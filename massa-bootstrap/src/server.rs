@@ -277,12 +277,7 @@ impl<D: Duplex, C: NetworkCommandSenderTrait + Clone> BootstrapServer<'_, D, C> 
 
             // check whether incoming peer IP is allowed.
             if let Err(error_msg) = self.white_black_list.is_ip_allowed(&remote_addr) {
-                //     server_binding.close_and_send_error(
-                //         self.bs_server_runtime.handle().clone(),
-                //         error_msg.to_string(),
-                //         remote_addr,
-                //         move || {},
-                //     );
+                server_binding.close_and_send_error(error_msg.to_string(), remote_addr, move || {});
                 continue;
             };
 
@@ -327,15 +322,11 @@ impl<D: Duplex, C: NetworkCommandSenderTrait + Clone> BootstrapServer<'_, D, C> 
                             "remote_addr": remote_addr
                         })
                     };
-                    // server_binding.close_and_send_error(
-                    //     self.bs_server_runtime.handle().clone(),
-                    //     msg,
-                    //     remote_addr,
-                    //     tracer,
-                    // );
+                    server_binding.close_and_send_error(msg, remote_addr, tracer);
                     continue;
-                }; // Clients Option<last-attempt> is good, and has been updated
+                };
 
+                // Clients Option<last-attempt> is good, and has been updated
                 massa_trace!("bootstrap.lib.run.select.accept.cache_available", {});
 
                 // launch bootstrap
@@ -368,12 +359,11 @@ impl<D: Duplex, C: NetworkCommandSenderTrait + Clone> BootstrapServer<'_, D, C> 
                     "active_count": Arc::strong_count(&bootstrap_sessions_counter) - 1
                 });
             } else {
-                // server_binding.close_and_send_error(
-                //     self.bs_server_runtime.handle().clone(),
-                //     "Bootstrap failed because the bootstrap server currently has no slots available.".to_string(),
-                //     remote_addr,
-                //     move || debug!("did not bootstrap {}: no available slots", remote_addr),
-                // );
+                server_binding.close_and_send_error(
+                    "Bootstrap failed because the bootstrap server currently has no slots available.".to_string(),
+                    remote_addr,
+                    move || debug!("did not bootstrap {}: no available slots", remote_addr),
+                );
             }
         }
 
@@ -508,19 +498,17 @@ fn run_bootstrap_session<D: Duplex, C: NetworkCommandSenderTrait>(
                     debug!("bootstrap serving error for peer {}: {}", remote_addr, err);
                     // We allow unused result because we don't care if an error is thrown when
                     // sending the error message to the server we will close the socket anyway.
-                    let _ = server.send_error(err.to_string()).await;
+                    let _ = server.send_error_timeout(err.to_string());
                 }
             },
             Err(_timeout) => {
                 debug!("bootstrap timeout for peer {}", remote_addr);
                 // We allow unused result because we don't care if an error is thrown when
                 // sending the error message to the server we will close the socket anyway.
-                let _ = server
-                    .send_error(format!(
-                        "Bootstrap process timedout ({})",
-                        format_duration(config.bootstrap_timeout.to_duration())
-                    ))
-                    .await;
+                let _ = server.send_error_timeout(format!(
+                    "Bootstrap process timedout ({})",
+                    format_duration(config.bootstrap_timeout.to_duration())
+                ));
             }
         }
     });
@@ -620,17 +608,16 @@ pub async fn stream_bootstrap_information<D: Duplex>(
         }
 
         if slot_too_old {
-            match server
-                .send_msg(write_timeout, BootstrapServerMessage::SlotTooOld)
-                .await
-            {
-                Err(_) => Err(std::io::Error::new(
-                    std::io::ErrorKind::TimedOut,
-                    "SlotTooOld message send timed out",
-                )
-                .into()),
-                Ok(Err(e)) => Err(e),
-                Ok(Ok(_)) => Ok(()),
+            match server.send_msg(write_timeout, BootstrapServerMessage::SlotTooOld) {
+                Err(BootstrapError::IoError(e)) if e.kind() == ErrorKind::TimedOut => {
+                    Err(std::io::Error::new(
+                        std::io::ErrorKind::TimedOut,
+                        "SlotTooOld message send timed out",
+                    )
+                    .into())
+                }
+                Err(e) => Err(e),
+                Ok(_) => Ok(()),
             }?;
             return Ok(());
         }
@@ -685,46 +672,44 @@ pub async fn stream_bootstrap_information<D: Duplex>(
             && final_state_changes_step.finished()
             && last_consensus_step.finished()
         {
-            match server
-                .send_msg(write_timeout, BootstrapServerMessage::BootstrapFinished)
-                .await
-            {
-                Err(_) => Err(std::io::Error::new(
-                    std::io::ErrorKind::TimedOut,
-                    "bootstrap ask ledger part send timed out",
-                )
-                .into()),
-                Ok(Err(e)) => Err(e),
-                Ok(Ok(_)) => Ok(()),
+            match server.send_msg(write_timeout, BootstrapServerMessage::BootstrapFinished) {
+                Err(BootstrapError::IoError(e)) if e.kind() == ErrorKind::TimedOut => {
+                    Err(std::io::Error::new(
+                        std::io::ErrorKind::TimedOut,
+                        "bootstrap ask ledger part send timed out",
+                    )
+                    .into())
+                }
+                Err(e) => Err(e),
+                Ok(_) => Ok(()),
             }?;
             break;
         }
 
         // At this point we know that consensus, final state or both are not finished
-        match server
-            .send_msg(
-                write_timeout,
-                BootstrapServerMessage::BootstrapPart {
-                    slot: current_slot,
-                    ledger_part,
-                    async_pool_part,
-                    pos_cycle_part,
-                    pos_credits_part,
-                    exec_ops_part,
-                    final_state_changes,
-                    consensus_part,
-                    consensus_outdated_ids,
-                },
-            )
-            .await
-        {
-            Err(_) => Err(std::io::Error::new(
-                std::io::ErrorKind::TimedOut,
-                "bootstrap ask ledger part send timed out",
-            )
-            .into()),
-            Ok(Err(e)) => Err(e),
-            Ok(Ok(_)) => Ok(()),
+        match server.send_msg(
+            write_timeout,
+            BootstrapServerMessage::BootstrapPart {
+                slot: current_slot,
+                ledger_part,
+                async_pool_part,
+                pos_cycle_part,
+                pos_credits_part,
+                exec_ops_part,
+                final_state_changes,
+                consensus_part,
+                consensus_outdated_ids,
+            },
+        ) {
+            Err(BootstrapError::IoError(e)) if e.kind() == ErrorKind::TimedOut => {
+                Err(std::io::Error::new(
+                    std::io::ErrorKind::TimedOut,
+                    "bootstrap ask ledger part send timed out",
+                )
+                .into())
+            }
+            Err(e) => Err(e),
+            Ok(_) => Ok(()),
         }?;
     }
     Ok(())
@@ -778,24 +763,22 @@ async fn manage_bootstrap<D: Duplex, C: NetworkCommandSenderTrait>(
     // Sync clocks.
     let server_time = MassaTime::now()?;
 
-    match dbg!(
-        server
-            .send_msg(
-                write_timeout,
-                BootstrapServerMessage::BootstrapTime {
-                    server_time,
-                    version,
-                },
+    match dbg!(server.send_msg(
+        write_timeout,
+        BootstrapServerMessage::BootstrapTime {
+            server_time,
+            version,
+        },
+    )) {
+        Err(BootstrapError::IoError(e)) if e.kind() == ErrorKind::TimedOut => {
+            Err(std::io::Error::new(
+                std::io::ErrorKind::TimedOut,
+                "bootstrap clock send timed out",
             )
-            .await
-    ) {
-        Err(_) => Err(std::io::Error::new(
-            std::io::ErrorKind::TimedOut,
-            "bootstrap clock send timed out",
-        )
-        .into()),
-        Ok(Err(e)) => Err(e),
-        Ok(Ok(_)) => Ok(()),
+            .into())
+        }
+        Err(e) => Err(e),
+        Ok(_) => Ok(()),
     }?;
 
     loop {
@@ -808,22 +791,21 @@ async fn manage_bootstrap<D: Duplex, C: NetworkCommandSenderTrait>(
             Err(e) => break Err(e),
             Ok(msg) => match msg {
                 BootstrapClientMessage::AskBootstrapPeers => {
-                    match server
-                        .send_msg(
-                            write_timeout,
-                            BootstrapServerMessage::BootstrapPeers {
-                                peers: network_command_sender.get_bootstrap_peers().await?,
-                            },
-                        )
-                        .await
-                    {
-                        Err(_) => Err(std::io::Error::new(
-                            std::io::ErrorKind::TimedOut,
-                            "bootstrap peers send timed out",
-                        )
-                        .into()),
-                        Ok(Err(e)) => Err(e),
-                        Ok(Ok(_)) => Ok(()),
+                    match server.send_msg(
+                        write_timeout,
+                        BootstrapServerMessage::BootstrapPeers {
+                            peers: network_command_sender.get_bootstrap_peers().await?,
+                        },
+                    ) {
+                        Err(BootstrapError::IoError(e)) if e.kind() == ErrorKind::TimedOut => {
+                            Err(std::io::Error::new(
+                                std::io::ErrorKind::TimedOut,
+                                "bootstrap peers send timed out",
+                            )
+                            .into())
+                        }
+                        Err(e) => Err(e),
+                        Ok(_) => Ok(()),
                     }?;
                 }
                 BootstrapClientMessage::AskBootstrapPart {

@@ -15,11 +15,11 @@ use massa_serialization::{DeserializeError, Deserializer, Serializer};
 use massa_signature::KeyPair;
 use massa_time::MassaTime;
 use std::convert::TryInto;
+use std::io::ErrorKind;
 use std::net::SocketAddr;
 use std::thread;
 use std::time::Duration;
 use tokio::runtime::Handle;
-use tokio::time::error::Elapsed;
 use tracing::error;
 
 /// Bootstrap server binder
@@ -99,12 +99,12 @@ impl<D: Duplex> BootstrapServerBinder<D> {
         Ok(())
     }
 
-    pub async fn send_msg(
+    pub fn send_msg(
         &mut self,
         timeout: Duration,
         msg: BootstrapServerMessage,
-    ) -> Result<Result<(), BootstrapError>, Elapsed> {
-        tokio::time::timeout(timeout, self.send(msg)).await
+    ) -> Result<(), BootstrapError> {
+        self.send_timeout(msg, Some(timeout))
     }
 
     /// 1. Spawns a thread
@@ -114,28 +114,22 @@ impl<D: Duplex> BootstrapServerBinder<D> {
     /// 5. runs the passed in closure (typically a custom logging msg)
     ///
     /// consumes the binding in the process
-    pub(crate) fn _close_and_send_error<F>(
-        mut self,
-        server_outer_rt_hnd: Handle,
-        msg: String,
-        addr: SocketAddr,
-        close_fn: F,
-    ) where
+    pub(crate) fn close_and_send_error<F>(mut self, msg: String, addr: SocketAddr, close_fn: F)
+    where
         F: FnOnce() + Send + 'static,
     {
         thread::Builder::new()
             .name("bootstrap-error-send".to_string())
             .spawn(move || {
                 let msg_cloned = msg.clone();
-                let err_send =
-                    server_outer_rt_hnd.block_on(async move { self.send_error(msg_cloned).await });
+                let err_send = self.send_error_timeout(msg_cloned);
                 match err_send {
-                    Err(_) => error!(
+                    Err(BootstrapError::IoError(e)) if e.kind() == ErrorKind::TimedOut => error!(
                         "bootstrap server timed out sending error '{}' to addr {}",
                         msg, addr
                     ),
-                    Ok(Err(e)) => error!("{}", e),
-                    Ok(Ok(_)) => {}
+                    Err(e) => error!("{}", e),
+                    Ok(_) => {}
                 }
                 close_fn();
             })
@@ -143,19 +137,25 @@ impl<D: Duplex> BootstrapServerBinder<D> {
             // it's an error at the OS level.
             .unwrap();
     }
-    pub async fn send_error(
-        &mut self,
-        error: String,
-    ) -> Result<Result<(), BootstrapError>, Elapsed> {
-        tokio::time::timeout(
-            self.write_error_timeout.into(),
-            self.send(BootstrapServerMessage::BootstrapError { error }),
+    pub fn send_error_timeout(&mut self, error: String) -> Result<(), BootstrapError> {
+        self.send_timeout(
+            BootstrapServerMessage::BootstrapError { error },
+            Some(self.write_error_timeout.to_duration()),
         )
-        .await
+        .map_err(|e| match e {
+            BootstrapError::IoError(e) if e.kind() == ErrorKind::WouldBlock => {
+                BootstrapError::IoError(ErrorKind::TimedOut.into())
+            }
+            e => e,
+        })
     }
 
     /// Writes the next message. NOT cancel-safe
-    pub async fn send(&mut self, msg: BootstrapServerMessage) -> Result<(), BootstrapError> {
+    pub fn send_timeout(
+        &mut self,
+        msg: BootstrapServerMessage,
+        duration: Option<Duration>,
+    ) -> Result<(), BootstrapError> {
         // serialize message
         let mut msg_bytes = Vec::new();
         BootstrapServerMessageSerializer::new().serialize(&msg, &mut msg_bytes)?;

@@ -98,7 +98,9 @@ async fn test_binders() {
         let version: Version = Version::from_str("TEST.1.10").unwrap();
 
         server.handshake(version).await.unwrap();
-        server.send(test_peers_message.clone()).await.unwrap();
+        server
+            .send_timeout(test_peers_message.clone(), None)
+            .unwrap();
 
         let message = server.next_timeout(None).unwrap();
         match message {
@@ -118,7 +120,9 @@ async fn test_binders() {
             peers: BootstrapPeers(vector_peers.clone()),
         };
 
-        server.send(test_peers_message.clone()).await.unwrap();
+        server
+            .send_timeout(test_peers_message.clone(), None)
+            .unwrap();
     });
 
     let client_thread = tokio::spawn(async move {
@@ -202,7 +206,9 @@ async fn test_binders_double_send_server_works() {
         let version: Version = Version::from_str("TEST.1.10").unwrap();
 
         server.handshake(version).await.unwrap();
-        server.send(test_peers_message.clone()).await.unwrap();
+        server
+            .send_timeout(test_peers_message.clone(), None)
+            .unwrap();
 
         // Test message 2
         let vector_peers = vec![
@@ -214,7 +220,9 @@ async fn test_binders_double_send_server_works() {
             peers: BootstrapPeers(vector_peers.clone()),
         };
 
-        server.send(test_peers_message.clone()).await.unwrap();
+        server
+            .send_timeout(test_peers_message.clone(), None)
+            .unwrap();
     });
 
     let client_thread = tokio::spawn(async move {
@@ -288,7 +296,9 @@ async fn test_binders_try_double_send_client_works() {
         let version: Version = Version::from_str("TEST.1.10").unwrap();
 
         server.handshake(version).await.unwrap();
-        server.send(test_peers_message.clone()).await.unwrap();
+        server
+            .send_timeout(test_peers_message.clone(), None)
+            .unwrap();
 
         let message = server.next_timeout(None).unwrap();
         match message {
@@ -306,7 +316,9 @@ async fn test_binders_try_double_send_client_works() {
             _ => panic!("Bad message receive: Expected a peers list message"),
         }
 
-        server.send(test_peers_message.clone()).await.unwrap();
+        server
+            .send_timeout(test_peers_message.clone(), None)
+            .unwrap();
     });
 
     let client_thread = tokio::spawn(async move {
