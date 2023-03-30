@@ -8,6 +8,9 @@ on:
 jobs:
   security_audit:
     runs-on: ubuntu-latest
+    concurrency:
+      group: ${{ github.workflow }}-${{ github.ref }}
+      cancel-in-progress: true
     steps:
       - uses: actions/checkout@v1
       - uses: actions-rs/audit-check@v1
