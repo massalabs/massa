@@ -4,6 +4,7 @@
 
 use displaydoc::Display;
 use massa_module_cache::error::CacheError;
+use massa_sc_runtime::VMError;
 use thiserror::Error;
 
 /// Errors of the execution component.
@@ -46,11 +47,14 @@ pub enum ExecutionError {
     /// Include operation error: {0}
     IncludeOperationError(String),
 
-    /// Error when initialize vesting addresses : {0}
+    /// Error when initialize vesting addresses: {0}
     InitVestingError(String),
 
-    /// We reach the vesting constraint : {0}
+    /// We reach the vesting constraint: {0}
     VestingError(String),
+
+    /// VM Error: {0}
+    VMError(#[from] VMError),
 
     /// Cache error: {0}
     CacheError(#[from] CacheError),

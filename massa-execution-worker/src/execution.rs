@@ -35,12 +35,12 @@ use massa_models::{amount::Amount, slot::Slot};
 use massa_module_cache::config::ModuleCacheConfig;
 use massa_module_cache::controller::ModuleCache;
 use massa_pos_exports::SelectorController;
-use massa_sc_runtime::{Interface, Response};
+use massa_sc_runtime::{Interface, Response, VMError};
 use massa_storage::Storage;
 use parking_lot::{Mutex, RwLock};
 use std::collections::{BTreeMap, BTreeSet, HashMap};
 use std::sync::Arc;
-use tracing::{debug, error, info, warn};
+use tracing::{debug, info, warn};
 
 /// Used to acquire a lock on the execution context
 macro_rules! context_guard {
@@ -580,20 +580,12 @@ impl ExecutionState {
                 "not enough gas to pay for singlepass compilation".to_string(),
             ))?;
         // run the VM
-        match massa_sc_runtime::run_main(
+        massa_sc_runtime::run_main(
             &*self.execution_interface,
             module,
             remaining_gas,
             self.config.gas_costs.clone(),
-        ) {
-            Ok(_response) => {}
-            Err(err) => {
-                return Err(ExecutionError::RuntimeError(format!(
-                    "module execution error in execute_executesc_op: {}",
-                    err
-                )));
-            }
-        }
+        )?;
 
         Ok(())
     }
@@ -675,25 +667,24 @@ impl ExecutionState {
         // load and execute the compiled module
         // IMPORTANT: do not keep a lock here as `run_function` uses the `get_module` interface
         let module = self.module_cache.write().load_module(&bytecode, max_gas)?;
-        match massa_sc_runtime::run_function(
+        let response = massa_sc_runtime::run_function(
             &*self.execution_interface,
             module,
             target_func,
             param,
             max_gas,
             self.config.gas_costs.clone(),
-        ) {
-            Ok(Response { init_cost, .. }) => {
+        );
+        match response {
+            Ok(Response { init_cost, .. }) | Err(VMError::ExecutionError { init_cost, .. }) => {
                 self.module_cache
                     .write()
                     .set_init_cost(&bytecode, init_cost);
-                Ok(())
             }
-            Err(err) => Err(ExecutionError::RuntimeError(format!(
-                "module execution error in execute_callsc_op: {}",
-                err
-            ))),
+            _ => (),
         }
+        response?;
+        Ok(())
     }
 
     /// Tries to execute an asynchronous message
@@ -770,14 +761,15 @@ impl ExecutionState {
             .module_cache
             .write()
             .load_module(&bytecode, message.max_gas)?;
-        match massa_sc_runtime::run_function(
+        let response = massa_sc_runtime::run_function(
             &*self.execution_interface,
             module,
             &message.handler,
             &message.data,
             message.max_gas,
             self.config.gas_costs.clone(),
-        ) {
+        );
+        match response {
             Ok(Response { init_cost, .. }) => {
                 self.module_cache
                     .write()
@@ -785,11 +777,13 @@ impl ExecutionState {
                 Ok(())
             }
             Err(err) => {
+                if let VMError::ExecutionError { init_cost, .. } = err {
+                    self.module_cache
+                        .write()
+                        .set_init_cost(&bytecode, init_cost);
+                }
                 // execution failed: reset context to snapshot and reimburse sender
-                let err = ExecutionError::RuntimeError(format!(
-                    "module execution error in execute_async_message: {}",
-                    err
-                ));
+                let err = ExecutionError::from(err);
                 let mut context = context_guard!(self);
                 context.reset_to_snapshot(context_snapshot, err.clone());
                 context.cancel_async_message(&message);
@@ -1155,13 +1149,7 @@ impl ExecutionState {
                     module,
                     req.max_gas,
                     self.config.gas_costs.clone(),
-                )
-                .map_err(|err| {
-                    ExecutionError::RuntimeError(format!(
-                        "module execution error in execute_readonly_request BytecodeExecution: {}",
-                        err,
-                    ))
-                })?
+                )?
             }
             ReadOnlyExecutionTarget::FunctionCall {
                 target_addr,
@@ -1190,17 +1178,17 @@ impl ExecutionState {
                     &parameter,
                     req.max_gas,
                     self.config.gas_costs.clone(),
-                )
-                .map_err(|err| {
-                    ExecutionError::RuntimeError(format!(
-                        "module execution error in execute_readonly_request FunctionCall: {}",
-                        err,
-                    ))
-                })?;
-                self.module_cache
-                    .write()
-                    .set_init_cost(&bytecode, response.init_cost);
-                response
+                );
+                match response {
+                    Ok(Response { init_cost, .. })
+                    | Err(VMError::ExecutionError { init_cost, .. }) => {
+                        self.module_cache
+                            .write()
+                            .set_init_cost(&bytecode, init_cost);
+                    }
+                    _ => (),
+                }
+                response?
             }
         };
 
