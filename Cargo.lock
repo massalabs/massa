@@ -2316,7 +2316,7 @@ dependencies = [
 [[package]]
 name = "massa-sc-runtime"
 version = "0.10.0"
-source = "git+https://github.com/massalabs/massa-sc-runtime?branch=abi_get_matching_key_for#8854f2248629c9db91a0d00eb271f87cc5bf4a6e"
+source = "git+https://github.com/massalabs/massa-sc-runtime?branch=testnet_21#66d6dc5cfcac6f4f9c9d184a0e1ddb3309a3296a"
 dependencies = [
  "anyhow",
  "as-ffi-bindings",
@@ -2669,7 +2669,7 @@ dependencies = [
 [[package]]
 name = "massa_hash"
 version = "0.1.0"
-source = "git+https://github.com/massalabs/massa.git#57d786ec01a78a714723b26dc6bf38618a6430a1"
+source = "git+https://github.com/massalabs/massa.git#b27e8416efac19e8ec470e96bb49c74687092ac3"
 dependencies = [
  "blake3",
  "bs58",
@@ -2932,7 +2932,7 @@ dependencies = [
 [[package]]
 name = "massa_serialization"
 version = "0.1.0"
-source = "git+https://github.com/massalabs/massa.git#57d786ec01a78a714723b26dc6bf38618a6430a1"
+source = "git+https://github.com/massalabs/massa.git#b27e8416efac19e8ec470e96bb49c74687092ac3"
 dependencies = [
  "displaydoc",
  "nom",
