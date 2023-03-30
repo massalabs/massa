@@ -43,6 +43,8 @@ pub struct ProtocolConfig {
     pub max_operations_per_message: u64,
     /// Maximum size in bytes of all serialized operations size in a block
     pub max_serialized_operations_size_per_block: usize,
+    /// Maximum operations in a block
+    pub max_operations_per_block: u32,
     /// Controller channel size
     pub controller_channel_size: usize,
     /// Event channel size

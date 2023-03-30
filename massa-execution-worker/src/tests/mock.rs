@@ -3,8 +3,8 @@ use massa_final_state::{FinalState, FinalStateConfig};
 use massa_hash::Hash;
 use massa_ledger_exports::{LedgerConfig, LedgerController, LedgerEntry, LedgerError};
 use massa_ledger_worker::FinalLedger;
+use massa_models::execution::TempFileVestingRange;
 use massa_models::prehash::PreHashMap;
-use massa_models::vesting_range::VestingRange;
 use massa_models::{
     address::Address,
     amount::Amount,
@@ -171,49 +171,40 @@ pub fn create_block(
 #[allow(dead_code)]
 pub fn get_initials_vesting(with_value: bool) -> NamedTempFile {
     let file = NamedTempFile::new().unwrap();
-    let mut map = PreHashMap::default();
+    let mut map: PreHashMap<Address, Vec<TempFileVestingRange>> = PreHashMap::default();
 
     if with_value {
         const PAST_TIMESTAMP: u64 = 1675356692000; // 02/02/2023 17h51
         const SEC_TIMESTAMP: u64 = 1677775892000; // 02/03/2023 17h51;
         const FUTURE_TIMESTAMP: u64 = 1731257385000; // 10/11/2024 17h49;
 
-        // this range has past timestamp so she doesn't appear in vesting HashMap
-        let vesting1 = VestingRange {
-            start_slot: Slot::min(),
-            end_slot: Slot::min(),
-            timestamp: MassaTime::from(PAST_TIMESTAMP),
-            min_balance: Amount::from_str("150000").unwrap(),
-            max_rolls: 170,
-        };
-
-        let vesting2 = VestingRange {
-            start_slot: Slot::min(),
-            end_slot: Slot::min(),
-            timestamp: MassaTime::from_millis(SEC_TIMESTAMP),
-            min_balance: Amount::from_str("100000").unwrap(),
-            max_rolls: 150,
-        };
-
-        let vesting3 = VestingRange {
-            start_slot: Slot::min(),
-            end_slot: Slot::min(),
-            timestamp: MassaTime::from_millis(FUTURE_TIMESTAMP),
-            min_balance: Amount::from_str("80000").unwrap(),
-            max_rolls: 80,
-        };
-
-        let vec1 = vec![vesting1, vesting2, vesting3];
+        let vec = vec![
+            TempFileVestingRange {
+                timestamp: MassaTime::from(SEC_TIMESTAMP),
+                min_balance: Some(Amount::from_str("100000").unwrap()),
+                max_rolls: Some(50),
+            },
+            TempFileVestingRange {
+                timestamp: MassaTime::from(FUTURE_TIMESTAMP),
+                min_balance: Some(Amount::from_str("80000").unwrap()),
+                max_rolls: None,
+            },
+            TempFileVestingRange {
+                timestamp: MassaTime::from(PAST_TIMESTAMP),
+                min_balance: Some(Amount::from_str("150000").unwrap()),
+                max_rolls: Some(30),
+            },
+        ];
 
         let keypair_0 =
             KeyPair::from_str("S1JJeHiZv1C1zZN5GLFcbz6EXYiccmUPLkYuDFA3kayjxP39kFQ").unwrap();
         let addr_0 = Address::from_public_key(&keypair_0.get_public_key());
 
-        map.insert(addr_0, vec1);
+        map.insert(addr_0, vec);
     }
 
     // write file
-    serde_json::to_writer_pretty::<&File, PreHashMap<Address, Vec<VestingRange>>>(
+    serde_json::to_writer_pretty::<&File, PreHashMap<Address, Vec<TempFileVestingRange>>>(
         file.as_file(),
         &map,
     )

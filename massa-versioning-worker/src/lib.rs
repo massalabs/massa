@@ -20,6 +20,10 @@
 //! * A state machine (stores the current state of deployment for a MipInfo)
 //! * A history (stores a list of `Advance` message that 'really' updated the state machine)
 //!
+//! A auto generated graph of the state machine can be found here:
+//! * dot -Tpng ./target/machine/componentstate.dot > ./target/machine/componentstate.png
+//! * xdg-open ./target/machine/componentstate.png
+//!
 //! History is there in order to:
 //! * Query the state at any time, so you can query MipStore and ask the best version at any time
 //! * Used a lot when merging 2 MipStore:

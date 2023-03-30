@@ -255,6 +255,7 @@ pub struct MessageDeserializer {
     id_deserializer: U32VarIntDeserializer,
     ask_block_number_deserializer: U32VarIntDeserializer,
     peer_list_length_deserializer: U32VarIntDeserializer,
+    operation_replies_deserializer: OperationsDeserializer,
     operations_deserializer: OperationsDeserializer,
     hash_deserializer: HashDeserializer,
     block_header_deserializer: SecureShareDeserializer<BlockHeader, BlockHeaderDeserializer>,
@@ -297,8 +298,17 @@ impl MessageDeserializer {
                 Included(0),
                 Included(max_advertise_length),
             ),
-            operations_deserializer: OperationsDeserializer::new(
+            operation_replies_deserializer: OperationsDeserializer::new(
                 max_operations_per_block,
+                max_datastore_value_length,
+                max_function_name_length,
+                max_parameters_size,
+                max_op_datastore_entry_count,
+                max_op_datastore_key_length,
+                max_op_datastore_value_length,
+            ),
+            operations_deserializer: OperationsDeserializer::new(
+                max_operations_per_message,
                 max_datastore_value_length,
                 max_function_name_length,
                 max_parameters_size,
@@ -466,7 +476,7 @@ impl Deserializer<Message> for MessageDeserializer {
                                                 (rest, BlockInfoReply::Info(operation_ids))
                                             }),
                                         BlockInfoType::Operations => self
-                                            .operations_deserializer
+                                            .operation_replies_deserializer
                                             .deserialize(rest)
                                             .map(|(rest, operations)| {
                                                 (rest, BlockInfoReply::Operations(operations))
