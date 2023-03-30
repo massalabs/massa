@@ -3,6 +3,7 @@ use massa_time::MassaTime;
 use std::{
     io,
     net::{SocketAddr, TcpListener, TcpStream},
+    time::Duration,
 };
 
 /// duplex connection
@@ -10,9 +11,24 @@ pub trait Duplex:
 // static because need to send between threads :(
     'static  + Send + io::Read + io::Write
 {
+    fn set_read_timeout(&mut self, duration: Option<Duration>) -> io::Result<()>;
+    fn set_write_timeout(&mut self, duration: Option<Duration>) -> io::Result<()>;
+    fn set_nonblocking(&mut self, setting: bool) -> io::Result<()>;
 }
 
-impl Duplex for std::net::TcpStream {}
+impl Duplex for std::net::TcpStream {
+    fn set_read_timeout(&mut self, duration: Option<Duration>) -> io::Result<()> {
+        Self::set_read_timeout(&self, duration)
+    }
+
+    fn set_write_timeout(&mut self, duration: Option<Duration>) -> io::Result<()> {
+        Self::set_write_timeout(&self, duration)
+    }
+
+    fn set_nonblocking(&mut self, setting: bool) -> io::Result<()> {
+        Self::set_nonblocking(&self, setting)
+    }
+}
 
 /// Specifies a common interface that can be used by standard, or mockers
 #[cfg_attr(test, mockall::automock)]
@@ -53,6 +69,7 @@ impl DefaultListener {
 
         // Number of connections to queue, set to the hardcoded value used by tokio
         socket.listen(1024)?;
+        socket.set_nonblocking(false);
         Ok(DefaultListener(socket.into()))
     }
 }

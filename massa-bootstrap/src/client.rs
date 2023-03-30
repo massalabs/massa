@@ -26,7 +26,7 @@ use crate::{
 /// This function will send the starting point to receive a stream of the ledger and will receive and process each part until receive a `BootstrapServerMessage::FinalStateFinished` message from the server.
 /// `next_bootstrap_message` passed as parameter must be `BootstrapClientMessage::AskFinalStatePart` enum variant.
 /// `next_bootstrap_message` will be updated after receiving each part so that in case of connection lost we can restart from the last message we processed.
-async fn stream_final_state_and_consensus<D: Duplex>(
+fn stream_final_state_and_consensus<D: Duplex>(
     cfg: &BootstrapConfig,
     client: &mut BootstrapClientBinder<D>,
     next_bootstrap_message: &mut BootstrapClientMessage,
@@ -47,7 +47,7 @@ async fn stream_final_state_and_consensus<D: Duplex>(
         }?;
         loop {
             let msg = match // tokio::time::timeout(cfg.read_timeout.into(),
-                                                 client.next() {
+                                                 client.next_timeout(Some(cfg.read_timeout.to_duration())) {
                                                      Err(BootstrapError::IoError(e)) if e.kind() == ErrorKind::TimedOut => {
                     return Err(std::io::Error::new(
                         std::io::ErrorKind::TimedOut,
@@ -193,7 +193,7 @@ async fn stream_final_state_and_consensus<D: Duplex>(
 
 /// Gets the state from a bootstrap server (internal private function)
 /// needs to be CANCELLABLE
-async fn bootstrap_from_server<D: Duplex>(
+fn bootstrap_from_server<D: Duplex>(
     cfg: &BootstrapConfig,
     client: &mut BootstrapClientBinder<D>,
     next_bootstrap_message: &mut BootstrapClientMessage,
@@ -201,22 +201,24 @@ async fn bootstrap_from_server<D: Duplex>(
     our_version: Version,
 ) -> Result<(), BootstrapError> {
     massa_trace!("bootstrap.lib.bootstrap_from_server", {});
+    dbg!("getting next");
 
     // read error (if sent by the server)
     // client.next() is not cancel-safe but we drop the whole client object if cancelled => it's OK
-    match // tokio::time::timeout(cfg.read_error_timeout.into(),
-                               client.next() {
+    match // tokio::time::timeout(,
+        client.next_timeout(Some(cfg.read_error_timeout.to_duration())) {
                                    Err(BootstrapError::IoError(e)) if e.kind() == ErrorKind::TimedOut => {
+                                       dbg!("no next");
             massa_trace!(
                 "bootstrap.lib.bootstrap_from_server: No error sent at connection",
                 {}
             );
         }
-        Err(e) => return Err(e),
+        Err(e) => return Err(dbg!(e)),
         Ok(BootstrapServerMessage::BootstrapError { error: err }) => {
-            return Err(BootstrapError::ReceivedError(err))
+            return Err(BootstrapError::ReceivedError(dbg!(err)))
         }
-        Ok(msg) => return Err(BootstrapError::UnexpectedServerMessage(msg)),
+        Ok(msg) => return Err(BootstrapError::UnexpectedServerMessage(dbg!(msg))),
     };
 
     // handshake
@@ -245,8 +247,8 @@ async fn bootstrap_from_server<D: Duplex>(
 
     // First, clock and version.
     // client.next() is not cancel-safe but we drop the whole client object if cancelled => it's OK
-    let server_time = match // tokio::time::timeout(cfg.read_timeout.into(),
-                                                 client.next() {
+    let server_time = match // tokio::time::timeout(,
+        client.next_timeout(Some(cfg.read_timeout.into())) {
         Err(BootstrapError::IoError(e)) if e.kind() == ErrorKind::TimedOut => {
             return Err(std::io::Error::new(
                 std::io::ErrorKind::TimedOut,
@@ -310,8 +312,7 @@ async fn bootstrap_from_server<D: Duplex>(
                     client,
                     next_bootstrap_message,
                     global_bootstrap_state,
-                )
-                .await?;
+                )?;
             }
             BootstrapClientMessage::AskBootstrapPeers => {
                 let peers = match send_client_message(
@@ -320,9 +321,7 @@ async fn bootstrap_from_server<D: Duplex>(
                     write_timeout,
                     cfg.read_timeout.into(),
                     "ask bootstrap peers timed out",
-                )
-                .await?
-                {
+                )? {
                     BootstrapServerMessage::BootstrapPeers { peers } => peers,
                     BootstrapServerMessage::BootstrapError { error } => {
                         return Err(BootstrapError::ReceivedError(error))
@@ -355,7 +354,7 @@ async fn bootstrap_from_server<D: Duplex>(
     Ok(())
 }
 
-async fn send_client_message<D: Duplex>(
+fn send_client_message<D: Duplex>(
     message_to_send: &BootstrapClientMessage,
     client: &mut BootstrapClientBinder<D>,
     write_timeout: Duration,
@@ -368,8 +367,8 @@ async fn send_client_message<D: Duplex>(
         Err(e) => Err(e),
         Ok(_) => Ok(()),
     }?;
-    match // tokio::time::timeout(read_timeout,
-                               client.next() {
+    match // tokio::time::timeout(,
+        client.next_timeout(Some(read_timeout)) {
                                    Err(BootstrapError::IoError(e)) if e.kind() == ErrorKind::TimedOut => Err(std::io::Error::new(std::io::ErrorKind::TimedOut, error).into()),
         Err(e) => Err(e),
         Ok(msg) => Ok(msg),
@@ -384,6 +383,9 @@ fn connect_to_server(
 ) -> Result<BootstrapClientBinder<std::net::TcpStream>, Box<BootstrapError>> {
     let socket = connector
         .connect_timeout(*addr, Some(bootstrap_config.connect_timeout))
+        .map_err(|e| Box::new(e.into()))?;
+    socket
+        .set_nonblocking(false)
         .map_err(|e| Box::new(e.into()))?;
     Ok(BootstrapClientBinder::new(
         // this from_std will panic if this method doesn't exist within an async runtime...
@@ -421,7 +423,7 @@ fn filter_bootstrap_list(
 
 /// Gets the state from a bootstrap server
 /// needs to be CANCELLABLE
-pub async fn get_state(
+pub fn get_state(
     bootstrap_config: &BootstrapConfig,
     final_state: Arc<RwLock<FinalState>>,
     mut connector: impl BSConnector,
@@ -466,7 +468,7 @@ pub async fn get_state(
             ) {
                 Ok(mut client) => {
                     match bootstrap_from_server(bootstrap_config, &mut client, &mut next_bootstrap_message, &mut global_bootstrap_state,version)
-                    .await  // cancellable
+                      // cancellable
                     {
                         Err(BootstrapError::ReceivedError(error)) => warn!("Error received from bootstrap server: {}", error),
                         Err(e) => {
@@ -486,7 +488,7 @@ pub async fn get_state(
             };
 
             info!("Bootstrap from server {} failed. Your node will try to bootstrap from another server in {}.", addr, format_duration(bootstrap_config.retry_delay.to_duration()).to_string());
-            sleep(bootstrap_config.retry_delay.into()).await;
+            std::thread::sleep(bootstrap_config.retry_delay.into());
         }
     }
 }

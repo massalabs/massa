@@ -195,9 +195,9 @@ async fn test_bootstrap_server() {
     .unwrap();
 
     // launch the get_state process
-    let get_state_h = tokio::task::Builder::new()
-        .name("state-getter")
-        .spawn(async move {
+    let get_state_h = std::thread::Builder::new()
+        .name("state-getter".to_string())
+        .spawn(move || {
             get_state(
                 bootstrap_config,
                 final_state_client_clone,
@@ -206,7 +206,6 @@ async fn test_bootstrap_server() {
                 MassaTime::now().unwrap().saturating_sub(1000.into()),
                 None,
             )
-            .await
             .unwrap()
         })
         .unwrap();
@@ -239,7 +238,7 @@ async fn test_bootstrap_server() {
 
     // wait for get_state
     let bootstrap_res = get_state_h
-        .await
+        .join()
         .expect("error while waiting for get_state to finish");
 
     // apply the changes to the server state before matching with the client

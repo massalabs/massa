@@ -1,5 +1,7 @@
 // Copyright (c) 2022 MASSA LABS <info@massa.net>
 
+use std::time::Duration;
+
 use crate::error::BootstrapError;
 use crate::establisher::Duplex;
 use crate::messages::{
@@ -66,18 +68,23 @@ impl<D: Duplex> BootstrapClientBinder<D> {
     }
 
     /// Reads the next message. NOT cancel-safe
-    pub fn next(&mut self) -> Result<BootstrapServerMessage, BootstrapError> {
+    pub fn next_timeout(
+        &mut self,
+        duration: Option<Duration>,
+    ) -> Result<BootstrapServerMessage, BootstrapError> {
+        self.duplex.set_read_timeout(duration).unwrap();
+        self.duplex.set_nonblocking(false).unwrap();
         // read signature
         let sig = {
             let mut sig_bytes = [0u8; SIGNATURE_SIZE_BYTES];
-            self.duplex.read_exact(&mut sig_bytes)?;
-            Signature::from_bytes(&sig_bytes)?
+            self.duplex.read_exact(&mut sig_bytes).unwrap();
+            Signature::from_bytes(&sig_bytes).unwrap()
         };
 
         // read message length
         let msg_len = {
             let mut msg_len_bytes = vec![0u8; self.size_field_len];
-            self.duplex.read_exact(&mut msg_len_bytes[..])?;
+            self.duplex.read_exact(&mut msg_len_bytes[..]).unwrap();
             u32::from_be_bytes_min(&msg_len_bytes, self.cfg.max_bootstrap_message_size)?.0
         };
 
