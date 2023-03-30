@@ -23,36 +23,16 @@ message Endorsement {
     string endorsed_block = 3;
 }
 
-// message struct
-message EndorsementContent {
-    // string field
-    string sender_public_key = 1;
-    // object field
-    Slot slot = 2;
-    // float field
-    fixed32 index = 3;
-    // string field
-    string endorsed_block = 4;
-}
-
-// message struct
-message EndorsementId {
-    // string field
-    string value = 1;
-}
-
-// message struct
-message SecureShareEndorsement {
+// Signed endorsement
+message SignedEndorsement {
     // object field
     Endorsement content = 1;
-    // Content in sharable, deserializable form. Is used in the secure verification protocols
-    bytes serialized_data = 2;
     // A cryptographically generated value using `serialized_data` and a public key.
-    string signature = 3;
+    string signature = 2;
     // The public-key component used in the generation of the signature
-    string content_creator_pub_key = 4;
+    string content_creator_pub_key = 3;
     // Derived from the same public key used to generate the signature
-    string content_creator_address = 5;
+    string content_creator_address = 4;
     // A secure hash of the data. See also [massa_hash::Hash]
-    string id = 6;
+    string id = 5;
 }

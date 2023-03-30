@@ -22,12 +22,12 @@ option php_namespace = "Massa\\Api\\V1";
 // Massa gRPC service
 service Grpc {
 
-    // GetBlocksBySlots
+    // Get blocks by slots
     rpc GetBlocksBySlots (GetBlocksBySlotsRequest) returns (GetBlocksBySlotsResponse) {
         option (google.api.http) = {get: "/v1/get_blocks_by_slots"};
     }
 
-    // GetDatastoreEntries
+    // Get datastore entries
     rpc GetDatastoreEntries (GetDatastoreEntriesRequest) returns (GetDatastoreEntriesResponse) {
         option (google.api.http) = {
             post: "/v1/get_datastore_entries"
@@ -35,12 +35,12 @@ service Grpc {
         };
     }
 
-    // GetNextBlockBestParents
+    // Get next block best parents
     rpc GetNextBlockBestParents (GetNextBlockBestParentsRequest) returns (GetNextBlockBestParentsResponse) {
         option (google.api.http) = {get: "/v1/get_next_block_best_parents"};
     }
 
-    // GetSelectorDraws
+    // Get selector draws
     rpc GetSelectorDraws (GetSelectorDrawsRequest) returns (GetSelectorDrawsResponse) {
         option (google.api.http) = {
             post: "/v1/get_selector_draws"
@@ -48,12 +48,12 @@ service Grpc {
         };
     }
 
-    // GetTransactionsThroughput
+    // Get transactions throughput
     rpc GetTransactionsThroughput (GetTransactionsThroughputRequest) returns (GetTransactionsThroughputResponse) {
         option (google.api.http) = {get: "/v1/transactions_throughput"};
     }
 
-    // GetVersion
+    // Get node version
     rpc GetVersion (GetVersionRequest) returns (GetVersionResponse) {
         option (google.api.http) = {get: "/v1/version"};
     }
@@ -64,28 +64,28 @@ service Grpc {
     // ╚════██║   ██║   ██╔══██╗██╔══╝  ██╔══██║██║╚██╔╝██║
     // ███████║   ██║   ██║  ██║███████╗██║  ██║██║ ╚═╝ ██║
 
-    // NewBlocks
+    // New received and produced blocks
     rpc NewBlocks (stream NewBlocksStreamRequest) returns (stream NewBlocksStreamResponse) {}
 
-    // NewBlocksHeaders
+    // New received and produced blocks headers
     rpc NewBlocksHeaders (stream NewBlocksHeadersStreamRequest) returns (stream NewBlocksHeadersStreamResponse) {}
 
-    // NewFilledBlocks
+    // New received and produced blocks with operations
     rpc NewFilledBlocks (stream NewFilledBlocksStreamRequest) returns (stream NewFilledBlocksStreamResponse) {}
 
-    // NewOperations
+    // New received and produced perations
     rpc NewOperations (stream NewOperationsStreamRequest) returns (stream NewOperationsStreamResponse) {}
 
-    // SendBlocks
+    // Send blocks
     rpc SendBlocks (stream SendBlocksStreamRequest) returns (stream SendBlocksStreamResponse) {}
 
-    // SendEndorsements
+    // Send endorsements
     rpc SendEndorsements (stream SendEndorsementsStreamRequest) returns (stream SendEndorsementsStreamResponse) {}
 
-    // SendOperations
+    // Send operations 
     rpc SendOperations (stream SendOperationsStreamRequest) returns (stream SendOperationsStreamResponse) {}
 
-    // TransactionsThroughput
+    // Transactions throughput per second
     rpc TransactionsThroughput (stream TransactionsThroughputStreamRequest) returns (stream GetTransactionsThroughputResponse) {}
 
 }
@@ -132,7 +132,15 @@ message GetDatastoreEntriesResponse {
     // Request id
     string id = 1;
     // Datastore entries
-    repeated BytesMapFieldEntry entries = 2;
+    repeated DatastoreEntry entries = 2;
+}
+
+// DatastoreEntry
+message DatastoreEntry {
+    // final datastore entry value
+    bytes final_value = 1;
+    // candidate_value datastore entry value
+    bytes candidate_value = 2;
 }
 
 // GetNextBlockBestParentsRequest holds request for GetNextBlockBestParents
@@ -233,7 +241,7 @@ message NewBlocksStreamResponse {
     // Request id
     string id = 1;
     // Signed block
-    SecureShareBlock block = 2;
+    SignedBlock block = 2;
 }
 
 // NewBlocksHeadersStreamRequest holds request for NewBlocksHeadersStream
@@ -247,7 +255,7 @@ message NewBlocksHeadersStreamResponse {
     // Request id
     string id = 1;
     // Signed block header
-    SecureShareBlockHeader block_header = 2;
+    SignedBlockHeader block_header = 2;
 }
 
 // NewFilledBlocksStreamRequest holds request for NewFilledBlocksStream
@@ -297,15 +305,15 @@ message NewOperationsStreamResponse {
     // Request id
     string id = 1;
     // Signed operation
-    SecureShareOperation operation = 2;
+    SignedOperation operation = 2;
 }
 
 // SendBlocksStreamRequest holds parameters to SendBlocks
 message SendBlocksStreamRequest {
     // Request id
     string id = 1;
-    // Signed block
-    SecureShareBlock block = 2;
+    // Secure shared block
+    SecureShare block = 2;
 }
 
 // SendBlocksStreamResponse holds response from SendBlocks
@@ -329,8 +337,8 @@ message BlockResult {
 message SendEndorsementsStreamRequest {
     // Request id
     string id = 1;
-    // Signed endorsements
-    repeated SecureShareEndorsement endorsements = 2;
+    // Secure shared endorsements
+    repeated SecureShare endorsements = 2;
 }
 
 // SendEndorsementsStreamResponse holds response from SendEndorsements
@@ -346,7 +354,7 @@ message SendEndorsementsStreamResponse {
 
 // Holds Endorsement response
 message EndorsementResult {
-    // Endorsement(s) id(s)
+    // Endorsements ids
     repeated string endorsements_ids = 1;
 }
 
@@ -354,8 +362,8 @@ message EndorsementResult {
 message SendOperationsStreamRequest {
     // Request id
     string id = 1;
-    // Signed operations
-    repeated SecureShareOperation operations = 2;
+    // Secured shared operations
+    repeated SecureShare operations = 2;
 }
 
 // SendOperationsStreamResponse holds response from SendOperations

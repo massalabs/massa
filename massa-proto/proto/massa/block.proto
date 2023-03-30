@@ -18,7 +18,7 @@ option php_namespace = "Massa\\Api\\V1";
 // Block
 message Block {
     // Signed header
-    SecureShareBlockHeader header = 1;
+    SignedBlockHeader header = 1;
     // Operations ids
     repeated string operations = 2;
 }
@@ -26,7 +26,7 @@ message Block {
 // Filled block
 message FilledBlock {
     // Signed header
-    SecureShareBlockHeader header = 1;
+    SignedBlockHeader header = 1;
     // Operations
     repeated FilledOperationTuple operations = 2;
 }
@@ -40,7 +40,7 @@ message BlockHeader {
     // All operations hash
     string operation_merkle_root = 3;
     // Signed endorsements
-    repeated SecureShareEndorsement endorsements = 4;
+    repeated SignedEndorsement endorsements = 4;
 }
 
 // Filled Operation Tuple
@@ -48,37 +48,33 @@ message FilledOperationTuple {
     // Operation id
     string operationId = 1;
     // Signed operation
-    SecureShareOperation operation = 2;
+    SignedOperation operation = 2;
 }
 
-// Packages type Block such that it can be securely sent and received in a trust-free network
-message SecureShareBlock {
+// Signed block
+message SignedBlock {
     // Block
     Block content = 1;
-    // Content in sharable, deserializable form. Is used in the secure verification protocols
-    bytes serialized_data = 2;
     // A cryptographically generated value using `serialized_data` and a public key.
-    string signature = 3;
+    string signature = 2;
     // The public-key component used in the generation of the signature
-    string content_creator_pub_key = 4;
+    string content_creator_pub_key = 3;
     // Derived from the same public key used to generate the signature
-    string content_creator_address = 5;
+    string content_creator_address = 4;
     // A secure hash of the data. See also [massa_hash::Hash]
-    string id = 6;
+    string id = 5;
 }
 
-// Packages type BlockHeader such that it can be securely sent and received in a trust-free network
-message SecureShareBlockHeader {
+// Signed block header
+message SignedBlockHeader {
     // BlockHeader
     BlockHeader content = 1;
-    // Content in sharable, deserializable form. Is used in the secure verification protocols
-    bytes serialized_data = 2;
     // A cryptographically generated value using `serialized_data` and a public key.
-    string signature = 3;
+    string signature = 2;
     // The public-key component used in the generation of the signature
-    string content_creator_pub_key = 4;
+    string content_creator_pub_key = 3;
     // Derived from the same public key used to generate the signature
-    string content_creator_address = 5;
+    string content_creator_address = 4;
     // A secure hash of the data. See also [massa_hash::Hash]
-    string id = 6;
+    string id = 5;
 }

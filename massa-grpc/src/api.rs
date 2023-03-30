@@ -8,18 +8,91 @@ use massa_proto::massa::api::v1 as grpc;
 use std::str::FromStr;
 use tracing::log::warn;
 
-// Get the version of the node
-pub(crate) fn get_version(
+/// get blocks by slots
+pub(crate) fn get_blocks_by_slots(
     grpc: &MassaGrpcService,
-    request: tonic::Request<grpc::GetVersionRequest>,
-) -> Result<grpc::GetVersionResponse, GrpcError> {
-    Ok(grpc::GetVersionResponse {
-        id: request.into_inner().id,
-        version: grpc.version.to_string(),
+    request: tonic::Request<grpc::GetBlocksBySlotsRequest>,
+) -> Result<grpc::GetBlocksBySlotsResponse, GrpcError> {
+    let inner_req = request.into_inner();
+    let storage = grpc.storage.clone_without_refs();
+
+    let mut blocks = Vec::new();
+
+    for slot in inner_req.slots.into_iter() {
+        let block_id_opt = grpc
+            .consensus_controller
+            .get_blockclique_block_at_slot(Slot {
+                period: slot.period,
+                thread: slot.thread as u8,
+            });
+
+        let block_id = match block_id_opt {
+            Some(id) => id,
+            None => continue,
+        };
+        let res = storage.read_blocks().get(&block_id).map(|b| {
+            // TODO rework ?
+            let header = b.clone().content.header;
+            // transform to grpc struct
+            let parents = header
+                .content
+                .parents
+                .into_iter()
+                .map(|p| p.to_string())
+                .collect();
+
+            let endorsements = header
+                .content
+                .endorsements
+                .into_iter()
+                .map(|endorsement| endorsement.into())
+                .collect();
+
+            let block_header = grpc::BlockHeader {
+                slot: Some(grpc::Slot {
+                    period: header.content.slot.period,
+                    thread: header.content.slot.thread as u32,
+                }),
+                parents,
+                operation_merkle_root: header.content.operation_merkle_root.to_string(),
+                endorsements,
+            };
+
+            let operations: Vec<String> = b
+                .content
+                .operations
+                .clone()
+                .into_iter()
+                .map(|ope| ope.to_string())
+                .collect();
+
+            (
+                grpc::SignedBlockHeader {
+                    content: Some(block_header),
+                    signature: header.signature.to_string(),
+                    content_creator_pub_key: header.content_creator_pub_key.to_string(),
+                    content_creator_address: header.content_creator_address.to_string(),
+                    id: header.id.to_string(),
+                },
+                operations,
+            )
+        });
+
+        if let Some(block) = res {
+            blocks.push(grpc::Block {
+                header: Some(block.0),
+                operations: block.1,
+            });
+        }
+    }
+
+    Ok(grpc::GetBlocksBySlotsResponse {
+        id: inner_req.id,
+        blocks,
     })
 }
 
-/// Get multiple datastore entries
+/// get multiple datastore entries
 pub(crate) fn get_datastore_entries(
     grpc: &MassaGrpcService,
     request: tonic::Request<grpc::GetDatastoreEntriesRequest>,
@@ -42,14 +115,34 @@ pub(crate) fn get_datastore_entries(
         .execution_controller
         .get_final_and_active_data_entry(filters)
         .into_iter()
-        .map(|output| grpc::BytesMapFieldEntry {
-            //TODO should be replaced by a dedicated struct
-            key: output.0.unwrap_or_default(),
-            value: output.1.unwrap_or_default(),
+        .map(|output| grpc::DatastoreEntry {
+            final_value: output.0.unwrap_or_default(),
+            candidate_value: output.1.unwrap_or_default(),
         })
         .collect();
 
     Ok(grpc::GetDatastoreEntriesResponse { id, entries })
+}
+
+/// get next block best parents
+pub(crate) fn get_next_block_best_parents(
+    grpc: &MassaGrpcService,
+    request: tonic::Request<grpc::GetNextBlockBestParentsRequest>,
+) -> Result<grpc::GetNextBlockBestParentsResponse, GrpcError> {
+    let inner_req = request.into_inner();
+    let parents = grpc
+        .consensus_controller
+        .get_best_parents()
+        .into_iter()
+        .map(|p| grpc::BlockParent {
+            block_id: p.0.to_string(),
+            period: p.1,
+        })
+        .collect();
+    Ok(grpc::GetNextBlockBestParentsResponse {
+        id: inner_req.id,
+        parents,
+    })
 }
 
 pub(crate) fn get_selector_draws(
@@ -126,27 +219,6 @@ pub(crate) fn get_selector_draws(
     })
 }
 
-/// Get next block best parents
-pub(crate) fn get_next_block_best_parents(
-    grpc: &MassaGrpcService,
-    request: tonic::Request<grpc::GetNextBlockBestParentsRequest>,
-) -> Result<grpc::GetNextBlockBestParentsResponse, GrpcError> {
-    let inner_req = request.into_inner();
-    let parents = grpc
-        .consensus_controller
-        .get_best_parents()
-        .into_iter()
-        .map(|p| grpc::BlockParent {
-            block_id: p.0.to_string(),
-            period: p.1,
-        })
-        .collect();
-    Ok(grpc::GetNextBlockBestParentsResponse {
-        id: inner_req.id,
-        parents,
-    })
-}
-
 /// get transactions throughput
 pub(crate) fn get_transactions_throughput(
     grpc: &MassaGrpcService,
@@ -171,88 +243,13 @@ pub(crate) fn get_transactions_throughput(
     })
 }
 
-/// get blocks by slots
-pub(crate) fn get_blocks_by_slots(
+// get node version
+pub(crate) fn get_version(
     grpc: &MassaGrpcService,
-    request: tonic::Request<grpc::GetBlocksBySlotsRequest>,
-) -> Result<grpc::GetBlocksBySlotsResponse, GrpcError> {
-    let inner_req = request.into_inner();
-    let storage = grpc.storage.clone_without_refs();
-
-    let mut blocks = Vec::new();
-
-    for slot in inner_req.slots.into_iter() {
-        let block_id_option = grpc
-            .consensus_controller
-            .get_blockclique_block_at_slot(Slot {
-                period: slot.period,
-                thread: slot.thread as u8,
-            });
-
-        let block_id = match block_id_option {
-            Some(id) => id,
-            None => continue,
-        };
-        let res = storage.read_blocks().get(&block_id).map(|b| {
-            // todo rework ?
-            let header = b.clone().content.header;
-            // transform to grpc struct
-            let parents = header
-                .content
-                .parents
-                .into_iter()
-                .map(|p| p.to_string())
-                .collect();
-
-            let endorsements = header
-                .content
-                .endorsements
-                .into_iter()
-                .map(|endorsement| endorsement.into())
-                .collect();
-
-            let block_header = grpc::BlockHeader {
-                slot: Some(grpc::Slot {
-                    period: header.content.slot.period,
-                    thread: header.content.slot.thread as u32,
-                }),
-                parents,
-                operation_merkle_root: header.content.operation_merkle_root.to_string(),
-                endorsements,
-            };
-
-            let operations: Vec<String> = b
-                .content
-                .operations
-                .clone()
-                .into_iter()
-                .map(|ope| ope.to_string())
-                .collect();
-
-            (
-                grpc::SecureShareBlockHeader {
-                    content: Some(block_header),
-                    //HACK do not map serialized_data
-                    serialized_data: Vec::new(),
-                    signature: header.signature.to_string(),
-                    content_creator_pub_key: header.content_creator_pub_key.to_string(),
-                    content_creator_address: header.content_creator_address.to_string(),
-                    id: header.id.to_string(),
-                },
-                operations,
-            )
-        });
-
-        if let Some(block) = res {
-            blocks.push(grpc::Block {
-                header: Some(block.0),
-                operations: block.1,
-            });
-        }
-    }
-
-    Ok(grpc::GetBlocksBySlotsResponse {
-        id: inner_req.id,
-        blocks,
+    request: tonic::Request<grpc::GetVersionRequest>,
+) -> Result<grpc::GetVersionResponse, GrpcError> {
+    Ok(grpc::GetVersionResponse {
+        id: request.into_inner().id,
+        version: grpc.version.to_string(),
     })
 }

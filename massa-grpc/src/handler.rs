@@ -21,7 +21,7 @@ use crate::stream::{
 
 #[tonic::async_trait]
 impl grpc::grpc_server::Grpc for MassaGrpcService {
-    /// Handler for get multiple datastore entries.
+    /// handler for get multiple datastore entries.
     async fn get_datastore_entries(
         &self,
         request: tonic::Request<grpc::GetDatastoreEntriesRequest>,
@@ -32,23 +32,12 @@ impl grpc::grpc_server::Grpc for MassaGrpcService {
         }
     }
 
-    /// Handler for get selector draws
+    /// handler for get selector draws
     async fn get_selector_draws(
         &self,
         request: tonic::Request<grpc::GetSelectorDrawsRequest>,
     ) -> Result<tonic::Response<grpc::GetSelectorDrawsResponse>, tonic::Status> {
         match get_selector_draws(self, request) {
-            Ok(response) => Ok(tonic::Response::new(response)),
-            Err(e) => Err(e.into()),
-        }
-    }
-
-    /// Handler for get version
-    async fn get_version(
-        &self,
-        request: tonic::Request<grpc::GetVersionRequest>,
-    ) -> Result<tonic::Response<grpc::GetVersionResponse>, tonic::Status> {
-        match get_version(self, request) {
             Ok(response) => Ok(tonic::Response::new(response)),
             Err(e) => Err(e.into()),
         }
@@ -64,7 +53,7 @@ impl grpc::grpc_server::Grpc for MassaGrpcService {
         }
     }
 
-    /// Handler for get_next_block_best_parents
+    /// handler for get_next_block_best_parents
     async fn get_next_block_best_parents(
         &self,
         request: tonic::Request<grpc::GetNextBlockBestParentsRequest>,
@@ -85,6 +74,17 @@ impl grpc::grpc_server::Grpc for MassaGrpcService {
         }
     }
 
+    /// handler for get version
+    async fn get_version(
+        &self,
+        request: tonic::Request<grpc::GetVersionRequest>,
+    ) -> Result<tonic::Response<grpc::GetVersionResponse>, tonic::Status> {
+        match get_version(self, request) {
+            Ok(response) => Ok(tonic::Response::new(response)),
+            Err(e) => Err(e.into()),
+        }
+    }
+
     // ███████╗████████╗██████╗ ███████╗ █████╗ ███╗   ███╗
     // ██╔════╝╚══██╔══╝██╔══██╗██╔════╝██╔══██╗████╗ ████║
     // ███████╗   ██║   ██████╔╝█████╗  ███████║██╔████╔██║
@@ -92,7 +92,8 @@ impl grpc::grpc_server::Grpc for MassaGrpcService {
     // ███████║   ██║   ██║  ██║███████╗██║  ██║██║ ╚═╝ ██║
 
     type SendBlocksStream = SendBlocksStream;
-    /// Handler for send_blocks_stream
+
+    /// handler for send_blocks_stream
     async fn send_blocks(
         &self,
         request: tonic::Request<tonic::Streaming<grpc::SendBlocksStreamRequest>>,
@@ -103,7 +104,7 @@ impl grpc::grpc_server::Grpc for MassaGrpcService {
         }
     }
     type SendEndorsementsStream = SendEndorsementsStream;
-    /// Handler for send_endorsements
+    /// handler for send_endorsements
     async fn send_endorsements(
         &self,
         request: tonic::Request<tonic::Streaming<grpc::SendEndorsementsStreamRequest>>,
@@ -114,7 +115,7 @@ impl grpc::grpc_server::Grpc for MassaGrpcService {
         }
     }
     type SendOperationsStream = SendOperationsStream;
-    /// Handler for send_operations
+    /// handler for send_operations
     async fn send_operations(
         &self,
         request: tonic::Request<tonic::Streaming<grpc::SendOperationsStreamRequest>>,
@@ -127,7 +128,7 @@ impl grpc::grpc_server::Grpc for MassaGrpcService {
 
     type TransactionsThroughputStream = TransactionsThroughputStream;
 
-    /// Handler for transactions throughput
+    /// handler for transactions throughput
     async fn transactions_throughput(
         &self,
         request: tonic::Request<tonic::Streaming<grpc::TransactionsThroughputStreamRequest>>,
@@ -140,7 +141,7 @@ impl grpc::grpc_server::Grpc for MassaGrpcService {
 
     type NewOperationsStream = NewOperationsStream;
 
-    /// Handler for subscribe new operations stream
+    /// handler for subscribe new operations stream
     async fn new_operations(
         &self,
         request: tonic::Request<tonic::Streaming<grpc::NewOperationsStreamRequest>>,
@@ -153,7 +154,7 @@ impl grpc::grpc_server::Grpc for MassaGrpcService {
 
     type NewBlocksStream = NewBlocksStream;
 
-    /// Handler for subscribe new blocks
+    /// handler for subscribe new blocks
     async fn new_blocks(
         &self,
         request: tonic::Request<tonic::Streaming<grpc::NewBlocksStreamRequest>>,
@@ -166,7 +167,7 @@ impl grpc::grpc_server::Grpc for MassaGrpcService {
 
     type NewBlocksHeadersStream = NewBlocksHeadersStream;
 
-    /// Handler for subscribe new blocks headers
+    /// handler for subscribe new blocks headers
     async fn new_blocks_headers(
         &self,
         request: tonic::Request<tonic::Streaming<grpc::NewBlocksHeadersStreamRequest>>,
@@ -179,7 +180,7 @@ impl grpc::grpc_server::Grpc for MassaGrpcService {
 
     type NewFilledBlocksStream = NewFilledBlocksStream;
 
-    /// Handler for subscribe new blocks with operations content
+    /// handler for subscribe new blocks with operations content
     async fn new_filled_blocks(
         &self,
         request: tonic::Request<tonic::Streaming<grpc::NewFilledBlocksStreamRequest>>,

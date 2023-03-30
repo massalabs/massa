@@ -54,12 +54,10 @@ impl From<FilledBlock> for grpc::FilledBlock {
     }
 }
 
-impl From<SecureShareBlock> for grpc::SecureShareBlock {
+impl From<SecureShareBlock> for grpc::SignedBlock {
     fn from(value: SecureShareBlock) -> Self {
-        grpc::SecureShareBlock {
+        grpc::SignedBlock {
             content: Some(value.content.into()),
-            //HACK do not map serialized_data
-            serialized_data: Vec::new(),
             signature: value.signature.to_bs58_check(),
             content_creator_pub_key: value.content_creator_pub_key.to_string(),
             content_creator_address: value.content_creator_address.to_string(),
@@ -68,12 +66,10 @@ impl From<SecureShareBlock> for grpc::SecureShareBlock {
     }
 }
 
-impl From<SecuredHeader> for grpc::SecureShareBlockHeader {
+impl From<SecuredHeader> for grpc::SignedBlockHeader {
     fn from(value: SecuredHeader) -> Self {
-        grpc::SecureShareBlockHeader {
+        grpc::SignedBlockHeader {
             content: Some(value.content.into()),
-            //HACK do not map serialized_data
-            serialized_data: Vec::new(),
             signature: value.signature.to_bs58_check(),
             content_creator_pub_key: value.content_creator_pub_key.to_string(),
             content_creator_address: value.content_creator_address.to_string(),
@@ -92,12 +88,10 @@ impl From<Endorsement> for grpc::Endorsement {
     }
 }
 
-impl From<SecureShareEndorsement> for grpc::SecureShareEndorsement {
+impl From<SecureShareEndorsement> for grpc::SignedEndorsement {
     fn from(value: SecureShareEndorsement) -> Self {
-        grpc::SecureShareEndorsement {
+        grpc::SignedEndorsement {
             content: Some(value.content.into()),
-            //HACK do not map serialized_data
-            serialized_data: Vec::new(),
             signature: value.signature.to_bs58_check(),
             content_creator_pub_key: value.content_creator_pub_key.to_string(),
             content_creator_address: value.content_creator_address.to_string(),
@@ -176,12 +170,10 @@ impl From<Operation> for grpc::Operation {
     }
 }
 
-impl From<SecureShareOperation> for grpc::SecureShareOperation {
+impl From<SecureShareOperation> for grpc::SignedOperation {
     fn from(value: SecureShareOperation) -> Self {
-        grpc::SecureShareOperation {
+        grpc::SignedOperation {
             content: Some(value.content.into()),
-            //HACK do not map serialized_data
-            serialized_data: Vec::new(),
             signature: value.signature.to_bs58_check(),
             content_creator_pub_key: value.content_creator_pub_key.to_string(),
             content_creator_address: value.content_creator_address.to_string(),

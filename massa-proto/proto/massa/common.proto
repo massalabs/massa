@@ -18,3 +18,17 @@ message BytesMapFieldEntry {
     // bytes key
     bytes value = 2;
 }
+
+// Packages a type such that it can be securely sent and received in a trust-free network
+message SecureShare {
+    // Content in sharable, deserializable form. Is used in the secure verification protocols
+    bytes serialized_data = 1;
+    // A cryptographically generated value using `serialized_data` and a public key.
+    string signature = 2;
+    // The public-key component used in the generation of the signature
+    string content_creator_pub_key = 3;
+    // Derived from the same public key used to generate the signature
+    string content_creator_address = 4;
+    // A secure hash of the data. See also [massa_hash::Hash]
+    string id = 5;
+}

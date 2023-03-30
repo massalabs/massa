@@ -35,52 +35,24 @@ pub struct Endorsement {
     #[prost(string, tag = "3")]
     pub endorsed_block: ::prost::alloc::string::String,
 }
-/// message struct
+/// Signed endorsement
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
-pub struct EndorsementContent {
-    /// string field
-    #[prost(string, tag = "1")]
-    pub sender_public_key: ::prost::alloc::string::String,
-    /// object field
-    #[prost(message, optional, tag = "2")]
-    pub slot: ::core::option::Option<Slot>,
-    /// float field
-    #[prost(fixed32, tag = "3")]
-    pub index: u32,
-    /// string field
-    #[prost(string, tag = "4")]
-    pub endorsed_block: ::prost::alloc::string::String,
-}
-/// message struct
-#[allow(clippy::derive_partial_eq_without_eq)]
-#[derive(Clone, PartialEq, ::prost::Message)]
-pub struct EndorsementId {
-    /// string field
-    #[prost(string, tag = "1")]
-    pub value: ::prost::alloc::string::String,
-}
-/// message struct
-#[allow(clippy::derive_partial_eq_without_eq)]
-#[derive(Clone, PartialEq, ::prost::Message)]
-pub struct SecureShareEndorsement {
+pub struct SignedEndorsement {
     /// object field
     #[prost(message, optional, tag = "1")]
     pub content: ::core::option::Option<Endorsement>,
-    /// Content in sharable, deserializable form. Is used in the secure verification protocols
-    #[prost(bytes = "vec", tag = "2")]
-    pub serialized_data: ::prost::alloc::vec::Vec<u8>,
     /// A cryptographically generated value using `serialized_data` and a public key.
-    #[prost(string, tag = "3")]
+    #[prost(string, tag = "2")]
     pub signature: ::prost::alloc::string::String,
     /// The public-key component used in the generation of the signature
-    #[prost(string, tag = "4")]
+    #[prost(string, tag = "3")]
     pub content_creator_pub_key: ::prost::alloc::string::String,
     /// Derived from the same public key used to generate the signature
-    #[prost(string, tag = "5")]
+    #[prost(string, tag = "4")]
     pub content_creator_address: ::prost::alloc::string::String,
     /// A secure hash of the data. See also \[massa_hash::Hash\]
-    #[prost(string, tag = "6")]
+    #[prost(string, tag = "5")]
     pub id: ::prost::alloc::string::String,
 }
 /// BytesMapFieldEntry
@@ -93,6 +65,26 @@ pub struct BytesMapFieldEntry {
     /// bytes key
     #[prost(bytes = "vec", tag = "2")]
     pub value: ::prost::alloc::vec::Vec<u8>,
+}
+/// Packages a type such that it can be securely sent and received in a trust-free network
+#[allow(clippy::derive_partial_eq_without_eq)]
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct SecureShare {
+    /// Content in sharable, deserializable form. Is used in the secure verification protocols
+    #[prost(bytes = "vec", tag = "1")]
+    pub serialized_data: ::prost::alloc::vec::Vec<u8>,
+    /// A cryptographically generated value using `serialized_data` and a public key.
+    #[prost(string, tag = "2")]
+    pub signature: ::prost::alloc::string::String,
+    /// The public-key component used in the generation of the signature
+    #[prost(string, tag = "3")]
+    pub content_creator_pub_key: ::prost::alloc::string::String,
+    /// Derived from the same public key used to generate the signature
+    #[prost(string, tag = "4")]
+    pub content_creator_address: ::prost::alloc::string::String,
+    /// A secure hash of the data. See also \[massa_hash::Hash\]
+    #[prost(string, tag = "5")]
+    pub id: ::prost::alloc::string::String,
 }
 /// The operation as sent in the network
 #[allow(clippy::derive_partial_eq_without_eq)]
@@ -189,27 +181,24 @@ pub struct CallSc {
     #[prost(fixed64, tag = "5")]
     pub coins: u64,
 }
-/// Packages type Operation such that it can be securely sent and received in a trust-free network
+/// Signed operation
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
-pub struct SecureShareOperation {
+pub struct SignedOperation {
     /// Operation
     #[prost(message, optional, tag = "1")]
     pub content: ::core::option::Option<Operation>,
-    /// Content in sharable, deserializable form. Is used in the secure verification protocols
-    #[prost(bytes = "vec", tag = "2")]
-    pub serialized_data: ::prost::alloc::vec::Vec<u8>,
     /// A cryptographically generated value using `serialized_data` and a public key.
-    #[prost(string, tag = "3")]
+    #[prost(string, tag = "2")]
     pub signature: ::prost::alloc::string::String,
     /// The public-key component used in the generation of the signature
-    #[prost(string, tag = "4")]
+    #[prost(string, tag = "3")]
     pub content_creator_pub_key: ::prost::alloc::string::String,
     /// Derived from the same public key used to generate the signature
-    #[prost(string, tag = "5")]
+    #[prost(string, tag = "4")]
     pub content_creator_address: ::prost::alloc::string::String,
     /// A secure hash of the data. See also \[massa_hash::Hash\]
-    #[prost(string, tag = "6")]
+    #[prost(string, tag = "5")]
     pub id: ::prost::alloc::string::String,
 }
 /// Block
@@ -218,7 +207,7 @@ pub struct SecureShareOperation {
 pub struct Block {
     /// Signed header
     #[prost(message, optional, tag = "1")]
-    pub header: ::core::option::Option<SecureShareBlockHeader>,
+    pub header: ::core::option::Option<SignedBlockHeader>,
     /// Operations ids
     #[prost(string, repeated, tag = "2")]
     pub operations: ::prost::alloc::vec::Vec<::prost::alloc::string::String>,
@@ -229,7 +218,7 @@ pub struct Block {
 pub struct FilledBlock {
     /// Signed header
     #[prost(message, optional, tag = "1")]
-    pub header: ::core::option::Option<SecureShareBlockHeader>,
+    pub header: ::core::option::Option<SignedBlockHeader>,
     /// Operations
     #[prost(message, repeated, tag = "2")]
     pub operations: ::prost::alloc::vec::Vec<FilledOperationTuple>,
@@ -249,7 +238,7 @@ pub struct BlockHeader {
     pub operation_merkle_root: ::prost::alloc::string::String,
     /// Signed endorsements
     #[prost(message, repeated, tag = "4")]
-    pub endorsements: ::prost::alloc::vec::Vec<SecureShareEndorsement>,
+    pub endorsements: ::prost::alloc::vec::Vec<SignedEndorsement>,
 }
 /// Filled Operation Tuple
 #[allow(clippy::derive_partial_eq_without_eq)]
@@ -260,52 +249,46 @@ pub struct FilledOperationTuple {
     pub operation_id: ::prost::alloc::string::String,
     /// Signed operation
     #[prost(message, optional, tag = "2")]
-    pub operation: ::core::option::Option<SecureShareOperation>,
+    pub operation: ::core::option::Option<SignedOperation>,
 }
-/// Packages type Block such that it can be securely sent and received in a trust-free network
+/// Signed block
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
-pub struct SecureShareBlock {
+pub struct SignedBlock {
     /// Block
     #[prost(message, optional, tag = "1")]
     pub content: ::core::option::Option<Block>,
-    /// Content in sharable, deserializable form. Is used in the secure verification protocols
-    #[prost(bytes = "vec", tag = "2")]
-    pub serialized_data: ::prost::alloc::vec::Vec<u8>,
     /// A cryptographically generated value using `serialized_data` and a public key.
-    #[prost(string, tag = "3")]
+    #[prost(string, tag = "2")]
     pub signature: ::prost::alloc::string::String,
     /// The public-key component used in the generation of the signature
-    #[prost(string, tag = "4")]
+    #[prost(string, tag = "3")]
     pub content_creator_pub_key: ::prost::alloc::string::String,
     /// Derived from the same public key used to generate the signature
-    #[prost(string, tag = "5")]
+    #[prost(string, tag = "4")]
     pub content_creator_address: ::prost::alloc::string::String,
     /// A secure hash of the data. See also \[massa_hash::Hash\]
-    #[prost(string, tag = "6")]
+    #[prost(string, tag = "5")]
     pub id: ::prost::alloc::string::String,
 }
-/// Packages type BlockHeader such that it can be securely sent and received in a trust-free network
+/// Signed block header
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
-pub struct SecureShareBlockHeader {
+pub struct SignedBlockHeader {
     /// BlockHeader
     #[prost(message, optional, tag = "1")]
     pub content: ::core::option::Option<BlockHeader>,
-    /// Content in sharable, deserializable form. Is used in the secure verification protocols
-    #[prost(bytes = "vec", tag = "2")]
-    pub serialized_data: ::prost::alloc::vec::Vec<u8>,
     /// A cryptographically generated value using `serialized_data` and a public key.
-    #[prost(string, tag = "3")]
+    #[prost(string, tag = "2")]
     pub signature: ::prost::alloc::string::String,
     /// The public-key component used in the generation of the signature
-    #[prost(string, tag = "4")]
+    #[prost(string, tag = "3")]
     pub content_creator_pub_key: ::prost::alloc::string::String,
     /// Derived from the same public key used to generate the signature
-    #[prost(string, tag = "5")]
+    #[prost(string, tag = "4")]
     pub content_creator_address: ::prost::alloc::string::String,
     /// A secure hash of the data. See also \[massa_hash::Hash\]
-    #[prost(string, tag = "6")]
+    #[prost(string, tag = "5")]
     pub id: ::prost::alloc::string::String,
 }
 /// GetBlocksBySlotsRequest holds request for GetBlocksBySlots
@@ -368,7 +351,18 @@ pub struct GetDatastoreEntriesResponse {
     pub id: ::prost::alloc::string::String,
     /// Datastore entries
     #[prost(message, repeated, tag = "2")]
-    pub entries: ::prost::alloc::vec::Vec<BytesMapFieldEntry>,
+    pub entries: ::prost::alloc::vec::Vec<DatastoreEntry>,
+}
+/// DatastoreEntry
+#[allow(clippy::derive_partial_eq_without_eq)]
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct DatastoreEntry {
+    /// final datastore entry value
+    #[prost(bytes = "vec", tag = "1")]
+    pub final_value: ::prost::alloc::vec::Vec<u8>,
+    /// candidate_value datastore entry value
+    #[prost(bytes = "vec", tag = "2")]
+    pub candidate_value: ::prost::alloc::vec::Vec<u8>,
 }
 /// GetNextBlockBestParentsRequest holds request for GetNextBlockBestParents
 #[allow(clippy::derive_partial_eq_without_eq)]
@@ -507,7 +501,7 @@ pub struct NewBlocksStreamResponse {
     pub id: ::prost::alloc::string::String,
     /// Signed block
     #[prost(message, optional, tag = "2")]
-    pub block: ::core::option::Option<SecureShareBlock>,
+    pub block: ::core::option::Option<SignedBlock>,
 }
 /// NewBlocksHeadersStreamRequest holds request for NewBlocksHeadersStream
 #[allow(clippy::derive_partial_eq_without_eq)]
@@ -526,7 +520,7 @@ pub struct NewBlocksHeadersStreamResponse {
     pub id: ::prost::alloc::string::String,
     /// Signed block header
     #[prost(message, optional, tag = "2")]
-    pub block_header: ::core::option::Option<SecureShareBlockHeader>,
+    pub block_header: ::core::option::Option<SignedBlockHeader>,
 }
 /// NewFilledBlocksStreamRequest holds request for NewFilledBlocksStream
 #[allow(clippy::derive_partial_eq_without_eq)]
@@ -583,7 +577,7 @@ pub struct NewOperationsStreamResponse {
     pub id: ::prost::alloc::string::String,
     /// Signed operation
     #[prost(message, optional, tag = "2")]
-    pub operation: ::core::option::Option<SecureShareOperation>,
+    pub operation: ::core::option::Option<SignedOperation>,
 }
 /// SendBlocksStreamRequest holds parameters to SendBlocks
 #[allow(clippy::derive_partial_eq_without_eq)]
@@ -592,9 +586,9 @@ pub struct SendBlocksStreamRequest {
     /// Request id
     #[prost(string, tag = "1")]
     pub id: ::prost::alloc::string::String,
-    /// Signed block
+    /// Secure shared block
     #[prost(message, optional, tag = "2")]
-    pub block: ::core::option::Option<SecureShareBlock>,
+    pub block: ::core::option::Option<SecureShare>,
 }
 /// SendBlocksStreamResponse holds response from SendBlocks
 #[allow(clippy::derive_partial_eq_without_eq)]
@@ -634,9 +628,9 @@ pub struct SendEndorsementsStreamRequest {
     /// Request id
     #[prost(string, tag = "1")]
     pub id: ::prost::alloc::string::String,
-    /// Signed endorsements
+    /// Secure shared endorsements
     #[prost(message, repeated, tag = "2")]
-    pub endorsements: ::prost::alloc::vec::Vec<SecureShareEndorsement>,
+    pub endorsements: ::prost::alloc::vec::Vec<SecureShare>,
 }
 /// SendEndorsementsStreamResponse holds response from SendEndorsements
 #[allow(clippy::derive_partial_eq_without_eq)]
@@ -665,7 +659,7 @@ pub mod send_endorsements_stream_response {
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct EndorsementResult {
-    /// Endorsement(s) id(s)
+    /// Endorsements ids
     #[prost(string, repeated, tag = "1")]
     pub endorsements_ids: ::prost::alloc::vec::Vec<::prost::alloc::string::String>,
 }
@@ -676,9 +670,9 @@ pub struct SendOperationsStreamRequest {
     /// Request id
     #[prost(string, tag = "1")]
     pub id: ::prost::alloc::string::String,
-    /// Signed operations
+    /// Secured shared operations
     #[prost(message, repeated, tag = "2")]
-    pub operations: ::prost::alloc::vec::Vec<SecureShareOperation>,
+    pub operations: ::prost::alloc::vec::Vec<SecureShare>,
 }
 /// SendOperationsStreamResponse holds response from SendOperations
 #[allow(clippy::derive_partial_eq_without_eq)]
@@ -840,7 +834,7 @@ pub mod grpc_client {
             self.inner = self.inner.max_encoding_message_size(limit);
             self
         }
-        /// GetBlocksBySlots
+        /// Get blocks by slots
         pub async fn get_blocks_by_slots(
             &mut self,
             request: impl tonic::IntoRequest<super::GetBlocksBySlotsRequest>,
@@ -866,7 +860,7 @@ pub mod grpc_client {
                 .insert(GrpcMethod::new("massa.api.v1.Grpc", "GetBlocksBySlots"));
             self.inner.unary(req, path, codec).await
         }
-        /// GetDatastoreEntries
+        /// Get datastore entries
         pub async fn get_datastore_entries(
             &mut self,
             request: impl tonic::IntoRequest<super::GetDatastoreEntriesRequest>,
@@ -892,7 +886,7 @@ pub mod grpc_client {
                 .insert(GrpcMethod::new("massa.api.v1.Grpc", "GetDatastoreEntries"));
             self.inner.unary(req, path, codec).await
         }
-        /// GetNextBlockBestParents
+        /// Get next block best parents
         pub async fn get_next_block_best_parents(
             &mut self,
             request: impl tonic::IntoRequest<super::GetNextBlockBestParentsRequest>,
@@ -918,7 +912,7 @@ pub mod grpc_client {
                 .insert(GrpcMethod::new("massa.api.v1.Grpc", "GetNextBlockBestParents"));
             self.inner.unary(req, path, codec).await
         }
-        /// GetSelectorDraws
+        /// Get selector draws
         pub async fn get_selector_draws(
             &mut self,
             request: impl tonic::IntoRequest<super::GetSelectorDrawsRequest>,
@@ -944,7 +938,7 @@ pub mod grpc_client {
                 .insert(GrpcMethod::new("massa.api.v1.Grpc", "GetSelectorDraws"));
             self.inner.unary(req, path, codec).await
         }
-        /// GetTransactionsThroughput
+        /// Get transactions throughput
         pub async fn get_transactions_throughput(
             &mut self,
             request: impl tonic::IntoRequest<super::GetTransactionsThroughputRequest>,
@@ -972,7 +966,7 @@ pub mod grpc_client {
                 );
             self.inner.unary(req, path, codec).await
         }
-        /// GetVersion
+        /// Get node version
         pub async fn get_version(
             &mut self,
             request: impl tonic::IntoRequest<super::GetVersionRequest>,
@@ -998,7 +992,7 @@ pub mod grpc_client {
                 .insert(GrpcMethod::new("massa.api.v1.Grpc", "GetVersion"));
             self.inner.unary(req, path, codec).await
         }
-        /// NewBlocks
+        /// New received and produced blocks
         pub async fn new_blocks(
             &mut self,
             request: impl tonic::IntoStreamingRequest<
@@ -1026,7 +1020,7 @@ pub mod grpc_client {
                 .insert(GrpcMethod::new("massa.api.v1.Grpc", "NewBlocks"));
             self.inner.streaming(req, path, codec).await
         }
-        /// NewBlocksHeaders
+        /// New received and produced blocks headers
         pub async fn new_blocks_headers(
             &mut self,
             request: impl tonic::IntoStreamingRequest<
@@ -1056,7 +1050,7 @@ pub mod grpc_client {
                 .insert(GrpcMethod::new("massa.api.v1.Grpc", "NewBlocksHeaders"));
             self.inner.streaming(req, path, codec).await
         }
-        /// NewFilledBlocks
+        /// New received and produced blocks with operations
         pub async fn new_filled_blocks(
             &mut self,
             request: impl tonic::IntoStreamingRequest<
@@ -1086,7 +1080,7 @@ pub mod grpc_client {
                 .insert(GrpcMethod::new("massa.api.v1.Grpc", "NewFilledBlocks"));
             self.inner.streaming(req, path, codec).await
         }
-        /// NewOperations
+        /// New received and produced perations
         pub async fn new_operations(
             &mut self,
             request: impl tonic::IntoStreamingRequest<
@@ -1114,7 +1108,7 @@ pub mod grpc_client {
                 .insert(GrpcMethod::new("massa.api.v1.Grpc", "NewOperations"));
             self.inner.streaming(req, path, codec).await
         }
-        /// SendBlocks
+        /// Send blocks
         pub async fn send_blocks(
             &mut self,
             request: impl tonic::IntoStreamingRequest<
@@ -1142,7 +1136,7 @@ pub mod grpc_client {
                 .insert(GrpcMethod::new("massa.api.v1.Grpc", "SendBlocks"));
             self.inner.streaming(req, path, codec).await
         }
-        /// SendEndorsements
+        /// Send endorsements
         pub async fn send_endorsements(
             &mut self,
             request: impl tonic::IntoStreamingRequest<
@@ -1172,7 +1166,7 @@ pub mod grpc_client {
                 .insert(GrpcMethod::new("massa.api.v1.Grpc", "SendEndorsements"));
             self.inner.streaming(req, path, codec).await
         }
-        /// SendOperations
+        /// Send operations
         pub async fn send_operations(
             &mut self,
             request: impl tonic::IntoStreamingRequest<
@@ -1202,7 +1196,7 @@ pub mod grpc_client {
                 .insert(GrpcMethod::new("massa.api.v1.Grpc", "SendOperations"));
             self.inner.streaming(req, path, codec).await
         }
-        /// TransactionsThroughput
+        /// Transactions throughput per second
         pub async fn transactions_throughput(
             &mut self,
             request: impl tonic::IntoStreamingRequest<
@@ -1241,7 +1235,7 @@ pub mod grpc_server {
     /// Generated trait containing gRPC methods that should be implemented for use with GrpcServer.
     #[async_trait]
     pub trait Grpc: Send + Sync + 'static {
-        /// GetBlocksBySlots
+        /// Get blocks by slots
         async fn get_blocks_by_slots(
             &self,
             request: tonic::Request<super::GetBlocksBySlotsRequest>,
@@ -1249,7 +1243,7 @@ pub mod grpc_server {
             tonic::Response<super::GetBlocksBySlotsResponse>,
             tonic::Status,
         >;
-        /// GetDatastoreEntries
+        /// Get datastore entries
         async fn get_datastore_entries(
             &self,
             request: tonic::Request<super::GetDatastoreEntriesRequest>,
@@ -1257,7 +1251,7 @@ pub mod grpc_server {
             tonic::Response<super::GetDatastoreEntriesResponse>,
             tonic::Status,
         >;
-        /// GetNextBlockBestParents
+        /// Get next block best parents
         async fn get_next_block_best_parents(
             &self,
             request: tonic::Request<super::GetNextBlockBestParentsRequest>,
@@ -1265,7 +1259,7 @@ pub mod grpc_server {
             tonic::Response<super::GetNextBlockBestParentsResponse>,
             tonic::Status,
         >;
-        /// GetSelectorDraws
+        /// Get selector draws
         async fn get_selector_draws(
             &self,
             request: tonic::Request<super::GetSelectorDrawsRequest>,
@@ -1273,7 +1267,7 @@ pub mod grpc_server {
             tonic::Response<super::GetSelectorDrawsResponse>,
             tonic::Status,
         >;
-        /// GetTransactionsThroughput
+        /// Get transactions throughput
         async fn get_transactions_throughput(
             &self,
             request: tonic::Request<super::GetTransactionsThroughputRequest>,
@@ -1281,7 +1275,7 @@ pub mod grpc_server {
             tonic::Response<super::GetTransactionsThroughputResponse>,
             tonic::Status,
         >;
-        /// GetVersion
+        /// Get node version
         async fn get_version(
             &self,
             request: tonic::Request<super::GetVersionRequest>,
@@ -1295,7 +1289,7 @@ pub mod grpc_server {
             >
             + Send
             + 'static;
-        /// NewBlocks
+        /// New received and produced blocks
         async fn new_blocks(
             &self,
             request: tonic::Request<tonic::Streaming<super::NewBlocksStreamRequest>>,
@@ -1309,7 +1303,7 @@ pub mod grpc_server {
             >
             + Send
             + 'static;
-        /// NewBlocksHeaders
+        /// New received and produced blocks headers
         async fn new_blocks_headers(
             &self,
             request: tonic::Request<
@@ -1328,7 +1322,7 @@ pub mod grpc_server {
             >
             + Send
             + 'static;
-        /// NewFilledBlocks
+        /// New received and produced blocks with operations
         async fn new_filled_blocks(
             &self,
             request: tonic::Request<
@@ -1347,7 +1341,7 @@ pub mod grpc_server {
             >
             + Send
             + 'static;
-        /// NewOperations
+        /// New received and produced perations
         async fn new_operations(
             &self,
             request: tonic::Request<tonic::Streaming<super::NewOperationsStreamRequest>>,
@@ -1364,7 +1358,7 @@ pub mod grpc_server {
             >
             + Send
             + 'static;
-        /// SendBlocks
+        /// Send blocks
         async fn send_blocks(
             &self,
             request: tonic::Request<tonic::Streaming<super::SendBlocksStreamRequest>>,
@@ -1378,7 +1372,7 @@ pub mod grpc_server {
             >
             + Send
             + 'static;
-        /// SendEndorsements
+        /// Send endorsements
         async fn send_endorsements(
             &self,
             request: tonic::Request<
@@ -1397,7 +1391,7 @@ pub mod grpc_server {
             >
             + Send
             + 'static;
-        /// SendOperations
+        /// Send operations
         async fn send_operations(
             &self,
             request: tonic::Request<tonic::Streaming<super::SendOperationsStreamRequest>>,
@@ -1414,7 +1408,7 @@ pub mod grpc_server {
             >
             + Send
             + 'static;
-        /// TransactionsThroughput
+        /// Transactions throughput per second
         async fn transactions_throughput(
             &self,
             request: tonic::Request<
