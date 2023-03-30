@@ -418,7 +418,7 @@
                     .expect(<span class="string">&quot;attempting to add operation to pool, but it is absent from storage&quot;</span>);
                 <span class="comment">// Broadcast operation to active sender(channel) subscribers.
                 </span><span class="kw">if </span><span class="self">self</span>.config.broadcast_enabled {
-                    <span class="kw">let _ </span>= <span class="self">self</span>.channels.operation_sender.send(op.content.clone());
+                    <span class="kw">let _ </span>= <span class="self">self</span>.channels.operation_sender.send(op.clone());
                 }
                 <span class="kw">let </span>op_info = OperationInfo::from_op(
                     op,
