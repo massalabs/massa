@@ -47,7 +47,6 @@ fn stream_final_state_and_consensus<D: Duplex>(
             Ok(_) => Ok(()),
         }?;
         loop {
-            dbg!();
             let msg = match client.next_timeout(Some(cfg.read_timeout.to_duration())) {
                 Err(BootstrapError::IoError(e)) if e.kind() == ErrorKind::TimedOut => {
                     return Err(std::io::Error::new(
@@ -205,29 +204,27 @@ fn bootstrap_from_server<D: Duplex>(
 
     // read error (if sent by the server)
     // client.next() is not cancel-safe but we drop the whole client object if cancelled => it's OK
-    match dbg!(client.next_timeout(Some(cfg.read_error_timeout.to_duration()))) {
+    match client.next_timeout(Some(cfg.read_error_timeout.to_duration())) {
         Err(BootstrapError::IoError(e))
             if e.kind() == ErrorKind::TimedOut || e.kind() == ErrorKind::WouldBlock =>
         {
-            dbg!("no next");
             massa_trace!(
                 "bootstrap.lib.bootstrap_from_server: No error sent at connection",
                 {}
             );
         }
-        Err(e) => return Err(dbg!(e)),
+        Err(e) => return Err(e),
         Ok(BootstrapServerMessage::BootstrapError { error: err }) => {
-            return Err(BootstrapError::ReceivedError(dbg!(err)))
+            return Err(BootstrapError::ReceivedError(err))
         }
-        Ok(msg) => return Err(BootstrapError::UnexpectedServerMessage(dbg!(msg))),
+        Ok(msg) => return Err(BootstrapError::UnexpectedServerMessage(msg)),
     };
 
-    dbg!("doing handshake");
     // handshake
     let send_time_uncompensated = MassaTime::now()?;
     // client.handshake() is not cancel-safe but we drop the whole client object if cancelled => it's OK
     match // tokio::time::timeout(cfg.write_timeout.into(),
-    dbg!(client.handshake(our_version)) {
+    client.handshake(our_version) {
         Err(BootstrapError::IoError(e)) if e.kind() == ErrorKind::TimedOut => {
             return Err(std::io::Error::new(
                 std::io::ErrorKind::TimedOut,
@@ -249,8 +246,7 @@ fn bootstrap_from_server<D: Duplex>(
 
     // First, clock and version.
     // client.next() is not cancel-safe but we drop the whole client object if cancelled => it's OK
-    dbg!();
-    let server_time = match dbg!(client.next_timeout(Some(cfg.read_timeout.into()))) {
+    let server_time = match client.next_timeout(Some(cfg.read_timeout.into())) {
         Err(BootstrapError::IoError(e))
             if e.kind() == ErrorKind::TimedOut || e.kind() == ErrorKind::WouldBlock =>
         {
@@ -260,7 +256,7 @@ fn bootstrap_from_server<D: Duplex>(
             )
             .into())
         }
-        Err(e) => return Err(dbg!(e)),
+        Err(e) => return Err(e),
         Ok(BootstrapServerMessage::BootstrapTime {
             server_time,
             version,
@@ -290,7 +286,6 @@ fn bootstrap_from_server<D: Duplex>(
         ));
     }
 
-    dbg!();
     // compute client / server clock delta
     // div 2 is an approximation of the time it took the message to do server -> client
     // the complete ping value being client -> server -> client
@@ -307,11 +302,9 @@ fn bootstrap_from_server<D: Duplex>(
         return Err(BootstrapError::ClockError(message));
     }
 
-    dbg!();
     let write_timeout: std::time::Duration = cfg.write_timeout.into();
     // Loop to ask data to the server depending on the last message we sent
     loop {
-        dbg!();
         match next_bootstrap_message {
             BootstrapClientMessage::AskBootstrapPart { .. } => {
                 stream_final_state_and_consensus(
@@ -375,7 +368,6 @@ fn send_client_message<D: Duplex>(
         Err(e) => Err(e),
         Ok(_) => Ok(()),
     }?;
-    dbg!();
     match client.next_timeout(Some(read_timeout)) {
         Err(BootstrapError::IoError(e)) if e.kind() == ErrorKind::TimedOut => {
             Err(std::io::Error::new(std::io::ErrorKind::TimedOut, error).into())
@@ -476,8 +468,7 @@ pub async fn get_state(
                 &node_id.get_public_key(),
             ) {
                 Ok(mut client) => {
-                    dbg!("got the con, bootstrapping");
-                    match dbg!(bootstrap_from_server(bootstrap_config, &mut client, &mut next_bootstrap_message, &mut global_bootstrap_state,version))
+                    match bootstrap_from_server(bootstrap_config, &mut client, &mut next_bootstrap_message, &mut global_bootstrap_state,version)
                       // cancellable
                     {
                         Err(BootstrapError::ReceivedError(error)) => warn!("Error received from bootstrap server: {}", error),

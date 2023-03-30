@@ -289,7 +289,6 @@ fn test_bootstrap_server() {
     // check graphs
     assert_eq_bootstrap_graph(&sent_graph, &bootstrap_res.graph.unwrap());
 
-    dbg!("now stop! (hammer time)");
     // stop bootstrap server
     bootstrap_manager_thread
         .join()

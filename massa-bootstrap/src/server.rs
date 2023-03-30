@@ -723,7 +723,7 @@ async fn manage_bootstrap<D: Duplex, C: NetworkCommandSenderTrait>(
     massa_trace!("bootstrap.lib.manage_bootstrap", {});
     let read_error_timeout: Duration = bootstrap_config.read_error_timeout.into();
 
-    match dbg!(server.handshake_timeout(version, Some(bootstrap_config.read_timeout.into()))) {
+    match server.handshake_timeout(version, Some(bootstrap_config.read_timeout.into())) {
         Err(BootstrapError::IoError(e)) if e.kind() == ErrorKind::TimedOut => {
             return Err(std::io::Error::new(
                 std::io::ErrorKind::TimedOut,
@@ -735,7 +735,7 @@ async fn manage_bootstrap<D: Duplex, C: NetworkCommandSenderTrait>(
         Ok(_) => (),
     };
 
-    match dbg!(server.next_timeout(Some(read_error_timeout))) {
+    match server.next_timeout(Some(read_error_timeout)) {
         Err(BootstrapError::IoError(e))
             if e.kind() == ErrorKind::TimedOut || e.kind() == ErrorKind::WouldBlock => {}
         Err(e) => return Err(e),
@@ -750,13 +750,13 @@ async fn manage_bootstrap<D: Duplex, C: NetworkCommandSenderTrait>(
     // Sync clocks.
     let server_time = MassaTime::now()?;
 
-    match dbg!(server.send_msg(
+    match server.send_msg(
         write_timeout,
         BootstrapServerMessage::BootstrapTime {
             server_time,
             version,
         },
-    )) {
+    ) {
         Err(BootstrapError::IoError(e)) if e.kind() == ErrorKind::TimedOut => {
             Err(std::io::Error::new(
                 std::io::ErrorKind::TimedOut,
@@ -769,7 +769,7 @@ async fn manage_bootstrap<D: Duplex, C: NetworkCommandSenderTrait>(
     }?;
 
     loop {
-        match dbg!(server.next_timeout(Some(bootstrap_config.read_timeout.into()))) {
+        match server.next_timeout(Some(bootstrap_config.read_timeout.into())) {
             Err(BootstrapError::IoError(e))
                 if e.kind() == ErrorKind::TimedOut || e.kind() == ErrorKind::WouldBlock =>
             {
