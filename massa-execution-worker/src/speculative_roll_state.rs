@@ -516,11 +516,9 @@ impl SpeculativeRollState {
 
         // set all the taken ones to zero in added_changes
         credits.for_each(|slot, address, amount| {
-            if amount != Amount::zero() {
-                self.added_changes
-                    .deferred_credits
-                    .insert(slot, address, Amount::zero());
-            }
+            self.added_changes
+                .deferred_credits
+                .insert(slot, address, Amount::zero());
         });
 
         // return taken credits
