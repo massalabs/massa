@@ -179,7 +179,6 @@ impl OperationPool {
             &Default::default(),
             &added,
             &Default::default(),
-            &Default::default(),
         ));
 
         // Clean the removed operations from storage.

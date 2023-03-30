@@ -19,6 +19,7 @@ use std::{
     thread,
     thread::JoinHandle,
 };
+use tracing::warn;
 
 /// Endorsement pool write thread instance
 pub(crate) struct EndorsementPoolThread {
@@ -59,6 +60,10 @@ impl EndorsementPoolThread {
                     .endorsement_pool
                     .write()
                     .notify_final_cs_periods(&final_cs_periods),
+                _ => {
+                    warn!("EndorsementPoolThread received an unexpected command");
+                    continue;
+                }
             }
         }
     }
@@ -103,6 +108,10 @@ impl OperationPoolThread {
                     .operation_pool
                     .write()
                     .notify_final_cs_periods(&final_cs_periods),
+                _ => {
+                    warn!("OperationPoolThread received an unexpected command");
+                    continue;
+                }
             };
         }
     }
@@ -140,13 +149,17 @@ impl DenunciationPoolThread {
             match self.receiver.recv() {
                 Err(RecvError) => break,
                 Ok(Command::Stop) => break,
-                Ok(Command::AddItems(operations)) => {
-                    self.denunciation_pool.write().add_denunciation(operations)
+                Ok(Command::AddDenunciation(de)) => {
+                    self.denunciation_pool.write().add_denunciation(de)
                 }
                 Ok(Command::NotifyFinalCsPeriods(final_cs_periods)) => self
                     .denunciation_pool
                     .write()
                     .notify_final_cs_periods(&final_cs_periods),
+                _ => {
+                    warn!("DenunciationPoolThread received an unexpected command");
+                    continue;
+                }
             };
         }
     }
@@ -177,7 +190,7 @@ pub fn start_pool_controller(
         storage,
         denunciation_factory_tx,
     )));
-    let denunciation_pool = Arc::new(RwLock::new(DenunciationPool::init(config, storage)));
+    let denunciation_pool = Arc::new(RwLock::new(DenunciationPool::init(config)));
     let controller = PoolControllerImpl {
         _config: config,
         operation_pool: operation_pool.clone(),

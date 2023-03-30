@@ -156,7 +156,6 @@ impl EndorsementPool {
             &Default::default(),
             &Default::default(),
             &added,
-            &Default::default(),
         ));
 
         // drop removed endorsements from storage

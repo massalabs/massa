@@ -2,6 +2,7 @@
 
 //! Pool controller implementation
 
+use massa_models::denunciation::Denunciation;
 use massa_models::{
     block_id::BlockId, endorsement::EndorsementId, operation::OperationId, slot::Slot,
 };
@@ -21,6 +22,8 @@ use crate::{
 pub enum Command {
     /// Add items to the pool
     AddItems(Storage),
+    /// Add denunciation to the pool
+    AddDenunciation(Denunciation),
     /// Notify of new final consensus periods
     NotifyFinalCsPeriods(Vec<u64>),
     /// Stop the worker
@@ -180,10 +183,10 @@ impl PoolController for PoolControllerImpl {
     }
 
     /// Add denunciation to pool
-    fn add_denunciations(&mut self, denunciations: Storage) {
+    fn add_denunciation(&mut self, denunciation: Denunciation) {
         match self
             .denunciations_input_sender
-            .try_send(Command::AddItems(denunciations))
+            .try_send(Command::AddDenunciation(denunciation))
         {
             Err(TrySendError::Disconnected(_)) => {
                 warn!("Could not add denunciations to pool: worker is unreachable.");

@@ -6,6 +6,7 @@ use std::sync::{
 };
 
 use massa_models::config::THREAD_COUNT;
+use massa_models::denunciation::Denunciation;
 use massa_models::{
     block_id::BlockId, endorsement::EndorsementId, operation::OperationId, slot::Slot,
 };
@@ -32,10 +33,10 @@ pub enum MockPoolControllerMessage {
         /// Storage that contains all operations
         operations: Storage,
     },
-    /// Add denunciations to the pool
-    AddDenunciations {
-        /// Storage that contains all denunciations
-        denunciations: Storage,
+    /// Add denunciation to the pool
+    AddDenunciation {
+        /// The denunciation to add
+        denunciation: Denunciation,
     },
     /// Get block endorsements
     GetBlockEndorsements {
@@ -249,11 +250,11 @@ impl PoolController for MockPoolController {
         Box::new(self.clone())
     }
 
-    fn add_denunciations(&mut self, denunciations: Storage) {
+    fn add_denunciation(&mut self, denunciation: Denunciation) {
         self.q
             .lock()
             .unwrap()
-            .send(MockPoolControllerMessage::AddDenunciations { denunciations })
+            .send(MockPoolControllerMessage::AddDenunciation { denunciation })
             .unwrap();
     }
 

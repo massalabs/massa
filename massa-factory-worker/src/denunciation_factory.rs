@@ -6,6 +6,7 @@ use crossbeam_channel::{select, Receiver};
 use tracing::{debug, info, warn};
 
 use massa_factory_exports::{FactoryChannels, FactoryConfig};
+use massa_models::address::Address;
 use massa_models::block_header::SecuredHeader;
 use massa_models::denunciation::Denunciation;
 use massa_models::endorsement::SecureShareEndorsement;
@@ -18,7 +19,6 @@ const DENUNCIATION_FACTORY_ENDORSEMENT_CACHE_MAX_LEN: usize = 4096;
 const DENUNCIATION_FACTORY_BLOCK_HEADER_CACHE_MAX_LEN: usize = 4096;
 
 /// Structure gathering all elements needed by the factory thread
-#[allow(dead_code)]
 pub(crate) struct DenunciationFactoryWorker {
     cfg: FactoryConfig,
     channels: FactoryChannels,
@@ -78,6 +78,23 @@ impl DenunciationFactoryWorker {
             return;
         }
 
+        // Get selected address from selector and check
+        // Note: If the public key of the header creator is not checked to match the PoS,
+        //       someone can spam with headers coming from various non-PoS-drawn pubkeys
+        //       and cause a problem
+        let selected_address = self.channels.selector.get_producer(key);
+        match selected_address {
+            Ok(address) => {
+                if address != Address::from_public_key(&secured_header.content_creator_pub_key) {
+                    warn!("Denunciation factory received a secured header but address was not selected");
+                    return;
+                }
+            }
+            Err(e) => {
+                warn!("Cannot get producer from selector: {}", e);
+            }
+        }
+
         let denunciation_: Option<Denunciation> = match self.block_header_by_slot.entry(key) {
             Entry::Occupied(mut eo) => {
                 let secured_headers = eo.get_mut();
@@ -90,11 +107,13 @@ impl DenunciationFactoryWorker {
                     let header_1 = secured_headers.get(0).unwrap();
                     let header_2 = secured_headers.get(1).unwrap();
                     let de_ = Denunciation::try_from((header_1, header_2));
-                    if let Err(e) = de_ {
-                        debug!("Denunciation factory cannot create denunciation from block headers: {}", e);
-                        return;
+                    match de_ {
+                        Ok(de) => Some(de),
+                        Err(e) => {
+                            debug!("Denunciation factory cannot create denunciation from block headers: {}", e);
+                            return;
+                        }
                     }
-                    Some(de_.unwrap()) // Already checked for error
                 } else {
                     // Already 2 entries - so a Denunciation has already been created
                     None
@@ -112,9 +131,7 @@ impl DenunciationFactoryWorker {
                 denunciation
             );
 
-            let mut de_storage = self.channels.storage.clone_without_refs();
-            de_storage.store_denunciation(denunciation);
-            self.channels.pool.add_denunciations(de_storage);
+            self.channels.pool.add_denunciation(denunciation);
         }
 
         self.cleanup_cache();
@@ -125,16 +142,39 @@ impl DenunciationFactoryWorker {
         &mut self,
         secure_share_endorsement: SecureShareEndorsement,
     ) {
-        let key = (
-            secure_share_endorsement.content.slot,
-            secure_share_endorsement.content.index,
-        );
+        let endo_slot = secure_share_endorsement.content.slot;
+        let endo_index = secure_share_endorsement.content.index;
+        let endo_index_usize = endo_index as usize;
+        let key = (endo_slot, endo_index);
         if self.endorsements_by_slot_index.contains_key(&key) {
             warn!(
                 "Denunciation factory process an endorsement that have already been denounced: {}",
                 secure_share_endorsement
             );
             return;
+        }
+
+        // Get selected address from selector and check
+        let selected = self.channels.selector.get_selection(endo_slot);
+        match selected {
+            Ok(selection) => {
+                if let Some(address) = selection.endorsements.get(endo_index_usize) {
+                    if *address
+                        != Address::from_public_key(
+                            &secure_share_endorsement.content_creator_pub_key,
+                        )
+                    {
+                        warn!("Denunciation factory received a secure share endorsement but address was not selected");
+                        return;
+                    }
+                } else {
+                    warn!("Denunciation factory could not get selected address for endorsements at index: {}", endo_index_usize);
+                    return;
+                }
+            }
+            Err(e) => {
+                warn!("Cannot get producer from selector: {}", e);
+            }
         }
 
         if self.endorsements_by_slot_index.len() > DENUNCIATION_FACTORY_ENDORSEMENT_CACHE_MAX_LEN {
@@ -179,9 +219,7 @@ impl DenunciationFactoryWorker {
                 denunciation
             );
 
-            let mut de_storage = self.channels.storage.clone_without_refs();
-            de_storage.store_denunciation(denunciation);
-            self.channels.pool.add_denunciations(de_storage);
+            self.channels.pool.add_denunciation(denunciation);
         }
 
         self.cleanup_cache();
@@ -199,7 +237,7 @@ impl DenunciationFactoryWorker {
         );
 
         self.endorsements_by_slot_index.retain(|(slot, _index), _| {
-            Denunciation::is_expired(
+            !Denunciation::is_expired(
                 slot,
                 &slot_now,
                 self.channels.pool.get_final_cs_periods(),
@@ -209,7 +247,7 @@ impl DenunciationFactoryWorker {
         });
 
         self.block_header_by_slot.retain(|slot, _| {
-            Denunciation::is_expired(
+            !Denunciation::is_expired(
                 slot,
                 &slot_now,
                 self.channels.pool.get_final_cs_periods(),

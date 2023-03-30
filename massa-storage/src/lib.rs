@@ -11,7 +11,6 @@
 #![feature(map_try_insert)]
 
 mod block_indexes;
-mod denunciation_indexes;
 mod endorsement_indexes;
 mod operation_indexes;
 
@@ -19,15 +18,12 @@ mod operation_indexes;
 mod tests;
 
 use block_indexes::BlockIndexes;
-use denunciation_indexes::DenunciationIndexes;
 use endorsement_indexes::EndorsementIndexes;
-use massa_models::denunciation::Denunciation;
 use massa_models::prehash::{CapacityAllocator, PreHashMap, PreHashSet, PreHashed};
 use massa_models::secure_share::Id;
 use massa_models::{
     block::SecureShareBlock,
     block_id::BlockId,
-    denunciation::DenunciationId,
     endorsement::{EndorsementId, SecureShareEndorsement},
     operation::{OperationId, SecureShareOperation},
 };
@@ -45,8 +41,6 @@ pub struct Storage {
     operations: Arc<RwLock<OperationIndexes>>,
     /// global operation storage
     endorsements: Arc<RwLock<EndorsementIndexes>>,
-    /// global denunciation storage
-    denunciations: Arc<RwLock<DenunciationIndexes>>,
 
     /// global block reference counter
     block_owners: Arc<RwLock<PreHashMap<BlockId, usize>>>,
@@ -54,8 +48,6 @@ pub struct Storage {
     operation_owners: Arc<RwLock<PreHashMap<OperationId, usize>>>,
     /// global endorsement reference counter
     endorsement_owners: Arc<RwLock<PreHashMap<EndorsementId, usize>>>,
-    /// global denunciation reference counter
-    denunciation_owners: Arc<RwLock<PreHashMap<DenunciationId, usize>>>,
 
     /// locally used block references
     local_used_blocks: PreHashSet<BlockId>,
@@ -63,8 +55,6 @@ pub struct Storage {
     local_used_ops: PreHashSet<OperationId>,
     /// locally used endorsement references
     local_used_endorsements: PreHashSet<EndorsementId>,
-    /// locally used denunciation references
-    local_used_denunciations: PreHashSet<DenunciationId>,
 }
 
 impl Debug for Storage {
@@ -113,15 +103,12 @@ impl Storage {
             blocks: Default::default(),
             operations: Default::default(),
             endorsements: Default::default(),
-            denunciations: Default::default(),
             block_owners: Default::default(),
             operation_owners: Default::default(),
             endorsement_owners: Default::default(),
-            denunciation_owners: Default::default(),
             local_used_blocks: Default::default(),
             local_used_ops: Default::default(),
             local_used_endorsements: Default::default(),
-            local_used_denunciations: Default::default(),
         }
     }
 
@@ -131,18 +118,15 @@ impl Storage {
             blocks: self.blocks.clone(),
             operations: self.operations.clone(),
             endorsements: self.endorsements.clone(),
-            denunciations: self.denunciations.clone(),
 
             operation_owners: self.operation_owners.clone(),
             block_owners: self.block_owners.clone(),
             endorsement_owners: self.endorsement_owners.clone(),
-            denunciation_owners: self.denunciation_owners.clone(),
 
             // do not clone local ref lists
             local_used_ops: Default::default(),
             local_used_blocks: Default::default(),
             local_used_endorsements: Default::default(),
-            local_used_denunciations: Default::default(),
         }
     }
 
@@ -179,7 +163,6 @@ impl Storage {
         blocks: &PreHashSet<BlockId>,
         operations: &PreHashSet<OperationId>,
         endorsements: &PreHashSet<EndorsementId>,
-        denunciations: &PreHashSet<DenunciationId>,
     ) -> Storage {
         // Make a clone of self, which has no ref ownership.
         let mut res = self.clone_without_refs();
@@ -209,15 +192,6 @@ impl Storage {
             .iter()
             .map(|id| {
                 self.local_used_endorsements
-                    .take(id)
-                    .expect("split endorsement ref not owned by source")
-            })
-            .collect();
-
-        res.local_used_denunciations = denunciations
-            .iter()
-            .map(|id| {
-                self.local_used_denunciations
                     .take(id)
                     .expect("split endorsement ref not owned by source")
             })
@@ -418,11 +392,6 @@ impl Storage {
         self.blocks.read()
     }
 
-    /// Gets a read reference to the denunciation index
-    pub fn read_denunciations(&self) -> RwLockReadGuard<DenunciationIndexes> {
-        self.denunciations.read()
-    }
-
     /// Claim endorsement references.
     /// Returns the set of operation refs that were found and claimed.
     pub fn claim_endorsement_refs(
@@ -504,63 +473,6 @@ impl Storage {
             endo_store.insert(endorsement);
         }
         Storage::internal_claim_refs(&ids, &mut owners, &mut self.local_used_endorsements);
-    }
-
-    /// Store denunciation
-    pub fn store_denunciation(&mut self, denunciation: Denunciation) {
-        let mut owners = self.denunciation_owners.write();
-        let mut de_indexes = self.denunciations.write();
-        let de_id = DenunciationId::from(&denunciation);
-        de_indexes.insert(denunciation);
-        let mut ids = PreHashSet::with_capacity(1);
-        ids.insert(de_id);
-        Storage::internal_claim_refs(&ids, &mut owners, &mut self.local_used_denunciations);
-    }
-
-    /// get the denunciation reference ownership
-    pub fn get_denunciation_refs(&self) -> &PreHashSet<DenunciationId> {
-        &self.local_used_denunciations
-    }
-
-    /// Drop local denunciation references.
-    /// Ignores already-absent refs.
-    pub fn drop_denunciation_refs(&mut self, ids: &PreHashSet<DenunciationId>) {
-        if ids.is_empty() {
-            return;
-        }
-        let mut owners = self.denunciation_owners.write();
-        let mut orphaned_ids = Vec::new();
-        for id in ids {
-            if !self.local_used_denunciations.remove(id) {
-                // the object was already not referenced locally
-                continue;
-            }
-            match owners.entry(*id) {
-                hash_map::Entry::Occupied(mut occ) => {
-                    let res_count = {
-                        let cnt = occ.get_mut();
-                        *cnt = cnt
-                            .checked_sub(1)
-                            .expect("less than 1 owner on storage object reference drop");
-                        *cnt
-                    };
-                    if res_count == 0 {
-                        orphaned_ids.push(*id);
-                        occ.remove();
-                    }
-                }
-                hash_map::Entry::Vacant(_vac) => {
-                    panic!("missing object in storage on storage object reference drop");
-                }
-            }
-        }
-        // if there are orphaned objects, remove them from storage
-        if !orphaned_ids.is_empty() {
-            let mut des = self.denunciations.write();
-            for id in orphaned_ids {
-                des.remove(&id);
-            }
-        }
     }
 }
 

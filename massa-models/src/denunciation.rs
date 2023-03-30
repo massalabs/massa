@@ -17,7 +17,7 @@ use crate::block_header::{
 use crate::endorsement::{
     Endorsement, EndorsementDenunciationData, EndorsementSerializer, SecureShareEndorsement,
 };
-use crate::slot::{Slot, SlotDeserializer, SlotSerializer};
+use crate::slot::{Slot, SlotDeserializer, SlotSerializer, SLOT_KEY_SIZE};
 
 use crate::prehash::PreHashed;
 use crate::secure_share::Id;
@@ -28,11 +28,12 @@ use massa_serialization::{
 };
 use massa_signature::{
     MassaSignatureError, PublicKey, PublicKeyDeserializer, Signature, SignatureDeserializer,
+    PUBLIC_KEY_SIZE_BYTES,
 };
 
 /// A Variant of Denunciation enum for endorsement
 #[allow(dead_code)]
-#[derive(Debug, PartialEq)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct EndorsementDenunciation {
     public_key: PublicKey,
     slot: Slot,
@@ -75,7 +76,7 @@ impl EndorsementDenunciation {
 
 /// A Variant of Denunciation enum for block header
 #[allow(dead_code)]
-#[derive(Debug, PartialEq)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct BlockHeaderDenunciation {
     public_key: PublicKey,
     slot: Slot,
@@ -123,7 +124,7 @@ impl BlockHeaderDenunciation {
 }
 
 /// A denunciation enum
-#[derive(Debug, PartialEq)]
+#[derive(Debug, Clone, PartialEq)]
 #[allow(missing_docs)]
 pub enum Denunciation {
     Endorsement(EndorsementDenunciation),
@@ -293,11 +294,7 @@ impl Denunciation {
         let cycle = slot.get_cycle(periods_per_cycle);
         let next_cycle = slot_at_now.get_cycle(periods_per_cycle);
 
-        if (next_cycle - cycle) > denunciation_expire_cycle_delta {
-            return true;
-        }
-
-        false
+        (next_cycle - cycle) > denunciation_expire_cycle_delta
     }
 }
 
@@ -809,12 +806,12 @@ impl DenunciationId {
         self.0.to_bytes()
     }
 
-    /// endorsement id into bytes
+    /// denunciation id into bytes
     pub fn into_bytes(self) -> [u8; DENUNCIATION_ID_SIZE_BYTES] {
         self.0.into_bytes()
     }
 
-    /// endorsement id from bytes
+    /// denunciation id from bytes
     pub fn from_bytes(data: &[u8; DENUNCIATION_ID_SIZE_BYTES]) -> DenunciationId {
         DenunciationId(Hash::from_bytes(data))
     }
@@ -824,7 +821,9 @@ impl From<&Denunciation> for DenunciationId {
     fn from(value: &Denunciation) -> Self {
         match value {
             Denunciation::Endorsement(endo_de) => {
-                let mut to_hash = Vec::new();
+                let mut to_hash = Vec::with_capacity(
+                    std::mem::size_of::<u32>() + PUBLIC_KEY_SIZE_BYTES + SLOT_KEY_SIZE,
+                );
                 to_hash.extend(endo_de.public_key.to_bytes());
                 to_hash.extend(endo_de.slot.to_bytes_key());
                 to_hash.extend(endo_de.index.to_le_bytes());
