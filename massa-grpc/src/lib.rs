@@ -1,17 +1,16 @@
 // Copyright (c) 2023 MASSA LABS <info@massa.net>
-// 
+//
 //! ## **Overview**
-//! 
+//!
 //! This Rust module is a gRPC API for providing services for the Massa blockchain.
 //! It implements gRPC services defined in the [massa_proto] module.
-//! 
+//!
 //! ## **Structure**
-//! 
+//!
 //! * `api.rs`: implements gRPC service methods without streams.
 //! * `handler.rs`: defines the logic for handling incoming gRPC requests.
 //! * `service.rs`: initializes the gRPC service and serve It.
 //! * `stream/`: contains the gRPC streaming methods implementations files.
-
 
 #![feature(async_closure)]
 #![warn(missing_docs)]
@@ -29,7 +28,7 @@ pub mod config;
 pub mod error;
 /// gRPC API implementation
 pub mod handler;
-/// gRPC service initialization and serve 
+/// gRPC service initialization and serve
 pub mod service;
 /// business code for stream methods
 pub mod stream;
