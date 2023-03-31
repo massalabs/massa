@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"constant":["DENUNCIATION_ID_SIZE_BYTES"],"enum":["Denunciation","DenunciationError","DenunciationInterest","DenunciationTypeId"],"struct":["BlockHeaderDenunciation","BlockHeaderDenunciationInterest","DenunciationDeserializer","DenunciationId","DenunciationSerializer","EndorsementDenunciation","EndorsementDenunciationInterest"]};
+window.SIDEBAR_ITEMS = {"enum":["DenunciationError","DenunciationTypeId"],"struct":["DenunciationDeserializer","DenunciationSerializer"]};

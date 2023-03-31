@@ -50,43 +50,16 @@
 <a href="#50" id="50">50</a>
 <a href="#51" id="51">51</a>
 <a href="#52" id="52">52</a>
-<a href="#53" id="53">53</a>
-<a href="#54" id="54">54</a>
-<a href="#55" id="55">55</a>
-<a href="#56" id="56">56</a>
-<a href="#57" id="57">57</a>
-<a href="#58" id="58">58</a>
-<a href="#59" id="59">59</a>
-<a href="#60" id="60">60</a>
-<a href="#61" id="61">61</a>
-<a href="#62" id="62">62</a>
-<a href="#63" id="63">63</a>
-<a href="#64" id="64">64</a>
-<a href="#65" id="65">65</a>
-<a href="#66" id="66">66</a>
-<a href="#67" id="67">67</a>
-<a href="#68" id="68">68</a>
-<a href="#69" id="69">69</a>
-<a href="#70" id="70">70</a>
-<a href="#71" id="71">71</a>
-<a href="#72" id="72">72</a>
-<a href="#73" id="73">73</a>
-<a href="#74" id="74">74</a>
-<a href="#75" id="75">75</a>
 </pre><pre class="rust"><code><span class="doccomment">//! Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="kw">use </span>parking_lot::RwLock;
 <span class="kw">use </span>std::sync::{mpsc, Arc};
 
-<span class="kw">use </span>crossbeam_channel::{unbounded, Receiver};
-
-<span class="kw">use </span><span class="kw">crate</span>::denunciation_factory::DenunciationFactoryWorker;
 <span class="kw">use crate</span>::{
     block_factory::BlockFactoryWorker, endorsement_factory::EndorsementFactoryWorker,
     manager::FactoryManagerImpl,
 };
 <span class="kw">use </span>massa_factory_exports::{FactoryChannels, FactoryConfig, FactoryManager};
-<span class="kw">use </span>massa_models::denunciation::DenunciationInterest;
 <span class="kw">use </span>massa_wallet::Wallet;
 
 <span class="doccomment">/// Start factory
@@ -102,17 +75,12 @@
     cfg: FactoryConfig,
     wallet: Arc&lt;RwLock&lt;Wallet&gt;&gt;,
     channels: FactoryChannels,
-    denunciation_factory_consensus_receiver: Receiver&lt;DenunciationInterest&gt;,
-    denunciation_factory_endorsement_pool_receiver: Receiver&lt;DenunciationInterest&gt;,
 ) -&gt; Box&lt;<span class="kw">dyn </span>FactoryManager&gt; {
     <span class="comment">// create block factory channel
     </span><span class="kw">let </span>(block_worker_tx, block_worker_rx) = mpsc::channel::&lt;()&gt;();
 
     <span class="comment">// create endorsement factory channel
     </span><span class="kw">let </span>(endorsement_worker_tx, endorsement_worker_rx) = mpsc::channel::&lt;()&gt;();
-
-    <span class="comment">// create denunciation factory channel
-    </span><span class="kw">let </span>(denunciation_worker_tx, denunciation_worker_rx) = unbounded::&lt;()&gt;();
 
     <span class="comment">// start block factory worker
     </span><span class="kw">let </span>block_worker_handle = BlockFactoryWorker::spawn(
@@ -123,27 +91,13 @@
     );
 
     <span class="comment">// start endorsement factory worker
-    </span><span class="kw">let </span>endorsement_worker_handle = EndorsementFactoryWorker::spawn(
-        cfg.clone(),
-        wallet,
-        channels.clone(),
-        endorsement_worker_rx,
-    );
-
-    <span class="comment">// start denunciation factory worker
-    </span><span class="kw">let </span>denunciation_worker_handle = DenunciationFactoryWorker::spawn(
-        cfg,
-        channels,
-        denunciation_worker_rx,
-        denunciation_factory_consensus_receiver,
-        denunciation_factory_endorsement_pool_receiver,
-    );
+    </span><span class="kw">let </span>endorsement_worker_handle =
+        EndorsementFactoryWorker::spawn(cfg, wallet, channels, endorsement_worker_rx);
 
     <span class="comment">// create factory manager
     </span><span class="kw">let </span>manager = FactoryManagerImpl {
         block_worker: <span class="prelude-val">Some</span>((block_worker_tx, block_worker_handle)),
         endorsement_worker: <span class="prelude-val">Some</span>((endorsement_worker_tx, endorsement_worker_handle)),
-        denunciation_worker: <span class="prelude-val">Some</span>((denunciation_worker_tx, denunciation_worker_handle)),
     };
 
     Box::new(manager)
