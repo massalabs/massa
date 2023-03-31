@@ -1,5 +1,7 @@
 // Copyright (c) 2022 MASSA LABS <info@massa.net>
 
+use std::io::ErrorKind;
+
 use crate::messages::{BootstrapClientMessage, BootstrapServerMessage};
 use displaydoc::Display;
 use massa_consensus_exports::error::ConsensusError;
@@ -14,8 +16,10 @@ use thiserror::Error;
 #[non_exhaustive]
 #[derive(Display, Error, Debug)]
 pub enum BootstrapError {
-    /// io error: {0}
-    IoError(#[from] std::io::Error),
+    /// all io errors except for Timedout, and would-block (unix error when timed out)
+    IoError(std::io::Error),
+    /// We want to handle Timedout and WouldBlock
+    TimedOut(std::io::Error),
     /// general bootstrap error: {0}
     GeneralError(String),
     /// models error: {0}
@@ -58,4 +62,19 @@ pub enum BootstrapError {
     BlackListed(String),
     /// IP {0} is not in the whitelist
     WhiteListed(String),
+}
+
+/// # Platform-specific behavior
+///
+/// Platforms may return a different error code whenever a read times out as
+/// a result of setting this option. For example Unix typically returns an
+/// error of the kind [`WouldBlock`], but Windows may return [`TimedOut`].)
+impl From<std::io::Error> for BootstrapError {
+    fn from(e: std::io::Error) -> Self {
+        if e.kind() == ErrorKind::TimedOut || e.kind() == ErrorKind::WouldBlock {
+            BootstrapError::TimedOut(e)
+        } else {
+            BootstrapError::IoError(e)
+        }
+    }
 }

@@ -45,7 +45,6 @@ use massa_time::MassaTime;
 use parking_lot::RwLock;
 use std::{
     collections::HashMap,
-    io::ErrorKind,
     net::{IpAddr, SocketAddr, TcpStream},
     sync::Arc,
     thread,
@@ -605,13 +604,11 @@ pub async fn stream_bootstrap_information<D: Duplex>(
 
         if slot_too_old {
             match server.send_msg(write_timeout, BootstrapServerMessage::SlotTooOld) {
-                Err(BootstrapError::IoError(e)) if e.kind() == ErrorKind::TimedOut => {
-                    Err(std::io::Error::new(
-                        std::io::ErrorKind::TimedOut,
-                        "SlotTooOld message send timed out",
-                    )
-                    .into())
-                }
+                Err(BootstrapError::TimedOut(_)) => Err(std::io::Error::new(
+                    std::io::ErrorKind::TimedOut,
+                    "SlotTooOld message send timed out",
+                )
+                .into()),
                 Err(e) => Err(e),
                 Ok(_) => Ok(()),
             }?;
@@ -669,13 +666,11 @@ pub async fn stream_bootstrap_information<D: Duplex>(
             && last_consensus_step.finished()
         {
             match server.send_msg(write_timeout, BootstrapServerMessage::BootstrapFinished) {
-                Err(BootstrapError::IoError(e)) if e.kind() == ErrorKind::TimedOut => {
-                    Err(std::io::Error::new(
-                        std::io::ErrorKind::TimedOut,
-                        "bootstrap ask ledger part send timed out",
-                    )
-                    .into())
-                }
+                Err(BootstrapError::TimedOut(_)) => Err(std::io::Error::new(
+                    std::io::ErrorKind::TimedOut,
+                    "bootstrap ask ledger part send timed out",
+                )
+                .into()),
                 Err(e) => Err(e),
                 Ok(_) => Ok(()),
             }?;
@@ -697,13 +692,11 @@ pub async fn stream_bootstrap_information<D: Duplex>(
                 consensus_outdated_ids,
             },
         ) {
-            Err(BootstrapError::IoError(e)) if e.kind() == ErrorKind::TimedOut => {
-                Err(std::io::Error::new(
-                    std::io::ErrorKind::TimedOut,
-                    "bootstrap ask ledger part send timed out",
-                )
-                .into())
-            }
+            Err(BootstrapError::TimedOut(_)) => Err(std::io::Error::new(
+                std::io::ErrorKind::TimedOut,
+                "bootstrap ask ledger part send timed out",
+            )
+            .into()),
             Err(e) => Err(e),
             Ok(_) => Ok(()),
         }?;
@@ -724,7 +717,7 @@ async fn manage_bootstrap<D: Duplex, C: NetworkCommandSenderTrait>(
     let read_error_timeout: Duration = bootstrap_config.read_error_timeout.into();
 
     match server.handshake_timeout(version, Some(bootstrap_config.read_timeout.into())) {
-        Err(BootstrapError::IoError(e)) if e.kind() == ErrorKind::TimedOut => {
+        Err(BootstrapError::TimedOut(_)) => {
             return Err(std::io::Error::new(
                 std::io::ErrorKind::TimedOut,
                 "bootstrap handshake send timed out",
@@ -736,8 +729,7 @@ async fn manage_bootstrap<D: Duplex, C: NetworkCommandSenderTrait>(
     };
 
     match server.next_timeout(Some(read_error_timeout)) {
-        Err(BootstrapError::IoError(e))
-            if e.kind() == ErrorKind::TimedOut || e.kind() == ErrorKind::WouldBlock => {}
+        Err(BootstrapError::TimedOut(_)) => {}
         Err(e) => return Err(e),
         Ok(BootstrapClientMessage::BootstrapError { error }) => {
             return Err(BootstrapError::GeneralError(error));
@@ -757,24 +749,18 @@ async fn manage_bootstrap<D: Duplex, C: NetworkCommandSenderTrait>(
             version,
         },
     ) {
-        Err(BootstrapError::IoError(e)) if e.kind() == ErrorKind::TimedOut => {
-            Err(std::io::Error::new(
-                std::io::ErrorKind::TimedOut,
-                "bootstrap clock send timed out",
-            )
-            .into())
-        }
+        Err(BootstrapError::TimedOut(_)) => Err(std::io::Error::new(
+            std::io::ErrorKind::TimedOut,
+            "bootstrap clock send timed out",
+        )
+        .into()),
         Err(e) => Err(e),
         Ok(_) => Ok(()),
     }?;
 
     loop {
         match server.next_timeout(Some(bootstrap_config.read_timeout.into())) {
-            Err(BootstrapError::IoError(e))
-                if e.kind() == ErrorKind::TimedOut || e.kind() == ErrorKind::WouldBlock =>
-            {
-                break Ok(())
-            }
+            Err(BootstrapError::TimedOut(_)) => break Ok(()),
             Err(e) => break Err(e),
             Ok(msg) => match msg {
                 BootstrapClientMessage::AskBootstrapPeers => {
@@ -784,13 +770,11 @@ async fn manage_bootstrap<D: Duplex, C: NetworkCommandSenderTrait>(
                             peers: network_command_sender.get_bootstrap_peers().await?,
                         },
                     ) {
-                        Err(BootstrapError::IoError(e)) if e.kind() == ErrorKind::TimedOut => {
-                            Err(std::io::Error::new(
-                                std::io::ErrorKind::TimedOut,
-                                "bootstrap peers send timed out",
-                            )
-                            .into())
-                        }
+                        Err(BootstrapError::TimedOut(_)) => Err(std::io::Error::new(
+                            std::io::ErrorKind::TimedOut,
+                            "bootstrap peers send timed out",
+                        )
+                        .into()),
                         Err(e) => Err(e),
                         Ok(_) => Ok(()),
                     }?;
