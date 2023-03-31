@@ -56,9 +56,20 @@
 <a href="#56" id="56">56</a>
 <a href="#57" id="57">57</a>
 <a href="#58" id="58">58</a>
+<a href="#59" id="59">59</a>
+<a href="#60" id="60">60</a>
+<a href="#61" id="61">61</a>
+<a href="#62" id="62">62</a>
+<a href="#63" id="63">63</a>
+<a href="#64" id="64">64</a>
+<a href="#65" id="65">65</a>
+<a href="#66" id="66">66</a>
+<a href="#67" id="67">67</a>
+<a href="#68" id="68">68</a>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
-</span><span class="kw">use </span>massa_models::{
+</span><span class="kw">use </span>massa_models::denunciation::Denunciation;
+<span class="kw">use </span>massa_models::{
     block_id::BlockId, endorsement::EndorsementId, operation::OperationId, slot::Slot,
 };
 <span class="kw">use </span>massa_storage::Storage;
@@ -96,9 +107,18 @@
     <span class="doccomment">/// Check if the pool contains a list of operations. Returns one boolean per item.
     </span><span class="kw">fn </span>contains_operations(<span class="kw-2">&amp;</span><span class="self">self</span>, operations: <span class="kw-2">&amp;</span>[OperationId]) -&gt; Vec&lt;bool&gt;;
 
+    <span class="doccomment">/// Add denunciations to pool. Simply print a warning on failure.
+    </span><span class="kw">fn </span>add_denunciation(<span class="kw-2">&amp;mut </span><span class="self">self</span>, denunciation: Denunciation);
+
+    <span class="doccomment">/// Get the number of denunciations in the pool
+    </span><span class="kw">fn </span>get_denunciation_count(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; usize;
+
     <span class="doccomment">/// Returns a boxed clone of self.
     /// Useful to allow cloning `Box&lt;dyn PoolController&gt;`.
     </span><span class="kw">fn </span>clone_box(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; Box&lt;<span class="kw">dyn </span>PoolController&gt;;
+
+    <span class="doccomment">/// Get final cs periods (updated regularly from consensus)
+    </span><span class="kw">fn </span>get_final_cs_periods(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>Vec&lt;u64&gt;;
 }
 
 <span class="doccomment">/// Allow cloning `Box&lt;dyn PoolController&gt;`

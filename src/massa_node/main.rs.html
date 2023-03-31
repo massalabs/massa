@@ -909,6 +909,28 @@
 <a href="#909" id="909">909</a>
 <a href="#910" id="910">910</a>
 <a href="#911" id="911">911</a>
+<a href="#912" id="912">912</a>
+<a href="#913" id="913">913</a>
+<a href="#914" id="914">914</a>
+<a href="#915" id="915">915</a>
+<a href="#916" id="916">916</a>
+<a href="#917" id="917">917</a>
+<a href="#918" id="918">918</a>
+<a href="#919" id="919">919</a>
+<a href="#920" id="920">920</a>
+<a href="#921" id="921">921</a>
+<a href="#922" id="922">922</a>
+<a href="#923" id="923">923</a>
+<a href="#924" id="924">924</a>
+<a href="#925" id="925">925</a>
+<a href="#926" id="926">926</a>
+<a href="#927" id="927">927</a>
+<a href="#928" id="928">928</a>
+<a href="#929" id="929">929</a>
+<a href="#930" id="930">930</a>
+<a href="#931" id="931">931</a>
+<a href="#932" id="932">932</a>
+<a href="#933" id="933">933</a>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="attr">#![doc = <span class="macro">include_str!</span>(<span class="string">&quot;../../README.md&quot;</span>)]
@@ -957,7 +979,10 @@
     POS_SAVED_CYCLES, PROTOCOL_CONTROLLER_CHANNEL_SIZE, PROTOCOL_EVENT_CHANNEL_SIZE, ROLL_PRICE,
     T0, THREAD_COUNT, VERSION,
 };
-<span class="kw">use </span>massa_models::config::CONSENSUS_BOOTSTRAP_PART_SIZE;
+<span class="kw">use </span>massa_models::config::{
+    CONSENSUS_BOOTSTRAP_PART_SIZE, DENUNCIATION_EXPIRE_PERIODS, DENUNCIATION_ITEMS_MAX_CYCLE_DELTA,
+};
+<span class="kw">use </span>massa_models::denunciation::DenunciationInterest;
 <span class="kw">use </span>massa_network_exports::{Establisher, NetworkConfig, NetworkManager};
 <span class="kw">use </span>massa_network_worker::start_network_controller;
 <span class="kw">use </span>massa_pool_exports::{PoolChannels, PoolConfig, PoolManager};
@@ -1280,17 +1305,24 @@
         channels_size: POOL_CONTROLLER_CHANNEL_SIZE,
         broadcast_enabled: SETTINGS.api.enable_ws,
         broadcast_operations_capacity: SETTINGS.pool.broadcast_operations_capacity,
+        genesis_timestamp: <span class="kw-2">*</span>GENESIS_TIMESTAMP,
+        t0: T0,
+        periods_per_cycle: PERIODS_PER_CYCLE,
+        denunciation_expire_periods: DENUNCIATION_EXPIRE_PERIODS,
     };
 
     <span class="kw">let </span>pool_channels = PoolChannels {
         operation_sender: broadcast::channel(pool_config.broadcast_operations_capacity).<span class="number">0</span>,
     };
+    <span class="kw">let </span>(denunciation_factory_tx, denunciation_factory_rx) =
+        crossbeam_channel::unbounded::&lt;DenunciationInterest&gt;();
 
     <span class="kw">let </span>(pool_manager, pool_controller) = start_pool_controller(
         pool_config,
         <span class="kw-2">&amp;</span>shared_storage,
         execution_controller.clone(),
         pool_channels.clone(),
+        denunciation_factory_tx,
     );
 
     <span class="kw">let </span>(protocol_command_sender, protocol_command_receiver) =
@@ -1326,6 +1358,8 @@
 
     <span class="kw">let </span>(consensus_event_sender, consensus_event_receiver) =
         crossbeam_channel::bounded(CHANNEL_SIZE);
+    <span class="kw">let </span>(denunciation_factory_sender, denunciation_factory_receiver) =
+        crossbeam_channel::bounded(CHANNEL_SIZE);
     <span class="kw">let </span>consensus_channels = ConsensusChannels {
         execution_controller: execution_controller.clone(),
         selector_controller: selector_controller.clone(),
@@ -1337,6 +1371,7 @@
         block_sender: broadcast::channel(consensus_config.broadcast_blocks_capacity).<span class="number">0</span>,
         filled_block_sender: broadcast::channel(consensus_config.broadcast_filled_blocks_capacity)
             .<span class="number">0</span>,
+        denunciation_factory_sender,
     };
 
     <span class="kw">let </span>(consensus_controller, consensus_manager) = start_consensus_worker(
@@ -1408,6 +1443,9 @@
         max_block_size: MAX_BLOCK_SIZE <span class="kw">as </span>u64,
         max_block_gas: MAX_GAS_PER_BLOCK,
         max_operations_per_block: MAX_OPERATIONS_PER_BLOCK,
+        periods_per_cycle: PERIODS_PER_CYCLE,
+        denunciation_expire_periods: DENUNCIATION_EXPIRE_PERIODS,
+        denunciation_items_max_cycle_delta: DENUNCIATION_ITEMS_MAX_CYCLE_DELTA,
     };
     <span class="kw">let </span>factory_channels = FactoryChannels {
         selector: selector_controller.clone(),
@@ -1416,7 +1454,13 @@
         protocol: ProtocolCommandSender(protocol_command_sender.clone()),
         storage: shared_storage.clone(),
     };
-    <span class="kw">let </span>factory_manager = start_factory(factory_config, node_wallet.clone(), factory_channels);
+    <span class="kw">let </span>factory_manager = start_factory(
+        factory_config,
+        node_wallet.clone(),
+        factory_channels,
+        denunciation_factory_receiver,
+        denunciation_factory_rx,
+    );
 
     <span class="comment">// launch bootstrap server
     </span><span class="kw">let </span>bootstrap_manager = start_bootstrap_server(

@@ -302,11 +302,22 @@
 <a href="#302" id="302">302</a>
 <a href="#303" id="303">303</a>
 <a href="#304" id="304">304</a>
+<a href="#305" id="305">305</a>
+<a href="#306" id="306">306</a>
+<a href="#307" id="307">307</a>
+<a href="#308" id="308">308</a>
+<a href="#309" id="309">309</a>
+<a href="#310" id="310">310</a>
+<a href="#311" id="311">311</a>
+<a href="#312" id="312">312</a>
+<a href="#313" id="313">313</a>
+<a href="#314" id="314">314</a>
 </pre><pre class="rust"><code><span class="kw">use </span>massa_consensus_exports::{
     block_graph_export::BlockGraphExport, block_status::BlockStatus,
     bootstrapable_graph::BootstrapableGraph, error::ConsensusError,
     export_active_block::ExportActiveBlock, ConsensusChannels, ConsensusController,
 };
+<span class="kw">use </span>massa_models::denunciation::DenunciationInterest;
 <span class="kw">use </span>massa_models::{
     block::{BlockGraphStatus, FilledBlock},
     block_header::BlockHeader,
@@ -585,6 +596,15 @@
                 .block_header_sender
                 .send(header.clone().content);
         }
+
+        <span class="kw">if let </span><span class="prelude-val">Err</span>(e) = <span class="self">self
+            </span>.channels
+            .denunciation_factory_sender
+            .send(DenunciationInterest::try_from(<span class="kw-2">&amp;</span>header).unwrap())
+        {
+            <span class="macro">warn!</span>(<span class="string">&quot;Cannot send header to denunciation factory: {}&quot;</span>, e);
+        }
+
         <span class="kw">if let </span><span class="prelude-val">Err</span>(err) = <span class="self">self
             </span>.command_sender
             .try_send(ConsensusCommand::RegisterBlockHeader(block_id, header))
