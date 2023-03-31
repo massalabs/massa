@@ -14,6 +14,7 @@ use massa_executed_ops::{ExecutedOps, ExecutedOpsDeserializer, ExecutedOpsSerial
 use massa_hash::{Hash, HashDeserializer, HASH_SIZE_BYTES};
 use massa_ledger_exports::{Key as LedgerKey, LedgerChanges, LedgerController};
 use massa_models::{
+    // TODO: uncomment when deserializing the final state from ledger
     /*config::{
         MAX_ASYNC_POOL_LENGTH, MAX_DATASTORE_KEY_LENGTH, MAX_DEFERRED_CREDITS_LENGTH,
         MAX_EXECUTED_OPS_LENGTH, MAX_OPERATIONS_PER_BLOCK, MAX_PRODUCTION_STATS_LENGTH,
