@@ -41,7 +41,7 @@ pub struct BootstrapServerBinder<D: Duplex> {
     write_error_timeout: MassaTime,
 }
 
-impl<D: Duplex> BootstrapServerBinder<D> {
+impl<D: Duplex + 'static> BootstrapServerBinder<D> {
     /// Creates a new `WriteBinder`.
     ///
     /// # Argument

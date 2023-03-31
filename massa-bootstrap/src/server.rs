@@ -102,7 +102,7 @@ impl<D: Duplex> BootstrapManager<D> {
 }
 
 /// See module level documentation for details
-pub fn start_bootstrap_server<D: Duplex>(
+pub fn start_bootstrap_server<D: Duplex + 'static>(
     consensus_controller: Box<dyn ConsensusController>,
     network_command_sender: NetworkCommandSender,
     final_state: Arc<RwLock<FinalState>>,
@@ -219,7 +219,7 @@ struct BootstrapServer<'a, D: Duplex> {
     bs_server_runtime: Runtime,
 }
 
-impl<D: Duplex> BootstrapServer<'_, D> {
+impl<D: Duplex + 'static> BootstrapServer<'_, D> {
     fn run_updater(
         mut list: SharedWhiteBlackList<'_>,
         interval: Duration,
@@ -486,7 +486,7 @@ impl<D: Duplex> BootstrapServer<'_, D> {
 /// The arc_counter variable is used as a proxy to keep track the number of active bootstrap
 /// sessions.
 #[allow(clippy::too_many_arguments)]
-fn run_bootstrap_session<D: Duplex>(
+fn run_bootstrap_session<D: Duplex + 'static>(
     mut server: BootstrapServerBinder<D>,
     arc_counter: Arc<()>,
     config: BootstrapConfig,
@@ -549,7 +549,7 @@ fn run_bootstrap_session<D: Duplex>(
 }
 
 #[allow(clippy::too_many_arguments)]
-pub async fn stream_bootstrap_information<D: Duplex>(
+pub async fn stream_bootstrap_information<D: Duplex + 'static>(
     server: &mut BootstrapServerBinder<D>,
     final_state: Arc<RwLock<FinalState>>,
     consensus_controller: Box<dyn ConsensusController>,
@@ -753,7 +753,7 @@ pub async fn stream_bootstrap_information<D: Duplex>(
 }
 
 #[allow(clippy::too_many_arguments)]
-async fn manage_bootstrap<D: Duplex>(
+async fn manage_bootstrap<D: Duplex + 'static>(
     bootstrap_config: &BootstrapConfig,
     server: &mut BootstrapServerBinder<D>,
     final_state: Arc<RwLock<FinalState>>,
