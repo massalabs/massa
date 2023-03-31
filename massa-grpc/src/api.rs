@@ -1,7 +1,7 @@
 // Copyright (c) 2023 MASSA LABS <info@massa.net>
 
 use crate::error::GrpcError;
-use crate::service::MassaGrpcService;
+use crate::server::MassaGrpc;
 use itertools::izip;
 use massa_models::address::Address;
 use massa_models::slot::Slot;
@@ -12,7 +12,7 @@ use tracing::log::warn;
 
 /// get blocks by slots
 pub(crate) fn get_blocks_by_slots(
-    grpc: &MassaGrpcService,
+    grpc: &MassaGrpc,
     request: tonic::Request<grpc::GetBlocksBySlotsRequest>,
 ) -> Result<grpc::GetBlocksBySlotsResponse, GrpcError> {
     let inner_req = request.into_inner();
@@ -96,7 +96,7 @@ pub(crate) fn get_blocks_by_slots(
 
 /// get multiple datastore entries
 pub(crate) fn get_datastore_entries(
-    grpc: &MassaGrpcService,
+    grpc: &MassaGrpc,
     request: tonic::Request<grpc::GetDatastoreEntriesRequest>,
 ) -> Result<grpc::GetDatastoreEntriesResponse, GrpcError> {
     let inner_req = request.into_inner();
@@ -128,7 +128,7 @@ pub(crate) fn get_datastore_entries(
 
 /// get next block best parents
 pub(crate) fn get_next_block_best_parents(
-    grpc: &MassaGrpcService,
+    grpc: &MassaGrpc,
     request: tonic::Request<grpc::GetNextBlockBestParentsRequest>,
 ) -> Result<grpc::GetNextBlockBestParentsResponse, GrpcError> {
     let inner_req = request.into_inner();
@@ -148,7 +148,7 @@ pub(crate) fn get_next_block_best_parents(
 }
 
 pub(crate) fn get_selector_draws(
-    grpc: &MassaGrpcService,
+    grpc: &MassaGrpc,
     request: tonic::Request<grpc::GetSelectorDrawsRequest>,
 ) -> Result<grpc::GetSelectorDrawsResponse, GrpcError> {
     let inner_req = request.into_inner();
@@ -223,7 +223,7 @@ pub(crate) fn get_selector_draws(
 
 /// get transactions throughput
 pub(crate) fn get_transactions_throughput(
-    grpc: &MassaGrpcService,
+    grpc: &MassaGrpc,
     request: tonic::Request<grpc::GetTransactionsThroughputRequest>,
 ) -> Result<grpc::GetTransactionsThroughputResponse, GrpcError> {
     let stats = grpc.execution_controller.get_stats();
@@ -247,7 +247,7 @@ pub(crate) fn get_transactions_throughput(
 
 // get node version
 pub(crate) fn get_version(
-    grpc: &MassaGrpcService,
+    grpc: &MassaGrpc,
     request: tonic::Request<grpc::GetVersionRequest>,
 ) -> Result<grpc::GetVersionResponse, GrpcError> {
     Ok(grpc::GetVersionResponse {

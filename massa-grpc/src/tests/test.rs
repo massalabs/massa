@@ -1,7 +1,7 @@
 // Copyright (c) 2023 MASSA LABS <info@massa.net>
 
 use crate::config::GrpcConfig;
-use crate::service::MassaGrpcService;
+use crate::server::MassaGrpc;
 use massa_consensus_exports::test_exports::MockConsensusController;
 use massa_consensus_exports::ConsensusChannels;
 use massa_execution_exports::test_exports::MockExecutionController;
@@ -83,7 +83,7 @@ async fn test_start_grpc_server() {
         draw_lookahead_period_count: 10,
     };
 
-    let service = MassaGrpcService {
+    let service = MassaGrpc {
         consensus_controller: consensus_controller.0,
         consensus_channels,
         execution_controller: execution_ctrl.0,

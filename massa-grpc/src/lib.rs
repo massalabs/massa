@@ -9,7 +9,7 @@
 //!
 //! * `api.rs`: implements gRPC service methods without streams.
 //! * `handler.rs`: defines the logic for handling incoming gRPC requests.
-//! * `service.rs`: initializes the gRPC service and serve It.
+//! * `server`: initializes the gRPC service and serve It.
 //! * `stream/`: contains the gRPC streaming methods implementations files.
 
 #![feature(async_closure)]
@@ -29,7 +29,7 @@ pub mod error;
 /// gRPC API implementation
 pub mod handler;
 /// gRPC service initialization and serve
-pub mod service;
+pub mod server;
 /// business code for stream methods
 pub mod stream;
 

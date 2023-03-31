@@ -17,7 +17,7 @@ use tonic_web::GrpcWebLayer;
 use tracing::log::{info, warn};
 
 /// gRPC API content
-pub struct MassaGrpcService {
+pub struct MassaGrpc {
     /// link(channels) to the consensus component
     pub consensus_controller: Box<dyn ConsensusController>,
     /// link(channels) to the consensus component
@@ -40,7 +40,7 @@ pub struct MassaGrpcService {
     pub version: massa_models::version::Version,
 }
 
-impl MassaGrpcService {
+impl MassaGrpc {
     /// Start the gRPC API
     pub async fn serve(self, config: &GrpcConfig) -> Result<StopHandle, GrpcError> {
         let mut svc = GrpcServer::new(self)

@@ -1,7 +1,7 @@
 // Copyright (c) 2023 MASSA LABS <info@massa.net>
 
 use crate::error::{match_for_io_error, GrpcError};
-use crate::service::MassaGrpcService;
+use crate::server::MassaGrpc;
 use futures_util::StreamExt;
 use massa_proto::massa::api::v1 as grpc;
 use std::io::ErrorKind;
@@ -22,7 +22,7 @@ pub type NewFilledBlocksStream = Pin<
 
 /// Creates a new stream of new produced and received filled blocks
 pub(crate) async fn new_filled_blocks(
-    grpc: &MassaGrpcService,
+    grpc: &MassaGrpc,
     request: Request<Streaming<grpc::NewFilledBlocksStreamRequest>>,
 ) -> Result<NewFilledBlocksStream, GrpcError> {
     // Create a channel to handle communication with the client

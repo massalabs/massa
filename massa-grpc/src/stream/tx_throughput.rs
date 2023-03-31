@@ -1,6 +1,6 @@
 // Copyright (c) 2023 MASSA LABS <info@massa.net>
 
-use crate::{error::GrpcError, service::MassaGrpcService};
+use crate::{error::GrpcError, server::MassaGrpc};
 use futures_util::StreamExt;
 use massa_proto::massa::api::v1 as grpc;
 use std::pin::Pin;
@@ -24,7 +24,7 @@ pub type TransactionsThroughputStream = Pin<
 
 /// The function returns a stream of transaction throughput statistics
 pub(crate) async fn transactions_throughput(
-    grpc: &MassaGrpcService,
+    grpc: &MassaGrpc,
     request: tonic::Request<tonic::Streaming<grpc::TransactionsThroughputStreamRequest>>,
 ) -> Result<TransactionsThroughputStream, GrpcError> {
     let execution_controller = grpc.execution_controller.clone();

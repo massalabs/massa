@@ -6,7 +6,7 @@ use crate::api::{
     get_blocks_by_slots, get_datastore_entries, get_next_block_best_parents, get_selector_draws,
     get_transactions_throughput, get_version,
 };
-use crate::service::MassaGrpcService;
+use crate::server::MassaGrpc;
 use crate::stream::new_blocks::{new_blocks, NewBlocksStream};
 use crate::stream::new_blocks_headers::{new_blocks_headers, NewBlocksHeadersStream};
 use crate::stream::new_filled_blocks::{new_filled_blocks, NewFilledBlocksStream};
@@ -19,7 +19,7 @@ use crate::stream::{
 };
 
 #[tonic::async_trait]
-impl grpc::grpc_server::Grpc for MassaGrpcService {
+impl grpc::grpc_server::Grpc for MassaGrpc {
     /// handler for get multiple datastore entries.
     async fn get_datastore_entries(
         &self,

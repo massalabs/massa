@@ -1,7 +1,7 @@
 // Copyright (c) 2023 MASSA LABS <info@massa.net>
 
 use crate::error::{match_for_io_error, GrpcError};
-use crate::service::MassaGrpcService;
+use crate::server::MassaGrpc;
 use futures_util::StreamExt;
 use massa_models::endorsement::{EndorsementDeserializer, SecureShareEndorsement};
 use massa_models::secure_share::SecureShareDeserializer;
@@ -26,7 +26,7 @@ pub type SendEndorsementsStream = Pin<
 /// verifies, saves and propagates the endorsements received in each message, and sends back a stream of
 /// endorsements ids messages
 pub(crate) async fn send_endorsements(
-    grpc: &MassaGrpcService,
+    grpc: &MassaGrpc,
     request: tonic::Request<tonic::Streaming<grpc::SendEndorsementsStreamRequest>>,
 ) -> Result<SendEndorsementsStream, GrpcError> {
     let mut pool_command_sender = grpc.pool_command_sender.clone();

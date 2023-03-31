@@ -1,7 +1,7 @@
 // Copyright (c) 2023 MASSA LABS <info@massa.net>
 
 use crate::error::{match_for_io_error, GrpcError};
-use crate::service::MassaGrpcService;
+use crate::server::MassaGrpc;
 use futures_util::StreamExt;
 use massa_models::block::{BlockDeserializer, BlockDeserializerArgs, SecureShareBlock};
 use massa_models::error::ModelsError;
@@ -29,7 +29,7 @@ pub type SendBlocksStream = Pin<
 /// verifies, saves and propagates the block received in each message, and sends back a stream of
 /// block id messages
 pub(crate) async fn send_blocks(
-    grpc: &MassaGrpcService,
+    grpc: &MassaGrpc,
     request: Request<tonic::Streaming<grpc::SendBlocksStreamRequest>>,
 ) -> Result<SendBlocksStream, GrpcError> {
     let consensus_controller = grpc.consensus_controller.clone();
