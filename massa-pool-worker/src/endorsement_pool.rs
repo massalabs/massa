@@ -1,8 +1,7 @@
 //! Copyright (c) 2022 MASSA LABS <info@massa.net>
 
 use crossbeam_channel::Sender;
-use massa_models::denunciation::{DenunciationError, DenunciationInterest};
-use massa_models::endorsement::SecureShareEndorsement;
+use massa_models::denunciation::DenunciationInterest;
 use massa_models::{
     block_id::BlockId,
     endorsement::EndorsementId,

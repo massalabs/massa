@@ -9,7 +9,6 @@ use crate::{controller_impl::PoolControllerImpl, endorsement_pool::EndorsementPo
 use crossbeam_channel::Sender;
 use massa_execution_exports::ExecutionController;
 use massa_models::denunciation::DenunciationInterest;
-use massa_models::endorsement::SecureShareEndorsement;
 use massa_pool_exports::PoolConfig;
 use massa_pool_exports::{PoolChannels, PoolController, PoolManager};
 use massa_storage::Storage;

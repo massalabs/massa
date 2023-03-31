@@ -11,9 +11,7 @@ use crate::{
     manager::FactoryManagerImpl,
 };
 use massa_factory_exports::{FactoryChannels, FactoryConfig, FactoryManager};
-use massa_models::block_header::SecuredHeader;
 use massa_models::denunciation::DenunciationInterest;
-use massa_models::endorsement::SecureShareEndorsement;
 use massa_wallet::Wallet;
 
 /// Start factory

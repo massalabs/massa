@@ -7,19 +7,10 @@ use tracing::{debug, info, warn};
 
 use massa_factory_exports::{FactoryChannels, FactoryConfig};
 use massa_models::address::Address;
-use massa_models::block_header::SecuredHeader;
-use massa_models::denunciation::{
-    BlockHeaderDenunciationInterest, Denunciation, DenunciationInterest,
-    EndorsementDenunciationInterest,
-};
-use massa_models::endorsement::SecureShareEndorsement;
+use massa_models::denunciation::{Denunciation, DenunciationInterest};
 use massa_models::slot::Slot;
 use massa_models::timeslots::get_closest_slot_to_timestamp;
 use massa_time::MassaTime;
-
-// TODO: rework these values
-const DENUNCIATION_FACTORY_ENDORSEMENT_CACHE_MAX_LEN: usize = 4096;
-const DENUNCIATION_FACTORY_BLOCK_HEADER_CACHE_MAX_LEN: usize = 4096;
 
 /// Structure gathering all elements needed by the factory thread
 pub(crate) struct DenunciationFactoryWorker {
@@ -164,7 +155,7 @@ impl DenunciationFactoryWorker {
         let de_i_orig = endorsement_denunciation_interest.clone();
         let de_i = match endorsement_denunciation_interest {
             DenunciationInterest::Endorsement(de_i) => de_i,
-            DenunciationInterest::BlockHeader(de_i) => {
+            DenunciationInterest::BlockHeader(_) => {
                 return;
             }
         };
@@ -209,14 +200,6 @@ impl DenunciationFactoryWorker {
             Err(e) => {
                 warn!("Cannot get producer from selector: {}", e);
             }
-        }
-
-        if self.endorsements_by_slot_index.len() > DENUNCIATION_FACTORY_ENDORSEMENT_CACHE_MAX_LEN {
-            warn!(
-                "Denunciation factory cannot process - cache full: {}",
-                self.endorsements_by_slot_index.len()
-            );
-            return;
         }
 
         let denunciation_: Option<Denunciation> = match self

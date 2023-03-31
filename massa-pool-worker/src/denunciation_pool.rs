@@ -1,9 +1,7 @@
 use massa_models::denunciation::{Denunciation, DenunciationId};
 use massa_models::prehash::PreHashMap;
-use massa_models::timeslots::get_closest_slot_to_timestamp;
 
 use massa_pool_exports::PoolConfig;
-use massa_time::MassaTime;
 
 pub struct DenunciationPool {
     /// configuration

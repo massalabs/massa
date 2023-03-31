@@ -2828,7 +2828,6 @@ dependencies = [
  "massa_pool_exports",
  "massa_signature",
  "massa_storage",
- "massa_time",
  "num",
  "parking_lot",
  "tokio",

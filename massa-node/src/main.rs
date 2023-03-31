@@ -51,7 +51,6 @@ use massa_models::config::{
     DENUNCIATION_ITEMS_MAX_CYCLE_DELTA,
 };
 use massa_models::denunciation::DenunciationInterest;
-use massa_models::endorsement::SecureShareEndorsement;
 use massa_network_exports::{Establisher, NetworkConfig, NetworkManager};
 use massa_network_worker::start_network_controller;
 use massa_pool_exports::{PoolChannels, PoolConfig, PoolManager};

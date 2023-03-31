@@ -1,6 +1,6 @@
 use massa_execution_exports::ExecutionController;
 use massa_models::block::{Block, FilledBlock};
-use massa_models::block_header::{BlockHeader, SecuredHeader};
+use massa_models::block_header::BlockHeader;
 use massa_models::denunciation::DenunciationInterest;
 use massa_pool_exports::PoolController;
 use massa_pos_exports::SelectorController;

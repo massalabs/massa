@@ -823,6 +823,7 @@ impl From<&Denunciation> for DenunciationId {
 // Denunciation interest
 
 /// DenunciationInterest variant for endorsement
+#[allow(missing_docs)]
 #[derive(Debug, Clone)]
 pub struct EndorsementDenunciationInterest {
     pub public_key: PublicKey,
@@ -833,6 +834,7 @@ pub struct EndorsementDenunciationInterest {
 }
 
 /// DenunciationInterest variant for block header
+#[allow(missing_docs)]
 #[derive(Debug, Clone)]
 pub struct BlockHeaderDenunciationInterest {
     pub public_key: PublicKey,
@@ -843,6 +845,7 @@ pub struct BlockHeaderDenunciationInterest {
 
 /// Lightweight data for Denunciation creation
 /// (avoid storing heavyweight secured header or secure share endorsement)
+#[allow(missing_docs)]
 #[derive(Debug, Clone)]
 pub enum DenunciationInterest {
     Endorsement(EndorsementDenunciationInterest),
