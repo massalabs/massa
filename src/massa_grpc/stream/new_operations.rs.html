@@ -120,72 +120,11 @@
 <a href="#120" id="120">120</a>
 <a href="#121" id="121">121</a>
 <a href="#122" id="122">122</a>
-<a href="#123" id="123">123</a>
-<a href="#124" id="124">124</a>
-<a href="#125" id="125">125</a>
-<a href="#126" id="126">126</a>
-<a href="#127" id="127">127</a>
-<a href="#128" id="128">128</a>
-<a href="#129" id="129">129</a>
-<a href="#130" id="130">130</a>
-<a href="#131" id="131">131</a>
-<a href="#132" id="132">132</a>
-<a href="#133" id="133">133</a>
-<a href="#134" id="134">134</a>
-<a href="#135" id="135">135</a>
-<a href="#136" id="136">136</a>
-<a href="#137" id="137">137</a>
-<a href="#138" id="138">138</a>
-<a href="#139" id="139">139</a>
-<a href="#140" id="140">140</a>
-<a href="#141" id="141">141</a>
-<a href="#142" id="142">142</a>
-<a href="#143" id="143">143</a>
-<a href="#144" id="144">144</a>
-<a href="#145" id="145">145</a>
-<a href="#146" id="146">146</a>
-<a href="#147" id="147">147</a>
-<a href="#148" id="148">148</a>
-<a href="#149" id="149">149</a>
-<a href="#150" id="150">150</a>
-<a href="#151" id="151">151</a>
-<a href="#152" id="152">152</a>
-<a href="#153" id="153">153</a>
-<a href="#154" id="154">154</a>
-<a href="#155" id="155">155</a>
-<a href="#156" id="156">156</a>
-<a href="#157" id="157">157</a>
-<a href="#158" id="158">158</a>
-<a href="#159" id="159">159</a>
-<a href="#160" id="160">160</a>
-<a href="#161" id="161">161</a>
-<a href="#162" id="162">162</a>
-<a href="#163" id="163">163</a>
-<a href="#164" id="164">164</a>
-<a href="#165" id="165">165</a>
-<a href="#166" id="166">166</a>
-<a href="#167" id="167">167</a>
-<a href="#168" id="168">168</a>
-<a href="#169" id="169">169</a>
-<a href="#170" id="170">170</a>
-<a href="#171" id="171">171</a>
-<a href="#172" id="172">172</a>
-<a href="#173" id="173">173</a>
-<a href="#174" id="174">174</a>
-<a href="#175" id="175">175</a>
-<a href="#176" id="176">176</a>
-<a href="#177" id="177">177</a>
-<a href="#178" id="178">178</a>
-<a href="#179" id="179">179</a>
-<a href="#180" id="180">180</a>
-<a href="#181" id="181">181</a>
-<a href="#182" id="182">182</a>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2023 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="kw">use </span><span class="kw">crate</span>::error::GrpcError;
 <span class="kw">use </span><span class="kw">crate</span>::server::MassaGrpc;
 <span class="kw">use </span>futures_util::StreamExt;
-<span class="kw">use </span>massa_models::operation::OperationType;
 <span class="kw">use </span>massa_proto::massa::api::v1 <span class="kw">as </span>grpc;
 <span class="kw">use </span>std::pin::Pin;
 <span class="kw">use </span>tokio::select;
@@ -227,72 +166,13 @@
                      </span>event = subscriber.recv() =&gt; {
                         <span class="kw">match </span>event {
                             <span class="prelude-val">Ok</span>(operation) =&gt; {
-                                <span class="kw">match </span>operation.clone().content.op {
-                                    OperationType::Transaction{recipient_address,amount} =&gt; {
-                                        <span class="kw">if </span>!should_send(<span class="kw-2">&amp;</span>filter, grpc::OperationTypeEnum::Transaction) {
-                                            <span class="kw">continue
-                                        </span>}
-                                        grpc::OperationType{
-                                            transaction: <span class="prelude-val">Some</span>(grpc::Transaction {amount: amount.to_raw(), recipient_address: recipient_address.to_string()}),
-                                            ..Default::default()
-                                        }
-                                    },
-                                    OperationType::RollBuy { roll_count } =&gt; {
-                                        <span class="kw">if </span>!should_send(<span class="kw-2">&amp;</span>filter, grpc::OperationTypeEnum::RollBuy) {
-                                            <span class="kw">continue
-                                        </span>}
-                                        grpc::OperationType {
-                                            roll_buy: <span class="prelude-val">Some</span>( grpc::RollBuy {roll_count}),
-                                            ..Default::default()
-                                        }
-                                    },
-                                    OperationType::RollSell { roll_count } =&gt; {
-                                        <span class="kw">if </span>!should_send(<span class="kw-2">&amp;</span>filter, grpc::OperationTypeEnum::RollSell) {
-                                            <span class="kw">continue
-                                        </span>}
-                                        grpc::OperationType {
-                                            roll_sell: <span class="prelude-val">Some</span>( grpc::RollSell {roll_count}),
-                                            ..Default::default()
-                                        }
-                                    },
-                                    OperationType::ExecuteSC { data, max_gas, datastore } =&gt; {
-                                        <span class="kw">if </span>!should_send(<span class="kw-2">&amp;</span>filter, grpc::OperationTypeEnum::ExecuteSc) {
-                                            <span class="kw">continue
-                                        </span>}
+                                <span class="comment">// Check if the operation should be sent
+                                </span><span class="kw">if </span>!should_send(<span class="kw-2">&amp;</span>filter, operation.clone().content.op.into()) {
+                                    <span class="kw">continue</span>;
+                                }
 
-                                       <span class="kw">let </span>vec_bytes_map =  datastore.into_iter().map(|(k, v)| {
-                                        grpc::BytesMapFieldEntry {
-                                                key: k,
-                                                value: v
-                                            }
-                                        }).collect();
-
-                                        grpc::OperationType {
-                                            execut_sc: <span class="prelude-val">Some</span>( grpc::ExecuteSc {
-                                                data,
-                                                max_gas,
-                                                datastore: vec_bytes_map}),
-                                            ..Default::default()
-                                        }
-                                    },
-                                    OperationType::CallSC { target_addr, target_func,  max_gas, param, coins} =&gt; {
-                                        <span class="kw">if </span>!should_send(<span class="kw-2">&amp;</span>filter, grpc::OperationTypeEnum::CallSc) {
-                                            <span class="kw">continue
-                                        </span>}
-                                        grpc::OperationType {
-                                            call_sc: <span class="prelude-val">Some</span>( grpc::CallSc {
-                                                target_addr: target_addr.to_string(),
-                                                target_func: target_func.to_string(),
-                                                param,
-                                                max_gas,
-                                                coins: coins.to_raw()
-                                            }),
-                                            ..Default::default()
-                                        }
-                                    },
-                                };
-
-                                <span class="kw">let </span>ret = grpc::SignedOperation {
+                                <span class="comment">// Convert the operation to a gRPC operation
+                                </span><span class="kw">let </span>ret = grpc::SignedOperation {
                                     content: <span class="prelude-val">Some</span>(operation.content.into()),
                                     signature: operation.signature.to_string(),
                                     content_creator_pub_key: operation.content_creator_pub_key.to_string(),

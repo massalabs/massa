@@ -250,10 +250,6 @@
 <a href="#250" id="250">250</a>
 <a href="#251" id="251">251</a>
 <a href="#252" id="252">252</a>
-<a href="#253" id="253">253</a>
-<a href="#254" id="254">254</a>
-<a href="#255" id="255">255</a>
-<a href="#256" id="256">256</a>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2023 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="kw">use </span><span class="kw">crate</span>::error::GrpcError;
@@ -277,17 +273,13 @@
     <span class="kw">let </span><span class="kw-2">mut </span>blocks = Vec::new();
 
     <span class="kw">for </span>slot <span class="kw">in </span>inner_req.slots.into_iter() {
-        <span class="kw">let </span>block_id_opt = grpc
-            .consensus_controller
-            .get_blockclique_block_at_slot(Slot {
-                period: slot.period,
-                thread: slot.thread <span class="kw">as </span>u8,
-            });
-
-        <span class="kw">let </span>block_id = <span class="kw">match </span>block_id_opt {
-            <span class="prelude-val">Some</span>(id) =&gt; id,
-            <span class="prelude-val">None </span>=&gt; <span class="kw">continue</span>,
+        <span class="kw">let </span><span class="prelude-val">Some</span>(block_id) = grpc.consensus_controller.get_blockclique_block_at_slot(Slot {
+            period: slot.period,
+            thread: slot.thread <span class="kw">as </span>u8,
+        }) <span class="kw">else </span>{
+            <span class="kw">continue</span>;
         };
+
         <span class="kw">let </span>res = storage.read_blocks().get(<span class="kw-2">&amp;</span>block_id).map(|b| {
             <span class="comment">// TODO rework ?
             </span><span class="kw">let </span>header = b.clone().content.header;

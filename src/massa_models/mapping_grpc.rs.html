@@ -196,12 +196,28 @@
 <a href="#196" id="196">196</a>
 <a href="#197" id="197">197</a>
 <a href="#198" id="198">198</a>
+<a href="#199" id="199">199</a>
+<a href="#200" id="200">200</a>
+<a href="#201" id="201">201</a>
+<a href="#202" id="202">202</a>
+<a href="#203" id="203">203</a>
+<a href="#204" id="204">204</a>
+<a href="#205" id="205">205</a>
+<a href="#206" id="206">206</a>
+<a href="#207" id="207">207</a>
+<a href="#208" id="208">208</a>
+<a href="#209" id="209">209</a>
+<a href="#210" id="210">210</a>
+<a href="#211" id="211">211</a>
+<a href="#212" id="212">212</a>
 </pre><pre class="rust"><code><span class="kw">use </span><span class="kw">crate</span>::block::{Block, FilledBlock, SecureShareBlock};
 <span class="kw">use </span><span class="kw">crate</span>::block_header::{BlockHeader, SecuredHeader};
 <span class="kw">use </span><span class="kw">crate</span>::endorsement::{Endorsement, SecureShareEndorsement};
 <span class="kw">use </span><span class="kw">crate</span>::operation::{Operation, OperationType, SecureShareOperation};
 <span class="kw">use </span><span class="kw">crate</span>::slot::{IndexedSlot, Slot};
-<span class="kw">use </span>massa_proto::massa::api::v1::{<span class="self">self </span><span class="kw">as </span>grpc, BytesMapFieldEntry, FilledOperationTuple};
+<span class="kw">use </span>massa_proto::massa::api::v1::{
+    <span class="self">self </span><span class="kw">as </span>grpc, BytesMapFieldEntry, FilledOperationTuple, OperationTypeEnum,
+};
 
 <span class="kw">impl </span>From&lt;Block&gt; <span class="kw">for </span>grpc::Block {
     <span class="kw">fn </span>from(value: Block) -&gt; <span class="self">Self </span>{
@@ -391,6 +407,18 @@
         grpc::Slot {
             period: s.period,
             thread: s.thread <span class="kw">as </span>u32,
+        }
+    }
+}
+
+<span class="kw">impl </span>From&lt;OperationType&gt; <span class="kw">for </span>OperationTypeEnum {
+    <span class="kw">fn </span>from(value: OperationType) -&gt; <span class="self">Self </span>{
+        <span class="kw">match </span>value {
+            OperationType::Transaction { .. } =&gt; OperationTypeEnum::Transaction,
+            OperationType::RollBuy { .. } =&gt; OperationTypeEnum::RollBuy,
+            OperationType::RollSell { .. } =&gt; OperationTypeEnum::RollSell,
+            OperationType::ExecuteSC { .. } =&gt; OperationTypeEnum::ExecuteSc,
+            OperationType::CallSC { .. } =&gt; OperationTypeEnum::CallSc,
         }
     }
 }
