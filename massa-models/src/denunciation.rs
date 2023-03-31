@@ -814,21 +814,24 @@ impl From<&Denunciation> for DenunciationId {
 // Denunciation interest
 
 /// DenunciationInterest variant for endorsement
-#[allow(missing_docs)]
 #[derive(Debug, Clone)]
 pub struct EndorsementDenunciationInterest {
+    /// secure share endorsement public key
     pub public_key: PublicKey,
+    /// endorsement slot
     pub slot: Slot,
+    /// endorsement index
     pub index: u32,
     hash: Hash,
     signature: Signature,
 }
 
 /// DenunciationInterest variant for block header
-#[allow(missing_docs)]
 #[derive(Debug, Clone)]
 pub struct BlockHeaderDenunciationInterest {
+    /// secured header public key
     pub public_key: PublicKey,
+    /// block header slot
     pub slot: Slot,
     hash: Hash,
     signature: Signature,
@@ -836,10 +839,11 @@ pub struct BlockHeaderDenunciationInterest {
 
 /// Lightweight data for Denunciation creation
 /// (avoid storing heavyweight secured header or secure share endorsement)
-#[allow(missing_docs)]
 #[derive(Debug, Clone)]
 pub enum DenunciationInterest {
+    /// Endorsement variant
     Endorsement(EndorsementDenunciationInterest),
+    /// Block header variant
     BlockHeader(BlockHeaderDenunciationInterest),
 }
 
