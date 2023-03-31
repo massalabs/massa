@@ -82,9 +82,6 @@ impl ConsensusState {
     ) -> Result<Option<BlockInfos>, ConsensusError> {
         let header_outcome =
             self.check_header(&block_id, &stored_block.content.header, current_slot)?;
-        if self.detect_multistake(&stored_block.content.header) {
-            return Ok(None);
-        }
         match header_outcome {
             HeaderCheckOutcome::Proceed {
                 parents_hash_period,
@@ -92,6 +89,9 @@ impl ConsensusState {
                 inherited_incompatibilities_count,
                 fitness,
             } => {
+                if self.detect_multistake(&stored_block.content.header) {
+                    return Ok(None);
+                }
                 // block is valid: remove it from Incoming and return it
                 massa_trace!("consensus.block_graph.process.incoming_block.valid", {
                     "block_id": block_id
@@ -107,6 +107,9 @@ impl ConsensusState {
                 }));
             }
             HeaderCheckOutcome::WaitForDependencies(dependencies) => {
+                if self.detect_multistake(&stored_block.content.header) {
+                    return Ok(None);
+                }
                 self.store_wait_for_dependencies(
                     block_id,
                     HeaderOrBlock::Block {
@@ -118,6 +121,9 @@ impl ConsensusState {
                 )?;
             }
             HeaderCheckOutcome::WaitForSlot => {
+                if self.detect_multistake(&stored_block.content.header) {
+                    return Ok(None);
+                }
                 self.store_wait_for_slot(
                     block_id,
                     HeaderOrBlock::Block {
@@ -142,11 +148,11 @@ impl ConsensusState {
         current_slot: Option<Slot>,
     ) -> Result<(), ConsensusError> {
         let header_outcome = self.check_header(&block_id, &header, current_slot)?;
-        if self.detect_multistake(&header) {
-            return Ok(());
-        }
         match header_outcome {
             HeaderCheckOutcome::Proceed { .. } => {
+                if self.detect_multistake(&header) {
+                    return Ok(());
+                }
                 // set as waiting dependencies
                 let mut dependencies = PreHashSet::<BlockId>::default();
                 dependencies.insert(block_id); // add self as unsatisfied
@@ -170,6 +176,9 @@ impl ConsensusState {
                 );
             }
             HeaderCheckOutcome::WaitForDependencies(mut dependencies) => {
+                if self.detect_multistake(&header) {
+                    return Ok(());
+                }
                 // set as waiting dependencies
                 dependencies.insert(block_id); // add self as unsatisfied
                 self.store_wait_for_dependencies(
@@ -179,6 +188,9 @@ impl ConsensusState {
                 )?;
             }
             HeaderCheckOutcome::WaitForSlot => {
+                if self.detect_multistake(&header) {
+                    return Ok(());
+                }
                 self.store_wait_for_slot(block_id, HeaderOrBlock::Header(header));
             }
             HeaderCheckOutcome::Discard(reason) => {
