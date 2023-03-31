@@ -5,7 +5,7 @@ use std::path::PathBuf;
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     //TODO add download external protos files instead of doing it manually
-    let protos = find_protos("proto/massa");
+    let protos = find_protos("proto/massa/");
 
     tonic_build::configure()
         .build_server(true)
@@ -23,7 +23,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         .out_dir("src/")
         .compile(
             &protos,
-            &["proto/massa", "proto/third-party"], // specify the root location to search proto dependencies
+            &["proto/massa/api/v1/", "proto/third-party"], // specify the root location to search proto dependencies
         )?;
 
     Ok(())

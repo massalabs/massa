@@ -19,7 +19,7 @@ use crate::stream::{
 };
 
 #[tonic::async_trait]
-impl grpc::grpc_server::Grpc for MassaGrpc {
+impl grpc::massa_service_server::MassaService for MassaGrpc {
     /// handler for get multiple datastore entries.
     async fn get_datastore_entries(
         &self,
@@ -95,7 +95,7 @@ impl grpc::grpc_server::Grpc for MassaGrpc {
     /// handler for send_blocks_stream
     async fn send_blocks(
         &self,
-        request: tonic::Request<tonic::Streaming<grpc::SendBlocksStreamRequest>>,
+        request: tonic::Request<tonic::Streaming<grpc::SendBlocksRequest>>,
     ) -> Result<tonic::Response<Self::SendBlocksStream>, tonic::Status> {
         match send_blocks(self, request).await {
             Ok(res) => Ok(tonic::Response::new(res)),
@@ -106,7 +106,7 @@ impl grpc::grpc_server::Grpc for MassaGrpc {
     /// handler for send_endorsements
     async fn send_endorsements(
         &self,
-        request: tonic::Request<tonic::Streaming<grpc::SendEndorsementsStreamRequest>>,
+        request: tonic::Request<tonic::Streaming<grpc::SendEndorsementsRequest>>,
     ) -> Result<tonic::Response<Self::SendEndorsementsStream>, tonic::Status> {
         match send_endorsements(self, request).await {
             Ok(res) => Ok(tonic::Response::new(res)),
@@ -117,7 +117,7 @@ impl grpc::grpc_server::Grpc for MassaGrpc {
     /// handler for send_operations
     async fn send_operations(
         &self,
-        request: tonic::Request<tonic::Streaming<grpc::SendOperationsStreamRequest>>,
+        request: tonic::Request<tonic::Streaming<grpc::SendOperationsRequest>>,
     ) -> Result<tonic::Response<Self::SendOperationsStream>, tonic::Status> {
         match send_operations(self, request).await {
             Ok(res) => Ok(tonic::Response::new(res)),
@@ -130,7 +130,7 @@ impl grpc::grpc_server::Grpc for MassaGrpc {
     /// handler for transactions throughput
     async fn transactions_throughput(
         &self,
-        request: tonic::Request<tonic::Streaming<grpc::TransactionsThroughputStreamRequest>>,
+        request: tonic::Request<tonic::Streaming<grpc::TransactionsThroughputRequest>>,
     ) -> Result<tonic::Response<Self::TransactionsThroughputStream>, tonic::Status> {
         match transactions_throughput(self, request).await {
             Ok(res) => Ok(tonic::Response::new(res)),
@@ -143,7 +143,7 @@ impl grpc::grpc_server::Grpc for MassaGrpc {
     /// handler for subscribe new operations stream
     async fn new_operations(
         &self,
-        request: tonic::Request<tonic::Streaming<grpc::NewOperationsStreamRequest>>,
+        request: tonic::Request<tonic::Streaming<grpc::NewOperationsRequest>>,
     ) -> Result<tonic::Response<Self::NewOperationsStream>, tonic::Status> {
         match new_operations(self, request).await {
             Ok(res) => Ok(tonic::Response::new(res)),
@@ -156,7 +156,7 @@ impl grpc::grpc_server::Grpc for MassaGrpc {
     /// handler for subscribe new blocks
     async fn new_blocks(
         &self,
-        request: tonic::Request<tonic::Streaming<grpc::NewBlocksStreamRequest>>,
+        request: tonic::Request<tonic::Streaming<grpc::NewBlocksRequest>>,
     ) -> Result<tonic::Response<Self::NewBlocksStream>, tonic::Status> {
         match new_blocks(self, request).await {
             Ok(res) => Ok(tonic::Response::new(res)),
@@ -169,7 +169,7 @@ impl grpc::grpc_server::Grpc for MassaGrpc {
     /// handler for subscribe new blocks headers
     async fn new_blocks_headers(
         &self,
-        request: tonic::Request<tonic::Streaming<grpc::NewBlocksHeadersStreamRequest>>,
+        request: tonic::Request<tonic::Streaming<grpc::NewBlocksHeadersRequest>>,
     ) -> Result<tonic::Response<Self::NewBlocksHeadersStream>, tonic::Status> {
         match new_blocks_headers(self, request).await {
             Ok(res) => Ok(tonic::Response::new(res)),
@@ -182,7 +182,7 @@ impl grpc::grpc_server::Grpc for MassaGrpc {
     /// handler for subscribe new blocks with operations content
     async fn new_filled_blocks(
         &self,
-        request: tonic::Request<tonic::Streaming<grpc::NewFilledBlocksStreamRequest>>,
+        request: tonic::Request<tonic::Streaming<grpc::NewFilledBlocksRequest>>,
     ) -> Result<tonic::Response<Self::NewFilledBlocksStream>, tonic::Status> {
         match new_filled_blocks(self, request).await {
             Ok(res) => Ok(tonic::Response::new(res)),

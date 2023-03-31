@@ -1,0 +1,4 @@
+version: v1
+plugins:
+  - plugin: buf.build/community/pseudomuto-doc
+    out: doc

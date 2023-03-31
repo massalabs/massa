@@ -66,8 +66,8 @@ VSCode integration
         "path": "/path/to/protoc",
         "compile_on_save": true,
         "options": [
-            "{workspaceRoot}/massa-proto/proto/massa/*.proto",
-            "--proto_path=${workspaceRoot}/massa-proto/proto/massa",
+            "{workspaceRoot}/massa-proto/proto/**/*.proto",
+            "--proto_path=${workspaceRoot}/massa-proto/proto/massa/api/v1",
             "--proto_path=${workspaceRoot}/massa-proto/proto/third-party",
             "--descriptor_set_out=${workspaceRoot}/massa-proto/src/api.bin"
         ]

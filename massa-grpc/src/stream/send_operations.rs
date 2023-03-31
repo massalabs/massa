@@ -13,10 +13,10 @@ use std::pin::Pin;
 use tonic::codegen::futures_core;
 use tracing::log::{error, warn};
 
-/// Type declaration for SendOperationsStream
+/// Type declaration for SendOperations
 pub type SendOperationsStream = Pin<
     Box<
-        dyn futures_core::Stream<Item = Result<grpc::SendOperationsStreamResponse, tonic::Status>>
+        dyn futures_core::Stream<Item = Result<grpc::SendOperationsResponse, tonic::Status>>
             + Send
             + 'static,
     >,
@@ -27,7 +27,7 @@ pub type SendOperationsStream = Pin<
 /// operations ids messages
 pub(crate) async fn send_operations(
     grpc: &MassaGrpc,
-    request: tonic::Request<tonic::Streaming<grpc::SendOperationsStreamRequest>>,
+    request: tonic::Request<tonic::Streaming<grpc::SendOperationsRequest>>,
 ) -> Result<SendOperationsStream, GrpcError> {
     let mut pool_command_sender = grpc.pool_command_sender.clone();
     let mut protocol_command_sender = grpc.protocol_command_sender.clone();
@@ -136,10 +136,10 @@ pub(crate) async fn send_operations(
                                     };
                                     // Send the response message back to the client
                                     if let Err(e) = tx
-                                        .send(Ok(grpc::SendOperationsStreamResponse {
+                                        .send(Ok(grpc::SendOperationsResponse {
                                             id: req_content.id.clone(),
                                             message: Some(
-                                                grpc::send_operations_stream_response::Message::Result(
+                                                grpc::send_operations_response::Message::Result(
                                                     result,
                                                 ),
                                             ),
@@ -191,16 +191,16 @@ pub(crate) async fn send_operations(
 /// This function reports an error to the sender by sending a gRPC response message to the client
 async fn report_error(
     id: String,
-    sender: tokio::sync::mpsc::Sender<Result<grpc::SendOperationsStreamResponse, tonic::Status>>,
+    sender: tokio::sync::mpsc::Sender<Result<grpc::SendOperationsResponse, tonic::Status>>,
     code: tonic::Code,
     error: String,
 ) {
     error!("{}", error);
     // Attempt to send the error response message to the sender
     if let Err(e) = sender
-        .send(Ok(grpc::SendOperationsStreamResponse {
+        .send(Ok(grpc::SendOperationsResponse {
             id,
-            message: Some(grpc::send_operations_stream_response::Message::Error(
+            message: Some(grpc::send_operations_response::Message::Error(
                 massa_proto::google::rpc::Status {
                     code: code.into(),
                     message: error,

@@ -16,12 +16,11 @@ use tracing::log::error;
 /// end user can override this value by sending a request with a custom interval
 const DEFAULT_THROUGHPUT_INTERVAL: u64 = 10;
 
-/// Type declaration for StreamTransactionsThroughputStream
+/// Type declaration for TransactionsThroughput
 pub type TransactionsThroughputStream = Pin<
     Box<
-        dyn futures_core::Stream<
-                Item = Result<grpc::GetTransactionsThroughputResponse, tonic::Status>,
-            > + Send
+        dyn futures_core::Stream<Item = Result<grpc::TransactionsThroughputResponse, tonic::Status>>
+            + Send
             + 'static,
     >,
 >;
@@ -29,7 +28,7 @@ pub type TransactionsThroughputStream = Pin<
 /// The function returns a stream of transaction throughput statistics
 pub(crate) async fn transactions_throughput(
     grpc: &MassaGrpc,
-    request: tonic::Request<tonic::Streaming<grpc::TransactionsThroughputStreamRequest>>,
+    request: tonic::Request<tonic::Streaming<grpc::TransactionsThroughputRequest>>,
 ) -> Result<TransactionsThroughputStream, GrpcError> {
     let execution_controller = grpc.execution_controller.clone();
 
@@ -78,7 +77,7 @@ pub(crate) async fn transactions_throughput(
                         .unwrap_or_default() as u32;
                     // Send the throughput response back to the client
                     if let Err(e) = tx
-                        .send(Ok(grpc::GetTransactionsThroughputResponse {
+                        .send(Ok(grpc::TransactionsThroughputResponse {
                             id: request_id.clone(),
                             throughput,
                         }))

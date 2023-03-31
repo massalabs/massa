@@ -13,10 +13,10 @@ use std::pin::Pin;
 use tonic::codegen::futures_core;
 use tracing::log::{error, warn};
 
-/// Type declaration for SendEndorsementsStream
+/// Type declaration for SendEndorsements
 pub type SendEndorsementsStream = Pin<
     Box<
-        dyn futures_core::Stream<Item = Result<grpc::SendEndorsementsStreamResponse, tonic::Status>>
+        dyn futures_core::Stream<Item = Result<grpc::SendEndorsementsResponse, tonic::Status>>
             + Send
             + 'static,
     >,
@@ -27,7 +27,7 @@ pub type SendEndorsementsStream = Pin<
 /// endorsements ids messages
 pub(crate) async fn send_endorsements(
     grpc: &MassaGrpc,
-    request: tonic::Request<tonic::Streaming<grpc::SendEndorsementsStreamRequest>>,
+    request: tonic::Request<tonic::Streaming<grpc::SendEndorsementsRequest>>,
 ) -> Result<SendEndorsementsStream, GrpcError> {
     let mut pool_command_sender = grpc.pool_command_sender.clone();
     let mut protocol_command_sender = grpc.protocol_command_sender.clone();
@@ -136,10 +136,10 @@ pub(crate) async fn send_endorsements(
                                     };
                                     // Send the response message back to the client
                                     if let Err(e) = tx
-                                        .send(Ok(grpc::SendEndorsementsStreamResponse {
+                                        .send(Ok(grpc::SendEndorsementsResponse {
                                             id: req_content.id.clone(),
                                             message: Some(
-                                                grpc::send_endorsements_stream_response::Message::Result(
+                                                grpc::send_endorsements_response::Message::Result(
                                                     result,
                                                 ),
                                             ),
@@ -194,16 +194,16 @@ pub(crate) async fn send_endorsements(
 /// This function reports an error to the sender by sending a gRPC response message to the client
 async fn report_error(
     id: String,
-    sender: tokio::sync::mpsc::Sender<Result<grpc::SendEndorsementsStreamResponse, tonic::Status>>,
+    sender: tokio::sync::mpsc::Sender<Result<grpc::SendEndorsementsResponse, tonic::Status>>,
     code: tonic::Code,
     error: String,
 ) {
     error!("{}", error);
     // Attempt to send the error response message to the sender
     if let Err(e) = sender
-        .send(Ok(grpc::SendEndorsementsStreamResponse {
+        .send(Ok(grpc::SendEndorsementsResponse {
             id,
-            message: Some(grpc::send_endorsements_stream_response::Message::Error(
+            message: Some(grpc::send_endorsements_response::Message::Error(
                 massa_proto::google::rpc::Status {
                     code: code.into(),
                     message: error,

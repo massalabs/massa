@@ -10,10 +10,10 @@ use tonic::codegen::futures_core;
 use tonic::{Request, Streaming};
 use tracing::log::error;
 
-/// Type declaration for StreamTransactionsThroughputStream
+/// Type declaration for StreamTransactionsThroughput
 pub type NewOperationsStream = Pin<
     Box<
-        dyn futures_core::Stream<Item = Result<grpc::NewOperationsStreamResponse, tonic::Status>>
+        dyn futures_core::Stream<Item = Result<grpc::NewOperationsResponse, tonic::Status>>
             + Send
             + 'static,
     >,
@@ -22,7 +22,7 @@ pub type NewOperationsStream = Pin<
 /// Creates a new stream of new produced and received operations
 pub(crate) async fn new_operations(
     grpc: &MassaGrpc,
-    request: Request<Streaming<grpc::NewOperationsStreamRequest>>,
+    request: Request<Streaming<grpc::NewOperationsRequest>>,
 ) -> Result<NewOperationsStream, GrpcError> {
     // Create a channel to handle communication with the client
     let (tx, rx) = tokio::sync::mpsc::channel(grpc.grpc_config.max_channel_size);
@@ -58,7 +58,7 @@ pub(crate) async fn new_operations(
                                     id: operation.id.to_string()
                                 };
                                 // Send the new operation through the channel
-                                if let Err(e) = tx.send(Ok(grpc::NewOperationsStreamResponse {
+                                if let Err(e) = tx.send(Ok(grpc::NewOperationsResponse {
                                     id: request_id.clone(),
                                     operation: Some(ret)
                                 })).await {
@@ -104,10 +104,7 @@ pub(crate) async fn new_operations(
 }
 
 /// Return if the type of operation should be send to client
-fn should_send(
-    filter_opt: &Option<grpc::NewOperationsStreamFilter>,
-    ope_type: grpc::OperationTypeEnum,
-) -> bool {
+fn should_send(filter_opt: &Option<grpc::NewOperationsFilter>, ope_type: grpc::OpType) -> bool {
     if let Some(filter) = filter_opt {
         let filtered_ope_ids = &filter.types;
         if filtered_ope_ids.is_empty() {

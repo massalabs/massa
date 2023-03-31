@@ -7,7 +7,7 @@ use massa_consensus_exports::{ConsensusChannels, ConsensusController};
 use massa_execution_exports::ExecutionController;
 use massa_pool_exports::{PoolChannels, PoolController};
 use massa_pos_exports::SelectorController;
-use massa_proto::massa::api::v1::grpc_server::GrpcServer;
+use massa_proto::massa::api::v1::massa_service_server::MassaServiceServer;
 use massa_proto::massa::api::v1::FILE_DESCRIPTOR_SET;
 use massa_protocol_exports::ProtocolCommandSender;
 use massa_storage::Storage;
@@ -43,7 +43,7 @@ pub struct MassaGrpc {
 impl MassaGrpc {
     /// Start the gRPC API
     pub async fn serve(self, config: &GrpcConfig) -> Result<StopHandle, GrpcError> {
-        let mut svc = GrpcServer::new(self)
+        let mut svc = MassaServiceServer::new(self)
             .max_decoding_message_size(config.max_decoding_message_size)
             .max_encoding_message_size(config.max_encoding_message_size);
 

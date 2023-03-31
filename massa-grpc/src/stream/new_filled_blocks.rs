@@ -11,10 +11,10 @@ use tonic::codegen::futures_core;
 use tonic::{Request, Streaming};
 use tracing::log::{error, warn};
 
-/// Type declaration for NewFilledBlocksStream
+/// Type declaration for NewFilledBlocks
 pub type NewFilledBlocksStream = Pin<
     Box<
-        dyn futures_core::Stream<Item = Result<grpc::NewFilledBlocksStreamResponse, tonic::Status>>
+        dyn futures_core::Stream<Item = Result<grpc::NewFilledBlocksResponse, tonic::Status>>
             + Send
             + 'static,
     >,
@@ -23,7 +23,7 @@ pub type NewFilledBlocksStream = Pin<
 /// Creates a new stream of new produced and received filled blocks
 pub(crate) async fn new_filled_blocks(
     grpc: &MassaGrpc,
-    request: Request<Streaming<grpc::NewFilledBlocksStreamRequest>>,
+    request: Request<Streaming<grpc::NewFilledBlocksRequest>>,
 ) -> Result<NewFilledBlocksStream, GrpcError> {
     // Create a channel to handle communication with the client
     let (tx, rx) = tokio::sync::mpsc::channel(grpc.grpc_config.max_channel_size);
@@ -43,7 +43,7 @@ pub(crate) async fn new_filled_blocks(
                     match event {
                         Ok(massa_filled_block) => {
                             // Send the new filled block through the channel
-                            if let Err(e) = tx.send(Ok(grpc::NewFilledBlocksStreamResponse {
+                            if let Err(e) = tx.send(Ok(grpc::NewFilledBlocksResponse {
                                     id: request_id.clone(),
                                     filled_block: Some(massa_filled_block.into())
                             })).await {

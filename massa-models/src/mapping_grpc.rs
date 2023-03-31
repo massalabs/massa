@@ -168,14 +168,14 @@ impl From<Operation> for grpc::Operation {
     }
 }
 
-impl From<OperationType> for grpc::OperationTypeEnum {
+impl From<OperationType> for grpc::OpType {
     fn from(value: OperationType) -> Self {
         match value {
-            OperationType::Transaction { .. } => grpc::OperationTypeEnum::Transaction,
-            OperationType::RollBuy { .. } => grpc::OperationTypeEnum::RollBuy,
-            OperationType::RollSell { .. } => grpc::OperationTypeEnum::RollSell,
-            OperationType::ExecuteSC { .. } => grpc::OperationTypeEnum::ExecuteSc,
-            OperationType::CallSC { .. } => grpc::OperationTypeEnum::CallSc,
+            OperationType::Transaction { .. } => grpc::OpType::Transaction,
+            OperationType::RollBuy { .. } => grpc::OpType::RollBuy,
+            OperationType::RollSell { .. } => grpc::OpType::RollSell,
+            OperationType::ExecuteSC { .. } => grpc::OpType::ExecuteSc,
+            OperationType::CallSC { .. } => grpc::OpType::CallSc,
         }
     }
 }

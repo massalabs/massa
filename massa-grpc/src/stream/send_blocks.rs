@@ -19,7 +19,7 @@ use tracing::log::{error, warn};
 /// Type declaration for SendBlockStream
 pub type SendBlocksStream = Pin<
     Box<
-        dyn futures_core::Stream<Item = Result<grpc::SendBlocksStreamResponse, tonic::Status>>
+        dyn futures_core::Stream<Item = Result<grpc::SendBlocksResponse, tonic::Status>>
             + Send
             + 'static,
     >,
@@ -30,7 +30,7 @@ pub type SendBlocksStream = Pin<
 /// block id messages
 pub(crate) async fn send_blocks(
     grpc: &MassaGrpc,
-    request: Request<tonic::Streaming<grpc::SendBlocksStreamRequest>>,
+    request: Request<tonic::Streaming<grpc::SendBlocksRequest>>,
 ) -> Result<SendBlocksStream, GrpcError> {
     let consensus_controller = grpc.consensus_controller.clone();
     let mut protocol_command_sender = grpc.protocol_command_sender.clone();
@@ -141,12 +141,10 @@ pub(crate) async fn send_blocks(
                             };
                             // Send the response message back to the client
                             if let Err(e) = tx
-                                .send(Ok(grpc::SendBlocksStreamResponse {
+                                .send(Ok(grpc::SendBlocksResponse {
                                     id: req_content.id.clone(),
 
-                                    result: Some(grpc::send_blocks_stream_response::Result::Ok(
-                                        result,
-                                    )),
+                                    result: Some(grpc::send_blocks_response::Result::Ok(result)),
                                 }))
                                 .await
                             {
@@ -193,16 +191,16 @@ pub(crate) async fn send_blocks(
 /// This function reports an error to the sender by sending a gRPC response message to the client
 async fn report_error(
     id: String,
-    sender: Sender<Result<grpc::SendBlocksStreamResponse, tonic::Status>>,
+    sender: Sender<Result<grpc::SendBlocksResponse, tonic::Status>>,
     code: tonic::Code,
     error: String,
 ) {
     error!("{}", error);
     // Attempt to send the error response message to the sender
     if let Err(e) = sender
-        .send(Ok(grpc::SendBlocksStreamResponse {
+        .send(Ok(grpc::SendBlocksResponse {
             id,
-            result: Some(grpc::send_blocks_stream_response::Result::Error(Status {
+            result: Some(grpc::send_blocks_response::Result::Error(Status {
                 code: code.into(),
                 message: error,
                 details: Vec::new(),
