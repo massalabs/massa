@@ -1154,8 +1154,6 @@
 <a href="#1154" id="1154">1154</a>
 <a href="#1155" id="1155">1155</a>
 <a href="#1156" id="1156">1156</a>
-<a href="#1157" id="1157">1157</a>
-<a href="#1158" id="1158">1158</a>
 </pre><pre class="rust"><code><span class="doccomment">//! Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="kw">use </span><span class="kw">crate</span>::cache::{LinearHashCacheMap, LinearHashCacheSet};
@@ -1178,9 +1176,7 @@
     operation::{OperationId, SecureShareOperation},
     prehash::{CapacityAllocator, PreHashMap, PreHashSet},
 };
-<span class="kw">use </span>massa_network_exports::{
-    AskForBlocksInfo, NetworkCommandSender, NetworkCommandSenderTrait, NetworkEventReceiver,
-};
+<span class="kw">use </span>massa_network_exports::{AskForBlocksInfo, NetworkCommandSender, NetworkEventReceiver};
 <span class="kw">use </span>massa_pool_exports::PoolController;
 <span class="kw">use </span>massa_protocol_exports::{
     ProtocolCommand, ProtocolConfig, ProtocolError, ProtocolManagementCommand, ProtocolManager,
