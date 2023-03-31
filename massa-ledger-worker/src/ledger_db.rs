@@ -169,10 +169,7 @@ impl LedgerDB {
             slot_serializer: SlotSerializer::new(),
             slot_deserializer: SlotDeserializer::new(
                 (Bound::Included(u64::MIN), Bound::Included(u64::MAX)),
-                (
-                    Bound::Included(u8::MIN),
-                    Bound::Excluded(thread_count),
-                ),
+                (Bound::Included(u8::MIN), Bound::Excluded(thread_count)),
             ),
             len_serializer: U64VarIntSerializer::new(),
             ledger_part_size_message_bytes,
