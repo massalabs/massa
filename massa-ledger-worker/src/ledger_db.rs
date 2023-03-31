@@ -171,7 +171,7 @@ impl LedgerDB {
                 (Bound::Included(u64::MIN), Bound::Included(u64::MAX)),
                 (
                     Bound::Included(u8::MIN),
-                    Bound::Included(thread_count.saturating_sub(1)),
+                    Bound::Excluded(thread_count),
                 ),
             ),
             len_serializer: U64VarIntSerializer::new(),
