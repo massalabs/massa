@@ -504,8 +504,6 @@ impl LedgerDB {
     pub fn get_slot(&self) -> Result<Slot, ModelsError> {
         let handle = self.db.cf_handle(METADATA_CF).expect(CF_ERROR);
 
-        self.db.get_pinned_cf(handle, SLOT_KEY).expect(CRUD_ERROR);
-
         let Ok(Some(slot_bytes)) = self.db.get_pinned_cf(handle, SLOT_KEY) else {
             return Err(ModelsError::BufferError(String::from("Could not recover final_state_hash")));
         };
