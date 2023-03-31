@@ -705,6 +705,38 @@
 <a href="#705" id="705">705</a>
 <a href="#706" id="706">706</a>
 <a href="#707" id="707">707</a>
+<a href="#708" id="708">708</a>
+<a href="#709" id="709">709</a>
+<a href="#710" id="710">710</a>
+<a href="#711" id="711">711</a>
+<a href="#712" id="712">712</a>
+<a href="#713" id="713">713</a>
+<a href="#714" id="714">714</a>
+<a href="#715" id="715">715</a>
+<a href="#716" id="716">716</a>
+<a href="#717" id="717">717</a>
+<a href="#718" id="718">718</a>
+<a href="#719" id="719">719</a>
+<a href="#720" id="720">720</a>
+<a href="#721" id="721">721</a>
+<a href="#722" id="722">722</a>
+<a href="#723" id="723">723</a>
+<a href="#724" id="724">724</a>
+<a href="#725" id="725">725</a>
+<a href="#726" id="726">726</a>
+<a href="#727" id="727">727</a>
+<a href="#728" id="728">728</a>
+<a href="#729" id="729">729</a>
+<a href="#730" id="730">730</a>
+<a href="#731" id="731">731</a>
+<a href="#732" id="732">732</a>
+<a href="#733" id="733">733</a>
+<a href="#734" id="734">734</a>
+<a href="#735" id="735">735</a>
+<a href="#736" id="736">736</a>
+<a href="#737" id="737">737</a>
+<a href="#738" id="738">738</a>
+<a href="#739" id="739">739</a>
 </pre><pre class="rust"><code><span class="kw">use </span>std::{
     collections::{BTreeSet, HashMap, VecDeque},
     mem,
@@ -727,7 +759,7 @@
 <span class="kw">use </span>massa_signature::PublicKey;
 <span class="kw">use </span>massa_storage::Storage;
 <span class="kw">use </span>massa_time::MassaTime;
-<span class="kw">use </span>tracing::log::{debug, info};
+<span class="kw">use </span>tracing::log::{debug, info, warn};
 
 <span class="kw">use </span><span class="kw">super</span>::ConsensusState;
 
@@ -827,6 +859,22 @@
                         block_id
                     )));
                 };
+                <span class="comment">// Verify that we haven&#39;t already received 2 blocks for this slot
+                </span><span class="kw">let </span>entry = <span class="self">self
+                    </span>.nonfinal_active_blocks_per_slot
+                    .entry(header.content.slot)
+                    .or_default();
+                <span class="kw">if </span>!entry.contains(<span class="kw-2">&amp;</span>header.id) {
+                    <span class="kw">if </span>entry.len() &gt; <span class="number">1 </span>&amp;&amp; !<span class="self">self</span>.wishlist.contains_key(<span class="kw-2">&amp;</span>block_id) {
+                        <span class="macro">warn!</span>(
+                            <span class="string">&quot;received more than 2 blocks for slot {}&quot;</span>,
+                            header.content.slot
+                        );
+                        <span class="kw">return </span><span class="prelude-val">Ok</span>(BTreeSet::new());
+                    } <span class="kw">else </span>{
+                        entry.insert(block_id);
+                    }
+                }
                 <span class="self">self</span>.check_block_header_and_store(block_id, header, current_slot)<span class="question-mark">?</span>;
                 <span class="kw">return </span><span class="prelude-val">Ok</span>(BTreeSet::new());
             }
@@ -855,6 +903,22 @@
                     .get(<span class="kw-2">&amp;</span>block_id)
                     .cloned()
                     .expect(<span class="string">&quot;incoming block not found in storage&quot;</span>);
+                <span class="comment">// Verify that we haven&#39;t already received 2 blocks for this slot
+                </span><span class="kw">let </span>entry = <span class="self">self
+                    </span>.nonfinal_active_blocks_per_slot
+                    .entry(stored_block.content.header.content.slot)
+                    .or_default();
+                <span class="kw">if </span>!entry.contains(<span class="kw-2">&amp;</span>stored_block.id) {
+                    <span class="kw">if </span>entry.len() &gt; <span class="number">1 </span>&amp;&amp; !<span class="self">self</span>.wishlist.contains_key(<span class="kw-2">&amp;</span>block_id) {
+                        <span class="macro">warn!</span>(
+                            <span class="string">&quot;received more than 2 blocks for slot {}&quot;</span>,
+                            stored_block.content.header.content.slot
+                        );
+                        <span class="kw">return </span><span class="prelude-val">Ok</span>(BTreeSet::default());
+                    } <span class="kw">else </span>{
+                        entry.insert(block_id);
+                    }
+                }
                 <span class="kw">match </span><span class="self">self</span>.check_block_and_store(
                     block_id,
                     slot,
