@@ -54,20 +54,15 @@ pub struct FinalState {
     /// hash of the final state, it is computed on finality
     pub final_state_hash: Hash,
     /// last_start_period
+    /// * If start all new network: set to 0
+    /// * If from snapshot: retrieve from args
+    /// * If from bootstrap: set during bootstrap
     pub last_start_period: u64,
 }
 
 const FINAL_STATE_HASH_INITIAL_BYTES: &[u8; 32] = &[0; HASH_SIZE_BYTES];
 
 impl FinalState {
-    /// Initializes the last_start_period value
-    /// If start all new network: set to 0
-    /// If from snapshot: retrieve from args
-    /// If from bootstrap: set during bootstrap
-    pub fn set_last_start_period(&mut self, period: u64) {
-        self.last_start_period = period;
-    }
-
     /// Initializes a new `FinalState`
     ///
     /// # Arguments
