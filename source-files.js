@@ -11,7 +11,7 @@ var sourcesIndex = JSON.parse('{\
 "massa_execution_exports":["",[],["controller_traits.rs","error.rs","event_store.rs","lib.rs","settings.rs","types.rs"]],\
 "massa_execution_worker":["",[],["active_history.rs","context.rs","controller.rs","execution.rs","interface_impl.rs","lib.rs","module_cache.rs","request_queue.rs","slot_sequencer.rs","speculative_async_pool.rs","speculative_executed_ops.rs","speculative_ledger.rs","speculative_roll_state.rs","stats.rs","vesting_manager.rs","worker.rs"]],\
 "massa_factory_exports":["",[],["config.rs","controller_traits.rs","error.rs","lib.rs","types.rs"]],\
-"massa_factory_worker":["",[],["block_factory.rs","denunciation_factory.rs","endorsement_factory.rs","lib.rs","manager.rs","run.rs"]],\
+"massa_factory_worker":["",[],["block_factory.rs","endorsement_factory.rs","lib.rs","manager.rs","run.rs"]],\
 "massa_final_state":["",[],["config.rs","error.rs","final_state.rs","lib.rs","state_changes.rs"]],\
 "massa_hash":["",[],["error.rs","hash.rs","lib.rs","settings.rs"]],\
 "massa_ledger_exports":["",[],["config.rs","controller.rs","error.rs","key.rs","ledger_changes.rs","ledger_entry.rs","lib.rs","types.rs"]],\
@@ -22,7 +22,7 @@ var sourcesIndex = JSON.parse('{\
 "massa_network_worker":["",[],["binders.rs","handshake_worker.rs","lib.rs","messages.rs","network_cmd_impl.rs","network_event.rs","network_worker.rs","node_worker.rs","peer_info_database.rs"]],\
 "massa_node":["",[],["main.rs","settings.rs"]],\
 "massa_pool_exports":["",[],["channels.rs","config.rs","controller_traits.rs","lib.rs"]],\
-"massa_pool_worker":["",[],["controller_impl.rs","denunciation_pool.rs","endorsement_pool.rs","lib.rs","operation_pool.rs","types.rs","worker.rs"]],\
+"massa_pool_worker":["",[],["controller_impl.rs","endorsement_pool.rs","lib.rs","operation_pool.rs","types.rs","worker.rs"]],\
 "massa_pos_exports":["",[],["config.rs","controller_traits.rs","cycle_info.rs","deferred_credits.rs","error.rs","lib.rs","pos_changes.rs","pos_final_state.rs","settings.rs"]],\
 "massa_pos_worker":["",[],["controller.rs","draw.rs","lib.rs","worker.rs"]],\
 "massa_protocol_exports":["",[["tests",[],["mock_network_controller.rs","mod.rs","tools.rs"]]],["channels.rs","error.rs","lib.rs","protocol_controller.rs","settings.rs"]],\
