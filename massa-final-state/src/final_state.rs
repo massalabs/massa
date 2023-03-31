@@ -166,10 +166,9 @@ impl FinalState {
 
     /// Once we created a FinalState from a snapshot, we need to edit it to attach at the end_slot and handle the downtime
     fn interpolate_downtime(&mut self) -> Result<(), FinalStateError> {
-        // TODO: Change the current_slot when we deserialize the final state from RocksDB
+        // TODO: Change the current_slot when we deserialize the final state from RocksDB. Until then, final_state slot and the ledger slot are not consistant!
         // let current_slot = self.slot;
         let current_slot = Slot::new(0, self.config.thread_count.saturating_sub(1));
-
         let current_slot_cycle = current_slot.get_cycle(self.config.periods_per_cycle);
 
         let end_slot = Slot::new(
@@ -178,100 +177,18 @@ impl FinalState {
         );
         let end_slot_cycle = end_slot.get_cycle(self.config.periods_per_cycle);
 
-        let latest_consistent_cycle_info = self
-            .pos_state
-            .cycle_history
-            .back()
-            .expect("Cycle history should not be empty in snapshot!")
-            .clone();
-
         if current_slot_cycle == end_slot_cycle {
             // In that case, we just complete the gap in the same cycle
-            let latest_cycle_info =
-                self.pos_state
-                    .cycle_history
-                    .back_mut()
-                    .ok_or(FinalStateError::SnapshotError(String::from(
-                        "Invalid cycle_history",
-                    )))?;
-
-            for _ in current_slot.period..end_slot.period {
-                latest_cycle_info.rng_seed.push(false);
-            }
+            self.interpolate_single_cycle(current_slot, end_slot)?;
         } else {
             // Here, we we also complete the cycle_infos in between
-
-            // Firstly, complete the first cycle
-            let latest_cycle_info =
-                self.pos_state
-                    .cycle_history
-                    .back_mut()
-                    .ok_or(FinalStateError::SnapshotError(String::from(
-                        "Invalid cycle_history",
-                    )))?;
-
-            for _ in current_slot.period..self.config.periods_per_cycle {
-                latest_cycle_info.rng_seed.push(false);
-            }
-            latest_cycle_info.complete = true;
-
-            // feed final_state_hash to the completed cycle
-            self.pos_state
-                .feed_cycle_state_hash(current_slot_cycle, self.final_state_hash);
-
-            self.pos_state
-                .feed_selector(current_slot_cycle.checked_add(2).ok_or_else(|| {
-                    FinalStateError::PosError("cycle overflow when feeding selector".into())
-                })?)
-                .map_err(|_| {
-                    FinalStateError::PosError("cycle overflow when feeding selector".into())
-                })?;
-
-            // Then, build all the already completed cycles
-            for cycle in current_slot_cycle + 1..end_slot_cycle {
-                // TODO: build a new cycle by repeating the one before. How do we handle this if latest cycle info is not complete?
-                let last_slot = Slot::new_last_of_cycle(
-                    cycle,
-                    self.config.periods_per_cycle,
-                    self.config.thread_count,
-                )
-                .map_err(|err| {
-                    FinalStateError::InvalidSlot(format!(
-                        "Cannot create slot for interpolating downtime: {}",
-                        err
-                    ))
-                })?;
-
-                self.pos_state
-                    .create_new_cycle_from_last(&latest_consistent_cycle_info, last_slot)
-                    .map_err(|err| FinalStateError::PosError(format!("{}", err)))?;
-
-                self.pos_state
-                    .feed_cycle_state_hash(cycle, self.final_state_hash);
-
-                self.pos_state
-                    .feed_selector(cycle.checked_add(2).ok_or_else(|| {
-                        FinalStateError::PosError("cycle overflow when feeding selector".into())
-                    })?)
-                    .map_err(|_| {
-                        FinalStateError::PosError("cycle overflow when feeding selector".into())
-                    })?;
-            }
-
-            // Then, build the last cycle
-            // TODO: build a new cycle by repeating the one before. How do we handle this if latest cycle info is not complete??
-            self.pos_state
-                .create_new_cycle_from_last(&latest_consistent_cycle_info, end_slot)
-                .map_err(|err| FinalStateError::PosError(format!("{}", err)))?;
-
-            while self.pos_state.cycle_history.len() > self.pos_state.config.cycle_history_length {
-                self.pos_state.cycle_history.pop_front();
-            }
+            self.interpolate_multiple_cycles(
+                current_slot,
+                end_slot,
+                current_slot_cycle,
+                end_slot_cycle,
+            )?;
         }
-
-        // TODO: remove this
-        /*self.pos_state
-        .create_new_cycle_for_snapshot(&latest_consistent_cycle_info, end_slot);*/
 
         // The deferred credits that happen during the downtime have to be set to the next slot to be executed
         // TODO: Make the deferred credits robust so that we don't have to interpolate them
@@ -293,6 +210,121 @@ impl FinalState {
         self.pos_state
             .feed_cycle_state_hash(cycle, self.final_state_hash);
 
+        Ok(())
+    }
+
+    /// This helper function is to be called if the downtime does not span over multiple cycles
+    fn interpolate_single_cycle(
+        &mut self,
+        current_slot: Slot,
+        end_slot: Slot,
+    ) -> Result<(), FinalStateError> {
+        let latest_snapshot_cycle_info =
+            self.pos_state
+                .cycle_history
+                .back_mut()
+                .ok_or(FinalStateError::SnapshotError(String::from(
+                    "Invalid cycle_history",
+                )))?;
+
+        for _ in current_slot.period..end_slot.period {
+            latest_snapshot_cycle_info.rng_seed.push(false);
+        }
+
+        Ok(())
+    }
+
+    /// This helper function is to be called if the downtime spans over multiple cycles
+    fn interpolate_multiple_cycles(
+        &mut self,
+        current_slot: Slot,
+        end_slot: Slot,
+        current_slot_cycle: u64,
+        end_slot_cycle: u64,
+    ) -> Result<(), FinalStateError> {
+        let latest_snapshot_cycle_info =
+            self.pos_state
+                .cycle_history
+                .back_mut()
+                .ok_or(FinalStateError::SnapshotError(String::from(
+                    "Invalid cycle_history",
+                )))?;
+
+        // This clone lets us repeat the cycle_info for new cycle_infos
+        let latest_snapshot_cycle_info_clone = latest_snapshot_cycle_info.clone();
+
+        // Firstly, complete the first cycle
+        let latest_cycle_info =
+            self.pos_state
+                .cycle_history
+                .back_mut()
+                .ok_or(FinalStateError::SnapshotError(String::from(
+                    "Invalid cycle_history",
+                )))?;
+
+        for _ in current_slot.period..self.config.periods_per_cycle {
+            latest_cycle_info.rng_seed.push(false);
+        }
+        latest_cycle_info.complete = true;
+
+        // Feed final_state_hash to the completed cycle
+        self.feed_cycle_hash_and_selector_for_interpolation(current_slot_cycle)?;
+
+        // Then, build all the already completed cycles
+        for cycle in (current_slot_cycle + 1)..end_slot_cycle {
+            let last_slot = Slot::new_last_of_cycle(
+                cycle,
+                self.config.periods_per_cycle,
+                self.config.thread_count,
+            )
+            .map_err(|err| {
+                FinalStateError::InvalidSlot(format!(
+                    "Cannot create slot for interpolating downtime: {}",
+                    err
+                ))
+            })?;
+
+            self.pos_state
+                .create_new_cycle_from_last(&latest_snapshot_cycle_info_clone, last_slot)
+                .map_err(|err| FinalStateError::PosError(format!("{}", err)))?;
+
+            // Feed final_state_hash to the completed cycle
+            self.feed_cycle_hash_and_selector_for_interpolation(cycle)?;
+        }
+
+        // Then, build the last cycle
+        self.pos_state
+            .create_new_cycle_from_last(&latest_snapshot_cycle_info_clone, end_slot)
+            .map_err(|err| FinalStateError::PosError(format!("{}", err)))?;
+
+        // If the end_slot_cycle is completed
+        if end_slot.is_last_of_cycle(self.config.periods_per_cycle, self.config.thread_count) {
+            // Feed final_state_hash to the completed cycle
+            self.feed_cycle_hash_and_selector_for_interpolation(end_slot_cycle)?;
+        }
+
+        // We reduce the cycle_history len as needed
+        while self.pos_state.cycle_history.len() > self.pos_state.config.cycle_history_length {
+            self.pos_state.cycle_history.pop_front();
+        }
+
+        Ok(())
+    }
+
+    fn feed_cycle_hash_and_selector_for_interpolation(
+        &mut self,
+        cycle: u64,
+    ) -> Result<(), FinalStateError> {
+        self.pos_state
+            .feed_cycle_state_hash(cycle, self.final_state_hash);
+
+        self.pos_state
+            .feed_selector(cycle.checked_add(2).ok_or_else(|| {
+                FinalStateError::PosError("cycle overflow when feeding selector".into())
+            })?)
+            .map_err(|_| {
+                FinalStateError::PosError("cycle overflow when feeding selector".into())
+            })?;
         Ok(())
     }
 

@@ -220,47 +220,6 @@ impl PoSFinalState {
         Ok(())
     }
 
-    /// Create a new empty cycle based off the initial rolls.
-    /// Completes the rng_seed to start at the given period.
-    ///
-    pub fn create_new_cycle_for_snapshot(
-        &mut self,
-        latest_consistent_cycle_info: &CycleInfo,
-        end_slot: Slot,
-    ) {
-        let mut rng_seed = BitVec::with_capacity(
-            self.config
-                .periods_per_cycle
-                .saturating_mul(self.config.thread_count as u64)
-                .try_into()
-                .unwrap(),
-        );
-        let cycle = end_slot.get_cycle(self.config.periods_per_cycle);
-
-        let num_slots = end_slot
-            .slots_since(
-                &Slot::new_first_of_cycle(cycle, self.config.periods_per_cycle)
-                    .expect("Cannot create first slot for cycle"),
-                self.config.thread_count,
-            )
-            .expect("Error in slot ordering")
-            .saturating_add(1);
-
-        // TODO: easier to read version
-        // rng_seed.extend_from_raw_slice([false;num_slots]);
-        for _ in 0..num_slots {
-            rng_seed.push(false);
-        }
-
-        self.cycle_history.push_back(CycleInfo::new_with_hash(
-            cycle,
-            false,
-            self.initial_rolls.clone(),
-            rng_seed,
-            latest_consistent_cycle_info.production_stats.clone(),
-        ));
-    }
-
     /// Sends the current draw inputs (initial or bootstrapped) to the selector.
     /// Waits for the initial draws to be performed.
     pub fn compute_initial_draws(&mut self) -> PosResult<()> {
