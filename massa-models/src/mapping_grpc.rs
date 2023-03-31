@@ -20,7 +20,7 @@ impl From<Block> for grpc::Block {
 
 impl From<BlockHeader> for grpc::BlockHeader {
     fn from(value: BlockHeader) -> Self {
-        let mut res = value.endorsements.into_iter().map(|e| e.into()).collect();
+        let res = value.endorsements.into_iter().map(|e| e.into()).collect();
 
         grpc::BlockHeader {
             slot: Some(value.slot.into()),

@@ -9,8 +9,12 @@ use tokio::{select, time};
 use tonic::codegen::futures_core;
 use tracing::log::error;
 
-// Throughput interval in seconds
-const THROUGHPUT_INTERVAL: u64 = 10;
+/// default throughput interval in seconds
+///
+/// set 'high' value to avoid spamming the client with updates who doesn't need
+///
+/// end user can override this value by sending a request with a custom interval
+const DEFAULT_THROUGHPUT_INTERVAL: u64 = 10;
 
 /// Type declaration for StreamTransactionsThroughputStream
 pub type TransactionsThroughputStream = Pin<
@@ -37,7 +41,7 @@ pub(crate) async fn transactions_throughput(
     // Spawn a new Tokio task to handle the stream processing
     tokio::spawn(async move {
         let mut request_id = "".to_string();
-        let mut interval = time::interval(Duration::from_secs(THROUGHPUT_INTERVAL));
+        let mut interval = time::interval(Duration::from_secs(DEFAULT_THROUGHPUT_INTERVAL));
 
         // Continuously loop until the stream ends or an error occurs
         loop {
@@ -49,7 +53,7 @@ pub(crate) async fn transactions_throughput(
                             // Update the request ID
                             request_id = req.id;
                             // Update the interval timer based on the request (or use the default)
-                            let new_timer = req.interval.unwrap_or(THROUGHPUT_INTERVAL);
+                            let new_timer = req.interval.unwrap_or(DEFAULT_THROUGHPUT_INTERVAL);
                             interval = time::interval(Duration::from_secs(new_timer));
                             interval.reset();
                         },
