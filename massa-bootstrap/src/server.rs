@@ -89,11 +89,13 @@ impl BootstrapManager {
 
         // when the runtime is dropped at the end of this stop, the listener is auto-aborted
 
-        // unwrap() effectively passes up a panic from the thread being handled
-        self.update_handle.join().unwrap()?;
+        self.update_handle
+            .join()
+            .expect("in BootstrapManager::stop() joining on updater thread")?;
 
-        // unwrap() effectively passes up a panic from the thread being handled
-        self.main_handle.join().unwrap()
+        self.main_handle
+            .join()
+            .expect("in BootstrapManager::stop() joining on bootstrap main-loop thread")
     }
 }
 
@@ -158,9 +160,7 @@ pub async fn start_bootstrap_server(
             };
             res
         })
-        // the non-builder spawn doesn't return a Result, and documentation states that
-        // it's an error at the OS level.
-        .unwrap();
+        .expect("in `start_bootstrap_server`, OS failed to spawn list-updater thread");
     let listen_rt_handle = bs_server_runtime.handle().clone();
     let listen_handle = thread::Builder::new()
         .name("bs_listener".to_string())
@@ -171,9 +171,7 @@ pub async fn start_bootstrap_server(
                 listen_rt_handle.block_on(BootstrapServer::run_listener(listener, listener_tx));
             res
         })
-        // the non-builder spawn doesn't return a Result, and documentation states that
-        // it's an error at the OS level.
-        .unwrap();
+        .expect("in `start_bootstrap_server`, OS failed to spawn listener thread");
 
     let main_handle = thread::Builder::new()
         .name("bs-main-loop".to_string())
@@ -193,9 +191,7 @@ pub async fn start_bootstrap_server(
             }
             .run_loop(max_bootstraps)
         })
-        // the non-builder spawn doesn't return a Result, and documentation states that
-        // it's an error at the OS level.
-        .unwrap();
+        .expect("in `start_bootstrap_server`, OS failed to spawn main-loop thread");
     // Give the runtime to the bootstrap manager, otherwise it will be dropped, forcibly aborting the spawned tasks.
     // TODO: make the tasks sync, so the runtime is redundant
     Ok(Some(BootstrapManager {
