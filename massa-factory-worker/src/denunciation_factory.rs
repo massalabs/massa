@@ -112,7 +112,7 @@ impl DenunciationFactoryWorker {
                 match eo.get_mut() {
                     BlockHeaderDenunciationStatus::Accumulating(de_i_1_) => {
                         let de_i_1: &DenunciationInterest = de_i_1_;
-                        match Denunciation::try_from((de_i_1, &de_i_orig.clone())) {
+                        match Denunciation::try_from((de_i_1, &de_i_orig)) {
                             Ok(de) => {
                                 eo.insert(BlockHeaderDenunciationStatus::DenunciationEmitted);
                                 Some(de)
@@ -210,7 +210,7 @@ impl DenunciationFactoryWorker {
                 match eo.get_mut() {
                     EndorsementDenunciationStatus::Accumulating(de_i_1_) => {
                         let de_i_1: &DenunciationInterest = de_i_1_;
-                        match Denunciation::try_from((de_i_1, &de_i_orig.clone())) {
+                        match Denunciation::try_from((de_i_1, &de_i_orig)) {
                             Ok(de) => {
                                 eo.insert(EndorsementDenunciationStatus::DenunciationEmitted);
                                 Some(de)
