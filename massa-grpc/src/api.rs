@@ -63,8 +63,7 @@ pub(crate) fn get_blocks_by_slots(
             let operations: Vec<String> = b
                 .content
                 .operations
-                .clone()
-                .into_iter()
+                .iter()
                 .map(|ope| ope.to_string())
                 .collect();
 
