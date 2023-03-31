@@ -265,9 +265,7 @@ impl Interface for InterfaceImpl {
         match (context.get_keys(&addr), prefix_opt) {
             (Some(value), None) => Ok(value),
             (Some(mut value), Some(prefix)) => {
-                value.retain(|key| {
-    key.iter().zip(prefix.iter()).all(|(k, p)| k == p)
-                });
+                value.retain(|key| key.iter().zip(prefix.iter()).all(|(k, p)| k == p));
                 Ok(value)
             }
             _ => bail!("data entry not found"),
@@ -284,12 +282,7 @@ impl Interface for InterfaceImpl {
         match (context.get_keys(addr), prefix_opt) {
             (Some(value), None) => Ok(value),
             (Some(mut value), Some(prefix)) => {
-                value.retain(|key| {
-                    prefix.iter().enumerate().all(|(n, b)| match key.get(n) {
-                        None => false,
-                        Some(v) => *v == *b,
-                    })
-                });
+                value.retain(|key| key.iter().zip(prefix.iter()).all(|(k, p)| k == p));
                 Ok(value)
             }
             _ => bail!("data entry not found"),
