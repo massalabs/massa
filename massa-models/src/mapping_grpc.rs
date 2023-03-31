@@ -3,7 +3,9 @@ use crate::block_header::{BlockHeader, SecuredHeader};
 use crate::endorsement::{Endorsement, SecureShareEndorsement};
 use crate::operation::{Operation, OperationType, SecureShareOperation};
 use crate::slot::{IndexedSlot, Slot};
-use massa_proto::massa::api::v1::{self as grpc, BytesMapFieldEntry, FilledOperationTuple};
+use massa_proto::massa::api::v1::{
+    self as grpc, BytesMapFieldEntry, FilledOperationTuple, OperationTypeEnum,
+};
 
 impl From<Block> for grpc::Block {
     fn from(value: Block) -> Self {
@@ -193,6 +195,18 @@ impl From<Slot> for grpc::Slot {
         grpc::Slot {
             period: s.period,
             thread: s.thread as u32,
+        }
+    }
+}
+
+impl From<OperationType> for OperationTypeEnum {
+    fn from(value: OperationType) -> Self {
+        match value {
+            OperationType::Transaction { .. } => OperationTypeEnum::Transaction,
+            OperationType::RollBuy { .. } => OperationTypeEnum::RollBuy,
+            OperationType::RollSell { .. } => OperationTypeEnum::RollSell,
+            OperationType::ExecuteSC { .. } => OperationTypeEnum::ExecuteSc,
+            OperationType::CallSC { .. } => OperationTypeEnum::CallSc,
         }
     }
 }

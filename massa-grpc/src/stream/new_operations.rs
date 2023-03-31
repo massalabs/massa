@@ -3,7 +3,6 @@
 use crate::error::GrpcError;
 use crate::server::MassaGrpc;
 use futures_util::StreamExt;
-use massa_models::operation::OperationType;
 use massa_proto::massa::api::v1 as grpc;
 use std::pin::Pin;
 use tokio::select;
@@ -45,71 +44,12 @@ pub(crate) async fn new_operations(
                      event = subscriber.recv() => {
                         match event {
                             Ok(operation) => {
-                                match operation.clone().content.op {
-                                    OperationType::Transaction{recipient_address,amount} => {
-                                        if !should_send(&filter, grpc::OperationTypeEnum::Transaction) {
-                                            continue
-                                        }
-                                        grpc::OperationType{
-                                            transaction: Some(grpc::Transaction {amount: amount.to_raw(), recipient_address: recipient_address.to_string()}),
-                                            ..Default::default()
-                                        }
-                                    },
-                                    OperationType::RollBuy { roll_count } => {
-                                        if !should_send(&filter, grpc::OperationTypeEnum::RollBuy) {
-                                            continue
-                                        }
-                                        grpc::OperationType {
-                                            roll_buy: Some( grpc::RollBuy {roll_count}),
-                                            ..Default::default()
-                                        }
-                                    },
-                                    OperationType::RollSell { roll_count } => {
-                                        if !should_send(&filter, grpc::OperationTypeEnum::RollSell) {
-                                            continue
-                                        }
-                                        grpc::OperationType {
-                                            roll_sell: Some( grpc::RollSell {roll_count}),
-                                            ..Default::default()
-                                        }
-                                    },
-                                    OperationType::ExecuteSC { data, max_gas, datastore } => {
-                                        if !should_send(&filter, grpc::OperationTypeEnum::ExecuteSc) {
-                                            continue
-                                        }
+                                // Check if the operation should be sent
+                                if !should_send(&filter, operation.clone().content.op.into()) {
+                                    continue;
+                                }
 
-                                       let vec_bytes_map =  datastore.into_iter().map(|(k, v)| {
-                                        grpc::BytesMapFieldEntry {
-                                                key: k,
-                                                value: v
-                                            }
-                                        }).collect();
-
-                                        grpc::OperationType {
-                                            execut_sc: Some( grpc::ExecuteSc {
-                                                data,
-                                                max_gas,
-                                                datastore: vec_bytes_map}),
-                                            ..Default::default()
-                                        }
-                                    },
-                                    OperationType::CallSC { target_addr, target_func,  max_gas, param, coins} => {
-                                        if !should_send(&filter, grpc::OperationTypeEnum::CallSc) {
-                                            continue
-                                        }
-                                        grpc::OperationType {
-                                            call_sc: Some( grpc::CallSc {
-                                                target_addr: target_addr.to_string(),
-                                                target_func: target_func.to_string(),
-                                                param,
-                                                max_gas,
-                                                coins: coins.to_raw()
-                                            }),
-                                            ..Default::default()
-                                        }
-                                    },
-                                };
-
+                                // Convert the operation to a gRPC operation
                                 let ret = grpc::SignedOperation {
                                     content: Some(operation.content.into()),
                                     signature: operation.signature.to_string(),
