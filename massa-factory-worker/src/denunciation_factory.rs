@@ -249,8 +249,7 @@ impl DenunciationFactoryWorker {
             !Denunciation::is_expired(
                 slot,
                 self.channels.pool.get_final_cs_periods(),
-                self.cfg.periods_per_cycle,
-                self.cfg.denunciation_expire_cycle_delta,
+                self.cfg.denunciation_expire_periods,
             )
         });
 
@@ -258,8 +257,7 @@ impl DenunciationFactoryWorker {
             !Denunciation::is_expired(
                 slot,
                 self.channels.pool.get_final_cs_periods(),
-                self.cfg.periods_per_cycle,
-                self.cfg.denunciation_expire_cycle_delta,
+                self.cfg.denunciation_expire_periods,
             )
         });
     }

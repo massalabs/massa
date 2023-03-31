@@ -12,7 +12,7 @@ use std::{
 use massa_factory_exports::{
     test_exports::create_empty_block, FactoryChannels, FactoryConfig, FactoryManager,
 };
-use massa_models::block_header::SecuredHeader;
+use massa_models::denunciation::DenunciationInterest;
 use massa_models::{
     address::Address, block_id::BlockId, config::ENDORSEMENT_COUNT,
     endorsement::SecureShareEndorsement, operation::SecureShareOperation, prehash::PreHashMap,
@@ -47,8 +47,8 @@ pub struct TestFactory {
     genesis_blocks: Vec<(BlockId, u64)>,
     pub(crate) storage: Storage,
     keypair: KeyPair,
-    pub(crate) denunciation_factory_sender: Sender<SecuredHeader>,
-    pub(crate) denunciation_factory_tx: Sender<SecureShareEndorsement>,
+    pub(crate) denunciation_factory_sender: Sender<DenunciationInterest>,
+    pub(crate) denunciation_factory_tx: Sender<DenunciationInterest>,
 }
 
 impl TestFactory {
@@ -64,7 +64,7 @@ impl TestFactory {
             MockConsensusController::new_with_receiver();
         let (pool_controller, pool_receiver) = MockPoolController::new_with_receiver();
         let (denunciation_factory_tx, denunciation_factory_rx) =
-            crossbeam_channel::unbounded::<SecureShareEndorsement>();
+            crossbeam_channel::unbounded::<DenunciationInterest>();
         let (denunciation_factory_sender, denunciation_factory_receiver) =
             crossbeam_channel::bounded(massa_models::config::CHANNEL_SIZE);
         let mut storage = Storage::create_root();

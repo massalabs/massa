@@ -260,20 +260,11 @@ impl Denunciation {
     pub fn is_expired(
         slot: &Slot,
         last_cs_final_periods: &[u64],
-        periods_per_cycle: u64,
-        denunciation_expire_cycle_delta: u64,
+        denunciation_expire_periods: u64,
     ) -> bool {
         // If the Slot is final, a Denunciation can still be made for 1 cycle
-        if slot.period <= last_cs_final_periods[slot.thread as usize] {
-            let cycle_of_slot = slot.get_cycle(periods_per_cycle);
-
-            let slot_final = Slot::new(last_cs_final_periods[slot.thread as usize], slot.thread);
-            let cycle_of_final = slot_final.get_cycle(periods_per_cycle);
-
-            (cycle_of_final - cycle_of_slot) > denunciation_expire_cycle_delta
-        } else {
-            false
-        }
+        last_cs_final_periods[slot.thread as usize].checked_sub(slot.period)
+            > Some(denunciation_expire_periods)
     }
 }
 
@@ -875,6 +866,7 @@ impl TryFrom<&SecuredHeader> for DenunciationInterest {
 
     fn try_from(value: &SecuredHeader) -> Result<Self, Self::Error> {
         let hash = BlockHeaderDenunciation::compute_content_hash(&value.content)?;
+
         Ok(DenunciationInterest::BlockHeader(
             BlockHeaderDenunciationInterest {
                 public_key: value.content_creator_pub_key,

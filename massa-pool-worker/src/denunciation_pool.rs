@@ -41,8 +41,7 @@ impl DenunciationPool {
         if !Denunciation::is_expired(
             denunciation.get_slot(),
             &self.last_cs_final_periods,
-            self.config.periods_per_cycle,
-            self.config.denunciation_expire_cycle_delta,
+            self.config.denunciation_expire_periods,
         ) {
             let de_id = DenunciationId::from(&denunciation);
             self.denunciations_cache.insert(de_id, denunciation);
@@ -69,8 +68,7 @@ impl DenunciationPool {
             Denunciation::is_expired(
                 de.get_slot(),
                 &self.last_cs_final_periods,
-                self.config.periods_per_cycle,
-                self.config.denunciation_expire_cycle_delta,
+                self.config.denunciation_expire_periods,
             )
         });
     }

@@ -231,7 +231,7 @@ pub const VERSIONING_THRESHOLD_TRANSITION_ACCEPTED: Amount = Amount::from_mantis
 //
 
 /// denunciation expiration delta (in cycle count)
-pub const DENUNCIATION_EXPIRE_CYCLE_DELTA: u64 = 1;
+pub const DENUNCIATION_EXPIRE_PERIODS: u64 = PERIODS_PER_CYCLE;
 /// Cycle delta to accept items in denunciation factory
 pub const DENUNCIATION_ITEMS_MAX_CYCLE_DELTA: u64 = 1;
 

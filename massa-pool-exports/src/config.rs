@@ -37,6 +37,6 @@ pub struct PoolConfig {
     pub t0: MassaTime,
     /// cycle duration in periods
     pub periods_per_cycle: u64,
-    /// denunciation expiration as cycle delta
-    pub denunciation_expire_cycle_delta: u64,
+    /// denunciation expiration (in periods)
+    pub denunciation_expire_periods: u64,
 }

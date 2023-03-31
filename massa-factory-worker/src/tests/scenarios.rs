@@ -3,7 +3,7 @@ use massa_hash::Hash;
 use massa_models::block_header::{BlockHeader, BlockHeaderSerializer, SecuredHeader};
 use massa_models::block_id::BlockId;
 use massa_models::config::{T0, THREAD_COUNT};
-use massa_models::denunciation::{Denunciation, DenunciationId};
+use massa_models::denunciation::{Denunciation, DenunciationId, DenunciationInterest};
 use massa_models::endorsement::{Endorsement, EndorsementSerializerLW};
 use massa_models::slot::Slot;
 use massa_models::timeslots::get_closest_slot_to_timestamp;
@@ -137,11 +137,11 @@ fn test_denunciation_factory_block_header_denunciation() {
 
     test_factory
         .denunciation_factory_sender
-        .send(secured_header_1.clone())
+        .send(DenunciationInterest::try_from(&secured_header_1.clone()).unwrap())
         .unwrap();
     test_factory
         .denunciation_factory_sender
-        .send(secured_header_2.clone())
+        .send(DenunciationInterest::try_from(&secured_header_2.clone()).unwrap())
         .unwrap();
 
     // Wait for denunciation factory to create the Denunciation
