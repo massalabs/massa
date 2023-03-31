@@ -1,4 +1,0 @@
-(function() {var implementors = {
-"massa_models":[["impl TryFromPrimitive for <a class=\"enum\" href=\"massa_models/denunciation/enum.DenunciationTypeId.html\" title=\"enum massa_models::denunciation::DenunciationTypeId\">DenunciationTypeId</a>"]],
-"massa_versioning_worker":[["impl TryFromPrimitive for <a class=\"enum\" href=\"massa_versioning_worker/versioning/enum.MipComponent.html\" title=\"enum massa_versioning_worker::versioning::MipComponent\">MipComponent</a>"],["impl TryFromPrimitive for <a class=\"enum\" href=\"massa_versioning_worker/versioning/enum.ComponentStateTypeId.html\" title=\"enum massa_versioning_worker::versioning::ComponentStateTypeId\">ComponentStateTypeId</a>"]]
-};if (window.register_implementors) {window.register_implementors(implementors);} else {window.pending_implementors = implementors;}})()
