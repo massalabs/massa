@@ -21,17 +21,13 @@ pub(crate) fn get_blocks_by_slots(
     let mut blocks = Vec::new();
 
     for slot in inner_req.slots.into_iter() {
-        let block_id_opt = grpc
-            .consensus_controller
-            .get_blockclique_block_at_slot(Slot {
-                period: slot.period,
-                thread: slot.thread as u8,
-            });
-
-        let block_id = match block_id_opt {
-            Some(id) => id,
-            None => continue,
+        let Some(block_id) = grpc.consensus_controller.get_blockclique_block_at_slot(Slot {
+            period: slot.period,
+            thread: slot.thread as u8,
+        }) else {
+            continue;
         };
+
         let res = storage.read_blocks().get(&block_id).map(|b| {
             // TODO rework ?
             let header = b.clone().content.header;
