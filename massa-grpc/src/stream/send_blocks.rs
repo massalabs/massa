@@ -56,7 +56,12 @@ pub(crate) async fn send_blocks(
                         ).await;
                         continue;
                     };
-
+                    // Concatenate signature, public key, and data into a single byte vector
+                    let mut blk_serialized = Vec::new();
+                    blk_serialized.extend(proto_block.signature.as_bytes());
+                    blk_serialized.extend(proto_block.content_creator_pub_key.as_bytes());
+                    blk_serialized.extend(proto_block.serialized_data);
+                    // Create a block deserializer arguments
                     let args = BlockDeserializerArgs {
                         thread_count: config.thread_count,
                         max_operations_per_block: config.max_operations_per_block,
@@ -64,90 +69,89 @@ pub(crate) async fn send_blocks(
                     };
                     // Deserialize and verify received block in the incoming message
                     match SecureShareDeserializer::new(BlockDeserializer::new(args))
-                        .deserialize::<DeserializeError>(&proto_block.serialized_data)
+                        .deserialize::<DeserializeError>(&blk_serialized)
                     {
                         Ok(tuple) => {
                             let (rest, res_block): (&[u8], SecureShareBlock) = tuple;
-                            if rest.is_empty() {
-                                if let Err(e) = res_block
-                                    .verify_signature()
-                                    .and_then(|_| res_block.content.header.verify_signature())
-                                    .map(|_| {
-                                        res_block
-                                            .content
-                                            .header
-                                            .content
-                                            .endorsements
-                                            .iter()
-                                            .map(|endorsement| endorsement.verify_signature())
-                                            .collect::<Vec<Result<(), ModelsError>>>()
-                                    })
-                                {
-                                    report_error(
-                                        req_content.id.clone(),
-                                        tx.clone(),
-                                        tonic::Code::InvalidArgument,
-                                        format!("wrong signature: {}", e),
-                                    )
-                                    .await;
-                                    continue;
-                                }
-
-                                let block_id = res_block.id;
-                                let slot = res_block.content.header.content.slot;
-                                let mut block_storage = storage.clone_without_refs();
-
-                                // Add the received block to the graph
-                                block_storage.store_block(res_block.clone());
-                                consensus_controller.register_block(
-                                    block_id,
-                                    slot,
-                                    block_storage.clone(),
-                                    false,
-                                );
-
-                                // Propagate the block(header) to the network
-                                if let Err(e) = protocol_command_sender
-                                    .integrated_block(block_id, block_storage)
-                                {
-                                    // If propagation failed, send an error message back to the client
-                                    report_error(
-                                        req_content.id.clone(),
-                                        tx.clone(),
-                                        tonic::Code::Internal,
-                                        format!("failed to propagate block: {}", e),
-                                    )
-                                    .await;
-                                    continue;
-                                };
-
-                                // Build the response message
-                                let result = grpc::BlockResult {
-                                    block_id: res_block.id.to_string(),
-                                };
-                                // Send the response message back to the client
-                                if let Err(e) = tx
-                                    .send(Ok(grpc::SendBlocksStreamResponse {
-                                        id: req_content.id.clone(),
-
-                                        result: Some(
-                                            grpc::send_blocks_stream_response::Result::Ok(result),
-                                        ),
-                                    }))
-                                    .await
-                                {
-                                    error!("failed to send back block response: {}", e);
-                                };
-                            } else {
+                            if !rest.is_empty() {
                                 report_error(
                                     req_content.id.clone(),
                                     tx.clone(),
                                     tonic::Code::InvalidArgument,
-                                    "there is data left after operation deserialization".to_owned(),
+                                    "the request payload is too large".to_owned(),
                                 )
                                 .await;
+                                continue;
                             }
-                            continue;
+                            if let Err(e) = res_block
+                                .verify_signature()
+                                .and_then(|_| res_block.content.header.verify_signature())
+                                .map(|_| {
+                                    res_block
+                                        .content
+                                        .header
+                                        .content
+                                        .endorsements
+                                        .iter()
+                                        .map(|endorsement| endorsement.verify_signature())
+                                        .collect::<Vec<Result<(), ModelsError>>>()
+                                })
+                            {
+                                report_error(
+                                    req_content.id.clone(),
+                                    tx.clone(),
+                                    tonic::Code::InvalidArgument,
+                                    format!("wrong signature: {}", e),
+                                )
+                                .await;
+                                continue;
+                            }
+
+                            let block_id = res_block.id;
+                            let slot = res_block.content.header.content.slot;
+                            let mut block_storage = storage.clone_without_refs();
+
+                            // Add the received block to the graph
+                            block_storage.store_block(res_block.clone());
+                            consensus_controller.register_block(
+                                block_id,
+                                slot,
+                                block_storage.clone(),
+                                false,
+                            );
+
+                            // Propagate the block(header) to the network
+                            if let Err(e) =
+                                protocol_command_sender.integrated_block(block_id, block_storage)
+                            {
+                                // If propagation failed, send an error message back to the client
+                                report_error(
+                                    req_content.id.clone(),
+                                    tx.clone(),
+                                    tonic::Code::Internal,
+                                    format!("failed to propagate block: {}", e),
+                                )
+                                .await;
+                                continue;
+                            };
+
+                            // Build the response message
+                            let result = grpc::BlockResult {
+                                block_id: res_block.id.to_string(),
+                            };
+                            // Send the response message back to the client
+                            if let Err(e) = tx
+                                .send(Ok(grpc::SendBlocksStreamResponse {
+                                    id: req_content.id.clone(),
+
+                                    result: Some(grpc::send_blocks_stream_response::Result::Ok(
+                                        result,
+                                    )),
+                                }))
+                                .await
+                            {
+                                error!("failed to send back block response: {}", e);
+                            };
                         }
                         // If the verification failed, send an error message back to the client
                         Err(e) => {

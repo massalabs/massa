@@ -5044,7 +5044,7 @@ dependencies = [
 [[package]]
 name = "tonic"
 version = "0.8.3"
-source = "git+https://github.com/hyperium/tonic?rev=b3358dc#b3358dc6acf11ec800571735de1e1f1e449ec96a"
+source = "git+https://github.com/hyperium/tonic?rev=ff33119#ff331199e45c8b53e93f1bd51ccd74dafc2146ac"
 dependencies = [
  "async-trait",
  "axum",
@@ -5072,7 +5072,7 @@ dependencies = [
 [[package]]
 name = "tonic-build"
 version = "0.8.4"
-source = "git+https://github.com/hyperium/tonic?rev=b3358dc#b3358dc6acf11ec800571735de1e1f1e449ec96a"
+source = "git+https://github.com/hyperium/tonic?rev=ff33119#ff331199e45c8b53e93f1bd51ccd74dafc2146ac"
 dependencies = [
  "prettyplease",
  "proc-macro2 1.0.54",
@@ -5084,7 +5084,7 @@ dependencies = [
 [[package]]
 name = "tonic-health"
 version = "0.8.0"
-source = "git+https://github.com/hyperium/tonic?rev=b3358dc#b3358dc6acf11ec800571735de1e1f1e449ec96a"
+source = "git+https://github.com/hyperium/tonic?rev=ff33119#ff331199e45c8b53e93f1bd51ccd74dafc2146ac"
 dependencies = [
  "async-stream",
  "prost",
@@ -5096,7 +5096,7 @@ dependencies = [
 [[package]]
 name = "tonic-reflection"
 version = "0.6.0"
-source = "git+https://github.com/hyperium/tonic?rev=b3358dc#b3358dc6acf11ec800571735de1e1f1e449ec96a"
+source = "git+https://github.com/hyperium/tonic?rev=ff33119#ff331199e45c8b53e93f1bd51ccd74dafc2146ac"
 dependencies = [
  "prost",
  "prost-types",
@@ -5108,7 +5108,7 @@ dependencies = [
 [[package]]
 name = "tonic-web"
 version = "0.5.0"
-source = "git+https://github.com/hyperium/tonic?rev=b3358dc#b3358dc6acf11ec800571735de1e1f1e449ec96a"
+source = "git+https://github.com/hyperium/tonic?rev=ff33119#ff331199e45c8b53e93f1bd51ccd74dafc2146ac"
 dependencies = [
  "base64 0.21.0",
  "bytes",

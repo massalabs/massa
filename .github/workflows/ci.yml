@@ -204,7 +204,7 @@ jobs:
       - uses: actions-rs/cargo@v1
         with:
           command: doc
-          args: --no-deps
+          args: --no-deps --all-features --document-private-items
       - uses: JamesIves/github-pages-deploy-action@4.1.7
         with:
           branch: gh-pages

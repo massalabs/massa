@@ -4,17 +4,19 @@
 name = "massa_grpc"
 version = "0.1.0"
 edition = "2021"
-
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+description = "GRPC API for Massa Blockchain"
+repository = "https://github.com/massalabs/massa/"
+homepage = "https://massa.net"
+documentation = "https://docs.massa.net/"
 
 [dependencies]
 displaydoc = "0.2"
 thiserror = "1.0"
 #TODO add stable version when released
-tonic = { git = "https://github.com/hyperium/tonic", rev = "b3358dc", features = ["gzip"] }
-tonic-web = { git = "https://github.com/hyperium/tonic", rev = "b3358dc" }
-tonic-reflection = { git = "https://github.com/hyperium/tonic", rev = "b3358dc" }
-tonic-health = { git = "https://github.com/hyperium/tonic", rev = "b3358dc" }
+tonic = { git = "https://github.com/hyperium/tonic", rev = "ff33119", features = ["gzip"] }
+tonic-web = { git = "https://github.com/hyperium/tonic", rev = "ff33119" }
+tonic-reflection = { git = "https://github.com/hyperium/tonic", rev = "ff33119" }
+tonic-health = { git = "https://github.com/hyperium/tonic", rev = "ff33119" }
 futures-util = "0.3.25"
 serde = { version = "1.0", features = ["derive"] }
 tokio = { version = "1.23", features = ["rt-multi-thread", "macros"] }

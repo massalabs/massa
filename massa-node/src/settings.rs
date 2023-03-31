@@ -255,11 +255,11 @@ pub struct GrpcSettings {
     pub concurrency_limit_per_connection: usize,
     /// set a timeout on for all request handlers
     pub timeout: MassaTime,
-    /// sets the [`SETTINGS_INITIAL_WINDOW_SIZE`][spec] option for HTTP2 stream-level flow control. Default is 65,535
+    /// sets the SETTINGS_INITIAL_WINDOW_SIZE spec option for HTTP2 stream-level flow control. Default is 65,535
     pub initial_stream_window_size: Option<u32>,
     /// sets the max connection-level flow control for HTTP2. Default is 65,535
     pub initial_connection_window_size: Option<u32>,
-    /// sets the [`SETTINGS_MAX_CONCURRENT_STREAMS`][spec] option for HTTP2 connections. Default is no limit (`None`)
+    /// sets the SETTINGS_MAX_CONCURRENT_STREAMS spec option for HTTP2 connections. Default is no limit (`None`)
     pub max_concurrent_streams: Option<u32>,
     /// set whether TCP keepalive messages are enabled on accepted connections
     pub tcp_keepalive: Option<MassaTime>,

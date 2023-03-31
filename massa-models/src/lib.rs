@@ -54,7 +54,7 @@ pub mod output_event;
 pub mod prehash;
 /// rolls
 pub mod rolls;
-/// trait for [Signature] secured data-structs
+/// trait for [massa_signature::Signature] secured data-structs
 pub mod secure_share;
 /// serialization
 pub mod serialization;

@@ -1,11 +1,11 @@
+// Copyright (c) 2023 MASSA LABS <info@massa.net>
+
 use crate::block::{Block, FilledBlock, SecureShareBlock};
 use crate::block_header::{BlockHeader, SecuredHeader};
 use crate::endorsement::{Endorsement, SecureShareEndorsement};
 use crate::operation::{Operation, OperationType, SecureShareOperation};
 use crate::slot::{IndexedSlot, Slot};
-use massa_proto::massa::api::v1::{
-    self as grpc, BytesMapFieldEntry, FilledOperationTuple, OperationTypeEnum,
-};
+use massa_proto::massa::api::v1 as grpc;
 
 impl From<Block> for grpc::Block {
     fn from(value: Block) -> Self {
@@ -44,7 +44,7 @@ impl From<FilledBlock> for grpc::FilledBlock {
             operations: value
                 .operations
                 .into_iter()
-                .map(|tuple| FilledOperationTuple {
+                .map(|tuple| grpc::FilledOperationTuple {
                     operation_id: tuple.0.to_string(),
                     operation: tuple.1.map(|op| op.into()),
                 })
@@ -99,7 +99,6 @@ impl From<SecureShareEndorsement> for grpc::SignedEndorsement {
     }
 }
 
-//TODO to be deep checked before release
 impl From<OperationType> for grpc::OperationType {
     fn from(operation_type: OperationType) -> grpc::OperationType {
         let mut grpc_operation_type = grpc::OperationType::default();
@@ -132,7 +131,7 @@ impl From<OperationType> for grpc::OperationType {
                     max_gas,
                     datastore: datastore
                         .into_iter()
-                        .map(|(key, value)| BytesMapFieldEntry { key, value })
+                        .map(|(key, value)| grpc::BytesMapFieldEntry { key, value })
                         .collect(),
                 };
                 grpc_operation_type.execut_sc = Some(execute_sc);
@@ -169,6 +168,18 @@ impl From<Operation> for grpc::Operation {
     }
 }
 
+impl From<OperationType> for grpc::OperationTypeEnum {
+    fn from(value: OperationType) -> Self {
+        match value {
+            OperationType::Transaction { .. } => grpc::OperationTypeEnum::Transaction,
+            OperationType::RollBuy { .. } => grpc::OperationTypeEnum::RollBuy,
+            OperationType::RollSell { .. } => grpc::OperationTypeEnum::RollSell,
+            OperationType::ExecuteSC { .. } => grpc::OperationTypeEnum::ExecuteSc,
+            OperationType::CallSC { .. } => grpc::OperationTypeEnum::CallSc,
+        }
+    }
+}
+
 impl From<SecureShareOperation> for grpc::SignedOperation {
     fn from(value: SecureShareOperation) -> Self {
         grpc::SignedOperation {
@@ -195,18 +206,6 @@ impl From<Slot> for grpc::Slot {
         grpc::Slot {
             period: s.period,
             thread: s.thread as u32,
-        }
-    }
-}
-
-impl From<OperationType> for OperationTypeEnum {
-    fn from(value: OperationType) -> Self {
-        match value {
-            OperationType::Transaction { .. } => OperationTypeEnum::Transaction,
-            OperationType::RollBuy { .. } => OperationTypeEnum::RollBuy,
-            OperationType::RollSell { .. } => OperationTypeEnum::RollSell,
-            OperationType::ExecuteSC { .. } => OperationTypeEnum::ExecuteSc,
-            OperationType::CallSC { .. } => OperationTypeEnum::CallSc,
         }
     }
 }
