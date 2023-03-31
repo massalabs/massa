@@ -266,10 +266,7 @@ impl Interface for InterfaceImpl {
             (Some(value), None) => Ok(value),
             (Some(mut value), Some(prefix)) => {
                 value.retain(|key| {
-                    prefix.iter().enumerate().all(|(n, b)| match key.get(n) {
-                        None => false,
-                        Some(v) => *v == *b,
-                    })
+    key.iter().zip(prefix.iter()).all(|(k, p)| k == p)
                 });
                 Ok(value)
             }
