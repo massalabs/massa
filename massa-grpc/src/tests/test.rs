@@ -15,7 +15,7 @@ use massa_models::config::{
 use massa_pool_exports::test_exports::MockPoolController;
 use massa_pool_exports::PoolChannels;
 use massa_pos_exports::test_exports::MockSelectorController;
-use massa_proto::massa::api::v1::grpc_client::GrpcClient;
+use massa_proto::massa::api::v1::massa_service_client::MassaServiceClient;
 use massa_protocol_exports::{ProtocolCommand, ProtocolCommandSender};
 use std::net::{IpAddr, Ipv4Addr, SocketAddr};
 use tokio::sync::mpsc;
@@ -105,6 +105,6 @@ async fn test_start_grpc_server() {
         .await
         .unwrap();
 
-    let _res = GrpcClient::new(channel);
+    let _res = MassaServiceClient::new(channel);
     stop_handle.stop();
 }
