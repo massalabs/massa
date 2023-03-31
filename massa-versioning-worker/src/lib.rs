@@ -1,3 +1,4 @@
+#![feature(variant_count)]
 // Copyright (c) 2022 MASSA LABS <info@massa.net>
 
 //! # General description
@@ -19,6 +20,10 @@
 //! * A state machine (stores the current state of deployment for a MipInfo)
 //! * A history (stores a list of `Advance` message that 'really' updated the state machine)
 //!
+//! A auto generated graph of the state machine can be found here:
+//! * dot -Tpng ./target/machine/componentstate.dot > ./target/machine/componentstate.png
+//! * xdg-open ./target/machine/componentstate.png
+//!
 //! History is there in order to:
 //! * Query the state at any time, so you can query MipStore and ask the best version at any time
 //! * Used a lot when merging 2 MipStore:
@@ -36,7 +41,7 @@
 //! A Factory trait is there to ease the development of factory for Versioned component (e.g. address, block)
 //!
 //! All factories should query MIPStore in order to create a component with correct version; default implementation
-//! are provided by the trait to avoid re writing theses query functions.
+//! are provided by the trait to avoid re writing these query functions.
 //!
 //! Unit tests in versioning_factory.rs shows a basic but realistic implementation of a AddressFactory (impl the Factory trait)
 
