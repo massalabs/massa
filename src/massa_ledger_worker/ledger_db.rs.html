@@ -913,11 +913,6 @@
 <a href="#913" id="913">913</a>
 <a href="#914" id="914">914</a>
 <a href="#915" id="915">915</a>
-<a href="#916" id="916">916</a>
-<a href="#917" id="917">917</a>
-<a href="#918" id="918">918</a>
-<a href="#919" id="919">919</a>
-<a href="#920" id="920">920</a>
 </pre><pre class="rust"><code><span class="doccomment">//! Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 //! Module to interact with the disk ledger
@@ -1089,10 +1084,7 @@
             slot_serializer: SlotSerializer::new(),
             slot_deserializer: SlotDeserializer::new(
                 (Bound::Included(u64::MIN), Bound::Included(u64::MAX)),
-                (
-                    Bound::Included(u8::MIN),
-                    Bound::Included(thread_count.saturating_sub(<span class="number">1</span>)),
-                ),
+                (Bound::Included(u8::MIN), Bound::Excluded(thread_count)),
             ),
             len_serializer: U64VarIntSerializer::new(),
             ledger_part_size_message_bytes,
@@ -1423,8 +1415,6 @@
 
     <span class="kw">pub fn </span>get_slot(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span>&lt;Slot, ModelsError&gt; {
         <span class="kw">let </span>handle = <span class="self">self</span>.db.cf_handle(METADATA_CF).expect(CF_ERROR);
-
-        <span class="self">self</span>.db.get_pinned_cf(handle, SLOT_KEY).expect(CRUD_ERROR);
 
         <span class="kw">let </span><span class="prelude-val">Ok</span>(<span class="prelude-val">Some</span>(slot_bytes)) = <span class="self">self</span>.db.get_pinned_cf(handle, SLOT_KEY) <span class="kw">else </span>{
             <span class="kw">return </span><span class="prelude-val">Err</span>(ModelsError::BufferError(String::from(<span class="string">&quot;Could not recover final_state_hash&quot;</span>)));
