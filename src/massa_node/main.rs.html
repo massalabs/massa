@@ -940,88 +940,12 @@
 <a href="#940" id="940">940</a>
 <a href="#941" id="941">941</a>
 <a href="#942" id="942">942</a>
-<a href="#943" id="943">943</a>
-<a href="#944" id="944">944</a>
-<a href="#945" id="945">945</a>
-<a href="#946" id="946">946</a>
-<a href="#947" id="947">947</a>
-<a href="#948" id="948">948</a>
-<a href="#949" id="949">949</a>
-<a href="#950" id="950">950</a>
-<a href="#951" id="951">951</a>
-<a href="#952" id="952">952</a>
-<a href="#953" id="953">953</a>
-<a href="#954" id="954">954</a>
-<a href="#955" id="955">955</a>
-<a href="#956" id="956">956</a>
-<a href="#957" id="957">957</a>
-<a href="#958" id="958">958</a>
-<a href="#959" id="959">959</a>
-<a href="#960" id="960">960</a>
-<a href="#961" id="961">961</a>
-<a href="#962" id="962">962</a>
-<a href="#963" id="963">963</a>
-<a href="#964" id="964">964</a>
-<a href="#965" id="965">965</a>
-<a href="#966" id="966">966</a>
-<a href="#967" id="967">967</a>
-<a href="#968" id="968">968</a>
-<a href="#969" id="969">969</a>
-<a href="#970" id="970">970</a>
-<a href="#971" id="971">971</a>
-<a href="#972" id="972">972</a>
-<a href="#973" id="973">973</a>
-<a href="#974" id="974">974</a>
-<a href="#975" id="975">975</a>
-<a href="#976" id="976">976</a>
-<a href="#977" id="977">977</a>
-<a href="#978" id="978">978</a>
-<a href="#979" id="979">979</a>
-<a href="#980" id="980">980</a>
-<a href="#981" id="981">981</a>
-<a href="#982" id="982">982</a>
-<a href="#983" id="983">983</a>
-<a href="#984" id="984">984</a>
-<a href="#985" id="985">985</a>
-<a href="#986" id="986">986</a>
-<a href="#987" id="987">987</a>
-<a href="#988" id="988">988</a>
-<a href="#989" id="989">989</a>
-<a href="#990" id="990">990</a>
-<a href="#991" id="991">991</a>
-<a href="#992" id="992">992</a>
-<a href="#993" id="993">993</a>
-<a href="#994" id="994">994</a>
-<a href="#995" id="995">995</a>
-<a href="#996" id="996">996</a>
-<a href="#997" id="997">997</a>
-<a href="#998" id="998">998</a>
-<a href="#999" id="999">999</a>
-<a href="#1000" id="1000">1000</a>
-<a href="#1001" id="1001">1001</a>
-<a href="#1002" id="1002">1002</a>
-<a href="#1003" id="1003">1003</a>
-<a href="#1004" id="1004">1004</a>
-<a href="#1005" id="1005">1005</a>
-<a href="#1006" id="1006">1006</a>
-<a href="#1007" id="1007">1007</a>
-<a href="#1008" id="1008">1008</a>
-<a href="#1009" id="1009">1009</a>
-<a href="#1010" id="1010">1010</a>
-<a href="#1011" id="1011">1011</a>
-<a href="#1012" id="1012">1012</a>
-<a href="#1013" id="1013">1013</a>
-<a href="#1014" id="1014">1014</a>
-<a href="#1015" id="1015">1015</a>
-<a href="#1016" id="1016">1016</a>
-<a href="#1017" id="1017">1017</a>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="attr">#![doc = <span class="macro">include_str!</span>(<span class="string">&quot;../../README.md&quot;</span>)]
 #![warn(missing_docs)]
 #![warn(unused_crate_dependencies)]
 </span><span class="kw">extern crate </span>massa_logging;
-
 <span class="kw">use </span><span class="kw">crate</span>::settings::SETTINGS;
 
 <span class="kw">use </span>crossbeam_channel::{Receiver, TryRecvError};
@@ -1039,8 +963,6 @@
 <span class="kw">use </span>massa_factory_exports::{FactoryChannels, FactoryConfig, FactoryManager};
 <span class="kw">use </span>massa_factory_worker::start_factory;
 <span class="kw">use </span>massa_final_state::{FinalState, FinalStateConfig};
-<span class="kw">use </span>massa_grpc::config::GrpcConfig;
-<span class="kw">use </span>massa_grpc::server::MassaGrpc;
 <span class="kw">use </span>massa_ledger_exports::LedgerConfig;
 <span class="kw">use </span>massa_ledger_worker::FinalLedger;
 <span class="kw">use </span>massa_logging::massa_trace;
@@ -1066,7 +988,7 @@
     POS_SAVED_CYCLES, PROTOCOL_CONTROLLER_CHANNEL_SIZE, PROTOCOL_EVENT_CHANNEL_SIZE, ROLL_PRICE,
     T0, THREAD_COUNT, VERSION,
 };
-<span class="kw">use </span>massa_models::config::{CONSENSUS_BOOTSTRAP_PART_SIZE, MAX_OPERATIONS_PER_MESSAGE};
+<span class="kw">use </span>massa_models::config::CONSENSUS_BOOTSTRAP_PART_SIZE;
 <span class="kw">use </span>massa_network_exports::{Establisher, NetworkConfig, NetworkManager};
 <span class="kw">use </span>massa_network_worker::start_network_controller;
 <span class="kw">use </span>massa_pool_exports::{PoolChannels, PoolConfig, PoolManager};
@@ -1112,7 +1034,6 @@
     StopHandle,
     StopHandle,
     StopHandle,
-    <span class="prelude-ty">Option</span>&lt;massa_grpc::server::StopHandle&gt;,
 ) {
     <span class="macro">info!</span>(<span class="string">&quot;Node version : {}&quot;</span>, <span class="kw-2">*</span>VERSION);
     <span class="kw">if let </span><span class="prelude-val">Some</span>(end) = <span class="kw-2">*</span>END_TIMESTAMP {
@@ -1161,9 +1082,9 @@
         initial_rolls_path: SETTINGS.selector.initial_rolls_path.clone(),
     };
 
-    <span class="comment">// Remove current disk ledger if there is one
+    <span class="comment">// Remove current disk ledger if there is one and we don&#39;t want to restart from snapshot
     // NOTE: this is temporary, since we cannot currently handle bootstrap from remaining ledger
-    </span><span class="kw">if </span>args.keep_ledger {
+    </span><span class="kw">if </span>args.keep_ledger || args.restart_from_snapshot_at_period.is_some() {
         <span class="macro">info!</span>(<span class="string">&quot;Loading old ledger for next episode&quot;</span>);
     } <span class="kw">else if </span>SETTINGS.ledger.disk_ledger_path.exists() {
         std::fs::remove_dir_all(SETTINGS.ledger.disk_ledger_path.clone())
@@ -1171,7 +1092,10 @@
     }
 
     <span class="comment">// Create final ledger
-    </span><span class="kw">let </span>ledger = FinalLedger::new(ledger_config.clone());
+    </span><span class="kw">let </span>ledger = FinalLedger::new(
+        ledger_config.clone(),
+        args.restart_from_snapshot_at_period.is_some() || <span class="macro">cfg!</span>(feature = <span class="string">&quot;create_snapshot&quot;</span>),
+    );
 
     <span class="comment">// launch selector worker
     </span><span class="kw">let </span>(selector_manager, selector_controller) = start_selector_worker(SelectorConfig {
@@ -1184,15 +1108,26 @@
     })
     .expect(<span class="string">&quot;could not start selector worker&quot;</span>);
 
-    <span class="comment">// Create final state
-    </span><span class="kw">let </span>final_state = Arc::new(parking_lot::RwLock::new(
-        FinalState::new(
-            final_state_config,
-            Box::new(ledger),
-            selector_controller.clone(),
-        )
-        .expect(<span class="string">&quot;could not init final state&quot;</span>),
-    ));
+    <span class="comment">// Create final state, from snapshot or from scratch
+    </span><span class="kw">let </span>final_state = <span class="kw">match </span>args.restart_from_snapshot_at_period {
+        <span class="prelude-val">Some</span>(last_start_period) =&gt; Arc::new(parking_lot::RwLock::new(
+            FinalState::from_snapshot(
+                final_state_config,
+                Box::new(ledger),
+                selector_controller.clone(),
+                last_start_period,
+            )
+            .expect(<span class="string">&quot;could not init final state&quot;</span>),
+        )),
+        <span class="prelude-val">None </span>=&gt; Arc::new(parking_lot::RwLock::new(
+            FinalState::new(
+                final_state_config,
+                Box::new(ledger),
+                selector_controller.clone(),
+            )
+            .expect(<span class="string">&quot;could not init final state&quot;</span>),
+        )),
+    };
 
     <span class="comment">// interrupt signal listener
     </span><span class="kw">let </span>stop_signal = signal::ctrl_c();
@@ -1264,6 +1199,7 @@
             <span class="kw-2">*</span>VERSION,
             <span class="kw-2">*</span>GENESIS_TIMESTAMP,
             <span class="kw-2">*</span>END_TIMESTAMP,
+            args.restart_from_snapshot_at_period
         ) =&gt; <span class="kw">match </span>res {
             <span class="prelude-val">Ok</span>(vals) =&gt; vals,
             <span class="prelude-val">Err</span>(err) =&gt; <span class="macro">panic!</span>(<span class="string">&quot;critical error detected in the bootstrap process: {}&quot;</span>, err)
@@ -1311,6 +1247,7 @@
         event_channel_size: NETWORK_EVENT_CHANNEL_SIZE,
         node_command_channel_size: NETWORK_NODE_COMMAND_CHANNEL_SIZE,
         node_event_channel_size: NETWORK_NODE_EVENT_CHANNEL_SIZE,
+        last_start_period: final_state.read().last_start_period,
     };
 
     <span class="comment">// launch network controller
@@ -1324,13 +1261,15 @@
         .<span class="kw">await
         </span>.expect(<span class="string">&quot;could not start network controller&quot;</span>);
 
-    <span class="comment">// give the controller to final state in order for it to feed the cycles
-    </span>final_state
-        .write()
-        .compute_initial_draws()
-        .expect(<span class="string">&quot;could not compute initial draws&quot;</span>); <span class="comment">// TODO: this might just mean a bad bootstrap, no need to panic, just reboot
+    <span class="kw">if </span>args.restart_from_snapshot_at_period.is_none() {
+        <span class="comment">// give the controller to final state in order for it to feed the cycles
+        </span>final_state
+            .write()
+            .compute_initial_draws()
+            .expect(<span class="string">&quot;could not compute initial draws&quot;</span>); <span class="comment">// TODO: this might just mean a bad bootstrap, no need to panic, just reboot
+    </span>}
 
-    // Storage costs constants
+    <span class="comment">// Storage costs constants
     </span><span class="kw">let </span>storage_costs_constants = StorageCostsConstants {
         ledger_cost_per_byte: LEDGER_COST_PER_BYTE,
         ledger_entry_base_cost: LEDGER_COST_PER_BYTE
@@ -1369,6 +1308,7 @@
             SETTINGS.execution.wasm_gas_costs_file.clone(),
         )
         .expect(<span class="string">&quot;Failed to load gas costs&quot;</span>),
+        last_start_period: final_state.read().last_start_period,
     };
     <span class="kw">let </span>(execution_manager, execution_controller) = start_execution_worker(
         execution_config,
@@ -1432,6 +1372,7 @@
         broadcast_blocks_headers_capacity: SETTINGS.consensus.broadcast_blocks_headers_capacity,
         broadcast_blocks_capacity: SETTINGS.consensus.broadcast_blocks_capacity,
         broadcast_filled_blocks_capacity: SETTINGS.consensus.broadcast_filled_blocks_capacity,
+        last_start_period: final_state.read().last_start_period,
     };
 
     <span class="kw">let </span>(consensus_event_sender, consensus_event_receiver) =
@@ -1487,6 +1428,7 @@
         t0: T0,
         max_operations_propagation_time: SETTINGS.protocol.max_operations_propagation_time,
         max_endorsements_propagation_time: SETTINGS.protocol.max_endorsements_propagation_time,
+        last_start_period: final_state.read().last_start_period,
     };
 
     <span class="kw">let </span>protocol_senders = ProtocolSenders {
@@ -1518,6 +1460,7 @@
         max_block_size: MAX_BLOCK_SIZE <span class="kw">as </span>u64,
         max_block_gas: MAX_GAS_PER_BLOCK,
         max_operations_per_block: MAX_OPERATIONS_PER_BLOCK,
+        last_start_period: final_state.read().last_start_period,
     };
     <span class="kw">let </span>factory_channels = FactoryChannels {
         selector: selector_controller.clone(),
@@ -1575,9 +1518,9 @@
     <span class="comment">// spawn Massa API
     </span><span class="kw">let </span>api = API::&lt;ApiV2&gt;::new(
         consensus_controller.clone(),
-        consensus_channels.clone(),
+        consensus_channels,
         execution_controller.clone(),
-        pool_channels.clone(),
+        pool_channels,
         api_config.clone(),
         <span class="kw-2">*</span>VERSION,
     );
@@ -1586,94 +1529,9 @@
         .<span class="kw">await
         </span>.expect(<span class="string">&quot;failed to start MASSA API&quot;</span>);
 
-    <span class="macro">info!</span>(
-        <span class="string">&quot;API | EXPERIMENTAL | listening on: {}&quot;</span>,
-        <span class="kw-2">&amp;</span>SETTINGS.api.bind_api
-    );
-
     <span class="comment">// Disable WebSockets for Private and Public API&#39;s
     </span><span class="kw">let </span><span class="kw-2">mut </span>api_config = api_config.clone();
     api_config.enable_ws = <span class="bool-val">false</span>;
-
-    <span class="comment">// Whether to spawn gRPC API
-    </span><span class="kw">let </span>grpc_handle = <span class="kw">if </span>SETTINGS.grpc.enabled {
-        <span class="kw">let </span>grpc_config = GrpcConfig {
-            enabled: SETTINGS.grpc.enabled,
-            accept_http1: SETTINGS.grpc.accept_http1,
-            enable_reflection: SETTINGS.grpc.enable_reflection,
-            bind: SETTINGS.grpc.bind,
-            accept_compressed: SETTINGS.grpc.accept_compressed.clone(),
-            send_compressed: SETTINGS.grpc.send_compressed.clone(),
-            max_decoding_message_size: SETTINGS.grpc.max_decoding_message_size,
-            max_encoding_message_size: SETTINGS.grpc.max_encoding_message_size,
-            concurrency_limit_per_connection: SETTINGS.grpc.concurrency_limit_per_connection,
-            timeout: SETTINGS.grpc.timeout.to_duration(),
-            initial_stream_window_size: SETTINGS.grpc.initial_stream_window_size,
-            initial_connection_window_size: SETTINGS.grpc.initial_connection_window_size,
-            max_concurrent_streams: SETTINGS.grpc.max_concurrent_streams,
-            tcp_keepalive: SETTINGS.grpc.tcp_keepalive.map(|t| t.to_duration()),
-            tcp_nodelay: SETTINGS.grpc.tcp_nodelay,
-            http2_keepalive_interval: SETTINGS
-                .grpc
-                .http2_keepalive_interval
-                .map(|t| t.to_duration()),
-            http2_keepalive_timeout: SETTINGS
-                .grpc
-                .http2_keepalive_timeout
-                .map(|t| t.to_duration()),
-            http2_adaptive_window: SETTINGS.grpc.http2_adaptive_window,
-            max_frame_size: SETTINGS.grpc.max_frame_size,
-            thread_count: THREAD_COUNT,
-            max_operations_per_block: MAX_OPERATIONS_PER_BLOCK,
-            endorsement_count: ENDORSEMENT_COUNT,
-            max_endorsements_per_message: MAX_ENDORSEMENTS_PER_MESSAGE,
-            max_datastore_value_length: MAX_DATASTORE_VALUE_LENGTH,
-            max_op_datastore_entry_count: MAX_OPERATION_DATASTORE_ENTRY_COUNT,
-            max_op_datastore_key_length: MAX_OPERATION_DATASTORE_KEY_LENGTH,
-            max_op_datastore_value_length: MAX_OPERATION_DATASTORE_VALUE_LENGTH,
-            max_function_name_length: MAX_FUNCTION_NAME_LENGTH,
-            max_parameter_size: MAX_PARAMETERS_SIZE,
-            max_operations_per_message: MAX_OPERATIONS_PER_MESSAGE,
-            genesis_timestamp: <span class="kw-2">*</span>GENESIS_TIMESTAMP,
-            t0: T0,
-            max_channel_size: SETTINGS.grpc.max_channel_size,
-            draw_lookahead_period_count: SETTINGS.grpc.draw_lookahead_period_count,
-        };
-
-        <span class="kw">let </span>grpc_api = MassaGrpc {
-            consensus_controller: consensus_controller.clone(),
-            consensus_channels: consensus_channels.clone(),
-            execution_controller: execution_controller.clone(),
-            pool_channels,
-            pool_command_sender: pool_controller.clone(),
-            protocol_command_sender: ProtocolCommandSender(protocol_command_sender.clone()),
-            selector_controller: selector_controller.clone(),
-            storage: shared_storage.clone(),
-            grpc_config: grpc_config.clone(),
-            version: <span class="kw-2">*</span>VERSION,
-        };
-
-        <span class="comment">// HACK maybe should remove timeout later
-        </span><span class="kw">if let </span><span class="prelude-val">Ok</span>(result) =
-            tokio::time::timeout(Duration::from_secs(<span class="number">3</span>), grpc_api.serve(<span class="kw-2">&amp;</span>grpc_config)).<span class="kw">await
-        </span>{
-            <span class="kw">match </span>result {
-                <span class="prelude-val">Ok</span>(stop) =&gt; {
-                    <span class="macro">info!</span>(<span class="string">&quot;API | gRPC | listening on: {}&quot;</span>, grpc_config.bind);
-                    <span class="prelude-val">Some</span>(stop)
-                }
-                <span class="prelude-val">Err</span>(e) =&gt; {
-                    <span class="macro">error!</span>(<span class="string">&quot;{}&quot;</span>, e);
-                    <span class="prelude-val">None
-                </span>}
-            }
-        } <span class="kw">else </span>{
-            <span class="macro">error!</span>(<span class="string">&quot;Timeout on start grpc API&quot;</span>);
-            <span class="prelude-val">None
-        </span>}
-    } <span class="kw">else </span>{
-        <span class="prelude-val">None
-    </span>};
 
     <span class="comment">// spawn private API
     </span><span class="kw">let </span>(api_private, api_private_stop_rx) = API::&lt;Private&gt;::new(
@@ -1686,10 +1544,6 @@
         .serve(<span class="kw-2">&amp;</span>SETTINGS.api.bind_private, <span class="kw-2">&amp;</span>api_config)
         .<span class="kw">await
         </span>.expect(<span class="string">&quot;failed to start PRIVATE API&quot;</span>);
-    <span class="macro">info!</span>(
-        <span class="string">&quot;API | PRIVATE JsonRPC | listening on: {}&quot;</span>,
-        api_config.bind_private
-    );
 
     <span class="comment">// spawn public API
     </span><span class="kw">let </span>api_public = API::&lt;Public&gt;::new(
@@ -1709,10 +1563,6 @@
         .serve(<span class="kw-2">&amp;</span>SETTINGS.api.bind_public, <span class="kw-2">&amp;</span>api_config)
         .<span class="kw">await
         </span>.expect(<span class="string">&quot;failed to start PUBLIC API&quot;</span>);
-    <span class="macro">info!</span>(
-        <span class="string">&quot;API | PUBLIC JsonRPC | listening on: {}&quot;</span>,
-        api_config.bind_public
-    );
 
     <span class="attr">#[cfg(feature = <span class="string">&quot;deadlock_detection&quot;</span>)]
     </span>{
@@ -1757,7 +1607,6 @@
         api_private_handle,
         api_public_handle,
         api_handle,
-        grpc_handle,
     )
 }
 
@@ -1787,7 +1636,6 @@
     api_private_handle: StopHandle,
     api_public_handle: StopHandle,
     api_handle: StopHandle,
-    grpc_handle: <span class="prelude-ty">Option</span>&lt;massa_grpc::server::StopHandle&gt;,
 ) {
     <span class="comment">// stop bootstrap
     </span><span class="kw">if let </span><span class="prelude-val">Some</span>(bootstrap_manager) = bootstrap_manager {
@@ -1805,11 +1653,6 @@
 
     <span class="comment">// stop Massa API
     </span>api_handle.stop();
-
-    <span class="comment">// stop Massa gRPC API
-    </span><span class="kw">if let </span><span class="prelude-val">Some</span>(handle) = grpc_handle {
-        handle.stop();
-    }
 
     <span class="comment">// stop factory
     </span>factory_manager.stop();
@@ -1852,6 +1695,10 @@
     <span class="doccomment">/// Wallet password
     </span><span class="attr">#[structopt(short = <span class="string">&quot;p&quot;</span>, long = <span class="string">&quot;pwd&quot;</span>)]
     </span>password: <span class="prelude-ty">Option</span>&lt;String&gt;,
+
+    <span class="doccomment">/// restart_from_snapshot_at_period
+    </span><span class="attr">#[structopt(long = <span class="string">&quot;restart-from-snapshot-at-period&quot;</span>)]
+    </span>restart_from_snapshot_at_period: <span class="prelude-ty">Option</span>&lt;u64&gt;,
 
     <span class="attr">#[cfg(feature = <span class="string">&quot;deadlock_detection&quot;</span>)]
     </span><span class="doccomment">/// Deadlocks detector
@@ -1905,6 +1752,7 @@
 }
 
 <span class="kw">async fn </span>run(args: Args) -&gt; anyhow::Result&lt;()&gt; {
+    <span class="kw">let </span><span class="kw-2">mut </span>cur_args = args;
     <span class="kw">use </span>tracing_subscriber::prelude::<span class="kw-2">*</span>;
     <span class="comment">// spawn the console server in the background, returning a `Layer`:
     </span><span class="kw">let </span>tracing_layer = tracing_subscriber::fmt::layer()
@@ -1935,7 +1783,10 @@
     }));
 
     <span class="comment">// load or create wallet, asking for password if necessary
-    </span><span class="kw">let </span>node_wallet = load_wallet(args.password.clone(), <span class="kw-2">&amp;</span>SETTINGS.factory.staking_wallet_path)<span class="question-mark">?</span>;
+    </span><span class="kw">let </span>node_wallet = load_wallet(
+        cur_args.password.clone(),
+        <span class="kw-2">&amp;</span>SETTINGS.factory.staking_wallet_path,
+    )<span class="question-mark">?</span>;
 
     <span class="kw">loop </span>{
         <span class="kw">let </span>(
@@ -1952,8 +1803,7 @@
             api_private_handle,
             api_public_handle,
             api_handle,
-            grpc_handle,
-        ) = launch(<span class="kw-2">&amp;</span>args, node_wallet.clone()).<span class="kw">await</span>;
+        ) = launch(<span class="kw-2">&amp;</span>cur_args, node_wallet.clone()).<span class="kw">await</span>;
 
         <span class="comment">// interrupt signal listener
         </span><span class="kw">let </span>(tx, rx) = crossbeam_channel::bounded(<span class="number">1</span>);
@@ -2021,13 +1871,13 @@
             api_private_handle,
             api_public_handle,
             api_handle,
-            grpc_handle,
         )
         .<span class="kw">await</span>;
 
         <span class="kw">if </span>!restart {
             <span class="kw">break</span>;
         }
+        cur_args.restart_from_snapshot_at_period = <span class="prelude-val">None</span>;
         interrupt_signal_listener.abort();
     }
     <span class="prelude-val">Ok</span>(())
