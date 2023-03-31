@@ -15,6 +15,33 @@ use std::{
 };
 
 /// Hash wrapper, the underlying hash type is `Blake3`
+///
+/// The motivations for selecting Blake3 were-
+/// Speed: Blake3 is significantly faster than other popular hashing algorithms, such as SHA-256 and SHA-3.
+/// This is largely due to its ability to leverage modern CPU architectures and instruction sets, as well as its optimized implementation.
+///
+/// Security: Blake3 is designed to be highly secure and resistant to a wide range of attacks, including collision attacks, 
+/// length-extension attacks, and timing attacks. It also offers better resistance to side-channel attacks than many other hashing algorithms.
+///
+/// Flexibility: Blake3 is highly flexible and can be used in a variety of applications, including as a general-purpose hash function, 
+/// as a key derivation function, and as a message authentication code. It also supports a wide range of input sizes and can produce output
+/// of any desired length.
+
+/// Scalability: Blake3 can efficiently take advantage of multiple cores and SIMD (single instruction, multiple data) instructions, 
+/// allowing it to scale well on modern CPUs.
+/// 
+/// Improved Compression Function: The compression function used in Blake3 is an improved version of the one used in its predecessor, Blake2. 
+/// This improved compression function offers better diffusion and mixing properties, which contributes to its increased security.
+///
+/// Keyed Hashing: Blake3 supports keyed hashing, which allows users to use a secret key to generate a unique hash value. 
+/// This feature can be useful in applications that require message authentication or integrity verification.
+///
+/// Tree Hashing: Blake3 supports tree hashing, which allows users to hash large files or data structures in a parallel and efficient manner.
+/// This feature can be useful in applications that involve large-scale data processing, such as cloud storage or distributed file systems.
+///
+/// Open Source: Blake3 is an open-source algorithm, which means that its code is publicly available for review and auditing by anyone. 
+/// This can help improve its security and reliability, as well as increase transparency and trust among users.
+///
 #[derive(Eq, PartialEq, Copy, Clone, Hash)]
 pub struct Hash(blake3::Hash);
 
@@ -23,6 +50,10 @@ impl PartialOrd for Hash {
         self.0.as_bytes().partial_cmp(other.0.as_bytes())
     }
 }
+
+/// This function is useful for the BTreeMap where the order of the addresses is to be maintained.
+/// This function helps to have a single coherent BTreeMap which is then used to perform the draw
+/// See Pos-Worker for more details.
 
 impl Ord for Hash {
     fn cmp(&self, other: &Self) -> Ordering {
@@ -42,11 +73,29 @@ impl std::fmt::Debug for Hash {
     }
 }
 
+/// The bitwise XOR is important to maintain the latest hash of the ~ 1TB ledger. Since the size is big,
+/// it is not feasible to hash the whole ledger every 0.5s (when the changes occur). Instead, 
+/// all the rows of the ledger are hashed and XORed together to get a single hash. Whenever, any
+/// row has to be changed, the row's original hash is XORed with the single hash. This essentially nullifies
+/// its effect and then the new hash of the changed row is XORed with the single hash. Thus,
+/// giving the latest hash without going over the entire ~1TB ledger. This method is as secure as the traditional 
+/// hash at the same time, it is much more efficient and convenient when the throughput needs are high and the requirement
+/// of integrity cannot be compromised.
+
 impl BitXorAssign for Hash {
     fn bitxor_assign(&mut self, rhs: Self) {
         *self = *self ^ rhs;
     }
 }
+
+/// The bitwise XOR is important to maintain the latest hash of the ~ 1TB ledger. Since the size is big,
+/// it is not feasible to hash the whole ledger every 0.5s (when the changes occur). Instead, 
+/// all the rows of the ledger are hashed and XORed together to get a single hash. Whenever, any
+/// row has to be changed, the row's original hash is XORed with the single hash. This essentially nullifies
+/// its effect and then the new hash of the changed row is XORed with the single hash. Thus,
+/// giving the latest hash without going over the entire ~1TB ledger. This method is as secure as the traditional 
+/// hash at the same time, it is much more efficient and convenient when the throughput needs are high and the requirement
+/// of integrity cannot be compromised.
 
 impl BitXor for Hash {
     type Output = Self;
@@ -84,6 +133,16 @@ impl Hash {
     /// let hash = Hash::compute_from(&"hello world".as_bytes());
     /// let serialized: String = hash.to_bs58_check();
     /// ```
+    /// All massa addresses, whenever presented as user-readable texts,
+    /// are presented in base58 encoding
+    /// Motivations for using base58 encoding:
+    /// 
+    /// base58_check is like base64 but-
+    /// * fully standardized (no = vs /)
+    /// * no weird characters (eg. +) only alphanumeric
+    /// * ambiguous letters combined (eg. O vs 0, or l vs 1)
+    /// * contains a checksum at the end to detect typing errors
+    ///    
     pub fn to_bs58_check(&self) -> String {
         bs58::encode(self.to_bytes()).with_check().into_string()
     }
