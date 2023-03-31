@@ -22,21 +22,15 @@ const DENUNCIATION_FACTORY_BLOCK_HEADER_CACHE_MAX_LEN: usize = 4096;
 pub(crate) struct DenunciationFactoryWorker {
     cfg: FactoryConfig,
     channels: FactoryChannels,
+    /// Factory manager command receiver
     factory_receiver: Receiver<()>,
     consensus_receiver: Receiver<SecuredHeader>,
     endorsement_pool_receiver: Receiver<SecureShareEndorsement>,
-
-    // TODO: optim with PreHashSet?
-    // internal for endorsements (or secure share endorsements)
-    /// Internal storage for endorsement -
-    /// store at max 1 endorsement per entry, as soon as we have 2 we produce a Denunciation
-    endorsements_by_slot_index: HashMap<(Slot, u32), Vec<SecureShareEndorsement>>,
-
-    // internal for block header (or secured header)
-    /// Internal storage for endorsement -
-    /// store at max 1 endorsement per entry, as soon as we have 2 we produce a Denunciation
-    // FIXME: Store per 'Slot' then per 'PubKey'
-    block_header_by_slot: HashMap<Slot, Vec<SecuredHeader>>,
+    /// Internal cache for endorsement denunciation
+    /// store at most 1 endorsement per entry, as soon as we have 2 we produce a Denunciation
+    endorsements_by_slot_index: HashMap<(Slot, u32), EndorsementDenunciationStatus>,
+    /// Internal cache for block header denunciation
+    block_header_by_slot: HashMap<Slot, BlockHeaderDenunciationStatus>,
 }
 
 impl DenunciationFactoryWorker {
@@ -97,30 +91,28 @@ impl DenunciationFactoryWorker {
 
         let denunciation_: Option<Denunciation> = match self.block_header_by_slot.entry(key) {
             Entry::Occupied(mut eo) => {
-                let secured_headers = eo.get_mut();
-                // Store at max 2 SecuredHeader's
-                if secured_headers.len() == 1 {
-                    secured_headers.push(secured_header);
-
-                    // TODO / OPTIM?: use [] ?
-                    // safe to unwrap as we just checked the vec len
-                    let header_1 = secured_headers.get(0).unwrap();
-                    let header_2 = secured_headers.get(1).unwrap();
-                    let de_ = Denunciation::try_from((header_1, header_2));
-                    match de_ {
-                        Ok(de) => Some(de),
-                        Err(e) => {
-                            debug!("Denunciation factory cannot create denunciation from block headers: {}", e);
-                            return;
+                match eo.get_mut() {
+                    BlockHeaderDenunciationStatus::Accumulating(header_1_) => {
+                        let header_1: &SecuredHeader = header_1_;
+                        match Denunciation::try_from((header_1, &secured_header)) {
+                            Ok(de) => {
+                                eo.insert(BlockHeaderDenunciationStatus::DenunciationEmitted);
+                                Some(de)
+                            }
+                            Err(e) => {
+                                debug!("Denunciation factory cannot create denunciation from endorsements: {}", e);
+                                None
+                            }
                         }
                     }
-                } else {
-                    // Already 2 entries - so a Denunciation has already been created
-                    None
+                    BlockHeaderDenunciationStatus::DenunciationEmitted => {
+                        // Already 2 entries - so a Denunciation has already been created
+                        None
+                    }
                 }
             }
             Entry::Vacant(ev) => {
-                ev.insert(vec![secured_header]);
+                ev.insert(BlockHeaderDenunciationStatus::Accumulating(secured_header));
                 None
             }
         };
@@ -187,28 +179,30 @@ impl DenunciationFactoryWorker {
 
         let denunciation_: Option<Denunciation> = match self.endorsements_by_slot_index.entry(key) {
             Entry::Occupied(mut eo) => {
-                let secure_share_endorsements = eo.get_mut();
-                // Store at max 2 endo
-                if secure_share_endorsements.len() == 1 {
-                    secure_share_endorsements.push(secure_share_endorsement);
-
-                    // TODO / OPTIM?: use [] ?
-                    // safe to unwrap as we just checked the vec len
-                    let header_1 = secure_share_endorsements.get(0).unwrap();
-                    let header_2 = secure_share_endorsements.get(1).unwrap();
-                    let de_ = Denunciation::try_from((header_1, header_2));
-                    if let Err(e) = de_ {
-                        debug!("Denunciation factory cannot create denunciation from block headers: {}", e);
-                        return;
+                match eo.get_mut() {
+                    EndorsementDenunciationStatus::Accumulating(secure_endo_1_) => {
+                        let secure_endo_1: &SecureShareEndorsement = secure_endo_1_;
+                        match Denunciation::try_from((secure_endo_1, &secure_share_endorsement)) {
+                            Ok(de) => {
+                                eo.insert(EndorsementDenunciationStatus::DenunciationEmitted);
+                                Some(de)
+                            }
+                            Err(e) => {
+                                debug!("Denunciation factory cannot create denunciation from endorsements: {}", e);
+                                None
+                            }
+                        }
                     }
-                    Some(de_.unwrap()) // Already checked for error
-                } else {
-                    // Already 2 entries - so a Denunciation has already been created
-                    None
+                    EndorsementDenunciationStatus::DenunciationEmitted => {
+                        // A Denunciation has already been created, nothing to do here
+                        None
+                    }
                 }
             }
             Entry::Vacant(ev) => {
-                ev.insert(vec![secure_share_endorsement]);
+                ev.insert(EndorsementDenunciationStatus::Accumulating(
+                    secure_share_endorsement,
+                ));
                 None
             }
         };
@@ -218,7 +212,6 @@ impl DenunciationFactoryWorker {
                 "Created a new endorsement denunciation : {:?}",
                 denunciation
             );
-
             self.channels.pool.add_denunciation(denunciation);
         }
 
@@ -295,4 +288,16 @@ impl DenunciationFactoryWorker {
             }
         }
     }
+}
+
+#[allow(clippy::large_enum_variant)]
+enum EndorsementDenunciationStatus {
+    Accumulating(SecureShareEndorsement),
+    DenunciationEmitted,
+}
+
+#[allow(clippy::large_enum_variant)]
+enum BlockHeaderDenunciationStatus {
+    Accumulating(SecuredHeader),
+    DenunciationEmitted,
 }

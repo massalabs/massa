@@ -19,6 +19,7 @@ use crate::{
 };
 
 /// A generic command to send commands to a pool
+#[allow(clippy::large_enum_variant)]
 pub enum Command {
     /// Add items to the pool
     AddItems(Storage),

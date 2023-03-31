@@ -26,5 +26,6 @@ pub struct ConsensusChannels {
     pub block_header_sender: tokio::sync::broadcast::Sender<BlockHeader>,
     /// Channel use by Websocket (if they are enable) to broadcast a new block integrated
     pub filled_block_sender: tokio::sync::broadcast::Sender<FilledBlock>,
+    /// Channel use for Denunciation factory to create denunciations
     pub denunciation_factory_sender: crossbeam_channel::Sender<SecuredHeader>,
 }
