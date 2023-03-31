@@ -33,4 +33,7 @@ pub struct FactoryConfig {
 
     /// denunciation expiration as cycle delta
     pub denunciation_expire_cycle_delta: u64,
+
+    /// Cycle delta to accept items in denunciation factory
+    pub denunciation_items_max_cycle_delta: u64,
 }

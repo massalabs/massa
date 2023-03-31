@@ -1,6 +1,7 @@
 //! Copyright (c) 2022 MASSA LABS <info@massa.net>
 
 use crossbeam_channel::Sender;
+use massa_models::denunciation::{DenunciationError, DenunciationInterest};
 use massa_models::endorsement::SecureShareEndorsement;
 use massa_models::{
     block_id::BlockId,
@@ -31,14 +32,14 @@ pub struct EndorsementPool {
     last_cs_final_periods: Vec<u64>,
 
     /// Queue to Denunciation factory
-    denunciation_factory_tx: Sender<SecureShareEndorsement>,
+    denunciation_factory_tx: Sender<DenunciationInterest>,
 }
 
 impl EndorsementPool {
     pub fn init(
         config: PoolConfig,
         storage: &Storage,
-        denunciation_factory_tx: Sender<SecureShareEndorsement>,
+        denunciation_factory_tx: Sender<DenunciationInterest>,
     ) -> Self {
         EndorsementPool {
             last_cs_final_periods: vec![0u64; config.thread_count as usize],
@@ -129,9 +130,18 @@ impl EndorsementPool {
                 }
 
                 // And send endorsements to Denunciation Factory
-                // let de_interest = DenunciationInterest::WrappedEndorsement(endo.clone());
-                if let Err(e) = self.denunciation_factory_tx.send(endo.clone()) {
-                    warn!("Cannot send endorsement to Denunciation factory: {}", e);
+                match DenunciationInterest::try_from(endo) {
+                    Ok(de_i) => {
+                        if let Err(e) = self.denunciation_factory_tx.send(de_i) {
+                            warn!("Cannot send endorsement to Denunciation factory: {}", e);
+                        }
+                    }
+                    Err(e) => {
+                        warn!(
+                            "Cannot create denunciation interest from endorsement: {}",
+                            e
+                        );
+                    }
                 }
             }
         }

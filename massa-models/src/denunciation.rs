@@ -59,9 +59,8 @@ impl EndorsementDenunciation {
         slot: &Slot,
         index: &u32,
         content_hash: &Hash,
-    ) -> Result<Hash, SerializeError> {
+    ) -> Hash {
         let mut hash_data = Vec::new();
-
         // Public key
         hash_data.extend(public_key.to_bytes());
         // Ser slot & index
@@ -69,8 +68,7 @@ impl EndorsementDenunciation {
         hash_data.extend(&denunciation_data.to_bytes());
         // Add content hash
         hash_data.extend(content_hash.to_bytes());
-
-        Ok(Hash::compute_from(&hash_data))
+        Hash::compute_from(&hash_data)
     }
 }
 
@@ -100,26 +98,16 @@ impl BlockHeaderDenunciation {
         public_key: &PublicKey,
         slot: &Slot,
         content_hash: &Hash,
-    ) -> Result<Hash, SerializeError> {
+    ) -> Hash {
         let mut hash_data = Vec::new();
-        // let mut buf = Vec::new();
-        // let de_data_serializer = DenunciationDataSerializer::new();
-
         // Public key
         hash_data.extend(public_key.to_bytes());
-
         // Ser slot
-        // let denunciation_data = DenunciationData::BlockHeader(*slot);
-        // de_data_serializer.serialize(&denunciation_data, &mut buf)?;
         let de_data = BlockHeaderDenunciationData::new(*slot);
         hash_data.extend(de_data.to_bytes());
-        // hash_data.extend(&buf);
-        // buf.clear();
-
         // Add content hash
         hash_data.extend(content_hash.to_bytes());
-
-        Ok(Hash::compute_from(&hash_data))
+        Hash::compute_from(&hash_data)
     }
 }
 
@@ -155,26 +143,22 @@ impl Denunciation {
                 let content_hash =
                     EndorsementDenunciation::compute_content_hash(&s_endorsement.content)?;
 
-                let hash_ = EndorsementDenunciation::compute_hash_for_sig_verif(
+                let hash = EndorsementDenunciation::compute_hash_for_sig_verif(
                     &endo_de.public_key,
                     &endo_de.slot,
                     &endo_de.index,
                     &content_hash,
                 );
 
-                if let Ok(hash) = hash_ {
-                    Ok(endo_de.slot == s_endorsement.content.slot
-                        && endo_de.index == s_endorsement.content.index
-                        && endo_de.public_key == s_endorsement.content_creator_pub_key
-                        && endo_de.hash_1 != content_hash
-                        && endo_de.hash_2 != content_hash
-                        && endo_de
-                            .public_key
-                            .verify_signature(&hash, &s_endorsement.signature)
-                            .is_ok())
-                } else {
-                    Ok(false)
-                }
+                Ok(endo_de.slot == s_endorsement.content.slot
+                    && endo_de.index == s_endorsement.content.index
+                    && endo_de.public_key == s_endorsement.content_creator_pub_key
+                    && endo_de.hash_1 != content_hash
+                    && endo_de.hash_2 != content_hash
+                    && endo_de
+                        .public_key
+                        .verify_signature(&hash, &s_endorsement.signature)
+                        .is_ok())
             }
         }
     }
@@ -191,24 +175,20 @@ impl Denunciation {
                 let content_hash =
                     BlockHeaderDenunciation::compute_content_hash(&s_block_header.content)?;
 
-                let hash_ = BlockHeaderDenunciation::compute_hash_for_sig_verif(
+                let hash = BlockHeaderDenunciation::compute_hash_for_sig_verif(
                     &endo_bh.public_key,
                     &endo_bh.slot,
                     &content_hash,
                 );
 
-                if let Ok(hash) = hash_ {
-                    Ok(endo_bh.slot == s_block_header.content.slot
-                        && endo_bh.public_key == s_block_header.content_creator_pub_key
-                        && endo_bh.hash_1 != content_hash
-                        && endo_bh.hash_2 != content_hash
-                        && endo_bh
-                            .public_key
-                            .verify_signature(&hash, &s_block_header.signature)
-                            .is_ok())
-                } else {
-                    Ok(false)
-                }
+                Ok(endo_bh.slot == s_block_header.content.slot
+                    && endo_bh.public_key == s_block_header.content_creator_pub_key
+                    && endo_bh.hash_1 != content_hash
+                    && endo_bh.hash_2 != content_hash
+                    && endo_bh
+                        .public_key
+                        .verify_signature(&hash, &s_block_header.signature)
+                        .is_ok())
             }
         }
     }
@@ -223,13 +203,13 @@ impl Denunciation {
                     &de.slot,
                     &de.index,
                     &de.hash_1,
-                )?;
+                );
                 let hash_2 = EndorsementDenunciation::compute_hash_for_sig_verif(
                     &de.public_key,
                     &de.slot,
                     &de.index,
                     &de.hash_2,
-                )?;
+                );
 
                 (
                     de.signature_1,
@@ -244,12 +224,12 @@ impl Denunciation {
                     &de.public_key,
                     &de.slot,
                     &de.hash_1,
-                )?;
+                );
                 let hash_2 = BlockHeaderDenunciation::compute_hash_for_sig_verif(
                     &de.public_key,
                     &de.slot,
                     &de.hash_2,
-                )?;
+                );
 
                 (
                     de.signature_1,
@@ -279,22 +259,21 @@ impl Denunciation {
     /// Can be used to check if block header | endorsement is not too old (at reception or too cleanup cache)
     pub fn is_expired(
         slot: &Slot,
-        slot_at_now: &Slot,
         last_cs_final_periods: &[u64],
         periods_per_cycle: u64,
         denunciation_expire_cycle_delta: u64,
     ) -> bool {
-        // Slot is final -> cannot be Denounced anymore, it's too late!
+        // If the Slot is final, a Denunciation can still be made for 1 cycle
         if slot.period <= last_cs_final_periods[slot.thread as usize] {
-            return true;
+            let cycle_of_slot = slot.get_cycle(periods_per_cycle);
+
+            let slot_final = Slot::new(last_cs_final_periods[slot.thread as usize], slot.thread);
+            let cycle_of_final = slot_final.get_cycle(periods_per_cycle);
+
+            (cycle_of_final - cycle_of_slot) > denunciation_expire_cycle_delta
+        } else {
+            false
         }
-
-        // As we need to ensure that the Denounced has some 'Deferred credits'
-        // we will reject Denunciation older than 3 cycle compared to the current slot
-        let cycle = slot.get_cycle(periods_per_cycle);
-        let next_cycle = slot_at_now.get_cycle(periods_per_cycle);
-
-        (next_cycle - cycle) > denunciation_expire_cycle_delta
     }
 }
 
@@ -326,7 +305,7 @@ impl TryFrom<(&SecureShareEndorsement, &SecureShareEndorsement)> for Denunciatio
             &s_e1.content.slot,
             &s_e1.content.index,
             &s_e1_hash_content,
-        )?;
+        );
         // Check sig of s_e2 but with s_e1.public_key, s_e1.slot, s_e1.index
         let s_e2_hash_content = EndorsementDenunciation::compute_content_hash(&s_e2.content)?;
         let s_e2_hash = EndorsementDenunciation::compute_hash_for_sig_verif(
@@ -334,7 +313,7 @@ impl TryFrom<(&SecureShareEndorsement, &SecureShareEndorsement)> for Denunciatio
             &s_e1.content.slot,
             &s_e1.content.index,
             &s_e2_hash_content,
-        )?;
+        );
 
         s_e1.content_creator_pub_key
             .verify_signature(&s_e1_hash, &s_e1.signature)?;
@@ -373,13 +352,13 @@ impl TryFrom<(&SecuredHeader, &SecuredHeader)> for Denunciation {
             &s_bh1.content_creator_pub_key,
             &s_bh1.content.slot,
             &s_bh1_hash_content,
-        )?;
+        );
         let s_bh2_hash_content = BlockHeaderDenunciation::compute_content_hash(&s_bh2.content)?;
         let s_bh2_hash = BlockHeaderDenunciation::compute_hash_for_sig_verif(
             &s_bh1.content_creator_pub_key,
             &s_bh1.content.slot,
             &s_bh2_hash_content,
-        )?;
+        );
 
         s_bh1
             .content_creator_pub_key
@@ -841,6 +820,111 @@ impl From<&Denunciation> for DenunciationId {
 
 // End Denunciation Id
 
+// Denunciation interest
+
+/// DenunciationInterest variant for endorsement
+#[derive(Debug, Clone)]
+pub struct EndorsementDenunciationInterest {
+    pub public_key: PublicKey,
+    pub slot: Slot,
+    pub index: u32,
+    hash: Hash,
+    signature: Signature,
+}
+
+/// DenunciationInterest variant for block header
+#[derive(Debug, Clone)]
+pub struct BlockHeaderDenunciationInterest {
+    pub public_key: PublicKey,
+    pub slot: Slot,
+    hash: Hash,
+    signature: Signature,
+}
+
+/// Lightweight data for Denunciation creation
+/// (avoid storing heavyweight secured header or secure share endorsement)
+#[derive(Debug, Clone)]
+pub enum DenunciationInterest {
+    Endorsement(EndorsementDenunciationInterest),
+    BlockHeader(BlockHeaderDenunciationInterest),
+}
+
+impl TryFrom<&SecureShareEndorsement> for DenunciationInterest {
+    type Error = DenunciationError;
+
+    fn try_from(value: &SecureShareEndorsement) -> Result<Self, Self::Error> {
+        let hash = EndorsementDenunciation::compute_content_hash(&value.content)?;
+
+        Ok(DenunciationInterest::Endorsement(
+            EndorsementDenunciationInterest {
+                public_key: value.content_creator_pub_key,
+                slot: value.content.slot,
+                index: value.content.index,
+                hash,
+                signature: value.signature,
+            },
+        ))
+    }
+}
+
+impl TryFrom<&SecuredHeader> for DenunciationInterest {
+    type Error = DenunciationError;
+
+    fn try_from(value: &SecuredHeader) -> Result<Self, Self::Error> {
+        let hash = BlockHeaderDenunciation::compute_content_hash(&value.content)?;
+        Ok(DenunciationInterest::BlockHeader(
+            BlockHeaderDenunciationInterest {
+                public_key: value.content_creator_pub_key,
+                slot: value.content.slot,
+                hash,
+                signature: value.signature,
+            },
+        ))
+    }
+}
+
+/// Create a new Denunciation from 2 SecureHeader
+impl TryFrom<(&DenunciationInterest, &DenunciationInterest)> for Denunciation {
+    type Error = DenunciationError;
+
+    fn try_from(
+        (de_i_1, de_i_2): (&DenunciationInterest, &DenunciationInterest),
+    ) -> Result<Self, Self::Error> {
+        // TODO: add checks before creating
+        match (de_i_1, de_i_2) {
+            (
+                DenunciationInterest::BlockHeader(de_i_blkh_1),
+                DenunciationInterest::BlockHeader(de_i_blkh_2),
+            ) => Ok(Denunciation::BlockHeader(BlockHeaderDenunciation {
+                public_key: de_i_blkh_1.public_key,
+                slot: de_i_blkh_1.slot,
+                signature_1: de_i_blkh_1.signature,
+                signature_2: de_i_blkh_2.signature,
+                hash_1: de_i_blkh_1.hash,
+                hash_2: de_i_blkh_2.hash,
+            })),
+            (
+                DenunciationInterest::Endorsement(de_i_endo_1),
+                DenunciationInterest::Endorsement(de_i_endo_2),
+            ) => Ok(Denunciation::Endorsement(EndorsementDenunciation {
+                public_key: de_i_endo_1.public_key,
+                slot: de_i_endo_1.slot,
+                index: de_i_endo_1.index,
+                signature_1: de_i_endo_1.signature,
+                signature_2: de_i_endo_2.signature,
+                hash_1: de_i_endo_1.hash,
+                hash_2: de_i_endo_2.hash,
+            })),
+            _ => {
+                // Different enum variant - this is invalid
+                Err(DenunciationError::InvalidInput)
+            }
+        }
+    }
+}
+
+// End Denunciation interest
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -1201,5 +1285,26 @@ mod tests {
         let (rem, de_der_res) = de_der.deserialize::<DeserializeError>(&buffer).unwrap();
         assert_eq!(rem.is_empty(), true);
         assert_eq!(denunciation, de_der_res);
+    }
+
+    #[test]
+    fn test_denunciation_interest() {
+        let (_, _, s_block_header_1, s_block_header_2, _) = gen_block_headers_for_denunciation();
+        let denunciation: Denunciation = (&s_block_header_1, &s_block_header_2).try_into().unwrap();
+
+        let de_i_1 = DenunciationInterest::try_from(&s_block_header_1).unwrap();
+        let de_i_2 = DenunciationInterest::try_from(&s_block_header_2).unwrap();
+        let denunciation_2: Denunciation = (&de_i_1, &de_i_2).try_into().unwrap();
+
+        assert_eq!(denunciation, denunciation_2);
+
+        let (_, _, s_endorsement_1, s_endorsement_2, _) = gen_endorsements_for_denunciation();
+        let denunciation_3 = Denunciation::try_from((&s_endorsement_1, &s_endorsement_2)).unwrap();
+
+        let de_i_3 = DenunciationInterest::try_from(&s_endorsement_1).unwrap();
+        let de_i_4 = DenunciationInterest::try_from(&s_endorsement_2).unwrap();
+        let denunciation_4: Denunciation = (&de_i_3, &de_i_4).try_into().unwrap();
+
+        assert_eq!(denunciation_3, denunciation_4);
     }
 }

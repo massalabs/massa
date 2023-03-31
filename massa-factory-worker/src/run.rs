@@ -12,6 +12,7 @@ use crate::{
 };
 use massa_factory_exports::{FactoryChannels, FactoryConfig, FactoryManager};
 use massa_models::block_header::SecuredHeader;
+use massa_models::denunciation::DenunciationInterest;
 use massa_models::endorsement::SecureShareEndorsement;
 use massa_wallet::Wallet;
 
@@ -28,8 +29,8 @@ pub fn start_factory(
     cfg: FactoryConfig,
     wallet: Arc<RwLock<Wallet>>,
     channels: FactoryChannels,
-    denunciation_factory_consensus_receiver: Receiver<SecuredHeader>,
-    denunciation_factory_endorsement_pool_receiver: Receiver<SecureShareEndorsement>,
+    denunciation_factory_consensus_receiver: Receiver<DenunciationInterest>,
+    denunciation_factory_endorsement_pool_receiver: Receiver<DenunciationInterest>,
 ) -> Box<dyn FactoryManager> {
     // create block factory channel
     let (block_worker_tx, block_worker_rx) = mpsc::channel::<()>();

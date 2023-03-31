@@ -231,7 +231,9 @@ pub const VERSIONING_THRESHOLD_TRANSITION_ACCEPTED: Amount = Amount::from_mantis
 //
 
 /// denunciation expiration delta (in cycle count)
-pub const DENUNCIATION_EXPIRE_CYCLE_DELTA: u64 = 3;
+pub const DENUNCIATION_EXPIRE_CYCLE_DELTA: u64 = 1;
+/// Cycle delta to accept items in denunciation factory
+pub const DENUNCIATION_ITEMS_MAX_CYCLE_DELTA: u64 = 1;
 
 // Some checks at compile time that should not be ignored!
 #[allow(clippy::assertions_on_constants)]

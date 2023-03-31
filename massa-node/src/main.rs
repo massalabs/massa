@@ -46,7 +46,11 @@ use massa_models::config::constants::{
     POS_SAVED_CYCLES, PROTOCOL_CONTROLLER_CHANNEL_SIZE, PROTOCOL_EVENT_CHANNEL_SIZE, ROLL_PRICE,
     T0, THREAD_COUNT, VERSION,
 };
-use massa_models::config::{CONSENSUS_BOOTSTRAP_PART_SIZE, DENUNCIATION_EXPIRE_CYCLE_DELTA};
+use massa_models::config::{
+    CONSENSUS_BOOTSTRAP_PART_SIZE, DENUNCIATION_EXPIRE_CYCLE_DELTA,
+    DENUNCIATION_ITEMS_MAX_CYCLE_DELTA,
+};
+use massa_models::denunciation::DenunciationInterest;
 use massa_models::endorsement::SecureShareEndorsement;
 use massa_network_exports::{Establisher, NetworkConfig, NetworkManager};
 use massa_network_worker::start_network_controller;
@@ -380,7 +384,7 @@ async fn launch(
         operation_sender: broadcast::channel(pool_config.broadcast_operations_capacity).0,
     };
     let (denunciation_factory_tx, denunciation_factory_rx) =
-        crossbeam_channel::unbounded::<SecureShareEndorsement>();
+        crossbeam_channel::unbounded::<DenunciationInterest>();
 
     let (pool_manager, pool_controller) = start_pool_controller(
         pool_config,
@@ -510,6 +514,7 @@ async fn launch(
         max_operations_per_block: MAX_OPERATIONS_PER_BLOCK,
         periods_per_cycle: PERIODS_PER_CYCLE,
         denunciation_expire_cycle_delta: DENUNCIATION_EXPIRE_CYCLE_DELTA,
+        denunciation_items_max_cycle_delta: DENUNCIATION_ITEMS_MAX_CYCLE_DELTA,
     };
     let factory_channels = FactoryChannels {
         selector: selector_controller.clone(),

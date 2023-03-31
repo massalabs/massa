@@ -40,17 +40,8 @@ impl DenunciationPool {
 
     /// Add a list of denunciation to the pool
     pub(crate) fn add_denunciation(&mut self, denunciation: Denunciation) {
-        let now = MassaTime::now().expect("could not get current time");
-        // get closest slot according to the current absolute time
-        let slot_now = get_closest_slot_to_timestamp(
-            self.config.thread_count,
-            self.config.t0,
-            self.config.genesis_timestamp,
-            now,
-        );
         if !Denunciation::is_expired(
             denunciation.get_slot(),
-            &slot_now,
             &self.last_cs_final_periods,
             self.config.periods_per_cycle,
             self.config.denunciation_expire_cycle_delta,
@@ -75,20 +66,10 @@ impl DenunciationPool {
         // update internal final CS period counter
         self.last_cs_final_periods = final_cs_periods.to_vec();
 
-        let now = MassaTime::now().expect("could not get current time");
-        // get closest slot according to the current absolute time
-        let slot_now = get_closest_slot_to_timestamp(
-            self.config.thread_count,
-            self.config.t0,
-            self.config.genesis_timestamp,
-            now,
-        );
-
         // remove all denunciations that are expired
         self.denunciations_cache.drain_filter(|_de_id, de| {
             Denunciation::is_expired(
                 de.get_slot(),
-                &slot_now,
                 &self.last_cs_final_periods,
                 self.config.periods_per_cycle,
                 self.config.denunciation_expire_cycle_delta,

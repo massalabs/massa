@@ -8,7 +8,10 @@ use tracing::{debug, info, warn};
 use massa_factory_exports::{FactoryChannels, FactoryConfig};
 use massa_models::address::Address;
 use massa_models::block_header::SecuredHeader;
-use massa_models::denunciation::Denunciation;
+use massa_models::denunciation::{
+    BlockHeaderDenunciationInterest, Denunciation, DenunciationInterest,
+    EndorsementDenunciationInterest,
+};
 use massa_models::endorsement::SecureShareEndorsement;
 use massa_models::slot::Slot;
 use massa_models::timeslots::get_closest_slot_to_timestamp;
@@ -24,8 +27,8 @@ pub(crate) struct DenunciationFactoryWorker {
     channels: FactoryChannels,
     /// Factory manager command receiver
     factory_receiver: Receiver<()>,
-    consensus_receiver: Receiver<SecuredHeader>,
-    endorsement_pool_receiver: Receiver<SecureShareEndorsement>,
+    consensus_receiver: Receiver<DenunciationInterest>,
+    endorsement_pool_receiver: Receiver<DenunciationInterest>,
     /// Internal cache for endorsement denunciation
     /// store at most 1 endorsement per entry, as soon as we have 2 we produce a Denunciation
     endorsements_by_slot_index: HashMap<(Slot, u32), EndorsementDenunciationStatus>,
@@ -40,8 +43,8 @@ impl DenunciationFactoryWorker {
         cfg: FactoryConfig,
         channels: FactoryChannels,
         factory_receiver: Receiver<()>,
-        consensus_receiver: Receiver<SecuredHeader>,
-        endorsement_pool_receiver: Receiver<SecureShareEndorsement>,
+        consensus_receiver: Receiver<DenunciationInterest>,
+        endorsement_pool_receiver: Receiver<DenunciationInterest>,
     ) -> thread::JoinHandle<()> {
         thread::Builder::new()
             .name("denunciation-factory".into())
@@ -61,13 +64,37 @@ impl DenunciationFactoryWorker {
     }
 
     /// Process new secured header (~ block header)
-    fn process_new_secured_header(&mut self, secured_header: SecuredHeader) {
-        let key = secured_header.content.slot;
+    fn process_new_secured_header(
+        &mut self,
+        block_header_denunciation_interest: DenunciationInterest,
+    ) {
+        let de_i_orig = block_header_denunciation_interest.clone();
+        let de_i = match block_header_denunciation_interest {
+            DenunciationInterest::Endorsement(_) => {
+                return;
+            }
+            DenunciationInterest::BlockHeader(de_i) => de_i,
+        };
 
-        if self.block_header_by_slot.len() > DENUNCIATION_FACTORY_BLOCK_HEADER_CACHE_MAX_LEN {
+        let now = MassaTime::now().expect("could not get current time");
+
+        // get closest slot according to the current absolute time
+        let slot_now = get_closest_slot_to_timestamp(
+            self.cfg.thread_count,
+            self.cfg.t0,
+            self.cfg.genesis_timestamp,
+            now,
+        );
+
+        let cycle_of_header = de_i.slot.get_cycle(self.cfg.periods_per_cycle);
+        let cycle_now = slot_now.get_cycle(self.cfg.periods_per_cycle);
+
+        // Do not fulfill the cache with block header too much in the future
+        // Note that cache is also purged each time a slot becomes final
+        if cycle_now - cycle_of_header > self.cfg.denunciation_items_max_cycle_delta {
             warn!(
-                "Denunciation factory cannot process - cache full: {}",
-                self.block_header_by_slot.len()
+                "Denunciation factory received a denunciation interest way to much in the future: {:?}",
+                de_i
             );
             return;
         }
@@ -76,10 +103,10 @@ impl DenunciationFactoryWorker {
         // Note: If the public key of the header creator is not checked to match the PoS,
         //       someone can spam with headers coming from various non-PoS-drawn pubkeys
         //       and cause a problem
-        let selected_address = self.channels.selector.get_producer(key);
+        let selected_address = self.channels.selector.get_producer(de_i.slot);
         match selected_address {
             Ok(address) => {
-                if address != Address::from_public_key(&secured_header.content_creator_pub_key) {
+                if address != Address::from_public_key(&de_i.public_key) {
                     warn!("Denunciation factory received a secured header but address was not selected");
                     return;
                 }
@@ -89,12 +116,12 @@ impl DenunciationFactoryWorker {
             }
         }
 
-        let denunciation_: Option<Denunciation> = match self.block_header_by_slot.entry(key) {
+        let denunciation_: Option<Denunciation> = match self.block_header_by_slot.entry(de_i.slot) {
             Entry::Occupied(mut eo) => {
                 match eo.get_mut() {
-                    BlockHeaderDenunciationStatus::Accumulating(header_1_) => {
-                        let header_1: &SecuredHeader = header_1_;
-                        match Denunciation::try_from((header_1, &secured_header)) {
+                    BlockHeaderDenunciationStatus::Accumulating(de_i_1_) => {
+                        let de_i_1: &DenunciationInterest = de_i_1_;
+                        match Denunciation::try_from((de_i_1, &de_i_orig.clone())) {
                             Ok(de) => {
                                 eo.insert(BlockHeaderDenunciationStatus::DenunciationEmitted);
                                 Some(de)
@@ -112,7 +139,7 @@ impl DenunciationFactoryWorker {
                 }
             }
             Entry::Vacant(ev) => {
-                ev.insert(BlockHeaderDenunciationStatus::Accumulating(secured_header));
+                ev.insert(BlockHeaderDenunciationStatus::Accumulating(de_i_orig));
                 None
             }
         };
@@ -132,35 +159,50 @@ impl DenunciationFactoryWorker {
     /// Process new secure share endorsement (~ endorsement)
     fn process_new_secure_share_endorsement(
         &mut self,
-        secure_share_endorsement: SecureShareEndorsement,
+        endorsement_denunciation_interest: DenunciationInterest,
     ) {
-        let endo_slot = secure_share_endorsement.content.slot;
-        let endo_index = secure_share_endorsement.content.index;
-        let endo_index_usize = endo_index as usize;
-        let key = (endo_slot, endo_index);
-        if self.endorsements_by_slot_index.contains_key(&key) {
+        let de_i_orig = endorsement_denunciation_interest.clone();
+        let de_i = match endorsement_denunciation_interest {
+            DenunciationInterest::Endorsement(de_i) => de_i,
+            DenunciationInterest::BlockHeader(de_i) => {
+                return;
+            }
+        };
+
+        let now = MassaTime::now().expect("could not get current time");
+
+        // get closest slot according to the current absolute time
+        let slot_now = get_closest_slot_to_timestamp(
+            self.cfg.thread_count,
+            self.cfg.t0,
+            self.cfg.genesis_timestamp,
+            now,
+        );
+
+        let cycle_of_header = de_i.slot.get_cycle(self.cfg.periods_per_cycle);
+        let cycle_now = slot_now.get_cycle(self.cfg.periods_per_cycle);
+
+        // Do not fulfill the cache with block header too much in the future
+        // Note that cache is also purged each time a slot becomes final
+        if cycle_now - cycle_of_header > self.cfg.denunciation_items_max_cycle_delta {
             warn!(
-                "Denunciation factory process an endorsement that have already been denounced: {}",
-                secure_share_endorsement
+                "Denunciation factory received a denunciation interest way to much in the future: {:?}",
+                de_i
             );
             return;
         }
 
         // Get selected address from selector and check
-        let selected = self.channels.selector.get_selection(endo_slot);
+        let selected = self.channels.selector.get_selection(de_i.slot);
         match selected {
             Ok(selection) => {
-                if let Some(address) = selection.endorsements.get(endo_index_usize) {
-                    if *address
-                        != Address::from_public_key(
-                            &secure_share_endorsement.content_creator_pub_key,
-                        )
-                    {
+                if let Some(address) = selection.endorsements.get(de_i.index as usize) {
+                    if *address != Address::from_public_key(&de_i.public_key) {
                         warn!("Denunciation factory received a secure share endorsement but address was not selected");
                         return;
                     }
                 } else {
-                    warn!("Denunciation factory could not get selected address for endorsements at index: {}", endo_index_usize);
+                    warn!("Denunciation factory could not get selected address for endorsements at index");
                     return;
                 }
             }
@@ -177,12 +219,15 @@ impl DenunciationFactoryWorker {
             return;
         }
 
-        let denunciation_: Option<Denunciation> = match self.endorsements_by_slot_index.entry(key) {
+        let denunciation_: Option<Denunciation> = match self
+            .endorsements_by_slot_index
+            .entry((de_i.slot, de_i.index))
+        {
             Entry::Occupied(mut eo) => {
                 match eo.get_mut() {
-                    EndorsementDenunciationStatus::Accumulating(secure_endo_1_) => {
-                        let secure_endo_1: &SecureShareEndorsement = secure_endo_1_;
-                        match Denunciation::try_from((secure_endo_1, &secure_share_endorsement)) {
+                    EndorsementDenunciationStatus::Accumulating(de_i_1_) => {
+                        let de_i_1: &DenunciationInterest = de_i_1_;
+                        match Denunciation::try_from((de_i_1, &de_i_orig.clone())) {
                             Ok(de) => {
                                 eo.insert(EndorsementDenunciationStatus::DenunciationEmitted);
                                 Some(de)
@@ -200,9 +245,7 @@ impl DenunciationFactoryWorker {
                 }
             }
             Entry::Vacant(ev) => {
-                ev.insert(EndorsementDenunciationStatus::Accumulating(
-                    secure_share_endorsement,
-                ));
+                ev.insert(EndorsementDenunciationStatus::Accumulating(de_i_orig));
                 None
             }
         };
@@ -219,20 +262,9 @@ impl DenunciationFactoryWorker {
     }
 
     fn cleanup_cache(&mut self) {
-        let now = MassaTime::now().expect("could not get current time");
-
-        // get closest slot according to the current absolute time
-        let slot_now = get_closest_slot_to_timestamp(
-            self.cfg.thread_count,
-            self.cfg.t0,
-            self.cfg.genesis_timestamp,
-            now,
-        );
-
         self.endorsements_by_slot_index.retain(|(slot, _index), _| {
             !Denunciation::is_expired(
                 slot,
-                &slot_now,
                 self.channels.pool.get_final_cs_periods(),
                 self.cfg.periods_per_cycle,
                 self.cfg.denunciation_expire_cycle_delta,
@@ -242,7 +274,6 @@ impl DenunciationFactoryWorker {
         self.block_header_by_slot.retain(|slot, _| {
             !Denunciation::is_expired(
                 slot,
-                &slot_now,
                 self.channels.pool.get_final_cs_periods(),
                 self.cfg.periods_per_cycle,
                 self.cfg.denunciation_expire_cycle_delta,
@@ -254,11 +285,11 @@ impl DenunciationFactoryWorker {
     fn run(&mut self) {
         loop {
             select! {
-                recv(self.consensus_receiver) -> secured_header_ => {
-                    match secured_header_ {
-                        Ok(secured_header) => {
-                            info!("Denunciation factory receives a new block header: {}", secured_header);
-                            self.process_new_secured_header(secured_header);
+                recv(self.consensus_receiver) -> de_i_ => {
+                    match de_i_ {
+                        Ok(de_i) => {
+                            info!("Denunciation factory receives a new block header denunciation interest: {:?}", de_i);
+                            self.process_new_secured_header(de_i);
                         },
                         Err(e) => {
                             warn!("Denunciation factory cannot receive from consensus receiver: {}", e);
@@ -266,11 +297,11 @@ impl DenunciationFactoryWorker {
                         }
                     }
                 },
-                recv(self.endorsement_pool_receiver) -> secure_share_endorsement_ => {
-                    match secure_share_endorsement_ {
-                        Ok(secure_share_endorsement) => {
-                            info!("Denunciation factory receives a new endorsement: {}", secure_share_endorsement);
-                            self.process_new_secure_share_endorsement(secure_share_endorsement)
+                recv(self.endorsement_pool_receiver) -> de_i_ => {
+                    match de_i_ {
+                        Ok(de_i) => {
+                            info!("Denunciation factory receives a new endorsement denunciation interest: {:?}", de_i);
+                            self.process_new_secure_share_endorsement(de_i)
                         }
                         Err(e) => {
                             warn!("Denunciation factory cannot receive from endorsement pool receiver: {}", e);
@@ -292,12 +323,12 @@ impl DenunciationFactoryWorker {
 
 #[allow(clippy::large_enum_variant)]
 enum EndorsementDenunciationStatus {
-    Accumulating(SecureShareEndorsement),
+    Accumulating(DenunciationInterest),
     DenunciationEmitted,
 }
 
 #[allow(clippy::large_enum_variant)]
 enum BlockHeaderDenunciationStatus {
-    Accumulating(SecuredHeader),
+    Accumulating(DenunciationInterest),
     DenunciationEmitted,
 }
