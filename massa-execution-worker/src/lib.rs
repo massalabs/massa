@@ -108,11 +108,7 @@ pub use worker::start_execution_worker;
 ))]
 pub use interface_impl::InterfaceImpl;
 
-#[cfg(any(
-    feature = "gas_calibration",
-    feature = "benchmarking",
-    feature = "testing"
-))]
+#[cfg(any(feature = "benchmarking"))]
 use criterion as _;
 
 #[cfg(any(
