@@ -190,16 +190,6 @@ impl FinalState {
             )?;
         }
 
-        // The deferred credits that happen during the downtime have to be set to the next slot to be executed
-        // TODO: Make the deferred credits robust so that we don't have to interpolate them
-        self.pos_state
-            .update_deferred_credits_after_restart(self.slot, end_slot)
-            .map_err(|_| {
-                FinalStateError::SnapshotError(String::from(
-                    "Could not update the deferred credits for snapshot",
-                ))
-            })?;
-
         self.slot = end_slot;
 
         // Recompute the hash with the updated data and feed it to POS_state.
@@ -353,7 +343,14 @@ impl FinalState {
         // 2. async_pool hash
         hash_concat.extend(self.async_pool.hash.to_bytes());
         // 3. pos deferred_credit hash
-        hash_concat.extend(self.pos_state.deferred_credits.hash.to_bytes());
+        let deferred_credit_hash = match self.pos_state.deferred_credits.get_hash() {
+            Some(hash) => hash,
+            None => self
+                .pos_state
+                .deferred_credits
+                .enable_hash_tracker_and_compute_hash(),
+        };
+        hash_concat.extend(deferred_credit_hash.to_bytes());
         // 4. pos cycle history hashes, skip the bootstrap safety cycle if there is one
         let n = (self.pos_state.cycle_history.len() == self.config.pos_config.cycle_history_length)
             as usize;
@@ -571,22 +568,21 @@ impl FinalState {
             // Get PoS deferred credits changes that concern credits <= credits_step
             match credits_step {
                 StreamingStep::Ongoing(cursor_slot) => {
-                    let deferred_credits = DeferredCredits {
-                        credits: changes
-                            .pos_changes
-                            .deferred_credits
-                            .credits
-                            .iter()
-                            .filter_map(|(credits_slot, credits)| {
-                                if *credits_slot <= cursor_slot {
-                                    Some((*credits_slot, credits.clone()))
-                                } else {
-                                    None
-                                }
-                            })
-                            .collect(),
-                        ..Default::default()
-                    };
+                    let mut deferred_credits = DeferredCredits::new_with_hash();
+                    deferred_credits.credits = changes
+                        .pos_changes
+                        .deferred_credits
+                        .credits
+                        .iter()
+                        .filter_map(|(credits_slot, credits)| {
+                            if *credits_slot <= cursor_slot {
+                                Some((*credits_slot, credits.clone()))
+                            } else {
+                                None
+                            }
+                        })
+                        .collect();
+
                     slot_changes.pos_changes.deferred_credits = deferred_credits;
                 }
                 StreamingStep::Finished(_) => {
@@ -732,6 +728,7 @@ impl FinalStateRawDeserializer {
             deferred_credits_deser: DeferredCreditsDeserializer::new(
                 config.thread_count,
                 max_credit_length,
+                true,
             ),
             executed_ops_deser: ExecutedOpsDeserializer::new(
                 config.thread_count,

@@ -1349,19 +1349,30 @@ mod tests {
             sample_read.pos_state.get_rolls_for(&address),
             roll_remaining
         );
+
         assert_eq!(
             sample_read
                 .pos_state
-                .get_deferred_credits_at(&Slot::new(7, 1)),
+                .get_deferred_credits_range(..=Slot::new(7, 1))
+                .credits
+                .get(&Slot::new(7, 1))
+                .cloned()
+                .unwrap_or_default(),
             credits
         );
 
         // Check that deferred credit are reimbursed
         let credits = PreHashMap::default();
+
+        // Check that deferred credit are reimbursed
         assert_eq!(
             sample_read
                 .pos_state
-                .get_deferred_credits_at(&Slot::new(8, 1)),
+                .get_deferred_credits_range(..=Slot::new(8, 1))
+                .credits
+                .get(&Slot::new(8, 1))
+                .cloned()
+                .unwrap_or_default(),
             credits
         );
 

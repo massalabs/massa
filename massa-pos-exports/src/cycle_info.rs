@@ -263,7 +263,7 @@ fn test_cycle_info_hash_computation() {
         seed_bits: bitvec![u8, Lsb0; 0, 10],
         roll_changes: roll_changes.clone(),
         production_stats: production_stats.clone(),
-        deferred_credits: DeferredCredits::default(),
+        deferred_credits: DeferredCredits::new_with_hash(),
     };
     cycle_a.apply_changes(changes, Slot::new(0, 0), 2, 2);
 
@@ -282,7 +282,7 @@ fn test_cycle_info_hash_computation() {
         seed_bits: bitvec![u8, Lsb0; 0, 20],
         roll_changes: roll_changes.clone(),
         production_stats: production_stats.clone(),
-        deferred_credits: DeferredCredits::default(),
+        deferred_credits: DeferredCredits::new_with_hash(),
     };
     cycle_a.apply_changes(changes, Slot::new(0, 1), 2, 2);
 
@@ -301,7 +301,7 @@ fn test_cycle_info_hash_computation() {
         seed_bits: bitvec![u8, Lsb0; 0, 30],
         roll_changes,
         production_stats,
-        deferred_credits: DeferredCredits::default(),
+        deferred_credits: DeferredCredits::new_with_hash(),
     };
     cycle_a.apply_changes(changes, Slot::new(1, 0), 2, 2);
 

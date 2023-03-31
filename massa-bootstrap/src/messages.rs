@@ -348,6 +348,7 @@ impl BootstrapServerMessageDeserializer {
             pos_credits_deserializer: DeferredCreditsDeserializer::new(
                 args.thread_count,
                 args.max_credits_length,
+                false,
             ),
             exec_ops_deserializer: ExecutedOpsDeserializer::new(
                 args.thread_count,
