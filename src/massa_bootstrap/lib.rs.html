@@ -62,7 +62,6 @@
 <a href="#62" id="62">62</a>
 <a href="#63" id="63">63</a>
 <a href="#64" id="64">64</a>
-<a href="#65" id="65">65</a>
 </pre><pre class="rust"><code><span class="doccomment">//! Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 //! Bootstrap crate
 //!
@@ -78,8 +77,7 @@
 #![feature(ip)]
 #![feature(let_chains)]
 
-</span><span class="kw">pub use </span>establisher::types::Establisher;
-<span class="kw">use </span>massa_consensus_exports::bootstrapable_graph::BootstrapableGraph;
+</span><span class="kw">use </span>massa_consensus_exports::bootstrapable_graph::BootstrapableGraph;
 <span class="kw">use </span>massa_final_state::FinalState;
 <span class="kw">use </span>massa_network_exports::BootstrapPeers;
 <span class="kw">use </span>parking_lot::RwLock;
@@ -95,7 +93,7 @@
 <span class="kw">mod </span>settings;
 <span class="kw">mod </span>tools;
 <span class="kw">pub use </span>client::get_state;
-<span class="kw">pub use </span>establisher::types;
+<span class="kw">pub use </span>establisher::DefaultEstablisher;
 <span class="kw">pub use </span>messages::{
     BootstrapClientMessage, BootstrapClientMessageDeserializer, BootstrapClientMessageSerializer,
     BootstrapServerMessage, BootstrapServerMessageDeserializer, BootstrapServerMessageSerializer,
@@ -105,7 +103,7 @@
 <span class="kw">pub use </span>settings::{BootstrapConfig, BootstrapServerMessageDeserializerArgs};
 
 <span class="attr">#[cfg(test)]
-</span><span class="kw">pub mod </span>tests;
+</span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">mod </span>tests;
 
 <span class="doccomment">/// a collection of the bootstrap state snapshots of all relevant modules
 </span><span class="kw">pub struct </span>GlobalBootstrapState {
