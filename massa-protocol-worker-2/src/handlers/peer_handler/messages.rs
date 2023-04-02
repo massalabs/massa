@@ -3,7 +3,12 @@ use std::{
     net::{IpAddr, SocketAddr},
 };
 
-use peernet::{error::PeerNetError, peer_id::PeerId, transports::TransportType};
+use massa_serialization::{Serializer, U64VarIntSerializer};
+use peernet::{
+    error::{PeerNetError, PeerNetResult},
+    peer_id::PeerId,
+    transports::TransportType,
+};
 
 #[derive(Debug, Clone)]
 pub enum PeerManagementMessage {
@@ -15,13 +20,13 @@ pub enum PeerManagementMessage {
 
 //TODO: Use a proper serialization system like we have in the rest of massa.
 impl PeerManagementMessage {
-    pub fn from_bytes(bytes: &[u8]) -> Result<Self, PeerNetError> {
-        match bytes[0] {
+    pub fn from_bytes(message_id: u64, bytes: &[u8]) -> PeerNetResult<Self> {
+        match message_id {
             0 => {
-                let peer_id = PeerId::from_bytes(&bytes[1..33].try_into().unwrap())?;
-                let nb_listeners = u64::from_be_bytes(bytes[33..41].try_into().unwrap());
+                let peer_id = PeerId::from_bytes(&bytes[0..32].try_into().unwrap())?;
+                let nb_listeners = u64::from_be_bytes(bytes[32..40].try_into().unwrap());
                 let mut listeners = HashMap::with_capacity(nb_listeners as usize);
-                let mut offset = 41;
+                let mut offset = 40;
                 for _ in 0..nb_listeners {
                     let ip = match bytes[offset] {
                         4 => {
@@ -36,14 +41,24 @@ impl PeerManagementMessage {
                             offset += 16;
                             IpAddr::from(bytes)
                         }
-                        _ => return Err(PeerNetError::InvalidMessage),
+                        _ => {
+                            return Err(PeerNetError::InvalidMessage.error(
+                                "Invalid deserialization peer message",
+                                Some("Invalid ip type".to_string()),
+                            ))
+                        }
                     };
                     let port = u16::from_be_bytes(bytes[offset..offset + 2].try_into().unwrap());
                     offset += 2;
                     let transport_type = match bytes[offset] {
                         0 => TransportType::Tcp,
                         1 => TransportType::Quic,
-                        _ => return Err(PeerNetError::InvalidMessage),
+                        _ => {
+                            return Err(PeerNetError::InvalidMessage.error(
+                                "Invalid deserialization peer message",
+                                Some("Invalid transport type".to_string()),
+                            ))
+                        }
                     };
                     offset += 1;
                     listeners.insert(SocketAddr::new(ip, port), transport_type);
@@ -53,9 +68,9 @@ impl PeerManagementMessage {
                 )))
             }
             1 => {
-                let nb_peers = u64::from_le_bytes(bytes[1..9].try_into().unwrap());
+                let nb_peers = u64::from_le_bytes(bytes[0..8].try_into().unwrap());
                 let mut peers = Vec::with_capacity(nb_peers as usize);
-                let mut offset = 9;
+                let mut offset = 8;
                 for _ in 0..nb_peers {
                     let peer_id =
                         PeerId::from_bytes(&bytes[offset..offset + 32].try_into().unwrap())?;
@@ -77,7 +92,12 @@ impl PeerManagementMessage {
                                     bytes[offset..offset + 16].try_into().unwrap();
                                 IpAddr::from(bytes)
                             }
-                            _ => return Err(PeerNetError::InvalidMessage),
+                            _ => {
+                                return Err(PeerNetError::InvalidMessage.error(
+                                    "Invalid deserialization peer message",
+                                    Some("Invalid ip type".to_string()),
+                                ))
+                            }
                         };
                         offset += 16;
                         let port =
@@ -86,7 +106,12 @@ impl PeerManagementMessage {
                         let transport_type = match bytes[offset] {
                             0 => TransportType::Tcp,
                             1 => TransportType::Quic,
-                            _ => return Err(PeerNetError::InvalidMessage),
+                            _ => {
+                                return Err(PeerNetError::InvalidMessage.error(
+                                    "Invalid deserialization peer message",
+                                    Some("Invalid transport type".to_string()),
+                                ))
+                            }
                         };
                         offset += 1;
                         listeners.insert(SocketAddr::new(ip, port), transport_type);
@@ -95,14 +120,19 @@ impl PeerManagementMessage {
                 }
                 Ok(PeerManagementMessage::ListPeers(peers))
             }
-            _ => Err(PeerNetError::InvalidMessage),
+            _ => Err(PeerNetError::InvalidMessage.error(
+                "Invalid deserialization peer message",
+                Some("Invalid id".to_string()),
+            )),
         }
     }
 
     pub fn to_bytes(&self) -> Vec<u8> {
+        let id_serializer = U64VarIntSerializer::new();
         match self {
             PeerManagementMessage::NewPeerConnected((peer_id, listeners)) => {
-                let mut bytes = vec![0];
+                let mut bytes = vec![];
+                let _ = id_serializer.serialize(&0, &mut bytes);
                 bytes.extend_from_slice(&peer_id.to_bytes());
                 bytes.extend((listeners.len() as u64).to_be_bytes());
                 for listener in listeners {
@@ -124,7 +154,8 @@ impl PeerManagementMessage {
                 bytes
             }
             PeerManagementMessage::ListPeers(peers) => {
-                let mut bytes = vec![1];
+                let mut bytes = vec![];
+                let _ = id_serializer.serialize(&1, &mut bytes);
                 let nb_peers = peers.len() as u64;
                 bytes.extend_from_slice(&nb_peers.to_le_bytes());
                 for (peer_id, listeners) in peers {

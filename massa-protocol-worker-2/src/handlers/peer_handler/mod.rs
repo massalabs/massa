@@ -6,13 +6,14 @@ use std::{
     time::Duration,
 };
 
+use crossbeam::channel::Sender;
 use massa_serialization::{DeserializeError, Deserializer, Serializer};
 use parking_lot::RwLock;
 use rand::{rngs::StdRng, RngCore, SeedableRng};
 
 use peernet::{
-    error::PeerNetError,
-    handlers::{MessageHandler, MessageHandlers},
+    error::{PeerNetError, PeerNetResult},
+    messages::MessagesHandler as PeerNetMessagesHandler,
     peer::HandshakeHandler,
     peer_id::PeerId,
     transports::{endpoint::Endpoint, TransportType},
@@ -54,13 +55,14 @@ pub struct PeerInfo {
 }
 
 impl PeerManagementHandler {
-    pub fn new(initial_peers: InitialPeers) -> (Self, MessageHandler) {
+    pub fn new(initial_peers: InitialPeers) -> (Self, Sender<(PeerId, u64, Vec<u8>)>) {
         let (sender, receiver) = crossbeam::channel::unbounded();
         for (peer_id, listeners) in &initial_peers {
             println!("Sending initial peer: {:?}", peer_id);
             sender
                 .send((
                     peer_id.clone(),
+                    0,
                     PeerManagementMessage::NewPeerConnected((peer_id.clone(), listeners.clone()))
                         .to_bytes(),
                 ))
@@ -71,9 +73,9 @@ impl PeerManagementHandler {
             let peer_db = peer_db.clone();
             move || {
                 loop {
-                    let (peer_id, message) = receiver.recv().unwrap();
+                    let (peer_id, message_id, message) = receiver.recv().unwrap();
                     println!("Received message len: {}", message.len());
-                    let message = PeerManagementMessage::from_bytes(&message).unwrap();
+                    let message = PeerManagementMessage::from_bytes(message_id, &message).unwrap();
                     println!("Received message from peer: {:?}", peer_id);
                     println!("Message: {:?}", message);
                     // TODO: Bufferize launch of test thread
@@ -100,7 +102,7 @@ impl PeerManagementHandler {
                 peer_db,
                 thread_join: Some(thread_join),
             },
-            MessageHandler::new(sender),
+            sender,
         )
     }
 }
@@ -126,28 +128,32 @@ impl MassaHandshake {
 }
 
 impl HandshakeHandler for MassaHandshake {
-    fn perform_handshake(
+    fn perform_handshake<MassaMessagesHandler: PeerNetMessagesHandler>(
         &mut self,
         keypair: &KeyPair,
         endpoint: &mut Endpoint,
         listeners: &HashMap<SocketAddr, TransportType>,
-        message_handlers: &MessageHandlers,
-    ) -> Result<PeerId, PeerNetError> {
+        messages_handler: MassaMessagesHandler,
+    ) -> PeerNetResult<PeerId> {
         let mut bytes = PeerId::from_public_key(keypair.get_public_key()).to_bytes();
         //TODO: Add version in announce
         let listeners_announcement = Announcement::new(listeners.clone(), keypair).unwrap();
         self.announcement_serializer
             .serialize(&listeners_announcement, &mut bytes)
             .map_err(|err| {
-                PeerNetError::HandshakeError(format!("Failed to serialize announcement: {}", err))
+                PeerNetError::HandshakeError.error(
+                    "Massa Handshake",
+                    Some(format!("Failed to serialize announcement: {}", err)),
+                )
             })?;
         endpoint.send(&bytes)?;
 
         let received = endpoint.receive()?;
         if received.is_empty() {
-            return Err(PeerNetError::HandshakeError(String::from(
-                "Received empty message",
-            )));
+            return Err(PeerNetError::HandshakeError.error(
+                "Massa Handshake",
+                Some(String::from("Received empty message")),
+            ));
         }
         let mut offset = 0;
         //TODO: We use this to verify the signature before sending it to the handler.
@@ -158,29 +164,23 @@ impl HandshakeHandler for MassaHandshake {
             .announcement_deserializer
             .deserialize::<DeserializeError>(&received[offset..])
             .map_err(|err| {
-                PeerNetError::HandshakeError(format!("Failed to deserialize announcement: {}", err))
+                PeerNetError::HandshakeError.error(
+                    "Massa Handshake",
+                    Some(format!("Failed to serialize announcement: {}", err)),
+                )
             })?;
         if peer_id
             .verify_signature(&announcement.hash, &announcement.signature)
             .is_err()
         {
-            return Err(PeerNetError::HandshakeError(String::from(
-                "Invalid signature",
-            )));
+            return Err(PeerNetError::HandshakeError
+                .error("Massa Handshake", Some("Invalid signature".to_string())));
         }
-        //TODO: Verify that the handler is defined
-        message_handlers
-            .get_handler(0)
-            .unwrap()
-            .send_message((
-                peer_id.clone(),
-                PeerManagementMessage::NewPeerConnected((
-                    peer_id.clone(),
-                    announcement.listeners.clone(),
-                ))
-                .to_bytes(),
-            ))
-            .unwrap();
+        //TODO: Avoid re-serializing
+        let peer_message =
+            PeerManagementMessage::NewPeerConnected((peer_id.clone(), announcement.listeners));
+        let peer_message_serialized = peer_message.to_bytes();
+        messages_handler.deserialize_and_handle(&peer_message_serialized, &peer_id)?;
 
         let mut self_random_bytes = [0u8; 32];
         StdRng::from_entropy().fill_bytes(&mut self_random_bytes);
@@ -217,8 +217,7 @@ pub fn fallback_function(
     keypair: &KeyPair,
     endpoint: &mut Endpoint,
     listeners: &HashMap<SocketAddr, TransportType>,
-    _message_handlers: &MessageHandlers,
-) -> Result<(), PeerNetError> {
+) -> PeerNetResult<()> {
     //TODO: Fix this clone
     let keypair = keypair.clone();
     let mut endpoint = endpoint.clone();

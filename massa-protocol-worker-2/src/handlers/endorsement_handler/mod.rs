@@ -26,7 +26,7 @@ impl EndorsementHandler {
         pool_controller: Box<dyn PoolController>,
         storage: Storage,
         active_connections: SharedActiveConnections,
-        receiver: Receiver<(PeerId, Vec<u8>)>,
+        receiver: Receiver<(PeerId, u64, Vec<u8>)>,
         receiver_ext: Receiver<EndorsementHandlerCommand>,
     ) -> Self {
         //TODO: Define bound channel

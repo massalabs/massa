@@ -178,6 +178,7 @@ impl Serializer<BlockMessage> for BlockMessageSerializer {
 }
 
 pub struct BlockMessageDeserializer {
+    message_id: u64,
     id_deserializer: U64VarIntDeserializer,
     block_header_deserializer: SecureShareDeserializer<BlockHeader, BlockHeaderDeserializer>,
     block_infos_length_deserializer: U64VarIntDeserializer,
@@ -202,6 +203,7 @@ pub struct BlockMessageDeserializerArgs {
 impl BlockMessageDeserializer {
     pub fn new(args: BlockMessageDeserializerArgs) -> Self {
         Self {
+            message_id: 0,
             id_deserializer: U64VarIntDeserializer::new(Included(0), Included(u64::MAX)),
             block_header_deserializer: SecureShareDeserializer::new(BlockHeaderDeserializer::new(
                 args.thread_count,
@@ -226,6 +228,10 @@ impl BlockMessageDeserializer {
             ),
         }
     }
+
+    pub fn set_message_id(&mut self, message_id: u64) {
+        self.message_id = message_id;
+    }
 }
 
 impl Deserializer<BlockMessage> for BlockMessageDeserializer {
@@ -234,8 +240,7 @@ impl Deserializer<BlockMessage> for BlockMessageDeserializer {
         buffer: &'a [u8],
     ) -> IResult<&'a [u8], BlockMessage, E> {
         context("Failed BlockMessage deserialization", |buffer| {
-            let (input, id) = self.id_deserializer.deserialize(buffer)?;
-            let id = MessageTypeId::try_from(id).map_err(|_| {
+            let id = MessageTypeId::try_from(self.message_id).map_err(|_| {
                 nom::Err::Error(ParseError::from_error_kind(
                     buffer,
                     nom::error::ErrorKind::Eof,
@@ -247,7 +252,7 @@ impl Deserializer<BlockMessage> for BlockMessageDeserializer {
                         self.block_header_deserializer.deserialize(input)
                     })
                     .map(BlockMessage::BlockHeader)
-                    .parse(input)
+                    .parse(buffer)
                 }
                 MessageTypeId::AskForBlocks => context(
                     "Failed AskForBlocks deserialization",
@@ -296,7 +301,7 @@ impl Deserializer<BlockMessage> for BlockMessageDeserializer {
                     ),
                 )
                 .map(BlockMessage::AskForBlocks)
-                .parse(input),
+                .parse(buffer),
                 MessageTypeId::ReplyForBlocks => context(
                     "Failed ReplyForBlocks deserialization",
                     length_count(
@@ -349,7 +354,7 @@ impl Deserializer<BlockMessage> for BlockMessageDeserializer {
                     ),
                 )
                 .map(BlockMessage::ReplyForBlocks)
-                .parse(input),
+                .parse(buffer),
             }
         })
         .parse(buffer)
