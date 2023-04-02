@@ -10,6 +10,7 @@ use massa_models::{
     slot::Slot,
 };
 use massa_storage::Storage;
+use tracing::warn;
 
 /// Possible output of a header check
 #[derive(Debug)]
@@ -45,6 +46,28 @@ pub enum EndorsementsCheckOutcome {
 }
 
 impl ConsensusState {
+    // Verify that we haven't already received 2 blocks for this slot
+    // If the block isn't already present two times we save it and return false
+    // If the block is already present two times we return true
+    pub(crate) fn detect_multistake(&mut self, header: &SecuredHeader) -> bool {
+        let entry = self
+            .nonfinal_active_blocks_per_slot
+            .entry(header.content.slot)
+            .or_default();
+        if !entry.contains(&header.id) {
+            if entry.len() > 1 && !self.wishlist.contains_key(&header.id) {
+                warn!(
+                    "received more than 2 blocks for slot {}",
+                    header.content.slot
+                );
+                return true;
+            } else {
+                entry.insert(header.id);
+            }
+        }
+        false
+    }
+
     /// Check if the header of the block is valid and if it could be processed
     ///
     /// # Returns:
@@ -57,13 +80,18 @@ impl ConsensusState {
         stored_block: SecureShareBlock,
         current_slot: Option<Slot>,
     ) -> Result<Option<BlockInfos>, ConsensusError> {
-        match self.check_header(&block_id, &stored_block.content.header, current_slot, self)? {
+        let header_outcome =
+            self.check_header(&block_id, &stored_block.content.header, current_slot)?;
+        match header_outcome {
             HeaderCheckOutcome::Proceed {
                 parents_hash_period,
                 incompatibilities,
                 inherited_incompatibilities_count,
                 fitness,
             } => {
+                if self.detect_multistake(&stored_block.content.header) {
+                    return Ok(None);
+                }
                 // block is valid: remove it from Incoming and return it
                 massa_trace!("consensus.block_graph.process.incoming_block.valid", {
                     "block_id": block_id
@@ -79,6 +107,9 @@ impl ConsensusState {
                 }));
             }
             HeaderCheckOutcome::WaitForDependencies(dependencies) => {
+                if self.detect_multistake(&stored_block.content.header) {
+                    return Ok(None);
+                }
                 self.store_wait_for_dependencies(
                     block_id,
                     HeaderOrBlock::Block {
@@ -90,6 +121,9 @@ impl ConsensusState {
                 )?;
             }
             HeaderCheckOutcome::WaitForSlot => {
+                if self.detect_multistake(&stored_block.content.header) {
+                    return Ok(None);
+                }
                 self.store_wait_for_slot(
                     block_id,
                     HeaderOrBlock::Block {
@@ -113,8 +147,12 @@ impl ConsensusState {
         header: SecuredHeader,
         current_slot: Option<Slot>,
     ) -> Result<(), ConsensusError> {
-        match self.check_header(&block_id, &header, current_slot, self)? {
+        let header_outcome = self.check_header(&block_id, &header, current_slot)?;
+        match header_outcome {
             HeaderCheckOutcome::Proceed { .. } => {
+                if self.detect_multistake(&header) {
+                    return Ok(());
+                }
                 // set as waiting dependencies
                 let mut dependencies = PreHashSet::<BlockId>::default();
                 dependencies.insert(block_id); // add self as unsatisfied
@@ -138,6 +176,9 @@ impl ConsensusState {
                 );
             }
             HeaderCheckOutcome::WaitForDependencies(mut dependencies) => {
+                if self.detect_multistake(&header) {
+                    return Ok(());
+                }
                 // set as waiting dependencies
                 dependencies.insert(block_id); // add self as unsatisfied
                 self.store_wait_for_dependencies(
@@ -147,6 +188,9 @@ impl ConsensusState {
                 )?;
             }
             HeaderCheckOutcome::WaitForSlot => {
+                if self.detect_multistake(&header) {
+                    return Ok(());
+                }
                 self.store_wait_for_slot(block_id, HeaderOrBlock::Header(header));
             }
             HeaderCheckOutcome::Discard(reason) => {
@@ -264,7 +308,6 @@ impl ConsensusState {
         block_id: &BlockId,
         header: &SecuredHeader,
         current_slot: Option<Slot>,
-        read_shared_state: &ConsensusState,
     ) -> Result<HeaderCheckOutcome, ConsensusError> {
         massa_trace!("consensus.block_graph.check_header", {
             "block_id": block_id
@@ -278,7 +321,7 @@ impl ConsensusState {
         // check that is older than the latest final block in that thread
         // Note: this excludes genesis blocks
         if header.content.slot.period
-            <= read_shared_state.latest_final_blocks_periods[header.content.slot.thread as usize].1
+            <= self.latest_final_blocks_periods[header.content.slot.thread as usize].1
         {
             return Ok(HeaderCheckOutcome::Discard(DiscardReason::Stale));
         }
@@ -325,7 +368,7 @@ impl ConsensusState {
         let parent_set: PreHashSet<BlockId> = header.content.parents.iter().copied().collect();
         for parent_thread in 0u8..self.config.thread_count {
             let parent_hash = header.content.parents[parent_thread as usize];
-            match read_shared_state.block_statuses.get(&parent_hash) {
+            match self.block_statuses.get(&parent_hash) {
                 Some(BlockStatus::Discarded { reason, .. }) => {
                     // parent is discarded
                     return Ok(HeaderCheckOutcome::Discard(match reason {
@@ -353,7 +396,7 @@ impl ConsensusState {
 
                     // inherit parent incompatibilities
                     // and ensure parents are mutually compatible
-                    if let Some(p_incomp) = read_shared_state.gi_head.get(&parent_hash) {
+                    if let Some(p_incomp) = self.gi_head.get(&parent_hash) {
                         if !p_incomp.is_disjoint(&parent_set) {
                             return Ok(HeaderCheckOutcome::Discard(DiscardReason::Invalid(
                                 "Parent not mutually compatible".to_string(),
@@ -366,7 +409,7 @@ impl ConsensusState {
                 }
                 _ => {
                     // parent is missing or queued
-                    if read_shared_state.genesis_hashes.contains(&parent_hash) {
+                    if self.genesis_hashes.contains(&parent_hash) {
                         // forbid depending on discarded genesis block
                         return Ok(HeaderCheckOutcome::Discard(DiscardReason::Stale));
                     }
@@ -384,7 +427,7 @@ impl ConsensusState {
             let mut gp_max_slots = vec![0u64; self.config.thread_count as usize];
             for parent_i in 0..self.config.thread_count {
                 let (parent_h, parent_period) = parents[parent_i as usize];
-                let parent = match read_shared_state.block_statuses.get(&parent_h) {
+                let parent = match self.block_statuses.get(&parent_h) {
                     Some(BlockStatus::Active {
                         a_block,
                         storage: _,
@@ -413,7 +456,7 @@ impl ConsensusState {
                         continue;
                     }
                     let gp_h = parent.parents[gp_i as usize].0;
-                    match read_shared_state.block_statuses.get(&gp_h) {
+                    match self.block_statuses.get(&gp_h) {
                         // this grandpa is discarded
                         Some(BlockStatus::Discarded { reason, .. }) => {
                             return Ok(HeaderCheckOutcome::Discard(reason.clone()));
@@ -439,7 +482,7 @@ impl ConsensusState {
         }
 
         // get parent in own thread
-        let parent_in_own_thread = match read_shared_state
+        let parent_in_own_thread = match self
             .block_statuses
             .get(&parents[header.content.slot.thread as usize].0)
         {
@@ -480,7 +523,7 @@ impl ConsensusState {
             // traverse parent's descendants in tau
             let mut to_explore = vec![(0usize, header.content.parents[tau as usize])];
             while let Some((cur_gen, cur_h)) = to_explore.pop() {
-                let cur_b = match read_shared_state.block_statuses.get(&cur_h) {
+                let cur_b = match self.block_statuses.get(&cur_h) {
                     Some(BlockStatus::Active { a_block, storage: _ }) => Some(a_block),
                     _ => None,
                 }.ok_or_else(|| ConsensusError::ContainerInconsistency(format!("inconsistency inside block statuses searching {} while checking grandpa incompatibility of block {}",cur_h,  block_id)))?;
@@ -513,7 +556,7 @@ impl ConsensusState {
 
                 // check if the parent in tauB has a strictly lower period number than B's parent in tauB
                 // note: cur_b cannot be genesis at gen > 1
-                let parent_period = match read_shared_state.block_statuses.get(&parent_id) {
+                let parent_period = match self.block_statuses.get(&parent_id) {
                     Some(BlockStatus::Active { a_block, storage: _ }) => Some(a_block),
                     _ => None,
                 }.ok_or_else(||
@@ -538,12 +581,11 @@ impl ConsensusState {
 
         // check if the block is incompatible with a final block
         if !incomp.is_disjoint(
-            &read_shared_state
+            &self
                 .active_index
                 .iter()
                 .filter_map(|h| {
-                    if let Some(BlockStatus::Active { a_block: a, .. }) =
-                        read_shared_state.block_statuses.get(h)
+                    if let Some(BlockStatus::Active { a_block: a, .. }) = self.block_statuses.get(h)
                     {
                         if a.is_final {
                             return Some(*h);
