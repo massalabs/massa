@@ -1175,7 +1175,7 @@ mod tests {
         assert!(events[0].data.contains("massa_execution_error"));
         assert!(events[0]
             .data
-            .contains("We reach the vesting constraint : vesting_min_balance=100000 with value min_balance=60000"));
+            .contains("We reach the vesting constraint: vesting_min_balance=100000 with value min_balance=60000"));
 
         // check recipient balance
         assert!(sample_state
@@ -1267,7 +1267,7 @@ mod tests {
         let events = controller.get_filtered_sc_output_event(EventFilter::default());
         assert!(events[0].data.contains("massa_execution_error"));
         assert!(events[0].data.contains(
-            "We reach the vesting constraint : trying to get to a total of 160 rolls but only 50 are allowed at that time by the vesting scheme"
+            "We reach the vesting constraint: trying to get to a total of 160 rolls but only 50 are allowed at that time by the vesting scheme"
         ));
 
         // check roll count of the buyer address and its balance, same as start because operation was rejected
