@@ -151,6 +151,7 @@ impl FinalState {
                 // Then, interpolate the downtime, to attach at end_slot;
                 final_state.last_start_period = last_start_period;
 
+                // We compute the draws here because we need to feed_cycles when interpolating
                 final_state.compute_initial_draws()?;
 
                 final_state.interpolate_downtime()?;
@@ -166,7 +167,7 @@ impl FinalState {
 
     /// Once we created a FinalState from a snapshot, we need to edit it to attach at the end_slot and handle the downtime
     fn interpolate_downtime(&mut self) -> Result<(), FinalStateError> {
-        // TODO: Change the current_slot when we deserialize the final state from RocksDB. Until then, final_state slot and the ledger slot are not consistant!
+        // TODO: Change the current_slot when we deserialize the final state from RocksDB. Until then, final_state slot and the ledger slot are not consistent!
         // let current_slot = self.slot;
         let current_slot = Slot::new(0, self.config.thread_count.saturating_sub(1));
         let current_slot_cycle = current_slot.get_cycle(self.config.periods_per_cycle);
@@ -255,6 +256,11 @@ impl FinalState {
         for _ in current_slot.period..self.config.periods_per_cycle {
             latest_cycle_info.rng_seed.push(false);
         }
+
+        // TODO: Replace the for loops with this. Check for "n+1" errors
+
+        //latest_cycle_info.rng_seed.extend(vec![false; (current_slot.period..self.config.periods_per_cycle).count()]);
+
         latest_cycle_info.complete = true;
 
         // Feed final_state_hash to the completed cycle
