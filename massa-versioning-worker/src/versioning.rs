@@ -614,16 +614,12 @@ impl MipStoreRaw {
         }
 
         if should_merge {
-            if !to_update.is_empty() || !to_add.is_empty() {
-                let added = to_add.keys().cloned().collect();
-                let updated = to_update.keys().cloned().collect();
+            let added = to_add.keys().cloned().collect();
+            let updated = to_update.keys().cloned().collect();
 
-                self.store.append(&mut to_update);
-                self.store.append(&mut to_add);
-                Ok((updated, added))
-            } else {
-                Ok((vec![], vec![]))
-            }
+            self.store.append(&mut to_update);
+            self.store.append(&mut to_add);
+            Ok((updated, added))
         } else {
             Err(())
         }
