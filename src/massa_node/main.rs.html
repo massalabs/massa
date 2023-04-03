@@ -909,6 +909,17 @@
 <a href="#909" id="909">909</a>
 <a href="#910" id="910">910</a>
 <a href="#911" id="911">911</a>
+<a href="#912" id="912">912</a>
+<a href="#913" id="913">913</a>
+<a href="#914" id="914">914</a>
+<a href="#915" id="915">915</a>
+<a href="#916" id="916">916</a>
+<a href="#917" id="917">917</a>
+<a href="#918" id="918">918</a>
+<a href="#919" id="919">919</a>
+<a href="#920" id="920">920</a>
+<a href="#921" id="921">921</a>
+<a href="#922" id="922">922</a>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="attr">#![doc = <span class="macro">include_str!</span>(<span class="string">&quot;../../README.md&quot;</span>)]
@@ -951,11 +962,12 @@
     MAX_GAS_PER_BLOCK, MAX_LEDGER_CHANGES_COUNT, MAX_MESSAGE_SIZE, MAX_OPERATIONS_PER_BLOCK,
     MAX_OPERATION_DATASTORE_ENTRY_COUNT, MAX_OPERATION_DATASTORE_KEY_LENGTH,
     MAX_OPERATION_DATASTORE_VALUE_LENGTH, MAX_PARAMETERS_SIZE, MAX_PRODUCTION_STATS_LENGTH,
-    MAX_ROLLS_COUNT_LENGTH, NETWORK_CONTROLLER_CHANNEL_SIZE, NETWORK_EVENT_CHANNEL_SIZE,
-    NETWORK_NODE_COMMAND_CHANNEL_SIZE, NETWORK_NODE_EVENT_CHANNEL_SIZE, OPERATION_VALIDITY_PERIODS,
-    PERIODS_PER_CYCLE, POOL_CONTROLLER_CHANNEL_SIZE, POS_MISS_RATE_DEACTIVATION_THRESHOLD,
-    POS_SAVED_CYCLES, PROTOCOL_CONTROLLER_CHANNEL_SIZE, PROTOCOL_EVENT_CHANNEL_SIZE, ROLL_PRICE,
-    T0, THREAD_COUNT, VERSION,
+    MAX_ROLLS_COUNT_LENGTH, MIP_STORE_STATS_BLOCK_CONSIDERED, MIP_STORE_STATS_COUNTERS_MAX,
+    NETWORK_CONTROLLER_CHANNEL_SIZE, NETWORK_EVENT_CHANNEL_SIZE, NETWORK_NODE_COMMAND_CHANNEL_SIZE,
+    NETWORK_NODE_EVENT_CHANNEL_SIZE, OPERATION_VALIDITY_PERIODS, PERIODS_PER_CYCLE,
+    POOL_CONTROLLER_CHANNEL_SIZE, POS_MISS_RATE_DEACTIVATION_THRESHOLD, POS_SAVED_CYCLES,
+    PROTOCOL_CONTROLLER_CHANNEL_SIZE, PROTOCOL_EVENT_CHANNEL_SIZE, ROLL_PRICE, T0, THREAD_COUNT,
+    VERSION,
 };
 <span class="kw">use </span>massa_models::config::CONSENSUS_BOOTSTRAP_PART_SIZE;
 <span class="kw">use </span>massa_network_exports::{Establisher, NetworkConfig, NetworkManager};
@@ -971,6 +983,7 @@
 <span class="kw">use </span>massa_protocol_worker::start_protocol_controller;
 <span class="kw">use </span>massa_storage::Storage;
 <span class="kw">use </span>massa_time::MassaTime;
+<span class="kw">use </span>massa_versioning_worker::versioning::{MipStatsConfig, MipStore};
 <span class="kw">use </span>massa_wallet::Wallet;
 <span class="kw">use </span>parking_lot::RwLock;
 <span class="kw">use </span>std::path::PathBuf;
@@ -1230,6 +1243,14 @@
             .checked_mul_u64(LEDGER_ENTRY_DATASTORE_BASE_SIZE <span class="kw">as </span>u64)
             .expect(<span class="string">&quot;Overflow when creating constant ledger_entry_datastore_base_size&quot;</span>),
     };
+
+    <span class="comment">// Creates an empty default store
+    </span><span class="kw">let </span>mip_stats_config = MipStatsConfig {
+        block_count_considered: MIP_STORE_STATS_BLOCK_CONSIDERED,
+        counters_max: MIP_STORE_STATS_COUNTERS_MAX,
+    };
+    <span class="kw">let </span>mip_store = MipStore::try_from(([], mip_stats_config)).unwrap();
+
     <span class="comment">// launch execution module
     </span><span class="kw">let </span>execution_config = ExecutionConfig {
         max_final_events: SETTINGS.execution.max_final_events,
@@ -1264,6 +1285,7 @@
         execution_config,
         final_state.clone(),
         selector_controller.clone(),
+        mip_store.clone(),
     );
 
     <span class="comment">// launch pool controller
