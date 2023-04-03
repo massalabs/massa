@@ -75,7 +75,7 @@ impl InterfaceImpl {
 
         let vesting_file = super::tests::get_initials_vesting(false);
         let config = ExecutionConfig::default();
-        let (final_state, _tempfile, _tempdir) = super::tests::get_sample_state().unwrap();
+        let (final_state, _tempfile, _tempdir) = super::tests::get_sample_state(0).unwrap();
         let module_cache = Arc::new(RwLock::new(ModuleCache::new(GasCosts::default(), 1000)));
         let vesting_manager = Arc::new(
             crate::vesting_manager::VestingManager::new(

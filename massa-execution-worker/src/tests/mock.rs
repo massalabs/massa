@@ -104,8 +104,9 @@ pub fn get_random_address_full() -> (Address, KeyPair) {
     (Address::from_public_key(&keypair.get_public_key()), keypair)
 }
 
-pub fn get_sample_state() -> Result<(Arc<RwLock<FinalState>>, NamedTempFile, TempDir), LedgerError>
-{
+pub fn get_sample_state(
+    last_start_period: u64,
+) -> Result<(Arc<RwLock<FinalState>>, NamedTempFile, TempDir), LedgerError> {
     let (rolls_file, ledger) = get_initials();
     let (ledger_config, tempfile, tempdir) = LedgerConfig::sample(&ledger);
     let mut ledger = FinalLedger::new(ledger_config.clone(), false);
@@ -124,7 +125,17 @@ pub fn get_sample_state() -> Result<(Arc<RwLock<FinalState>>, NamedTempFile, Tem
     };
     let (_, selector_controller) = start_selector_worker(SelectorConfig::default())
         .expect("could not start selector controller");
-    let mut final_state = FinalState::new(cfg, Box::new(ledger), selector_controller).unwrap();
+    let mut final_state = if last_start_period > 0 {
+        FinalState::new_derived_from_snapshot(
+            cfg,
+            Box::new(ledger),
+            selector_controller,
+            last_start_period,
+        )
+        .unwrap()
+    } else {
+        FinalState::new(cfg, Box::new(ledger), selector_controller).unwrap()
+    };
     final_state.compute_initial_draws().unwrap();
     final_state.pos_state.create_initial_cycle();
     Ok((Arc::new(RwLock::new(final_state)), tempfile, tempdir))
