@@ -228,15 +228,13 @@ impl<D: Duplex, C: NetworkCommandSenderTrait + Clone> BootstrapServer<'_, D, C> 
     ) -> Result<Result<(), BsConn<TcpStream>>, BootstrapError> {
         loop {
             let (msg, addr) = listener.accept().map_err(BootstrapError::IoError)?;
-            match listener_tx.send((msg, addr)) {
-                Ok(_) => continue,
-                Err(SendError((dplx, remote_addr))) => {
-                    warn!(
-                        "listener channel disconnected after accepting connection from {}",
-                        remote_addr
-                    );
-                    return Ok(Err((dplx, remote_addr)));
-                }
+
+            if let Err(SendError((dplx, remote_addr))) = listener_tx.send((msg, addr)) {
+                warn!(
+                    "listener channel disconnected after accepting connection from {}",
+                    remote_addr
+                );
+                return Ok(Err((dplx, remote_addr)));
             };
         }
     }
@@ -262,7 +260,7 @@ impl<D: Duplex, C: NetworkCommandSenderTrait + Clone> BootstrapServer<'_, D, C> 
         loop {
             // block until we have a connection to work with, or break out of main-loop
             // if a stop-signal is received
-            let Some((dplx, remote_addr)) = self.receive_connection(&mut selector).map_err(BootstrapError::GeneralError)? else { break; };
+            let Some((dplx, remote_addr)) = self.receive_connection(&mut selector)? else { break; };
             // claim a slot in the max_bootstrap_sessions
             let server_binding = BootstrapServerBinder::new(
                 dplx,
@@ -375,7 +373,10 @@ impl<D: Duplex, C: NetworkCommandSenderTrait + Clone> BootstrapServer<'_, D, C> 
     /// - 3.a. double check the stop-signal is absent
     /// - 3.b. If present, fall-back to the stop behaviour
     /// - 3.c. If absent, all's clear to rock-n-roll.
-    fn receive_connection(&self, selector: &mut Select) -> Result<Option<BsConn<D>>, String> {
+    fn receive_connection(
+        &self,
+        selector: &mut Select,
+    ) -> Result<Option<BsConn<D>>, BootstrapError> {
         // 1. Block until _something_ is ready
         let rdy = selector.ready();
 
@@ -396,7 +397,9 @@ impl<D: Duplex, C: NetworkCommandSenderTrait + Clone> BootstrapServer<'_, D, C> 
                 // 3.b. If present, fall-back to the stop behaviour
                 return Ok(None);
             } else if unlikely(stop == Err(crossbeam::channel::TryRecvError::Disconnected)) {
-                return Err("Unexpected stop-channel disconnection".to_string());
+                return Err(BootstrapError::GeneralError(
+                    "Unexpected stop-channel disconnection".to_string(),
+                ));
             };
         }
         // - 3.c. If absent, all's clear to rock-n-roll.
@@ -405,7 +408,9 @@ impl<D: Duplex, C: NetworkCommandSenderTrait + Clone> BootstrapServer<'_, D, C> 
             Err(try_rcv_err) => match try_rcv_err {
                 crossbeam::channel::TryRecvError::Empty => return Ok(None),
                 crossbeam::channel::TryRecvError::Disconnected => {
-                    return Err("listener recv channel disconnected unexpectedly".to_string());
+                    return Err(BootstrapError::GeneralError(
+                        "listener recv channel disconnected unexpectedly".to_string(),
+                    ));
                 }
             },
         };
@@ -603,16 +608,7 @@ pub async fn stream_bootstrap_information<D: Duplex>(
         }
 
         if slot_too_old {
-            match server.send_msg(write_timeout, BootstrapServerMessage::SlotTooOld) {
-                Err(BootstrapError::TimedOut(_)) => Err(std::io::Error::new(
-                    std::io::ErrorKind::TimedOut,
-                    "SlotTooOld message send timed out",
-                )
-                .into()),
-                Err(e) => Err(e),
-                Ok(_) => Ok(()),
-            }?;
-            return Ok(());
+            return server.send_msg(write_timeout, BootstrapServerMessage::SlotTooOld);
         }
 
         // Setup final state global cursor
@@ -665,20 +661,12 @@ pub async fn stream_bootstrap_information<D: Duplex>(
             && final_state_changes_step.finished()
             && last_consensus_step.finished()
         {
-            match server.send_msg(write_timeout, BootstrapServerMessage::BootstrapFinished) {
-                Err(BootstrapError::TimedOut(_)) => Err(std::io::Error::new(
-                    std::io::ErrorKind::TimedOut,
-                    "bootstrap ask ledger part send timed out",
-                )
-                .into()),
-                Err(e) => Err(e),
-                Ok(_) => Ok(()),
-            }?;
+            server.send_msg(write_timeout, BootstrapServerMessage::BootstrapFinished)?;
             break;
         }
 
         // At this point we know that consensus, final state or both are not finished
-        match server.send_msg(
+        server.send_msg(
             write_timeout,
             BootstrapServerMessage::BootstrapPart {
                 slot: current_slot,
@@ -691,15 +679,7 @@ pub async fn stream_bootstrap_information<D: Duplex>(
                 consensus_part,
                 consensus_outdated_ids,
             },
-        ) {
-            Err(BootstrapError::TimedOut(_)) => Err(std::io::Error::new(
-                std::io::ErrorKind::TimedOut,
-                "bootstrap ask ledger part send timed out",
-            )
-            .into()),
-            Err(e) => Err(e),
-            Ok(_) => Ok(()),
-        }?;
+        )?;
     }
     Ok(())
 }
@@ -716,17 +696,7 @@ async fn manage_bootstrap<D: Duplex, C: NetworkCommandSenderTrait>(
     massa_trace!("bootstrap.lib.manage_bootstrap", {});
     let read_error_timeout: Duration = bootstrap_config.read_error_timeout.into();
 
-    match server.handshake_timeout(version, Some(bootstrap_config.read_timeout.into())) {
-        Err(BootstrapError::TimedOut(_)) => {
-            return Err(std::io::Error::new(
-                std::io::ErrorKind::TimedOut,
-                "bootstrap handshake send timed out",
-            )
-            .into());
-        }
-        Err(e) => return Err(e),
-        Ok(_) => (),
-    };
+    server.handshake_timeout(version, Some(bootstrap_config.read_timeout.into()))?;
 
     match server.next_timeout(Some(read_error_timeout)) {
         Err(BootstrapError::TimedOut(_)) => {}
@@ -742,21 +712,13 @@ async fn manage_bootstrap<D: Duplex, C: NetworkCommandSenderTrait>(
     // Sync clocks.
     let server_time = MassaTime::now()?;
 
-    match server.send_msg(
+    server.send_msg(
         write_timeout,
         BootstrapServerMessage::BootstrapTime {
             server_time,
             version,
         },
-    ) {
-        Err(BootstrapError::TimedOut(_)) => Err(std::io::Error::new(
-            std::io::ErrorKind::TimedOut,
-            "bootstrap clock send timed out",
-        )
-        .into()),
-        Err(e) => Err(e),
-        Ok(_) => Ok(()),
-    }?;
+    )?;
 
     loop {
         match server.next_timeout(Some(bootstrap_config.read_timeout.into())) {
@@ -764,20 +726,12 @@ async fn manage_bootstrap<D: Duplex, C: NetworkCommandSenderTrait>(
             Err(e) => break Err(e),
             Ok(msg) => match msg {
                 BootstrapClientMessage::AskBootstrapPeers => {
-                    match server.send_msg(
+                    server.send_msg(
                         write_timeout,
                         BootstrapServerMessage::BootstrapPeers {
                             peers: network_command_sender.get_bootstrap_peers().await?,
                         },
-                    ) {
-                        Err(BootstrapError::TimedOut(_)) => Err(std::io::Error::new(
-                            std::io::ErrorKind::TimedOut,
-                            "bootstrap peers send timed out",
-                        )
-                        .into()),
-                        Err(e) => Err(e),
-                        Ok(_) => Ok(()),
-                    }?;
+                    )?;
                 }
                 BootstrapClientMessage::AskBootstrapPart {
                     last_slot,

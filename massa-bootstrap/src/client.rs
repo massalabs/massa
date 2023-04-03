@@ -32,31 +32,13 @@ fn stream_final_state_and_consensus<D: Duplex>(
     global_bootstrap_state: &mut GlobalBootstrapState,
 ) -> Result<(), BootstrapError> {
     if let BootstrapClientMessage::AskBootstrapPart { .. } = &next_bootstrap_message {
-        match client.send_timeout(
+        client.send_timeout(
             next_bootstrap_message,
             Some(cfg.write_timeout.to_duration()),
-        ) {
-            Err(BootstrapError::TimedOut(_)) => Err(std::io::Error::new(
-                std::io::ErrorKind::TimedOut,
-                "bootstrap ask ledger part send timed out",
-            )
-            .into()),
-            Err(e) => Err(e),
-            Ok(_) => Ok(()),
-        }?;
+        )?;
+
         loop {
-            let msg = match client.next_timeout(Some(cfg.read_timeout.to_duration())) {
-                Err(BootstrapError::TimedOut(_)) => {
-                    return Err(std::io::Error::new(
-                        std::io::ErrorKind::TimedOut,
-                        "final state bootstrap read timed out",
-                    )
-                    .into());
-                }
-                Err(e) => return Err(e),
-                Ok(msg) => msg,
-            };
-            match msg {
+            match client.next_timeout(Some(cfg.read_timeout.to_duration()))? {
                 BootstrapServerMessage::BootstrapPart {
                     slot,
                     ledger_part,
@@ -170,14 +152,12 @@ fn stream_final_state_and_consensus<D: Duplex>(
                     return Err(BootstrapError::GeneralError(String::from("Slot too old")));
                 }
                 BootstrapServerMessage::BootstrapError { error } => {
-                    return Err(std::io::Error::new(std::io::ErrorKind::InvalidData, error).into())
+                    return Err(BootstrapError::GeneralError(error))
                 }
                 _ => {
-                    return Err(std::io::Error::new(
-                        std::io::ErrorKind::InvalidData,
-                        "unexpected message",
-                    )
-                    .into())
+                    return Err(BootstrapError::GeneralError(
+                        "unexpected message".to_string(),
+                    ))
                 }
             }
         }
@@ -219,18 +199,12 @@ fn bootstrap_from_server<D: Duplex>(
     // handshake
     let send_time_uncompensated = MassaTime::now()?;
     // client.handshake() is not cancel-safe but we drop the whole client object if cancelled => it's OK
-    match // tokio::time::timeout(cfg.write_timeout.into(),
-    client.handshake(our_version) {
-        Err(BootstrapError::TimedOut(_)) => {
-            return Err(std::io::Error::new(
-                std::io::ErrorKind::TimedOut,
-                "bootstrap handshake timed out",
-            )
-            .into());
-        }
-        Err(e) => return Err(e),
-        Ok(_) => {}
-    }
+    // match // tokio::time::timeout(cfg.write_timeout.into(),
+    // client.handshake(our_version) {
+    // Err(e) => return Err(e),
+    // Ok(_) => {}
+    // }
+    client.handshake(our_version)?;
 
     // compute ping
     let ping = MassaTime::now()?.saturating_sub(send_time_uncompensated);
@@ -243,13 +217,6 @@ fn bootstrap_from_server<D: Duplex>(
     // First, clock and version.
     // client.next() is not cancel-safe but we drop the whole client object if cancelled => it's OK
     let server_time = match client.next_timeout(Some(cfg.read_timeout.into())) {
-        Err(BootstrapError::TimedOut(_)) => {
-            return Err(std::io::Error::new(
-                std::io::ErrorKind::TimedOut,
-                "bootstrap clock sync read timed out",
-            )
-            .into())
-        }
         Err(e) => return Err(e),
         Ok(BootstrapServerMessage::BootstrapTime {
             server_time,
@@ -326,15 +293,7 @@ fn bootstrap_from_server<D: Duplex>(
                 *next_bootstrap_message = BootstrapClientMessage::BootstrapSuccess;
             }
             BootstrapClientMessage::BootstrapSuccess => {
-                match client.send_timeout(next_bootstrap_message, Some(write_timeout)) {
-                    Err(BootstrapError::TimedOut(_)) => Err(std::io::Error::new(
-                        std::io::ErrorKind::TimedOut,
-                        "send bootstrap success timed out",
-                    )
-                    .into()),
-                    Err(e) => Err(e),
-                    Ok(_) => Ok(()),
-                }?;
+                client.send_timeout(next_bootstrap_message, Some(write_timeout))?;
                 break;
             }
             BootstrapClientMessage::BootstrapError { error: _ } => {
@@ -353,20 +312,16 @@ fn send_client_message<D: Duplex>(
     read_timeout: Duration,
     error: &str,
 ) -> Result<BootstrapServerMessage, BootstrapError> {
-    match client.send_timeout(message_to_send, Some(write_timeout)) {
-        Err(BootstrapError::TimedOut(_)) => {
-            Err(std::io::Error::new(std::io::ErrorKind::TimedOut, error).into())
-        }
-        Err(e) => Err(e),
-        Ok(_) => Ok(()),
-    }?;
-    match client.next_timeout(Some(read_timeout)) {
-        Err(BootstrapError::TimedOut(_)) => {
-            Err(std::io::Error::new(std::io::ErrorKind::TimedOut, error).into())
-        }
-        Err(e) => Err(e),
-        Ok(msg) => Ok(msg),
-    }
+    client.send_timeout(message_to_send, Some(write_timeout))?;
+
+    client
+        .next_timeout(Some(read_timeout))
+        .map_err(|e| match e {
+            BootstrapError::TimedOut(_) => {
+                BootstrapError::TimedOut(std::io::Error::new(std::io::ErrorKind::TimedOut, error))
+            }
+            _ => e,
+        })
 }
 
 fn connect_to_server(

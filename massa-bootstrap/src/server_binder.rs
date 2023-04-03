@@ -148,7 +148,7 @@ impl<D: Duplex> BootstrapServerBinder<D> {
         )
         .map_err(|e| match e {
             BootstrapError::IoError(e) if e.kind() == ErrorKind::WouldBlock => {
-                BootstrapError::IoError(ErrorKind::TimedOut.into())
+                BootstrapError::TimedOut(ErrorKind::TimedOut.into())
             }
             e => e,
         })
