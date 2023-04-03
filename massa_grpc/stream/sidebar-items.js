@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"mod":["new_blocks","new_blocks_headers","new_filled_blocks","new_operations","send_blocks","send_endorsements","send_operations","tx_throughput"]};

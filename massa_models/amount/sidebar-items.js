@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"constant":["AMOUNT_DECIMAL_FACTOR"],"struct":["Amount","AmountDeserializer","AmountSerializer"]};
+window.SIDEBAR_ITEMS = {"constant":["AMOUNT_DECIMAL_FACTOR"],"struct":["Amount","AmountDeserializer","AmountSerializer","AmountVisitor"]};

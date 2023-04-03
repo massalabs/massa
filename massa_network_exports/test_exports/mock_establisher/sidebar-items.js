@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"constant":["MAX_DUPLEX_BUFFER_SIZE"],"fn":["new"],"opaque":[""],"struct":["MockConnector","MockEstablisher","MockEstablisherInterface","MockListener"],"type":["AddrSender","ReadHalf","WriteHalf"]};
