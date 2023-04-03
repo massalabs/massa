@@ -29,7 +29,8 @@ async fn test_start_grpc_server() {
     let pool_ctrl = MockPoolController::new_with_receiver();
 
     let (consensus_event_sender, _consensus_event_receiver) = crossbeam::channel::bounded(1024);
-    let (denunciation_factory_sender, _denunciation_factory_receiver) = crossbeam::channel::bounded(1024);
+    let (denunciation_factory_sender, _denunciation_factory_receiver) =
+        crossbeam::channel::bounded(1024);
 
     let (protocol_command_sender, _protocol_command_receiver) =
         mpsc::channel::<ProtocolCommand>(PROTOCOL_CONTROLLER_CHANNEL_SIZE);
