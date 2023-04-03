@@ -1,5 +1,3 @@
-
-
 [logging]
     # Logging level. High log levels might impact performance. 0: ERROR, 1: WARN, 2: INFO, 3: DEBUG, 4: TRACE
     level = 2
@@ -37,6 +35,8 @@
     enable_http = true
     # whether to enable WS.
     enable_ws = false
+    # whether to broadcast for blocks, endorsement and operations
+    enable_broadcast = false
 
 [grpc]
     # whether to enable gRPC
@@ -59,8 +59,8 @@
     max_channel_size = 128
     # set a timeout on for all request handlers in seconds. Defaults to 60s
     timeout = 60
-    # sets the maximum frame size to use for HTTP2. Defaults to 50MB
-    max_frame_size = 52428800
+    # sets the maximum frame size to use for HTTP2(must be within 16,384 and 16,777,215). Defaults to 16MB
+    max_frame_size = 16777215
     # set the concurrency limit applied to on requests inbound per connection. Defaults to 32
     concurrency_limit_per_connection = 32
     # sets the SETTINGS_MAX_CONCURRENT_STREAMS spec option for HTTP2 connections

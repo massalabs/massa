@@ -18,7 +18,7 @@ use massa_models::{
 use massa_storage::Storage;
 use parking_lot::RwLock;
 use std::sync::{mpsc::SyncSender, Arc};
-use tracing::log::warn;
+use tracing::log::{debug, warn};
 
 use crate::{commands::ConsensusCommand, state::ConsensusState};
 
@@ -244,16 +244,25 @@ impl ConsensusController for ConsensusControllerImpl {
                         })
                         .collect();
 
-                let _block_receivers_count =
-                    self.channels.block_sender.send(verifiable_block.clone());
-                let _filled_block_receivers_count =
-                    self.channels.filled_block_sender.send(FilledBlock {
-                        header: verifiable_block.content.header.clone(),
-                        operations,
-                    });
+                if let Err(err) = self.channels.block_sender.send(verifiable_block.clone()) {
+                    debug!(
+                        "error trying to broadcast block with id {} due to: {}",
+                        block_id, err
+                    );
+                }
+
+                if let Err(err) = self.channels.filled_block_sender.send(FilledBlock {
+                    header: verifiable_block.content.header.clone(),
+                    operations,
+                }) {
+                    debug!(
+                        "error trying to broadcast filled block with id {} due to: {}",
+                        block_id, err
+                    );
+                }
             } else {
-                warn!(
-                    "error no ws event sent, block with id {} not found",
+                debug!(
+                    "error, no broadcast event sent, block with id {} not found",
                     block_id
                 );
             };
@@ -274,7 +283,12 @@ impl ConsensusController for ConsensusControllerImpl {
 
     fn register_block_header(&self, block_id: BlockId, header: SecureShare<BlockHeader, BlockId>) {
         if self.broadcast_enabled {
-            let _ = self.channels.block_header_sender.send(header.clone());
+            if let Err(err) = self.channels.block_header_sender.send(header.clone()) {
+                debug!(
+                    "error trying to broadcast block header with block id {}: {}",
+                    block_id, err
+                );
+            }
         }
         if let Err(err) = self
             .command_sender

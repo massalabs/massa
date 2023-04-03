@@ -382,7 +382,7 @@ async fn launch(
         max_operation_pool_size_per_thread: SETTINGS.pool.max_pool_size_per_thread,
         max_endorsements_pool_size_per_thread: SETTINGS.pool.max_pool_size_per_thread,
         channels_size: POOL_CONTROLLER_CHANNEL_SIZE,
-        broadcast_enabled: SETTINGS.api.enable_ws,
+        broadcast_enabled: SETTINGS.api.enable_broadcast,
         broadcast_operations_capacity: SETTINGS.pool.broadcast_operations_capacity,
     };
 
@@ -422,7 +422,7 @@ async fn launch(
         max_gas_per_block: MAX_GAS_PER_BLOCK,
         channel_size: CHANNEL_SIZE,
         bootstrap_part_size: CONSENSUS_BOOTSTRAP_PART_SIZE,
-        broadcast_enabled: SETTINGS.api.enable_ws,
+        broadcast_enabled: SETTINGS.api.enable_broadcast,
         broadcast_blocks_headers_capacity: SETTINGS.consensus.broadcast_blocks_headers_capacity,
         broadcast_blocks_capacity: SETTINGS.consensus.broadcast_blocks_capacity,
         broadcast_filled_blocks_capacity: SETTINGS.consensus.broadcast_filled_blocks_capacity,

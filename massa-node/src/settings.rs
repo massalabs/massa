@@ -138,6 +138,8 @@ pub struct APISettings {
     pub ping_interval: MassaTime,
     pub enable_http: bool,
     pub enable_ws: bool,
+    // whether to broadcast for blocks, endorsement and operations
+    pub enable_broadcast: bool,
 }
 
 #[derive(Debug, Deserialize, Clone)]
@@ -271,7 +273,7 @@ pub struct GrpcSettings {
     pub http2_keepalive_timeout: Option<MassaTime>,
     /// sets whether to use an adaptive flow control. Defaults to false
     pub http2_adaptive_window: Option<bool>,
-    /// sets the maximum frame size to use for HTTP2. If not set, will default from underlying transport
+    /// sets the maximum frame size to use for HTTP2(must be within 16,384 and 16,777,215). If not set, will default from underlying transport
     pub max_frame_size: Option<u32>,
     /// when looking for next draw we want to look at max `draw_lookahead_period_count`
     pub draw_lookahead_period_count: u64,
