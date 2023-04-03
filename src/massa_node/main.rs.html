@@ -920,6 +920,12 @@
 <a href="#920" id="920">920</a>
 <a href="#921" id="921">921</a>
 <a href="#922" id="922">922</a>
+<a href="#923" id="923">923</a>
+<a href="#924" id="924">924</a>
+<a href="#925" id="925">925</a>
+<a href="#926" id="926">926</a>
+<a href="#927" id="927">927</a>
+<a href="#928" id="928">928</a>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="attr">#![doc = <span class="macro">include_str!</span>(<span class="string">&quot;../../README.md&quot;</span>)]
@@ -933,7 +939,10 @@
 <span class="kw">use </span>massa_api::{ApiServer, ApiV2, Private, Public, RpcServer, StopHandle, API};
 <span class="kw">use </span>massa_api_exports::config::APIConfig;
 <span class="kw">use </span>massa_async_pool::AsyncPoolConfig;
-<span class="kw">use </span>massa_bootstrap::{get_state, start_bootstrap_server, BootstrapConfig, BootstrapManager};
+<span class="kw">use </span>massa_bootstrap::{
+    get_state, start_bootstrap_server, BootstrapConfig, BootstrapManager, DefaultConnector,
+    DefaultListener,
+};
 <span class="kw">use </span>massa_consensus_exports::events::ConsensusEvent;
 <span class="kw">use </span>massa_consensus_exports::{ConsensusChannels, ConsensusConfig, ConsensusManager};
 <span class="kw">use </span>massa_consensus_worker::start_consensus_worker;
@@ -970,7 +979,7 @@
     VERSION,
 };
 <span class="kw">use </span>massa_models::config::CONSENSUS_BOOTSTRAP_PART_SIZE;
-<span class="kw">use </span>massa_network_exports::{Establisher, NetworkConfig, NetworkManager};
+<span class="kw">use </span>massa_network_exports::{Establisher, NetworkCommandSender, NetworkConfig, NetworkManager};
 <span class="kw">use </span>massa_network_worker::start_network_controller;
 <span class="kw">use </span>massa_pool_exports::{PoolChannels, PoolConfig, PoolManager};
 <span class="kw">use </span>massa_pool_worker::start_pool_controller;
@@ -986,6 +995,7 @@
 <span class="kw">use </span>massa_versioning_worker::versioning::{MipStatsConfig, MipStore};
 <span class="kw">use </span>massa_wallet::Wallet;
 <span class="kw">use </span>parking_lot::RwLock;
+<span class="kw">use </span>std::net::TcpStream;
 <span class="kw">use </span>std::path::PathBuf;
 <span class="kw">use </span>std::sync::atomic::{AtomicUsize, Ordering};
 <span class="kw">use </span>std::thread::sleep;
@@ -1004,7 +1014,7 @@
     node_wallet: Arc&lt;RwLock&lt;Wallet&gt;&gt;,
 ) -&gt; (
     Receiver&lt;ConsensusEvent&gt;,
-    <span class="prelude-ty">Option</span>&lt;BootstrapManager&gt;,
+    <span class="prelude-ty">Option</span>&lt;BootstrapManager&lt;TcpStream&gt;&gt;,
     Box&lt;<span class="kw">dyn </span>ConsensusManager&gt;,
     Box&lt;<span class="kw">dyn </span>ExecutionManager&gt;,
     Box&lt;<span class="kw">dyn </span>SelectorManager&gt;,
@@ -1163,7 +1173,7 @@
         res = get_state(
             <span class="kw-2">&amp;</span>bootstrap_config,
             final_state.clone(),
-            massa_bootstrap::DefaultEstablisher::default(),
+            DefaultConnector,
             <span class="kw-2">*</span>VERSION,
             <span class="kw-2">*</span>GENESIS_TIMESTAMP,
             <span class="kw-2">*</span>END_TIMESTAMP,
@@ -1441,17 +1451,20 @@
     <span class="kw">let </span>factory_manager = start_factory(factory_config, node_wallet.clone(), factory_channels);
 
     <span class="comment">// launch bootstrap server
-    </span><span class="kw">let </span>bootstrap_manager = start_bootstrap_server(
-        consensus_controller.clone(),
-        network_command_sender.clone(),
-        final_state.clone(),
-        bootstrap_config,
-        massa_bootstrap::DefaultEstablisher::new(),
-        private_key,
-        <span class="kw-2">*</span>VERSION,
-    )
-    .<span class="kw">await
-    </span>.unwrap();
+    // TODO: use std::net::TcpStream
+    </span><span class="kw">let </span>bootstrap_manager = <span class="kw">match </span>bootstrap_config.listen_addr {
+        <span class="prelude-val">Some</span>(addr) =&gt; start_bootstrap_server::&lt;TcpStream, NetworkCommandSender&gt;(
+            consensus_controller.clone(),
+            network_command_sender.clone(),
+            final_state.clone(),
+            bootstrap_config,
+            DefaultListener::new(<span class="kw-2">&amp;</span>addr).unwrap(),
+            private_key,
+            <span class="kw-2">*</span>VERSION,
+        )
+        .unwrap(),
+        <span class="prelude-val">None </span>=&gt; <span class="prelude-val">None</span>,
+    };
 
     <span class="kw">let </span>api_config: APIConfig = APIConfig {
         bind_private: SETTINGS.api.bind_private,
@@ -1580,7 +1593,7 @@
 }
 
 <span class="kw">struct </span>Managers {
-    bootstrap_manager: <span class="prelude-ty">Option</span>&lt;BootstrapManager&gt;,
+    bootstrap_manager: <span class="prelude-ty">Option</span>&lt;BootstrapManager&lt;TcpStream&gt;&gt;,
     consensus_manager: Box&lt;<span class="kw">dyn </span>ConsensusManager&gt;,
     execution_manager: Box&lt;<span class="kw">dyn </span>ExecutionManager&gt;,
     selector_manager: Box&lt;<span class="kw">dyn </span>SelectorManager&gt;,
@@ -1610,8 +1623,7 @@
     </span><span class="kw">if let </span><span class="prelude-val">Some</span>(bootstrap_manager) = bootstrap_manager {
         bootstrap_manager
             .stop()
-            .<span class="kw">await
-            </span>.expect(<span class="string">&quot;bootstrap server shutdown failed&quot;</span>)
+            .expect(<span class="string">&quot;bootstrap server shutdown failed&quot;</span>)
     }
 
     <span class="comment">// stop public API
