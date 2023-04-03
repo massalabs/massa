@@ -374,13 +374,9 @@ fn connect_to_server(
     bootstrap_config: &BootstrapConfig,
     addr: &SocketAddr,
     pub_key: &PublicKey,
-) -> Result<BootstrapClientBinder<std::net::TcpStream>, Box<BootstrapError>> {
-    let socket = connector
-        .connect_timeout(*addr, Some(bootstrap_config.connect_timeout))
-        .map_err(|e| Box::new(e.into()))?;
-    socket
-        .set_nonblocking(false)
-        .map_err(|e| Box::new(e.into()))?;
+) -> Result<BootstrapClientBinder<std::net::TcpStream>, BootstrapError> {
+    let socket = connector.connect_timeout(*addr, Some(bootstrap_config.connect_timeout))?;
+    socket.set_nonblocking(false)?;
     Ok(BootstrapClientBinder::new(
         socket,
         *pub_key,

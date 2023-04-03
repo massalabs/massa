@@ -12,8 +12,6 @@
 #![warn(unused_crate_dependencies)]
 #![feature(ip)]
 #![feature(let_chains)]
-// TODO: Box large variants of BootstrapError
-#![allow(clippy::result_large_err)]
 
 use massa_consensus_exports::bootstrapable_graph::BootstrapableGraph;
 use massa_final_state::FinalState;

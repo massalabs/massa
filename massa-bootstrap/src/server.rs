@@ -67,18 +67,18 @@ type BsConn<D> = (D, SocketAddr);
 
 /// handle on the bootstrap server
 pub struct BootstrapManager<D: Duplex> {
-    update_handle: thread::JoinHandle<Result<(), Box<BootstrapError>>>,
+    update_handle: thread::JoinHandle<Result<(), BootstrapError>>,
     // need to preserve the listener handle up to here to prevent it being destroyed
     #[allow(clippy::type_complexity)]
-    _listen_handle: thread::JoinHandle<Result<Result<(), BsConn<D>>, Box<BootstrapError>>>,
-    main_handle: thread::JoinHandle<Result<(), Box<BootstrapError>>>,
+    _listen_handle: thread::JoinHandle<Result<Result<(), BsConn<D>>, BootstrapError>>,
+    main_handle: thread::JoinHandle<Result<(), BootstrapError>>,
     listen_stopper_tx: crossbeam::channel::Sender<()>,
     update_stopper_tx: crossbeam::channel::Sender<()>,
 }
 
 impl<D: Duplex> BootstrapManager<D> {
     /// stop the bootstrap server
-    pub fn stop(self) -> Result<(), Box<BootstrapError>> {
+    pub fn stop(self) -> Result<(), BootstrapError> {
         massa_trace!("bootstrap.lib.stop", {});
         if self.listen_stopper_tx.send(()).is_err() {
             warn!("bootstrap server already dropped");
@@ -109,7 +109,7 @@ pub fn start_bootstrap_server<D: Duplex, C: NetworkCommandSenderTrait + Clone>(
     listener: impl BSListener + Send + 'static,
     keypair: KeyPair,
     version: Version,
-) -> Result<Option<BootstrapManager<TcpStream>>, Box<BootstrapError>> {
+) -> Result<Option<BootstrapManager<TcpStream>>, BootstrapError> {
     massa_trace!("bootstrap.lib.start_bootstrap_server", {});
 
     // TODO(low prio): See if a zero capacity channel model can work
@@ -117,7 +117,7 @@ pub fn start_bootstrap_server<D: Duplex, C: NetworkCommandSenderTrait + Clone>(
     let (update_stopper_tx, update_stopper_rx) = crossbeam::channel::bounded::<()>(1);
 
     let Ok(max_bootstraps) = config.max_simultaneous_bootstraps.try_into() else {
-        return Err(BootstrapError::GeneralError("Fail to convert u32 to usize".to_string()).into());
+        return Err(BootstrapError::GeneralError("Fail to convert u32 to usize".to_string()));
     };
 
     // This is needed for now, as there is no ergonomic to "select!" on both a channel and a blocking std::net::TcpStream
@@ -199,7 +199,7 @@ impl<D: Duplex, C: NetworkCommandSenderTrait + Clone> BootstrapServer<'_, D, C> 
         mut list: SharedWhiteBlackList<'_>,
         interval: Duration,
         stopper: crossbeam::channel::Receiver<()>,
-    ) -> Result<(), Box<BootstrapError>> {
+    ) -> Result<(), BootstrapError> {
         let ticker = tick(interval);
 
         loop {
@@ -207,7 +207,7 @@ impl<D: Duplex, C: NetworkCommandSenderTrait + Clone> BootstrapServer<'_, D, C> 
                 recv(stopper) -> res => {
                     match res {
                         Ok(()) => return Ok(()),
-                        Err(e) => return Err(Box::new(BootstrapError::GeneralError(format!("update stopper error : {}", e)))),
+                        Err(e) => return Err(BootstrapError::GeneralError(format!("update stopper error : {}", e))),
                     }
                 },
                 recv(ticker) -> _ => {list.update()?;},
@@ -225,7 +225,7 @@ impl<D: Duplex, C: NetworkCommandSenderTrait + Clone> BootstrapServer<'_, D, C> 
     fn run_listener(
         mut listener: impl BSListener,
         listener_tx: crossbeam::channel::Sender<BsConn<TcpStream>>,
-    ) -> Result<Result<(), BsConn<TcpStream>>, Box<BootstrapError>> {
+    ) -> Result<Result<(), BsConn<TcpStream>>, BootstrapError> {
         loop {
             let (msg, addr) = listener.accept().map_err(BootstrapError::IoError)?;
             match listener_tx.send((msg, addr)) {
@@ -241,7 +241,7 @@ impl<D: Duplex, C: NetworkCommandSenderTrait + Clone> BootstrapServer<'_, D, C> 
         }
     }
 
-    fn run_loop(mut self, max_bootstraps: usize) -> Result<(), Box<BootstrapError>> {
+    fn run_loop(mut self, max_bootstraps: usize) -> Result<(), BootstrapError> {
         let Ok(bs_loop_rt) = runtime::Builder::new_multi_thread()
             .max_blocking_threads(max_bootstraps * 2)
             .enable_io()
@@ -249,7 +249,7 @@ impl<D: Duplex, C: NetworkCommandSenderTrait + Clone> BootstrapServer<'_, D, C> 
             .thread_name("bootstrap-main-loop-worker")
             .thread_keep_alive(Duration::from_millis(u64::MAX))
             .build() else {
-            return Err(Box::new(BootstrapError::GeneralError("Failed to create bootstrap main-loop runtime".to_string())));
+            return Err(BootstrapError::GeneralError("Failed to create bootstrap main-loop runtime".to_string()));
         };
 
         // Use the strong-count of this variable to track the session count
@@ -734,7 +734,7 @@ async fn manage_bootstrap<D: Duplex, C: NetworkCommandSenderTrait>(
         Ok(BootstrapClientMessage::BootstrapError { error }) => {
             return Err(BootstrapError::GeneralError(error));
         }
-        Ok(msg) => return Err(BootstrapError::UnexpectedClientMessage(msg)),
+        Ok(msg) => return Err(BootstrapError::UnexpectedClientMessage(Box::new(msg))),
     };
 
     let write_timeout: Duration = bootstrap_config.write_timeout.into();
