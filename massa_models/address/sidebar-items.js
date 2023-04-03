@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"constant":["ADDRESS_PREFIX","ADDRESS_SIZE_BYTES","ADDRESS_VERSION","FIELDS","SC_PREFIX","USER_PREFIX"],"enum":["Address","__Field"],"fn":["sc_parser","user_parser"],"struct":["AddressDeserializer","AddressSerializer","AddressVisitor","BytesVisitor","ExecutionAddressCycleInfo","SCAddress","UserAddress","__FieldVisitor","__Visitor"]};
+window.SIDEBAR_ITEMS = {"constant":["ADDRESS_SIZE_BYTES"],"enum":["Address"],"struct":["AddressDeserializer","AddressSerializer","ExecutionAddressCycleInfo","SCAddress","UserAddress"]};

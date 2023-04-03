@@ -312,15 +312,6 @@
 <a href="#312" id="312">312</a>
 <a href="#313" id="313">313</a>
 <a href="#314" id="314">314</a>
-<a href="#315" id="315">315</a>
-<a href="#316" id="316">316</a>
-<a href="#317" id="317">317</a>
-<a href="#318" id="318">318</a>
-<a href="#319" id="319">319</a>
-<a href="#320" id="320">320</a>
-<a href="#321" id="321">321</a>
-<a href="#322" id="322">322</a>
-<a href="#323" id="323">323</a>
 </pre><pre class="rust"><code><span class="kw">use </span>massa_consensus_exports::{
     block_graph_export::BlockGraphExport, block_status::BlockStatus,
     bootstrapable_graph::BootstrapableGraph, error::ConsensusError,
@@ -342,7 +333,7 @@
 <span class="kw">use </span>massa_storage::Storage;
 <span class="kw">use </span>parking_lot::RwLock;
 <span class="kw">use </span>std::sync::{mpsc::SyncSender, Arc};
-<span class="kw">use </span>tracing::log::{debug, warn};
+<span class="kw">use </span>tracing::log::warn;
 
 <span class="kw">use crate</span>::{commands::ConsensusCommand, state::ConsensusState};
 
@@ -568,25 +559,18 @@
                         })
                         .collect();
 
-                <span class="kw">if let </span><span class="prelude-val">Err</span>(err) = <span class="self">self</span>.channels.block_sender.send(verifiable_block.clone()) {
-                    <span class="macro">debug!</span>(
-                        <span class="string">&quot;error trying to broadcast block with id {} due to: {}&quot;</span>,
-                        block_id, err
-                    );
-                }
-
-                <span class="kw">if let </span><span class="prelude-val">Err</span>(err) = <span class="self">self</span>.channels.filled_block_sender.send(FilledBlock {
-                    header: verifiable_block.content.header.clone(),
-                    operations,
-                }) {
-                    <span class="macro">debug!</span>(
-                        <span class="string">&quot;error trying to broadcast filled block with id {} due to: {}&quot;</span>,
-                        block_id, err
-                    );
-                }
+                <span class="kw">let </span>_block_receivers_count = <span class="self">self
+                    </span>.channels
+                    .block_sender
+                    .send(verifiable_block.content.clone());
+                <span class="kw">let </span>_filled_block_receivers_count =
+                    <span class="self">self</span>.channels.filled_block_sender.send(FilledBlock {
+                        header: verifiable_block.content.header.clone(),
+                        operations,
+                    });
             } <span class="kw">else </span>{
-                <span class="macro">debug!</span>(
-                    <span class="string">&quot;error, no broadcast event sent, block with id {} not found&quot;</span>,
+                <span class="macro">warn!</span>(
+                    <span class="string">&quot;error no ws event sent, block with id {} not found&quot;</span>,
                     block_id
                 );
             };
@@ -607,12 +591,10 @@
 
     <span class="kw">fn </span>register_block_header(<span class="kw-2">&amp;</span><span class="self">self</span>, block_id: BlockId, header: SecureShare&lt;BlockHeader, BlockId&gt;) {
         <span class="kw">if </span><span class="self">self</span>.broadcast_enabled {
-            <span class="kw">if let </span><span class="prelude-val">Err</span>(err) = <span class="self">self</span>.channels.block_header_sender.send(header.clone()) {
-                <span class="macro">debug!</span>(
-                    <span class="string">&quot;error trying to broadcast block header with block id {}: {}&quot;</span>,
-                    block_id, err
-                );
-            }
+            <span class="kw">let _ </span>= <span class="self">self
+                </span>.channels
+                .block_header_sender
+                .send(header.clone().content);
         }
 
         <span class="kw">if let </span><span class="prelude-val">Err</span>(e) = <span class="self">self

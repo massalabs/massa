@@ -1,1 +1,0 @@
-window.SIDEBAR_ITEMS = {"constant":["_LEN"],"fn":["_likely","cold","manage_bootstrap","run_bootstrap_session","start_bootstrap_server","stream_bootstrap_information","unbind","unlikely"],"mod":["white_black_list"],"opaque":[""],"static":["CALLSITE","META"],"struct":["BootstrapManager","BootstrapServer"],"type":["BsConn"]};

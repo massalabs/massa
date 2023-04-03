@@ -1,1 +1,0 @@
-window.SIDEBAR_ITEMS = {"constant":["FIELDS"],"enum":["__Field"],"struct":["DatastoreUpdateDeserializer","DatastoreUpdateSerializer","LedgerChanges","LedgerChangesDeserializer","LedgerChangesSerializer","LedgerEntryUpdate","LedgerEntryUpdateDeserializer","LedgerEntryUpdateSerializer","__FieldVisitor","__Visitor"]};

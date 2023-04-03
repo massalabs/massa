@@ -1,1 +1,0 @@
-window.SIDEBAR_ITEMS = {"constant":["_DERIVE_Display_FOR_FactoryError"],"enum":["FactoryError"],"trait":["DisplayToDisplayDoc","PathToDisplayDoc"],"type":["FactoryResult"]};

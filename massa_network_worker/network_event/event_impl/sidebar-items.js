@@ -1,1 +1,0 @@
-window.SIDEBAR_ITEMS = {"fn":["on_asked_peer_list","on_received_ask_for_blocks","on_received_ask_for_operations","on_received_block_header","on_received_block_info","on_received_endorsements","on_received_operations","on_received_operations_annoncement","on_received_peer_list"],"macro":["evt_failed"],"opaque":[""],"static":["CALLSITE","META"]};
