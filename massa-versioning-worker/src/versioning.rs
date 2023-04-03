@@ -1,5 +1,5 @@
 use std::cmp::Ordering;
-use std::collections::{BTreeMap, BTreeSet, HashMap};
+use std::collections::{BTreeMap, BTreeSet, HashMap, VecDeque};
 use std::hash::{Hash, Hasher};
 use std::ops::Deref;
 use std::sync::Arc;
@@ -8,6 +8,7 @@ use machine::{machine, transitions};
 use num_enum::{IntoPrimitive, TryFromPrimitive};
 use parking_lot::RwLock;
 use thiserror::Error;
+use tracing::warn;
 
 use massa_models::{amount::Amount, config::VERSIONING_THRESHOLD_TRANSITION_ACCEPTED};
 use massa_time::MassaTime;
@@ -230,7 +231,7 @@ impl Failed {
 /// Wrapper of ComponentState (in order to keep state history)
 #[derive(Debug, Clone, PartialEq)]
 pub struct MipState {
-    pub(crate) inner: ComponentState,
+    pub(crate) state: ComponentState,
     pub(crate) history: BTreeMap<Advance, ComponentStateTypeId>,
 }
 
@@ -250,10 +251,7 @@ impl MipState {
         };
 
         let history = BTreeMap::from([(advance, state_id)]);
-        Self {
-            inner: state,
-            history,
-        }
+        Self { state, history }
     }
 
     /// Advance the state
@@ -270,19 +268,19 @@ impl MipState {
 
         if is_forward {
             // machines crate (for state machine) does not support passing ref :-/
-            let state = self.inner.on_advance(input.clone());
+            let state = self.state.on_advance(input.clone());
             // Update history as well
-            if state != self.inner {
+            if state != self.state {
                 let state_id = ComponentStateTypeId::from(&state);
 
                 // Avoid storing too much things in history
                 // Here we avoid storing for every threshold update
                 if !(matches!(state, ComponentState::Started(Started { .. }))
-                    && matches!(self.inner, ComponentState::Started(Started { .. })))
+                    && matches!(self.state, ComponentState::Started(Started { .. })))
                 {
                     self.history.insert(input.clone(), state_id);
                 }
-                self.inner = state;
+                self.state = state;
             }
         }
     }
@@ -296,7 +294,7 @@ impl MipState {
         // TODO: rename versioning_info -> mip_info
 
         // Always return false for state Error or if history is empty
-        if matches!(&self.inner, &ComponentState::Error) || self.history.is_empty() {
+        if matches!(&self.state, &ComponentState::Error) || self.history.is_empty() {
             return false;
         }
 
@@ -394,7 +392,7 @@ impl MipState {
                         activation_delay: adv.activation_delay,
                     };
                     // Return the resulting state after advance
-                    let state = self.inner.on_advance(msg);
+                    let state = self.state.on_advance(msg);
                     Ok(ComponentStateTypeId::from(&state))
                 }
             }
@@ -432,10 +430,10 @@ impl MipStore {
         let store = lock.deref();
         // Current version == last active
         store
-            .0
+            .store
             .iter()
             .rev()
-            .find_map(|(k, v)| (v.inner == ComponentState::active()).then_some(k.version))
+            .find_map(|(k, v)| (v.state == ComponentState::active()).then_some(k.version))
             .unwrap_or(0)
     }
 
@@ -448,31 +446,70 @@ impl MipStore {
         // Defined == Not yet ready to announce
         // Active == current version
         store
-            .0
+            .store
             .iter()
             .rev()
             .find_map(|(k, v)| {
                 matches!(
-                    &v.inner,
+                    &v.state,
                     &ComponentState::Started(_) | &ComponentState::LockedIn(_)
                 )
                 .then_some(k.version)
             })
             .unwrap_or(0)
     }
+
+    pub fn update_network_version_stats(
+        &mut self,
+        slot_timestamp: MassaTime,
+        network_versions: Option<(u32, u32)>,
+    ) {
+        let mut lock = self.0.write();
+        lock.update_network_version_stats(slot_timestamp, network_versions);
+    }
 }
 
-impl<const N: usize> TryFrom<[(MipInfo, MipState); N]> for MipStore {
+impl<const N: usize> TryFrom<([(MipInfo, MipState); N], MipStatsConfig)> for MipStore {
     type Error = ();
 
-    fn try_from(value: [(MipInfo, MipState); N]) -> Result<Self, Self::Error> {
-        MipStoreRaw::try_from(value).map(|store_raw| Self(Arc::new(RwLock::new(store_raw))))
+    fn try_from(
+        (value, cfg): ([(MipInfo, MipState); N], MipStatsConfig),
+    ) -> Result<Self, Self::Error> {
+        MipStoreRaw::try_from((value, cfg)).map(|store_raw| Self(Arc::new(RwLock::new(store_raw))))
+    }
+}
+
+/// Statistics in MipStoreRaw
+#[derive(Debug, Clone, PartialEq)]
+pub struct MipStatsConfig {
+    pub block_count_considered: usize,
+    pub counters_max: usize,
+}
+
+/// In order for a MIP to be accepted, we compute stats about other node 'network' version announcement
+#[derive(Debug, Clone, PartialEq)]
+pub(crate) struct MipStoreStats {
+    pub(crate) config: MipStatsConfig,
+    pub(crate) latest_announcements: VecDeque<u32>,
+    pub(crate) network_version_counters: BTreeMap<u32, u64>,
+}
+
+impl MipStoreStats {
+    pub(crate) fn new(config: MipStatsConfig) -> Self {
+        Self {
+            config: config.clone(),
+            latest_announcements: VecDeque::with_capacity(config.block_count_considered),
+            network_version_counters: Default::default(),
+        }
     }
 }
 
 /// Store of all versioning info
-#[derive(Debug, Clone, Default, PartialEq)]
-pub struct MipStoreRaw(pub(crate) BTreeMap<MipInfo, MipState>);
+#[derive(Debug, Clone, PartialEq)]
+pub struct MipStoreRaw {
+    pub(crate) store: BTreeMap<MipInfo, MipState>,
+    pub(crate) stats: MipStoreStats,
+}
 
 impl MipStoreRaw {
     /// Update our store with another (usually after a bootstrap where we received another store)
@@ -487,7 +524,7 @@ impl MipStoreRaw {
         //                                   to update the software
 
         let mut component_versions: HashMap<MipComponent, u32> = self
-            .0
+            .store
             .iter()
             .flat_map(|c| {
                 c.0.components
@@ -497,26 +534,26 @@ impl MipStoreRaw {
                     })
             })
             .collect();
-        let mut names: BTreeSet<String> = self.0.iter().map(|i| i.0.name.clone()).collect();
+        let mut names: BTreeSet<String> = self.store.iter().map(|i| i.0.name.clone()).collect();
         let mut to_update: BTreeMap<MipInfo, MipState> = Default::default();
         let mut to_add: BTreeMap<MipInfo, MipState> = Default::default();
         let mut should_merge = true;
 
-        for (v_info, v_state) in store_raw.0.iter() {
+        for (v_info, v_state) in store_raw.store.iter() {
             if !v_state.is_coherent_with(v_info) {
                 // As soon as we found one non coherent state we abort the merge
                 should_merge = false;
                 break;
             }
 
-            if let Some(v_state_orig) = self.0.get(v_info) {
+            if let Some(v_state_orig) = self.store.get(v_info) {
                 // Versioning info (from right) is already in self (left)
                 // Need to check if we add this to 'to_update' list
-                let v_state_id: u32 = ComponentStateTypeId::from(&v_state.inner).into();
-                let v_state_orig_id: u32 = ComponentStateTypeId::from(&v_state_orig.inner).into();
+                let v_state_id: u32 = ComponentStateTypeId::from(&v_state.state).into();
+                let v_state_orig_id: u32 = ComponentStateTypeId::from(&v_state_orig.state).into();
 
                 if matches!(
-                    v_state_orig.inner,
+                    v_state_orig.state,
                     ComponentState::Defined(_)
                         | ComponentState::Started(_)
                         | ComponentState::LockedIn(_)
@@ -538,7 +575,7 @@ impl MipStoreRaw {
                 let last_v_info_ = to_add
                     .last_key_value()
                     .map(|i| i.0)
-                    .or(self.0.last_key_value().map(|i| i.0));
+                    .or(self.store.last_key_value().map(|i| i.0));
 
                 if let Some(last_v_info) = last_v_info_ {
                     // check for versions of all components in v_info
@@ -581,24 +618,105 @@ impl MipStoreRaw {
             let added = to_add.keys().cloned().collect();
             let updated = to_update.keys().cloned().collect();
 
-            self.0.append(&mut to_update);
-            self.0.append(&mut to_add);
+            self.store.append(&mut to_update);
+            self.store.append(&mut to_add);
             Ok((updated, added))
         } else {
             Err(())
         }
     }
+
+    fn update_network_version_stats(
+        &mut self,
+        slot_timestamp: MassaTime,
+        network_versions: Option<(u32, u32)>,
+    ) {
+        if let Some((_current_network_version, announced_network_version)) = network_versions {
+            let removed_version_ = match self.stats.latest_announcements.len() {
+                n if n > self.stats.config.block_count_considered => {
+                    self.stats.latest_announcements.pop_front()
+                }
+                _ => None,
+            };
+            self.stats
+                .latest_announcements
+                .push_back(announced_network_version);
+
+            // We update the count of the received version
+            *self
+                .stats
+                .network_version_counters
+                .entry(announced_network_version)
+                .or_default() += 1;
+
+            if let Some(removed_version) = removed_version_ {
+                *self
+                    .stats
+                    .network_version_counters
+                    .entry(removed_version)
+                    .or_insert(1) -= 1;
+            }
+
+            // Cleanup for the counters
+            if self.stats.network_version_counters.len() > self.stats.config.counters_max {
+                if let Some((version, count)) = self.stats.network_version_counters.pop_first() {
+                    // TODO: return version / count for unit tests?
+                    warn!(
+                        "MipStoreStats removed counter for version {}, count was: {}",
+                        version, count
+                    )
+                }
+            }
+
+            self.advance_states_on_updated_stats(slot_timestamp);
+        }
+    }
+
+    /// Used internally by `update_network_version_stats`
+    fn advance_states_on_updated_stats(&mut self, slot_timestamp: MassaTime) {
+        for (mi, state) in self.store.iter_mut() {
+            let network_version_count = *self
+                .stats
+                .network_version_counters
+                .get(&mi.version)
+                .unwrap_or(&0) as f32;
+            let block_count_considered = self.stats.config.block_count_considered as f32;
+
+            let vote_ratio_ = 100.0 * network_version_count / block_count_considered;
+
+            let vote_ratio = Amount::from_mantissa_scale(vote_ratio_.round() as u64, 0);
+
+            let advance_msg = Advance {
+                start_timestamp: mi.start,
+                timeout: mi.timeout,
+                threshold: vote_ratio,
+                now: slot_timestamp,
+                activation_delay: mi.activation_delay,
+            };
+
+            // TODO / OPTIM: filter the store to avoid advancing on failed and active versions
+            state.on_advance(&advance_msg.clone());
+        }
+    }
 }
 
-impl<const N: usize> TryFrom<[(MipInfo, MipState); N]> for MipStoreRaw {
+impl<const N: usize> TryFrom<([(MipInfo, MipState); N], MipStatsConfig)> for MipStoreRaw {
     type Error = ();
 
-    fn try_from(value: [(MipInfo, MipState); N]) -> Result<Self, Self::Error> {
+    fn try_from(
+        (value, cfg): ([(MipInfo, MipState); N], MipStatsConfig),
+    ) -> Result<Self, Self::Error> {
         // Build an empty store
-        let mut store = Self(Default::default());
+        let mut store = Self {
+            store: Default::default(),
+            stats: MipStoreStats::new(cfg.clone()),
+        };
 
         // Build another one with given value
-        let other_store = Self(BTreeMap::from(value));
+        let other_store = Self {
+            store: BTreeMap::from(value),
+            stats: MipStoreStats::new(cfg),
+        };
 
         // Use update_with ensuring that we have no overlapping time range, unique names & ...
         match store.update_with(&other_store) {
@@ -622,7 +740,7 @@ mod test {
     // Only for unit tests
     impl PartialEq<ComponentState> for MipState {
         fn eq(&self, other: &ComponentState) -> bool {
-            self.inner == *other
+            self.state == *other
         }
     }
 
@@ -863,16 +981,23 @@ mod test {
 
         // Can only build such object in test - history is empty :-/
         let vs_1 = MipState {
-            inner: ComponentState::active(),
+            state: ComponentState::active(),
             history: Default::default(),
         };
         let vs_2 = MipState {
-            inner: ComponentState::started(Amount::zero()),
+            state: ComponentState::started(Amount::zero()),
             history: Default::default(),
         };
 
         // TODO: Have VersioningStore::from ?
-        let vs_raw = MipStoreRaw(BTreeMap::from([(mi.clone(), vs_1), (mi_2.clone(), vs_2)]));
+        let mip_stats_cfg = MipStatsConfig {
+            block_count_considered: 10,
+            counters_max: 5,
+        };
+        let vs_raw = MipStoreRaw {
+            store: BTreeMap::from([(mi.clone(), vs_1), (mi_2.clone(), vs_2)]),
+            stats: MipStoreStats::new(mip_stats_cfg.clone()),
+        };
         // let vs_raw = MipStoreRaw::try_from([(vi.clone(), vs_1), (vi_2.clone(), vs_2)]).unwrap();
         let vs = MipStore(Arc::new(RwLock::new(vs_raw)));
 
@@ -880,7 +1005,10 @@ mod test {
         assert_eq!(vs.get_network_version_to_announce(), mi_2.version);
 
         // Test also an empty versioning store
-        let vs_raw = MipStoreRaw(Default::default());
+        let vs_raw = MipStoreRaw {
+            store: Default::default(),
+            stats: MipStoreStats::new(mip_stats_cfg),
+        };
         let vs = MipStore(Arc::new(RwLock::new(vs_raw)));
         assert_eq!(vs.get_network_version_current(), 0);
         assert_eq!(vs.get_network_version_to_announce(), 0);
@@ -914,14 +1042,14 @@ mod test {
         };
 
         let vsh = MipState {
-            inner: ComponentState::Error,
+            state: ComponentState::Error,
             history: Default::default(),
         };
         // At state Error -> (always) false
         assert_eq!(vsh.is_coherent_with(&vi_1), false);
 
         let vsh = MipState {
-            inner: ComponentState::defined(),
+            state: ComponentState::defined(),
             history: Default::default(),
         };
         // At state Defined but no history -> false
@@ -939,7 +1067,7 @@ mod test {
         vsh.on_advance(&adv);
 
         // At state Started at time now -> true
-        assert_eq!(vsh.inner, ComponentState::started(Amount::zero()));
+        assert_eq!(vsh.state, ComponentState::started(Amount::zero()));
         assert_eq!(vsh.is_coherent_with(&vi_1), true);
         // Now with another versioning info
         assert_eq!(vsh.is_coherent_with(&vi_2), false);
@@ -950,7 +1078,7 @@ mod test {
         vsh.on_advance(&adv);
 
         // At state LockedIn at time now -> true
-        assert_eq!(vsh.inner, ComponentState::locked_in(now));
+        assert_eq!(vsh.state, ComponentState::locked_in(now));
         assert_eq!(vsh.is_coherent_with(&vi_1), true);
         assert_eq!(vsh.is_coherent_with(&vi_1), true);
 
@@ -981,23 +1109,30 @@ mod test {
             activation_delay: MassaTime::from(2),
         };
         let vs_2 = advance_state_until(ComponentState::defined(), &vi_2);
-        let mut vs_raw_1 = MipStoreRaw(BTreeMap::from([
-            (vi_1.clone(), vs_1.clone()),
-            (vi_2.clone(), vs_2.clone()),
-        ]));
+
+        let mip_stats_cfg = MipStatsConfig {
+            block_count_considered: 10,
+            counters_max: 5,
+        };
+        let mut vs_raw_1 = MipStoreRaw {
+            store: BTreeMap::from([(vi_1.clone(), vs_1.clone()), (vi_2.clone(), vs_2.clone())]),
+            stats: MipStoreStats::new(mip_stats_cfg.clone()),
+        };
 
         let vs_2_2 = advance_state_until(ComponentState::active(), &vi_2);
         assert_eq!(vs_2_2, ComponentState::active());
 
-        let vs_raw_2 =
-            MipStoreRaw::try_from([(vi_1.clone(), vs_1.clone()), (vi_2.clone(), vs_2_2.clone())])
-                .unwrap();
+        let vs_raw_2 = MipStoreRaw::try_from((
+            [(vi_1.clone(), vs_1.clone()), (vi_2.clone(), vs_2_2.clone())],
+            mip_stats_cfg,
+        ))
+        .unwrap();
 
         vs_raw_1.update_with(&vs_raw_2).unwrap();
 
         // Expect state 1 (for vi_1) no change, state 2 (for vi_2) updated to "Active"
-        assert_eq!(vs_raw_1.0.get(&vi_1).unwrap().inner, vs_1.inner);
-        assert_eq!(vs_raw_1.0.get(&vi_2).unwrap().inner, vs_2_2.inner);
+        assert_eq!(vs_raw_1.store.get(&vi_1).unwrap().state, vs_1.state);
+        assert_eq!(vs_raw_1.store.get(&vi_2).unwrap().state, vs_2_2.state);
     }
 
     #[test]
@@ -1028,43 +1163,61 @@ mod test {
         let vs_2 = advance_state_until(ComponentState::defined(), &vi_2);
         assert_eq!(vs_2, ComponentState::defined());
 
-        let mut vs_raw_1 =
-            MipStoreRaw::try_from([(vi_1.clone(), vs_1.clone()), (vi_2.clone(), vs_2.clone())])
-                .unwrap();
+        let mip_stats_cfg = MipStatsConfig {
+            block_count_considered: 10,
+            counters_max: 5,
+        };
+
+        let mut vs_raw_1 = MipStoreRaw::try_from((
+            [(vi_1.clone(), vs_1.clone()), (vi_2.clone(), vs_2.clone())],
+            mip_stats_cfg.clone(),
+        ))
+        .unwrap();
 
         let mut vi_2_2 = vi_2.clone();
         // Make versioning info invalid (because start == vi_1.timeout)
         vi_2_2.start = vi_1.timeout;
         let vs_2_2 = advance_state_until(ComponentState::defined(), &vi_2_2);
-        let vs_raw_2 = MipStoreRaw(BTreeMap::from([
-            (vi_1.clone(), vs_1.clone()),
-            (vi_2_2.clone(), vs_2_2.clone()),
-        ]));
+        let vs_raw_2 = MipStoreRaw {
+            store: BTreeMap::from([
+                (vi_1.clone(), vs_1.clone()),
+                (vi_2_2.clone(), vs_2_2.clone()),
+            ]),
+            stats: MipStoreStats::new(mip_stats_cfg.clone()),
+        };
 
         // This fails because try_from use update_with
-        let _vs_raw_2_ = MipStoreRaw::try_from([
-            (vi_1.clone(), vs_1.clone()),
-            (vi_2_2.clone(), vs_2_2.clone()),
-        ]);
+        let _vs_raw_2_ = MipStoreRaw::try_from((
+            [
+                (vi_1.clone(), vs_1.clone()),
+                (vi_2_2.clone(), vs_2_2.clone()),
+            ],
+            mip_stats_cfg.clone(),
+        ));
         assert_eq!(_vs_raw_2_.is_err(), true);
 
         assert_eq!(vs_raw_1.update_with(&vs_raw_2), Err(()));
-        assert_eq!(vs_raw_1.0.get(&vi_1).unwrap().inner, vs_1.inner);
-        assert_eq!(vs_raw_1.0.get(&vi_2).unwrap().inner, vs_2.inner);
+        assert_eq!(vs_raw_1.store.get(&vi_1).unwrap().state, vs_1.state);
+        assert_eq!(vs_raw_1.store.get(&vi_2).unwrap().state, vs_2.state);
 
         // 2- overlapping component version
-        let mut vs_raw_1 =
-            MipStoreRaw::try_from([(vi_1.clone(), vs_1.clone()), (vi_2.clone(), vs_2.clone())])
-                .unwrap();
+        let mut vs_raw_1 = MipStoreRaw::try_from((
+            [(vi_1.clone(), vs_1.clone()), (vi_2.clone(), vs_2.clone())],
+            mip_stats_cfg.clone(),
+        ))
+        .unwrap();
 
         let mut vi_2_2 = vi_2.clone();
         vi_2_2.components = vi_1.components.clone();
 
         let vs_2_2 = advance_state_until(ComponentState::defined(), &vi_2_2);
-        let vs_raw_2 = MipStoreRaw(BTreeMap::from([
-            (vi_1.clone(), vs_1.clone()),
-            (vi_2_2.clone(), vs_2_2.clone()),
-        ]));
+        let vs_raw_2 = MipStoreRaw {
+            store: BTreeMap::from([
+                (vi_1.clone(), vs_1.clone()),
+                (vi_2_2.clone(), vs_2_2.clone()),
+            ]),
+            stats: MipStoreStats::new(mip_stats_cfg.clone()),
+        };
 
         assert_eq!(vs_raw_1.update_with(&vs_raw_2), Err(()));
     }

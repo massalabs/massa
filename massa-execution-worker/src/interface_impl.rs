@@ -551,6 +551,10 @@ impl Interface for InterfaceImpl {
         Ok(addr.to_string())
     }
 
+    fn validate_address(&self, address: &str) -> Result<bool> {
+        Ok(massa_models::address::Address::from_str(address).is_ok())
+    }
+
     /// Verifies a signature
     ///
     /// # Arguments
