@@ -85,7 +85,6 @@ impl SharedWhiteBlackList<'_> {
 }
 
 impl WhiteBlackListInner {
-    #[allow(clippy::result_large_err)]
     #[allow(clippy::type_complexity)]
     fn update_list(
         whitelist_path: &Path,
