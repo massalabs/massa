@@ -77,7 +77,7 @@ impl BlockFactoryWorker {
 
         // ignore genesis
         if next_slot.period <= self.cfg.last_start_period {
-            next_slot.period = self.cfg.last_start_period + 1;
+            next_slot = Slot::new(self.cfg.last_start_period + 1, 0);
         }
 
         // protection against double-production on unexpected system clock adjustment
