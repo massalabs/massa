@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"struct":["LedgerChange","LedgerChangeDeserializer","LedgerChangeSerializer","LedgerChanges","LedgerChangesDeserializer","LedgerChangesSerializer","LedgerData","LedgerDataDeserializer","LedgerDataSerializer"]};
+window.SIDEBAR_ITEMS = {"constant":["FIELDS"],"enum":["__Field"],"struct":["LedgerChange","LedgerChangeDeserializer","LedgerChangeSerializer","LedgerChanges","LedgerChangesDeserializer","LedgerChangesSerializer","LedgerData","LedgerDataDeserializer","LedgerDataSerializer","__FieldVisitor","__Visitor"]};
