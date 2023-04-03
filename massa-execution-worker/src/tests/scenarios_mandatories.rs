@@ -2131,7 +2131,7 @@ mod tests {
             ..ExecutionConfig::default()
         };
         // get a sample final state
-        let (sample_state, _keep_file, _keep_dir) = get_sample_state().unwrap();
+        let (sample_state, _keep_file, _keep_dir) = get_sample_state(0).unwrap();
 
         // init the MIP store
         let mip_stats_config = MipStatsConfig {

@@ -117,10 +117,8 @@ impl PoSFinalState {
                 .try_into()
                 .unwrap(),
         );
-        for _ in 0..self.config.thread_count {
-            // assume genesis blocks have a "False" seed bit to avoid passing them around
-            rng_seed.push(false);
-        }
+        rng_seed.extend(vec![false; self.config.thread_count as usize]);
+
         self.cycle_history.push_back(CycleInfo::new_with_hash(
             0,
             false,
@@ -157,9 +155,7 @@ impl PoSFinalState {
             .expect("Error in slot ordering")
             .saturating_add(1);
 
-        for _ in 0..num_slots {
-            rng_seed.push(false);
-        }
+        rng_seed.extend(vec![false; num_slots as usize]);
 
         let complete =
             last_slot.is_last_of_cycle(self.config.periods_per_cycle, self.config.thread_count);

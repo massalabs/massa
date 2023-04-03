@@ -257,9 +257,13 @@ impl FinalState {
             latest_cycle_info.rng_seed.push(false);
         }
 
-        // TODO: Replace the for loops with this. Check for "n+1" errors
-
-        //latest_cycle_info.rng_seed.extend(vec![false; (current_slot.period..self.config.periods_per_cycle).count()]);
+        latest_cycle_info.rng_seed.extend(vec![
+            false;
+            self.config
+                .periods_per_cycle
+                .saturating_sub(current_slot.period)
+                as usize
+        ]);
 
         latest_cycle_info.complete = true;
 
