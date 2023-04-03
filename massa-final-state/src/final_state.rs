@@ -115,7 +115,7 @@ impl FinalState {
     /// * `ledger`: a handle to the ledger
     /// * `selector`: a handle to the POS selector
     /// * `last_start_period`: at what period we should attach the final_state
-    pub fn from_snapshot(
+    pub fn new_derived_from_snapshot(
         config: FinalStateConfig,
         ledger: Box<dyn LedgerController>,
         selector: Box<dyn SelectorController>,

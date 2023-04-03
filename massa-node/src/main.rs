@@ -169,7 +169,7 @@ async fn launch(
     // Create final state, from snapshot or from scratch
     let final_state = match args.restart_from_snapshot_at_period {
         Some(last_start_period) => Arc::new(parking_lot::RwLock::new(
-            FinalState::from_snapshot(
+            FinalState::new_derived_from_snapshot(
                 final_state_config,
                 Box::new(ledger),
                 selector_controller.clone(),

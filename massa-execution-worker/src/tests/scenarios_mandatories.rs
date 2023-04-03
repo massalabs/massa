@@ -1364,7 +1364,6 @@ mod tests {
         // Check that deferred credit are reimbursed
         let credits = PreHashMap::default();
 
-        // Check that deferred credit are reimbursed
         assert_eq!(
             sample_read
                 .pos_state
