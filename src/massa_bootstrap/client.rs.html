@@ -525,6 +525,27 @@
 <a href="#525" id="525">525</a>
 <a href="#526" id="526">526</a>
 <a href="#527" id="527">527</a>
+<a href="#528" id="528">528</a>
+<a href="#529" id="529">529</a>
+<a href="#530" id="530">530</a>
+<a href="#531" id="531">531</a>
+<a href="#532" id="532">532</a>
+<a href="#533" id="533">533</a>
+<a href="#534" id="534">534</a>
+<a href="#535" id="535">535</a>
+<a href="#536" id="536">536</a>
+<a href="#537" id="537">537</a>
+<a href="#538" id="538">538</a>
+<a href="#539" id="539">539</a>
+<a href="#540" id="540">540</a>
+<a href="#541" id="541">541</a>
+<a href="#542" id="542">542</a>
+<a href="#543" id="543">543</a>
+<a href="#544" id="544">544</a>
+<a href="#545" id="545">545</a>
+<a href="#546" id="546">546</a>
+<a href="#547" id="547">547</a>
+<a href="#548" id="548">548</a>
 </pre><pre class="rust"><code><span class="kw">use </span>humantime::format_duration;
 <span class="kw">use </span>std::{collections::HashSet, net::SocketAddr, sync::Arc, time::Duration};
 
@@ -538,12 +559,13 @@
     prelude::{SliceRandom, StdRng},
     SeedableRng,
 };
+<span class="kw">use </span>tokio::time::sleep;
 <span class="kw">use </span>tracing::{debug, info, warn};
 
 <span class="kw">use crate</span>::{
     client_binder::BootstrapClientBinder,
     error::BootstrapError,
-    establisher::{BSConnector, Duplex},
+    establisher::{BSConnector, BSEstablisher},
     messages::{BootstrapClientMessage, BootstrapServerMessage},
     settings::IpType,
     BootstrapConfig, GlobalBootstrapState,
@@ -552,36 +574,38 @@
 <span class="doccomment">/// This function will send the starting point to receive a stream of the ledger and will receive and process each part until receive a `BootstrapServerMessage::FinalStateFinished` message from the server.
 /// `next_bootstrap_message` passed as parameter must be `BootstrapClientMessage::AskFinalStatePart` enum variant.
 /// `next_bootstrap_message` will be updated after receiving each part so that in case of connection lost we can restart from the last message we processed.
-</span><span class="kw">fn </span>stream_final_state_and_consensus&lt;D: Duplex&gt;(
+</span><span class="kw">async fn </span>stream_final_state_and_consensus(
     cfg: <span class="kw-2">&amp;</span>BootstrapConfig,
-    client: <span class="kw-2">&amp;mut </span>BootstrapClientBinder&lt;D&gt;,
+    client: <span class="kw-2">&amp;mut </span>BootstrapClientBinder,
     next_bootstrap_message: <span class="kw-2">&amp;mut </span>BootstrapClientMessage,
     global_bootstrap_state: <span class="kw-2">&amp;mut </span>GlobalBootstrapState,
 ) -&gt; <span class="prelude-ty">Result</span>&lt;(), BootstrapError&gt; {
     <span class="kw">if let </span>BootstrapClientMessage::AskBootstrapPart { .. } = <span class="kw-2">&amp;</span>next_bootstrap_message {
-        <span class="kw">match </span>client.send_timeout(
-            next_bootstrap_message,
-            <span class="prelude-val">Some</span>(cfg.write_timeout.to_duration()),
-        ) {
-            <span class="prelude-val">Err</span>(BootstrapError::TimedOut(<span class="kw">_</span>)) =&gt; <span class="prelude-val">Err</span>(std::io::Error::new(
+        <span class="kw">match </span>tokio::time::timeout(
+            cfg.write_timeout.into(),
+            client.send(next_bootstrap_message),
+        )
+        .<span class="kw">await
+        </span>{
+            <span class="prelude-val">Err</span>(<span class="kw">_</span>) =&gt; <span class="prelude-val">Err</span>(std::io::Error::new(
                 std::io::ErrorKind::TimedOut,
                 <span class="string">&quot;bootstrap ask ledger part send timed out&quot;</span>,
             )
             .into()),
-            <span class="prelude-val">Err</span>(e) =&gt; <span class="prelude-val">Err</span>(e),
-            <span class="prelude-val">Ok</span>(<span class="kw">_</span>) =&gt; <span class="prelude-val">Ok</span>(()),
+            <span class="prelude-val">Ok</span>(<span class="prelude-val">Err</span>(e)) =&gt; <span class="prelude-val">Err</span>(e),
+            <span class="prelude-val">Ok</span>(<span class="prelude-val">Ok</span>(<span class="kw">_</span>)) =&gt; <span class="prelude-val">Ok</span>(()),
         }<span class="question-mark">?</span>;
         <span class="kw">loop </span>{
-            <span class="kw">let </span>msg = <span class="kw">match </span>client.next_timeout(<span class="prelude-val">Some</span>(cfg.read_timeout.to_duration())) {
-                <span class="prelude-val">Err</span>(BootstrapError::TimedOut(<span class="kw">_</span>)) =&gt; {
+            <span class="kw">let </span>msg = <span class="kw">match </span>tokio::time::timeout(cfg.read_timeout.into(), client.next()).<span class="kw">await </span>{
+                <span class="prelude-val">Err</span>(<span class="kw">_</span>) =&gt; {
                     <span class="kw">return </span><span class="prelude-val">Err</span>(std::io::Error::new(
                         std::io::ErrorKind::TimedOut,
                         <span class="string">&quot;final state bootstrap read timed out&quot;</span>,
                     )
                     .into());
                 }
-                <span class="prelude-val">Err</span>(e) =&gt; <span class="kw">return </span><span class="prelude-val">Err</span>(e),
-                <span class="prelude-val">Ok</span>(msg) =&gt; msg,
+                <span class="prelude-val">Ok</span>(<span class="prelude-val">Err</span>(e)) =&gt; <span class="kw">return </span><span class="prelude-val">Err</span>(e),
+                <span class="prelude-val">Ok</span>(<span class="prelude-val">Ok</span>(msg)) =&gt; msg,
             };
             <span class="kw">match </span>msg {
                 BootstrapServerMessage::BootstrapPart {
@@ -594,9 +618,16 @@
                     final_state_changes,
                     consensus_part,
                     consensus_outdated_ids,
+                    last_start_period,
                 } =&gt; {
                     <span class="comment">// Set final state
                     </span><span class="kw">let </span><span class="kw-2">mut </span>write_final_state = global_bootstrap_state.final_state.write();
+
+                    <span class="comment">// We only need to receive the initial_state once
+                    </span><span class="kw">if let </span><span class="prelude-val">Some</span>(last_start_period) = last_start_period {
+                        write_final_state.last_start_period = last_start_period;
+                    }
+
                     <span class="kw">let </span>last_ledger_step = write_final_state.ledger.set_ledger_part(ledger_part)<span class="question-mark">?</span>;
                     <span class="kw">let </span>last_pool_step =
                         write_final_state.async_pool.set_pool_part(async_pool_part);
@@ -610,9 +641,11 @@
                         .executed_ops
                         .set_executed_ops_part(exec_ops_part);
                     <span class="kw">for </span>(changes_slot, changes) <span class="kw">in </span>final_state_changes.iter() {
-                        write_final_state
-                            .ledger
-                            .apply_changes(changes.ledger_changes.clone(), <span class="kw-2">*</span>changes_slot);
+                        write_final_state.ledger.apply_changes(
+                            changes.ledger_changes.clone(),
+                            <span class="kw-2">*</span>changes_slot,
+                            <span class="prelude-val">None</span>,
+                        );
                         write_final_state
                             .async_pool
                             .apply_changes_unchecked(<span class="kw-2">&amp;</span>changes.async_pool_changes);
@@ -663,6 +696,7 @@
                         last_credits_step,
                         last_ops_step,
                         last_consensus_step,
+                        send_last_start_period: <span class="bool-val">false</span>,
                     };
 
                     <span class="comment">// Logs for an easier diagnostic if needed
@@ -691,6 +725,7 @@
                         last_credits_step: StreamingStep::Started,
                         last_ops_step: StreamingStep::Started,
                         last_consensus_step: StreamingStep::Started,
+                        send_last_start_period: <span class="bool-val">true</span>,
                     };
                     <span class="kw">let </span><span class="kw-2">mut </span>write_final_state = global_bootstrap_state.final_state.write();
                     write_final_state.reset();
@@ -718,9 +753,9 @@
 
 <span class="doccomment">/// Gets the state from a bootstrap server (internal private function)
 /// needs to be CANCELLABLE
-</span><span class="kw">fn </span>bootstrap_from_server&lt;D: Duplex&gt;(
+</span><span class="kw">async fn </span>bootstrap_from_server(
     cfg: <span class="kw-2">&amp;</span>BootstrapConfig,
-    client: <span class="kw-2">&amp;mut </span>BootstrapClientBinder&lt;D&gt;,
+    client: <span class="kw-2">&amp;mut </span>BootstrapClientBinder,
     next_bootstrap_message: <span class="kw-2">&amp;mut </span>BootstrapClientMessage,
     global_bootstrap_state: <span class="kw-2">&amp;mut </span>GlobalBootstrapState,
     our_version: Version,
@@ -729,34 +764,33 @@
 
     <span class="comment">// read error (if sent by the server)
     // client.next() is not cancel-safe but we drop the whole client object if cancelled =&gt; it&#39;s OK
-    </span><span class="kw">match </span>client.next_timeout(<span class="prelude-val">Some</span>(cfg.read_error_timeout.to_duration())) {
-        <span class="prelude-val">Err</span>(BootstrapError::TimedOut(<span class="kw">_</span>)) =&gt; {
+    </span><span class="kw">match </span>tokio::time::timeout(cfg.read_error_timeout.into(), client.next()).<span class="kw">await </span>{
+        <span class="prelude-val">Err</span>(<span class="kw">_</span>) =&gt; {
             <span class="macro">massa_trace!</span>(
                 <span class="string">&quot;bootstrap.lib.bootstrap_from_server: No error sent at connection&quot;</span>,
                 {}
             );
         }
-        <span class="prelude-val">Err</span>(e) =&gt; <span class="kw">return </span><span class="prelude-val">Err</span>(e),
-        <span class="prelude-val">Ok</span>(BootstrapServerMessage::BootstrapError { error: err }) =&gt; {
+        <span class="prelude-val">Ok</span>(<span class="prelude-val">Err</span>(e)) =&gt; <span class="kw">return </span><span class="prelude-val">Err</span>(e),
+        <span class="prelude-val">Ok</span>(<span class="prelude-val">Ok</span>(BootstrapServerMessage::BootstrapError { error: err })) =&gt; {
             <span class="kw">return </span><span class="prelude-val">Err</span>(BootstrapError::ReceivedError(err))
         }
-        <span class="prelude-val">Ok</span>(msg) =&gt; <span class="kw">return </span><span class="prelude-val">Err</span>(BootstrapError::UnexpectedServerMessage(msg)),
+        <span class="prelude-val">Ok</span>(<span class="prelude-val">Ok</span>(msg)) =&gt; <span class="kw">return </span><span class="prelude-val">Err</span>(BootstrapError::UnexpectedServerMessage(msg)),
     };
 
     <span class="comment">// handshake
     </span><span class="kw">let </span>send_time_uncompensated = MassaTime::now()<span class="question-mark">?</span>;
     <span class="comment">// client.handshake() is not cancel-safe but we drop the whole client object if cancelled =&gt; it&#39;s OK
-    </span><span class="kw">match </span><span class="comment">// tokio::time::timeout(cfg.write_timeout.into(),
-    </span>client.handshake(our_version) {
-        <span class="prelude-val">Err</span>(BootstrapError::TimedOut(<span class="kw">_</span>)) =&gt; {
+    </span><span class="kw">match </span>tokio::time::timeout(cfg.write_timeout.into(), client.handshake(our_version)).<span class="kw">await </span>{
+        <span class="prelude-val">Err</span>(<span class="kw">_</span>) =&gt; {
             <span class="kw">return </span><span class="prelude-val">Err</span>(std::io::Error::new(
                 std::io::ErrorKind::TimedOut,
                 <span class="string">&quot;bootstrap handshake timed out&quot;</span>,
             )
-            .into());
+            .into())
         }
-        <span class="prelude-val">Err</span>(e) =&gt; <span class="kw">return </span><span class="prelude-val">Err</span>(e),
-        <span class="prelude-val">Ok</span>(<span class="kw">_</span>) =&gt; {}
+        <span class="prelude-val">Ok</span>(<span class="prelude-val">Err</span>(e)) =&gt; <span class="kw">return </span><span class="prelude-val">Err</span>(e),
+        <span class="prelude-val">Ok</span>(<span class="prelude-val">Ok</span>(<span class="kw">_</span>)) =&gt; {}
     }
 
     <span class="comment">// compute ping
@@ -769,19 +803,19 @@
 
     <span class="comment">// First, clock and version.
     // client.next() is not cancel-safe but we drop the whole client object if cancelled =&gt; it&#39;s OK
-    </span><span class="kw">let </span>server_time = <span class="kw">match </span>client.next_timeout(<span class="prelude-val">Some</span>(cfg.read_timeout.into())) {
-        <span class="prelude-val">Err</span>(BootstrapError::TimedOut(<span class="kw">_</span>)) =&gt; {
+    </span><span class="kw">let </span>server_time = <span class="kw">match </span>tokio::time::timeout(cfg.read_timeout.into(), client.next()).<span class="kw">await </span>{
+        <span class="prelude-val">Err</span>(<span class="kw">_</span>) =&gt; {
             <span class="kw">return </span><span class="prelude-val">Err</span>(std::io::Error::new(
                 std::io::ErrorKind::TimedOut,
                 <span class="string">&quot;bootstrap clock sync read timed out&quot;</span>,
             )
             .into())
         }
-        <span class="prelude-val">Err</span>(e) =&gt; <span class="kw">return </span><span class="prelude-val">Err</span>(e),
-        <span class="prelude-val">Ok</span>(BootstrapServerMessage::BootstrapTime {
+        <span class="prelude-val">Ok</span>(<span class="prelude-val">Err</span>(e)) =&gt; <span class="kw">return </span><span class="prelude-val">Err</span>(e),
+        <span class="prelude-val">Ok</span>(<span class="prelude-val">Ok</span>(BootstrapServerMessage::BootstrapTime {
             server_time,
             version,
-        }) =&gt; {
+        })) =&gt; {
             <span class="kw">if </span>!our_version.is_compatible(<span class="kw-2">&amp;</span>version) {
                 <span class="kw">return </span><span class="prelude-val">Err</span>(BootstrapError::IncompatibleVersionError(<span class="macro">format!</span>(
                     <span class="string">&quot;remote is running incompatible version: {} (local node version: {})&quot;</span>,
@@ -790,10 +824,10 @@
             }
             server_time
         }
-        <span class="prelude-val">Ok</span>(BootstrapServerMessage::BootstrapError { error }) =&gt; {
+        <span class="prelude-val">Ok</span>(<span class="prelude-val">Ok</span>(BootstrapServerMessage::BootstrapError { error })) =&gt; {
             <span class="kw">return </span><span class="prelude-val">Err</span>(BootstrapError::ReceivedError(error))
         }
-        <span class="prelude-val">Ok</span>(msg) =&gt; <span class="kw">return </span><span class="prelude-val">Err</span>(BootstrapError::UnexpectedServerMessage(msg)),
+        <span class="prelude-val">Ok</span>(<span class="prelude-val">Ok</span>(msg)) =&gt; <span class="kw">return </span><span class="prelude-val">Err</span>(BootstrapError::UnexpectedServerMessage(msg)),
     };
 
     <span class="comment">// get the time of reception
@@ -833,7 +867,8 @@
                     client,
                     next_bootstrap_message,
                     global_bootstrap_state,
-                )<span class="question-mark">?</span>;
+                )
+                .<span class="kw">await</span><span class="question-mark">?</span>;
             }
             BootstrapClientMessage::AskBootstrapPeers =&gt; {
                 <span class="kw">let </span>peers = <span class="kw">match </span>send_client_message(
@@ -842,7 +877,9 @@
                     write_timeout,
                     cfg.read_timeout.into(),
                     <span class="string">&quot;ask bootstrap peers timed out&quot;</span>,
-                )<span class="question-mark">? </span>{
+                )
+                .<span class="kw">await</span><span class="question-mark">?
+                </span>{
                     BootstrapServerMessage::BootstrapPeers { peers } =&gt; peers,
                     BootstrapServerMessage::BootstrapError { error } =&gt; {
                         <span class="kw">return </span><span class="prelude-val">Err</span>(BootstrapError::ReceivedError(error))
@@ -853,14 +890,15 @@
                 <span class="kw-2">*</span>next_bootstrap_message = BootstrapClientMessage::BootstrapSuccess;
             }
             BootstrapClientMessage::BootstrapSuccess =&gt; {
-                <span class="kw">match </span>client.send_timeout(next_bootstrap_message, <span class="prelude-val">Some</span>(write_timeout)) {
-                    <span class="prelude-val">Err</span>(BootstrapError::TimedOut(<span class="kw">_</span>)) =&gt; <span class="prelude-val">Err</span>(std::io::Error::new(
+                <span class="kw">match </span>tokio::time::timeout(write_timeout, client.send(next_bootstrap_message)).<span class="kw">await
+                </span>{
+                    <span class="prelude-val">Err</span>(<span class="kw">_</span>) =&gt; <span class="prelude-val">Err</span>(std::io::Error::new(
                         std::io::ErrorKind::TimedOut,
                         <span class="string">&quot;send bootstrap success timed out&quot;</span>,
                     )
                     .into()),
-                    <span class="prelude-val">Err</span>(e) =&gt; <span class="prelude-val">Err</span>(e),
-                    <span class="prelude-val">Ok</span>(<span class="kw">_</span>) =&gt; <span class="prelude-val">Ok</span>(()),
+                    <span class="prelude-val">Ok</span>(<span class="prelude-val">Err</span>(e)) =&gt; <span class="prelude-val">Err</span>(e),
+                    <span class="prelude-val">Ok</span>(<span class="prelude-val">Ok</span>(<span class="kw">_</span>)) =&gt; <span class="prelude-val">Ok</span>(()),
                 }<span class="question-mark">?</span>;
                 <span class="kw">break</span>;
             }
@@ -873,37 +911,34 @@
     <span class="prelude-val">Ok</span>(())
 }
 
-<span class="kw">fn </span>send_client_message&lt;D: Duplex&gt;(
+<span class="kw">async fn </span>send_client_message(
     message_to_send: <span class="kw-2">&amp;</span>BootstrapClientMessage,
-    client: <span class="kw-2">&amp;mut </span>BootstrapClientBinder&lt;D&gt;,
+    client: <span class="kw-2">&amp;mut </span>BootstrapClientBinder,
     write_timeout: Duration,
     read_timeout: Duration,
     error: <span class="kw-2">&amp;</span>str,
 ) -&gt; <span class="prelude-ty">Result</span>&lt;BootstrapServerMessage, BootstrapError&gt; {
-    <span class="kw">match </span>client.send_timeout(message_to_send, <span class="prelude-val">Some</span>(write_timeout)) {
-        <span class="prelude-val">Err</span>(BootstrapError::TimedOut(<span class="kw">_</span>)) =&gt; {
-            <span class="prelude-val">Err</span>(std::io::Error::new(std::io::ErrorKind::TimedOut, error).into())
-        }
-        <span class="prelude-val">Err</span>(e) =&gt; <span class="prelude-val">Err</span>(e),
-        <span class="prelude-val">Ok</span>(<span class="kw">_</span>) =&gt; <span class="prelude-val">Ok</span>(()),
+    <span class="kw">match </span>tokio::time::timeout(write_timeout, client.send(message_to_send)).<span class="kw">await </span>{
+        <span class="prelude-val">Err</span>(<span class="kw">_</span>) =&gt; <span class="prelude-val">Err</span>(std::io::Error::new(std::io::ErrorKind::TimedOut, error).into()),
+        <span class="prelude-val">Ok</span>(<span class="prelude-val">Err</span>(e)) =&gt; <span class="prelude-val">Err</span>(e),
+        <span class="prelude-val">Ok</span>(<span class="prelude-val">Ok</span>(<span class="kw">_</span>)) =&gt; <span class="prelude-val">Ok</span>(()),
     }<span class="question-mark">?</span>;
-    <span class="kw">match </span>client.next_timeout(<span class="prelude-val">Some</span>(read_timeout)) {
-        <span class="prelude-val">Err</span>(BootstrapError::TimedOut(<span class="kw">_</span>)) =&gt; {
-            <span class="prelude-val">Err</span>(std::io::Error::new(std::io::ErrorKind::TimedOut, error).into())
-        }
-        <span class="prelude-val">Err</span>(e) =&gt; <span class="prelude-val">Err</span>(e),
-        <span class="prelude-val">Ok</span>(msg) =&gt; <span class="prelude-val">Ok</span>(msg),
+    <span class="kw">match </span>tokio::time::timeout(read_timeout, client.next()).<span class="kw">await </span>{
+        <span class="prelude-val">Err</span>(<span class="kw">_</span>) =&gt; <span class="prelude-val">Err</span>(std::io::Error::new(std::io::ErrorKind::TimedOut, error).into()),
+        <span class="prelude-val">Ok</span>(<span class="prelude-val">Err</span>(e)) =&gt; <span class="prelude-val">Err</span>(e),
+        <span class="prelude-val">Ok</span>(<span class="prelude-val">Ok</span>(msg)) =&gt; <span class="prelude-val">Ok</span>(msg),
     }
 }
 
-<span class="kw">fn </span>connect_to_server(
-    connector: <span class="kw-2">&amp;mut </span><span class="kw">impl </span>BSConnector,
+<span class="kw">async fn </span>connect_to_server(
+    establisher: <span class="kw-2">&amp;mut </span><span class="kw">impl </span>BSEstablisher,
     bootstrap_config: <span class="kw-2">&amp;</span>BootstrapConfig,
     addr: <span class="kw-2">&amp;</span>SocketAddr,
     pub_key: <span class="kw-2">&amp;</span>PublicKey,
-) -&gt; <span class="prelude-ty">Result</span>&lt;BootstrapClientBinder&lt;std::net::TcpStream&gt;, BootstrapError&gt; {
-    <span class="kw">let </span>socket = connector.connect_timeout(<span class="kw-2">*</span>addr, <span class="prelude-val">Some</span>(bootstrap_config.connect_timeout))<span class="question-mark">?</span>;
-    socket.set_nonblocking(<span class="bool-val">false</span>)<span class="question-mark">?</span>;
+) -&gt; <span class="prelude-ty">Result</span>&lt;BootstrapClientBinder, BootstrapError&gt; {
+    <span class="comment">// connect
+    </span><span class="kw">let </span><span class="kw-2">mut </span>connector = establisher.get_connector(bootstrap_config.connect_timeout)<span class="question-mark">?</span>;
+    <span class="kw">let </span>socket = connector.connect(<span class="kw-2">*</span>addr).<span class="kw">await</span><span class="question-mark">?</span>;
     <span class="prelude-val">Ok</span>(BootstrapClientBinder::new(
         socket,
         <span class="kw-2">*</span>pub_key,
@@ -942,96 +977,50 @@
 </span><span class="kw">pub async fn </span>get_state(
     bootstrap_config: <span class="kw-2">&amp;</span>BootstrapConfig,
     final_state: Arc&lt;RwLock&lt;FinalState&gt;&gt;,
-    <span class="kw-2">mut </span>connector: <span class="kw">impl </span>BSConnector,
+    <span class="kw-2">mut </span>establisher: <span class="kw">impl </span>BSEstablisher,
     version: Version,
     genesis_timestamp: MassaTime,
     end_timestamp: <span class="prelude-ty">Option</span>&lt;MassaTime&gt;,
+    restart_from_snapshot_at_period: <span class="prelude-ty">Option</span>&lt;u64&gt;,
 ) -&gt; <span class="prelude-ty">Result</span>&lt;GlobalBootstrapState, BootstrapError&gt; {
     <span class="macro">massa_trace!</span>(<span class="string">&quot;bootstrap.lib.get_state&quot;</span>, {});
+
+    <span class="comment">// If we restart from a snapshot, do not bootstrap
+    </span><span class="kw">if </span>restart_from_snapshot_at_period.is_some() {
+        <span class="macro">massa_trace!</span>(<span class="string">&quot;bootstrap.lib.get_state.init_from_snapshot&quot;</span>, {});
+        <span class="kw">return </span><span class="prelude-val">Ok</span>(GlobalBootstrapState::new(final_state));
+    }
+
+    <span class="kw">let </span>now = MassaTime::now()<span class="question-mark">?</span>;
     <span class="comment">// if we are before genesis, do not bootstrap
-    </span><span class="kw">if </span>MassaTime::now()<span class="question-mark">? </span>&lt; genesis_timestamp {
-        <span class="kw">return </span>get_genesis_state(final_state);
-    }
+    </span><span class="kw">if </span>now &lt; genesis_timestamp {
+        <span class="macro">massa_trace!</span>(<span class="string">&quot;bootstrap.lib.get_state.init_from_scratch&quot;</span>, {});
+        <span class="comment">// init final state
+        </span>{
+            <span class="kw">let </span><span class="kw-2">mut </span>final_state_guard = final_state.write();
 
-    <span class="comment">// we filter the bootstrap list to keep only the ip addresses we are compatible with
-    </span><span class="kw">let </span>filtered_bootstrap_list = get_bootstrap_list_iter(bootstrap_config)<span class="question-mark">?</span>;
-
-    <span class="kw">let </span><span class="kw-2">mut </span>next_bootstrap_message: BootstrapClientMessage =
-        BootstrapClientMessage::AskBootstrapPart {
-            last_slot: <span class="prelude-val">None</span>,
-            last_ledger_step: StreamingStep::Started,
-            last_pool_step: StreamingStep::Started,
-            last_cycle_step: StreamingStep::Started,
-            last_credits_step: StreamingStep::Started,
-            last_ops_step: StreamingStep::Started,
-            last_consensus_step: StreamingStep::Started,
-        };
-    <span class="kw">let </span><span class="kw-2">mut </span>global_bootstrap_state = GlobalBootstrapState::new(final_state);
-
-    <span class="kw">loop </span>{
-        <span class="kw">for </span>(addr, node_id) <span class="kw">in </span>filtered_bootstrap_list.iter() {
-            <span class="kw">if let </span><span class="prelude-val">Some</span>(end) = end_timestamp {
-                <span class="kw">if </span>MassaTime::now().expect(<span class="string">&quot;could not get now time&quot;</span>) &gt; end {
-                    <span class="macro">panic!</span>(<span class="string">&quot;This episode has come to an end, please get the latest testnet node version to continue&quot;</span>);
-                }
+            <span class="kw">if </span>!bootstrap_config.keep_ledger {
+                <span class="comment">// load ledger from initial ledger file
+                </span>final_state_guard
+                    .ledger
+                    .load_initial_ledger()
+                    .map_err(|err| {
+                        BootstrapError::GeneralError(<span class="macro">format!</span>(
+                            <span class="string">&quot;could not load initial ledger: {}&quot;</span>,
+                            err
+                        ))
+                    })<span class="question-mark">?</span>;
             }
-            <span class="macro">info!</span>(<span class="string">&quot;Start bootstrapping from {}&quot;</span>, addr);
-            <span class="kw">match </span>connect_to_server(
-                <span class="kw-2">&amp;mut </span>connector,
-                bootstrap_config,
-                addr,
-                <span class="kw-2">&amp;</span>node_id.get_public_key(),
-            ) {
-                <span class="prelude-val">Ok</span>(<span class="kw-2">mut </span>client) =&gt; {
-                    <span class="kw">match </span>bootstrap_from_server(bootstrap_config, <span class="kw-2">&amp;mut </span>client, <span class="kw-2">&amp;mut </span>next_bootstrap_message, <span class="kw-2">&amp;mut </span>global_bootstrap_state,version)
-                      <span class="comment">// cancellable
-                    </span>{
-                        <span class="prelude-val">Err</span>(BootstrapError::ReceivedError(error)) =&gt; <span class="macro">warn!</span>(<span class="string">&quot;Error received from bootstrap server: {}&quot;</span>, error),
-                        <span class="prelude-val">Err</span>(e) =&gt; {
-                            <span class="macro">warn!</span>(<span class="string">&quot;Error while bootstrapping: {}&quot;</span>, e);
-                            <span class="comment">// We allow unused result because we don&#39;t care if an error is thrown when sending the error message to the server we will close the socket anyway.
-                            </span><span class="kw">let _ </span>= client.send_timeout(<span class="kw-2">&amp;</span>BootstrapClientMessage::BootstrapError { error: e.to_string() }, <span class="prelude-val">Some</span>(bootstrap_config.write_error_timeout.into()));
-                        }
-                        <span class="prelude-val">Ok</span>(()) =&gt; {
-                            <span class="kw">return </span><span class="prelude-val">Ok</span>(global_bootstrap_state)
-                        }
-                    }
-                }
-                <span class="prelude-val">Err</span>(e) =&gt; {
-                    <span class="macro">warn!</span>(<span class="string">&quot;Error while connecting to bootstrap server: {}&quot;</span>, e);
-                }
-            };
 
-            <span class="macro">info!</span>(<span class="string">&quot;Bootstrap from server {} failed. Your node will try to bootstrap from another server in {}.&quot;</span>, addr, format_duration(bootstrap_config.retry_delay.to_duration()).to_string());
-            std::thread::sleep(bootstrap_config.retry_delay.into());
+            <span class="comment">// create the initial cycle of PoS cycle_history
+            </span>final_state_guard.pos_state.create_initial_cycle();
         }
+        <span class="kw">return </span><span class="prelude-val">Ok</span>(GlobalBootstrapState::new(final_state));
     }
-}
 
-<span class="kw">fn </span>get_genesis_state(
-    final_state: Arc&lt;RwLock&lt;FinalState&gt;&gt;,
-) -&gt; <span class="prelude-ty">Result</span>&lt;GlobalBootstrapState, BootstrapError&gt; {
-    <span class="macro">massa_trace!</span>(<span class="string">&quot;bootstrap.lib.get_state.init_from_scratch&quot;</span>, {});
-    <span class="comment">// init final state
-    </span>{
-        <span class="kw">let </span><span class="kw-2">mut </span>final_state_guard = final_state.write();
-        <span class="comment">// load ledger from initial ledger file
-        </span>final_state_guard
-            .ledger
-            .load_initial_ledger()
-            .map_err(|err| {
-                BootstrapError::GeneralError(<span class="macro">format!</span>(<span class="string">&quot;could not load initial ledger: {}&quot;</span>, err))
-            })<span class="question-mark">?</span>;
-        <span class="comment">// create the initial cycle of PoS cycle_history
-        </span>final_state_guard.pos_state.create_initial_cycle();
-    }
-    <span class="prelude-val">Ok</span>(GlobalBootstrapState::new(final_state))
-}
-
-<span class="kw">fn </span>get_bootstrap_list_iter(
-    bootstrap_config: <span class="kw-2">&amp;</span>BootstrapConfig,
-) -&gt; <span class="prelude-ty">Result</span>&lt;Vec&lt;(SocketAddr, NodeId)&gt;, BootstrapError&gt; {
-    <span class="kw">let </span><span class="kw-2">mut </span>filtered_bootstrap_list = filter_bootstrap_list(
+    <span class="comment">// If the two conditions above are not verified, we need to bootstrap
+    // we filter the bootstrap list to keep only the ip addresses we are compatible with
+    </span><span class="kw">let </span><span class="kw-2">mut </span>filtered_bootstrap_list = filter_bootstrap_list(
         bootstrap_config.bootstrap_list.clone(),
         bootstrap_config.bootstrap_protocol,
     );
@@ -1050,7 +1039,60 @@
     <span class="comment">// we remove the duplicated node ids (if a bootstrap server appears both with its IPv4 and IPv6 address)
     </span><span class="kw">let </span><span class="kw-2">mut </span>unique_node_ids: HashSet&lt;NodeId&gt; = HashSet::new();
     filtered_bootstrap_list.retain(|e| unique_node_ids.insert(e.<span class="number">1</span>));
-    <span class="prelude-val">Ok</span>(filtered_bootstrap_list)
+
+    <span class="kw">let </span><span class="kw-2">mut </span>next_bootstrap_message: BootstrapClientMessage =
+        BootstrapClientMessage::AskBootstrapPart {
+            last_slot: <span class="prelude-val">None</span>,
+            last_ledger_step: StreamingStep::Started,
+            last_pool_step: StreamingStep::Started,
+            last_cycle_step: StreamingStep::Started,
+            last_credits_step: StreamingStep::Started,
+            last_ops_step: StreamingStep::Started,
+            last_consensus_step: StreamingStep::Started,
+            send_last_start_period: <span class="bool-val">true</span>,
+        };
+    <span class="kw">let </span><span class="kw-2">mut </span>global_bootstrap_state = GlobalBootstrapState::new(final_state.clone());
+
+    <span class="kw">loop </span>{
+        <span class="kw">for </span>(addr, node_id) <span class="kw">in </span>filtered_bootstrap_list.iter() {
+            <span class="kw">if let </span><span class="prelude-val">Some</span>(end) = end_timestamp {
+                <span class="kw">if </span>MassaTime::now().expect(<span class="string">&quot;could not get now time&quot;</span>) &gt; end {
+                    <span class="macro">panic!</span>(<span class="string">&quot;This episode has come to an end, please get the latest testnet node version to continue&quot;</span>);
+                }
+            }
+            <span class="macro">info!</span>(<span class="string">&quot;Start bootstrapping from {}&quot;</span>, addr);
+            <span class="kw">match </span>connect_to_server(
+                <span class="kw-2">&amp;mut </span>establisher,
+                bootstrap_config,
+                addr,
+                <span class="kw-2">&amp;</span>node_id.get_public_key(),
+            )
+            .<span class="kw">await
+            </span>{
+                <span class="prelude-val">Ok</span>(<span class="kw-2">mut </span>client) =&gt; {
+                    <span class="kw">match </span>bootstrap_from_server(bootstrap_config, <span class="kw-2">&amp;mut </span>client, <span class="kw-2">&amp;mut </span>next_bootstrap_message, <span class="kw-2">&amp;mut </span>global_bootstrap_state,version)
+                    .<span class="kw">await  </span><span class="comment">// cancellable
+                    </span>{
+                        <span class="prelude-val">Err</span>(BootstrapError::ReceivedError(error)) =&gt; <span class="macro">warn!</span>(<span class="string">&quot;Error received from bootstrap server: {}&quot;</span>, error),
+                        <span class="prelude-val">Err</span>(e) =&gt; {
+                            <span class="macro">warn!</span>(<span class="string">&quot;Error while bootstrapping: {}&quot;</span>, e);
+                            <span class="comment">// We allow unused result because we don&#39;t care if an error is thrown when sending the error message to the server we will close the socket anyway.
+                            </span><span class="kw">let _ </span>= tokio::time::timeout(bootstrap_config.write_error_timeout.into(), client.send(<span class="kw-2">&amp;</span>BootstrapClientMessage::BootstrapError { error: e.to_string() })).<span class="kw">await</span>;
+                        }
+                        <span class="prelude-val">Ok</span>(()) =&gt; {
+                            <span class="kw">return </span><span class="prelude-val">Ok</span>(global_bootstrap_state)
+                        }
+                    }
+                }
+                <span class="prelude-val">Err</span>(e) =&gt; {
+                    <span class="macro">warn!</span>(<span class="string">&quot;Error while connecting to bootstrap server: {}&quot;</span>, e);
+                }
+            };
+
+            <span class="macro">info!</span>(<span class="string">&quot;Bootstrap from server {} failed. Your node will try to bootstrap from another server in {}.&quot;</span>, addr, format_duration(bootstrap_config.retry_delay.to_duration()).to_string());
+            sleep(bootstrap_config.retry_delay.into()).<span class="kw">await</span>;
+        }
+    }
 }
 </code></pre></div>
 </section></main><div id="rustdoc-vars" data-root-path="../../" data-static-root-path="../../static.files/" data-current-crate="massa_bootstrap" data-themes="" data-resource-suffix="" data-rustdoc-version="1.69.0-nightly (d962ea578 2023-02-26)" data-search-js="search-14421e1532aead08.js" data-settings-js="settings-f0c5c39777a9a2f6.js" data-settings-css="settings-0bcba95ff279c1db.css" ></div></body></html>

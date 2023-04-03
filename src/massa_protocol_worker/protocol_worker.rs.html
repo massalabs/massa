@@ -1178,9 +1178,7 @@
     operation::{OperationId, SecureShareOperation},
     prehash::{CapacityAllocator, PreHashMap, PreHashSet},
 };
-<span class="kw">use </span>massa_network_exports::{
-    AskForBlocksInfo, NetworkCommandSender, NetworkCommandSenderTrait, NetworkEventReceiver,
-};
+<span class="kw">use </span>massa_network_exports::{AskForBlocksInfo, NetworkCommandSender, NetworkEventReceiver};
 <span class="kw">use </span>massa_pool_exports::PoolController;
 <span class="kw">use </span>massa_protocol_exports::{
     ProtocolCommand, ProtocolConfig, ProtocolError, ProtocolManagementCommand, ProtocolManager,
@@ -1943,7 +1941,9 @@
         });
 
         <span class="comment">// refuse genesis blocks
-        </span><span class="kw">if </span>header.content.slot.period == <span class="number">0 </span>|| header.content.parents.is_empty() {
+        </span><span class="kw">if </span>header.content.slot.period == <span class="self">self</span>.config.last_start_period
+            || header.content.parents.is_empty()
+        {
             <span class="comment">// genesis
             </span><span class="macro">massa_trace!</span>(<span class="string">&quot;protocol.protocol_worker.check_header.err_is_genesis&quot;</span>, {
                 <span class="string">&quot;header&quot;</span>: header
