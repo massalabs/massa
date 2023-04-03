@@ -72,7 +72,7 @@ impl<D: Duplex> BootstrapClientBinder<D> {
         &mut self,
         duration: Option<Duration>,
     ) -> Result<BootstrapServerMessage, BootstrapError> {
-        self.duplex.set_read_timeout(duration).unwrap();
+        self.duplex.set_read_timeout(duration)?;
         // read signature
         let sig = {
             let mut sig_bytes = [0u8; SIGNATURE_SIZE_BYTES];
