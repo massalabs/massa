@@ -209,6 +209,11 @@
 <a href="#209" id="209">209</a>
 <a href="#210" id="210">210</a>
 <a href="#211" id="211">211</a>
+<a href="#212" id="212">212</a>
+<a href="#213" id="213">213</a>
+<a href="#214" id="214">214</a>
+<a href="#215" id="215">215</a>
+<a href="#216" id="216">216</a>
 </pre><pre class="rust"><code><span class="kw">use </span>massa_execution_exports::ExecutionError;
 <span class="kw">use </span>massa_models::address::Address;
 <span class="kw">use </span>massa_models::amount::Amount;
@@ -331,8 +336,13 @@
             <span class="kw">let </span>deferred_credits = <span class="kw">if </span>deferred_map.is_empty() {
                 Amount::zero()
             } <span class="kw">else </span>{
-                Amount::from_raw(deferred_map.into_values().map(|a| a.to_raw()).sum())
-            };
+                deferred_map
+                    .into_values()
+                    .reduce(|acc, amount| acc.saturating_add(amount))
+                    .ok_or(ExecutionError::RuntimeError(
+                        <span class="string">&quot;Overflow in deferred credits&quot;</span>.to_string(),
+                    ))<span class="question-mark">?
+            </span>};
 
             <span class="comment">// min_balance = (rolls * roll_price) + balance + deferred_credits
             </span><span class="kw">let </span>min_balance = new_balance
