@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"enum":["Command"],"static":["CALLSITE","META"],"struct":["PoolControllerImpl","PoolManagerImpl"]};
