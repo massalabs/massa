@@ -1425,6 +1425,48 @@
 <a href="#1425" id="1425">1425</a>
 <a href="#1426" id="1426">1426</a>
 <a href="#1427" id="1427">1427</a>
+<a href="#1428" id="1428">1428</a>
+<a href="#1429" id="1429">1429</a>
+<a href="#1430" id="1430">1430</a>
+<a href="#1431" id="1431">1431</a>
+<a href="#1432" id="1432">1432</a>
+<a href="#1433" id="1433">1433</a>
+<a href="#1434" id="1434">1434</a>
+<a href="#1435" id="1435">1435</a>
+<a href="#1436" id="1436">1436</a>
+<a href="#1437" id="1437">1437</a>
+<a href="#1438" id="1438">1438</a>
+<a href="#1439" id="1439">1439</a>
+<a href="#1440" id="1440">1440</a>
+<a href="#1441" id="1441">1441</a>
+<a href="#1442" id="1442">1442</a>
+<a href="#1443" id="1443">1443</a>
+<a href="#1444" id="1444">1444</a>
+<a href="#1445" id="1445">1445</a>
+<a href="#1446" id="1446">1446</a>
+<a href="#1447" id="1447">1447</a>
+<a href="#1448" id="1448">1448</a>
+<a href="#1449" id="1449">1449</a>
+<a href="#1450" id="1450">1450</a>
+<a href="#1451" id="1451">1451</a>
+<a href="#1452" id="1452">1452</a>
+<a href="#1453" id="1453">1453</a>
+<a href="#1454" id="1454">1454</a>
+<a href="#1455" id="1455">1455</a>
+<a href="#1456" id="1456">1456</a>
+<a href="#1457" id="1457">1457</a>
+<a href="#1458" id="1458">1458</a>
+<a href="#1459" id="1459">1459</a>
+<a href="#1460" id="1460">1460</a>
+<a href="#1461" id="1461">1461</a>
+<a href="#1462" id="1462">1462</a>
+<a href="#1463" id="1463">1463</a>
+<a href="#1464" id="1464">1464</a>
+<a href="#1465" id="1465">1465</a>
+<a href="#1466" id="1466">1466</a>
+<a href="#1467" id="1467">1467</a>
+<a href="#1468" id="1468">1468</a>
+<a href="#1469" id="1469">1469</a>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="doccomment">//! This module deals with executing final and active slots, as well as read-only requests.
@@ -1454,6 +1496,7 @@
 <span class="kw">use </span>massa_models::output_event::SCOutputEvent;
 <span class="kw">use </span>massa_models::prehash::PreHashSet;
 <span class="kw">use </span>massa_models::stats::ExecutionStats;
+<span class="kw">use </span>massa_models::timeslots::get_block_slot_timestamp;
 <span class="kw">use </span>massa_models::{
     address::Address,
     block_id::BlockId,
@@ -1463,6 +1506,7 @@
 <span class="kw">use </span>massa_pos_exports::SelectorController;
 <span class="kw">use </span>massa_sc_runtime::{Interface, Response, RuntimeModule};
 <span class="kw">use </span>massa_storage::Storage;
+<span class="kw">use </span>massa_versioning_worker::versioning::MipStore;
 <span class="kw">use </span>parking_lot::{Mutex, RwLock};
 <span class="kw">use </span>std::collections::{BTreeMap, BTreeSet, HashMap};
 <span class="kw">use </span>std::sync::Arc;
@@ -1504,6 +1548,8 @@
     </span>module_cache: Arc&lt;RwLock&lt;ModuleCache&gt;&gt;,
     <span class="comment">// Vesting manager
     </span>vesting_manager: Arc&lt;VestingManager&gt;,
+    <span class="comment">// MipStore (Versioning)
+    </span>mip_store: MipStore,
 }
 
 <span class="kw">impl </span>ExecutionState {
@@ -1515,7 +1561,11 @@
     ///
     /// # returns
     /// A new `ExecutionState`
-    </span><span class="kw">pub fn </span>new(config: ExecutionConfig, final_state: Arc&lt;RwLock&lt;FinalState&gt;&gt;) -&gt; ExecutionState {
+    </span><span class="kw">pub fn </span>new(
+        config: ExecutionConfig,
+        final_state: Arc&lt;RwLock&lt;FinalState&gt;&gt;,
+        mip_store: MipStore,
+    ) -&gt; ExecutionState {
         <span class="comment">// Get the slot at the output of which the final state is attached.
         // This should be among the latest final slots.
         </span><span class="kw">let </span>last_final_slot = final_state.read().slot;
@@ -1574,6 +1624,7 @@
             module_cache,
             config,
             vesting_manager,
+            mip_store,
         }
     }
 
@@ -2505,7 +2556,11 @@
 
         <span class="comment">// apply execution output to final state
         </span><span class="self">self</span>.apply_final_execution_output(exec_out);
-        <span class="macro">debug!</span>(<span class="string">&quot;execute_final_slot: execution finished &amp; result applied&quot;</span>);
+
+        <span class="self">self</span>.update_versioning_stats(exec_target, slot);
+        <span class="macro">debug!</span>(
+            <span class="string">&quot;execute_final_slot: execution finished &amp; result applied &amp; versioning stats updated&quot;
+        </span>);
     }
 
     <span class="doccomment">/// Runs a read-only execution request.
@@ -2734,21 +2789,18 @@
     ///
     /// By default it returns an empty map.
     </span><span class="kw">pub fn </span>get_cycle_active_rolls(<span class="kw-2">&amp;</span><span class="self">self</span>, cycle: u64) -&gt; BTreeMap&lt;Address, u64&gt; {
+        <span class="kw">let </span>lookback_cycle = cycle.checked_sub(<span class="number">3</span>);
         <span class="kw">let </span>final_state = <span class="self">self</span>.final_state.read();
-
-        <span class="kw">match </span>cycle.checked_sub(<span class="number">3</span>) {
-            <span class="prelude-val">Some</span>(lookback_cycle) =&gt; {
-                <span class="kw">let </span>lookback_cycle_index =
-                    <span class="kw">match </span>final_state.pos_state.get_cycle_index(lookback_cycle) {
-                        <span class="prelude-val">Some</span>(v) =&gt; v,
-                        <span class="prelude-val">None </span>=&gt; Default::default(),
-                    };
-                <span class="comment">// get rolls
-                </span>final_state.pos_state.cycle_history[lookback_cycle_index]
-                    .roll_counts
-                    .clone()
-            }
-            <span class="kw">_ </span>=&gt; final_state.pos_state.initial_rolls.clone(),
+        <span class="kw">if let </span><span class="prelude-val">Some</span>(lookback_cycle) = lookback_cycle {
+            <span class="kw">let </span>lookback_cycle_index = <span class="kw">match </span>final_state.pos_state.get_cycle_index(lookback_cycle) {
+                <span class="prelude-val">Some</span>(v) =&gt; v,
+                <span class="prelude-val">None </span>=&gt; Default::default(),
+            };
+            final_state.pos_state.cycle_history[lookback_cycle_index]
+                .roll_counts
+                .clone()
+        } <span class="kw">else </span>{
+            final_state.pos_state.initial_rolls.clone()
         }
     }
 
@@ -2850,6 +2902,38 @@
             <span class="self">self</span>.active_history.read().get_op_exec_status(),
             <span class="self">self</span>.final_state.read().executed_ops.op_exec_status.clone(),
         )
+    }
+
+    <span class="doccomment">/// Update MipStore with block header stats
+    </span><span class="kw">pub fn </span>update_versioning_stats(
+        <span class="kw-2">&amp;mut </span><span class="self">self</span>,
+        exec_target: <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span>(BlockId, Storage)&gt;,
+        slot: <span class="kw-2">&amp;</span>Slot,
+    ) {
+        <span class="comment">// update versioning statistics
+        </span><span class="kw">if let </span><span class="prelude-val">Some</span>((block_id, storage)) = exec_target {
+            <span class="kw">if let </span><span class="prelude-val">Some</span>(_block) = storage.read_blocks().get(block_id) {
+                <span class="kw">let </span>slot_ts_ = get_block_slot_timestamp(
+                    <span class="self">self</span>.config.thread_count,
+                    <span class="self">self</span>.config.t0,
+                    <span class="self">self</span>.config.genesis_timestamp,
+                    <span class="kw-2">*</span>slot,
+                );
+
+                <span class="kw">if let </span><span class="prelude-val">Ok</span>(slot_ts) = slot_ts_ {
+                    <span class="comment">// TODO - Next PR: use block header network versions - default to 0 for now
+                    </span><span class="self">self</span>.mip_store
+                        .update_network_version_stats(slot_ts, <span class="prelude-val">Some</span>((<span class="number">0</span>, <span class="number">0</span>)));
+                } <span class="kw">else </span>{
+                    <span class="macro">warn!</span>(<span class="string">&quot;Unable to get slot timestamp for slot: {} in order to update mip_store stats&quot;</span>, slot);
+                }
+            } <span class="kw">else </span>{
+                <span class="macro">warn!</span>(
+                    <span class="string">&quot;Could not find block id: {} in storage in order to update mip_store stats&quot;</span>,
+                    block_id
+                );
+            }
+        }
     }
 }
 </code></pre></div>

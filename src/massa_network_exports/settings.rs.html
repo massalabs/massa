@@ -256,10 +256,6 @@
 <a href="#256" id="256">256</a>
 <a href="#257" id="257">257</a>
 <a href="#258" id="258">258</a>
-<a href="#259" id="259">259</a>
-<a href="#260" id="260">260</a>
-<a href="#261" id="261">261</a>
-<a href="#262" id="262">262</a>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="kw">use </span>enum_map::EnumMap;
@@ -354,8 +350,6 @@
     </span><span class="kw">pub </span>node_command_channel_size: usize,
     <span class="doccomment">/// Node event channel size
     </span><span class="kw">pub </span>node_event_channel_size: usize,
-    <span class="doccomment">/// last start period
-    </span><span class="kw">pub </span>last_start_period: u64,
 }
 
 <span class="doccomment">/// Connection configuration for a peer type
@@ -449,7 +443,6 @@
                 event_channel_size: NETWORK_EVENT_CHANNEL_SIZE,
                 node_command_channel_size: NETWORK_NODE_COMMAND_CHANNEL_SIZE,
                 node_event_channel_size: NETWORK_NODE_EVENT_CHANNEL_SIZE,
-                last_start_period: <span class="number">0</span>,
             }
         }
     }
@@ -517,7 +510,6 @@
                 event_channel_size: NETWORK_EVENT_CHANNEL_SIZE,
                 node_command_channel_size: NETWORK_NODE_COMMAND_CHANNEL_SIZE,
                 node_event_channel_size: NETWORK_NODE_EVENT_CHANNEL_SIZE,
-                last_start_period: <span class="number">0</span>,
             }
         }
     }
