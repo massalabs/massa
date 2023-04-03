@@ -50,7 +50,11 @@ use massa_models::config::constants::{
     PROTOCOL_CONTROLLER_CHANNEL_SIZE, PROTOCOL_EVENT_CHANNEL_SIZE, ROLL_PRICE, T0, THREAD_COUNT,
     VERSION,
 };
-use massa_models::config::{CONSENSUS_BOOTSTRAP_PART_SIZE, MAX_OPERATIONS_PER_MESSAGE};
+use massa_models::config::{
+    CONSENSUS_BOOTSTRAP_PART_SIZE, DENUNCIATION_EXPIRE_PERIODS, DENUNCIATION_ITEMS_MAX_CYCLE_DELTA,
+    MAX_OPERATIONS_PER_MESSAGE,
+};
+use massa_models::denunciation::DenunciationPrecursor;
 use massa_network_exports::{Establisher, NetworkConfig, NetworkManager};
 use massa_network_worker::start_network_controller;
 use massa_pool_exports::{PoolChannels, PoolConfig, PoolManager};
@@ -384,17 +388,24 @@ async fn launch(
         channels_size: POOL_CONTROLLER_CHANNEL_SIZE,
         broadcast_enabled: SETTINGS.api.enable_broadcast,
         broadcast_operations_capacity: SETTINGS.pool.broadcast_operations_capacity,
+        genesis_timestamp: *GENESIS_TIMESTAMP,
+        t0: T0,
+        periods_per_cycle: PERIODS_PER_CYCLE,
+        denunciation_expire_periods: DENUNCIATION_EXPIRE_PERIODS,
     };
 
     let pool_channels = PoolChannels {
         operation_sender: broadcast::channel(pool_config.broadcast_operations_capacity).0,
     };
+    let (denunciation_factory_tx, denunciation_factory_rx) =
+        crossbeam_channel::unbounded::<DenunciationPrecursor>();
 
     let (pool_manager, pool_controller) = start_pool_controller(
         pool_config,
         &shared_storage,
         execution_controller.clone(),
         pool_channels.clone(),
+        denunciation_factory_tx,
     );
 
     let (protocol_command_sender, protocol_command_receiver) =
@@ -430,6 +441,8 @@ async fn launch(
 
     let (consensus_event_sender, consensus_event_receiver) =
         crossbeam_channel::bounded(CHANNEL_SIZE);
+    let (denunciation_factory_sender, denunciation_factory_receiver) =
+        crossbeam_channel::bounded(CHANNEL_SIZE);
     let consensus_channels = ConsensusChannels {
         execution_controller: execution_controller.clone(),
         selector_controller: selector_controller.clone(),
@@ -441,6 +454,7 @@ async fn launch(
         block_sender: broadcast::channel(consensus_config.broadcast_blocks_capacity).0,
         filled_block_sender: broadcast::channel(consensus_config.broadcast_filled_blocks_capacity)
             .0,
+        denunciation_factory_sender,
     };
 
     let (consensus_controller, consensus_manager) = start_consensus_worker(
@@ -512,6 +526,9 @@ async fn launch(
         max_block_size: MAX_BLOCK_SIZE as u64,
         max_block_gas: MAX_GAS_PER_BLOCK,
         max_operations_per_block: MAX_OPERATIONS_PER_BLOCK,
+        periods_per_cycle: PERIODS_PER_CYCLE,
+        denunciation_expire_periods: DENUNCIATION_EXPIRE_PERIODS,
+        denunciation_items_max_cycle_delta: DENUNCIATION_ITEMS_MAX_CYCLE_DELTA,
     };
     let factory_channels = FactoryChannels {
         selector: selector_controller.clone(),
@@ -520,7 +537,13 @@ async fn launch(
         protocol: ProtocolCommandSender(protocol_command_sender.clone()),
         storage: shared_storage.clone(),
     };
-    let factory_manager = start_factory(factory_config, node_wallet.clone(), factory_channels);
+    let factory_manager = start_factory(
+        factory_config,
+        node_wallet.clone(),
+        factory_channels,
+        denunciation_factory_receiver,
+        denunciation_factory_rx,
+    );
 
     // launch bootstrap server
     let bootstrap_manager = start_bootstrap_server(

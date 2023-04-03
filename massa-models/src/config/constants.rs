@@ -230,6 +230,15 @@ pub const MIP_STORE_STATS_BLOCK_CONSIDERED: usize = 1000;
 /// Max number of stats counters
 pub const MIP_STORE_STATS_COUNTERS_MAX: usize = 10;
 
+//
+// Constants for denunciation factory
+//
+
+/// denunciation expiration delta (in cycle count)
+pub const DENUNCIATION_EXPIRE_PERIODS: u64 = PERIODS_PER_CYCLE;
+/// Cycle delta to accept items in denunciation factory
+pub const DENUNCIATION_ITEMS_MAX_CYCLE_DELTA: u64 = 1;
+
 // Some checks at compile time that should not be ignored!
 #[allow(clippy::assertions_on_constants)]
 const _: () = {

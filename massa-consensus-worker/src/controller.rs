@@ -3,6 +3,7 @@ use massa_consensus_exports::{
     bootstrapable_graph::BootstrapableGraph, error::ConsensusError,
     export_active_block::ExportActiveBlock, ConsensusChannels, ConsensusController,
 };
+use massa_models::denunciation::DenunciationPrecursor;
 use massa_models::{
     block::{BlockGraphStatus, FilledBlock},
     block_header::BlockHeader,
@@ -290,6 +291,15 @@ impl ConsensusController for ConsensusControllerImpl {
                 );
             }
         }
+
+        if let Err(e) = self
+            .channels
+            .denunciation_factory_sender
+            .send(DenunciationPrecursor::try_from(&header).unwrap())
+        {
+            warn!("Cannot send header to denunciation factory: {}", e);
+        }
+
         if let Err(err) = self
             .command_sender
             .try_send(ConsensusCommand::RegisterBlockHeader(block_id, header))

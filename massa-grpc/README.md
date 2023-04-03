@@ -46,13 +46,28 @@ After installing `protoc`, please verify that the `protoc` command is accessible
 To keep the documentation synchronised with our proto files, you must install `protoc-gen-doc`. You can use your package manager or download the binary from the official [GitHub repository releases](https://github.com/pseudomuto/protoc-gen-doc/releases) and add it to your system's `PATH`
 
 
-Project build
--------------
+Project build and run
+---------------------
 
 The project is set up to automatically compile proto files during the build process using 
 [massa-proto/build.rs](../massa-proto/build.rs).
 
 When the project is built, `build.rs` is executed and it uses the `tonic-build` crate to generate Rust code from the proto files. The generated Rust code could be found in [massa-proto/src/](../massa-proto/src/).
+
+
+Before launching your Massa node, please add this following configuration to your `config.toml` file:
+
+```toml
+
+[api]
+    # whether to broadcast for blocks, endorsement and operations
+    enable_broadcast = true
+[grpc]
+    # whether to enable gRPC
+    enabled = true
+```
+
+You can easily import APIs collections from [Massa's Postman workspace](https://www.postman.com/massalabs) and start testing and exploring the provided functionalities by Massa API's.
 
 
 VSCode integration
@@ -85,3 +100,4 @@ VSCode integration
 ```
 
 3- Add the snippet above to `.vscode/settings.json`.
+

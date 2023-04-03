@@ -2,6 +2,7 @@ use massa_execution_exports::ExecutionController;
 use massa_models::block::{FilledBlock, SecureShareBlock};
 use massa_models::block_header::BlockHeader;
 use massa_models::block_id::BlockId;
+use massa_models::denunciation::DenunciationPrecursor;
 use massa_models::secure_share::SecureShare;
 use massa_pool_exports::PoolController;
 use massa_pos_exports::SelectorController;
@@ -28,4 +29,6 @@ pub struct ConsensusChannels {
     pub block_header_sender: tokio::sync::broadcast::Sender<SecureShare<BlockHeader, BlockId>>,
     /// Channel use by Websocket (if they are enable) to broadcast a new block integrated
     pub filled_block_sender: tokio::sync::broadcast::Sender<FilledBlock>,
+    /// Channel use for Denunciation factory to create denunciations
+    pub denunciation_factory_sender: crossbeam_channel::Sender<DenunciationPrecursor>,
 }

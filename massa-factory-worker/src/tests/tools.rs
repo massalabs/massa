@@ -1,3 +1,4 @@
+use crossbeam_channel::Sender;
 use massa_consensus_exports::test_exports::{
     ConsensusEventReceiver, MockConsensusController, MockConsensusControllerMessage,
 };
@@ -11,6 +12,7 @@ use std::{
 use massa_factory_exports::{
     test_exports::create_empty_block, FactoryChannels, FactoryConfig, FactoryManager,
 };
+use massa_models::denunciation::DenunciationPrecursor;
 use massa_models::{
     address::Address, block_id::BlockId, config::ENDORSEMENT_COUNT,
     endorsement::SecureShareEndorsement, operation::SecureShareOperation, prehash::PreHashMap,
@@ -35,15 +37,18 @@ use massa_wallet::test_exports::create_test_wallet;
 /// The factory will ask that to the the pool, consensus and factory and then will send the block to the consensus.
 /// You can use the method `new` to build all the mocks and make the connections
 /// Then you can use the method `get_next_created_block` that will manage the answers from the mock to the factory depending on the parameters you gave.
+#[allow(dead_code)]
 pub struct TestFactory {
     consensus_event_receiver: ConsensusEventReceiver,
     pool_receiver: PoolEventReceiver,
-    selector_receiver: Receiver<MockSelectorControllerMessage>,
+    selector_receiver: Option<Receiver<MockSelectorControllerMessage>>,
     factory_config: FactoryConfig,
     factory_manager: Box<dyn FactoryManager>,
     genesis_blocks: Vec<(BlockId, u64)>,
-    storage: Storage,
+    pub(crate) storage: Storage,
     keypair: KeyPair,
+    pub(crate) denunciation_factory_sender: Sender<DenunciationPrecursor>,
+    pub(crate) denunciation_factory_tx: Sender<DenunciationPrecursor>,
 }
 
 impl TestFactory {
@@ -58,6 +63,10 @@ impl TestFactory {
         let (consensus_controller, consensus_event_receiver) =
             MockConsensusController::new_with_receiver();
         let (pool_controller, pool_receiver) = MockPoolController::new_with_receiver();
+        let (denunciation_factory_tx, denunciation_factory_rx) =
+            crossbeam_channel::unbounded::<DenunciationPrecursor>();
+        let (denunciation_factory_sender, denunciation_factory_receiver) =
+            crossbeam_channel::bounded(massa_models::config::CHANNEL_SIZE);
         let mut storage = Storage::create_root();
         let mut factory_config = FactoryConfig::default();
         let (_protocol_controller, protocol_command_sender) = MockProtocolController::new();
@@ -88,17 +97,21 @@ impl TestFactory {
                 protocol: protocol_command_sender,
                 storage: storage.clone_without_refs(),
             },
+            denunciation_factory_receiver,
+            denunciation_factory_rx,
         );
 
         TestFactory {
             consensus_event_receiver,
             pool_receiver,
-            selector_receiver,
+            selector_receiver: Some(selector_receiver),
             factory_config,
             factory_manager,
             genesis_blocks,
             storage,
             keypair: default_keypair.clone(),
+            denunciation_factory_sender,
+            denunciation_factory_tx,
         }
     }
 
@@ -124,6 +137,8 @@ impl TestFactory {
         loop {
             match self
                 .selector_receiver
+                .as_ref()
+                .unwrap()
                 .recv_timeout(Duration::from_millis(100))
             {
                 Ok(MockSelectorControllerMessage::GetProducer {
@@ -223,6 +238,16 @@ impl TestFactory {
 
 impl Drop for TestFactory {
     fn drop(&mut self) {
+        // Need this otherwise factory_manager is stuck while waiting for block & endorsement factory
+        // to join
+        // For instance, block factory is waiting for selector.get_producer(...)
+        //               endorsement factory is waiting for selector.get_selection(...)
+        // Note: that this will make the 2 threads panic
+        // TODO: find a better way to resolve this
+        if let Some(selector_receiver) = self.selector_receiver.take() {
+            drop(selector_receiver);
+        }
+
         self.factory_manager.stop();
     }
 }
