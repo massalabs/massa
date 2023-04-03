@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"enum":["EndorsementsCheckOutcome","HeaderCheckOutcome"],"static":["CALLSITE","META"]};

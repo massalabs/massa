@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"fn":["start_factory"]};
+window.SIDEBAR_ITEMS = {"fn":["start_factory"],"mod":["block_factory","endorsement_factory","manager","run"]};

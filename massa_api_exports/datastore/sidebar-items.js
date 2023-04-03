@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"struct":["DatastoreEntryInput","DatastoreEntryOutput"]};
+window.SIDEBAR_ITEMS = {"constant":["FIELDS"],"enum":["__Field"],"struct":["DatastoreEntryInput","DatastoreEntryOutput","__FieldVisitor","__Visitor"]};

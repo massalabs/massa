@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"struct":["RollCompensation","RollCounts","RollUpdate","RollUpdateDeserializer","RollUpdateSerializer","RollUpdates"]};
+window.SIDEBAR_ITEMS = {"constant":["FIELDS"],"enum":["__Field"],"struct":["RollCompensation","RollCounts","RollUpdate","RollUpdateDeserializer","RollUpdateSerializer","RollUpdates","__FieldVisitor","__Visitor"]};
