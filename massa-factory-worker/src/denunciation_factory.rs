@@ -283,7 +283,7 @@ impl DenunciationFactoryWorker {
                 recv(self.endorsement_pool_receiver) -> de_i_ => {
                     match de_i_ {
                         Ok(de_i) => {
-                            debug!("Denunciation factory receives a new endorsement denunciation interest: {:?}", de_i);
+                            info!("Denunciation factory receives a new endorsement denunciation interest: {:?}", de_i);
                             self.process_new_secure_share_endorsement(de_i)
                         }
                         Err(e) => {
