@@ -297,11 +297,27 @@
 <a href="#297" id="297">297</a>
 <a href="#298" id="298">298</a>
 <a href="#299" id="299">299</a>
+<a href="#300" id="300">300</a>
+<a href="#301" id="301">301</a>
+<a href="#302" id="302">302</a>
+<a href="#303" id="303">303</a>
+<a href="#304" id="304">304</a>
+<a href="#305" id="305">305</a>
+<a href="#306" id="306">306</a>
+<a href="#307" id="307">307</a>
+<a href="#308" id="308">308</a>
+<a href="#309" id="309">309</a>
+<a href="#310" id="310">310</a>
+<a href="#311" id="311">311</a>
+<a href="#312" id="312">312</a>
+<a href="#313" id="313">313</a>
+<a href="#314" id="314">314</a>
 </pre><pre class="rust"><code><span class="kw">use </span>massa_consensus_exports::{
     block_graph_export::BlockGraphExport, block_status::BlockStatus,
     bootstrapable_graph::BootstrapableGraph, error::ConsensusError,
     export_active_block::ExportActiveBlock, ConsensusChannels, ConsensusController,
 };
+<span class="kw">use </span>massa_models::denunciation::DenunciationPrecursor;
 <span class="kw">use </span>massa_models::{
     block::{BlockGraphStatus, FilledBlock},
     block_header::BlockHeader,
@@ -543,8 +559,10 @@
                         })
                         .collect();
 
-                <span class="kw">let </span>_block_receivers_count =
-                    <span class="self">self</span>.channels.block_sender.send(verifiable_block.clone());
+                <span class="kw">let </span>_block_receivers_count = <span class="self">self
+                    </span>.channels
+                    .block_sender
+                    .send(verifiable_block.content.clone());
                 <span class="kw">let </span>_filled_block_receivers_count =
                     <span class="self">self</span>.channels.filled_block_sender.send(FilledBlock {
                         header: verifiable_block.content.header.clone(),
@@ -573,8 +591,20 @@
 
     <span class="kw">fn </span>register_block_header(<span class="kw-2">&amp;</span><span class="self">self</span>, block_id: BlockId, header: SecureShare&lt;BlockHeader, BlockId&gt;) {
         <span class="kw">if </span><span class="self">self</span>.broadcast_enabled {
-            <span class="kw">let _ </span>= <span class="self">self</span>.channels.block_header_sender.send(header.clone());
+            <span class="kw">let _ </span>= <span class="self">self
+                </span>.channels
+                .block_header_sender
+                .send(header.clone().content);
         }
+
+        <span class="kw">if let </span><span class="prelude-val">Err</span>(e) = <span class="self">self
+            </span>.channels
+            .denunciation_factory_sender
+            .send(DenunciationPrecursor::try_from(<span class="kw-2">&amp;</span>header).unwrap())
+        {
+            <span class="macro">warn!</span>(<span class="string">&quot;Cannot send header to denunciation factory: {}&quot;</span>, e);
+        }
+
         <span class="kw">if let </span><span class="prelude-val">Err</span>(err) = <span class="self">self
             </span>.command_sender
             .try_send(ConsensusCommand::RegisterBlockHeader(block_id, header))

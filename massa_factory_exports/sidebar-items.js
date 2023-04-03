@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"enum":["FactoryError"],"mod":["config","controller_traits","error","test_exports","types"],"struct":["FactoryChannels","FactoryConfig"],"trait":["FactoryManager"],"type":["FactoryResult","ProductionHistory"]};
+window.SIDEBAR_ITEMS = {"enum":["FactoryError"],"struct":["FactoryChannels","FactoryConfig"],"trait":["FactoryManager"],"type":["FactoryResult","ProductionHistory"]};

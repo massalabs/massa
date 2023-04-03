@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"mod":["ledger","ledger_db","test_exports"],"struct":["FinalLedger"]};
+window.SIDEBAR_ITEMS = {"struct":["FinalLedger"]};

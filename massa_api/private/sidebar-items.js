@@ -1,1 +1,0 @@
-window.SIDEBAR_ITEMS = {"fn":["get_file_len","read_ips_from_jsonfile","run_scrud_operation","write_ips_to_jsonfile"]};
