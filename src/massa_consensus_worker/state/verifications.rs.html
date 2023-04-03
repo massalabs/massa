@@ -1097,7 +1097,7 @@
                     )));
                 }
                 gp_max_slots[parent_i <span class="kw">as </span>usize] = parent_period;
-                <span class="kw">if </span>parent_period == <span class="number">0 </span>{
+                <span class="kw">if </span>parent_period == <span class="self">self</span>.config.last_start_period {
                     <span class="comment">// genesis
                     </span><span class="kw">continue</span>;
                 }

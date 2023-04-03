@@ -420,23 +420,6 @@
 <a href="#420" id="420">420</a>
 <a href="#421" id="421">421</a>
 <a href="#422" id="422">422</a>
-<a href="#423" id="423">423</a>
-<a href="#424" id="424">424</a>
-<a href="#425" id="425">425</a>
-<a href="#426" id="426">426</a>
-<a href="#427" id="427">427</a>
-<a href="#428" id="428">428</a>
-<a href="#429" id="429">429</a>
-<a href="#430" id="430">430</a>
-<a href="#431" id="431">431</a>
-<a href="#432" id="432">432</a>
-<a href="#433" id="433">433</a>
-<a href="#434" id="434">434</a>
-<a href="#435" id="435">435</a>
-<a href="#436" id="436">436</a>
-<a href="#437" id="437">437</a>
-<a href="#438" id="438">438</a>
-<a href="#439" id="439">439</a>
 </pre><pre class="rust"><code><span class="kw">use </span>massa_time::MassaTime;
 <span class="kw">use </span>std::collections::BTreeMap;
 <span class="kw">use </span>std::iter;
@@ -501,11 +484,11 @@
         <span class="kw">let </span>state_active = ComponentState::active();
 
         vi_store
-            .store
-            .iter()
+            .<span class="number">0
+            </span>.iter()
             .rev()
             .find_map(|(vi, vsh)| {
-                <span class="kw">if </span>vsh.state == state_active {
+                <span class="kw">if </span>vsh.inner == state_active {
                     vi.components.get(<span class="kw-2">&amp;</span>component).copied()
                 } <span class="kw">else </span>{
                     <span class="prelude-val">None
@@ -523,11 +506,11 @@
 
         <span class="comment">// Iter backward, filter component + state active,
         </span><span class="kw">let </span>version = vi_store
-            .store
-            .iter()
+            .<span class="number">0
+            </span>.iter()
             .rev()
             .filter(|(vi, vsh)| {
-                vi.components.get(<span class="kw-2">&amp;</span>component).is_some() &amp;&amp; vsh.state == state_active
+                vi.components.get(<span class="kw-2">&amp;</span>component).is_some() &amp;&amp; vsh.inner == state_active
             })
             .find_map(|(vi, vsh)| {
                 <span class="kw">let </span>res = vsh.state_at(ts, vi.start, vi.timeout);
@@ -548,8 +531,8 @@
         <span class="kw">let </span>vi_store = vi_store_.<span class="number">0</span>.read();
 
         <span class="kw">let </span>state_active = ComponentState::active();
-        <span class="kw">let </span>versions_iter = vi_store.store.iter().filter_map(|(vi, vsh)| {
-            <span class="kw">if </span>vsh.state == state_active {
+        <span class="kw">let </span>versions_iter = vi_store.<span class="number">0</span>.iter().filter_map(|(vi, vsh)| {
+            <span class="kw">if </span>vsh.inner == state_active {
                 vi.components.get(<span class="kw-2">&amp;</span>component).copied()
             } <span class="kw">else </span>{
                 <span class="prelude-val">None
@@ -565,12 +548,12 @@
         <span class="kw">let </span>vi_store_ = <span class="self">self</span>.get_versioning_store();
         <span class="kw">let </span>vi_store = vi_store_.<span class="number">0</span>.read();
 
-        <span class="kw">let </span>versions_iter = vi_store.store.iter().filter_map(|(vi, vsh)| {
+        <span class="kw">let </span>versions_iter = vi_store.<span class="number">0</span>.iter().filter_map(|(vi, vsh)| {
             vi.components
                 .get(<span class="kw-2">&amp;</span>component)
                 .copied()
                 .map(|component_version| {
-                    (component_version, ComponentStateTypeId::from(<span class="kw-2">&amp;</span>vsh.state))
+                    (component_version, ComponentStateTypeId::from(<span class="kw-2">&amp;</span>vsh.inner))
                 })
         });
         iter::once((<span class="number">0</span>, ComponentStateTypeId::Active))
@@ -593,7 +576,7 @@
     <span class="kw">use </span>std::collections::{BTreeMap, HashMap};
 
     <span class="kw">use </span><span class="kw">crate</span>::test_helpers::versioning_helpers::advance_state_until;
-    <span class="kw">use </span><span class="kw">crate</span>::versioning::{MipInfo, MipState, MipStatsConfig};
+    <span class="kw">use </span><span class="kw">crate</span>::versioning::{MipInfo, MipState};
 
     <span class="kw">use </span>massa_time::MassaTime;
 
@@ -729,16 +712,7 @@
         };
         <span class="kw">let </span>vs_2 = MipState::new(MassaTime::from(<span class="number">18</span>));
 
-        <span class="kw">let </span>mip_stats_cfg = MipStatsConfig {
-            block_count_considered: <span class="number">10</span>,
-            counters_max: <span class="number">5</span>,
-        };
-
-        <span class="kw">let </span>vs = MipStore::try_from((
-            [(vi_1.clone(), vs_1), (vi_2.clone(), vs_2.clone())],
-            mip_stats_cfg,
-        ))
-        .unwrap();
+        <span class="kw">let </span>vs = MipStore::try_from([(vi_1.clone(), vs_1), (vi_2.clone(), vs_2.clone())]).unwrap();
         <span class="kw">let </span>fa = AddressFactory {
             versioning_store: vs.clone(),
         };
@@ -771,7 +745,7 @@
         <span class="comment">// Create a new factory
         </span><span class="kw">let </span>info = BTreeMap::from([(vi_1.clone(), vs_1_new.clone()), (vi_2.clone(), vs_2)]);
         <span class="comment">// Update versioning store
-        </span>vs.<span class="number">0</span>.write().store = info;
+        </span>vs.<span class="number">0</span>.write().<span class="number">0 </span>= info;
 
         <span class="macro">assert_eq!</span>(fa.get_all_active_component_versions(), <span class="macro">vec!</span>[<span class="number">0</span>, <span class="number">1</span>]);
         <span class="macro">assert_eq!</span>(
@@ -819,16 +793,8 @@
         };
         <span class="kw">let </span>vs_2 = MipState::new(MassaTime::from(<span class="number">18</span>));
 
-        <span class="kw">let </span>mip_stats_cfg = MipStatsConfig {
-            block_count_considered: <span class="number">10</span>,
-            counters_max: <span class="number">5</span>,
-        };
-
-        <span class="kw">let </span>vs = MipStore::try_from((
-            [(vi_1.clone(), vs_1.clone()), (vi_2.clone(), vs_2.clone())],
-            mip_stats_cfg,
-        ))
-        .unwrap();
+        <span class="kw">let </span>vs = MipStore::try_from([(vi_1.clone(), vs_1.clone()), (vi_2.clone(), vs_2.clone())])
+            .unwrap();
 
         <span class="kw">let </span>fa = AddressFactory {
             versioning_store: vs.clone(),
@@ -865,7 +831,7 @@
         </span><span class="kw">let </span>vs_2_new = advance_state_until(ComponentState::active(), <span class="kw-2">&amp;</span>vi_2);
         <span class="kw">let </span>info = BTreeMap::from([(vi_1.clone(), vs_1), (vi_2.clone(), vs_2_new)]);
         <span class="comment">// Update versioning store
-        </span>vs.<span class="number">0</span>.write().store = info;
+        </span>vs.<span class="number">0</span>.write().<span class="number">0 </span>= info;
 
         <span class="macro">assert_eq!</span>(fa.get_all_active_component_versions(), <span class="macro">vec!</span>[<span class="number">0</span>, <span class="number">1</span>, <span class="number">2</span>]);
         <span class="kw">let </span>addr_st_4 = fa.create(<span class="kw-2">&amp;</span>args, <span class="prelude-val">Some</span>(st_4));
