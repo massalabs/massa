@@ -1,6 +1,7 @@
 {
   "assembly_script_abort": 1,
   "assembly_script_address_from_public_key": 294,
+  "assembly_script_validate_address": 155,
   "assembly_script_append_data": 198,
   "assembly_script_append_data_for": 231,
   "assembly_script_call": 50000,

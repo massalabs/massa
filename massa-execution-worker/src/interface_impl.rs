@@ -265,11 +265,15 @@ impl Interface for InterfaceImpl {
     ///
     /// # Returns
     /// A list of keys (keys are byte arrays)
-    fn get_keys(&self, _prefix: Option<&[u8]>) -> Result<BTreeSet<Vec<u8>>> {
+    fn get_keys(&self, prefix_opt: Option<&[u8]>) -> Result<BTreeSet<Vec<u8>>> {
         let context = context_guard!(self);
         let addr = context.get_current_address()?;
-        match context.get_keys(&addr) {
-            Some(value) => Ok(value),
+        match (context.get_keys(&addr), prefix_opt) {
+            (Some(value), None) => Ok(value),
+            (Some(mut value), Some(prefix)) => {
+                value.retain(|key| key.iter().zip(prefix.iter()).all(|(k, p)| k == p));
+                Ok(value)
+            }
             _ => bail!("data entry not found"),
         }
     }
@@ -278,11 +282,15 @@ impl Interface for InterfaceImpl {
     ///
     /// # Returns
     /// A list of keys (keys are byte arrays)
-    fn get_keys_for(&self, address: &str, _prefix: Option<&[u8]>) -> Result<BTreeSet<Vec<u8>>> {
+    fn get_keys_for(&self, address: &str, prefix_opt: Option<&[u8]>) -> Result<BTreeSet<Vec<u8>>> {
         let addr = &Address::from_str(address)?;
         let context = context_guard!(self);
-        match context.get_keys(addr) {
-            Some(value) => Ok(value),
+        match (context.get_keys(addr), prefix_opt) {
+            (Some(value), None) => Ok(value),
+            (Some(mut value), Some(prefix)) => {
+                value.retain(|key| key.iter().zip(prefix.iter()).all(|(k, p)| k == p));
+                Ok(value)
+            }
             _ => bail!("data entry not found"),
         }
     }
@@ -547,6 +555,10 @@ impl Interface for InterfaceImpl {
         let public_key = massa_signature::PublicKey::from_str(public_key)?;
         let addr = massa_models::address::Address::from_public_key(&public_key);
         Ok(addr.to_string())
+    }
+
+    fn validate_address(&self, address: &str) -> Result<bool> {
+        Ok(massa_models::address::Address::from_str(address).is_ok())
     }
 
     /// Verifies a signature

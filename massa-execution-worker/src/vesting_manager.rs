@@ -120,7 +120,12 @@ impl VestingManager {
             let deferred_credits = if deferred_map.is_empty() {
                 Amount::zero()
             } else {
-                Amount::from_raw(deferred_map.into_values().map(|a| a.to_raw()).sum())
+                deferred_map
+                    .into_values()
+                    .reduce(|acc, amount| acc.saturating_add(amount))
+                    .ok_or(ExecutionError::RuntimeError(
+                        "Overflow in deferred credits".to_string(),
+                    ))?
             };
 
             // min_balance = (rolls * roll_price) + balance + deferred_credits
