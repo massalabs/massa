@@ -385,6 +385,7 @@
 <a href="#385" id="385">385</a>
 <a href="#386" id="386">386</a>
 <a href="#387" id="387">387</a>
+<a href="#388" id="388">388</a>
 </pre><pre class="rust"><code><span class="doccomment">//! Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 //! This file defines the final state of the node, which includes
@@ -534,6 +535,7 @@
         </span><span class="self">self</span>.slot = slot;
 
         <span class="comment">// apply the state changes
+        // unwrap is justified because every error in PoS `apply_changes` is critical
         </span><span class="self">self</span>.ledger
             .apply_changes(changes.ledger_changes.clone(), <span class="self">self</span>.slot);
         <span class="self">self</span>.async_pool

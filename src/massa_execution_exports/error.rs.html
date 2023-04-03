@@ -51,26 +51,11 @@
 <a href="#51" id="51">51</a>
 <a href="#52" id="52">52</a>
 <a href="#53" id="53">53</a>
-<a href="#54" id="54">54</a>
-<a href="#55" id="55">55</a>
-<a href="#56" id="56">56</a>
-<a href="#57" id="57">57</a>
-<a href="#58" id="58">58</a>
-<a href="#59" id="59">59</a>
-<a href="#60" id="60">60</a>
-<a href="#61" id="61">61</a>
-<a href="#62" id="62">62</a>
-<a href="#63" id="63">63</a>
-<a href="#64" id="64">64</a>
-<a href="#65" id="65">65</a>
-<a href="#66" id="66">66</a>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="doccomment">//! this file defines all possible execution error categories
 
 </span><span class="kw">use </span>displaydoc::Display;
-<span class="kw">use </span>massa_module_cache::error::CacheError;
-<span class="kw">use </span>massa_sc_runtime::VMError;
 <span class="kw">use </span>thiserror::Error;
 
 <span class="doccomment">/// Errors of the execution component.
@@ -113,22 +98,11 @@
     <span class="doccomment">/// Include operation error: {0}
     </span>IncludeOperationError(String),
 
-    <span class="doccomment">/// Error when initialize vesting addresses: {0}
+    <span class="doccomment">/// Error when initialize vesting addresses : {0}
     </span>InitVestingError(String),
 
-    <span class="doccomment">/// We reach the vesting constraint: {0}
+    <span class="doccomment">/// We reach the vesting constraint : {0}
     </span>VestingError(String),
-
-    <span class="doccomment">/// VM Error in {context} context: {error}
-    </span>VMError {
-        <span class="doccomment">/// execution context in which the error happened
-        </span>context: String,
-        <span class="doccomment">/// `massa-sc-runtime` virtual machine error
-        </span>error: VMError,
-    },
-
-    <span class="doccomment">/// Cache error: {0}
-    </span>CacheError(<span class="attr">#[from] </span>CacheError),
 }
 </code></pre></div>
 </section></main><div id="rustdoc-vars" data-root-path="../../" data-static-root-path="../../static.files/" data-current-crate="massa_execution_exports" data-themes="" data-resource-suffix="" data-rustdoc-version="1.69.0-nightly (d962ea578 2023-02-26)" data-search-js="search-14421e1532aead08.js" data-settings-js="settings-f0c5c39777a9a2f6.js" data-settings-css="settings-0bcba95ff279c1db.css" ></div></body></html>
