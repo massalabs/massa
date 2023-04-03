@@ -581,7 +581,7 @@ async fn launch(
         .expect("failed to start MASSA API");
 
     info!(
-        "API | EXPERIMENTAL | listening on: {}",
+        "API | EXPERIMENTAL JsonRPC | listening on: {}",
         &SETTINGS.api.bind_api
     );
 

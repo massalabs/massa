@@ -42,6 +42,10 @@ After installing `protoc`, you should be able to compile proto files using the a
 
 After installing `protoc`, please verify that the `protoc` command is accessible by running `protoc --version` again.
 
+
+To keep the documentation synchronised with our proto files, you must install `protoc-gen-doc`. You can use your package manager or download the binary from the official [GitHub repository releases](https://github.com/pseudomuto/protoc-gen-doc/releases) and add it to your system's `PATH`
+
+
 Project build
 -------------
 
@@ -58,21 +62,26 @@ VSCode integration
 
 2- The following settings contain a `protoc` configuration block:
 
-```
+```json
 {
-    "rust-analyzer.procMacro.enable": true,
-    "rust-analyzer.cargo.buildScripts.enable": true,
-    "protoc": {
-        "path": "/path/to/protoc",
-        "compile_on_save": true,
-        "options": [
-            "{workspaceRoot}/massa-proto/proto/**/*.proto",
-            "--proto_path=${workspaceRoot}/massa-proto/proto/massa/api/v1",
-            "--proto_path=${workspaceRoot}/massa-proto/proto/third-party",
-            "--descriptor_set_out=${workspaceRoot}/massa-proto/src/api.bin"
+    "rust-analyzer.procMacro.enable": true,  // Enables Rust macro support for the Rust Analyzer extension.
+    "rust-analyzer.cargo.buildScripts.enable": true,  // Enables cargo build scripts for the Rust Analyzer extension.
+    "protoc": {  // Specifies the configuration for the protoc plugin.
+        "path": "/path/to/protoc",  // Sets the path to the protoc binary that will be used to compile the protobuf files.
+        "compile_on_save": true,  // Enables automatic compilation of protobuf files when they are saved.
+        "options": [  // Specifies the command line options that will be passed to protoc.
+            "{workspaceRoot}/massa-proto/proto/**/*.proto",  // Specifies the path to the protobuf files that should be compiled.
+            "--proto_path=${workspaceRoot}/massa-proto/proto/massa/api/v1",  // Specifies the directory to search for imported protobuf files.
+            "--proto_path=${workspaceRoot}/massa-proto/proto/third-party",  // Specifies the directory to search for imported third-party protobuf files.
+            // "--java_out=${workspaceRoot}/target/",  // Generates Java code from the protobuf files.
+            "--doc_out=${workspaceRoot}/massa-proto/doc/",  // Generates documentation in HTML/markdown format from the protobuf files.
+            "--doc_opt=html,index.html",  // Specifies the options for generating the HTML documentation.
+            // "--doc_opt=markdown,docs.md",  // Specifies the options for generating the markdown documentation.
+            "--descriptor_set_out=${workspaceRoot}/massa-proto/src/api.bin"  // Generates a binary descriptor set for the protobuf files which is used for server reflection.
         ]
     }
 }
+
 ```
 
 3- Add the snippet above to `.vscode/settings.json`.
