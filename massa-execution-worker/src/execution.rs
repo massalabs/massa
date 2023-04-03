@@ -230,7 +230,7 @@ impl ExecutionState {
     /// * `operation`: operation to be schedule
     /// * `sender_addr`: sender address for the operation (for fee transfer)
 
-    fn schedule_operation_for_execution(
+    fn prepare_operation_for_execution(
         &self,
         operation: &SecureShareOperation,
         sender_addr: Address,
@@ -325,7 +325,7 @@ impl ExecutionState {
         // Add fee from operation.
         let new_block_credits = block_credits.saturating_add(operation.content.fee);
 
-        let context_snapshot = self.schedule_operation_for_execution(operation, sender_addr)?;
+        let context_snapshot = self.prepare_operation_for_execution(operation, sender_addr)?;
 
         // update block gas
         *remaining_block_gas = new_remaining_block_gas;
