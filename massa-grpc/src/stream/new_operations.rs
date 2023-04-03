@@ -31,7 +31,6 @@ pub(crate) async fn new_operations(
     // Subscribe to the new operations channel
     let mut subscriber = grpc.pool_channels.operation_sender.subscribe();
 
-    // Spawn a new task for sending new operations
     tokio::spawn(async move {
         if let Some(Ok(request)) = in_stream.next().await {
             let mut request_id = request.id;

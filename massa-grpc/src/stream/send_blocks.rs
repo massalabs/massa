@@ -143,8 +143,9 @@ pub(crate) async fn send_blocks(
                             if let Err(e) = tx
                                 .send(Ok(grpc::SendBlocksResponse {
                                     id: req_content.id.clone(),
-
-                                    result: Some(grpc::send_blocks_response::Result::Ok(result)),
+                                    message: Some(grpc::send_blocks_response::Message::Result(
+                                        result,
+                                    )),
                                 }))
                                 .await
                             {
@@ -200,7 +201,7 @@ async fn report_error(
     if let Err(e) = sender
         .send(Ok(grpc::SendBlocksResponse {
             id,
-            result: Some(grpc::send_blocks_response::Result::Error(Status {
+            message: Some(grpc::send_blocks_response::Message::Error(Status {
                 code: code.into(),
                 message: error,
                 details: Vec::new(),

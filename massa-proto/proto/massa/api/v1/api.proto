@@ -294,12 +294,12 @@ message NewOperationsFilter {
 
 // Operation type enum
 enum OpType {
-  OP_TYPE_UNSPECIFIED = 0;
-  OP_TYPE_TRANSACTION = 1;
-  OP_TYPE_ROLL_BUY = 2;
-  OP_TYPE_ROLL_SELL = 3;
-  OP_TYPE_EXECUTE_SC = 4;
-  OP_TYPE_CALL_SC = 5;
+  OP_TYPE_UNSPECIFIED = 0; // Defaut enum value
+  OP_TYPE_TRANSACTION = 1; // Transaction
+  OP_TYPE_ROLL_BUY = 2; // Roll buy
+  OP_TYPE_ROLL_SELL = 3; // Roll sell
+  OP_TYPE_EXECUTE_SC = 4; // Execute smart contract
+  OP_TYPE_CALL_SC = 5; // Call smart contract
 }
 
 // NewOperationsResponse holds response from NewOperations
@@ -323,8 +323,10 @@ message SendBlocksResponse {
   // Request id
   string id = 1;
   // Block result or a gRPC status
-  oneof result {
-    BlockResult ok = 2;
+  oneof message {
+    // Block result
+    BlockResult result = 2;
+    // gRPC error(status)
     google.rpc.Status error = 3;
   }
 }
@@ -349,7 +351,9 @@ message SendEndorsementsResponse {
   string id = 1;
   // Endorsement result or gRPC status
   oneof message {
+    // Endorsement result
     EndorsementResult result = 2;
+    // gRPC error(status)
     google.rpc.Status error = 3;
   }
 }
@@ -374,7 +378,9 @@ message SendOperationsResponse {
   string id = 1;
   // Operation result or gRPC status
   oneof message {
+    // Operation result
     OperationResult result = 2;
+    // gRPC error(status)
     google.rpc.Status error = 3;
   }
 }

@@ -32,7 +32,6 @@ pub(crate) async fn new_blocks(
     // Subscribe to the new blocks channel
     let mut subscriber = grpc.consensus_channels.block_sender.subscribe();
 
-    // Spawn a new task for sending new blocks
     tokio::spawn(async move {
         // Initialize the request_id string
         let mut request_id = String::new();

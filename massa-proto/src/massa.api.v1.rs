@@ -598,17 +598,19 @@ pub struct SendBlocksResponse {
     #[prost(string, tag = "1")]
     pub id: ::prost::alloc::string::String,
     /// Block result or a gRPC status
-    #[prost(oneof = "send_blocks_response::Result", tags = "2, 3")]
-    pub result: ::core::option::Option<send_blocks_response::Result>,
+    #[prost(oneof = "send_blocks_response::Message", tags = "2, 3")]
+    pub message: ::core::option::Option<send_blocks_response::Message>,
 }
 /// Nested message and enum types in `SendBlocksResponse`.
 pub mod send_blocks_response {
     /// Block result or a gRPC status
     #[allow(clippy::derive_partial_eq_without_eq)]
     #[derive(Clone, PartialEq, ::prost::Oneof)]
-    pub enum Result {
+    pub enum Message {
+        /// Block result
         #[prost(message, tag = "2")]
-        Ok(super::BlockResult),
+        Result(super::BlockResult),
+        /// gRPC error(status)
         #[prost(message, tag = "3")]
         Error(super::super::super::super::google::rpc::Status),
     }
@@ -649,8 +651,10 @@ pub mod send_endorsements_response {
     #[allow(clippy::derive_partial_eq_without_eq)]
     #[derive(Clone, PartialEq, ::prost::Oneof)]
     pub enum Message {
+        /// Endorsement result
         #[prost(message, tag = "2")]
         Result(super::EndorsementResult),
+        /// gRPC error(status)
         #[prost(message, tag = "3")]
         Error(super::super::super::super::google::rpc::Status),
     }
@@ -691,8 +695,10 @@ pub mod send_operations_response {
     #[allow(clippy::derive_partial_eq_without_eq)]
     #[derive(Clone, PartialEq, ::prost::Oneof)]
     pub enum Message {
+        /// Operation result
         #[prost(message, tag = "2")]
         Result(super::OperationResult),
+        /// gRPC error(status)
         #[prost(message, tag = "3")]
         Error(super::super::super::super::google::rpc::Status),
     }
@@ -731,11 +737,17 @@ pub struct TransactionsThroughputResponse {
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, ::prost::Enumeration)]
 #[repr(i32)]
 pub enum OpType {
+    /// Defaut enum value
     Unspecified = 0,
+    /// Transaction
     Transaction = 1,
+    /// Roll buy
     RollBuy = 2,
+    /// Roll sell
     RollSell = 3,
+    /// Execute smart contract
     ExecuteSc = 4,
+    /// Call smart contract
     CallSc = 5,
 }
 impl OpType {
