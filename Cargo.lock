@@ -2313,6 +2313,7 @@ dependencies = [
  "massa_protocol_worker",
  "massa_storage",
  "massa_time",
+ "massa_versioning_worker",
  "massa_wallet",
  "parking_lot",
  "paw",
@@ -2581,6 +2582,7 @@ dependencies = [
  "massa_signature",
  "massa_storage",
  "massa_time",
+ "massa_versioning_worker",
  "num",
  "parking_lot",
  "rand 0.8.5",
@@ -3012,6 +3014,7 @@ dependencies = [
  "num_enum",
  "parking_lot",
  "thiserror",
+ "tracing",
 ]
 
 [[package]]
