@@ -8,7 +8,7 @@ use crate::operation_pool::OperationPool;
 use crate::{controller_impl::PoolControllerImpl, endorsement_pool::EndorsementPool};
 use crossbeam_channel::Sender;
 use massa_execution_exports::ExecutionController;
-use massa_models::denunciation::DenunciationInterest;
+use massa_models::denunciation::DenunciationPrecursor;
 use massa_pool_exports::PoolConfig;
 use massa_pool_exports::{PoolChannels, PoolController, PoolManager};
 use massa_storage::Storage;
@@ -172,7 +172,7 @@ pub fn start_pool_controller(
     storage: &Storage,
     execution_controller: Box<dyn ExecutionController>,
     channels: PoolChannels,
-    denunciation_factory_tx: Sender<DenunciationInterest>,
+    denunciation_factory_tx: Sender<DenunciationPrecursor>,
 ) -> (Box<dyn PoolManager>, Box<dyn PoolController>) {
     let (operations_input_sender, operations_input_receiver) = sync_channel(config.channels_size);
     let (endorsements_input_sender, endorsements_input_receiver) =

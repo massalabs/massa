@@ -49,7 +49,7 @@ use massa_models::config::constants::{
 use massa_models::config::{
     CONSENSUS_BOOTSTRAP_PART_SIZE, DENUNCIATION_EXPIRE_PERIODS, DENUNCIATION_ITEMS_MAX_CYCLE_DELTA,
 };
-use massa_models::denunciation::DenunciationInterest;
+use massa_models::denunciation::DenunciationPrecursor;
 use massa_network_exports::{Establisher, NetworkConfig, NetworkManager};
 use massa_network_worker::start_network_controller;
 use massa_pool_exports::{PoolChannels, PoolConfig, PoolManager};
@@ -382,7 +382,7 @@ async fn launch(
         operation_sender: broadcast::channel(pool_config.broadcast_operations_capacity).0,
     };
     let (denunciation_factory_tx, denunciation_factory_rx) =
-        crossbeam_channel::unbounded::<DenunciationInterest>();
+        crossbeam_channel::unbounded::<DenunciationPrecursor>();
 
     let (pool_manager, pool_controller) = start_pool_controller(
         pool_config,

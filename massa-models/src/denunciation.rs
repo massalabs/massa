@@ -723,6 +723,17 @@ impl Deserializer<Denunciation> for DenunciationDeserializer {
 // End Ser / Der
 
 // Denunciation Id
+// TODO: replace with
+// #[derive(Debug, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
+// pub enum DenunciationKey {
+//     Header {
+//        slot: Slot
+//     },
+//     Endorsement {
+//         slot: Slot,
+//         index: u32
+//     }
+// }
 
 /// Endorsement ID size in bytes
 pub const DENUNCIATION_ID_SIZE_BYTES: usize = massa_hash::HASH_SIZE_BYTES;
@@ -815,7 +826,7 @@ impl From<&Denunciation> for DenunciationId {
 
 /// DenunciationInterest variant for endorsement
 #[derive(Debug, Clone)]
-pub struct EndorsementDenunciationInterest {
+pub struct EndorsementDenunciationPrecursor {
     /// secure share endorsement public key
     pub public_key: PublicKey,
     /// endorsement slot
@@ -828,7 +839,7 @@ pub struct EndorsementDenunciationInterest {
 
 /// DenunciationInterest variant for block header
 #[derive(Debug, Clone)]
-pub struct BlockHeaderDenunciationInterest {
+pub struct BlockHeaderDenunciationPrecursor {
     /// secured header public key
     pub public_key: PublicKey,
     /// block header slot
@@ -840,21 +851,22 @@ pub struct BlockHeaderDenunciationInterest {
 /// Lightweight data for Denunciation creation
 /// (avoid storing heavyweight secured header or secure share endorsement)
 #[derive(Debug, Clone)]
-pub enum DenunciationInterest {
+pub enum DenunciationPrecursor {
     /// Endorsement variant
-    Endorsement(EndorsementDenunciationInterest),
+    Endorsement(EndorsementDenunciationPrecursor),
     /// Block header variant
-    BlockHeader(BlockHeaderDenunciationInterest),
+    BlockHeader(BlockHeaderDenunciationPrecursor),
 }
 
-impl TryFrom<&SecureShareEndorsement> for DenunciationInterest {
+impl TryFrom<&SecureShareEndorsement> for DenunciationPrecursor {
     type Error = DenunciationError;
 
     fn try_from(value: &SecureShareEndorsement) -> Result<Self, Self::Error> {
+        // TODO: find a way to avoid recomputing a hash
         let hash = EndorsementDenunciation::compute_content_hash(&value.content)?;
 
-        Ok(DenunciationInterest::Endorsement(
-            EndorsementDenunciationInterest {
+        Ok(DenunciationPrecursor::Endorsement(
+            EndorsementDenunciationPrecursor {
                 public_key: value.content_creator_pub_key,
                 slot: value.content.slot,
                 index: value.content.index,
@@ -865,14 +877,15 @@ impl TryFrom<&SecureShareEndorsement> for DenunciationInterest {
     }
 }
 
-impl TryFrom<&SecuredHeader> for DenunciationInterest {
+impl TryFrom<&SecuredHeader> for DenunciationPrecursor {
     type Error = DenunciationError;
 
     fn try_from(value: &SecuredHeader) -> Result<Self, Self::Error> {
+        // TODO: find a way to avoid recomputing a hash
         let hash = BlockHeaderDenunciation::compute_content_hash(&value.content)?;
 
-        Ok(DenunciationInterest::BlockHeader(
-            BlockHeaderDenunciationInterest {
+        Ok(DenunciationPrecursor::BlockHeader(
+            BlockHeaderDenunciationPrecursor {
                 public_key: value.content_creator_pub_key,
                 slot: value.content.slot,
                 hash,
@@ -883,17 +896,17 @@ impl TryFrom<&SecuredHeader> for DenunciationInterest {
 }
 
 /// Create a new Denunciation from 2 SecureHeader
-impl TryFrom<(&DenunciationInterest, &DenunciationInterest)> for Denunciation {
+impl TryFrom<(&DenunciationPrecursor, &DenunciationPrecursor)> for Denunciation {
     type Error = DenunciationError;
 
     fn try_from(
-        (de_i_1, de_i_2): (&DenunciationInterest, &DenunciationInterest),
+        (de_i_1, de_i_2): (&DenunciationPrecursor, &DenunciationPrecursor),
     ) -> Result<Self, Self::Error> {
         // TODO: add checks before creating
         match (de_i_1, de_i_2) {
             (
-                DenunciationInterest::BlockHeader(de_i_blkh_1),
-                DenunciationInterest::BlockHeader(de_i_blkh_2),
+                DenunciationPrecursor::BlockHeader(de_i_blkh_1),
+                DenunciationPrecursor::BlockHeader(de_i_blkh_2),
             ) => Ok(Denunciation::BlockHeader(BlockHeaderDenunciation {
                 public_key: de_i_blkh_1.public_key,
                 slot: de_i_blkh_1.slot,
@@ -903,8 +916,8 @@ impl TryFrom<(&DenunciationInterest, &DenunciationInterest)> for Denunciation {
                 hash_2: de_i_blkh_2.hash,
             })),
             (
-                DenunciationInterest::Endorsement(de_i_endo_1),
-                DenunciationInterest::Endorsement(de_i_endo_2),
+                DenunciationPrecursor::Endorsement(de_i_endo_1),
+                DenunciationPrecursor::Endorsement(de_i_endo_2),
             ) => Ok(Denunciation::Endorsement(EndorsementDenunciation {
                 public_key: de_i_endo_1.public_key,
                 slot: de_i_endo_1.slot,
@@ -1291,8 +1304,8 @@ mod tests {
         let (_, _, s_block_header_1, s_block_header_2, _) = gen_block_headers_for_denunciation();
         let denunciation: Denunciation = (&s_block_header_1, &s_block_header_2).try_into().unwrap();
 
-        let de_i_1 = DenunciationInterest::try_from(&s_block_header_1).unwrap();
-        let de_i_2 = DenunciationInterest::try_from(&s_block_header_2).unwrap();
+        let de_i_1 = DenunciationPrecursor::try_from(&s_block_header_1).unwrap();
+        let de_i_2 = DenunciationPrecursor::try_from(&s_block_header_2).unwrap();
         let denunciation_2: Denunciation = (&de_i_1, &de_i_2).try_into().unwrap();
 
         assert_eq!(denunciation, denunciation_2);
@@ -1300,8 +1313,8 @@ mod tests {
         let (_, _, s_endorsement_1, s_endorsement_2, _) = gen_endorsements_for_denunciation();
         let denunciation_3 = Denunciation::try_from((&s_endorsement_1, &s_endorsement_2)).unwrap();
 
-        let de_i_3 = DenunciationInterest::try_from(&s_endorsement_1).unwrap();
-        let de_i_4 = DenunciationInterest::try_from(&s_endorsement_2).unwrap();
+        let de_i_3 = DenunciationPrecursor::try_from(&s_endorsement_1).unwrap();
+        let de_i_4 = DenunciationPrecursor::try_from(&s_endorsement_2).unwrap();
         let denunciation_4: Denunciation = (&de_i_3, &de_i_4).try_into().unwrap();
 
         assert_eq!(denunciation_3, denunciation_4);

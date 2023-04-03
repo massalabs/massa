@@ -1,7 +1,7 @@
 //! Copyright (c) 2022 MASSA LABS <info@massa.net>
 
 use crossbeam_channel::Sender;
-use massa_models::denunciation::DenunciationInterest;
+use massa_models::denunciation::DenunciationPrecursor;
 use massa_models::{
     block_id::BlockId,
     endorsement::EndorsementId,
@@ -31,14 +31,14 @@ pub struct EndorsementPool {
     last_cs_final_periods: Vec<u64>,
 
     /// Queue to Denunciation factory
-    denunciation_factory_tx: Sender<DenunciationInterest>,
+    denunciation_factory_tx: Sender<DenunciationPrecursor>,
 }
 
 impl EndorsementPool {
     pub fn init(
         config: PoolConfig,
         storage: &Storage,
-        denunciation_factory_tx: Sender<DenunciationInterest>,
+        denunciation_factory_tx: Sender<DenunciationPrecursor>,
     ) -> Self {
         EndorsementPool {
             last_cs_final_periods: vec![0u64; config.thread_count as usize],
@@ -129,7 +129,7 @@ impl EndorsementPool {
                 }
 
                 // And send endorsements to Denunciation Factory
-                match DenunciationInterest::try_from(endo) {
+                match DenunciationPrecursor::try_from(endo) {
                     Ok(de_i) => {
                         if let Err(e) = self.denunciation_factory_tx.send(de_i) {
                             warn!("Cannot send endorsement to Denunciation factory: {}", e);
