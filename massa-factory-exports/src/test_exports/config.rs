@@ -15,6 +15,9 @@ impl Default for FactoryConfig {
             max_block_gas: MAX_GAS_PER_BLOCK,
             max_operations_per_block: MAX_OPERATIONS_PER_BLOCK,
             last_start_period: 0,
+            periods_per_cycle: PERIODS_PER_CYCLE,
+            denunciation_expire_periods: DENUNCIATION_EXPIRE_PERIODS,
+            denunciation_items_max_cycle_delta: DENUNCIATION_ITEMS_MAX_CYCLE_DELTA,
         }
     }
 }

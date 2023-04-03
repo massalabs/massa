@@ -206,14 +206,13 @@ impl Serializer<Block> for BlockSerializer {
     }
 }
 
-/// Block Deserializer Args struct. Useful to pass around the parameters,
-/// e.g. create a block deserializer from a BootstrapServerMessageDeserializerArgs.
+/// Parameters for the deserializer of a block
 pub struct BlockDeserializerArgs {
-    /// thread count for slot deserialization
+    /// Number of threads in Massa
     pub thread_count: u8,
-    /// max operations, otherwise the block is invalid
+    /// Maximum of operations in a block
     pub max_operations_per_block: u32,
-    /// endorsement deserialization and checks
+    /// Number of endorsements in a block
     pub endorsement_count: u32,
     /// If Some(lsp), this will through if trying to deserialize a block with a period before the genesis blocks
     pub last_start_period: Option<u64>,

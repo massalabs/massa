@@ -30,4 +30,13 @@ pub struct FactoryConfig {
 
     /// last start period
     pub last_start_period: u64,
+
+    /// cycle duration in periods
+    pub periods_per_cycle: u64,
+
+    /// denunciation expiration as periods
+    pub denunciation_expire_periods: u64,
+
+    /// Cycle delta to accept items in denunciation factory
+    pub denunciation_items_max_cycle_delta: u64,
 }

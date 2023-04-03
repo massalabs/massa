@@ -642,7 +642,7 @@ impl ExecutionContext {
     }
 
     /// Cancels an asynchronous message, reimbursing `msg.coins` to the sender
-    ///x
+    ///
     /// # Arguments
     /// * `msg`: the asynchronous message to cancel
     pub fn cancel_async_message(&mut self, msg: &AsyncMessage) {
