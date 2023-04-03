@@ -74,11 +74,17 @@ pub(crate) async fn send_endorsements(
                             let verified_eds_res: Result<HashMap<String, SecureShareEndorsement>, GrpcError> = proto_endorsement
                                 .into_iter()
                                 .map(|proto_endorsement| {
+
+                                    let pub_key_b = proto_endorsement.content_creator_pub_key.as_bytes();
                                     // Concatenate signature, public key, and data into a single byte vector
-                                    let mut ed_serialized = Vec::new();
-                                    ed_serialized.extend(proto_endorsement.signature.as_bytes());
-                                    ed_serialized.extend(proto_endorsement.content_creator_pub_key.as_bytes());
-                                    ed_serialized.extend(proto_endorsement.serialized_data);
+                                    let mut ed_serialized = Vec::with_capacity(
+                                        proto_endorsement.signature.len()
+                                            + pub_key_b.len()
+                                            + proto_endorsement.serialized_data.len(),
+                                    );
+                                    ed_serialized.extend_from_slice(proto_endorsement.signature.as_bytes());
+                                    ed_serialized.extend_from_slice(pub_key_b);
+                                    ed_serialized.extend_from_slice(&proto_endorsement.serialized_data);
 
                                     let verified_op = match endorsement_deserializer.deserialize::<DeserializeError>(&ed_serialized) {
                                         Ok(tuple) => {

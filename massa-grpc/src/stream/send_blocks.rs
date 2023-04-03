@@ -56,11 +56,18 @@ pub(crate) async fn send_blocks(
                         ).await;
                         continue;
                     };
+
+                    let pub_key_b = proto_block.content_creator_pub_key.as_bytes();
                     // Concatenate signature, public key, and data into a single byte vector
-                    let mut blk_serialized = Vec::new();
-                    blk_serialized.extend(proto_block.signature.as_bytes());
-                    blk_serialized.extend(proto_block.content_creator_pub_key.as_bytes());
-                    blk_serialized.extend(proto_block.serialized_data);
+                    let mut blk_serialized = Vec::with_capacity(
+                        proto_block.signature.len()
+                            + pub_key_b.len()
+                            + proto_block.serialized_data.len(),
+                    );
+
+                    blk_serialized.extend_from_slice(proto_block.signature.as_bytes());
+                    blk_serialized.extend_from_slice(pub_key_b);
+                    blk_serialized.extend_from_slice(&proto_block.serialized_data);
                     // Create a block deserializer arguments
                     let args = BlockDeserializerArgs {
                         thread_count: config.thread_count,
