@@ -206,13 +206,13 @@ impl Serializer<Block> for BlockSerializer {
     }
 }
 
-/// Block deserializer arguments
+/// Parameters for the deserializer of a block
 pub struct BlockDeserializerArgs {
-    ///
+    /// Number of threads in Massa
     pub thread_count: u8,
-    ///
+    /// Maximum of operations in a block
     pub max_operations_per_block: u32,
-    ///
+    /// Number of endorsements in a block
     pub endorsement_count: u32,
 }
 

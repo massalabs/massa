@@ -613,8 +613,7 @@ impl MipStoreRaw {
             }
         }
 
-        // Return false is there is nothing to merge - maybe we could make a distinction here?
-        if should_merge && (!to_update.is_empty() || !to_add.is_empty()) {
+        if should_merge {
             let added = to_add.keys().cloned().collect();
             let updated = to_update.keys().cloned().collect();
 
@@ -734,8 +733,11 @@ mod test {
 
     use std::str::FromStr;
 
-    use crate::test_helpers::versioning_helpers::advance_state_until;
     use chrono::{Days, NaiveDate, NaiveDateTime};
+
+    use crate::test_helpers::versioning_helpers::advance_state_until;
+
+    use massa_models::config::{MIP_STORE_STATS_BLOCK_CONSIDERED, MIP_STORE_STATS_COUNTERS_MAX};
 
     // Only for unit tests
     impl PartialEq<ComponentState> for MipState {
@@ -1220,5 +1222,18 @@ mod test {
         };
 
         assert_eq!(vs_raw_1.update_with(&vs_raw_2), Err(()));
+    }
+
+    #[test]
+    fn test_empty_mip_store() {
+        // Test if we can init an empty MipStore
+
+        let mip_stats_config = MipStatsConfig {
+            block_count_considered: MIP_STORE_STATS_BLOCK_CONSIDERED,
+            counters_max: MIP_STORE_STATS_COUNTERS_MAX,
+        };
+
+        let mip_store = MipStore::try_from(([], mip_stats_config));
+        assert_eq!(mip_store.is_ok(), true);
     }
 }
