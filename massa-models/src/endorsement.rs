@@ -169,12 +169,8 @@ pub type SecureShareEndorsement = SecureShare<Endorsement, EndorsementId>;
 
 impl SecureShareContent for Endorsement {
     /// Compute hash for Endorsement in SecuredHeader - taking care of Denunciation verification
-    fn compute_hash(
-        content: &Self,
-        content_serialized: &[u8],
-        content_creator_pub_key: &PublicKey,
-    ) -> Hash {
-        let de_data = EndorsementDenunciationData::new(content.slot, content.index);
+    fn compute_hash(&self, content_serialized: &[u8], content_creator_pub_key: &PublicKey) -> Hash {
+        let de_data = EndorsementDenunciationData::new(self.slot, self.index);
         let mut hash_data = Vec::new();
         hash_data.extend(content_creator_pub_key.to_bytes());
         hash_data.extend(de_data.to_bytes());
