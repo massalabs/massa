@@ -803,6 +803,10 @@
 <a href="#803" id="803">803</a>
 <a href="#804" id="804">804</a>
 <a href="#805" id="805">805</a>
+<a href="#806" id="806">806</a>
+<a href="#807" id="807">807</a>
+<a href="#808" id="808">808</a>
+<a href="#809" id="809">809</a>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="doccomment">//! Implementation of the interface between massa-execution-worker and massa-sc-runtime.
@@ -880,7 +884,7 @@
 
         <span class="kw">let </span>vesting_file = <span class="kw">super</span>::tests::get_initials_vesting(<span class="bool-val">false</span>);
         <span class="kw">let </span>config = ExecutionConfig::default();
-        <span class="kw">let </span>(final_state, _tempfile, _tempdir) = <span class="kw">super</span>::tests::get_sample_state(<span class="number">0</span>).unwrap();
+        <span class="kw">let </span>(final_state, _tempfile, _tempdir) = <span class="kw">super</span>::tests::get_sample_state().unwrap();
         <span class="kw">let </span>module_cache = Arc::new(RwLock::new(ModuleCache::new(GasCosts::default(), <span class="number">1000</span>)));
         <span class="kw">let </span>vesting_manager = Arc::new(
             <span class="kw">crate</span>::vesting_manager::VestingManager::new(
@@ -1354,6 +1358,10 @@
         <span class="kw">let </span>public_key = massa_signature::PublicKey::from_str(public_key)<span class="question-mark">?</span>;
         <span class="kw">let </span>addr = massa_models::address::Address::from_public_key(<span class="kw-2">&amp;</span>public_key);
         <span class="prelude-val">Ok</span>(addr.to_string())
+    }
+
+    <span class="kw">fn </span>validate_address(<span class="kw-2">&amp;</span><span class="self">self</span>, address: <span class="kw-2">&amp;</span>str) -&gt; <span class="prelude-ty">Result</span>&lt;bool&gt; {
+        <span class="prelude-val">Ok</span>(massa_models::address::Address::from_str(address).is_ok())
     }
 
     <span class="doccomment">/// Verifies a signature

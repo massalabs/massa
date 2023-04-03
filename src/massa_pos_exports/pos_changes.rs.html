@@ -180,18 +180,6 @@
 <a href="#180" id="180">180</a>
 <a href="#181" id="181">181</a>
 <a href="#182" id="182">182</a>
-<a href="#183" id="183">183</a>
-<a href="#184" id="184">184</a>
-<a href="#185" id="185">185</a>
-<a href="#186" id="186">186</a>
-<a href="#187" id="187">187</a>
-<a href="#188" id="188">188</a>
-<a href="#189" id="189">189</a>
-<a href="#190" id="190">190</a>
-<a href="#191" id="191">191</a>
-<a href="#192" id="192">192</a>
-<a href="#193" id="193">193</a>
-<a href="#194" id="194">194</a>
 </pre><pre class="rust"><code><span class="kw">use crate</span>::{
     DeferredCredits, DeferredCreditsDeserializer, DeferredCreditsSerializer, ProductionStats,
     ProductionStatsDeserializer, ProductionStatsSerializer, RollsDeserializer,
@@ -211,7 +199,7 @@
 <span class="kw">use </span>serde::{Deserialize, Serialize};
 
 <span class="doccomment">/// Recap of all PoS changes
-</span><span class="attr">#[derive(Debug, Clone, Deserialize, Serialize)]
+</span><span class="attr">#[derive(Default, Debug, Clone, Deserialize, Serialize)]
 </span><span class="kw">pub struct </span>PoSChanges {
     <span class="doccomment">/// extra block seed bits added
     </span><span class="kw">pub </span>seed_bits: BitVec&lt;u8&gt;,
@@ -225,17 +213,6 @@
     <span class="doccomment">/// set deferred credits indexed by target slot (can be set to 0 to cancel some, in case of slash)
     /// ordered structure to ensure slot iteration order is deterministic
     </span><span class="kw">pub </span>deferred_credits: DeferredCredits,
-}
-
-<span class="kw">impl </span>Default <span class="kw">for </span>PoSChanges {
-    <span class="kw">fn </span>default() -&gt; <span class="self">Self </span>{
-        <span class="self">Self </span>{
-            seed_bits: Default::default(),
-            roll_changes: Default::default(),
-            production_stats: Default::default(),
-            deferred_credits: DeferredCredits::new_with_hash(),
-        }
-    }
 }
 
 <span class="kw">impl </span>PoSChanges {
@@ -264,7 +241,7 @@
         }
 
         <span class="comment">// extend deferred credits
-        </span><span class="self">self</span>.deferred_credits.extend(other.deferred_credits);
+        </span><span class="self">self</span>.deferred_credits.nested_extend(other.deferred_credits);
     }
 }
 
@@ -347,7 +324,6 @@
             deferred_credits_deserializer: DeferredCreditsDeserializer::new(
                 thread_count,
                 max_credits_length,
-                <span class="bool-val">true</span>,
             ),
         }
     }

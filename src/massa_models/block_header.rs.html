@@ -486,17 +486,6 @@
 <a href="#486" id="486">486</a>
 <a href="#487" id="487">487</a>
 <a href="#488" id="488">488</a>
-<a href="#489" id="489">489</a>
-<a href="#490" id="490">490</a>
-<a href="#491" id="491">491</a>
-<a href="#492" id="492">492</a>
-<a href="#493" id="493">493</a>
-<a href="#494" id="494">494</a>
-<a href="#495" id="495">495</a>
-<a href="#496" id="496">496</a>
-<a href="#497" id="497">497</a>
-<a href="#498" id="498">498</a>
-<a href="#499" id="499">499</a>
 </pre><pre class="rust"><code><span class="kw">use </span><span class="kw">crate</span>::block_id::BlockId;
 <span class="kw">use </span><span class="kw">crate</span>::config::THREAD_COUNT;
 <span class="kw">use </span><span class="kw">crate</span>::endorsement::{
@@ -725,17 +714,11 @@
     hash_deserializer: HashDeserializer,
     thread_count: u8,
     endorsement_count: u32,
-    last_start_period: <span class="prelude-ty">Option</span>&lt;u64&gt;,
 }
 
 <span class="kw">impl </span>BlockHeaderDeserializer {
-    <span class="doccomment">/// Creates a new `BlockHeaderDeserializer`
-    /// If last_start_period is Some(lsp), then the deserializer will check for valid (non)-genesis blocks
-    </span><span class="kw">pub const fn </span>new(
-        thread_count: u8,
-        endorsement_count: u32,
-        last_start_period: <span class="prelude-ty">Option</span>&lt;u64&gt;,
-    ) -&gt; <span class="self">Self </span>{
+    <span class="doccomment">/// Creates a new `BlockHeaderDeserializerLW`
+    </span><span class="kw">pub const fn </span>new(thread_count: u8, endorsement_count: u32) -&gt; <span class="self">Self </span>{
         <span class="self">Self </span>{
             slot_deserializer: SlotDeserializer::new(
                 (Included(<span class="number">0</span>), Included(u64::MAX)),
@@ -749,7 +732,6 @@
             hash_deserializer: HashDeserializer::new(),
             thread_count,
             endorsement_count,
-            last_start_period,
         }
     }
 }
@@ -798,7 +780,7 @@
     /// };
     /// let mut buffer = vec![];
     /// BlockHeaderSerializer::new().serialize(&amp;header, &amp;mut buffer).unwrap();
-    /// let (rest, deserialized_header) = BlockHeaderDeserializer::new(32, 9, Some(0)).deserialize::&lt;DeserializeError&gt;(&amp;buffer).unwrap();
+    /// let (rest, deserialized_header) = BlockHeaderDeserializer::new(32, 9).deserialize::&lt;DeserializeError&gt;(&amp;buffer).unwrap();
     /// assert_eq!(rest.len(), 0);
     /// let mut buffer2 = Vec::new();
     /// BlockHeaderSerializer::new().serialize(&amp;deserialized_header, &amp;mut buffer2).unwrap();
@@ -834,26 +816,22 @@
                 ))
                 .parse(input)<span class="question-mark">?</span>;
 
-                <span class="comment">// validate the parent/slot invariants before moving on to other fields
-                </span><span class="kw">if let </span><span class="prelude-val">Some</span>(last_start_period) = <span class="self">self</span>.last_start_period {
-                    <span class="kw">if </span>slot.period == last_start_period &amp;&amp; !parents.is_empty() {
-                        <span class="kw">return </span><span class="prelude-val">Err</span>(nom::Err::Failure(ContextError::add_context(
-                            rest,
-                            <span class="string">&quot;Genesis block cannot contain parents&quot;</span>,
-                            ParseError::from_error_kind(rest, nom::error::ErrorKind::Fail),
-                        )));
-                    } <span class="kw">else if </span>slot.period != last_start_period
-                        &amp;&amp; parents.len() != THREAD_COUNT <span class="kw">as </span>usize
-                    {
-                        <span class="kw">return </span><span class="prelude-val">Err</span>(nom::Err::Failure(ContextError::add_context(
-                            rest,
-                            <span class="macro">const_format::formatcp!</span>(
-                                <span class="string">&quot;Non-genesis block must have {} parents&quot;</span>,
-                                THREAD_COUNT
-                            ),
-                            ParseError::from_error_kind(rest, nom::error::ErrorKind::Fail),
-                        )));
-                    }
+                <span class="comment">// validate the parent/slot invariats before moving on to other fields
+                </span><span class="kw">if </span>slot.period == <span class="number">0 </span>&amp;&amp; !parents.is_empty() {
+                    <span class="kw">return </span><span class="prelude-val">Err</span>(nom::Err::Failure(ContextError::add_context(
+                        rest,
+                        <span class="string">&quot;Genesis block cannot contain parents&quot;</span>,
+                        ParseError::from_error_kind(rest, nom::error::ErrorKind::Fail),
+                    )));
+                } <span class="kw">else if </span>slot.period != <span class="number">0 </span>&amp;&amp; parents.len() != THREAD_COUNT <span class="kw">as </span>usize {
+                    <span class="kw">return </span><span class="prelude-val">Err</span>(nom::Err::Failure(ContextError::add_context(
+                        rest,
+                        <span class="macro">const_format::formatcp!</span>(
+                            <span class="string">&quot;Non-genesis block must have {} parents&quot;</span>,
+                            THREAD_COUNT
+                        ),
+                        ParseError::from_error_kind(rest, nom::error::ErrorKind::Fail),
+                    )));
                 }
 
                 <span class="kw">let </span>(rest, merkle) = context(<span class="string">&quot;Failed operation_merkle_root&quot;</span>, |input| {
