@@ -26,14 +26,12 @@ pub struct PoSFinalState {
     pub deferred_credits: DeferredCredits,
     /// selector controller
     pub selector: Box<dyn SelectorController>,
-    /// initial rolls
+    /// initial rolls, used for negative cycle look back
     pub initial_rolls: BTreeMap<Address, u64>,
-    /// initial seeds
+    /// initial seeds, used for negative cycle look back (cycles -2, -1 in that order)
     pub initial_seeds: Vec<Hash>,
-    /// initial ledger hash
+    /// initial ledger hash, used for seed computation
     pub initial_ledger_hash: Hash,
-    /// last start period
-    pub last_start_period: u64,
 }
 
 impl PoSFinalState {
@@ -65,11 +63,9 @@ impl PoSFinalState {
             initial_rolls,
             initial_seeds,
             initial_ledger_hash,
-            last_start_period: 0,
         })
     }
 
-    #[allow(clippy::too_many_arguments)]
     /// create a `PoSFinalState` from an existing snapshot
     pub fn from_snapshot(
         config: PoSConfig,
@@ -79,9 +75,8 @@ impl PoSFinalState {
         initial_rolls_path: &PathBuf,
         selector: Box<dyn SelectorController>,
         initial_ledger_hash: Hash,
-        end_slot: Slot,
     ) -> Result<Self, PosError> {
-        // Seeds used as the initial seeds for negative cycles (initial_cycle-2 and initial_cycle-1 respectively)
+        // Seeds used as the initial seeds for negative cycles (-2 and -1 respectively)
         let init_seed = Hash::compute_from(initial_seed_string.as_bytes());
         let initial_seeds = vec![Hash::compute_from(init_seed.to_bytes()), init_seed];
         // load get initial rolls from file
@@ -100,7 +95,6 @@ impl PoSFinalState {
             initial_rolls,
             initial_seeds,
             initial_ledger_hash,
-            last_start_period: end_slot.period,
         })
     }
 
@@ -184,7 +178,7 @@ impl PoSFinalState {
     /// Sends the current draw inputs (initial or bootstrapped) to the selector.
     /// Waits for the initial draws to be performed.
     pub fn compute_initial_draws(&mut self) -> PosResult<()> {
-        // if cycle_history starts at a cycle that is strictly higher than initial_cycle, do not feed cycles 0, 1 to selector
+        // if cycle_history starts at a cycle that is strictly higher than 0, do not feed cycles 0, 1 to selector
         let history_starts_late = self
             .cycle_history
             .front()
