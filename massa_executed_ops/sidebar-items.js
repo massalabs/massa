@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"mod":["config","executed_ops","ops_changes"],"struct":["ExecutedOps","ExecutedOpsChangesDeserializer","ExecutedOpsChangesSerializer","ExecutedOpsConfig","ExecutedOpsDeserializer","ExecutedOpsSerializer"],"type":["ExecutedOpsChanges"]};
+window.SIDEBAR_ITEMS = {"struct":["ExecutedOps","ExecutedOpsChangesDeserializer","ExecutedOpsChangesSerializer","ExecutedOpsConfig","ExecutedOpsDeserializer","ExecutedOpsSerializer"],"type":["ExecutedOpsChanges"]};

@@ -27,13 +27,9 @@
 <a href="#27" id="27">27</a>
 <a href="#28" id="28">28</a>
 <a href="#29" id="29">29</a>
-<a href="#30" id="30">30</a>
-<a href="#31" id="31">31</a>
 </pre><pre class="rust"><code><span class="kw">use </span>massa_execution_exports::ExecutionController;
-<span class="kw">use </span>massa_models::block::{FilledBlock, SecureShareBlock};
+<span class="kw">use </span>massa_models::block::{Block, FilledBlock};
 <span class="kw">use </span>massa_models::block_header::BlockHeader;
-<span class="kw">use </span>massa_models::block_id::BlockId;
-<span class="kw">use </span>massa_models::secure_share::SecureShare;
 <span class="kw">use </span>massa_pool_exports::PoolController;
 <span class="kw">use </span>massa_pos_exports::SelectorController;
 <span class="kw">use </span>massa_protocol_exports::ProtocolCommandSender;
@@ -54,9 +50,9 @@
     <span class="doccomment">/// Channel to send commands to the Protocol module
     </span><span class="kw">pub </span>protocol_command_sender: ProtocolCommandSender,
     <span class="doccomment">/// Channel used for Websocket broadcast (if enabled) of new blocks being integrated in the graph
-    </span><span class="kw">pub </span>block_sender: tokio::sync::broadcast::Sender&lt;SecureShareBlock&gt;,
+    </span><span class="kw">pub </span>block_sender: tokio::sync::broadcast::Sender&lt;Block&gt;,
     <span class="doccomment">/// Channel used for Websocket broadcast (if enabled) of new block headers being integrated in the graph
-    </span><span class="kw">pub </span>block_header_sender: tokio::sync::broadcast::Sender&lt;SecureShare&lt;BlockHeader, BlockId&gt;&gt;,
+    </span><span class="kw">pub </span>block_header_sender: tokio::sync::broadcast::Sender&lt;BlockHeader&gt;,
     <span class="doccomment">/// Channel use by Websocket (if they are enable) to broadcast a new block integrated
     </span><span class="kw">pub </span>filled_block_sender: tokio::sync::broadcast::Sender&lt;FilledBlock&gt;,
 }

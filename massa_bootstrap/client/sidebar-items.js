@@ -1,1 +1,0 @@
-window.SIDEBAR_ITEMS = {"fn":["bootstrap_from_server","connect_to_server","filter_bootstrap_list","get_state","send_client_message","stream_final_state_and_consensus"],"opaque":[""],"static":["CALLSITE","META"]};
