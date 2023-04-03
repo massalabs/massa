@@ -1964,11 +1964,18 @@ mod tests {
 
         // init the storage
         let mut storage = Storage::create_root();
+        // init the MIP store
+        let mip_stats_config = MipStatsConfig {
+            block_count_considered: MIP_STORE_STATS_BLOCK_CONSIDERED,
+            counters_max: MIP_STORE_STATS_COUNTERS_MAX,
+        };
+        let mip_store = MipStore::try_from(([], mip_stats_config)).unwrap();
         // start the execution worker
         let (mut manager, controller) = start_execution_worker(
             exec_cfg.clone(),
             sample_state.clone(),
             sample_state.read().pos_state.selector.clone(),
+            mip_store,
         );
         // initialize the execution system with genesis blocks
         init_execution_worker(&exec_cfg, &storage, controller.clone());
