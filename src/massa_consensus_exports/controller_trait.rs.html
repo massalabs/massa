@@ -274,7 +274,7 @@
 </span><span class="kw">pub trait </span>ConsensusManager {
     <span class="doccomment">/// Stop the consensus thread
     /// Note that we do not take self by value to consume it
-    /// because it is not allowed to move out of `Box&lt;dyn ConsensusManager&gt;`
+    /// because it is not allowed to move out of Box&lt;dyn ConsensusManager&gt;
     /// This will improve if the `unsized_fn_params` feature stabilizes enough to be safely usable.
     </span><span class="kw">fn </span>stop(<span class="kw-2">&amp;mut </span><span class="self">self</span>);
 }

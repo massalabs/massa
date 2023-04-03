@@ -1,1 +1,0 @@
-window.SIDEBAR_ITEMS = {"enum":["MockPoolControllerMessage"],"struct":["MockPoolController","PoolEventReceiver"]};

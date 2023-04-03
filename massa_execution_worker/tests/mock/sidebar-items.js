@@ -1,1 +1,0 @@
-window.SIDEBAR_ITEMS = {"constant":["FUTURE_TIMESTAMP","PAST_TIMESTAMP","SEC_TIMESTAMP"],"fn":["create_block","get_initials","get_initials_vesting","get_random_address_full","get_sample_state"]};

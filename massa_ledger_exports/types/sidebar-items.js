@@ -1,1 +1,0 @@
-window.SIDEBAR_ITEMS = {"constant":["VARIANTS"],"enum":["SetOrDelete","SetOrKeep","SetUpdateOrDelete","__Field"],"struct":["SetOrDeleteDeserializer","SetOrDeleteSerializer","SetOrKeepDeserializer","SetOrKeepSerializer","SetUpdateOrDeleteDeserializer","SetUpdateOrDeleteSerializer","__FieldVisitor","__Visitor"],"trait":["Applicable"]};

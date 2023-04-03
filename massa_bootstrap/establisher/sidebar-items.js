@@ -1,1 +1,0 @@
-window.SIDEBAR_ITEMS = {"struct":["DefaultConnector","DefaultEstablisher","DefaultListener"],"trait":["BSConnector","BSEstablisher","BSListener"],"type":["Duplex","DuplexListener"]};
