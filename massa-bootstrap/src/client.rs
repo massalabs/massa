@@ -382,7 +382,9 @@ fn connect_to_server(
         .set_nonblocking(true)
         .map_err(|e| Box::new(BootstrapError::IoError(e)))?;
     Ok(BootstrapClientBinder::new(
-        // this from_std will panic if this method doesn't exist within an async runtime...
+        // From_std will panic unless called inside a tokio-runtime that has IO enabled.
+        // These conditions are currently met.
+        // If you find a panic here, start by confirming whether or not these required conditions have been broken.
         tokio::net::TcpStream::from_std(socket)
             .map_err(|e| Box::new(BootstrapError::IoError(e)))?,
         *pub_key,
