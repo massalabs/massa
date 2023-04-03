@@ -7,7 +7,6 @@ use std::{
 
 /// duplex connection
 pub trait Duplex:
-// static because need to send between threads :(
     Send + tokio::io::AsyncReadExt + tokio::io::AsyncWriteExt + std::marker::Unpin
 {
 }
