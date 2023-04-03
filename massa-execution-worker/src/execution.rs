@@ -585,7 +585,11 @@ impl ExecutionState {
             module,
             remaining_gas,
             self.config.gas_costs.clone(),
-        )?;
+        )
+        .map_err(|error| ExecutionError::VMError {
+            context: "ExecuteSC".to_string(),
+            error,
+        })?;
 
         Ok(())
     }
@@ -683,7 +687,10 @@ impl ExecutionState {
             }
             _ => (),
         }
-        response?;
+        response.map_err(|error| ExecutionError::VMError {
+            context: "CallSC".to_string(),
+            error,
+        })?;
         Ok(())
     }
 
@@ -776,14 +783,17 @@ impl ExecutionState {
                     .set_init_cost(&bytecode, init_cost);
                 Ok(())
             }
-            Err(err) => {
-                if let VMError::ExecutionError { init_cost, .. } = err {
+            Err(error) => {
+                if let VMError::ExecutionError { init_cost, .. } = error {
                     self.module_cache
                         .write()
                         .set_init_cost(&bytecode, init_cost);
                 }
                 // execution failed: reset context to snapshot and reimburse sender
-                let err = ExecutionError::from(err);
+                let err = ExecutionError::VMError {
+                    context: "Asynchronous Message".to_string(),
+                    error,
+                };
                 let mut context = context_guard!(self);
                 context.reset_to_snapshot(context_snapshot, err.clone());
                 context.cancel_async_message(&message);
@@ -1149,7 +1159,11 @@ impl ExecutionState {
                     module,
                     req.max_gas,
                     self.config.gas_costs.clone(),
-                )?
+                )
+                .map_err(|error| ExecutionError::VMError {
+                    context: "ReadOnlyExecutionTarget::BytecodeExecution".to_string(),
+                    error,
+                })?
             }
             ReadOnlyExecutionTarget::FunctionCall {
                 target_addr,
@@ -1188,7 +1202,10 @@ impl ExecutionState {
                     }
                     _ => (),
                 }
-                response?
+                response.map_err(|error| ExecutionError::VMError {
+                    context: "ReadOnlyExecutionTarget::FunctionCall".to_string(),
+                    error,
+                })?
             }
         };
 

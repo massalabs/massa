@@ -53,8 +53,13 @@ pub enum ExecutionError {
     /// We reach the vesting constraint: {0}
     VestingError(String),
 
-    /// VM Error: {0}
-    VMError(#[from] VMError),
+    /// VM Error in {context} context: {error}
+    VMError {
+        /// execution context in which the error happened
+        context: String,
+        /// `massa-sc-runtime` virtual machine error
+        error: VMError,
+    },
 
     /// Cache error: {0}
     CacheError(#[from] CacheError),
