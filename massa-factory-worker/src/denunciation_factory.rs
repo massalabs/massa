@@ -3,7 +3,7 @@ use std::collections::HashMap;
 use std::thread;
 
 use crossbeam_channel::{select, Receiver};
-use tracing::{debug, warn};
+use tracing::{debug, info, warn};
 
 use massa_factory_exports::{FactoryChannels, FactoryConfig};
 use massa_models::address::Address;
@@ -137,7 +137,7 @@ impl DenunciationFactoryWorker {
         };
 
         if let Some(denunciation) = denunciation_ {
-            debug!(
+            info!(
                 "Created a new block header denunciation : {:?}",
                 denunciation
             );
@@ -236,7 +236,7 @@ impl DenunciationFactoryWorker {
         };
 
         if let Some(denunciation) = denunciation_ {
-            debug!(
+            info!(
                 "Created a new endorsement denunciation : {:?}",
                 denunciation
             );
@@ -271,7 +271,7 @@ impl DenunciationFactoryWorker {
                 recv(self.consensus_receiver) -> de_i_ => {
                     match de_i_ {
                         Ok(de_i) => {
-                            debug!("Denunciation factory receives a new block header denunciation interest: {:?}", de_i);
+                            info!("Denunciation factory receives a new block header denunciation interest: {:?}", de_i);
                             self.process_new_secured_header(de_i);
                         },
                         Err(e) => {
