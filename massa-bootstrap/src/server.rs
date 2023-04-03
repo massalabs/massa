@@ -734,7 +734,7 @@ async fn manage_bootstrap<D: Duplex, C: NetworkCommandSenderTrait>(
         Ok(BootstrapClientMessage::BootstrapError { error }) => {
             return Err(BootstrapError::GeneralError(error));
         }
-        Ok(msg) => return Err(BootstrapError::UnexpectedClientMessage(msg)),
+        Ok(msg) => return Err(BootstrapError::UnexpectedClientMessage(Box::new(msg))),
     };
 
     let write_timeout: Duration = bootstrap_config.write_timeout.into();

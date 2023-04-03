@@ -29,7 +29,7 @@ pub enum BootstrapError {
     /// unexpected message received from server: {0:?}
     UnexpectedServerMessage(BootstrapServerMessage),
     /// unexpected message received from client: {0:?}
-    UnexpectedClientMessage(BootstrapClientMessage),
+    UnexpectedClientMessage(Box<BootstrapClientMessage>),
     /// connection with bootstrap node dropped
     UnexpectedConnectionDrop,
     /// `massa_hash` error: {0}
