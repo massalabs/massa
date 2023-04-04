@@ -88,6 +88,18 @@
 <a href="#88" id="88">88</a>
 <a href="#89" id="89">89</a>
 <a href="#90" id="90">90</a>
+<a href="#91" id="91">91</a>
+<a href="#92" id="92">92</a>
+<a href="#93" id="93">93</a>
+<a href="#94" id="94">94</a>
+<a href="#95" id="95">95</a>
+<a href="#96" id="96">96</a>
+<a href="#97" id="97">97</a>
+<a href="#98" id="98">98</a>
+<a href="#99" id="99">99</a>
+<a href="#100" id="100">100</a>
+<a href="#101" id="101">101</a>
+<a href="#102" id="102">102</a>
 </pre><pre class="rust"><code><span class="kw">use </span>massa_hash::Hash;
 <span class="kw">use </span>massa_models::{
     address::Address, amount::Amount, bytecode::Bytecode, error::ModelsError, slot::Slot,
@@ -100,7 +112,13 @@
 
 <span class="kw">pub trait </span>LedgerController: Send + Sync + Debug {
     <span class="doccomment">/// Allows applying `LedgerChanges` to the final ledger
-    </span><span class="kw">fn </span>apply_changes(<span class="kw-2">&amp;mut </span><span class="self">self</span>, changes: LedgerChanges, slot: Slot);
+    /// * final_state_data should be non-None only if we are storing a final_state snapshot.
+    </span><span class="kw">fn </span>apply_changes(
+        <span class="kw-2">&amp;mut </span><span class="self">self</span>,
+        changes: LedgerChanges,
+        slot: Slot,
+        final_state_data: <span class="prelude-ty">Option</span>&lt;Vec&lt;u8&gt;&gt;,
+    );
 
     <span class="doccomment">/// Loads ledger from file
     </span><span class="kw">fn </span>load_initial_ledger(<span class="kw-2">&amp;mut </span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span>&lt;(), LedgerError&gt;;
@@ -159,6 +177,12 @@
     ///
     /// USED FOR BOOTSTRAP ONLY
     </span><span class="kw">fn </span>reset(<span class="kw-2">&amp;mut </span><span class="self">self</span>);
+
+    <span class="kw">fn </span>get_slot(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span>&lt;Slot, ModelsError&gt;;
+
+    <span class="kw">fn </span>set_final_state_hash(<span class="kw-2">&amp;mut </span><span class="self">self</span>, data: Vec&lt;u8&gt;);
+
+    <span class="kw">fn </span>get_final_state(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span>&lt;Vec&lt;u8&gt;, ModelsError&gt;;
 
     <span class="doccomment">/// Get every address and their corresponding balance.
     ///
