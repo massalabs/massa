@@ -215,17 +215,6 @@
 <a href="#215" id="215">215</a>
 <a href="#216" id="216">216</a>
 <a href="#217" id="217">217</a>
-<a href="#218" id="218">218</a>
-<a href="#219" id="219">219</a>
-<a href="#220" id="220">220</a>
-<a href="#221" id="221">221</a>
-<a href="#222" id="222">222</a>
-<a href="#223" id="223">223</a>
-<a href="#224" id="224">224</a>
-<a href="#225" id="225">225</a>
-<a href="#226" id="226">226</a>
-<a href="#227" id="227">227</a>
-<a href="#228" id="228">228</a>
 </pre><pre class="rust"><code><span class="kw">use </span>massa_execution_exports::ExecutionError;
 <span class="kw">use </span>massa_final_state::{FinalState, FinalStateConfig};
 <span class="kw">use </span>massa_hash::Hash;
@@ -332,12 +321,11 @@
     (Address::from_public_key(<span class="kw-2">&amp;</span>keypair.get_public_key()), keypair)
 }
 
-<span class="kw">pub fn </span>get_sample_state(
-    last_start_period: u64,
-) -&gt; <span class="prelude-ty">Result</span>&lt;(Arc&lt;RwLock&lt;FinalState&gt;&gt;, NamedTempFile, TempDir), LedgerError&gt; {
+<span class="kw">pub fn </span>get_sample_state() -&gt; <span class="prelude-ty">Result</span>&lt;(Arc&lt;RwLock&lt;FinalState&gt;&gt;, NamedTempFile, TempDir), LedgerError&gt;
+{
     <span class="kw">let </span>(rolls_file, ledger) = get_initials();
     <span class="kw">let </span>(ledger_config, tempfile, tempdir) = LedgerConfig::sample(<span class="kw-2">&amp;</span>ledger);
-    <span class="kw">let </span><span class="kw-2">mut </span>ledger = FinalLedger::new(ledger_config.clone(), <span class="bool-val">false</span>);
+    <span class="kw">let </span><span class="kw-2">mut </span>ledger = FinalLedger::new(ledger_config.clone());
     ledger.load_initial_ledger().unwrap();
     <span class="kw">let </span>default_config = FinalStateConfig::default();
     <span class="kw">let </span>cfg = FinalStateConfig {
@@ -353,17 +341,7 @@
     };
     <span class="kw">let </span>(<span class="kw">_</span>, selector_controller) = start_selector_worker(SelectorConfig::default())
         .expect(<span class="string">&quot;could not start selector controller&quot;</span>);
-    <span class="kw">let </span><span class="kw-2">mut </span>final_state = <span class="kw">if </span>last_start_period &gt; <span class="number">0 </span>{
-        FinalState::new_derived_from_snapshot(
-            cfg,
-            Box::new(ledger),
-            selector_controller,
-            last_start_period,
-        )
-        .unwrap()
-    } <span class="kw">else </span>{
-        FinalState::new(cfg, Box::new(ledger), selector_controller).unwrap()
-    };
+    <span class="kw">let </span><span class="kw-2">mut </span>final_state = FinalState::new(cfg, Box::new(ledger), selector_controller).unwrap();
     final_state.compute_initial_draws().unwrap();
     final_state.pos_state.create_initial_cycle();
     <span class="prelude-val">Ok</span>((Arc::new(RwLock::new(final_state)), tempfile, tempdir))
