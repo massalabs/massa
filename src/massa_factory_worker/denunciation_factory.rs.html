@@ -588,7 +588,7 @@
                 recv(<span class="self">self</span>.consensus_receiver) -&gt; de_i_ =&gt; {
                     <span class="kw">match </span>de_i_ {
                         <span class="prelude-val">Ok</span>(de_i) =&gt; {
-                            <span class="macro">info!</span>(<span class="string">&quot;Denunciation factory receives a new block header denunciation interest: {:?}&quot;</span>, de_i);
+                            <span class="macro">debug!</span>(<span class="string">&quot;Denunciation factory receives a new block header denunciation interest: {:?}&quot;</span>, de_i);
                             <span class="self">self</span>.process_new_secured_header(de_i);
                         },
                         <span class="prelude-val">Err</span>(e) =&gt; {
@@ -600,7 +600,7 @@
                 recv(<span class="self">self</span>.endorsement_pool_receiver) -&gt; de_i_ =&gt; {
                     <span class="kw">match </span>de_i_ {
                         <span class="prelude-val">Ok</span>(de_i) =&gt; {
-                            <span class="macro">info!</span>(<span class="string">&quot;Denunciation factory receives a new endorsement denunciation interest: {:?}&quot;</span>, de_i);
+                            <span class="macro">debug!</span>(<span class="string">&quot;Denunciation factory receives a new endorsement denunciation interest: {:?}&quot;</span>, de_i);
                             <span class="self">self</span>.process_new_secure_share_endorsement(de_i)
                         }
                         <span class="prelude-val">Err</span>(e) =&gt; {
@@ -611,7 +611,7 @@
                 }
                 recv(<span class="self">self</span>.factory_receiver) -&gt; msg_ =&gt; {
                     <span class="kw">if let </span><span class="prelude-val">Err</span>(e) = msg_ {
-                        <span class="macro">warn!</span>(<span class="string">&quot;Denunciation factory receive an error from factory receiver: {}&quot;</span>, e);
+                        <span class="macro">debug!</span>(<span class="string">&quot;Denunciation factory receive an error from factory receiver: {}&quot;</span>, e);
                     }
                     <span class="comment">// factory_receiver send () and is supposed to be a STOP message
                     </span><span class="kw">break</span>;
