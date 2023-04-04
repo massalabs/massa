@@ -448,9 +448,8 @@ pub async fn get_state(
         return Ok(GlobalBootstrapState::new(final_state));
     }
 
-    let now = MassaTime::now()?;
     // if we are before genesis, do not bootstrap
-    if now < genesis_timestamp {
+    if  MassaTime::now()? < genesis_timestamp {
         massa_trace!("bootstrap.lib.get_state.init_from_scratch", {});
         // init final state
         {
