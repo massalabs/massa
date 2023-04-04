@@ -17,7 +17,7 @@ use tracing::{debug, info, warn};
 use crate::{
     client_binder::BootstrapClientBinder,
     error::BootstrapError,
-    establisher::{BSConnector, BSEstablisher},
+    establisher::{BSConnector, Duplex},
     messages::{BootstrapClientMessage, BootstrapServerMessage},
     settings::IpType,
     BootstrapConfig, GlobalBootstrapState,
@@ -26,9 +26,9 @@ use crate::{
 /// This function will send the starting point to receive a stream of the ledger and will receive and process each part until receive a `BootstrapServerMessage::FinalStateFinished` message from the server.
 /// `next_bootstrap_message` passed as parameter must be `BootstrapClientMessage::AskFinalStatePart` enum variant.
 /// `next_bootstrap_message` will be updated after receiving each part so that in case of connection lost we can restart from the last message we processed.
-async fn stream_final_state_and_consensus(
+async fn stream_final_state_and_consensus<D: Duplex>(
     cfg: &BootstrapConfig,
-    client: &mut BootstrapClientBinder,
+    client: &mut BootstrapClientBinder<D>,
     next_bootstrap_message: &mut BootstrapClientMessage,
     global_bootstrap_state: &mut GlobalBootstrapState,
 ) -> Result<(), BootstrapError> {
@@ -194,9 +194,9 @@ async fn stream_final_state_and_consensus(
 
 /// Gets the state from a bootstrap server (internal private function)
 /// needs to be CANCELLABLE
-async fn bootstrap_from_server(
+async fn bootstrap_from_server<D: Duplex>(
     cfg: &BootstrapConfig,
-    client: &mut BootstrapClientBinder,
+    client: &mut BootstrapClientBinder<D>,
     next_bootstrap_message: &mut BootstrapClientMessage,
     global_bootstrap_state: &mut GlobalBootstrapState,
     our_version: Version,
@@ -352,9 +352,9 @@ async fn bootstrap_from_server(
     Ok(())
 }
 
-async fn send_client_message(
+async fn send_client_message<D: Duplex>(
     message_to_send: &BootstrapClientMessage,
-    client: &mut BootstrapClientBinder,
+    client: &mut BootstrapClientBinder<D>,
     write_timeout: Duration,
     read_timeout: Duration,
     error: &str,
@@ -371,17 +371,22 @@ async fn send_client_message(
     }
 }
 
-async fn connect_to_server(
-    establisher: &mut impl BSEstablisher,
+fn connect_to_server(
+    connector: &mut impl BSConnector,
     bootstrap_config: &BootstrapConfig,
     addr: &SocketAddr,
     pub_key: &PublicKey,
-) -> Result<BootstrapClientBinder, BootstrapError> {
-    // connect
-    let mut connector = establisher.get_connector(bootstrap_config.connect_timeout)?;
-    let socket = connector.connect(*addr).await?;
+) -> Result<BootstrapClientBinder<tokio::net::TcpStream>, Box<BootstrapError>> {
+    let socket = connector.connect(*addr).map_err(|e| Box::new(e.into()))?;
+    socket
+        .set_nonblocking(true)
+        .map_err(|e| Box::new(BootstrapError::IoError(e)))?;
     Ok(BootstrapClientBinder::new(
-        socket,
+        // From_std will panic unless called inside a tokio-runtime that has IO enabled.
+        // These conditions are currently met.
+        // If you find a panic here, start by confirming whether or not these required conditions have been broken.
+        tokio::net::TcpStream::from_std(socket)
+            .map_err(|e| Box::new(BootstrapError::IoError(e)))?,
         *pub_key,
         bootstrap_config.into(),
     ))
@@ -418,7 +423,7 @@ fn filter_bootstrap_list(
 pub async fn get_state(
     bootstrap_config: &BootstrapConfig,
     final_state: Arc<RwLock<FinalState>>,
-    mut establisher: impl BSEstablisher,
+    mut connector: impl BSConnector,
     version: Version,
     genesis_timestamp: MassaTime,
     end_timestamp: Option<MassaTime>,
@@ -490,13 +495,11 @@ pub async fn get_state(
             }
             info!("Start bootstrapping from {}", addr);
             match connect_to_server(
-                &mut establisher,
+                &mut connector,
                 bootstrap_config,
                 addr,
                 &node_id.get_public_key(),
-            )
-            .await
-            {
+            ) {
                 Ok(mut client) => {
                     match bootstrap_from_server(bootstrap_config, &mut client, &mut next_bootstrap_message, &mut global_bootstrap_state,version)
                     .await  // cancellable

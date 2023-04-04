@@ -19,24 +19,24 @@ use tokio::io::AsyncReadExt;
 use tokio::io::AsyncWriteExt;
 
 /// Bootstrap client binder
-pub struct BootstrapClientBinder {
+pub struct BootstrapClientBinder<D: Duplex> {
     // max_bootstrap_message_size: u32,
     size_field_len: usize,
     remote_pubkey: PublicKey,
-    duplex: Resource<Duplex, StandardClock>,
+    duplex: Resource<D, StandardClock>,
     prev_message: Option<Hash>,
     version_serializer: VersionSerializer,
     cfg: BootstrapClientConfig,
 }
 
-impl BootstrapClientBinder {
+impl<D: Duplex> BootstrapClientBinder<D> {
     /// Creates a new `WriteBinder`.
     ///
     /// # Argument
     /// * duplex: duplex stream.
     /// * limit: limit max bytes per second (up and down)
     #[allow(clippy::too_many_arguments)]
-    pub fn new(duplex: Duplex, remote_pubkey: PublicKey, cfg: BootstrapClientConfig) -> Self {
+    pub fn new(duplex: D, remote_pubkey: PublicKey, cfg: BootstrapClientConfig) -> Self {
         let size_field_len = u32::be_bytes_min_length(cfg.max_bootstrap_message_size);
         BootstrapClientBinder {
             size_field_len,
@@ -47,9 +47,7 @@ impl BootstrapClientBinder {
             cfg,
         }
     }
-}
 
-impl BootstrapClientBinder {
     /// Performs a handshake. Should be called after connection
     /// NOT cancel-safe
     pub async fn handshake(&mut self, version: Version) -> Result<(), BootstrapError> {

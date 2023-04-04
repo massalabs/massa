@@ -12,7 +12,10 @@ use dialoguer::Password;
 use massa_api::{ApiServer, ApiV2, Private, Public, RpcServer, StopHandle, API};
 use massa_api_exports::config::APIConfig;
 use massa_async_pool::AsyncPoolConfig;
-use massa_bootstrap::{get_state, start_bootstrap_server, BootstrapConfig, BootstrapManager};
+use massa_bootstrap::{
+    get_state, start_bootstrap_server, BootstrapConfig, BootstrapManager, DefaultConnector,
+    DefaultListener,
+};
 use massa_consensus_exports::events::ConsensusEvent;
 use massa_consensus_exports::{ConsensusChannels, ConsensusConfig, ConsensusManager};
 use massa_consensus_worker::start_consensus_worker;
@@ -77,6 +80,7 @@ use std::thread::sleep;
 use std::time::Duration;
 use std::{path::Path, process, sync::Arc};
 use structopt::StructOpt;
+use tokio::net::TcpStream;
 use tokio::signal;
 use tokio::sync::{broadcast, mpsc};
 use tracing::{error, info, warn};
@@ -89,7 +93,7 @@ async fn launch(
     node_wallet: Arc<RwLock<Wallet>>,
 ) -> (
     Receiver<ConsensusEvent>,
-    Option<BootstrapManager>,
+    Option<BootstrapManager<TcpStream>>,
     Box<dyn ConsensusManager>,
     Box<dyn ExecutionManager>,
     Box<dyn SelectorManager>,
@@ -249,7 +253,7 @@ async fn launch(
         res = get_state(
             &bootstrap_config,
             final_state.clone(),
-            massa_bootstrap::DefaultEstablisher::default(),
+            DefaultConnector(bootstrap_config.connect_timeout),
             *VERSION,
             *GENESIS_TIMESTAMP,
             *END_TIMESTAMP,
@@ -546,17 +550,20 @@ async fn launch(
     );
 
     // launch bootstrap server
-    let bootstrap_manager = start_bootstrap_server(
-        consensus_controller.clone(),
-        network_command_sender.clone(),
-        final_state.clone(),
-        bootstrap_config,
-        massa_bootstrap::DefaultEstablisher::new(),
-        private_key,
-        *VERSION,
-    )
-    .await
-    .unwrap();
+    // TODO: use std::net::TcpStream
+    let bootstrap_manager = match bootstrap_config.listen_addr {
+        Some(addr) => start_bootstrap_server::<TcpStream>(
+            consensus_controller.clone(),
+            network_command_sender.clone(),
+            final_state.clone(),
+            bootstrap_config,
+            DefaultListener::new(&addr).unwrap(),
+            private_key,
+            *VERSION,
+        )
+        .unwrap(),
+        None => None,
+    };
 
     let api_config: APIConfig = APIConfig {
         bind_private: SETTINGS.api.bind_private,
@@ -779,7 +786,7 @@ async fn launch(
 }
 
 struct Managers {
-    bootstrap_manager: Option<BootstrapManager>,
+    bootstrap_manager: Option<BootstrapManager<TcpStream>>,
     consensus_manager: Box<dyn ConsensusManager>,
     execution_manager: Box<dyn ExecutionManager>,
     selector_manager: Box<dyn SelectorManager>,
