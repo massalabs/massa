@@ -115,7 +115,7 @@ impl<D: Duplex> BootstrapServerBinder<D> {
             {
                 BootstrapError::TimedOut(std::io::Error::new(
                     std::io::ErrorKind::TimedOut,
-                    format!("{} send timed out", to_str),
+                    format!("BootstrapServerMessage::{} send timed out", to_str),
                 ))
             }
             _ => e,
