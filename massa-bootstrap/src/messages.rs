@@ -93,6 +93,21 @@ pub enum BootstrapServerMessage {
     },
 }
 
+impl ToString for BootstrapServerMessage {
+    fn to_string(&self) -> String {
+        match self {
+            BootstrapServerMessage::BootstrapTime { .. } => "BootstrapTime".to_string(),
+            BootstrapServerMessage::BootstrapPeers { .. } => "BootstrapPeers".to_string(),
+            BootstrapServerMessage::BootstrapPart { .. } => "BootstrapPart".to_string(),
+            BootstrapServerMessage::BootstrapFinished => "BootstrapFinished".to_string(),
+            BootstrapServerMessage::SlotTooOld => "SlotTooOld".to_string(),
+            BootstrapServerMessage::BootstrapError { error } => {
+                format!("BootstrapError {{ error: {} }}", error)
+            }
+        }
+    }
+}
+
 #[derive(IntoPrimitive, Debug, Eq, PartialEq, TryFromPrimitive)]
 #[repr(u32)]
 enum MessageServerTypeId {
