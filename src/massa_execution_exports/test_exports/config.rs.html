@@ -61,6 +61,10 @@
 <a href="#61" id="61">61</a>
 <a href="#62" id="62">62</a>
 <a href="#63" id="63">63</a>
+<a href="#64" id="64">64</a>
+<a href="#65" id="65">65</a>
+<a href="#66" id="66">66</a>
+<a href="#67" id="67">67</a>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="doccomment">//! This file defines testing tools related to the configuration
@@ -70,6 +74,7 @@
 <span class="kw">use </span>massa_sc_runtime::GasCosts;
 <span class="kw">use </span>massa_time::MassaTime;
 <span class="kw">use </span>std::path::PathBuf;
+<span class="kw">use </span>tempfile::TempDir;
 
 <span class="kw">impl </span>Default <span class="kw">for </span>ExecutionConfig {
     <span class="doccomment">/// default configuration used for testing
@@ -119,8 +124,11 @@
                 .into(),
             )
             .unwrap(),
-            max_module_cache_size: <span class="number">1000</span>,
             initial_vesting_path: PathBuf::default(),
+            hd_cache_path: TempDir::new().unwrap().path().to_path_buf(),
+            lru_cache_size: <span class="number">1000</span>,
+            hd_cache_size: <span class="number">10_000</span>,
+            snip_amount: <span class="number">10</span>,
         }
     }
 }
