@@ -193,14 +193,18 @@ impl LedgerController for FinalLedger {
         self.sorted_ledger.reset();
     }
 
+    /// Get the slot associated with the current ledger
     fn get_slot(&self) -> Result<Slot, ModelsError> {
         self.sorted_ledger.get_slot()
     }
 
+    /// Set the final_state_hash of the slot associated with the current ledger
+    /// Can be used to verify the integrity of the final state saved when restarting from snapshot
     fn set_final_state_hash(&mut self, data: Vec<u8>) {
         self.sorted_ledger.set_final_state_hash(&data)
     }
 
+    /// Get the final state stored in the ledger, to restart from snapshot
     fn get_final_state(&self) -> Result<Vec<u8>, ModelsError> {
         self.sorted_ledger.get_final_state()
     }

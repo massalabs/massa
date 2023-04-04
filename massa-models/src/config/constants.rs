@@ -38,6 +38,8 @@ pub const CHANNEL_SIZE: usize = 1024;
 
 lazy_static::lazy_static! {
     /// Time in milliseconds when the blockclique started.
+    /// In sandbox mode, the value depends on starting time and on the --restart-from-snapshot-at-period argument in CLI,
+    /// so that the network starts or restarts 10 seconds after launch
     pub static ref GENESIS_TIMESTAMP: MassaTime = if cfg!(feature = "sandbox") {
         std::env::var("GENESIS_TIMESTAMP").map(|timestamp| timestamp.parse::<u64>().unwrap().into()).unwrap_or_else(|_|
             MassaTime::now()
@@ -46,7 +48,6 @@ lazy_static::lazy_static! {
                     T0.checked_mul(get_period_from_args()).unwrap()
                 )
                 .saturating_add(MassaTime::from_millis(1000 * 10)
-
             )
         )
     } else {
