@@ -180,7 +180,7 @@ async fn launch(
     })
     .expect("could not start selector worker");
 
-    // Create final state, from snapshot or from scratch
+    // Create final state, either from a snapshot, or from scratch
     let final_state = Arc::new(parking_lot::RwLock::new(
         match args.restart_from_snapshot_at_period {
             Some(last_start_period) => FinalState::new_derived_from_snapshot(
