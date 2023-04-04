@@ -84,6 +84,7 @@ async fn test_start_grpc_server() {
         t0: T0,
         max_channel_size: 128,
         draw_lookahead_period_count: 10,
+        last_start_period: 0,
     };
 
     let service = MassaGrpc {

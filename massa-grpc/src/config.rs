@@ -76,4 +76,6 @@ pub struct GrpcConfig {
     pub max_channel_size: usize,
     /// when looking for next draw we want to look at max `draw_lookahead_period_count`
     pub draw_lookahead_period_count: u64,
+    /// last_start_period of the network, used to deserialize blocks
+    pub last_start_period: u64,
 }
