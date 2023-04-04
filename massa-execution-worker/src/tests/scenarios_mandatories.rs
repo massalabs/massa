@@ -1994,7 +1994,7 @@ mod tests {
             ..ExecutionConfig::default()
         };
         // get a sample final state
-        let (sample_state, _keep_file, _keep_dir) = get_sample_state().unwrap();
+        let (sample_state, _keep_file, _keep_dir) = get_sample_state(0).unwrap();
 
         // init the storage
         let mut storage = Storage::create_root();
