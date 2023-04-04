@@ -74,7 +74,7 @@
 <span class="kw">let </span><span class="kw-2">mut </span>serialized = Vec::new();
 ExportActiveBlockSerializer::new().serialize(<span class="kw-2">&amp;</span>export_active_block, <span class="kw-2">&amp;mut </span>serialized).unwrap();
 <span class="kw">let </span>args = BlockDeserializerArgs {
-  thread_count: <span class="number">32</span>, max_operations_per_block: <span class="number">16</span>, endorsement_count: <span class="number">1000</span>,last_start_period: <span class="prelude-val">Some</span>(<span class="number">0</span>),};
+  thread_count: <span class="number">32</span>, max_operations_per_block: <span class="number">16</span>, endorsement_count: <span class="number">1000</span>};
 <span class="kw">let </span>(rest, export_deserialized) = ExportActiveBlockDeserializer::new(args).deserialize::&lt;DeserializeError&gt;(<span class="kw-2">&amp;</span>serialized).unwrap();
 <span class="macro">assert_eq!</span>(export_deserialized.block.id, export_active_block.block.id);
 <span class="macro">assert_eq!</span>(export_deserialized.block.serialized_data, export_active_block.block.serialized_data);

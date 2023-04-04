@@ -274,14 +274,16 @@
 <a href="#274" id="274">274</a>
 <a href="#275" id="275">275</a>
 <a href="#276" id="276">276</a>
+<a href="#277" id="277">277</a>
+<a href="#278" id="278">278</a>
 </pre><pre class="rust"><code><span class="kw">use </span>massa_execution_exports::ExecutionOutput;
 <span class="kw">use </span>massa_ledger_exports::{
     LedgerEntry, LedgerEntryUpdate, SetOrDelete, SetOrKeep, SetUpdateOrDelete,
 };
 <span class="kw">use </span>massa_models::{
-    address::Address, amount::Amount, bytecode::Bytecode, operation::OperationId, slot::Slot,
+    address::Address, amount::Amount, bytecode::Bytecode, operation::OperationId,
+    prehash::PreHashMap, slot::Slot,
 };
-<span class="kw">use </span>massa_pos_exports::DeferredCredits;
 <span class="kw">use </span>std::collections::{HashMap, VecDeque};
 
 <span class="attr">#[derive(Default)]
@@ -420,19 +422,21 @@
         })
     }
 
-    <span class="doccomment">/// Gets all the deferred credits that will be credited until a given slot (included)
-    </span><span class="kw">pub fn </span>get_all_deferred_credits_until(<span class="kw-2">&amp;</span><span class="self">self</span>, slot: <span class="kw-2">&amp;</span>Slot) -&gt; DeferredCredits {
+    <span class="doccomment">/// Gets all the deferred credits that will be credited at a given slot
+    </span><span class="kw">pub fn </span>get_all_deferred_credits_for(<span class="kw-2">&amp;</span><span class="self">self</span>, slot: <span class="kw-2">&amp;</span>Slot) -&gt; PreHashMap&lt;Address, Amount&gt; {
         <span class="self">self</span>.<span class="number">0
             </span>.iter()
-            .fold(DeferredCredits::new_without_hash(), |<span class="kw-2">mut </span>acc, e| {
-                acc.extend(
-                    e.state_changes
-                        .pos_changes
-                        .deferred_credits
-                        .get_slot_range(..=slot, <span class="bool-val">false</span>),
-                );
-                acc
+            .filter_map(|output| {
+                output
+                    .state_changes
+                    .pos_changes
+                    .deferred_credits
+                    .credits
+                    .get(slot)
+                    .cloned()
             })
+            .flatten()
+            .collect()
     }
 
     <span class="doccomment">/// Gets the deferred credits for a given address that will be credited at a given slot
@@ -446,7 +450,7 @@
                 .state_changes
                 .pos_changes
                 .deferred_credits
-                .get_address_credits_for_slot(addr, slot)
+                .get_address_deferred_credit_for_slot(addr, slot)
             {
                 <span class="kw">return </span><span class="prelude-val">Some</span>(v);
             }
