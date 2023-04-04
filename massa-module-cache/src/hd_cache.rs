@@ -1,12 +1,14 @@
 use crate::types::{
     ModuleInfo, ModuleMetadata, ModuleMetadataDeserializer, ModuleMetadataSerializer,
 };
+use core::panic;
 use massa_hash::Hash;
 use massa_sc_runtime::{GasCosts, RuntimeModule};
 use massa_serialization::{DeserializeError, Deserializer, Serializer};
 use rand::RngCore;
 use rocksdb::{Direction, IteratorMode, WriteBatch, DB};
 use std::path::PathBuf;
+use tracing::debug;
 
 const OPEN_ERROR: &str = "critical: rocksdb open operation failed";
 const CRUD_ERROR: &str = "critical: rocksdb crud operation failed";
@@ -105,6 +107,8 @@ impl HDCache {
         self.db.write(batch).expect(CRUD_ERROR);
 
         self.entry_count = self.entry_count.saturating_add(1);
+
+        debug!("(HD insert) entry_count is: {}", self.entry_count);
     }
 
     /// Sets the initialization cost of a given module separately
@@ -193,6 +197,11 @@ impl HDCache {
 
             // increase snipped_count
             snipped_count += 1;
+        }
+
+        // safety check
+        if batch.len() / 2 != snipped_count {
+            panic!("snipped_count incoherence");
         }
 
         // delete the key and reduce entry_count

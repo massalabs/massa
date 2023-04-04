@@ -1,7 +1,7 @@
 use massa_hash::Hash;
 use massa_models::prehash::BuildHashMapper;
 use schnellru::{ByLength, LruMap};
-use tracing::warn;
+use tracing::{debug, warn};
 
 use crate::types::ModuleInfo;
 
@@ -37,6 +37,7 @@ impl LRUCache {
     /// Save a module in the LRU cache
     pub fn insert(&mut self, hash: Hash, module_info: ModuleInfo) {
         self.cache.insert(hash, module_info);
+        debug!("(LRU insert) length is: {}", self.cache.len());
     }
 
     /// Set the initialization cost of a LRU cached module

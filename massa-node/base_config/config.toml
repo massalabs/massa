@@ -59,9 +59,11 @@
     # path to the hard drive cache storage
     hd_cache_path = "storage/cache/rocks_db"
     # maximum number of entries we want to keep in the LRU cache
-    lru_cache_size = 1000
+    # in the worst case scenario this is equivalent to 2Gb
+    lru_cache_size = 200
     # maximum number of entries we want to keep in the HD cache
-    hd_cache_size = 10_000
+    # in the worst case scenario this is equivalent to 20Gb
+    hd_cache_size = 2000
     # amount of entries removed when `hd_cache_size` is reached
     snip_amount = 10
 
