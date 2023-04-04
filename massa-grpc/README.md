@@ -54,11 +54,14 @@ The project is set up to automatically compile proto files during the build proc
 
 When the project is built, `build.rs` is executed and it uses the `tonic-build` crate to generate Rust code from the proto files. The generated Rust code could be found in [massa-proto/src/](../massa-proto/src/).
 
+By default, `build-tonic` feature is disabled, you can update the generated code from protobuf files by running: 
+```bash
+cargo check --features build-tonic
+```
 
 Before launching your Massa node, please add this following configuration to your `config.toml` file:
 
 ```toml
-
 [api]
     # whether to broadcast for blocks, endorsement and operations
     enable_broadcast = true
@@ -79,6 +82,7 @@ VSCode integration
 
 ```json
 {
+    // "rust.features": ["build-tonic"], // Enables the build-tonic feature for the Rust Analyzer extension.
     "rust-analyzer.procMacro.enable": true,  // Enables Rust macro support for the Rust Analyzer extension.
     "rust-analyzer.cargo.buildScripts.enable": true,  // Enables cargo build scripts for the Rust Analyzer extension.
     "protoc": {  // Specifies the configuration for the protoc plugin.
