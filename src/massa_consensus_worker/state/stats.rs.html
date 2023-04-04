@@ -100,6 +100,7 @@
 <a href="#100" id="100">100</a>
 <a href="#101" id="101">101</a>
 <a href="#102" id="102">102</a>
+<a href="#103" id="103">103</a>
 </pre><pre class="rust"><code><span class="kw">use </span><span class="kw">super</span>::ConsensusState;
 <span class="kw">use </span>massa_consensus_exports::error::ConsensusError;
 <span class="kw">use </span>massa_models::stats::ConsensusStats;
@@ -144,6 +145,7 @@
     </span><span class="kw">pub fn </span>stats_tick(<span class="kw-2">&amp;mut </span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span>&lt;(), ConsensusError&gt; {
         <span class="comment">// check if there are any final blocks is coming from protocol
         // if none =&gt; we are probably desync
+        // Ignore if we are before the last_start_period
         </span><span class="attr">#[cfg(not(feature = <span class="string">&quot;sandbox&quot;</span>))]
         </span>{
             <span class="kw">let </span>now = MassaTime::now()<span class="question-mark">?</span>;

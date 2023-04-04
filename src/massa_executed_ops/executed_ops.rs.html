@@ -385,6 +385,7 @@
 <a href="#385" id="385">385</a>
 <a href="#386" id="386">386</a>
 <a href="#387" id="387">387</a>
+<a href="#388" id="388">388</a>
 </pre><pre class="rust"><code><span class="doccomment">//! Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 //! This file defines a structure to list and prune previously executed operations.
@@ -443,6 +444,7 @@
     }
 
     <span class="doccomment">/// Creates a new `ExecutedOps` and computes the hash
+    /// Useful when restarting from a snapshot
     </span><span class="kw">pub fn </span>new_with_hash(
         config: ExecutedOpsConfig,
         sorted_ops: BTreeMap&lt;Slot, PreHashSet&lt;OperationId&gt;&gt;,
