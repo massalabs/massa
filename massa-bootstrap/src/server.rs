@@ -603,16 +603,7 @@ pub async fn stream_bootstrap_information<D: Duplex>(
         }
 
         if slot_too_old {
-            match server.send_msg(write_timeout, BootstrapServerMessage::SlotTooOld) {
-                Err(BootstrapError::TimedOut(_)) => Err(std::io::Error::new(
-                    std::io::ErrorKind::TimedOut,
-                    "SlotTooOld message send timed out",
-                )
-                .into()),
-                Err(e) => Err(e),
-                Ok(_) => Ok(()),
-            }?;
-            return Ok(());
+            return server.send_msg(write_timeout, BootstrapServerMessage::SlotTooOld);
         }
 
         // Setup final state global cursor
@@ -665,20 +656,12 @@ pub async fn stream_bootstrap_information<D: Duplex>(
             && final_state_changes_step.finished()
             && last_consensus_step.finished()
         {
-            match server.send_msg(write_timeout, BootstrapServerMessage::BootstrapFinished) {
-                Err(BootstrapError::TimedOut(_)) => Err(std::io::Error::new(
-                    std::io::ErrorKind::TimedOut,
-                    "bootstrap ask ledger part send timed out",
-                )
-                .into()),
-                Err(e) => Err(e),
-                Ok(_) => Ok(()),
-            }?;
+            server.send_msg(write_timeout, BootstrapServerMessage::BootstrapFinished)?;
             break;
         }
 
         // At this point we know that consensus, final state or both are not finished
-        match server.send_msg(
+        server.send_msg(
             write_timeout,
             BootstrapServerMessage::BootstrapPart {
                 slot: current_slot,
@@ -691,15 +674,7 @@ pub async fn stream_bootstrap_information<D: Duplex>(
                 consensus_part,
                 consensus_outdated_ids,
             },
-        ) {
-            Err(BootstrapError::TimedOut(_)) => Err(std::io::Error::new(
-                std::io::ErrorKind::TimedOut,
-                "bootstrap ask ledger part send timed out",
-            )
-            .into()),
-            Err(e) => Err(e),
-            Ok(_) => Ok(()),
-        }?;
+        )?;
     }
     Ok(())
 }
@@ -742,21 +717,13 @@ async fn manage_bootstrap<D: Duplex, C: NetworkCommandSenderTrait>(
     // Sync clocks.
     let server_time = MassaTime::now()?;
 
-    match server.send_msg(
+    server.send_msg(
         write_timeout,
         BootstrapServerMessage::BootstrapTime {
             server_time,
             version,
         },
-    ) {
-        Err(BootstrapError::TimedOut(_)) => Err(std::io::Error::new(
-            std::io::ErrorKind::TimedOut,
-            "bootstrap clock send timed out",
-        )
-        .into()),
-        Err(e) => Err(e),
-        Ok(_) => Ok(()),
-    }?;
+    )?;
 
     loop {
         match server.next_timeout(Some(bootstrap_config.read_timeout.into())) {
@@ -764,20 +731,12 @@ async fn manage_bootstrap<D: Duplex, C: NetworkCommandSenderTrait>(
             Err(e) => break Err(e),
             Ok(msg) => match msg {
                 BootstrapClientMessage::AskBootstrapPeers => {
-                    match server.send_msg(
+                    server.send_msg(
                         write_timeout,
                         BootstrapServerMessage::BootstrapPeers {
                             peers: network_command_sender.get_bootstrap_peers().await?,
                         },
-                    ) {
-                        Err(BootstrapError::TimedOut(_)) => Err(std::io::Error::new(
-                            std::io::ErrorKind::TimedOut,
-                            "bootstrap peers send timed out",
-                        )
-                        .into()),
-                        Err(e) => Err(e),
-                        Ok(_) => Ok(()),
-                    }?;
+                    )?;
                 }
                 BootstrapClientMessage::AskBootstrapPart {
                     last_slot,
