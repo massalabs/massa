@@ -197,6 +197,7 @@ pub struct BootstrapServerMessageDeserializerArgs {
 }
 
 // TODO: add a proc macro for this case
+// We set last_start_period to None because we set the value during Bootstrap
 impl From<&BootstrapServerMessageDeserializerArgs> for BlockDeserializerArgs {
     fn from(value: &BootstrapServerMessageDeserializerArgs) -> Self {
         Self {

@@ -1345,7 +1345,7 @@ impl ExecutionState {
                     .roll_counts
                     .clone()
             }
-            _ => final_state.pos_state.initial_rolls.clone(),
+            None => final_state.pos_state.initial_rolls.clone(),
         }
     }
 

@@ -51,7 +51,7 @@ impl AsyncPool {
         }
     }
 
-    /// Creates an `AsyncPool` from an existing snapshot
+    /// Creates an `AsyncPool` from an existing snapshot (and recomputes the hash)
     pub fn from_snapshot(
         config: AsyncPoolConfig,
         messages: BTreeMap<AsyncMessageId, AsyncMessage>,

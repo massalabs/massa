@@ -56,6 +56,7 @@ impl ExecutedOps {
     }
 
     /// Creates a new `ExecutedOps` and computes the hash
+    /// Useful when restarting from a snapshot
     pub fn new_with_hash(
         config: ExecutedOpsConfig,
         sorted_ops: BTreeMap<Slot, PreHashSet<OperationId>>,

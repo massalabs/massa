@@ -42,6 +42,7 @@ impl ConsensusState {
     pub fn stats_tick(&mut self) -> Result<(), ConsensusError> {
         // check if there are any final blocks is coming from protocol
         // if none => we are probably desync
+        // Ignore if we are before the last_start_period
         #[cfg(not(feature = "sandbox"))]
         {
             let now = MassaTime::now()?;

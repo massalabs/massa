@@ -88,7 +88,7 @@ impl EndorsementFactoryWorker {
             }
         }
 
-        // prevent triggering on period-zero slots
+        // ignore genesis
         if next_slot.period <= self.cfg.last_start_period {
             next_slot = Slot::new(self.cfg.last_start_period + 1, 0);
         }
