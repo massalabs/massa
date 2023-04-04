@@ -1154,8 +1154,6 @@
 <a href="#1154" id="1154">1154</a>
 <a href="#1155" id="1155">1155</a>
 <a href="#1156" id="1156">1156</a>
-<a href="#1157" id="1157">1157</a>
-<a href="#1158" id="1158">1158</a>
 </pre><pre class="rust"><code><span class="doccomment">//! Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="kw">use </span><span class="kw">crate</span>::cache::{LinearHashCacheMap, LinearHashCacheSet};
@@ -1941,9 +1939,7 @@
         });
 
         <span class="comment">// refuse genesis blocks
-        </span><span class="kw">if </span>header.content.slot.period == <span class="self">self</span>.config.last_start_period
-            || header.content.parents.is_empty()
-        {
+        </span><span class="kw">if </span>header.content.slot.period == <span class="number">0 </span>|| header.content.parents.is_empty() {
             <span class="comment">// genesis
             </span><span class="macro">massa_trace!</span>(<span class="string">&quot;protocol.protocol_worker.check_header.err_is_genesis&quot;</span>, {
                 <span class="string">&quot;header&quot;</span>: header
