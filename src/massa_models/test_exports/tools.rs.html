@@ -49,7 +49,7 @@
     </span><span class="kw">let </span><span class="kw-2">mut </span>slot = get_closest_slot_to_timestamp(thread_count, t0, genesis_timestamp, now);
 
     <span class="comment">// ignore genesis
-    </span><span class="kw">if </span>slot.period == <span class="number">0 </span>{
+    </span><span class="kw">if </span>slot.period &lt;= <span class="number">0 </span>{
         slot.period = <span class="number">1</span>;
     }
 

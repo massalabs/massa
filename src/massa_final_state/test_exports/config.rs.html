@@ -59,6 +59,7 @@
 <a href="#59" id="59">59</a>
 <a href="#60" id="60">60</a>
 <a href="#61" id="61">61</a>
+<a href="#62" id="62">62</a>
 </pre><pre class="rust"><code><span class="doccomment">//! Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 //! This file defines testing tools related to the configuration
@@ -85,13 +86,14 @@
     </span><span class="kw">pub fn </span>create_final_state(pos_state: PoSFinalState, config: FinalStateConfig) -&gt; <span class="self">Self </span>{
         FinalState {
             slot: Slot::new(<span class="number">0</span>, <span class="number">0</span>),
-            ledger: Box::new(FinalLedger::new(config.ledger_config.clone())),
+            ledger: Box::new(FinalLedger::new(config.ledger_config.clone(), <span class="bool-val">false</span>)),
             async_pool: AsyncPool::new(config.async_pool_config.clone()),
             pos_state,
             executed_ops: ExecutedOps::new(config.executed_ops_config.clone()),
             changes_history: Default::default(),
             config,
             final_state_hash: Hash::from_bytes(<span class="kw-2">&amp;</span>[<span class="number">0</span>; HASH_SIZE_BYTES]),
+            last_start_period: <span class="number">0</span>,
         }
     }
 }
