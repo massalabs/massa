@@ -38,6 +38,8 @@ members = [
   "massa-pos-worker",
   "massa-versioning-worker",
   "massa-versioning-exports",
+  "massa-grpc",
+  "massa-proto",
 ]
 resolver = "2"
 

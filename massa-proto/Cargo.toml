@@ -1,0 +1,22 @@
+# Copyright (c) 2023 MASSA LABS <info@massa.net>
+
+[package]
+name = "massa_proto"
+version = "0.1.0"
+edition = "2021"
+description = "Protobuf definitions for the Massa blockchain"
+repository = "https://github.com/massalabs/massa/"
+homepage = "https://massa.net"
+documentation = "https://docs.massa.net/"
+
+[dependencies]
+prost = "0.11.6"
+prost-types = "0.11.6"
+#TODO add stable version when released
+tonic = { git = "https://github.com/hyperium/tonic", rev = "ff33119" }
+
+[build-dependencies]
+glob = "0.3.1"
+prost-build = "0.11.8"
+#TODO add stable version when released
+tonic-build = { git = "https://github.com/hyperium/tonic", rev = "ff33119" }

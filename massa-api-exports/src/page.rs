@@ -4,7 +4,7 @@ use paginate::Pages;
 use serde::{Deserialize, Serialize, Serializer};
 
 /// Represents a Vec that can be split across Pages
-/// Cf. https://docs.rs/paginate/latest/paginate/
+/// Cf. <https://docs.rs/paginate/latest/paginate/>
 pub struct PagedVec<T> {
     res: Vec<T>,
     _total_count: usize,

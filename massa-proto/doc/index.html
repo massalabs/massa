@@ -1,0 +1,1971 @@
+<!DOCTYPE html>
+
+<html>
+  <head>
+    <title>Protocol Documentation</title>
+    <meta charset="UTF-8">
+    <link rel="stylesheet" type="text/css" href="https://fonts.googleapis.com/css?family=Ubuntu:400,700,400italic"/>
+    <style>
+      body {
+        width: 60em;
+        margin: 1em auto;
+        color: #222;
+        font-family: "Ubuntu", sans-serif;
+        padding-bottom: 4em;
+      }
+
+      h1 {
+        font-weight: normal;
+        border-bottom: 1px solid #aaa;
+        padding-bottom: 0.5ex;
+      }
+
+      h2 {
+        border-bottom: 1px solid #aaa;
+        padding-bottom: 0.5ex;
+        margin: 1.5em 0;
+      }
+
+      h3 {
+        font-weight: normal;
+        border-bottom: 1px solid #aaa;
+        padding-bottom: 0.5ex;
+      }
+
+      a {
+        text-decoration: none;
+        color: #567e25;
+      }
+
+      table {
+        width: 100%;
+        font-size: 80%;
+        border-collapse: collapse;
+      }
+
+      thead {
+        font-weight: 700;
+        background-color: #dcdcdc;
+      }
+
+      tbody tr:nth-child(even) {
+        background-color: #fbfbfb;
+      }
+
+      td {
+        border: 1px solid #ccc;
+        padding: 0.5ex 2ex;
+      }
+
+      td p {
+        text-indent: 1em;
+        margin: 0;
+      }
+
+      td p:nth-child(1) {
+        text-indent: 0;  
+      }
+
+       
+      .field-table td:nth-child(1) {  
+        width: 10em;
+      }
+      .field-table td:nth-child(2) {  
+        width: 10em;
+      }
+      .field-table td:nth-child(3) {  
+        width: 6em;
+      }
+      .field-table td:nth-child(4) {  
+        width: auto;
+      }
+
+       
+      .extension-table td:nth-child(1) {  
+        width: 10em;
+      }
+      .extension-table td:nth-child(2) {  
+        width: 10em;
+      }
+      .extension-table td:nth-child(3) {  
+        width: 10em;
+      }
+      .extension-table td:nth-child(4) {  
+        width: 5em;
+      }
+      .extension-table td:nth-child(5) {  
+        width: auto;
+      }
+
+       
+      .enum-table td:nth-child(1) {  
+        width: 10em;
+      }
+      .enum-table td:nth-child(2) {  
+        width: 10em;
+      }
+      .enum-table td:nth-child(3) {  
+        width: auto;
+      }
+
+       
+      .scalar-value-types-table tr {
+        height: 3em;
+      }
+
+       
+      #toc-container ul {
+        list-style-type: none;
+        padding-left: 1em;
+        line-height: 180%;
+        margin: 0;
+      }
+      #toc > li > a {
+        font-weight: bold;
+      }
+
+       
+      .file-heading {
+        width: 100%;
+        display: table;
+        border-bottom: 1px solid #aaa;
+        margin: 4em 0 1.5em 0;
+      }
+      .file-heading h2 {
+        border: none;
+        display: table-cell;
+      }
+      .file-heading a {
+        text-align: right;
+        display: table-cell;
+      }
+
+       
+      .badge {
+        width: 1.6em;
+        height: 1.6em;
+        display: inline-block;
+
+        line-height: 1.6em;
+        text-align: center;
+        font-weight: bold;
+        font-size: 60%;
+
+        color: #89ba48;
+        background-color: #dff0c8;
+
+        margin: 0.5ex 1em 0.5ex -1em;
+        border: 1px solid #fbfbfb;
+        border-radius: 1ex;
+      }
+    </style>
+
+    
+    <link rel="stylesheet" type="text/css" href="stylesheet.css"/>
+  </head>
+
+  <body>
+
+    <h1 id="title">Protocol Documentation</h1>
+
+    <h2>Table of Contents</h2>
+
+    <div id="toc-container">
+      <ul id="toc">
+        
+          
+          <li>
+            <a href="#api.proto">api.proto</a>
+            <ul>
+              
+                <li>
+                  <a href="#massa.api.v1.BlockParent"><span class="badge">M</span>BlockParent</a>
+                </li>
+              
+                <li>
+                  <a href="#massa.api.v1.BlockResult"><span class="badge">M</span>BlockResult</a>
+                </li>
+              
+                <li>
+                  <a href="#massa.api.v1.DatastoreEntriesQuery"><span class="badge">M</span>DatastoreEntriesQuery</a>
+                </li>
+              
+                <li>
+                  <a href="#massa.api.v1.DatastoreEntry"><span class="badge">M</span>DatastoreEntry</a>
+                </li>
+              
+                <li>
+                  <a href="#massa.api.v1.DatastoreEntryFilter"><span class="badge">M</span>DatastoreEntryFilter</a>
+                </li>
+              
+                <li>
+                  <a href="#massa.api.v1.EndorsementResult"><span class="badge">M</span>EndorsementResult</a>
+                </li>
+              
+                <li>
+                  <a href="#massa.api.v1.GetBlocksBySlotsRequest"><span class="badge">M</span>GetBlocksBySlotsRequest</a>
+                </li>
+              
+                <li>
+                  <a href="#massa.api.v1.GetBlocksBySlotsResponse"><span class="badge">M</span>GetBlocksBySlotsResponse</a>
+                </li>
+              
+                <li>
+                  <a href="#massa.api.v1.GetDatastoreEntriesRequest"><span class="badge">M</span>GetDatastoreEntriesRequest</a>
+                </li>
+              
+                <li>
+                  <a href="#massa.api.v1.GetDatastoreEntriesResponse"><span class="badge">M</span>GetDatastoreEntriesResponse</a>
+                </li>
+              
+                <li>
+                  <a href="#massa.api.v1.GetNextBlockBestParentsRequest"><span class="badge">M</span>GetNextBlockBestParentsRequest</a>
+                </li>
+              
+                <li>
+                  <a href="#massa.api.v1.GetNextBlockBestParentsResponse"><span class="badge">M</span>GetNextBlockBestParentsResponse</a>
+                </li>
+              
+                <li>
+                  <a href="#massa.api.v1.GetSelectorDrawsRequest"><span class="badge">M</span>GetSelectorDrawsRequest</a>
+                </li>
+              
+                <li>
+                  <a href="#massa.api.v1.GetSelectorDrawsResponse"><span class="badge">M</span>GetSelectorDrawsResponse</a>
+                </li>
+              
+                <li>
+                  <a href="#massa.api.v1.GetTransactionsThroughputRequest"><span class="badge">M</span>GetTransactionsThroughputRequest</a>
+                </li>
+              
+                <li>
+                  <a href="#massa.api.v1.GetTransactionsThroughputResponse"><span class="badge">M</span>GetTransactionsThroughputResponse</a>
+                </li>
+              
+                <li>
+                  <a href="#massa.api.v1.GetVersionRequest"><span class="badge">M</span>GetVersionRequest</a>
+                </li>
+              
+                <li>
+                  <a href="#massa.api.v1.GetVersionResponse"><span class="badge">M</span>GetVersionResponse</a>
+                </li>
+              
+                <li>
+                  <a href="#massa.api.v1.NewBlocksHeadersRequest"><span class="badge">M</span>NewBlocksHeadersRequest</a>
+                </li>
+              
+                <li>
+                  <a href="#massa.api.v1.NewBlocksHeadersResponse"><span class="badge">M</span>NewBlocksHeadersResponse</a>
+                </li>
+              
+                <li>
+                  <a href="#massa.api.v1.NewBlocksRequest"><span class="badge">M</span>NewBlocksRequest</a>
+                </li>
+              
+                <li>
+                  <a href="#massa.api.v1.NewBlocksResponse"><span class="badge">M</span>NewBlocksResponse</a>
+                </li>
+              
+                <li>
+                  <a href="#massa.api.v1.NewFilledBlocksRequest"><span class="badge">M</span>NewFilledBlocksRequest</a>
+                </li>
+              
+                <li>
+                  <a href="#massa.api.v1.NewFilledBlocksResponse"><span class="badge">M</span>NewFilledBlocksResponse</a>
+                </li>
+              
+                <li>
+                  <a href="#massa.api.v1.NewOperationsFilter"><span class="badge">M</span>NewOperationsFilter</a>
+                </li>
+              
+                <li>
+                  <a href="#massa.api.v1.NewOperationsQuery"><span class="badge">M</span>NewOperationsQuery</a>
+                </li>
+              
+                <li>
+                  <a href="#massa.api.v1.NewOperationsRequest"><span class="badge">M</span>NewOperationsRequest</a>
+                </li>
+              
+                <li>
+                  <a href="#massa.api.v1.NewOperationsResponse"><span class="badge">M</span>NewOperationsResponse</a>
+                </li>
+              
+                <li>
+                  <a href="#massa.api.v1.OperationResult"><span class="badge">M</span>OperationResult</a>
+                </li>
+              
+                <li>
+                  <a href="#massa.api.v1.SelectorDraws"><span class="badge">M</span>SelectorDraws</a>
+                </li>
+              
+                <li>
+                  <a href="#massa.api.v1.SelectorDrawsFilter"><span class="badge">M</span>SelectorDrawsFilter</a>
+                </li>
+              
+                <li>
+                  <a href="#massa.api.v1.SelectorDrawsQuery"><span class="badge">M</span>SelectorDrawsQuery</a>
+                </li>
+              
+                <li>
+                  <a href="#massa.api.v1.SendBlocksRequest"><span class="badge">M</span>SendBlocksRequest</a>
+                </li>
+              
+                <li>
+                  <a href="#massa.api.v1.SendBlocksResponse"><span class="badge">M</span>SendBlocksResponse</a>
+                </li>
+              
+                <li>
+                  <a href="#massa.api.v1.SendEndorsementsRequest"><span class="badge">M</span>SendEndorsementsRequest</a>
+                </li>
+              
+                <li>
+                  <a href="#massa.api.v1.SendEndorsementsResponse"><span class="badge">M</span>SendEndorsementsResponse</a>
+                </li>
+              
+                <li>
+                  <a href="#massa.api.v1.SendOperationsRequest"><span class="badge">M</span>SendOperationsRequest</a>
+                </li>
+              
+                <li>
+                  <a href="#massa.api.v1.SendOperationsResponse"><span class="badge">M</span>SendOperationsResponse</a>
+                </li>
+              
+                <li>
+                  <a href="#massa.api.v1.TransactionsThroughputRequest"><span class="badge">M</span>TransactionsThroughputRequest</a>
+                </li>
+              
+                <li>
+                  <a href="#massa.api.v1.TransactionsThroughputResponse"><span class="badge">M</span>TransactionsThroughputResponse</a>
+                </li>
+              
+              
+                <li>
+                  <a href="#massa.api.v1.OpType"><span class="badge">E</span>OpType</a>
+                </li>
+              
+              
+              
+                <li>
+                  <a href="#massa.api.v1.MassaService"><span class="badge">S</span>MassaService</a>
+                </li>
+              
+            </ul>
+          </li>
+        
+        <li><a href="#scalar-value-types">Scalar Value Types</a></li>
+      </ul>
+    </div>
+
+    
+      
+      <div class="file-heading">
+        <h2 id="api.proto">api.proto</h2><a href="#title">Top</a>
+      </div>
+      <p></p>
+
+      
+        <h3 id="massa.api.v1.BlockParent">BlockParent</h3>
+        <p>Block parent tuple</p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>block_id</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p>Block id </p></td>
+                </tr>
+              
+                <tr>
+                  <td>period</td>
+                  <td><a href="#fixed64">fixed64</a></td>
+                  <td></td>
+                  <td><p>Period </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
+        <h3 id="massa.api.v1.BlockResult">BlockResult</h3>
+        <p>Holds Block response</p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>block_id</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p>Block id </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
+        <h3 id="massa.api.v1.DatastoreEntriesQuery">DatastoreEntriesQuery</h3>
+        <p>DatastoreEntries Query</p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>filter</td>
+                  <td><a href="#massa.api.v1.DatastoreEntryFilter">DatastoreEntryFilter</a></td>
+                  <td></td>
+                  <td><p>Filter </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
+        <h3 id="massa.api.v1.DatastoreEntry">DatastoreEntry</h3>
+        <p>DatastoreEntry</p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>final_value</td>
+                  <td><a href="#bytes">bytes</a></td>
+                  <td></td>
+                  <td><p>final datastore entry value </p></td>
+                </tr>
+              
+                <tr>
+                  <td>candidate_value</td>
+                  <td><a href="#bytes">bytes</a></td>
+                  <td></td>
+                  <td><p>candidate_value datastore entry value </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
+        <h3 id="massa.api.v1.DatastoreEntryFilter">DatastoreEntryFilter</h3>
+        <p></p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>address</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p>Associated address of the entry </p></td>
+                </tr>
+              
+                <tr>
+                  <td>key</td>
+                  <td><a href="#bytes">bytes</a></td>
+                  <td></td>
+                  <td><p>Datastore key </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
+        <h3 id="massa.api.v1.EndorsementResult">EndorsementResult</h3>
+        <p>Holds Endorsement response</p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>endorsements_ids</td>
+                  <td><a href="#string">string</a></td>
+                  <td>repeated</td>
+                  <td><p>Endorsements ids </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
+        <h3 id="massa.api.v1.GetBlocksBySlotsRequest">GetBlocksBySlotsRequest</h3>
+        <p>GetBlocksBySlotsRequest holds request for GetBlocksBySlots</p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>id</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p>Request id </p></td>
+                </tr>
+              
+                <tr>
+                  <td>slots</td>
+                  <td><a href="#massa.api.v1.Slot">Slot</a></td>
+                  <td>repeated</td>
+                  <td><p>Slots </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
+        <h3 id="massa.api.v1.GetBlocksBySlotsResponse">GetBlocksBySlotsResponse</h3>
+        <p>GetBlocksBySlotsResponse holds response from GetBlocksBySlots</p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>id</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p>Request id </p></td>
+                </tr>
+              
+                <tr>
+                  <td>blocks</td>
+                  <td><a href="#massa.api.v1.Block">Block</a></td>
+                  <td>repeated</td>
+                  <td><p>Blocks </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
+        <h3 id="massa.api.v1.GetDatastoreEntriesRequest">GetDatastoreEntriesRequest</h3>
+        <p>GetDatastoreEntriesRequest holds request from GetDatastoreEntries</p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>id</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p>Request id </p></td>
+                </tr>
+              
+                <tr>
+                  <td>queries</td>
+                  <td><a href="#massa.api.v1.DatastoreEntriesQuery">DatastoreEntriesQuery</a></td>
+                  <td>repeated</td>
+                  <td><p>Queries </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
+        <h3 id="massa.api.v1.GetDatastoreEntriesResponse">GetDatastoreEntriesResponse</h3>
+        <p>GetDatastoreEntriesResponse holds response from GetDatastoreEntries</p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>id</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p>Request id </p></td>
+                </tr>
+              
+                <tr>
+                  <td>entries</td>
+                  <td><a href="#massa.api.v1.DatastoreEntry">DatastoreEntry</a></td>
+                  <td>repeated</td>
+                  <td><p>Datastore entries </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
+        <h3 id="massa.api.v1.GetNextBlockBestParentsRequest">GetNextBlockBestParentsRequest</h3>
+        <p>GetNextBlockBestParentsRequest holds request for GetNextBlockBestParents</p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>id</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p>Request id </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
+        <h3 id="massa.api.v1.GetNextBlockBestParentsResponse">GetNextBlockBestParentsResponse</h3>
+        <p>GetNextBlockBestParentsResponse holds response from GetNextBlockBestParents</p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>id</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p>Request id </p></td>
+                </tr>
+              
+                <tr>
+                  <td>parents</td>
+                  <td><a href="#massa.api.v1.BlockParent">BlockParent</a></td>
+                  <td>repeated</td>
+                  <td><p>Best parents </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
+        <h3 id="massa.api.v1.GetSelectorDrawsRequest">GetSelectorDrawsRequest</h3>
+        <p>GetSelectorDrawsRequest holds request from GetSelectorDraws</p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>id</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p>Request id </p></td>
+                </tr>
+              
+                <tr>
+                  <td>queries</td>
+                  <td><a href="#massa.api.v1.SelectorDrawsQuery">SelectorDrawsQuery</a></td>
+                  <td>repeated</td>
+                  <td><p>Queries </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
+        <h3 id="massa.api.v1.GetSelectorDrawsResponse">GetSelectorDrawsResponse</h3>
+        <p>GetSelectorDrawsResponse holds response from GetSelectorDraws</p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>id</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p>Request id </p></td>
+                </tr>
+              
+                <tr>
+                  <td>selector_draws</td>
+                  <td><a href="#massa.api.v1.SelectorDraws">SelectorDraws</a></td>
+                  <td>repeated</td>
+                  <td><p>Selector draws </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
+        <h3 id="massa.api.v1.GetTransactionsThroughputRequest">GetTransactionsThroughputRequest</h3>
+        <p>GetTransactionsThroughputRequest holds request for GetTransactionsThroughput</p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>id</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p>Request id </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
+        <h3 id="massa.api.v1.GetTransactionsThroughputResponse">GetTransactionsThroughputResponse</h3>
+        <p>GetTransactionsThroughputResponse holds response from GetTransactionsThroughput</p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>id</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p>Request id </p></td>
+                </tr>
+              
+                <tr>
+                  <td>throughput</td>
+                  <td><a href="#fixed32">fixed32</a></td>
+                  <td></td>
+                  <td><p>Transactions throughput </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
+        <h3 id="massa.api.v1.GetVersionRequest">GetVersionRequest</h3>
+        <p>GetVersionRequest holds request from GetVersion</p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>id</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p>Request id </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
+        <h3 id="massa.api.v1.GetVersionResponse">GetVersionResponse</h3>
+        <p>GetVersionResponse holds response from GetVersion</p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>id</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p>Request id </p></td>
+                </tr>
+              
+                <tr>
+                  <td>version</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p>Version </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
+        <h3 id="massa.api.v1.NewBlocksHeadersRequest">NewBlocksHeadersRequest</h3>
+        <p>NewBlocksHeadersRequest holds request for NewBlocksHeaders</p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>id</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p>Request id </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
+        <h3 id="massa.api.v1.NewBlocksHeadersResponse">NewBlocksHeadersResponse</h3>
+        <p>NewBlocksHeadersResponse holds response from NewBlocksHeaders</p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>id</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p>Request id </p></td>
+                </tr>
+              
+                <tr>
+                  <td>block_header</td>
+                  <td><a href="#massa.api.v1.SignedBlockHeader">SignedBlockHeader</a></td>
+                  <td></td>
+                  <td><p>Signed block header </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
+        <h3 id="massa.api.v1.NewBlocksRequest">NewBlocksRequest</h3>
+        <p>NewBlocksRequest holds request for NewBlocks</p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>id</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p>Request id </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
+        <h3 id="massa.api.v1.NewBlocksResponse">NewBlocksResponse</h3>
+        <p>NewBlocksResponse holds response from NewBlocks</p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>id</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p>Request id </p></td>
+                </tr>
+              
+                <tr>
+                  <td>block</td>
+                  <td><a href="#massa.api.v1.SignedBlock">SignedBlock</a></td>
+                  <td></td>
+                  <td><p>Signed block </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
+        <h3 id="massa.api.v1.NewFilledBlocksRequest">NewFilledBlocksRequest</h3>
+        <p>NewFilledBlocksRequest holds request for NewFilledBlocks</p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>id</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p>Request id </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
+        <h3 id="massa.api.v1.NewFilledBlocksResponse">NewFilledBlocksResponse</h3>
+        <p>NewFilledBlocksResponse holds response from NewFilledBlocks</p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>id</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p>Request id </p></td>
+                </tr>
+              
+                <tr>
+                  <td>filled_block</td>
+                  <td><a href="#massa.api.v1.FilledBlock">FilledBlock</a></td>
+                  <td></td>
+                  <td><p>Block with operations content </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
+        <h3 id="massa.api.v1.NewOperationsFilter">NewOperationsFilter</h3>
+        <p>NewOperations Filter</p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>types</td>
+                  <td><a href="#massa.api.v1.OpType">OpType</a></td>
+                  <td>repeated</td>
+                  <td><p>Operation type enum </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
+        <h3 id="massa.api.v1.NewOperationsQuery">NewOperationsQuery</h3>
+        <p>NewOperations Query</p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>filter</td>
+                  <td><a href="#massa.api.v1.NewOperationsFilter">NewOperationsFilter</a></td>
+                  <td></td>
+                  <td><p>Filter </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
+        <h3 id="massa.api.v1.NewOperationsRequest">NewOperationsRequest</h3>
+        <p>NewOperationsRequest holds request for NewOperations</p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>id</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p>Request id </p></td>
+                </tr>
+              
+                <tr>
+                  <td>query</td>
+                  <td><a href="#massa.api.v1.NewOperationsQuery">NewOperationsQuery</a></td>
+                  <td></td>
+                  <td><p>Query </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
+        <h3 id="massa.api.v1.NewOperationsResponse">NewOperationsResponse</h3>
+        <p>NewOperationsResponse holds response from NewOperations</p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>id</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p>Request id </p></td>
+                </tr>
+              
+                <tr>
+                  <td>operation</td>
+                  <td><a href="#massa.api.v1.SignedOperation">SignedOperation</a></td>
+                  <td></td>
+                  <td><p>Signed operation </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
+        <h3 id="massa.api.v1.OperationResult">OperationResult</h3>
+        <p>Holds Operation response</p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>operations_ids</td>
+                  <td><a href="#string">string</a></td>
+                  <td>repeated</td>
+                  <td><p>Operation(s) id(s) </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
+        <h3 id="massa.api.v1.SelectorDraws">SelectorDraws</h3>
+        <p>Selector draws</p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>address</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p>Address </p></td>
+                </tr>
+              
+                <tr>
+                  <td>next_block_draws</td>
+                  <td><a href="#massa.api.v1.Slot">Slot</a></td>
+                  <td>repeated</td>
+                  <td><p>Next block draws </p></td>
+                </tr>
+              
+                <tr>
+                  <td>next_endorsement_draws</td>
+                  <td><a href="#massa.api.v1.IndexedSlot">IndexedSlot</a></td>
+                  <td>repeated</td>
+                  <td><p>Next endorsements draws </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
+        <h3 id="massa.api.v1.SelectorDrawsFilter">SelectorDrawsFilter</h3>
+        <p>SelectorDraws Filter</p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>address</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p>Address </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
+        <h3 id="massa.api.v1.SelectorDrawsQuery">SelectorDrawsQuery</h3>
+        <p>SelectorDraws Query</p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>filter</td>
+                  <td><a href="#massa.api.v1.SelectorDrawsFilter">SelectorDrawsFilter</a></td>
+                  <td></td>
+                  <td><p>Filter </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
+        <h3 id="massa.api.v1.SendBlocksRequest">SendBlocksRequest</h3>
+        <p>SendBlocksRequest holds parameters to SendBlocks</p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>id</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p>Request id </p></td>
+                </tr>
+              
+                <tr>
+                  <td>block</td>
+                  <td><a href="#massa.api.v1.SecureShare">SecureShare</a></td>
+                  <td></td>
+                  <td><p>Secure shared block </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
+        <h3 id="massa.api.v1.SendBlocksResponse">SendBlocksResponse</h3>
+        <p>SendBlocksResponse holds response from SendBlocks</p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>id</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p>Request id </p></td>
+                </tr>
+              
+                <tr>
+                  <td>result</td>
+                  <td><a href="#massa.api.v1.BlockResult">BlockResult</a></td>
+                  <td></td>
+                  <td><p>Block result </p></td>
+                </tr>
+              
+                <tr>
+                  <td>error</td>
+                  <td><a href="#google.rpc.Status">google.rpc.Status</a></td>
+                  <td></td>
+                  <td><p>gRPC error(status) </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
+        <h3 id="massa.api.v1.SendEndorsementsRequest">SendEndorsementsRequest</h3>
+        <p>SendEndorsementsRequest holds parameters to SendEndorsements</p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>id</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p>Request id </p></td>
+                </tr>
+              
+                <tr>
+                  <td>endorsements</td>
+                  <td><a href="#massa.api.v1.SecureShare">SecureShare</a></td>
+                  <td>repeated</td>
+                  <td><p>Secure shared endorsements </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
+        <h3 id="massa.api.v1.SendEndorsementsResponse">SendEndorsementsResponse</h3>
+        <p>SendEndorsementsResponse holds response from SendEndorsements</p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>id</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p>Request id </p></td>
+                </tr>
+              
+                <tr>
+                  <td>result</td>
+                  <td><a href="#massa.api.v1.EndorsementResult">EndorsementResult</a></td>
+                  <td></td>
+                  <td><p>Endorsement result </p></td>
+                </tr>
+              
+                <tr>
+                  <td>error</td>
+                  <td><a href="#google.rpc.Status">google.rpc.Status</a></td>
+                  <td></td>
+                  <td><p>gRPC error(status) </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
+        <h3 id="massa.api.v1.SendOperationsRequest">SendOperationsRequest</h3>
+        <p>SendOperationsRequest holds parameters to SendOperations</p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>id</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p>Request id </p></td>
+                </tr>
+              
+                <tr>
+                  <td>operations</td>
+                  <td><a href="#massa.api.v1.SecureShare">SecureShare</a></td>
+                  <td>repeated</td>
+                  <td><p>Secured shared operations </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
+        <h3 id="massa.api.v1.SendOperationsResponse">SendOperationsResponse</h3>
+        <p>SendOperationsResponse holds response from SendOperations</p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>id</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p>Request id </p></td>
+                </tr>
+              
+                <tr>
+                  <td>result</td>
+                  <td><a href="#massa.api.v1.OperationResult">OperationResult</a></td>
+                  <td></td>
+                  <td><p>Operation result </p></td>
+                </tr>
+              
+                <tr>
+                  <td>error</td>
+                  <td><a href="#google.rpc.Status">google.rpc.Status</a></td>
+                  <td></td>
+                  <td><p>gRPC error(status) </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
+        <h3 id="massa.api.v1.TransactionsThroughputRequest">TransactionsThroughputRequest</h3>
+        <p>TransactionsThroughputRequest holds request for TransactionsThroughput</p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>id</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p>Request id </p></td>
+                </tr>
+              
+                <tr>
+                  <td>interval</td>
+                  <td><a href="#fixed64">fixed64</a></td>
+                  <td>optional</td>
+                  <td><p>Optional timer interval in sec. Defaults to 10s </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
+        <h3 id="massa.api.v1.TransactionsThroughputResponse">TransactionsThroughputResponse</h3>
+        <p>TransactionsThroughputResponse holds response from TransactionsThroughput</p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>id</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p>Request id </p></td>
+                </tr>
+              
+                <tr>
+                  <td>throughput</td>
+                  <td><a href="#fixed32">fixed32</a></td>
+                  <td></td>
+                  <td><p>Transactions throughput </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
+
+      
+        <h3 id="massa.api.v1.OpType">OpType</h3>
+        <p>Operation type enum</p>
+        <table class="enum-table">
+          <thead>
+            <tr><td>Name</td><td>Number</td><td>Description</td></tr>
+          </thead>
+          <tbody>
+            
+              <tr>
+                <td>OP_TYPE_UNSPECIFIED</td>
+                <td>0</td>
+                <td><p>Defaut enum value</p></td>
+              </tr>
+            
+              <tr>
+                <td>OP_TYPE_TRANSACTION</td>
+                <td>1</td>
+                <td><p>Transaction</p></td>
+              </tr>
+            
+              <tr>
+                <td>OP_TYPE_ROLL_BUY</td>
+                <td>2</td>
+                <td><p>Roll buy</p></td>
+              </tr>
+            
+              <tr>
+                <td>OP_TYPE_ROLL_SELL</td>
+                <td>3</td>
+                <td><p>Roll sell</p></td>
+              </tr>
+            
+              <tr>
+                <td>OP_TYPE_EXECUTE_SC</td>
+                <td>4</td>
+                <td><p>Execute smart contract</p></td>
+              </tr>
+            
+              <tr>
+                <td>OP_TYPE_CALL_SC</td>
+                <td>5</td>
+                <td><p>Call smart contract</p></td>
+              </tr>
+            
+          </tbody>
+        </table>
+      
+
+      
+
+      
+        <h3 id="massa.api.v1.MassaService">MassaService</h3>
+        <p>Massa gRPC service</p>
+        <table class="enum-table">
+          <thead>
+            <tr><td>Method Name</td><td>Request Type</td><td>Response Type</td><td>Description</td></tr>
+          </thead>
+          <tbody>
+            
+              <tr>
+                <td>GetBlocksBySlots</td>
+                <td><a href="#massa.api.v1.GetBlocksBySlotsRequest">GetBlocksBySlotsRequest</a></td>
+                <td><a href="#massa.api.v1.GetBlocksBySlotsResponse">GetBlocksBySlotsResponse</a></td>
+                <td><p>Get blocks by slots</p></td>
+              </tr>
+            
+              <tr>
+                <td>GetDatastoreEntries</td>
+                <td><a href="#massa.api.v1.GetDatastoreEntriesRequest">GetDatastoreEntriesRequest</a></td>
+                <td><a href="#massa.api.v1.GetDatastoreEntriesResponse">GetDatastoreEntriesResponse</a></td>
+                <td><p>Get datastore entries</p></td>
+              </tr>
+            
+              <tr>
+                <td>GetNextBlockBestParents</td>
+                <td><a href="#massa.api.v1.GetNextBlockBestParentsRequest">GetNextBlockBestParentsRequest</a></td>
+                <td><a href="#massa.api.v1.GetNextBlockBestParentsResponse">GetNextBlockBestParentsResponse</a></td>
+                <td><p>Get next block best parents</p></td>
+              </tr>
+            
+              <tr>
+                <td>GetSelectorDraws</td>
+                <td><a href="#massa.api.v1.GetSelectorDrawsRequest">GetSelectorDrawsRequest</a></td>
+                <td><a href="#massa.api.v1.GetSelectorDrawsResponse">GetSelectorDrawsResponse</a></td>
+                <td><p>Get selector draws</p></td>
+              </tr>
+            
+              <tr>
+                <td>GetTransactionsThroughput</td>
+                <td><a href="#massa.api.v1.GetTransactionsThroughputRequest">GetTransactionsThroughputRequest</a></td>
+                <td><a href="#massa.api.v1.GetTransactionsThroughputResponse">GetTransactionsThroughputResponse</a></td>
+                <td><p>Get transactions throughput</p></td>
+              </tr>
+            
+              <tr>
+                <td>GetVersion</td>
+                <td><a href="#massa.api.v1.GetVersionRequest">GetVersionRequest</a></td>
+                <td><a href="#massa.api.v1.GetVersionResponse">GetVersionResponse</a></td>
+                <td><p>Get node version</p></td>
+              </tr>
+            
+              <tr>
+                <td>NewBlocks</td>
+                <td><a href="#massa.api.v1.NewBlocksRequest">NewBlocksRequest</a> stream</td>
+                <td><a href="#massa.api.v1.NewBlocksResponse">NewBlocksResponse</a> stream</td>
+                <td><p>New received and produced blocks</p></td>
+              </tr>
+            
+              <tr>
+                <td>NewBlocksHeaders</td>
+                <td><a href="#massa.api.v1.NewBlocksHeadersRequest">NewBlocksHeadersRequest</a> stream</td>
+                <td><a href="#massa.api.v1.NewBlocksHeadersResponse">NewBlocksHeadersResponse</a> stream</td>
+                <td><p>New received and produced blocks headers</p></td>
+              </tr>
+            
+              <tr>
+                <td>NewFilledBlocks</td>
+                <td><a href="#massa.api.v1.NewFilledBlocksRequest">NewFilledBlocksRequest</a> stream</td>
+                <td><a href="#massa.api.v1.NewFilledBlocksResponse">NewFilledBlocksResponse</a> stream</td>
+                <td><p>New received and produced blocks with operations</p></td>
+              </tr>
+            
+              <tr>
+                <td>NewOperations</td>
+                <td><a href="#massa.api.v1.NewOperationsRequest">NewOperationsRequest</a> stream</td>
+                <td><a href="#massa.api.v1.NewOperationsResponse">NewOperationsResponse</a> stream</td>
+                <td><p>New received and produced perations</p></td>
+              </tr>
+            
+              <tr>
+                <td>SendBlocks</td>
+                <td><a href="#massa.api.v1.SendBlocksRequest">SendBlocksRequest</a> stream</td>
+                <td><a href="#massa.api.v1.SendBlocksResponse">SendBlocksResponse</a> stream</td>
+                <td><p>Send blocks</p></td>
+              </tr>
+            
+              <tr>
+                <td>SendEndorsements</td>
+                <td><a href="#massa.api.v1.SendEndorsementsRequest">SendEndorsementsRequest</a> stream</td>
+                <td><a href="#massa.api.v1.SendEndorsementsResponse">SendEndorsementsResponse</a> stream</td>
+                <td><p>Send endorsements</p></td>
+              </tr>
+            
+              <tr>
+                <td>SendOperations</td>
+                <td><a href="#massa.api.v1.SendOperationsRequest">SendOperationsRequest</a> stream</td>
+                <td><a href="#massa.api.v1.SendOperationsResponse">SendOperationsResponse</a> stream</td>
+                <td><p>Send operations</p></td>
+              </tr>
+            
+              <tr>
+                <td>TransactionsThroughput</td>
+                <td><a href="#massa.api.v1.TransactionsThroughputRequest">TransactionsThroughputRequest</a> stream</td>
+                <td><a href="#massa.api.v1.TransactionsThroughputResponse">TransactionsThroughputResponse</a> stream</td>
+                <td><p>Transactions throughput per second</p></td>
+              </tr>
+            
+          </tbody>
+        </table>
+
+        
+          
+          
+          <h4>Methods with HTTP bindings</h4>
+          <table>
+            <thead>
+              <tr>
+                <td>Method Name</td>
+                <td>Method</td>
+                <td>Pattern</td>
+                <td>Body</td>
+              </tr>
+            </thead>
+            <tbody>
+            
+              
+              
+              <tr>
+                <td>GetBlocksBySlots</td>
+                <td>GET</td>
+                <td>/v1/get_blocks_by_slots</td>
+                <td></td>
+              </tr>
+              
+            
+              
+              
+              <tr>
+                <td>GetDatastoreEntries</td>
+                <td>POST</td>
+                <td>/v1/get_datastore_entries</td>
+                <td>*</td>
+              </tr>
+              
+            
+              
+              
+              <tr>
+                <td>GetNextBlockBestParents</td>
+                <td>GET</td>
+                <td>/v1/get_next_block_best_parents</td>
+                <td></td>
+              </tr>
+              
+            
+              
+              
+              <tr>
+                <td>GetSelectorDraws</td>
+                <td>POST</td>
+                <td>/v1/get_selector_draws</td>
+                <td>*</td>
+              </tr>
+              
+            
+              
+              
+              <tr>
+                <td>GetTransactionsThroughput</td>
+                <td>GET</td>
+                <td>/v1/transactions_throughput</td>
+                <td></td>
+              </tr>
+              
+            
+              
+              
+              <tr>
+                <td>GetVersion</td>
+                <td>GET</td>
+                <td>/v1/version</td>
+                <td></td>
+              </tr>
+              
+            
+            </tbody>
+          </table>
+          
+        
+    
+
+    <h2 id="scalar-value-types">Scalar Value Types</h2>
+    <table class="scalar-value-types-table">
+      <thead>
+        <tr><td>.proto Type</td><td>Notes</td><td>C++</td><td>Java</td><td>Python</td><td>Go</td><td>C#</td><td>PHP</td><td>Ruby</td></tr>
+      </thead>
+      <tbody>
+        
+          <tr id="double">
+            <td>double</td>
+            <td></td>
+            <td>double</td>
+            <td>double</td>
+            <td>float</td>
+            <td>float64</td>
+            <td>double</td>
+            <td>float</td>
+            <td>Float</td>
+          </tr>
+        
+          <tr id="float">
+            <td>float</td>
+            <td></td>
+            <td>float</td>
+            <td>float</td>
+            <td>float</td>
+            <td>float32</td>
+            <td>float</td>
+            <td>float</td>
+            <td>Float</td>
+          </tr>
+        
+          <tr id="int32">
+            <td>int32</td>
+            <td>Uses variable-length encoding. Inefficient for encoding negative numbers – if your field is likely to have negative values, use sint32 instead.</td>
+            <td>int32</td>
+            <td>int</td>
+            <td>int</td>
+            <td>int32</td>
+            <td>int</td>
+            <td>integer</td>
+            <td>Bignum or Fixnum (as required)</td>
+          </tr>
+        
+          <tr id="int64">
+            <td>int64</td>
+            <td>Uses variable-length encoding. Inefficient for encoding negative numbers – if your field is likely to have negative values, use sint64 instead.</td>
+            <td>int64</td>
+            <td>long</td>
+            <td>int/long</td>
+            <td>int64</td>
+            <td>long</td>
+            <td>integer/string</td>
+            <td>Bignum</td>
+          </tr>
+        
+          <tr id="uint32">
+            <td>uint32</td>
+            <td>Uses variable-length encoding.</td>
+            <td>uint32</td>
+            <td>int</td>
+            <td>int/long</td>
+            <td>uint32</td>
+            <td>uint</td>
+            <td>integer</td>
+            <td>Bignum or Fixnum (as required)</td>
+          </tr>
+        
+          <tr id="uint64">
+            <td>uint64</td>
+            <td>Uses variable-length encoding.</td>
+            <td>uint64</td>
+            <td>long</td>
+            <td>int/long</td>
+            <td>uint64</td>
+            <td>ulong</td>
+            <td>integer/string</td>
+            <td>Bignum or Fixnum (as required)</td>
+          </tr>
+        
+          <tr id="sint32">
+            <td>sint32</td>
+            <td>Uses variable-length encoding. Signed int value. These more efficiently encode negative numbers than regular int32s.</td>
+            <td>int32</td>
+            <td>int</td>
+            <td>int</td>
+            <td>int32</td>
+            <td>int</td>
+            <td>integer</td>
+            <td>Bignum or Fixnum (as required)</td>
+          </tr>
+        
+          <tr id="sint64">
+            <td>sint64</td>
+            <td>Uses variable-length encoding. Signed int value. These more efficiently encode negative numbers than regular int64s.</td>
+            <td>int64</td>
+            <td>long</td>
+            <td>int/long</td>
+            <td>int64</td>
+            <td>long</td>
+            <td>integer/string</td>
+            <td>Bignum</td>
+          </tr>
+        
+          <tr id="fixed32">
+            <td>fixed32</td>
+            <td>Always four bytes. More efficient than uint32 if values are often greater than 2^28.</td>
+            <td>uint32</td>
+            <td>int</td>
+            <td>int</td>
+            <td>uint32</td>
+            <td>uint</td>
+            <td>integer</td>
+            <td>Bignum or Fixnum (as required)</td>
+          </tr>
+        
+          <tr id="fixed64">
+            <td>fixed64</td>
+            <td>Always eight bytes. More efficient than uint64 if values are often greater than 2^56.</td>
+            <td>uint64</td>
+            <td>long</td>
+            <td>int/long</td>
+            <td>uint64</td>
+            <td>ulong</td>
+            <td>integer/string</td>
+            <td>Bignum</td>
+          </tr>
+        
+          <tr id="sfixed32">
+            <td>sfixed32</td>
+            <td>Always four bytes.</td>
+            <td>int32</td>
+            <td>int</td>
+            <td>int</td>
+            <td>int32</td>
+            <td>int</td>
+            <td>integer</td>
+            <td>Bignum or Fixnum (as required)</td>
+          </tr>
+        
+          <tr id="sfixed64">
+            <td>sfixed64</td>
+            <td>Always eight bytes.</td>
+            <td>int64</td>
+            <td>long</td>
+            <td>int/long</td>
+            <td>int64</td>
+            <td>long</td>
+            <td>integer/string</td>
+            <td>Bignum</td>
+          </tr>
+        
+          <tr id="bool">
+            <td>bool</td>
+            <td></td>
+            <td>bool</td>
+            <td>boolean</td>
+            <td>boolean</td>
+            <td>bool</td>
+            <td>bool</td>
+            <td>boolean</td>
+            <td>TrueClass/FalseClass</td>
+          </tr>
+        
+          <tr id="string">
+            <td>string</td>
+            <td>A string must always contain UTF-8 encoded or 7-bit ASCII text.</td>
+            <td>string</td>
+            <td>String</td>
+            <td>str/unicode</td>
+            <td>string</td>
+            <td>string</td>
+            <td>string</td>
+            <td>String (UTF-8)</td>
+          </tr>
+        
+          <tr id="bytes">
+            <td>bytes</td>
+            <td>May contain any arbitrary sequence of bytes.</td>
+            <td>string</td>
+            <td>ByteString</td>
+            <td>str</td>
+            <td>[]byte</td>
+            <td>ByteString</td>
+            <td>string</td>
+            <td>String (ASCII-8BIT)</td>
+          </tr>
+        
+      </tbody>
+    </table>
+  </body>
+</html>
+
