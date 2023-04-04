@@ -21,6 +21,7 @@ To install `protoc` on macOS using Homebrew, run the following command:
 
 ```
 brew install protobuf
+protoc --version  # Ensure compiler version is 3+
 ```
 
 ### Linux
@@ -30,7 +31,8 @@ To install `protoc` on Linux, you can download the binary file for your architec
 Alternatively, you can use your distribution's package manager to install `protoc`. On Ubuntu, for example, you can run:
 
 ```
-sudo apt-get install protobuf-compiler
+sudo apt install protobuf-compiler
+protoc --version  # Ensure compiler version is 3+
 ```
 
 ### Windows
@@ -40,7 +42,7 @@ To install `protoc` on Windows, you can download the binary file for your archit
 After installing `protoc`, you should be able to compile proto files using the appropriate language-specific plugin (e.g. `protoc --go_out=./ path/to/my_proto_file.proto`).
 
 
-After installing `protoc`, please verify that the `protoc` command is accessible by running `protoc --version` again.
+After installing `protoc`, please verify that the `protoc` command is accessible by running `protoc --version` again and ensure compiler version is 3+.
 
 
 To keep the documentation synchronised with our proto files, you must install `protoc-gen-doc`. You can use your package manager or download the binary from the official [GitHub repository releases](https://github.com/pseudomuto/protoc-gen-doc/releases) and add it to your system's `PATH`
@@ -57,6 +59,28 @@ When the project is built, `build.rs` is executed and it uses the `tonic-build` 
 By default, `build-tonic` feature is disabled, you can update the generated code from protobuf files by running: 
 ```bash
 cargo check --features build-tonic
+```
+
+Generate html documentation:
+```bash
+protoc \
+  --proto_path=/path/to/workspace/massa-proto/proto/massa/api/v1 \
+  --proto_path=/path/to/workspace/massa-proto/proto/third-party \
+  --doc_out=/path/to/workspace/massa-proto/doc/ \
+  --doc_opt=html,index.html \
+  --descriptor_set_out=/path/to/workspace/massa-proto/src/api.bin \
+  /path/to/workspace/massa-proto/proto/**/*.proto
+```
+
+Generate markdown documentation:
+```bash
+protoc \
+  --proto_path=/path/to/workspace/massa-proto/proto/massa/api/v1 \
+  --proto_path=/path/to/workspace/massa-proto/proto/third-party \
+  --doc_out=/path/to/workspace/massa-proto/doc/ \
+  --doc_opt=markdown,api.md \
+  --descriptor_set_out=/path/to/workspace/massa-proto/src/api.bin \
+  /path/to/workspace/massa-proto/proto/**/*.proto
 ```
 
 Before launching your Massa node, please add this following configuration to your `config.toml` file:
