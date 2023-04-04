@@ -33,6 +33,8 @@ use massa_serialization::{
     U64VarIntSerializer,
 };
 use massa_time::{MassaTime, MassaTimeDeserializer, MassaTimeSerializer};
+use massa_versioning_worker::versioning::MipStoreRaw;
+use massa_versioning_worker::versioning_ser_der::{MipStoreRawDeserializer, MipStoreRawSerializer};
 use nom::error::context;
 use nom::multi::{length_count, length_data};
 use nom::sequence::tuple;
@@ -85,6 +87,11 @@ pub enum BootstrapServerMessage {
         /// Last Start Period for network restart management
         last_start_period: Option<u64>,
     },
+    /// Bootstrap versioning store
+    BootstrapMipStore {
+        /// Server mip store
+        store: MipStoreRaw,
+    },
     /// Message sent when the final state and consensus bootstrap are finished
     BootstrapFinished,
     /// Slot sent to get state changes is too old
@@ -105,6 +112,7 @@ enum MessageServerTypeId {
     FinalStateFinished = 3u32,
     SlotTooOld = 4u32,
     BootstrapError = 5u32,
+    MipStore = 6u32,
 }
 
 /// Serializer for `BootstrapServerMessage`
@@ -124,6 +132,7 @@ pub struct BootstrapServerMessageSerializer {
     pos_credits_serializer: DeferredCreditsSerializer,
     exec_ops_serializer: ExecutedOpsSerializer,
     opt_last_start_period_serializer: OptionSerializer<u64, U64VarIntSerializer>,
+    store_serializer: MipStoreRawSerializer,
 }
 
 impl Default for BootstrapServerMessageSerializer {
@@ -151,6 +160,7 @@ impl BootstrapServerMessageSerializer {
             pos_credits_serializer: DeferredCreditsSerializer::new(),
             exec_ops_serializer: ExecutedOpsSerializer::new(),
             opt_last_start_period_serializer: OptionSerializer::new(U64VarIntSerializer::new()),
+            store_serializer: MipStoreRawSerializer::new(),
         }
     }
 }
@@ -241,6 +251,11 @@ impl Serializer<BootstrapServerMessage> for BootstrapServerMessageSerializer {
                 self.opt_last_start_period_serializer
                     .serialize(last_start_period, buffer)?;
             }
+            BootstrapServerMessage::BootstrapMipStore { store: store_raw } => {
+                self.u32_serializer
+                    .serialize(&u32::from(MessageServerTypeId::MipStore), buffer)?;
+                self.store_serializer.serialize(store_raw, buffer)?;
+            }
             BootstrapServerMessage::BootstrapFinished => {
                 self.u32_serializer
                     .serialize(&u32::from(MessageServerTypeId::FinalStateFinished), buffer)?;
@@ -283,6 +298,7 @@ pub struct BootstrapServerMessageDeserializer {
     pos_credits_deserializer: DeferredCreditsDeserializer,
     exec_ops_deserializer: ExecutedOpsDeserializer,
     opt_last_start_period_deserializer: OptionDeserializer<u64, U64VarIntDeserializer>,
+    store_deserializer: MipStoreRawDeserializer,
 }
 
 impl BootstrapServerMessageDeserializer {
@@ -357,6 +373,10 @@ impl BootstrapServerMessageDeserializer {
             ),
             opt_last_start_period_deserializer: OptionDeserializer::new(
                 U64VarIntDeserializer::new(Included(u64::MIN), Included(u64::MAX)),
+            ),
+            store_deserializer: MipStoreRawDeserializer::new(
+                args.mip_store_stats_block_considered,
+                args.mip_store_stats_counters_max,
             ),
         }
     }
@@ -441,6 +461,13 @@ impl Deserializer<BootstrapServerMessage> for BootstrapServerMessageDeserializer
                 })
                 .map(|peers| BootstrapServerMessage::BootstrapPeers { peers })
                 .parse(input),
+                MessageServerTypeId::MipStore => {
+                    context("Failed MIP store deserialization", |input| {
+                        self.store_deserializer.deserialize(input)
+                    })
+                    .map(|store| BootstrapServerMessage::BootstrapMipStore { store })
+                    .parse(input)
+                }
                 MessageServerTypeId::FinalStatePart => tuple((
                     context("Failed slot deserialization", |input| {
                         self.slot_deserializer.deserialize(input)
@@ -555,6 +582,8 @@ pub enum BootstrapClientMessage {
         /// Should be true only for the first part, false later
         send_last_start_period: bool,
     },
+    /// Ask for mip store
+    AskBootstrapMipStore,
     /// Bootstrap error
     BootstrapError {
         /// Error message
@@ -571,6 +600,7 @@ enum MessageClientTypeId {
     AskFinalStatePart = 1u32,
     BootstrapError = 2u32,
     BootstrapSuccess = 3u32,
+    AskBootstrapMipStore = 4u32,
 }
 
 /// Serializer for `BootstrapClientMessage`
@@ -680,6 +710,12 @@ impl Serializer<BootstrapClientMessage> for BootstrapClientMessageSerializer {
                 self.u32_serializer
                     .serialize(&u32::from(MessageClientTypeId::BootstrapSuccess), buffer)?;
             }
+            BootstrapClientMessage::AskBootstrapMipStore => {
+                self.u32_serializer.serialize(
+                    &u32::from(MessageClientTypeId::AskBootstrapMipStore),
+                    buffer,
+                )?;
+            }
         }
         Ok(())
     }
@@ -783,6 +819,9 @@ impl Deserializer<BootstrapClientMessage> for BootstrapClientMessageDeserializer
             match id? {
                 MessageClientTypeId::AskBootstrapPeers => {
                     Ok((input, BootstrapClientMessage::AskBootstrapPeers))
+                }
+                MessageClientTypeId::AskBootstrapMipStore => {
+                    Ok((input, BootstrapClientMessage::AskBootstrapMipStore))
                 }
                 MessageClientTypeId::AskFinalStatePart => {
                     if input.is_empty() {

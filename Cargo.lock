@@ -2549,6 +2549,7 @@ dependencies = [
  "massa_serialization 0.1.0",
  "massa_signature",
  "massa_time",
+ "massa_versioning_worker",
  "nom",
  "num_enum",
  "parking_lot",

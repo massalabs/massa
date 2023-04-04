@@ -302,6 +302,8 @@ async fn launch(
         max_ops_changes_length: MAX_EXECUTED_OPS_CHANGES_LENGTH,
         consensus_bootstrap_part_size: CONSENSUS_BOOTSTRAP_PART_SIZE,
         max_consensus_block_ids: MAX_CONSENSUS_BLOCKS_IDS,
+        mip_store_stats_block_considered: MIP_STORE_STATS_BLOCK_CONSIDERED,
+        mip_store_stats_counters_max: MIP_STORE_STATS_COUNTERS_MAX,
     };
 
     // bootstrap
@@ -631,6 +633,7 @@ async fn launch(
             DefaultListener::new(&addr).unwrap(),
             private_key,
             *VERSION,
+            mip_store.clone(),
         )
         .unwrap(),
         None => None,

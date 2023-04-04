@@ -123,6 +123,10 @@ pub struct BootstrapConfig {
     pub consensus_bootstrap_part_size: u64,
     /// max number of consensus block ids when sending a bootstrap cursor from the client
     pub max_consensus_block_ids: u64,
+    /// block count to check / process for versioning stats
+    pub mip_store_stats_block_considered: usize,
+    /// max number of counters for versioning stats
+    pub mip_store_stats_counters_max: usize,
 }
 
 /// Bootstrap server binding
@@ -167,6 +171,8 @@ pub struct BootstrapClientConfig {
     pub max_credits_length: u64,
     pub max_executed_ops_length: u64,
     pub max_ops_changes_length: u64,
+    pub mip_store_stats_block_considered: usize,
+    pub mip_store_stats_counters_max: usize,
 }
 
 /// Bootstrap Message der args
@@ -194,6 +200,8 @@ pub struct BootstrapServerMessageDeserializerArgs {
     pub max_credits_length: u64,
     pub max_executed_ops_length: u64,
     pub max_ops_changes_length: u64,
+    pub mip_store_stats_block_considered: usize,
+    pub mip_store_stats_counters_max: usize,
 }
 
 // TODO: add a proc macro for this case

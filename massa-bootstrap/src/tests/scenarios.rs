@@ -27,6 +27,7 @@ use massa_final_state::{
 };
 use massa_hash::{Hash, HASH_SIZE_BYTES};
 use massa_ledger_exports::LedgerConfig;
+use massa_models::config::{MIP_STORE_STATS_BLOCK_CONSIDERED, MIP_STORE_STATS_COUNTERS_MAX};
 use massa_models::{
     address::Address, config::MAX_DATASTORE_VALUE_LENGTH, node::NodeId, slot::Slot,
     streaming_step::StreamingStep, version::Version,
@@ -44,9 +45,13 @@ use massa_pos_exports::{
 use massa_pos_worker::start_selector_worker;
 use massa_signature::KeyPair;
 use massa_time::MassaTime;
+use massa_versioning_worker::versioning::{
+    MipComponent, MipInfo, MipState, MipStatsConfig, MipStore,
+};
 use parking_lot::RwLock;
 use serial_test::serial;
 use std::{
+    collections::HashMap,
     path::PathBuf,
     str::FromStr,
     sync::{atomic::Ordering, Arc},
@@ -74,6 +79,22 @@ async fn test_bootstrap_server() {
     let (consensus_controller, mut consensus_event_receiver) =
         MockConsensusController::new_with_receiver();
     let (network_cmd_tx, mut network_cmd_rx) = mpsc::channel::<NetworkCommand>(5);
+
+    // create a MIP store
+    let mip_stats_cfg = MipStatsConfig {
+        block_count_considered: MIP_STORE_STATS_BLOCK_CONSIDERED,
+        counters_max: MIP_STORE_STATS_COUNTERS_MAX,
+    };
+    let mi_1 = MipInfo {
+        name: "MIP-0002".to_string(),
+        version: 2,
+        components: HashMap::from([(MipComponent::Address, 1)]),
+        start: MassaTime::from(5),
+        timeout: MassaTime::from(10),
+        activation_delay: MassaTime::from(4),
+    };
+    let state_1 = MipState::new(MassaTime::from(3));
+    let mip_store = MipStore::try_from(([(mi_1, state_1)], mip_stats_cfg.clone())).unwrap();
 
     // setup final state local config
     let temp_dir = TempDir::new().unwrap();
@@ -163,6 +184,7 @@ async fn test_bootstrap_server() {
             .unwrap(),
         keypair.clone(),
         Version::from_str("TEST.1.10").unwrap(),
+        mip_store.clone(),
     )
     .unwrap()
     .unwrap();
@@ -359,6 +381,11 @@ async fn test_bootstrap_server() {
 
     // check graphs
     assert_eq_bootstrap_graph(&sent_graph, &bootstrap_res.graph.unwrap());
+
+    // check mip store
+    let mip_raw_orig = mip_store.0.read().to_owned();
+    let mip_raw_received = bootstrap_res.mip_store.unwrap().0.read().to_owned();
+    assert_eq!(mip_raw_orig, mip_raw_received);
 
     // stop bootstrap server
     bootstrap_manager
