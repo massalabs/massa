@@ -199,11 +199,6 @@ fn bootstrap_from_server<D: Duplex>(
     // handshake
     let send_time_uncompensated = MassaTime::now()?;
     // client.handshake() is not cancel-safe but we drop the whole client object if cancelled => it's OK
-    // match // tokio::time::timeout(cfg.write_timeout.into(),
-    // client.handshake(our_version) {
-    // Err(e) => return Err(e),
-    // Ok(_) => {}
-    // }
     client.handshake(our_version)?;
 
     // compute ping
