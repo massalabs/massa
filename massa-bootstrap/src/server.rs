@@ -55,7 +55,7 @@ use tracing::{debug, error, info, warn};
 
 use crate::{
     error::BootstrapError,
-    establisher::{BSListener, Duplex},
+    establisher::BSListener,
     messages::{BootstrapClientMessage, BootstrapServerMessage},
     server_binder::BootstrapServerBinder,
     BootstrapConfig,
@@ -63,20 +63,20 @@ use crate::{
 
 /// Abstraction layer over data produced by the listener, and transported
 /// over to the worker via a channel
-type BsConn<D> = (D, SocketAddr);
+type BsConn = (TcpStream, SocketAddr);
 
 /// handle on the bootstrap server
-pub struct BootstrapManager<D: Duplex> {
+pub struct BootstrapManager {
     update_handle: thread::JoinHandle<Result<(), BootstrapError>>,
     // need to preserve the listener handle up to here to prevent it being destroyed
     #[allow(clippy::type_complexity)]
-    _listen_handle: thread::JoinHandle<Result<Result<(), BsConn<D>>, BootstrapError>>,
+    _listen_handle: thread::JoinHandle<Result<Result<(), BsConn>, BootstrapError>>,
     main_handle: thread::JoinHandle<Result<(), BootstrapError>>,
     listen_stopper_tx: crossbeam::channel::Sender<()>,
     update_stopper_tx: crossbeam::channel::Sender<()>,
 }
 
-impl<D: Duplex> BootstrapManager<D> {
+impl BootstrapManager {
     /// stop the bootstrap server
     pub fn stop(self) -> Result<(), BootstrapError> {
         massa_trace!("bootstrap.lib.stop", {});
@@ -101,7 +101,7 @@ impl<D: Duplex> BootstrapManager<D> {
 }
 
 /// See module level documentation for details
-pub fn start_bootstrap_server<D: Duplex, C: NetworkCommandSenderTrait + Clone>(
+pub fn start_bootstrap_server<C: NetworkCommandSenderTrait + Clone>(
     consensus_controller: Box<dyn ConsensusController>,
     network_command_sender: C,
     final_state: Arc<RwLock<FinalState>>,
@@ -109,7 +109,7 @@ pub fn start_bootstrap_server<D: Duplex, C: NetworkCommandSenderTrait + Clone>(
     listener: impl BSListener + Send + 'static,
     keypair: KeyPair,
     version: Version,
-) -> Result<Option<BootstrapManager<TcpStream>>, BootstrapError> {
+) -> Result<Option<BootstrapManager>, BootstrapError> {
     massa_trace!("bootstrap.lib.start_bootstrap_server", {});
 
     // TODO(low prio): See if a zero capacity channel model can work
@@ -121,8 +121,7 @@ pub fn start_bootstrap_server<D: Duplex, C: NetworkCommandSenderTrait + Clone>(
     };
 
     // This is needed for now, as there is no ergonomic to "select!" on both a channel and a blocking std::net::TcpStream
-    let (listener_tx, listener_rx) =
-        crossbeam::channel::bounded::<BsConn<TcpStream>>(max_bootstraps * 2);
+    let (listener_tx, listener_rx) = crossbeam::channel::bounded::<BsConn>(max_bootstraps * 2);
 
     let white_black_list = SharedWhiteBlackList::new(
         config.bootstrap_whitelist_path.clone(),
@@ -133,7 +132,7 @@ pub fn start_bootstrap_server<D: Duplex, C: NetworkCommandSenderTrait + Clone>(
     let update_handle = thread::Builder::new()
         .name("wb_list_updater".to_string())
         .spawn(move || {
-            let res = BootstrapServer::<D, C>::run_updater(
+            let res = BootstrapServer::<C>::run_updater(
                 updater_lists,
                 config.cache_duration.into(),
                 update_stopper_rx,
@@ -149,7 +148,7 @@ pub fn start_bootstrap_server<D: Duplex, C: NetworkCommandSenderTrait + Clone>(
         .name("bs_listener".to_string())
         // FIXME: The interface being used shouldn't have `: Send + 'static` as a constraint on the listener assosciated type.
         // GAT lifetime is likely to remedy this, however.
-        .spawn(move || BootstrapServer::<D, C>::run_listener(listener, listener_tx))
+        .spawn(move || BootstrapServer::<C>::run_listener(listener, listener_tx))
         .expect("in `start_bootstrap_server`, OS failed to spawn listener thread");
 
     let main_handle = thread::Builder::new()
@@ -181,11 +180,11 @@ pub fn start_bootstrap_server<D: Duplex, C: NetworkCommandSenderTrait + Clone>(
     }))
 }
 
-struct BootstrapServer<'a, D: Duplex, C: NetworkCommandSenderTrait> {
+struct BootstrapServer<'a, C: NetworkCommandSenderTrait> {
     consensus_controller: Box<dyn ConsensusController>,
     network_command_sender: C,
     final_state: Arc<RwLock<FinalState>>,
-    listener_rx: crossbeam::channel::Receiver<BsConn<D>>,
+    listener_rx: crossbeam::channel::Receiver<BsConn>,
     listen_stopper_rx: crossbeam::channel::Receiver<()>,
     white_black_list: SharedWhiteBlackList<'a>,
     keypair: KeyPair,
@@ -194,7 +193,7 @@ struct BootstrapServer<'a, D: Duplex, C: NetworkCommandSenderTrait> {
     ip_hist_map: HashMap<IpAddr, Instant>,
 }
 
-impl<D: Duplex, C: NetworkCommandSenderTrait + Clone> BootstrapServer<'_, D, C> {
+impl<C: NetworkCommandSenderTrait + Clone> BootstrapServer<'_, C> {
     fn run_updater(
         mut list: SharedWhiteBlackList<'_>,
         interval: Duration,
@@ -224,8 +223,8 @@ impl<D: Duplex, C: NetworkCommandSenderTrait + Clone> BootstrapServer<'_, D, C> 
     /// TODO: Integrate the listener into the bootstrap-main-loop
     fn run_listener(
         mut listener: impl BSListener,
-        listener_tx: crossbeam::channel::Sender<BsConn<TcpStream>>,
-    ) -> Result<Result<(), BsConn<TcpStream>>, BootstrapError> {
+        listener_tx: crossbeam::channel::Sender<BsConn>,
+    ) -> Result<Result<(), BsConn>, BootstrapError> {
         loop {
             let (msg, addr) = listener.accept().map_err(BootstrapError::IoError)?;
 
@@ -298,7 +297,7 @@ impl<D: Duplex, C: NetworkCommandSenderTrait + Clone> BootstrapServer<'_, D, C> 
                 }
 
                 // check IP's bootstrap attempt history
-                if let Err(msg) = BootstrapServer::<D, C>::greedy_client_check(
+                if let Err(msg) = BootstrapServer::<C>::greedy_client_check(
                     &mut self.ip_hist_map,
                     remote_addr,
                     now,
@@ -373,10 +372,7 @@ impl<D: Duplex, C: NetworkCommandSenderTrait + Clone> BootstrapServer<'_, D, C> 
     /// - 3.a. double check the stop-signal is absent
     /// - 3.b. If present, fall-back to the stop behaviour
     /// - 3.c. If absent, all's clear to rock-n-roll.
-    fn receive_connection(
-        &self,
-        selector: &mut Select,
-    ) -> Result<Option<BsConn<D>>, BootstrapError> {
+    fn receive_connection(&self, selector: &mut Select) -> Result<Option<BsConn>, BootstrapError> {
         // 1. Block until _something_ is ready
         let rdy = selector.ready();
 
@@ -454,8 +450,8 @@ impl<D: Duplex, C: NetworkCommandSenderTrait + Clone> BootstrapServer<'_, D, C> 
 /// The arc_counter variable is used as a proxy to keep track the number of active bootstrap
 /// sessions.
 #[allow(clippy::too_many_arguments)]
-fn run_bootstrap_session<D: Duplex, C: NetworkCommandSenderTrait>(
-    mut server: BootstrapServerBinder<D>,
+fn run_bootstrap_session<C: NetworkCommandSenderTrait>(
+    mut server: BootstrapServerBinder,
     arc_counter: Arc<()>,
     config: BootstrapConfig,
     remote_addr: SocketAddr,
@@ -515,8 +511,8 @@ fn run_bootstrap_session<D: Duplex, C: NetworkCommandSenderTrait>(
 }
 
 #[allow(clippy::too_many_arguments)]
-pub async fn stream_bootstrap_information<D: Duplex>(
-    server: &mut BootstrapServerBinder<D>,
+pub async fn stream_bootstrap_information(
+    server: &mut BootstrapServerBinder,
     final_state: Arc<RwLock<FinalState>>,
     consensus_controller: Box<dyn ConsensusController>,
     mut last_slot: Option<Slot>,
@@ -685,9 +681,9 @@ pub async fn stream_bootstrap_information<D: Duplex>(
 }
 
 #[allow(clippy::too_many_arguments)]
-async fn manage_bootstrap<D: Duplex, C: NetworkCommandSenderTrait>(
+async fn manage_bootstrap<C: NetworkCommandSenderTrait>(
     bootstrap_config: &BootstrapConfig,
-    server: &mut BootstrapServerBinder<D>,
+    server: &mut BootstrapServerBinder,
     final_state: Arc<RwLock<FinalState>>,
     version: Version,
     consensus_controller: Box<dyn ConsensusController>,

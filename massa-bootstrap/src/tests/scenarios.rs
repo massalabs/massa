@@ -41,7 +41,7 @@ use massa_pos_worker::start_selector_worker;
 use massa_signature::KeyPair;
 use massa_time::MassaTime;
 use parking_lot::RwLock;
-use std::{net::TcpStream, path::PathBuf, str::FromStr, sync::Arc, time::Duration};
+use std::{path::PathBuf, str::FromStr, sync::Arc, time::Duration};
 use tempfile::TempDir;
 
 lazy_static::lazy_static! {
@@ -185,7 +185,7 @@ fn test_bootstrap_server() {
     let bootstrap_manager_thread = std::thread::Builder::new()
         .name("bootstrap_thread".to_string())
         .spawn(move || {
-            start_bootstrap_server::<TcpStream, MockNetworkCommandSender>(
+            start_bootstrap_server::<MockNetworkCommandSender>(
                 stream_mock1,
                 mocked1,
                 final_state_server_clone1,

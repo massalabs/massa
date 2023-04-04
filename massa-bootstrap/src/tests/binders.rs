@@ -1,4 +1,3 @@
-use crate::establisher::Duplex;
 use crate::messages::{BootstrapClientMessage, BootstrapServerMessage};
 use crate::settings::{BootstrapClientConfig, BootstrapSrvBindCfg};
 use crate::BootstrapConfig;
@@ -19,6 +18,7 @@ use massa_models::node::NodeId;
 use massa_models::version::Version;
 use massa_signature::{KeyPair, PublicKey};
 use massa_time::MassaTime;
+use std::net::TcpStream;
 use std::str::FromStr;
 
 lazy_static::lazy_static! {
@@ -28,8 +28,8 @@ lazy_static::lazy_static! {
     };
 }
 
-impl<D: Duplex> BootstrapClientBinder<D> {
-    pub fn test_default(client_duplex: D, remote_pubkey: PublicKey) -> Self {
+impl BootstrapClientBinder {
+    pub fn test_default(client_duplex: TcpStream, remote_pubkey: PublicKey) -> Self {
         let cfg = BootstrapClientConfig {
             max_bytes_read_write: f64::INFINITY,
             max_bootstrap_message_size: MAX_BOOTSTRAP_MESSAGE_SIZE,

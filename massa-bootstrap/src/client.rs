@@ -16,7 +16,7 @@ use tracing::{debug, info, warn};
 use crate::{
     client_binder::BootstrapClientBinder,
     error::BootstrapError,
-    establisher::{BSConnector, Duplex},
+    establisher::BSConnector,
     messages::{BootstrapClientMessage, BootstrapServerMessage},
     settings::IpType,
     BootstrapConfig, GlobalBootstrapState,
@@ -25,9 +25,9 @@ use crate::{
 /// This function will send the starting point to receive a stream of the ledger and will receive and process each part until receive a `BootstrapServerMessage::FinalStateFinished` message from the server.
 /// `next_bootstrap_message` passed as parameter must be `BootstrapClientMessage::AskFinalStatePart` enum variant.
 /// `next_bootstrap_message` will be updated after receiving each part so that in case of connection lost we can restart from the last message we processed.
-fn stream_final_state_and_consensus<D: Duplex>(
+fn stream_final_state_and_consensus(
     cfg: &BootstrapConfig,
-    client: &mut BootstrapClientBinder<D>,
+    client: &mut BootstrapClientBinder,
     next_bootstrap_message: &mut BootstrapClientMessage,
     global_bootstrap_state: &mut GlobalBootstrapState,
 ) -> Result<(), BootstrapError> {
@@ -172,9 +172,9 @@ fn stream_final_state_and_consensus<D: Duplex>(
 
 /// Gets the state from a bootstrap server (internal private function)
 /// needs to be CANCELLABLE
-fn bootstrap_from_server<D: Duplex>(
+fn bootstrap_from_server(
     cfg: &BootstrapConfig,
-    client: &mut BootstrapClientBinder<D>,
+    client: &mut BootstrapClientBinder,
     next_bootstrap_message: &mut BootstrapClientMessage,
     global_bootstrap_state: &mut GlobalBootstrapState,
     our_version: Version,
@@ -301,9 +301,9 @@ fn bootstrap_from_server<D: Duplex>(
     Ok(())
 }
 
-fn send_client_message<D: Duplex>(
+fn send_client_message(
     message_to_send: &BootstrapClientMessage,
-    client: &mut BootstrapClientBinder<D>,
+    client: &mut BootstrapClientBinder,
     write_timeout: Duration,
     read_timeout: Duration,
     error: &str,
@@ -325,7 +325,7 @@ fn connect_to_server(
     bootstrap_config: &BootstrapConfig,
     addr: &SocketAddr,
     pub_key: &PublicKey,
-) -> Result<BootstrapClientBinder<std::net::TcpStream>, BootstrapError> {
+) -> Result<BootstrapClientBinder, BootstrapError> {
     let socket = connector.connect_timeout(*addr, Some(bootstrap_config.connect_timeout))?;
     socket.set_nonblocking(false)?;
     Ok(BootstrapClientBinder::new(

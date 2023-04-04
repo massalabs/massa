@@ -1,9 +1,10 @@
 // Copyright (c) 2022 MASSA LABS <info@massa.net>
 
+use std::io::{Read, Write};
+use std::net::TcpStream;
 use std::time::Duration;
 
 use crate::error::BootstrapError;
-use crate::establisher::Duplex;
 use crate::messages::{
     BootstrapClientMessage, BootstrapClientMessageSerializer, BootstrapServerMessage,
     BootstrapServerMessageDeserializer,
@@ -17,24 +18,24 @@ use massa_signature::{PublicKey, Signature, SIGNATURE_SIZE_BYTES};
 use rand::{rngs::StdRng, RngCore, SeedableRng};
 
 /// Bootstrap client binder
-pub struct BootstrapClientBinder<D: Duplex> {
+pub struct BootstrapClientBinder {
     // max_bootstrap_message_size: u32,
     size_field_len: usize,
     remote_pubkey: PublicKey,
-    duplex: D,
+    duplex: TcpStream,
     prev_message: Option<Hash>,
     version_serializer: VersionSerializer,
     cfg: BootstrapClientConfig,
 }
 
-impl<D: Duplex> BootstrapClientBinder<D> {
+impl BootstrapClientBinder {
     /// Creates a new `WriteBinder`.
     ///
     /// # Argument
     /// * duplex: duplex stream.
     /// * limit: limit max bytes per second (up and down)
     #[allow(clippy::too_many_arguments)]
-    pub fn new(duplex: D, remote_pubkey: PublicKey, cfg: BootstrapClientConfig) -> Self {
+    pub fn new(duplex: TcpStream, remote_pubkey: PublicKey, cfg: BootstrapClientConfig) -> Self {
         let size_field_len = u32::be_bytes_min_length(cfg.max_bootstrap_message_size);
         BootstrapClientBinder {
             size_field_len,
