@@ -69,6 +69,7 @@ impl HandshakeWorker {
     /// * `timeout_duration`: after `timeout_duration` milliseconds, the handshake attempt is dropped.
     /// * `connection_id`: Node we are trying to connect for debugging
     /// * `version`: Node version used in handshake initialization (check peers compatibility)
+    /// * `last_start_period`: Used in the message deserializer
     #[allow(clippy::too_many_arguments)]
     pub fn spawn(
         socket_reader: ReadHalf,

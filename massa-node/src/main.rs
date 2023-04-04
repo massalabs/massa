@@ -1086,6 +1086,7 @@ async fn run(args: Args) -> anyhow::Result<()> {
         if !restart {
             break;
         }
+        // If we restart because of a desync, then we do not want to restart from a snapshot
         cur_args.restart_from_snapshot_at_period = None;
         interrupt_signal_listener.abort();
     }

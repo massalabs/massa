@@ -108,7 +108,8 @@ impl FinalState {
         })
     }
 
-    /// Initializes a `FinalState` from a snapshot
+    /// Initializes a `FinalState` from a snapshot. Currently, we do not use the final_state from the ledger,
+    /// we just create a new one. This will be changed in the follow-up.
     ///
     /// # Arguments
     /// * `config`: the configuration of the execution state
@@ -125,7 +126,7 @@ impl FinalState {
 
         // FIRST, we recover the last known final_state
         let mut final_state = FinalState::new(config, ledger, selector)?;
-        let final_state_hash_from_snapshot = Hash::from_bytes(FINAL_STATE_HASH_INITIAL_BYTES);
+        let _final_state_hash_from_snapshot = Hash::from_bytes(FINAL_STATE_HASH_INITIAL_BYTES);
         final_state.pos_state.create_initial_cycle();
 
         // TODO: We recover the final_state from the RocksDB instance instead
@@ -145,27 +146,24 @@ impl FinalState {
         final_state.compute_state_hash_at_slot(final_state.slot);
 
         // Check the hash to see if we correctly recovered the snapshot
-        // TODO: Once we deserialize the final_state from the snapshot, we should check the hash again (replace _ with true)
-        match final_state.final_state_hash == final_state_hash_from_snapshot {
-            _ => {
-                // Then, interpolate the downtime, to attach at end_slot;
-                final_state.last_start_period = last_start_period;
+        // TODO: Redo this check when we get the final_state from the ledger
+        /*if final_state.final_state_hash != final_state_hash_from_snapshot {
+            warn!("The hash of the final_state recovered from the snapshot is different from the hash saved.");
+        }*/
 
-                // We compute the draws here because we need to feed_cycles when interpolating
-                final_state.compute_initial_draws()?;
+        // Then, interpolate the downtime, to attach at end_slot;
+        final_state.last_start_period = last_start_period;
 
-                final_state.interpolate_downtime()?;
+        // We compute the draws here because we need to feed_cycles when interpolating
+        final_state.compute_initial_draws()?;
 
-                Ok(final_state)
-            }
-            #[allow(unreachable_patterns)]
-            false => Err(FinalStateError::SnapshotError(String::from(
-                "Invalid Final state hash",
-            ))),
-        }
+        final_state.interpolate_downtime()?;
+
+        Ok(final_state)
     }
 
-    /// Once we created a FinalState from a snapshot, we need to edit it to attach at the end_slot and handle the downtime
+    /// Once we created a FinalState from a snapshot, we need to edit it to attach at the end_slot and handle the downtime.
+    /// This basically recreates the history of the final_state, without executing the slots.
     fn interpolate_downtime(&mut self) -> Result<(), FinalStateError> {
         // TODO: Change the current_slot when we deserialize the final state from RocksDB. Until then, final_state slot and the ledger slot are not consistent!
         // let current_slot = self.slot;
@@ -311,6 +309,7 @@ impl FinalState {
         Ok(())
     }
 
+    /// Used during interpolation, when a new cycle is set as completed
     fn feed_cycle_hash_and_selector_for_interpolation(
         &mut self,
         cycle: u64,

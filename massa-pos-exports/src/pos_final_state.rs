@@ -128,9 +128,9 @@ impl PoSFinalState {
         ));
     }
 
-    /// Create the initial cycle based off the initial rolls.
+    /// Create the a cycle based off of another cycle_info. Used for downtime interpolation,
+    /// when restarting from a snapshot.
     ///
-    /// This should be called only if bootstrap did not happen.
     pub fn create_new_cycle_from_last(
         &mut self,
         last_cycle_info: &CycleInfo,
