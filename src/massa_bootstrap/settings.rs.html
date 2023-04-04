@@ -206,14 +206,6 @@
 <a href="#206" id="206">206</a>
 <a href="#207" id="207">207</a>
 <a href="#208" id="208">208</a>
-<a href="#209" id="209">209</a>
-<a href="#210" id="210">210</a>
-<a href="#211" id="211">211</a>
-<a href="#212" id="212">212</a>
-<a href="#213" id="213">213</a>
-<a href="#214" id="214">214</a>
-<a href="#215" id="215">215</a>
-<a href="#216" id="216">216</a>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="kw">use </span>massa_models::block::BlockDeserializerArgs;
@@ -339,10 +331,6 @@
     </span><span class="kw">pub </span>consensus_bootstrap_part_size: u64,
     <span class="doccomment">/// max number of consensus block ids when sending a bootstrap cursor from the client
     </span><span class="kw">pub </span>max_consensus_block_ids: u64,
-    <span class="doccomment">/// block count to check / process for versioning stats
-    </span><span class="kw">pub </span>mip_store_stats_block_considered: usize,
-    <span class="doccomment">/// max number of counters for versioning stats
-    </span><span class="kw">pub </span>mip_store_stats_counters_max: usize,
 }
 
 <span class="doccomment">/// Bootstrap server binding
@@ -387,8 +375,6 @@
     <span class="kw">pub </span>max_credits_length: u64,
     <span class="kw">pub </span>max_executed_ops_length: u64,
     <span class="kw">pub </span>max_ops_changes_length: u64,
-    <span class="kw">pub </span>mip_store_stats_block_considered: usize,
-    <span class="kw">pub </span>mip_store_stats_counters_max: usize,
 }
 
 <span class="doccomment">/// Bootstrap Message der args
@@ -416,8 +402,6 @@
     <span class="kw">pub </span>max_credits_length: u64,
     <span class="kw">pub </span>max_executed_ops_length: u64,
     <span class="kw">pub </span>max_ops_changes_length: u64,
-    <span class="kw">pub </span>mip_store_stats_block_considered: usize,
-    <span class="kw">pub </span>mip_store_stats_counters_max: usize,
 }
 
 <span class="comment">// TODO: add a proc macro for this case

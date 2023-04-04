@@ -525,28 +525,6 @@
 <a href="#525" id="525">525</a>
 <a href="#526" id="526">526</a>
 <a href="#527" id="527">527</a>
-<a href="#528" id="528">528</a>
-<a href="#529" id="529">529</a>
-<a href="#530" id="530">530</a>
-<a href="#531" id="531">531</a>
-<a href="#532" id="532">532</a>
-<a href="#533" id="533">533</a>
-<a href="#534" id="534">534</a>
-<a href="#535" id="535">535</a>
-<a href="#536" id="536">536</a>
-<a href="#537" id="537">537</a>
-<a href="#538" id="538">538</a>
-<a href="#539" id="539">539</a>
-<a href="#540" id="540">540</a>
-<a href="#541" id="541">541</a>
-<a href="#542" id="542">542</a>
-<a href="#543" id="543">543</a>
-<a href="#544" id="544">544</a>
-<a href="#545" id="545">545</a>
-<a href="#546" id="546">546</a>
-<a href="#547" id="547">547</a>
-<a href="#548" id="548">548</a>
-<a href="#549" id="549">549</a>
 </pre><pre class="rust"><code><span class="kw">use </span>humantime::format_duration;
 <span class="kw">use </span>std::{collections::HashSet, net::SocketAddr, sync::Arc, time::Duration};
 
@@ -555,7 +533,6 @@
 <span class="kw">use </span>massa_models::{node::NodeId, streaming_step::StreamingStep, version::Version};
 <span class="kw">use </span>massa_signature::PublicKey;
 <span class="kw">use </span>massa_time::MassaTime;
-<span class="kw">use </span>massa_versioning_worker::versioning::{MipStore, MipStoreRaw};
 <span class="kw">use </span>parking_lot::RwLock;
 <span class="kw">use </span>rand::{
     prelude::{SliceRandom, StdRng},
@@ -878,27 +855,6 @@
                     other =&gt; <span class="kw">return </span><span class="prelude-val">Err</span>(BootstrapError::UnexpectedServerMessage(other)),
                 };
                 global_bootstrap_state.peers = <span class="prelude-val">Some</span>(peers);
-                <span class="kw-2">*</span>next_bootstrap_message = BootstrapClientMessage::AskBootstrapMipStore;
-            }
-            BootstrapClientMessage::AskBootstrapMipStore =&gt; {
-                <span class="kw">let </span>mip_store_raw: MipStoreRaw = <span class="kw">match </span>send_client_message(
-                    next_bootstrap_message,
-                    client,
-                    write_timeout,
-                    cfg.read_timeout.into(),
-                    <span class="string">&quot;ask bootstrap versioning store timed out&quot;</span>,
-                )
-                .<span class="kw">await</span><span class="question-mark">?
-                </span>{
-                    BootstrapServerMessage::BootstrapMipStore { store: store_raw } =&gt; store_raw,
-                    BootstrapServerMessage::BootstrapError { error } =&gt; {
-                        <span class="kw">return </span><span class="prelude-val">Err</span>(BootstrapError::ReceivedError(error))
-                    }
-                    other =&gt; <span class="kw">return </span><span class="prelude-val">Err</span>(BootstrapError::UnexpectedServerMessage(other)),
-                };
-
-                global_bootstrap_state.mip_store =
-                    <span class="prelude-val">Some</span>(MipStore(Arc::new(RwLock::new(mip_store_raw))));
                 <span class="kw-2">*</span>next_bootstrap_message = BootstrapClientMessage::BootstrapSuccess;
             }
             BootstrapClientMessage::BootstrapSuccess =&gt; {

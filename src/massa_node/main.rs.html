@@ -1059,15 +1059,6 @@
 <a href="#1059" id="1059">1059</a>
 <a href="#1060" id="1060">1060</a>
 <a href="#1061" id="1061">1061</a>
-<a href="#1062" id="1062">1062</a>
-<a href="#1063" id="1063">1063</a>
-<a href="#1064" id="1064">1064</a>
-<a href="#1065" id="1065">1065</a>
-<a href="#1066" id="1066">1066</a>
-<a href="#1067" id="1067">1067</a>
-<a href="#1068" id="1068">1068</a>
-<a href="#1069" id="1069">1069</a>
-<a href="#1070" id="1070">1070</a>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="attr">#![doc = <span class="macro">include_str!</span>(<span class="string">&quot;../../README.md&quot;</span>)]
@@ -1312,8 +1303,6 @@
         max_ops_changes_length: MAX_EXECUTED_OPS_CHANGES_LENGTH,
         consensus_bootstrap_part_size: CONSENSUS_BOOTSTRAP_PART_SIZE,
         max_consensus_block_ids: MAX_CONSENSUS_BLOCKS_IDS,
-        mip_store_stats_block_considered: MIP_STORE_STATS_BLOCK_CONSIDERED,
-        mip_store_stats_counters_max: MIP_STORE_STATS_COUNTERS_MAX,
     };
 
     <span class="comment">// bootstrap
@@ -1411,13 +1400,7 @@
         block_count_considered: MIP_STORE_STATS_BLOCK_CONSIDERED,
         counters_max: MIP_STORE_STATS_COUNTERS_MAX,
     };
-    <span class="kw">let </span><span class="kw-2">mut </span>mip_store =
-        MipStore::try_from(([], mip_stats_config)).expect(<span class="string">&quot;Cannot create an empty MIP store&quot;</span>);
-    <span class="kw">if let </span><span class="prelude-val">Some</span>(bootstrap_mip_store) = bootstrap_state.mip_store {
-        mip_store
-            .update_with(<span class="kw-2">&amp;</span>bootstrap_mip_store)
-            .expect(<span class="string">&quot;Cannot update MIP store with bootstrap mip store&quot;</span>);
-    }
+    <span class="kw">let </span>mip_store = MipStore::try_from(([], mip_stats_config)).unwrap();
 
     <span class="comment">// launch execution module
     </span><span class="kw">let </span>execution_config = ExecutionConfig {
@@ -1641,7 +1624,6 @@
             DefaultListener::new(<span class="kw-2">&amp;</span>addr).unwrap(),
             private_key,
             <span class="kw-2">*</span>VERSION,
-            mip_store.clone(),
         )
         .unwrap(),
         <span class="prelude-val">None </span>=&gt; <span class="prelude-val">None</span>,
