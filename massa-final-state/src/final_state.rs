@@ -403,7 +403,6 @@ impl FinalState {
         self.slot = slot;
 
         // apply the state changes
-        // unwrap is justified because every error in PoS `apply_changes` is critical
         self.async_pool
             .apply_changes_unchecked(&changes.async_pool_changes);
         self.pos_state

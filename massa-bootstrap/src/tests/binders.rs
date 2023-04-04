@@ -29,8 +29,8 @@ lazy_static::lazy_static! {
     };
 }
 
-impl BootstrapClientBinder {
-    pub fn test_default(client_duplex: Duplex, remote_pubkey: PublicKey) -> Self {
+impl<D: Duplex> BootstrapClientBinder<D> {
+    pub fn test_default(client_duplex: D, remote_pubkey: PublicKey) -> Self {
         let cfg = BootstrapClientConfig {
             max_bytes_read_write: f64::INFINITY,
             max_bootstrap_message_size: MAX_BOOTSTRAP_MESSAGE_SIZE,

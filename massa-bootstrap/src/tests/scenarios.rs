@@ -46,9 +46,14 @@ use massa_signature::KeyPair;
 use massa_time::MassaTime;
 use parking_lot::RwLock;
 use serial_test::serial;
-use std::{path::PathBuf, str::FromStr, sync::Arc, time::Duration};
+use std::{
+    path::PathBuf,
+    str::FromStr,
+    sync::{atomic::Ordering, Arc},
+    time::Duration,
+};
 use tempfile::TempDir;
-use tokio::sync::mpsc;
+use tokio::{net::TcpStream, sync::mpsc};
 
 lazy_static::lazy_static! {
     pub static ref BOOTSTRAP_CONFIG_KEYPAIR: (BootstrapConfig, KeyPair) = {
@@ -147,27 +152,28 @@ async fn test_bootstrap_server() {
     let final_state_server_clone = final_state_server.clone();
 
     // start bootstrap server
-    let (bootstrap_establisher, bootstrap_interface) = mock_establisher::new();
-    let bootstrap_manager = start_bootstrap_server(
+    let (mut mock_bs_listener, bootstrap_interface) = mock_establisher::new();
+    let bootstrap_manager = start_bootstrap_server::<TcpStream>(
         consensus_controller,
         NetworkCommandSender(network_cmd_tx),
         final_state_server.clone(),
         bootstrap_config.clone(),
-        bootstrap_establisher,
+        mock_bs_listener
+            .get_listener(&bootstrap_config.listen_addr.unwrap())
+            .unwrap(),
         keypair.clone(),
         Version::from_str("TEST.1.10").unwrap(),
     )
-    .await
     .unwrap()
     .unwrap();
 
     // launch the get_state process
-    let (remote_establisher, mut remote_interface) = mock_establisher::new();
+    let (mut mock_remote_connector, mut remote_interface) = mock_establisher::new();
     let get_state_h = tokio::spawn(async move {
         get_state(
             bootstrap_config,
             final_state_client_clone,
-            remote_establisher,
+            mock_remote_connector.get_connector(),
             Version::from_str("TEST.1.10").unwrap(),
             MassaTime::now().unwrap().saturating_sub(1000.into()),
             None,
@@ -178,24 +184,22 @@ async fn test_bootstrap_server() {
     });
 
     // accept connection attempt from remote
-    let (remote_rw, conn_addr, resp) = tokio::time::timeout(
-        std::time::Duration::from_millis(1000),
-        remote_interface.wait_connection_attempt_from_controller(),
-    )
-    .await
-    .expect("timeout waiting for connection attempt from remote")
-    .expect("error receiving connection attempt from remote");
-    let expect_conn_addr = bootstrap_config.bootstrap_list[0].0;
-    assert_eq!(
-        conn_addr, expect_conn_addr,
-        "client connected to wrong bootstrap ip"
-    );
-    resp.send(true)
-        .expect("could not send connection accept to remote");
+    let remote_bridge = std::thread::spawn(move || {
+        let (remote_rw, conn_addr, waker) = remote_interface
+            .wait_connection_attempt_from_controller()
+            .expect("timeout waiting for connection attempt from remote");
+        let expect_conn_addr = bootstrap_config.bootstrap_list[0].0;
+        assert_eq!(
+            conn_addr, expect_conn_addr,
+            "client connected to wrong bootstrap ip"
+        );
+        waker.store(true, Ordering::Relaxed);
+        remote_rw
+    });
 
     // connect to bootstrap
     let remote_addr = std::net::SocketAddr::from_str("82.245.72.98:10000").unwrap(); // not checked
-    let bootstrap_rw = tokio::time::timeout(
+    let bootstrap_bridge = tokio::time::timeout(
         std::time::Duration::from_millis(1000),
         bootstrap_interface.connect_to_controller(&remote_addr),
     )
@@ -204,11 +208,18 @@ async fn test_bootstrap_server() {
     .expect("could not connect to bootstrap");
 
     // launch bridge
+    bootstrap_bridge.set_nonblocking(true).unwrap();
+    let bootstrap_bridge = TcpStream::from_std(bootstrap_bridge).unwrap();
     let bridge = tokio::spawn(async move {
-        bridge_mock_streams(remote_rw, bootstrap_rw).await;
+        let remote_bridge = remote_bridge.join().unwrap();
+        remote_bridge.set_nonblocking(true).unwrap();
+        let remote_bridge = TcpStream::from_std(remote_bridge).unwrap();
+        bridge_mock_streams(remote_bridge, bootstrap_bridge).await;
     });
 
     // intercept peers being asked
+    // TODO: This would ideally be mocked such that the bootstrap server takes an impl of the network controller.
+    // and the impl is mocked such that it will just return the sent peers
     let wait_peers = async move || {
         // wait for bootstrap to ask network for peers, send them
         let response =

@@ -1175,7 +1175,7 @@ mod tests {
         assert!(events[0].data.contains("massa_execution_error"));
         assert!(events[0]
             .data
-            .contains("We reach the vesting constraint : vesting_min_balance=100000 with value min_balance=60000"));
+            .contains("We reach the vesting constraint: vesting_min_balance=100000 with value min_balance=60000"));
 
         // check recipient balance
         assert!(sample_state
@@ -1267,7 +1267,7 @@ mod tests {
         let events = controller.get_filtered_sc_output_event(EventFilter::default());
         assert!(events[0].data.contains("massa_execution_error"));
         assert!(events[0].data.contains(
-            "We reach the vesting constraint : trying to get to a total of 160 rolls but only 50 are allowed at that time by the vesting scheme"
+            "We reach the vesting constraint: trying to get to a total of 160 rolls but only 50 are allowed at that time by the vesting scheme"
         ));
 
         // check roll count of the buyer address and its balance, same as start because operation was rejected
@@ -1979,6 +1979,81 @@ mod tests {
         assert_eq!(events.len(), 2, "wrong event count");
         assert_eq!(events[0].context.slot, Slot::new(1, 0), "Wrong event slot");
         assert_eq!(events[1].context.slot, Slot::new(1, 1), "Wrong event slot");
+
+        manager.stop();
+    }
+
+    #[test]
+    #[serial]
+    pub fn not_enough_compilation_gas() {
+        let vesting = get_initials_vesting(false);
+        // config
+        let exec_cfg = ExecutionConfig {
+            t0: 100.into(),
+            initial_vesting_path: vesting.path().to_path_buf(),
+            ..ExecutionConfig::default()
+        };
+        // get a sample final state
+        let (sample_state, _keep_file, _keep_dir) = get_sample_state().unwrap();
+
+        // init the storage
+        let mut storage = Storage::create_root();
+        // init the MIP store
+        let mip_stats_config = MipStatsConfig {
+            block_count_considered: MIP_STORE_STATS_BLOCK_CONSIDERED,
+            counters_max: MIP_STORE_STATS_COUNTERS_MAX,
+        };
+        let mip_store = MipStore::try_from(([], mip_stats_config)).unwrap();
+        // start the execution worker
+        let (mut manager, controller) = start_execution_worker(
+            exec_cfg.clone(),
+            sample_state.clone(),
+            sample_state.read().pos_state.selector.clone(),
+            mip_store,
+        );
+        // initialize the execution system with genesis blocks
+        init_execution_worker(&exec_cfg, &storage, controller.clone());
+
+        // keypair associated to thread 0
+        let keypair =
+            KeyPair::from_str("S1JJeHiZv1C1zZN5GLFcbz6EXYiccmUPLkYuDFA3kayjxP39kFQ").unwrap();
+
+        // load bytecode
+        // you can check the source code of the following wasm file in massa-unit-tests-src
+        let bytecode = include_bytes!("./wasm/datastore_manipulations.wasm");
+        // create the block containing the operation
+        let operation = Operation::new_verifiable(
+            Operation {
+                fee: Amount::from_mantissa_scale(10, 0),
+                expire_period: 10,
+                op: OperationType::ExecuteSC {
+                    data: bytecode.to_vec(),
+                    max_gas: 0,
+                    datastore: BTreeMap::default(),
+                },
+            },
+            OperationSerializer::new(),
+            &keypair,
+        )
+        .unwrap();
+        storage.store_operations(vec![operation.clone()]);
+        let block = create_block(KeyPair::generate(), vec![operation], Slot::new(1, 0)).unwrap();
+        // store the block in storage
+        storage.store_block(block.clone());
+        // set our block as a final block
+        let mut finalized_blocks: HashMap<Slot, BlockId> = Default::default();
+        finalized_blocks.insert(block.content.header.content.slot, block.id);
+        let block_store = vec![(block.id, storage.clone())].into_iter().collect();
+
+        // update blockclique
+        controller.update_blockclique_status(finalized_blocks, Default::default(), block_store);
+        std::thread::sleep(Duration::from_millis(100));
+
+        // assert events
+        let events = controller.get_filtered_sc_output_event(EventFilter::default());
+        assert!(events[0]
+            .data
+            .contains("not enough gas to pay for singlepass compilation"));
 
         manager.stop();
     }
