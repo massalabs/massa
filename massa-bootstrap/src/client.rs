@@ -151,6 +151,7 @@ fn stream_final_state_and_consensus<D: Duplex>(
                     write_final_state.reset();
                     return Err(BootstrapError::GeneralError(String::from("Slot too old")));
                 }
+                // At this point, we have succesfully received the next message from the server, and it's an error-message String
                 BootstrapServerMessage::BootstrapError { error } => {
                     return Err(BootstrapError::GeneralError(error))
                 }
