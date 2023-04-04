@@ -47,5 +47,6 @@
   "assembly_script_transfer_coins": 189,
   "assembly_script_transfer_coins_for": 218,
   "assembly_script_unsafe_random": 143,
-  "launch": 50000
+  "launch": 50000,
+  "sp_compilation_cost": 10000
 }
