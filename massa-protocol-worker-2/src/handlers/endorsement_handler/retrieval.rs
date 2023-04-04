@@ -19,7 +19,7 @@ use super::{
 };
 
 pub struct RetrievalThread {
-    receiver: Receiver<(PeerId, Vec<u8>)>,
+    receiver: Receiver<(PeerId, u64, Vec<u8>)>,
     receiver_ext: Receiver<EndorsementHandlerCommand>,
     cached_endorsement_ids: PreHashSet<EndorsementId>,
     pool_controller: Box<dyn PoolController>,
@@ -30,7 +30,7 @@ pub struct RetrievalThread {
 impl RetrievalThread {
     fn run(&mut self) {
         //TODO: Real values
-        let endorsement_message_deserializer =
+        let mut endorsement_message_deserializer =
             EndorsementMessageDeserializer::new(EndorsementMessageDeserializerArgs {
                 thread_count: 32,
                 max_length_endorsements: 10000,
@@ -40,7 +40,8 @@ impl RetrievalThread {
             select! {
                 recv(self.receiver) -> msg => {
                     match msg {
-                        Ok((peer_id, message)) => {
+                        Ok((peer_id, message_id, message)) => {
+                            endorsement_message_deserializer.set_message_id(message_id);
                             let (rest, message) = endorsement_message_deserializer
                                 .deserialize::<DeserializeError>(&message)
                                 .unwrap();
@@ -94,7 +95,7 @@ impl RetrievalThread {
 }
 
 pub fn start_retrieval_thread(
-    receiver: Receiver<(PeerId, Vec<u8>)>,
+    receiver: Receiver<(PeerId, u64, Vec<u8>)>,
     receiver_ext: Receiver<EndorsementHandlerCommand>,
     pool_controller: Box<dyn PoolController>,
     storage: Storage,

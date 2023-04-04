@@ -70,7 +70,7 @@ pub struct EndorsementMessageDeserializerArgs {
 }
 
 pub struct EndorsementMessageDeserializer {
-    id_deserializer: U64VarIntDeserializer,
+    message_id: u64,
     length_endorsements_deserializer: U64VarIntDeserializer,
     secure_share_deserializer: SecureShareDeserializer<Endorsement, EndorsementDeserializer>,
 }
@@ -78,7 +78,7 @@ pub struct EndorsementMessageDeserializer {
 impl EndorsementMessageDeserializer {
     pub fn new(args: EndorsementMessageDeserializerArgs) -> Self {
         Self {
-            id_deserializer: U64VarIntDeserializer::new(Included(0), Included(u64::MAX)),
+            message_id: 0,
             length_endorsements_deserializer: U64VarIntDeserializer::new(
                 Included(0),
                 Included(args.max_length_endorsements),
@@ -89,6 +89,10 @@ impl EndorsementMessageDeserializer {
             )),
         }
     }
+
+    pub fn set_message_id(&mut self, message_id: u64) {
+        self.message_id = message_id;
+    }
 }
 
 impl Deserializer<EndorsementMessage> for EndorsementMessageDeserializer {
@@ -97,8 +101,7 @@ impl Deserializer<EndorsementMessage> for EndorsementMessageDeserializer {
         buffer: &'a [u8],
     ) -> IResult<&'a [u8], EndorsementMessage, E> {
         context("Failed EndorsementMessage deserialization", |buffer| {
-            let (input, id) = self.id_deserializer.deserialize(buffer)?;
-            let id = MessageTypeId::try_from(id).map_err(|_| {
+            let id = MessageTypeId::try_from(self.message_id).map_err(|_| {
                 nom::Err::Error(ParseError::from_error_kind(
                     buffer,
                     nom::error::ErrorKind::Eof,
@@ -117,7 +120,7 @@ impl Deserializer<EndorsementMessage> for EndorsementMessageDeserializer {
                     ),
                 )
                 .map(EndorsementMessage::Endorsements)
-                .parse(input),
+                .parse(buffer),
             }
         })
         .parse(buffer)

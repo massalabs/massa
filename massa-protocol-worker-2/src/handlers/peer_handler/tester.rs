@@ -3,8 +3,8 @@ use std::{collections::HashMap, net::SocketAddr, thread::JoinHandle, time::Durat
 use massa_serialization::{DeserializeError, Deserializer};
 use peernet::{
     config::PeerNetConfiguration,
-    error::PeerNetError,
-    handlers::MessageHandlers,
+    error::{PeerNetError, PeerNetResult},
+    messages::MessagesHandler,
     network_manager::PeerNetManager,
     peer::HandshakeHandler,
     peer_id::PeerId,
@@ -37,29 +37,48 @@ impl TesterHandshake {
     }
 }
 
+#[derive(Clone)]
+pub struct TesterMessagesHandler;
+
+impl MessagesHandler for TesterMessagesHandler {
+    fn deserialize_id<'a>(
+        &self,
+        data: &'a [u8],
+        _peer_id: &PeerId,
+    ) -> PeerNetResult<(&'a [u8], u64)> {
+        Ok((data, 0))
+    }
+
+    fn handle(&self, _id: u64, _data: &[u8], _peer_id: &PeerId) -> PeerNetResult<()> {
+        Ok(())
+    }
+}
+
 impl HandshakeHandler for TesterHandshake {
-    fn perform_handshake(
+    fn perform_handshake<TesterMessagesHandler>(
         &mut self,
         _: &KeyPair,
         endpoint: &mut Endpoint,
         _: &HashMap<SocketAddr, TransportType>,
-        _: &MessageHandlers,
-    ) -> Result<PeerId, PeerNetError> {
+        _: TesterMessagesHandler,
+    ) -> PeerNetResult<PeerId> {
         let data = endpoint.receive()?;
         let peer_id = PeerId::from_bytes(&data[..32].try_into().unwrap())?;
         let (_, announcement) = self
             .announcement_deserializer
             .deserialize::<DeserializeError>(&data[32..])
             .map_err(|err| {
-                PeerNetError::HandshakeError(format!("Failed to deserialize announcement: {}", err))
+                PeerNetError::HandshakeError.error(
+                    "Tester Handshake",
+                    Some(format!("Failed to deserialize announcement: {}", err)),
+                )
             })?;
         if peer_id
             .verify_signature(&announcement.hash, &announcement.signature)
             .is_err()
         {
-            return Err(PeerNetError::HandshakeError(String::from(
-                "Invalid signature",
-            )));
+            return Err(PeerNetError::HandshakeError
+                .error("Tester Handshake", Some(String::from("Invalid signature"))));
         }
         //TODO: Check ip we are connected match one of the announced ips
         {
@@ -90,7 +109,10 @@ pub struct Tester {
 impl Tester {
     pub fn new(peer_db: SharedPeerDB, listener: (SocketAddr, TransportType)) -> Self {
         let handle = std::thread::spawn(move || {
-            let mut config = PeerNetConfiguration::default(TesterHandshake::new(peer_db));
+            let mut config = PeerNetConfiguration::default(
+                TesterHandshake::new(peer_db),
+                TesterMessagesHandler {},
+            );
             config.fallback_function = Some(&empty_fallback);
             config.max_out_connections = 1;
             let mut network_manager = PeerNetManager::new(config);
@@ -98,7 +120,7 @@ impl Tester {
                 .try_connect(
                     listener.0,
                     Duration::from_millis(200),
-                    &OutConnectionConfig::Tcp(TcpOutConnectionConfig {}),
+                    &OutConnectionConfig::Tcp(Box::new(TcpOutConnectionConfig {})),
                 )
                 .unwrap();
             std::thread::sleep(Duration::from_millis(10));
@@ -113,8 +135,7 @@ pub fn empty_fallback(
     _keypair: &KeyPair,
     _endpoint: &mut Endpoint,
     _listeners: &HashMap<SocketAddr, TransportType>,
-    _message_handlers: &MessageHandlers,
-) -> Result<(), PeerNetError> {
+) -> PeerNetResult<()> {
     println!("Fallback function called");
     std::thread::sleep(Duration::from_millis(10000));
     Ok(())

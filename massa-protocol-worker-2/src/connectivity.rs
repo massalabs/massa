@@ -1,19 +1,19 @@
-use std::{collections::HashMap, net::SocketAddr, thread::JoinHandle, time::Duration};
-
 use crossbeam::{
     channel::{unbounded, Sender},
     select,
 };
 use massa_pool_exports::PoolController;
 use massa_protocol_exports_2::{ProtocolConfig, ProtocolError};
+use massa_serialization::U64VarIntDeserializer;
 use massa_storage::Storage;
 use peernet::{
     config::PeerNetConfiguration,
-    handlers::{MessageHandler, MessageHandlers},
     network_manager::PeerNetManager,
     peer_id::PeerId,
     transports::{OutConnectionConfig, TcpOutConnectionConfig, TransportType},
 };
+use std::ops::Bound::Included;
+use std::{collections::HashMap, net::SocketAddr, thread::JoinHandle, time::Duration};
 
 use crate::{
     controller::ProtocolControllerImpl,
@@ -23,6 +23,7 @@ use crate::{
         operation_handler::OperationHandler,
         peer_handler::{fallback_function, MassaHandshake, PeerManagementHandler},
     },
+    messages::MessagesHandler,
 };
 
 pub enum ConnectivityCommand {
@@ -51,28 +52,29 @@ pub fn start_connectivity_thread(
     let (sender_blocks_ext, receiver_blocks_ext) = unbounded();
 
     let handle = std::thread::spawn(move || {
-        let (mut peer_manager_handler, peer_manager_handler_sender) =
-            PeerManagementHandler::new(initial_peers);
+        let (mut peer_manager_handler, sender_peers) = PeerManagementHandler::new(initial_peers);
         //TODO: Bound the channel
         // Channels network <-> handlers
         let (sender_operations, receiver_operations) = unbounded();
         let (sender_endorsements, receiver_endorsements) = unbounded();
         let (sender_blocks, receiver_blocks) = unbounded();
 
-        let mut peernet_config = PeerNetConfiguration::default(MassaHandshake::new());
+        // Register channels for handlers
+        let message_handlers: MessagesHandler = MessagesHandler {
+            sender_blocks,
+            sender_endorsements,
+            sender_operations,
+            sender_peers,
+            id_deserializer: U64VarIntDeserializer::new(Included(0), Included(u64::MAX)),
+        };
+
+        let mut peernet_config =
+            PeerNetConfiguration::default(MassaHandshake::new(), message_handlers);
         peernet_config.self_keypair = config.keypair;
         peernet_config.fallback_function = Some(&fallback_function);
         //TODO: Add the rest of the config
         peernet_config.max_in_connections = config.max_in_connections;
         peernet_config.max_out_connections = config.max_out_connections;
-
-        // Register channels for handlers
-        let mut message_handlers: MessageHandlers = Default::default();
-        message_handlers.add_handler(0, peer_manager_handler_sender);
-        message_handlers.add_handler(1, MessageHandler::new(sender_operations));
-        message_handlers.add_handler(2, MessageHandler::new(sender_endorsements));
-        message_handlers.add_handler(3, MessageHandler::new(sender_blocks));
-        peernet_config.message_handlers = message_handlers;
 
         let mut manager = PeerNetManager::new(peernet_config);
 
@@ -142,7 +144,7 @@ pub fn start_connectivity_thread(
                             }
                             // We only manage TCP for now
                             let (addr, _transport) = peer_info.last_announce.listeners.iter().next().unwrap();
-                            manager.try_connect(*addr, Duration::from_millis(200), &OutConnectionConfig::Tcp(TcpOutConnectionConfig {})).unwrap();
+                            manager.try_connect(*addr, Duration::from_millis(200), &OutConnectionConfig::Tcp(Box::new(TcpOutConnectionConfig {}))).unwrap();
                         };
                     };
                 }

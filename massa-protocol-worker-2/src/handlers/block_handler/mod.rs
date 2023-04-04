@@ -23,14 +23,14 @@ pub struct BlockHandler {
 impl BlockHandler {
     pub fn new(
         active_connections: SharedActiveConnections,
-        receiver: Receiver<(PeerId, Vec<u8>)>,
+        receiver: Receiver<(PeerId, u64, Vec<u8>)>,
         receiver_ext: Receiver<BlockHandlerCommand>,
     ) -> Self {
         //TODO: Define real data
         let (_internal_sender, internal_receiver): (Sender<()>, Receiver<()>) = unbounded();
         let block_retrieval_thread = std::thread::spawn(move || {
             //TODO: Real values
-            let block_message_deserializer =
+            let mut block_message_deserializer =
                 BlockMessageDeserializer::new(BlockMessageDeserializerArgs {
                     thread_count: 32,
                     endorsement_count: 32,
@@ -48,7 +48,8 @@ impl BlockHandler {
                 select! {
                     recv(receiver) -> msg => {
                         match msg {
-                            Ok((peer_id, message)) => {
+                            Ok((peer_id, message_id, message)) => {
+                                block_message_deserializer.set_message_id(message_id);
                                 let (rest, message) = block_message_deserializer
                                     .deserialize::<DeserializeError>(&message)
                                     .unwrap();

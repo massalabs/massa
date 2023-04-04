@@ -13,7 +13,7 @@ use nom::{
     IResult, Parser,
 };
 use peernet::{
-    error::PeerNetError,
+    error::{PeerNetError, PeerNetResult},
     transports::TransportType,
     types::{Hash, KeyPair, Signature},
 };
@@ -156,13 +156,14 @@ impl Announcement {
     pub fn new(
         listeners: HashMap<SocketAddr, TransportType>,
         keypair: &KeyPair,
-    ) -> Result<Self, PeerNetError> {
+    ) -> PeerNetResult<Self> {
         let mut buf: Vec<u8> = vec![];
         let length_serializer = U64VarIntSerializer::new();
         length_serializer
             .serialize(&(listeners.len() as u64), &mut buf)
             .map_err(|err| {
-                PeerNetError::HandlerError(format!("Failed to serialize announcement: {}", err))
+                PeerNetError::HandlerError
+                    .error("Announcement serialization", Some(err.to_string()))
             })?;
         for listener in &listeners {
             let ip_bytes = match listener.0.ip() {
@@ -190,9 +191,9 @@ impl Announcement {
             listeners,
             timestamp,
             hash,
-            signature: keypair
-                .sign(&hash)
-                .map_err(|err| PeerNetError::SignError(err.to_string()))?,
+            signature: keypair.sign(&hash).map_err(|err| {
+                PeerNetError::SignError.error("Announcement serialization", Some(err.to_string()))
+            })?,
             serialized: buf,
         })
     }
