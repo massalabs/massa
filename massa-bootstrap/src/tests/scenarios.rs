@@ -177,6 +177,7 @@ async fn test_bootstrap_server() {
             Version::from_str("TEST.1.10").unwrap(),
             MassaTime::now().unwrap().saturating_sub(1000.into()),
             None,
+            None,
         )
         .await
         .unwrap()
@@ -322,9 +323,11 @@ async fn test_bootstrap_server() {
                 .pos_state
                 .apply_changes(change.pos_changes.clone(), *slot, false)
                 .unwrap();
-            final_state_server_write
-                .ledger
-                .apply_changes(change.ledger_changes.clone(), *slot);
+            final_state_server_write.ledger.apply_changes(
+                change.ledger_changes.clone(),
+                *slot,
+                None,
+            );
             final_state_server_write
                 .async_pool
                 .apply_changes_unchecked(&change.async_pool_changes);

@@ -28,6 +28,9 @@ pub struct FactoryConfig {
     /// maximum number of operation ids in block
     pub max_operations_per_block: u32,
 
+    /// last start period, to deduce genesis blocks
+    pub last_start_period: u64,
+
     /// cycle duration in periods
     pub periods_per_cycle: u64,
 

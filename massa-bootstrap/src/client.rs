@@ -70,9 +70,16 @@ async fn stream_final_state_and_consensus<D: Duplex>(
                     final_state_changes,
                     consensus_part,
                     consensus_outdated_ids,
+                    last_start_period,
                 } => {
                     // Set final state
                     let mut write_final_state = global_bootstrap_state.final_state.write();
+
+                    // We only need to receive the initial_state once
+                    if let Some(last_start_period) = last_start_period {
+                        write_final_state.last_start_period = last_start_period;
+                    }
+
                     let last_ledger_step = write_final_state.ledger.set_ledger_part(ledger_part)?;
                     let last_pool_step =
                         write_final_state.async_pool.set_pool_part(async_pool_part);
@@ -86,9 +93,11 @@ async fn stream_final_state_and_consensus<D: Duplex>(
                         .executed_ops
                         .set_executed_ops_part(exec_ops_part);
                     for (changes_slot, changes) in final_state_changes.iter() {
-                        write_final_state
-                            .ledger
-                            .apply_changes(changes.ledger_changes.clone(), *changes_slot);
+                        write_final_state.ledger.apply_changes(
+                            changes.ledger_changes.clone(),
+                            *changes_slot,
+                            None,
+                        );
                         write_final_state
                             .async_pool
                             .apply_changes_unchecked(&changes.async_pool_changes);
@@ -139,6 +148,7 @@ async fn stream_final_state_and_consensus<D: Duplex>(
                         last_credits_step,
                         last_ops_step,
                         last_consensus_step,
+                        send_last_start_period: false,
                     };
 
                     // Logs for an easier diagnostic if needed
@@ -167,6 +177,7 @@ async fn stream_final_state_and_consensus<D: Duplex>(
                         last_credits_step: StreamingStep::Started,
                         last_ops_step: StreamingStep::Started,
                         last_consensus_step: StreamingStep::Started,
+                        send_last_start_period: true,
                     };
                     let mut write_final_state = global_bootstrap_state.final_state.write();
                     write_final_state.reset();
@@ -427,16 +438,25 @@ pub async fn get_state(
     version: Version,
     genesis_timestamp: MassaTime,
     end_timestamp: Option<MassaTime>,
+    restart_from_snapshot_at_period: Option<u64>,
 ) -> Result<GlobalBootstrapState, BootstrapError> {
     massa_trace!("bootstrap.lib.get_state", {});
-    let now = MassaTime::now()?;
+
+    // If we restart from a snapshot, do not bootstrap
+    if restart_from_snapshot_at_period.is_some() {
+        massa_trace!("bootstrap.lib.get_state.init_from_snapshot", {});
+        return Ok(GlobalBootstrapState::new(final_state));
+    }
+
     // if we are before genesis, do not bootstrap
-    if now < genesis_timestamp {
+    if MassaTime::now()? < genesis_timestamp {
         massa_trace!("bootstrap.lib.get_state.init_from_scratch", {});
         // init final state
         {
             let mut final_state_guard = final_state.write();
+
             if !bootstrap_config.keep_ledger {
+                // load ledger from initial ledger file
                 final_state_guard
                     .ledger
                     .load_initial_ledger()
@@ -447,12 +467,14 @@ pub async fn get_state(
                         ))
                     })?;
             }
+
             // create the initial cycle of PoS cycle_history
             final_state_guard.pos_state.create_initial_cycle();
         }
         return Ok(GlobalBootstrapState::new(final_state));
     }
 
+    // If the two conditions above are not verified, we need to bootstrap
     // we filter the bootstrap list to keep only the ip addresses we are compatible with
     let mut filtered_bootstrap_list = filter_bootstrap_list(
         bootstrap_config.bootstrap_list.clone(),
@@ -483,6 +505,7 @@ pub async fn get_state(
             last_credits_step: StreamingStep::Started,
             last_ops_step: StreamingStep::Started,
             last_consensus_step: StreamingStep::Started,
+            send_last_start_period: true,
         };
     let mut global_bootstrap_state = GlobalBootstrapState::new(final_state.clone());
 

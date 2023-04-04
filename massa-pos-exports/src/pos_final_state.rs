@@ -4,9 +4,10 @@ use bitvec::vec::BitVec;
 use massa_hash::Hash;
 use massa_models::error::ModelsError;
 use massa_models::streaming_step::StreamingStep;
-use massa_models::{address::Address, amount::Amount, prehash::PreHashMap, slot::Slot};
+use massa_models::{address::Address, prehash::PreHashMap, slot::Slot};
 use massa_serialization::{Serializer, U64VarIntSerializer};
 use std::collections::VecDeque;
+use std::ops::RangeBounds;
 use std::{
     collections::BTreeMap,
     ops::Bound::{Excluded, Unbounded},
@@ -14,6 +15,7 @@ use std::{
 };
 use tracing::debug;
 
+#[derive(Clone)]
 /// Final state of PoS
 pub struct PoSFinalState {
     /// proof-of-stake configuration
@@ -28,7 +30,7 @@ pub struct PoSFinalState {
     pub initial_rolls: BTreeMap<Address, u64>,
     /// initial seeds, used for negative cycle look back (cycles -2, -1 in that order)
     pub initial_seeds: Vec<Hash>,
-    /// initial state hash
+    /// initial ledger hash, used for seed computation
     pub initial_ledger_hash: Hash,
 }
 
@@ -56,7 +58,39 @@ impl PoSFinalState {
         Ok(Self {
             config,
             cycle_history: Default::default(),
-            deferred_credits: DeferredCredits::default(),
+            deferred_credits: DeferredCredits::new_with_hash(),
+            selector,
+            initial_rolls,
+            initial_seeds,
+            initial_ledger_hash,
+        })
+    }
+
+    /// create a `PoSFinalState` from an existing snapshot
+    pub fn from_snapshot(
+        config: PoSConfig,
+        cycle_history: VecDeque<CycleInfo>,
+        deferred_credits: DeferredCredits,
+        initial_seed_string: &str,
+        initial_rolls_path: &PathBuf,
+        selector: Box<dyn SelectorController>,
+        initial_ledger_hash: Hash,
+    ) -> Result<Self, PosError> {
+        // Seeds used as the initial seeds for negative cycles (-2 and -1 respectively)
+        let init_seed = Hash::compute_from(initial_seed_string.as_bytes());
+        let initial_seeds = vec![Hash::compute_from(init_seed.to_bytes()), init_seed];
+        // load get initial rolls from file
+        let initial_rolls = serde_json::from_str::<BTreeMap<Address, u64>>(
+            &std::fs::read_to_string(initial_rolls_path).map_err(|err| {
+                PosError::RollsFileLoadingError(format!("error while deserializing: {}", err))
+            })?,
+        )
+        .map_err(|err| PosError::RollsFileLoadingError(format!("error opening file: {}", err)))?;
+
+        Ok(Self {
+            config,
+            cycle_history,
+            deferred_credits,
             selector,
             initial_rolls,
             initial_seeds,
@@ -69,7 +103,7 @@ impl PoSFinalState {
     /// USED ONLY FOR BOOTSTRAP
     pub fn reset(&mut self) {
         self.cycle_history.clear();
-        self.deferred_credits = DeferredCredits::default();
+        self.deferred_credits = DeferredCredits::new_with_hash();
     }
 
     /// Create the initial cycle based off the initial rolls.
@@ -83,10 +117,8 @@ impl PoSFinalState {
                 .try_into()
                 .unwrap(),
         );
-        for _ in 0..self.config.thread_count {
-            // assume genesis blocks have a "False" seed bit to avoid passing them around
-            rng_seed.push(false);
-        }
+        rng_seed.extend(vec![false; self.config.thread_count as usize]);
+
         self.cycle_history.push_back(CycleInfo::new_with_hash(
             0,
             false,
@@ -94,6 +126,49 @@ impl PoSFinalState {
             rng_seed,
             PreHashMap::default(),
         ));
+    }
+
+    /// Create the a cycle based off of another cycle_info. Used for downtime interpolation,
+    /// when restarting from a snapshot.
+    ///
+    pub fn create_new_cycle_from_last(
+        &mut self,
+        last_cycle_info: &CycleInfo,
+        last_slot: Slot,
+    ) -> Result<(), PosError> {
+        let mut rng_seed = BitVec::with_capacity(
+            self.config
+                .periods_per_cycle
+                .saturating_mul(self.config.thread_count as u64)
+                .try_into()
+                .unwrap(),
+        );
+
+        let cycle = last_slot.get_cycle(self.config.periods_per_cycle);
+
+        let num_slots = last_slot
+            .slots_since(
+                &Slot::new_first_of_cycle(cycle, self.config.periods_per_cycle)
+                    .expect("Cannot create first slot for cycle"),
+                self.config.thread_count,
+            )
+            .expect("Error in slot ordering")
+            .saturating_add(1);
+
+        rng_seed.extend(vec![false; num_slots as usize]);
+
+        let complete =
+            last_slot.is_last_of_cycle(self.config.periods_per_cycle, self.config.thread_count);
+
+        self.cycle_history.push_back(CycleInfo::new_with_hash(
+            cycle,
+            complete,
+            last_cycle_info.roll_counts.clone(),
+            rng_seed,
+            last_cycle_info.production_stats.clone(),
+        ));
+
+        Ok(())
     }
 
     /// Sends the current draw inputs (initial or bootstrapped) to the selector.
@@ -220,8 +295,7 @@ impl PoSFinalState {
 
         // extent deferred_credits with changes.deferred_credits
         // remove zero-valued credits
-        self.deferred_credits
-            .final_nested_extend(changes.deferred_credits);
+        self.deferred_credits.extend(changes.deferred_credits);
         self.deferred_credits.remove_zeros();
 
         // feed the cycle if it is complete
@@ -245,8 +319,11 @@ impl PoSFinalState {
     }
 
     /// Feeds the selector targeting a given draw cycle
-    fn feed_selector(&self, draw_cycle: u64) -> PosResult<()> {
+    pub fn feed_selector(&self, draw_cycle: u64) -> PosResult<()> {
         // get roll lookback
+
+        //info!("Feed selector with draw cycle: {}", draw_cycle);
+
         let (lookback_rolls, lookback_state_hash) = match draw_cycle.checked_sub(3) {
             // looking back in history
             Some(c) => {
@@ -317,30 +394,28 @@ impl PoSFinalState {
 
     /// Retrieves the amount of rolls a given address has at a given cycle
     pub fn get_address_active_rolls(&self, addr: &Address, cycle: u64) -> Option<u64> {
-        // get lookback cycle index
-        let lookback_cycle = cycle.checked_sub(3);
-        if let Some(lookback_cycle) = lookback_cycle {
-            let lookback_index = match self.get_cycle_index(lookback_cycle) {
-                Some(idx) => idx,
-                None => return None,
-            };
-            // get rolls
-            self.cycle_history[lookback_index]
-                .roll_counts
-                .get(addr)
-                .cloned()
-        } else {
-            self.initial_rolls.get(addr).cloned()
+        match cycle.checked_sub(3) {
+            Some(lookback_cycle) => {
+                let lookback_index = match self.get_cycle_index(lookback_cycle) {
+                    Some(idx) => idx,
+                    None => return None,
+                };
+                // get rolls
+                self.cycle_history[lookback_index]
+                    .roll_counts
+                    .get(addr)
+                    .cloned()
+            }
+            None => self.initial_rolls.get(addr).cloned(),
         }
     }
 
-    /// Retrieves every deferred credit of the given slot
-    pub fn get_deferred_credits_at(&self, slot: &Slot) -> PreHashMap<Address, Amount> {
-        self.deferred_credits
-            .credits
-            .get(slot)
-            .cloned()
-            .unwrap_or_default()
+    /// Retrieves every deferred credit in a slot range
+    pub fn get_deferred_credits_range<R>(&self, range: R) -> DeferredCredits
+    where
+        R: RangeBounds<Slot>,
+    {
+        self.deferred_credits.get_slot_range(range, false)
     }
 
     /// Retrieves the productions statistics for all addresses on a given cycle
@@ -419,7 +494,7 @@ impl PoSFinalState {
         &self,
         cursor: StreamingStep<Slot>,
     ) -> (DeferredCredits, StreamingStep<Slot>) {
-        let mut credits_part = DeferredCredits::default();
+        let mut credits_part = DeferredCredits::new_with_hash();
         let left_bound = match cursor {
             StreamingStep::Started => Unbounded,
             StreamingStep::Ongoing(last_slot) => Excluded(last_slot),
@@ -470,7 +545,7 @@ impl PoSFinalState {
     /// # Arguments
     /// `part`: `DeferredCredits` from `get_pos_state_part` and used to update PoS final state
     pub fn set_deferred_credits_part(&mut self, part: DeferredCredits) -> StreamingStep<Slot> {
-        self.deferred_credits.final_nested_extend(part);
+        self.deferred_credits.extend(part);
         if let Some(slot) = self
             .deferred_credits
             .credits

@@ -307,7 +307,7 @@
     initial_rolls_path = "base_config/initial_rolls.json"
 
 [factory]
-    # initial delay in milliseconds to wait before starting productin to avoid double staking on node restart
+    # initial delay in milliseconds to wait before starting production to avoid double staking on node restart
     initial_delay = 100
     # path to your staking wallet
     staking_wallet_path = "config/staking_wallet.dat"

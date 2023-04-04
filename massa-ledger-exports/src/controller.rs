@@ -10,7 +10,13 @@ use crate::{Key, LedgerChanges, LedgerError};
 
 pub trait LedgerController: Send + Sync + Debug {
     /// Allows applying `LedgerChanges` to the final ledger
-    fn apply_changes(&mut self, changes: LedgerChanges, slot: Slot);
+    /// * final_state_data should be non-None only if we are storing a final_state snapshot.
+    fn apply_changes(
+        &mut self,
+        changes: LedgerChanges,
+        slot: Slot,
+        final_state_data: Option<Vec<u8>>,
+    );
 
     /// Loads ledger from file
     fn load_initial_ledger(&mut self) -> Result<(), LedgerError>;
@@ -69,6 +75,12 @@ pub trait LedgerController: Send + Sync + Debug {
     ///
     /// USED FOR BOOTSTRAP ONLY
     fn reset(&mut self);
+
+    fn get_slot(&self) -> Result<Slot, ModelsError>;
+
+    fn set_final_state_hash(&mut self, data: Vec<u8>);
+
+    fn get_final_state(&self) -> Result<Vec<u8>, ModelsError>;
 
     /// Get every address and their corresponding balance.
     ///

@@ -2849,6 +2849,7 @@ dependencies = [
  "rocksdb",
  "serde_json",
  "tempfile",
+ "tracing",
 ]
 
 [[package]]

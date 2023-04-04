@@ -21,7 +21,7 @@ use nom::{
 };
 use num::rational::Ratio;
 use serde::{Deserialize, Serialize};
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, VecDeque};
 use std::ops::Bound::Included;
 
 use crate::PoSChanges;
@@ -218,7 +218,11 @@ impl CycleInfo {
 
         // if the cycle just completed, check that it has the right number of seed bits
         if self.complete && self.rng_seed.len() as u64 != slots_per_cycle {
-            panic!("cycle completed with incorrect number of seed bits");
+            panic!(
+                "cycle completed with incorrect number of seed bits: {} instead of {}",
+                self.rng_seed.len(),
+                slots_per_cycle
+            );
         }
 
         // compute the global hash
@@ -259,7 +263,7 @@ fn test_cycle_info_hash_computation() {
         seed_bits: bitvec![u8, Lsb0; 0, 10],
         roll_changes: roll_changes.clone(),
         production_stats: production_stats.clone(),
-        deferred_credits: DeferredCredits::default(),
+        deferred_credits: DeferredCredits::new_with_hash(),
     };
     cycle_a.apply_changes(changes, Slot::new(0, 0), 2, 2);
 
@@ -278,7 +282,7 @@ fn test_cycle_info_hash_computation() {
         seed_bits: bitvec![u8, Lsb0; 0, 20],
         roll_changes: roll_changes.clone(),
         production_stats: production_stats.clone(),
-        deferred_credits: DeferredCredits::default(),
+        deferred_credits: DeferredCredits::new_with_hash(),
     };
     cycle_a.apply_changes(changes, Slot::new(0, 1), 2, 2);
 
@@ -297,7 +301,7 @@ fn test_cycle_info_hash_computation() {
         seed_bits: bitvec![u8, Lsb0; 0, 30],
         roll_changes,
         production_stats,
-        deferred_credits: DeferredCredits::default(),
+        deferred_credits: DeferredCredits::new_with_hash(),
     };
     cycle_a.apply_changes(changes, Slot::new(1, 0), 2, 2);
 
@@ -630,6 +634,89 @@ impl Deserializer<Vec<(Address, u64)>> for RollsDeserializer {
                         self.u64_deserializer.deserialize(input)
                     }),
                 )),
+            ),
+        )
+        .parse(buffer)
+    }
+}
+
+/// Serializer for cycle history
+pub struct CycleHistorySerializer {
+    u64_serializer: U64VarIntSerializer,
+    cycle_info_serializer: CycleInfoSerializer,
+}
+
+impl CycleHistorySerializer {
+    /// Creates a new `CycleHistory` serializer
+    pub fn new() -> Self {
+        Self {
+            u64_serializer: U64VarIntSerializer::new(),
+            cycle_info_serializer: CycleInfoSerializer::new(),
+        }
+    }
+}
+
+impl Default for CycleHistorySerializer {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+impl Serializer<VecDeque<CycleInfo>> for CycleHistorySerializer {
+    fn serialize(
+        &self,
+        value: &VecDeque<CycleInfo>,
+        buffer: &mut Vec<u8>,
+    ) -> Result<(), SerializeError> {
+        self.u64_serializer
+            .serialize(&(value.len() as u64), buffer)?;
+        for cycle_info in value.iter() {
+            self.cycle_info_serializer.serialize(cycle_info, buffer)?;
+        }
+        Ok(())
+    }
+}
+
+/// Deserializer for cycle history, useful when restarting from a snapshot
+pub struct CycleHistoryDeserializer {
+    u64_deserializer: U64VarIntDeserializer,
+    cycle_info_deserializer: CycleInfoDeserializer,
+}
+
+impl CycleHistoryDeserializer {
+    /// Creates a new `CycleHistory` deserializer
+    pub fn new(
+        max_cycle_history_length: u64,
+        max_rolls_length: u64,
+        max_production_stats_length: u64,
+    ) -> Self {
+        Self {
+            u64_deserializer: U64VarIntDeserializer::new(
+                Included(u64::MIN),
+                Included(max_cycle_history_length),
+            ),
+            cycle_info_deserializer: CycleInfoDeserializer::new(
+                max_rolls_length,
+                max_production_stats_length,
+            ),
+        }
+    }
+}
+
+impl Deserializer<Vec<CycleInfo>> for CycleHistoryDeserializer {
+    fn deserialize<'a, E: ParseError<&'a [u8]> + ContextError<&'a [u8]>>(
+        &self,
+        buffer: &'a [u8],
+    ) -> IResult<&'a [u8], Vec<CycleInfo>, E> {
+        context(
+            "Failed cycle_history deserialization",
+            length_count(
+                context("Failed length deserialization", |input| {
+                    self.u64_deserializer.deserialize(input)
+                }),
+                context("Failed cycle_info deserialization", |input| {
+                    self.cycle_info_deserializer.deserialize(input)
+                }),
             ),
         )
         .parse(buffer)

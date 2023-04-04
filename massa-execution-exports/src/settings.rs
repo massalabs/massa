@@ -66,6 +66,8 @@ pub struct ExecutionConfig {
     pub gas_costs: GasCosts,
     /// Path to the initial vesting file
     pub initial_vesting_path: PathBuf,
+    /// last start period, used to attach to the correct execution slot if the network has restarted
+    pub last_start_period: u64,
     /// Path to the hard drive cache storage
     pub hd_cache_path: PathBuf,
     /// Maximum number of entries we want to keep in the LRU cache

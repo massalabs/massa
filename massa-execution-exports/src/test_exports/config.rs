@@ -58,6 +58,7 @@ impl Default for ExecutionConfig {
             )
             .unwrap(),
             initial_vesting_path: PathBuf::default(),
+            last_start_period: 0,
             hd_cache_path: TempDir::new().unwrap().path().to_path_buf(),
             lru_cache_size: 1000,
             hd_cache_size: 10_000,

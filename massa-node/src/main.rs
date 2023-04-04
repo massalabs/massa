@@ -154,9 +154,9 @@ async fn launch(
         initial_rolls_path: SETTINGS.selector.initial_rolls_path.clone(),
     };
 
-    // Remove current disk ledger if there is one
+    // Remove current disk ledger if there is one and we don't want to restart from snapshot
     // NOTE: this is temporary, since we cannot currently handle bootstrap from remaining ledger
-    if args.keep_ledger {
+    if args.keep_ledger || args.restart_from_snapshot_at_period.is_some() {
         info!("Loading old ledger for next episode");
     } else if SETTINGS.ledger.disk_ledger_path.exists() {
         std::fs::remove_dir_all(SETTINGS.ledger.disk_ledger_path.clone())
@@ -164,7 +164,10 @@ async fn launch(
     }
 
     // Create final ledger
-    let ledger = FinalLedger::new(ledger_config.clone());
+    let ledger = FinalLedger::new(
+        ledger_config.clone(),
+        args.restart_from_snapshot_at_period.is_some() || cfg!(feature = "create_snapshot"),
+    );
 
     // launch selector worker
     let (selector_manager, selector_controller) = start_selector_worker(SelectorConfig {
@@ -177,14 +180,23 @@ async fn launch(
     })
     .expect("could not start selector worker");
 
-    // Create final state
+    // Create final state, either from a snapshot, or from scratch
     let final_state = Arc::new(parking_lot::RwLock::new(
-        FinalState::new(
-            final_state_config,
-            Box::new(ledger),
-            selector_controller.clone(),
-        )
-        .expect("could not init final state"),
+        match args.restart_from_snapshot_at_period {
+            Some(last_start_period) => FinalState::new_derived_from_snapshot(
+                final_state_config,
+                Box::new(ledger),
+                selector_controller.clone(),
+                last_start_period,
+            )
+            .expect("could not init final state"),
+            None => FinalState::new(
+                final_state_config,
+                Box::new(ledger),
+                selector_controller.clone(),
+            )
+            .expect("could not init final state"),
+        },
     ));
 
     // interrupt signal listener
@@ -257,6 +269,7 @@ async fn launch(
             *VERSION,
             *GENESIS_TIMESTAMP,
             *END_TIMESTAMP,
+            args.restart_from_snapshot_at_period
         ) => match res {
             Ok(vals) => vals,
             Err(err) => panic!("critical error detected in the bootstrap process: {}", err)
@@ -304,6 +317,7 @@ async fn launch(
         event_channel_size: NETWORK_EVENT_CHANNEL_SIZE,
         node_command_channel_size: NETWORK_NODE_COMMAND_CHANNEL_SIZE,
         node_event_channel_size: NETWORK_NODE_EVENT_CHANNEL_SIZE,
+        last_start_period: final_state.read().last_start_period,
     };
 
     // launch network controller
@@ -317,11 +331,13 @@ async fn launch(
         .await
         .expect("could not start network controller");
 
-    // give the controller to final state in order for it to feed the cycles
-    final_state
-        .write()
-        .compute_initial_draws()
-        .expect("could not compute initial draws"); // TODO: this might just mean a bad bootstrap, no need to panic, just reboot
+    if args.restart_from_snapshot_at_period.is_none() {
+        // give the controller to final state in order for it to feed the cycles
+        final_state
+            .write()
+            .compute_initial_draws()
+            .expect("could not compute initial draws"); // TODO: this might just mean a bad bootstrap, no need to panic, just reboot
+    }
 
     // Storage costs constants
     let storage_costs_constants = StorageCostsConstants {
@@ -369,6 +385,7 @@ async fn launch(
             SETTINGS.execution.wasm_gas_costs_file.clone(),
         )
         .expect("Failed to load gas costs"),
+        last_start_period: final_state.read().last_start_period,
         hd_cache_path: SETTINGS.execution.hd_cache_path.clone(),
         lru_cache_size: SETTINGS.execution.lru_cache_size,
         hd_cache_size: SETTINGS.execution.hd_cache_size,
@@ -444,6 +461,7 @@ async fn launch(
         broadcast_blocks_headers_capacity: SETTINGS.consensus.broadcast_blocks_headers_capacity,
         broadcast_blocks_capacity: SETTINGS.consensus.broadcast_blocks_capacity,
         broadcast_filled_blocks_capacity: SETTINGS.consensus.broadcast_filled_blocks_capacity,
+        last_start_period: final_state.read().last_start_period,
     };
 
     let (consensus_event_sender, consensus_event_receiver) =
@@ -502,6 +520,7 @@ async fn launch(
         t0: T0,
         max_operations_propagation_time: SETTINGS.protocol.max_operations_propagation_time,
         max_endorsements_propagation_time: SETTINGS.protocol.max_endorsements_propagation_time,
+        last_start_period: final_state.read().last_start_period,
     };
 
     let protocol_senders = ProtocolSenders {
@@ -533,6 +552,7 @@ async fn launch(
         max_block_size: MAX_BLOCK_SIZE as u64,
         max_block_gas: MAX_GAS_PER_BLOCK,
         max_operations_per_block: MAX_OPERATIONS_PER_BLOCK,
+        last_start_period: final_state.read().last_start_period,
         periods_per_cycle: PERIODS_PER_CYCLE,
         denunciation_expire_periods: DENUNCIATION_EXPIRE_PERIODS,
         denunciation_items_max_cycle_delta: DENUNCIATION_ITEMS_MAX_CYCLE_DELTA,
@@ -665,6 +685,7 @@ async fn launch(
             t0: T0,
             max_channel_size: SETTINGS.grpc.max_channel_size,
             draw_lookahead_period_count: SETTINGS.grpc.draw_lookahead_period_count,
+            last_start_period: final_state.read().last_start_period,
         };
 
         let grpc_api = MassaGrpc {
@@ -880,6 +901,10 @@ struct Args {
     #[structopt(short = "p", long = "pwd")]
     password: Option<String>,
 
+    /// restart_from_snapshot_at_period
+    #[structopt(long = "restart-from-snapshot-at-period")]
+    restart_from_snapshot_at_period: Option<u64>,
+
     #[cfg(feature = "deadlock_detection")]
     /// Deadlocks detector
     #[structopt(
@@ -932,6 +957,7 @@ fn main(args: Args) -> anyhow::Result<()> {
 }
 
 async fn run(args: Args) -> anyhow::Result<()> {
+    let mut cur_args = args;
     use tracing_subscriber::prelude::*;
     // spawn the console server in the background, returning a `Layer`:
     let tracing_layer = tracing_subscriber::fmt::layer()
@@ -962,7 +988,10 @@ async fn run(args: Args) -> anyhow::Result<()> {
     }));
 
     // load or create wallet, asking for password if necessary
-    let node_wallet = load_wallet(args.password.clone(), &SETTINGS.factory.staking_wallet_path)?;
+    let node_wallet = load_wallet(
+        cur_args.password.clone(),
+        &SETTINGS.factory.staking_wallet_path,
+    )?;
 
     loop {
         let (
@@ -980,7 +1009,7 @@ async fn run(args: Args) -> anyhow::Result<()> {
             api_public_handle,
             api_handle,
             grpc_handle,
-        ) = launch(&args, node_wallet.clone()).await;
+        ) = launch(&cur_args, node_wallet.clone()).await;
 
         // interrupt signal listener
         let (tx, rx) = crossbeam_channel::bounded(1);
@@ -1055,6 +1084,8 @@ async fn run(args: Args) -> anyhow::Result<()> {
         if !restart {
             break;
         }
+        // If we restart because of a desync, then we do not want to restart from a snapshot
+        cur_args.restart_from_snapshot_at_period = None;
         interrupt_signal_listener.abort();
     }
     Ok(())

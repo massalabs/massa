@@ -69,6 +69,7 @@ impl HandshakeWorker {
     /// * `timeout_duration`: after `timeout_duration` milliseconds, the handshake attempt is dropped.
     /// * `connection_id`: Node we are trying to connect for debugging
     /// * `version`: Node version used in handshake initialization (check peers compatibility)
+    /// * `last_start_period`: Used in the message deserializer
     #[allow(clippy::too_many_arguments)]
     pub fn spawn(
         socket_reader: ReadHalf,
@@ -80,6 +81,7 @@ impl HandshakeWorker {
         connection_id: ConnectionId,
         max_bytes_read: f64,
         max_bytes_write: f64,
+        last_start_period: u64,
     ) -> JoinHandle<(ConnectionId, HandshakeReturnType)> {
         debug!("starting handshake with connection_id={}", connection_id);
         massa_trace!("network_worker.new_connection", {
@@ -109,6 +111,7 @@ impl HandshakeWorker {
                             MAX_OPERATION_DATASTORE_ENTRY_COUNT,
                             MAX_OPERATION_DATASTORE_KEY_LENGTH,
                             MAX_OPERATION_DATASTORE_VALUE_LENGTH,
+                            Some(last_start_period),
                         ),
                     ),
                     writer: WriteBinder::new(socket_writer, max_bytes_write, MAX_MESSAGE_SIZE),

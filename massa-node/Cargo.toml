@@ -66,6 +66,7 @@ sandbox = [
     "massa_models/sandbox",
     "massa_protocol_exports/sandbox"
 ]
+create_snapshot = ["massa_final_state/create_snapshot"]
 
 [build]
 rustflags = ["--cfg", "tokio_unstable"]

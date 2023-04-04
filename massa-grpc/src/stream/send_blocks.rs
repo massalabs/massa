@@ -73,6 +73,7 @@ pub(crate) async fn send_blocks(
                         thread_count: config.thread_count,
                         max_operations_per_block: config.max_operations_per_block,
                         endorsement_count: config.endorsement_count,
+                        last_start_period: Some(config.last_start_period),
                     };
                     // Deserialize and verify received block in the incoming message
                     match SecureShareDeserializer::new(BlockDeserializer::new(args))

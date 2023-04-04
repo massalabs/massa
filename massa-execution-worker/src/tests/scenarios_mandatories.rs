@@ -47,7 +47,7 @@ mod tests {
         };
         let mip_store = MipStore::try_from(([], mip_stats_config)).unwrap();
 
-        let (sample_state, _keep_file, _keep_dir) = get_sample_state().unwrap();
+        let (sample_state, _keep_file, _keep_dir) = get_sample_state(0).unwrap();
         let (mut manager, _controller) = start_execution_worker(
             config,
             sample_state.clone(),
@@ -72,7 +72,7 @@ mod tests {
         };
         let mip_store = MipStore::try_from(([], mip_stats_config)).unwrap();
 
-        let (sample_state, _keep_file, _keep_dir) = get_sample_state().unwrap();
+        let (sample_state, _keep_file, _keep_dir) = get_sample_state(0).unwrap();
         let (mut manager, controller) = start_execution_worker(
             config,
             sample_state.clone(),
@@ -105,7 +105,7 @@ mod tests {
         };
         let mip_store = MipStore::try_from(([], mip_stats_config)).unwrap();
         // get a sample final state
-        let (sample_state, _keep_file, _keep_dir) = get_sample_state().unwrap();
+        let (sample_state, _keep_file, _keep_dir) = get_sample_state(0).unwrap();
         // init the storage
         let storage = Storage::create_root();
         // start the execution worker
@@ -198,7 +198,7 @@ mod tests {
         };
         let mip_store = MipStore::try_from(([], mip_stats_config)).unwrap();
         // get a sample final state
-        let (sample_state, _keep_file, _keep_dir) = get_sample_state().unwrap();
+        let (sample_state, _keep_file, _keep_dir) = get_sample_state(0).unwrap();
         // init the storage
         let mut storage = Storage::create_root();
         // start the execution worker
@@ -339,7 +339,7 @@ mod tests {
         };
         let mip_store = MipStore::try_from(([], mip_stats_config)).unwrap();
         // get a sample final state
-        let (sample_state, _keep_file, _keep_dir) = get_sample_state().unwrap();
+        let (sample_state, _keep_file, _keep_dir) = get_sample_state(0).unwrap();
         // init the storage
         let mut storage = Storage::create_root();
         // start the execution worker
@@ -466,7 +466,7 @@ mod tests {
             ..ExecutionConfig::default()
         };
         // get a sample final state
-        let (sample_state, _keep_file, _keep_dir) = get_sample_state().unwrap();
+        let (sample_state, _keep_file, _keep_dir) = get_sample_state(0).unwrap();
 
         // init the MIP store
         let mip_stats_config = MipStatsConfig {
@@ -563,7 +563,7 @@ mod tests {
             ..ExecutionConfig::default()
         };
         // get a sample final state
-        let (sample_state, _keep_file, _keep_dir) = get_sample_state().unwrap();
+        let (sample_state, _keep_file, _keep_dir) = get_sample_state(0).unwrap();
 
         // init the MIP store
         let mip_stats_config = MipStatsConfig {
@@ -660,7 +660,7 @@ mod tests {
             ..ExecutionConfig::default()
         };
         // get a sample final state
-        let (sample_state, _keep_file, _keep_dir) = get_sample_state().unwrap();
+        let (sample_state, _keep_file, _keep_dir) = get_sample_state(0).unwrap();
 
         // init the MIP store
         let mip_stats_config = MipStatsConfig {
@@ -775,7 +775,7 @@ mod tests {
             ..ExecutionConfig::default()
         };
         // get a sample final state
-        let (sample_state, _keep_file, _keep_dir) = get_sample_state().unwrap();
+        let (sample_state, _keep_file, _keep_dir) = get_sample_state(0).unwrap();
 
         // init the MIP store
         let mip_stats_config = MipStatsConfig {
@@ -874,7 +874,7 @@ mod tests {
             ..ExecutionConfig::default()
         };
         // get a sample final state
-        let (sample_state, _keep_file, _keep_dir) = get_sample_state().unwrap();
+        let (sample_state, _keep_file, _keep_dir) = get_sample_state(0).unwrap();
 
         // init the MIP store
         let mip_stats_config = MipStatsConfig {
@@ -1026,7 +1026,7 @@ mod tests {
             ..ExecutionConfig::default()
         };
         // get a sample final state
-        let (sample_state, _keep_file, _keep_dir) = get_sample_state().unwrap();
+        let (sample_state, _keep_file, _keep_dir) = get_sample_state(0).unwrap();
 
         // init the MIP store
         let mip_stats_config = MipStatsConfig {
@@ -1114,7 +1114,7 @@ mod tests {
             ..ExecutionConfig::default()
         };
         // get a sample final state
-        let (sample_state, _keep_file, _keep_dir) = get_sample_state().unwrap();
+        let (sample_state, _keep_file, _keep_dir) = get_sample_state(0).unwrap();
 
         // init the MIP store
         let mip_stats_config = MipStatsConfig {
@@ -1210,7 +1210,7 @@ mod tests {
         };
 
         // get a sample final state
-        let (sample_state, _keep_file, _keep_dir) = get_sample_state().unwrap();
+        let (sample_state, _keep_file, _keep_dir) = get_sample_state(0).unwrap();
 
         // init the MIP store
         let mip_stats_config = MipStatsConfig {
@@ -1293,7 +1293,7 @@ mod tests {
             ..ExecutionConfig::default()
         };
         // get a sample final state
-        let (sample_state, _keep_file, _keep_dir) = get_sample_state().unwrap();
+        let (sample_state, _keep_file, _keep_dir) = get_sample_state(0).unwrap();
 
         // init the MIP store
         let mip_stats_config = MipStatsConfig {
@@ -1369,6 +1369,7 @@ mod tests {
             thread_count: 2,
             cursor_delay: 0.into(),
             initial_vesting_path: vesting.path().to_path_buf(),
+            last_start_period: 2,
             ..Default::default()
         };
         // turn off roll selling on missed block opportunities
@@ -1377,7 +1378,7 @@ mod tests {
         exec_cfg.max_miss_ratio = Ratio::new(1, 1);
 
         // get a sample final state
-        let (sample_state, _keep_file, _keep_dir) = get_sample_state().unwrap();
+        let (sample_state, _keep_file, _keep_dir) = get_sample_state(2).unwrap();
 
         // init the MIP store
         let mip_stats_config = MipStatsConfig {
@@ -1410,6 +1411,14 @@ mod tests {
         let roll_sell_1 = 10;
         let roll_sell_2 = 1;
 
+        let initial_deferred_credits = Amount::from_str("100").unwrap();
+        // set initial_deferred_credits that will be reimbursed at first block
+        sample_state.write().pos_state.deferred_credits.insert(
+            Slot::new(1, 0),
+            address,
+            initial_deferred_credits,
+        );
+
         // create operation 1
         let operation1 = Operation::new_verifiable(
             Operation {
@@ -1440,7 +1449,7 @@ mod tests {
         let block = create_block(
             KeyPair::generate(),
             vec![operation1, operation2],
-            Slot::new(1, 0),
+            Slot::new(3, 0),
         )
         .unwrap();
         // store the block in storage
@@ -1456,6 +1465,7 @@ mod tests {
             block_storage.clone(),
         );
         std::thread::sleep(Duration::from_millis(1000));
+
         // check roll count deferred credits and candidate balance of the seller address
         let sample_read = sample_state.read();
         let mut credits = PreHashMap::default();
@@ -1470,19 +1480,41 @@ mod tests {
             sample_read.pos_state.get_rolls_for(&address),
             roll_remaining
         );
+
         assert_eq!(
             sample_read
                 .pos_state
-                .get_deferred_credits_at(&Slot::new(7, 1)),
+                .get_deferred_credits_range(..=Slot::new(9, 1))
+                .credits
+                .get(&Slot::new(9, 1))
+                .cloned()
+                .unwrap_or_default(),
             credits
         );
 
         // Check that deferred credit are reimbursed
         let credits = PreHashMap::default();
+
         assert_eq!(
             sample_read
                 .pos_state
-                .get_deferred_credits_at(&Slot::new(8, 1)),
+                .get_deferred_credits_range(..=Slot::new(10, 1))
+                .credits
+                .get(&Slot::new(10, 1))
+                .cloned()
+                .unwrap_or_default(),
+            credits
+        );
+
+        // Check that the initial deferred_credits are set to zero
+        assert_eq!(
+            sample_read
+                .pos_state
+                .get_deferred_credits_range(..=Slot::new(10, 1))
+                .credits
+                .get(&Slot::new(1, 0))
+                .cloned()
+                .unwrap_or_default(),
             credits
         );
 
@@ -1497,6 +1529,8 @@ mod tests {
                 .checked_mul_u64(roll_sell_1 + roll_sell_2)
                 .unwrap()
                 .checked_add(balance_initial)
+                .unwrap()
+                .checked_add(initial_deferred_credits)
                 .unwrap()
         );
 
@@ -1517,7 +1551,7 @@ mod tests {
             ..ExecutionConfig::default()
         };
         // get a sample final state
-        let (sample_state, _keep_file, _keep_dir) = get_sample_state().unwrap();
+        let (sample_state, _keep_file, _keep_dir) = get_sample_state(0).unwrap();
 
         // init the MIP store
         let mip_stats_config = MipStatsConfig {
@@ -1592,7 +1626,7 @@ mod tests {
             ..ExecutionConfig::default()
         };
         // get a sample final state
-        let (sample_state, _keep_file, _keep_dir) = get_sample_state().unwrap();
+        let (sample_state, _keep_file, _keep_dir) = get_sample_state(0).unwrap();
 
         // init the MIP store
         let mip_stats_config = MipStatsConfig {
@@ -1664,7 +1698,7 @@ mod tests {
             ..ExecutionConfig::default()
         };
         // get a sample final state
-        let (sample_state, _keep_file, _keep_dir) = get_sample_state().unwrap();
+        let (sample_state, _keep_file, _keep_dir) = get_sample_state(0).unwrap();
 
         // init the MIP store
         let mip_stats_config = MipStatsConfig {
@@ -1736,7 +1770,7 @@ mod tests {
             ..ExecutionConfig::default()
         };
         // get a sample final state
-        let (sample_state, _keep_file, _keep_dir) = get_sample_state().unwrap();
+        let (sample_state, _keep_file, _keep_dir) = get_sample_state(0).unwrap();
 
         // init the MIP store
         let mip_stats_config = MipStatsConfig {
@@ -1870,7 +1904,7 @@ mod tests {
             ..ExecutionConfig::default()
         };
         let storage: Storage = Storage::create_root();
-        let (sample_state, _keep_file, _keep_dir) = get_sample_state().unwrap();
+        let (sample_state, _keep_file, _keep_dir) = get_sample_state(0).unwrap();
         // init the MIP store
         let mip_stats_config = MipStatsConfig {
             block_count_considered: MIP_STORE_STATS_BLOCK_CONSIDERED,
@@ -1960,7 +1994,7 @@ mod tests {
             ..ExecutionConfig::default()
         };
         // get a sample final state
-        let (sample_state, _keep_file, _keep_dir) = get_sample_state().unwrap();
+        let (sample_state, _keep_file, _keep_dir) = get_sample_state(0).unwrap();
 
         // init the storage
         let mut storage = Storage::create_root();
@@ -2091,7 +2125,7 @@ mod tests {
             ..ExecutionConfig::default()
         };
         // get a sample final state
-        let (sample_state, _keep_file, _keep_dir) = get_sample_state().unwrap();
+        let (sample_state, _keep_file, _keep_dir) = get_sample_state(0).unwrap();
 
         // init the MIP store
         let mip_stats_config = MipStatsConfig {
@@ -2172,7 +2206,7 @@ mod tests {
             ..ExecutionConfig::default()
         };
         // get a sample final state
-        let (sample_state, _keep_file, _keep_dir) = get_sample_state().unwrap();
+        let (sample_state, _keep_file, _keep_dir) = get_sample_state(0).unwrap();
 
         // init the MIP store
         let mip_stats_config = MipStatsConfig {

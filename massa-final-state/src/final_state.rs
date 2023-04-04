@@ -6,14 +6,34 @@
 //! and need to be bootstrapped by nodes joining the network.
 
 use crate::{config::FinalStateConfig, error::FinalStateError, state_changes::StateChanges};
-use massa_async_pool::{AsyncMessageId, AsyncPool, AsyncPoolChanges, Change};
-use massa_executed_ops::ExecutedOps;
-use massa_hash::{Hash, HASH_SIZE_BYTES};
+use massa_async_pool::{
+    AsyncMessage, AsyncMessageId, AsyncPool, AsyncPoolChanges, AsyncPoolDeserializer,
+    AsyncPoolSerializer, Change,
+};
+use massa_executed_ops::{ExecutedOps, ExecutedOpsDeserializer, ExecutedOpsSerializer};
+use massa_hash::{Hash, HashDeserializer, HASH_SIZE_BYTES};
 use massa_ledger_exports::{Key as LedgerKey, LedgerChanges, LedgerController};
-use massa_models::{slot::Slot, streaming_step::StreamingStep};
-use massa_pos_exports::{DeferredCredits, PoSFinalState, SelectorController};
-use std::collections::VecDeque;
-use tracing::info;
+use massa_models::{
+    // TODO: uncomment when deserializing the final state from ledger
+    /*config::{
+        MAX_ASYNC_POOL_LENGTH, MAX_DATASTORE_KEY_LENGTH, MAX_DEFERRED_CREDITS_LENGTH,
+        MAX_EXECUTED_OPS_LENGTH, MAX_OPERATIONS_PER_BLOCK, MAX_PRODUCTION_STATS_LENGTH,
+        MAX_ROLLS_COUNT_LENGTH,
+    },*/
+    operation::OperationId,
+    prehash::PreHashSet,
+    slot::{Slot, SlotDeserializer, SlotSerializer},
+    streaming_step::StreamingStep,
+};
+use massa_pos_exports::{
+    CycleHistoryDeserializer, CycleHistorySerializer, CycleInfo, DeferredCredits,
+    DeferredCreditsDeserializer, DeferredCreditsSerializer, PoSFinalState, SelectorController,
+};
+use massa_serialization::{Deserializer, SerializeError, Serializer};
+use nom::{error::context, sequence::tuple, IResult, Parser};
+use std::collections::{BTreeMap, VecDeque};
+use std::ops::Bound::{Excluded, Included};
+use tracing::{debug, info};
 
 /// Represents a final state `(ledger, async pool, executed_ops and the state of the PoS)`
 pub struct FinalState {
@@ -34,6 +54,11 @@ pub struct FinalState {
     pub changes_history: VecDeque<(Slot, StateChanges)>,
     /// hash of the final state, it is computed on finality
     pub final_state_hash: Hash,
+    /// last_start_period
+    /// * If start all new network: set to 0
+    /// * If from snapshot: retrieve from args
+    /// * If from bootstrap: set during bootstrap
+    pub last_start_period: u64,
 }
 
 const FINAL_STATE_HASH_INITIAL_BYTES: &[u8; 32] = &[0; HASH_SIZE_BYTES];
@@ -42,7 +67,9 @@ impl FinalState {
     /// Initializes a new `FinalState`
     ///
     /// # Arguments
-    /// * `config`: the configuration of the execution state
+    /// * `config`: the configuration of the final state to use for initialization
+    /// * `ledger`: the instance of the ledger on disk. Used to apply changes to the ledger.
+    /// * `selector`: the pos selector. Used to send draw inputs when a new cycle is completed.
     pub fn new(
         config: FinalStateConfig,
         ledger: Box<dyn LedgerController>,
@@ -77,7 +104,227 @@ impl FinalState {
             executed_ops,
             changes_history: Default::default(), // no changes in history
             final_state_hash: Hash::from_bytes(FINAL_STATE_HASH_INITIAL_BYTES),
+            last_start_period: 0,
         })
+    }
+
+    /// Initializes a `FinalState` from a snapshot. Currently, we do not use the final_state from the ledger,
+    /// we just create a new one. This will be changed in the follow-up.
+    ///
+    /// # Arguments
+    /// * `config`: the configuration of the final state to use for initialization
+    /// * `ledger`: the instance of the ledger on disk. Used to apply changes to the ledger.
+    /// * `selector`: the pos selector. Used to send draw inputs when a new cycle is completed.
+    /// * `last_start_period`: at what period we should attach the final_state
+    pub fn new_derived_from_snapshot(
+        config: FinalStateConfig,
+        ledger: Box<dyn LedgerController>,
+        selector: Box<dyn SelectorController>,
+        last_start_period: u64,
+    ) -> Result<Self, FinalStateError> {
+        info!("Restarting from snapshot");
+
+        // FIRST, we recover the last known final_state
+        let mut final_state = FinalState::new(config, ledger, selector)?;
+        let _final_state_hash_from_snapshot = Hash::from_bytes(FINAL_STATE_HASH_INITIAL_BYTES);
+        final_state.pos_state.create_initial_cycle();
+
+        // TODO: We recover the final_state from the RocksDB instance instead
+        /*let final_state_data = ledger
+        .get_final_state()
+        .expect("Cannot retrieve ledger final_state data");*/
+
+        final_state.slot = final_state.ledger.get_slot().map_err(|_| {
+            FinalStateError::InvalidSlot(String::from("Could not recover Slot in Ledger"))
+        })?;
+
+        debug!(
+            "Latest consistent slot found in snapshot data: {}",
+            final_state.slot
+        );
+
+        final_state.compute_state_hash_at_slot(final_state.slot);
+
+        // Check the hash to see if we correctly recovered the snapshot
+        // TODO: Redo this check when we get the final_state from the ledger
+        /*if final_state.final_state_hash != final_state_hash_from_snapshot {
+            warn!("The hash of the final_state recovered from the snapshot is different from the hash saved.");
+        }*/
+
+        // Then, interpolate the downtime, to attach at end_slot;
+        final_state.last_start_period = last_start_period;
+
+        // We compute the draws here because we need to feed_cycles when interpolating
+        final_state.compute_initial_draws()?;
+
+        final_state.interpolate_downtime()?;
+
+        Ok(final_state)
+    }
+
+    /// Once we created a FinalState from a snapshot, we need to edit it to attach at the end_slot and handle the downtime.
+    /// This basically recreates the history of the final_state, without executing the slots.
+    fn interpolate_downtime(&mut self) -> Result<(), FinalStateError> {
+        // TODO: Change the current_slot when we deserialize the final state from RocksDB. Until then, final_state slot and the ledger slot are not consistent!
+        // let current_slot = self.slot;
+        let current_slot = Slot::new(0, self.config.thread_count.saturating_sub(1));
+        let current_slot_cycle = current_slot.get_cycle(self.config.periods_per_cycle);
+
+        let end_slot = Slot::new(
+            self.last_start_period,
+            self.config.thread_count.saturating_sub(1),
+        );
+        let end_slot_cycle = end_slot.get_cycle(self.config.periods_per_cycle);
+
+        if current_slot_cycle == end_slot_cycle {
+            // In that case, we just complete the gap in the same cycle
+            self.interpolate_single_cycle(current_slot, end_slot)?;
+        } else {
+            // Here, we we also complete the cycle_infos in between
+            self.interpolate_multiple_cycles(
+                current_slot,
+                end_slot,
+                current_slot_cycle,
+                end_slot_cycle,
+            )?;
+        }
+
+        self.slot = end_slot;
+
+        // Recompute the hash with the updated data and feed it to POS_state.
+        self.compute_state_hash_at_slot(self.slot);
+
+        // feed final_state_hash to the last cycle
+        let cycle = self.slot.get_cycle(self.config.periods_per_cycle);
+        self.pos_state
+            .feed_cycle_state_hash(cycle, self.final_state_hash);
+
+        Ok(())
+    }
+
+    /// This helper function is to be called if the downtime does not span over multiple cycles
+    fn interpolate_single_cycle(
+        &mut self,
+        current_slot: Slot,
+        end_slot: Slot,
+    ) -> Result<(), FinalStateError> {
+        let latest_snapshot_cycle_info =
+            self.pos_state
+                .cycle_history
+                .back_mut()
+                .ok_or(FinalStateError::SnapshotError(String::from(
+                    "Invalid cycle_history",
+                )))?;
+
+        for _ in current_slot.period..end_slot.period {
+            latest_snapshot_cycle_info.rng_seed.push(false);
+        }
+
+        Ok(())
+    }
+
+    /// This helper function is to be called if the downtime spans over multiple cycles
+    fn interpolate_multiple_cycles(
+        &mut self,
+        current_slot: Slot,
+        end_slot: Slot,
+        current_slot_cycle: u64,
+        end_slot_cycle: u64,
+    ) -> Result<(), FinalStateError> {
+        let latest_snapshot_cycle_info =
+            self.pos_state
+                .cycle_history
+                .back_mut()
+                .ok_or(FinalStateError::SnapshotError(String::from(
+                    "Invalid cycle_history",
+                )))?;
+
+        // This clone lets us repeat the cycle_info for new cycle_infos
+        let latest_snapshot_cycle_info_clone = latest_snapshot_cycle_info.clone();
+
+        // Firstly, complete the first cycle
+        let latest_cycle_info =
+            self.pos_state
+                .cycle_history
+                .back_mut()
+                .ok_or(FinalStateError::SnapshotError(String::from(
+                    "Invalid cycle_history",
+                )))?;
+
+        for _ in current_slot.period..self.config.periods_per_cycle {
+            latest_cycle_info.rng_seed.push(false);
+        }
+
+        latest_cycle_info.rng_seed.extend(vec![
+            false;
+            self.config
+                .periods_per_cycle
+                .saturating_sub(current_slot.period)
+                as usize
+        ]);
+
+        latest_cycle_info.complete = true;
+
+        // Feed final_state_hash to the completed cycle
+        self.feed_cycle_hash_and_selector_for_interpolation(current_slot_cycle)?;
+
+        // Then, build all the already completed cycles
+        for cycle in (current_slot_cycle + 1)..end_slot_cycle {
+            let last_slot = Slot::new_last_of_cycle(
+                cycle,
+                self.config.periods_per_cycle,
+                self.config.thread_count,
+            )
+            .map_err(|err| {
+                FinalStateError::InvalidSlot(format!(
+                    "Cannot create slot for interpolating downtime: {}",
+                    err
+                ))
+            })?;
+
+            self.pos_state
+                .create_new_cycle_from_last(&latest_snapshot_cycle_info_clone, last_slot)
+                .map_err(|err| FinalStateError::PosError(format!("{}", err)))?;
+
+            // Feed final_state_hash to the completed cycle
+            self.feed_cycle_hash_and_selector_for_interpolation(cycle)?;
+        }
+
+        // Then, build the last cycle
+        self.pos_state
+            .create_new_cycle_from_last(&latest_snapshot_cycle_info_clone, end_slot)
+            .map_err(|err| FinalStateError::PosError(format!("{}", err)))?;
+
+        // If the end_slot_cycle is completed
+        if end_slot.is_last_of_cycle(self.config.periods_per_cycle, self.config.thread_count) {
+            // Feed final_state_hash to the completed cycle
+            self.feed_cycle_hash_and_selector_for_interpolation(end_slot_cycle)?;
+        }
+
+        // We reduce the cycle_history len as needed
+        while self.pos_state.cycle_history.len() > self.pos_state.config.cycle_history_length {
+            self.pos_state.cycle_history.pop_front();
+        }
+
+        Ok(())
+    }
+
+    /// Used during interpolation, when a new cycle is set as completed
+    fn feed_cycle_hash_and_selector_for_interpolation(
+        &mut self,
+        cycle: u64,
+    ) -> Result<(), FinalStateError> {
+        self.pos_state
+            .feed_cycle_state_hash(cycle, self.final_state_hash);
+
+        self.pos_state
+            .feed_selector(cycle.checked_add(2).ok_or_else(|| {
+                FinalStateError::PosError("cycle overflow when feeding selector".into())
+            })?)
+            .map_err(|_| {
+                FinalStateError::PosError("cycle overflow when feeding selector".into())
+            })?;
+        Ok(())
     }
 
     /// Reset the final state to the initial state.
@@ -105,7 +352,14 @@ impl FinalState {
         // 2. async_pool hash
         hash_concat.extend(self.async_pool.hash.to_bytes());
         // 3. pos deferred_credit hash
-        hash_concat.extend(self.pos_state.deferred_credits.hash.to_bytes());
+        let deferred_credit_hash = match self.pos_state.deferred_credits.get_hash() {
+            Some(hash) => hash,
+            None => self
+                .pos_state
+                .deferred_credits
+                .enable_hash_tracker_and_compute_hash(),
+        };
+        hash_concat.extend(deferred_credit_hash.to_bytes());
         // 4. pos cycle history hashes, skip the bootstrap safety cycle if there is one
         let n = (self.pos_state.cycle_history.len() == self.config.pos_config.cycle_history_length)
             as usize;
@@ -116,6 +370,7 @@ impl FinalState {
         hash_concat.extend(self.executed_ops.hash.to_bytes());
         // 6. compute and save final state hash
         self.final_state_hash = Hash::compute_from(&hash_concat);
+
         info!(
             "final_state hash at slot {}: {}",
             slot, self.final_state_hash
@@ -147,8 +402,6 @@ impl FinalState {
         self.slot = slot;
 
         // apply the state changes
-        self.ledger
-            .apply_changes(changes.ledger_changes.clone(), self.slot);
         self.async_pool
             .apply_changes_unchecked(&changes.async_pool_changes);
         self.pos_state
@@ -160,6 +413,35 @@ impl FinalState {
         self.executed_ops
             .apply_changes(changes.executed_ops_changes.clone(), self.slot);
 
+        let mut final_state_data = None;
+
+        if cfg!(feature = "create_snapshot") {
+            let /*mut*/ final_state_buffer = Vec::new();
+
+            /*let final_state_raw_serializer = FinalStateRawSerializer::new();
+
+            let final_state_raw = FinalStateRaw {
+                async_pool_messages: self.async_pool.messages.clone(),
+                cycle_history: self.pos_state.cycle_history.clone(),
+                deferred_credits: self.pos_state.deferred_credits.clone(),
+                sorted_ops: self.executed_ops.sorted_ops.clone(),
+                latest_consistent_slot: self.slot,
+                final_state_hash_from_snapshot: self.final_state_hash,
+            };
+
+            if final_state_raw_serializer
+                .serialize(&final_state_raw, &mut final_state_buffer)
+                .is_err()
+            {
+                debug!("Error while trying to serialize final_state");
+            }*/
+
+            final_state_data = Some(final_state_buffer)
+        }
+
+        self.ledger
+            .apply_changes(changes.ledger_changes.clone(), self.slot, final_state_data);
+
         // push history element and limit history size
         if self.config.final_history_length > 0 {
             while self.changes_history.len() >= self.config.final_history_length {
@@ -170,6 +452,22 @@ impl FinalState {
 
         // compute the final state hash
         self.compute_state_hash_at_slot(slot);
+
+        if cfg!(feature = "create_snapshot") {
+            let /*mut*/ hash_buffer = Vec::new();
+
+            /*
+            let hash_serializer = HashSerializer::new();
+
+            if hash_serializer
+                .serialize(&self.final_state_hash, &mut hash_buffer)
+                .is_err()
+            {
+                debug!("Error while trying to serialize final_state_hash");
+            }*/
+
+            self.ledger.set_final_state_hash(hash_buffer);
+        }
 
         // feed final_state_hash to the last cycle
         let cycle = slot.get_cycle(self.config.periods_per_cycle);
@@ -278,22 +576,21 @@ impl FinalState {
             // Get PoS deferred credits changes that concern credits <= credits_step
             match credits_step {
                 StreamingStep::Ongoing(cursor_slot) => {
-                    let deferred_credits = DeferredCredits {
-                        credits: changes
-                            .pos_changes
-                            .deferred_credits
-                            .credits
-                            .iter()
-                            .filter_map(|(credits_slot, credits)| {
-                                if *credits_slot <= cursor_slot {
-                                    Some((*credits_slot, credits.clone()))
-                                } else {
-                                    None
-                                }
-                            })
-                            .collect(),
-                        ..Default::default()
-                    };
+                    let mut deferred_credits = DeferredCredits::new_with_hash();
+                    deferred_credits.credits = changes
+                        .pos_changes
+                        .deferred_credits
+                        .credits
+                        .iter()
+                        .filter_map(|(credits_slot, credits)| {
+                            if *credits_slot <= cursor_slot {
+                                Some((*credits_slot, credits.clone()))
+                            } else {
+                                None
+                            }
+                        })
+                        .collect();
+
                     slot_changes.pos_changes.deferred_credits = deferred_credits;
                 }
                 StreamingStep::Finished(_) => {
@@ -320,6 +617,187 @@ impl FinalState {
             res_changes.push((*slot, slot_changes));
         }
         Ok(res_changes)
+    }
+}
+
+/// Serializer for `FinalStateRaw`
+pub struct FinalStateRawSerializer {
+    async_pool_serializer: AsyncPoolSerializer,
+    cycle_history_serializer: CycleHistorySerializer,
+    deferred_credits_serializer: DeferredCreditsSerializer,
+    executed_ops_serializer: ExecutedOpsSerializer,
+    slot_serializer: SlotSerializer,
+}
+
+impl Default for FinalStateRawSerializer {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+impl From<FinalState> for FinalStateRaw {
+    fn from(value: FinalState) -> Self {
+        Self {
+            async_pool_messages: value.async_pool.messages,
+            cycle_history: value.pos_state.cycle_history,
+            deferred_credits: value.pos_state.deferred_credits,
+            sorted_ops: value.executed_ops.sorted_ops,
+            latest_consistent_slot: value.slot,
+            final_state_hash_from_snapshot: value.final_state_hash,
+        }
+    }
+}
+
+impl FinalStateRawSerializer {
+    /// Initialize a `FinalStateRaweSerializer`
+    pub fn new() -> Self {
+        Self {
+            async_pool_serializer: AsyncPoolSerializer::new(),
+            cycle_history_serializer: CycleHistorySerializer::new(),
+            deferred_credits_serializer: DeferredCreditsSerializer::new(),
+            executed_ops_serializer: ExecutedOpsSerializer::new(),
+            slot_serializer: SlotSerializer::new(),
+        }
+    }
+}
+
+impl Serializer<FinalStateRaw> for FinalStateRawSerializer {
+    fn serialize(&self, value: &FinalStateRaw, buffer: &mut Vec<u8>) -> Result<(), SerializeError> {
+        // Serialize Async Pool
+        self.async_pool_serializer
+            .serialize(&value.async_pool_messages, buffer)?;
+
+        // Serialize pos state
+        self.cycle_history_serializer
+            .serialize(&value.cycle_history, buffer)?;
+        self.deferred_credits_serializer
+            .serialize(&value.deferred_credits, buffer)?;
+
+        // Serialize Executed Ops
+        self.executed_ops_serializer
+            .serialize(&value.sorted_ops, buffer)?;
+
+        // Serialize metadata
+        self.slot_serializer
+            .serialize(&value.latest_consistent_slot, buffer)?;
+
+        // /!\ The final_state_hash has to be serialized separately!
+
+        Ok(())
+    }
+}
+
+pub struct FinalStateRaw {
+    async_pool_messages: BTreeMap<AsyncMessageId, AsyncMessage>,
+    cycle_history: VecDeque<CycleInfo>,
+    deferred_credits: DeferredCredits,
+    sorted_ops: BTreeMap<Slot, PreHashSet<OperationId>>,
+    latest_consistent_slot: Slot,
+    #[allow(dead_code)]
+    final_state_hash_from_snapshot: Hash,
+}
+
+/// Deserializer for `FinalStateRaw`
+pub struct FinalStateRawDeserializer {
+    async_deser: AsyncPoolDeserializer,
+    cycle_history_deser: CycleHistoryDeserializer,
+    deferred_credits_deser: DeferredCreditsDeserializer,
+    executed_ops_deser: ExecutedOpsDeserializer,
+    slot_deser: SlotDeserializer,
+    hash_deser: HashDeserializer,
+}
+
+impl FinalStateRawDeserializer {
+    #[allow(clippy::too_many_arguments)]
+    #[allow(dead_code)]
+    /// Initialize a `FinalStateRawDeserializer`
+    pub fn new(
+        config: FinalStateConfig,
+        max_async_pool_length: u64,
+        max_datastore_key_length: u8,
+        max_rolls_length: u64,
+        max_production_stats_length: u64,
+        max_credit_length: u64,
+        max_executed_ops_length: u64,
+        max_operations_per_block: u32,
+    ) -> Self {
+        Self {
+            async_deser: AsyncPoolDeserializer::new(
+                config.thread_count,
+                max_async_pool_length,
+                config.async_pool_config.max_async_message_data,
+                max_datastore_key_length as u32,
+            ),
+            cycle_history_deser: CycleHistoryDeserializer::new(
+                config.pos_config.cycle_history_length as u64,
+                max_rolls_length,
+                max_production_stats_length,
+            ),
+            deferred_credits_deser: DeferredCreditsDeserializer::new(
+                config.thread_count,
+                max_credit_length,
+                true,
+            ),
+            executed_ops_deser: ExecutedOpsDeserializer::new(
+                config.thread_count,
+                max_executed_ops_length,
+                max_operations_per_block as u64,
+            ),
+            slot_deser: SlotDeserializer::new(
+                (Included(u64::MIN), Included(u64::MAX)),
+                (Included(0), Excluded(config.thread_count)),
+            ),
+            hash_deser: HashDeserializer::new(),
+        }
+    }
+}
+
+impl Deserializer<FinalStateRaw> for FinalStateRawDeserializer {
+    fn deserialize<'a, E: nom::error::ParseError<&'a [u8]> + nom::error::ContextError<&'a [u8]>>(
+        &self,
+        buffer: &'a [u8],
+    ) -> IResult<&'a [u8], FinalStateRaw, E> {
+        context("Failed FinalStateRaw deserialization", |buffer| {
+            tuple((
+                context("Failed async_pool_messages deserialization", |input| {
+                    self.async_deser.deserialize(input)
+                }),
+                context("Failed cycle_history deserialization", |input| {
+                    self.cycle_history_deser.deserialize(input)
+                }),
+                context("Failed deferred_credits deserialization", |input| {
+                    self.deferred_credits_deser.deserialize(input)
+                }),
+                context("Failed executed_ops deserialization", |input| {
+                    self.executed_ops_deser.deserialize(input)
+                }),
+                context("Failed slot deserialization", |input| {
+                    self.slot_deser.deserialize(input)
+                }),
+                context("Failed hash deserialization", |input| {
+                    self.hash_deser.deserialize(input)
+                }),
+            ))
+            .map(
+                |(
+                    async_pool_messages,
+                    cycle_history,
+                    deferred_credits,
+                    sorted_ops,
+                    latest_consistent_slot,
+                    final_state_hash_from_snapshot,
+                )| FinalStateRaw {
+                    async_pool_messages,
+                    cycle_history: cycle_history.into(),
+                    deferred_credits,
+                    sorted_ops,
+                    latest_consistent_slot,
+                    final_state_hash_from_snapshot,
+                },
+            )
+            .parse(buffer)
+        })
+        .parse(buffer)
     }
 }
 
