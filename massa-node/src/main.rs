@@ -54,7 +54,7 @@ use massa_models::config::{
     CONSENSUS_BOOTSTRAP_PART_SIZE, DENUNCIATION_EXPIRE_PERIODS, DENUNCIATION_ITEMS_MAX_CYCLE_DELTA,
 };
 use massa_models::denunciation::DenunciationPrecursor;
-use massa_network_exports::{Establisher, NetworkConfig, NetworkManager};
+use massa_network_exports::{Establisher, NetworkCommandSender, NetworkConfig, NetworkManager};
 use massa_network_worker::start_network_controller;
 use massa_pool_exports::{PoolChannels, PoolConfig, PoolManager};
 use massa_pool_worker::start_pool_controller;
@@ -70,7 +70,6 @@ use massa_time::MassaTime;
 use massa_versioning_worker::versioning::{MipStatsConfig, MipStore};
 use massa_wallet::Wallet;
 use parking_lot::RwLock;
-use std::net::TcpStream;
 use std::path::PathBuf;
 use std::sync::atomic::{AtomicUsize, Ordering};
 use std::thread::sleep;
@@ -89,7 +88,7 @@ async fn launch(
     node_wallet: Arc<RwLock<Wallet>>,
 ) -> (
     Receiver<ConsensusEvent>,
-    Option<BootstrapManager<TcpStream>>,
+    Option<BootstrapManager>,
     Box<dyn ConsensusManager>,
     Box<dyn ExecutionManager>,
     Box<dyn SelectorManager>,
@@ -547,7 +546,7 @@ async fn launch(
     // launch bootstrap server
     // TODO: use std::net::TcpStream
     let bootstrap_manager = match bootstrap_config.listen_addr {
-        Some(addr) => start_bootstrap_server::<TcpStream, NetworkCommandSender>(
+        Some(addr) => start_bootstrap_server::<NetworkCommandSender>(
             consensus_controller.clone(),
             network_command_sender.clone(),
             final_state.clone(),
@@ -687,7 +686,7 @@ async fn launch(
 }
 
 struct Managers {
-    bootstrap_manager: Option<BootstrapManager<TcpStream>>,
+    bootstrap_manager: Option<BootstrapManager>,
     consensus_manager: Box<dyn ConsensusManager>,
     execution_manager: Box<dyn ExecutionManager>,
     selector_manager: Box<dyn SelectorManager>,
