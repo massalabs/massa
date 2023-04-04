@@ -1090,8 +1090,6 @@
 <a href="#1090" id="1090">1090</a>
 <a href="#1091" id="1091">1091</a>
 <a href="#1092" id="1092">1092</a>
-<a href="#1093" id="1093">1093</a>
-<a href="#1094" id="1094">1094</a>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="attr">#![doc = <span class="macro">include_str!</span>(<span class="string">&quot;../../README.md&quot;</span>)]
@@ -1274,26 +1272,24 @@
     })
     .expect(<span class="string">&quot;could not start selector worker&quot;</span>);
 
-    <span class="comment">// Create final state, from snapshot or from scratch
-    </span><span class="kw">let </span>final_state = <span class="kw">match </span>args.restart_from_snapshot_at_period {
-        <span class="prelude-val">Some</span>(last_start_period) =&gt; Arc::new(parking_lot::RwLock::new(
-            FinalState::new_derived_from_snapshot(
+    <span class="comment">// Create final state, either from a snapshot, or from scratch
+    </span><span class="kw">let </span>final_state = Arc::new(parking_lot::RwLock::new(
+        <span class="kw">match </span>args.restart_from_snapshot_at_period {
+            <span class="prelude-val">Some</span>(last_start_period) =&gt; FinalState::new_derived_from_snapshot(
                 final_state_config,
                 Box::new(ledger),
                 selector_controller.clone(),
                 last_start_period,
             )
             .expect(<span class="string">&quot;could not init final state&quot;</span>),
-        )),
-        <span class="prelude-val">None </span>=&gt; Arc::new(parking_lot::RwLock::new(
-            FinalState::new(
+            <span class="prelude-val">None </span>=&gt; FinalState::new(
                 final_state_config,
                 Box::new(ledger),
                 selector_controller.clone(),
             )
             .expect(<span class="string">&quot;could not init final state&quot;</span>),
-        )),
-    };
+        },
+    ));
 
     <span class="comment">// interrupt signal listener
     </span><span class="kw">let </span>stop_signal = signal::ctrl_c();

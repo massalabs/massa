@@ -1401,7 +1401,7 @@
     }
 }
 
-<span class="doccomment">/// Deserializer for cycle history
+<span class="doccomment">/// Deserializer for cycle history, useful when restarting from a snapshot
 </span><span class="kw">pub struct </span>CycleHistoryDeserializer {
     u64_deserializer: U64VarIntDeserializer,
     cycle_info_deserializer: CycleInfoDeserializer,

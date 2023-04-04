@@ -548,7 +548,6 @@
 <a href="#548" id="548">548</a>
 <a href="#549" id="549">549</a>
 <a href="#550" id="550">550</a>
-<a href="#551" id="551">551</a>
 </pre><pre class="rust"><code><span class="kw">use </span>humantime::format_duration;
 <span class="kw">use </span>std::{collections::HashSet, net::SocketAddr, sync::Arc, time::Duration};
 
@@ -999,9 +998,8 @@
         <span class="kw">return </span><span class="prelude-val">Ok</span>(GlobalBootstrapState::new(final_state));
     }
 
-    <span class="kw">let </span>now = MassaTime::now()<span class="question-mark">?</span>;
     <span class="comment">// if we are before genesis, do not bootstrap
-    </span><span class="kw">if </span>now &lt; genesis_timestamp {
+    </span><span class="kw">if </span>MassaTime::now()<span class="question-mark">? </span>&lt; genesis_timestamp {
         <span class="macro">massa_trace!</span>(<span class="string">&quot;bootstrap.lib.get_state.init_from_scratch&quot;</span>, {});
         <span class="comment">// init final state
         </span>{

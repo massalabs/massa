@@ -932,9 +932,9 @@
     <span class="doccomment">/// Initializes a new `FinalState`
     ///
     /// # Arguments
-    /// * `config`: the configuration of the execution state
-    /// * `ledger`: a handle to the ledger
-    /// * `selector`: a handle to the POS selector
+    /// * `config`: the configuration of the final state to use for initialization
+    /// * `ledger`: the instance of the ledger on disk. Used to apply changes to the ledger.
+    /// * `selector`: the pos selector. Used to send draw inputs when a new cycle is completed.
     </span><span class="kw">pub fn </span>new(
         config: FinalStateConfig,
         ledger: Box&lt;<span class="kw">dyn </span>LedgerController&gt;,
@@ -977,9 +977,9 @@
     /// we just create a new one. This will be changed in the follow-up.
     ///
     /// # Arguments
-    /// * `config`: the configuration of the execution state
-    /// * `ledger`: a handle to the ledger
-    /// * `selector`: a handle to the POS selector
+    /// * `config`: the configuration of the final state to use for initialization
+    /// * `ledger`: the instance of the ledger on disk. Used to apply changes to the ledger.
+    /// * `selector`: the pos selector. Used to send draw inputs when a new cycle is completed.
     /// * `last_start_period`: at what period we should attach the final_state
     </span><span class="kw">pub fn </span>new_derived_from_snapshot(
         config: FinalStateConfig,

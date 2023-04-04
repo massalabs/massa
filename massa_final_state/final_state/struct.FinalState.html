@@ -31,9 +31,9 @@
 ) -&gt; <a class="enum" href="https://doc.rust-lang.org/nightly/core/result/enum.Result.html" title="enum core::result::Result">Result</a>&lt;Self, <a class="enum" href="../error/enum.FinalStateError.html" title="enum massa_final_state::error::FinalStateError">FinalStateError</a>&gt;</h4></section></summary><div class="docblock"><p>Initializes a new <code>FinalState</code></p>
 <h5 id="arguments"><a href="#arguments">Arguments</a></h5>
 <ul>
-<li><code>config</code>: the configuration of the execution state</li>
-<li><code>ledger</code>: a handle to the ledger</li>
-<li><code>selector</code>: a handle to the POS selector</li>
+<li><code>config</code>: the configuration of the final state to use for initialization</li>
+<li><code>ledger</code>: the instance of the ledger on disk. Used to apply changes to the ledger.</li>
+<li><code>selector</code>: the pos selector. Used to send draw inputs when a new cycle is completed.</li>
 </ul>
 </div></details><details class="toggle method-toggle" open><summary><section id="method.new_derived_from_snapshot" class="method"><a class="srclink rightside" href="../../src/massa_final_state/final_state.rs.html#119-163">source</a><h4 class="code-header">pub fn <a href="#method.new_derived_from_snapshot" class="fn">new_derived_from_snapshot</a>(
     config: <a class="struct" href="../config/struct.FinalStateConfig.html" title="struct massa_final_state::config::FinalStateConfig">FinalStateConfig</a>,
@@ -44,9 +44,9 @@
 we just create a new one. This will be changed in the follow-up.</p>
 <h5 id="arguments-1"><a href="#arguments-1">Arguments</a></h5>
 <ul>
-<li><code>config</code>: the configuration of the execution state</li>
-<li><code>ledger</code>: a handle to the ledger</li>
-<li><code>selector</code>: a handle to the POS selector</li>
+<li><code>config</code>: the configuration of the final state to use for initialization</li>
+<li><code>ledger</code>: the instance of the ledger on disk. Used to apply changes to the ledger.</li>
+<li><code>selector</code>: the pos selector. Used to send draw inputs when a new cycle is completed.</li>
 <li><code>last_start_period</code>: at what period we should attach the final_state</li>
 </ul>
 </div></details><details class="toggle method-toggle" open><summary><section id="method.interpolate_downtime" class="method"><a class="srclink rightside" href="../../src/massa_final_state/final_state.rs.html#167-203">source</a><h4 class="code-header">fn <a href="#method.interpolate_downtime" class="fn">interpolate_downtime</a>(&amp;mut self) -&gt; <a class="enum" href="https://doc.rust-lang.org/nightly/core/result/enum.Result.html" title="enum core::result::Result">Result</a>&lt;<a class="primitive" href="https://doc.rust-lang.org/nightly/std/primitive.unit.html">()</a>, <a class="enum" href="../error/enum.FinalStateError.html" title="enum massa_final_state::error::FinalStateError">FinalStateError</a>&gt;</h4></section></summary><div class="docblock"><p>Once we created a FinalState from a snapshot, we need to edit it to attach at the end_slot and handle the downtime.

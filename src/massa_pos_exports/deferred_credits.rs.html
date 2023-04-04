@@ -456,7 +456,7 @@
 </span><span class="kw">pub struct </span>DeferredCredits {
     <span class="doccomment">/// Deferred credits
     </span><span class="kw">pub </span>credits: BTreeMap&lt;Slot, PreHashMap&lt;Address, Amount&gt;&gt;,
-    <span class="doccomment">/// Hash tracker, optional
+    <span class="doccomment">/// Hash tracker, optional. Indeed, computing the hash is expensive, so we only compute it when finalizing a slot.
     </span><span class="attr">#[serde(skip_serializing, skip_deserializing)]
     </span>hash_tracker: <span class="prelude-ty">Option</span>&lt;DeferredCreditsHashTracker&gt;,
 }
@@ -486,7 +486,7 @@
         }
     }
 
-    <span class="doccomment">/// Get resulting hash
+    <span class="doccomment">/// Get resulting hash from the tracker
     </span><span class="kw">pub fn </span>get_hash(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>Hash {
         <span class="kw-2">&amp;</span><span class="self">self</span>.hash
     }
@@ -496,7 +496,7 @@
         <span class="self">self</span>.hash ^= <span class="self">self</span>.compute_hash(slot, address, amount);
     }
 
-    <span class="doccomment">/// Compute the hash
+    <span class="doccomment">/// Compute the hash for a specific entry
     </span><span class="kw">fn </span>compute_hash(<span class="kw-2">&amp;</span><span class="self">self</span>, slot: <span class="kw-2">&amp;</span>Slot, address: <span class="kw-2">&amp;</span>Address, amount: <span class="kw-2">&amp;</span>Amount) -&gt; Hash {
         <span class="comment">// serialization can never fail in the following computations, unwrap is justified
         </span><span class="kw">let </span><span class="kw-2">mut </span>buffer = Vec::new();
