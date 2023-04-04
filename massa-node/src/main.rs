@@ -405,7 +405,13 @@ async fn launch(
         block_count_considered: MIP_STORE_STATS_BLOCK_CONSIDERED,
         counters_max: MIP_STORE_STATS_COUNTERS_MAX,
     };
-    let mip_store = MipStore::try_from(([], mip_stats_config)).unwrap();
+    let mut mip_store =
+        MipStore::try_from(([], mip_stats_config)).expect("Cannot create an empty MIP store");
+    if let Some(bootstrap_mip_store) = bootstrap_state.mip_store {
+        mip_store
+            .update_with(&bootstrap_mip_store)
+            .expect("Cannot update MIP store with bootstrap mip store");
+    }
 
     // launch execution module
     let execution_config = ExecutionConfig {

@@ -53,6 +53,7 @@ pub struct GlobalBootstrapState {
     /// list of network peers
     pub peers: Option<BootstrapPeers>,
 
+    /// versioning info state
     pub mip_store: Option<MipStore>,
 }
 
