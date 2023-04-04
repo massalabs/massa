@@ -271,7 +271,7 @@ impl DenunciationFactoryWorker {
                 recv(self.consensus_receiver) -> de_i_ => {
                     match de_i_ {
                         Ok(de_i) => {
-                            info!("Denunciation factory receives a new block header denunciation interest: {:?}", de_i);
+                            debug!("Denunciation factory receives a new block header denunciation interest: {:?}", de_i);
                             self.process_new_secured_header(de_i);
                         },
                         Err(e) => {
@@ -283,7 +283,7 @@ impl DenunciationFactoryWorker {
                 recv(self.endorsement_pool_receiver) -> de_i_ => {
                     match de_i_ {
                         Ok(de_i) => {
-                            info!("Denunciation factory receives a new endorsement denunciation interest: {:?}", de_i);
+                            debug!("Denunciation factory receives a new endorsement denunciation interest: {:?}", de_i);
                             self.process_new_secure_share_endorsement(de_i)
                         }
                         Err(e) => {
@@ -294,7 +294,7 @@ impl DenunciationFactoryWorker {
                 }
                 recv(self.factory_receiver) -> msg_ => {
                     if let Err(e) = msg_ {
-                        warn!("Denunciation factory receive an error from factory receiver: {}", e);
+                        debug!("Denunciation factory receive an error from factory receiver: {}", e);
                     }
                     // factory_receiver send () and is supposed to be a STOP message
                     break;

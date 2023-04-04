@@ -25,6 +25,7 @@ use massa_api_exports::{
     operation::{OperationInfo, OperationInput},
     TimeInterval,
 };
+use massa_models::secure_share::SecureShare;
 use massa_models::{
     address::Address,
     block::FilledBlock,
@@ -496,7 +497,7 @@ impl RpcClientV2 {
     /// New produced blocks headers
     pub async fn subscribe_new_blocks_headers(
         &self,
-    ) -> Result<Subscription<BlockHeader>, jsonrpsee::core::Error> {
+    ) -> Result<Subscription<SecureShare<BlockHeader, BlockId>>, jsonrpsee::core::Error> {
         if let Some(client) = self.ws_client.as_ref() {
             client
                 .subscribe(
