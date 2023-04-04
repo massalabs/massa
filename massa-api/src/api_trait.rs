@@ -38,7 +38,7 @@ pub trait MassaApi {
     #[subscription(
         name = "subscribe_new_blocks_headers" => "new_blocks_headers",
         unsubscribe = "unsubscribe_new_blocks_headers",
-        item = BlockHeader
+        item = SecureShare<BlockHeader, BlockId>
     )]
     fn subscribe_new_blocks_headers(&self);
 

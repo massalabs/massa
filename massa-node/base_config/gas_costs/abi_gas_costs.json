@@ -1,6 +1,7 @@
 {
   "assembly_script_abort": 1,
   "assembly_script_address_from_public_key": 294,
+  "assembly_script_validate_address": 155,
   "assembly_script_append_data": 198,
   "assembly_script_append_data_for": 231,
   "assembly_script_call": 50000,
@@ -46,5 +47,6 @@
   "assembly_script_transfer_coins": 189,
   "assembly_script_transfer_coins_for": 218,
   "assembly_script_unsafe_random": 143,
-  "launch": 50000
+  "launch": 50000,
+  "sp_compilation_cost": 10000
 }

@@ -7,6 +7,7 @@ use massa_models::config::*;
 use massa_sc_runtime::GasCosts;
 use massa_time::MassaTime;
 use std::path::PathBuf;
+use tempfile::TempDir;
 
 impl Default for ExecutionConfig {
     /// default configuration used for testing
@@ -56,8 +57,11 @@ impl Default for ExecutionConfig {
                 .into(),
             )
             .unwrap(),
-            max_module_cache_size: 1000,
             initial_vesting_path: PathBuf::default(),
+            hd_cache_path: TempDir::new().unwrap().path().to_path_buf(),
+            lru_cache_size: 1000,
+            hd_cache_size: 10_000,
+            snip_amount: 10,
         }
     }
 }

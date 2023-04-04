@@ -11,7 +11,6 @@
 use crate::active_history::{ActiveHistory, HistorySearchResult};
 use crate::context::{ExecutionContext, ExecutionContextSnapshot};
 use crate::interface_impl::InterfaceImpl;
-use crate::module_cache::ModuleCache;
 use crate::stats::ExecutionStatsCounter;
 use crate::vesting_manager::VestingManager;
 use massa_async_pool::AsyncMessage;
@@ -27,15 +26,19 @@ use massa_models::execution::EventFilter;
 use massa_models::output_event::SCOutputEvent;
 use massa_models::prehash::PreHashSet;
 use massa_models::stats::ExecutionStats;
+use massa_models::timeslots::get_block_slot_timestamp;
 use massa_models::{
     address::Address,
     block_id::BlockId,
     operation::{OperationId, OperationType, SecureShareOperation},
 };
 use massa_models::{amount::Amount, slot::Slot};
+use massa_module_cache::config::ModuleCacheConfig;
+use massa_module_cache::controller::ModuleCache;
 use massa_pos_exports::SelectorController;
-use massa_sc_runtime::{Interface, Response, RuntimeModule};
+use massa_sc_runtime::{Interface, Response, VMError};
 use massa_storage::Storage;
+use massa_versioning_worker::versioning::MipStore;
 use parking_lot::{Mutex, RwLock};
 use std::collections::{BTreeMap, BTreeSet, HashMap};
 use std::sync::Arc;
@@ -77,6 +80,8 @@ pub(crate) struct ExecutionState {
     module_cache: Arc<RwLock<ModuleCache>>,
     // Vesting manager
     vesting_manager: Arc<VestingManager>,
+    // MipStore (Versioning)
+    mip_store: MipStore,
 }
 
 impl ExecutionState {
@@ -88,7 +93,11 @@ impl ExecutionState {
     ///
     /// # returns
     /// A new `ExecutionState`
-    pub fn new(config: ExecutionConfig, final_state: Arc<RwLock<FinalState>>) -> ExecutionState {
+    pub fn new(
+        config: ExecutionConfig,
+        final_state: Arc<RwLock<FinalState>>,
+        mip_store: MipStore,
+    ) -> ExecutionState {
         // Get the slot at the output of which the final state is attached.
         // This should be among the latest final slots.
         let last_final_slot = final_state.read().slot;
@@ -111,10 +120,14 @@ impl ExecutionState {
         };
 
         // Initialize the SC module cache
-        let module_cache = Arc::new(RwLock::new(ModuleCache::new(
-            config.gas_costs.clone(),
-            config.max_module_cache_size,
-        )));
+        let module_cache = Arc::new(RwLock::new(ModuleCache::new(ModuleCacheConfig {
+            hd_cache_path: config.hd_cache_path.clone(),
+            gas_costs: config.gas_costs.clone(),
+            compilation_gas: config.max_gas_per_block,
+            lru_cache_size: config.lru_cache_size,
+            hd_cache_size: config.hd_cache_size,
+            snip_amount: config.snip_amount,
+        })));
 
         // Create an empty placeholder execution context, with shared atomic access
         let execution_context = Arc::new(Mutex::new(ExecutionContext::new(
@@ -147,6 +160,7 @@ impl ExecutionState {
             module_cache,
             config,
             vesting_manager,
+            mip_store,
         }
     }
 
@@ -221,7 +235,7 @@ impl ExecutionState {
     /// * `operation`: operation to be schedule
     /// * `sender_addr`: sender address for the operation (for fee transfer)
 
-    fn schedule_operation_for_execution(
+    fn prepare_operation_for_execution(
         &self,
         operation: &SecureShareOperation,
         sender_addr: Address,
@@ -316,7 +330,7 @@ impl ExecutionState {
         // Add fee from operation.
         let new_block_credits = block_credits.saturating_add(operation.content.fee);
 
-        let context_snapshot = self.schedule_operation_for_execution(operation, sender_addr)?;
+        let context_snapshot = self.prepare_operation_for_execution(operation, sender_addr)?;
 
         // update block gas
         *remaining_block_gas = new_remaining_block_gas;
@@ -563,28 +577,28 @@ impl ExecutionState {
             }];
         };
 
-        // run the VM on the bytecode contained in the operation
-        let module = RuntimeModule::new(bytecode, *max_gas, self.config.gas_costs.clone())
-            .map_err(|err| {
-                ExecutionError::RuntimeError(format!(
-                    "compilation error in execute_executesc_op: {}",
-                    err
-                ))
-            })?;
-        match massa_sc_runtime::run_main(
+        // load the tmp module
+        let module = self
+            .module_cache
+            .read()
+            .load_tmp_module(bytecode, *max_gas)?;
+        // sub tmp module compilation cost
+        let remaining_gas = max_gas
+            .checked_sub(self.config.gas_costs.sp_compilation_cost)
+            .ok_or(ExecutionError::RuntimeError(
+                "not enough gas to pay for singlepass compilation".to_string(),
+            ))?;
+        // run the VM
+        massa_sc_runtime::run_main(
             &*self.execution_interface,
             module,
-            *max_gas,
+            remaining_gas,
             self.config.gas_costs.clone(),
-        ) {
-            Ok(_response) => {}
-            Err(err) => {
-                return Err(ExecutionError::RuntimeError(format!(
-                    "module execution error in execute_executesc_op: {}",
-                    err
-                )));
-            }
-        }
+        )
+        .map_err(|error| ExecutionError::VMError {
+            context: "ExecuteSC".to_string(),
+            error,
+        })?;
 
         Ok(())
     }
@@ -663,28 +677,30 @@ impl ExecutionState {
             bytecode = context.get_bytecode(&target_addr).unwrap_or_default().0;
         }
 
-        // Execute bytecode
+        // load and execute the compiled module
         // IMPORTANT: do not keep a lock here as `run_function` uses the `get_module` interface
-        let module = self.module_cache.write().get_module(&bytecode, max_gas)?;
-        match massa_sc_runtime::run_function(
+        let module = self.module_cache.write().load_module(&bytecode, max_gas)?;
+        let response = massa_sc_runtime::run_function(
             &*self.execution_interface,
-            module.clone(),
+            module,
             target_func,
             param,
             max_gas,
             self.config.gas_costs.clone(),
-        ) {
-            Ok(Response { init_cost, .. }) => {
+        );
+        match response {
+            Ok(Response { init_cost, .. }) | Err(VMError::ExecutionError { init_cost, .. }) => {
                 self.module_cache
                     .write()
-                    .save_module(&bytecode, module, init_cost);
-                Ok(())
+                    .set_init_cost(&bytecode, init_cost);
             }
-            Err(err) => Err(ExecutionError::RuntimeError(format!(
-                "module execution error in execute_callsc_op: {}",
-                err
-            ))),
+            _ => (),
         }
+        response.map_err(|error| ExecutionError::VMError {
+            context: "CallSC".to_string(),
+            error,
+        })?;
+        Ok(())
     }
 
     /// Tries to execute an asynchronous message
@@ -700,7 +716,7 @@ impl ExecutionState {
     ) -> Result<(), ExecutionError> {
         // prepare execution context
         let context_snapshot;
-        let bytecode: Bytecode = {
+        let bytecode = {
             let mut context = context_guard!(self);
             context_snapshot = context.get_snapshot();
             context.max_gas = message.max_gas;
@@ -752,35 +768,41 @@ impl ExecutionState {
                 return Err(err);
             }
 
-            bytecode
+            bytecode.0
         };
 
-        // Execute bytecode
+        // load and execute the compiled module
         // IMPORTANT: do not keep a lock here as `run_function` uses the `get_module` interface
         let module = self
             .module_cache
             .write()
-            .get_module(&bytecode.0, message.max_gas)?;
-        match massa_sc_runtime::run_function(
+            .load_module(&bytecode, message.max_gas)?;
+        let response = massa_sc_runtime::run_function(
             &*self.execution_interface,
-            module.clone(),
+            module,
             &message.handler,
             &message.data,
             message.max_gas,
             self.config.gas_costs.clone(),
-        ) {
+        );
+        match response {
             Ok(Response { init_cost, .. }) => {
                 self.module_cache
                     .write()
-                    .save_module(&bytecode.0, module, init_cost);
+                    .set_init_cost(&bytecode, init_cost);
                 Ok(())
             }
-            Err(err) => {
+            Err(error) => {
+                if let VMError::ExecutionError { init_cost, .. } = error {
+                    self.module_cache
+                        .write()
+                        .set_init_cost(&bytecode, init_cost);
+                }
                 // execution failed: reset context to snapshot and reimburse sender
-                let err = ExecutionError::RuntimeError(format!(
-                    "module execution error in execute_async_message: {}",
-                    err
-                ));
+                let err = ExecutionError::VMError {
+                    context: "Asynchronous Message".to_string(),
+                    error,
+                };
                 let mut context = context_guard!(self);
                 context.reset_to_snapshot(context_snapshot, err.clone());
                 context.cancel_async_message(&message);
@@ -1078,7 +1100,11 @@ impl ExecutionState {
 
         // apply execution output to final state
         self.apply_final_execution_output(exec_out);
-        debug!("execute_final_slot: execution finished & result applied");
+
+        self.update_versioning_stats(exec_target, slot);
+        debug!(
+            "execute_final_slot: execution finished & result applied & versioning stats updated"
+        );
     }
 
     /// Runs a read-only execution request.
@@ -1132,29 +1158,24 @@ impl ExecutionState {
         // run the interpreter according to the target type
         let exec_response = match req.target {
             ReadOnlyExecutionTarget::BytecodeExecution(bytecode) => {
-                // set the execution context for execution
+                // set the execution context
                 *context_guard!(self) = execution_context;
 
-                // run the bytecode's main function
-                let module =
-                    RuntimeModule::new(&bytecode, req.max_gas, self.config.gas_costs.clone())
-                        .map_err(|err| {
-                            ExecutionError::RuntimeError(format!(
-                                "compilation error in execute_readonly_request: {}",
-                                err
-                            ))
-                        })?;
+                // load the tmp module
+                let module = self
+                    .module_cache
+                    .read()
+                    .load_tmp_module(&bytecode, req.max_gas)?;
+                // run the VM
                 massa_sc_runtime::run_main(
                     &*self.execution_interface,
                     module,
                     req.max_gas,
                     self.config.gas_costs.clone(),
                 )
-                .map_err(|err| {
-                    ExecutionError::RuntimeError(format!(
-                        "module execution error in execute_readonly_request BytecodeExecution: {}",
-                        err,
-                    ))
+                .map_err(|error| ExecutionError::VMError {
+                    context: "ReadOnlyExecutionTarget::BytecodeExecution".to_string(),
+                    error,
                 })?
             }
             ReadOnlyExecutionTarget::FunctionCall {
@@ -1168,33 +1189,36 @@ impl ExecutionState {
                     .unwrap_or_default()
                     .0;
 
-                // set the execution context for execution
+                // set the execution context
                 *context_guard!(self) = execution_context;
 
-                // Execute bytecode
+                // load and execute the compiled module
                 // IMPORTANT: do not keep a lock here as `run_function` uses the `get_module` interface
                 let module = self
                     .module_cache
                     .write()
-                    .get_module(&bytecode, req.max_gas)?;
+                    .load_module(&bytecode, req.max_gas)?;
                 let response = massa_sc_runtime::run_function(
                     &*self.execution_interface,
-                    module.clone(),
+                    module,
                     &target_func,
                     &parameter,
                     req.max_gas,
                     self.config.gas_costs.clone(),
-                )
-                .map_err(|err| {
-                    ExecutionError::RuntimeError(format!(
-                        "module execution error in execute_readonly_request BytecodeExecution: {}",
-                        err,
-                    ))
-                })?;
-                self.module_cache
-                    .write()
-                    .save_module(&bytecode, module, response.init_cost);
-                response
+                );
+                match response {
+                    Ok(Response { init_cost, .. })
+                    | Err(VMError::ExecutionError { init_cost, .. }) => {
+                        self.module_cache
+                            .write()
+                            .set_init_cost(&bytecode, init_cost);
+                    }
+                    _ => (),
+                }
+                response.map_err(|error| ExecutionError::VMError {
+                    context: "ReadOnlyExecutionTarget::FunctionCall".to_string(),
+                    error,
+                })?
             }
         };
 
@@ -1420,5 +1444,37 @@ impl ExecutionState {
             self.active_history.read().get_op_exec_status(),
             self.final_state.read().executed_ops.op_exec_status.clone(),
         )
+    }
+
+    /// Update MipStore with block header stats
+    pub fn update_versioning_stats(
+        &mut self,
+        exec_target: Option<&(BlockId, Storage)>,
+        slot: &Slot,
+    ) {
+        // update versioning statistics
+        if let Some((block_id, storage)) = exec_target {
+            if let Some(_block) = storage.read_blocks().get(block_id) {
+                let slot_ts_ = get_block_slot_timestamp(
+                    self.config.thread_count,
+                    self.config.t0,
+                    self.config.genesis_timestamp,
+                    *slot,
+                );
+
+                if let Ok(slot_ts) = slot_ts_ {
+                    // TODO - Next PR: use block header network versions - default to 0 for now
+                    self.mip_store
+                        .update_network_version_stats(slot_ts, Some((0, 0)));
+                } else {
+                    warn!("Unable to get slot timestamp for slot: {} in order to update mip_store stats", slot);
+                }
+            } else {
+                warn!(
+                    "Could not find block id: {} in storage in order to update mip_store stats",
+                    block_id
+                );
+            }
+        }
     }
 }

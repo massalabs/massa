@@ -180,7 +180,8 @@ impl HandshakeHandler for MassaHandshake {
         let peer_message =
             PeerManagementMessage::NewPeerConnected((peer_id.clone(), announcement.listeners));
         let peer_message_serialized = peer_message.to_bytes();
-        messages_handler.deserialize_and_handle(&peer_message_serialized, &peer_id)?;
+        let (rest, id) = messages_handler.deserialize_id(&peer_message_serialized, &peer_id)?;
+        messages_handler.handle(id, rest, &peer_id)?;
 
         let mut self_random_bytes = [0u8; 32];
         StdRng::from_entropy().fill_bytes(&mut self_random_bytes);

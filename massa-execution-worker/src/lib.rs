@@ -88,7 +88,6 @@ mod context;
 mod controller;
 mod execution;
 mod interface_impl;
-mod module_cache;
 mod request_queue;
 mod slot_sequencer;
 mod speculative_async_pool;
@@ -107,6 +106,9 @@ pub use worker::start_execution_worker;
     feature = "testing"
 ))]
 pub use interface_impl::InterfaceImpl;
+
+#[cfg(any(feature = "benchmarking"))]
+use criterion as _;
 
 #[cfg(any(
     test,

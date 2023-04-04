@@ -5,6 +5,7 @@ use massa_execution_exports::test_exports::{
     MockExecutionController, MockExecutionControllerMessage,
 };
 use massa_hash::Hash;
+use massa_models::denunciation::DenunciationPrecursor;
 use massa_models::{
     address::Address,
     amount::Amount,
@@ -95,11 +96,14 @@ where
     let storage: Storage = Storage::create_root();
     let operation_sender = broadcast::channel(5000).0;
     let (execution_controller, execution_receiver) = MockExecutionController::new_with_receiver();
+    let (denunciation_factory_tx, _denunciation_factory_rx) =
+        crossbeam_channel::unbounded::<DenunciationPrecursor>();
     let (pool_manager, pool_controller) = start_pool_controller(
         cfg,
         &storage,
         execution_controller,
         PoolChannels { operation_sender },
+        denunciation_factory_tx,
     );
 
     test(pool_manager, pool_controller, execution_receiver, storage)

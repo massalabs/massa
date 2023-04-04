@@ -16,26 +16,32 @@ pub struct MessagesHandler {
 }
 
 impl PeerNetMessagesHandler for MessagesHandler {
-    fn deserialize_and_handle(&self, data: &[u8], peer_id: &PeerId) -> PeerNetResult<()> {
+    fn deserialize_id<'a>(
+        &self,
+        data: &'a [u8],
+        _peer_id: &PeerId,
+    ) -> PeerNetResult<(&'a [u8], u64)> {
         if data.is_empty() {
             return Err(PeerNetError::ReceiveError.error(
                 "MessagesHandler",
                 Some("Empty message received".to_string()),
             ));
         }
-        let (rest, id) = self
-            .id_deserializer
+        self.id_deserializer
             .deserialize::<DeserializeError>(data)
             .map_err(|err| {
                 PeerNetError::HandlerError.error(
                     "MessagesHandler",
                     Some(format!("Failed to deserialize message id: {}", err)),
                 )
-            })?;
+            })
+    }
+
+    fn handle(&self, id: u64, data: &[u8], peer_id: &PeerId) -> PeerNetResult<()> {
         match id {
             0..=2 => self
                 .sender_blocks
-                .send((peer_id.clone(), id, rest.to_vec()))
+                .send((peer_id.clone(), id, data.to_vec()))
                 .map_err(|err| {
                     PeerNetError::HandlerError.error(
                         "MessagesHandler",
@@ -44,7 +50,7 @@ impl PeerNetMessagesHandler for MessagesHandler {
                 }),
             3 => self
                 .sender_endorsements
-                .send((peer_id.clone(), id - 3, rest.to_vec()))
+                .send((peer_id.clone(), id - 3, data.to_vec()))
                 .map_err(|err| {
                     PeerNetError::HandlerError.error(
                         "MessagesHandler",
@@ -56,7 +62,7 @@ impl PeerNetMessagesHandler for MessagesHandler {
                 }),
             4..=6 => self
                 .sender_operations
-                .send((peer_id.clone(), id - 4, rest.to_vec()))
+                .send((peer_id.clone(), id - 4, data.to_vec()))
                 .map_err(|err| {
                     PeerNetError::HandlerError.error(
                         "MessagesHandler",
@@ -68,7 +74,7 @@ impl PeerNetMessagesHandler for MessagesHandler {
                 }),
             7..=8 => self
                 .sender_peers
-                .send((peer_id.clone(), id - 7, rest.to_vec()))
+                .send((peer_id.clone(), id - 7, data.to_vec()))
                 .map_err(|err| {
                     PeerNetError::HandlerError.error(
                         "MessagesHandler",
