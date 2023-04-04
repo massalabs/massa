@@ -49,6 +49,8 @@ impl ConsensusState {
         Ok(())
     }
 
+
+    #[cfg(not(feature = "sandbox"))]
     /// Helper function for stats_tick. Checks if there are any final blocks is coming from protocol
     /// if none => we are probably desync
     /// Ignore if we are before the last_start_period
