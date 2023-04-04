@@ -449,7 +449,7 @@ pub async fn get_state(
     }
 
     // if we are before genesis, do not bootstrap
-    if  MassaTime::now()? < genesis_timestamp {
+    if MassaTime::now()? < genesis_timestamp {
         massa_trace!("bootstrap.lib.get_state.init_from_scratch", {});
         // init final state
         {
