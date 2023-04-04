@@ -20,7 +20,7 @@ massa_storage = { path = "../massa-storage" }
 massa_final_state = { path = "../massa-final-state" }
 massa_ledger_exports = { path = "../massa-ledger-exports", optional = true }
 massa_module_cache = { path = "../massa-module-cache" }
-massa-sc-runtime = { git = "https://github.com/massalabs/massa-sc-runtime", branch = "caching-followup" }
+massa-sc-runtime = { git = "https://github.com/massalabs/massa-sc-runtime", branch = "testnet_21" }
 
 # for more information on what are the following features used for, see the cargo.toml at workspace level
 
