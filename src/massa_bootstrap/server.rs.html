@@ -900,7 +900,7 @@
 //! # Updater
 //!
 //! Runs on a dedicated thread. Signal sent my manager stop method terminates the thread.
-//! Shares an Arc&lt;RwLock&gt;&gt; guarded list of white and blacklists with the main worker.
+//! Shares an `Arc&lt;RwLock&gt;&gt;` guarded list of white and blacklists with the main worker.
 //! Periodically does a read-only check to see if list needs updating.
 //! Creates an updated list then swaps it out with write-locked list
 //! Assuming no errors in code, this is the only write occurance, and is only a pointer-swap

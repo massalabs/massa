@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"fn":["start_pool_controller"]};
+window.SIDEBAR_ITEMS = {"fn":["start_pool_controller"],"mod":["controller_impl","denunciation_pool","endorsement_pool","operation_pool","types","worker"]};

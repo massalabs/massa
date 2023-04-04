@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"struct":["Clique","CliqueDeserializer","CliqueSerializer"]};
+window.SIDEBAR_ITEMS = {"constant":["FIELDS"],"enum":["__Field"],"struct":["Clique","CliqueDeserializer","CliqueSerializer","__FieldVisitor","__Visitor"]};
