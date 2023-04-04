@@ -2328,6 +2328,7 @@ dependencies = [
  "massa_protocol_worker",
  "massa_storage",
  "massa_time",
+ "massa_versioning_worker",
  "massa_wallet",
  "parking_lot",
  "paw",
@@ -2342,7 +2343,7 @@ dependencies = [
 [[package]]
 name = "massa-sc-runtime"
 version = "0.10.0"
-source = "git+https://github.com/massalabs/massa-sc-runtime?branch=testnet_21#5f12bfb15d1f34c40491025a8524e435f918ec0c"
+source = "git+https://github.com/massalabs/massa-sc-runtime?branch=testnet_21#66d6dc5cfcac6f4f9c9d184a0e1ddb3309a3296a"
 dependencies = [
  "anyhow",
  "as-ffi-bindings",
@@ -2595,6 +2596,7 @@ dependencies = [
  "massa_signature",
  "massa_storage",
  "massa_time",
+ "massa_versioning_worker",
  "num",
  "parking_lot",
  "rand 0.8.5",
@@ -2638,6 +2640,7 @@ name = "massa_factory_worker"
 version = "0.1.0"
 dependencies = [
  "anyhow",
+ "crossbeam-channel",
  "massa_consensus_exports",
  "massa_factory_exports",
  "massa_hash 0.1.0",
@@ -2836,6 +2839,7 @@ dependencies = [
 name = "massa_pool_worker"
 version = "0.1.0"
 dependencies = [
+ "crossbeam-channel",
  "massa_execution_exports",
  "massa_hash 0.1.0",
  "massa_models",
@@ -3028,6 +3032,7 @@ dependencies = [
  "num_enum",
  "parking_lot",
  "thiserror",
+ "tracing",
 ]
 
 [[package]]

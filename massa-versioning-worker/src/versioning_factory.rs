@@ -62,11 +62,11 @@ pub trait VersioningFactory {
         let state_active = ComponentState::active();
 
         vi_store
-            .0
+            .store
             .iter()
             .rev()
             .find_map(|(vi, vsh)| {
-                if vsh.inner == state_active {
+                if vsh.state == state_active {
                     vi.components.get(&component).copied()
                 } else {
                     None
@@ -84,11 +84,11 @@ pub trait VersioningFactory {
 
         // Iter backward, filter component + state active,
         let version = vi_store
-            .0
+            .store
             .iter()
             .rev()
             .filter(|(vi, vsh)| {
-                vi.components.get(&component).is_some() && vsh.inner == state_active
+                vi.components.get(&component).is_some() && vsh.state == state_active
             })
             .find_map(|(vi, vsh)| {
                 let res = vsh.state_at(ts, vi.start, vi.timeout);
@@ -109,8 +109,8 @@ pub trait VersioningFactory {
         let vi_store = vi_store_.0.read();
 
         let state_active = ComponentState::active();
-        let versions_iter = vi_store.0.iter().filter_map(|(vi, vsh)| {
-            if vsh.inner == state_active {
+        let versions_iter = vi_store.store.iter().filter_map(|(vi, vsh)| {
+            if vsh.state == state_active {
                 vi.components.get(&component).copied()
             } else {
                 None
@@ -126,12 +126,12 @@ pub trait VersioningFactory {
         let vi_store_ = self.get_versioning_store();
         let vi_store = vi_store_.0.read();
 
-        let versions_iter = vi_store.0.iter().filter_map(|(vi, vsh)| {
+        let versions_iter = vi_store.store.iter().filter_map(|(vi, vsh)| {
             vi.components
                 .get(&component)
                 .copied()
                 .map(|component_version| {
-                    (component_version, ComponentStateTypeId::from(&vsh.inner))
+                    (component_version, ComponentStateTypeId::from(&vsh.state))
                 })
         });
         iter::once((0, ComponentStateTypeId::Active))
@@ -154,7 +154,7 @@ mod test {
     use std::collections::{BTreeMap, HashMap};
 
     use crate::test_helpers::versioning_helpers::advance_state_until;
-    use crate::versioning::{MipInfo, MipState};
+    use crate::versioning::{MipInfo, MipState, MipStatsConfig};
 
     use massa_time::MassaTime;
 
@@ -290,7 +290,16 @@ mod test {
         };
         let vs_2 = MipState::new(MassaTime::from(18));
 
-        let vs = MipStore::try_from([(vi_1.clone(), vs_1), (vi_2.clone(), vs_2.clone())]).unwrap();
+        let mip_stats_cfg = MipStatsConfig {
+            block_count_considered: 10,
+            counters_max: 5,
+        };
+
+        let vs = MipStore::try_from((
+            [(vi_1.clone(), vs_1), (vi_2.clone(), vs_2.clone())],
+            mip_stats_cfg,
+        ))
+        .unwrap();
         let fa = AddressFactory {
             versioning_store: vs.clone(),
         };
@@ -323,7 +332,7 @@ mod test {
         // Create a new factory
         let info = BTreeMap::from([(vi_1.clone(), vs_1_new.clone()), (vi_2.clone(), vs_2)]);
         // Update versioning store
-        vs.0.write().0 = info;
+        vs.0.write().store = info;
 
         assert_eq!(fa.get_all_active_component_versions(), vec![0, 1]);
         assert_eq!(
@@ -371,8 +380,16 @@ mod test {
         };
         let vs_2 = MipState::new(MassaTime::from(18));
 
-        let vs = MipStore::try_from([(vi_1.clone(), vs_1.clone()), (vi_2.clone(), vs_2.clone())])
-            .unwrap();
+        let mip_stats_cfg = MipStatsConfig {
+            block_count_considered: 10,
+            counters_max: 5,
+        };
+
+        let vs = MipStore::try_from((
+            [(vi_1.clone(), vs_1.clone()), (vi_2.clone(), vs_2.clone())],
+            mip_stats_cfg,
+        ))
+        .unwrap();
 
         let fa = AddressFactory {
             versioning_store: vs.clone(),
@@ -409,7 +426,7 @@ mod test {
         let vs_2_new = advance_state_until(ComponentState::active(), &vi_2);
         let info = BTreeMap::from([(vi_1.clone(), vs_1), (vi_2.clone(), vs_2_new)]);
         // Update versioning store
-        vs.0.write().0 = info;
+        vs.0.write().store = info;
 
         assert_eq!(fa.get_all_active_component_versions(), vec![0, 1, 2]);
         let addr_st_4 = fa.create(&args, Some(st_4));

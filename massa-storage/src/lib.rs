@@ -118,6 +118,7 @@ impl Storage {
             blocks: self.blocks.clone(),
             operations: self.operations.clone(),
             endorsements: self.endorsements.clone(),
+
             operation_owners: self.operation_owners.clone(),
             block_owners: self.block_owners.clone(),
             endorsement_owners: self.endorsement_owners.clone(),
