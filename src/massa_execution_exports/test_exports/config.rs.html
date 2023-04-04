@@ -61,6 +61,7 @@
 <a href="#61" id="61">61</a>
 <a href="#62" id="62">62</a>
 <a href="#63" id="63">63</a>
+<a href="#64" id="64">64</a>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="doccomment">//! This file defines testing tools related to the configuration
@@ -121,6 +122,7 @@
             .unwrap(),
             max_module_cache_size: <span class="number">1000</span>,
             initial_vesting_path: PathBuf::default(),
+            last_start_period: <span class="number">0</span>,
         }
     }
 }
