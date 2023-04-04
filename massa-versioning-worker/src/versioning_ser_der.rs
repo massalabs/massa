@@ -12,12 +12,14 @@ use nom::{
 
 use crate::versioning::{
     Advance, ComponentState, ComponentStateTypeId, LockedIn, MipComponent, MipInfo, MipState,
-    MipStoreRaw, Started,
+    MipStatsConfig, MipStoreRaw, MipStoreStats, Started,
 };
 
 use massa_models::amount::{Amount, AmountDeserializer, AmountSerializer};
+use massa_models::config::{MIP_STORE_STATS_BLOCK_CONSIDERED, MIP_STORE_STATS_COUNTERS_MAX};
 use massa_serialization::{
     Deserializer, SerializeError, Serializer, U32VarIntDeserializer, U32VarIntSerializer,
+    U64VarIntDeserializer, U64VarIntSerializer,
 };
 use massa_time::{MassaTimeDeserializer, MassaTimeSerializer};
 
@@ -483,7 +485,7 @@ impl Default for MipStateSerializer {
 
 impl Serializer<MipState> for MipStateSerializer {
     fn serialize(&self, value: &MipState, buffer: &mut Vec<u8>) -> Result<(), SerializeError> {
-        self.state_serializer.serialize(&value.inner, buffer)?;
+        self.state_serializer.serialize(&value.state, buffer)?;
         // history len
         self.u32_serializer.serialize(
             &value.history.len().try_into().map_err(|err| {
@@ -580,7 +582,7 @@ impl Deserializer<MipState> for MipStateDeserializer {
         IResult::Ok((
             rem2,
             MipState {
-                inner: component_state,
+                state: component_state,
                 history,
             },
         ))
@@ -589,6 +591,206 @@ impl Deserializer<MipState> for MipStateDeserializer {
 
 // End MipState
 
+// MipStoreStats
+
+/// Serializer for `VersioningStoreRaw`
+pub struct MipStoreStatsSerializer {
+    u32_serializer: U32VarIntSerializer,
+    u64_serializer: U64VarIntSerializer,
+}
+
+impl MipStoreStatsSerializer {
+    /// Creates a new `Serializer`
+    pub fn new() -> Self {
+        Self {
+            u32_serializer: U32VarIntSerializer::new(),
+            u64_serializer: U64VarIntSerializer::new(),
+        }
+    }
+}
+
+impl Default for MipStoreStatsSerializer {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+impl Serializer<MipStoreStats> for MipStoreStatsSerializer {
+    fn serialize(&self, value: &MipStoreStats, buffer: &mut Vec<u8>) -> Result<(), SerializeError> {
+        // config
+        // let cfg_1 = u32::try_from(value.config.block_count_considered).map_err(|e| {
+        //     SerializeError::GeneralError(format!("Could not convert to u32: {}", e))
+        // })?;
+        // let cfg_2 = u32::try_from(value.config.counters_max).map_err(|e| {
+        //     SerializeError::GeneralError(format!("Could not convert to u32: {}", e))
+        // })?;
+
+        // self.u32_serializer.serialize(&cfg_1, buffer)?;
+        // self.u32_serializer.serialize(&cfg_2, buffer)?;
+
+        // stats data
+
+        let entry_count_ = value.latest_announcements.len();
+        let entry_count = u32::try_from(entry_count_).map_err(|e| {
+            SerializeError::GeneralError(format!("Could not convert to u32: {}", e))
+        })?;
+        let entry_count_max = u32::try_from(MIP_STORE_STATS_BLOCK_CONSIDERED).map_err(|e| {
+            SerializeError::GeneralError(format!("Could not convert to u32: {}", e))
+        })?;
+
+        if entry_count > entry_count_max {
+            return Err(SerializeError::GeneralError(format!(
+                "Too many entries in MipStoreStats latest announcements, max: {}",
+                MIP_STORE_STATS_BLOCK_CONSIDERED
+            )));
+        }
+        self.u32_serializer.serialize(&entry_count, buffer)?;
+        for v in value.latest_announcements.iter() {
+            self.u32_serializer.serialize(v, buffer)?;
+        }
+
+        let entry_count_2_ = value.network_version_counters.len();
+        let entry_count_2 = u32::try_from(entry_count_2_).map_err(|e| {
+            SerializeError::GeneralError(format!("Could not convert to u32: {}", e))
+        })?;
+        let entry_count_2_max = u32::try_from(MIP_STORE_STATS_COUNTERS_MAX).map_err(|e| {
+            SerializeError::GeneralError(format!("Could not convert to u32: {}", e))
+        })?;
+
+        if entry_count_2 > entry_count_2_max {
+            return Err(SerializeError::GeneralError(format!(
+                "Too many entries in MipStoreStats version counters, max: {}",
+                MIP_STORE_STATS_COUNTERS_MAX
+            )));
+        }
+        self.u32_serializer.serialize(&entry_count, buffer)?;
+        for (v, c) in value.network_version_counters.iter() {
+            self.u32_serializer.serialize(v, buffer)?;
+            self.u64_serializer.serialize(c, buffer)?;
+        }
+
+        Ok(())
+    }
+}
+
+/// A Deserializer for `MipStoreStats
+pub struct MipStoreStatsDeserializer {
+    config: MipStatsConfig,
+    u32_deserializer: U32VarIntDeserializer,
+    u64_deserializer: U64VarIntDeserializer,
+}
+
+impl MipStoreStatsDeserializer {
+    /// Creates a new ``
+    pub fn new(block_count_considered: usize, counters_max: usize) -> Self {
+        Self {
+            config: MipStatsConfig {
+                block_count_considered,
+                counters_max,
+            },
+            u32_deserializer: U32VarIntDeserializer::new(Included(0), Included(u32::MAX)),
+            u64_deserializer: U64VarIntDeserializer::new(Included(0), Included(u64::MAX)),
+        }
+    }
+}
+
+/*
+impl Default for MipStoreStatsDeserializer {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+*/
+
+impl Deserializer<MipStoreStats> for MipStoreStatsDeserializer {
+    fn deserialize<'a, E: ParseError<&'a [u8]> + ContextError<&'a [u8]>>(
+        &self,
+        buffer: &'a [u8],
+    ) -> IResult<&'a [u8], MipStoreStats, E> {
+        // let (rem, cfg_1) = context("Failed cfg_1 der", |input| {
+        //     self.u32_deserializer.deserialize(input)
+        // })
+        // .parse(buffer)?;
+
+        // let (rem2, cfg_2) = context("Failed cfg_2 der", |input| {
+        //     self.u32_deserializer.deserialize(input)
+        // })
+        // .parse(rem)?;
+
+        // let config = MipStatsConfig {
+        //     block_count_considered: cfg_1 as usize,
+        //     counters_max: cfg_2 as usize,
+        // };
+
+        let cfg_block_considered: u32 =
+            u32::try_from(self.config.block_count_considered).map_err(|_e| {
+                nom::Err::Error(ParseError::from_error_kind(
+                    buffer,
+                    nom::error::ErrorKind::Fail,
+                ))
+            })?;
+        let cfg_counter_max: u32 = u32::try_from(self.config.counters_max).map_err(|_e| {
+            nom::Err::Error(ParseError::from_error_kind(
+                buffer,
+                nom::error::ErrorKind::Fail,
+            ))
+        })?;
+
+        let (rem3, latest_annoucements_) = context(
+            "Failed MipStoreStats latest announcements der",
+            length_count(
+                context("Failed latest announcements count der", |input| {
+                    let (rem, count) = self.u32_deserializer.deserialize(input)?;
+                    if count > cfg_block_considered {
+                        return IResult::Err(nom::Err::Error(ParseError::from_error_kind(
+                            input,
+                            nom::error::ErrorKind::Fail,
+                        )));
+                    }
+                    IResult::Ok((rem, count))
+                }),
+                context("Failed latest announcement data der", |input| {
+                    self.u32_deserializer.deserialize(input)
+                }),
+            ),
+        )
+        .parse(buffer)?;
+
+        let (rem4, network_version_counters) = context(
+            "Failed MipStoreStats network version counters der",
+            length_count(
+                context("Failed counters len der", |input| {
+                    let (rem, count) = self.u32_deserializer.deserialize(input)?;
+                    if count > cfg_counter_max {
+                        return IResult::Err(nom::Err::Error(ParseError::from_error_kind(
+                            input,
+                            nom::error::ErrorKind::Fail,
+                        )));
+                    }
+                    IResult::Ok((rem, count))
+                }),
+                context("Failed counters data der", |input| {
+                    let (rem, v) = self.u32_deserializer.deserialize(input)?;
+                    let (rem2, c) = self.u64_deserializer.deserialize(rem)?;
+                    IResult::Ok((rem2, (v, c)))
+                }),
+            ),
+        )
+        .parse(rem3)?;
+
+        IResult::Ok((
+            rem4,
+            MipStoreStats {
+                config: self.config.clone(),
+                latest_announcements: latest_annoucements_.into_iter().collect(),
+                network_version_counters: network_version_counters.into_iter().collect(),
+            },
+        ))
+    }
+}
+
+// End MipStoreStats
+
 // MipStoreRaw
 
 /// Serializer for `VersioningStoreRaw`
@@ -596,6 +798,7 @@ pub struct MipStoreRawSerializer {
     u32_serializer: U32VarIntSerializer,
     info_serializer: MipInfoSerializer,
     state_serializer: MipStateSerializer,
+    stats_serializer: MipStoreStatsSerializer,
 }
 
 impl MipStoreRawSerializer {
@@ -605,6 +808,7 @@ impl MipStoreRawSerializer {
             u32_serializer: U32VarIntSerializer::new(),
             info_serializer: MipInfoSerializer::new(),
             state_serializer: MipStateSerializer::new(),
+            stats_serializer: MipStoreStatsSerializer::new(),
         }
     }
 }
@@ -617,7 +821,7 @@ impl Default for MipStoreRawSerializer {
 
 impl Serializer<MipStoreRaw> for MipStoreRawSerializer {
     fn serialize(&self, value: &MipStoreRaw, buffer: &mut Vec<u8>) -> Result<(), SerializeError> {
-        let entry_count_ = value.0.len();
+        let entry_count_ = value.store.len();
         let entry_count = u32::try_from(entry_count_).map_err(|e| {
             SerializeError::GeneralError(format!("Could not convert to u32: {}", e))
         })?;
@@ -628,10 +832,11 @@ impl Serializer<MipStoreRaw> for MipStoreRawSerializer {
             )));
         }
         self.u32_serializer.serialize(&entry_count, buffer)?;
-        for (key, value) in value.0.iter() {
+        for (key, value) in value.store.iter() {
             self.info_serializer.serialize(key, buffer)?;
             self.state_serializer.serialize(value, buffer)?;
         }
+        self.stats_serializer.serialize(&value.stats, buffer)?;
         Ok(())
     }
 }
@@ -641,11 +846,12 @@ pub struct MipStoreRawDeserializer {
     u32_deserializer: U32VarIntDeserializer,
     info_deserializer: MipInfoDeserializer,
     state_deserializer: MipStateDeserializer,
+    stats_deserializer: MipStoreStatsDeserializer,
 }
 
 impl MipStoreRawDeserializer {
     /// Creates a new ``
-    pub fn new() -> Self {
+    pub fn new(block_count_considered: usize, counters_max: usize) -> Self {
         Self {
             u32_deserializer: U32VarIntDeserializer::new(
                 Included(0),
@@ -653,15 +859,21 @@ impl MipStoreRawDeserializer {
             ),
             info_deserializer: MipInfoDeserializer::new(),
             state_deserializer: MipStateDeserializer::new(),
+            stats_deserializer: MipStoreStatsDeserializer::new(
+                block_count_considered,
+                counters_max,
+            ),
         }
     }
 }
 
+/*
 impl Default for MipStoreRawDeserializer {
     fn default() -> Self {
         Self::new()
     }
 }
+*/
 
 impl Deserializer<MipStoreRaw> for MipStoreRawDeserializer {
     fn deserialize<'a, E: ParseError<&'a [u8]> + ContextError<&'a [u8]>>(
@@ -670,19 +882,27 @@ impl Deserializer<MipStoreRaw> for MipStoreRawDeserializer {
     ) -> IResult<&'a [u8], MipStoreRaw, E> {
         context(
             "Failed MipStoreRaw der",
-            length_count(
-                context("Failed entry count der", |input| {
-                    let (rem, count) = self.u32_deserializer.deserialize(input)?;
-                    IResult::Ok((rem, count))
+            tuple((
+                length_count(
+                    context("Failed entry count der", |input| {
+                        let (rem, count) = self.u32_deserializer.deserialize(input)?;
+                        IResult::Ok((rem, count))
+                    }),
+                    context("Failed items der", |input| {
+                        let (rem, vi) = self.info_deserializer.deserialize(input)?;
+                        let (rem2, vs) = self.state_deserializer.deserialize(rem)?;
+                        IResult::Ok((rem2, (vi, vs)))
+                    }),
+                ),
+                context("Failed mip store stats der", |input| {
+                    self.stats_deserializer.deserialize(input)
                 }),
-                context("Failed items der", |input| {
-                    let (rem, vi) = self.info_deserializer.deserialize(input)?;
-                    let (rem2, vs) = self.state_deserializer.deserialize(rem)?;
-                    IResult::Ok((rem2, (vi, vs)))
-                }),
-            ),
+            )),
         )
-        .map(|items| MipStoreRaw(items.into_iter().collect()))
+        .map(|(items, stats)| MipStoreRaw {
+            store: items.into_iter().collect(),
+            stats,
+        })
         .parse(buffer)
     }
 }
@@ -825,7 +1045,41 @@ mod test {
     }
 
     #[test]
+    fn test_mip_store_stats_ser_der() {
+        let mip_stats_cfg = MipStatsConfig {
+            block_count_considered: 10,
+            counters_max: 5,
+        };
+
+        let mip_stats = MipStoreStats {
+            config: mip_stats_cfg.clone(),
+            latest_announcements: Default::default(),
+            network_version_counters: Default::default(),
+        };
+
+        let mut buf = Vec::new();
+        let store_stats_ser = MipStoreStatsSerializer::new();
+        store_stats_ser.serialize(&mip_stats, &mut buf).unwrap();
+
+        let store_stats_der = MipStoreStatsDeserializer::new(
+            mip_stats_cfg.block_count_considered,
+            mip_stats_cfg.counters_max,
+        );
+        let (rem, store_stats_der_res) = store_stats_der
+            .deserialize::<DeserializeError>(&buf)
+            .unwrap();
+
+        assert!(rem.is_empty());
+        assert_eq!(mip_stats, store_stats_der_res);
+    }
+
+    #[test]
     fn test_mip_store_raw_ser_der() {
+        let mip_stats_cfg = MipStatsConfig {
+            block_count_considered: 10,
+            counters_max: 5,
+        };
+
         let mi_2 = MipInfo {
             name: "MIP-0002".to_string(),
             version: 2,
@@ -850,13 +1104,14 @@ mod test {
             &mi_3,
         );
 
-        let store_raw = MipStoreRaw::try_from([(mi_2, state_2), (mi_3, state_3)]).unwrap();
+        let store_raw =
+            MipStoreRaw::try_from(([(mi_2, state_2), (mi_3, state_3)], mip_stats_cfg)).unwrap();
 
         let mut buf = Vec::new();
         let store_raw_ser = MipStoreRawSerializer::new();
         store_raw_ser.serialize(&store_raw, &mut buf).unwrap();
 
-        let store_raw_der = MipStoreRawDeserializer::new();
+        let store_raw_der = MipStoreRawDeserializer::new(10, 5);
         let (rem, store_raw_der_res) = store_raw_der.deserialize::<DeserializeError>(&buf).unwrap();
 
         assert!(rem.is_empty());
@@ -895,7 +1150,7 @@ mod test {
 
                 let state = advance_state_until(ComponentState::active(), &mi_base);
 
-                all_state_size += size_of_val(&state.inner);
+                all_state_size += size_of_val(&state.state);
                 all_state_size += state.history.len() * (size_of::<Advance>() + size_of::<u32>());
 
                 (mi_base.clone(), state)
@@ -904,11 +1159,15 @@ mod test {
 
         // Cannot use update_with ou try_from here as the names are not uniques
         let store_raw = MipStoreRaw {
-            0: BTreeMap::from_iter(store_raw_.into_iter()),
+            store: BTreeMap::from_iter(store_raw_.into_iter()),
+            stats: MipStoreStats::new(MipStatsConfig {
+                block_count_considered: 10,
+                counters_max: 5,
+            }),
         };
-        assert_eq!(store_raw.0.len(), MIP_STORE_MAX_ENTRIES as usize);
+        assert_eq!(store_raw.store.len(), MIP_STORE_MAX_ENTRIES as usize);
 
-        let store_raw_size = (store_raw.0.len() * mi_base_size) + all_state_size;
+        let store_raw_size = (store_raw.store.len() * mi_base_size) + all_state_size;
         assert_lt!(store_raw_size, MIP_STORE_MAX_SIZE);
 
         // Now check SER / DER with this huge store
@@ -919,7 +1178,7 @@ mod test {
             .serialize(&store_raw, &mut buf)
             .expect("Unable to serialize");
 
-        let store_raw_der = MipStoreRawDeserializer::new();
+        let store_raw_der = MipStoreRawDeserializer::new(10, 5);
         let (rem, store_raw_der_res) = store_raw_der.deserialize::<DeserializeError>(&buf).unwrap();
 
         assert!(rem.is_empty());

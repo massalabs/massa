@@ -147,7 +147,6 @@ impl FinalState {
         self.slot = slot;
 
         // apply the state changes
-        // unwrap is justified because every error in PoS `apply_changes` is critical
         self.ledger
             .apply_changes(changes.ledger_changes.clone(), self.slot);
         self.async_pool

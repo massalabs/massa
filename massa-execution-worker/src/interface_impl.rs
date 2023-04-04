@@ -68,15 +68,21 @@ impl InterfaceImpl {
         sender_addr: Address,
         operation_datastore: Option<Datastore>,
     ) -> InterfaceImpl {
-        use crate::module_cache::ModuleCache;
         use massa_ledger_exports::{LedgerEntry, SetUpdateOrDelete};
-        use massa_sc_runtime::GasCosts;
+        use massa_module_cache::{config::ModuleCacheConfig, controller::ModuleCache};
         use parking_lot::RwLock;
 
         let vesting_file = super::tests::get_initials_vesting(false);
         let config = ExecutionConfig::default();
         let (final_state, _tempfile, _tempdir) = super::tests::get_sample_state().unwrap();
-        let module_cache = Arc::new(RwLock::new(ModuleCache::new(GasCosts::default(), 1000)));
+        let module_cache = Arc::new(RwLock::new(ModuleCache::new(ModuleCacheConfig {
+            hd_cache_path: config.hd_cache_path.clone(),
+            gas_costs: config.gas_costs.clone(),
+            compilation_gas: config.max_gas_per_block,
+            lru_cache_size: config.lru_cache_size,
+            hd_cache_size: config.hd_cache_size,
+            snip_amount: config.snip_amount,
+        })));
         let vesting_manager = Arc::new(
             crate::vesting_manager::VestingManager::new(
                 config.thread_count,
@@ -209,7 +215,7 @@ impl Interface for InterfaceImpl {
     /// A `massa-sc-runtime` compiled module
     fn get_module(&self, bytecode: &[u8], limit: u64) -> Result<RuntimeModule> {
         let context = context_guard!(self);
-        let module = context.module_cache.write().get_module(bytecode, limit)?;
+        let module = context.module_cache.write().load_module(bytecode, limit)?;
         Ok(module)
     }
 
@@ -549,6 +555,10 @@ impl Interface for InterfaceImpl {
         let public_key = massa_signature::PublicKey::from_str(public_key)?;
         let addr = massa_models::address::Address::from_public_key(&public_key);
         Ok(addr.to_string())
+    }
+
+    fn validate_address(&self, address: &str) -> Result<bool> {
+        Ok(massa_models::address::Address::from_str(address).is_ok())
     }
 
     /// Verifies a signature

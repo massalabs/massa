@@ -29,6 +29,7 @@ members = [
   "massa-protocol-worker",
   "massa-protocol-exports-2",
   "massa-protocol-worker-2",
+  "massa-module-cache",
   "massa-serialization",
   "massa-signature",
   "massa-time",
@@ -40,6 +41,8 @@ members = [
   "massa-pos-worker",
   "massa-versioning-worker",
   "massa-versioning-exports",
+  "massa-grpc",
+  "massa-proto",
 ]
 resolver = "2"
 
