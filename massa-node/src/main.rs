@@ -181,25 +181,23 @@ async fn launch(
     .expect("could not start selector worker");
 
     // Create final state, from snapshot or from scratch
-    let final_state = match args.restart_from_snapshot_at_period {
-        Some(last_start_period) => Arc::new(parking_lot::RwLock::new(
-            FinalState::new_derived_from_snapshot(
+    let final_state = Arc::new(parking_lot::RwLock::new(
+        match args.restart_from_snapshot_at_period {
+            Some(last_start_period) => FinalState::new_derived_from_snapshot(
                 final_state_config,
                 Box::new(ledger),
                 selector_controller.clone(),
                 last_start_period,
             )
             .expect("could not init final state"),
-        )),
-        None => Arc::new(parking_lot::RwLock::new(
-            FinalState::new(
+            None => FinalState::new(
                 final_state_config,
                 Box::new(ledger),
                 selector_controller.clone(),
             )
             .expect("could not init final state"),
-        )),
-    };
+        },
+    ));
 
     // interrupt signal listener
     let stop_signal = signal::ctrl_c();

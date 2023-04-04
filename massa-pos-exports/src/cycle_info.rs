@@ -677,7 +677,7 @@ impl Serializer<VecDeque<CycleInfo>> for CycleHistorySerializer {
     }
 }
 
-/// Deserializer for cycle history
+/// Deserializer for cycle history, useful when restarting from a snapshot
 pub struct CycleHistoryDeserializer {
     u64_deserializer: U64VarIntDeserializer,
     cycle_info_deserializer: CycleInfoDeserializer,

@@ -28,7 +28,7 @@ const DEFERRED_CREDITS_HASH_INITIAL_BYTES: &[u8; 32] = &[0; HASH_SIZE_BYTES];
 pub struct DeferredCredits {
     /// Deferred credits
     pub credits: BTreeMap<Slot, PreHashMap<Address, Amount>>,
-    /// Hash tracker, optional
+    /// Hash tracker, optional. Indeed, computing the hash is expensive, so we only compute it when finalizing a slot.
     #[serde(skip_serializing, skip_deserializing)]
     hash_tracker: Option<DeferredCreditsHashTracker>,
 }
@@ -58,7 +58,7 @@ impl DeferredCreditsHashTracker {
         }
     }
 
-    /// Get resulting hash
+    /// Get resulting hash from the tracker
     pub fn get_hash(&self) -> &Hash {
         &self.hash
     }
@@ -68,7 +68,7 @@ impl DeferredCreditsHashTracker {
         self.hash ^= self.compute_hash(slot, address, amount);
     }
 
-    /// Compute the hash
+    /// Compute the hash for a specific entry
     fn compute_hash(&self, slot: &Slot, address: &Address, amount: &Amount) -> Hash {
         // serialization can never fail in the following computations, unwrap is justified
         let mut buffer = Vec::new();

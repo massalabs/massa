@@ -15,7 +15,7 @@ pub fn get_next_slot_instant(
     let mut slot = get_closest_slot_to_timestamp(thread_count, t0, genesis_timestamp, now);
 
     // ignore genesis
-    if slot.period <= 0 {
+    if slot.period == 0 {
         slot.period = 1;
     }
 
