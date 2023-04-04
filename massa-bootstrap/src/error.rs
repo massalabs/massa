@@ -22,6 +22,8 @@ pub enum BootstrapError {
     TimedOut(std::io::Error),
     /// general bootstrap error: {0}
     GeneralError(String),
+    /// deserialization error: {0}
+    DeserializeError(String),
     /// models error: {0}
     ModelsError(#[from] massa_models::error::ModelsError),
     /// serialize error: {0}

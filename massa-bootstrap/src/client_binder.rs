@@ -100,7 +100,7 @@ impl<D: Duplex> BootstrapClientBinder<D> {
                 self.remote_pubkey.verify_signature(&msg_hash, &sig)?;
                 let (_, msg) = message_deserializer
                     .deserialize::<DeserializeError>(&sig_msg_bytes[HASH_SIZE_BYTES..])
-                    .map_err(|err| BootstrapError::GeneralError(format!("{}", err)))?;
+                    .map_err(|err| BootstrapError::DeserializeError(format!("{}", err)))?;
                 msg
             } else {
                 self.prev_message = Some(Hash::compute_from(&sig.to_bytes()));
@@ -110,7 +110,7 @@ impl<D: Duplex> BootstrapClientBinder<D> {
                 self.remote_pubkey.verify_signature(&msg_hash, &sig)?;
                 let (_, msg) = message_deserializer
                     .deserialize::<DeserializeError>(&sig_msg_bytes[..])
-                    .map_err(|err| BootstrapError::GeneralError(format!("{}", err)))?;
+                    .map_err(|err| BootstrapError::DeserializeError(format!("{}", err)))?;
                 msg
             }
         };

@@ -108,7 +108,19 @@ impl<D: Duplex> BootstrapServerBinder<D> {
         timeout: Duration,
         msg: BootstrapServerMessage,
     ) -> Result<(), BootstrapError> {
-        self.send_timeout(msg, Some(timeout))
+        let to_str = msg.to_string();
+        self.send_timeout(msg, Some(timeout)).map_err(|e| match e {
+            BootstrapError::IoError(e)
+            // On some systems, a timed out send returns WouldBlock
+                if e.kind() == ErrorKind::TimedOut || e.kind() == ErrorKind::WouldBlock =>
+            {
+                BootstrapError::TimedOut(std::io::Error::new(
+                    std::io::ErrorKind::TimedOut,
+                    format!("BootstrapServerMessage::{} send timed out", to_str),
+                ))
+            }
+            _ => e,
+        })
     }
 
     /// 1. Spawns a thread
@@ -148,7 +160,7 @@ impl<D: Duplex> BootstrapServerBinder<D> {
         )
         .map_err(|e| match e {
             BootstrapError::IoError(e) if e.kind() == ErrorKind::WouldBlock => {
-                BootstrapError::IoError(ErrorKind::TimedOut.into())
+                BootstrapError::TimedOut(ErrorKind::TimedOut.into())
             }
             e => e,
         })
