@@ -20,6 +20,7 @@
 <a href="#20" id="20">20</a>
 <a href="#21" id="21">21</a>
 <a href="#22" id="22">22</a>
+<a href="#23" id="23">23</a>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="kw">use </span><span class="kw">crate</span>::FactoryConfig;
@@ -36,6 +37,7 @@
             max_block_size: MAX_BLOCK_SIZE <span class="kw">as </span>u64,
             max_block_gas: MAX_GAS_PER_BLOCK,
             max_operations_per_block: MAX_OPERATIONS_PER_BLOCK,
+            last_start_period: <span class="number">0</span>,
             periods_per_cycle: PERIODS_PER_CYCLE,
             denunciation_expire_periods: DENUNCIATION_EXPIRE_PERIODS,
             denunciation_items_max_cycle_delta: DENUNCIATION_ITEMS_MAX_CYCLE_DELTA,

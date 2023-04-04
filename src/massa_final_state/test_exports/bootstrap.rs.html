@@ -104,6 +104,8 @@
 <a href="#104" id="104">104</a>
 <a href="#105" id="105">105</a>
 <a href="#106" id="106">106</a>
+<a href="#107" id="107">107</a>
+<a href="#108" id="108">108</a>
 </pre><pre class="rust"><code><span class="doccomment">//! Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 //! This file defines tools to test the final state bootstrap
@@ -138,6 +140,7 @@
         pos_state,
         executed_ops,
         final_state_hash: Hash::from_bytes(<span class="kw-2">&amp;</span>[<span class="number">0</span>; HASH_SIZE_BYTES]),
+        last_start_period: <span class="number">0</span>,
     }
 }
 
@@ -180,7 +183,8 @@
         <span class="string">&quot;async pool hash mismatch&quot;
     </span>);
     <span class="macro">assert_eq!</span>(
-        v1.pos_state.deferred_credits.hash, v2.pos_state.deferred_credits.hash,
+        v1.pos_state.deferred_credits.get_hash(),
+        v2.pos_state.deferred_credits.get_hash(),
         <span class="string">&quot;deferred credits hash mismatch&quot;
     </span>);
     <span class="kw">for </span>(cycle1, cycle2) <span class="kw">in </span>v1

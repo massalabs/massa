@@ -1,1 +1,0 @@
-window.SIDEBAR_ITEMS = {"mod":["commands","internal_messages","messages","propagation","retrieval"],"struct":["EndorsementHandler"]};

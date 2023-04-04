@@ -34,7 +34,7 @@
 </div><span id="structfield.active_connections" class="structfield small-section-header"><a href="#structfield.active_connections" class="anchor field">§</a><code>active_connections: <a class="struct" href="https://doc.rust-lang.org/nightly/std/collections/hash/map/struct.HashMap.html" title="struct std::collections::hash::map::HashMap">HashMap</a>&lt;ConnectionId, (<a class="enum" href="https://doc.rust-lang.org/nightly/std/net/ip_addr/enum.IpAddr.html" title="enum std::net::ip_addr::IpAddr">IpAddr</a>, <a class="primitive" href="https://doc.rust-lang.org/nightly/std/primitive.bool.html">bool</a>)&gt;</code></span><div class="docblock"><p>Map of connection to ip, <code>is_outgoing</code>.</p>
 </div><span id="structfield.version" class="structfield small-section-header"><a href="#structfield.version" class="anchor field">§</a><code>version: Version</code></span><div class="docblock"><p>Node version</p>
 </div><span id="structfield.event" class="structfield small-section-header"><a href="#structfield.event" class="anchor field">§</a><code>event: <a class="struct" href="../network_event/struct.EventSender.html" title="struct massa_network_worker::network_event::EventSender">EventSender</a></code></span><div class="docblock"><p>Event sender</p>
-</div><h2 id="implementations" class="small-section-header">Implementations<a href="#implementations" class="anchor">§</a></h2><div id="implementations-list"><details class="toggle implementors-toggle" open><summary><section id="impl-NetworkWorker" class="impl"><a class="srclink rightside" href="../../src/massa_network_worker/network_worker.rs.html#75-817">source</a><a href="#impl-NetworkWorker" class="anchor">§</a><h3 class="code-header">impl <a class="struct" href="struct.NetworkWorker.html" title="struct massa_network_worker::network_worker::NetworkWorker">NetworkWorker</a></h3></section></summary><div class="impl-items"><details class="toggle method-toggle" open><summary><section id="method.new" class="method"><a class="srclink rightside" href="../../src/massa_network_worker/network_worker.rs.html#87-124">source</a><h4 class="code-header">pub fn <a href="#method.new" class="fn">new</a>(
+</div><h2 id="implementations" class="small-section-header">Implementations<a href="#implementations" class="anchor">§</a></h2><div id="implementations-list"><details class="toggle implementors-toggle" open><summary><section id="impl-NetworkWorker" class="impl"><a class="srclink rightside" href="../../src/massa_network_worker/network_worker.rs.html#75-820">source</a><a href="#impl-NetworkWorker" class="anchor">§</a><h3 class="code-header">impl <a class="struct" href="struct.NetworkWorker.html" title="struct massa_network_worker::network_worker::NetworkWorker">NetworkWorker</a></h3></section></summary><div class="impl-items"><details class="toggle method-toggle" open><summary><section id="method.new" class="method"><a class="srclink rightside" href="../../src/massa_network_worker/network_worker.rs.html#87-124">source</a><h4 class="code-header">pub fn <a href="#method.new" class="fn">new</a>(
     cfg: NetworkConfig,
     keypair: KeyPair,
     listener: Listener,
@@ -119,7 +119,7 @@ handshake and send a list of advertisable peer ips.</p>
 <li><code>re</code> : <code>(reader, writer, socketAddr)</code> in a result coming out of the listener</li>
 <li><code>cur_connection_id</code>: connection id of the node we are trying to reach</li>
 </ul>
-</div></details><details class="toggle method-toggle" open><summary><section id="method.try_send_peer_list_in_handshake" class="method"><a class="srclink rightside" href="../../src/massa_network_worker/network_worker.rs.html#677-745">source</a><h4 class="code-header">fn <a href="#method.try_send_peer_list_in_handshake" class="fn">try_send_peer_list_in_handshake</a>(
+</div></details><details class="toggle method-toggle" open><summary><section id="method.try_send_peer_list_in_handshake" class="method"><a class="srclink rightside" href="../../src/massa_network_worker/network_worker.rs.html#677-747">source</a><h4 class="code-header">fn <a href="#method.try_send_peer_list_in_handshake" class="fn">try_send_peer_list_in_handshake</a>(
     &amp;self,
     reader: ReadHalf,
     writer: WriteHalf,
@@ -145,7 +145,7 @@ managed by the <em>connection node</em> in <code>HandshakeWorker::run()</code>, 
 current node send a <code>ListPeer</code> as a message.</p>
 <p>Spawn a future in <code>self.handshake_peer_list_futures</code> managed by the
 main loop.</p>
-</div></details><details class="toggle method-toggle" open><summary><section id="method.manage_successful_connection" class="method"><a class="srclink rightside" href="../../src/massa_network_worker/network_worker.rs.html#753-776">source</a><h4 class="code-header">fn <a href="#method.manage_successful_connection" class="fn">manage_successful_connection</a>(
+</div></details><details class="toggle method-toggle" open><summary><section id="method.manage_successful_connection" class="method"><a class="srclink rightside" href="../../src/massa_network_worker/network_worker.rs.html#755-779">source</a><h4 class="code-header">fn <a href="#method.manage_successful_connection" class="fn">manage_successful_connection</a>(
     &amp;mut self,
     connection_id: ConnectionId,
     reader: ReadHalf,
@@ -155,7 +155,7 @@ Check if we’re not already running an handshake for <code>connection_id</code>
 <code>self.running_handshakes</code>
 Add a new handshake to perform in <code>self.handshake_futures</code> to be handle in the main loop.</p>
 <p>Return an handshake error if connection already running/waiting</p>
-</div></details><details class="toggle method-toggle" open><summary><section id="method.on_node_event" class="method"><a class="srclink rightside" href="../../src/massa_network_worker/network_worker.rs.html#783-816">source</a><h4 class="code-header">async fn <a href="#method.on_node_event" class="fn">on_node_event</a>(&amp;mut self, evt: NodeEvent) -&gt; <a class="enum" href="https://doc.rust-lang.org/nightly/core/result/enum.Result.html" title="enum core::result::Result">Result</a>&lt;<a class="primitive" href="https://doc.rust-lang.org/nightly/std/primitive.unit.html">()</a>, NetworkError&gt;</h4></section></summary><div class="docblock"><p>Manages node events.
+</div></details><details class="toggle method-toggle" open><summary><section id="method.on_node_event" class="method"><a class="srclink rightside" href="../../src/massa_network_worker/network_worker.rs.html#786-819">source</a><h4 class="code-header">async fn <a href="#method.on_node_event" class="fn">on_node_event</a>(&amp;mut self, evt: NodeEvent) -&gt; <a class="enum" href="https://doc.rust-lang.org/nightly/core/result/enum.Result.html" title="enum core::result::Result">Result</a>&lt;<a class="primitive" href="https://doc.rust-lang.org/nightly/std/primitive.unit.html">()</a>, NetworkError&gt;</h4></section></summary><div class="docblock"><p>Manages node events.
 Only used by the worker.</p>
 <h5 id="argument"><a href="#argument">Argument</a></h5>
 <ul>

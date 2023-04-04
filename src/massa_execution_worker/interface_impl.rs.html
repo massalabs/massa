@@ -889,7 +889,7 @@
 
         <span class="kw">let </span>vesting_file = <span class="kw">super</span>::tests::get_initials_vesting(<span class="bool-val">false</span>);
         <span class="kw">let </span>config = ExecutionConfig::default();
-        <span class="kw">let </span>(final_state, _tempfile, _tempdir) = <span class="kw">super</span>::tests::get_sample_state().unwrap();
+        <span class="kw">let </span>(final_state, _tempfile, _tempdir) = <span class="kw">super</span>::tests::get_sample_state(<span class="number">0</span>).unwrap();
         <span class="kw">let </span>module_cache = Arc::new(RwLock::new(ModuleCache::new(ModuleCacheConfig {
             hd_cache_path: config.hd_cache_path.clone(),
             gas_costs: config.gas_costs.clone(),
