@@ -897,12 +897,6 @@
 <a href="#897" id="897">897</a>
 <a href="#898" id="898">898</a>
 <a href="#899" id="899">899</a>
-<a href="#900" id="900">900</a>
-<a href="#901" id="901">901</a>
-<a href="#902" id="902">902</a>
-<a href="#903" id="903">903</a>
-<a href="#904" id="904">904</a>
-<a href="#905" id="905">905</a>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="doccomment">//! This module represents the context in which the VM executes bytecode.
@@ -1610,25 +1604,19 @@
     ///
     /// # Arguments
     /// * `slot`: associated slot of the deferred credits to be executed
-    /// * `credits`: deferred to be executed
     </span><span class="kw">pub fn </span>execute_deferred_credits(<span class="kw-2">&amp;mut </span><span class="self">self</span>, slot: <span class="kw-2">&amp;</span>Slot) {
-        <span class="kw">let </span>executed_credits = <span class="self">self</span>.speculative_roll_state.get_deferred_credits(slot);
-
-        <span class="kw">for </span>(address, amount) <span class="kw">in </span>executed_credits {
-            <span class="self">self</span>.speculative_roll_state
-                .added_changes
-                .deferred_credits
-                .credits
-                .entry(<span class="kw-2">*</span>slot)
-                .or_default()
-                .entry(address)
-                .and_modify(|credit_amount| <span class="kw-2">*</span>credit_amount = Amount::default())
-                .or_default();
-            <span class="kw">if let </span><span class="prelude-val">Err</span>(e) = <span class="self">self</span>.transfer_coins(<span class="prelude-val">None</span>, <span class="prelude-val">Some</span>(address), amount, <span class="bool-val">false</span>) {
-                <span class="macro">debug!</span>(
-                    <span class="string">&quot;could not credit {} deferred coins to {} at slot {}: {}&quot;</span>,
-                    amount, address, slot, e
-                );
+        <span class="kw">for </span>(_slot, map) <span class="kw">in </span><span class="self">self
+            </span>.speculative_roll_state
+            .take_unexecuted_deferred_credits(slot)
+            .credits
+        {
+            <span class="kw">for </span>(address, amount) <span class="kw">in </span>map {
+                <span class="kw">if let </span><span class="prelude-val">Err</span>(e) = <span class="self">self</span>.transfer_coins(<span class="prelude-val">None</span>, <span class="prelude-val">Some</span>(address), amount, <span class="bool-val">false</span>) {
+                    <span class="macro">debug!</span>(
+                        <span class="string">&quot;could not credit {} deferred coins to {} at slot {}: {}&quot;</span>,
+                        amount, address, slot, e
+                    );
+                }
             }
         }
     }

@@ -75,6 +75,8 @@
 <a href="#75" id="75">75</a>
 <a href="#76" id="76">76</a>
 <a href="#77" id="77">77</a>
+<a href="#78" id="78">78</a>
+<a href="#79" id="79">79</a>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="doccomment">//! This module provides the structures used to provide configuration parameters to the Execution system
@@ -143,6 +145,8 @@
     </span><span class="kw">pub </span>gas_costs: GasCosts,
     <span class="doccomment">/// Path to the initial vesting file
     </span><span class="kw">pub </span>initial_vesting_path: PathBuf,
+    <span class="doccomment">/// last start period
+    </span><span class="kw">pub </span>last_start_period: u64,
     <span class="doccomment">/// Path to the hard drive cache storage
     </span><span class="kw">pub </span>hd_cache_path: PathBuf,
     <span class="doccomment">/// Maximum number of entries we want to keep in the LRU cache
