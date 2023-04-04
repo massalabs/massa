@@ -284,9 +284,6 @@
 <a href="#284" id="284">284</a>
 <a href="#285" id="285">285</a>
 <a href="#286" id="286">286</a>
-<a href="#287" id="287">287</a>
-<a href="#288" id="288">288</a>
-<a href="#289" id="289">289</a>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="doccomment">//! Build here the default node settings from the configuration file toml
@@ -319,11 +316,8 @@
     <span class="kw">pub </span>max_read_only_gas: u64,
     <span class="kw">pub </span>abi_gas_costs_file: PathBuf,
     <span class="kw">pub </span>wasm_gas_costs_file: PathBuf,
+    <span class="kw">pub </span>max_module_cache_size: u32,
     <span class="kw">pub </span>initial_vesting_path: PathBuf,
-    <span class="kw">pub </span>hd_cache_path: PathBuf,
-    <span class="kw">pub </span>lru_cache_size: u32,
-    <span class="kw">pub </span>hd_cache_size: usize,
-    <span class="kw">pub </span>snip_amount: usize,
 }
 
 <span class="attr">#[derive(Clone, Debug, Deserialize)]
