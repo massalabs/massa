@@ -171,13 +171,17 @@
 <a href="#171" id="171">171</a>
 <a href="#172" id="172">172</a>
 <a href="#173" id="173">173</a>
+<a href="#174" id="174">174</a>
+<a href="#175" id="175">175</a>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="kw">use </span>parking_lot::Mutex;
-<span class="kw">use </span>crossbeam_channel::{Sender, Receiver};
 <span class="kw">use </span>std::{
     collections::{BTreeMap, HashMap, VecDeque},
-    sync::Arc,
+    sync::{
+        mpsc::{<span class="self">self</span>, Receiver},
+        Arc,
+    },
 };
 
 <span class="kw">use </span>massa_hash::Hash;
@@ -210,33 +214,33 @@
         <span class="doccomment">/// End of the search range
         </span>end: Slot,
         <span class="doccomment">/// Receiver to send the result to
-        </span>response_tx: Sender&lt;PosResult&lt;(Vec&lt;Slot&gt;, Vec&lt;IndexedSlot&gt;)&gt;&gt;,
+        </span>response_tx: mpsc::Sender&lt;PosResult&lt;(Vec&lt;Slot&gt;, Vec&lt;IndexedSlot&gt;)&gt;&gt;,
     },
     <span class="doccomment">/// Get the entire selection of PoS. used for testing only
     </span>GetEntireSelection {
         <span class="doccomment">/// response channel
-        </span>response_tx: Sender&lt;VecDeque&lt;(u64, HashMap&lt;Slot, Selection&gt;)&gt;&gt;,
+        </span>response_tx: mpsc::Sender&lt;VecDeque&lt;(u64, HashMap&lt;Slot, Selection&gt;)&gt;&gt;,
     },
     <span class="doccomment">/// Get the producer for a block at a specific slot
     </span>GetProducer {
         <span class="doccomment">/// Slot to search
         </span>slot: Slot,
         <span class="doccomment">/// Receiver to send the result to
-        </span>response_tx: Sender&lt;PosResult&lt;Address&gt;&gt;,
+        </span>response_tx: mpsc::Sender&lt;PosResult&lt;Address&gt;&gt;,
     },
     <span class="doccomment">/// Get the selection for a block at a specific slot
     </span>GetSelection {
         <span class="doccomment">/// Slot to search
         </span>slot: Slot,
         <span class="doccomment">/// Receiver to send the result to
-        </span>response_tx: Sender&lt;PosResult&lt;Selection&gt;&gt;,
+        </span>response_tx: mpsc::Sender&lt;PosResult&lt;Selection&gt;&gt;,
     },
     <span class="doccomment">/// Wait for draws
     </span>WaitForDraws {
         <span class="doccomment">/// Cycle to wait for
         </span>cycle: u64,
         <span class="doccomment">/// Receiver to send the result to
-        </span>response_tx: Sender&lt;PosResult&lt;u64&gt;&gt;,
+        </span>response_tx: mpsc::Sender&lt;PosResult&lt;u64&gt;&gt;,
     },
 }
 
@@ -244,7 +248,7 @@
 /// This mock will be called by the others modules and you will receive events in the receiver.
 /// You can choose to manage them how you want.
 </span><span class="attr">#[derive(Clone)]
-</span><span class="kw">pub struct </span>MockSelectorController(Arc&lt;Mutex&lt;Sender&lt;MockSelectorControllerMessage&gt;&gt;&gt;);
+</span><span class="kw">pub struct </span>MockSelectorController(Arc&lt;Mutex&lt;mpsc::Sender&lt;MockSelectorControllerMessage&gt;&gt;&gt;);
 
 <span class="kw">impl </span>MockSelectorController {
     <span class="doccomment">/// Create a new pair (mock execution controller, mpsc receiver for emitted messages)
@@ -253,7 +257,7 @@
         Box&lt;<span class="kw">dyn </span>SelectorController&gt;,
         Receiver&lt;MockSelectorControllerMessage&gt;,
     ) {
-        <span class="kw">let </span>(tx, rx) = crossbeam_channel::unbounded();
+        <span class="kw">let </span>(tx, rx) = mpsc::channel();
         (
             Box::new(MockSelectorController(Arc::new(Mutex::new(tx)))),
             rx,
@@ -286,7 +290,7 @@
     /// TODO: limit usage
     </span><span class="attr">#[cfg(feature = <span class="string">&quot;testing&quot;</span>)]
     </span><span class="kw">fn </span>get_entire_selection(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; VecDeque&lt;(u64, HashMap&lt;Slot, Selection&gt;)&gt; {
-        <span class="kw">let </span>(response_tx, response_rx) = crossbeam_channel::unbounded();
+        <span class="kw">let </span>(response_tx, response_rx) = mpsc::channel();
         <span class="self">self</span>.<span class="number">0
             </span>.lock()
             .send(MockSelectorControllerMessage::GetEntireSelection { response_tx })
@@ -295,7 +299,7 @@
     }
 
     <span class="kw">fn </span>wait_for_draws(<span class="kw-2">&amp;</span><span class="self">self</span>, cycle: u64) -&gt; PosResult&lt;u64&gt; {
-        <span class="kw">let </span>(response_tx, response_rx) = crossbeam_channel::unbounded();
+        <span class="kw">let </span>(response_tx, response_rx) = mpsc::channel();
         <span class="self">self</span>.<span class="number">0
             </span>.lock()
             .send(MockSelectorControllerMessage::WaitForDraws { cycle, response_tx })
@@ -309,7 +313,7 @@
         start: Slot,
         end: Slot,
     ) -&gt; PosResult&lt;(Vec&lt;Slot&gt;, Vec&lt;IndexedSlot&gt;)&gt; {
-        <span class="kw">let </span>(response_tx, response_rx) = crossbeam_channel::unbounded();
+        <span class="kw">let </span>(response_tx, response_rx) = mpsc::channel();
         <span class="self">self</span>.<span class="number">0
             </span>.lock()
             .send(MockSelectorControllerMessage::GetAddressSelections {
@@ -323,7 +327,7 @@
     }
 
     <span class="kw">fn </span>get_producer(<span class="kw-2">&amp;</span><span class="self">self</span>, slot: Slot) -&gt; PosResult&lt;Address&gt; {
-        <span class="kw">let </span>(response_tx, response_rx) = crossbeam_channel::unbounded();
+        <span class="kw">let </span>(response_tx, response_rx) = mpsc::channel();
         <span class="self">self</span>.<span class="number">0
             </span>.lock()
             .send(MockSelectorControllerMessage::GetProducer { slot, response_tx })
@@ -332,7 +336,7 @@
     }
 
     <span class="kw">fn </span>get_selection(<span class="kw-2">&amp;</span><span class="self">self</span>, slot: Slot) -&gt; PosResult&lt;Selection&gt; {
-        <span class="kw">let </span>(response_tx, response_rx) = crossbeam_channel::unbounded();
+        <span class="kw">let </span>(response_tx, response_rx) = mpsc::channel();
         <span class="self">self</span>.<span class="number">0
             </span>.lock()
             .send(MockSelectorControllerMessage::GetSelection { slot, response_tx })
