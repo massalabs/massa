@@ -6,6 +6,7 @@
   "assembly_script_call": 15000,
   "assembly_script_caller_has_write_access": 155,
   "assembly_script_create_sc": 300000,
+  "sp_compilation_cost": 200000,
   "assembly_script_date_now": 71,
   "assembly_script_delete_data": 196,
   "assembly_script_delete_data_for": 220,
