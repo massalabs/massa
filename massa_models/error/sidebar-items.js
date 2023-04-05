@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"constant":["_DERIVE_Display_FOR_ModelsError"],"enum":["ModelsError"],"trait":["DisplayToDisplayDoc","PathToDisplayDoc"],"type":["ModelsResult"]};
+window.SIDEBAR_ITEMS = {"enum":["ModelsError"],"type":["ModelsResult"]};

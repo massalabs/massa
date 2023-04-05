@@ -1,1 +1,0 @@
-window.SIDEBAR_ITEMS = {"fn":["start_selector_worker"],"struct":["SelectorThread"]};

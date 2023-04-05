@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"constant":["FIELDS","SLOT_KEY_SIZE"],"enum":["__Field"],"struct":["IndexedSlot","Slot","SlotDeserializer","SlotSerializer","__FieldVisitor","__Visitor"]};
+window.SIDEBAR_ITEMS = {"constant":["SLOT_KEY_SIZE"],"struct":["IndexedSlot","Slot","SlotDeserializer","SlotSerializer"]};

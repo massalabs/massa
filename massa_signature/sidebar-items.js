@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"constant":["PUBLIC_KEY_SIZE_BYTES","SECRET_KEY_BYTES_SIZE","SIGNATURE_SIZE_BYTES"],"enum":["MassaSignatureError"],"fn":["verify_signature_batch"],"mod":["error","signature_impl"],"struct":["KeyPair","PublicKey","PublicKeyDeserializer","Signature","SignatureDeserializer"]};
+window.SIDEBAR_ITEMS = {"constant":["PUBLIC_KEY_SIZE_BYTES","SECRET_KEY_BYTES_SIZE","SIGNATURE_SIZE_BYTES"],"enum":["MassaSignatureError"],"fn":["verify_signature_batch"],"struct":["KeyPair","PublicKey","PublicKeyDeserializer","Signature","SignatureDeserializer"]};
