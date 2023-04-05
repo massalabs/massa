@@ -62,11 +62,6 @@
 <a href="#62" id="62">62</a>
 <a href="#63" id="63">63</a>
 <a href="#64" id="64">64</a>
-<a href="#65" id="65">65</a>
-<a href="#66" id="66">66</a>
-<a href="#67" id="67">67</a>
-<a href="#68" id="68">68</a>
-<a href="#69" id="69">69</a>
 </pre><pre class="rust"><code><span class="doccomment">//! Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 //! Bootstrap crate
 //!
@@ -99,7 +94,6 @@
 <span class="kw">mod </span>tools;
 <span class="kw">pub use </span>client::get_state;
 <span class="kw">pub use </span>establisher::{DefaultConnector, DefaultListener};
-<span class="kw">use </span>massa_versioning_worker::versioning::MipStore;
 <span class="kw">pub use </span>messages::{
     BootstrapClientMessage, BootstrapClientMessageDeserializer, BootstrapClientMessageSerializer,
     BootstrapServerMessage, BootstrapServerMessageDeserializer, BootstrapServerMessageSerializer,
@@ -121,9 +115,6 @@
 
     <span class="doccomment">/// list of network peers
     </span><span class="kw">pub </span>peers: <span class="prelude-ty">Option</span>&lt;BootstrapPeers&gt;,
-
-    <span class="doccomment">/// versioning info state
-    </span><span class="kw">pub </span>mip_store: <span class="prelude-ty">Option</span>&lt;MipStore&gt;,
 }
 
 <span class="kw">impl </span>GlobalBootstrapState {
@@ -132,7 +123,6 @@
             final_state,
             graph: <span class="prelude-val">None</span>,
             peers: <span class="prelude-val">None</span>,
-            mip_store: <span class="prelude-val">None</span>,
         }
     }
 }
