@@ -1136,6 +1136,8 @@
 <a href="#1136" id="1136">1136</a>
 <a href="#1137" id="1137">1137</a>
 <a href="#1138" id="1138">1138</a>
+<a href="#1139" id="1139">1139</a>
+<a href="#1140" id="1140">1140</a>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="attr">#![doc = <span class="macro">include_str!</span>(<span class="string">&quot;../../README.md&quot;</span>)]
@@ -1196,7 +1198,7 @@
     MAX_OPERATIONS_PER_MESSAGE,
 };
 <span class="kw">use </span>massa_models::denunciation::DenunciationPrecursor;
-<span class="kw">use </span>massa_network_exports::{Establisher, NetworkCommandSender, NetworkConfig, NetworkManager};
+<span class="kw">use </span>massa_network_exports::{Establisher, NetworkConfig, NetworkManager};
 <span class="kw">use </span>massa_network_worker::start_network_controller;
 <span class="kw">use </span>massa_pool_exports::{PoolChannels, PoolConfig, PoolManager};
 <span class="kw">use </span>massa_pool_worker::start_pool_controller;
@@ -1218,6 +1220,7 @@
 <span class="kw">use </span>std::time::Duration;
 <span class="kw">use </span>std::{path::Path, process, sync::Arc};
 <span class="kw">use </span>structopt::StructOpt;
+<span class="kw">use </span>tokio::net::TcpStream;
 <span class="kw">use </span>tokio::signal;
 <span class="kw">use </span>tokio::sync::{broadcast, mpsc};
 <span class="kw">use </span>tracing::{error, info, warn};
@@ -1230,7 +1233,7 @@
     node_wallet: Arc&lt;RwLock&lt;Wallet&gt;&gt;,
 ) -&gt; (
     Receiver&lt;ConsensusEvent&gt;,
-    <span class="prelude-ty">Option</span>&lt;BootstrapManager&gt;,
+    <span class="prelude-ty">Option</span>&lt;BootstrapManager&lt;TcpStream&gt;&gt;,
     Box&lt;<span class="kw">dyn </span>ConsensusManager&gt;,
     Box&lt;<span class="kw">dyn </span>ExecutionManager&gt;,
     Box&lt;<span class="kw">dyn </span>SelectorManager&gt;,
@@ -1450,7 +1453,7 @@
         res = get_state(
             <span class="kw-2">&amp;</span>bootstrap_config,
             final_state.clone(),
-            DefaultConnector,
+            DefaultConnector(bootstrap_config.connect_timeout),
             <span class="kw-2">*</span>VERSION,
             <span class="kw-2">*</span>GENESIS_TIMESTAMP,
             <span class="kw-2">*</span>END_TIMESTAMP,
@@ -1760,7 +1763,7 @@
     <span class="comment">// launch bootstrap server
     // TODO: use std::net::TcpStream
     </span><span class="kw">let </span>bootstrap_manager = <span class="kw">match </span>bootstrap_config.listen_addr {
-        <span class="prelude-val">Some</span>(addr) =&gt; start_bootstrap_server::&lt;NetworkCommandSender&gt;(
+        <span class="prelude-val">Some</span>(addr) =&gt; start_bootstrap_server::&lt;TcpStream&gt;(
             consensus_controller.clone(),
             network_command_sender.clone(),
             final_state.clone(),
@@ -1995,7 +1998,7 @@
 }
 
 <span class="kw">struct </span>Managers {
-    bootstrap_manager: <span class="prelude-ty">Option</span>&lt;BootstrapManager&gt;,
+    bootstrap_manager: <span class="prelude-ty">Option</span>&lt;BootstrapManager&lt;TcpStream&gt;&gt;,
     consensus_manager: Box&lt;<span class="kw">dyn </span>ConsensusManager&gt;,
     execution_manager: Box&lt;<span class="kw">dyn </span>ExecutionManager&gt;,
     selector_manager: Box&lt;<span class="kw">dyn </span>SelectorManager&gt;,
@@ -2026,7 +2029,8 @@
     </span><span class="kw">if let </span><span class="prelude-val">Some</span>(bootstrap_manager) = bootstrap_manager {
         bootstrap_manager
             .stop()
-            .expect(<span class="string">&quot;bootstrap server shutdown failed&quot;</span>)
+            .<span class="kw">await
+            </span>.expect(<span class="string">&quot;bootstrap server shutdown failed&quot;</span>)
     }
 
     <span class="comment">// stop public API
