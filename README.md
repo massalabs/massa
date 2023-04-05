@@ -21,7 +21,7 @@ that supports more than 10'000 transactions per second in a fully decentralized 
 introduction video is available [here](https://www.youtube.com/watch?v=NUUFhvd7ulY).
 
 Massa's purpose is to make it easy to deploy fully decentralized applications. To achieve this purpose, Massa is the
-first blockchain to provide [Autonomous smart contracts](https://docs.massa.net/en/latest/general-doc/autonomous-sc.html)
+first blockchain to provide [autonomous smart contracts](https://docs.massa.net/en/latest/general-doc/autonomous-sc.html)
 and native [front-end hosting](https://docs.massa.net/en/latest/general-doc/decentralized-web.html).
 
 Here is a list of tools to easily build applications on the Massa blockchain:
