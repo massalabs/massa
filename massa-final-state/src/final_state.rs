@@ -321,6 +321,8 @@ impl FinalState {
         );
         self.ledger.set_initial_slot(slot);
         self.pos_state.initial_ledger_hash = self.ledger.get_ledger_hash();
+
+        info!("Set initial ledger hash to {}", self.ledger.get_ledger_hash().to_string())
     }
 
     /// Reset the final state to the initial state.
@@ -366,6 +368,28 @@ impl FinalState {
         hash_concat.extend(self.executed_ops.hash.to_bytes());
         // 6. compute and save final state hash
         self.final_state_hash = Hash::compute_from(&hash_concat);
+
+        info!("ledger_hash hash at slot {}: {}", slot, ledger_hash);
+        let n = (self.pos_state.cycle_history.len() == self.config.pos_config.cycle_history_length)
+            as usize;
+        for cycle_info in self.pos_state.cycle_history.iter().skip(n) {
+            info!(
+                "cycle_global_hash hash at slot {}: {}",
+                slot, cycle_info.cycle_global_hash
+            );
+        }
+
+        info!(
+            "cycle_history at slot {}: {}",
+            slot,
+            self.pos_state.cycle_history.len()
+        );
+        for cycle_info in self.pos_state.cycle_history.clone() {
+            info!(
+                "cycle_info at slot {}: [cycle: {}, complete: {}, roll_counts: {:?}]",
+                slot, cycle_info.cycle, cycle_info.complete, cycle_info.roll_counts
+            );
+        }
 
         info!(
             "final_state hash at slot {}: {}",
