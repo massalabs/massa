@@ -3,7 +3,7 @@ use std::collections::HashMap;
 use std::thread;
 
 use crossbeam_channel::{select, Receiver};
-use tracing::{debug, info, warn};
+use tracing::{debug, warn};
 
 use massa_factory_exports::{FactoryChannels, FactoryConfig};
 use massa_models::address::Address;

@@ -315,7 +315,10 @@ impl FinalState {
 
     /// Used after bootstrap, to set the initial ledger hash (used in initial draws)
     pub fn init_ledger_hash(&mut self, last_start_period: u64) {
-        let slot = Slot::new(last_start_period, self.config.thread_count.saturating_sub(1));
+        let slot = Slot::new(
+            last_start_period,
+            self.config.thread_count.saturating_sub(1),
+        );
         self.ledger.set_initial_slot(slot);
         self.pos_state.initial_ledger_hash = self.ledger.get_ledger_hash();
     }
