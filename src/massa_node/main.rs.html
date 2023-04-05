@@ -1145,8 +1145,6 @@
 <a href="#1145" id="1145">1145</a>
 <a href="#1146" id="1146">1146</a>
 <a href="#1147" id="1147">1147</a>
-<a href="#1148" id="1148">1148</a>
-<a href="#1149" id="1149">1149</a>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="attr">#![doc = <span class="macro">include_str!</span>(<span class="string">&quot;../../README.md&quot;</span>)]
@@ -1530,15 +1528,13 @@
         .<span class="kw">await
         </span>.expect(<span class="string">&quot;could not start network controller&quot;</span>);
 
-    <span class="kw">if </span>args.restart_from_snapshot_at_period.is_none() {
-        <span class="comment">// give the controller to final state in order for it to feed the cycles
-        </span>final_state
-            .write()
-            .compute_initial_draws()
-            .expect(<span class="string">&quot;could not compute initial draws&quot;</span>); <span class="comment">// TODO: this might just mean a bad bootstrap, no need to panic, just reboot
-    </span>}
+    <span class="comment">// give the controller to final state in order for it to feed the cycles
+    </span>final_state
+        .write()
+        .compute_initial_draws()
+        .expect(<span class="string">&quot;could not compute initial draws&quot;</span>); <span class="comment">// TODO: this might just mean a bad bootstrap, no need to panic, just reboot
 
-    <span class="comment">// Storage costs constants
+    // Storage costs constants
     </span><span class="kw">let </span>storage_costs_constants = StorageCostsConstants {
         ledger_cost_per_byte: LEDGER_COST_PER_BYTE,
         ledger_entry_base_cost: LEDGER_COST_PER_BYTE
