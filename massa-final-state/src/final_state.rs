@@ -143,7 +143,7 @@ impl FinalState {
             final_state.slot
         );
 
-        final_state.compute_state_hash_at_slot(final_state.slot);
+        //final_state.compute_state_hash_at_slot(final_state.slot);
 
         // Check the hash to see if we correctly recovered the snapshot
         // TODO: Redo this check when we get the final_state from the ledger
@@ -155,6 +155,8 @@ impl FinalState {
         final_state.last_start_period = last_start_period;
 
         final_state.interpolate_downtime()?;
+
+        final_state.compute_state_hash_at_slot(final_state.slot);
 
         Ok(final_state)
     }
@@ -307,6 +309,10 @@ impl FinalState {
         }
 
         Ok(())
+    }
+
+    pub fn init_ledger_hash(&mut self) {
+        self.pos_state.initial_ledger_hash = self.ledger.get_ledger_hash();
     }
 
     /// Reset the final state to the initial state.

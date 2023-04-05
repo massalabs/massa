@@ -379,6 +379,8 @@ async fn launch(
         .await
         .expect("could not start network controller");
 
+    final_state.write().init_ledger_hash();
+
     // give the controller to final state in order for it to feed the cycles
     final_state
         .write()
