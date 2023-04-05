@@ -268,6 +268,11 @@
 <a href="#268" id="268">268</a>
 <a href="#269" id="269">269</a>
 <a href="#270" id="270">270</a>
+<a href="#271" id="271">271</a>
+<a href="#272" id="272">272</a>
+<a href="#273" id="273">273</a>
+<a href="#274" id="274">274</a>
+<a href="#275" id="275">275</a>
 </pre><pre class="rust"><code><span class="doccomment">//! DEFAULT VALUES USED TO INITIALIZE DIVERS CONFIGURATIONS STRUCTURES
 //!
 //!
@@ -290,7 +295,12 @@
 <span class="kw">use </span>massa_time::MassaTime;
 <span class="kw">use </span>num::rational::Ratio;
 
-<span class="doccomment">/// Limit on the number of peers we advertise to others.
+<span class="doccomment">/// Start of the downtime simulation
+</span><span class="kw">pub const </span>DOWNTIME_START_TIMESTAMP: MassaTime = MassaTime::from_millis(<span class="number">1680699600000</span>); <span class="comment">// 05/04/2023 3PM CET
+</span><span class="doccomment">/// End of the downtime simulation
+</span><span class="kw">pub const </span>DOWNTIME_END_TIMESTAMP: MassaTime = MassaTime::from_millis(<span class="number">1680703200000</span>); <span class="comment">// 05/04/2023 4PM CET
+
+</span><span class="doccomment">/// Limit on the number of peers we advertise to others.
 </span><span class="kw">pub const </span>MAX_ADVERTISE_LENGTH: u32 = <span class="number">10000</span>;
 <span class="doccomment">/// Maximum message length in bytes
 </span><span class="kw">pub const </span>MAX_MESSAGE_SIZE: u32 = <span class="number">1048576000</span>;
