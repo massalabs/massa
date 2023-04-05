@@ -129,7 +129,7 @@ pub const MAX_ASYNC_MESSAGE_DATA: u64 = 1_000_000;
 pub const OPERATION_VALIDITY_PERIODS: u64 = 10;
 /// cycle duration in periods
 /// TODO: Reset to 128 after testing
-pub const PERIODS_PER_CYCLE: u64 = 128;
+pub const PERIODS_PER_CYCLE: u64 = 12;
 /// PoS saved cycles: number of cycles saved in `PoSFinalState`
 ///
 /// 4 for PoS itself and 1 for bootstrap safety
