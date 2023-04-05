@@ -74,19 +74,6 @@ impl BootstrapClientBinder {
         duration: Option<Duration>,
     ) -> Result<BootstrapServerMessage, BootstrapError> {
         self.duplex.set_read_timeout(duration)?;
-        // read signature
-        let sig = {
-            let mut sig_bytes = [0u8; SIGNATURE_SIZE_BYTES];
-            self.duplex.read_exact(&mut sig_bytes)?;
-            Signature::from_bytes(&sig_bytes)?
-        };
-
-        // read message length
-        let msg_len = {
-            let mut msg_len_bytes = vec![0u8; self.size_field_len];
-            self.duplex.read_exact(&mut msg_len_bytes[..])?;
-            u32::from_be_bytes_min(&msg_len_bytes, self.cfg.max_bootstrap_message_size)?.0
-        };
         let peek_len = SIGNATURE_SIZE_BYTES + self.size_field_len;
         let mut peek_buff = vec![0u8; peek_len];
         let mut acc = 0;
@@ -104,6 +91,19 @@ impl BootstrapClientBinder {
             self.cfg.max_bootstrap_message_size,
         )?
         .0;
+        // read signature
+        let sig = {
+            let mut sig_bytes = [0u8; SIGNATURE_SIZE_BYTES];
+            self.duplex.read_exact(&mut sig_bytes)?;
+            Signature::from_bytes(&sig_bytes)?
+        };
+
+        // read message length
+        let msg_len = {
+            let mut msg_len_bytes = vec![0u8; self.size_field_len];
+            self.duplex.read_exact(&mut msg_len_bytes[..])?;
+            u32::from_be_bytes_min(&msg_len_bytes, self.cfg.max_bootstrap_message_size)?.0
+        };
 
         // read message, check signature and check signature of the message sent just before then deserialize it
         let message_deserializer = BootstrapServerMessageDeserializer::new((&self.cfg).into());
