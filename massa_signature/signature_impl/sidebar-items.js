@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"constant":["FIELDS","KEYPAIR_VERSION","PUBLIC_KEY_SIZE_BYTES","PUBLIC_PREFIX","SECRET_KEY_BYTES_SIZE","SECRET_PREFIX","SIGNATURE_SIZE_BYTES"],"enum":["Field"],"fn":["verify_signature_batch"],"struct":["Base58CheckVisitor","BytesVisitor","FieldVisitor","KeyPair","KeyPairVisitor","PublicKey","PublicKeyDeserializer","Signature","SignatureDeserializer"]};

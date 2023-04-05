@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"enum":["OperationSearchResultBlockStatus","OperationSearchResultStatus"],"struct":["OperationSearchResult","PubkeySig","StakersCycleProductionStats"]};
+window.SIDEBAR_ITEMS = {"constant":["FIELDS","VARIANTS"],"enum":["OperationSearchResultBlockStatus","OperationSearchResultStatus","__Field"],"struct":["OperationSearchResult","PubkeySig","StakersCycleProductionStats","__FieldVisitor","__Visitor"]};

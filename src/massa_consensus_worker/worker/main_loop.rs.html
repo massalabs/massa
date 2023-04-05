@@ -171,6 +171,12 @@
 <a href="#171" id="171">171</a>
 <a href="#172" id="172">172</a>
 <a href="#173" id="173">173</a>
+<a href="#174" id="174">174</a>
+<a href="#175" id="175">175</a>
+<a href="#176" id="176">176</a>
+<a href="#177" id="177">177</a>
+<a href="#178" id="178">178</a>
+<a href="#179" id="179">179</a>
 </pre><pre class="rust"><code><span class="kw">use </span>std::{sync::mpsc, time::Instant};
 
 <span class="kw">use </span>massa_consensus_exports::{error::ConsensusError, events::ConsensusEvent};
@@ -198,13 +204,15 @@
     /// * `command`: the command to execute
     ///
     /// # Returns:
+    /// If successful, returns true if the loop should continue, false if it should stop.
     /// An error if the command failed
-    </span><span class="kw">fn </span>manage_command(<span class="kw-2">&amp;mut </span><span class="self">self</span>, command: ConsensusCommand) -&gt; <span class="prelude-ty">Result</span>&lt;(), ConsensusError&gt; {
+    </span><span class="kw">fn </span>manage_command(<span class="kw-2">&amp;mut </span><span class="self">self</span>, command: ConsensusCommand) -&gt; <span class="prelude-ty">Result</span>&lt;bool, ConsensusError&gt; {
         <span class="kw">let </span><span class="kw-2">mut </span>write_shared_state = <span class="self">self</span>.shared_state.write();
         <span class="kw">match </span>command {
             ConsensusCommand::RegisterBlockHeader(block_id, header) =&gt; {
                 write_shared_state.register_block_header(block_id, header, <span class="self">self</span>.previous_slot)<span class="question-mark">?</span>;
-                write_shared_state.block_db_changed()
+                write_shared_state.block_db_changed()<span class="question-mark">?</span>;
+                <span class="prelude-val">Ok</span>(<span class="bool-val">true</span>)
             }
             ConsensusCommand::RegisterBlock(block_id, slot, block_storage, created) =&gt; {
                 write_shared_state.register_block(
@@ -214,11 +222,13 @@
                     block_storage,
                     created,
                 )<span class="question-mark">?</span>;
-                write_shared_state.block_db_changed()
+                write_shared_state.block_db_changed()<span class="question-mark">?</span>;
+                <span class="prelude-val">Ok</span>(<span class="bool-val">true</span>)
             }
+            ConsensusCommand::Stop =&gt; <span class="prelude-val">Ok</span>(<span class="bool-val">false</span>),
             ConsensusCommand::MarkInvalidBlock(block_id, header) =&gt; {
                 write_shared_state.mark_invalid_block(<span class="kw-2">&amp;</span>block_id, header);
-                <span class="prelude-val">Ok</span>(())
+                <span class="prelude-val">Ok</span>(<span class="bool-val">true</span>)
             }
         }
     }
@@ -232,12 +242,14 @@
     </span><span class="kw">fn </span>wait_slot_or_command(<span class="kw-2">&amp;mut </span><span class="self">self</span>, deadline: Instant) -&gt; WaitingStatus {
         <span class="kw">match </span><span class="self">self</span>.command_receiver.recv_deadline(deadline) {
             <span class="comment">// message received =&gt; manage it
-            </span><span class="prelude-val">Ok</span>(command) =&gt; {
-                <span class="kw">if let </span><span class="prelude-val">Err</span>(err) = <span class="self">self</span>.manage_command(command) {
+            </span><span class="prelude-val">Ok</span>(command) =&gt; <span class="kw">match </span><span class="self">self</span>.manage_command(command) {
+                <span class="prelude-val">Ok</span>(<span class="bool-val">true</span>) =&gt; WaitingStatus::Interrupted,
+                <span class="prelude-val">Ok</span>(<span class="bool-val">false</span>) =&gt; WaitingStatus::Disconnected,
+                <span class="prelude-val">Err</span>(err) =&gt; {
                     <span class="macro">warn!</span>(<span class="string">&quot;Error in consensus: {}&quot;</span>, err);
+                    WaitingStatus::Interrupted
                 }
-                WaitingStatus::Interrupted
-            }
+            },
             <span class="comment">// timeout =&gt; continue main loop
             </span><span class="prelude-val">Err</span>(mpsc::RecvTimeoutError::Timeout) =&gt; WaitingStatus::Ended,
             <span class="comment">// channel disconnected (sender dropped) =&gt; quit main loop

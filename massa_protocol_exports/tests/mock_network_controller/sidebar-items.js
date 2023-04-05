@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"struct":["MockNetworkController"]};
+window.SIDEBAR_ITEMS = {"constant":["BRANCHES"],"opaque":[""],"struct":["MockNetworkController"]};

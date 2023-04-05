@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"constant":["VARIANTS"],"enum":["Change","ChangeId","__Field"],"struct":["AsyncPoolChanges","AsyncPoolChangesDeserializer","AsyncPoolChangesSerializer","__FieldVisitor","__Visitor"]};

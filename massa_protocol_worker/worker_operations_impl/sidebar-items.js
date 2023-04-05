@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"struct":["OperationBatchItem"],"type":["OperationBatchBuffer"]};
+window.SIDEBAR_ITEMS = {"opaque":[""],"static":["CALLSITE","META"],"struct":["OperationBatchItem"],"type":["OperationBatchBuffer"]};

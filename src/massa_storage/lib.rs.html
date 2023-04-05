@@ -488,6 +488,7 @@
 <a href="#488" id="488">488</a>
 <a href="#489" id="489">489</a>
 <a href="#490" id="490">490</a>
+<a href="#491" id="491">491</a>
 </pre><pre class="rust"><code><span class="doccomment">//! Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 //!
 //! This crate is used to store shared objects (blocks, operations...) across different modules.
@@ -608,6 +609,7 @@
             blocks: <span class="self">self</span>.blocks.clone(),
             operations: <span class="self">self</span>.operations.clone(),
             endorsements: <span class="self">self</span>.endorsements.clone(),
+
             operation_owners: <span class="self">self</span>.operation_owners.clone(),
             block_owners: <span class="self">self</span>.block_owners.clone(),
             endorsement_owners: <span class="self">self</span>.endorsement_owners.clone(),
