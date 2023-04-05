@@ -231,6 +231,10 @@
 <a href="#231" id="231">231</a>
 <a href="#232" id="232">232</a>
 <a href="#233" id="233">233</a>
+<a href="#234" id="234">234</a>
+<a href="#235" id="235">235</a>
+<a href="#236" id="236">236</a>
+<a href="#237" id="237">237</a>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="doccomment">//! This file defines the final ledger associating addresses to their balances, bytecode and data.
@@ -462,6 +466,10 @@
     </span><span class="attr">#[cfg(feature = <span class="string">&quot;testing&quot;</span>)]
     </span><span class="kw">fn </span>get_entire_datastore(<span class="kw-2">&amp;</span><span class="self">self</span>, addr: <span class="kw-2">&amp;</span>Address) -&gt; std::collections::BTreeMap&lt;Vec&lt;u8&gt;, Vec&lt;u8&gt;&gt; {
         <span class="self">self</span>.sorted_ledger.get_entire_datastore(addr)
+    }
+
+    <span class="kw">fn </span>set_initial_slot(<span class="kw-2">&amp;mut </span><span class="self">self</span>, slot: Slot) {
+        <span class="self">self</span>.sorted_ledger.set_initial_slot(slot);
     }
 }
 </code></pre></div>

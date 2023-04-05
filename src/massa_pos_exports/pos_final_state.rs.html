@@ -558,6 +558,13 @@
 <a href="#558" id="558">558</a>
 <a href="#559" id="559">559</a>
 <a href="#560" id="560">560</a>
+<a href="#561" id="561">561</a>
+<a href="#562" id="562">562</a>
+<a href="#563" id="563">563</a>
+<a href="#564" id="564">564</a>
+<a href="#565" id="565">565</a>
+<a href="#566" id="566">566</a>
+<a href="#567" id="567">567</a>
 </pre><pre class="rust"><code><span class="kw">use crate</span>::{CycleInfo, PoSChanges, PosError, PosResult, ProductionStats, SelectorController};
 <span class="kw">use crate</span>::{DeferredCredits, PoSConfig};
 <span class="kw">use </span>bitvec::vec::BitVec;
@@ -573,7 +580,7 @@
     ops::Bound::{Excluded, Unbounded},
     path::PathBuf,
 };
-<span class="kw">use </span>tracing::debug;
+<span class="kw">use </span>tracing::{debug, info};
 
 <span class="attr">#[derive(Clone)]
 </span><span class="doccomment">/// Final state of PoS
@@ -743,6 +750,8 @@
 
         <span class="kw">let </span><span class="kw-2">mut </span>max_cycle = <span class="prelude-val">None</span>;
 
+        <span class="macro">info!</span>(<span class="string">&quot;history starts late: {}&quot;</span>, history_starts_late);
+
         <span class="comment">// feed cycles 0, 1 to selector if necessary
         </span><span class="kw">if </span>!history_starts_late {
             <span class="kw">for </span>draw_cycle <span class="kw">in </span><span class="number">0u64</span>..=<span class="number">1 </span>{
@@ -882,9 +891,9 @@
     </span><span class="kw">pub fn </span>feed_selector(<span class="kw-2">&amp;</span><span class="self">self</span>, draw_cycle: u64) -&gt; PosResult&lt;()&gt; {
         <span class="comment">// get roll lookback
 
-        //info!(&quot;Feed selector with draw cycle: {}&quot;, draw_cycle);
+        </span><span class="macro">info!</span>(<span class="string">&quot;Feed selector with draw cycle: {}&quot;</span>, draw_cycle);
 
-        </span><span class="kw">let </span>(lookback_rolls, lookback_state_hash) = <span class="kw">match </span>draw_cycle.checked_sub(<span class="number">3</span>) {
+        <span class="kw">let </span>(lookback_rolls, lookback_state_hash) = <span class="kw">match </span>draw_cycle.checked_sub(<span class="number">3</span>) {
             <span class="comment">// looking back in history
             </span><span class="prelude-val">Some</span>(c) =&gt; {
                 <span class="kw">let </span>index = <span class="self">self
@@ -905,6 +914,9 @@
             <span class="comment">// looking back to negative cycles
             </span><span class="prelude-val">None </span>=&gt; (<span class="self">self</span>.initial_rolls.clone(), <span class="self">self</span>.initial_ledger_hash),
         };
+
+        <span class="macro">info!</span>(<span class="string">&quot;lookback_rolls: {:?}&quot;</span>, lookback_rolls);
+        <span class="macro">info!</span>(<span class="string">&quot;lookback_state_hash: {}&quot;</span>, lookback_state_hash.to_string());
 
         <span class="comment">// get seed lookback
         </span><span class="kw">let </span>lookback_seed = <span class="kw">match </span>draw_cycle.checked_sub(<span class="number">2</span>) {
@@ -927,6 +939,8 @@
             <span class="comment">// looking back to negative cycles
             </span><span class="prelude-val">None </span>=&gt; <span class="self">self</span>.initial_seeds[draw_cycle <span class="kw">as </span>usize],
         };
+
+        <span class="macro">info!</span>(<span class="string">&quot;lookback_seed: {}&quot;</span>, lookback_seed.to_string());
 
         <span class="comment">// feed selector
         </span><span class="self">self</span>.selector
