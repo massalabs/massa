@@ -25,13 +25,15 @@ impl ConsensusWorker {
     /// * `command`: the command to execute
     ///
     /// # Returns:
+    /// If successful, returns true if the loop should continue, false if it should stop.
     /// An error if the command failed
-    fn manage_command(&mut self, command: ConsensusCommand) -> Result<(), ConsensusError> {
+    fn manage_command(&mut self, command: ConsensusCommand) -> Result<bool, ConsensusError> {
         let mut write_shared_state = self.shared_state.write();
         match command {
             ConsensusCommand::RegisterBlockHeader(block_id, header) => {
                 write_shared_state.register_block_header(block_id, header, self.previous_slot)?;
-                write_shared_state.block_db_changed()
+                write_shared_state.block_db_changed()?;
+                Ok(true)
             }
             ConsensusCommand::RegisterBlock(block_id, slot, block_storage, created) => {
                 write_shared_state.register_block(
@@ -41,11 +43,13 @@ impl ConsensusWorker {
                     block_storage,
                     created,
                 )?;
-                write_shared_state.block_db_changed()
+                write_shared_state.block_db_changed()?;
+                Ok(true)
             }
+            ConsensusCommand::Stop => Ok(false),
             ConsensusCommand::MarkInvalidBlock(block_id, header) => {
                 write_shared_state.mark_invalid_block(&block_id, header);
-                Ok(())
+                Ok(true)
             }
         }
     }
@@ -59,12 +63,14 @@ impl ConsensusWorker {
     fn wait_slot_or_command(&mut self, deadline: Instant) -> WaitingStatus {
         match self.command_receiver.recv_deadline(deadline) {
             // message received => manage it
-            Ok(command) => {
-                if let Err(err) = self.manage_command(command) {
+            Ok(command) => match self.manage_command(command) {
+                Ok(true) => WaitingStatus::Interrupted,
+                Ok(false) => WaitingStatus::Disconnected,
+                Err(err) => {
                     warn!("Error in consensus: {}", err);
+                    WaitingStatus::Interrupted
                 }
-                WaitingStatus::Interrupted
-            }
+            },
             // timeout => continue main loop
             Err(mpsc::RecvTimeoutError::Timeout) => WaitingStatus::Ended,
             // channel disconnected (sender dropped) => quit main loop
