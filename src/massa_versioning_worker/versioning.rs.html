@@ -1237,6 +1237,20 @@
 <a href="#1237" id="1237">1237</a>
 <a href="#1238" id="1238">1238</a>
 <a href="#1239" id="1239">1239</a>
+<a href="#1240" id="1240">1240</a>
+<a href="#1241" id="1241">1241</a>
+<a href="#1242" id="1242">1242</a>
+<a href="#1243" id="1243">1243</a>
+<a href="#1244" id="1244">1244</a>
+<a href="#1245" id="1245">1245</a>
+<a href="#1246" id="1246">1246</a>
+<a href="#1247" id="1247">1247</a>
+<a href="#1248" id="1248">1248</a>
+<a href="#1249" id="1249">1249</a>
+<a href="#1250" id="1250">1250</a>
+<a href="#1251" id="1251">1251</a>
+<a href="#1252" id="1252">1252</a>
+<a href="#1253" id="1253">1253</a>
 </pre><pre class="rust"><code><span class="kw">use </span>std::cmp::Ordering;
 <span class="kw">use </span>std::collections::{BTreeMap, BTreeSet, HashMap, VecDeque};
 <span class="kw">use </span>std::hash::{Hash, Hasher};
@@ -1706,6 +1720,16 @@
         <span class="kw">let </span><span class="kw-2">mut </span>lock = <span class="self">self</span>.<span class="number">0</span>.write();
         lock.update_network_version_stats(slot_timestamp, network_versions);
     }
+
+    <span class="attr">#[allow(clippy::result_unit_err)]
+    </span><span class="kw">pub fn </span>update_with(
+        <span class="kw-2">&amp;mut </span><span class="self">self</span>,
+        mip_store: <span class="kw-2">&amp;</span>MipStore,
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;(Vec&lt;MipInfo&gt;, Vec&lt;MipInfo&gt;), ()&gt; {
+        <span class="kw">let </span><span class="kw-2">mut </span>lock = <span class="self">self</span>.<span class="number">0</span>.write();
+        <span class="kw">let </span>lock_other = mip_store.<span class="number">0</span>.read();
+        lock.update_with(lock_other.deref())
+    }
 }
 
 <span class="kw">impl</span>&lt;<span class="kw">const </span>N: usize&gt; TryFrom&lt;([(MipInfo, MipState); N], MipStatsConfig)&gt; <span class="kw">for </span>MipStore {
@@ -1753,7 +1777,11 @@
 <span class="kw">impl </span>MipStoreRaw {
     <span class="doccomment">/// Update our store with another (usually after a bootstrap where we received another store)
     /// Return list of updated / added if update is successful
-    </span><span class="kw">fn </span>update_with(<span class="kw-2">&amp;mut </span><span class="self">self</span>, store_raw: <span class="kw-2">&amp;</span>MipStoreRaw) -&gt; <span class="prelude-ty">Result</span>&lt;(Vec&lt;MipInfo&gt;, Vec&lt;MipInfo&gt;), ()&gt; {
+    </span><span class="attr">#[allow(clippy::result_unit_err)]
+    </span><span class="kw">pub fn </span>update_with(
+        <span class="kw-2">&amp;mut </span><span class="self">self</span>,
+        store_raw: <span class="kw-2">&amp;</span>MipStoreRaw,
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;(Vec&lt;MipInfo&gt;, Vec&lt;MipInfo&gt;), ()&gt; {
         <span class="comment">// iter over items in given store:
         // -&gt; 2 cases:
         // * MipInfo is already in self store -&gt; add to &#39;to_update&#39; list

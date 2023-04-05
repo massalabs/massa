@@ -845,6 +845,24 @@
 <a href="#845" id="845">845</a>
 <a href="#846" id="846">846</a>
 <a href="#847" id="847">847</a>
+<a href="#848" id="848">848</a>
+<a href="#849" id="849">849</a>
+<a href="#850" id="850">850</a>
+<a href="#851" id="851">851</a>
+<a href="#852" id="852">852</a>
+<a href="#853" id="853">853</a>
+<a href="#854" id="854">854</a>
+<a href="#855" id="855">855</a>
+<a href="#856" id="856">856</a>
+<a href="#857" id="857">857</a>
+<a href="#858" id="858">858</a>
+<a href="#859" id="859">859</a>
+<a href="#860" id="860">860</a>
+<a href="#861" id="861">861</a>
+<a href="#862" id="862">862</a>
+<a href="#863" id="863">863</a>
+<a href="#864" id="864">864</a>
+<a href="#865" id="865">865</a>
 </pre><pre class="rust"><code><span class="doccomment">//! Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 //! This file defines the final state of the node, which includes
@@ -1001,6 +1019,9 @@
         // Then, interpolate the downtime, to attach at end_slot;
         </span>final_state.last_start_period = last_start_period;
 
+        <span class="comment">// We compute the draws here because we need to feed_cycles when interpolating
+        </span>final_state.compute_initial_draws()<span class="question-mark">?</span>;
+
         final_state.interpolate_downtime()<span class="question-mark">?</span>;
 
         <span class="prelude-val">Ok</span>(final_state)
@@ -1110,8 +1131,7 @@
         latest_cycle_info.complete = <span class="bool-val">true</span>;
 
         <span class="comment">// Feed final_state_hash to the completed cycle
-        </span><span class="self">self</span>.pos_state
-            .feed_cycle_state_hash(current_slot_cycle, <span class="self">self</span>.final_state_hash);
+        </span><span class="self">self</span>.feed_cycle_hash_and_selector_for_interpolation(current_slot_cycle)<span class="question-mark">?</span>;
 
         <span class="comment">// Then, build all the already completed cycles
         </span><span class="kw">for </span>cycle <span class="kw">in </span>(current_slot_cycle + <span class="number">1</span>)..end_slot_cycle {
@@ -1132,8 +1152,7 @@
                 .map_err(|err| FinalStateError::PosError(<span class="macro">format!</span>(<span class="string">&quot;{}&quot;</span>, err)))<span class="question-mark">?</span>;
 
             <span class="comment">// Feed final_state_hash to the completed cycle
-            </span><span class="self">self</span>.pos_state
-                .feed_cycle_state_hash(cycle, <span class="self">self</span>.final_state_hash);
+            </span><span class="self">self</span>.feed_cycle_hash_and_selector_for_interpolation(cycle)<span class="question-mark">?</span>;
         }
 
         <span class="comment">// Then, build the last cycle
@@ -1144,8 +1163,7 @@
         <span class="comment">// If the end_slot_cycle is completed
         </span><span class="kw">if </span>end_slot.is_last_of_cycle(<span class="self">self</span>.config.periods_per_cycle, <span class="self">self</span>.config.thread_count) {
             <span class="comment">// Feed final_state_hash to the completed cycle
-            </span><span class="self">self</span>.pos_state
-                .feed_cycle_state_hash(end_slot_cycle, <span class="self">self</span>.final_state_hash);
+            </span><span class="self">self</span>.feed_cycle_hash_and_selector_for_interpolation(end_slot_cycle)<span class="question-mark">?</span>;
         }
 
         <span class="comment">// We reduce the cycle_history len as needed
@@ -1153,6 +1171,24 @@
             <span class="self">self</span>.pos_state.cycle_history.pop_front();
         }
 
+        <span class="prelude-val">Ok</span>(())
+    }
+
+    <span class="doccomment">/// Used during interpolation, when a new cycle is set as completed
+    </span><span class="kw">fn </span>feed_cycle_hash_and_selector_for_interpolation(
+        <span class="kw-2">&amp;mut </span><span class="self">self</span>,
+        cycle: u64,
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;(), FinalStateError&gt; {
+        <span class="self">self</span>.pos_state
+            .feed_cycle_state_hash(cycle, <span class="self">self</span>.final_state_hash);
+
+        <span class="self">self</span>.pos_state
+            .feed_selector(cycle.checked_add(<span class="number">2</span>).ok_or_else(|| {
+                FinalStateError::PosError(<span class="string">&quot;cycle overflow when feeding selector&quot;</span>.into())
+            })<span class="question-mark">?</span>)
+            .map_err(|<span class="kw">_</span>| {
+                FinalStateError::PosError(<span class="string">&quot;cycle overflow when feeding selector&quot;</span>.into())
+            })<span class="question-mark">?</span>;
         <span class="prelude-val">Ok</span>(())
     }
 
