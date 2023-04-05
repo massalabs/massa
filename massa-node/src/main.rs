@@ -108,8 +108,25 @@ async fn launch(
     Option<massa_grpc::server::StopHandle>,
 ) {
     info!("Node version : {}", *VERSION);
+    let now = MassaTime::now().expect("could not get now time");
+    // Do not start if genesis is in the future. This is meant to prevent nodes
+    // from desync if the bootstrap nodes keep a previous ledger
+    //#[cfg(not(feature = "sandbox"))]
+    {
+        if *GENESIS_TIMESTAMP > now {
+            let (days, hours, mins, secs) = GENESIS_TIMESTAMP
+                .saturating_sub(now)
+                .days_hours_mins_secs()
+                .unwrap();
+            panic!(
+                "This episode has not started yet, please wait {} days, {} hours, {} minutes, {} seconds for genesis",
+                days, hours, mins, secs,
+            )
+        }
+    }
+
     if let Some(end) = *END_TIMESTAMP {
-        if MassaTime::now().expect("could not get now time") > end {
+        if now > end {
             panic!("This episode has come to an end, please get the latest testnet node version to continue");
         }
     }
