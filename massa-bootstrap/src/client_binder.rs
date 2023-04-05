@@ -80,6 +80,7 @@ impl BootstrapClientBinder {
         // problematic if we can only peek some of it
         while acc < peek_len {
             acc = self.duplex.peek(&mut peek_buff[..peek_len])?;
+            // TODO: Backoff spin
         }
 
         let sig_array = peek_buff.as_slice()[0..SIGNATURE_SIZE_BYTES]
@@ -91,19 +92,6 @@ impl BootstrapClientBinder {
             self.cfg.max_bootstrap_message_size,
         )?
         .0;
-        // read signature
-        let _sig = {
-            let mut sig_bytes = [0u8; SIGNATURE_SIZE_BYTES];
-            self.duplex.read_exact(&mut sig_bytes)?;
-            Signature::from_bytes(&sig_bytes)?
-        };
-
-        // read message length
-        let _msg_len = {
-            let mut msg_len_bytes = vec![0u8; self.size_field_len];
-            self.duplex.read_exact(&mut msg_len_bytes[..])?;
-            u32::from_be_bytes_min(&msg_len_bytes, self.cfg.max_bootstrap_message_size)?.0
-        };
 
         // read message, check signature and check signature of the message sent just before then deserialize it
         let message_deserializer = BootstrapServerMessageDeserializer::new((&self.cfg).into());
@@ -113,10 +101,12 @@ impl BootstrapClientBinder {
 
         let message = {
             if let Some(legacy_msg) = legacy_msg {
-                let mut sig_msg_bytes = vec![0u8; HASH_SIZE_BYTES + (msg_len as usize)];
-                sig_msg_bytes[..HASH_SIZE_BYTES].copy_from_slice(legacy_msg.to_bytes());
+                let mut sig_msg_bytes = vec![0u8; peek_len + HASH_SIZE_BYTES + (msg_len as usize)];
                 self.duplex
                     .read_exact(&mut sig_msg_bytes[HASH_SIZE_BYTES..])?;
+                // discard the peek
+                let sig_msg_bytes = &mut sig_msg_bytes[peek_len..];
+                sig_msg_bytes[..HASH_SIZE_BYTES].copy_from_slice(legacy_msg.to_bytes());
                 let msg_hash = Hash::compute_from(&sig_msg_bytes);
                 self.remote_pubkey.verify_signature(&msg_hash, &sig)?;
                 let (_, msg) = message_deserializer
@@ -124,8 +114,12 @@ impl BootstrapClientBinder {
                     .map_err(|err| BootstrapError::DeserializeError(format!("{}", err)))?;
                 msg
             } else {
-                let mut sig_msg_bytes = vec![0u8; msg_len as usize];
+                let mut sig_msg_bytes = vec![0u8; peek_len + msg_len as usize];
                 self.duplex.read_exact(&mut sig_msg_bytes[..])?;
+
+                // discard the peek
+                let sig_msg_bytes = &mut sig_msg_bytes[peek_len..];
+
                 let msg_hash = Hash::compute_from(&sig_msg_bytes);
                 self.remote_pubkey.verify_signature(&msg_hash, &sig)?;
                 let (_, msg) = message_deserializer
