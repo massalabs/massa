@@ -1,3 +1,13 @@
+<br />
+<br />
+
+<p align="center">
+<img src="logo.png" width="240">
+</p>
+
+<br />
+<br />
+
 # Massa: The Decentralized and Scaled Blockchain
 
 Massa is a truly decentralized blockchain controlled by thousands of
