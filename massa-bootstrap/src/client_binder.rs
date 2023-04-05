@@ -107,7 +107,7 @@ impl BootstrapClientBinder {
                 // discard the peek
                 let sig_msg_bytes = &mut sig_msg_bytes[peek_len..];
                 sig_msg_bytes[..HASH_SIZE_BYTES].copy_from_slice(legacy_msg.to_bytes());
-                let msg_hash = Hash::compute_from(&sig_msg_bytes);
+                let msg_hash = Hash::compute_from(sig_msg_bytes);
                 self.remote_pubkey.verify_signature(&msg_hash, &sig)?;
                 let (_, msg) = message_deserializer
                     .deserialize::<DeserializeError>(&sig_msg_bytes[HASH_SIZE_BYTES..])
@@ -120,10 +120,10 @@ impl BootstrapClientBinder {
                 // discard the peek
                 let sig_msg_bytes = &mut sig_msg_bytes[peek_len..];
 
-                let msg_hash = Hash::compute_from(&sig_msg_bytes);
+                let msg_hash = Hash::compute_from(sig_msg_bytes);
                 self.remote_pubkey.verify_signature(&msg_hash, &sig)?;
                 let (_, msg) = message_deserializer
-                    .deserialize::<DeserializeError>(&sig_msg_bytes[..])
+                    .deserialize::<DeserializeError>(sig_msg_bytes)
                     .map_err(|err| BootstrapError::DeserializeError(format!("{}", err)))?;
                 msg
             }
