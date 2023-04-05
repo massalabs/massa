@@ -6,6 +6,7 @@ use massa_logging::massa_trace;
 use massa_models::{node::NodeId, streaming_step::StreamingStep, version::Version};
 use massa_signature::PublicKey;
 use massa_time::MassaTime;
+use massa_versioning_worker::versioning::{MipStore, MipStoreRaw};
 use parking_lot::RwLock;
 use rand::{
     prelude::{SliceRandom, StdRng},
@@ -339,6 +340,27 @@ async fn bootstrap_from_server<D: Duplex>(
                     other => return Err(BootstrapError::UnexpectedServerMessage(other)),
                 };
                 global_bootstrap_state.peers = Some(peers);
+                *next_bootstrap_message = BootstrapClientMessage::AskBootstrapMipStore;
+            }
+            BootstrapClientMessage::AskBootstrapMipStore => {
+                let mip_store_raw: MipStoreRaw = match send_client_message(
+                    next_bootstrap_message,
+                    client,
+                    write_timeout,
+                    cfg.read_timeout.into(),
+                    "ask bootstrap versioning store timed out",
+                )
+                .await?
+                {
+                    BootstrapServerMessage::BootstrapMipStore { store: store_raw } => store_raw,
+                    BootstrapServerMessage::BootstrapError { error } => {
+                        return Err(BootstrapError::ReceivedError(error))
+                    }
+                    other => return Err(BootstrapError::UnexpectedServerMessage(other)),
+                };
+
+                global_bootstrap_state.mip_store =
+                    Some(MipStore(Arc::new(RwLock::new(mip_store_raw))));
                 *next_bootstrap_message = BootstrapClientMessage::BootstrapSuccess;
             }
             BootstrapClientMessage::BootstrapSuccess => {

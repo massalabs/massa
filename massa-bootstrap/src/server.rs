@@ -40,6 +40,8 @@ use massa_models::{
 use massa_network_exports::NetworkCommandSender;
 use massa_signature::KeyPair;
 use massa_time::MassaTime;
+use massa_versioning_worker::versioning::MipStore;
+
 use parking_lot::RwLock;
 use std::{
     collections::HashMap,
@@ -103,6 +105,7 @@ impl<D: Duplex> BootstrapManager<D> {
 }
 
 /// See module level documentation for details
+#[allow(clippy::too_many_arguments)]
 pub fn start_bootstrap_server<D: Duplex + 'static>(
     consensus_controller: Box<dyn ConsensusController>,
     network_command_sender: NetworkCommandSender,
@@ -111,6 +114,7 @@ pub fn start_bootstrap_server<D: Duplex + 'static>(
     listener: impl BSListener + Send + 'static,
     keypair: KeyPair,
     version: Version,
+    mip_store: MipStore,
 ) -> Result<Option<BootstrapManager<TcpStream>>, Box<BootstrapError>> {
     massa_trace!("bootstrap.lib.start_bootstrap_server", {});
 
@@ -185,6 +189,7 @@ pub fn start_bootstrap_server<D: Duplex + 'static>(
                 ip_hist_map: HashMap::with_capacity(config.ip_list_max_size),
                 bootstrap_config: config,
                 bs_server_runtime,
+                mip_store,
             }
             .run_loop(max_bootstraps)
         })
@@ -212,6 +217,7 @@ struct BootstrapServer<'a, D: Duplex> {
     version: Version,
     ip_hist_map: HashMap<IpAddr, Instant>,
     bs_server_runtime: Runtime,
+    mip_store: MipStore,
 }
 
 impl<D: Duplex + 'static> BootstrapServer<'_, D> {
@@ -364,6 +370,7 @@ impl<D: Duplex + 'static> BootstrapServer<'_, D> {
 
                 let bootstrap_count_token = bootstrap_sessions_counter.clone();
                 let session_handle = bs_loop_rt.handle().clone();
+                let mip_store = self.mip_store.clone();
 
                 let _ = thread::Builder::new()
                     .name(format!("bootstrap thread, peer: {}", remote_addr))
@@ -378,6 +385,7 @@ impl<D: Duplex + 'static> BootstrapServer<'_, D> {
                             consensus_command_sender,
                             network_command_sender,
                             session_handle,
+                            mip_store,
                         )
                     });
 
@@ -491,6 +499,7 @@ fn run_bootstrap_session<D: Duplex + 'static>(
     consensus_command_sender: Box<dyn ConsensusController>,
     network_command_sender: NetworkCommandSender,
     bs_loop_rt_handle: Handle,
+    mip_store: MipStore,
 ) {
     debug!("running bootstrap for peer {}", remote_addr);
     bs_loop_rt_handle.block_on(async move {
@@ -503,6 +512,7 @@ fn run_bootstrap_session<D: Duplex + 'static>(
                 version,
                 consensus_command_sender,
                 network_command_sender,
+                mip_store,
             ),
         )
         .await;
@@ -766,6 +776,7 @@ async fn manage_bootstrap<D: Duplex + 'static>(
     version: Version,
     consensus_controller: Box<dyn ConsensusController>,
     network_command_sender: NetworkCommandSender,
+    mip_store: MipStore,
 ) -> Result<(), BootstrapError> {
     massa_trace!("bootstrap.lib.manage_bootstrap", {});
     let read_error_timeout: Duration = bootstrap_config.read_error_timeout.into();
@@ -871,6 +882,24 @@ async fn manage_bootstrap<D: Duplex + 'static>(
                         write_timeout,
                     )
                     .await?;
+                }
+                BootstrapClientMessage::AskBootstrapMipStore => {
+                    let vs = mip_store.0.read().to_owned();
+                    match tokio::time::timeout(
+                        write_timeout,
+                        server
+                            .send(BootstrapServerMessage::BootstrapMipStore { store: vs.clone() }),
+                    )
+                    .await
+                    {
+                        Err(_) => Err(std::io::Error::new(
+                            std::io::ErrorKind::TimedOut,
+                            "bootstrap peers send timed out",
+                        )
+                        .into()),
+                        Ok(Err(e)) => Err(e),
+                        Ok(Ok(_)) => Ok(()),
+                    }?;
                 }
                 BootstrapClientMessage::BootstrapSuccess => break Ok(()),
                 BootstrapClientMessage::BootstrapError { error } => {

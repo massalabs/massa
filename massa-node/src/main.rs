@@ -302,6 +302,8 @@ async fn launch(
         max_ops_changes_length: MAX_EXECUTED_OPS_CHANGES_LENGTH,
         consensus_bootstrap_part_size: CONSENSUS_BOOTSTRAP_PART_SIZE,
         max_consensus_block_ids: MAX_CONSENSUS_BLOCKS_IDS,
+        mip_store_stats_block_considered: MIP_STORE_STATS_BLOCK_CONSIDERED,
+        mip_store_stats_counters_max: MIP_STORE_STATS_COUNTERS_MAX,
     };
 
     // bootstrap
@@ -403,7 +405,13 @@ async fn launch(
         block_count_considered: MIP_STORE_STATS_BLOCK_CONSIDERED,
         counters_max: MIP_STORE_STATS_COUNTERS_MAX,
     };
-    let mip_store = MipStore::try_from(([], mip_stats_config)).unwrap();
+    let mut mip_store =
+        MipStore::try_from(([], mip_stats_config)).expect("Cannot create an empty MIP store");
+    if let Some(bootstrap_mip_store) = bootstrap_state.mip_store {
+        mip_store
+            .update_with(&bootstrap_mip_store)
+            .expect("Cannot update MIP store with bootstrap mip store");
+    }
 
     // launch execution module
     let execution_config = ExecutionConfig {
@@ -631,6 +639,7 @@ async fn launch(
             DefaultListener::new(&addr).unwrap(),
             private_key,
             *VERSION,
+            mip_store.clone(),
         )
         .unwrap(),
         None => None,
