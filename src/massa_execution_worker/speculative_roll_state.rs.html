@@ -516,15 +516,6 @@
 <a href="#516" id="516">516</a>
 <a href="#517" id="517">517</a>
 <a href="#518" id="518">518</a>
-<a href="#519" id="519">519</a>
-<a href="#520" id="520">520</a>
-<a href="#521" id="521">521</a>
-<a href="#522" id="522">522</a>
-<a href="#523" id="523">523</a>
-<a href="#524" id="524">524</a>
-<a href="#525" id="525">525</a>
-<a href="#526" id="526">526</a>
-<a href="#527" id="527">527</a>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="kw">use </span><span class="kw">crate</span>::active_history::ActiveHistory;
@@ -670,7 +661,7 @@
         <span class="comment">// Add deferred credits (reimbursement) corresponding to the sold rolls value
         </span><span class="self">self</span>.added_changes
             .deferred_credits
-            .insert(target_slot, <span class="kw-2">*</span>seller_addr, new_deferred_credits);
+            .insert(<span class="kw-2">*</span>seller_addr, target_slot, new_deferred_credits);
 
         <span class="prelude-val">Ok</span>(())
     }
@@ -749,9 +740,9 @@
             }
         }
         <span class="kw">if </span>!target_credits.is_empty() {
-            <span class="kw">let </span><span class="kw-2">mut </span>credits = DeferredCredits::new_with_hash();
+            <span class="kw">let </span><span class="kw-2">mut </span>credits = DeferredCredits::default();
             credits.credits.insert(target_slot, target_credits);
-            <span class="self">self</span>.added_changes.deferred_credits.extend(credits);
+            <span class="self">self</span>.added_changes.deferred_credits.nested_extend(credits);
         }
     }
 
@@ -817,7 +808,7 @@
         </span><span class="kw">if let </span><span class="prelude-val">Some</span>(v) = <span class="self">self
             </span>.added_changes
             .deferred_credits
-            .get_address_credits_for_slot(addr, slot)
+            .get_address_deferred_credit_for_slot(addr, slot)
         {
             <span class="kw">return </span><span class="prelude-val">Some</span>(v);
         }
@@ -837,7 +828,7 @@
             .read()
             .pos_state
             .deferred_credits
-            .get_address_credits_for_slot(addr, slot)
+            .get_address_deferred_credit_for_slot(addr, slot)
         {
             <span class="kw">return </span><span class="prelude-val">Some</span>(v);
         }
@@ -1009,47 +1000,38 @@
         (accumulated_stats, !underflow &amp;&amp; !overflow)
     }
 
-    <span class="doccomment">/// Take the non-zero deferred credits at or before `slot`.
-    /// Set them to zero in the speculative state.
+    <span class="doccomment">/// Get the deferred credits of `slot`.
     ///
     /// # Arguments
     /// * `slot`: associated slot of the deferred credits to be executed
-    </span><span class="kw">pub fn </span>take_unexecuted_deferred_credits(<span class="kw-2">&amp;mut </span><span class="self">self</span>, slot: <span class="kw-2">&amp;</span>Slot) -&gt; DeferredCredits {
-        <span class="comment">// NOTE: Deferred credits are overridden. Zeros will be deleted at finality.
+    </span><span class="kw">pub fn </span>get_deferred_credits(<span class="kw-2">&amp;mut </span><span class="self">self</span>, slot: <span class="kw-2">&amp;</span>Slot) -&gt; PreHashMap&lt;Address, Amount&gt; {
+        <span class="comment">// NOTE:
+        // There is no need to sum the credits for similar entries between
+        // the final state and the active history.
+        // Credits come from cycle C-3 so there will never be similar entries.
+        // Even in the case of final credits being removed because of active slashing
+        // we want the active value to override the final one in this function.
 
         // get final deferred credits
         </span><span class="kw">let </span><span class="kw-2">mut </span>credits = <span class="self">self
             </span>.final_state
             .read()
             .pos_state
-            .get_deferred_credits_range(..=slot);
+            .get_deferred_credits_at(slot);
 
         <span class="comment">// fetch active history deferred credits
         </span>credits.extend(
             <span class="self">self</span>.active_history
                 .read()
-                .get_all_deferred_credits_until(slot),
+                .get_all_deferred_credits_for(slot),
         );
 
         <span class="comment">// added deferred credits
-        </span>credits.extend(
-            <span class="self">self</span>.added_changes
-                .deferred_credits
-                .get_slot_range(..=slot, <span class="bool-val">false</span>),
-        );
+        </span><span class="kw">if let </span><span class="prelude-val">Some</span>(creds) = <span class="self">self</span>.added_changes.deferred_credits.credits.get(slot) {
+            credits.extend(creds.clone());
+        }
 
-        <span class="comment">// filter out zeros
-        </span>credits.remove_zeros();
-
-        <span class="comment">// set all the taken ones to zero in added_changes
-        </span>credits.for_each(|slot, address, _amount| {
-            <span class="self">self</span>.added_changes
-                .deferred_credits
-                .insert(<span class="kw-2">*</span>slot, <span class="kw-2">*</span>address, Amount::zero());
-        });
-
-        <span class="comment">// return taken credits
-        </span>credits
+        credits
     }
 }
 </code></pre></div>

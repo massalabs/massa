@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"mod":["cache","checked_operations","node_info","protocol_network","protocol_worker","sig_verifier","worker_operations_impl"]};
+window.SIDEBAR_ITEMS = {"mod":["protocol_worker","worker_operations_impl"]};
