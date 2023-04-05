@@ -6,7 +6,7 @@ use rand::{distributions::Distribution, SeedableRng};
 use rand_distr::WeightedAliasIndex;
 use rand_xoshiro::Xoshiro256PlusPlus;
 use std::collections::{BTreeMap, HashMap};
-use tracing::{debug, info};
+use tracing::info;
 
 /// Draws block and creators for a given cycle.
 ///
