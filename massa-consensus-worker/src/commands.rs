@@ -8,5 +8,5 @@ pub enum ConsensusCommand {
     RegisterBlock(BlockId, Slot, Storage, bool),
     RegisterBlockHeader(BlockId, SecureShare<BlockHeader, BlockId>),
     MarkInvalidBlock(BlockId, SecureShare<BlockHeader, BlockId>),
-    Stop
+    Stop,
 }
