@@ -47,18 +47,22 @@ impl ConsensusState {
         // take care of block db changes
         self.block_db_changed()?;
 
+        let now = massa_time::MassaTime::now().expect("could not get now time");
+
+        use massa_models::config::constants::DOWNTIME_END_TIMESTAMP;
+        use massa_models::config::constants::DOWNTIME_START_TIMESTAMP;
+
         // Simulate downtime
-        // last_start_period should be set after the downtime_end_period (with a delay, to let people bootstrap before the network restarts).
-        // E.g. last_start_period of 563 for 30 mins after downtime_end_period
-        let downtime_start_period = 225; // Period 225 is 1 hour after genesis
-        let downtime_end_period = 450; // Period 450 is 2 hours after genesis
-        if current_slot.period >= downtime_start_period
-            && current_slot.period <= downtime_end_period
-        {
+        // last_start_period should be set to trigger after the DOWNTIME_END_TIMESTAMP
+        if now >= DOWNTIME_START_TIMESTAMP && now <= DOWNTIME_END_TIMESTAMP {
+            let (days, hours, mins, secs) = DOWNTIME_END_TIMESTAMP
+                .saturating_sub(now)
+                .days_hours_mins_secs()
+                .unwrap();
+
             panic!(
-                "We are in downtime! Current period: {}. Downtime periods: {:?}",
-                current_slot.period,
-                downtime_start_period..=downtime_end_period
+                "We are in downtime! {} days, {} hours, {} minutes, {} seconds remaining to the end of the downtime",
+                days, hours, mins, secs,
             );
         }
 
