@@ -3,8 +3,9 @@ use massa_consensus_exports::test_exports::{
     ConsensusEventReceiver, MockConsensusController, MockConsensusControllerMessage,
 };
 use parking_lot::RwLock;
+use crossbeam_channel::Receiver;
 use std::{
-    sync::{mpsc::Receiver, Arc},
+    sync::{Arc},
     thread::sleep,
     time::Duration,
 };
@@ -39,9 +40,9 @@ use massa_wallet::test_exports::create_test_wallet;
 /// Then you can use the method `get_next_created_block` that will manage the answers from the mock to the factory depending on the parameters you gave.
 #[allow(dead_code)]
 pub struct TestFactory {
-    consensus_event_receiver: ConsensusEventReceiver,
-    pool_receiver: PoolEventReceiver,
-    selector_receiver: Option<Receiver<MockSelectorControllerMessage>>,
+    consensus_event_receiver: Option<ConsensusEventReceiver>,
+    pub(crate) pool_receiver: PoolEventReceiver,
+    pub(crate) selector_receiver: Option<Receiver<MockSelectorControllerMessage>>,
     factory_config: FactoryConfig,
     factory_manager: Box<dyn FactoryManager>,
     genesis_blocks: Vec<(BlockId, u64)>,
@@ -102,7 +103,7 @@ impl TestFactory {
         );
 
         TestFactory {
-            consensus_event_receiver,
+            consensus_event_receiver: Some(consensus_event_receiver),
             pool_receiver,
             selector_receiver: Some(selector_receiver),
             factory_config,
@@ -166,16 +167,18 @@ impl TestFactory {
                 _ => panic!("unexpected message"),
             }
         }
-        self.consensus_event_receiver
-            .wait_command(MassaTime::from_millis(100), |command| {
-                if let MockConsensusControllerMessage::GetBestParents { response_tx } = command {
-                    response_tx.send(self.genesis_blocks.clone()).unwrap();
-                    Some(())
-                } else {
-                    None
-                }
-            })
-            .unwrap();
+        if let Some(consensus_event_receiver) = self.consensus_event_receiver.as_mut() {
+            consensus_event_receiver
+                .wait_command(MassaTime::from_millis(100), |command| {
+                    if let MockConsensusControllerMessage::GetBestParents { response_tx } = command {
+                        response_tx.send(self.genesis_blocks.clone()).unwrap();
+                        Some(())
+                    } else {
+                        None
+                    }
+                })
+                .unwrap();
+        }
         self.pool_receiver
             .wait_command(MassaTime::from_millis(100), |command| match command {
                 MockPoolControllerMessage::GetBlockEndorsements {
@@ -218,21 +221,26 @@ impl TestFactory {
                 _ => panic!("unexpected message"),
             })
             .unwrap();
-        self.consensus_event_receiver
-            .wait_command(MassaTime::from_millis(100), |command| {
-                if let MockConsensusControllerMessage::RegisterBlock {
-                    block_id,
-                    block_storage,
-                    slot: _,
-                    created: _,
-                } = command
-                {
-                    Some((block_id, block_storage))
-                } else {
-                    None
-                }
-            })
-            .unwrap()
+
+        if let Some(consensus_event_receiver) = self.consensus_event_receiver.as_mut() {
+            consensus_event_receiver
+                .wait_command(MassaTime::from_millis(100), |command| {
+                    if let MockConsensusControllerMessage::RegisterBlock {
+                        block_id,
+                        block_storage,
+                        slot: _,
+                        created: _,
+                    } = command
+                    {
+                        Some((block_id, block_storage))
+                    } else {
+                        None
+                    }
+                })
+                .unwrap()
+        } else {
+            panic!()
+        }
     }
 }
 
@@ -246,6 +254,10 @@ impl Drop for TestFactory {
         // TODO: find a better way to resolve this
         if let Some(selector_receiver) = self.selector_receiver.take() {
             drop(selector_receiver);
+        }
+
+        if let Some(consensus_receiver) = self.consensus_event_receiver.take() {
+            drop(consensus_receiver);
         }
 
         self.factory_manager.stop();

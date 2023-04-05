@@ -1,9 +1,12 @@
 // Copyright (c) 2022 MASSA LABS <info@massa.net>
 
 use std::sync::{
-    mpsc::{self, Receiver},
+    mpsc::{self,
+           // Receiver
+           },
     Arc, Mutex,
 };
+use crossbeam_channel::{Sender, Receiver};
 
 use massa_models::config::THREAD_COUNT;
 use massa_models::denunciation::Denunciation;
@@ -22,6 +25,7 @@ pub struct PoolEventReceiver(pub Receiver<MockPoolControllerMessage>);
 /// Each variant corresponds to a unique method in `PoolController`,
 /// Some variants wait for a response on their `response_tx` field, if present.
 /// See the documentation of `PoolController` for details on parameters and return values.
+#[derive(Debug)]
 pub enum MockPoolControllerMessage {
     /// Add endorsements to the pool
     AddEndorsements {
@@ -104,7 +108,7 @@ pub enum MockPoolControllerMessage {
 #[derive(Clone)]
 // pub struct MockPoolController(Arc<Mutex<mpsc::Sender<MockPoolControllerMessage>>>);
 pub struct MockPoolController {
-    q: Arc<Mutex<mpsc::Sender<MockPoolControllerMessage>>>,
+    q: Arc<Mutex<Sender<MockPoolControllerMessage>>>,
     last_final_cs_periods: Vec<u64>,
 }
 
@@ -112,7 +116,7 @@ impl MockPoolController {
     /// Create a new pair (mock execution controller, mpsc receiver for emitted messages)
     /// Note that unbounded mpsc channels are used
     pub fn new_with_receiver() -> (Box<dyn PoolController>, PoolEventReceiver) {
-        let (tx, rx) = mpsc::channel();
+        let (tx, rx) = crossbeam_channel::unbounded();
         (
             Box::new(MockPoolController {
                 q: Arc::new(Mutex::new(tx)),

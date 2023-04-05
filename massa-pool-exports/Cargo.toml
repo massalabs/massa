@@ -7,6 +7,7 @@ edition = "2021"
 [dependencies]
 serde = { version = "1.0", features = ["derive"] }
 tokio = { version = "1.23", features = ["sync"] }
+crossbeam-channel = "0.5"
 # custom modules
 massa_models = { path = "../massa-models" }
 massa_storage = { path = "../massa-storage" }

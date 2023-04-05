@@ -1,12 +1,10 @@
 // Copyright (c) 2022 MASSA LABS <info@massa.net>
 
 use parking_lot::Mutex;
+use crossbeam_channel::{Sender, Receiver};
 use std::{
     collections::{BTreeMap, HashMap, VecDeque},
-    sync::{
-        mpsc::{self, Receiver},
-        Arc,
-    },
+    sync::Arc,
 };
 
 use massa_hash::Hash;
@@ -39,33 +37,33 @@ pub enum MockSelectorControllerMessage {
         /// End of the search range
         end: Slot,
         /// Receiver to send the result to
-        response_tx: mpsc::Sender<PosResult<(Vec<Slot>, Vec<IndexedSlot>)>>,
+        response_tx: Sender<PosResult<(Vec<Slot>, Vec<IndexedSlot>)>>,
     },
     /// Get the entire selection of PoS. used for testing only
     GetEntireSelection {
         /// response channel
-        response_tx: mpsc::Sender<VecDeque<(u64, HashMap<Slot, Selection>)>>,
+        response_tx: Sender<VecDeque<(u64, HashMap<Slot, Selection>)>>,
     },
     /// Get the producer for a block at a specific slot
     GetProducer {
         /// Slot to search
         slot: Slot,
         /// Receiver to send the result to
-        response_tx: mpsc::Sender<PosResult<Address>>,
+        response_tx: Sender<PosResult<Address>>,
     },
     /// Get the selection for a block at a specific slot
     GetSelection {
         /// Slot to search
         slot: Slot,
         /// Receiver to send the result to
-        response_tx: mpsc::Sender<PosResult<Selection>>,
+        response_tx: Sender<PosResult<Selection>>,
     },
     /// Wait for draws
     WaitForDraws {
         /// Cycle to wait for
         cycle: u64,
         /// Receiver to send the result to
-        response_tx: mpsc::Sender<PosResult<u64>>,
+        response_tx: Sender<PosResult<u64>>,
     },
 }
 
@@ -73,7 +71,7 @@ pub enum MockSelectorControllerMessage {
 /// This mock will be called by the others modules and you will receive events in the receiver.
 /// You can choose to manage them how you want.
 #[derive(Clone)]
-pub struct MockSelectorController(Arc<Mutex<mpsc::Sender<MockSelectorControllerMessage>>>);
+pub struct MockSelectorController(Arc<Mutex<Sender<MockSelectorControllerMessage>>>);
 
 impl MockSelectorController {
     /// Create a new pair (mock execution controller, mpsc receiver for emitted messages)
@@ -82,7 +80,7 @@ impl MockSelectorController {
         Box<dyn SelectorController>,
         Receiver<MockSelectorControllerMessage>,
     ) {
-        let (tx, rx) = mpsc::channel();
+        let (tx, rx) = crossbeam_channel::unbounded();
         (
             Box::new(MockSelectorController(Arc::new(Mutex::new(tx)))),
             rx,
@@ -115,7 +113,7 @@ impl SelectorController for MockSelectorController {
     /// TODO: limit usage
     #[cfg(feature = "testing")]
     fn get_entire_selection(&self) -> VecDeque<(u64, HashMap<Slot, Selection>)> {
-        let (response_tx, response_rx) = mpsc::channel();
+        let (response_tx, response_rx) = crossbeam_channel::unbounded();
         self.0
             .lock()
             .send(MockSelectorControllerMessage::GetEntireSelection { response_tx })
@@ -124,7 +122,7 @@ impl SelectorController for MockSelectorController {
     }
 
     fn wait_for_draws(&self, cycle: u64) -> PosResult<u64> {
-        let (response_tx, response_rx) = mpsc::channel();
+        let (response_tx, response_rx) = crossbeam_channel::unbounded();
         self.0
             .lock()
             .send(MockSelectorControllerMessage::WaitForDraws { cycle, response_tx })
@@ -138,7 +136,7 @@ impl SelectorController for MockSelectorController {
         start: Slot,
         end: Slot,
     ) -> PosResult<(Vec<Slot>, Vec<IndexedSlot>)> {
-        let (response_tx, response_rx) = mpsc::channel();
+        let (response_tx, response_rx) = crossbeam_channel::unbounded();
         self.0
             .lock()
             .send(MockSelectorControllerMessage::GetAddressSelections {
@@ -152,7 +150,7 @@ impl SelectorController for MockSelectorController {
     }
 
     fn get_producer(&self, slot: Slot) -> PosResult<Address> {
-        let (response_tx, response_rx) = mpsc::channel();
+        let (response_tx, response_rx) = crossbeam_channel::unbounded();
         self.0
             .lock()
             .send(MockSelectorControllerMessage::GetProducer { slot, response_tx })
@@ -161,7 +159,7 @@ impl SelectorController for MockSelectorController {
     }
 
     fn get_selection(&self, slot: Slot) -> PosResult<Selection> {
-        let (response_tx, response_rx) = mpsc::channel();
+        let (response_tx, response_rx) = crossbeam_channel::unbounded();
         self.0
             .lock()
             .send(MockSelectorControllerMessage::GetSelection { slot, response_tx })

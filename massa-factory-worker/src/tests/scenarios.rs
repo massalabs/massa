@@ -2,7 +2,7 @@ use super::TestFactory;
 use massa_hash::Hash;
 use massa_models::block_header::{BlockHeader, BlockHeaderSerializer, SecuredHeader};
 use massa_models::block_id::BlockId;
-use massa_models::config::{T0, THREAD_COUNT};
+use massa_models::config::{ENDORSEMENT_COUNT, T0, THREAD_COUNT};
 use massa_models::denunciation::{Denunciation, DenunciationId, DenunciationPrecursor};
 use massa_models::endorsement::{Endorsement, EndorsementSerializerLW};
 use massa_models::slot::Slot;
@@ -15,7 +15,10 @@ use massa_models::{
 use massa_signature::KeyPair;
 use massa_time::MassaTime;
 use std::str::FromStr;
-use std::time::Duration;
+use massa_models::address::Address;
+use massa_pos_exports::{PosResult, Selection};
+use massa_pos_exports::test_exports::MockSelectorControllerMessage;
+use massa_pool_exports::test_exports::MockPoolControllerMessage;
 
 /// Creates a basic empty block with the factory.
 #[test]
@@ -77,7 +80,9 @@ fn basic_creation_with_multiple_operations() {
 /// Send 2 block headers and check if a Denunciation op is in storage
 #[test]
 fn test_denunciation_factory_block_header_denunciation() {
+
     let keypair = KeyPair::generate();
+    let address = Address::from_public_key(&keypair.get_public_key());
 
     let now = MassaTime::now().expect("could not get current time");
     // get closest slot according to the current absolute time
@@ -144,14 +149,53 @@ fn test_denunciation_factory_block_header_denunciation() {
         .send(DenunciationPrecursor::try_from(&secured_header_2.clone()).unwrap())
         .unwrap();
 
-    // Wait for denunciation factory to create the Denunciation
-    std::thread::sleep(Duration::from_secs(1));
+    // Need to answer for MockSelector request (Denunciation factory asks selector)
+    // && MockPool request (DenunciationFactory sends Denunciation to pool)
+    loop {
+        if let Some(selector_receiver) = test_factory.selector_receiver.as_ref() {
+            crossbeam_channel::select! {
+                recv(selector_receiver) -> selector_res => {
+                    match selector_res {
+                        Ok(MockSelectorControllerMessage::GetProducer { slot: _slot, response_tx}) => {
+                            // println!("Received GetProducer for slot: {}", slot);
+                            response_tx.send(PosResult::Ok(address)).unwrap();
+                        }
+                        Ok(MockSelectorControllerMessage::GetSelection { slot: _slot, response_tx }) => {
+                            // println!("Received GetProducer for selection for slot: {}", slot);
+                            response_tx.send(PosResult::Ok(Selection {
+                                endorsements: vec![address; ENDORSEMENT_COUNT as usize],
+                                producer: address,
+                            })).unwrap();
+                        },
+                        Err(e) => {
+                            println!("Received error: {}", e);
+                            break;
+                        }
+                        _ => {
+                            println!("Received an unexpected MockSelectorControllerMessage: {:?}", selector_res);
+                            break;
+                        }
+                    }
+                }
+                recv(test_factory.pool_receiver.0) -> pool_res => {
+                    match pool_res {
+                        Ok(MockPoolControllerMessage::AddDenunciation { denunciation }) => {
+                            assert_eq!(denunciation, _denunciation);
+                            break;
+                        },
+                        Err(e) => {
+                            println!("Received error from pool: {}", e);
+                        }
+                        _ => {
+                            println!("Received an unexpected MockPoolControllerMessage: {:?}", pool_res);
+                            break;
+                        }
+                    }
+                }
+            }
+        }
+    }
 
-    // let de_indexes = test_factory.storage.read_denunciations();
-    // assert_eq!(de_indexes.get(&denunciation_id), Some(&denunciation));
-
-    // release RwLockReadGuard
-    // drop(de_indexes);
     // stop everything
     drop(test_factory);
 }
