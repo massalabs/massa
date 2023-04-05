@@ -60,7 +60,7 @@
 <a href="#60" id="60">60</a>
 </pre><pre class="rust"><code><span class="doccomment">//! Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 //! Json RPC API for a massa-node
-</span><span class="kw">use </span>jsonrpsee::core::RpcResult;
+</span><span class="kw">use </span>jsonrpsee::core::{RpcResult, SubscriptionResult};
 <span class="kw">use </span>jsonrpsee::proc_macros::rpc;
 <span class="kw">use </span>massa_api_exports::page::PagedVecV2;
 <span class="kw">use </span>massa_api_exports::ApiRequest;
@@ -92,7 +92,7 @@
 		unsubscribe = <span class="string">&quot;unsubscribe_new_blocks&quot;</span>,
 		item = Block
 	)]
-    </span><span class="kw">fn </span>subscribe_new_blocks(<span class="kw-2">&amp;</span><span class="self">self</span>);
+    </span><span class="kw">async fn </span>subscribe_new_blocks(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; SubscriptionResult;
 
     <span class="doccomment">/// New produced blocks headers.
     </span><span class="attr">#[subscription(
@@ -100,7 +100,7 @@
         unsubscribe = <span class="string">&quot;unsubscribe_new_blocks_headers&quot;</span>,
         item = SecureShare&lt;BlockHeader, BlockId&gt;
     )]
-    </span><span class="kw">fn </span>subscribe_new_blocks_headers(<span class="kw-2">&amp;</span><span class="self">self</span>);
+    </span><span class="kw">async fn </span>subscribe_new_blocks_headers(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; SubscriptionResult;
 
     <span class="doccomment">/// New produced blocks with operations content.
     </span><span class="attr">#[subscription(
@@ -108,7 +108,7 @@
 		unsubscribe = <span class="string">&quot;unsubscribe_new_filled_blocks&quot;</span>,
 		item = FilledBlock
 	)]
-    </span><span class="kw">fn </span>subscribe_new_filled_blocks(<span class="kw-2">&amp;</span><span class="self">self</span>);
+    </span><span class="kw">async fn </span>subscribe_new_filled_blocks(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; SubscriptionResult;
 
     <span class="doccomment">/// New produced operations.
     </span><span class="attr">#[subscription(
@@ -116,7 +116,7 @@
 		unsubscribe = <span class="string">&quot;unsubscribe_new_operations&quot;</span>,
 		item = Operation
 	)]
-    </span><span class="kw">fn </span>subscribe_new_operations(<span class="kw-2">&amp;</span><span class="self">self</span>);
+    </span><span class="kw">async fn </span>subscribe_new_operations(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; SubscriptionResult;
 }
 </code></pre></div>
 </section></main><div id="rustdoc-vars" data-root-path="../../" data-static-root-path="../../static.files/" data-current-crate="massa_api" data-themes="" data-resource-suffix="" data-rustdoc-version="1.69.0-nightly (d962ea578 2023-02-26)" data-search-js="search-14421e1532aead08.js" data-settings-js="settings-f0c5c39777a9a2f6.js" data-settings-css="settings-0bcba95ff279c1db.css" ></div></body></html>

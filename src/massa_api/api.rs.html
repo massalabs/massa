@@ -156,6 +156,35 @@
 <a href="#156" id="156">156</a>
 <a href="#157" id="157">157</a>
 <a href="#158" id="158">158</a>
+<a href="#159" id="159">159</a>
+<a href="#160" id="160">160</a>
+<a href="#161" id="161">161</a>
+<a href="#162" id="162">162</a>
+<a href="#163" id="163">163</a>
+<a href="#164" id="164">164</a>
+<a href="#165" id="165">165</a>
+<a href="#166" id="166">166</a>
+<a href="#167" id="167">167</a>
+<a href="#168" id="168">168</a>
+<a href="#169" id="169">169</a>
+<a href="#170" id="170">170</a>
+<a href="#171" id="171">171</a>
+<a href="#172" id="172">172</a>
+<a href="#173" id="173">173</a>
+<a href="#174" id="174">174</a>
+<a href="#175" id="175">175</a>
+<a href="#176" id="176">176</a>
+<a href="#177" id="177">177</a>
+<a href="#178" id="178">178</a>
+<a href="#179" id="179">179</a>
+<a href="#180" id="180">180</a>
+<a href="#181" id="181">181</a>
+<a href="#182" id="182">182</a>
+<a href="#183" id="183">183</a>
+<a href="#184" id="184">184</a>
+<a href="#185" id="185">185</a>
+<a href="#186" id="186">186</a>
+<a href="#187" id="187">187</a>
 </pre><pre class="rust"><code><span class="doccomment">//! Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 //! Json RPC API for a massa-node
 </span><span class="kw">use </span>std::net::SocketAddr;
@@ -163,10 +192,10 @@
 <span class="kw">use </span><span class="kw">crate</span>::api_trait::MassaApiServer;
 <span class="kw">use crate</span>::{ApiServer, ApiV2, StopHandle, API};
 <span class="kw">use </span>async_trait::async_trait;
-<span class="kw">use </span>jsonrpsee::core::error::SubscriptionClosed;
-<span class="kw">use </span>jsonrpsee::core::{Error <span class="kw">as </span>JsonRpseeError, RpcResult};
-<span class="kw">use </span>jsonrpsee::types::SubscriptionResult;
-<span class="kw">use </span>jsonrpsee::SubscriptionSink;
+<span class="kw">use </span>futures::future::{<span class="self">self</span>, Either};
+<span class="kw">use </span>futures::StreamExt;
+<span class="kw">use </span>jsonrpsee::core::{Error <span class="kw">as </span>JsonRpseeError, RpcResult, SubscriptionResult};
+<span class="kw">use </span>jsonrpsee::{PendingSubscriptionSink, SubscriptionMessage};
 <span class="kw">use </span>massa_api_exports::config::APIConfig;
 <span class="kw">use </span>massa_api_exports::error::ApiError;
 <span class="kw">use </span>massa_api_exports::page::{PageRequest, PagedVec, PagedVecV2};
@@ -275,44 +304,73 @@
         <span class="prelude-val">Ok</span>(<span class="self">self</span>.<span class="number">0</span>.version)
     }
 
-    <span class="kw">fn </span>subscribe_new_blocks(<span class="kw-2">&amp;</span><span class="self">self</span>, sink: SubscriptionSink) -&gt; SubscriptionResult {
-        broadcast_via_ws(<span class="self">self</span>.<span class="number">0</span>.consensus_channels.block_sender.clone(), sink);
-        <span class="prelude-val">Ok</span>(())
-    }
+    <span class="kw">async fn </span>subscribe_new_blocks(<span class="kw-2">&amp;</span><span class="self">self</span>, pending: PendingSubscriptionSink) -&gt; SubscriptionResult {
+        broadcast_via_ws(<span class="self">self</span>.<span class="number">0</span>.consensus_channels.block_sender.clone(), pending).<span class="kw">await
+    </span>}
 
-    <span class="kw">fn </span>subscribe_new_blocks_headers(<span class="kw-2">&amp;</span><span class="self">self</span>, sink: SubscriptionSink) -&gt; SubscriptionResult {
-        broadcast_via_ws(<span class="self">self</span>.<span class="number">0</span>.consensus_channels.block_header_sender.clone(), sink);
-        <span class="prelude-val">Ok</span>(())
-    }
+    <span class="kw">async fn </span>subscribe_new_blocks_headers(
+        <span class="kw-2">&amp;</span><span class="self">self</span>,
+        pending: PendingSubscriptionSink,
+    ) -&gt; SubscriptionResult {
+        broadcast_via_ws(
+            <span class="self">self</span>.<span class="number">0</span>.consensus_channels.block_header_sender.clone(),
+            pending,
+        )
+        .<span class="kw">await
+    </span>}
 
-    <span class="kw">fn </span>subscribe_new_filled_blocks(<span class="kw-2">&amp;</span><span class="self">self</span>, sink: SubscriptionSink) -&gt; SubscriptionResult {
-        broadcast_via_ws(<span class="self">self</span>.<span class="number">0</span>.consensus_channels.filled_block_sender.clone(), sink);
-        <span class="prelude-val">Ok</span>(())
-    }
+    <span class="kw">async fn </span>subscribe_new_filled_blocks(
+        <span class="kw-2">&amp;</span><span class="self">self</span>,
+        pending: PendingSubscriptionSink,
+    ) -&gt; SubscriptionResult {
+        broadcast_via_ws(
+            <span class="self">self</span>.<span class="number">0</span>.consensus_channels.filled_block_sender.clone(),
+            pending,
+        )
+        .<span class="kw">await
+    </span>}
 
-    <span class="kw">fn </span>subscribe_new_operations(<span class="kw-2">&amp;</span><span class="self">self</span>, sink: SubscriptionSink) -&gt; SubscriptionResult {
-        broadcast_via_ws(<span class="self">self</span>.<span class="number">0</span>.pool_channels.operation_sender.clone(), sink);
-        <span class="prelude-val">Ok</span>(())
-    }
+    <span class="kw">async fn </span>subscribe_new_operations(
+        <span class="kw-2">&amp;</span><span class="self">self</span>,
+        pending: PendingSubscriptionSink,
+    ) -&gt; SubscriptionResult {
+        broadcast_via_ws(<span class="self">self</span>.<span class="number">0</span>.pool_channels.operation_sender.clone(), pending).<span class="kw">await
+    </span>}
 }
 
-<span class="doccomment">/// Brodcast the stream(sender) content via a WebSocket
-</span><span class="kw">fn </span>broadcast_via_ws&lt;T: Serialize + Send + Clone + <span class="lifetime">&#39;static</span>&gt;(
+<span class="comment">// Brodcast the stream(sender) content via a WebSocket
+</span><span class="kw">async fn </span>broadcast_via_ws&lt;T: Serialize + Send + Clone + <span class="lifetime">&#39;static</span>&gt;(
     sender: tokio::sync::broadcast::Sender&lt;T&gt;,
-    <span class="kw-2">mut </span>sink: SubscriptionSink,
-) {
-    <span class="kw">let </span>rx = BroadcastStream::new(sender.subscribe());
-    tokio::spawn(<span class="kw">async move </span>{
-        <span class="kw">match </span>sink.pipe_from_try_stream(rx).<span class="kw">await </span>{
-            SubscriptionClosed::Success =&gt; {
-                sink.close(SubscriptionClosed::Success);
+    pending: PendingSubscriptionSink,
+) -&gt; SubscriptionResult {
+    <span class="kw">let </span>sink = pending.accept().<span class="kw">await</span><span class="question-mark">?</span>;
+    <span class="kw">let </span>closed = sink.closed();
+    <span class="kw">let </span>stream = BroadcastStream::new(sender.subscribe());
+    <span class="macro">futures::pin_mut!</span>(closed, stream);
+
+    <span class="kw">loop </span>{
+        <span class="kw">match </span>future::select(closed, stream.next()).<span class="kw">await </span>{
+            <span class="comment">// subscription closed.
+            </span>Either::Left((<span class="kw">_</span>, <span class="kw">_</span>)) =&gt; <span class="kw">break </span><span class="prelude-val">Ok</span>(()),
+
+            <span class="comment">// received new item from the stream.
+            </span>Either::Right((<span class="prelude-val">Some</span>(<span class="prelude-val">Ok</span>(item)), c)) =&gt; {
+                <span class="kw">let </span>notif = SubscriptionMessage::from_json(<span class="kw-2">&amp;</span>item)<span class="question-mark">?</span>;
+
+                <span class="kw">if </span>sink.send(notif).<span class="kw">await</span>.is_err() {
+                    <span class="kw">break </span><span class="prelude-val">Ok</span>(());
+                }
+
+                closed = c;
             }
-            SubscriptionClosed::RemotePeerAborted =&gt; (),
-            SubscriptionClosed::Failed(err) =&gt; {
-                sink.close(err);
-            }
-        };
-    });
+
+            <span class="comment">// Send back back the error.
+            </span>Either::Right((<span class="prelude-val">Some</span>(<span class="prelude-val">Err</span>(e)), <span class="kw">_</span>)) =&gt; <span class="kw">break </span><span class="prelude-val">Err</span>(e.into()),
+
+            <span class="comment">// Stream is closed.
+            </span>Either::Right((<span class="prelude-val">None</span>, <span class="kw">_</span>)) =&gt; <span class="kw">break </span><span class="prelude-val">Ok</span>(()),
+        }
+    }
 }
 </code></pre></div>
 </section></main><div id="rustdoc-vars" data-root-path="../../" data-static-root-path="../../static.files/" data-current-crate="massa_api" data-themes="" data-resource-suffix="" data-rustdoc-version="1.69.0-nightly (d962ea578 2023-02-26)" data-search-js="search-14421e1532aead08.js" data-settings-js="settings-f0c5c39777a9a2f6.js" data-settings-css="settings-0bcba95ff279c1db.css" ></div></body></html>
