@@ -154,12 +154,29 @@ impl FinalState {
         // Then, interpolate the downtime, to attach at end_slot;
         final_state.last_start_period = last_start_period;
 
+        final_state.init_ledger_hash(last_start_period);
+        
         // We compute the draws here because we need to feed_cycles when interpolating
         final_state.compute_initial_draws()?;
 
         final_state.interpolate_downtime()?;
 
         Ok(final_state)
+    }
+
+    /// Used after bootstrap, to set the initial ledger hash (used in initial draws)
+    pub fn init_ledger_hash(&mut self, last_start_period: u64) {
+        let slot = Slot::new(
+            last_start_period,
+            self.config.thread_count.saturating_sub(1),
+        );
+        self.ledger.set_initial_slot(slot);
+        self.pos_state.initial_ledger_hash = self.ledger.get_ledger_hash();
+
+        info!(
+            "Set initial ledger hash to {}",
+            self.ledger.get_ledger_hash().to_string()
+        )
     }
 
     /// Once we created a FinalState from a snapshot, we need to edit it to attach at the end_slot and handle the downtime.

@@ -180,6 +180,13 @@ impl LedgerDB {
             ),
         }
     }
+    
+    pub fn set_initial_slot(&mut self, slot: Slot) {
+        let ledger_hash = self.get_ledger_hash();
+        let mut batch = LedgerBatch::new(ledger_hash);
+        self.set_slot(slot, &mut batch);
+        self.write_batch(batch);
+    }
 
     /// Loads the initial disk ledger
     ///
