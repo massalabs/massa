@@ -327,7 +327,6 @@
 <a href="#327" id="327">327</a>
 <a href="#328" id="328">328</a>
 <a href="#329" id="329">329</a>
-<a href="#330" id="330">330</a>
 </pre><pre class="rust"><code><span class="kw">use </span>massa_consensus_exports::{
     block_status::BlockStatus, bootstrapable_graph::BootstrapableGraph, error::ConsensusError,
     ConsensusConfig,
@@ -478,11 +477,10 @@
             )
         }
 
-        <span class="kw">if </span>config.last_start_period &gt; <span class="number">0
-            </span>&amp;&amp; config
-                .genesis_timestamp
-                .checked_add(config.t0.checked_mul(config.last_start_period)<span class="question-mark">?</span>)<span class="question-mark">?
-                </span>&gt; now
+        <span class="kw">if </span>config
+            .genesis_timestamp
+            .checked_add(config.t0.checked_mul(config.last_start_period)<span class="question-mark">?</span>)<span class="question-mark">?
+            </span>&gt; now
         {
             <span class="kw">let </span>(days, hours, mins, secs) = config
                 .genesis_timestamp
@@ -490,7 +488,7 @@
                 </span>.saturating_sub(now)
                 .days_hours_mins_secs()<span class="question-mark">?</span>;
             <span class="macro">info!</span>(
-                <span class="string">&quot;{} days, {} hours, {} minutes, {} seconds remaining to network restart&quot;</span>,
+                <span class="string">&quot;{} days, {} hours, {} minutes, {} seconds remaining to last start period&quot;</span>,
                 days, hours, mins, secs,
             )
         }

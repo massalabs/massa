@@ -250,7 +250,7 @@
         <span class="kw">if let </span><span class="prelude-val">Err</span>(e) = <span class="self">self</span>.stop_cmd_sender.send(()) {
             <span class="macro">warn!</span>(<span class="string">&quot;gRPC API thread panicked: {:?}&quot;</span>, e);
         } <span class="kw">else </span>{
-            <span class="macro">info!</span>(<span class="string">&quot;gRPC API finished cleanly&quot;</span>);
+            <span class="macro">info!</span>(<span class="string">&quot;gRPC API stop signal sent successfully&quot;</span>);
         }
     }
 }

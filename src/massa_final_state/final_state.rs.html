@@ -863,29 +863,6 @@
 <a href="#863" id="863">863</a>
 <a href="#864" id="864">864</a>
 <a href="#865" id="865">865</a>
-<a href="#866" id="866">866</a>
-<a href="#867" id="867">867</a>
-<a href="#868" id="868">868</a>
-<a href="#869" id="869">869</a>
-<a href="#870" id="870">870</a>
-<a href="#871" id="871">871</a>
-<a href="#872" id="872">872</a>
-<a href="#873" id="873">873</a>
-<a href="#874" id="874">874</a>
-<a href="#875" id="875">875</a>
-<a href="#876" id="876">876</a>
-<a href="#877" id="877">877</a>
-<a href="#878" id="878">878</a>
-<a href="#879" id="879">879</a>
-<a href="#880" id="880">880</a>
-<a href="#881" id="881">881</a>
-<a href="#882" id="882">882</a>
-<a href="#883" id="883">883</a>
-<a href="#884" id="884">884</a>
-<a href="#885" id="885">885</a>
-<a href="#886" id="886">886</a>
-<a href="#887" id="887">887</a>
-<a href="#888" id="888">888</a>
 </pre><pre class="rust"><code><span class="doccomment">//! Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 //! This file defines the final state of the node, which includes
@@ -1031,9 +1008,9 @@
             final_state.slot
         );
 
-        <span class="comment">//final_state.compute_state_hash_at_slot(final_state.slot);
+        final_state.compute_state_hash_at_slot(final_state.slot);
 
-        // Check the hash to see if we correctly recovered the snapshot
+        <span class="comment">// Check the hash to see if we correctly recovered the snapshot
         // TODO: Redo this check when we get the final_state from the ledger
         /*if final_state.final_state_hash != final_state_hash_from_snapshot {
             warn!(&quot;The hash of the final_state recovered from the snapshot is different from the hash saved.&quot;);
@@ -1042,9 +1019,8 @@
         // Then, interpolate the downtime, to attach at end_slot;
         </span>final_state.last_start_period = last_start_period;
 
-        final_state.init_ledger_hash(last_start_period);
-
-        final_state.compute_state_hash_at_slot(final_state.slot);
+        <span class="comment">// We compute the draws here because we need to feed_cycles when interpolating
+        </span>final_state.compute_initial_draws()<span class="question-mark">?</span>;
 
         final_state.interpolate_downtime()<span class="question-mark">?</span>;
 
@@ -1155,8 +1131,7 @@
         latest_cycle_info.complete = <span class="bool-val">true</span>;
 
         <span class="comment">// Feed final_state_hash to the completed cycle
-        </span><span class="self">self</span>.pos_state
-            .feed_cycle_state_hash(current_slot_cycle, <span class="self">self</span>.final_state_hash);
+        </span><span class="self">self</span>.feed_cycle_hash_and_selector_for_interpolation(current_slot_cycle)<span class="question-mark">?</span>;
 
         <span class="comment">// Then, build all the already completed cycles
         </span><span class="kw">for </span>cycle <span class="kw">in </span>(current_slot_cycle + <span class="number">1</span>)..end_slot_cycle {
@@ -1177,8 +1152,7 @@
                 .map_err(|err| FinalStateError::PosError(<span class="macro">format!</span>(<span class="string">&quot;{}&quot;</span>, err)))<span class="question-mark">?</span>;
 
             <span class="comment">// Feed final_state_hash to the completed cycle
-            </span><span class="self">self</span>.pos_state
-                .feed_cycle_state_hash(cycle, <span class="self">self</span>.final_state_hash);
+            </span><span class="self">self</span>.feed_cycle_hash_and_selector_for_interpolation(cycle)<span class="question-mark">?</span>;
         }
 
         <span class="comment">// Then, build the last cycle
@@ -1189,8 +1163,7 @@
         <span class="comment">// If the end_slot_cycle is completed
         </span><span class="kw">if </span>end_slot.is_last_of_cycle(<span class="self">self</span>.config.periods_per_cycle, <span class="self">self</span>.config.thread_count) {
             <span class="comment">// Feed final_state_hash to the completed cycle
-            </span><span class="self">self</span>.pos_state
-                .feed_cycle_state_hash(end_slot_cycle, <span class="self">self</span>.final_state_hash);
+            </span><span class="self">self</span>.feed_cycle_hash_and_selector_for_interpolation(end_slot_cycle)<span class="question-mark">?</span>;
         }
 
         <span class="comment">// We reduce the cycle_history len as needed
@@ -1201,19 +1174,22 @@
         <span class="prelude-val">Ok</span>(())
     }
 
-    <span class="doccomment">/// Used after bootstrap, to set the initial ledger hash (used in initial draws)
-    </span><span class="kw">pub fn </span>init_ledger_hash(<span class="kw-2">&amp;mut </span><span class="self">self</span>, last_start_period: u64) {
-        <span class="kw">let </span>slot = Slot::new(
-            last_start_period,
-            <span class="self">self</span>.config.thread_count.saturating_sub(<span class="number">1</span>),
-        );
-        <span class="self">self</span>.ledger.set_initial_slot(slot);
-        <span class="self">self</span>.pos_state.initial_ledger_hash = <span class="self">self</span>.ledger.get_ledger_hash();
+    <span class="doccomment">/// Used during interpolation, when a new cycle is set as completed
+    </span><span class="kw">fn </span>feed_cycle_hash_and_selector_for_interpolation(
+        <span class="kw-2">&amp;mut </span><span class="self">self</span>,
+        cycle: u64,
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;(), FinalStateError&gt; {
+        <span class="self">self</span>.pos_state
+            .feed_cycle_state_hash(cycle, <span class="self">self</span>.final_state_hash);
 
-        <span class="macro">info!</span>(
-            <span class="string">&quot;Set initial ledger hash to {}&quot;</span>,
-            <span class="self">self</span>.ledger.get_ledger_hash().to_string()
-        )
+        <span class="self">self</span>.pos_state
+            .feed_selector(cycle.checked_add(<span class="number">2</span>).ok_or_else(|| {
+                FinalStateError::PosError(<span class="string">&quot;cycle overflow when feeding selector&quot;</span>.into())
+            })<span class="question-mark">?</span>)
+            .map_err(|<span class="kw">_</span>| {
+                FinalStateError::PosError(<span class="string">&quot;cycle overflow when feeding selector&quot;</span>.into())
+            })<span class="question-mark">?</span>;
+        <span class="prelude-val">Ok</span>(())
     }
 
     <span class="doccomment">/// Reset the final state to the initial state.
@@ -1259,28 +1235,6 @@
         </span>hash_concat.extend(<span class="self">self</span>.executed_ops.hash.to_bytes());
         <span class="comment">// 6. compute and save final state hash
         </span><span class="self">self</span>.final_state_hash = Hash::compute_from(<span class="kw-2">&amp;</span>hash_concat);
-
-        <span class="macro">info!</span>(<span class="string">&quot;ledger_hash hash at slot {}: {}&quot;</span>, slot, ledger_hash);
-        <span class="kw">let </span>n = (<span class="self">self</span>.pos_state.cycle_history.len() == <span class="self">self</span>.config.pos_config.cycle_history_length)
-            <span class="kw">as </span>usize;
-        <span class="kw">for </span>cycle_info <span class="kw">in </span><span class="self">self</span>.pos_state.cycle_history.iter().skip(n) {
-            <span class="macro">info!</span>(
-                <span class="string">&quot;cycle_global_hash hash at slot {}: {}&quot;</span>,
-                slot, cycle_info.cycle_global_hash
-            );
-        }
-
-        <span class="macro">info!</span>(
-            <span class="string">&quot;cycle_history at slot {}: {}&quot;</span>,
-            slot,
-            <span class="self">self</span>.pos_state.cycle_history.len()
-        );
-        <span class="kw">for </span>cycle_info <span class="kw">in </span><span class="self">self</span>.pos_state.cycle_history.clone() {
-            <span class="macro">info!</span>(
-                <span class="string">&quot;cycle_info at slot {}: [cycle: {}, complete: {}, roll_counts: {:?}]&quot;</span>,
-                slot, cycle_info.cycle, cycle_info.complete, cycle_info.roll_counts
-            );
-        }
 
         <span class="macro">info!</span>(
             <span class="string">&quot;final_state hash at slot {}: {}&quot;</span>,
