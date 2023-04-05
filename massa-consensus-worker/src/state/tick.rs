@@ -49,6 +49,7 @@ impl ConsensusState {
 
         // Simulate downtime
         // last_start_period should be set after the downtime_end_period (with a delay, to let people bootstrap before the network restarts).
+        // E.g. last_start_period of 563 for 30 mins after downtime_end_period
         let downtime_start_period = 225; // Period 225 is 1 hour after genesis
         let downtime_end_period = 450; // Period 450 is 2 hours after genesis
         if current_slot.period >= downtime_start_period
