@@ -269,7 +269,7 @@ impl BootstrapServerBinder {
             self.prev_message = Some(Hash::compute_from(&hashed_bytes));
         } else {
             // no previous message: hash message only
-            self.prev_message = Some(Hash::compute_from(&msg_bytes));
+            self.prev_message = Some(Hash::compute_from(msg_bytes));
         }
 
         // deserialize message
@@ -278,7 +278,7 @@ impl BootstrapServerBinder {
             self.max_datastore_key_length,
             self.max_consensus_block_ids,
         )
-        .deserialize::<DeserializeError>(&msg_bytes)
+        .deserialize::<DeserializeError>(msg_bytes)
         .map_err(|err| BootstrapError::GeneralError(format!("{}", err)))?;
 
         Ok(msg)
