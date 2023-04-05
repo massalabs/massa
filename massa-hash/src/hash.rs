@@ -51,7 +51,8 @@ impl PartialOrd for Hash {
     }
 }
 
-/// This function is useful for the BTreeMap where the order of the addresses is to be maintained.
+/// This function is generally useful for data structures that performs ordering and where hashes are used
+/// as keys. In massa, it is used for the BTreeMap where the order of the addresses is to be maintained.
 /// This function helps to have a single coherent BTreeMap which is then used to perform the draw
 /// See Pos-Worker for more details.
 
@@ -133,8 +134,6 @@ impl Hash {
     /// let hash = Hash::compute_from(&"hello world".as_bytes());
     /// let serialized: String = hash.to_bs58_check();
     /// ```
-    /// All massa addresses, whenever presented as user-readable texts,
-    /// are presented in base58 encoding
     /// Motivations for using base58 encoding:
     /// 
     /// base58_check is like base64 but-
