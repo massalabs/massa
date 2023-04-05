@@ -13,6 +13,7 @@ impl ConsensusManager for ConsensusManagerImpl {
         info!("stopping consensus worker...");
         // join the consensus thread
         if let Some((tx, join_handle)) = self.consensus_thread.take() {
+            tx.send(ConsensusCommand::Stop).unwrap();
             drop(tx);
             join_handle
                 .join()
