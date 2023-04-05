@@ -13,7 +13,9 @@ impl ConsensusManager for ConsensusManagerImpl {
         info!("stopping consensus worker...");
         // join the consensus thread
         if let Some((tx, join_handle)) = self.consensus_thread.take() {
-            tx.send(ConsensusCommand::Stop).unwrap();
+            //TODO: Remove when we have a good fix for https://github.com/massalabs/massa/issues/3766
+            tx.send(ConsensusCommand::Stop)
+                .expect("consensus thread panicked on try to send stop message to worker");
             drop(tx);
             join_handle
                 .join()
