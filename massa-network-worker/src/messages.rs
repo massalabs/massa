@@ -8,8 +8,8 @@ use massa_models::{
     endorsement::{Endorsement, EndorsementDeserializer, SecureShareEndorsement},
     operation::{
         OperationIdsDeserializer, OperationIdsSerializer, OperationPrefixIds,
-        OperationPrefixIdsDeserializer, OperationPrefixIdsSerializer, OperationsDeserializer,
-        OperationsSerializer, SecureShareOperation,
+        OperationPrefixIdsDeserializer, OperationPrefixIdsSerializer, OperationRepliesDeserializer,
+        OperationRepliesSerializer, SecureShareOperation,
     },
     secure_share::{SecureShareDeserializer, SecureShareSerializer},
     serialization::array_from_slice,
@@ -107,7 +107,7 @@ pub struct MessageSerializer {
     secure_serializer: SecureShareSerializer,
     operation_prefix_ids_serializer: OperationPrefixIdsSerializer,
     operations_ids_serializer: OperationIdsSerializer,
-    operations_serializer: OperationsSerializer,
+    operations_serializer: OperationRepliesSerializer,
     ip_addr_serializer: IpAddrSerializer,
 }
 
@@ -120,7 +120,7 @@ impl MessageSerializer {
             secure_serializer: SecureShareSerializer::new(),
             operation_prefix_ids_serializer: OperationPrefixIdsSerializer::new(),
             operations_ids_serializer: OperationIdsSerializer::new(),
-            operations_serializer: OperationsSerializer::new(),
+            operations_serializer: OperationRepliesSerializer::new(),
             ip_addr_serializer: IpAddrSerializer::new(),
         }
     }
@@ -255,8 +255,8 @@ pub struct MessageDeserializer {
     id_deserializer: U32VarIntDeserializer,
     ask_block_number_deserializer: U32VarIntDeserializer,
     peer_list_length_deserializer: U32VarIntDeserializer,
-    operation_replies_deserializer: OperationsDeserializer,
-    operations_deserializer: OperationsDeserializer,
+    operation_replies_deserializer: OperationRepliesDeserializer,
+    operations_deserializer: OperationRepliesDeserializer,
     hash_deserializer: HashDeserializer,
     block_header_deserializer: SecureShareDeserializer<BlockHeader, BlockHeaderDeserializer>,
     endorsements_length_deserializer: U32VarIntDeserializer,
@@ -297,7 +297,7 @@ impl MessageDeserializer {
                 Included(0),
                 Included(max_advertise_length),
             ),
-            operation_replies_deserializer: OperationsDeserializer::new(
+            operation_replies_deserializer: OperationRepliesDeserializer::new(
                 max_operations_per_block,
                 max_datastore_value_length,
                 max_function_name_length,
@@ -306,7 +306,7 @@ impl MessageDeserializer {
                 max_op_datastore_key_length,
                 max_op_datastore_value_length,
             ),
-            operations_deserializer: OperationsDeserializer::new(
+            operations_deserializer: OperationRepliesDeserializer::new(
                 max_operations_per_message,
                 max_datastore_value_length,
                 max_function_name_length,

@@ -1129,13 +1129,13 @@ impl Serializer<OperationPrefixIds> for OperationPrefixIdsSerializer {
     }
 }
 
-/// Serializer for `Operations`
-pub struct OperationsSerializer {
+/// Serializer for `Operation replies` (used for operations propagation in Message)
+pub struct OperationRepliesSerializer {
     u32_serializer: U32VarIntSerializer,
     signed_op_serializer: SecureShareSerializer,
 }
 
-impl OperationsSerializer {
+impl OperationRepliesSerializer {
     /// Creates a new `OperationsSerializer`
     pub const fn new() -> Self {
         Self {
@@ -1145,16 +1145,16 @@ impl OperationsSerializer {
     }
 }
 
-impl Default for OperationsSerializer {
+impl Default for OperationRepliesSerializer {
     fn default() -> Self {
         Self::new()
     }
 }
 
-impl Serializer<Vec<SecureShareOperation>> for OperationsSerializer {
+impl Serializer<Vec<SecureShareOperation>> for OperationRepliesSerializer {
     /// ## Example:
     /// ```rust
-    /// use massa_models::{operation::{SecureShareOperation, Operation, OperationType, OperationsSerializer, OperationSerializer}, secure_share::SecureShareContent, address::Address, amount::Amount};
+    /// use massa_models::{operation::{SecureShareOperation, Operation, OperationType, OperationRepliesSerializer, OperationSerializer}, secure_share::SecureShareContent, address::Address, amount::Amount};
     /// use massa_signature::KeyPair;
     /// use massa_serialization::Serializer;
     /// use std::str::FromStr;
@@ -1172,7 +1172,7 @@ impl Serializer<Vec<SecureShareOperation>> for OperationsSerializer {
     /// let op_secured = Operation::new_verifiable(content, OperationSerializer::new(), &keypair).unwrap();
     /// let operations = vec![op_secured.clone(), op_secured.clone()];
     /// let mut buffer = Vec::new();
-    /// OperationsSerializer::new().serialize(&operations, &mut buffer).unwrap();
+    /// OperationRepliesSerializer::new().serialize(&operations, &mut buffer).unwrap();
     /// ```
     fn serialize(
         &self,
@@ -1190,13 +1190,13 @@ impl Serializer<Vec<SecureShareOperation>> for OperationsSerializer {
     }
 }
 
-/// Deserializer for `Operations`
-pub struct OperationsDeserializer {
+/// Deserializer for `Operation replies` (used for operations propagation in Message)
+pub struct OperationRepliesDeserializer {
     length_deserializer: U32VarIntDeserializer,
     signed_op_deserializer: SecureShareDeserializer<Operation, OperationDeserializer>,
 }
 
-impl OperationsDeserializer {
+impl OperationRepliesDeserializer {
     /// Creates a new `OperationsDeserializer`
     pub fn new(
         max_operations_per_message: u32,
@@ -1224,10 +1224,10 @@ impl OperationsDeserializer {
     }
 }
 
-impl Deserializer<Vec<SecureShareOperation>> for OperationsDeserializer {
+impl Deserializer<Vec<SecureShareOperation>> for OperationRepliesDeserializer {
     /// ## Example:
     /// ```rust
-    /// use massa_models::{operation::{SecureShareOperation, Operation, OperationType, OperationsSerializer, OperationsDeserializer, OperationSerializer}, secure_share::SecureShareContent, address::Address, amount::Amount};
+    /// use massa_models::{operation::{SecureShareOperation, Operation, OperationType, OperationRepliesSerializer, OperationRepliesDeserializer, OperationSerializer}, secure_share::SecureShareContent, address::Address, amount::Amount};
     /// use massa_signature::KeyPair;
     /// use massa_serialization::{Serializer, Deserializer, DeserializeError};
     /// use std::str::FromStr;
@@ -1245,8 +1245,8 @@ impl Deserializer<Vec<SecureShareOperation>> for OperationsDeserializer {
     /// let op_secured = Operation::new_verifiable(content, OperationSerializer::new(), &keypair).unwrap();
     /// let operations = vec![op_secured.clone(), op_secured.clone()];
     /// let mut buffer = Vec::new();
-    /// OperationsSerializer::new().serialize(&operations, &mut buffer).unwrap();
-    /// let (rest, deserialized_operations) = OperationsDeserializer::new(10000, 10000, 10000, 10000, 10, 255, 10_000).deserialize::<DeserializeError>(&buffer).unwrap();
+    /// OperationRepliesSerializer::new().serialize(&operations, &mut buffer).unwrap();
+    /// let (rest, deserialized_operations) = OperationRepliesDeserializer::new(10000, 10000, 10000, 10000, 10, 255, 10_000).deserialize::<DeserializeError>(&buffer).unwrap();
     /// for (operation1, operation2) in deserialized_operations.iter().zip(operations.iter()) {
     ///     assert_eq!(operation1.id, operation2.id);
     ///     assert_eq!(operation1.signature, operation2.signature);

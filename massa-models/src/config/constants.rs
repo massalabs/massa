@@ -27,6 +27,8 @@ pub const MAX_MESSAGE_SIZE: u32 = 1048576000;
 /// Max number of hash in the message `AskForBlocks`
 pub const MAX_ASK_BLOCKS_PER_MESSAGE: u32 = 128;
 /// Max number of operations per message
+/// This is the max number for Operation reply (e.g. for Operation propagation in network)
+/// For max number of operations that can be included in block -> MAX_OPERATIONS_PER_BLOCK
 pub const MAX_OPERATIONS_PER_MESSAGE: u32 = 1024;
 /// Length of the handshake random signature
 pub const HANDSHAKE_RANDOMNESS_SIZE_BYTES: usize = 32;
@@ -91,9 +93,9 @@ pub const THREAD_COUNT: u8 = 32;
 pub const ENDORSEMENT_COUNT: u32 = 16;
 /// Threshold for fitness.
 pub const DELTA_F0: u64 = 64 * (ENDORSEMENT_COUNT as u64 + 1);
-/// Maximum number of operations per block
+/// Maximum number of operations per block - used when creating a block && deser a block
 pub const MAX_OPERATIONS_PER_BLOCK: u32 = 5000;
-/// Maximum block size in bytes
+/// Maximum block size in bytes (this does not include the Block header size)
 pub const MAX_BLOCK_SIZE: u32 = 1_000_000;
 /// Maximum capacity of the asynchronous messages pool
 pub const MAX_ASYNC_POOL_LENGTH: u64 = 10_000;
