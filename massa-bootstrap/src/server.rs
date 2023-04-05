@@ -105,6 +105,7 @@ impl<D: Duplex> BootstrapManager<D> {
 }
 
 /// See module level documentation for details
+#[allow(clippy::too_many_arguments)]
 pub fn start_bootstrap_server<D: Duplex + 'static>(
     consensus_controller: Box<dyn ConsensusController>,
     network_command_sender: NetworkCommandSender,
