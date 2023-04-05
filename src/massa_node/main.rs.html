@@ -1107,20 +1107,6 @@
 <a href="#1107" id="1107">1107</a>
 <a href="#1108" id="1108">1108</a>
 <a href="#1109" id="1109">1109</a>
-<a href="#1110" id="1110">1110</a>
-<a href="#1111" id="1111">1111</a>
-<a href="#1112" id="1112">1112</a>
-<a href="#1113" id="1113">1113</a>
-<a href="#1114" id="1114">1114</a>
-<a href="#1115" id="1115">1115</a>
-<a href="#1116" id="1116">1116</a>
-<a href="#1117" id="1117">1117</a>
-<a href="#1118" id="1118">1118</a>
-<a href="#1119" id="1119">1119</a>
-<a href="#1120" id="1120">1120</a>
-<a href="#1121" id="1121">1121</a>
-<a href="#1122" id="1122">1122</a>
-<a href="#1123" id="1123">1123</a>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="attr">#![doc = <span class="macro">include_str!</span>(<span class="string">&quot;../../README.md&quot;</span>)]
@@ -1231,41 +1217,27 @@
     <span class="prelude-ty">Option</span>&lt;massa_grpc::server::StopHandle&gt;,
 ) {
     <span class="macro">info!</span>(<span class="string">&quot;Node version : {}&quot;</span>, <span class="kw-2">*</span>VERSION);
-    <span class="kw">if let </span><span class="prelude-val">Some</span>(end) = <span class="kw-2">*</span>END_TIMESTAMP {
-        <span class="kw">if </span>MassaTime::now().expect(<span class="string">&quot;could not get now time&quot;</span>) &gt; end {
-            <span class="macro">panic!</span>(<span class="string">&quot;This episode has come to an end, please get the latest testnet node version to continue&quot;</span>);
+    <span class="kw">let </span>now = MassaTime::now().expect(<span class="string">&quot;could not get now time&quot;</span>);
+    <span class="comment">// Do not start if genesis is in the future. This is meant to prevent nodes
+    // from desync if the bootstrap nodes keep a previous ledger
+    </span><span class="attr">#[cfg(not(feature = <span class="string">&quot;sandbox&quot;</span>))]
+    </span>{
+        <span class="kw">if </span><span class="kw-2">*</span>GENESIS_TIMESTAMP &gt; now {
+            <span class="kw">let </span>(days, hours, mins, secs) = GENESIS_TIMESTAMP
+                .saturating_sub(now)
+                .days_hours_mins_secs()
+                .unwrap();
+            <span class="macro">panic!</span>(
+                <span class="string">&quot;This episode has not started yet, please wait {} days, {} hours, {} minutes, {} seconds for genesis&quot;</span>,
+                days, hours, mins, secs,
+            )
         }
     }
 
-    <span class="kw">let </span>now = MassaTime::now().expect(<span class="string">&quot;could not get now time&quot;</span>);
-
-    <span class="kw">use </span>massa_models::config::constants::DOWNTIME_END_TIMESTAMP;
-    <span class="kw">use </span>massa_models::config::constants::DOWNTIME_START_TIMESTAMP;
-
-    <span class="comment">// Simulate downtime
-    // last_start_period should be set to trigger after the DOWNTIME_END_TIMESTAMP
-    </span><span class="kw">if </span>now &gt;= DOWNTIME_START_TIMESTAMP &amp;&amp; now &lt;= DOWNTIME_END_TIMESTAMP {
-        <span class="kw">let </span>(days, hours, mins, secs) = DOWNTIME_END_TIMESTAMP
-            .saturating_sub(now)
-            .days_hours_mins_secs()
-            .unwrap();
-
-        <span class="kw">if let </span><span class="prelude-val">Ok</span>(<span class="prelude-val">Some</span>(end_period)) = massa_models::timeslots::get_latest_block_slot_at_timestamp(
-            THREAD_COUNT,
-            T0,
-            <span class="kw-2">*</span>GENESIS_TIMESTAMP,
-            DOWNTIME_END_TIMESTAMP,
-        ) {
-            <span class="macro">panic!</span>(
-                <span class="string">&quot;We are in downtime! {} days, {} hours, {} minutes, {} seconds remaining to the end of the downtime. Downtime end period: {}&quot;</span>,
-                days, hours, mins, secs, end_period.period
-            );
+    <span class="kw">if let </span><span class="prelude-val">Some</span>(end) = <span class="kw-2">*</span>END_TIMESTAMP {
+        <span class="kw">if </span>now &gt; end {
+            <span class="macro">panic!</span>(<span class="string">&quot;This episode has come to an end, please get the latest testnet node version to continue&quot;</span>);
         }
-
-        <span class="macro">panic!</span>(
-            <span class="string">&quot;We are in downtime! {} days, {} hours, {} minutes, {} seconds remaining to the end of the downtime&quot;</span>,
-            days, hours, mins, secs,
-        );
     }
 
     <span class="comment">// Storage shared by multiple components.
