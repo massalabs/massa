@@ -137,7 +137,7 @@ impl DenunciationFactoryWorker {
         };
 
         if let Some(denunciation) = denunciation_ {
-            info!(
+            debug!(
                 "Created a new block header denunciation : {:?}",
                 denunciation
             );
@@ -236,7 +236,7 @@ impl DenunciationFactoryWorker {
         };
 
         if let Some(denunciation) = denunciation_ {
-            info!(
+            debug!(
                 "Created a new endorsement denunciation : {:?}",
                 denunciation
             );

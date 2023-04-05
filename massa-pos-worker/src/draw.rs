@@ -92,7 +92,7 @@ pub(crate) fn perform_draws(
         })?;
     }
 
-    debug!(
+    info!(
         "Draws for cycle {} complete. Look_back seed was {:#?}. Five first selections is : {:#?}",
         cycle,
         lookback_seed.to_bytes(),
