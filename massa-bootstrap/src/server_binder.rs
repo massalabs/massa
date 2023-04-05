@@ -226,7 +226,7 @@ impl BootstrapServerBinder {
             // TODO: backoff spin of some sort
         }
         // construct prev-hash from peek
-        let peeked_received_prev_hash = {
+        let received_prev_hash = {
             if self.prev_message.is_some() {
                 Some(Hash::from_bytes(
                     peek_buf[..HASH_SIZE_BYTES]
@@ -237,37 +237,20 @@ impl BootstrapServerBinder {
                 None
             }
         };
-        // read prev hash
-        let received_prev_hash = {
-            if self.prev_message.is_some() {
-                let mut hash_bytes = [0u8; HASH_SIZE_BYTES];
-                self.duplex.read_exact(&mut hash_bytes)?;
-                Some(Hash::from_bytes(&hash_bytes))
-            } else {
-                None
-            }
-        };
-        assert_eq!(peeked_received_prev_hash, received_prev_hash);
 
         // construct msg-len from peek
-        let peeked_msg_len = {
+        let msg_len = {
             u32::from_be_bytes_min(
                 &peek_buf[HASH_SIZE_BYTES..],
                 self.max_bootstrap_message_size,
             )?
             .0
         };
-        // read message length
-        let msg_len = {
-            let mut msg_len_bytes = vec![0u8; self.size_field_len];
-            self.duplex.read_exact(&mut msg_len_bytes[..])?;
-            u32::from_be_bytes_min(&msg_len_bytes, self.max_bootstrap_message_size)?.0
-        };
-        assert_eq!(peeked_msg_len, msg_len);
 
-        // read message
-        let mut msg_bytes = vec![0u8; msg_len as usize];
+        // read message, and discard the peek
+        let mut msg_bytes = vec![0u8; peek_len + (msg_len as usize)];
         self.duplex.read_exact(&mut msg_bytes)?;
+        let msg_bytes = &msg_bytes[peek_len..];
 
         // check previous hash
         if received_prev_hash != self.prev_message {
@@ -282,7 +265,7 @@ impl BootstrapServerBinder {
             let mut hashed_bytes =
                 Vec::with_capacity(HASH_SIZE_BYTES.saturating_add(msg_bytes.len()));
             hashed_bytes.extend(prev_hash.to_bytes());
-            hashed_bytes.extend(&msg_bytes);
+            hashed_bytes.extend(msg_bytes);
             self.prev_message = Some(Hash::compute_from(&hashed_bytes));
         } else {
             // no previous message: hash message only
