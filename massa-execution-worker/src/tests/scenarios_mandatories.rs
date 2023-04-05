@@ -2067,7 +2067,7 @@ mod tests {
     ) -> Result<SecureShareOperation, ExecutionError> {
         let op = OperationType::ExecuteSC {
             data: data.to_vec(),
-            max_gas: 1_000_000,
+            max_gas: 100_000_000,
             datastore,
         };
         let op = Operation::new_verifiable(
