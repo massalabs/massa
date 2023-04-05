@@ -90,11 +90,14 @@ impl BootstrapClientBinder {
 
         // read message, check signature and check signature of the message sent just before then deserialize it
         let message_deserializer = BootstrapServerMessageDeserializer::new((&self.cfg).into());
+        let legacy_msg = self
+            .prev_message
+            .replace(Hash::compute_from(&sig.to_bytes()));
+
         let message = {
-            if let Some(prev_message) = self.prev_message {
-                self.prev_message = Some(Hash::compute_from(&sig.to_bytes()));
+            if let Some(legacy_msg) = legacy_msg {
                 let mut sig_msg_bytes = vec![0u8; HASH_SIZE_BYTES + (msg_len as usize)];
-                sig_msg_bytes[..HASH_SIZE_BYTES].copy_from_slice(prev_message.to_bytes());
+                sig_msg_bytes[..HASH_SIZE_BYTES].copy_from_slice(legacy_msg.to_bytes());
                 self.duplex
                     .read_exact(&mut sig_msg_bytes[HASH_SIZE_BYTES..])?;
                 let msg_hash = Hash::compute_from(&sig_msg_bytes);
@@ -104,7 +107,6 @@ impl BootstrapClientBinder {
                     .map_err(|err| BootstrapError::DeserializeError(format!("{}", err)))?;
                 msg
             } else {
-                self.prev_message = Some(Hash::compute_from(&sig.to_bytes()));
                 let mut sig_msg_bytes = vec![0u8; msg_len as usize];
                 self.duplex.read_exact(&mut sig_msg_bytes[..])?;
                 let msg_hash = Hash::compute_from(&sig_msg_bytes);
