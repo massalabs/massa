@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"constant":["BRANCHES"],"opaque":[""],"static":["CALLSITE","META"],"struct":["NetworkWorker","NetworkWorkerChannels"]};
