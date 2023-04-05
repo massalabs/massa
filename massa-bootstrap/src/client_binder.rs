@@ -74,6 +74,8 @@ impl BootstrapClientBinder {
         duration: Option<Duration>,
     ) -> Result<BootstrapServerMessage, BootstrapError> {
         self.duplex.set_read_timeout(duration)?;
+
+        // Read the signature and message length without consuming it
         let peek_len = SIGNATURE_SIZE_BYTES + self.size_field_len;
         let mut peek_buff = vec![0u8; peek_len];
         let mut acc = 0;
@@ -93,7 +95,6 @@ impl BootstrapClientBinder {
         )?
         .0;
 
-        // read message, check signature and check signature of the message sent just before then deserialize it
         let message_deserializer = BootstrapServerMessageDeserializer::new((&self.cfg).into());
         let legacy_msg = self
             .prev_message
@@ -101,27 +102,37 @@ impl BootstrapClientBinder {
 
         let message = {
             if let Some(legacy_msg) = legacy_msg {
+                // Consume the stream...
                 let mut sig_msg_bytes = vec![0u8; peek_len + HASH_SIZE_BYTES + (msg_len as usize)];
                 self.duplex
                     .read_exact(&mut sig_msg_bytes[HASH_SIZE_BYTES..])?;
+
                 // discard the peek
                 let sig_msg_bytes = &mut sig_msg_bytes[peek_len..];
+
+                // Move in the previous message hash for computation, and verify
                 sig_msg_bytes[..HASH_SIZE_BYTES].copy_from_slice(legacy_msg.to_bytes());
                 let msg_hash = Hash::compute_from(sig_msg_bytes);
                 self.remote_pubkey.verify_signature(&msg_hash, &sig)?;
+
+                // ...And deserialize
                 let (_, msg) = message_deserializer
                     .deserialize::<DeserializeError>(&sig_msg_bytes[HASH_SIZE_BYTES..])
                     .map_err(|err| BootstrapError::DeserializeError(format!("{}", err)))?;
                 msg
             } else {
+                // Consume the stream...
                 let mut sig_msg_bytes = vec![0u8; peek_len + msg_len as usize];
                 self.duplex.read_exact(&mut sig_msg_bytes[..])?;
 
                 // discard the peek
                 let sig_msg_bytes = &mut sig_msg_bytes[peek_len..];
 
+                // Compute the hash and verify
                 let msg_hash = Hash::compute_from(sig_msg_bytes);
                 self.remote_pubkey.verify_signature(&msg_hash, &sig)?;
+
+                // ...And deserialize
                 let (_, msg) = message_deserializer
                     .deserialize::<DeserializeError>(sig_msg_bytes)
                     .map_err(|err| BootstrapError::DeserializeError(format!("{}", err)))?;
