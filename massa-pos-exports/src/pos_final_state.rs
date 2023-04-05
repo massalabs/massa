@@ -13,7 +13,7 @@ use std::{
     ops::Bound::{Excluded, Unbounded},
     path::PathBuf,
 };
-use tracing::debug;
+use tracing::{debug, info};
 
 #[derive(Clone)]
 /// Final state of PoS
@@ -183,6 +183,8 @@ impl PoSFinalState {
 
         let mut max_cycle = None;
 
+        info!("history starts late: {}", history_starts_late);
+        
         // feed cycles 0, 1 to selector if necessary
         if !history_starts_late {
             for draw_cycle in 0u64..=1 {
@@ -322,7 +324,7 @@ impl PoSFinalState {
     pub fn feed_selector(&self, draw_cycle: u64) -> PosResult<()> {
         // get roll lookback
 
-        //info!("Feed selector with draw cycle: {}", draw_cycle);
+        info!("Feed selector with draw cycle: {}", draw_cycle);
 
         let (lookback_rolls, lookback_state_hash) = match draw_cycle.checked_sub(3) {
             // looking back in history
@@ -346,6 +348,9 @@ impl PoSFinalState {
             None => (self.initial_rolls.clone(), self.initial_ledger_hash),
         };
 
+        info!("lookback_rolls: {:?}", lookback_rolls);
+        info!("lookback_state_hash: {}", lookback_state_hash.to_string());
+
         // get seed lookback
         let lookback_seed = match draw_cycle.checked_sub(2) {
             // looking back in history
@@ -367,6 +372,8 @@ impl PoSFinalState {
             // looking back to negative cycles
             None => self.initial_seeds[draw_cycle as usize],
         };
+
+        info!("lookback_seed: {}", lookback_seed.to_string());
 
         // feed selector
         self.selector
