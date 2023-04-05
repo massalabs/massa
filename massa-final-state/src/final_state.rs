@@ -322,7 +322,10 @@ impl FinalState {
         self.ledger.set_initial_slot(slot);
         self.pos_state.initial_ledger_hash = self.ledger.get_ledger_hash();
 
-        info!("Set initial ledger hash to {}", self.ledger.get_ledger_hash().to_string())
+        info!(
+            "Set initial ledger hash to {}",
+            self.ledger.get_ledger_hash().to_string()
+        )
     }
 
     /// Reset the final state to the initial state.
