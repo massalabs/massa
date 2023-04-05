@@ -1,7 +1,7 @@
 //! Contains the implementation of the life cycle of operations
 //!
 //! Implement the propagation algorithm written here [redirect to GitHub]
-//! (https://github.com/massalabs/massa/issues/2283#issuecomment-1040872779).
+//! <https://github.com/massalabs/massa/issues/2283#issuecomment-1040872779>.
 //!
 //! 1) get batches of operations ids
 //! 2) ask for operations

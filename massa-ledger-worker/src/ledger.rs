@@ -34,13 +34,14 @@ pub struct FinalLedger {
 
 impl FinalLedger {
     /// Initializes a new `FinalLedger` by reading its initial state from file.
-    pub fn new(config: LedgerConfig) -> Self {
+    pub fn new(config: LedgerConfig, with_final_state: bool) -> Self {
         // create and initialize the disk ledger
         let sorted_ledger = LedgerDB::new(
             config.disk_ledger_path.clone(),
             config.thread_count,
             config.max_key_length,
             config.max_ledger_part_size,
+            with_final_state,
         );
 
         // generate the final ledger
@@ -53,8 +54,14 @@ impl FinalLedger {
 
 impl LedgerController for FinalLedger {
     /// Allows applying `LedgerChanges` to the final ledger
-    fn apply_changes(&mut self, changes: LedgerChanges, slot: Slot) {
-        self.sorted_ledger.apply_changes(changes, slot);
+    fn apply_changes(
+        &mut self,
+        changes: LedgerChanges,
+        slot: Slot,
+        final_state_data: Option<Vec<u8>>,
+    ) {
+        self.sorted_ledger
+            .apply_changes(changes, slot, final_state_data);
     }
 
     /// Loads ledger from file
@@ -184,6 +191,22 @@ impl LedgerController for FinalLedger {
     /// USED FOR BOOTSTRAP ONLY
     fn reset(&mut self) {
         self.sorted_ledger.reset();
+    }
+
+    /// Get the slot associated with the current ledger
+    fn get_slot(&self) -> Result<Slot, ModelsError> {
+        self.sorted_ledger.get_slot()
+    }
+
+    /// Set the final_state_hash of the slot associated with the current ledger
+    /// Can be used to verify the integrity of the final state saved when restarting from snapshot
+    fn set_final_state_hash(&mut self, data: Vec<u8>) {
+        self.sorted_ledger.set_final_state_hash(&data)
+    }
+
+    /// Get the final state stored in the ledger, to restart from snapshot
+    fn get_final_state(&self) -> Result<Vec<u8>, ModelsError> {
+        self.sorted_ledger.get_final_state()
     }
 
     /// Get every address and their corresponding balance.

@@ -7,7 +7,6 @@
 //! More generally, the context acts only on its own state
 //! and does not write anything persistent to the consensus state.
 
-use crate::module_cache::ModuleCache;
 use crate::speculative_async_pool::SpeculativeAsyncPool;
 use crate::speculative_executed_ops::SpeculativeExecutedOps;
 use crate::speculative_ledger::SpeculativeLedger;
@@ -30,6 +29,7 @@ use massa_models::{
     output_event::{EventExecutionContext, SCOutputEvent},
     slot::Slot,
 };
+use massa_module_cache::controller::ModuleCache;
 use massa_pos_exports::PoSChanges;
 use parking_lot::RwLock;
 use rand::SeedableRng;
@@ -705,25 +705,19 @@ impl ExecutionContext {
     ///
     /// # Arguments
     /// * `slot`: associated slot of the deferred credits to be executed
-    /// * `credits`: deferred to be executed
     pub fn execute_deferred_credits(&mut self, slot: &Slot) {
-        let executed_credits = self.speculative_roll_state.get_deferred_credits(slot);
-
-        for (address, amount) in executed_credits {
-            self.speculative_roll_state
-                .added_changes
-                .deferred_credits
-                .credits
-                .entry(*slot)
-                .or_default()
-                .entry(address)
-                .and_modify(|credit_amount| *credit_amount = Amount::default())
-                .or_default();
-            if let Err(e) = self.transfer_coins(None, Some(address), amount, false) {
-                debug!(
-                    "could not credit {} deferred coins to {} at slot {}: {}",
-                    amount, address, slot, e
-                );
+        for (_slot, map) in self
+            .speculative_roll_state
+            .take_unexecuted_deferred_credits(slot)
+            .credits
+        {
+            for (address, amount) in map {
+                if let Err(e) = self.transfer_coins(None, Some(address), amount, false) {
+                    debug!(
+                        "could not credit {} deferred coins to {} at slot {}: {}",
+                        amount, address, slot, e
+                    );
+                }
             }
         }
     }
@@ -741,13 +735,24 @@ impl ExecutionContext {
         // execute the deferred credits coming from roll sells
         self.execute_deferred_credits(&slot);
 
-        // settle emitted async messages and reimburse the senders of deleted messages
+        // take the ledger changes first as they are needed for async messages and cache
         let ledger_changes = self.speculative_ledger.take();
+
+        // settle emitted async messages and reimburse the senders of deleted messages
         let deleted_messages = self
             .speculative_async_pool
             .settle_slot(&slot, &ledger_changes);
         for (_msg_id, msg) in deleted_messages {
             self.cancel_async_message(&msg);
+        }
+
+        // update module cache
+        let bc_updates = ledger_changes.get_bytecode_updates();
+        {
+            let mut cache_write_lock = self.module_cache.write();
+            for bytecode in bc_updates {
+                cache_write_lock.save_module(&bytecode.0);
+            }
         }
 
         // if the current slot is last in cycle check the production stats and act accordingly

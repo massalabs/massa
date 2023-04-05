@@ -49,9 +49,16 @@ fn stream_final_state_and_consensus(
                     final_state_changes,
                     consensus_part,
                     consensus_outdated_ids,
+                    last_start_period,
                 } => {
                     // Set final state
                     let mut write_final_state = global_bootstrap_state.final_state.write();
+
+                    // We only need to receive the initial_state once
+                    if let Some(last_start_period) = last_start_period {
+                        write_final_state.last_start_period = last_start_period;
+                    }
+
                     let last_ledger_step = write_final_state.ledger.set_ledger_part(ledger_part)?;
                     let last_pool_step =
                         write_final_state.async_pool.set_pool_part(async_pool_part);
@@ -65,9 +72,11 @@ fn stream_final_state_and_consensus(
                         .executed_ops
                         .set_executed_ops_part(exec_ops_part);
                     for (changes_slot, changes) in final_state_changes.iter() {
-                        write_final_state
-                            .ledger
-                            .apply_changes(changes.ledger_changes.clone(), *changes_slot);
+                        write_final_state.ledger.apply_changes(
+                            changes.ledger_changes.clone(),
+                            *changes_slot,
+                            None,
+                        );
                         write_final_state
                             .async_pool
                             .apply_changes_unchecked(&changes.async_pool_changes);
@@ -118,6 +127,7 @@ fn stream_final_state_and_consensus(
                         last_credits_step,
                         last_ops_step,
                         last_consensus_step,
+                        send_last_start_period: false,
                     };
 
                     // Logs for an easier diagnostic if needed
@@ -146,6 +156,7 @@ fn stream_final_state_and_consensus(
                         last_credits_step: StreamingStep::Started,
                         last_ops_step: StreamingStep::Started,
                         last_consensus_step: StreamingStep::Started,
+                        send_last_start_period: true,
                     };
                     let mut write_final_state = global_bootstrap_state.final_state.write();
                     write_final_state.reset();
@@ -370,13 +381,43 @@ pub async fn get_state(
     version: Version,
     genesis_timestamp: MassaTime,
     end_timestamp: Option<MassaTime>,
+    restart_from_snapshot_at_period: Option<u64>,
 ) -> Result<GlobalBootstrapState, BootstrapError> {
     massa_trace!("bootstrap.lib.get_state", {});
-    // if we are before genesis, do not bootstrap
-    if MassaTime::now()? < genesis_timestamp {
-        return get_genesis_state(final_state);
+
+    // If we restart from a snapshot, do not bootstrap
+    if restart_from_snapshot_at_period.is_some() {
+        massa_trace!("bootstrap.lib.get_state.init_from_snapshot", {});
+        return Ok(GlobalBootstrapState::new(final_state));
     }
 
+    // if we are before genesis, do not bootstrap
+    if MassaTime::now()? < genesis_timestamp {
+        massa_trace!("bootstrap.lib.get_state.init_from_scratch", {});
+        // init final state
+        {
+            let mut final_state_guard = final_state.write();
+
+            if !bootstrap_config.keep_ledger {
+                // load ledger from initial ledger file
+                final_state_guard
+                    .ledger
+                    .load_initial_ledger()
+                    .map_err(|err| {
+                        BootstrapError::GeneralError(format!(
+                            "could not load initial ledger: {}",
+                            err
+                        ))
+                    })?;
+            }
+
+            // create the initial cycle of PoS cycle_history
+            final_state_guard.pos_state.create_initial_cycle();
+        }
+        return Ok(GlobalBootstrapState::new(final_state));
+    }
+
+    // If the two conditions above are not verified, we need to bootstrap
     // we filter the bootstrap list to keep only the ip addresses we are compatible with
     let filtered_bootstrap_list = get_bootstrap_list_iter(bootstrap_config)?;
 
@@ -389,6 +430,7 @@ pub async fn get_state(
             last_credits_step: StreamingStep::Started,
             last_ops_step: StreamingStep::Started,
             last_consensus_step: StreamingStep::Started,
+            send_last_start_period: true,
         };
     let mut global_bootstrap_state = GlobalBootstrapState::new(final_state);
 
@@ -430,26 +472,6 @@ pub async fn get_state(
             std::thread::sleep(bootstrap_config.retry_delay.into());
         }
     }
-}
-
-fn get_genesis_state(
-    final_state: Arc<RwLock<FinalState>>,
-) -> Result<GlobalBootstrapState, BootstrapError> {
-    massa_trace!("bootstrap.lib.get_state.init_from_scratch", {});
-    // init final state
-    {
-        let mut final_state_guard = final_state.write();
-        // load ledger from initial ledger file
-        final_state_guard
-            .ledger
-            .load_initial_ledger()
-            .map_err(|err| {
-                BootstrapError::GeneralError(format!("could not load initial ledger: {}", err))
-            })?;
-        // create the initial cycle of PoS cycle_history
-        final_state_guard.pos_state.create_initial_cycle();
-    }
-    Ok(GlobalBootstrapState::new(final_state))
 }
 
 fn get_bootstrap_list_iter(

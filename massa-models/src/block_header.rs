@@ -226,11 +226,17 @@ pub struct BlockHeaderDeserializer {
     hash_deserializer: HashDeserializer,
     thread_count: u8,
     endorsement_count: u32,
+    last_start_period: Option<u64>,
 }
 
 impl BlockHeaderDeserializer {
-    /// Creates a new `BlockHeaderDeserializerLW`
-    pub const fn new(thread_count: u8, endorsement_count: u32) -> Self {
+    /// Creates a new `BlockHeaderDeserializer`
+    /// If last_start_period is Some(lsp), then the deserializer will check for valid (non)-genesis blocks
+    pub const fn new(
+        thread_count: u8,
+        endorsement_count: u32,
+        last_start_period: Option<u64>,
+    ) -> Self {
         Self {
             slot_deserializer: SlotDeserializer::new(
                 (Included(0), Included(u64::MAX)),
@@ -244,6 +250,7 @@ impl BlockHeaderDeserializer {
             hash_deserializer: HashDeserializer::new(),
             thread_count,
             endorsement_count,
+            last_start_period,
         }
     }
 }
@@ -292,7 +299,7 @@ impl Deserializer<BlockHeader> for BlockHeaderDeserializer {
     /// };
     /// let mut buffer = vec![];
     /// BlockHeaderSerializer::new().serialize(&header, &mut buffer).unwrap();
-    /// let (rest, deserialized_header) = BlockHeaderDeserializer::new(32, 9).deserialize::<DeserializeError>(&buffer).unwrap();
+    /// let (rest, deserialized_header) = BlockHeaderDeserializer::new(32, 9, Some(0)).deserialize::<DeserializeError>(&buffer).unwrap();
     /// assert_eq!(rest.len(), 0);
     /// let mut buffer2 = Vec::new();
     /// BlockHeaderSerializer::new().serialize(&deserialized_header, &mut buffer2).unwrap();
@@ -328,22 +335,26 @@ impl Deserializer<BlockHeader> for BlockHeaderDeserializer {
                 ))
                 .parse(input)?;
 
-                // validate the parent/slot invariats before moving on to other fields
-                if slot.period == 0 && !parents.is_empty() {
-                    return Err(nom::Err::Failure(ContextError::add_context(
-                        rest,
-                        "Genesis block cannot contain parents",
-                        ParseError::from_error_kind(rest, nom::error::ErrorKind::Fail),
-                    )));
-                } else if slot.period != 0 && parents.len() != THREAD_COUNT as usize {
-                    return Err(nom::Err::Failure(ContextError::add_context(
-                        rest,
-                        const_format::formatcp!(
-                            "Non-genesis block must have {} parents",
-                            THREAD_COUNT
-                        ),
-                        ParseError::from_error_kind(rest, nom::error::ErrorKind::Fail),
-                    )));
+                // validate the parent/slot invariants before moving on to other fields
+                if let Some(last_start_period) = self.last_start_period {
+                    if slot.period == last_start_period && !parents.is_empty() {
+                        return Err(nom::Err::Failure(ContextError::add_context(
+                            rest,
+                            "Genesis block cannot contain parents",
+                            ParseError::from_error_kind(rest, nom::error::ErrorKind::Fail),
+                        )));
+                    } else if slot.period != last_start_period
+                        && parents.len() != THREAD_COUNT as usize
+                    {
+                        return Err(nom::Err::Failure(ContextError::add_context(
+                            rest,
+                            const_format::formatcp!(
+                                "Non-genesis block must have {} parents",
+                                THREAD_COUNT
+                            ),
+                            ParseError::from_error_kind(rest, nom::error::ErrorKind::Fail),
+                        )));
+                    }
                 }
 
                 let (rest, merkle) = context("Failed operation_merkle_root", |input| {

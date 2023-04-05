@@ -219,7 +219,7 @@ impl ProtocolWorker {
             })
     }
 
-    /// Return the sum of all operation's serialized sizes in the Set<Id>
+    /// Return the sum of all operation's serialized sizes in the `Set<Id>`
     fn get_total_operations_size(
         storage: &Storage,
         operation_ids: &PreHashSet<OperationId>,

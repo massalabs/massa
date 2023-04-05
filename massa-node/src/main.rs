@@ -4,6 +4,7 @@
 #![warn(missing_docs)]
 #![warn(unused_crate_dependencies)]
 extern crate massa_logging;
+
 use crate::settings::SETTINGS;
 
 use crossbeam_channel::{Receiver, TryRecvError};
@@ -24,6 +25,8 @@ use massa_execution_worker::start_execution_worker;
 use massa_factory_exports::{FactoryChannels, FactoryConfig, FactoryManager};
 use massa_factory_worker::start_factory;
 use massa_final_state::{FinalState, FinalStateConfig};
+use massa_grpc::config::GrpcConfig;
+use massa_grpc::server::MassaGrpc;
 use massa_ledger_exports::LedgerConfig;
 use massa_ledger_worker::FinalLedger;
 use massa_logging::massa_trace;
@@ -52,6 +55,7 @@ use massa_models::config::constants::{
 };
 use massa_models::config::{
     CONSENSUS_BOOTSTRAP_PART_SIZE, DENUNCIATION_EXPIRE_PERIODS, DENUNCIATION_ITEMS_MAX_CYCLE_DELTA,
+    MAX_OPERATIONS_PER_MESSAGE,
 };
 use massa_models::denunciation::DenunciationPrecursor;
 use massa_network_exports::{Establisher, NetworkCommandSender, NetworkConfig, NetworkManager};
@@ -100,12 +104,61 @@ async fn launch(
     StopHandle,
     StopHandle,
     StopHandle,
+    Option<massa_grpc::server::StopHandle>,
 ) {
     info!("Node version : {}", *VERSION);
+    let now = MassaTime::now().expect("could not get now time");
+    // Do not start if genesis is in the future. This is meant to prevent nodes
+    // from desync if the bootstrap nodes keep a previous ledger
+    #[cfg(not(feature = "sandbox"))]
+    {
+        if *GENESIS_TIMESTAMP > now {
+            let (days, hours, mins, secs) = GENESIS_TIMESTAMP
+                .saturating_sub(now)
+                .days_hours_mins_secs()
+                .unwrap();
+            panic!(
+                "This episode has not started yet, please wait {} days, {} hours, {} minutes, {} seconds for genesis",
+                days, hours, mins, secs,
+            )
+        }
+    }
+
     if let Some(end) = *END_TIMESTAMP {
-        if MassaTime::now().expect("could not get now time") > end {
+        if now > end {
             panic!("This episode has come to an end, please get the latest testnet node version to continue");
         }
+    }
+
+    let now = MassaTime::now().expect("could not get now time");
+
+    use massa_models::config::constants::DOWNTIME_END_TIMESTAMP;
+    use massa_models::config::constants::DOWNTIME_START_TIMESTAMP;
+
+    // Simulate downtime
+    // last_start_period should be set to trigger after the DOWNTIME_END_TIMESTAMP
+    if now >= DOWNTIME_START_TIMESTAMP && now <= DOWNTIME_END_TIMESTAMP {
+        let (days, hours, mins, secs) = DOWNTIME_END_TIMESTAMP
+            .saturating_sub(now)
+            .days_hours_mins_secs()
+            .unwrap();
+
+        if let Ok(Some(end_period)) = massa_models::timeslots::get_latest_block_slot_at_timestamp(
+            THREAD_COUNT,
+            T0,
+            *GENESIS_TIMESTAMP,
+            DOWNTIME_END_TIMESTAMP,
+        ) {
+            panic!(
+                "We are in downtime! {} days, {} hours, {} minutes, {} seconds remaining to the end of the downtime. Downtime end period: {}",
+                days, hours, mins, secs, end_period.period
+            );
+        }
+
+        panic!(
+            "We are in downtime! {} days, {} hours, {} minutes, {} seconds remaining to the end of the downtime",
+            days, hours, mins, secs,
+        );
     }
 
     // Storage shared by multiple components.
@@ -148,9 +201,9 @@ async fn launch(
         initial_rolls_path: SETTINGS.selector.initial_rolls_path.clone(),
     };
 
-    // Remove current disk ledger if there is one
+    // Remove current disk ledger if there is one and we don't want to restart from snapshot
     // NOTE: this is temporary, since we cannot currently handle bootstrap from remaining ledger
-    if args.keep_ledger {
+    if args.keep_ledger || args.restart_from_snapshot_at_period.is_some() {
         info!("Loading old ledger for next episode");
     } else if SETTINGS.ledger.disk_ledger_path.exists() {
         std::fs::remove_dir_all(SETTINGS.ledger.disk_ledger_path.clone())
@@ -158,7 +211,10 @@ async fn launch(
     }
 
     // Create final ledger
-    let ledger = FinalLedger::new(ledger_config.clone());
+    let ledger = FinalLedger::new(
+        ledger_config.clone(),
+        args.restart_from_snapshot_at_period.is_some() || cfg!(feature = "create_snapshot"),
+    );
 
     // launch selector worker
     let (selector_manager, selector_controller) = start_selector_worker(SelectorConfig {
@@ -171,14 +227,23 @@ async fn launch(
     })
     .expect("could not start selector worker");
 
-    // Create final state
+    // Create final state, either from a snapshot, or from scratch
     let final_state = Arc::new(parking_lot::RwLock::new(
-        FinalState::new(
-            final_state_config,
-            Box::new(ledger),
-            selector_controller.clone(),
-        )
-        .expect("could not init final state"),
+        match args.restart_from_snapshot_at_period {
+            Some(last_start_period) => FinalState::new_derived_from_snapshot(
+                final_state_config,
+                Box::new(ledger),
+                selector_controller.clone(),
+                last_start_period,
+            )
+            .expect("could not init final state"),
+            None => FinalState::new(
+                final_state_config,
+                Box::new(ledger),
+                selector_controller.clone(),
+            )
+            .expect("could not init final state"),
+        },
     ));
 
     // interrupt signal listener
@@ -251,6 +316,7 @@ async fn launch(
             *VERSION,
             *GENESIS_TIMESTAMP,
             *END_TIMESTAMP,
+            args.restart_from_snapshot_at_period
         ) => match res {
             Ok(vals) => vals,
             Err(err) => panic!("critical error detected in the bootstrap process: {}", err)
@@ -298,6 +364,7 @@ async fn launch(
         event_channel_size: NETWORK_EVENT_CHANNEL_SIZE,
         node_command_channel_size: NETWORK_NODE_COMMAND_CHANNEL_SIZE,
         node_event_channel_size: NETWORK_NODE_EVENT_CHANNEL_SIZE,
+        last_start_period: final_state.read().last_start_period,
     };
 
     // launch network controller
@@ -311,11 +378,13 @@ async fn launch(
         .await
         .expect("could not start network controller");
 
-    // give the controller to final state in order for it to feed the cycles
-    final_state
-        .write()
-        .compute_initial_draws()
-        .expect("could not compute initial draws"); // TODO: this might just mean a bad bootstrap, no need to panic, just reboot
+    if args.restart_from_snapshot_at_period.is_none() {
+        // give the controller to final state in order for it to feed the cycles
+        final_state
+            .write()
+            .compute_initial_draws()
+            .expect("could not compute initial draws"); // TODO: this might just mean a bad bootstrap, no need to panic, just reboot
+    }
 
     // Storage costs constants
     let storage_costs_constants = StorageCostsConstants {
@@ -355,7 +424,6 @@ async fn launch(
         max_datastore_key_length: MAX_DATASTORE_KEY_LENGTH,
         max_bytecode_size: MAX_BYTECODE_LENGTH,
         max_datastore_value_size: MAX_DATASTORE_VALUE_LENGTH,
-        max_module_cache_size: SETTINGS.execution.max_module_cache_size,
         storage_costs_constants,
         max_read_only_gas: SETTINGS.execution.max_read_only_gas,
         initial_vesting_path: SETTINGS.execution.initial_vesting_path.clone(),
@@ -364,6 +432,11 @@ async fn launch(
             SETTINGS.execution.wasm_gas_costs_file.clone(),
         )
         .expect("Failed to load gas costs"),
+        last_start_period: final_state.read().last_start_period,
+        hd_cache_path: SETTINGS.execution.hd_cache_path.clone(),
+        lru_cache_size: SETTINGS.execution.lru_cache_size,
+        hd_cache_size: SETTINGS.execution.hd_cache_size,
+        snip_amount: SETTINGS.execution.snip_amount,
     };
     let (execution_manager, execution_controller) = start_execution_worker(
         execution_config,
@@ -384,7 +457,7 @@ async fn launch(
         max_operation_pool_size_per_thread: SETTINGS.pool.max_pool_size_per_thread,
         max_endorsements_pool_size_per_thread: SETTINGS.pool.max_pool_size_per_thread,
         channels_size: POOL_CONTROLLER_CHANNEL_SIZE,
-        broadcast_enabled: SETTINGS.api.enable_ws,
+        broadcast_enabled: SETTINGS.api.enable_broadcast,
         broadcast_operations_capacity: SETTINGS.pool.broadcast_operations_capacity,
         genesis_timestamp: *GENESIS_TIMESTAMP,
         t0: T0,
@@ -431,10 +504,11 @@ async fn launch(
         max_gas_per_block: MAX_GAS_PER_BLOCK,
         channel_size: CHANNEL_SIZE,
         bootstrap_part_size: CONSENSUS_BOOTSTRAP_PART_SIZE,
-        broadcast_enabled: SETTINGS.api.enable_ws,
+        broadcast_enabled: SETTINGS.api.enable_broadcast,
         broadcast_blocks_headers_capacity: SETTINGS.consensus.broadcast_blocks_headers_capacity,
         broadcast_blocks_capacity: SETTINGS.consensus.broadcast_blocks_capacity,
         broadcast_filled_blocks_capacity: SETTINGS.consensus.broadcast_filled_blocks_capacity,
+        last_start_period: final_state.read().last_start_period,
     };
 
     let (consensus_event_sender, consensus_event_receiver) =
@@ -493,6 +567,7 @@ async fn launch(
         t0: T0,
         max_operations_propagation_time: SETTINGS.protocol.max_operations_propagation_time,
         max_endorsements_propagation_time: SETTINGS.protocol.max_endorsements_propagation_time,
+        last_start_period: final_state.read().last_start_period,
     };
 
     let protocol_senders = ProtocolSenders {
@@ -524,6 +599,7 @@ async fn launch(
         max_block_size: MAX_BLOCK_SIZE as u64,
         max_block_gas: MAX_GAS_PER_BLOCK,
         max_operations_per_block: MAX_OPERATIONS_PER_BLOCK,
+        last_start_period: final_state.read().last_start_period,
         periods_per_cycle: PERIODS_PER_CYCLE,
         denunciation_expire_periods: DENUNCIATION_EXPIRE_PERIODS,
         denunciation_items_max_cycle_delta: DENUNCIATION_ITEMS_MAX_CYCLE_DELTA,
@@ -593,9 +669,9 @@ async fn launch(
     // spawn Massa API
     let api = API::<ApiV2>::new(
         consensus_controller.clone(),
-        consensus_channels,
+        consensus_channels.clone(),
         execution_controller.clone(),
-        pool_channels,
+        pool_channels.clone(),
         api_config.clone(),
         *VERSION,
     );
@@ -604,9 +680,95 @@ async fn launch(
         .await
         .expect("failed to start MASSA API");
 
+    info!(
+        "API | EXPERIMENTAL JsonRPC | listening on: {}",
+        &SETTINGS.api.bind_api
+    );
+
     // Disable WebSockets for Private and Public API's
     let mut api_config = api_config.clone();
     api_config.enable_ws = false;
+
+    // Whether to spawn gRPC API
+    let grpc_handle = if SETTINGS.grpc.enabled {
+        let grpc_config = GrpcConfig {
+            enabled: SETTINGS.grpc.enabled,
+            accept_http1: SETTINGS.grpc.accept_http1,
+            enable_reflection: SETTINGS.grpc.enable_reflection,
+            bind: SETTINGS.grpc.bind,
+            accept_compressed: SETTINGS.grpc.accept_compressed.clone(),
+            send_compressed: SETTINGS.grpc.send_compressed.clone(),
+            max_decoding_message_size: SETTINGS.grpc.max_decoding_message_size,
+            max_encoding_message_size: SETTINGS.grpc.max_encoding_message_size,
+            concurrency_limit_per_connection: SETTINGS.grpc.concurrency_limit_per_connection,
+            timeout: SETTINGS.grpc.timeout.to_duration(),
+            initial_stream_window_size: SETTINGS.grpc.initial_stream_window_size,
+            initial_connection_window_size: SETTINGS.grpc.initial_connection_window_size,
+            max_concurrent_streams: SETTINGS.grpc.max_concurrent_streams,
+            tcp_keepalive: SETTINGS.grpc.tcp_keepalive.map(|t| t.to_duration()),
+            tcp_nodelay: SETTINGS.grpc.tcp_nodelay,
+            http2_keepalive_interval: SETTINGS
+                .grpc
+                .http2_keepalive_interval
+                .map(|t| t.to_duration()),
+            http2_keepalive_timeout: SETTINGS
+                .grpc
+                .http2_keepalive_timeout
+                .map(|t| t.to_duration()),
+            http2_adaptive_window: SETTINGS.grpc.http2_adaptive_window,
+            max_frame_size: SETTINGS.grpc.max_frame_size,
+            thread_count: THREAD_COUNT,
+            max_operations_per_block: MAX_OPERATIONS_PER_BLOCK,
+            endorsement_count: ENDORSEMENT_COUNT,
+            max_endorsements_per_message: MAX_ENDORSEMENTS_PER_MESSAGE,
+            max_datastore_value_length: MAX_DATASTORE_VALUE_LENGTH,
+            max_op_datastore_entry_count: MAX_OPERATION_DATASTORE_ENTRY_COUNT,
+            max_op_datastore_key_length: MAX_OPERATION_DATASTORE_KEY_LENGTH,
+            max_op_datastore_value_length: MAX_OPERATION_DATASTORE_VALUE_LENGTH,
+            max_function_name_length: MAX_FUNCTION_NAME_LENGTH,
+            max_parameter_size: MAX_PARAMETERS_SIZE,
+            max_operations_per_message: MAX_OPERATIONS_PER_MESSAGE,
+            genesis_timestamp: *GENESIS_TIMESTAMP,
+            t0: T0,
+            max_channel_size: SETTINGS.grpc.max_channel_size,
+            draw_lookahead_period_count: SETTINGS.grpc.draw_lookahead_period_count,
+            last_start_period: final_state.read().last_start_period,
+        };
+
+        let grpc_api = MassaGrpc {
+            consensus_controller: consensus_controller.clone(),
+            consensus_channels: consensus_channels.clone(),
+            execution_controller: execution_controller.clone(),
+            pool_channels,
+            pool_command_sender: pool_controller.clone(),
+            protocol_command_sender: ProtocolCommandSender(protocol_command_sender.clone()),
+            selector_controller: selector_controller.clone(),
+            storage: shared_storage.clone(),
+            grpc_config: grpc_config.clone(),
+            version: *VERSION,
+        };
+
+        // HACK maybe should remove timeout later
+        if let Ok(result) =
+            tokio::time::timeout(Duration::from_secs(3), grpc_api.serve(&grpc_config)).await
+        {
+            match result {
+                Ok(stop) => {
+                    info!("API | gRPC | listening on: {}", grpc_config.bind);
+                    Some(stop)
+                }
+                Err(e) => {
+                    error!("{}", e);
+                    None
+                }
+            }
+        } else {
+            error!("Timeout on start grpc API");
+            None
+        }
+    } else {
+        None
+    };
 
     // spawn private API
     let (api_private, api_private_stop_rx) = API::<Private>::new(
@@ -619,6 +781,10 @@ async fn launch(
         .serve(&SETTINGS.api.bind_private, &api_config)
         .await
         .expect("failed to start PRIVATE API");
+    info!(
+        "API | PRIVATE JsonRPC | listening on: {}",
+        api_config.bind_private
+    );
 
     // spawn public API
     let api_public = API::<Public>::new(
@@ -638,6 +804,10 @@ async fn launch(
         .serve(&SETTINGS.api.bind_public, &api_config)
         .await
         .expect("failed to start PUBLIC API");
+    info!(
+        "API | PUBLIC JsonRPC | listening on: {}",
+        api_config.bind_public
+    );
 
     #[cfg(feature = "deadlock_detection")]
     {
@@ -682,6 +852,7 @@ async fn launch(
         api_private_handle,
         api_public_handle,
         api_handle,
+        grpc_handle,
     )
 }
 
@@ -711,6 +882,7 @@ async fn stop(
     api_private_handle: StopHandle,
     api_public_handle: StopHandle,
     api_handle: StopHandle,
+    grpc_handle: Option<massa_grpc::server::StopHandle>,
 ) {
     // stop bootstrap
     if let Some(bootstrap_manager) = bootstrap_manager {
@@ -727,6 +899,11 @@ async fn stop(
 
     // stop Massa API
     api_handle.stop();
+
+    // stop Massa gRPC API
+    if let Some(handle) = grpc_handle {
+        handle.stop();
+    }
 
     // stop factory
     factory_manager.stop();
@@ -769,6 +946,10 @@ struct Args {
     /// Wallet password
     #[structopt(short = "p", long = "pwd")]
     password: Option<String>,
+
+    /// restart_from_snapshot_at_period
+    #[structopt(long = "restart-from-snapshot-at-period")]
+    restart_from_snapshot_at_period: Option<u64>,
 
     #[cfg(feature = "deadlock_detection")]
     /// Deadlocks detector
@@ -822,6 +1003,7 @@ fn main(args: Args) -> anyhow::Result<()> {
 }
 
 async fn run(args: Args) -> anyhow::Result<()> {
+    let mut cur_args = args;
     use tracing_subscriber::prelude::*;
     // spawn the console server in the background, returning a `Layer`:
     let tracing_layer = tracing_subscriber::fmt::layer()
@@ -852,7 +1034,10 @@ async fn run(args: Args) -> anyhow::Result<()> {
     }));
 
     // load or create wallet, asking for password if necessary
-    let node_wallet = load_wallet(args.password.clone(), &SETTINGS.factory.staking_wallet_path)?;
+    let node_wallet = load_wallet(
+        cur_args.password.clone(),
+        &SETTINGS.factory.staking_wallet_path,
+    )?;
 
     loop {
         let (
@@ -869,7 +1054,8 @@ async fn run(args: Args) -> anyhow::Result<()> {
             api_private_handle,
             api_public_handle,
             api_handle,
-        ) = launch(&args, node_wallet.clone()).await;
+            grpc_handle,
+        ) = launch(&cur_args, node_wallet.clone()).await;
 
         // interrupt signal listener
         let (tx, rx) = crossbeam_channel::bounded(1);
@@ -937,12 +1123,15 @@ async fn run(args: Args) -> anyhow::Result<()> {
             api_private_handle,
             api_public_handle,
             api_handle,
+            grpc_handle,
         )
         .await;
 
         if !restart {
             break;
         }
+        // If we restart because of a desync, then we do not want to restart from a snapshot
+        cur_args.restart_from_snapshot_at_period = None;
         interrupt_signal_listener.abort();
     }
     Ok(())

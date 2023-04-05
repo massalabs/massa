@@ -1,5 +1,3 @@
-
-
 [logging]
     # Logging level. High log levels might impact performance. 0: ERROR, 1: WARN, 2: INFO, 3: DEBUG, 4: TRACE
     level = 2
@@ -7,11 +5,11 @@
 [api]
     # max number of future periods considered during requests
     draw_lookahead_period_count = 10
-    # port on which the node API listens for admin and node management requests. Dangerous if publicly exposed. Bind to "[::1]:port" if you want to access the node from IPv6.
+    # port on which the node API listens for admin and node management requests. Dangerous if publicly exposed. Bind to "[::1]:port" for IPv6
     bind_private = "127.0.0.1:33034"
-    # port on which the node API listens for public requests. Can be exposed to the Internet. Bind to "[::]:port" if you want to access the node from IPv6.
+    # port on which the node API listens for public requests. Can be exposed to the Internet. Bind to "[::]:port" for IPv6
     bind_public = "0.0.0.0:33035"
-    # port on which the node API(V2) listens for HTTP requests and WebSockets subscriptions. Can be exposed to the Internet. Bind to "[::]:port" if you want to access the node from IPv6.
+    # port on which the node API(V2) listens for HTTP requests and WebSockets subscriptions. Can be exposed to the Internet. Bind to "[::]:port" for IPv6
     bind_api = "0.0.0.0:33036"
     # max number of arguments per RPC call
     max_arguments = 128
@@ -37,7 +35,40 @@
     enable_http = true
     # whether to enable WS.
     enable_ws = false
+    # whether to broadcast for blocks, endorsement and operations
+    enable_broadcast = false
 
+[grpc]
+    # whether to enable gRPC
+    enabled = false
+    # whether to add HTTP 1 layer
+    accept_http1 = false
+    # whether to enable gRPC reflection(introspection)
+    enable_reflection = true
+    # bind for the Massa gRPC API
+    bind = "0.0.0.0:33037"
+    # which compression encodings does the server accept for requests
+    accept_compressed = "Gzip"
+    # which compression encodings might the server use for responses
+    send_compressed = "Gzip"
+    # limits the maximum size of a decoded message. Defaults to 50MB
+    max_decoding_message_size = 52428800
+    # limits the maximum size of an encoded message. Defaults to 50MB
+    max_encoding_message_size = 52428800
+    # limits the maximum size of streaming channel
+    max_channel_size = 128
+    # set a timeout on for all request handlers in seconds. Defaults to 60s
+    timeout = 60
+    # sets the maximum frame size to use for HTTP2(must be within 16,384 and 16,777,215). Defaults to 16MB
+    max_frame_size = 16777215
+    # set the concurrency limit applied to on requests inbound per connection. Defaults to 32
+    concurrency_limit_per_connection = 32
+    # sets the SETTINGS_MAX_CONCURRENT_STREAMS spec option for HTTP2 connections
+    max_concurrent_streams = 1024
+    # set the value of `TCP_NODELAY` option for accepted connections. Enabled by default
+    tcp_nodelay = true
+    # max number of future periods considered during requests
+    draw_lookahead_period_count = 10
 [execution]
     # max number of generated events kept in RAM
     max_final_events = 10000
@@ -54,10 +85,18 @@
     abi_gas_costs_file = "base_config/gas_costs/abi_gas_costs.json"
     # gas cost for wasm operator
     wasm_gas_costs_file = "base_config/gas_costs/wasm_gas_costs.json"
-    # max number of compiled modules in the cache
-    max_module_cache_size = 1000
     # path to the initial vesting file
     initial_vesting_path = "base_config/initial_vesting.json"
+    # path to the hard drive cache storage
+    hd_cache_path = "storage/cache/rocks_db"
+    # maximum number of entries we want to keep in the LRU cache
+    # in the worst case scenario this is equivalent to 2Gb
+    lru_cache_size = 200
+    # maximum number of entries we want to keep in the HD cache
+    # in the worst case scenario this is equivalent to 20Gb
+    hd_cache_size = 2000
+    # amount of entries removed when `hd_cache_size` is reached
+    snip_amount = 10
 
 [ledger]
     # path to the initial ledger
@@ -268,7 +307,7 @@
     initial_rolls_path = "base_config/initial_rolls.json"
 
 [factory]
-    # initial delay in milliseconds to wait before starting productin to avoid double staking on node restart
+    # initial delay in milliseconds to wait before starting production to avoid double staking on node restart
     initial_delay = 100
     # path to your staking wallet
     staking_wallet_path = "config/staking_wallet.dat"

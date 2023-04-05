@@ -10,7 +10,7 @@ use massa_models::{
     bytecode::BytecodeSerializer,
     error::ModelsError,
     serialization::{VecU8Deserializer, VecU8Serializer},
-    slot::{Slot, SlotSerializer},
+    slot::{Slot, SlotDeserializer, SlotSerializer},
     streaming_step::StreamingStep,
 };
 use massa_serialization::{DeserializeError, Deserializer, Serializer, U64VarIntSerializer};
@@ -28,12 +28,14 @@ use std::{
     collections::{BTreeSet, HashMap},
     convert::TryInto,
 };
+use tracing::{debug, info};
 
 #[cfg(feature = "testing")]
 use massa_models::amount::{Amount, AmountDeserializer};
 
 const LEDGER_CF: &str = "ledger";
 const METADATA_CF: &str = "metadata";
+const FINAL_STATE_CF: &str = "final_state";
 const OPEN_ERROR: &str = "critical: rocksdb open operation failed";
 const CRUD_ERROR: &str = "critical: rocksdb crud operation failed";
 const CF_ERROR: &str = "critical: rocksdb column family operation failed";
@@ -43,6 +45,8 @@ const KEY_SER_ERROR: &str = "critical: key serialization failed";
 const KEY_LEN_SER_ERROR: &str = "critical: key length serialization failed";
 const SLOT_KEY: &[u8; 1] = b"s";
 const LEDGER_HASH_KEY: &[u8; 1] = b"h";
+const LEDGER_FINAL_STATE_KEY: &[u8; 2] = b"fs";
+const LEDGER_FINAL_STATE_HASH_KEY: &[u8; 3] = b"fsh";
 const LEDGER_HASH_INITIAL_BYTES: &[u8; 32] = &[0; HASH_SIZE_BYTES];
 
 /// Ledger sub entry enum
@@ -78,6 +82,7 @@ pub(crate) struct LedgerDB {
     amount_serializer: AmountSerializer,
     bytecode_serializer: BytecodeSerializer,
     slot_serializer: SlotSerializer,
+    slot_deserializer: SlotDeserializer,
     len_serializer: U64VarIntSerializer,
     ledger_part_size_message_bytes: u64,
     #[cfg(feature = "testing")]
@@ -120,20 +125,37 @@ impl LedgerDB {
         thread_count: u8,
         max_datastore_key_length: u8,
         ledger_part_size_message_bytes: u64,
+        with_final_state: bool,
     ) -> Self {
         let mut db_opts = Options::default();
         db_opts.create_if_missing(true);
         db_opts.create_missing_column_families(true);
 
-        let db = DB::open_cf_descriptors(
-            &db_opts,
-            path,
-            vec![
-                ColumnFamilyDescriptor::new(LEDGER_CF, Options::default()),
-                ColumnFamilyDescriptor::new(METADATA_CF, Options::default()),
-            ],
-        )
-        .expect(OPEN_ERROR);
+        info!("Init LedgerDB, with_final_state = {}", with_final_state);
+        debug!("Init LedgerDB, with_final_state = {}", with_final_state);
+
+        let db = if with_final_state {
+            DB::open_cf_descriptors(
+                &db_opts,
+                path,
+                vec![
+                    ColumnFamilyDescriptor::new(LEDGER_CF, Options::default()),
+                    ColumnFamilyDescriptor::new(METADATA_CF, Options::default()),
+                    ColumnFamilyDescriptor::new(FINAL_STATE_CF, Options::default()),
+                ],
+            )
+            .expect(OPEN_ERROR)
+        } else {
+            DB::open_cf_descriptors(
+                &db_opts,
+                path,
+                vec![
+                    ColumnFamilyDescriptor::new(LEDGER_CF, Options::default()),
+                    ColumnFamilyDescriptor::new(METADATA_CF, Options::default()),
+                ],
+            )
+            .expect(OPEN_ERROR)
+        };
 
         LedgerDB {
             db,
@@ -145,6 +167,10 @@ impl LedgerDB {
             amount_serializer: AmountSerializer::new(),
             bytecode_serializer: BytecodeSerializer::new(),
             slot_serializer: SlotSerializer::new(),
+            slot_deserializer: SlotDeserializer::new(
+                (Bound::Included(u64::MIN), Bound::Included(u64::MAX)),
+                (Bound::Included(0_u8), Bound::Excluded(thread_count)),
+            ),
             len_serializer: U64VarIntSerializer::new(),
             ledger_part_size_message_bytes,
             #[cfg(feature = "testing")]
@@ -178,7 +204,13 @@ impl LedgerDB {
     /// # Arguments
     /// * changes: ledger changes to be applied
     /// * slot: new slot associated to the final ledger
-    pub fn apply_changes(&mut self, changes: LedgerChanges, slot: Slot) {
+    /// * final_state_data: the serialized final state data to include, in case we use the feature `create_snapshot`
+    pub fn apply_changes(
+        &mut self,
+        changes: LedgerChanges,
+        slot: Slot,
+        final_state_data: Option<Vec<u8>>,
+    ) {
         // create the batch
         let mut batch = LedgerBatch::new(self.get_ledger_hash());
         // for all incoming changes
@@ -204,6 +236,14 @@ impl LedgerDB {
         }
         // set the associated slot in metadata
         self.set_slot(slot, &mut batch);
+
+        if let Some(final_state) = final_state_data {
+            let fs_handle = self.db.cf_handle(FINAL_STATE_CF).expect(CF_ERROR);
+            batch
+                .write_batch
+                .put_cf(fs_handle, LEDGER_FINAL_STATE_KEY, final_state);
+        }
+
         // write the batch
         self.write_batch(batch);
     }
@@ -398,6 +438,31 @@ impl LedgerDB {
             .create_cf(METADATA_CF, &db_opts)
             .expect("Error creating metadata cf");
     }
+
+    pub fn set_final_state_hash(&mut self, data: &[u8]) {
+        let handle = self.db.cf_handle(FINAL_STATE_CF).expect(CF_ERROR);
+        let mut batch = WriteBatch::default();
+
+        batch.put_cf(handle, LEDGER_FINAL_STATE_HASH_KEY, data);
+        self.db.write(batch).expect(CRUD_ERROR);
+    }
+
+    pub fn get_final_state(&self) -> Result<Vec<u8>, ModelsError> {
+        let handle = self.db.cf_handle(FINAL_STATE_CF).expect(CF_ERROR);
+        let opt = ReadOptions::default();
+
+        let Ok(Some(final_state_data)) = self.db.get_cf_opt(handle, LEDGER_FINAL_STATE_KEY, &opt) else {
+            return Err(ModelsError::BufferError(String::from("Could not recover final_state_data")));
+        };
+        let Ok(Some(final_state_hash)) = self.db.get_pinned_cf_opt(handle, LEDGER_FINAL_STATE_HASH_KEY, &opt) else {
+            return Err(ModelsError::BufferError(String::from("Could not recover final_state_hash")));
+        };
+
+        let mut final_state = final_state_data;
+        final_state.extend_from_slice(&final_state_hash);
+
+        Ok(final_state)
+    }
 }
 
 // Private helpers
@@ -431,6 +496,18 @@ impl LedgerDB {
             batch.ledger_hash ^= Hash::compute_from(&prev_bytes);
         }
         batch.ledger_hash ^= Hash::compute_from(&slot_bytes);
+    }
+
+    pub fn get_slot(&self) -> Result<Slot, ModelsError> {
+        let handle = self.db.cf_handle(METADATA_CF).expect(CF_ERROR);
+
+        let Ok(Some(slot_bytes)) = self.db.get_pinned_cf(handle, SLOT_KEY) else {
+            return Err(ModelsError::BufferError(String::from("Could not recover final_state_hash")));
+        };
+
+        let (_rest, slot) = self.slot_deserializer.deserialize(&slot_bytes)?;
+
+        Ok(slot)
     }
 
     /// Internal function to put a key & value and perform the ledger hash XORs
@@ -770,7 +847,7 @@ mod tests {
 
         // write data
         let temp_dir = TempDir::new().unwrap();
-        let mut db = LedgerDB::new(temp_dir.path().to_path_buf(), 32, 255, 1_000_000);
+        let mut db = LedgerDB::new(temp_dir.path().to_path_buf(), 32, 255, 1_000_000, false);
         let mut batch = LedgerBatch::new(Hash::from_bytes(LEDGER_HASH_INITIAL_BYTES));
         db.put_entry(&addr, entry, &mut batch);
         db.update_entry(&addr, entry_update, &mut batch);

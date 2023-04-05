@@ -54,4 +54,6 @@ pub struct ConsensusConfig {
     pub broadcast_blocks_capacity: usize,
     /// filled blocks sender(channel) capacity
     pub broadcast_filled_blocks_capacity: usize,
+    /// last start period
+    pub last_start_period: u64,
 }

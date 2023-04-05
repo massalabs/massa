@@ -20,6 +20,11 @@ use massa_signature::KeyPair;
 use massa_time::MassaTime;
 use num::rational::Ratio;
 
+/// Start of the downtime simulation
+pub const DOWNTIME_START_TIMESTAMP: MassaTime = MassaTime::from_millis(1680699600000); // 05/04/2023 3PM CET
+/// End of the downtime simulation
+pub const DOWNTIME_END_TIMESTAMP: MassaTime = MassaTime::from_millis(1680703200000); // 05/04/2023 4PM CET
+
 /// Limit on the number of peers we advertise to others.
 pub const MAX_ADVERTISE_LENGTH: u32 = 10000;
 /// Maximum message length in bytes
@@ -38,11 +43,17 @@ pub const CHANNEL_SIZE: usize = 1024;
 
 lazy_static::lazy_static! {
     /// Time in milliseconds when the blockclique started.
+    /// In sandbox mode, the value depends on starting time and on the --restart-from-snapshot-at-period argument in CLI,
+    /// so that the network starts or restarts 10 seconds after launch
     pub static ref GENESIS_TIMESTAMP: MassaTime = if cfg!(feature = "sandbox") {
         std::env::var("GENESIS_TIMESTAMP").map(|timestamp| timestamp.parse::<u64>().unwrap().into()).unwrap_or_else(|_|
             MassaTime::now()
                 .unwrap()
-                .saturating_add(MassaTime::from_millis(1000 * 10))
+                .saturating_sub(
+                    T0.checked_mul(get_period_from_args()).unwrap()
+                )
+                .saturating_add(MassaTime::from_millis(1000 * 10)
+            )
         )
     } else {
         1679481900000.into()  // Wednesday, March 22, 2023 10:45:00 AM UTC
@@ -69,6 +80,21 @@ lazy_static::lazy_static! {
         .parse()
         .unwrap()
     };
+
+}
+
+/// Helper function to parse args for lazy_static evaluations
+pub fn get_period_from_args() -> u64 {
+    let mut last_start_period = 0;
+    let mut parse_next = false;
+    for args in std::env::args() {
+        if parse_next {
+            last_start_period = u64::from_str(&args).unwrap_or_default();
+            break;
+        }
+        parse_next = args == *"--restart-from-snapshot-at-period";
+    }
+    last_start_period
 }
 
 /// Price of a roll in the network
@@ -102,6 +128,7 @@ pub const MAX_ASYNC_MESSAGE_DATA: u64 = 1_000_000;
 /// Maximum operation validity period count
 pub const OPERATION_VALIDITY_PERIODS: u64 = 10;
 /// cycle duration in periods
+/// TODO: Reset to 128 after testing
 pub const PERIODS_PER_CYCLE: u64 = 128;
 /// PoS saved cycles: number of cycles saved in `PoSFinalState`
 ///

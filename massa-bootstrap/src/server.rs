@@ -10,7 +10,7 @@
 //! # Updater
 //!
 //! Runs on a dedicated thread. Signal sent my manager stop method terminates the thread.
-//! Shares an Arc<RwLock>> guarded list of white and blacklists with the main worker.
+//! Shares an `Arc<RwLock>>` guarded list of white and blacklists with the main worker.
 //! Periodically does a read-only check to see if list needs updating.
 //! Creates an updated list then swaps it out with write-locked list
 //! Assuming no errors in code, this is the only write occurance, and is only a pointer-swap
@@ -25,8 +25,6 @@
 //! 5. All checks have passed: spawn a thread on which to run the bootstrap session
 //!    This thread creates a new tokio runtime, and runs it with `block_on`
 mod white_black_list;
-
-use white_black_list::*;
 
 use crossbeam::channel::{tick, Select, SendError};
 use humantime::format_duration;
@@ -52,6 +50,7 @@ use std::{
 };
 use tokio::runtime::{self, Handle};
 use tracing::{debug, error, info, warn};
+use white_black_list::*;
 
 use crate::{
     error::BootstrapError,
@@ -522,6 +521,7 @@ pub async fn stream_bootstrap_information(
     mut last_credits_step: StreamingStep<Slot>,
     mut last_ops_step: StreamingStep<Slot>,
     mut last_consensus_step: StreamingStep<PreHashSet<BlockId>>,
+    mut send_last_start_period: bool,
     write_timeout: Duration,
 ) -> Result<(), BootstrapError> {
     loop {
@@ -538,12 +538,20 @@ pub async fn stream_bootstrap_information(
         let pos_credits_part;
         let exec_ops_part;
         let final_state_changes;
+        let last_start_period;
 
         let mut slot_too_old = false;
 
         // Scope of the final state read
         {
             let final_state_read = final_state.read();
+
+            last_start_period = if send_last_start_period {
+                Some(final_state_read.last_start_period)
+            } else {
+                None
+            };
+
             let (data, new_ledger_step) = final_state_read
                 .ledger
                 .get_ledger_part(last_ledger_step.clone())?;
@@ -601,6 +609,7 @@ pub async fn stream_bootstrap_information(
             last_ops_step = new_ops_step;
             last_slot = Some(final_state_read.slot);
             current_slot = final_state_read.slot;
+            send_last_start_period = false;
         }
 
         if slot_too_old {
@@ -674,6 +683,7 @@ pub async fn stream_bootstrap_information(
                 final_state_changes,
                 consensus_part,
                 consensus_outdated_ids,
+                last_start_period,
             },
         )?;
     }
@@ -737,6 +747,7 @@ async fn manage_bootstrap<C: NetworkCommandSenderTrait>(
                     last_credits_step,
                     last_ops_step,
                     last_consensus_step,
+                    send_last_start_period,
                 } => {
                     stream_bootstrap_information(
                         server,
@@ -749,6 +760,7 @@ async fn manage_bootstrap<C: NetworkCommandSenderTrait>(
                         last_credits_step,
                         last_ops_step,
                         last_consensus_step,
+                        send_last_start_period,
                         write_timeout,
                     )
                     .await?;
