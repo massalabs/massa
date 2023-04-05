@@ -21,6 +21,7 @@
 <a href="#21" id="21">21</a>
 <a href="#22" id="22">22</a>
 <a href="#23" id="23">23</a>
+<a href="#24" id="24">24</a>
 </pre><pre class="rust"><code><span class="kw">use </span>massa_consensus_exports::ConsensusManager;
 <span class="kw">use </span>std::{sync::mpsc::SyncSender, thread::JoinHandle};
 <span class="kw">use </span>tracing::log::info;
@@ -36,6 +37,7 @@
         <span class="macro">info!</span>(<span class="string">&quot;stopping consensus worker...&quot;</span>);
         <span class="comment">// join the consensus thread
         </span><span class="kw">if let </span><span class="prelude-val">Some</span>((tx, join_handle)) = <span class="self">self</span>.consensus_thread.take() {
+            tx.send(ConsensusCommand::Stop).unwrap();
             drop(tx);
             join_handle
                 .join()
