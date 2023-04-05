@@ -379,13 +379,11 @@ async fn launch(
         .await
         .expect("could not start network controller");
 
-    if args.restart_from_snapshot_at_period.is_none() {
-        // give the controller to final state in order for it to feed the cycles
-        final_state
-            .write()
-            .compute_initial_draws()
-            .expect("could not compute initial draws"); // TODO: this might just mean a bad bootstrap, no need to panic, just reboot
-    }
+    // give the controller to final state in order for it to feed the cycles
+    final_state
+        .write()
+        .compute_initial_draws()
+        .expect("could not compute initial draws"); // TODO: this might just mean a bad bootstrap, no need to panic, just reboot
 
     // Storage costs constants
     let storage_costs_constants = StorageCostsConstants {

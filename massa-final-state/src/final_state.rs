@@ -154,9 +154,6 @@ impl FinalState {
         // Then, interpolate the downtime, to attach at end_slot;
         final_state.last_start_period = last_start_period;
 
-        // We compute the draws here because we need to feed_cycles when interpolating
-        final_state.compute_initial_draws()?;
-
         final_state.interpolate_downtime()?;
 
         Ok(final_state)
@@ -266,7 +263,8 @@ impl FinalState {
         latest_cycle_info.complete = true;
 
         // Feed final_state_hash to the completed cycle
-        self.feed_cycle_hash_and_selector_for_interpolation(current_slot_cycle)?;
+        self.pos_state
+            .feed_cycle_state_hash(current_slot_cycle, self.final_state_hash);
 
         // Then, build all the already completed cycles
         for cycle in (current_slot_cycle + 1)..end_slot_cycle {
@@ -287,7 +285,8 @@ impl FinalState {
                 .map_err(|err| FinalStateError::PosError(format!("{}", err)))?;
 
             // Feed final_state_hash to the completed cycle
-            self.feed_cycle_hash_and_selector_for_interpolation(cycle)?;
+            self.pos_state
+                .feed_cycle_state_hash(cycle, self.final_state_hash);
         }
 
         // Then, build the last cycle
@@ -298,7 +297,8 @@ impl FinalState {
         // If the end_slot_cycle is completed
         if end_slot.is_last_of_cycle(self.config.periods_per_cycle, self.config.thread_count) {
             // Feed final_state_hash to the completed cycle
-            self.feed_cycle_hash_and_selector_for_interpolation(end_slot_cycle)?;
+            self.pos_state
+                .feed_cycle_state_hash(end_slot_cycle, self.final_state_hash);
         }
 
         // We reduce the cycle_history len as needed
@@ -306,24 +306,6 @@ impl FinalState {
             self.pos_state.cycle_history.pop_front();
         }
 
-        Ok(())
-    }
-
-    /// Used during interpolation, when a new cycle is set as completed
-    fn feed_cycle_hash_and_selector_for_interpolation(
-        &mut self,
-        cycle: u64,
-    ) -> Result<(), FinalStateError> {
-        self.pos_state
-            .feed_cycle_state_hash(cycle, self.final_state_hash);
-
-        self.pos_state
-            .feed_selector(cycle.checked_add(2).ok_or_else(|| {
-                FinalStateError::PosError("cycle overflow when feeding selector".into())
-            })?)
-            .map_err(|_| {
-                FinalStateError::PosError("cycle overflow when feeding selector".into())
-            })?;
         Ok(())
     }
 
