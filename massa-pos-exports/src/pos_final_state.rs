@@ -184,7 +184,7 @@ impl PoSFinalState {
         let mut max_cycle = None;
 
         info!("history starts late: {}", history_starts_late);
-        
+
         // feed cycles 0, 1 to selector if necessary
         if !history_starts_late {
             for draw_cycle in 0u64..=1 {
