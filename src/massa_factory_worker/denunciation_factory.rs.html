@@ -320,7 +320,7 @@
 <span class="kw">use </span>std::thread;
 
 <span class="kw">use </span>crossbeam_channel::{select, Receiver};
-<span class="kw">use </span>tracing::{debug, info, warn};
+<span class="kw">use </span>tracing::{debug, warn};
 
 <span class="kw">use </span>massa_factory_exports::{FactoryChannels, FactoryConfig};
 <span class="kw">use </span>massa_models::address::Address;
@@ -454,7 +454,7 @@
         };
 
         <span class="kw">if let </span><span class="prelude-val">Some</span>(denunciation) = denunciation_ {
-            <span class="macro">info!</span>(
+            <span class="macro">debug!</span>(
                 <span class="string">&quot;Created a new block header denunciation : {:?}&quot;</span>,
                 denunciation
             );
@@ -553,7 +553,7 @@
         };
 
         <span class="kw">if let </span><span class="prelude-val">Some</span>(denunciation) = denunciation_ {
-            <span class="macro">info!</span>(
+            <span class="macro">debug!</span>(
                 <span class="string">&quot;Created a new endorsement denunciation : {:?}&quot;</span>,
                 denunciation
             );

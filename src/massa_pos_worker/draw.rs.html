@@ -109,7 +109,7 @@
 <span class="kw">use </span>rand_distr::WeightedAliasIndex;
 <span class="kw">use </span>rand_xoshiro::Xoshiro256PlusPlus;
 <span class="kw">use </span>std::collections::{BTreeMap, HashMap};
-<span class="kw">use </span>tracing::debug;
+<span class="kw">use </span>tracing::info;
 
 <span class="doccomment">/// Draws block and creators for a given cycle.
 ///
@@ -195,7 +195,7 @@
         })<span class="question-mark">?</span>;
     }
 
-    <span class="macro">debug!</span>(
+    <span class="macro">info!</span>(
         <span class="string">&quot;Draws for cycle {} complete. Look_back seed was {:#?}. Five first selections is : {:#?}&quot;</span>,
         cycle,
         lookback_seed.to_bytes(),

@@ -1147,6 +1147,8 @@
 <a href="#1147" id="1147">1147</a>
 <a href="#1148" id="1148">1148</a>
 <a href="#1149" id="1149">1149</a>
+<a href="#1150" id="1150">1150</a>
+<a href="#1151" id="1151">1151</a>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="attr">#![doc = <span class="macro">include_str!</span>(<span class="string">&quot;../../README.md&quot;</span>)]
@@ -1530,7 +1532,9 @@
         .<span class="kw">await
         </span>.expect(<span class="string">&quot;could not start network controller&quot;</span>);
 
-    final_state.write().init_ledger_hash();
+    <span class="kw">let </span>last_start_period = final_state.read().last_start_period;
+
+    final_state.write().init_ledger_hash(last_start_period);
 
     <span class="comment">// give the controller to final state in order for it to feed the cycles
     </span>final_state
