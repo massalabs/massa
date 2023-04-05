@@ -155,7 +155,7 @@ impl FinalState {
         final_state.last_start_period = last_start_period;
 
         final_state.init_ledger_hash(last_start_period);
-        
+
         // We compute the draws here because we need to feed_cycles when interpolating
         final_state.compute_initial_draws()?;
 

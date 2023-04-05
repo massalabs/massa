@@ -77,7 +77,7 @@ pub trait LedgerController: Send + Sync + Debug {
     fn reset(&mut self);
 
     fn set_initial_slot(&mut self, slot: Slot);
-    
+
     fn get_slot(&self) -> Result<Slot, ModelsError>;
 
     fn set_final_state_hash(&mut self, data: Vec<u8>);

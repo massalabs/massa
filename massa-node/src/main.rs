@@ -382,7 +382,6 @@ async fn launch(
         .expect("could not start network controller");
 
     if args.restart_from_snapshot_at_period.is_none() {
-        
         let last_start_period = final_state.read().last_start_period;
         final_state.write().init_ledger_hash(last_start_period);
 

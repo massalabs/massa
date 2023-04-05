@@ -149,10 +149,10 @@ impl ConsensusWorker {
         }
 
         if config.last_start_period > 0
-        && config
-            .genesis_timestamp
-            .checked_add(config.t0.checked_mul(config.last_start_period)?)?
-            > now
+            && config
+                .genesis_timestamp
+                .checked_add(config.t0.checked_mul(config.last_start_period)?)?
+                > now
         {
             let (days, hours, mins, secs) = config
                 .genesis_timestamp

@@ -180,7 +180,7 @@ impl LedgerDB {
             ),
         }
     }
-    
+
     pub fn set_initial_slot(&mut self, slot: Slot) {
         let ledger_hash = self.get_ledger_hash();
         let mut batch = LedgerBatch::new(ledger_hash);
