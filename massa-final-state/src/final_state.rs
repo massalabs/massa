@@ -198,6 +198,8 @@ impl FinalState {
         self.pos_state
             .feed_cycle_state_hash(cycle, self.final_state_hash);
 
+        self.ledger.set_initial_slot(end_slot);
+
         Ok(())
     }
 
@@ -311,7 +313,9 @@ impl FinalState {
         Ok(())
     }
 
+    /// Used after bootstrap, to set the initial ledger hash (used in initial draws)
     pub fn init_ledger_hash(&mut self) {
+        self.ledger.set_initial_slot(self.slot);
         self.pos_state.initial_ledger_hash = self.ledger.get_ledger_hash();
     }
 

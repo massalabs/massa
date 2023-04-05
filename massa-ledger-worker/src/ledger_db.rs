@@ -199,6 +199,13 @@ impl LedgerDB {
         self.write_batch(batch);
     }
 
+    pub fn set_initial_slot(&mut self, slot: Slot) {
+        let ledger_hash = self.get_ledger_hash();
+        let mut batch = LedgerBatch::new(ledger_hash);
+        self.set_slot(slot, &mut batch);
+        self.write_batch(batch);
+    }
+
     /// Allows applying `LedgerChanges` to the disk ledger
     ///
     /// # Arguments
