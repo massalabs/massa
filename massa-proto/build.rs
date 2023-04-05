@@ -5,7 +5,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     tonic::build()?;
 
     #[cfg(not(feature = "build-tonic"))]
-    println!("cargo:warning=build-tonic feature is disabled, you can update the generated code from protobuf files by running: cargo check --features build-tonic");
+    println!("cargo:warning=build-tonic feature is disabled, you can update the generated code from protobuf files by running: cargo build --features massa_proto/build-tonic");
 
     Ok(())
 }

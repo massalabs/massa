@@ -194,13 +194,14 @@ pub struct StopHandle {
 
 impl StopHandle {
     /// stop the API gracefully
-    pub fn stop(self) {
+    pub async fn stop(self) {
         match self.server_handler.stop() {
             Ok(_) => {
-                info!("API finished cleanly");
+                info!("API stop signal sent successfully");
             }
             Err(err) => warn!("API thread panicked: {:?}", err),
         }
+        self.server_handler.stopped().await;
     }
 }
 
