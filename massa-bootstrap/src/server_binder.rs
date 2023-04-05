@@ -219,6 +219,24 @@ impl BootstrapServerBinder {
         duration: Option<Duration>,
     ) -> Result<BootstrapClientMessage, BootstrapError> {
         self.duplex.set_read_timeout(duration)?;
+
+        let peek_len = HASH_SIZE_BYTES + self.size_field_len;
+        let mut peek_buf = vec![0; peek_len];
+        while self.duplex.peek(&mut peek_buf)? < peek_len {
+            // TODO: backoff spin of some sort
+        }
+        // construct prev-hash from peek
+        let peeked_received_prev_hash = {
+            if self.prev_message.is_some() {
+                Some(Hash::from_bytes(
+                    peek_buf[..HASH_SIZE_BYTES]
+                        .try_into()
+                        .expect("bad slice logic"),
+                ))
+            } else {
+                None
+            }
+        };
         // read prev hash
         let received_prev_hash = {
             if self.prev_message.is_some() {
@@ -229,13 +247,23 @@ impl BootstrapServerBinder {
                 None
             }
         };
+        assert_eq!(peeked_received_prev_hash, received_prev_hash);
 
+        // construct msg-len from peek
+        let peeked_msg_len = {
+            u32::from_be_bytes_min(
+                &peek_buf[HASH_SIZE_BYTES..],
+                self.max_bootstrap_message_size,
+            )?
+            .0
+        };
         // read message length
         let msg_len = {
             let mut msg_len_bytes = vec![0u8; self.size_field_len];
             self.duplex.read_exact(&mut msg_len_bytes[..])?;
             u32::from_be_bytes_min(&msg_len_bytes, self.max_bootstrap_message_size)?.0
         };
+        assert_eq!(peeked_msg_len, msg_len);
 
         // read message
         let mut msg_bytes = vec![0u8; msg_len as usize];
