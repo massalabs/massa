@@ -111,7 +111,7 @@ async fn launch(
     let now = MassaTime::now().expect("could not get now time");
     // Do not start if genesis is in the future. This is meant to prevent nodes
     // from desync if the bootstrap nodes keep a previous ledger
-    #[cfg(not(feature = "sandbox"))]
+    #[cfg(all(not(feature = "sandbox"), not(feature = "bootstrap_server")))]
     {
         if *GENESIS_TIMESTAMP > now {
             let (days, hours, mins, secs) = GENESIS_TIMESTAMP
