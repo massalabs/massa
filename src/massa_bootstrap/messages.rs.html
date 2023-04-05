@@ -870,47 +870,6 @@
 <a href="#870" id="870">870</a>
 <a href="#871" id="871">871</a>
 <a href="#872" id="872">872</a>
-<a href="#873" id="873">873</a>
-<a href="#874" id="874">874</a>
-<a href="#875" id="875">875</a>
-<a href="#876" id="876">876</a>
-<a href="#877" id="877">877</a>
-<a href="#878" id="878">878</a>
-<a href="#879" id="879">879</a>
-<a href="#880" id="880">880</a>
-<a href="#881" id="881">881</a>
-<a href="#882" id="882">882</a>
-<a href="#883" id="883">883</a>
-<a href="#884" id="884">884</a>
-<a href="#885" id="885">885</a>
-<a href="#886" id="886">886</a>
-<a href="#887" id="887">887</a>
-<a href="#888" id="888">888</a>
-<a href="#889" id="889">889</a>
-<a href="#890" id="890">890</a>
-<a href="#891" id="891">891</a>
-<a href="#892" id="892">892</a>
-<a href="#893" id="893">893</a>
-<a href="#894" id="894">894</a>
-<a href="#895" id="895">895</a>
-<a href="#896" id="896">896</a>
-<a href="#897" id="897">897</a>
-<a href="#898" id="898">898</a>
-<a href="#899" id="899">899</a>
-<a href="#900" id="900">900</a>
-<a href="#901" id="901">901</a>
-<a href="#902" id="902">902</a>
-<a href="#903" id="903">903</a>
-<a href="#904" id="904">904</a>
-<a href="#905" id="905">905</a>
-<a href="#906" id="906">906</a>
-<a href="#907" id="907">907</a>
-<a href="#908" id="908">908</a>
-<a href="#909" id="909">909</a>
-<a href="#910" id="910">910</a>
-<a href="#911" id="911">911</a>
-<a href="#912" id="912">912</a>
-<a href="#913" id="913">913</a>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="kw">use </span><span class="kw">crate</span>::settings::BootstrapServerMessageDeserializerArgs;
@@ -946,8 +905,6 @@
     U64VarIntSerializer,
 };
 <span class="kw">use </span>massa_time::{MassaTime, MassaTimeDeserializer, MassaTimeSerializer};
-<span class="kw">use </span>massa_versioning_worker::versioning::MipStoreRaw;
-<span class="kw">use </span>massa_versioning_worker::versioning_ser_der::{MipStoreRawDeserializer, MipStoreRawSerializer};
 <span class="kw">use </span>nom::error::context;
 <span class="kw">use </span>nom::multi::{length_count, length_data};
 <span class="kw">use </span>nom::sequence::tuple;
@@ -1000,11 +957,6 @@
         <span class="doccomment">/// Last Start Period for network restart management
         </span>last_start_period: <span class="prelude-ty">Option</span>&lt;u64&gt;,
     },
-    <span class="doccomment">/// Bootstrap versioning store
-    </span>BootstrapMipStore {
-        <span class="doccomment">/// Server mip store
-        </span>store: MipStoreRaw,
-    },
     <span class="doccomment">/// Message sent when the final state and consensus bootstrap are finished
     </span>BootstrapFinished,
     <span class="doccomment">/// Slot sent to get state changes is too old
@@ -1025,7 +977,6 @@
     FinalStateFinished = <span class="number">3u32</span>,
     SlotTooOld = <span class="number">4u32</span>,
     BootstrapError = <span class="number">5u32</span>,
-    MipStore = <span class="number">6u32</span>,
 }
 
 <span class="doccomment">/// Serializer for `BootstrapServerMessage`
@@ -1045,7 +996,6 @@
     pos_credits_serializer: DeferredCreditsSerializer,
     exec_ops_serializer: ExecutedOpsSerializer,
     opt_last_start_period_serializer: OptionSerializer&lt;u64, U64VarIntSerializer&gt;,
-    store_serializer: MipStoreRawSerializer,
 }
 
 <span class="kw">impl </span>Default <span class="kw">for </span>BootstrapServerMessageSerializer {
@@ -1073,7 +1023,6 @@
             pos_credits_serializer: DeferredCreditsSerializer::new(),
             exec_ops_serializer: ExecutedOpsSerializer::new(),
             opt_last_start_period_serializer: OptionSerializer::new(U64VarIntSerializer::new()),
-            store_serializer: MipStoreRawSerializer::new(),
         }
     }
 }
@@ -1164,11 +1113,6 @@
                 </span><span class="self">self</span>.opt_last_start_period_serializer
                     .serialize(last_start_period, buffer)<span class="question-mark">?</span>;
             }
-            BootstrapServerMessage::BootstrapMipStore { store: store_raw } =&gt; {
-                <span class="self">self</span>.u32_serializer
-                    .serialize(<span class="kw-2">&amp;</span>u32::from(MessageServerTypeId::MipStore), buffer)<span class="question-mark">?</span>;
-                <span class="self">self</span>.store_serializer.serialize(store_raw, buffer)<span class="question-mark">?</span>;
-            }
             BootstrapServerMessage::BootstrapFinished =&gt; {
                 <span class="self">self</span>.u32_serializer
                     .serialize(<span class="kw-2">&amp;</span>u32::from(MessageServerTypeId::FinalStateFinished), buffer)<span class="question-mark">?</span>;
@@ -1211,7 +1155,6 @@
     pos_credits_deserializer: DeferredCreditsDeserializer,
     exec_ops_deserializer: ExecutedOpsDeserializer,
     opt_last_start_period_deserializer: OptionDeserializer&lt;u64, U64VarIntDeserializer&gt;,
-    store_deserializer: MipStoreRawDeserializer,
 }
 
 <span class="kw">impl </span>BootstrapServerMessageDeserializer {
@@ -1287,10 +1230,6 @@
             opt_last_start_period_deserializer: OptionDeserializer::new(
                 U64VarIntDeserializer::new(Included(u64::MIN), Included(u64::MAX)),
             ),
-            store_deserializer: MipStoreRawDeserializer::new(
-                args.mip_store_stats_block_considered,
-                args.mip_store_stats_counters_max,
-            ),
         }
     }
 }
@@ -1315,9 +1254,7 @@
     ///     max_datastore_value_length: 1000,
     ///     max_datastore_entry_count: 1000, max_bootstrap_error_length: 1000, max_changes_slot_count: 1000,
     ///     max_rolls_length: 1000, max_production_stats_length: 1000, max_credits_length: 1000,
-    ///     max_executed_ops_length: 1000, max_ops_changes_length: 1000,
-    ///     mip_store_stats_block_considered: 100, mip_store_stats_counters_max: 10
-    /// };
+    ///     max_executed_ops_length: 1000, max_ops_changes_length: 1000};
     /// let message_deserializer = BootstrapServerMessageDeserializer::new(args);
     /// let bootstrap_server_message = BootstrapServerMessage::BootstrapTime {
     ///    server_time: MassaTime::from(0),
@@ -1376,13 +1313,6 @@
                 })
                 .map(|peers| BootstrapServerMessage::BootstrapPeers { peers })
                 .parse(input),
-                MessageServerTypeId::MipStore =&gt; {
-                    context(<span class="string">&quot;Failed MIP store deserialization&quot;</span>, |input| {
-                        <span class="self">self</span>.store_deserializer.deserialize(input)
-                    })
-                    .map(|store| BootstrapServerMessage::BootstrapMipStore { store })
-                    .parse(input)
-                }
                 MessageServerTypeId::FinalStatePart =&gt; tuple((
                     context(<span class="string">&quot;Failed slot deserialization&quot;</span>, |input| {
                         <span class="self">self</span>.slot_deserializer.deserialize(input)
@@ -1497,8 +1427,6 @@
         <span class="doccomment">/// Should be true only for the first part, false later
         </span>send_last_start_period: bool,
     },
-    <span class="doccomment">/// Ask for mip store
-    </span>AskBootstrapMipStore,
     <span class="doccomment">/// Bootstrap error
     </span>BootstrapError {
         <span class="doccomment">/// Error message
@@ -1515,7 +1443,6 @@
     AskFinalStatePart = <span class="number">1u32</span>,
     BootstrapError = <span class="number">2u32</span>,
     BootstrapSuccess = <span class="number">3u32</span>,
-    AskBootstrapMipStore = <span class="number">4u32</span>,
 }
 
 <span class="doccomment">/// Serializer for `BootstrapClientMessage`
@@ -1625,12 +1552,6 @@
                 <span class="self">self</span>.u32_serializer
                     .serialize(<span class="kw-2">&amp;</span>u32::from(MessageClientTypeId::BootstrapSuccess), buffer)<span class="question-mark">?</span>;
             }
-            BootstrapClientMessage::AskBootstrapMipStore =&gt; {
-                <span class="self">self</span>.u32_serializer.serialize(
-                    <span class="kw-2">&amp;</span>u32::from(MessageClientTypeId::AskBootstrapMipStore),
-                    buffer,
-                )<span class="question-mark">?</span>;
-            }
         }
         <span class="prelude-val">Ok</span>(())
     }
@@ -1734,9 +1655,6 @@
             <span class="kw">match </span>id<span class="question-mark">? </span>{
                 MessageClientTypeId::AskBootstrapPeers =&gt; {
                     <span class="prelude-val">Ok</span>((input, BootstrapClientMessage::AskBootstrapPeers))
-                }
-                MessageClientTypeId::AskBootstrapMipStore =&gt; {
-                    <span class="prelude-val">Ok</span>((input, BootstrapClientMessage::AskBootstrapMipStore))
                 }
                 MessageClientTypeId::AskFinalStatePart =&gt; {
                     <span class="kw">if </span>input.is_empty() {
