@@ -87,6 +87,23 @@ impl BootstrapClientBinder {
             self.duplex.read_exact(&mut msg_len_bytes[..])?;
             u32::from_be_bytes_min(&msg_len_bytes, self.cfg.max_bootstrap_message_size)?.0
         };
+        let peek_len = SIGNATURE_SIZE_BYTES + self.size_field_len;
+        let mut peek_buff = vec![0u8; peek_len];
+        let mut acc = 0;
+        // problematic if we can only peek some of it
+        while acc < peek_len {
+            acc += self.duplex.peek(&mut peek_buff[..peek_len])?;
+        }
+
+        let sig_array = peek_buff.as_slice()[0..SIGNATURE_SIZE_BYTES]
+            .try_into()
+            .expect("logic error in array manipulations");
+        let sig = Signature::from_bytes(&sig_array)?;
+        let msg_len = u32::from_be_bytes_min(
+            &peek_buff[SIGNATURE_SIZE_BYTES..],
+            self.cfg.max_bootstrap_message_size,
+        )?
+        .0;
 
         // read message, check signature and check signature of the message sent just before then deserialize it
         let message_deserializer = BootstrapServerMessageDeserializer::new((&self.cfg).into());
