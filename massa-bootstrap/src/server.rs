@@ -40,6 +40,8 @@ use massa_models::{
 use massa_network_exports::NetworkCommandSenderTrait;
 use massa_signature::KeyPair;
 use massa_time::MassaTime;
+use massa_versioning_worker::versioning::MipStore;
+
 use parking_lot::RwLock;
 use std::{
     collections::HashMap,
@@ -99,6 +101,7 @@ impl BootstrapManager {
 }
 
 /// See module level documentation for details
+#[allow(clippy::too_many_arguments)]
 pub fn start_bootstrap_server<C: NetworkCommandSenderTrait + Clone>(
     addr: SocketAddr,
     consensus_controller: Box<dyn ConsensusController>,
@@ -107,6 +110,7 @@ pub fn start_bootstrap_server<C: NetworkCommandSenderTrait + Clone>(
     config: BootstrapConfig,
     keypair: KeyPair,
     version: Version,
+    mip_store: MipStore,
 ) -> Result<BootstrapManager, BootstrapError> {
     massa_trace!("bootstrap.lib.start_bootstrap_server", {});
 
@@ -157,6 +161,7 @@ pub fn start_bootstrap_server<C: NetworkCommandSenderTrait + Clone>(
                 version,
                 ip_hist_map: HashMap::with_capacity(config.ip_list_max_size),
                 bootstrap_config: config,
+                mip_store,
             }
             .run_loop(max_bootstraps)
         })
@@ -181,6 +186,7 @@ struct BootstrapServer<'a, C: NetworkCommandSenderTrait> {
     bootstrap_config: BootstrapConfig,
     version: Version,
     ip_hist_map: HashMap<IpAddr, Instant>,
+    mip_store: MipStore,
 }
 
 impl<C: NetworkCommandSenderTrait + Clone> BootstrapServer<'_, C> {
@@ -295,6 +301,7 @@ impl<C: NetworkCommandSenderTrait + Clone> BootstrapServer<'_, C> {
 
                 let bootstrap_count_token = bootstrap_sessions_counter.clone();
                 let session_handle = bs_loop_rt.handle().clone();
+                let mip_store = self.mip_store.clone();
 
                 let _ = thread::Builder::new()
                     .name(format!("bootstrap thread, peer: {}", remote_addr))
@@ -309,6 +316,7 @@ impl<C: NetworkCommandSenderTrait + Clone> BootstrapServer<'_, C> {
                             consensus_command_sender,
                             network_command_sender,
                             session_handle,
+                            mip_store,
                         )
                     });
 
@@ -376,6 +384,7 @@ fn run_bootstrap_session<C: NetworkCommandSenderTrait>(
     consensus_command_sender: Box<dyn ConsensusController>,
     network_command_sender: C,
     bs_loop_rt_handle: Handle,
+    mip_store: MipStore,
 ) {
     debug!("running bootstrap for peer {}", remote_addr);
     bs_loop_rt_handle.block_on(async move {
@@ -388,6 +397,7 @@ fn run_bootstrap_session<C: NetworkCommandSenderTrait>(
                 version,
                 consensus_command_sender,
                 network_command_sender,
+                mip_store,
             ),
         )
         .await;
@@ -615,6 +625,7 @@ async fn manage_bootstrap<C: NetworkCommandSenderTrait>(
     version: Version,
     consensus_controller: Box<dyn ConsensusController>,
     network_command_sender: C,
+    mip_store: MipStore,
 ) -> Result<(), BootstrapError> {
     massa_trace!("bootstrap.lib.manage_bootstrap", {});
     let read_error_timeout: Duration = bootstrap_config.read_error_timeout.into();
@@ -681,6 +692,13 @@ async fn manage_bootstrap<C: NetworkCommandSenderTrait>(
                         write_timeout,
                     )
                     .await?;
+                }
+                BootstrapClientMessage::AskBootstrapMipStore => {
+                    let vs = mip_store.0.read().to_owned();
+                    server.send_msg(
+                        write_timeout,
+                        BootstrapServerMessage::BootstrapMipStore { store: vs.clone() },
+                    )?
                 }
                 BootstrapClientMessage::BootstrapSuccess => break Ok(()),
                 BootstrapClientMessage::BootstrapError { error } => {

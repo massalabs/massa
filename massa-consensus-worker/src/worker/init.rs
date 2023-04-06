@@ -148,10 +148,11 @@ impl ConsensusWorker {
             )
         }
 
-        if config
-            .genesis_timestamp
-            .checked_add(config.t0.checked_mul(config.last_start_period)?)?
-            > now
+        if config.last_start_period > 0
+            && config
+                .genesis_timestamp
+                .checked_add(config.t0.checked_mul(config.last_start_period)?)?
+                > now
         {
             let (days, hours, mins, secs) = config
                 .genesis_timestamp
@@ -159,7 +160,7 @@ impl ConsensusWorker {
                 .saturating_sub(now)
                 .days_hours_mins_secs()?;
             info!(
-                "{} days, {} hours, {} minutes, {} seconds remaining to last start period",
+                "{} days, {} hours, {} minutes, {} seconds remaining to network restart",
                 days, hours, mins, secs,
             )
         }

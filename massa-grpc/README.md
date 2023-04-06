@@ -58,7 +58,7 @@ When the project is built, `build.rs` is executed and it uses the `tonic-build` 
 
 By default, `build-tonic` feature is disabled, you can update the generated code from protobuf files by running: 
 ```bash
-cargo check --features build-tonic
+cargo build --features massa_proto/build-tonic
 ```
 
 Generate html documentation:
@@ -106,7 +106,7 @@ VSCode integration
 
 ```json
 {
-    // "rust.features": ["build-tonic"], // Enables the build-tonic feature for the Rust Analyzer extension.
+    // "rust-analyzer.rust.features": ["build-tonic"], // Enables the build-tonic feature for the Rust Analyzer extension.
     "rust-analyzer.procMacro.enable": true,  // Enables Rust macro support for the Rust Analyzer extension.
     "rust-analyzer.cargo.buildScripts.enable": true,  // Enables cargo build scripts for the Rust Analyzer extension.
     "protoc": {  // Specifies the configuration for the protoc plugin.

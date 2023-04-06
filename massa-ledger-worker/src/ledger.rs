@@ -193,6 +193,10 @@ impl LedgerController for FinalLedger {
         self.sorted_ledger.reset();
     }
 
+    fn set_initial_slot(&mut self, slot: Slot) {
+        self.sorted_ledger.set_initial_slot(slot);
+    }
+
     /// Get the slot associated with the current ledger
     fn get_slot(&self) -> Result<Slot, ModelsError> {
         self.sorted_ledger.get_slot()
