@@ -1,12 +1,13 @@
 // Copyright (c) 2022 MASSA LABS <info@massa.net>
 
+use crossbeam_channel::{Receiver, Sender};
 use std::sync::{
-    mpsc::{self,
-           // Receiver
-           },
+    mpsc::{
+        self,
+        // Receiver
+    },
     Arc, Mutex,
 };
-use crossbeam_channel::{Sender, Receiver};
 
 use massa_models::config::THREAD_COUNT;
 use massa_models::denunciation::Denunciation;

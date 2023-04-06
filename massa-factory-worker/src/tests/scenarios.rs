@@ -1,5 +1,6 @@
 use super::TestFactory;
 use massa_hash::Hash;
+use massa_models::address::Address;
 use massa_models::block_header::{BlockHeader, BlockHeaderSerializer, SecuredHeader};
 use massa_models::block_id::BlockId;
 use massa_models::config::{ENDORSEMENT_COUNT, T0, THREAD_COUNT};
@@ -12,13 +13,12 @@ use massa_models::{
     operation::{Operation, OperationSerializer, OperationType},
     secure_share::SecureShareContent,
 };
+use massa_pool_exports::test_exports::MockPoolControllerMessage;
+use massa_pos_exports::test_exports::MockSelectorControllerMessage;
+use massa_pos_exports::{PosResult, Selection};
 use massa_signature::KeyPair;
 use massa_time::MassaTime;
 use std::str::FromStr;
-use massa_models::address::Address;
-use massa_pos_exports::{PosResult, Selection};
-use massa_pos_exports::test_exports::MockSelectorControllerMessage;
-use massa_pool_exports::test_exports::MockPoolControllerMessage;
 
 /// Creates a basic empty block with the factory.
 #[test]
@@ -80,7 +80,6 @@ fn basic_creation_with_multiple_operations() {
 /// Send 2 block headers and check if a Denunciation op is in storage
 #[test]
 fn test_denunciation_factory_block_header_denunciation() {
-
     let keypair = KeyPair::generate();
     let address = Address::from_public_key(&keypair.get_public_key());
 

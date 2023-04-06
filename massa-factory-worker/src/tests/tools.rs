@@ -1,14 +1,10 @@
+use crossbeam_channel::Receiver;
 use crossbeam_channel::Sender;
 use massa_consensus_exports::test_exports::{
     ConsensusEventReceiver, MockConsensusController, MockConsensusControllerMessage,
 };
 use parking_lot::RwLock;
-use crossbeam_channel::Receiver;
-use std::{
-    sync::{Arc},
-    thread::sleep,
-    time::Duration,
-};
+use std::{sync::Arc, thread::sleep, time::Duration};
 
 use massa_factory_exports::{
     test_exports::create_empty_block, FactoryChannels, FactoryConfig, FactoryManager,
@@ -170,7 +166,8 @@ impl TestFactory {
         if let Some(consensus_event_receiver) = self.consensus_event_receiver.as_mut() {
             consensus_event_receiver
                 .wait_command(MassaTime::from_millis(100), |command| {
-                    if let MockConsensusControllerMessage::GetBestParents { response_tx } = command {
+                    if let MockConsensusControllerMessage::GetBestParents { response_tx } = command
+                    {
                         response_tx.send(self.genesis_blocks.clone()).unwrap();
                         Some(())
                     } else {

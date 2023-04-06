@@ -26,7 +26,10 @@ use massa_serialization::{
     Deserializer, SerializeError, Serializer, U32VarIntDeserializer, U32VarIntSerializer,
     U64VarIntSerializer,
 };
-use massa_signature::{MassaSignatureError, PublicKey, PublicKeyDeserializer, Signature, SignatureDeserializer, PUBLIC_KEY_SIZE_BYTES};
+use massa_signature::{
+    MassaSignatureError, PublicKey, PublicKeyDeserializer, Signature, SignatureDeserializer,
+    PUBLIC_KEY_SIZE_BYTES,
+};
 
 /// A Variant of Denunciation enum for endorsement
 #[allow(dead_code)]
@@ -905,7 +908,6 @@ impl TryFrom<(&DenunciationPrecursor, &DenunciationPrecursor)> for Denunciation 
                 DenunciationPrecursor::BlockHeader(de_i_blkh_1),
                 DenunciationPrecursor::BlockHeader(de_i_blkh_2),
             ) => {
-
                 // Cannot use the same block header (here: block header denunciation precursor) twice
                 if de_i_blkh_1.slot != de_i_blkh_2.slot
                     || de_i_blkh_1.public_key != de_i_blkh_2.public_key
@@ -939,14 +941,13 @@ impl TryFrom<(&DenunciationPrecursor, &DenunciationPrecursor)> for Denunciation 
                     signature_1: de_i_blkh_1.signature,
                     signature_2: de_i_blkh_2.signature,
                     hash_1: de_i_blkh_1.hash,
-                    hash_2: de_i_blkh_2.hash
+                    hash_2: de_i_blkh_2.hash,
                 }))
-            },
+            }
             (
                 DenunciationPrecursor::Endorsement(de_i_endo_1),
                 DenunciationPrecursor::Endorsement(de_i_endo_2),
             ) => {
-
                 // Cannot use the same endorsement (here: endorsement denunciation) twice
                 if de_i_endo_1.slot != de_i_endo_2.slot
                     || de_i_endo_1.index != de_i_endo_2.index
@@ -984,9 +985,9 @@ impl TryFrom<(&DenunciationPrecursor, &DenunciationPrecursor)> for Denunciation 
                     signature_1: de_i_endo_1.signature,
                     signature_2: de_i_endo_2.signature,
                     hash_1: de_i_endo_1.hash,
-                    hash_2: de_i_endo_2.hash
+                    hash_2: de_i_endo_2.hash,
                 }))
-            },
+            }
             _ => {
                 // Different enum variant - this is invalid
                 Err(DenunciationError::InvalidInput)

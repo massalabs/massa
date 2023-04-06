@@ -1,7 +1,7 @@
 // Copyright (c) 2022 MASSA LABS <info@massa.net>
 
+use crossbeam_channel::{Receiver, Sender};
 use parking_lot::Mutex;
-use crossbeam_channel::{Sender, Receiver};
 use std::{
     collections::{BTreeMap, HashMap, VecDeque},
     sync::Arc,
