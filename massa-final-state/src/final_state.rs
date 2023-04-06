@@ -228,14 +228,14 @@ impl FinalState {
         let latest_snapshot_cycle_info =
             self.pos_state
                 .cycle_history
-                .back_mut()
+                .pop_back()
                 .ok_or(FinalStateError::SnapshotError(String::from(
                     "Invalid cycle_history",
                 )))?;
 
-        for _ in current_slot.period..end_slot.period {
-            latest_snapshot_cycle_info.rng_seed.push(false);
-        }
+        self.pos_state
+            .create_new_cycle_from_last(&latest_snapshot_cycle_info, current_slot, end_slot)
+            .map_err(|err| FinalStateError::PosError(format!("{}", err)))?;
 
         Ok(())
     }
@@ -251,42 +251,42 @@ impl FinalState {
         let latest_snapshot_cycle_info =
             self.pos_state
                 .cycle_history
-                .back_mut()
+                .pop_back()
                 .ok_or(FinalStateError::SnapshotError(String::from(
                     "Invalid cycle_history",
                 )))?;
-
-        // This clone lets us repeat the cycle_info for new cycle_infos
-        let latest_snapshot_cycle_info_clone = latest_snapshot_cycle_info.clone();
 
         // Firstly, complete the first cycle
-        let latest_cycle_info =
-            self.pos_state
-                .cycle_history
-                .back_mut()
-                .ok_or(FinalStateError::SnapshotError(String::from(
-                    "Invalid cycle_history",
-                )))?;
 
-        for _ in current_slot.period..self.config.periods_per_cycle {
-            latest_cycle_info.rng_seed.push(false);
-        }
+        let last_slot = Slot::new_last_of_cycle(
+            current_slot_cycle,
+            self.config.periods_per_cycle,
+            self.config.thread_count,
+        )
+        .map_err(|err| {
+            FinalStateError::InvalidSlot(format!(
+                "Cannot create slot for interpolating downtime: {}",
+                err
+            ))
+        })?;
 
-        latest_cycle_info.rng_seed.extend(vec![
-            false;
-            self.config
-                .periods_per_cycle
-                .saturating_sub(current_slot.period)
-                as usize
-        ]);
-
-        latest_cycle_info.complete = true;
+        self.pos_state
+            .create_new_cycle_from_last(&latest_snapshot_cycle_info, current_slot, last_slot)
+            .map_err(|err| FinalStateError::PosError(format!("{}", err)))?;
 
         // Feed final_state_hash to the completed cycle
         self.feed_cycle_hash_and_selector_for_interpolation(current_slot_cycle)?;
 
         // Then, build all the already completed cycles
         for cycle in (current_slot_cycle + 1)..end_slot_cycle {
+            let first_slot = Slot::new_first_of_cycle(cycle, self.config.periods_per_cycle)
+                .map_err(|err| {
+                    FinalStateError::InvalidSlot(format!(
+                        "Cannot create slot for interpolating downtime: {}",
+                        err
+                    ))
+                })?;
+
             let last_slot = Slot::new_last_of_cycle(
                 cycle,
                 self.config.periods_per_cycle,
@@ -300,7 +300,7 @@ impl FinalState {
             })?;
 
             self.pos_state
-                .create_new_cycle_from_last(&latest_snapshot_cycle_info_clone, last_slot)
+                .create_new_cycle_from_last(&latest_snapshot_cycle_info, first_slot, last_slot)
                 .map_err(|err| FinalStateError::PosError(format!("{}", err)))?;
 
             // Feed final_state_hash to the completed cycle
@@ -308,8 +308,16 @@ impl FinalState {
         }
 
         // Then, build the last cycle
+        let first_slot = Slot::new_first_of_cycle(end_slot_cycle, self.config.periods_per_cycle)
+            .map_err(|err| {
+                FinalStateError::InvalidSlot(format!(
+                    "Cannot create slot for interpolating downtime: {}",
+                    err
+                ))
+            })?;
+
         self.pos_state
-            .create_new_cycle_from_last(&latest_snapshot_cycle_info_clone, end_slot)
+            .create_new_cycle_from_last(&latest_snapshot_cycle_info, first_slot, end_slot)
             .map_err(|err| FinalStateError::PosError(format!("{}", err)))?;
 
         // If the end_slot_cycle is completed
