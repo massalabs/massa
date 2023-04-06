@@ -683,7 +683,7 @@ fn manage_bootstrap<C: NetworkCommandSenderTrait>(
 ) -> Result<(), BootstrapError> {
     massa_trace!("bootstrap.lib.manage_bootstrap", {});
     let read_error_timeout: Duration = bootstrap_config.read_error_timeout.into();
-    let rt_hack = tokio::runtime::Runtime::new()?;
+    let rt_hack = massa_network_exports::make_runtime();
 
     server.handshake_timeout(version, Some(bootstrap_config.read_timeout.into()))?;
 
