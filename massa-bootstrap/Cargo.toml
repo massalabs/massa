@@ -21,7 +21,7 @@ tracing = "0.1"
 substruct = { git = "https://github.com/sydhds/substruct" }
 socket2 = "0.4.7"
 crossbeam = "0.8.2"
-mio =  { version = "0.8", features = ["net"] }
+mio =  { version = "0.8", features = ["net", "os-poll"] }
 
 # custom modules
 massa_async_pool = { path = "../massa-async-pool" }
