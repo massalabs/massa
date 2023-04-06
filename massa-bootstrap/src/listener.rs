@@ -25,7 +25,6 @@ impl BootstrapTcpListener {
     ) -> Result<BootstrapListenerStopHandle, BootstrapError> {
         info!("Starting bootstrap listener on {}", &addr);
         let server = TcpListener::bind(addr)?;
-        server.set_nonblocking(true)?;
         let mut mio_server =
             MioTcpListener::from_std(server.try_clone().expect("Unable to clone server socket"));
 
