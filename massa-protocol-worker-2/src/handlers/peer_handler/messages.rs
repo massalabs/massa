@@ -3,7 +3,6 @@ use std::{
     net::{IpAddr, SocketAddr},
 };
 
-use massa_serialization::{Serializer, U64VarIntSerializer};
 use peernet::{
     error::{PeerNetError, PeerNetResult},
     peer_id::PeerId,
@@ -128,11 +127,9 @@ impl PeerManagementMessage {
     }
 
     pub fn to_bytes(&self) -> Vec<u8> {
-        let id_serializer = U64VarIntSerializer::new();
         match self {
             PeerManagementMessage::NewPeerConnected((peer_id, listeners)) => {
                 let mut bytes = vec![];
-                let _ = id_serializer.serialize(&0, &mut bytes);
                 bytes.extend_from_slice(&peer_id.to_bytes());
                 bytes.extend((listeners.len() as u64).to_be_bytes());
                 for listener in listeners {
@@ -155,7 +152,6 @@ impl PeerManagementMessage {
             }
             PeerManagementMessage::ListPeers(peers) => {
                 let mut bytes = vec![];
-                let _ = id_serializer.serialize(&1, &mut bytes);
                 let nb_peers = peers.len() as u64;
                 bytes.extend_from_slice(&nb_peers.to_le_bytes());
                 for (peer_id, listeners) in peers {
