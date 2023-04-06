@@ -1253,6 +1253,73 @@
 <a href="#1253" id="1253">1253</a>
 <a href="#1254" id="1254">1254</a>
 <a href="#1255" id="1255">1255</a>
+<a href="#1256" id="1256">1256</a>
+<a href="#1257" id="1257">1257</a>
+<a href="#1258" id="1258">1258</a>
+<a href="#1259" id="1259">1259</a>
+<a href="#1260" id="1260">1260</a>
+<a href="#1261" id="1261">1261</a>
+<a href="#1262" id="1262">1262</a>
+<a href="#1263" id="1263">1263</a>
+<a href="#1264" id="1264">1264</a>
+<a href="#1265" id="1265">1265</a>
+<a href="#1266" id="1266">1266</a>
+<a href="#1267" id="1267">1267</a>
+<a href="#1268" id="1268">1268</a>
+<a href="#1269" id="1269">1269</a>
+<a href="#1270" id="1270">1270</a>
+<a href="#1271" id="1271">1271</a>
+<a href="#1272" id="1272">1272</a>
+<a href="#1273" id="1273">1273</a>
+<a href="#1274" id="1274">1274</a>
+<a href="#1275" id="1275">1275</a>
+<a href="#1276" id="1276">1276</a>
+<a href="#1277" id="1277">1277</a>
+<a href="#1278" id="1278">1278</a>
+<a href="#1279" id="1279">1279</a>
+<a href="#1280" id="1280">1280</a>
+<a href="#1281" id="1281">1281</a>
+<a href="#1282" id="1282">1282</a>
+<a href="#1283" id="1283">1283</a>
+<a href="#1284" id="1284">1284</a>
+<a href="#1285" id="1285">1285</a>
+<a href="#1286" id="1286">1286</a>
+<a href="#1287" id="1287">1287</a>
+<a href="#1288" id="1288">1288</a>
+<a href="#1289" id="1289">1289</a>
+<a href="#1290" id="1290">1290</a>
+<a href="#1291" id="1291">1291</a>
+<a href="#1292" id="1292">1292</a>
+<a href="#1293" id="1293">1293</a>
+<a href="#1294" id="1294">1294</a>
+<a href="#1295" id="1295">1295</a>
+<a href="#1296" id="1296">1296</a>
+<a href="#1297" id="1297">1297</a>
+<a href="#1298" id="1298">1298</a>
+<a href="#1299" id="1299">1299</a>
+<a href="#1300" id="1300">1300</a>
+<a href="#1301" id="1301">1301</a>
+<a href="#1302" id="1302">1302</a>
+<a href="#1303" id="1303">1303</a>
+<a href="#1304" id="1304">1304</a>
+<a href="#1305" id="1305">1305</a>
+<a href="#1306" id="1306">1306</a>
+<a href="#1307" id="1307">1307</a>
+<a href="#1308" id="1308">1308</a>
+<a href="#1309" id="1309">1309</a>
+<a href="#1310" id="1310">1310</a>
+<a href="#1311" id="1311">1311</a>
+<a href="#1312" id="1312">1312</a>
+<a href="#1313" id="1313">1313</a>
+<a href="#1314" id="1314">1314</a>
+<a href="#1315" id="1315">1315</a>
+<a href="#1316" id="1316">1316</a>
+<a href="#1317" id="1317">1317</a>
+<a href="#1318" id="1318">1318</a>
+<a href="#1319" id="1319">1319</a>
+<a href="#1320" id="1320">1320</a>
+<a href="#1321" id="1321">1321</a>
+<a href="#1322" id="1322">1322</a>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 </span><span class="doccomment">/// An overview of what is a Denunciation and what it is used for can be found here
 /// https://github.com/massalabs/massa/discussions/3113
@@ -1377,17 +1444,18 @@
 <span class="attr">#[allow(dead_code)]
 </span><span class="kw">impl </span>Denunciation {
     <span class="doccomment">/// Check if it is a Denunciation of several endorsements
-    </span><span class="kw">pub fn </span>is_for_endorsement(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; bool {
+    </span><span class="kw">fn </span>is_for_endorsement(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; bool {
         <span class="macro">matches!</span>(<span class="self">self</span>, Denunciation::Endorsement(<span class="kw">_</span>))
     }
 
     <span class="doccomment">/// Check if it is a Denunciation of several block headers
-    </span><span class="kw">pub fn </span>is_for_block_header(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; bool {
+    </span><span class="kw">fn </span>is_for_block_header(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; bool {
         <span class="macro">matches!</span>(<span class="self">self</span>, Denunciation::BlockHeader(<span class="kw">_</span>))
     }
 
     <span class="doccomment">/// Check if it is a Denunciation for this endorsement
-    </span><span class="kw">pub fn </span>is_also_for_endorsement(
+    </span><span class="attr">#[cfg(test)]
+    </span><span class="kw">fn </span>is_also_for_endorsement(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         s_endorsement: <span class="kw-2">&amp;</span>SecureShareEndorsement,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;bool, DenunciationError&gt; {
@@ -1418,7 +1486,8 @@
     }
 
     <span class="doccomment">/// Check if it is a Denunciation for this block header
-    </span><span class="kw">pub fn </span>is_also_for_block_header(
+    </span><span class="attr">#[cfg(test)]
+    </span><span class="kw">fn </span>is_also_for_block_header(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         s_block_header: <span class="kw-2">&amp;</span>SecuredHeader,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;bool, DenunciationError&gt; {
@@ -1448,7 +1517,7 @@
 
     <span class="doccomment">/// Check if Denunciation is valid
     /// Should be used if received from the network (prevent against invalid or attacker crafted denunciation)
-    </span><span class="kw">pub fn </span>is_valid(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span>&lt;bool, DenunciationError&gt; {
+    </span><span class="kw">fn </span>is_valid(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span>&lt;bool, DenunciationError&gt; {
         <span class="kw">let </span>(signature_1, signature_2, hash_1, hash_2, public_key) = <span class="kw">match </span><span class="self">self </span>{
             Denunciation::Endorsement(de) =&gt; {
                 <span class="kw">let </span>hash_1 = EndorsementDenunciation::compute_hash_for_sig_verif(
@@ -1538,7 +1607,6 @@
         </span><span class="kw">if </span>s_e1.content.slot != s_e2.content.slot
             || s_e1.content.index != s_e2.content.index
             || s_e1.content_creator_pub_key != s_e2.content_creator_pub_key
-            || s_e1.id == s_e2.id
         {
             <span class="kw">return </span><span class="prelude-val">Err</span>(DenunciationError::InvalidInput);
         }
@@ -1583,7 +1651,7 @@
 
     <span class="kw">fn </span>try_from((s_bh1, s_bh2): (<span class="kw-2">&amp;</span>SecuredHeader, <span class="kw-2">&amp;</span>SecuredHeader)) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="self">Self</span>, <span class="self">Self</span>::Error&gt; {
         <span class="comment">// Cannot use the same block header twice
-        // In order to create a Denunciation, there should be the same slot &amp; public key
+        // In order to create a Denunciation, there should be the same slot, index &amp; public key
         </span><span class="kw">if </span>s_bh1.content.slot != s_bh2.content.slot
             || s_bh1.content_creator_pub_key != s_bh2.content_creator_pub_key
             || s_bh1.id == s_bh2.id
@@ -2156,91 +2224,31 @@
     <span class="kw">fn </span>try_from(
         (de_i_1, de_i_2): (<span class="kw-2">&amp;</span>DenunciationPrecursor, <span class="kw-2">&amp;</span>DenunciationPrecursor),
     ) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="self">Self</span>, <span class="self">Self</span>::Error&gt; {
-        <span class="kw">match </span>(de_i_1, de_i_2) {
+        <span class="comment">// TODO: add checks before creating
+        </span><span class="kw">match </span>(de_i_1, de_i_2) {
             (
                 DenunciationPrecursor::BlockHeader(de_i_blkh_1),
                 DenunciationPrecursor::BlockHeader(de_i_blkh_2),
-            ) =&gt; {
-                <span class="comment">// Cannot use the same block header (here: block header denunciation precursor) twice
-                </span><span class="kw">if </span>de_i_blkh_1.slot != de_i_blkh_2.slot
-                    || de_i_blkh_1.public_key != de_i_blkh_2.public_key
-                    || de_i_blkh_1.hash == de_i_blkh_2.hash
-                {
-                    <span class="kw">return </span><span class="prelude-val">Err</span>(DenunciationError::InvalidInput);
-                }
-
-                <span class="comment">// Check sig
-                </span><span class="kw">let </span>de_i_blkh_1_hash = BlockHeaderDenunciation::compute_hash_for_sig_verif(
-                    <span class="kw-2">&amp;</span>de_i_blkh_1.public_key,
-                    <span class="kw-2">&amp;</span>de_i_blkh_1.slot,
-                    <span class="kw-2">&amp;</span>de_i_blkh_1.hash,
-                );
-                <span class="kw">let </span>de_i_blkh_2_hash = BlockHeaderDenunciation::compute_hash_for_sig_verif(
-                    <span class="kw-2">&amp;</span>de_i_blkh_2.public_key,
-                    <span class="kw-2">&amp;</span>de_i_blkh_2.slot,
-                    <span class="kw-2">&amp;</span>de_i_blkh_2.hash,
-                );
-
-                de_i_blkh_1
-                    .public_key
-                    .verify_signature(<span class="kw-2">&amp;</span>de_i_blkh_1_hash, <span class="kw-2">&amp;</span>de_i_blkh_1.signature)<span class="question-mark">?</span>;
-                de_i_blkh_1
-                    .public_key
-                    .verify_signature(<span class="kw-2">&amp;</span>de_i_blkh_2_hash, <span class="kw-2">&amp;</span>de_i_blkh_2.signature)<span class="question-mark">?</span>;
-
-                <span class="prelude-val">Ok</span>(Denunciation::BlockHeader(BlockHeaderDenunciation {
-                    public_key: de_i_blkh_1.public_key,
-                    slot: de_i_blkh_1.slot,
-                    signature_1: de_i_blkh_1.signature,
-                    signature_2: de_i_blkh_2.signature,
-                    hash_1: de_i_blkh_1.hash,
-                    hash_2: de_i_blkh_2.hash,
-                }))
-            }
+            ) =&gt; <span class="prelude-val">Ok</span>(Denunciation::BlockHeader(BlockHeaderDenunciation {
+                public_key: de_i_blkh_1.public_key,
+                slot: de_i_blkh_1.slot,
+                signature_1: de_i_blkh_1.signature,
+                signature_2: de_i_blkh_2.signature,
+                hash_1: de_i_blkh_1.hash,
+                hash_2: de_i_blkh_2.hash,
+            })),
             (
                 DenunciationPrecursor::Endorsement(de_i_endo_1),
                 DenunciationPrecursor::Endorsement(de_i_endo_2),
-            ) =&gt; {
-                <span class="comment">// Cannot use the same endorsement (here: endorsement denunciation) twice
-                </span><span class="kw">if </span>de_i_endo_1.slot != de_i_endo_2.slot
-                    || de_i_endo_1.index != de_i_endo_2.index
-                    || de_i_endo_1.public_key != de_i_endo_2.public_key
-                    || de_i_endo_1.hash == de_i_endo_2.hash
-                {
-                    <span class="kw">return </span><span class="prelude-val">Err</span>(DenunciationError::InvalidInput);
-                }
-
-                <span class="comment">// Check sig
-                </span><span class="kw">let </span>de_i_endo_1_hash = EndorsementDenunciation::compute_hash_for_sig_verif(
-                    <span class="kw-2">&amp;</span>de_i_endo_1.public_key,
-                    <span class="kw-2">&amp;</span>de_i_endo_1.slot,
-                    <span class="kw-2">&amp;</span>de_i_endo_1.index,
-                    <span class="kw-2">&amp;</span>de_i_endo_1.hash,
-                );
-                <span class="kw">let </span>de_i_endo_2_hash = EndorsementDenunciation::compute_hash_for_sig_verif(
-                    <span class="kw-2">&amp;</span>de_i_endo_2.public_key,
-                    <span class="kw-2">&amp;</span>de_i_endo_2.slot,
-                    <span class="kw-2">&amp;</span>de_i_endo_2.index,
-                    <span class="kw-2">&amp;</span>de_i_endo_2.hash,
-                );
-
-                de_i_endo_1
-                    .public_key
-                    .verify_signature(<span class="kw-2">&amp;</span>de_i_endo_1_hash, <span class="kw-2">&amp;</span>de_i_endo_1.signature)<span class="question-mark">?</span>;
-                de_i_endo_1
-                    .public_key
-                    .verify_signature(<span class="kw-2">&amp;</span>de_i_endo_2_hash, <span class="kw-2">&amp;</span>de_i_endo_2.signature)<span class="question-mark">?</span>;
-
-                <span class="prelude-val">Ok</span>(Denunciation::Endorsement(EndorsementDenunciation {
-                    public_key: de_i_endo_1.public_key,
-                    slot: de_i_endo_1.slot,
-                    index: de_i_endo_1.index,
-                    signature_1: de_i_endo_1.signature,
-                    signature_2: de_i_endo_2.signature,
-                    hash_1: de_i_endo_1.hash,
-                    hash_2: de_i_endo_2.hash,
-                }))
-            }
+            ) =&gt; <span class="prelude-val">Ok</span>(Denunciation::Endorsement(EndorsementDenunciation {
+                public_key: de_i_endo_1.public_key,
+                slot: de_i_endo_1.slot,
+                index: de_i_endo_1.index,
+                signature_1: de_i_endo_1.signature,
+                signature_2: de_i_endo_2.signature,
+                hash_1: de_i_endo_1.hash,
+                hash_2: de_i_endo_2.hash,
+            })),
             <span class="kw">_ </span>=&gt; {
                 <span class="comment">// Different enum variant - this is invalid
                 </span><span class="prelude-val">Err</span>(DenunciationError::InvalidInput)
@@ -2257,14 +2265,62 @@
     <span class="kw">use </span>massa_serialization::DeserializeError;
 
     <span class="kw">use </span><span class="kw">crate</span>::block_id::BlockId;
-    <span class="kw">use </span><span class="kw">crate</span>::endorsement::{Endorsement, EndorsementSerializer, SecureShareEndorsement};
+    <span class="kw">use </span><span class="kw">crate</span>::endorsement::{
+        Endorsement, EndorsementSerializer, EndorsementSerializerLW, SecureShareEndorsement,
+    };
 
     <span class="kw">use </span><span class="kw">crate</span>::config::{ENDORSEMENT_COUNT, THREAD_COUNT};
     <span class="kw">use </span><span class="kw">crate</span>::secure_share::{Id, SecureShareContent};
-    <span class="kw">use </span><span class="kw">crate</span>::test_exports::{
-        gen_block_headers_for_denunciation, gen_endorsements_for_denunciation,
-    };
     <span class="kw">use </span>massa_signature::KeyPair;
+
+    <span class="doccomment">/// Helper for Endorsement denunciation
+    </span><span class="kw">fn </span>gen_endorsements_for_denunciation() -&gt; (
+        Slot,
+        KeyPair,
+        SecureShareEndorsement,
+        SecureShareEndorsement,
+        SecureShareEndorsement,
+    ) {
+        <span class="kw">let </span>keypair = KeyPair::generate();
+
+        <span class="kw">let </span>slot = Slot::new(<span class="number">3</span>, <span class="number">7</span>);
+        <span class="kw">let </span>endorsement_1 = Endorsement {
+            slot,
+            index: <span class="number">0</span>,
+            endorsed_block: BlockId(Hash::compute_from(<span class="string">&quot;blk1&quot;</span>.as_bytes())),
+        };
+
+        <span class="kw">let </span>v_endorsement1 =
+            Endorsement::new_verifiable(endorsement_1, EndorsementSerializer::new(), <span class="kw-2">&amp;</span>keypair)
+                .unwrap();
+
+        <span class="kw">let </span>endorsement_2 = Endorsement {
+            slot,
+            index: <span class="number">0</span>,
+            endorsed_block: BlockId(Hash::compute_from(<span class="string">&quot;blk2&quot;</span>.as_bytes())),
+        };
+
+        <span class="kw">let </span>v_endorsement2 =
+            Endorsement::new_verifiable(endorsement_2, EndorsementSerializer::new(), <span class="kw-2">&amp;</span>keypair)
+                .unwrap();
+
+        <span class="kw">let </span>endorsement_3 = Endorsement {
+            slot,
+            index: <span class="number">0</span>,
+            endorsed_block: BlockId(Hash::compute_from(<span class="string">&quot;blk3&quot;</span>.as_bytes())),
+        };
+        <span class="kw">let </span>v_endorsement_3 =
+            Endorsement::new_verifiable(endorsement_3, EndorsementSerializer::new(), <span class="kw-2">&amp;</span>keypair)
+                .unwrap();
+
+        <span class="kw">return </span>(
+            slot,
+            keypair,
+            v_endorsement1,
+            v_endorsement2,
+            v_endorsement_3,
+        );
+    }
 
     <span class="attr">#[test]
     </span><span class="kw">fn </span>test_endorsement_denunciation() {
@@ -2335,6 +2391,84 @@
             <span class="bool-val">true
         </span>);
         <span class="macro">assert_eq!</span>(denunciation.is_valid().unwrap(), <span class="bool-val">true</span>);
+    }
+
+    <span class="kw">fn </span>gen_block_headers_for_denunciation(
+    ) -&gt; (Slot, KeyPair, SecuredHeader, SecuredHeader, SecuredHeader) {
+        <span class="kw">let </span>keypair = KeyPair::generate();
+
+        <span class="kw">let </span>slot = Slot::new(<span class="number">2</span>, <span class="number">1</span>);
+        <span class="kw">let </span>parents_1: Vec&lt;BlockId&gt; = (<span class="number">0</span>..THREAD_COUNT)
+            .map(|i| BlockId(Hash::compute_from(<span class="kw-2">&amp;</span>[i])))
+            .collect();
+        <span class="kw">let </span>parents_2: Vec&lt;BlockId&gt; = (<span class="number">0</span>..THREAD_COUNT)
+            .map(|i| BlockId(Hash::compute_from(<span class="kw-2">&amp;</span>[i + <span class="number">1</span>])))
+            .collect();
+        <span class="kw">let </span>parents_3: Vec&lt;BlockId&gt; = (<span class="number">0</span>..THREAD_COUNT)
+            .map(|i| BlockId(Hash::compute_from(<span class="kw-2">&amp;</span>[i + <span class="number">2</span>])))
+            .collect();
+
+        <span class="kw">let </span>endorsement_1 = Endorsement {
+            slot: Slot::new(<span class="number">1</span>, <span class="number">1</span>),
+            index: <span class="number">1</span>,
+            endorsed_block: BlockId(Hash::compute_from(<span class="string">&quot;blk1&quot;</span>.as_bytes())),
+        };
+        <span class="kw">let </span>s_endorsement_1 =
+            Endorsement::new_verifiable(endorsement_1, EndorsementSerializerLW::new(), <span class="kw-2">&amp;</span>keypair)
+                .unwrap();
+
+        <span class="kw">let </span>block_header_1 = BlockHeader {
+            slot,
+            parents: parents_1,
+            operation_merkle_root: Hash::compute_from(<span class="string">&quot;mno&quot;</span>.as_bytes()),
+            endorsements: <span class="macro">vec!</span>[s_endorsement_1.clone()],
+        };
+
+        <span class="comment">// create header
+        </span><span class="kw">let </span>s_block_header_1 = BlockHeader::new_verifiable::&lt;BlockHeaderSerializer, BlockId&gt;(
+            block_header_1,
+            BlockHeaderSerializer::new(),
+            <span class="kw-2">&amp;</span>keypair,
+        )
+        .expect(<span class="string">&quot;error while producing block header&quot;</span>);
+
+        <span class="kw">let </span>block_header_2 = BlockHeader {
+            slot,
+            parents: parents_2,
+            operation_merkle_root: Hash::compute_from(<span class="string">&quot;mno&quot;</span>.as_bytes()),
+            endorsements: <span class="macro">vec!</span>[s_endorsement_1.clone()],
+        };
+
+        <span class="comment">// create header
+        </span><span class="kw">let </span>s_block_header_2 = BlockHeader::new_verifiable::&lt;BlockHeaderSerializer, BlockId&gt;(
+            block_header_2,
+            BlockHeaderSerializer::new(),
+            <span class="kw-2">&amp;</span>keypair,
+        )
+        .expect(<span class="string">&quot;error while producing block header&quot;</span>);
+
+        <span class="kw">let </span>block_header_3 = BlockHeader {
+            slot,
+            parents: parents_3,
+            operation_merkle_root: Hash::compute_from(<span class="string">&quot;mno&quot;</span>.as_bytes()),
+            endorsements: <span class="macro">vec!</span>[s_endorsement_1.clone()],
+        };
+
+        <span class="comment">// create header
+        </span><span class="kw">let </span>s_block_header_3 = BlockHeader::new_verifiable::&lt;BlockHeaderSerializer, BlockId&gt;(
+            block_header_3,
+            BlockHeaderSerializer::new(),
+            <span class="kw-2">&amp;</span>keypair,
+        )
+        .expect(<span class="string">&quot;error while producing block header&quot;</span>);
+
+        <span class="kw">return </span>(
+            slot,
+            keypair,
+            s_block_header_1.clone(),
+            s_block_header_2,
+            s_block_header_3,
+        );
     }
 
     <span class="attr">#[test]
@@ -2488,22 +2622,22 @@
     }
 
     <span class="attr">#[test]
-    </span><span class="kw">fn </span>test_denunciation_precursor() {
+    </span><span class="kw">fn </span>test_denunciation_interest() {
         <span class="kw">let </span>(<span class="kw">_</span>, <span class="kw">_</span>, s_block_header_1, s_block_header_2, <span class="kw">_</span>) = gen_block_headers_for_denunciation();
         <span class="kw">let </span>denunciation: Denunciation = (<span class="kw-2">&amp;</span>s_block_header_1, <span class="kw-2">&amp;</span>s_block_header_2).try_into().unwrap();
 
-        <span class="kw">let </span>de_p_1 = DenunciationPrecursor::try_from(<span class="kw-2">&amp;</span>s_block_header_1).unwrap();
-        <span class="kw">let </span>de_p_2 = DenunciationPrecursor::try_from(<span class="kw-2">&amp;</span>s_block_header_2).unwrap();
-        <span class="kw">let </span>denunciation_2: Denunciation = (<span class="kw-2">&amp;</span>de_p_1, <span class="kw-2">&amp;</span>de_p_2).try_into().unwrap();
+        <span class="kw">let </span>de_i_1 = DenunciationPrecursor::try_from(<span class="kw-2">&amp;</span>s_block_header_1).unwrap();
+        <span class="kw">let </span>de_i_2 = DenunciationPrecursor::try_from(<span class="kw-2">&amp;</span>s_block_header_2).unwrap();
+        <span class="kw">let </span>denunciation_2: Denunciation = (<span class="kw-2">&amp;</span>de_i_1, <span class="kw-2">&amp;</span>de_i_2).try_into().unwrap();
 
         <span class="macro">assert_eq!</span>(denunciation, denunciation_2);
 
         <span class="kw">let </span>(<span class="kw">_</span>, <span class="kw">_</span>, s_endorsement_1, s_endorsement_2, <span class="kw">_</span>) = gen_endorsements_for_denunciation();
         <span class="kw">let </span>denunciation_3 = Denunciation::try_from((<span class="kw-2">&amp;</span>s_endorsement_1, <span class="kw-2">&amp;</span>s_endorsement_2)).unwrap();
 
-        <span class="kw">let </span>de_p_3 = DenunciationPrecursor::try_from(<span class="kw-2">&amp;</span>s_endorsement_1).unwrap();
-        <span class="kw">let </span>de_p_4 = DenunciationPrecursor::try_from(<span class="kw-2">&amp;</span>s_endorsement_2).unwrap();
-        <span class="kw">let </span>denunciation_4: Denunciation = (<span class="kw-2">&amp;</span>de_p_3, <span class="kw-2">&amp;</span>de_p_4).try_into().unwrap();
+        <span class="kw">let </span>de_i_3 = DenunciationPrecursor::try_from(<span class="kw-2">&amp;</span>s_endorsement_1).unwrap();
+        <span class="kw">let </span>de_i_4 = DenunciationPrecursor::try_from(<span class="kw-2">&amp;</span>s_endorsement_2).unwrap();
+        <span class="kw">let </span>denunciation_4: Denunciation = (<span class="kw-2">&amp;</span>de_i_3, <span class="kw-2">&amp;</span>de_i_4).try_into().unwrap();
 
         <span class="macro">assert_eq!</span>(denunciation_3, denunciation_4);
     }
