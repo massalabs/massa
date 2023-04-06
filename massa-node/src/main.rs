@@ -905,19 +905,24 @@ async fn stop(
             .expect("bootstrap server shutdown failed")
     }
 
-    // stop public API
-    api_public_handle.stop();
-
-    // stop private API
-    api_private_handle.stop();
-
-    // stop Massa API
-    api_handle.stop();
+    info!("Start stopping API's: gRPC, EXPERIMENTAL, PUBLIC, PRIVATE");
 
     // stop Massa gRPC API
     if let Some(handle) = grpc_handle {
         handle.stop();
     }
+
+    // stop Massa API
+    api_handle.stop().await;
+    info!("API | EXPERIMENTAL JsonRPC | stopped");
+
+    // stop public API
+    api_public_handle.stop().await;
+    info!("API | PUBLIC JsonRPC | stopped");
+
+    // stop private API
+    api_private_handle.stop().await;
+    info!("API | PRIVATE JsonRPC | stopped");
 
     // stop factory
     factory_manager.stop();
