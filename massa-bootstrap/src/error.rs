@@ -48,8 +48,6 @@ pub enum BootstrapError {
     FinalStateError(#[from] FinalStateError),
     /// Proof-of-Stake error: {0}
     PoSError(#[from] PosError),
-    /// join error: {0}
-    JoinError(#[from] tokio::task::JoinError),
     /// missing keypair file
     MissingKeyError,
     /// incompatible version: {0}
