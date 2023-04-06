@@ -23,7 +23,9 @@ impl BootstrapTcpListener {
         addr: SocketAddr,
         connection_tx: crossbeam::channel::Sender<(TcpStream, SocketAddr)>,
     ) -> Result<BootstrapListenerStopHandle, BootstrapError> {
+        info!("Starting bootstrap listener on {}", &addr);
         let server = TcpListener::bind(addr)?;
+        server.set_nonblocking(true)?;
         let mut mio_server =
             MioTcpListener::from_std(server.try_clone().expect("Unable to clone server socket"));
 
@@ -43,13 +45,16 @@ impl BootstrapTcpListener {
             .name("bs_listener".to_string())
             .spawn(move || loop {
                 poll.poll(&mut events, None).unwrap();
+                info!("polling events:");
 
                 for event in events.iter() {
                     match event.token() {
                         NEW_CONNECTION => {
+                            println!("New connection: {}", addr);
+                            // Here we need std::TcpStream
                             let (socket, addr) =
                                 server.accept().map_err(BootstrapError::from).unwrap();
-                            println!("New connection: {}", addr);
+                            println!("send msg: {}", addr);
                             connection_tx.send((socket, addr)).unwrap();
                         }
                         STOP_LISTENER => {
