@@ -31,7 +31,7 @@ impl BootstrapTcpListener {
         let mut poll = Poll::new()?;
 
         // wake up the poll when we want to stop the listener
-        let waker = mio::Waker::new(poll.registry(), STOP_LISTENER)?;
+        let waker = Waker::new(poll.registry(), STOP_LISTENER)?;
 
         poll.registry()
             .register(&mut mio_server, NEW_CONNECTION, Interest::READABLE)?;
@@ -39,28 +39,30 @@ impl BootstrapTcpListener {
         // TODO use config for capacity ?
         let mut events = Events::with_capacity(32);
 
-        // spawn a new thread to handle events
+        // spawn a thread to handle events
         std::thread::Builder::new()
             .name("bs_listener".to_string())
-            .spawn(move || loop {
-                poll.poll(&mut events, None).unwrap();
-                info!("polling events:");
+            .spawn(move || {
+                // HACK : create variable to move ownership of mio_server to the thread
+                // if mio_server is not moved, poll does not receive any event from listener
+                let _temp = mio_server;
 
-                for event in events.iter() {
-                    match event.token() {
-                        NEW_CONNECTION => {
-                            println!("New connection: {}", addr);
-                            // Here we need std::TcpStream
-                            let (socket, addr) =
-                                server.accept().map_err(BootstrapError::from).unwrap();
-                            println!("send msg: {}", addr);
-                            connection_tx.send((socket, addr)).unwrap();
+                loop {
+                    poll.poll(&mut events, None).unwrap();
+
+                    for event in events.iter() {
+                        match event.token() {
+                            NEW_CONNECTION => {
+                                let (socket, addr) =
+                                    server.accept().map_err(BootstrapError::from).unwrap();
+                                connection_tx.send((socket, addr)).unwrap();
+                            }
+                            STOP_LISTENER => {
+                                info!("Stopping bootstrap listener");
+                                return;
+                            }
+                            _ => error!("Unexpected event"),
                         }
-                        STOP_LISTENER => {
-                            info!("Stopping bootstrap listener");
-                            return;
-                        }
-                        _ => error!("Unexpected event"),
                     }
                 }
             })
