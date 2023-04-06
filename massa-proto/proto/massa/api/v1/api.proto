@@ -387,7 +387,7 @@ message SendOperationsResponse {
 
 // Holds Operation response
 message OperationResult {
-  // Operation(s) id(s)
+  // Operations ids
   repeated string operations_ids = 1;
 }
 

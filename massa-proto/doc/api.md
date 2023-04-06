@@ -535,7 +535,7 @@ Holds Operation response
 
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
-| operations_ids | [string](#string) | repeated | Operation(s) id(s) |
+| operations_ids | [string](#string) | repeated | Operations ids |
 
 
 

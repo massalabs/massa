@@ -64,7 +64,7 @@ cargo build --features massa_proto/build-tonic
 Generate html documentation:
 ```bash
 protoc \
-  ./massa-proto/proto/massa/api/v1/*.proto \
+  ./massa-proto/proto/massa/**/*.proto \
   --proto_path=./massa-proto/proto/massa/api/v1 \
   --proto_path=./massa-proto/proto/third-party \
   --doc_out=./massa-proto/doc/ \
@@ -74,7 +74,7 @@ protoc \
 Generate markdown documentation:
 ```bash
 protoc \
-  ./massa-proto/proto/massa/api/v1/*.proto \
+  ./massa-proto/proto/massa/**/*.proto \
   --proto_path=./massa-proto/proto/massa/api/v1 \
   --proto_path=./massa-proto/proto/third-party \
   --doc_out=./massa-proto/doc/ \
@@ -124,10 +124,10 @@ VSCode integration
             "--proto_path=${workspaceRoot}/massa-proto/proto/massa/api/v1",  // Specifies the directory to search for imported protobuf files.
             "--proto_path=${workspaceRoot}/massa-proto/proto/third-party",  // Specifies the directory to search for imported third-party protobuf files.
             // "--java_out=${workspaceRoot}/target/",  // Generates Java code from the protobuf files.
-            "--doc_out=${workspaceRoot}/massa-proto/doc/",  // Generates documentation in HTML/markdown format from the protobuf files.
-            "--doc_opt=html,index.html",  // Specifies the options for generating the HTML documentation.
+            // "--doc_out=${workspaceRoot}/massa-proto/doc/",  // Generates documentation in HTML/markdown format from the protobuf files.
+            // "--doc_opt=html,index.html",  // Specifies the options for generating the HTML documentation.
             // "--doc_opt=markdown,docs.md",  // Specifies the options for generating the markdown documentation.
-            "--descriptor_set_out=${workspaceRoot}/massa-proto/src/api.bin"  // Generates a binary descriptor set for the protobuf files which is used for server reflection.
+            // "--descriptor_set_out=${workspaceRoot}/massa-proto/src/api.bin"  // Generates a binary descriptor set for the protobuf files which is used for server reflection.
         ]
     }
 }
