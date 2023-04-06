@@ -863,6 +863,43 @@
 <a href="#863" id="863">863</a>
 <a href="#864" id="864">864</a>
 <a href="#865" id="865">865</a>
+<a href="#866" id="866">866</a>
+<a href="#867" id="867">867</a>
+<a href="#868" id="868">868</a>
+<a href="#869" id="869">869</a>
+<a href="#870" id="870">870</a>
+<a href="#871" id="871">871</a>
+<a href="#872" id="872">872</a>
+<a href="#873" id="873">873</a>
+<a href="#874" id="874">874</a>
+<a href="#875" id="875">875</a>
+<a href="#876" id="876">876</a>
+<a href="#877" id="877">877</a>
+<a href="#878" id="878">878</a>
+<a href="#879" id="879">879</a>
+<a href="#880" id="880">880</a>
+<a href="#881" id="881">881</a>
+<a href="#882" id="882">882</a>
+<a href="#883" id="883">883</a>
+<a href="#884" id="884">884</a>
+<a href="#885" id="885">885</a>
+<a href="#886" id="886">886</a>
+<a href="#887" id="887">887</a>
+<a href="#888" id="888">888</a>
+<a href="#889" id="889">889</a>
+<a href="#890" id="890">890</a>
+<a href="#891" id="891">891</a>
+<a href="#892" id="892">892</a>
+<a href="#893" id="893">893</a>
+<a href="#894" id="894">894</a>
+<a href="#895" id="895">895</a>
+<a href="#896" id="896">896</a>
+<a href="#897" id="897">897</a>
+<a href="#898" id="898">898</a>
+<a href="#899" id="899">899</a>
+<a href="#900" id="900">900</a>
+<a href="#901" id="901">901</a>
+<a href="#902" id="902">902</a>
 </pre><pre class="rust"><code><span class="doccomment">//! Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 //! This file defines the final state of the node, which includes
@@ -1019,12 +1056,29 @@
         // Then, interpolate the downtime, to attach at end_slot;
         </span>final_state.last_start_period = last_start_period;
 
+        final_state.init_ledger_hash(last_start_period);
+
         <span class="comment">// We compute the draws here because we need to feed_cycles when interpolating
         </span>final_state.compute_initial_draws()<span class="question-mark">?</span>;
 
         final_state.interpolate_downtime()<span class="question-mark">?</span>;
 
         <span class="prelude-val">Ok</span>(final_state)
+    }
+
+    <span class="doccomment">/// Used after bootstrap, to set the initial ledger hash (used in initial draws)
+    </span><span class="kw">pub fn </span>init_ledger_hash(<span class="kw-2">&amp;mut </span><span class="self">self</span>, last_start_period: u64) {
+        <span class="kw">let </span>slot = Slot::new(
+            last_start_period,
+            <span class="self">self</span>.config.thread_count.saturating_sub(<span class="number">1</span>),
+        );
+        <span class="self">self</span>.ledger.set_initial_slot(slot);
+        <span class="self">self</span>.pos_state.initial_ledger_hash = <span class="self">self</span>.ledger.get_ledger_hash();
+
+        <span class="macro">info!</span>(
+            <span class="string">&quot;Set initial ledger hash to {}&quot;</span>,
+            <span class="self">self</span>.ledger.get_ledger_hash().to_string()
+        )
     }
 
     <span class="doccomment">/// Once we created a FinalState from a snapshot, we need to edit it to attach at the end_slot and handle the downtime.
@@ -1076,14 +1130,20 @@
         <span class="kw">let </span>latest_snapshot_cycle_info =
             <span class="self">self</span>.pos_state
                 .cycle_history
-                .back_mut()
+                .pop_back()
                 .ok_or(FinalStateError::SnapshotError(String::from(
                     <span class="string">&quot;Invalid cycle_history&quot;</span>,
                 )))<span class="question-mark">?</span>;
 
-        <span class="kw">for _ in </span>current_slot.period..end_slot.period {
-            latest_snapshot_cycle_info.rng_seed.push(<span class="bool-val">false</span>);
-        }
+        <span class="self">self</span>.pos_state
+            .create_new_cycle_from_last(
+                <span class="kw-2">&amp;</span>latest_snapshot_cycle_info,
+                current_slot
+                    .get_next_slot(<span class="self">self</span>.config.thread_count)
+                    .expect(<span class="string">&quot;Cannot get next slot&quot;</span>),
+                end_slot,
+            )
+            .map_err(|err| FinalStateError::PosError(<span class="macro">format!</span>(<span class="string">&quot;{}&quot;</span>, err)))<span class="question-mark">?</span>;
 
         <span class="prelude-val">Ok</span>(())
     }
@@ -1099,42 +1159,48 @@
         <span class="kw">let </span>latest_snapshot_cycle_info =
             <span class="self">self</span>.pos_state
                 .cycle_history
-                .back_mut()
+                .pop_back()
                 .ok_or(FinalStateError::SnapshotError(String::from(
                     <span class="string">&quot;Invalid cycle_history&quot;</span>,
                 )))<span class="question-mark">?</span>;
-
-        <span class="comment">// This clone lets us repeat the cycle_info for new cycle_infos
-        </span><span class="kw">let </span>latest_snapshot_cycle_info_clone = latest_snapshot_cycle_info.clone();
 
         <span class="comment">// Firstly, complete the first cycle
-        </span><span class="kw">let </span>latest_cycle_info =
-            <span class="self">self</span>.pos_state
-                .cycle_history
-                .back_mut()
-                .ok_or(FinalStateError::SnapshotError(String::from(
-                    <span class="string">&quot;Invalid cycle_history&quot;</span>,
-                )))<span class="question-mark">?</span>;
 
-        <span class="kw">for _ in </span>current_slot.period..<span class="self">self</span>.config.periods_per_cycle {
-            latest_cycle_info.rng_seed.push(<span class="bool-val">false</span>);
-        }
+        </span><span class="kw">let </span>last_slot = Slot::new_last_of_cycle(
+            current_slot_cycle,
+            <span class="self">self</span>.config.periods_per_cycle,
+            <span class="self">self</span>.config.thread_count,
+        )
+        .map_err(|err| {
+            FinalStateError::InvalidSlot(<span class="macro">format!</span>(
+                <span class="string">&quot;Cannot create slot for interpolating downtime: {}&quot;</span>,
+                err
+            ))
+        })<span class="question-mark">?</span>;
 
-        latest_cycle_info.rng_seed.extend(<span class="macro">vec!</span>[
-            <span class="bool-val">false</span>;
-            <span class="self">self</span>.config
-                .periods_per_cycle
-                .saturating_sub(current_slot.period)
-                <span class="kw">as </span>usize
-        ]);
-
-        latest_cycle_info.complete = <span class="bool-val">true</span>;
+        <span class="self">self</span>.pos_state
+            .create_new_cycle_from_last(
+                <span class="kw-2">&amp;</span>latest_snapshot_cycle_info,
+                current_slot
+                    .get_next_slot(<span class="self">self</span>.config.thread_count)
+                    .expect(<span class="string">&quot;Cannot get next slot&quot;</span>),
+                last_slot,
+            )
+            .map_err(|err| FinalStateError::PosError(<span class="macro">format!</span>(<span class="string">&quot;{}&quot;</span>, err)))<span class="question-mark">?</span>;
 
         <span class="comment">// Feed final_state_hash to the completed cycle
         </span><span class="self">self</span>.feed_cycle_hash_and_selector_for_interpolation(current_slot_cycle)<span class="question-mark">?</span>;
 
         <span class="comment">// Then, build all the already completed cycles
         </span><span class="kw">for </span>cycle <span class="kw">in </span>(current_slot_cycle + <span class="number">1</span>)..end_slot_cycle {
+            <span class="kw">let </span>first_slot = Slot::new_first_of_cycle(cycle, <span class="self">self</span>.config.periods_per_cycle)
+                .map_err(|err| {
+                    FinalStateError::InvalidSlot(<span class="macro">format!</span>(
+                        <span class="string">&quot;Cannot create slot for interpolating downtime: {}&quot;</span>,
+                        err
+                    ))
+                })<span class="question-mark">?</span>;
+
             <span class="kw">let </span>last_slot = Slot::new_last_of_cycle(
                 cycle,
                 <span class="self">self</span>.config.periods_per_cycle,
@@ -1148,7 +1214,7 @@
             })<span class="question-mark">?</span>;
 
             <span class="self">self</span>.pos_state
-                .create_new_cycle_from_last(<span class="kw-2">&amp;</span>latest_snapshot_cycle_info_clone, last_slot)
+                .create_new_cycle_from_last(<span class="kw-2">&amp;</span>latest_snapshot_cycle_info, first_slot, last_slot)
                 .map_err(|err| FinalStateError::PosError(<span class="macro">format!</span>(<span class="string">&quot;{}&quot;</span>, err)))<span class="question-mark">?</span>;
 
             <span class="comment">// Feed final_state_hash to the completed cycle
@@ -1156,8 +1222,16 @@
         }
 
         <span class="comment">// Then, build the last cycle
-        </span><span class="self">self</span>.pos_state
-            .create_new_cycle_from_last(<span class="kw-2">&amp;</span>latest_snapshot_cycle_info_clone, end_slot)
+        </span><span class="kw">let </span>first_slot = Slot::new_first_of_cycle(end_slot_cycle, <span class="self">self</span>.config.periods_per_cycle)
+            .map_err(|err| {
+                FinalStateError::InvalidSlot(<span class="macro">format!</span>(
+                    <span class="string">&quot;Cannot create slot for interpolating downtime: {}&quot;</span>,
+                    err
+                ))
+            })<span class="question-mark">?</span>;
+
+        <span class="self">self</span>.pos_state
+            .create_new_cycle_from_last(<span class="kw-2">&amp;</span>latest_snapshot_cycle_info, first_slot, end_slot)
             .map_err(|err| FinalStateError::PosError(<span class="macro">format!</span>(<span class="string">&quot;{}&quot;</span>, err)))<span class="question-mark">?</span>;
 
         <span class="comment">// If the end_slot_cycle is completed

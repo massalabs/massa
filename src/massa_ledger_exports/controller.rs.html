@@ -100,6 +100,8 @@
 <a href="#100" id="100">100</a>
 <a href="#101" id="101">101</a>
 <a href="#102" id="102">102</a>
+<a href="#103" id="103">103</a>
+<a href="#104" id="104">104</a>
 </pre><pre class="rust"><code><span class="kw">use </span>massa_hash::Hash;
 <span class="kw">use </span>massa_models::{
     address::Address, amount::Amount, bytecode::Bytecode, error::ModelsError, slot::Slot,
@@ -177,6 +179,8 @@
     ///
     /// USED FOR BOOTSTRAP ONLY
     </span><span class="kw">fn </span>reset(<span class="kw-2">&amp;mut </span><span class="self">self</span>);
+
+    <span class="kw">fn </span>set_initial_slot(<span class="kw-2">&amp;mut </span><span class="self">self</span>, slot: Slot);
 
     <span class="kw">fn </span>get_slot(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span>&lt;Slot, ModelsError&gt;;
 
