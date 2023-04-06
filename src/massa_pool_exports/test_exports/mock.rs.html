@@ -272,19 +272,10 @@
 <a href="#272" id="272">272</a>
 <a href="#273" id="273">273</a>
 <a href="#274" id="274">274</a>
-<a href="#275" id="275">275</a>
-<a href="#276" id="276">276</a>
-<a href="#277" id="277">277</a>
-<a href="#278" id="278">278</a>
-<a href="#279" id="279">279</a>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
-</span><span class="kw">use </span>crossbeam_channel::{Receiver, Sender};
-<span class="kw">use </span>std::sync::{
-    mpsc::{
-        <span class="self">self</span>,
-        <span class="comment">// Receiver
-    </span>},
+</span><span class="kw">use </span>std::sync::{
+    mpsc::{<span class="self">self</span>, Receiver},
     Arc, Mutex,
 };
 
@@ -305,7 +296,6 @@
 /// Each variant corresponds to a unique method in `PoolController`,
 /// Some variants wait for a response on their `response_tx` field, if present.
 /// See the documentation of `PoolController` for details on parameters and return values.
-</span><span class="attr">#[derive(Debug)]
 </span><span class="kw">pub enum </span>MockPoolControllerMessage {
     <span class="doccomment">/// Add endorsements to the pool
     </span>AddEndorsements {
@@ -388,7 +378,7 @@
 </span><span class="attr">#[derive(Clone)]
 </span><span class="comment">// pub struct MockPoolController(Arc&lt;Mutex&lt;mpsc::Sender&lt;MockPoolControllerMessage&gt;&gt;&gt;);
 </span><span class="kw">pub struct </span>MockPoolController {
-    q: Arc&lt;Mutex&lt;Sender&lt;MockPoolControllerMessage&gt;&gt;&gt;,
+    q: Arc&lt;Mutex&lt;mpsc::Sender&lt;MockPoolControllerMessage&gt;&gt;&gt;,
     last_final_cs_periods: Vec&lt;u64&gt;,
 }
 
@@ -396,7 +386,7 @@
     <span class="doccomment">/// Create a new pair (mock execution controller, mpsc receiver for emitted messages)
     /// Note that unbounded mpsc channels are used
     </span><span class="kw">pub fn </span>new_with_receiver() -&gt; (Box&lt;<span class="kw">dyn </span>PoolController&gt;, PoolEventReceiver) {
-        <span class="kw">let </span>(tx, rx) = crossbeam_channel::unbounded();
+        <span class="kw">let </span>(tx, rx) = mpsc::channel();
         (
             Box::new(MockPoolController {
                 q: Arc::new(Mutex::new(tx)),

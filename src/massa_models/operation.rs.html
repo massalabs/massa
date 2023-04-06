@@ -2641,13 +2641,13 @@
     }
 }
 
-<span class="doccomment">/// Serializer for `Operations`
-</span><span class="kw">pub struct </span>OperationsSerializer {
+<span class="doccomment">/// Serializer for `Operation replies` (used for operations propagation in Message)
+</span><span class="kw">pub struct </span>OperationRepliesSerializer {
     u32_serializer: U32VarIntSerializer,
     signed_op_serializer: SecureShareSerializer,
 }
 
-<span class="kw">impl </span>OperationsSerializer {
+<span class="kw">impl </span>OperationRepliesSerializer {
     <span class="doccomment">/// Creates a new `OperationsSerializer`
     </span><span class="kw">pub const fn </span>new() -&gt; <span class="self">Self </span>{
         <span class="self">Self </span>{
@@ -2657,16 +2657,16 @@
     }
 }
 
-<span class="kw">impl </span>Default <span class="kw">for </span>OperationsSerializer {
+<span class="kw">impl </span>Default <span class="kw">for </span>OperationRepliesSerializer {
     <span class="kw">fn </span>default() -&gt; <span class="self">Self </span>{
         <span class="self">Self</span>::new()
     }
 }
 
-<span class="kw">impl </span>Serializer&lt;Vec&lt;SecureShareOperation&gt;&gt; <span class="kw">for </span>OperationsSerializer {
+<span class="kw">impl </span>Serializer&lt;Vec&lt;SecureShareOperation&gt;&gt; <span class="kw">for </span>OperationRepliesSerializer {
     <span class="doccomment">/// ## Example:
     /// ```rust
-    /// use massa_models::{operation::{SecureShareOperation, Operation, OperationType, OperationsSerializer, OperationSerializer}, secure_share::SecureShareContent, address::Address, amount::Amount};
+    /// use massa_models::{operation::{SecureShareOperation, Operation, OperationType, OperationRepliesSerializer, OperationSerializer}, secure_share::SecureShareContent, address::Address, amount::Amount};
     /// use massa_signature::KeyPair;
     /// use massa_serialization::Serializer;
     /// use std::str::FromStr;
@@ -2684,7 +2684,7 @@
     /// let op_secured = Operation::new_verifiable(content, OperationSerializer::new(), &amp;keypair).unwrap();
     /// let operations = vec![op_secured.clone(), op_secured.clone()];
     /// let mut buffer = Vec::new();
-    /// OperationsSerializer::new().serialize(&amp;operations, &amp;mut buffer).unwrap();
+    /// OperationRepliesSerializer::new().serialize(&amp;operations, &amp;mut buffer).unwrap();
     /// ```
     </span><span class="kw">fn </span>serialize(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
@@ -2702,13 +2702,13 @@
     }
 }
 
-<span class="doccomment">/// Deserializer for `Operations`
-</span><span class="kw">pub struct </span>OperationsDeserializer {
+<span class="doccomment">/// Deserializer for `Operation replies` (used for operations propagation in Message)
+</span><span class="kw">pub struct </span>OperationRepliesDeserializer {
     length_deserializer: U32VarIntDeserializer,
     signed_op_deserializer: SecureShareDeserializer&lt;Operation, OperationDeserializer&gt;,
 }
 
-<span class="kw">impl </span>OperationsDeserializer {
+<span class="kw">impl </span>OperationRepliesDeserializer {
     <span class="doccomment">/// Creates a new `OperationsDeserializer`
     </span><span class="kw">pub fn </span>new(
         max_operations_per_message: u32,
@@ -2736,10 +2736,10 @@
     }
 }
 
-<span class="kw">impl </span>Deserializer&lt;Vec&lt;SecureShareOperation&gt;&gt; <span class="kw">for </span>OperationsDeserializer {
+<span class="kw">impl </span>Deserializer&lt;Vec&lt;SecureShareOperation&gt;&gt; <span class="kw">for </span>OperationRepliesDeserializer {
     <span class="doccomment">/// ## Example:
     /// ```rust
-    /// use massa_models::{operation::{SecureShareOperation, Operation, OperationType, OperationsSerializer, OperationsDeserializer, OperationSerializer}, secure_share::SecureShareContent, address::Address, amount::Amount};
+    /// use massa_models::{operation::{SecureShareOperation, Operation, OperationType, OperationRepliesSerializer, OperationRepliesDeserializer, OperationSerializer}, secure_share::SecureShareContent, address::Address, amount::Amount};
     /// use massa_signature::KeyPair;
     /// use massa_serialization::{Serializer, Deserializer, DeserializeError};
     /// use std::str::FromStr;
@@ -2757,8 +2757,8 @@
     /// let op_secured = Operation::new_verifiable(content, OperationSerializer::new(), &amp;keypair).unwrap();
     /// let operations = vec![op_secured.clone(), op_secured.clone()];
     /// let mut buffer = Vec::new();
-    /// OperationsSerializer::new().serialize(&amp;operations, &amp;mut buffer).unwrap();
-    /// let (rest, deserialized_operations) = OperationsDeserializer::new(10000, 10000, 10000, 10000, 10, 255, 10_000).deserialize::&lt;DeserializeError&gt;(&amp;buffer).unwrap();
+    /// OperationRepliesSerializer::new().serialize(&amp;operations, &amp;mut buffer).unwrap();
+    /// let (rest, deserialized_operations) = OperationRepliesDeserializer::new(10000, 10000, 10000, 10000, 10, 255, 10_000).deserialize::&lt;DeserializeError&gt;(&amp;buffer).unwrap();
     /// for (operation1, operation2) in deserialized_operations.iter().zip(operations.iter()) {
     ///     assert_eq!(operation1.id, operation2.id);
     ///     assert_eq!(operation1.signature, operation2.signature);

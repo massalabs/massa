@@ -21,9 +21,6 @@
 <a href="#21" id="21">21</a>
 <a href="#22" id="22">22</a>
 <a href="#23" id="23">23</a>
-<a href="#24" id="24">24</a>
-<a href="#25" id="25">25</a>
-<a href="#26" id="26">26</a>
 </pre><pre class="rust"><code><span class="kw">use </span>massa_consensus_exports::ConsensusManager;
 <span class="kw">use </span>std::{sync::mpsc::SyncSender, thread::JoinHandle};
 <span class="kw">use </span>tracing::log::info;
@@ -39,9 +36,6 @@
         <span class="macro">info!</span>(<span class="string">&quot;stopping consensus worker...&quot;</span>);
         <span class="comment">// join the consensus thread
         </span><span class="kw">if let </span><span class="prelude-val">Some</span>((tx, join_handle)) = <span class="self">self</span>.consensus_thread.take() {
-            <span class="comment">//TODO: Remove when we have a good fix for https://github.com/massalabs/massa/issues/3766
-            </span>tx.send(ConsensusCommand::Stop)
-                .expect(<span class="string">&quot;consensus thread panicked on try to send stop message to worker&quot;</span>);
             drop(tx);
             join_handle
                 .join()

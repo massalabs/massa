@@ -273,6 +273,7 @@
 <a href="#273" id="273">273</a>
 <a href="#274" id="274">274</a>
 <a href="#275" id="275">275</a>
+<a href="#276" id="276">276</a>
 </pre><pre class="rust"><code><span class="doccomment">//! DEFAULT VALUES USED TO INITIALIZE DIVERS CONFIGURATIONS STRUCTURES
 //!
 //!
@@ -296,9 +297,9 @@
 <span class="kw">use </span>num::rational::Ratio;
 
 <span class="doccomment">/// Start of the downtime simulation
-</span><span class="kw">pub const </span>DOWNTIME_START_TIMESTAMP: MassaTime = MassaTime::from_millis(<span class="number">1680699600000</span>); <span class="comment">// 05/04/2023 3PM CET
+</span><span class="kw">pub const </span>DOWNTIME_START_TIMESTAMP: MassaTime = MassaTime::from_millis(<span class="number">1680768000000</span>); <span class="comment">// 06/04/2023 10AM CET
 </span><span class="doccomment">/// End of the downtime simulation
-</span><span class="kw">pub const </span>DOWNTIME_END_TIMESTAMP: MassaTime = MassaTime::from_millis(<span class="number">1680703200000</span>); <span class="comment">// 05/04/2023 4PM CET
+</span><span class="kw">pub const </span>DOWNTIME_END_TIMESTAMP: MassaTime = MassaTime::from_millis(<span class="number">1680771600000</span>); <span class="comment">// 06/04/2023 11AM CET
 
 </span><span class="doccomment">/// Limit on the number of peers we advertise to others.
 </span><span class="kw">pub const </span>MAX_ADVERTISE_LENGTH: u32 = <span class="number">10000</span>;
@@ -307,6 +308,8 @@
 <span class="doccomment">/// Max number of hash in the message `AskForBlocks`
 </span><span class="kw">pub const </span>MAX_ASK_BLOCKS_PER_MESSAGE: u32 = <span class="number">128</span>;
 <span class="doccomment">/// Max number of operations per message
+/// This is the max number for Operation reply (e.g. for Operation propagation in network)
+/// For max number of operations that can be included in block -&gt; MAX_OPERATIONS_PER_BLOCK
 </span><span class="kw">pub const </span>MAX_OPERATIONS_PER_MESSAGE: u32 = <span class="number">1024</span>;
 <span class="doccomment">/// Length of the handshake random signature
 </span><span class="kw">pub const </span>HANDSHAKE_RANDOMNESS_SIZE_BYTES: usize = <span class="number">32</span>;
@@ -392,9 +395,9 @@
 </span><span class="kw">pub const </span>ENDORSEMENT_COUNT: u32 = <span class="number">16</span>;
 <span class="doccomment">/// Threshold for fitness.
 </span><span class="kw">pub const </span>DELTA_F0: u64 = <span class="number">64 </span>* (ENDORSEMENT_COUNT <span class="kw">as </span>u64 + <span class="number">1</span>);
-<span class="doccomment">/// Maximum number of operations per block
+<span class="doccomment">/// Maximum number of operations per block - used when creating a block &amp;&amp; deser a block
 </span><span class="kw">pub const </span>MAX_OPERATIONS_PER_BLOCK: u32 = <span class="number">5000</span>;
-<span class="doccomment">/// Maximum block size in bytes
+<span class="doccomment">/// Maximum block size in bytes (this does not include the Block header size)
 </span><span class="kw">pub const </span>MAX_BLOCK_SIZE: u32 = <span class="number">1_000_000</span>;
 <span class="doccomment">/// Maximum capacity of the asynchronous messages pool
 </span><span class="kw">pub const </span>MAX_ASYNC_POOL_LENGTH: u64 = <span class="number">10_000</span>;
@@ -403,7 +406,6 @@
 <span class="doccomment">/// Maximum operation validity period count
 </span><span class="kw">pub const </span>OPERATION_VALIDITY_PERIODS: u64 = <span class="number">10</span>;
 <span class="doccomment">/// cycle duration in periods
-/// TODO: Reset to 128 after testing
 </span><span class="kw">pub const </span>PERIODS_PER_CYCLE: u64 = <span class="number">128</span>;
 <span class="doccomment">/// PoS saved cycles: number of cycles saved in `PoSFinalState`
 ///
