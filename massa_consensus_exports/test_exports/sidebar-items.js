@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"enum":["MockConsensusControllerMessage"],"mod":["config","mock"],"struct":["ConsensusEventReceiver","MockConsensusController"]};
+window.SIDEBAR_ITEMS = {"enum":["MockConsensusControllerMessage"],"mod":["__mock_MockConsensusControllerImpl","__mock_MockConsensusControllerImpl_Clone","__mock_MockConsensusControllerImpl_ConsensusController","config","mock"],"struct":["ConsensusControllerImpl","ConsensusEventReceiver","MockConsensusControllerImpl"]};

@@ -235,10 +235,6 @@
 <a href="#235" id="235">235</a>
 <a href="#236" id="236">236</a>
 <a href="#237" id="237">237</a>
-<a href="#238" id="238">238</a>
-<a href="#239" id="239">239</a>
-<a href="#240" id="240">240</a>
-<a href="#241" id="241">241</a>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="doccomment">//! This file defines the final ledger associating addresses to their balances, bytecode and data.
@@ -452,10 +448,6 @@
     <span class="doccomment">/// Get the final state stored in the ledger, to restart from snapshot
     </span><span class="kw">fn </span>get_final_state(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span>&lt;Vec&lt;u8&gt;, ModelsError&gt; {
         <span class="self">self</span>.sorted_ledger.get_final_state()
-    }
-
-    <span class="kw">fn </span>backup_db(<span class="kw-2">&amp;</span><span class="self">self</span>, slot: Slot) {
-        <span class="self">self</span>.sorted_ledger.backup_db(slot);
     }
 
     <span class="doccomment">/// Get every address and their corresponding balance.
