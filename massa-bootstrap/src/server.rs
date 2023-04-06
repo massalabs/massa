@@ -205,30 +205,6 @@ impl<C: NetworkCommandSenderTrait + Clone> BootstrapServer<'_, C> {
         }
     }
 
-    /// Listens on a channel for incoming connections, and loads them onto a crossbeam channel
-    /// for the main-loop to process.
-    ///
-    /// Ok(Ok(())) listener closed without issue
-    /// Ok(Err((dplx, address))) listener accepted a connection then tried sending on a disconnected channel
-    /// Err(..) Error accepting a connection
-    /// TODO: Integrate the listener into the bootstrap-main-loop
-    // fn run_listener(
-    //     mut _listener: impl BSListener,
-    //     listener_tx: crossbeam::channel::Sender<BsConn>,
-    // ) -> Result<Result<(), BsConn>, BootstrapError> {
-    //     // loop {
-    //     //     let (msg, addr) = listener.accept().map_err(BootstrapError::IoError)?;
-
-    //     //     if let Err(SendError((dplx, remote_addr))) = listener_tx.send((msg, addr)) {
-    //     //         warn!(
-    //     //             "listener channel disconnected after accepting connection from {}",
-    //     //             remote_addr
-    //     //         );
-    //     //         return Ok(Err((dplx, remote_addr)));
-    //     //     };
-    //     // }
-    // }
-
     fn run_loop(mut self, max_bootstraps: usize) -> Result<(), BootstrapError> {
         let Ok(bs_loop_rt) = runtime::Builder::new_multi_thread()
             .max_blocking_threads(max_bootstraps * 2)
@@ -353,55 +329,6 @@ impl<C: NetworkCommandSenderTrait + Clone> BootstrapServer<'_, C> {
         bs_loop_rt.shutdown_timeout(Duration::from_secs(20));
         Ok(())
     }
-
-    /// These are the steps to ensure that a connection is only processed if the server is active:
-    ///
-    /// - 1. Block until _something_ is ready
-    /// - 2. If that something is a stop-signal, stop
-    /// - 3. If that something is anything else:
-    /// - 3.a. double check the stop-signal is absent
-    /// - 3.b. If present, fall-back to the stop behaviour
-    /// - 3.c. If absent, all's clear to rock-n-roll.
-    // fn receive_connection(&self, _selector: &mut Select) -> Result<Option<BsConn>, BootstrapError> {
-    //     // 1. Block until _something_ is ready
-    //     // let rdy = selector.ready();
-
-    //     // 2. If that something is a stop-signal, stop
-    //     // from `crossbeam::Select::read()` documentation:
-    //     // "Note that this method might return with success spuriously, so it’s a good idea
-    //     // to always double check if the operation is really ready."
-    //     if rdy == 0 && self.listen_stopper_rx.try_recv().is_ok() {
-    //         return Ok(None);
-    //         // - 3. If that something is anything else:
-    //     } else {
-    //         massa_trace!("bootstrap.lib.run.select", {});
-
-    //         // - 3.a. double check the stop-signal is absent
-    //         let stop = self.listen_stopper_rx.try_recv();
-    //         if unlikely(stop.is_ok()) {
-    //             massa_trace!("bootstrap.lib.run.select.manager", {});
-    //             // 3.b. If present, fall-back to the stop behaviour
-    //             return Ok(None);
-    //         } else if unlikely(stop == Err(crossbeam::channel::TryRecvError::Disconnected)) {
-    //             return Err(BootstrapError::GeneralError(
-    //                 "Unexpected stop-channel disconnection".to_string(),
-    //             ));
-    //         };
-    //     }
-    //     // - 3.c. If absent, all's clear to rock-n-roll.
-    //     let msg = match self.listener_rx.try_recv() {
-    //         Ok(msg) => msg,
-    //         Err(try_rcv_err) => match try_rcv_err {
-    //             crossbeam::channel::TryRecvError::Empty => return Ok(None),
-    //             crossbeam::channel::TryRecvError::Disconnected => {
-    //                 return Err(BootstrapError::GeneralError(
-    //                     "listener recv channel disconnected unexpectedly".to_string(),
-    //                 ));
-    //             }
-    //         },
-    //     };
-    //     Ok(Some(msg))
-    // }
 
     /// Checks latest attempt. If too recent, provides the bad news (as an error).
     /// Updates the latest attempt to "now" if it's all good.
