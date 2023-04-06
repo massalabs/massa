@@ -392,15 +392,6 @@ async fn launch(
             .expect("could not compute initial draws"); // TODO: this might just mean a bad bootstrap, no need to panic, just reboot
     }
 
-    let final_hash = final_state.read().final_state_hash;
-    let cycle_history = final_state.read().pos_state.cycle_history.clone();
-
-    info!(
-        "final_hash: {},\n
-        cycle_history: {:?},\n",
-        final_hash, cycle_history
-    );
-
     // Storage costs constants
     let storage_costs_constants = StorageCostsConstants {
         ledger_cost_per_byte: LEDGER_COST_PER_BYTE,
