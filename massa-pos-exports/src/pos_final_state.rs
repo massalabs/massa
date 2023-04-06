@@ -138,8 +138,6 @@ impl PoSFinalState {
         last_slot: Slot,
     ) -> Result<(), PosError> {
         let mut rng_seed = if first_slot.is_first_of_cycle(self.config.periods_per_cycle) {
-            last_cycle_info.rng_seed.clone()
-        } else {
             BitVec::with_capacity(
                 self.config
                     .periods_per_cycle
@@ -147,6 +145,8 @@ impl PoSFinalState {
                     .try_into()
                     .unwrap(),
             )
+        } else {
+            last_cycle_info.rng_seed.clone()
         };
 
         let cycle = last_slot.get_cycle(self.config.periods_per_cycle);

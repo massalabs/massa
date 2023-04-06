@@ -234,7 +234,7 @@ impl FinalState {
                 )))?;
 
         self.pos_state
-            .create_new_cycle_from_last(&latest_snapshot_cycle_info, current_slot, end_slot)
+            .create_new_cycle_from_last(&latest_snapshot_cycle_info, current_slot.get_next_slot(self.config.thread_count).expect("Cannot get next slot"), end_slot)
             .map_err(|err| FinalStateError::PosError(format!("{}", err)))?;
 
         Ok(())
@@ -271,7 +271,7 @@ impl FinalState {
         })?;
 
         self.pos_state
-            .create_new_cycle_from_last(&latest_snapshot_cycle_info, current_slot, last_slot)
+            .create_new_cycle_from_last(&latest_snapshot_cycle_info, current_slot.get_next_slot(self.config.thread_count).expect("Cannot get next slot"), last_slot)
             .map_err(|err| FinalStateError::PosError(format!("{}", err)))?;
 
         // Feed final_state_hash to the completed cycle
