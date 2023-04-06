@@ -213,6 +213,10 @@ impl LedgerController for FinalLedger {
         self.sorted_ledger.get_final_state()
     }
 
+    fn backup_db(&self, slot: Slot) {
+        self.sorted_ledger.backup_db(slot);
+    }
+
     /// Get every address and their corresponding balance.
     ///
     /// IMPORTANT: This should only be used for debug and test purposes.

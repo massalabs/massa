@@ -506,6 +506,10 @@ impl FinalState {
             }*/
 
             self.ledger.set_final_state_hash(hash_buffer);
+
+            if self.slot.is_first_of_cycle(self.config.periods_per_cycle) {
+                self.ledger.backup_db(self.slot);
+            }
         }
 
         // feed final_state_hash to the last cycle

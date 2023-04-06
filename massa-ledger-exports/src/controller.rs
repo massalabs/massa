@@ -84,6 +84,8 @@ pub trait LedgerController: Send + Sync + Debug {
 
     fn get_final_state(&self) -> Result<Vec<u8>, ModelsError>;
 
+    fn backup_db(&self, slot: Slot);
+
     /// Get every address and their corresponding balance.
     ///
     /// IMPORTANT: This should only be used for debug and test purposes.
