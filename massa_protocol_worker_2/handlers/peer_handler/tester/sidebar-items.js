@@ -1,1 +1,0 @@
-window.SIDEBAR_ITEMS = {"fn":["empty_fallback"],"struct":["Tester","TesterHandshake","TesterMessagesHandler"]};

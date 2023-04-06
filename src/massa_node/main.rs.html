@@ -1147,6 +1147,11 @@
 <a href="#1147" id="1147">1147</a>
 <a href="#1148" id="1148">1148</a>
 <a href="#1149" id="1149">1149</a>
+<a href="#1150" id="1150">1150</a>
+<a href="#1151" id="1151">1151</a>
+<a href="#1152" id="1152">1152</a>
+<a href="#1153" id="1153">1153</a>
+<a href="#1154" id="1154">1154</a>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="attr">#![doc = <span class="macro">include_str!</span>(<span class="string">&quot;../../README.md&quot;</span>)]
@@ -2051,19 +2056,24 @@
             </span>.expect(<span class="string">&quot;bootstrap server shutdown failed&quot;</span>)
     }
 
-    <span class="comment">// stop public API
-    </span>api_public_handle.stop();
-
-    <span class="comment">// stop private API
-    </span>api_private_handle.stop();
-
-    <span class="comment">// stop Massa API
-    </span>api_handle.stop();
+    <span class="macro">info!</span>(<span class="string">&quot;Start stopping API&#39;s: gRPC, EXPERIMENTAL, PUBLIC, PRIVATE&quot;</span>);
 
     <span class="comment">// stop Massa gRPC API
     </span><span class="kw">if let </span><span class="prelude-val">Some</span>(handle) = grpc_handle {
         handle.stop();
     }
+
+    <span class="comment">// stop Massa API
+    </span>api_handle.stop().<span class="kw">await</span>;
+    <span class="macro">info!</span>(<span class="string">&quot;API | EXPERIMENTAL JsonRPC | stopped&quot;</span>);
+
+    <span class="comment">// stop public API
+    </span>api_public_handle.stop().<span class="kw">await</span>;
+    <span class="macro">info!</span>(<span class="string">&quot;API | PUBLIC JsonRPC | stopped&quot;</span>);
+
+    <span class="comment">// stop private API
+    </span>api_private_handle.stop().<span class="kw">await</span>;
+    <span class="macro">info!</span>(<span class="string">&quot;API | PRIVATE JsonRPC | stopped&quot;</span>);
 
     <span class="comment">// stop factory
     </span>factory_manager.stop();

@@ -29,9 +29,7 @@ var sourcesIndex = JSON.parse('{\
 "massa_pos_worker":["",[],["controller.rs","draw.rs","lib.rs","worker.rs"]],\
 "massa_proto":["",[],["google.api.rs","google.rpc.rs","lib.rs","massa.api.v1.rs"]],\
 "massa_protocol_exports":["",[["test_exports",[],["mock.rs","mod.rs"]],["tests",[],["mock_network_controller.rs","mod.rs","tools.rs"]]],["channels.rs","error.rs","lib.rs","protocol_controller.rs","settings.rs"]],\
-"massa_protocol_exports_2":["",[["test_exports",[],["config.rs","mod.rs"]]],["controller_trait.rs","error.rs","lib.rs","settings.rs"]],\
 "massa_protocol_worker":["",[],["cache.rs","checked_operations.rs","lib.rs","node_info.rs","protocol_network.rs","protocol_worker.rs","sig_verifier.rs","worker_operations_impl.rs"]],\
-"massa_protocol_worker_2":["",[["handlers",[["block_handler",[],["commands.rs","messages.rs","mod.rs"]],["endorsement_handler",[],["commands.rs","internal_messages.rs","messages.rs","mod.rs","propagation.rs","retrieval.rs"]],["operation_handler",[],["commands.rs","messages.rs","mod.rs"]],["peer_handler",[],["announcement.rs","messages.rs","mod.rs","tester.rs"]]],["mod.rs"]]],["connectivity.rs","controller.rs","lib.rs","manager.rs","messages.rs","worker.rs"]],\
 "massa_sdk":["",[],["config.rs","lib.rs"]],\
 "massa_serialization":["",[],["lib.rs"]],\
 "massa_signature":["",[],["error.rs","lib.rs","signature_impl.rs"]],\
