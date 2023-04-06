@@ -13,10 +13,9 @@ use massa_models::version::{Version, VersionDeserializer, VersionSerializer};
 use massa_serialization::{DeserializeError, Deserializer, Serializer};
 use massa_signature::KeyPair;
 use massa_time::MassaTime;
-use mio::net::TcpStream;
 use std::convert::TryInto;
 use std::io::{ErrorKind, Read, Write};
-use std::net::SocketAddr;
+use std::net::{SocketAddr, TcpStream};
 use std::thread;
 use std::time::Duration;
 use tracing::error;
@@ -86,8 +85,7 @@ impl BootstrapServerBinder {
                 .serialize(&version, &mut version_bytes)?;
             let mut msg_bytes = vec![0u8; version_bytes.len() + self.randomness_size_bytes];
 
-            // TODO TIMEOUT
-            // self.duplex.set_read_timeout(duration)?;
+            self.duplex.set_read_timeout(duration)?;
 
             self.duplex.read_exact(&mut msg_bytes)?;
             let (_, received_version) = self
@@ -198,10 +196,7 @@ impl BootstrapServerBinder {
         };
 
         // send signature
-
-        // TODO TIMEOUT
-        // self.duplex.set_write_timeout(duration)?;
-
+        self.duplex.set_write_timeout(duration)?;
         self.duplex.write_all(&sig.to_bytes())?;
 
         // send message length
@@ -225,8 +220,7 @@ impl BootstrapServerBinder {
         &mut self,
         duration: Option<Duration>,
     ) -> Result<BootstrapClientMessage, BootstrapError> {
-        // TODO TIMEOUT
-        // self.duplex.set_read_timeout(duration)?;
+        self.duplex.set_read_timeout(duration)?;
 
         // read prev hash
         let received_prev_hash = {

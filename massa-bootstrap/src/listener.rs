@@ -1,9 +1,8 @@
-use std::net::SocketAddr;
+use std::net::{SocketAddr, TcpListener, TcpStream};
 
-use mio::{
-    net::{TcpListener, TcpStream},
-    Events, Interest, Poll, Token, Waker,
-};
+use mio::net::TcpListener as MioTcpListener;
+
+use mio::{Events, Interest, Poll, Token, Waker};
 use tracing::{error, info};
 
 use crate::error::BootstrapError;
@@ -24,14 +23,17 @@ impl BootstrapTcpListener {
         addr: SocketAddr,
         connection_tx: crossbeam::channel::Sender<(TcpStream, SocketAddr)>,
     ) -> Result<BootstrapListenerStopHandle, BootstrapError> {
-        let mut server = TcpListener::bind(addr)?;
+        let server = TcpListener::bind(addr)?;
+        let mut mio_server =
+            MioTcpListener::from_std(server.try_clone().expect("Unable to clone server socket"));
+
         let mut poll = Poll::new()?;
 
         // wake up the poll when we want to stop the listener
         let waker = mio::Waker::new(poll.registry(), STOP_LISTENER)?;
 
         poll.registry()
-            .register(&mut server, NEW_CONNECTION, Interest::READABLE)?;
+            .register(&mut mio_server, NEW_CONNECTION, Interest::READABLE)?;
 
         // TODO use config for capacity ?
         let mut events = Events::with_capacity(32);

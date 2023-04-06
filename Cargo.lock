@@ -2563,6 +2563,7 @@ dependencies = [
  "massa_serialization 0.1.0",
  "massa_signature",
  "massa_time",
+ "mio",
  "mockall",
  "nom",
  "num_enum",

@@ -40,11 +40,10 @@ use massa_models::{
 use massa_network_exports::NetworkCommandSenderTrait;
 use massa_signature::KeyPair;
 use massa_time::MassaTime;
-use mio::net::TcpStream;
 use parking_lot::RwLock;
 use std::{
     collections::HashMap,
-    net::{IpAddr, SocketAddr},
+    net::{IpAddr, SocketAddr, TcpStream},
     sync::Arc,
     thread,
     time::{Duration, Instant},
