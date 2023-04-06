@@ -2945,6 +2945,7 @@ dependencies = [
 name = "massa_pool_exports"
 version = "0.1.0"
 dependencies = [
+ "crossbeam-channel",
  "massa_models",
  "massa_storage",
  "massa_time",
@@ -2975,6 +2976,7 @@ version = "0.1.0"
 dependencies = [
  "anyhow",
  "bitvec",
+ "crossbeam-channel",
  "displaydoc",
  "massa_hash 0.1.0",
  "massa_ledger_exports",

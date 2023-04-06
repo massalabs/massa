@@ -1,21 +1,16 @@
 use super::TestFactory;
-use massa_hash::Hash;
-use massa_models::block_header::{BlockHeader, BlockHeaderSerializer, SecuredHeader};
-use massa_models::block_id::BlockId;
-use massa_models::config::{T0, THREAD_COUNT};
-use massa_models::denunciation::{Denunciation, DenunciationId, DenunciationPrecursor};
-use massa_models::endorsement::{Endorsement, EndorsementSerializerLW};
-use massa_models::slot::Slot;
-use massa_models::timeslots::get_closest_slot_to_timestamp;
+use massa_models::address::Address;
+use massa_models::denunciation::{Denunciation, DenunciationPrecursor};
+use massa_models::test_exports::{
+    gen_block_headers_for_denunciation, gen_endorsements_for_denunciation,
+};
 use massa_models::{
     amount::Amount,
     operation::{Operation, OperationSerializer, OperationType},
     secure_share::SecureShareContent,
 };
 use massa_signature::KeyPair;
-use massa_time::MassaTime;
 use std::str::FromStr;
-use std::time::Duration;
 
 /// Creates a basic empty block with the factory.
 #[test]
@@ -74,84 +69,112 @@ fn basic_creation_with_multiple_operations() {
     assert_eq!(block.content.operations.len(), 2);
 }
 
-/// Send 2 block headers and check if a Denunciation op is in storage
+/// Send some block headers and check if 1 (and only 1) Denunciation is produced
 #[test]
 fn test_denunciation_factory_block_header_denunciation() {
-    let keypair = KeyPair::generate();
-
-    let now = MassaTime::now().expect("could not get current time");
-    // get closest slot according to the current absolute time
-    let slot = get_closest_slot_to_timestamp(THREAD_COUNT, T0, now, now);
-
-    let parents: Vec<BlockId> = (0..THREAD_COUNT)
-        .map(|i| BlockId(Hash::compute_from(&[i])))
-        .collect();
-
-    let parents2: Vec<BlockId> = (0..THREAD_COUNT)
-        .map(|i| BlockId(Hash::compute_from(&[i + 1])))
-        .collect();
-
-    let header1 = BlockHeader {
-        slot,
-        parents: parents.clone(),
-        operation_merkle_root: Hash::compute_from("mno".as_bytes()),
-        endorsements: vec![Endorsement::new_verifiable(
-            Endorsement {
-                slot: Slot::new(1, 1),
-                index: 1,
-                endorsed_block: BlockId(Hash::compute_from("blk1".as_bytes())),
-            },
-            EndorsementSerializerLW::new(),
-            &keypair,
-        )
-        .unwrap()],
-    };
-
-    let secured_header_1: SecuredHeader =
-        BlockHeader::new_verifiable(header1, BlockHeaderSerializer::new(), &keypair).unwrap();
-
-    let header2 = BlockHeader {
-        slot,
-        parents: parents2,
-        operation_merkle_root: Hash::compute_from("mno".as_bytes()),
-        endorsements: vec![Endorsement::new_verifiable(
-            Endorsement {
-                slot: Slot::new(1, 1),
-                index: 1,
-                endorsed_block: BlockId(Hash::compute_from("blk1".as_bytes())),
-            },
-            EndorsementSerializerLW::new(),
-            &keypair,
-        )
-        .unwrap()],
-    };
-
-    let secured_header_2: SecuredHeader =
-        BlockHeader::new_verifiable(header2, BlockHeaderSerializer::new(), &keypair).unwrap();
+    let (_slot, keypair, secured_header_1, secured_header_2, secured_header_3) =
+        gen_block_headers_for_denunciation();
+    let address = Address::from_public_key(&keypair.get_public_key());
 
     // Built it to compare with what the factory will produce
-    let _denunciation = Denunciation::try_from((&secured_header_1, &secured_header_2)).unwrap();
-    let _denunciation_id = DenunciationId::from(&_denunciation);
+    let denunciation_orig = Denunciation::try_from((&secured_header_1, &secured_header_2)).unwrap();
+    // let _denunciation_id = DenunciationId::from(&_denunciation);
 
-    let test_factory = TestFactory::new(&keypair);
+    let mut test_factory = TestFactory::new(&keypair);
 
     test_factory
         .denunciation_factory_sender
         .send(DenunciationPrecursor::try_from(&secured_header_1.clone()).unwrap())
         .unwrap();
+    // Sending twice the same secured header - should not produce a Denunciation
+    test_factory
+        .denunciation_factory_sender
+        .send(DenunciationPrecursor::try_from(&secured_header_1.clone()).unwrap())
+        .unwrap();
+    // With this one, it should produce a Denunciation
     test_factory
         .denunciation_factory_sender
         .send(DenunciationPrecursor::try_from(&secured_header_2.clone()).unwrap())
         .unwrap();
+    // A denunciation has already been produced - expect this one will be ignored
+    test_factory
+        .denunciation_factory_sender
+        .send(DenunciationPrecursor::try_from(&secured_header_3.clone()).unwrap())
+        .unwrap();
 
-    // Wait for denunciation factory to create the Denunciation
-    std::thread::sleep(Duration::from_secs(1));
+    // Handle selector && pool responses - will timeout if nothing happens
+    let from_pool = test_factory.denunciation_factory_loop(address);
 
-    // let de_indexes = test_factory.storage.read_denunciations();
-    // assert_eq!(de_indexes.get(&denunciation_id), Some(&denunciation));
+    assert_eq!(from_pool.len(), 1);
+    assert_eq!(from_pool[0], denunciation_orig);
+    assert_eq!(
+        from_pool[0]
+            .is_valid()
+            .expect("Denunciation should be a valid one"),
+        true
+    );
+    assert_eq!(from_pool[0].is_for_block_header(), true);
+    assert_eq!(
+        from_pool[0]
+            .is_also_for_block_header(&secured_header_3)
+            .unwrap(),
+        true
+    );
 
-    // release RwLockReadGuard
-    // drop(de_indexes);
+    // stop everything
+    drop(test_factory);
+}
+
+/// Send some block headers and check if 1 (and only 1) Denunciation is produced
+#[test]
+fn test_denunciation_factory_endorsement_denunciation() {
+    let (_slot, keypair, s_endorsement_1, s_endorsement_2, s_endorsement_3) =
+        gen_endorsements_for_denunciation();
+    let address = Address::from_public_key(&keypair.get_public_key());
+
+    let denunciation_orig: Denunciation = (&s_endorsement_1, &s_endorsement_2).try_into().unwrap();
+
+    let mut test_factory = TestFactory::new(&keypair);
+
+    test_factory
+        .denunciation_factory_tx
+        .send(DenunciationPrecursor::try_from(&s_endorsement_1.clone()).unwrap())
+        .unwrap();
+    // Sending twice the same secured header - should not produce a Denunciation
+    test_factory
+        .denunciation_factory_tx
+        .send(DenunciationPrecursor::try_from(&s_endorsement_1.clone()).unwrap())
+        .unwrap();
+    // With this one, it should produce a Denunciation
+    test_factory
+        .denunciation_factory_tx
+        .send(DenunciationPrecursor::try_from(&s_endorsement_2.clone()).unwrap())
+        .unwrap();
+    // A denunciation has already been produced - expect this one will be ignored
+    test_factory
+        .denunciation_factory_tx
+        .send(DenunciationPrecursor::try_from(&s_endorsement_3.clone()).unwrap())
+        .unwrap();
+
+    // Handle selector && pool responses - will timeout if nothing happens
+    let from_pool = test_factory.denunciation_factory_loop(address);
+
+    assert_eq!(from_pool.len(), 1);
+    assert_eq!(from_pool[0], denunciation_orig);
+    assert_eq!(
+        from_pool[0]
+            .is_valid()
+            .expect("Denunciation should be a valid one"),
+        true
+    );
+    assert_eq!(from_pool[0].is_for_endorsement(), true);
+    assert_eq!(
+        from_pool[0]
+            .is_also_for_endorsement(&s_endorsement_3)
+            .unwrap(),
+        true
+    );
+
     // stop everything
     drop(test_factory);
 }
