@@ -88,6 +88,7 @@ impl BootstrapServerBinder {
 
             // TODO TIMEOUT
             // self.duplex.set_read_timeout(duration)?;
+
             self.duplex.read_exact(&mut msg_bytes)?;
             let (_, received_version) = self
                 .version_deserializer

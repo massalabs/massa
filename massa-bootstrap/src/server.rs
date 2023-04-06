@@ -56,7 +56,7 @@ use white_black_list::*;
 use crate::{
     error::BootstrapError,
     establisher::BSListener,
-    listener::BootstrapTcpListener,
+    listener::{BootstrapListenerStopHandle, BootstrapTcpListener},
     messages::{BootstrapClientMessage, BootstrapServerMessage},
     server_binder::BootstrapServerBinder,
     BootstrapConfig,
@@ -71,9 +71,8 @@ pub struct BootstrapManager {
     update_handle: thread::JoinHandle<Result<(), BootstrapError>>,
     // need to preserve the listener handle up to here to prevent it being destroyed
     #[allow(clippy::type_complexity)]
-    _listen_handle: thread::JoinHandle<Result<Result<(), BsConn>, BootstrapError>>,
     main_handle: thread::JoinHandle<Result<(), BootstrapError>>,
-    listen_stopper_tx: crossbeam::channel::Sender<()>,
+    listen_stop_handle: BootstrapListenerStopHandle,
     update_stopper_tx: crossbeam::channel::Sender<()>,
 }
 
@@ -81,7 +80,7 @@ impl BootstrapManager {
     /// stop the bootstrap server
     pub fn stop(self) -> Result<(), BootstrapError> {
         massa_trace!("bootstrap.lib.stop", {});
-        if self.listen_stopper_tx.send(()).is_err() {
+        if self.listen_stop_handle.stop().is_err() {
             warn!("bootstrap server already dropped");
         }
         if self.update_stopper_tx.send(()).is_err() {
@@ -114,7 +113,6 @@ pub fn start_bootstrap_server<C: NetworkCommandSenderTrait + Clone>(
     massa_trace!("bootstrap.lib.start_bootstrap_server", {});
 
     // TODO(low prio): See if a zero capacity channel model can work
-    let (listen_stopper_tx, listen_stopper_rx) = crossbeam::channel::bounded::<()>(1);
     let (update_stopper_tx, update_stopper_rx) = crossbeam::channel::bounded::<()>(1);
 
     let Ok(max_bootstraps) = config.max_simultaneous_bootstraps.try_into() else {
@@ -145,12 +143,17 @@ pub fn start_bootstrap_server<C: NetworkCommandSenderTrait + Clone>(
             res
         })
         .expect("in `start_bootstrap_server`, OS failed to spawn list-updater thread");
-    let listen_handle = thread::Builder::new()
-        .name("bs_listener".to_string())
-        // FIXME: The interface being used shouldn't have `: Send + 'static` as a constraint on the listener assosciated type.
-        // GAT lifetime is likely to remedy this, however.
-        .spawn(move || BootstrapServer::<C>::run_listener(listener, listener_tx))
-        .expect("in `start_bootstrap_server`, OS failed to spawn listener thread");
+
+    // let listen_handle = thread::Builder::new()
+    //     .name("bs_listener".to_string())
+    //     // FIXME: The interface being used shouldn't have `: Send + 'static` as a constraint on the listener assosciated type.
+    //     // GAT lifetime is likely to remedy this, however.
+    //     .spawn(move || BootstrapServer::<C>::run_listener(listener, listener_tx))
+    //     .expect("in `start_bootstrap_server`, OS failed to spawn listener thread");
+
+    // TODO get addr from config
+    let listen_stop_handle =
+        BootstrapTcpListener::start("0.0.0.0:8080".parse().unwrap(), listener_tx)?;
 
     let main_handle = thread::Builder::new()
         .name("bs-main-loop".to_string())
@@ -160,7 +163,6 @@ pub fn start_bootstrap_server<C: NetworkCommandSenderTrait + Clone>(
                 network_command_sender,
                 final_state,
                 listener_rx,
-                listen_stopper_rx,
                 white_black_list,
                 keypair,
                 version,
@@ -174,9 +176,8 @@ pub fn start_bootstrap_server<C: NetworkCommandSenderTrait + Clone>(
     // TODO: make the tasks sync, so the runtime is redundant
     Ok(Some(BootstrapManager {
         update_handle,
-        _listen_handle: listen_handle,
         main_handle,
-        listen_stopper_tx,
+        listen_stop_handle,
         update_stopper_tx,
     }))
 }
@@ -186,7 +187,6 @@ struct BootstrapServer<'a, C: NetworkCommandSenderTrait> {
     network_command_sender: C,
     final_state: Arc<RwLock<FinalState>>,
     listener_rx: crossbeam::channel::Receiver<BsConn>,
-    listen_stopper_rx: crossbeam::channel::Receiver<()>,
     white_black_list: SharedWhiteBlackList<'a>,
     keypair: KeyPair,
     bootstrap_config: BootstrapConfig,
@@ -262,14 +262,18 @@ impl<C: NetworkCommandSenderTrait + Clone> BootstrapServer<'_, C> {
         // Use the strong-count of this variable to track the session count
         let bootstrap_sessions_counter: Arc<()> = Arc::new(());
         let per_ip_min_interval = self.bootstrap_config.per_ip_min_interval.to_duration();
-        let mut selector = Select::new();
-        selector.recv(&self.listen_stopper_rx);
-        selector.recv(&self.listener_rx);
+        // let mut selector = Select::new();
+        // selector.recv(&self.listen_stopper_rx);
+        // selector.recv(&self.listener_rx);
         // TODO: Work out how to integration-test this
         loop {
             // block until we have a connection to work with, or break out of main-loop
             // if a stop-signal is received
-            let Some((dplx, remote_addr)) = self.receive_connection(&mut selector)? else { break; };
+            let (dplx, remote_addr) = self.listener_rx.recv().map_err(|_e| {
+                BootstrapError::GeneralError("Bootstrap listener channel disconnected".to_string())
+            })?;
+
+            // let Some((dplx, remote_addr)) = self.receive_connection(&mut selector)? else { break; };
             // claim a slot in the max_bootstrap_sessions
             let server_binding = BootstrapServerBinder::new(
                 dplx,
@@ -382,46 +386,46 @@ impl<C: NetworkCommandSenderTrait + Clone> BootstrapServer<'_, C> {
     /// - 3.a. double check the stop-signal is absent
     /// - 3.b. If present, fall-back to the stop behaviour
     /// - 3.c. If absent, all's clear to rock-n-roll.
-    fn receive_connection(&self, selector: &mut Select) -> Result<Option<BsConn>, BootstrapError> {
-        // 1. Block until _something_ is ready
-        let rdy = selector.ready();
+    // fn receive_connection(&self, _selector: &mut Select) -> Result<Option<BsConn>, BootstrapError> {
+    //     // 1. Block until _something_ is ready
+    //     // let rdy = selector.ready();
 
-        // 2. If that something is a stop-signal, stop
-        // from `crossbeam::Select::read()` documentation:
-        // "Note that this method might return with success spuriously, so it’s a good idea
-        // to always double check if the operation is really ready."
-        if rdy == 0 && self.listen_stopper_rx.try_recv().is_ok() {
-            return Ok(None);
-            // - 3. If that something is anything else:
-        } else {
-            massa_trace!("bootstrap.lib.run.select", {});
+    //     // 2. If that something is a stop-signal, stop
+    //     // from `crossbeam::Select::read()` documentation:
+    //     // "Note that this method might return with success spuriously, so it’s a good idea
+    //     // to always double check if the operation is really ready."
+    //     if rdy == 0 && self.listen_stopper_rx.try_recv().is_ok() {
+    //         return Ok(None);
+    //         // - 3. If that something is anything else:
+    //     } else {
+    //         massa_trace!("bootstrap.lib.run.select", {});
 
-            // - 3.a. double check the stop-signal is absent
-            let stop = self.listen_stopper_rx.try_recv();
-            if unlikely(stop.is_ok()) {
-                massa_trace!("bootstrap.lib.run.select.manager", {});
-                // 3.b. If present, fall-back to the stop behaviour
-                return Ok(None);
-            } else if unlikely(stop == Err(crossbeam::channel::TryRecvError::Disconnected)) {
-                return Err(BootstrapError::GeneralError(
-                    "Unexpected stop-channel disconnection".to_string(),
-                ));
-            };
-        }
-        // - 3.c. If absent, all's clear to rock-n-roll.
-        let msg = match self.listener_rx.try_recv() {
-            Ok(msg) => msg,
-            Err(try_rcv_err) => match try_rcv_err {
-                crossbeam::channel::TryRecvError::Empty => return Ok(None),
-                crossbeam::channel::TryRecvError::Disconnected => {
-                    return Err(BootstrapError::GeneralError(
-                        "listener recv channel disconnected unexpectedly".to_string(),
-                    ));
-                }
-            },
-        };
-        Ok(Some(msg))
-    }
+    //         // - 3.a. double check the stop-signal is absent
+    //         let stop = self.listen_stopper_rx.try_recv();
+    //         if unlikely(stop.is_ok()) {
+    //             massa_trace!("bootstrap.lib.run.select.manager", {});
+    //             // 3.b. If present, fall-back to the stop behaviour
+    //             return Ok(None);
+    //         } else if unlikely(stop == Err(crossbeam::channel::TryRecvError::Disconnected)) {
+    //             return Err(BootstrapError::GeneralError(
+    //                 "Unexpected stop-channel disconnection".to_string(),
+    //             ));
+    //         };
+    //     }
+    //     // - 3.c. If absent, all's clear to rock-n-roll.
+    //     let msg = match self.listener_rx.try_recv() {
+    //         Ok(msg) => msg,
+    //         Err(try_rcv_err) => match try_rcv_err {
+    //             crossbeam::channel::TryRecvError::Empty => return Ok(None),
+    //             crossbeam::channel::TryRecvError::Disconnected => {
+    //                 return Err(BootstrapError::GeneralError(
+    //                     "listener recv channel disconnected unexpectedly".to_string(),
+    //                 ));
+    //             }
+    //         },
+    //     };
+    //     Ok(Some(msg))
+    // }
 
     /// Checks latest attempt. If too recent, provides the bad news (as an error).
     /// Updates the latest attempt to "now" if it's all good.

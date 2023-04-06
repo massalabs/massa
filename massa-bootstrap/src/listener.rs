@@ -34,34 +34,37 @@ impl BootstrapTcpListener {
         let mut events = Events::with_capacity(32);
 
         // spawn a new thread to handle events
-        std::thread::spawn(move || loop {
-            poll.poll(&mut events, None).unwrap();
+        std::thread::Builder::new()
+            .name("bs_listener".to_string())
+            .spawn(move || loop {
+                poll.poll(&mut events, None).unwrap();
 
-            for event in events.iter() {
-                match event.token() {
-                    NEW_CONNECTION => {
-                        let (socket, addr) = server
-                            .accept()
-                            .map_err(|e| BootstrapError::from(e))
-                            .unwrap();
-                        println!("New connection: {}", addr);
-                        connection_tx.send((socket, addr)).unwrap();
+                for event in events.iter() {
+                    match event.token() {
+                        NEW_CONNECTION => {
+                            let (socket, addr) = server
+                                .accept()
+                                .map_err(|e| BootstrapError::from(e))
+                                .unwrap();
+                            println!("New connection: {}", addr);
+                            connection_tx.send((socket, addr)).unwrap();
+                        }
+                        STOP_LISTENER => {
+                            info!("Stopping bootstrap listener");
+                            return;
+                        }
+                        _ => error!("Unexpected event"),
                     }
-                    STOP_LISTENER => {
-                        info!("Stopping bootstrap listener");
-                        return;
-                    }
-                    _ => error!("Unexpected event"),
                 }
-            }
-        });
+            })
+            .expect("in `start bootstrap listener`, OS failed to spawn listener thread");
 
         Ok(BootstrapListenerStopHandle(waker))
     }
 }
 
 impl BootstrapListenerStopHandle {
-    pub fn stop(self) {
-        self.0.wake().unwrap();
+    pub fn stop(self) -> Result<(), BootstrapError> {
+        self.0.wake().map_err(BootstrapError::from)
     }
 }
