@@ -154,7 +154,6 @@ impl PeerManagementMessage {
             }
             PeerManagementMessage::ListPeers(peers) => {
                 let mut bytes = vec![];
-                let _ = id_serializer.serialize(&1, &mut bytes);
                 let nb_peers = peers.len() as u64;
                 bytes.extend_from_slice(&nb_peers.to_le_bytes());
                 for (peer_id, listeners) in peers {
