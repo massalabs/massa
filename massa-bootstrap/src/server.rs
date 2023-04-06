@@ -55,6 +55,7 @@ use white_black_list::*;
 use crate::{
     error::BootstrapError,
     establisher::BSListener,
+    listener::BootstrapTcpListener,
     messages::{BootstrapClientMessage, BootstrapServerMessage},
     server_binder::BootstrapServerBinder,
     BootstrapConfig,
@@ -224,6 +225,12 @@ impl<C: NetworkCommandSenderTrait + Clone> BootstrapServer<'_, C> {
         mut listener: impl BSListener,
         listener_tx: crossbeam::channel::Sender<BsConn>,
     ) -> Result<Result<(), BsConn>, BootstrapError> {
+        // TODO remove, only for testing
+        std::thread::spawn(|| {
+            let mut server = BootstrapTcpListener::new("0.0.0.0:8080".parse().unwrap());
+            dbg!(server.run());
+        });
+
         loop {
             let (msg, addr) = listener.accept().map_err(BootstrapError::IoError)?;
 
