@@ -9,11 +9,13 @@ use peernet::{network_manager::SharedActiveConnections, peer_id::PeerId};
 
 use self::{
     commands::BlockHandlerCommand,
-    messages::{BlockMessageDeserializer, BlockMessageDeserializerArgs, BlockMessageSerializer},
+    messages::{BlockMessageDeserializer, BlockMessageDeserializerArgs},
 };
 
 pub mod commands;
 mod messages;
+
+pub(crate) use messages::{BlockMessage, BlockMessageSerializer};
 
 pub struct BlockHandler {
     pub block_retrieval_thread: Option<JoinHandle<()>>,

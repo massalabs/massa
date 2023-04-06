@@ -10,12 +10,14 @@ use peernet::{network_manager::SharedActiveConnections, peer_id::PeerId};
 use self::{
     commands::OperationHandlerCommand,
     messages::{
-        OperationMessageDeserializer, OperationMessageDeserializerArgs, OperationMessageSerializer,
+        OperationMessageDeserializer, OperationMessageDeserializerArgs,
     },
 };
 
 pub mod commands;
 mod messages;
+
+pub(crate) use messages::{OperationMessage, OperationMessageSerializer};
 
 pub struct OperationHandler {
     pub operation_retrieval_thread: Option<JoinHandle<()>>,

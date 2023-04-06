@@ -21,10 +21,14 @@ use peernet::{
     types::{KeyPair, Signature},
 };
 
-use crate::handlers::peer_handler::{messages::PeerManagementMessage, tester::Tester};
+use self::tester::Tester;
 
-use self::announcement::{
-    Announcement, AnnouncementDeserializer, AnnouncementDeserializerArgs, AnnouncementSerializer,
+use self::{
+    announcement::{
+        Announcement, AnnouncementDeserializer, AnnouncementDeserializerArgs,
+        AnnouncementSerializer,
+    },
+    messages::{PeerManagementMessageDeserializer, PeerManagementMessageDeserializerArgs},
 };
 
 /// This file contains the definition of the peer management handler
@@ -34,6 +38,7 @@ mod announcement;
 mod messages;
 mod tester;
 
+pub(crate) use messages::{PeerManagementMessage, PeerManagementMessageSerializer};
 pub type InitialPeers = HashMap<PeerId, HashMap<SocketAddr, TransportType>>;
 
 #[derive(Default)]
@@ -57,25 +62,35 @@ pub struct PeerInfo {
 impl PeerManagementHandler {
     pub fn new(initial_peers: InitialPeers) -> (Self, Sender<(PeerId, u64, Vec<u8>)>) {
         let (sender, receiver) = crossbeam::channel::unbounded();
+        let message_serializer = PeerManagementMessageSerializer::new();
         for (peer_id, listeners) in &initial_peers {
             println!("Sending initial peer: {:?}", peer_id);
-            sender
-                .send((
-                    peer_id.clone(),
-                    0,
-                    PeerManagementMessage::NewPeerConnected((peer_id.clone(), listeners.clone()))
-                        .to_bytes(),
-                ))
+            let mut message = Vec::new();
+            message_serializer
+                .serialize(
+                    &PeerManagementMessage::NewPeerConnected((peer_id.clone(), listeners.clone())),
+                    &mut message,
+                )
                 .unwrap();
+            sender.send((peer_id.clone(), 0, message)).unwrap();
         }
         let peer_db: SharedPeerDB = Arc::new(RwLock::new(Default::default()));
         let thread_join = std::thread::spawn({
             let peer_db = peer_db.clone();
+            let mut message_deserializer =
+                PeerManagementMessageDeserializer::new(PeerManagementMessageDeserializerArgs {
+                    //TODO: Real config values
+                    max_peers_per_announcement: 1000,
+                    max_listeners_per_peer: 100,
+                });
             move || {
                 loop {
                     let (peer_id, message_id, message) = receiver.recv().unwrap();
                     println!("Received message len: {}", message.len());
-                    let message = PeerManagementMessage::from_bytes(message_id, &message).unwrap();
+                    message_deserializer.set_message(message_id);
+                    let (_, message) = message_deserializer
+                        .deserialize::<DeserializeError>(&message)
+                        .unwrap();
                     println!("Received message from peer: {:?}", peer_id);
                     println!("Message: {:?}", message);
                     // TODO: Bufferize launch of test thread
@@ -176,12 +191,18 @@ impl HandshakeHandler for MassaHandshake {
             return Err(PeerNetError::HandshakeError
                 .error("Massa Handshake", Some("Invalid signature".to_string())));
         }
-        //TODO: Avoid re-serializing
-        let peer_message =
-            PeerManagementMessage::NewPeerConnected((peer_id.clone(), announcement.listeners));
-        let peer_message_serialized = peer_message.to_bytes();
-        let (rest, id) = messages_handler.deserialize_id(&peer_message_serialized, &peer_id)?;
-        messages_handler.handle(id, rest, &peer_id)?;
+        let message = PeerManagementMessage::NewPeerConnected((peer_id.clone(), announcement.listeners));
+        let mut bytes = Vec::new();
+        let peer_management_message_serializer = PeerManagementMessageSerializer::new();
+        peer_management_message_serializer
+            .serialize(&message, &mut bytes)
+            .map_err(|err| {
+                PeerNetError::HandshakeError.error(
+                    "Massa Handshake",
+                    Some(format!("Failed to serialize announcement: {}", err)),
+                )
+            })?;
+        messages_handler.handle(7, &bytes, &peer_id)?;
 
         let mut self_random_bytes = [0u8; 32];
         StdRng::from_entropy().fill_bytes(&mut self_random_bytes);
