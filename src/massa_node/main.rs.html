@@ -1136,6 +1136,25 @@
 <a href="#1136" id="1136">1136</a>
 <a href="#1137" id="1137">1137</a>
 <a href="#1138" id="1138">1138</a>
+<a href="#1139" id="1139">1139</a>
+<a href="#1140" id="1140">1140</a>
+<a href="#1141" id="1141">1141</a>
+<a href="#1142" id="1142">1142</a>
+<a href="#1143" id="1143">1143</a>
+<a href="#1144" id="1144">1144</a>
+<a href="#1145" id="1145">1145</a>
+<a href="#1146" id="1146">1146</a>
+<a href="#1147" id="1147">1147</a>
+<a href="#1148" id="1148">1148</a>
+<a href="#1149" id="1149">1149</a>
+<a href="#1150" id="1150">1150</a>
+<a href="#1151" id="1151">1151</a>
+<a href="#1152" id="1152">1152</a>
+<a href="#1153" id="1153">1153</a>
+<a href="#1154" id="1154">1154</a>
+<a href="#1155" id="1155">1155</a>
+<a href="#1156" id="1156">1156</a>
+<a href="#1157" id="1157">1157</a>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="attr">#![doc = <span class="macro">include_str!</span>(<span class="string">&quot;../../README.md&quot;</span>)]
@@ -1196,7 +1215,7 @@
     MAX_OPERATIONS_PER_MESSAGE,
 };
 <span class="kw">use </span>massa_models::denunciation::DenunciationPrecursor;
-<span class="kw">use </span>massa_network_exports::{Establisher, NetworkCommandSender, NetworkConfig, NetworkManager};
+<span class="kw">use </span>massa_network_exports::{Establisher, NetworkConfig, NetworkManager};
 <span class="kw">use </span>massa_network_worker::start_network_controller;
 <span class="kw">use </span>massa_pool_exports::{PoolChannels, PoolConfig, PoolManager};
 <span class="kw">use </span>massa_pool_worker::start_pool_controller;
@@ -1218,6 +1237,7 @@
 <span class="kw">use </span>std::time::Duration;
 <span class="kw">use </span>std::{path::Path, process, sync::Arc};
 <span class="kw">use </span>structopt::StructOpt;
+<span class="kw">use </span>tokio::net::TcpStream;
 <span class="kw">use </span>tokio::signal;
 <span class="kw">use </span>tokio::sync::{broadcast, mpsc};
 <span class="kw">use </span>tracing::{error, info, warn};
@@ -1230,7 +1250,7 @@
     node_wallet: Arc&lt;RwLock&lt;Wallet&gt;&gt;,
 ) -&gt; (
     Receiver&lt;ConsensusEvent&gt;,
-    <span class="prelude-ty">Option</span>&lt;BootstrapManager&gt;,
+    <span class="prelude-ty">Option</span>&lt;BootstrapManager&lt;TcpStream&gt;&gt;,
     Box&lt;<span class="kw">dyn </span>ConsensusManager&gt;,
     Box&lt;<span class="kw">dyn </span>ExecutionManager&gt;,
     Box&lt;<span class="kw">dyn </span>SelectorManager&gt;,
@@ -1248,7 +1268,7 @@
     <span class="kw">let </span>now = MassaTime::now().expect(<span class="string">&quot;could not get now time&quot;</span>);
     <span class="comment">// Do not start if genesis is in the future. This is meant to prevent nodes
     // from desync if the bootstrap nodes keep a previous ledger
-    </span><span class="attr">#[cfg(not(feature = <span class="string">&quot;sandbox&quot;</span>))]
+    </span><span class="attr">#[cfg(all(not(feature = <span class="string">&quot;sandbox&quot;</span>), not(feature = <span class="string">&quot;bootstrap_server&quot;</span>)))]
     </span>{
         <span class="kw">if </span><span class="kw-2">*</span>GENESIS_TIMESTAMP &gt; now {
             <span class="kw">let </span>(days, hours, mins, secs) = GENESIS_TIMESTAMP
@@ -1439,6 +1459,8 @@
         max_ops_changes_length: MAX_EXECUTED_OPS_CHANGES_LENGTH,
         consensus_bootstrap_part_size: CONSENSUS_BOOTSTRAP_PART_SIZE,
         max_consensus_block_ids: MAX_CONSENSUS_BLOCKS_IDS,
+        mip_store_stats_block_considered: MIP_STORE_STATS_BLOCK_CONSIDERED,
+        mip_store_stats_counters_max: MIP_STORE_STATS_COUNTERS_MAX,
     };
 
     <span class="comment">// bootstrap
@@ -1450,7 +1472,7 @@
         res = get_state(
             <span class="kw-2">&amp;</span>bootstrap_config,
             final_state.clone(),
-            DefaultConnector,
+            DefaultConnector(bootstrap_config.connect_timeout),
             <span class="kw-2">*</span>VERSION,
             <span class="kw-2">*</span>GENESIS_TIMESTAMP,
             <span class="kw-2">*</span>END_TIMESTAMP,
@@ -1517,6 +1539,9 @@
         </span>.expect(<span class="string">&quot;could not start network controller&quot;</span>);
 
     <span class="kw">if </span>args.restart_from_snapshot_at_period.is_none() {
+        <span class="kw">let </span>last_start_period = final_state.read().last_start_period;
+        final_state.write().init_ledger_hash(last_start_period);
+
         <span class="comment">// give the controller to final state in order for it to feed the cycles
         </span>final_state
             .write()
@@ -1540,7 +1565,13 @@
         block_count_considered: MIP_STORE_STATS_BLOCK_CONSIDERED,
         counters_max: MIP_STORE_STATS_COUNTERS_MAX,
     };
-    <span class="kw">let </span>mip_store = MipStore::try_from(([], mip_stats_config)).unwrap();
+    <span class="kw">let </span><span class="kw-2">mut </span>mip_store =
+        MipStore::try_from(([], mip_stats_config)).expect(<span class="string">&quot;Cannot create an empty MIP store&quot;</span>);
+    <span class="kw">if let </span><span class="prelude-val">Some</span>(bootstrap_mip_store) = bootstrap_state.mip_store {
+        mip_store
+            .update_with(<span class="kw-2">&amp;</span>bootstrap_mip_store)
+            .expect(<span class="string">&quot;Cannot update MIP store with bootstrap mip store&quot;</span>);
+    }
 
     <span class="comment">// launch execution module
     </span><span class="kw">let </span>execution_config = ExecutionConfig {
@@ -1760,7 +1791,7 @@
     <span class="comment">// launch bootstrap server
     // TODO: use std::net::TcpStream
     </span><span class="kw">let </span>bootstrap_manager = <span class="kw">match </span>bootstrap_config.listen_addr {
-        <span class="prelude-val">Some</span>(addr) =&gt; start_bootstrap_server::&lt;NetworkCommandSender&gt;(
+        <span class="prelude-val">Some</span>(addr) =&gt; start_bootstrap_server::&lt;TcpStream&gt;(
             consensus_controller.clone(),
             network_command_sender.clone(),
             final_state.clone(),
@@ -1768,6 +1799,7 @@
             DefaultListener::new(<span class="kw-2">&amp;</span>addr).unwrap(),
             private_key,
             <span class="kw-2">*</span>VERSION,
+            mip_store.clone(),
         )
         .unwrap(),
         <span class="prelude-val">None </span>=&gt; <span class="prelude-val">None</span>,
@@ -1995,7 +2027,7 @@
 }
 
 <span class="kw">struct </span>Managers {
-    bootstrap_manager: <span class="prelude-ty">Option</span>&lt;BootstrapManager&gt;,
+    bootstrap_manager: <span class="prelude-ty">Option</span>&lt;BootstrapManager&lt;TcpStream&gt;&gt;,
     consensus_manager: Box&lt;<span class="kw">dyn </span>ConsensusManager&gt;,
     execution_manager: Box&lt;<span class="kw">dyn </span>ExecutionManager&gt;,
     selector_manager: Box&lt;<span class="kw">dyn </span>SelectorManager&gt;,
@@ -2026,22 +2058,28 @@
     </span><span class="kw">if let </span><span class="prelude-val">Some</span>(bootstrap_manager) = bootstrap_manager {
         bootstrap_manager
             .stop()
-            .expect(<span class="string">&quot;bootstrap server shutdown failed&quot;</span>)
+            .<span class="kw">await
+            </span>.expect(<span class="string">&quot;bootstrap server shutdown failed&quot;</span>)
     }
 
-    <span class="comment">// stop public API
-    </span>api_public_handle.stop();
-
-    <span class="comment">// stop private API
-    </span>api_private_handle.stop();
-
-    <span class="comment">// stop Massa API
-    </span>api_handle.stop();
+    <span class="macro">info!</span>(<span class="string">&quot;Start stopping API&#39;s: gRPC, EXPERIMENTAL, PUBLIC, PRIVATE&quot;</span>);
 
     <span class="comment">// stop Massa gRPC API
     </span><span class="kw">if let </span><span class="prelude-val">Some</span>(handle) = grpc_handle {
         handle.stop();
     }
+
+    <span class="comment">// stop Massa API
+    </span>api_handle.stop().<span class="kw">await</span>;
+    <span class="macro">info!</span>(<span class="string">&quot;API | EXPERIMENTAL JsonRPC | stopped&quot;</span>);
+
+    <span class="comment">// stop public API
+    </span>api_public_handle.stop().<span class="kw">await</span>;
+    <span class="macro">info!</span>(<span class="string">&quot;API | PUBLIC JsonRPC | stopped&quot;</span>);
+
+    <span class="comment">// stop private API
+    </span>api_private_handle.stop().<span class="kw">await</span>;
+    <span class="macro">info!</span>(<span class="string">&quot;API | PRIVATE JsonRPC | stopped&quot;</span>);
 
     <span class="comment">// stop factory
     </span>factory_manager.stop();

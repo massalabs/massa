@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"static":["CALLSITE","META"],"struct":["BootstrapServerBinder"]};
+window.SIDEBAR_ITEMS = {"opaque":[""],"static":["CALLSITE","META"],"struct":["BootstrapServerBinder"]};

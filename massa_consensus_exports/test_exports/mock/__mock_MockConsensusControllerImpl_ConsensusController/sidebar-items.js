@@ -1,1 +1,0 @@
-window.SIDEBAR_ITEMS = {"mod":["__clone_box","__get_best_parents","__get_block_graph_status","__get_block_statuses","__get_blockclique_block_at_slot","__get_bootstrap_part","__get_cliques","__get_latest_blockclique_block_at_slot","__get_stats","__mark_invalid_block","__register_block","__register_block_header"]};

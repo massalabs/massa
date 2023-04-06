@@ -16,22 +16,30 @@
     ) -&gt; <a class="struct" href="https://doc.rust-lang.org/nightly/core/pin/struct.Pin.html" title="struct core::pin::Pin">Pin</a>&lt;<a class="struct" href="https://doc.rust-lang.org/nightly/alloc/boxed/struct.Box.html" title="struct alloc::boxed::Box">Box</a>&lt;dyn <a class="trait" href="https://doc.rust-lang.org/nightly/core/future/future/trait.Future.html" title="trait core::future::future::Future">Future</a>&lt;Output = RpcResult&lt;<a class="struct" href="../../massa_models/version/struct.Version.html" title="struct massa_models::version::Version">Version</a>&gt;&gt; + <a class="trait" href="https://doc.rust-lang.org/nightly/core/marker/trait.Send.html" title="trait core::marker::Send">Send</a> + 'async_trait&gt;&gt;
        <span class="where">where Self: 'async_trait,
              'life0: 'async_trait</span>;
-<span class="item-spacer"></span>    fn <a href="#tymethod.subscribe_new_blocks" class="fn">subscribe_new_blocks</a>(
-        &amp;self,
-        subscription_sink: SubscriptionSink
-    ) -&gt; SubscriptionResult;
-<span class="item-spacer"></span>    fn <a href="#tymethod.subscribe_new_blocks_headers" class="fn">subscribe_new_blocks_headers</a>(
-        &amp;self,
-        subscription_sink: SubscriptionSink
-    ) -&gt; SubscriptionResult;
-<span class="item-spacer"></span>    fn <a href="#tymethod.subscribe_new_filled_blocks" class="fn">subscribe_new_filled_blocks</a>(
-        &amp;self,
-        subscription_sink: SubscriptionSink
-    ) -&gt; SubscriptionResult;
-<span class="item-spacer"></span>    fn <a href="#tymethod.subscribe_new_operations" class="fn">subscribe_new_operations</a>(
-        &amp;self,
-        subscription_sink: SubscriptionSink
-    ) -&gt; SubscriptionResult;
+<span class="item-spacer"></span>    fn <a href="#tymethod.subscribe_new_blocks" class="fn">subscribe_new_blocks</a>&lt;'life0, 'async_trait&gt;(
+        &amp;'life0 self,
+        subscription_sink: PendingSubscriptionSink
+    ) -&gt; <a class="struct" href="https://doc.rust-lang.org/nightly/core/pin/struct.Pin.html" title="struct core::pin::Pin">Pin</a>&lt;<a class="struct" href="https://doc.rust-lang.org/nightly/alloc/boxed/struct.Box.html" title="struct alloc::boxed::Box">Box</a>&lt;dyn <a class="trait" href="https://doc.rust-lang.org/nightly/core/future/future/trait.Future.html" title="trait core::future::future::Future">Future</a>&lt;Output = SubscriptionResult&gt; + <a class="trait" href="https://doc.rust-lang.org/nightly/core/marker/trait.Send.html" title="trait core::marker::Send">Send</a> + 'async_trait&gt;&gt;
+       <span class="where">where Self: 'async_trait,
+             'life0: 'async_trait</span>;
+<span class="item-spacer"></span>    fn <a href="#tymethod.subscribe_new_blocks_headers" class="fn">subscribe_new_blocks_headers</a>&lt;'life0, 'async_trait&gt;(
+        &amp;'life0 self,
+        subscription_sink: PendingSubscriptionSink
+    ) -&gt; <a class="struct" href="https://doc.rust-lang.org/nightly/core/pin/struct.Pin.html" title="struct core::pin::Pin">Pin</a>&lt;<a class="struct" href="https://doc.rust-lang.org/nightly/alloc/boxed/struct.Box.html" title="struct alloc::boxed::Box">Box</a>&lt;dyn <a class="trait" href="https://doc.rust-lang.org/nightly/core/future/future/trait.Future.html" title="trait core::future::future::Future">Future</a>&lt;Output = SubscriptionResult&gt; + <a class="trait" href="https://doc.rust-lang.org/nightly/core/marker/trait.Send.html" title="trait core::marker::Send">Send</a> + 'async_trait&gt;&gt;
+       <span class="where">where Self: 'async_trait,
+             'life0: 'async_trait</span>;
+<span class="item-spacer"></span>    fn <a href="#tymethod.subscribe_new_filled_blocks" class="fn">subscribe_new_filled_blocks</a>&lt;'life0, 'async_trait&gt;(
+        &amp;'life0 self,
+        subscription_sink: PendingSubscriptionSink
+    ) -&gt; <a class="struct" href="https://doc.rust-lang.org/nightly/core/pin/struct.Pin.html" title="struct core::pin::Pin">Pin</a>&lt;<a class="struct" href="https://doc.rust-lang.org/nightly/alloc/boxed/struct.Box.html" title="struct alloc::boxed::Box">Box</a>&lt;dyn <a class="trait" href="https://doc.rust-lang.org/nightly/core/future/future/trait.Future.html" title="trait core::future::future::Future">Future</a>&lt;Output = SubscriptionResult&gt; + <a class="trait" href="https://doc.rust-lang.org/nightly/core/marker/trait.Send.html" title="trait core::marker::Send">Send</a> + 'async_trait&gt;&gt;
+       <span class="where">where Self: 'async_trait,
+             'life0: 'async_trait</span>;
+<span class="item-spacer"></span>    fn <a href="#tymethod.subscribe_new_operations" class="fn">subscribe_new_operations</a>&lt;'life0, 'async_trait&gt;(
+        &amp;'life0 self,
+        subscription_sink: PendingSubscriptionSink
+    ) -&gt; <a class="struct" href="https://doc.rust-lang.org/nightly/core/pin/struct.Pin.html" title="struct core::pin::Pin">Pin</a>&lt;<a class="struct" href="https://doc.rust-lang.org/nightly/alloc/boxed/struct.Box.html" title="struct alloc::boxed::Box">Box</a>&lt;dyn <a class="trait" href="https://doc.rust-lang.org/nightly/core/future/future/trait.Future.html" title="trait core::future::future::Future">Future</a>&lt;Output = SubscriptionResult&gt; + <a class="trait" href="https://doc.rust-lang.org/nightly/core/marker/trait.Send.html" title="trait core::marker::Send">Send</a> + 'async_trait&gt;&gt;
+       <span class="where">where Self: 'async_trait,
+             'life0: 'async_trait</span>;
 
     // Provided method
     fn <a href="#method.into_rpc" class="fn">into_rpc</a>(self) -&gt; RpcModule&lt;Self&gt; { ... }
@@ -52,21 +60,29 @@
 ) -&gt; <a class="struct" href="https://doc.rust-lang.org/nightly/core/pin/struct.Pin.html" title="struct core::pin::Pin">Pin</a>&lt;<a class="struct" href="https://doc.rust-lang.org/nightly/alloc/boxed/struct.Box.html" title="struct alloc::boxed::Box">Box</a>&lt;dyn <a class="trait" href="https://doc.rust-lang.org/nightly/core/future/future/trait.Future.html" title="trait core::future::future::Future">Future</a>&lt;Output = RpcResult&lt;<a class="struct" href="../../massa_models/version/struct.Version.html" title="struct massa_models::version::Version">Version</a>&gt;&gt; + <a class="trait" href="https://doc.rust-lang.org/nightly/core/marker/trait.Send.html" title="trait core::marker::Send">Send</a> + 'async_trait&gt;&gt;<span class="where fmt-newline">where
     Self: 'async_trait,
     'life0: 'async_trait,</span></h4></section></summary><div class="docblock"><p>Get Massa node version.</p>
-</div></details><details class="toggle method-toggle" open><summary><section id="tymethod.subscribe_new_blocks" class="method"><a class="srclink rightside" href="../../src/massa_api/api_trait.rs.html#35">source</a><h4 class="code-header">fn <a href="#tymethod.subscribe_new_blocks" class="fn">subscribe_new_blocks</a>(
-    &amp;self,
-    subscription_sink: SubscriptionSink
-) -&gt; SubscriptionResult</h4></section></summary><div class="docblock"><p>New produced block.</p>
-</div></details><details class="toggle method-toggle" open><summary><section id="tymethod.subscribe_new_blocks_headers" class="method"><a class="srclink rightside" href="../../src/massa_api/api_trait.rs.html#43">source</a><h4 class="code-header">fn <a href="#tymethod.subscribe_new_blocks_headers" class="fn">subscribe_new_blocks_headers</a>(
-    &amp;self,
-    subscription_sink: SubscriptionSink
-) -&gt; SubscriptionResult</h4></section></summary><div class="docblock"><p>New produced blocks headers.</p>
-</div></details><details class="toggle method-toggle" open><summary><section id="tymethod.subscribe_new_filled_blocks" class="method"><a class="srclink rightside" href="../../src/massa_api/api_trait.rs.html#51">source</a><h4 class="code-header">fn <a href="#tymethod.subscribe_new_filled_blocks" class="fn">subscribe_new_filled_blocks</a>(
-    &amp;self,
-    subscription_sink: SubscriptionSink
-) -&gt; SubscriptionResult</h4></section></summary><div class="docblock"><p>New produced blocks with operations content.</p>
-</div></details><details class="toggle method-toggle" open><summary><section id="tymethod.subscribe_new_operations" class="method"><a class="srclink rightside" href="../../src/massa_api/api_trait.rs.html#59">source</a><h4 class="code-header">fn <a href="#tymethod.subscribe_new_operations" class="fn">subscribe_new_operations</a>(
-    &amp;self,
-    subscription_sink: SubscriptionSink
-) -&gt; SubscriptionResult</h4></section></summary><div class="docblock"><p>New produced operations.</p>
+</div></details><details class="toggle method-toggle" open><summary><section id="tymethod.subscribe_new_blocks" class="method"><a class="srclink rightside" href="../../src/massa_api/api_trait.rs.html#35">source</a><h4 class="code-header">fn <a href="#tymethod.subscribe_new_blocks" class="fn">subscribe_new_blocks</a>&lt;'life0, 'async_trait&gt;(
+    &amp;'life0 self,
+    subscription_sink: PendingSubscriptionSink
+) -&gt; <a class="struct" href="https://doc.rust-lang.org/nightly/core/pin/struct.Pin.html" title="struct core::pin::Pin">Pin</a>&lt;<a class="struct" href="https://doc.rust-lang.org/nightly/alloc/boxed/struct.Box.html" title="struct alloc::boxed::Box">Box</a>&lt;dyn <a class="trait" href="https://doc.rust-lang.org/nightly/core/future/future/trait.Future.html" title="trait core::future::future::Future">Future</a>&lt;Output = SubscriptionResult&gt; + <a class="trait" href="https://doc.rust-lang.org/nightly/core/marker/trait.Send.html" title="trait core::marker::Send">Send</a> + 'async_trait&gt;&gt;<span class="where fmt-newline">where
+    Self: 'async_trait,
+    'life0: 'async_trait,</span></h4></section></summary><div class="docblock"><p>New produced block.</p>
+</div></details><details class="toggle method-toggle" open><summary><section id="tymethod.subscribe_new_blocks_headers" class="method"><a class="srclink rightside" href="../../src/massa_api/api_trait.rs.html#43">source</a><h4 class="code-header">fn <a href="#tymethod.subscribe_new_blocks_headers" class="fn">subscribe_new_blocks_headers</a>&lt;'life0, 'async_trait&gt;(
+    &amp;'life0 self,
+    subscription_sink: PendingSubscriptionSink
+) -&gt; <a class="struct" href="https://doc.rust-lang.org/nightly/core/pin/struct.Pin.html" title="struct core::pin::Pin">Pin</a>&lt;<a class="struct" href="https://doc.rust-lang.org/nightly/alloc/boxed/struct.Box.html" title="struct alloc::boxed::Box">Box</a>&lt;dyn <a class="trait" href="https://doc.rust-lang.org/nightly/core/future/future/trait.Future.html" title="trait core::future::future::Future">Future</a>&lt;Output = SubscriptionResult&gt; + <a class="trait" href="https://doc.rust-lang.org/nightly/core/marker/trait.Send.html" title="trait core::marker::Send">Send</a> + 'async_trait&gt;&gt;<span class="where fmt-newline">where
+    Self: 'async_trait,
+    'life0: 'async_trait,</span></h4></section></summary><div class="docblock"><p>New produced blocks headers.</p>
+</div></details><details class="toggle method-toggle" open><summary><section id="tymethod.subscribe_new_filled_blocks" class="method"><a class="srclink rightside" href="../../src/massa_api/api_trait.rs.html#51">source</a><h4 class="code-header">fn <a href="#tymethod.subscribe_new_filled_blocks" class="fn">subscribe_new_filled_blocks</a>&lt;'life0, 'async_trait&gt;(
+    &amp;'life0 self,
+    subscription_sink: PendingSubscriptionSink
+) -&gt; <a class="struct" href="https://doc.rust-lang.org/nightly/core/pin/struct.Pin.html" title="struct core::pin::Pin">Pin</a>&lt;<a class="struct" href="https://doc.rust-lang.org/nightly/alloc/boxed/struct.Box.html" title="struct alloc::boxed::Box">Box</a>&lt;dyn <a class="trait" href="https://doc.rust-lang.org/nightly/core/future/future/trait.Future.html" title="trait core::future::future::Future">Future</a>&lt;Output = SubscriptionResult&gt; + <a class="trait" href="https://doc.rust-lang.org/nightly/core/marker/trait.Send.html" title="trait core::marker::Send">Send</a> + 'async_trait&gt;&gt;<span class="where fmt-newline">where
+    Self: 'async_trait,
+    'life0: 'async_trait,</span></h4></section></summary><div class="docblock"><p>New produced blocks with operations content.</p>
+</div></details><details class="toggle method-toggle" open><summary><section id="tymethod.subscribe_new_operations" class="method"><a class="srclink rightside" href="../../src/massa_api/api_trait.rs.html#59">source</a><h4 class="code-header">fn <a href="#tymethod.subscribe_new_operations" class="fn">subscribe_new_operations</a>&lt;'life0, 'async_trait&gt;(
+    &amp;'life0 self,
+    subscription_sink: PendingSubscriptionSink
+) -&gt; <a class="struct" href="https://doc.rust-lang.org/nightly/core/pin/struct.Pin.html" title="struct core::pin::Pin">Pin</a>&lt;<a class="struct" href="https://doc.rust-lang.org/nightly/alloc/boxed/struct.Box.html" title="struct alloc::boxed::Box">Box</a>&lt;dyn <a class="trait" href="https://doc.rust-lang.org/nightly/core/future/future/trait.Future.html" title="trait core::future::future::Future">Future</a>&lt;Output = SubscriptionResult&gt; + <a class="trait" href="https://doc.rust-lang.org/nightly/core/marker/trait.Send.html" title="trait core::marker::Send">Send</a> + 'async_trait&gt;&gt;<span class="where fmt-newline">where
+    Self: 'async_trait,
+    'life0: 'async_trait,</span></h4></section></summary><div class="docblock"><p>New produced operations.</p>
 </div></details></div><h2 id="provided-methods" class="small-section-header">Provided Methods<a href="#provided-methods" class="anchor">§</a></h2><div class="methods"><details class="toggle method-toggle" open><summary><section id="method.into_rpc" class="method"><a class="srclink rightside" href="../../src/massa_api/api_trait.rs.html#12">source</a><h4 class="code-header">fn <a href="#method.into_rpc" class="fn">into_rpc</a>(self) -&gt; RpcModule&lt;Self&gt;</h4></section></summary><div class="docblock"><p>Collects all the methods and subscriptions defined in the trait and adds them into a single <code>RpcModule</code>.</p>
 </div></details></div><h2 id="implementors" class="small-section-header">Implementors<a href="#implementors" class="anchor">§</a></h2><div id="implementors-list"></div><script src="../../implementors/massa_api/api_trait/trait.MassaApiServer.js" async></script></section></div></main><div id="rustdoc-vars" data-root-path="../../" data-static-root-path="../../static.files/" data-current-crate="massa_api" data-themes="" data-resource-suffix="" data-rustdoc-version="1.69.0-nightly (d962ea578 2023-02-26)" data-search-js="search-14421e1532aead08.js" data-settings-js="settings-f0c5c39777a9a2f6.js" data-settings-css="settings-0bcba95ff279c1db.css" ></div></body></html>
