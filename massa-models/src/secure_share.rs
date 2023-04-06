@@ -13,7 +13,6 @@ use nom::{
     IResult,
 };
 use serde::{Deserialize, Serialize};
-use crate::address::ADDRESS_SIZE_BYTES;
 
 /// Packages type T such that it can be securely sent and received in a trust-free network
 ///
