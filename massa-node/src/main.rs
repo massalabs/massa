@@ -14,7 +14,6 @@ use massa_api_exports::config::APIConfig;
 use massa_async_pool::AsyncPoolConfig;
 use massa_bootstrap::{
     get_state, start_bootstrap_server, BootstrapConfig, BootstrapManager, DefaultConnector,
-    DefaultListener,
 };
 use massa_consensus_exports::events::ConsensusEvent;
 use massa_consensus_exports::{ConsensusChannels, ConsensusConfig, ConsensusManager};
@@ -620,20 +619,18 @@ async fn launch(
     );
 
     // launch bootstrap server
-    // TODO: use std::net::TcpStream
-    let bootstrap_manager = match bootstrap_config.listen_addr {
-        Some(addr) => start_bootstrap_server::<NetworkCommandSender>(
+    let bootstrap_manager = bootstrap_config.listen_addr.map(|addr| {
+        start_bootstrap_server::<NetworkCommandSender>(
+            addr,
             consensus_controller.clone(),
             network_command_sender.clone(),
             final_state.clone(),
             bootstrap_config,
-            DefaultListener::new(&addr).unwrap(),
             private_key,
             *VERSION,
         )
-        .unwrap(),
-        None => None,
-    };
+        .unwrap()
+    });
 
     let api_config: APIConfig = APIConfig {
         bind_private: SETTINGS.api.bind_private,

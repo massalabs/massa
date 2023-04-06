@@ -55,7 +55,6 @@ use white_black_list::*;
 
 use crate::{
     error::BootstrapError,
-    establisher::BSListener,
     listener::{BootstrapListenerStopHandle, BootstrapTcpListener},
     messages::{BootstrapClientMessage, BootstrapServerMessage},
     server_binder::BootstrapServerBinder,
@@ -102,14 +101,14 @@ impl BootstrapManager {
 
 /// See module level documentation for details
 pub fn start_bootstrap_server<C: NetworkCommandSenderTrait + Clone>(
+    addr: SocketAddr,
     consensus_controller: Box<dyn ConsensusController>,
     network_command_sender: C,
     final_state: Arc<RwLock<FinalState>>,
     config: BootstrapConfig,
-    listener: impl BSListener + Send + 'static,
     keypair: KeyPair,
     version: Version,
-) -> Result<Option<BootstrapManager>, BootstrapError> {
+) -> Result<BootstrapManager, BootstrapError> {
     massa_trace!("bootstrap.lib.start_bootstrap_server", {});
 
     // TODO(low prio): See if a zero capacity channel model can work
@@ -119,7 +118,7 @@ pub fn start_bootstrap_server<C: NetworkCommandSenderTrait + Clone>(
         return Err(BootstrapError::GeneralError("Fail to convert u32 to usize".to_string()));
     };
 
-    // This is needed for now, as there is no ergonomic to "select!" on both a channel and a blocking std::net::TcpStream
+    // channel for incoming connections from the listener
     let (listener_tx, listener_rx) = crossbeam::channel::bounded::<BsConn>(max_bootstraps * 2);
 
     let white_black_list = SharedWhiteBlackList::new(
@@ -144,16 +143,7 @@ pub fn start_bootstrap_server<C: NetworkCommandSenderTrait + Clone>(
         })
         .expect("in `start_bootstrap_server`, OS failed to spawn list-updater thread");
 
-    // let listen_handle = thread::Builder::new()
-    //     .name("bs_listener".to_string())
-    //     // FIXME: The interface being used shouldn't have `: Send + 'static` as a constraint on the listener assosciated type.
-    //     // GAT lifetime is likely to remedy this, however.
-    //     .spawn(move || BootstrapServer::<C>::run_listener(listener, listener_tx))
-    //     .expect("in `start_bootstrap_server`, OS failed to spawn listener thread");
-
-    // TODO get addr from config
-    let listen_stop_handle =
-        BootstrapTcpListener::start("0.0.0.0:8080".parse().unwrap(), listener_tx)?;
+    let listen_stop_handle = BootstrapTcpListener::start(addr, listener_tx)?;
 
     let main_handle = thread::Builder::new()
         .name("bs-main-loop".to_string())
@@ -174,12 +164,12 @@ pub fn start_bootstrap_server<C: NetworkCommandSenderTrait + Clone>(
         .expect("in `start_bootstrap_server`, OS failed to spawn main-loop thread");
     // Give the runtime to the bootstrap manager, otherwise it will be dropped, forcibly aborting the spawned tasks.
     // TODO: make the tasks sync, so the runtime is redundant
-    Ok(Some(BootstrapManager {
+    Ok(BootstrapManager {
         update_handle,
         main_handle,
         listen_stop_handle,
         update_stopper_tx,
-    }))
+    })
 }
 
 struct BootstrapServer<'a, C: NetworkCommandSenderTrait> {
@@ -773,27 +763,4 @@ async fn manage_bootstrap<C: NetworkCommandSenderTrait>(
             },
         };
     }
-}
-
-// Stable means of providing compiler optimisation hints
-// Also provides a self-documenting tool to communicate likely/unlikely code-paths
-// https://users.rust-lang.org/t/compiler-hint-for-unlikely-likely-for-if-branches/62102/4
-#[inline]
-#[cold]
-fn cold() {}
-
-#[inline]
-fn _likely(b: bool) -> bool {
-    if !b {
-        cold()
-    }
-    b
-}
-
-#[inline]
-fn unlikely(b: bool) -> bool {
-    if b {
-        cold()
-    }
-    b
 }
