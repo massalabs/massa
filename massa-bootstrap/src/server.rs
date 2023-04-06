@@ -26,7 +26,7 @@
 //!    This thread creates a new tokio runtime, and runs it with `block_on`
 mod white_black_list;
 
-use crossbeam::channel::{tick, Select, SendError};
+use crossbeam::channel::tick;
 use humantime::format_duration;
 use massa_async_pool::AsyncMessageId;
 use massa_consensus_exports::{bootstrapable_graph::BootstrapableGraph, ConsensusController};
@@ -262,18 +262,13 @@ impl<C: NetworkCommandSenderTrait + Clone> BootstrapServer<'_, C> {
         // Use the strong-count of this variable to track the session count
         let bootstrap_sessions_counter: Arc<()> = Arc::new(());
         let per_ip_min_interval = self.bootstrap_config.per_ip_min_interval.to_duration();
-        // let mut selector = Select::new();
-        // selector.recv(&self.listen_stopper_rx);
-        // selector.recv(&self.listener_rx);
         // TODO: Work out how to integration-test this
         loop {
             // block until we have a connection to work with, or break out of main-loop
-            // if a stop-signal is received
             let Ok((dplx, remote_addr)) = self.listener_rx.recv().map_err(|_e| {
                 BootstrapError::GeneralError("Bootstrap listener channel disconnected".to_string())
             }) else { break; };
 
-            // let Some((dplx, remote_addr)) = self.receive_connection(&mut selector)? else { break; };
             // claim a slot in the max_bootstrap_sessions
             let server_binding = BootstrapServerBinder::new(
                 dplx,

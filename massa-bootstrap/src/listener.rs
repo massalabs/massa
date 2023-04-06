@@ -42,10 +42,8 @@ impl BootstrapTcpListener {
                 for event in events.iter() {
                     match event.token() {
                         NEW_CONNECTION => {
-                            let (socket, addr) = server
-                                .accept()
-                                .map_err(|e| BootstrapError::from(e))
-                                .unwrap();
+                            let (socket, addr) =
+                                server.accept().map_err(BootstrapError::from).unwrap();
                             println!("New connection: {}", addr);
                             connection_tx.send((socket, addr)).unwrap();
                         }
