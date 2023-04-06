@@ -126,11 +126,41 @@
 <a href="#126" id="126">126</a>
 <a href="#127" id="127">127</a>
 <a href="#128" id="128">128</a>
+<a href="#129" id="129">129</a>
+<a href="#130" id="130">130</a>
+<a href="#131" id="131">131</a>
+<a href="#132" id="132">132</a>
+<a href="#133" id="133">133</a>
+<a href="#134" id="134">134</a>
+<a href="#135" id="135">135</a>
+<a href="#136" id="136">136</a>
+<a href="#137" id="137">137</a>
+<a href="#138" id="138">138</a>
+<a href="#139" id="139">139</a>
+<a href="#140" id="140">140</a>
+<a href="#141" id="141">141</a>
+<a href="#142" id="142">142</a>
+<a href="#143" id="143">143</a>
+<a href="#144" id="144">144</a>
+<a href="#145" id="145">145</a>
+<a href="#146" id="146">146</a>
+<a href="#147" id="147">147</a>
+<a href="#148" id="148">148</a>
+<a href="#149" id="149">149</a>
+<a href="#150" id="150">150</a>
+<a href="#151" id="151">151</a>
+<a href="#152" id="152">152</a>
+<a href="#153" id="153">153</a>
+<a href="#154" id="154">154</a>
+<a href="#155" id="155">155</a>
+<a href="#156" id="156">156</a>
+<a href="#157" id="157">157</a>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2023 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="kw">use </span><span class="kw">crate</span>::config::GrpcConfig;
 <span class="kw">use </span><span class="kw">crate</span>::error::GrpcError;
 <span class="kw">use </span>futures_util::FutureExt;
+<span class="kw">use </span>hyper::Method;
 <span class="kw">use </span>massa_consensus_exports::{ConsensusChannels, ConsensusController};
 <span class="kw">use </span>massa_execution_exports::ExecutionController;
 <span class="kw">use </span>massa_pool_exports::{PoolChannels, PoolController};
@@ -142,6 +172,7 @@
 <span class="kw">use </span>tokio::sync::oneshot;
 <span class="kw">use </span>tonic::codec::CompressionEncoding;
 <span class="kw">use </span>tonic_web::GrpcWebLayer;
+<span class="kw">use </span>tower_http::cors::{Any, CorsLayer};
 <span class="kw">use </span>tracing::log::{info, warn};
 
 <span class="doccomment">/// gRPC API content
@@ -203,22 +234,49 @@
             .max_frame_size(config.max_frame_size);
 
         <span class="kw">if </span>config.accept_http1 {
-            <span class="kw">let </span><span class="kw-2">mut </span>router_with_http1 = server_builder
-                .accept_http1(<span class="bool-val">true</span>)
-                .layer(GrpcWebLayer::new())
-                .add_service(svc);
+            <span class="kw">if </span>config.enable_cors {
+                <span class="kw">let </span>cors = CorsLayer::new()
+                    <span class="comment">// Allow `GET`, `POST` and `OPTIONS` when accessing the resource
+                    </span>.allow_methods([Method::GET, Method::POST, Method::OPTIONS])
+                    <span class="comment">// Allow requests from any origin
+                    </span>.allow_origin(Any)
+                    .allow_headers([hyper::header::CONTENT_TYPE]);
 
-            <span class="kw">if </span>config.enable_reflection {
-                <span class="kw">let </span>reflection_service = tonic_reflection::server::Builder::configure()
-                    .register_encoded_file_descriptor_set(FILE_DESCRIPTOR_SET)
-                    .build()<span class="question-mark">?</span>;
+                <span class="kw">let </span><span class="kw-2">mut </span>router_with_http1 = server_builder
+                    .accept_http1(<span class="bool-val">true</span>)
+                    .layer(cors)
+                    .layer(GrpcWebLayer::new())
+                    .add_service(svc);
 
-                router_with_http1 = router_with_http1.add_service(reflection_service);
+                <span class="kw">if </span>config.enable_reflection {
+                    <span class="kw">let </span>reflection_service = tonic_reflection::server::Builder::configure()
+                        .register_encoded_file_descriptor_set(FILE_DESCRIPTOR_SET)
+                        .build()<span class="question-mark">?</span>;
+
+                    router_with_http1 = router_with_http1.add_service(reflection_service);
+                }
+
+                tokio::spawn(
+                    router_with_http1.serve_with_shutdown(config.bind, shutdown_recv.map(drop)),
+                );
+            } <span class="kw">else </span>{
+                <span class="kw">let </span><span class="kw-2">mut </span>router_with_http1 = server_builder
+                    .accept_http1(<span class="bool-val">true</span>)
+                    .layer(GrpcWebLayer::new())
+                    .add_service(svc);
+
+                <span class="kw">if </span>config.enable_reflection {
+                    <span class="kw">let </span>reflection_service = tonic_reflection::server::Builder::configure()
+                        .register_encoded_file_descriptor_set(FILE_DESCRIPTOR_SET)
+                        .build()<span class="question-mark">?</span>;
+
+                    router_with_http1 = router_with_http1.add_service(reflection_service);
+                }
+
+                tokio::spawn(
+                    router_with_http1.serve_with_shutdown(config.bind, shutdown_recv.map(drop)),
+                );
             }
-
-            tokio::spawn(
-                router_with_http1.serve_with_shutdown(config.bind, shutdown_recv.map(drop)),
-            );
         } <span class="kw">else </span>{
             <span class="kw">let </span><span class="kw-2">mut </span>router = server_builder.add_service(svc);
 
