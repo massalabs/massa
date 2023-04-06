@@ -40,10 +40,11 @@ use massa_models::{
 use massa_network_exports::NetworkCommandSenderTrait;
 use massa_signature::KeyPair;
 use massa_time::MassaTime;
+use mio::net::TcpStream;
 use parking_lot::RwLock;
 use std::{
     collections::HashMap,
-    net::{IpAddr, SocketAddr, TcpStream},
+    net::{IpAddr, SocketAddr},
     sync::Arc,
     thread,
     time::{Duration, Instant},
@@ -222,26 +223,29 @@ impl<C: NetworkCommandSenderTrait + Clone> BootstrapServer<'_, C> {
     /// Err(..) Error accepting a connection
     /// TODO: Integrate the listener into the bootstrap-main-loop
     fn run_listener(
-        mut listener: impl BSListener,
+        mut _listener: impl BSListener,
         listener_tx: crossbeam::channel::Sender<BsConn>,
     ) -> Result<Result<(), BsConn>, BootstrapError> {
-        // TODO remove, only for testing
-        std::thread::spawn(|| {
-            let mut server = BootstrapTcpListener::new("0.0.0.0:8080".parse().unwrap());
-            dbg!(server.run());
+        let result = BootstrapTcpListener::start("0.0.0.0:8080".parse().unwrap(), listener_tx);
+
+        std::thread::spawn(move || {
+            thread::sleep(Duration::from_secs(10));
+            info!("stop bootstrap listener");
+            result.unwrap().stop();
         });
+        Ok(Ok(()))
 
-        loop {
-            let (msg, addr) = listener.accept().map_err(BootstrapError::IoError)?;
+        // loop {
+        //     let (msg, addr) = listener.accept().map_err(BootstrapError::IoError)?;
 
-            if let Err(SendError((dplx, remote_addr))) = listener_tx.send((msg, addr)) {
-                warn!(
-                    "listener channel disconnected after accepting connection from {}",
-                    remote_addr
-                );
-                return Ok(Err((dplx, remote_addr)));
-            };
-        }
+        //     if let Err(SendError((dplx, remote_addr))) = listener_tx.send((msg, addr)) {
+        //         warn!(
+        //             "listener channel disconnected after accepting connection from {}",
+        //             remote_addr
+        //         );
+        //         return Ok(Err((dplx, remote_addr)));
+        //     };
+        // }
     }
 
     fn run_loop(mut self, max_bootstraps: usize) -> Result<(), BootstrapError> {

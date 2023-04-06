@@ -1,51 +1,67 @@
 use std::net::SocketAddr;
 
-use mio::{net::TcpListener, Events, Interest, Poll, Token};
-use tracing::{info, log::warn};
+use mio::{
+    net::{TcpListener, TcpStream},
+    Events, Interest, Poll, Token, Waker,
+};
+use tracing::{error, info};
 
 use crate::error::BootstrapError;
 
 const NEW_CONNECTION: Token = Token(0);
 const STOP_LISTENER: Token = Token(10);
 
-pub(crate) struct BootstrapTcpListener {
-    addr: SocketAddr,
-    // stop_handle:
-}
+pub(crate) struct BootstrapTcpListener();
+
+pub struct BootstrapListenerStopHandle(Waker);
 
 impl BootstrapTcpListener {
-    pub fn new(addr: SocketAddr) -> Self {
-        BootstrapTcpListener { addr }
-    }
-
-    pub fn run(&mut self) -> Result<(), BootstrapError> {
-        let mut server = TcpListener::bind(self.addr)?;
+    /// Start a new bootstrap listener on the given address.
+    pub fn start(
+        addr: SocketAddr,
+        connection_tx: crossbeam::channel::Sender<(TcpStream, SocketAddr)>,
+    ) -> Result<BootstrapListenerStopHandle, BootstrapError> {
+        let mut server = TcpListener::bind(addr)?;
         let mut poll = Poll::new()?;
+
+        // wake up the poll when we want to stop the listener
+        let waker = mio::Waker::new(poll.registry(), STOP_LISTENER)?;
+
         poll.registry()
             .register(&mut server, NEW_CONNECTION, Interest::READABLE)?;
 
         // TODO use config for capacity ?
         let mut events = Events::with_capacity(32);
 
-        loop {
-            poll.poll(&mut events, None)?;
+        // spawn a new thread to handle events
+        std::thread::spawn(move || loop {
+            poll.poll(&mut events, None).unwrap();
 
             for event in events.iter() {
                 match event.token() {
                     NEW_CONNECTION => {
-                        let (mut socket, addr) =
-                            server.accept().map_err(|e| BootstrapError::from(e))?;
+                        let (socket, addr) = server
+                            .accept()
+                            .map_err(|e| BootstrapError::from(e))
+                            .unwrap();
                         println!("New connection: {}", addr);
-                        // poll.register(&socket, STOP_LISTENER, Ready::readable(), PollOpt::edge())
-                        //     .unwrap();
+                        connection_tx.send((socket, addr)).unwrap();
                     }
                     STOP_LISTENER => {
                         info!("Stopping bootstrap listener");
-                        return Ok(());
+                        return;
                     }
-                    _ => warn!("Unexpected event"),
+                    _ => error!("Unexpected event"),
                 }
             }
-        }
+        });
+
+        Ok(BootstrapListenerStopHandle(waker))
+    }
+}
+
+impl BootstrapListenerStopHandle {
+    pub fn stop(self) {
+        self.0.wake().unwrap();
     }
 }
