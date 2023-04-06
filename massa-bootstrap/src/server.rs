@@ -491,7 +491,7 @@ fn run_bootstrap_session<C: NetworkCommandSenderTrait>(
 }
 
 #[allow(clippy::too_many_arguments)]
-pub async fn stream_bootstrap_information(
+pub fn stream_bootstrap_information(
     server: &mut BootstrapServerBinder,
     final_state: Arc<RwLock<FinalState>>,
     consensus_controller: Box<dyn ConsensusController>,
@@ -509,7 +509,7 @@ pub async fn stream_bootstrap_information(
         #[cfg(test)]
         {
             // Necessary for test_bootstrap_server in tests/scenarios.rs
-            tokio::time::sleep(Duration::from_millis(500)).await;
+            std::thread::sleep(Duration::from_millis(500));
         }
 
         let current_slot;
@@ -733,7 +733,7 @@ fn manage_bootstrap<C: NetworkCommandSenderTrait>(
                     last_consensus_step,
                     send_last_start_period,
                 } => {
-                    rt_hack.block_on(stream_bootstrap_information(
+                    stream_bootstrap_information(
                         server,
                         final_state.clone(),
                         consensus_controller.clone(),
@@ -746,7 +746,7 @@ fn manage_bootstrap<C: NetworkCommandSenderTrait>(
                         last_consensus_step,
                         send_last_start_period,
                         write_timeout,
-                    ))?;
+                    )?;
                 }
                 BootstrapClientMessage::BootstrapSuccess => break Ok(()),
                 BootstrapClientMessage::BootstrapError { error } => {
