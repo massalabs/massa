@@ -3,6 +3,7 @@
 use crate::config::GrpcConfig;
 use crate::error::GrpcError;
 use futures_util::FutureExt;
+use hyper::Method;
 use massa_consensus_exports::{ConsensusChannels, ConsensusController};
 use massa_execution_exports::ExecutionController;
 use massa_pool_exports::{PoolChannels, PoolController};
@@ -14,6 +15,7 @@ use massa_storage::Storage;
 use tokio::sync::oneshot;
 use tonic::codec::CompressionEncoding;
 use tonic_web::GrpcWebLayer;
+use tower_http::cors::{Any, CorsLayer};
 use tracing::log::{info, warn};
 
 /// gRPC API content
@@ -75,8 +77,16 @@ impl MassaGrpc {
             .max_frame_size(config.max_frame_size);
 
         if config.accept_http1 {
+            let cors = CorsLayer::new()
+                // Allow `GET`, `POST` and `OPTIONS` when accessing the resource
+                .allow_methods([Method::GET, Method::POST, Method::OPTIONS])
+                // Allow requests from any origin
+                .allow_origin(Any)
+                .allow_headers([hyper::header::CONTENT_TYPE]);
+
             let mut router_with_http1 = server_builder
                 .accept_http1(true)
+                .layer(cors)
                 .layer(GrpcWebLayer::new())
                 .add_service(svc);
 

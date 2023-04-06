@@ -64,30 +64,37 @@ cargo build --features massa_proto/build-tonic
 Generate html documentation:
 ```bash
 protoc \
-  --proto_path=/path/to/workspace/massa-proto/proto/massa/api/v1 \
-  --proto_path=/path/to/workspace/massa-proto/proto/third-party \
-  --doc_out=/path/to/workspace/massa-proto/doc/ \
-  --doc_opt=html,index.html \
-  --descriptor_set_out=/path/to/workspace/massa-proto/src/api.bin \
-  /path/to/workspace/massa-proto/proto/**/*.proto
+  ./massa-proto/proto/massa/api/v1/*.proto \
+  --proto_path=./massa-proto/proto/massa/api/v1 \
+  --proto_path=./massa-proto/proto/third-party \
+  --doc_out=./massa-proto/doc/ \
+  --doc_opt=html,index.html
 ```
 
 Generate markdown documentation:
 ```bash
 protoc \
-  --proto_path=/path/to/workspace/massa-proto/proto/massa/api/v1 \
-  --proto_path=/path/to/workspace/massa-proto/proto/third-party \
-  --doc_out=/path/to/workspace/massa-proto/doc/ \
-  --doc_opt=markdown,api.md \
-  --descriptor_set_out=/path/to/workspace/massa-proto/src/api.bin \
-  /path/to/workspace/massa-proto/proto/**/*.proto
+  ./massa-proto/proto/massa/api/v1/*.proto \
+  --proto_path=./massa-proto/proto/massa/api/v1 \
+  --proto_path=./massa-proto/proto/third-party \
+  --doc_out=./massa-proto/doc/ \
+  --doc_opt=markdown,api.md
+```
+
+Test code generation:
+```bash
+protoc \
+  ./massa-proto/proto/**/*.proto \
+  --proto_path=./massa-proto/proto/massa/api/v1 \
+  --proto_path=./massa-proto/proto/third-party \
+  --java_out=./target/
 ```
 
 Before launching your Massa node, please add this following configuration to your `config.toml` file:
 
 ```toml
 [api]
-    # whether to broadcast for blocks, endorsement and operations
+    # whether to broadcast for blocks, endorsements and operations
     enable_broadcast = true
 [grpc]
     # whether to enable gRPC
