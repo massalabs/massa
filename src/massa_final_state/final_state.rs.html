@@ -900,8 +900,6 @@
 <a href="#900" id="900">900</a>
 <a href="#901" id="901">901</a>
 <a href="#902" id="902">902</a>
-<a href="#903" id="903">903</a>
-<a href="#904" id="904">904</a>
 </pre><pre class="rust"><code><span class="doccomment">//! Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 //! This file defines the final state of the node, which includes
@@ -1167,6 +1165,7 @@
                 )))<span class="question-mark">?</span>;
 
         <span class="comment">// Firstly, complete the first cycle
+
         </span><span class="kw">let </span>last_slot = Slot::new_last_of_cycle(
             current_slot_cycle,
             <span class="self">self</span>.config.periods_per_cycle,
@@ -1192,11 +1191,8 @@
         <span class="comment">// Feed final_state_hash to the completed cycle
         </span><span class="self">self</span>.feed_cycle_hash_and_selector_for_interpolation(current_slot_cycle)<span class="question-mark">?</span>;
 
-        <span class="comment">// Then, build all the completed cycles in betweens. If we have to build more cycles than the cycle_history_length, we only build the last ones.
-        </span><span class="kw">let </span>current_slot_cycle = (current_slot_cycle + <span class="number">1</span>)
-            .max(end_slot_cycle.saturating_sub(<span class="self">self</span>.config.pos_config.cycle_history_length <span class="kw">as </span>u64));
-
-        <span class="kw">for </span>cycle <span class="kw">in </span>current_slot_cycle..end_slot_cycle {
+        <span class="comment">// Then, build all the already completed cycles
+        </span><span class="kw">for </span>cycle <span class="kw">in </span>(current_slot_cycle + <span class="number">1</span>)..end_slot_cycle {
             <span class="kw">let </span>first_slot = Slot::new_first_of_cycle(cycle, <span class="self">self</span>.config.periods_per_cycle)
                 .map_err(|err| {
                     FinalStateError::InvalidSlot(<span class="macro">format!</span>(
