@@ -222,31 +222,22 @@ impl<C: NetworkCommandSenderTrait + Clone> BootstrapServer<'_, C> {
     /// Ok(Err((dplx, address))) listener accepted a connection then tried sending on a disconnected channel
     /// Err(..) Error accepting a connection
     /// TODO: Integrate the listener into the bootstrap-main-loop
-    fn run_listener(
-        mut _listener: impl BSListener,
-        listener_tx: crossbeam::channel::Sender<BsConn>,
-    ) -> Result<Result<(), BsConn>, BootstrapError> {
-        let result = BootstrapTcpListener::start("0.0.0.0:8080".parse().unwrap(), listener_tx);
+    // fn run_listener(
+    //     mut _listener: impl BSListener,
+    //     listener_tx: crossbeam::channel::Sender<BsConn>,
+    // ) -> Result<Result<(), BsConn>, BootstrapError> {
+    //     // loop {
+    //     //     let (msg, addr) = listener.accept().map_err(BootstrapError::IoError)?;
 
-        std::thread::spawn(move || {
-            thread::sleep(Duration::from_secs(10));
-            info!("stop bootstrap listener");
-            result.unwrap().stop();
-        });
-        Ok(Ok(()))
-
-        // loop {
-        //     let (msg, addr) = listener.accept().map_err(BootstrapError::IoError)?;
-
-        //     if let Err(SendError((dplx, remote_addr))) = listener_tx.send((msg, addr)) {
-        //         warn!(
-        //             "listener channel disconnected after accepting connection from {}",
-        //             remote_addr
-        //         );
-        //         return Ok(Err((dplx, remote_addr)));
-        //     };
-        // }
-    }
+    //     //     if let Err(SendError((dplx, remote_addr))) = listener_tx.send((msg, addr)) {
+    //     //         warn!(
+    //     //             "listener channel disconnected after accepting connection from {}",
+    //     //             remote_addr
+    //     //         );
+    //     //         return Ok(Err((dplx, remote_addr)));
+    //     //     };
+    //     // }
+    // }
 
     fn run_loop(mut self, max_bootstraps: usize) -> Result<(), BootstrapError> {
         let Ok(bs_loop_rt) = runtime::Builder::new_multi_thread()

@@ -17,6 +17,9 @@ pub struct BootstrapListenerStopHandle(Waker);
 
 impl BootstrapTcpListener {
     /// Start a new bootstrap listener on the given address.
+    ///
+    /// * `addr` - the address to listen on
+    /// * `connection_tx` - the channel to send new connections to
     pub fn start(
         addr: SocketAddr,
         connection_tx: crossbeam::channel::Sender<(TcpStream, SocketAddr)>,
@@ -62,6 +65,7 @@ impl BootstrapTcpListener {
 }
 
 impl BootstrapListenerStopHandle {
+    /// Stop the bootstrap listener.
     pub fn stop(self) -> Result<(), BootstrapError> {
         self.0.wake().map_err(BootstrapError::from)
     }
