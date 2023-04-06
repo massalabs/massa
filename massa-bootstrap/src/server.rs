@@ -269,9 +269,9 @@ impl<C: NetworkCommandSenderTrait + Clone> BootstrapServer<'_, C> {
         loop {
             // block until we have a connection to work with, or break out of main-loop
             // if a stop-signal is received
-            let (dplx, remote_addr) = self.listener_rx.recv().map_err(|_e| {
+            let Ok((dplx, remote_addr)) = self.listener_rx.recv().map_err(|_e| {
                 BootstrapError::GeneralError("Bootstrap listener channel disconnected".to_string())
-            })?;
+            }) else { break; };
 
             // let Some((dplx, remote_addr)) = self.receive_connection(&mut selector)? else { break; };
             // claim a slot in the max_bootstrap_sessions
