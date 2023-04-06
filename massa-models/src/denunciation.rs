@@ -122,18 +122,17 @@ pub enum Denunciation {
 #[allow(dead_code)]
 impl Denunciation {
     /// Check if it is a Denunciation of several endorsements
-    fn is_for_endorsement(&self) -> bool {
+    pub fn is_for_endorsement(&self) -> bool {
         matches!(self, Denunciation::Endorsement(_))
     }
 
     /// Check if it is a Denunciation of several block headers
-    fn is_for_block_header(&self) -> bool {
+    pub fn is_for_block_header(&self) -> bool {
         matches!(self, Denunciation::BlockHeader(_))
     }
 
     /// Check if it is a Denunciation for this endorsement
-    #[cfg(test)]
-    fn is_also_for_endorsement(
+    pub fn is_also_for_endorsement(
         &self,
         s_endorsement: &SecureShareEndorsement,
     ) -> Result<bool, DenunciationError> {
@@ -164,8 +163,7 @@ impl Denunciation {
     }
 
     /// Check if it is a Denunciation for this block header
-    #[cfg(test)]
-    fn is_also_for_block_header(
+    pub fn is_also_for_block_header(
         &self,
         s_block_header: &SecuredHeader,
     ) -> Result<bool, DenunciationError> {
@@ -195,7 +193,7 @@ impl Denunciation {
 
     /// Check if Denunciation is valid
     /// Should be used if received from the network (prevent against invalid or attacker crafted denunciation)
-    fn is_valid(&self) -> Result<bool, DenunciationError> {
+    pub fn is_valid(&self) -> Result<bool, DenunciationError> {
         let (signature_1, signature_2, hash_1, hash_2, public_key) = match self {
             Denunciation::Endorsement(de) => {
                 let hash_1 = EndorsementDenunciation::compute_hash_for_sig_verif(
@@ -1010,56 +1008,10 @@ mod tests {
 
     use crate::config::{ENDORSEMENT_COUNT, THREAD_COUNT};
     use crate::secure_share::{Id, SecureShareContent};
+    use crate::test_exports::{
+        gen_block_headers_for_denunciation, gen_endorsements_for_denunciation,
+    };
     use massa_signature::KeyPair;
-
-    /// Helper for Endorsement denunciation
-    fn gen_endorsements_for_denunciation() -> (
-        Slot,
-        KeyPair,
-        SecureShareEndorsement,
-        SecureShareEndorsement,
-        SecureShareEndorsement,
-    ) {
-        let keypair = KeyPair::generate();
-
-        let slot = Slot::new(3, 7);
-        let endorsement_1 = Endorsement {
-            slot,
-            index: 0,
-            endorsed_block: BlockId(Hash::compute_from("blk1".as_bytes())),
-        };
-
-        let v_endorsement1 =
-            Endorsement::new_verifiable(endorsement_1, EndorsementSerializer::new(), &keypair)
-                .unwrap();
-
-        let endorsement_2 = Endorsement {
-            slot,
-            index: 0,
-            endorsed_block: BlockId(Hash::compute_from("blk2".as_bytes())),
-        };
-
-        let v_endorsement2 =
-            Endorsement::new_verifiable(endorsement_2, EndorsementSerializer::new(), &keypair)
-                .unwrap();
-
-        let endorsement_3 = Endorsement {
-            slot,
-            index: 0,
-            endorsed_block: BlockId(Hash::compute_from("blk3".as_bytes())),
-        };
-        let v_endorsement_3 =
-            Endorsement::new_verifiable(endorsement_3, EndorsementSerializer::new(), &keypair)
-                .unwrap();
-
-        return (
-            slot,
-            keypair,
-            v_endorsement1,
-            v_endorsement2,
-            v_endorsement_3,
-        );
-    }
 
     #[test]
     fn test_endorsement_denunciation() {
@@ -1130,84 +1082,6 @@ mod tests {
             true
         );
         assert_eq!(denunciation.is_valid().unwrap(), true);
-    }
-
-    fn gen_block_headers_for_denunciation(
-    ) -> (Slot, KeyPair, SecuredHeader, SecuredHeader, SecuredHeader) {
-        let keypair = KeyPair::generate();
-
-        let slot = Slot::new(2, 1);
-        let parents_1: Vec<BlockId> = (0..THREAD_COUNT)
-            .map(|i| BlockId(Hash::compute_from(&[i])))
-            .collect();
-        let parents_2: Vec<BlockId> = (0..THREAD_COUNT)
-            .map(|i| BlockId(Hash::compute_from(&[i + 1])))
-            .collect();
-        let parents_3: Vec<BlockId> = (0..THREAD_COUNT)
-            .map(|i| BlockId(Hash::compute_from(&[i + 2])))
-            .collect();
-
-        let endorsement_1 = Endorsement {
-            slot: Slot::new(1, 1),
-            index: 1,
-            endorsed_block: BlockId(Hash::compute_from("blk1".as_bytes())),
-        };
-        let s_endorsement_1 =
-            Endorsement::new_verifiable(endorsement_1, EndorsementSerializerLW::new(), &keypair)
-                .unwrap();
-
-        let block_header_1 = BlockHeader {
-            slot,
-            parents: parents_1,
-            operation_merkle_root: Hash::compute_from("mno".as_bytes()),
-            endorsements: vec![s_endorsement_1.clone()],
-        };
-
-        // create header
-        let s_block_header_1 = BlockHeader::new_verifiable::<BlockHeaderSerializer, BlockId>(
-            block_header_1,
-            BlockHeaderSerializer::new(),
-            &keypair,
-        )
-        .expect("error while producing block header");
-
-        let block_header_2 = BlockHeader {
-            slot,
-            parents: parents_2,
-            operation_merkle_root: Hash::compute_from("mno".as_bytes()),
-            endorsements: vec![s_endorsement_1.clone()],
-        };
-
-        // create header
-        let s_block_header_2 = BlockHeader::new_verifiable::<BlockHeaderSerializer, BlockId>(
-            block_header_2,
-            BlockHeaderSerializer::new(),
-            &keypair,
-        )
-        .expect("error while producing block header");
-
-        let block_header_3 = BlockHeader {
-            slot,
-            parents: parents_3,
-            operation_merkle_root: Hash::compute_from("mno".as_bytes()),
-            endorsements: vec![s_endorsement_1.clone()],
-        };
-
-        // create header
-        let s_block_header_3 = BlockHeader::new_verifiable::<BlockHeaderSerializer, BlockId>(
-            block_header_3,
-            BlockHeaderSerializer::new(),
-            &keypair,
-        )
-        .expect("error while producing block header");
-
-        return (
-            slot,
-            keypair,
-            s_block_header_1.clone(),
-            s_block_header_2,
-            s_block_header_3,
-        );
     }
 
     #[test]
