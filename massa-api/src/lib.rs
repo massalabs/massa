@@ -156,7 +156,8 @@ async fn serve<T>(
         .max_connections(api_config.max_connections)
         .set_host_filtering(allowed_hosts)
         .batch_requests_supported(api_config.batch_requests_supported)
-        .ping_interval(api_config.ping_interval.to_duration());
+        .ping_interval(api_config.ping_interval.to_duration())
+        .custom_tokio_runtime(tokio::runtime::Handle::current());
 
     if api_config.enable_http && !api_config.enable_ws {
         server_builder = server_builder.http_only();
@@ -194,13 +195,14 @@ pub struct StopHandle {
 
 impl StopHandle {
     /// stop the API gracefully
-    pub fn stop(self) {
+    pub async fn stop(self) {
         match self.server_handler.stop() {
             Ok(_) => {
-                info!("API finished cleanly");
+                info!("API stop signal sent successfully");
             }
             Err(err) => warn!("API thread panicked: {:?}", err),
         }
+        self.server_handler.stopped().await;
     }
 }
 

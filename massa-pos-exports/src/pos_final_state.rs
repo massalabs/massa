@@ -134,24 +134,25 @@ impl PoSFinalState {
     pub fn create_new_cycle_from_last(
         &mut self,
         last_cycle_info: &CycleInfo,
+        first_slot: Slot,
         last_slot: Slot,
     ) -> Result<(), PosError> {
-        let mut rng_seed = BitVec::with_capacity(
-            self.config
-                .periods_per_cycle
-                .saturating_mul(self.config.thread_count as u64)
-                .try_into()
-                .unwrap(),
-        );
+        let mut rng_seed = if first_slot.is_first_of_cycle(self.config.periods_per_cycle) {
+            BitVec::with_capacity(
+                self.config
+                    .periods_per_cycle
+                    .saturating_mul(self.config.thread_count as u64)
+                    .try_into()
+                    .unwrap(),
+            )
+        } else {
+            last_cycle_info.rng_seed.clone()
+        };
 
         let cycle = last_slot.get_cycle(self.config.periods_per_cycle);
 
         let num_slots = last_slot
-            .slots_since(
-                &Slot::new_first_of_cycle(cycle, self.config.periods_per_cycle)
-                    .expect("Cannot create first slot for cycle"),
-                self.config.thread_count,
-            )
+            .slots_since(&first_slot, self.config.thread_count)
             .expect("Error in slot ordering")
             .saturating_add(1);
 

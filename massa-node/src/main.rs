@@ -110,7 +110,7 @@ async fn launch(
     let now = MassaTime::now().expect("could not get now time");
     // Do not start if genesis is in the future. This is meant to prevent nodes
     // from desync if the bootstrap nodes keep a previous ledger
-    #[cfg(not(feature = "sandbox"))]
+    #[cfg(all(not(feature = "sandbox"), not(feature = "bootstrap_server")))]
     {
         if *GENESIS_TIMESTAMP > now {
             let (days, hours, mins, secs) = GENESIS_TIMESTAMP
@@ -301,6 +301,8 @@ async fn launch(
         max_ops_changes_length: MAX_EXECUTED_OPS_CHANGES_LENGTH,
         consensus_bootstrap_part_size: CONSENSUS_BOOTSTRAP_PART_SIZE,
         max_consensus_block_ids: MAX_CONSENSUS_BLOCKS_IDS,
+        mip_store_stats_block_considered: MIP_STORE_STATS_BLOCK_CONSIDERED,
+        mip_store_stats_counters_max: MIP_STORE_STATS_COUNTERS_MAX,
     };
 
     // bootstrap
@@ -379,6 +381,9 @@ async fn launch(
         .expect("could not start network controller");
 
     if args.restart_from_snapshot_at_period.is_none() {
+        let last_start_period = final_state.read().last_start_period;
+        final_state.write().init_ledger_hash(last_start_period);
+
         // give the controller to final state in order for it to feed the cycles
         final_state
             .write()
@@ -402,7 +407,13 @@ async fn launch(
         block_count_considered: MIP_STORE_STATS_BLOCK_CONSIDERED,
         counters_max: MIP_STORE_STATS_COUNTERS_MAX,
     };
-    let mip_store = MipStore::try_from(([], mip_stats_config)).unwrap();
+    let mut mip_store =
+        MipStore::try_from(([], mip_stats_config)).expect("Cannot create an empty MIP store");
+    if let Some(bootstrap_mip_store) = bootstrap_state.mip_store {
+        mip_store
+            .update_with(&bootstrap_mip_store)
+            .expect("Cannot update MIP store with bootstrap mip store");
+    }
 
     // launch execution module
     let execution_config = ExecutionConfig {
@@ -630,6 +641,7 @@ async fn launch(
             DefaultListener::new(&addr).unwrap(),
             private_key,
             *VERSION,
+            mip_store.clone(),
         )
         .unwrap(),
         None => None,
@@ -891,19 +903,24 @@ async fn stop(
             .expect("bootstrap server shutdown failed")
     }
 
-    // stop public API
-    api_public_handle.stop();
-
-    // stop private API
-    api_private_handle.stop();
-
-    // stop Massa API
-    api_handle.stop();
+    info!("Start stopping API's: gRPC, EXPERIMENTAL, PUBLIC, PRIVATE");
 
     // stop Massa gRPC API
     if let Some(handle) = grpc_handle {
         handle.stop();
     }
+
+    // stop Massa API
+    api_handle.stop().await;
+    info!("API | EXPERIMENTAL JsonRPC | stopped");
+
+    // stop public API
+    api_public_handle.stop().await;
+    info!("API | PUBLIC JsonRPC | stopped");
+
+    // stop private API
+    api_private_handle.stop().await;
+    info!("API | PRIVATE JsonRPC | stopped");
 
     // stop factory
     factory_manager.stop();
