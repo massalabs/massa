@@ -132,7 +132,6 @@ impl PeerManagementMessage {
         match self {
             PeerManagementMessage::NewPeerConnected((peer_id, listeners)) => {
                 let mut bytes = vec![];
-                let _ = id_serializer.serialize(&0, &mut bytes);
                 bytes.extend_from_slice(&peer_id.to_bytes());
                 bytes.extend((listeners.len() as u64).to_be_bytes());
                 for listener in listeners {
