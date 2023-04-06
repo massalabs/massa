@@ -1002,9 +1002,7 @@ mod tests {
     use massa_serialization::DeserializeError;
 
     use crate::block_id::BlockId;
-    use crate::endorsement::{
-        Endorsement, EndorsementSerializer, EndorsementSerializerLW, SecureShareEndorsement,
-    };
+    use crate::endorsement::{Endorsement, EndorsementSerializer, SecureShareEndorsement};
 
     use crate::config::{ENDORSEMENT_COUNT, THREAD_COUNT};
     use crate::secure_share::{Id, SecureShareContent};
