@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"enum":["ProtocolError"],"mod":["controller_trait","error","settings","test_exports"],"struct":["ProtocolConfig"],"trait":["ProtocolController","ProtocolManager"]};

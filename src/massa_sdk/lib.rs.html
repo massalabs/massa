@@ -631,6 +631,8 @@
 <a href="#631" id="631">631</a>
 <a href="#632" id="632">632</a>
 <a href="#633" id="633">633</a>
+<a href="#634" id="634">634</a>
+<a href="#635" id="635">635</a>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 </span><span class="doccomment">//! Utilities for a massa client
 
@@ -638,8 +640,9 @@
 #![warn(unused_crate_dependencies)]
 
 </span><span class="kw">use </span>http::header::HeaderName;
-<span class="kw">use </span>jsonrpsee::core::client::{ClientT, IdKind, Subscription, SubscriptionClientT};
-<span class="kw">use </span>jsonrpsee::http_client::transport::HttpBackend;
+<span class="kw">use </span>jsonrpsee::core::client::{
+    CertificateStore, ClientT, IdKind, Subscription, SubscriptionClientT,
+};
 <span class="kw">use </span>jsonrpsee::http_client::HttpClient;
 <span class="kw">use </span>jsonrpsee::rpc_params;
 <span class="kw">use </span>jsonrpsee::types::error::CallError;
@@ -673,9 +676,6 @@
     prehash::{PreHashMap, PreHashSet},
     version::Version,
 };
-
-<span class="kw">use </span>jsonrpsee_http_client <span class="kw">as _</span>;
-<span class="kw">use </span>jsonrpsee_ws_client <span class="kw">as _</span>;
 
 <span class="kw">use </span>jsonrpsee::{core::Error <span class="kw">as </span>JsonRpseeError, core::RpcResult, http_client::HttpClientBuilder};
 <span class="kw">use </span>std::net::{IpAddr, SocketAddr};
@@ -715,14 +715,14 @@
 
 <span class="doccomment">/// Rpc client
 </span><span class="kw">pub struct </span>RpcClient {
-    http_client: HttpClient&lt;HttpBackend&gt;,
+    http_client: HttpClient,
 }
 
 <span class="kw">impl </span>RpcClient {
     <span class="doccomment">/// Default constructor
     </span><span class="kw">pub async fn </span>from_url(url: <span class="kw-2">&amp;</span>str, http_config: <span class="kw-2">&amp;</span>HttpConfig) -&gt; RpcClient {
         RpcClient {
-            http_client: http_client_from_url(url, http_config),
+            http_client: http_client_from_url(url, http_config).<span class="kw">await</span>,
         }
     }
 
@@ -1022,7 +1022,7 @@
 
 <span class="doccomment">/// Rpc V2 client
 </span><span class="kw">pub struct </span>RpcClientV2 {
-    http_client: <span class="prelude-ty">Option</span>&lt;HttpClient&lt;HttpBackend&gt;&gt;,
+    http_client: <span class="prelude-ty">Option</span>&lt;HttpClient&gt;,
     ws_client: <span class="prelude-ty">Option</span>&lt;WsClient&gt;,
 }
 
@@ -1037,7 +1037,7 @@
         <span class="kw">let </span>ws_url = <span class="macro">format!</span>(<span class="string">&quot;ws://{}&quot;</span>, socket_addr);
 
         <span class="kw">if </span>http_config.enabled &amp;&amp; !ws_config.enabled {
-            <span class="kw">let </span>http_client = http_client_from_url(<span class="kw-2">&amp;</span>http_url, http_config);
+            <span class="kw">let </span>http_client = http_client_from_url(<span class="kw-2">&amp;</span>http_url, http_config).<span class="kw">await</span>;
             <span class="kw">return </span>RpcClientV2 {
                 http_client: <span class="prelude-val">Some</span>(http_client),
                 ws_client: <span class="prelude-val">None</span>,
@@ -1052,7 +1052,7 @@
             <span class="macro">panic!</span>(<span class="string">&quot;wrong client configuration, you can&#39;t disable both http and ws&quot;</span>);
         }
 
-        <span class="kw">let </span>http_client = http_client_from_url(<span class="kw-2">&amp;</span>http_url, http_config);
+        <span class="kw">let </span>http_client = http_client_from_url(<span class="kw-2">&amp;</span>http_url, http_config).<span class="kw">await</span>;
         <span class="kw">let </span>ws_client = ws_client_from_url(<span class="kw-2">&amp;</span>ws_url, ws_config).<span class="kw">await</span>;
 
         RpcClientV2 {
@@ -1196,48 +1196,52 @@
     }
 }
 
-<span class="kw">fn </span>http_client_from_url(url: <span class="kw-2">&amp;</span>str, http_config: <span class="kw-2">&amp;</span>HttpConfig) -&gt; HttpClient&lt;HttpBackend&gt; {
-    <span class="kw">let </span><span class="kw-2">mut </span>builder = HttpClientBuilder::default()
-        .max_request_size(http_config.client_config.max_request_body_size)
+<span class="kw">async fn </span>http_client_from_url(url: <span class="kw-2">&amp;</span>str, http_config: <span class="kw-2">&amp;</span>HttpConfig) -&gt; HttpClient {
+    <span class="kw">match </span>HttpClientBuilder::default()
+        .max_request_body_size(http_config.client_config.max_request_body_size)
         .request_timeout(http_config.client_config.request_timeout.to_duration())
         .max_concurrent_requests(http_config.client_config.max_concurrent_requests)
+        .certificate_store(get_certificate_store(
+            http_config.client_config.certificate_store.as_str(),
+        ))
         .id_format(get_id_kind(http_config.client_config.id_kind.as_str()))
-        .set_headers(get_headers(<span class="kw-2">&amp;</span>http_config.client_config.headers));
-
-    <span class="kw">match </span>http_config.client_config.certificate_store.as_str() {
-        <span class="string">&quot;Native&quot; </span>=&gt; builder = builder.use_native_rustls(),
-        <span class="string">&quot;WebPki&quot; </span>=&gt; builder = builder.use_webpki_rustls(),
-        <span class="kw">_ </span>=&gt; {}
-    }
-
-    builder
+        .set_headers(get_headers(<span class="kw-2">&amp;</span>http_config.client_config.headers))
         .build(url)
-        .unwrap_or_else(|<span class="kw">_</span>| <span class="macro">panic!</span>(<span class="string">&quot;unable to create Http client for {}&quot;</span>, url))
+    {
+        <span class="prelude-val">Ok</span>(http_client) =&gt; http_client,
+        <span class="prelude-val">Err</span>(<span class="kw">_</span>) =&gt; <span class="macro">panic!</span>(<span class="string">&quot;unable to create Http client.&quot;</span>),
+    }
 }
 
 <span class="kw">async fn </span>ws_client_from_url(url: <span class="kw-2">&amp;</span>str, ws_config: <span class="kw-2">&amp;</span>WsConfig) -&gt; WsClient
 <span class="kw">where
     </span>WsClient: SubscriptionClientT,
 {
-    <span class="kw">let </span><span class="kw-2">mut </span>builder = WsClientBuilder::default()
-        .max_request_size(ws_config.client_config.max_request_body_size)
+    <span class="kw">match </span>WsClientBuilder::default()
+        .max_request_body_size(ws_config.client_config.max_request_body_size)
         .request_timeout(ws_config.client_config.request_timeout.to_duration())
         .max_concurrent_requests(ws_config.client_config.max_concurrent_requests)
+        .certificate_store(get_certificate_store(
+            ws_config.client_config.certificate_store.as_str(),
+        ))
         .id_format(get_id_kind(ws_config.client_config.id_kind.as_str()))
         .set_headers(get_headers(<span class="kw-2">&amp;</span>ws_config.client_config.headers))
-        .max_buffer_capacity_per_subscription(ws_config.max_notifs_per_subscription)
-        .max_redirections(ws_config.max_redirections);
-
-    <span class="kw">match </span>ws_config.client_config.certificate_store.as_str() {
-        <span class="string">&quot;Native&quot; </span>=&gt; builder = builder.use_native_rustls(),
-        <span class="string">&quot;WebPki&quot; </span>=&gt; builder = builder.use_webpki_rustls(),
-        <span class="kw">_ </span>=&gt; {}
-    }
-
-    builder
+        .max_notifs_per_subscription(ws_config.max_notifs_per_subscription)
+        .max_redirections(ws_config.max_redirections)
         .build(url)
         .<span class="kw">await
-        </span>.unwrap_or_else(|<span class="kw">_</span>| <span class="macro">panic!</span>(<span class="string">&quot;unable to create WebSocket client for {}&quot;</span>, url))
+    </span>{
+        <span class="prelude-val">Ok</span>(ws_client) =&gt; ws_client,
+        <span class="prelude-val">Err</span>(<span class="kw">_</span>) =&gt; <span class="macro">panic!</span>(<span class="string">&quot;unable to create WebSocket client&quot;</span>),
+    }
+}
+
+<span class="kw">fn </span>get_certificate_store(certificate_store: <span class="kw-2">&amp;</span>str) -&gt; CertificateStore {
+    <span class="kw">match </span>certificate_store {
+        <span class="string">&quot;Native&quot; </span>=&gt; CertificateStore::Native,
+        <span class="string">&quot;WebPki&quot; </span>=&gt; CertificateStore::WebPki,
+        <span class="kw">_ </span>=&gt; CertificateStore::Native,
+    }
 }
 
 <span class="kw">fn </span>get_id_kind(id_kind: <span class="kw-2">&amp;</span>str) -&gt; IdKind {
