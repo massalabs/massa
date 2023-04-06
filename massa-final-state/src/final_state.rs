@@ -263,7 +263,6 @@ impl FinalState {
                 )))?;
 
         // Firstly, complete the first cycle
-
         let last_slot = Slot::new_last_of_cycle(
             current_slot_cycle,
             self.config.periods_per_cycle,
@@ -289,8 +288,11 @@ impl FinalState {
         // Feed final_state_hash to the completed cycle
         self.feed_cycle_hash_and_selector_for_interpolation(current_slot_cycle)?;
 
-        // Then, build all the already completed cycles
-        for cycle in (current_slot_cycle + 1)..end_slot_cycle {
+        // Then, build all the completed cycles in betweens. If we have to build more cycles than the cycle_history_length, we only build the last ones.
+        let current_slot_cycle = (current_slot_cycle + 1)
+            .max(end_slot_cycle.saturating_sub(self.config.pos_config.cycle_history_length as u64));
+
+        for cycle in current_slot_cycle..end_slot_cycle {
             let first_slot = Slot::new_first_of_cycle(cycle, self.config.periods_per_cycle)
                 .map_err(|err| {
                     FinalStateError::InvalidSlot(format!(
