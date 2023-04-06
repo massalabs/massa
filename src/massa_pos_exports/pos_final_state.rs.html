@@ -558,7 +558,6 @@
 <a href="#558" id="558">558</a>
 <a href="#559" id="559">559</a>
 <a href="#560" id="560">560</a>
-<a href="#561" id="561">561</a>
 </pre><pre class="rust"><code><span class="kw">use crate</span>::{CycleInfo, PoSChanges, PosError, PosResult, ProductionStats, SelectorController};
 <span class="kw">use crate</span>::{DeferredCredits, PoSConfig};
 <span class="kw">use </span>bitvec::vec::BitVec;
@@ -695,25 +694,24 @@
     </span><span class="kw">pub fn </span>create_new_cycle_from_last(
         <span class="kw-2">&amp;mut </span><span class="self">self</span>,
         last_cycle_info: <span class="kw-2">&amp;</span>CycleInfo,
-        first_slot: Slot,
         last_slot: Slot,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;(), PosError&gt; {
-        <span class="kw">let </span><span class="kw-2">mut </span>rng_seed = <span class="kw">if </span>first_slot.is_first_of_cycle(<span class="self">self</span>.config.periods_per_cycle) {
-            BitVec::with_capacity(
-                <span class="self">self</span>.config
-                    .periods_per_cycle
-                    .saturating_mul(<span class="self">self</span>.config.thread_count <span class="kw">as </span>u64)
-                    .try_into()
-                    .unwrap(),
-            )
-        } <span class="kw">else </span>{
-            last_cycle_info.rng_seed.clone()
-        };
+        <span class="kw">let </span><span class="kw-2">mut </span>rng_seed = BitVec::with_capacity(
+            <span class="self">self</span>.config
+                .periods_per_cycle
+                .saturating_mul(<span class="self">self</span>.config.thread_count <span class="kw">as </span>u64)
+                .try_into()
+                .unwrap(),
+        );
 
         <span class="kw">let </span>cycle = last_slot.get_cycle(<span class="self">self</span>.config.periods_per_cycle);
 
         <span class="kw">let </span>num_slots = last_slot
-            .slots_since(<span class="kw-2">&amp;</span>first_slot, <span class="self">self</span>.config.thread_count)
+            .slots_since(
+                <span class="kw-2">&amp;</span>Slot::new_first_of_cycle(cycle, <span class="self">self</span>.config.periods_per_cycle)
+                    .expect(<span class="string">&quot;Cannot create first slot for cycle&quot;</span>),
+                <span class="self">self</span>.config.thread_count,
+            )
             .expect(<span class="string">&quot;Error in slot ordering&quot;</span>)
             .saturating_add(<span class="number">1</span>);
 

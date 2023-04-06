@@ -32,6 +32,9 @@
 <a href="#32" id="32">32</a>
 <a href="#33" id="33">33</a>
 <a href="#34" id="34">34</a>
+<a href="#35" id="35">35</a>
+<a href="#36" id="36">36</a>
+<a href="#37" id="37">37</a>
 </pre><pre class="rust"><code><span class="doccomment">//! Manages a connection with a node
 
 </span><span class="attr">#![warn(missing_docs)]
@@ -46,7 +49,10 @@
 <span class="kw">pub use </span>common::{ConnectionClosureReason, ConnectionId};
 <span class="kw">pub use </span>error::{HandshakeErrorType, NetworkConnectionErrorType, NetworkError};
 <span class="kw">pub use </span>establisher::{Establisher, Listener, ReadHalf, WriteHalf};
-<span class="kw">pub use </span>network_controller::{NetworkCommandSender, NetworkEventReceiver, NetworkManager};
+<span class="kw">pub use </span>network_controller::{
+    make_runtime, MockNetworkCommandSender, NetworkCommandSender, NetworkCommandSenderTrait,
+    NetworkEventReceiver, NetworkManager,
+};
 <span class="kw">pub use </span>peers::{
     BootstrapPeers, BootstrapPeersDeserializer, BootstrapPeersSerializer, ConnectionCount, Peer,
     PeerInfo, PeerType, Peers,
