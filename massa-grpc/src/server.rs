@@ -122,7 +122,7 @@ impl StopHandle {
         if let Err(e) = self.stop_cmd_sender.send(()) {
             warn!("gRPC API thread panicked: {:?}", e);
         } else {
-            info!("gRPC API finished cleanly");
+            info!("gRPC API stop signal sent successfully");
         }
     }
 }

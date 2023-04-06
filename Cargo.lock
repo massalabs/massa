@@ -2028,8 +2028,7 @@ dependencies = [
 [[package]]
 name = "jsonrpsee"
 version = "0.16.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "7d291e3a5818a2384645fd9756362e6d89cf0541b0b916fa7702ea4a9833608e"
+source = "git+https://github.com/paritytech/jsonrpsee.git?rev=118acc3#118acc39668c60cd90174d91743c725f59275388"
 dependencies = [
  "jsonrpsee-client-transport",
  "jsonrpsee-core",
@@ -2045,17 +2044,13 @@ dependencies = [
 [[package]]
 name = "jsonrpsee-client-transport"
 version = "0.16.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "965de52763f2004bc91ac5bcec504192440f0b568a5d621c59d9dbd6f886c3fb"
+source = "git+https://github.com/paritytech/jsonrpsee.git?rev=118acc3#118acc39668c60cd90174d91743c725f59275388"
 dependencies = [
- "anyhow",
  "futures-channel",
- "futures-timer",
  "futures-util",
  "gloo-net",
  "http",
  "jsonrpsee-core",
- "jsonrpsee-types",
  "pin-project",
  "rustls-native-certs",
  "soketto",
@@ -2070,15 +2065,12 @@ dependencies = [
 [[package]]
 name = "jsonrpsee-core"
 version = "0.16.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a4e70b4439a751a5de7dd5ed55eacff78ebf4ffe0fc009cb1ebb11417f5b536b"
+source = "git+https://github.com/paritytech/jsonrpsee.git?rev=118acc3#118acc39668c60cd90174d91743c725f59275388"
 dependencies = [
  "anyhow",
- "arrayvec",
  "async-lock",
  "async-trait",
  "beef",
- "futures-channel",
  "futures-timer",
  "futures-util",
  "globset",
@@ -2092,6 +2084,7 @@ dependencies = [
  "soketto",
  "thiserror",
  "tokio",
+ "tokio-stream",
  "tracing",
  "wasm-bindgen-futures",
 ]
@@ -2099,27 +2092,25 @@ dependencies = [
 [[package]]
 name = "jsonrpsee-http-client"
 version = "0.16.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "cc345b0a43c6bc49b947ebeb936e886a419ee3d894421790c969cc56040542ad"
+source = "git+https://github.com/paritytech/jsonrpsee.git?rev=118acc3#118acc39668c60cd90174d91743c725f59275388"
 dependencies = [
  "async-trait",
  "hyper",
  "hyper-rustls",
  "jsonrpsee-core",
  "jsonrpsee-types",
- "rustc-hash",
  "serde",
  "serde_json",
  "thiserror",
  "tokio",
+ "tower",
  "tracing",
 ]
 
 [[package]]
 name = "jsonrpsee-proc-macros"
 version = "0.16.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "baa6da1e4199c10d7b1d0a6e5e8bd8e55f351163b6f4b3cbb044672a69bd4c1c"
+source = "git+https://github.com/paritytech/jsonrpsee.git?rev=118acc3#118acc39668c60cd90174d91743c725f59275388"
 dependencies = [
  "heck 0.4.1",
  "proc-macro-crate 1.3.1",
@@ -2131,12 +2122,9 @@ dependencies = [
 [[package]]
 name = "jsonrpsee-server"
 version = "0.16.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "1fb69dad85df79527c019659a992498d03f8495390496da2f07e6c24c2b356fc"
+source = "git+https://github.com/paritytech/jsonrpsee.git?rev=118acc3#118acc39668c60cd90174d91743c725f59275388"
 dependencies = [
- "futures-channel",
  "futures-util",
- "http",
  "hyper",
  "jsonrpsee-core",
  "jsonrpsee-types",
@@ -2153,8 +2141,7 @@ dependencies = [
 [[package]]
 name = "jsonrpsee-types"
 version = "0.16.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "5bd522fe1ce3702fd94812965d7bb7a3364b1c9aba743944c5a00529aae80f8c"
+source = "git+https://github.com/paritytech/jsonrpsee.git?rev=118acc3#118acc39668c60cd90174d91743c725f59275388"
 dependencies = [
  "anyhow",
  "beef",
@@ -2167,8 +2154,7 @@ dependencies = [
 [[package]]
 name = "jsonrpsee-wasm-client"
 version = "0.16.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a77310456f43c6c89bcba1f6b2fc2a28300da7c341f320f5128f8c83cc63232d"
+source = "git+https://github.com/paritytech/jsonrpsee.git?rev=118acc3#118acc39668c60cd90174d91743c725f59275388"
 dependencies = [
  "jsonrpsee-client-transport",
  "jsonrpsee-core",
@@ -2178,8 +2164,7 @@ dependencies = [
 [[package]]
 name = "jsonrpsee-ws-client"
 version = "0.16.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "0b83daeecfc6517cfe210df24e570fb06213533dfb990318fae781f4c7119dd9"
+source = "git+https://github.com/paritytech/jsonrpsee.git?rev=118acc3#118acc39668c60cd90174d91743c725f59275388"
 dependencies = [
  "http",
  "jsonrpsee-client-transport",
@@ -2464,6 +2449,7 @@ name = "massa_api"
 version = "0.1.0"
 dependencies = [
  "async-trait",
+ "futures",
  "hyper",
  "itertools",
  "jsonrpsee",
@@ -2495,8 +2481,7 @@ name = "massa_api_exports"
 version = "0.1.0"
 dependencies = [
  "displaydoc",
- "jsonrpsee-core",
- "jsonrpsee-types",
+ "jsonrpsee",
  "massa_consensus_exports",
  "massa_execution_exports",
  "massa_final_state",
@@ -2563,6 +2548,7 @@ dependencies = [
  "massa_serialization 0.1.0",
  "massa_signature",
  "massa_time",
+ "massa_versioning_worker",
  "mockall",
  "nom",
  "num_enum",
@@ -3105,6 +3091,8 @@ version = "0.1.0"
 dependencies = [
  "http",
  "jsonrpsee",
+ "jsonrpsee-http-client",
+ "jsonrpsee-ws-client",
  "massa_api_exports",
  "massa_models",
  "massa_time",

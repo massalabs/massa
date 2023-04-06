@@ -35,6 +35,7 @@ massa_serialization = { path = "../massa-serialization" }
 massa_signature = { path = "../massa-signature" }
 massa_pos_exports = { path = "../massa-pos-exports" }
 massa_time = { path = "../massa-time" }
+massa_versioning_worker = { path = "../massa-versioning-worker" }
 
 [dev-dependencies]
 mockall = "0.11.4"
