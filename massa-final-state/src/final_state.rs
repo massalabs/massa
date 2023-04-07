@@ -75,6 +75,24 @@ impl FinalState {
         ledger: Box<dyn LedgerController>,
         selector: Box<dyn SelectorController>,
     ) -> Result<Self, FinalStateError> {
+        let ledger_slot = ledger.get_slot();
+        match ledger_slot {
+            Ok(slot) => {
+                info!(
+                    "Recovered ledger. ledger_slot: {}, ledger hash: {}",
+                    slot,
+                    ledger.get_ledger_hash()
+                );
+            }
+            Err(e) => {
+                info!("{}", e);
+                info!(
+                    "Recovered ledger. Unknown ledger slot, ledger hash: {}",
+                    ledger.get_ledger_hash()
+                );
+            }
+        }
+
         // create the pos state
         let pos_state = PoSFinalState::new(
             config.pos_config.clone(),
@@ -508,6 +526,25 @@ impl FinalState {
             self.ledger.set_final_state_hash(hash_buffer);
 
             if self.slot.is_first_of_cycle(self.config.periods_per_cycle) {
+                let ledger_slot = self.ledger.get_slot();
+                match ledger_slot {
+                    Ok(slot) => {
+                        info!(
+                            "Backuping db for slot {}, ledger_slot: {}, ledger hash: {}",
+                            self.slot,
+                            slot,
+                            self.ledger.get_ledger_hash()
+                        );
+                    }
+                    Err(e) => {
+                        info!("{}", e);
+                        info!(
+                            "Backuping db for unknown slot, ledger hash: {}",
+                            self.ledger.get_ledger_hash()
+                        );
+                    }
+                }
+
                 self.ledger.backup_db(self.slot);
             }
         }
