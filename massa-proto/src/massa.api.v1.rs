@@ -707,7 +707,7 @@ pub mod send_operations_response {
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct OperationResult {
-    /// Operation(s) id(s)
+    /// Operations ids
     #[prost(string, repeated, tag = "1")]
     pub operations_ids: ::prost::alloc::vec::Vec<::prost::alloc::string::String>,
 }

@@ -21,9 +21,9 @@ use massa_time::MassaTime;
 use num::rational::Ratio;
 
 /// Start of the downtime simulation
-pub const DOWNTIME_START_TIMESTAMP: MassaTime = MassaTime::from_millis(1680768000000); // 06/04/2023 10AM CET
+pub const DOWNTIME_START_TIMESTAMP: MassaTime = MassaTime::from_millis(1681372800000); // 13/04/2023 10AM CET
 /// End of the downtime simulation
-pub const DOWNTIME_END_TIMESTAMP: MassaTime = MassaTime::from_millis(1680771600000); // 06/04/2023 11AM CET
+pub const DOWNTIME_END_TIMESTAMP: MassaTime = MassaTime::from_millis(1681390800000); // 13/04/2023 16AM CET
 
 /// Limit on the number of peers we advertise to others.
 pub const MAX_ADVERTISE_LENGTH: u32 = 10000;
@@ -56,14 +56,14 @@ lazy_static::lazy_static! {
             )
         )
     } else {
-        1679481900000.into()  // Wednesday, March 22, 2023 10:45:00 AM UTC
+        1680872400000.into()  // Friday, April 7, 2023 01:00:00 PM UTC
     };
 
     /// TESTNET: time when the blockclique is ended.
     pub static ref END_TIMESTAMP: Option<MassaTime> = if cfg!(feature = "sandbox") {
         None
     } else {
-        Some(1680292800000.into())  // Friday, March 31, 2023 08:00:00 PM UTC
+        Some(1682877600000.into())  // Sunday, April 30, 2023 06:00:00 PM UTC
     };
     /// `KeyPair` to sign genesis blocks.
     pub static ref GENESIS_KEY: KeyPair = KeyPair::from_str("S1UxdCJv5ckDK8z87E5Jq5fEfSVLi2cTHgtpfZy7iURs3KpPns8")
@@ -73,9 +73,9 @@ lazy_static::lazy_static! {
     /// node version
     pub static ref VERSION: Version = {
         if cfg!(feature = "sandbox") {
-            "SAND.20.0"
+            "SAND.22.0"
         } else {
-            "TEST.21.0"
+            "TEST.22.0"
         }
         .parse()
         .unwrap()

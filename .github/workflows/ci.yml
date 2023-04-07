@@ -37,7 +37,7 @@ jobs:
       - uses: Swatinem/rust-cache@v2
         with:
           shared-key: "sanity"
-          save-if: ${{ github.ref_name == 'testnet_21' }}
+          save-if: ${{ github.ref_name == 'testnet_22' }}
       - uses: actions-rs/cargo@v1
         with:
           command: fmt
@@ -59,7 +59,7 @@ jobs:
       - uses: Swatinem/rust-cache@v2
         with:
           shared-key: "check"
-          save-if: ${{ github.ref_name == 'testnet_21' }}
+          save-if: ${{ github.ref_name == 'testnet_22' }}
       - uses: arduino/setup-protoc@v1
         with:
           version: '3.x'
@@ -86,7 +86,7 @@ jobs:
       - uses: Swatinem/rust-cache@v2
         with:
           shared-key: "clippy"
-          save-if: ${{ github.ref_name == 'testnet_21' }}
+          save-if: ${{ github.ref_name == 'testnet_22' }}
       - uses: arduino/setup-protoc@v1
         with:
           version: '3.x'
@@ -120,7 +120,7 @@ jobs:
       - uses: Swatinem/rust-cache@v2
         with:
           shared-key: "massa"
-          save-if: ${{ github.ref_name == 'testnet_21' }}
+          save-if: ${{ github.ref_name == 'testnet_22' }}
       - uses: arduino/setup-protoc@v1
         with:
           version: '3.x'
@@ -196,7 +196,7 @@ jobs:
       - uses: Swatinem/rust-cache@v2
         with:
           shared-key: "doc"
-          save-if: ${{ github.ref_name == 'testnet_21' }}
+          save-if: ${{ github.ref_name == 'testnet_22' }}
       - uses: arduino/setup-protoc@v1
         with:
           version: '3.x'
