@@ -5,4 +5,5 @@ mod bootstrap;
 mod mock;
 
 pub use bootstrap::*;
+#[cfg(feature = "testing")]
 pub use mock::*;

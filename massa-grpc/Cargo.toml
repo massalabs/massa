@@ -12,11 +12,12 @@ documentation = "https://docs.massa.net/"
 [dependencies]
 displaydoc = "0.2"
 thiserror = "1.0"
-#TODO add stable version when released
-tonic = { git = "https://github.com/hyperium/tonic", rev = "ff33119", features = ["gzip"] }
-tonic-web = { git = "https://github.com/hyperium/tonic", rev = "ff33119" }
-tonic-reflection = { git = "https://github.com/hyperium/tonic", rev = "ff33119" }
-tonic-health = { git = "https://github.com/hyperium/tonic", rev = "ff33119" }
+tonic = { version = "0.9.1", features = ["gzip"] }
+tonic-web = "0.9.1"
+tonic-reflection = "0.9.1"
+tonic-health = "0.9.1"
+tower-http = { version = "0.4.0", features = ["cors"] }
+hyper = "0.14.25"
 futures-util = "0.3.25"
 serde = { version = "1.0", features = ["derive"] }
 tokio = { version = "1.23", features = ["rt-multi-thread", "macros"] }

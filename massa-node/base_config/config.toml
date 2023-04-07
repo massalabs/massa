@@ -35,7 +35,7 @@
     enable_http = true
     # whether to enable WS.
     enable_ws = false
-    # whether to broadcast for blocks, endorsement and operations
+    # whether to broadcast for blocks, endorsements and operations
     enable_broadcast = false
 
 [grpc]
@@ -43,6 +43,8 @@
     enabled = false
     # whether to add HTTP 1 layer
     accept_http1 = false
+    # whether to enable CORS. works only if `accept_http1` is true
+    enable_cors = false
     # whether to enable gRPC reflection(introspection)
     enable_reflection = true
     # bind for the Massa gRPC API
