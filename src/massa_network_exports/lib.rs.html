@@ -50,7 +50,7 @@
 <span class="kw">pub use </span>error::{HandshakeErrorType, NetworkConnectionErrorType, NetworkError};
 <span class="kw">pub use </span>establisher::{Establisher, Listener, ReadHalf, WriteHalf};
 <span class="kw">pub use </span>network_controller::{
-    MockNetworkCommandSender, NetworkCommandSender, NetworkCommandSenderTrait,
+    make_runtime, MockNetworkCommandSender, NetworkCommandSender, NetworkCommandSenderTrait,
     NetworkEventReceiver, NetworkManager,
 };
 <span class="kw">pub use </span>peers::{
