@@ -797,6 +797,23 @@
 <a href="#797" id="797">797</a>
 <a href="#798" id="798">798</a>
 <a href="#799" id="799">799</a>
+<a href="#800" id="800">800</a>
+<a href="#801" id="801">801</a>
+<a href="#802" id="802">802</a>
+<a href="#803" id="803">803</a>
+<a href="#804" id="804">804</a>
+<a href="#805" id="805">805</a>
+<a href="#806" id="806">806</a>
+<a href="#807" id="807">807</a>
+<a href="#808" id="808">808</a>
+<a href="#809" id="809">809</a>
+<a href="#810" id="810">810</a>
+<a href="#811" id="811">811</a>
+<a href="#812" id="812">812</a>
+<a href="#813" id="813">813</a>
+<a href="#814" id="814">814</a>
+<a href="#815" id="815">815</a>
+<a href="#816" id="816">816</a>
 </pre><pre class="rust"><code><span class="doccomment">//! start the bootstrapping system using [`start_bootstrap_server`]
 //! Once your node will be ready, you may want other to bootstrap from you.
 //!
@@ -849,6 +866,7 @@
     thread,
     time::{Duration, Instant},
 };
+<span class="kw">use </span>tokio::runtime::{<span class="self">self</span>, Handle};
 <span class="kw">use </span>tracing::{debug, error, info, warn};
 <span class="kw">use </span>white_black_list::<span class="kw-2">*</span>;
 
@@ -1042,6 +1060,16 @@
     }
 
     <span class="kw">fn </span>run_loop(<span class="kw-2">mut </span><span class="self">self</span>, max_bootstraps: usize) -&gt; <span class="prelude-ty">Result</span>&lt;(), BootstrapError&gt; {
+        <span class="kw">let </span><span class="prelude-val">Ok</span>(bs_loop_rt) = runtime::Builder::new_multi_thread()
+            .max_blocking_threads(max_bootstraps * <span class="number">2</span>)
+            .enable_io()
+            .enable_time()
+            .thread_name(<span class="string">&quot;bootstrap-main-loop-worker&quot;</span>)
+            .thread_keep_alive(Duration::from_millis(u64::MAX))
+            .build() <span class="kw">else </span>{
+            <span class="kw">return </span><span class="prelude-val">Err</span>(BootstrapError::GeneralError(<span class="string">&quot;Failed to create bootstrap main-loop runtime&quot;</span>.to_string()));
+        };
+
         <span class="comment">// Use the strong-count of this variable to track the session count
         </span><span class="kw">let </span>bootstrap_sessions_counter: Arc&lt;()&gt; = Arc::new(());
         <span class="kw">let </span>per_ip_min_interval = <span class="self">self</span>.bootstrap_config.per_ip_min_interval.to_duration();
@@ -1122,6 +1150,7 @@
                 <span class="kw">let </span>config = <span class="self">self</span>.bootstrap_config.clone();
 
                 <span class="kw">let </span>bootstrap_count_token = bootstrap_sessions_counter.clone();
+                <span class="kw">let </span>session_handle = bs_loop_rt.handle().clone();
                 <span class="kw">let </span>mip_store = <span class="self">self</span>.mip_store.clone();
 
                 <span class="kw">let _ </span>= thread::Builder::new()
@@ -1136,6 +1165,7 @@
                             version,
                             consensus_command_sender,
                             network_command_sender,
+                            session_handle,
                             mip_store,
                         )
                     });
@@ -1153,7 +1183,8 @@
         }
 
         <span class="comment">// Give any remaining processes 20 seconds to clean up, otherwise force them to shutdown
-        </span><span class="prelude-val">Ok</span>(())
+        </span>bs_loop_rt.shutdown_timeout(Duration::from_secs(<span class="number">20</span>));
+        <span class="prelude-val">Ok</span>(())
     }
 
     <span class="doccomment">/// These are the steps to ensure that a connection is only processed if the server is active:
@@ -1251,56 +1282,61 @@
     version: Version,
     consensus_command_sender: Box&lt;<span class="kw">dyn </span>ConsensusController&gt;,
     network_command_sender: C,
+    bs_loop_rt_handle: Handle,
     mip_store: MipStore,
 ) {
     <span class="macro">debug!</span>(<span class="string">&quot;running bootstrap for peer {}&quot;</span>, remote_addr);
-    <span class="kw">let </span>deadline = Instant::now() + config.bootstrap_timeout.to_duration();
-    <span class="comment">// TODO: reinstate prevention of bootstrap slot camping. Deadline cancellation is one option
-    </span><span class="kw">let </span>res = manage_bootstrap(
-        <span class="kw-2">&amp;</span>config,
-        <span class="kw-2">&amp;mut </span>server,
-        data_execution,
-        version,
-        consensus_command_sender,
-        network_command_sender,
-        deadline,
-        mip_store,
-    );
-    <span class="comment">// TODO: handle the deadline management
-    // This drop allows the server to accept new connections before having to complete the error notifications
-    // account for this session being finished, as well as the root-instance
-    </span><span class="macro">massa_trace!</span>(<span class="string">&quot;bootstrap.session.finished&quot;</span>, {
-        <span class="string">&quot;sessions_remaining&quot;</span>: Arc::strong_count(<span class="kw-2">&amp;</span>arc_counter) - <span class="number">2
-    </span>});
-    drop(arc_counter);
-    <span class="kw">match </span>res {
-        <span class="prelude-val">Err</span>(BootstrapError::TimedOut(<span class="kw">_</span>)) =&gt; {
-            <span class="macro">debug!</span>(<span class="string">&quot;bootstrap timeout for peer {}&quot;</span>, remote_addr);
-            <span class="comment">// We allow unused result because we don&#39;t care if an error is thrown when
-            // sending the error message to the server we will close the socket anyway.
-            </span><span class="kw">let _ </span>= server.send_error_timeout(<span class="macro">format!</span>(
-                <span class="string">&quot;Bootstrap process timedout ({})&quot;</span>,
-                format_duration(config.bootstrap_timeout.to_duration())
-            ));
+    bs_loop_rt_handle.block_on(<span class="kw">async move </span>{
+        <span class="kw">let </span>res = tokio::time::timeout(
+            config.bootstrap_timeout.into(),
+            manage_bootstrap(
+                <span class="kw-2">&amp;</span>config,
+                <span class="kw-2">&amp;mut </span>server,
+                data_execution,
+                version,
+                consensus_command_sender,
+                network_command_sender,
+                mip_store,
+            ),
+        )
+        .<span class="kw">await</span>;
+        <span class="comment">// This drop allows the server to accept new connections before having to complete the error notifications
+        // account for this session being finished, as well as the root-instance
+        </span><span class="macro">massa_trace!</span>(<span class="string">&quot;bootstrap.session.finished&quot;</span>, {
+            <span class="string">&quot;sessions_remaining&quot;</span>: Arc::strong_count(<span class="kw-2">&amp;</span>arc_counter) - <span class="number">2
+        </span>});
+        drop(arc_counter);
+        <span class="kw">match </span>res {
+            <span class="prelude-val">Ok</span>(mgmt) =&gt; <span class="kw">match </span>mgmt {
+                <span class="prelude-val">Ok</span>(<span class="kw">_</span>) =&gt; {
+                    <span class="macro">info!</span>(<span class="string">&quot;bootstrapped peer {}&quot;</span>, remote_addr);
+                }
+                <span class="prelude-val">Err</span>(BootstrapError::ReceivedError(error)) =&gt; <span class="macro">debug!</span>(
+                    <span class="string">&quot;bootstrap serving error received from peer {}: {}&quot;</span>,
+                    remote_addr, error
+                ),
+                <span class="prelude-val">Err</span>(err) =&gt; {
+                    <span class="macro">debug!</span>(<span class="string">&quot;bootstrap serving error for peer {}: {}&quot;</span>, remote_addr, err);
+                    <span class="comment">// We allow unused result because we don&#39;t care if an error is thrown when
+                    // sending the error message to the server we will close the socket anyway.
+                    </span><span class="kw">let _ </span>= server.send_error_timeout(err.to_string());
+                }
+            },
+            <span class="prelude-val">Err</span>(_timeout) =&gt; {
+                <span class="macro">debug!</span>(<span class="string">&quot;bootstrap timeout for peer {}&quot;</span>, remote_addr);
+                <span class="comment">// We allow unused result because we don&#39;t care if an error is thrown when
+                // sending the error message to the server we will close the socket anyway.
+                </span><span class="kw">let _ </span>= server.send_error_timeout(<span class="macro">format!</span>(
+                    <span class="string">&quot;Bootstrap process timedout ({})&quot;</span>,
+                    format_duration(config.bootstrap_timeout.to_duration())
+                ));
+            }
         }
-        <span class="prelude-val">Err</span>(BootstrapError::ReceivedError(error)) =&gt; <span class="macro">debug!</span>(
-            <span class="string">&quot;bootstrap serving error received from peer {}: {}&quot;</span>,
-            remote_addr, error
-        ),
-        <span class="prelude-val">Err</span>(err) =&gt; {
-            <span class="macro">debug!</span>(<span class="string">&quot;bootstrap serving error for peer {}: {}&quot;</span>, remote_addr, err);
-            <span class="comment">// We allow unused result because we don&#39;t care if an error is thrown when
-            // sending the error message to the server we will close the socket anyway.
-            </span><span class="kw">let _ </span>= server.send_error_timeout(err.to_string());
-        }
-        <span class="prelude-val">Ok</span>(<span class="kw">_</span>) =&gt; {
-            <span class="macro">info!</span>(<span class="string">&quot;bootstrapped peer {}&quot;</span>, remote_addr);
-        }
-    }
+    });
 }
 
 <span class="attr">#[allow(clippy::too_many_arguments)]
-</span><span class="kw">pub fn </span>stream_bootstrap_information(
+</span><span class="kw">pub async fn </span>stream_bootstrap_information(
     server: <span class="kw-2">&amp;mut </span>BootstrapServerBinder,
     final_state: Arc&lt;RwLock&lt;FinalState&gt;&gt;,
     consensus_controller: Box&lt;<span class="kw">dyn </span>ConsensusController&gt;,
@@ -1318,7 +1354,7 @@
         <span class="attr">#[cfg(test)]
         </span>{
             <span class="comment">// Necessary for test_bootstrap_server in tests/scenarios.rs
-            </span>std::thread::sleep(Duration::from_millis(<span class="number">500</span>));
+            </span>tokio::time::sleep(Duration::from_millis(<span class="number">500</span>)).<span class="kw">await</span>;
         }
 
         <span class="kw">let </span>current_slot;
@@ -1481,19 +1517,17 @@
 }
 
 <span class="attr">#[allow(clippy::too_many_arguments)]
-</span><span class="kw">fn </span>manage_bootstrap&lt;C: NetworkCommandSenderTrait&gt;(
+</span><span class="kw">async fn </span>manage_bootstrap&lt;C: NetworkCommandSenderTrait&gt;(
     bootstrap_config: <span class="kw-2">&amp;</span>BootstrapConfig,
     server: <span class="kw-2">&amp;mut </span>BootstrapServerBinder,
     final_state: Arc&lt;RwLock&lt;FinalState&gt;&gt;,
     version: Version,
     consensus_controller: Box&lt;<span class="kw">dyn </span>ConsensusController&gt;,
     network_command_sender: C,
-    _deadline: Instant,
     mip_store: MipStore,
 ) -&gt; <span class="prelude-ty">Result</span>&lt;(), BootstrapError&gt; {
     <span class="macro">massa_trace!</span>(<span class="string">&quot;bootstrap.lib.manage_bootstrap&quot;</span>, {});
     <span class="kw">let </span>read_error_timeout: Duration = bootstrap_config.read_error_timeout.into();
-    <span class="kw">let </span>rt_hack = massa_network_exports::make_runtime();
 
     server.handshake_timeout(version, <span class="prelude-val">Some</span>(bootstrap_config.read_timeout.into()))<span class="question-mark">?</span>;
 
@@ -1528,8 +1562,7 @@
                     server.send_msg(
                         write_timeout,
                         BootstrapServerMessage::BootstrapPeers {
-                            peers: rt_hack
-                                .block_on(network_command_sender.get_bootstrap_peers())<span class="question-mark">?</span>,
+                            peers: network_command_sender.get_bootstrap_peers().<span class="kw">await</span><span class="question-mark">?</span>,
                         },
                     )<span class="question-mark">?</span>;
                 }
@@ -1556,7 +1589,8 @@
                         last_consensus_step,
                         send_last_start_period,
                         write_timeout,
-                    )<span class="question-mark">?</span>;
+                    )
+                    .<span class="kw">await</span><span class="question-mark">?</span>;
                 }
                 BootstrapClientMessage::AskBootstrapMipStore =&gt; {
                     <span class="kw">let </span>vs = mip_store.<span class="number">0</span>.read().to_owned();
