@@ -50,6 +50,7 @@ use std::{
     thread,
     time::{Duration, Instant},
 };
+use tokio::runtime::{self, Handle};
 use tracing::{debug, error, info, warn};
 use white_black_list::*;
 
@@ -243,6 +244,16 @@ impl<C: NetworkCommandSenderTrait + Clone> BootstrapServer<'_, C> {
     }
 
     fn run_loop(mut self, max_bootstraps: usize) -> Result<(), BootstrapError> {
+        let Ok(bs_loop_rt) = runtime::Builder::new_multi_thread()
+            .max_blocking_threads(max_bootstraps * 2)
+            .enable_io()
+            .enable_time()
+            .thread_name("bootstrap-main-loop-worker")
+            .thread_keep_alive(Duration::from_millis(u64::MAX))
+            .build() else {
+            return Err(BootstrapError::GeneralError("Failed to create bootstrap main-loop runtime".to_string()));
+        };
+
         // Use the strong-count of this variable to track the session count
         let bootstrap_sessions_counter: Arc<()> = Arc::new(());
         let per_ip_min_interval = self.bootstrap_config.per_ip_min_interval.to_duration();
@@ -323,6 +334,7 @@ impl<C: NetworkCommandSenderTrait + Clone> BootstrapServer<'_, C> {
                 let config = self.bootstrap_config.clone();
 
                 let bootstrap_count_token = bootstrap_sessions_counter.clone();
+                let session_handle = bs_loop_rt.handle().clone();
                 let mip_store = self.mip_store.clone();
 
                 let _ = thread::Builder::new()
@@ -337,6 +349,7 @@ impl<C: NetworkCommandSenderTrait + Clone> BootstrapServer<'_, C> {
                             version,
                             consensus_command_sender,
                             network_command_sender,
+                            session_handle,
                             mip_store,
                         )
                     });
@@ -354,6 +367,7 @@ impl<C: NetworkCommandSenderTrait + Clone> BootstrapServer<'_, C> {
         }
 
         // Give any remaining processes 20 seconds to clean up, otherwise force them to shutdown
+        bs_loop_rt.shutdown_timeout(Duration::from_secs(20));
         Ok(())
     }
 
@@ -452,56 +466,61 @@ fn run_bootstrap_session<C: NetworkCommandSenderTrait>(
     version: Version,
     consensus_command_sender: Box<dyn ConsensusController>,
     network_command_sender: C,
+    bs_loop_rt_handle: Handle,
     mip_store: MipStore,
 ) {
     debug!("running bootstrap for peer {}", remote_addr);
-    let deadline = Instant::now() + config.bootstrap_timeout.to_duration();
-    // TODO: reinstate prevention of bootstrap slot camping. Deadline cancellation is one option
-    let res = manage_bootstrap(
-        &config,
-        &mut server,
-        data_execution,
-        version,
-        consensus_command_sender,
-        network_command_sender,
-        deadline,
-        mip_store,
-    );
-    // TODO: handle the deadline management
-    // This drop allows the server to accept new connections before having to complete the error notifications
-    // account for this session being finished, as well as the root-instance
-    massa_trace!("bootstrap.session.finished", {
-        "sessions_remaining": Arc::strong_count(&arc_counter) - 2
+    bs_loop_rt_handle.block_on(async move {
+        let res = tokio::time::timeout(
+            config.bootstrap_timeout.into(),
+            manage_bootstrap(
+                &config,
+                &mut server,
+                data_execution,
+                version,
+                consensus_command_sender,
+                network_command_sender,
+                mip_store,
+            ),
+        )
+        .await;
+        // This drop allows the server to accept new connections before having to complete the error notifications
+        // account for this session being finished, as well as the root-instance
+        massa_trace!("bootstrap.session.finished", {
+            "sessions_remaining": Arc::strong_count(&arc_counter) - 2
+        });
+        drop(arc_counter);
+        match res {
+            Ok(mgmt) => match mgmt {
+                Ok(_) => {
+                    info!("bootstrapped peer {}", remote_addr);
+                }
+                Err(BootstrapError::ReceivedError(error)) => debug!(
+                    "bootstrap serving error received from peer {}: {}",
+                    remote_addr, error
+                ),
+                Err(err) => {
+                    debug!("bootstrap serving error for peer {}: {}", remote_addr, err);
+                    // We allow unused result because we don't care if an error is thrown when
+                    // sending the error message to the server we will close the socket anyway.
+                    let _ = server.send_error_timeout(err.to_string());
+                }
+            },
+            Err(_timeout) => {
+                debug!("bootstrap timeout for peer {}", remote_addr);
+                // We allow unused result because we don't care if an error is thrown when
+                // sending the error message to the server we will close the socket anyway.
+                let _ = server.send_error_timeout(format!(
+                    "Bootstrap process timedout ({})",
+                    format_duration(config.bootstrap_timeout.to_duration())
+                ));
+            }
+        }
     });
-    drop(arc_counter);
-    match res {
-        Err(BootstrapError::TimedOut(_)) => {
-            debug!("bootstrap timeout for peer {}", remote_addr);
-            // We allow unused result because we don't care if an error is thrown when
-            // sending the error message to the server we will close the socket anyway.
-            let _ = server.send_error_timeout(format!(
-                "Bootstrap process timedout ({})",
-                format_duration(config.bootstrap_timeout.to_duration())
-            ));
-        }
-        Err(BootstrapError::ReceivedError(error)) => debug!(
-            "bootstrap serving error received from peer {}: {}",
-            remote_addr, error
-        ),
-        Err(err) => {
-            debug!("bootstrap serving error for peer {}: {}", remote_addr, err);
-            // We allow unused result because we don't care if an error is thrown when
-            // sending the error message to the server we will close the socket anyway.
-            let _ = server.send_error_timeout(err.to_string());
-        }
-        Ok(_) => {
-            info!("bootstrapped peer {}", remote_addr);
-        }
-    }
 }
 
 #[allow(clippy::too_many_arguments)]
-pub fn stream_bootstrap_information(
+pub async fn stream_bootstrap_information(
     server: &mut BootstrapServerBinder,
     final_state: Arc<RwLock<FinalState>>,
     consensus_controller: Box<dyn ConsensusController>,
@@ -519,7 +538,7 @@ pub fn stream_bootstrap_information(
         #[cfg(test)]
         {
             // Necessary for test_bootstrap_server in tests/scenarios.rs
-            std::thread::sleep(Duration::from_millis(500));
+            tokio::time::sleep(Duration::from_millis(500)).await;
         }
 
         let current_slot;
@@ -682,19 +701,17 @@ pub fn stream_bootstrap_information(
 }
 
 #[allow(clippy::too_many_arguments)]
-fn manage_bootstrap<C: NetworkCommandSenderTrait>(
+async fn manage_bootstrap<C: NetworkCommandSenderTrait>(
     bootstrap_config: &BootstrapConfig,
     server: &mut BootstrapServerBinder,
     final_state: Arc<RwLock<FinalState>>,
     version: Version,
     consensus_controller: Box<dyn ConsensusController>,
     network_command_sender: C,
-    _deadline: Instant,
     mip_store: MipStore,
 ) -> Result<(), BootstrapError> {
     massa_trace!("bootstrap.lib.manage_bootstrap", {});
     let read_error_timeout: Duration = bootstrap_config.read_error_timeout.into();
-    let rt_hack = massa_network_exports::make_runtime();
 
     server.handshake_timeout(version, Some(bootstrap_config.read_timeout.into()))?;
 
@@ -729,8 +746,7 @@ fn manage_bootstrap<C: NetworkCommandSenderTrait>(
                     server.send_msg(
                         write_timeout,
                         BootstrapServerMessage::BootstrapPeers {
-                            peers: rt_hack
-                                .block_on(network_command_sender.get_bootstrap_peers())?,
+                            peers: network_command_sender.get_bootstrap_peers().await?,
                         },
                     )?;
                 }
@@ -757,7 +773,8 @@ fn manage_bootstrap<C: NetworkCommandSenderTrait>(
                         last_consensus_step,
                         send_last_start_period,
                         write_timeout,
-                    )?;
+                    )
+                    .await?;
                 }
                 BootstrapClientMessage::AskBootstrapMipStore => {
                     let vs = mip_store.0.read().to_owned();
