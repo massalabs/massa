@@ -51,11 +51,14 @@ massa_time = { path = "../massa-time" }
 massa_wallet = { path = "../massa-wallet" }
 massa_factory_exports = { path = "../massa-factory-exports" }
 massa_factory_worker = { path = "../massa-factory-worker" }
+massa_grpc = { path = "../massa-grpc" }
+massa_versioning_worker = { path = "../massa-versioning-worker" }
 
 # for more information on what are the following features used for, see the cargo.toml at workspace level
 [features]
 beta = []
 deadlock_detection = []
+bootstrap_server = []
 sandbox = [
     "massa_bootstrap/sandbox",
     "massa_consensus_worker/sandbox",
@@ -64,6 +67,4 @@ sandbox = [
     "massa_models/sandbox",
     "massa_protocol_exports/sandbox"
 ]
-
-[build]
-rustflags = ["--cfg", "tokio_unstable"]
+create_snapshot = ["massa_final_state/create_snapshot"]

@@ -9,6 +9,10 @@ env:
   CARGO_TERM_COLOR: always
   RUST_BACKTRACE: full
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   release:
     strategy:

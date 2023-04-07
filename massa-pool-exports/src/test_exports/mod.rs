@@ -4,4 +4,5 @@ mod config;
 mod mock;
 
 pub use config::*;
+#[cfg(feature = "testing")]
 pub use mock::*;

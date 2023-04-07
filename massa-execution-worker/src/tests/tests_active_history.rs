@@ -34,7 +34,7 @@ mod tests {
         ph2.insert(addr1, amount_a1_s2);
         ph2.insert(addr2, amount_a2_s2);
 
-        let mut credits = DeferredCredits::default();
+        let mut credits = DeferredCredits::new_without_hash();
         credits.credits = BTreeMap::from([(slot1, ph1), (slot2, ph2)]);
 
         let exec_output_1 = ExecutionOutput {
@@ -63,8 +63,14 @@ mod tests {
             Some(amount_a1_s2)
         );
 
-        let deferred_credit_for_slot1 = active_history.get_all_deferred_credits_for(&slot1);
-        assert_eq!(deferred_credit_for_slot1.get(&addr1), Some(&amount_a1_s1));
-        assert_eq!(deferred_credit_for_slot1.get(&addr2), Some(&amount_a2_s1));
+        let deferred_credit_for_slot1 = active_history.get_all_deferred_credits_until(&slot1);
+        assert_eq!(
+            deferred_credit_for_slot1.get_address_credits_for_slot(&addr1, &slot1),
+            Some(amount_a1_s1)
+        );
+        assert_eq!(
+            deferred_credit_for_slot1.get_address_credits_for_slot(&addr2, &slot1),
+            Some(amount_a2_s1)
+        );
     }
 }

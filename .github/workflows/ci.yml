@@ -16,6 +16,10 @@ env:
   RUST_BACKTRACE: full
   RUSTFLAGS: "--deny warnings"
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+    
 jobs:
   # Quick tests on each commit/PR
   sanity:
@@ -56,6 +60,10 @@ jobs:
         with:
           shared-key: "check"
           save-if: ${{ github.ref == 'refs/heads/main' }}
+      - uses: arduino/setup-protoc@v1
+        with:
+          version: '3.x'
+          repo-token: ${{ secrets.GITHUB_TOKEN }}
       - uses: actions-rs/cargo@v1
         with:
           command: check
@@ -79,6 +87,10 @@ jobs:
         with:
           shared-key: "clippy"
           save-if: ${{ github.ref == 'refs/heads/main' }}
+      - uses: arduino/setup-protoc@v1
+        with:
+          version: '3.x'
+          repo-token: ${{ secrets.GITHUB_TOKEN }}
       - uses: actions-rs/clippy-check@v1
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
@@ -109,6 +121,10 @@ jobs:
         with:
           shared-key: "massa"
           save-if: ${{ github.ref == 'refs/heads/main' }}
+      - uses: arduino/setup-protoc@v1
+        with:
+          version: '3.x'
+          repo-token: ${{ secrets.GITHUB_TOKEN }}
       - uses: actions-rs/cargo@v1
         with:
           command: install
@@ -181,10 +197,14 @@ jobs:
         with:
           shared-key: "doc"
           save-if: ${{ github.ref == 'refs/heads/main' }}
+      - uses: arduino/setup-protoc@v1
+        with:
+          version: '3.x'
+          repo-token: ${{ secrets.GITHUB_TOKEN }}
       - uses: actions-rs/cargo@v1
         with:
           command: doc
-          args: --no-deps
+          args: --no-deps --all-features --document-private-items
       - uses: JamesIves/github-pages-deploy-action@4.1.7
         with:
           branch: gh-pages

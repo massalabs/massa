@@ -72,7 +72,9 @@ impl SlotSequencer {
     pub fn new(config: ExecutionConfig, final_cursor: Slot) -> Self {
         SlotSequencer {
             sequence: Default::default(),
-            latest_css_final_slots: (0..config.thread_count).map(|t| Slot::new(0, t)).collect(),
+            latest_css_final_slots: (0..config.thread_count)
+                .map(|t| Slot::new(config.last_start_period, t))
+                .collect(),
             latest_sce_final_slot: final_cursor,
             latest_executed_final_slot: final_cursor,
             latest_executed_candidate_slot: final_cursor,
@@ -124,7 +126,7 @@ impl SlotSequencer {
                     .keys()
                     .max()
                     .copied()
-                    .unwrap_or_else(|| Slot::new(0, 0)),
+                    .unwrap_or_else(|| Slot::new(self.config.last_start_period, 0)),
             ),
             self.get_time_cursor(),
         );
@@ -197,7 +199,7 @@ impl SlotSequencer {
             shifted_now,
         )
         .expect("could not get latest block slot at shifted execution time")
-        .unwrap_or_else(|| Slot::new(0, 0))
+        .unwrap_or_else(|| Slot::new(self.config.last_start_period, 0))
     }
 
     /// Notify the sequencer of incoming changes: CSS-finalized blocks and changes in the blockclique.
@@ -260,7 +262,7 @@ impl SlotSequencer {
                 new_blockclique
                     .as_ref()
                     .and_then(|bq| bq.keys().max().copied())
-                    .unwrap_or_else(|| Slot::new(0, 0)),
+                    .unwrap_or_else(|| Slot::new(self.config.last_start_period, 0)),
             ),
             self.sequence
                 .back()

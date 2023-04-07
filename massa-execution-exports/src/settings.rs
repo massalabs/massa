@@ -58,14 +58,22 @@ pub struct ExecutionConfig {
     pub max_bytecode_size: u64,
     /// Max datastore value size
     pub max_datastore_value_size: u64,
-    /// Max number of compiled modules in the cache
-    pub max_module_cache_size: u32,
     /// Storage cost constants
     pub storage_costs_constants: StorageCostsConstants,
     /// Max gas for read only executions
     pub max_read_only_gas: u64,
     /// Gas costs
     pub gas_costs: GasCosts,
-    /// path of the initial vesting file
+    /// Path to the initial vesting file
     pub initial_vesting_path: PathBuf,
+    /// last start period, used to attach to the correct execution slot if the network has restarted
+    pub last_start_period: u64,
+    /// Path to the hard drive cache storage
+    pub hd_cache_path: PathBuf,
+    /// Maximum number of entries we want to keep in the LRU cache
+    pub lru_cache_size: u32,
+    /// Maximum number of entries we want to keep in the HD cache
+    pub hd_cache_size: usize,
+    /// Amount of entries removed when `hd_cache_size` is reached
+    pub snip_amount: usize,
 }

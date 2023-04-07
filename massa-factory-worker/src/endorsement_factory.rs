@@ -88,9 +88,9 @@ impl EndorsementFactoryWorker {
             }
         }
 
-        // prevent triggering on period-zero slots
-        if next_slot.period == 0 {
-            next_slot = Slot::new(1, 0);
+        // ignore genesis
+        if next_slot.period <= self.cfg.last_start_period {
+            next_slot = Slot::new(self.cfg.last_start_period + 1, 0);
         }
 
         // get the timestamp of the target slot
