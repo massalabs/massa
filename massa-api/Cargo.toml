@@ -11,9 +11,9 @@ futures = "0.3.18"
 async-trait = "0.1.58"
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0.87"
-tower-http = { version = "0.3.4", features = ["full"] }
+tower-http = { version = "0.4.0", features = ["cors"] }
 tower = { version = "0.4.13", features = ["full"] }
-hyper = "0.14.20"
+hyper = "0.14.25"
 tokio = { version = "1.23", features = ["full"] }
 tokio-stream = { version = "0.1", features = ["sync"] }
 tracing = "0.1"

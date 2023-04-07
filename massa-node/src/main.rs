@@ -707,6 +707,7 @@ async fn launch(
         let grpc_config = GrpcConfig {
             enabled: SETTINGS.grpc.enabled,
             accept_http1: SETTINGS.grpc.accept_http1,
+            enable_cors: SETTINGS.grpc.enable_cors,
             enable_reflection: SETTINGS.grpc.enable_reflection,
             bind: SETTINGS.grpc.bind,
             accept_compressed: SETTINGS.grpc.accept_compressed.clone(),
