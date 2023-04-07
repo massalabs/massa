@@ -7,8 +7,10 @@
 #![feature(async_closure)]
 #![feature(map_try_insert)]
 #![feature(let_chains)]
+#![feature(hash_drain_filter)]
 
 mod controller_impl;
+mod denunciation_pool;
 mod endorsement_pool;
 mod operation_pool;
 mod types;

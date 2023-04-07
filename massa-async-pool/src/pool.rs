@@ -35,7 +35,7 @@ pub struct AsyncPool {
     config: AsyncPoolConfig,
 
     /// Messages sorted by decreasing ID (decreasing priority)
-    pub(crate) messages: BTreeMap<AsyncMessageId, AsyncMessage>,
+    pub messages: BTreeMap<AsyncMessageId, AsyncMessage>,
 
     /// Hash of the asynchronous pool
     pub hash: Hash,
@@ -48,6 +48,23 @@ impl AsyncPool {
             config,
             messages: Default::default(),
             hash: Hash::from_bytes(ASYNC_POOL_HASH_INITIAL_BYTES),
+        }
+    }
+
+    /// Creates an `AsyncPool` from an existing snapshot (and recomputes the hash)
+    pub fn from_snapshot(
+        config: AsyncPoolConfig,
+        messages: BTreeMap<AsyncMessageId, AsyncMessage>,
+    ) -> AsyncPool {
+        let mut hash = Hash::from_bytes(&[0; HASH_SIZE_BYTES]);
+        for (_, msg) in messages.iter() {
+            hash ^= msg.hash;
+        }
+
+        AsyncPool {
+            config,
+            messages,
+            hash,
         }
     }
 

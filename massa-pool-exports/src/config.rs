@@ -1,6 +1,7 @@
 //! Copyright (c) 2022 MASSA LABS <info@massa.net>
 
 use massa_models::amount::Amount;
+use massa_time::MassaTime;
 use serde::{Deserialize, Serialize};
 
 /// Pool configuration
@@ -26,8 +27,16 @@ pub struct PoolConfig {
     pub max_block_endorsement_count: u32,
     /// operations and endorsements communication channels size
     pub channels_size: usize,
-    /// Whether WebSockets are enabled
+    /// whether operations broadcast is enabled
     pub broadcast_enabled: bool,
     /// operations sender(channel) capacity
     pub broadcast_operations_capacity: usize,
+    /// genesis timestamp
+    pub genesis_timestamp: MassaTime,
+    /// period duration
+    pub t0: MassaTime,
+    /// cycle duration in periods
+    pub periods_per_cycle: u64,
+    /// denunciation expiration (in periods)
+    pub denunciation_expire_periods: u64,
 }

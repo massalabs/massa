@@ -37,6 +37,7 @@ impl Default for ConsensusConfig {
             broadcast_blocks_headers_capacity: 128,
             broadcast_blocks_capacity: 128,
             broadcast_filled_blocks_capacity: 128,
+            last_start_period: 0,
         }
     }
 }

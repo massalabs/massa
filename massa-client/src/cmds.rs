@@ -1,6 +1,7 @@
 // Copyright (c) 2022 MASSA LABS <info@massa.net>
 
-use crate::repl::Output;
+use crate::display::Output;
+use crate::{client_warning, rpc_error};
 use anyhow::{anyhow, bail, Result};
 use console::style;
 use massa_api_exports::{
@@ -334,30 +335,10 @@ pub enum ListOperation {
     Remove,
 }
 
-/// Display the help of all commands
-pub(crate) fn help() {
-    println!("HELP of Massa client (list of available commands):");
-    Command::iter().map(|c| c.help()).collect()
-}
-
-/// bail a shinny RPC error
-macro_rules! rpc_error {
-    ($e:expr) => {
-        bail!("check if your node is running: {}", $e)
-    };
-}
-
-/// print a yellow warning
-macro_rules! client_warning {
-    ($e:expr) => {
-        println!("{}: {}", style("WARNING").yellow(), $e)
-    };
-}
-
 /// Used to have a shinny json output
 /// TODO re-factor me
 #[derive(Debug, Serialize)]
-struct ExtendedWalletEntry {
+pub(crate) struct ExtendedWalletEntry {
     /// the keypair
     pub keypair: KeyPair,
     /// address and balance information
@@ -381,7 +362,7 @@ impl Display for ExtendedWalletEntry {
 /// Aggregation of the local, with some useful information as the balance, etc
 /// to be printed by the client.
 #[derive(Debug, Serialize)]
-pub struct ExtendedWallet(PreHashMap<Address, ExtendedWalletEntry>);
+pub struct ExtendedWallet(pub(crate) PreHashMap<Address, ExtendedWalletEntry>);
 
 impl ExtendedWallet {
     /// Reorganize everything into an extended wallet
@@ -1448,4 +1429,10 @@ where
     } else {
         Ok(None)
     }
+}
+
+/// Display the help of all commands
+pub fn help() {
+    println!("HELP of Massa client (list of available commands):");
+    Command::iter().map(|c| c.help()).collect()
 }

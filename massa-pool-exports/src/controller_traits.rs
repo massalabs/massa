@@ -1,5 +1,6 @@
 // Copyright (c) 2022 MASSA LABS <info@massa.net>
 
+use massa_models::denunciation::Denunciation;
 use massa_models::{
     block_id::BlockId, endorsement::EndorsementId, operation::OperationId, slot::Slot,
 };
@@ -38,9 +39,18 @@ pub trait PoolController: Send + Sync {
     /// Check if the pool contains a list of operations. Returns one boolean per item.
     fn contains_operations(&self, operations: &[OperationId]) -> Vec<bool>;
 
+    /// Add denunciations to pool. Simply print a warning on failure.
+    fn add_denunciation(&mut self, denunciation: Denunciation);
+
+    /// Get the number of denunciations in the pool
+    fn get_denunciation_count(&self) -> usize;
+
     /// Returns a boxed clone of self.
     /// Useful to allow cloning `Box<dyn PoolController>`.
     fn clone_box(&self) -> Box<dyn PoolController>;
+
+    /// Get final cs periods (updated regularly from consensus)
+    fn get_final_cs_periods(&self) -> &Vec<u64>;
 }
 
 /// Allow cloning `Box<dyn PoolController>`

@@ -27,6 +27,7 @@ use massa_final_state::{
 };
 use massa_hash::{Hash, HASH_SIZE_BYTES};
 use massa_ledger_exports::LedgerConfig;
+use massa_models::config::{MIP_STORE_STATS_BLOCK_CONSIDERED, MIP_STORE_STATS_COUNTERS_MAX};
 use massa_models::{
     address::Address, config::MAX_DATASTORE_VALUE_LENGTH, node::NodeId, slot::Slot,
     streaming_step::StreamingStep, version::Version,
@@ -44,11 +45,20 @@ use massa_pos_exports::{
 use massa_pos_worker::start_selector_worker;
 use massa_signature::KeyPair;
 use massa_time::MassaTime;
+use massa_versioning_worker::versioning::{
+    MipComponent, MipInfo, MipState, MipStatsConfig, MipStore,
+};
 use parking_lot::RwLock;
 use serial_test::serial;
-use std::{path::PathBuf, str::FromStr, sync::Arc, time::Duration};
+use std::{
+    collections::HashMap,
+    path::PathBuf,
+    str::FromStr,
+    sync::{atomic::Ordering, Arc},
+    time::Duration,
+};
 use tempfile::TempDir;
-use tokio::sync::mpsc;
+use tokio::{net::TcpStream, sync::mpsc};
 
 lazy_static::lazy_static! {
     pub static ref BOOTSTRAP_CONFIG_KEYPAIR: (BootstrapConfig, KeyPair) = {
@@ -69,6 +79,22 @@ async fn test_bootstrap_server() {
     let (consensus_controller, mut consensus_event_receiver) =
         MockConsensusController::new_with_receiver();
     let (network_cmd_tx, mut network_cmd_rx) = mpsc::channel::<NetworkCommand>(5);
+
+    // create a MIP store
+    let mip_stats_cfg = MipStatsConfig {
+        block_count_considered: MIP_STORE_STATS_BLOCK_CONSIDERED,
+        counters_max: MIP_STORE_STATS_COUNTERS_MAX,
+    };
+    let mi_1 = MipInfo {
+        name: "MIP-0002".to_string(),
+        version: 2,
+        components: HashMap::from([(MipComponent::Address, 1)]),
+        start: MassaTime::from(5),
+        timeout: MassaTime::from(10),
+        activation_delay: MassaTime::from(4),
+    };
+    let state_1 = MipState::new(MassaTime::from(3));
+    let mip_store = MipStore::try_from(([(mi_1, state_1)], mip_stats_cfg.clone())).unwrap();
 
     // setup final state local config
     let temp_dir = TempDir::new().unwrap();
@@ -147,29 +173,32 @@ async fn test_bootstrap_server() {
     let final_state_server_clone = final_state_server.clone();
 
     // start bootstrap server
-    let (bootstrap_establisher, bootstrap_interface) = mock_establisher::new();
-    let bootstrap_manager = start_bootstrap_server(
+    let (mut mock_bs_listener, bootstrap_interface) = mock_establisher::new();
+    let bootstrap_manager = start_bootstrap_server::<TcpStream>(
         consensus_controller,
         NetworkCommandSender(network_cmd_tx),
         final_state_server.clone(),
         bootstrap_config.clone(),
-        bootstrap_establisher,
+        mock_bs_listener
+            .get_listener(&bootstrap_config.listen_addr.unwrap())
+            .unwrap(),
         keypair.clone(),
         Version::from_str("TEST.1.10").unwrap(),
+        mip_store.clone(),
     )
-    .await
     .unwrap()
     .unwrap();
 
     // launch the get_state process
-    let (remote_establisher, mut remote_interface) = mock_establisher::new();
+    let (mut mock_remote_connector, mut remote_interface) = mock_establisher::new();
     let get_state_h = tokio::spawn(async move {
         get_state(
             bootstrap_config,
             final_state_client_clone,
-            remote_establisher,
+            mock_remote_connector.get_connector(),
             Version::from_str("TEST.1.10").unwrap(),
             MassaTime::now().unwrap().saturating_sub(1000.into()),
+            None,
             None,
         )
         .await
@@ -177,24 +206,22 @@ async fn test_bootstrap_server() {
     });
 
     // accept connection attempt from remote
-    let (remote_rw, conn_addr, resp) = tokio::time::timeout(
-        std::time::Duration::from_millis(1000),
-        remote_interface.wait_connection_attempt_from_controller(),
-    )
-    .await
-    .expect("timeout waiting for connection attempt from remote")
-    .expect("error receiving connection attempt from remote");
-    let expect_conn_addr = bootstrap_config.bootstrap_list[0].0;
-    assert_eq!(
-        conn_addr, expect_conn_addr,
-        "client connected to wrong bootstrap ip"
-    );
-    resp.send(true)
-        .expect("could not send connection accept to remote");
+    let remote_bridge = std::thread::spawn(move || {
+        let (remote_rw, conn_addr, waker) = remote_interface
+            .wait_connection_attempt_from_controller()
+            .expect("timeout waiting for connection attempt from remote");
+        let expect_conn_addr = bootstrap_config.bootstrap_list[0].0;
+        assert_eq!(
+            conn_addr, expect_conn_addr,
+            "client connected to wrong bootstrap ip"
+        );
+        waker.store(true, Ordering::Relaxed);
+        remote_rw
+    });
 
     // connect to bootstrap
     let remote_addr = std::net::SocketAddr::from_str("82.245.72.98:10000").unwrap(); // not checked
-    let bootstrap_rw = tokio::time::timeout(
+    let bootstrap_bridge = tokio::time::timeout(
         std::time::Duration::from_millis(1000),
         bootstrap_interface.connect_to_controller(&remote_addr),
     )
@@ -203,11 +230,18 @@ async fn test_bootstrap_server() {
     .expect("could not connect to bootstrap");
 
     // launch bridge
+    bootstrap_bridge.set_nonblocking(true).unwrap();
+    let bootstrap_bridge = TcpStream::from_std(bootstrap_bridge).unwrap();
     let bridge = tokio::spawn(async move {
-        bridge_mock_streams(remote_rw, bootstrap_rw).await;
+        let remote_bridge = remote_bridge.join().unwrap();
+        remote_bridge.set_nonblocking(true).unwrap();
+        let remote_bridge = TcpStream::from_std(remote_bridge).unwrap();
+        bridge_mock_streams(remote_bridge, bootstrap_bridge).await;
     });
 
     // intercept peers being asked
+    // TODO: This would ideally be mocked such that the bootstrap server takes an impl of the network controller.
+    // and the impl is mocked such that it will just return the sent peers
     let wait_peers = async move || {
         // wait for bootstrap to ask network for peers, send them
         let response =
@@ -311,9 +345,11 @@ async fn test_bootstrap_server() {
                 .pos_state
                 .apply_changes(change.pos_changes.clone(), *slot, false)
                 .unwrap();
-            final_state_server_write
-                .ledger
-                .apply_changes(change.ledger_changes.clone(), *slot);
+            final_state_server_write.ledger.apply_changes(
+                change.ledger_changes.clone(),
+                *slot,
+                None,
+            );
             final_state_server_write
                 .async_pool
                 .apply_changes_unchecked(&change.async_pool_changes);
@@ -345,6 +381,11 @@ async fn test_bootstrap_server() {
 
     // check graphs
     assert_eq_bootstrap_graph(&sent_graph, &bootstrap_res.graph.unwrap());
+
+    // check mip store
+    let mip_raw_orig = mip_store.0.read().to_owned();
+    let mip_raw_received = bootstrap_res.mip_store.unwrap().0.read().to_owned();
+    assert_eq!(mip_raw_orig, mip_raw_received);
 
     // stop bootstrap server
     bootstrap_manager

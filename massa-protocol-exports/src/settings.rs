@@ -57,4 +57,6 @@ pub struct ProtocolConfig {
     pub max_operations_propagation_time: MassaTime,
     /// max time we propagate endorsements
     pub max_endorsements_propagation_time: MassaTime,
+    /// last start period, used to discard genesis blocks
+    pub last_start_period: u64,
 }

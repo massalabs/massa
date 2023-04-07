@@ -10,7 +10,9 @@ mass adoption.
 [![Docs](https://img.shields.io/static/v1?label=docs&message=massa&color=&style=flat)](https://massalabs.github.io/massa/massa_node/)
 [![Open in Gitpod](https://shields.io/badge/Gitpod-contribute-brightgreen?logo=gitpod&style=flat)](https://gitpod.io/#https://github.com/massalabs/massa)
 
-[![OpenRPC Playground](https://img.shields.io/static/v1?label=interactive-api-specification&message=massa&style=for-the-badge&color=blue)](https://playground.open-rpc.org/?schemaUrl=https://test.massa.net/api/v2&uiSchema\[appBar\]\[ui:input\]=false&uiSchema\[appBar\]\[ui:inputPlaceholder\]=Enter+Massa+JSON-RPC+server+URL&uiSchema\[appBar\]\[ui:logoUrl\]=https://massa.net/favicons/favicon.ico&uiSchema\[appBar\]\[ui:splitView\]=false&uiSchema\[appBar\]\[ui:darkMode\]=false&uiSchema\[appBar\]\[ui:title\]=Massa&uiSchema\[appBar\]\[ui:examplesDropdown\]=false&uiSchema\[methods\]\[ui:defaultExpanded\]=false&uiSchema\[methods\]\[ui:methodPlugins\]=true&uiSchema\[params\]\[ui:defaultExpanded\]=false)
+[![OpenRPC Playground](https://img.shields.io/static/v1?label=INTERACTIVE-JSONRPC-API-SPECIFICATION&message=massa&style=for-the-badge&color=blue)](https://playground.open-rpc.org/?schemaUrl=https://test.massa.net/api/v2&uiSchema\[appBar\]\[ui:input\]=false&uiSchema\[appBar\]\[ui:inputPlaceholder\]=Enter+Massa+JSON-RPC+server+URL&uiSchema\[appBar\]\[ui:logoUrl\]=https://massa.net/favicons/favicon.ico&uiSchema\[appBar\]\[ui:splitView\]=false&uiSchema\[appBar\]\[ui:darkMode\]=false&uiSchema\[appBar\]\[ui:title\]=Massa&uiSchema\[appBar\]\[ui:examplesDropdown\]=false&uiSchema\[methods\]\[ui:defaultExpanded\]=false&uiSchema\[methods\]\[ui:methodPlugins\]=true&uiSchema\[params\]\[ui:defaultExpanded\]=false)
+[![gRPC documentation](https://img.shields.io/static/v1?label=GRPC-API-DOCUMENTATION&message=massa&style=for-the-badge&color=yellow)](https://htmlpreview.github.io/?https://github.com/massalabs/massa/blob/main/massa-proto/doc/index.html) 
+[![Postman workspace](https://img.shields.io/static/v1?logo=postman&label=POSTMAN-WORKSPACE&message=massa&style=for-the-badge&color=orange)](https://www.postman.com/massalabs)
 
 ## Introduction
 
@@ -27,7 +29,12 @@ with its explorer available at <https://massa.net/testnet>.
 
 ## Massa API
 
-You can interact with Massa JSON-RPC API via the [interactive API specification](https://playground.open-rpc.org/?schemaUrl=https://test.massa.net/api/v2&uiSchema\[appBar\]\[ui:input\]=false&uiSchema\[appBar\]\[ui:inputPlaceholder\]=Enter+Massa+JSON-RPC+server+URL&uiSchema\[appBar\]\[ui:logoUrl\]=https://massa.net/favicons/favicon.ico&uiSchema\[appBar\]\[ui:splitView\]=false&uiSchema\[appBar\]\[ui:darkMode\]=false&uiSchema\[appBar\]\[ui:title\]=Massa&uiSchema\[appBar\]\[ui:examplesDropdown\]=false&uiSchema\[methods\]\[ui:defaultExpanded\]=false&uiSchema\[methods\]\[ui:methodPlugins\]=true&uiSchema\[params\]\[ui:defaultExpanded\]=false) which is the equivalent of SwaggerUI for OpenRPC specifications.
+You can interact with Massa JSON-RPC API via the [interactive API specification](https://playground.open-rpc.org/?schemaUrl=https://test.massa.net/api/v2&uiSchema\[appBar\]\[ui:input\]=false&uiSchema\[appBar\]\[ui:inputPlaceholder\]=Enter+Massa+JSON-RPC+server+URL&uiSchema\[appBar\]\[ui:logoUrl\]=https://massa.net/favicons/favicon.ico&uiSchema\[appBar\]\[ui:splitView\]=false&uiSchema\[appBar\]\[ui:darkMode\]=false&uiSchema\[appBar\]\[ui:title\]=Massa&uiSchema\[appBar\]\[ui:examplesDropdown\]=false&uiSchema\[methods\]\[ui:defaultExpanded\]=false&uiSchema\[methods\]\[ui:methodPlugins\]=true&uiSchema\[params\]\[ui:defaultExpanded\]=false) which is the equivalent of SwaggerUI for OpenRPC specifications. 
+
+You can use the [gRPC API](./massa-proto/proto/massa/api/v1/)(experimental) to communicate with Massa node. This allows you to incorporate Massa's functionality into your own applications or services using gRPC's high-performance, language-agnostic RPC framework.
+
+You can easily import APIs collections from [Massa's Postman workspace](https://www.postman.com/massalabs) and start testing and exploring the provided functionalities by Massa API's.
+
 
 ## Testnet Incentives
 
