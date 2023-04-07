@@ -321,6 +321,17 @@
 <a href="#321" id="321">321</a>
 <a href="#322" id="322">322</a>
 <a href="#323" id="323">323</a>
+<a href="#324" id="324">324</a>
+<a href="#325" id="325">325</a>
+<a href="#326" id="326">326</a>
+<a href="#327" id="327">327</a>
+<a href="#328" id="328">328</a>
+<a href="#329" id="329">329</a>
+<a href="#330" id="330">330</a>
+<a href="#331" id="331">331</a>
+<a href="#332" id="332">332</a>
+<a href="#333" id="333">333</a>
+<a href="#334" id="334">334</a>
 </pre><pre class="rust"><code><span class="kw">use </span>massa_consensus_exports::{
     block_graph_export::BlockGraphExport, block_status::BlockStatus,
     bootstrapable_graph::BootstrapableGraph, error::ConsensusError,
@@ -592,6 +603,14 @@
             };
         }
 
+        <span class="kw">if let </span><span class="prelude-val">Some</span>(verifiable_block) = block_storage.read_blocks().get(<span class="kw-2">&amp;</span>block_id) {
+            <span class="kw">if let </span><span class="prelude-val">Ok</span>(de_p) = DenunciationPrecursor::try_from(<span class="kw-2">&amp;</span>verifiable_block.content.header) {
+                <span class="kw">if let </span><span class="prelude-val">Err</span>(e) = <span class="self">self</span>.channels.denunciation_factory_sender.send(de_p) {
+                    <span class="macro">warn!</span>(<span class="string">&quot;Cannot send block to denunciation factory: {}&quot;</span>, e);
+                }
+            }
+        }
+
         <span class="kw">if let </span><span class="prelude-val">Err</span>(err) = <span class="self">self
             </span>.command_sender
             .try_send(ConsensusCommand::RegisterBlock(
@@ -615,12 +634,15 @@
             }
         }
 
-        <span class="kw">if let </span><span class="prelude-val">Err</span>(e) = <span class="self">self
-            </span>.channels
-            .denunciation_factory_sender
-            .send(DenunciationPrecursor::try_from(<span class="kw-2">&amp;</span>header).unwrap())
-        {
-            <span class="macro">warn!</span>(<span class="string">&quot;Cannot send header to denunciation factory: {}&quot;</span>, e);
+        <span class="kw">if let </span><span class="prelude-val">Ok</span>(de_p) = DenunciationPrecursor::try_from(<span class="kw-2">&amp;</span>header) {
+            <span class="kw">if let </span><span class="prelude-val">Err</span>(e) = <span class="self">self</span>.channels.denunciation_factory_sender.send(de_p) {
+                <span class="macro">warn!</span>(<span class="string">&quot;Cannot send header to denunciation factory: {}&quot;</span>, e);
+            }
+        } <span class="kw">else </span>{
+            <span class="macro">warn!</span>(
+                <span class="string">&quot;Cannot create denunciation precursor from header: {}&quot;</span>,
+                <span class="kw-2">&amp;</span>header
+            );
         }
 
         <span class="kw">if let </span><span class="prelude-val">Err</span>(err) = <span class="self">self
