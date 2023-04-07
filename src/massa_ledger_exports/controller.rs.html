@@ -102,8 +102,6 @@
 <a href="#102" id="102">102</a>
 <a href="#103" id="103">103</a>
 <a href="#104" id="104">104</a>
-<a href="#105" id="105">105</a>
-<a href="#106" id="106">106</a>
 </pre><pre class="rust"><code><span class="kw">use </span>massa_hash::Hash;
 <span class="kw">use </span>massa_models::{
     address::Address, amount::Amount, bytecode::Bytecode, error::ModelsError, slot::Slot,
@@ -189,8 +187,6 @@
     <span class="kw">fn </span>set_final_state_hash(<span class="kw-2">&amp;mut </span><span class="self">self</span>, data: Vec&lt;u8&gt;);
 
     <span class="kw">fn </span>get_final_state(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span>&lt;Vec&lt;u8&gt;, ModelsError&gt;;
-
-    <span class="kw">fn </span>backup_db(<span class="kw-2">&amp;</span><span class="self">self</span>, slot: Slot);
 
     <span class="doccomment">/// Get every address and their corresponding balance.
     ///
