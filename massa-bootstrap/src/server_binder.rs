@@ -84,9 +84,7 @@ impl BootstrapServerBinder {
             self.version_serializer
                 .serialize(&version, &mut version_bytes)?;
             let mut msg_bytes = vec![0u8; version_bytes.len() + self.randomness_size_bytes];
-
             self.duplex.set_read_timeout(duration)?;
-
             self.duplex.read_exact(&mut msg_bytes)?;
             let (_, received_version) = self
                 .version_deserializer
@@ -221,7 +219,6 @@ impl BootstrapServerBinder {
         duration: Option<Duration>,
     ) -> Result<BootstrapClientMessage, BootstrapError> {
         self.duplex.set_read_timeout(duration)?;
-
         // read prev hash
         let received_prev_hash = {
             if self.prev_message.is_some() {
