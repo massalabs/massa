@@ -900,6 +900,49 @@
 <a href="#900" id="900">900</a>
 <a href="#901" id="901">901</a>
 <a href="#902" id="902">902</a>
+<a href="#903" id="903">903</a>
+<a href="#904" id="904">904</a>
+<a href="#905" id="905">905</a>
+<a href="#906" id="906">906</a>
+<a href="#907" id="907">907</a>
+<a href="#908" id="908">908</a>
+<a href="#909" id="909">909</a>
+<a href="#910" id="910">910</a>
+<a href="#911" id="911">911</a>
+<a href="#912" id="912">912</a>
+<a href="#913" id="913">913</a>
+<a href="#914" id="914">914</a>
+<a href="#915" id="915">915</a>
+<a href="#916" id="916">916</a>
+<a href="#917" id="917">917</a>
+<a href="#918" id="918">918</a>
+<a href="#919" id="919">919</a>
+<a href="#920" id="920">920</a>
+<a href="#921" id="921">921</a>
+<a href="#922" id="922">922</a>
+<a href="#923" id="923">923</a>
+<a href="#924" id="924">924</a>
+<a href="#925" id="925">925</a>
+<a href="#926" id="926">926</a>
+<a href="#927" id="927">927</a>
+<a href="#928" id="928">928</a>
+<a href="#929" id="929">929</a>
+<a href="#930" id="930">930</a>
+<a href="#931" id="931">931</a>
+<a href="#932" id="932">932</a>
+<a href="#933" id="933">933</a>
+<a href="#934" id="934">934</a>
+<a href="#935" id="935">935</a>
+<a href="#936" id="936">936</a>
+<a href="#937" id="937">937</a>
+<a href="#938" id="938">938</a>
+<a href="#939" id="939">939</a>
+<a href="#940" id="940">940</a>
+<a href="#941" id="941">941</a>
+<a href="#942" id="942">942</a>
+<a href="#943" id="943">943</a>
+<a href="#944" id="944">944</a>
+<a href="#945" id="945">945</a>
 </pre><pre class="rust"><code><span class="doccomment">//! Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 //! This file defines the final state of the node, which includes
@@ -977,6 +1020,24 @@
         ledger: Box&lt;<span class="kw">dyn </span>LedgerController&gt;,
         selector: Box&lt;<span class="kw">dyn </span>SelectorController&gt;,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="self">Self</span>, FinalStateError&gt; {
+        <span class="kw">let </span>ledger_slot = ledger.get_slot();
+        <span class="kw">match </span>ledger_slot {
+            <span class="prelude-val">Ok</span>(slot) =&gt; {
+                <span class="macro">info!</span>(
+                    <span class="string">&quot;Recovered ledger. ledger_slot: {}, ledger hash: {}&quot;</span>,
+                    slot,
+                    ledger.get_ledger_hash()
+                );
+            }
+            <span class="prelude-val">Err</span>(e) =&gt; {
+                <span class="macro">info!</span>(<span class="string">&quot;{}&quot;</span>, e);
+                <span class="macro">info!</span>(
+                    <span class="string">&quot;Recovered ledger. Unknown ledger slot, ledger hash: {}&quot;</span>,
+                    ledger.get_ledger_hash()
+                );
+            }
+        }
+
         <span class="comment">// create the pos state
         </span><span class="kw">let </span>pos_state = PoSFinalState::new(
             config.pos_config.clone(),
@@ -1165,7 +1226,6 @@
                 )))<span class="question-mark">?</span>;
 
         <span class="comment">// Firstly, complete the first cycle
-
         </span><span class="kw">let </span>last_slot = Slot::new_last_of_cycle(
             current_slot_cycle,
             <span class="self">self</span>.config.periods_per_cycle,
@@ -1191,8 +1251,11 @@
         <span class="comment">// Feed final_state_hash to the completed cycle
         </span><span class="self">self</span>.feed_cycle_hash_and_selector_for_interpolation(current_slot_cycle)<span class="question-mark">?</span>;
 
-        <span class="comment">// Then, build all the already completed cycles
-        </span><span class="kw">for </span>cycle <span class="kw">in </span>(current_slot_cycle + <span class="number">1</span>)..end_slot_cycle {
+        <span class="comment">// Then, build all the completed cycles in betweens. If we have to build more cycles than the cycle_history_length, we only build the last ones.
+        </span><span class="kw">let </span>current_slot_cycle = (current_slot_cycle + <span class="number">1</span>)
+            .max(end_slot_cycle.saturating_sub(<span class="self">self</span>.config.pos_config.cycle_history_length <span class="kw">as </span>u64));
+
+        <span class="kw">for </span>cycle <span class="kw">in </span>current_slot_cycle..end_slot_cycle {
             <span class="kw">let </span>first_slot = Slot::new_first_of_cycle(cycle, <span class="self">self</span>.config.periods_per_cycle)
                 .map_err(|err| {
                     FinalStateError::InvalidSlot(<span class="macro">format!</span>(
@@ -1406,6 +1469,29 @@
             }*/
 
             </span><span class="self">self</span>.ledger.set_final_state_hash(hash_buffer);
+
+            <span class="kw">if </span><span class="self">self</span>.slot.is_first_of_cycle(<span class="self">self</span>.config.periods_per_cycle) {
+                <span class="kw">let </span>ledger_slot = <span class="self">self</span>.ledger.get_slot();
+                <span class="kw">match </span>ledger_slot {
+                    <span class="prelude-val">Ok</span>(slot) =&gt; {
+                        <span class="macro">info!</span>(
+                            <span class="string">&quot;Backuping db for slot {}, ledger_slot: {}, ledger hash: {}&quot;</span>,
+                            <span class="self">self</span>.slot,
+                            slot,
+                            <span class="self">self</span>.ledger.get_ledger_hash()
+                        );
+                    }
+                    <span class="prelude-val">Err</span>(e) =&gt; {
+                        <span class="macro">info!</span>(<span class="string">&quot;{}&quot;</span>, e);
+                        <span class="macro">info!</span>(
+                            <span class="string">&quot;Backuping db for unknown slot, ledger hash: {}&quot;</span>,
+                            <span class="self">self</span>.ledger.get_ledger_hash()
+                        );
+                    }
+                }
+
+                <span class="self">self</span>.ledger.backup_db(<span class="self">self</span>.slot);
+            }
         }
 
         <span class="comment">// feed final_state_hash to the last cycle
