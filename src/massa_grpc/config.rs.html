@@ -79,6 +79,8 @@
 <a href="#79" id="79">79</a>
 <a href="#80" id="80">80</a>
 <a href="#81" id="81">81</a>
+<a href="#82" id="82">82</a>
+<a href="#83" id="83">83</a>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2023 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="kw">use </span>massa_time::MassaTime;
@@ -91,8 +93,10 @@
 </span><span class="kw">pub struct </span>GrpcConfig {
     <span class="doccomment">/// whether to enable gRPC
     </span><span class="kw">pub </span>enabled: bool,
-    <span class="doccomment">/// whether to accept HTTP/1.1 requests.
+    <span class="doccomment">/// whether to accept HTTP/1.1 requests
     </span><span class="kw">pub </span>accept_http1: bool,
+    <span class="doccomment">/// whether to enable CORS. Works only if `accept_http1` is true
+    </span><span class="kw">pub </span>enable_cors: bool,
     <span class="doccomment">/// whether to enable gRPC reflection
     </span><span class="kw">pub </span>enable_reflection: bool,
     <span class="doccomment">/// bind for the Massa gRPC API

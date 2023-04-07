@@ -1155,6 +1155,7 @@
 <a href="#1155" id="1155">1155</a>
 <a href="#1156" id="1156">1156</a>
 <a href="#1157" id="1157">1157</a>
+<a href="#1158" id="1158">1158</a>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="attr">#![doc = <span class="macro">include_str!</span>(<span class="string">&quot;../../README.md&quot;</span>)]
@@ -1864,6 +1865,7 @@
         <span class="kw">let </span>grpc_config = GrpcConfig {
             enabled: SETTINGS.grpc.enabled,
             accept_http1: SETTINGS.grpc.accept_http1,
+            enable_cors: SETTINGS.grpc.enable_cors,
             enable_reflection: SETTINGS.grpc.enable_reflection,
             bind: SETTINGS.grpc.bind,
             accept_compressed: SETTINGS.grpc.accept_compressed.clone(),
