@@ -490,14 +490,14 @@ impl<const N: usize> TryFrom<([(MipInfo, MipState); N], MipStatsConfig)> for Mip
 }
 
 /// Statistics in MipStoreRaw
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Default, Debug, Clone, PartialEq)]
 pub struct MipStatsConfig {
     pub block_count_considered: usize,
     pub counters_max: usize,
 }
 
 /// In order for a MIP to be accepted, we compute stats about other node 'network' version announcement
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Default, Debug, Clone, PartialEq)]
 pub(crate) struct MipStoreStats {
     pub(crate) config: MipStatsConfig,
     pub(crate) latest_announcements: VecDeque<u32>,
@@ -515,7 +515,7 @@ impl MipStoreStats {
 }
 
 /// Store of all versioning info
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Default, Debug, Clone, PartialEq)]
 pub struct MipStoreRaw {
     pub(crate) store: BTreeMap<MipInfo, MipState>,
     pub(crate) stats: MipStoreStats,

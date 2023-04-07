@@ -117,3 +117,4 @@ use criterion as _;
     feature = "testing"
 ))]
 mod tests;
+pub use tests::get_sample_state;
