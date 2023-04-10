@@ -98,7 +98,8 @@ impl BootstrapServerBinder {
                 .serialize(&version, &mut version_bytes)?;
             let mut msg_bytes = vec![0u8; version_bytes.len() + self.randomness_size_bytes];
             // self.duplex.set_read_timeout(duration)?;
-            self.duplex.read_exact(&mut msg_bytes)?;
+            // self.duplex.read_exact(&mut msg_bytes)?;
+            self.read_helper(&mut msg_bytes, duration)?;
             let (_, received_version) = self
                 .version_deserializer
                 .deserialize::<DeserializeError>(&msg_bytes[..version_bytes.len()])
@@ -208,16 +209,19 @@ impl BootstrapServerBinder {
 
         // send signature
         // self.duplex.set_write_timeout(duration)?;
-        self.duplex.write_all(&sig.to_bytes())?;
+        // self.duplex.write_all(&sig.to_bytes())?;
+        self.write_helper(&sig.to_bytes(), duration)?;
 
         // send message length
         {
             let msg_len_bytes = msg_len.to_be_bytes_min(self.max_bootstrap_message_size)?;
-            self.duplex.write_all(&msg_len_bytes)?;
+            // self.duplex.write_all(&msg_len_bytes)?;
+            self.write_helper(&msg_len_bytes, duration)?;
         }
 
         // send message
-        self.duplex.write_all(&msg_bytes)?;
+        // self.duplex.write_all(&msg_bytes)?;
+        self.write_helper(&msg_bytes, duration)?;
 
         // save prev sig
         self.prev_message = Some(Hash::compute_from(&sig.to_bytes()));
@@ -236,7 +240,8 @@ impl BootstrapServerBinder {
         let received_prev_hash = {
             if self.prev_message.is_some() {
                 let mut hash_bytes = [0u8; HASH_SIZE_BYTES];
-                self.duplex.read_exact(&mut hash_bytes)?;
+                // self.duplex.read_exact(&mut hash_bytes)?;
+                self.read_helper(&mut hash_bytes, duration)?;
                 Some(Hash::from_bytes(&hash_bytes))
             } else {
                 None
@@ -246,13 +251,15 @@ impl BootstrapServerBinder {
         // read message length
         let msg_len = {
             let mut msg_len_bytes = vec![0u8; self.size_field_len];
-            self.duplex.read_exact(&mut msg_len_bytes[..])?;
+            // self.duplex.read_exact(&mut msg_len_bytes[..])?;
+            self.read_helper(&mut msg_len_bytes, duration)?;
             u32::from_be_bytes_min(&msg_len_bytes, self.max_bootstrap_message_size)?.0
         };
 
         // read message
         let mut msg_bytes = vec![0u8; msg_len as usize];
-        self.duplex.read_exact(&mut msg_bytes)?;
+        // self.duplex.read_exact(&mut msg_bytes)?;
+        self.read_helper(&mut msg_bytes, duration)?;
 
         // check previous hash
         if received_prev_hash != self.prev_message {
@@ -284,5 +291,78 @@ impl BootstrapServerBinder {
         .map_err(|err| BootstrapError::GeneralError(format!("{}", err)))?;
 
         Ok(msg)
+    }
+
+    fn write_helper(
+        &mut self,
+        buf: &[u8],
+        duration: Option<Duration>,
+    ) -> Result<(), BootstrapError> {
+        self.poll
+            .registry()
+            .reregister(&mut self.duplex, BINDING_EVENT, Interest::WRITABLE)?;
+        let mut written = 0;
+
+        loop {
+            self.poll.poll(&mut self.events, duration)?;
+            for event in self.events.iter() {
+                if event.token() == BINDING_EVENT {
+                    match self.duplex.write(&buf[written..]) {
+                        Ok(0) => {
+                            return Err(BootstrapError::IoError(std::io::Error::new(
+                                ErrorKind::WriteZero,
+                                "failed to write whole buffer",
+                            )))
+                        }
+                        Ok(n) => {
+                            written += n;
+                            if written == buf.len() {
+                                return Ok(());
+                            }
+                        }
+                        Err(ref e) if e.kind() == ErrorKind::Interrupted => {}
+                        Err(e) => return Err(BootstrapError::IoError(e)),
+                    }
+                } else {
+                    panic!("unexpected token");
+                }
+            }
+        }
+    }
+    fn read_helper(
+        &mut self,
+        buf: &mut [u8],
+        duration: Option<Duration>,
+    ) -> Result<(), BootstrapError> {
+        self.poll
+            .registry()
+            .reregister(&mut self.duplex, BINDING_EVENT, Interest::READABLE)?;
+        let mut read = 0;
+
+        loop {
+            self.poll.poll(&mut self.events, duration)?;
+            for event in self.events.iter() {
+                if event.token() == BINDING_EVENT {
+                    match self.duplex.read(&mut buf[read..]) {
+                        Ok(0) => {
+                            return Err(BootstrapError::IoError(std::io::Error::new(
+                                ErrorKind::WriteZero,
+                                "failed to write whole buffer",
+                            )))
+                        }
+                        Ok(n) => {
+                            read += n;
+                            if read == buf.len() {
+                                return Ok(());
+                            }
+                        }
+                        Err(ref e) if e.kind() == ErrorKind::Interrupted => {}
+                        Err(e) => return Err(BootstrapError::IoError(e)),
+                    }
+                } else {
+                    panic!("unexpected token");
+                }
+            }
+        }
     }
 }

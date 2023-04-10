@@ -256,7 +256,7 @@ impl<C: NetworkCommandSenderTrait + Clone> BootstrapServer<'_, C> {
             let Some((dplx, remote_addr)) = self.receive_connection(&mut selector)? else { break; };
             // claim a slot in the max_bootstrap_sessions
             let server_binding = BootstrapServerBinder::new(
-                dplx,
+                todo!(), //dplx,
                 self.keypair.clone(),
                 (&self.bootstrap_config).into(),
             );

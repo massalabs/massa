@@ -70,9 +70,10 @@ fn test_binders() {
     let addr = server.local_addr().unwrap();
     let client = std::net::TcpStream::connect(addr).unwrap();
     let server = server.accept().unwrap();
+    server.0.set_nonblocking(true).unwrap();
     // let (client, server) = duplex(1000000);
     let mut server = BootstrapServerBinder::new(
-        server.0,
+        mio::net::TcpStream::from_std(server.0),
         server_keypair.clone(),
         BootstrapSrvBindCfg {
             max_bytes_read_write: f64::INFINITY,
@@ -184,9 +185,10 @@ fn test_binders_double_send_server_works() {
     let server = std::net::TcpListener::bind("localhost:0").unwrap();
     let client = std::net::TcpStream::connect(server.local_addr().unwrap()).unwrap();
     let server = server.accept().unwrap();
+    server.0.set_nonblocking(true).unwrap();
 
     let mut server = BootstrapServerBinder::new(
-        server.0,
+        mio::net::TcpStream::from_std(server.0),
         server_keypair.clone(),
         BootstrapSrvBindCfg {
             max_bytes_read_write: f64::INFINITY,
@@ -281,8 +283,9 @@ fn test_binders_try_double_send_client_works() {
     let addr = server.local_addr().unwrap();
     let client = std::net::TcpStream::connect(addr).unwrap();
     let server = server.accept().unwrap();
+    server.0.set_nonblocking(true).unwrap();
     let mut server = BootstrapServerBinder::new(
-        server.0,
+        mio::net::TcpStream::from_std(server.0),
         server_keypair.clone(),
         BootstrapSrvBindCfg {
             max_bytes_read_write: f64::INFINITY,
