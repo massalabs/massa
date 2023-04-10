@@ -19,7 +19,7 @@ use std::convert::TryInto;
 use std::io::{ErrorKind, Read, Write};
 use std::net::SocketAddr;
 use std::thread;
-use std::time::Duration;
+use std::time::{Duration, Instant};
 use tracing::error;
 
 /// Bootstrap server binder
@@ -210,18 +210,18 @@ impl BootstrapServerBinder {
         // send signature
         // self.duplex.set_write_timeout(duration)?;
         // self.duplex.write_all(&sig.to_bytes())?;
-        dbg!(self.write_helper(&sig.to_bytes(), duration))?;
+        self.write_helper(&sig.to_bytes(), duration)?;
 
         // send message length
         {
             let msg_len_bytes = msg_len.to_be_bytes_min(self.max_bootstrap_message_size)?;
             // self.duplex.write_all(&msg_len_bytes)?;
-            dbg!(self.write_helper(&msg_len_bytes, duration))?;
+            self.write_helper(&msg_len_bytes, duration)?;
         }
 
         // send message
         // self.duplex.write_all(&msg_bytes)?;
-        dbg!(self.write_helper(&msg_bytes, duration))?;
+        self.write_helper(&msg_bytes, duration)?;
 
         // save prev sig
         self.prev_message = Some(Hash::compute_from(&sig.to_bytes()));
@@ -235,8 +235,6 @@ impl BootstrapServerBinder {
         &mut self,
         duration: Option<Duration>,
     ) -> Result<BootstrapClientMessage, BootstrapError> {
-        dbg!("SERVER");
-        // self.duplex.set_read_timeout(duration)?;
         // read prev hash
         let received_prev_hash = {
             if self.prev_message.is_some() {
@@ -248,7 +246,6 @@ impl BootstrapServerBinder {
                 None
             }
         };
-        dbg!(&received_prev_hash);
 
         // read message length
         let msg_len = {
@@ -257,7 +254,6 @@ impl BootstrapServerBinder {
             self.read_helper(&mut msg_len_bytes, duration)?;
             u32::from_be_bytes_min(&msg_len_bytes, self.max_bootstrap_message_size)?.0
         };
-        dbg!(&msg_len);
 
         // read message
         let mut msg_bytes = vec![0u8; msg_len as usize];
@@ -293,7 +289,7 @@ impl BootstrapServerBinder {
         .deserialize::<DeserializeError>(&msg_bytes)
         .map_err(|err| BootstrapError::GeneralError(format!("{}", err)))?;
 
-        Ok(dbg!(msg))
+        Ok(msg)
     }
 
     fn write_helper(
@@ -356,6 +352,12 @@ impl BootstrapServerBinder {
                     ErrorKind::TimedOut | ErrorKind::WouldBlock => BootstrapError::TimedOut(e),
                     _ => BootstrapError::IoError(e),
                 })?;
+            if self.events.is_empty() {
+                return Err(BootstrapError::TimedOut(std::io::Error::new(
+                    ErrorKind::TimedOut,
+                    "timed out",
+                )));
+            }
             for event in self.events.iter() {
                 if event.token() == BINDING_EVENT {
                     match self.duplex.read(&mut buf[read..]) {
@@ -371,9 +373,11 @@ impl BootstrapServerBinder {
                                 return Ok(());
                             }
                         }
-                        Err(ref e) if e.kind() == ErrorKind::WouldBlock => {}
-                        Err(ref e) if e.kind() == ErrorKind::TimedOut => {}
-                        Err(ref e) if e.kind() == ErrorKind::Interrupted => {}
+                        Err(e) if e.kind() == ErrorKind::WouldBlock => break,
+                        Err(e) if e.kind() == ErrorKind::TimedOut => {
+                            return Err(BootstrapError::TimedOut(e))
+                        }
+                        Err(e) if e.kind() == ErrorKind::Interrupted => break,
                         Err(e) => return Err(BootstrapError::IoError(e)),
                     }
                 } else {

@@ -210,7 +210,6 @@ impl<L: BSListener, C: NetworkCommandSenderTrait + Clone> BootstrapServer<'_, L,
             let Ok((dplx, remote_addr)) = self.listener.accept() else {
                 return Err(BootstrapError::GeneralError("Fail to accept connection".to_string()));
             };
-            dbg!("accepted", &dplx, &remote_addr);
             let server_binding = BootstrapServerBinder::new(
                 dplx,
                 self.keypair.clone(),
@@ -598,7 +597,6 @@ fn manage_bootstrap<C: NetworkCommandSenderTrait>(
     _deadline: Instant,
     mip_store: MipStore,
 ) -> Result<(), BootstrapError> {
-    dbg!("managing session");
     massa_trace!("bootstrap.lib.manage_bootstrap", {});
     let read_error_timeout: Duration = bootstrap_config.read_error_timeout.into();
     let rt_hack = massa_network_exports::make_runtime();
@@ -606,7 +604,7 @@ fn manage_bootstrap<C: NetworkCommandSenderTrait>(
     server.handshake_timeout(version, Some(bootstrap_config.read_timeout.into()))?;
     dbg!("SERVER good handshake");
 
-    match dbg!(server.next_timeout(Some(read_error_timeout))) {
+    match server.next_timeout(Some(read_error_timeout)) {
         Err(BootstrapError::TimedOut(_)) => {}
         Err(e) => return Err(e),
         Ok(BootstrapClientMessage::BootstrapError { error }) => {
@@ -614,7 +612,7 @@ fn manage_bootstrap<C: NetworkCommandSenderTrait>(
         }
         Ok(msg) => return Err(BootstrapError::UnexpectedClientMessage(Box::new(msg))),
     };
-    dbg!("SERVER no error from client");
+    dbg!("SERVER no error message");
 
     let write_timeout: Duration = bootstrap_config.write_timeout.into();
 
@@ -622,17 +620,16 @@ fn manage_bootstrap<C: NetworkCommandSenderTrait>(
     let server_time = MassaTime::now()?;
 
     dbg!("SERVER sending bootstrap time");
-    server.send_msg(
+    dbg!(server.send_msg(
         write_timeout,
         BootstrapServerMessage::BootstrapTime {
             server_time,
             version,
         },
-    )?;
+    ))?;
     dbg!("SERVER sent bootstrap time");
-
     loop {
-        match server.next_timeout(Some(bootstrap_config.read_timeout.into())) {
+        match dbg!(server.next_timeout(Some(bootstrap_config.read_timeout.into()))) {
             Err(BootstrapError::TimedOut(_)) => break Ok(()),
             Err(e) => break Err(e),
             Ok(msg) => match msg {

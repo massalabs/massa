@@ -3,6 +3,7 @@
 use super::tools::{
     get_boot_state, get_peers, get_random_final_state_bootstrap, get_random_ledger_changes,
 };
+use crate::error::BootstrapError;
 use crate::tests::tools::{
     get_random_async_pool_changes, get_random_executed_ops_changes, get_random_pos_changes,
 };
@@ -44,8 +45,10 @@ use massa_time::MassaTime;
 use massa_versioning_worker::versioning::{
     MipComponent, MipInfo, MipState, MipStatsConfig, MipStore,
 };
+use mockall::Sequence;
 use parking_lot::RwLock;
 use std::collections::HashMap;
+use std::io::ErrorKind;
 use std::{path::PathBuf, str::FromStr, sync::Arc, time::Duration};
 use tempfile::TempDir;
 
@@ -355,7 +358,7 @@ fn conn_establishment_mocks() -> (MockBSListener, MockBSConnector) {
     // Setup the server/client connection
     // Bind a TcpListener to localhost on a specific port
     let server = std::net::TcpListener::bind("localhost:0").unwrap();
-    let client = std::net::TcpStream::connect(server.local_addr().unwrap()).unwrap();
+    let server_addr = server.local_addr().unwrap();
     let (strm_tx, strm_rx) = std::sync::mpsc::channel();
     std::thread::Builder::new()
         .name("stream holder".to_string())
@@ -370,23 +373,37 @@ fn conn_establishment_mocks() -> (MockBSListener, MockBSConnector) {
     // Mock the connection setups
     // TODO: Why is it twice, and not just once?
     let mut mock_bs_listener = MockBSListener::new();
+    let mut seq = Sequence::new();
     mock_bs_listener
         .expect_accept()
         .times(1)
         // Mock the `accept` method here by receiving from the listen-loop thread
-        .returning(move || Ok(strm_rx.recv().unwrap()));
+        .returning(move || Ok(strm_rx.recv().unwrap()))
+        .in_sequence(&mut seq);
     mock_bs_listener
         .expect_accept()
         .times(1)
-        .returning(move || loop {});
+        .returning(move || {
+            std::thread::sleep(Duration::from_secs(60 * 60 * 24));
+            panic!("should not be called")
+        })
+        .in_sequence(&mut seq);
 
+    let mut seq = Sequence::new();
     let mut mock_remote_connector = MockBSConnector::new();
     mock_remote_connector
         .expect_connect_timeout()
         .times(1)
-        .return_once(move |_, _| {
+        .returning(move |_, _| {
+            let client = std::net::TcpStream::connect(server_addr).unwrap();
             client.set_nonblocking(false).unwrap();
             Ok(client)
-        });
+        })
+        .in_sequence(&mut seq);
+    mock_remote_connector
+        .expect_connect_timeout()
+        .times(1)
+        .returning(move |_, _| Err(ErrorKind::TimedOut.into()))
+        .in_sequence(&mut seq);
     (mock_bs_listener, mock_remote_connector)
 }

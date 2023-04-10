@@ -197,7 +197,6 @@ fn bootstrap_from_server(
     // client.next() is not cancel-safe but we drop the whole client object if cancelled => it's OK
     match client.next_timeout(Some(cfg.read_error_timeout.to_duration())) {
         Err(BootstrapError::TimedOut(_)) => {
-            dbg!("good timeout: no errors from server");
             massa_trace!(
                 "bootstrap.lib.bootstrap_from_server: No error sent at connection",
                 {}
@@ -214,7 +213,7 @@ fn bootstrap_from_server(
     let send_time_uncompensated = MassaTime::now()?;
     // client.handshake() is not cancel-safe but we drop the whole client object if cancelled => it's OK
     client.handshake(our_version)?;
-    dbg!("client: good handshake");
+    dbg!("CLIENT: good handshake");
 
     // compute ping
     let ping = MassaTime::now()?.saturating_sub(send_time_uncompensated);
@@ -359,6 +358,7 @@ fn connect_to_server(
     addr: &SocketAddr,
     pub_key: &PublicKey,
 ) -> Result<BootstrapClientBinder, BootstrapError> {
+    dbg!("connect_to_server");
     let socket = connector.connect_timeout(*addr, Some(bootstrap_config.connect_timeout))?;
     socket.set_nonblocking(false).unwrap();
     dbg!(&socket);
