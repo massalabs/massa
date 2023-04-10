@@ -210,18 +210,18 @@ impl BootstrapServerBinder {
         // send signature
         // self.duplex.set_write_timeout(duration)?;
         // self.duplex.write_all(&sig.to_bytes())?;
-        self.write_helper(&sig.to_bytes(), duration)?;
+        dbg!(self.write_helper(&sig.to_bytes(), duration))?;
 
         // send message length
         {
             let msg_len_bytes = msg_len.to_be_bytes_min(self.max_bootstrap_message_size)?;
             // self.duplex.write_all(&msg_len_bytes)?;
-            self.write_helper(&msg_len_bytes, duration)?;
+            dbg!(self.write_helper(&msg_len_bytes, duration))?;
         }
 
         // send message
         // self.duplex.write_all(&msg_bytes)?;
-        self.write_helper(&msg_bytes, duration)?;
+        dbg!(self.write_helper(&msg_bytes, duration))?;
 
         // save prev sig
         self.prev_message = Some(Hash::compute_from(&sig.to_bytes()));
@@ -235,6 +235,7 @@ impl BootstrapServerBinder {
         &mut self,
         duration: Option<Duration>,
     ) -> Result<BootstrapClientMessage, BootstrapError> {
+        dbg!("SERVER");
         // self.duplex.set_read_timeout(duration)?;
         // read prev hash
         let received_prev_hash = {
@@ -247,6 +248,7 @@ impl BootstrapServerBinder {
                 None
             }
         };
+        dbg!(&received_prev_hash);
 
         // read message length
         let msg_len = {
@@ -255,6 +257,7 @@ impl BootstrapServerBinder {
             self.read_helper(&mut msg_len_bytes, duration)?;
             u32::from_be_bytes_min(&msg_len_bytes, self.max_bootstrap_message_size)?.0
         };
+        dbg!(&msg_len);
 
         // read message
         let mut msg_bytes = vec![0u8; msg_len as usize];
@@ -290,7 +293,7 @@ impl BootstrapServerBinder {
         .deserialize::<DeserializeError>(&msg_bytes)
         .map_err(|err| BootstrapError::GeneralError(format!("{}", err)))?;
 
-        Ok(msg)
+        Ok(dbg!(msg))
     }
 
     fn write_helper(
@@ -304,7 +307,12 @@ impl BootstrapServerBinder {
         let mut written = 0;
 
         loop {
-            self.poll.poll(&mut self.events, None)?;
+            self.poll
+                .poll(&mut self.events, duration)
+                .map_err(|e| match e.kind() {
+                    ErrorKind::TimedOut | ErrorKind::WouldBlock => BootstrapError::TimedOut(e),
+                    _ => BootstrapError::IoError(e),
+                })?;
             for event in self.events.iter() {
                 if event.token() == BINDING_EVENT {
                     match self.duplex.write(&buf[written..]) {
@@ -321,6 +329,7 @@ impl BootstrapServerBinder {
                             }
                         }
                         Err(ref e) if e.kind() == ErrorKind::WouldBlock => {}
+                        Err(ref e) if e.kind() == ErrorKind::TimedOut => {}
                         Err(ref e) if e.kind() == ErrorKind::Interrupted => {}
                         Err(e) => return Err(BootstrapError::IoError(e)),
                     }
@@ -341,7 +350,12 @@ impl BootstrapServerBinder {
         let mut read = 0;
 
         loop {
-            self.poll.poll(&mut self.events, None)?;
+            self.poll
+                .poll(&mut self.events, duration)
+                .map_err(|e| match e.kind() {
+                    ErrorKind::TimedOut | ErrorKind::WouldBlock => BootstrapError::TimedOut(e),
+                    _ => BootstrapError::IoError(e),
+                })?;
             for event in self.events.iter() {
                 if event.token() == BINDING_EVENT {
                     match self.duplex.read(&mut buf[read..]) {
@@ -358,6 +372,7 @@ impl BootstrapServerBinder {
                             }
                         }
                         Err(ref e) if e.kind() == ErrorKind::WouldBlock => {}
+                        Err(ref e) if e.kind() == ErrorKind::TimedOut => {}
                         Err(ref e) if e.kind() == ErrorKind::Interrupted => {}
                         Err(e) => return Err(BootstrapError::IoError(e)),
                     }

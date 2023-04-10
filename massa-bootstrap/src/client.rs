@@ -197,6 +197,7 @@ fn bootstrap_from_server(
     // client.next() is not cancel-safe but we drop the whole client object if cancelled => it's OK
     match client.next_timeout(Some(cfg.read_error_timeout.to_duration())) {
         Err(BootstrapError::TimedOut(_)) => {
+            dbg!("good timeout: no errors from server");
             massa_trace!(
                 "bootstrap.lib.bootstrap_from_server: No error sent at connection",
                 {}
@@ -213,6 +214,7 @@ fn bootstrap_from_server(
     let send_time_uncompensated = MassaTime::now()?;
     // client.handshake() is not cancel-safe but we drop the whole client object if cancelled => it's OK
     client.handshake(our_version)?;
+    dbg!("client: good handshake");
 
     // compute ping
     let ping = MassaTime::now()?.saturating_sub(send_time_uncompensated);
@@ -224,7 +226,7 @@ fn bootstrap_from_server(
 
     // First, clock and version.
     // client.next() is not cancel-safe but we drop the whole client object if cancelled => it's OK
-    let server_time = match client.next_timeout(Some(cfg.read_timeout.into())) {
+    let server_time = match dbg!(client.next_timeout(Some(cfg.read_timeout.into()))) {
         Err(e) => return Err(e),
         Ok(BootstrapServerMessage::BootstrapTime {
             server_time,
@@ -358,7 +360,8 @@ fn connect_to_server(
     pub_key: &PublicKey,
 ) -> Result<BootstrapClientBinder, BootstrapError> {
     let socket = connector.connect_timeout(*addr, Some(bootstrap_config.connect_timeout))?;
-    socket.set_nonblocking(false)?;
+    socket.set_nonblocking(false).unwrap();
+    dbg!(&socket);
     Ok(BootstrapClientBinder::new(
         socket,
         *pub_key,
@@ -469,6 +472,7 @@ pub async fn get_state(
                 &node_id.get_public_key(),
             ) {
                 Ok(mut client) => {
+                    dbg!("connected to server, now bootstrapping");
                     match bootstrap_from_server(bootstrap_config, &mut client, &mut next_bootstrap_message, &mut global_bootstrap_state,version)
                       // cancellable
                     {

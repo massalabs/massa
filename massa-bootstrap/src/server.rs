@@ -210,6 +210,7 @@ impl<L: BSListener, C: NetworkCommandSenderTrait + Clone> BootstrapServer<'_, L,
             let Ok((dplx, remote_addr)) = self.listener.accept() else {
                 return Err(BootstrapError::GeneralError("Fail to accept connection".to_string()));
             };
+            dbg!("accepted", &dplx, &remote_addr);
             let server_binding = BootstrapServerBinder::new(
                 dplx,
                 self.keypair.clone(),
@@ -597,13 +598,15 @@ fn manage_bootstrap<C: NetworkCommandSenderTrait>(
     _deadline: Instant,
     mip_store: MipStore,
 ) -> Result<(), BootstrapError> {
+    dbg!("managing session");
     massa_trace!("bootstrap.lib.manage_bootstrap", {});
     let read_error_timeout: Duration = bootstrap_config.read_error_timeout.into();
     let rt_hack = massa_network_exports::make_runtime();
 
     server.handshake_timeout(version, Some(bootstrap_config.read_timeout.into()))?;
+    dbg!("SERVER good handshake");
 
-    match server.next_timeout(Some(read_error_timeout)) {
+    match dbg!(server.next_timeout(Some(read_error_timeout))) {
         Err(BootstrapError::TimedOut(_)) => {}
         Err(e) => return Err(e),
         Ok(BootstrapClientMessage::BootstrapError { error }) => {
@@ -611,12 +614,14 @@ fn manage_bootstrap<C: NetworkCommandSenderTrait>(
         }
         Ok(msg) => return Err(BootstrapError::UnexpectedClientMessage(Box::new(msg))),
     };
+    dbg!("SERVER no error from client");
 
     let write_timeout: Duration = bootstrap_config.write_timeout.into();
 
     // Sync clocks.
     let server_time = MassaTime::now()?;
 
+    dbg!("SERVER sending bootstrap time");
     server.send_msg(
         write_timeout,
         BootstrapServerMessage::BootstrapTime {
@@ -624,6 +629,7 @@ fn manage_bootstrap<C: NetworkCommandSenderTrait>(
             version,
         },
     )?;
+    dbg!("SERVER sent bootstrap time");
 
     loop {
         match server.next_timeout(Some(bootstrap_config.read_timeout.into())) {

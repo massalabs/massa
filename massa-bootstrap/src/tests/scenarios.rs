@@ -6,12 +6,12 @@ use super::tools::{
 use crate::tests::tools::{
     get_random_async_pool_changes, get_random_executed_ops_changes, get_random_pos_changes,
 };
+use crate::BootstrapConfig;
 use crate::{
     establisher::{MockBSConnector, MockBSListener},
     get_state, start_bootstrap_server,
     tests::tools::{assert_eq_bootstrap_graph, get_bootstrap_config},
 };
-use crate::{BootstrapConfig, DefaultConnector, DefaultListener};
 use massa_async_pool::AsyncPoolConfig;
 use massa_consensus_exports::{
     bootstrapable_graph::BootstrapableGraph, test_exports::MockConsensusControllerImpl,
@@ -161,6 +161,7 @@ fn test_bootstrap_server() {
     let final_state_server_clone1 = final_state_server.clone();
     let final_state_server_clone2 = final_state_server.clone();
 
+    let (mock_bs_listener, mock_remote_connector) = conn_establishment_mocks();
     // // start bootstrap server
     // let (mut mock_bs_listener, bootstrap_interface) = mock_establisher::new();
     // let bootstrap_manager = start_bootstrap_server::<TcpStream>(
@@ -226,12 +227,12 @@ fn test_bootstrap_server() {
     let bootstrap_manager_thread = std::thread::Builder::new()
         .name("bootstrap_thread".to_string())
         .spawn(move || {
-            start_bootstrap_server::<DefaultListener, MockNetworkCommandSender>(
+            start_bootstrap_server::<MockBSListener, MockNetworkCommandSender>(
                 stream_mock1,
                 mocked1,
                 final_state_server_clone1,
                 bootstrap_config.clone(),
-                DefaultListener::new(&bootstrap_config.listen_addr.unwrap()).unwrap(),
+                mock_bs_listener,
                 keypair.clone(),
                 Version::from_str("TEST.1.10").unwrap(),
                 cloned_store,
@@ -276,7 +277,7 @@ fn test_bootstrap_server() {
         .block_on(get_state(
             bootstrap_config,
             final_state_client_clone,
-            DefaultConnector {},
+            mock_remote_connector,
             Version::from_str("TEST.1.10").unwrap(),
             MassaTime::now().unwrap().saturating_sub(1000.into()),
             None,
@@ -348,4 +349,44 @@ fn test_bootstrap_server() {
     // stop selector controllers
     server_selector_manager.stop();
     client_selector_manager.stop();
+}
+
+fn conn_establishment_mocks() -> (MockBSListener, MockBSConnector) {
+    // Setup the server/client connection
+    // Bind a TcpListener to localhost on a specific port
+    let server = std::net::TcpListener::bind("localhost:0").unwrap();
+    let client = std::net::TcpStream::connect(server.local_addr().unwrap()).unwrap();
+    let (strm_tx, strm_rx) = std::sync::mpsc::channel();
+    std::thread::Builder::new()
+        .name("stream holder".to_string())
+        .spawn(move || {
+            let (strm, rem_addr) = server.accept().unwrap();
+            strm.set_nonblocking(true).unwrap();
+            let strm = mio::net::TcpStream::from_std(strm);
+            strm_tx.send((strm, rem_addr)).unwrap();
+        })
+        .unwrap();
+
+    // Mock the connection setups
+    // TODO: Why is it twice, and not just once?
+    let mut mock_bs_listener = MockBSListener::new();
+    mock_bs_listener
+        .expect_accept()
+        .times(1)
+        // Mock the `accept` method here by receiving from the listen-loop thread
+        .returning(move || Ok(strm_rx.recv().unwrap()));
+    mock_bs_listener
+        .expect_accept()
+        .times(1)
+        .returning(move || loop {});
+
+    let mut mock_remote_connector = MockBSConnector::new();
+    mock_remote_connector
+        .expect_connect_timeout()
+        .times(1)
+        .return_once(move |_, _| {
+            client.set_nonblocking(false).unwrap();
+            Ok(client)
+        });
+    (mock_bs_listener, mock_remote_connector)
 }

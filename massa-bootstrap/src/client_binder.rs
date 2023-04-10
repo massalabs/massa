@@ -80,6 +80,7 @@ impl BootstrapClientBinder {
             self.duplex.read_exact(&mut sig_bytes)?;
             Signature::from_bytes(&sig_bytes)?
         };
+        dbg!(&sig);
 
         // read message length
         let msg_len = {
@@ -87,6 +88,7 @@ impl BootstrapClientBinder {
             self.duplex.read_exact(&mut msg_len_bytes[..])?;
             u32::from_be_bytes_min(&msg_len_bytes, self.cfg.max_bootstrap_message_size)?.0
         };
+        dbg!(&msg_len);
 
         // read message, check signature and check signature of the message sent just before then deserialize it
         let message_deserializer = BootstrapServerMessageDeserializer::new((&self.cfg).into());
@@ -115,7 +117,7 @@ impl BootstrapClientBinder {
                 msg
             }
         };
-        Ok(message)
+        Ok(dbg!(message))
     }
 
     #[allow(dead_code)]
@@ -144,7 +146,7 @@ impl BootstrapClientBinder {
             self.prev_message = Some(Hash::compute_from(&hash_data));
 
             // send old previous message
-            self.duplex.write_all(prev_message)?;
+            dbg!(self.duplex.write_all(prev_message))?;
         } else {
             // there was no previous message
 
@@ -156,11 +158,11 @@ impl BootstrapClientBinder {
         {
             self.duplex.set_write_timeout(duration)?;
             let msg_len_bytes = msg_len.to_be_bytes_min(self.cfg.max_bootstrap_message_size)?;
-            self.duplex.write_all(&msg_len_bytes)?;
+            dbg!(self.duplex.write_all(&msg_len_bytes))?;
         }
 
         // send message
-        self.duplex.write_all(&msg_bytes)?;
+        dbg!(self.duplex.write_all(&msg_bytes))?;
         Ok(())
     }
 }

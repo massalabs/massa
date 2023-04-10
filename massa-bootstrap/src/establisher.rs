@@ -82,7 +82,7 @@ impl BSListener for DefaultListener {
                         Ok((sock, mut remote_addr)) => {
                             // normalize address
                             remote_addr.set_ip(remote_addr.ip().to_canonical());
-                            return Ok((sock, remote_addr));
+                            return Ok(dbg!((sock, remote_addr)));
                         }
                         Err(e) => {
                             if e.kind() == io::ErrorKind::WouldBlock {
