@@ -13,9 +13,11 @@ use massa_models::version::{Version, VersionDeserializer, VersionSerializer};
 use massa_serialization::{DeserializeError, Deserializer, Serializer};
 use massa_signature::KeyPair;
 use massa_time::MassaTime;
+use mio::net::TcpStream;
+use mio::{Events, Interest, Poll, Token};
 use std::convert::TryInto;
 use std::io::{ErrorKind, Read, Write};
-use std::net::{SocketAddr, TcpStream};
+use std::net::SocketAddr;
 use std::thread;
 use std::time::Duration;
 use tracing::error;
@@ -29,12 +31,16 @@ pub struct BootstrapServerBinder {
     randomness_size_bytes: usize,
     size_field_len: usize,
     local_keypair: KeyPair,
-    duplex: TcpStream,
     prev_message: Option<Hash>,
     version_serializer: VersionSerializer,
     version_deserializer: VersionDeserializer,
     write_error_timeout: MassaTime,
+    poll: Poll,
+    events: Events,
+    duplex: TcpStream,
 }
+
+const BINDING_EVENT: Token = Token(0);
 
 impl BootstrapServerBinder {
     /// Creates a new `WriteBinder`.
@@ -44,7 +50,12 @@ impl BootstrapServerBinder {
     /// * `local_keypair`: local node user keypair
     /// * `limit`: limit max bytes per second (up and down)
     #[allow(clippy::too_many_arguments)]
-    pub fn new(duplex: TcpStream, local_keypair: KeyPair, cfg: BootstrapSrvBindCfg) -> Self {
+    pub fn new(mut duplex: TcpStream, local_keypair: KeyPair, cfg: BootstrapSrvBindCfg) -> Self {
+        let poll = Poll::new().unwrap();
+        let mut events = Events::with_capacity(1024);
+        poll.registry()
+            .register(&mut duplex, BINDING_EVENT, Interest::READABLE)
+            .unwrap();
         let BootstrapSrvBindCfg {
             max_bytes_read_write: _limit,
             max_bootstrap_message_size,
@@ -60,7 +71,6 @@ impl BootstrapServerBinder {
             max_consensus_block_ids: consensus_bootstrap_part_size,
             size_field_len,
             local_keypair,
-            duplex,
             prev_message: None,
             thread_count,
             max_datastore_key_length,
@@ -68,6 +78,9 @@ impl BootstrapServerBinder {
             version_serializer: VersionSerializer::new(),
             version_deserializer: VersionDeserializer::new(),
             write_error_timeout,
+            poll,
+            events,
+            duplex,
         }
     }
     /// Performs a handshake. Should be called after connection
@@ -84,7 +97,7 @@ impl BootstrapServerBinder {
             self.version_serializer
                 .serialize(&version, &mut version_bytes)?;
             let mut msg_bytes = vec![0u8; version_bytes.len() + self.randomness_size_bytes];
-            self.duplex.set_read_timeout(duration)?;
+            // self.duplex.set_read_timeout(duration)?;
             self.duplex.read_exact(&mut msg_bytes)?;
             let (_, received_version) = self
                 .version_deserializer
@@ -194,7 +207,7 @@ impl BootstrapServerBinder {
         };
 
         // send signature
-        self.duplex.set_write_timeout(duration)?;
+        // self.duplex.set_write_timeout(duration)?;
         self.duplex.write_all(&sig.to_bytes())?;
 
         // send message length
@@ -218,7 +231,7 @@ impl BootstrapServerBinder {
         &mut self,
         duration: Option<Duration>,
     ) -> Result<BootstrapClientMessage, BootstrapError> {
-        self.duplex.set_read_timeout(duration)?;
+        // self.duplex.set_read_timeout(duration)?;
         // read prev hash
         let received_prev_hash = {
             if self.prev_message.is_some() {
