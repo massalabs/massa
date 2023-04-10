@@ -52,7 +52,7 @@ impl BootstrapServerBinder {
     #[allow(clippy::too_many_arguments)]
     pub fn new(mut duplex: TcpStream, local_keypair: KeyPair, cfg: BootstrapSrvBindCfg) -> Self {
         let poll = Poll::new().unwrap();
-        let mut events = Events::with_capacity(1024);
+        let events = Events::with_capacity(1024);
         poll.registry()
             .register(&mut duplex, BINDING_EVENT, Interest::READABLE)
             .unwrap();
