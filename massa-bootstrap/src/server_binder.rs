@@ -304,7 +304,7 @@ impl BootstrapServerBinder {
         let mut written = 0;
 
         loop {
-            self.poll.poll(&mut self.events, duration)?;
+            self.poll.poll(&mut self.events, None)?;
             for event in self.events.iter() {
                 if event.token() == BINDING_EVENT {
                     match self.duplex.write(&buf[written..]) {
@@ -320,6 +320,7 @@ impl BootstrapServerBinder {
                                 return Ok(());
                             }
                         }
+                        Err(ref e) if e.kind() == ErrorKind::WouldBlock => {}
                         Err(ref e) if e.kind() == ErrorKind::Interrupted => {}
                         Err(e) => return Err(BootstrapError::IoError(e)),
                     }
@@ -340,7 +341,7 @@ impl BootstrapServerBinder {
         let mut read = 0;
 
         loop {
-            self.poll.poll(&mut self.events, duration)?;
+            self.poll.poll(&mut self.events, None)?;
             for event in self.events.iter() {
                 if event.token() == BINDING_EVENT {
                     match self.duplex.read(&mut buf[read..]) {
@@ -356,6 +357,7 @@ impl BootstrapServerBinder {
                                 return Ok(());
                             }
                         }
+                        Err(ref e) if e.kind() == ErrorKind::WouldBlock => {}
                         Err(ref e) if e.kind() == ErrorKind::Interrupted => {}
                         Err(e) => return Err(BootstrapError::IoError(e)),
                     }

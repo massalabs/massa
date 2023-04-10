@@ -78,11 +78,20 @@ impl BSListener for DefaultListener {
             self.poll.poll(&mut self.events, None)?;
             for event in self.events.iter() {
                 if event.token() == ACCEPT_EV {
-                    let (sock, mut remote_addr) = self.listener.accept()?;
-
-                    // normalize address
-                    remote_addr.set_ip(remote_addr.ip().to_canonical());
-                    return Ok((sock, remote_addr));
+                    match self.listener.accept() {
+                        Ok((sock, mut remote_addr)) => {
+                            // normalize address
+                            remote_addr.set_ip(remote_addr.ip().to_canonical());
+                            return Ok((sock, remote_addr));
+                        }
+                        Err(e) => {
+                            if e.kind() == io::ErrorKind::WouldBlock {
+                                std::thread::yield_now();
+                            } else {
+                                return Err(e);
+                            }
+                        }
+                    }
                 }
             }
         }
@@ -104,7 +113,7 @@ impl BSConnector for DefaultConnector {
         duration: Option<MassaTime>,
     ) -> io::Result<TcpStream> {
         let Some(duration) = duration else {
-            return TcpStream::connect(addr);
+        return TcpStream::connect(addr);
         };
         TcpStream::connect_timeout(&addr, duration.to_duration())
     }
