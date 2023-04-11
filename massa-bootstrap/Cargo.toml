@@ -20,6 +20,7 @@ tracing = "0.1"
 substruct = { git = "https://github.com/sydhds/substruct" }
 socket2 = "0.4.7"
 crossbeam = "0.8.2"
+mio = "0.8.6"
 
 # custom modules
 massa_async_pool = { path = "../massa-async-pool" }
@@ -36,7 +37,6 @@ massa_signature = { path = "../massa-signature" }
 massa_pos_exports = { path = "../massa-pos-exports" }
 massa_time = { path = "../massa-time" }
 massa_versioning_worker = { path = "../massa-versioning-worker" }
-mio = "0.8.6"
 
 [dev-dependencies]
 mockall = "0.11.4"
@@ -51,6 +51,7 @@ massa_pos_exports = { path = "../massa-pos-exports", features = ["testing"] }
 massa_consensus_exports = { path = "../massa-consensus-exports", features = [
     "testing",
 ] }
+massa_network_exports = { path = "../massa-network-exports", features = ["testing"] }
 lazy_static = "1.4"
 tempfile = "3.3"
 
