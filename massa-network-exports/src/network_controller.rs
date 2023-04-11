@@ -15,8 +15,7 @@ use massa_models::{
     operation::{OperationPrefixIds, SecureShareOperation},
     stats::NetworkStats,
 };
-#[cfg(test)]
-use mockall::{automock, mock};
+
 use std::{
     collections::{HashMap, VecDeque},
     net::IpAddr,
@@ -105,7 +104,7 @@ mockall::mock! {
     }
 }
 
-#[cfg_attr(test, automock)]
+#[cfg_attr(any(test, feature = "testing"), mockall::automock)]
 #[async_trait]
 /// Network command sender interface. Can be mocked for testing
 pub trait NetworkCommandSenderTrait: Send + 'static {
