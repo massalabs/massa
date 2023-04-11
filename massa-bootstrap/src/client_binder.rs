@@ -75,26 +75,28 @@ impl BootstrapClientBinder {
     ) -> Result<BootstrapServerMessage, BootstrapError> {
         self.duplex.set_read_timeout(duration)?;
 
-        // Read the signature and message length without consuming it
+        // peek the signature and message len
         let peek_len = SIGNATURE_SIZE_BYTES + self.size_field_len;
         let mut peek_buff = vec![0u8; peek_len];
-        let mut acc = 0;
         // problematic if we can only peek some of it
-        while acc < peek_len {
-            acc = self.duplex.peek(&mut peek_buff[..peek_len])?;
-            // TODO: Backoff spin
+        while self.duplex.peek(&mut peek_buff)? < peek_len {
+            // TODO: Backoff spin of some sort
         }
 
+        // construct the signature from the peek
         let sig_array = peek_buff.as_slice()[0..SIGNATURE_SIZE_BYTES]
             .try_into()
             .expect("logic error in array manipulations");
         let sig = Signature::from_bytes(&sig_array)?;
+
+        // construct the message len from the peek
         let msg_len = u32::from_be_bytes_min(
             &peek_buff[SIGNATURE_SIZE_BYTES..],
             self.cfg.max_bootstrap_message_size,
         )?
         .0;
 
+        // Update this bindings "most recently received" message hash, retaining the replaced value
         let message_deserializer = BootstrapServerMessageDeserializer::new((&self.cfg).into());
         let legacy_msg = self
             .prev_message
@@ -102,12 +104,10 @@ impl BootstrapClientBinder {
 
         let message = {
             if let Some(legacy_msg) = legacy_msg {
-                // Consume the stream...
+                // Consume the stream, and discard the peek
                 let mut sig_msg_bytes = vec![0u8; peek_len + HASH_SIZE_BYTES + (msg_len as usize)];
                 self.duplex
                     .read_exact(&mut sig_msg_bytes[HASH_SIZE_BYTES..])?;
-
-                // discard the peek
                 let sig_msg_bytes = &mut sig_msg_bytes[peek_len..];
 
                 // Move in the previous message hash for computation, and verify
@@ -121,11 +121,9 @@ impl BootstrapClientBinder {
                     .map_err(|err| BootstrapError::DeserializeError(format!("{}", err)))?;
                 msg
             } else {
-                // Consume the stream...
+                // Consume the stream and discard the peek
                 let mut sig_msg_bytes = vec![0u8; peek_len + msg_len as usize];
                 self.duplex.read_exact(&mut sig_msg_bytes[..])?;
-
-                // discard the peek
                 let sig_msg_bytes = &mut sig_msg_bytes[peek_len..];
 
                 // Compute the hash and verify
