@@ -6,7 +6,10 @@ use std::{
     time::Duration,
 };
 
-use crossbeam::channel::Sender;
+use crossbeam::{
+    channel::{Receiver, Sender},
+    select,
+};
 use massa_serialization::{DeserializeError, Deserializer, Serializer};
 use parking_lot::RwLock;
 use rand::{rngs::StdRng, RngCore, SeedableRng};
@@ -54,9 +57,22 @@ pub struct PeerInfo {
     pub last_announce: Announcement,
 }
 
+#[warn(dead_code)]
+pub enum PeerManagementCmd {
+    BAN(PeerId),
+}
+
 impl PeerManagementHandler {
-    pub fn new(initial_peers: InitialPeers) -> (Self, Sender<(PeerId, u64, Vec<u8>)>) {
+    pub fn new(
+        initial_peers: InitialPeers,
+    ) -> (
+        Self,
+        Sender<(PeerId, u64, Vec<u8>)>,
+        Sender<PeerManagementCmd>,
+    ) {
         let (sender, receiver) = crossbeam::channel::unbounded();
+        let (sender_cmd, receiver_cmd): (Sender<PeerManagementCmd>, Receiver<PeerManagementCmd>) =
+            crossbeam::channel::unbounded();
         for (peer_id, listeners) in &initial_peers {
             println!("Sending initial peer: {:?}", peer_id);
             sender
@@ -73,23 +89,39 @@ impl PeerManagementHandler {
             let peer_db = peer_db.clone();
             move || {
                 loop {
-                    let (peer_id, message_id, message) = receiver.recv().unwrap();
-                    println!("Received message len: {}", message.len());
-                    let message = PeerManagementMessage::from_bytes(message_id, &message).unwrap();
-                    println!("Received message from peer: {:?}", peer_id);
-                    println!("Message: {:?}", message);
-                    // TODO: Bufferize launch of test thread
-                    // TODO: Add wait group or something like that to wait for all threads to finish when stop
-                    match message {
-                        PeerManagementMessage::NewPeerConnected((_peer_id, listeners)) => {
-                            for listener in listeners.into_iter() {
-                                let _tester = Tester::new(peer_db.clone(), listener.clone());
+                    select! {
+                        // internal command
+                        recv(receiver_cmd) -> cmd => {
+                           match cmd {
+                             Ok(PeerManagementCmd::BAN(peer_id)) => {
+                                // TODO ban peer
+                                 println!("Banning peer: {:?}", peer_id);
+                             },
+                            Err(_) => {
+                                    println!("Error");
                             }
-                        }
-                        PeerManagementMessage::ListPeers(peers) => {
-                            for (_peer_id, listeners) in peers.into_iter() {
-                                for listener in listeners.into_iter() {
-                                    let _tester = Tester::new(peer_db.clone(), listener.clone());
+                           }
+                        },
+                        recv(receiver) -> msg => {
+                            let (peer_id, message_id, message) = msg.unwrap();
+                            println!("Received message len: {}", message.len());
+                            let message = PeerManagementMessage::from_bytes(message_id, &message).unwrap();
+                            println!("Received message from peer: {:?}", peer_id);
+                            println!("Message: {:?}", message);
+                            // TODO: Bufferize launch of test thread
+                            // TODO: Add wait group or something like that to wait for all threads to finish when stop
+                            match message {
+                                PeerManagementMessage::NewPeerConnected((_peer_id, listeners)) => {
+                                    for listener in listeners.into_iter() {
+                                        let _tester = Tester::new(peer_db.clone(), listener.clone());
+                                    }
+                                }
+                                PeerManagementMessage::ListPeers(peers) => {
+                                    for (_peer_id, listeners) in peers.into_iter() {
+                                        for listener in listeners.into_iter() {
+                                            let _tester = Tester::new(peer_db.clone(), listener.clone());
+                                        }
+                                    }
                                 }
                             }
                         }
@@ -103,6 +135,7 @@ impl PeerManagementHandler {
                 thread_join: Some(thread_join),
             },
             sender,
+            sender_cmd,
         )
     }
 }

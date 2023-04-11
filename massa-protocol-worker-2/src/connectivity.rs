@@ -52,7 +52,8 @@ pub fn start_connectivity_thread(
     let (sender_blocks_ext, receiver_blocks_ext) = unbounded();
 
     let handle = std::thread::spawn(move || {
-        let (mut peer_manager_handler, sender_peers) = PeerManagementHandler::new(initial_peers);
+        let (mut peer_manager_handler, sender_peers, _sender_cmd) =
+            PeerManagementHandler::new(initial_peers);
         //TODO: Bound the channel
         // Channels network <-> handlers
         let (sender_operations, receiver_operations) = unbounded();
