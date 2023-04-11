@@ -33,6 +33,7 @@ impl OperationMessage {
     }
 }
 
+// DO NOT FORGET TO UPDATE MAX ID IF YOU UPDATE THERE
 #[derive(IntoPrimitive, Debug, Eq, PartialEq, TryFromPrimitive)]
 #[repr(u64)]
 pub enum MessageTypeId {
