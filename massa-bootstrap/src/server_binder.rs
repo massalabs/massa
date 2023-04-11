@@ -13,11 +13,13 @@ use massa_models::version::{Version, VersionDeserializer, VersionSerializer};
 use massa_serialization::{DeserializeError, Deserializer, Serializer};
 use massa_signature::KeyPair;
 use massa_time::MassaTime;
-use std::convert::TryInto;
-use std::io::{ErrorKind, Read, Write};
-use std::net::{SocketAddr, TcpStream};
-use std::thread;
-use std::time::Duration;
+use std::{
+    convert::TryInto,
+    io::{ErrorKind, Read, Write},
+    net::{SocketAddr, TcpStream},
+    thread,
+    time::Duration,
+};
 use tracing::error;
 
 /// Bootstrap server binder
