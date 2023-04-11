@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"struct":["ExportActiveBlock","ExportActiveBlockDeserializer","ExportActiveBlockSerializer"]};
+window.SIDEBAR_ITEMS = {"constant":["FIELDS"],"enum":["__Field"],"struct":["ExportActiveBlock","ExportActiveBlockDeserializer","ExportActiveBlockSerializer","__FieldVisitor","__Visitor"]};
