@@ -2,7 +2,7 @@ use massa_models::operation::{
     OperationPrefixIds, OperationPrefixIdsDeserializer, OperationPrefixIdsSerializer,
     OperationsDeserializer, OperationsSerializer, SecureShareOperation,
 };
-use massa_serialization::{Deserializer, SerializeError, Serializer, U64VarIntSerializer};
+use massa_serialization::{Deserializer, SerializeError, Serializer};
 use nom::{
     error::{context, ContextError, ParseError},
     IResult, Parser,
@@ -19,9 +19,24 @@ pub enum OperationMessage {
     Operations(Vec<SecureShareOperation>),
 }
 
+impl OperationMessage {
+    pub fn get_id(&self) -> MessageTypeId {
+        match self {
+            OperationMessage::OperationsAnnouncement(_) => MessageTypeId::OperationsAnnouncement,
+            OperationMessage::AskForOperations(_) => MessageTypeId::AskForOperations,
+            OperationMessage::Operations(_) => MessageTypeId::Operations,
+        }
+    }
+
+    pub fn max_id() -> u64 {
+        <MessageTypeId as Into<u64>>::into(MessageTypeId::Operations) + 1
+    }
+}
+
+// DO NOT FORGET TO UPDATE MAX ID IF YOU UPDATE THERE
 #[derive(IntoPrimitive, Debug, Eq, PartialEq, TryFromPrimitive)]
 #[repr(u64)]
-enum MessageTypeId {
+pub enum MessageTypeId {
     OperationsAnnouncement = 0,
     AskForOperations = 1,
     Operations = 2,
@@ -29,7 +44,6 @@ enum MessageTypeId {
 
 #[derive(Default)]
 pub struct OperationMessageSerializer {
-    id_serializer: U64VarIntSerializer,
     operation_prefix_ids_serializer: OperationPrefixIdsSerializer,
     operations_serializer: OperationsSerializer,
 }
@@ -37,7 +51,6 @@ pub struct OperationMessageSerializer {
 impl OperationMessageSerializer {
     pub fn new() -> Self {
         Self {
-            id_serializer: U64VarIntSerializer::new(),
             operation_prefix_ids_serializer: OperationPrefixIdsSerializer::new(),
             operations_serializer: OperationsSerializer::new(),
         }
@@ -52,20 +65,14 @@ impl Serializer<OperationMessage> for OperationMessageSerializer {
     ) -> Result<(), SerializeError> {
         match value {
             OperationMessage::OperationsAnnouncement(operations) => {
-                self.id_serializer
-                    .serialize(&(MessageTypeId::OperationsAnnouncement as u64), buffer)?;
                 self.operation_prefix_ids_serializer
                     .serialize(operations, buffer)?;
             }
             OperationMessage::AskForOperations(operations) => {
-                self.id_serializer
-                    .serialize(&(MessageTypeId::AskForOperations as u64), buffer)?;
                 self.operation_prefix_ids_serializer
                     .serialize(operations, buffer)?;
             }
             OperationMessage::Operations(operations) => {
-                self.id_serializer
-                    .serialize(&(MessageTypeId::Operations as u64), buffer)?;
                 self.operations_serializer.serialize(operations, buffer)?;
             }
         }
