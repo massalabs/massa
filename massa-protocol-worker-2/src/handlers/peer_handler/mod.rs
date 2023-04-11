@@ -191,7 +191,8 @@ impl HandshakeHandler for MassaHandshake {
             return Err(PeerNetError::HandshakeError
                 .error("Massa Handshake", Some("Invalid signature".to_string())));
         }
-        let message = PeerManagementMessage::NewPeerConnected((peer_id.clone(), announcement.listeners));
+        let message =
+            PeerManagementMessage::NewPeerConnected((peer_id.clone(), announcement.listeners));
         let mut bytes = Vec::new();
         let peer_management_message_serializer = PeerManagementMessageSerializer::new();
         peer_management_message_serializer

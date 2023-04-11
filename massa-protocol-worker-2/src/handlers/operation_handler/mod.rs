@@ -9,9 +9,7 @@ use peernet::{network_manager::SharedActiveConnections, peer_id::PeerId};
 
 use self::{
     commands::OperationHandlerCommand,
-    messages::{
-        OperationMessageDeserializer, OperationMessageDeserializerArgs,
-    },
+    messages::{OperationMessageDeserializer, OperationMessageDeserializerArgs},
 };
 
 pub mod commands;

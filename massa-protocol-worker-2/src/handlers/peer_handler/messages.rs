@@ -1,10 +1,7 @@
 use std::{collections::HashMap, net::SocketAddr, ops::Bound::Included};
 
 use massa_models::serialization::{IpAddrDeserializer, IpAddrSerializer};
-use massa_serialization::{
-    Deserializer, Serializer, U64VarIntDeserializer,
-    U64VarIntSerializer,
-};
+use massa_serialization::{Deserializer, Serializer, U64VarIntDeserializer, U64VarIntSerializer};
 use nom::{
     error::{context, ContextError, ParseError},
     multi::length_count,
@@ -164,10 +161,7 @@ impl Deserializer<PeerManagementMessage> for PeerManagementMessageDeserializer {
                                 self.listeners_length_deserializer.deserialize(buffer)
                             }),
                             context("Failed listener deserialization", |buffer| {
-                                listener_deserializer(
-                                    buffer,
-                                    &self.ip_addr_deserializer,
-                                )
+                                listener_deserializer(buffer, &self.ip_addr_deserializer)
                             }),
                         ),
                     )),
@@ -213,10 +207,7 @@ impl Deserializer<PeerManagementMessage> for PeerManagementMessageDeserializer {
                                         self.listeners_length_deserializer.deserialize(buffer)
                                     }),
                                     context("Failed listener deserialization", |buffer| {
-                                        listener_deserializer(
-                                            buffer,
-                                            &self.ip_addr_deserializer,
-                                        )
+                                        listener_deserializer(buffer, &self.ip_addr_deserializer)
                                     }),
                                 )
                                 .map::<_, HashMap<SocketAddr, TransportType>>(
