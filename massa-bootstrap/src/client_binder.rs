@@ -115,7 +115,8 @@ impl BootstrapClientBinder {
                 msg
             }
         };
-        Ok(message)
+        dbg!("CLIENT: received message");
+        Ok(dbg!(message))
     }
 
     #[allow(dead_code)]
@@ -125,7 +126,6 @@ impl BootstrapClientBinder {
         msg: &BootstrapClientMessage,
         duration: Option<Duration>,
     ) -> Result<(), BootstrapError> {
-        dbg!(&msg);
         let mut msg_bytes = Vec::new();
         let message_serializer = BootstrapClientMessageSerializer::new();
         message_serializer.serialize(msg, &mut msg_bytes)?;
@@ -162,6 +162,7 @@ impl BootstrapClientBinder {
 
         // send message
         self.duplex.write_all(&msg_bytes)?;
+        dbg!("CLIENT sent message", &msg);
         Ok(())
     }
 }

@@ -226,6 +226,7 @@ impl BootstrapServerBinder {
         // save prev sig
         self.prev_message = Some(Hash::compute_from(&sig.to_bytes()));
 
+        dbg!("SERVER sent message", msg);
         Ok(())
     }
 
@@ -289,7 +290,8 @@ impl BootstrapServerBinder {
         .deserialize::<DeserializeError>(&msg_bytes)
         .map_err(|err| BootstrapError::GeneralError(format!("{}", err)))?;
 
-        Ok(msg)
+        dbg!("SERVER received message");
+        Ok(dbg!(msg))
     }
 
     fn write_helper(

@@ -602,7 +602,6 @@ fn manage_bootstrap<C: NetworkCommandSenderTrait>(
     let rt_hack = massa_network_exports::make_runtime();
 
     server.handshake_timeout(version, Some(bootstrap_config.read_timeout.into()))?;
-    dbg!("SERVER good handshake");
 
     match server.next_timeout(Some(read_error_timeout)) {
         Err(BootstrapError::TimedOut(_)) => {}
@@ -612,24 +611,21 @@ fn manage_bootstrap<C: NetworkCommandSenderTrait>(
         }
         Ok(msg) => return Err(BootstrapError::UnexpectedClientMessage(Box::new(msg))),
     };
-    dbg!("SERVER no error message");
 
     let write_timeout: Duration = bootstrap_config.write_timeout.into();
 
     // Sync clocks.
     let server_time = MassaTime::now()?;
 
-    dbg!("SERVER sending bootstrap time");
-    dbg!(server.send_msg(
+    server.send_msg(
         write_timeout,
         BootstrapServerMessage::BootstrapTime {
             server_time,
             version,
         },
-    ))?;
-    dbg!("SERVER sent bootstrap time");
+    )?;
     loop {
-        match dbg!(server.next_timeout(Some(bootstrap_config.read_timeout.into()))) {
+        match server.next_timeout(Some(bootstrap_config.read_timeout.into())) {
             Err(BootstrapError::TimedOut(_)) => break Ok(()),
             Err(e) => break Err(e),
             Ok(msg) => match msg {
