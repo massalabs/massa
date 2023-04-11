@@ -26,8 +26,7 @@ massa_storage = { path = "../massa-storage" }
 massa_serialization = { path = "../massa-serialization" }
 massa_time = { path = "../massa-time" }
 massa_signature = { path = "../massa-signature" }
+mockall = {version =  "0.11.4", features = ["nightly"], optional = true}
 
-[dev-dependencies]
-mockall = {version =  "0.11.4", features = ["nightly"]}
 [features]
-testing = ["massa_models/testing", "massa_execution_exports/testing", "massa_pool_exports/testing", "massa_pos_exports/testing", "massa_protocol_exports/testing", "massa_storage/testing"]
+testing = ["massa_models/testing", "massa_execution_exports/testing", "massa_pool_exports/testing", "massa_pos_exports/testing", "massa_protocol_exports/testing", "massa_storage/testing", "dep:mockall"]

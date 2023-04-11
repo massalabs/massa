@@ -13,7 +13,7 @@ pub use common::{ConnectionClosureReason, ConnectionId};
 pub use error::{HandshakeErrorType, NetworkConnectionErrorType, NetworkError};
 pub use establisher::{Establisher, Listener, ReadHalf, WriteHalf};
 
-#[cfg(test)]
+#[cfg(any(test, feature = "testing"))]
 pub use network_controller::MockNetworkCommandSender;
 
 pub use network_controller::{

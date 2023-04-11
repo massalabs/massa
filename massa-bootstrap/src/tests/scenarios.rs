@@ -34,6 +34,7 @@ use massa_models::{
     },
     prehash::PreHashSet,
 };
+#[cfg(any(test, feature = "testing"))]
 use massa_network_exports::MockNetworkCommandSender;
 use massa_pos_exports::{
     test_exports::assert_eq_pos_selection, PoSConfig, PoSFinalState, SelectorConfig,

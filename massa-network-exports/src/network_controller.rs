@@ -33,8 +33,9 @@ use tracing::{info, warn};
 /// Network command sender
 #[derive(Debug, Clone)]
 pub struct NetworkCommandSender(pub mpsc::Sender<NetworkCommand>);
-#[cfg(test)]
-mock! {
+
+#[cfg(any(test, feature = "testing"))]
+mockall::mock! {
     pub NetworkCommandSender{}
     impl Clone for NetworkCommandSender {
         fn clone(&self) -> Self;
