@@ -1,3 +1,4 @@
+use crate::client_binder::NonHSClientBinder;
 use crate::messages::{BootstrapClientMessage, BootstrapServerMessage};
 use crate::settings::{BootstrapClientConfig, BootstrapSrvBindCfg};
 use crate::BootstrapConfig;
@@ -30,7 +31,7 @@ lazy_static::lazy_static! {
 }
 
 impl BootstrapClientBinder {
-    pub fn test_default(client_duplex: TcpStream, remote_pubkey: PublicKey) -> Self {
+    pub fn test_default(client_duplex: TcpStream, remote_pubkey: PublicKey) -> NonHSClientBinder {
         let cfg = BootstrapClientConfig {
             max_bytes_read_write: f64::INFINITY,
             max_bootstrap_message_size: MAX_BOOTSTRAP_MESSAGE_SIZE,
@@ -58,7 +59,7 @@ impl BootstrapClientBinder {
             mip_store_stats_block_considered: MIP_STORE_STATS_BLOCK_CONSIDERED,
             mip_store_stats_counters_max: MIP_STORE_STATS_COUNTERS_MAX,
         };
-        BootstrapClientBinder::new(client_duplex, remote_pubkey, cfg)
+        NonHSClientBinder::new(client_duplex, remote_pubkey, cfg)
     }
 }
 
@@ -84,7 +85,7 @@ fn test_binders() {
             write_error_timeout: MassaTime::from_millis(1000),
         },
     );
-    let mut client = BootstrapClientBinder::test_default(
+    let client = BootstrapClientBinder::test_default(
         client,
         bootstrap_config.bootstrap_list[0].1.get_public_key(),
     );
@@ -138,7 +139,9 @@ fn test_binders() {
 
             let version: Version = Version::from_str("TEST.1.10").unwrap();
 
-            client.handshake(version).unwrap();
+            let (mut client, _ping) = client
+                .handshake(version, bootstrap_config.read_error_timeout.to_duration())
+                .unwrap();
             let message = client.next_timeout(None).unwrap();
             match message {
                 BootstrapServerMessage::BootstrapPeers { peers } => {
@@ -198,7 +201,7 @@ fn test_binders_double_send_server_works() {
             write_error_timeout: MassaTime::from_millis(1000),
         },
     );
-    let mut client = BootstrapClientBinder::test_default(
+    let client = BootstrapClientBinder::test_default(
         client,
         bootstrap_config.bootstrap_list[0].1.get_public_key(),
     );
@@ -243,7 +246,9 @@ fn test_binders_double_send_server_works() {
 
             let version: Version = Version::from_str("TEST.1.10").unwrap();
 
-            client.handshake(version).unwrap();
+            let (mut client, _ping) = client
+                .handshake(version, bootstrap_config.read_error_timeout.to_duration())
+                .unwrap();
             let message = client.next_timeout(None).unwrap();
             match message {
                 BootstrapServerMessage::BootstrapPeers { peers } => {
@@ -294,7 +299,7 @@ fn test_binders_try_double_send_client_works() {
             write_error_timeout: MassaTime::from_millis(1000),
         },
     );
-    let mut client = BootstrapClientBinder::test_default(
+    let client = BootstrapClientBinder::test_default(
         client,
         bootstrap_config.bootstrap_list[0].1.get_public_key(),
     );
@@ -343,7 +348,9 @@ fn test_binders_try_double_send_client_works() {
             let vector_peers = vec![bootstrap_config.bootstrap_list[0].0.ip()];
             let version: Version = Version::from_str("TEST.1.10").unwrap();
 
-            client.handshake(version).unwrap();
+            let (mut client, _ping) = client
+                .handshake(version, bootstrap_config.read_error_timeout.to_duration())
+                .unwrap();
             let message = client.next_timeout(None).unwrap();
             match message {
                 BootstrapServerMessage::BootstrapPeers { peers } => {

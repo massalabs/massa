@@ -11,10 +11,12 @@ use crate::messages::{
 };
 use crate::settings::BootstrapClientConfig;
 use massa_hash::{Hash, HASH_SIZE_BYTES};
+use massa_logging::massa_trace;
 use massa_models::serialization::{DeserializeMinBEInt, SerializeMinBEInt};
 use massa_models::version::{Version, VersionSerializer};
 use massa_serialization::{DeserializeError, Deserializer, Serializer};
 use massa_signature::{PublicKey, Signature, SIGNATURE_SIZE_BYTES};
+use massa_time::MassaTime;
 use rand::{rngs::StdRng, RngCore, SeedableRng};
 
 /// Bootstrap client binder
@@ -23,51 +25,99 @@ pub struct BootstrapClientBinder {
     size_field_len: usize,
     remote_pubkey: PublicKey,
     duplex: TcpStream,
-    prev_message: Option<Hash>,
+    prev_message: Hash,
+    cfg: BootstrapClientConfig,
+}
+pub struct NonHSClientBinder {
+    // max_bootstrap_message_size: u32,
+    size_field_len: usize,
+    remote_pubkey: PublicKey,
+    duplex: TcpStream,
     version_serializer: VersionSerializer,
     cfg: BootstrapClientConfig,
 }
 
-impl BootstrapClientBinder {
-    /// Creates a new `WriteBinder`.
-    ///
-    /// # Argument
-    /// * duplex: duplex stream.
-    /// * limit: limit max bytes per second (up and down)
-    #[allow(clippy::too_many_arguments)]
+impl NonHSClientBinder {
+    /// Encapsulates a new connection to a client, ready to perform a handshake.
     pub fn new(duplex: TcpStream, remote_pubkey: PublicKey, cfg: BootstrapClientConfig) -> Self {
         let size_field_len = u32::be_bytes_min_length(cfg.max_bootstrap_message_size);
-        BootstrapClientBinder {
+        Self {
             size_field_len,
             remote_pubkey,
             duplex,
-            prev_message: None,
             version_serializer: VersionSerializer::new(),
             cfg,
         }
     }
+    /// Attempts to upgrade the connection to a client by performing a handshake, providing a ping estimation in the process
+    /// NOT cancel-safe, so does not return the binder if cancelled
+    pub fn handshake(
+        mut self,
+        version: Version,
+        duration: Duration,
+    ) -> Result<(BootstrapClientBinder, MassaTime), BootstrapError> {
+        // read error (if sent by the server)
+        self = self.check_no_error(duration)?;
 
-    /// Performs a handshake. Should be called after connection
-    /// NOT cancel-safe
-    pub fn handshake(&mut self, version: Version) -> Result<(), BootstrapError> {
+        // handshake
         // send version and randomn bytes
-        let msg_hash = {
-            let mut version_ser = Vec::new();
-            self.version_serializer
-                .serialize(&version, &mut version_ser)?;
-            let mut version_random_bytes =
-                vec![0u8; version_ser.len() + self.cfg.randomness_size_bytes];
-            version_random_bytes[..version_ser.len()].clone_from_slice(&version_ser);
-            StdRng::from_entropy().fill_bytes(&mut version_random_bytes[version_ser.len()..]);
-            self.duplex.write_all(&version_random_bytes)?;
-            Hash::compute_from(&version_random_bytes)
-        };
+        let mut version_ser = Vec::new();
+        self.version_serializer
+            .serialize(&version, &mut version_ser)?;
+        let mut version_random_bytes =
+            vec![0u8; version_ser.len() + self.cfg.randomness_size_bytes];
+        version_random_bytes[..version_ser.len()].clone_from_slice(&version_ser);
+        StdRng::from_entropy().fill_bytes(&mut version_random_bytes[version_ser.len()..]);
 
-        self.prev_message = Some(msg_hash);
+        // do the send
+        let send_time_uncompensated = MassaTime::now()?;
+        self.duplex.write_all(&version_random_bytes)?;
 
-        Ok(())
+        // compute ping
+        let ping = MassaTime::now()?.saturating_sub(send_time_uncompensated);
+
+        let msg_hash = Hash::compute_from(&version_random_bytes);
+
+        Ok((
+            BootstrapClientBinder {
+                size_field_len: self.size_field_len,
+                remote_pubkey: self.remote_pubkey,
+                duplex: self.duplex,
+                prev_message: msg_hash,
+                cfg: self.cfg,
+            },
+            ping,
+        ))
     }
 
+    /// Checks that no errors were sent by the server
+    pub fn check_no_error(self, duration: Duration) -> Result<Self, BootstrapError> {
+        // read error (if sent by the server)
+        // client.next() is not cancel-safe but we drop the whole client object if cancelled => it's OK
+        self.duplex.set_read_timeout(Some(duration))?;
+        match self
+            .duplex
+            .peek(&mut [0u8; SIGNATURE_SIZE_BYTES])
+            .map_err(Into::into)
+        {
+            Err(BootstrapError::TimedOut(_)) | Ok(0) => {
+                massa_trace!(
+                    "bootstrap.lib.bootstrap_from_server: No error sent at connection",
+                    {}
+                );
+            }
+            Err(e) => return Err(e),
+            Ok(_n) => {
+                return Err(BootstrapError::GeneralError(
+                    "bootstrap server handshake unexpected bytes available".to_string(),
+                ));
+            }
+        };
+        Ok(self)
+    }
+}
+
+impl BootstrapClientBinder {
     /// Reads the next message. NOT cancel-safe
     pub fn next_timeout(
         &mut self,
@@ -90,30 +140,19 @@ impl BootstrapClientBinder {
 
         // read message, check signature and check signature of the message sent just before then deserialize it
         let message_deserializer = BootstrapServerMessageDeserializer::new((&self.cfg).into());
+        let prev_message = self.prev_message;
         let message = {
-            if let Some(prev_message) = self.prev_message {
-                self.prev_message = Some(Hash::compute_from(&sig.to_bytes()));
-                let mut sig_msg_bytes = vec![0u8; HASH_SIZE_BYTES + (msg_len as usize)];
-                sig_msg_bytes[..HASH_SIZE_BYTES].copy_from_slice(prev_message.to_bytes());
-                self.duplex
-                    .read_exact(&mut sig_msg_bytes[HASH_SIZE_BYTES..])?;
-                let msg_hash = Hash::compute_from(&sig_msg_bytes);
-                self.remote_pubkey.verify_signature(&msg_hash, &sig)?;
-                let (_, msg) = message_deserializer
-                    .deserialize::<DeserializeError>(&sig_msg_bytes[HASH_SIZE_BYTES..])
-                    .map_err(|err| BootstrapError::DeserializeError(format!("{}", err)))?;
-                msg
-            } else {
-                self.prev_message = Some(Hash::compute_from(&sig.to_bytes()));
-                let mut sig_msg_bytes = vec![0u8; msg_len as usize];
-                self.duplex.read_exact(&mut sig_msg_bytes[..])?;
-                let msg_hash = Hash::compute_from(&sig_msg_bytes);
-                self.remote_pubkey.verify_signature(&msg_hash, &sig)?;
-                let (_, msg) = message_deserializer
-                    .deserialize::<DeserializeError>(&sig_msg_bytes[..])
-                    .map_err(|err| BootstrapError::DeserializeError(format!("{}", err)))?;
-                msg
-            }
+            self.prev_message = Hash::compute_from(&sig.to_bytes());
+            let mut sig_msg_bytes = vec![0u8; HASH_SIZE_BYTES + (msg_len as usize)];
+            sig_msg_bytes[..HASH_SIZE_BYTES].copy_from_slice(prev_message.to_bytes());
+            self.duplex
+                .read_exact(&mut sig_msg_bytes[HASH_SIZE_BYTES..])?;
+            let msg_hash = Hash::compute_from(&sig_msg_bytes);
+            self.remote_pubkey.verify_signature(&msg_hash, &sig)?;
+            let (_, msg) = message_deserializer
+                .deserialize::<DeserializeError>(&sig_msg_bytes[HASH_SIZE_BYTES..])
+                .map_err(|err| BootstrapError::DeserializeError(format!("{}", err)))?;
+            msg
         };
         Ok(message)
     }
@@ -132,25 +171,18 @@ impl BootstrapClientBinder {
             BootstrapError::GeneralError(format!("bootstrap message too large to encode: {}", e))
         })?;
 
-        if let Some(prev_message) = self.prev_message {
-            // there was a previous message
-            let prev_message = prev_message.to_bytes();
+        let prev_message = self.prev_message;
+        // there was a previous message
+        let prev_message = prev_message.to_bytes();
 
-            // update current previous message to be hash(prev_msg_hash + msg)
-            let mut hash_data =
-                Vec::with_capacity(prev_message.len().saturating_add(msg_bytes.len()));
-            hash_data.extend(prev_message);
-            hash_data.extend(&msg_bytes);
-            self.prev_message = Some(Hash::compute_from(&hash_data));
+        // update current previous message to be hash(prev_msg_hash + msg)
+        let mut hash_data = Vec::with_capacity(prev_message.len().saturating_add(msg_bytes.len()));
+        hash_data.extend(prev_message);
+        hash_data.extend(&msg_bytes);
+        self.prev_message = Hash::compute_from(&hash_data);
 
-            // send old previous message
-            self.duplex.write_all(prev_message)?;
-        } else {
-            // there was no previous message
-
-            //update current previous message
-            self.prev_message = Some(Hash::compute_from(&msg_bytes));
-        }
+        // send old previous message
+        self.duplex.write_all(prev_message)?;
 
         // send message length
         {

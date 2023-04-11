@@ -6,7 +6,7 @@ use massa_logging::massa_trace;
 use massa_models::{node::NodeId, streaming_step::StreamingStep, version::Version};
 use massa_signature::PublicKey;
 use massa_time::MassaTime;
-use massa_versioning_worker::versioning::{MipStore, MipStoreRaw};
+use massa_versioning_worker::versioning::MipStore;
 use parking_lot::RwLock;
 use rand::{
     prelude::{SliceRandom, StdRng},
@@ -15,7 +15,7 @@ use rand::{
 use tracing::{debug, info, warn};
 
 use crate::{
-    client_binder::BootstrapClientBinder,
+    client_binder::{BootstrapClientBinder, NonHSClientBinder},
     error::BootstrapError,
     establisher::BSConnector,
     messages::{BootstrapClientMessage, BootstrapServerMessage},
@@ -186,79 +186,77 @@ fn stream_final_state_and_consensus(
 /// needs to be CANCELLABLE
 fn bootstrap_from_server(
     cfg: &BootstrapConfig,
-    client: &mut BootstrapClientBinder,
+    client: NonHSClientBinder,
     next_bootstrap_message: &mut BootstrapClientMessage,
     global_bootstrap_state: &mut GlobalBootstrapState,
     our_version: Version,
-) -> Result<(), BootstrapError> {
+) -> Result<(), (Option<BootstrapClientBinder>, BootstrapError)> {
     massa_trace!("bootstrap.lib.bootstrap_from_server", {});
 
-    // read error (if sent by the server)
-    // client.next() is not cancel-safe but we drop the whole client object if cancelled => it's OK
-    match client.next_timeout(Some(cfg.read_error_timeout.to_duration())) {
-        Err(BootstrapError::TimedOut(_)) => {
-            massa_trace!(
-                "bootstrap.lib.bootstrap_from_server: No error sent at connection",
-                {}
-            );
-        }
-        Err(e) => return Err(e),
-        Ok(BootstrapServerMessage::BootstrapError { error: err }) => {
-            return Err(BootstrapError::ReceivedError(err))
-        }
-        Ok(msg) => return Err(BootstrapError::UnexpectedServerMessage(msg)),
-    };
-
     // handshake
-    let send_time_uncompensated = MassaTime::now()?;
-    // client.handshake() is not cancel-safe but we drop the whole client object if cancelled => it's OK
-    client.handshake(our_version)?;
+    let send_time_uncompensated = MassaTime::now().map_err(|e| (None, e.into()))?;
 
-    // compute ping
-    let ping = MassaTime::now()?.saturating_sub(send_time_uncompensated);
+    let (mut client, ping) = client
+        .handshake(our_version, cfg.read_error_timeout.to_duration())
+        .map_err(|e| (None, e.into()))?;
+
     if ping > cfg.max_ping {
-        return Err(BootstrapError::GeneralError(
-            "bootstrap ping too high".into(),
+        return Err((
+            Some(client),
+            BootstrapError::GeneralError("bootstrap ping too high".into()),
         ));
     }
 
     // First, clock and version.
-    // client.next() is not cancel-safe but we drop the whole client object if cancelled => it's OK
+    // client.next_timeout() is not cancel-safe but we drop the whole client object if cancelled => it's OK
     let server_time = match client.next_timeout(Some(cfg.read_timeout.into())) {
-        Err(e) => return Err(e),
+        Err(e) => return Err((Some(client), e)),
         Ok(BootstrapServerMessage::BootstrapTime {
             server_time,
             version,
         }) => {
             if !our_version.is_compatible(&version) {
-                return Err(BootstrapError::IncompatibleVersionError(format!(
-                    "remote is running incompatible version: {} (local node version: {})",
-                    version, our_version
-                )));
+                return Err((
+                    Some(client),
+                    BootstrapError::IncompatibleVersionError(format!(
+                        "remote is running incompatible version: {} (local node version: {})",
+                        version, our_version
+                    )),
+                ));
             }
             server_time
         }
         Ok(BootstrapServerMessage::BootstrapError { error }) => {
-            return Err(BootstrapError::ReceivedError(error))
+            return Err((Some(client), BootstrapError::ReceivedError(error)))
         }
-        Ok(msg) => return Err(BootstrapError::UnexpectedServerMessage(msg)),
+        Ok(msg) => return Err((Some(client), BootstrapError::UnexpectedServerMessage(msg))),
     };
 
     // get the time of reception
-    let recv_time = MassaTime::now()?;
+    let recv_time = match MassaTime::now() {
+        Ok(now) => now,
+        Err(e) => return Err((Some(client), e.into())),
+    };
 
     // compute ping
     let ping = recv_time.saturating_sub(send_time_uncompensated);
     if ping > cfg.max_ping {
-        return Err(BootstrapError::GeneralError(
-            "bootstrap ping too high".into(),
+        return Err((
+            Some(client),
+            BootstrapError::GeneralError("bootstrap ping too high".into()),
         ));
     }
 
     // compute client / server clock delta
     // div 2 is an approximation of the time it took the message to do server -> client
     // the complete ping value being client -> server -> client
-    let adjusted_server_time = server_time.checked_add(ping.checked_div_u64(2)?)?;
+    let adjusted_server_time = match server_time.checked_add(match ping.checked_div_u64(2) {
+        Ok(adjusted_server_time) => adjusted_server_time,
+        Err(e) => return Err((Some(client), e.into())),
+    }) {
+        Ok(adjusted_server_time) => adjusted_server_time,
+        Err(e) => return Err((Some(client), e.into())),
+    };
     let clock_delta = adjusted_server_time.abs_diff(recv_time);
 
     // if clock delta is too high warn the user and restart bootstrap
@@ -268,7 +266,7 @@ fn bootstrap_from_server(
             "client = {}, server = {}, ping = {}, max_delta = {}",
             recv_time, server_time, ping, cfg.max_clock_delta
         );
-        return Err(BootstrapError::ClockError(message));
+        return Err((Some(client), BootstrapError::ClockError(message)));
     }
 
     let write_timeout: std::time::Duration = cfg.write_timeout.into();
@@ -276,43 +274,59 @@ fn bootstrap_from_server(
     loop {
         match next_bootstrap_message {
             BootstrapClientMessage::AskBootstrapPart { .. } => {
-                stream_final_state_and_consensus(
+                match stream_final_state_and_consensus(
                     cfg,
-                    client,
+                    &mut client,
                     next_bootstrap_message,
                     global_bootstrap_state,
-                )?;
+                ) {
+                    Ok(_) => (),
+                    Err(e) => return Err((Some(client), e.into())),
+                }
             }
             BootstrapClientMessage::AskBootstrapPeers => {
-                let peers = match send_client_message(
+                let peers = match match send_client_message(
                     next_bootstrap_message,
-                    client,
+                    &mut client,
                     write_timeout,
                     cfg.read_timeout.into(),
                     "ask bootstrap peers timed out",
-                )? {
+                ) {
+                    Ok(peers) => peers,
+                    Err(e) => return Err((Some(client), e.into())),
+                } {
                     BootstrapServerMessage::BootstrapPeers { peers } => peers,
                     BootstrapServerMessage::BootstrapError { error } => {
-                        return Err(BootstrapError::ReceivedError(error))
+                        return Err((Some(client), BootstrapError::ReceivedError(error)))
                     }
-                    other => return Err(BootstrapError::UnexpectedServerMessage(other)),
+                    other => {
+                        return Err((Some(client), BootstrapError::UnexpectedServerMessage(other)))
+                    }
                 };
                 global_bootstrap_state.peers = Some(peers);
                 *next_bootstrap_message = BootstrapClientMessage::AskBootstrapMipStore;
             }
             BootstrapClientMessage::AskBootstrapMipStore => {
-                let mip_store_raw: MipStoreRaw = match send_client_message(
+                let mip_store_raw = match send_client_message(
                     next_bootstrap_message,
-                    client,
+                    &mut client,
                     write_timeout,
                     cfg.read_timeout.into(),
                     "ask bootstrap versioning store timed out",
-                )? {
-                    BootstrapServerMessage::BootstrapMipStore { store: store_raw } => store_raw,
-                    BootstrapServerMessage::BootstrapError { error } => {
-                        return Err(BootstrapError::ReceivedError(error))
-                    }
-                    other => return Err(BootstrapError::UnexpectedServerMessage(other)),
+                ) {
+                    Err(e) => return Err((Some(client), e.into())),
+                    Ok(msg) => match msg {
+                        BootstrapServerMessage::BootstrapMipStore { store: store_raw } => store_raw,
+                        BootstrapServerMessage::BootstrapError { error } => {
+                            return Err((Some(client), BootstrapError::ReceivedError(error)));
+                        }
+                        other => {
+                            return Err((
+                                Some(client),
+                                BootstrapError::UnexpectedServerMessage(other),
+                            ));
+                        }
+                    },
                 };
 
                 global_bootstrap_state.mip_store =
@@ -320,7 +334,9 @@ fn bootstrap_from_server(
                 *next_bootstrap_message = BootstrapClientMessage::BootstrapSuccess;
             }
             BootstrapClientMessage::BootstrapSuccess => {
-                client.send_timeout(next_bootstrap_message, Some(write_timeout))?;
+                client
+                    .send_timeout(next_bootstrap_message, Some(write_timeout))
+                    .map_err(|e| (Some(client), e.into()))?;
                 break;
             }
             BootstrapClientMessage::BootstrapError { error: _ } => {
@@ -356,10 +372,10 @@ fn connect_to_server(
     bootstrap_config: &BootstrapConfig,
     addr: &SocketAddr,
     pub_key: &PublicKey,
-) -> Result<BootstrapClientBinder, BootstrapError> {
+) -> Result<NonHSClientBinder, BootstrapError> {
     let socket = connector.connect_timeout(*addr, Some(bootstrap_config.connect_timeout))?;
     socket.set_nonblocking(false)?;
-    Ok(BootstrapClientBinder::new(
+    Ok(NonHSClientBinder::new(
         socket,
         *pub_key,
         bootstrap_config.into(),
@@ -462,21 +478,25 @@ pub async fn get_state(
                 }
             }
             info!("Start bootstrapping from {}", addr);
-            match connect_to_server(
+            let conn = connect_to_server(
                 &mut connector,
                 bootstrap_config,
                 addr,
                 &node_id.get_public_key(),
-            ) {
-                Ok(mut client) => {
-                    match bootstrap_from_server(bootstrap_config, &mut client, &mut next_bootstrap_message, &mut global_bootstrap_state,version)
+            );
+            match conn {
+                Ok(client) => {
+                    match bootstrap_from_server(bootstrap_config, client, &mut next_bootstrap_message, &mut global_bootstrap_state,version)
                       // cancellable
                     {
-                        Err(BootstrapError::ReceivedError(error)) => warn!("Error received from bootstrap server: {}", error),
-                        Err(e) => {
+                        Err((Some(_client), BootstrapError::ReceivedError(error))) => warn!("Error received from bootstrap server: {}", error),
+                        Err((Some(mut client), e)) => {
                             warn!("Error while bootstrapping: {}", e);
                             // We allow unused result because we don't care if an error is thrown when sending the error message to the server we will close the socket anyway.
                             let _ = client.send_timeout(&BootstrapClientMessage::BootstrapError { error: e.to_string() }, Some(bootstrap_config.write_error_timeout.into()));
+                        }
+                        Err((None, e)) => {
+                            warn!("Error while bootstrapping: {}", e);
                         }
                         Ok(()) => {
                             return Ok(global_bootstrap_state)
