@@ -70,7 +70,7 @@ pub enum BootstrapError {
 ///
 /// Platforms may return a different error code whenever a read times out as
 /// a result of setting this option. For example Unix typically returns an
-/// error of the kind [`WouldBlock`], but Windows may return [`TimedOut`].)
+/// error of the kind [`ErrorKind::WouldBlock`], but Windows may return [`ErrorKind::TimedOut`].)
 impl From<std::io::Error> for BootstrapError {
     fn from(e: std::io::Error) -> Self {
         if e.kind() == ErrorKind::TimedOut || e.kind() == ErrorKind::WouldBlock {
