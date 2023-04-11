@@ -71,7 +71,7 @@ fn test_binders() {
     let client = std::net::TcpStream::connect(addr).unwrap();
     let server = server.accept().unwrap();
     server.0.set_nonblocking(true).unwrap();
-    // let (client, server) = duplex(1000000);
+
     let mut server = BootstrapServerBinder::new(
         mio::net::TcpStream::from_std(server.0),
         server_keypair.clone(),

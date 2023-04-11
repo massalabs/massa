@@ -15,7 +15,6 @@ use massa_models::{
     operation::{OperationPrefixIds, SecureShareOperation},
     stats::NetworkStats,
 };
-use mockall::{automock, mock};
 use std::{
     collections::{HashMap, VecDeque},
     net::IpAddr,
@@ -32,7 +31,9 @@ use tracing::{info, warn};
 /// Network command sender
 #[derive(Debug, Clone)]
 pub struct NetworkCommandSender(pub mpsc::Sender<NetworkCommand>);
-mock! {
+
+#[cfg(any(test, feature = "testing"))]
+mockall::mock! {
     pub NetworkCommandSender{}
     impl Clone for NetworkCommandSender {
         fn clone(&self) -> Self;
@@ -102,7 +103,7 @@ mock! {
     }
 }
 
-#[automock]
+#[cfg_attr(test, mockall::automock)]
 #[async_trait]
 /// Network command sender interface. Can be mocked for testing
 pub trait NetworkCommandSenderTrait: Send + 'static {

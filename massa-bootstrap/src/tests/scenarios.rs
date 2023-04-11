@@ -3,7 +3,6 @@
 use super::tools::{
     get_boot_state, get_peers, get_random_final_state_bootstrap, get_random_ledger_changes,
 };
-use crate::error::BootstrapError;
 use crate::tests::tools::{
     get_random_async_pool_changes, get_random_executed_ops_changes, get_random_pos_changes,
 };
@@ -35,6 +34,7 @@ use massa_models::{
     },
     prehash::PreHashSet,
 };
+#[cfg(any(test, feature = "testing"))]
 use massa_network_exports::MockNetworkCommandSender;
 use massa_pos_exports::{
     test_exports::assert_eq_pos_selection, PoSConfig, PoSFinalState, SelectorConfig,
@@ -160,27 +160,14 @@ fn test_bootstrap_server() {
         .unwrap(),
         final_state_local_config,
     )));
+
+    // setup final state mocks.
+    // TODO: work out a way to handle the clone shenanigans in a cleaner manner
     let final_state_client_clone = final_state_client.clone();
     let final_state_server_clone1 = final_state_server.clone();
     let final_state_server_clone2 = final_state_server.clone();
 
     let (mock_bs_listener, mock_remote_connector) = conn_establishment_mocks();
-    // // start bootstrap server
-    // let (mut mock_bs_listener, bootstrap_interface) = mock_establisher::new();
-    // let bootstrap_manager = start_bootstrap_server::<TcpStream>(
-    //     consensus_controller,
-    //     NetworkCommandSender(network_cmd_tx),
-    //     final_state_server.clone(),
-    //     bootstrap_config.clone(),
-    //     mock_bs_listener
-    //         .get_listener(&bootstrap_config.listen_addr.unwrap())
-    //         .unwrap(),
-    //     keypair.clone(),
-    //     Version::from_str("TEST.1.10").unwrap(),
-    //     mip_store.clone(),
-    // )
-    // .unwrap()
-    // .unwrap();
 
     // Setup network command mock-story: hard-code the result of getting bootstrap peers
     let mut mocked1 = MockNetworkCommandSender::new();
@@ -271,10 +258,6 @@ fn test_bootstrap_server() {
         })
         .unwrap();
 
-    // mock_remote_connector
-    //     .expect_connect_timeout()
-    //     .times(1)
-    //     .returning(|_, _| todo!());
     // launch the get_state process
     let bootstrap_res = massa_network_exports::make_runtime()
         .block_on(get_state(

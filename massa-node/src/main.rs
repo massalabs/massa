@@ -633,7 +633,7 @@ async fn launch(
     // launch bootstrap server
     // TODO: use std::net::TcpStream
     let bootstrap_manager = match bootstrap_config.listen_addr {
-        Some(addr) => start_bootstrap_server::<NetworkCommandSender>(
+        Some(addr) => start_bootstrap_server::<DefaultListener, NetworkCommandSender>(
             consensus_controller.clone(),
             network_command_sender.clone(),
             final_state.clone(),
