@@ -23,6 +23,7 @@ use peernet::{
     types::Hash,
     types::{KeyPair, Signature},
 };
+use tracing::info;
 
 use crate::handlers::peer_handler::{messages::PeerManagementMessage, tester::Tester};
 
@@ -102,11 +103,8 @@ impl PeerManagementHandler {
                         recv(receiver_cmd) -> cmd => {
                            match cmd {
                              Ok(PeerManagementCmd::BAN(peer_id)) => {
-                                // set peer state to banned
-                                peer_db.write().peers.get_mut(&peer_id).unwrap().state = PeerState::Banned;
-                                println!("Banning peer: {:?}", peer_id);
-
-                                // should disconnect it ?
+                                peer_db.write().ban_peer(&peer_id);
+                                // should disconnect peer ?
                              },
                             Err(_) => {
                                     println!("Error");
@@ -148,6 +146,13 @@ impl PeerManagementHandler {
             sender,
             sender_cmd,
         )
+    }
+}
+
+impl PeerDB {
+    fn ban_peer(&mut self, peer_id: &PeerId) {
+        self.peers.get_mut(peer_id).unwrap().state = PeerState::Banned;
+        info!("Banned peer: {:?}", peer_id);
     }
 }
 
