@@ -122,16 +122,12 @@ pub fn start_connectivity_thread(
                     // Check if we need to connect to peers
                     let nb_connection_to_try = {
                         let active_connections = manager.active_connections.read();
-                        let connection_to_try = active_connections.max_out_connections - active_connections.nb_out_connections;
-                        if connection_to_try <= 0 {
-                            continue;
-                        }
-                       connection_to_try
+                        active_connections.max_out_connections - active_connections.nb_out_connections
                     };
                     // Get the best peers
                     {
                         let peer_db_read = peer_manager_handler.peer_db.read();
-                        let best_peers = peer_db_read.index_by_newest.iter().take(nb_connection_to_try as usize);
+                        let best_peers = peer_db_read.index_by_newest.iter().take(nb_connection_to_try);
                         for (_timestamp, peer_id) in best_peers {
                             let peer_info = peer_db_read.peers.get(peer_id).unwrap();
                             if peer_info.last_announce.listeners.is_empty() {

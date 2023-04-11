@@ -125,13 +125,13 @@ impl PeerManagementHandler {
                             match message {
                                 PeerManagementMessage::NewPeerConnected((_peer_id, listeners)) => {
                                     for listener in listeners.into_iter() {
-                                        let _tester = Tester::new(peer_db.clone(), listener.clone());
+                                        let _tester = Tester::new(peer_db.clone(), listener);
                                     }
                                 }
                                 PeerManagementMessage::ListPeers(peers) => {
                                     for (_peer_id, listeners) in peers.into_iter() {
                                         for listener in listeners.into_iter() {
-                                            let _tester = Tester::new(peer_db.clone(), listener.clone());
+                                            let _tester = Tester::new(peer_db.clone(), listener);
                                         }
                                     }
                                 }
