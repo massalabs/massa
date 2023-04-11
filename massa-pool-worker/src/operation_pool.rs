@@ -11,7 +11,7 @@ use massa_models::{
 use massa_pool_exports::{PoolChannels, PoolConfig};
 use massa_storage::Storage;
 use std::collections::BTreeSet;
-use tracing::debug;
+use tracing::{debug, trace};
 
 use crate::types::{OperationInfo, PoolOperationCursor};
 
@@ -127,7 +127,7 @@ impl OperationPool {
                 // Broadcast operation to active sender(channel) subscribers.
                 if self.config.broadcast_enabled {
                     if let Err(err) = self.channels.operation_sender.send(op.clone()) {
-                        debug!(
+                        trace!(
                             "error trying to broadcast operation with id {} due to: {}",
                             op.id.clone(),
                             err

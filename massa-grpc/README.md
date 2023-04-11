@@ -8,6 +8,7 @@ To check if you have `protoc` installed on your system, you can run the followin
 
 ```
 protoc --version
+libprotoc 3.21.12 # Ensure compiler version is 3.15+
 ```
 
 If you see a version number printed out, then you have `protoc` installed. If not, you will need to download and install it.
@@ -21,7 +22,7 @@ To install `protoc` on macOS using Homebrew, run the following command:
 
 ```
 brew install protobuf
-protoc --version  # Ensure compiler version is 3+
+protoc --version  # Ensure compiler version is 3.15+
 ```
 
 ### Linux
@@ -32,7 +33,7 @@ Alternatively, you can use your distribution's package manager to install `proto
 
 ```
 sudo apt install protobuf-compiler
-protoc --version  # Ensure compiler version is 3+
+protoc --version  # Ensure compiler version is 3.15+
 ```
 
 ### Windows
