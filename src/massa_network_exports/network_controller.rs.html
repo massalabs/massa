@@ -452,7 +452,6 @@
 <a href="#452" id="452">452</a>
 <a href="#453" id="453">453</a>
 <a href="#454" id="454">454</a>
-<a href="#455" id="455">455</a>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="kw">use crate</span>::{
@@ -470,8 +469,7 @@
     operation::{OperationPrefixIds, SecureShareOperation},
     stats::NetworkStats,
 };
-<span class="attr">#[cfg(test)]
-</span><span class="kw">use </span>mockall::{automock, mock};
+
 <span class="kw">use </span>std::{
     collections::{HashMap, VecDeque},
     net::IpAddr,
@@ -560,7 +558,7 @@
     }
 }
 
-<span class="attr">#[cfg_attr(test, automock)]
+<span class="attr">#[cfg_attr(any(test, feature = <span class="string">&quot;testing&quot;</span>), mockall::automock)]
 #[async_trait]
 </span><span class="doccomment">/// Network command sender interface. Can be mocked for testing
 </span><span class="kw">pub trait </span>NetworkCommandSenderTrait: Send + <span class="lifetime">&#39;static </span>{
