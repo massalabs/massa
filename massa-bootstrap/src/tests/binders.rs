@@ -70,7 +70,7 @@ fn test_binders() {
     let addr = server.local_addr().unwrap();
     let client = std::net::TcpStream::connect(addr).unwrap();
     let server = server.accept().unwrap();
-    // let (client, server) = duplex(1000000);
+
     let mut server = BootstrapServerBinder::new(
         server.0,
         server_keypair.clone(),
