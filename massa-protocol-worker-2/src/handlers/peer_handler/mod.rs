@@ -23,7 +23,7 @@ use peernet::{
     types::Hash,
     types::{KeyPair, Signature},
 };
-use tracing::info;
+use tracing::log::{info, warn};
 
 use crate::handlers::peer_handler::{messages::PeerManagementMessage, tester::Tester};
 
@@ -49,17 +49,13 @@ pub struct PeerDB {
 
 pub type SharedPeerDB = Arc<RwLock<PeerDB>>;
 
-pub struct PeerManagementHandler {
-    pub peer_db: SharedPeerDB,
-    pub thread_join: Option<JoinHandle<()>>,
-}
-
 pub struct PeerInfo {
     pub last_announce: Announcement,
     pub state: PeerState,
 }
 
 #[warn(dead_code)]
+#[derive(Eq, PartialEq)]
 pub enum PeerState {
     Connected,
     InHandshake,
@@ -69,6 +65,11 @@ pub enum PeerState {
 #[warn(dead_code)]
 pub enum PeerManagementCmd {
     BAN(PeerId),
+}
+
+pub struct PeerManagementHandler {
+    pub peer_db: SharedPeerDB,
+    pub thread_join: Option<JoinHandle<()>>,
 }
 
 impl PeerManagementHandler {
@@ -85,17 +86,7 @@ impl PeerManagementHandler {
         ) = crossbeam::channel::unbounded();
         let (sender_cmd, receiver_cmd): (Sender<PeerManagementCmd>, Receiver<PeerManagementCmd>) =
             crossbeam::channel::unbounded();
-        for (peer_id, listeners) in &initial_peers {
-            println!("Sending initial peer: {:?}", peer_id);
-            sender
-                .send((
-                    peer_id.clone(),
-                    0,
-                    PeerManagementMessage::NewPeerConnected((peer_id.clone(), listeners.clone()))
-                        .to_bytes(),
-                ))
-                .unwrap();
-        }
+
         let peer_db: SharedPeerDB = Arc::new(RwLock::new(Default::default()));
         let thread_join = std::thread::spawn({
             let peer_db = peer_db.clone();
@@ -110,12 +101,21 @@ impl PeerManagementHandler {
                                 // should disconnect peer ?
                              },
                             Err(_) => {
-                                    println!("Error");
+                                println!("Error");
                             }
                            }
                         },
                         recv(receiver) -> msg => {
                             let (peer_id, message_id, message) = msg.unwrap();
+
+                            // check if peer is banned
+                            if let Some(peer) = peer_db.read().peers.get(&peer_id) {
+                                if peer.state == PeerState::Banned {
+                                    warn!("Banned peer tried to connect: {:?}", peer_id);
+                                    continue;
+                                }
+                            }
+
                             println!("Received message len: {}", message.len());
                             let message = PeerManagementMessage::from_bytes(message_id, &message).unwrap();
                             println!("Received message from peer: {:?}", peer_id);
