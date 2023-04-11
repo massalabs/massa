@@ -167,8 +167,12 @@ impl PeerManagementHandler {
 
 impl PeerDB {
     fn ban_peer(&mut self, peer_id: &PeerId) {
-        self.peers.get_mut(peer_id).unwrap().state = PeerState::Banned;
-        info!("Banned peer: {:?}", peer_id);
+        if let Some(peer) = self.peers.get_mut(peer_id) {
+            peer.state = PeerState::Banned;
+            info!("Banned peer: {:?}", peer_id);
+        } else {
+            info!("Tried to ban unknown peer: {:?}", peer_id);
+        };
     }
 }
 
