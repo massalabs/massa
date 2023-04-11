@@ -10,6 +10,7 @@ use crossbeam::{
     channel::{Receiver, Sender},
     select,
 };
+use massa_protocol_exports_2::ProtocolError;
 use massa_serialization::{DeserializeError, Deserializer, Serializer};
 use parking_lot::RwLock;
 use rand::{rngs::StdRng, RngCore, SeedableRng};
@@ -23,7 +24,7 @@ use peernet::{
     types::Hash,
     types::{KeyPair, Signature},
 };
-use tracing::log::{info, warn};
+use tracing::log::{error, info, warn};
 
 use crate::handlers::peer_handler::{messages::PeerManagementMessage, tester::Tester};
 
@@ -64,7 +65,7 @@ pub enum PeerState {
 
 #[warn(dead_code)]
 pub enum PeerManagementCmd {
-    BAN(PeerId),
+    Ban(PeerId),
 }
 
 pub struct PeerManagementHandler {
@@ -96,12 +97,17 @@ impl PeerManagementHandler {
                         // internal command
                         recv(receiver_cmd) -> cmd => {
                            match cmd {
-                             Ok(PeerManagementCmd::BAN(peer_id)) => {
+                             Ok(PeerManagementCmd::Ban(peer_id)) => {
+
+                                // remove runing handshake ?
+
+                                // close peer connection ?
+
+                                // update peer_db
                                 peer_db.write().ban_peer(&peer_id);
-                                // should disconnect peer ?
                              },
-                            Err(_) => {
-                                println!("Error");
+                            Err(e) => {
+                                error!("error receiving command: {:?}", e);
                             }
                            }
                         },
@@ -173,6 +179,11 @@ impl PeerDB {
         } else {
             info!("Tried to ban unknown peer: {:?}", peer_id);
         };
+    }
+
+    // Flush PeerDB to disk ?
+    fn flush(&self) -> Result<(), ProtocolError> {
+        unimplemented!()
     }
 }
 
