@@ -55,6 +55,14 @@ pub struct PeerManagementHandler {
 
 pub struct PeerInfo {
     pub last_announce: Announcement,
+    pub state: PeerState,
+}
+
+#[warn(dead_code)]
+pub enum PeerState {
+    Connected,
+    InHandshake,
+    Banned,
 }
 
 #[warn(dead_code)]
@@ -94,8 +102,11 @@ impl PeerManagementHandler {
                         recv(receiver_cmd) -> cmd => {
                            match cmd {
                              Ok(PeerManagementCmd::BAN(peer_id)) => {
-                                // TODO ban peer
-                                 println!("Banning peer: {:?}", peer_id);
+                                // set peer state to banned
+                                peer_db.write().peers.get_mut(&peer_id).unwrap().state = PeerState::Banned;
+                                println!("Banning peer: {:?}", peer_id);
+
+                                // should disconnect it ?
                              },
                             Err(_) => {
                                     println!("Error");
@@ -168,6 +179,7 @@ impl HandshakeHandler for MassaHandshake {
         listeners: &HashMap<SocketAddr, TransportType>,
         messages_handler: MassaMessagesHandler,
     ) -> PeerNetResult<PeerId> {
+        // TODO set peer state to InHandshake ?
         let mut bytes = PeerId::from_public_key(keypair.get_public_key()).to_bytes();
         //TODO: Add version in announce
         let listeners_announcement = Announcement::new(listeners.clone(), keypair).unwrap();

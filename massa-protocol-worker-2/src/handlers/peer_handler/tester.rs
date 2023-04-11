@@ -62,6 +62,8 @@ impl HandshakeHandler for TesterHandshake {
         _: &HashMap<SocketAddr, TransportType>,
         _: TesterMessagesHandler,
     ) -> PeerNetResult<PeerId> {
+        // TODO set the peer state to InHandshake
+
         let data = endpoint.receive()?;
         let peer_id = PeerId::from_bytes(&data[..32].try_into().unwrap())?;
         let (_, announcement) = self
@@ -96,6 +98,7 @@ impl HandshakeHandler for TesterHandshake {
                 })
                 .or_insert(PeerInfo {
                     last_announce: announcement,
+                    state: super::PeerState::Connected,
                 });
         }
         Ok(peer_id)
