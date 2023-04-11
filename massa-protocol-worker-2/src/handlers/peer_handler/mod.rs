@@ -79,7 +79,10 @@ impl PeerManagementHandler {
         Sender<(PeerId, u64, Vec<u8>)>,
         Sender<PeerManagementCmd>,
     ) {
-        let (sender, receiver) = crossbeam::channel::unbounded();
+        let (sender, receiver): (
+            Sender<(PeerId, u64, Vec<u8>)>,
+            Receiver<(PeerId, u64, Vec<u8>)>,
+        ) = crossbeam::channel::unbounded();
         let (sender_cmd, receiver_cmd): (Sender<PeerManagementCmd>, Receiver<PeerManagementCmd>) =
             crossbeam::channel::unbounded();
         for (peer_id, listeners) in &initial_peers {
@@ -138,6 +141,19 @@ impl PeerManagementHandler {
                 }
             }
         });
+
+        for (peer_id, listeners) in &initial_peers {
+            println!("Sending initial peer: {:?}", peer_id);
+            sender
+                .send((
+                    peer_id.clone(),
+                    0,
+                    PeerManagementMessage::NewPeerConnected((peer_id.clone(), listeners.clone()))
+                        .to_bytes(),
+                ))
+                .unwrap();
+        }
+
         (
             Self {
                 peer_db,
