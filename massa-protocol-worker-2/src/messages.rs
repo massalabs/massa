@@ -2,7 +2,6 @@ use crossbeam::channel::Sender;
 use massa_serialization::{
     DeserializeError, Deserializer, Serializer, U64VarIntDeserializer, U64VarIntSerializer,
 };
-use num_enum::{IntoPrimitive, TryFromPrimitive};
 use peernet::{
     error::{PeerNetError, PeerNetResult},
     messages::{
@@ -50,13 +49,25 @@ impl From<PeerManagementMessage> for Message {
     }
 }
 
-#[derive(IntoPrimitive, TryFromPrimitive)]
-#[repr(u64)]
-pub enum MessageCategoryId {
-    BlockHandler = 0,
-    EndorsementHandler = 3,
-    OperationHandler = 4,
-    PeerHandler = 7,
+impl Message {
+    //TODO: Macroize get_id and max_id
+    fn get_id(&self) -> u64 {
+        match self {
+            Message::BlockMessage(message) => message.get_id() as u64,
+            Message::EndorsementMessage(message) => {
+                message.get_id() as u64 + BlockMessage::max_id()
+            }
+            Message::OperationMessage(message) => {
+                message.get_id() as u64 + BlockMessage::max_id() + EndorsementMessage::max_id()
+            }
+            Message::PeerManagementMessage(message) => {
+                message.get_id() as u64
+                    + BlockMessage::max_id()
+                    + EndorsementMessage::max_id()
+                    + OperationMessage::max_id()
+            }
+        }
+    }
 }
 
 pub struct MessagesSerializer {
@@ -114,56 +125,14 @@ impl MessagesSerializer {
 impl PeerNetMessagesSerializer<Message> for MessagesSerializer {
     /// Serialize the id of a message
     fn serialize_id(&self, message: &Message, buffer: &mut Vec<u8>) -> PeerNetResult<()> {
-        match message {
-            Message::BlockMessage(message) => self
-                .id_serializer
-                .serialize(
-                    &(MessageCategoryId::BlockHandler as u64 + message.get_id() as u64),
-                    buffer,
+        self.id_serializer
+            .serialize(&message.get_id(), buffer)
+            .map_err(|err| {
+                PeerNetError::HandlerError.error(
+                    "MessagesSerializer",
+                    Some(format!("Failed to serialize message id: {}", err)),
                 )
-                .map_err(|err| {
-                    PeerNetError::HandlerError.error(
-                        "MessagesSerializer",
-                        Some(format!("Failed to serialize message id: {}", err)),
-                    )
-                }),
-            Message::EndorsementMessage(message) => self
-                .id_serializer
-                .serialize(
-                    &(MessageCategoryId::EndorsementHandler as u64 + message.get_id() as u64),
-                    buffer,
-                )
-                .map_err(|err| {
-                    PeerNetError::HandlerError.error(
-                        "MessagesSerializer",
-                        Some(format!("Failed to serialize message id: {}", err)),
-                    )
-                }),
-            Message::OperationMessage(message) => self
-                .id_serializer
-                .serialize(
-                    &(MessageCategoryId::OperationHandler as u64 + message.get_id() as u64),
-                    buffer,
-                )
-                .map_err(|err| {
-                    PeerNetError::HandlerError.error(
-                        "MessagesSerializer",
-                        Some(format!("Failed to serialize message id: {}", err)),
-                    )
-                }),
-            Message::PeerManagementMessage(message) => self
-                .id_serializer
-                .serialize(
-                    &(MessageCategoryId::PeerHandler as u64 + message.get_id() as u64),
-                    buffer,
-                )
-                .map_err(|err| {
-                    PeerNetError::HandlerError.error(
-                        "MessagesSerializer",
-                        Some(format!("Failed to serialize message id: {}", err)),
-                    )
-                }),
-        }
+            })
     }
     /// Serialize the message
     fn serialize(&self, message: &Message, buffer: &mut Vec<u8>) -> PeerNetResult<()> {
@@ -264,31 +233,22 @@ impl PeerNetMessagesHandler for MessagesHandler {
     }
 
     fn handle(&self, id: u64, data: &[u8], peer_id: &PeerId) -> PeerNetResult<()> {
-        match id {
-            0..=2 => self
-                .sender_blocks
-                .send((
-                    peer_id.clone(),
-                    id - <MessageCategoryId as Into<u64>>::into(
-                        MessageCategoryId::BlockHandler.into(),
-                    ),
-                    data.to_vec(),
-                ))
+        let block_max_id = BlockMessage::max_id();
+        let endorsement_max_id = EndorsementMessage::max_id();
+        let operation_max_id = OperationMessage::max_id();
+        let peer_management_max_id = PeerManagementMessage::max_id();
+        if id < block_max_id {
+            self.sender_blocks
+                .send((peer_id.clone(), id, data.to_vec()))
                 .map_err(|err| {
                     PeerNetError::HandlerError.error(
                         "MessagesHandler",
                         Some(format!("Failed to send block message to channel: {}", err)),
                     )
-                }),
-            3 => self
-                .sender_endorsements
-                .send((
-                    peer_id.clone(),
-                    id - <MessageCategoryId as Into<u64>>::into(
-                        MessageCategoryId::EndorsementHandler.into(),
-                    ),
-                    data.to_vec(),
-                ))
+                })
+        } else if id < endorsement_max_id {
+            self.sender_endorsements
+                .send((peer_id.clone(), id - block_max_id, data.to_vec()))
                 .map_err(|err| {
                     PeerNetError::HandlerError.error(
                         "MessagesHandler",
@@ -297,14 +257,12 @@ impl PeerNetMessagesHandler for MessagesHandler {
                             err
                         )),
                     )
-                }),
-            4..=6 => self
-                .sender_operations
+                })
+        } else if id < operation_max_id {
+            self.sender_operations
                 .send((
                     peer_id.clone(),
-                    id - <MessageCategoryId as Into<u64>>::into(
-                        MessageCategoryId::OperationHandler.into(),
-                    ),
+                    id - (block_max_id + endorsement_max_id),
                     data.to_vec(),
                 ))
                 .map_err(|err| {
@@ -315,26 +273,28 @@ impl PeerNetMessagesHandler for MessagesHandler {
                             err
                         )),
                     )
-                }),
-            7..=8 => self
-                .sender_peers
+                })
+        } else if id < peer_management_max_id {
+            self.sender_peers
                 .send((
                     peer_id.clone(),
-                    id - <MessageCategoryId as Into<u64>>::into(
-                        MessageCategoryId::PeerHandler.into(),
-                    ),
+                    id - (block_max_id + endorsement_max_id + operation_max_id),
                     data.to_vec(),
                 ))
                 .map_err(|err| {
                     PeerNetError::HandlerError.error(
                         "MessagesHandler",
-                        Some(format!("Failed to send peer message to channel: {}", err)),
+                        Some(format!(
+                            "Failed to send peer management message to channel: {}",
+                            err
+                        )),
                     )
-                }),
-            _ => Err(PeerNetError::HandlerError.error(
+                })
+        } else {
+            Err(PeerNetError::HandlerError.error(
                 "MessagesHandler",
-                Some(format!("Invalid message id: {}", id)),
-            )),
+                Some(format!("Unknown message id: {}", id)),
+            ))
         }
     }
 }

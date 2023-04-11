@@ -26,6 +26,10 @@ impl PeerManagementMessage {
             PeerManagementMessage::ListPeers(_) => MessageTypeId::ListPeers,
         }
     }
+
+    pub fn max_id() -> u64 {
+        <MessageTypeId as Into<u64>>::into(MessageTypeId::ListPeers) + 1
+    }
 }
 
 #[derive(IntoPrimitive, Debug, Eq, PartialEq, TryFromPrimitive)]

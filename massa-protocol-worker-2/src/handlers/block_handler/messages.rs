@@ -61,6 +61,10 @@ impl BlockMessage {
             BlockMessage::ReplyForBlocks(_) => MessageTypeId::ReplyForBlocks,
         }
     }
+
+    pub fn max_id() -> u64 {
+        <MessageTypeId as Into<u64>>::into(MessageTypeId::ReplyForBlocks) + 1
+    }
 }
 
 #[derive(IntoPrimitive, Debug, Eq, PartialEq, TryFromPrimitive)]

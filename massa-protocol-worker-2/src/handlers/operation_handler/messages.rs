@@ -27,6 +27,10 @@ impl OperationMessage {
             OperationMessage::Operations(_) => MessageTypeId::Operations,
         }
     }
+
+    pub fn max_id() -> u64 {
+        <MessageTypeId as Into<u64>>::into(MessageTypeId::Operations) + 1
+    }
 }
 
 #[derive(IntoPrimitive, Debug, Eq, PartialEq, TryFromPrimitive)]

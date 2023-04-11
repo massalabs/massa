@@ -24,6 +24,10 @@ impl EndorsementMessage {
             EndorsementMessage::Endorsements(_) => MessageTypeId::Endorsements,
         }
     }
+
+    pub fn max_id() -> u64 {
+        <MessageTypeId as Into<u64>>::into(MessageTypeId::Endorsements) + 1
+    }
 }
 
 #[derive(IntoPrimitive, Debug, Eq, PartialEq, TryFromPrimitive)]
