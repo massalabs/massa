@@ -95,7 +95,7 @@ impl PeerManagementHandler {
                             // check if peer is banned
                             if let Some(peer) = peer_db.read().peers.get(&peer_id) {
                                 if peer.state == PeerState::Banned {
-                                    warn!("Banned peer tried to connect: {:?}", peer_id);
+                                    warn!("Banned peer sent us a message: {:?}", peer_id);
                                     continue;
                                 }
                             }
