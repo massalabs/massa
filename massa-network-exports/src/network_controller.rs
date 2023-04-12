@@ -39,67 +39,52 @@ mockall::mock! {
     impl Clone for NetworkCommandSender {
         fn clone(&self) -> Self;
     }
+
     #[async_trait]
     impl NetworkCommandSenderTrait for NetworkCommandSender {
     async fn node_ban_by_ids(&self, ids: Vec<NodeId>) -> Result<(), NetworkError>;
-
     async fn node_ban_by_ips(&self, ips: Vec<IpAddr>) -> Result<(), NetworkError>;
-
     async fn add_to_whitelist(&self, ips: Vec<IpAddr>) -> Result<(), NetworkError>;
-
     async fn remove_from_whitelist(&self, ips: Vec<IpAddr>) -> Result<(), NetworkError>;
-
     async fn node_unban_by_ids(&self, ids: Vec<NodeId>) -> Result<(), NetworkError>;
-
     async fn node_unban_ips(&self, ips: Vec<IpAddr>) -> Result<(), NetworkError>;
-
     async fn send_block_info(
         &self,
         node: NodeId,
         info: Vec<(BlockId, BlockInfoReply)>,
     ) -> Result<(), NetworkError>;
-
     async fn ask_for_block_list(
         &self,
         list: HashMap<NodeId, Vec<(BlockId, AskForBlocksInfo)>>,
     ) -> Result<(), NetworkError>;
-
     async fn send_block_header(
         &self,
         node: NodeId,
         header: SecuredHeader,
     ) -> Result<(), NetworkError>;
-
     async fn get_peers(&self) -> Result<Peers, NetworkError>;
-
     async fn get_network_stats(&self) -> Result<NetworkStats, NetworkError>;
-
     async fn get_bootstrap_peers(&self) -> Result<BootstrapPeers, NetworkError>;
-
     async fn send_operations(
         &self,
         node: NodeId,
         operations: Vec<SecureShareOperation>,
     ) -> Result<(), NetworkError>;
-
     async fn announce_operations(
         &self,
         to_node: NodeId,
         batch: OperationPrefixIds,
     ) -> Result<(), NetworkError>;
-
     async fn send_ask_for_operations(
         &self,
         to_node: NodeId,
         wishlist: OperationPrefixIds,
     ) -> Result<(), NetworkError>;
-
     async fn send_endorsements(
         &self,
         node: NodeId,
         endorsements: Vec<SecureShareEndorsement>,
     ) -> Result<(), NetworkError>;
-
     async fn node_sign_message(&self, msg: Vec<u8>) -> Result<PubkeySig, NetworkError>;
     }
 }
