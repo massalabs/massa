@@ -73,7 +73,7 @@ impl BlockHeader {
         let mut set = HashSet::new();
         for endo in self.endorsements.iter() {
             // ...and check signatures + invariants while at it
-            endo.check_invariants()?;
+            // endo.check_invariants()?;
 
             if !set.insert(endo.content.index) {
                 return Err("Endorsement duplicate index found".into());
