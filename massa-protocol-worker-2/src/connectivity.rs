@@ -68,8 +68,10 @@ pub fn start_connectivity_thread(
             id_deserializer: U64VarIntDeserializer::new(Included(0), Included(u64::MAX)),
         };
 
-        let mut peernet_config =
-            PeerNetConfiguration::default(MassaHandshake::new(), message_handlers);
+        let mut peernet_config = PeerNetConfiguration::default(
+            MassaHandshake::new(peer_management_handler.peer_db.clone()),
+            message_handlers,
+        );
         peernet_config.self_keypair = config.keypair;
         peernet_config.fallback_function = Some(&fallback_function);
         //TODO: Add the rest of the config

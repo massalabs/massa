@@ -156,11 +156,13 @@ impl PeerManagementHandler {
 pub struct MassaHandshake {
     pub announcement_serializer: AnnouncementSerializer,
     pub announcement_deserializer: AnnouncementDeserializer,
+    pub peer_db: SharedPeerDB,
 }
 
 impl MassaHandshake {
-    pub fn new() -> Self {
+    pub fn new(peer_db: SharedPeerDB) -> Self {
         Self {
+            peer_db,
             announcement_serializer: AnnouncementSerializer::new(),
             announcement_deserializer: AnnouncementDeserializer::new(
                 AnnouncementDeserializerArgs {
@@ -181,18 +183,6 @@ impl HandshakeHandler for MassaHandshake {
         messages_handler: MassaMessagesHandler,
     ) -> PeerNetResult<PeerId> {
         // TODO set peer state to InHandshake ?
-        let mut bytes = PeerId::from_public_key(keypair.get_public_key()).to_bytes();
-        //TODO: Add version in announce
-        let listeners_announcement = Announcement::new(listeners.clone(), keypair).unwrap();
-        self.announcement_serializer
-            .serialize(&listeners_announcement, &mut bytes)
-            .map_err(|err| {
-                PeerNetError::HandshakeError.error(
-                    "Massa Handshake",
-                    Some(format!("Failed to serialize announcement: {}", err)),
-                )
-            })?;
-        endpoint.send(&bytes)?;
 
         let received = endpoint.receive()?;
         if received.is_empty() {
@@ -202,68 +192,109 @@ impl HandshakeHandler for MassaHandshake {
             ));
         }
         let mut offset = 0;
-        //TODO: We use this to verify the signature before sending it to the handler.
-        //This will be done also in the handler but as we are in the handshake we want to do it to invalid the handshake in case it fails.
         let peer_id = PeerId::from_bytes(&received[offset..offset + 32].try_into().unwrap())?;
-        offset += 32;
-        let (_, announcement) = self
-            .announcement_deserializer
-            .deserialize::<DeserializeError>(&received[offset..])
-            .map_err(|err| {
-                PeerNetError::HandshakeError.error(
-                    "Massa Handshake",
-                    Some(format!("Failed to serialize announcement: {}", err)),
-                )
-            })?;
-        if peer_id
-            .verify_signature(&announcement.hash, &announcement.signature)
-            .is_err()
-        {
-            return Err(PeerNetError::HandshakeError
-                .error("Massa Handshake", Some("Invalid signature".to_string())));
+
+        let res = {
+            {
+                let mut peer_db_write = self.peer_db.write();
+                peer_db_write
+                    .peers
+                    .entry(peer_id.clone())
+                    .and_modify(|info| {
+                        info.state = PeerState::InHandshake;
+                    });
+            }
+
+            let mut bytes = PeerId::from_public_key(keypair.get_public_key()).to_bytes();
+            //TODO: Add version in announce
+            let listeners_announcement = Announcement::new(listeners.clone(), keypair).unwrap();
+            self.announcement_serializer
+                .serialize(&listeners_announcement, &mut bytes)
+                .map_err(|err| {
+                    PeerNetError::HandshakeError.error(
+                        "Massa Handshake",
+                        Some(format!("Failed to serialize announcement: {}", err)),
+                    )
+                })?;
+            endpoint.send(&bytes)?;
+
+            //TODO: We use this to verify the signature before sending it to the handler.
+            //This will be done also in the handler but as we are in the handshake we want to do it to invalid the handshake in case it fails.
+
+            offset += 32;
+            let (_, announcement) = self
+                .announcement_deserializer
+                .deserialize::<DeserializeError>(&received[offset..])
+                .map_err(|err| {
+                    PeerNetError::HandshakeError.error(
+                        "Massa Handshake",
+                        Some(format!("Failed to serialize announcement: {}", err)),
+                    )
+                })?;
+            if peer_id
+                .verify_signature(&announcement.hash, &announcement.signature)
+                .is_err()
+            {
+                return Err(PeerNetError::HandshakeError
+                    .error("Massa Handshake", Some("Invalid signature".to_string())));
+            }
+            let message =
+                PeerManagementMessage::NewPeerConnected((peer_id.clone(), announcement.listeners));
+            let mut bytes = Vec::new();
+            let peer_management_message_serializer = PeerManagementMessageSerializer::new();
+            peer_management_message_serializer
+                .serialize(&message, &mut bytes)
+                .map_err(|err| {
+                    PeerNetError::HandshakeError.error(
+                        "Massa Handshake",
+                        Some(format!("Failed to serialize announcement: {}", err)),
+                    )
+                })?;
+            messages_handler.handle(7, &bytes, &peer_id)?;
+
+            let mut self_random_bytes = [0u8; 32];
+            StdRng::from_entropy().fill_bytes(&mut self_random_bytes);
+            let self_random_hash = Hash::compute_from(&self_random_bytes);
+            let mut bytes = [0u8; 32];
+            bytes[..32].copy_from_slice(&self_random_bytes);
+
+            endpoint.send(&bytes)?;
+            let received = endpoint.receive()?;
+            let other_random_bytes: &[u8; 32] = received.as_slice()[..32].try_into().unwrap();
+
+            // sign their random bytes
+            let other_random_hash = Hash::compute_from(other_random_bytes);
+            let self_signature = keypair.sign(&other_random_hash).unwrap();
+
+            let mut bytes = [0u8; 64];
+            bytes.copy_from_slice(&self_signature.to_bytes());
+
+            endpoint.send(&bytes)?;
+            let received = endpoint.receive()?;
+
+            let other_signature =
+                Signature::from_bytes(received.as_slice().try_into().unwrap()).unwrap();
+
+            // check their signature
+            peer_id.verify_signature(&self_random_hash, &other_signature)?;
+
+            println!("Handshake finished");
+            Ok(peer_id.clone())
+        };
+
+        let mut peer_db_write = self.peer_db.write();
+        // if handshake failed, we set the peer state to HandshakeFailed
+        if res.is_err() {
+            peer_db_write.peers.entry(peer_id).and_modify(|info| {
+                info.state = PeerState::HandshakeFailed;
+            });
+        } else {
+            peer_db_write.peers.entry(peer_id).and_modify(|info| {
+                info.state = PeerState::HandshakeSuccess;
+            });
         }
-        let message =
-            PeerManagementMessage::NewPeerConnected((peer_id.clone(), announcement.listeners));
-        let mut bytes = Vec::new();
-        let peer_management_message_serializer = PeerManagementMessageSerializer::new();
-        peer_management_message_serializer
-            .serialize(&message, &mut bytes)
-            .map_err(|err| {
-                PeerNetError::HandshakeError.error(
-                    "Massa Handshake",
-                    Some(format!("Failed to serialize announcement: {}", err)),
-                )
-            })?;
-        messages_handler.handle(7, &bytes, &peer_id)?;
 
-        let mut self_random_bytes = [0u8; 32];
-        StdRng::from_entropy().fill_bytes(&mut self_random_bytes);
-        let self_random_hash = Hash::compute_from(&self_random_bytes);
-        let mut bytes = [0u8; 32];
-        bytes[..32].copy_from_slice(&self_random_bytes);
-
-        endpoint.send(&bytes)?;
-        let received = endpoint.receive()?;
-        let other_random_bytes: &[u8; 32] = received.as_slice()[..32].try_into().unwrap();
-
-        // sign their random bytes
-        let other_random_hash = Hash::compute_from(other_random_bytes);
-        let self_signature = keypair.sign(&other_random_hash).unwrap();
-
-        let mut bytes = [0u8; 64];
-        bytes.copy_from_slice(&self_signature.to_bytes());
-
-        endpoint.send(&bytes)?;
-        let received = endpoint.receive()?;
-
-        let other_signature =
-            Signature::from_bytes(received.as_slice().try_into().unwrap()).unwrap();
-
-        // check their signature
-        peer_id.verify_signature(&self_random_hash, &other_signature)?;
-
-        println!("Handshake finished");
-        Ok(peer_id)
+        res
     }
 }
 
