@@ -2,7 +2,7 @@
     socket_writer: &amp;mut <a class="struct" href="../binders/struct.WriteBinder.html" title="struct massa_network_worker::binders::WriteBinder">WriteBinder</a>,
     node_command_rx: &amp;mut Receiver&lt;<a class="enum" href="../../massa_network_exports/commands/enum.NodeCommand.html" title="enum massa_network_exports::commands::NodeCommand">NodeCommand</a>&gt;,
     write_timeout: MassaTime,
-    node_id: <a class="struct" href="../../massa_models/node/struct.NodeId.html" title="struct massa_models::node::NodeId">NodeId</a>,
+    node_id: NodeId,
     max_ask_blocks: <a class="primitive" href="https://doc.rust-lang.org/nightly/std/primitive.u32.html">u32</a>,
     max_operations_per_message: <a class="primitive" href="https://doc.rust-lang.org/nightly/std/primitive.u32.html">u32</a>,
     max_endorsements_per_message: <a class="primitive" href="https://doc.rust-lang.org/nightly/std/primitive.u32.html">u32</a>
