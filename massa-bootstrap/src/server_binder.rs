@@ -48,6 +48,7 @@ impl BootstrapServerBinder {
     #[allow(clippy::too_many_arguments)]
     pub fn new(duplex: TcpStream, local_keypair: KeyPair, cfg: BootstrapSrvBindCfg) -> Self {
         let BootstrapSrvBindCfg {
+            // TODO: Reintroduce bandwidth limits
             max_bytes_read_write: _limit,
             max_bootstrap_message_size,
             thread_count,
