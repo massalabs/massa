@@ -5,6 +5,8 @@ use std::thread;
 use crossbeam_channel::{select, Receiver};
 use tracing::{debug, info, warn};
 
+use crate::types::DenunciationsRequest;
+
 use massa_factory_exports::{FactoryChannels, FactoryConfig};
 use massa_models::address::Address;
 use massa_models::denunciation::{Denunciation, DenunciationPrecursor};
@@ -20,6 +22,7 @@ pub(crate) struct DenunciationFactoryWorker {
     factory_receiver: Receiver<()>,
     consensus_receiver: Receiver<DenunciationPrecursor>,
     endorsement_pool_receiver: Receiver<DenunciationPrecursor>,
+    block_factory_request: Receiver<DenunciationsRequest>,
     /// Internal cache for endorsement denunciation
     /// store at most 1 endorsement per entry, as soon as we have 2 we produce a Denunciation
     endorsements_by_slot_index: HashMap<(Slot, u32), EndorsementDenunciationStatus>,
@@ -36,6 +39,7 @@ impl DenunciationFactoryWorker {
         factory_receiver: Receiver<()>,
         consensus_receiver: Receiver<DenunciationPrecursor>,
         endorsement_pool_receiver: Receiver<DenunciationPrecursor>,
+        block_factory_request: Receiver<DenunciationsRequest>,
     ) -> thread::JoinHandle<()> {
         thread::Builder::new()
             .name("denunciation-factory".into())
@@ -46,6 +50,7 @@ impl DenunciationFactoryWorker {
                     factory_receiver,
                     consensus_receiver,
                     endorsement_pool_receiver,
+                    block_factory_request,
                     endorsements_by_slot_index: Default::default(),
                     block_header_by_slot: Default::default(),
                 };
@@ -115,7 +120,9 @@ impl DenunciationFactoryWorker {
                         let de_i_1: &DenunciationPrecursor = de_i_1_;
                         match Denunciation::try_from((de_i_1, &de_i_orig)) {
                             Ok(de) => {
-                                eo.insert(BlockHeaderDenunciationStatus::DenunciationEmitted);
+                                eo.insert(BlockHeaderDenunciationStatus::DenunciationEmitted(
+                                    de.clone(),
+                                ));
                                 Some(de)
                             }
                             Err(e) => {
@@ -124,7 +131,7 @@ impl DenunciationFactoryWorker {
                             }
                         }
                     }
-                    BlockHeaderDenunciationStatus::DenunciationEmitted => {
+                    BlockHeaderDenunciationStatus::DenunciationEmitted(_) => {
                         // Already 2 entries - so a Denunciation has already been created
                         None
                     }
@@ -142,7 +149,7 @@ impl DenunciationFactoryWorker {
                 denunciation
             );
 
-            self.channels.pool.add_denunciation(denunciation);
+            // self.channels.pool.add_denunciation(denunciation);
         }
 
         self.cleanup_cache();
@@ -214,7 +221,9 @@ impl DenunciationFactoryWorker {
                         let de_i_1: &DenunciationPrecursor = de_i_1_;
                         match Denunciation::try_from((de_i_1, &de_i_orig)) {
                             Ok(de) => {
-                                eo.insert(EndorsementDenunciationStatus::DenunciationEmitted);
+                                eo.insert(EndorsementDenunciationStatus::DenunciationEmitted(
+                                    de.clone(),
+                                ));
                                 Some(de)
                             }
                             Err(e) => {
@@ -223,7 +232,7 @@ impl DenunciationFactoryWorker {
                             }
                         }
                     }
-                    EndorsementDenunciationStatus::DenunciationEmitted => {
+                    EndorsementDenunciationStatus::DenunciationEmitted(_) => {
                         // A Denunciation has already been created, nothing to do here
                         None
                     }
@@ -240,7 +249,7 @@ impl DenunciationFactoryWorker {
                 "Created a new endorsement denunciation : {:?}",
                 denunciation
             );
-            self.channels.pool.add_denunciation(denunciation);
+            // self.channels.pool.add_denunciation(denunciation);
         }
 
         self.cleanup_cache();
@@ -262,6 +271,12 @@ impl DenunciationFactoryWorker {
                 self.cfg.denunciation_expire_periods,
             )
         });
+    }
+
+    fn get_denunciations_for_block_header(&mut self, _slot: Slot) -> Vec<Denunciation> {
+        // Next PR (after exec denunciations): send denunciations and not empty vec
+        // debug!("Send denunciations for block header at slot: {}", slot);
+        vec![]
     }
 
     /// main run loop of the denunciation creator thread
@@ -292,6 +307,20 @@ impl DenunciationFactoryWorker {
                         }
                     }
                 }
+                recv(self.block_factory_request) -> req_ => {
+                    match req_ {
+                        Ok(req) => {
+                            if let Err(e) = req.tx.send(self.get_denunciations_for_block_header(req.slot)) {
+                                warn!("Denunciation factory cannot send denunciations to block factory: {}", e);
+                                return;
+                            }
+                        }
+                        Err(e) => {
+                            warn!("Denunciation factory cannot receive from block factory request receiver: {}", e);
+                            break;
+                        }
+                    }
+                }
                 recv(self.factory_receiver) -> msg_ => {
                     if let Err(e) = msg_ {
                         debug!("Denunciation factory receive an error from factory receiver: {}", e);
@@ -307,11 +336,11 @@ impl DenunciationFactoryWorker {
 #[allow(clippy::large_enum_variant)]
 enum EndorsementDenunciationStatus {
     Accumulating(DenunciationPrecursor),
-    DenunciationEmitted,
+    DenunciationEmitted(Denunciation),
 }
 
 #[allow(clippy::large_enum_variant)]
 enum BlockHeaderDenunciationStatus {
     Accumulating(DenunciationPrecursor),
-    DenunciationEmitted,
+    DenunciationEmitted(Denunciation),
 }
