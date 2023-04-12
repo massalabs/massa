@@ -699,9 +699,9 @@
         </span><span class="kw">let </span><span class="kw-2">mut </span>set = HashSet::new();
         <span class="kw">for </span>endo <span class="kw">in </span><span class="self">self</span>.endorsements.iter() {
             <span class="comment">// ...and check signatures + invariants while at it
-            // endo.check_invariants()?;
+            </span>endo.check_invariants()<span class="question-mark">?</span>;
 
-            </span><span class="kw">if </span>!set.insert(endo.content.index) {
+            <span class="kw">if </span>!set.insert(endo.content.index) {
                 <span class="kw">return </span><span class="prelude-val">Err</span>(<span class="string">&quot;Endorsement duplicate index found&quot;</span>.into());
             }
         }
@@ -1037,8 +1037,8 @@
 
             <span class="comment">// TODO: gh-issue #3398
             </span><span class="attr">#[cfg(any(test, feature = <span class="string">&quot;testing&quot;</span>))]
-            </span><span class="comment">// res.assert_invariants().unwrap();
-            </span><span class="kw">return </span><span class="prelude-val">Ok</span>((
+            </span>res.assert_invariants().unwrap();
+            <span class="kw">return </span><span class="prelude-val">Ok</span>((
                 <span class="kw-2">&amp;</span>rest[<span class="number">2</span>..], <span class="comment">// Because there is 0 endorsements &amp; 0 denunciations, we have a remaining [0, 0] in rest and we don&#39;t need it
                 </span>res,
             ));
