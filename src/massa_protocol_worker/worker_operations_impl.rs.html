@@ -234,6 +234,7 @@
 <a href="#234" id="234">234</a>
 <a href="#235" id="235">235</a>
 <a href="#236" id="236">236</a>
+<a href="#237" id="237">237</a>
 </pre><pre class="rust"><code><span class="doccomment">//! Contains the implementation of the life cycle of operations
 //!
 //! Implement the propagation algorithm written here [redirect to GitHub]
@@ -253,6 +254,7 @@
     operation::{OperationPrefixIds, SecureShareOperation},
     prehash::CapacityAllocator,
 };
+<span class="kw">use </span>massa_network_exports::NetworkCommandSenderTrait;
 <span class="kw">use </span>massa_protocol_exports::ProtocolError;
 <span class="kw">use </span>massa_time::TimeError;
 <span class="kw">use </span>std::pin::Pin;
