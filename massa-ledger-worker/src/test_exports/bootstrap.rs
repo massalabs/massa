@@ -2,24 +2,25 @@
 
 use massa_ledger_exports::{LedgerConfig, LedgerController, LedgerEntry};
 use massa_models::address::Address;
-use std::collections::HashMap;
-use tempfile::TempDir;
+use parking_lot::RwLock;
+use rocksdb::DB;
+use std::{collections::HashMap, sync::Arc};
 
 use crate::{ledger_db::LedgerDB, FinalLedger};
 
 /// This file defines tools to test the ledger bootstrap
 
 pub fn create_final_ledger(
+    rocks_db_instance: Arc<RwLock<DB>>,
     config: LedgerConfig,
     initial_ledger: HashMap<Address, LedgerEntry>,
 ) -> FinalLedger {
-    let temp_dir = TempDir::new().unwrap();
+    // Create final ledger
     let mut db = LedgerDB::new(
-        temp_dir.path().to_path_buf(),
+        rocks_db_instance,
         config.thread_count,
         config.max_key_length,
         config.max_ledger_part_size,
-        false,
     );
     db.load_initial_ledger(initial_ledger);
     FinalLedger {

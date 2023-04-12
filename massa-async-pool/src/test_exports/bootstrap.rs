@@ -1,20 +1,23 @@
 // Copyright (c) 2022 MASSA LABS <info@massa.net>
 
-use std::{collections::BTreeMap, str::FromStr};
+use std::{collections::BTreeMap, str::FromStr, sync::Arc};
 
 use crate::{AsyncMessage, AsyncMessageId, AsyncPool, AsyncPoolConfig};
 use massa_models::{address::Address, amount::Amount, config::THREAD_COUNT, slot::Slot};
 use massa_signature::KeyPair;
+use parking_lot::RwLock;
 use rand::Rng;
+use rocksdb::DB;
 
 /// This file defines tools to test the asynchronous pool bootstrap
 
 /// Creates a `AsyncPool` from pre-set values
 pub fn create_async_pool(
+    db: Arc<RwLock<DB>>,
     config: AsyncPoolConfig,
     messages: BTreeMap<AsyncMessageId, AsyncMessage>,
 ) -> AsyncPool {
-    let mut async_pool = AsyncPool::new(config);
+    let mut async_pool = AsyncPool::new(config, db);
     async_pool.messages = messages;
     async_pool
 }

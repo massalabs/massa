@@ -10,6 +10,8 @@ serde = { version = "1.0", features = ["derive"] }
 nom = "7.1"
 thiserror = "1.0"
 tracing = "0.1"
+rocksdb = "0.20"
+parking_lot = { version = "0.12", features = ["deadlock_detection"] }
 # custom modules
 massa_ledger_exports = { path = "../massa-ledger-exports" }
 massa_ledger_worker = { path = "../massa-ledger-worker", optional = true }

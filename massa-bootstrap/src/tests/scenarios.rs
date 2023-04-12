@@ -112,6 +112,7 @@ async fn test_bootstrap_server() {
             max_length: MAX_ASYNC_POOL_LENGTH,
             max_async_message_data: MAX_ASYNC_MESSAGE_DATA,
             bootstrap_part_size: 100,
+            max_key_length: MAX_DATASTORE_KEY_LENGTH as u32,
         },
         pos_config: PoSConfig {
             periods_per_cycle,
@@ -345,11 +346,9 @@ async fn test_bootstrap_server() {
                 .pos_state
                 .apply_changes(change.pos_changes.clone(), *slot, false)
                 .unwrap();
-            final_state_server_write.ledger.apply_changes(
-                change.ledger_changes.clone(),
-                *slot,
-                None,
-            );
+            final_state_server_write
+                .ledger
+                .apply_changes(change.ledger_changes.clone(), *slot);
             final_state_server_write
                 .async_pool
                 .apply_changes_unchecked(&change.async_pool_changes);

@@ -2493,6 +2493,7 @@ dependencies = [
  "lazy_static",
  "massa_hash 0.1.0",
  "massa_ledger_exports",
+ "massa_ledger_worker",
  "massa_logging",
  "massa_models",
  "massa_serialization 0.1.0",
@@ -2500,11 +2501,14 @@ dependencies = [
  "massa_time",
  "nom",
  "num",
+ "parking_lot",
  "pretty_assertions",
  "rand 0.8.5",
+ "rocksdb",
  "serde",
  "serde_json",
  "serial_test 1.0.0",
+ "tempfile",
  "thiserror",
  "tracing",
 ]
@@ -2738,6 +2742,8 @@ dependencies = [
  "massa_serialization 0.1.0",
  "massa_signature",
  "nom",
+ "parking_lot",
+ "rocksdb",
  "serde",
  "thiserror",
  "tracing",
@@ -2833,10 +2839,10 @@ dependencies = [
  "massa_serialization 0.1.0",
  "massa_signature",
  "nom",
+ "parking_lot",
  "rocksdb",
  "serde_json",
  "tempfile",
- "tracing",
 ]
 
 [[package]]

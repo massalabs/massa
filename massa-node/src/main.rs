@@ -28,7 +28,7 @@ use massa_final_state::{FinalState, FinalStateConfig};
 use massa_grpc::config::GrpcConfig;
 use massa_grpc::server::MassaGrpc;
 use massa_ledger_exports::LedgerConfig;
-use massa_ledger_worker::FinalLedger;
+use massa_ledger_worker::{new_rocks_db_instance, FinalLedger};
 use massa_logging::massa_trace;
 use massa_models::address::Address;
 use massa_models::config::constants::{
@@ -179,6 +179,7 @@ async fn launch(
         thread_count: THREAD_COUNT,
         bootstrap_part_size: ASYNC_POOL_BOOTSTRAP_PART_SIZE,
         max_async_message_data: MAX_ASYNC_MESSAGE_DATA,
+        max_key_length: MAX_DATASTORE_KEY_LENGTH as u32,
     };
     let pos_config = PoSConfig {
         periods_per_cycle: PERIODS_PER_CYCLE,
@@ -211,11 +212,12 @@ async fn launch(
             .expect("disk ledger delete failed");
     }
 
+    let rocks_db_instance = Arc::new(RwLock::new(new_rocks_db_instance(
+        SETTINGS.ledger.disk_ledger_path.clone(),
+    )));
+
     // Create final ledger
-    let ledger = FinalLedger::new(
-        ledger_config.clone(),
-        args.restart_from_snapshot_at_period.is_some() || cfg!(feature = "create_snapshot"),
-    );
+    let ledger = FinalLedger::new(ledger_config.clone(), rocks_db_instance.clone());
 
     // launch selector worker
     let (selector_manager, selector_controller) = start_selector_worker(SelectorConfig {
@@ -232,6 +234,7 @@ async fn launch(
     let final_state = Arc::new(parking_lot::RwLock::new(
         match args.restart_from_snapshot_at_period {
             Some(last_start_period) => FinalState::new_derived_from_snapshot(
+                rocks_db_instance.clone(),
                 final_state_config,
                 Box::new(ledger),
                 selector_controller.clone(),
@@ -239,6 +242,7 @@ async fn launch(
             )
             .expect("could not init final state"),
             None => FinalState::new(
+                rocks_db_instance.clone(),
                 final_state_config,
                 Box::new(ledger),
                 selector_controller.clone(),

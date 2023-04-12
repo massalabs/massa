@@ -13,4 +13,6 @@ pub struct AsyncPoolConfig {
     pub max_async_message_data: u64,
     /// thread count
     pub thread_count: u8,
+    /// max key length for message deserilization
+    pub max_key_length: u32,
 }

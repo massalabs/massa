@@ -177,6 +177,7 @@ pub struct AsyncMessageTrigger {
     pub datastore_key: Option<Vec<u8>>,
 }
 
+#[derive(Clone)]
 /// Serializer for a trigger for an asynchronous message
 struct AsyncMessageTriggerSerializer {
     address_serializer: AddressSerializer,
@@ -205,6 +206,7 @@ impl Serializer<AsyncMessageTrigger> for AsyncMessageTriggerSerializer {
     }
 }
 
+#[derive(Clone)]
 /// Deserializer for a trigger for an asynchronous message
 struct AsyncMessageTriggerDeserializer {
     address_deserializer: AddressDeserializer,
@@ -362,6 +364,7 @@ impl AsyncMessage {
     }
 }
 
+#[derive(Clone)]
 pub struct AsyncMessageSerializer {
     slot_serializer: SlotSerializer,
     amount_serializer: AmountSerializer,
@@ -452,6 +455,7 @@ impl Serializer<AsyncMessage> for AsyncMessageSerializer {
     }
 }
 
+#[derive(Clone)]
 pub struct AsyncMessageDeserializer {
     slot_deserializer: SlotDeserializer,
     amount_deserializer: AmountDeserializer,

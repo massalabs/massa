@@ -31,8 +31,13 @@ use massa_pos_exports::{
 };
 use massa_serialization::{Deserializer, SerializeError, Serializer};
 use nom::{error::context, sequence::tuple, IResult, Parser};
-use std::collections::{BTreeMap, VecDeque};
+use parking_lot::RwLock;
+use rocksdb::DB;
 use std::ops::Bound::{Excluded, Included};
+use std::{
+    collections::{BTreeMap, VecDeque},
+    sync::Arc,
+};
 use tracing::{debug, info};
 
 /// Represents a final state `(ledger, async pool, executed_ops and the state of the PoS)`
@@ -71,6 +76,7 @@ impl FinalState {
     /// * `ledger`: the instance of the ledger on disk. Used to apply changes to the ledger.
     /// * `selector`: the pos selector. Used to send draw inputs when a new cycle is completed.
     pub fn new(
+        rocks_db: Arc<RwLock<DB>>,
         config: FinalStateConfig,
         ledger: Box<dyn LedgerController>,
         selector: Box<dyn SelectorController>,
@@ -107,7 +113,7 @@ impl FinalState {
         let slot = Slot::new(0, config.thread_count.saturating_sub(1));
 
         // create the async pool
-        let async_pool = AsyncPool::new(config.async_pool_config.clone());
+        let async_pool = AsyncPool::new(config.async_pool_config.clone(), rocks_db);
 
         // create a default executed ops
         let executed_ops = ExecutedOps::new(config.executed_ops_config.clone());
@@ -135,6 +141,7 @@ impl FinalState {
     /// * `selector`: the pos selector. Used to send draw inputs when a new cycle is completed.
     /// * `last_start_period`: at what period we should attach the final_state
     pub fn new_derived_from_snapshot(
+        rocks_db: Arc<RwLock<DB>>,
         config: FinalStateConfig,
         ledger: Box<dyn LedgerController>,
         selector: Box<dyn SelectorController>,
@@ -143,7 +150,7 @@ impl FinalState {
         info!("Restarting from snapshot");
 
         // FIRST, we recover the last known final_state
-        let mut final_state = FinalState::new(config, ledger, selector)?;
+        let mut final_state = FinalState::new(rocks_db, config, ledger, selector)?;
         let _final_state_hash_from_snapshot = Hash::from_bytes(FINAL_STATE_HASH_INITIAL_BYTES);
         final_state.pos_state.create_initial_cycle();
 
@@ -458,7 +465,6 @@ impl FinalState {
         // update current slot
         self.slot = slot;
 
-        /*
         self.async_pool
             .apply_changes_unchecked(&changes.async_pool_changes);
         self.pos_state
@@ -470,22 +476,22 @@ impl FinalState {
         self.executed_ops
             .apply_changes(changes.executed_ops_changes.clone(), self.slot);
         self.ledger
-            .apply_changes(changes.ledger_changes.clone(), self.slot, final_state_data);
-        */
+            .apply_changes(changes.ledger_changes.clone(), self.slot);
 
         let mut ledger_batch = LedgerBatch::new(self.ledger.get_ledger_hash());
 
         // apply the state changes to the batch
+
         self.async_pool
-            .apply_changes_unchecked_to_batch(&changes.async_pool_changes, ledger_batch);
-        self.pos_state
+            .apply_changes_unchecked_to_batch(&changes.async_pool_changes, &mut ledger_batch);
+        /*self.pos_state
             .apply_changes_to_batch(changes.pos_changes.clone(), self.slot, true, ledger_batch)
             .expect("could not settle slot in final state proof-of-stake");
         self.executed_ops.apply_changes_to_batch(
             changes.executed_ops_changes.clone(),
             self.slot,
             ledger_batch,
-        );
+        );*/
 
         self.ledger.apply_changes_to_batch(
             changes.ledger_changes.clone(),
@@ -506,7 +512,7 @@ impl FinalState {
         // compute the final state hash and set in DB
         self.compute_state_hash_at_slot(slot);
 
-        let hash_buffer = Vec::new();
+        let mut hash_buffer = Vec::new();
         let hash_serializer = HashSerializer::new();
 
         if hash_serializer

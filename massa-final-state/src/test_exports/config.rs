@@ -2,13 +2,14 @@
 
 //! This file defines testing tools related to the configuration
 
-use std::path::PathBuf;
+use std::{path::PathBuf, sync::Arc};
 
 use crate::{FinalState, FinalStateConfig};
 use massa_async_pool::{AsyncPool, AsyncPoolConfig};
 use massa_executed_ops::{ExecutedOps, ExecutedOpsConfig};
 use massa_hash::{Hash, HASH_SIZE_BYTES};
 use massa_ledger_exports::LedgerConfig;
+use massa_ledger_worker::new_rocks_db_instance;
 use massa_ledger_worker::FinalLedger;
 use massa_models::{
     config::{
@@ -18,14 +19,20 @@ use massa_models::{
     slot::Slot,
 };
 use massa_pos_exports::{PoSConfig, PoSFinalState};
+use parking_lot::RwLock;
 
 impl FinalState {
     /// Create a final stat
     pub fn create_final_state(pos_state: PoSFinalState, config: FinalStateConfig) -> Self {
+        let temp_dir = config.ledger_config.initial_ledger_path.clone();
+        let rocks_db = Arc::new(RwLock::new(new_rocks_db_instance(temp_dir)));
         FinalState {
             slot: Slot::new(0, 0),
-            ledger: Box::new(FinalLedger::new(config.ledger_config.clone(), false)),
-            async_pool: AsyncPool::new(config.async_pool_config.clone()),
+            ledger: Box::new(FinalLedger::new(
+                config.ledger_config.clone(),
+                rocks_db.clone(),
+            )),
+            async_pool: AsyncPool::new(config.async_pool_config.clone(), rocks_db.clone()),
             pos_state,
             executed_ops: ExecutedOps::new(config.executed_ops_config.clone()),
             changes_history: Default::default(),

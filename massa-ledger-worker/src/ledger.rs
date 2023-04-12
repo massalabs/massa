@@ -17,8 +17,13 @@ use massa_models::{
 };
 use massa_serialization::{DeserializeError, Deserializer};
 use nom::AsBytes;
-use std::collections::{BTreeSet, HashMap};
+use parking_lot::RwLock;
+use rocksdb::DB;
 use std::ops::Bound::Included;
+use std::{
+    collections::{BTreeSet, HashMap},
+    sync::Arc,
+};
 
 /// Represents a final ledger associating addresses to their balances, bytecode and data.
 /// The final ledger is part of the final state which is attached to a final slot, can be bootstrapped and allows others to bootstrap.
@@ -34,14 +39,13 @@ pub struct FinalLedger {
 
 impl FinalLedger {
     /// Initializes a new `FinalLedger` by reading its initial state from file.
-    pub fn new(config: LedgerConfig, with_final_state: bool) -> Self {
+    pub fn new(config: LedgerConfig, db: Arc<RwLock<DB>>) -> Self {
         // create and initialize the disk ledger
         let sorted_ledger = LedgerDB::new(
-            config.disk_ledger_path.clone(),
+            db,
             config.thread_count,
             config.max_key_length,
             config.max_ledger_part_size,
-            with_final_state,
         );
 
         // generate the final ledger
