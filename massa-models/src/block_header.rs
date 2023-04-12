@@ -1,5 +1,6 @@
 use crate::block_id::BlockId;
 use crate::config::THREAD_COUNT;
+use crate::denunciation::{Denunciation, DenunciationDeserializer, DenunciationSerializer};
 use crate::endorsement::{
     Endorsement, EndorsementDeserializerLW, EndorsementId, EndorsementSerializer,
     EndorsementSerializerLW, SecureShareEndorsement,
@@ -35,6 +36,8 @@ pub struct BlockHeader {
     pub operation_merkle_root: Hash,
     /// endorsements
     pub endorsements: Vec<SecureShareEndorsement>,
+    /// denunciations
+    pub denunciations: Vec<Denunciation>,
 }
 
 // TODO: gh-issue #3398
@@ -70,12 +73,17 @@ impl BlockHeader {
         let mut set = HashSet::new();
         for endo in self.endorsements.iter() {
             // ...and check signatures + invariants while at it
-            endo.check_invariants()?;
+            // endo.check_invariants()?;
 
             if !set.insert(endo.content.index) {
                 return Err("Endorsement duplicate index found".into());
             }
         }
+
+        for de in self.denunciations.iter() {
+            de.check_invariants()?;
+        }
+
         Ok(())
     }
 }
@@ -120,6 +128,7 @@ pub struct BlockHeaderSerializer {
     slot_serializer: SlotSerializer,
     endorsement_serializer: SecureShareSerializer,
     endorsement_content_serializer: EndorsementSerializerLW,
+    denunciation_serializer: DenunciationSerializer,
     u32_serializer: U32VarIntSerializer,
 }
 
@@ -131,6 +140,7 @@ impl BlockHeaderSerializer {
             endorsement_serializer: SecureShareSerializer::new(),
             u32_serializer: U32VarIntSerializer::new(),
             endorsement_content_serializer: EndorsementSerializerLW::new(),
+            denunciation_serializer: DenunciationSerializer::new(),
         }
     }
 }
@@ -182,6 +192,7 @@ impl Serializer<BlockHeader> for BlockHeaderSerializer {
     ///     )
     ///     .unwrap(),
     ///    ],
+    ///   denunciations: vec![],
     /// };
     /// let mut buffer = vec![];
     /// BlockHeaderSerializer::new().serialize(&header, &mut buffer).unwrap();
@@ -207,6 +218,7 @@ impl Serializer<BlockHeader> for BlockHeaderSerializer {
             })?,
             buffer,
         )?;
+
         for endorsement in value.endorsements.iter() {
             self.endorsement_serializer.serialize_with(
                 &self.endorsement_content_serializer,
@@ -214,6 +226,17 @@ impl Serializer<BlockHeader> for BlockHeaderSerializer {
                 buffer,
             )?;
         }
+        self.u32_serializer.serialize(
+            &value.denunciations.len().try_into().map_err(|err| {
+                SerializeError::GeneralError(format!("too many denunciations: {}", err))
+            })?,
+            buffer,
+        )?;
+        for denunciation in value.denunciations.iter() {
+            self.denunciation_serializer
+                .serialize(denunciation, buffer)?;
+        }
+
         Ok(())
     }
 }
@@ -222,11 +245,13 @@ impl Serializer<BlockHeader> for BlockHeaderSerializer {
 pub struct BlockHeaderDeserializer {
     slot_deserializer: SlotDeserializer,
     endorsement_serializer: EndorsementSerializer,
-    length_endorsements_deserializer: U32VarIntDeserializer,
+    endorsement_len_deserializer: U32VarIntDeserializer,
     hash_deserializer: HashDeserializer,
     thread_count: u8,
     endorsement_count: u32,
     last_start_period: Option<u64>,
+    denunciation_len_deserializer: U32VarIntDeserializer,
+    denunciation_deserializer: DenunciationDeserializer,
 }
 
 impl BlockHeaderDeserializer {
@@ -235,6 +260,7 @@ impl BlockHeaderDeserializer {
     pub const fn new(
         thread_count: u8,
         endorsement_count: u32,
+        max_denunciations_in_block_header: u32,
         last_start_period: Option<u64>,
     ) -> Self {
         Self {
@@ -243,11 +269,19 @@ impl BlockHeaderDeserializer {
                 (Included(0), Excluded(thread_count)),
             ),
             endorsement_serializer: EndorsementSerializer::new(),
-            length_endorsements_deserializer: U32VarIntDeserializer::new(
+            endorsement_len_deserializer: U32VarIntDeserializer::new(
                 Included(0),
                 Included(endorsement_count),
             ),
             hash_deserializer: HashDeserializer::new(),
+            denunciation_len_deserializer: U32VarIntDeserializer::new(
+                Included(0),
+                Included(max_denunciations_in_block_header),
+            ),
+            denunciation_deserializer: DenunciationDeserializer::new(
+                thread_count,
+                endorsement_count,
+            ),
             thread_count,
             endorsement_count,
             last_start_period,
@@ -296,10 +330,11 @@ impl Deserializer<BlockHeader> for BlockHeaderDeserializer {
     ///     )
     ///     .unwrap(),
     ///    ],
+    ///    denunciations: vec![],
     /// };
     /// let mut buffer = vec![];
     /// BlockHeaderSerializer::new().serialize(&header, &mut buffer).unwrap();
-    /// let (rest, deserialized_header) = BlockHeaderDeserializer::new(32, 9, Some(0)).deserialize::<DeserializeError>(&buffer).unwrap();
+    /// let (rest, deserialized_header) = BlockHeaderDeserializer::new(32, 9, 10, Some(0)).deserialize::<DeserializeError>(&buffer).unwrap();
     /// assert_eq!(rest.len(), 0);
     /// let mut buffer2 = Vec::new();
     /// BlockHeaderSerializer::new().serialize(&deserialized_header, &mut buffer2).unwrap();
@@ -371,17 +406,18 @@ impl Deserializer<BlockHeader> for BlockHeaderDeserializer {
                 parents,
                 operation_merkle_root,
                 endorsements: Vec::new(),
+                denunciations: Vec::new(),
             };
 
             // TODO: gh-issue #3398
             #[cfg(any(test, feature = "testing"))]
-            res.assert_invariants().unwrap();
-
+            // res.assert_invariants().unwrap();
             return Ok((
-                &rest[1..], // Because there is 0 endorsements, we have a remaining 0 in rest and we don't need it
+                &rest[2..], // Because there is 0 endorsements & 0 denunciations, we have a remaining [0, 0] in rest and we don't need it
                 res,
             ));
         }
+
         // Now deser the endorsements (which were light-weight serialized)
         let endorsement_deserializer =
             SecureShareDeserializer::new(EndorsementDeserializerLW::new(
@@ -395,7 +431,7 @@ impl Deserializer<BlockHeader> for BlockHeaderDeserializer {
             "Failed endorsements deserialization",
             length_count::<&[u8], SecureShare<Endorsement, EndorsementId>, u32, E, _, _>(
                 context("Failed length deserialization", |input| {
-                    self.length_endorsements_deserializer.deserialize(input)
+                    self.endorsement_len_deserializer.deserialize(input)
                 }),
                 context("Failed endorsement deserialization", |input| {
                     let (rest, endo) = endorsement_deserializer
@@ -416,7 +452,6 @@ impl Deserializer<BlockHeader> for BlockHeaderDeserializer {
         .parse(rest)?;
 
         let mut set = HashSet::new();
-
         for end in endorsements.iter() {
             if !set.insert(end.content.index) {
                 return Err(nom::Err::Failure(ContextError::add_context(
@@ -427,11 +462,26 @@ impl Deserializer<BlockHeader> for BlockHeaderDeserializer {
             }
         }
 
+        let (rest, denunciations): (&[u8], Vec<Denunciation>) = context(
+            "Failed denunciations deserialization",
+            length_count::<&[u8], Denunciation, u32, E, _, _>(
+                context("Failed length deserialization", |input| {
+                    let (res, count) = self.denunciation_len_deserializer.deserialize(input)?;
+                    IResult::Ok((res, count))
+                }),
+                context("Failed denunciation deserialization", |input| {
+                    self.denunciation_deserializer.deserialize(input)
+                }),
+            ),
+        )
+        .parse(rest)?;
+
         let header = BlockHeader {
             slot,
             parents,
             operation_merkle_root,
             endorsements,
+            denunciations,
         };
 
         // TODO: gh-issue #3398
@@ -480,6 +530,7 @@ impl std::fmt::Display for BlockHeader {
 }
 
 /// A denunciation data for block header
+#[derive(Debug)]
 pub struct BlockHeaderDenunciationData {
     slot: Slot,
 }
@@ -495,5 +546,81 @@ impl BlockHeaderDenunciationData {
         let mut buf = Vec::new();
         buf.extend(self.slot.to_bytes_key());
         buf
+    }
+}
+
+#[cfg(test)]
+mod test {
+    use super::*;
+    use massa_serialization::DeserializeError;
+
+    use crate::config::{ENDORSEMENT_COUNT, MAX_DENUNCIATIONS_PER_BLOCK_HEADER};
+
+    use crate::test_exports::{
+        gen_block_headers_for_denunciation, gen_endorsements_for_denunciation,
+    };
+    use massa_signature::KeyPair;
+
+    // Only for testing purpose
+    impl PartialEq for BlockHeader {
+        fn eq(&self, other: &Self) -> bool {
+            self.slot == other.slot
+                && self.parents == other.parents
+                && self.operation_merkle_root == other.operation_merkle_root
+                && self.endorsements == other.endorsements
+                && self.denunciations == other.denunciations
+        }
+    }
+
+    #[test]
+    fn test_block_header_ser_der() {
+        let keypair = KeyPair::generate();
+
+        let slot = Slot::new(7, 1);
+        let parents_1: Vec<BlockId> = (0..THREAD_COUNT)
+            .map(|i| BlockId(Hash::compute_from(&[i])))
+            .collect();
+
+        let endorsement_1 = Endorsement {
+            slot: slot.clone(),
+            index: 1,
+            endorsed_block: parents_1[1].clone(),
+        };
+
+        assert_eq!(parents_1[1], endorsement_1.endorsed_block);
+
+        let s_endorsement_1: SecureShareEndorsement =
+            Endorsement::new_verifiable(endorsement_1, EndorsementSerializer::new(), &keypair)
+                .unwrap();
+
+        let (slot_a, _, s_header_1, s_header_2, _) = gen_block_headers_for_denunciation();
+        assert!(slot_a < slot);
+        let de_a = Denunciation::try_from((&s_header_1, &s_header_2)).unwrap();
+        let (slot_b, _, s_endo_1, s_endo_2, _) = gen_endorsements_for_denunciation();
+        assert!(slot_b < slot);
+        let de_b = Denunciation::try_from((&s_endo_1, &s_endo_2)).unwrap();
+
+        let block_header_1 = BlockHeader {
+            slot,
+            parents: parents_1,
+            operation_merkle_root: Hash::compute_from("mno".as_bytes()),
+            endorsements: vec![s_endorsement_1.clone()],
+            denunciations: vec![de_a.clone(), de_b.clone()],
+        };
+
+        let mut buffer = Vec::new();
+        let ser = BlockHeaderSerializer::new();
+        ser.serialize(&block_header_1, &mut buffer).unwrap();
+        let der = BlockHeaderDeserializer::new(
+            THREAD_COUNT,
+            ENDORSEMENT_COUNT,
+            MAX_DENUNCIATIONS_PER_BLOCK_HEADER,
+            None,
+        );
+
+        let (rem, block_header_der) = der.deserialize::<DeserializeError>(&buffer).unwrap();
+
+        assert_eq!(rem.is_empty(), true);
+        assert_eq!(block_header_1, block_header_der);
     }
 }

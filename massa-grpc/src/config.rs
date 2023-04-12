@@ -80,4 +80,6 @@ pub struct GrpcConfig {
     pub draw_lookahead_period_count: u64,
     /// last_start_period of the network, used to deserialize blocks
     pub last_start_period: u64,
+    /// Max denunciations in block header
+    pub max_denunciations_per_block_header: u32,
 }

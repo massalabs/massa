@@ -55,7 +55,7 @@ use massa_models::config::constants::{
 };
 use massa_models::config::{
     CONSENSUS_BOOTSTRAP_PART_SIZE, DENUNCIATION_EXPIRE_PERIODS, DENUNCIATION_ITEMS_MAX_CYCLE_DELTA,
-    MAX_OPERATIONS_PER_MESSAGE,
+    MAX_DENUNCIATIONS_PER_BLOCK_HEADER, MAX_OPERATIONS_PER_MESSAGE,
 };
 use massa_models::denunciation::DenunciationPrecursor;
 use massa_network_exports::{Establisher, NetworkConfig, NetworkManager};
@@ -304,6 +304,7 @@ async fn launch(
         max_consensus_block_ids: MAX_CONSENSUS_BLOCKS_IDS,
         mip_store_stats_block_considered: MIP_STORE_STATS_BLOCK_CONSIDERED,
         mip_store_stats_counters_max: MIP_STORE_STATS_COUNTERS_MAX,
+        max_denunciations_per_block_header: MAX_DENUNCIATIONS_PER_BLOCK_HEADER,
     };
 
     // bootstrap
@@ -368,6 +369,7 @@ async fn launch(
         node_command_channel_size: NETWORK_NODE_COMMAND_CHANNEL_SIZE,
         node_event_channel_size: NETWORK_NODE_EVENT_CHANNEL_SIZE,
         last_start_period: final_state.read().last_start_period,
+        max_denunciations_per_block_header: MAX_DENUNCIATIONS_PER_BLOCK_HEADER,
     };
 
     // launch network controller
@@ -747,6 +749,7 @@ async fn launch(
             max_channel_size: SETTINGS.grpc.max_channel_size,
             draw_lookahead_period_count: SETTINGS.grpc.draw_lookahead_period_count,
             last_start_period: final_state.read().last_start_period,
+            max_denunciations_per_block_header: MAX_DENUNCIATIONS_PER_BLOCK_HEADER,
         };
 
         let grpc_api = MassaGrpc {

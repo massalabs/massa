@@ -9,6 +9,7 @@ use nom::{
     IResult, Parser,
 };
 use num_enum::{IntoPrimitive, TryFromPrimitive};
+use serde::{Deserialize, Serialize};
 use thiserror::Error;
 
 use crate::block_header::{
@@ -17,23 +18,21 @@ use crate::block_header::{
 use crate::endorsement::{
     Endorsement, EndorsementDenunciationData, EndorsementSerializer, SecureShareEndorsement,
 };
-use crate::slot::{Slot, SlotDeserializer, SlotSerializer, SLOT_KEY_SIZE};
+use crate::slot::{Slot, SlotDeserializer, SlotSerializer};
 
 use crate::prehash::PreHashed;
-use crate::secure_share::Id;
+
 use massa_hash::{Hash, HashDeserializer, HashSerializer};
 use massa_serialization::{
     Deserializer, SerializeError, Serializer, U32VarIntDeserializer, U32VarIntSerializer,
-    U64VarIntSerializer,
 };
 use massa_signature::{
     MassaSignatureError, PublicKey, PublicKeyDeserializer, Signature, SignatureDeserializer,
-    PUBLIC_KEY_SIZE_BYTES,
 };
 
 /// A Variant of Denunciation enum for endorsement
 #[allow(dead_code)]
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct EndorsementDenunciation {
     public_key: PublicKey,
     slot: Slot,
@@ -74,7 +73,7 @@ impl EndorsementDenunciation {
 
 /// A Variant of Denunciation enum for block header
 #[allow(dead_code)]
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct BlockHeaderDenunciation {
     public_key: PublicKey,
     slot: Slot,
@@ -112,7 +111,7 @@ impl BlockHeaderDenunciation {
 }
 
 /// A denunciation enum
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[allow(missing_docs)]
 pub enum Denunciation {
     Endorsement(EndorsementDenunciation),
@@ -721,105 +720,42 @@ impl Deserializer<Denunciation> for DenunciationDeserializer {
 
 // End Ser / Der
 
-// Denunciation Id
-// TODO: replace with
-// #[derive(Debug, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
-// pub enum DenunciationKey {
-//     Header {
-//        slot: Slot
-//     },
-//     Endorsement {
-//         slot: Slot,
-//         index: u32
-//     }
-// }
+// Denunciation Index
 
-/// Endorsement ID size in bytes
-pub const DENUNCIATION_ID_SIZE_BYTES: usize = massa_hash::HASH_SIZE_BYTES;
-
-/// endorsement id
-#[derive(Clone, Copy, Eq, PartialEq, Ord, PartialOrd, Hash)]
-pub struct DenunciationId(Hash);
-
-const DENUNCIATION_ID_PREFIX: char = 'D';
-const DENUNCIATION_ID_VERSION: u64 = 0;
-
-impl PreHashed for DenunciationId {}
-
-impl Id for DenunciationId {
-    fn new(hash: Hash) -> Self {
-        Self(hash)
-    }
-
-    fn get_hash(&self) -> &Hash {
-        &self.0
-    }
+#[derive(Debug, Clone, Hash, PartialEq, Eq)]
+/// Index for Denunciations in collections (e.g. like a HashMap...)
+pub enum DenunciationIndex {
+    /// Variant for Block header denunciation
+    BlockHeader {
+        /// de slot
+        slot: Slot,
+    },
+    /// Variant for Endorsement denunciation
+    Endorsement {
+        /// de slot
+        slot: Slot,
+        /// de index
+        index: u32,
+    },
 }
 
-impl std::fmt::Display for DenunciationId {
-    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        let u64_serializer = U64VarIntSerializer::new();
-        // might want to allocate the vector with capacity in order to avoid re-allocation
-        let mut bytes: Vec<u8> = Vec::new();
-        u64_serializer
-            .serialize(&DENUNCIATION_ID_VERSION, &mut bytes)
-            .map_err(|_| std::fmt::Error)?;
-        bytes.extend(self.0.to_bytes());
-        write!(
-            f,
-            "{}{}",
-            DENUNCIATION_ID_PREFIX,
-            bs58::encode(bytes).with_check().into_string()
-        )
-    }
-}
+impl PreHashed for DenunciationIndex {}
 
-impl std::fmt::Debug for DenunciationId {
-    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        write!(f, "{}", self)
-    }
-}
-
-impl DenunciationId {
-    /// denunciation id to bytes
-    pub fn to_bytes(&self) -> &[u8; DENUNCIATION_ID_SIZE_BYTES] {
-        self.0.to_bytes()
-    }
-
-    /// denunciation id into bytes
-    pub fn into_bytes(self) -> [u8; DENUNCIATION_ID_SIZE_BYTES] {
-        self.0.into_bytes()
-    }
-
-    /// denunciation id from bytes
-    pub fn from_bytes(data: &[u8; DENUNCIATION_ID_SIZE_BYTES]) -> DenunciationId {
-        DenunciationId(Hash::from_bytes(data))
-    }
-}
-
-impl From<&Denunciation> for DenunciationId {
+impl From<&Denunciation> for DenunciationIndex {
     fn from(value: &Denunciation) -> Self {
         match value {
-            Denunciation::Endorsement(endo_de) => {
-                let mut to_hash = Vec::with_capacity(
-                    std::mem::size_of::<u32>() + PUBLIC_KEY_SIZE_BYTES + SLOT_KEY_SIZE,
-                );
-                to_hash.extend(endo_de.public_key.to_bytes());
-                to_hash.extend(endo_de.slot.to_bytes_key());
-                to_hash.extend(endo_de.index.to_le_bytes());
-                DenunciationId(Hash::compute_from(&to_hash))
-            }
+            Denunciation::Endorsement(endo_de) => DenunciationIndex::Endorsement {
+                slot: endo_de.slot,
+                index: endo_de.index,
+            },
             Denunciation::BlockHeader(blkh_de) => {
-                let mut to_hash = Vec::new();
-                to_hash.extend(blkh_de.public_key.to_bytes());
-                to_hash.extend(blkh_de.slot.to_bytes_key());
-                DenunciationId(Hash::compute_from(&to_hash))
+                DenunciationIndex::BlockHeader { slot: blkh_de.slot }
             }
         }
     }
 }
 
-// End Denunciation Id
+// End Denunciation Index
 
 // Denunciation interest
 
@@ -848,7 +784,7 @@ pub struct BlockHeaderDenunciationPrecursor {
 }
 
 /// Lightweight data for Denunciation creation
-/// (avoid storing heavyweight secured header or secure share endorsement)
+/// (avoid storing heavyweight secured header or secure share endorsement, see denunciation factory)
 #[derive(Debug, Clone)]
 pub enum DenunciationPrecursor {
     /// Endorsement variant
@@ -996,20 +932,35 @@ impl TryFrom<(&DenunciationPrecursor, &DenunciationPrecursor)> for Denunciation 
 
 // End Denunciation interest
 
+// testing
+
+#[cfg(any(test, feature = "testing"))]
+impl Denunciation {
+    /// Used under testing conditions to validate an instance of Self
+    pub fn check_invariants(&self) -> Result<(), Box<dyn std::error::Error>> {
+        if let Err(e) = self.is_valid() {
+            return Err(e.into());
+        }
+        Ok(())
+    }
+}
+
+// end testing
+
 #[cfg(test)]
 mod tests {
     use super::*;
+
     use massa_serialization::DeserializeError;
+    use massa_signature::KeyPair;
 
     use crate::block_id::BlockId;
-    use crate::endorsement::{Endorsement, EndorsementSerializer, SecureShareEndorsement};
-
     use crate::config::{ENDORSEMENT_COUNT, THREAD_COUNT};
+    use crate::endorsement::{Endorsement, EndorsementSerializer, SecureShareEndorsement};
     use crate::secure_share::{Id, SecureShareContent};
     use crate::test_exports::{
         gen_block_headers_for_denunciation, gen_endorsements_for_denunciation,
     };
-    use massa_signature::KeyPair;
 
     #[test]
     fn test_endorsement_denunciation() {

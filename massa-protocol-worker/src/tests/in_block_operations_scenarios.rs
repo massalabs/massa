@@ -225,6 +225,7 @@ async fn test_protocol_sends_blocks_with_operations_to_consensus() {
                             parents: Vec::new(),
                             operation_merkle_root,
                             endorsements: Vec::new(),
+                            denunciations: vec![],
                         },
                         BlockHeaderSerializer::new(),
                         &creator_node.keypair,

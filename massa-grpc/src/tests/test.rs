@@ -6,11 +6,11 @@ use massa_consensus_exports::test_exports::MockConsensusController;
 use massa_consensus_exports::ConsensusChannels;
 use massa_execution_exports::test_exports::MockExecutionController;
 use massa_models::config::{
-    ENDORSEMENT_COUNT, GENESIS_TIMESTAMP, MAX_DATASTORE_VALUE_LENGTH, MAX_ENDORSEMENTS_PER_MESSAGE,
-    MAX_FUNCTION_NAME_LENGTH, MAX_OPERATIONS_PER_BLOCK, MAX_OPERATIONS_PER_MESSAGE,
-    MAX_OPERATION_DATASTORE_ENTRY_COUNT, MAX_OPERATION_DATASTORE_KEY_LENGTH,
-    MAX_OPERATION_DATASTORE_VALUE_LENGTH, MAX_PARAMETERS_SIZE, PROTOCOL_CONTROLLER_CHANNEL_SIZE,
-    T0, THREAD_COUNT, VERSION,
+    ENDORSEMENT_COUNT, GENESIS_TIMESTAMP, MAX_DATASTORE_VALUE_LENGTH,
+    MAX_DENUNCIATIONS_PER_BLOCK_HEADER, MAX_ENDORSEMENTS_PER_MESSAGE, MAX_FUNCTION_NAME_LENGTH,
+    MAX_OPERATIONS_PER_BLOCK, MAX_OPERATIONS_PER_MESSAGE, MAX_OPERATION_DATASTORE_ENTRY_COUNT,
+    MAX_OPERATION_DATASTORE_KEY_LENGTH, MAX_OPERATION_DATASTORE_VALUE_LENGTH, MAX_PARAMETERS_SIZE,
+    PROTOCOL_CONTROLLER_CHANNEL_SIZE, T0, THREAD_COUNT, VERSION,
 };
 use massa_pool_exports::test_exports::MockPoolController;
 use massa_pool_exports::PoolChannels;
@@ -86,6 +86,7 @@ async fn test_start_grpc_server() {
         max_channel_size: 128,
         draw_lookahead_period_count: 10,
         last_start_period: 0,
+        max_denunciations_per_block_header: MAX_DENUNCIATIONS_PER_BLOCK_HEADER,
     };
 
     let service = MassaGrpc {

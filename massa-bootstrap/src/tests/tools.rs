@@ -25,12 +25,12 @@ use massa_models::config::{
     MAX_BOOTSTRAP_ASYNC_POOL_CHANGES, MAX_BOOTSTRAP_BLOCKS, MAX_BOOTSTRAP_ERROR_LENGTH,
     MAX_BOOTSTRAP_FINAL_STATE_PARTS_SIZE, MAX_BOOTSTRAP_MESSAGE_SIZE, MAX_CONSENSUS_BLOCKS_IDS,
     MAX_DATASTORE_ENTRY_COUNT, MAX_DATASTORE_KEY_LENGTH, MAX_DATASTORE_VALUE_LENGTH,
-    MAX_DEFERRED_CREDITS_LENGTH, MAX_EXECUTED_OPS_CHANGES_LENGTH, MAX_EXECUTED_OPS_LENGTH,
-    MAX_FUNCTION_NAME_LENGTH, MAX_LEDGER_CHANGES_COUNT, MAX_OPERATIONS_PER_BLOCK,
-    MAX_OPERATION_DATASTORE_ENTRY_COUNT, MAX_OPERATION_DATASTORE_KEY_LENGTH,
-    MAX_OPERATION_DATASTORE_VALUE_LENGTH, MAX_PARAMETERS_SIZE, MAX_PRODUCTION_STATS_LENGTH,
-    MAX_ROLLS_COUNT_LENGTH, MIP_STORE_STATS_BLOCK_CONSIDERED, MIP_STORE_STATS_COUNTERS_MAX,
-    PERIODS_PER_CYCLE, THREAD_COUNT,
+    MAX_DEFERRED_CREDITS_LENGTH, MAX_DENUNCIATIONS_PER_BLOCK_HEADER,
+    MAX_EXECUTED_OPS_CHANGES_LENGTH, MAX_EXECUTED_OPS_LENGTH, MAX_FUNCTION_NAME_LENGTH,
+    MAX_LEDGER_CHANGES_COUNT, MAX_OPERATIONS_PER_BLOCK, MAX_OPERATION_DATASTORE_ENTRY_COUNT,
+    MAX_OPERATION_DATASTORE_KEY_LENGTH, MAX_OPERATION_DATASTORE_VALUE_LENGTH, MAX_PARAMETERS_SIZE,
+    MAX_PRODUCTION_STATS_LENGTH, MAX_ROLLS_COUNT_LENGTH, MIP_STORE_STATS_BLOCK_CONSIDERED,
+    MIP_STORE_STATS_COUNTERS_MAX, PERIODS_PER_CYCLE, THREAD_COUNT,
 };
 use massa_models::node::NodeId;
 use massa_models::{
@@ -340,6 +340,7 @@ pub fn get_bootstrap_config(bootstrap_public_key: NodeId) -> BootstrapConfig {
         max_consensus_block_ids: MAX_CONSENSUS_BLOCKS_IDS,
         mip_store_stats_block_considered: MIP_STORE_STATS_BLOCK_CONSIDERED,
         mip_store_stats_counters_max: MIP_STORE_STATS_COUNTERS_MAX,
+        max_denunciations_per_block_header: MAX_DENUNCIATIONS_PER_BLOCK_HEADER,
     }
 }
 
@@ -415,6 +416,7 @@ pub fn get_boot_state() -> BootstrapableGraph {
                         )
                         .unwrap(),
                     ],
+                    denunciations: vec![],
                 },
                 BlockHeaderSerializer::new(),
                 &keypair,
@@ -443,6 +445,7 @@ pub fn get_boot_state() -> BootstrapableGraph {
         thread_count: THREAD_COUNT,
         max_operations_per_block: MAX_OPERATIONS_PER_BLOCK,
         endorsement_count: ENDORSEMENT_COUNT,
+        max_denunciations_per_block_header: MAX_DENUNCIATIONS_PER_BLOCK_HEADER,
         last_start_period: Some(0),
     };
     let bootstrapable_graph_deserializer =
