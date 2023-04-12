@@ -64,8 +64,6 @@ impl TestFactory {
             crossbeam_channel::unbounded::<DenunciationPrecursor>();
         let (denunciation_factory_sender, denunciation_factory_receiver) =
             crossbeam_channel::bounded(massa_models::config::CHANNEL_SIZE);
-        let (block_factory_request_sender, block_factory_request_receiver) =
-            crossbeam_channel::bounded(massa_models::config::CHANNEL_SIZE);
         let mut storage = Storage::create_root();
         let mut factory_config = FactoryConfig::default();
         let (_protocol_controller, protocol_command_sender) = MockProtocolController::new();
@@ -98,8 +96,6 @@ impl TestFactory {
             },
             denunciation_factory_receiver,
             denunciation_factory_rx,
-            block_factory_request_sender,
-            block_factory_request_receiver,
         );
 
         TestFactory {
