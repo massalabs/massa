@@ -257,8 +257,7 @@ fn test_bootstrap_server() {
         .unwrap();
 
     // launch the get_state process
-    let bootstrap_res = tokio::runtime::Runtime::new()
-        .unwrap()
+    let bootstrap_res = massa_network_exports::make_runtime()
         .block_on(get_state(
             bootstrap_config,
             final_state_client_clone,

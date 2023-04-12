@@ -452,3 +452,13 @@ impl NetworkManager {
         Ok(())
     }
 }
+
+/// Used by the bootstrap server to run async tasks, allowing the bootstrap module to
+/// remove the tokio dependency.
+pub fn make_runtime() -> tokio::runtime::Runtime {
+    tokio::runtime::Builder::new_multi_thread()
+        .enable_all()
+        .thread_name("network-provided-runtime")
+        .build()
+        .expect("failed to create runtime")
+}
