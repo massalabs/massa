@@ -467,7 +467,7 @@ fn run_bootstrap_session<C: NetworkCommandSenderTrait>(
         deadline,
         mip_store,
     );
-    // TODO: handle the deadline management
+
     // This drop allows the server to accept new connections before having to complete the error notifications
     // account for this session being finished, as well as the root-instance
     massa_trace!("bootstrap.session.finished", {
