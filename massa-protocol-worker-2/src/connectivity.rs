@@ -122,7 +122,11 @@ pub fn start_connectivity_thread(
                     // Check if we need to connect to peers
                     let nb_connection_to_try = {
                         let active_connections = manager.active_connections.read();
-                        active_connections.max_out_connections - active_connections.nb_out_connections
+                        let nb_connection_to_try = active_connections.max_out_connections - active_connections.nb_out_connections;
+                        if nb_connection_to_try == 0 {
+                            continue;
+                        }
+                        nb_connection_to_try
                     };
                     // Get the best peers
                     {
