@@ -288,6 +288,9 @@
 <a href="#288" id="288">288</a>
 <a href="#289" id="289">289</a>
 <a href="#290" id="290">290</a>
+<a href="#291" id="291">291</a>
+<a href="#292" id="292">292</a>
+<a href="#293" id="293">293</a>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="kw">use </span><span class="kw">super</span>::mock_network_controller::MockNetworkController;
@@ -357,6 +360,7 @@
             ],
             operation_merkle_root: Hash::compute_from(<span class="kw-2">&amp;</span>Vec::new()),
             endorsements: Vec::new(),
+            denunciations: Vec::new(),
         },
         BlockHeaderSerializer::new(),
         keypair,
@@ -398,6 +402,7 @@
             ],
             operation_merkle_root,
             endorsements: Vec::new(),
+            denunciations: Vec::new(),
         },
         BlockHeaderSerializer::new(),
         keypair,
@@ -435,6 +440,7 @@
             ],
             operation_merkle_root: Hash::compute_from(<span class="kw-2">&amp;</span>Vec::new()),
             endorsements,
+            denunciations: Vec::new(),
         },
         BlockHeaderSerializer::new(),
         keypair,

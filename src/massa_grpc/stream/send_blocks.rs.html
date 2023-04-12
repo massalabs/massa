@@ -221,6 +221,7 @@
 <a href="#221" id="221">221</a>
 <a href="#222" id="222">222</a>
 <a href="#223" id="223">223</a>
+<a href="#224" id="224">224</a>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2023 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="kw">use </span><span class="kw">crate</span>::error::{match_for_io_error, GrpcError};
@@ -296,6 +297,7 @@
                         thread_count: config.thread_count,
                         max_operations_per_block: config.max_operations_per_block,
                         endorsement_count: config.endorsement_count,
+                        max_denunciations_per_block_header: config.max_denunciations_per_block_header,
                         last_start_period: <span class="prelude-val">Some</span>(config.last_start_period),
                     };
                     <span class="comment">// Deserialize and verify received block in the incoming message

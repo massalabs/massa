@@ -1154,6 +1154,11 @@
 <a href="#1154" id="1154">1154</a>
 <a href="#1155" id="1155">1155</a>
 <a href="#1156" id="1156">1156</a>
+<a href="#1157" id="1157">1157</a>
+<a href="#1158" id="1158">1158</a>
+<a href="#1159" id="1159">1159</a>
+<a href="#1160" id="1160">1160</a>
+<a href="#1161" id="1161">1161</a>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="attr">#![doc = <span class="macro">include_str!</span>(<span class="string">&quot;../../README.md&quot;</span>)]
@@ -1211,10 +1216,10 @@
 };
 <span class="kw">use </span>massa_models::config::{
     CONSENSUS_BOOTSTRAP_PART_SIZE, DENUNCIATION_EXPIRE_PERIODS, DENUNCIATION_ITEMS_MAX_CYCLE_DELTA,
-    MAX_OPERATIONS_PER_MESSAGE,
+    MAX_DENUNCIATIONS_PER_BLOCK_HEADER, MAX_OPERATIONS_PER_MESSAGE,
 };
 <span class="kw">use </span>massa_models::denunciation::DenunciationPrecursor;
-<span class="kw">use </span>massa_network_exports::{Establisher, NetworkCommandSender, NetworkConfig, NetworkManager};
+<span class="kw">use </span>massa_network_exports::{Establisher, NetworkConfig, NetworkManager};
 <span class="kw">use </span>massa_network_worker::start_network_controller;
 <span class="kw">use </span>massa_pool_exports::{PoolChannels, PoolConfig, PoolManager};
 <span class="kw">use </span>massa_pool_worker::start_pool_controller;
@@ -1236,6 +1241,7 @@
 <span class="kw">use </span>std::time::Duration;
 <span class="kw">use </span>std::{path::Path, process, sync::Arc};
 <span class="kw">use </span>structopt::StructOpt;
+<span class="kw">use </span>tokio::net::TcpStream;
 <span class="kw">use </span>tokio::signal;
 <span class="kw">use </span>tokio::sync::{broadcast, mpsc};
 <span class="kw">use </span>tracing::{error, info, warn};
@@ -1248,7 +1254,7 @@
     node_wallet: Arc&lt;RwLock&lt;Wallet&gt;&gt;,
 ) -&gt; (
     Receiver&lt;ConsensusEvent&gt;,
-    <span class="prelude-ty">Option</span>&lt;BootstrapManager&gt;,
+    <span class="prelude-ty">Option</span>&lt;BootstrapManager&lt;TcpStream&gt;&gt;,
     Box&lt;<span class="kw">dyn </span>ConsensusManager&gt;,
     Box&lt;<span class="kw">dyn </span>ExecutionManager&gt;,
     Box&lt;<span class="kw">dyn </span>SelectorManager&gt;,
@@ -1459,6 +1465,7 @@
         max_consensus_block_ids: MAX_CONSENSUS_BLOCKS_IDS,
         mip_store_stats_block_considered: MIP_STORE_STATS_BLOCK_CONSIDERED,
         mip_store_stats_counters_max: MIP_STORE_STATS_COUNTERS_MAX,
+        max_denunciations_per_block_header: MAX_DENUNCIATIONS_PER_BLOCK_HEADER,
     };
 
     <span class="comment">// bootstrap
@@ -1470,7 +1477,7 @@
         res = get_state(
             <span class="kw-2">&amp;</span>bootstrap_config,
             final_state.clone(),
-            DefaultConnector,
+            DefaultConnector(bootstrap_config.connect_timeout),
             <span class="kw-2">*</span>VERSION,
             <span class="kw-2">*</span>GENESIS_TIMESTAMP,
             <span class="kw-2">*</span>END_TIMESTAMP,
@@ -1523,6 +1530,7 @@
         node_command_channel_size: NETWORK_NODE_COMMAND_CHANNEL_SIZE,
         node_event_channel_size: NETWORK_NODE_EVENT_CHANNEL_SIZE,
         last_start_period: final_state.read().last_start_period,
+        max_denunciations_per_block_header: MAX_DENUNCIATIONS_PER_BLOCK_HEADER,
     };
 
     <span class="comment">// launch network controller
@@ -1789,7 +1797,7 @@
     <span class="comment">// launch bootstrap server
     // TODO: use std::net::TcpStream
     </span><span class="kw">let </span>bootstrap_manager = <span class="kw">match </span>bootstrap_config.listen_addr {
-        <span class="prelude-val">Some</span>(addr) =&gt; start_bootstrap_server::&lt;NetworkCommandSender&gt;(
+        <span class="prelude-val">Some</span>(addr) =&gt; start_bootstrap_server::&lt;TcpStream&gt;(
             consensus_controller.clone(),
             network_command_sender.clone(),
             final_state.clone(),
@@ -1902,6 +1910,7 @@
             max_channel_size: SETTINGS.grpc.max_channel_size,
             draw_lookahead_period_count: SETTINGS.grpc.draw_lookahead_period_count,
             last_start_period: final_state.read().last_start_period,
+            max_denunciations_per_block_header: MAX_DENUNCIATIONS_PER_BLOCK_HEADER,
         };
 
         <span class="kw">let </span>grpc_api = MassaGrpc {
@@ -2026,7 +2035,7 @@
 }
 
 <span class="kw">struct </span>Managers {
-    bootstrap_manager: <span class="prelude-ty">Option</span>&lt;BootstrapManager&gt;,
+    bootstrap_manager: <span class="prelude-ty">Option</span>&lt;BootstrapManager&lt;TcpStream&gt;&gt;,
     consensus_manager: Box&lt;<span class="kw">dyn </span>ConsensusManager&gt;,
     execution_manager: Box&lt;<span class="kw">dyn </span>ExecutionManager&gt;,
     selector_manager: Box&lt;<span class="kw">dyn </span>SelectorManager&gt;,
@@ -2057,7 +2066,8 @@
     </span><span class="kw">if let </span><span class="prelude-val">Some</span>(bootstrap_manager) = bootstrap_manager {
         bootstrap_manager
             .stop()
-            .expect(<span class="string">&quot;bootstrap server shutdown failed&quot;</span>)
+            .<span class="kw">await
+            </span>.expect(<span class="string">&quot;bootstrap server shutdown failed&quot;</span>)
     }
 
     <span class="macro">info!</span>(<span class="string">&quot;Start stopping API&#39;s: gRPC, EXPERIMENTAL, PUBLIC, PRIVATE&quot;</span>);
