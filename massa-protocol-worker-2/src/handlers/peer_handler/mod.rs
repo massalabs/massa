@@ -1,16 +1,9 @@
-use std::{
-    collections::{BTreeMap, HashMap},
-    net::SocketAddr,
-    sync::Arc,
-    thread::JoinHandle,
-    time::Duration,
-};
+use std::{collections::HashMap, net::SocketAddr, sync::Arc, thread::JoinHandle, time::Duration};
 
 use crossbeam::{
     channel::{Receiver, Sender},
     select,
 };
-use massa_protocol_exports_2::ProtocolError;
 use massa_serialization::{DeserializeError, Deserializer, Serializer};
 use parking_lot::RwLock;
 use rand::{rngs::StdRng, RngCore, SeedableRng};
@@ -24,9 +17,14 @@ use peernet::{
     types::Hash,
     types::{KeyPair, Signature},
 };
-use tracing::log::{error, info, warn};
+use tracing::log::{error, warn};
 
-use self::tester::Tester;
+use crate::handlers::peer_handler::models::PeerState;
+
+use self::{
+    models::{InitialPeers, PeerManagementChannel, PeerManagementCmd, SharedPeerDB},
+    tester::Tester,
+};
 
 use self::{
     announcement::{
@@ -41,51 +39,19 @@ use self::{
 /// that all the endpoints we received are active.
 mod announcement;
 mod messages;
+pub mod models;
 mod tester;
 
 pub(crate) use messages::{PeerManagementMessage, PeerManagementMessageSerializer};
-pub type InitialPeers = HashMap<PeerId, HashMap<SocketAddr, TransportType>>;
-
-#[derive(Default)]
-pub struct PeerDB {
-    //TODO: Add state of the peer (banned, trusted, ...)
-    pub peers: HashMap<PeerId, PeerInfo>,
-    pub index_by_newest: BTreeMap<u128, PeerId>,
-}
-
-pub type SharedPeerDB = Arc<RwLock<PeerDB>>;
-
-pub struct PeerInfo {
-    pub last_announce: Announcement,
-    pub state: PeerState,
-}
-
-#[warn(dead_code)]
-#[derive(Eq, PartialEq)]
-pub enum PeerState {
-    Connected,
-    InHandshake,
-    Banned,
-}
-
-#[warn(dead_code)]
-pub enum PeerManagementCmd {
-    Ban(PeerId),
-}
 
 pub struct PeerManagementHandler {
     pub peer_db: SharedPeerDB,
     pub thread_join: Option<JoinHandle<()>>,
+    pub sender: PeerManagementChannel,
 }
 
 impl PeerManagementHandler {
-    pub fn new(
-        initial_peers: InitialPeers,
-    ) -> (
-        Self,
-        Sender<(PeerId, u64, Vec<u8>)>,
-        Sender<PeerManagementCmd>,
-    ) {
+    pub fn new(initial_peers: InitialPeers) -> Self {
         let (sender, receiver): (
             Sender<(PeerId, u64, Vec<u8>)>,
             Receiver<(PeerId, u64, Vec<u8>)>,
@@ -175,30 +141,14 @@ impl PeerManagementHandler {
             sender.send((peer_id.clone(), 0, message)).unwrap();
         }
 
-        (
-            Self {
-                peer_db,
-                thread_join: Some(thread_join),
+        Self {
+            peer_db,
+            thread_join: Some(thread_join),
+            sender: PeerManagementChannel {
+                msg_sender: sender,
+                command_sender: sender_cmd,
             },
-            sender,
-            sender_cmd,
-        )
-    }
-}
-
-impl PeerDB {
-    fn ban_peer(&mut self, peer_id: &PeerId) {
-        if let Some(peer) = self.peers.get_mut(peer_id) {
-            peer.state = PeerState::Banned;
-            info!("Banned peer: {:?}", peer_id);
-        } else {
-            info!("Tried to ban unknown peer: {:?}", peer_id);
-        };
-    }
-
-    // Flush PeerDB to disk ?
-    fn flush(&self) -> Result<(), ProtocolError> {
-        unimplemented!()
+        }
     }
 }
 

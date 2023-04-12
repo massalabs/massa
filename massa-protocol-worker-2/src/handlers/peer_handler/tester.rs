@@ -14,7 +14,8 @@ use peernet::{
 
 use super::{
     announcement::{AnnouncementDeserializer, AnnouncementDeserializerArgs},
-    PeerInfo, SharedPeerDB,
+    models::PeerInfo,
+    SharedPeerDB,
 };
 
 #[derive(Clone)]
