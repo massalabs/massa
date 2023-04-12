@@ -1,17 +1,18 @@
 use std::thread::JoinHandle;
 
-use crossbeam::channel::{unbounded, Receiver};
+use crossbeam::channel::{Receiver, Sender};
 use massa_pool_exports::PoolController;
+use massa_protocol_exports_2::ProtocolConfig;
 use massa_storage::Storage;
 use peernet::{network_manager::SharedActiveConnections, peer_id::PeerId};
 
 use self::{
-    commands::OperationHandlerCommand, propagation::start_propagation_thread,
-    retrieval::start_retrieval_thread,
+    cache::SharedOperationCache, commands_propagation::OperationHandlerCommand,
+    propagation::start_propagation_thread, retrieval::start_retrieval_thread,
 };
 
-pub mod commands;
-mod internal_messages;
+pub mod cache;
+pub mod commands_propagation;
 mod messages;
 mod propagation;
 mod retrieval;
@@ -27,22 +28,25 @@ impl OperationHandler {
     pub fn new(
         pool_controller: Box<dyn PoolController>,
         storage: Storage,
+        config: ProtocolConfig,
+        cache: SharedOperationCache,
         active_connections: SharedActiveConnections,
-        receiver: Receiver<(PeerId, u64, Vec<u8>)>,
-        receiver_ext: Receiver<OperationHandlerCommand>,
+        receiver_network: Receiver<(PeerId, u64, Vec<u8>)>,
+        local_sender: Sender<OperationHandlerCommand>,
+        local_receiver: Receiver<OperationHandlerCommand>,
     ) -> Self {
         //TODO: Define bound channel
-        let (internal_sender, internal_receiver) = unbounded();
         let operation_retrieval_thread = start_retrieval_thread(
-            receiver,
-            receiver_ext,
+            receiver_network,
             pool_controller,
             storage,
-            internal_sender,
+            config.clone(),
+            cache.clone(),
+            local_sender,
         );
 
         let operation_propagation_thread =
-            start_propagation_thread(internal_receiver, active_connections);
+            start_propagation_thread(local_receiver, active_connections, config, cache);
         Self {
             operation_retrieval_thread: Some(operation_retrieval_thread),
             operation_propagation_thread: Some(operation_propagation_thread),

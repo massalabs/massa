@@ -10,7 +10,7 @@ use massa_storage::Storage;
 use crate::handlers::{
     block_handler::commands::BlockHandlerCommand,
     endorsement_handler::commands::EndorsementHandlerCommand,
-    operation_handler::commands::OperationHandlerCommand,
+    operation_handler::commands_propagation::OperationHandlerCommand,
 };
 
 #[derive(Clone)]
@@ -72,8 +72,9 @@ impl ProtocolController for ProtocolControllerImpl {
     ///
     /// note: Full `OperationId` is replaced by a `OperationPrefixId` later by the worker.
     fn propagate_operations(&self, operations: Storage) -> Result<(), ProtocolError> {
+        let operations = operations.get_op_refs().clone();
         self.sender_operation_handler
-            .send(OperationHandlerCommand::PropagateOperations(operations))
+            .send(OperationHandlerCommand::AnnounceOperations(operations))
             .map_err(|_| {
                 ProtocolError::ChannelError("propagate_operations command send error".into())
             })
