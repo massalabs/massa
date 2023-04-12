@@ -1,4 +1,4 @@
-use std::time::Duration;
+use std::{collections::HashMap, time::Duration};
 
 use massa_consensus_exports::test_exports::MockConsensusController;
 use massa_pool_exports::test_exports::MockPoolController;
@@ -30,15 +30,31 @@ fn basic() {
 
     // Setup initial peers
     let initial_peers_file = NamedTempFile::new().expect("cannot create temp file");
-    let mut initial_peers: InitialPeers = InitialPeers::default();
-    initial_peers.insert(
+    let mut initial_peers1: InitialPeers = InitialPeers::default();
+    let mut peers_1 = HashMap::new();
+    peers_1.insert("127.0.0.1:8082".parse().unwrap(), TransportType::Tcp);
+    initial_peers1.insert(
         PeerId::from_public_key(config1.keypair.get_public_key()),
-        config1.listeners.clone(),
+        peers_1,
     );
-    serde_json::to_writer_pretty(initial_peers_file.as_file(), &initial_peers)
+    serde_json::to_writer_pretty(initial_peers_file.as_file(), &initial_peers1)
+        .expect("unable to write ledger file");
+    let initial_peers_file_2 = NamedTempFile::new().expect("cannot create temp file");
+    let mut initial_peers2: InitialPeers = InitialPeers::default();
+    let mut peers_2 = HashMap::new();
+    peers_2.insert("127.0.0.1:8081".parse().unwrap(), TransportType::Tcp);
+    initial_peers2.insert(
+        PeerId::from_public_key(config2.keypair.get_public_key()),
+        peers_2,
+    );
+    serde_json::to_writer_pretty(initial_peers_file_2.as_file(), &initial_peers2)
         .expect("unable to write ledger file");
     config1.initial_peers = initial_peers_file.path().to_path_buf();
-    config2.initial_peers = initial_peers_file.path().to_path_buf();
+    config1.max_in_connections = 1;
+    config1.max_out_connections = 1;
+    config2.initial_peers = initial_peers_file_2.path().to_path_buf();
+    config2.max_in_connections = 2;
+    config2.max_out_connections = 0;
 
     // Setup the storages
     let storage1 = Storage::create_root();
@@ -52,7 +68,7 @@ fn basic() {
         start_protocol_controller(config2, consensus_controller2, pool_controller2, storage2)
             .expect("Failed to start protocol 2");
 
-    std::thread::sleep(Duration::from_secs(10));
+    std::thread::sleep(Duration::from_secs(3));
     // Stop the protocols
     manager1.stop();
     manager2.stop();
