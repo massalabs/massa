@@ -2543,6 +2543,7 @@ dependencies = [
  "num_enum",
  "parking_lot",
  "rand 0.8.5",
+ "rocksdb",
  "serde",
  "serde_json",
  "serial_test 1.0.0",

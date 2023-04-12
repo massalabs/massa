@@ -452,12 +452,12 @@ impl LedgerDB {
     }
 
     pub fn set_final_state_hash(&mut self, data: &[u8]) {
-        let db = self.db.write();
+        let db = self.db.read();
         let handle = db.cf_handle(METADATA_CF).expect(CF_ERROR);
         let mut batch = WriteBatch::default();
 
         batch.put_cf(handle, LEDGER_FINAL_STATE_HASH_KEY, data);
-        (*db).write(batch).expect(CRUD_ERROR);
+        db.write(batch).expect(CRUD_ERROR);
     }
 
     pub fn get_final_state(&self) -> Result<Vec<u8>, ModelsError> {
@@ -480,7 +480,7 @@ impl LedgerDB {
 
     /// Apply the given operation batch to the disk ledger
     pub fn write_batch(&self, mut batch: LedgerBatch) {
-        let db = self.db.write();
+        let db = self.db.read();
         let handle = db.cf_handle(METADATA_CF).expect(CF_ERROR);
         batch
             .write_batch
@@ -497,7 +497,7 @@ impl LedgerDB {
     /// * slot: associated slot of the current ledger
     /// * batch: the given operation batch to update
     fn set_slot(&self, slot: Slot, batch: &mut LedgerBatch) {
-        let db = self.db.write();
+        let db = self.db.read();
         let handle = db.cf_handle(METADATA_CF).expect(CF_ERROR);
         let mut slot_bytes = Vec::new();
         // Slot serialization never fails

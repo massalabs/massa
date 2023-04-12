@@ -16,7 +16,6 @@ use massa_final_state::test_exports::create_final_state;
 use massa_final_state::{FinalState, FinalStateConfig};
 use massa_hash::Hash;
 use massa_ledger_exports::{LedgerChanges, LedgerEntry, SetUpdateOrDelete};
-use massa_ledger_worker::new_rocks_db_instance;
 use massa_ledger_worker::test_exports::create_final_ledger;
 use massa_models::block::BlockDeserializerArgs;
 use massa_models::bytecode::Bytecode;
@@ -56,6 +55,7 @@ use massa_signature::KeyPair;
 use massa_time::MassaTime;
 use parking_lot::RwLock;
 use rand::Rng;
+use rocksdb::DB;
 use std::collections::{HashMap, VecDeque};
 use std::str::FromStr;
 use std::sync::Arc;
@@ -64,7 +64,6 @@ use std::{
     net::{IpAddr, Ipv4Addr, SocketAddr},
     path::PathBuf,
 };
-use tempfile::TempDir;
 use tokio::{sync::mpsc::Receiver, time::sleep};
 
 // Use loop-back address. use port 0 to auto-assign a port
@@ -236,6 +235,7 @@ pub fn get_random_executed_ops_changes(r_limit: u64) -> PreHashMap<OperationId, 
 pub fn get_random_final_state_bootstrap(
     pos: PoSFinalState,
     config: FinalStateConfig,
+    rocks_db_instance: Arc<RwLock<DB>>,
 ) -> FinalState {
     let r_limit: u64 = 50;
 
@@ -259,11 +259,7 @@ pub fn get_random_final_state_bootstrap(
     );
 
     let slot = Slot::new(0, 0);
-    let temp_dir = TempDir::new().unwrap();
 
-    let rocks_db_instance = Arc::new(RwLock::new(new_rocks_db_instance(
-        temp_dir.path().to_path_buf(),
-    )));
     let final_ledger = create_final_ledger(
         rocks_db_instance.clone(),
         config.ledger_config.clone(),

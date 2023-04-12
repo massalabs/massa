@@ -9,7 +9,6 @@ use massa_async_pool::{AsyncPool, AsyncPoolConfig};
 use massa_executed_ops::{ExecutedOps, ExecutedOpsConfig};
 use massa_hash::{Hash, HASH_SIZE_BYTES};
 use massa_ledger_exports::LedgerConfig;
-use massa_ledger_worker::new_rocks_db_instance;
 use massa_ledger_worker::FinalLedger;
 use massa_models::{
     config::{
@@ -20,12 +19,15 @@ use massa_models::{
 };
 use massa_pos_exports::{PoSConfig, PoSFinalState};
 use parking_lot::RwLock;
+use rocksdb::DB;
 
 impl FinalState {
     /// Create a final stat
-    pub fn create_final_state(pos_state: PoSFinalState, config: FinalStateConfig) -> Self {
-        let temp_dir = config.ledger_config.initial_ledger_path.clone();
-        let rocks_db = Arc::new(RwLock::new(new_rocks_db_instance(temp_dir)));
+    pub fn create_final_state(
+        pos_state: PoSFinalState,
+        config: FinalStateConfig,
+        rocks_db: Arc<RwLock<DB>>,
+    ) -> Self {
         FinalState {
             slot: Slot::new(0, 0),
             ledger: Box::new(FinalLedger::new(

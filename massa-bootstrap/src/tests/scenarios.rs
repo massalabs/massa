@@ -27,6 +27,7 @@ use massa_final_state::{
 };
 use massa_hash::{Hash, HASH_SIZE_BYTES};
 use massa_ledger_exports::LedgerConfig;
+use massa_ledger_worker::new_rocks_db_instance;
 use massa_models::config::{MIP_STORE_STATS_BLOCK_CONSIDERED, MIP_STORE_STATS_COUNTERS_MAX};
 use massa_models::{
     address::Address, config::MAX_DATASTORE_VALUE_LENGTH, node::NodeId, slot::Slot,
@@ -97,12 +98,19 @@ async fn test_bootstrap_server() {
     let mip_store = MipStore::try_from(([(mi_1, state_1)], mip_stats_cfg.clone())).unwrap();
 
     // setup final state local config
-    let temp_dir = TempDir::new().unwrap();
+    let temp_dir_server = TempDir::new().unwrap();
+    let rocks_db_instance_server = Arc::new(RwLock::new(new_rocks_db_instance(
+        temp_dir_server.path().to_path_buf(),
+    )));
+    let temp_dir_client = TempDir::new().unwrap();
+    let rocks_db_instance_client = Arc::new(RwLock::new(new_rocks_db_instance(
+        temp_dir_client.path().to_path_buf(),
+    )));
     let final_state_local_config = FinalStateConfig {
         ledger_config: LedgerConfig {
             thread_count,
             initial_ledger_path: "".into(),
-            disk_ledger_path: temp_dir.path().to_path_buf(),
+            disk_ledger_path: temp_dir_server.path().to_path_buf(),
             max_key_length: MAX_DATASTORE_KEY_LENGTH,
             max_ledger_part_size: 100_000,
             max_datastore_value_length: MAX_DATASTORE_VALUE_LENGTH,
@@ -146,7 +154,6 @@ async fn test_bootstrap_server() {
     let (mut client_selector_manager, client_selector_controller) =
         start_selector_worker(selector_local_config)
             .expect("could not start client selector controller");
-
     // setup final states
     let final_state_server = Arc::new(RwLock::new(get_random_final_state_bootstrap(
         PoSFinalState::new(
@@ -158,6 +165,7 @@ async fn test_bootstrap_server() {
         )
         .unwrap(),
         final_state_local_config.clone(),
+        rocks_db_instance_server.clone(),
     )));
     let final_state_client = Arc::new(RwLock::new(FinalState::create_final_state(
         PoSFinalState::new(
@@ -169,10 +177,10 @@ async fn test_bootstrap_server() {
         )
         .unwrap(),
         final_state_local_config,
+        rocks_db_instance_client.clone(),
     )));
     let final_state_client_clone = final_state_client.clone();
     let final_state_server_clone = final_state_server.clone();
-
     // start bootstrap server
     let (mut mock_bs_listener, bootstrap_interface) = mock_establisher::new();
     let bootstrap_manager = start_bootstrap_server::<TcpStream>(
@@ -301,7 +309,6 @@ async fn test_bootstrap_server() {
             _ => None,
         });
     });
-
     // launch the modifier thread
     let list_changes: Arc<RwLock<Vec<(Slot, StateChanges)>>> = Arc::new(RwLock::new(Vec::new()));
     let list_changes_clone = list_changes.clone();
@@ -335,7 +342,6 @@ async fn test_bootstrap_server() {
 
     // wait for bridge
     bridge.await.expect("bridge join failed");
-
     // apply the changes to the server state before matching with the client
     {
         let mut final_state_server_write = final_state_server.write();
@@ -357,7 +363,6 @@ async fn test_bootstrap_server() {
                 .apply_changes(change.executed_ops_changes.clone(), *slot);
         }
     }
-
     // check final states
     assert_eq_final_state(&final_state_server.read(), &final_state_client.read());
     assert_eq_final_state_hash(&final_state_server.read(), &final_state_client.read());
@@ -365,7 +370,6 @@ async fn test_bootstrap_server() {
     // compute initial draws
     final_state_server.write().compute_initial_draws().unwrap();
     final_state_client.write().compute_initial_draws().unwrap();
-
     // check selection draw
     let server_selection = server_selector_controller.get_entire_selection();
     let client_selection = client_selector_controller.get_entire_selection();

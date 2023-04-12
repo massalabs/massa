@@ -57,7 +57,7 @@ massa_consensus_exports = { path = "../massa-consensus-exports", features = [
 ] }
 lazy_static = "1.4"
 tempfile = "3.3"
-
+rocksdb = "0.20"
 
 # for more information on what are the following features used for, see the cargo.toml at workspace level
 [features]
