@@ -3,8 +3,8 @@
 use massa_proto::massa::api::v1 as grpc;
 
 use crate::api::{
-    get_blocks_by_slots, get_datastore_entries, get_next_block_best_parents, get_selector_draws,
-    get_transactions_throughput, get_version,
+    get_blocks_by_slots, get_datastore_entries, get_largest_stakers, get_next_block_best_parents,
+    get_selector_draws, get_transactions_throughput, get_version,
 };
 use crate::server::MassaGrpc;
 use crate::stream::new_blocks::{new_blocks, NewBlocksStream};
@@ -26,6 +26,17 @@ impl grpc::massa_service_server::MassaService for MassaGrpc {
         request: tonic::Request<grpc::GetDatastoreEntriesRequest>,
     ) -> Result<tonic::Response<grpc::GetDatastoreEntriesResponse>, tonic::Status> {
         match get_datastore_entries(self, request) {
+            Ok(response) => Ok(tonic::Response::new(response)),
+            Err(e) => Err(e.into()),
+        }
+    }
+
+    /// handler for get largest stakers.
+    async fn get_largest_stakers(
+        &self,
+        request: tonic::Request<grpc::GetLargestStakersRequest>,
+    ) -> Result<tonic::Response<grpc::GetLargestStakersResponse>, tonic::Status> {
+        match get_largest_stakers(self, request) {
             Ok(response) => Ok(tonic::Response::new(response)),
             Err(e) => Err(e.into()),
         }

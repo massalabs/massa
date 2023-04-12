@@ -14,6 +14,9 @@
     - [GetBlocksBySlotsResponse](#massa-api-v1-GetBlocksBySlotsResponse)
     - [GetDatastoreEntriesRequest](#massa-api-v1-GetDatastoreEntriesRequest)
     - [GetDatastoreEntriesResponse](#massa-api-v1-GetDatastoreEntriesResponse)
+    - [GetLargestStakersRequest](#massa-api-v1-GetLargestStakersRequest)
+    - [GetLargestStakersResponse](#massa-api-v1-GetLargestStakersResponse)
+    - [GetLargestStakersResponse.StakersEntry](#massa-api-v1-GetLargestStakersResponse-StakersEntry)
     - [GetNextBlockBestParentsRequest](#massa-api-v1-GetNextBlockBestParentsRequest)
     - [GetNextBlockBestParentsResponse](#massa-api-v1-GetNextBlockBestParentsResponse)
     - [GetSelectorDrawsRequest](#massa-api-v1-GetSelectorDrawsRequest)
@@ -22,6 +25,8 @@
     - [GetTransactionsThroughputResponse](#massa-api-v1-GetTransactionsThroughputResponse)
     - [GetVersionRequest](#massa-api-v1-GetVersionRequest)
     - [GetVersionResponse](#massa-api-v1-GetVersionResponse)
+    - [LargestStakersFilter](#massa-api-v1-LargestStakersFilter)
+    - [LargestStakersQuery](#massa-api-v1-LargestStakersQuery)
     - [NewBlocksHeadersRequest](#massa-api-v1-NewBlocksHeadersRequest)
     - [NewBlocksHeadersResponse](#massa-api-v1-NewBlocksHeadersResponse)
     - [NewBlocksRequest](#massa-api-v1-NewBlocksRequest)
@@ -247,6 +252,54 @@ GetDatastoreEntriesResponse holds response from GetDatastoreEntries
 
 
 
+<a name="massa-api-v1-GetLargestStakersRequest"></a>
+
+### GetLargestStakersRequest
+GetLargestStakersRequest holds request from GetLargestStakers
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| id | [string](#string) |  | Request id |
+| query | [LargestStakersQuery](#massa-api-v1-LargestStakersQuery) |  | Query |
+
+
+
+
+
+
+<a name="massa-api-v1-GetLargestStakersResponse"></a>
+
+### GetLargestStakersResponse
+GetLargestStakersResponse holds response from GetLargestStakers
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| id | [string](#string) |  | Request id |
+| stakers | [GetLargestStakersResponse.StakersEntry](#massa-api-v1-GetLargestStakersResponse-StakersEntry) | repeated | Largest stakers |
+
+
+
+
+
+
+<a name="massa-api-v1-GetLargestStakersResponse-StakersEntry"></a>
+
+### GetLargestStakersResponse.StakersEntry
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| key | [string](#string) |  |  |
+| value | [fixed64](#fixed64) |  |  |
+
+
+
+
+
+
 <a name="massa-api-v1-GetNextBlockBestParentsRequest"></a>
 
 ### GetNextBlockBestParentsRequest
@@ -366,6 +419,36 @@ GetVersionResponse holds response from GetVersion
 | ----- | ---- | ----- | ----------- |
 | id | [string](#string) |  | Request id |
 | version | [string](#string) |  | Version |
+
+
+
+
+
+
+<a name="massa-api-v1-LargestStakersFilter"></a>
+
+### LargestStakersFilter
+LargestStakers Filter
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| limit | [fixed64](#fixed64) |  | Limits the number of stakers to return. Defaults to 50 |
+
+
+
+
+
+
+<a name="massa-api-v1-LargestStakersQuery"></a>
+
+### LargestStakersQuery
+LargestStakers Query
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| filter | [LargestStakersFilter](#massa-api-v1-LargestStakersFilter) |  | Filter |
 
 
 
@@ -751,6 +834,7 @@ Massa gRPC service
 | ----------- | ------------ | ------------- | ------------|
 | GetBlocksBySlots | [GetBlocksBySlotsRequest](#massa-api-v1-GetBlocksBySlotsRequest) | [GetBlocksBySlotsResponse](#massa-api-v1-GetBlocksBySlotsResponse) | Get blocks by slots |
 | GetDatastoreEntries | [GetDatastoreEntriesRequest](#massa-api-v1-GetDatastoreEntriesRequest) | [GetDatastoreEntriesResponse](#massa-api-v1-GetDatastoreEntriesResponse) | Get datastore entries |
+| GetLargestStakers | [GetLargestStakersRequest](#massa-api-v1-GetLargestStakersRequest) | [GetLargestStakersResponse](#massa-api-v1-GetLargestStakersResponse) | Get largest stakers |
 | GetNextBlockBestParents | [GetNextBlockBestParentsRequest](#massa-api-v1-GetNextBlockBestParentsRequest) | [GetNextBlockBestParentsResponse](#massa-api-v1-GetNextBlockBestParentsResponse) | Get next block best parents |
 | GetSelectorDraws | [GetSelectorDrawsRequest](#massa-api-v1-GetSelectorDrawsRequest) | [GetSelectorDrawsResponse](#massa-api-v1-GetSelectorDrawsResponse) | Get selector draws |
 | GetTransactionsThroughput | [GetTransactionsThroughputRequest](#massa-api-v1-GetTransactionsThroughputRequest) | [GetTransactionsThroughputResponse](#massa-api-v1-GetTransactionsThroughputResponse) | Get transactions throughput |

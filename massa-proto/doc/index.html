@@ -219,6 +219,18 @@
                 </li>
               
                 <li>
+                  <a href="#massa.api.v1.GetLargestStakersRequest"><span class="badge">M</span>GetLargestStakersRequest</a>
+                </li>
+              
+                <li>
+                  <a href="#massa.api.v1.GetLargestStakersResponse"><span class="badge">M</span>GetLargestStakersResponse</a>
+                </li>
+              
+                <li>
+                  <a href="#massa.api.v1.GetLargestStakersResponse.StakersEntry"><span class="badge">M</span>GetLargestStakersResponse.StakersEntry</a>
+                </li>
+              
+                <li>
                   <a href="#massa.api.v1.GetNextBlockBestParentsRequest"><span class="badge">M</span>GetNextBlockBestParentsRequest</a>
                 </li>
               
@@ -248,6 +260,14 @@
               
                 <li>
                   <a href="#massa.api.v1.GetVersionResponse"><span class="badge">M</span>GetVersionResponse</a>
+                </li>
+              
+                <li>
+                  <a href="#massa.api.v1.LargestStakersFilter"><span class="badge">M</span>LargestStakersFilter</a>
+                </li>
+              
+                <li>
+                  <a href="#massa.api.v1.LargestStakersQuery"><span class="badge">M</span>LargestStakersQuery</a>
                 </li>
               
                 <li>
@@ -788,6 +808,99 @@
 
         
       
+        <h3 id="massa.api.v1.GetLargestStakersRequest">GetLargestStakersRequest</h3>
+        <p>GetLargestStakersRequest holds request from GetLargestStakers</p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>id</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p>Request id </p></td>
+                </tr>
+              
+                <tr>
+                  <td>query</td>
+                  <td><a href="#massa.api.v1.LargestStakersQuery">LargestStakersQuery</a></td>
+                  <td></td>
+                  <td><p>Query </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
+        <h3 id="massa.api.v1.GetLargestStakersResponse">GetLargestStakersResponse</h3>
+        <p>GetLargestStakersResponse holds response from GetLargestStakers</p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>id</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p>Request id </p></td>
+                </tr>
+              
+                <tr>
+                  <td>stakers</td>
+                  <td><a href="#massa.api.v1.GetLargestStakersResponse.StakersEntry">GetLargestStakersResponse.StakersEntry</a></td>
+                  <td>repeated</td>
+                  <td><p>Largest stakers </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
+        <h3 id="massa.api.v1.GetLargestStakersResponse.StakersEntry">GetLargestStakersResponse.StakersEntry</h3>
+        <p></p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>key</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
+                <tr>
+                  <td>value</td>
+                  <td><a href="#fixed64">fixed64</a></td>
+                  <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
         <h3 id="massa.api.v1.GetNextBlockBestParentsRequest">GetNextBlockBestParentsRequest</h3>
         <p>GetNextBlockBestParentsRequest holds request for GetNextBlockBestParents</p>
 
@@ -1006,6 +1119,54 @@
                   <td><a href="#string">string</a></td>
                   <td></td>
                   <td><p>Version </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
+        <h3 id="massa.api.v1.LargestStakersFilter">LargestStakersFilter</h3>
+        <p>LargestStakers Filter</p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>limit</td>
+                  <td><a href="#fixed64">fixed64</a></td>
+                  <td></td>
+                  <td><p>Limits the number of stakers to return. Defaults to 50 </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
+        <h3 id="massa.api.v1.LargestStakersQuery">LargestStakersQuery</h3>
+        <p>LargestStakers Query</p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>filter</td>
+                  <td><a href="#massa.api.v1.LargestStakersFilter">LargestStakersFilter</a></td>
+                  <td></td>
+                  <td><p>Filter </p></td>
                 </tr>
               
             </tbody>
@@ -1745,6 +1906,13 @@
               </tr>
             
               <tr>
+                <td>GetLargestStakers</td>
+                <td><a href="#massa.api.v1.GetLargestStakersRequest">GetLargestStakersRequest</a></td>
+                <td><a href="#massa.api.v1.GetLargestStakersResponse">GetLargestStakersResponse</a></td>
+                <td><p>Get largest stakers</p></td>
+              </tr>
+            
+              <tr>
                 <td>GetNextBlockBestParents</td>
                 <td><a href="#massa.api.v1.GetNextBlockBestParentsRequest">GetNextBlockBestParentsRequest</a></td>
                 <td><a href="#massa.api.v1.GetNextBlockBestParentsResponse">GetNextBlockBestParentsResponse</a></td>
@@ -1863,6 +2031,16 @@
                 <td>POST</td>
                 <td>/v1/get_datastore_entries</td>
                 <td>*</td>
+              </tr>
+              
+            
+              
+              
+              <tr>
+                <td>GetLargestStakers</td>
+                <td>GET</td>
+                <td>/v1/get_largest_stakers</td>
+                <td></td>
               </tr>
               
             

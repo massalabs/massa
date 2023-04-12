@@ -35,6 +35,11 @@ service MassaService {
     };
   }
 
+  // Get largest stakers
+  rpc GetLargestStakers(GetLargestStakersRequest) returns (GetLargestStakersResponse) {
+      option (google.api.http) = {get: "/v1/get_largest_stakers"};
+  }
+
   // Get next block best parents
   rpc GetNextBlockBestParents(GetNextBlockBestParentsRequest) returns (GetNextBlockBestParentsResponse) {
     option (google.api.http) = {get: "/v1/get_next_block_best_parents"};
@@ -140,6 +145,34 @@ message DatastoreEntry {
   bytes final_value = 1;
   // candidate_value datastore entry value
   bytes candidate_value = 2;
+}
+
+// GetLargestStakersRequest holds request from GetLargestStakers
+message GetLargestStakersRequest {
+  // Request id
+  string id = 1;
+  // Query
+  LargestStakersQuery query = 2;
+}
+
+// LargestStakers Query
+message LargestStakersQuery {
+  // Filter
+  LargestStakersFilter filter = 1;
+}
+
+// LargestStakers Filter
+message LargestStakersFilter {
+  /// Limits the number of stakers to return. Defaults to 50
+  fixed64 limit = 1;
+}
+
+// GetLargestStakersResponse holds response from GetLargestStakers
+message GetLargestStakersResponse {
+  // Request id
+  string id = 1;
+  // Largest stakers
+  map<string, fixed64> stakers = 2;
 }
 
 // GetNextBlockBestParentsRequest holds request for GetNextBlockBestParents

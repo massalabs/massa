@@ -5,10 +5,14 @@ use crate::server::MassaGrpc;
 use itertools::izip;
 use massa_models::address::Address;
 use massa_models::slot::Slot;
-use massa_models::timeslots;
+use massa_models::timeslots::{self, get_latest_block_slot_at_timestamp};
 use massa_proto::massa::api::v1 as grpc;
+use massa_time::MassaTime;
 use std::str::FromStr;
 use tracing::log::warn;
+
+/// default stakers limit
+const DEFAULT_STAKERS_LIMIT: u64 = 50;
 
 /// get blocks by slots
 pub(crate) fn get_blocks_by_slots(
@@ -119,6 +123,44 @@ pub(crate) fn get_datastore_entries(
         .collect();
 
     Ok(grpc::GetDatastoreEntriesResponse { id, entries })
+}
+
+/// get largest stakers
+pub(crate) fn get_largest_stakers(
+    grpc: &MassaGrpc,
+    request: tonic::Request<grpc::GetLargestStakersRequest>,
+) -> Result<grpc::GetLargestStakersResponse, GrpcError> {
+    let inner_req = request.into_inner();
+    let id = inner_req.id;
+    let limit = inner_req.query.map_or(DEFAULT_STAKERS_LIMIT, |query| {
+        query
+            .filter
+            .map_or(DEFAULT_STAKERS_LIMIT, |filter| filter.limit)
+    });
+
+    let now = MassaTime::now()?;
+    let curr_cycle = get_latest_block_slot_at_timestamp(
+        grpc.grpc_config.thread_count,
+        grpc.grpc_config.t0,
+        grpc.grpc_config.genesis_timestamp,
+        now,
+    )?
+    .unwrap_or_else(|| Slot::new(0, 0))
+    .get_cycle(grpc.grpc_config.periods_per_cycle);
+
+    let mut staker_vec = grpc
+        .execution_controller
+        .get_cycle_active_rolls(curr_cycle)
+        .into_iter()
+        .map(|(address, roll_counts)| (address.to_string(), roll_counts))
+        .take(limit as usize)
+        .collect::<Vec<(String, u64)>>();
+
+    staker_vec.sort_by_key(|&(_, roll_counts)| std::cmp::Reverse(roll_counts));
+
+    let stakers = staker_vec.into_iter().collect();
+
+    Ok(grpc::GetLargestStakersResponse { id, stakers })
 }
 
 /// get next block best parents
