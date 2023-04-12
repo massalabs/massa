@@ -134,15 +134,15 @@ impl PeerManagementHandler {
                                 }
                             }
 
-                    println!("Received message len: {}", message.len());
-                    message_deserializer.set_message(message_id);
-                    let (_, message) = message_deserializer
-                        .deserialize::<DeserializeError>(&message)
-                        .unwrap();
-                    println!("Received message from peer: {:?}", peer_id);
-                    println!("Message: {:?}", message);
-                    // TODO: Bufferize launch of test thread
-                    // TODO: Add wait group or something like that to wait for all threads to finish when stop
+                            println!("Received message len: {}", message.len());
+                            message_deserializer.set_message(message_id);
+                            let (_, message) = message_deserializer
+                                .deserialize::<DeserializeError>(&message)
+                                .unwrap();
+                            println!("Received message from peer: {:?}", peer_id);
+                            println!("Message: {:?}", message);
+                            // TODO: Bufferize launch of test thread
+                            // TODO: Add wait group or something like that to wait for all threads to finish when stop
                             match message {
                                 PeerManagementMessage::NewPeerConnected((_peer_id, listeners)) => {
                                     for listener in listeners.into_iter() {
