@@ -58,7 +58,6 @@ impl PeerManagementHandler {
     pub fn new(initial_peers: InitialPeers) -> (Self, Sender<(PeerId, u64, Vec<u8>)>) {
         let (sender, receiver) = crossbeam::channel::unbounded();
         for (peer_id, listeners) in &initial_peers {
-            println!("Sending initial peer: {:?}", peer_id);
             sender
                 .send((
                     peer_id.clone(),
@@ -73,26 +72,26 @@ impl PeerManagementHandler {
             let peer_db = peer_db.clone();
             move || {
                 loop {
-                    let (peer_id, message_id, message) = receiver.recv().unwrap();
-                    println!("Received message len: {}", message.len());
-                    let message = PeerManagementMessage::from_bytes(message_id, &message).unwrap();
-                    println!("Received message from peer: {:?}", peer_id);
-                    println!("Message: {:?}", message);
-                    // TODO: Bufferize launch of test thread
-                    // TODO: Add wait group or something like that to wait for all threads to finish when stop
-                    match message {
-                        PeerManagementMessage::NewPeerConnected((_peer_id, listeners)) => {
-                            for listener in listeners.into_iter() {
-                                let _tester = Tester::new(peer_db.clone(), listener.clone());
-                            }
-                        }
-                        PeerManagementMessage::ListPeers(peers) => {
-                            for (_peer_id, listeners) in peers.into_iter() {
+                    if let Ok((_peer_id, message_id, message)) = receiver.recv() {
+                        let message = PeerManagementMessage::from_bytes(message_id, &message).unwrap();
+                        // TODO: Bufferize launch of test thread
+                        // TODO: Add wait group or something like that to wait for all threads to finish when stop
+                        match message {
+                            PeerManagementMessage::NewPeerConnected((_peer_id, listeners)) => {
                                 for listener in listeners.into_iter() {
                                     let _tester = Tester::new(peer_db.clone(), listener.clone());
                                 }
                             }
+                            PeerManagementMessage::ListPeers(peers) => {
+                                for (_peer_id, listeners) in peers.into_iter() {
+                                    for listener in listeners.into_iter() {
+                                        let _tester = Tester::new(peer_db.clone(), listener.clone());
+                                    }
+                                }
+                            }
                         }
+                    } else {
+                        break;
                     }
                 }
             }
@@ -209,7 +208,6 @@ impl HandshakeHandler for MassaHandshake {
         // check their signature
         peer_id.verify_signature(&self_random_hash, &other_signature)?;
 
-        println!("Handshake finished");
         Ok(peer_id)
     }
 }

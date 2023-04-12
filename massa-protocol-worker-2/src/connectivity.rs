@@ -103,11 +103,13 @@ pub fn start_connectivity_thread(
                 addr, transport
             ));
         }
+
         //Try to connect to peers
         loop {
             select! {
                 recv(receiver) -> msg => {
                     if let Ok(ConnectivityCommand::Stop) = msg {
+                        drop(manager);
                         if let Some(handle) = peer_manager_handler.thread_join.take() {
                             handle.join().expect("Failed to join peer manager thread");
                         }
