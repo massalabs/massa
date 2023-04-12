@@ -1,14 +1,11 @@
 //! Copyright (c) 2022 MASSA LABS <info@massa.net>
 
-use crate::types::DenunciationsRequest;
-use crossbeam_channel::{Receiver, Sender};
 use massa_factory_exports::{FactoryChannels, FactoryConfig};
 use massa_hash::Hash;
 use massa_models::{
     block::{Block, BlockSerializer},
     block_header::{BlockHeader, BlockHeaderSerializer, SecuredHeader},
     block_id::BlockId,
-    denunciation::Denunciation,
     endorsement::SecureShareEndorsement,
     prehash::PreHashSet,
     secure_share::SecureShareContent,
@@ -18,7 +15,6 @@ use massa_models::{
 use massa_time::MassaTime;
 use massa_wallet::Wallet;
 use parking_lot::RwLock;
-use std::time::Duration;
 use std::{
     sync::{mpsc, Arc},
     thread,
@@ -32,9 +28,6 @@ pub(crate) struct BlockFactoryWorker {
     wallet: Arc<RwLock<Wallet>>,
     channels: FactoryChannels,
     factory_receiver: mpsc::Receiver<()>,
-    block_factory_request_sender: Sender<DenunciationsRequest>,
-    req_tx: Sender<Vec<Denunciation>>,
-    req_rx: Receiver<Vec<Denunciation>>,
 }
 
 impl BlockFactoryWorker {
@@ -45,20 +38,15 @@ impl BlockFactoryWorker {
         wallet: Arc<RwLock<Wallet>>,
         channels: FactoryChannels,
         factory_receiver: mpsc::Receiver<()>,
-        block_factory_request_sender: Sender<DenunciationsRequest>,
     ) -> thread::JoinHandle<()> {
         thread::Builder::new()
             .name("block-factory".into())
             .spawn(|| {
-                let (req_tx, req_rx) = crossbeam_channel::unbounded();
                 let mut this = Self {
                     cfg,
                     wallet,
                     channels,
                     factory_receiver,
-                    block_factory_request_sender,
-                    req_tx,
-                    req_rx,
                 };
                 this.run();
             })
@@ -221,28 +209,6 @@ impl BlockFactoryWorker {
                 .collect::<Vec<u8>>(),
         );
 
-        // request denunciations
-        let denunciations_req = DenunciationsRequest {
-            tx: self.req_tx.clone(),
-            slot,
-        };
-        let denunciations = match self.block_factory_request_sender.send(denunciations_req) {
-            Ok(_) => {
-                // TODO: not hardcoded constant
-                match self.req_rx.recv_timeout(Duration::from_millis(100)) {
-                    Ok(v) => v,
-                    Err(e) => {
-                        warn!("Unable to receive denunciations: {}", e);
-                        return;
-                    }
-                }
-            }
-            Err(e) => {
-                warn!("Unable to send denuncations request: {}", e);
-                return;
-            }
-        };
-
         // create header
         let header: SecuredHeader = BlockHeader::new_verifiable::<BlockHeaderSerializer, BlockId>(
             BlockHeader {
@@ -250,7 +216,7 @@ impl BlockFactoryWorker {
                 parents: parents.into_iter().map(|(id, _period)| id).collect(),
                 operation_merkle_root: global_operations_hash,
                 endorsements,
-                denunciations,
+                denunciations: Vec::new(), // TODO / FIXME: feed
             },
             BlockHeaderSerializer::new(), // TODO reuse self.block_header_serializer
             block_producer_keypair,
@@ -269,7 +235,6 @@ impl BlockFactoryWorker {
             block_producer_keypair,
         )
         .expect("error while producing block");
-
         let block_id = block.id;
         // store block in storage
         block_storage.store_block(block);
