@@ -10,7 +10,7 @@ use crate::messages::{
     BootstrapServerMessageDeserializer,
 };
 use crate::settings::BootstrapClientConfig;
-use massa_hash::{Hash, HASH_SIZE_BYTES};
+use massa_hash::Hash;
 use massa_models::serialization::{DeserializeMinBEInt, SerializeMinBEInt};
 use massa_models::version::{Version, VersionSerializer};
 use massa_serialization::{DeserializeError, Deserializer, Serializer};
@@ -105,26 +105,26 @@ impl BootstrapClientBinder {
         let message = {
             if let Some(legacy_msg) = legacy_msg {
                 // Consume the stream, and discard the peek
-                let mut sig_msg_bytes = vec![0u8; peek_len + HASH_SIZE_BYTES + (msg_len as usize)];
-                self.duplex
-                    .read_exact(&mut sig_msg_bytes[HASH_SIZE_BYTES..])?;
-                let sig_msg_bytes = &mut sig_msg_bytes[peek_len..];
+                let mut stream_bytes = vec![0u8; peek_len + (msg_len as usize)];
+                self.duplex.read_exact(&mut stream_bytes[..])?;
+                let msg_bytes = &mut stream_bytes[peek_len..];
 
-                // Move in the previous message hash for computation, and verify
-                sig_msg_bytes[..HASH_SIZE_BYTES].copy_from_slice(legacy_msg.to_bytes());
-                let msg_hash = Hash::compute_from(sig_msg_bytes);
+                // prepend the received message with the previous messages hash, and derive the new hash.
+                // TODO: some sort of recovery if this fails?
+                let rehash_seed = &[legacy_msg.to_bytes().as_slice(), msg_bytes].concat();
+                let msg_hash = Hash::compute_from(rehash_seed);
                 self.remote_pubkey.verify_signature(&msg_hash, &sig)?;
 
                 // ...And deserialize
                 let (_, msg) = message_deserializer
-                    .deserialize::<DeserializeError>(&sig_msg_bytes[HASH_SIZE_BYTES..])
+                    .deserialize::<DeserializeError>(&msg_bytes)
                     .map_err(|err| BootstrapError::DeserializeError(format!("{}", err)))?;
                 msg
             } else {
                 // Consume the stream and discard the peek
-                let mut sig_msg_bytes = vec![0u8; peek_len + msg_len as usize];
-                self.duplex.read_exact(&mut sig_msg_bytes[..])?;
-                let sig_msg_bytes = &mut sig_msg_bytes[peek_len..];
+                let mut stream_bytes = vec![0u8; peek_len + msg_len as usize];
+                self.duplex.read_exact(&mut stream_bytes[..])?;
+                let sig_msg_bytes = &mut stream_bytes[peek_len..];
 
                 // Compute the hash and verify
                 let msg_hash = Hash::compute_from(sig_msg_bytes);
