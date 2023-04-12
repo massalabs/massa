@@ -22,7 +22,9 @@ use tracing::log::{error, warn};
 use crate::handlers::peer_handler::models::PeerState;
 
 use self::{
-    models::{InitialPeers, PeerManagementChannel, PeerManagementCmd, SharedPeerDB},
+    models::{
+        InitialPeers, PeerManagementChannel, PeerManagementCmd, PeerMessageTuple, SharedPeerDB,
+    },
     tester::Tester,
 };
 
@@ -52,10 +54,8 @@ pub struct PeerManagementHandler {
 
 impl PeerManagementHandler {
     pub fn new(initial_peers: InitialPeers) -> Self {
-        let (sender, receiver): (
-            Sender<(PeerId, u64, Vec<u8>)>,
-            Receiver<(PeerId, u64, Vec<u8>)>,
-        ) = crossbeam::channel::unbounded();
+        let (sender, receiver): (Sender<PeerMessageTuple>, Receiver<PeerMessageTuple>) =
+            crossbeam::channel::unbounded();
         let (sender_cmd, receiver_cmd): (Sender<PeerManagementCmd>, Receiver<PeerManagementCmd>) =
             crossbeam::channel::unbounded();
         let message_serializer = PeerManagementMessageSerializer::new();
@@ -90,7 +90,7 @@ impl PeerManagementHandler {
                            }
                         },
                         recv(receiver) -> msg => {
-                            let (peer_id, message_id, message) = msg.unwrap();
+                            let (peer_id, message_id, message): PeerMessageTuple = msg.unwrap();
 
                             // check if peer is banned
                             if let Some(peer) = peer_db.read().peers.get(&peer_id) {

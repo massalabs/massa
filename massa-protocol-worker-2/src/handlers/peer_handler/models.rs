@@ -21,6 +21,8 @@ pub struct PeerDB {
 
 pub type SharedPeerDB = Arc<RwLock<PeerDB>>;
 
+pub type PeerMessageTuple = (PeerId, u64, Vec<u8>);
+
 pub struct PeerInfo {
     pub last_announce: Announcement,
     pub state: PeerState,
@@ -41,7 +43,7 @@ pub enum PeerManagementCmd {
 }
 
 pub struct PeerManagementChannel {
-    pub msg_sender: Sender<(PeerId, u64, Vec<u8>)>,
+    pub msg_sender: Sender<PeerMessageTuple>,
     pub command_sender: Sender<PeerManagementCmd>,
 }
 
