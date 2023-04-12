@@ -45,7 +45,7 @@ use massa_versioning_worker::versioning::MipStore;
 use parking_lot::RwLock;
 use std::{
     collections::HashMap,
-    net::{IpAddr, SocketAddr, TcpStream},
+    net::{IpAddr, SocketAddr},
     sync::Arc,
     thread,
     time::{Duration, Instant},
@@ -56,7 +56,7 @@ use white_black_list::*;
 
 use crate::{
     error::BootstrapError,
-    listener::{BootstrapListenerStopHandle, BootstrapTcpListener},
+    listener::{AcceptEvent, BootstrapListenerStopHandle, BootstrapTcpListener},
     messages::{BootstrapClientMessage, BootstrapServerMessage},
     server_binder::BootstrapServerBinder,
     BootstrapConfig,
@@ -64,7 +64,6 @@ use crate::{
 
 /// Abstraction layer over data produced by the listener, and transported
 /// over to the worker via a channel
-type BsConn = (TcpStream, SocketAddr);
 
 /// handle on the bootstrap server
 pub struct BootstrapManager {
@@ -122,7 +121,6 @@ pub fn start_bootstrap_server<C: NetworkCommandSenderTrait + Clone>(
     };
 
     // channel for incoming connections from the listener
-    let (listener_tx, listener_rx) = crossbeam::channel::bounded::<BsConn>(max_bootstraps * 2);
 
     let white_black_list = SharedWhiteBlackList::new(
         config.bootstrap_whitelist_path.clone(),
@@ -146,7 +144,7 @@ pub fn start_bootstrap_server<C: NetworkCommandSenderTrait + Clone>(
         })
         .expect("in `start_bootstrap_server`, OS failed to spawn list-updater thread");
 
-    let listen_stop_handle = BootstrapTcpListener::start(addr, listener_tx)?;
+    let (waker, listener) = BootstrapTcpListener::new(addr)?;
 
     let main_handle = thread::Builder::new()
         .name("bs-main-loop".to_string())
@@ -155,7 +153,7 @@ pub fn start_bootstrap_server<C: NetworkCommandSenderTrait + Clone>(
                 consensus_controller,
                 network_command_sender,
                 final_state,
-                listener_rx,
+                listener,
                 white_black_list,
                 keypair,
                 version,
@@ -171,8 +169,8 @@ pub fn start_bootstrap_server<C: NetworkCommandSenderTrait + Clone>(
     Ok(BootstrapManager {
         update_handle,
         main_handle,
-        listen_stop_handle,
         update_stopper_tx,
+        listen_stop_handle: waker,
     })
 }
 
@@ -180,7 +178,7 @@ struct BootstrapServer<'a, C: NetworkCommandSenderTrait> {
     consensus_controller: Box<dyn ConsensusController>,
     network_command_sender: C,
     final_state: Arc<RwLock<FinalState>>,
-    listener_rx: crossbeam::channel::Receiver<BsConn>,
+    listener: BootstrapTcpListener,
     white_black_list: SharedWhiteBlackList<'a>,
     keypair: KeyPair,
     bootstrap_config: BootstrapConfig,
@@ -225,11 +223,19 @@ impl<C: NetworkCommandSenderTrait + Clone> BootstrapServer<'_, C> {
         let bootstrap_sessions_counter: Arc<()> = Arc::new(());
         let per_ip_min_interval = self.bootstrap_config.per_ip_min_interval.to_duration();
         // TODO: Work out how to integration-test this
-        loop {
+        let res = loop {
             // block until we have a connection to work with, or break out of main-loop
-            let Ok((dplx, remote_addr)) = self.listener_rx.recv().map_err(|_e| {
-                BootstrapError::GeneralError("Bootstrap listener channel disconnected".to_string())
-            }) else { break; };
+            // let Ok((dplx, remote_addr)) = self.listener_rx.recv().map_err(|_e| {
+            //     BootstrapError::GeneralError("Bootstrap listener channel disconnected".to_string())
+            // }) else { break; };
+            let (dplx, remote_addr) = match self.listener.accept() {
+                Ok(AcceptEvent::NewConnection((dplx, remote_addr))) => (dplx, remote_addr),
+                Ok(AcceptEvent::Stop) => break Ok(()),
+                Err(e) => {
+                    error!("bootstrap listener error: {}", e);
+                    break Err(e);
+                }
+            };
 
             // claim a slot in the max_bootstrap_sessions
             let server_binding = BootstrapServerBinder::new(
@@ -330,11 +336,11 @@ impl<C: NetworkCommandSenderTrait + Clone> BootstrapServer<'_, C> {
                     move || debug!("did not bootstrap {}: no available slots", remote_addr),
                 );
             }
-        }
+        };
 
         // Give any remaining processes 20 seconds to clean up, otherwise force them to shutdown
         bs_loop_rt.shutdown_timeout(Duration::from_secs(20));
-        Ok(())
+        res
     }
 
     /// Checks latest attempt. If too recent, provides the bad news (as an error).
