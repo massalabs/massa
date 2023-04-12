@@ -403,7 +403,7 @@ impl Deserializer<BlockHeader> for BlockHeaderDeserializer {
         if parents.is_empty() {
             let res = BlockHeader {
                 slot,
-                parents,
+                parents: parents.clone(),
                 operation_merkle_root,
                 endorsements: Vec::new(),
                 denunciations: Vec::new(),

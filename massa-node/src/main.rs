@@ -605,6 +605,10 @@ async fn launch(
     .expect("could not start protocol controller");
 
     // launch factory
+
+    let (block_factory_request_sender, block_factory_request_receiver) =
+        crossbeam_channel::bounded(CHANNEL_SIZE);
+
     let factory_config = FactoryConfig {
         thread_count: THREAD_COUNT,
         genesis_timestamp: *GENESIS_TIMESTAMP,
@@ -631,6 +635,8 @@ async fn launch(
         factory_channels,
         denunciation_factory_receiver,
         denunciation_factory_rx,
+        block_factory_request_sender,
+        block_factory_request_receiver,
     );
 
     // launch bootstrap server

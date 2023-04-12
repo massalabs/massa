@@ -3,9 +3,10 @@
 use parking_lot::RwLock;
 use std::sync::{mpsc, Arc};
 
-use crossbeam_channel::{unbounded, Receiver};
+use crossbeam_channel::{unbounded, Receiver, Sender};
 
 use crate::denunciation_factory::DenunciationFactoryWorker;
+use crate::types::DenunciationsRequest;
 use crate::{
     block_factory::BlockFactoryWorker, endorsement_factory::EndorsementFactoryWorker,
     manager::FactoryManagerImpl,
@@ -29,6 +30,8 @@ pub fn start_factory(
     channels: FactoryChannels,
     denunciation_factory_consensus_receiver: Receiver<DenunciationPrecursor>,
     denunciation_factory_endorsement_pool_receiver: Receiver<DenunciationPrecursor>,
+    block_factory_request_sender: Sender<DenunciationsRequest>,
+    block_factory_request_receiver: Receiver<DenunciationsRequest>,
 ) -> Box<dyn FactoryManager> {
     // create block factory channel
     let (block_worker_tx, block_worker_rx) = mpsc::channel::<()>();
@@ -45,6 +48,7 @@ pub fn start_factory(
         wallet.clone(),
         channels.clone(),
         block_worker_rx,
+        block_factory_request_sender,
     );
 
     // start endorsement factory worker
@@ -62,6 +66,7 @@ pub fn start_factory(
         denunciation_worker_rx,
         denunciation_factory_consensus_receiver,
         denunciation_factory_endorsement_pool_receiver,
+        block_factory_request_receiver,
     );
 
     // create factory manager

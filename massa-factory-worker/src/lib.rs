@@ -7,6 +7,7 @@ mod denunciation_factory;
 mod endorsement_factory;
 mod manager;
 mod run;
+mod types;
 
 pub use run::start_factory;
 
