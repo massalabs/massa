@@ -17,7 +17,8 @@ pub use establisher::{Establisher, Listener, ReadHalf, WriteHalf};
 pub use network_controller::MockNetworkCommandSender;
 
 pub use network_controller::{
-    NetworkCommandSender, NetworkCommandSenderTrait, NetworkEventReceiver, NetworkManager,
+    make_runtime, NetworkCommandSender, NetworkCommandSenderTrait, NetworkEventReceiver,
+    NetworkManager,
 };
 pub use peers::{
     BootstrapPeers, BootstrapPeersDeserializer, BootstrapPeersSerializer, ConnectionCount, Peer,
