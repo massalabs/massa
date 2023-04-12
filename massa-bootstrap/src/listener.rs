@@ -6,11 +6,13 @@ use mio::{Events, Interest, Poll, Token, Waker};
 use tracing::{error, info};
 
 use crate::error::BootstrapError;
+use crate::establisher::BSListener;
 
 const NEW_CONNECTION: Token = Token(0);
 const STOP_LISTENER: Token = Token(10);
 
-pub(crate) struct BootstrapTcpListener {
+/// TODO: this should be crate-private. currently needed for models testing
+pub struct BootstrapTcpListener {
     poll: Poll,
     events: Events,
     server: TcpListener,
@@ -25,15 +27,12 @@ pub enum AcceptEvent {
     NewConnection((TcpStream, SocketAddr)),
     Stop,
 }
-
 impl BootstrapTcpListener {
     /// Start a new bootstrap listener on the given address.
     ///
     /// * `addr` - the address to listen on
     /// * `connection_tx` - the channel to send new connections to
-    pub fn new(
-        addr: SocketAddr,
-    ) -> Result<(BootstrapListenerStopHandle, BootstrapTcpListener), BootstrapError> {
+    pub fn new(addr: SocketAddr) -> Result<(BootstrapListenerStopHandle, Self), BootstrapError> {
         info!("Starting bootstrap listener on {}", &addr);
         let server = TcpListener::bind(addr)?;
         let mut mio_server =
@@ -59,8 +58,10 @@ impl BootstrapTcpListener {
             },
         ))
     }
+}
 
-    pub(crate) fn accept(&mut self) -> Result<AcceptEvent, BootstrapError> {
+impl BSListener for BootstrapTcpListener {
+    fn accept(&mut self) -> Result<AcceptEvent, BootstrapError> {
         self.poll.poll(&mut self.events, None).unwrap();
 
         for event in self.events.iter() {

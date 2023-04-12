@@ -13,7 +13,8 @@ use massa_api::{ApiServer, ApiV2, Private, Public, RpcServer, StopHandle, API};
 use massa_api_exports::config::APIConfig;
 use massa_async_pool::AsyncPoolConfig;
 use massa_bootstrap::{
-    get_state, start_bootstrap_server, BootstrapConfig, BootstrapManager, DefaultConnector,
+    get_state, start_bootstrap_server, BootstrapConfig, BootstrapManager, BootstrapTcpListener,
+    DefaultConnector,
 };
 use massa_consensus_exports::events::ConsensusEvent;
 use massa_consensus_exports::{ConsensusChannels, ConsensusConfig, ConsensusManager};
@@ -630,9 +631,10 @@ async fn launch(
     );
 
     // launch bootstrap server
-    let bootstrap_manager = bootstrap_config.listen_addr.map(|addr| {
-        start_bootstrap_server::<NetworkCommandSender>(
-            addr,
+    let (waker, listener) = BootstrapTcpListener::new(bootstrap_config.listen_addr.unwrap());
+    let mut bootstrap_manager = bootstrap_config.listen_addr.map(|addr| {
+        start_bootstrap_server::<_, NetworkCommandSender>(
+            listener,
             consensus_controller.clone(),
             network_command_sender.clone(),
             final_state.clone(),
@@ -643,6 +645,9 @@ async fn launch(
         )
         .unwrap()
     });
+    if let Some(bootstrap_manager) = bootstrap_manager {
+        bootstrap_manager.set_listener_stopper(waker);
+    }
 
     let api_config: APIConfig = APIConfig {
         bind_private: SETTINGS.api.bind_private,

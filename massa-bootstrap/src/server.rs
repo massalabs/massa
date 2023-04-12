@@ -56,7 +56,8 @@ use white_black_list::*;
 
 use crate::{
     error::BootstrapError,
-    listener::{AcceptEvent, BootstrapListenerStopHandle, BootstrapTcpListener},
+    establisher::BSListener,
+    listener::{AcceptEvent, BootstrapListenerStopHandle},
     messages::{BootstrapClientMessage, BootstrapServerMessage},
     server_binder::BootstrapServerBinder,
     BootstrapConfig,
@@ -71,16 +72,37 @@ pub struct BootstrapManager {
     // need to preserve the listener handle up to here to prevent it being destroyed
     #[allow(clippy::type_complexity)]
     main_handle: thread::JoinHandle<Result<(), BootstrapError>>,
-    listen_stop_handle: BootstrapListenerStopHandle,
+    listener_stopper: Option<BootstrapListenerStopHandle>,
     update_stopper_tx: crossbeam::channel::Sender<()>,
 }
 
 impl BootstrapManager {
+    /// create a new bootstrap manager, but no means of stopping the listener
+    /// use [`set_listen_stop_handle`] to set the handle
+    pub(crate) fn new(
+        update_handle: thread::JoinHandle<Result<(), BootstrapError>>,
+        main_handle: thread::JoinHandle<Result<(), BootstrapError>>,
+        update_stopper_tx: crossbeam::channel::Sender<()>,
+    ) -> Self {
+        Self {
+            update_handle,
+            main_handle,
+            update_stopper_tx,
+            listener_stopper: None,
+        }
+    }
+    /// Sets an event-emmiter. `Self::stop`] will use this stopper to signal the listener that created this stopper.
+    pub fn set_listener_stopper(&mut self, listener_stopper: BootstrapListenerStopHandle) {
+        self.listener_stopper = Some(listener_stopper);
+    }
+
     /// stop the bootstrap server
     pub fn stop(self) -> Result<(), BootstrapError> {
         massa_trace!("bootstrap.lib.stop", {});
-        if self.listen_stop_handle.stop().is_err() {
-            warn!("bootstrap server already dropped");
+        if let Some(listen_stop_handle) = self.listener_stopper {
+            if listen_stop_handle.stop().is_err() {
+                warn!("bootstrap server already dropped");
+            }
         }
         if self.update_stopper_tx.send(()).is_err() {
             warn!("bootstrap ip-list-updater already dropped");
@@ -101,8 +123,11 @@ impl BootstrapManager {
 
 /// See module level documentation for details
 #[allow(clippy::too_many_arguments)]
-pub fn start_bootstrap_server<C: NetworkCommandSenderTrait + Clone>(
-    addr: SocketAddr,
+pub fn start_bootstrap_server<
+    L: BSListener + Send + 'static,
+    C: NetworkCommandSenderTrait + Clone,
+>(
+    listener: L,
     consensus_controller: Box<dyn ConsensusController>,
     network_command_sender: C,
     final_state: Arc<RwLock<FinalState>>,
@@ -131,7 +156,7 @@ pub fn start_bootstrap_server<C: NetworkCommandSenderTrait + Clone>(
     let update_handle = thread::Builder::new()
         .name("wb_list_updater".to_string())
         .spawn(move || {
-            let res = BootstrapServer::<C>::run_updater(
+            let res = BootstrapServer::<L, C>::run_updater(
                 updater_lists,
                 config.cache_duration.into(),
                 update_stopper_rx,
@@ -143,8 +168,6 @@ pub fn start_bootstrap_server<C: NetworkCommandSenderTrait + Clone>(
             res
         })
         .expect("in `start_bootstrap_server`, OS failed to spawn list-updater thread");
-
-    let (waker, listener) = BootstrapTcpListener::new(addr)?;
 
     let main_handle = thread::Builder::new()
         .name("bs-main-loop".to_string())
@@ -166,19 +189,18 @@ pub fn start_bootstrap_server<C: NetworkCommandSenderTrait + Clone>(
         .expect("in `start_bootstrap_server`, OS failed to spawn main-loop thread");
     // Give the runtime to the bootstrap manager, otherwise it will be dropped, forcibly aborting the spawned tasks.
     // TODO: make the tasks sync, so the runtime is redundant
-    Ok(BootstrapManager {
+    Ok(BootstrapManager::new(
         update_handle,
         main_handle,
         update_stopper_tx,
-        listen_stop_handle: waker,
-    })
+    ))
 }
 
-struct BootstrapServer<'a, C: NetworkCommandSenderTrait> {
+struct BootstrapServer<'a, L: BSListener, C: NetworkCommandSenderTrait> {
     consensus_controller: Box<dyn ConsensusController>,
     network_command_sender: C,
     final_state: Arc<RwLock<FinalState>>,
-    listener: BootstrapTcpListener,
+    listener: L,
     white_black_list: SharedWhiteBlackList<'a>,
     keypair: KeyPair,
     bootstrap_config: BootstrapConfig,
@@ -187,7 +209,7 @@ struct BootstrapServer<'a, C: NetworkCommandSenderTrait> {
     mip_store: MipStore,
 }
 
-impl<C: NetworkCommandSenderTrait + Clone> BootstrapServer<'_, C> {
+impl<L: BSListener, C: NetworkCommandSenderTrait + Clone> BootstrapServer<'_, L, C> {
     fn run_updater(
         mut list: SharedWhiteBlackList<'_>,
         interval: Duration,
@@ -274,7 +296,7 @@ impl<C: NetworkCommandSenderTrait + Clone> BootstrapServer<'_, C> {
                 }
 
                 // check IP's bootstrap attempt history
-                if let Err(msg) = BootstrapServer::<C>::greedy_client_check(
+                if let Err(msg) = BootstrapServer::<L, C>::greedy_client_check(
                     &mut self.ip_hist_map,
                     remote_addr,
                     now,

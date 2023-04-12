@@ -5,10 +5,12 @@ use std::{
     net::{SocketAddr, TcpListener, TcpStream},
 };
 
+use crate::{error::BootstrapError, listener::AcceptEvent};
+
 /// Specifies a common interface that can be used by standard, or mockers
 #[cfg_attr(test, mockall::automock)]
 pub trait BSListener {
-    fn accept(&mut self) -> io::Result<(TcpStream, SocketAddr)>;
+    fn accept(&mut self) -> Result<AcceptEvent, BootstrapError>;
 }
 
 /// Specifies a common interface that can be used by standard, or mockers
@@ -51,12 +53,12 @@ impl DefaultListener {
 
 impl BSListener for DefaultListener {
     /// Accepts a new incoming connection from this listener.
-    fn accept(&mut self) -> io::Result<(TcpStream, SocketAddr)> {
+    fn accept(&mut self) -> Result<AcceptEvent, BootstrapError> {
         // accept
         let (sock, mut remote_addr) = self.0.accept()?;
         // normalize address
         remote_addr.set_ip(remote_addr.ip().to_canonical());
-        Ok((sock, remote_addr))
+        Ok(AcceptEvent::NewConnection((sock, remote_addr)))
     }
 }
 /// Initiates a connection with given timeout in milliseconds
