@@ -1157,6 +1157,12 @@
 <a href="#1157" id="1157">1157</a>
 <a href="#1158" id="1158">1158</a>
 <a href="#1159" id="1159">1159</a>
+<a href="#1160" id="1160">1160</a>
+<a href="#1161" id="1161">1161</a>
+<a href="#1162" id="1162">1162</a>
+<a href="#1163" id="1163">1163</a>
+<a href="#1164" id="1164">1164</a>
+<a href="#1165" id="1165">1165</a>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="attr">#![doc = <span class="macro">include_str!</span>(<span class="string">&quot;../../README.md&quot;</span>)]
@@ -1187,7 +1193,7 @@
 <span class="kw">use </span>massa_grpc::config::GrpcConfig;
 <span class="kw">use </span>massa_grpc::server::MassaGrpc;
 <span class="kw">use </span>massa_ledger_exports::LedgerConfig;
-<span class="kw">use </span>massa_ledger_worker::FinalLedger;
+<span class="kw">use </span>massa_ledger_worker::{new_rocks_db_instance, FinalLedger};
 <span class="kw">use </span>massa_logging::massa_trace;
 <span class="kw">use </span>massa_models::address::Address;
 <span class="kw">use </span>massa_models::config::constants::{
@@ -1217,7 +1223,7 @@
     MAX_DENUNCIATIONS_PER_BLOCK_HEADER, MAX_OPERATIONS_PER_MESSAGE,
 };
 <span class="kw">use </span>massa_models::denunciation::DenunciationPrecursor;
-<span class="kw">use </span>massa_network_exports::{Establisher, NetworkCommandSender, NetworkConfig, NetworkManager};
+<span class="kw">use </span>massa_network_exports::{Establisher, NetworkConfig, NetworkManager};
 <span class="kw">use </span>massa_network_worker::start_network_controller;
 <span class="kw">use </span>massa_pool_exports::{PoolChannels, PoolConfig, PoolManager};
 <span class="kw">use </span>massa_pool_worker::start_pool_controller;
@@ -1239,6 +1245,7 @@
 <span class="kw">use </span>std::time::Duration;
 <span class="kw">use </span>std::{path::Path, process, sync::Arc};
 <span class="kw">use </span>structopt::StructOpt;
+<span class="kw">use </span>tokio::net::TcpStream;
 <span class="kw">use </span>tokio::signal;
 <span class="kw">use </span>tokio::sync::{broadcast, mpsc};
 <span class="kw">use </span>tracing::{error, info, warn};
@@ -1251,7 +1258,7 @@
     node_wallet: Arc&lt;RwLock&lt;Wallet&gt;&gt;,
 ) -&gt; (
     Receiver&lt;ConsensusEvent&gt;,
-    <span class="prelude-ty">Option</span>&lt;BootstrapManager&gt;,
+    <span class="prelude-ty">Option</span>&lt;BootstrapManager&lt;TcpStream&gt;&gt;,
     Box&lt;<span class="kw">dyn </span>ConsensusManager&gt;,
     Box&lt;<span class="kw">dyn </span>ExecutionManager&gt;,
     Box&lt;<span class="kw">dyn </span>SelectorManager&gt;,
@@ -1337,6 +1344,7 @@
         thread_count: THREAD_COUNT,
         bootstrap_part_size: ASYNC_POOL_BOOTSTRAP_PART_SIZE,
         max_async_message_data: MAX_ASYNC_MESSAGE_DATA,
+        max_key_length: MAX_DATASTORE_KEY_LENGTH <span class="kw">as </span>u32,
     };
     <span class="kw">let </span>pos_config = PoSConfig {
         periods_per_cycle: PERIODS_PER_CYCLE,
@@ -1369,11 +1377,12 @@
             .expect(<span class="string">&quot;disk ledger delete failed&quot;</span>);
     }
 
+    <span class="kw">let </span>rocks_db_instance = Arc::new(RwLock::new(new_rocks_db_instance(
+        SETTINGS.ledger.disk_ledger_path.clone(),
+    )));
+
     <span class="comment">// Create final ledger
-    </span><span class="kw">let </span>ledger = FinalLedger::new(
-        ledger_config.clone(),
-        args.restart_from_snapshot_at_period.is_some() || <span class="macro">cfg!</span>(feature = <span class="string">&quot;create_snapshot&quot;</span>),
-    );
+    </span><span class="kw">let </span>ledger = FinalLedger::new(ledger_config.clone(), rocks_db_instance.clone());
 
     <span class="comment">// launch selector worker
     </span><span class="kw">let </span>(selector_manager, selector_controller) = start_selector_worker(SelectorConfig {
@@ -1390,6 +1399,7 @@
     </span><span class="kw">let </span>final_state = Arc::new(parking_lot::RwLock::new(
         <span class="kw">match </span>args.restart_from_snapshot_at_period {
             <span class="prelude-val">Some</span>(last_start_period) =&gt; FinalState::new_derived_from_snapshot(
+                rocks_db_instance.clone(),
                 final_state_config,
                 Box::new(ledger),
                 selector_controller.clone(),
@@ -1397,6 +1407,7 @@
             )
             .expect(<span class="string">&quot;could not init final state&quot;</span>),
             <span class="prelude-val">None </span>=&gt; FinalState::new(
+                rocks_db_instance.clone(),
                 final_state_config,
                 Box::new(ledger),
                 selector_controller.clone(),
@@ -1474,7 +1485,7 @@
         res = get_state(
             <span class="kw-2">&amp;</span>bootstrap_config,
             final_state.clone(),
-            DefaultConnector,
+            DefaultConnector(bootstrap_config.connect_timeout),
             <span class="kw-2">*</span>VERSION,
             <span class="kw-2">*</span>GENESIS_TIMESTAMP,
             <span class="kw-2">*</span>END_TIMESTAMP,
@@ -1794,7 +1805,7 @@
     <span class="comment">// launch bootstrap server
     // TODO: use std::net::TcpStream
     </span><span class="kw">let </span>bootstrap_manager = <span class="kw">match </span>bootstrap_config.listen_addr {
-        <span class="prelude-val">Some</span>(addr) =&gt; start_bootstrap_server::&lt;NetworkCommandSender&gt;(
+        <span class="prelude-val">Some</span>(addr) =&gt; start_bootstrap_server::&lt;TcpStream&gt;(
             consensus_controller.clone(),
             network_command_sender.clone(),
             final_state.clone(),
@@ -2032,7 +2043,7 @@
 }
 
 <span class="kw">struct </span>Managers {
-    bootstrap_manager: <span class="prelude-ty">Option</span>&lt;BootstrapManager&gt;,
+    bootstrap_manager: <span class="prelude-ty">Option</span>&lt;BootstrapManager&lt;TcpStream&gt;&gt;,
     consensus_manager: Box&lt;<span class="kw">dyn </span>ConsensusManager&gt;,
     execution_manager: Box&lt;<span class="kw">dyn </span>ExecutionManager&gt;,
     selector_manager: Box&lt;<span class="kw">dyn </span>SelectorManager&gt;,
@@ -2063,7 +2074,8 @@
     </span><span class="kw">if let </span><span class="prelude-val">Some</span>(bootstrap_manager) = bootstrap_manager {
         bootstrap_manager
             .stop()
-            .expect(<span class="string">&quot;bootstrap server shutdown failed&quot;</span>)
+            .<span class="kw">await
+            </span>.expect(<span class="string">&quot;bootstrap server shutdown failed&quot;</span>)
     }
 
     <span class="macro">info!</span>(<span class="string">&quot;Start stopping API&#39;s: gRPC, EXPERIMENTAL, PUBLIC, PRIVATE&quot;</span>);

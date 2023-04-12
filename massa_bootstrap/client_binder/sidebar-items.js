@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"struct":["BootstrapClientBinder"]};
+window.SIDEBAR_ITEMS = {"opaque":[""],"struct":["BootstrapClientBinder"]};

@@ -60,17 +60,25 @@
 <a href="#60" id="60">60</a>
 <a href="#61" id="61">61</a>
 <a href="#62" id="62">62</a>
+<a href="#63" id="63">63</a>
+<a href="#64" id="64">64</a>
+<a href="#65" id="65">65</a>
+<a href="#66" id="66">66</a>
+<a href="#67" id="67">67</a>
+<a href="#68" id="68">68</a>
+<a href="#69" id="69">69</a>
 </pre><pre class="rust"><code><span class="doccomment">//! Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 //! This file defines testing tools related to the configuration
 
-</span><span class="kw">use </span>std::path::PathBuf;
+</span><span class="kw">use </span>std::{path::PathBuf, sync::Arc};
 
 <span class="kw">use crate</span>::{FinalState, FinalStateConfig};
 <span class="kw">use </span>massa_async_pool::{AsyncPool, AsyncPoolConfig};
 <span class="kw">use </span>massa_executed_ops::{ExecutedOps, ExecutedOpsConfig};
 <span class="kw">use </span>massa_hash::{Hash, HASH_SIZE_BYTES};
 <span class="kw">use </span>massa_ledger_exports::LedgerConfig;
+<span class="kw">use </span>massa_ledger_worker::new_rocks_db_instance;
 <span class="kw">use </span>massa_ledger_worker::FinalLedger;
 <span class="kw">use </span>massa_models::{
     config::{
@@ -80,14 +88,20 @@
     slot::Slot,
 };
 <span class="kw">use </span>massa_pos_exports::{PoSConfig, PoSFinalState};
+<span class="kw">use </span>parking_lot::RwLock;
 
 <span class="kw">impl </span>FinalState {
     <span class="doccomment">/// Create a final stat
     </span><span class="kw">pub fn </span>create_final_state(pos_state: PoSFinalState, config: FinalStateConfig) -&gt; <span class="self">Self </span>{
+        <span class="kw">let </span>temp_dir = config.ledger_config.initial_ledger_path.clone();
+        <span class="kw">let </span>rocks_db = Arc::new(RwLock::new(new_rocks_db_instance(temp_dir)));
         FinalState {
             slot: Slot::new(<span class="number">0</span>, <span class="number">0</span>),
-            ledger: Box::new(FinalLedger::new(config.ledger_config.clone(), <span class="bool-val">false</span>)),
-            async_pool: AsyncPool::new(config.async_pool_config.clone()),
+            ledger: Box::new(FinalLedger::new(
+                config.ledger_config.clone(),
+                rocks_db.clone(),
+            )),
+            async_pool: AsyncPool::new(config.async_pool_config.clone(), rocks_db.clone()),
             pos_state,
             executed_ops: ExecutedOps::new(config.executed_ops_config.clone()),
             changes_history: Default::default(),
