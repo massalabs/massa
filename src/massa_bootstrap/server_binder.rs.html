@@ -256,33 +256,17 @@
 <a href="#256" id="256">256</a>
 <a href="#257" id="257">257</a>
 <a href="#258" id="258">258</a>
-<a href="#259" id="259">259</a>
-<a href="#260" id="260">260</a>
-<a href="#261" id="261">261</a>
-<a href="#262" id="262">262</a>
-<a href="#263" id="263">263</a>
-<a href="#264" id="264">264</a>
-<a href="#265" id="265">265</a>
-<a href="#266" id="266">266</a>
-<a href="#267" id="267">267</a>
-<a href="#268" id="268">268</a>
-<a href="#269" id="269">269</a>
-<a href="#270" id="270">270</a>
-<a href="#271" id="271">271</a>
-<a href="#272" id="272">272</a>
-<a href="#273" id="273">273</a>
-<a href="#274" id="274">274</a>
-<a href="#275" id="275">275</a>
-<a href="#276" id="276">276</a>
-<a href="#277" id="277">277</a>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="kw">use </span><span class="kw">crate</span>::error::BootstrapError;
+<span class="kw">use </span><span class="kw">crate</span>::establisher::Duplex;
 <span class="kw">use </span><span class="kw">crate</span>::messages::{
     BootstrapClientMessage, BootstrapClientMessageDeserializer, BootstrapServerMessage,
     BootstrapServerMessageSerializer,
 };
 <span class="kw">use </span><span class="kw">crate</span>::settings::BootstrapSrvBindCfg;
+<span class="kw">use </span>async_speed_limit::clock::StandardClock;
+<span class="kw">use </span>async_speed_limit::{Limiter, Resource};
 <span class="kw">use </span>massa_hash::Hash;
 <span class="kw">use </span>massa_hash::HASH_SIZE_BYTES;
 <span class="kw">use </span>massa_models::serialization::{DeserializeMinBEInt, SerializeMinBEInt};
@@ -290,17 +274,17 @@
 <span class="kw">use </span>massa_serialization::{DeserializeError, Deserializer, Serializer};
 <span class="kw">use </span>massa_signature::KeyPair;
 <span class="kw">use </span>massa_time::MassaTime;
-<span class="kw">use </span>std::{
-    convert::TryInto,
-    io::{ErrorKind, Read, Write},
-    net::{SocketAddr, TcpStream},
-    thread,
-    time::Duration,
-};
+<span class="kw">use </span>std::convert::TryInto;
+<span class="kw">use </span>std::net::SocketAddr;
+<span class="kw">use </span>std::thread;
+<span class="kw">use </span>std::time::Duration;
+<span class="kw">use </span>tokio::io::{AsyncReadExt, AsyncWriteExt};
+<span class="kw">use </span>tokio::runtime::Handle;
+<span class="kw">use </span>tokio::time::error::Elapsed;
 <span class="kw">use </span>tracing::error;
 
 <span class="doccomment">/// Bootstrap server binder
-</span><span class="kw">pub struct </span>BootstrapServerBinder {
+</span><span class="kw">pub struct </span>BootstrapServerBinder&lt;D: Duplex&gt; {
     max_bootstrap_message_size: u32,
     max_consensus_block_ids: u64,
     thread_count: u8,
@@ -308,14 +292,14 @@
     randomness_size_bytes: usize,
     size_field_len: usize,
     local_keypair: KeyPair,
-    duplex: TcpStream,
+    duplex: Resource&lt;D, StandardClock&gt;,
     prev_message: <span class="prelude-ty">Option</span>&lt;Hash&gt;,
     version_serializer: VersionSerializer,
     version_deserializer: VersionDeserializer,
     write_error_timeout: MassaTime,
 }
 
-<span class="kw">impl </span>BootstrapServerBinder {
+<span class="kw">impl</span>&lt;D: Duplex + <span class="lifetime">&#39;static</span>&gt; BootstrapServerBinder&lt;D&gt; {
     <span class="doccomment">/// Creates a new `WriteBinder`.
     ///
     /// # Argument
@@ -323,9 +307,9 @@
     /// * `local_keypair`: local node user keypair
     /// * `limit`: limit max bytes per second (up and down)
     </span><span class="attr">#[allow(clippy::too_many_arguments)]
-    </span><span class="kw">pub fn </span>new(duplex: TcpStream, local_keypair: KeyPair, cfg: BootstrapSrvBindCfg) -&gt; <span class="self">Self </span>{
+    </span><span class="kw">pub fn </span>new(duplex: D, local_keypair: KeyPair, cfg: BootstrapSrvBindCfg) -&gt; <span class="self">Self </span>{
         <span class="kw">let </span>BootstrapSrvBindCfg {
-            max_bytes_read_write: _limit,
+            max_bytes_read_write: limit,
             max_bootstrap_message_size,
             thread_count,
             max_datastore_key_length,
@@ -339,7 +323,7 @@
             max_consensus_block_ids: consensus_bootstrap_part_size,
             size_field_len,
             local_keypair,
-            duplex,
+            duplex: &lt;Limiter&gt;::new(limit).limit(duplex),
             prev_message: <span class="prelude-val">None</span>,
             thread_count,
             max_datastore_key_length,
@@ -352,19 +336,14 @@
     <span class="doccomment">/// Performs a handshake. Should be called after connection
     /// NOT cancel-safe
     /// MUST always be followed by a send of the `BootstrapMessage::BootstrapTime`
-    </span><span class="kw">pub fn </span>handshake_timeout(
-        <span class="kw-2">&amp;mut </span><span class="self">self</span>,
-        version: Version,
-        duration: <span class="prelude-ty">Option</span>&lt;Duration&gt;,
-    ) -&gt; <span class="prelude-ty">Result</span>&lt;(), BootstrapError&gt; {
+    </span><span class="kw">pub async fn </span>handshake(<span class="kw-2">&amp;mut </span><span class="self">self</span>, version: Version) -&gt; <span class="prelude-ty">Result</span>&lt;(), BootstrapError&gt; {
         <span class="comment">// read version and random bytes, send signature
         </span><span class="kw">let </span>msg_hash = {
             <span class="kw">let </span><span class="kw-2">mut </span>version_bytes = Vec::new();
             <span class="self">self</span>.version_serializer
                 .serialize(<span class="kw-2">&amp;</span>version, <span class="kw-2">&amp;mut </span>version_bytes)<span class="question-mark">?</span>;
             <span class="kw">let </span><span class="kw-2">mut </span>msg_bytes = <span class="macro">vec!</span>[<span class="number">0u8</span>; version_bytes.len() + <span class="self">self</span>.randomness_size_bytes];
-            <span class="self">self</span>.duplex.set_read_timeout(duration)<span class="question-mark">?</span>;
-            <span class="self">self</span>.duplex.read_exact(<span class="kw-2">&amp;mut </span>msg_bytes)<span class="question-mark">?</span>;
+            <span class="self">self</span>.duplex.read_exact(<span class="kw-2">&amp;mut </span>msg_bytes).<span class="kw">await</span><span class="question-mark">?</span>;
             <span class="kw">let </span>(<span class="kw">_</span>, received_version) = <span class="self">self
                 </span>.version_deserializer
                 .deserialize::&lt;DeserializeError&gt;(<span class="kw-2">&amp;</span>msg_bytes[..version_bytes.len()])
@@ -381,25 +360,13 @@
         <span class="prelude-val">Ok</span>(())
     }
 
-    <span class="kw">pub fn </span>send_msg(
+    <span class="kw">pub async fn </span>send_msg(
         <span class="kw-2">&amp;mut </span><span class="self">self</span>,
         timeout: Duration,
         msg: BootstrapServerMessage,
-    ) -&gt; <span class="prelude-ty">Result</span>&lt;(), BootstrapError&gt; {
-        <span class="kw">let </span>to_str = msg.to_string();
-        <span class="self">self</span>.send_timeout(msg, <span class="prelude-val">Some</span>(timeout)).map_err(|e| <span class="kw">match </span>e {
-            BootstrapError::IoError(e)
-            <span class="comment">// On some systems, a timed out send returns WouldBlock
-                </span><span class="kw">if </span>e.kind() == ErrorKind::TimedOut || e.kind() == ErrorKind::WouldBlock =&gt;
-            {
-                BootstrapError::TimedOut(std::io::Error::new(
-                    std::io::ErrorKind::TimedOut,
-                    <span class="macro">format!</span>(<span class="string">&quot;BootstrapServerMessage::{} send timed out&quot;</span>, to_str),
-                ))
-            }
-            <span class="kw">_ </span>=&gt; e,
-        })
-    }
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="prelude-ty">Result</span>&lt;(), BootstrapError&gt;, Elapsed&gt; {
+        tokio::time::timeout(timeout, <span class="self">self</span>.send(msg)).<span class="kw">await
+    </span>}
 
     <span class="doccomment">/// 1. Spawns a thread
     /// 2. blocks on the passed in runtime
@@ -408,22 +375,28 @@
     /// 5. runs the passed in closure (typically a custom logging msg)
     ///
     /// consumes the binding in the process
-    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>close_and_send_error&lt;F&gt;(<span class="kw-2">mut </span><span class="self">self</span>, msg: String, addr: SocketAddr, close_fn: F)
-    <span class="kw">where
+    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>close_and_send_error&lt;F&gt;(
+        <span class="kw-2">mut </span><span class="self">self</span>,
+        server_outer_rt_hnd: Handle,
+        msg: String,
+        addr: SocketAddr,
+        close_fn: F,
+    ) <span class="kw">where
         </span>F: FnOnce() + Send + <span class="lifetime">&#39;static</span>,
     {
         thread::Builder::new()
             .name(<span class="string">&quot;bootstrap-error-send&quot;</span>.to_string())
             .spawn(<span class="kw">move </span>|| {
                 <span class="kw">let </span>msg_cloned = msg.clone();
-                <span class="kw">let </span>err_send = <span class="self">self</span>.send_error_timeout(msg_cloned);
+                <span class="kw">let </span>err_send =
+                    server_outer_rt_hnd.block_on(<span class="kw">async move </span>{ <span class="self">self</span>.send_error(msg_cloned).<span class="kw">await </span>});
                 <span class="kw">match </span>err_send {
-                    <span class="prelude-val">Err</span>(BootstrapError::IoError(e)) <span class="kw">if </span>e.kind() == ErrorKind::TimedOut =&gt; <span class="macro">error!</span>(
+                    <span class="prelude-val">Err</span>(<span class="kw">_</span>) =&gt; <span class="macro">error!</span>(
                         <span class="string">&quot;bootstrap server timed out sending error &#39;{}&#39; to addr {}&quot;</span>,
                         msg, addr
                     ),
-                    <span class="prelude-val">Err</span>(e) =&gt; <span class="macro">error!</span>(<span class="string">&quot;{}&quot;</span>, e),
-                    <span class="prelude-val">Ok</span>(<span class="kw">_</span>) =&gt; {}
+                    <span class="prelude-val">Ok</span>(<span class="prelude-val">Err</span>(e)) =&gt; <span class="macro">error!</span>(<span class="string">&quot;{}&quot;</span>, e),
+                    <span class="prelude-val">Ok</span>(<span class="prelude-val">Ok</span>(<span class="kw">_</span>)) =&gt; {}
                 }
                 close_fn();
             })
@@ -431,25 +404,19 @@
             // it&#39;s an error at the OS level.
             </span>.unwrap();
     }
-    <span class="kw">pub fn </span>send_error_timeout(<span class="kw-2">&amp;mut </span><span class="self">self</span>, error: String) -&gt; <span class="prelude-ty">Result</span>&lt;(), BootstrapError&gt; {
-        <span class="self">self</span>.send_timeout(
-            BootstrapServerMessage::BootstrapError { error },
-            <span class="prelude-val">Some</span>(<span class="self">self</span>.write_error_timeout.to_duration()),
+    <span class="kw">pub async fn </span>send_error(
+        <span class="kw-2">&amp;mut </span><span class="self">self</span>,
+        error: String,
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="prelude-ty">Result</span>&lt;(), BootstrapError&gt;, Elapsed&gt; {
+        tokio::time::timeout(
+            <span class="self">self</span>.write_error_timeout.into(),
+            <span class="self">self</span>.send(BootstrapServerMessage::BootstrapError { error }),
         )
-        .map_err(|e| <span class="kw">match </span>e {
-            BootstrapError::IoError(e) <span class="kw">if </span>e.kind() == ErrorKind::WouldBlock =&gt; {
-                BootstrapError::TimedOut(ErrorKind::TimedOut.into())
-            }
-            e =&gt; e,
-        })
-    }
+        .<span class="kw">await
+    </span>}
 
     <span class="doccomment">/// Writes the next message. NOT cancel-safe
-    </span><span class="kw">pub fn </span>send_timeout(
-        <span class="kw-2">&amp;mut </span><span class="self">self</span>,
-        msg: BootstrapServerMessage,
-        duration: <span class="prelude-ty">Option</span>&lt;Duration&gt;,
-    ) -&gt; <span class="prelude-ty">Result</span>&lt;(), BootstrapError&gt; {
+    </span><span class="kw">pub async fn </span>send(<span class="kw-2">&amp;mut </span><span class="self">self</span>, msg: BootstrapServerMessage) -&gt; <span class="prelude-ty">Result</span>&lt;(), BootstrapError&gt; {
         <span class="comment">// serialize message
         </span><span class="kw">let </span><span class="kw-2">mut </span>msg_bytes = Vec::new();
         BootstrapServerMessageSerializer::new().serialize(<span class="kw-2">&amp;</span>msg, <span class="kw-2">&amp;mut </span>msg_bytes)<span class="question-mark">?</span>;
@@ -473,17 +440,16 @@
         };
 
         <span class="comment">// send signature
-        </span><span class="self">self</span>.duplex.set_write_timeout(duration)<span class="question-mark">?</span>;
-        <span class="self">self</span>.duplex.write_all(<span class="kw-2">&amp;</span>sig.to_bytes())<span class="question-mark">?</span>;
+        </span><span class="self">self</span>.duplex.write_all(<span class="kw-2">&amp;</span>sig.to_bytes()).<span class="kw">await</span><span class="question-mark">?</span>;
 
         <span class="comment">// send message length
         </span>{
             <span class="kw">let </span>msg_len_bytes = msg_len.to_be_bytes_min(<span class="self">self</span>.max_bootstrap_message_size)<span class="question-mark">?</span>;
-            <span class="self">self</span>.duplex.write_all(<span class="kw-2">&amp;</span>msg_len_bytes)<span class="question-mark">?</span>;
+            <span class="self">self</span>.duplex.write_all(<span class="kw-2">&amp;</span>msg_len_bytes).<span class="kw">await</span><span class="question-mark">?</span>;
         }
 
         <span class="comment">// send message
-        </span><span class="self">self</span>.duplex.write_all(<span class="kw-2">&amp;</span>msg_bytes)<span class="question-mark">?</span>;
+        </span><span class="self">self</span>.duplex.write_all(<span class="kw-2">&amp;</span>msg_bytes).<span class="kw">await</span><span class="question-mark">?</span>;
 
         <span class="comment">// save prev sig
         </span><span class="self">self</span>.prev_message = <span class="prelude-val">Some</span>(Hash::compute_from(<span class="kw-2">&amp;</span>sig.to_bytes()));
@@ -493,16 +459,12 @@
 
     <span class="attr">#[allow(dead_code)]
     </span><span class="doccomment">/// Read a message sent from the client (not signed). NOT cancel-safe
-    </span><span class="kw">pub fn </span>next_timeout(
-        <span class="kw-2">&amp;mut </span><span class="self">self</span>,
-        duration: <span class="prelude-ty">Option</span>&lt;Duration&gt;,
-    ) -&gt; <span class="prelude-ty">Result</span>&lt;BootstrapClientMessage, BootstrapError&gt; {
-        <span class="self">self</span>.duplex.set_read_timeout(duration)<span class="question-mark">?</span>;
+    </span><span class="kw">pub async fn </span>next(<span class="kw-2">&amp;mut </span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span>&lt;BootstrapClientMessage, BootstrapError&gt; {
         <span class="comment">// read prev hash
         </span><span class="kw">let </span>received_prev_hash = {
             <span class="kw">if </span><span class="self">self</span>.prev_message.is_some() {
                 <span class="kw">let </span><span class="kw-2">mut </span>hash_bytes = [<span class="number">0u8</span>; HASH_SIZE_BYTES];
-                <span class="self">self</span>.duplex.read_exact(<span class="kw-2">&amp;mut </span>hash_bytes)<span class="question-mark">?</span>;
+                <span class="self">self</span>.duplex.read_exact(<span class="kw-2">&amp;mut </span>hash_bytes).<span class="kw">await</span><span class="question-mark">?</span>;
                 <span class="prelude-val">Some</span>(Hash::from_bytes(<span class="kw-2">&amp;</span>hash_bytes))
             } <span class="kw">else </span>{
                 <span class="prelude-val">None
@@ -512,13 +474,13 @@
         <span class="comment">// read message length
         </span><span class="kw">let </span>msg_len = {
             <span class="kw">let </span><span class="kw-2">mut </span>msg_len_bytes = <span class="macro">vec!</span>[<span class="number">0u8</span>; <span class="self">self</span>.size_field_len];
-            <span class="self">self</span>.duplex.read_exact(<span class="kw-2">&amp;mut </span>msg_len_bytes[..])<span class="question-mark">?</span>;
+            <span class="self">self</span>.duplex.read_exact(<span class="kw-2">&amp;mut </span>msg_len_bytes[..]).<span class="kw">await</span><span class="question-mark">?</span>;
             u32::from_be_bytes_min(<span class="kw-2">&amp;</span>msg_len_bytes, <span class="self">self</span>.max_bootstrap_message_size)<span class="question-mark">?</span>.<span class="number">0
         </span>};
 
         <span class="comment">// read message
         </span><span class="kw">let </span><span class="kw-2">mut </span>msg_bytes = <span class="macro">vec!</span>[<span class="number">0u8</span>; msg_len <span class="kw">as </span>usize];
-        <span class="self">self</span>.duplex.read_exact(<span class="kw-2">&amp;mut </span>msg_bytes)<span class="question-mark">?</span>;
+        <span class="self">self</span>.duplex.read_exact(<span class="kw-2">&amp;mut </span>msg_bytes).<span class="kw">await</span><span class="question-mark">?</span>;
 
         <span class="comment">// check previous hash
         </span><span class="kw">if </span>received_prev_hash != <span class="self">self</span>.prev_message {
