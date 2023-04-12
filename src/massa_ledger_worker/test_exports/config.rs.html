@@ -25,24 +25,12 @@
 <a href="#25" id="25">25</a>
 <a href="#26" id="26">26</a>
 <a href="#27" id="27">27</a>
-<a href="#28" id="28">28</a>
-<a href="#29" id="29">29</a>
-<a href="#30" id="30">30</a>
-<a href="#31" id="31">31</a>
-<a href="#32" id="32">32</a>
-<a href="#33" id="33">33</a>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
-</span><span class="kw">use </span>std::sync::Arc;
-
-<span class="kw">use </span>parking_lot::RwLock;
-<span class="doccomment">/// This file defines testing tools related to the configuration
+</span><span class="doccomment">/// This file defines testing tools related to the configuration
 </span><span class="kw">use </span>tempfile::TempDir;
 
-<span class="kw">use crate</span>::{
-    ledger_db::{new_rocks_db_instance, LedgerDB},
-    FinalLedger,
-};
+<span class="kw">use crate</span>::{ledger_db::LedgerDB, FinalLedger};
 <span class="kw">use </span>massa_models::config::{
     LEDGER_PART_SIZE_MESSAGE_BYTES, MAX_DATASTORE_KEY_LENGTH, THREAD_COUNT,
 };
@@ -51,12 +39,12 @@
 </span><span class="kw">impl </span>Default <span class="kw">for </span>FinalLedger {
     <span class="kw">fn </span>default() -&gt; <span class="self">Self </span>{
         <span class="kw">let </span>temp_dir = TempDir::new().unwrap();
-        <span class="kw">let </span>rocks_db_instance = new_rocks_db_instance(temp_dir.path().to_path_buf());
         <span class="kw">let </span>db = LedgerDB::new(
-            Arc::new(RwLock::new(rocks_db_instance)),
+            temp_dir.path().to_path_buf(),
             THREAD_COUNT,
             MAX_DATASTORE_KEY_LENGTH,
             LEDGER_PART_SIZE_MESSAGE_BYTES,
+            <span class="bool-val">false</span>,
         );
         FinalLedger {
             config: Default::default(),

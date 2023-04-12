@@ -81,30 +81,28 @@
 <a href="#81" id="81">81</a>
 <a href="#82" id="82">82</a>
 <a href="#83" id="83">83</a>
-<a href="#84" id="84">84</a>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="kw">use </span>massa_ledger_exports::{LedgerConfig, LedgerController, LedgerEntry};
 <span class="kw">use </span>massa_models::address::Address;
-<span class="kw">use </span>parking_lot::RwLock;
-<span class="kw">use </span>rocksdb::DB;
-<span class="kw">use </span>std::{collections::HashMap, sync::Arc};
+<span class="kw">use </span>std::collections::HashMap;
+<span class="kw">use </span>tempfile::TempDir;
 
 <span class="kw">use crate</span>::{ledger_db::LedgerDB, FinalLedger};
 
 <span class="doccomment">/// This file defines tools to test the ledger bootstrap
 
 </span><span class="kw">pub fn </span>create_final_ledger(
-    rocks_db_instance: Arc&lt;RwLock&lt;DB&gt;&gt;,
     config: LedgerConfig,
     initial_ledger: HashMap&lt;Address, LedgerEntry&gt;,
 ) -&gt; FinalLedger {
-    <span class="comment">// Create final ledger
-    </span><span class="kw">let </span><span class="kw-2">mut </span>db = LedgerDB::new(
-        rocks_db_instance,
+    <span class="kw">let </span>temp_dir = TempDir::new().unwrap();
+    <span class="kw">let </span><span class="kw-2">mut </span>db = LedgerDB::new(
+        temp_dir.path().to_path_buf(),
         config.thread_count,
         config.max_key_length,
         config.max_ledger_part_size,
+        <span class="bool-val">false</span>,
     );
     db.load_initial_ledger(initial_ledger);
     FinalLedger {
