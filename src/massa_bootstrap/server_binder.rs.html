@@ -276,6 +276,17 @@
 <a href="#276" id="276">276</a>
 <a href="#277" id="277">277</a>
 <a href="#278" id="278">278</a>
+<a href="#279" id="279">279</a>
+<a href="#280" id="280">280</a>
+<a href="#281" id="281">281</a>
+<a href="#282" id="282">282</a>
+<a href="#283" id="283">283</a>
+<a href="#284" id="284">284</a>
+<a href="#285" id="285">285</a>
+<a href="#286" id="286">286</a>
+<a href="#287" id="287">287</a>
+<a href="#288" id="288">288</a>
+<a href="#289" id="289">289</a>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="kw">use </span><span class="kw">crate</span>::error::BootstrapError;
@@ -500,27 +511,38 @@
         duration: <span class="prelude-ty">Option</span>&lt;Duration&gt;,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;BootstrapClientMessage, BootstrapError&gt; {
         <span class="self">self</span>.duplex.set_read_timeout(duration)<span class="question-mark">?</span>;
-        <span class="comment">// read prev hash
+
+        <span class="kw">let </span>peek_len = HASH_SIZE_BYTES + <span class="self">self</span>.size_field_len;
+        <span class="kw">let </span><span class="kw-2">mut </span>peek_buf = <span class="macro">vec!</span>[<span class="number">0</span>; peek_len];
+        <span class="kw">while </span><span class="self">self</span>.duplex.peek(<span class="kw-2">&amp;mut </span>peek_buf)<span class="question-mark">? </span>&lt; peek_len {
+            <span class="comment">// TODO: backoff spin of some sort
+        </span>}
+        <span class="comment">// construct prev-hash from peek
         </span><span class="kw">let </span>received_prev_hash = {
             <span class="kw">if </span><span class="self">self</span>.prev_message.is_some() {
-                <span class="kw">let </span><span class="kw-2">mut </span>hash_bytes = [<span class="number">0u8</span>; HASH_SIZE_BYTES];
-                <span class="self">self</span>.duplex.read_exact(<span class="kw-2">&amp;mut </span>hash_bytes)<span class="question-mark">?</span>;
-                <span class="prelude-val">Some</span>(Hash::from_bytes(<span class="kw-2">&amp;</span>hash_bytes))
+                <span class="prelude-val">Some</span>(Hash::from_bytes(
+                    peek_buf[..HASH_SIZE_BYTES]
+                        .try_into()
+                        .expect(<span class="string">&quot;bad slice logic&quot;</span>),
+                ))
             } <span class="kw">else </span>{
                 <span class="prelude-val">None
             </span>}
         };
 
-        <span class="comment">// read message length
+        <span class="comment">// construct msg-len from peek
         </span><span class="kw">let </span>msg_len = {
-            <span class="kw">let </span><span class="kw-2">mut </span>msg_len_bytes = <span class="macro">vec!</span>[<span class="number">0u8</span>; <span class="self">self</span>.size_field_len];
-            <span class="self">self</span>.duplex.read_exact(<span class="kw-2">&amp;mut </span>msg_len_bytes[..])<span class="question-mark">?</span>;
-            u32::from_be_bytes_min(<span class="kw-2">&amp;</span>msg_len_bytes, <span class="self">self</span>.max_bootstrap_message_size)<span class="question-mark">?</span>.<span class="number">0
+            u32::from_be_bytes_min(
+                <span class="kw-2">&amp;</span>peek_buf[HASH_SIZE_BYTES..],
+                <span class="self">self</span>.max_bootstrap_message_size,
+            )<span class="question-mark">?
+            </span>.<span class="number">0
         </span>};
 
-        <span class="comment">// read message
-        </span><span class="kw">let </span><span class="kw-2">mut </span>msg_bytes = <span class="macro">vec!</span>[<span class="number">0u8</span>; msg_len <span class="kw">as </span>usize];
+        <span class="comment">// read message, and discard the peek
+        </span><span class="kw">let </span><span class="kw-2">mut </span>msg_bytes = <span class="macro">vec!</span>[<span class="number">0u8</span>; peek_len + (msg_len <span class="kw">as </span>usize)];
         <span class="self">self</span>.duplex.read_exact(<span class="kw-2">&amp;mut </span>msg_bytes)<span class="question-mark">?</span>;
+        <span class="kw">let </span>msg_bytes = <span class="kw-2">&amp;</span>msg_bytes[peek_len..];
 
         <span class="comment">// check previous hash
         </span><span class="kw">if </span>received_prev_hash != <span class="self">self</span>.prev_message {
@@ -535,11 +557,11 @@
             </span><span class="kw">let </span><span class="kw-2">mut </span>hashed_bytes =
                 Vec::with_capacity(HASH_SIZE_BYTES.saturating_add(msg_bytes.len()));
             hashed_bytes.extend(prev_hash.to_bytes());
-            hashed_bytes.extend(<span class="kw-2">&amp;</span>msg_bytes);
+            hashed_bytes.extend(msg_bytes);
             <span class="self">self</span>.prev_message = <span class="prelude-val">Some</span>(Hash::compute_from(<span class="kw-2">&amp;</span>hashed_bytes));
         } <span class="kw">else </span>{
             <span class="comment">// no previous message: hash message only
-            </span><span class="self">self</span>.prev_message = <span class="prelude-val">Some</span>(Hash::compute_from(<span class="kw-2">&amp;</span>msg_bytes));
+            </span><span class="self">self</span>.prev_message = <span class="prelude-val">Some</span>(Hash::compute_from(msg_bytes));
         }
 
         <span class="comment">// deserialize message
@@ -548,7 +570,7 @@
             <span class="self">self</span>.max_datastore_key_length,
             <span class="self">self</span>.max_consensus_block_ids,
         )
-        .deserialize::&lt;DeserializeError&gt;(<span class="kw-2">&amp;</span>msg_bytes)
+        .deserialize::&lt;DeserializeError&gt;(msg_bytes)
         .map_err(|err| BootstrapError::GeneralError(<span class="macro">format!</span>(<span class="string">&quot;{}&quot;</span>, err)))<span class="question-mark">?</span>;
 
         <span class="prelude-val">Ok</span>(msg)
