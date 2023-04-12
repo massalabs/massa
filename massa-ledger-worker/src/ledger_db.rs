@@ -20,10 +20,10 @@ use rocksdb::{
     checkpoint::Checkpoint, ColumnFamily, ColumnFamilyDescriptor, Direction, IteratorMode, Options,
     ReadOptions, WriteBatch, DB,
 };
+use std::fmt::Debug;
 use std::ops::Bound;
 use std::path::PathBuf;
 use std::rc::Rc;
-use std::{collections::BTreeMap, fmt::Debug};
 use std::{
     collections::{BTreeSet, HashMap},
     convert::TryInto,
@@ -92,26 +92,6 @@ pub(crate) struct LedgerDB {
 impl Debug for LedgerDB {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "{:#?}", self.db)
-    }
-}
-
-/// Batch containing write operations to perform on disk and cache for the ledger hash computing
-pub struct LedgerBatch {
-    // Rocksdb write batch
-    write_batch: WriteBatch,
-    // Ledger hash state in the current batch
-    ledger_hash: Hash,
-    // Added entry hashes in the current batch
-    aeh_list: BTreeMap<Vec<u8>, Hash>,
-}
-
-impl LedgerBatch {
-    pub fn new(ledger_hash: Hash) -> Self {
-        Self {
-            write_batch: WriteBatch::default(),
-            ledger_hash,
-            aeh_list: BTreeMap::new(),
-        }
     }
 }
 
@@ -224,12 +204,7 @@ impl LedgerDB {
     /// * changes: ledger changes to be applied
     /// * slot: new slot associated to the final ledger
     /// * final_state_data: the serialized final state data to include, in case we use the feature `create_snapshot`
-    pub fn apply_changes(
-        &mut self,
-        changes: LedgerChanges,
-        slot: Slot,
-        final_state_data: Option<Vec<u8>>,
-    ) {
+    pub fn apply_changes(&mut self, changes: LedgerChanges, slot: Slot) {
         // create the batch
         let mut batch = LedgerBatch::new(self.get_ledger_hash());
         // for all incoming changes
@@ -256,15 +231,45 @@ impl LedgerDB {
         // set the associated slot in metadata
         self.set_slot(slot, &mut batch);
 
-        if let Some(final_state) = final_state_data {
-            let fs_handle = self.db.cf_handle(FINAL_STATE_CF).expect(CF_ERROR);
-            batch
-                .write_batch
-                .put_cf(fs_handle, LEDGER_FINAL_STATE_KEY, final_state);
-        }
-
         // write the batch
         self.write_batch(batch);
+    }
+
+    /// Allows applying `LedgerChanges` to the disk ledger
+    ///
+    /// # Arguments
+    /// * changes: ledger changes to be applied
+    /// * slot: new slot associated to the final ledger
+    /// * final_state_data: the serialized final state data to include, in case we use the feature `create_snapshot`
+    pub fn apply_changes_to_batch(
+        &mut self,
+        changes: LedgerChanges,
+        slot: Slot,
+        ledger_batch: &mut LedgerBatch,
+    ) {
+        // for all incoming changes
+        for (addr, change) in changes.0 {
+            match change {
+                // the incoming change sets a ledger entry to a new one
+                SetUpdateOrDelete::Set(new_entry) => {
+                    // inserts/overwrites the entry with the incoming one
+                    self.put_entry(&addr, new_entry, ledger_batch);
+                }
+                // the incoming change updates an existing ledger entry
+                SetUpdateOrDelete::Update(entry_update) => {
+                    // applies the updates to the entry
+                    // if the entry does not exist, inserts a default one and applies the updates to it
+                    self.update_entry(&addr, entry_update, ledger_batch);
+                }
+                // the incoming change deletes a ledger entry
+                SetUpdateOrDelete::Delete => {
+                    // delete the entry, if it exists
+                    self.delete_entry(&addr, ledger_batch);
+                }
+            }
+        }
+        // set the associated slot in metadata
+        self.set_slot(slot, ledger_batch);
     }
 
     /// Get the current disk ledger hash
@@ -482,19 +487,19 @@ impl LedgerDB {
 
         Ok(final_state)
     }
-}
 
-// Private helpers
-impl LedgerDB {
     /// Apply the given operation batch to the disk ledger
-    fn write_batch(&self, mut batch: LedgerBatch) {
+    pub fn write_batch(&self, mut batch: LedgerBatch) {
         let handle = self.db.cf_handle(METADATA_CF).expect(CF_ERROR);
         batch
             .write_batch
             .put_cf(handle, LEDGER_HASH_KEY, batch.ledger_hash.to_bytes());
         self.db.write(batch.write_batch).expect(CRUD_ERROR);
     }
+}
 
+// Private helpers
+impl LedgerDB {
     /// Set the disk ledger slot metadata
     ///
     /// # Arguments

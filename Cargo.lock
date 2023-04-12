@@ -2816,6 +2816,7 @@ dependencies = [
  "massa_signature",
  "nom",
  "num_enum",
+ "rocksdb",
  "serde",
  "serde_json",
  "tempfile",

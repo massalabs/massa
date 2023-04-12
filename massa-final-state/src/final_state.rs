@@ -11,8 +11,8 @@ use massa_async_pool::{
     AsyncPoolSerializer, Change,
 };
 use massa_executed_ops::{ExecutedOps, ExecutedOpsDeserializer, ExecutedOpsSerializer};
-use massa_hash::{Hash, HashDeserializer, HASH_SIZE_BYTES};
-use massa_ledger_exports::{Key as LedgerKey, LedgerChanges, LedgerController};
+use massa_hash::{Hash, HashDeserializer, HashSerializer, HASH_SIZE_BYTES};
+use massa_ledger_exports::{Key as LedgerKey, LedgerBatch, LedgerChanges, LedgerController};
 use massa_models::{
     // TODO: uncomment when deserializing the final state from ledger
     /*config::{
@@ -458,7 +458,7 @@ impl FinalState {
         // update current slot
         self.slot = slot;
 
-        // apply the state changes
+        /*
         self.async_pool
             .apply_changes_unchecked(&changes.async_pool_changes);
         self.pos_state
@@ -469,35 +469,31 @@ impl FinalState {
         // bootstrap again instead
         self.executed_ops
             .apply_changes(changes.executed_ops_changes.clone(), self.slot);
-
-        let mut final_state_data = None;
-
-        if cfg!(feature = "create_snapshot") {
-            let /*mut*/ final_state_buffer = Vec::new();
-
-            /*let final_state_raw_serializer = FinalStateRawSerializer::new();
-
-            let final_state_raw = FinalStateRaw {
-                async_pool_messages: self.async_pool.messages.clone(),
-                cycle_history: self.pos_state.cycle_history.clone(),
-                deferred_credits: self.pos_state.deferred_credits.clone(),
-                sorted_ops: self.executed_ops.sorted_ops.clone(),
-                latest_consistent_slot: self.slot,
-                final_state_hash_from_snapshot: self.final_state_hash,
-            };
-
-            if final_state_raw_serializer
-                .serialize(&final_state_raw, &mut final_state_buffer)
-                .is_err()
-            {
-                debug!("Error while trying to serialize final_state");
-            }*/
-
-            final_state_data = Some(final_state_buffer)
-        }
-
         self.ledger
             .apply_changes(changes.ledger_changes.clone(), self.slot, final_state_data);
+        */
+
+        let mut ledger_batch = LedgerBatch::new(self.ledger.get_ledger_hash());
+
+        // apply the state changes to the batch
+        self.async_pool
+            .apply_changes_unchecked_to_batch(&changes.async_pool_changes, ledger_batch);
+        self.pos_state
+            .apply_changes_to_batch(changes.pos_changes.clone(), self.slot, true, ledger_batch)
+            .expect("could not settle slot in final state proof-of-stake");
+        self.executed_ops.apply_changes_to_batch(
+            changes.executed_ops_changes.clone(),
+            self.slot,
+            ledger_batch,
+        );
+
+        self.ledger.apply_changes_to_batch(
+            changes.ledger_changes.clone(),
+            self.slot,
+            &mut ledger_batch,
+        );
+
+        self.ledger.write_batch(ledger_batch);
 
         // push history element and limit history size
         if self.config.final_history_length > 0 {
@@ -507,46 +503,43 @@ impl FinalState {
             self.changes_history.push_back((slot, changes));
         }
 
-        // compute the final state hash
+        // compute the final state hash and set in DB
         self.compute_state_hash_at_slot(slot);
 
-        if cfg!(feature = "create_snapshot") {
-            let /*mut*/ hash_buffer = Vec::new();
+        let hash_buffer = Vec::new();
+        let hash_serializer = HashSerializer::new();
 
-            /*
-            let hash_serializer = HashSerializer::new();
+        if hash_serializer
+            .serialize(&self.final_state_hash, &mut hash_buffer)
+            .is_err()
+        {
+            debug!("Error while trying to serialize final_state_hash");
+        }
 
-            if hash_serializer
-                .serialize(&self.final_state_hash, &mut hash_buffer)
-                .is_err()
-            {
-                debug!("Error while trying to serialize final_state_hash");
-            }*/
+        self.ledger.set_final_state_hash(hash_buffer);
 
-            self.ledger.set_final_state_hash(hash_buffer);
-
-            if self.slot.is_first_of_cycle(self.config.periods_per_cycle) {
-                let ledger_slot = self.ledger.get_slot();
-                match ledger_slot {
-                    Ok(slot) => {
-                        info!(
-                            "Backuping db for slot {}, ledger_slot: {}, ledger hash: {}",
-                            self.slot,
-                            slot,
-                            self.ledger.get_ledger_hash()
-                        );
-                    }
-                    Err(e) => {
-                        info!("{}", e);
-                        info!(
-                            "Backuping db for unknown slot, ledger hash: {}",
-                            self.ledger.get_ledger_hash()
-                        );
-                    }
+        // Backup DB if needed
+        if self.slot.is_first_of_cycle(self.config.periods_per_cycle) {
+            let ledger_slot = self.ledger.get_slot();
+            match ledger_slot {
+                Ok(slot) => {
+                    info!(
+                        "Backuping db for slot {}, ledger_slot: {}, ledger hash: {}",
+                        self.slot,
+                        slot,
+                        self.ledger.get_ledger_hash()
+                    );
                 }
-
-                self.ledger.backup_db(self.slot);
+                Err(e) => {
+                    info!("{}", e);
+                    info!(
+                        "Backuping db for unknown slot, ledger hash: {}",
+                        self.ledger.get_ledger_hash()
+                    );
+                }
             }
+
+            self.ledger.backup_db(self.slot);
         }
 
         // feed final_state_hash to the last cycle

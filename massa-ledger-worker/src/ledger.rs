@@ -5,7 +5,7 @@
 use crate::ledger_db::{LedgerDB, LedgerSubEntry};
 use massa_hash::Hash;
 use massa_ledger_exports::{
-    Key, LedgerChanges, LedgerConfig, LedgerController, LedgerEntry, LedgerError,
+    Key, LedgerBatch, LedgerChanges, LedgerConfig, LedgerController, LedgerEntry, LedgerError,
 };
 use massa_models::{
     address::Address,
@@ -54,14 +54,8 @@ impl FinalLedger {
 
 impl LedgerController for FinalLedger {
     /// Allows applying `LedgerChanges` to the final ledger
-    fn apply_changes(
-        &mut self,
-        changes: LedgerChanges,
-        slot: Slot,
-        final_state_data: Option<Vec<u8>>,
-    ) {
-        self.sorted_ledger
-            .apply_changes(changes, slot, final_state_data);
+    fn apply_changes(&mut self, changes: LedgerChanges, slot: Slot) {
+        self.sorted_ledger.apply_changes(changes, slot);
     }
 
     /// Loads ledger from file
@@ -215,6 +209,20 @@ impl LedgerController for FinalLedger {
 
     fn backup_db(&self, slot: Slot) {
         self.sorted_ledger.backup_db(slot);
+    }
+
+    fn apply_changes_to_batch(
+        &mut self,
+        changes: LedgerChanges,
+        slot: Slot,
+        ledger_batch: &mut LedgerBatch,
+    ) {
+        self.sorted_ledger
+            .apply_changes_to_batch(changes, slot, ledger_batch);
+    }
+
+    fn write_batch(&mut self, batch: LedgerBatch) {
+        self.sorted_ledger.write_batch(batch);
     }
 
     /// Get every address and their corresponding balance.
