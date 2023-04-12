@@ -589,6 +589,8 @@
 <a href="#589" id="589">589</a>
 <a href="#590" id="590">590</a>
 <a href="#591" id="591">591</a>
+<a href="#592" id="592">592</a>
+<a href="#593" id="593">593</a>
 </pre><pre class="rust"><code><span class="doccomment">//! Worker implementation for the network events
 //!
 //! Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
@@ -608,7 +610,9 @@
     prehash::{CapacityAllocator, PreHashSet},
     secure_share::{Id, SecureShare},
 };
-<span class="kw">use </span>massa_network_exports::{AskForBlocksInfo, BlockInfoReply, NetworkEvent};
+<span class="kw">use </span>massa_network_exports::{
+    AskForBlocksInfo, BlockInfoReply, NetworkCommandSenderTrait, NetworkEvent,
+};
 <span class="kw">use </span>massa_protocol_exports::ProtocolError;
 <span class="kw">use </span>massa_serialization::Serializer;
 <span class="kw">use </span>massa_storage::Storage;
