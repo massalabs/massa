@@ -16,6 +16,8 @@ mod messages;
 mod propagation;
 mod retrieval;
 
+pub(crate) use messages::{EndorsementMessage, EndorsementMessageSerializer};
+
 pub struct EndorsementHandler {
     pub endorsement_retrieval_thread: Option<JoinHandle<()>>,
     pub endorsement_propagation_thread: Option<JoinHandle<()>>,

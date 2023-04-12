@@ -53,9 +53,24 @@ pub enum BlockMessage {
     ReplyForBlocks(Vec<(BlockId, BlockInfoReply)>),
 }
 
+impl BlockMessage {
+    pub fn get_id(&self) -> MessageTypeId {
+        match self {
+            BlockMessage::BlockHeader(_) => MessageTypeId::BlockHeader,
+            BlockMessage::AskForBlocks(_) => MessageTypeId::AskForBlocks,
+            BlockMessage::ReplyForBlocks(_) => MessageTypeId::ReplyForBlocks,
+        }
+    }
+
+    pub fn max_id() -> u64 {
+        <MessageTypeId as Into<u64>>::into(MessageTypeId::ReplyForBlocks) + 1
+    }
+}
+
+// DO NOT FORGET TO UPDATE MAX ID IF YOU UPDATE THERE
 #[derive(IntoPrimitive, Debug, Eq, PartialEq, TryFromPrimitive)]
 #[repr(u64)]
-enum MessageTypeId {
+pub enum MessageTypeId {
     BlockHeader,
     AskForBlocks,
     ReplyForBlocks,
@@ -99,14 +114,10 @@ impl Serializer<BlockMessage> for BlockMessageSerializer {
     ) -> Result<(), massa_serialization::SerializeError> {
         match value {
             BlockMessage::BlockHeader(endorsements) => {
-                self.id_serializer
-                    .serialize(&(MessageTypeId::BlockHeader as u64), buffer)?;
                 self.secure_share_serializer
                     .serialize(endorsements, buffer)?;
             }
             BlockMessage::AskForBlocks(ask_for_blocks) => {
-                self.id_serializer
-                    .serialize(&(MessageTypeId::AskForBlocks as u64), buffer)?;
                 self.length_serializer
                     .serialize(&(ask_for_blocks.len() as u64), buffer)?;
                 for (block_id, ask_for_block_info) in ask_for_blocks {
@@ -134,8 +145,6 @@ impl Serializer<BlockMessage> for BlockMessageSerializer {
                 }
             }
             BlockMessage::ReplyForBlocks(reply_for_blocks) => {
-                self.id_serializer
-                    .serialize(&(MessageTypeId::ReplyForBlocks as u64), buffer)?;
                 self.length_serializer
                     .serialize(&(reply_for_blocks.len() as u64), buffer)?;
                 for (block_id, reply_for_block_info) in reply_for_blocks {

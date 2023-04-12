@@ -2,10 +2,11 @@ use std::{collections::HashMap, thread::JoinHandle};
 
 use crossbeam::channel::Receiver;
 use massa_models::{endorsement::EndorsementId, prehash::PreHashSet};
-use massa_serialization::Serializer;
 use peernet::{network_manager::SharedActiveConnections, peer_id::PeerId};
 
-use crate::handlers::endorsement_handler::messages::EndorsementMessage;
+use crate::{
+    handlers::endorsement_handler::messages::EndorsementMessage, messages::MessagesSerializer,
+};
 
 use super::{internal_messages::InternalMessage, messages::EndorsementMessageSerializer};
 
@@ -20,10 +21,11 @@ pub fn start_propagation_thread(
 ) -> JoinHandle<()> {
     //TODO: Here and everywhere add id to threads
     std::thread::spawn(move || {
+        let endorsement_serializer = MessagesSerializer::new()
+            .with_endorsement_message_serializer(EndorsementMessageSerializer::new());
         let mut propagation_thread = PropagationThread {
             cache_by_peer: HashMap::new(),
         };
-        let endorsement_message_serializer = EndorsementMessageSerializer::new();
         loop {
             match internal_receiver.recv() {
                 Ok(internal_message) => {
@@ -58,13 +60,11 @@ pub fn start_propagation_thread(
                                 // Send the endorsements
                                 let message = EndorsementMessage::Endorsements(endorsements);
                                 println!("Sending message to {:?}", peer_id);
-                                let mut buf = Vec::new();
-                                endorsement_message_serializer
-                                    .serialize(&message, &mut buf)
-                                    .unwrap();
-                                // TODO: Have a way to have this defined level module (const value for example)
                                 // TODO: Error management
-                                connection.send_channels.send(2, buf, false).unwrap();
+                                connection
+                                    .send_channels
+                                    .send(&endorsement_serializer, message.into(), false)
+                                    .unwrap();
                             }
                         }
                     }
