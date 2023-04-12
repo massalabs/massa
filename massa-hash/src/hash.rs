@@ -51,8 +51,8 @@ impl PartialOrd for Hash {
     }
 }
 
-/// This function is generally useful for data structures that performs ordering and where hashes are used
-/// as keys. In massa, it is used for the BTreeMap where the order of the addresses is to be maintained.
+/// In massa, this function is generally useful for data structures that performs ordering and where hashes are used
+/// as keys. For e.g., it is used for the BTreeMap where the order of the addresses is to be maintained.
 /// This function helps to have a single coherent BTreeMap which is then used to perform the draw
 /// See Pos-Worker for more details.
 
