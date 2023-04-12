@@ -1,4 +1,4 @@
-use massa_models::denunciation::{Denunciation, DenunciationId};
+use massa_models::denunciation::{Denunciation, DenunciationIndex};
 use massa_models::prehash::PreHashMap;
 
 use massa_pool_exports::PoolConfig;
@@ -11,7 +11,7 @@ pub struct DenunciationPool {
     /// last consensus final periods, per thread
     last_cs_final_periods: Vec<u64>,
     /// internal cache
-    denunciations_cache: PreHashMap<DenunciationId, Denunciation>,
+    denunciations_cache: PreHashMap<DenunciationIndex, Denunciation>,
 }
 
 impl DenunciationPool {
@@ -43,8 +43,8 @@ impl DenunciationPool {
             &self.last_cs_final_periods,
             self.config.denunciation_expire_periods,
         ) {
-            let de_id = DenunciationId::from(&denunciation);
-            self.denunciations_cache.insert(de_id, denunciation);
+            let de_idx = DenunciationIndex::from(&denunciation);
+            self.denunciations_cache.insert(de_idx, denunciation);
         }
     }
 
