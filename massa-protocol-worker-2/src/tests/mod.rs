@@ -87,11 +87,11 @@ fn test_endorsements() {
     let mut config1 = ProtocolConfig::default();
     config1
         .listeners
-        .insert("127.0.0.1:8081".parse().unwrap(), TransportType::Tcp);
+        .insert("127.0.0.1:8083".parse().unwrap(), TransportType::Tcp);
     let mut config2 = ProtocolConfig::default();
     config2
         .listeners
-        .insert("127.0.0.1:8082".parse().unwrap(), TransportType::Tcp);
+        .insert("127.0.0.1:8084".parse().unwrap(), TransportType::Tcp);
 
     // Setup initial peers
     let initial_peers_file = NamedTempFile::new().expect("cannot create temp file");
