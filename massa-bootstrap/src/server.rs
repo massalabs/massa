@@ -663,8 +663,8 @@ pub fn stream_bootstrap_information(
             break;
         }
 
-        let Some(write_timeout) = step_timeout_duration(&bs_deadline, &write_timeout) else {
-            return Err(BootstrapError::Interupted("insufficient time left to respond te request for mip-store".to_string()));
+        let Some(write_timeout) = step_timeout_duration(bs_deadline, &write_timeout) else {
+            return Err(BootstrapError::Interupted("insufficient time left to provide next bootstrap part".to_string()));
         };
         // At this point we know that consensus, final state or both are not finished
         server.send_msg(
@@ -713,11 +713,11 @@ fn manage_bootstrap<C: NetworkCommandSenderTrait>(
     // TODO: make network_command_sender non-async and remove both the variable and the method
     let rt_hack = massa_network_exports::make_runtime();
 
-    let Some(hs_deadline) = step_timeout_duration(&deadline, &bootstrap_config.read_timeout.to_duration()) else {
+    let Some(hs_timeout) = step_timeout_duration(&deadline, &bootstrap_config.read_timeout.to_duration()) else {
         return Err(BootstrapError::Interupted("insufficient time left to begin handshake".to_string()));
     };
 
-    server.handshake_timeout(version, Some(hs_deadline))?;
+    server.handshake_timeout(version, Some(hs_timeout))?;
 
     let send_time_timeout =
         step_timeout_duration(&deadline, &bootstrap_config.write_timeout.to_duration());
@@ -736,7 +736,7 @@ fn manage_bootstrap<C: NetworkCommandSenderTrait>(
         let Some(read_timeout) = step_timeout_duration(&deadline, &bootstrap_config.read_timeout.to_duration()) else {
             return Err(BootstrapError::Interupted("insufficient time left to process next message".to_string()));
         };
-        match dbg!(server.next_timeout(Some(read_timeout))) {
+        match server.next_timeout(Some(read_timeout)) {
             Err(BootstrapError::TimedOut(_)) => break Ok(()),
             Err(e) => break Err(e),
             Ok(msg) => match msg {
@@ -745,13 +745,13 @@ fn manage_bootstrap<C: NetworkCommandSenderTrait>(
                         return Err(BootstrapError::Interupted("insufficient time left to respond te request for peers".to_string()));
                     };
 
-                    dbg!(server.send_msg(
+                    server.send_msg(
                         write_timeout,
                         BootstrapServerMessage::BootstrapPeers {
                             peers: rt_hack
                                 .block_on(network_command_sender.get_bootstrap_peers())?,
                         },
-                    ))?;
+                    )?;
                 }
                 BootstrapClientMessage::AskBootstrapPart {
                     last_slot,

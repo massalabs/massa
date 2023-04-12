@@ -119,7 +119,7 @@ impl BootstrapClientBinder {
 
                 // ...And deserialize
                 let (_, msg) = message_deserializer
-                    .deserialize::<DeserializeError>(&msg_bytes)
+                    .deserialize::<DeserializeError>(msg_bytes)
                     .map_err(|err| BootstrapError::DeserializeError(format!("{}", err)))?;
                 msg
             } else {
