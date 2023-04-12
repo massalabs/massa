@@ -63,46 +63,69 @@ impl HandshakeHandler for TesterHandshake {
         _: &HashMap<SocketAddr, TransportType>,
         _: TesterMessagesHandler,
     ) -> PeerNetResult<PeerId> {
-        // TODO set the peer state to InHandshake
-
         let data = endpoint.receive()?;
         let peer_id = PeerId::from_bytes(&data[..32].try_into().unwrap())?;
-        let (_, announcement) = self
-            .announcement_deserializer
-            .deserialize::<DeserializeError>(&data[32..])
-            .map_err(|err| {
-                PeerNetError::HandshakeError.error(
-                    "Tester Handshake",
-                    Some(format!("Failed to deserialize announcement: {}", err)),
-                )
-            })?;
-        if peer_id
-            .verify_signature(&announcement.hash, &announcement.signature)
-            .is_err()
-        {
-            return Err(PeerNetError::HandshakeError
-                .error("Tester Handshake", Some(String::from("Invalid signature"))));
-        }
-        //TODO: Check ip we are connected match one of the announced ips
-        {
+
+        let res = {
+            {
+                let mut peer_db_write = self.peer_db.write();
+                peer_db_write
+                    .peers
+                    .entry(peer_id.clone())
+                    .and_modify(|info| {
+                        info.state = super::PeerState::InHandshake;
+                    });
+            }
+
+            let (_, announcement) = self
+                .announcement_deserializer
+                .deserialize::<DeserializeError>(&data[32..])
+                .map_err(|err| {
+                    PeerNetError::HandshakeError.error(
+                        "Tester Handshake",
+                        Some(format!("Failed to deserialize announcement: {}", err)),
+                    )
+                })?;
+            if peer_id
+                .verify_signature(&announcement.hash, &announcement.signature)
+                .is_err()
+            {
+                return Err(PeerNetError::HandshakeError
+                    .error("Tester Handshake", Some(String::from("Invalid signature"))));
+            }
+            //TODO: Check ip we are connected match one of the announced ips
+            {
+                let mut peer_db_write = self.peer_db.write();
+                peer_db_write
+                    .index_by_newest
+                    .insert(announcement.timestamp, peer_id.clone());
+                peer_db_write
+                    .peers
+                    .entry(peer_id.clone())
+                    .and_modify(|info| {
+                        if info.last_announce.timestamp < announcement.timestamp {
+                            info.last_announce = announcement.clone();
+                        }
+                        info.state = super::PeerState::HandshakeSuccess;
+                    })
+                    .or_insert(PeerInfo {
+                        last_announce: announcement,
+                        state: super::PeerState::HandshakeSuccess,
+                    });
+            }
+
+            Ok(peer_id.clone())
+        };
+
+        // if handshake failed, we set the peer state to HandshakeFailed
+        if res.is_err() {
             let mut peer_db_write = self.peer_db.write();
-            peer_db_write
-                .index_by_newest
-                .insert(announcement.timestamp, peer_id.clone());
-            peer_db_write
-                .peers
-                .entry(peer_id.clone())
-                .and_modify(|info| {
-                    if info.last_announce.timestamp < announcement.timestamp {
-                        info.last_announce = announcement.clone();
-                    }
-                })
-                .or_insert(PeerInfo {
-                    last_announce: announcement,
-                    state: super::PeerState::Connected,
-                });
+            peer_db_write.peers.entry(peer_id).and_modify(|info| {
+                info.state = super::PeerState::HandshakeFailed;
+            });
         }
-        Ok(peer_id)
+
+        res
     }
 }
 

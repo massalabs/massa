@@ -34,6 +34,8 @@ pub enum PeerState {
     Connected,
     Banned,
     InHandshake,
+    HandshakeFailed,
+    HandshakeSuccess,
     Trusted,
 }
 
