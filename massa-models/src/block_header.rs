@@ -411,7 +411,7 @@ impl Deserializer<BlockHeader> for BlockHeaderDeserializer {
 
             // TODO: gh-issue #3398
             #[cfg(any(test, feature = "testing"))]
-            // res.assert_invariants().unwrap();
+            res.assert_invariants().unwrap();
             return Ok((
                 &rest[2..], // Because there is 0 endorsements & 0 denunciations, we have a remaining [0, 0] in rest and we don't need it
                 res,

@@ -73,7 +73,8 @@ pub(crate) async fn send_blocks(
                         thread_count: config.thread_count,
                         max_operations_per_block: config.max_operations_per_block,
                         endorsement_count: config.endorsement_count,
-                        max_denunciations_per_block_header: config.max_denunciations_per_block_header,
+                        max_denunciations_per_block_header: config
+                            .max_denunciations_per_block_header,
                         last_start_period: Some(config.last_start_period),
                     };
                     // Deserialize and verify received block in the incoming message
