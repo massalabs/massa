@@ -50,6 +50,9 @@ massa_pos_exports = { path = "../massa-pos-exports", features = ["testing"] }
 massa_consensus_exports = { path = "../massa-consensus-exports", features = [
     "testing",
 ] }
+massa_network_exports = { path = "../massa-network-exports", features = [
+    "testing",
+] }
 lazy_static = "1.4"
 tempfile = "3.3"
 

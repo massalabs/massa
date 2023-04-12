@@ -30,6 +30,7 @@ mockall = {version = "0.11.4", features = ["nightly"], optional = true }
 
 [dev-dependencies]
 massa_models = { path = "../massa-models", features = ["testing"] }
+mockall = {version = "0.11.4", features = ["nightly"] }
 
 # for more information on what are the following features used for, see the cargo.toml at workspace level
 
