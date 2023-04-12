@@ -106,6 +106,7 @@ impl BootstrapClientBinder {
             if let Some(legacy_msg) = legacy_msg {
                 // Consume the stream, and discard the peek
                 let mut stream_bytes = vec![0u8; peek_len + (msg_len as usize)];
+                // TODO: under the hood, this isn't actually atomic. For now, we use the ostrich algorithm.
                 self.duplex.read_exact(&mut stream_bytes[..])?;
                 let msg_bytes = &mut stream_bytes[peek_len..];
 
@@ -123,6 +124,7 @@ impl BootstrapClientBinder {
             } else {
                 // Consume the stream and discard the peek
                 let mut stream_bytes = vec![0u8; peek_len + msg_len as usize];
+                // TODO: under the hood, this isn't actually atomic. For now, we use the ostrich algorithm.
                 self.duplex.read_exact(&mut stream_bytes[..])?;
                 let sig_msg_bytes = &mut stream_bytes[peek_len..];
 
