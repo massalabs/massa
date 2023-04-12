@@ -31,6 +31,7 @@ pub struct BootstrapServerBinder {
     randomness_size_bytes: usize,
     size_field_len: usize,
     local_keypair: KeyPair,
+    // TODO: Reintroduce bandwidth limits
     duplex: TcpStream,
     prev_message: Option<Hash>,
     version_serializer: VersionSerializer,
