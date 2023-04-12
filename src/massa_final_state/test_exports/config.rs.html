@@ -67,6 +67,8 @@
 <a href="#67" id="67">67</a>
 <a href="#68" id="68">68</a>
 <a href="#69" id="69">69</a>
+<a href="#70" id="70">70</a>
+<a href="#71" id="71">71</a>
 </pre><pre class="rust"><code><span class="doccomment">//! Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 //! This file defines testing tools related to the configuration
@@ -78,7 +80,6 @@
 <span class="kw">use </span>massa_executed_ops::{ExecutedOps, ExecutedOpsConfig};
 <span class="kw">use </span>massa_hash::{Hash, HASH_SIZE_BYTES};
 <span class="kw">use </span>massa_ledger_exports::LedgerConfig;
-<span class="kw">use </span>massa_ledger_worker::new_rocks_db_instance;
 <span class="kw">use </span>massa_ledger_worker::FinalLedger;
 <span class="kw">use </span>massa_models::{
     config::{
@@ -89,12 +90,15 @@
 };
 <span class="kw">use </span>massa_pos_exports::{PoSConfig, PoSFinalState};
 <span class="kw">use </span>parking_lot::RwLock;
+<span class="kw">use </span>rocksdb::DB;
 
 <span class="kw">impl </span>FinalState {
     <span class="doccomment">/// Create a final stat
-    </span><span class="kw">pub fn </span>create_final_state(pos_state: PoSFinalState, config: FinalStateConfig) -&gt; <span class="self">Self </span>{
-        <span class="kw">let </span>temp_dir = config.ledger_config.initial_ledger_path.clone();
-        <span class="kw">let </span>rocks_db = Arc::new(RwLock::new(new_rocks_db_instance(temp_dir)));
+    </span><span class="kw">pub fn </span>create_final_state(
+        pos_state: PoSFinalState,
+        config: FinalStateConfig,
+        rocks_db: Arc&lt;RwLock&lt;DB&gt;&gt;,
+    ) -&gt; <span class="self">Self </span>{
         FinalState {
             slot: Slot::new(<span class="number">0</span>, <span class="number">0</span>),
             ledger: Box::new(FinalLedger::new(

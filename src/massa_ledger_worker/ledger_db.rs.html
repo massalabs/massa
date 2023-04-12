@@ -1390,12 +1390,12 @@
     }
 
     <span class="kw">pub fn </span>set_final_state_hash(<span class="kw-2">&amp;mut </span><span class="self">self</span>, data: <span class="kw-2">&amp;</span>[u8]) {
-        <span class="kw">let </span>db = <span class="self">self</span>.db.write();
+        <span class="kw">let </span>db = <span class="self">self</span>.db.read();
         <span class="kw">let </span>handle = db.cf_handle(METADATA_CF).expect(CF_ERROR);
         <span class="kw">let </span><span class="kw-2">mut </span>batch = WriteBatch::default();
 
         batch.put_cf(handle, LEDGER_FINAL_STATE_HASH_KEY, data);
-        (<span class="kw-2">*</span>db).write(batch).expect(CRUD_ERROR);
+        db.write(batch).expect(CRUD_ERROR);
     }
 
     <span class="kw">pub fn </span>get_final_state(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span>&lt;Vec&lt;u8&gt;, ModelsError&gt; {
@@ -1418,7 +1418,7 @@
 
     <span class="doccomment">/// Apply the given operation batch to the disk ledger
     </span><span class="kw">pub fn </span>write_batch(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="kw-2">mut </span>batch: LedgerBatch) {
-        <span class="kw">let </span>db = <span class="self">self</span>.db.write();
+        <span class="kw">let </span>db = <span class="self">self</span>.db.read();
         <span class="kw">let </span>handle = db.cf_handle(METADATA_CF).expect(CF_ERROR);
         batch
             .write_batch
@@ -1435,7 +1435,7 @@
     /// * slot: associated slot of the current ledger
     /// * batch: the given operation batch to update
     </span><span class="kw">fn </span>set_slot(<span class="kw-2">&amp;</span><span class="self">self</span>, slot: Slot, batch: <span class="kw-2">&amp;mut </span>LedgerBatch) {
-        <span class="kw">let </span>db = <span class="self">self</span>.db.write();
+        <span class="kw">let </span>db = <span class="self">self</span>.db.read();
         <span class="kw">let </span>handle = db.cf_handle(METADATA_CF).expect(CF_ERROR);
         <span class="kw">let </span><span class="kw-2">mut </span>slot_bytes = Vec::new();
         <span class="comment">// Slot serialization never fails
