@@ -73,7 +73,7 @@
 <a href="#73" id="73">73</a>
 <a href="#74" id="74">74</a>
 <a href="#75" id="75">75</a>
-</pre><pre class="rust"><code><span class="kw">use </span>massa_models::denunciation::{Denunciation, DenunciationIndex};
+</pre><pre class="rust"><code><span class="kw">use </span>massa_models::denunciation::{Denunciation, DenunciationId};
 <span class="kw">use </span>massa_models::prehash::PreHashMap;
 
 <span class="kw">use </span>massa_pool_exports::PoolConfig;
@@ -86,7 +86,7 @@
     </span><span class="doccomment">/// last consensus final periods, per thread
     </span>last_cs_final_periods: Vec&lt;u64&gt;,
     <span class="doccomment">/// internal cache
-    </span>denunciations_cache: PreHashMap&lt;DenunciationIndex, Denunciation&gt;,
+    </span>denunciations_cache: PreHashMap&lt;DenunciationId, Denunciation&gt;,
 }
 
 <span class="kw">impl </span>DenunciationPool {
@@ -118,8 +118,8 @@
             <span class="kw-2">&amp;</span><span class="self">self</span>.last_cs_final_periods,
             <span class="self">self</span>.config.denunciation_expire_periods,
         ) {
-            <span class="kw">let </span>de_idx = DenunciationIndex::from(<span class="kw-2">&amp;</span>denunciation);
-            <span class="self">self</span>.denunciations_cache.insert(de_idx, denunciation);
+            <span class="kw">let </span>de_id = DenunciationId::from(<span class="kw-2">&amp;</span>denunciation);
+            <span class="self">self</span>.denunciations_cache.insert(de_id, denunciation);
         }
     }
 

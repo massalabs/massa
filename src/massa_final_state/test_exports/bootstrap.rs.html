@@ -106,7 +106,6 @@
 <a href="#106" id="106">106</a>
 <a href="#107" id="107">107</a>
 <a href="#108" id="108">108</a>
-<a href="#109" id="109">109</a>
 </pre><pre class="rust"><code><span class="doccomment">//! Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 //! This file defines tools to test the final state bootstrap
@@ -180,8 +179,7 @@
         <span class="string">&quot;ledger hash mismatch&quot;
     </span>);
     <span class="macro">assert_eq!</span>(
-        v1.async_pool.get_hash(),
-        v2.async_pool.get_hash(),
+        v1.async_pool.hash, v2.async_pool.hash,
         <span class="string">&quot;async pool hash mismatch&quot;
     </span>);
     <span class="macro">assert_eq!</span>(
