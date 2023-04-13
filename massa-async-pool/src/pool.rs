@@ -23,19 +23,24 @@ use nom::{
     IResult, Parser,
 };
 use parking_lot::RwLock;
-use rocksdb::DB;
-use std::ops::Bound::{Excluded, Included, Unbounded};
+use rocksdb::{DB, IteratorMode, ReadOptions, Direction};
+use std::ops::Bound::Included;
 use std::{collections::BTreeMap, sync::Arc};
 
 const ASYNC_POOL_HASH_INITIAL_BYTES: &[u8; 32] = &[0; HASH_SIZE_BYTES];
-const LEDGER_CF: &str = "ledger";
+const ASYNC_POOL_CF: &str = "async_pool";
 const CF_ERROR: &str = "critical: rocksdb column family operation failed";
 //const OPEN_ERROR: &str = "critical: rocksdb open operation failed";
 const CRUD_ERROR: &str = "critical: rocksdb crud operation failed";
 const MESSAGE_DESER_ERROR: &str = "critical: message deserialization failed";
 const MESSAGE_SER_ERROR: &str = "critical: message serialization failed";
-//const MESSAGE_ID_DESER_ERROR: &str = "critical: message_id deserialization failed";
+const MESSAGE_ID_DESER_ERROR: &str = "critical: message_id deserialization failed";
 const MESSAGE_ID_SER_ERROR: &str = "critical: message_id serialization failed";
+
+const METADATA_CF: &str = "metadata";
+const LEDGER_HASH_ERROR: &str = "critical: saved ledger hash is corrupted";
+const LEDGER_HASH_KEY: &[u8; 1] = b"h";
+const LEDGER_HASH_INITIAL_BYTES: &[u8; 32] = &[0; HASH_SIZE_BYTES];
 
 #[derive(Clone)]
 /// Represents a pool of sorted messages in a deterministic way.
@@ -54,7 +59,7 @@ pub struct AsyncPool {
     db: Arc<RwLock<DB>>,
     message_id_serializer: AsyncMessageIdSerializer,
     message_serializer: AsyncMessageSerializer,
-    _message_id_deserializer: AsyncMessageIdDeserializer,
+    message_id_deserializer: AsyncMessageIdDeserializer,
     message_deserializer: AsyncMessageDeserializer,
 }
 
@@ -68,7 +73,7 @@ impl AsyncPool {
             db,
             message_id_serializer: AsyncMessageIdSerializer::new(),
             message_serializer: AsyncMessageSerializer::new(),
-            _message_id_deserializer: AsyncMessageIdDeserializer::new(config.thread_count),
+            message_id_deserializer: AsyncMessageIdDeserializer::new(config.thread_count),
             message_deserializer: AsyncMessageDeserializer::new(
                 config.thread_count,
                 config.max_async_message_data,
@@ -94,7 +99,7 @@ impl AsyncPool {
             db,
             message_id_serializer: AsyncMessageIdSerializer::new(),
             message_serializer: AsyncMessageSerializer::new(),
-            _message_id_deserializer: AsyncMessageIdDeserializer::new(config.thread_count),
+            message_id_deserializer: AsyncMessageIdDeserializer::new(config.thread_count),
             message_deserializer: AsyncMessageDeserializer::new(
                 config.thread_count,
                 config.max_async_message_data,
@@ -151,7 +156,7 @@ impl AsyncPool {
     /// # arguments
     /// * `changes`: `AsyncPoolChanges` listing all asynchronous pool changes (message insertions/deletions)
     pub fn apply_changes_unchecked_to_batch(
-        &mut self,
+        &self,
         changes: &AsyncPoolChanges,
         batch: &mut LedgerBatch,
     ) {
@@ -202,7 +207,7 @@ impl AsyncPool {
     /// The list of message that their trigger has been triggered.
     #[allow(clippy::type_complexity)]
     pub fn settle_slot(
-        &mut self,
+        &self,
         slot: &Slot,
         new_messages: &mut Vec<(AsyncMessageId, AsyncMessage)>,
         ledger_changes: &LedgerChanges,
@@ -210,34 +215,98 @@ impl AsyncPool {
         Vec<(AsyncMessageId, AsyncMessage)>,
         Vec<(AsyncMessageId, AsyncMessage)>,
     ) {
-        // Filter out all messages for which the validity end is expired.
-        // Note that the validity_end bound is NOT included in the validity interval of the message.
-        let mut eliminated: Vec<_> = self
-            .messages
-            .drain_filter(|_k, v| *slot >= v.validity_end)
-            .chain(new_messages.drain_filter(|(_k, v)| *slot >= v.validity_end))
-            .collect();
+        let mut batch = LedgerBatch::new(self.get_ledger_hash());
+        let mut eliminated = Vec::new();
 
-        // Insert new messages into the pool
-        self.messages.extend(new_messages.clone());
-
-        // Truncate message pool to its max size, removing non-prioritary items
-        let excess_count = self
-            .messages
-            .len()
-            .saturating_sub(self.config.max_length as usize);
-        eliminated.reserve_exact(excess_count);
-        for _ in 0..excess_count {
-            eliminated.push(self.messages.pop_last().unwrap()); // will not panic (checked at excess_count computation)
-        }
-        let mut triggered = Vec::new();
-        for (id, message) in self.messages.iter_mut() {
-            if let Some(filter) = &message.trigger && !message.can_be_executed && is_triggered(filter, ledger_changes)
-            {
-                message.can_be_executed = true;
-                triggered.push((*id, message.clone()));
+        let db = self.db.read();
+        let handle = db.cf_handle(ASYNC_POOL_CF).expect(CF_ERROR);
+    
+        for (serialized_message_id, serialized_message) in db
+            .iterator_cf(
+                handle,
+                IteratorMode::Start,
+            )
+            .flatten()
+        {
+            let (_, message) = self
+                .message_deserializer
+                .deserialize::<DeserializeError>(&serialized_message)
+                .expect(MESSAGE_DESER_ERROR);
+            if *slot >= message.validity_end {
+                let (_, message_id) = self
+                    .message_id_deserializer
+                    .deserialize::<DeserializeError>(&serialized_message_id)
+                    .expect(MESSAGE_ID_DESER_ERROR);
+                eliminated.push((message_id, message));
+                self.delete_entry(&message_id, &mut batch)
             }
         }
+        
+        // Filter out all messages for which the validity end is expired.
+        // Note that the validity_end bound is NOT included in the validity interval of the message.
+        eliminated.extend(new_messages.drain_filter(|(_k, v)| *slot >= v.validity_end));
+        
+        // Insert new messages into the pool
+        for (message_id, message) in new_messages.iter() {
+            self.put_entry(message_id, message.clone(), &mut batch);
+        }
+
+        // Truncate message pool to its max size, removing non-prioritary items
+        let excess_count = db
+        .iterator_cf(
+            handle,
+            IteratorMode::Start,
+        )
+        .count()
+        .saturating_sub(self.config.max_length as usize);
+        eliminated.reserve_exact(excess_count);
+
+        for _ in 0..excess_count {
+
+            let (serialized_message_id, serialized_message) = db.iterator_cf(
+                handle,
+                IteratorMode::End,
+            ).next().unwrap().unwrap(); // will not panic (checked at excess_count computation)
+
+            let (_, message_id) = self
+                .message_id_deserializer
+                .deserialize::<DeserializeError>(&serialized_message_id)
+                .expect(MESSAGE_ID_DESER_ERROR);
+            let (_, message) = self
+                .message_deserializer
+                .deserialize::<DeserializeError>(&serialized_message)
+                .expect(MESSAGE_DESER_ERROR);
+
+            eliminated.push((message_id, message)); // will not panic (checked at excess_count computation)
+            self.delete_entry(&message_id, &mut batch);
+        }
+        
+        let mut triggered = Vec::new();
+
+        for (serialized_message_id, serialized_message) in db
+            .iterator_cf(
+                handle,
+                IteratorMode::Start,
+            )
+            .flatten()
+        {
+            let (_, mut message) = self
+                .message_deserializer
+                .deserialize::<DeserializeError>(&serialized_message)
+                .expect(MESSAGE_DESER_ERROR);
+
+            if let Some(filter) = &message.trigger && !message.can_be_executed && is_triggered(filter, ledger_changes) {
+                let (_, message_id) = self
+                    .message_id_deserializer
+                    .deserialize::<DeserializeError>(&serialized_message_id)
+                    .expect(MESSAGE_ID_DESER_ERROR);
+
+                message.can_be_executed = true;
+                triggered.push((message_id, message.clone()));
+
+            }
+        }
+
         (eliminated, triggered)
     }
 
@@ -258,21 +327,42 @@ impl AsyncPool {
     ) -> Vec<(AsyncMessageId, AsyncMessage)> {
         // gather all selected items and remove them from self.messages
         // iterate in decreasing priority order
-        self.messages
-            .drain_filter(|_, message| {
-                // check available gas and validity period
-                if available_gas >= message.max_gas
-                    && slot >= message.validity_start
-                    && slot < message.validity_end
-                    && message.can_be_executed
-                {
-                    available_gas -= message.max_gas;
-                    true
-                } else {
-                    false
-                }
-            })
-            .collect()
+        let mut batch = LedgerBatch::new(self.get_ledger_hash());
+        let mut taken = Vec::new();
+
+        let db = self.db.read();
+        let handle = db.cf_handle(ASYNC_POOL_CF).expect(CF_ERROR);
+    
+        for (serialized_message_id, serialized_message) in db
+            .iterator_cf(
+                handle,
+                IteratorMode::Start,
+            )
+            .flatten()
+        {
+            let (_, message) = self
+                .message_deserializer
+                .deserialize::<DeserializeError>(&serialized_message)
+                .expect(MESSAGE_DESER_ERROR);
+
+            if available_gas >= message.max_gas
+                && slot >= message.validity_start
+                && slot < message.validity_end
+                && message.can_be_executed
+            {
+                available_gas -= message.max_gas;
+                let (_, message_id) = self
+                .message_id_deserializer
+                .deserialize::<DeserializeError>(&serialized_message_id)
+                .expect(MESSAGE_ID_DESER_ERROR);
+                taken.push((message_id, message));
+                self.delete_entry(&message_id, &mut batch);
+            }
+        }
+
+        self.write_batch(batch);
+
+        taken
     }
 
     /// Get a part of the async pool.
@@ -290,26 +380,46 @@ impl AsyncPool {
         BTreeMap<AsyncMessageId, AsyncMessage>,
         StreamingStep<AsyncMessageId>,
     ) {
+
+        let db = self.db.read();
+        let handle = db.cf_handle(ASYNC_POOL_CF).expect(CF_ERROR);
+        let opt = ReadOptions::default();
+
         let mut pool_part = BTreeMap::new();
-        let left_bound = match cursor {
-            StreamingStep::Started => Unbounded,
-            StreamingStep::Ongoing(last_id) => Excluded(last_id),
-            StreamingStep::Finished(_) => return (pool_part, cursor),
+        // Creates an iterator from the next element after the last if defined, otherwise initialize it at the first key of the ledger.
+        let (db_iterator, mut new_cursor) = match cursor {
+            StreamingStep::Started => (
+                db.iterator_cf_opt(handle, opt, IteratorMode::Start),
+                StreamingStep::<AsyncMessageId>::Started,
+            ),
+            StreamingStep::Ongoing(last_id) => {
+                let mut serialized_message_id = Vec::new();
+                self.message_id_serializer
+                    .serialize(&last_id, &mut serialized_message_id).expect(MESSAGE_ID_SER_ERROR);
+                let mut iter = db.iterator_cf_opt(
+                    handle,
+                    opt,
+                    IteratorMode::From(&serialized_message_id, Direction::Forward),
+                );
+                iter.next();
+                (iter, StreamingStep::Finished(None))
+            }
+            StreamingStep::<AsyncMessageId>::Finished(_) => return (pool_part, cursor),
         };
-        let mut pool_part_last_id: Option<AsyncMessageId> = None;
-        for (id, message) in self.messages.range((left_bound, Unbounded)) {
+
+        // Iterates over the whole database
+        for (serialized_message_id, serialized_message) in db_iterator.flatten() {
             if pool_part.len() < self.config.bootstrap_part_size as usize {
-                pool_part.insert(*id, message.clone());
-                pool_part_last_id = Some(*id);
+                let (_, message_id) = self.message_id_deserializer.deserialize::<DeserializeError>(&serialized_message_id).expect(MESSAGE_ID_DESER_ERROR);
+                let (_, message) = self.message_deserializer.deserialize::<DeserializeError>(&serialized_message).expect(MESSAGE_DESER_ERROR);
+                pool_part.insert(message_id, message.clone());
+
+                new_cursor = StreamingStep::Ongoing(message_id);
             } else {
                 break;
             }
         }
-        if let Some(last_id) = pool_part_last_id {
-            (pool_part, StreamingStep::Ongoing(last_id))
-        } else {
-            (pool_part, StreamingStep::Finished(None))
-        }
+        (pool_part, new_cursor)
     }
 
     /// Set a part of the async pool.
@@ -324,16 +434,21 @@ impl AsyncPool {
         &mut self,
         part: BTreeMap<AsyncMessageId, AsyncMessage>,
     ) -> StreamingStep<AsyncMessageId> {
-        for (message_id, message) in part {
-            if self.messages.insert(message_id, message.clone()).is_none() {
-                self.hash ^= message.hash;
-            }
-        }
-        if let Some(message_id) = self.messages.last_key_value().map(|(&id, _)| id) {
+        let mut batch = LedgerBatch::new(self.get_ledger_hash());
+
+        let cursor = if let Some(message_id) = part.last_key_value().map(|(&id, _)| id) {
             StreamingStep::Ongoing(message_id)
         } else {
             StreamingStep::Finished(None)
+        };
+
+        for (message_id, message) in part {
+            self.put_entry(&message_id, message, &mut batch);
         }
+
+        self.write_batch(batch);
+
+        cursor
     }
 }
 
@@ -461,9 +576,10 @@ fn test_take_batch() {
         max_key_length: 1000,
     };
     let tempdir = TempDir::new().expect("cannot create temp directory");
-    let rocks_db_instance = new_rocks_db_instance(tempdir.path().to_path_buf());
-    let mut pool = AsyncPool::new(config, Arc::new(RwLock::new(rocks_db_instance)));
+    let rocks_db_instance = Arc::new(RwLock::new(new_rocks_db_instance(tempdir.path().to_path_buf())));
+    let mut pool = AsyncPool::new(config, rocks_db_instance.clone());
     let address = Address::User(UserAddress(Hash::compute_from(b"abc")));
+    let mut batch = LedgerBatch::new(pool.get_ledger_hash());
     for i in 1..10 {
         let message = AsyncMessage::new_with_hash(
             Slot::new(0, 0),
@@ -479,21 +595,19 @@ fn test_take_batch() {
             Vec::new(),
             None,
         );
-        pool.messages.insert(message.compute_id(), message);
+        pool.put_entry(&message.compute_id(), message, &mut batch);
     }
-    assert_eq!(pool.messages.len(), 9);
-    pool.take_batch_to_execute(Slot::new(2, 0), 19);
-    assert_eq!(pool.messages.len(), 4);
+    pool.write_batch(batch);
+    let db = rocks_db_instance.read();
+    let handle = db.cf_handle(ASYNC_POOL_CF).expect(CF_ERROR);
+    assert_eq!(db.iterator_cf(handle, IteratorMode::Start).count(), 9);
+    let a = pool.take_batch_to_execute(Slot::new(2, 0), 19);
+    assert_eq!(a.len(), 5);
+    assert_eq!(db.iterator_cf(handle, IteratorMode::Start).count(), 4);
 }
 
 // Private helpers
 impl AsyncPool {
-    /*self.put_entry(&message_id, message, &mut batch);
-        self.activate_entry(&message_id, &mut batch);
-        self.delete_entry(&message_id, batch);
-        AsyncMessageId
-        AsyncMessage
-    */
 
     /// Add every sub-entry individually for a given entry.
     ///
@@ -501,14 +615,13 @@ impl AsyncPool {
     /// * `message_id`
     /// * `message`
     /// * `batch`: the given operation batch to update
-    fn put_entry(
-        &mut self,
+    fn put_entry(&self,
         message_id: &AsyncMessageId,
         message: AsyncMessage,
         batch: &mut LedgerBatch,
     ) {
         let db = self.db.read();
-        let handle = db.cf_handle(LEDGER_CF).expect(CF_ERROR);
+        let handle = db.cf_handle(ASYNC_POOL_CF).expect(CF_ERROR);
         let mut serialized_message_id = Vec::new();
         self.message_id_serializer
             .serialize(message_id, &mut serialized_message_id)
@@ -533,18 +646,10 @@ impl AsyncPool {
     /// # Arguments
     /// * `entry_update`: a descriptor of the entry updates to be applied
     /// * `batch`: the given operation batch to update
-    fn activate_entry(&mut self, message_id: &AsyncMessageId, batch: &mut LedgerBatch) {
-        /*
-            if let Some(message) = self.messages.get_mut(message_id) {
-                self.hash ^= message.hash;
-                message.can_be_executed = true;
-                message.compute_hash();
-                self.hash ^= message.hash;
-            }
-        */
+    fn activate_entry(&self, message_id: &AsyncMessageId, batch: &mut LedgerBatch) {
         let db = self.db.read();
 
-        let handle = db.cf_handle(LEDGER_CF).expect(CF_ERROR);
+        let handle = db.cf_handle(ASYNC_POOL_CF).expect(CF_ERROR);
         let mut serialized_message_id = Vec::new();
         self.message_id_serializer
             .serialize(message_id, &mut serialized_message_id)
@@ -583,7 +688,7 @@ impl AsyncPool {
     /// * batch: the given operation batch to update
     fn delete_entry(&self, message_id: &AsyncMessageId, batch: &mut LedgerBatch) {
         let db = self.db.read();
-        let handle = db.cf_handle(LEDGER_CF).expect(CF_ERROR);
+        let handle = db.cf_handle(ASYNC_POOL_CF).expect(CF_ERROR);
         let mut serialized_message_id = Vec::new();
         self.message_id_serializer
             .serialize(message_id, &mut serialized_message_id)
@@ -599,5 +704,33 @@ impl AsyncPool {
                 Hash::compute_from(&[&serialized_message_id, &prev_bytes[..]].concat());
         }
         batch.write_batch.delete_cf(handle, serialized_message_id);
+    }
+
+    /// Get the current disk ledger hash
+    fn get_ledger_hash(&self) -> Hash {
+        let db = self.db.read();
+        let handle = db.cf_handle(METADATA_CF).expect(CF_ERROR);
+        if let Some(ledger_hash_bytes) = db
+            .get_cf(handle, LEDGER_HASH_KEY)
+            .expect(CRUD_ERROR)
+            .as_deref()
+        {
+            Hash::from_bytes(ledger_hash_bytes.try_into().expect(LEDGER_HASH_ERROR))
+        } else {
+            // initial ledger_hash value to avoid matching an option in every XOR operation
+            // because of a one time case being an empty ledger
+            // also note that the if you XOR a hash with itself result is LEDGER_HASH_INITIAL_BYTES
+            Hash::from_bytes(LEDGER_HASH_INITIAL_BYTES)
+        }
+    }
+
+    /// Apply the given operation batch to the disk ledger
+    pub fn write_batch(&self, mut batch: LedgerBatch) {
+        let db = self.db.read();
+        let handle = db.cf_handle(METADATA_CF).expect(CF_ERROR);
+        batch
+            .write_batch
+            .put_cf(handle, LEDGER_HASH_KEY, batch.ledger_hash.to_bytes());
+        db.write(batch.write_batch).expect(CRUD_ERROR);
     }
 }

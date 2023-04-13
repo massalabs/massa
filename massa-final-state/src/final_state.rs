@@ -465,8 +465,8 @@ impl FinalState {
         // update current slot
         self.slot = slot;
 
-        self.async_pool
-            .apply_changes_unchecked(&changes.async_pool_changes);
+        /*self.async_pool
+            .apply_changes_unchecked(&changes.async_pool_changes);*/
         self.pos_state
             .apply_changes(changes.pos_changes.clone(), self.slot, true)
             .expect("could not settle slot in final state proof-of-stake");

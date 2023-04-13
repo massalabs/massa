@@ -33,6 +33,7 @@ use massa_models::amount::{Amount, AmountDeserializer};
 
 const LEDGER_CF: &str = "ledger";
 const METADATA_CF: &str = "metadata";
+const ASYNC_POOL_CF: &str = "async_pool";
 const OPEN_ERROR: &str = "critical: rocksdb open operation failed";
 const CRUD_ERROR: &str = "critical: rocksdb crud operation failed";
 const CF_ERROR: &str = "critical: rocksdb column family operation failed";
@@ -58,6 +59,7 @@ pub fn new_rocks_db_instance(path: PathBuf) -> DB {
         vec![
             ColumnFamilyDescriptor::new(LEDGER_CF, Options::default()),
             ColumnFamilyDescriptor::new(METADATA_CF, Options::default()),
+            ColumnFamilyDescriptor::new(ASYNC_POOL_CF, Options::default()),
         ],
     )
     .expect(OPEN_ERROR)

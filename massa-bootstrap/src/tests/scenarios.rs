@@ -26,7 +26,7 @@ use massa_final_state::{
     FinalState, FinalStateConfig, StateChanges,
 };
 use massa_hash::{Hash, HASH_SIZE_BYTES};
-use massa_ledger_exports::LedgerConfig;
+use massa_ledger_exports::{LedgerConfig, LedgerBatch};
 use massa_ledger_worker::new_rocks_db_instance;
 use massa_models::config::{MIP_STORE_STATS_BLOCK_CONSIDERED, MIP_STORE_STATS_COUNTERS_MAX};
 use massa_models::{
@@ -348,19 +348,23 @@ async fn test_bootstrap_server() {
         let list_changes_read = list_changes.read().clone();
         // note: skip the first change to match the update loop behaviour
         for (slot, change) in list_changes_read.iter().skip(1) {
+            
+            let mut ledger_batch = LedgerBatch::new(final_state_server_write.ledger.get_ledger_hash());
             final_state_server_write
                 .pos_state
                 .apply_changes(change.pos_changes.clone(), *slot, false)
                 .unwrap();
             final_state_server_write
                 .ledger
-                .apply_changes(change.ledger_changes.clone(), *slot);
+                .apply_changes_to_batch(change.ledger_changes.clone(), *slot, &mut ledger_batch);
             final_state_server_write
                 .async_pool
-                .apply_changes_unchecked(&change.async_pool_changes);
+                .apply_changes_unchecked_to_batch(&change.async_pool_changes, &mut ledger_batch);
             final_state_server_write
                 .executed_ops
                 .apply_changes(change.executed_ops_changes.clone(), *slot);
+            
+                final_state_server_write.ledger.write_batch(ledger_batch);
         }
     }
     // check final states
