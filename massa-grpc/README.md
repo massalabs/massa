@@ -42,9 +42,7 @@ To install `protoc` on Windows, you can download the binary file for your archit
 
 After installing `protoc`, you should be able to compile proto files using the appropriate language-specific plugin (e.g. `protoc --go_out=./ path/to/my_proto_file.proto`).
 
-
 After installing `protoc`, please verify that the `protoc` command is accessible by running `protoc --version` again and ensure compiler version is 3+.
-
 
 To keep the documentation synchronised with our proto files, you must install `protoc-gen-doc`. You can use your package manager or download the binary from the official [GitHub repository releases](https://github.com/pseudomuto/protoc-gen-doc/releases) and add it to your system's `PATH`
 
@@ -57,38 +55,9 @@ The project is set up to automatically compile proto files during the build proc
 
 When the project is built, `build.rs` is executed and it uses the `tonic-build` crate to generate Rust code from the proto files. The generated Rust code could be found in [massa-proto/src/](../massa-proto/src/).
 
-By default, `build-tonic` feature is disabled, you can update the generated code from protobuf files by running: 
+By default, `build-tonic` feature is disabled, you can update the generated code and documentation from protobuf files by running: 
 ```bash
 cargo build --features massa_proto/build-tonic
-```
-
-Generate html documentation:
-```bash
-protoc \
-  ./massa-proto/proto/massa/**/*.proto \
-  --proto_path=./massa-proto/proto/massa/api/v1 \
-  --proto_path=./massa-proto/proto/third-party \
-  --doc_out=./massa-proto/doc/ \
-  --doc_opt=html,index.html
-```
-
-Generate markdown documentation:
-```bash
-protoc \
-  ./massa-proto/proto/massa/**/*.proto \
-  --proto_path=./massa-proto/proto/massa/api/v1 \
-  --proto_path=./massa-proto/proto/third-party \
-  --doc_out=./massa-proto/doc/ \
-  --doc_opt=markdown,api.md
-```
-
-Test code generation:
-```bash
-protoc \
-  ./massa-proto/proto/**/*.proto \
-  --proto_path=./massa-proto/proto/massa/api/v1 \
-  --proto_path=./massa-proto/proto/third-party \
-  --java_out=./target/
 ```
 
 Before launching your Massa node, please add this following configuration to your `config.toml` file:
@@ -137,3 +106,35 @@ VSCode integration
 
 3- Add the snippet above to `.vscode/settings.json`.
 
+
+Protoc examples
+---------------
+
+Generate html documentation:
+```bash
+protoc \
+  ./massa-proto/proto/massa/**/*.proto \
+  --proto_path=./massa-proto/proto/massa/api/v1 \
+  --proto_path=./massa-proto/proto/third-party \
+  --doc_out=./massa-proto/doc/ \
+  --doc_opt=html,index.html
+```
+
+Generate markdown documentation:
+```bash
+protoc \
+  ./massa-proto/proto/massa/**/*.proto \
+  --proto_path=./massa-proto/proto/massa/api/v1 \
+  --proto_path=./massa-proto/proto/third-party \
+  --doc_out=./massa-proto/doc/ \
+  --doc_opt=markdown,api.md
+```
+
+Test code generation:
+```bash
+protoc \
+  ./massa-proto/proto/**/*.proto \
+  --proto_path=./massa-proto/proto/massa/api/v1 \
+  --proto_path=./massa-proto/proto/third-party \
+  --java_out=./target/
+```
