@@ -23,7 +23,7 @@ serde = { version = "1.0", features = ["derive"] }
 tokio = { version = "1.23", features = ["rt-multi-thread", "macros"] }
 tokio-stream = "0.1.12"
 itertools = "0.10"
-h2 = "0.3.15"
+h2 = "0.3.17"
 tracing = "0.1"
 # custom modules
 massa_consensus_exports = { path = "../massa-consensus-exports" }
