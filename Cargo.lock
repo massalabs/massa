@@ -2901,6 +2901,7 @@ dependencies = [
 name = "massa_pool_worker"
 version = "0.1.0"
 dependencies = [
+ "crossbeam-channel",
  "massa_execution_exports",
  "massa_hash 0.1.0",
  "massa_models",

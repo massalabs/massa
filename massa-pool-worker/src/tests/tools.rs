@@ -1,6 +1,7 @@
 // Copyright (c) 2022 MASSA LABS <info@massa.net>
 
 use crate::{operation_pool::OperationPool, start_pool_controller};
+use crossbeam_channel as _;
 use massa_execution_exports::test_exports::{
     MockExecutionController, MockExecutionControllerMessage,
 };
@@ -15,7 +16,7 @@ use massa_models::{
     slot::Slot,
 };
 use massa_pool_exports::{PoolChannels, PoolConfig, PoolController, PoolManager};
-use massa_pos_exports::test_exports::MockSelectorController;
+use massa_pos_exports::test_exports::{MockSelectorController, MockSelectorControllerMessage};
 use massa_signature::KeyPair;
 use massa_storage::Storage;
 use std::sync::mpsc::Receiver;
@@ -90,13 +91,14 @@ where
         Box<dyn PoolManager>,
         Box<dyn PoolController>,
         Receiver<MockExecutionControllerMessage>,
+        crossbeam_channel::Receiver<MockSelectorControllerMessage>,
         Storage,
     ),
 {
     let storage: Storage = Storage::create_root();
     let operation_sender = broadcast::channel(5000).0;
     let (execution_controller, execution_receiver) = MockExecutionController::new_with_receiver();
-    let (selector_controller, _selector_receiver) = MockSelectorController::new_with_receiver();
+    let (selector_controller, selector_receiver) = MockSelectorController::new_with_receiver();
     let (pool_manager, pool_controller) = start_pool_controller(
         cfg,
         &storage,
@@ -107,7 +109,13 @@ where
         },
     );
 
-    test(pool_manager, pool_controller, execution_receiver, storage)
+    test(
+        pool_manager,
+        pool_controller,
+        execution_receiver,
+        selector_receiver,
+        storage,
+    )
 }
 
 pub fn operation_pool_test<F>(cfg: PoolConfig, test: F)

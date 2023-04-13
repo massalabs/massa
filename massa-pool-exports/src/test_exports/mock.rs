@@ -10,7 +10,7 @@ use std::sync::{
 };
 
 use massa_models::config::THREAD_COUNT;
-use massa_models::denunciation::DenunciationPrecursor;
+use massa_models::denunciation::{Denunciation, DenunciationPrecursor};
 use massa_models::{
     block_id::BlockId, endorsement::EndorsementId, operation::OperationId, slot::Slot,
 };
@@ -287,5 +287,9 @@ impl PoolController for MockPoolController {
             .send(MockPoolControllerMessage::GetDenunciationCount { response_tx })
             .unwrap();
         response_rx.recv().unwrap()
+    }
+
+    fn get_denunciations(&self) -> Vec<Denunciation> {
+        vec![]
     }
 }

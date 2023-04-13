@@ -1,6 +1,6 @@
 // Copyright (c) 2022 MASSA LABS <info@massa.net>
 
-use massa_models::denunciation::DenunciationPrecursor;
+use massa_models::denunciation::{Denunciation, DenunciationPrecursor};
 use massa_models::{
     block_id::BlockId, endorsement::EndorsementId, operation::OperationId, slot::Slot,
 };
@@ -42,8 +42,8 @@ pub trait PoolController: Send + Sync {
     /// Check if the pool contains a list of operations. Returns one boolean per item.
     fn contains_operations(&self, operations: &[OperationId]) -> Vec<bool>;
 
-    // /// Add denunciations to pool. Simply print a warning on failure.
-    // fn add_denunciation(&mut self, denunciation: Denunciation);
+    /// Get the number of denunciations in the pool
+    fn get_denunciations(&self) -> Vec<Denunciation>;
 
     /// Get the number of denunciations in the pool
     fn get_denunciation_count(&self) -> usize;

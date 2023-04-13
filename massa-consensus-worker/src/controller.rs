@@ -272,13 +272,6 @@ impl ConsensusController for ConsensusControllerImpl {
         }
 
         if let Some(verifiable_block) = block_storage.read_blocks().get(&block_id) {
-            /*
-            if let Ok(de_p) = DenunciationPrecursor::try_from(&verifiable_block.content.header) {
-                if let Err(e) = self.channels.denunciation_precursor_sender.send(de_p) {
-                    warn!("Cannot send block to denunciation factory: {}", e);
-                }
-            }
-            */
             if let Ok(de_p) = DenunciationPrecursor::try_from(&verifiable_block.content.header) {
                 self.channels
                     .pool_command_sender
@@ -311,12 +304,6 @@ impl ConsensusController for ConsensusControllerImpl {
         }
 
         if let Ok(de_p) = DenunciationPrecursor::try_from(&header) {
-            /*
-            if let Err(e) = self.channels.denunciation_precursor_sender.send(de_p) {
-                warn!("Cannot send header to denunciation factory: {}", e);
-            }
-            */
-
             self.channels
                 .pool_command_sender
                 .add_denunciation_precursor(de_p);

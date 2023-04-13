@@ -2,7 +2,7 @@
 
 //! Pool controller implementation
 
-use massa_models::denunciation::DenunciationPrecursor;
+use massa_models::denunciation::{Denunciation, DenunciationPrecursor};
 use massa_models::{
     block_id::BlockId, endorsement::EndorsementId, operation::OperationId, slot::Slot,
 };
@@ -23,8 +23,6 @@ use crate::{
 pub enum Command {
     /// Add items to the pool
     AddItems(Storage),
-    /// Add denunciation to the pool
-    // AddDenunciation(Denunciation),
     /// Add denunciation precursor to the pool
     AddDenunciationPrecursor(DenunciationPrecursor),
     /// Notify of new final consensus periods
@@ -48,11 +46,8 @@ pub struct PoolControllerImpl {
     pub(crate) operations_input_sender: SyncSender<Command>,
     /// Endorsement write worker command sender
     pub(crate) endorsements_input_sender: SyncSender<Command>,
-
     /// Denunciation write worker command sender
     pub(crate) denunciations_input_sender: SyncSender<Command>,
-    // /// Denunciation precursor sender
-    // pub(crate) denunciation_precursor_sender: SyncSender<Command>,
     /// Last final periods from Consensus
     pub last_cs_final_periods: Vec<u64>,
 }
@@ -204,23 +199,9 @@ impl PoolController for PoolControllerImpl {
         }
     }
 
-    /// Add denunciation to pool
-    /*
-    fn add_denunciation(&mut self, denunciation: Denunciation) {
-        match self
-            .denunciations_input_sender
-            .try_send(Command::AddDenunciation(denunciation))
-        {
-            Err(TrySendError::Disconnected(_)) => {
-                warn!("Could not add denunciations to pool: worker is unreachable.");
-            }
-            Err(TrySendError::Full(_)) => {
-                warn!("Could not add denunciations to pool: worker channel is full.");
-            }
-            Ok(_) => {}
-        }
+    fn get_denunciations(&self) -> Vec<Denunciation> {
+        self.denunciation_pool.read().get_denunciations()
     }
-    */
 
     /// Get the number of denunciations in the pool
     fn get_denunciation_count(&self) -> usize {

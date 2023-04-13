@@ -130,7 +130,9 @@ impl DenunciationPool {
                     let de_p_2 = DenunciationPrecursor::Endorsement(denunciation_precursor);
                     match Denunciation::try_from((de_p_1, &de_p_2)) {
                         Ok(de) => {
-                            eo.insert(EndorsementDenunciationStatus::DenunciationEmitted);
+                            eo.insert(EndorsementDenunciationStatus::DenunciationEmitted(
+                                de.clone(),
+                            ));
                             Some(de)
                         }
                         Err(e) => {
@@ -139,7 +141,7 @@ impl DenunciationPool {
                         }
                     }
                 }
-                EndorsementDenunciationStatus::DenunciationEmitted => {
+                EndorsementDenunciationStatus::DenunciationEmitted(..) => {
                     // Already 2 entries - so a Denunciation has already been created
                     None
                 }
@@ -164,7 +166,9 @@ impl DenunciationPool {
                     let de_p_2 = DenunciationPrecursor::BlockHeader(denunciation_precursor);
                     match Denunciation::try_from((de_p_1, &de_p_2)) {
                         Ok(de) => {
-                            eo.insert(BlockHeaderDenunciationStatus::DenunciationEmitted);
+                            eo.insert(BlockHeaderDenunciationStatus::DenunciationEmitted(
+                                de.clone(),
+                            ));
                             Some(de)
                         }
                         Err(e) => {
@@ -173,7 +177,7 @@ impl DenunciationPool {
                         }
                     }
                 }
-                BlockHeaderDenunciationStatus::DenunciationEmitted => {
+                BlockHeaderDenunciationStatus::DenunciationEmitted(..) => {
                     // Already 2 entries - so a Denunciation has already been created
                     None
                 }
@@ -205,20 +209,6 @@ impl DenunciationPool {
         });
     }
 
-    /*
-    /// Add a list of denunciation to the pool
-    pub(crate) fn add_denunciation(&mut self, denunciation: Denunciation) {
-        if !Denunciation::is_expired(
-            denunciation.get_slot(),
-            &self.last_cs_final_periods,
-            self.config.denunciation_expire_periods,
-        ) {
-            let de_idx = DenunciationIndex::from(&denunciation);
-            self.denunciations_cache.insert(de_idx, denunciation);
-        }
-    }
-    */
-
     // In next PR
     /*
     pub fn get_block_denunciations(
@@ -229,6 +219,28 @@ impl DenunciationPool {
         todo!()
     }
     */
+
+    pub fn get_denunciations(&self) -> Vec<Denunciation> {
+        let mut res: Vec<Denunciation> = self
+            .block_header_by_slot
+            .iter()
+            .filter_map(|(_, de_status)| match de_status {
+                BlockHeaderDenunciationStatus::Accumulating(_) => None,
+                BlockHeaderDenunciationStatus::DenunciationEmitted(de) => Some(de.clone()),
+            })
+            .collect();
+        let res2: Vec<Denunciation> = self
+            .endorsements_by_slot_index
+            .iter()
+            .filter_map(|(_, de_status)| match de_status {
+                EndorsementDenunciationStatus::Accumulating(_) => None,
+                EndorsementDenunciationStatus::DenunciationEmitted(de) => Some(de.clone()),
+            })
+            .collect();
+
+        res.extend(res2);
+        res
+    }
 
     pub(crate) fn notify_final_cs_periods(&mut self, final_cs_periods: &[u64]) {
         // update internal final CS period counter
@@ -242,11 +254,11 @@ impl DenunciationPool {
 #[allow(clippy::large_enum_variant)]
 enum EndorsementDenunciationStatus {
     Accumulating(DenunciationPrecursor),
-    DenunciationEmitted,
+    DenunciationEmitted(Denunciation),
 }
 
 #[allow(clippy::large_enum_variant)]
 enum BlockHeaderDenunciationStatus {
     Accumulating(DenunciationPrecursor),
-    DenunciationEmitted,
+    DenunciationEmitted(Denunciation),
 }

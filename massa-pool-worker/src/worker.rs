@@ -50,7 +50,9 @@ impl EndorsementPoolThread {
         loop {
             match self.receiver.recv() {
                 Err(RecvError) => break,
-                Ok(Command::Stop) => break,
+                Ok(Command::Stop) => {
+                    break;
+                }
                 Ok(Command::AddItems(endorsements)) => {
                     self.endorsement_pool.write().add_endorsements(endorsements)
                 }
@@ -98,7 +100,9 @@ impl OperationPoolThread {
         loop {
             match self.receiver.recv() {
                 Err(RecvError) => break,
-                Ok(Command::Stop) => break,
+                Ok(Command::Stop) => {
+                    break;
+                }
                 Ok(Command::AddItems(operations)) => {
                     self.operation_pool.write().add_operations(operations)
                 }
@@ -138,18 +142,19 @@ impl DenunciationPoolThread {
                 };
                 this.run()
             })
-            .expect("failed to spawn thread : operation-pool")
+            .expect("failed to spawn thread : denunciation-pool")
     }
 
     /// Run the thread.
     fn run(self) {
         loop {
             match self.receiver.recv() {
-                Err(RecvError) => break,
-                Ok(Command::Stop) => break,
-                // Ok(Command::AddDenunciation(de)) => {
-                //     self.denunciation_pool.write().add_denunciation(de)
-                // }
+                Err(RecvError) => {
+                    break;
+                }
+                Ok(Command::Stop) => {
+                    break;
+                }
                 Ok(Command::AddDenunciationPrecursor(de_p)) => self
                     .denunciation_pool
                     .write()
@@ -191,13 +196,11 @@ pub fn start_pool_controller(
     let endorsement_pool = Arc::new(RwLock::new(EndorsementPool::init(
         config,
         storage,
-        // denunciation_factory_tx,
         denunciations_input_sender.clone(),
     )));
     let denunciation_pool = Arc::new(RwLock::new(DenunciationPool::init(
         config,
         channels.selector.clone(),
-        // denunciation_factory_rx
     )));
     let controller = PoolControllerImpl {
         _config: config,
