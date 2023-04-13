@@ -29,8 +29,6 @@
 <a href="#29" id="29">29</a>
 <a href="#30" id="30">30</a>
 <a href="#31" id="31">31</a>
-<a href="#32" id="32">32</a>
-<a href="#33" id="33">33</a>
 </pre><pre class="rust"><code><span class="doccomment">//! # General description
 //!
 //! TODO
@@ -41,7 +39,6 @@
 <span class="kw">mod </span>controller;
 <span class="kw">mod </span>error;
 <span class="kw">mod </span>key;
-<span class="kw">mod </span>ledger_batch;
 <span class="kw">mod </span>ledger_changes;
 <span class="kw">mod </span>ledger_entry;
 <span class="kw">mod </span>types;
@@ -53,7 +50,6 @@
     datastore_prefix_from_address, Key, KeyDeserializer, KeySerializer, KeyType, BALANCE_IDENT,
     BYTECODE_IDENT, DATASTORE_IDENT,
 };
-<span class="kw">pub use </span>ledger_batch::LedgerBatch;
 <span class="kw">pub use </span>ledger_changes::{
     DatastoreUpdateDeserializer, DatastoreUpdateSerializer, LedgerChanges,
     LedgerChangesDeserializer, LedgerChangesSerializer, LedgerEntryUpdate,
