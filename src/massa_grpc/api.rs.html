@@ -250,48 +250,6 @@
 <a href="#250" id="250">250</a>
 <a href="#251" id="251">251</a>
 <a href="#252" id="252">252</a>
-<a href="#253" id="253">253</a>
-<a href="#254" id="254">254</a>
-<a href="#255" id="255">255</a>
-<a href="#256" id="256">256</a>
-<a href="#257" id="257">257</a>
-<a href="#258" id="258">258</a>
-<a href="#259" id="259">259</a>
-<a href="#260" id="260">260</a>
-<a href="#261" id="261">261</a>
-<a href="#262" id="262">262</a>
-<a href="#263" id="263">263</a>
-<a href="#264" id="264">264</a>
-<a href="#265" id="265">265</a>
-<a href="#266" id="266">266</a>
-<a href="#267" id="267">267</a>
-<a href="#268" id="268">268</a>
-<a href="#269" id="269">269</a>
-<a href="#270" id="270">270</a>
-<a href="#271" id="271">271</a>
-<a href="#272" id="272">272</a>
-<a href="#273" id="273">273</a>
-<a href="#274" id="274">274</a>
-<a href="#275" id="275">275</a>
-<a href="#276" id="276">276</a>
-<a href="#277" id="277">277</a>
-<a href="#278" id="278">278</a>
-<a href="#279" id="279">279</a>
-<a href="#280" id="280">280</a>
-<a href="#281" id="281">281</a>
-<a href="#282" id="282">282</a>
-<a href="#283" id="283">283</a>
-<a href="#284" id="284">284</a>
-<a href="#285" id="285">285</a>
-<a href="#286" id="286">286</a>
-<a href="#287" id="287">287</a>
-<a href="#288" id="288">288</a>
-<a href="#289" id="289">289</a>
-<a href="#290" id="290">290</a>
-<a href="#291" id="291">291</a>
-<a href="#292" id="292">292</a>
-<a href="#293" id="293">293</a>
-<a href="#294" id="294">294</a>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2023 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="kw">use </span><span class="kw">crate</span>::error::GrpcError;
@@ -299,14 +257,10 @@
 <span class="kw">use </span>itertools::izip;
 <span class="kw">use </span>massa_models::address::Address;
 <span class="kw">use </span>massa_models::slot::Slot;
-<span class="kw">use </span>massa_models::timeslots::{<span class="self">self</span>, get_latest_block_slot_at_timestamp};
+<span class="kw">use </span>massa_models::timeslots;
 <span class="kw">use </span>massa_proto::massa::api::v1 <span class="kw">as </span>grpc;
-<span class="kw">use </span>massa_time::MassaTime;
 <span class="kw">use </span>std::str::FromStr;
 <span class="kw">use </span>tracing::log::warn;
-
-<span class="doccomment">/// default stakers limit
-</span><span class="kw">const </span>DEFAULT_STAKERS_LIMIT: u64 = <span class="number">50</span>;
 
 <span class="doccomment">/// get blocks by slots
 </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>get_blocks_by_slots(
@@ -417,44 +371,6 @@
         .collect();
 
     <span class="prelude-val">Ok</span>(grpc::GetDatastoreEntriesResponse { id, entries })
-}
-
-<span class="doccomment">/// get largest stakers
-</span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>get_largest_stakers(
-    grpc: <span class="kw-2">&amp;</span>MassaGrpc,
-    request: tonic::Request&lt;grpc::GetLargestStakersRequest&gt;,
-) -&gt; <span class="prelude-ty">Result</span>&lt;grpc::GetLargestStakersResponse, GrpcError&gt; {
-    <span class="kw">let </span>inner_req = request.into_inner();
-    <span class="kw">let </span>id = inner_req.id;
-    <span class="kw">let </span>limit = inner_req.query.map_or(DEFAULT_STAKERS_LIMIT, |query| {
-        query
-            .filter
-            .map_or(DEFAULT_STAKERS_LIMIT, |filter| filter.limit)
-    });
-
-    <span class="kw">let </span>now = MassaTime::now()<span class="question-mark">?</span>;
-    <span class="kw">let </span>curr_cycle = get_latest_block_slot_at_timestamp(
-        grpc.grpc_config.thread_count,
-        grpc.grpc_config.t0,
-        grpc.grpc_config.genesis_timestamp,
-        now,
-    )<span class="question-mark">?
-    </span>.unwrap_or_else(|| Slot::new(<span class="number">0</span>, <span class="number">0</span>))
-    .get_cycle(grpc.grpc_config.periods_per_cycle);
-
-    <span class="kw">let </span><span class="kw-2">mut </span>staker_vec = grpc
-        .execution_controller
-        .get_cycle_active_rolls(curr_cycle)
-        .into_iter()
-        .map(|(address, roll_counts)| (address.to_string(), roll_counts))
-        .take(limit <span class="kw">as </span>usize)
-        .collect::&lt;Vec&lt;(String, u64)&gt;&gt;();
-
-    staker_vec.sort_by_key(|<span class="kw-2">&amp;</span>(<span class="kw">_</span>, roll_counts)| std::cmp::Reverse(roll_counts));
-
-    <span class="kw">let </span>stakers = staker_vec.into_iter().collect();
-
-    <span class="prelude-val">Ok</span>(grpc::GetLargestStakersResponse { id, stakers })
 }
 
 <span class="doccomment">/// get next block best parents
