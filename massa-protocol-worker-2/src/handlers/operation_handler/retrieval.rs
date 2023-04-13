@@ -1,5 +1,5 @@
 use std::{
-    collections::{HashSet, VecDeque},
+    collections::{HashSet, VecDeque, BTreeSet},
     thread::JoinHandle,
     time::Instant,
 };
@@ -41,12 +41,53 @@ pub struct OperationBatchItem {
     pub operations_prefix_ids: OperationPrefixIds,
 }
 
+enum RetrievalTimer {
+    NextAsk(Instant),
+    NextPrune(Instant),
+}
+
+impl RetrievalTimer {
+    fn get_instant(&self) -> Instant {
+        match self {
+            RetrievalTimer::NextAsk(instant) => *instant,
+            RetrievalTimer::NextPrune(instant) => *instant,
+        }
+    }
+}
+
+impl Eq for RetrievalTimer {}
+
+impl PartialEq for RetrievalTimer {
+    fn eq(&self, other: &Self) -> bool {
+        self.cmp(other) == std::cmp::Ordering::Equal
+    }
+}
+
+impl PartialOrd for RetrievalTimer {
+    fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
+        Some(self.cmp(other))
+    }
+}
+
+impl Ord for RetrievalTimer {
+    fn cmp(&self, other: &Self) -> std::cmp::Ordering {
+        match (self, other) {
+            (RetrievalTimer::NextAsk(_), RetrievalTimer::NextAsk(_)) => std::cmp::Ordering::Equal,
+            (RetrievalTimer::NextPrune(_), RetrievalTimer::NextPrune(_)) => {
+                std::cmp::Ordering::Equal
+            }
+            (a, b) => a.get_instant().cmp(&b.get_instant()),
+        }
+    }
+}
+
 pub struct RetrievalThread {
     receiver: Receiver<(PeerId, u64, Vec<u8>)>,
     pool_controller: Box<dyn PoolController>,
     cache: SharedOperationCache,
     asked_operations: PreHashMap<OperationPrefixId, (Instant, Vec<PeerId>)>,
     op_batch_buffer: VecDeque<OperationBatchItem>,
+    timers: BTreeSet<RetrievalTimer>,
     storage: Storage,
     config: ProtocolConfig,
     internal_sender: Sender<OperationHandlerCommand>,
@@ -67,11 +108,16 @@ impl RetrievalThread {
                 max_op_datastore_key_length: u8::MAX,
                 max_op_datastore_value_length: u64::MAX,
             });
-        let mut next_ask_operations = Instant::now()
-            .checked_add(self.config.operation_batch_proc_period.to_duration())
-            .expect("Can't add duration operation_batch_proc_period");
+        self.timers.insert(RetrievalTimer::NextAsk(Instant::now()
+        .checked_add(self.config.operation_batch_proc_period.to_duration())
+        .expect("Can't add duration operation_batch_proc_period")));
+        self.timers.insert(RetrievalTimer::NextPrune(Instant::now().checked_add(
+            self.config.asked_operations_pruning_period.to_duration(),
+        ).expect("Can't add duration operation_retrieval_prune_period")));
         loop {
-            match self.receiver.recv_deadline(next_ask_operations) {
+            let timer = self.timers.first().expect("No timers left in operation retrieval");
+            //If there is message in the channel it will receive them even if the deadline is in the past
+            match self.receiver.recv_deadline(timer.get_instant()) {
                 Ok((peer_id, message_id, message)) => {
                     operation_message_deserializer.set_message_id(message_id);
                     let (rest, message) = operation_message_deserializer
@@ -104,12 +150,28 @@ impl RetrievalThread {
                     }
                 }
                 Err(RecvTimeoutError::Timeout) => {
-                    if let Err(err) = self.update_ask_operation() {
-                        warn!("Error in update_ask_operation: {}", err);
-                    };
-                    next_ask_operations = Instant::now()
-                        .checked_add(self.config.operation_batch_proc_period.to_duration())
-                        .expect("Can't add duration operation_batch_proc_period");
+                    match timer {
+                        RetrievalTimer::NextAsk(_) => {
+                            self.timers.pop_first();
+                            if let Err(err) = self.update_ask_operation() {
+                                warn!("Error in update_ask_operation: {}", err);
+                            };
+                            let next_ask_operations = Instant::now()
+                                .checked_add(self.config.operation_batch_proc_period.to_duration())
+                                .expect("Can't add duration operation_batch_proc_period");
+                            self.timers
+                                .insert(RetrievalTimer::NextAsk(next_ask_operations));
+                        }
+                        RetrievalTimer::NextPrune(_) => {
+                            self.timers.pop_first();
+                            self.asked_operations.clear();
+                            let next_prune_operations = Instant::now()
+                                .checked_add(self.config.asked_operations_pruning_period.to_duration())
+                                .expect("Can't add duration operation_prune_period");
+                            self.timers
+                                .insert(RetrievalTimer::NextPrune(next_prune_operations));
+                        }
+                    }
                 }
                 Err(RecvTimeoutError::Disconnected) => {
                     println!("Disconnected");
@@ -393,6 +455,7 @@ pub fn start_retrieval_thread(
             config,
             asked_operations: PreHashMap::default(),
             op_batch_buffer: VecDeque::new(),
+            timers: BTreeSet::default()
         };
         retrieval_thread.run();
     })
