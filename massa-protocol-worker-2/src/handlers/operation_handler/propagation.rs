@@ -33,6 +33,13 @@ impl PropagationThread {
             match self.internal_receiver.recv_deadline(next_announce) {
                 Ok(internal_message) => match internal_message {
                     OperationHandlerCommand::AnnounceOperations(operations_ids) => {
+                        // Note operations as checked.
+                        {
+                            let mut cache_write = self.cache.write();
+                            for op_id in operations_ids.iter().copied() {
+                                cache_write.insert_checked_operation(op_id);
+                            }
+                        }
                         self.operations_to_announce.extend(operations_ids);
                         if self.operations_to_announce.len()
                             > self.config.operation_announcement_buffer_capacity
