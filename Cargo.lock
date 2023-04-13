@@ -2342,6 +2342,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "lru"
+version = "0.10.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "03f1160296536f10c833a82dca22267d5486734230d47bf00bf435885814ba1e"
+dependencies = [
+ "hashbrown 0.13.2",
+]
+
+[[package]]
 name = "lz4-sys"
 version = "1.9.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3135,19 +3144,23 @@ name = "massa_protocol_worker_2"
 version = "0.1.0"
 dependencies = [
  "crossbeam",
+ "lru",
  "massa_consensus_exports",
  "massa_hash 0.1.0",
+ "massa_logging",
  "massa_models",
  "massa_pool_exports",
  "massa_protocol_exports_2",
  "massa_serialization 0.1.0",
  "massa_signature 0.1.0",
  "massa_storage",
+ "massa_time",
  "nom",
  "num_enum",
  "parking_lot",
  "peernet",
  "rand 0.8.5",
+ "rayon",
  "serde_json",
  "tempfile",
  "tracing",
