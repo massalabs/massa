@@ -57,6 +57,24 @@ impl PeerDB {
         };
     }
 
+    /// get best peers for a given number of peers
+    /// returns a vector of peer ids
+    pub fn get_best_peers(&self, nb_peers: usize) -> Vec<PeerId> {
+        self.index_by_newest
+            .iter()
+            .filter_map(|(_, peer_id)| {
+                self.peers.get(peer_id).and_then(|peer| {
+                    if peer.state == PeerState::Trusted {
+                        Some(peer_id.clone())
+                    } else {
+                        None
+                    }
+                })
+            })
+            .take(nb_peers)
+            .collect()
+    }
+
     // Flush PeerDB to disk ?
     fn flush(&self) -> Result<(), ProtocolError> {
         unimplemented!()

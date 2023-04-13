@@ -132,15 +132,15 @@ pub fn start_connectivity_thread(
                     // Get the best peers
                     {
                         let peer_db_read = peer_management_handler.peer_db.read();
-                        let best_peers = peer_db_read.index_by_newest.iter().take(nb_connection_to_try);
-                        for (_timestamp, peer_id) in best_peers {
-                            let peer_info = peer_db_read.peers.get(peer_id).unwrap();
+                        let best_peers = peer_db_read.get_best_peers(nb_connection_to_try);
+                        for peer_id in best_peers {
+                            let peer_info = peer_db_read.peers.get(&peer_id).unwrap();
                             if peer_info.last_announce.listeners.is_empty() {
                                 continue;
                             }
                             {
                                 let active_connections = manager.active_connections.read();
-                                if active_connections.connections.contains_key(peer_id) {
+                                if active_connections.connections.contains_key(&peer_id) {
                                     continue;
                                 }
                             }
