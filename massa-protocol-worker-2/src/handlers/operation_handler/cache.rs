@@ -1,4 +1,4 @@
-use std::{collections::HashSet, num::NonZeroUsize, sync::Arc};
+use std::{num::NonZeroUsize, sync::Arc};
 
 use lru::LruCache;
 use massa_models::operation::{OperationId, OperationPrefixId};
@@ -8,7 +8,7 @@ use peernet::peer_id::PeerId;
 pub struct OperationCache {
     pub checked_operations: LruCache<OperationId, ()>,
     pub checked_operations_prefix: LruCache<OperationPrefixId, ()>,
-    pub ops_known_by_peer: LruCache<PeerId, HashSet<OperationPrefixId>>,
+    pub ops_known_by_peer: LruCache<PeerId, LruCache<OperationPrefixId, ()>>,
 }
 
 impl OperationCache {

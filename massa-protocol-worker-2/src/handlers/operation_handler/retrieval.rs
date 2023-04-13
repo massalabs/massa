@@ -1,10 +1,15 @@
 use std::{
-    collections::{HashSet, VecDeque, BTreeSet},
+    collections::{HashMap, VecDeque},
+    num::NonZeroUsize,
     thread::JoinHandle,
     time::Instant,
 };
 
-use crossbeam::channel::{Receiver, RecvTimeoutError, Sender};
+use crossbeam::{
+    channel::{tick, Receiver, Sender},
+    select,
+};
+use lru::LruCache;
 use massa_logging::massa_trace;
 use massa_models::{
     operation::{OperationId, OperationPrefixId, OperationPrefixIds, SecureShareOperation},
@@ -18,15 +23,16 @@ use massa_protocol_exports_2::{ProtocolConfig, ProtocolError};
 use massa_serialization::{DeserializeError, Deserializer};
 use massa_storage::Storage;
 use massa_time::{MassaTime, TimeError};
-use peernet::peer_id::PeerId;
+use peernet::{network_manager::SharedActiveConnections, peer_id::PeerId};
 
-use crate::sig_verifier::verify_sigs_batch;
+use crate::{messages::MessagesSerializer, sig_verifier::verify_sigs_batch};
 use tracing::warn;
 
 use super::{
     cache::SharedOperationCache,
     commands_propagation::OperationHandlerCommand,
     messages::{OperationMessage, OperationMessageDeserializer, OperationMessageDeserializerArgs},
+    OperationMessageSerializer,
 };
 
 /// Structure containing a Batch of `operation_ids` we would like to ask
@@ -41,56 +47,18 @@ pub struct OperationBatchItem {
     pub operations_prefix_ids: OperationPrefixIds,
 }
 
-enum RetrievalTimer {
-    NextAsk(Instant),
-    NextPrune(Instant),
-}
-
-impl RetrievalTimer {
-    fn get_instant(&self) -> Instant {
-        match self {
-            RetrievalTimer::NextAsk(instant) => *instant,
-            RetrievalTimer::NextPrune(instant) => *instant,
-        }
-    }
-}
-
-impl Eq for RetrievalTimer {}
-
-impl PartialEq for RetrievalTimer {
-    fn eq(&self, other: &Self) -> bool {
-        self.cmp(other) == std::cmp::Ordering::Equal
-    }
-}
-
-impl PartialOrd for RetrievalTimer {
-    fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
-        Some(self.cmp(other))
-    }
-}
-
-impl Ord for RetrievalTimer {
-    fn cmp(&self, other: &Self) -> std::cmp::Ordering {
-        match (self, other) {
-            (RetrievalTimer::NextAsk(_), RetrievalTimer::NextAsk(_)) => std::cmp::Ordering::Equal,
-            (RetrievalTimer::NextPrune(_), RetrievalTimer::NextPrune(_)) => {
-                std::cmp::Ordering::Equal
-            }
-            (a, b) => a.get_instant().cmp(&b.get_instant()),
-        }
-    }
-}
-
 pub struct RetrievalThread {
     receiver: Receiver<(PeerId, u64, Vec<u8>)>,
     pool_controller: Box<dyn PoolController>,
     cache: SharedOperationCache,
-    asked_operations: PreHashMap<OperationPrefixId, (Instant, Vec<PeerId>)>,
+    asked_operations: LruCache<OperationPrefixId, (Instant, Vec<PeerId>)>,
+    active_connections: SharedActiveConnections,
     op_batch_buffer: VecDeque<OperationBatchItem>,
-    timers: BTreeSet<RetrievalTimer>,
+    stored_operations: HashMap<Instant, PreHashSet<OperationId>>,
     storage: Storage,
     config: ProtocolConfig,
     internal_sender: Sender<OperationHandlerCommand>,
+    operation_message_serializer: MessagesSerializer,
 }
 
 impl RetrievalThread {
@@ -108,75 +76,67 @@ impl RetrievalThread {
                 max_op_datastore_key_length: u8::MAX,
                 max_op_datastore_value_length: u64::MAX,
             });
-        self.timers.insert(RetrievalTimer::NextAsk(Instant::now()
-        .checked_add(self.config.operation_batch_proc_period.to_duration())
-        .expect("Can't add duration operation_batch_proc_period")));
-        self.timers.insert(RetrievalTimer::NextPrune(Instant::now().checked_add(
-            self.config.asked_operations_pruning_period.to_duration(),
-        ).expect("Can't add duration operation_retrieval_prune_period")));
+        let tick_ask_operations = tick(self.config.operation_batch_proc_period.to_duration());
+        let tick_clear_storage = tick(self.config.asked_operations_pruning_period.to_duration());
         loop {
-            let timer = self.timers.first().expect("No timers left in operation retrieval");
-            //If there is message in the channel it will receive them even if the deadline is in the past
-            match self.receiver.recv_deadline(timer.get_instant()) {
-                Ok((peer_id, message_id, message)) => {
-                    operation_message_deserializer.set_message_id(message_id);
-                    let (rest, message) = operation_message_deserializer
-                        .deserialize::<DeserializeError>(&message)
-                        .unwrap();
-                    if !rest.is_empty() {
-                        println!("Error: message not fully consumed");
-                        return;
-                    }
-                    match message {
-                        OperationMessage::Operations(ops) => {
-                            if let Err(err) = self.note_operations_from_peer(ops, &peer_id) {
-                                warn!("peer {} sent us critically incorrect operation, which may be an attack attempt by the remote peer or a loss of sync between us and the remote peer. Err = {}", peer_id, err);
-                                //TODO: Ban
-                                //let _ = self.ban_node(&peer_id).await;
+            select! {
+                recv(self.receiver) -> msg => {
+                    match msg {
+                        Ok((peer_id, message_id, message)) => {
+                            operation_message_deserializer.set_message_id(message_id);
+                            let (rest, message) = operation_message_deserializer
+                                .deserialize::<DeserializeError>(&message)
+                                .unwrap();
+                            if !rest.is_empty() {
+                                println!("Error: message not fully consumed");
+                                return;
+                            }
+                            match message {
+                                OperationMessage::Operations(ops) => {
+                                    if let Err(err) = self.note_operations_from_peer(ops, &peer_id) {
+                                        warn!("peer {} sent us critically incorrect operation, which may be an attack attempt by the remote peer or a loss of sync between us and the remote peer. Err = {}", peer_id, err);
+                                        //TODO: Ban
+                                        //let _ = self.ban_node(&peer_id).await;
+                                    }
+                                }
+                                OperationMessage::OperationsAnnouncement(announcement) => {
+                                    if let Err(err) =
+                                        self.on_operations_announcements_received(announcement, &peer_id)
+                                    {
+                                        warn!("error when processing announcement received from peer {}: Err = {}", peer_id, err);
+                                    }
+                                }
+                                OperationMessage::AskForOperations(ask) => {
+                                    if let Err(err) = self.on_asked_operations_received(&peer_id, ask) {
+                                        warn!("error when processing asked operations received from peer {}: Err = {}", peer_id, err);
+                                    }
+                                }
                             }
                         }
-                        OperationMessage::OperationsAnnouncement(announcement) => {
-                            if let Err(err) =
-                                self.on_operations_announcements_received(announcement, &peer_id)
-                            {
-                                warn!("error when processing announcement received from peer {}: Err = {}", peer_id, err);
-                            }
-                        }
-                        OperationMessage::AskForOperations(ask) => {
-                            if let Err(err) = self.on_asked_operations_received(&peer_id, ask) {
-                                warn!("error when processing asked operations received from peer {}: Err = {}", peer_id, err);
-                            }
+                        Err(err) => {
+                            warn!("Error in receiver: {}", err);
+                            return;
                         }
                     }
+                },
+                recv(tick_ask_operations) -> _ => {
+                    if let Err(err) = self.update_ask_operation() {
+                        warn!("Error in update_ask_operation: {}", err);
+                    };
+                },
+                recv(tick_clear_storage) -> _ => {
+                    self.clear_storage();
                 }
-                Err(RecvTimeoutError::Timeout) => {
-                    match timer {
-                        RetrievalTimer::NextAsk(_) => {
-                            self.timers.pop_first();
-                            if let Err(err) = self.update_ask_operation() {
-                                warn!("Error in update_ask_operation: {}", err);
-                            };
-                            let next_ask_operations = Instant::now()
-                                .checked_add(self.config.operation_batch_proc_period.to_duration())
-                                .expect("Can't add duration operation_batch_proc_period");
-                            self.timers
-                                .insert(RetrievalTimer::NextAsk(next_ask_operations));
-                        }
-                        RetrievalTimer::NextPrune(_) => {
-                            self.timers.pop_first();
-                            self.asked_operations.clear();
-                            let next_prune_operations = Instant::now()
-                                .checked_add(self.config.asked_operations_pruning_period.to_duration())
-                                .expect("Can't add duration operation_prune_period");
-                            self.timers
-                                .insert(RetrievalTimer::NextPrune(next_prune_operations));
-                        }
-                    }
-                }
-                Err(RecvTimeoutError::Disconnected) => {
-                    println!("Disconnected");
-                    return;
-                }
+            }
+        }
+    }
+
+    fn clear_storage(&mut self) {
+        for (instant, operations) in self.stored_operations.iter() {
+            if instant.elapsed() > self.config.asked_operations_pruning_period.to_duration() {
+                self.storage.drop_operation_refs(operations);
+            } else {
+                break;
             }
         }
     }
@@ -225,10 +185,18 @@ impl RetrievalThread {
             }
 
             // add to known ops
-            let known_ops = cache_write
-                .ops_known_by_peer
-                .get_or_insert_mut(source_peer_id.clone(), || HashSet::default());
-            known_ops.extend(received_ids.iter().map(|id| id.prefix()));
+            let known_ops =
+                cache_write
+                    .ops_known_by_peer
+                    .get_or_insert_mut(source_peer_id.clone(), || {
+                        LruCache::new(
+                            NonZeroUsize::new(self.config.max_known_ops_size)
+                                .expect("max_known_ops_size in config must be > 0"),
+                        )
+                    });
+            for id in received_ids {
+                known_ops.put(id.prefix(), ());
+            }
         }
 
         if !new_operations.is_empty() {
@@ -268,6 +236,9 @@ impl RetrievalThread {
             ops_to_propagate.drop_operation_refs(&operations_to_not_propagate);
             let to_announce: PreHashSet<OperationId> =
                 ops_to_propagate.get_op_refs().iter().copied().collect();
+            self.stored_operations
+                .insert(Instant::now(), to_announce.clone());
+            self.storage.extend(ops_to_propagate);
             self.internal_sender
                 .send(OperationHandlerCommand::AnnounceOperations(to_announce))
                 .map_err(|err| ProtocolError::SendError(err.to_string()))?;
@@ -306,10 +277,18 @@ impl RetrievalThread {
         // mark sender as knowing the ops
         {
             let mut cache_write = self.cache.write();
-            let known_ops = cache_write
-                .ops_known_by_peer
-                .get_or_insert_mut(peer_id.clone(), || HashSet::default());
-            known_ops.extend(op_batch.iter().copied());
+            let known_ops =
+                cache_write
+                    .ops_known_by_peer
+                    .get_or_insert_mut(peer_id.clone(), || {
+                        LruCache::new(
+                            NonZeroUsize::new(self.config.max_known_ops_size)
+                                .expect("max_known_ops_size in config must be > 0"),
+                        )
+                    });
+            for prefix in &op_batch {
+                known_ops.put(*prefix, ());
+            }
         }
 
         // filter out the operations that we already know about
@@ -326,7 +305,7 @@ impl RetrievalThread {
         for op_id in op_batch {
             let wish = match self.asked_operations.get_mut(&op_id) {
                 Some(wish) => {
-                    if wish.1.contains(&peer_id) {
+                    if wish.1.contains(peer_id) {
                         continue; // already asked to the `peer_id`
                     } else {
                         Some(wish) // already asked but at someone else
@@ -352,7 +331,7 @@ impl RetrievalThread {
             } else {
                 ask_set.insert(op_id);
                 self.asked_operations
-                    .insert(op_id, (now, vec![peer_id.clone()]));
+                    .put(op_id, (now, vec![peer_id.clone()]));
             }
         } // EndOf for op_id in op_batch:
 
@@ -370,17 +349,28 @@ impl RetrievalThread {
                 operations_prefix_ids: future_set,
             });
         }
-
-        //TODO: Wait damir's answer on Discord
-        // if !ask_set.is_empty() {
-        //     self.network_command_sender
-        //         .send_ask_for_operations(peer_id, ask_set)
-        //         .await
-        //         .map_err(|_| ProtocolError::ChannelError("send ask for operations failed".into()))
-        // } else {
-        //     Ok(())
-        // }
-        Ok(())
+        if !ask_set.is_empty() {
+            {
+                let mut active_connections_write = self.active_connections.write();
+                if let Some(peer) = active_connections_write.connections.get_mut(peer_id) {
+                    peer.send_channels
+                        .send(
+                            &self.operation_message_serializer,
+                            OperationMessage::AskForOperations(ask_set).into(),
+                            false,
+                        )
+                        .map_err(|err| ProtocolError::SendError(err.to_string()))
+                } else {
+                    {
+                        let mut cache_write = self.cache.write();
+                        cache_write.ops_known_by_peer.pop(peer_id);
+                    }
+                    Ok(())
+                }
+            }
+        } else {
+            Ok(())
+        }
     }
 
     fn update_ask_operation(&mut self) -> Result<(), ProtocolError> {
@@ -398,12 +388,13 @@ impl RetrievalThread {
         Ok(())
     }
 
+    /// Maybe move this to propagation
     /// Process the reception of a batch of asked operations, that means that
     /// we have already sent a batch of ids in the network, notifying that we already
     /// have those operations.
     fn on_asked_operations_received(
         &mut self,
-        _peer_id: &PeerId,
+        peer_id: &PeerId,
         op_pre_ids: OperationPrefixIds,
     ) -> Result<(), ProtocolError> {
         if op_pre_ids.is_empty() {
@@ -427,13 +418,24 @@ impl RetrievalThread {
                 }
             }
         }
-        //TODO: See with damir
-        // if !ops.is_empty() {
-        //     self.network_command_sender
-        //         .send_operations(node_id, ops)
-        //         .await?;
-        // }
-        Ok(())
+        {
+            let mut active_connections_write = self.active_connections.write();
+            if let Some(peer) = active_connections_write.connections.get_mut(peer_id) {
+                peer.send_channels
+                    .send(
+                        &self.operation_message_serializer,
+                        OperationMessage::Operations(ops).into(),
+                        false,
+                    )
+                    .map_err(|err| ProtocolError::SendError(err.to_string()))
+            } else {
+                {
+                    let mut cache_write = self.cache.write();
+                    cache_write.ops_known_by_peer.pop(peer_id);
+                }
+                Ok(())
+            }
+        }
     }
 }
 
@@ -443,19 +445,26 @@ pub fn start_retrieval_thread(
     storage: Storage,
     config: ProtocolConfig,
     cache: SharedOperationCache,
+    active_connections: SharedActiveConnections,
     internal_sender: Sender<OperationHandlerCommand>,
 ) -> JoinHandle<()> {
     std::thread::spawn(move || {
         let mut retrieval_thread = RetrievalThread {
             receiver,
             pool_controller,
+            stored_operations: HashMap::new(),
             storage,
             internal_sender,
             cache,
+            active_connections,
+            asked_operations: LruCache::new(
+                NonZeroUsize::new(config.asked_operations_buffer_capacity)
+                    .expect("asked_operations_buffer_capacity in config must be > 0"),
+            ),
             config,
-            asked_operations: PreHashMap::default(),
+            operation_message_serializer: MessagesSerializer::new()
+                .with_operation_message_serializer(OperationMessageSerializer::new()),
             op_batch_buffer: VecDeque::new(),
-            timers: BTreeSet::default()
         };
         retrieval_thread.run();
     })

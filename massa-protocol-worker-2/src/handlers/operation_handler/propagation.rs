@@ -17,7 +17,6 @@ use super::{
 struct PropagationThread {
     internal_receiver: Receiver<OperationHandlerCommand>,
     active_connections: SharedActiveConnections,
-    //TODO: Add pruning
     operations_to_announce: Vec<OperationId>,
     config: ProtocolConfig,
     cache: SharedOperationCache,
@@ -101,7 +100,9 @@ impl PropagationThread {
                     .copied()
                     .collect();
                 if !new_ops.is_empty() {
-                    ops.extend(new_ops.iter().map(|id| id.prefix()));
+                    for id in &new_ops {
+                        ops.put(id.prefix(), ());
+                    }
                     {
                         let mut active_connections = self.active_connections.write();
                         if let Some(connection) = active_connections.connections.get_mut(peer_id) {

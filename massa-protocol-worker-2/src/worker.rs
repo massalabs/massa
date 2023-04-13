@@ -23,7 +23,7 @@ pub fn start_protocol_controller(
     debug!("starting protocol controller");
 
     let (connectivity_thread_handle, controller) =
-        start_connectivity_thread(config.clone(), pool_controller, storage)?;
+        start_connectivity_thread(config, pool_controller, storage)?;
 
     let manager = ProtocolManagerImpl::new(connectivity_thread_handle);
 
