@@ -10,7 +10,7 @@ use std::sync::{
 };
 
 use massa_models::config::THREAD_COUNT;
-use massa_models::denunciation::Denunciation;
+use massa_models::denunciation::DenunciationPrecursor;
 use massa_models::{
     block_id::BlockId, endorsement::EndorsementId, operation::OperationId, slot::Slot,
 };
@@ -39,9 +39,9 @@ pub enum MockPoolControllerMessage {
         operations: Storage,
     },
     /// Add denunciation to the pool
-    AddDenunciation {
-        /// The denunciation to add
-        denunciation: Denunciation,
+    AddDenunciationPrecursor {
+        /// The denunciation precursor to add
+        denunciation_precursor: DenunciationPrecursor,
     },
     /// Get block endorsements
     GetBlockEndorsements {
@@ -255,6 +255,7 @@ impl PoolController for MockPoolController {
         Box::new(self.clone())
     }
 
+    /*
     fn add_denunciation(&mut self, denunciation: Denunciation) {
         self.q
             .lock()
@@ -262,9 +263,20 @@ impl PoolController for MockPoolController {
             .send(MockPoolControllerMessage::AddDenunciation { denunciation })
             .unwrap();
     }
+    */
 
     fn get_final_cs_periods(&self) -> &Vec<u64> {
         &self.last_final_cs_periods
+    }
+
+    fn add_denunciation_precursor(&self, denunciation_precursor: DenunciationPrecursor) {
+        self.q
+            .lock()
+            .unwrap()
+            .send(MockPoolControllerMessage::AddDenunciationPrecursor {
+                denunciation_precursor,
+            })
+            .unwrap();
     }
 
     fn get_denunciation_count(&self) -> usize {

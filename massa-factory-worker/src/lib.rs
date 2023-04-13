@@ -3,7 +3,7 @@
 #![feature(deadline_api)]
 
 mod block_factory;
-mod denunciation_factory;
+// mod denunciation_factory;
 mod endorsement_factory;
 mod manager;
 mod run;

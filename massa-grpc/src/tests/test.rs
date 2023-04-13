@@ -27,10 +27,7 @@ async fn test_start_grpc_server() {
     let shared_storage: massa_storage::Storage = massa_storage::Storage::create_root();
     let selector_ctrl = MockSelectorController::new_with_receiver();
     let pool_ctrl = MockPoolController::new_with_receiver();
-
     let (consensus_event_sender, _consensus_event_receiver) = crossbeam::channel::bounded(1024);
-    let (denunciation_factory_sender, _denunciation_factory_receiver) =
-        crossbeam::channel::bounded(1024);
 
     let (protocol_command_sender, _protocol_command_receiver) =
         mpsc::channel::<ProtocolCommand>(PROTOCOL_CONTROLLER_CHANNEL_SIZE);
@@ -44,7 +41,6 @@ async fn test_start_grpc_server() {
         block_sender: tokio::sync::broadcast::channel(100).0,
         block_header_sender: tokio::sync::broadcast::channel(100).0,
         filled_block_sender: tokio::sync::broadcast::channel(100).0,
-        denunciation_factory_sender: denunciation_factory_sender,
     };
 
     let operation_sender = tokio::sync::broadcast::channel(5000).0;
@@ -93,7 +89,10 @@ async fn test_start_grpc_server() {
         consensus_controller: consensus_controller.0,
         consensus_channels,
         execution_controller: execution_ctrl.0,
-        pool_channels: PoolChannels { operation_sender },
+        pool_channels: PoolChannels {
+            operation_sender,
+            selector: selector_ctrl.0.clone(),
+        },
         pool_command_sender: pool_ctrl.0,
         protocol_command_sender: ProtocolCommandSender(protocol_command_sender.clone()),
         selector_controller: selector_ctrl.0,

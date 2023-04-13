@@ -6,7 +6,6 @@ edition = "2021"
 
 [dependencies]
 num = "0.4"
-crossbeam-channel = "0.5"
 tracing = "0.1"
 # custom modules
 parking_lot = { version = "0.12", features = ["deadlock_detection"] }
@@ -14,6 +13,8 @@ massa_models = { path = "../massa-models" }
 massa_storage = { path = "../massa-storage" }
 massa_pool_exports = { path = "../massa-pool-exports" }
 massa_execution_exports = { path = "../massa-execution-exports" }
+massa_time = { path = "../massa-time" }
+massa_pos_exports = { path = "../massa-pos-exports" }
 
 [dev-dependencies]
 tokio = { version = "1.23", features = ["sync"] }

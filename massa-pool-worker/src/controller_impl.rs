@@ -2,7 +2,7 @@
 
 //! Pool controller implementation
 
-use massa_models::denunciation::Denunciation;
+use massa_models::denunciation::DenunciationPrecursor;
 use massa_models::{
     block_id::BlockId, endorsement::EndorsementId, operation::OperationId, slot::Slot,
 };
@@ -24,7 +24,9 @@ pub enum Command {
     /// Add items to the pool
     AddItems(Storage),
     /// Add denunciation to the pool
-    AddDenunciation(Denunciation),
+    // AddDenunciation(Denunciation),
+    /// Add denunciation precursor to the pool
+    AddDenunciationPrecursor(DenunciationPrecursor),
     /// Notify of new final consensus periods
     NotifyFinalCsPeriods(Vec<u64>),
     /// Stop the worker
@@ -46,8 +48,11 @@ pub struct PoolControllerImpl {
     pub(crate) operations_input_sender: SyncSender<Command>,
     /// Endorsement write worker command sender
     pub(crate) endorsements_input_sender: SyncSender<Command>,
+
     /// Denunciation write worker command sender
     pub(crate) denunciations_input_sender: SyncSender<Command>,
+    // /// Denunciation precursor sender
+    // pub(crate) denunciation_precursor_sender: SyncSender<Command>,
     /// Last final periods from Consensus
     pub last_cs_final_periods: Vec<u64>,
 }
@@ -183,7 +188,24 @@ impl PoolController for PoolControllerImpl {
         operations.iter().map(|id| lck.contains(id)).collect()
     }
 
+    /// Add denunciation precursor to pool
+    fn add_denunciation_precursor(&self, denunciation_precursor: DenunciationPrecursor) {
+        match self
+            .denunciations_input_sender
+            .try_send(Command::AddDenunciationPrecursor(denunciation_precursor))
+        {
+            Err(TrySendError::Disconnected(_)) => {
+                warn!("Could not add denunciation precursor to pool: worker is unreachable.");
+            }
+            Err(TrySendError::Full(_)) => {
+                warn!("Could not add denunciation precursor to pool: worker channel is full.");
+            }
+            Ok(_) => {}
+        }
+    }
+
     /// Add denunciation to pool
+    /*
     fn add_denunciation(&mut self, denunciation: Denunciation) {
         match self
             .denunciations_input_sender
@@ -198,6 +220,7 @@ impl PoolController for PoolControllerImpl {
             Ok(_) => {}
         }
     }
+    */
 
     /// Get the number of denunciations in the pool
     fn get_denunciation_count(&self) -> usize {

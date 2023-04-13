@@ -5,7 +5,6 @@ use massa_execution_exports::test_exports::{
     MockExecutionController, MockExecutionControllerMessage,
 };
 use massa_hash::Hash;
-use massa_models::denunciation::DenunciationPrecursor;
 use massa_models::{
     address::Address,
     amount::Amount,
@@ -16,6 +15,7 @@ use massa_models::{
     slot::Slot,
 };
 use massa_pool_exports::{PoolChannels, PoolConfig, PoolController, PoolManager};
+use massa_pos_exports::test_exports::MockSelectorController;
 use massa_signature::KeyPair;
 use massa_storage::Storage;
 use std::sync::mpsc::Receiver;
@@ -96,14 +96,15 @@ where
     let storage: Storage = Storage::create_root();
     let operation_sender = broadcast::channel(5000).0;
     let (execution_controller, execution_receiver) = MockExecutionController::new_with_receiver();
-    let (denunciation_factory_tx, _denunciation_factory_rx) =
-        crossbeam_channel::unbounded::<DenunciationPrecursor>();
+    let (selector_controller, _selector_receiver) = MockSelectorController::new_with_receiver();
     let (pool_manager, pool_controller) = start_pool_controller(
         cfg,
         &storage,
         execution_controller,
-        PoolChannels { operation_sender },
-        denunciation_factory_tx,
+        PoolChannels {
+            operation_sender,
+            selector: selector_controller,
+        },
     );
 
     test(pool_manager, pool_controller, execution_receiver, storage)
@@ -115,13 +116,17 @@ where
 {
     let operation_sender = broadcast::channel(5000).0;
     let (execution_controller, _) = MockExecutionController::new_with_receiver();
+    let (selector_controller, _selector_receiver) = MockSelectorController::new_with_receiver();
     let storage = Storage::create_root();
     test(
         OperationPool::init(
             cfg,
             &storage.clone_without_refs(),
             execution_controller,
-            PoolChannels { operation_sender },
+            PoolChannels {
+                operation_sender,
+                selector: selector_controller,
+            },
         ),
         storage,
     )

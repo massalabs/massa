@@ -793,6 +793,24 @@ pub enum DenunciationPrecursor {
     BlockHeader(BlockHeaderDenunciationPrecursor),
 }
 
+impl DenunciationPrecursor {
+    /// Get field: slot
+    pub fn get_slot(&self) -> &Slot {
+        match self {
+            DenunciationPrecursor::Endorsement(endo_de_p) => &endo_de_p.slot,
+            DenunciationPrecursor::BlockHeader(blkh_de_p) => &blkh_de_p.slot,
+        }
+    }
+
+    /// Get field: pub key
+    pub fn get_public_key(&self) -> &PublicKey {
+        match self {
+            DenunciationPrecursor::Endorsement(endo_de_p) => &endo_de_p.public_key,
+            DenunciationPrecursor::BlockHeader(blkh_de_p) => &blkh_de_p.public_key,
+        }
+    }
+}
+
 impl TryFrom<&SecureShareEndorsement> for DenunciationPrecursor {
     type Error = DenunciationError;
 

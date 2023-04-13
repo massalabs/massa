@@ -2890,6 +2890,7 @@ version = "0.1.0"
 dependencies = [
  "crossbeam-channel",
  "massa_models",
+ "massa_pos_exports",
  "massa_storage",
  "massa_time",
  "serde",
@@ -2900,13 +2901,14 @@ dependencies = [
 name = "massa_pool_worker"
 version = "0.1.0"
 dependencies = [
- "crossbeam-channel",
  "massa_execution_exports",
  "massa_hash 0.1.0",
  "massa_models",
  "massa_pool_exports",
+ "massa_pos_exports",
  "massa_signature",
  "massa_storage",
+ "massa_time",
  "num",
  "parking_lot",
  "tokio",
