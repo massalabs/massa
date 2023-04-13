@@ -68,13 +68,16 @@ impl HandshakeHandler for TesterHandshake {
 
         let res = {
             {
+                // check if peer is banned else set state to InHandshake
                 let mut peer_db_write = self.peer_db.write();
-                peer_db_write
-                    .peers
-                    .entry(peer_id.clone())
-                    .and_modify(|info| {
+                if let Some(info) = peer_db_write.peers.get_mut(&peer_id) {
+                    if info.state == super::PeerState::Banned {
+                        return Err(PeerNetError::HandshakeError
+                            .error("Tester Handshake", Some(String::from("Peer is banned"))));
+                    } else {
                         info.state = super::PeerState::InHandshake;
-                    });
+                    }
+                }
             }
 
             let (_, announcement) = self
@@ -106,11 +109,11 @@ impl HandshakeHandler for TesterHandshake {
                         if info.last_announce.timestamp < announcement.timestamp {
                             info.last_announce = announcement.clone();
                         }
-                        info.state = super::PeerState::HandshakeSuccess;
+                        info.state = super::PeerState::Trusted;
                     })
                     .or_insert(PeerInfo {
                         last_announce: announcement,
-                        state: super::PeerState::HandshakeSuccess,
+                        state: super::PeerState::Trusted,
                     });
             }
 

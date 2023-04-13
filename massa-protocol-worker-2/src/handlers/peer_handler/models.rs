@@ -31,11 +31,9 @@ pub struct PeerInfo {
 #[warn(dead_code)]
 #[derive(Eq, PartialEq)]
 pub enum PeerState {
-    Connected,
     Banned,
     InHandshake,
     HandshakeFailed,
-    HandshakeSuccess,
     Trusted,
 }
 

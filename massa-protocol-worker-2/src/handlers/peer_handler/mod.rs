@@ -182,8 +182,6 @@ impl HandshakeHandler for MassaHandshake {
         listeners: &HashMap<SocketAddr, TransportType>,
         messages_handler: MassaMessagesHandler,
     ) -> PeerNetResult<PeerId> {
-        // TODO set peer state to InHandshake ?
-
         let received = endpoint.receive()?;
         if received.is_empty() {
             return Err(PeerNetError::HandshakeError.error(
@@ -290,7 +288,7 @@ impl HandshakeHandler for MassaHandshake {
             });
         } else {
             peer_db_write.peers.entry(peer_id).and_modify(|info| {
-                info.state = PeerState::HandshakeSuccess;
+                info.state = PeerState::Trusted;
             });
         }
 
