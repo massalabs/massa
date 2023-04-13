@@ -4,9 +4,6 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     #[cfg(feature = "build-tonic")]
     tonic::build()?;
 
-    #[cfg(not(feature = "build-tonic"))]
-    println!("cargo:warning=build-tonic feature is disabled, you can update the generated code from protobuf files by running: cargo build --features massa_proto/build-tonic");
-
     Ok(())
 }
 
@@ -18,9 +15,6 @@ mod tonic {
     pub fn build() -> Result<(), Box<dyn std::error::Error>> {
         //TODO add download external protos files instead of doing it manually
         let protos = find_protos("proto/massa/");
-
-        let mut prost_config = prost_build::Config::default();
-        prost_config.protoc_arg("--experimental_allow_proto3_optional");
 
         tonic_build::configure()
             .build_server(true)
@@ -36,8 +30,7 @@ mod tonic {
             .file_descriptor_set_path("src/api.bin")
             .include_file("_includes.rs")
             .out_dir("src/")
-            .compile_with_config(
-                prost_config,
+            .compile(
                 &protos,
                 &["proto/massa/api/v1/", "proto/third-party"], // specify the root location to search proto dependencies
             )
