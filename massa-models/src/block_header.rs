@@ -28,6 +28,10 @@ use std::fmt::Formatter;
 /// block header
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct BlockHeader {
+    /// current network version
+    pub current_version: u32,
+    /// announced network version
+    pub announced_version: u32,
     /// slot
     pub slot: Slot,
     /// parents
@@ -401,7 +405,10 @@ impl Deserializer<BlockHeader> for BlockHeaderDeserializer {
             .parse(buffer)?;
 
         if parents.is_empty() {
+            // NEW TODO
             let res = BlockHeader {
+                current_version: 0,
+                announced_version: 0,
                 slot,
                 parents,
                 operation_merkle_root,
@@ -476,7 +483,10 @@ impl Deserializer<BlockHeader> for BlockHeaderDeserializer {
         )
         .parse(rest)?;
 
+        // NEW TODO
         let header = BlockHeader {
+            current_version: 0,
+            announced_version: 0,
             slot,
             parents,
             operation_merkle_root,
@@ -600,7 +610,10 @@ mod test {
         assert!(slot_b < slot);
         let de_b = Denunciation::try_from((&s_endo_1, &s_endo_2)).unwrap();
 
+        // NEW TODO
         let block_header_1 = BlockHeader {
+            current_version: 0,
+            announced_version: 0,
             slot,
             parents: parents_1,
             operation_merkle_root: Hash::compute_from("mno".as_bytes()),

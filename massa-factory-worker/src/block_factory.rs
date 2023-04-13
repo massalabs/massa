@@ -13,6 +13,7 @@ use massa_models::{
     timeslots::{get_block_slot_timestamp, get_closest_slot_to_timestamp},
 };
 use massa_time::MassaTime;
+use massa_versioning_worker::versioning::MipStore;
 use massa_wallet::Wallet;
 use parking_lot::RwLock;
 use std::{
@@ -28,6 +29,7 @@ pub(crate) struct BlockFactoryWorker {
     wallet: Arc<RwLock<Wallet>>,
     channels: FactoryChannels,
     factory_receiver: mpsc::Receiver<()>,
+    mip_store: MipStore,
 }
 
 impl BlockFactoryWorker {
@@ -38,6 +40,7 @@ impl BlockFactoryWorker {
         wallet: Arc<RwLock<Wallet>>,
         channels: FactoryChannels,
         factory_receiver: mpsc::Receiver<()>,
+        mip_store: MipStore,
     ) -> thread::JoinHandle<()> {
         thread::Builder::new()
             .name("block-factory".into())
@@ -47,6 +50,7 @@ impl BlockFactoryWorker {
                     wallet,
                     channels,
                     factory_receiver,
+                    mip_store,
                 };
                 this.run();
             })
@@ -210,8 +214,12 @@ impl BlockFactoryWorker {
         );
 
         // create header
+        let current_version = self.mip_store.get_network_version_current();
+        let announced_version = self.mip_store.get_network_version_to_announce();
         let header: SecuredHeader = BlockHeader::new_verifiable::<BlockHeaderSerializer, BlockId>(
             BlockHeader {
+                current_version,
+                announced_version,
                 slot,
                 parents: parents.into_iter().map(|(id, _period)| id).collect(),
                 operation_merkle_root: global_operations_hash,

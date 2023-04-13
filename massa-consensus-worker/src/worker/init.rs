@@ -41,7 +41,10 @@ pub fn create_genesis_block(
 ) -> Result<SecureShareBlock, ConsensusError> {
     let keypair = &cfg.genesis_key;
     let header = BlockHeader::new_verifiable(
+        // NEW TODO: what to implement here in case of restart?
         BlockHeader {
+            current_version: 0,
+            announced_version: 0,
             slot: Slot::new(cfg.last_start_period, thread_number),
             parents: Vec::new(),
             operation_merkle_root: Hash::compute_from(&Vec::new()),

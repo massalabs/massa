@@ -1457,7 +1457,7 @@ impl ExecutionState {
     ) {
         // update versioning statistics
         if let Some((block_id, storage)) = exec_target {
-            if let Some(_block) = storage.read_blocks().get(block_id) {
+            if let Some(block) = storage.read_blocks().get(block_id) {
                 let slot_ts_ = get_block_slot_timestamp(
                     self.config.thread_count,
                     self.config.t0,
@@ -1465,10 +1465,13 @@ impl ExecutionState {
                     *slot,
                 );
 
+                let current_version = block.content.header.content.current_version;
+                let announced_version = block.content.header.content.announced_version;
                 if let Ok(slot_ts) = slot_ts_ {
-                    // TODO - Next PR: use block header network versions - default to 0 for now
-                    self.mip_store
-                        .update_network_version_stats(slot_ts, Some((0, 0)));
+                    self.mip_store.update_network_version_stats(
+                        slot_ts,
+                        Some((current_version, announced_version)),
+                    );
                 } else {
                     warn!("Unable to get slot timestamp for slot: {} in order to update mip_store stats", slot);
                 }

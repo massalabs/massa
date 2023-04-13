@@ -631,6 +631,7 @@ async fn launch(
         factory_channels,
         denunciation_factory_receiver,
         denunciation_factory_rx,
+        mip_store.clone(),
     );
 
     // launch bootstrap server

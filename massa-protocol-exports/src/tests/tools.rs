@@ -60,6 +60,8 @@ pub async fn create_and_connect_nodes(
 pub fn create_block(keypair: &KeyPair) -> SecureShareBlock {
     let header = BlockHeader::new_verifiable(
         BlockHeader {
+            current_version: 0,
+            announced_version: 0,
             slot: Slot::new(1, 0),
             parents: vec![
                 BlockId(Hash::compute_from("Genesis 0".as_bytes())),
@@ -102,6 +104,8 @@ pub fn create_block_with_operations(
     );
     let header = BlockHeader::new_verifiable(
         BlockHeader {
+            current_version: 0,
+            announced_version: 0,
             slot,
             parents: vec![
                 BlockId(Hash::compute_from("Genesis 0".as_bytes())),
@@ -139,7 +143,10 @@ pub fn create_block_with_endorsements(
     endorsements: Vec<SecureShareEndorsement>,
 ) -> SecureShareBlock {
     let header = BlockHeader::new_verifiable(
+        // NEW TODO: check if we want to have versions available in this test tool
         BlockHeader {
+            current_version: 0,
+            announced_version: 0,
             slot,
             parents: vec![
                 BlockId(Hash::compute_from("Genesis 0".as_bytes())),

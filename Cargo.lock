@@ -2656,6 +2656,7 @@ dependencies = [
  "massa_signature",
  "massa_storage",
  "massa_time",
+ "massa_versioning_worker",
  "massa_wallet",
  "parking_lot",
  "serde",
