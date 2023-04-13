@@ -158,7 +158,10 @@ pub(crate) fn get_largest_stakers(
 
     staker_vec.sort_by_key(|&(_, roll_counts)| std::cmp::Reverse(roll_counts));
 
-    let stakers = staker_vec.into_iter().collect();
+    let stakers = staker_vec
+        .into_iter()
+        .map(|(address, rolls)| grpc::LargestStakerEntry { address, rolls })
+        .collect();
 
     Ok(grpc::GetLargestStakersResponse { id, stakers })
 }

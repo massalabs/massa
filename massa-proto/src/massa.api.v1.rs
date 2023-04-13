@@ -402,8 +402,19 @@ pub struct GetLargestStakersResponse {
     #[prost(string, tag = "1")]
     pub id: ::prost::alloc::string::String,
     /// Largest stakers
-    #[prost(map = "string, fixed64", tag = "2")]
-    pub stakers: ::std::collections::HashMap<::prost::alloc::string::String, u64>,
+    #[prost(message, repeated, tag = "2")]
+    pub stakers: ::prost::alloc::vec::Vec<LargestStakerEntry>,
+}
+/// LargestStakerEntry
+#[allow(clippy::derive_partial_eq_without_eq)]
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct LargestStakerEntry {
+    /// Address
+    #[prost(string, tag = "1")]
+    pub address: ::prost::alloc::string::String,
+    /// Rolls
+    #[prost(fixed64, tag = "2")]
+    pub rolls: u64,
 }
 /// GetNextBlockBestParentsRequest holds request for GetNextBlockBestParents
 #[allow(clippy::derive_partial_eq_without_eq)]

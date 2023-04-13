@@ -16,7 +16,6 @@
     - [GetDatastoreEntriesResponse](#massa-api-v1-GetDatastoreEntriesResponse)
     - [GetLargestStakersRequest](#massa-api-v1-GetLargestStakersRequest)
     - [GetLargestStakersResponse](#massa-api-v1-GetLargestStakersResponse)
-    - [GetLargestStakersResponse.StakersEntry](#massa-api-v1-GetLargestStakersResponse-StakersEntry)
     - [GetNextBlockBestParentsRequest](#massa-api-v1-GetNextBlockBestParentsRequest)
     - [GetNextBlockBestParentsResponse](#massa-api-v1-GetNextBlockBestParentsResponse)
     - [GetSelectorDrawsRequest](#massa-api-v1-GetSelectorDrawsRequest)
@@ -25,6 +24,7 @@
     - [GetTransactionsThroughputResponse](#massa-api-v1-GetTransactionsThroughputResponse)
     - [GetVersionRequest](#massa-api-v1-GetVersionRequest)
     - [GetVersionResponse](#massa-api-v1-GetVersionResponse)
+    - [LargestStakerEntry](#massa-api-v1-LargestStakerEntry)
     - [LargestStakersFilter](#massa-api-v1-LargestStakersFilter)
     - [LargestStakersQuery](#massa-api-v1-LargestStakersQuery)
     - [NewBlocksHeadersRequest](#massa-api-v1-NewBlocksHeadersRequest)
@@ -277,23 +277,7 @@ GetLargestStakersResponse holds response from GetLargestStakers
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | id | [string](#string) |  | Request id |
-| stakers | [GetLargestStakersResponse.StakersEntry](#massa-api-v1-GetLargestStakersResponse-StakersEntry) | repeated | Largest stakers |
-
-
-
-
-
-
-<a name="massa-api-v1-GetLargestStakersResponse-StakersEntry"></a>
-
-### GetLargestStakersResponse.StakersEntry
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| key | [string](#string) |  |  |
-| value | [fixed64](#fixed64) |  |  |
+| stakers | [LargestStakerEntry](#massa-api-v1-LargestStakerEntry) | repeated | Largest stakers |
 
 
 
@@ -419,6 +403,22 @@ GetVersionResponse holds response from GetVersion
 | ----- | ---- | ----- | ----------- |
 | id | [string](#string) |  | Request id |
 | version | [string](#string) |  | Version |
+
+
+
+
+
+
+<a name="massa-api-v1-LargestStakerEntry"></a>
+
+### LargestStakerEntry
+LargestStakerEntry
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| address | [string](#string) |  | Address |
+| rolls | [fixed64](#fixed64) |  | Rolls |
 
 
 

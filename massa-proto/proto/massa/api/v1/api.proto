@@ -172,7 +172,15 @@ message GetLargestStakersResponse {
   // Request id
   string id = 1;
   // Largest stakers
-  map<string, fixed64> stakers = 2;
+  repeated LargestStakerEntry stakers = 2;
+}
+
+// LargestStakerEntry
+message LargestStakerEntry {
+  // Address
+  string address = 1;
+  // Rolls
+  fixed64 rolls = 2;
 }
 
 // GetNextBlockBestParentsRequest holds request for GetNextBlockBestParents

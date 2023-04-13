@@ -227,10 +227,6 @@
                 </li>
               
                 <li>
-                  <a href="#massa.api.v1.GetLargestStakersResponse.StakersEntry"><span class="badge">M</span>GetLargestStakersResponse.StakersEntry</a>
-                </li>
-              
-                <li>
                   <a href="#massa.api.v1.GetNextBlockBestParentsRequest"><span class="badge">M</span>GetNextBlockBestParentsRequest</a>
                 </li>
               
@@ -260,6 +256,10 @@
               
                 <li>
                   <a href="#massa.api.v1.GetVersionResponse"><span class="badge">M</span>GetVersionResponse</a>
+                </li>
+              
+                <li>
+                  <a href="#massa.api.v1.LargestStakerEntry"><span class="badge">M</span>LargestStakerEntry</a>
                 </li>
               
                 <li>
@@ -858,40 +858,9 @@
               
                 <tr>
                   <td>stakers</td>
-                  <td><a href="#massa.api.v1.GetLargestStakersResponse.StakersEntry">GetLargestStakersResponse.StakersEntry</a></td>
+                  <td><a href="#massa.api.v1.LargestStakerEntry">LargestStakerEntry</a></td>
                   <td>repeated</td>
                   <td><p>Largest stakers </p></td>
-                </tr>
-              
-            </tbody>
-          </table>
-
-          
-
-        
-      
-        <h3 id="massa.api.v1.GetLargestStakersResponse.StakersEntry">GetLargestStakersResponse.StakersEntry</h3>
-        <p></p>
-
-        
-          <table class="field-table">
-            <thead>
-              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
-            </thead>
-            <tbody>
-              
-                <tr>
-                  <td>key</td>
-                  <td><a href="#string">string</a></td>
-                  <td></td>
-                  <td><p> </p></td>
-                </tr>
-              
-                <tr>
-                  <td>value</td>
-                  <td><a href="#fixed64">fixed64</a></td>
-                  <td></td>
-                  <td><p> </p></td>
                 </tr>
               
             </tbody>
@@ -1119,6 +1088,37 @@
                   <td><a href="#string">string</a></td>
                   <td></td>
                   <td><p>Version </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
+        <h3 id="massa.api.v1.LargestStakerEntry">LargestStakerEntry</h3>
+        <p>LargestStakerEntry</p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>address</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p>Address </p></td>
+                </tr>
+              
+                <tr>
+                  <td>rolls</td>
+                  <td><a href="#fixed64">fixed64</a></td>
+                  <td></td>
+                  <td><p>Rolls </p></td>
                 </tr>
               
             </tbody>
