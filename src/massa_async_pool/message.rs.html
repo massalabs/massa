@@ -671,6 +671,10 @@
 <a href="#671" id="671">671</a>
 <a href="#672" id="672">672</a>
 <a href="#673" id="673">673</a>
+<a href="#674" id="674">674</a>
+<a href="#675" id="675">675</a>
+<a href="#676" id="676">676</a>
+<a href="#677" id="677">677</a>
 </pre><pre class="rust"><code><span class="doccomment">//! Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 //! This file defines the structure representing an asynchronous message
@@ -850,7 +854,8 @@
     </span><span class="kw">pub </span>datastore_key: <span class="prelude-ty">Option</span>&lt;Vec&lt;u8&gt;&gt;,
 }
 
-<span class="doccomment">/// Serializer for a trigger for an asynchronous message
+<span class="attr">#[derive(Clone)]
+</span><span class="doccomment">/// Serializer for a trigger for an asynchronous message
 </span><span class="kw">struct </span>AsyncMessageTriggerSerializer {
     address_serializer: AddressSerializer,
     key_serializer: OptionSerializer&lt;Vec&lt;u8&gt;, VecU8Serializer&gt;,
@@ -878,7 +883,8 @@
     }
 }
 
-<span class="doccomment">/// Deserializer for a trigger for an asynchronous message
+<span class="attr">#[derive(Clone)]
+</span><span class="doccomment">/// Deserializer for a trigger for an asynchronous message
 </span><span class="kw">struct </span>AsyncMessageTriggerDeserializer {
     address_deserializer: AddressDeserializer,
     key_serializer: OptionDeserializer&lt;Vec&lt;u8&gt;, VecU8Deserializer&gt;,
@@ -1035,7 +1041,8 @@
     }
 }
 
-<span class="kw">pub struct </span>AsyncMessageSerializer {
+<span class="attr">#[derive(Clone)]
+</span><span class="kw">pub struct </span>AsyncMessageSerializer {
     slot_serializer: SlotSerializer,
     amount_serializer: AmountSerializer,
     u64_serializer: U64VarIntSerializer,
@@ -1125,7 +1132,8 @@
     }
 }
 
-<span class="kw">pub struct </span>AsyncMessageDeserializer {
+<span class="attr">#[derive(Clone)]
+</span><span class="kw">pub struct </span>AsyncMessageDeserializer {
     slot_deserializer: SlotDeserializer,
     amount_deserializer: AmountDeserializer,
     emission_index_deserializer: U64VarIntDeserializer,

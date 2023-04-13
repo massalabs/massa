@@ -900,6 +900,48 @@
 <a href="#900" id="900">900</a>
 <a href="#901" id="901">901</a>
 <a href="#902" id="902">902</a>
+<a href="#903" id="903">903</a>
+<a href="#904" id="904">904</a>
+<a href="#905" id="905">905</a>
+<a href="#906" id="906">906</a>
+<a href="#907" id="907">907</a>
+<a href="#908" id="908">908</a>
+<a href="#909" id="909">909</a>
+<a href="#910" id="910">910</a>
+<a href="#911" id="911">911</a>
+<a href="#912" id="912">912</a>
+<a href="#913" id="913">913</a>
+<a href="#914" id="914">914</a>
+<a href="#915" id="915">915</a>
+<a href="#916" id="916">916</a>
+<a href="#917" id="917">917</a>
+<a href="#918" id="918">918</a>
+<a href="#919" id="919">919</a>
+<a href="#920" id="920">920</a>
+<a href="#921" id="921">921</a>
+<a href="#922" id="922">922</a>
+<a href="#923" id="923">923</a>
+<a href="#924" id="924">924</a>
+<a href="#925" id="925">925</a>
+<a href="#926" id="926">926</a>
+<a href="#927" id="927">927</a>
+<a href="#928" id="928">928</a>
+<a href="#929" id="929">929</a>
+<a href="#930" id="930">930</a>
+<a href="#931" id="931">931</a>
+<a href="#932" id="932">932</a>
+<a href="#933" id="933">933</a>
+<a href="#934" id="934">934</a>
+<a href="#935" id="935">935</a>
+<a href="#936" id="936">936</a>
+<a href="#937" id="937">937</a>
+<a href="#938" id="938">938</a>
+<a href="#939" id="939">939</a>
+<a href="#940" id="940">940</a>
+<a href="#941" id="941">941</a>
+<a href="#942" id="942">942</a>
+<a href="#943" id="943">943</a>
+<a href="#944" id="944">944</a>
 </pre><pre class="rust"><code><span class="doccomment">//! Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 //! This file defines the final state of the node, which includes
@@ -913,8 +955,8 @@
     AsyncPoolSerializer, Change,
 };
 <span class="kw">use </span>massa_executed_ops::{ExecutedOps, ExecutedOpsDeserializer, ExecutedOpsSerializer};
-<span class="kw">use </span>massa_hash::{Hash, HashDeserializer, HASH_SIZE_BYTES};
-<span class="kw">use </span>massa_ledger_exports::{Key <span class="kw">as </span>LedgerKey, LedgerChanges, LedgerController};
+<span class="kw">use </span>massa_hash::{Hash, HashDeserializer, HashSerializer, HASH_SIZE_BYTES};
+<span class="kw">use </span>massa_ledger_exports::{Key <span class="kw">as </span>LedgerKey, LedgerBatch, LedgerChanges, LedgerController};
 <span class="kw">use </span>massa_models::{
     <span class="comment">// TODO: uncomment when deserializing the final state from ledger
     /*config::{
@@ -933,8 +975,13 @@
 };
 <span class="kw">use </span>massa_serialization::{Deserializer, SerializeError, Serializer};
 <span class="kw">use </span>nom::{error::context, sequence::tuple, IResult, Parser};
-<span class="kw">use </span>std::collections::{BTreeMap, VecDeque};
+<span class="kw">use </span>parking_lot::RwLock;
+<span class="kw">use </span>rocksdb::DB;
 <span class="kw">use </span>std::ops::Bound::{Excluded, Included};
+<span class="kw">use </span>std::{
+    collections::{BTreeMap, VecDeque},
+    sync::Arc,
+};
 <span class="kw">use </span>tracing::{debug, info};
 
 <span class="doccomment">/// Represents a final state `(ledger, async pool, executed_ops and the state of the PoS)`
@@ -973,10 +1020,29 @@
     /// * `ledger`: the instance of the ledger on disk. Used to apply changes to the ledger.
     /// * `selector`: the pos selector. Used to send draw inputs when a new cycle is completed.
     </span><span class="kw">pub fn </span>new(
+        rocks_db: Arc&lt;RwLock&lt;DB&gt;&gt;,
         config: FinalStateConfig,
         ledger: Box&lt;<span class="kw">dyn </span>LedgerController&gt;,
         selector: Box&lt;<span class="kw">dyn </span>SelectorController&gt;,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="self">Self</span>, FinalStateError&gt; {
+        <span class="kw">let </span>ledger_slot = ledger.get_slot();
+        <span class="kw">match </span>ledger_slot {
+            <span class="prelude-val">Ok</span>(slot) =&gt; {
+                <span class="macro">info!</span>(
+                    <span class="string">&quot;Recovered ledger. ledger_slot: {}, ledger hash: {}&quot;</span>,
+                    slot,
+                    ledger.get_ledger_hash()
+                );
+            }
+            <span class="prelude-val">Err</span>(e) =&gt; {
+                <span class="macro">info!</span>(<span class="string">&quot;{}&quot;</span>, e);
+                <span class="macro">info!</span>(
+                    <span class="string">&quot;Recovered ledger. Unknown ledger slot, ledger hash: {}&quot;</span>,
+                    ledger.get_ledger_hash()
+                );
+            }
+        }
+
         <span class="comment">// create the pos state
         </span><span class="kw">let </span>pos_state = PoSFinalState::new(
             config.pos_config.clone(),
@@ -991,7 +1057,7 @@
         </span><span class="kw">let </span>slot = Slot::new(<span class="number">0</span>, config.thread_count.saturating_sub(<span class="number">1</span>));
 
         <span class="comment">// create the async pool
-        </span><span class="kw">let </span>async_pool = AsyncPool::new(config.async_pool_config.clone());
+        </span><span class="kw">let </span>async_pool = AsyncPool::new(config.async_pool_config.clone(), rocks_db);
 
         <span class="comment">// create a default executed ops
         </span><span class="kw">let </span>executed_ops = ExecutedOps::new(config.executed_ops_config.clone());
@@ -1019,6 +1085,7 @@
     /// * `selector`: the pos selector. Used to send draw inputs when a new cycle is completed.
     /// * `last_start_period`: at what period we should attach the final_state
     </span><span class="kw">pub fn </span>new_derived_from_snapshot(
+        rocks_db: Arc&lt;RwLock&lt;DB&gt;&gt;,
         config: FinalStateConfig,
         ledger: Box&lt;<span class="kw">dyn </span>LedgerController&gt;,
         selector: Box&lt;<span class="kw">dyn </span>SelectorController&gt;,
@@ -1027,7 +1094,7 @@
         <span class="macro">info!</span>(<span class="string">&quot;Restarting from snapshot&quot;</span>);
 
         <span class="comment">// FIRST, we recover the last known final_state
-        </span><span class="kw">let </span><span class="kw-2">mut </span>final_state = FinalState::new(config, ledger, selector)<span class="question-mark">?</span>;
+        </span><span class="kw">let </span><span class="kw-2">mut </span>final_state = FinalState::new(rocks_db, config, ledger, selector)<span class="question-mark">?</span>;
         <span class="kw">let </span>_final_state_hash_from_snapshot = Hash::from_bytes(FINAL_STATE_HASH_INITIAL_BYTES);
         final_state.pos_state.create_initial_cycle();
 
@@ -1165,7 +1232,6 @@
                 )))<span class="question-mark">?</span>;
 
         <span class="comment">// Firstly, complete the first cycle
-
         </span><span class="kw">let </span>last_slot = Slot::new_last_of_cycle(
             current_slot_cycle,
             <span class="self">self</span>.config.periods_per_cycle,
@@ -1191,8 +1257,11 @@
         <span class="comment">// Feed final_state_hash to the completed cycle
         </span><span class="self">self</span>.feed_cycle_hash_and_selector_for_interpolation(current_slot_cycle)<span class="question-mark">?</span>;
 
-        <span class="comment">// Then, build all the already completed cycles
-        </span><span class="kw">for </span>cycle <span class="kw">in </span>(current_slot_cycle + <span class="number">1</span>)..end_slot_cycle {
+        <span class="comment">// Then, build all the completed cycles in betweens. If we have to build more cycles than the cycle_history_length, we only build the last ones.
+        </span><span class="kw">let </span>current_slot_cycle = (current_slot_cycle + <span class="number">1</span>)
+            .max(end_slot_cycle.saturating_sub(<span class="self">self</span>.config.pos_config.cycle_history_length <span class="kw">as </span>u64));
+
+        <span class="kw">for </span>cycle <span class="kw">in </span>current_slot_cycle..end_slot_cycle {
             <span class="kw">let </span>first_slot = Slot::new_first_of_cycle(cycle, <span class="self">self</span>.config.periods_per_cycle)
                 .map_err(|err| {
                     FinalStateError::InvalidSlot(<span class="macro">format!</span>(
@@ -1340,10 +1409,9 @@
         <span class="comment">// update current slot
         </span><span class="self">self</span>.slot = slot;
 
-        <span class="comment">// apply the state changes
-        </span><span class="self">self</span>.async_pool
-            .apply_changes_unchecked(<span class="kw-2">&amp;</span>changes.async_pool_changes);
-        <span class="self">self</span>.pos_state
+        <span class="comment">/*self.async_pool
+            .apply_changes_unchecked(&amp;changes.async_pool_changes);*/
+        </span><span class="self">self</span>.pos_state
             .apply_changes(changes.pos_changes.clone(), <span class="self">self</span>.slot, <span class="bool-val">true</span>)
             .expect(<span class="string">&quot;could not settle slot in final state proof-of-stake&quot;</span>);
         <span class="comment">// TODO:
@@ -1351,35 +1419,31 @@
         // bootstrap again instead
         </span><span class="self">self</span>.executed_ops
             .apply_changes(changes.executed_ops_changes.clone(), <span class="self">self</span>.slot);
-
-        <span class="kw">let </span><span class="kw-2">mut </span>final_state_data = <span class="prelude-val">None</span>;
-
-        <span class="kw">if </span><span class="macro">cfg!</span>(feature = <span class="string">&quot;create_snapshot&quot;</span>) {
-            <span class="kw">let </span><span class="comment">/*mut*/ </span>final_state_buffer = Vec::new();
-
-            <span class="comment">/*let final_state_raw_serializer = FinalStateRawSerializer::new();
-
-            let final_state_raw = FinalStateRaw {
-                async_pool_messages: self.async_pool.messages.clone(),
-                cycle_history: self.pos_state.cycle_history.clone(),
-                deferred_credits: self.pos_state.deferred_credits.clone(),
-                sorted_ops: self.executed_ops.sorted_ops.clone(),
-                latest_consistent_slot: self.slot,
-                final_state_hash_from_snapshot: self.final_state_hash,
-            };
-
-            if final_state_raw_serializer
-                .serialize(&amp;final_state_raw, &amp;mut final_state_buffer)
-                .is_err()
-            {
-                debug!(&quot;Error while trying to serialize final_state&quot;);
-            }*/
-
-            </span>final_state_data = <span class="prelude-val">Some</span>(final_state_buffer)
-        }
-
         <span class="self">self</span>.ledger
-            .apply_changes(changes.ledger_changes.clone(), <span class="self">self</span>.slot, final_state_data);
+            .apply_changes(changes.ledger_changes.clone(), <span class="self">self</span>.slot);
+
+        <span class="kw">let </span><span class="kw-2">mut </span>ledger_batch = LedgerBatch::new(<span class="self">self</span>.ledger.get_ledger_hash());
+
+        <span class="comment">// apply the state changes to the batch
+
+        </span><span class="self">self</span>.async_pool
+            .apply_changes_unchecked_to_batch(<span class="kw-2">&amp;</span>changes.async_pool_changes, <span class="kw-2">&amp;mut </span>ledger_batch);
+        <span class="comment">/*self.pos_state
+            .apply_changes_to_batch(changes.pos_changes.clone(), self.slot, true, ledger_batch)
+            .expect(&quot;could not settle slot in final state proof-of-stake&quot;);
+        self.executed_ops.apply_changes_to_batch(
+            changes.executed_ops_changes.clone(),
+            self.slot,
+            ledger_batch,
+        );*/
+
+        </span><span class="self">self</span>.ledger.apply_changes_to_batch(
+            changes.ledger_changes.clone(),
+            <span class="self">self</span>.slot,
+            <span class="kw-2">&amp;mut </span>ledger_batch,
+        );
+
+        <span class="self">self</span>.ledger.write_batch(ledger_batch);
 
         <span class="comment">// push history element and limit history size
         </span><span class="kw">if </span><span class="self">self</span>.config.final_history_length &gt; <span class="number">0 </span>{
@@ -1389,23 +1453,43 @@
             <span class="self">self</span>.changes_history.push_back((slot, changes));
         }
 
-        <span class="comment">// compute the final state hash
+        <span class="comment">// compute the final state hash and set in DB
         </span><span class="self">self</span>.compute_state_hash_at_slot(slot);
 
-        <span class="kw">if </span><span class="macro">cfg!</span>(feature = <span class="string">&quot;create_snapshot&quot;</span>) {
-            <span class="kw">let </span><span class="comment">/*mut*/ </span>hash_buffer = Vec::new();
+        <span class="kw">let </span><span class="kw-2">mut </span>hash_buffer = Vec::new();
+        <span class="kw">let </span>hash_serializer = HashSerializer::new();
 
-            <span class="comment">/*
-            let hash_serializer = HashSerializer::new();
+        <span class="kw">if </span>hash_serializer
+            .serialize(<span class="kw-2">&amp;</span><span class="self">self</span>.final_state_hash, <span class="kw-2">&amp;mut </span>hash_buffer)
+            .is_err()
+        {
+            <span class="macro">debug!</span>(<span class="string">&quot;Error while trying to serialize final_state_hash&quot;</span>);
+        }
 
-            if hash_serializer
-                .serialize(&amp;self.final_state_hash, &amp;mut hash_buffer)
-                .is_err()
-            {
-                debug!(&quot;Error while trying to serialize final_state_hash&quot;);
-            }*/
+        <span class="self">self</span>.ledger.set_final_state_hash(hash_buffer);
 
-            </span><span class="self">self</span>.ledger.set_final_state_hash(hash_buffer);
+        <span class="comment">// Backup DB if needed
+        </span><span class="kw">if </span><span class="self">self</span>.slot.is_first_of_cycle(<span class="self">self</span>.config.periods_per_cycle) {
+            <span class="kw">let </span>ledger_slot = <span class="self">self</span>.ledger.get_slot();
+            <span class="kw">match </span>ledger_slot {
+                <span class="prelude-val">Ok</span>(slot) =&gt; {
+                    <span class="macro">info!</span>(
+                        <span class="string">&quot;Backuping db for slot {}, ledger_slot: {}, ledger hash: {}&quot;</span>,
+                        <span class="self">self</span>.slot,
+                        slot,
+                        <span class="self">self</span>.ledger.get_ledger_hash()
+                    );
+                }
+                <span class="prelude-val">Err</span>(e) =&gt; {
+                    <span class="macro">info!</span>(<span class="string">&quot;{}&quot;</span>, e);
+                    <span class="macro">info!</span>(
+                        <span class="string">&quot;Backuping db for unknown slot, ledger hash: {}&quot;</span>,
+                        <span class="self">self</span>.ledger.get_ledger_hash()
+                    );
+                }
+            }
+
+            <span class="self">self</span>.ledger.backup_db(<span class="self">self</span>.slot);
         }
 
         <span class="comment">// feed final_state_hash to the last cycle

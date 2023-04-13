@@ -568,8 +568,6 @@
 <a href="#568" id="568">568</a>
 <a href="#569" id="569">569</a>
 <a href="#570" id="570">570</a>
-<a href="#571" id="571">571</a>
-<a href="#572" id="572">572</a>
 </pre><pre class="rust"><code><span class="kw">use </span>humantime::format_duration;
 <span class="kw">use </span>std::{collections::HashSet, net::SocketAddr, sync::Arc, time::Duration};
 
@@ -666,11 +664,9 @@
                         .executed_ops
                         .set_executed_ops_part(exec_ops_part);
                     <span class="kw">for </span>(changes_slot, changes) <span class="kw">in </span>final_state_changes.iter() {
-                        write_final_state.ledger.apply_changes(
-                            changes.ledger_changes.clone(),
-                            <span class="kw-2">*</span>changes_slot,
-                            <span class="prelude-val">None</span>,
-                        );
+                        write_final_state
+                            .ledger
+                            .apply_changes(changes.ledger_changes.clone(), <span class="kw-2">*</span>changes_slot);
                         write_final_state
                             .async_pool
                             .apply_changes_unchecked(<span class="kw-2">&amp;</span>changes.async_pool_changes);
