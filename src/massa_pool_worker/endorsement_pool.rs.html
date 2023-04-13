@@ -201,9 +201,13 @@
 <a href="#201" id="201">201</a>
 <a href="#202" id="202">202</a>
 <a href="#203" id="203">203</a>
+<a href="#204" id="204">204</a>
+<a href="#205" id="205">205</a>
+<a href="#206" id="206">206</a>
+<a href="#207" id="207">207</a>
 </pre><pre class="rust"><code><span class="doccomment">//! Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
-</span><span class="kw">use </span>crossbeam_channel::Sender;
+</span><span class="kw">use </span><span class="kw">crate</span>::controller_impl::Command;
 <span class="kw">use </span>massa_models::denunciation::DenunciationPrecursor;
 <span class="kw">use </span>massa_models::{
     block_id::BlockId,
@@ -214,6 +218,7 @@
 <span class="kw">use </span>massa_pool_exports::PoolConfig;
 <span class="kw">use </span>massa_storage::Storage;
 <span class="kw">use </span>std::collections::{BTreeMap, HashMap};
+<span class="kw">use </span>std::sync::mpsc::SyncSender;
 <span class="kw">use </span>tracing::warn;
 
 <span class="kw">pub struct </span>EndorsementPool {
@@ -234,14 +239,14 @@
     </span>last_cs_final_periods: Vec&lt;u64&gt;,
 
     <span class="doccomment">/// Queue to Denunciation factory
-    </span>denunciation_factory_tx: Sender&lt;DenunciationPrecursor&gt;,
+    </span>denunciation_factory_tx: SyncSender&lt;Command&gt;,
 }
 
 <span class="kw">impl </span>EndorsementPool {
     <span class="kw">pub fn </span>init(
         config: PoolConfig,
         storage: <span class="kw-2">&amp;</span>Storage,
-        denunciation_factory_tx: Sender&lt;DenunciationPrecursor&gt;,
+        denunciation_factory_tx: SyncSender&lt;Command&gt;,
     ) -&gt; <span class="self">Self </span>{
         EndorsementPool {
             last_cs_final_periods: <span class="macro">vec!</span>[<span class="number">0u64</span>; config.thread_count <span class="kw">as </span>usize],
@@ -331,10 +336,13 @@
                     added.insert(endo.id);
                 }
 
-                <span class="comment">// And send endorsements to Denunciation Factory
+                <span class="comment">// And send endorsements to Denunciation pool
                 </span><span class="kw">match </span>DenunciationPrecursor::try_from(endo) {
-                    <span class="prelude-val">Ok</span>(de_i) =&gt; {
-                        <span class="kw">if let </span><span class="prelude-val">Err</span>(e) = <span class="self">self</span>.denunciation_factory_tx.send(de_i) {
+                    <span class="prelude-val">Ok</span>(de_p) =&gt; {
+                        <span class="kw">if let </span><span class="prelude-val">Err</span>(e) = <span class="self">self
+                            </span>.denunciation_factory_tx
+                            .send(Command::AddDenunciationPrecursor(de_p))
+                        {
                             <span class="macro">warn!</span>(<span class="string">&quot;Cannot send endorsement to Denunciation factory: {}&quot;</span>, e);
                         }
                     }

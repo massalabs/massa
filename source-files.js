@@ -11,7 +11,7 @@ var sourcesIndex = JSON.parse('{\
 "massa_execution_exports":["",[["test_exports",[],["config.rs","mock.rs","mod.rs"]]],["controller_traits.rs","error.rs","event_store.rs","lib.rs","settings.rs","types.rs"]],\
 "massa_execution_worker":["",[["tests",[],["interface.rs","mock.rs","mod.rs","tests_vesting_manager.rs"]]],["active_history.rs","context.rs","controller.rs","execution.rs","interface_impl.rs","lib.rs","request_queue.rs","slot_sequencer.rs","speculative_async_pool.rs","speculative_executed_ops.rs","speculative_ledger.rs","speculative_roll_state.rs","stats.rs","vesting_manager.rs","worker.rs"]],\
 "massa_factory_exports":["",[["test_exports",[],["config.rs","mod.rs","tools.rs"]]],["config.rs","controller_traits.rs","error.rs","lib.rs","types.rs"]],\
-"massa_factory_worker":["",[],["block_factory.rs","denunciation_factory.rs","endorsement_factory.rs","lib.rs","manager.rs","run.rs"]],\
+"massa_factory_worker":["",[],["block_factory.rs","endorsement_factory.rs","lib.rs","manager.rs","run.rs"]],\
 "massa_final_state":["",[["test_exports",[],["bootstrap.rs","config.rs","mod.rs"]]],["config.rs","error.rs","final_state.rs","lib.rs","state_changes.rs"]],\
 "massa_grpc":["",[["stream",[],["mod.rs","new_blocks.rs","new_blocks_headers.rs","new_filled_blocks.rs","new_operations.rs","send_blocks.rs","send_endorsements.rs","send_operations.rs","tx_throughput.rs"]]],["api.rs","config.rs","error.rs","handler.rs","lib.rs","server.rs"]],\
 "massa_hash":["",[],["error.rs","hash.rs","lib.rs","settings.rs"]],\
