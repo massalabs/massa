@@ -71,7 +71,8 @@ pub fn assert_eq_final_state_hash(v1: &FinalState, v2: &FinalState) {
         "ledger hash mismatch"
     );
     assert_eq!(
-        v1.async_pool.hash, v2.async_pool.hash,
+        v1.async_pool.get_hash(),
+        v2.async_pool.get_hash(),
         "async pool hash mismatch"
     );
     assert_eq!(

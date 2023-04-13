@@ -15,7 +15,7 @@ use massa_executed_ops::{ExecutedOps, ExecutedOpsConfig};
 use massa_final_state::test_exports::create_final_state;
 use massa_final_state::{FinalState, FinalStateConfig};
 use massa_hash::Hash;
-use massa_ledger_exports::{LedgerChanges, LedgerEntry, SetUpdateOrDelete};
+use massa_ledger_exports::{LedgerBatch, LedgerChanges, LedgerEntry, SetUpdateOrDelete};
 use massa_ledger_worker::test_exports::create_final_ledger;
 use massa_models::block::BlockDeserializerArgs;
 use massa_models::bytecode::Bytecode;
@@ -191,14 +191,15 @@ pub fn get_random_pos_changes(r_limit: u64) -> PoSChanges {
     }
 }
 
-pub fn get_random_async_pool_changes(r_limit: u64) -> AsyncPoolChanges {
+pub fn get_random_async_pool_changes(r_limit: u64, thread_count: u8) -> AsyncPoolChanges {
     let mut changes = AsyncPoolChanges::default();
     for _ in 0..(r_limit / 2) {
-        let message = get_random_message(Some(Amount::from_str("10").unwrap()));
+        let message = get_random_message(Some(Amount::from_str("10").unwrap()), thread_count);
         changes.0.push(Change::Add(message.compute_id(), message));
     }
     for _ in (r_limit / 2)..r_limit {
-        let message = get_random_message(Some(Amount::from_str("1_000_000").unwrap()));
+        let message =
+            get_random_message(Some(Amount::from_str("1_000_000").unwrap()), thread_count);
         changes.0.push(Change::Add(message.compute_id(), message));
     }
     changes
@@ -242,7 +243,7 @@ pub fn get_random_final_state_bootstrap(
     let mut sorted_ledger = HashMap::new();
     let mut messages = AsyncPoolChanges::default();
     for _ in 0..r_limit {
-        let message = get_random_message(None);
+        let message = get_random_message(None, config.thread_count);
         messages.0.push(Change::Add(message.compute_id(), message));
     }
     for _ in 0..r_limit {
@@ -265,12 +266,14 @@ pub fn get_random_final_state_bootstrap(
         config.ledger_config.clone(),
         sorted_ledger,
     );
-    let mut async_pool = create_async_pool(
+    let async_pool = create_async_pool(
         rocks_db_instance.clone(),
         config.async_pool_config.clone(),
         BTreeMap::new(),
     );
-    async_pool.apply_changes_unchecked(&messages);
+    let mut batch = LedgerBatch::new(None, Some(async_pool.get_hash()));
+    async_pool.apply_changes_unchecked_to_batch(&messages, &mut batch);
+    async_pool.write_batch(batch);
 
     create_final_state(
         config.clone(),

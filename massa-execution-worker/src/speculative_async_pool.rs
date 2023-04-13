@@ -6,7 +6,7 @@
 use crate::active_history::ActiveHistory;
 use massa_async_pool::{AsyncMessage, AsyncMessageId, AsyncPool, AsyncPoolChanges};
 use massa_final_state::FinalState;
-use massa_ledger_exports::LedgerChanges;
+use massa_ledger_exports::{LedgerBatch, LedgerChanges};
 use massa_models::slot::Slot;
 use parking_lot::RwLock;
 use std::sync::Arc;
@@ -35,9 +35,14 @@ impl SpeculativeAsyncPool {
         active_history: Arc<RwLock<ActiveHistory>>,
     ) -> Self {
         // deduce speculative async pool from history
-        let mut async_pool = final_state.read().async_pool.clone();
+        let async_pool = final_state.read().async_pool.clone();
         for history_item in active_history.read().0.iter() {
-            async_pool.apply_changes_unchecked(&history_item.state_changes.async_pool_changes);
+            let mut batch = LedgerBatch::new(None, Some(async_pool.get_hash()));
+            async_pool.apply_changes_unchecked_to_batch(
+                &history_item.state_changes.async_pool_changes,
+                &mut batch,
+            );
+            async_pool.write_batch(batch);
         }
 
         SpeculativeAsyncPool {

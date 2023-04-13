@@ -1,4 +1,5 @@
 use humantime::format_duration;
+use massa_ledger_exports::LedgerBatch;
 use std::{collections::HashSet, net::SocketAddr, sync::Arc, time::Duration};
 
 use massa_final_state::FinalState;
@@ -94,12 +95,21 @@ async fn stream_final_state_and_consensus<D: Duplex>(
                         .executed_ops
                         .set_executed_ops_part(exec_ops_part);
                     for (changes_slot, changes) in final_state_changes.iter() {
-                        write_final_state
-                            .ledger
-                            .apply_changes(changes.ledger_changes.clone(), *changes_slot);
+                        let ledger_hash = write_final_state.ledger.get_ledger_hash();
+                        let async_pool_hash = write_final_state.async_pool.get_hash();
+                        let mut batch = LedgerBatch::new(Some(ledger_hash), Some(async_pool_hash));
+                        write_final_state.ledger.apply_changes_to_batch(
+                            changes.ledger_changes.clone(),
+                            *changes_slot,
+                            &mut batch,
+                        );
                         write_final_state
                             .async_pool
-                            .apply_changes_unchecked(&changes.async_pool_changes);
+                            .apply_changes_unchecked_to_batch(
+                                &changes.async_pool_changes,
+                                &mut batch,
+                            );
+                        write_final_state.ledger.write_batch(batch);
                         if !changes.pos_changes.is_empty() {
                             write_final_state.pos_state.apply_changes(
                                 changes.pos_changes.clone(),

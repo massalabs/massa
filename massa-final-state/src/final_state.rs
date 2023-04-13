@@ -414,7 +414,7 @@ impl FinalState {
         let ledger_hash = self.ledger.get_ledger_hash();
         let mut hash_concat: Vec<u8> = ledger_hash.to_bytes().to_vec();
         // 2. async_pool hash
-        hash_concat.extend(self.async_pool.hash.to_bytes());
+        hash_concat.extend(self.async_pool.get_hash().to_bytes());
         // 3. pos deferred_credit hash
         let deferred_credit_hash = match self.pos_state.deferred_credits.get_hash() {
             Some(hash) => hash,
@@ -466,7 +466,7 @@ impl FinalState {
         self.slot = slot;
 
         /*self.async_pool
-            .apply_changes_unchecked(&changes.async_pool_changes);*/
+        .apply_changes_unchecked(&changes.async_pool_changes);*/
         self.pos_state
             .apply_changes(changes.pos_changes.clone(), self.slot, true)
             .expect("could not settle slot in final state proof-of-stake");
@@ -478,7 +478,10 @@ impl FinalState {
         self.ledger
             .apply_changes(changes.ledger_changes.clone(), self.slot);
 
-        let mut ledger_batch = LedgerBatch::new(self.ledger.get_ledger_hash());
+        let mut ledger_batch = LedgerBatch::new(
+            Some(self.ledger.get_ledger_hash()),
+            Some(self.async_pool.get_hash()),
+        );
 
         // apply the state changes to the batch
 
@@ -714,7 +717,7 @@ impl Default for FinalStateRawSerializer {
     }
 }
 
-impl From<FinalState> for FinalStateRaw {
+/*impl From<FinalState> for FinalStateRaw {
     fn from(value: FinalState) -> Self {
         Self {
             async_pool_messages: value.async_pool.messages,
@@ -725,7 +728,7 @@ impl From<FinalState> for FinalStateRaw {
             final_state_hash_from_snapshot: value.final_state_hash,
         }
     }
-}
+}*/
 
 impl FinalStateRawSerializer {
     /// Initialize a `FinalStateRaweSerializer`
@@ -888,7 +891,7 @@ mod tests {
     use crate::StateChanges;
     use massa_async_pool::test_exports::get_random_message;
     use massa_ledger_exports::SetUpdateOrDelete;
-    use massa_models::{address::Address, slot::Slot};
+    use massa_models::{address::Address, config::THREAD_COUNT, slot::Slot};
     use massa_signature::KeyPair;
 
     fn get_random_address() -> Address {
@@ -898,7 +901,7 @@ mod tests {
 
     #[test]
     fn get_state_changes_part() {
-        let message = get_random_message(None);
+        let message = get_random_message(None, THREAD_COUNT);
         // Building the state changes
         let mut history_state_changes: VecDeque<(Slot, StateChanges)> = VecDeque::new();
         let (low_address, high_address) = {

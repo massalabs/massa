@@ -26,7 +26,7 @@ use massa_final_state::{
     FinalState, FinalStateConfig, StateChanges,
 };
 use massa_hash::{Hash, HASH_SIZE_BYTES};
-use massa_ledger_exports::{LedgerConfig, LedgerBatch};
+use massa_ledger_exports::{LedgerBatch, LedgerConfig};
 use massa_ledger_worker::new_rocks_db_instance;
 use massa_models::config::{MIP_STORE_STATS_BLOCK_CONSIDERED, MIP_STORE_STATS_COUNTERS_MAX};
 use massa_models::{
@@ -321,7 +321,7 @@ async fn test_bootstrap_server() {
             let changes = StateChanges {
                 pos_changes: get_random_pos_changes(10),
                 ledger_changes: get_random_ledger_changes(10),
-                async_pool_changes: get_random_async_pool_changes(10),
+                async_pool_changes: get_random_async_pool_changes(10, thread_count),
                 executed_ops_changes: get_random_executed_ops_changes(10),
             };
             final_write
@@ -348,23 +348,26 @@ async fn test_bootstrap_server() {
         let list_changes_read = list_changes.read().clone();
         // note: skip the first change to match the update loop behaviour
         for (slot, change) in list_changes_read.iter().skip(1) {
-            
-            let mut ledger_batch = LedgerBatch::new(final_state_server_write.ledger.get_ledger_hash());
+            let ledger_hash = final_state_server_write.ledger.get_ledger_hash();
+            let async_pool_hash = final_state_server_write.async_pool.get_hash();
+            let mut batch = LedgerBatch::new(Some(ledger_hash), Some(async_pool_hash));
             final_state_server_write
                 .pos_state
                 .apply_changes(change.pos_changes.clone(), *slot, false)
                 .unwrap();
-            final_state_server_write
-                .ledger
-                .apply_changes_to_batch(change.ledger_changes.clone(), *slot, &mut ledger_batch);
+            final_state_server_write.ledger.apply_changes_to_batch(
+                change.ledger_changes.clone(),
+                *slot,
+                &mut batch,
+            );
             final_state_server_write
                 .async_pool
-                .apply_changes_unchecked_to_batch(&change.async_pool_changes, &mut ledger_batch);
+                .apply_changes_unchecked_to_batch(&change.async_pool_changes, &mut batch);
             final_state_server_write
                 .executed_ops
                 .apply_changes(change.executed_ops_changes.clone(), *slot);
-            
-                final_state_server_write.ledger.write_batch(ledger_batch);
+
+            final_state_server_write.ledger.write_batch(batch);
         }
     }
     // check final states

@@ -7,16 +7,19 @@ pub struct LedgerBatch {
     // Rocksdb write batch
     pub write_batch: WriteBatch,
     // Ledger hash state in the current batch
-    pub ledger_hash: Hash,
+    pub ledger_hash: Option<Hash>,
+    // Ledger hash state in the current batch
+    pub async_pool_hash: Option<Hash>,
     // Added entry hashes in the current batch
     pub aeh_list: BTreeMap<Vec<u8>, Hash>,
 }
 
 impl LedgerBatch {
-    pub fn new(ledger_hash: Hash) -> Self {
+    pub fn new(ledger_hash: Option<Hash>, async_pool_hash: Option<Hash>) -> Self {
         Self {
             write_batch: WriteBatch::default(),
             ledger_hash,
+            async_pool_hash,
             aeh_list: BTreeMap::new(),
         }
     }

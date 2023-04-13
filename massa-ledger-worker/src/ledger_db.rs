@@ -34,6 +34,7 @@ use massa_models::amount::{Amount, AmountDeserializer};
 const LEDGER_CF: &str = "ledger";
 const METADATA_CF: &str = "metadata";
 const ASYNC_POOL_CF: &str = "async_pool";
+const WRONG_BATCH_TYPE_ERROR: &str = "critical: wrong batch type";
 const OPEN_ERROR: &str = "critical: rocksdb open operation failed";
 const CRUD_ERROR: &str = "critical: rocksdb crud operation failed";
 const CF_ERROR: &str = "critical: rocksdb column family operation failed";
@@ -46,6 +47,7 @@ const LEDGER_HASH_KEY: &[u8; 1] = b"h";
 const LEDGER_FINAL_STATE_KEY: &[u8; 2] = b"fs";
 const LEDGER_FINAL_STATE_HASH_KEY: &[u8; 3] = b"fsh";
 const LEDGER_HASH_INITIAL_BYTES: &[u8; 32] = &[0; HASH_SIZE_BYTES];
+const ASYNC_POOL_HASH_KEY: &[u8; 1] = b"h";
 
 /// Returns a new `RocksDB` instance
 pub fn new_rocks_db_instance(path: PathBuf) -> DB {
@@ -149,7 +151,7 @@ impl LedgerDB {
 
     pub fn set_initial_slot(&mut self, slot: Slot) {
         let ledger_hash = self.get_ledger_hash();
-        let mut batch = LedgerBatch::new(ledger_hash);
+        let mut batch = LedgerBatch::new(Some(ledger_hash), None);
         self.set_slot(slot, &mut batch);
         self.write_batch(batch);
     }
@@ -161,7 +163,7 @@ impl LedgerDB {
         // initial ledger_hash value to avoid matching an option in every XOR operation
         // because of a one time case being an empty ledger
         let ledger_hash = Hash::from_bytes(LEDGER_HASH_INITIAL_BYTES);
-        let mut batch = LedgerBatch::new(ledger_hash);
+        let mut batch = LedgerBatch::new(Some(ledger_hash), None);
         for (address, entry) in initial_ledger {
             self.put_entry(&address, entry, &mut batch);
         }
@@ -194,7 +196,7 @@ impl LedgerDB {
     /// * final_state_data: the serialized final state data to include, in case we use the feature `create_snapshot`
     pub fn apply_changes(&mut self, changes: LedgerChanges, slot: Slot) {
         // create the batch
-        let mut batch = LedgerBatch::new(self.get_ledger_hash());
+        let mut batch = LedgerBatch::new(Some(self.get_ledger_hash()), None);
         // for all incoming changes
         for (addr, change) in changes.0 {
             match change {
@@ -406,8 +408,7 @@ impl LedgerDB {
         let vec_u8_deserializer =
             VecU8Deserializer::new(Bound::Included(0), Bound::Excluded(u64::MAX));
         let mut last_key: Rc<Option<Key>> = Rc::new(None);
-        let mut batch = LedgerBatch::new(self.get_ledger_hash());
-
+        let mut batch = LedgerBatch::new(Some(self.get_ledger_hash()), None);
         // Since this data is coming from the network, deser to address and ser back to bytes for a security check.
         let (rest, _) = many0(|input: &'a [u8]| {
             let (rest, (key, value)) = tuple((
@@ -484,9 +485,16 @@ impl LedgerDB {
     pub fn write_batch(&self, mut batch: LedgerBatch) {
         let db = self.db.read();
         let handle = db.cf_handle(METADATA_CF).expect(CF_ERROR);
-        batch
-            .write_batch
-            .put_cf(handle, LEDGER_HASH_KEY, batch.ledger_hash.to_bytes());
+        if let Some(ledger_hash) = batch.ledger_hash {
+            batch
+                .write_batch
+                .put_cf(handle, LEDGER_HASH_KEY, ledger_hash.to_bytes());
+        }
+        if let Some(async_pool_hash) = batch.async_pool_hash {
+            batch
+                .write_batch
+                .put_cf(handle, ASYNC_POOL_HASH_KEY, async_pool_hash.to_bytes());
+        }
         db.write(batch.write_batch).expect(CRUD_ERROR);
     }
 }
@@ -511,9 +519,11 @@ impl LedgerDB {
             .put_cf(handle, SLOT_KEY, slot_bytes.clone());
         // XOR previous slot and new one
         if let Some(prev_bytes) = db.get_pinned_cf(handle, SLOT_KEY).expect(CRUD_ERROR) {
-            batch.ledger_hash ^= Hash::compute_from(&prev_bytes);
+            *batch.ledger_hash.as_mut().expect(WRONG_BATCH_TYPE_ERROR) ^=
+                Hash::compute_from(&prev_bytes);
         }
-        batch.ledger_hash ^= Hash::compute_from(&slot_bytes);
+        *batch.ledger_hash.as_mut().expect(WRONG_BATCH_TYPE_ERROR) ^=
+            Hash::compute_from(&slot_bytes);
     }
 
     pub fn get_slot(&self) -> Result<Slot, ModelsError> {
@@ -546,7 +556,7 @@ impl LedgerDB {
             .serialize(&(serialized_key.len() as u64), &mut len_bytes)
             .expect(KEY_LEN_SER_ERROR);
         let hash = Hash::compute_from(&[&len_bytes, &serialized_key, value].concat());
-        batch.ledger_hash ^= hash;
+        *batch.ledger_hash.as_mut().expect(WRONG_BATCH_TYPE_ERROR) ^= hash;
         batch.aeh_list.insert(serialized_key.clone(), hash);
         batch.write_batch.put_cf(handle, serialized_key, value);
     }
@@ -617,15 +627,15 @@ impl LedgerDB {
             .serialize(&(serialized_key.len() as u64), &mut len_bytes)
             .expect(KEY_LEN_SER_ERROR);
         if let Some(added_hash) = batch.aeh_list.get(&serialized_key) {
-            batch.ledger_hash ^= *added_hash;
+            *batch.ledger_hash.as_mut().expect(WRONG_BATCH_TYPE_ERROR) ^= *added_hash;
         } else if let Some(prev_bytes) =
             db.get_pinned_cf(handle, &serialized_key).expect(CRUD_ERROR)
         {
-            batch.ledger_hash ^=
+            *batch.ledger_hash.as_mut().expect(WRONG_BATCH_TYPE_ERROR) ^=
                 Hash::compute_from(&[&len_bytes, &serialized_key, &prev_bytes[..]].concat());
         }
         let hash = Hash::compute_from(&[&len_bytes, &serialized_key, value].concat());
-        batch.ledger_hash ^= hash;
+        *batch.ledger_hash.as_mut().expect(WRONG_BATCH_TYPE_ERROR) ^= hash;
         batch.aeh_list.insert(serialized_key.clone(), hash);
         batch.write_batch.put_cf(handle, serialized_key, value);
     }
@@ -687,7 +697,7 @@ impl LedgerDB {
             .serialize(key, &mut serialized_key)
             .expect(KEY_SER_ERROR);
         if let Some(added_hash) = batch.aeh_list.get(&serialized_key) {
-            batch.ledger_hash ^= *added_hash;
+            *batch.ledger_hash.as_mut().expect(WRONG_BATCH_TYPE_ERROR) ^= *added_hash;
         } else if let Some(prev_bytes) =
             db.get_pinned_cf(handle, &serialized_key).expect(CRUD_ERROR)
         {
@@ -695,7 +705,7 @@ impl LedgerDB {
             self.len_serializer
                 .serialize(&(serialized_key.len() as u64), &mut len_bytes)
                 .expect(KEY_LEN_SER_ERROR);
-            batch.ledger_hash ^=
+            *batch.ledger_hash.as_mut().expect(WRONG_BATCH_TYPE_ERROR) ^=
                 Hash::compute_from(&[&len_bytes, &serialized_key, &prev_bytes[..]].concat());
         }
         batch.write_batch.delete_cf(handle, serialized_key);
@@ -873,7 +883,7 @@ mod tests {
         let rocks_db_instance = new_rocks_db_instance(temp_dir.path().to_path_buf());
 
         let mut db = LedgerDB::new(Arc::new(RwLock::new(rocks_db_instance)), 32, 255, 1_000_000);
-        let mut batch = LedgerBatch::new(Hash::from_bytes(LEDGER_HASH_INITIAL_BYTES));
+        let mut batch = LedgerBatch::new(Some(Hash::from_bytes(LEDGER_HASH_INITIAL_BYTES)), None);
         db.put_entry(&addr, entry, &mut batch);
         db.update_entry(&addr, entry_update, &mut batch);
         db.write_batch(batch);
@@ -910,7 +920,7 @@ mod tests {
         );
 
         // delete entry
-        let mut batch = LedgerBatch::new(ledger_hash);
+        let mut batch = LedgerBatch::new(Some(ledger_hash), None);
         db.delete_entry(&addr, &mut batch);
         db.write_batch(batch);
 
