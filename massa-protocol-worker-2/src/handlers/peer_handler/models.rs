@@ -37,7 +37,6 @@ pub enum PeerState {
     Trusted,
 }
 
-#[warn(dead_code)]
 pub enum PeerManagementCmd {
     Ban(PeerId),
 }

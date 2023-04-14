@@ -50,10 +50,14 @@ pub struct ProtocolConfig {
     pub operation_announcement_buffer_capacity: usize,
     /// Start processing batches in the buffer each `operation_batch_proc_period` in millisecond
     pub operation_batch_proc_period: MassaTime,
+    /// Maximum number of asked operations in the memory buffer.
+    pub asked_operations_buffer_capacity: usize,
     /// All operations asked are prune each `operation_asked_pruning_period` millisecond
     pub asked_operations_pruning_period: MassaTime,
     /// Interval at which operations are announced in batches.
     pub operation_announcement_interval: MassaTime,
+    /// Maximum time we keep an operation in the storage
+    pub max_operation_storage_time: MassaTime,
     /// Maximum of operations sent in one message.
     pub max_operations_per_message: u64,
     /// Maximum size in bytes of all serialized operations size in a block

@@ -83,7 +83,6 @@ impl BlockHandler {
         });
 
         let block_propagation_thread = std::thread::spawn({
-            let _active_connections = active_connections;
             move || {
                 let _block_message_serializer = BlockMessageSerializer::new();
                 //TODO: Real logic

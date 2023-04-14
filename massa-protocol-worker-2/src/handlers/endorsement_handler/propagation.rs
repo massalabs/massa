@@ -30,6 +30,7 @@ pub fn start_propagation_thread(
             match internal_receiver.recv() {
                 Ok(internal_message) => {
                     match internal_message {
+                        //TODO: Batch with timer 0
                         InternalMessage::PropagateEndorsements((from_peer_id, endorsements)) => {
                             // Add endorsements received as known by the sender peer
                             let cached_endorsements = propagation_thread
