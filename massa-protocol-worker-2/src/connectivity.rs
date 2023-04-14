@@ -100,6 +100,7 @@ pub fn start_connectivity_thread(
                 receiver_operations,
                 sender_operations_ext,
                 receiver_operations_ext,
+                peer_management_handler.sender.command_sender.clone(),
             );
             let mut endorsement_handler = EndorsementHandler::new(
                 pool_controller,

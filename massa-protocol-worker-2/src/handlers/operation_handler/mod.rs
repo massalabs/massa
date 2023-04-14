@@ -19,7 +19,7 @@ mod retrieval;
 
 pub(crate) use messages::{OperationMessage, OperationMessageSerializer};
 
-use super::peer_handler::models::PeerMessageTuple;
+use super::peer_handler::models::{PeerManagementCmd, PeerMessageTuple};
 
 pub struct OperationHandler {
     pub operation_retrieval_thread: Option<JoinHandle<()>>,
@@ -36,6 +36,7 @@ impl OperationHandler {
         receiver_network: Receiver<PeerMessageTuple>,
         local_sender: Sender<OperationHandlerCommand>,
         local_receiver: Receiver<OperationHandlerCommand>,
+        peer_cmd_sender: Sender<PeerManagementCmd>,
     ) -> Self {
         //TODO: Define bound channel
         let operation_retrieval_thread = start_retrieval_thread(
@@ -46,6 +47,7 @@ impl OperationHandler {
             cache.clone(),
             active_connections.clone(),
             local_sender,
+            peer_cmd_sender,
         );
 
         let operation_propagation_thread =
