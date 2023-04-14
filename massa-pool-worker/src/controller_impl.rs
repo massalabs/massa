@@ -2,7 +2,7 @@
 
 //! Pool controller implementation
 
-use massa_models::denunciation::{Denunciation, DenunciationPrecursor};
+use massa_models::denunciation::DenunciationPrecursor;
 use massa_models::{
     block_id::BlockId, endorsement::EndorsementId, operation::OperationId, slot::Slot,
 };
@@ -17,6 +17,9 @@ use crate::{
     denunciation_pool::DenunciationPool, endorsement_pool::EndorsementPool,
     operation_pool::OperationPool,
 };
+
+#[cfg(feature = "testing")]
+use massa_models::denunciation::Denunciation;
 
 /// A generic command to send commands to a pool
 #[allow(clippy::large_enum_variant)]
@@ -73,6 +76,19 @@ impl PoolController for PoolControllerImpl {
     fn add_endorsements(&mut self, endorsements: Storage) {
         match self
             .endorsements_input_sender
+            .try_send(Command::AddItems(endorsements.clone()))
+        {
+            Err(TrySendError::Disconnected(_)) => {
+                warn!("Could not add endorsements to pool: worker is unreachable.");
+            }
+            Err(TrySendError::Full(_)) => {
+                warn!("Could not add endorsements to pool: worker channel is full.");
+            }
+            Ok(_) => {}
+        }
+
+        match self
+            .denunciations_input_sender
             .try_send(Command::AddItems(endorsements))
         {
             Err(TrySendError::Disconnected(_)) => {
@@ -83,6 +99,7 @@ impl PoolController for PoolControllerImpl {
             }
             Ok(_) => {}
         }
+        
     }
 
     /// Asynchronously notify of new final consensus periods. Simply print a warning on failure.
@@ -200,6 +217,7 @@ impl PoolController for PoolControllerImpl {
     }
 
     /// Check if the pool contains a denunciation. Returns a boolean
+    #[cfg(feature = "testing")]
     fn contains_denunciation(&self, denunciation: &Denunciation) -> bool {
         let lock = self.denunciation_pool.read();
         lock.contains(denunciation)

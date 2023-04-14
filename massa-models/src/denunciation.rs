@@ -20,8 +20,6 @@ use crate::endorsement::{
 };
 use crate::slot::{Slot, SlotDeserializer, SlotSerializer};
 
-use crate::prehash::PreHashed;
-
 use massa_hash::{Hash, HashDeserializer, HashSerializer};
 use massa_serialization::{
     Deserializer, SerializeError, Serializer, U32VarIntDeserializer, U32VarIntSerializer,
@@ -748,8 +746,6 @@ impl DenunciationIndex {
         }
     }
 }
-
-impl PreHashed for DenunciationIndex {}
 
 impl From<&Denunciation> for DenunciationIndex {
     fn from(value: &Denunciation) -> Self {

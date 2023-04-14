@@ -159,14 +159,14 @@ impl DenunciationPoolThread {
                     .denunciation_pool
                     .write()
                     .add_denunciation_precursor(de_p),
+                Ok(Command::AddItems(endorsements)) => self
+                    .denunciation_pool
+                    .write()
+                    .add_endorsements(endorsements),
                 Ok(Command::NotifyFinalCsPeriods(final_cs_periods)) => self
                     .denunciation_pool
                     .write()
                     .notify_final_cs_periods(&final_cs_periods),
-                _ => {
-                    warn!("DenunciationPoolThread received an unexpected command");
-                    continue;
-                }
             };
         }
     }

@@ -9,6 +9,7 @@ use massa_models::{
 };
 use massa_pool_exports::PoolConfig;
 use massa_pos_exports::SelectorController;
+use massa_storage::Storage;
 use massa_time::MassaTime;
 
 pub struct DenunciationPool {
@@ -41,6 +42,7 @@ impl DenunciationPool {
     }
 
     /// Checks whether an element is stored in the pool
+    #[cfg(feature = "testing")]
     pub fn contains(&self, denunciation: &Denunciation) -> bool {
         self.denunciations_cache
             .iter()
@@ -102,6 +104,7 @@ impl DenunciationPool {
                     }
                     Err(e) => {
                         warn!("Cannot get producer from selector: {}", e);
+                        return;
                     }
                 }
             }
@@ -118,6 +121,7 @@ impl DenunciationPool {
                     }
                     Err(e) => {
                         warn!("Cannot get producer from selector: {}", e);
+                        return;
                     }
                 }
             }
@@ -185,6 +189,26 @@ impl DenunciationPool {
 
         // remove all denunciations that are expired
         self.cleanup_caches()
+    }
+
+    pub(crate) fn add_endorsements(&mut self, endorsement_storage: Storage) {
+        let items = endorsement_storage
+            .get_endorsement_refs()
+            .iter()
+            .copied()
+            .collect::<Vec<_>>();
+
+        let endo_store = endorsement_storage.read_endorsements();
+
+        for endo_id in items {
+            let endo = endo_store.get(&endo_id).expect(
+                "Attempting to add endorsement to denunciation pool, but it is absent from storage",
+            );
+
+            if let Ok(de_p) = DenunciationPrecursor::try_from(endo) {
+                self.add_denunciation_precursor(de_p)
+            }
+        }
     }
 }
 
