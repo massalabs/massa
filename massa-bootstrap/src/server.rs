@@ -37,7 +37,11 @@ use massa_models::{
     block_id::BlockId, prehash::PreHashSet, slot::Slot, streaming_step::StreamingStep,
     version::Version,
 };
-use massa_network_exports::NetworkCommandSenderTrait;
+
+#[cfg(any(test, feature = "test"))]
+use massa_network_exports::MockNetworkCommandSender as NetworkCommandSender;
+#[cfg(not(any(test, feature = "test")))]
+use massa_network_exports::NetworkCommandSender;
 use massa_signature::KeyPair;
 use massa_time::MassaTime;
 use massa_versioning_worker::versioning::MipStore;
@@ -102,9 +106,9 @@ impl BootstrapManager {
 
 /// See module level documentation for details
 #[allow(clippy::too_many_arguments)]
-pub fn start_bootstrap_server<C: NetworkCommandSenderTrait + Clone>(
+pub fn start_bootstrap_server(
     consensus_controller: Box<dyn ConsensusController>,
-    network_command_sender: C,
+    network_command_sender: NetworkCommandSender,
     final_state: Arc<RwLock<FinalState>>,
     config: BootstrapConfig,
     listener: impl BSListener + Send + 'static,
@@ -134,7 +138,7 @@ pub fn start_bootstrap_server<C: NetworkCommandSenderTrait + Clone>(
     let update_handle = thread::Builder::new()
         .name("wb_list_updater".to_string())
         .spawn(move || {
-            let res = BootstrapServer::<C>::run_updater(
+            let res = BootstrapServer::run_updater(
                 updater_lists,
                 config.cache_duration.into(),
                 update_stopper_rx,
@@ -150,7 +154,7 @@ pub fn start_bootstrap_server<C: NetworkCommandSenderTrait + Clone>(
         .name("bs_listener".to_string())
         // FIXME: The interface being used shouldn't have `: Send + 'static` as a constraint on the listener assosciated type.
         // GAT lifetime is likely to remedy this, however.
-        .spawn(move || BootstrapServer::<C>::run_listener(listener, listener_tx))
+        .spawn(move || BootstrapServer::run_listener(listener, listener_tx))
         .expect("in `start_bootstrap_server`, OS failed to spawn listener thread");
 
     let main_handle = thread::Builder::new()
@@ -183,9 +187,9 @@ pub fn start_bootstrap_server<C: NetworkCommandSenderTrait + Clone>(
     }))
 }
 
-struct BootstrapServer<'a, C: NetworkCommandSenderTrait> {
+struct BootstrapServer<'a> {
     consensus_controller: Box<dyn ConsensusController>,
-    network_command_sender: C,
+    network_command_sender: NetworkCommandSender,
     final_state: Arc<RwLock<FinalState>>,
     listener_rx: crossbeam::channel::Receiver<BsConn>,
     listen_stopper_rx: crossbeam::channel::Receiver<()>,
@@ -197,7 +201,7 @@ struct BootstrapServer<'a, C: NetworkCommandSenderTrait> {
     mip_store: MipStore,
 }
 
-impl<C: NetworkCommandSenderTrait + Clone> BootstrapServer<'_, C> {
+impl BootstrapServer<'_> {
     fn run_updater(
         mut list: SharedWhiteBlackList<'_>,
         interval: Duration,
@@ -291,7 +295,7 @@ impl<C: NetworkCommandSenderTrait + Clone> BootstrapServer<'_, C> {
                 }
 
                 // check IP's bootstrap attempt history
-                if let Err(msg) = BootstrapServer::<C>::greedy_client_check(
+                if let Err(msg) = BootstrapServer::greedy_client_check(
                     &mut self.ip_hist_map,
                     remote_addr,
                     now,
@@ -443,7 +447,7 @@ impl<C: NetworkCommandSenderTrait + Clone> BootstrapServer<'_, C> {
 /// The arc_counter variable is used as a proxy to keep track the number of active bootstrap
 /// sessions.
 #[allow(clippy::too_many_arguments)]
-fn run_bootstrap_session<C: NetworkCommandSenderTrait>(
+fn run_bootstrap_session(
     mut server: BootstrapServerBinder,
     arc_counter: Arc<()>,
     config: BootstrapConfig,
@@ -451,7 +455,7 @@ fn run_bootstrap_session<C: NetworkCommandSenderTrait>(
     data_execution: Arc<RwLock<FinalState>>,
     version: Version,
     consensus_command_sender: Box<dyn ConsensusController>,
-    network_command_sender: C,
+    network_command_sender: NetworkCommandSender,
     mip_store: MipStore,
 ) {
     debug!("running bootstrap for peer {}", remote_addr);
@@ -682,13 +686,13 @@ pub fn stream_bootstrap_information(
 }
 
 #[allow(clippy::too_many_arguments)]
-fn manage_bootstrap<C: NetworkCommandSenderTrait>(
+fn manage_bootstrap(
     bootstrap_config: &BootstrapConfig,
     server: &mut BootstrapServerBinder,
     final_state: Arc<RwLock<FinalState>>,
     version: Version,
     consensus_controller: Box<dyn ConsensusController>,
-    network_command_sender: C,
+    network_command_sender: NetworkCommandSender,
     _deadline: Instant,
     mip_store: MipStore,
 ) -> Result<(), BootstrapError> {

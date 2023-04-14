@@ -58,7 +58,7 @@ use massa_models::config::{
     MAX_OPERATIONS_PER_MESSAGE,
 };
 use massa_models::denunciation::DenunciationPrecursor;
-use massa_network_exports::{Establisher, NetworkCommandSender, NetworkConfig, NetworkManager};
+use massa_network_exports::{Establisher, NetworkConfig, NetworkManager};
 use massa_network_worker::start_network_controller;
 use massa_pool_exports::{PoolChannels, PoolConfig, PoolManager};
 use massa_pool_worker::start_pool_controller;
@@ -633,7 +633,7 @@ async fn launch(
     // launch bootstrap server
     // TODO: use std::net::TcpStream
     let bootstrap_manager = match bootstrap_config.listen_addr {
-        Some(addr) => start_bootstrap_server::<NetworkCommandSender>(
+        Some(addr) => start_bootstrap_server(
             consensus_controller.clone(),
             network_command_sender.clone(),
             final_state.clone(),

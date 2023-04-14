@@ -2856,7 +2856,6 @@ dependencies = [
 name = "massa_network_exports"
 version = "0.1.0"
 dependencies = [
- "async-trait",
  "displaydoc",
  "enum-map",
  "massa_hash 0.1.0",

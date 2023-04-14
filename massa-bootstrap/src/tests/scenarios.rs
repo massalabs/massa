@@ -35,7 +35,10 @@ use massa_models::{
     prehash::PreHashSet,
 };
 #[cfg(any(test, feature = "testing"))]
-use massa_network_exports::MockNetworkCommandSender;
+use massa_network_exports::MockNetworkCommandSender as NetworkCommandSender;
+#[cfg(not(any(test, feature = "testing")))]
+use massa_network_exports::NetworkCommandSender;
+
 use massa_pos_exports::{
     test_exports::assert_eq_pos_selection, PoSConfig, PoSFinalState, SelectorConfig,
 };
@@ -168,8 +171,8 @@ fn test_bootstrap_server() {
     let (mock_bs_listener, mock_remote_connector) = conn_establishment_mocks();
 
     // Setup network command mock-story: hard-code the result of getting bootstrap peers
-    let mut mocked1 = MockNetworkCommandSender::new();
-    let mut mocked2 = MockNetworkCommandSender::new();
+    let mut mocked1 = NetworkCommandSender::new();
+    let mut mocked2 = NetworkCommandSender::new();
     mocked2
         .expect_get_bootstrap_peers()
         .times(1)
@@ -215,7 +218,7 @@ fn test_bootstrap_server() {
     let bootstrap_manager_thread = std::thread::Builder::new()
         .name("bootstrap_thread".to_string())
         .spawn(move || {
-            start_bootstrap_server::<MockNetworkCommandSender>(
+            start_bootstrap_server(
                 stream_mock1,
                 mocked1,
                 final_state_server_clone1,

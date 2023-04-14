@@ -31,7 +31,7 @@ use massa_models::{
 use massa_network_exports::{settings::PeerTypeConnectionConfig, NodeCommand, NodeEvent};
 use massa_network_exports::{
     AskForBlocksInfo, BlockInfoReply, ConnectionClosureReason, ConnectionId, HandshakeErrorType,
-    NetworkCommandSenderTrait, PeerInfo, PeerType,
+    PeerInfo, PeerType,
 };
 use massa_signature::KeyPair;
 use massa_time::MassaTime;
