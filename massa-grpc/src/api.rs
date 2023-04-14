@@ -6,13 +6,15 @@ use itertools::izip;
 use massa_models::address::Address;
 use massa_models::slot::Slot;
 use massa_models::timeslots::{self, get_latest_block_slot_at_timestamp};
-use massa_proto::massa::api::v1 as grpc;
+use massa_proto::massa::api::v1::{self as grpc};
 use massa_time::MassaTime;
 use std::str::FromStr;
 use tracing::log::warn;
 
-/// default stakers limit
-const DEFAULT_STAKERS_LIMIT: u64 = 50;
+/// default offset
+const DEFAULT_OFFSET: u64 = 1;
+/// default limit
+const DEFAULT_LIMIT: u64 = 50;
 
 /// get blocks by slots
 pub(crate) fn get_blocks_by_slots(
@@ -125,45 +127,114 @@ pub(crate) fn get_datastore_entries(
     Ok(grpc::GetDatastoreEntriesResponse { id, entries })
 }
 
-/// get largest stakers
+/// Get the largest stakers.
 pub(crate) fn get_largest_stakers(
     grpc: &MassaGrpc,
     request: tonic::Request<grpc::GetLargestStakersRequest>,
 ) -> Result<grpc::GetLargestStakersResponse, GrpcError> {
     let inner_req = request.into_inner();
     let id = inner_req.id;
-    let limit = inner_req.query.map_or(DEFAULT_STAKERS_LIMIT, |query| {
-        query
-            .filter
-            .map_or(DEFAULT_STAKERS_LIMIT, |filter| filter.limit)
-    });
 
-    let now = MassaTime::now()?;
-    let curr_cycle = get_latest_block_slot_at_timestamp(
+    // Parse the query parameters, if provided.
+    let query_res: Result<(u64, u64, Option<grpc::LargestStakersFilter>), GrpcError> = inner_req
+        .query
+        .map_or(Ok((DEFAULT_OFFSET, DEFAULT_LIMIT, None)), |query| {
+            let limit = if query.limit == 0 {
+                DEFAULT_LIMIT
+            } else {
+                query.limit
+            };
+            let filter = query.filter;
+            // If the filter is provided, validate the minimum and maximum roll counts.
+            let filter_opt = filter
+                .map(|filter| {
+                    if let Some(min_rolls) = filter.min_rolls {
+                        if min_rolls == 0 {
+                            return Err(GrpcError::InvalidArgument(
+                                "min_rolls should be a positive number".into(),
+                            ));
+                        }
+                        if let Some(max_rolls) = filter.max_rolls {
+                            if max_rolls == 0 {
+                                return Err(GrpcError::InvalidArgument(
+                                    "max_rolls should be a positive number".into(),
+                                ));
+                            }
+                            if min_rolls > max_rolls {
+                                return Err(GrpcError::InvalidArgument(format!(
+                                    "min_rolls {} cannot be greater than max_rolls {}",
+                                    min_rolls, max_rolls
+                                )));
+                            }
+                        }
+                    }
+
+                    Ok(filter)
+                })
+                .transpose()?; // Convert `Option<Result>` to `Result<Option>`.
+
+            Ok((query.offset, limit, filter_opt))
+        });
+
+    let (offset, limit, filter_opt) = query_res?;
+
+    // Get the current cycle and slot.
+    let now: MassaTime = MassaTime::now()?;
+    let current_slot = get_latest_block_slot_at_timestamp(
         grpc.grpc_config.thread_count,
         grpc.grpc_config.t0,
         grpc.grpc_config.genesis_timestamp,
         now,
     )?
-    .unwrap_or_else(|| Slot::new(0, 0))
-    .get_cycle(grpc.grpc_config.periods_per_cycle);
+    .unwrap_or_else(|| Slot::new(0, 0));
+    let current_cycle = current_slot.get_cycle(grpc.grpc_config.periods_per_cycle);
 
+    // Create the context for the response.
+    let context = Some(grpc::LargestStakersContext {
+        cycle: current_cycle,
+        slot: Some(current_slot.into()),
+    });
+
+    // Get the list of stakers, filtered by the specified minimum and maximum roll counts.
     let mut staker_vec = grpc
         .execution_controller
-        .get_cycle_active_rolls(curr_cycle)
+        .get_cycle_active_rolls(current_cycle)
         .into_iter()
+        .filter(|(_, rolls)| {
+            filter_opt.as_ref().map_or(true, |filter| {
+                if let Some(min_rolls) = filter.min_rolls {
+                    if *rolls < min_rolls {
+                        return false;
+                    }
+                }
+                if let Some(max_rolls) = filter.max_rolls {
+                    if *rolls > max_rolls {
+                        return false;
+                    }
+                }
+                true
+            })
+        })
         .map(|(address, roll_counts)| (address.to_string(), roll_counts))
-        .take(limit as usize)
         .collect::<Vec<(String, u64)>>();
 
+    // Sort the stakers by their roll counts in descending order.
     staker_vec.sort_by_key(|&(_, roll_counts)| std::cmp::Reverse(roll_counts));
 
+    // Paginate the stakers based on the specified offset and limit.
     let stakers = staker_vec
         .into_iter()
         .map(|(address, rolls)| grpc::LargestStakerEntry { address, rolls })
+        .skip(offset as usize)
+        .take(limit as usize)
         .collect();
 
-    Ok(grpc::GetLargestStakersResponse { id, stakers })
+    // Return a response with the given id, context, and the collected stakers.
+    Ok(grpc::GetLargestStakersResponse {
+        id,
+        context,
+        stakers,
+    })
 }
 
 /// get next block best parents

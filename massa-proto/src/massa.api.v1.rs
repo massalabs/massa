@@ -382,17 +382,26 @@ pub struct GetLargestStakersRequest {
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct LargestStakersQuery {
+    /// Starting offset for the list of stakers. Defaults to 1
+    #[prost(fixed64, tag = "1")]
+    pub offset: u64,
+    /// Limits the number of stakers to return. Defaults to 50
+    #[prost(fixed64, tag = "2")]
+    pub limit: u64,
     /// Filter
-    #[prost(message, optional, tag = "1")]
+    #[prost(message, optional, tag = "3")]
     pub filter: ::core::option::Option<LargestStakersFilter>,
 }
 /// LargestStakers Filter
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct LargestStakersFilter {
-    /// / Limits the number of stakers to return. Defaults to 50
-    #[prost(fixed64, tag = "1")]
-    pub limit: u64,
+    /// Minimum rolls (Optional)
+    #[prost(fixed64, optional, tag = "1")]
+    pub min_rolls: ::core::option::Option<u64>,
+    /// Maximum rolls (Optional)
+    #[prost(fixed64, optional, tag = "2")]
+    pub max_rolls: ::core::option::Option<u64>,
 }
 /// GetLargestStakersResponse holds response from GetLargestStakers
 #[allow(clippy::derive_partial_eq_without_eq)]
@@ -401,9 +410,23 @@ pub struct GetLargestStakersResponse {
     /// Request id
     #[prost(string, tag = "1")]
     pub id: ::prost::alloc::string::String,
+    /// Context
+    #[prost(message, optional, tag = "2")]
+    pub context: ::core::option::Option<LargestStakersContext>,
     /// Largest stakers
-    #[prost(message, repeated, tag = "2")]
+    #[prost(message, repeated, tag = "3")]
     pub stakers: ::prost::alloc::vec::Vec<LargestStakerEntry>,
+}
+/// LargestStakers context
+#[allow(clippy::derive_partial_eq_without_eq)]
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct LargestStakersContext {
+    /// Cycle
+    #[prost(fixed64, tag = "1")]
+    pub cycle: u64,
+    /// Slot
+    #[prost(message, optional, tag = "2")]
+    pub slot: ::core::option::Option<Slot>,
 }
 /// LargestStakerEntry
 #[allow(clippy::derive_partial_eq_without_eq)]
@@ -770,7 +793,7 @@ pub struct TransactionsThroughputRequest {
     /// Request id
     #[prost(string, tag = "1")]
     pub id: ::prost::alloc::string::String,
-    /// Optional timer interval in sec. Defaults to 10s
+    /// Timer interval in seconds (Optional). Defaults to 10s
     #[prost(fixed64, optional, tag = "2")]
     pub interval: ::core::option::Option<u64>,
 }

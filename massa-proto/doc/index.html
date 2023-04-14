@@ -263,6 +263,10 @@
                 </li>
               
                 <li>
+                  <a href="#massa.api.v1.LargestStakersContext"><span class="badge">M</span>LargestStakersContext</a>
+                </li>
+              
+                <li>
                   <a href="#massa.api.v1.LargestStakersFilter"><span class="badge">M</span>LargestStakersFilter</a>
                 </li>
               
@@ -857,6 +861,13 @@
                 </tr>
               
                 <tr>
+                  <td>context</td>
+                  <td><a href="#massa.api.v1.LargestStakersContext">LargestStakersContext</a></td>
+                  <td></td>
+                  <td><p>Context </p></td>
+                </tr>
+              
+                <tr>
                   <td>stakers</td>
                   <td><a href="#massa.api.v1.LargestStakerEntry">LargestStakerEntry</a></td>
                   <td>repeated</td>
@@ -1128,6 +1139,37 @@
 
         
       
+        <h3 id="massa.api.v1.LargestStakersContext">LargestStakersContext</h3>
+        <p>LargestStakers context</p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>cycle</td>
+                  <td><a href="#fixed64">fixed64</a></td>
+                  <td></td>
+                  <td><p>Cycle </p></td>
+                </tr>
+              
+                <tr>
+                  <td>slot</td>
+                  <td><a href="#massa.api.v1.Slot">Slot</a></td>
+                  <td></td>
+                  <td><p>Slot </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
         <h3 id="massa.api.v1.LargestStakersFilter">LargestStakersFilter</h3>
         <p>LargestStakers Filter</p>
 
@@ -1139,10 +1181,17 @@
             <tbody>
               
                 <tr>
-                  <td>limit</td>
+                  <td>min_rolls</td>
                   <td><a href="#fixed64">fixed64</a></td>
-                  <td></td>
-                  <td><p>Limits the number of stakers to return. Defaults to 50 </p></td>
+                  <td>optional</td>
+                  <td><p>Minimum rolls (Optional) </p></td>
+                </tr>
+              
+                <tr>
+                  <td>max_rolls</td>
+                  <td><a href="#fixed64">fixed64</a></td>
+                  <td>optional</td>
+                  <td><p>Maximum rolls (Optional) </p></td>
                 </tr>
               
             </tbody>
@@ -1161,6 +1210,20 @@
               <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
             </thead>
             <tbody>
+              
+                <tr>
+                  <td>offset</td>
+                  <td><a href="#fixed64">fixed64</a></td>
+                  <td></td>
+                  <td><p>Starting offset for the list of stakers. Defaults to 1 </p></td>
+                </tr>
+              
+                <tr>
+                  <td>limit</td>
+                  <td><a href="#fixed64">fixed64</a></td>
+                  <td></td>
+                  <td><p>Limits the number of stakers to return. Defaults to 50 </p></td>
+                </tr>
               
                 <tr>
                   <td>filter</td>
@@ -1789,7 +1852,7 @@
                   <td>interval</td>
                   <td><a href="#fixed64">fixed64</a></td>
                   <td>optional</td>
-                  <td><p>Optional timer interval in sec. Defaults to 10s </p></td>
+                  <td><p>Timer interval in seconds (Optional). Defaults to 10s </p></td>
                 </tr>
               
             </tbody>

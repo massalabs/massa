@@ -25,6 +25,7 @@
     - [GetVersionRequest](#massa-api-v1-GetVersionRequest)
     - [GetVersionResponse](#massa-api-v1-GetVersionResponse)
     - [LargestStakerEntry](#massa-api-v1-LargestStakerEntry)
+    - [LargestStakersContext](#massa-api-v1-LargestStakersContext)
     - [LargestStakersFilter](#massa-api-v1-LargestStakersFilter)
     - [LargestStakersQuery](#massa-api-v1-LargestStakersQuery)
     - [NewBlocksHeadersRequest](#massa-api-v1-NewBlocksHeadersRequest)
@@ -277,6 +278,7 @@ GetLargestStakersResponse holds response from GetLargestStakers
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | id | [string](#string) |  | Request id |
+| context | [LargestStakersContext](#massa-api-v1-LargestStakersContext) |  | Context |
 | stakers | [LargestStakerEntry](#massa-api-v1-LargestStakerEntry) | repeated | Largest stakers |
 
 
@@ -425,6 +427,22 @@ LargestStakerEntry
 
 
 
+<a name="massa-api-v1-LargestStakersContext"></a>
+
+### LargestStakersContext
+LargestStakers context
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| cycle | [fixed64](#fixed64) |  | Cycle |
+| slot | [Slot](#massa-api-v1-Slot) |  | Slot |
+
+
+
+
+
+
 <a name="massa-api-v1-LargestStakersFilter"></a>
 
 ### LargestStakersFilter
@@ -433,7 +451,8 @@ LargestStakers Filter
 
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
-| limit | [fixed64](#fixed64) |  | Limits the number of stakers to return. Defaults to 50 |
+| min_rolls | [fixed64](#fixed64) | optional | Minimum rolls (Optional) |
+| max_rolls | [fixed64](#fixed64) | optional | Maximum rolls (Optional) |
 
 
 
@@ -448,6 +467,8 @@ LargestStakers Query
 
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
+| offset | [fixed64](#fixed64) |  | Starting offset for the list of stakers. Defaults to 1 |
+| limit | [fixed64](#fixed64) |  | Limits the number of stakers to return. Defaults to 50 |
 | filter | [LargestStakersFilter](#massa-api-v1-LargestStakersFilter) |  | Filter |
 
 
@@ -780,7 +801,7 @@ TransactionsThroughputRequest holds request for TransactionsThroughput
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | id | [string](#string) |  | Request id |
-| interval | [fixed64](#fixed64) | optional | Optional timer interval in sec. Defaults to 10s |
+| interval | [fixed64](#fixed64) | optional | Timer interval in seconds (Optional). Defaults to 10s |
 
 
 

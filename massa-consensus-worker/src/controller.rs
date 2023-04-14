@@ -247,7 +247,7 @@ impl ConsensusController for ConsensusControllerImpl {
 
                 if let Err(err) = self.channels.block_sender.send(verifiable_block.clone()) {
                     trace!(
-                        "error trying to broadcast block with id {} due to: {}",
+                        "error, failed to broadcast block with id {} due to: {}",
                         block_id,
                         err
                     );
@@ -258,7 +258,7 @@ impl ConsensusController for ConsensusControllerImpl {
                     operations,
                 }) {
                     trace!(
-                        "error trying to broadcast filled block with id {} due to: {}",
+                        "error, failed to broadcast filled block with id {} due to: {}",
                         block_id,
                         err
                     );
@@ -296,7 +296,7 @@ impl ConsensusController for ConsensusControllerImpl {
         if self.broadcast_enabled {
             if let Err(err) = self.channels.block_header_sender.send(header.clone()) {
                 trace!(
-                    "error trying to broadcast block header with block id {}: {}",
+                    "error, failed to broadcast block header with block id {}: {}",
                     block_id,
                     err
                 );
