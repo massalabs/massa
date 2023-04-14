@@ -26,7 +26,8 @@ use massa_time::{MassaTime, TimeError};
 use peernet::{network_manager::SharedActiveConnections, peer_id::PeerId};
 
 use crate::{
-    handlers::peer_handler::models::PeerMessageTuple, messages::MessagesSerializer,
+    handlers::peer_handler::models::{PeerManagementCmd, PeerMessageTuple},
+    messages::MessagesSerializer,
     sig_verifier::verify_sigs_batch,
 };
 use tracing::warn;
@@ -62,6 +63,7 @@ pub struct RetrievalThread {
     config: ProtocolConfig,
     internal_sender: Sender<OperationHandlerCommand>,
     operation_message_serializer: MessagesSerializer,
+    peer_cmd_sender: Sender<PeerManagementCmd>,
 }
 
 impl RetrievalThread {
@@ -98,8 +100,10 @@ impl RetrievalThread {
                                 OperationMessage::Operations(ops) => {
                                     if let Err(err) = self.note_operations_from_peer(ops, &peer_id) {
                                         warn!("peer {} sent us critically incorrect operation, which may be an attack attempt by the remote peer or a loss of sync between us and the remote peer. Err = {}", peer_id, err);
-                                        //TODO: Ban
-                                        //let _ = self.ban_node(&peer_id).await;
+
+                                        if let Err(e) = self.ban_node(&peer_id) {
+                                            warn!("Error when banning node: {}", e);
+                                        }
                                     }
                                 }
                                 OperationMessage::OperationsAnnouncement(announcement) => {
@@ -440,6 +444,14 @@ impl RetrievalThread {
             }
         }
     }
+
+    /// send a ban peer command to the peer handler
+    fn ban_node(&mut self, peer_id: &PeerId) -> Result<(), ProtocolError> {
+        massa_trace!("ban node from retrieval thread", { "peer_id": peer_id.to_string() });
+        self.peer_cmd_sender
+            .send(PeerManagementCmd::Ban(peer_id.clone()))
+            .map_err(|err| ProtocolError::SendError(err.to_string()))
+    }
 }
 
 pub fn start_retrieval_thread(
@@ -450,6 +462,7 @@ pub fn start_retrieval_thread(
     cache: SharedOperationCache,
     active_connections: SharedActiveConnections,
     internal_sender: Sender<OperationHandlerCommand>,
+    peer_cmd_sender: Sender<PeerManagementCmd>,
 ) -> JoinHandle<()> {
     std::thread::spawn(move || {
         let mut retrieval_thread = RetrievalThread {
@@ -468,6 +481,7 @@ pub fn start_retrieval_thread(
             operation_message_serializer: MessagesSerializer::new()
                 .with_operation_message_serializer(OperationMessageSerializer::new()),
             op_batch_buffer: VecDeque::new(),
+            peer_cmd_sender,
         };
         retrieval_thread.run();
     })
