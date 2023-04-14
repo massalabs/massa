@@ -18,16 +18,16 @@ use crate::handlers::{
 };
 
 pub enum Message {
-    Block(BlockMessage),
+    Block(Box<BlockMessage>),
     Endorsement(EndorsementMessage),
     Operation(OperationMessage),
-    PeerManagement(PeerManagementMessage),
+    PeerManagement(Box<PeerManagementMessage>),
 }
 
 //TODO: Macroize this
 impl From<BlockMessage> for Message {
     fn from(message: BlockMessage) -> Self {
-        Self::Block(message)
+        Self::Block(Box::from(message))
     }
 }
 
@@ -45,7 +45,7 @@ impl From<OperationMessage> for Message {
 
 impl From<PeerManagementMessage> for Message {
     fn from(message: PeerManagementMessage) -> Self {
-        Self::PeerManagement(message)
+        Self::PeerManagement(Box::from(message))
     }
 }
 
@@ -54,9 +54,7 @@ impl Message {
     fn get_id(&self) -> u64 {
         match self {
             Message::Block(message) => message.get_id() as u64,
-            Message::Endorsement(message) => {
-                message.get_id() as u64 + BlockMessage::max_id()
-            }
+            Message::Endorsement(message) => message.get_id() as u64 + BlockMessage::max_id(),
             Message::Operation(message) => {
                 message.get_id() as u64 + BlockMessage::max_id() + EndorsementMessage::max_id()
             }

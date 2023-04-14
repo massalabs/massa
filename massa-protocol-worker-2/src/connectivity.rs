@@ -55,8 +55,7 @@ pub fn start_connectivity_thread(
     let handle = std::thread::spawn({
         let sender_operations_ext = sender_operations_ext.clone();
         move || {
-            let (mut peer_manager_handler, sender_peers) =
-                PeerManagementHandler::new(initial_peers);
+            let mut peer_management_handler = PeerManagementHandler::new(initial_peers);
             //TODO: Bound the channel
             // Channels network <-> handlers
             let (sender_operations, receiver_operations) = unbounded();
@@ -68,12 +67,14 @@ pub fn start_connectivity_thread(
                 sender_blocks,
                 sender_endorsements,
                 sender_operations,
-                sender_peers,
+                sender_peers: peer_management_handler.sender.msg_sender.clone(),
                 id_deserializer: U64VarIntDeserializer::new(Included(0), Included(u64::MAX)),
             };
 
-            let mut peernet_config =
-                PeerNetConfiguration::default(MassaHandshake::new(), message_handlers);
+            let mut peernet_config = PeerNetConfiguration::default(
+                MassaHandshake::new(peer_management_handler.peer_db.clone()),
+                message_handlers,
+            );
             peernet_config.self_keypair = config.keypair.clone();
             peernet_config.fallback_function = Some(&fallback_function);
             //TODO: Add the rest of the config
@@ -122,47 +123,49 @@ pub fn start_connectivity_thread(
             //Try to connect to peers
             loop {
                 select! {
-                    recv(receiver) -> msg => {
-                        if let Ok(ConnectivityCommand::Stop) = msg {
-                            if let Some(handle) = peer_manager_handler.thread_join.take() {
-                                handle.join().expect("Failed to join peer manager thread");
+                        recv(receiver) -> msg => {
+                            if let Ok(ConnectivityCommand::Stop) = msg {
+                                if let Some(handle) = peer_management_handler.thread_join.take() {
+                                    handle.join().expect("Failed to join peer manager thread");
+                                }
+                                operation_handler.stop();
+                                endorsement_handler.stop();
+                                block_handler.stop();
+                                break;
                             }
-                            operation_handler.stop();
-                            endorsement_handler.stop();
-                            block_handler.stop();
-                            break;
                         }
-                    }
                     default(Duration::from_millis(2000)) => {
                         // Check if we need to connect to peers
                         let nb_connection_to_try = {
                             let active_connections = manager.active_connections.read();
-                            let connection_to_try = active_connections.max_out_connections - active_connections.nb_out_connections;
-                            if connection_to_try <= 0 {
+                            let nb_connection_to_try = active_connections.max_out_connections - active_connections.nb_out_connections;
+                            if nb_connection_to_try == 0 {
                                 continue;
                             }
-                           connection_to_try
+                            nb_connection_to_try
                         };
                         // Get the best peers
                         {
-                            let peer_db_read = peer_manager_handler.peer_db.read();
-                            let best_peers = peer_db_read.index_by_newest.iter().take(nb_connection_to_try as usize);
-                            for (_timestamp, peer_id) in best_peers {
-                                let peer_info = peer_db_read.peers.get(peer_id).unwrap();
+                            let peer_db_read = peer_management_handler.peer_db.read();
+                            let best_peers = peer_db_read.get_best_peers(nb_connection_to_try);
+                            for peer_id in best_peers {
+                                let peer_info = peer_db_read.peers.get(&peer_id).unwrap();
                                 if peer_info.last_announce.listeners.is_empty() {
                                     continue;
                                 }
                                 {
-                                    let active_connections = manager.active_connections.read();
-                                    if active_connections.connections.contains_key(peer_id) {
-                                        continue;
+                                    {
+                                        let active_connections = manager.active_connections.read();
+                                        if active_connections.connections.contains_key(&peer_id) {
+                                            continue;
+                                        }
                                     }
-                                }
-                                // We only manage TCP for now
-                                let (addr, _transport) = peer_info.last_announce.listeners.iter().next().unwrap();
-                                manager.try_connect(*addr, Duration::from_millis(200), &OutConnectionConfig::Tcp(Box::new(TcpOutConnectionConfig {}))).unwrap();
+                                    // We only manage TCP for now
+                                    let (addr, _transport) = peer_info.last_announce.listeners.iter().next().unwrap();
+                                    manager.try_connect(*addr, Duration::from_millis(200), &OutConnectionConfig::Tcp(Box::new(TcpOutConnectionConfig {}))).unwrap();
+                                };
                             };
-                        };
+                        }
                     }
                 }
             }
