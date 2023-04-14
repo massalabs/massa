@@ -671,43 +671,6 @@
 <a href="#671" id="671">671</a>
 <a href="#672" id="672">672</a>
 <a href="#673" id="673">673</a>
-<a href="#674" id="674">674</a>
-<a href="#675" id="675">675</a>
-<a href="#676" id="676">676</a>
-<a href="#677" id="677">677</a>
-<a href="#678" id="678">678</a>
-<a href="#679" id="679">679</a>
-<a href="#680" id="680">680</a>
-<a href="#681" id="681">681</a>
-<a href="#682" id="682">682</a>
-<a href="#683" id="683">683</a>
-<a href="#684" id="684">684</a>
-<a href="#685" id="685">685</a>
-<a href="#686" id="686">686</a>
-<a href="#687" id="687">687</a>
-<a href="#688" id="688">688</a>
-<a href="#689" id="689">689</a>
-<a href="#690" id="690">690</a>
-<a href="#691" id="691">691</a>
-<a href="#692" id="692">692</a>
-<a href="#693" id="693">693</a>
-<a href="#694" id="694">694</a>
-<a href="#695" id="695">695</a>
-<a href="#696" id="696">696</a>
-<a href="#697" id="697">697</a>
-<a href="#698" id="698">698</a>
-<a href="#699" id="699">699</a>
-<a href="#700" id="700">700</a>
-<a href="#701" id="701">701</a>
-<a href="#702" id="702">702</a>
-<a href="#703" id="703">703</a>
-<a href="#704" id="704">704</a>
-<a href="#705" id="705">705</a>
-<a href="#706" id="706">706</a>
-<a href="#707" id="707">707</a>
-<a href="#708" id="708">708</a>
-<a href="#709" id="709">709</a>
-<a href="#710" id="710">710</a>
 </pre><pre class="rust"><code><span class="doccomment">//! Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 //! This file defines the structure representing an asynchronous message
@@ -723,8 +686,8 @@
     slot::Slot,
 };
 <span class="kw">use </span>massa_serialization::{
-    BoolDeserializer, BoolSerializer, Deserializer, OptionDeserializer, OptionSerializer,
-    SerializeError, Serializer, U64VarIntDeserializer, U64VarIntSerializer,
+    Deserializer, OptionDeserializer, OptionSerializer, SerializeError, Serializer,
+    U64VarIntDeserializer, U64VarIntSerializer,
 };
 <span class="kw">use </span>nom::error::{context, ContextError, ParseError};
 <span class="kw">use </span>nom::multi::length_data;
@@ -887,8 +850,7 @@
     </span><span class="kw">pub </span>datastore_key: <span class="prelude-ty">Option</span>&lt;Vec&lt;u8&gt;&gt;,
 }
 
-<span class="attr">#[derive(Clone)]
-</span><span class="doccomment">/// Serializer for a trigger for an asynchronous message
+<span class="doccomment">/// Serializer for a trigger for an asynchronous message
 </span><span class="kw">struct </span>AsyncMessageTriggerSerializer {
     address_serializer: AddressSerializer,
     key_serializer: OptionSerializer&lt;Vec&lt;u8&gt;, VecU8Serializer&gt;,
@@ -916,8 +878,7 @@
     }
 }
 
-<span class="attr">#[derive(Clone)]
-</span><span class="doccomment">/// Deserializer for a trigger for an asynchronous message
+<span class="doccomment">/// Deserializer for a trigger for an asynchronous message
 </span><span class="kw">struct </span>AsyncMessageTriggerDeserializer {
     address_deserializer: AddressDeserializer,
     key_serializer: OptionDeserializer&lt;Vec&lt;u8&gt;, VecU8Deserializer&gt;,
@@ -1026,9 +987,8 @@
         validity_end: Slot,
         data: Vec&lt;u8&gt;,
         trigger: <span class="prelude-ty">Option</span>&lt;AsyncMessageTrigger&gt;,
-        can_be_executed: <span class="prelude-ty">Option</span>&lt;bool&gt;,
     ) -&gt; <span class="self">Self </span>{
-        <span class="kw">let </span>async_message_ser = AsyncMessageSerializer::new(can_be_executed.is_some());
+        <span class="kw">let </span>async_message_ser = AsyncMessageSerializer::new();
         <span class="kw">let </span><span class="kw-2">mut </span>buffer = Vec::new();
         <span class="kw">let </span><span class="kw-2">mut </span>message = AsyncMessage {
             emission_slot,
@@ -1042,7 +1002,7 @@
             validity_start,
             validity_end,
             data,
-            can_be_executed: can_be_executed.unwrap_or(trigger.is_none()),
+            can_be_executed: trigger.is_none(),
             trigger,
             <span class="comment">// placeholder hash to serialize the message, replaced below
             </span>hash: Hash::from_bytes(<span class="kw-2">&amp;</span>[<span class="number">0</span>; <span class="number">32</span>]),
@@ -1065,8 +1025,8 @@
     }
 
     <span class="doccomment">/// Recompute the hash of the message. Must be used each time we modify one field
-    </span><span class="kw">pub fn </span>compute_hash(<span class="kw-2">&amp;mut </span><span class="self">self</span>, for_db: bool) {
-        <span class="kw">let </span>async_message_ser = AsyncMessageSerializer::new(for_db);
+    </span><span class="kw">pub fn </span>compute_hash(<span class="kw-2">&amp;mut </span><span class="self">self</span>) {
+        <span class="kw">let </span>async_message_ser = AsyncMessageSerializer::new();
         <span class="kw">let </span><span class="kw-2">mut </span>buffer = Vec::new();
         async_message_ser.serialize(<span class="self">self</span>, <span class="kw-2">&amp;mut </span>buffer).expect(
             <span class="string">&quot;critical: asynchronous message serialization should never fail in recompute hash&quot;</span>,
@@ -1075,20 +1035,17 @@
     }
 }
 
-<span class="attr">#[derive(Clone)]
-</span><span class="kw">pub struct </span>AsyncMessageSerializer {
+<span class="kw">pub struct </span>AsyncMessageSerializer {
     slot_serializer: SlotSerializer,
     amount_serializer: AmountSerializer,
     u64_serializer: U64VarIntSerializer,
     vec_u8_serializer: VecU8Serializer,
     address_serializer: AddressSerializer,
     trigger_serializer: OptionSerializer&lt;AsyncMessageTrigger, AsyncMessageTriggerSerializer&gt;,
-    bool_serializer: BoolSerializer,
-    for_db: bool,
 }
 
 <span class="kw">impl </span>AsyncMessageSerializer {
-    <span class="kw">pub fn </span>new(for_db: bool) -&gt; <span class="self">Self </span>{
+    <span class="kw">pub fn </span>new() -&gt; <span class="self">Self </span>{
         <span class="self">Self </span>{
             slot_serializer: SlotSerializer::new(),
             amount_serializer: AmountSerializer::new(),
@@ -1096,15 +1053,13 @@
             vec_u8_serializer: VecU8Serializer::new(),
             address_serializer: AddressSerializer::new(),
             trigger_serializer: OptionSerializer::new(AsyncMessageTriggerSerializer::new()),
-            bool_serializer: BoolSerializer::new(),
-            for_db,
         }
     }
 }
 
 <span class="kw">impl </span>Default <span class="kw">for </span>AsyncMessageSerializer {
     <span class="kw">fn </span>default() -&gt; <span class="self">Self </span>{
-        <span class="self">Self</span>::new(<span class="bool-val">false</span>)
+        <span class="self">Self</span>::new()
     }
 }
 
@@ -1166,16 +1121,11 @@
             .serialize(<span class="kw-2">&amp;</span>value.validity_end, buffer)<span class="question-mark">?</span>;
         <span class="self">self</span>.vec_u8_serializer.serialize(<span class="kw-2">&amp;</span>value.data, buffer)<span class="question-mark">?</span>;
         <span class="self">self</span>.trigger_serializer.serialize(<span class="kw-2">&amp;</span>value.trigger, buffer)<span class="question-mark">?</span>;
-        <span class="kw">if </span><span class="self">self</span>.for_db {
-            <span class="self">self</span>.bool_serializer
-                .serialize(<span class="kw-2">&amp;</span>value.can_be_executed, buffer)<span class="question-mark">?</span>;
-        }
         <span class="prelude-val">Ok</span>(())
     }
 }
 
-<span class="attr">#[derive(Clone)]
-</span><span class="kw">pub struct </span>AsyncMessageDeserializer {
+<span class="kw">pub struct </span>AsyncMessageDeserializer {
     slot_deserializer: SlotDeserializer,
     amount_deserializer: AmountDeserializer,
     emission_index_deserializer: U64VarIntDeserializer,
@@ -1183,17 +1133,10 @@
     data_deserializer: VecU8Deserializer,
     address_deserializer: AddressDeserializer,
     trigger_deserializer: OptionDeserializer&lt;AsyncMessageTrigger, AsyncMessageTriggerDeserializer&gt;,
-    bool_deserializer: BoolDeserializer,
-    for_db: bool,
 }
 
 <span class="kw">impl </span>AsyncMessageDeserializer {
-    <span class="kw">pub fn </span>new(
-        thread_count: u8,
-        max_async_message_data: u64,
-        max_key_length: u32,
-        for_db: bool,
-    ) -&gt; <span class="self">Self </span>{
+    <span class="kw">pub fn </span>new(thread_count: u8, max_async_message_data: u64, max_key_length: u32) -&gt; <span class="self">Self </span>{
         <span class="self">Self </span>{
             slot_deserializer: SlotDeserializer::new(
                 (Included(<span class="number">0</span>), Included(u64::MAX)),
@@ -1216,8 +1159,6 @@
             trigger_deserializer: OptionDeserializer::new(AsyncMessageTriggerDeserializer::new(
                 max_key_length,
             )),
-            bool_deserializer: BoolDeserializer::new(),
-            for_db,
         }
     }
 }
@@ -1315,13 +1256,6 @@
                 context(<span class="string">&quot;Failed filter deserialization&quot;</span>, |input| {
                     <span class="self">self</span>.trigger_deserializer.deserialize(input)
                 }),
-                context(<span class="string">&quot;Failed can_be_executed deserialization&quot;</span>, |input| {
-                    <span class="kw">if </span><span class="self">self</span>.for_db {
-                        <span class="self">self</span>.bool_deserializer.deserialize(input)
-                    } <span class="kw">else </span>{
-                        <span class="prelude-val">Ok</span>((input, <span class="bool-val">false</span>))
-                    }
-                }),
             )),
         )
         .map(
@@ -1338,7 +1272,6 @@
                 validity_end,
                 data,
                 filter,
-                can_be_executed,
             )| {
                 AsyncMessage::new_with_hash(
                     emission_slot,
@@ -1353,11 +1286,6 @@
                     validity_end,
                     data,
                     filter,
-                    <span class="kw">if </span><span class="self">self</span>.for_db {
-                        <span class="prelude-val">Some</span>(can_be_executed)
-                    } <span class="kw">else </span>{
-                        <span class="prelude-val">None
-                    </span>},
                 )
             },
         )
@@ -1399,9 +1327,8 @@
                     .unwrap(),
                 datastore_key: <span class="prelude-val">None</span>,
             }),
-            <span class="prelude-val">None</span>,
         );
-        <span class="kw">let </span>message_serializer = AsyncMessageSerializer::new(<span class="bool-val">false</span>);
+        <span class="kw">let </span>message_serializer = AsyncMessageSerializer::new();
         <span class="kw">let </span><span class="kw-2">mut </span>serialized = Vec::new();
         message_serializer
             .serialize(<span class="kw-2">&amp;</span>message, <span class="kw-2">&amp;mut </span>serialized)
@@ -1410,7 +1337,6 @@
             THREAD_COUNT,
             MAX_ASYNC_MESSAGE_DATA,
             MAX_DATASTORE_KEY_LENGTH <span class="kw">as </span>u32,
-            <span class="bool-val">false</span>,
         );
         serialized[<span class="number">1</span>] = <span class="number">50</span>;
         message_deserializer
