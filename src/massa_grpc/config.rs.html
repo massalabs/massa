@@ -83,6 +83,8 @@
 <a href="#83" id="83">83</a>
 <a href="#84" id="84">84</a>
 <a href="#85" id="85">85</a>
+<a href="#86" id="86">86</a>
+<a href="#87" id="87">87</a>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2023 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="kw">use </span>massa_time::MassaTime;
@@ -159,6 +161,8 @@
     </span><span class="kw">pub </span>genesis_timestamp: MassaTime,
     <span class="doccomment">/// t0
     </span><span class="kw">pub </span>t0: MassaTime,
+    <span class="doccomment">/// periods per cycle
+    </span><span class="kw">pub </span>periods_per_cycle: u64,
     <span class="doccomment">/// limits the maximum size of streaming channel
     </span><span class="kw">pub </span>max_channel_size: usize,
     <span class="doccomment">/// when looking for next draw we want to look at max `draw_lookahead_period_count`

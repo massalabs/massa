@@ -427,7 +427,7 @@
                 </span><span class="kw">if </span><span class="self">self</span>.config.broadcast_enabled {
                     <span class="kw">if let </span><span class="prelude-val">Err</span>(err) = <span class="self">self</span>.channels.operation_sender.send(op.clone()) {
                         <span class="macro">trace!</span>(
-                            <span class="string">&quot;error trying to broadcast operation with id {} due to: {}&quot;</span>,
+                            <span class="string">&quot;error, failed to broadcast operation with id {} due to: {}&quot;</span>,
                             op.id.clone(),
                             err
                         );

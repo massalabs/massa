@@ -525,35 +525,6 @@
 <a href="#525" id="525">525</a>
 <a href="#526" id="526">526</a>
 <a href="#527" id="527">527</a>
-<a href="#528" id="528">528</a>
-<a href="#529" id="529">529</a>
-<a href="#530" id="530">530</a>
-<a href="#531" id="531">531</a>
-<a href="#532" id="532">532</a>
-<a href="#533" id="533">533</a>
-<a href="#534" id="534">534</a>
-<a href="#535" id="535">535</a>
-<a href="#536" id="536">536</a>
-<a href="#537" id="537">537</a>
-<a href="#538" id="538">538</a>
-<a href="#539" id="539">539</a>
-<a href="#540" id="540">540</a>
-<a href="#541" id="541">541</a>
-<a href="#542" id="542">542</a>
-<a href="#543" id="543">543</a>
-<a href="#544" id="544">544</a>
-<a href="#545" id="545">545</a>
-<a href="#546" id="546">546</a>
-<a href="#547" id="547">547</a>
-<a href="#548" id="548">548</a>
-<a href="#549" id="549">549</a>
-<a href="#550" id="550">550</a>
-<a href="#551" id="551">551</a>
-<a href="#552" id="552">552</a>
-<a href="#553" id="553">553</a>
-<a href="#554" id="554">554</a>
-<a href="#555" id="555">555</a>
-<a href="#556" id="556">556</a>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="kw">use </span><span class="kw">crate</span>::active_history::ActiveHistory;
@@ -566,7 +537,6 @@
 <span class="kw">use </span>massa_pos_exports::{DeferredCredits, PoSChanges, ProductionStats};
 <span class="kw">use </span>num::rational::Ratio;
 <span class="kw">use </span>parking_lot::RwLock;
-<span class="kw">use </span>std::cmp::min;
 <span class="kw">use </span>std::collections::{BTreeMap, HashMap};
 <span class="kw">use </span>std::sync::Arc;
 
@@ -703,34 +673,6 @@
             .insert(target_slot, <span class="kw-2">*</span>seller_addr, new_deferred_credits);
 
         <span class="prelude-val">Ok</span>(())
-    }
-
-    <span class="doccomment">/// Try to slash `roll_count` rolls from the seller address. If not enough roll, slash
-    /// the available amount and return the value.
-    ///
-    /// # Arguments
-    /// * `addr`: address to sell the rolls from
-    /// * `roll_count`: number of rolls to sell
-    </span><span class="kw">pub fn </span>try_slash_rolls(
-        <span class="kw-2">&amp;mut </span><span class="self">self</span>,
-        addr: <span class="kw-2">&amp;</span>Address,
-        roll_count: u64,
-    ) -&gt; <span class="prelude-ty">Result</span>&lt;u64, ExecutionError&gt; {
-        <span class="comment">// fetch the roll count
-        </span><span class="kw">let </span>owned_count = <span class="self">self</span>.get_rolls(addr);
-        <span class="kw">let </span>roll_to_slash = min(roll_count, owned_count);
-
-        <span class="comment">// remove the rolls
-        </span><span class="kw">let </span>current_rolls = <span class="self">self
-            </span>.added_changes
-            .roll_changes
-            .get_mut(addr)
-            .ok_or_else(|| {
-                ExecutionError::RuntimeError(<span class="macro">format!</span>(<span class="string">&quot;Cannot get roll changes for addr: {}&quot;</span>, addr))
-            })<span class="question-mark">?</span>;
-
-        <span class="kw-2">*</span>current_rolls = current_rolls.saturating_sub(roll_to_slash);
-        <span class="prelude-val">Ok</span>(roll_to_slash)
     }
 
     <span class="doccomment">/// Update production statistics of an address.
