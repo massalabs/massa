@@ -75,7 +75,7 @@ impl PoolController for PoolControllerImpl {
     /// Asynchronously add endorsements to pool. Simply print a warning on failure.
     fn add_endorsements(&mut self, endorsements: Storage) {
         match self
-            .endorsements_input_sender
+            .denunciations_input_sender
             .try_send(Command::AddItems(endorsements.clone()))
         {
             Err(TrySendError::Disconnected(_)) => {
@@ -88,7 +88,7 @@ impl PoolController for PoolControllerImpl {
         }
 
         match self
-            .denunciations_input_sender
+            .endorsements_input_sender
             .try_send(Command::AddItems(endorsements))
         {
             Err(TrySendError::Disconnected(_)) => {
@@ -99,7 +99,6 @@ impl PoolController for PoolControllerImpl {
             }
             Ok(_) => {}
         }
-        
     }
 
     /// Asynchronously notify of new final consensus periods. Simply print a warning on failure.
