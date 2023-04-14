@@ -1204,50 +1204,6 @@
 <a href="#1204" id="1204">1204</a>
 <a href="#1205" id="1205">1205</a>
 <a href="#1206" id="1206">1206</a>
-<a href="#1207" id="1207">1207</a>
-<a href="#1208" id="1208">1208</a>
-<a href="#1209" id="1209">1209</a>
-<a href="#1210" id="1210">1210</a>
-<a href="#1211" id="1211">1211</a>
-<a href="#1212" id="1212">1212</a>
-<a href="#1213" id="1213">1213</a>
-<a href="#1214" id="1214">1214</a>
-<a href="#1215" id="1215">1215</a>
-<a href="#1216" id="1216">1216</a>
-<a href="#1217" id="1217">1217</a>
-<a href="#1218" id="1218">1218</a>
-<a href="#1219" id="1219">1219</a>
-<a href="#1220" id="1220">1220</a>
-<a href="#1221" id="1221">1221</a>
-<a href="#1222" id="1222">1222</a>
-<a href="#1223" id="1223">1223</a>
-<a href="#1224" id="1224">1224</a>
-<a href="#1225" id="1225">1225</a>
-<a href="#1226" id="1226">1226</a>
-<a href="#1227" id="1227">1227</a>
-<a href="#1228" id="1228">1228</a>
-<a href="#1229" id="1229">1229</a>
-<a href="#1230" id="1230">1230</a>
-<a href="#1231" id="1231">1231</a>
-<a href="#1232" id="1232">1232</a>
-<a href="#1233" id="1233">1233</a>
-<a href="#1234" id="1234">1234</a>
-<a href="#1235" id="1235">1235</a>
-<a href="#1236" id="1236">1236</a>
-<a href="#1237" id="1237">1237</a>
-<a href="#1238" id="1238">1238</a>
-<a href="#1239" id="1239">1239</a>
-<a href="#1240" id="1240">1240</a>
-<a href="#1241" id="1241">1241</a>
-<a href="#1242" id="1242">1242</a>
-<a href="#1243" id="1243">1243</a>
-<a href="#1244" id="1244">1244</a>
-<a href="#1245" id="1245">1245</a>
-<a href="#1246" id="1246">1246</a>
-<a href="#1247" id="1247">1247</a>
-<a href="#1248" id="1248">1248</a>
-<a href="#1249" id="1249">1249</a>
-<a href="#1250" id="1250">1250</a>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 </span><span class="doccomment">/// An overview of what is a Denunciation and what it is used for can be found here
 /// https://github.com/massalabs/massa/discussions/3113
@@ -1269,6 +1225,8 @@
     Endorsement, EndorsementDenunciationData, EndorsementSerializer, SecureShareEndorsement,
 };
 <span class="kw">use </span><span class="kw">crate</span>::slot::{Slot, SlotDeserializer, SlotSerializer};
+
+<span class="kw">use </span><span class="kw">crate</span>::prehash::PreHashed;
 
 <span class="kw">use </span>massa_hash::{Hash, HashDeserializer, HashSerializer};
 <span class="kw">use </span>massa_serialization::{
@@ -1973,12 +1931,12 @@
 </span><span class="attr">#[derive(Debug, Clone, Hash, PartialEq, Eq)]
 </span><span class="doccomment">/// Index for Denunciations in collections (e.g. like a HashMap...)
 </span><span class="kw">pub enum </span>DenunciationIndex {
-    <span class="doccomment">/// Variant for Block header denunciation index
+    <span class="doccomment">/// Variant for Block header denunciation
     </span>BlockHeader {
         <span class="doccomment">/// de slot
         </span>slot: Slot,
     },
-    <span class="doccomment">/// Variant for Endorsement denunciation index
+    <span class="doccomment">/// Variant for Endorsement denunciation
     </span>Endorsement {
         <span class="doccomment">/// de slot
         </span>slot: Slot,
@@ -1987,18 +1945,9 @@
     },
 }
 
-<span class="kw">impl </span>DenunciationIndex {
-    <span class="doccomment">/// Get field: slot
-    </span><span class="kw">pub fn </span>get_slot(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>Slot {
-        <span class="kw">match </span><span class="self">self </span>{
-            DenunciationIndex::BlockHeader { slot } =&gt; slot,
-            DenunciationIndex::Endorsement { slot, .. } =&gt; slot,
-        }
-    }
-}
+<span class="kw">impl </span>PreHashed <span class="kw">for </span>DenunciationIndex {}
 
-<span class="doccomment">/// Create a `DenunciationIndex` from a `Denunciation`
-</span><span class="kw">impl </span>From&lt;<span class="kw-2">&amp;</span>Denunciation&gt; <span class="kw">for </span>DenunciationIndex {
+<span class="kw">impl </span>From&lt;<span class="kw-2">&amp;</span>Denunciation&gt; <span class="kw">for </span>DenunciationIndex {
     <span class="kw">fn </span>from(value: <span class="kw-2">&amp;</span>Denunciation) -&gt; <span class="self">Self </span>{
         <span class="kw">match </span>value {
             Denunciation::Endorsement(endo_de) =&gt; DenunciationIndex::Endorsement {
@@ -2012,26 +1961,11 @@
     }
 }
 
-<span class="doccomment">/// Create a `DenunciationIndex` from a `DenunciationPrecursor`
-</span><span class="kw">impl </span>From&lt;<span class="kw-2">&amp;</span>DenunciationPrecursor&gt; <span class="kw">for </span>DenunciationIndex {
-    <span class="kw">fn </span>from(value: <span class="kw-2">&amp;</span>DenunciationPrecursor) -&gt; <span class="self">Self </span>{
-        <span class="kw">match </span>value {
-            DenunciationPrecursor::Endorsement(de_p) =&gt; DenunciationIndex::Endorsement {
-                slot: de_p.slot,
-                index: de_p.index,
-            },
-            DenunciationPrecursor::BlockHeader(de_p) =&gt; {
-                DenunciationIndex::BlockHeader { slot: de_p.slot }
-            }
-        }
-    }
-}
-
 <span class="comment">// End Denunciation Index
 
 // Denunciation interest
 
-</span><span class="doccomment">/// DenunciationPrecursor variant for endorsement
+</span><span class="doccomment">/// DenunciationInterest variant for endorsement
 </span><span class="attr">#[derive(Debug, Clone)]
 </span><span class="kw">pub struct </span>EndorsementDenunciationPrecursor {
     <span class="doccomment">/// secure share endorsement public key
@@ -2040,23 +1974,19 @@
     </span><span class="kw">pub </span>slot: Slot,
     <span class="doccomment">/// endorsement index
     </span><span class="kw">pub </span>index: u32,
-    <span class="doccomment">/// secured header partial hash
-    </span>hash: Hash,
-    <span class="doccomment">/// secured header signature
-    </span>signature: Signature,
+    hash: Hash,
+    signature: Signature,
 }
 
-<span class="doccomment">/// DenunciationPrecursor variant for block header
+<span class="doccomment">/// DenunciationInterest variant for block header
 </span><span class="attr">#[derive(Debug, Clone)]
 </span><span class="kw">pub struct </span>BlockHeaderDenunciationPrecursor {
     <span class="doccomment">/// secured header public key
     </span><span class="kw">pub </span>public_key: PublicKey,
     <span class="doccomment">/// block header slot
     </span><span class="kw">pub </span>slot: Slot,
-    <span class="doccomment">/// secured header partial hash
-    </span>hash: Hash,
-    <span class="doccomment">/// secured header signature
-    </span>signature: Signature,
+    hash: Hash,
+    signature: Signature,
 }
 
 <span class="doccomment">/// Lightweight data for Denunciation creation
@@ -2067,24 +1997,6 @@
     </span>Endorsement(EndorsementDenunciationPrecursor),
     <span class="doccomment">/// Block header variant
     </span>BlockHeader(BlockHeaderDenunciationPrecursor),
-}
-
-<span class="kw">impl </span>DenunciationPrecursor {
-    <span class="doccomment">/// Get field: slot
-    </span><span class="kw">pub fn </span>get_slot(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>Slot {
-        <span class="kw">match </span><span class="self">self </span>{
-            DenunciationPrecursor::Endorsement(endo_de_p) =&gt; <span class="kw-2">&amp;</span>endo_de_p.slot,
-            DenunciationPrecursor::BlockHeader(blkh_de_p) =&gt; <span class="kw-2">&amp;</span>blkh_de_p.slot,
-        }
-    }
-
-    <span class="doccomment">/// Get field: pub key
-    </span><span class="kw">pub fn </span>get_public_key(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>PublicKey {
-        <span class="kw">match </span><span class="self">self </span>{
-            DenunciationPrecursor::Endorsement(endo_de_p) =&gt; <span class="kw-2">&amp;</span>endo_de_p.public_key,
-            DenunciationPrecursor::BlockHeader(blkh_de_p) =&gt; <span class="kw-2">&amp;</span>blkh_de_p.public_key,
-        }
-    }
 }
 
 <span class="kw">impl </span>TryFrom&lt;<span class="kw-2">&amp;</span>SecureShareEndorsement&gt; <span class="kw">for </span>DenunciationPrecursor {
@@ -2217,7 +2129,7 @@
                 }))
             }
             <span class="kw">_ </span>=&gt; {
-                <span class="comment">// Different enum variants - this is invalid
+                <span class="comment">// Different enum variant - this is invalid
                 </span><span class="prelude-val">Err</span>(DenunciationError::InvalidInput)
             }
         }

@@ -74,24 +74,71 @@
 <a href="#74" id="74">74</a>
 <a href="#75" id="75">75</a>
 <a href="#76" id="76">76</a>
+<a href="#77" id="77">77</a>
+<a href="#78" id="78">78</a>
+<a href="#79" id="79">79</a>
+<a href="#80" id="80">80</a>
+<a href="#81" id="81">81</a>
+<a href="#82" id="82">82</a>
+<a href="#83" id="83">83</a>
+<a href="#84" id="84">84</a>
+<a href="#85" id="85">85</a>
+<a href="#86" id="86">86</a>
+<a href="#87" id="87">87</a>
+<a href="#88" id="88">88</a>
+<a href="#89" id="89">89</a>
+<a href="#90" id="90">90</a>
+<a href="#91" id="91">91</a>
+<a href="#92" id="92">92</a>
+<a href="#93" id="93">93</a>
+<a href="#94" id="94">94</a>
+<a href="#95" id="95">95</a>
+<a href="#96" id="96">96</a>
+<a href="#97" id="97">97</a>
+<a href="#98" id="98">98</a>
+<a href="#99" id="99">99</a>
+<a href="#100" id="100">100</a>
+<a href="#101" id="101">101</a>
+<a href="#102" id="102">102</a>
+<a href="#103" id="103">103</a>
+<a href="#104" id="104">104</a>
+<a href="#105" id="105">105</a>
+<a href="#106" id="106">106</a>
+<a href="#107" id="107">107</a>
+<a href="#108" id="108">108</a>
+<a href="#109" id="109">109</a>
+<a href="#110" id="110">110</a>
+<a href="#111" id="111">111</a>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
-</span><span class="kw">use </span>std::{collections::BTreeMap, str::FromStr};
+</span><span class="kw">use </span>std::{collections::BTreeMap, str::FromStr, sync::Arc};
 
-<span class="kw">use crate</span>::{AsyncMessage, AsyncMessageId, AsyncPool, AsyncPoolConfig};
-<span class="kw">use </span>massa_models::{address::Address, amount::Amount, config::THREAD_COUNT, slot::Slot};
+<span class="kw">use crate</span>::{
+    pool::ASYNC_POOL_CF, AsyncMessage, AsyncMessageDeserializer, AsyncMessageId, AsyncPool,
+    AsyncPoolConfig,
+};
+<span class="kw">use </span>massa_models::{
+    address::Address,
+    amount::Amount,
+    config::{MAX_ASYNC_MESSAGE_DATA, MAX_DATASTORE_KEY_LENGTH, THREAD_COUNT},
+    slot::Slot,
+};
+<span class="kw">use </span>massa_serialization::{DeserializeError, Deserializer};
 <span class="kw">use </span>massa_signature::KeyPair;
+<span class="kw">use </span>parking_lot::RwLock;
 <span class="kw">use </span>rand::Rng;
+<span class="kw">use </span>rocksdb::{IteratorMode, DB};
 
 <span class="doccomment">/// This file defines tools to test the asynchronous pool bootstrap
 
 /// Creates a `AsyncPool` from pre-set values
 </span><span class="kw">pub fn </span>create_async_pool(
+    db: Arc&lt;RwLock&lt;DB&gt;&gt;,
     config: AsyncPoolConfig,
     messages: BTreeMap&lt;AsyncMessageId, AsyncMessage&gt;,
 ) -&gt; AsyncPool {
-    <span class="kw">let </span><span class="kw-2">mut </span>async_pool = AsyncPool::new(config);
-    async_pool.messages = messages;
+    <span class="kw">let </span><span class="kw-2">mut </span>async_pool = AsyncPool::new(config, db);
+    async_pool.set_pool_part(messages);
     async_pool
 }
 
@@ -100,10 +147,10 @@
     Address::from_public_key(<span class="kw-2">&amp;</span>keypair.get_public_key())
 }
 
-<span class="kw">pub fn </span>get_random_message(fee: <span class="prelude-ty">Option</span>&lt;Amount&gt;) -&gt; AsyncMessage {
+<span class="kw">pub fn </span>get_random_message(fee: <span class="prelude-ty">Option</span>&lt;Amount&gt;, thread_count: u8) -&gt; AsyncMessage {
     <span class="kw">let </span><span class="kw-2">mut </span>rng = rand::thread_rng();
     AsyncMessage::new_with_hash(
-        Slot::new(rng.gen_range(<span class="number">0</span>..<span class="number">100_000</span>), rng.gen_range(<span class="number">0</span>..THREAD_COUNT)),
+        Slot::new(rng.gen_range(<span class="number">0</span>..<span class="number">100_000</span>), rng.gen_range(<span class="number">0</span>..thread_count)),
         <span class="number">0</span>,
         get_random_address(),
         get_random_address(),
@@ -114,6 +161,7 @@
         Slot::new(<span class="number">2</span>, <span class="number">0</span>),
         Slot::new(<span class="number">4</span>, <span class="number">0</span>),
         <span class="macro">vec!</span>[<span class="number">1</span>, <span class="number">2</span>, <span class="number">3</span>],
+        <span class="prelude-val">None</span>,
         <span class="prelude-val">None</span>,
     )
 }
@@ -141,13 +189,35 @@
 
 <span class="doccomment">/// asserts that two `AsyncPool` are equal
 </span><span class="kw">pub fn </span>assert_eq_async_pool_bootstrap_state(v1: <span class="kw-2">&amp;</span>AsyncPool, v2: <span class="kw-2">&amp;</span>AsyncPool) {
+    <span class="kw">let </span>message_deserializer = AsyncMessageDeserializer::new(
+        THREAD_COUNT,
+        MAX_ASYNC_MESSAGE_DATA,
+        MAX_DATASTORE_KEY_LENGTH <span class="kw">as </span>u32,
+        <span class="bool-val">false</span>,
+    );
+    <span class="kw">let </span>db1 = v1.db.read();
+    <span class="kw">let </span>db2 = v2.db.read();
+    <span class="kw">let </span>handle1 = db1.cf_handle(ASYNC_POOL_CF).unwrap();
+    <span class="kw">let </span>handle2 = db2.cf_handle(ASYNC_POOL_CF).unwrap();
     <span class="macro">assert_eq!</span>(
-        v1.messages.len(),
-        v2.messages.len(),
+        db1.iterator_cf(handle1, IteratorMode::Start).count(),
+        db2.iterator_cf(handle2, IteratorMode::Start).count(),
         <span class="string">&quot;message count mismatch&quot;
     </span>);
-    <span class="kw">for </span>(val1, val2) <span class="kw">in </span>v1.messages.iter().zip(v2.messages.iter()) {
-        assert_eq_async_message(val1.<span class="number">1</span>, val2.<span class="number">1</span>);
+    <span class="kw">for </span>(val1, val2) <span class="kw">in </span>db1
+        .iterator_cf(handle1, IteratorMode::Start)
+        .zip(db2.iterator_cf(handle2, IteratorMode::Start))
+    {
+        <span class="kw">let </span>val1 = val1.unwrap();
+        <span class="kw">let </span>val2 = val2.unwrap();
+
+        <span class="kw">let </span>(_rest, message1) = message_deserializer
+            .deserialize::&lt;DeserializeError&gt;(<span class="kw-2">&amp;</span>val1.<span class="number">1</span>)
+            .unwrap();
+        <span class="kw">let </span>(_rest, message2) = message_deserializer
+            .deserialize::&lt;DeserializeError&gt;(<span class="kw-2">&amp;</span>val2.<span class="number">1</span>)
+            .unwrap();
+        assert_eq_async_message(<span class="kw-2">&amp;</span>message1, <span class="kw-2">&amp;</span>message2);
     }
 }
 </code></pre></div>
