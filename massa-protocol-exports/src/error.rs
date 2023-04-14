@@ -49,6 +49,13 @@ pub enum ProtocolError {
     ContainerInconsistencyError(String),
     /// Invalid operation error: {0}
     InvalidOperationError(String),
+    /// Incompatible newtork version: local current is {current} received is {received}
+    IncompatibleNetworkVersion {
+        /// local current version
+        current: u32,
+        /// received version from incoming header
+        received: u32,
+    },
 }
 
 #[derive(Debug)]

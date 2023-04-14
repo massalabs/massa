@@ -3008,6 +3008,7 @@ dependencies = [
  "massa_signature",
  "massa_storage",
  "massa_time",
+ "massa_versioning_worker",
  "rayon",
  "serde_json",
  "serial_test 1.0.0",

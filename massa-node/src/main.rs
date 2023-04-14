@@ -600,6 +600,7 @@ async fn launch(
         consensus_controller.clone(),
         pool_controller.clone(),
         shared_storage.clone(),
+        mip_store.clone(),
     )
     .await
     .expect("could not start protocol controller");

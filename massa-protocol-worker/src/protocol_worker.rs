@@ -28,6 +28,7 @@ use massa_protocol_exports::{
 };
 use massa_storage::Storage;
 use massa_time::{MassaTime, TimeError};
+use massa_versioning_worker::versioning::MipStore;
 use std::collections::{HashMap, HashSet};
 use std::mem;
 use std::pin::Pin;
@@ -55,6 +56,7 @@ pub async fn start_protocol_controller(
     consensus_controller: Box<dyn ConsensusController>,
     pool_controller: Box<dyn PoolController>,
     storage: Storage,
+    mip_store: MipStore,
 ) -> Result<ProtocolManager, ProtocolError> {
     debug!("starting protocol controller");
 
@@ -73,6 +75,7 @@ pub async fn start_protocol_controller(
             consensus_controller,
             pool_controller,
             storage,
+            mip_store,
         )
         .run_loop()
         .await;
@@ -151,6 +154,8 @@ pub struct ProtocolWorker {
     pub(crate) storage: Storage,
     /// Operations to announce at the next interval.
     operations_to_announce: Vec<OperationId>,
+    /// Versioning manager
+    pub(crate) mip_store: MipStore,
 }
 
 /// channels used by the protocol worker
@@ -185,6 +190,7 @@ impl ProtocolWorker {
         consensus_controller: Box<dyn ConsensusController>,
         pool_controller: Box<dyn PoolController>,
         storage: Storage,
+        mip_store: MipStore,
     ) -> ProtocolWorker {
         ProtocolWorker {
             config,
@@ -207,6 +213,7 @@ impl ProtocolWorker {
             operations_to_announce: Vec::with_capacity(
                 config.operation_announcement_buffer_capacity,
             ),
+            mip_store,
         }
     }
 

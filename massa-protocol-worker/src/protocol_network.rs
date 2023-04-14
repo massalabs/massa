@@ -95,6 +95,7 @@ impl ProtocolWorker {
                 header,
             } => {
                 massa_trace!(BLOCK_HEADER, { "node": source_node_id, "header": header});
+                self.check_network_version_compatibility(&header)?;
                 if let Some((block_id, is_new)) =
                     self.note_header_from_node(&header, &source_node_id).await?
                 {
@@ -232,6 +233,21 @@ impl ProtocolWorker {
         total
     }
 
+    /// Check if the incoming header network version is compatible with the current node
+    fn check_network_version_compatibility(
+        &self,
+        header: &SecuredHeader,
+    ) -> Result<(), ProtocolError> {
+        if header.content.current_version != self.mip_store.get_network_version_current() {
+            Err(ProtocolError::IncompatibleNetworkVersion {
+                current: self.mip_store.get_network_version_current(),
+                received: header.content.current_version,
+            })
+        } else {
+            Ok(())
+        }
+    }
+
     /// On block header received from a node.
     /// If the header is new, we propagate it to the consensus.
     /// We pass the state of `block_wishlist` to ask for information about the block.
@@ -241,6 +257,7 @@ impl ProtocolWorker {
         block_id: BlockId,
         header: SecuredHeader,
     ) -> Result<(), ProtocolError> {
+        self.check_network_version_compatibility(&header)?;
         if let Some(info) = self.block_wishlist.get(&block_id) {
             if info.header.is_some() {
                 warn!(
