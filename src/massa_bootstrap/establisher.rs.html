@@ -73,6 +73,12 @@
 <a href="#73" id="73">73</a>
 <a href="#74" id="74">74</a>
 <a href="#75" id="75">75</a>
+<a href="#76" id="76">76</a>
+<a href="#77" id="77">77</a>
+<a href="#78" id="78">78</a>
+<a href="#79" id="79">79</a>
+<a href="#80" id="80">80</a>
+<a href="#81" id="81">81</a>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 </span><span class="kw">use </span>massa_time::MassaTime;
 <span class="kw">use </span>std::{
@@ -80,22 +86,20 @@
     net::{SocketAddr, TcpListener, TcpStream},
 };
 
-<span class="doccomment">/// duplex connection
-</span><span class="kw">pub trait </span>Duplex:
-    Send + tokio::io::AsyncReadExt + tokio::io::AsyncWriteExt + std::marker::Unpin
-{
-}
-
-<span class="kw">impl </span>Duplex <span class="kw">for </span>tokio::net::TcpStream {}
-
 <span class="doccomment">/// Specifies a common interface that can be used by standard, or mockers
+</span><span class="attr">#[cfg_attr(test, mockall::automock)]
 </span><span class="kw">pub trait </span>BSListener {
     <span class="kw">fn </span>accept(<span class="kw-2">&amp;mut </span><span class="self">self</span>) -&gt; io::Result&lt;(TcpStream, SocketAddr)&gt;;
 }
 
 <span class="doccomment">/// Specifies a common interface that can be used by standard, or mockers
+</span><span class="attr">#[cfg_attr(test, mockall::automock)]
 </span><span class="kw">pub trait </span>BSConnector {
-    <span class="kw">fn </span>connect(<span class="kw-2">&amp;mut </span><span class="self">self</span>, addr: SocketAddr) -&gt; io::Result&lt;TcpStream&gt;;
+    <span class="kw">fn </span>connect_timeout(
+        <span class="kw-2">&amp;</span><span class="self">self</span>,
+        addr: SocketAddr,
+        duration: <span class="prelude-ty">Option</span>&lt;MassaTime&gt;,
+    ) -&gt; io::Result&lt;TcpStream&gt;;
 }
 
 <span class="doccomment">/// The listener we are using
@@ -121,6 +125,7 @@
 
         <span class="comment">// Number of connections to queue, set to the hardcoded value used by tokio
         </span>socket.listen(<span class="number">1024</span>)<span class="question-mark">?</span>;
+        socket.set_nonblocking(<span class="bool-val">false</span>)<span class="question-mark">?</span>;
         <span class="prelude-val">Ok</span>(DefaultListener(socket.into()))
     }
 }
@@ -137,15 +142,22 @@
 }
 <span class="doccomment">/// Initiates a connection with given timeout in milliseconds
 </span><span class="attr">#[derive(Debug)]
-</span><span class="kw">pub struct </span>DefaultConnector(<span class="kw">pub </span>MassaTime);
+</span><span class="kw">pub struct </span>DefaultConnector;
 
 <span class="kw">impl </span>BSConnector <span class="kw">for </span>DefaultConnector {
     <span class="doccomment">/// Tries to connect to address
     ///
     /// # Argument
     /// * `addr`: `SocketAddr` we are trying to connect to.
-    </span><span class="kw">fn </span>connect(<span class="kw-2">&amp;mut </span><span class="self">self</span>, addr: SocketAddr) -&gt; io::Result&lt;TcpStream&gt; {
-        TcpStream::connect_timeout(<span class="kw-2">&amp;</span>addr, <span class="self">self</span>.<span class="number">0</span>.to_duration())
+    </span><span class="kw">fn </span>connect_timeout(
+        <span class="kw-2">&amp;</span><span class="self">self</span>,
+        addr: SocketAddr,
+        duration: <span class="prelude-ty">Option</span>&lt;MassaTime&gt;,
+    ) -&gt; io::Result&lt;TcpStream&gt; {
+        <span class="kw">let </span><span class="prelude-val">Some</span>(duration) = duration <span class="kw">else </span>{
+            <span class="kw">return </span>TcpStream::connect(addr);
+        };
+        TcpStream::connect_timeout(<span class="kw-2">&amp;</span>addr, duration.to_duration())
     }
 }
 </code></pre></div>

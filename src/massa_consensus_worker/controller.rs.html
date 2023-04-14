@@ -584,7 +584,7 @@
 
                 <span class="kw">if let </span><span class="prelude-val">Err</span>(err) = <span class="self">self</span>.channels.block_sender.send(verifiable_block.clone()) {
                     <span class="macro">trace!</span>(
-                        <span class="string">&quot;error, failed to broadcast block with id {} due to: {}&quot;</span>,
+                        <span class="string">&quot;error trying to broadcast block with id {} due to: {}&quot;</span>,
                         block_id,
                         err
                     );
@@ -595,7 +595,7 @@
                     operations,
                 }) {
                     <span class="macro">trace!</span>(
-                        <span class="string">&quot;error, failed to broadcast filled block with id {} due to: {}&quot;</span>,
+                        <span class="string">&quot;error trying to broadcast filled block with id {} due to: {}&quot;</span>,
                         block_id,
                         err
                     );
@@ -633,7 +633,7 @@
         <span class="kw">if </span><span class="self">self</span>.broadcast_enabled {
             <span class="kw">if let </span><span class="prelude-val">Err</span>(err) = <span class="self">self</span>.channels.block_header_sender.send(header.clone()) {
                 <span class="macro">trace!</span>(
-                    <span class="string">&quot;error, failed to broadcast block header with block id {}: {}&quot;</span>,
+                    <span class="string">&quot;error trying to broadcast block header with block id {}: {}&quot;</span>,
                     block_id,
                     err
                 );
