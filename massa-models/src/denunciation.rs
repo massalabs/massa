@@ -245,11 +245,20 @@ impl Denunciation {
     /// Get Denunciation slot ref
     pub fn get_slot(&self) -> &Slot {
         match self {
-            Denunciation::Endorsement(endo_de) => &endo_de.slot,
-            Denunciation::BlockHeader(blkh_de) => &blkh_de.slot,
+            Denunciation::Endorsement(de) => &de.slot,
+            Denunciation::BlockHeader(de) => &de.slot,
         }
     }
 
+    /// Get Denunciation public key ref
+    pub fn get_public_key(&self) -> &PublicKey {
+        match self {
+            Denunciation::Endorsement(de) => &de.public_key,
+            Denunciation::BlockHeader(de) => &de.public_key,
+        }
+    }
+    
+    
     /// For a given slot (and given the slot at now()), check if it can be denounced
     /// Can be used to check if block header | endorsement is not too old (at reception or too cleanup cache)
     pub fn is_expired(

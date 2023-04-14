@@ -56,6 +56,7 @@ use massa_models::config::constants::{
 use massa_models::config::{
     CONSENSUS_BOOTSTRAP_PART_SIZE, DENUNCIATION_EXPIRE_PERIODS, DENUNCIATION_ITEMS_MAX_CYCLE_DELTA,
     MAX_DENUNCIATIONS_PER_BLOCK_HEADER, MAX_OPERATIONS_PER_MESSAGE,
+    ROLL_COUNT_TO_SLASH_ON_DENUNCIATION,
 };
 use massa_network_exports::{Establisher, NetworkConfig, NetworkManager};
 use massa_network_worker::start_network_controller;
@@ -450,6 +451,7 @@ async fn launch(
         lru_cache_size: SETTINGS.execution.lru_cache_size,
         hd_cache_size: SETTINGS.execution.hd_cache_size,
         snip_amount: SETTINGS.execution.snip_amount,
+        roll_count_to_slash_on_denunciation: ROLL_COUNT_TO_SLASH_ON_DENUNCIATION,
     };
     let (execution_manager, execution_controller) = start_execution_worker(
         execution_config,

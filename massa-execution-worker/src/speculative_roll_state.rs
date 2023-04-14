@@ -10,6 +10,7 @@ use massa_models::{
 use massa_pos_exports::{DeferredCredits, PoSChanges, ProductionStats};
 use num::rational::Ratio;
 use parking_lot::RwLock;
+use std::cmp::min;
 use std::collections::{BTreeMap, HashMap};
 use std::sync::Arc;
 
@@ -146,6 +147,34 @@ impl SpeculativeRollState {
             .insert(target_slot, *seller_addr, new_deferred_credits);
 
         Ok(())
+    }
+
+    /// Try to slash `roll_count` rolls from the seller address. If not enough roll, slash
+    /// the available amount and return the value.
+    ///
+    /// # Arguments
+    /// * `addr`: address to sell the rolls from
+    /// * `roll_count`: number of rolls to sell
+    pub fn try_slash_rolls(
+        &mut self,
+        addr: &Address,
+        roll_count: u64,
+    ) -> Result<u64, ExecutionError> {
+        // fetch the roll count
+        let owned_count = self.get_rolls(addr);
+        let roll_to_slash = min(roll_count, owned_count);
+
+        // remove the rolls
+        let current_rolls = self
+            .added_changes
+            .roll_changes
+            .get_mut(addr)
+            .ok_or_else(|| {
+                ExecutionError::RuntimeError(format!("Cannot get roll changes for addr: {}", addr))
+            })?;
+
+        *current_rolls = current_rolls.saturating_sub(roll_to_slash);
+        Ok(roll_to_slash)
     }
 
     /// Update production statistics of an address.
