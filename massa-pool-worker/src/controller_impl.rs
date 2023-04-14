@@ -74,6 +74,8 @@ impl PoolController for PoolControllerImpl {
 
     /// Asynchronously add endorsements to pool. Simply print a warning on failure.
     fn add_endorsements(&mut self, endorsements: Storage) {
+        // Send endorsements to the denunciation pool - so we got unfiltered endorsements
+        // from protocol & endorsement factory
         match self
             .denunciations_input_sender
             .try_send(Command::AddItems(endorsements.clone()))
@@ -87,6 +89,7 @@ impl PoolController for PoolControllerImpl {
             Ok(_) => {}
         }
 
+        // Now send endorsements to endorsement pool - storage is cleaned up
         match self
             .endorsements_input_sender
             .try_send(Command::AddItems(endorsements))
@@ -96,6 +99,22 @@ impl PoolController for PoolControllerImpl {
             }
             Err(TrySendError::Full(_)) => {
                 warn!("Could not add endorsements to pool: worker channel is full.");
+            }
+            Ok(_) => {}
+        }
+    }
+
+    /// Add denunciation precursor to pool
+    fn add_denunciation_precursor(&self, denunciation_precursor: DenunciationPrecursor) {
+        match self
+            .denunciations_input_sender
+            .try_send(Command::AddDenunciationPrecursor(denunciation_precursor))
+        {
+            Err(TrySendError::Disconnected(_)) => {
+                warn!("Could not add denunciation precursor to pool: worker is unreachable.");
+            }
+            Err(TrySendError::Full(_)) => {
+                warn!("Could not add denunciation precursor to pool: worker channel is full.");
             }
             Ok(_) => {}
         }
@@ -171,12 +190,6 @@ impl PoolController for PoolControllerImpl {
             .get_block_endorsements(target_slot, target_block)
     }
 
-    /// Returns a boxed clone of self.
-    /// Allows cloning `Box<dyn PoolController>`,
-    fn clone_box(&self) -> Box<dyn PoolController> {
-        Box::new(self.clone())
-    }
-
     /// Get the number of endorsements in the pool
     fn get_endorsement_count(&self) -> usize {
         self.endorsement_pool.read().len()
@@ -199,22 +212,6 @@ impl PoolController for PoolControllerImpl {
         operations.iter().map(|id| lck.contains(id)).collect()
     }
 
-    /// Add denunciation precursor to pool
-    fn add_denunciation_precursor(&self, denunciation_precursor: DenunciationPrecursor) {
-        match self
-            .denunciations_input_sender
-            .try_send(Command::AddDenunciationPrecursor(denunciation_precursor))
-        {
-            Err(TrySendError::Disconnected(_)) => {
-                warn!("Could not add denunciation precursor to pool: worker is unreachable.");
-            }
-            Err(TrySendError::Full(_)) => {
-                warn!("Could not add denunciation precursor to pool: worker channel is full.");
-            }
-            Ok(_) => {}
-        }
-    }
-
     /// Check if the pool contains a denunciation. Returns a boolean
     #[cfg(feature = "testing")]
     fn contains_denunciation(&self, denunciation: &Denunciation) -> bool {
@@ -225,6 +222,12 @@ impl PoolController for PoolControllerImpl {
     /// Get the number of denunciations in the pool
     fn get_denunciation_count(&self) -> usize {
         self.denunciation_pool.read().len()
+    }
+
+    /// Returns a boxed clone of self.
+    /// Allows cloning `Box<dyn PoolController>`,
+    fn clone_box(&self) -> Box<dyn PoolController> {
+        Box::new(self.clone())
     }
 
     /// Get final consensus periods

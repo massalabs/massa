@@ -255,16 +255,6 @@ impl PoolController for MockPoolController {
         Box::new(self.clone())
     }
 
-    /*
-    fn add_denunciation(&mut self, denunciation: Denunciation) {
-        self.q
-            .lock()
-            .unwrap()
-            .send(MockPoolControllerMessage::AddDenunciation { denunciation })
-            .unwrap();
-    }
-    */
-
     fn get_final_cs_periods(&self) -> &Vec<u64> {
         &self.last_final_cs_periods
     }

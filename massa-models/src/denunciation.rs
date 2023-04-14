@@ -723,12 +723,12 @@ impl Deserializer<Denunciation> for DenunciationDeserializer {
 #[derive(Debug, Clone, Hash, PartialEq, Eq)]
 /// Index for Denunciations in collections (e.g. like a HashMap...)
 pub enum DenunciationIndex {
-    /// Variant for Block header denunciation
+    /// Variant for Block header denunciation index
     BlockHeader {
         /// de slot
         slot: Slot,
     },
-    /// Variant for Endorsement denunciation
+    /// Variant for Endorsement denunciation index
     Endorsement {
         /// de slot
         slot: Slot,
@@ -747,6 +747,7 @@ impl DenunciationIndex {
     }
 }
 
+/// Create a `DenunciationIndex` from a `Denunciation`
 impl From<&Denunciation> for DenunciationIndex {
     fn from(value: &Denunciation) -> Self {
         match value {
@@ -761,6 +762,7 @@ impl From<&Denunciation> for DenunciationIndex {
     }
 }
 
+/// Create a `DenunciationIndex` from a `DenunciationPrecursor`
 impl From<&DenunciationPrecursor> for DenunciationIndex {
     fn from(value: &DenunciationPrecursor) -> Self {
         match value {
@@ -779,7 +781,7 @@ impl From<&DenunciationPrecursor> for DenunciationIndex {
 
 // Denunciation interest
 
-/// DenunciationInterest variant for endorsement
+/// DenunciationPrecursor variant for endorsement
 #[derive(Debug, Clone)]
 pub struct EndorsementDenunciationPrecursor {
     /// secure share endorsement public key
@@ -788,18 +790,22 @@ pub struct EndorsementDenunciationPrecursor {
     pub slot: Slot,
     /// endorsement index
     pub index: u32,
+    /// secured header partial hash
     hash: Hash,
+    /// secured header signature
     signature: Signature,
 }
 
-/// DenunciationInterest variant for block header
+/// DenunciationPrecursor variant for block header
 #[derive(Debug, Clone)]
 pub struct BlockHeaderDenunciationPrecursor {
     /// secured header public key
     pub public_key: PublicKey,
     /// block header slot
     pub slot: Slot,
+    /// secured header partial hash
     hash: Hash,
+    /// secured header signature
     signature: Signature,
 }
 
@@ -961,7 +967,7 @@ impl TryFrom<(&DenunciationPrecursor, &DenunciationPrecursor)> for Denunciation 
                 }))
             }
             _ => {
-                // Different enum variant - this is invalid
+                // Different enum variants - this is invalid
                 Err(DenunciationError::InvalidInput)
             }
         }

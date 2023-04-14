@@ -1,3 +1,5 @@
+//! Copyright (c) 2022 MASSA LABS <info@massa.net>
+
 use std::collections::{hash_map::Entry, HashMap};
 use tracing::{debug, info, warn};
 
@@ -13,7 +15,7 @@ use massa_storage::Storage;
 use massa_time::MassaTime;
 
 pub struct DenunciationPool {
-    /// configuration
+    /// pool configuration
     config: PoolConfig,
     /// selector controller to get draws
     pub selector: Box<dyn SelectorController>,
@@ -41,7 +43,7 @@ impl DenunciationPool {
             .count()
     }
 
-    /// Checks whether an element is stored in the pool
+    /// Checks whether an element is stored in the pool - only used in unit tests for now
     #[cfg(feature = "testing")]
     pub fn contains(&self, denunciation: &Denunciation) -> bool {
         self.denunciations_cache
@@ -53,6 +55,8 @@ impl DenunciationPool {
             .is_some()
     }
 
+    /// Add a denunciation precursor to the pool - can lead to a Denunciation creation
+    /// Note that the Denunciation is stored in the denunciation pool internal cache
     pub fn add_denunciation_precursor(&mut self, denunciation_precursor: DenunciationPrecursor) {
         let slot = denunciation_precursor.get_slot();
 
@@ -162,6 +166,7 @@ impl DenunciationPool {
         self.cleanup_caches();
     }
 
+    /// cleanup internal cache, removing too old denunciation
     fn cleanup_caches(&mut self) {
         self.denunciations_cache.retain(|de_idx, _| {
             !Denunciation::is_expired(
@@ -183,6 +188,7 @@ impl DenunciationPool {
     }
     */
 
+    /// Notify of final periods
     pub(crate) fn notify_final_cs_periods(&mut self, final_cs_periods: &[u64]) {
         // update internal final CS period counter
         self.last_cs_final_periods = final_cs_periods.to_vec();
@@ -191,6 +197,7 @@ impl DenunciationPool {
         self.cleanup_caches()
     }
 
+    /// Add endorsements, turn them in DenunciationPrecursor then process
     pub(crate) fn add_endorsements(&mut self, endorsement_storage: Storage) {
         let items = endorsement_storage
             .get_endorsement_refs()
@@ -212,7 +219,10 @@ impl DenunciationPool {
     }
 }
 
+/// A Value (as in Key/Value) for denunciation pool internal cache
 enum DenunciationStatus {
+    /// Only 1 DenunciationPrecursor received for this key
     Accumulating(DenunciationPrecursor),
+    /// 2 DenunciationPrecursor received, a Denunciation was then created
     DenunciationEmitted(Denunciation),
 }

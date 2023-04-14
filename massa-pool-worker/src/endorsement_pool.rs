@@ -1,7 +1,5 @@
 //! Copyright (c) 2022 MASSA LABS <info@massa.net>
 
-use crate::controller_impl::Command;
-use massa_models::denunciation::DenunciationPrecursor;
 use massa_models::{
     block_id::BlockId,
     endorsement::EndorsementId,
@@ -11,8 +9,6 @@ use massa_models::{
 use massa_pool_exports::PoolConfig;
 use massa_storage::Storage;
 use std::collections::{BTreeMap, HashMap};
-use std::sync::mpsc::SyncSender;
-use tracing::warn;
 
 pub struct EndorsementPool {
     /// configuration
@@ -30,24 +26,16 @@ pub struct EndorsementPool {
 
     /// last consensus final periods, per thread
     last_cs_final_periods: Vec<u64>,
-
-    /// Queue to Denunciation factory
-    denunciation_factory_tx: SyncSender<Command>,
 }
 
 impl EndorsementPool {
-    pub fn init(
-        config: PoolConfig,
-        storage: &Storage,
-        denunciation_factory_tx: SyncSender<Command>,
-    ) -> Self {
+    pub fn init(config: PoolConfig, storage: &Storage) -> Self {
         EndorsementPool {
             last_cs_final_periods: vec![0u64; config.thread_count as usize],
             endorsements_indexed: Default::default(),
             endorsements_sorted: vec![Default::default(); config.thread_count as usize],
             config,
             storage: storage.clone_without_refs(),
-            denunciation_factory_tx,
         }
     }
 
