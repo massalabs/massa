@@ -128,24 +128,6 @@ impl EndorsementPool {
                     }
                     added.insert(endo.id);
                 }
-
-                // And send endorsements to Denunciation pool
-                match DenunciationPrecursor::try_from(endo) {
-                    Ok(de_p) => {
-                        if let Err(e) = self
-                            .denunciation_factory_tx
-                            .send(Command::AddDenunciationPrecursor(de_p))
-                        {
-                            warn!("Cannot send endorsement to Denunciation factory: {}", e);
-                        }
-                    }
-                    Err(e) => {
-                        warn!(
-                            "Cannot create denunciation interest from endorsement: {}",
-                            e
-                        );
-                    }
-                }
             }
         }
 
