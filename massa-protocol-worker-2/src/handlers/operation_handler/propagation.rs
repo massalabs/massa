@@ -82,14 +82,12 @@ impl PropagationThread {
                 .map(|(id, _)| id.clone())
                 .collect();
             // Clean shared cache if peers do not exist anymore
-            for peer_id in peers {
-                if !self
-                    .active_connections
-                    .read()
-                    .connections
-                    .contains_key(&peer_id)
-                {
-                    cache_write.ops_known_by_peer.pop(&peer_id);
+            {
+                let active_connections_read = self.active_connections.read();
+                for peer_id in peers {
+                    if !active_connections_read.connections.contains_key(&peer_id) {
+                        cache_write.ops_known_by_peer.pop(&peer_id);
+                    }
                 }
             }
             // Propagate to peers

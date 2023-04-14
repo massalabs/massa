@@ -4,7 +4,7 @@ use crossbeam::channel::{Receiver, Sender};
 use massa_pool_exports::PoolController;
 use massa_protocol_exports_2::ProtocolConfig;
 use massa_storage::Storage;
-use peernet::{network_manager::SharedActiveConnections, peer_id::PeerId};
+use peernet::network_manager::SharedActiveConnections;
 
 use self::{
     cache::SharedOperationCache, commands_propagation::OperationHandlerCommand,
@@ -19,6 +19,8 @@ mod retrieval;
 
 pub(crate) use messages::{OperationMessage, OperationMessageSerializer};
 
+use super::peer_handler::models::PeerMessageTuple;
+
 pub struct OperationHandler {
     pub operation_retrieval_thread: Option<JoinHandle<()>>,
     pub operation_propagation_thread: Option<JoinHandle<()>>,
@@ -31,7 +33,7 @@ impl OperationHandler {
         config: ProtocolConfig,
         cache: SharedOperationCache,
         active_connections: SharedActiveConnections,
-        receiver_network: Receiver<(PeerId, u64, Vec<u8>)>,
+        receiver_network: Receiver<PeerMessageTuple>,
         local_sender: Sender<OperationHandlerCommand>,
         local_receiver: Receiver<OperationHandlerCommand>,
     ) -> Self {

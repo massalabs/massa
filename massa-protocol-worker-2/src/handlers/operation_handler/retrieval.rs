@@ -25,7 +25,10 @@ use massa_storage::Storage;
 use massa_time::{MassaTime, TimeError};
 use peernet::{network_manager::SharedActiveConnections, peer_id::PeerId};
 
-use crate::{messages::MessagesSerializer, sig_verifier::verify_sigs_batch};
+use crate::{
+    handlers::peer_handler::models::PeerMessageTuple, messages::MessagesSerializer,
+    sig_verifier::verify_sigs_batch,
+};
 use tracing::warn;
 
 use super::{
@@ -48,7 +51,7 @@ pub struct OperationBatchItem {
 }
 
 pub struct RetrievalThread {
-    receiver: Receiver<(PeerId, u64, Vec<u8>)>,
+    receiver: Receiver<PeerMessageTuple>,
     pool_controller: Box<dyn PoolController>,
     cache: SharedOperationCache,
     asked_operations: LruCache<OperationPrefixId, (Instant, Vec<PeerId>)>,
@@ -351,8 +354,8 @@ impl RetrievalThread {
         }
         if !ask_set.is_empty() {
             {
-                let mut active_connections_write = self.active_connections.write();
-                if let Some(peer) = active_connections_write.connections.get_mut(peer_id) {
+                let active_connections_read = self.active_connections.read();
+                if let Some(peer) = active_connections_read.connections.get(peer_id) {
                     peer.send_channels
                         .send(
                             &self.operation_message_serializer,
@@ -419,8 +422,8 @@ impl RetrievalThread {
             }
         }
         {
-            let mut active_connections_write = self.active_connections.write();
-            if let Some(peer) = active_connections_write.connections.get_mut(peer_id) {
+            let active_connections_read = self.active_connections.read();
+            if let Some(peer) = active_connections_read.connections.get(peer_id) {
                 peer.send_channels
                     .send(
                         &self.operation_message_serializer,
