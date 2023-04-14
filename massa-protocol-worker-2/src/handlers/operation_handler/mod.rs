@@ -81,7 +81,7 @@ impl OperationHandler {
         });
 
         let operation_propagation_thread = std::thread::spawn({
-            let _active_connections = active_connections.clone();
+            let _active_connections = active_connections;
             move || {
                 let _operation_message_serializer = OperationMessageSerializer::new();
                 //TODO: Real logic

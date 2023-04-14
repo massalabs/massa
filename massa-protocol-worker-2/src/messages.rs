@@ -18,34 +18,34 @@ use crate::handlers::{
 };
 
 pub enum Message {
-    BlockMessage(BlockMessage),
-    EndorsementMessage(EndorsementMessage),
-    OperationMessage(OperationMessage),
-    PeerManagementMessage(PeerManagementMessage),
+    Block(Box<BlockMessage>),
+    Endorsement(EndorsementMessage),
+    Operation(OperationMessage),
+    PeerManagement(Box<PeerManagementMessage>),
 }
 
 //TODO: Macroize this
 impl From<BlockMessage> for Message {
     fn from(message: BlockMessage) -> Self {
-        Self::BlockMessage(message)
+        Self::Block(Box::from(message))
     }
 }
 
 impl From<EndorsementMessage> for Message {
     fn from(message: EndorsementMessage) -> Self {
-        Self::EndorsementMessage(message)
+        Self::Endorsement(message)
     }
 }
 
 impl From<OperationMessage> for Message {
     fn from(message: OperationMessage) -> Self {
-        Self::OperationMessage(message)
+        Self::Operation(message)
     }
 }
 
 impl From<PeerManagementMessage> for Message {
     fn from(message: PeerManagementMessage) -> Self {
-        Self::PeerManagementMessage(message)
+        Self::PeerManagement(Box::from(message))
     }
 }
 
@@ -53,14 +53,12 @@ impl Message {
     //TODO: Macroize get_id and max_id
     fn get_id(&self) -> u64 {
         match self {
-            Message::BlockMessage(message) => message.get_id() as u64,
-            Message::EndorsementMessage(message) => {
-                message.get_id() as u64 + BlockMessage::max_id()
-            }
-            Message::OperationMessage(message) => {
+            Message::Block(message) => message.get_id() as u64,
+            Message::Endorsement(message) => message.get_id() as u64 + BlockMessage::max_id(),
+            Message::Operation(message) => {
                 message.get_id() as u64 + BlockMessage::max_id() + EndorsementMessage::max_id()
             }
-            Message::PeerManagementMessage(message) => {
+            Message::PeerManagement(message) => {
                 message.get_id() as u64
                     + BlockMessage::max_id()
                     + EndorsementMessage::max_id()
@@ -137,7 +135,7 @@ impl PeerNetMessagesSerializer<Message> for MessagesSerializer {
     /// Serialize the message
     fn serialize(&self, message: &Message, buffer: &mut Vec<u8>) -> PeerNetResult<()> {
         match message {
-            Message::BlockMessage(message) => {
+            Message::Block(message) => {
                 if let Some(serializer) = &self.block_message_serializer {
                     serializer.serialize(message, buffer).map_err(|err| {
                         PeerNetError::HandlerError.error(
@@ -152,7 +150,7 @@ impl PeerNetMessagesSerializer<Message> for MessagesSerializer {
                     ))
                 }
             }
-            Message::EndorsementMessage(message) => {
+            Message::Endorsement(message) => {
                 if let Some(serializer) = &self.endorsement_message_serializer {
                     serializer.serialize(message, buffer).map_err(|err| {
                         PeerNetError::HandlerError.error(
@@ -167,7 +165,7 @@ impl PeerNetMessagesSerializer<Message> for MessagesSerializer {
                     ))
                 }
             }
-            Message::OperationMessage(message) => {
+            Message::Operation(message) => {
                 if let Some(serializer) = &self.operation_message_serializer {
                     serializer.serialize(message, buffer).map_err(|err| {
                         PeerNetError::HandlerError.error(
@@ -182,7 +180,7 @@ impl PeerNetMessagesSerializer<Message> for MessagesSerializer {
                     ))
                 }
             }
-            Message::PeerManagementMessage(message) => {
+            Message::PeerManagement(message) => {
                 if let Some(serializer) = &self.peer_management_message_serializer {
                     serializer.serialize(message, buffer).map_err(|err| {
                         PeerNetError::HandlerError.error(

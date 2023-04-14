@@ -7,7 +7,7 @@ use massa_storage::Storage;
 use peernet::{peer_id::PeerId, transports::TransportType};
 use tempfile::NamedTempFile;
 
-use crate::{handlers::peer_handler::InitialPeers, start_protocol_controller};
+use crate::{handlers::peer_handler::models::InitialPeers, start_protocol_controller};
 
 mod tools;
 
