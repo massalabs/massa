@@ -280,9 +280,6 @@
 <a href="#280" id="280">280</a>
 <a href="#281" id="281">281</a>
 <a href="#282" id="282">282</a>
-<a href="#283" id="283">283</a>
-<a href="#284" id="284">284</a>
-<a href="#285" id="285">285</a>
 </pre><pre class="rust"><code><span class="kw">use </span>std::ops::Bound::Included;
 
 <span class="kw">use </span>massa_serialization::{
@@ -340,7 +337,7 @@
         <span class="self">Self </span>{
             u64_serializer: U64VarIntSerializer::new(),
             id_serializer: AsyncMessageIdSerializer::new(),
-            message_serializer: AsyncMessageSerializer::new(<span class="bool-val">false</span>),
+            message_serializer: AsyncMessageSerializer::new(),
         }
     }
 }
@@ -372,7 +369,6 @@
     ///     Slot::new(2, 0),
     ///     Slot::new(3, 0),
     ///     vec![1, 2, 3, 4],
-    ///     None,
     ///     None
     /// );
     /// let changes: AsyncPoolChanges = AsyncPoolChanges(vec![Change::Add(message.compute_id(), message)]);
@@ -435,7 +431,6 @@
                 thread_count,
                 max_async_message_data,
                 max_key_length,
-                <span class="bool-val">false</span>,
             ),
         }
     }
@@ -465,8 +460,7 @@
     ///     Some(AsyncMessageTrigger {
     ///        address: Address::from_str(&quot;AU12dG5xP1RDEB5ocdHkymNVvvSJmUL9BgHwCksDowqmGWxfpm93x&quot;).unwrap(),
     ///        datastore_key: Some(vec![1, 2, 3, 4]),
-    ///     }),
-    ///     None
+    ///     })
     /// );
     /// let changes: AsyncPoolChanges = AsyncPoolChanges(vec![Change::Add(message.compute_id(), message.clone()), Change::Delete(message.compute_id())]);
     /// let mut serialized = Vec::new();

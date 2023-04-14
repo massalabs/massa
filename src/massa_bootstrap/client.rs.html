@@ -570,16 +570,7 @@
 <a href="#570" id="570">570</a>
 <a href="#571" id="571">571</a>
 <a href="#572" id="572">572</a>
-<a href="#573" id="573">573</a>
-<a href="#574" id="574">574</a>
-<a href="#575" id="575">575</a>
-<a href="#576" id="576">576</a>
-<a href="#577" id="577">577</a>
-<a href="#578" id="578">578</a>
-<a href="#579" id="579">579</a>
-<a href="#580" id="580">580</a>
 </pre><pre class="rust"><code><span class="kw">use </span>humantime::format_duration;
-<span class="kw">use </span>massa_ledger_exports::LedgerBatch;
 <span class="kw">use </span>std::{collections::HashSet, net::SocketAddr, sync::Arc, time::Duration};
 
 <span class="kw">use </span>massa_final_state::FinalState;
@@ -675,21 +666,14 @@
                         .executed_ops
                         .set_executed_ops_part(exec_ops_part);
                     <span class="kw">for </span>(changes_slot, changes) <span class="kw">in </span>final_state_changes.iter() {
-                        <span class="kw">let </span>ledger_hash = write_final_state.ledger.get_ledger_hash();
-                        <span class="kw">let </span>async_pool_hash = write_final_state.async_pool.get_hash();
-                        <span class="kw">let </span><span class="kw-2">mut </span>batch = LedgerBatch::new(<span class="prelude-val">Some</span>(ledger_hash), <span class="prelude-val">Some</span>(async_pool_hash));
-                        write_final_state.ledger.apply_changes_to_batch(
+                        write_final_state.ledger.apply_changes(
                             changes.ledger_changes.clone(),
                             <span class="kw-2">*</span>changes_slot,
-                            <span class="kw-2">&amp;mut </span>batch,
+                            <span class="prelude-val">None</span>,
                         );
                         write_final_state
                             .async_pool
-                            .apply_changes_unchecked_to_batch(
-                                <span class="kw-2">&amp;</span>changes.async_pool_changes,
-                                <span class="kw-2">&amp;mut </span>batch,
-                            );
-                        write_final_state.ledger.write_batch(batch);
+                            .apply_changes_unchecked(<span class="kw-2">&amp;</span>changes.async_pool_changes);
                         <span class="kw">if </span>!changes.pos_changes.is_empty() {
                             write_final_state.pos_state.apply_changes(
                                 changes.pos_changes.clone(),
