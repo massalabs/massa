@@ -51,6 +51,7 @@ pub fn get_random_message(fee: Option<Amount>, thread_count: u8) -> AsyncMessage
         Slot::new(4, 0),
         vec![1, 2, 3],
         None,
+        None,
     )
 }
 
@@ -81,6 +82,7 @@ pub fn assert_eq_async_pool_bootstrap_state(v1: &AsyncPool, v2: &AsyncPool) {
         THREAD_COUNT,
         MAX_ASYNC_MESSAGE_DATA,
         MAX_DATASTORE_KEY_LENGTH as u32,
+        false,
     );
     let db1 = v1.db.read();
     let db2 = v2.db.read();

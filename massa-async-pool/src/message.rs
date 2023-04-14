@@ -13,8 +13,8 @@ use massa_models::{
     slot::Slot,
 };
 use massa_serialization::{
-    Deserializer, OptionDeserializer, OptionSerializer, SerializeError, Serializer,
-    U64VarIntDeserializer, U64VarIntSerializer,
+    BoolDeserializer, BoolSerializer, Deserializer, OptionDeserializer, OptionSerializer,
+    SerializeError, Serializer, U64VarIntDeserializer, U64VarIntSerializer,
 };
 use nom::error::{context, ContextError, ParseError};
 use nom::multi::length_data;
@@ -316,8 +316,9 @@ impl AsyncMessage {
         validity_end: Slot,
         data: Vec<u8>,
         trigger: Option<AsyncMessageTrigger>,
+        can_be_executed: Option<bool>,
     ) -> Self {
-        let async_message_ser = AsyncMessageSerializer::new();
+        let async_message_ser = AsyncMessageSerializer::new(can_be_executed.is_some());
         let mut buffer = Vec::new();
         let mut message = AsyncMessage {
             emission_slot,
@@ -331,7 +332,7 @@ impl AsyncMessage {
             validity_start,
             validity_end,
             data,
-            can_be_executed: trigger.is_none(),
+            can_be_executed: can_be_executed.unwrap_or(trigger.is_none()),
             trigger,
             // placeholder hash to serialize the message, replaced below
             hash: Hash::from_bytes(&[0; 32]),
@@ -354,8 +355,8 @@ impl AsyncMessage {
     }
 
     /// Recompute the hash of the message. Must be used each time we modify one field
-    pub fn compute_hash(&mut self) {
-        let async_message_ser = AsyncMessageSerializer::new();
+    pub fn compute_hash(&mut self, for_db: bool) {
+        let async_message_ser = AsyncMessageSerializer::new(for_db);
         let mut buffer = Vec::new();
         async_message_ser.serialize(self, &mut buffer).expect(
             "critical: asynchronous message serialization should never fail in recompute hash",
@@ -372,10 +373,12 @@ pub struct AsyncMessageSerializer {
     vec_u8_serializer: VecU8Serializer,
     address_serializer: AddressSerializer,
     trigger_serializer: OptionSerializer<AsyncMessageTrigger, AsyncMessageTriggerSerializer>,
+    bool_serializer: BoolSerializer,
+    for_db: bool,
 }
 
 impl AsyncMessageSerializer {
-    pub fn new() -> Self {
+    pub fn new(for_db: bool) -> Self {
         Self {
             slot_serializer: SlotSerializer::new(),
             amount_serializer: AmountSerializer::new(),
@@ -383,13 +386,15 @@ impl AsyncMessageSerializer {
             vec_u8_serializer: VecU8Serializer::new(),
             address_serializer: AddressSerializer::new(),
             trigger_serializer: OptionSerializer::new(AsyncMessageTriggerSerializer::new()),
+            bool_serializer: BoolSerializer::new(),
+            for_db,
         }
     }
 }
 
 impl Default for AsyncMessageSerializer {
     fn default() -> Self {
-        Self::new()
+        Self::new(false)
     }
 }
 
@@ -451,6 +456,10 @@ impl Serializer<AsyncMessage> for AsyncMessageSerializer {
             .serialize(&value.validity_end, buffer)?;
         self.vec_u8_serializer.serialize(&value.data, buffer)?;
         self.trigger_serializer.serialize(&value.trigger, buffer)?;
+        if self.for_db {
+            self.bool_serializer
+                .serialize(&value.can_be_executed, buffer)?;
+        }
         Ok(())
     }
 }
@@ -464,10 +473,17 @@ pub struct AsyncMessageDeserializer {
     data_deserializer: VecU8Deserializer,
     address_deserializer: AddressDeserializer,
     trigger_deserializer: OptionDeserializer<AsyncMessageTrigger, AsyncMessageTriggerDeserializer>,
+    bool_deserializer: BoolDeserializer,
+    for_db: bool,
 }
 
 impl AsyncMessageDeserializer {
-    pub fn new(thread_count: u8, max_async_message_data: u64, max_key_length: u32) -> Self {
+    pub fn new(
+        thread_count: u8,
+        max_async_message_data: u64,
+        max_key_length: u32,
+        for_db: bool,
+    ) -> Self {
         Self {
             slot_deserializer: SlotDeserializer::new(
                 (Included(0), Included(u64::MAX)),
@@ -490,6 +506,8 @@ impl AsyncMessageDeserializer {
             trigger_deserializer: OptionDeserializer::new(AsyncMessageTriggerDeserializer::new(
                 max_key_length,
             )),
+            bool_deserializer: BoolDeserializer::new(),
+            for_db,
         }
     }
 }
@@ -587,6 +605,13 @@ impl Deserializer<AsyncMessage> for AsyncMessageDeserializer {
                 context("Failed filter deserialization", |input| {
                     self.trigger_deserializer.deserialize(input)
                 }),
+                context("Failed can_be_executed deserialization", |input| {
+                    if self.for_db {
+                        self.bool_deserializer.deserialize(input)
+                    } else {
+                        Ok((input, false))
+                    }
+                }),
             )),
         )
         .map(
@@ -603,6 +628,7 @@ impl Deserializer<AsyncMessage> for AsyncMessageDeserializer {
                 validity_end,
                 data,
                 filter,
+                can_be_executed,
             )| {
                 AsyncMessage::new_with_hash(
                     emission_slot,
@@ -617,6 +643,11 @@ impl Deserializer<AsyncMessage> for AsyncMessageDeserializer {
                     validity_end,
                     data,
                     filter,
+                    if self.for_db {
+                        Some(can_be_executed)
+                    } else {
+                        None
+                    },
                 )
             },
         )
@@ -658,8 +689,9 @@ mod tests {
                     .unwrap(),
                 datastore_key: None,
             }),
+            None,
         );
-        let message_serializer = AsyncMessageSerializer::new();
+        let message_serializer = AsyncMessageSerializer::new(false);
         let mut serialized = Vec::new();
         message_serializer
             .serialize(&message, &mut serialized)
@@ -668,6 +700,7 @@ mod tests {
             THREAD_COUNT,
             MAX_ASYNC_MESSAGE_DATA,
             MAX_DATASTORE_KEY_LENGTH as u32,
+            false,
         );
         serialized[1] = 50;
         message_deserializer

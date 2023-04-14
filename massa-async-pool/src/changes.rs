@@ -55,7 +55,7 @@ impl AsyncPoolChangesSerializer {
         Self {
             u64_serializer: U64VarIntSerializer::new(),
             id_serializer: AsyncMessageIdSerializer::new(),
-            message_serializer: AsyncMessageSerializer::new(),
+            message_serializer: AsyncMessageSerializer::new(false),
         }
     }
 }
@@ -149,6 +149,7 @@ impl AsyncPoolChangesDeserializer {
                 thread_count,
                 max_async_message_data,
                 max_key_length,
+                false,
             ),
         }
     }

@@ -339,7 +339,7 @@ where
 }
 
 /// Serializer for bool
-#[derive(Debug, Default)]
+#[derive(Clone, Debug, Default)]
 pub struct BoolSerializer {}
 
 impl BoolSerializer {
@@ -357,7 +357,7 @@ impl Serializer<bool> for BoolSerializer {
 }
 
 /// Deserializer for bool
-#[derive(Debug, Default)]
+#[derive(Clone, Debug, Default)]
 pub struct BoolDeserializer {}
 
 impl BoolDeserializer {

@@ -43,11 +43,11 @@ const KEY_DESER_ERROR: &str = "critical: key deserialization failed";
 const KEY_SER_ERROR: &str = "critical: key serialization failed";
 const KEY_LEN_SER_ERROR: &str = "critical: key length serialization failed";
 const SLOT_KEY: &[u8; 1] = b"s";
-const LEDGER_HASH_KEY: &[u8; 1] = b"h";
+const LEDGER_HASH_KEY: &[u8; 3] = b"l_h";
 const LEDGER_FINAL_STATE_KEY: &[u8; 2] = b"fs";
 const LEDGER_FINAL_STATE_HASH_KEY: &[u8; 3] = b"fsh";
 const LEDGER_HASH_INITIAL_BYTES: &[u8; 32] = &[0; HASH_SIZE_BYTES];
-const ASYNC_POOL_HASH_KEY: &[u8; 1] = b"h";
+const ASYNC_POOL_HASH_KEY: &[u8; 4] = b"ap_h";
 
 /// Returns a new `RocksDB` instance
 pub fn new_rocks_db_instance(path: PathBuf) -> DB {

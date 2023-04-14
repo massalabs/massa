@@ -129,6 +129,7 @@ mod tests {
                 is_final: true,
             })
             .expect("readonly execution failed");
+
         assert_eq!(res.out.slot, Slot::new(1, 0));
         assert!(res.gas_cost > 0);
         assert_eq!(res.out.events.take().len(), 1, "wrong number of events");
@@ -143,6 +144,7 @@ mod tests {
                 is_final: false,
             })
             .expect("readonly execution failed");
+
         assert!(res.out.slot.period > 8);
 
         manager.stop();

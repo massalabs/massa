@@ -40,7 +40,7 @@ const MESSAGE_ID_SER_ERROR: &str = "critical: message_id serialization failed";
 
 const METADATA_CF: &str = "metadata";
 const ASYNC_POOL_HASH_ERROR: &str = "critical: saved async pool hash is corrupted";
-const ASYNC_POOL_HASH_KEY: &[u8; 1] = b"h";
+const ASYNC_POOL_HASH_KEY: &[u8; 4] = b"ap_h";
 
 #[derive(Clone)]
 /// Represents a pool of sorted messages in a deterministic way.
@@ -53,7 +53,7 @@ pub struct AsyncPool {
     message_id_serializer: AsyncMessageIdSerializer,
     message_serializer: AsyncMessageSerializer,
     message_id_deserializer: AsyncMessageIdDeserializer,
-    message_deserializer: AsyncMessageDeserializer,
+    message_deserializer_db: AsyncMessageDeserializer,
 }
 
 impl AsyncPool {
@@ -63,12 +63,13 @@ impl AsyncPool {
             config: config.clone(),
             db,
             message_id_serializer: AsyncMessageIdSerializer::new(),
-            message_serializer: AsyncMessageSerializer::new(),
+            message_serializer: AsyncMessageSerializer::new(true),
             message_id_deserializer: AsyncMessageIdDeserializer::new(config.thread_count),
-            message_deserializer: AsyncMessageDeserializer::new(
+            message_deserializer_db: AsyncMessageDeserializer::new(
                 config.thread_count,
                 config.max_async_message_data,
                 config.max_key_length,
+                true,
             ),
         }
     }
@@ -83,12 +84,13 @@ impl AsyncPool {
             config: config.clone(),
             db,
             message_id_serializer: AsyncMessageIdSerializer::new(),
-            message_serializer: AsyncMessageSerializer::new(),
+            message_serializer: AsyncMessageSerializer::new(true),
             message_id_deserializer: AsyncMessageIdDeserializer::new(config.thread_count),
-            message_deserializer: AsyncMessageDeserializer::new(
+            message_deserializer_db: AsyncMessageDeserializer::new(
                 config.thread_count,
                 config.max_async_message_data,
                 config.max_key_length,
+                true,
             ),
         };
         pool.set_pool_part(messages);
@@ -173,7 +175,7 @@ impl AsyncPool {
             db.iterator_cf(handle, IteratorMode::Start).flatten()
         {
             let (_, message) = self
-                .message_deserializer
+                .message_deserializer_db
                 .deserialize::<DeserializeError>(&serialized_message)
                 .expect(MESSAGE_DESER_ERROR);
             if *slot >= message.validity_end {
@@ -186,6 +188,10 @@ impl AsyncPool {
             }
         }
 
+        self.write_batch(batch);
+        let mut batch = LedgerBatch::new(None, Some(self.get_hash()));
+        let handle = db.cf_handle(ASYNC_POOL_CF).expect(CF_ERROR);
+
         // Filter out all messages for which the validity end is expired.
         // Note that the validity_end bound is NOT included in the validity interval of the message.
         eliminated.extend(new_messages.drain_filter(|(_k, v)| *slot >= v.validity_end));
@@ -195,6 +201,8 @@ impl AsyncPool {
             self.put_entry(message_id, message.clone(), &mut batch);
         }
 
+        self.write_batch(batch);
+
         // Truncate message pool to its max size, removing non-prioritary items
         let excess_count = db
             .iterator_cf(handle, IteratorMode::Start)
@@ -203,6 +211,10 @@ impl AsyncPool {
         eliminated.reserve_exact(excess_count);
 
         for _ in 0..excess_count {
+            let mut batch = LedgerBatch::new(None, Some(self.get_hash()));
+
+            let handle = db.cf_handle(ASYNC_POOL_CF).expect(CF_ERROR);
+
             let (serialized_message_id, serialized_message) = db
                 .iterator_cf(handle, IteratorMode::End)
                 .next()
@@ -214,21 +226,25 @@ impl AsyncPool {
                 .deserialize::<DeserializeError>(&serialized_message_id)
                 .expect(MESSAGE_ID_DESER_ERROR);
             let (_, message) = self
-                .message_deserializer
+                .message_deserializer_db
                 .deserialize::<DeserializeError>(&serialized_message)
                 .expect(MESSAGE_DESER_ERROR);
 
             eliminated.push((message_id, message)); // will not panic (checked at excess_count computation)
             self.delete_entry(&message_id, &mut batch);
+
+            self.write_batch(batch);
         }
 
         let mut triggered = Vec::new();
+
+        let handle = db.cf_handle(ASYNC_POOL_CF).expect(CF_ERROR);
 
         for (serialized_message_id, serialized_message) in
             db.iterator_cf(handle, IteratorMode::Start).flatten()
         {
             let (_, mut message) = self
-                .message_deserializer
+                .message_deserializer_db
                 .deserialize::<DeserializeError>(&serialized_message)
                 .expect(MESSAGE_DESER_ERROR);
 
@@ -239,11 +255,16 @@ impl AsyncPool {
                     .expect(MESSAGE_ID_DESER_ERROR);
 
                 message.can_be_executed = true;
-                triggered.push((message_id, message.clone()));
 
+                triggered.push((message_id, message.clone()));
             }
         }
 
+        for (message_id, _message) in triggered.clone() {
+            let mut batch = LedgerBatch::new(None, Some(self.get_hash()));
+            self.activate_entry(&message_id, &mut batch);
+            self.write_batch(batch);
+        }
         (eliminated, triggered)
     }
 
@@ -274,7 +295,7 @@ impl AsyncPool {
             db.iterator_cf(handle, IteratorMode::Start).flatten()
         {
             let (_, message) = self
-                .message_deserializer
+                .message_deserializer_db
                 .deserialize::<DeserializeError>(&serialized_message)
                 .expect(MESSAGE_DESER_ERROR);
 
@@ -292,9 +313,7 @@ impl AsyncPool {
                 self.delete_entry(&message_id, &mut batch);
             }
         }
-
         self.write_batch(batch);
-
         taken
     }
 
@@ -348,7 +367,7 @@ impl AsyncPool {
                     .deserialize::<DeserializeError>(&serialized_message_id)
                     .expect("MESSAGE_ID_DESER_ERROR");
                 let (_, message) = self
-                    .message_deserializer
+                    .message_deserializer_db
                     .deserialize::<DeserializeError>(&serialized_message)
                     .expect(MESSAGE_DESER_ERROR);
                 pool_part.insert(message_id, message.clone());
@@ -415,7 +434,7 @@ impl AsyncPoolSerializer {
         Self {
             u64_serializer: U64VarIntSerializer::new(),
             async_message_id_serializer: AsyncMessageIdSerializer::new(),
-            async_message_serializer: AsyncMessageSerializer::new(),
+            async_message_serializer: AsyncMessageSerializer::new(true),
         }
     }
 }
@@ -443,7 +462,7 @@ impl Serializer<BTreeMap<AsyncMessageId, AsyncMessage>> for AsyncPoolSerializer 
 pub struct AsyncPoolDeserializer {
     u64_deserializer: U64VarIntDeserializer,
     async_message_id_deserializer: AsyncMessageIdDeserializer,
-    async_message_deserializer: AsyncMessageDeserializer,
+    async_message_deserializer_db: AsyncMessageDeserializer,
 }
 
 impl AsyncPoolDeserializer {
@@ -460,10 +479,11 @@ impl AsyncPoolDeserializer {
                 Included(max_async_pool_length),
             ),
             async_message_id_deserializer: AsyncMessageIdDeserializer::new(thread_count),
-            async_message_deserializer: AsyncMessageDeserializer::new(
+            async_message_deserializer_db: AsyncMessageDeserializer::new(
                 thread_count,
                 max_async_message_data,
                 max_key_length,
+                true,
             ),
         }
     }
@@ -485,7 +505,7 @@ impl Deserializer<BTreeMap<AsyncMessageId, AsyncMessage>> for AsyncPoolDeseriali
                         self.async_message_id_deserializer.deserialize(input)
                     }),
                     context("Failed async_message deserialization", |input| {
-                        self.async_message_deserializer.deserialize(input)
+                        self.async_message_deserializer_db.deserialize(input)
                     }),
                 )),
             ),
@@ -534,6 +554,7 @@ fn test_take_batch() {
             Slot::new(1, 0),
             Slot::new(3, 0),
             Vec::new(),
+            None,
             None,
         );
         pool.put_entry(&message.compute_id(), message, &mut batch);
@@ -607,11 +628,12 @@ impl AsyncPool {
                 Hash::compute_from(&[&serialized_message_id, &prev_bytes[..]].concat());
 
             let (_rest, mut message) = self
-                .message_deserializer
+                .message_deserializer_db
                 .deserialize::<DeserializeError>(&prev_bytes)
                 .expect(MESSAGE_DESER_ERROR);
+
             message.can_be_executed = true;
-            message.compute_hash();
+            message.compute_hash(true);
 
             let mut serialized_message = Vec::new();
             self.message_serializer
@@ -628,7 +650,7 @@ impl AsyncPool {
             batch.aeh_list.insert(serialized_message_id.clone(), hash);
             batch
                 .write_batch
-                .put_cf(handle, serialized_message_id, &serialized_message);
+                .put_cf(handle, serialized_message_id, serialized_message.clone());
         }
     }
 
