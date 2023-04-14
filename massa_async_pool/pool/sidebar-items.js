@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"constant":["ASYNC_POOL_HASH_INITIAL_BYTES"],"fn":["is_triggered"],"struct":["AsyncPool","AsyncPoolDeserializer","AsyncPoolSerializer"]};
+window.SIDEBAR_ITEMS = {"constant":["ASYNC_POOL_CF","ASYNC_POOL_HASH_ERROR","ASYNC_POOL_HASH_INITIAL_BYTES","ASYNC_POOL_HASH_KEY","CF_ERROR","CRUD_ERROR","MESSAGE_DESER_ERROR","MESSAGE_ID_DESER_ERROR","MESSAGE_ID_SER_ERROR","MESSAGE_SER_ERROR","METADATA_CF","WRONG_BATCH_TYPE_ERROR"],"fn":["is_triggered"],"struct":["AsyncPool","AsyncPoolDeserializer","AsyncPoolSerializer"]};

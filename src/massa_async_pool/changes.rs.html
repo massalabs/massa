@@ -280,6 +280,7 @@
 <a href="#280" id="280">280</a>
 <a href="#281" id="281">281</a>
 <a href="#282" id="282">282</a>
+<a href="#283" id="283">283</a>
 </pre><pre class="rust"><code><span class="kw">use </span>std::ops::Bound::Included;
 
 <span class="kw">use </span>massa_serialization::{
@@ -337,7 +338,7 @@
         <span class="self">Self </span>{
             u64_serializer: U64VarIntSerializer::new(),
             id_serializer: AsyncMessageIdSerializer::new(),
-            message_serializer: AsyncMessageSerializer::new(),
+            message_serializer: AsyncMessageSerializer::new(<span class="bool-val">false</span>),
         }
     }
 }
@@ -431,6 +432,7 @@
                 thread_count,
                 max_async_message_data,
                 max_key_length,
+                <span class="bool-val">false</span>,
             ),
         }
     }

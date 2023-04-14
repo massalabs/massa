@@ -31,6 +31,7 @@
 <a href="#31" id="31">31</a>
 <a href="#32" id="32">32</a>
 <a href="#33" id="33">33</a>
+<a href="#34" id="34">34</a>
 </pre><pre class="rust"><code><span class="kw">use </span>massa_hash::Hash;
 <span class="kw">use </span>massa_models::{
     block::{Block, BlockSerializer, SecureShareBlock},
@@ -48,6 +49,7 @@
             parents: Vec::new(),
             operation_merkle_root: Hash::compute_from(<span class="kw-2">&amp;</span>Vec::new()),
             endorsements: Vec::new(),
+            denunciations: <span class="macro">vec!</span>[],
         },
         BlockHeaderSerializer::new(),
         keypair,

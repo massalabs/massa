@@ -226,11 +226,23 @@
 <a href="#226" id="226">226</a>
 <a href="#227" id="227">227</a>
 <a href="#228" id="228">228</a>
+<a href="#229" id="229">229</a>
+<a href="#230" id="230">230</a>
+<a href="#231" id="231">231</a>
+<a href="#232" id="232">232</a>
+<a href="#233" id="233">233</a>
+<a href="#234" id="234">234</a>
+<a href="#235" id="235">235</a>
+<a href="#236" id="236">236</a>
+<a href="#237" id="237">237</a>
+<a href="#238" id="238">238</a>
+<a href="#239" id="239">239</a>
+<a href="#240" id="240">240</a>
 </pre><pre class="rust"><code><span class="kw">use </span>massa_execution_exports::ExecutionError;
 <span class="kw">use </span>massa_final_state::{FinalState, FinalStateConfig};
 <span class="kw">use </span>massa_hash::Hash;
 <span class="kw">use </span>massa_ledger_exports::{LedgerConfig, LedgerController, LedgerEntry, LedgerError};
-<span class="kw">use </span>massa_ledger_worker::FinalLedger;
+<span class="kw">use </span>massa_ledger_worker::{new_rocks_db_instance, FinalLedger};
 <span class="kw">use </span>massa_models::execution::TempFileVestingRange;
 <span class="kw">use </span>massa_models::prehash::PreHashMap;
 <span class="kw">use </span>massa_models::{
@@ -337,7 +349,11 @@
 ) -&gt; <span class="prelude-ty">Result</span>&lt;(Arc&lt;RwLock&lt;FinalState&gt;&gt;, NamedTempFile, TempDir), LedgerError&gt; {
     <span class="kw">let </span>(rolls_file, ledger) = get_initials();
     <span class="kw">let </span>(ledger_config, tempfile, tempdir) = LedgerConfig::sample(<span class="kw-2">&amp;</span>ledger);
-    <span class="kw">let </span><span class="kw-2">mut </span>ledger = FinalLedger::new(ledger_config.clone(), <span class="bool-val">false</span>);
+    <span class="kw">let </span>rocks_db_instance = Arc::new(RwLock::new(new_rocks_db_instance(
+        tempdir.path().to_path_buf(),
+    )));
+
+    <span class="kw">let </span><span class="kw-2">mut </span>ledger = FinalLedger::new(ledger_config.clone(), rocks_db_instance.clone());
     ledger.load_initial_ledger().unwrap();
     <span class="kw">let </span>default_config = FinalStateConfig::default();
     <span class="kw">let </span>cfg = FinalStateConfig {
@@ -355,6 +371,7 @@
         .expect(<span class="string">&quot;could not start selector controller&quot;</span>);
     <span class="kw">let </span><span class="kw-2">mut </span>final_state = <span class="kw">if </span>last_start_period &gt; <span class="number">0 </span>{
         FinalState::new_derived_from_snapshot(
+            rocks_db_instance.clone(),
             cfg,
             Box::new(ledger),
             selector_controller,
@@ -362,7 +379,13 @@
         )
         .unwrap()
     } <span class="kw">else </span>{
-        FinalState::new(cfg, Box::new(ledger), selector_controller).unwrap()
+        FinalState::new(
+            rocks_db_instance.clone(),
+            cfg,
+            Box::new(ledger),
+            selector_controller,
+        )
+        .unwrap()
     };
     final_state.compute_initial_draws().unwrap();
     final_state.pos_state.create_initial_cycle();
@@ -391,6 +414,7 @@
             parents: <span class="macro">vec!</span>[],
             operation_merkle_root,
             endorsements: <span class="macro">vec!</span>[],
+            denunciations: <span class="macro">vec!</span>[],
         },
         BlockHeaderSerializer::new(),
         <span class="kw-2">&amp;</span>creator_keypair,

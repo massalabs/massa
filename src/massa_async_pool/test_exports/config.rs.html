@@ -18,10 +18,13 @@
 <a href="#18" id="18">18</a>
 <a href="#19" id="19">19</a>
 <a href="#20" id="20">20</a>
+<a href="#21" id="21">21</a>
+<a href="#22" id="22">22</a>
 </pre><pre class="rust"><code><span class="doccomment">//! Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="kw">use </span>massa_models::config::{
-    ASYNC_POOL_BOOTSTRAP_PART_SIZE, MAX_ASYNC_MESSAGE_DATA, MAX_ASYNC_POOL_LENGTH, THREAD_COUNT,
+    ASYNC_POOL_BOOTSTRAP_PART_SIZE, MAX_ASYNC_MESSAGE_DATA, MAX_ASYNC_POOL_LENGTH,
+    MAX_DATASTORE_KEY_LENGTH, THREAD_COUNT,
 };
 
 <span class="doccomment">///! This file defines testing tools related to the configuration
@@ -35,6 +38,7 @@
             max_async_message_data: MAX_ASYNC_MESSAGE_DATA,
             bootstrap_part_size: ASYNC_POOL_BOOTSTRAP_PART_SIZE,
             thread_count: THREAD_COUNT,
+            max_key_length: MAX_DATASTORE_KEY_LENGTH <span class="kw">as </span>u32,
         }
     }
 }
