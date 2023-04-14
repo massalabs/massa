@@ -87,6 +87,7 @@ impl Serializer<AsyncPoolChanges> for AsyncPoolChangesSerializer {
     ///     Slot::new(2, 0),
     ///     Slot::new(3, 0),
     ///     vec![1, 2, 3, 4],
+    ///     None,
     ///     None
     /// );
     /// let changes: AsyncPoolChanges = AsyncPoolChanges(vec![Change::Add(message.compute_id(), message)]);
@@ -179,7 +180,8 @@ impl Deserializer<AsyncPoolChanges> for AsyncPoolChangesDeserializer {
     ///     Some(AsyncMessageTrigger {
     ///        address: Address::from_str("AU12dG5xP1RDEB5ocdHkymNVvvSJmUL9BgHwCksDowqmGWxfpm93x").unwrap(),
     ///        datastore_key: Some(vec![1, 2, 3, 4]),
-    ///     })
+    ///     }),
+    ///     None
     /// );
     /// let changes: AsyncPoolChanges = AsyncPoolChanges(vec![Change::Add(message.compute_id(), message.clone()), Change::Delete(message.compute_id())]);
     /// let mut serialized = Vec::new();

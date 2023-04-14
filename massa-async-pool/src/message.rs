@@ -71,6 +71,7 @@ impl Serializer<AsyncMessageId> for AsyncMessageIdSerializer {
     ///     Slot::new(2, 0),
     ///     Slot::new(3, 0),
     ///     vec![1, 2, 3, 4],
+    ///     None,
     ///     None
     /// );
     /// let id: AsyncMessageId = message.compute_id();
@@ -130,6 +131,7 @@ impl Deserializer<AsyncMessageId> for AsyncMessageIdDeserializer {
     ///     Slot::new(2, 0),
     ///     Slot::new(3, 0),
     ///     vec![1, 2, 3, 4],
+    ///     None,
     ///     None
     /// );
     /// let id: AsyncMessageId = message.compute_id();
@@ -421,10 +423,11 @@ impl Serializer<AsyncMessage> for AsyncMessageSerializer {
     ///     Some(AsyncMessageTrigger {
     ///         address: Address::from_str("AU12dG5xP1RDEB5ocdHkymNVvvSJmUL9BgHwCksDowqmGWxfpm93x").unwrap(),
     ///         datastore_key: Some(vec![1, 2, 3, 4])
-    ///     })
+    ///     }),
+    ///     None,
     /// );
     /// let mut buffer = Vec::new();
-    /// let message_serializer = AsyncMessageSerializer::new();
+    /// let message_serializer = AsyncMessageSerializer::new(false);
     /// message_serializer.serialize(&message, &mut buffer).unwrap();
     /// ```
     fn serialize(
@@ -535,12 +538,13 @@ impl Deserializer<AsyncMessage> for AsyncMessageDeserializer {
     ///     Some(AsyncMessageTrigger {
     ///        address: Address::from_str("AU12dG5xP1RDEB5ocdHkymNVvvSJmUL9BgHwCksDowqmGWxfpm93x").unwrap(),
     ///        datastore_key: Some(vec![1, 2, 3, 4]),
-    ///     })
+    ///     }),
+    ///     None,
     /// );
-    /// let message_serializer = AsyncMessageSerializer::new();
+    /// let message_serializer = AsyncMessageSerializer::new(false);
     /// let mut serialized = Vec::new();
     /// message_serializer.serialize(&message, &mut serialized).unwrap();
-    /// let message_deserializer = AsyncMessageDeserializer::new(32, 100000, 255);
+    /// let message_deserializer = AsyncMessageDeserializer::new(32, 100000, 255, false);
     /// // dbg!(&serialized);
     /// let (rest, message_deserialized) = message_deserializer.deserialize::<DeserializeError>(&serialized).unwrap();
     /// assert!(rest.is_empty());
