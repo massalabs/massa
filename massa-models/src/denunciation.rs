@@ -20,8 +20,6 @@ use crate::endorsement::{
 };
 use crate::slot::{Slot, SlotDeserializer, SlotSerializer};
 
-use crate::prehash::PreHashed;
-
 use massa_hash::{Hash, HashDeserializer, HashSerializer};
 use massa_serialization::{
     Deserializer, SerializeError, Serializer, U32VarIntDeserializer, U32VarIntSerializer,
@@ -725,12 +723,12 @@ impl Deserializer<Denunciation> for DenunciationDeserializer {
 #[derive(Debug, Clone, Hash, PartialEq, Eq)]
 /// Index for Denunciations in collections (e.g. like a HashMap...)
 pub enum DenunciationIndex {
-    /// Variant for Block header denunciation
+    /// Variant for Block header denunciation index
     BlockHeader {
         /// de slot
         slot: Slot,
     },
-    /// Variant for Endorsement denunciation
+    /// Variant for Endorsement denunciation index
     Endorsement {
         /// de slot
         slot: Slot,
@@ -739,8 +737,17 @@ pub enum DenunciationIndex {
     },
 }
 
-impl PreHashed for DenunciationIndex {}
+impl DenunciationIndex {
+    /// Get field: slot
+    pub fn get_slot(&self) -> &Slot {
+        match self {
+            DenunciationIndex::BlockHeader { slot } => slot,
+            DenunciationIndex::Endorsement { slot, .. } => slot,
+        }
+    }
+}
 
+/// Create a `DenunciationIndex` from a `Denunciation`
 impl From<&Denunciation> for DenunciationIndex {
     fn from(value: &Denunciation) -> Self {
         match value {
@@ -755,11 +762,26 @@ impl From<&Denunciation> for DenunciationIndex {
     }
 }
 
+/// Create a `DenunciationIndex` from a `DenunciationPrecursor`
+impl From<&DenunciationPrecursor> for DenunciationIndex {
+    fn from(value: &DenunciationPrecursor) -> Self {
+        match value {
+            DenunciationPrecursor::Endorsement(de_p) => DenunciationIndex::Endorsement {
+                slot: de_p.slot,
+                index: de_p.index,
+            },
+            DenunciationPrecursor::BlockHeader(de_p) => {
+                DenunciationIndex::BlockHeader { slot: de_p.slot }
+            }
+        }
+    }
+}
+
 // End Denunciation Index
 
 // Denunciation interest
 
-/// DenunciationInterest variant for endorsement
+/// DenunciationPrecursor variant for endorsement
 #[derive(Debug, Clone)]
 pub struct EndorsementDenunciationPrecursor {
     /// secure share endorsement public key
@@ -768,18 +790,22 @@ pub struct EndorsementDenunciationPrecursor {
     pub slot: Slot,
     /// endorsement index
     pub index: u32,
+    /// secured header partial hash
     hash: Hash,
+    /// secured header signature
     signature: Signature,
 }
 
-/// DenunciationInterest variant for block header
+/// DenunciationPrecursor variant for block header
 #[derive(Debug, Clone)]
 pub struct BlockHeaderDenunciationPrecursor {
     /// secured header public key
     pub public_key: PublicKey,
     /// block header slot
     pub slot: Slot,
+    /// secured header partial hash
     hash: Hash,
+    /// secured header signature
     signature: Signature,
 }
 
@@ -791,6 +817,24 @@ pub enum DenunciationPrecursor {
     Endorsement(EndorsementDenunciationPrecursor),
     /// Block header variant
     BlockHeader(BlockHeaderDenunciationPrecursor),
+}
+
+impl DenunciationPrecursor {
+    /// Get field: slot
+    pub fn get_slot(&self) -> &Slot {
+        match self {
+            DenunciationPrecursor::Endorsement(endo_de_p) => &endo_de_p.slot,
+            DenunciationPrecursor::BlockHeader(blkh_de_p) => &blkh_de_p.slot,
+        }
+    }
+
+    /// Get field: pub key
+    pub fn get_public_key(&self) -> &PublicKey {
+        match self {
+            DenunciationPrecursor::Endorsement(endo_de_p) => &endo_de_p.public_key,
+            DenunciationPrecursor::BlockHeader(blkh_de_p) => &blkh_de_p.public_key,
+        }
+    }
 }
 
 impl TryFrom<&SecureShareEndorsement> for DenunciationPrecursor {
@@ -923,7 +967,7 @@ impl TryFrom<(&DenunciationPrecursor, &DenunciationPrecursor)> for Denunciation 
                 }))
             }
             _ => {
-                // Different enum variant - this is invalid
+                // Different enum variants - this is invalid
                 Err(DenunciationError::InvalidInput)
             }
         }

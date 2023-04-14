@@ -1,7 +1,5 @@
 //! Copyright (c) 2022 MASSA LABS <info@massa.net>
 
-use crossbeam_channel::Sender;
-use massa_models::denunciation::DenunciationPrecursor;
 use massa_models::{
     block_id::BlockId,
     endorsement::EndorsementId,
@@ -11,7 +9,6 @@ use massa_models::{
 use massa_pool_exports::PoolConfig;
 use massa_storage::Storage;
 use std::collections::{BTreeMap, HashMap};
-use tracing::warn;
 
 pub struct EndorsementPool {
     /// configuration
@@ -29,24 +26,16 @@ pub struct EndorsementPool {
 
     /// last consensus final periods, per thread
     last_cs_final_periods: Vec<u64>,
-
-    /// Queue to Denunciation factory
-    denunciation_factory_tx: Sender<DenunciationPrecursor>,
 }
 
 impl EndorsementPool {
-    pub fn init(
-        config: PoolConfig,
-        storage: &Storage,
-        denunciation_factory_tx: Sender<DenunciationPrecursor>,
-    ) -> Self {
+    pub fn init(config: PoolConfig, storage: &Storage) -> Self {
         EndorsementPool {
             last_cs_final_periods: vec![0u64; config.thread_count as usize],
             endorsements_indexed: Default::default(),
             endorsements_sorted: vec![Default::default(); config.thread_count as usize],
             config,
             storage: storage.clone_without_refs(),
-            denunciation_factory_tx,
         }
     }
 
@@ -126,21 +115,6 @@ impl EndorsementPool {
                         panic!("endorsement is expected to be absent from endorsements_sorted at this point");
                     }
                     added.insert(endo.id);
-                }
-
-                // And send endorsements to Denunciation Factory
-                match DenunciationPrecursor::try_from(endo) {
-                    Ok(de_i) => {
-                        if let Err(e) = self.denunciation_factory_tx.send(de_i) {
-                            warn!("Cannot send endorsement to Denunciation factory: {}", e);
-                        }
-                    }
-                    Err(e) => {
-                        warn!(
-                            "Cannot create denunciation interest from endorsement: {}",
-                            e
-                        );
-                    }
                 }
             }
         }
