@@ -199,8 +199,10 @@ impl PoolController for PoolControllerImpl {
         }
     }
 
-    fn get_denunciations(&self) -> Vec<Denunciation> {
-        self.denunciation_pool.read().get_denunciations()
+    /// Check if the pool contains a denunciation. Returns a boolean
+    fn contains_denunciation(&self, denunciation: &Denunciation) -> bool {
+        let lock = self.denunciation_pool.read();
+        lock.contains(denunciation)
     }
 
     /// Get the number of denunciations in the pool

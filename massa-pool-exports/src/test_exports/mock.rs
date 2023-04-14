@@ -289,7 +289,7 @@ impl PoolController for MockPoolController {
         response_rx.recv().unwrap()
     }
 
-    fn get_denunciations(&self) -> Vec<Denunciation> {
-        vec![]
+    fn contains_denunciation(&self, _denunciation: &Denunciation) -> bool {
+        false
     }
 }

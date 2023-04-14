@@ -483,17 +483,11 @@ async fn launch(
         selector: selector_controller.clone(),
     };
 
-    // TODO: rename
-    // let (denunciation_factory_tx, denunciation_factory_rx) =
-    //     crossbeam_channel::unbounded::<DenunciationPrecursor>();
-
     let (pool_manager, pool_controller) = start_pool_controller(
         pool_config,
         &shared_storage,
         execution_controller.clone(),
         pool_channels.clone(),
-        // denunciation_factory_tx,
-        // denunciation_factory_rx,
     );
 
     let (protocol_command_sender, protocol_command_receiver) =
@@ -541,7 +535,6 @@ async fn launch(
         block_sender: broadcast::channel(consensus_config.broadcast_blocks_capacity).0,
         filled_block_sender: broadcast::channel(consensus_config.broadcast_filled_blocks_capacity)
             .0,
-        // denunciation_precursor_sender,
     };
 
     let (consensus_controller, consensus_manager) = start_consensus_worker(

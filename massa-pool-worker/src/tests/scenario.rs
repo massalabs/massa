@@ -30,7 +30,7 @@ use massa_models::test_exports::{
 };
 use massa_pool_exports::PoolConfig;
 use massa_pos_exports::test_exports::MockSelectorControllerMessage;
-use massa_pos_exports::PosResult;
+use massa_pos_exports::{PosResult, Selection};
 use massa_signature::KeyPair;
 
 /// # Test simple get operation
@@ -245,20 +245,19 @@ fn test_block_header_denunciation_creation() {
                 }
             }
 
-            let denunciations = pool_controller.get_denunciations();
-            pool_manager.stop();
+            assert_eq!(pool_controller.get_denunciation_count(), 1);
+            assert_eq!(
+                pool_controller.contains_denunciation(&denunciation_orig),
+                true
+            );
 
-            assert_eq!(denunciations, vec![denunciation_orig])
+            pool_manager.stop();
         },
     );
 }
 
 #[test]
 fn test_endorsement_denunciation_creation() {
-    /*
-    let (_slot, keypair, secured_header_1, secured_header_2, secured_header_3) =
-        gen_block_headers_for_denunciation();
-    */
     let (_slot, keypair, s_endorsement_1, s_endorsement_2, _) = gen_endorsements_for_denunciation();
     let address = Address::from_public_key(&keypair.get_public_key());
 
@@ -277,11 +276,16 @@ fn test_endorsement_denunciation_creation() {
             // Allow some time for the pool to add the operations
             loop {
                 match selector_receiver.recv_timeout(Duration::from_millis(100)) {
-                    Ok(MockSelectorControllerMessage::GetProducer {
+                    Ok(MockSelectorControllerMessage::GetSelection {
                         slot: _slot,
                         response_tx,
                     }) => {
-                        response_tx.send(PosResult::Ok(address)).unwrap();
+                        let selection = Selection {
+                            endorsements: vec![address; usize::from(config.thread_count)],
+                            producer: address,
+                        };
+
+                        response_tx.send(PosResult::Ok(selection)).unwrap();
                     }
                     Ok(msg) => {
                         panic!(
@@ -296,10 +300,13 @@ fn test_endorsement_denunciation_creation() {
                 }
             }
 
-            let denunciations = pool_controller.get_denunciations();
-            pool_manager.stop();
+            assert_eq!(pool_controller.get_denunciation_count(), 1);
+            assert_eq!(
+                pool_controller.contains_denunciation(&denunciation_orig),
+                true
+            );
 
-            assert_eq!(denunciations, vec![denunciation_orig])
+            pool_manager.stop();
         },
     );
 }

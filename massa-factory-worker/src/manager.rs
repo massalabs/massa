@@ -16,8 +16,6 @@ pub struct FactoryManagerImpl {
 
     /// endorsement worker message sender and join handle
     pub(crate) endorsement_worker: Option<(mpsc::Sender<()>, JoinHandle<()>)>,
-    // /// denunciation worker message sender and join handle
-    // pub(crate) denunciation_worker: Option<(crossbeam_channel::Sender<()>, JoinHandle<()>)>,
 }
 
 impl FactoryManager for FactoryManagerImpl {
@@ -36,14 +34,6 @@ impl FactoryManager for FactoryManagerImpl {
                 warn!("endorsement factory worker panicked: {:?}", err);
             }
         }
-        /*
-        if let Some((chan_tx, join_handle)) = self.denunciation_worker.take() {
-            std::mem::drop(chan_tx);
-            if let Err(err) = join_handle.join() {
-                warn!("denunciation factory worker panicked: {:?}", err);
-            }
-        }
-        */
         info!("factory stopped");
     }
 }

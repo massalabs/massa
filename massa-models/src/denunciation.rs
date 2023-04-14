@@ -739,6 +739,16 @@ pub enum DenunciationIndex {
     },
 }
 
+impl DenunciationIndex {
+    /// Get field: slot
+    pub fn get_slot(&self) -> &Slot {
+        match self {
+            DenunciationIndex::BlockHeader { slot } => slot,
+            DenunciationIndex::Endorsement { slot, .. } => slot,
+        }
+    }
+}
+
 impl PreHashed for DenunciationIndex {}
 
 impl From<&Denunciation> for DenunciationIndex {
@@ -750,6 +760,20 @@ impl From<&Denunciation> for DenunciationIndex {
             },
             Denunciation::BlockHeader(blkh_de) => {
                 DenunciationIndex::BlockHeader { slot: blkh_de.slot }
+            }
+        }
+    }
+}
+
+impl From<&DenunciationPrecursor> for DenunciationIndex {
+    fn from(value: &DenunciationPrecursor) -> Self {
+        match value {
+            DenunciationPrecursor::Endorsement(de_p) => DenunciationIndex::Endorsement {
+                slot: de_p.slot,
+                index: de_p.index,
+            },
+            DenunciationPrecursor::BlockHeader(de_p) => {
+                DenunciationIndex::BlockHeader { slot: de_p.slot }
             }
         }
     }
