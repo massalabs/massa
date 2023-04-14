@@ -9,7 +9,7 @@ use massa_storage::Storage;
 
 use crate::handlers::{
     block_handler::commands::BlockHandlerCommand,
-    endorsement_handler::commands::EndorsementHandlerCommand,
+    endorsement_handler::commands_propagation::EndorsementHandlerCommand,
     operation_handler::commands_propagation::OperationHandlerCommand,
 };
 

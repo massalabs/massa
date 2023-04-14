@@ -1,30 +1,30 @@
-use std::thread::JoinHandle;
+use std::{num::NonZeroUsize, thread::JoinHandle};
 
-use crossbeam::{
-    channel::{Receiver, Sender},
-    select,
-};
+use crossbeam::channel::{Receiver, Sender};
+use lru::LruCache;
 use massa_models::{endorsement::EndorsementId, prehash::PreHashSet};
 use massa_pool_exports::PoolController;
+use massa_protocol_exports_2::ProtocolConfig;
 use massa_serialization::{DeserializeError, Deserializer};
 use massa_storage::Storage;
-use peernet::peer_id::PeerId;
 
-use crate::handlers::endorsement_handler::messages::EndorsementMessage;
+use crate::handlers::{
+    endorsement_handler::messages::EndorsementMessage, peer_handler::models::PeerMessageTuple,
+};
 
 use super::{
-    commands::EndorsementHandlerCommand,
-    internal_messages::InternalMessage,
+    cache::SharedEndorsementCache,
+    commands_propagation::EndorsementHandlerCommand,
     messages::{EndorsementMessageDeserializer, EndorsementMessageDeserializerArgs},
 };
 
 pub struct RetrievalThread {
-    receiver: Receiver<(PeerId, u64, Vec<u8>)>,
-    receiver_ext: Receiver<EndorsementHandlerCommand>,
-    cached_endorsement_ids: PreHashSet<EndorsementId>,
+    receiver: Receiver<PeerMessageTuple>,
+    cache: SharedEndorsementCache,
+    internal_sender: Sender<EndorsementHandlerCommand>,
     pool_controller: Box<dyn PoolController>,
+    config: ProtocolConfig,
     storage: Storage,
-    internal_sender: Sender<InternalMessage>,
 }
 
 impl RetrievalThread {
@@ -37,57 +37,60 @@ impl RetrievalThread {
                 endorsement_count: 32,
             });
         loop {
-            select! {
-                recv(self.receiver) -> msg => {
-                    match msg {
-                        Ok((peer_id, message_id, message)) => {
-                            endorsement_message_deserializer.set_message_id(message_id);
-                            let (rest, message) = endorsement_message_deserializer
-                                .deserialize::<DeserializeError>(&message)
-                                .unwrap();
-                            if !rest.is_empty() {
-                                println!("Error: message not fully consumed");
-                                return;
-                            }
-                            match message {
-                                EndorsementMessage::Endorsements(mut endorsements) => {
-                                    // Retain endorsements not in cache in endorsement vec and add them
-                                    endorsements.retain(|endorsement| {
-                                        if self.cached_endorsement_ids.contains(&endorsement.id) {
-                                            false
-                                        } else {
-                                            self.cached_endorsement_ids.insert(endorsement.id);
-                                            true
-                                        }
-                                    });
-                                    let mut endorsements_storage = self.storage.clone_without_refs();
-                                    endorsements_storage.store_endorsements(endorsements.clone());
-                                    self.pool_controller.add_endorsements(endorsements_storage);
-                                    self.internal_sender
-                                        .send(InternalMessage::PropagateEndorsements((
-                                            peer_id,
-                                            endorsements,
-                                        )))
-                                        .unwrap();
+            match self.receiver.recv() {
+                Ok((peer_id, message_id, message)) => {
+                    endorsement_message_deserializer.set_message_id(message_id);
+                    let (rest, message) = endorsement_message_deserializer
+                        .deserialize::<DeserializeError>(&message)
+                        .unwrap();
+                    if !rest.is_empty() {
+                        println!("Error: message not fully consumed");
+                        return;
+                    }
+                    match message {
+                        EndorsementMessage::Endorsements(mut endorsements) => {
+                            // Retain endorsements not in cache in endorsement vec and add them
+                            {
+                                let ids: PreHashSet<EndorsementId> = endorsements
+                                    .iter()
+                                    .map(|endorsement| endorsement.id)
+                                    .collect();
+                                let mut cache_write = self.cache.write();
+                                // Add endorsements known for this peer
+                                let cached_endorsements = cache_write
+                                    .endorsements_known_by_peer
+                                    .get_or_insert_mut(peer_id, || LruCache::new(NonZeroUsize::new(self.config.max_node_known_endorsements_size).expect("max_node_known_endorsements_size in config should be > 0")));
+                                for id in ids {
+                                    cached_endorsements.put(id, ());
                                 }
+                                endorsements.retain(|endorsement| {
+                                    if cache_write
+                                        .checked_endorsements
+                                        .get(&endorsement.id)
+                                        .is_some()
+                                    {
+                                        false
+                                    } else {
+                                        cache_write.insert_checked_endorsement(endorsement.id);
+                                        true
+                                    }
+                                });
                             }
-                        }
-                        Err(err) => {
-                            println!("Error: {:?}", err);
-                            return;
-                        }
-                    }
-                },
-                recv(self.receiver_ext) -> command => {
-                    match command {
-                        Ok(command) => {
-                            println!("Received command: {:?}", command);
-                        }
-                        Err(err) => {
-                            println!("Error: {:?}", err);
-                            return;
+                            let mut endorsements_storage = self.storage.clone_without_refs();
+                            endorsements_storage.store_endorsements(endorsements.clone());
+                            self.pool_controller
+                                .add_endorsements(endorsements_storage.clone());
+                            self.internal_sender
+                                .send(EndorsementHandlerCommand::PropagateEndorsements(
+                                    endorsements_storage,
+                                ))
+                                .unwrap();
                         }
                     }
+                }
+                Err(err) => {
+                    println!("Error: {:?}", err);
+                    return;
                 }
             }
         }
@@ -95,20 +98,21 @@ impl RetrievalThread {
 }
 
 pub fn start_retrieval_thread(
-    receiver: Receiver<(PeerId, u64, Vec<u8>)>,
-    receiver_ext: Receiver<EndorsementHandlerCommand>,
+    receiver: Receiver<PeerMessageTuple>,
+    internal_sender: Sender<EndorsementHandlerCommand>,
+    cache: SharedEndorsementCache,
     pool_controller: Box<dyn PoolController>,
+    config: ProtocolConfig,
     storage: Storage,
-    internal_sender: Sender<InternalMessage>,
 ) -> JoinHandle<()> {
     std::thread::spawn(move || {
         let mut retrieval_thread = RetrievalThread {
             receiver,
-            receiver_ext,
-            cached_endorsement_ids: PreHashSet::default(),
-            pool_controller,
-            storage,
+            cache,
             internal_sender,
+            pool_controller,
+            config,
+            storage,
         };
         retrieval_thread.run();
     })
