@@ -124,10 +124,12 @@ impl From<OperationType> for grpc::OperationType {
             OperationType::ExecuteSC {
                 data,
                 max_gas,
+                max_coins,
                 datastore,
             } => {
                 let execute_sc = grpc::ExecuteSc {
                     data,
+                    max_coins: max_coins.to_raw(),
                     max_gas,
                     datastore: datastore
                         .into_iter()

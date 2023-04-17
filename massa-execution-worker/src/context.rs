@@ -105,6 +105,9 @@ pub struct ExecutionContext {
     /// max gas for this execution
     pub max_gas: u64,
 
+    /// coin spending allowance for the operation creator
+    pub creator_coin_spending_allowance: Option<Amount>,
+
     /// slot at which the execution happens
     pub slot: Slot,
 
@@ -182,6 +185,7 @@ impl ExecutionContext {
             ),
             speculative_executed_ops: SpeculativeExecutedOps::new(final_state, active_history),
             max_gas: Default::default(),
+            creator_coin_spending_allowance: Default::default(),
             slot: Slot::new(0, 0),
             created_addr_index: Default::default(),
             created_event_index: Default::default(),
@@ -628,9 +632,29 @@ impl ExecutionContext {
                 .check_vesting_transfer_coins(self, from_addr, amount)?;
         }
 
+        // check remaining sender allowance
+        let sender_allowance = {
+            if let (Some(op_creator_allowance), Some(op_creator_addr)) = (&mut self.creator_coin_spending_allowance, self.creator_address) && from_addr == Some(op_creator_addr) {
+                if amount > *op_creator_allowance {
+                    return Err(ExecutionError::RuntimeError(format!("failed transfer of {} coins from spending address {} due to limited allowance", amount, op_creator_addr)));
+                }
+                Some(op_creator_allowance)
+            } else {
+                None
+            }
+        };
+
         // do the transfer
-        self.speculative_ledger
-            .transfer_coins(from_addr, to_addr, amount)
+        let result = self
+            .speculative_ledger
+            .transfer_coins(from_addr, to_addr, amount);
+
+        // update allowance
+        if let Some(allowance) = sender_allowance && result.is_ok() {
+            *allowance = allowance.saturating_sub(amount);
+        }
+
+        result
     }
 
     /// Add a new asynchronous message to speculative pool
