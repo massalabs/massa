@@ -1481,12 +1481,6 @@
 <a href="#1481" id="1481">1481</a>
 <a href="#1482" id="1482">1482</a>
 <a href="#1483" id="1483">1483</a>
-<a href="#1484" id="1484">1484</a>
-<a href="#1485" id="1485">1485</a>
-<a href="#1486" id="1486">1486</a>
-<a href="#1487" id="1487">1487</a>
-<a href="#1488" id="1488">1488</a>
-<a href="#1489" id="1489">1489</a>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="doccomment">//! This module deals with executing final and active slots, as well as read-only requests.
@@ -1740,11 +1734,6 @@
                 <span class="string">&quot;operation was executed previously&quot;</span>.to_string(),
             ));
         }
-
-        <span class="comment">// Set the creator coin spending allowance.
-        // Note that this needs to be initialized before any spending from the creator.
-        </span>context.creator_coin_spending_allowance =
-            <span class="prelude-val">Some</span>(operation.get_max_spending(<span class="self">self</span>.config.roll_price));
 
         <span class="comment">// debit the fee from the operation sender
         // fail execution if there are not enough coins
@@ -2215,7 +2204,6 @@
             context_snapshot = context.get_snapshot();
             context.max_gas = message.max_gas;
             context.creator_address = <span class="prelude-val">None</span>;
-            context.creator_coin_spending_allowance = <span class="prelude-val">None</span>;
             context.stack = <span class="macro">vec!</span>[
                 ExecutionStackElement {
                     address: message.sender,
