@@ -290,6 +290,13 @@
 <a href="#290" id="290">290</a>
 <a href="#291" id="291">291</a>
 <a href="#292" id="292">292</a>
+<a href="#293" id="293">293</a>
+<a href="#294" id="294">294</a>
+<a href="#295" id="295">295</a>
+<a href="#296" id="296">296</a>
+<a href="#297" id="297">297</a>
+<a href="#298" id="298">298</a>
+<a href="#299" id="299">299</a>
 </pre><pre class="rust"><code><span class="doccomment">//! Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="kw">use </span>massa_execution_exports::ExecutionController;
@@ -303,7 +310,7 @@
 <span class="kw">use </span>massa_pool_exports::{PoolChannels, PoolConfig};
 <span class="kw">use </span>massa_storage::Storage;
 <span class="kw">use </span>std::collections::BTreeSet;
-<span class="kw">use </span>tracing::debug;
+<span class="kw">use </span>tracing::{debug, trace};
 
 <span class="kw">use </span><span class="kw">crate</span>::types::{OperationInfo, PoolOperationCursor};
 
@@ -418,8 +425,15 @@
                     .expect(<span class="string">&quot;attempting to add operation to pool, but it is absent from storage&quot;</span>);
                 <span class="comment">// Broadcast operation to active sender(channel) subscribers.
                 </span><span class="kw">if </span><span class="self">self</span>.config.broadcast_enabled {
-                    <span class="kw">let _ </span>= <span class="self">self</span>.channels.operation_sender.send(op.content.clone());
+                    <span class="kw">if let </span><span class="prelude-val">Err</span>(err) = <span class="self">self</span>.channels.operation_sender.send(op.clone()) {
+                        <span class="macro">trace!</span>(
+                            <span class="string">&quot;error trying to broadcast operation with id {} due to: {}&quot;</span>,
+                            op.id.clone(),
+                            err
+                        );
+                    }
                 }
+
                 <span class="kw">let </span>op_info = OperationInfo::from_op(
                     op,
                     <span class="self">self</span>.config.operation_validity_periods,

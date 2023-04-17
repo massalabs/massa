@@ -308,6 +308,27 @@
 <a href="#308" id="308">308</a>
 <a href="#309" id="309">309</a>
 <a href="#310" id="310">310</a>
+<a href="#311" id="311">311</a>
+<a href="#312" id="312">312</a>
+<a href="#313" id="313">313</a>
+<a href="#314" id="314">314</a>
+<a href="#315" id="315">315</a>
+<a href="#316" id="316">316</a>
+<a href="#317" id="317">317</a>
+<a href="#318" id="318">318</a>
+<a href="#319" id="319">319</a>
+<a href="#320" id="320">320</a>
+<a href="#321" id="321">321</a>
+<a href="#322" id="322">322</a>
+<a href="#323" id="323">323</a>
+<a href="#324" id="324">324</a>
+<a href="#325" id="325">325</a>
+<a href="#326" id="326">326</a>
+<a href="#327" id="327">327</a>
+<a href="#328" id="328">328</a>
+<a href="#329" id="329">329</a>
+<a href="#330" id="330">330</a>
+<a href="#331" id="331">331</a>
 </pre><pre class="rust"><code><span class="kw">use </span>massa_consensus_exports::{
     block_status::BlockStatus, bootstrapable_graph::BootstrapableGraph, error::ConsensusError,
     ConsensusConfig,
@@ -352,10 +373,11 @@
     <span class="kw">let </span>keypair = <span class="kw-2">&amp;</span>cfg.genesis_key;
     <span class="kw">let </span>header = BlockHeader::new_verifiable(
         BlockHeader {
-            slot: Slot::new(<span class="number">0</span>, thread_number),
+            slot: Slot::new(cfg.last_start_period, thread_number),
             parents: Vec::new(),
             operation_merkle_root: Hash::compute_from(<span class="kw-2">&amp;</span>Vec::new()),
             endorsements: Vec::new(),
+            denunciations: Vec::new(),
         },
         BlockHeaderSerializer::new(),
         keypair,
@@ -458,6 +480,23 @@
             )
         }
 
+        <span class="kw">if </span>config.last_start_period &gt; <span class="number">0
+            </span>&amp;&amp; config
+                .genesis_timestamp
+                .checked_add(config.t0.checked_mul(config.last_start_period)<span class="question-mark">?</span>)<span class="question-mark">?
+                </span>&gt; now
+        {
+            <span class="kw">let </span>(days, hours, mins, secs) = config
+                .genesis_timestamp
+                .checked_add(config.t0.checked_mul(config.last_start_period)<span class="question-mark">?</span>)<span class="question-mark">?
+                </span>.saturating_sub(now)
+                .days_hours_mins_secs()<span class="question-mark">?</span>;
+            <span class="macro">info!</span>(
+                <span class="string">&quot;{} days, {} hours, {} minutes, {} seconds remaining to network restart&quot;</span>,
+                days, hours, mins, secs,
+            )
+        }
+
         <span class="comment">// add genesis blocks to stats
         </span><span class="kw">let </span>genesis_addr = Address::from_public_key(<span class="kw-2">&amp;</span>config.genesis_key.get_public_key());
         <span class="kw">let </span><span class="kw-2">mut </span>final_block_stats = VecDeque::new();
@@ -467,7 +506,7 @@
                     config.thread_count,
                     config.t0,
                     config.genesis_timestamp,
-                    Slot::new(<span class="number">0</span>, thread),
+                    Slot::new(config.last_start_period, thread),
                 )<span class="question-mark">?</span>,
                 genesis_addr,
                 <span class="bool-val">false</span>,
@@ -483,7 +522,9 @@
             next_instant,
         };
 
-        <span class="kw">if let </span><span class="prelude-val">Some</span>(BootstrapableGraph { final_blocks }) = init_graph {
+        <span class="comment">// If the node starts after the genesis timestamp then it has to initialize its graph
+        // with already produced blocks received from the bootstrap.
+        </span><span class="kw">if let </span><span class="prelude-val">Some</span>(BootstrapableGraph { final_blocks }) = init_graph {
             <span class="comment">// load final blocks
             </span><span class="kw">let </span>final_blocks: Vec&lt;(ActiveBlock, Storage)&gt; = final_blocks
                 .into_iter()
@@ -500,8 +541,8 @@
                     }
                 }
             }
-
-            {
+            <span class="comment">// Initialize the shared state between the worker and the interface used by the other modules.
+            </span>{
                 <span class="kw">let </span><span class="kw-2">mut </span>write_shared_state = res_consensus.shared_state.write();
                 write_shared_state.genesis_hashes = genesis_block_ids;
                 write_shared_state.active_index =
@@ -525,7 +566,8 @@
 
             res_consensus.claim_parent_refs()<span class="question-mark">?</span>;
         } <span class="kw">else </span>{
-            {
+            <span class="comment">// Initialize the shared state between the worker and the interface used by the other modules.
+            </span>{
                 <span class="kw">let </span><span class="kw-2">mut </span>write_shared_state = res_consensus.shared_state.write();
                 write_shared_state.active_index = genesis_block_ids.iter().copied().collect();
                 write_shared_state.latest_final_blocks_periods =
