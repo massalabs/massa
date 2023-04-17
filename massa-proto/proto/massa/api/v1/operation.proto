@@ -63,10 +63,12 @@ message RollSell {
 message ExecuteSC {
   // Smart contract bytecode.
   bytes data = 1;
+  // The maximum of coins that could be spent by the operation sender
+  fixed64 max_coins = 2;
   // The maximum amount of gas that the execution of the contract is allowed to cost
-  fixed64 max_gas = 2;
+  fixed64 max_gas = 3;
   // A key-value store associating a hash to arbitrary bytes
-  repeated BytesMapFieldEntry datastore = 3;
+  repeated BytesMapFieldEntry datastore = 4;
 }
 
 // Calls an exported function from a stored smart contract
