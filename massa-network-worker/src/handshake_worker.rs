@@ -11,6 +11,7 @@ use super::{
 use futures::future::try_join;
 use massa_hash::Hash;
 use massa_logging::massa_trace;
+use massa_models::config::MAX_DENUNCIATIONS_PER_BLOCK_HEADER;
 use massa_models::{
     config::{
         constants::{MAX_DATASTORE_VALUE_LENGTH, MAX_FUNCTION_NAME_LENGTH, MAX_PARAMETERS_SIZE},
@@ -111,6 +112,7 @@ impl HandshakeWorker {
                             MAX_OPERATION_DATASTORE_ENTRY_COUNT,
                             MAX_OPERATION_DATASTORE_KEY_LENGTH,
                             MAX_OPERATION_DATASTORE_VALUE_LENGTH,
+                            MAX_DENUNCIATIONS_PER_BLOCK_HEADER,
                             Some(last_start_period),
                         ),
                     ),

@@ -21,10 +21,16 @@ use crate::tests::tools::OpGenerator;
 use massa_execution_exports::test_exports::MockExecutionControllerMessage as ControllerMsg;
 use massa_models::address::Address;
 use massa_models::amount::Amount;
+use massa_models::denunciation::{Denunciation, DenunciationPrecursor};
 use massa_models::operation::OperationId;
 use massa_models::prehash::PreHashSet;
 use massa_models::slot::Slot;
+use massa_models::test_exports::{
+    gen_block_headers_for_denunciation, gen_endorsements_for_denunciation,
+};
 use massa_pool_exports::PoolConfig;
+use massa_pos_exports::test_exports::MockSelectorControllerMessage;
+use massa_pos_exports::{PosResult, Selection};
 use massa_signature::KeyPair;
 
 /// # Test simple get operation
@@ -50,7 +56,11 @@ fn test_simple_get_operations() {
     let config = PoolConfig::default();
     pool_test(
         config,
-        |mut pool_manager, mut pool_controller, execution_receiver, mut storage| {
+        |mut pool_manager,
+         mut pool_controller,
+         execution_receiver,
+         _selector_receiver,
+         mut storage| {
             //setup meta-data
             let keypair = KeyPair::generate();
             let op_gen = OpGenerator::default().creator(keypair.clone()).expirery(1);
@@ -163,7 +173,11 @@ fn test_get_operations_overflow() {
     let creator_thread = creator_address.get_thread(config.thread_count);
     pool_test(
         config,
-        |mut pool_manager, mut pool_controller, execution_receiver, mut storage| {
+        |mut pool_manager,
+         mut pool_controller,
+         execution_receiver,
+         _selector_receiver,
+         mut storage| {
             // setup storage
             storage.store_operations(operations);
             let unexecuted_ops = storage.get_op_refs().clone();
@@ -187,6 +201,112 @@ fn test_get_operations_overflow() {
             pool_manager.stop();
 
             assert_eq!(block_operations_storage.get_op_refs().len(), MAX_OP_LEN);
+        },
+    );
+}
+
+#[test]
+fn test_block_header_denunciation_creation() {
+    let (_slot, keypair, secured_header_1, secured_header_2, _secured_header_3) =
+        gen_block_headers_for_denunciation();
+    let address = Address::from_public_key(&keypair.get_public_key());
+
+    let de_p_1 = DenunciationPrecursor::try_from(&secured_header_1).unwrap();
+    let de_p_2 = DenunciationPrecursor::try_from(&secured_header_2).unwrap();
+
+    // Built it to compare with what the factory will produce
+    let denunciation_orig = Denunciation::try_from((&secured_header_1, &secured_header_2)).unwrap();
+
+    let config = PoolConfig::default();
+    pool_test(
+        config,
+        |mut pool_manager, pool_controller, _execution_receiver, selector_receiver, _storage| {
+            pool_controller.add_denunciation_precursor(de_p_1);
+            pool_controller.add_denunciation_precursor(de_p_2);
+            // Allow some time for the pool to add the operations
+            loop {
+                match selector_receiver.recv_timeout(Duration::from_millis(100)) {
+                    Ok(MockSelectorControllerMessage::GetProducer {
+                        slot: _slot,
+                        response_tx,
+                    }) => {
+                        response_tx.send(PosResult::Ok(address)).unwrap();
+                    }
+                    Ok(msg) => {
+                        panic!(
+                            "Received an unexpected message from mock selector: {:?}",
+                            msg
+                        );
+                    }
+                    Err(_e) => {
+                        // timeout
+                        break;
+                    }
+                }
+            }
+
+            assert_eq!(pool_controller.get_denunciation_count(), 1);
+            assert_eq!(
+                pool_controller.contains_denunciation(&denunciation_orig),
+                true
+            );
+
+            pool_manager.stop();
+        },
+    );
+}
+
+#[test]
+fn test_endorsement_denunciation_creation() {
+    let (_slot, keypair, s_endorsement_1, s_endorsement_2, _) = gen_endorsements_for_denunciation();
+    let address = Address::from_public_key(&keypair.get_public_key());
+
+    let de_p_1 = DenunciationPrecursor::try_from(&s_endorsement_1).unwrap();
+    let de_p_2 = DenunciationPrecursor::try_from(&s_endorsement_2).unwrap();
+
+    // Built it to compare with what the factory will produce
+    let denunciation_orig = Denunciation::try_from((&s_endorsement_1, &s_endorsement_2)).unwrap();
+
+    let config = PoolConfig::default();
+    pool_test(
+        config,
+        |mut pool_manager, pool_controller, _execution_receiver, selector_receiver, _storage| {
+            pool_controller.add_denunciation_precursor(de_p_1);
+            pool_controller.add_denunciation_precursor(de_p_2);
+            // Allow some time for the pool to add the operations
+            loop {
+                match selector_receiver.recv_timeout(Duration::from_millis(100)) {
+                    Ok(MockSelectorControllerMessage::GetSelection {
+                        slot: _slot,
+                        response_tx,
+                    }) => {
+                        let selection = Selection {
+                            endorsements: vec![address; usize::from(config.thread_count)],
+                            producer: address,
+                        };
+
+                        response_tx.send(PosResult::Ok(selection)).unwrap();
+                    }
+                    Ok(msg) => {
+                        panic!(
+                            "Received an unexpected message from mock selector: {:?}",
+                            msg
+                        );
+                    }
+                    Err(_e) => {
+                        // timeout
+                        break;
+                    }
+                }
+            }
+
+            assert_eq!(pool_controller.get_denunciation_count(), 1);
+            assert_eq!(
+                pool_controller.contains_denunciation(&denunciation_orig),
+                true
+            );
+
+            pool_manager.stop();
         },
     );
 }

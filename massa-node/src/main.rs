@@ -55,9 +55,8 @@ use massa_models::config::constants::{
 };
 use massa_models::config::{
     CONSENSUS_BOOTSTRAP_PART_SIZE, DENUNCIATION_EXPIRE_PERIODS, DENUNCIATION_ITEMS_MAX_CYCLE_DELTA,
-    MAX_OPERATIONS_PER_MESSAGE,
+    MAX_DENUNCIATIONS_PER_BLOCK_HEADER, MAX_OPERATIONS_PER_MESSAGE,
 };
-use massa_models::denunciation::DenunciationPrecursor;
 use massa_network_exports::{Establisher, NetworkConfig, NetworkManager};
 use massa_network_worker::start_network_controller;
 use massa_pool_exports::{PoolChannels, PoolConfig, PoolManager};
@@ -303,6 +302,7 @@ async fn launch(
         max_consensus_block_ids: MAX_CONSENSUS_BLOCKS_IDS,
         mip_store_stats_block_considered: MIP_STORE_STATS_BLOCK_CONSIDERED,
         mip_store_stats_counters_max: MIP_STORE_STATS_COUNTERS_MAX,
+        max_denunciations_per_block_header: MAX_DENUNCIATIONS_PER_BLOCK_HEADER,
     };
 
     // bootstrap
@@ -367,6 +367,7 @@ async fn launch(
         node_command_channel_size: NETWORK_NODE_COMMAND_CHANNEL_SIZE,
         node_event_channel_size: NETWORK_NODE_EVENT_CHANNEL_SIZE,
         last_start_period: final_state.read().last_start_period,
+        max_denunciations_per_block_header: MAX_DENUNCIATIONS_PER_BLOCK_HEADER,
     };
 
     // launch network controller
@@ -478,16 +479,14 @@ async fn launch(
 
     let pool_channels = PoolChannels {
         operation_sender: broadcast::channel(pool_config.broadcast_operations_capacity).0,
+        selector: selector_controller.clone(),
     };
-    let (denunciation_factory_tx, denunciation_factory_rx) =
-        crossbeam_channel::unbounded::<DenunciationPrecursor>();
 
     let (pool_manager, pool_controller) = start_pool_controller(
         pool_config,
         &shared_storage,
         execution_controller.clone(),
         pool_channels.clone(),
-        denunciation_factory_tx,
     );
 
     let (protocol_command_sender, protocol_command_receiver) =
@@ -524,8 +523,6 @@ async fn launch(
 
     let (consensus_event_sender, consensus_event_receiver) =
         crossbeam_channel::bounded(CHANNEL_SIZE);
-    let (denunciation_factory_sender, denunciation_factory_receiver) =
-        crossbeam_channel::bounded(CHANNEL_SIZE);
     let consensus_channels = ConsensusChannels {
         execution_controller: execution_controller.clone(),
         selector_controller: selector_controller.clone(),
@@ -537,7 +534,6 @@ async fn launch(
         block_sender: broadcast::channel(consensus_config.broadcast_blocks_capacity).0,
         filled_block_sender: broadcast::channel(consensus_config.broadcast_filled_blocks_capacity)
             .0,
-        denunciation_factory_sender,
     };
 
     let (consensus_controller, consensus_manager) = start_consensus_worker(
@@ -622,13 +618,7 @@ async fn launch(
         protocol: ProtocolCommandSender(protocol_command_sender.clone()),
         storage: shared_storage.clone(),
     };
-    let factory_manager = start_factory(
-        factory_config,
-        node_wallet.clone(),
-        factory_channels,
-        denunciation_factory_receiver,
-        denunciation_factory_rx,
-    );
+    let factory_manager = start_factory(factory_config, node_wallet.clone(), factory_channels);
 
     // launch bootstrap server
     // TODO: use std::net::TcpStream
@@ -746,6 +736,7 @@ async fn launch(
             max_channel_size: SETTINGS.grpc.max_channel_size,
             draw_lookahead_period_count: SETTINGS.grpc.draw_lookahead_period_count,
             last_start_period: final_state.read().last_start_period,
+            max_denunciations_per_block_header: MAX_DENUNCIATIONS_PER_BLOCK_HEADER,
         };
 
         let grpc_api = MassaGrpc {

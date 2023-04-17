@@ -6,11 +6,11 @@ use massa_consensus_exports::test_exports::MockConsensusControllerImpl;
 use massa_consensus_exports::ConsensusChannels;
 use massa_execution_exports::test_exports::MockExecutionController;
 use massa_models::config::{
-    ENDORSEMENT_COUNT, GENESIS_TIMESTAMP, MAX_DATASTORE_VALUE_LENGTH, MAX_ENDORSEMENTS_PER_MESSAGE,
-    MAX_FUNCTION_NAME_LENGTH, MAX_OPERATIONS_PER_BLOCK, MAX_OPERATIONS_PER_MESSAGE,
-    MAX_OPERATION_DATASTORE_ENTRY_COUNT, MAX_OPERATION_DATASTORE_KEY_LENGTH,
-    MAX_OPERATION_DATASTORE_VALUE_LENGTH, MAX_PARAMETERS_SIZE, PROTOCOL_CONTROLLER_CHANNEL_SIZE,
-    T0, THREAD_COUNT, VERSION,
+    ENDORSEMENT_COUNT, GENESIS_TIMESTAMP, MAX_DATASTORE_VALUE_LENGTH,
+    MAX_DENUNCIATIONS_PER_BLOCK_HEADER, MAX_ENDORSEMENTS_PER_MESSAGE, MAX_FUNCTION_NAME_LENGTH,
+    MAX_OPERATIONS_PER_BLOCK, MAX_OPERATIONS_PER_MESSAGE, MAX_OPERATION_DATASTORE_ENTRY_COUNT,
+    MAX_OPERATION_DATASTORE_KEY_LENGTH, MAX_OPERATION_DATASTORE_VALUE_LENGTH, MAX_PARAMETERS_SIZE,
+    PROTOCOL_CONTROLLER_CHANNEL_SIZE, T0, THREAD_COUNT, VERSION,
 };
 use massa_pool_exports::test_exports::MockPoolController;
 use massa_pool_exports::PoolChannels;
@@ -27,10 +27,7 @@ async fn test_start_grpc_server() {
     let shared_storage: massa_storage::Storage = massa_storage::Storage::create_root();
     let selector_ctrl = MockSelectorController::new_with_receiver();
     let pool_ctrl = MockPoolController::new_with_receiver();
-
     let (consensus_event_sender, _consensus_event_receiver) = crossbeam::channel::bounded(1024);
-    let (denunciation_factory_sender, _denunciation_factory_receiver) =
-        crossbeam::channel::bounded(1024);
 
     let (protocol_command_sender, _protocol_command_receiver) =
         mpsc::channel::<ProtocolCommand>(PROTOCOL_CONTROLLER_CHANNEL_SIZE);
@@ -44,7 +41,6 @@ async fn test_start_grpc_server() {
         block_sender: tokio::sync::broadcast::channel(100).0,
         block_header_sender: tokio::sync::broadcast::channel(100).0,
         filled_block_sender: tokio::sync::broadcast::channel(100).0,
-        denunciation_factory_sender: denunciation_factory_sender,
     };
 
     let operation_sender = tokio::sync::broadcast::channel(5000).0;
@@ -86,13 +82,17 @@ async fn test_start_grpc_server() {
         max_channel_size: 128,
         draw_lookahead_period_count: 10,
         last_start_period: 0,
+        max_denunciations_per_block_header: MAX_DENUNCIATIONS_PER_BLOCK_HEADER,
     };
 
     let service = MassaGrpc {
         consensus_controller: Box::new(consensus_controller),
         consensus_channels,
         execution_controller: execution_ctrl.0,
-        pool_channels: PoolChannels { operation_sender },
+        pool_channels: PoolChannels {
+            operation_sender,
+            selector: selector_ctrl.0.clone(),
+        },
         pool_command_sender: pool_ctrl.0,
         protocol_command_sender: ProtocolCommandSender(protocol_command_sender.clone()),
         selector_controller: selector_ctrl.0,

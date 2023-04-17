@@ -163,6 +163,7 @@ pub fn create_block(
             parents: vec![],
             operation_merkle_root,
             endorsements: vec![],
+            denunciations: vec![],
         },
         BlockHeaderSerializer::new(),
         &creator_keypair,

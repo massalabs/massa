@@ -154,11 +154,14 @@ pub struct ExecuteSc {
     /// Smart contract bytecode.
     #[prost(bytes = "vec", tag = "1")]
     pub data: ::prost::alloc::vec::Vec<u8>,
-    /// The maximum amount of gas that the execution of the contract is allowed to cost
+    /// The maximum of coins that could be spent by the operation sender
     #[prost(fixed64, tag = "2")]
+    pub max_coins: u64,
+    /// The maximum amount of gas that the execution of the contract is allowed to cost
+    #[prost(fixed64, tag = "3")]
     pub max_gas: u64,
     /// A key-value store associating a hash to arbitrary bytes
-    #[prost(message, repeated, tag = "3")]
+    #[prost(message, repeated, tag = "4")]
     pub datastore: ::prost::alloc::vec::Vec<BytesMapFieldEntry>,
 }
 /// Calls an exported function from a stored smart contract
