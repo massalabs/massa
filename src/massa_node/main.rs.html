@@ -1149,6 +1149,13 @@
 <a href="#1149" id="1149">1149</a>
 <a href="#1150" id="1150">1150</a>
 <a href="#1151" id="1151">1151</a>
+<a href="#1152" id="1152">1152</a>
+<a href="#1153" id="1153">1153</a>
+<a href="#1154" id="1154">1154</a>
+<a href="#1155" id="1155">1155</a>
+<a href="#1156" id="1156">1156</a>
+<a href="#1157" id="1157">1157</a>
+<a href="#1158" id="1158">1158</a>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="attr">#![doc = <span class="macro">include_str!</span>(<span class="string">&quot;../../README.md&quot;</span>)]
@@ -1206,9 +1213,9 @@
 };
 <span class="kw">use </span>massa_models::config::{
     CONSENSUS_BOOTSTRAP_PART_SIZE, DENUNCIATION_EXPIRE_PERIODS, DENUNCIATION_ITEMS_MAX_CYCLE_DELTA,
-    MAX_DENUNCIATIONS_PER_BLOCK_HEADER, MAX_OPERATIONS_PER_MESSAGE,
-    ROLL_COUNT_TO_SLASH_ON_DENUNCIATION,
+    MAX_OPERATIONS_PER_MESSAGE,
 };
+<span class="kw">use </span>massa_models::denunciation::DenunciationPrecursor;
 <span class="kw">use </span>massa_network_exports::{Establisher, NetworkConfig, NetworkManager};
 <span class="kw">use </span>massa_network_worker::start_network_controller;
 <span class="kw">use </span>massa_pool_exports::{PoolChannels, PoolConfig, PoolManager};
@@ -1455,7 +1462,6 @@
         max_consensus_block_ids: MAX_CONSENSUS_BLOCKS_IDS,
         mip_store_stats_block_considered: MIP_STORE_STATS_BLOCK_CONSIDERED,
         mip_store_stats_counters_max: MIP_STORE_STATS_COUNTERS_MAX,
-        max_denunciations_per_block_header: MAX_DENUNCIATIONS_PER_BLOCK_HEADER,
     };
 
     <span class="comment">// bootstrap
@@ -1520,7 +1526,6 @@
         node_command_channel_size: NETWORK_NODE_COMMAND_CHANNEL_SIZE,
         node_event_channel_size: NETWORK_NODE_EVENT_CHANNEL_SIZE,
         last_start_period: final_state.read().last_start_period,
-        max_denunciations_per_block_header: MAX_DENUNCIATIONS_PER_BLOCK_HEADER,
     };
 
     <span class="comment">// launch network controller
@@ -1602,7 +1607,6 @@
         lru_cache_size: SETTINGS.execution.lru_cache_size,
         hd_cache_size: SETTINGS.execution.hd_cache_size,
         snip_amount: SETTINGS.execution.snip_amount,
-        roll_count_to_slash_on_denunciation: ROLL_COUNT_TO_SLASH_ON_DENUNCIATION,
     };
     <span class="kw">let </span>(execution_manager, execution_controller) = start_execution_worker(
         execution_config,
@@ -1633,14 +1637,16 @@
 
     <span class="kw">let </span>pool_channels = PoolChannels {
         operation_sender: broadcast::channel(pool_config.broadcast_operations_capacity).<span class="number">0</span>,
-        selector: selector_controller.clone(),
     };
+    <span class="kw">let </span>(denunciation_factory_tx, denunciation_factory_rx) =
+        crossbeam_channel::unbounded::&lt;DenunciationPrecursor&gt;();
 
     <span class="kw">let </span>(pool_manager, pool_controller) = start_pool_controller(
         pool_config,
         <span class="kw-2">&amp;</span>shared_storage,
         execution_controller.clone(),
         pool_channels.clone(),
+        denunciation_factory_tx,
     );
 
     <span class="kw">let </span>(protocol_command_sender, protocol_command_receiver) =
@@ -1677,6 +1683,8 @@
 
     <span class="kw">let </span>(consensus_event_sender, consensus_event_receiver) =
         crossbeam_channel::bounded(CHANNEL_SIZE);
+    <span class="kw">let </span>(denunciation_factory_sender, denunciation_factory_receiver) =
+        crossbeam_channel::bounded(CHANNEL_SIZE);
     <span class="kw">let </span>consensus_channels = ConsensusChannels {
         execution_controller: execution_controller.clone(),
         selector_controller: selector_controller.clone(),
@@ -1688,6 +1696,7 @@
         block_sender: broadcast::channel(consensus_config.broadcast_blocks_capacity).<span class="number">0</span>,
         filled_block_sender: broadcast::channel(consensus_config.broadcast_filled_blocks_capacity)
             .<span class="number">0</span>,
+        denunciation_factory_sender,
     };
 
     <span class="kw">let </span>(consensus_controller, consensus_manager) = start_consensus_worker(
@@ -1772,7 +1781,13 @@
         protocol: ProtocolCommandSender(protocol_command_sender.clone()),
         storage: shared_storage.clone(),
     };
-    <span class="kw">let </span>factory_manager = start_factory(factory_config, node_wallet.clone(), factory_channels);
+    <span class="kw">let </span>factory_manager = start_factory(
+        factory_config,
+        node_wallet.clone(),
+        factory_channels,
+        denunciation_factory_receiver,
+        denunciation_factory_rx,
+    );
 
     <span class="comment">// launch bootstrap server
     // TODO: use std::net::TcpStream
@@ -1890,7 +1905,6 @@
             max_channel_size: SETTINGS.grpc.max_channel_size,
             draw_lookahead_period_count: SETTINGS.grpc.draw_lookahead_period_count,
             last_start_period: final_state.read().last_start_period,
-            max_denunciations_per_block_header: MAX_DENUNCIATIONS_PER_BLOCK_HEADER,
         };
 
         <span class="kw">let </span>grpc_api = MassaGrpc {

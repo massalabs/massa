@@ -2231,9 +2231,6 @@
 <a href="#2231" id="2231">2231</a>
 <a href="#2232" id="2232">2232</a>
 <a href="#2233" id="2233">2233</a>
-<a href="#2234" id="2234">2234</a>
-<a href="#2235" id="2235">2235</a>
-<a href="#2236" id="2236">2236</a>
 </pre><pre class="rust"><code><span class="doccomment">/// When an address is drawn to create an endorsement it is selected for a specific index
 </span><span class="attr">#[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
@@ -2390,14 +2387,11 @@
     <span class="doccomment">/// Smart contract bytecode.
     </span><span class="attr">#[prost(bytes = <span class="string">&quot;vec&quot;</span>, tag = <span class="string">&quot;1&quot;</span>)]
     </span><span class="kw">pub </span>data: ::prost::alloc::vec::Vec&lt;u8&gt;,
-    <span class="doccomment">/// The maximum of coins that could be spent by the operation sender
-    </span><span class="attr">#[prost(fixed64, tag = <span class="string">&quot;2&quot;</span>)]
-    </span><span class="kw">pub </span>max_coins: u64,
     <span class="doccomment">/// The maximum amount of gas that the execution of the contract is allowed to cost
-    </span><span class="attr">#[prost(fixed64, tag = <span class="string">&quot;3&quot;</span>)]
+    </span><span class="attr">#[prost(fixed64, tag = <span class="string">&quot;2&quot;</span>)]
     </span><span class="kw">pub </span>max_gas: u64,
     <span class="doccomment">/// A key-value store associating a hash to arbitrary bytes
-    </span><span class="attr">#[prost(message, repeated, tag = <span class="string">&quot;4&quot;</span>)]
+    </span><span class="attr">#[prost(message, repeated, tag = <span class="string">&quot;3&quot;</span>)]
     </span><span class="kw">pub </span>datastore: ::prost::alloc::vec::Vec&lt;BytesMapFieldEntry&gt;,
 }
 <span class="doccomment">/// Calls an exported function from a stored smart contract
