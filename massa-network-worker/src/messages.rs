@@ -255,6 +255,7 @@ pub struct MessageDeserializer {
     id_deserializer: U32VarIntDeserializer,
     ask_block_number_deserializer: U32VarIntDeserializer,
     peer_list_length_deserializer: U32VarIntDeserializer,
+    operation_replies_deserializer: OperationsDeserializer,
     operations_deserializer: OperationsDeserializer,
     hash_deserializer: HashDeserializer,
     block_header_deserializer: SecureShareDeserializer<BlockHeader, BlockHeaderDeserializer>,
@@ -282,6 +283,7 @@ impl MessageDeserializer {
         max_op_datastore_entry_count: u64,
         max_op_datastore_key_length: u8,
         max_op_datastore_value_length: u64,
+        last_start_period: Option<u64>,
     ) -> Self {
         MessageDeserializer {
             public_key_deserializer: PublicKeyDeserializer::new(),
@@ -296,8 +298,17 @@ impl MessageDeserializer {
                 Included(0),
                 Included(max_advertise_length),
             ),
-            operations_deserializer: OperationsDeserializer::new(
+            operation_replies_deserializer: OperationsDeserializer::new(
                 max_operations_per_block,
+                max_datastore_value_length,
+                max_function_name_length,
+                max_parameters_size,
+                max_op_datastore_entry_count,
+                max_op_datastore_key_length,
+                max_op_datastore_value_length,
+            ),
+            operations_deserializer: OperationsDeserializer::new(
+                max_operations_per_message,
                 max_datastore_value_length,
                 max_function_name_length,
                 max_parameters_size,
@@ -309,6 +320,7 @@ impl MessageDeserializer {
             block_header_deserializer: SecureShareDeserializer::new(BlockHeaderDeserializer::new(
                 thread_count,
                 endorsement_count,
+                last_start_period,
             )),
             endorsements_length_deserializer: U32VarIntDeserializer::new(
                 Included(0),
@@ -464,7 +476,7 @@ impl Deserializer<Message> for MessageDeserializer {
                                                 (rest, BlockInfoReply::Info(operation_ids))
                                             }),
                                         BlockInfoType::Operations => self
-                                            .operations_deserializer
+                                            .operation_replies_deserializer
                                             .deserialize(rest)
                                             .map(|(rest, operations)| {
                                                 (rest, BlockInfoReply::Operations(operations))
@@ -568,6 +580,7 @@ mod tests {
             MAX_OPERATION_DATASTORE_ENTRY_COUNT,
             MAX_OPERATION_DATASTORE_KEY_LENGTH,
             MAX_OPERATION_DATASTORE_VALUE_LENGTH,
+            Some(0),
         );
         let mut random_bytes = [0u8; 32];
         StdRng::from_entropy().fill_bytes(&mut random_bytes);

@@ -42,7 +42,7 @@ pub fn create_genesis_block(
     let keypair = &cfg.genesis_key;
     let header = BlockHeader::new_verifiable(
         BlockHeader {
-            slot: Slot::new(0, thread_number),
+            slot: Slot::new(cfg.last_start_period, thread_number),
             parents: Vec::new(),
             operation_merkle_root: Hash::compute_from(&Vec::new()),
             endorsements: Vec::new(),
@@ -148,6 +148,23 @@ impl ConsensusWorker {
             )
         }
 
+        if config.last_start_period > 0
+            && config
+                .genesis_timestamp
+                .checked_add(config.t0.checked_mul(config.last_start_period)?)?
+                > now
+        {
+            let (days, hours, mins, secs) = config
+                .genesis_timestamp
+                .checked_add(config.t0.checked_mul(config.last_start_period)?)?
+                .saturating_sub(now)
+                .days_hours_mins_secs()?;
+            info!(
+                "{} days, {} hours, {} minutes, {} seconds remaining to network restart",
+                days, hours, mins, secs,
+            )
+        }
+
         // add genesis blocks to stats
         let genesis_addr = Address::from_public_key(&config.genesis_key.get_public_key());
         let mut final_block_stats = VecDeque::new();
@@ -157,7 +174,7 @@ impl ConsensusWorker {
                     config.thread_count,
                     config.t0,
                     config.genesis_timestamp,
-                    Slot::new(0, thread),
+                    Slot::new(config.last_start_period, thread),
                 )?,
                 genesis_addr,
                 false,

@@ -1,6 +1,6 @@
 // Copyright (c) 2022 MASSA LABS <info@massa.net>
 
 mod binders;
-pub mod mock_establisher;
+pub(crate) mod mock_establisher;
 mod scenarios;
-pub mod tools;
+pub(crate) mod tools;

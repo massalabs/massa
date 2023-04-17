@@ -40,31 +40,44 @@ impl ConsensusState {
 
     /// Must be called each tick to update stats. Will detect if a desynchronization happened
     pub fn stats_tick(&mut self) -> Result<(), ConsensusError> {
-        // check if there are any final blocks is coming from protocol
-        // if none => we are probably desync
         #[cfg(not(feature = "sandbox"))]
         {
-            let now = MassaTime::now()?;
-            if now
-                > max(self.config.genesis_timestamp, self.launch_time)
-                    .saturating_add(self.stats_desync_detection_timespan)
-                && !self
-                    .final_block_stats
-                    .iter()
-                    .any(|(time, _, is_from_protocol)| {
-                        time > &now.saturating_sub(self.stats_desync_detection_timespan)
-                            && *is_from_protocol
-                    })
-            {
-                warn!("desynchronization detected because the recent final block history is empty or contains only blocks produced by this node");
-                let _ = self
-                    .channels
-                    .controller_event_tx
-                    .send(ConsensusEvent::NeedSync);
-            }
+            self.check_desync()?;
         }
         // prune stats
         self.prune_stats()?;
+        Ok(())
+    }
+
+    #[cfg(not(feature = "sandbox"))]
+    /// Helper function for stats_tick. Checks if there are any final blocks is coming from protocol
+    /// if none => we are probably desync
+    /// Ignore if we are before the last_start_period
+    fn check_desync(&mut self) -> Result<(), ConsensusError> {
+        let now = MassaTime::now()?;
+        if now
+            > max(
+                self.config
+                    .genesis_timestamp
+                    .checked_add(self.config.t0.checked_mul(self.config.last_start_period)?)?,
+                self.launch_time,
+            )
+            .saturating_add(self.stats_desync_detection_timespan)
+            && !self
+                .final_block_stats
+                .iter()
+                .any(|(time, _, is_from_protocol)| {
+                    time > &now.saturating_sub(self.stats_desync_detection_timespan)
+                        && *is_from_protocol
+                })
+        {
+            warn!("desynchronization detected because the recent final block history is empty or contains only blocks produced by this node");
+            let _ = self
+                .channels
+                .controller_event_tx
+                .send(ConsensusEvent::NeedSync);
+        }
+
         Ok(())
     }
 

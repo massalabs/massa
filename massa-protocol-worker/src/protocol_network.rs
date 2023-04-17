@@ -217,7 +217,7 @@ impl ProtocolWorker {
             })
     }
 
-    /// Return the sum of all operation's serialized sizes in the Set<Id>
+    /// Return the sum of all operation's serialized sizes in the `Set<Id>`
     fn get_total_operations_size(
         storage: &Storage,
         operation_ids: &PreHashSet<OperationId>,
@@ -353,6 +353,12 @@ impl ProtocolWorker {
 
         // Check operation_list against expected operations hash from header.
         if header.content.operation_merkle_root == Hash::compute_from(&total_hash) {
+            if operation_ids.len() > self.config.max_operations_per_block as usize {
+                warn!("Node id {} sent us an operations list for block id {} that contains more operations than the max allowed for a block.", from_node_id, block_id);
+                let _ = self.ban_node(&from_node_id).await;
+                return Ok(());
+            }
+
             // Add the ops of info.
             info.operation_ids = Some(operation_ids.clone());
             let known_operations = info.storage.claim_operation_refs(&operation_ids_set);

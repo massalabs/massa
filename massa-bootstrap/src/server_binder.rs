@@ -1,7 +1,7 @@
 // Copyright (c) 2022 MASSA LABS <info@massa.net>
 
 use crate::error::BootstrapError;
-use crate::establisher::types::Duplex;
+use crate::establisher::Duplex;
 use crate::messages::{
     BootstrapClientMessage, BootstrapClientMessageDeserializer, BootstrapServerMessage,
     BootstrapServerMessageSerializer,
@@ -26,7 +26,7 @@ use tokio::time::error::Elapsed;
 use tracing::error;
 
 /// Bootstrap server binder
-pub struct BootstrapServerBinder {
+pub struct BootstrapServerBinder<D: Duplex> {
     max_bootstrap_message_size: u32,
     max_consensus_block_ids: u64,
     thread_count: u8,
@@ -34,14 +34,14 @@ pub struct BootstrapServerBinder {
     randomness_size_bytes: usize,
     size_field_len: usize,
     local_keypair: KeyPair,
-    duplex: Resource<Duplex, StandardClock>,
+    duplex: Resource<D, StandardClock>,
     prev_message: Option<Hash>,
     version_serializer: VersionSerializer,
     version_deserializer: VersionDeserializer,
     write_error_timeout: MassaTime,
 }
 
-impl BootstrapServerBinder {
+impl<D: Duplex + 'static> BootstrapServerBinder<D> {
     /// Creates a new `WriteBinder`.
     ///
     /// # Argument
@@ -49,7 +49,7 @@ impl BootstrapServerBinder {
     /// * `local_keypair`: local node user keypair
     /// * `limit`: limit max bytes per second (up and down)
     #[allow(clippy::too_many_arguments)]
-    pub fn new(duplex: Duplex, local_keypair: KeyPair, cfg: BootstrapSrvBindCfg) -> Self {
+    pub fn new(duplex: D, local_keypair: KeyPair, cfg: BootstrapSrvBindCfg) -> Self {
         let BootstrapSrvBindCfg {
             max_bytes_read_write: limit,
             max_bootstrap_message_size,
@@ -75,9 +75,6 @@ impl BootstrapServerBinder {
             write_error_timeout,
         }
     }
-}
-
-impl BootstrapServerBinder {
     /// Performs a handshake. Should be called after connection
     /// NOT cancel-safe
     /// MUST always be followed by a send of the `BootstrapMessage::BootstrapTime`

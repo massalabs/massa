@@ -102,7 +102,9 @@ mod types {
             // Number of connections to queue, set to the hardcoded value used by tokio
             socket.listen(1024)?;
 
-            Ok(DefaultListener(TcpListener::from_std(socket.into())?))
+            let socket: std::net::TcpListener = socket.into();
+            socket.set_nonblocking(true)?;
+            Ok(DefaultListener(TcpListener::from_std(socket)?))
         }
 
         /// Get the connector with associated timeout

@@ -5,10 +5,10 @@ use std::net::SocketAddr;
 use crate::api_trait::MassaApiServer;
 use crate::{ApiServer, ApiV2, StopHandle, API};
 use async_trait::async_trait;
-use jsonrpsee::core::error::SubscriptionClosed;
-use jsonrpsee::core::{Error as JsonRpseeError, RpcResult};
-use jsonrpsee::types::SubscriptionResult;
-use jsonrpsee::SubscriptionSink;
+use futures::future::{self, Either};
+use futures::StreamExt;
+use jsonrpsee::core::{Error as JsonRpseeError, RpcResult, SubscriptionResult};
+use jsonrpsee::{PendingSubscriptionSink, SubscriptionMessage};
 use massa_api_exports::config::APIConfig;
 use massa_api_exports::error::ApiError;
 use massa_api_exports::page::{PageRequest, PagedVec, PagedVecV2};
@@ -117,42 +117,71 @@ impl MassaApiServer for API<ApiV2> {
         Ok(self.0.version)
     }
 
-    fn subscribe_new_blocks(&self, sink: SubscriptionSink) -> SubscriptionResult {
-        broadcast_via_ws(self.0.consensus_channels.block_sender.clone(), sink);
-        Ok(())
+    async fn subscribe_new_blocks(&self, pending: PendingSubscriptionSink) -> SubscriptionResult {
+        broadcast_via_ws(self.0.consensus_channels.block_sender.clone(), pending).await
     }
 
-    fn subscribe_new_blocks_headers(&self, sink: SubscriptionSink) -> SubscriptionResult {
-        broadcast_via_ws(self.0.consensus_channels.block_header_sender.clone(), sink);
-        Ok(())
+    async fn subscribe_new_blocks_headers(
+        &self,
+        pending: PendingSubscriptionSink,
+    ) -> SubscriptionResult {
+        broadcast_via_ws(
+            self.0.consensus_channels.block_header_sender.clone(),
+            pending,
+        )
+        .await
     }
 
-    fn subscribe_new_filled_blocks(&self, sink: SubscriptionSink) -> SubscriptionResult {
-        broadcast_via_ws(self.0.consensus_channels.filled_block_sender.clone(), sink);
-        Ok(())
+    async fn subscribe_new_filled_blocks(
+        &self,
+        pending: PendingSubscriptionSink,
+    ) -> SubscriptionResult {
+        broadcast_via_ws(
+            self.0.consensus_channels.filled_block_sender.clone(),
+            pending,
+        )
+        .await
     }
 
-    fn subscribe_new_operations(&self, sink: SubscriptionSink) -> SubscriptionResult {
-        broadcast_via_ws(self.0.pool_channels.operation_sender.clone(), sink);
-        Ok(())
+    async fn subscribe_new_operations(
+        &self,
+        pending: PendingSubscriptionSink,
+    ) -> SubscriptionResult {
+        broadcast_via_ws(self.0.pool_channels.operation_sender.clone(), pending).await
     }
 }
 
-/// Brodcast the stream(sender) content via a WebSocket
-fn broadcast_via_ws<T: Serialize + Send + Clone + 'static>(
+// Brodcast the stream(sender) content via a WebSocket
+async fn broadcast_via_ws<T: Serialize + Send + Clone + 'static>(
     sender: tokio::sync::broadcast::Sender<T>,
-    mut sink: SubscriptionSink,
-) {
-    let rx = BroadcastStream::new(sender.subscribe());
-    tokio::spawn(async move {
-        match sink.pipe_from_try_stream(rx).await {
-            SubscriptionClosed::Success => {
-                sink.close(SubscriptionClosed::Success);
+    pending: PendingSubscriptionSink,
+) -> SubscriptionResult {
+    let sink = pending.accept().await?;
+    let closed = sink.closed();
+    let stream = BroadcastStream::new(sender.subscribe());
+    futures::pin_mut!(closed, stream);
+
+    loop {
+        match future::select(closed, stream.next()).await {
+            // subscription closed.
+            Either::Left((_, _)) => break Ok(()),
+
+            // received new item from the stream.
+            Either::Right((Some(Ok(item)), c)) => {
+                let notif = SubscriptionMessage::from_json(&item)?;
+
+                if sink.send(notif).await.is_err() {
+                    break Ok(());
+                }
+
+                closed = c;
             }
-            SubscriptionClosed::RemotePeerAborted => (),
-            SubscriptionClosed::Failed(err) => {
-                sink.close(err);
-            }
-        };
-    });
+
+            // Send back back the error.
+            Either::Right((Some(Err(e)), _)) => break Err(e.into()),
+
+            // Stream is closed.
+            Either::Right((None, _)) => break Ok(()),
+        }
+    }
 }

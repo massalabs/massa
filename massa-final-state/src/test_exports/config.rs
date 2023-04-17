@@ -24,13 +24,14 @@ impl FinalState {
     pub fn create_final_state(pos_state: PoSFinalState, config: FinalStateConfig) -> Self {
         FinalState {
             slot: Slot::new(0, 0),
-            ledger: Box::new(FinalLedger::new(config.ledger_config.clone())),
+            ledger: Box::new(FinalLedger::new(config.ledger_config.clone(), false)),
             async_pool: AsyncPool::new(config.async_pool_config.clone()),
             pos_state,
             executed_ops: ExecutedOps::new(config.executed_ops_config.clone()),
             changes_history: Default::default(),
             config,
             final_state_hash: Hash::from_bytes(&[0; HASH_SIZE_BYTES]),
+            last_start_period: 0,
         }
     }
 }

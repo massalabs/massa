@@ -1,8 +1,9 @@
 // Copyright (c) 2022 MASSA LABS <info@massa.net>
 
 use massa_models::config::{
-    ENDORSEMENT_COUNT, MAX_BLOCK_SIZE, MAX_GAS_PER_BLOCK, MAX_OPERATIONS_PER_BLOCK,
-    OPERATION_VALIDITY_PERIODS, ROLL_PRICE, THREAD_COUNT,
+    DENUNCIATION_EXPIRE_PERIODS, ENDORSEMENT_COUNT, GENESIS_TIMESTAMP, MAX_BLOCK_SIZE,
+    MAX_GAS_PER_BLOCK, MAX_OPERATIONS_PER_BLOCK, OPERATION_VALIDITY_PERIODS, PERIODS_PER_CYCLE,
+    ROLL_PRICE, T0, THREAD_COUNT,
 };
 
 use crate::PoolConfig;
@@ -22,6 +23,10 @@ impl Default for PoolConfig {
             channels_size: 1024,
             broadcast_enabled: false,
             broadcast_operations_capacity: 5000,
+            genesis_timestamp: *GENESIS_TIMESTAMP,
+            t0: T0,
+            periods_per_cycle: PERIODS_PER_CYCLE,
+            denunciation_expire_periods: DENUNCIATION_EXPIRE_PERIODS,
         }
     }
 }

@@ -1,0 +1,36 @@
+// Copyright (c) 2023 MASSA LABS <info@massa.net>
+
+syntax = "proto3";
+
+package massa.api.v1;
+
+option csharp_namespace = "Com.Massa.Api.V1";
+option go_package = "github.com/massalabs/massa/api/v1;v1";
+option java_multiple_files = true;
+option java_package = "com.massa.api.v1";
+option objc_class_prefix = "GRPC";
+option php_namespace = "Com\\Massa\\Api\\V1";
+option ruby_package = "Com::Massa::Api::V1";
+option swift_prefix = "GRPC";
+
+// BytesMapFieldEntry
+message BytesMapFieldEntry {
+  // bytes key
+  bytes key = 1;
+  // bytes key
+  bytes value = 2;
+}
+
+// Packages a type such that it can be securely sent and received in a trust-free network
+message SecureShare {
+  // Content in sharable, deserializable form. Is used in the secure verification protocols
+  bytes serialized_data = 1;
+  // A cryptographically generated value using `serialized_data` and a public key.
+  string signature = 2;
+  // The public-key component used in the generation of the signature
+  string content_creator_pub_key = 3;
+  // Derived from the same public key used to generate the signature
+  string content_creator_address = 4;
+  // A secure hash of the data. See also [massa_hash::Hash]
+  string id = 5;
+}

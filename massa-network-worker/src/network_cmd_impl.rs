@@ -6,7 +6,7 @@
 //! All following functions are necessary internals (not public) or called by
 //! the `manage_network_command` in the worker.
 //!
-//! ```ignore
+//! ```text
 //! async fn manage_network_command(&mut self, cmd: NetworkCommand) -> Result<(), NetworkError> {
 //!     use crate::network_cmd_impl::*;
 //!     match cmd {

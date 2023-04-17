@@ -76,8 +76,8 @@ impl BlockFactoryWorker {
         );
 
         // ignore genesis
-        if next_slot.period == 0 {
-            next_slot.period = 1;
+        if next_slot.period <= self.cfg.last_start_period {
+            next_slot = Slot::new(self.cfg.last_start_period + 1, 0);
         }
 
         // protection against double-production on unexpected system clock adjustment
@@ -195,6 +195,12 @@ impl BlockFactoryWorker {
 
         // gather operations and compute global operations hash
         let (op_ids, op_storage) = self.channels.pool.get_block_operations(&slot);
+
+        if op_ids.len() > self.cfg.max_operations_per_block as usize {
+            warn!("Too many operations returned");
+            return;
+        }
+
         block_storage.extend(op_storage);
         let global_operations_hash = Hash::compute_from(
             &op_ids
@@ -217,11 +223,13 @@ impl BlockFactoryWorker {
         .expect("error while producing block header");
 
         // create block
+        let block_ = Block {
+            header,
+            operations: op_ids.into_iter().collect(),
+        };
+
         let block = Block::new_verifiable(
-            Block {
-                header,
-                operations: op_ids.into_iter().collect(),
-            },
+            block_,
             BlockSerializer::new(), // TODO reuse self.block_serializer
             block_producer_keypair,
         )
