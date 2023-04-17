@@ -67,7 +67,7 @@ impl std::fmt::Display for OperationInfo {
 
 #[cfg(test)]
 mod tests {
-    use jsonrpsee_core::__reexports::serde_json::{self, Value};
+    use jsonrpsee::core::__reexports::serde_json::{self, Value};
     use massa_models::{amount::Amount, operation::OperationType};
     use serial_test::serial;
     use std::collections::BTreeMap;
