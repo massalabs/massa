@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"mod":["channels","config","controller_traits","test_exports"],"struct":["PoolChannels","PoolConfig"],"trait":["PoolController","PoolManager"]};
+window.SIDEBAR_ITEMS = {"mod":["channels","config","controller_traits"],"struct":["PoolChannels","PoolConfig"],"trait":["PoolController","PoolManager"]};
