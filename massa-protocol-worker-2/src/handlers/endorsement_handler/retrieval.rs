@@ -7,6 +7,7 @@ use massa_pool_exports::PoolController;
 use massa_protocol_exports_2::ProtocolConfig;
 use massa_serialization::{DeserializeError, Deserializer};
 use massa_storage::Storage;
+use tracing::warn;
 
 use crate::handlers::{
     endorsement_handler::messages::EndorsementMessage, peer_handler::models::PeerMessageTuple,
@@ -80,11 +81,13 @@ impl RetrievalThread {
                             endorsements_storage.store_endorsements(endorsements.clone());
                             self.pool_controller
                                 .add_endorsements(endorsements_storage.clone());
-                            self.internal_sender
-                                .send(EndorsementHandlerCommand::PropagateEndorsements(
+                            if let Err(err) = self.internal_sender.send(
+                                EndorsementHandlerCommand::PropagateEndorsements(
                                     endorsements_storage,
-                                ))
-                                .unwrap();
+                                ),
+                            ) {
+                                warn!("Failed to send from retrieval thread of endorsement handler to propagation: {:?}", err);
+                            }
                         }
                     }
                 }

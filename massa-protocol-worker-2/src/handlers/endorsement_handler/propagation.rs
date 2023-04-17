@@ -125,7 +125,10 @@ impl PropagationThread {
                     }
                 }
                 Err(err) => {
-                    println!("Err: {:#?}", err);
+                    warn!(
+                        "Error in propagation thread of endorsement handler: {:#?}",
+                        err
+                    );
                     return;
                 }
             }
