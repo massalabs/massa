@@ -9,11 +9,13 @@ use peernet::{network_manager::SharedActiveConnections, peer_id::PeerId};
 
 use self::{
     commands::BlockHandlerCommand,
-    messages::{BlockMessageDeserializer, BlockMessageDeserializerArgs, BlockMessageSerializer},
+    messages::{BlockMessageDeserializer, BlockMessageDeserializerArgs},
 };
 
 pub mod commands;
 mod messages;
+
+pub(crate) use messages::{BlockMessage, BlockMessageSerializer};
 
 pub struct BlockHandler {
     pub block_retrieval_thread: Option<JoinHandle<()>>,
@@ -81,7 +83,6 @@ impl BlockHandler {
         });
 
         let block_propagation_thread = std::thread::spawn({
-            let _active_connections = active_connections.clone();
             move || {
                 let _block_message_serializer = BlockMessageSerializer::new();
                 //TODO: Real logic

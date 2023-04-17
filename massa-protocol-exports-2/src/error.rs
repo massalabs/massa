@@ -33,6 +33,8 @@ pub enum ProtocolError {
     MissingPeersError,
     /// Models error: {0}
     ModelsError(#[from] ModelsError),
+    /// Send error: {0}
+    SendError(String),
     /// Container inconsistency error: {0}
     ContainerInconsistencyError(String),
     /// Invalid operation error: {0}

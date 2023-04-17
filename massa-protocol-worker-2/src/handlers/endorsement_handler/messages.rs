@@ -18,15 +18,27 @@ pub enum EndorsementMessage {
     Endorsements(Vec<SecureShareEndorsement>),
 }
 
+impl EndorsementMessage {
+    pub fn get_id(&self) -> MessageTypeId {
+        match self {
+            EndorsementMessage::Endorsements(_) => MessageTypeId::Endorsements,
+        }
+    }
+
+    pub fn max_id() -> u64 {
+        <MessageTypeId as Into<u64>>::into(MessageTypeId::Endorsements) + 1
+    }
+}
+
+// DO NOT FORGET TO UPDATE MAX ID IF YOU UPDATE THERE
 #[derive(IntoPrimitive, Debug, Eq, PartialEq, TryFromPrimitive)]
 #[repr(u64)]
-enum MessageTypeId {
+pub enum MessageTypeId {
     Endorsements,
 }
 
 #[derive(Default)]
 pub struct EndorsementMessageSerializer {
-    id_serializer: U64VarIntSerializer,
     length_endorsements_serializer: U64VarIntSerializer,
     secure_share_serializer: SecureShareSerializer,
 }
@@ -34,7 +46,6 @@ pub struct EndorsementMessageSerializer {
 impl EndorsementMessageSerializer {
     pub fn new() -> Self {
         Self {
-            id_serializer: U64VarIntSerializer::new(),
             length_endorsements_serializer: U64VarIntSerializer::new(),
             secure_share_serializer: SecureShareSerializer::new(),
         }
@@ -49,8 +60,6 @@ impl Serializer<EndorsementMessage> for EndorsementMessageSerializer {
     ) -> Result<(), massa_serialization::SerializeError> {
         match value {
             EndorsementMessage::Endorsements(endorsements) => {
-                self.id_serializer
-                    .serialize(&(MessageTypeId::Endorsements as u64), buffer)?;
                 self.length_endorsements_serializer
                     .serialize(&(endorsements.len() as u64), buffer)?;
                 for endorsement in endorsements {

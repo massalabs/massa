@@ -1,4 +1,4 @@
-use std::time::Duration;
+use std::{collections::HashMap, time::Duration};
 
 use massa_consensus_exports::test_exports::MockConsensusController;
 use massa_pool_exports::test_exports::MockPoolController;
@@ -7,7 +7,7 @@ use massa_storage::Storage;
 use peernet::{peer_id::PeerId, transports::TransportType};
 use tempfile::NamedTempFile;
 
-use crate::{handlers::peer_handler::InitialPeers, start_protocol_controller};
+use crate::{handlers::peer_handler::models::InitialPeers, start_protocol_controller};
 use std::collections::HashMap;
 
 mod tools;
@@ -56,7 +56,7 @@ fn basic() {
     config2.initial_peers = initial_peers_file_2.path().to_path_buf();
     config2.max_in_connections = 2;
     config2.max_out_connections = 0;
-    
+
     // Setup the storages
     let storage1 = Storage::create_root();
     let storage2 = Storage::create_root();
@@ -69,8 +69,8 @@ fn basic() {
         start_protocol_controller(config2, consensus_controller2, pool_controller2, storage2)
             .expect("Failed to start protocol 2");
 
-    std::thread::sleep(Duration::from_secs(10));
-
+    std::thread::sleep(Duration::from_secs(3));
+    
     // Stop the protocols
     manager1.stop();
     manager2.stop();

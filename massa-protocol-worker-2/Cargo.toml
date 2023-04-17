@@ -14,16 +14,20 @@ nom = "7.1"
 num_enum = "0.5"
 peernet = { path = "../../PeerNet" } #git = "https://github.com/massalabs/PeerNet" }
 tempfile = { version = "3.3", optional = true } # use with testing feature
+rayon = "1.7.0"
+lru = "0.10.0"
 
 # modules Custom
 massa_hash = { path = "../massa-hash" }
 massa_models = { path = "../massa-models" }
+massa_logging = { path = "../massa-logging" }
 massa_protocol_exports_2 = { path = "../massa-protocol-exports-2" }
 massa_consensus_exports = { path = "../massa-consensus-exports" }
 massa_pool_exports = { path = "../massa-pool-exports" }
 massa_storage = { path = "../massa-storage" }
 massa_serialization = { path = "../massa-serialization" }
 massa_signature = { path = "../massa-signature" }
+massa_time = { path = "../massa-time" }
 
 [dev-dependencies]
 tempfile = "3.3"

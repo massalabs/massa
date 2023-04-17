@@ -1,21 +1,25 @@
 use std::thread::JoinHandle;
 
-use crossbeam::{
-    channel::{unbounded, Receiver, Sender},
-    select,
-};
-use massa_serialization::{DeserializeError, Deserializer};
-use peernet::{network_manager::SharedActiveConnections, peer_id::PeerId};
+use crossbeam::channel::{Receiver, Sender};
+use massa_pool_exports::PoolController;
+use massa_protocol_exports_2::ProtocolConfig;
+use massa_storage::Storage;
+use peernet::network_manager::SharedActiveConnections;
 
 use self::{
-    commands::OperationHandlerCommand,
-    messages::{
-        OperationMessageDeserializer, OperationMessageDeserializerArgs, OperationMessageSerializer,
-    },
+    cache::SharedOperationCache, commands_propagation::OperationHandlerCommand,
+    propagation::start_propagation_thread, retrieval::start_retrieval_thread,
 };
 
-pub mod commands;
+pub mod cache;
+pub mod commands_propagation;
 mod messages;
+mod propagation;
+mod retrieval;
+
+pub(crate) use messages::{OperationMessage, OperationMessageSerializer};
+
+use super::peer_handler::models::{PeerManagementCmd, PeerMessageTuple};
 
 pub struct OperationHandler {
     pub operation_retrieval_thread: Option<JoinHandle<()>>,
@@ -24,90 +28,30 @@ pub struct OperationHandler {
 
 impl OperationHandler {
     pub fn new(
+        pool_controller: Box<dyn PoolController>,
+        storage: Storage,
+        config: ProtocolConfig,
+        cache: SharedOperationCache,
         active_connections: SharedActiveConnections,
-        receiver: Receiver<(PeerId, u64, Vec<u8>)>,
-        receiver_ext: Receiver<OperationHandlerCommand>,
+        receiver_network: Receiver<PeerMessageTuple>,
+        local_sender: Sender<OperationHandlerCommand>,
+        local_receiver: Receiver<OperationHandlerCommand>,
+        peer_cmd_sender: Sender<PeerManagementCmd>,
     ) -> Self {
-        //TODO: Define real data
-        let (_internal_sender, internal_receiver): (Sender<()>, Receiver<()>) = unbounded();
-        let operation_retrieval_thread = std::thread::spawn(move || {
-            //TODO: Real values
-            let mut operation_message_deserializer =
-                OperationMessageDeserializer::new(OperationMessageDeserializerArgs {
-                    max_datastore_value_length: 10000,
-                    max_function_name_length: 10000,
-                    max_op_datastore_entry_count: 10000,
-                    max_op_datastore_key_length: 100,
-                    max_op_datastore_value_length: 10000,
-                    max_operations: 10000,
-                    max_operations_prefix_ids: 10000,
-                    max_parameters_size: 10000,
-                });
-            //TODO: Real logic
-            loop {
-                select! {
-                    recv(receiver) -> msg => {
-                        match msg {
-                            Ok((peer_id, message_id, message)) => {
-                                operation_message_deserializer.set_message_id(message_id);
-                                let (rest, message) = operation_message_deserializer
-                                    .deserialize::<DeserializeError>(&message)
-                                    .unwrap();
-                                if !rest.is_empty() {
-                                    println!("Error: message not fully consumed");
-                                    return;
-                                }
-                                println!("Received message from {:?}: {:?}", peer_id, message);
-                            }
-                            Err(err) => {
-                                println!("Error: {:?}", err);
-                                return;
-                            }
-                        }
-                    },
-                    recv(receiver_ext) -> command => {
-                        match command {
-                            Ok(command) => {
-                                println!("Received command: {:?}", command);
-                            }
-                            Err(err) => {
-                                println!("Error: {:?}", err);
-                                return;
-                            }
-                        }
-                    }
-                }
-            }
-        });
+        //TODO: Define bound channel
+        let operation_retrieval_thread = start_retrieval_thread(
+            receiver_network,
+            pool_controller,
+            storage.clone_without_refs(),
+            config.clone(),
+            cache.clone(),
+            active_connections.clone(),
+            local_sender,
+            peer_cmd_sender,
+        );
 
-        let operation_propagation_thread = std::thread::spawn({
-            let _active_connections = active_connections.clone();
-            move || {
-                let _operation_message_serializer = OperationMessageSerializer::new();
-                //TODO: Real logic
-                loop {
-                    match internal_receiver.recv() {
-                        Ok(_data) => {
-                            // Example to send data
-                            // {
-                            //     let active_connections = active_connections.read();
-                            //     for (peer_id, connection) in active_connections.iter() {
-                            //         println!("Sending message to {:?}", peer_id);
-                            //         let buf = Vec::new();
-                            //         operation_message_serializer.serialize(&data, &mut buf).unwrap();
-                            //         connection.send_message(&buf);
-                            //     }
-                            // }
-                            println!("Received message");
-                        }
-                        Err(err) => {
-                            println!("Error: {:?}", err);
-                            return;
-                        }
-                    }
-                }
-            }
-        });
+        let operation_propagation_thread =
+            start_propagation_thread(local_receiver, active_connections, config, cache);
         Self {
             operation_retrieval_thread: Some(operation_retrieval_thread),
             operation_propagation_thread: Some(operation_propagation_thread),
