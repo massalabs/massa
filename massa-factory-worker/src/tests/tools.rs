@@ -1,12 +1,9 @@
+use crossbeam_channel::Receiver;
 use massa_consensus_exports::test_exports::{
     ConsensusEventReceiver, MockConsensusController, MockConsensusControllerMessage,
 };
 use parking_lot::RwLock;
-use std::{
-    sync::{mpsc::Receiver, Arc},
-    thread::sleep,
-    time::Duration,
-};
+use std::{sync::Arc, thread::sleep, time::Duration};
 
 use massa_factory_exports::{
     test_exports::create_empty_block, FactoryChannels, FactoryConfig, FactoryManager,
@@ -35,14 +32,15 @@ use massa_wallet::test_exports::create_test_wallet;
 /// The factory will ask that to the the pool, consensus and factory and then will send the block to the consensus.
 /// You can use the method `new` to build all the mocks and make the connections
 /// Then you can use the method `get_next_created_block` that will manage the answers from the mock to the factory depending on the parameters you gave.
+#[allow(dead_code)]
 pub struct TestFactory {
-    consensus_event_receiver: ConsensusEventReceiver,
-    pool_receiver: PoolEventReceiver,
-    selector_receiver: Receiver<MockSelectorControllerMessage>,
+    consensus_event_receiver: Option<ConsensusEventReceiver>,
+    pub(crate) pool_receiver: PoolEventReceiver,
+    pub(crate) selector_receiver: Option<Receiver<MockSelectorControllerMessage>>,
     factory_config: FactoryConfig,
     factory_manager: Box<dyn FactoryManager>,
     genesis_blocks: Vec<(BlockId, u64)>,
-    storage: Storage,
+    pub(crate) storage: Storage,
     keypair: KeyPair,
 }
 
@@ -91,9 +89,9 @@ impl TestFactory {
         );
 
         TestFactory {
-            consensus_event_receiver,
+            consensus_event_receiver: Some(consensus_event_receiver),
             pool_receiver,
-            selector_receiver,
+            selector_receiver: Some(selector_receiver),
             factory_config,
             factory_manager,
             genesis_blocks,
@@ -124,6 +122,8 @@ impl TestFactory {
         loop {
             match self
                 .selector_receiver
+                .as_ref()
+                .unwrap()
                 .recv_timeout(Duration::from_millis(100))
             {
                 Ok(MockSelectorControllerMessage::GetProducer {
@@ -151,16 +151,19 @@ impl TestFactory {
                 _ => panic!("unexpected message"),
             }
         }
-        self.consensus_event_receiver
-            .wait_command(MassaTime::from_millis(100), |command| {
-                if let MockConsensusControllerMessage::GetBestParents { response_tx } = command {
-                    response_tx.send(self.genesis_blocks.clone()).unwrap();
-                    Some(())
-                } else {
-                    None
-                }
-            })
-            .unwrap();
+        if let Some(consensus_event_receiver) = self.consensus_event_receiver.as_mut() {
+            consensus_event_receiver
+                .wait_command(MassaTime::from_millis(100), |command| {
+                    if let MockConsensusControllerMessage::GetBestParents { response_tx } = command
+                    {
+                        response_tx.send(self.genesis_blocks.clone()).unwrap();
+                        Some(())
+                    } else {
+                        None
+                    }
+                })
+                .unwrap();
+        }
         self.pool_receiver
             .wait_command(MassaTime::from_millis(100), |command| match command {
                 MockPoolControllerMessage::GetBlockEndorsements {
@@ -203,26 +206,45 @@ impl TestFactory {
                 _ => panic!("unexpected message"),
             })
             .unwrap();
-        self.consensus_event_receiver
-            .wait_command(MassaTime::from_millis(100), |command| {
-                if let MockConsensusControllerMessage::RegisterBlock {
-                    block_id,
-                    block_storage,
-                    slot: _,
-                    created: _,
-                } = command
-                {
-                    Some((block_id, block_storage))
-                } else {
-                    None
-                }
-            })
-            .unwrap()
+
+        if let Some(consensus_event_receiver) = self.consensus_event_receiver.as_mut() {
+            consensus_event_receiver
+                .wait_command(MassaTime::from_millis(100), |command| {
+                    if let MockConsensusControllerMessage::RegisterBlock {
+                        block_id,
+                        block_storage,
+                        slot: _,
+                        created: _,
+                    } = command
+                    {
+                        Some((block_id, block_storage))
+                    } else {
+                        None
+                    }
+                })
+                .unwrap()
+        } else {
+            panic!()
+        }
     }
 }
 
 impl Drop for TestFactory {
     fn drop(&mut self) {
+        // Need this otherwise factory_manager is stuck while waiting for block & endorsement factory
+        // to join
+        // For instance, block factory is waiting for selector.get_producer(...)
+        //               endorsement factory is waiting for selector.get_selection(...)
+        // Note: that this will make the 2 threads panic
+        // TODO: find a better way to resolve this
+        if let Some(selector_receiver) = self.selector_receiver.take() {
+            drop(selector_receiver);
+        }
+
+        if let Some(consensus_receiver) = self.consensus_event_receiver.take() {
+            drop(consensus_receiver);
+        }
+
         self.factory_manager.stop();
     }
 }

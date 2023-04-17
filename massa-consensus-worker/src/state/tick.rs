@@ -37,12 +37,34 @@ impl ConsensusState {
             .collect();
 
         massa_trace!("consensus.block_graph.slot_tick", {});
+
         // process those elements
         self.rec_process(to_process, Some(current_slot))?;
 
+        // Update the stats
         self.stats_tick()?;
+
         // take care of block db changes
         self.block_db_changed()?;
+
+        let now = massa_time::MassaTime::now().expect("could not get now time");
+
+        use massa_models::config::constants::DOWNTIME_END_TIMESTAMP;
+        use massa_models::config::constants::DOWNTIME_START_TIMESTAMP;
+
+        // Simulate downtime
+        // last_start_period should be set to trigger after the DOWNTIME_END_TIMESTAMP
+        if now >= DOWNTIME_START_TIMESTAMP && now <= DOWNTIME_END_TIMESTAMP {
+            let (days, hours, mins, secs) = DOWNTIME_END_TIMESTAMP
+                .saturating_sub(now)
+                .days_hours_mins_secs()
+                .unwrap();
+
+            panic!(
+                "We are in downtime! {} days, {} hours, {} minutes, {} seconds remaining to the end of the downtime",
+                days, hours, mins, secs,
+            );
+        }
 
         Ok(())
     }

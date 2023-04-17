@@ -42,10 +42,11 @@ pub fn create_genesis_block(
     let keypair = &cfg.genesis_key;
     let header = BlockHeader::new_verifiable(
         BlockHeader {
-            slot: Slot::new(0, thread_number),
+            slot: Slot::new(cfg.last_start_period, thread_number),
             parents: Vec::new(),
             operation_merkle_root: Hash::compute_from(&Vec::new()),
             endorsements: Vec::new(),
+            denunciations: Vec::new(),
         },
         BlockHeaderSerializer::new(),
         keypair,
@@ -148,6 +149,23 @@ impl ConsensusWorker {
             )
         }
 
+        if config.last_start_period > 0
+            && config
+                .genesis_timestamp
+                .checked_add(config.t0.checked_mul(config.last_start_period)?)?
+                > now
+        {
+            let (days, hours, mins, secs) = config
+                .genesis_timestamp
+                .checked_add(config.t0.checked_mul(config.last_start_period)?)?
+                .saturating_sub(now)
+                .days_hours_mins_secs()?;
+            info!(
+                "{} days, {} hours, {} minutes, {} seconds remaining to network restart",
+                days, hours, mins, secs,
+            )
+        }
+
         // add genesis blocks to stats
         let genesis_addr = Address::from_public_key(&config.genesis_key.get_public_key());
         let mut final_block_stats = VecDeque::new();
@@ -157,7 +175,7 @@ impl ConsensusWorker {
                     config.thread_count,
                     config.t0,
                     config.genesis_timestamp,
-                    Slot::new(0, thread),
+                    Slot::new(config.last_start_period, thread),
                 )?,
                 genesis_addr,
                 false,
@@ -173,6 +191,8 @@ impl ConsensusWorker {
             next_instant,
         };
 
+        // If the node starts after the genesis timestamp then it has to initialize its graph
+        // with already produced blocks received from the bootstrap.
         if let Some(BootstrapableGraph { final_blocks }) = init_graph {
             // load final blocks
             let final_blocks: Vec<(ActiveBlock, Storage)> = final_blocks
@@ -190,7 +210,7 @@ impl ConsensusWorker {
                     }
                 }
             }
-
+            // Initialize the shared state between the worker and the interface used by the other modules.
             {
                 let mut write_shared_state = res_consensus.shared_state.write();
                 write_shared_state.genesis_hashes = genesis_block_ids;
@@ -215,6 +235,7 @@ impl ConsensusWorker {
 
             res_consensus.claim_parent_refs()?;
         } else {
+            // Initialize the shared state between the worker and the interface used by the other modules.
             {
                 let mut write_shared_state = res_consensus.shared_state.write();
                 write_shared_state.active_index = genesis_block_ids.iter().copied().collect();

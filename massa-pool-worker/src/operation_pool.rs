@@ -11,7 +11,7 @@ use massa_models::{
 use massa_pool_exports::{PoolChannels, PoolConfig};
 use massa_storage::Storage;
 use std::collections::BTreeSet;
-use tracing::debug;
+use tracing::{debug, trace};
 
 use crate::types::{OperationInfo, PoolOperationCursor};
 
@@ -126,8 +126,15 @@ impl OperationPool {
                     .expect("attempting to add operation to pool, but it is absent from storage");
                 // Broadcast operation to active sender(channel) subscribers.
                 if self.config.broadcast_enabled {
-                    let _ = self.channels.operation_sender.send(op.content.clone());
+                    if let Err(err) = self.channels.operation_sender.send(op.clone()) {
+                        trace!(
+                            "error trying to broadcast operation with id {} due to: {}",
+                            op.id.clone(),
+                            err
+                        );
+                    }
                 }
+
                 let op_info = OperationInfo::from_op(
                     op,
                     self.config.operation_validity_periods,

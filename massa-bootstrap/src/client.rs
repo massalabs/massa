@@ -6,6 +6,7 @@ use massa_logging::massa_trace;
 use massa_models::{node::NodeId, streaming_step::StreamingStep, version::Version};
 use massa_signature::PublicKey;
 use massa_time::MassaTime;
+use massa_versioning_worker::versioning::{MipStore, MipStoreRaw};
 use parking_lot::RwLock;
 use rand::{
     prelude::{SliceRandom, StdRng},
@@ -17,7 +18,7 @@ use tracing::{debug, info, warn};
 use crate::{
     client_binder::BootstrapClientBinder,
     error::BootstrapError,
-    establisher::{BSConnector, BSEstablisher},
+    establisher::{BSConnector, Duplex},
     messages::{BootstrapClientMessage, BootstrapServerMessage},
     settings::IpType,
     BootstrapConfig, GlobalBootstrapState,
@@ -26,9 +27,9 @@ use crate::{
 /// This function will send the starting point to receive a stream of the ledger and will receive and process each part until receive a `BootstrapServerMessage::FinalStateFinished` message from the server.
 /// `next_bootstrap_message` passed as parameter must be `BootstrapClientMessage::AskFinalStatePart` enum variant.
 /// `next_bootstrap_message` will be updated after receiving each part so that in case of connection lost we can restart from the last message we processed.
-async fn stream_final_state_and_consensus(
+async fn stream_final_state_and_consensus<D: Duplex>(
     cfg: &BootstrapConfig,
-    client: &mut BootstrapClientBinder,
+    client: &mut BootstrapClientBinder<D>,
     next_bootstrap_message: &mut BootstrapClientMessage,
     global_bootstrap_state: &mut GlobalBootstrapState,
 ) -> Result<(), BootstrapError> {
@@ -70,9 +71,16 @@ async fn stream_final_state_and_consensus(
                     final_state_changes,
                     consensus_part,
                     consensus_outdated_ids,
+                    last_start_period,
                 } => {
                     // Set final state
                     let mut write_final_state = global_bootstrap_state.final_state.write();
+
+                    // We only need to receive the initial_state once
+                    if let Some(last_start_period) = last_start_period {
+                        write_final_state.last_start_period = last_start_period;
+                    }
+
                     let last_ledger_step = write_final_state.ledger.set_ledger_part(ledger_part)?;
                     let last_pool_step =
                         write_final_state.async_pool.set_pool_part(async_pool_part);
@@ -86,9 +94,11 @@ async fn stream_final_state_and_consensus(
                         .executed_ops
                         .set_executed_ops_part(exec_ops_part);
                     for (changes_slot, changes) in final_state_changes.iter() {
-                        write_final_state
-                            .ledger
-                            .apply_changes(changes.ledger_changes.clone(), *changes_slot);
+                        write_final_state.ledger.apply_changes(
+                            changes.ledger_changes.clone(),
+                            *changes_slot,
+                            None,
+                        );
                         write_final_state
                             .async_pool
                             .apply_changes_unchecked(&changes.async_pool_changes);
@@ -139,6 +149,7 @@ async fn stream_final_state_and_consensus(
                         last_credits_step,
                         last_ops_step,
                         last_consensus_step,
+                        send_last_start_period: false,
                     };
 
                     // Logs for an easier diagnostic if needed
@@ -167,6 +178,7 @@ async fn stream_final_state_and_consensus(
                         last_credits_step: StreamingStep::Started,
                         last_ops_step: StreamingStep::Started,
                         last_consensus_step: StreamingStep::Started,
+                        send_last_start_period: true,
                     };
                     let mut write_final_state = global_bootstrap_state.final_state.write();
                     write_final_state.reset();
@@ -194,9 +206,9 @@ async fn stream_final_state_and_consensus(
 
 /// Gets the state from a bootstrap server (internal private function)
 /// needs to be CANCELLABLE
-async fn bootstrap_from_server(
+async fn bootstrap_from_server<D: Duplex>(
     cfg: &BootstrapConfig,
-    client: &mut BootstrapClientBinder,
+    client: &mut BootstrapClientBinder<D>,
     next_bootstrap_message: &mut BootstrapClientMessage,
     global_bootstrap_state: &mut GlobalBootstrapState,
     our_version: Version,
@@ -328,6 +340,27 @@ async fn bootstrap_from_server(
                     other => return Err(BootstrapError::UnexpectedServerMessage(other)),
                 };
                 global_bootstrap_state.peers = Some(peers);
+                *next_bootstrap_message = BootstrapClientMessage::AskBootstrapMipStore;
+            }
+            BootstrapClientMessage::AskBootstrapMipStore => {
+                let mip_store_raw: MipStoreRaw = match send_client_message(
+                    next_bootstrap_message,
+                    client,
+                    write_timeout,
+                    cfg.read_timeout.into(),
+                    "ask bootstrap versioning store timed out",
+                )
+                .await?
+                {
+                    BootstrapServerMessage::BootstrapMipStore { store: store_raw } => store_raw,
+                    BootstrapServerMessage::BootstrapError { error } => {
+                        return Err(BootstrapError::ReceivedError(error))
+                    }
+                    other => return Err(BootstrapError::UnexpectedServerMessage(other)),
+                };
+
+                global_bootstrap_state.mip_store =
+                    Some(MipStore(Arc::new(RwLock::new(mip_store_raw))));
                 *next_bootstrap_message = BootstrapClientMessage::BootstrapSuccess;
             }
             BootstrapClientMessage::BootstrapSuccess => {
@@ -352,9 +385,9 @@ async fn bootstrap_from_server(
     Ok(())
 }
 
-async fn send_client_message(
+async fn send_client_message<D: Duplex>(
     message_to_send: &BootstrapClientMessage,
-    client: &mut BootstrapClientBinder,
+    client: &mut BootstrapClientBinder<D>,
     write_timeout: Duration,
     read_timeout: Duration,
     error: &str,
@@ -371,17 +404,22 @@ async fn send_client_message(
     }
 }
 
-async fn connect_to_server(
-    establisher: &mut impl BSEstablisher,
+fn connect_to_server(
+    connector: &mut impl BSConnector,
     bootstrap_config: &BootstrapConfig,
     addr: &SocketAddr,
     pub_key: &PublicKey,
-) -> Result<BootstrapClientBinder, BootstrapError> {
-    // connect
-    let mut connector = establisher.get_connector(bootstrap_config.connect_timeout)?;
-    let socket = connector.connect(*addr).await?;
+) -> Result<BootstrapClientBinder<tokio::net::TcpStream>, Box<BootstrapError>> {
+    let socket = connector.connect(*addr).map_err(|e| Box::new(e.into()))?;
+    socket
+        .set_nonblocking(true)
+        .map_err(|e| Box::new(BootstrapError::IoError(e)))?;
     Ok(BootstrapClientBinder::new(
-        socket,
+        // From_std will panic unless called inside a tokio-runtime that has IO enabled.
+        // These conditions are currently met.
+        // If you find a panic here, start by confirming whether or not these required conditions have been broken.
+        tokio::net::TcpStream::from_std(socket)
+            .map_err(|e| Box::new(BootstrapError::IoError(e)))?,
         *pub_key,
         bootstrap_config.into(),
     ))
@@ -418,32 +456,47 @@ fn filter_bootstrap_list(
 pub async fn get_state(
     bootstrap_config: &BootstrapConfig,
     final_state: Arc<RwLock<FinalState>>,
-    mut establisher: impl BSEstablisher,
+    mut connector: impl BSConnector,
     version: Version,
     genesis_timestamp: MassaTime,
     end_timestamp: Option<MassaTime>,
+    restart_from_snapshot_at_period: Option<u64>,
 ) -> Result<GlobalBootstrapState, BootstrapError> {
     massa_trace!("bootstrap.lib.get_state", {});
-    let now = MassaTime::now()?;
+
+    // If we restart from a snapshot, do not bootstrap
+    if restart_from_snapshot_at_period.is_some() {
+        massa_trace!("bootstrap.lib.get_state.init_from_snapshot", {});
+        return Ok(GlobalBootstrapState::new(final_state));
+    }
+
     // if we are before genesis, do not bootstrap
-    if now < genesis_timestamp {
+    if MassaTime::now()? < genesis_timestamp {
         massa_trace!("bootstrap.lib.get_state.init_from_scratch", {});
         // init final state
         {
             let mut final_state_guard = final_state.write();
-            // load ledger from initial ledger file
-            final_state_guard
-                .ledger
-                .load_initial_ledger()
-                .map_err(|err| {
-                    BootstrapError::GeneralError(format!("could not load initial ledger: {}", err))
-                })?;
+
+            if !bootstrap_config.keep_ledger {
+                // load ledger from initial ledger file
+                final_state_guard
+                    .ledger
+                    .load_initial_ledger()
+                    .map_err(|err| {
+                        BootstrapError::GeneralError(format!(
+                            "could not load initial ledger: {}",
+                            err
+                        ))
+                    })?;
+            }
+
             // create the initial cycle of PoS cycle_history
             final_state_guard.pos_state.create_initial_cycle();
         }
         return Ok(GlobalBootstrapState::new(final_state));
     }
 
+    // If the two conditions above are not verified, we need to bootstrap
     // we filter the bootstrap list to keep only the ip addresses we are compatible with
     let mut filtered_bootstrap_list = filter_bootstrap_list(
         bootstrap_config.bootstrap_list.clone(),
@@ -474,6 +527,7 @@ pub async fn get_state(
             last_credits_step: StreamingStep::Started,
             last_ops_step: StreamingStep::Started,
             last_consensus_step: StreamingStep::Started,
+            send_last_start_period: true,
         };
     let mut global_bootstrap_state = GlobalBootstrapState::new(final_state.clone());
 
@@ -486,13 +540,11 @@ pub async fn get_state(
             }
             info!("Start bootstrapping from {}", addr);
             match connect_to_server(
-                &mut establisher,
+                &mut connector,
                 bootstrap_config,
                 addr,
                 &node_id.get_public_key(),
-            )
-            .await
-            {
+            ) {
                 Ok(mut client) => {
                     match bootstrap_from_server(bootstrap_config, &mut client, &mut next_bootstrap_message, &mut global_bootstrap_state,version)
                     .await  // cancellable

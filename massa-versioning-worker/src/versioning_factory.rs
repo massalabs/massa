@@ -19,7 +19,7 @@ pub enum FactoryError {
     OnCreate(String, String),
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 /// Strategy to use when creating a new object from a factory
 pub enum FactoryStrategy {
     /// use get_latest_version (see Factory trait)
@@ -62,12 +62,15 @@ pub trait VersioningFactory {
         let state_active = ComponentState::active();
 
         vi_store
-            .0
+            .store
             .iter()
             .rev()
             .find_map(|(vi, vsh)| {
-                (vi.component == component && vsh.inner == state_active)
-                    .then_some(vi.component_version)
+                if vsh.state == state_active {
+                    vi.components.get(&component).copied()
+                } else {
+                    None
+                }
             })
             .unwrap_or(0)
     }
@@ -81,14 +84,16 @@ pub trait VersioningFactory {
 
         // Iter backward, filter component + state active,
         let version = vi_store
-            .0
+            .store
             .iter()
             .rev()
-            .filter(|(vi, vsh)| vi.component == component && vsh.inner == state_active)
+            .filter(|(vi, vsh)| {
+                vi.components.get(&component).is_some() && vsh.state == state_active
+            })
             .find_map(|(vi, vsh)| {
                 let res = vsh.state_at(ts, vi.start, vi.timeout);
                 match res {
-                    Ok(ComponentStateTypeId::Active) => Some(vi.component_version),
+                    Ok(ComponentStateTypeId::Active) => vi.components.get(&component).copied(),
                     _ => None,
                 }
             })
@@ -104,8 +109,12 @@ pub trait VersioningFactory {
         let vi_store = vi_store_.0.read();
 
         let state_active = ComponentState::active();
-        let versions_iter = vi_store.0.iter().filter_map(|(vi, vsh)| {
-            (vi.component == component && vsh.inner == state_active).then_some(vi.component_version)
+        let versions_iter = vi_store.store.iter().filter_map(|(vi, vsh)| {
+            if vsh.state == state_active {
+                vi.components.get(&component).copied()
+            } else {
+                None
+            }
         });
         let versions: Vec<u32> = iter::once(0).chain(versions_iter).collect();
         versions
@@ -117,9 +126,13 @@ pub trait VersioningFactory {
         let vi_store_ = self.get_versioning_store();
         let vi_store = vi_store_.0.read();
 
-        let versions_iter = vi_store.0.iter().filter_map(|(vi, vsh)| {
-            (vi.component == component)
-                .then_some((vi.component_version, ComponentStateTypeId::from(&vsh.inner)))
+        let versions_iter = vi_store.store.iter().filter_map(|(vi, vsh)| {
+            vi.components
+                .get(&component)
+                .copied()
+                .map(|component_version| {
+                    (component_version, ComponentStateTypeId::from(&vsh.state))
+                })
         });
         iter::once((0, ComponentStateTypeId::Active))
             .chain(versions_iter)
@@ -138,10 +151,10 @@ pub trait VersioningFactory {
 mod test {
     use super::*;
 
-    use std::collections::BTreeMap;
+    use std::collections::{BTreeMap, HashMap};
 
     use crate::test_helpers::versioning_helpers::advance_state_until;
-    use crate::versioning::{MipInfo, MipState};
+    use crate::versioning::{MipInfo, MipState, MipStatsConfig};
 
     use massa_time::MassaTime;
 
@@ -260,24 +273,33 @@ mod test {
         let vi_1 = MipInfo {
             name: "MIP-0002".to_string(),
             version: 1,
-            component: MipComponent::Address,
-            component_version: 1,
+            components: HashMap::from([(MipComponent::Address, 1)]),
             start: MassaTime::from(12),
             timeout: MassaTime::from(15),
+            activation_delay: MassaTime::from(2),
         };
         let vs_1 = MipState::new(MassaTime::from(10));
 
         let vi_2 = MipInfo {
             name: "MIP-0003".to_string(),
             version: 2,
-            component: MipComponent::Address,
-            component_version: 2,
+            components: HashMap::from([(MipComponent::Address, 2)]),
             start: MassaTime::from(25),
             timeout: MassaTime::from(28),
+            activation_delay: MassaTime::from(2),
         };
         let vs_2 = MipState::new(MassaTime::from(18));
 
-        let vs = MipStore::try_from([(vi_1.clone(), vs_1), (vi_2.clone(), vs_2.clone())]).unwrap();
+        let mip_stats_cfg = MipStatsConfig {
+            block_count_considered: 10,
+            counters_max: 5,
+        };
+
+        let vs = MipStore::try_from((
+            [(vi_1.clone(), vs_1), (vi_2.clone(), vs_2.clone())],
+            mip_stats_cfg,
+        ))
+        .unwrap();
         let fa = AddressFactory {
             versioning_store: vs.clone(),
         };
@@ -310,7 +332,7 @@ mod test {
         // Create a new factory
         let info = BTreeMap::from([(vi_1.clone(), vs_1_new.clone()), (vi_2.clone(), vs_2)]);
         // Update versioning store
-        vs.0.write().0 = info;
+        vs.0.write().store = info;
 
         assert_eq!(fa.get_all_active_component_versions(), vec![0, 1]);
         assert_eq!(
@@ -341,25 +363,33 @@ mod test {
         let vi_1 = MipInfo {
             name: "MIP-0002".to_string(),
             version: 1,
-            component: MipComponent::Address,
-            component_version: 1,
+            components: HashMap::from([(MipComponent::Address, 1)]),
             start: MassaTime::from(12),
             timeout: MassaTime::from(15),
+            activation_delay: MassaTime::from(2),
         };
         let vs_1 = advance_state_until(ComponentState::active(), &vi_1);
 
         let vi_2 = MipInfo {
             name: "MIP-0003".to_string(),
             version: 2,
-            component: MipComponent::Address,
-            component_version: 2,
+            components: HashMap::from([(MipComponent::Address, 2)]),
             start: MassaTime::from(25),
             timeout: MassaTime::from(28),
+            activation_delay: MassaTime::from(2),
         };
         let vs_2 = MipState::new(MassaTime::from(18));
 
-        let vs = MipStore::try_from([(vi_1.clone(), vs_1.clone()), (vi_2.clone(), vs_2.clone())])
-            .unwrap();
+        let mip_stats_cfg = MipStatsConfig {
+            block_count_considered: 10,
+            counters_max: 5,
+        };
+
+        let vs = MipStore::try_from((
+            [(vi_1.clone(), vs_1.clone()), (vi_2.clone(), vs_2.clone())],
+            mip_stats_cfg,
+        ))
+        .unwrap();
 
         let fa = AddressFactory {
             versioning_store: vs.clone(),
@@ -376,7 +406,7 @@ mod test {
         let st_1 = FactoryStrategy::At(MassaTime::from(8)); // vi_1 not yet defined
         let ts_1_2 = MassaTime::from(13);
         let st_1_2 = FactoryStrategy::At(ts_1_2); // vi_1 is started (after vi_1.start)
-        let st_2 = FactoryStrategy::At(MassaTime::from(16)); // vi_1 is active (after vi_1.timeout)
+        let st_2 = FactoryStrategy::At(MassaTime::from(18)); // vi_1 is active (after start + activation delay)
         let st_3 = FactoryStrategy::At(MassaTime::from(27)); // vi_2 is started or locked_in
         let st_4 = FactoryStrategy::At(MassaTime::from(30)); // vi_2 is active (after vi_2.timeout)
 
@@ -396,7 +426,7 @@ mod test {
         let vs_2_new = advance_state_until(ComponentState::active(), &vi_2);
         let info = BTreeMap::from([(vi_1.clone(), vs_1), (vi_2.clone(), vs_2_new)]);
         // Update versioning store
-        vs.0.write().0 = info;
+        vs.0.write().store = info;
 
         assert_eq!(fa.get_all_active_component_versions(), vec![0, 1, 2]);
         let addr_st_4 = fa.create(&args, Some(st_4));

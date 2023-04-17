@@ -9,18 +9,22 @@ env:
   CARGO_TERM_COLOR: always
   RUST_BACKTRACE: full
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   release:
     strategy:
       matrix:
-        os: [ubuntu-18.04, macOS-latest, windows-latest]
+        os: [ubuntu-20.04, macOS-latest, windows-latest]
         platform: [x86_64, arm64]
         include:
-          - os: ubuntu-18.04
+          - os: ubuntu-20.04
             platform: x86_64
             target: x86_64-unknown-linux-gnu
             name: release_linux.tar.gz
-          - os: ubuntu-18.04
+          - os: ubuntu-20.04
             platform: arm64
             target: aarch64-unknown-linux-gnu
             name: release_linux_arm64.tar.gz

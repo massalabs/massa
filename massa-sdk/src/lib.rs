@@ -5,9 +5,8 @@
 #![warn(unused_crate_dependencies)]
 
 use http::header::HeaderName;
-use jsonrpsee::core::client::{
-    CertificateStore, ClientT, IdKind, Subscription, SubscriptionClientT,
-};
+use jsonrpsee::core::client::{ClientT, IdKind, Subscription, SubscriptionClientT};
+use jsonrpsee::http_client::transport::HttpBackend;
 use jsonrpsee::http_client::HttpClient;
 use jsonrpsee::rpc_params;
 use jsonrpsee::types::error::CallError;
@@ -25,6 +24,7 @@ use massa_api_exports::{
     operation::{OperationInfo, OperationInput},
     TimeInterval,
 };
+use massa_models::secure_share::SecureShare;
 use massa_models::{
     address::Address,
     block::FilledBlock,
@@ -40,6 +40,9 @@ use massa_models::{
     prehash::{PreHashMap, PreHashSet},
     version::Version,
 };
+
+use jsonrpsee_http_client as _;
+use jsonrpsee_ws_client as _;
 
 use jsonrpsee::{core::Error as JsonRpseeError, core::RpcResult, http_client::HttpClientBuilder};
 use std::net::{IpAddr, SocketAddr};
@@ -79,14 +82,14 @@ impl Client {
 
 /// Rpc client
 pub struct RpcClient {
-    http_client: HttpClient,
+    http_client: HttpClient<HttpBackend>,
 }
 
 impl RpcClient {
     /// Default constructor
     pub async fn from_url(url: &str, http_config: &HttpConfig) -> RpcClient {
         RpcClient {
-            http_client: http_client_from_url(url, http_config).await,
+            http_client: http_client_from_url(url, http_config),
         }
     }
 
@@ -386,7 +389,7 @@ impl ClientV2 {
 
 /// Rpc V2 client
 pub struct RpcClientV2 {
-    http_client: Option<HttpClient>,
+    http_client: Option<HttpClient<HttpBackend>>,
     ws_client: Option<WsClient>,
 }
 
@@ -401,7 +404,7 @@ impl RpcClientV2 {
         let ws_url = format!("ws://{}", socket_addr);
 
         if http_config.enabled && !ws_config.enabled {
-            let http_client = http_client_from_url(&http_url, http_config).await;
+            let http_client = http_client_from_url(&http_url, http_config);
             return RpcClientV2 {
                 http_client: Some(http_client),
                 ws_client: None,
@@ -416,7 +419,7 @@ impl RpcClientV2 {
             panic!("wrong client configuration, you can't disable both http and ws");
         }
 
-        let http_client = http_client_from_url(&http_url, http_config).await;
+        let http_client = http_client_from_url(&http_url, http_config);
         let ws_client = ws_client_from_url(&ws_url, ws_config).await;
 
         RpcClientV2 {
@@ -496,7 +499,7 @@ impl RpcClientV2 {
     /// New produced blocks headers
     pub async fn subscribe_new_blocks_headers(
         &self,
-    ) -> Result<Subscription<BlockHeader>, jsonrpsee::core::Error> {
+    ) -> Result<Subscription<SecureShare<BlockHeader, BlockId>>, jsonrpsee::core::Error> {
         if let Some(client) = self.ws_client.as_ref() {
             client
                 .subscribe(
@@ -560,52 +563,48 @@ impl RpcClientV2 {
     }
 }
 
-async fn http_client_from_url(url: &str, http_config: &HttpConfig) -> HttpClient {
-    match HttpClientBuilder::default()
-        .max_request_body_size(http_config.client_config.max_request_body_size)
+fn http_client_from_url(url: &str, http_config: &HttpConfig) -> HttpClient<HttpBackend> {
+    let mut builder = HttpClientBuilder::default()
+        .max_request_size(http_config.client_config.max_request_body_size)
         .request_timeout(http_config.client_config.request_timeout.to_duration())
         .max_concurrent_requests(http_config.client_config.max_concurrent_requests)
-        .certificate_store(get_certificate_store(
-            http_config.client_config.certificate_store.as_str(),
-        ))
         .id_format(get_id_kind(http_config.client_config.id_kind.as_str()))
-        .set_headers(get_headers(&http_config.client_config.headers))
-        .build(url)
-    {
-        Ok(http_client) => http_client,
-        Err(_) => panic!("unable to create Http client."),
+        .set_headers(get_headers(&http_config.client_config.headers));
+
+    match http_config.client_config.certificate_store.as_str() {
+        "Native" => builder = builder.use_native_rustls(),
+        "WebPki" => builder = builder.use_webpki_rustls(),
+        _ => {}
     }
+
+    builder
+        .build(url)
+        .unwrap_or_else(|_| panic!("unable to create Http client for {}", url))
 }
 
 async fn ws_client_from_url(url: &str, ws_config: &WsConfig) -> WsClient
 where
     WsClient: SubscriptionClientT,
 {
-    match WsClientBuilder::default()
-        .max_request_body_size(ws_config.client_config.max_request_body_size)
+    let mut builder = WsClientBuilder::default()
+        .max_request_size(ws_config.client_config.max_request_body_size)
         .request_timeout(ws_config.client_config.request_timeout.to_duration())
         .max_concurrent_requests(ws_config.client_config.max_concurrent_requests)
-        .certificate_store(get_certificate_store(
-            ws_config.client_config.certificate_store.as_str(),
-        ))
         .id_format(get_id_kind(ws_config.client_config.id_kind.as_str()))
         .set_headers(get_headers(&ws_config.client_config.headers))
-        .max_notifs_per_subscription(ws_config.max_notifs_per_subscription)
-        .max_redirections(ws_config.max_redirections)
+        .max_buffer_capacity_per_subscription(ws_config.max_notifs_per_subscription)
+        .max_redirections(ws_config.max_redirections);
+
+    match ws_config.client_config.certificate_store.as_str() {
+        "Native" => builder = builder.use_native_rustls(),
+        "WebPki" => builder = builder.use_webpki_rustls(),
+        _ => {}
+    }
+
+    builder
         .build(url)
         .await
-    {
-        Ok(ws_client) => ws_client,
-        Err(_) => panic!("unable to create WebSocket client"),
-    }
-}
-
-fn get_certificate_store(certificate_store: &str) -> CertificateStore {
-    match certificate_store {
-        "Native" => CertificateStore::Native,
-        "WebPki" => CertificateStore::WebPki,
-        _ => CertificateStore::Native,
-    }
+        .unwrap_or_else(|_| panic!("unable to create WebSocket client for {}", url))
 }
 
 fn get_id_kind(id_kind: &str) -> IdKind {

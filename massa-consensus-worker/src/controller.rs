@@ -3,6 +3,7 @@ use massa_consensus_exports::{
     bootstrapable_graph::BootstrapableGraph, error::ConsensusError,
     export_active_block::ExportActiveBlock, ConsensusChannels, ConsensusController,
 };
+use massa_models::denunciation::DenunciationPrecursor;
 use massa_models::{
     block::{BlockGraphStatus, FilledBlock},
     block_header::BlockHeader,
@@ -18,7 +19,7 @@ use massa_models::{
 use massa_storage::Storage;
 use parking_lot::RwLock;
 use std::sync::{mpsc::SyncSender, Arc};
-use tracing::log::warn;
+use tracing::log::{debug, trace, warn};
 
 use crate::{commands::ConsensusCommand, state::ConsensusState};
 
@@ -244,21 +245,38 @@ impl ConsensusController for ConsensusControllerImpl {
                         })
                         .collect();
 
-                let _block_receivers_count = self
-                    .channels
-                    .block_sender
-                    .send(verifiable_block.content.clone());
-                let _filled_block_receivers_count =
-                    self.channels.filled_block_sender.send(FilledBlock {
-                        header: verifiable_block.content.header.clone(),
-                        operations,
-                    });
+                if let Err(err) = self.channels.block_sender.send(verifiable_block.clone()) {
+                    trace!(
+                        "error trying to broadcast block with id {} due to: {}",
+                        block_id,
+                        err
+                    );
+                }
+
+                if let Err(err) = self.channels.filled_block_sender.send(FilledBlock {
+                    header: verifiable_block.content.header.clone(),
+                    operations,
+                }) {
+                    trace!(
+                        "error trying to broadcast filled block with id {} due to: {}",
+                        block_id,
+                        err
+                    );
+                }
             } else {
-                warn!(
-                    "error no ws event sent, block with id {} not found",
+                debug!(
+                    "error, no broadcast event sent, block with id {} not found",
                     block_id
                 );
             };
+        }
+
+        if let Some(verifiable_block) = block_storage.read_blocks().get(&block_id) {
+            if let Ok(de_p) = DenunciationPrecursor::try_from(&verifiable_block.content.header) {
+                self.channels
+                    .pool_command_sender
+                    .add_denunciation_precursor(de_p);
+            }
         }
 
         if let Err(err) = self
@@ -276,11 +294,26 @@ impl ConsensusController for ConsensusControllerImpl {
 
     fn register_block_header(&self, block_id: BlockId, header: SecureShare<BlockHeader, BlockId>) {
         if self.broadcast_enabled {
-            let _ = self
-                .channels
-                .block_header_sender
-                .send(header.clone().content);
+            if let Err(err) = self.channels.block_header_sender.send(header.clone()) {
+                trace!(
+                    "error trying to broadcast block header with block id {}: {}",
+                    block_id,
+                    err
+                );
+            }
         }
+
+        if let Ok(de_p) = DenunciationPrecursor::try_from(&header) {
+            self.channels
+                .pool_command_sender
+                .add_denunciation_precursor(de_p);
+        } else {
+            warn!(
+                "Cannot create denunciation precursor from header: {}",
+                &header
+            );
+        }
+
         if let Err(err) = self
             .command_sender
             .try_send(ConsensusCommand::RegisterBlockHeader(block_id, header))

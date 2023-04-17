@@ -9,7 +9,10 @@ mod tests {
         ExecutionConfig, ExecutionController, ExecutionError, ReadOnlyExecutionRequest,
         ReadOnlyExecutionTarget,
     };
-    use massa_models::config::{LEDGER_ENTRY_BASE_SIZE, LEDGER_ENTRY_DATASTORE_BASE_SIZE};
+    use massa_models::config::{
+        LEDGER_ENTRY_BASE_SIZE, LEDGER_ENTRY_DATASTORE_BASE_SIZE, MIP_STORE_STATS_BLOCK_CONSIDERED,
+        MIP_STORE_STATS_COUNTERS_MAX,
+    };
     use massa_models::prehash::PreHashMap;
     use massa_models::{address::Address, amount::Amount, slot::Slot};
     use massa_models::{
@@ -22,6 +25,7 @@ mod tests {
     use massa_signature::KeyPair;
     use massa_storage::Storage;
     use massa_time::MassaTime;
+    use massa_versioning_worker::versioning::{MipStatsConfig, MipStore};
     use num::rational::Ratio;
     use serial_test::serial;
     use std::{
@@ -36,11 +40,19 @@ mod tests {
             initial_vesting_path: vesting.path().to_path_buf(),
             ..ExecutionConfig::default()
         };
-        let (sample_state, _keep_file, _keep_dir) = get_sample_state().unwrap();
+        // init the MIP store
+        let mip_stats_config = MipStatsConfig {
+            block_count_considered: MIP_STORE_STATS_BLOCK_CONSIDERED,
+            counters_max: MIP_STORE_STATS_COUNTERS_MAX,
+        };
+        let mip_store = MipStore::try_from(([], mip_stats_config)).unwrap();
+
+        let (sample_state, _keep_file, _keep_dir) = get_sample_state(0).unwrap();
         let (mut manager, _controller) = start_execution_worker(
             config,
             sample_state.clone(),
             sample_state.read().pos_state.selector.clone(),
+            mip_store,
         );
         manager.stop();
     }
@@ -53,11 +65,19 @@ mod tests {
             initial_vesting_path: vesting.path().to_path_buf(),
             ..ExecutionConfig::default()
         };
-        let (sample_state, _keep_file, _keep_dir) = get_sample_state().unwrap();
+        // init the MIP store
+        let mip_stats_config = MipStatsConfig {
+            block_count_considered: MIP_STORE_STATS_BLOCK_CONSIDERED,
+            counters_max: MIP_STORE_STATS_COUNTERS_MAX,
+        };
+        let mip_store = MipStore::try_from(([], mip_stats_config)).unwrap();
+
+        let (sample_state, _keep_file, _keep_dir) = get_sample_state(0).unwrap();
         let (mut manager, controller) = start_execution_worker(
             config,
             sample_state.clone(),
             sample_state.read().pos_state.selector.clone(),
+            mip_store,
         );
         controller.update_blockclique_status(
             Default::default(),
@@ -78,8 +98,14 @@ mod tests {
             initial_vesting_path: vesting.path().to_path_buf(),
             ..ExecutionConfig::default()
         };
+        // init the MIP store
+        let mip_stats_config = MipStatsConfig {
+            block_count_considered: MIP_STORE_STATS_BLOCK_CONSIDERED,
+            counters_max: MIP_STORE_STATS_COUNTERS_MAX,
+        };
+        let mip_store = MipStore::try_from(([], mip_stats_config)).unwrap();
         // get a sample final state
-        let (sample_state, _keep_file, _keep_dir) = get_sample_state().unwrap();
+        let (sample_state, _keep_file, _keep_dir) = get_sample_state(0).unwrap();
         // init the storage
         let storage = Storage::create_root();
         // start the execution worker
@@ -87,6 +113,7 @@ mod tests {
             exec_cfg.clone(),
             sample_state.clone(),
             sample_state.read().pos_state.selector.clone(),
+            mip_store,
         );
         // initialize the execution system with genesis blocks
         init_execution_worker(&exec_cfg, &storage, controller.clone());
@@ -164,8 +191,14 @@ mod tests {
             initial_vesting_path: vesting.path().to_path_buf(),
             ..ExecutionConfig::default()
         };
+        // init the MIP store
+        let mip_stats_config = MipStatsConfig {
+            block_count_considered: MIP_STORE_STATS_BLOCK_CONSIDERED,
+            counters_max: MIP_STORE_STATS_COUNTERS_MAX,
+        };
+        let mip_store = MipStore::try_from(([], mip_stats_config)).unwrap();
         // get a sample final state
-        let (sample_state, _keep_file, _keep_dir) = get_sample_state().unwrap();
+        let (sample_state, _keep_file, _keep_dir) = get_sample_state(0).unwrap();
         // init the storage
         let mut storage = Storage::create_root();
         // start the execution worker
@@ -173,6 +206,7 @@ mod tests {
             exec_cfg.clone(),
             sample_state.clone(),
             sample_state.read().pos_state.selector.clone(),
+            mip_store,
         );
         // initialize the execution system with genesis blocks
         init_execution_worker(&exec_cfg, &storage, controller.clone());
@@ -298,8 +332,14 @@ mod tests {
             initial_vesting_path: vesting.path().to_path_buf(),
             ..ExecutionConfig::default()
         };
+        // init the MIP store
+        let mip_stats_config = MipStatsConfig {
+            block_count_considered: MIP_STORE_STATS_BLOCK_CONSIDERED,
+            counters_max: MIP_STORE_STATS_COUNTERS_MAX,
+        };
+        let mip_store = MipStore::try_from(([], mip_stats_config)).unwrap();
         // get a sample final state
-        let (sample_state, _keep_file, _keep_dir) = get_sample_state().unwrap();
+        let (sample_state, _keep_file, _keep_dir) = get_sample_state(0).unwrap();
         // init the storage
         let mut storage = Storage::create_root();
         // start the execution worker
@@ -307,6 +347,7 @@ mod tests {
             exec_cfg.clone(),
             sample_state.clone(),
             sample_state.read().pos_state.selector.clone(),
+            mip_store,
         );
         // initialize the execution system with genesis blocks
         init_execution_worker(&exec_cfg, &storage, controller.clone());
@@ -425,7 +466,14 @@ mod tests {
             ..ExecutionConfig::default()
         };
         // get a sample final state
-        let (sample_state, _keep_file, _keep_dir) = get_sample_state().unwrap();
+        let (sample_state, _keep_file, _keep_dir) = get_sample_state(0).unwrap();
+
+        // init the MIP store
+        let mip_stats_config = MipStatsConfig {
+            block_count_considered: MIP_STORE_STATS_BLOCK_CONSIDERED,
+            counters_max: MIP_STORE_STATS_COUNTERS_MAX,
+        };
+        let mip_store = MipStore::try_from(([], mip_stats_config)).unwrap();
 
         // init the storage
         let mut storage = Storage::create_root();
@@ -434,6 +482,7 @@ mod tests {
             exec_cfg.clone(),
             sample_state.clone(),
             sample_state.read().pos_state.selector.clone(),
+            mip_store,
         );
         // initialize the execution system with genesis blocks
         init_execution_worker(&exec_cfg, &storage, controller.clone());
@@ -514,7 +563,14 @@ mod tests {
             ..ExecutionConfig::default()
         };
         // get a sample final state
-        let (sample_state, _keep_file, _keep_dir) = get_sample_state().unwrap();
+        let (sample_state, _keep_file, _keep_dir) = get_sample_state(0).unwrap();
+
+        // init the MIP store
+        let mip_stats_config = MipStatsConfig {
+            block_count_considered: MIP_STORE_STATS_BLOCK_CONSIDERED,
+            counters_max: MIP_STORE_STATS_COUNTERS_MAX,
+        };
+        let mip_store = MipStore::try_from(([], mip_stats_config)).unwrap();
 
         // init the storage
         let mut storage = Storage::create_root();
@@ -523,6 +579,7 @@ mod tests {
             exec_cfg.clone(),
             sample_state.clone(),
             sample_state.read().pos_state.selector.clone(),
+            mip_store,
         );
         // initialize the execution system with genesis blocks
         init_execution_worker(&exec_cfg, &storage, controller.clone());
@@ -603,7 +660,14 @@ mod tests {
             ..ExecutionConfig::default()
         };
         // get a sample final state
-        let (sample_state, _keep_file, _keep_dir) = get_sample_state().unwrap();
+        let (sample_state, _keep_file, _keep_dir) = get_sample_state(0).unwrap();
+
+        // init the MIP store
+        let mip_stats_config = MipStatsConfig {
+            block_count_considered: MIP_STORE_STATS_BLOCK_CONSIDERED,
+            counters_max: MIP_STORE_STATS_COUNTERS_MAX,
+        };
+        let mip_store = MipStore::try_from(([], mip_stats_config)).unwrap();
 
         // init the storage
         let mut storage = Storage::create_root();
@@ -612,6 +676,7 @@ mod tests {
             exec_cfg.clone(),
             sample_state.clone(),
             sample_state.read().pos_state.selector.clone(),
+            mip_store,
         );
         // initialize the execution system with genesis blocks
         init_execution_worker(&exec_cfg, &storage, controller.clone());
@@ -710,7 +775,14 @@ mod tests {
             ..ExecutionConfig::default()
         };
         // get a sample final state
-        let (sample_state, _keep_file, _keep_dir) = get_sample_state().unwrap();
+        let (sample_state, _keep_file, _keep_dir) = get_sample_state(0).unwrap();
+
+        // init the MIP store
+        let mip_stats_config = MipStatsConfig {
+            block_count_considered: MIP_STORE_STATS_BLOCK_CONSIDERED,
+            counters_max: MIP_STORE_STATS_COUNTERS_MAX,
+        };
+        let mip_store = MipStore::try_from(([], mip_stats_config)).unwrap();
 
         // init the storage
         let mut storage = Storage::create_root();
@@ -719,6 +791,7 @@ mod tests {
             exec_cfg.clone(),
             sample_state.clone(),
             sample_state.read().pos_state.selector.clone(),
+            mip_store,
         );
         // initialize the execution system with genesis blocks
         init_execution_worker(&exec_cfg, &storage, controller.clone());
@@ -801,7 +874,14 @@ mod tests {
             ..ExecutionConfig::default()
         };
         // get a sample final state
-        let (sample_state, _keep_file, _keep_dir) = get_sample_state().unwrap();
+        let (sample_state, _keep_file, _keep_dir) = get_sample_state(0).unwrap();
+
+        // init the MIP store
+        let mip_stats_config = MipStatsConfig {
+            block_count_considered: MIP_STORE_STATS_BLOCK_CONSIDERED,
+            counters_max: MIP_STORE_STATS_COUNTERS_MAX,
+        };
+        let mip_store = MipStore::try_from(([], mip_stats_config)).unwrap();
 
         let mut blockclique_blocks: HashMap<Slot, BlockId> = HashMap::new();
         // init the storage
@@ -811,6 +891,7 @@ mod tests {
             exec_cfg.clone(),
             sample_state.clone(),
             sample_state.read().pos_state.selector.clone(),
+            mip_store,
         );
         // initialize the execution system with genesis blocks
         init_execution_worker(&exec_cfg, &storage, controller.clone());
@@ -945,7 +1026,14 @@ mod tests {
             ..ExecutionConfig::default()
         };
         // get a sample final state
-        let (sample_state, _keep_file, _keep_dir) = get_sample_state().unwrap();
+        let (sample_state, _keep_file, _keep_dir) = get_sample_state(0).unwrap();
+
+        // init the MIP store
+        let mip_stats_config = MipStatsConfig {
+            block_count_considered: MIP_STORE_STATS_BLOCK_CONSIDERED,
+            counters_max: MIP_STORE_STATS_COUNTERS_MAX,
+        };
+        let mip_store = MipStore::try_from(([], mip_stats_config)).unwrap();
 
         // init the storage
         let mut storage = Storage::create_root();
@@ -954,6 +1042,7 @@ mod tests {
             exec_cfg.clone(),
             sample_state.clone(),
             sample_state.read().pos_state.selector.clone(),
+            mip_store,
         );
         // initialize the execution system with genesis blocks
         init_execution_worker(&exec_cfg, &storage, controller.clone());
@@ -1025,7 +1114,14 @@ mod tests {
             ..ExecutionConfig::default()
         };
         // get a sample final state
-        let (sample_state, _keep_file, _keep_dir) = get_sample_state().unwrap();
+        let (sample_state, _keep_file, _keep_dir) = get_sample_state(0).unwrap();
+
+        // init the MIP store
+        let mip_stats_config = MipStatsConfig {
+            block_count_considered: MIP_STORE_STATS_BLOCK_CONSIDERED,
+            counters_max: MIP_STORE_STATS_COUNTERS_MAX,
+        };
+        let mip_store = MipStore::try_from(([], mip_stats_config)).unwrap();
 
         // init the storage
         let mut storage = Storage::create_root();
@@ -1034,6 +1130,7 @@ mod tests {
             exec_cfg.clone(),
             sample_state.clone(),
             sample_state.read().pos_state.selector.clone(),
+            mip_store,
         );
         // initialize the execution system with genesis blocks
         init_execution_worker(&exec_cfg, &storage, controller.clone());
@@ -1078,7 +1175,7 @@ mod tests {
         assert!(events[0].data.contains("massa_execution_error"));
         assert!(events[0]
             .data
-            .contains("We reach the vesting constraint : vesting_min_balance=100000 with value min_balance=60000"));
+            .contains("We reach the vesting constraint: vesting_min_balance=100000 with value min_balance=60000"));
 
         // check recipient balance
         assert!(sample_state
@@ -1113,7 +1210,14 @@ mod tests {
         };
 
         // get a sample final state
-        let (sample_state, _keep_file, _keep_dir) = get_sample_state().unwrap();
+        let (sample_state, _keep_file, _keep_dir) = get_sample_state(0).unwrap();
+
+        // init the MIP store
+        let mip_stats_config = MipStatsConfig {
+            block_count_considered: MIP_STORE_STATS_BLOCK_CONSIDERED,
+            counters_max: MIP_STORE_STATS_COUNTERS_MAX,
+        };
+        let mip_store = MipStore::try_from(([], mip_stats_config)).unwrap();
 
         // init the storage
         let mut storage = Storage::create_root();
@@ -1122,6 +1226,7 @@ mod tests {
             exec_cfg.clone(),
             sample_state.clone(),
             sample_state.read().pos_state.selector.clone(),
+            mip_store,
         );
         // initialize the execution system with genesis blocks
         init_execution_worker(&exec_cfg, &storage, controller.clone());
@@ -1162,7 +1267,7 @@ mod tests {
         let events = controller.get_filtered_sc_output_event(EventFilter::default());
         assert!(events[0].data.contains("massa_execution_error"));
         assert!(events[0].data.contains(
-            "We reach the vesting constraint : trying to get to a total of 160 rolls but only 150 are allowed at that time by the vesting scheme"
+            "We reach the vesting constraint: trying to get to a total of 160 rolls but only 50 are allowed at that time by the vesting scheme"
         ));
 
         // check roll count of the buyer address and its balance, same as start because operation was rejected
@@ -1188,7 +1293,14 @@ mod tests {
             ..ExecutionConfig::default()
         };
         // get a sample final state
-        let (sample_state, _keep_file, _keep_dir) = get_sample_state().unwrap();
+        let (sample_state, _keep_file, _keep_dir) = get_sample_state(0).unwrap();
+
+        // init the MIP store
+        let mip_stats_config = MipStatsConfig {
+            block_count_considered: MIP_STORE_STATS_BLOCK_CONSIDERED,
+            counters_max: MIP_STORE_STATS_COUNTERS_MAX,
+        };
+        let mip_store = MipStore::try_from(([], mip_stats_config)).unwrap();
 
         // init the storage
         let mut storage = Storage::create_root();
@@ -1197,6 +1309,7 @@ mod tests {
             exec_cfg.clone(),
             sample_state.clone(),
             sample_state.read().pos_state.selector.clone(),
+            mip_store,
         );
         // initialize the execution system with genesis blocks
         init_execution_worker(&exec_cfg, &storage, controller.clone());
@@ -1256,6 +1369,7 @@ mod tests {
             thread_count: 2,
             cursor_delay: 0.into(),
             initial_vesting_path: vesting.path().to_path_buf(),
+            last_start_period: 2,
             ..Default::default()
         };
         // turn off roll selling on missed block opportunities
@@ -1264,7 +1378,14 @@ mod tests {
         exec_cfg.max_miss_ratio = Ratio::new(1, 1);
 
         // get a sample final state
-        let (sample_state, _keep_file, _keep_dir) = get_sample_state().unwrap();
+        let (sample_state, _keep_file, _keep_dir) = get_sample_state(2).unwrap();
+
+        // init the MIP store
+        let mip_stats_config = MipStatsConfig {
+            block_count_considered: MIP_STORE_STATS_BLOCK_CONSIDERED,
+            counters_max: MIP_STORE_STATS_COUNTERS_MAX,
+        };
+        let mip_store = MipStore::try_from(([], mip_stats_config)).unwrap();
 
         // init the storage
         let mut storage = Storage::create_root();
@@ -1273,6 +1394,7 @@ mod tests {
             exec_cfg.clone(),
             sample_state.clone(),
             sample_state.read().pos_state.selector.clone(),
+            mip_store,
         );
         // initialize the execution system with genesis blocks
         init_execution_worker(&exec_cfg, &storage, controller.clone());
@@ -1288,6 +1410,14 @@ mod tests {
         let roll_count_initial = sample_state.read().pos_state.get_rolls_for(&address);
         let roll_sell_1 = 10;
         let roll_sell_2 = 1;
+
+        let initial_deferred_credits = Amount::from_str("100").unwrap();
+        // set initial_deferred_credits that will be reimbursed at first block
+        sample_state.write().pos_state.deferred_credits.insert(
+            Slot::new(1, 0),
+            address,
+            initial_deferred_credits,
+        );
 
         // create operation 1
         let operation1 = Operation::new_verifiable(
@@ -1319,7 +1449,7 @@ mod tests {
         let block = create_block(
             KeyPair::generate(),
             vec![operation1, operation2],
-            Slot::new(1, 0),
+            Slot::new(3, 0),
         )
         .unwrap();
         // store the block in storage
@@ -1335,6 +1465,7 @@ mod tests {
             block_storage.clone(),
         );
         std::thread::sleep(Duration::from_millis(1000));
+
         // check roll count deferred credits and candidate balance of the seller address
         let sample_read = sample_state.read();
         let mut credits = PreHashMap::default();
@@ -1349,19 +1480,41 @@ mod tests {
             sample_read.pos_state.get_rolls_for(&address),
             roll_remaining
         );
+
         assert_eq!(
             sample_read
                 .pos_state
-                .get_deferred_credits_at(&Slot::new(7, 1)),
+                .get_deferred_credits_range(..=Slot::new(9, 1))
+                .credits
+                .get(&Slot::new(9, 1))
+                .cloned()
+                .unwrap_or_default(),
             credits
         );
 
         // Check that deferred credit are reimbursed
         let credits = PreHashMap::default();
+
         assert_eq!(
             sample_read
                 .pos_state
-                .get_deferred_credits_at(&Slot::new(8, 1)),
+                .get_deferred_credits_range(..=Slot::new(10, 1))
+                .credits
+                .get(&Slot::new(10, 1))
+                .cloned()
+                .unwrap_or_default(),
+            credits
+        );
+
+        // Check that the initial deferred_credits are set to zero
+        assert_eq!(
+            sample_read
+                .pos_state
+                .get_deferred_credits_range(..=Slot::new(10, 1))
+                .credits
+                .get(&Slot::new(1, 0))
+                .cloned()
+                .unwrap_or_default(),
             credits
         );
 
@@ -1376,6 +1529,8 @@ mod tests {
                 .checked_mul_u64(roll_sell_1 + roll_sell_2)
                 .unwrap()
                 .checked_add(balance_initial)
+                .unwrap()
+                .checked_add(initial_deferred_credits)
                 .unwrap()
         );
 
@@ -1396,7 +1551,14 @@ mod tests {
             ..ExecutionConfig::default()
         };
         // get a sample final state
-        let (sample_state, _keep_file, _keep_dir) = get_sample_state().unwrap();
+        let (sample_state, _keep_file, _keep_dir) = get_sample_state(0).unwrap();
+
+        // init the MIP store
+        let mip_stats_config = MipStatsConfig {
+            block_count_considered: MIP_STORE_STATS_BLOCK_CONSIDERED,
+            counters_max: MIP_STORE_STATS_COUNTERS_MAX,
+        };
+        let mip_store = MipStore::try_from(([], mip_stats_config)).unwrap();
 
         // init the storage
         let mut storage = Storage::create_root();
@@ -1405,6 +1567,7 @@ mod tests {
             exec_cfg.clone(),
             sample_state.clone(),
             sample_state.read().pos_state.selector.clone(),
+            mip_store,
         );
         // initialize the execution system with genesis blocks
         init_execution_worker(&exec_cfg, &storage, controller.clone());
@@ -1463,7 +1626,14 @@ mod tests {
             ..ExecutionConfig::default()
         };
         // get a sample final state
-        let (sample_state, _keep_file, _keep_dir) = get_sample_state().unwrap();
+        let (sample_state, _keep_file, _keep_dir) = get_sample_state(0).unwrap();
+
+        // init the MIP store
+        let mip_stats_config = MipStatsConfig {
+            block_count_considered: MIP_STORE_STATS_BLOCK_CONSIDERED,
+            counters_max: MIP_STORE_STATS_COUNTERS_MAX,
+        };
+        let mip_store = MipStore::try_from(([], mip_stats_config)).unwrap();
 
         // init the storage
         let mut storage = Storage::create_root();
@@ -1472,6 +1642,7 @@ mod tests {
             exec_cfg.clone(),
             sample_state.clone(),
             sample_state.read().pos_state.selector.clone(),
+            mip_store,
         );
         // initialize the execution system with genesis blocks
         init_execution_worker(&exec_cfg, &storage, controller.clone());
@@ -1527,7 +1698,14 @@ mod tests {
             ..ExecutionConfig::default()
         };
         // get a sample final state
-        let (sample_state, _keep_file, _keep_dir) = get_sample_state().unwrap();
+        let (sample_state, _keep_file, _keep_dir) = get_sample_state(0).unwrap();
+
+        // init the MIP store
+        let mip_stats_config = MipStatsConfig {
+            block_count_considered: MIP_STORE_STATS_BLOCK_CONSIDERED,
+            counters_max: MIP_STORE_STATS_COUNTERS_MAX,
+        };
+        let mip_store = MipStore::try_from(([], mip_stats_config)).unwrap();
 
         // init the storage
         let mut storage = Storage::create_root();
@@ -1536,6 +1714,7 @@ mod tests {
             exec_cfg.clone(),
             sample_state.clone(),
             sample_state.read().pos_state.selector.clone(),
+            mip_store,
         );
         // initialize the execution system with genesis blocks
         init_execution_worker(&exec_cfg, &storage, controller.clone());
@@ -1591,7 +1770,14 @@ mod tests {
             ..ExecutionConfig::default()
         };
         // get a sample final state
-        let (sample_state, _keep_file, _keep_dir) = get_sample_state().unwrap();
+        let (sample_state, _keep_file, _keep_dir) = get_sample_state(0).unwrap();
+
+        // init the MIP store
+        let mip_stats_config = MipStatsConfig {
+            block_count_considered: MIP_STORE_STATS_BLOCK_CONSIDERED,
+            counters_max: MIP_STORE_STATS_COUNTERS_MAX,
+        };
+        let mip_store = MipStore::try_from(([], mip_stats_config)).unwrap();
 
         // init the storage
         let mut storage = Storage::create_root();
@@ -1600,6 +1786,7 @@ mod tests {
             exec_cfg.clone(),
             sample_state.clone(),
             sample_state.read().pos_state.selector.clone(),
+            mip_store,
         );
         // initialize the execution system with genesis blocks
         init_execution_worker(&exec_cfg, &storage, controller.clone());
@@ -1633,19 +1820,45 @@ mod tests {
 
         let events = controller.get_filtered_sc_output_event(EventFilter::default());
         // match the events
-        assert!(!events.is_empty(), "2 events were expected");
-        let key: Vec<u8> = [1, 0, 4, 255].iter().cloned().collect();
-        let keys_str: String = key
+        println!("{:?}", events);
+        assert_eq!(events.len(), 4, "Got {} events, expected 4", events.len());
+        let key_a: Vec<u8> = [1, 0, 4, 255].iter().cloned().collect();
+        let key_a_str: String = key_a
             .iter()
             .map(|b| format!("{}", b))
             .collect::<Vec<String>>()
             .join(",");
 
-        assert!(events[0].data.contains(&format!("keys: {}", keys_str)));
-        assert!(events[1].data.contains(&format!("keys2: {}", keys_str)));
+        let key_b: Vec<u8> = [2, 0, 254, 255].iter().cloned().collect();
+        let key_b_str: String = key_b
+            .iter()
+            .map(|b| format!("{}", b))
+            .collect::<Vec<String>>()
+            .join(",");
+
+        assert!(
+            events[0].data.contains(&format!("keys: {}", key_a_str)),
+            "{:?}",
+            events[0].data
+        );
+        assert!(
+            events[1].data.contains(&format!("keys2: {}", key_a_str)),
+            "{:?}",
+            events[1].data
+        );
+        assert!(
+            events[2].data.contains(&format!("keys_f: {}", key_b_str)),
+            "{:?}",
+            events[2].data
+        );
+        assert!(
+            events[3].data.contains(&format!("keys2_f: {}", key_a_str)),
+            "{:?}",
+            events[3].data
+        );
 
         // Length of the value left in the datastore. See sources for more context.
-        let value_len = [21, 0, 49].len() as u64;
+        let value_len = ([21, 0, 49].len() + [5, 12, 241].len()) as u64;
 
         assert_eq!(
             sample_state
@@ -1662,7 +1875,7 @@ mod tests {
                     exec_cfg
                         .storage_costs_constants
                         .ledger_cost_per_byte
-                        .saturating_mul_u64(LEDGER_ENTRY_DATASTORE_BASE_SIZE as u64)
+                        .saturating_mul_u64(2 * LEDGER_ENTRY_DATASTORE_BASE_SIZE as u64)
                 )
                 // Storage cost value
                 .saturating_sub(
@@ -1691,11 +1904,18 @@ mod tests {
             ..ExecutionConfig::default()
         };
         let storage: Storage = Storage::create_root();
-        let (sample_state, _keep_file, _keep_dir) = get_sample_state().unwrap();
+        let (sample_state, _keep_file, _keep_dir) = get_sample_state(0).unwrap();
+        // init the MIP store
+        let mip_stats_config = MipStatsConfig {
+            block_count_considered: MIP_STORE_STATS_BLOCK_CONSIDERED,
+            counters_max: MIP_STORE_STATS_COUNTERS_MAX,
+        };
+        let mip_store = MipStore::try_from(([], mip_stats_config)).unwrap();
         let (mut manager, controller) = start_execution_worker(
             exec_cfg.clone(),
             sample_state.clone(),
             sample_state.read().pos_state.selector.clone(),
+            mip_store,
         );
         // initialize the execution system with genesis blocks
         init_execution_worker(&exec_cfg, &storage, controller.clone());
@@ -1763,6 +1983,81 @@ mod tests {
         manager.stop();
     }
 
+    #[test]
+    #[serial]
+    pub fn not_enough_compilation_gas() {
+        let vesting = get_initials_vesting(false);
+        // config
+        let exec_cfg = ExecutionConfig {
+            t0: 100.into(),
+            initial_vesting_path: vesting.path().to_path_buf(),
+            ..ExecutionConfig::default()
+        };
+        // get a sample final state
+        let (sample_state, _keep_file, _keep_dir) = get_sample_state(0).unwrap();
+
+        // init the storage
+        let mut storage = Storage::create_root();
+        // init the MIP store
+        let mip_stats_config = MipStatsConfig {
+            block_count_considered: MIP_STORE_STATS_BLOCK_CONSIDERED,
+            counters_max: MIP_STORE_STATS_COUNTERS_MAX,
+        };
+        let mip_store = MipStore::try_from(([], mip_stats_config)).unwrap();
+        // start the execution worker
+        let (mut manager, controller) = start_execution_worker(
+            exec_cfg.clone(),
+            sample_state.clone(),
+            sample_state.read().pos_state.selector.clone(),
+            mip_store,
+        );
+        // initialize the execution system with genesis blocks
+        init_execution_worker(&exec_cfg, &storage, controller.clone());
+
+        // keypair associated to thread 0
+        let keypair =
+            KeyPair::from_str("S1JJeHiZv1C1zZN5GLFcbz6EXYiccmUPLkYuDFA3kayjxP39kFQ").unwrap();
+
+        // load bytecode
+        // you can check the source code of the following wasm file in massa-unit-tests-src
+        let bytecode = include_bytes!("./wasm/datastore_manipulations.wasm");
+        // create the block containing the operation
+        let operation = Operation::new_verifiable(
+            Operation {
+                fee: Amount::from_mantissa_scale(10, 0),
+                expire_period: 10,
+                op: OperationType::ExecuteSC {
+                    data: bytecode.to_vec(),
+                    max_gas: 0,
+                    datastore: BTreeMap::default(),
+                },
+            },
+            OperationSerializer::new(),
+            &keypair,
+        )
+        .unwrap();
+        storage.store_operations(vec![operation.clone()]);
+        let block = create_block(KeyPair::generate(), vec![operation], Slot::new(1, 0)).unwrap();
+        // store the block in storage
+        storage.store_block(block.clone());
+        // set our block as a final block
+        let mut finalized_blocks: HashMap<Slot, BlockId> = Default::default();
+        finalized_blocks.insert(block.content.header.content.slot, block.id);
+        let block_store = vec![(block.id, storage.clone())].into_iter().collect();
+
+        // update blockclique
+        controller.update_blockclique_status(finalized_blocks, Default::default(), block_store);
+        std::thread::sleep(Duration::from_millis(100));
+
+        // assert events
+        let events = controller.get_filtered_sc_output_event(EventFilter::default());
+        assert!(events[0]
+            .data
+            .contains("not enough gas to pay for singlepass compilation"));
+
+        manager.stop();
+    }
+
     /// Create an operation for the given sender with `data` as bytecode.
     /// Return a result that should be unwrapped in the root `#[test]` routine.
     fn create_execute_sc_operation(
@@ -1772,7 +2067,7 @@ mod tests {
     ) -> Result<SecureShareOperation, ExecutionError> {
         let op = OperationType::ExecuteSC {
             data: data.to_vec(),
-            max_gas: 1_000_000,
+            max_gas: 100_000_000,
             max_coins: Amount::from_str("5000000").unwrap(),
             datastore,
         };
@@ -1831,8 +2126,14 @@ mod tests {
             ..ExecutionConfig::default()
         };
         // get a sample final state
-        let (sample_state, _keep_file, _keep_dir) = get_sample_state().unwrap();
+        let (sample_state, _keep_file, _keep_dir) = get_sample_state(0).unwrap();
 
+        // init the MIP store
+        let mip_stats_config = MipStatsConfig {
+            block_count_considered: MIP_STORE_STATS_BLOCK_CONSIDERED,
+            counters_max: MIP_STORE_STATS_COUNTERS_MAX,
+        };
+        let mip_store = MipStore::try_from(([], mip_stats_config)).unwrap();
         // init the storage
         let mut storage = Storage::create_root();
         // start the execution worker
@@ -1840,6 +2141,7 @@ mod tests {
             exec_cfg.clone(),
             sample_state.clone(),
             sample_state.read().pos_state.selector.clone(),
+            mip_store,
         );
         // initialize the execution system with genesis blocks
         init_execution_worker(&exec_cfg, &storage, controller.clone());
@@ -1888,6 +2190,99 @@ mod tests {
                 .unwrap(),
             Amount::from_str("299990").unwrap()
         );
+        // stop the execution controller
+        manager.stop();
+    }
+
+    #[test]
+    #[serial]
+    fn validate_address() {
+        let vesting = get_initials_vesting(false);
+        // setup the period duration and the maximum gas for asynchronous messages execution
+        let exec_cfg = ExecutionConfig {
+            t0: 100.into(),
+            max_async_gas: 100_000,
+            cursor_delay: 0.into(),
+            initial_vesting_path: vesting.path().to_path_buf(),
+            ..ExecutionConfig::default()
+        };
+        // get a sample final state
+        let (sample_state, _keep_file, _keep_dir) = get_sample_state(0).unwrap();
+
+        // init the MIP store
+        let mip_stats_config = MipStatsConfig {
+            block_count_considered: MIP_STORE_STATS_BLOCK_CONSIDERED,
+            counters_max: MIP_STORE_STATS_COUNTERS_MAX,
+        };
+        let mip_store = MipStore::try_from(([], mip_stats_config)).unwrap();
+        // init the storage
+        let mut storage = Storage::create_root();
+        // start the execution worker
+        let (mut manager, controller) = start_execution_worker(
+            exec_cfg.clone(),
+            sample_state.clone(),
+            sample_state.read().pos_state.selector.clone(),
+            mip_store,
+        );
+        // initialize the execution system with genesis blocks
+        init_execution_worker(&exec_cfg, &storage, controller.clone());
+
+        // keypair associated to thread 0
+        let keypair =
+            KeyPair::from_str("S1JJeHiZv1C1zZN5GLFcbz6EXYiccmUPLkYuDFA3kayjxP39kFQ").unwrap();
+        // let address = Address::from_public_key(&keypair.get_public_key());
+
+        // load bytecode
+        // you can check the source code of the following wasm file in massa-unit-tests-src
+        let bytecode = include_bytes!("./wasm/validate_address.wasm");
+
+        // create the block containing the erroneous smart contract execution operation
+        let operation =
+            create_execute_sc_operation(&keypair, bytecode, BTreeMap::default()).unwrap();
+        storage.store_operations(vec![operation.clone()]);
+        let block = create_block(KeyPair::generate(), vec![operation], Slot::new(1, 0)).unwrap();
+
+        // store the block in storage
+        storage.store_block(block.clone());
+
+        // set our block as a final block
+        let mut finalized_blocks: HashMap<Slot, BlockId> = Default::default();
+        finalized_blocks.insert(block.content.header.content.slot, block.id);
+        let block_store = vec![(block.id, storage.clone())].into_iter().collect();
+        controller.update_blockclique_status(finalized_blocks, Default::default(), block_store);
+        std::thread::sleep(
+            exec_cfg
+                .t0
+                .saturating_add(MassaTime::from_millis(50))
+                .into(),
+        );
+
+        let events = controller.get_filtered_sc_output_event(EventFilter::default());
+        // match the events
+        assert_eq!(events.len(), 2);
+        assert!(
+            events[0].data.ends_with("true"),
+            "Expected 'true': {:?}",
+            events[0].data
+        );
+        assert!(
+            events[1].data.ends_with("false"),
+            "Expected 'false': {:?}",
+            events[1].data
+        );
+
+        assert_eq!(
+            sample_state
+                .read()
+                .ledger
+                .get_balance(&Address::from_public_key(&keypair.get_public_key()))
+                .unwrap(),
+            Amount::from_str("300000")
+                .unwrap()
+                // Gas fee
+                .saturating_sub(Amount::from_mantissa_scale(10, 0))
+        );
+
         // stop the execution controller
         manager.stop();
     }

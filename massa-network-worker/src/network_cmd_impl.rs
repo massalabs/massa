@@ -6,7 +6,7 @@
 //! All following functions are necessary internals (not public) or called by
 //! the `manage_network_command` in the worker.
 //!
-//! ```ignore
+//! ```text
 //! async fn manage_network_command(&mut self, cmd: NetworkCommand) -> Result<(), NetworkError> {
 //!     use crate::network_cmd_impl::*;
 //!     match cmd {
@@ -99,6 +99,15 @@ async fn node_ban_by_ids(worker: &mut NetworkWorker, ids: Vec<NodeId>) -> Result
         .filter(|res| res.is_ok())
         .flat_map(|res| res.unwrap())
         .collect::<HashSet<_>>();
+
+    if connection_ids_to_ban.is_empty() {
+        let log = format!(
+            "no connection to ban found when executing node_ban_by_ids for ids: {:?}",
+            ids
+        );
+        warn!("{}", &log);
+        return Err(NetworkError::GeneralProtocolError(log));
+    }
 
     ban_connection_ids(worker, connection_ids_to_ban).await;
     Ok(())

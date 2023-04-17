@@ -17,6 +17,7 @@ impl Default for FinalLedger {
             THREAD_COUNT,
             MAX_DATASTORE_KEY_LENGTH,
             LEDGER_PART_SIZE_MESSAGE_BYTES,
+            false,
         );
         FinalLedger {
             config: Default::default(),

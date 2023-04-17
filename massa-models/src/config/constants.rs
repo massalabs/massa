@@ -20,6 +20,11 @@ use massa_signature::KeyPair;
 use massa_time::MassaTime;
 use num::rational::Ratio;
 
+/// Start of the downtime simulation
+pub const DOWNTIME_START_TIMESTAMP: MassaTime = MassaTime::from_millis(1681372800000); // 13/04/2023 10AM CET
+/// End of the downtime simulation
+pub const DOWNTIME_END_TIMESTAMP: MassaTime = MassaTime::from_millis(1681390800000); // 13/04/2023 16AM CET
+
 /// Limit on the number of peers we advertise to others.
 pub const MAX_ADVERTISE_LENGTH: u32 = 10000;
 /// Maximum message length in bytes
@@ -38,21 +43,27 @@ pub const CHANNEL_SIZE: usize = 1024;
 
 lazy_static::lazy_static! {
     /// Time in milliseconds when the blockclique started.
+    /// In sandbox mode, the value depends on starting time and on the --restart-from-snapshot-at-period argument in CLI,
+    /// so that the network starts or restarts 10 seconds after launch
     pub static ref GENESIS_TIMESTAMP: MassaTime = if cfg!(feature = "sandbox") {
         std::env::var("GENESIS_TIMESTAMP").map(|timestamp| timestamp.parse::<u64>().unwrap().into()).unwrap_or_else(|_|
             MassaTime::now()
                 .unwrap()
-                .saturating_add(MassaTime::from_millis(1000 * 10))
+                .saturating_sub(
+                    T0.checked_mul(get_period_from_args()).unwrap()
+                )
+                .saturating_add(MassaTime::from_millis(1000 * 10)
+            )
         )
     } else {
-        1677682800000.into()  // Wednesday, March 1, 2023 03:00:00 PM UTC
+        1680872400000.into()  // Friday, April 7, 2023 01:00:00 PM UTC
     };
 
     /// TESTNET: time when the blockclique is ended.
     pub static ref END_TIMESTAMP: Option<MassaTime> = if cfg!(feature = "sandbox") {
         None
     } else {
-        Some(1680292800000.into())  // Friday, March 31, 2023 08:00:00 PM UTC
+        Some(1682877600000.into())  // Sunday, April 30, 2023 06:00:00 PM UTC
     };
     /// `KeyPair` to sign genesis blocks.
     pub static ref GENESIS_KEY: KeyPair = KeyPair::from_str("S1UxdCJv5ckDK8z87E5Jq5fEfSVLi2cTHgtpfZy7iURs3KpPns8")
@@ -62,13 +73,28 @@ lazy_static::lazy_static! {
     /// node version
     pub static ref VERSION: Version = {
         if cfg!(feature = "sandbox") {
-            "SAND.20.0"
+            "SAND.22.0"
         } else {
-            "TEST.21.0"
+            "TEST.22.0"
         }
         .parse()
         .unwrap()
     };
+
+}
+
+/// Helper function to parse args for lazy_static evaluations
+pub fn get_period_from_args() -> u64 {
+    let mut last_start_period = 0;
+    let mut parse_next = false;
+    for args in std::env::args() {
+        if parse_next {
+            last_start_period = u64::from_str(&args).unwrap_or_default();
+            break;
+        }
+        parse_next = args == *"--restart-from-snapshot-at-period";
+    }
+    last_start_period
 }
 
 /// Price of a roll in the network
@@ -92,7 +118,7 @@ pub const ENDORSEMENT_COUNT: u32 = 16;
 /// Threshold for fitness.
 pub const DELTA_F0: u64 = 64 * (ENDORSEMENT_COUNT as u64 + 1);
 /// Maximum number of operations per block
-pub const MAX_OPERATIONS_PER_BLOCK: u32 = 10000;
+pub const MAX_OPERATIONS_PER_BLOCK: u32 = 5000;
 /// Maximum block size in bytes
 pub const MAX_BLOCK_SIZE: u32 = 1_000_000;
 /// Maximum capacity of the asynchronous messages pool
@@ -225,6 +251,22 @@ pub const NETWORK_NODE_EVENT_CHANNEL_SIZE: usize = 10_000;
 //
 /// Threshold to accept a new versioning
 pub const VERSIONING_THRESHOLD_TRANSITION_ACCEPTED: Amount = Amount::from_mantissa_scale(75, 0);
+/// Block count to process in MipStoreStats (for state change threshold)
+pub const MIP_STORE_STATS_BLOCK_CONSIDERED: usize = 1000;
+/// Max number of stats counters
+pub const MIP_STORE_STATS_COUNTERS_MAX: usize = 10;
+
+//
+// Constants for denunciation factory
+//
+
+/// denunciation expiration delta (in cycle count)
+pub const DENUNCIATION_EXPIRE_PERIODS: u64 = PERIODS_PER_CYCLE;
+/// Cycle delta to accept items in denunciation factory
+/// TODO / FIXME: unused?
+pub const DENUNCIATION_ITEMS_MAX_CYCLE_DELTA: u64 = 1;
+/// Max number of denunciations that can be included in a block header
+pub const MAX_DENUNCIATIONS_PER_BLOCK_HEADER: u32 = 128;
 
 // Some checks at compile time that should not be ignored!
 #[allow(clippy::assertions_on_constants)]

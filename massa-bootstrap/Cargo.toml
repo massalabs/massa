@@ -25,7 +25,6 @@ tracing = "0.1"
 substruct = { git = "https://github.com/sydhds/substruct" }
 socket2 = "0.4.7"
 crossbeam = "0.8.2"
-async-trait = "0.1.64"
 
 # custom modules
 massa_async_pool = { path = "../massa-async-pool" }
@@ -41,6 +40,7 @@ massa_serialization = { path = "../massa-serialization" }
 massa_signature = { path = "../massa-signature" }
 massa_pos_exports = { path = "../massa-pos-exports" }
 massa_time = { path = "../massa-time" }
+massa_versioning_worker = { path = "../massa-versioning-worker" }
 
 [dev-dependencies]
 bitvec = { version = "1.0", features = ["serde"] }

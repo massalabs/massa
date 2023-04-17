@@ -19,6 +19,7 @@ use massa_models::slot::Slot;
 use massa_pos_exports::SelectorController;
 use massa_storage::Storage;
 use massa_time::MassaTime;
+use massa_versioning_worker::versioning::MipStore;
 use parking_lot::{Condvar, Mutex, RwLock};
 use std::sync::Arc;
 use std::thread;
@@ -53,7 +54,15 @@ impl ExecutionThread {
         selector: Box<dyn SelectorController>,
     ) -> Self {
         // get the latest executed final slot, at the output of which the final ledger is attached
-        let final_cursor = execution_state.read().final_cursor;
+        // if we are restarting the network, use last genesis slot of the last start.
+
+        let final_cursor = std::cmp::max(
+            execution_state.read().final_cursor,
+            Slot {
+                period: config.last_start_period,
+                thread: config.thread_count.saturating_sub(1),
+            },
+        );
 
         // create and return the ExecutionThread
         ExecutionThread {
@@ -237,11 +246,13 @@ pub fn start_execution_worker(
     config: ExecutionConfig,
     final_state: Arc<RwLock<FinalState>>,
     selector: Box<dyn SelectorController>,
+    mip_store: MipStore,
 ) -> (Box<dyn ExecutionManager>, Box<dyn ExecutionController>) {
     // create an execution state
     let execution_state = Arc::new(RwLock::new(ExecutionState::new(
         config.clone(),
         final_state,
+        mip_store,
     )));
 
     // define the input data interface

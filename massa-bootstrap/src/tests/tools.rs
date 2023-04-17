@@ -25,11 +25,12 @@ use massa_models::config::{
     MAX_BOOTSTRAP_ASYNC_POOL_CHANGES, MAX_BOOTSTRAP_BLOCKS, MAX_BOOTSTRAP_ERROR_LENGTH,
     MAX_BOOTSTRAP_FINAL_STATE_PARTS_SIZE, MAX_BOOTSTRAP_MESSAGE_SIZE, MAX_CONSENSUS_BLOCKS_IDS,
     MAX_DATASTORE_ENTRY_COUNT, MAX_DATASTORE_KEY_LENGTH, MAX_DATASTORE_VALUE_LENGTH,
-    MAX_DEFERRED_CREDITS_LENGTH, MAX_EXECUTED_OPS_CHANGES_LENGTH, MAX_EXECUTED_OPS_LENGTH,
-    MAX_FUNCTION_NAME_LENGTH, MAX_LEDGER_CHANGES_COUNT, MAX_OPERATIONS_PER_BLOCK,
-    MAX_OPERATION_DATASTORE_ENTRY_COUNT, MAX_OPERATION_DATASTORE_KEY_LENGTH,
-    MAX_OPERATION_DATASTORE_VALUE_LENGTH, MAX_PARAMETERS_SIZE, MAX_PRODUCTION_STATS_LENGTH,
-    MAX_ROLLS_COUNT_LENGTH, PERIODS_PER_CYCLE, THREAD_COUNT,
+    MAX_DEFERRED_CREDITS_LENGTH, MAX_DENUNCIATIONS_PER_BLOCK_HEADER,
+    MAX_EXECUTED_OPS_CHANGES_LENGTH, MAX_EXECUTED_OPS_LENGTH, MAX_FUNCTION_NAME_LENGTH,
+    MAX_LEDGER_CHANGES_COUNT, MAX_OPERATIONS_PER_BLOCK, MAX_OPERATION_DATASTORE_ENTRY_COUNT,
+    MAX_OPERATION_DATASTORE_KEY_LENGTH, MAX_OPERATION_DATASTORE_VALUE_LENGTH, MAX_PARAMETERS_SIZE,
+    MAX_PRODUCTION_STATS_LENGTH, MAX_ROLLS_COUNT_LENGTH, MIP_STORE_STATS_BLOCK_CONSIDERED,
+    MIP_STORE_STATS_COUNTERS_MAX, PERIODS_PER_CYCLE, THREAD_COUNT,
 };
 use massa_models::node::NodeId;
 use massa_models::{
@@ -60,8 +61,6 @@ use std::{
     net::{IpAddr, Ipv4Addr, SocketAddr},
     path::PathBuf,
 };
-use tokio::io::AsyncReadExt;
-use tokio::io::AsyncWriteExt;
 use tokio::{sync::mpsc::Receiver, time::sleep};
 
 // Use loop-back address. use port 0 to auto-assign a port
@@ -143,7 +142,7 @@ fn get_random_pos_cycles_info(
 
 /// generates random PoS deferred credits
 fn get_random_deferred_credits(r_limit: u64) -> DeferredCredits {
-    let mut deferred_credits = DeferredCredits::default();
+    let mut deferred_credits = DeferredCredits::new_with_hash();
 
     for i in 0u64..r_limit {
         let mut credits = PreHashMap::default();
@@ -168,8 +167,8 @@ fn get_random_pos_state(r_limit: u64, pos: PoSFinalState) -> PoSFinalState {
     let mut cycle = CycleInfo::new_with_hash(0, false, roll_counts, rng_seed, production_stats);
     cycle.final_state_hash_snapshot = Some(Hash::from_bytes(&[0; 32]));
     cycle_history.push_back(cycle);
-    let mut deferred_credits = DeferredCredits::default();
-    deferred_credits.final_nested_extend(get_random_deferred_credits(r_limit));
+    let mut deferred_credits = DeferredCredits::new_with_hash();
+    deferred_credits.extend(get_random_deferred_credits(r_limit));
     PoSFinalState {
         cycle_history,
         deferred_credits,
@@ -296,6 +295,7 @@ pub fn get_bootstrap_config(bootstrap_public_key: NodeId) -> BootstrapConfig {
             SocketAddr::new(BASE_BOOTSTRAP_IP, 8069),
             bootstrap_public_key,
         )],
+        keep_ledger: false,
         bootstrap_whitelist_path: PathBuf::from(
             "../massa-node/base_config/bootstrap_whitelist.json",
         ),
@@ -338,6 +338,9 @@ pub fn get_bootstrap_config(bootstrap_public_key: NodeId) -> BootstrapConfig {
         max_ops_changes_length: MAX_EXECUTED_OPS_CHANGES_LENGTH,
         consensus_bootstrap_part_size: CONSENSUS_BOOTSTRAP_PART_SIZE,
         max_consensus_block_ids: MAX_CONSENSUS_BLOCKS_IDS,
+        mip_store_stats_block_considered: MIP_STORE_STATS_BLOCK_CONSIDERED,
+        mip_store_stats_counters_max: MIP_STORE_STATS_COUNTERS_MAX,
+        max_denunciations_per_block_header: MAX_DENUNCIATIONS_PER_BLOCK_HEADER,
     }
 }
 
@@ -413,6 +416,7 @@ pub fn get_boot_state() -> BootstrapableGraph {
                         )
                         .unwrap(),
                     ],
+                    denunciations: vec![],
                 },
                 BlockHeaderSerializer::new(),
                 &keypair,
@@ -441,6 +445,8 @@ pub fn get_boot_state() -> BootstrapableGraph {
         thread_count: THREAD_COUNT,
         max_operations_per_block: MAX_OPERATIONS_PER_BLOCK,
         endorsement_count: ENDORSEMENT_COUNT,
+        max_denunciations_per_block_header: MAX_DENUNCIATIONS_PER_BLOCK_HEADER,
+        last_start_period: Some(0),
     };
     let bootstrapable_graph_deserializer =
         BootstrapableGraphDeserializer::new(args, MAX_BOOTSTRAP_BLOCKS);
@@ -465,7 +471,7 @@ pub fn get_peers() -> BootstrapPeers {
     ])
 }
 
-pub async fn bridge_mock_streams(mut side1: Duplex, mut side2: Duplex) {
+pub async fn bridge_mock_streams<D: Duplex>(mut side1: D, mut side2: D) {
     let mut buf1 = vec![0u8; 1024];
     let mut buf2 = vec![0u8; 1024];
     loop {

@@ -7,10 +7,10 @@
 //! More generally, the context acts only on its own state
 //! and does not write anything persistent to the consensus state.
 
-use crate::module_cache::ModuleCache;
 use crate::speculative_async_pool::SpeculativeAsyncPool;
 use crate::speculative_executed_ops::SpeculativeExecutedOps;
 use crate::speculative_ledger::SpeculativeLedger;
+use crate::vesting_manager::VestingManager;
 use crate::{active_history::ActiveHistory, speculative_roll_state::SpeculativeRollState};
 use massa_async_pool::{AsyncMessage, AsyncMessageId};
 use massa_executed_ops::ExecutedOpsChanges;
@@ -21,8 +21,6 @@ use massa_final_state::{FinalState, StateChanges};
 use massa_ledger_exports::LedgerChanges;
 use massa_models::address::{ExecutionAddressCycleInfo, SCAddress};
 use massa_models::bytecode::Bytecode;
-use massa_models::prehash::PreHashMap;
-use massa_models::vesting_range::VestingRange;
 use massa_models::{
     address::Address,
     amount::Amount,
@@ -31,6 +29,7 @@ use massa_models::{
     output_event::{EventExecutionContext, SCOutputEvent},
     slot::Slot,
 };
+use massa_module_cache::controller::ModuleCache;
 use massa_pos_exports::PoSChanges;
 use parking_lot::RwLock;
 use rand::SeedableRng;
@@ -145,8 +144,8 @@ pub struct ExecutionContext {
     // cache of compiled runtime modules
     pub module_cache: Arc<RwLock<ModuleCache>>,
 
-    // Map of vesting addresses
-    pub vesting_registry: Arc<PreHashMap<Address, Vec<VestingRange>>>,
+    // Vesting Manager
+    pub vesting_manager: Arc<VestingManager>,
 }
 
 impl ExecutionContext {
@@ -165,7 +164,7 @@ impl ExecutionContext {
         final_state: Arc<RwLock<FinalState>>,
         active_history: Arc<RwLock<ActiveHistory>>,
         module_cache: Arc<RwLock<ModuleCache>>,
-        vesting_registry: Arc<PreHashMap<Address, Vec<VestingRange>>>,
+        vesting_manager: Arc<VestingManager>,
     ) -> Self {
         ExecutionContext {
             speculative_ledger: SpeculativeLedger::new(
@@ -200,7 +199,7 @@ impl ExecutionContext {
             origin_operation_id: Default::default(),
             module_cache,
             config,
-            vesting_registry,
+            vesting_manager,
         }
     }
 
@@ -275,7 +274,7 @@ impl ExecutionContext {
         final_state: Arc<RwLock<FinalState>>,
         active_history: Arc<RwLock<ActiveHistory>>,
         module_cache: Arc<RwLock<ModuleCache>>,
-        vesting_registry: Arc<PreHashMap<Address, Vec<VestingRange>>>,
+        vesting_manager: Arc<VestingManager>,
     ) -> Self {
         // Deterministically seed the unsafe RNG to allow the bytecode to use it.
         // Note that consecutive read-only calls for the same slot will get the same random seed.
@@ -304,7 +303,7 @@ impl ExecutionContext {
                 final_state,
                 active_history,
                 module_cache,
-                vesting_registry,
+                vesting_manager,
             )
         }
     }
@@ -346,7 +345,7 @@ impl ExecutionContext {
         final_state: Arc<RwLock<FinalState>>,
         active_history: Arc<RwLock<ActiveHistory>>,
         module_cache: Arc<RwLock<ModuleCache>>,
-        vesting_registry: Arc<PreHashMap<Address, Vec<VestingRange>>>,
+        vesting_manager: Arc<VestingManager>,
     ) -> Self {
         // Deterministically seed the unsafe RNG to allow the bytecode to use it.
 
@@ -373,7 +372,7 @@ impl ExecutionContext {
                 final_state,
                 active_history,
                 module_cache,
-                vesting_registry,
+                vesting_manager,
             )
         }
     }
@@ -500,6 +499,16 @@ impl ExecutionContext {
         self.speculative_ledger.get_balance(address)
     }
 
+    /// Get deferred credits of an address starting from a given slot
+    pub fn get_address_deferred_credits(
+        &self,
+        address: &Address,
+        min_slot: Slot,
+    ) -> BTreeMap<Slot, Amount> {
+        self.speculative_roll_state
+            .get_address_deferred_credits(address, min_slot)
+    }
+
     /// Sets a datastore entry for an address in the speculative ledger.
     /// Fail if the address is absent from the ledger.
     /// The datastore entry is created if it is absent for that address.
@@ -619,47 +628,8 @@ impl ExecutionContext {
             }
 
             // control vesting min_balance for sender address
-            if let Some(vesting_range) = self.find_vesting_range(from_addr, &self.slot) && (amount != Amount::zero()){
-                let new_balance = self
-                    .get_balance(from_addr)
-                    .ok_or_else(|| ExecutionError::RuntimeError(format!("spending address {} not found", from_addr)))?
-                    .checked_sub(amount)
-                    .ok_or_else(|| {
-                        ExecutionError::RuntimeError(format!("failed check transfer {} from spending address {} due to insufficient balance {}", amount, from_addr, self
-                            .get_balance(from_addr).unwrap_or_default()))
-                    })?;
-
-                let vec = self.get_address_cycle_infos(from_addr, self.config.periods_per_cycle);
-                let Some(exec_info) = vec.last() else {
-                    return Err(ExecutionError::VestingError(format!("can not get address info cycle for {}", from_addr)));
-                };
-
-                let rolls_value = exec_info
-                    .active_rolls
-                    .map(|rolls| self.config.roll_price.saturating_mul_u64(rolls))
-                    .unwrap_or(Amount::zero());
-
-                let deferred_map = self
-                    .speculative_roll_state
-                    .get_address_deferred_credits(from_addr, self.slot);
-                let deferred_credits = if deferred_map.is_empty() {
-                    Amount::zero()
-                } else {
-                    Amount::from_raw(deferred_map.into_values().map(|a| a.to_raw()).sum())
-                };
-
-                // min_balance = (rolls * roll_price) + balance + deferred_credits
-                let min_balance = new_balance
-                    .saturating_add(rolls_value)
-                    .saturating_add(deferred_credits);
-
-                if min_balance < vesting_range.min_balance {
-                    return Err(ExecutionError::VestingError(format!(
-                        "vesting_min_balance={} with value min_balance={} ",
-                        vesting_range.min_balance, min_balance
-                    )));
-                }
-            }
+            self.vesting_manager
+                .check_vesting_transfer_coins(self, from_addr, amount)?;
         }
 
         // check remaining sender allowance
@@ -696,7 +666,7 @@ impl ExecutionContext {
     }
 
     /// Cancels an asynchronous message, reimbursing `msg.coins` to the sender
-    ///x
+    ///
     /// # Arguments
     /// * `msg`: the asynchronous message to cancel
     pub fn cancel_async_message(&mut self, msg: &AsyncMessage) {
@@ -759,25 +729,19 @@ impl ExecutionContext {
     ///
     /// # Arguments
     /// * `slot`: associated slot of the deferred credits to be executed
-    /// * `credits`: deferred to be executed
     pub fn execute_deferred_credits(&mut self, slot: &Slot) {
-        let executed_credits = self.speculative_roll_state.get_deferred_credits(slot);
-
-        for (address, amount) in executed_credits {
-            self.speculative_roll_state
-                .added_changes
-                .deferred_credits
-                .credits
-                .entry(*slot)
-                .or_default()
-                .entry(address)
-                .and_modify(|credit_amount| *credit_amount = Amount::default())
-                .or_default();
-            if let Err(e) = self.transfer_coins(None, Some(address), amount, false) {
-                debug!(
-                    "could not credit {} deferred coins to {} at slot {}: {}",
-                    amount, address, slot, e
-                );
+        for (_slot, map) in self
+            .speculative_roll_state
+            .take_unexecuted_deferred_credits(slot)
+            .credits
+        {
+            for (address, amount) in map {
+                if let Err(e) = self.transfer_coins(None, Some(address), amount, false) {
+                    debug!(
+                        "could not credit {} deferred coins to {} at slot {}: {}",
+                        amount, address, slot, e
+                    );
+                }
             }
         }
     }
@@ -795,13 +759,24 @@ impl ExecutionContext {
         // execute the deferred credits coming from roll sells
         self.execute_deferred_credits(&slot);
 
-        // settle emitted async messages and reimburse the senders of deleted messages
+        // take the ledger changes first as they are needed for async messages and cache
         let ledger_changes = self.speculative_ledger.take();
+
+        // settle emitted async messages and reimburse the senders of deleted messages
         let deleted_messages = self
             .speculative_async_pool
             .settle_slot(&slot, &ledger_changes);
         for (_msg_id, msg) in deleted_messages {
             self.cancel_async_message(&msg);
+        }
+
+        // update module cache
+        let bc_updates = ledger_changes.get_bytecode_updates();
+        {
+            let mut cache_write_lock = self.module_cache.write();
+            for bytecode in bc_updates {
+                cache_write_lock.save_module(&bytecode.0);
+            }
         }
 
         // if the current slot is last in cycle check the production stats and act accordingly
@@ -944,16 +919,5 @@ impl ExecutionContext {
             .expect("unexpected slot overflow in context.get_addresses_deferred_credits");
         self.speculative_roll_state
             .get_address_deferred_credits(address, min_slot)
-    }
-
-    /// find a vesting range in the registry, otherwise return None
-    pub fn find_vesting_range(&self, addr: &Address, current_slot: &Slot) -> Option<&VestingRange> {
-        let Some(vector) = self.vesting_registry.get(addr) else {
-            return None;
-        };
-
-        vector.iter().find(|vesting| {
-            vesting.start_slot <= *current_slot && vesting.end_slot >= *current_slot
-        })
     }
 }
