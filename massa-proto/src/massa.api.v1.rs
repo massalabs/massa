@@ -421,11 +421,8 @@ pub struct GetLargestStakersResponse {
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct LargestStakersContext {
-    /// Cycle
-    #[prost(fixed64, tag = "1")]
-    pub cycle: u64,
     /// Slot
-    #[prost(message, optional, tag = "2")]
+    #[prost(message, optional, tag = "1")]
     pub slot: ::core::option::Option<Slot>,
 }
 /// LargestStakerEntry

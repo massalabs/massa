@@ -435,7 +435,6 @@ LargestStakers context
 
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
-| cycle | [fixed64](#fixed64) |  | Cycle |
 | slot | [Slot](#massa-api-v1-Slot) |  | Slot |
 
 

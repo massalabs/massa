@@ -191,7 +191,6 @@ pub(crate) fn get_largest_stakers(
 
     // Create the context for the response.
     let context = Some(grpc::LargestStakersContext {
-        cycle: current_cycle,
         slot: Some(current_slot.into()),
     });
 

@@ -185,10 +185,8 @@ message GetLargestStakersResponse {
 
 // LargestStakers context
 message LargestStakersContext {
-  // Cycle
-  fixed64 cycle = 1;
   // Slot
-  Slot slot = 2;
+  Slot slot = 1;
 }
 
 // LargestStakerEntry
