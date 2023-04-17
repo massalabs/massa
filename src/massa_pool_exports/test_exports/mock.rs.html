@@ -277,6 +277,12 @@
 <a href="#277" id="277">277</a>
 <a href="#278" id="278">278</a>
 <a href="#279" id="279">279</a>
+<a href="#280" id="280">280</a>
+<a href="#281" id="281">281</a>
+<a href="#282" id="282">282</a>
+<a href="#283" id="283">283</a>
+<a href="#284" id="284">284</a>
+<a href="#285" id="285">285</a>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="kw">use </span>crossbeam_channel::{Receiver, Sender};
@@ -289,7 +295,7 @@
 };
 
 <span class="kw">use </span>massa_models::config::THREAD_COUNT;
-<span class="kw">use </span>massa_models::denunciation::Denunciation;
+<span class="kw">use </span>massa_models::denunciation::{Denunciation, DenunciationPrecursor};
 <span class="kw">use </span>massa_models::{
     block_id::BlockId, endorsement::EndorsementId, operation::OperationId, slot::Slot,
 };
@@ -318,9 +324,9 @@
         </span>operations: Storage,
     },
     <span class="doccomment">/// Add denunciation to the pool
-    </span>AddDenunciation {
-        <span class="doccomment">/// The denunciation to add
-        </span>denunciation: Denunciation,
+    </span>AddDenunciationPrecursor {
+        <span class="doccomment">/// The denunciation precursor to add
+        </span>denunciation_precursor: DenunciationPrecursor,
     },
     <span class="doccomment">/// Get block endorsements
     </span>GetBlockEndorsements {
@@ -534,16 +540,18 @@
         Box::new(<span class="self">self</span>.clone())
     }
 
-    <span class="kw">fn </span>add_denunciation(<span class="kw-2">&amp;mut </span><span class="self">self</span>, denunciation: Denunciation) {
+    <span class="kw">fn </span>get_final_cs_periods(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>Vec&lt;u64&gt; {
+        <span class="kw-2">&amp;</span><span class="self">self</span>.last_final_cs_periods
+    }
+
+    <span class="kw">fn </span>add_denunciation_precursor(<span class="kw-2">&amp;</span><span class="self">self</span>, denunciation_precursor: DenunciationPrecursor) {
         <span class="self">self</span>.q
             .lock()
             .unwrap()
-            .send(MockPoolControllerMessage::AddDenunciation { denunciation })
+            .send(MockPoolControllerMessage::AddDenunciationPrecursor {
+                denunciation_precursor,
+            })
             .unwrap();
-    }
-
-    <span class="kw">fn </span>get_final_cs_periods(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>Vec&lt;u64&gt; {
-        <span class="kw-2">&amp;</span><span class="self">self</span>.last_final_cs_periods
     }
 
     <span class="kw">fn </span>get_denunciation_count(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; usize {
@@ -555,6 +563,10 @@
             .unwrap();
         response_rx.recv().unwrap()
     }
+
+    <span class="kw">fn </span>contains_denunciation(<span class="kw-2">&amp;</span><span class="self">self</span>, _denunciation: <span class="kw-2">&amp;</span>Denunciation) -&gt; bool {
+        <span class="bool-val">false
+    </span>}
 }
 </code></pre></div>
 </section></main><div id="rustdoc-vars" data-root-path="../../../" data-static-root-path="../../../static.files/" data-current-crate="massa_pool_exports" data-themes="" data-resource-suffix="" data-rustdoc-version="1.69.0-nightly (d962ea578 2023-02-26)" data-search-js="search-14421e1532aead08.js" data-settings-js="settings-f0c5c39777a9a2f6.js" data-settings-css="settings-0bcba95ff279c1db.css" ></div></body></html>
