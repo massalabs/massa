@@ -401,14 +401,14 @@ impl ExecutionState {
         denunciation: &Denunciation,
         block_credits: &mut Amount,
     ) -> Result<(), ExecutionError> {
-
         let addr_denounced = Address::from_public_key(denunciation.get_public_key());
 
         // acquire write access to the context
         let mut context = context_guard!(self);
         let slashed = context.try_slash_rolls(
-            &addr_denounced, 
-            self.config.roll_count_to_slash_on_denunciation);
+            &addr_denounced,
+            self.config.roll_count_to_slash_on_denunciation,
+        );
 
         match slashed {
             Ok(slashed_amount) => {

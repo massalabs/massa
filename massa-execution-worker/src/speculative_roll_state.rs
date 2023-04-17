@@ -149,12 +149,12 @@ impl SpeculativeRollState {
         Ok(())
     }
 
-    /// Try to slash `roll_count` rolls from the seller address. If not enough roll, slash
+    /// Try to slash `roll_count` rolls from the given address. If not enough roll, slash
     /// the available amount and return the value.
     ///
     /// # Arguments
-    /// * `addr`: address to sell the rolls from
-    /// * `roll_count`: number of rolls to sell
+    /// * `addr`: address to slash the rolls from
+    /// * `roll_count`: number of rolls to slash
     pub fn try_slash_rolls(
         &mut self,
         addr: &Address,
@@ -175,6 +175,38 @@ impl SpeculativeRollState {
 
         *current_rolls = current_rolls.saturating_sub(roll_to_slash);
         Ok(roll_to_slash)
+    }
+
+    /// Try to slash `amount` credits from the given address. If not enough credits, slash
+    /// the available amount and return the value.
+    ///
+    /// # Arguments
+    /// * `addr`: address to slash the deferred credits from
+    /// * `amount`: number of deferred credits to slash
+    pub fn try_slash_deferred_credits(
+        &mut self,
+        slot: &Slot,
+        addr: &Address,
+        amount: &Amount,
+    ) -> Result<Amount, ExecutionError> {
+        let credits = self.get_address_deferred_credits(addr, *slot);
+
+        // Return an error here - this should never happen
+        // TODO: credit a DeferredCredits related error here?
+        let (_last_credit_slot, last_credit_amount) =
+            credits
+                .last_key_value()
+                .ok_or(ExecutionError::RuntimeError(
+                    "No deferred credits to slash".to_string(),
+                ))?;
+
+        let deferred_credits_slashed = min(*amount, *last_credit_amount);
+        let new_deferred_credits = last_credit_amount.saturating_sub(*amount);
+        self.added_changes
+            .deferred_credits
+            .insert(*slot, *addr, new_deferred_credits);
+
+        Ok(deferred_credits_slashed)
     }
 
     /// Update production statistics of an address.

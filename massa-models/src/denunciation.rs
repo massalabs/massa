@@ -257,8 +257,7 @@ impl Denunciation {
             Denunciation::BlockHeader(de) => &de.public_key,
         }
     }
-    
-    
+
     /// For a given slot (and given the slot at now()), check if it can be denounced
     /// Can be used to check if block header | endorsement is not too old (at reception or too cleanup cache)
     pub fn is_expired(
