@@ -726,12 +726,15 @@ impl ExecutionContext {
             .try_slash_rolls(denounced_addr, roll_count);
 
         // convert slashed rolls to coins (as deferred credits => coins)
-        let slashed_coins = self
+        let mut slashed_coins = self
             .config
             .roll_price
             .checked_mul_u64(slashed_rolls.unwrap_or_default())
             .ok_or_else(|| {
-                ExecutionError::RuntimeError(format!("Cannot mult roll price by {}", roll_count))
+                ExecutionError::RuntimeError(format!(
+                    "Cannot multiply roll price by {}",
+                    roll_count
+                ))
             })?;
 
         // what remains to slash (then will try to slash as many deferred credits as avail/what remains to be slashed)
@@ -757,6 +760,7 @@ impl ExecutionContext {
                     &amount_remaining_to_slash,
                 )?;
 
+            slashed_coins = slashed_coins.saturating_add(slashed_coins_in_deferred_credits);
             let amount_remaining_to_slash_2 =
                 slashed_coins.saturating_sub(slashed_coins_in_deferred_credits);
             if amount_remaining_to_slash_2 > Amount::zero() {
@@ -768,8 +772,7 @@ impl ExecutionContext {
             }
         }
 
-        // TODO: return cumulative slashed amount
-        Ok(Amount::zero())
+        Ok(slashed_coins)
     }
 
     /// Update production statistics of an address.
