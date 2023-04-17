@@ -190,24 +190,13 @@
 <a href="#190" id="190">190</a>
 <a href="#191" id="191">191</a>
 <a href="#192" id="192">192</a>
-<a href="#193" id="193">193</a>
-<a href="#194" id="194">194</a>
-<a href="#195" id="195">195</a>
-<a href="#196" id="196">196</a>
-<a href="#197" id="197">197</a>
-<a href="#198" id="198">198</a>
-<a href="#199" id="199">199</a>
-<a href="#200" id="200">200</a>
-<a href="#201" id="201">201</a>
-<a href="#202" id="202">202</a>
-<a href="#203" id="203">203</a>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2023 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="kw">use </span>massa_proto::massa::api::v1 <span class="kw">as </span>grpc;
 
 <span class="kw">use </span><span class="kw">crate</span>::api::{
-    get_blocks_by_slots, get_datastore_entries, get_largest_stakers, get_next_block_best_parents,
-    get_selector_draws, get_transactions_throughput, get_version,
+    get_blocks_by_slots, get_datastore_entries, get_next_block_best_parents, get_selector_draws,
+    get_transactions_throughput, get_version,
 };
 <span class="kw">use </span><span class="kw">crate</span>::server::MassaGrpc;
 <span class="kw">use </span><span class="kw">crate</span>::stream::new_blocks::{new_blocks, NewBlocksStream};
@@ -229,17 +218,6 @@
         request: tonic::Request&lt;grpc::GetDatastoreEntriesRequest&gt;,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;tonic::Response&lt;grpc::GetDatastoreEntriesResponse&gt;, tonic::Status&gt; {
         <span class="kw">match </span>get_datastore_entries(<span class="self">self</span>, request) {
-            <span class="prelude-val">Ok</span>(response) =&gt; <span class="prelude-val">Ok</span>(tonic::Response::new(response)),
-            <span class="prelude-val">Err</span>(e) =&gt; <span class="prelude-val">Err</span>(e.into()),
-        }
-    }
-
-    <span class="doccomment">/// handler for get largest stakers.
-    </span><span class="kw">async fn </span>get_largest_stakers(
-        <span class="kw-2">&amp;</span><span class="self">self</span>,
-        request: tonic::Request&lt;grpc::GetLargestStakersRequest&gt;,
-    ) -&gt; <span class="prelude-ty">Result</span>&lt;tonic::Response&lt;grpc::GetLargestStakersResponse&gt;, tonic::Status&gt; {
-        <span class="kw">match </span>get_largest_stakers(<span class="self">self</span>, request) {
             <span class="prelude-val">Ok</span>(response) =&gt; <span class="prelude-val">Ok</span>(tonic::Response::new(response)),
             <span class="prelude-val">Err</span>(e) =&gt; <span class="prelude-val">Err</span>(e.into()),
         }

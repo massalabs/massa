@@ -66,25 +66,13 @@
 <a href="#66" id="66">66</a>
 <a href="#67" id="67">67</a>
 <a href="#68" id="68">68</a>
-<a href="#69" id="69">69</a>
-<a href="#70" id="70">70</a>
-<a href="#71" id="71">71</a>
-<a href="#72" id="72">72</a>
-<a href="#73" id="73">73</a>
-<a href="#74" id="74">74</a>
-<a href="#75" id="75">75</a>
-<a href="#76" id="76">76</a>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
-</span><span class="kw">use </span>massa_models::denunciation::DenunciationPrecursor;
-
+</span><span class="kw">use </span>massa_models::denunciation::Denunciation;
 <span class="kw">use </span>massa_models::{
     block_id::BlockId, endorsement::EndorsementId, operation::OperationId, slot::Slot,
 };
 <span class="kw">use </span>massa_storage::Storage;
-
-<span class="attr">#[cfg(feature = <span class="string">&quot;testing&quot;</span>)]
-</span><span class="kw">use </span>massa_models::denunciation::Denunciation;
 
 <span class="doccomment">/// Trait defining a pool controller
 </span><span class="kw">pub trait </span>PoolController: Send + Sync {
@@ -93,9 +81,6 @@
 
     <span class="doccomment">/// Asynchronously add endorsements to pool. Simply print a warning on failure.
     </span><span class="kw">fn </span>add_endorsements(<span class="kw-2">&amp;mut </span><span class="self">self</span>, endorsements: Storage);
-
-    <span class="doccomment">/// Add denunciation precursor to pool
-    </span><span class="kw">fn </span>add_denunciation_precursor(<span class="kw-2">&amp;</span><span class="self">self</span>, denunciation_precursor: DenunciationPrecursor);
 
     <span class="doccomment">/// Asynchronously notify of new consensus final periods. Simply print a warning on failure.
     </span><span class="kw">fn </span>notify_final_cs_periods(<span class="kw-2">&amp;mut </span><span class="self">self</span>, final_cs_periods: <span class="kw-2">&amp;</span>[u64]);
@@ -122,9 +107,8 @@
     <span class="doccomment">/// Check if the pool contains a list of operations. Returns one boolean per item.
     </span><span class="kw">fn </span>contains_operations(<span class="kw-2">&amp;</span><span class="self">self</span>, operations: <span class="kw-2">&amp;</span>[OperationId]) -&gt; Vec&lt;bool&gt;;
 
-    <span class="doccomment">/// Check if the pool contains a denunciation. Returns a boolean
-    </span><span class="attr">#[cfg(feature = <span class="string">&quot;testing&quot;</span>)]
-    </span><span class="kw">fn </span>contains_denunciation(<span class="kw-2">&amp;</span><span class="self">self</span>, denunciation: <span class="kw-2">&amp;</span>Denunciation) -&gt; bool;
+    <span class="doccomment">/// Add denunciations to pool. Simply print a warning on failure.
+    </span><span class="kw">fn </span>add_denunciation(<span class="kw-2">&amp;mut </span><span class="self">self</span>, denunciation: Denunciation);
 
     <span class="doccomment">/// Get the number of denunciations in the pool
     </span><span class="kw">fn </span>get_denunciation_count(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; usize;

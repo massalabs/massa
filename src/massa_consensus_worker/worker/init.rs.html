@@ -328,7 +328,6 @@
 <a href="#328" id="328">328</a>
 <a href="#329" id="329">329</a>
 <a href="#330" id="330">330</a>
-<a href="#331" id="331">331</a>
 </pre><pre class="rust"><code><span class="kw">use </span>massa_consensus_exports::{
     block_status::BlockStatus, bootstrapable_graph::BootstrapableGraph, error::ConsensusError,
     ConsensusConfig,
@@ -377,7 +376,6 @@
             parents: Vec::new(),
             operation_merkle_root: Hash::compute_from(<span class="kw-2">&amp;</span>Vec::new()),
             endorsements: Vec::new(),
-            denunciations: Vec::new(),
         },
         BlockHeaderSerializer::new(),
         keypair,
