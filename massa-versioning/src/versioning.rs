@@ -232,6 +232,7 @@ impl Failed {
 #[derive(Debug, Clone, PartialEq)]
 pub struct MipState {
     pub(crate) state: ComponentState,
+    // TMW TODO: PUT MASSA TIME AS KEY
     pub(crate) history: BTreeMap<Advance, ComponentStateTypeId>,
 }
 
@@ -434,6 +435,23 @@ impl MipStore {
             .iter()
             .rev()
             .find_map(|(k, v)| (v.state == ComponentState::active()).then_some(k.version))
+            .unwrap_or(0)
+    }
+
+    /// Retrieve the network version at the given timestamp
+    pub fn get_network_version_at_timestamp(&self, ts: MassaTime) -> u32 {
+        let lock = self.0.read();
+        let store = lock.deref();
+        store
+            .store
+            .iter()
+            .rev()
+            // TMW TODO: V MIP STATE HAS HISTORY
+            // QUERY WITH TIME AFTER THE HISTORY UPDATE
+            .find_map(|(k, v)| {
+                (v.state == ComponentState::active())
+                    .then_some(k.version)
+            })
             .unwrap_or(0)
     }
 
