@@ -146,6 +146,13 @@
 <a href="#146" id="146">146</a>
 <a href="#147" id="147">147</a>
 <a href="#148" id="148">148</a>
+<a href="#149" id="149">149</a>
+<a href="#150" id="150">150</a>
+<a href="#151" id="151">151</a>
+<a href="#152" id="152">152</a>
+<a href="#153" id="153">153</a>
+<a href="#154" id="154">154</a>
+<a href="#155" id="155">155</a>
 </pre><pre class="rust"><code><span class="kw">use </span>std::{
     borrow::Cow,
     collections::HashSet,
@@ -172,7 +179,10 @@
 }
 
 <span class="kw">impl </span>SharedWhiteBlackList&lt;<span class="lifetime">&#39;_</span>&gt; {
-    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>new(white_path: PathBuf, black_path: PathBuf) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="self">Self</span>, BootstrapError&gt; {
+    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>new(
+        white_path: PathBuf,
+        black_path: PathBuf,
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="self">Self</span>, Box&lt;BootstrapError&gt;&gt; {
         <span class="kw">let </span>(white_list, black_list) = WhiteBlackListInner::init_list(<span class="kw-2">&amp;</span>white_path, <span class="kw-2">&amp;</span>black_path)<span class="question-mark">?</span>;
         <span class="prelude-val">Ok</span>(<span class="self">Self </span>{
             inner: Arc::new(RwLock::new(WhiteBlackListInner {
@@ -186,7 +196,7 @@
 
     <span class="doccomment">/// Checks if the white/black list is up to date with a read-lock
     /// Creates a new list, and replaces the old one in a write-lock
-    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>update(<span class="kw-2">&amp;mut </span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span>&lt;(), BootstrapError&gt; {
+    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>update(<span class="kw-2">&amp;mut </span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span>&lt;(), Box&lt;BootstrapError&gt;&gt; {
         <span class="kw">let </span>read_lock = <span class="self">self</span>.inner.read();
         <span class="kw">let </span>(new_white, new_black) =
             WhiteBlackListInner::update_list(<span class="kw-2">&amp;</span><span class="self">self</span>.white_path, <span class="kw-2">&amp;</span><span class="self">self</span>.black_path)<span class="question-mark">?</span>;
@@ -212,7 +222,10 @@
     }
 
     <span class="attr">#[cfg_attr(test, allow(unreachable_code, unused_variables))]
-    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>is_ip_allowed(<span class="kw-2">&amp;</span><span class="self">self</span>, remote_addr: <span class="kw-2">&amp;</span>SocketAddr) -&gt; <span class="prelude-ty">Result</span>&lt;(), BootstrapError&gt; {
+    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>is_ip_allowed(
+        <span class="kw-2">&amp;</span><span class="self">self</span>,
+        remote_addr: <span class="kw-2">&amp;</span>SocketAddr,
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;(), Box&lt;BootstrapError&gt;&gt; {
         <span class="attr">#[cfg(test)]
         </span><span class="kw">return </span><span class="prelude-val">Ok</span>(());
 
@@ -221,11 +234,11 @@
         </span><span class="kw">let </span>read = <span class="self">self</span>.inner.read();
         <span class="kw">if let </span><span class="prelude-val">Some</span>(ip_list) = <span class="kw-2">&amp;</span>read.black_list &amp;&amp; ip_list.contains(<span class="kw-2">&amp;</span>ip) {
             <span class="macro">massa_trace!</span>(<span class="string">&quot;bootstrap.lib.run.select.accept.refuse_blacklisted&quot;</span>, {<span class="string">&quot;remote_addr&quot;</span>: remote_addr});
-            <span class="prelude-val">Err</span>(BootstrapError::BlackListed(ip.to_string()))
+            <span class="prelude-val">Err</span>(Box::new(BootstrapError::BlackListed(ip.to_string())))
             <span class="comment">// whether the peer IP address is not present in the whitelist
         </span>} <span class="kw">else if let </span><span class="prelude-val">Some</span>(ip_list) = <span class="kw-2">&amp;</span>read.white_list &amp;&amp; !ip_list.contains(<span class="kw-2">&amp;</span>ip) {
             <span class="macro">massa_trace!</span>(<span class="string">&quot;bootstrap.lib.run.select.accept.refuse_not_whitelisted&quot;</span>, {<span class="string">&quot;remote_addr&quot;</span>: remote_addr});
-            <span class="prelude-val">Err</span>(BootstrapError::WhiteListed(ip.to_string()))
+            <span class="prelude-val">Err</span>(Box::new(BootstrapError::WhiteListed(ip.to_string())))
         } <span class="kw">else </span>{
             <span class="prelude-val">Ok</span>(())
         }
@@ -233,11 +246,12 @@
 }
 
 <span class="kw">impl </span>WhiteBlackListInner {
-    <span class="attr">#[allow(clippy::type_complexity)]
+    <span class="attr">#[allow(clippy::result_large_err)]
+    #[allow(clippy::type_complexity)]
     </span><span class="kw">fn </span>update_list(
         whitelist_path: <span class="kw-2">&amp;</span>Path,
         blacklist_path: <span class="kw-2">&amp;</span>Path,
-    ) -&gt; <span class="prelude-ty">Result</span>&lt;(<span class="prelude-ty">Option</span>&lt;HashSet&lt;IpAddr&gt;&gt;, <span class="prelude-ty">Option</span>&lt;HashSet&lt;IpAddr&gt;&gt;), BootstrapError&gt; {
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;(<span class="prelude-ty">Option</span>&lt;HashSet&lt;IpAddr&gt;&gt;, <span class="prelude-ty">Option</span>&lt;HashSet&lt;IpAddr&gt;&gt;), Box&lt;BootstrapError&gt;&gt; {
         <span class="prelude-val">Ok</span>((
             <span class="self">Self</span>::load_list(whitelist_path, <span class="bool-val">false</span>)<span class="question-mark">?</span>,
             <span class="self">Self</span>::load_list(blacklist_path, <span class="bool-val">false</span>)<span class="question-mark">?</span>,
@@ -248,7 +262,7 @@
     </span><span class="kw">fn </span>init_list(
         whitelist_path: <span class="kw-2">&amp;</span>Path,
         blacklist_path: <span class="kw-2">&amp;</span>Path,
-    ) -&gt; <span class="prelude-ty">Result</span>&lt;(<span class="prelude-ty">Option</span>&lt;HashSet&lt;IpAddr&gt;&gt;, <span class="prelude-ty">Option</span>&lt;HashSet&lt;IpAddr&gt;&gt;), BootstrapError&gt; {
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;(<span class="prelude-ty">Option</span>&lt;HashSet&lt;IpAddr&gt;&gt;, <span class="prelude-ty">Option</span>&lt;HashSet&lt;IpAddr&gt;&gt;), Box&lt;BootstrapError&gt;&gt; {
         <span class="prelude-val">Ok</span>((
             <span class="self">Self</span>::load_list(whitelist_path, <span class="bool-val">true</span>)<span class="question-mark">?</span>,
             <span class="self">Self</span>::load_list(blacklist_path, <span class="bool-val">true</span>)<span class="question-mark">?</span>,
@@ -258,7 +272,7 @@
     <span class="kw">fn </span>load_list(
         list_path: <span class="kw-2">&amp;</span>Path,
         is_init: bool,
-    ) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="prelude-ty">Option</span>&lt;HashSet&lt;IpAddr&gt;&gt;, BootstrapError&gt; {
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="prelude-ty">Option</span>&lt;HashSet&lt;IpAddr&gt;&gt;, Box&lt;BootstrapError&gt;&gt; {
         <span class="kw">match </span>std::fs::read_to_string(list_path) {
             <span class="prelude-val">Err</span>(e) =&gt; {
                 <span class="kw">if </span>is_init {
