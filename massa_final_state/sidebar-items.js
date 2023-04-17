@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"enum":["FinalStateError"],"mod":["config","error","final_state","state_changes","test_exports"],"struct":["FinalState","FinalStateConfig","StateChanges","StateChangesDeserializer","StateChangesSerializer"]};
+window.SIDEBAR_ITEMS = {"enum":["FinalStateError"],"mod":["config","error","final_state","state_changes"],"struct":["FinalState","FinalStateConfig","StateChanges","StateChangesDeserializer","StateChangesSerializer"]};

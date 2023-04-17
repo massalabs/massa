@@ -260,6 +260,11 @@
 <a href="#260" id="260">260</a>
 <a href="#261" id="261">261</a>
 <a href="#262" id="262">262</a>
+<a href="#263" id="263">263</a>
+<a href="#264" id="264">264</a>
+<a href="#265" id="265">265</a>
+<a href="#266" id="266">266</a>
+<a href="#267" id="267">267</a>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="kw">use </span>enum_map::EnumMap;
@@ -356,6 +361,8 @@
     </span><span class="kw">pub </span>node_event_channel_size: usize,
     <span class="doccomment">/// last start period, used in message deserialization
     </span><span class="kw">pub </span>last_start_period: u64,
+    <span class="doccomment">/// max denunciations in block header
+    </span><span class="kw">pub </span>max_denunciations_per_block_header: u32,
 }
 
 <span class="doccomment">/// Connection configuration for a peer type
@@ -378,8 +385,9 @@
     <span class="kw">use </span>enum_map::enum_map;
     <span class="kw">use </span>massa_models::config::{
         ENDORSEMENT_COUNT, MAX_ADVERTISE_LENGTH, MAX_ASK_BLOCKS_PER_MESSAGE,
-        MAX_DATASTORE_VALUE_LENGTH, MAX_ENDORSEMENTS_PER_MESSAGE, MAX_FUNCTION_NAME_LENGTH,
-        MAX_MESSAGE_SIZE, MAX_OPERATIONS_PER_MESSAGE, MAX_OPERATION_DATASTORE_ENTRY_COUNT,
+        MAX_DATASTORE_VALUE_LENGTH, MAX_DENUNCIATIONS_PER_BLOCK_HEADER,
+        MAX_ENDORSEMENTS_PER_MESSAGE, MAX_FUNCTION_NAME_LENGTH, MAX_MESSAGE_SIZE,
+        MAX_OPERATIONS_PER_MESSAGE, MAX_OPERATION_DATASTORE_ENTRY_COUNT,
         MAX_OPERATION_DATASTORE_KEY_LENGTH, MAX_OPERATION_DATASTORE_VALUE_LENGTH,
         MAX_PARAMETERS_SIZE, NETWORK_CONTROLLER_CHANNEL_SIZE, NETWORK_EVENT_CHANNEL_SIZE,
         NETWORK_NODE_COMMAND_CHANNEL_SIZE, NETWORK_NODE_EVENT_CHANNEL_SIZE, THREAD_COUNT,
@@ -450,6 +458,7 @@
                 node_command_channel_size: NETWORK_NODE_COMMAND_CHANNEL_SIZE,
                 node_event_channel_size: NETWORK_NODE_EVENT_CHANNEL_SIZE,
                 last_start_period: <span class="number">0</span>,
+                max_denunciations_per_block_header: MAX_DENUNCIATIONS_PER_BLOCK_HEADER,
             }
         }
     }
@@ -518,6 +527,7 @@
                 node_command_channel_size: NETWORK_NODE_COMMAND_CHANNEL_SIZE,
                 node_event_channel_size: NETWORK_NODE_EVENT_CHANNEL_SIZE,
                 last_start_period: <span class="number">0</span>,
+                max_denunciations_per_block_header: MAX_DENUNCIATIONS_PER_BLOCK_HEADER,
             }
         }
     }
