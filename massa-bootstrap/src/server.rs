@@ -40,7 +40,7 @@ use massa_models::{
 use massa_network_exports::NetworkCommandSender;
 use massa_signature::KeyPair;
 use massa_time::MassaTime;
-use massa_versioning_worker::versioning::MipStore;
+use massa_versioning::versioning::MipStore;
 
 use parking_lot::RwLock;
 use std::{

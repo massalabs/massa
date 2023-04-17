@@ -23,7 +23,7 @@ massa_serialization = { path = "../massa-serialization" }
 massa_storage = { path = "../massa-storage" }
 massa_time = { path = "../massa-time" }
 massa_signature = { path = "../massa-signature" }
-massa_versioning_worker = { path = "../massa-versioning-worker" }
+massa_versioning = { path = "../massa-versioning" }
 
 [dev-dependencies]
 lazy_static = "1.4"

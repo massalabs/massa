@@ -30,7 +30,7 @@ mod settings;
 mod tools;
 pub use client::get_state;
 pub use establisher::{DefaultConnector, DefaultListener};
-use massa_versioning_worker::versioning::MipStore;
+use massa_versioning::versioning::MipStore;
 pub use messages::{
     BootstrapClientMessage, BootstrapClientMessageDeserializer, BootstrapClientMessageSerializer,
     BootstrapServerMessage, BootstrapServerMessageDeserializer, BootstrapServerMessageSerializer,

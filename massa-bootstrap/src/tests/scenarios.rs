@@ -45,9 +45,7 @@ use massa_pos_exports::{
 use massa_pos_worker::start_selector_worker;
 use massa_signature::KeyPair;
 use massa_time::MassaTime;
-use massa_versioning_worker::versioning::{
-    MipComponent, MipInfo, MipState, MipStatsConfig, MipStore,
-};
+use massa_versioning::versioning::{MipComponent, MipInfo, MipState, MipStatsConfig, MipStore};
 use parking_lot::RwLock;
 use serial_test::serial;
 use std::{

@@ -13,7 +13,7 @@ use massa_models::{
     timeslots::{get_block_slot_timestamp, get_closest_slot_to_timestamp},
 };
 use massa_time::MassaTime;
-use massa_versioning_worker::versioning::MipStore;
+use massa_versioning::versioning::MipStore;
 use massa_wallet::Wallet;
 use parking_lot::RwLock;
 use std::{

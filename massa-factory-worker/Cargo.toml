@@ -24,7 +24,7 @@ massa_hash = { path = "../massa-hash" }
 massa_pos_exports = { path = "../massa-pos-exports" }
 massa_serialization = { path = "../massa-serialization" }
 massa_pool_exports = { path = "../massa-pool-exports" }
-massa_versioning_worker = { path = "../massa-versioning-worker" }
+massa_versioning = { path = "../massa-versioning" }
 
 [dev-dependencies]
 serial_test = "1.0"

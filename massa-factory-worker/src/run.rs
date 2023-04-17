@@ -1,6 +1,6 @@
 //! Copyright (c) 2022 MASSA LABS <info@massa.net>
 
-use massa_versioning_worker::versioning::MipStore;
+use massa_versioning::versioning::MipStore;
 use parking_lot::RwLock;
 use std::sync::{mpsc, Arc};
 

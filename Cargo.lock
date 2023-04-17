@@ -2328,7 +2328,7 @@ dependencies = [
  "massa_protocol_worker",
  "massa_storage",
  "massa_time",
- "massa_versioning_worker",
+ "massa_versioning",
  "massa_wallet",
  "parking_lot",
  "paw",
@@ -2475,7 +2475,7 @@ dependencies = [
  "massa_serialization 0.1.0",
  "massa_signature",
  "massa_time",
- "massa_versioning_worker",
+ "massa_versioning",
  "nom",
  "num_enum",
  "parking_lot",
@@ -2601,7 +2601,7 @@ dependencies = [
  "massa_signature",
  "massa_storage",
  "massa_time",
- "massa_versioning_worker",
+ "massa_versioning",
  "num",
  "parking_lot",
  "rand 0.8.5",
@@ -2656,7 +2656,7 @@ dependencies = [
  "massa_signature",
  "massa_storage",
  "massa_time",
- "massa_versioning_worker",
+ "massa_versioning",
  "massa_wallet",
  "parking_lot",
  "serde",
@@ -3008,7 +3008,7 @@ dependencies = [
  "massa_signature",
  "massa_storage",
  "massa_time",
- "massa_versioning_worker",
+ "massa_versioning",
  "rayon",
  "serde_json",
  "serial_test 1.0.0",
@@ -3093,11 +3093,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "massa_versioning_exports"
-version = "0.1.0"
-
-[[package]]
-name = "massa_versioning_worker"
+name = "massa_versioning"
 version = "0.1.0"
 dependencies = [
  "chrono",

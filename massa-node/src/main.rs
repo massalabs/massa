@@ -71,7 +71,7 @@ use massa_protocol_exports::{
 use massa_protocol_worker::start_protocol_controller;
 use massa_storage::Storage;
 use massa_time::MassaTime;
-use massa_versioning_worker::versioning::{MipStatsConfig, MipStore};
+use massa_versioning::versioning::{MipStatsConfig, MipStore};
 use massa_wallet::Wallet;
 use parking_lot::RwLock;
 use std::path::PathBuf;

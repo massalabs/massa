@@ -38,7 +38,7 @@ use massa_module_cache::controller::ModuleCache;
 use massa_pos_exports::SelectorController;
 use massa_sc_runtime::{Interface, Response, VMError};
 use massa_storage::Storage;
-use massa_versioning_worker::versioning::MipStore;
+use massa_versioning::versioning::MipStore;
 use parking_lot::{Mutex, RwLock};
 use std::collections::{BTreeMap, BTreeSet, HashMap};
 use std::sync::Arc;

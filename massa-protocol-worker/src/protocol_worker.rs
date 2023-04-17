@@ -28,7 +28,7 @@ use massa_protocol_exports::{
 };
 use massa_storage::Storage;
 use massa_time::{MassaTime, TimeError};
-use massa_versioning_worker::versioning::MipStore;
+use massa_versioning::versioning::MipStore;
 use std::collections::{HashMap, HashSet};
 use std::mem;
 use std::pin::Pin;

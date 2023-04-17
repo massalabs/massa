@@ -34,7 +34,7 @@ massa_time = { path = "../massa-time" }
 massa_ledger_exports = { path = "../massa-ledger-exports" }
 massa_pos_exports = { path = "../massa-pos-exports" }
 massa_final_state = { path = "../massa-final-state" }
-massa_versioning_worker = { path = "../massa-versioning-worker" }
+massa_versioning = { path = "../massa-versioning" }
 
 [dev-dependencies]
 massa_pos_worker = { path = "../massa-pos-worker" }

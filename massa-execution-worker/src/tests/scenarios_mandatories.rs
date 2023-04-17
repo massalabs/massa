@@ -25,7 +25,7 @@ mod tests {
     use massa_signature::KeyPair;
     use massa_storage::Storage;
     use massa_time::MassaTime;
-    use massa_versioning_worker::versioning::{MipStatsConfig, MipStore};
+    use massa_versioning::versioning::{MipStatsConfig, MipStore};
     use num::rational::Ratio;
     use serial_test::serial;
     use std::{
