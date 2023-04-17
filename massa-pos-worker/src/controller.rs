@@ -58,7 +58,7 @@ impl SelectorController for SelectorControllerImpl {
     /// * `cycle`: cycle number to be drawn
     /// * `lookback_rolls`: look back rolls used for the draw (cycle - 3)
     /// * `lookback_seed`: look back seed hash for the draw (cycle - 2)
-    
+
     /// * This a non-blocking function where the worker is separate,
     /// * so the feed is queued and not applied immediately and that's
     /// * done to avoid blocking while drawing. This is because the
