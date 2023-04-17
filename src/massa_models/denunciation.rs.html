@@ -1248,6 +1248,14 @@
 <a href="#1248" id="1248">1248</a>
 <a href="#1249" id="1249">1249</a>
 <a href="#1250" id="1250">1250</a>
+<a href="#1251" id="1251">1251</a>
+<a href="#1252" id="1252">1252</a>
+<a href="#1253" id="1253">1253</a>
+<a href="#1254" id="1254">1254</a>
+<a href="#1255" id="1255">1255</a>
+<a href="#1256" id="1256">1256</a>
+<a href="#1257" id="1257">1257</a>
+<a href="#1258" id="1258">1258</a>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 </span><span class="doccomment">/// An overview of what is a Denunciation and what it is used for can be found here
 /// https://github.com/massalabs/massa/discussions/3113
@@ -1495,8 +1503,16 @@
     <span class="doccomment">/// Get Denunciation slot ref
     </span><span class="kw">pub fn </span>get_slot(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>Slot {
         <span class="kw">match </span><span class="self">self </span>{
-            Denunciation::Endorsement(endo_de) =&gt; <span class="kw-2">&amp;</span>endo_de.slot,
-            Denunciation::BlockHeader(blkh_de) =&gt; <span class="kw-2">&amp;</span>blkh_de.slot,
+            Denunciation::Endorsement(de) =&gt; <span class="kw-2">&amp;</span>de.slot,
+            Denunciation::BlockHeader(de) =&gt; <span class="kw-2">&amp;</span>de.slot,
+        }
+    }
+
+    <span class="doccomment">/// Get Denunciation public key ref
+    </span><span class="kw">pub fn </span>get_public_key(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>PublicKey {
+        <span class="kw">match </span><span class="self">self </span>{
+            Denunciation::Endorsement(de) =&gt; <span class="kw-2">&amp;</span>de.public_key,
+            Denunciation::BlockHeader(de) =&gt; <span class="kw-2">&amp;</span>de.public_key,
         }
     }
 
