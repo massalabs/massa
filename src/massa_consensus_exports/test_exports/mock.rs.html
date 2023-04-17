@@ -265,54 +265,6 @@
 <a href="#265" id="265">265</a>
 <a href="#266" id="266">266</a>
 <a href="#267" id="267">267</a>
-<a href="#268" id="268">268</a>
-<a href="#269" id="269">269</a>
-<a href="#270" id="270">270</a>
-<a href="#271" id="271">271</a>
-<a href="#272" id="272">272</a>
-<a href="#273" id="273">273</a>
-<a href="#274" id="274">274</a>
-<a href="#275" id="275">275</a>
-<a href="#276" id="276">276</a>
-<a href="#277" id="277">277</a>
-<a href="#278" id="278">278</a>
-<a href="#279" id="279">279</a>
-<a href="#280" id="280">280</a>
-<a href="#281" id="281">281</a>
-<a href="#282" id="282">282</a>
-<a href="#283" id="283">283</a>
-<a href="#284" id="284">284</a>
-<a href="#285" id="285">285</a>
-<a href="#286" id="286">286</a>
-<a href="#287" id="287">287</a>
-<a href="#288" id="288">288</a>
-<a href="#289" id="289">289</a>
-<a href="#290" id="290">290</a>
-<a href="#291" id="291">291</a>
-<a href="#292" id="292">292</a>
-<a href="#293" id="293">293</a>
-<a href="#294" id="294">294</a>
-<a href="#295" id="295">295</a>
-<a href="#296" id="296">296</a>
-<a href="#297" id="297">297</a>
-<a href="#298" id="298">298</a>
-<a href="#299" id="299">299</a>
-<a href="#300" id="300">300</a>
-<a href="#301" id="301">301</a>
-<a href="#302" id="302">302</a>
-<a href="#303" id="303">303</a>
-<a href="#304" id="304">304</a>
-<a href="#305" id="305">305</a>
-<a href="#306" id="306">306</a>
-<a href="#307" id="307">307</a>
-<a href="#308" id="308">308</a>
-<a href="#309" id="309">309</a>
-<a href="#310" id="310">310</a>
-<a href="#311" id="311">311</a>
-<a href="#312" id="312">312</a>
-<a href="#313" id="313">313</a>
-<a href="#314" id="314">314</a>
-<a href="#315" id="315">315</a>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="kw">use </span>std::sync::{
@@ -403,63 +355,15 @@
 /// For messages with a `response_tx` field, the mock will await a response through their `response_tx` channel
 /// in order to simulate returning this value at the end of the call.
 </span><span class="attr">#[derive(Clone)]
-</span><span class="kw">pub struct </span>ConsensusControllerImpl(Arc&lt;Mutex&lt;mpsc::Sender&lt;MockConsensusControllerMessage&gt;&gt;&gt;);
+</span><span class="kw">pub struct </span>MockConsensusController(Arc&lt;Mutex&lt;mpsc::Sender&lt;MockConsensusControllerMessage&gt;&gt;&gt;);
 
-<span class="attr">#[cfg(any(test, feature = <span class="string">&quot;testing&quot;</span>))]
-</span><span class="macro">mockall::mock! </span>{
-    <span class="kw">pub </span>ConsensusControllerImpl {}
-    <span class="kw">impl </span>Clone <span class="kw">for </span>ConsensusControllerImpl {
-        <span class="kw">fn </span>clone(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="self">Self</span>;
-    }
-    <span class="kw">impl </span>ConsensusController <span class="kw">for </span>ConsensusControllerImpl {
-        <span class="kw">fn </span>get_block_graph_status(
-            <span class="kw-2">&amp;</span><span class="self">self</span>,
-            start_slot: <span class="prelude-ty">Option</span>&lt;Slot&gt;,
-            end_slot: <span class="prelude-ty">Option</span>&lt;Slot&gt;,
-        ) -&gt; <span class="prelude-ty">Result</span>&lt;BlockGraphExport, ConsensusError&gt;;
-
-        <span class="kw">fn </span>get_block_statuses(<span class="kw-2">&amp;</span><span class="self">self</span>, ids: <span class="kw-2">&amp;</span>[BlockId]) -&gt; Vec&lt;BlockGraphStatus&gt;;
-
-        <span class="kw">fn </span>get_cliques(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; Vec&lt;Clique&gt;;
-
-        <span class="kw">fn </span>get_bootstrap_part(
-            <span class="kw-2">&amp;</span><span class="self">self</span>,
-            cursor: StreamingStep&lt;PreHashSet&lt;BlockId&gt;&gt;,
-            execution_cursor: StreamingStep&lt;Slot&gt;,
-        ) -&gt; <span class="prelude-ty">Result</span>&lt;
-            (
-                BootstrapableGraph,
-                PreHashSet&lt;BlockId&gt;,
-                StreamingStep&lt;PreHashSet&lt;BlockId&gt;&gt;,
-            ),
-            ConsensusError,
-        &gt;;
-
-        <span class="kw">fn </span>get_stats(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span>&lt;ConsensusStats, ConsensusError&gt;;
-
-        <span class="kw">fn </span>get_best_parents(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; Vec&lt;(BlockId, u64)&gt;;
-
-        <span class="kw">fn </span>get_blockclique_block_at_slot(<span class="kw-2">&amp;</span><span class="self">self</span>, slot: Slot) -&gt; <span class="prelude-ty">Option</span>&lt;BlockId&gt;;
-
-        <span class="kw">fn </span>get_latest_blockclique_block_at_slot(<span class="kw-2">&amp;</span><span class="self">self</span>, slot: Slot) -&gt; BlockId;
-
-        <span class="kw">fn </span>register_block(<span class="kw-2">&amp;</span><span class="self">self</span>, block_id: BlockId, slot: Slot, block_storage: Storage, created: bool);
-
-        <span class="kw">fn </span>register_block_header(<span class="kw-2">&amp;</span><span class="self">self</span>, block_id: BlockId, header: SecureShare&lt;BlockHeader, BlockId&gt;);
-
-        <span class="kw">fn </span>mark_invalid_block(<span class="kw-2">&amp;</span><span class="self">self</span>, block_id: BlockId, header: SecureShare&lt;BlockHeader, BlockId&gt;);
-
-        <span class="kw">fn </span>clone_box(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; Box&lt;<span class="kw">dyn </span>ConsensusController&gt;;
-    }
-}
-
-<span class="kw">impl </span>ConsensusControllerImpl {
+<span class="kw">impl </span>MockConsensusController {
     <span class="doccomment">/// Create a new pair (mock graph controller, mpsc receiver for emitted messages)
     /// Note that unbounded mpsc channels are used
     </span><span class="kw">pub fn </span>new_with_receiver() -&gt; (Box&lt;<span class="kw">dyn </span>ConsensusController&gt;, ConsensusEventReceiver) {
         <span class="kw">let </span>(tx, rx) = mpsc::channel();
         (
-            Box::new(ConsensusControllerImpl(Arc::new(Mutex::new(tx)))),
+            Box::new(MockConsensusController(Arc::new(Mutex::new(tx)))),
             ConsensusEventReceiver(rx),
         )
     }
@@ -483,7 +387,7 @@
 /// If the message contains a `response_tx`,
 /// a response from that channel is read and returned as return value.
 /// See the documentation of `ConsensusController` for details on each function.
-</span><span class="kw">impl </span>ConsensusController <span class="kw">for </span>ConsensusControllerImpl {
+</span><span class="kw">impl </span>ConsensusController <span class="kw">for </span>MockConsensusController {
     <span class="kw">fn </span>get_block_graph_status(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         start_slot: <span class="prelude-ty">Option</span>&lt;Slot&gt;,
