@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"enum":["ConsensusError","InternalError","LedgerError"]};
+window.SIDEBAR_ITEMS = {"constant":["_DERIVE_Display_FOR_ConsensusError","_DERIVE_Display_FOR_InternalError","_DERIVE_Display_FOR_LedgerError"],"enum":["ConsensusError","InternalError","LedgerError"],"trait":["DisplayToDisplayDoc","PathToDisplayDoc"]};

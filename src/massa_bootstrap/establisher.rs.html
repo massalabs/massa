@@ -73,143 +73,37 @@
 <a href="#73" id="73">73</a>
 <a href="#74" id="74">74</a>
 <a href="#75" id="75">75</a>
-<a href="#76" id="76">76</a>
-<a href="#77" id="77">77</a>
-<a href="#78" id="78">78</a>
-<a href="#79" id="79">79</a>
-<a href="#80" id="80">80</a>
-<a href="#81" id="81">81</a>
-<a href="#82" id="82">82</a>
-<a href="#83" id="83">83</a>
-<a href="#84" id="84">84</a>
-<a href="#85" id="85">85</a>
-<a href="#86" id="86">86</a>
-<a href="#87" id="87">87</a>
-<a href="#88" id="88">88</a>
-<a href="#89" id="89">89</a>
-<a href="#90" id="90">90</a>
-<a href="#91" id="91">91</a>
-<a href="#92" id="92">92</a>
-<a href="#93" id="93">93</a>
-<a href="#94" id="94">94</a>
-<a href="#95" id="95">95</a>
-<a href="#96" id="96">96</a>
-<a href="#97" id="97">97</a>
-<a href="#98" id="98">98</a>
-<a href="#99" id="99">99</a>
-<a href="#100" id="100">100</a>
-<a href="#101" id="101">101</a>
-<a href="#102" id="102">102</a>
-<a href="#103" id="103">103</a>
-<a href="#104" id="104">104</a>
-<a href="#105" id="105">105</a>
-<a href="#106" id="106">106</a>
-<a href="#107" id="107">107</a>
-<a href="#108" id="108">108</a>
-<a href="#109" id="109">109</a>
-<a href="#110" id="110">110</a>
-<a href="#111" id="111">111</a>
-<a href="#112" id="112">112</a>
-<a href="#113" id="113">113</a>
-<a href="#114" id="114">114</a>
-<a href="#115" id="115">115</a>
-<a href="#116" id="116">116</a>
-<a href="#117" id="117">117</a>
-<a href="#118" id="118">118</a>
-<a href="#119" id="119">119</a>
-<a href="#120" id="120">120</a>
-<a href="#121" id="121">121</a>
-<a href="#122" id="122">122</a>
-<a href="#123" id="123">123</a>
-<a href="#124" id="124">124</a>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
-</span><span class="kw">use </span>async_trait::async_trait;
-<span class="kw">use </span>massa_time::MassaTime;
-<span class="kw">use </span>std::{io, net::SocketAddr};
+</span><span class="kw">use </span>massa_time::MassaTime;
+<span class="kw">use </span>std::{
+    io,
+    net::{SocketAddr, TcpListener, TcpStream},
+};
 
 <span class="doccomment">/// duplex connection
-</span><span class="kw">pub type </span>Duplex = tokio::net::TcpStream;
-
-<span class="doccomment">/// Listener used to establish a Duplex
-</span><span class="kw">pub type </span>DuplexListener = tokio::net::TcpListener;
-
-<span class="attr">#[async_trait]
-</span><span class="doccomment">/// Specifies a common interface that can be used by standard, or mockers
-</span><span class="kw">pub trait </span>BSListener {
-    <span class="kw">async fn </span>accept(<span class="kw-2">&amp;mut </span><span class="self">self</span>) -&gt; io::Result&lt;(Duplex, SocketAddr)&gt;;
+</span><span class="kw">pub trait </span>Duplex:
+    Send + tokio::io::AsyncReadExt + tokio::io::AsyncWriteExt + std::marker::Unpin
+{
 }
 
-<span class="attr">#[async_trait]
-</span><span class="doccomment">/// Specifies a common interface that can be used by standard, or mockers
-</span><span class="kw">pub trait </span>BSConnector {
-    <span class="kw">async fn </span>connect(<span class="kw-2">&amp;mut </span><span class="self">self</span>, addr: SocketAddr) -&gt; io::Result&lt;Duplex&gt;;
+<span class="kw">impl </span>Duplex <span class="kw">for </span>tokio::net::TcpStream {}
+
+<span class="doccomment">/// Specifies a common interface that can be used by standard, or mockers
+</span><span class="kw">pub trait </span>BSListener {
+    <span class="kw">fn </span>accept(<span class="kw-2">&amp;mut </span><span class="self">self</span>) -&gt; io::Result&lt;(TcpStream, SocketAddr)&gt;;
 }
 
 <span class="doccomment">/// Specifies a common interface that can be used by standard, or mockers
-</span><span class="kw">pub trait </span>BSEstablisher {
-    <span class="comment">// TODO: this is needed for thread spawning. Once the listener is on-thread, the static
-    // lifetime can be thrown away.
-    // TODO: use super-advanced lifetime/GAT/other shenanigans to
-    // make the listener compatable with being moved into a thread
-    </span><span class="kw">type </span>Listener: BSListener + Send + <span class="lifetime">&#39;static</span>;
-    <span class="kw">type </span>Connector: BSConnector;
-    <span class="kw">fn </span>get_listener(<span class="kw-2">&amp;mut </span><span class="self">self</span>, addr: SocketAddr) -&gt; io::Result&lt;<span class="self">Self</span>::Listener&gt;;
-    <span class="kw">fn </span>get_connector(<span class="kw-2">&amp;mut </span><span class="self">self</span>, timeout_duration: MassaTime) -&gt; io::Result&lt;<span class="self">Self</span>::Connector&gt;;
+</span><span class="kw">pub trait </span>BSConnector {
+    <span class="kw">fn </span>connect(<span class="kw-2">&amp;mut </span><span class="self">self</span>, addr: SocketAddr) -&gt; io::Result&lt;TcpStream&gt;;
 }
 
 <span class="doccomment">/// The listener we are using
 </span><span class="attr">#[derive(Debug)]
-</span><span class="kw">pub struct </span>DefaultListener(DuplexListener);
-
-<span class="attr">#[async_trait]
-</span><span class="kw">impl </span>BSListener <span class="kw">for </span>DefaultListener {
-    <span class="doccomment">/// Accepts a new incoming connection from this listener.
-    </span><span class="kw">async fn </span>accept(<span class="kw-2">&amp;mut </span><span class="self">self</span>) -&gt; io::Result&lt;(Duplex, SocketAddr)&gt; {
-        <span class="comment">// accept
-        </span><span class="kw">let </span>(sock, <span class="kw-2">mut </span>remote_addr) = <span class="self">self</span>.<span class="number">0</span>.accept().<span class="kw">await</span><span class="question-mark">?</span>;
-        <span class="comment">// normalize address
-        </span>remote_addr.set_ip(remote_addr.ip().to_canonical());
-        <span class="prelude-val">Ok</span>((sock, remote_addr))
-    }
-}
-<span class="doccomment">/// Initiates a connection with given timeout in milliseconds
-</span><span class="attr">#[derive(Debug)]
-</span><span class="kw">pub struct </span>DefaultConnector(MassaTime);
-
-<span class="attr">#[async_trait]
-</span><span class="kw">impl </span>BSConnector <span class="kw">for </span>DefaultConnector {
-    <span class="doccomment">/// Tries to connect to address
-    ///
-    /// # Argument
-    /// * `addr`: `SocketAddr` we are trying to connect to.
-    </span><span class="kw">async fn </span>connect(<span class="kw-2">&amp;mut </span><span class="self">self</span>, addr: SocketAddr) -&gt; io::Result&lt;Duplex&gt; {
-        <span class="kw">match </span>tokio::time::timeout(<span class="self">self</span>.<span class="number">0</span>.to_duration(), Duplex::connect(addr)).<span class="kw">await </span>{
-            <span class="prelude-val">Ok</span>(<span class="prelude-val">Ok</span>(sock)) =&gt; <span class="prelude-val">Ok</span>(sock),
-            <span class="prelude-val">Ok</span>(<span class="prelude-val">Err</span>(e)) =&gt; <span class="prelude-val">Err</span>(e),
-            <span class="prelude-val">Err</span>(e) =&gt; <span class="prelude-val">Err</span>(io::Error::new(io::ErrorKind::TimedOut, e)),
-        }
-    }
-}
-
-<span class="doccomment">/// Establishes a connection
-</span><span class="attr">#[derive(Debug)]
-</span><span class="kw">pub struct </span>DefaultEstablisher;
-
-<span class="kw">impl </span>DefaultEstablisher {
-    <span class="doccomment">/// Creates an Establisher.
-    </span><span class="kw">pub fn </span>new() -&gt; <span class="self">Self </span>{
-        DefaultEstablisher {}
-    }
-}
-
-<span class="kw">impl </span>BSEstablisher <span class="kw">for </span>DefaultEstablisher {
-    <span class="kw">type </span>Connector = DefaultConnector;
-    <span class="kw">type </span>Listener = DefaultListener;
-    <span class="doccomment">/// Gets the associated listener
-    ///
-    /// # Argument
-    /// * `addr`: `SocketAddr` we want to bind to.
-    </span><span class="kw">fn </span>get_listener(<span class="kw-2">&amp;mut </span><span class="self">self</span>, addr: SocketAddr) -&gt; io::Result&lt;DefaultListener&gt; {
+</span><span class="kw">pub struct </span>DefaultListener(TcpListener);
+<span class="kw">impl </span>DefaultListener {
+    <span class="doccomment">/// Provides a standard TcpListener
+    </span><span class="kw">pub fn </span>new(addr: <span class="kw-2">&amp;</span>SocketAddr) -&gt; io::Result&lt;DefaultListener&gt; {
         <span class="comment">// Create a socket2 TCP listener to manually set the IPV6_V6ONLY flag
         // This is needed to get the same behavior on all OS
         // However, if IPv6 is disabled system-wide, you may need to bind to an IPv4 address instead.
@@ -223,27 +117,35 @@
         <span class="kw">if </span>addr.is_ipv6() {
             socket.set_only_v6(<span class="bool-val">false</span>)<span class="question-mark">?</span>;
         }
-        socket.set_nonblocking(<span class="bool-val">true</span>)<span class="question-mark">?</span>;
-        socket.bind(<span class="kw-2">&amp;</span>addr.into())<span class="question-mark">?</span>;
+        socket.bind(<span class="kw-2">&amp;</span>(<span class="kw-2">*</span>addr).into())<span class="question-mark">?</span>;
 
         <span class="comment">// Number of connections to queue, set to the hardcoded value used by tokio
         </span>socket.listen(<span class="number">1024</span>)<span class="question-mark">?</span>;
-
-        <span class="prelude-val">Ok</span>(DefaultListener(DuplexListener::from_std(socket.into())<span class="question-mark">?</span>))
-    }
-
-    <span class="doccomment">/// Get the connector with associated timeout
-    ///
-    /// # Argument
-    /// * `timeout_duration`: timeout duration in milliseconds
-    </span><span class="kw">fn </span>get_connector(<span class="kw-2">&amp;mut </span><span class="self">self</span>, timeout_duration: MassaTime) -&gt; io::Result&lt;DefaultConnector&gt; {
-        <span class="prelude-val">Ok</span>(DefaultConnector(timeout_duration))
+        <span class="prelude-val">Ok</span>(DefaultListener(socket.into()))
     }
 }
 
-<span class="kw">impl </span>Default <span class="kw">for </span>DefaultEstablisher {
-    <span class="kw">fn </span>default() -&gt; <span class="self">Self </span>{
-        <span class="self">Self</span>::new()
+<span class="kw">impl </span>BSListener <span class="kw">for </span>DefaultListener {
+    <span class="doccomment">/// Accepts a new incoming connection from this listener.
+    </span><span class="kw">fn </span>accept(<span class="kw-2">&amp;mut </span><span class="self">self</span>) -&gt; io::Result&lt;(TcpStream, SocketAddr)&gt; {
+        <span class="comment">// accept
+        </span><span class="kw">let </span>(sock, <span class="kw-2">mut </span>remote_addr) = <span class="self">self</span>.<span class="number">0</span>.accept()<span class="question-mark">?</span>;
+        <span class="comment">// normalize address
+        </span>remote_addr.set_ip(remote_addr.ip().to_canonical());
+        <span class="prelude-val">Ok</span>((sock, remote_addr))
+    }
+}
+<span class="doccomment">/// Initiates a connection with given timeout in milliseconds
+</span><span class="attr">#[derive(Debug)]
+</span><span class="kw">pub struct </span>DefaultConnector(<span class="kw">pub </span>MassaTime);
+
+<span class="kw">impl </span>BSConnector <span class="kw">for </span>DefaultConnector {
+    <span class="doccomment">/// Tries to connect to address
+    ///
+    /// # Argument
+    /// * `addr`: `SocketAddr` we are trying to connect to.
+    </span><span class="kw">fn </span>connect(<span class="kw-2">&amp;mut </span><span class="self">self</span>, addr: SocketAddr) -&gt; io::Result&lt;TcpStream&gt; {
+        TcpStream::connect_timeout(<span class="kw-2">&amp;</span>addr, <span class="self">self</span>.<span class="number">0</span>.to_duration())
     }
 }
 </code></pre></div>

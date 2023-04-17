@@ -445,6 +445,11 @@
 <a href="#445" id="445">445</a>
 <a href="#446" id="446">446</a>
 <a href="#447" id="447">447</a>
+<a href="#448" id="448">448</a>
+<a href="#449" id="449">449</a>
+<a href="#450" id="450">450</a>
+<a href="#451" id="451">451</a>
+<a href="#452" id="452">452</a>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 </span><span class="doccomment">//! Unsigned time management
 </span><span class="attr">#![warn(missing_docs)]
@@ -890,6 +895,11 @@
             - time::Duration::minutes(mins))
         .whole_seconds();
         <span class="prelude-val">Ok</span>((days, hours, mins, secs))
+    }
+
+    <span class="doccomment">/// Get max MassaTime value
+    </span><span class="kw">pub fn </span>max() -&gt; MassaTime {
+        MassaTime::from_millis(u64::MAX)
     }
 }
 </code></pre></div>
