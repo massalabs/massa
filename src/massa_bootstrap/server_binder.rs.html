@@ -256,6 +256,9 @@
 <a href="#256" id="256">256</a>
 <a href="#257" id="257">257</a>
 <a href="#258" id="258">258</a>
+<a href="#259" id="259">259</a>
+<a href="#260" id="260">260</a>
+<a href="#261" id="261">261</a>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="kw">use </span><span class="kw">crate</span>::error::BootstrapError;
@@ -284,7 +287,7 @@
 <span class="kw">use </span>tracing::error;
 
 <span class="doccomment">/// Bootstrap server binder
-</span><span class="kw">pub struct </span>BootstrapServerBinder&lt;D: Duplex&gt; {
+</span><span class="kw">pub struct </span>BootstrapServerBinder {
     max_bootstrap_message_size: u32,
     max_consensus_block_ids: u64,
     thread_count: u8,
@@ -292,14 +295,14 @@
     randomness_size_bytes: usize,
     size_field_len: usize,
     local_keypair: KeyPair,
-    duplex: Resource&lt;D, StandardClock&gt;,
+    duplex: Resource&lt;Duplex, StandardClock&gt;,
     prev_message: <span class="prelude-ty">Option</span>&lt;Hash&gt;,
     version_serializer: VersionSerializer,
     version_deserializer: VersionDeserializer,
     write_error_timeout: MassaTime,
 }
 
-<span class="kw">impl</span>&lt;D: Duplex + <span class="lifetime">&#39;static</span>&gt; BootstrapServerBinder&lt;D&gt; {
+<span class="kw">impl </span>BootstrapServerBinder {
     <span class="doccomment">/// Creates a new `WriteBinder`.
     ///
     /// # Argument
@@ -307,7 +310,7 @@
     /// * `local_keypair`: local node user keypair
     /// * `limit`: limit max bytes per second (up and down)
     </span><span class="attr">#[allow(clippy::too_many_arguments)]
-    </span><span class="kw">pub fn </span>new(duplex: D, local_keypair: KeyPair, cfg: BootstrapSrvBindCfg) -&gt; <span class="self">Self </span>{
+    </span><span class="kw">pub fn </span>new(duplex: Duplex, local_keypair: KeyPair, cfg: BootstrapSrvBindCfg) -&gt; <span class="self">Self </span>{
         <span class="kw">let </span>BootstrapSrvBindCfg {
             max_bytes_read_write: limit,
             max_bootstrap_message_size,
@@ -333,6 +336,9 @@
             write_error_timeout,
         }
     }
+}
+
+<span class="kw">impl </span>BootstrapServerBinder {
     <span class="doccomment">/// Performs a handshake. Should be called after connection
     /// NOT cancel-safe
     /// MUST always be followed by a send of the `BootstrapMessage::BootstrapTime`

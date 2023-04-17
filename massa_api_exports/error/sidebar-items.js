@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"constant":["_DERIVE_Display_FOR_ApiError"],"enum":["ApiError"],"trait":["DisplayToDisplayDoc","PathToDisplayDoc"]};
+window.SIDEBAR_ITEMS = {"enum":["ApiError"]};

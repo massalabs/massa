@@ -477,7 +477,7 @@
     ///             )
     ///             .unwrap(),
     ///         ],
-    ///     denunciations: vec![],},
+    ///     },
     ///     BlockHeaderSerializer::new(),
     ///     &amp;keypair,
     /// )
@@ -499,7 +499,7 @@
     /// let mut serialized = Vec::new();
     /// ExportActiveBlockSerializer::new().serialize(&amp;export_active_block, &amp;mut serialized).unwrap();
     /// let args = BlockDeserializerArgs {
-    ///   thread_count: 32, max_operations_per_block: 16, endorsement_count: 1000,max_denunciations_per_block_header: 128,last_start_period: Some(0),};
+    ///   thread_count: 32, max_operations_per_block: 16, endorsement_count: 1000};
     /// let (rest, export_deserialized) = ExportActiveBlockDeserializer::new(args).deserialize::&lt;DeserializeError&gt;(&amp;serialized).unwrap();
     /// assert_eq!(export_deserialized.block.id, export_active_block.block.id);
     /// assert_eq!(export_deserialized.block.serialized_data, export_active_block.block.serialized_data);

@@ -18,21 +18,17 @@
 <a href="#18" id="18">18</a>
 <a href="#19" id="19">19</a>
 <a href="#20" id="20">20</a>
-<a href="#21" id="21">21</a>
-<a href="#22" id="22">22</a>
 </pre><pre class="rust"><code><span class="doccomment">//! Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
-//! Pool of operation &amp;&amp; endorsements &amp;&amp; denunciations waiting to be included in a block
+//! Pool of operation and endorsements waiting to be included in a block
 
 </span><span class="attr">#![warn(missing_docs)]
 #![warn(unused_crate_dependencies)]
 #![feature(async_closure)]
 #![feature(map_try_insert)]
 #![feature(let_chains)]
-#![feature(hash_drain_filter)]
 
 </span><span class="kw">mod </span>controller_impl;
-<span class="kw">mod </span>denunciation_pool;
 <span class="kw">mod </span>endorsement_pool;
 <span class="kw">mod </span>operation_pool;
 <span class="kw">mod </span>types;
