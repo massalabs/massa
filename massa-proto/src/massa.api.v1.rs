@@ -367,6 +367,75 @@ pub struct DatastoreEntry {
     #[prost(bytes = "vec", tag = "2")]
     pub candidate_value: ::prost::alloc::vec::Vec<u8>,
 }
+/// GetLargestStakersRequest holds request from GetLargestStakers
+#[allow(clippy::derive_partial_eq_without_eq)]
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct GetLargestStakersRequest {
+    /// Request id
+    #[prost(string, tag = "1")]
+    pub id: ::prost::alloc::string::String,
+    /// Query
+    #[prost(message, optional, tag = "2")]
+    pub query: ::core::option::Option<LargestStakersQuery>,
+}
+/// LargestStakers Query
+#[allow(clippy::derive_partial_eq_without_eq)]
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct LargestStakersQuery {
+    /// Starting offset for the list of stakers. Defaults to 1
+    #[prost(fixed64, tag = "1")]
+    pub offset: u64,
+    /// Limits the number of stakers to return. Defaults to 50
+    #[prost(fixed64, tag = "2")]
+    pub limit: u64,
+    /// Filter
+    #[prost(message, optional, tag = "3")]
+    pub filter: ::core::option::Option<LargestStakersFilter>,
+}
+/// LargestStakers Filter
+#[allow(clippy::derive_partial_eq_without_eq)]
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct LargestStakersFilter {
+    /// Minimum rolls (Optional)
+    #[prost(fixed64, optional, tag = "1")]
+    pub min_rolls: ::core::option::Option<u64>,
+    /// Maximum rolls (Optional)
+    #[prost(fixed64, optional, tag = "2")]
+    pub max_rolls: ::core::option::Option<u64>,
+}
+/// GetLargestStakersResponse holds response from GetLargestStakers
+#[allow(clippy::derive_partial_eq_without_eq)]
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct GetLargestStakersResponse {
+    /// Request id
+    #[prost(string, tag = "1")]
+    pub id: ::prost::alloc::string::String,
+    /// Context
+    #[prost(message, optional, tag = "2")]
+    pub context: ::core::option::Option<LargestStakersContext>,
+    /// Largest stakers
+    #[prost(message, repeated, tag = "3")]
+    pub stakers: ::prost::alloc::vec::Vec<LargestStakerEntry>,
+}
+/// LargestStakers context
+#[allow(clippy::derive_partial_eq_without_eq)]
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct LargestStakersContext {
+    /// Slot
+    #[prost(message, optional, tag = "1")]
+    pub slot: ::core::option::Option<Slot>,
+}
+/// LargestStakerEntry
+#[allow(clippy::derive_partial_eq_without_eq)]
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct LargestStakerEntry {
+    /// Address
+    #[prost(string, tag = "1")]
+    pub address: ::prost::alloc::string::String,
+    /// Rolls
+    #[prost(fixed64, tag = "2")]
+    pub rolls: u64,
+}
 /// GetNextBlockBestParentsRequest holds request for GetNextBlockBestParents
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
@@ -721,7 +790,7 @@ pub struct TransactionsThroughputRequest {
     /// Request id
     #[prost(string, tag = "1")]
     pub id: ::prost::alloc::string::String,
-    /// Optional timer interval in sec. Defaults to 10s
+    /// Timer interval in seconds (Optional). Defaults to 10s
     #[prost(fixed64, optional, tag = "2")]
     pub interval: ::core::option::Option<u64>,
 }
@@ -920,6 +989,34 @@ pub mod massa_service_client {
             req.extensions_mut()
                 .insert(
                     GrpcMethod::new("massa.api.v1.MassaService", "GetDatastoreEntries"),
+                );
+            self.inner.unary(req, path, codec).await
+        }
+        /// Get largest stakers
+        pub async fn get_largest_stakers(
+            &mut self,
+            request: impl tonic::IntoRequest<super::GetLargestStakersRequest>,
+        ) -> std::result::Result<
+            tonic::Response<super::GetLargestStakersResponse>,
+            tonic::Status,
+        > {
+            self.inner
+                .ready()
+                .await
+                .map_err(|e| {
+                    tonic::Status::new(
+                        tonic::Code::Unknown,
+                        format!("Service was not ready: {}", e.into()),
+                    )
+                })?;
+            let codec = tonic::codec::ProstCodec::default();
+            let path = http::uri::PathAndQuery::from_static(
+                "/massa.api.v1.MassaService/GetLargestStakers",
+            );
+            let mut req = request.into_request();
+            req.extensions_mut()
+                .insert(
+                    GrpcMethod::new("massa.api.v1.MassaService", "GetLargestStakers"),
                 );
             self.inner.unary(req, path, codec).await
         }
@@ -1295,6 +1392,14 @@ pub mod massa_service_server {
             tonic::Response<super::GetDatastoreEntriesResponse>,
             tonic::Status,
         >;
+        /// Get largest stakers
+        async fn get_largest_stakers(
+            &self,
+            request: tonic::Request<super::GetLargestStakersRequest>,
+        ) -> std::result::Result<
+            tonic::Response<super::GetLargestStakersResponse>,
+            tonic::Status,
+        >;
         /// Get next block best parents
         async fn get_next_block_best_parents(
             &self,
@@ -1602,6 +1707,52 @@ pub mod massa_service_server {
                     let fut = async move {
                         let inner = inner.0;
                         let method = GetDatastoreEntriesSvc(inner);
+                        let codec = tonic::codec::ProstCodec::default();
+                        let mut grpc = tonic::server::Grpc::new(codec)
+                            .apply_compression_config(
+                                accept_compression_encodings,
+                                send_compression_encodings,
+                            )
+                            .apply_max_message_size_config(
+                                max_decoding_message_size,
+                                max_encoding_message_size,
+                            );
+                        let res = grpc.unary(method, req).await;
+                        Ok(res)
+                    };
+                    Box::pin(fut)
+                }
+                "/massa.api.v1.MassaService/GetLargestStakers" => {
+                    #[allow(non_camel_case_types)]
+                    struct GetLargestStakersSvc<T: MassaService>(pub Arc<T>);
+                    impl<
+                        T: MassaService,
+                    > tonic::server::UnaryService<super::GetLargestStakersRequest>
+                    for GetLargestStakersSvc<T> {
+                        type Response = super::GetLargestStakersResponse;
+                        type Future = BoxFuture<
+                            tonic::Response<Self::Response>,
+                            tonic::Status,
+                        >;
+                        fn call(
+                            &mut self,
+                            request: tonic::Request<super::GetLargestStakersRequest>,
+                        ) -> Self::Future {
+                            let inner = Arc::clone(&self.0);
+                            let fut = async move {
+                                (*inner).get_largest_stakers(request).await
+                            };
+                            Box::pin(fut)
+                        }
+                    }
+                    let accept_compression_encodings = self.accept_compression_encodings;
+                    let send_compression_encodings = self.send_compression_encodings;
+                    let max_decoding_message_size = self.max_decoding_message_size;
+                    let max_encoding_message_size = self.max_encoding_message_size;
+                    let inner = self.inner.clone();
+                    let fut = async move {
+                        let inner = inner.0;
+                        let method = GetLargestStakersSvc(inner);
                         let codec = tonic::codec::ProstCodec::default();
                         let mut grpc = tonic::server::Grpc::new(codec)
                             .apply_compression_config(

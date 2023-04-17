@@ -74,6 +74,8 @@ pub struct GrpcConfig {
     pub genesis_timestamp: MassaTime,
     /// t0
     pub t0: MassaTime,
+    /// periods per cycle
+    pub periods_per_cycle: u64,
     /// limits the maximum size of streaming channel
     pub max_channel_size: usize,
     /// when looking for next draw we want to look at max `draw_lookahead_period_count`

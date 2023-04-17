@@ -14,6 +14,8 @@
     - [GetBlocksBySlotsResponse](#massa-api-v1-GetBlocksBySlotsResponse)
     - [GetDatastoreEntriesRequest](#massa-api-v1-GetDatastoreEntriesRequest)
     - [GetDatastoreEntriesResponse](#massa-api-v1-GetDatastoreEntriesResponse)
+    - [GetLargestStakersRequest](#massa-api-v1-GetLargestStakersRequest)
+    - [GetLargestStakersResponse](#massa-api-v1-GetLargestStakersResponse)
     - [GetNextBlockBestParentsRequest](#massa-api-v1-GetNextBlockBestParentsRequest)
     - [GetNextBlockBestParentsResponse](#massa-api-v1-GetNextBlockBestParentsResponse)
     - [GetSelectorDrawsRequest](#massa-api-v1-GetSelectorDrawsRequest)
@@ -22,6 +24,10 @@
     - [GetTransactionsThroughputResponse](#massa-api-v1-GetTransactionsThroughputResponse)
     - [GetVersionRequest](#massa-api-v1-GetVersionRequest)
     - [GetVersionResponse](#massa-api-v1-GetVersionResponse)
+    - [LargestStakerEntry](#massa-api-v1-LargestStakerEntry)
+    - [LargestStakersContext](#massa-api-v1-LargestStakersContext)
+    - [LargestStakersFilter](#massa-api-v1-LargestStakersFilter)
+    - [LargestStakersQuery](#massa-api-v1-LargestStakersQuery)
     - [NewBlocksHeadersRequest](#massa-api-v1-NewBlocksHeadersRequest)
     - [NewBlocksHeadersResponse](#massa-api-v1-NewBlocksHeadersResponse)
     - [NewBlocksRequest](#massa-api-v1-NewBlocksRequest)
@@ -247,6 +253,39 @@ GetDatastoreEntriesResponse holds response from GetDatastoreEntries
 
 
 
+<a name="massa-api-v1-GetLargestStakersRequest"></a>
+
+### GetLargestStakersRequest
+GetLargestStakersRequest holds request from GetLargestStakers
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| id | [string](#string) |  | Request id |
+| query | [LargestStakersQuery](#massa-api-v1-LargestStakersQuery) |  | Query |
+
+
+
+
+
+
+<a name="massa-api-v1-GetLargestStakersResponse"></a>
+
+### GetLargestStakersResponse
+GetLargestStakersResponse holds response from GetLargestStakers
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| id | [string](#string) |  | Request id |
+| context | [LargestStakersContext](#massa-api-v1-LargestStakersContext) |  | Context |
+| stakers | [LargestStakerEntry](#massa-api-v1-LargestStakerEntry) | repeated | Largest stakers |
+
+
+
+
+
+
 <a name="massa-api-v1-GetNextBlockBestParentsRequest"></a>
 
 ### GetNextBlockBestParentsRequest
@@ -366,6 +405,70 @@ GetVersionResponse holds response from GetVersion
 | ----- | ---- | ----- | ----------- |
 | id | [string](#string) |  | Request id |
 | version | [string](#string) |  | Version |
+
+
+
+
+
+
+<a name="massa-api-v1-LargestStakerEntry"></a>
+
+### LargestStakerEntry
+LargestStakerEntry
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| address | [string](#string) |  | Address |
+| rolls | [fixed64](#fixed64) |  | Rolls |
+
+
+
+
+
+
+<a name="massa-api-v1-LargestStakersContext"></a>
+
+### LargestStakersContext
+LargestStakers context
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| slot | [Slot](#massa-api-v1-Slot) |  | Slot |
+
+
+
+
+
+
+<a name="massa-api-v1-LargestStakersFilter"></a>
+
+### LargestStakersFilter
+LargestStakers Filter
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| min_rolls | [fixed64](#fixed64) | optional | Minimum rolls (Optional) |
+| max_rolls | [fixed64](#fixed64) | optional | Maximum rolls (Optional) |
+
+
+
+
+
+
+<a name="massa-api-v1-LargestStakersQuery"></a>
+
+### LargestStakersQuery
+LargestStakers Query
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| offset | [fixed64](#fixed64) |  | Starting offset for the list of stakers. Defaults to 1 |
+| limit | [fixed64](#fixed64) |  | Limits the number of stakers to return. Defaults to 50 |
+| filter | [LargestStakersFilter](#massa-api-v1-LargestStakersFilter) |  | Filter |
 
 
 
@@ -697,7 +800,7 @@ TransactionsThroughputRequest holds request for TransactionsThroughput
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | id | [string](#string) |  | Request id |
-| interval | [fixed64](#fixed64) | optional | Optional timer interval in sec. Defaults to 10s |
+| interval | [fixed64](#fixed64) | optional | Timer interval in seconds (Optional). Defaults to 10s |
 
 
 
@@ -751,6 +854,7 @@ Massa gRPC service
 | ----------- | ------------ | ------------- | ------------|
 | GetBlocksBySlots | [GetBlocksBySlotsRequest](#massa-api-v1-GetBlocksBySlotsRequest) | [GetBlocksBySlotsResponse](#massa-api-v1-GetBlocksBySlotsResponse) | Get blocks by slots |
 | GetDatastoreEntries | [GetDatastoreEntriesRequest](#massa-api-v1-GetDatastoreEntriesRequest) | [GetDatastoreEntriesResponse](#massa-api-v1-GetDatastoreEntriesResponse) | Get datastore entries |
+| GetLargestStakers | [GetLargestStakersRequest](#massa-api-v1-GetLargestStakersRequest) | [GetLargestStakersResponse](#massa-api-v1-GetLargestStakersResponse) | Get largest stakers |
 | GetNextBlockBestParents | [GetNextBlockBestParentsRequest](#massa-api-v1-GetNextBlockBestParentsRequest) | [GetNextBlockBestParentsResponse](#massa-api-v1-GetNextBlockBestParentsResponse) | Get next block best parents |
 | GetSelectorDraws | [GetSelectorDrawsRequest](#massa-api-v1-GetSelectorDrawsRequest) | [GetSelectorDrawsResponse](#massa-api-v1-GetSelectorDrawsResponse) | Get selector draws |
 | GetTransactionsThroughput | [GetTransactionsThroughputRequest](#massa-api-v1-GetTransactionsThroughputRequest) | [GetTransactionsThroughputResponse](#massa-api-v1-GetTransactionsThroughputResponse) | Get transactions throughput |
@@ -1026,6 +1130,7 @@ Execute a smart contract
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | data | [bytes](#bytes) |  | Smart contract bytecode. |
+| max_coins | [fixed64](#fixed64) |  | The maximum of coins that could be spent by the operation sender |
 | max_gas | [fixed64](#fixed64) |  | The maximum amount of gas that the execution of the contract is allowed to cost |
 | datastore | [BytesMapFieldEntry](#massa-api-v1-BytesMapFieldEntry) | repeated | A key-value store associating a hash to arbitrary bytes |
 

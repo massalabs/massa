@@ -734,6 +734,7 @@ async fn launch(
             max_operations_per_message: MAX_OPERATIONS_PER_MESSAGE,
             genesis_timestamp: *GENESIS_TIMESTAMP,
             t0: T0,
+            periods_per_cycle: PERIODS_PER_CYCLE,
             max_channel_size: SETTINGS.grpc.max_channel_size,
             draw_lookahead_period_count: SETTINGS.grpc.draw_lookahead_period_count,
             last_start_period: final_state.read().last_start_period,
