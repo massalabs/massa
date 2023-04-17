@@ -1,6 +1,7 @@
-use std::{mem, thread::JoinHandle};
+use std::{mem, num::NonZeroUsize, thread::JoinHandle};
 
 use crossbeam::channel::{Receiver, RecvTimeoutError};
+use lru::LruCache;
 use massa_logging::massa_trace;
 use massa_models::operation::OperationId;
 use massa_protocol_exports_2::ProtocolConfig;
@@ -88,6 +89,19 @@ impl PropagationThread {
                     if !active_connections_read.connections.contains_key(&peer_id) {
                         cache_write.ops_known_by_peer.pop(&peer_id);
                     }
+                }
+            }
+            // Add new potential peers
+            {
+                let active_connections_read = self.active_connections.read();
+                for peer_id in active_connections_read.connections.keys() {
+                    cache_write.ops_known_by_peer.put(
+                        peer_id.clone(),
+                        LruCache::new(
+                            NonZeroUsize::new(self.config.max_node_known_ops_size)
+                                .expect("max_node_known_endorsements_size in config is > 0"),
+                        ),
+                    );
                 }
             }
             // Propagate to peers

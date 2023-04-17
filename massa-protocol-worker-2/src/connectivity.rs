@@ -20,7 +20,7 @@ use crate::{
     controller::ProtocolControllerImpl,
     handlers::{
         block_handler::BlockHandler,
-        endorsement_handler::EndorsementHandler,
+        endorsement_handler::{cache::EndorsementCache, EndorsementHandler},
         operation_handler::{cache::OperationCache, OperationHandler},
         peer_handler::{fallback_function, MassaHandshake, PeerManagementHandler},
     },
@@ -53,6 +53,7 @@ pub fn start_connectivity_thread(
     let (sender_blocks_ext, receiver_blocks_ext) = unbounded();
 
     let handle = std::thread::spawn({
+        let sender_endorsements_ext = sender_endorsements_ext.clone();
         let sender_operations_ext = sender_operations_ext.clone();
         move || {
             let mut peer_management_handler = PeerManagementHandler::new(initial_peers);
@@ -89,6 +90,10 @@ pub fn start_connectivity_thread(
                 NonZeroUsize::new(usize::MAX).unwrap(),
                 NonZeroUsize::new(usize::MAX).unwrap(),
             )));
+            let endorsement_cache = Arc::new(RwLock::new(EndorsementCache::new(
+                NonZeroUsize::new(usize::MAX).unwrap(),
+                NonZeroUsize::new(usize::MAX).unwrap(),
+            )));
 
             // Start handlers
             let mut operation_handler = OperationHandler::new(
@@ -104,9 +109,12 @@ pub fn start_connectivity_thread(
             );
             let mut endorsement_handler = EndorsementHandler::new(
                 pool_controller,
+                endorsement_cache,
                 storage,
+                config.clone(),
                 manager.active_connections.clone(),
                 receiver_endorsements,
+                sender_endorsements_ext,
                 receiver_endorsements_ext,
             );
             let mut block_handler = BlockHandler::new(
