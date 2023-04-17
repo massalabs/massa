@@ -2027,6 +2027,7 @@ mod tests {
                 fee: Amount::from_mantissa_scale(10, 0),
                 expire_period: 10,
                 op: OperationType::ExecuteSC {
+                    max_coins: Amount::from_mantissa_scale(0, 0),
                     data: bytecode.to_vec(),
                     max_gas: 0,
                     datastore: BTreeMap::default(),
