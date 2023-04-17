@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"constant":["NODEID_PREFIX","NODEID_VERSION"],"struct":["Helper","NodeId"]};
+window.SIDEBAR_ITEMS = {"struct":["NodeId"]};

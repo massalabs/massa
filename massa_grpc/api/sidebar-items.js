@@ -1,1 +1,0 @@
-window.SIDEBAR_ITEMS = {"fn":["get_blocks_by_slots","get_datastore_entries","get_next_block_best_parents","get_selector_draws","get_transactions_throughput","get_version"]};

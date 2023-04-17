@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"constant":["INSTANCE_LEN"],"struct":["Version","VersionDeserializer","VersionSerializer","VersionVisitor"]};
+window.SIDEBAR_ITEMS = {"struct":["Version","VersionDeserializer","VersionSerializer"]};

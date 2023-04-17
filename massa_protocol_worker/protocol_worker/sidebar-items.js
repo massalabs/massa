@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"constant":["BRANCHES"],"fn":["start_protocol_controller"],"opaque":[""],"static":["CALLSITE","META"],"struct":["BlockInfo","ProtocolWorker","ProtocolWorkerChannels"]};
+window.SIDEBAR_ITEMS = {"fn":["start_protocol_controller"],"struct":["ProtocolWorker","ProtocolWorkerChannels"]};

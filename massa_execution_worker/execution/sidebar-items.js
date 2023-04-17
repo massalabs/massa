@@ -1,1 +1,0 @@
-window.SIDEBAR_ITEMS = {"macro":["context_guard"],"static":["CALLSITE","META"],"struct":["ExecutionState"]};

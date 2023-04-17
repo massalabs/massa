@@ -21,44 +21,28 @@
 <a href="#21" id="21">21</a>
 <a href="#22" id="22">22</a>
 <a href="#23" id="23">23</a>
-<a href="#24" id="24">24</a>
-<a href="#25" id="25">25</a>
-<a href="#26" id="26">26</a>
-<a href="#27" id="27">27</a>
-<a href="#28" id="28">28</a>
-<a href="#29" id="29">29</a>
-<a href="#30" id="30">30</a>
-<a href="#31" id="31">31</a>
 </pre><pre class="rust"><code><span class="kw">use </span>massa_execution_exports::ExecutionController;
-<span class="kw">use </span>massa_models::block::{FilledBlock, SecureShareBlock};
+<span class="kw">use </span>massa_models::block::{Block, FilledBlock};
 <span class="kw">use </span>massa_models::block_header::BlockHeader;
-<span class="kw">use </span>massa_models::block_id::BlockId;
-<span class="kw">use </span>massa_models::secure_share::SecureShare;
 <span class="kw">use </span>massa_pool_exports::PoolController;
 <span class="kw">use </span>massa_pos_exports::SelectorController;
 <span class="kw">use </span>massa_protocol_exports::ProtocolCommandSender;
 
 <span class="kw">use </span><span class="kw">crate</span>::events::ConsensusEvent;
 
-<span class="doccomment">/// Contains links to other modules of the node to be able to interact with them.
+<span class="doccomment">/// Contains a reference to the pool, selector and execution controller
+/// Contains a channel to send info to protocol
+/// Contains channels to send info to api
 </span><span class="attr">#[derive(Clone)]
 </span><span class="kw">pub struct </span>ConsensusChannels {
-    <span class="doccomment">/// Interface to interact with Execution module
-    </span><span class="kw">pub </span>execution_controller: Box&lt;<span class="kw">dyn </span>ExecutionController&gt;,
-    <span class="doccomment">/// Interface to interact with PoS module
-    </span><span class="kw">pub </span>selector_controller: Box&lt;<span class="kw">dyn </span>SelectorController&gt;,
-    <span class="doccomment">/// Interface to interact with Pool module
-    </span><span class="kw">pub </span>pool_command_sender: Box&lt;<span class="kw">dyn </span>PoolController&gt;,
-    <span class="doccomment">/// Channel used by the consensus to send events to the node globally
-    </span><span class="kw">pub </span>controller_event_tx: crossbeam_channel::Sender&lt;ConsensusEvent&gt;,
-    <span class="doccomment">/// Channel to send commands to the Protocol module
-    </span><span class="kw">pub </span>protocol_command_sender: ProtocolCommandSender,
-    <span class="doccomment">/// Channel used for Websocket broadcast (if enabled) of new blocks being integrated in the graph
-    </span><span class="kw">pub </span>block_sender: tokio::sync::broadcast::Sender&lt;SecureShareBlock&gt;,
-    <span class="doccomment">/// Channel used for Websocket broadcast (if enabled) of new block headers being integrated in the graph
-    </span><span class="kw">pub </span>block_header_sender: tokio::sync::broadcast::Sender&lt;SecureShare&lt;BlockHeader, BlockId&gt;&gt;,
-    <span class="doccomment">/// Channel use by Websocket (if they are enable) to broadcast a new block integrated
-    </span><span class="kw">pub </span>filled_block_sender: tokio::sync::broadcast::Sender&lt;FilledBlock&gt;,
+    <span class="kw">pub </span>execution_controller: Box&lt;<span class="kw">dyn </span>ExecutionController&gt;,
+    <span class="kw">pub </span>selector_controller: Box&lt;<span class="kw">dyn </span>SelectorController&gt;,
+    <span class="kw">pub </span>pool_command_sender: Box&lt;<span class="kw">dyn </span>PoolController&gt;,
+    <span class="kw">pub </span>controller_event_tx: crossbeam_channel::Sender&lt;ConsensusEvent&gt;,
+    <span class="kw">pub </span>protocol_command_sender: ProtocolCommandSender,
+    <span class="kw">pub </span>block_sender: tokio::sync::broadcast::Sender&lt;Block&gt;,
+    <span class="kw">pub </span>block_header_sender: tokio::sync::broadcast::Sender&lt;BlockHeader&gt;,
+    <span class="kw">pub </span>filled_block_sender: tokio::sync::broadcast::Sender&lt;FilledBlock&gt;,
 }
 </code></pre></div>
 </section></main><div id="rustdoc-vars" data-root-path="../../" data-static-root-path="../../static.files/" data-current-crate="massa_consensus_exports" data-themes="" data-resource-suffix="" data-rustdoc-version="1.69.0-nightly (d962ea578 2023-02-26)" data-search-js="search-14421e1532aead08.js" data-settings-js="settings-f0c5c39777a9a2f6.js" data-settings-css="settings-0bcba95ff279c1db.css" ></div></body></html>

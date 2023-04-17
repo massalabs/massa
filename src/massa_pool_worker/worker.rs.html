@@ -144,94 +144,11 @@
 <a href="#144" id="144">144</a>
 <a href="#145" id="145">145</a>
 <a href="#146" id="146">146</a>
-<a href="#147" id="147">147</a>
-<a href="#148" id="148">148</a>
-<a href="#149" id="149">149</a>
-<a href="#150" id="150">150</a>
-<a href="#151" id="151">151</a>
-<a href="#152" id="152">152</a>
-<a href="#153" id="153">153</a>
-<a href="#154" id="154">154</a>
-<a href="#155" id="155">155</a>
-<a href="#156" id="156">156</a>
-<a href="#157" id="157">157</a>
-<a href="#158" id="158">158</a>
-<a href="#159" id="159">159</a>
-<a href="#160" id="160">160</a>
-<a href="#161" id="161">161</a>
-<a href="#162" id="162">162</a>
-<a href="#163" id="163">163</a>
-<a href="#164" id="164">164</a>
-<a href="#165" id="165">165</a>
-<a href="#166" id="166">166</a>
-<a href="#167" id="167">167</a>
-<a href="#168" id="168">168</a>
-<a href="#169" id="169">169</a>
-<a href="#170" id="170">170</a>
-<a href="#171" id="171">171</a>
-<a href="#172" id="172">172</a>
-<a href="#173" id="173">173</a>
-<a href="#174" id="174">174</a>
-<a href="#175" id="175">175</a>
-<a href="#176" id="176">176</a>
-<a href="#177" id="177">177</a>
-<a href="#178" id="178">178</a>
-<a href="#179" id="179">179</a>
-<a href="#180" id="180">180</a>
-<a href="#181" id="181">181</a>
-<a href="#182" id="182">182</a>
-<a href="#183" id="183">183</a>
-<a href="#184" id="184">184</a>
-<a href="#185" id="185">185</a>
-<a href="#186" id="186">186</a>
-<a href="#187" id="187">187</a>
-<a href="#188" id="188">188</a>
-<a href="#189" id="189">189</a>
-<a href="#190" id="190">190</a>
-<a href="#191" id="191">191</a>
-<a href="#192" id="192">192</a>
-<a href="#193" id="193">193</a>
-<a href="#194" id="194">194</a>
-<a href="#195" id="195">195</a>
-<a href="#196" id="196">196</a>
-<a href="#197" id="197">197</a>
-<a href="#198" id="198">198</a>
-<a href="#199" id="199">199</a>
-<a href="#200" id="200">200</a>
-<a href="#201" id="201">201</a>
-<a href="#202" id="202">202</a>
-<a href="#203" id="203">203</a>
-<a href="#204" id="204">204</a>
-<a href="#205" id="205">205</a>
-<a href="#206" id="206">206</a>
-<a href="#207" id="207">207</a>
-<a href="#208" id="208">208</a>
-<a href="#209" id="209">209</a>
-<a href="#210" id="210">210</a>
-<a href="#211" id="211">211</a>
-<a href="#212" id="212">212</a>
-<a href="#213" id="213">213</a>
-<a href="#214" id="214">214</a>
-<a href="#215" id="215">215</a>
-<a href="#216" id="216">216</a>
-<a href="#217" id="217">217</a>
-<a href="#218" id="218">218</a>
-<a href="#219" id="219">219</a>
-<a href="#220" id="220">220</a>
-<a href="#221" id="221">221</a>
-<a href="#222" id="222">222</a>
-<a href="#223" id="223">223</a>
-<a href="#224" id="224">224</a>
-<a href="#225" id="225">225</a>
-<a href="#226" id="226">226</a>
-<a href="#227" id="227">227</a>
-<a href="#228" id="228">228</a>
 </pre><pre class="rust"><code><span class="doccomment">//! Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 //! Write worker for the pools, allowing asynchronous writes.
 
 </span><span class="kw">use </span><span class="kw">crate</span>::controller_impl::{Command, PoolManagerImpl};
-<span class="kw">use </span><span class="kw">crate</span>::denunciation_pool::DenunciationPool;
 <span class="kw">use </span><span class="kw">crate</span>::operation_pool::OperationPool;
 <span class="kw">use crate</span>::{controller_impl::PoolControllerImpl, endorsement_pool::EndorsementPool};
 <span class="kw">use </span>massa_execution_exports::ExecutionController;
@@ -245,7 +162,6 @@
     thread,
     thread::JoinHandle,
 };
-<span class="kw">use </span>tracing::warn;
 
 <span class="doccomment">/// Endorsement pool write thread instance
 </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">struct </span>EndorsementPoolThread {
@@ -278,9 +194,7 @@
         <span class="kw">loop </span>{
             <span class="kw">match </span><span class="self">self</span>.receiver.recv() {
                 <span class="prelude-val">Err</span>(RecvError) =&gt; <span class="kw">break</span>,
-                <span class="prelude-val">Ok</span>(Command::Stop) =&gt; {
-                    <span class="kw">break</span>;
-                }
+                <span class="prelude-val">Ok</span>(Command::Stop) =&gt; <span class="kw">break</span>,
                 <span class="prelude-val">Ok</span>(Command::AddItems(endorsements)) =&gt; {
                     <span class="self">self</span>.endorsement_pool.write().add_endorsements(endorsements)
                 }
@@ -288,10 +202,6 @@
                     </span>.endorsement_pool
                     .write()
                     .notify_final_cs_periods(<span class="kw-2">&amp;</span>final_cs_periods),
-                <span class="kw">_ </span>=&gt; {
-                    <span class="macro">warn!</span>(<span class="string">&quot;EndorsementPoolThread received an unexpected command&quot;</span>);
-                    <span class="kw">continue</span>;
-                }
             }
         }
     }
@@ -328,71 +238,12 @@
         <span class="kw">loop </span>{
             <span class="kw">match </span><span class="self">self</span>.receiver.recv() {
                 <span class="prelude-val">Err</span>(RecvError) =&gt; <span class="kw">break</span>,
-                <span class="prelude-val">Ok</span>(Command::Stop) =&gt; {
-                    <span class="kw">break</span>;
-                }
+                <span class="prelude-val">Ok</span>(Command::Stop) =&gt; <span class="kw">break</span>,
                 <span class="prelude-val">Ok</span>(Command::AddItems(operations)) =&gt; {
                     <span class="self">self</span>.operation_pool.write().add_operations(operations)
                 }
                 <span class="prelude-val">Ok</span>(Command::NotifyFinalCsPeriods(final_cs_periods)) =&gt; <span class="self">self
                     </span>.operation_pool
-                    .write()
-                    .notify_final_cs_periods(<span class="kw-2">&amp;</span>final_cs_periods),
-                <span class="kw">_ </span>=&gt; {
-                    <span class="macro">warn!</span>(<span class="string">&quot;OperationPoolThread received an unexpected command&quot;</span>);
-                    <span class="kw">continue</span>;
-                }
-            };
-        }
-    }
-}
-
-<span class="doccomment">/// Denunciation pool writer thread.
-</span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">struct </span>DenunciationPoolThread {
-    <span class="doccomment">/// Command reception channel
-    </span>receiver: Receiver&lt;Command&gt;,
-    <span class="doccomment">/// Shared reference to the denunciation pool
-    </span>denunciation_pool: Arc&lt;RwLock&lt;DenunciationPool&gt;&gt;,
-}
-
-<span class="kw">impl </span>DenunciationPoolThread {
-    <span class="doccomment">/// Spawns a pool writer thread, returning a join handle.
-    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>spawn(
-        receiver: Receiver&lt;Command&gt;,
-        denunciation_pool: Arc&lt;RwLock&lt;DenunciationPool&gt;&gt;,
-    ) -&gt; JoinHandle&lt;()&gt; {
-        <span class="kw">let </span>thread_builder = thread::Builder::new().name(<span class="string">&quot;denunciation-pool&quot;</span>.into());
-        thread_builder
-            .spawn(|| {
-                <span class="kw">let </span>this = <span class="self">Self </span>{
-                    receiver,
-                    denunciation_pool,
-                };
-                this.run()
-            })
-            .expect(<span class="string">&quot;failed to spawn thread : denunciation-pool&quot;</span>)
-    }
-
-    <span class="doccomment">/// Run the thread.
-    </span><span class="kw">fn </span>run(<span class="self">self</span>) {
-        <span class="kw">loop </span>{
-            <span class="kw">match </span><span class="self">self</span>.receiver.recv() {
-                <span class="prelude-val">Err</span>(RecvError) =&gt; {
-                    <span class="kw">break</span>;
-                }
-                <span class="prelude-val">Ok</span>(Command::Stop) =&gt; {
-                    <span class="kw">break</span>;
-                }
-                <span class="prelude-val">Ok</span>(Command::AddDenunciationPrecursor(de_p)) =&gt; <span class="self">self
-                    </span>.denunciation_pool
-                    .write()
-                    .add_denunciation_precursor(de_p),
-                <span class="prelude-val">Ok</span>(Command::AddItems(endorsements)) =&gt; <span class="self">self
-                    </span>.denunciation_pool
-                    .write()
-                    .add_endorsements(endorsements),
-                <span class="prelude-val">Ok</span>(Command::NotifyFinalCsPeriods(final_cs_periods)) =&gt; <span class="self">self
-                    </span>.denunciation_pool
                     .write()
                     .notify_final_cs_periods(<span class="kw-2">&amp;</span>final_cs_periods),
             };
@@ -407,50 +258,35 @@
     storage: <span class="kw-2">&amp;</span>Storage,
     execution_controller: Box&lt;<span class="kw">dyn </span>ExecutionController&gt;,
     channels: PoolChannels,
-    <span class="comment">// denunciation_factory_tx: Sender&lt;DenunciationPrecursor&gt;,
-    // denunciation_factory_rx: Receiver&lt;DenunciationPrecursor&gt;,
-</span>) -&gt; (Box&lt;<span class="kw">dyn </span>PoolManager&gt;, Box&lt;<span class="kw">dyn </span>PoolController&gt;) {
+) -&gt; (Box&lt;<span class="kw">dyn </span>PoolManager&gt;, Box&lt;<span class="kw">dyn </span>PoolController&gt;) {
     <span class="kw">let </span>(operations_input_sender, operations_input_receiver) = sync_channel(config.channels_size);
     <span class="kw">let </span>(endorsements_input_sender, endorsements_input_receiver) =
-        sync_channel(config.channels_size);
-    <span class="kw">let </span>(denunciations_input_sender, denunciations_input_receiver) =
         sync_channel(config.channels_size);
     <span class="kw">let </span>operation_pool = Arc::new(RwLock::new(OperationPool::init(
         config,
         storage,
         execution_controller,
-        channels.clone(),
+        channels,
     )));
     <span class="kw">let </span>endorsement_pool = Arc::new(RwLock::new(EndorsementPool::init(config, storage)));
-    <span class="kw">let </span>denunciation_pool = Arc::new(RwLock::new(DenunciationPool::init(
-        config,
-        channels.selector.clone(),
-    )));
     <span class="kw">let </span>controller = PoolControllerImpl {
         _config: config,
         operation_pool: operation_pool.clone(),
         endorsement_pool: endorsement_pool.clone(),
-        denunciation_pool: denunciation_pool.clone(),
         operations_input_sender: operations_input_sender.clone(),
         endorsements_input_sender: endorsements_input_sender.clone(),
-        denunciations_input_sender: denunciations_input_sender.clone(),
-        last_cs_final_periods: <span class="macro">vec!</span>[<span class="number">0u64</span>; usize::from(config.thread_count)],
     };
 
     <span class="kw">let </span>operations_thread_handle =
         OperationPoolThread::spawn(operations_input_receiver, operation_pool);
     <span class="kw">let </span>endorsements_thread_handle =
         EndorsementPoolThread::spawn(endorsements_input_receiver, endorsement_pool);
-    <span class="kw">let </span>denunciations_thread_handle =
-        DenunciationPoolThread::spawn(denunciations_input_receiver, denunciation_pool);
 
     <span class="kw">let </span>manager = PoolManagerImpl {
         operations_thread_handle: <span class="prelude-val">Some</span>(operations_thread_handle),
         endorsements_thread_handle: <span class="prelude-val">Some</span>(endorsements_thread_handle),
-        denunciations_thread_handle: <span class="prelude-val">Some</span>(denunciations_thread_handle),
         operations_input_sender,
         endorsements_input_sender,
-        denunciations_input_sender,
     };
     (Box::new(manager), Box::new(controller))
 }
