@@ -1131,6 +1131,7 @@ Execute a smart contract
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | data | [bytes](#bytes) |  | Smart contract bytecode. |
+| max_coins | [fixed64](#fixed64) |  | The maximum of coins that could be spent by the operation sender |
 | max_gas | [fixed64](#fixed64) |  | The maximum amount of gas that the execution of the contract is allowed to cost |
 | datastore | [BytesMapFieldEntry](#massa-api-v1-BytesMapFieldEntry) | repeated | A key-value store associating a hash to arbitrary bytes |
 

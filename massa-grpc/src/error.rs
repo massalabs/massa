@@ -44,7 +44,7 @@ pub enum GrpcError {
 
 impl From<GrpcError> for tonic::Status {
     fn from(error: GrpcError) -> Self {
-        error!("{:}", error);
+        error!("{}", error);
         match error {
             GrpcError::MassaHashError(e) => tonic::Status::internal(e.to_string()),
             GrpcError::ConsensusError(e) => tonic::Status::internal(e.to_string()),
