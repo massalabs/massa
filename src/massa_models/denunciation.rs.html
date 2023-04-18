@@ -1248,6 +1248,17 @@
 <a href="#1248" id="1248">1248</a>
 <a href="#1249" id="1249">1249</a>
 <a href="#1250" id="1250">1250</a>
+<a href="#1251" id="1251">1251</a>
+<a href="#1252" id="1252">1252</a>
+<a href="#1253" id="1253">1253</a>
+<a href="#1254" id="1254">1254</a>
+<a href="#1255" id="1255">1255</a>
+<a href="#1256" id="1256">1256</a>
+<a href="#1257" id="1257">1257</a>
+<a href="#1258" id="1258">1258</a>
+<a href="#1259" id="1259">1259</a>
+<a href="#1260" id="1260">1260</a>
+<a href="#1261" id="1261">1261</a>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 </span><span class="doccomment">/// An overview of what is a Denunciation and what it is used for can be found here
 /// https://github.com/massalabs/massa/discussions/3113
@@ -1495,8 +1506,16 @@
     <span class="doccomment">/// Get Denunciation slot ref
     </span><span class="kw">pub fn </span>get_slot(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>Slot {
         <span class="kw">match </span><span class="self">self </span>{
-            Denunciation::Endorsement(endo_de) =&gt; <span class="kw-2">&amp;</span>endo_de.slot,
-            Denunciation::BlockHeader(blkh_de) =&gt; <span class="kw-2">&amp;</span>blkh_de.slot,
+            Denunciation::Endorsement(de) =&gt; <span class="kw-2">&amp;</span>de.slot,
+            Denunciation::BlockHeader(de) =&gt; <span class="kw-2">&amp;</span>de.slot,
+        }
+    }
+
+    <span class="doccomment">/// Get Denunciation public key ref
+    </span><span class="kw">pub fn </span>get_public_key(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>PublicKey {
+        <span class="kw">match </span><span class="self">self </span>{
+            Denunciation::Endorsement(de) =&gt; <span class="kw-2">&amp;</span>de.public_key,
+            Denunciation::BlockHeader(de) =&gt; <span class="kw-2">&amp;</span>de.public_key,
         }
     }
 
@@ -2260,7 +2279,7 @@
     </span><span class="kw">fn </span>test_endorsement_denunciation() {
         <span class="comment">// Create an endorsement denunciation and check if it is valid
         </span><span class="kw">let </span>(_slot, _keypair, s_endorsement_1, s_endorsement_2, _s_endorsement_3) =
-            gen_endorsements_for_denunciation();
+            gen_endorsements_for_denunciation(<span class="prelude-val">None</span>, <span class="prelude-val">None</span>);
         <span class="kw">let </span>denunciation: Denunciation = (<span class="kw-2">&amp;</span>s_endorsement_1, <span class="kw-2">&amp;</span>s_endorsement_2).try_into().unwrap();
 
         <span class="macro">assert_eq!</span>(denunciation.is_for_endorsement(), <span class="bool-val">true</span>);
@@ -2270,7 +2289,7 @@
     <span class="attr">#[test]
     </span><span class="kw">fn </span>test_endorsement_denunciation_invalid_1() {
         <span class="kw">let </span>(slot, keypair, s_endorsement_1, _s_endorsement_2, _s_endorsement_3) =
-            gen_endorsements_for_denunciation();
+            gen_endorsements_for_denunciation(<span class="prelude-val">None</span>, <span class="prelude-val">None</span>);
 
         <span class="comment">// Try to create a denunciation from 2 endorsements @ != index
         </span><span class="kw">let </span>endorsement_4 = Endorsement {
@@ -2295,7 +2314,7 @@
     <span class="attr">#[test]
     </span><span class="kw">fn </span>test_endorsement_denunciation_is_for() {
         <span class="kw">let </span>(slot, keypair, s_endorsement_1, s_endorsement_2, s_endorsement_3) =
-            gen_endorsements_for_denunciation();
+            gen_endorsements_for_denunciation(<span class="prelude-val">None</span>, <span class="prelude-val">None</span>);
 
         <span class="kw">let </span>denunciation: Denunciation = (<span class="kw-2">&amp;</span>s_endorsement_1, <span class="kw-2">&amp;</span>s_endorsement_2).try_into().unwrap();
 
@@ -2403,7 +2422,8 @@
     <span class="comment">// SER / DER
     </span><span class="attr">#[test]
     </span><span class="kw">fn </span>test_endorsement_denunciation_ser_der() {
-        <span class="kw">let </span>(<span class="kw">_</span>, <span class="kw">_</span>, s_endorsement_1, s_endorsement_2, <span class="kw">_</span>) = gen_endorsements_for_denunciation();
+        <span class="kw">let </span>(<span class="kw">_</span>, <span class="kw">_</span>, s_endorsement_1, s_endorsement_2, <span class="kw">_</span>) =
+            gen_endorsements_for_denunciation(<span class="prelude-val">None</span>, <span class="prelude-val">None</span>);
 
         <span class="kw">let </span>denunciation = Denunciation::try_from((<span class="kw-2">&amp;</span>s_endorsement_1, <span class="kw-2">&amp;</span>s_endorsement_2)).unwrap();
 
@@ -2467,7 +2487,8 @@
         <span class="macro">assert_eq!</span>(rem.is_empty(), <span class="bool-val">true</span>);
         <span class="macro">assert_eq!</span>(denunciation, de_der_res);
 
-        <span class="kw">let </span>(<span class="kw">_</span>, <span class="kw">_</span>, s_endorsement_1, s_endorsement_2, <span class="kw">_</span>) = gen_endorsements_for_denunciation();
+        <span class="kw">let </span>(<span class="kw">_</span>, <span class="kw">_</span>, s_endorsement_1, s_endorsement_2, <span class="kw">_</span>) =
+            gen_endorsements_for_denunciation(<span class="prelude-val">None</span>, <span class="prelude-val">None</span>);
         <span class="kw">let </span>denunciation = Denunciation::try_from((<span class="kw-2">&amp;</span>s_endorsement_1, <span class="kw-2">&amp;</span>s_endorsement_2)).unwrap();
         buffer.clear();
 
@@ -2488,7 +2509,8 @@
 
         <span class="macro">assert_eq!</span>(denunciation, denunciation_2);
 
-        <span class="kw">let </span>(<span class="kw">_</span>, <span class="kw">_</span>, s_endorsement_1, s_endorsement_2, <span class="kw">_</span>) = gen_endorsements_for_denunciation();
+        <span class="kw">let </span>(<span class="kw">_</span>, <span class="kw">_</span>, s_endorsement_1, s_endorsement_2, <span class="kw">_</span>) =
+            gen_endorsements_for_denunciation(<span class="prelude-val">None</span>, <span class="prelude-val">None</span>);
         <span class="kw">let </span>denunciation_3 = Denunciation::try_from((<span class="kw-2">&amp;</span>s_endorsement_1, <span class="kw-2">&amp;</span>s_endorsement_2)).unwrap();
 
         <span class="kw">let </span>de_p_3 = DenunciationPrecursor::try_from(<span class="kw-2">&amp;</span>s_endorsement_1).unwrap();
