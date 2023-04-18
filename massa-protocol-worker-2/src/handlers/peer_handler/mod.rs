@@ -1,7 +1,7 @@
 use std::{collections::HashMap, net::SocketAddr, sync::Arc, thread::JoinHandle, time::Duration};
 
 use crossbeam::{
-    channel::{Receiver, Sender},
+    channel::{Receiver, RecvError, Sender},
     select,
 };
 use massa_serialization::{DeserializeError, Deserializer, Serializer};
@@ -90,7 +90,12 @@ impl PeerManagementHandler {
                            }
                         },
                         recv(receiver) -> msg => {
-                            let (peer_id, message_id, message): PeerMessageTuple = msg.unwrap();
+                            let (peer_id, message_id, message) = match msg {
+                                Ok((peer_id, message_id, message)) => (peer_id, message_id, message),
+                                Err(_) => {
+                                    return;
+                                }
+                            };
 
                             // check if peer is banned
                             if let Some(peer) = peer_db.read().peers.get(&peer_id) {
@@ -148,6 +153,12 @@ impl PeerManagementHandler {
                 msg_sender: sender,
                 command_sender: sender_cmd,
             },
+        }
+    }
+
+    pub fn stop(&mut self) {
+        if let Some(handle) = self.thread_join.take() {
+            handle.join().expect("Failed to join peer manager thread");
         }
     }
 }

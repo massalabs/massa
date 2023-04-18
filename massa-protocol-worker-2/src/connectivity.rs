@@ -87,12 +87,12 @@ pub fn start_connectivity_thread(
             // Create cache outside of the op handler because it could be used by other handlers
             //TODO: Add real config values
             let operation_cache = Arc::new(RwLock::new(OperationCache::new(
-                NonZeroUsize::new(usize::MAX).unwrap(),
-                NonZeroUsize::new(usize::MAX).unwrap(),
+                NonZeroUsize::new(10000).unwrap(),
+                NonZeroUsize::new(10000).unwrap(),
             )));
             let endorsement_cache = Arc::new(RwLock::new(EndorsementCache::new(
-                NonZeroUsize::new(usize::MAX).unwrap(),
-                NonZeroUsize::new(usize::MAX).unwrap(),
+                NonZeroUsize::new(10000).unwrap(),
+                NonZeroUsize::new(10000).unwrap(),
             )));
 
             // Start handlers
@@ -134,12 +134,10 @@ pub fn start_connectivity_thread(
                 select! {
                         recv(receiver) -> msg => {
                             if let Ok(ConnectivityCommand::Stop) = msg {
-                                if let Some(handle) = peer_management_handler.thread_join.take() {
-                                    handle.join().expect("Failed to join peer manager thread");
-                                }
                                 operation_handler.stop();
                                 endorsement_handler.stop();
                                 block_handler.stop();
+                                peer_management_handler.stop();
                                 break;
                             }
                         }
