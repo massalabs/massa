@@ -1812,8 +1812,6 @@ mod tests {
             .checked_mul_u64(exec_cfg.roll_count_to_slash_on_denunciation)
             .unwrap();
 
-        println!("amount_def: {}", amount_def);
-
         // create operation 1
         let operation1 = Operation::new_verifiable(
             Operation {
