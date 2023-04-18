@@ -3,6 +3,7 @@ use massa_final_state::{FinalState, FinalStateConfig};
 use massa_hash::Hash;
 use massa_ledger_exports::{LedgerConfig, LedgerController, LedgerEntry, LedgerError};
 use massa_ledger_worker::FinalLedger;
+use massa_models::denunciation::Denunciation;
 use massa_models::execution::TempFileVestingRange;
 use massa_models::prehash::PreHashMap;
 use massa_models::{
@@ -149,6 +150,7 @@ pub fn get_sample_state(
 pub fn create_block(
     creator_keypair: KeyPair,
     operations: Vec<SecureShareOperation>,
+    denunciations: Vec<Denunciation>,
     slot: Slot,
 ) -> Result<SecureShareBlock, ExecutionError> {
     let operation_merkle_root = Hash::compute_from(
@@ -163,7 +165,7 @@ pub fn create_block(
             parents: vec![],
             operation_merkle_root,
             endorsements: vec![],
-            denunciations: vec![],
+            denunciations,
         },
         BlockHeaderSerializer::new(),
         &creator_keypair,

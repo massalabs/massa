@@ -11,16 +11,19 @@ use crate::secure_share::SecureShareContent;
 use crate::slot::Slot;
 
 /// Helper to generate endorsements ready for denunciation
-pub fn gen_endorsements_for_denunciation() -> (
+pub fn gen_endorsements_for_denunciation(
+    with_slot: Option<Slot>,
+    with_keypair: Option<KeyPair>,
+) -> (
     Slot,
     KeyPair,
     SecureShareEndorsement,
     SecureShareEndorsement,
     SecureShareEndorsement,
 ) {
-    let keypair = KeyPair::generate();
+    let keypair = with_keypair.unwrap_or(KeyPair::generate());
+    let slot = with_slot.unwrap_or(Slot::new(3, 7));
 
-    let slot = Slot::new(3, 7);
     let endorsement_1 = Endorsement {
         slot,
         index: 0,

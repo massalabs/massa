@@ -192,15 +192,16 @@ impl SpeculativeRollState {
         let credits = self.get_address_deferred_credits(addr, *slot);
 
         // Return an error here - this should never happen
-        let (_last_credit_slot, last_credit_amount) = credits.last_key_value().ok_or(
+        let (last_credit_slot, last_credit_amount) = credits.last_key_value().ok_or(
             ExecutionError::SlashError("No deferred credits to slash".to_string()),
         )?;
 
         let deferred_credits_slashed = min(*amount, *last_credit_amount);
         let new_deferred_credits = last_credit_amount.saturating_sub(*amount);
+
         self.added_changes
             .deferred_credits
-            .insert(*slot, *addr, new_deferred_credits);
+            .insert(*last_credit_slot, *addr, new_deferred_credits);
 
         Ok(deferred_credits_slashed)
     }

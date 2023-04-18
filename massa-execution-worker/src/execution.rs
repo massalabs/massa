@@ -966,7 +966,6 @@ impl ExecutionState {
 
             // Try executing the denunciations of this block
             for denunciation in &stored_block.content.header.content.denunciations {
-                println!("Processing Denunciation: {:?}", denunciation);
                 if let Err(e) = self.process_denunciation(denunciation, &mut block_credits) {
                     debug!(
                         "Failed processing denunciation: {:?}, in block: {}: {}",
