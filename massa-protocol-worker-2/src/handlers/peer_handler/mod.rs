@@ -1,7 +1,7 @@
 use std::{collections::HashMap, net::SocketAddr, sync::Arc, thread::JoinHandle, time::Duration};
 
 use crossbeam::{
-    channel::{Receiver, RecvError, Sender},
+    channel::{Receiver, Sender},
     select,
 };
 use massa_serialization::{DeserializeError, Deserializer, Serializer};
