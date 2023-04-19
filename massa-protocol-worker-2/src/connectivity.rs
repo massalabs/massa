@@ -135,7 +135,10 @@ pub fn start_connectivity_thread(
                 select! {
                         recv(receiver) -> msg => {
                             if let Ok(ConnectivityCommand::Stop) = msg {
+                                drop(manager);
                                 operation_handler.stop();
+                                drop(operation_handler);
+                                println!("Operation stopped");
                                 endorsement_handler.stop();
                                 block_handler.stop();
                                 peer_management_handler.stop();
