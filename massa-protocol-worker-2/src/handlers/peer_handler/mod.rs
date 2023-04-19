@@ -77,7 +77,7 @@ impl PeerManagementHandler {
                            match cmd {
                              Ok(PeerManagementCmd::Ban(peer_id)) => {
 
-                                // remove runing handshake ?
+                                // remove running handshake ?
 
                                 // close peer connection ?
 

@@ -11,6 +11,8 @@ use peernet::{
     transports::{endpoint::Endpoint, OutConnectionConfig, TcpOutConnectionConfig, TransportType},
     types::KeyPair,
 };
+use std::cmp::Reverse;
+use tracing::log::warn;
 
 use super::{
     announcement::{AnnouncementDeserializer, AnnouncementDeserializerArgs},
@@ -101,7 +103,7 @@ impl HandshakeHandler for TesterHandshake {
                 let mut peer_db_write = self.peer_db.write();
                 peer_db_write
                     .index_by_newest
-                    .insert(announcement.timestamp, peer_id.clone());
+                    .insert(Reverse(announcement.timestamp), peer_id.clone());
                 peer_db_write
                     .peers
                     .entry(peer_id.clone())
@@ -134,10 +136,66 @@ impl HandshakeHandler for TesterHandshake {
 
 pub struct Tester {
     pub handler: Option<JoinHandle<()>>,
+    pub sender: crossbeam::channel::Sender<()>,
 }
 
 impl Tester {
+    pub fn new2(peer_db: SharedPeerDB) -> Self {
+        // create channel for launching test
+        let (test_sender, test_receiver) = crossbeam::channel::unbounded();
+
+        let handle = std::thread::spawn(move || {
+            let db = peer_db.clone();
+            let mut config = PeerNetConfiguration::default(
+                TesterHandshake::new(peer_db),
+                TesterMessagesHandler {},
+            );
+            config.fallback_function = Some(&empty_fallback);
+            config.max_out_connections = 1;
+
+            let mut network_manager = PeerNetManager::new(config);
+
+            loop {
+                crossbeam::select! {
+                    recv(test_receiver) -> res => {
+                        match res {
+                            Ok(msg) => dbg!(msg),
+                            Err(e) => break,
+                        }
+                    }
+                    default(Duration::from_secs(2)) => {
+                        // If no message in 2 seconds they will test a peer that hasn't been tested for long time
+
+                        // we find the last peer that has been tested
+                        let Some((_peer_id, peer_info)) = db.read().get_oldest_peer() else {
+                            warn!("No peer to test");
+                            continue;
+                        };
+
+                        // we try to connect to all peer listener (For now we have only one listener)
+                        peerInfo.last_announce.listeners.iter().for_each(|listener| {
+                            network_manager.try_connect(
+                                *listener.0,
+                                Duration::from_millis(200),
+                                &OutConnectionConfig::Tcp(Box::new(TcpOutConnectionConfig {})),
+                            );
+                        });
+
+                    }
+                }
+            }
+        });
+
+        Self {
+            handler: Some(handle),
+            sender: test_sender,
+        }
+    }
+
     pub fn new(peer_db: SharedPeerDB, listener: (SocketAddr, TransportType)) -> Self {
+        // create channel for launching test
+        let (test_sender, test_receiver) = crossbeam::channel::unbounded();
+
         let handle = std::thread::spawn(move || {
             let mut config = PeerNetConfiguration::default(
                 TesterHandshake::new(peer_db),
@@ -157,6 +215,7 @@ impl Tester {
         });
         Self {
             handler: Some(handle),
+            sender: test_sender,
         }
     }
 }
