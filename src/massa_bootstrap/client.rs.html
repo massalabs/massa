@@ -914,7 +914,7 @@
 
 <span class="doccomment">/// Gets the state from a bootstrap server
 /// needs to be CANCELLABLE
-</span><span class="kw">pub async fn </span>get_state(
+</span><span class="kw">pub fn </span>get_state(
     bootstrap_config: <span class="kw-2">&amp;</span>BootstrapConfig,
     final_state: Arc&lt;RwLock&lt;FinalState&gt;&gt;,
     <span class="kw-2">mut </span>connector: <span class="kw">impl </span>BSConnector,

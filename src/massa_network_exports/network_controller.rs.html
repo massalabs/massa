@@ -321,17 +321,6 @@
 <a href="#321" id="321">321</a>
 <a href="#322" id="322">322</a>
 <a href="#323" id="323">323</a>
-<a href="#324" id="324">324</a>
-<a href="#325" id="325">325</a>
-<a href="#326" id="326">326</a>
-<a href="#327" id="327">327</a>
-<a href="#328" id="328">328</a>
-<a href="#329" id="329">329</a>
-<a href="#330" id="330">330</a>
-<a href="#331" id="331">331</a>
-<a href="#332" id="332">332</a>
-<a href="#333" id="333">333</a>
-<a href="#334" id="334">334</a>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="kw">use crate</span>::{
@@ -498,15 +487,14 @@
     }
 
     <span class="doccomment">/// Send the order to get bootstrap peers.
-    </span><span class="kw">pub async fn </span>get_bootstrap_peers(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span>&lt;BootstrapPeers, NetworkError&gt; {
+    </span><span class="kw">pub fn </span>sync_get_bootstrap_peers(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span>&lt;BootstrapPeers, NetworkError&gt; {
         <span class="kw">let </span>(response_tx, response_rx) = oneshot::channel::&lt;BootstrapPeers&gt;();
         <span class="self">self</span>.<span class="number">0
-            </span>.send(NetworkCommand::GetBootstrapPeers(response_tx))
-            .<span class="kw">await
-            </span>.map_err(|<span class="kw">_</span>| {
+            </span>.blocking_send(NetworkCommand::GetBootstrapPeers(response_tx))
+            .map_err(|<span class="kw">_</span>| {
                 NetworkError::ChannelError(<span class="string">&quot;could not send GetBootstrapPeers command&quot;</span>.into())
             })<span class="question-mark">?</span>;
-        response_rx.<span class="kw">await</span>.map_err(|<span class="kw">_</span>| {
+        response_rx.blocking_recv().map_err(|<span class="kw">_</span>| {
             NetworkError::ChannelError(<span class="string">&quot;could not send GetBootstrapPeers response upstream&quot;</span>.into())
         })
     }
@@ -655,16 +643,6 @@
         <span class="macro">info!</span>(<span class="string">&quot;network manager stopped&quot;</span>);
         <span class="prelude-val">Ok</span>(())
     }
-}
-
-<span class="doccomment">/// Used by the bootstrap server to run async tasks, allowing the bootstrap module to
-/// remove the tokio dependency.
-</span><span class="kw">pub fn </span>make_runtime() -&gt; tokio::runtime::Runtime {
-    tokio::runtime::Builder::new_multi_thread()
-        .enable_all()
-        .thread_name(<span class="string">&quot;network-provided-runtime&quot;</span>)
-        .build()
-        .expect(<span class="string">&quot;failed to create runtime&quot;</span>)
 }
 </code></pre></div>
 </section></main><div id="rustdoc-vars" data-root-path="../../" data-static-root-path="../../static.files/" data-current-crate="massa_network_exports" data-themes="" data-resource-suffix="" data-rustdoc-version="1.69.0-nightly (d962ea578 2023-02-26)" data-search-js="search-14421e1532aead08.js" data-settings-js="settings-f0c5c39777a9a2f6.js" data-settings-css="settings-0bcba95ff279c1db.css" ></div></body></html>
