@@ -596,7 +596,7 @@ mod test {
         let (slot_a, _, s_header_1, s_header_2, _) = gen_block_headers_for_denunciation();
         assert!(slot_a < slot);
         let de_a = Denunciation::try_from((&s_header_1, &s_header_2)).unwrap();
-        let (slot_b, _, s_endo_1, s_endo_2, _) = gen_endorsements_for_denunciation();
+        let (slot_b, _, s_endo_1, s_endo_2, _) = gen_endorsements_for_denunciation(None, None);
         assert!(slot_b < slot);
         let de_b = Denunciation::try_from((&s_endo_1, &s_endo_2)).unwrap();
 

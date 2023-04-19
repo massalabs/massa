@@ -245,8 +245,16 @@ impl Denunciation {
     /// Get Denunciation slot ref
     pub fn get_slot(&self) -> &Slot {
         match self {
-            Denunciation::Endorsement(endo_de) => &endo_de.slot,
-            Denunciation::BlockHeader(blkh_de) => &blkh_de.slot,
+            Denunciation::Endorsement(de) => &de.slot,
+            Denunciation::BlockHeader(de) => &de.slot,
+        }
+    }
+
+    /// Get Denunciation public key ref
+    pub fn get_public_key(&self) -> &PublicKey {
+        match self {
+            Denunciation::Endorsement(de) => &de.public_key,
+            Denunciation::BlockHeader(de) => &de.public_key,
         }
     }
 
@@ -1010,7 +1018,7 @@ mod tests {
     fn test_endorsement_denunciation() {
         // Create an endorsement denunciation and check if it is valid
         let (_slot, _keypair, s_endorsement_1, s_endorsement_2, _s_endorsement_3) =
-            gen_endorsements_for_denunciation();
+            gen_endorsements_for_denunciation(None, None);
         let denunciation: Denunciation = (&s_endorsement_1, &s_endorsement_2).try_into().unwrap();
 
         assert_eq!(denunciation.is_for_endorsement(), true);
@@ -1020,7 +1028,7 @@ mod tests {
     #[test]
     fn test_endorsement_denunciation_invalid_1() {
         let (slot, keypair, s_endorsement_1, _s_endorsement_2, _s_endorsement_3) =
-            gen_endorsements_for_denunciation();
+            gen_endorsements_for_denunciation(None, None);
 
         // Try to create a denunciation from 2 endorsements @ != index
         let endorsement_4 = Endorsement {
@@ -1045,7 +1053,7 @@ mod tests {
     #[test]
     fn test_endorsement_denunciation_is_for() {
         let (slot, keypair, s_endorsement_1, s_endorsement_2, s_endorsement_3) =
-            gen_endorsements_for_denunciation();
+            gen_endorsements_for_denunciation(None, None);
 
         let denunciation: Denunciation = (&s_endorsement_1, &s_endorsement_2).try_into().unwrap();
 
@@ -1153,7 +1161,8 @@ mod tests {
     // SER / DER
     #[test]
     fn test_endorsement_denunciation_ser_der() {
-        let (_, _, s_endorsement_1, s_endorsement_2, _) = gen_endorsements_for_denunciation();
+        let (_, _, s_endorsement_1, s_endorsement_2, _) =
+            gen_endorsements_for_denunciation(None, None);
 
         let denunciation = Denunciation::try_from((&s_endorsement_1, &s_endorsement_2)).unwrap();
 
@@ -1217,7 +1226,8 @@ mod tests {
         assert_eq!(rem.is_empty(), true);
         assert_eq!(denunciation, de_der_res);
 
-        let (_, _, s_endorsement_1, s_endorsement_2, _) = gen_endorsements_for_denunciation();
+        let (_, _, s_endorsement_1, s_endorsement_2, _) =
+            gen_endorsements_for_denunciation(None, None);
         let denunciation = Denunciation::try_from((&s_endorsement_1, &s_endorsement_2)).unwrap();
         buffer.clear();
 
@@ -1238,7 +1248,8 @@ mod tests {
 
         assert_eq!(denunciation, denunciation_2);
 
-        let (_, _, s_endorsement_1, s_endorsement_2, _) = gen_endorsements_for_denunciation();
+        let (_, _, s_endorsement_1, s_endorsement_2, _) =
+            gen_endorsements_for_denunciation(None, None);
         let denunciation_3 = Denunciation::try_from((&s_endorsement_1, &s_endorsement_2)).unwrap();
 
         let de_p_3 = DenunciationPrecursor::try_from(&s_endorsement_1).unwrap();

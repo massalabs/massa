@@ -29,6 +29,9 @@ pub enum ExecutionError {
     /// `RollSell` error: {0}
     RollSellError(String),
 
+    /// Slash roll or deferred credits  error: {0}
+    SlashError(String),
+
     /// `Transaction` error: {0}
     TransactionError(String),
 

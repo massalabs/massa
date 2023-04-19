@@ -258,7 +258,8 @@ fn test_block_header_denunciation_creation() {
 
 #[test]
 fn test_endorsement_denunciation_creation() {
-    let (_slot, keypair, s_endorsement_1, s_endorsement_2, _) = gen_endorsements_for_denunciation();
+    let (_slot, keypair, s_endorsement_1, s_endorsement_2, _) =
+        gen_endorsements_for_denunciation(None, None);
     let address = Address::from_public_key(&keypair.get_public_key());
 
     let de_p_1 = DenunciationPrecursor::try_from(&s_endorsement_1).unwrap();
