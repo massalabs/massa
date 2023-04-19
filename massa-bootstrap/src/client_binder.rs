@@ -145,7 +145,6 @@ impl BootstrapClientBinder {
     }
 
     // TODO: use a proper (de)serializer: https://github.com/massalabs/massa/pull/3745#discussion_r1169733161
-    #[allow(dead_code)]
     /// Send a message to the bootstrap server
     pub fn send_timeout(
         &mut self,

@@ -218,7 +218,6 @@ impl BootstrapServerBinder {
     }
 
     // TODO: use a proper (de)serializer: https://github.com/massalabs/massa/pull/3745#discussion_r1169733161
-    #[allow(dead_code)]
     /// Read a message sent from the client (not signed). NOT cancel-safe
     pub fn next_timeout(
         &mut self,
