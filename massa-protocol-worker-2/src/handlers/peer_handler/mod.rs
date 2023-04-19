@@ -4,6 +4,7 @@ use crossbeam::{
     channel::{Receiver, RecvError, Sender},
     select,
 };
+use massa_protocol_exports_2::ProtocolConfig;
 use massa_serialization::{DeserializeError, Deserializer, Serializer};
 use parking_lot::RwLock;
 use rand::{rngs::StdRng, RngCore, SeedableRng};
@@ -25,7 +26,7 @@ use self::{
     models::{
         InitialPeers, PeerManagementChannel, PeerManagementCmd, PeerMessageTuple, SharedPeerDB,
     },
-    tester::Tester,
+    tester::{PeersTester, Tester},
 };
 
 use self::{
@@ -50,10 +51,11 @@ pub struct PeerManagementHandler {
     pub peer_db: SharedPeerDB,
     pub thread_join: Option<JoinHandle<()>>,
     pub sender: PeerManagementChannel,
+    testers: PeersTester,
 }
 
 impl PeerManagementHandler {
-    pub fn new(initial_peers: InitialPeers) -> Self {
+    pub fn new(initial_peers: InitialPeers, config: &ProtocolConfig) -> Self {
         let (sender, receiver): (Sender<PeerMessageTuple>, Receiver<PeerMessageTuple>) =
             crossbeam::channel::unbounded();
         let (sender_cmd, receiver_cmd): (Sender<PeerManagementCmd>, Receiver<PeerManagementCmd>) =
@@ -61,6 +63,9 @@ impl PeerManagementHandler {
         let message_serializer = PeerManagementMessageSerializer::new();
 
         let peer_db: SharedPeerDB = Arc::new(RwLock::new(Default::default()));
+
+        let peers_tester = PeersTester::new(config, peer_db.clone());
+
         let thread_join = std::thread::spawn({
             let peer_db = peer_db.clone();
             let mut message_deserializer =
@@ -153,6 +158,7 @@ impl PeerManagementHandler {
                 msg_sender: sender,
                 command_sender: sender_cmd,
             },
+            testers: peers_tester,
         }
     }
 

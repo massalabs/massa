@@ -175,6 +175,8 @@
     max_operations_propagation_time = 32000
     # time threshold after which endorsement are not propagated
     max_endorsements_propagation_time = 48000
+    # number of thread tester
+    thread_tester_count = 5
 
 [network]
     # port on which to listen for protocol communication. You may need to change this to "0.0.0.0:port" if IPv6 is disabled system-wide.
@@ -229,8 +231,6 @@
     max_bytes_read = 20_000_000.0
     # write limitation for a connection in bytes per seconds
     max_bytes_write = 20_000_000.0
-    # number of thread tester
-    thread_tester_count = 5
 
     [network.peer_types_config]
     Standard = { target_out_connections = 10, max_out_attempts = 10, max_in_connections = 15}

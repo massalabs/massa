@@ -22,7 +22,7 @@ use crate::{
         block_handler::BlockHandler,
         endorsement_handler::{cache::EndorsementCache, EndorsementHandler},
         operation_handler::{cache::OperationCache, OperationHandler},
-        peer_handler::{fallback_function, MassaHandshake, PeerManagementHandler},
+        peer_handler::{self, fallback_function, MassaHandshake, PeerManagementHandler},
     },
     messages::MessagesHandler,
 };
@@ -56,7 +56,7 @@ pub fn start_connectivity_thread(
         let sender_endorsements_ext = sender_endorsements_ext.clone();
         let sender_operations_ext = sender_operations_ext.clone();
         move || {
-            let mut peer_management_handler = PeerManagementHandler::new(initial_peers);
+            let mut peer_management_handler = PeerManagementHandler::new(initial_peers, &config);
             //TODO: Bound the channel
             // Channels network <-> handlers
             let (sender_operations, receiver_operations) = unbounded();
@@ -129,6 +129,7 @@ pub fn start_connectivity_thread(
                     addr, transport
                 ));
             }
+
             //Try to connect to peers
             loop {
                 select! {

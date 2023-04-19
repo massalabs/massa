@@ -1,5 +1,6 @@
 use std::{collections::HashMap, net::SocketAddr, thread::JoinHandle, time::Duration};
 
+use massa_protocol_exports_2::ProtocolConfig;
 use massa_serialization::{DeserializeError, Deserializer};
 use peernet::{
     config::PeerNetConfiguration,
@@ -134,6 +135,23 @@ impl HandshakeHandler for TesterHandshake {
     }
 }
 
+pub struct PeersTester {
+    pub testers: Vec<Tester>,
+}
+
+impl PeersTester {
+    pub fn new(config: &ProtocolConfig, peer_db: SharedPeerDB) -> Self {
+        let mut testers = Vec::new();
+
+        dbg!(config.thread_tester_count);
+        for _ in 0..config.thread_tester_count {
+            testers.push(Tester::new2(peer_db.clone()));
+        }
+
+        Self { testers }
+    }
+}
+
 pub struct Tester {
     pub handler: Option<JoinHandle<()>>,
     pub sender: crossbeam::channel::Sender<()>,
@@ -141,6 +159,7 @@ pub struct Tester {
 
 impl Tester {
     pub fn new2(peer_db: SharedPeerDB) -> Self {
+        tracing::log::debug!("running new tester");
         // create channel for launching test
         let (test_sender, test_receiver) = crossbeam::channel::unbounded();
 
@@ -159,22 +178,25 @@ impl Tester {
                 crossbeam::select! {
                     recv(test_receiver) -> res => {
                         match res {
-                            Ok(msg) => dbg!(msg),
-                            Err(e) => break,
+                            Ok(_listener) => {
+                                // receive new listener to test
+                            },
+                            Err(_e) => break,
                         }
                     }
                     default(Duration::from_secs(2)) => {
                         // If no message in 2 seconds they will test a peer that hasn't been tested for long time
 
                         // we find the last peer that has been tested
-                        let Some((_peer_id, peer_info)) = db.read().get_oldest_peer() else {
-                            warn!("No peer to test");
+                        let Some((peer_id, peer_info)) = db.read().get_oldest_peer() else {
+                            dbg!("No peer to test");
                             continue;
                         };
 
+                        dbg!("Testing peer {}", peer_id);
                         // we try to connect to all peer listener (For now we have only one listener)
-                        peerInfo.last_announce.listeners.iter().for_each(|listener| {
-                            network_manager.try_connect(
+                        peer_info.last_announce.listeners.iter().for_each(|listener| {
+                           let _res =  network_manager.try_connect(
                                 *listener.0,
                                 Duration::from_millis(200),
                                 &OutConnectionConfig::Tcp(Box::new(TcpOutConnectionConfig {})),
