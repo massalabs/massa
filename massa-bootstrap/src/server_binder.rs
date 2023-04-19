@@ -75,7 +75,6 @@ impl BootstrapServerBinder {
         }
     }
     /// Performs a handshake. Should be called after connection
-    /// NOT cancel-safe
     /// MUST always be followed by a send of the `BootstrapMessage::BootstrapTime`
     pub fn handshake_timeout(
         &mut self,
@@ -170,7 +169,7 @@ impl BootstrapServerBinder {
     }
 
     // TODO: use a proper (de)serializer: https://github.com/massalabs/massa/pull/3745#discussion_r1169733161
-    /// Writes the next message. NOT cancel-safe
+    /// Writes the next message.
     pub fn send_timeout(
         &mut self,
         msg: BootstrapServerMessage,
@@ -218,7 +217,7 @@ impl BootstrapServerBinder {
     }
 
     // TODO: use a proper (de)serializer: https://github.com/massalabs/massa/pull/3745#discussion_r1169733161
-    /// Read a message sent from the client (not signed). NOT cancel-safe
+    /// Read a message sent from the client (not signed).
     pub fn next_timeout(
         &mut self,
         duration: Option<Duration>,
