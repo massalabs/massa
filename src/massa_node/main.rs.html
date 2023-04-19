@@ -1636,7 +1636,7 @@
     };
 
     <span class="kw">let </span>pool_channels = PoolChannels {
-        endorsement_sender: broadcast::channel(pool_config.broadcast_operations_capacity).<span class="number">0</span>,
+        endorsement_sender: broadcast::channel(pool_config.broadcast_endorsements_capacity).<span class="number">0</span>,
         operation_sender: broadcast::channel(pool_config.broadcast_operations_capacity).<span class="number">0</span>,
         selector: selector_controller.clone(),
     };
