@@ -56,8 +56,8 @@ use white_black_list::*;
 
 use crate::{
     error::BootstrapError,
-    establisher::BSListener,
-    listener::{AcceptEvent, BootstrapListenerStopHandle},
+    establisher::BSEventPoller,
+    listener::{BootstrapListenerStopHandle, PollEvent},
     messages::{BootstrapClientMessage, BootstrapServerMessage},
     server_binder::BootstrapServerBinder,
     BootstrapConfig,
@@ -124,10 +124,10 @@ impl BootstrapManager {
 /// See module level documentation for details
 #[allow(clippy::too_many_arguments)]
 pub fn start_bootstrap_server<
-    L: BSListener + Send + 'static,
+    L: BSEventPoller + Send + 'static,
     C: NetworkCommandSenderTrait + Clone,
 >(
-    listener: L,
+    ev_poller: L,
     consensus_controller: Box<dyn ConsensusController>,
     network_command_sender: C,
     final_state: Arc<RwLock<FinalState>>,
@@ -176,7 +176,7 @@ pub fn start_bootstrap_server<
                 consensus_controller,
                 network_command_sender,
                 final_state,
-                listener,
+                ev_poller,
                 white_black_list,
                 keypair,
                 version,
@@ -184,7 +184,7 @@ pub fn start_bootstrap_server<
                 bootstrap_config: config,
                 mip_store,
             }
-            .run_loop(max_bootstraps)
+            .event_loop(max_bootstraps)
         })
         .expect("in `start_bootstrap_server`, OS failed to spawn main-loop thread");
     // Give the runtime to the bootstrap manager, otherwise it will be dropped, forcibly aborting the spawned tasks.
@@ -196,11 +196,11 @@ pub fn start_bootstrap_server<
     ))
 }
 
-struct BootstrapServer<'a, L: BSListener, C: NetworkCommandSenderTrait> {
+struct BootstrapServer<'a, L: BSEventPoller, C: NetworkCommandSenderTrait> {
     consensus_controller: Box<dyn ConsensusController>,
     network_command_sender: C,
     final_state: Arc<RwLock<FinalState>>,
-    listener: L,
+    ev_poller: L,
     white_black_list: SharedWhiteBlackList<'a>,
     keypair: KeyPair,
     bootstrap_config: BootstrapConfig,
@@ -209,7 +209,7 @@ struct BootstrapServer<'a, L: BSListener, C: NetworkCommandSenderTrait> {
     mip_store: MipStore,
 }
 
-impl<L: BSListener, C: NetworkCommandSenderTrait + Clone> BootstrapServer<'_, L, C> {
+impl<L: BSEventPoller, C: NetworkCommandSenderTrait + Clone> BootstrapServer<'_, L, C> {
     fn run_updater(
         mut list: SharedWhiteBlackList<'_>,
         interval: Duration,
@@ -230,7 +230,7 @@ impl<L: BSListener, C: NetworkCommandSenderTrait + Clone> BootstrapServer<'_, L,
         }
     }
 
-    fn run_loop(mut self, max_bootstraps: usize) -> Result<(), BootstrapError> {
+    fn event_loop(mut self, max_bootstraps: usize) -> Result<(), BootstrapError> {
         let Ok(bs_loop_rt) = runtime::Builder::new_multi_thread()
             .max_blocking_threads(max_bootstraps * 2)
             .enable_io()
@@ -250,9 +250,9 @@ impl<L: BSListener, C: NetworkCommandSenderTrait + Clone> BootstrapServer<'_, L,
             // let Ok((dplx, remote_addr)) = self.listener_rx.recv().map_err(|_e| {
             //     BootstrapError::GeneralError("Bootstrap listener channel disconnected".to_string())
             // }) else { break; };
-            let (dplx, remote_addr) = match self.listener.accept() {
-                Ok(AcceptEvent::NewConnection((dplx, remote_addr))) => (dplx, remote_addr),
-                Ok(AcceptEvent::Stop) => break Ok(()),
+            let (dplx, remote_addr) = match self.ev_poller.poll() {
+                Ok(PollEvent::NewConnection((dplx, remote_addr))) => (dplx, remote_addr),
+                Ok(PollEvent::Stop) => break Ok(()),
                 Err(e) => {
                     error!("bootstrap listener error: {}", e);
                     break Err(e);

@@ -3,10 +3,10 @@ use std::net::{SocketAddr, TcpListener, TcpStream};
 use mio::net::TcpListener as MioTcpListener;
 
 use mio::{Events, Interest, Poll, Token, Waker};
-use tracing::{error, info};
+use tracing::info;
 
 use crate::error::BootstrapError;
-use crate::establisher::BSListener;
+use crate::establisher::BSEventPoller;
 
 const NEW_CONNECTION: Token = Token(0);
 const STOP_LISTENER: Token = Token(10);
@@ -23,7 +23,7 @@ pub struct BootstrapTcpListener {
 
 pub struct BootstrapListenerStopHandle(Waker);
 
-pub enum AcceptEvent {
+pub enum PollEvent {
     NewConnection((TcpStream, SocketAddr)),
     Stop,
 }
@@ -60,25 +60,20 @@ impl BootstrapTcpListener {
     }
 }
 
-impl BSListener for BootstrapTcpListener {
-    fn accept(&mut self) -> Result<AcceptEvent, BootstrapError> {
+impl BSEventPoller for BootstrapTcpListener {
+    fn poll(&mut self) -> Result<PollEvent, BootstrapError> {
         self.poll.poll(&mut self.events, None).unwrap();
 
-        for event in self.events.iter() {
-            match event.token() {
-                NEW_CONNECTION => {
-                    return Ok(AcceptEvent::NewConnection(
-                        self.server.accept().map_err(BootstrapError::from)?,
-                    ));
-                }
-                STOP_LISTENER => {
-                    info!("Stopping bootstrap listener");
-                    return Ok(AcceptEvent::Stop);
-                }
-                _ => error!("Unexpected event"),
-            }
+        // Confirm that we are not being signalled to shut down
+        if self.events.iter().any(|ev| ev.token() == STOP_LISTENER) {
+            return Ok(PollEvent::Stop);
         }
-        panic!("TODO: handle No event received");
+
+        // Ther could be more than one connection ready, but we want to re-check for the stop
+        // signal after processing each connection.
+        return Ok(PollEvent::NewConnection(
+            self.server.accept().map_err(BootstrapError::from)?,
+        ));
     }
 }
 

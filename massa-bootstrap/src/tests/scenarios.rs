@@ -4,12 +4,12 @@ use super::tools::{
     get_boot_state, get_peers, get_random_final_state_bootstrap, get_random_ledger_changes,
 };
 use crate::error::BootstrapError;
-use crate::listener::AcceptEvent;
+use crate::listener::PollEvent;
 use crate::tests::tools::{
     get_random_async_pool_changes, get_random_executed_ops_changes, get_random_pos_changes,
 };
 use crate::{
-    establisher::{MockBSConnector, MockBSListener},
+    establisher::{BSEventPoller, MockBSConnector},
     get_state, start_bootstrap_server,
     tests::tools::{assert_eq_bootstrap_graph, get_bootstrap_config},
 };
@@ -464,7 +464,7 @@ fn test_bootstrap_server() {
     client_selector_manager.stop();
 }
 
-fn conn_establishment_mocks() -> (MockBSListener, MockBSConnector) {
+fn conn_establishment_mocks() -> (BSEventPoller, MockBSConnector) {
     // Setup the server/client connection
     // Bind a TcpListener to localhost on a specific port
     let listener = std::net::TcpListener::bind("127.0.0.1:8069").unwrap();
@@ -482,18 +482,18 @@ fn conn_establishment_mocks() -> (MockBSListener, MockBSConnector) {
     // Mock the connection setups
     // TODO: Why is it twice, and not just once?
     let mut seq = Sequence::new();
-    let mut mock_bs_listener = MockBSListener::new();
+    let mut mock_bs_listener = BSEventPoller::new();
     mock_bs_listener
         .expect_accept()
         .times(1)
         // Mock the `accept` method here by receiving from the listen-loop thread
-        .returning(move || Ok(AcceptEvent::NewConnection(conn_rx.recv().unwrap())))
+        .returning(move || Ok(PollEvent::NewConnection(conn_rx.recv().unwrap())))
         .in_sequence(&mut seq);
     mock_bs_listener
         .expect_accept()
         .times(1)
         // Mock the `accept` method here by receiving from the listen-loop thread
-        .returning(move || Ok(AcceptEvent::Stop))
+        .returning(move || Ok(PollEvent::Stop))
         .in_sequence(&mut seq);
 
     let mut seq = Sequence::new();
