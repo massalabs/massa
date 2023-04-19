@@ -69,6 +69,7 @@ impl BootstrapClientBinder {
         Ok(())
     }
 
+    // TODO: use a proper (de)serializer: https://github.com/massalabs/massa/pull/3745#discussion_r1169733161
     /// Reads the next message. NOT cancel-safe
     pub fn next_timeout(
         &mut self,
@@ -143,6 +144,7 @@ impl BootstrapClientBinder {
         Ok(message)
     }
 
+    // TODO: use a proper (de)serializer: https://github.com/massalabs/massa/pull/3745#discussion_r1169733161
     #[allow(dead_code)]
     /// Send a message to the bootstrap server
     pub fn send_timeout(
