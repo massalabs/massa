@@ -128,7 +128,7 @@
 <span class="kw">use </span>tonic::{Request, Streaming};
 <span class="kw">use </span>tracing::log::error;
 
-<span class="doccomment">/// Type declaration for NewOperations
+<span class="doccomment">/// Type declaration for StreamTransactionsThroughput
 </span><span class="kw">pub type </span>NewOperationsStream = Pin&lt;
     Box&lt;
         <span class="kw">dyn </span>futures_core::Stream&lt;Item = <span class="prelude-ty">Result</span>&lt;grpc::NewOperationsResponse, tonic::Status&gt;&gt;
@@ -154,7 +154,7 @@
             <span class="kw">let </span><span class="kw-2">mut </span>request_id = request.id;
             <span class="kw">let </span><span class="kw-2">mut </span>filter = request.query.and_then(|q| q.filter);
 
-            <span class="comment">// Spawn a new task for sending new operations
+            <span class="comment">// Spawn a new task for sending new blocks
             </span><span class="kw">loop </span>{
                 <span class="macro">select! </span>{
                     <span class="comment">// Receive a new operation from the subscriber

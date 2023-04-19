@@ -712,13 +712,13 @@
     /// ) &lt; std::time::Duration::from_millis(10))
     /// ```
     </span><span class="kw">pub fn </span>estimate_instant(<span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span>&lt;Instant, TimeError&gt; {
-        <span class="kw">let </span>(cur_timestamp, cur_instant): (MassaTime, Instant) =
-            (MassaTime::now()<span class="question-mark">?</span>, Instant::now());
-        cur_instant
-            .checked_add(<span class="self">self</span>.to_duration())
-            .ok_or(TimeError::TimeOverflowError)<span class="question-mark">?
-            </span>.checked_sub(cur_timestamp.to_duration())
-            .ok_or(TimeError::TimeOverflowError)
+        <span class="kw">let </span>(cur_timestamp, cur_instant) = (MassaTime::now()<span class="question-mark">?</span>, Instant::now());
+        <span class="kw">if </span><span class="self">self </span>&gt;= cur_timestamp {
+            cur_instant.checked_add(<span class="self">self</span>.saturating_sub(cur_timestamp).to_duration())
+        } <span class="kw">else </span>{
+            cur_instant.checked_sub(cur_timestamp.saturating_sub(<span class="self">self</span>).to_duration())
+        }
+        .ok_or(TimeError::TimeOverflowError)
     }
 
     <span class="doccomment">/// ```

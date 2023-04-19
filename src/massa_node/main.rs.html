@@ -1150,8 +1150,6 @@
 <a href="#1150" id="1150">1150</a>
 <a href="#1151" id="1151">1151</a>
 <a href="#1152" id="1152">1152</a>
-<a href="#1153" id="1153">1153</a>
-<a href="#1154" id="1154">1154</a>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="attr">#![doc = <span class="macro">include_str!</span>(<span class="string">&quot;../../README.md&quot;</span>)]
@@ -1627,7 +1625,6 @@
         max_endorsements_pool_size_per_thread: SETTINGS.pool.max_pool_size_per_thread,
         channels_size: POOL_CONTROLLER_CHANNEL_SIZE,
         broadcast_enabled: SETTINGS.api.enable_broadcast,
-        broadcast_endorsements_capacity: SETTINGS.pool.broadcast_endorsements_capacity,
         broadcast_operations_capacity: SETTINGS.pool.broadcast_operations_capacity,
         genesis_timestamp: <span class="kw-2">*</span>GENESIS_TIMESTAMP,
         t0: T0,
@@ -1636,7 +1633,6 @@
     };
 
     <span class="kw">let </span>pool_channels = PoolChannels {
-        endorsement_sender: broadcast::channel(pool_config.broadcast_endorsements_capacity).<span class="number">0</span>,
         operation_sender: broadcast::channel(pool_config.broadcast_operations_capacity).<span class="number">0</span>,
         selector: selector_controller.clone(),
     };
