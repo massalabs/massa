@@ -43,6 +43,7 @@ async fn test_start_grpc_server() {
         filled_block_sender: tokio::sync::broadcast::channel(100).0,
     };
 
+    let endorsement_sender = tokio::sync::broadcast::channel(2000).0;
     let operation_sender = tokio::sync::broadcast::channel(5000).0;
 
     let grpc_config = GrpcConfig {
@@ -91,6 +92,7 @@ async fn test_start_grpc_server() {
         consensus_channels,
         execution_controller: execution_ctrl.0,
         pool_channels: PoolChannels {
+            endorsement_sender,
             operation_sender,
             selector: selector_ctrl.0.clone(),
         },

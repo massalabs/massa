@@ -6,9 +6,10 @@ use massa_models::{
     prehash::{CapacityAllocator, PreHashSet},
     slot::Slot,
 };
-use massa_pool_exports::PoolConfig;
+use massa_pool_exports::{PoolChannels, PoolConfig};
 use massa_storage::Storage;
 use std::collections::{BTreeMap, HashMap};
+use tracing::trace;
 
 pub struct EndorsementPool {
     /// configuration
@@ -26,16 +27,20 @@ pub struct EndorsementPool {
 
     /// last consensus final periods, per thread
     last_cs_final_periods: Vec<u64>,
+
+    /// channels used by the pool worker
+    channels: PoolChannels,
 }
 
 impl EndorsementPool {
-    pub fn init(config: PoolConfig, storage: &Storage) -> Self {
+    pub fn init(config: PoolConfig, storage: &Storage, channels: PoolChannels) -> Self {
         EndorsementPool {
             last_cs_final_periods: vec![0u64; config.thread_count as usize],
             endorsements_indexed: Default::default(),
             endorsements_sorted: vec![Default::default(); config.thread_count as usize],
             config,
             storage: storage.clone_without_refs(),
+            channels,
         }
     }
 
@@ -92,6 +97,17 @@ impl EndorsementPool {
                 let endo = endo_store
                     .get(&endo_id)
                     .expect("attempting to add endorsement to pool, but it is absent from storage");
+
+                // Broadcast endorsement to active channel subscribers.
+                if self.config.broadcast_enabled {
+                    if let Err(err) = self.channels.endorsement_sender.send(endo.clone()) {
+                        trace!(
+                            "error, failed to broadcast endorsement with id {} due to: {}",
+                            endo.id.clone(),
+                            err
+                        );
+                    }
+                }
 
                 if endo.content.slot.period
                     < self.last_cs_final_periods[endo.content.slot.thread as usize]

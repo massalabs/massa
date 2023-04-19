@@ -6,6 +6,7 @@ package massa.api.v1;
 
 import "block.proto";
 import "common.proto";
+import "endorsement.proto";
 import "google/api/annotations.proto";
 import "google/rpc/status.proto";
 import "operation.proto";
@@ -74,6 +75,9 @@ service MassaService {
 
   // New received and produced blocks headers
   rpc NewBlocksHeaders(stream NewBlocksHeadersRequest) returns (stream NewBlocksHeadersResponse) {}
+
+  // New received and produced endorsements
+  rpc NewEndorsements(stream NewEndorsementsRequest) returns (stream NewEndorsementsResponse) {}
 
   // New received and produced blocks with operations
   rpc NewFilledBlocks(stream NewFilledBlocksRequest) returns (stream NewFilledBlocksResponse) {}
@@ -311,6 +315,20 @@ message NewBlocksHeadersResponse {
   string id = 1;
   // Signed block header
   SignedBlockHeader block_header = 2;
+}
+
+// NewEndorsementsRequest holds request for NewEndorsements
+message NewEndorsementsRequest {
+  // Request id
+  string id = 1;
+}
+
+// NewEndorsementsResponse holds response from NewEndorsements
+message NewEndorsementsResponse {
+  // Request id
+  string id = 1;
+  // Signed endorsement
+  SignedEndorsement endorsement = 2;
 }
 
 // NewFilledBlocksRequest holds request for NewFilledBlocks
