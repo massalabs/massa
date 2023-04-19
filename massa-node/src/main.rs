@@ -80,7 +80,6 @@ use std::thread::sleep;
 use std::time::Duration;
 use std::{path::Path, process, sync::Arc};
 use structopt::StructOpt;
-use tokio::net::TcpStream;
 use tokio::signal;
 use tokio::sync::{broadcast, mpsc};
 use tracing::{error, info, warn};
@@ -93,7 +92,7 @@ async fn launch(
     node_wallet: Arc<RwLock<Wallet>>,
 ) -> (
     Receiver<ConsensusEvent>,
-    Option<BootstrapManager<TcpStream>>,
+    Option<BootstrapManager>,
     Box<dyn ConsensusManager>,
     Box<dyn ExecutionManager>,
     Box<dyn SelectorManager>,
@@ -316,7 +315,7 @@ async fn launch(
         res = get_state(
             &bootstrap_config,
             final_state.clone(),
-            DefaultConnector(bootstrap_config.connect_timeout),
+            DefaultConnector,
             *VERSION,
             *GENESIS_TIMESTAMP,
             *END_TIMESTAMP,
@@ -626,7 +625,7 @@ async fn launch(
     // launch bootstrap server
     // TODO: use std::net::TcpStream
     let bootstrap_manager = match bootstrap_config.listen_addr {
-        Some(addr) => start_bootstrap_server::<TcpStream>(
+        Some(addr) => start_bootstrap_server(
             consensus_controller.clone(),
             network_command_sender.clone(),
             final_state.clone(),
@@ -865,7 +864,7 @@ async fn launch(
 }
 
 struct Managers {
-    bootstrap_manager: Option<BootstrapManager<TcpStream>>,
+    bootstrap_manager: Option<BootstrapManager>,
     consensus_manager: Box<dyn ConsensusManager>,
     execution_manager: Box<dyn ExecutionManager>,
     selector_manager: Box<dyn SelectorManager>,
@@ -896,7 +895,6 @@ async fn stop(
     if let Some(bootstrap_manager) = bootstrap_manager {
         bootstrap_manager
             .stop()
-            .await
             .expect("bootstrap server shutdown failed")
     }
 

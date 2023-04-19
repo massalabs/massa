@@ -2,7 +2,7 @@
 
 use crate::config::GrpcConfig;
 use crate::server::MassaGrpc;
-use massa_consensus_exports::test_exports::MockConsensusController;
+use massa_consensus_exports::test_exports::MockConsensusControllerImpl;
 use massa_consensus_exports::ConsensusChannels;
 use massa_execution_exports::test_exports::MockExecutionController;
 use massa_models::config::{
@@ -22,7 +22,7 @@ use tokio::sync::mpsc;
 
 #[tokio::test]
 async fn test_start_grpc_server() {
-    let consensus_controller = MockConsensusController::new_with_receiver();
+    let consensus_controller = MockConsensusControllerImpl::new();
     let execution_ctrl = MockExecutionController::new_with_receiver();
     let shared_storage: massa_storage::Storage = massa_storage::Storage::create_root();
     let selector_ctrl = MockSelectorController::new_with_receiver();
@@ -87,7 +87,7 @@ async fn test_start_grpc_server() {
     };
 
     let service = MassaGrpc {
-        consensus_controller: consensus_controller.0,
+        consensus_controller: Box::new(consensus_controller),
         consensus_channels,
         execution_controller: execution_ctrl.0,
         pool_channels: PoolChannels {

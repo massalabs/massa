@@ -12,13 +12,12 @@ use rand::{
     prelude::{SliceRandom, StdRng},
     SeedableRng,
 };
-use tokio::time::sleep;
 use tracing::{debug, info, warn};
 
 use crate::{
     client_binder::BootstrapClientBinder,
     error::BootstrapError,
-    establisher::{BSConnector, Duplex},
+    establisher::BSConnector,
     messages::{BootstrapClientMessage, BootstrapServerMessage},
     settings::IpType,
     BootstrapConfig, GlobalBootstrapState,
@@ -27,40 +26,20 @@ use crate::{
 /// This function will send the starting point to receive a stream of the ledger and will receive and process each part until receive a `BootstrapServerMessage::FinalStateFinished` message from the server.
 /// `next_bootstrap_message` passed as parameter must be `BootstrapClientMessage::AskFinalStatePart` enum variant.
 /// `next_bootstrap_message` will be updated after receiving each part so that in case of connection lost we can restart from the last message we processed.
-async fn stream_final_state_and_consensus<D: Duplex>(
+fn stream_final_state_and_consensus(
     cfg: &BootstrapConfig,
-    client: &mut BootstrapClientBinder<D>,
+    client: &mut BootstrapClientBinder,
     next_bootstrap_message: &mut BootstrapClientMessage,
     global_bootstrap_state: &mut GlobalBootstrapState,
 ) -> Result<(), BootstrapError> {
     if let BootstrapClientMessage::AskBootstrapPart { .. } = &next_bootstrap_message {
-        match tokio::time::timeout(
-            cfg.write_timeout.into(),
-            client.send(next_bootstrap_message),
-        )
-        .await
-        {
-            Err(_) => Err(std::io::Error::new(
-                std::io::ErrorKind::TimedOut,
-                "bootstrap ask ledger part send timed out",
-            )
-            .into()),
-            Ok(Err(e)) => Err(e),
-            Ok(Ok(_)) => Ok(()),
-        }?;
+        client.send_timeout(
+            next_bootstrap_message,
+            Some(cfg.write_timeout.to_duration()),
+        )?;
+
         loop {
-            let msg = match tokio::time::timeout(cfg.read_timeout.into(), client.next()).await {
-                Err(_) => {
-                    return Err(std::io::Error::new(
-                        std::io::ErrorKind::TimedOut,
-                        "final state bootstrap read timed out",
-                    )
-                    .into());
-                }
-                Ok(Err(e)) => return Err(e),
-                Ok(Ok(msg)) => msg,
-            };
-            match msg {
+            match client.next_timeout(Some(cfg.read_timeout.to_duration()))? {
                 BootstrapServerMessage::BootstrapPart {
                     slot,
                     ledger_part,
@@ -184,15 +163,14 @@ async fn stream_final_state_and_consensus<D: Duplex>(
                     write_final_state.reset();
                     return Err(BootstrapError::GeneralError(String::from("Slot too old")));
                 }
+                // At this point, we have succesfully received the next message from the server, and it's an error-message String
                 BootstrapServerMessage::BootstrapError { error } => {
-                    return Err(std::io::Error::new(std::io::ErrorKind::InvalidData, error).into())
+                    return Err(BootstrapError::GeneralError(error))
                 }
                 _ => {
-                    return Err(std::io::Error::new(
-                        std::io::ErrorKind::InvalidData,
-                        "unexpected message",
-                    )
-                    .into())
+                    return Err(BootstrapError::GeneralError(
+                        "unexpected message".to_string(),
+                    ))
                 }
             }
         }
@@ -206,9 +184,9 @@ async fn stream_final_state_and_consensus<D: Duplex>(
 
 /// Gets the state from a bootstrap server (internal private function)
 /// needs to be CANCELLABLE
-async fn bootstrap_from_server<D: Duplex>(
+fn bootstrap_from_server(
     cfg: &BootstrapConfig,
-    client: &mut BootstrapClientBinder<D>,
+    client: &mut BootstrapClientBinder,
     next_bootstrap_message: &mut BootstrapClientMessage,
     global_bootstrap_state: &mut GlobalBootstrapState,
     our_version: Version,
@@ -217,34 +195,24 @@ async fn bootstrap_from_server<D: Duplex>(
 
     // read error (if sent by the server)
     // client.next() is not cancel-safe but we drop the whole client object if cancelled => it's OK
-    match tokio::time::timeout(cfg.read_error_timeout.into(), client.next()).await {
-        Err(_) => {
+    match client.next_timeout(Some(cfg.read_error_timeout.to_duration())) {
+        Err(BootstrapError::TimedOut(_)) => {
             massa_trace!(
                 "bootstrap.lib.bootstrap_from_server: No error sent at connection",
                 {}
             );
         }
-        Ok(Err(e)) => return Err(e),
-        Ok(Ok(BootstrapServerMessage::BootstrapError { error: err })) => {
+        Err(e) => return Err(e),
+        Ok(BootstrapServerMessage::BootstrapError { error: err }) => {
             return Err(BootstrapError::ReceivedError(err))
         }
-        Ok(Ok(msg)) => return Err(BootstrapError::UnexpectedServerMessage(msg)),
+        Ok(msg) => return Err(BootstrapError::UnexpectedServerMessage(msg)),
     };
 
     // handshake
     let send_time_uncompensated = MassaTime::now()?;
     // client.handshake() is not cancel-safe but we drop the whole client object if cancelled => it's OK
-    match tokio::time::timeout(cfg.write_timeout.into(), client.handshake(our_version)).await {
-        Err(_) => {
-            return Err(std::io::Error::new(
-                std::io::ErrorKind::TimedOut,
-                "bootstrap handshake timed out",
-            )
-            .into())
-        }
-        Ok(Err(e)) => return Err(e),
-        Ok(Ok(_)) => {}
-    }
+    client.handshake(our_version)?;
 
     // compute ping
     let ping = MassaTime::now()?.saturating_sub(send_time_uncompensated);
@@ -256,19 +224,12 @@ async fn bootstrap_from_server<D: Duplex>(
 
     // First, clock and version.
     // client.next() is not cancel-safe but we drop the whole client object if cancelled => it's OK
-    let server_time = match tokio::time::timeout(cfg.read_timeout.into(), client.next()).await {
-        Err(_) => {
-            return Err(std::io::Error::new(
-                std::io::ErrorKind::TimedOut,
-                "bootstrap clock sync read timed out",
-            )
-            .into())
-        }
-        Ok(Err(e)) => return Err(e),
-        Ok(Ok(BootstrapServerMessage::BootstrapTime {
+    let server_time = match client.next_timeout(Some(cfg.read_timeout.into())) {
+        Err(e) => return Err(e),
+        Ok(BootstrapServerMessage::BootstrapTime {
             server_time,
             version,
-        })) => {
+        }) => {
             if !our_version.is_compatible(&version) {
                 return Err(BootstrapError::IncompatibleVersionError(format!(
                     "remote is running incompatible version: {} (local node version: {})",
@@ -277,10 +238,10 @@ async fn bootstrap_from_server<D: Duplex>(
             }
             server_time
         }
-        Ok(Ok(BootstrapServerMessage::BootstrapError { error })) => {
+        Ok(BootstrapServerMessage::BootstrapError { error }) => {
             return Err(BootstrapError::ReceivedError(error))
         }
-        Ok(Ok(msg)) => return Err(BootstrapError::UnexpectedServerMessage(msg)),
+        Ok(msg) => return Err(BootstrapError::UnexpectedServerMessage(msg)),
     };
 
     // get the time of reception
@@ -320,8 +281,7 @@ async fn bootstrap_from_server<D: Duplex>(
                     client,
                     next_bootstrap_message,
                     global_bootstrap_state,
-                )
-                .await?;
+                )?;
             }
             BootstrapClientMessage::AskBootstrapPeers => {
                 let peers = match send_client_message(
@@ -330,9 +290,7 @@ async fn bootstrap_from_server<D: Duplex>(
                     write_timeout,
                     cfg.read_timeout.into(),
                     "ask bootstrap peers timed out",
-                )
-                .await?
-                {
+                )? {
                     BootstrapServerMessage::BootstrapPeers { peers } => peers,
                     BootstrapServerMessage::BootstrapError { error } => {
                         return Err(BootstrapError::ReceivedError(error))
@@ -349,9 +307,7 @@ async fn bootstrap_from_server<D: Duplex>(
                     write_timeout,
                     cfg.read_timeout.into(),
                     "ask bootstrap versioning store timed out",
-                )
-                .await?
-                {
+                )? {
                     BootstrapServerMessage::BootstrapMipStore { store: store_raw } => store_raw,
                     BootstrapServerMessage::BootstrapError { error } => {
                         return Err(BootstrapError::ReceivedError(error))
@@ -364,16 +320,7 @@ async fn bootstrap_from_server<D: Duplex>(
                 *next_bootstrap_message = BootstrapClientMessage::BootstrapSuccess;
             }
             BootstrapClientMessage::BootstrapSuccess => {
-                match tokio::time::timeout(write_timeout, client.send(next_bootstrap_message)).await
-                {
-                    Err(_) => Err(std::io::Error::new(
-                        std::io::ErrorKind::TimedOut,
-                        "send bootstrap success timed out",
-                    )
-                    .into()),
-                    Ok(Err(e)) => Err(e),
-                    Ok(Ok(_)) => Ok(()),
-                }?;
+                client.send_timeout(next_bootstrap_message, Some(write_timeout))?;
                 break;
             }
             BootstrapClientMessage::BootstrapError { error: _ } => {
@@ -385,23 +332,23 @@ async fn bootstrap_from_server<D: Duplex>(
     Ok(())
 }
 
-async fn send_client_message<D: Duplex>(
+fn send_client_message(
     message_to_send: &BootstrapClientMessage,
-    client: &mut BootstrapClientBinder<D>,
+    client: &mut BootstrapClientBinder,
     write_timeout: Duration,
     read_timeout: Duration,
     error: &str,
 ) -> Result<BootstrapServerMessage, BootstrapError> {
-    match tokio::time::timeout(write_timeout, client.send(message_to_send)).await {
-        Err(_) => Err(std::io::Error::new(std::io::ErrorKind::TimedOut, error).into()),
-        Ok(Err(e)) => Err(e),
-        Ok(Ok(_)) => Ok(()),
-    }?;
-    match tokio::time::timeout(read_timeout, client.next()).await {
-        Err(_) => Err(std::io::Error::new(std::io::ErrorKind::TimedOut, error).into()),
-        Ok(Err(e)) => Err(e),
-        Ok(Ok(msg)) => Ok(msg),
-    }
+    client.send_timeout(message_to_send, Some(write_timeout))?;
+
+    client
+        .next_timeout(Some(read_timeout))
+        .map_err(|e| match e {
+            BootstrapError::TimedOut(_) => {
+                BootstrapError::TimedOut(std::io::Error::new(std::io::ErrorKind::TimedOut, error))
+            }
+            _ => e,
+        })
 }
 
 fn connect_to_server(
@@ -409,17 +356,11 @@ fn connect_to_server(
     bootstrap_config: &BootstrapConfig,
     addr: &SocketAddr,
     pub_key: &PublicKey,
-) -> Result<BootstrapClientBinder<tokio::net::TcpStream>, Box<BootstrapError>> {
-    let socket = connector.connect(*addr).map_err(|e| Box::new(e.into()))?;
-    socket
-        .set_nonblocking(true)
-        .map_err(|e| Box::new(BootstrapError::IoError(e)))?;
+) -> Result<BootstrapClientBinder, BootstrapError> {
+    let socket = connector.connect_timeout(*addr, Some(bootstrap_config.connect_timeout))?;
+    socket.set_nonblocking(false)?;
     Ok(BootstrapClientBinder::new(
-        // From_std will panic unless called inside a tokio-runtime that has IO enabled.
-        // These conditions are currently met.
-        // If you find a panic here, start by confirming whether or not these required conditions have been broken.
-        tokio::net::TcpStream::from_std(socket)
-            .map_err(|e| Box::new(BootstrapError::IoError(e)))?,
+        socket,
         *pub_key,
         bootstrap_config.into(),
     ))
@@ -498,6 +439,64 @@ pub async fn get_state(
 
     // If the two conditions above are not verified, we need to bootstrap
     // we filter the bootstrap list to keep only the ip addresses we are compatible with
+    let filtered_bootstrap_list = get_bootstrap_list_iter(bootstrap_config)?;
+
+    let mut next_bootstrap_message: BootstrapClientMessage =
+        BootstrapClientMessage::AskBootstrapPart {
+            last_slot: None,
+            last_ledger_step: StreamingStep::Started,
+            last_pool_step: StreamingStep::Started,
+            last_cycle_step: StreamingStep::Started,
+            last_credits_step: StreamingStep::Started,
+            last_ops_step: StreamingStep::Started,
+            last_consensus_step: StreamingStep::Started,
+            send_last_start_period: true,
+        };
+    let mut global_bootstrap_state = GlobalBootstrapState::new(final_state);
+
+    loop {
+        for (addr, node_id) in filtered_bootstrap_list.iter() {
+            if let Some(end) = end_timestamp {
+                if MassaTime::now().expect("could not get now time") > end {
+                    panic!("This episode has come to an end, please get the latest testnet node version to continue");
+                }
+            }
+            info!("Start bootstrapping from {}", addr);
+            match connect_to_server(
+                &mut connector,
+                bootstrap_config,
+                addr,
+                &node_id.get_public_key(),
+            ) {
+                Ok(mut client) => {
+                    match bootstrap_from_server(bootstrap_config, &mut client, &mut next_bootstrap_message, &mut global_bootstrap_state,version)
+                      // cancellable
+                    {
+                        Err(BootstrapError::ReceivedError(error)) => warn!("Error received from bootstrap server: {}", error),
+                        Err(e) => {
+                            warn!("Error while bootstrapping: {}", e);
+                            // We allow unused result because we don't care if an error is thrown when sending the error message to the server we will close the socket anyway.
+                            let _ = client.send_timeout(&BootstrapClientMessage::BootstrapError { error: e.to_string() }, Some(bootstrap_config.write_error_timeout.into()));
+                        }
+                        Ok(()) => {
+                            return Ok(global_bootstrap_state)
+                        }
+                    }
+                }
+                Err(e) => {
+                    warn!("Error while connecting to bootstrap server: {}", e);
+                }
+            };
+
+            info!("Bootstrap from server {} failed. Your node will try to bootstrap from another server in {}.", addr, format_duration(bootstrap_config.retry_delay.to_duration()).to_string());
+            std::thread::sleep(bootstrap_config.retry_delay.into());
+        }
+    }
+}
+
+fn get_bootstrap_list_iter(
+    bootstrap_config: &BootstrapConfig,
+) -> Result<Vec<(SocketAddr, NodeId)>, BootstrapError> {
     let mut filtered_bootstrap_list = filter_bootstrap_list(
         bootstrap_config.bootstrap_list.clone(),
         bootstrap_config.bootstrap_protocol,
@@ -517,56 +516,5 @@ pub async fn get_state(
     // we remove the duplicated node ids (if a bootstrap server appears both with its IPv4 and IPv6 address)
     let mut unique_node_ids: HashSet<NodeId> = HashSet::new();
     filtered_bootstrap_list.retain(|e| unique_node_ids.insert(e.1));
-
-    let mut next_bootstrap_message: BootstrapClientMessage =
-        BootstrapClientMessage::AskBootstrapPart {
-            last_slot: None,
-            last_ledger_step: StreamingStep::Started,
-            last_pool_step: StreamingStep::Started,
-            last_cycle_step: StreamingStep::Started,
-            last_credits_step: StreamingStep::Started,
-            last_ops_step: StreamingStep::Started,
-            last_consensus_step: StreamingStep::Started,
-            send_last_start_period: true,
-        };
-    let mut global_bootstrap_state = GlobalBootstrapState::new(final_state.clone());
-
-    loop {
-        for (addr, node_id) in filtered_bootstrap_list.iter() {
-            if let Some(end) = end_timestamp {
-                if MassaTime::now().expect("could not get now time") > end {
-                    panic!("This episode has come to an end, please get the latest testnet node version to continue");
-                }
-            }
-            info!("Start bootstrapping from {}", addr);
-            match connect_to_server(
-                &mut connector,
-                bootstrap_config,
-                addr,
-                &node_id.get_public_key(),
-            ) {
-                Ok(mut client) => {
-                    match bootstrap_from_server(bootstrap_config, &mut client, &mut next_bootstrap_message, &mut global_bootstrap_state,version)
-                    .await  // cancellable
-                    {
-                        Err(BootstrapError::ReceivedError(error)) => warn!("Error received from bootstrap server: {}", error),
-                        Err(e) => {
-                            warn!("Error while bootstrapping: {}", e);
-                            // We allow unused result because we don't care if an error is thrown when sending the error message to the server we will close the socket anyway.
-                            let _ = tokio::time::timeout(bootstrap_config.write_error_timeout.into(), client.send(&BootstrapClientMessage::BootstrapError { error: e.to_string() })).await;
-                        }
-                        Ok(()) => {
-                            return Ok(global_bootstrap_state)
-                        }
-                    }
-                }
-                Err(e) => {
-                    warn!("Error while connecting to bootstrap server: {}", e);
-                }
-            };
-
-            info!("Bootstrap from server {} failed. Your node will try to bootstrap from another server in {}.", addr, format_duration(bootstrap_config.retry_delay.to_duration()).to_string());
-            sleep(bootstrap_config.retry_delay.into()).await;
-        }
-    }
+    Ok(filtered_bootstrap_list)
 }

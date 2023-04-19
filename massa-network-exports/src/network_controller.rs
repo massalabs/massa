@@ -14,6 +14,7 @@ use massa_models::{
     operation::{OperationPrefixIds, SecureShareOperation},
     stats::NetworkStats,
 };
+
 use std::{
     collections::{HashMap, VecDeque},
     net::IpAddr,
@@ -28,9 +29,10 @@ use tokio::{
 use tracing::{info, warn};
 
 /// Network command sender
-#[derive(Clone)]
+#[derive(Debug, Clone)]
 pub struct NetworkCommandSender(pub mpsc::Sender<NetworkCommand>);
 
+#[cfg_attr(any(test, feature = "testing"), mockall::automock)]
 impl NetworkCommandSender {
     /// ban node(s) by id(s)
     pub async fn node_ban_by_ids(&self, ids: Vec<NodeId>) -> Result<(), NetworkError> {
@@ -149,7 +151,7 @@ impl NetworkCommandSender {
         })
     }
 
-    /// get network stats
+    #[allow(missing_docs)]
     pub async fn get_network_stats(&self) -> Result<NetworkStats, NetworkError> {
         let (response_tx, response_rx) = oneshot::channel();
         self.0
@@ -266,6 +268,13 @@ impl NetworkCommandSender {
             NetworkError::ChannelError("could not send GetBootstrapPeers response upstream".into())
         })
     }
+
+    #[cfg(any(test, feature = "testing"))]
+    /// Used for mock-testing. Easier than using a clone derive
+    #[allow(clippy::should_implement_trait)]
+    pub fn clone(&self) -> Self {
+        Self(self.0.clone())
+    }
 }
 
 /// network event receiver
@@ -312,4 +321,14 @@ impl NetworkManager {
         info!("network manager stopped");
         Ok(())
     }
+}
+
+/// Used by the bootstrap server to run async tasks, allowing the bootstrap module to
+/// remove the tokio dependency.
+pub fn make_runtime() -> tokio::runtime::Runtime {
+    tokio::runtime::Builder::new_multi_thread()
+        .enable_all()
+        .thread_name("network-provided-runtime")
+        .build()
+        .expect("failed to create runtime")
 }
