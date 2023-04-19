@@ -8,7 +8,7 @@ use massa_protocol_exports_2::{ProtocolController, ProtocolError};
 use massa_storage::Storage;
 
 use crate::handlers::{
-    block_handler::commands::BlockHandlerCommand,
+    block_handler::commands_propagation::BlockHandlerCommand,
     endorsement_handler::commands_propagation::EndorsementHandlerCommand,
     operation_handler::commands_propagation::OperationHandlerCommand,
 };

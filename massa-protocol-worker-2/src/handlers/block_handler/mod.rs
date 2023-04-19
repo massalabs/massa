@@ -8,11 +8,14 @@ use massa_serialization::{DeserializeError, Deserializer};
 use peernet::{network_manager::SharedActiveConnections, peer_id::PeerId};
 
 use self::{
-    commands::BlockHandlerCommand,
+    commands_propagation::BlockHandlerCommand,
     messages::{BlockMessageDeserializer, BlockMessageDeserializerArgs},
 };
 
-pub mod commands;
+mod propagation;
+mod retrieval;
+mod commands_retrieval;
+mod commands_propagation;
 mod messages;
 
 pub(crate) use messages::{BlockMessage, BlockMessageSerializer};

@@ -54,6 +54,7 @@ pub fn start_connectivity_thread(
 
     let handle = std::thread::spawn({
         let sender_endorsements_ext = sender_endorsements_ext.clone();
+        let sender_blocks_ext = sender_blocks_ext.clone();
         let sender_operations_ext = sender_operations_ext.clone();
         move || {
             let mut peer_management_handler = PeerManagementHandler::new(initial_peers);
