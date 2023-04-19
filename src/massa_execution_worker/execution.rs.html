@@ -1529,6 +1529,11 @@
 <a href="#1529" id="1529">1529</a>
 <a href="#1530" id="1530">1530</a>
 <a href="#1531" id="1531">1531</a>
+<a href="#1532" id="1532">1532</a>
+<a href="#1533" id="1533">1533</a>
+<a href="#1534" id="1534">1534</a>
+<a href="#1535" id="1535">1535</a>
+<a href="#1536" id="1536">1536</a>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="doccomment">//! This module deals with executing final and active slots, as well as read-only requests.
@@ -1927,7 +1932,12 @@
         <span class="prelude-val">Ok</span>(())
     }
 
-    <span class="kw">fn </span>process_denunciation(
+    <span class="doccomment">/// Process a denunciation in the context of a block.
+    ///
+    /// # Arguments
+    /// * `denunciation`: denunciation to process
+    /// * `block_credits`: mutable reference towards the total block reward/fee credits
+    </span><span class="kw">fn </span>process_denunciation(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         denunciation: <span class="kw-2">&amp;</span>Denunciation,
         block_credits: <span class="kw-2">&amp;mut </span>Amount,

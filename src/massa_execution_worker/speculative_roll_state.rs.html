@@ -581,8 +581,6 @@
 <a href="#581" id="581">581</a>
 <a href="#582" id="582">582</a>
 <a href="#583" id="583">583</a>
-<a href="#584" id="584">584</a>
-<a href="#585" id="585">585</a>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="kw">use </span><span class="kw">crate</span>::active_history::ActiveHistory;
@@ -749,17 +747,16 @@
         </span><span class="kw">let </span>owned_count = <span class="self">self</span>.get_rolls(addr);
         <span class="kw">let </span>roll_to_slash = min(roll_count, owned_count);
 
-        <span class="comment">// remove the rolls
-        </span><span class="kw">let </span>current_rolls = <span class="self">self
-            </span>.added_changes
-            .roll_changes
-            .get_mut(addr)
-            .ok_or_else(|| {
-                ExecutionError::RuntimeError(<span class="macro">format!</span>(<span class="string">&quot;Cannot get roll changes for addr: {}&quot;</span>, addr))
-            })<span class="question-mark">?</span>;
-
-        <span class="kw-2">*</span>current_rolls = current_rolls.saturating_sub(roll_to_slash);
-        <span class="prelude-val">Ok</span>(roll_to_slash)
+        <span class="kw">match </span><span class="self">self</span>.added_changes.roll_changes.get_mut(addr) {
+            <span class="prelude-val">None </span>=&gt; {
+                <span class="comment">// Address does not exist anymore, slash nothing
+                </span><span class="prelude-val">Ok</span>(<span class="number">0</span>)
+            }
+            <span class="prelude-val">Some</span>(current_rolls) =&gt; {
+                <span class="kw-2">*</span>current_rolls = current_rolls.saturating_sub(roll_to_slash);
+                <span class="prelude-val">Ok</span>(roll_to_slash)
+            }
+        }
     }
 
     <span class="doccomment">/// Try to slash `amount` credits from the given address. If not enough credits, slash
@@ -773,22 +770,21 @@
         slot: <span class="kw-2">&amp;</span>Slot,
         addr: <span class="kw-2">&amp;</span>Address,
         amount: <span class="kw-2">&amp;</span>Amount,
-    ) -&gt; <span class="prelude-ty">Result</span>&lt;Amount, ExecutionError&gt; {
+    ) -&gt; Amount {
         <span class="kw">let </span>credits = <span class="self">self</span>.get_address_deferred_credits(addr, <span class="kw-2">*</span>slot);
+        <span class="kw">let </span><span class="kw-2">mut </span>remaining_to_slash = <span class="kw-2">*</span>amount;
 
-        <span class="comment">// Return an error here - this should never happen
-        </span><span class="kw">let </span>(last_credit_slot, last_credit_amount) = credits.last_key_value().ok_or(
-            ExecutionError::SlashError(<span class="string">&quot;No deferred credits to slash&quot;</span>.to_string()),
-        )<span class="question-mark">?</span>;
+        <span class="kw">for </span>(slot, amount) <span class="kw">in </span>credits.iter() {
+            <span class="kw">let </span>to_slash = min(<span class="kw-2">*</span>amount, remaining_to_slash);
+            <span class="kw">let </span>new_deferred_credits = amount.saturating_sub(to_slash);
+            remaining_to_slash = remaining_to_slash.saturating_sub(to_slash);
 
-        <span class="kw">let </span>deferred_credits_slashed = min(<span class="kw-2">*</span>amount, <span class="kw-2">*</span>last_credit_amount);
-        <span class="kw">let </span>new_deferred_credits = last_credit_amount.saturating_sub(<span class="kw-2">*</span>amount);
+            <span class="self">self</span>.added_changes
+                .deferred_credits
+                .insert(<span class="kw-2">*</span>slot, <span class="kw-2">*</span>addr, new_deferred_credits);
+        }
 
-        <span class="self">self</span>.added_changes
-            .deferred_credits
-            .insert(<span class="kw-2">*</span>last_credit_slot, <span class="kw-2">*</span>addr, new_deferred_credits);
-
-        <span class="prelude-val">Ok</span>(deferred_credits_slashed)
+        remaining_to_slash
     }
 
     <span class="doccomment">/// Update production statistics of an address.
