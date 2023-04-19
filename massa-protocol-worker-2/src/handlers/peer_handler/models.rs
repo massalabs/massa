@@ -42,6 +42,7 @@ pub enum PeerState {
 
 pub enum PeerManagementCmd {
     Ban(PeerId),
+    Stop,
 }
 
 pub struct PeerManagementChannel {

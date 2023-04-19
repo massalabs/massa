@@ -1,5 +1,6 @@
 use std::{collections::HashMap, net::SocketAddr, thread::JoinHandle, time::Duration};
 
+use crossbeam::channel::Sender;
 use massa_protocol_exports_2::ProtocolConfig;
 use massa_serialization::{DeserializeError, Deserializer};
 use peernet::{
@@ -135,33 +136,36 @@ impl HandshakeHandler for TesterHandshake {
     }
 }
 
-pub struct PeersTester {
-    pub testers: Vec<Tester>,
-}
-
-impl PeersTester {
-    pub fn new(config: &ProtocolConfig, peer_db: SharedPeerDB) -> Self {
-        let mut testers = Vec::new();
-
-        dbg!(config.thread_tester_count);
-        for _ in 0..config.thread_tester_count {
-            testers.push(Tester::new2(peer_db.clone()));
-        }
-
-        Self { testers }
-    }
-}
-
 pub struct Tester {
     pub handler: Option<JoinHandle<()>>,
-    pub sender: crossbeam::channel::Sender<()>,
 }
 
 impl Tester {
-    pub fn new2(peer_db: SharedPeerDB) -> Self {
-        tracing::log::debug!("running new tester");
-        // create channel for launching test
+    pub fn run(
+        config: &ProtocolConfig,
+        peer_db: SharedPeerDB,
+    ) -> (
+        Sender<(PeerId, HashMap<SocketAddr, TransportType>)>,
+        Vec<Tester>,
+    ) {
+        let mut testers = Vec::new();
+
+        // create shared channel for launching test
         let (test_sender, test_receiver) = crossbeam::channel::unbounded();
+
+        dbg!(config.thread_tester_count);
+        for _ in 0..config.thread_tester_count {
+            testers.push(Tester::new(peer_db.clone(), test_receiver.clone()));
+        }
+
+        (test_sender, testers)
+    }
+
+    pub fn new(
+        peer_db: SharedPeerDB,
+        receiver: crossbeam::channel::Receiver<(PeerId, HashMap<SocketAddr, TransportType>)>,
+    ) -> Self {
+        tracing::log::debug!("running new tester");
 
         let handle = std::thread::spawn(move || {
             let db = peer_db.clone();
@@ -176,10 +180,11 @@ impl Tester {
 
             loop {
                 crossbeam::select! {
-                    recv(test_receiver) -> res => {
+                    recv(receiver) -> res => {
                         match res {
                             Ok(_listener) => {
                                 // receive new listener to test
+                                dbg!("New listener to test");
                             },
                             Err(_e) => break,
                         }
@@ -210,34 +215,6 @@ impl Tester {
 
         Self {
             handler: Some(handle),
-            sender: test_sender,
-        }
-    }
-
-    pub fn new(peer_db: SharedPeerDB, listener: (SocketAddr, TransportType)) -> Self {
-        // create channel for launching test
-        let (test_sender, test_receiver) = crossbeam::channel::unbounded();
-
-        let handle = std::thread::spawn(move || {
-            let mut config = PeerNetConfiguration::default(
-                TesterHandshake::new(peer_db),
-                TesterMessagesHandler {},
-            );
-            config.fallback_function = Some(&empty_fallback);
-            config.max_out_connections = 1;
-            let mut network_manager = PeerNetManager::new(config);
-            network_manager
-                .try_connect(
-                    listener.0,
-                    Duration::from_millis(200),
-                    &OutConnectionConfig::Tcp(Box::new(TcpOutConnectionConfig {})),
-                )
-                .unwrap();
-            std::thread::sleep(Duration::from_millis(10));
-        });
-        Self {
-            handler: Some(handle),
-            sender: test_sender,
         }
     }
 }
