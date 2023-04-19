@@ -61,20 +61,19 @@ fn basic() {
     let storage2 = Storage::create_root();
 
     // Setup the protocols
-    let (_sender_manager1, mut manager1) =
+    let (mut sender_manager1, mut manager1) =
         start_protocol_controller(config1, consensus_controller1, pool_controller1, storage1)
             .expect("Failed to start protocol 1");
-    let (_sender_manager2, mut manager2) =
+    let (mut sender_manager2, mut manager2) =
         start_protocol_controller(config2, consensus_controller2, pool_controller2, storage2)
             .expect("Failed to start protocol 2");
 
     std::thread::sleep(Duration::from_secs(3));
     // Stop the protocols
+    sender_manager1.stop();
     manager1.stop();
+    sender_manager2.stop();
     manager2.stop();
-    //TODO: Fix join are not working well
-    // manager1.join().expect("Failed to join manager 1");
-    // manager2.join().expect("Failed to join manager 2");
 }
 
 #[test]
@@ -111,10 +110,10 @@ fn test_endorsements() {
     let storage2 = Storage::create_root();
 
     // Setup the protocols
-    let (_sender_manager1, mut manager1) =
+    let (mut sender_manager1, mut manager1) =
         start_protocol_controller(config1, consensus_controller1, pool_controller1, storage1)
             .expect("Failed to start protocol 1");
-    let (_sender_manager2, mut manager2) =
+    let (mut sender_manager2, mut manager2) =
         start_protocol_controller(config2, consensus_controller2, pool_controller2, storage2)
             .expect("Failed to start protocol 2");
 
@@ -122,7 +121,9 @@ fn test_endorsements() {
     //TODO: Test with endorsements
     std::thread::sleep(Duration::from_secs(10));
     // Stop the protocols
+    sender_manager1.stop();
     manager1.stop();
+    sender_manager2.stop();
     manager2.stop();
     //TODO: Fix join are not working well
     // manager1.join().expect("Failed to join manager 1");

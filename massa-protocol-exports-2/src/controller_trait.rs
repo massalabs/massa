@@ -7,6 +7,10 @@ use massa_models::{block_header::SecuredHeader, block_id::BlockId};
 use massa_storage::Storage;
 
 pub trait ProtocolController: Send + Sync {
+    /// Perform all operations needed to stop the ProtocolController
+    /// without dropping it completely yet.
+    fn stop(&mut self);
+
     /// Sends the order to propagate the header of a block
     ///
     /// # Arguments

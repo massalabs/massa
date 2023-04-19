@@ -156,7 +156,8 @@ impl PeerManagementHandler {
         }
     }
 
-    pub fn stop(&mut self) {
+    pub fn stop(mut self) {
+        drop(self.sender);
         if let Some(handle) = self.thread_join.take() {
             handle.join().expect("Failed to join peer manager thread");
         }
