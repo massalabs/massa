@@ -481,7 +481,7 @@ async fn launch(
     };
 
     let pool_channels = PoolChannels {
-        endorsement_sender: broadcast::channel(pool_config.broadcast_operations_capacity).0,
+        endorsement_sender: broadcast::channel(pool_config.broadcast_endorsements_capacity).0,
         operation_sender: broadcast::channel(pool_config.broadcast_operations_capacity).0,
         selector: selector_controller.clone(),
     };

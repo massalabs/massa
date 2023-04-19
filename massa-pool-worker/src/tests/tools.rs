@@ -96,6 +96,7 @@ where
     ),
 {
     let storage: Storage = Storage::create_root();
+    let endorsement_sender = broadcast::channel(2000).0;
     let operation_sender = broadcast::channel(5000).0;
     let (execution_controller, execution_receiver) = MockExecutionController::new_with_receiver();
     let (selector_controller, selector_receiver) = MockSelectorController::new_with_receiver();
@@ -104,6 +105,7 @@ where
         &storage,
         execution_controller,
         PoolChannels {
+            endorsement_sender,
             operation_sender,
             selector: selector_controller,
         },
@@ -122,6 +124,7 @@ pub fn operation_pool_test<F>(cfg: PoolConfig, test: F)
 where
     F: FnOnce(OperationPool, Storage),
 {
+    let endorsement_sender = broadcast::channel(2000).0;
     let operation_sender = broadcast::channel(5000).0;
     let (execution_controller, _) = MockExecutionController::new_with_receiver();
     let (selector_controller, _selector_receiver) = MockSelectorController::new_with_receiver();
@@ -132,6 +135,7 @@ where
             &storage.clone_without_refs(),
             execution_controller,
             PoolChannels {
+                endorsement_sender,
                 operation_sender,
                 selector: selector_controller,
             },
