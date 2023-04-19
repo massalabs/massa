@@ -174,7 +174,7 @@ fn test_bootstrap_server() {
     let mut mocked1 = NetworkCommandSender::new();
     let mut mocked2 = NetworkCommandSender::new();
     mocked2
-        .expect_get_bootstrap_peers()
+        .expect_sync_get_bootstrap_peers()
         .times(1)
         .returning(|| Ok(get_peers()));
 
@@ -260,17 +260,16 @@ fn test_bootstrap_server() {
         .unwrap();
 
     // launch the get_state process
-    let bootstrap_res = massa_network_exports::make_runtime()
-        .block_on(get_state(
-            bootstrap_config,
-            final_state_client_clone,
-            mock_remote_connector,
-            Version::from_str("TEST.1.10").unwrap(),
-            MassaTime::now().unwrap().saturating_sub(1000.into()),
-            None,
-            None,
-        ))
-        .unwrap();
+    let bootstrap_res = get_state(
+        bootstrap_config,
+        final_state_client_clone,
+        mock_remote_connector,
+        Version::from_str("TEST.1.10").unwrap(),
+        MassaTime::now().unwrap().saturating_sub(1000.into()),
+        None,
+        None,
+    )
+    .unwrap();
 
     // apply the changes to the server state before matching with the client
     {

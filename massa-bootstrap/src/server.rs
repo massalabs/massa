@@ -698,7 +698,6 @@ fn manage_bootstrap(
 ) -> Result<(), BootstrapError> {
     massa_trace!("bootstrap.lib.manage_bootstrap", {});
     let read_error_timeout: Duration = bootstrap_config.read_error_timeout.into();
-    let rt_hack = massa_network_exports::make_runtime();
 
     server.handshake_timeout(version, Some(bootstrap_config.read_timeout.into()))?;
 
@@ -733,8 +732,7 @@ fn manage_bootstrap(
                     server.send_msg(
                         write_timeout,
                         BootstrapServerMessage::BootstrapPeers {
-                            peers: rt_hack
-                                .block_on(network_command_sender.get_bootstrap_peers())?,
+                            peers: (network_command_sender.sync_get_bootstrap_peers())?,
                         },
                     )?;
                 }

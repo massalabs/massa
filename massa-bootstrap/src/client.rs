@@ -394,7 +394,7 @@ fn filter_bootstrap_list(
 
 /// Gets the state from a bootstrap server
 /// needs to be CANCELLABLE
-pub async fn get_state(
+pub fn get_state(
     bootstrap_config: &BootstrapConfig,
     final_state: Arc<RwLock<FinalState>>,
     mut connector: impl BSConnector,
