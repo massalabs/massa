@@ -1804,7 +1804,9 @@ mod tests {
         // get initial roll count
         let roll_count_initial = sample_state.read().pos_state.get_rolls_for(&address);
         // sell all rolls so we can check if slash will occur on deferred credits
-        let roll_to_sell = roll_count_initial;
+        let roll_to_sell_1 = 1;
+        let roll_to_sell_2 = roll_count_initial - 1;
+        let roll_to_sell = roll_to_sell_1 + roll_to_sell_2;
 
         //
         let amount_def = exec_cfg
@@ -1818,7 +1820,21 @@ mod tests {
                 fee: Amount::zero(),
                 expire_period: 8,
                 op: OperationType::RollSell {
-                    roll_count: roll_to_sell,
+                    roll_count: roll_to_sell_1,
+                },
+            },
+            OperationSerializer::new(),
+            &keypair,
+        )
+        .unwrap();
+
+        // create operation 2
+        let operation2 = Operation::new_verifiable(
+            Operation {
+                fee: Amount::zero(),
+                expire_period: 8,
+                op: OperationType::RollSell {
+                    roll_count: roll_to_sell_2,
                 },
             },
             OperationSerializer::new(),
@@ -1832,10 +1848,10 @@ mod tests {
         let denunciation = Denunciation::try_from((&s_endorsement_1, &s_endorsement_2)).unwrap();
 
         // create the block containing the roll buy operation
-        storage.store_operations(vec![operation1.clone()]);
+        storage.store_operations(vec![operation1.clone(), operation2.clone()]);
         let block = create_block(
             KeyPair::generate(),
-            vec![operation1],
+            vec![operation1, operation2],
             vec![denunciation],
             Slot::new(3, 0),
         )

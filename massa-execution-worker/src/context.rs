@@ -753,21 +753,18 @@ impl ExecutionContext {
         if amount_remaining_to_slash > Amount::zero() {
             // There is still an amount to slash for this denunciation so we need to slash
             // in deferred credits
-            let slashed_coins_in_deferred_credits =
-                self.speculative_roll_state.try_slash_deferred_credits(
-                    &self.slot,
-                    denounced_addr,
-                    &amount_remaining_to_slash,
-                )?;
+            let slashed_coins_in_deferred_credits = self
+                .speculative_roll_state
+                .try_slash_deferred_credits(&self.slot, denounced_addr, &amount_remaining_to_slash);
 
             slashed_coins = slashed_coins.saturating_add(slashed_coins_in_deferred_credits);
             let amount_remaining_to_slash_2 =
                 slashed_coins.saturating_sub(slashed_coins_in_deferred_credits);
             if amount_remaining_to_slash_2 > Amount::zero() {
+                // Use saturating_mul_u64 to avoid an error (for a warn!)
                 warn!("Slashed {} coins (by selling rolls) and {} coins from deferred credits but cumulative amount is lower than expected: {} coins", 
                     slashed_coins, slashed_coins_in_deferred_credits,
-                    self.config.roll_price.checked_mul_u64(roll_count)
-                        .ok_or_else(|| { ExecutionError::RuntimeError(format!("Cannot multiply roll price by {}", roll_count))})?
+                    self.config.roll_price.saturating_mul_u64(roll_count)
                 );
             }
         }

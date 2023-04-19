@@ -164,17 +164,16 @@ impl SpeculativeRollState {
         let owned_count = self.get_rolls(addr);
         let roll_to_slash = min(roll_count, owned_count);
 
-        // remove the rolls
-        let current_rolls = self
-            .added_changes
-            .roll_changes
-            .get_mut(addr)
-            .ok_or_else(|| {
-                ExecutionError::RuntimeError(format!("Cannot get roll changes for addr: {}", addr))
-            })?;
-
-        *current_rolls = current_rolls.saturating_sub(roll_to_slash);
-        Ok(roll_to_slash)
+        match self.added_changes.roll_changes.get_mut(addr) {
+            None => {
+                // Address does not exist anymore, slash nothing
+                Ok(0)
+            }
+            Some(current_rolls) => {
+                *current_rolls = current_rolls.saturating_sub(roll_to_slash);
+                Ok(roll_to_slash)
+            }
+        }
     }
 
     /// Try to slash `amount` credits from the given address. If not enough credits, slash
@@ -188,22 +187,21 @@ impl SpeculativeRollState {
         slot: &Slot,
         addr: &Address,
         amount: &Amount,
-    ) -> Result<Amount, ExecutionError> {
+    ) -> Amount {
         let credits = self.get_address_deferred_credits(addr, *slot);
+        let mut remaining_to_slash = *amount;
 
-        // Return an error here - this should never happen
-        let (last_credit_slot, last_credit_amount) = credits.last_key_value().ok_or(
-            ExecutionError::SlashError("No deferred credits to slash".to_string()),
-        )?;
+        for (slot, amount) in credits.iter() {
+            let to_slash = min(*amount, remaining_to_slash);
+            let new_deferred_credits = amount.saturating_sub(to_slash);
+            remaining_to_slash = remaining_to_slash.saturating_sub(to_slash);
 
-        let deferred_credits_slashed = min(*amount, *last_credit_amount);
-        let new_deferred_credits = last_credit_amount.saturating_sub(*amount);
+            self.added_changes
+                .deferred_credits
+                .insert(*slot, *addr, new_deferred_credits);
+        }
 
-        self.added_changes
-            .deferred_credits
-            .insert(*last_credit_slot, *addr, new_deferred_credits);
-
-        Ok(deferred_credits_slashed)
+        remaining_to_slash
     }
 
     /// Update production statistics of an address.

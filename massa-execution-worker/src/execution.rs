@@ -396,6 +396,11 @@ impl ExecutionState {
         Ok(())
     }
 
+    /// Process a denunciation in the context of a block.
+    ///
+    /// # Arguments
+    /// * `denunciation`: denunciation to process
+    /// * `block_credits`: mutable reference towards the total block reward/fee credits
     fn process_denunciation(
         &self,
         denunciation: &Denunciation,
