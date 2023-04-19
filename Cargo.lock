@@ -2459,7 +2459,7 @@ dependencies = [
 [[package]]
 name = "massa-sc-runtime"
 version = "0.10.0"
-source = "git+https://github.com/massalabs/massa-sc-runtime?branch=testnet_21#8a5bf796f5b269882cb8510de4dbbb4335ad313d"
+source = "git+https://github.com/massalabs/massa-sc-runtime?branch=testnet_22#9b02ec78344f90290535cab8f5f94d739583ad19"
 dependencies = [
  "anyhow",
  "as-ffi-bindings",
@@ -2850,7 +2850,7 @@ dependencies = [
 [[package]]
 name = "massa_hash"
 version = "0.1.0"
-source = "git+https://github.com/massalabs/massa.git#2e351ab46db270634fe81137dbc78d1ea9e10228"
+source = "git+https://github.com/massalabs/massa.git#6a769b344e29dfda652fe2c975937119cca786f6"
 dependencies = [
  "blake3",
  "bs58",
@@ -3190,7 +3190,7 @@ dependencies = [
 [[package]]
 name = "massa_serialization"
 version = "0.1.0"
-source = "git+https://github.com/massalabs/massa.git#2e351ab46db270634fe81137dbc78d1ea9e10228"
+source = "git+https://github.com/massalabs/massa.git#6a769b344e29dfda652fe2c975937119cca786f6"
 dependencies = [
  "displaydoc",
  "nom",
@@ -3218,7 +3218,7 @@ dependencies = [
 [[package]]
 name = "massa_signature"
 version = "0.1.0"
-source = "git+https://github.com/massalabs/massa.git#2e351ab46db270634fe81137dbc78d1ea9e10228"
+source = "git+https://github.com/massalabs/massa.git#6a769b344e29dfda652fe2c975937119cca786f6"
 dependencies = [
  "bs58",
  "displaydoc",
@@ -3736,7 +3736,7 @@ checksum = "19b17cddbe7ec3f8bc800887bab5e717348c95ea2ca0b1bf0837fb964dc67099"
 [[package]]
 name = "peernet"
 version = "0.1.0"
-source = "git+https://github.com/massalabs/PeerNet#34404c0fae38fa01de126084e9c1cebd1ce5c7c4"
+source = "git+https://github.com/massalabs/PeerNet#74a0e6a6bc3303ee497f18400dfc70f34703d3fc"
 dependencies = [
  "crossbeam",
  "enum_delegate",

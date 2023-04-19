@@ -194,6 +194,18 @@ impl HandshakeHandler for MassaHandshake {
         listeners: &HashMap<SocketAddr, TransportType>,
         messages_handler: MassaMessagesHandler,
     ) -> PeerNetResult<PeerId> {
+        let mut bytes = PeerId::from_public_key(keypair.get_public_key()).to_bytes();
+        //TODO: Add version in announce
+        let listeners_announcement = Announcement::new(listeners.clone(), keypair).unwrap();
+        self.announcement_serializer
+            .serialize(&listeners_announcement, &mut bytes)
+            .map_err(|err| {
+                PeerNetError::HandshakeError.error(
+                    "Massa Handshake",
+                    Some(format!("Failed to serialize announcement: {}", err)),
+                )
+            })?;
+        endpoint.send(&bytes)?;
         let received = endpoint.receive()?;
         if received.is_empty() {
             return Err(PeerNetError::HandshakeError.error(
@@ -214,19 +226,6 @@ impl HandshakeHandler for MassaHandshake {
                         info.state = PeerState::InHandshake;
                     });
             }
-
-            let mut bytes = PeerId::from_public_key(keypair.get_public_key()).to_bytes();
-            //TODO: Add version in announce
-            let listeners_announcement = Announcement::new(listeners.clone(), keypair).unwrap();
-            self.announcement_serializer
-                .serialize(&listeners_announcement, &mut bytes)
-                .map_err(|err| {
-                    PeerNetError::HandshakeError.error(
-                        "Massa Handshake",
-                        Some(format!("Failed to serialize announcement: {}", err)),
-                    )
-                })?;
-            endpoint.send(&bytes)?;
 
             //TODO: We use this to verify the signature before sending it to the handler.
             //This will be done also in the handler but as we are in the handshake we want to do it to invalid the handshake in case it fails.

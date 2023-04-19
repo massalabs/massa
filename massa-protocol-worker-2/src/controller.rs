@@ -52,14 +52,18 @@ impl ProtocolController for ProtocolControllerImpl {
     /// * `block_id`: ID of the block
     /// * `storage`: Storage instance containing references to the block and all its dependencies
     fn integrated_block(&self, block_id: BlockId, storage: Storage) -> Result<(), ProtocolError> {
-        self.sender_block_handler.as_ref().unwrap()
+        self.sender_block_handler
+            .as_ref()
+            .unwrap()
             .send(BlockHandlerCommand::IntegratedBlock { block_id, storage })
             .map_err(|_| ProtocolError::ChannelError("integrated_block command send error".into()))
     }
 
     /// Notify to protocol an attack attempt.
     fn notify_block_attack(&self, block_id: BlockId) -> Result<(), ProtocolError> {
-        self.sender_block_handler.as_ref().unwrap()
+        self.sender_block_handler
+            .as_ref()
+            .unwrap()
             .send(BlockHandlerCommand::AttackBlockDetected(block_id))
             .map_err(|_| {
                 ProtocolError::ChannelError("notify_block_attack command send error".into())
@@ -87,7 +91,9 @@ impl ProtocolController for ProtocolControllerImpl {
     fn propagate_operations(&self, operations: Storage) -> Result<(), ProtocolError> {
         //TODO: Change when send will be in propagation
         let operations = operations.get_op_refs().clone();
-        self.sender_operation_handler.as_ref().unwrap()
+        self.sender_operation_handler
+            .as_ref()
+            .unwrap()
             .send(OperationHandlerCommand::AnnounceOperations(operations))
             .map_err(|_| {
                 ProtocolError::ChannelError("propagate_operations command send error".into())
@@ -96,7 +102,9 @@ impl ProtocolController for ProtocolControllerImpl {
 
     /// propagate endorsements to connected node
     fn propagate_endorsements(&self, endorsements: Storage) -> Result<(), ProtocolError> {
-        self.sender_endorsement_handler.as_ref().unwrap()
+        self.sender_endorsement_handler
+            .as_ref()
+            .unwrap()
             .send(EndorsementHandlerCommand::PropagateEndorsements(
                 endorsements,
             ))

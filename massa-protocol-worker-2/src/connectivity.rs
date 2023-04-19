@@ -161,13 +161,17 @@ pub fn start_connectivity_thread(
                             let best_peers = peer_db_read.get_best_peers(nb_connection_to_try);
                             for peer_id in best_peers {
                                 let peer_info = peer_db_read.peers.get(&peer_id).unwrap();
+                                //TODO: Adapt for multiple listeners
+                                let (addr, _) = peer_info.last_announce.listeners.iter().next().unwrap();
                                 if peer_info.last_announce.listeners.is_empty() {
                                     continue;
                                 }
                                 {
                                     {
                                         let active_connections = manager.active_connections.read();
-                                        if active_connections.connections.contains_key(&peer_id) {
+                                        println!("Connections queue = {:#?}", active_connections.connection_queue);
+                                        println!("Connections = {:#?}", active_connections.connections);
+                                        if active_connections.check_addr_accepted(&addr) {
                                             continue;
                                         }
                                     }

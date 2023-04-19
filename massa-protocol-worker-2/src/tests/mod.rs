@@ -68,7 +68,7 @@ fn basic() {
         start_protocol_controller(config2, consensus_controller2, pool_controller2, storage2)
             .expect("Failed to start protocol 2");
 
-    std::thread::sleep(Duration::from_secs(3));
+    std::thread::sleep(Duration::from_secs(5));
     // Stop the protocols
     sender_manager1.stop();
     manager1.stop();
