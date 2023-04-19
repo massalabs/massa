@@ -92,6 +92,8 @@ pub struct NetworkConfig {
     pub node_command_channel_size: usize,
     /// Node event channel size
     pub node_event_channel_size: usize,
+    /// thread tester count
+    pub thread_tester_count: u8,
 }
 
 /// Connection configuration for a peer type
@@ -185,6 +187,7 @@ pub mod tests {
                 event_channel_size: NETWORK_EVENT_CHANNEL_SIZE,
                 node_command_channel_size: NETWORK_NODE_COMMAND_CHANNEL_SIZE,
                 node_event_channel_size: NETWORK_NODE_EVENT_CHANNEL_SIZE,
+                thread_tester_count: 5,
             }
         }
     }
@@ -252,6 +255,7 @@ pub mod tests {
                 event_channel_size: NETWORK_EVENT_CHANNEL_SIZE,
                 node_command_channel_size: NETWORK_NODE_COMMAND_CHANNEL_SIZE,
                 node_event_channel_size: NETWORK_NODE_EVENT_CHANNEL_SIZE,
+                thread_tester_count: 5,
             }
         }
     }

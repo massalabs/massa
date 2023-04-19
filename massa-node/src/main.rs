@@ -304,6 +304,7 @@ async fn launch(
         event_channel_size: NETWORK_EVENT_CHANNEL_SIZE,
         node_command_channel_size: NETWORK_NODE_COMMAND_CHANNEL_SIZE,
         node_event_channel_size: NETWORK_NODE_EVENT_CHANNEL_SIZE,
+        thread_tester_count: SETTINGS.network.thread_tester_count,
     };
 
     // launch network controller

@@ -75,6 +75,7 @@ pub struct NetworkSettings {
     pub max_operations_per_message: u32,
     pub max_bytes_read: f64,
     pub max_bytes_write: f64,
+    pub thread_tester_count: u8,
 }
 
 /// Bootstrap configuration.
