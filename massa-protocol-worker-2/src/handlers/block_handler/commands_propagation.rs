@@ -12,5 +12,5 @@ pub enum BlockHandlerCommand {
         storage: Storage,
     },
     /// A block, or it's header, amounted to an attempted attack.
-    AttackBlockDetected(BlockId)
+    AttackBlockDetected(BlockId),
 }

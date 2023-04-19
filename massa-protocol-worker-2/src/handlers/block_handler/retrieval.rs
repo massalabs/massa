@@ -1,12 +1,17 @@
 use std::thread::JoinHandle;
 
-use crossbeam::{channel::{Receiver, Sender}, select};
+use crossbeam::{
+    channel::{Receiver, Sender},
+    select,
+};
 use massa_protocol_exports_2::ProtocolConfig;
 use massa_storage::Storage;
 
 use crate::handlers::peer_handler::models::PeerMessageTuple;
 
-use super::{commands_propagation::BlockHandlerCommand, commands_retrieval::BlockHandlerRetrievalCommand};
+use super::{
+    commands_propagation::BlockHandlerCommand, commands_retrieval::BlockHandlerRetrievalCommand,
+};
 
 pub struct RetrievalThread {
     receiver_network: Receiver<PeerMessageTuple>,
@@ -21,9 +26,24 @@ impl RetrievalThread {
         loop {
             select! {
                 recv(self.receiver_network) -> msg => {
-                    
+                    match msg {
+                        Ok((peer_id, message_id, message)) => {
+                        },
+                        Err(err) => {
+                            println!("Error: {:?}", err);
+                            return;
+                        }
+                    }
                 },
                 recv(self.receiver) -> msg => {
+                    match msg {
+                        Ok(command) => {
+                        },
+                        Err(err) => {
+                            println!("Error: {:?}", err);
+                            return;
+                        }
+                    }
                 }
             }
         }

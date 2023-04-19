@@ -18,7 +18,12 @@ pub struct PropagationThread {
 impl PropagationThread {
     fn run(&mut self) {
         loop {
-            //TODO:
+            match self.receiver.recv() {
+                Ok(command) => {}
+                Err(err) => {
+                    println!("Error: {:?}", err)
+                }
+            }
         }
     }
 }
@@ -30,8 +35,8 @@ pub fn start_propagation_thread(
 ) -> JoinHandle<()> {
     //TODO: Here and everywhere add id to threads
     std::thread::spawn(move || {
-        let block_serializer = MessagesSerializer::new()
-            .with_block_message_serializer(BlockMessageSerializer::new());
+        let block_serializer =
+            MessagesSerializer::new().with_block_message_serializer(BlockMessageSerializer::new());
         let mut propagation_thread = PropagationThread {
             receiver,
             config,

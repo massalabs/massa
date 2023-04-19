@@ -12,11 +12,12 @@ use self::{
     messages::{BlockMessageDeserializer, BlockMessageDeserializerArgs},
 };
 
+mod cache;
+pub mod commands_propagation;
+pub mod commands_retrieval;
+mod messages;
 mod propagation;
 mod retrieval;
-mod commands_retrieval;
-mod commands_propagation;
-mod messages;
 
 pub(crate) use messages::{BlockMessage, BlockMessageSerializer};
 

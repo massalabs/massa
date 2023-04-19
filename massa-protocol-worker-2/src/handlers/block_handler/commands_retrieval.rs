@@ -1,4 +1,8 @@
-use massa_models::{prehash::{PreHashMap, PreHashSet}, block_header::SecuredHeader, block_id::BlockId};
+use massa_models::{
+    block_header::SecuredHeader,
+    block_id::BlockId,
+    prehash::{PreHashMap, PreHashSet},
+};
 
 pub enum BlockHandlerRetrievalCommand {
     /// Wish list delta
