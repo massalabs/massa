@@ -24,6 +24,7 @@ mod client_binder;
 mod error;
 mod establisher;
 mod listener;
+pub use listener::BootstrapTcpListener;
 mod messages;
 mod server;
 mod server_binder;
