@@ -423,7 +423,7 @@
                 <span class="kw">let </span>op = ops
                     .get(<span class="kw-2">&amp;</span>op_id)
                     .expect(<span class="string">&quot;attempting to add operation to pool, but it is absent from storage&quot;</span>);
-                <span class="comment">// Broadcast operation to active sender(channel) subscribers.
+                <span class="comment">// Broadcast operation to active channel subscribers.
                 </span><span class="kw">if </span><span class="self">self</span>.config.broadcast_enabled {
                     <span class="kw">if let </span><span class="prelude-val">Err</span>(err) = <span class="self">self</span>.channels.operation_sender.send(op.clone()) {
                         <span class="macro">trace!</span>(

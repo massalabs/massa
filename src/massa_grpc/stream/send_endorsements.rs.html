@@ -242,7 +242,7 @@
 <span class="kw">use </span>tracing::log::{error, warn};
 
 <span class="doccomment">/// Type declaration for SendEndorsements
-</span><span class="kw">pub type </span>SendEndorsementsStream = Pin&lt;
+</span><span class="kw">pub type </span>SendEndorsementsStreamType = Pin&lt;
     Box&lt;
         <span class="kw">dyn </span>futures_core::Stream&lt;Item = <span class="prelude-ty">Result</span>&lt;grpc::SendEndorsementsResponse, tonic::Status&gt;&gt;
             + Send
@@ -256,7 +256,7 @@
 </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">async fn </span>send_endorsements(
     grpc: <span class="kw-2">&amp;</span>MassaGrpc,
     request: tonic::Request&lt;tonic::Streaming&lt;grpc::SendEndorsementsRequest&gt;&gt;,
-) -&gt; <span class="prelude-ty">Result</span>&lt;SendEndorsementsStream, GrpcError&gt; {
+) -&gt; <span class="prelude-ty">Result</span>&lt;SendEndorsementsStreamType, GrpcError&gt; {
     <span class="kw">let </span><span class="kw-2">mut </span>pool_command_sender = grpc.pool_command_sender.clone();
     <span class="kw">let </span><span class="kw-2">mut </span>protocol_command_sender = grpc.protocol_command_sender.clone();
     <span class="kw">let </span>config = grpc.grpc_config.clone();
@@ -422,7 +422,7 @@
     });
 
     <span class="kw">let </span>out_stream = tokio_stream::wrappers::ReceiverStream::new(rx);
-    <span class="prelude-val">Ok</span>(Box::pin(out_stream) <span class="kw">as </span>SendEndorsementsStream)
+    <span class="prelude-val">Ok</span>(Box::pin(out_stream) <span class="kw">as </span>SendEndorsementsStreamType)
 }
 
 <span class="doccomment">/// This function reports an error to the sender by sending a gRPC response message to the client
