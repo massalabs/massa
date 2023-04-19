@@ -189,19 +189,19 @@ impl SpeculativeRollState {
         amount: &Amount,
     ) -> Amount {
         let credits = self.get_address_deferred_credits(addr, *slot);
-        let mut remaining_to_slash = *amount;
 
-        for (slot, amount) in credits.iter() {
-            let to_slash = min(*amount, remaining_to_slash);
-            let new_deferred_credits = amount.saturating_sub(to_slash);
+        let mut remaining_to_slash = *amount;
+        for (credit_slot, credit_amount) in credits.iter() {
+            let to_slash = min(*credit_amount, remaining_to_slash);
+            let new_deferred_credits = credit_amount.saturating_sub(to_slash);
             remaining_to_slash = remaining_to_slash.saturating_sub(to_slash);
 
             self.added_changes
                 .deferred_credits
-                .insert(*slot, *addr, new_deferred_credits);
+                .insert(*credit_slot, *addr, new_deferred_credits);
         }
 
-        remaining_to_slash
+        amount.saturating_sub(remaining_to_slash)
     }
 
     /// Update production statistics of an address.
