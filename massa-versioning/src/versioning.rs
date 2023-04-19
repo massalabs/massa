@@ -232,9 +232,7 @@ impl Failed {
 #[derive(Debug, Clone, PartialEq)]
 pub struct MipState {
     pub(crate) state: ComponentState,
-    // TMW TODO: PUT MASSA TIME AS KEY
-    // pub(crate) history: BTreeMap<Advance, ComponentStateTypeId>,
-    pub(crate) history: BTreeMap<MassaTime, (Advance, ComponentStateTypeId)>,
+    pub(crate) history: BTreeMap<Advance, ComponentStateTypeId>,
 }
 
 impl MipState {
@@ -252,19 +250,20 @@ impl MipState {
             activation_delay: MassaTime::from(0),
         };
 
-        let history = BTreeMap::from([(advance.now, (advance, state_id))]);
+        let history = BTreeMap::from([(advance, state_id)]);
         Self { state, history }
     }
 
     /// Advance the state
     /// Can be called as multiple times as it will only store what changes the state in history
     pub fn on_advance(&mut self, input: &Advance) {
+        let now = input.now;
         // Check that input.now is after last item in history
         // We don't want to go backward
         let is_forward = self
             .history
             .last_key_value()
-            .map(|(&now, _)| now < input.now)
+            .map(|(adv, _)| adv.now < now)
             .unwrap_or(false);
 
         if is_forward {
@@ -279,7 +278,7 @@ impl MipState {
                 if !(matches!(state, ComponentState::Started(Started { .. }))
                     && matches!(self.state, ComponentState::Started(Started { .. })))
                 {
-                    self.history.insert(input.now, (input.clone(), state_id));
+                    self.history.insert(input.clone(), state_id);
                 }
                 self.state = state;
             }
@@ -300,7 +299,7 @@ impl MipState {
         }
 
         // safe to unwrap (already tested if empty or not)
-        let (_, (initial_ts, initial_state_id)) = self.history.first_key_value().unwrap();
+        let (initial_ts, initial_state_id) = self.history.first_key_value().unwrap();
         if *initial_state_id != ComponentStateTypeId::Defined {
             // self.history does not start with Defined -> (always) false
             return false;
@@ -317,7 +316,7 @@ impl MipState {
             activation_delay: versioning_info.activation_delay,
         };
 
-        for (_, (adv, _state)) in self.history.iter().skip(1) {
+        for (adv, _state) in self.history.iter().skip(1) {
             advance_msg.now = adv.now;
             advance_msg.threshold = adv.threshold;
             vsh.on_advance(&advance_msg);
@@ -339,10 +338,10 @@ impl MipState {
         }
 
         // Optim: this avoids iterating over history (cheap to retrieve first item)
-        let (&now, (_, component)) = self.history.first_key_value().unwrap(); // safe to unwrap
-        if ts < now {
+        let first = self.history.first_key_value().unwrap(); // safe to unwrap
+        if ts < first.0.now {
             // Before initial state
-            return Err(StateAtError::BeforeInitialState(component.clone(), ts));
+            return Err(StateAtError::BeforeInitialState(first.1.clone(), ts));
         }
 
         // At this point, we are >= the first state in history
@@ -351,7 +350,7 @@ impl MipState {
         let mut is_after_last = false;
 
         // Optim: this avoids iterating over history (cheap to retrieve first item)
-        let (_, last) = self.history.last_key_value().unwrap(); // safe to unwrap
+        let last = self.history.last_key_value().unwrap(); // safe to unwrap
         if ts > last.0.now {
             lower_bound = Some(last);
             is_after_last = true;
@@ -359,12 +358,12 @@ impl MipState {
 
         if !is_after_last {
             // We are in between two states in history, find bounds
-            for (&now, state_id) in self.history.iter() {
-                if now <= ts {
-                    lower_bound = Some(state_id);
+            for (adv, state_id) in self.history.iter() {
+                if adv.now <= ts {
+                    lower_bound = Some((adv, state_id));
                 }
-                if now >= ts && higher_bound.is_none() {
-                    higher_bound = Some(state_id);
+                if adv.now >= ts && higher_bound.is_none() {
+                    higher_bound = Some((adv, state_id));
                     break;
                 }
             }
@@ -434,20 +433,6 @@ impl MipStore {
             .store
             .iter()
             .rev()
-            .find_map(|(k, v)| (v.state == ComponentState::active()).then_some(k.version))
-            .unwrap_or(0)
-    }
-
-    /// Retrieve the network version at the given timestamp
-    pub fn get_network_version_at_timestamp(&self, ts: MassaTime) -> u32 {
-        let lock = self.0.read();
-        let store = lock.deref();
-        store
-            .store
-            .iter()
-            .rev()
-            // TMW TODO: V MIP STATE HAS HISTORY
-            // QUERY WITH TIME AFTER THE HISTORY UPDATE
             .find_map(|(k, v)| (v.state == ComponentState::active()).then_some(k.version))
             .unwrap_or(0)
     }

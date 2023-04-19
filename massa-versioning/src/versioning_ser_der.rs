@@ -494,7 +494,7 @@ impl Serializer<MipState> for MipStateSerializer {
             buffer,
         )?;
         // history
-        for (_, (advance, state_id)) in value.history.iter() {
+        for (advance, state_id) in value.history.iter() {
             self.advance_serializer.serialize(advance, buffer)?;
             self.u32_serializer
                 .serialize(&u32::from(state_id.clone()), buffer)?;
@@ -554,8 +554,6 @@ impl Deserializer<MipState> for MipStateDeserializer {
                     tuple((
                         context("Failed advance deserialization", |input| {
                             self.advance_deserializer.deserialize(input)
-
-                            // NEXT TODO HERE
                         }),
                         context("Failed state id deserialization", |input| {
                             let (res, state_id_) = self.state_id_deserializer.deserialize(input)?;
