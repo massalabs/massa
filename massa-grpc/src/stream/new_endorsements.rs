@@ -12,7 +12,7 @@ use tonic::{Request, Streaming};
 use tracing::log::{error, warn};
 
 /// Type declaration for NewEndorsements
-pub type NewEndorsementsStream = Pin<
+pub type NewEndorsementsStreamType = Pin<
     Box<
         dyn futures_core::Stream<Item = Result<grpc::NewEndorsementsResponse, tonic::Status>>
             + Send
@@ -24,7 +24,7 @@ pub type NewEndorsementsStream = Pin<
 pub(crate) async fn new_endorsements(
     grpc: &MassaGrpc,
     request: Request<Streaming<grpc::NewEndorsementsRequest>>,
-) -> Result<NewEndorsementsStream, GrpcError> {
+) -> Result<NewEndorsementsStreamType, GrpcError> {
     // Create a channel to handle communication with the client
     let (tx, rx) = tokio::sync::mpsc::channel(grpc.grpc_config.max_channel_size);
     // Get the inner stream from the request
@@ -94,5 +94,5 @@ pub(crate) async fn new_endorsements(
     let out_stream = tokio_stream::wrappers::ReceiverStream::new(rx);
 
     // Return the new stream of endorsements.
-    Ok(Box::pin(out_stream) as NewEndorsementsStream)
+    Ok(Box::pin(out_stream) as NewEndorsementsStreamType)
 }

@@ -11,7 +11,7 @@ use tonic::{Request, Streaming};
 use tracing::log::error;
 
 /// Type declaration for NewOperations
-pub type NewOperationsStream = Pin<
+pub type NewOperationsStreamType = Pin<
     Box<
         dyn futures_core::Stream<Item = Result<grpc::NewOperationsResponse, tonic::Status>>
             + Send
@@ -23,7 +23,7 @@ pub type NewOperationsStream = Pin<
 pub(crate) async fn new_operations(
     grpc: &MassaGrpc,
     request: Request<Streaming<grpc::NewOperationsRequest>>,
-) -> Result<NewOperationsStream, GrpcError> {
+) -> Result<NewOperationsStreamType, GrpcError> {
     // Create a channel to handle communication with the client
     let (tx, rx) = tokio::sync::mpsc::channel(grpc.grpc_config.max_channel_size);
     // Get the inner stream from the request
@@ -99,7 +99,7 @@ pub(crate) async fn new_operations(
     });
 
     let out_stream = tokio_stream::wrappers::ReceiverStream::new(rx);
-    Ok(Box::pin(out_stream) as NewOperationsStream)
+    Ok(Box::pin(out_stream) as NewOperationsStreamType)
 }
 
 /// Return if the type of operation should be send to client

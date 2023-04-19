@@ -12,7 +12,7 @@ use tonic::{Request, Streaming};
 use tracing::log::{error, warn};
 
 /// Type declaration for NewBlocks
-pub type NewBlocksStream = Pin<
+pub type NewBlocksStreamType = Pin<
     Box<
         dyn futures_core::Stream<Item = Result<grpc::NewBlocksResponse, tonic::Status>>
             + Send
@@ -24,7 +24,7 @@ pub type NewBlocksStream = Pin<
 pub(crate) async fn new_blocks(
     grpc: &MassaGrpc,
     request: Request<Streaming<grpc::NewBlocksRequest>>,
-) -> Result<NewBlocksStream, GrpcError> {
+) -> Result<NewBlocksStreamType, GrpcError> {
     // Create a channel to handle communication with the client
     let (tx, rx) = tokio::sync::mpsc::channel(grpc.grpc_config.max_channel_size);
     // Get the inner stream from the request
@@ -94,5 +94,5 @@ pub(crate) async fn new_blocks(
     let out_stream = tokio_stream::wrappers::ReceiverStream::new(rx);
 
     // Return the new stream of blocks.
-    Ok(Box::pin(out_stream) as NewBlocksStream)
+    Ok(Box::pin(out_stream) as NewBlocksStreamType)
 }

@@ -472,8 +472,10 @@ async fn launch(
         max_endorsements_pool_size_per_thread: SETTINGS.pool.max_pool_size_per_thread,
         channels_size: POOL_CONTROLLER_CHANNEL_SIZE,
         broadcast_enabled: SETTINGS.api.enable_broadcast,
-        broadcast_endorsements_capacity: SETTINGS.pool.broadcast_endorsements_capacity,
-        broadcast_operations_capacity: SETTINGS.pool.broadcast_operations_capacity,
+        broadcast_endorsements_channel_capacity: SETTINGS
+            .pool
+            .broadcast_endorsements_channel_capacity,
+        broadcast_operations_channel_capacity: SETTINGS.pool.broadcast_operations_channel_capacity,
         genesis_timestamp: *GENESIS_TIMESTAMP,
         t0: T0,
         periods_per_cycle: PERIODS_PER_CYCLE,
@@ -481,8 +483,9 @@ async fn launch(
     };
 
     let pool_channels = PoolChannels {
-        endorsement_sender: broadcast::channel(pool_config.broadcast_endorsements_capacity).0,
-        operation_sender: broadcast::channel(pool_config.broadcast_operations_capacity).0,
+        endorsement_sender: broadcast::channel(pool_config.broadcast_endorsements_channel_capacity)
+            .0,
+        operation_sender: broadcast::channel(pool_config.broadcast_operations_channel_capacity).0,
         selector: selector_controller.clone(),
     };
 
@@ -519,9 +522,13 @@ async fn launch(
         channel_size: CHANNEL_SIZE,
         bootstrap_part_size: CONSENSUS_BOOTSTRAP_PART_SIZE,
         broadcast_enabled: SETTINGS.api.enable_broadcast,
-        broadcast_blocks_headers_capacity: SETTINGS.consensus.broadcast_blocks_headers_capacity,
-        broadcast_blocks_capacity: SETTINGS.consensus.broadcast_blocks_capacity,
-        broadcast_filled_blocks_capacity: SETTINGS.consensus.broadcast_filled_blocks_capacity,
+        broadcast_blocks_headers_channel_capacity: SETTINGS
+            .consensus
+            .broadcast_blocks_headers_channel_capacity,
+        broadcast_blocks_channel_capacity: SETTINGS.consensus.broadcast_blocks_channel_capacity,
+        broadcast_filled_blocks_channel_capacity: SETTINGS
+            .consensus
+            .broadcast_filled_blocks_channel_capacity,
         last_start_period: final_state.read().last_start_period,
     };
 
@@ -533,11 +540,15 @@ async fn launch(
         pool_command_sender: pool_controller.clone(),
         controller_event_tx: consensus_event_sender,
         protocol_command_sender: ProtocolCommandSender(protocol_command_sender.clone()),
-        block_header_sender: broadcast::channel(consensus_config.broadcast_blocks_headers_capacity)
-            .0,
-        block_sender: broadcast::channel(consensus_config.broadcast_blocks_capacity).0,
-        filled_block_sender: broadcast::channel(consensus_config.broadcast_filled_blocks_capacity)
-            .0,
+        block_header_sender: broadcast::channel(
+            consensus_config.broadcast_blocks_headers_channel_capacity,
+        )
+        .0,
+        block_sender: broadcast::channel(consensus_config.broadcast_blocks_channel_capacity).0,
+        filled_block_sender: broadcast::channel(
+            consensus_config.broadcast_filled_blocks_channel_capacity,
+        )
+        .0,
     };
 
     let (consensus_controller, consensus_manager) = start_consensus_worker(

@@ -17,7 +17,7 @@ use tonic::Request;
 use tracing::log::{error, warn};
 
 /// Type declaration for SendBlockStream
-pub type SendBlocksStream = Pin<
+pub type SendBlocksStreamType = Pin<
     Box<
         dyn futures_core::Stream<Item = Result<grpc::SendBlocksResponse, tonic::Status>>
             + Send
@@ -31,7 +31,7 @@ pub type SendBlocksStream = Pin<
 pub(crate) async fn send_blocks(
     grpc: &MassaGrpc,
     request: Request<tonic::Streaming<grpc::SendBlocksRequest>>,
-) -> Result<SendBlocksStream, GrpcError> {
+) -> Result<SendBlocksStreamType, GrpcError> {
     let consensus_controller = grpc.consensus_controller.clone();
     let mut protocol_command_sender = grpc.protocol_command_sender.clone();
     let storage = grpc.storage.clone_without_refs();
@@ -196,7 +196,7 @@ pub(crate) async fn send_blocks(
     });
 
     let out_stream = tokio_stream::wrappers::ReceiverStream::new(rx);
-    Ok(Box::pin(out_stream) as SendBlocksStream)
+    Ok(Box::pin(out_stream) as SendBlocksStreamType)
 }
 
 /// This function reports an error to the sender by sending a gRPC response message to the client
