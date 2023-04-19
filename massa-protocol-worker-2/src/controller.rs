@@ -72,11 +72,13 @@ impl ProtocolController for ProtocolControllerImpl {
         new: PreHashMap<BlockId, Option<SecuredHeader>>,
         remove: PreHashSet<BlockId>,
     ) -> Result<(), ProtocolError> {
-        self.sender_block_handler.as_ref().unwrap()
-            .send(BlockHandlerCommand::WishlistDelta { new, remove })
-            .map_err(|_| {
-                ProtocolError::ChannelError("send_wishlist_delta command send error".into())
-            })
+        //TODO: Send to retrieval channel
+        // self.sender_block_handler.as_ref().unwrap()
+        //     .send(BlockHandlerCommand::WishlistDelta { new, remove })
+        //     .map_err(|_| {
+        //         ProtocolError::ChannelError("send_wishlist_delta command send error".into())
+        //     })
+        Ok(())
     }
 
     /// Propagate a batch of operation ids (from pool).
