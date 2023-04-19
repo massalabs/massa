@@ -291,6 +291,14 @@
                 </li>
               
                 <li>
+                  <a href="#massa.api.v1.NewEndorsementsRequest"><span class="badge">M</span>NewEndorsementsRequest</a>
+                </li>
+              
+                <li>
+                  <a href="#massa.api.v1.NewEndorsementsResponse"><span class="badge">M</span>NewEndorsementsResponse</a>
+                </li>
+              
+                <li>
                   <a href="#massa.api.v1.NewFilledBlocksRequest"><span class="badge">M</span>NewFilledBlocksRequest</a>
                 </li>
               
@@ -1342,6 +1350,61 @@
 
         
       
+        <h3 id="massa.api.v1.NewEndorsementsRequest">NewEndorsementsRequest</h3>
+        <p>NewEndorsementsRequest holds request for NewEndorsements</p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>id</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p>Request id </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
+        <h3 id="massa.api.v1.NewEndorsementsResponse">NewEndorsementsResponse</h3>
+        <p>NewEndorsementsResponse holds response from NewEndorsements</p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>id</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p>Request id </p></td>
+                </tr>
+              
+                <tr>
+                  <td>endorsement</td>
+                  <td><a href="#massa.api.v1.SignedEndorsement">SignedEndorsement</a></td>
+                  <td></td>
+                  <td><p>Signed endorsement </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
         <h3 id="massa.api.v1.NewFilledBlocksRequest">NewFilledBlocksRequest</h3>
         <p>NewFilledBlocksRequest holds request for NewFilledBlocks</p>
 
@@ -2008,6 +2071,13 @@
                 <td><a href="#massa.api.v1.NewBlocksHeadersRequest">NewBlocksHeadersRequest</a> stream</td>
                 <td><a href="#massa.api.v1.NewBlocksHeadersResponse">NewBlocksHeadersResponse</a> stream</td>
                 <td><p>New received and produced blocks headers</p></td>
+              </tr>
+            
+              <tr>
+                <td>NewEndorsements</td>
+                <td><a href="#massa.api.v1.NewEndorsementsRequest">NewEndorsementsRequest</a> stream</td>
+                <td><a href="#massa.api.v1.NewEndorsementsResponse">NewEndorsementsResponse</a> stream</td>
+                <td><p>New received and produced endorsements</p></td>
               </tr>
             
               <tr>

@@ -29,6 +29,8 @@ pub struct PoolConfig {
     pub channels_size: usize,
     /// whether operations broadcast is enabled
     pub broadcast_enabled: bool,
+    /// endorsements sender(channel) capacity
+    pub broadcast_endorsements_capacity: usize,
     /// operations sender(channel) capacity
     pub broadcast_operations_capacity: usize,
     /// genesis timestamp

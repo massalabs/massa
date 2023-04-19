@@ -32,6 +32,8 @@
     - [NewBlocksHeadersResponse](#massa-api-v1-NewBlocksHeadersResponse)
     - [NewBlocksRequest](#massa-api-v1-NewBlocksRequest)
     - [NewBlocksResponse](#massa-api-v1-NewBlocksResponse)
+    - [NewEndorsementsRequest](#massa-api-v1-NewEndorsementsRequest)
+    - [NewEndorsementsResponse](#massa-api-v1-NewEndorsementsResponse)
     - [NewFilledBlocksRequest](#massa-api-v1-NewFilledBlocksRequest)
     - [NewFilledBlocksResponse](#massa-api-v1-NewFilledBlocksResponse)
     - [NewOperationsFilter](#massa-api-v1-NewOperationsFilter)
@@ -537,6 +539,37 @@ NewBlocksResponse holds response from NewBlocks
 
 
 
+<a name="massa-api-v1-NewEndorsementsRequest"></a>
+
+### NewEndorsementsRequest
+NewEndorsementsRequest holds request for NewEndorsements
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| id | [string](#string) |  | Request id |
+
+
+
+
+
+
+<a name="massa-api-v1-NewEndorsementsResponse"></a>
+
+### NewEndorsementsResponse
+NewEndorsementsResponse holds response from NewEndorsements
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| id | [string](#string) |  | Request id |
+| endorsement | [SignedEndorsement](#massa-api-v1-SignedEndorsement) |  | Signed endorsement |
+
+
+
+
+
+
 <a name="massa-api-v1-NewFilledBlocksRequest"></a>
 
 ### NewFilledBlocksRequest
@@ -861,6 +894,7 @@ Massa gRPC service
 | GetVersion | [GetVersionRequest](#massa-api-v1-GetVersionRequest) | [GetVersionResponse](#massa-api-v1-GetVersionResponse) | Get node version |
 | NewBlocks | [NewBlocksRequest](#massa-api-v1-NewBlocksRequest) stream | [NewBlocksResponse](#massa-api-v1-NewBlocksResponse) stream | New received and produced blocks |
 | NewBlocksHeaders | [NewBlocksHeadersRequest](#massa-api-v1-NewBlocksHeadersRequest) stream | [NewBlocksHeadersResponse](#massa-api-v1-NewBlocksHeadersResponse) stream | New received and produced blocks headers |
+| NewEndorsements | [NewEndorsementsRequest](#massa-api-v1-NewEndorsementsRequest) stream | [NewEndorsementsResponse](#massa-api-v1-NewEndorsementsResponse) stream | New received and produced endorsements |
 | NewFilledBlocks | [NewFilledBlocksRequest](#massa-api-v1-NewFilledBlocksRequest) stream | [NewFilledBlocksResponse](#massa-api-v1-NewFilledBlocksResponse) stream | New received and produced blocks with operations |
 | NewOperations | [NewOperationsRequest](#massa-api-v1-NewOperationsRequest) stream | [NewOperationsResponse](#massa-api-v1-NewOperationsResponse) stream | New received and produced perations |
 | SendBlocks | [SendBlocksRequest](#massa-api-v1-SendBlocksRequest) stream | [SendBlocksResponse](#massa-api-v1-SendBlocksResponse) stream | Send blocks |

@@ -22,6 +22,7 @@ impl Default for PoolConfig {
             max_block_endorsement_count: ENDORSEMENT_COUNT,
             channels_size: 1024,
             broadcast_enabled: false,
+            broadcast_endorsements_capacity: 2000,
             broadcast_operations_capacity: 5000,
             genesis_timestamp: *GENESIS_TIMESTAMP,
             t0: T0,

@@ -472,6 +472,7 @@ async fn launch(
         max_endorsements_pool_size_per_thread: SETTINGS.pool.max_pool_size_per_thread,
         channels_size: POOL_CONTROLLER_CHANNEL_SIZE,
         broadcast_enabled: SETTINGS.api.enable_broadcast,
+        broadcast_endorsements_capacity: SETTINGS.pool.broadcast_endorsements_capacity,
         broadcast_operations_capacity: SETTINGS.pool.broadcast_operations_capacity,
         genesis_timestamp: *GENESIS_TIMESTAMP,
         t0: T0,
@@ -480,6 +481,7 @@ async fn launch(
     };
 
     let pool_channels = PoolChannels {
+        endorsement_sender: broadcast::channel(pool_config.broadcast_operations_capacity).0,
         operation_sender: broadcast::channel(pool_config.broadcast_operations_capacity).0,
         selector: selector_controller.clone(),
     };

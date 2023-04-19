@@ -10,7 +10,7 @@ use tonic::codegen::futures_core;
 use tonic::{Request, Streaming};
 use tracing::log::error;
 
-/// Type declaration for StreamTransactionsThroughput
+/// Type declaration for NewOperations
 pub type NewOperationsStream = Pin<
     Box<
         dyn futures_core::Stream<Item = Result<grpc::NewOperationsResponse, tonic::Status>>
@@ -36,7 +36,7 @@ pub(crate) async fn new_operations(
             let mut request_id = request.id;
             let mut filter = request.query.and_then(|q| q.filter);
 
-            // Spawn a new task for sending new blocks
+            // Spawn a new task for sending new operations
             loop {
                 select! {
                     // Receive a new operation from the subscriber

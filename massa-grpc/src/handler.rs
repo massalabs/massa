@@ -7,15 +7,16 @@ use crate::api::{
     get_selector_draws, get_transactions_throughput, get_version,
 };
 use crate::server::MassaGrpc;
-use crate::stream::new_blocks::{new_blocks, NewBlocksStream};
-use crate::stream::new_blocks_headers::{new_blocks_headers, NewBlocksHeadersStream};
-use crate::stream::new_filled_blocks::{new_filled_blocks, NewFilledBlocksStream};
-use crate::stream::new_operations::{new_operations, NewOperationsStream};
-use crate::stream::tx_throughput::{transactions_throughput, TransactionsThroughputStream};
 use crate::stream::{
+    new_blocks::{new_blocks, NewBlocksStream},
+    new_blocks_headers::{new_blocks_headers, NewBlocksHeadersStream},
+    new_endorsements::{new_endorsements, NewEndorsementsStream},
+    new_filled_blocks::{new_filled_blocks, NewFilledBlocksStream},
+    new_operations::{new_operations, NewOperationsStream},
     send_blocks::{send_blocks, SendBlocksStream},
     send_endorsements::{send_endorsements, SendEndorsementsStream},
     send_operations::{send_operations, SendOperationsStream},
+    tx_throughput::{transactions_throughput, TransactionsThroughputStream},
 };
 
 #[tonic::async_trait]
@@ -101,6 +102,71 @@ impl grpc::massa_service_server::MassaService for MassaGrpc {
     // ╚════██║   ██║   ██╔══██╗██╔══╝  ██╔══██║██║╚██╔╝██║
     // ███████║   ██║   ██║  ██║███████╗██║  ██║██║ ╚═╝ ██║
 
+    type NewBlocksStream = NewBlocksStream;
+
+    /// handler for subscribe new blocks
+    async fn new_blocks(
+        &self,
+        request: tonic::Request<tonic::Streaming<grpc::NewBlocksRequest>>,
+    ) -> Result<tonic::Response<Self::NewBlocksStream>, tonic::Status> {
+        match new_blocks(self, request).await {
+            Ok(res) => Ok(tonic::Response::new(res)),
+            Err(e) => Err(e.into()),
+        }
+    }
+
+    type NewBlocksHeadersStream = NewBlocksHeadersStream;
+
+    /// handler for subscribe new blocks headers
+    async fn new_blocks_headers(
+        &self,
+        request: tonic::Request<tonic::Streaming<grpc::NewBlocksHeadersRequest>>,
+    ) -> Result<tonic::Response<Self::NewBlocksHeadersStream>, tonic::Status> {
+        match new_blocks_headers(self, request).await {
+            Ok(res) => Ok(tonic::Response::new(res)),
+            Err(e) => Err(e.into()),
+        }
+    }
+
+    type NewEndorsementsStream = NewEndorsementsStream;
+
+    /// handler for subscribe new operations stream
+    async fn new_endorsements(
+        &self,
+        request: tonic::Request<tonic::Streaming<grpc::NewEndorsementsRequest>>,
+    ) -> Result<tonic::Response<Self::NewEndorsementsStream>, tonic::Status> {
+        match new_endorsements(self, request).await {
+            Ok(res) => Ok(tonic::Response::new(res)),
+            Err(e) => Err(e.into()),
+        }
+    }
+
+    type NewFilledBlocksStream = NewFilledBlocksStream;
+
+    /// handler for subscribe new blocks with operations content
+    async fn new_filled_blocks(
+        &self,
+        request: tonic::Request<tonic::Streaming<grpc::NewFilledBlocksRequest>>,
+    ) -> Result<tonic::Response<Self::NewFilledBlocksStream>, tonic::Status> {
+        match new_filled_blocks(self, request).await {
+            Ok(res) => Ok(tonic::Response::new(res)),
+            Err(e) => Err(e.into()),
+        }
+    }
+
+    type NewOperationsStream = NewOperationsStream;
+
+    /// handler for subscribe new operations stream
+    async fn new_operations(
+        &self,
+        request: tonic::Request<tonic::Streaming<grpc::NewOperationsRequest>>,
+    ) -> Result<tonic::Response<Self::NewOperationsStream>, tonic::Status> {
+        match new_operations(self, request).await {
+            Ok(res) => Ok(tonic::Response::new(res)),
+            Err(e) => Err(e.into()),
+        }
+    }
+
     type SendBlocksStream = SendBlocksStream;
 
     /// handler for send_blocks_stream
@@ -144,58 +210,6 @@ impl grpc::massa_service_server::MassaService for MassaGrpc {
         request: tonic::Request<tonic::Streaming<grpc::TransactionsThroughputRequest>>,
     ) -> Result<tonic::Response<Self::TransactionsThroughputStream>, tonic::Status> {
         match transactions_throughput(self, request).await {
-            Ok(res) => Ok(tonic::Response::new(res)),
-            Err(e) => Err(e.into()),
-        }
-    }
-
-    type NewOperationsStream = NewOperationsStream;
-
-    /// handler for subscribe new operations stream
-    async fn new_operations(
-        &self,
-        request: tonic::Request<tonic::Streaming<grpc::NewOperationsRequest>>,
-    ) -> Result<tonic::Response<Self::NewOperationsStream>, tonic::Status> {
-        match new_operations(self, request).await {
-            Ok(res) => Ok(tonic::Response::new(res)),
-            Err(e) => Err(e.into()),
-        }
-    }
-
-    type NewBlocksStream = NewBlocksStream;
-
-    /// handler for subscribe new blocks
-    async fn new_blocks(
-        &self,
-        request: tonic::Request<tonic::Streaming<grpc::NewBlocksRequest>>,
-    ) -> Result<tonic::Response<Self::NewBlocksStream>, tonic::Status> {
-        match new_blocks(self, request).await {
-            Ok(res) => Ok(tonic::Response::new(res)),
-            Err(e) => Err(e.into()),
-        }
-    }
-
-    type NewBlocksHeadersStream = NewBlocksHeadersStream;
-
-    /// handler for subscribe new blocks headers
-    async fn new_blocks_headers(
-        &self,
-        request: tonic::Request<tonic::Streaming<grpc::NewBlocksHeadersRequest>>,
-    ) -> Result<tonic::Response<Self::NewBlocksHeadersStream>, tonic::Status> {
-        match new_blocks_headers(self, request).await {
-            Ok(res) => Ok(tonic::Response::new(res)),
-            Err(e) => Err(e.into()),
-        }
-    }
-
-    type NewFilledBlocksStream = NewFilledBlocksStream;
-
-    /// handler for subscribe new blocks with operations content
-    async fn new_filled_blocks(
-        &self,
-        request: tonic::Request<tonic::Streaming<grpc::NewFilledBlocksRequest>>,
-    ) -> Result<tonic::Response<Self::NewFilledBlocksStream>, tonic::Status> {
-        match new_filled_blocks(self, request).await {
             Ok(res) => Ok(tonic::Response::new(res)),
             Err(e) => Err(e.into()),
         }

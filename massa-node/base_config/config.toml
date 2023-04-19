@@ -299,6 +299,8 @@
     max_endorsement_count = 10000
     # max number of items returned per query
     max_item_return_count = 100
+    # endorsements sender(channel) capacity
+    broadcast_endorsements_capacity = 2000
     # operations sender(channel) capacity
     broadcast_operations_capacity = 5000
 
