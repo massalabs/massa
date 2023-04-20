@@ -88,9 +88,9 @@ machine!(
         /// Past start, can only go to LockedIn after the threshold is above a given value
         Started { pub(crate) threshold: Amount },
         /// Wait for some time before going to active (to let user the time to upgrade)
-        LockedIn { pub(crate) at: MassaTime },
+        LockedIn { pub(crate) delay: MassaTime },
         /// After LockedIn, deployment is considered successful (after activation delay)
-        Active,
+        Active { pub(crate) at: MassaTime },
         /// Past the timeout, if LockedIn is not reach
         Failed,
     }
@@ -130,16 +130,17 @@ impl From<&ComponentState> for ComponentStateTypeId {
 /// A message to update the `ComponentState`
 #[derive(Clone, Debug)]
 pub struct Advance {
-    /// from VersioningInfo.start
+    /// from MipInfo.start
     pub start_timestamp: MassaTime,
-    /// from VersioningInfo.timeout
+    /// from MipInfo.timeout
     pub timeout: MassaTime,
+    /// from MipInfo.activation_delay
+    pub activation_delay: MassaTime,
+
     /// % of past blocks with this version
     pub threshold: Amount,
     /// Current time (timestamp)
     pub now: MassaTime,
-    /// TODO
-    pub activation_delay: MassaTime,
 }
 
 // Need Ord / PartialOrd so it is properly sorted in BTreeMap
@@ -206,10 +207,10 @@ impl Started {
 impl LockedIn {
     /// Update state from state LockedIn ...
     pub fn on_advance(self, input: Advance) -> ComponentState {
-        if input.now > self.at.saturating_add(input.activation_delay) {
-            ComponentState::active()
+        if input.now > self.delay.saturating_add(input.activation_delay) {
+            ComponentState::active(input.now)
         } else {
-            ComponentState::locked_in(self.at)
+            ComponentState::locked_in(self.delay)
         }
     }
 }
@@ -217,7 +218,7 @@ impl LockedIn {
 impl Active {
     /// Update state (will always stay in state Active)
     pub fn on_advance(self, _input: Advance) -> Active {
-        Active {}
+        Active { at: self.at }
     }
 }
 
@@ -327,6 +328,7 @@ impl MipState {
 
     /// Query state at given timestamp
     /// TODO: add doc for start & timeout parameter? why do we need them?
+    /// HERE
     pub fn state_at(
         &self,
         ts: MassaTime,
@@ -425,6 +427,7 @@ pub struct MipStore(pub Arc<RwLock<MipStoreRaw>>);
 
 impl MipStore {
     /// Retrieve the current network version to set in block header
+    /// HERE
     pub fn get_network_version_current(&self) -> u32 {
         let lock = self.0.read();
         let store = lock.deref();
@@ -433,7 +436,7 @@ impl MipStore {
             .store
             .iter()
             .rev()
-            .find_map(|(k, v)| (v.state == ComponentState::active()).then_some(k.version))
+            .find_map(|(k, v)| (matches!(v.state, ComponentState::Active(_))).then_some(k.version))
             .unwrap_or(0)
     }
 
@@ -515,6 +518,7 @@ impl MipStoreStats {
 }
 
 /// Store of all versioning info
+/// HERE
 #[derive(Debug, Clone, PartialEq)]
 pub struct MipStoreRaw {
     pub(crate) store: BTreeMap<MipInfo, MipState>,

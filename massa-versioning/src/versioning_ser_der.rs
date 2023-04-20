@@ -257,7 +257,7 @@ impl Serializer<ComponentState> for ComponentStateSerializer {
                 self.u32_serializer.serialize(&state_id, buffer)?;
                 self.amount_serializer.serialize(threshold, buffer)?;
             }
-            ComponentState::LockedIn(LockedIn { at }) => {
+            ComponentState::LockedIn(LockedIn { delay: at }) => {
                 let state_id = u32::from(ComponentStateTypeId::from(value));
                 self.u32_serializer.serialize(&state_id, buffer)?;
                 self.time_serializer.serialize(at, buffer)?;
@@ -336,7 +336,13 @@ impl Deserializer<ComponentState> for ComponentStateDeserializer {
                 .parse(rem)?;
                 (rem2, ComponentState::locked_in(at))
             }
-            ComponentStateTypeId::Active => (rem, ComponentState::active()),
+            ComponentStateTypeId::Active => {
+                let (rem2, at) = context("Failed at value der", |input| {
+                    self.time_deserializer.deserialize(input)
+                })
+                .parse(rem)?;
+                (rem2, ComponentState::active(at))
+            }
             ComponentStateTypeId::Failed => (rem, ComponentState::failed()),
             _ => (rem, ComponentState::Error),
         };

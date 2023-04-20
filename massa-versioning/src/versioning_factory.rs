@@ -59,14 +59,13 @@ pub trait VersioningFactory {
         let component = Self::get_component();
         let vi_store_ = self.get_versioning_store();
         let vi_store = vi_store_.0.read();
-        let state_active = ComponentState::active();
 
         vi_store
             .store
             .iter()
             .rev()
             .find_map(|(vi, vsh)| {
-                if vsh.state == state_active {
+                if matches!(vsh.state, ComponentState::Active(_)) {
                     vi.components.get(&component).copied()
                 } else {
                     None
@@ -80,7 +79,6 @@ pub trait VersioningFactory {
         let component = Self::get_component();
         let vi_store_ = self.get_versioning_store();
         let vi_store = vi_store_.0.read();
-        let state_active = ComponentState::active();
 
         // Iter backward, filter component + state active,
         let version = vi_store
@@ -88,7 +86,8 @@ pub trait VersioningFactory {
             .iter()
             .rev()
             .filter(|(vi, vsh)| {
-                vi.components.get(&component).is_some() && vsh.state == state_active
+                vi.components.get(&component).is_some()
+                    && matches!(vsh.state, ComponentState::Active(_))
             })
             .find_map(|(vi, vsh)| {
                 let res = vsh.state_at(ts, vi.start, vi.timeout);
@@ -108,9 +107,8 @@ pub trait VersioningFactory {
         let vi_store_ = self.get_versioning_store();
         let vi_store = vi_store_.0.read();
 
-        let state_active = ComponentState::active();
         let versions_iter = vi_store.store.iter().filter_map(|(vi, vsh)| {
-            if vsh.state == state_active {
+            if matches!(vsh.state, ComponentState::Active(_)) {
                 vi.components.get(&component).copied()
             } else {
                 None
