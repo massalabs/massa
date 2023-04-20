@@ -328,7 +328,6 @@ impl MipState {
 
     /// Query state at given timestamp
     /// TODO: add doc for start & timeout parameter? why do we need them?
-    /// HERE
     pub fn state_at(
         &self,
         ts: MassaTime,
@@ -427,7 +426,6 @@ pub struct MipStore(pub Arc<RwLock<MipStoreRaw>>);
 
 impl MipStore {
     /// Retrieve the current network version to set in block header
-    /// HERE
     pub fn get_network_version_current(&self) -> u32 {
         let lock = self.0.read();
         let store = lock.deref();
@@ -437,6 +435,21 @@ impl MipStore {
             .iter()
             .rev()
             .find_map(|(k, v)| (matches!(v.state, ComponentState::Active(_))).then_some(k.version))
+            .unwrap_or(0)
+    }
+
+    /// Retrieve the last active version at the given timestamp
+    pub fn get_network_version_active_at(&self, ts: MassaTime) -> u32 {
+        let lock = self.0.read();
+        let store = lock.deref();
+        store
+            .store
+            .iter()
+            .rev()
+            .find_map(|(k, v)| match v.state {
+                ComponentState::Active(at) if at <= ts => Some(k.version),
+                _ => None,
+            })
             .unwrap_or(0)
     }
 
@@ -518,7 +531,6 @@ impl MipStoreStats {
 }
 
 /// Store of all versioning info
-/// HERE
 #[derive(Debug, Clone, PartialEq)]
 pub struct MipStoreRaw {
     pub(crate) store: BTreeMap<MipInfo, MipState>,
