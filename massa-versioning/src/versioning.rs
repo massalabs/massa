@@ -447,7 +447,7 @@ impl MipStore {
             .iter()
             .rev()
             .find_map(|(k, v)| match v.state {
-                ComponentState::Active(at) if at <= ts => Some(k.version),
+                ComponentState::Active(Active { at }) if at <= ts => Some(k.version),
                 _ => None,
             })
             .unwrap_or(0)
