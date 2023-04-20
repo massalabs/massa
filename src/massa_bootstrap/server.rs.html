@@ -799,6 +799,8 @@
 <a href="#799" id="799">799</a>
 <a href="#800" id="800">800</a>
 <a href="#801" id="801">801</a>
+<a href="#802" id="802">802</a>
+<a href="#803" id="803">803</a>
 </pre><pre class="rust"><code><span class="doccomment">//! start the bootstrapping system using [`start_bootstrap_server`]
 //! Once your node will be ready, you may want other to bootstrap from you.
 //!
@@ -1499,6 +1501,7 @@
 ) -&gt; <span class="prelude-ty">Result</span>&lt;(), BootstrapError&gt; {
     <span class="macro">massa_trace!</span>(<span class="string">&quot;bootstrap.lib.manage_bootstrap&quot;</span>, {});
     <span class="kw">let </span>read_error_timeout: Duration = bootstrap_config.read_error_timeout.into();
+    <span class="kw">let </span>rt_hack = massa_network_exports::make_runtime();
 
     server.handshake_timeout(version, <span class="prelude-val">Some</span>(bootstrap_config.read_timeout.into()))<span class="question-mark">?</span>;
 
@@ -1533,7 +1536,8 @@
                     server.send_msg(
                         write_timeout,
                         BootstrapServerMessage::BootstrapPeers {
-                            peers: (network_command_sender.sync_get_bootstrap_peers())<span class="question-mark">?</span>,
+                            peers: rt_hack
+                                .block_on(network_command_sender.get_bootstrap_peers())<span class="question-mark">?</span>,
                         },
                     )<span class="question-mark">?</span>;
                 }

@@ -5,7 +5,7 @@
     max_datastore_key_length: <a class="primitive" href="https://doc.rust-lang.org/nightly/std/primitive.u8.html">u8</a>,
     max_datastore_value_size: <a class="primitive" href="https://doc.rust-lang.org/nightly/std/primitive.u64.html">u64</a>,
     max_bytecode_size: <a class="primitive" href="https://doc.rust-lang.org/nightly/std/primitive.u64.html">u64</a>,
-    storage_costs_constants: StorageCostsConstants,
+    storage_costs_constants: <a class="struct" href="../../massa_execution_exports/settings/struct.StorageCostsConstants.html" title="struct massa_execution_exports::settings::StorageCostsConstants">StorageCostsConstants</a>,
 }</code></pre><details class="toggle top-doc" open><summary class="hideme"><span>Expand description</span></summary><div class="docblock"><p>The <code>SpeculativeLedger</code> contains an thread-safe shared reference to the final ledger (read-only),
 a list of existing changes that happened o the ledger since its finality,
 as well as an extra list of “added” changes.
@@ -19,14 +19,14 @@ Slots should be consecutive, newest at the back.</p>
 </div><span id="structfield.max_datastore_key_length" class="structfield small-section-header"><a href="#structfield.max_datastore_key_length" class="anchor field">§</a><code>max_datastore_key_length: <a class="primitive" href="https://doc.rust-lang.org/nightly/std/primitive.u8.html">u8</a></code></span><div class="docblock"><p>max datastore key length</p>
 </div><span id="structfield.max_datastore_value_size" class="structfield small-section-header"><a href="#structfield.max_datastore_value_size" class="anchor field">§</a><code>max_datastore_value_size: <a class="primitive" href="https://doc.rust-lang.org/nightly/std/primitive.u64.html">u64</a></code></span><div class="docblock"><p>Max datastore value size</p>
 </div><span id="structfield.max_bytecode_size" class="structfield small-section-header"><a href="#structfield.max_bytecode_size" class="anchor field">§</a><code>max_bytecode_size: <a class="primitive" href="https://doc.rust-lang.org/nightly/std/primitive.u64.html">u64</a></code></span><div class="docblock"><p>Max bytecode size</p>
-</div><span id="structfield.storage_costs_constants" class="structfield small-section-header"><a href="#structfield.storage_costs_constants" class="anchor field">§</a><code>storage_costs_constants: StorageCostsConstants</code></span><div class="docblock"><p>storage cost constants</p>
+</div><span id="structfield.storage_costs_constants" class="structfield small-section-header"><a href="#structfield.storage_costs_constants" class="anchor field">§</a><code>storage_costs_constants: <a class="struct" href="../../massa_execution_exports/settings/struct.StorageCostsConstants.html" title="struct massa_execution_exports::settings::StorageCostsConstants">StorageCostsConstants</a></code></span><div class="docblock"><p>storage cost constants</p>
 </div><h2 id="implementations" class="small-section-header">Implementations<a href="#implementations" class="anchor">§</a></h2><div id="implementations-list"><details class="toggle implementors-toggle" open><summary><section id="impl-SpeculativeLedger" class="impl"><a class="srclink rightside" href="../../src/massa_execution_worker/speculative_ledger.rs.html#61-619">source</a><a href="#impl-SpeculativeLedger" class="anchor">§</a><h3 class="code-header">impl <a class="struct" href="struct.SpeculativeLedger.html" title="struct massa_execution_worker::speculative_ledger::SpeculativeLedger">SpeculativeLedger</a></h3></section></summary><div class="impl-items"><details class="toggle method-toggle" open><summary><section id="method.new" class="method"><a class="srclink rightside" href="../../src/massa_execution_worker/speculative_ledger.rs.html#67-84">source</a><h4 class="code-header">pub fn <a href="#method.new" class="fn">new</a>(
     final_state: <a class="struct" href="https://doc.rust-lang.org/nightly/alloc/sync/struct.Arc.html" title="struct alloc::sync::Arc">Arc</a>&lt;RwLock&lt;FinalState&gt;&gt;,
     active_history: <a class="struct" href="https://doc.rust-lang.org/nightly/alloc/sync/struct.Arc.html" title="struct alloc::sync::Arc">Arc</a>&lt;RwLock&lt;<a class="struct" href="../active_history/struct.ActiveHistory.html" title="struct massa_execution_worker::active_history::ActiveHistory">ActiveHistory</a>&gt;&gt;,
     max_datastore_key_length: <a class="primitive" href="https://doc.rust-lang.org/nightly/std/primitive.u8.html">u8</a>,
     max_bytecode_size: <a class="primitive" href="https://doc.rust-lang.org/nightly/std/primitive.u64.html">u64</a>,
     max_datastore_value_size: <a class="primitive" href="https://doc.rust-lang.org/nightly/std/primitive.u64.html">u64</a>,
-    storage_costs_constants: StorageCostsConstants
+    storage_costs_constants: <a class="struct" href="../../massa_execution_exports/settings/struct.StorageCostsConstants.html" title="struct massa_execution_exports::settings::StorageCostsConstants">StorageCostsConstants</a>
 ) -&gt; Self</h4></section></summary><div class="docblock"><p>creates a new <code>SpeculativeLedger</code></p>
 <h5 id="arguments"><a href="#arguments">Arguments</a></h5>
 <ul>
@@ -52,7 +52,7 @@ and resets their local value to nothing.</p>
     from_addr: <a class="enum" href="https://doc.rust-lang.org/nightly/core/option/enum.Option.html" title="enum core::option::Option">Option</a>&lt;Address&gt;,
     to_addr: <a class="enum" href="https://doc.rust-lang.org/nightly/core/option/enum.Option.html" title="enum core::option::Option">Option</a>&lt;Address&gt;,
     amount: Amount
-) -&gt; <a class="enum" href="https://doc.rust-lang.org/nightly/core/result/enum.Result.html" title="enum core::result::Result">Result</a>&lt;<a class="primitive" href="https://doc.rust-lang.org/nightly/std/primitive.unit.html">()</a>, ExecutionError&gt;</h4></section></summary><div class="docblock"><p>Transfers coins from one address to another.
+) -&gt; <a class="enum" href="https://doc.rust-lang.org/nightly/core/result/enum.Result.html" title="enum core::result::Result">Result</a>&lt;<a class="primitive" href="https://doc.rust-lang.org/nightly/std/primitive.unit.html">()</a>, <a class="enum" href="../../massa_execution_exports/error/enum.ExecutionError.html" title="enum massa_execution_exports::error::ExecutionError">ExecutionError</a>&gt;</h4></section></summary><div class="docblock"><p>Transfers coins from one address to another.
 No changes are retained in case of failure.
 The spending address, if defined, must exist.</p>
 <h5 id="parameters"><a href="#parameters">Parameters:</a></h5>
@@ -71,7 +71,7 @@ The spending address, if defined, must exist.</p>
     creator_address: Address,
     addr: Address,
     bytecode: Bytecode
-) -&gt; <a class="enum" href="https://doc.rust-lang.org/nightly/core/result/enum.Result.html" title="enum core::result::Result">Result</a>&lt;<a class="primitive" href="https://doc.rust-lang.org/nightly/std/primitive.unit.html">()</a>, ExecutionError&gt;</h4></section></summary><div class="docblock"><p>Creates a new smart contract address with initial bytecode.</p>
+) -&gt; <a class="enum" href="https://doc.rust-lang.org/nightly/core/result/enum.Result.html" title="enum core::result::Result">Result</a>&lt;<a class="primitive" href="https://doc.rust-lang.org/nightly/std/primitive.unit.html">()</a>, <a class="enum" href="../../massa_execution_exports/error/enum.ExecutionError.html" title="enum massa_execution_exports::error::ExecutionError">ExecutionError</a>&gt;</h4></section></summary><div class="docblock"><p>Creates a new smart contract address with initial bytecode.</p>
 <h5 id="arguments-4"><a href="#arguments-4">Arguments</a></h5>
 <ul>
 <li><code>creator_address</code>: address that asked for this creation. Will pay the storage costs.</li>
@@ -83,7 +83,7 @@ The spending address, if defined, must exist.</p>
     caller_addr: &amp;Address,
     addr: &amp;Address,
     bytecode: Bytecode
-) -&gt; <a class="enum" href="https://doc.rust-lang.org/nightly/core/result/enum.Result.html" title="enum core::result::Result">Result</a>&lt;<a class="primitive" href="https://doc.rust-lang.org/nightly/std/primitive.unit.html">()</a>, ExecutionError&gt;</h4></section></summary><div class="docblock"><p>Sets the bytecode associated to an address in the ledger.
+) -&gt; <a class="enum" href="https://doc.rust-lang.org/nightly/core/result/enum.Result.html" title="enum core::result::Result">Result</a>&lt;<a class="primitive" href="https://doc.rust-lang.org/nightly/std/primitive.unit.html">()</a>, <a class="enum" href="../../massa_execution_exports/error/enum.ExecutionError.html" title="enum massa_execution_exports::error::ExecutionError">ExecutionError</a>&gt;</h4></section></summary><div class="docblock"><p>Sets the bytecode associated to an address in the ledger.
 Fails if the address doesn’t exist.</p>
 <h5 id="arguments-5"><a href="#arguments-5">Arguments</a></h5>
 <ul>
@@ -117,13 +117,13 @@ Fails if the address doesn’t exist.</p>
 </div></details><section id="method.get_storage_cost_datastore_value" class="method"><a class="srclink rightside" href="../../src/massa_execution_worker/speculative_ledger.rs.html#483-494">source</a><h4 class="code-header">fn <a href="#method.get_storage_cost_datastore_value" class="fn">get_storage_cost_datastore_value</a>(
     &amp;self,
     value: &amp;<a class="struct" href="https://doc.rust-lang.org/nightly/alloc/vec/struct.Vec.html" title="struct alloc::vec::Vec">Vec</a>&lt;<a class="primitive" href="https://doc.rust-lang.org/nightly/std/primitive.u8.html">u8</a>&gt;
-) -&gt; <a class="enum" href="https://doc.rust-lang.org/nightly/core/result/enum.Result.html" title="enum core::result::Result">Result</a>&lt;Amount, ExecutionError&gt;</h4></section><details class="toggle method-toggle" open><summary><section id="method.set_data_entry" class="method"><a class="srclink rightside" href="../../src/massa_execution_worker/speculative_ledger.rs.html#505-576">source</a><h4 class="code-header">pub fn <a href="#method.set_data_entry" class="fn">set_data_entry</a>(
+) -&gt; <a class="enum" href="https://doc.rust-lang.org/nightly/core/result/enum.Result.html" title="enum core::result::Result">Result</a>&lt;Amount, <a class="enum" href="../../massa_execution_exports/error/enum.ExecutionError.html" title="enum massa_execution_exports::error::ExecutionError">ExecutionError</a>&gt;</h4></section><details class="toggle method-toggle" open><summary><section id="method.set_data_entry" class="method"><a class="srclink rightside" href="../../src/massa_execution_worker/speculative_ledger.rs.html#505-576">source</a><h4 class="code-header">pub fn <a href="#method.set_data_entry" class="fn">set_data_entry</a>(
     &amp;mut self,
     caller_addr: &amp;Address,
     addr: &amp;Address,
     key: <a class="struct" href="https://doc.rust-lang.org/nightly/alloc/vec/struct.Vec.html" title="struct alloc::vec::Vec">Vec</a>&lt;<a class="primitive" href="https://doc.rust-lang.org/nightly/std/primitive.u8.html">u8</a>&gt;,
     value: <a class="struct" href="https://doc.rust-lang.org/nightly/alloc/vec/struct.Vec.html" title="struct alloc::vec::Vec">Vec</a>&lt;<a class="primitive" href="https://doc.rust-lang.org/nightly/std/primitive.u8.html">u8</a>&gt;
-) -&gt; <a class="enum" href="https://doc.rust-lang.org/nightly/core/result/enum.Result.html" title="enum core::result::Result">Result</a>&lt;<a class="primitive" href="https://doc.rust-lang.org/nightly/std/primitive.unit.html">()</a>, ExecutionError&gt;</h4></section></summary><div class="docblock"><p>Sets a data set entry for a given address in the ledger.
+) -&gt; <a class="enum" href="https://doc.rust-lang.org/nightly/core/result/enum.Result.html" title="enum core::result::Result">Result</a>&lt;<a class="primitive" href="https://doc.rust-lang.org/nightly/std/primitive.unit.html">()</a>, <a class="enum" href="../../massa_execution_exports/error/enum.ExecutionError.html" title="enum massa_execution_exports::error::ExecutionError">ExecutionError</a>&gt;</h4></section></summary><div class="docblock"><p>Sets a data set entry for a given address in the ledger.
 Fails if the address doesn’t exist.
 If the datastore entry does not exist, it is created.</p>
 <h5 id="arguments-9"><a href="#arguments-9">Arguments</a></h5>
@@ -138,7 +138,7 @@ If the datastore entry does not exist, it is created.</p>
     caller_addr: &amp;Address,
     addr: &amp;Address,
     key: &amp;[<a class="primitive" href="https://doc.rust-lang.org/nightly/std/primitive.u8.html">u8</a>]
-) -&gt; <a class="enum" href="https://doc.rust-lang.org/nightly/core/result/enum.Result.html" title="enum core::result::Result">Result</a>&lt;<a class="primitive" href="https://doc.rust-lang.org/nightly/std/primitive.unit.html">()</a>, ExecutionError&gt;</h4></section></summary><div class="docblock"><p>Deletes a datastore entry for a given address.
+) -&gt; <a class="enum" href="https://doc.rust-lang.org/nightly/core/result/enum.Result.html" title="enum core::result::Result">Result</a>&lt;<a class="primitive" href="https://doc.rust-lang.org/nightly/std/primitive.unit.html">()</a>, <a class="enum" href="../../massa_execution_exports/error/enum.ExecutionError.html" title="enum massa_execution_exports::error::ExecutionError">ExecutionError</a>&gt;</h4></section></summary><div class="docblock"><p>Deletes a datastore entry for a given address.
 Fails if the entry or address does not exist.</p>
 <h5 id="arguments-10"><a href="#arguments-10">Arguments</a></h5>
 <ul>
