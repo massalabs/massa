@@ -150,10 +150,9 @@ impl Tester {
     ) {
         let mut testers = Vec::new();
 
-        // create shared channel for launching test
+        // create shared channel between thread for launching test
         let (test_sender, test_receiver) = crossbeam::channel::unbounded();
 
-        dbg!(config.thread_tester_count);
         for _ in 0..config.thread_tester_count {
             testers.push(Tester::new(peer_db.clone(), test_receiver.clone()));
         }
@@ -182,9 +181,16 @@ impl Tester {
                 crossbeam::select! {
                     recv(receiver) -> res => {
                         match res {
-                            Ok(_listener) => {
+                            Ok(listener) => {
                                 // receive new listener to test
-                                dbg!("New listener to test");
+                                listener.1.iter().for_each(|(addr, _transport)| {
+                                    dbg!("New listener to test : {:?}", addr);
+                                    let _res =  network_manager.try_connect(
+                                        *addr,
+                                        Duration::from_millis(200),
+                                        &OutConnectionConfig::Tcp(Box::new(TcpOutConnectionConfig {})),
+                                    );
+                                });
                             },
                             Err(_e) => break,
                         }
@@ -207,7 +213,6 @@ impl Tester {
                                 &OutConnectionConfig::Tcp(Box::new(TcpOutConnectionConfig {})),
                             );
                         });
-
                     }
                 }
             }
