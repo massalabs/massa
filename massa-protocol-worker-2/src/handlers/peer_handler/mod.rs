@@ -194,6 +194,7 @@ impl HandshakeHandler for MassaHandshake {
         listeners: &HashMap<SocketAddr, TransportType>,
         messages_handler: MassaMessagesHandler,
     ) -> PeerNetResult<PeerId> {
+        println!("Performing Massa handshake");
         let mut bytes = PeerId::from_public_key(keypair.get_public_key()).to_bytes();
         //TODO: Add version in announce
         let listeners_announcement = Announcement::new(listeners.clone(), keypair).unwrap();

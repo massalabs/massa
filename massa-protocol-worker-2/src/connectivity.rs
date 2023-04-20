@@ -169,14 +169,16 @@ pub fn start_connectivity_thread(
                                 {
                                     {
                                         let active_connections = manager.active_connections.read();
+                                        println!("Checking addr: {:?}", addr);
                                         println!("Connections queue = {:#?}", active_connections.connection_queue);
                                         println!("Connections = {:#?}", active_connections.connections);
-                                        if active_connections.check_addr_accepted(&addr) {
+                                        if !active_connections.check_addr_accepted(&addr) {
+                                            println!("Address already connected");
                                             continue;
                                         }
                                     }
+                                    println!("Trying to connect to peer {:?}", addr);
                                     // We only manage TCP for now
-                                    let (addr, _transport) = peer_info.last_announce.listeners.iter().next().unwrap();
                                     manager.try_connect(*addr, Duration::from_millis(200), &OutConnectionConfig::Tcp(Box::new(TcpOutConnectionConfig {}))).unwrap();
                                 };
                             };

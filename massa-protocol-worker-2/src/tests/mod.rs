@@ -50,10 +50,10 @@ fn basic() {
     serde_json::to_writer_pretty(initial_peers_file_2.as_file(), &initial_peers2)
         .expect("unable to write ledger file");
     config1.initial_peers = initial_peers_file.path().to_path_buf();
-    config1.max_in_connections = 1;
+    config1.max_in_connections = 5;
     config1.max_out_connections = 1;
     config2.initial_peers = initial_peers_file_2.path().to_path_buf();
-    config2.max_in_connections = 2;
+    config2.max_in_connections = 5;
     config2.max_out_connections = 0;
 
     // Setup the storages
@@ -68,7 +68,7 @@ fn basic() {
         start_protocol_controller(config2, consensus_controller2, pool_controller2, storage2)
             .expect("Failed to start protocol 2");
 
-    std::thread::sleep(Duration::from_secs(5));
+    std::thread::sleep(Duration::from_secs(10));
     // Stop the protocols
     sender_manager1.stop();
     manager1.stop();

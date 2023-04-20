@@ -63,9 +63,8 @@ impl HandshakeHandler for TesterHandshake {
         _: &HashMap<SocketAddr, TransportType>,
         _: TesterMessagesHandler,
     ) -> PeerNetResult<PeerId> {
-        println!("Before receive");
+        println!("Performing Tester handshake");
         let data = endpoint.receive()?;
-        println!("Received handshake data: {:?}", data);
         let peer_id = PeerId::from_bytes(&data[..32].try_into().unwrap())?;
 
         let res = {

@@ -6,11 +6,14 @@ use peernet::network_manager::SharedActiveConnections;
 
 use crate::messages::MessagesSerializer;
 
-use super::{commands_propagation::BlockHandlerCommand, BlockMessageSerializer};
+use super::{
+    cache::SharedBlockCache, commands_propagation::BlockHandlerCommand, BlockMessageSerializer,
+};
 
 pub struct PropagationThread {
     receiver: Receiver<BlockHandlerCommand>,
     config: ProtocolConfig,
+    cache: SharedBlockCache,
     active_connections: SharedActiveConnections,
     block_serializer: MessagesSerializer,
 }
@@ -29,9 +32,10 @@ impl PropagationThread {
 }
 
 pub fn start_propagation_thread(
+    active_connections: SharedActiveConnections,
     receiver: Receiver<BlockHandlerCommand>,
     config: ProtocolConfig,
-    active_connections: SharedActiveConnections,
+    cache: SharedBlockCache,
 ) -> JoinHandle<()> {
     //TODO: Here and everywhere add id to threads
     std::thread::spawn(move || {
@@ -40,6 +44,7 @@ pub fn start_propagation_thread(
         let mut propagation_thread = PropagationThread {
             receiver,
             config,
+            cache,
             active_connections,
             block_serializer,
         };
