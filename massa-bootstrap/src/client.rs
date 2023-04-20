@@ -383,7 +383,7 @@ fn filter_bootstrap_list(
     let new_bootstrap_list_len = filtered_bootstrap_list.len();
 
     debug!(
-        "Keeping {:?} bootstrap ips. Filtered out {} bootstrap addresses out of a total of {} bootstrap servers.",
+        "Keeping {:?} bootstrap ip types. Filtered out {} bootstrap addresses out of a total of {} bootstrap servers.",
         ip_type,
         prev_bootstrap_list_len as i32 - new_bootstrap_list_len as i32,
         prev_bootstrap_list_len
