@@ -22,7 +22,9 @@ impl PropagationThread {
     fn run(&mut self) {
         loop {
             match self.receiver.recv() {
-                Ok(command) => {}
+                Ok(command) => {
+                    //TODO: Add management
+                }
                 Err(err) => {
                     println!("Error: {:?}", err)
                 }

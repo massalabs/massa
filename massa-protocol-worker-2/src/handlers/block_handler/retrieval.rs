@@ -15,7 +15,7 @@ use crate::{
     sig_verifier::verify_sigs_batch,
 };
 use crossbeam::{
-    channel::{Receiver, Sender},
+    channel::{at, Receiver, Sender},
     select,
 };
 use lru::LruCache;
@@ -35,6 +35,7 @@ use massa_pool_exports::PoolController;
 use massa_protocol_exports_2::{ProtocolConfig, ProtocolError};
 use massa_serialization::{DeserializeError, Deserializer, Serializer};
 use massa_storage::Storage;
+use massa_time::TimeError;
 use peernet::{network_manager::SharedActiveConnections, peer_id::PeerId};
 use tracing::warn;
 
@@ -65,6 +66,17 @@ pub(crate) struct BlockInfo {
     pub(crate) operations_size: usize,
 }
 
+impl BlockInfo {
+    fn new(header: Option<SecuredHeader>, storage: Storage) -> Self {
+        BlockInfo {
+            header,
+            operation_ids: None,
+            storage,
+            operations_size: 0,
+        }
+    }
+}
+
 pub struct RetrievalThread {
     active_connections: SharedActiveConnections,
     consensus_controller: Box<dyn ConsensusController>,
@@ -78,6 +90,7 @@ pub struct RetrievalThread {
     peer_cmd_sender: Sender<PeerManagementCmd>,
     endorsement_cache: SharedEndorsementCache,
     operation_cache: SharedOperationCache,
+    next_timer_ask_block: Instant,
     cache: SharedBlockCache,
     config: ProtocolConfig,
     storage: Storage,
@@ -124,7 +137,9 @@ impl RetrievalThread {
                                             warn!("Error in on_block_info_received: {:?}", err);
                                         }
                                     }
-                                    //TODO: Block algorithm
+                                    if let Err(err) = self.update_ask_block() {
+                                        warn!("Error in update_ask_blocks: {:?}", err);
+                                    }
                                 }
                                 BlockMessage::BlockHeader(header) => {
                                     massa_trace!(BLOCK_HEADER, { "peer_id": peer_id, "header": header});
@@ -135,8 +150,9 @@ impl RetrievalThread {
                                             self.consensus_controller
                                                 .register_block_header(block_id, header);
                                         }
-                                        //TODO: Block algorithm
-                                        //self.update_ask_block(block_ask_timer).await?;
+                                        if let Err(err) = self.update_ask_block() {
+                                            warn!("Error in update_ask_blocks: {:?}", err);
+                                        }
                                     } else {
                                         warn!(
                                             "peer {} sent us critically incorrect header, \
@@ -158,11 +174,43 @@ impl RetrievalThread {
                 recv(self.receiver) -> msg => {
                     match msg {
                         Ok(command) => {
+                            match command {
+                                BlockHandlerRetrievalCommand::WishlistDelta { new, remove } => {
+                                    massa_trace!("protocol.protocol_worker.process_command.wishlist_delta.begin", { "new": new, "remove": remove });
+                                    for (block_id, header) in new.into_iter() {
+                                        self.block_wishlist.insert(
+                                            block_id,
+                                            BlockInfo::new(header, self.storage.clone_without_refs()),
+                                        );
+                                    }
+                                    // Remove the knowledge that we asked this block to nodes.
+                                    if let Err(err) = self.remove_asked_blocks_of_node(&remove) {
+                                        warn!("Error in remove_asked_blocks_of_node: {:?}", err);
+                                    }
+
+                                    // Remove from the wishlist.
+                                    for block_id in remove.iter() {
+                                        self.block_wishlist.remove(block_id);
+                                    }
+                                    if let Err(err) = self.update_ask_block() {
+                                        warn!("Error in update_ask_blocks: {:?}", err);
+                                    }
+                                    massa_trace!(
+                                        "protocol.protocol_worker.process_command.wishlist_delta.end",
+                                        {}
+                                    );
+                                }
+                            }
                         },
                         Err(err) => {
                             println!("Error: {:?}", err);
                             return;
                         }
+                    }
+                },
+                recv(at(self.next_timer_ask_block)) -> _ => {
+                    if let Err(err) = self.update_ask_block() {
+                        warn!("Error in ask_blocks: {:?}", err);
                     }
                 }
             }
@@ -205,7 +253,12 @@ impl RetrievalThread {
                     // Mark the node as having the block.
                     {
                         let mut cache_write = self.cache.write();
-                        cache_write.insert_blocks_known(&from_peer_id, &[*hash]);
+                        cache_write.insert_blocks_known(
+                            &from_peer_id,
+                            &[*hash],
+                            true,
+                            Instant::now(),
+                        );
                     }
                     // Send only the missing operations that are in storage.
                     let needed_ops = {
@@ -289,7 +342,12 @@ impl RetrievalThread {
             BlockInfoReply::NotFound => {
                 {
                     let mut cache_write = self.cache.write();
-                    cache_write.insert_blocks_known(&from_peer_id, &[block_id]);
+                    cache_write.insert_blocks_known(
+                        &from_peer_id,
+                        &[block_id],
+                        false,
+                        Instant::now(),
+                    );
                 }
                 Ok(())
             }
@@ -316,7 +374,12 @@ impl RetrievalThread {
                         asked_blocks.remove(&block_id);
                         {
                             let mut cache_write = self.cache.write();
-                            cache_write.insert_blocks_known(&from_peer_id, &[block_id]);
+                            cache_write.insert_blocks_known(
+                                &from_peer_id,
+                                &[block_id],
+                                false,
+                                Instant::now(),
+                            );
                         }
                     }
                 }
@@ -382,8 +445,13 @@ impl RetrievalThread {
         {
             let cache_write = self.cache.write();
             if let Some(block_header) = cache_write.checked_headers.get(&block_id) {
-                cache_write.insert_blocks_known(&from_peer_id, &[block_id]);
-                cache_write.insert_blocks_known(&from_peer_id, &block_header.content.parents);
+                cache_write.insert_blocks_known(&from_peer_id, &[block_id], false, Instant::now());
+                cache_write.insert_blocks_known(
+                    &from_peer_id,
+                    &block_header.content.parents,
+                    false,
+                    Instant::now(),
+                );
                 {
                     let write_endorsement_cache = self.endorsement_cache.write();
                     let endorsement_ids = write_endorsement_cache
@@ -443,8 +511,13 @@ impl RetrievalThread {
         {
             let mut cache_write = self.cache.write();
             cache_write.checked_headers.put(block_id, header.clone());
-            cache_write.insert_blocks_known(&from_peer_id, &[block_id]);
-            cache_write.insert_blocks_known(&from_peer_id, &header.content.parents);
+            cache_write.insert_blocks_known(&from_peer_id, &[block_id], false, Instant::now());
+            cache_write.insert_blocks_known(
+                &from_peer_id,
+                &header.content.parents,
+                false,
+                Instant::now(),
+            );
             {
                 let write_endorsement_cache = self.endorsement_cache.write();
                 let endorsement_ids = write_endorsement_cache
@@ -615,7 +688,7 @@ impl RetrievalThread {
                 asked_blocks.remove(&block_id);
                 {
                     let mut cache_write = self.cache.write();
-                    cache_write.insert_blocks_known(&from_peer_id, &[block_id]);
+                    cache_write.insert_blocks_known(&from_peer_id, &[block_id], false, Instant::now());
                 }
             }
             return Ok(());
@@ -629,7 +702,7 @@ impl RetrievalThread {
                 asked_blocks.remove(&block_id);
                 {
                     let mut cache_write = self.cache.write();
-                    cache_write.insert_blocks_known(&from_peer_id, &[block_id]);
+                    cache_write.insert_blocks_known(&from_peer_id, &[block_id], false, Instant::now());
                 }
             }
             return Ok(());
@@ -644,7 +717,7 @@ impl RetrievalThread {
                 asked_blocks.remove(&block_id);
                 {
                     let mut cache_write = self.cache.write();
-                    cache_write.insert_blocks_known(&from_peer_id, &[block_id]);
+                    cache_write.insert_blocks_known(&from_peer_id, &[block_id], false, Instant::now());
                 }
             }
             return Ok(());
@@ -694,9 +767,11 @@ impl RetrievalThread {
 
             // If the block is empty, go straight to processing the full block info.
             if operation_ids.is_empty() {
-                return self
-                    .on_block_full_operations_received(from_peer_id, block_id, Default::default())
-                    .await;
+                return self.on_block_full_operations_received(
+                    from_peer_id,
+                    block_id,
+                    Default::default(),
+                );
             }
         } else {
             warn!("Peer id {} sent us a operation list for block id {} but the hash in header doesn't match.", from_peer_id, block_id);
@@ -738,10 +813,7 @@ impl RetrievalThread {
         block_id: BlockId,
         mut operations: Vec<SecureShareOperation>,
     ) -> Result<(), ProtocolError> {
-        if let Err(err) = self
-            .note_operations_from_node(operations.clone(), &from_peer_id)
-            .await
-        {
+        if let Err(err) = self.note_operations_from_peer(operations.clone(), &from_peer_id) {
             warn!(
                 "Peer id {} sent us operations for block id {} but they failed at verifications. Err = {}",
                 from_peer_id, block_id, err
@@ -761,7 +833,7 @@ impl RetrievalThread {
                         asked_blocks.remove(&block_id);
                         {
                             let mut cache_write = self.cache.write();
-                            cache_write.insert_blocks_known(&from_peer_id, &[block_id]);
+                            cache_write.insert_blocks_known(&from_peer_id, &[block_id], false, Instant::now());
                         }
                     }
                     return Ok(());
@@ -774,7 +846,7 @@ impl RetrievalThread {
                         asked_blocks.remove(&block_id);
                         {
                             let mut cache_write = self.cache.write();
-                            cache_write.insert_blocks_known(&from_peer_id, &[block_id]);
+                            cache_write.insert_blocks_known(&from_peer_id, &[block_id], false, Instant::now());
                         }
                     }
                     return Ok(());
@@ -812,7 +884,7 @@ impl RetrievalThread {
                             asked_blocks.remove(&block_id);
                             {
                                 let mut cache_write = self.cache.write();
-                                cache_write.insert_blocks_known(&from_peer_id, &[block_id]);
+                                cache_write.insert_blocks_known(&from_peer_id, &[block_id], false, Instant::now());
                             }
                         }
                         return Ok(());
@@ -861,7 +933,7 @@ impl RetrievalThread {
                     asked_blocks.remove(&block_id);
                     {
                         let mut cache_write = self.cache.write();
-                        cache_write.insert_blocks_known(&from_peer_id, &[block_id]);
+                        cache_write.insert_blocks_known(&from_peer_id, &[block_id], false, Instant::now());
                     }
                 }
                 return Ok(());
@@ -872,14 +944,315 @@ impl RetrievalThread {
         let remove_hashes = vec![block_id].into_iter().collect();
         self.remove_asked_blocks_of_node(&remove_hashes)
     }
+
+    fn note_operations_from_peer(
+        &mut self,
+        operations: Vec<SecureShareOperation>,
+        source_peer_id: &PeerId,
+    ) -> Result<(), ProtocolError> {
+        massa_trace!("protocol.protocol_worker.note_operations_from_peer", { "peer": source_peer_id, "operations": operations });
+        let length = operations.len();
+        let mut new_operations = PreHashMap::with_capacity(length);
+        for operation in operations {
+            let operation_id = operation.id;
+            if operation.serialized_size() > self.config.max_serialized_operations_size_per_block {
+                return Err(ProtocolError::InvalidOperationError(format!(
+                    "Operation {} exceeds max block size,  maximum authorized {} bytes but found {} bytes",
+                    operation_id,
+                    operation.serialized_size(),
+                    self.config.max_serialized_operations_size_per_block
+                )));
+            };
+
+            // Check operation signature only if not already checked.
+            if !self
+                .operation_cache
+                .read()
+                .checked_operations
+                .contains(&operation_id)
+            {
+                // check signature if the operation wasn't in `checked_operation`
+                new_operations.insert(operation_id, operation);
+            };
+        }
+        // optimized signature verification
+        verify_sigs_batch(
+            &new_operations
+                .iter()
+                .map(|(op_id, op)| (*op_id.get_hash(), op.signature, op.content_creator_pub_key))
+                .collect::<Vec<_>>(),
+        )?;
+        {
+            // add to checked operations
+            let mut cache_write = self.operation_cache.write();
+            for op_id in new_operations.keys().copied() {
+                cache_write.insert_checked_operation(op_id);
+            }
+        }
+        //TODO: Send to operation propagation thread
+        Ok(())
+    }
+
+    pub(crate) fn update_ask_block(&mut self) -> Result<(), ProtocolError> {
+        massa_trace!("protocol.protocol_worker.update_ask_block.begin", {});
+        let now = Instant::now();
+
+        // init timer
+        let mut next_tick = now
+            .checked_add(self.config.ask_block_timeout.into())
+            .ok_or(TimeError::TimeOverflowError)?;
+
+        // list blocks to re-ask and gather candidate nodes to ask from
+        let mut candidate_nodes: PreHashMap<BlockId, Vec<_>> = Default::default();
+        let mut ask_block_list: HashMap<PeerId, Vec<(BlockId, AskForBlocksInfo)>> =
+            Default::default();
+
+        // list blocks to re-ask and from whom
+        for (hash, block_info) in self.block_wishlist.iter() {
+            let required_info = if block_info.header.is_none() {
+                AskForBlocksInfo::Header
+            } else if block_info.operation_ids.is_none() {
+                AskForBlocksInfo::Info
+            } else {
+                let already_stored_operations = block_info.storage.get_op_refs();
+                // Unwrap safety: Check if `operation_ids` is none just above
+                AskForBlocksInfo::Operations(
+                    block_info
+                        .operation_ids
+                        .as_ref()
+                        .unwrap()
+                        .iter()
+                        .filter(|id| !already_stored_operations.contains(id))
+                        .copied()
+                        .collect(),
+                )
+            };
+            let mut needs_ask = true;
+            {
+                let mut cache_write = self.cache.write();
+                // Clean old peers that aren't active anymore
+                let peers_connected: HashSet<PeerId> = self
+                    .active_connections
+                    .read()
+                    .connections
+                    .keys()
+                    .cloned()
+                    .collect();
+                let peers_in_cache = cache_write
+                    .blocks_known_by_peer
+                    .iter()
+                    .map(|(peer_id, _)| peer_id.clone())
+                    .collect();
+                for peer_id in peers_in_cache {
+                    if !peers_connected.contains(&peer_id) {
+                        cache_write.blocks_known_by_peer.pop(&peer_id);
+                    }
+                }
+                let peers_in_asked_blocks = self.asked_blocks.keys().cloned().collect();
+                for peer_id in peers_in_asked_blocks {
+                    if !peers_connected.contains(&peer_id) {
+                        self.asked_blocks.remove(&peer_id);
+                    }
+                }
+                // Add new peers
+                for peer_id in peers_connected {
+                    if !cache_write.blocks_known_by_peer.contains(&peer_id) {
+                        //TODO: Change to detect the connection before
+                        cache_write.blocks_known_by_peer.put(
+                            peer_id,
+                            (
+                                LruCache::new(
+                                    NonZeroUsize::new(self.config.max_node_known_blocks_size)
+                                        .expect("max_node_known_blocks_size in config must be > 0"),
+                                ),
+                                Instant::now(),
+                            ),
+                        );
+                    } else {
+                        cache_write.blocks_known_by_peer.promote(&peer_id);
+                    }
+
+                    if !self.asked_blocks.contains_key(&peer_id) {
+                        self.asked_blocks
+                            .insert(peer_id.clone(), PreHashMap::default());
+                    }
+                }
+                for (peer_id, (blocks_known, _)) in cache_write.blocks_known_by_peer.iter_mut() {
+                    // map to remove the borrow on asked_blocks. Otherwise can't call insert_known_blocks
+                    let ask_time_opt = self
+                        .asked_blocks
+                        .get(peer_id)
+                        .and_then(|asked_blocks| asked_blocks.get(hash).copied());
+                    let (timeout_at_opt, timed_out) = if let Some(ask_time) = ask_time_opt {
+                        let t = ask_time
+                            .checked_add(self.config.ask_block_timeout.into())
+                            .ok_or(TimeError::TimeOverflowError)?;
+                        (Some(t), t <= now)
+                    } else {
+                        (None, false)
+                    };
+                    let knows_block = blocks_known.get(hash);
+
+                    // check if the node recently told us it doesn't have the block
+                    if let Some((false, info_time)) = knows_block {
+                        let info_expires = info_time
+                            .checked_add(self.config.ask_block_timeout.into())
+                            .ok_or(TimeError::TimeOverflowError)?;
+                        if info_expires > now {
+                            next_tick = std::cmp::min(next_tick, info_expires);
+                            continue; // ignore candidate node
+                        }
+                    }
+
+                    let candidate = match (timed_out, timeout_at_opt, knows_block) {
+                        // not asked yet
+                        (_, None, knowledge) => match knowledge {
+                            Some((true, _)) => (0u8, None),
+                            None => (1u8, None),
+                            Some((false, _)) => (2u8, None),
+                        },
+                        // not timed out yet (note: recent DONTHAVBLOCK checked before the match)
+                        (false, Some(timeout_at), _) => {
+                            next_tick = std::cmp::min(next_tick, timeout_at);
+                            needs_ask = false; // no need to re ask
+                            continue; // not a candidate
+                        }
+                        // timed out, supposed to have it
+                        (true, Some(timeout_at), Some((true, info_time))) => {
+                            if info_time < &timeout_at {
+                                // info less recent than timeout: mark as not having it
+                                blocks_known.put(*hash, (false, timeout_at));
+                                (2u8, ask_time_opt)
+                            } else {
+                                // told us it has it after a timeout: good candidate again
+                                (0u8, ask_time_opt)
+                            }
+                        }
+                        // timed out, supposed to not have it
+                        (true, Some(timeout_at), Some((false, info_time))) => {
+                            if info_time < &timeout_at {
+                                // info less recent than timeout: update info time
+                                blocks_known.put(*hash, (false, timeout_at));
+                            }
+                            (2u8, ask_time_opt)
+                        }
+                        // timed out but don't know if has it: mark as not having it
+                        (true, Some(timeout_at), None) => {
+                            blocks_known.put(*hash, (false, timeout_at));
+                            (2u8, ask_time_opt)
+                        }
+                    };
+
+                    // add candidate node
+                    candidate_nodes.entry(*hash).or_insert_with(Vec::new).push((
+                        candidate,
+                        *peer_id,
+                        required_info.clone(),
+                    ));
+                }
+
+                // remove if doesn't need to be asked
+                if !needs_ask {
+                    candidate_nodes.remove(hash);
+                }
+            }
+        }
+
+        // count active block requests per node
+        let mut active_block_req_count: HashMap<PeerId, usize> = self
+            .asked_blocks
+            .iter()
+            .map(|(peer_id, blocks)| {
+                (
+                    *peer_id,
+                    blocks
+                        .iter()
+                        .filter(|(_h, ask_t)| {
+                            ask_t
+                                .checked_add(self.config.ask_block_timeout.into())
+                                .map_or(false, |timeout_t| timeout_t > now)
+                        })
+                        .count(),
+                )
+            })
+            .collect();
+
+        for (hash, criteria) in candidate_nodes.into_iter() {
+            // find the best node
+            if let Some((_knowledge, best_node, required_info)) = criteria
+                .into_iter()
+                .filter(|(_knowledge, peer_id, _)| {
+                    // filter out nodes with too many active block requests
+                    *active_block_req_count.get(peer_id).unwrap_or(&0)
+                        <= self.config.max_simultaneous_ask_blocks_per_node
+                })
+                .min_by_key(|(knowledge, peer_id, _)| {
+                    (
+                        *knowledge,                                         // block knowledge
+                        *active_block_req_count.get(peer_id).unwrap_or(&0), // active requests
+                        self.cache
+                            .read()
+                            .blocks_known_by_peer
+                            .get(peer_id)
+                            .unwrap()
+                            .1, // node age (will not panic, already checked)
+                        *peer_id,                                           // node ID
+                    )
+                })
+            {
+                let asked_blocks = self.asked_blocks.get_mut(&best_node).unwrap(); // will not panic, already checked
+                asked_blocks.insert(hash, now);
+                if let Some(cnt) = active_block_req_count.get_mut(&best_node) {
+                    *cnt += 1; // increase the number of actively asked blocks
+                }
+
+                ask_block_list
+                    .entry(best_node)
+                    .or_insert_with(Vec::new)
+                    .push((hash, required_info.clone()));
+
+                let timeout_at = now
+                    .checked_add(self.config.ask_block_timeout.into())
+                    .ok_or(TimeError::TimeOverflowError)?;
+                next_tick = std::cmp::min(next_tick, timeout_at);
+            }
+        }
+
+        // send AskBlockEvents
+        if !ask_block_list.is_empty() {
+            massa_trace!("protocol.protocol_worker.update_ask_block", {
+                "list": ask_block_list
+            });
+            for (peer_id, list) in ask_block_list.iter() {
+                {
+                    let active_connections_read = self.active_connections.read();
+                    if let Some(peer) = active_connections_read.connections.get(peer_id) {
+                        peer.send_channels.send(
+                            &self.block_message_serializer,
+                            BlockMessage::AskForBlocks(*list).into(),
+                            true,
+                        );
+                    }
+                }
+            }
+        }
+
+        self.next_timer_ask_block = next_tick;
+        Ok(())
+    }
 }
 
 pub fn start_retrieval_thread(
     active_connections: SharedActiveConnections,
+    consensus_controller: Box<dyn ConsensusController>,
+    pool_controller: Box<dyn PoolController>,
     receiver_network: Receiver<PeerMessageTuple>,
     receiver: Receiver<BlockHandlerRetrievalCommand>,
     internal_sender: Sender<BlockHandlerCommand>,
+    peer_cmd_sender: Sender<PeerManagementCmd>,
     config: ProtocolConfig,
+    endorsement_cache: SharedEndorsementCache,
+    operation_cache: SharedOperationCache,
     cache: SharedBlockCache,
     storage: Storage,
 ) -> JoinHandle<()> {
@@ -888,11 +1261,19 @@ pub fn start_retrieval_thread(
     std::thread::spawn(move || {
         let mut retrieval_thread = RetrievalThread {
             active_connections,
+            consensus_controller,
+            pool_controller,
+            next_timer_ask_block: Instant::now() + config.ask_block_timeout.to_duration(),
+            block_wishlist: PreHashMap::default(),
+            asked_blocks: HashMap::default(),
+            peer_cmd_sender,
             receiver_network,
             block_message_serializer,
             receiver,
             internal_sender,
             cache,
+            endorsement_cache,
+            operation_cache,
             config,
             storage,
         };

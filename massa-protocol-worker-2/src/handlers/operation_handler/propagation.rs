@@ -116,8 +116,8 @@ impl PropagationThread {
                         ops.put(id.prefix(), ());
                     }
                     {
-                        let mut active_connections = self.active_connections.write();
-                        if let Some(connection) = active_connections.connections.get_mut(peer_id) {
+                        let active_connections = self.active_connections.read();
+                        if let Some(connection) = active_connections.connections.get(peer_id) {
                             if let Err(err) = connection.send_channels.send(
                                 &self.operation_message_serializer,
                                 OperationMessage::OperationsAnnouncement(
