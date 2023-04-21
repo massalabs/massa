@@ -62,7 +62,7 @@ impl RetrievalThread {
                         return;
                     }
                     match message {
-                        EndorsementMessage::Endorsements(mut endorsements) => {
+                        EndorsementMessage::Endorsements(endorsements) => {
                             if let Err(err) =
                                 self.note_endorsements_from_peer(endorsements, &peer_id)
                             {
@@ -137,15 +137,15 @@ impl RetrievalThread {
                 cache_write.checked_endorsements.put(*endorsement_id, ());
             }
             // add to known endorsements for source node.
-            let endorsements =
-                cache_write
-                    .endorsements_known_by_peer
-                    .get_or_insert_mut(*from_peer_id, || {
-                        LruCache::new(
-                            NonZeroUsize::new(self.config.max_node_known_endorsements_size)
-                                .expect("max_node_known_endorsements_size in config should be > 0"),
-                        )
-                    });
+            let endorsements = cache_write.endorsements_known_by_peer.get_or_insert_mut(
+                from_peer_id.clone(),
+                || {
+                    LruCache::new(
+                        NonZeroUsize::new(self.config.max_node_known_endorsements_size)
+                            .expect("max_node_known_endorsements_size in config should be > 0"),
+                    )
+                },
+            );
             for endorsement_id in endorsement_ids.iter() {
                 endorsements.put(*endorsement_id, ());
             }

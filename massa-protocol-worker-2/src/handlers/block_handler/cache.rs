@@ -9,7 +9,7 @@ pub struct BlockCache {
     pub checked_headers: LruCache<BlockId, SecuredHeader>,
     //TODO: Add the val true fal as a value
     pub blocks_known_by_peer: LruCache<PeerId, (LruCache<BlockId, (bool, Instant)>, Instant)>,
-    pub max_node_known_blocks_size: NonZeroUsize,
+    pub max_known_blocks_by_peer: NonZeroUsize,
 }
 
 impl BlockCache {
@@ -22,14 +22,21 @@ impl BlockCache {
     ) {
         let (blocks, _) = self
             .blocks_known_by_peer
-            .get_or_insert_mut(*from_peer_id, || {
-                (
-                    LruCache::new(self.max_node_known_blocks_size),
-                    Instant::now(),
-                )
+            .get_or_insert_mut(from_peer_id.clone(), || {
+                (LruCache::new(self.max_known_blocks_by_peer), Instant::now())
             });
         for block_id in block_ids {
             blocks.put(*block_id, (val, timeout));
+        }
+    }
+}
+
+impl BlockCache {
+    pub fn new(max_known_blocks: NonZeroUsize, max_known_blocks_by_peer: NonZeroUsize) -> Self {
+        Self {
+            checked_headers: LruCache::new(max_known_blocks),
+            blocks_known_by_peer: LruCache::new(max_known_blocks_by_peer),
+            max_known_blocks_by_peer: max_known_blocks_by_peer,
         }
     }
 }

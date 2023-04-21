@@ -49,21 +49,26 @@ impl BlockHandler {
         storage: Storage,
     ) -> Self {
         let block_retrieval_thread = start_retrieval_thread(
-            active_connections,
+            active_connections.clone(),
             consensus_controller,
             pool_controller,
             receiver_network,
             receiver_ext,
             internal_sender,
-            peer_cmd_sender,
-            config,
+            peer_cmd_sender.clone(),
+            config.clone(),
             endorsement_cache,
             operation_cache,
-            cache,
+            cache.clone(),
             storage,
         );
-        let block_propagation_thread =
-            start_propagation_thread(active_connections, internal_receiver, config, cache);
+        let block_propagation_thread = start_propagation_thread(
+            active_connections,
+            internal_receiver,
+            peer_cmd_sender,
+            config,
+            cache,
+        );
         Self {
             block_retrieval_thread: Some(block_retrieval_thread),
             block_propagation_thread: Some(block_propagation_thread),

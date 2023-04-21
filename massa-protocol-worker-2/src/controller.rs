@@ -8,7 +8,9 @@ use massa_protocol_exports_2::{ProtocolController, ProtocolError};
 use massa_storage::Storage;
 
 use crate::handlers::{
-    block_handler::commands_propagation::BlockHandlerCommand,
+    block_handler::{
+        commands_propagation::BlockHandlerCommand, commands_retrieval::BlockHandlerRetrievalCommand,
+    },
     endorsement_handler::commands_propagation::EndorsementHandlerCommand,
     operation_handler::commands_propagation::OperationHandlerCommand,
 };
@@ -20,6 +22,7 @@ pub struct ProtocolControllerImpl {
     // This is needed as to be able to stop the controller, the Sender has to be dropped,
     // if not, the handler will deadlock on `recv`
     // As this is never None, we allow ourselves to use `unwrap` to acceed to the senders
+    pub sender_block_retrieval_handler: Option<Sender<BlockHandlerRetrievalCommand>>,
     pub sender_block_handler: Option<Sender<BlockHandlerCommand>>,
     pub sender_operation_handler: Option<Sender<OperationHandlerCommand>>,
     pub sender_endorsement_handler: Option<Sender<EndorsementHandlerCommand>>,
@@ -27,11 +30,13 @@ pub struct ProtocolControllerImpl {
 
 impl ProtocolControllerImpl {
     pub fn new(
+        sender_block_retrieval_handler: Sender<BlockHandlerRetrievalCommand>,
         sender_block_handler: Sender<BlockHandlerCommand>,
         sender_operation_handler: Sender<OperationHandlerCommand>,
         sender_endorsement_handler: Sender<EndorsementHandlerCommand>,
     ) -> Self {
         ProtocolControllerImpl {
+            sender_block_retrieval_handler: Some(sender_block_retrieval_handler),
             sender_block_handler: Some(sender_block_handler),
             sender_operation_handler: Some(sender_operation_handler),
             sender_endorsement_handler: Some(sender_endorsement_handler),
@@ -76,13 +81,13 @@ impl ProtocolController for ProtocolControllerImpl {
         new: PreHashMap<BlockId, Option<SecuredHeader>>,
         remove: PreHashSet<BlockId>,
     ) -> Result<(), ProtocolError> {
-        //TODO: Send to retrieval channel
-        // self.sender_block_handler.as_ref().unwrap()
-        //     .send(BlockHandlerCommand::WishlistDelta { new, remove })
-        //     .map_err(|_| {
-        //         ProtocolError::ChannelError("send_wishlist_delta command send error".into())
-        //     })
-        Ok(())
+        self.sender_block_retrieval_handler
+            .as_ref()
+            .unwrap()
+            .send(BlockHandlerRetrievalCommand::WishlistDelta { new, remove })
+            .map_err(|_| {
+                ProtocolError::ChannelError("send_wishlist_delta command send error".into())
+            })
     }
 
     /// Propagate a batch of operation ids (from pool).

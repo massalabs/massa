@@ -2,6 +2,7 @@ use crossbeam::{
     channel::{unbounded, Sender},
     select,
 };
+use massa_consensus_exports::ConsensusController;
 use massa_pool_exports::PoolController;
 use massa_protocol_exports_2::{ProtocolConfig, ProtocolError};
 use massa_serialization::U64VarIntDeserializer;
@@ -19,7 +20,7 @@ use std::{num::NonZeroUsize, ops::Bound::Included, sync::Arc};
 use crate::{
     controller::ProtocolControllerImpl,
     handlers::{
-        block_handler::BlockHandler,
+        block_handler::{cache::BlockCache, BlockHandler},
         endorsement_handler::{cache::EndorsementCache, EndorsementHandler},
         operation_handler::{cache::OperationCache, OperationHandler},
         peer_handler::{fallback_function, MassaHandshake, PeerManagementHandler},
@@ -33,6 +34,7 @@ pub enum ConnectivityCommand {
 
 pub fn start_connectivity_thread(
     config: ProtocolConfig,
+    consensus_controller: Box<dyn ConsensusController>,
     pool_controller: Box<dyn PoolController>,
     storage: Storage,
 ) -> Result<
@@ -51,13 +53,14 @@ pub fn start_connectivity_thread(
     let (sender_operations_ext, receiver_operations_ext) = unbounded();
     let (sender_endorsements_ext, receiver_endorsements_ext) = unbounded();
     let (sender_blocks_ext, receiver_blocks_ext) = unbounded();
+    let (sender_blocks_retrieval_ext, receiver_blocks_retrieval_ext) = unbounded();
 
     let handle = std::thread::spawn({
         let sender_endorsements_ext = sender_endorsements_ext.clone();
         let sender_blocks_ext = sender_blocks_ext.clone();
         let sender_operations_ext = sender_operations_ext.clone();
         move || {
-            let mut peer_management_handler = PeerManagementHandler::new(initial_peers);
+            let peer_management_handler = PeerManagementHandler::new(initial_peers);
             //TODO: Bound the channel
             // Channels network <-> handlers
             let (sender_operations, receiver_operations) = unbounded();
@@ -96,12 +99,17 @@ pub fn start_connectivity_thread(
                 NonZeroUsize::new(10000).unwrap(),
             )));
 
+            let block_cache = Arc::new(RwLock::new(BlockCache::new(
+                NonZeroUsize::new(10000).unwrap(),
+                NonZeroUsize::new(10000).unwrap(),
+            )));
+
             // Start handlers
             let mut operation_handler = OperationHandler::new(
                 pool_controller.clone(),
                 storage.clone_without_refs(),
                 config.clone(),
-                operation_cache,
+                operation_cache.clone(),
                 manager.active_connections.clone(),
                 receiver_operations,
                 sender_operations_ext,
@@ -109,19 +117,30 @@ pub fn start_connectivity_thread(
                 peer_management_handler.sender.command_sender.clone(),
             );
             let mut endorsement_handler = EndorsementHandler::new(
-                pool_controller,
-                endorsement_cache,
-                storage,
+                pool_controller.clone(),
+                endorsement_cache.clone(),
+                storage.clone_without_refs(),
                 config.clone(),
                 manager.active_connections.clone(),
                 receiver_endorsements,
                 sender_endorsements_ext,
                 receiver_endorsements_ext,
+                peer_management_handler.sender.command_sender.clone(),
             );
             let mut block_handler = BlockHandler::new(
                 manager.active_connections.clone(),
+                consensus_controller,
+                pool_controller,
                 receiver_blocks,
+                receiver_blocks_retrieval_ext,
                 receiver_blocks_ext,
+                sender_blocks_ext,
+                peer_management_handler.sender.command_sender.clone(),
+                config.clone(),
+                endorsement_cache,
+                operation_cache,
+                block_cache,
+                storage.clone_without_refs(),
             );
 
             for (addr, transport) in config.listeners {
@@ -190,6 +209,7 @@ pub fn start_connectivity_thread(
     });
     // Start controller
     let controller = ProtocolControllerImpl::new(
+        sender_blocks_retrieval_ext,
         sender_blocks_ext,
         sender_operations_ext,
         sender_endorsements_ext,

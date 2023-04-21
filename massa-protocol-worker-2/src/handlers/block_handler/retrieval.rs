@@ -82,7 +82,7 @@ pub struct RetrievalThread {
     consensus_controller: Box<dyn ConsensusController>,
     pool_controller: Box<dyn PoolController>,
     receiver_network: Receiver<PeerMessageTuple>,
-    internal_sender: Sender<BlockHandlerCommand>,
+    _internal_sender: Sender<BlockHandlerCommand>,
     receiver: Receiver<BlockHandlerRetrievalCommand>,
     block_message_serializer: MessagesSerializer,
     block_wishlist: PreHashMap<BlockId, BlockInfo>,
@@ -127,13 +127,13 @@ impl RetrievalThread {
                             }
                             match message {
                                 BlockMessage::AskForBlocks(block_infos) => {
-                                    if let Err(err) = self.on_asked_for_blocks_received(peer_id, block_infos) {
+                                    if let Err(err) = self.on_asked_for_blocks_received(peer_id.clone(), block_infos) {
                                         warn!("Error in on_asked_for_blocks_received: {:?}", err);
                                     }
                                 }
                                 BlockMessage::ReplyForBlocks(block_infos) => {
                                     for (block_id, block_info) in block_infos.into_iter() {
-                                        if let Err(err) = self.on_block_info_received(peer_id, block_id, block_info) {
+                                        if let Err(err) = self.on_block_info_received(peer_id.clone(), block_id, block_info) {
                                             warn!("Error in on_block_info_received: {:?}", err);
                                         }
                                     }
@@ -229,10 +229,6 @@ impl RetrievalThread {
         from_peer_id: PeerId,
         list: Vec<(BlockId, AskForBlocksInfo)>,
     ) -> Result<(), ProtocolError> {
-        // let node_info = match self.active_nodes.get_mut(&from_node_id) {
-        //     Some(node_info) => node_info,
-        //     _ => return Ok(()),
-        // };
         let mut all_blocks_info = vec![];
         for (hash, info_wanted) in &list {
             let (header, operations_ids) = match self.storage.read_blocks().get(hash) {
@@ -441,10 +437,9 @@ impl RetrievalThread {
         let block_id = header.id;
 
         // check if this header was already verified
-        let now = Instant::now();
         {
-            let cache_write = self.cache.write();
-            if let Some(block_header) = cache_write.checked_headers.get(&block_id) {
+            let mut cache_write = self.cache.write();
+            if let Some(block_header) = cache_write.checked_headers.get(&block_id).cloned() {
                 cache_write.insert_blocks_known(&from_peer_id, &[block_id], false, Instant::now());
                 cache_write.insert_blocks_known(
                     &from_peer_id,
@@ -453,10 +448,10 @@ impl RetrievalThread {
                     Instant::now(),
                 );
                 {
-                    let write_endorsement_cache = self.endorsement_cache.write();
-                    let endorsement_ids = write_endorsement_cache
+                    let mut endorsement_cache_write = self.endorsement_cache.write();
+                    let endorsement_ids = endorsement_cache_write
                         .endorsements_known_by_peer
-                        .get_or_insert_mut(*from_peer_id, || {
+                        .get_or_insert_mut(from_peer_id.clone(), || {
                             LruCache::new(
                                 NonZeroUsize::new(self.config.max_node_known_blocks_size)
                                     .expect("max_node_known_blocks_size in config must be > 0"),
@@ -519,10 +514,10 @@ impl RetrievalThread {
                 Instant::now(),
             );
             {
-                let write_endorsement_cache = self.endorsement_cache.write();
-                let endorsement_ids = write_endorsement_cache
+                let mut endorsement_cache_write = self.endorsement_cache.write();
+                let endorsement_ids = endorsement_cache_write
                     .endorsements_known_by_peer
-                    .get_or_insert_mut(*from_peer_id, || {
+                    .get_or_insert_mut(from_peer_id.clone(), || {
                         LruCache::new(
                             NonZeroUsize::new(self.config.max_node_known_blocks_size)
                                 .expect("max_node_known_blocks_size in config must be > 0"),
@@ -611,15 +606,15 @@ impl RetrievalThread {
                 cache_write.checked_endorsements.put(*endorsement_id, ());
             }
             // add to known endorsements for source node.
-            let endorsements =
-                cache_write
-                    .endorsements_known_by_peer
-                    .get_or_insert_mut(*from_peer_id, || {
-                        LruCache::new(
-                            NonZeroUsize::new(self.config.max_node_known_endorsements_size)
-                                .expect("max_node_known_endorsements_size in config should be > 0"),
-                        )
-                    });
+            let endorsements = cache_write.endorsements_known_by_peer.get_or_insert_mut(
+                from_peer_id.clone(),
+                || {
+                    LruCache::new(
+                        NonZeroUsize::new(self.config.max_node_known_endorsements_size)
+                            .expect("max_node_known_endorsements_size in config should be > 0"),
+                    )
+                },
+            );
             for endorsement_id in endorsement_ids.iter() {
                 endorsements.put(*endorsement_id, ());
             }
@@ -1038,7 +1033,7 @@ impl RetrievalThread {
                     .keys()
                     .cloned()
                     .collect();
-                let peers_in_cache = cache_write
+                let peers_in_cache: Vec<PeerId> = cache_write
                     .blocks_known_by_peer
                     .iter()
                     .map(|(peer_id, _)| peer_id.clone())
@@ -1048,7 +1043,8 @@ impl RetrievalThread {
                         cache_write.blocks_known_by_peer.pop(&peer_id);
                     }
                 }
-                let peers_in_asked_blocks = self.asked_blocks.keys().cloned().collect();
+                let peers_in_asked_blocks: Vec<PeerId> =
+                    self.asked_blocks.keys().cloned().collect();
                 for peer_id in peers_in_asked_blocks {
                     if !peers_connected.contains(&peer_id) {
                         self.asked_blocks.remove(&peer_id);
@@ -1059,7 +1055,7 @@ impl RetrievalThread {
                     if !cache_write.blocks_known_by_peer.contains(&peer_id) {
                         //TODO: Change to detect the connection before
                         cache_write.blocks_known_by_peer.put(
-                            peer_id,
+                            peer_id.clone(),
                             (
                                 LruCache::new(
                                     NonZeroUsize::new(self.config.max_node_known_blocks_size)
@@ -1093,14 +1089,14 @@ impl RetrievalThread {
                     };
                     let knows_block = blocks_known.get(hash);
 
-                    // check if the node recently told us it doesn't have the block
+                    // check if the peer recently told us it doesn't have the block
                     if let Some((false, info_time)) = knows_block {
                         let info_expires = info_time
                             .checked_add(self.config.ask_block_timeout.into())
                             .ok_or(TimeError::TimeOverflowError)?;
                         if info_expires > now {
                             next_tick = std::cmp::min(next_tick, info_expires);
-                            continue; // ignore candidate node
+                            continue; // ignore candidate peer
                         }
                     }
 
@@ -1143,10 +1139,10 @@ impl RetrievalThread {
                         }
                     };
 
-                    // add candidate node
+                    // add candidate peer
                     candidate_nodes.entry(*hash).or_insert_with(Vec::new).push((
                         candidate,
-                        *peer_id,
+                        peer_id.clone(),
                         required_info.clone(),
                     ));
                 }
@@ -1164,7 +1160,7 @@ impl RetrievalThread {
             .iter()
             .map(|(peer_id, blocks)| {
                 (
-                    *peer_id,
+                    peer_id.clone(),
                     blocks
                         .iter()
                         .filter(|(_h, ask_t)| {
@@ -1193,10 +1189,10 @@ impl RetrievalThread {
                         self.cache
                             .read()
                             .blocks_known_by_peer
-                            .get(peer_id)
+                            .peek(peer_id)
                             .unwrap()
                             .1, // node age (will not panic, already checked)
-                        *peer_id,                                           // node ID
+                        peer_id.clone(),                                    // node ID
                     )
                 })
             {
@@ -1207,7 +1203,7 @@ impl RetrievalThread {
                 }
 
                 ask_block_list
-                    .entry(best_node)
+                    .entry(best_node.clone())
                     .or_insert_with(Vec::new)
                     .push((hash, required_info.clone()));
 
@@ -1220,18 +1216,20 @@ impl RetrievalThread {
 
         // send AskBlockEvents
         if !ask_block_list.is_empty() {
-            massa_trace!("protocol.protocol_worker.update_ask_block", {
-                "list": ask_block_list
-            });
             for (peer_id, list) in ask_block_list.iter() {
                 {
                     let active_connections_read = self.active_connections.read();
                     if let Some(peer) = active_connections_read.connections.get(peer_id) {
-                        peer.send_channels.send(
+                        if let Err(err) = peer.send_channels.send(
                             &self.block_message_serializer,
-                            BlockMessage::AskForBlocks(*list).into(),
+                            BlockMessage::AskForBlocks(list.clone()).into(),
                             true,
-                        );
+                        ) {
+                            warn!(
+                                "Failed to send AskForBlocks to peer {} err: {}",
+                                peer_id, err
+                            );
+                        }
                     }
                 }
             }
@@ -1248,7 +1246,7 @@ pub fn start_retrieval_thread(
     pool_controller: Box<dyn PoolController>,
     receiver_network: Receiver<PeerMessageTuple>,
     receiver: Receiver<BlockHandlerRetrievalCommand>,
-    internal_sender: Sender<BlockHandlerCommand>,
+    _internal_sender: Sender<BlockHandlerCommand>,
     peer_cmd_sender: Sender<PeerManagementCmd>,
     config: ProtocolConfig,
     endorsement_cache: SharedEndorsementCache,
@@ -1270,7 +1268,7 @@ pub fn start_retrieval_thread(
             receiver_network,
             block_message_serializer,
             receiver,
-            internal_sender,
+            _internal_sender,
             cache,
             endorsement_cache,
             operation_cache,
