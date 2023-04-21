@@ -29,6 +29,7 @@ impl Default for ProtocolConfig {
             asked_operations_pruning_period: 500.into(),
             operation_announcement_interval: 150.into(),
             max_operations_per_message: 1024,
+            max_operations_per_block: 5000,
             thread_count: 32,
             max_serialized_operations_size_per_block: 1024,
             controller_channel_size: 1024,

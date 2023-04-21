@@ -1,5 +1,5 @@
 use std::{
-    collections::{HashMap, HashSet},
+    collections::{hash_map::Entry, HashMap, HashSet},
     num::NonZeroUsize,
     thread::JoinHandle,
     time::Instant,
@@ -8,6 +8,7 @@ use std::{
 use crate::{
     handlers::{
         endorsement_handler::cache::SharedEndorsementCache,
+        operation_handler::cache::SharedOperationCache,
         peer_handler::models::{PeerManagementCmd, PeerMessageTuple},
     },
     messages::MessagesSerializer,
@@ -19,18 +20,20 @@ use crossbeam::{
 };
 use lru::LruCache;
 use massa_consensus_exports::ConsensusController;
+use massa_hash::{Hash, HASH_SIZE_BYTES};
 use massa_logging::massa_trace;
 use massa_models::{
+    block::{Block, BlockSerializer},
     block_header::SecuredHeader,
     block_id::BlockId,
     endorsement::SecureShareEndorsement,
-    operation::OperationId,
+    operation::{OperationId, SecureShareOperation},
     prehash::{CapacityAllocator, PreHashMap, PreHashSet},
-    secure_share::Id,
+    secure_share::{Id, SecureShare},
 };
 use massa_pool_exports::PoolController;
 use massa_protocol_exports_2::{ProtocolConfig, ProtocolError};
-use massa_serialization::{DeserializeError, Deserializer};
+use massa_serialization::{DeserializeError, Deserializer, Serializer};
 use massa_storage::Storage;
 use peernet::{network_manager::SharedActiveConnections, peer_id::PeerId};
 use tracing::warn;
@@ -74,6 +77,7 @@ pub struct RetrievalThread {
     asked_blocks: HashMap<PeerId, PreHashMap<BlockId, Instant>>,
     peer_cmd_sender: Sender<PeerManagementCmd>,
     endorsement_cache: SharedEndorsementCache,
+    operation_cache: SharedOperationCache,
     cache: SharedBlockCache,
     config: ProtocolConfig,
     storage: Storage,
@@ -201,16 +205,7 @@ impl RetrievalThread {
                     // Mark the node as having the block.
                     {
                         let mut cache_write = self.cache.write();
-                        let known_blocks = cache_write.blocks_known_by_peer.get_or_insert_mut(
-                            from_peer_id,
-                            || {
-                                LruCache::new(
-                                    NonZeroUsize::new(self.config.max_node_known_blocks_size)
-                                        .expect("max_node_known_blocks_size in config must be > 0"),
-                                )
-                            },
-                        );
-                        known_blocks.put(*hash, ());
+                        cache_write.insert_blocks_known(&from_peer_id, &[*hash]);
                     }
                     // Send only the missing operations that are in storage.
                     let needed_ops = {
@@ -240,6 +235,7 @@ impl RetrievalThread {
                 for peer_id in peers {
                     if !active_connections_read.connections.contains_key(&peer_id) {
                         cache_write.blocks_known_by_peer.pop(&peer_id);
+                        self.asked_blocks.remove(&peer_id);
                     }
                 }
             }
@@ -282,34 +278,18 @@ impl RetrievalThread {
                 // that block.
                 // Ban the node if the operation ids hash doesn't match with the hash contained in
                 // the block_header.
-                self.on_block_operation_list_received(
-                    from_peer_id,
-                    block_id,
-                    operation_list,
-                    op_timer,
-                )
-                .await
+                self.on_block_operation_list_received(from_peer_id, block_id, operation_list)
             }
             BlockInfoReply::Operations(operations) => {
                 // Send operations to pool,
                 // before performing the below checks,
                 // and wait for them to have been procesed(i.e. added to storage).
-                self.on_block_full_operations_received(from_node_id, block_id, operations, op_timer)
-                    .await
+                self.on_block_full_operations_received(from_peer_id, block_id, operations)
             }
             BlockInfoReply::NotFound => {
                 {
                     let mut cache_write = self.cache.write();
-                    let known_blocks =
-                        cache_write
-                            .blocks_known_by_peer
-                            .get_or_insert_mut(from_peer_id, || {
-                                LruCache::new(
-                                    NonZeroUsize::new(self.config.max_node_known_blocks_size)
-                                        .expect("max_node_known_blocks_size in config must be > 0"),
-                                )
-                            });
-                    known_blocks.put(block_id, ());
+                    cache_write.insert_blocks_known(&from_peer_id, &[block_id]);
                 }
                 Ok(())
             }
@@ -336,18 +316,7 @@ impl RetrievalThread {
                         asked_blocks.remove(&block_id);
                         {
                             let mut cache_write = self.cache.write();
-                            let blocks = cache_write.blocks_known_by_peer.get_or_insert_mut(
-                                from_peer_id,
-                                || {
-                                    LruCache::new(
-                                        NonZeroUsize::new(self.config.max_node_known_blocks_size)
-                                            .expect(
-                                                "max_node_known_blocks_size in config must be > 0",
-                                            ),
-                                    )
-                                },
-                            );
-                            blocks.put(block_id, ());
+                            cache_write.insert_blocks_known(&from_peer_id, &[block_id]);
                         }
                     }
                 }
@@ -413,19 +382,8 @@ impl RetrievalThread {
         {
             let cache_write = self.cache.write();
             if let Some(block_header) = cache_write.checked_headers.get(&block_id) {
-                let blocks =
-                    cache_write
-                        .blocks_known_by_peer
-                        .get_or_insert_mut(*from_peer_id, || {
-                            LruCache::new(
-                                NonZeroUsize::new(self.config.max_node_known_blocks_size)
-                                    .expect("max_node_known_blocks_size in config must be > 0"),
-                            )
-                        });
-                blocks.put(block_id, ());
-                for parent in &block_header.content.parents {
-                    blocks.put(*parent, ());
-                }
+                cache_write.insert_blocks_known(&from_peer_id, &[block_id]);
+                cache_write.insert_blocks_known(&from_peer_id, &block_header.content.parents);
                 {
                     let write_endorsement_cache = self.endorsement_cache.write();
                     let endorsement_ids = write_endorsement_cache
@@ -485,18 +443,8 @@ impl RetrievalThread {
         {
             let mut cache_write = self.cache.write();
             cache_write.checked_headers.put(block_id, header.clone());
-            let blocks = cache_write
-                .blocks_known_by_peer
-                .get_or_insert_mut(*from_peer_id, || {
-                    LruCache::new(
-                        NonZeroUsize::new(self.config.max_node_known_blocks_size)
-                            .expect("max_node_known_blocks_size in config must be > 0"),
-                    )
-                });
-            blocks.put(block_id, ());
-            for parent in header.content.parents {
-                blocks.put(parent, ());
-            }
+            cache_write.insert_blocks_known(&from_peer_id, &[block_id]);
+            cache_write.insert_blocks_known(&from_peer_id, &header.content.parents);
             {
                 let write_endorsement_cache = self.endorsement_cache.write();
                 let endorsement_ids = write_endorsement_cache
@@ -612,6 +560,317 @@ impl RetrievalThread {
         }
 
         Ok(())
+    }
+
+    /// On block information received, manage when we get a list of operations.
+    /// Ask for the missing operations that are not in the `checked_operations` cache variable.
+    ///
+    /// # Ban
+    /// Start compute the operations serialized total size with the operation we know.
+    /// Ban the node if the operations contained in the block overflow the max size. We don't
+    /// forward the block to the consensus in that case.
+    ///
+    /// # Parameters:
+    /// - `from_peer_id`: Node which sent us the information.
+    /// - `BlockId`: ID of the related operations we received.
+    /// - `operation_ids`: IDs of the operations contained by the block.
+    ///
+    /// # Result
+    /// return an error if stopping asking block failed. The error should be forwarded at the
+    /// root. todo: check if if make panic.
+    fn on_block_operation_list_received(
+        &mut self,
+        from_peer_id: PeerId,
+        block_id: BlockId,
+        operation_ids: Vec<OperationId>,
+    ) -> Result<(), ProtocolError> {
+        // All operation ids sent into a set
+        let operation_ids_set: PreHashSet<OperationId> = operation_ids.iter().cloned().collect();
+
+        // add to known ops
+        {
+            let mut cache_write = self.operation_cache.write();
+            let known_ops =
+                cache_write
+                    .ops_known_by_peer
+                    .get_or_insert_mut(from_peer_id.clone(), || {
+                        LruCache::new(
+                            NonZeroUsize::new(self.config.max_node_known_ops_size)
+                                .expect("max_node_known_ops_size in config should be > 0"),
+                        )
+                    });
+            for op_id in operation_ids_set.iter() {
+                known_ops.put(op_id.prefix(), ());
+            }
+        }
+
+        let info = if let Some(info) = self.block_wishlist.get_mut(&block_id) {
+            info
+        } else {
+            warn!(
+                "Peer {} sent us an operation list but we don't have block id {} in our wishlist.",
+                from_peer_id, block_id
+            );
+            if let Some(asked_blocks) = self.asked_blocks.get_mut(&from_peer_id) && asked_blocks.contains_key(&block_id) {
+                asked_blocks.remove(&block_id);
+                {
+                    let mut cache_write = self.cache.write();
+                    cache_write.insert_blocks_known(&from_peer_id, &[block_id]);
+                }
+            }
+            return Ok(());
+        };
+
+        let header = if let Some(header) = &info.header {
+            header
+        } else {
+            warn!("Peer {} sent us an operation list but we don't have receive the header of block id {} yet.", from_peer_id, block_id);
+            if let Some(asked_blocks) = self.asked_blocks.get_mut(&from_peer_id) && asked_blocks.contains_key(&block_id) {
+                asked_blocks.remove(&block_id);
+                {
+                    let mut cache_write = self.cache.write();
+                    cache_write.insert_blocks_known(&from_peer_id, &[block_id]);
+                }
+            }
+            return Ok(());
+        };
+
+        if info.operation_ids.is_some() {
+            warn!(
+                "Peer {} sent us an operation list for block id {} but we already received it.",
+                from_peer_id, block_id
+            );
+            if let Some(asked_blocks) = self.asked_blocks.get_mut(&from_peer_id) && asked_blocks.contains_key(&block_id) {
+                asked_blocks.remove(&block_id);
+                {
+                    let mut cache_write = self.cache.write();
+                    cache_write.insert_blocks_known(&from_peer_id, &[block_id]);
+                }
+            }
+            return Ok(());
+        }
+
+        let mut total_hash: Vec<u8> =
+            Vec::with_capacity(operation_ids.len().saturating_mul(HASH_SIZE_BYTES));
+        operation_ids.iter().for_each(|op_id| {
+            let op_hash = op_id.get_hash().into_bytes();
+            total_hash.extend(op_hash);
+        });
+
+        // Check operation_list against expected operations hash from header.
+        if header.content.operation_merkle_root == Hash::compute_from(&total_hash) {
+            if operation_ids.len() > self.config.max_operations_per_block as usize {
+                warn!("Peer id {} sent us an operations list for block id {} that contains more operations than the max allowed for a block.", from_peer_id, block_id);
+                let _ = self.ban_node(&from_peer_id);
+                return Ok(());
+            }
+
+            // Add the ops of info.
+            info.operation_ids = Some(operation_ids.clone());
+            let known_operations = info.storage.claim_operation_refs(&operation_ids_set);
+
+            // get the total size of known ops
+            info.operations_size =
+                Self::get_total_operations_size(&self.storage, &known_operations);
+
+            // mark ops as checked
+            {
+                let mut cache_ops_write = self.operation_cache.write();
+                for operation_id in known_operations.iter() {
+                    cache_ops_write.insert_checked_operation(*operation_id);
+                }
+            }
+
+            if info.operations_size > self.config.max_serialized_operations_size_per_block {
+                warn!("Peer id {} sent us a operation list for block id {} but the operations we already have in our records exceed max size.", from_peer_id, block_id);
+                let _ = self.ban_node(&from_peer_id);
+                return Ok(());
+            }
+
+            // Update ask block
+            let mut set = PreHashSet::<BlockId>::with_capacity(1);
+            set.insert(block_id);
+            self.remove_asked_blocks_of_node(&set)?;
+
+            // If the block is empty, go straight to processing the full block info.
+            if operation_ids.is_empty() {
+                return self
+                    .on_block_full_operations_received(from_peer_id, block_id, Default::default())
+                    .await;
+            }
+        } else {
+            warn!("Peer id {} sent us a operation list for block id {} but the hash in header doesn't match.", from_peer_id, block_id);
+            let _ = self.ban_node(&from_peer_id);
+        }
+        Ok(())
+    }
+    /// Return the sum of all operation's serialized sizes in the `Set<Id>`
+    fn get_total_operations_size(
+        storage: &Storage,
+        operation_ids: &PreHashSet<OperationId>,
+    ) -> usize {
+        let op_reader = storage.read_operations();
+        let mut total: usize = 0;
+        operation_ids.iter().for_each(|id| {
+            if let Some(op) = op_reader.get(id) {
+                total = total.saturating_add(op.serialized_size());
+            }
+        });
+        total
+    }
+
+    /// Checks full block operations that we asked. (Because their was missing in the
+    /// `checked_operations` cache variable, refer to `on_block_operation_list_received`)
+    ///
+    /// # Ban
+    /// Ban the node if it doesn't fill the requirement. Forward to the graph with a
+    /// `ProtocolEvent::ReceivedBlock` if the operations are under a max size.
+    ///
+    /// - thread incorrect for an operation
+    /// - wanted operations doesn't match
+    /// - duplicated operation
+    /// - full operations serialized size overflow
+    ///
+    /// We received these operation because we asked for the missing operation
+    fn on_block_full_operations_received(
+        &mut self,
+        from_peer_id: PeerId,
+        block_id: BlockId,
+        mut operations: Vec<SecureShareOperation>,
+    ) -> Result<(), ProtocolError> {
+        if let Err(err) = self
+            .note_operations_from_node(operations.clone(), &from_peer_id)
+            .await
+        {
+            warn!(
+                "Peer id {} sent us operations for block id {} but they failed at verifications. Err = {}",
+                from_peer_id, block_id, err
+            );
+            let _ = self.ban_node(&from_peer_id);
+            return Ok(());
+        }
+
+        match self.block_wishlist.entry(block_id) {
+            Entry::Occupied(mut entry) => {
+                let info = entry.get_mut();
+                let header = if let Some(header) = &info.header {
+                    header.clone()
+                } else {
+                    warn!("Peer {} sent us full operations but we don't have receive the header of block id {} yet.", from_peer_id, block_id);
+                    if let Some(asked_blocks) = self.asked_blocks.get_mut(&from_peer_id) && asked_blocks.contains_key(&block_id) {
+                        asked_blocks.remove(&block_id);
+                        {
+                            let mut cache_write = self.cache.write();
+                            cache_write.insert_blocks_known(&from_peer_id, &[block_id]);
+                        }
+                    }
+                    return Ok(());
+                };
+                let block_operation_ids = if let Some(operations) = &info.operation_ids {
+                    operations
+                } else {
+                    warn!("Peer id {} sent us full operations but we don't have received the operation list of block id {} yet.", from_peer_id, block_id);
+                    if let Some(asked_blocks) = self.asked_blocks.get_mut(&from_peer_id) && asked_blocks.contains_key(&block_id) {
+                        asked_blocks.remove(&block_id);
+                        {
+                            let mut cache_write = self.cache.write();
+                            cache_write.insert_blocks_known(&from_peer_id, &[block_id]);
+                        }
+                    }
+                    return Ok(());
+                };
+                operations.retain(|op| block_operation_ids.contains(&op.id));
+                // add operations to local storage and claim ref
+                info.storage.store_operations(operations);
+                let block_ids_set = block_operation_ids.clone().into_iter().collect();
+                let known_operations = info.storage.claim_operation_refs(&block_ids_set);
+
+                // Ban the node if:
+                // - mismatch with asked operations (asked operations are the one that are not in storage) + operations already in storage and block operations
+                // - full operations serialized size overflow
+                let full_op_size: usize = {
+                    let stored_operations = info.storage.read_operations();
+                    known_operations
+                        .iter()
+                        .map(|id| stored_operations.get(id).unwrap().serialized_size())
+                        .sum()
+                };
+                if full_op_size > self.config.max_serialized_operations_size_per_block {
+                    warn!("Peer id {} sent us full operations for block id {} but they exceed max size.", from_peer_id, block_id);
+                    let _ = self.ban_node(&from_peer_id);
+                    self.block_wishlist.remove(&block_id);
+                    self.consensus_controller
+                        .mark_invalid_block(block_id, header);
+                } else {
+                    if known_operations != block_ids_set {
+                        warn!(
+                            "Peer id {} didn't sent us all the full operations for block id {}.",
+                            from_peer_id, block_id
+                        );
+
+                        if let Some(asked_blocks) = self.asked_blocks.get_mut(&from_peer_id) && asked_blocks.contains_key(&block_id) {
+                            asked_blocks.remove(&block_id);
+                            {
+                                let mut cache_write = self.cache.write();
+                                cache_write.insert_blocks_known(&from_peer_id, &[block_id]);
+                            }
+                        }
+                        return Ok(());
+                    }
+
+                    // Re-constitute block.
+                    let block = Block {
+                        header: header.clone(),
+                        operations: block_operation_ids.clone(),
+                    };
+
+                    let mut content_serialized = Vec::new();
+                    BlockSerializer::new() // todo : keep the serializer in the struct to avoid recreating it
+                        .serialize(&block, &mut content_serialized)
+                        .unwrap();
+
+                    // wrap block
+                    let signed_block = SecureShare {
+                        signature: header.signature,
+                        content_creator_pub_key: header.content_creator_pub_key,
+                        content_creator_address: header.content_creator_address,
+                        id: block_id,
+                        content: block,
+                        serialized_data: content_serialized,
+                    };
+
+                    // create block storage (without parents)
+                    let mut block_storage = entry.remove().storage;
+                    // add endorsements to local storage and claim ref
+                    // TODO change this if we make endorsements separate from block header
+                    block_storage.store_endorsements(
+                        signed_block.content.header.content.endorsements.clone(),
+                    );
+                    let slot = signed_block.content.header.content.slot;
+                    // add block to local storage and claim ref
+                    block_storage.store_block(signed_block);
+
+                    // Send to consensus
+                    self.consensus_controller
+                        .register_block(block_id, slot, block_storage, false);
+                }
+            }
+            Entry::Vacant(_) => {
+                warn!("Peer {} sent us full operations but we don't have the block id {} in our wishlist.", from_peer_id, block_id);
+                if let Some(asked_blocks) = self.asked_blocks.get_mut(&from_peer_id) && asked_blocks.contains_key(&block_id) {
+                    asked_blocks.remove(&block_id);
+                    {
+                        let mut cache_write = self.cache.write();
+                        cache_write.insert_blocks_known(&from_peer_id, &[block_id]);
+                    }
+                }
+                return Ok(());
+            }
+        };
+
+        // Update ask block
+        let remove_hashes = vec![block_id].into_iter().collect();
+        self.remove_asked_blocks_of_node(&remove_hashes)
     }
 }
 
