@@ -235,6 +235,22 @@
                 </li>
               
                 <li>
+                  <a href="#massa.api.v1.GetOperationsFilter"><span class="badge">M</span>GetOperationsFilter</a>
+                </li>
+              
+                <li>
+                  <a href="#massa.api.v1.GetOperationsQuery"><span class="badge">M</span>GetOperationsQuery</a>
+                </li>
+              
+                <li>
+                  <a href="#massa.api.v1.GetOperationsRequest"><span class="badge">M</span>GetOperationsRequest</a>
+                </li>
+              
+                <li>
+                  <a href="#massa.api.v1.GetOperationsResponse"><span class="badge">M</span>GetOperationsResponse</a>
+                </li>
+              
+                <li>
                   <a href="#massa.api.v1.GetSelectorDrawsRequest"><span class="badge">M</span>GetSelectorDrawsRequest</a>
                 </li>
               
@@ -324,6 +340,10 @@
               
                 <li>
                   <a href="#massa.api.v1.OperationResult"><span class="badge">M</span>OperationResult</a>
+                </li>
+              
+                <li>
+                  <a href="#massa.api.v1.OperationsContext"><span class="badge">M</span>OperationsContext</a>
                 </li>
               
                 <li>
@@ -479,6 +499,10 @@
                 </li>
               
                 <li>
+                  <a href="#massa.api.v1.OperationWrapper"><span class="badge">M</span>OperationWrapper</a>
+                </li>
+              
+                <li>
                   <a href="#massa.api.v1.RollBuy"><span class="badge">M</span>RollBuy</a>
                 </li>
               
@@ -494,6 +518,10 @@
                   <a href="#massa.api.v1.Transaction"><span class="badge">M</span>Transaction</a>
                 </li>
               
+              
+                <li>
+                  <a href="#massa.api.v1.OperationStatus"><span class="badge">E</span>OperationStatus</a>
+                </li>
               
               
               
@@ -935,6 +963,123 @@
                   <td><a href="#massa.api.v1.BlockParent">BlockParent</a></td>
                   <td>repeated</td>
                   <td><p>Best parents </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
+        <h3 id="massa.api.v1.GetOperationsFilter">GetOperationsFilter</h3>
+        <p>GetOperations Filter</p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>id</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p>Operation id </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
+        <h3 id="massa.api.v1.GetOperationsQuery">GetOperationsQuery</h3>
+        <p>GetOperations Query</p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>filter</td>
+                  <td><a href="#massa.api.v1.GetOperationsFilter">GetOperationsFilter</a></td>
+                  <td></td>
+                  <td><p>Filter </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
+        <h3 id="massa.api.v1.GetOperationsRequest">GetOperationsRequest</h3>
+        <p>GetOperationsRequest holds request for GetOperations</p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>id</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p>Request id </p></td>
+                </tr>
+              
+                <tr>
+                  <td>queries</td>
+                  <td><a href="#massa.api.v1.GetOperationsQuery">GetOperationsQuery</a></td>
+                  <td>repeated</td>
+                  <td><p>Queries </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
+        <h3 id="massa.api.v1.GetOperationsResponse">GetOperationsResponse</h3>
+        <p>GetOperationsResponse holds response from GetOperations</p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>id</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p>Request id </p></td>
+                </tr>
+              
+                <tr>
+                  <td>context</td>
+                  <td><a href="#massa.api.v1.OperationsContext">OperationsContext</a></td>
+                  <td></td>
+                  <td><p>Context </p></td>
+                </tr>
+              
+                <tr>
+                  <td>operations</td>
+                  <td><a href="#massa.api.v1.OperationWrapper">OperationWrapper</a></td>
+                  <td>repeated</td>
+                  <td><p>Largest stakers </p></td>
                 </tr>
               
             </tbody>
@@ -1594,6 +1739,30 @@
 
         
       
+        <h3 id="massa.api.v1.OperationsContext">OperationsContext</h3>
+        <p>Operations context</p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>slot</td>
+                  <td><a href="#massa.api.v1.Slot">Slot</a></td>
+                  <td></td>
+                  <td><p>Slot </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
         <h3 id="massa.api.v1.SelectorDraws">SelectorDraws</h3>
         <p>Selector draws</p>
 
@@ -2039,6 +2208,13 @@
               </tr>
             
               <tr>
+                <td>GetOperations</td>
+                <td><a href="#massa.api.v1.GetOperationsRequest">GetOperationsRequest</a></td>
+                <td><a href="#massa.api.v1.GetOperationsResponse">GetOperationsResponse</a></td>
+                <td><p>Get operations</p></td>
+              </tr>
+            
+              <tr>
                 <td>GetSelectorDraws</td>
                 <td><a href="#massa.api.v1.GetSelectorDrawsRequest">GetSelectorDrawsRequest</a></td>
                 <td><a href="#massa.api.v1.GetSelectorDrawsResponse">GetSelectorDrawsResponse</a></td>
@@ -2176,6 +2352,16 @@
                 <td>GetNextBlockBestParents</td>
                 <td>GET</td>
                 <td>/v1/get_next_block_best_parents</td>
+                <td></td>
+              </tr>
+              
+            
+              
+              
+              <tr>
+                <td>GetOperations</td>
+                <td>GET</td>
+                <td>/v1/get_operations</td>
                 <td></td>
               </tr>
               
@@ -2867,6 +3053,58 @@ This is the parent in thread `self.slot.thread` of the block in which the endors
 
         
       
+        <h3 id="massa.api.v1.OperationWrapper">OperationWrapper</h3>
+        <p>A wrapper around an operation with its metadata</p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>id</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p>The unique ID of the operation. </p></td>
+                </tr>
+              
+                <tr>
+                  <td>block_ids</td>
+                  <td><a href="#string">string</a></td>
+                  <td>repeated</td>
+                  <td><p>The IDs of the blocks in which the operation appears </p></td>
+                </tr>
+              
+                <tr>
+                  <td>thread</td>
+                  <td><a href="#fixed32">fixed32</a></td>
+                  <td></td>
+                  <td><p>The thread in which the operation can be included </p></td>
+                </tr>
+              
+                <tr>
+                  <td>operation</td>
+                  <td><a href="#massa.api.v1.SignedOperation">SignedOperation</a></td>
+                  <td></td>
+                  <td><p>The operation object itself </p></td>
+                </tr>
+              
+                <tr>
+                  <td>status</td>
+                  <td><a href="#massa.api.v1.OperationStatus">OperationStatus</a></td>
+                  <td>repeated</td>
+                  <td><p>The execution statuses of the operation </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
         <h3 id="massa.api.v1.RollBuy">RollBuy</h3>
         <p>The sender buys `roll_count` rolls. Roll price is defined in configuration</p>
 
@@ -2999,6 +3237,47 @@ This is the parent in thread `self.slot.thread` of the block in which the endors
         
       
 
+      
+        <h3 id="massa.api.v1.OperationStatus">OperationStatus</h3>
+        <p>Possible statuses for an operation</p>
+        <table class="enum-table">
+          <thead>
+            <tr><td>Name</td><td>Number</td><td>Description</td></tr>
+          </thead>
+          <tbody>
+            
+              <tr>
+                <td>PENDING</td>
+                <td>0</td>
+                <td><p>The operation is still pending</p></td>
+              </tr>
+            
+              <tr>
+                <td>FINAL</td>
+                <td>1</td>
+                <td><p>The operation is final</p></td>
+              </tr>
+            
+              <tr>
+                <td>SUCCESS</td>
+                <td>2</td>
+                <td><p>The operation was executed successfully</p></td>
+              </tr>
+            
+              <tr>
+                <td>FAILURE</td>
+                <td>3</td>
+                <td><p>The operation failed to execute</p></td>
+              </tr>
+            
+              <tr>
+                <td>UNKNOWN</td>
+                <td>4</td>
+                <td><p>The status of the operation is unknown</p></td>
+              </tr>
+            
+          </tbody>
+        </table>
       
 
       

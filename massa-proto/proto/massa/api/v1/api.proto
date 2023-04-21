@@ -46,6 +46,11 @@ service MassaService {
     option (google.api.http) = {get: "/v1/get_next_block_best_parents"};
   }
 
+  // Get operations
+  rpc GetOperations(GetOperationsRequest) returns (GetOperationsResponse) {
+    option (google.api.http) = {get: "/v1/get_operations"};
+  }
+
   // Get selector draws
   rpc GetSelectorDraws(GetSelectorDrawsRequest) returns (GetSelectorDrawsResponse) {
     option (google.api.http) = {
@@ -221,6 +226,42 @@ message BlockParent {
   string block_id = 1;
   // Period
   fixed64 period = 2;
+}
+
+// GetOperationsRequest holds request for GetOperations
+message GetOperationsRequest {
+  // Request id
+  string id = 1;
+  // Queries
+  repeated GetOperationsQuery queries = 2;
+}
+
+// GetOperations Query
+message GetOperationsQuery {
+  // Filter
+  GetOperationsFilter filter = 1;
+}
+
+// GetOperations Filter
+message GetOperationsFilter {
+  // Operation id
+  string id = 1;
+}
+
+// GetOperationsResponse holds response from GetOperations
+message GetOperationsResponse {
+  // Request id
+  string id = 1;
+  // Context
+  OperationsContext context = 2;
+  // Largest stakers
+  repeated OperationWrapper operations = 3;
+}
+
+// Operations context
+message OperationsContext {
+  // Slot
+  Slot slot = 1;
 }
 
 // GetSelectorDrawsRequest holds request from GetSelectorDraws
