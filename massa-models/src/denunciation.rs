@@ -258,8 +258,8 @@ impl Denunciation {
         }
     }
 
-    /// For a given slot (and given the slot at now()), check if it can be denounced
-    /// Can be used to check if block header | endorsement is not too old (at reception or too cleanup cache)
+    /// For a given slot, check if a block header or an endorsement can be denounced
+    /// Can be use at reception or to cleanup some caches
     pub fn is_expired(
         slot: &Slot,
         last_cs_final_periods: &[u64],
@@ -728,7 +728,7 @@ impl Deserializer<Denunciation> for DenunciationDeserializer {
 
 // Denunciation Index
 
-#[derive(Debug, Clone, Hash, PartialEq, Eq)]
+#[derive(Debug, Clone, Hash, PartialEq, Eq, Serialize, Deserialize)]
 /// Index for Denunciations in collections (e.g. like a HashMap...)
 pub enum DenunciationIndex {
     /// Variant for Block header denunciation index
@@ -752,6 +752,18 @@ impl DenunciationIndex {
             DenunciationIndex::BlockHeader { slot } => slot,
             DenunciationIndex::Endorsement { slot, .. } => slot,
         }
+    }
+    /// Compute the hash
+    pub fn get_hash(&self) -> Hash {
+        let mut buffer = vec![];
+        match self {
+            DenunciationIndex::BlockHeader { slot } => buffer.extend(slot.to_bytes_key()),
+            DenunciationIndex::Endorsement { slot, index } => {
+                buffer.extend(slot.to_bytes_key());
+                buffer.extend(index.to_le_bytes());
+            }
+        }
+        Hash::compute_from(&buffer)
     }
 }
 
@@ -786,6 +798,106 @@ impl From<&DenunciationPrecursor> for DenunciationIndex {
 }
 
 // End Denunciation Index
+
+// Denunciation Index ser der
+
+/// Serializer for `DenunciationIndex`
+pub struct DenunciationIndexSerializer {
+    slot_serializer: SlotSerializer,
+    index_serializer: U32VarIntSerializer,
+}
+
+impl DenunciationIndexSerializer {
+    /// Creates a new `DenunciationIndexSerializer`
+    pub const fn new() -> Self {
+        Self {
+            slot_serializer: SlotSerializer::new(),
+            index_serializer: U32VarIntSerializer::new(),
+        }
+    }
+}
+
+impl Default for DenunciationIndexSerializer {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+impl Serializer<DenunciationIndex> for DenunciationIndexSerializer {
+    fn serialize(
+        &self,
+        value: &DenunciationIndex,
+        buffer: &mut Vec<u8>,
+    ) -> Result<(), SerializeError> {
+        match value {
+            DenunciationIndex::BlockHeader { slot } => {
+                buffer.push(0);
+                self.slot_serializer.serialize(&slot, buffer)?;
+            }
+            DenunciationIndex::Endorsement { slot, index } => {
+                buffer.push(1);
+                self.slot_serializer.serialize(slot, buffer)?;
+                self.index_serializer.serialize(index, buffer)?;
+            }
+        }
+        Ok(())
+    }
+}
+
+/// Deserializer for `DenunciationIndex`
+pub struct DenunciationIndexDeserializer {
+    slot_deserializer: SlotDeserializer,
+    index_deserializer: U32VarIntDeserializer,
+}
+
+impl DenunciationIndexDeserializer {
+    /// Creates a new `DenunciationIndexDeserializer`
+    pub const fn new(thread_count: u8, endorsement_count: u32) -> Self {
+        Self {
+            slot_deserializer: SlotDeserializer::new(
+                (Included(0), Included(u64::MAX)),
+                (Included(0), Excluded(thread_count)),
+            ),
+            index_deserializer: U32VarIntDeserializer::new(
+                Included(0),
+                Included(endorsement_count),
+            ),
+        }
+    }
+}
+
+impl Deserializer<DenunciationIndex> for DenunciationIndexDeserializer {
+    fn deserialize<'a, E: ParseError<&'a [u8]> + ContextError<&'a [u8]>>(
+        &self,
+        buffer: &'a [u8],
+    ) -> IResult<&'a [u8], DenunciationIndex, E> {
+        // TODO: no unwrap() - DenunciationIndexTypeId?
+        let denunciation_index_type = buffer.get(0).unwrap();
+
+        match denunciation_index_type {
+            0 => context("Failed slot deserialization", |input| {
+                self.slot_deserializer.deserialize(input)
+            })
+            .map(|slot| DenunciationIndex::BlockHeader { slot })
+            .parse(&buffer[1..]),
+            _ => context(
+                "Failed Endorsement denunciation index",
+                tuple((
+                    context("Failed slot deserialization", |input| {
+                        self.slot_deserializer.deserialize(input)
+                    }),
+                    context("Failed index deserialization", |input| {
+                        self.index_deserializer.deserialize(input)
+                    }),
+                )),
+            )
+            .map(|(slot, index)| DenunciationIndex::Endorsement { slot, index })
+            .parse(&buffer[1..]),
+        }
+    }
+}
+
+// End Denunciation Index ser der
 
 // Denunciation interest
 
@@ -1257,5 +1369,40 @@ mod tests {
         let denunciation_4: Denunciation = (&de_p_3, &de_p_4).try_into().unwrap();
 
         assert_eq!(denunciation_3, denunciation_4);
+    }
+
+    #[test]
+    fn test_denunciation_index_ser_der() {
+        let (_, _, s_block_header_1, s_block_header_2, _) = gen_block_headers_for_denunciation();
+        let denunciation_1: Denunciation =
+            (&s_block_header_1, &s_block_header_2).try_into().unwrap();
+        let denunciation_index_1 = DenunciationIndex::from(&denunciation_1);
+
+        let (_, _, s_endorsement_1, s_endorsement_2, _) =
+            gen_endorsements_for_denunciation(None, None);
+        let denunciation_2 = Denunciation::try_from((&s_endorsement_1, &s_endorsement_2)).unwrap();
+        let denunciation_index_2 = DenunciationIndex::from(&denunciation_2);
+
+        let mut buffer = Vec::new();
+        let de_idx_ser = DenunciationIndexSerializer::new();
+        de_idx_ser
+            .serialize(&denunciation_index_1, &mut buffer)
+            .unwrap();
+        let de_idx_der = DenunciationIndexDeserializer::new(THREAD_COUNT, ENDORSEMENT_COUNT);
+        let (rem, de_idx_der_res) = de_idx_der.deserialize::<DeserializeError>(&buffer).unwrap();
+
+        assert!(rem.is_empty());
+        assert_eq!(denunciation_index_1, de_idx_der_res);
+
+        let mut buffer = Vec::new();
+        let de_idx_ser = DenunciationIndexSerializer::new();
+        de_idx_ser
+            .serialize(&denunciation_index_2, &mut buffer)
+            .unwrap();
+        let de_idx_der = DenunciationIndexDeserializer::new(THREAD_COUNT, ENDORSEMENT_COUNT);
+        let (rem, de_idx_der_res) = de_idx_der.deserialize::<DeserializeError>(&buffer).unwrap();
+
+        assert!(rem.is_empty());
+        assert_eq!(denunciation_index_2, de_idx_der_res);
     }
 }

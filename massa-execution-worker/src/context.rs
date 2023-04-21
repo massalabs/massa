@@ -10,6 +10,7 @@
 use crate::speculative_async_pool::SpeculativeAsyncPool;
 use crate::speculative_executed_ops::SpeculativeExecutedOps;
 use crate::speculative_ledger::SpeculativeLedger;
+use crate::speculative_processed_denunciations::SpeculativeProcessedDenunciations;
 use crate::vesting_manager::VestingManager;
 use crate::{active_history::ActiveHistory, speculative_roll_state::SpeculativeRollState};
 use massa_async_pool::{AsyncMessage, AsyncMessageId};
@@ -21,6 +22,7 @@ use massa_final_state::{FinalState, StateChanges};
 use massa_ledger_exports::LedgerChanges;
 use massa_models::address::{ExecutionAddressCycleInfo, SCAddress};
 use massa_models::bytecode::Bytecode;
+use massa_models::denunciation::DenunciationIndex;
 use massa_models::{
     address::Address,
     amount::Amount,
@@ -101,6 +103,9 @@ pub struct ExecutionContext {
 
     /// speculative list of executed operations
     speculative_executed_ops: SpeculativeExecutedOps,
+
+    /// speculative list of processed denunciations
+    speculative_processed_denunciations: SpeculativeProcessedDenunciations,
 
     /// max gas for this execution
     pub max_gas: u64,
@@ -183,7 +188,14 @@ impl ExecutionContext {
                 final_state.clone(),
                 active_history.clone(),
             ),
-            speculative_executed_ops: SpeculativeExecutedOps::new(final_state, active_history),
+            speculative_executed_ops: SpeculativeExecutedOps::new(
+                final_state.clone(),
+                active_history.clone(),
+            ),
+            speculative_processed_denunciations: SpeculativeProcessedDenunciations::new(
+                final_state,
+                active_history,
+            ),
             max_gas: Default::default(),
             creator_coin_spending_allowance: Default::default(),
             slot: Slot::new(0, 0),
@@ -862,6 +874,7 @@ impl ExecutionContext {
             async_pool_changes: self.speculative_async_pool.take(),
             pos_changes: self.speculative_roll_state.take(),
             executed_ops_changes: self.speculative_executed_ops.take(),
+            processed_de_changes: self.speculative_processed_denunciations.take(),
         };
         ExecutionOutput {
             slot,
@@ -943,8 +956,14 @@ impl ExecutionContext {
         self.speculative_executed_ops.is_op_executed(op_id)
     }
 
+    /// Check if a denunciation was previously processed (to prevent reuse)
+    pub fn is_de_processed(&self, de_idx: &DenunciationIndex) -> bool {
+        self.speculative_processed_denunciations
+            .is_de_processed(de_idx)
+    }
+
     /// Insert an executed operation.
-    /// Does not check for reuse, please use `is_op_executed` before.
+    /// Does not check for reuse, please use `op_exec_status` before.
     ///
     /// # Arguments
     /// * `op_id`: operation ID
@@ -958,6 +977,19 @@ impl ExecutionContext {
     ) {
         self.speculative_executed_ops
             .insert_executed_op(op_id, op_exec_status, op_valid_until_slot)
+    }
+
+    /// Insert a processed denunciation.
+    /// Does not check for reuse, please use `de_exec_status` before.
+    ///
+    pub fn insert_executed_de(
+        &mut self,
+        de_idx: &DenunciationIndex,
+        de_exec_status: bool,
+        de_valid_until_slot: Slot,
+    ) {
+        self.speculative_processed_denunciations
+            .insert_processed_de(de_idx.clone(), de_exec_status, de_valid_until_slot);
     }
 
     /// gets the cycle information for an address

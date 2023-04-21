@@ -22,7 +22,7 @@ use massa_final_state::FinalState;
 use massa_ledger_exports::{SetOrDelete, SetUpdateOrDelete};
 use massa_models::address::ExecutionAddressCycleInfo;
 use massa_models::bytecode::Bytecode;
-use massa_models::denunciation::Denunciation;
+use massa_models::denunciation::{Denunciation, DenunciationIndex};
 use massa_models::execution::EventFilter;
 use massa_models::output_event::SCOutputEvent;
 use massa_models::prehash::PreHashSet;
@@ -410,10 +410,21 @@ impl ExecutionState {
 
         // acquire write access to the context
         let mut context = context_guard!(self);
+
+        // ignore the denunciation if it was already processed
+        let de_idx = DenunciationIndex::from(denunciation);
+        if context.is_de_processed(&de_idx) {
+            return Err(ExecutionError::IncludeOperationError(
+                "denunciation was processed previously".to_string(),
+            ));
+        }
+
         let slashed = context.try_slash_rolls(
             &addr_denounced,
             self.config.roll_count_to_slash_on_denunciation,
         );
+
+        let de_idx_slot = de_idx.get_slot().clone();
 
         match slashed {
             Ok(slashed_amount) => {
@@ -425,8 +436,14 @@ impl ExecutionState {
                     ))
                 })?;
                 *block_credits = block_credits.saturating_add(amount);
+
+                // TODO: should renmae de_valid_until_slot to de_idx_slot?
+                context.insert_executed_de(&de_idx, true, de_idx_slot);
             }
-            Err(e) => warn!("Unable to slash rolls or deferred credits: {}", e),
+            Err(e) => {
+                context.insert_executed_de(&de_idx, false, de_idx_slot);
+                warn!("Unable to slash rolls or deferred credits: {}", e);
+            }
         }
 
         Ok(())

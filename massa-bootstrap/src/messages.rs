@@ -12,6 +12,7 @@ use massa_executed_ops::{ExecutedOpsDeserializer, ExecutedOpsSerializer};
 use massa_final_state::{StateChanges, StateChangesDeserializer, StateChangesSerializer};
 use massa_ledger_exports::{Key as LedgerKey, KeyDeserializer, KeySerializer};
 use massa_models::block_id::{BlockId, BlockIdDeserializer, BlockIdSerializer};
+use massa_models::denunciation::DenunciationIndex;
 use massa_models::operation::OperationId;
 use massa_models::prehash::PreHashSet;
 use massa_models::serialization::{
@@ -44,7 +45,7 @@ use nom::{
     IResult,
 };
 use num_enum::{IntoPrimitive, TryFromPrimitive};
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, HashSet};
 use std::convert::TryInto;
 use std::ops::Bound::{Excluded, Included};
 
@@ -78,6 +79,8 @@ pub enum BootstrapServerMessage {
         pos_credits_part: DeferredCredits,
         /// Part of the executed operations
         exec_ops_part: BTreeMap<Slot, PreHashSet<OperationId>>,
+        /// Part of the processed denunciations
+        processed_denunciations_part: BTreeMap<Slot, HashSet<DenunciationIndex>>,
         /// Ledger change for addresses inferior to `address` of the client message until the actual slot.
         final_state_changes: Vec<(Slot, StateChanges)>,
         /// Part of the consensus graph
@@ -209,6 +212,7 @@ impl Serializer<BootstrapServerMessage> for BootstrapServerMessageSerializer {
                 pos_cycle_part,
                 pos_credits_part,
                 exec_ops_part,
+                processed_denunciations_part,
                 final_state_changes,
                 consensus_part,
                 consensus_outdated_ids,
@@ -232,6 +236,7 @@ impl Serializer<BootstrapServerMessage> for BootstrapServerMessageSerializer {
                     .serialize(pos_credits_part, buffer)?;
                 // executed operations
                 self.exec_ops_serializer.serialize(exec_ops_part, buffer)?;
+                // TODO: ser p de
                 // changes length
                 self.u64_serializer
                     .serialize(&(final_state_changes.len() as u64), buffer)?;
@@ -325,6 +330,8 @@ impl BootstrapServerMessageDeserializer {
                 args.max_production_stats_length,
                 args.max_credits_length,
                 args.max_ops_changes_length,
+                args.endorsement_count,
+                args.max_de_changes_length,
             ),
             length_state_changes: U64VarIntDeserializer::new(
                 Included(0),
@@ -404,7 +411,7 @@ impl Deserializer<BootstrapServerMessage> for BootstrapServerMessageDeserializer
     ///     max_rolls_length: 1000, max_production_stats_length: 1000, max_credits_length: 1000,
     ///     max_executed_ops_length: 1000, max_ops_changes_length: 1000,
     ///     mip_store_stats_block_considered: 100, mip_store_stats_counters_max: 10,
-    ///     max_denunciations_per_block_header: 128,};
+    ///     max_denunciations_per_block_header: 128, max_de_changes_length: 1000};
     /// let message_deserializer = BootstrapServerMessageDeserializer::new(args);
     /// let bootstrap_server_message = BootstrapServerMessage::BootstrapTime {
     ///    server_time: MassaTime::from(0),
@@ -531,6 +538,7 @@ impl Deserializer<BootstrapServerMessage> for BootstrapServerMessageDeserializer
                             pos_cycle_part,
                             pos_credits_part,
                             exec_ops_part,
+                            processed_denunciations_part: Default::default(), // TODO: deser
                             final_state_changes,
                             consensus_part,
                             consensus_outdated_ids,
@@ -579,6 +587,8 @@ pub enum BootstrapClientMessage {
         last_credits_step: StreamingStep<Slot>,
         /// Last received executed operation associated slot
         last_ops_step: StreamingStep<Slot>,
+        /// Last received processed denunciations associated slot
+        last_de_step: StreamingStep<Slot>,
         /// Last received consensus block slot
         last_consensus_step: StreamingStep<PreHashSet<BlockId>>,
         /// Should be true only for the first part, false later
@@ -675,6 +685,7 @@ impl Serializer<BootstrapClientMessage> for BootstrapClientMessageSerializer {
                 last_cycle_step,
                 last_credits_step,
                 last_ops_step,
+                last_de_step,
                 last_consensus_step,
                 send_last_start_period,
             } => {
@@ -836,6 +847,7 @@ impl Deserializer<BootstrapClientMessage> for BootstrapClientMessageDeserializer
                                 last_cycle_step: StreamingStep::Started,
                                 last_credits_step: StreamingStep::Started,
                                 last_ops_step: StreamingStep::Started,
+                                last_de_step: StreamingStep::Started,
                                 last_consensus_step: StreamingStep::Started,
                                 send_last_start_period: true,
                             },
@@ -860,6 +872,7 @@ impl Deserializer<BootstrapClientMessage> for BootstrapClientMessageDeserializer
                             context("Failed last_ops_step deserialization", |input| {
                                 self.slot_step_deserializer.deserialize(input)
                             }),
+                            context("Failed last_de_step deserialization", |input| todo!()),
                             context("Failed last_consensus_step deserialization", |input| {
                                 self.block_ids_step_deserializer.deserialize(input)
                             }),
@@ -875,6 +888,7 @@ impl Deserializer<BootstrapClientMessage> for BootstrapClientMessageDeserializer
                                 last_cycle_step,
                                 last_credits_step,
                                 last_ops_step,
+                                last_de_step,
                                 last_consensus_step,
                                 send_last_start_period,
                             )| {
@@ -885,6 +899,7 @@ impl Deserializer<BootstrapClientMessage> for BootstrapClientMessageDeserializer
                                     last_cycle_step,
                                     last_credits_step,
                                     last_ops_step,
+                                    last_de_step,
                                     last_consensus_step,
                                     send_last_start_period,
                                 }

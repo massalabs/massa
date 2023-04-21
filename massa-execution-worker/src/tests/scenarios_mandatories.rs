@@ -1685,8 +1685,10 @@ mod tests {
         storage.store_operations(vec![operation1.clone()]);
         let block = create_block(
             KeyPair::generate(),
-            vec![operation1], //, operation2],
-            vec![denunciation],
+            vec![operation1],
+            // insert twice the same denunciation in order to check if
+            // processed denunciations checks will detect it
+            vec![denunciation.clone(), denunciation],
             Slot::new(3, 0),
         )
         .unwrap();

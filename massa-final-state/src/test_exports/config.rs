@@ -6,10 +6,13 @@ use std::path::PathBuf;
 
 use crate::{FinalState, FinalStateConfig};
 use massa_async_pool::{AsyncPool, AsyncPoolConfig};
-use massa_executed_ops::{ExecutedOps, ExecutedOpsConfig};
+use massa_executed_ops::{
+    ExecutedOps, ExecutedOpsConfig, ProcessedDenunciations, ProcessedDenunciationsConfig,
+};
 use massa_hash::{Hash, HASH_SIZE_BYTES};
 use massa_ledger_exports::LedgerConfig;
 use massa_ledger_worker::FinalLedger;
+use massa_models::config::DENUNCIATION_EXPIRE_PERIODS;
 use massa_models::{
     config::{
         DEFERRED_CREDITS_BOOTSTRAP_PART_SIZE, EXECUTED_OPS_BOOTSTRAP_PART_SIZE, PERIODS_PER_CYCLE,
@@ -28,6 +31,9 @@ impl FinalState {
             async_pool: AsyncPool::new(config.async_pool_config.clone()),
             pos_state,
             executed_ops: ExecutedOps::new(config.executed_ops_config.clone()),
+            processed_denunciations: ProcessedDenunciations::new(
+                config.processed_denunciations_config.clone(),
+            ),
             changes_history: Default::default(),
             config,
             final_state_hash: Hash::from_bytes(&[0; HASH_SIZE_BYTES]),
@@ -57,6 +63,9 @@ impl Default for FinalStateConfig {
             periods_per_cycle: 100,
             initial_rolls_path: PathBuf::new(),
             initial_seed_string: "".to_string(),
+            processed_denunciations_config: ProcessedDenunciationsConfig {
+                denunciation_expire_periods: DENUNCIATION_EXPIRE_PERIODS,
+            },
         }
     }
 }

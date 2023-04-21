@@ -7,6 +7,7 @@ use massa_models::{
 };
 use massa_pos_exports::DeferredCredits;
 use std::collections::{HashMap, VecDeque};
+use massa_models::denunciation::DenunciationIndex;
 
 #[derive(Default)]
 /// History of the outputs of recently executed slots.
@@ -52,6 +53,22 @@ impl ActiveHistory {
                 .state_changes
                 .executed_ops_changes
                 .contains_key(op_id)
+            {
+                return HistorySearchResult::Present(());
+            }
+        }
+        HistorySearchResult::NoInfo
+    }
+    
+    /// Lazily query (from end to beginning) the active list of proccessed denunciations.
+    ///
+    /// Returns a `HistorySearchResult`.
+    pub fn fetch_processed_de(&self, de_idx: &DenunciationIndex) -> HistorySearchResult<()> {
+        for history_element in self.0.iter().rev() {
+            if history_element
+                .state_changes
+                .processed_de_changes
+                .contains_key(de_idx)
             {
                 return HistorySearchResult::Present(());
             }

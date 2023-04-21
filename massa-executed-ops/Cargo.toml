@@ -9,3 +9,6 @@ nom = "7.1"
 massa_models = { path = "../massa-models" }
 massa_hash = { path = "../massa-hash" }
 massa_serialization = { path = "../massa-serialization" }
+
+[features]
+testing = ["massa_models/testing"]

@@ -111,7 +111,7 @@ impl ExecutedOps {
             }
         }
     }
-
+    
     /// Apply speculative operations changes to the final executed operations state
     pub fn apply_changes(&mut self, changes: ExecutedOpsChanges, slot: Slot) {
         self.extend_and_compute_hash(changes.keys());

@@ -93,6 +93,7 @@ mod slot_sequencer;
 mod speculative_async_pool;
 mod speculative_executed_ops;
 mod speculative_ledger;
+mod speculative_processed_denunciations;
 mod speculative_roll_state;
 mod stats;
 mod vesting_manager;

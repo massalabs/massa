@@ -9,6 +9,7 @@ use super::{
 };
 use crate::tests::tools::{
     get_random_async_pool_changes, get_random_executed_ops_changes, get_random_pos_changes,
+    get_random_processed_de_changes,
 };
 use crate::BootstrapConfig;
 use crate::{
@@ -20,14 +21,16 @@ use massa_consensus_exports::{
     bootstrapable_graph::BootstrapableGraph,
     test_exports::{MockConsensusController, MockConsensusControllerMessage},
 };
-use massa_executed_ops::ExecutedOpsConfig;
+use massa_executed_ops::{ExecutedOpsConfig, ProcessedDenunciationsConfig};
 use massa_final_state::{
     test_exports::{assert_eq_final_state, assert_eq_final_state_hash},
     FinalState, FinalStateConfig, StateChanges,
 };
 use massa_hash::{Hash, HASH_SIZE_BYTES};
 use massa_ledger_exports::LedgerConfig;
-use massa_models::config::{MIP_STORE_STATS_BLOCK_CONSIDERED, MIP_STORE_STATS_COUNTERS_MAX};
+use massa_models::config::{
+    DENUNCIATION_EXPIRE_PERIODS, MIP_STORE_STATS_BLOCK_CONSIDERED, MIP_STORE_STATS_COUNTERS_MAX,
+};
 use massa_models::{
     address::Address, config::MAX_DATASTORE_VALUE_LENGTH, node::NodeId, slot::Slot,
     streaming_step::StreamingStep, version::Version,
@@ -122,6 +125,9 @@ async fn test_bootstrap_server() {
         executed_ops_config: ExecutedOpsConfig {
             thread_count,
             bootstrap_part_size: 10,
+        },
+        processed_denunciations_config: ProcessedDenunciationsConfig {
+            denunciation_expire_periods: DENUNCIATION_EXPIRE_PERIODS,
         },
         final_history_length: 100,
         initial_seed_string: "".into(),
@@ -315,6 +321,7 @@ async fn test_bootstrap_server() {
                 ledger_changes: get_random_ledger_changes(10),
                 async_pool_changes: get_random_async_pool_changes(10),
                 executed_ops_changes: get_random_executed_ops_changes(10),
+                processed_de_changes: get_random_processed_de_changes(10),
             };
             final_write
                 .changes_history

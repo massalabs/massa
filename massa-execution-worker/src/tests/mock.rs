@@ -118,6 +118,7 @@ pub fn get_sample_state(
         async_pool_config: default_config.async_pool_config,
         pos_config: default_config.pos_config,
         executed_ops_config: default_config.executed_ops_config,
+        processed_denunciations_config: default_config.processed_denunciations_config,
         final_history_length: 128,
         thread_count: THREAD_COUNT,
         initial_rolls_path: rolls_file.path().to_path_buf(),

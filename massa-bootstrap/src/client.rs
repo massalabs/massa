@@ -68,6 +68,7 @@ async fn stream_final_state_and_consensus<D: Duplex>(
                     pos_cycle_part,
                     pos_credits_part,
                     exec_ops_part,
+                    processed_denunciations_part,
                     final_state_changes,
                     consensus_part,
                     consensus_outdated_ids,
@@ -93,6 +94,9 @@ async fn stream_final_state_and_consensus<D: Duplex>(
                     let last_ops_step = write_final_state
                         .executed_ops
                         .set_executed_ops_part(exec_ops_part);
+                    let last_de_step = write_final_state
+                        .processed_denunciations
+                        .set_processed_de_part(processed_denunciations_part);
                     for (changes_slot, changes) in final_state_changes.iter() {
                         write_final_state.ledger.apply_changes(
                             changes.ledger_changes.clone(),
@@ -148,6 +152,7 @@ async fn stream_final_state_and_consensus<D: Duplex>(
                         last_cycle_step,
                         last_credits_step,
                         last_ops_step,
+                        last_de_step,
                         last_consensus_step,
                         send_last_start_period: false,
                     };
@@ -177,6 +182,7 @@ async fn stream_final_state_and_consensus<D: Duplex>(
                         last_cycle_step: StreamingStep::Started,
                         last_credits_step: StreamingStep::Started,
                         last_ops_step: StreamingStep::Started,
+                        last_de_step: StreamingStep::Started,
                         last_consensus_step: StreamingStep::Started,
                         send_last_start_period: true,
                     };
@@ -526,6 +532,7 @@ pub async fn get_state(
             last_cycle_step: StreamingStep::Started,
             last_credits_step: StreamingStep::Started,
             last_ops_step: StreamingStep::Started,
+            last_de_step: StreamingStep::Started,
             last_consensus_step: StreamingStep::Started,
             send_last_start_period: true,
         };
