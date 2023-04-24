@@ -386,13 +386,53 @@
 <a href="#386" id="386">386</a>
 <a href="#387" id="387">387</a>
 <a href="#388" id="388">388</a>
+<a href="#389" id="389">389</a>
+<a href="#390" id="390">390</a>
+<a href="#391" id="391">391</a>
+<a href="#392" id="392">392</a>
+<a href="#393" id="393">393</a>
+<a href="#394" id="394">394</a>
+<a href="#395" id="395">395</a>
+<a href="#396" id="396">396</a>
+<a href="#397" id="397">397</a>
+<a href="#398" id="398">398</a>
+<a href="#399" id="399">399</a>
+<a href="#400" id="400">400</a>
+<a href="#401" id="401">401</a>
+<a href="#402" id="402">402</a>
+<a href="#403" id="403">403</a>
+<a href="#404" id="404">404</a>
+<a href="#405" id="405">405</a>
+<a href="#406" id="406">406</a>
+<a href="#407" id="407">407</a>
+<a href="#408" id="408">408</a>
+<a href="#409" id="409">409</a>
+<a href="#410" id="410">410</a>
+<a href="#411" id="411">411</a>
+<a href="#412" id="412">412</a>
+<a href="#413" id="413">413</a>
+<a href="#414" id="414">414</a>
+<a href="#415" id="415">415</a>
+<a href="#416" id="416">416</a>
+<a href="#417" id="417">417</a>
+<a href="#418" id="418">418</a>
+<a href="#419" id="419">419</a>
+<a href="#420" id="420">420</a>
+<a href="#421" id="421">421</a>
+<a href="#422" id="422">422</a>
+<a href="#423" id="423">423</a>
+<a href="#424" id="424">424</a>
+<a href="#425" id="425">425</a>
+<a href="#426" id="426">426</a>
+<a href="#427" id="427">427</a>
 </pre><pre class="rust"><code><span class="doccomment">//! Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 //! This file defines a structure to list and prune previously executed operations.
 //! Used to detect operation reuse.
 
 </span><span class="kw">use crate</span>::{ops_changes::ExecutedOpsChanges, ExecutedOpsConfig};
-<span class="kw">use </span>massa_hash::{Hash, HASH_SIZE_BYTES};
+<span class="kw">use </span>massa_db::{DBBatch, EXECUTED_OPS_CF, EXECUTED_OPS_HASH_INITIAL_BYTES};
+<span class="kw">use </span>massa_hash::Hash;
 <span class="kw">use </span>massa_models::{
     operation::{OperationId, OperationIdDeserializer},
     prehash::PreHashSet,
@@ -409,18 +449,21 @@
     sequence::tuple,
     IResult, Parser,
 };
+<span class="kw">use </span>parking_lot::RwLock;
+<span class="kw">use </span>rocksdb::{Options, DB};
 <span class="kw">use </span>std::{
     collections::{BTreeMap, HashMap},
     ops::Bound::{Excluded, Included, Unbounded},
+    sync::Arc,
 };
-
-<span class="kw">const </span>EXECUTED_OPS_HASH_INITIAL_BYTES: <span class="kw-2">&amp;</span>[u8; <span class="number">32</span>] = <span class="kw-2">&amp;</span>[<span class="number">0</span>; HASH_SIZE_BYTES];
 
 <span class="doccomment">/// A structure to list and prune previously executed operations
 </span><span class="attr">#[derive(Debug, Clone)]
 </span><span class="kw">pub struct </span>ExecutedOps {
     <span class="doccomment">/// Executed operations configuration
     </span>config: ExecutedOpsConfig,
+    <span class="doccomment">/// RocksDB Instance
+    </span><span class="kw">pub </span>db: Arc&lt;RwLock&lt;DB&gt;&gt;,
     <span class="doccomment">/// Executed operations btreemap with slot as index for better pruning complexity
     </span><span class="kw">pub </span>sorted_ops: BTreeMap&lt;Slot, PreHashSet&lt;OperationId&gt;&gt;,
     <span class="doccomment">/// Executed operations only for better insertion complexity
@@ -433,9 +476,10 @@
 
 <span class="kw">impl </span>ExecutedOps {
     <span class="doccomment">/// Creates a new `ExecutedOps`
-    </span><span class="kw">pub fn </span>new(config: ExecutedOpsConfig) -&gt; <span class="self">Self </span>{
+    </span><span class="kw">pub fn </span>new(config: ExecutedOpsConfig, db: Arc&lt;RwLock&lt;DB&gt;&gt;) -&gt; <span class="self">Self </span>{
         <span class="self">Self </span>{
             config,
+            db,
             sorted_ops: BTreeMap::new(),
             ops: PreHashSet::default(),
             hash: Hash::from_bytes(EXECUTED_OPS_HASH_INITIAL_BYTES),
@@ -447,6 +491,7 @@
     /// Useful when restarting from a snapshot
     </span><span class="kw">pub fn </span>new_with_hash(
         config: ExecutedOpsConfig,
+        db: Arc&lt;RwLock&lt;DB&gt;&gt;,
         sorted_ops: BTreeMap&lt;Slot, PreHashSet&lt;OperationId&gt;&gt;,
     ) -&gt; <span class="self">Self </span>{
         <span class="kw">let </span><span class="kw-2">mut </span>hash = Hash::from_bytes(EXECUTED_OPS_HASH_INITIAL_BYTES);
@@ -462,6 +507,7 @@
         }
         <span class="self">Self </span>{
             config,
+            db,
             sorted_ops,
             ops,
             hash,
@@ -476,6 +522,16 @@
         <span class="self">self</span>.sorted_ops.clear();
         <span class="self">self</span>.ops.clear();
         <span class="self">self</span>.hash = Hash::from_bytes(EXECUTED_OPS_HASH_INITIAL_BYTES);
+
+        <span class="kw">let </span><span class="kw-2">mut </span>db = <span class="self">self</span>.db.write();
+        (<span class="kw-2">*</span>db)
+            .drop_cf(EXECUTED_OPS_CF)
+            .expect(<span class="string">&quot;Error dropping executed_ops cf&quot;</span>);
+        <span class="kw">let </span><span class="kw-2">mut </span>db_opts = Options::default();
+        db_opts.set_error_if_exists(<span class="bool-val">true</span>);
+        (<span class="kw-2">*</span>db)
+            .create_cf(EXECUTED_OPS_CF, <span class="kw-2">&amp;</span>db_opts)
+            .expect(<span class="string">&quot;Error creating executed_ops cf&quot;</span>);
     }
 
     <span class="doccomment">/// Returns the number of executed operations
@@ -501,7 +557,12 @@
     }
 
     <span class="doccomment">/// Apply speculative operations changes to the final executed operations state
-    </span><span class="kw">pub fn </span>apply_changes(<span class="kw-2">&amp;mut </span><span class="self">self</span>, changes: ExecutedOpsChanges, slot: Slot) {
+    </span><span class="kw">pub fn </span>apply_changes_to_batch(
+        <span class="kw-2">&amp;mut </span><span class="self">self</span>,
+        changes: ExecutedOpsChanges,
+        slot: Slot,
+        _batch: <span class="kw-2">&amp;mut </span>DBBatch,
+    ) {
         <span class="self">self</span>.extend_and_compute_hash(changes.keys());
         <span class="kw">for </span>(op_id, (op_exec_success, slot)) <span class="kw">in </span>changes {
             <span class="self">self</span>.sorted_ops
@@ -593,18 +654,28 @@
 
 <span class="attr">#[test]
 </span><span class="kw">fn </span>test_executed_ops_xor_computing() {
+    <span class="kw">use </span>massa_db::new_rocks_db_instance;
+    <span class="kw">use </span>massa_db::write_batch;
     <span class="kw">use </span>massa_models::prehash::PreHashMap;
     <span class="kw">use </span>massa_models::secure_share::Id;
+    <span class="kw">use </span>tempfile::TempDir;
 
     <span class="comment">// initialize the executed ops config
     </span><span class="kw">let </span>config = ExecutedOpsConfig {
         thread_count: <span class="number">2</span>,
         bootstrap_part_size: <span class="number">10</span>,
     };
-
+    <span class="kw">let </span>tempdir_a = TempDir::new().expect(<span class="string">&quot;cannot create temp directory&quot;</span>);
+    <span class="kw">let </span>tempdir_c = TempDir::new().expect(<span class="string">&quot;cannot create temp directory&quot;</span>);
+    <span class="kw">let </span>rocks_db_instance_a = Arc::new(RwLock::new(new_rocks_db_instance(
+        tempdir_a.path().to_path_buf(),
+    )));
+    <span class="kw">let </span>rocks_db_instance_c = Arc::new(RwLock::new(new_rocks_db_instance(
+        tempdir_c.path().to_path_buf(),
+    )));
     <span class="comment">// initialize the executed ops and executed ops changes
-    </span><span class="kw">let </span><span class="kw-2">mut </span>a = ExecutedOps::new(config.clone());
-    <span class="kw">let </span><span class="kw-2">mut </span>c = ExecutedOps::new(config);
+    </span><span class="kw">let </span><span class="kw-2">mut </span>a = ExecutedOps::new(config.clone(), rocks_db_instance_a.clone());
+    <span class="kw">let </span><span class="kw-2">mut </span>c = ExecutedOps::new(config, rocks_db_instance_c.clone());
     <span class="kw">let </span><span class="kw-2">mut </span>change_a = PreHashMap::default();
     <span class="kw">let </span><span class="kw-2">mut </span>change_b = PreHashMap::default();
     <span class="kw">let </span><span class="kw-2">mut </span>change_c = PreHashMap::default();
@@ -636,9 +707,14 @@
         period: <span class="number">0</span>,
         thread: <span class="number">0</span>,
     };
-    a.apply_changes(change_a, apply_slot);
-    a.apply_changes(change_b, apply_slot);
-    c.apply_changes(change_c, apply_slot);
+
+    <span class="kw">let </span><span class="kw-2">mut </span>batch_a = DBBatch::new(<span class="prelude-val">None</span>, <span class="prelude-val">None</span>, <span class="prelude-val">None</span>, <span class="prelude-val">None</span>, <span class="prelude-val">Some</span>(a.hash));
+    <span class="kw">let </span><span class="kw-2">mut </span>batch_c = DBBatch::new(<span class="prelude-val">None</span>, <span class="prelude-val">None</span>, <span class="prelude-val">None</span>, <span class="prelude-val">None</span>, <span class="prelude-val">Some</span>(c.hash));
+    a.apply_changes_to_batch(change_a, apply_slot, <span class="kw-2">&amp;mut </span>batch_a);
+    a.apply_changes_to_batch(change_b, apply_slot, <span class="kw-2">&amp;mut </span>batch_a);
+    c.apply_changes_to_batch(change_c, apply_slot, <span class="kw-2">&amp;mut </span>batch_c);
+    write_batch(<span class="kw-2">&amp;</span>rocks_db_instance_a.read(), batch_a);
+    write_batch(<span class="kw-2">&amp;</span>rocks_db_instance_c.read(), batch_c);
 
     <span class="comment">// check that a.hash ^ $(change_b) = c.hash
     </span><span class="macro">assert_eq!</span>(a.hash, c.hash, <span class="string">&quot;&#39;a&#39; and &#39;c&#39; hashes are not equal&quot;</span>);
@@ -648,8 +724,10 @@
         period: <span class="number">20</span>,
         thread: <span class="number">0</span>,
     };
-    a.apply_changes(PreHashMap::default(), prune_slot);
+    <span class="kw">let </span><span class="kw-2">mut </span>batch_a = DBBatch::new(<span class="prelude-val">None</span>, <span class="prelude-val">None</span>, <span class="prelude-val">None</span>, <span class="prelude-val">None</span>, <span class="prelude-val">Some</span>(a.hash));
+    a.apply_changes_to_batch(PreHashMap::default(), prune_slot, <span class="kw-2">&amp;mut </span>batch_a);
     a.prune(prune_slot);
+    write_batch(<span class="kw-2">&amp;</span>rocks_db_instance_a.read(), batch_a);
 
     <span class="comment">// at this point the hash should have been XORed with itself
     </span><span class="macro">assert_eq!</span>(
