@@ -814,6 +814,34 @@
 <a href="#814" id="814">814</a>
 <a href="#815" id="815">815</a>
 <a href="#816" id="816">816</a>
+<a href="#817" id="817">817</a>
+<a href="#818" id="818">818</a>
+<a href="#819" id="819">819</a>
+<a href="#820" id="820">820</a>
+<a href="#821" id="821">821</a>
+<a href="#822" id="822">822</a>
+<a href="#823" id="823">823</a>
+<a href="#824" id="824">824</a>
+<a href="#825" id="825">825</a>
+<a href="#826" id="826">826</a>
+<a href="#827" id="827">827</a>
+<a href="#828" id="828">828</a>
+<a href="#829" id="829">829</a>
+<a href="#830" id="830">830</a>
+<a href="#831" id="831">831</a>
+<a href="#832" id="832">832</a>
+<a href="#833" id="833">833</a>
+<a href="#834" id="834">834</a>
+<a href="#835" id="835">835</a>
+<a href="#836" id="836">836</a>
+<a href="#837" id="837">837</a>
+<a href="#838" id="838">838</a>
+<a href="#839" id="839">839</a>
+<a href="#840" id="840">840</a>
+<a href="#841" id="841">841</a>
+<a href="#842" id="842">842</a>
+<a href="#843" id="843">843</a>
+<a href="#844" id="844">844</a>
 </pre><pre class="rust"><code><span class="doccomment">//! start the bootstrapping system using [`start_bootstrap_server`]
 //! Once your node will be ready, you may want other to bootstrap from you.
 //!
@@ -1287,8 +1315,8 @@
         deadline,
         mip_store,
     );
-    <span class="comment">// TODO: handle the deadline management
-    // This drop allows the server to accept new connections before having to complete the error notifications
+
+    <span class="comment">// This drop allows the server to accept new connections before having to complete the error notifications
     // account for this session being finished, as well as the root-instance
     </span><span class="macro">massa_trace!</span>(<span class="string">&quot;bootstrap.session.finished&quot;</span>, {
         <span class="string">&quot;sessions_remaining&quot;</span>: Arc::strong_count(<span class="kw-2">&amp;</span>arc_counter) - <span class="number">2
@@ -1331,9 +1359,9 @@
     <span class="kw-2">mut </span>last_cycle_step: StreamingStep&lt;u64&gt;,
     <span class="kw-2">mut </span>last_credits_step: StreamingStep&lt;Slot&gt;,
     <span class="kw-2">mut </span>last_ops_step: StreamingStep&lt;Slot&gt;,
-    <span class="kw-2">mut </span>last_de_step: StreamingStep&lt;Slot&gt;,
     <span class="kw-2">mut </span>last_consensus_step: StreamingStep&lt;PreHashSet&lt;BlockId&gt;&gt;,
     <span class="kw-2">mut </span>send_last_start_period: bool,
+    bs_deadline: <span class="kw-2">&amp;</span>Instant,
     write_timeout: Duration,
 ) -&gt; <span class="prelude-ty">Result</span>&lt;(), BootstrapError&gt; {
     <span class="kw">loop </span>{
@@ -1349,7 +1377,6 @@
         <span class="kw">let </span>pos_cycle_part;
         <span class="kw">let </span>pos_credits_part;
         <span class="kw">let </span>exec_ops_part;
-        <span class="kw">let </span>processed_de_part;
         <span class="kw">let </span>final_state_changes;
         <span class="kw">let </span>last_start_period;
 
@@ -1389,11 +1416,6 @@
                 .get_executed_ops_part(last_ops_step);
             exec_ops_part = ops_data;
 
-            <span class="kw">let </span>(de_data, new_de_step) = final_state_read
-                .processed_denunciations
-                .get_processed_de_part(last_de_step);
-            processed_de_part = de_data;
-
             <span class="kw">if let </span><span class="prelude-val">Some</span>(slot) = last_slot &amp;&amp; slot != final_state_read.slot {
                 <span class="kw">if </span>slot &gt; final_state_read.slot {
                     <span class="kw">return </span><span class="prelude-val">Err</span>(BootstrapError::GeneralError(
@@ -1407,7 +1429,6 @@
                     new_cycle_step,
                     new_credits_step,
                     new_ops_step,
-                    new_de_step,
                 ) {
                     <span class="prelude-val">Ok</span>(data) =&gt; data,
                     <span class="prelude-val">Err</span>(err) <span class="kw">if </span><span class="macro">matches!</span>(err, FinalStateError::InvalidSlot(<span class="kw">_</span>)) =&gt; {
@@ -1426,7 +1447,6 @@
             last_cycle_step = new_cycle_step;
             last_credits_step = new_credits_step;
             last_ops_step = new_ops_step;
-            last_de_step = new_de_step;
             last_slot = <span class="prelude-val">Some</span>(final_state_read.slot);
             current_slot = final_state_read.slot;
             send_last_start_period = <span class="bool-val">false</span>;
@@ -1442,7 +1462,6 @@
             &amp;&amp; last_cycle_step.finished()
             &amp;&amp; last_credits_step.finished()
             &amp;&amp; last_ops_step.finished()
-            &amp;&amp; last_de_step.finished()
         {
             StreamingStep::Finished(<span class="prelude-val">Some</span>(current_slot))
         } <span class="kw">else </span>{
@@ -1483,6 +1502,7 @@
         }
 
         <span class="comment">// If the consensus streaming is finished (also meaning that consensus slot == final state slot) exit
+        // We don&#39;t bother with the bs-deadline, as this is the last step of the bootstrap process - defer to general write-timeout
         </span><span class="kw">if </span>final_state_global_step.finished()
             &amp;&amp; final_state_changes_step.finished()
             &amp;&amp; last_consensus_step.finished()
@@ -1491,6 +1511,9 @@
             <span class="kw">break</span>;
         }
 
+        <span class="kw">let </span><span class="prelude-val">Some</span>(write_timeout) = step_timeout_duration(bs_deadline, <span class="kw-2">&amp;</span>write_timeout) <span class="kw">else </span>{
+            <span class="kw">return </span><span class="prelude-val">Err</span>(BootstrapError::Interupted(<span class="string">&quot;insufficient time left to provide next bootstrap part&quot;</span>.to_string()));
+        };
         <span class="comment">// At this point we know that consensus, final state or both are not finished
         </span>server.send_msg(
             write_timeout,
@@ -1501,7 +1524,6 @@
                 pos_cycle_part,
                 pos_credits_part,
                 exec_ops_part,
-                processed_de_part,
                 final_state_changes,
                 consensus_part,
                 consensus_outdated_ids,
@@ -1512,6 +1534,17 @@
     <span class="prelude-val">Ok</span>(())
 }
 
+<span class="comment">// derives the duration allowed for a step in the bootstrap process.
+// Returns None if the deadline for the entire bs-process has been reached
+</span><span class="kw">fn </span>step_timeout_duration(bs_deadline: <span class="kw-2">&amp;</span>Instant, step_timeout: <span class="kw-2">&amp;</span>Duration) -&gt; <span class="prelude-ty">Option</span>&lt;Duration&gt; {
+    <span class="kw">let </span>now = Instant::now();
+    <span class="kw">if </span>now &gt;= <span class="kw-2">*</span>bs_deadline {
+        <span class="kw">return </span><span class="prelude-val">None</span>;
+    }
+
+    <span class="kw">let </span>remaining = <span class="kw-2">*</span>bs_deadline - now;
+    <span class="prelude-val">Some</span>(std::cmp::min(remaining, <span class="kw-2">*</span>step_timeout))
+}
 <span class="attr">#[allow(clippy::too_many_arguments)]
 </span><span class="kw">fn </span>manage_bootstrap(
     bootstrap_config: <span class="kw-2">&amp;</span>BootstrapConfig,
@@ -1520,15 +1553,27 @@
     version: Version,
     consensus_controller: Box&lt;<span class="kw">dyn </span>ConsensusController&gt;,
     network_command_sender: NetworkCommandSender,
-    _deadline: Instant,
+    deadline: Instant,
     mip_store: MipStore,
 ) -&gt; <span class="prelude-ty">Result</span>&lt;(), BootstrapError&gt; {
     <span class="macro">massa_trace!</span>(<span class="string">&quot;bootstrap.lib.manage_bootstrap&quot;</span>, {});
     <span class="kw">let </span>read_error_timeout: Duration = bootstrap_config.read_error_timeout.into();
-    <span class="kw">let </span>rt_hack = massa_network_exports::make_runtime();
 
-    server.handshake_timeout(version, <span class="prelude-val">Some</span>(bootstrap_config.read_timeout.into()))<span class="question-mark">?</span>;
+    <span class="comment">// TODO: make network_command_sender non-async and remove both the variable and the method
+    </span><span class="kw">let </span>rt_hack = massa_network_exports::make_runtime();
 
+    <span class="kw">let </span><span class="prelude-val">Some</span>(hs_timeout) = step_timeout_duration(<span class="kw-2">&amp;</span>deadline, <span class="kw-2">&amp;</span>bootstrap_config.read_timeout.to_duration()) <span class="kw">else </span>{
+        <span class="kw">return </span><span class="prelude-val">Err</span>(BootstrapError::Interupted(<span class="string">&quot;insufficient time left to begin handshake&quot;</span>.to_string()));
+    };
+
+    server.handshake_timeout(version, <span class="prelude-val">Some</span>(hs_timeout))<span class="question-mark">?</span>;
+
+    <span class="comment">// Check for error from client
+    </span><span class="kw">if </span>Instant::now() + read_error_timeout &gt;= deadline {
+        <span class="kw">return </span><span class="prelude-val">Err</span>(BootstrapError::Interupted(
+            <span class="string">&quot;insufficient time to check for error from client&quot;</span>.to_string(),
+        ));
+    };
     <span class="kw">match </span>server.next_timeout(<span class="prelude-val">Some</span>(read_error_timeout)) {
         <span class="prelude-val">Err</span>(BootstrapError::TimedOut(<span class="kw">_</span>)) =&gt; {}
         <span class="prelude-val">Err</span>(e) =&gt; <span class="kw">return </span><span class="prelude-val">Err</span>(e),
@@ -1538,25 +1583,33 @@
         <span class="prelude-val">Ok</span>(msg) =&gt; <span class="kw">return </span><span class="prelude-val">Err</span>(BootstrapError::UnexpectedClientMessage(Box::new(msg))),
     };
 
-    <span class="kw">let </span>write_timeout: Duration = bootstrap_config.write_timeout.into();
-
-    <span class="comment">// Sync clocks.
-    </span><span class="kw">let </span>server_time = MassaTime::now()<span class="question-mark">?</span>;
-
+    <span class="comment">// Sync clocks
+    </span><span class="kw">let </span>send_time_timeout =
+        step_timeout_duration(<span class="kw-2">&amp;</span>deadline, <span class="kw-2">&amp;</span>bootstrap_config.write_timeout.to_duration());
+    <span class="kw">let </span><span class="prelude-val">Some</span>(next_step_timeout) = send_time_timeout <span class="kw">else </span>{
+        <span class="kw">return </span><span class="prelude-val">Err</span>(BootstrapError::Interupted(<span class="string">&quot;insufficient time left to send server time&quot;</span>.to_string()));
+    };
     server.send_msg(
-        write_timeout,
+        next_step_timeout,
         BootstrapServerMessage::BootstrapTime {
-            server_time,
+            server_time: MassaTime::now()<span class="question-mark">?</span>,
             version,
         },
     )<span class="question-mark">?</span>;
 
     <span class="kw">loop </span>{
-        <span class="kw">match </span>server.next_timeout(<span class="prelude-val">Some</span>(bootstrap_config.read_timeout.into())) {
+        <span class="kw">let </span><span class="prelude-val">Some</span>(read_timeout) = step_timeout_duration(<span class="kw-2">&amp;</span>deadline, <span class="kw-2">&amp;</span>bootstrap_config.read_timeout.to_duration()) <span class="kw">else </span>{
+            <span class="kw">return </span><span class="prelude-val">Err</span>(BootstrapError::Interupted(<span class="string">&quot;insufficient time left to process next message&quot;</span>.to_string()));
+        };
+        <span class="kw">match </span>server.next_timeout(<span class="prelude-val">Some</span>(read_timeout)) {
             <span class="prelude-val">Err</span>(BootstrapError::TimedOut(<span class="kw">_</span>)) =&gt; <span class="kw">break </span><span class="prelude-val">Ok</span>(()),
             <span class="prelude-val">Err</span>(e) =&gt; <span class="kw">break </span><span class="prelude-val">Err</span>(e),
             <span class="prelude-val">Ok</span>(msg) =&gt; <span class="kw">match </span>msg {
                 BootstrapClientMessage::AskBootstrapPeers =&gt; {
+                    <span class="kw">let </span><span class="prelude-val">Some</span>(write_timeout) = step_timeout_duration(<span class="kw-2">&amp;</span>deadline, <span class="kw-2">&amp;</span>bootstrap_config.write_timeout.to_duration()) <span class="kw">else </span>{
+                        <span class="kw">return </span><span class="prelude-val">Err</span>(BootstrapError::Interupted(<span class="string">&quot;insufficient time left to respond te request for peers&quot;</span>.to_string()));
+                    };
+
                     server.send_msg(
                         write_timeout,
                         BootstrapServerMessage::BootstrapPeers {
@@ -1572,7 +1625,6 @@
                     last_cycle_step,
                     last_credits_step,
                     last_ops_step,
-                    last_de_step,
                     last_consensus_step,
                     send_last_start_period,
                 } =&gt; {
@@ -1586,14 +1638,18 @@
                         last_cycle_step,
                         last_credits_step,
                         last_ops_step,
-                        last_de_step,
                         last_consensus_step,
                         send_last_start_period,
-                        write_timeout,
+                        <span class="kw-2">&amp;</span>deadline,
+                        bootstrap_config.write_timeout.to_duration(),
                     )<span class="question-mark">?</span>;
                 }
                 BootstrapClientMessage::AskBootstrapMipStore =&gt; {
                     <span class="kw">let </span>vs = mip_store.<span class="number">0</span>.read().to_owned();
+                    <span class="kw">let </span><span class="prelude-val">Some</span>(write_timeout) = step_timeout_duration(<span class="kw-2">&amp;</span>deadline, <span class="kw-2">&amp;</span>bootstrap_config.write_timeout.to_duration()) <span class="kw">else </span>{
+                        <span class="kw">return </span><span class="prelude-val">Err</span>(BootstrapError::Interupted(<span class="string">&quot;insufficient time left to respond te request for mip-store&quot;</span>.to_string()));
+                    };
+
                     server.send_msg(
                         write_timeout,
                         BootstrapServerMessage::BootstrapMipStore { store: vs.clone() },

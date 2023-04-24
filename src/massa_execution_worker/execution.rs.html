@@ -1534,54 +1534,6 @@
 <a href="#1534" id="1534">1534</a>
 <a href="#1535" id="1535">1535</a>
 <a href="#1536" id="1536">1536</a>
-<a href="#1537" id="1537">1537</a>
-<a href="#1538" id="1538">1538</a>
-<a href="#1539" id="1539">1539</a>
-<a href="#1540" id="1540">1540</a>
-<a href="#1541" id="1541">1541</a>
-<a href="#1542" id="1542">1542</a>
-<a href="#1543" id="1543">1543</a>
-<a href="#1544" id="1544">1544</a>
-<a href="#1545" id="1545">1545</a>
-<a href="#1546" id="1546">1546</a>
-<a href="#1547" id="1547">1547</a>
-<a href="#1548" id="1548">1548</a>
-<a href="#1549" id="1549">1549</a>
-<a href="#1550" id="1550">1550</a>
-<a href="#1551" id="1551">1551</a>
-<a href="#1552" id="1552">1552</a>
-<a href="#1553" id="1553">1553</a>
-<a href="#1554" id="1554">1554</a>
-<a href="#1555" id="1555">1555</a>
-<a href="#1556" id="1556">1556</a>
-<a href="#1557" id="1557">1557</a>
-<a href="#1558" id="1558">1558</a>
-<a href="#1559" id="1559">1559</a>
-<a href="#1560" id="1560">1560</a>
-<a href="#1561" id="1561">1561</a>
-<a href="#1562" id="1562">1562</a>
-<a href="#1563" id="1563">1563</a>
-<a href="#1564" id="1564">1564</a>
-<a href="#1565" id="1565">1565</a>
-<a href="#1566" id="1566">1566</a>
-<a href="#1567" id="1567">1567</a>
-<a href="#1568" id="1568">1568</a>
-<a href="#1569" id="1569">1569</a>
-<a href="#1570" id="1570">1570</a>
-<a href="#1571" id="1571">1571</a>
-<a href="#1572" id="1572">1572</a>
-<a href="#1573" id="1573">1573</a>
-<a href="#1574" id="1574">1574</a>
-<a href="#1575" id="1575">1575</a>
-<a href="#1576" id="1576">1576</a>
-<a href="#1577" id="1577">1577</a>
-<a href="#1578" id="1578">1578</a>
-<a href="#1579" id="1579">1579</a>
-<a href="#1580" id="1580">1580</a>
-<a href="#1581" id="1581">1581</a>
-<a href="#1582" id="1582">1582</a>
-<a href="#1583" id="1583">1583</a>
-<a href="#1584" id="1584">1584</a>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="doccomment">//! This module deals with executing final and active slots, as well as read-only requests.
@@ -1606,7 +1558,7 @@
 <span class="kw">use </span>massa_ledger_exports::{SetOrDelete, SetUpdateOrDelete};
 <span class="kw">use </span>massa_models::address::ExecutionAddressCycleInfo;
 <span class="kw">use </span>massa_models::bytecode::Bytecode;
-<span class="kw">use </span>massa_models::denunciation::{Denunciation, DenunciationIndex};
+<span class="kw">use </span>massa_models::denunciation::Denunciation;
 <span class="kw">use </span>massa_models::execution::EventFilter;
 <span class="kw">use </span>massa_models::output_event::SCOutputEvent;
 <span class="kw">use </span>massa_models::prehash::PreHashSet;
@@ -1988,53 +1940,12 @@
     </span><span class="kw">fn </span>process_denunciation(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         denunciation: <span class="kw-2">&amp;</span>Denunciation,
-        block_slot: <span class="kw-2">&amp;</span>Slot,
         block_credits: <span class="kw-2">&amp;mut </span>Amount,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;(), ExecutionError&gt; {
         <span class="kw">let </span>addr_denounced = Address::from_public_key(denunciation.get_public_key());
 
         <span class="comment">// acquire write access to the context
         </span><span class="kw">let </span><span class="kw-2">mut </span>context = <span class="macro">context_guard!</span>(<span class="self">self</span>);
-
-        <span class="comment">// ignore denunciation if not valid
-        </span><span class="kw">if </span>!denunciation.is_valid() {
-            <span class="kw">return </span><span class="prelude-val">Err</span>(ExecutionError::IncludeDenunciationError(
-                <span class="string">&quot;denunciation is not valid&quot;</span>.to_string(),
-            ));
-        }
-
-        <span class="comment">// ignore denunciation if too old or expired
-        </span><span class="kw">let </span>de_slot = denunciation.get_slot();
-
-        <span class="kw">if </span>de_slot.period
-            &lt; <span class="self">self
-                </span>.final_cursor
-                .period
-                .saturating_sub(<span class="self">self</span>.config.denunciation_expire_periods)
-        {
-            <span class="comment">// too old - cannot be denounced anymore
-            </span><span class="kw">return </span><span class="prelude-val">Err</span>(ExecutionError::IncludeDenunciationError(
-                <span class="string">&quot;denunciation is too old&quot;</span>.to_string(),
-            ));
-        }
-
-        <span class="kw">if </span>de_slot.period.saturating_sub(block_slot.period)
-            &gt; <span class="self">self</span>.config.denunciation_expire_periods
-        {
-            <span class="comment">// too much in the future - ignored
-            </span><span class="kw">return </span><span class="prelude-val">Err</span>(ExecutionError::IncludeDenunciationError(
-                <span class="string">&quot;denunciation is too much in the future&quot;</span>.to_string(),
-            ));
-        }
-
-        <span class="comment">// ignore the denunciation if it was already processed
-        </span><span class="kw">let </span>de_idx = DenunciationIndex::from(denunciation);
-        <span class="kw">if </span>context.is_de_processed(<span class="kw-2">&amp;</span>de_idx) {
-            <span class="kw">return </span><span class="prelude-val">Err</span>(ExecutionError::IncludeDenunciationError(
-                <span class="string">&quot;denunciation was processed previously&quot;</span>.to_string(),
-            ));
-        }
-
         <span class="kw">let </span>slashed = context.try_slash_rolls(
             <span class="kw-2">&amp;</span>addr_denounced,
             <span class="self">self</span>.config.roll_count_to_slash_on_denunciation,
@@ -2051,12 +1962,9 @@
                 })<span class="question-mark">?</span>;
                 <span class="kw-2">*</span>block_credits = block_credits.saturating_add(amount);
             }
-            <span class="prelude-val">Err</span>(e) =&gt; {
-                <span class="macro">warn!</span>(<span class="string">&quot;Unable to slash rolls or deferred credits: {}&quot;</span>, e);
-            }
+            <span class="prelude-val">Err</span>(e) =&gt; <span class="macro">warn!</span>(<span class="string">&quot;Unable to slash rolls or deferred credits: {}&quot;</span>, e),
         }
 
-        context.insert_executed_de(<span class="kw-2">&amp;</span>de_idx);
         <span class="prelude-val">Ok</span>(())
     }
 
@@ -2599,11 +2507,7 @@
 
             <span class="comment">// Try executing the denunciations of this block
             </span><span class="kw">for </span>denunciation <span class="kw">in </span><span class="kw-2">&amp;</span>stored_block.content.header.content.denunciations {
-                <span class="kw">if let </span><span class="prelude-val">Err</span>(e) = <span class="self">self</span>.process_denunciation(
-                    denunciation,
-                    <span class="kw-2">&amp;</span>stored_block.content.header.content.slot,
-                    <span class="kw-2">&amp;mut </span>block_credits,
-                ) {
+                <span class="kw">if let </span><span class="prelude-val">Err</span>(e) = <span class="self">self</span>.process_denunciation(denunciation, <span class="kw-2">&amp;mut </span>block_credits) {
                     <span class="macro">debug!</span>(
                         <span class="string">&quot;Failed processing denunciation: {:?}, in block: {}: {}&quot;</span>,
                         denunciation, block_id, e
