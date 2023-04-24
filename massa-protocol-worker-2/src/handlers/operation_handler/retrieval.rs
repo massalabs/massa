@@ -34,7 +34,8 @@ use tracing::warn;
 
 use super::{
     cache::SharedOperationCache,
-    commands_propagation::OperationHandlerCommand,
+    commands_propagation::OperationHandlerPropagationCommand,
+    commands_retrieval::OperationHandlerRetrievalCommand,
     messages::{OperationMessage, OperationMessageDeserializer, OperationMessageDeserializerArgs},
     OperationMessageSerializer,
 };
@@ -61,7 +62,8 @@ pub struct RetrievalThread {
     stored_operations: HashMap<Instant, PreHashSet<OperationId>>,
     storage: Storage,
     config: ProtocolConfig,
-    internal_sender: Sender<OperationHandlerCommand>,
+    internal_sender: Sender<OperationHandlerPropagationCommand>,
+    receiver_ext: Receiver<OperationHandlerRetrievalCommand>,
     operation_message_serializer: MessagesSerializer,
     peer_cmd_sender: Sender<PeerManagementCmd>,
 }
@@ -120,12 +122,26 @@ impl RetrievalThread {
                                 }
                             }
                         }
-                        Err(err) => {
-                            warn!("Error in receiver: {}", err);
+                        Err(_) => {
+                            println!("Stop operation retrieval thread");
                             return;
                         }
                     }
                 },
+                recv(self.receiver_ext) -> msg => {
+                    match msg {
+                        Ok(cmd) => match cmd {
+                            OperationHandlerRetrievalCommand::Stop => {
+                                println!("Stop operation retrieval thread");
+                                return;
+                            }
+                        },
+                        Err(_) => {
+                            println!("Stop operation retrieval thread");
+                            return;
+                        }
+                    }
+                }
                 recv(tick_ask_operations) -> _ => {
                     if let Err(err) = self.update_ask_operation() {
                         warn!("Error in update_ask_operation: {}", err);
@@ -247,7 +263,9 @@ impl RetrievalThread {
                 .insert(Instant::now(), to_announce.clone());
             self.storage.extend(ops_to_propagate);
             self.internal_sender
-                .send(OperationHandlerCommand::AnnounceOperations(to_announce))
+                .send(OperationHandlerPropagationCommand::AnnounceOperations(
+                    to_announce,
+                ))
                 .map_err(|err| ProtocolError::SendError(err.to_string()))?;
             // Add to pool
             self.pool_controller.add_operations(ops);
@@ -461,7 +479,8 @@ pub fn start_retrieval_thread(
     config: ProtocolConfig,
     cache: SharedOperationCache,
     active_connections: SharedActiveConnections,
-    internal_sender: Sender<OperationHandlerCommand>,
+    receiver_ext: Receiver<OperationHandlerRetrievalCommand>,
+    internal_sender: Sender<OperationHandlerPropagationCommand>,
     peer_cmd_sender: Sender<PeerManagementCmd>,
 ) -> JoinHandle<()> {
     std::thread::spawn(move || {
@@ -471,6 +490,7 @@ pub fn start_retrieval_thread(
             stored_operations: HashMap::new(),
             storage,
             internal_sender,
+            receiver_ext,
             cache,
             active_connections,
             asked_operations: LruCache::new(

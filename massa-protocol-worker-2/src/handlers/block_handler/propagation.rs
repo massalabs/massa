@@ -13,11 +13,12 @@ use crate::{
 };
 
 use super::{
-    cache::SharedBlockCache, commands_propagation::BlockHandlerCommand, BlockMessageSerializer,
+    cache::SharedBlockCache, commands_propagation::BlockHandlerPropagationCommand,
+    BlockMessageSerializer,
 };
 
 pub struct PropagationThread {
-    receiver: Receiver<BlockHandlerCommand>,
+    receiver: Receiver<BlockHandlerPropagationCommand>,
     config: ProtocolConfig,
     cache: SharedBlockCache,
     active_connections: SharedActiveConnections,
@@ -31,7 +32,7 @@ impl PropagationThread {
             match self.receiver.recv() {
                 Ok(command) => {
                     match command {
-                        BlockHandlerCommand::IntegratedBlock { block_id, storage } => {
+                        BlockHandlerPropagationCommand::IntegratedBlock { block_id, storage } => {
                             massa_trace!(
                                 "protocol.protocol_worker.process_command.integrated_block.begin",
                                 { "block_id": block_id }
@@ -117,7 +118,7 @@ impl PropagationThread {
                                 }
                             }
                         }
-                        BlockHandlerCommand::AttackBlockDetected(block_id) => {
+                        BlockHandlerPropagationCommand::AttackBlockDetected(block_id) => {
                             let to_ban: Vec<PeerId> = self
                                 .cache
                                 .read()
@@ -136,6 +137,10 @@ impl PropagationThread {
                                     warn!("Error while banning peer {} err: {:?}", id, err);
                                 }
                             }
+                        }
+                        BlockHandlerPropagationCommand::Stop => {
+                            println!("Stop block propagation thread");
+                            return;
                         }
                     }
                 }
@@ -158,7 +163,7 @@ impl PropagationThread {
 
 pub fn start_propagation_thread(
     active_connections: SharedActiveConnections,
-    receiver: Receiver<BlockHandlerCommand>,
+    receiver: Receiver<BlockHandlerPropagationCommand>,
     peer_cmd_sender: Sender<PeerManagementCmd>,
     config: ProtocolConfig,
     cache: SharedBlockCache,
