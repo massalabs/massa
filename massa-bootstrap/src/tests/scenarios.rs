@@ -174,7 +174,7 @@ fn test_bootstrap_server() {
     let mut mocked1 = NetworkCommandSender::new();
     let mut mocked2 = NetworkCommandSender::new();
     mocked2
-        .expect_get_bootstrap_peers()
+        .expect_sync_get_bootstrap_peers()
         .times(1)
         .returning(|| Ok(get_peers()));
 

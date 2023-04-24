@@ -164,15 +164,14 @@ impl NetworkCommandSender {
     }
 
     /// Send the order to get bootstrap peers.
-    pub async fn get_bootstrap_peers(&self) -> Result<BootstrapPeers, NetworkError> {
+    pub fn sync_get_bootstrap_peers(&self) -> Result<BootstrapPeers, NetworkError> {
         let (response_tx, response_rx) = oneshot::channel::<BootstrapPeers>();
         self.0
-            .send(NetworkCommand::GetBootstrapPeers(response_tx))
-            .await
+            .blocking_send(NetworkCommand::GetBootstrapPeers(response_tx))
             .map_err(|_| {
                 NetworkError::ChannelError("could not send GetBootstrapPeers command".into())
             })?;
-        response_rx.await.map_err(|_| {
+        response_rx.blocking_recv().map_err(|_| {
             NetworkError::ChannelError("could not send GetBootstrapPeers response upstream".into())
         })
     }
@@ -323,8 +322,10 @@ impl NetworkManager {
     }
 }
 
-/// Used by the bootstrap server to run async tasks, allowing the bootstrap module to
-/// remove the tokio dependency.
+#[cfg(any(test, feature = "testing"))]
+/// The bootstrap server function `get_state` has to be async due to main.rs `tokio::select!` usage to
+/// cancel on `ctrl-c`
+/// If get state can be cancelled with ctrl-c without an async context, this can be removed
 pub fn make_runtime() -> tokio::runtime::Runtime {
     tokio::runtime::Builder::new_multi_thread()
         .enable_all()
