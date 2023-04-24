@@ -25,7 +25,6 @@ tracing = { version = "0.1", features = [
     "max_level_debug",
     "release_max_level_debug",
 ] }
-async-trait = "0.1.68"
 mockall = {version = "0.11.4", features = ["nightly"], optional = true }
 
 [dev-dependencies]

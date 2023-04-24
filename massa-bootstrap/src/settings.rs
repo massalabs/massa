@@ -127,6 +127,8 @@ pub struct BootstrapConfig {
     pub mip_store_stats_block_considered: usize,
     /// max number of counters for versioning stats
     pub mip_store_stats_counters_max: usize,
+    /// max denunciations in block header
+    pub max_denunciations_per_block_header: u32,
 }
 
 /// Bootstrap server binding
@@ -173,6 +175,7 @@ pub struct BootstrapClientConfig {
     pub max_ops_changes_length: u64,
     pub mip_store_stats_block_considered: usize,
     pub mip_store_stats_counters_max: usize,
+    pub max_denunciations_per_block_header: u32,
 }
 
 /// Bootstrap Message der args
@@ -202,6 +205,7 @@ pub struct BootstrapServerMessageDeserializerArgs {
     pub max_ops_changes_length: u64,
     pub mip_store_stats_block_considered: usize,
     pub mip_store_stats_counters_max: usize,
+    pub max_denunciations_per_block_header: u32,
 }
 
 // TODO: add a proc macro for this case
@@ -212,6 +216,7 @@ impl From<&BootstrapServerMessageDeserializerArgs> for BlockDeserializerArgs {
             thread_count: value.thread_count,
             max_operations_per_block: value.max_operations_per_block,
             endorsement_count: value.endorsement_count,
+            max_denunciations_per_block_header: value.max_denunciations_per_block_header,
             last_start_period: None,
         }
     }

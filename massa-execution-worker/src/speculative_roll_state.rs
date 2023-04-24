@@ -10,6 +10,7 @@ use massa_models::{
 use massa_pos_exports::{DeferredCredits, PoSChanges, ProductionStats};
 use num::rational::Ratio;
 use parking_lot::RwLock;
+use std::cmp::min;
 use std::collections::{BTreeMap, HashMap};
 use std::sync::Arc;
 
@@ -146,6 +147,61 @@ impl SpeculativeRollState {
             .insert(target_slot, *seller_addr, new_deferred_credits);
 
         Ok(())
+    }
+
+    /// Try to slash `roll_count` rolls from the given address. If not enough roll, slash
+    /// the available amount and return the value.
+    ///
+    /// # Arguments
+    /// * `addr`: address to slash the rolls from
+    /// * `roll_count`: number of rolls to slash
+    pub fn try_slash_rolls(
+        &mut self,
+        addr: &Address,
+        roll_count: u64,
+    ) -> Result<u64, ExecutionError> {
+        // fetch the roll count
+        let owned_count = self.get_rolls(addr);
+        let roll_to_slash = min(roll_count, owned_count);
+
+        match self.added_changes.roll_changes.get_mut(addr) {
+            None => {
+                // Address does not exist anymore, slash nothing
+                Ok(0)
+            }
+            Some(current_rolls) => {
+                *current_rolls = current_rolls.saturating_sub(roll_to_slash);
+                Ok(roll_to_slash)
+            }
+        }
+    }
+
+    /// Try to slash `amount` credits from the given address. If not enough credits, slash
+    /// the available amount and return the value.
+    ///
+    /// # Arguments
+    /// * `addr`: address to slash the deferred credits from
+    /// * `amount`: number of deferred credits to slash
+    pub fn try_slash_deferred_credits(
+        &mut self,
+        slot: &Slot,
+        addr: &Address,
+        amount: &Amount,
+    ) -> Amount {
+        let credits = self.get_address_deferred_credits(addr, *slot);
+
+        let mut remaining_to_slash = *amount;
+        for (credit_slot, credit_amount) in credits.iter() {
+            let to_slash = min(*credit_amount, remaining_to_slash);
+            let new_deferred_credits = credit_amount.saturating_sub(to_slash);
+            remaining_to_slash = remaining_to_slash.saturating_sub(to_slash);
+
+            self.added_changes
+                .deferred_credits
+                .insert(*credit_slot, *addr, new_deferred_credits);
+        }
+
+        amount.saturating_sub(remaining_to_slash)
     }
 
     /// Update production statistics of an address.

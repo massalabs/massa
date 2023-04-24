@@ -219,6 +219,14 @@
                 </li>
               
                 <li>
+                  <a href="#massa.api.v1.GetLargestStakersRequest"><span class="badge">M</span>GetLargestStakersRequest</a>
+                </li>
+              
+                <li>
+                  <a href="#massa.api.v1.GetLargestStakersResponse"><span class="badge">M</span>GetLargestStakersResponse</a>
+                </li>
+              
+                <li>
                   <a href="#massa.api.v1.GetNextBlockBestParentsRequest"><span class="badge">M</span>GetNextBlockBestParentsRequest</a>
                 </li>
               
@@ -251,6 +259,22 @@
                 </li>
               
                 <li>
+                  <a href="#massa.api.v1.LargestStakerEntry"><span class="badge">M</span>LargestStakerEntry</a>
+                </li>
+              
+                <li>
+                  <a href="#massa.api.v1.LargestStakersContext"><span class="badge">M</span>LargestStakersContext</a>
+                </li>
+              
+                <li>
+                  <a href="#massa.api.v1.LargestStakersFilter"><span class="badge">M</span>LargestStakersFilter</a>
+                </li>
+              
+                <li>
+                  <a href="#massa.api.v1.LargestStakersQuery"><span class="badge">M</span>LargestStakersQuery</a>
+                </li>
+              
+                <li>
                   <a href="#massa.api.v1.NewBlocksHeadersRequest"><span class="badge">M</span>NewBlocksHeadersRequest</a>
                 </li>
               
@@ -264,6 +288,14 @@
               
                 <li>
                   <a href="#massa.api.v1.NewBlocksResponse"><span class="badge">M</span>NewBlocksResponse</a>
+                </li>
+              
+                <li>
+                  <a href="#massa.api.v1.NewEndorsementsRequest"><span class="badge">M</span>NewEndorsementsRequest</a>
+                </li>
+              
+                <li>
+                  <a href="#massa.api.v1.NewEndorsementsResponse"><span class="badge">M</span>NewEndorsementsResponse</a>
                 </li>
               
                 <li>
@@ -788,6 +820,75 @@
 
         
       
+        <h3 id="massa.api.v1.GetLargestStakersRequest">GetLargestStakersRequest</h3>
+        <p>GetLargestStakersRequest holds request from GetLargestStakers</p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>id</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p>Request id </p></td>
+                </tr>
+              
+                <tr>
+                  <td>query</td>
+                  <td><a href="#massa.api.v1.LargestStakersQuery">LargestStakersQuery</a></td>
+                  <td></td>
+                  <td><p>Query </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
+        <h3 id="massa.api.v1.GetLargestStakersResponse">GetLargestStakersResponse</h3>
+        <p>GetLargestStakersResponse holds response from GetLargestStakers</p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>id</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p>Request id </p></td>
+                </tr>
+              
+                <tr>
+                  <td>context</td>
+                  <td><a href="#massa.api.v1.LargestStakersContext">LargestStakersContext</a></td>
+                  <td></td>
+                  <td><p>Context </p></td>
+                </tr>
+              
+                <tr>
+                  <td>stakers</td>
+                  <td><a href="#massa.api.v1.LargestStakerEntry">LargestStakerEntry</a></td>
+                  <td>repeated</td>
+                  <td><p>Largest stakers </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
         <h3 id="massa.api.v1.GetNextBlockBestParentsRequest">GetNextBlockBestParentsRequest</h3>
         <p>GetNextBlockBestParentsRequest holds request for GetNextBlockBestParents</p>
 
@@ -1015,6 +1116,130 @@
 
         
       
+        <h3 id="massa.api.v1.LargestStakerEntry">LargestStakerEntry</h3>
+        <p>LargestStakerEntry</p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>address</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p>Address </p></td>
+                </tr>
+              
+                <tr>
+                  <td>rolls</td>
+                  <td><a href="#fixed64">fixed64</a></td>
+                  <td></td>
+                  <td><p>Rolls </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
+        <h3 id="massa.api.v1.LargestStakersContext">LargestStakersContext</h3>
+        <p>LargestStakers context</p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>slot</td>
+                  <td><a href="#massa.api.v1.Slot">Slot</a></td>
+                  <td></td>
+                  <td><p>Slot </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
+        <h3 id="massa.api.v1.LargestStakersFilter">LargestStakersFilter</h3>
+        <p>LargestStakers Filter</p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>min_rolls</td>
+                  <td><a href="#fixed64">fixed64</a></td>
+                  <td>optional</td>
+                  <td><p>Minimum rolls (Optional) </p></td>
+                </tr>
+              
+                <tr>
+                  <td>max_rolls</td>
+                  <td><a href="#fixed64">fixed64</a></td>
+                  <td>optional</td>
+                  <td><p>Maximum rolls (Optional) </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
+        <h3 id="massa.api.v1.LargestStakersQuery">LargestStakersQuery</h3>
+        <p>LargestStakers Query</p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>offset</td>
+                  <td><a href="#fixed64">fixed64</a></td>
+                  <td></td>
+                  <td><p>Starting offset for the list of stakers. Defaults to 1 </p></td>
+                </tr>
+              
+                <tr>
+                  <td>limit</td>
+                  <td><a href="#fixed64">fixed64</a></td>
+                  <td></td>
+                  <td><p>Limits the number of stakers to return. Defaults to 50 </p></td>
+                </tr>
+              
+                <tr>
+                  <td>filter</td>
+                  <td><a href="#massa.api.v1.LargestStakersFilter">LargestStakersFilter</a></td>
+                  <td></td>
+                  <td><p>Filter </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
         <h3 id="massa.api.v1.NewBlocksHeadersRequest">NewBlocksHeadersRequest</h3>
         <p>NewBlocksHeadersRequest holds request for NewBlocksHeaders</p>
 
@@ -1116,6 +1341,61 @@
                   <td><a href="#massa.api.v1.SignedBlock">SignedBlock</a></td>
                   <td></td>
                   <td><p>Signed block </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
+        <h3 id="massa.api.v1.NewEndorsementsRequest">NewEndorsementsRequest</h3>
+        <p>NewEndorsementsRequest holds request for NewEndorsements</p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>id</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p>Request id </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
+        <h3 id="massa.api.v1.NewEndorsementsResponse">NewEndorsementsResponse</h3>
+        <p>NewEndorsementsResponse holds response from NewEndorsements</p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>id</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p>Request id </p></td>
+                </tr>
+              
+                <tr>
+                  <td>endorsement</td>
+                  <td><a href="#massa.api.v1.SignedEndorsement">SignedEndorsement</a></td>
+                  <td></td>
+                  <td><p>Signed endorsement </p></td>
                 </tr>
               
             </tbody>
@@ -1628,7 +1908,7 @@
                   <td>interval</td>
                   <td><a href="#fixed64">fixed64</a></td>
                   <td>optional</td>
-                  <td><p>Optional timer interval in sec. Defaults to 10s </p></td>
+                  <td><p>Timer interval in seconds (Optional). Defaults to 10s </p></td>
                 </tr>
               
             </tbody>
@@ -1745,6 +2025,13 @@
               </tr>
             
               <tr>
+                <td>GetLargestStakers</td>
+                <td><a href="#massa.api.v1.GetLargestStakersRequest">GetLargestStakersRequest</a></td>
+                <td><a href="#massa.api.v1.GetLargestStakersResponse">GetLargestStakersResponse</a></td>
+                <td><p>Get largest stakers</p></td>
+              </tr>
+            
+              <tr>
                 <td>GetNextBlockBestParents</td>
                 <td><a href="#massa.api.v1.GetNextBlockBestParentsRequest">GetNextBlockBestParentsRequest</a></td>
                 <td><a href="#massa.api.v1.GetNextBlockBestParentsResponse">GetNextBlockBestParentsResponse</a></td>
@@ -1784,6 +2071,13 @@
                 <td><a href="#massa.api.v1.NewBlocksHeadersRequest">NewBlocksHeadersRequest</a> stream</td>
                 <td><a href="#massa.api.v1.NewBlocksHeadersResponse">NewBlocksHeadersResponse</a> stream</td>
                 <td><p>New received and produced blocks headers</p></td>
+              </tr>
+            
+              <tr>
+                <td>NewEndorsements</td>
+                <td><a href="#massa.api.v1.NewEndorsementsRequest">NewEndorsementsRequest</a> stream</td>
+                <td><a href="#massa.api.v1.NewEndorsementsResponse">NewEndorsementsResponse</a> stream</td>
+                <td><p>New received and produced endorsements</p></td>
               </tr>
             
               <tr>
@@ -1863,6 +2157,16 @@
                 <td>POST</td>
                 <td>/v1/get_datastore_entries</td>
                 <td>*</td>
+              </tr>
+              
+            
+              
+              
+              <tr>
+                <td>GetLargestStakers</td>
+                <td>GET</td>
+                <td>/v1/get_largest_stakers</td>
+                <td></td>
               </tr>
               
             
@@ -2443,6 +2747,13 @@ This is the parent in thread `self.slot.thread` of the block in which the endors
                   <td><a href="#bytes">bytes</a></td>
                   <td></td>
                   <td><p>Smart contract bytecode. </p></td>
+                </tr>
+              
+                <tr>
+                  <td>max_coins</td>
+                  <td><a href="#fixed64">fixed64</a></td>
+                  <td></td>
+                  <td><p>The maximum of coins that could be spent by the operation sender </p></td>
                 </tr>
               
                 <tr>

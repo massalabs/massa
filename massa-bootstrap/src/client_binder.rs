@@ -69,7 +69,8 @@ impl BootstrapClientBinder {
         Ok(())
     }
 
-    /// Reads the next message. NOT cancel-safe
+    // TODO: use a proper (de)serializer: https://github.com/massalabs/massa/pull/3745#discussion_r1169733161
+    /// Reads the next message.
     pub fn next_timeout(
         &mut self,
         duration: Option<Duration>,
@@ -99,12 +100,12 @@ impl BootstrapClientBinder {
 
         // Update this bindings "most recently received" message hash, retaining the replaced value
         let message_deserializer = BootstrapServerMessageDeserializer::new((&self.cfg).into());
-        let legacy_msg = self
+        let prev_msg = self
             .prev_message
             .replace(Hash::compute_from(&sig.to_bytes()));
 
         let message = {
-            if let Some(legacy_msg) = legacy_msg {
+            if let Some(prev_msg) = prev_msg {
                 // Consume the stream, and discard the peek
                 let mut stream_bytes = vec![0u8; peek_len + (msg_len as usize)];
                 // TODO: under the hood, this isn't actually atomic. For now, we use the ostrich algorithm.
@@ -113,7 +114,7 @@ impl BootstrapClientBinder {
 
                 // prepend the received message with the previous messages hash, and derive the new hash.
                 // TODO: some sort of recovery if this fails?
-                let rehash_seed = &[legacy_msg.to_bytes().as_slice(), msg_bytes].concat();
+                let rehash_seed = &[prev_msg.to_bytes().as_slice(), msg_bytes].concat();
                 let msg_hash = Hash::compute_from(rehash_seed);
                 self.remote_pubkey.verify_signature(&msg_hash, &sig)?;
 
@@ -143,7 +144,7 @@ impl BootstrapClientBinder {
         Ok(message)
     }
 
-    #[allow(dead_code)]
+    // TODO: use a proper (de)serializer: https://github.com/massalabs/massa/pull/3745#discussion_r1169733161
     /// Send a message to the bootstrap server
     pub fn send_timeout(
         &mut self,

@@ -161,8 +161,8 @@ impl ExecutionController for ExecutionControllerImpl {
         &self,
         input: Vec<(Address, Vec<u8>)>,
     ) -> Vec<(Option<Vec<u8>>, Option<Vec<u8>>)> {
-        let lock = self.execution_state.read();
         let mut result = Vec::with_capacity(input.len());
+        let lock = self.execution_state.read();
         for (addr, key) in input {
             result.push(lock.get_final_and_active_data_entry(&addr, &key));
         }

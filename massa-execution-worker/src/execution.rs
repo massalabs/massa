@@ -22,6 +22,7 @@ use massa_final_state::FinalState;
 use massa_ledger_exports::{SetOrDelete, SetUpdateOrDelete};
 use massa_models::address::ExecutionAddressCycleInfo;
 use massa_models::bytecode::Bytecode;
+use massa_models::denunciation::Denunciation;
 use massa_models::execution::EventFilter;
 use massa_models::output_event::SCOutputEvent;
 use massa_models::prehash::PreHashSet;
@@ -252,6 +253,11 @@ impl ExecutionState {
             ));
         }
 
+        // Set the creator coin spending allowance.
+        // Note that this needs to be initialized before any spending from the creator.
+        context.creator_coin_spending_allowance =
+            Some(operation.get_max_spending(self.config.roll_price));
+
         // debit the fee from the operation sender
         // fail execution if there are not enough coins
         if let Err(err) =
@@ -385,6 +391,42 @@ impl ExecutionState {
                     )
                 }
             }
+        }
+
+        Ok(())
+    }
+
+    /// Process a denunciation in the context of a block.
+    ///
+    /// # Arguments
+    /// * `denunciation`: denunciation to process
+    /// * `block_credits`: mutable reference towards the total block reward/fee credits
+    fn process_denunciation(
+        &self,
+        denunciation: &Denunciation,
+        block_credits: &mut Amount,
+    ) -> Result<(), ExecutionError> {
+        let addr_denounced = Address::from_public_key(denunciation.get_public_key());
+
+        // acquire write access to the context
+        let mut context = context_guard!(self);
+        let slashed = context.try_slash_rolls(
+            &addr_denounced,
+            self.config.roll_count_to_slash_on_denunciation,
+        );
+
+        match slashed {
+            Ok(slashed_amount) => {
+                // Add slashed amount / 2 to block reward
+                let amount = slashed_amount.checked_div_u64(2).ok_or_else(|| {
+                    ExecutionError::RuntimeError(format!(
+                        "Unable to divide slashed amount: {} by 2",
+                        slashed_amount
+                    ))
+                })?;
+                *block_credits = block_credits.saturating_add(amount);
+            }
+            Err(e) => warn!("Unable to slash rolls or deferred credits: {}", e),
         }
 
         Ok(())
@@ -721,6 +763,7 @@ impl ExecutionState {
             context_snapshot = context.get_snapshot();
             context.max_gas = message.max_gas;
             context.creator_address = None;
+            context.creator_coin_spending_allowance = None;
             context.stack = vec![
                 ExecutionStackElement {
                     address: message.sender,
@@ -922,6 +965,16 @@ impl ExecutionState {
                     debug!(
                         "failed executing operation {} in block {}: {}",
                         operation.id, block_id, err
+                    );
+                }
+            }
+
+            // Try executing the denunciations of this block
+            for denunciation in &stored_block.content.header.content.denunciations {
+                if let Err(e) = self.process_denunciation(denunciation, &mut block_credits) {
+                    debug!(
+                        "Failed processing denunciation: {:?}, in block: {}: {}",
+                        denunciation, block_id, e
                     );
                 }
             }

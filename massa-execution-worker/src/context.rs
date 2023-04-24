@@ -36,7 +36,7 @@ use rand::SeedableRng;
 use rand_xoshiro::Xoshiro256PlusPlus;
 use std::collections::{BTreeMap, BTreeSet};
 use std::sync::Arc;
-use tracing::debug;
+use tracing::{debug, warn};
 
 /// A snapshot taken from an `ExecutionContext` and that represents its current state.
 /// The `ExecutionContext` state can then be restored later from this snapshot.
@@ -104,6 +104,9 @@ pub struct ExecutionContext {
 
     /// max gas for this execution
     pub max_gas: u64,
+
+    /// coin spending allowance for the operation creator
+    pub creator_coin_spending_allowance: Option<Amount>,
 
     /// slot at which the execution happens
     pub slot: Slot,
@@ -182,6 +185,7 @@ impl ExecutionContext {
             ),
             speculative_executed_ops: SpeculativeExecutedOps::new(final_state, active_history),
             max_gas: Default::default(),
+            creator_coin_spending_allowance: Default::default(),
             slot: Slot::new(0, 0),
             created_addr_index: Default::default(),
             created_event_index: Default::default(),
@@ -628,9 +632,29 @@ impl ExecutionContext {
                 .check_vesting_transfer_coins(self, from_addr, amount)?;
         }
 
+        // check remaining sender allowance
+        let sender_allowance = {
+            if let (Some(op_creator_allowance), Some(op_creator_addr)) = (&mut self.creator_coin_spending_allowance, self.creator_address) && from_addr == Some(op_creator_addr) {
+                if amount > *op_creator_allowance {
+                    return Err(ExecutionError::RuntimeError(format!("failed transfer of {} coins from spending address {} due to limited allowance", amount, op_creator_addr)));
+                }
+                Some(op_creator_allowance)
+            } else {
+                None
+            }
+        };
+
         // do the transfer
-        self.speculative_ledger
-            .transfer_coins(from_addr, to_addr, amount)
+        let result = self
+            .speculative_ledger
+            .transfer_coins(from_addr, to_addr, amount);
+
+        // update allowance
+        if let Some(allowance) = sender_allowance && result.is_ok() {
+            *allowance = allowance.saturating_sub(amount);
+        }
+
+        result
     }
 
     /// Add a new asynchronous message to speculative pool
@@ -683,6 +707,69 @@ impl ExecutionContext {
             self.config.thread_count,
             self.config.roll_price,
         )
+    }
+
+    /// Try to slash `roll_count` rolls from the denounced address. If not enough rolls,
+    /// slash the available amount and return the result
+    ///
+    /// # Arguments
+    /// * `denounced_addr`: address to sell the rolls from
+    /// * `roll_count`: number of rolls to slash
+    pub fn try_slash_rolls(
+        &mut self,
+        denounced_addr: &Address,
+        roll_count: u64,
+    ) -> Result<Amount, ExecutionError> {
+        // try to slash as many roll as available
+        let slashed_rolls = self
+            .speculative_roll_state
+            .try_slash_rolls(denounced_addr, roll_count);
+
+        // convert slashed rolls to coins (as deferred credits => coins)
+        let mut slashed_coins = self
+            .config
+            .roll_price
+            .checked_mul_u64(slashed_rolls.unwrap_or_default())
+            .ok_or_else(|| {
+                ExecutionError::RuntimeError(format!(
+                    "Cannot multiply roll price by {}",
+                    roll_count
+                ))
+            })?;
+
+        // what remains to slash (then will try to slash as many deferred credits as avail/what remains to be slashed)
+        let amount_remaining_to_slash = self
+            .config
+            .roll_price
+            .checked_mul_u64(roll_count)
+            .ok_or_else(|| {
+                ExecutionError::RuntimeError(format!(
+                    "Cannot multiply roll price by {}",
+                    roll_count
+                ))
+            })?
+            .saturating_sub(slashed_coins);
+
+        if amount_remaining_to_slash > Amount::zero() {
+            // There is still an amount to slash for this denunciation so we need to slash
+            // in deferred credits
+            let slashed_coins_in_deferred_credits = self
+                .speculative_roll_state
+                .try_slash_deferred_credits(&self.slot, denounced_addr, &amount_remaining_to_slash);
+
+            slashed_coins = slashed_coins.saturating_add(slashed_coins_in_deferred_credits);
+            let amount_remaining_to_slash_2 =
+                slashed_coins.saturating_sub(slashed_coins_in_deferred_credits);
+            if amount_remaining_to_slash_2 > Amount::zero() {
+                // Use saturating_mul_u64 to avoid an error (for just a warn!(..))
+                warn!("Slashed {} coins (by selling rolls) and {} coins from deferred credits of address: {} but cumulative amount is lower than expected: {} coins",
+                    slashed_coins, slashed_coins_in_deferred_credits, denounced_addr,
+                    self.config.roll_price.saturating_mul_u64(roll_count)
+                );
+            }
+        }
+
+        Ok(slashed_coins)
     }
 
     /// Update production statistics of an address.

@@ -17,7 +17,7 @@ use tracing::log::error;
 const DEFAULT_THROUGHPUT_INTERVAL: u64 = 10;
 
 /// Type declaration for TransactionsThroughput
-pub type TransactionsThroughputStream = Pin<
+pub type TransactionsThroughputStreamType = Pin<
     Box<
         dyn futures_core::Stream<Item = Result<grpc::TransactionsThroughputResponse, tonic::Status>>
             + Send
@@ -29,7 +29,7 @@ pub type TransactionsThroughputStream = Pin<
 pub(crate) async fn transactions_throughput(
     grpc: &MassaGrpc,
     request: tonic::Request<tonic::Streaming<grpc::TransactionsThroughputRequest>>,
-) -> Result<TransactionsThroughputStream, GrpcError> {
+) -> Result<TransactionsThroughputStreamType, GrpcError> {
     let execution_controller = grpc.execution_controller.clone();
 
     // Create a channel for sending responses to the client
@@ -93,5 +93,5 @@ pub(crate) async fn transactions_throughput(
     });
 
     let out_stream = tokio_stream::wrappers::ReceiverStream::new(rx);
-    Ok(Box::pin(out_stream) as TransactionsThroughputStream)
+    Ok(Box::pin(out_stream) as TransactionsThroughputStreamType)
 }

@@ -20,9 +20,7 @@ use massa_models::{
     operation::{OperationId, SecureShareOperation},
     prehash::{CapacityAllocator, PreHashMap, PreHashSet},
 };
-use massa_network_exports::{
-    AskForBlocksInfo, NetworkCommandSender, NetworkCommandSenderTrait, NetworkEventReceiver,
-};
+use massa_network_exports::{AskForBlocksInfo, NetworkCommandSender, NetworkEventReceiver};
 use massa_pool_exports::PoolController;
 use massa_protocol_exports::{
     ProtocolCommand, ProtocolConfig, ProtocolError, ProtocolManagementCommand, ProtocolManager,
