@@ -7,13 +7,23 @@
 <a href="#7" id="7">7</a>
 <a href="#8" id="8">8</a>
 <a href="#9" id="9">9</a>
-</pre><pre class="rust"><code><span class="doccomment">//! Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
+<a href="#10" id="10">10</a>
+<a href="#11" id="11">11</a>
+<a href="#12" id="12">12</a>
+<a href="#13" id="13">13</a>
+<a href="#14" id="14">14</a>
+</pre><pre class="rust"><code><span class="attr">#![feature(btree_drain_filter)]
+</span><span class="doccomment">//! Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="kw">mod </span>config;
+<span class="kw">mod </span>denunciations_changes;
+<span class="kw">mod </span>executed_denunciations;
 <span class="kw">mod </span>executed_ops;
 <span class="kw">mod </span>ops_changes;
 
 <span class="kw">pub use </span>config::<span class="kw-2">*</span>;
+<span class="kw">pub use </span>denunciations_changes::<span class="kw-2">*</span>;
+<span class="kw">pub use </span>executed_denunciations::<span class="kw-2">*</span>;
 <span class="kw">pub use </span>executed_ops::<span class="kw-2">*</span>;
 <span class="kw">pub use </span>ops_changes::<span class="kw-2">*</span>;
 </code></pre></div>
