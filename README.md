@@ -1,8 +1,12 @@
-# Massa: The Decentralized and Scaled Blockchain
+<br />
 
-Massa is a truly decentralized blockchain controlled by thousands of
-people. With the breakthrough multithreaded technology, we're set for
-mass adoption.
+<p align="center">
+<img src="logo.png" width="240">
+</p>
+
+<br />
+
+# Massa: The Decentralized and Scaled Blockchain
 
 [![CI](https://github.com/massalabs/massa/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/massalabs/massa/actions/workflows/ci.yml?query=branch%3Amain)
 [![Bors enabled](https://bors.tech/images/badge_small.svg)](https://app.bors.tech/repositories/39543)
@@ -10,74 +14,52 @@ mass adoption.
 [![Docs](https://img.shields.io/static/v1?label=docs&message=massa&color=&style=flat)](https://massalabs.github.io/massa/massa_node/)
 [![Open in Gitpod](https://shields.io/badge/Gitpod-contribute-brightgreen?logo=gitpod&style=flat)](https://gitpod.io/#https://github.com/massalabs/massa)
 
-[![OpenRPC Playground](https://img.shields.io/static/v1?label=INTERACTIVE-JSONRPC-API-SPECIFICATION&message=massa&style=for-the-badge&color=blue)](https://playground.open-rpc.org/?schemaUrl=https://test.massa.net/api/v2&uiSchema\[appBar\]\[ui:input\]=false&uiSchema\[appBar\]\[ui:inputPlaceholder\]=Enter+Massa+JSON-RPC+server+URL&uiSchema\[appBar\]\[ui:logoUrl\]=https://massa.net/favicons/favicon.ico&uiSchema\[appBar\]\[ui:splitView\]=false&uiSchema\[appBar\]\[ui:darkMode\]=false&uiSchema\[appBar\]\[ui:title\]=Massa&uiSchema\[appBar\]\[ui:examplesDropdown\]=false&uiSchema\[methods\]\[ui:defaultExpanded\]=false&uiSchema\[methods\]\[ui:methodPlugins\]=true&uiSchema\[params\]\[ui:defaultExpanded\]=false)
-[![gRPC documentation](https://img.shields.io/static/v1?label=GRPC-API-DOCUMENTATION&message=massa&style=for-the-badge&color=yellow)](https://htmlpreview.github.io/?https://github.com/massalabs/massa/blob/main/massa-proto/doc/index.html) 
-[![Postman workspace](https://img.shields.io/static/v1?logo=postman&label=POSTMAN-WORKSPACE&message=massa&style=for-the-badge&color=orange)](https://www.postman.com/massalabs)
+## About Massa
 
-## Introduction
+[Massa](https://massa.net) is a new blockchain based on a [multithreaded technology](https://arxiv.org/pdf/1803.09029)
+that supports more than 10'000 transactions per second in a fully decentralized network with thousands of nodes. A short
+introduction video is available [here](https://www.youtube.com/watch?v=NUUFhvd7ulY).
 
-[Massa](https://massa.net) is a new blockchain reaching a high
-transaction throughput in a decentralized network. Our research is
-published in this [technical paper](https://arxiv.org/pdf/1803.09029).
-It shows that throughput of 10'000 transactions per second is reached
-even in a fully decentralized network with thousands of nodes.
+Massa's purpose is to make it easy to deploy fully decentralized applications. We've developed two key technologies that
+are exclusive to Massa to help make this possible:
+[autonomous smart contracts](https://docs.massa.net/en/latest/general-doc/autonomous-sc.html) and native
+[front-end hosting](https://docs.massa.net/en/latest/general-doc/decentralized-web.html).
 
-You can watch a short introduction video [here](https://www.youtube.com/watch?v=HbILgK1Wh-4).
+Here is a list of tools to easily build applications on the Massa blockchain:
 
-We are now releasing the **Massa testnet** in this GitHub repository,
-with its explorer available at <https://massa.net/testnet>.
+- [JS Client library](https://github.com/massalabs/massa-web3) to connect to the Massa blockchain from your applications.
+- [AssemblyScript](https://github.com/massalabs/massa-as-sdk) SDKs to write smart contracts.
+- [Examples of applications](https://github.com/massalabs/massa-sc-examples) built on Massa.
+- [Explorer](test.massa.net).
+- [Interactive API specification](https://playground.open-rpc.org/?schemaUrl=https://test.massa.net/api/v2&uiSchema\[appBar\]\[ui:input\]=false&uiSchema\[appBar\]\[ui:inputPlaceholder\]=Enter+Massa+JSON-RPC+server+URL&uiSchema\[appBar\]\[ui:logoUrl\]=https://massa.net/favicons/favicon.ico&uiSchema\[appBar\]\[ui:splitView\]=false&uiSchema\[appBar\]\[ui:darkMode\]=false&uiSchema\[appBar\]\[ui:title\]=Massa&uiSchema\[appBar\]\[ui:examplesDropdown\]=false&uiSchema\[methods\]\[ui:defaultExpanded\]=false&uiSchema\[methods\]\[ui:methodPlugins\]=true&uiSchema\[params\]\[ui:defaultExpanded\]=false).
+- [Lots of documentation](docs.massa.net), from [web3 development](https://docs.massa.net/en/latest/web3-dev/smart-contracts.html)
+  to [Massa's architecture](https://docs.massa.net/en/latest/general-doc/architecture.html).
 
-## Massa API
+## Join the Testnet
 
-You can interact with Massa JSON-RPC API via the [interactive API specification](https://playground.open-rpc.org/?schemaUrl=https://test.massa.net/api/v2&uiSchema\[appBar\]\[ui:input\]=false&uiSchema\[appBar\]\[ui:inputPlaceholder\]=Enter+Massa+JSON-RPC+server+URL&uiSchema\[appBar\]\[ui:logoUrl\]=https://massa.net/favicons/favicon.ico&uiSchema\[appBar\]\[ui:splitView\]=false&uiSchema\[appBar\]\[ui:darkMode\]=false&uiSchema\[appBar\]\[ui:title\]=Massa&uiSchema\[appBar\]\[ui:examplesDropdown\]=false&uiSchema\[methods\]\[ui:defaultExpanded\]=false&uiSchema\[methods\]\[ui:methodPlugins\]=true&uiSchema\[params\]\[ui:defaultExpanded\]=false) which is the equivalent of SwaggerUI for OpenRPC specifications. 
+With decentralization as a core value, we've gone to great lengths to lower the barrier of entry for community
+participation in our community testnet, and we
+[invite you to join in](https://docs.massa.net/en/latest/testnet/install.html#testnet-install), and register for the
+testnet participation reward program.
 
-You can use the [gRPC API](./massa-proto/proto/massa/api/v1/)(experimental) to communicate with Massa node. This allows you to incorporate Massa's functionality into your own applications or services using gRPC's high-performance, language-agnostic RPC framework.
+Your participation will help improve decentralization, usability, and network reliability leading up to, and following,
+the launch of mainnet.
 
-You can easily import APIs collections from [Massa's Postman workspace](https://www.postman.com/massalabs) and start testing and exploring the provided functionalities by Massa API's.
+## Community
 
+We have active community discussions on several platforms, and we invite you to join the conversations. If you wish to
+go into some depth about technical aspects, speak with people working in the ecosystem full-time, or just have a chat
+with other like-minded people, these can be good places to start:
 
-## Testnet Incentives
+- [Discord](https://discord.com/invite/massa)
+- [Telegram](https://t.me/massanetwork)
+- [Twitter](https://twitter.com/MassaLabs)
 
-As decentralization is our core value, we would like to help you start
-and run a Massa node. Running a node during the testnet phase also helps
-us find bugs and improve usability, so it will be rewarded with real
-Massa on mainnet launch.
+## Contributing
 
-The mechanics of those rewards are described in the [Testnet rules](https://docs.massa.net/en/latest/testnet/rewards.html).
+We welcome contributions from the community at large, from anywhere between seasoned OSS contributors, to those hoping
+to try it for the first time.
 
-## Testnet Discussions
-
-Please come to our [Discord](https://discord.com/invite/massa) for
-testnet discussions, in the testnet channel.
-
-For project announcements, we mainly use
-[Telegram](https://t.me/massanetwork), and we also have a [Twitter](https://twitter.com/MassaLabs) account.
-
-## Tutorials to join the testnet
-
--   [Installing a node](https://docs.massa.net/en/latest/testnet/install.html)
--   [Running a node](https://docs.massa.net/en/latest/testnet/running.html)
--   [Creating a wallet](https://docs.massa.net/en/latest/testnet/wallet.html)
--   [Staking](https://docs.massa.net/en/latest/testnet/staking.html)
--   [Routability tutorial](https://docs.massa.net/en/latest/testnet/routability.html) (Optional)
--   [Testnet rewards program](https://docs.massa.net/en/latest/testnet/rewards.html) (Optional)
-
-## More tutorials
-
--   [Updating the node](https://docs.massa.net/en/latest/testnet/update.html)
--   [Tutorials and resources from the community](https://docs.massa.net/en/latest/testnet/community-resources.html)
-
-## [FAQ](https://docs.massa.net/en/latest/testnet/faq.html) and Troubleshooting
-
-You'll find answers to common issues and questions regarding the Massa
-protocol in the [FAQ](https://docs.massa.net/en/latest/testnet/faq.html).
-
-Don't hesitate to ask questions in the
-[Discord](https://discord.com/invite/massa) testnet channel.
-
-## Technical documentation
-
--   [API](https://docs.massa.net/en/latest/technical-doc/api.html)
--   [Architecture](https://docs.massa.net/en/latest/general-doc/architecture.html)
--   [Smart contract Execution](https://docs.massa.net/en/latest/web3-dev/smart-contracts/sc-execution.html)
--   [Local network generation](https://docs.massa.net/en/latest/web3-dev/dummy-network-generation.html)
+If you would like some help to get started, reach out to us on our community [Discord](https://discord.com/invite/massa)
+server. If you're comfortable enough to get started on you're own, check out our
+[good first issue](https://github.com/massalabs/massa/labels/good%20first%20issue) label.
