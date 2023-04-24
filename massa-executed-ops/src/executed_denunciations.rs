@@ -13,7 +13,7 @@ use nom::{
     IResult, Parser,
 };
 
-use crate::{ExecutedDenunciationsConfig, ExecutedDenunciationsChanges};
+use crate::{ExecutedDenunciationsChanges, ExecutedDenunciationsConfig};
 
 use massa_hash::{Hash, HASH_SIZE_BYTES};
 use massa_models::streaming_step::StreamingStep;

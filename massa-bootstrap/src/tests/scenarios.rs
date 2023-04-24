@@ -4,8 +4,8 @@ use super::tools::{
     get_boot_state, get_peers, get_random_final_state_bootstrap, get_random_ledger_changes,
 };
 use crate::tests::tools::{
-    get_random_async_pool_changes, get_random_executed_ops_changes, get_random_pos_changes,
-    get_random_executed_de_changes,
+    get_random_async_pool_changes, get_random_executed_de_changes, get_random_executed_ops_changes,
+    get_random_pos_changes,
 };
 use crate::BootstrapConfig;
 use crate::{
