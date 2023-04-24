@@ -715,9 +715,6 @@ fn manage_bootstrap(
     massa_trace!("bootstrap.lib.manage_bootstrap", {});
     let read_error_timeout: Duration = bootstrap_config.read_error_timeout.into();
 
-    // TODO: make network_command_sender non-async and remove both the variable and the method
-    let rt_hack = massa_network_exports::make_runtime();
-
     let Some(hs_timeout) = step_timeout_duration(&deadline, &bootstrap_config.read_timeout.to_duration()) else {
         return Err(BootstrapError::Interupted("insufficient time left to begin handshake".to_string()));
     };
@@ -769,8 +766,7 @@ fn manage_bootstrap(
                     server.send_msg(
                         write_timeout,
                         BootstrapServerMessage::BootstrapPeers {
-                            peers: rt_hack
-                                .block_on(network_command_sender.get_bootstrap_peers())?,
+                            peers: network_command_sender.sync_get_bootstrap_peers()?,
                         },
                     )?;
                 }
