@@ -277,6 +277,8 @@
 <a href="#277" id="277">277</a>
 <a href="#278" id="278">278</a>
 <a href="#279" id="279">279</a>
+<a href="#280" id="280">280</a>
+<a href="#281" id="281">281</a>
 </pre><pre class="rust"><code><span class="doccomment">//! DEFAULT VALUES USED TO INITIALIZE DIVERS CONFIGURATIONS STRUCTURES
 //!
 //!
@@ -539,15 +541,17 @@
 // Constants for denunciation factory
 //
 
-</span><span class="doccomment">/// denunciation expiration delta (in cycle count)
+</span><span class="doccomment">/// denunciation expiration delta
 </span><span class="kw">pub const </span>DENUNCIATION_EXPIRE_PERIODS: u64 = PERIODS_PER_CYCLE;
-<span class="doccomment">/// Cycle delta to accept items in denunciation factory
-/// TODO / FIXME: unused?
-</span><span class="kw">pub const </span>DENUNCIATION_ITEMS_MAX_CYCLE_DELTA: u64 = <span class="number">1</span>;
-<span class="doccomment">/// Max number of denunciations that can be included in a block header
+<span class="comment">// /// Cycle delta to accept items in denunciation factory
+// /// TODO / FIXME: unused?
+// pub const DENUNCIATION_ITEMS_MAX_CYCLE_DELTA: u64 = 1;
+</span><span class="doccomment">/// Max number of denunciations that can be included in a block header
 </span><span class="kw">pub const </span>MAX_DENUNCIATIONS_PER_BLOCK_HEADER: u32 = <span class="number">128</span>;
 <span class="doccomment">/// Number of roll to remove per denunciation
 </span><span class="kw">pub const </span>ROLL_COUNT_TO_SLASH_ON_DENUNCIATION: u64 = <span class="number">1</span>;
+<span class="doccomment">/// Maximum size of processed denunciations
+</span><span class="kw">pub const </span>MAX_DENUNCIATION_CHANGES_LENGTH: u64 = <span class="number">1_000</span>;
 
 <span class="comment">// Some checks at compile time that should not be ignored!
 </span><span class="attr">#[allow(clippy::assertions_on_constants)]

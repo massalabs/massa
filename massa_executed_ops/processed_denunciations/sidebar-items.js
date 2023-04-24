@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"constant":["PROCESSED_DENUNCIATIONS_HASH_INITIAL_BYTES"],"struct":["ProcessedDenunciations","ProcessedDenunciationsDeserializer","ProcessedDenunciationsSerializer"]};

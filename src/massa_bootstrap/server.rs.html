@@ -842,6 +842,19 @@
 <a href="#842" id="842">842</a>
 <a href="#843" id="843">843</a>
 <a href="#844" id="844">844</a>
+<a href="#845" id="845">845</a>
+<a href="#846" id="846">846</a>
+<a href="#847" id="847">847</a>
+<a href="#848" id="848">848</a>
+<a href="#849" id="849">849</a>
+<a href="#850" id="850">850</a>
+<a href="#851" id="851">851</a>
+<a href="#852" id="852">852</a>
+<a href="#853" id="853">853</a>
+<a href="#854" id="854">854</a>
+<a href="#855" id="855">855</a>
+<a href="#856" id="856">856</a>
+<a href="#857" id="857">857</a>
 </pre><pre class="rust"><code><span class="doccomment">//! start the bootstrapping system using [`start_bootstrap_server`]
 //! Once your node will be ready, you may want other to bootstrap from you.
 //!
@@ -1359,6 +1372,7 @@
     <span class="kw-2">mut </span>last_cycle_step: StreamingStep&lt;u64&gt;,
     <span class="kw-2">mut </span>last_credits_step: StreamingStep&lt;Slot&gt;,
     <span class="kw-2">mut </span>last_ops_step: StreamingStep&lt;Slot&gt;,
+    <span class="kw-2">mut </span>last_de_step: StreamingStep&lt;Slot&gt;,
     <span class="kw-2">mut </span>last_consensus_step: StreamingStep&lt;PreHashSet&lt;BlockId&gt;&gt;,
     <span class="kw-2">mut </span>send_last_start_period: bool,
     bs_deadline: <span class="kw-2">&amp;</span>Instant,
@@ -1377,6 +1391,7 @@
         <span class="kw">let </span>pos_cycle_part;
         <span class="kw">let </span>pos_credits_part;
         <span class="kw">let </span>exec_ops_part;
+        <span class="kw">let </span>processed_de_part;
         <span class="kw">let </span>final_state_changes;
         <span class="kw">let </span>last_start_period;
 
@@ -1416,6 +1431,11 @@
                 .get_executed_ops_part(last_ops_step);
             exec_ops_part = ops_data;
 
+            <span class="kw">let </span>(de_data, new_de_step) = final_state_read
+                .processed_denunciations
+                .get_processed_de_part(last_de_step);
+            processed_de_part = de_data;
+
             <span class="kw">if let </span><span class="prelude-val">Some</span>(slot) = last_slot &amp;&amp; slot != final_state_read.slot {
                 <span class="kw">if </span>slot &gt; final_state_read.slot {
                     <span class="kw">return </span><span class="prelude-val">Err</span>(BootstrapError::GeneralError(
@@ -1429,6 +1449,7 @@
                     new_cycle_step,
                     new_credits_step,
                     new_ops_step,
+                    new_de_step,
                 ) {
                     <span class="prelude-val">Ok</span>(data) =&gt; data,
                     <span class="prelude-val">Err</span>(err) <span class="kw">if </span><span class="macro">matches!</span>(err, FinalStateError::InvalidSlot(<span class="kw">_</span>)) =&gt; {
@@ -1447,6 +1468,7 @@
             last_cycle_step = new_cycle_step;
             last_credits_step = new_credits_step;
             last_ops_step = new_ops_step;
+            last_de_step = new_de_step;
             last_slot = <span class="prelude-val">Some</span>(final_state_read.slot);
             current_slot = final_state_read.slot;
             send_last_start_period = <span class="bool-val">false</span>;
@@ -1462,6 +1484,7 @@
             &amp;&amp; last_cycle_step.finished()
             &amp;&amp; last_credits_step.finished()
             &amp;&amp; last_ops_step.finished()
+            &amp;&amp; last_de_step.finished()
         {
             StreamingStep::Finished(<span class="prelude-val">Some</span>(current_slot))
         } <span class="kw">else </span>{
@@ -1524,6 +1547,7 @@
                 pos_cycle_part,
                 pos_credits_part,
                 exec_ops_part,
+                processed_de_part,
                 final_state_changes,
                 consensus_part,
                 consensus_outdated_ids,
@@ -1625,6 +1649,7 @@
                     last_cycle_step,
                     last_credits_step,
                     last_ops_step,
+                    last_de_step,
                     last_consensus_step,
                     send_last_start_period,
                 } =&gt; {
@@ -1638,6 +1663,7 @@
                         last_cycle_step,
                         last_credits_step,
                         last_ops_step,
+                        last_de_step,
                         last_consensus_step,
                         send_last_start_period,
                         <span class="kw-2">&amp;</span>deadline,
