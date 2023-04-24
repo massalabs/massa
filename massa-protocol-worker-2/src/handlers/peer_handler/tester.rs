@@ -160,6 +160,7 @@ impl Tester {
         (test_sender, testers)
     }
 
+    /// Create a new tester (spawn a thread)
     pub fn new(
         peer_db: SharedPeerDB,
         receiver: crossbeam::channel::Receiver<(PeerId, HashMap<SocketAddr, TransportType>)>,

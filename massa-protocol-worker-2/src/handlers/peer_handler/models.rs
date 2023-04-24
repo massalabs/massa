@@ -3,6 +3,7 @@ use massa_protocol_exports_2::ProtocolError;
 use parking_lot::RwLock;
 use peernet::{peer_id::PeerId, transports::TransportType};
 use std::cmp::Reverse;
+use std::time::{SystemTime, UNIX_EPOCH};
 use std::{
     collections::{BTreeMap, HashMap},
     net::SocketAddr,
@@ -11,6 +12,8 @@ use std::{
 use tracing::log::info;
 
 use super::announcement::Announcement;
+
+const THREE_DAYS_NS: u128 = 3 * 24 * 60 * 60 * 1_000_000_000;
 
 pub type InitialPeers = HashMap<PeerId, HashMap<SocketAddr, TransportType>>;
 
@@ -89,6 +92,35 @@ impl PeerDB {
                 .clone();
             (peer_id, peer_info)
         })
+    }
+
+    /// Select max 100 peers to send to another peer
+    /// The selected peers should has been online within the last 3 days
+    pub fn get_peers_to_send(&self) -> Vec<(PeerId, HashMap<SocketAddr, TransportType>)> {
+        let now = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .expect("Time went backward")
+            .as_nanos();
+        let min_time = now - THREE_DAYS_NS;
+
+        // todo update for random
+        self.index_by_newest
+            .iter()
+            .filter_map(|(timestamp, peer_id)| {
+                if timestamp.0 < min_time {
+                    None
+                } else {
+                    self.peers.get(peer_id).and_then(|peer| {
+                        if peer.last_announce.listeners.is_empty() {
+                            None
+                        } else {
+                            Option::from((peer_id.clone(), peer.last_announce.listeners.clone()))
+                        }
+                    })
+                }
+            })
+            .take(100)
+            .collect()
     }
 
     // Flush PeerDB to disk ?
