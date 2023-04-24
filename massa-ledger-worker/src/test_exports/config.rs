@@ -2,14 +2,12 @@
 
 use std::sync::Arc;
 
+use massa_db::new_rocks_db_instance;
 use parking_lot::RwLock;
 /// This file defines testing tools related to the configuration
 use tempfile::TempDir;
 
-use crate::{
-    ledger_db::{new_rocks_db_instance, LedgerDB},
-    FinalLedger,
-};
+use crate::{ledger_db::LedgerDB, FinalLedger};
 use massa_models::config::{
     LEDGER_PART_SIZE_MESSAGE_BYTES, MAX_DATASTORE_KEY_LENGTH, THREAD_COUNT,
 };

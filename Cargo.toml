@@ -8,6 +8,7 @@ members = [
   "massa-cipher",
   "massa-consensus-exports",
   "massa-consensus-worker",
+  "massa-db",
   "massa-executed-ops",
   "massa-execution-exports",
   "massa-execution-worker",

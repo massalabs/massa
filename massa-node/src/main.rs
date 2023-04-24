@@ -19,6 +19,7 @@ use massa_bootstrap::{
 use massa_consensus_exports::events::ConsensusEvent;
 use massa_consensus_exports::{ConsensusChannels, ConsensusConfig, ConsensusManager};
 use massa_consensus_worker::start_consensus_worker;
+use massa_db::new_rocks_db_instance;
 use massa_executed_ops::ExecutedOpsConfig;
 use massa_execution_exports::{ExecutionConfig, ExecutionManager, GasCosts, StorageCostsConstants};
 use massa_execution_worker::start_execution_worker;
@@ -28,7 +29,7 @@ use massa_final_state::{FinalState, FinalStateConfig};
 use massa_grpc::config::GrpcConfig;
 use massa_grpc::server::MassaGrpc;
 use massa_ledger_exports::LedgerConfig;
-use massa_ledger_worker::{new_rocks_db_instance, FinalLedger};
+use massa_ledger_worker::FinalLedger;
 use massa_logging::massa_trace;
 use massa_models::address::Address;
 use massa_models::config::constants::{

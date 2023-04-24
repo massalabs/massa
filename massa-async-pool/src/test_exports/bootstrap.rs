@@ -2,10 +2,8 @@
 
 use std::{collections::BTreeMap, str::FromStr, sync::Arc};
 
-use crate::{
-    pool::ASYNC_POOL_CF, AsyncMessage, AsyncMessageDeserializer, AsyncMessageId, AsyncPool,
-    AsyncPoolConfig,
-};
+use crate::{AsyncMessage, AsyncMessageDeserializer, AsyncMessageId, AsyncPool, AsyncPoolConfig};
+use massa_db::ASYNC_POOL_CF;
 use massa_models::{
     address::Address,
     amount::Amount,

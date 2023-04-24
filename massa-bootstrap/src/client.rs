@@ -1,5 +1,5 @@
 use humantime::format_duration;
-use massa_ledger_exports::LedgerBatch;
+use massa_db::{write_batch, DBBatch};
 use std::{collections::HashSet, net::SocketAddr, sync::Arc, time::Duration};
 
 use massa_final_state::FinalState;
@@ -97,7 +97,14 @@ async fn stream_final_state_and_consensus<D: Duplex>(
                     for (changes_slot, changes) in final_state_changes.iter() {
                         let ledger_hash = write_final_state.ledger.get_ledger_hash();
                         let async_pool_hash = write_final_state.async_pool.get_hash();
-                        let mut batch = LedgerBatch::new(Some(ledger_hash), Some(async_pool_hash));
+                        let executed_ops_hash = write_final_state.executed_ops.hash;
+                        let mut batch = DBBatch::new(
+                            Some(ledger_hash),
+                            Some(async_pool_hash),
+                            None,
+                            None,
+                            Some(executed_ops_hash),
+                        );
                         write_final_state.ledger.apply_changes_to_batch(
                             changes.ledger_changes.clone(),
                             *changes_slot,
@@ -105,11 +112,7 @@ async fn stream_final_state_and_consensus<D: Duplex>(
                         );
                         write_final_state
                             .async_pool
-                            .apply_changes_unchecked_to_batch(
-                                &changes.async_pool_changes,
-                                &mut batch,
-                            );
-                        write_final_state.ledger.write_batch(batch);
+                            .apply_changes_to_batch(&changes.async_pool_changes, &mut batch);
                         if !changes.pos_changes.is_empty() {
                             write_final_state.pos_state.apply_changes(
                                 changes.pos_changes.clone(),
@@ -118,10 +121,13 @@ async fn stream_final_state_and_consensus<D: Duplex>(
                             )?;
                         }
                         if !changes.executed_ops_changes.is_empty() {
-                            write_final_state
-                                .executed_ops
-                                .apply_changes(changes.executed_ops_changes.clone(), *changes_slot);
+                            write_final_state.executed_ops.apply_changes_to_batch(
+                                changes.executed_ops_changes.clone(),
+                                *changes_slot,
+                                &mut batch,
+                            );
                         }
+                        write_batch(&write_final_state.rocks_db.read(), batch);
                     }
                     write_final_state.slot = slot;
 

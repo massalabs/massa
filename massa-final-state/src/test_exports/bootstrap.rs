@@ -2,7 +2,7 @@
 
 //! This file defines tools to test the final state bootstrap
 
-use std::collections::VecDeque;
+use std::{collections::VecDeque, sync::Arc};
 
 use massa_async_pool::AsyncPool;
 use massa_executed_ops::ExecutedOps;
@@ -10,6 +10,8 @@ use massa_hash::{Hash, HASH_SIZE_BYTES};
 use massa_ledger_exports::LedgerController;
 use massa_models::slot::Slot;
 use massa_pos_exports::PoSFinalState;
+use parking_lot::RwLock;
+use rocksdb::DB;
 
 use crate::{FinalState, FinalStateConfig, StateChanges};
 
@@ -22,6 +24,7 @@ pub fn create_final_state(
     changes_history: VecDeque<(Slot, StateChanges)>,
     pos_state: PoSFinalState,
     executed_ops: ExecutedOps,
+    rocks_db: Arc<RwLock<DB>>,
 ) -> FinalState {
     FinalState {
         config,
@@ -33,6 +36,7 @@ pub fn create_final_state(
         executed_ops,
         final_state_hash: Hash::from_bytes(&[0; HASH_SIZE_BYTES]),
         last_start_period: 0,
+        rocks_db,
     }
 }
 

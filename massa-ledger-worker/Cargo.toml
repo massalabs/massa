@@ -16,6 +16,7 @@ massa_ledger_exports = { path = "../massa-ledger-exports" }
 massa_models = { path = "../massa-models" }
 massa_serialization = { path = "../massa-serialization" }
 massa_hash = { path = "../massa-hash" }
+massa_db = { path = "../massa-db" }
 
 [dev-dependencies]
 massa_signature = { path = "../massa-signature" }

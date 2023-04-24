@@ -26,6 +26,7 @@ massa_models = { path = "../massa-models" }
 massa_serialization = { path = "../massa-serialization" }
 massa_signature = { path = "../massa-signature" }
 massa_time = { path = "../massa-time" }
+massa_db = { path = "../massa-db" }
 
 [dev-dependencies]
 pretty_assertions = "1.2"

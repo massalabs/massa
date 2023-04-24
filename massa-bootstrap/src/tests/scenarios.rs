@@ -20,14 +20,15 @@ use massa_consensus_exports::{
     bootstrapable_graph::BootstrapableGraph,
     test_exports::{MockConsensusController, MockConsensusControllerMessage},
 };
+use massa_db::new_rocks_db_instance;
+use massa_db::{write_batch, DBBatch};
 use massa_executed_ops::ExecutedOpsConfig;
 use massa_final_state::{
     test_exports::{assert_eq_final_state, assert_eq_final_state_hash},
     FinalState, FinalStateConfig, StateChanges,
 };
 use massa_hash::{Hash, HASH_SIZE_BYTES};
-use massa_ledger_exports::{LedgerBatch, LedgerConfig};
-use massa_ledger_worker::new_rocks_db_instance;
+use massa_ledger_exports::LedgerConfig;
 use massa_models::config::{MIP_STORE_STATS_BLOCK_CONSIDERED, MIP_STORE_STATS_COUNTERS_MAX};
 use massa_models::{
     address::Address, config::MAX_DATASTORE_VALUE_LENGTH, node::NodeId, slot::Slot,
@@ -350,7 +351,14 @@ async fn test_bootstrap_server() {
         for (slot, change) in list_changes_read.iter().skip(1) {
             let ledger_hash = final_state_server_write.ledger.get_ledger_hash();
             let async_pool_hash = final_state_server_write.async_pool.get_hash();
-            let mut batch = LedgerBatch::new(Some(ledger_hash), Some(async_pool_hash));
+            let executed_ops_hash = final_state_server_write.executed_ops.hash;
+            let mut batch = DBBatch::new(
+                Some(ledger_hash),
+                Some(async_pool_hash),
+                None,
+                None,
+                Some(executed_ops_hash),
+            );
             final_state_server_write
                 .pos_state
                 .apply_changes(change.pos_changes.clone(), *slot, false)
@@ -362,12 +370,12 @@ async fn test_bootstrap_server() {
             );
             final_state_server_write
                 .async_pool
-                .apply_changes_unchecked_to_batch(&change.async_pool_changes, &mut batch);
+                .apply_changes_to_batch(&change.async_pool_changes, &mut batch);
             final_state_server_write
                 .executed_ops
-                .apply_changes(change.executed_ops_changes.clone(), *slot);
+                .apply_changes_to_batch(change.executed_ops_changes.clone(), *slot, &mut batch);
 
-            final_state_server_write.ledger.write_batch(batch);
+            write_batch(&final_state_server_write.rocks_db.read(), batch);
         }
     }
     // check final states

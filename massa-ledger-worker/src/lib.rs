@@ -42,7 +42,6 @@ mod ledger;
 mod ledger_db;
 
 pub use ledger::FinalLedger;
-pub use ledger_db::new_rocks_db_instance;
 
 #[cfg(test)]
 mod tests;

@@ -53,6 +53,7 @@ massa_factory_exports = { path = "../massa-factory-exports" }
 massa_factory_worker = { path = "../massa-factory-worker" }
 massa_grpc = { path = "../massa-grpc" }
 massa_versioning_worker = { path = "../massa-versioning-worker" }
+massa_db = { path = "../massa-db" }
 
 # for more information on what are the following features used for, see the cargo.toml at workspace level
 [features]

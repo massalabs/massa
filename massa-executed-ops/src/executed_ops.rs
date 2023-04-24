@@ -4,7 +4,8 @@
 //! Used to detect operation reuse.
 
 use crate::{ops_changes::ExecutedOpsChanges, ExecutedOpsConfig};
-use massa_hash::{Hash, HASH_SIZE_BYTES};
+use massa_db::{DBBatch, EXECUTED_OPS_CF, EXECUTED_OPS_HASH_INITIAL_BYTES};
+use massa_hash::Hash;
 use massa_models::{
     operation::{OperationId, OperationIdDeserializer},
     prehash::PreHashSet,
@@ -21,18 +22,21 @@ use nom::{
     sequence::tuple,
     IResult, Parser,
 };
+use parking_lot::RwLock;
+use rocksdb::{Options, DB};
 use std::{
     collections::{BTreeMap, HashMap},
     ops::Bound::{Excluded, Included, Unbounded},
+    sync::Arc,
 };
-
-const EXECUTED_OPS_HASH_INITIAL_BYTES: &[u8; 32] = &[0; HASH_SIZE_BYTES];
 
 /// A structure to list and prune previously executed operations
 #[derive(Debug, Clone)]
 pub struct ExecutedOps {
     /// Executed operations configuration
     config: ExecutedOpsConfig,
+    /// RocksDB Instance
+    pub db: Arc<RwLock<DB>>,
     /// Executed operations btreemap with slot as index for better pruning complexity
     pub sorted_ops: BTreeMap<Slot, PreHashSet<OperationId>>,
     /// Executed operations only for better insertion complexity
@@ -45,9 +49,10 @@ pub struct ExecutedOps {
 
 impl ExecutedOps {
     /// Creates a new `ExecutedOps`
-    pub fn new(config: ExecutedOpsConfig) -> Self {
+    pub fn new(config: ExecutedOpsConfig, db: Arc<RwLock<DB>>) -> Self {
         Self {
             config,
+            db,
             sorted_ops: BTreeMap::new(),
             ops: PreHashSet::default(),
             hash: Hash::from_bytes(EXECUTED_OPS_HASH_INITIAL_BYTES),
@@ -59,6 +64,7 @@ impl ExecutedOps {
     /// Useful when restarting from a snapshot
     pub fn new_with_hash(
         config: ExecutedOpsConfig,
+        db: Arc<RwLock<DB>>,
         sorted_ops: BTreeMap<Slot, PreHashSet<OperationId>>,
     ) -> Self {
         let mut hash = Hash::from_bytes(EXECUTED_OPS_HASH_INITIAL_BYTES);
@@ -74,6 +80,7 @@ impl ExecutedOps {
         }
         Self {
             config,
+            db,
             sorted_ops,
             ops,
             hash,
@@ -88,6 +95,16 @@ impl ExecutedOps {
         self.sorted_ops.clear();
         self.ops.clear();
         self.hash = Hash::from_bytes(EXECUTED_OPS_HASH_INITIAL_BYTES);
+
+        let mut db = self.db.write();
+        (*db)
+            .drop_cf(EXECUTED_OPS_CF)
+            .expect("Error dropping executed_ops cf");
+        let mut db_opts = Options::default();
+        db_opts.set_error_if_exists(true);
+        (*db)
+            .create_cf(EXECUTED_OPS_CF, &db_opts)
+            .expect("Error creating executed_ops cf");
     }
 
     /// Returns the number of executed operations
@@ -113,7 +130,12 @@ impl ExecutedOps {
     }
 
     /// Apply speculative operations changes to the final executed operations state
-    pub fn apply_changes(&mut self, changes: ExecutedOpsChanges, slot: Slot) {
+    pub fn apply_changes_to_batch(
+        &mut self,
+        changes: ExecutedOpsChanges,
+        slot: Slot,
+        _batch: &mut DBBatch,
+    ) {
         self.extend_and_compute_hash(changes.keys());
         for (op_id, (op_exec_success, slot)) in changes {
             self.sorted_ops
@@ -205,18 +227,28 @@ impl ExecutedOps {
 
 #[test]
 fn test_executed_ops_xor_computing() {
+    use massa_db::new_rocks_db_instance;
+    use massa_db::write_batch;
     use massa_models::prehash::PreHashMap;
     use massa_models::secure_share::Id;
+    use tempfile::TempDir;
 
     // initialize the executed ops config
     let config = ExecutedOpsConfig {
         thread_count: 2,
         bootstrap_part_size: 10,
     };
-
+    let tempdir_a = TempDir::new().expect("cannot create temp directory");
+    let tempdir_c = TempDir::new().expect("cannot create temp directory");
+    let rocks_db_instance_a = Arc::new(RwLock::new(new_rocks_db_instance(
+        tempdir_a.path().to_path_buf(),
+    )));
+    let rocks_db_instance_c = Arc::new(RwLock::new(new_rocks_db_instance(
+        tempdir_c.path().to_path_buf(),
+    )));
     // initialize the executed ops and executed ops changes
-    let mut a = ExecutedOps::new(config.clone());
-    let mut c = ExecutedOps::new(config);
+    let mut a = ExecutedOps::new(config.clone(), rocks_db_instance_a.clone());
+    let mut c = ExecutedOps::new(config, rocks_db_instance_c.clone());
     let mut change_a = PreHashMap::default();
     let mut change_b = PreHashMap::default();
     let mut change_c = PreHashMap::default();
@@ -248,9 +280,14 @@ fn test_executed_ops_xor_computing() {
         period: 0,
         thread: 0,
     };
-    a.apply_changes(change_a, apply_slot);
-    a.apply_changes(change_b, apply_slot);
-    c.apply_changes(change_c, apply_slot);
+
+    let mut batch_a = DBBatch::new(None, None, None, None, Some(a.hash));
+    let mut batch_c = DBBatch::new(None, None, None, None, Some(c.hash));
+    a.apply_changes_to_batch(change_a, apply_slot, &mut batch_a);
+    a.apply_changes_to_batch(change_b, apply_slot, &mut batch_a);
+    c.apply_changes_to_batch(change_c, apply_slot, &mut batch_c);
+    write_batch(&rocks_db_instance_a.read(), batch_a);
+    write_batch(&rocks_db_instance_c.read(), batch_c);
 
     // check that a.hash ^ $(change_b) = c.hash
     assert_eq!(a.hash, c.hash, "'a' and 'c' hashes are not equal");
@@ -260,8 +297,10 @@ fn test_executed_ops_xor_computing() {
         period: 20,
         thread: 0,
     };
-    a.apply_changes(PreHashMap::default(), prune_slot);
+    let mut batch_a = DBBatch::new(None, None, None, None, Some(a.hash));
+    a.apply_changes_to_batch(PreHashMap::default(), prune_slot, &mut batch_a);
     a.prune(prune_slot);
+    write_batch(&rocks_db_instance_a.read(), batch_a);
 
     // at this point the hash should have been XORed with itself
     assert_eq!(

@@ -1,3 +1,4 @@
+use massa_async_pool::{AsyncMessage, AsyncMessageId};
 use massa_execution_exports::ExecutionOutput;
 use massa_ledger_exports::{
     LedgerEntry, LedgerEntryUpdate, SetOrDelete, SetOrKeep, SetUpdateOrDelete,
@@ -54,6 +55,25 @@ impl ActiveHistory {
                 .contains_key(op_id)
             {
                 return HistorySearchResult::Present(());
+            }
+        }
+        HistorySearchResult::NoInfo
+    }
+
+    /// Lazily query (from end to beginning) the a message based on its id
+    ///
+    /// Returns a `HistorySearchResult`.
+    pub fn fetch_message(&self, message_id: &AsyncMessageId) -> HistorySearchResult<AsyncMessage> {
+        for history_element in self.0.iter().rev() {
+            match history_element
+                .state_changes
+                .async_pool_changes
+                .0
+                .get(message_id)
+            {
+                Some(SetOrDelete::Set(msg)) => return HistorySearchResult::Present(msg.clone()),
+                Some(SetOrDelete::Delete) => return HistorySearchResult::Absent,
+                _ => (),
             }
         }
         HistorySearchResult::NoInfo

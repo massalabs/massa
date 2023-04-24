@@ -8,11 +8,12 @@
 use crate::{config::FinalStateConfig, error::FinalStateError, state_changes::StateChanges};
 use massa_async_pool::{
     AsyncMessage, AsyncMessageId, AsyncPool, AsyncPoolChanges, AsyncPoolDeserializer,
-    AsyncPoolSerializer, Change,
+    AsyncPoolSerializer,
 };
+use massa_db::{write_batch, DBBatch};
 use massa_executed_ops::{ExecutedOps, ExecutedOpsDeserializer, ExecutedOpsSerializer};
-use massa_hash::{Hash, HashDeserializer, HashSerializer, HASH_SIZE_BYTES};
-use massa_ledger_exports::{Key as LedgerKey, LedgerBatch, LedgerChanges, LedgerController};
+use massa_hash::{Hash, HashDeserializer, HASH_SIZE_BYTES};
+use massa_ledger_exports::{Key as LedgerKey, LedgerChanges, LedgerController};
 use massa_models::{
     // TODO: uncomment when deserializing the final state from ledger
     /*config::{
@@ -64,6 +65,8 @@ pub struct FinalState {
     /// * If from snapshot: retrieve from args
     /// * If from bootstrap: set during bootstrap
     pub last_start_period: u64,
+    /// the rocksdb instance used to write every final_state struct on disk
+    pub rocks_db: Arc<RwLock<DB>>,
 }
 
 const FINAL_STATE_HASH_INITIAL_BYTES: &[u8; 32] = &[0; HASH_SIZE_BYTES];
@@ -113,10 +116,10 @@ impl FinalState {
         let slot = Slot::new(0, config.thread_count.saturating_sub(1));
 
         // create the async pool
-        let async_pool = AsyncPool::new(config.async_pool_config.clone(), rocks_db);
+        let async_pool = AsyncPool::new(config.async_pool_config.clone(), rocks_db.clone());
 
         // create a default executed ops
-        let executed_ops = ExecutedOps::new(config.executed_ops_config.clone());
+        let executed_ops = ExecutedOps::new(config.executed_ops_config.clone(), rocks_db.clone());
 
         // create the final state
         Ok(FinalState {
@@ -129,6 +132,7 @@ impl FinalState {
             changes_history: Default::default(), // no changes in history
             final_state_hash: Hash::from_bytes(FINAL_STATE_HASH_INITIAL_BYTES),
             last_start_period: 0,
+            rocks_db,
         })
     }
 
@@ -473,22 +477,21 @@ impl FinalState {
         // TODO:
         // do not panic above, it might just mean that the lookback cycle is not available
         // bootstrap again instead
-        self.executed_ops
-            .apply_changes(changes.executed_ops_changes.clone(), self.slot);
-        self.ledger
-            .apply_changes(changes.ledger_changes.clone(), self.slot);
 
-        let mut ledger_batch = LedgerBatch::new(
+        let mut db_batch = DBBatch::new(
             Some(self.ledger.get_ledger_hash()),
             Some(self.async_pool.get_hash()),
+            None,
+            None,
+            Some(self.executed_ops.hash),
         );
 
         // apply the state changes to the batch
 
         self.async_pool
-            .apply_changes_unchecked_to_batch(&changes.async_pool_changes, &mut ledger_batch);
+            .apply_changes_to_batch(&changes.async_pool_changes, &mut db_batch);
         /*self.pos_state
-            .apply_changes_to_batch(changes.pos_changes.clone(), self.slot, true, ledger_batch)
+            .apply_changes_to_batch(changes.pos_changes.clone(), self.slot, true, db_batch)
             .expect("could not settle slot in final state proof-of-stake");
         self.executed_ops.apply_changes_to_batch(
             changes.executed_ops_changes.clone(),
@@ -496,13 +499,19 @@ impl FinalState {
             ledger_batch,
         );*/
 
+        self.executed_ops.apply_changes_to_batch(
+            changes.executed_ops_changes.clone(),
+            self.slot,
+            &mut db_batch,
+        );
+
         self.ledger.apply_changes_to_batch(
             changes.ledger_changes.clone(),
             self.slot,
-            &mut ledger_batch,
+            &mut db_batch,
         );
 
-        self.ledger.write_batch(ledger_batch);
+        write_batch(&self.rocks_db.read(), db_batch);
 
         // push history element and limit history size
         if self.config.final_history_length > 0 {
@@ -511,21 +520,6 @@ impl FinalState {
             }
             self.changes_history.push_back((slot, changes));
         }
-
-        // compute the final state hash and set in DB
-        self.compute_state_hash_at_slot(slot);
-
-        let mut hash_buffer = Vec::new();
-        let hash_serializer = HashSerializer::new();
-
-        if hash_serializer
-            .serialize(&self.final_state_hash, &mut hash_buffer)
-            .is_err()
-        {
-            debug!("Error while trying to serialize final_state_hash");
-        }
-
-        self.ledger.set_final_state_hash(hash_buffer);
 
         // Backup DB if needed
         if self.slot.is_first_of_cycle(self.config.periods_per_cycle) {
@@ -628,7 +622,6 @@ impl FinalState {
                 }
                 _ => (),
             }
-
             // Get async pool changes that concern ids <= pool_step
             match pool_step {
                 StreamingStep::Ongoing(last_id) => {
@@ -636,13 +629,10 @@ impl FinalState {
                         changes
                             .async_pool_changes
                             .0
-                            .iter()
+                            .clone()
+                            .into_iter()
                             .filter_map(|change| match change {
-                                Change::Add(id, _) | Change::Activate(id) | Change::Delete(id)
-                                    if id <= &last_id =>
-                                {
-                                    Some(change.clone())
-                                }
+                                (id, _) if id <= last_id => Some(change.clone()),
                                 _ => None,
                             })
                             .collect(),
@@ -890,7 +880,7 @@ mod tests {
 
     use crate::StateChanges;
     use massa_async_pool::test_exports::get_random_message;
-    use massa_ledger_exports::SetUpdateOrDelete;
+    use massa_ledger_exports::{SetOrDelete, SetUpdateOrDelete};
     use massa_models::{address::Address, config::THREAD_COUNT, slot::Slot};
     use massa_signature::KeyPair;
 
@@ -921,7 +911,7 @@ mod tests {
         state_changes
             .async_pool_changes
             .0
-            .push(massa_async_pool::Change::Add(message.compute_id(), message));
+            .insert(message.compute_id(), SetOrDelete::Set(message));
         history_state_changes.push_front((Slot::new(3, 0), state_changes));
         let mut state_changes = StateChanges::default();
         state_changes

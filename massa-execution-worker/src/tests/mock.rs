@@ -1,8 +1,9 @@
+use massa_db::new_rocks_db_instance;
 use massa_execution_exports::ExecutionError;
 use massa_final_state::{FinalState, FinalStateConfig};
 use massa_hash::Hash;
 use massa_ledger_exports::{LedgerConfig, LedgerController, LedgerEntry, LedgerError};
-use massa_ledger_worker::{new_rocks_db_instance, FinalLedger};
+use massa_ledger_worker::FinalLedger;
 use massa_models::execution::TempFileVestingRange;
 use massa_models::prehash::PreHashMap;
 use massa_models::{

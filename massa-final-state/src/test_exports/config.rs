@@ -36,11 +36,12 @@ impl FinalState {
             )),
             async_pool: AsyncPool::new(config.async_pool_config.clone(), rocks_db.clone()),
             pos_state,
-            executed_ops: ExecutedOps::new(config.executed_ops_config.clone()),
+            executed_ops: ExecutedOps::new(config.executed_ops_config.clone(), rocks_db.clone()),
             changes_history: Default::default(),
             config,
             final_state_hash: Hash::from_bytes(&[0; HASH_SIZE_BYTES]),
             last_start_period: 0,
+            rocks_db,
         }
     }
 }

@@ -1,5 +1,9 @@
-use std::ops::Bound::Included;
+use std::{
+    collections::{btree_map::Entry, BTreeMap},
+    ops::Bound::Included,
+};
 
+use massa_ledger_exports::{Applicable, SetOrDelete};
 use massa_serialization::{
     Deserializer, SerializeError, Serializer, U64VarIntDeserializer, U64VarIntSerializer,
 };
@@ -19,7 +23,7 @@ use crate::{
     AsyncMessageDeserializer, AsyncMessageSerializer,
 };
 
-/// Enum representing a value U with identifier T being added or deleted
+/*/// Enum representing a value U with identifier T being added or deleted
 #[derive(Debug, Clone, PartialEq, Eq, Deserialize, Serialize)]
 pub enum Change<T, U> {
     /// an item with identifier T and value U is added
@@ -30,18 +34,37 @@ pub enum Change<T, U> {
 
     /// an item with identifier T is deleted
     Delete(T),
-}
+}*/
 
-#[repr(u32)]
+/*#[repr(u32)]
 enum ChangeId {
     Add = 0,
     Activate = 1,
     Delete = 2,
-}
+}*/
 
 /// represents a list of additions and deletions to the asynchronous message pool
 #[derive(Default, Debug, Clone, PartialEq, Eq, Deserialize, Serialize)]
-pub struct AsyncPoolChanges(pub Vec<Change<AsyncMessageId, AsyncMessage>>);
+//pub struct AsyncPoolChanges(pub Vec<Change<AsyncMessageId, AsyncMessage>>);
+pub struct AsyncPoolChanges(pub BTreeMap<AsyncMessageId, SetOrDelete<AsyncMessage>>);
+
+impl Applicable<AsyncPoolChanges> for AsyncPoolChanges {
+    /// extends the current `AsyncPoolChanges` with another one
+    fn apply(&mut self, changes: AsyncPoolChanges) {
+        for (id, msg_change) in changes.0 {
+            match self.0.entry(id) {
+                Entry::Occupied(mut occ) => {
+                    // apply incoming change if a change on this entry already exists
+                    occ.get_mut().apply(msg_change);
+                }
+                Entry::Vacant(vac) => {
+                    // otherwise insert the incoming change
+                    vac.insert(msg_change);
+                }
+            }
+        }
+    }
+}
 
 /// `AsyncPoolChanges` serializer
 pub struct AsyncPoolChangesSerializer {
@@ -108,17 +131,14 @@ impl Serializer<AsyncPoolChanges> for AsyncPoolChangesSerializer {
         )?;
         for change in &value.0 {
             match change {
-                Change::Add(id, message) => {
-                    buffer.push(ChangeId::Add as u8);
+                (id, SetOrDelete::Set(message)) => {
+                    buffer.push(0);
                     self.id_serializer.serialize(id, buffer)?;
                     self.message_serializer.serialize(message, buffer)?;
                 }
-                Change::Activate(id) => {
-                    buffer.push(ChangeId::Activate as u8);
-                    self.id_serializer.serialize(id, buffer)?;
-                }
-                Change::Delete(id) => {
-                    buffer.push(ChangeId::Delete as u8);
+
+                (id, SetOrDelete::Delete) => {
+                    buffer.push(1);
                     self.id_serializer.serialize(id, buffer)?;
                 }
             }
@@ -204,7 +224,7 @@ impl Deserializer<AsyncPoolChanges> for AsyncPoolChangesDeserializer {
                 }),
                 |input: &'a [u8]| match input.first() {
                     Some(0) => context(
-                        "Failed Change::Add deserialization",
+                        "Failed SetOrDelete::Set deserialization",
                         tuple((
                             context("Failed id deserialization", |input| {
                                 self.id_deserializer.deserialize(input)
@@ -214,23 +234,15 @@ impl Deserializer<AsyncPoolChanges> for AsyncPoolChangesDeserializer {
                             }),
                         )),
                     )
-                    .map(|(id, message)| Change::Add(id, message))
+                    .map(|(id, message)| (id, SetOrDelete::Set(message)))
                     .parse(&input[1..]),
                     Some(1) => context(
-                        "Failed Change::Activate deserialization",
+                        "Failed SetOrDelete::Delete deserialization",
                         context("Failed id deserialization", |input| {
                             self.id_deserializer.deserialize(input)
                         }),
                     )
-                    .map(Change::Activate)
-                    .parse(&input[1..]),
-                    Some(2) => context(
-                        "Failed Change::Delete deserialization",
-                        context("Failed id deserialization", |input| {
-                            self.id_deserializer.deserialize(input)
-                        }),
-                    )
-                    .map(Change::Delete)
+                    .map(|id| (id, SetOrDelete::Delete))
                     .parse(&input[1..]),
                     Some(_) => Err(nom::Err::Error(ParseError::from_error_kind(
                         buffer,
@@ -243,7 +255,7 @@ impl Deserializer<AsyncPoolChanges> for AsyncPoolChangesDeserializer {
                 },
             ),
         )
-        .map(AsyncPoolChanges)
+        .map(|vec| AsyncPoolChanges(vec.into_iter().map(|data| (data.0, data.1)).collect()))
         .parse(buffer)
     }
 }
@@ -252,9 +264,9 @@ impl AsyncPoolChanges {
     /// Extends self with another another `AsyncPoolChanges`.
     /// This simply appends the contents of other to self.
     /// No add/delete compensations are done.
-    pub fn extend(&mut self, other: AsyncPoolChanges) {
+    /*pub fn extend(&mut self, other: AsyncPoolChanges) {
         self.0.extend(other.0);
-    }
+    }*/
 
     /// Pushes a message addition to the list of changes.
     /// No add/delete compensations are done.
@@ -263,7 +275,9 @@ impl AsyncPoolChanges {
     /// * `msg_id`: ID of the message to push as added to the list of changes
     /// * `msg`: message to push as added to the list of changes
     pub fn push_add(&mut self, msg_id: AsyncMessageId, msg: AsyncMessage) {
-        self.0.push(Change::Add(msg_id, msg));
+        let mut change = AsyncPoolChanges::default();
+        change.0.insert(msg_id, SetOrDelete::Set(msg));
+        self.apply(change);
     }
 
     /// Pushes a message deletion to the list of changes.
@@ -272,14 +286,20 @@ impl AsyncPoolChanges {
     /// Arguments:
     /// * `msg_id`: ID of the message to push as deleted to the list of changes
     pub fn push_delete(&mut self, msg_id: AsyncMessageId) {
-        self.0.push(Change::Delete(msg_id));
+        let mut change = AsyncPoolChanges::default();
+        change.0.insert(msg_id, SetOrDelete::Delete);
+        self.apply(change);
     }
 
     /// Pushes a message activation to the list of changes.
     ///
     /// Arguments:
     /// * `msg_id`: ID of the message to push as ready to be executed to the list of changes
-    pub fn push_activate(&mut self, msg_id: AsyncMessageId) {
-        self.0.push(Change::Activate(msg_id));
+    pub fn push_activate(&mut self, msg_id: AsyncMessageId, prev_message: AsyncMessage) {
+        let mut change = AsyncPoolChanges::default();
+        let mut new_message = prev_message;
+        new_message.can_be_executed = true;
+        change.0.insert(msg_id, SetOrDelete::Set(new_message));
+        self.apply(change);
     }
 }

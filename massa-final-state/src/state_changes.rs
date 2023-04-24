@@ -255,7 +255,7 @@ impl StateChanges {
     pub fn apply(&mut self, changes: StateChanges) {
         use massa_ledger_exports::Applicable;
         self.ledger_changes.apply(changes.ledger_changes);
-        self.async_pool_changes.extend(changes.async_pool_changes);
+        self.async_pool_changes.apply(changes.async_pool_changes);
         self.pos_changes.extend(changes.pos_changes);
         self.executed_ops_changes
             .extend(changes.executed_ops_changes);

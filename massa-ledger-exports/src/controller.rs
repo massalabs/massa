@@ -6,7 +6,8 @@ use massa_models::{
 use std::collections::BTreeSet;
 use std::fmt::Debug;
 
-use crate::{Key, LedgerBatch, LedgerChanges, LedgerError};
+use crate::{Key, LedgerChanges, LedgerError};
+use ::massa_db::DBBatch;
 
 pub trait LedgerController: Send + Sync + Debug {
     /// Allows applying `LedgerChanges` to the final ledger
@@ -75,20 +76,14 @@ pub trait LedgerController: Send + Sync + Debug {
 
     fn get_slot(&self) -> Result<Slot, ModelsError>;
 
-    fn set_final_state_hash(&mut self, data: Vec<u8>);
-
-    fn get_final_state(&self) -> Result<Vec<u8>, ModelsError>;
-
     fn backup_db(&self, slot: Slot);
 
     fn apply_changes_to_batch(
         &mut self,
         changes: LedgerChanges,
         slot: Slot,
-        ledger_batch: &mut LedgerBatch,
+        ledger_batch: &mut DBBatch,
     );
-
-    fn write_batch(&mut self, batch: LedgerBatch);
 
     /// Get every address and their corresponding balance.
     ///
