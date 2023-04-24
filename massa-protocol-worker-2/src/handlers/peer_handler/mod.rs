@@ -124,11 +124,15 @@ impl PeerManagementHandler {
                             // TODO: Add wait group or something like that to wait for all threads to finish when stop
                             match message {
                                 PeerManagementMessage::NewPeerConnected((peer_id, listeners)) => {
-                                    test_sender.send((peer_id, listeners)).unwrap();
+                                   if let Err(e) = test_sender.send((peer_id, listeners)) {
+                                        error!("error when sending msg to peer tester : {}", e);
+                                   }
                                 }
                                 PeerManagementMessage::ListPeers(peers) => {
                                     for (peer_id, listeners) in peers.into_iter() {
-                                        test_sender.send((peer_id, listeners)).unwrap();
+                                        if let Err(e) = test_sender.send((peer_id, listeners)) {
+                                            error!("error when sending msg to peer tester : {}", e);
+                                        }
                                     }
                                 }
                             }

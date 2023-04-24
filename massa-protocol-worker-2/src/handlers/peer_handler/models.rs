@@ -82,8 +82,11 @@ impl PeerDB {
     pub fn get_oldest_peer(&self) -> Option<(PeerId, PeerInfo)> {
         self.index_by_newest.last_key_value().map(|data| {
             let peer_id = data.1.clone();
-            // TODO unwrap
-            let peer_info = self.peers.get(&peer_id).unwrap().clone();
+            let peer_info = self
+                .peers
+                .get(&peer_id)
+                .unwrap_or_else(|| panic!("Peer {:?} not found", peer_id))
+                .clone();
             (peer_id, peer_info)
         })
     }
