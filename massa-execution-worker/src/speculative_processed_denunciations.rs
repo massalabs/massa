@@ -1,5 +1,7 @@
 //! Copyright (c) 2023 MASSA LABS <info@massa.net>
 
+//! Speculative list of previously processed denunciations, to prevent reuse.
+
 use std::sync::Arc;
 
 use parking_lot::RwLock;
@@ -9,6 +11,7 @@ use massa_executed_ops::ProcessedDenunciationsChanges;
 use massa_final_state::FinalState;
 use massa_models::denunciation::DenunciationIndex;
 
+/// Speculative state of processed denunciations
 pub(crate) struct SpeculativeProcessedDenunciations {
     /// Thread-safe shared access to the final state. For reading only.
     final_state: Arc<RwLock<FinalState>>,
@@ -80,7 +83,6 @@ impl SpeculativeProcessedDenunciations {
     }
 
     /// Insert a processed denunciation.
-    /// Does not check for reuse, please use `SpeculativeExecutedOps::is_de_processed` before.
     pub fn insert_processed_de(&mut self, de_idx: DenunciationIndex) {
         self.processed_denunciations.insert(de_idx);
     }

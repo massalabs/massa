@@ -70,7 +70,7 @@ impl Default for FinalStateConfig {
             periods_per_cycle: 100,
             initial_rolls_path: PathBuf::new(),
             endorsement_count: ENDORSEMENT_COUNT,
-            max_processed_de_length: MAX_DENUNCIATION_CHANGES_LENGTH,
+            max_processed_denunciations_length: MAX_DENUNCIATION_CHANGES_LENGTH,
             initial_seed_string: "".to_string(),
             max_denunciations_per_block_header: MAX_DENUNCIATIONS_PER_BLOCK_HEADER,
         }

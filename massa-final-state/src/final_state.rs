@@ -464,7 +464,7 @@ impl FinalState {
         self.executed_ops
             .apply_changes(changes.executed_ops_changes.clone(), self.slot);
         self.processed_denunciations
-            .apply_changes(changes.processed_de_changes.clone(), self.slot);
+            .apply_changes(changes.processed_denunciations_changes.clone(), self.slot);
 
         let mut final_state_data = None;
 
@@ -668,7 +668,8 @@ impl FinalState {
                 slot_changes.executed_ops_changes = changes.executed_ops_changes.clone();
             }
             if de_step.finished() {
-                slot_changes.processed_de_changes = changes.processed_de_changes.clone();
+                slot_changes.processed_denunciations_changes =
+                    changes.processed_denunciations_changes.clone();
             }
 
             // Push the slot changes
@@ -812,7 +813,7 @@ impl FinalStateRawDeserializer {
             processed_denunciations_deser: ProcessedDenunciationsDeserializer::new(
                 config.thread_count,
                 config.endorsement_count,
-                config.max_processed_de_length,
+                config.max_processed_denunciations_length,
                 config.max_denunciations_per_block_header as u64,
             ),
             slot_deser: SlotDeserializer::new(

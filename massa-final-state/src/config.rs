@@ -34,7 +34,7 @@ pub struct FinalStateConfig {
     /// endorsement count
     pub endorsement_count: u32,
     /// max number of denunciation index in processed denunciations struct
-    pub max_processed_de_length: u64,
+    pub max_processed_denunciations_length: u64,
     /// max number of denunciations that can be included in a block header
     /// or in processed denunciations struct
     pub max_denunciations_per_block_header: u32,

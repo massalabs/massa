@@ -127,7 +127,7 @@ fn test_bootstrap_server() {
         initial_seed_string: "".into(),
         initial_rolls_path: "".into(),
         endorsement_count: ENDORSEMENT_COUNT,
-        max_processed_de_length: 1000,
+        max_processed_denunciations_length: 1000,
         thread_count,
         periods_per_cycle,
         max_denunciations_per_block_header: MAX_DENUNCIATIONS_PER_BLOCK_HEADER,
@@ -260,7 +260,7 @@ fn test_bootstrap_server() {
                     ledger_changes: get_random_ledger_changes(10),
                     async_pool_changes: get_random_async_pool_changes(10),
                     executed_ops_changes: get_random_executed_ops_changes(10),
-                    processed_de_changes: get_random_processed_de_changes(10),
+                    processed_denunciations_changes: get_random_processed_de_changes(10),
                 };
                 final_write
                     .changes_history

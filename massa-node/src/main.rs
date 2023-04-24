@@ -205,7 +205,7 @@ async fn launch(
         initial_seed_string: INITIAL_DRAW_SEED.into(),
         initial_rolls_path: SETTINGS.selector.initial_rolls_path.clone(),
         endorsement_count: ENDORSEMENT_COUNT,
-        max_processed_de_length: MAX_DENUNCIATION_CHANGES_LENGTH,
+        max_processed_denunciations_length: MAX_DENUNCIATION_CHANGES_LENGTH,
         max_denunciations_per_block_header: MAX_DENUNCIATIONS_PER_BLOCK_HEADER,
     };
 
@@ -312,7 +312,7 @@ async fn launch(
         mip_store_stats_block_considered: MIP_STORE_STATS_BLOCK_CONSIDERED,
         mip_store_stats_counters_max: MIP_STORE_STATS_COUNTERS_MAX,
         max_denunciations_per_block_header: MAX_DENUNCIATIONS_PER_BLOCK_HEADER,
-        max_de_changes_length: MAX_DENUNCIATION_CHANGES_LENGTH,
+        max_denunciation_changes_length: MAX_DENUNCIATION_CHANGES_LENGTH,
     };
 
     // bootstrap

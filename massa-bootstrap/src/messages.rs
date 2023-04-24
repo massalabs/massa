@@ -357,7 +357,7 @@ impl BootstrapServerMessageDeserializer {
                 args.max_credits_length,
                 args.max_ops_changes_length,
                 args.endorsement_count,
-                args.max_de_changes_length,
+                args.max_denunciation_changes_length,
             ),
             length_state_changes: U64VarIntDeserializer::new(
                 Included(0),
@@ -407,7 +407,7 @@ impl BootstrapServerMessageDeserializer {
             processed_de_deserializer: ProcessedDenunciationsDeserializer::new(
                 args.thread_count,
                 args.endorsement_count,
-                args.max_de_changes_length,
+                args.max_denunciation_changes_length,
                 args.max_denunciations_per_block_header as u64,
             ),
             opt_last_start_period_deserializer: OptionDeserializer::new(
@@ -443,7 +443,7 @@ impl Deserializer<BootstrapServerMessage> for BootstrapServerMessageDeserializer
     ///     max_rolls_length: 1000, max_production_stats_length: 1000, max_credits_length: 1000,
     ///     max_executed_ops_length: 1000, max_ops_changes_length: 1000,
     ///     mip_store_stats_block_considered: 100, mip_store_stats_counters_max: 10,
-    ///     max_denunciations_per_block_header: 128, max_de_changes_length: 1000,};
+    ///     max_denunciations_per_block_header: 128, max_denunciation_changes_length: 1000,};
     /// let message_deserializer = BootstrapServerMessageDeserializer::new(args);
     /// let bootstrap_server_message = BootstrapServerMessage::BootstrapTime {
     ///    server_time: MassaTime::from(0),

@@ -130,7 +130,7 @@ pub struct BootstrapConfig {
     /// max denunciations in block header
     pub max_denunciations_per_block_header: u32,
     /// max processed denunciations changes
-    pub max_de_changes_length: u64,
+    pub max_denunciation_changes_length: u64,
 }
 
 /// Bootstrap server binding
@@ -178,7 +178,7 @@ pub struct BootstrapClientConfig {
     pub mip_store_stats_block_considered: usize,
     pub mip_store_stats_counters_max: usize,
     pub max_denunciations_per_block_header: u32,
-    pub max_de_changes_length: u64,
+    pub max_denunciation_changes_length: u64,
 }
 
 /// Bootstrap Message der args
@@ -209,7 +209,7 @@ pub struct BootstrapServerMessageDeserializerArgs {
     pub mip_store_stats_block_considered: usize,
     pub mip_store_stats_counters_max: usize,
     pub max_denunciations_per_block_header: u32,
-    pub max_de_changes_length: u64,
+    pub max_denunciation_changes_length: u64,
 }
 
 // TODO: add a proc macro for this case

@@ -124,7 +124,7 @@ pub fn get_sample_state(
         thread_count: THREAD_COUNT,
         initial_rolls_path: rolls_file.path().to_path_buf(),
         endorsement_count: ENDORSEMENT_COUNT,
-        max_processed_de_length: 1000,
+        max_processed_denunciations_length: 1000,
         initial_seed_string: "".to_string(),
         periods_per_cycle: 10,
 

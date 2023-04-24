@@ -880,7 +880,7 @@ impl ExecutionContext {
             async_pool_changes: self.speculative_async_pool.take(),
             pos_changes: self.speculative_roll_state.take(),
             executed_ops_changes: self.speculative_executed_ops.take(),
-            processed_de_changes: self.speculative_processed_denunciations.take(),
+            processed_denunciations_changes: self.speculative_processed_denunciations.take(),
         };
         ExecutionOutput {
             slot,

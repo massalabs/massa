@@ -50,7 +50,7 @@ mod tests {
                     deferred_credits: credits,
                 },
                 executed_ops_changes: Default::default(),
-                processed_de_changes: Default::default(),
+                processed_denunciations_changes: Default::default(),
             },
             events: Default::default(),
         };
