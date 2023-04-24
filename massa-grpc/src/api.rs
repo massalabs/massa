@@ -14,12 +14,12 @@ use massa_time::MassaTime;
 use std::str::FromStr;
 use tracing::log::warn;
 
-/// default offset
+/// Default offset
 const DEFAULT_OFFSET: u64 = 1;
-/// default limit
+/// Default limit
 const DEFAULT_LIMIT: u64 = 50;
 
-/// get blocks by slots
+/// Get blocks by slots
 pub(crate) fn get_blocks_by_slots(
     grpc: &MassaGrpc,
     request: tonic::Request<grpc::GetBlocksBySlotsRequest>,
@@ -98,7 +98,7 @@ pub(crate) fn get_blocks_by_slots(
     })
 }
 
-/// get multiple datastore entries
+/// Get multiple datastore entries
 pub(crate) fn get_datastore_entries(
     grpc: &MassaGrpc,
     request: tonic::Request<grpc::GetDatastoreEntriesRequest>,
@@ -130,7 +130,7 @@ pub(crate) fn get_datastore_entries(
     Ok(grpc::GetDatastoreEntriesResponse { id, entries })
 }
 
-/// Get the largest stakers.
+/// Get the largest stakers
 pub(crate) fn get_largest_stakers(
     grpc: &MassaGrpc,
     request: tonic::Request<grpc::GetLargestStakersRequest>,
@@ -239,7 +239,7 @@ pub(crate) fn get_largest_stakers(
     })
 }
 
-/// get next block best parents
+/// Get next block best parents
 pub(crate) fn get_next_block_best_parents(
     grpc: &MassaGrpc,
     request: tonic::Request<grpc::GetNextBlockBestParentsRequest>,
@@ -260,6 +260,7 @@ pub(crate) fn get_next_block_best_parents(
     })
 }
 
+/// Get operations
 pub(crate) fn get_operations(
     grpc: &MassaGrpc,
     request: tonic::Request<grpc::GetOperationsRequest>,
@@ -268,24 +269,27 @@ pub(crate) fn get_operations(
     let inner_req: grpc::GetOperationsRequest = request.into_inner();
     let id = inner_req.id;
 
-    //TODO add context for failing arguments
     let operations_ids: Vec<OperationId> = inner_req
         .queries
         .into_iter()
-        .take(DEFAULT_LIMIT as usize + 1)
+        .take(grpc.grpc_config.max_operations_per_message as usize + 1)
         .map(|query| {
             query
                 .filter
                 .ok_or_else(|| GrpcError::InvalidArgument("filter is missing".to_string()))
-                .and_then(|filter| OperationId::from_str(filter.id.as_str()).map_err(Into::into))
+                .and_then(|filter| {
+                    OperationId::from_str(filter.id.as_str()).map_err(|_| {
+                        GrpcError::InvalidArgument(format!("invalid operation id: {}", filter.id))
+                    })
+                })
         })
         .collect::<Result<_, _>>()?;
 
-    if operations_ids.len() as u64 > DEFAULT_LIMIT {
-        return Err(GrpcError::InvalidArgument("too many arguments".into()));
+    if operations_ids.len() as u32 > grpc.grpc_config.max_operations_per_message {
+        return Err(GrpcError::InvalidArgument(format!("too many operations received. Only a maximum of {} operations are accepted per request", grpc.grpc_config.max_operations_per_message)));
     }
 
-    // Get the current cycle and slot.
+    // Get the current slot.
     let now: MassaTime = MassaTime::now()?;
     let current_slot = get_latest_block_slot_at_timestamp(
         grpc.grpc_config.thread_count,
@@ -300,7 +304,7 @@ pub(crate) fn get_operations(
         slot: Some(current_slot.into()),
     });
 
-    // get the operations and the list of blocks that contain them from storage
+    // Get the operations and the list of blocks that contain them from storage
     let storage_info: Vec<(SecureShareOperation, PreHashSet<BlockId>)> = {
         let read_blocks = storage.read_blocks();
         let read_ops = storage.read_operations();
@@ -320,38 +324,29 @@ pub(crate) fn get_operations(
             .collect()
     };
 
-    // keep only the ops id (found in storage)
+    // Keep only the ops id (found in storage)
     let ops: Vec<OperationId> = storage_info.iter().map(|(op, _)| op.id).collect();
 
-    // ask pool whether it carries the operations
+    // Ask pool whether it carries the operations
     let in_pool = grpc.pool_command_sender.contains_operations(&ops);
 
     let (speculative_op_exec_statuses, final_op_exec_statuses) =
         grpc.execution_controller.get_op_exec_status();
 
-    // compute operation finality and operation execution status from *_op_exec_statuses
+    // Compute operation finality and execution status
     let (is_operation_final, statuses): (Vec<Option<bool>>, Vec<Option<bool>>) = ops
         .iter()
         .map(|op| {
-            match (
-                final_op_exec_statuses.get(op),
-                speculative_op_exec_statuses.get(op),
-            ) {
-                // op status found in the final hashmap, so the op is "final"(first value of the tuple: Some(true))
-                // and we keep its status (copied as the second value of the tuple)
-                (Some(val), _) => (Some(true), Some(*val)),
-                // op status NOT found in the final hashmap but in the speculative one, so the op is "not final"(first value of the tuple: Some(false))
-                // and we keep its status (copied as the second value of the tuple)
-                (None, Some(val)) => (Some(false), Some(*val)),
-                // op status not defined in any hashmap, finality and status are unknow hence (None, None)
-                (None, None) => (None, None),
-            }
+            let final_status = final_op_exec_statuses.get(op);
+            let is_final = final_status.copied();
+            let status = final_status
+                .or(speculative_op_exec_statuses.get(op))
+                .copied();
+            (is_final, status)
         })
-        .collect::<Vec<(Option<bool>, Option<bool>)>>()
-        .into_iter()
         .unzip();
 
-    // gather all values into a vector of OperationWrapper instances
+    // Gather all values into a vector of OperationWrapper instances
     let mut operations: Vec<grpc::OperationWrapper> = Vec::with_capacity(ops.len());
     let zipped_iterator = izip!(
         ops.into_iter(),
@@ -363,18 +358,20 @@ pub(crate) fn get_operations(
     for (id, (operation, in_blocks), in_pool, is_operation_final, op_exec_status) in zipped_iterator
     {
         let mut status: Vec<i32> = Vec::new();
-        if in_pool {
-            status.push(grpc::OperationStatus::Pending.into());
-        }
-        if is_operation_final.unwrap_or_default() {
-            status.push(grpc::OperationStatus::Final.into());
-        }
         if let Some(op_exec_status) = op_exec_status {
             if op_exec_status {
                 status.push(grpc::OperationStatus::Success.into());
             } else {
                 status.push(grpc::OperationStatus::Failure.into());
             }
+        } else {
+            status.push(grpc::OperationStatus::Unknown.into());
+        }
+        if is_operation_final.unwrap_or_default() {
+            status.push(grpc::OperationStatus::Final.into());
+        }
+        if in_pool {
+            status.push(grpc::OperationStatus::Pending.into());
         }
 
         operations.push(grpc::OperationWrapper {
@@ -395,7 +392,7 @@ pub(crate) fn get_operations(
     })
 }
 
-//  get selector draws
+//  Get selector draws
 pub(crate) fn get_selector_draws(
     grpc: &MassaGrpc,
     request: tonic::Request<grpc::GetSelectorDrawsRequest>,
@@ -453,7 +450,7 @@ pub(crate) fn get_selector_draws(
             .collect::<Vec<_>>()
     };
 
-    // compile results
+    // Compile results
     let mut res = Vec::with_capacity(addresses.len());
     let iterator = izip!(addresses.into_iter(), selection_draws.into_iter());
     for (address, (next_block_draws, next_endorsement_draws)) in iterator {
@@ -470,7 +467,7 @@ pub(crate) fn get_selector_draws(
     })
 }
 
-/// get transactions throughput
+/// Get transactions throughput
 pub(crate) fn get_transactions_throughput(
     grpc: &MassaGrpc,
     request: tonic::Request<grpc::GetTransactionsThroughputRequest>,
@@ -494,7 +491,7 @@ pub(crate) fn get_transactions_throughput(
     })
 }
 
-// get node version
+// Get node version
 pub(crate) fn get_version(
     grpc: &MassaGrpc,
     request: tonic::Request<grpc::GetVersionRequest>,
