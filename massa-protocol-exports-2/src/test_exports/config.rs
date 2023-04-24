@@ -42,6 +42,7 @@ impl Default for ProtocolConfig {
                 .path()
                 .to_path_buf(),
             listeners: HashMap::default(),
+            thread_tester_count: 2,
         }
     }
 }

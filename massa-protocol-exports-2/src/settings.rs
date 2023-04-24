@@ -74,4 +74,6 @@ pub struct ProtocolConfig {
     pub max_operations_propagation_time: MassaTime,
     /// max time we propagate endorsements
     pub max_endorsements_propagation_time: MassaTime,
+    /// number of thread tester
+    pub thread_tester_count: u8,
 }
