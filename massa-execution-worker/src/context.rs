@@ -963,7 +963,7 @@ impl ExecutionContext {
     }
 
     /// Check if a denunciation was previously processed (to prevent reuse)
-    pub fn is_de_processed(&self, de_idx: &DenunciationIndex) -> bool {
+    pub fn is_denunciation_processed(&self, de_idx: &DenunciationIndex) -> bool {
         self.speculative_processed_denunciations
             .is_de_processed(de_idx)
     }
@@ -986,11 +986,10 @@ impl ExecutionContext {
     }
 
     /// Insert a processed denunciation.
-    /// Does not check for reuse, please use `de_exec_status` before.
     ///
-    pub fn insert_executed_de(&mut self, de_idx: &DenunciationIndex) {
+    pub fn insert_executed_denunciation(&mut self, denunciation_idx: &DenunciationIndex) {
         self.speculative_processed_denunciations
-            .insert_processed_de(de_idx.clone());
+            .insert_processed_de(denunciation_idx.clone());
     }
 
     /// gets the cycle information for an address

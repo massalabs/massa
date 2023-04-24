@@ -237,7 +237,6 @@ impl Denunciation {
         };
 
         hash_1 != hash_2
-            && signature_1 != signature_2
             && public_key.verify_signature(&hash_1, &signature_1).is_ok()
             && public_key.verify_signature(&hash_2, &signature_2).is_ok()
     }

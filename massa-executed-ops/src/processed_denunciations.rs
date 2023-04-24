@@ -1,5 +1,8 @@
 //! Copyright (c) 2023 MASSA LABS <info@massa.net>
 
+//! This file defines a structure to list and prune previously processed denunciations.
+//! Used to detect denunciation reuse.
+
 use std::collections::{BTreeMap, HashSet};
 use std::ops::Bound::{Excluded, Included, Unbounded};
 
@@ -27,7 +30,7 @@ const PROCESSED_DENUNCIATIONS_HASH_INITIAL_BYTES: &[u8; 32] = &[0; HASH_SIZE_BYT
 /// A structure to list and prune previously processed denunciations
 #[derive(Debug, Clone)]
 pub struct ProcessedDenunciations {
-    ///
+    /// Processed denunciations configuration
     config: ProcessedDenunciationsConfig,
     /// for better pruning complexity
     pub sorted_denunciations: BTreeMap<Slot, HashSet<DenunciationIndex>>,
@@ -35,8 +38,6 @@ pub struct ProcessedDenunciations {
     pub denunciations: HashSet<DenunciationIndex>,
     /// Accumulated hash of the processed denunciations
     pub hash: Hash,
-    // /// processed status of denunciations (true: success, false: fail)
-    // pub de_processed_status: HashMap<DenunciationIndex, bool>,
 }
 
 impl ProcessedDenunciations {
@@ -47,7 +48,6 @@ impl ProcessedDenunciations {
             sorted_denunciations: Default::default(),
             denunciations: Default::default(),
             hash: Hash::from_bytes(PROCESSED_DENUNCIATIONS_HASH_INITIAL_BYTES),
-            // de_processed_status: Default::default(),
         }
     }
 
@@ -101,9 +101,6 @@ impl ProcessedDenunciations {
                     new.insert(de_idx.clone());
                     new
                 });
-
-            // self.de_processed_status
-            //     .insert(de_idx, de_process_succeeded);
         }
 
         self.prune(slot);

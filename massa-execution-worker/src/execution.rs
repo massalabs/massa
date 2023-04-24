@@ -423,8 +423,7 @@ impl ExecutionState {
         let de_slot = denunciation.get_slot();
 
         if de_slot.period
-            < self
-                .final_cursor
+            < block_slot
                 .period
                 .saturating_sub(self.config.denunciation_expire_periods)
         {
@@ -434,10 +433,11 @@ impl ExecutionState {
             ));
         }
 
-        if de_slot.period.saturating_sub(block_slot.period)
-            > self.config.denunciation_expire_periods
-        {
+        if de_slot > block_slot {
             // too much in the future - ignored
+            // Note: de_slot == block_slot is OK,
+            //       for example if the block producer wants to denounce someone who multi-endorsed
+            //       for the block's slot
             return Err(ExecutionError::IncludeDenunciationError(
                 "denunciation is too much in the future".to_string(),
             ));
@@ -445,7 +445,7 @@ impl ExecutionState {
 
         // ignore the denunciation if it was already processed
         let de_idx = DenunciationIndex::from(denunciation);
-        if context.is_de_processed(&de_idx) {
+        if context.is_denunciation_processed(&de_idx) {
             return Err(ExecutionError::IncludeDenunciationError(
                 "denunciation was processed previously".to_string(),
             ));
@@ -455,6 +455,8 @@ impl ExecutionState {
             &addr_denounced,
             self.config.roll_count_to_slash_on_denunciation,
         );
+
+        context.insert_executed_denunciation(&de_idx);
 
         match slashed {
             Ok(slashed_amount) => {
@@ -472,7 +474,6 @@ impl ExecutionState {
             }
         }
 
-        context.insert_executed_de(&de_idx);
         Ok(())
     }
 
