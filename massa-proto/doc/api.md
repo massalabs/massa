@@ -383,7 +383,7 @@ GetOperationsResponse holds response from GetOperations
 | ----- | ---- | ----- | ----------- |
 | id | [string](#string) |  | Request id |
 | context | [OperationsContext](#massa-api-v1-OperationsContext) |  | Context |
-| operations | [OperationWrapper](#massa-api-v1-OperationWrapper) | repeated | Largest stakers |
+| operations | [OperationWrapper](#massa-api-v1-OperationWrapper) | repeated | Operations wrappers |
 
 
 
@@ -987,7 +987,7 @@ Massa gRPC service
 | SendBlocks | [SendBlocksRequest](#massa-api-v1-SendBlocksRequest) stream | [SendBlocksResponse](#massa-api-v1-SendBlocksResponse) stream | Send blocks |
 | SendEndorsements | [SendEndorsementsRequest](#massa-api-v1-SendEndorsementsRequest) stream | [SendEndorsementsResponse](#massa-api-v1-SendEndorsementsResponse) stream | Send endorsements |
 | SendOperations | [SendOperationsRequest](#massa-api-v1-SendOperationsRequest) stream | [SendOperationsResponse](#massa-api-v1-SendOperationsResponse) stream | Send operations |
-| TransactionsThroughput | [TransactionsThroughputRequest](#massa-api-v1-TransactionsThroughputRequest) stream | [TransactionsThroughputResponse](#massa-api-v1-TransactionsThroughputResponse) stream | Transactions throughput per second |
+| TransactionsThroughput | [TransactionsThroughputRequest](#massa-api-v1-TransactionsThroughputRequest) stream | [TransactionsThroughputResponse](#massa-api-v1-TransactionsThroughputResponse) stream | Transactions throughput |
 
  
 

@@ -564,7 +564,7 @@ pub struct GetOperationsResponse {
     /// Context
     #[prost(message, optional, tag = "2")]
     pub context: ::core::option::Option<OperationsContext>,
-    /// Largest stakers
+    /// Operations wrappers
     #[prost(message, repeated, tag = "3")]
     pub operations: ::prost::alloc::vec::Vec<OperationWrapper>,
 }
@@ -1515,7 +1515,7 @@ pub mod massa_service_client {
                 .insert(GrpcMethod::new("massa.api.v1.MassaService", "SendOperations"));
             self.inner.streaming(req, path, codec).await
         }
-        /// Transactions throughput per second
+        /// Transactions throughput
         pub async fn transactions_throughput(
             &mut self,
             request: impl tonic::IntoStreamingRequest<
@@ -1744,7 +1744,7 @@ pub mod massa_service_server {
             >
             + Send
             + 'static;
-        /// Transactions throughput per second
+        /// Transactions throughput
         async fn transactions_throughput(
             &self,
             request: tonic::Request<

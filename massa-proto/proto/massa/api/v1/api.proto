@@ -99,7 +99,7 @@ service MassaService {
   // Send operations
   rpc SendOperations(stream SendOperationsRequest) returns (stream SendOperationsResponse) {}
 
-  // Transactions throughput per second
+  // Transactions throughput
   rpc TransactionsThroughput(stream TransactionsThroughputRequest) returns (stream TransactionsThroughputResponse) {}
 }
 
@@ -254,7 +254,7 @@ message GetOperationsResponse {
   string id = 1;
   // Context
   OperationsContext context = 2;
-  // Largest stakers
+  //Operations wrappers
   repeated OperationWrapper operations = 3;
 }
 
