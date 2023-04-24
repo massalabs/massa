@@ -1,21 +1,32 @@
 use std::thread::JoinHandle;
 
-use crossbeam::{
-    channel::{unbounded, Receiver, Sender},
-    select,
-};
-use massa_serialization::{DeserializeError, Deserializer};
-use peernet::{network_manager::SharedActiveConnections, peer_id::PeerId};
+use crossbeam::channel::{Receiver, Sender};
+use massa_consensus_exports::ConsensusController;
+use massa_pool_exports::PoolController;
+use massa_protocol_exports_2::ProtocolConfig;
+use massa_storage::Storage;
+use peernet::network_manager::SharedActiveConnections;
 
 use self::{
-    commands::BlockHandlerCommand,
-    messages::{BlockMessageDeserializer, BlockMessageDeserializerArgs},
+    cache::SharedBlockCache, commands_propagation::BlockHandlerCommand,
+    commands_retrieval::BlockHandlerRetrievalCommand, propagation::start_propagation_thread,
+    retrieval::start_retrieval_thread,
 };
 
-pub mod commands;
+pub mod cache;
+pub mod commands_propagation;
+pub mod commands_retrieval;
 mod messages;
+mod propagation;
+mod retrieval;
 
 pub(crate) use messages::{BlockMessage, BlockMessageSerializer};
+
+use super::{
+    endorsement_handler::cache::SharedEndorsementCache,
+    operation_handler::cache::SharedOperationCache,
+    peer_handler::models::{PeerManagementCmd, PeerMessageTuple},
+};
 
 pub struct BlockHandler {
     pub block_retrieval_thread: Option<JoinHandle<()>>,
@@ -25,90 +36,40 @@ pub struct BlockHandler {
 impl BlockHandler {
     pub fn new(
         active_connections: SharedActiveConnections,
-        receiver: Receiver<(PeerId, u64, Vec<u8>)>,
-        receiver_ext: Receiver<BlockHandlerCommand>,
+        consensus_controller: Box<dyn ConsensusController>,
+        pool_controller: Box<dyn PoolController>,
+        receiver_network: Receiver<PeerMessageTuple>,
+        receiver_ext: Receiver<BlockHandlerRetrievalCommand>,
+        internal_receiver: Receiver<BlockHandlerCommand>,
+        internal_sender: Sender<BlockHandlerCommand>,
+        peer_cmd_sender: Sender<PeerManagementCmd>,
+        config: ProtocolConfig,
+        endorsement_cache: SharedEndorsementCache,
+        operation_cache: SharedOperationCache,
+        cache: SharedBlockCache,
+        storage: Storage,
     ) -> Self {
-        //TODO: Define real data
-        let (_internal_sender, internal_receiver): (Sender<()>, Receiver<()>) = unbounded();
-        let block_retrieval_thread = std::thread::spawn(move || {
-            //TODO: Real values
-            let mut block_message_deserializer =
-                BlockMessageDeserializer::new(BlockMessageDeserializerArgs {
-                    thread_count: 32,
-                    endorsement_count: 32,
-                    block_infos_length_max: 100000,
-                    max_operations_per_block: 100000,
-                    max_datastore_value_length: 100000,
-                    max_function_name_length: 10000,
-                    max_op_datastore_entry_count: 100000,
-                    max_op_datastore_key_length: 200,
-                    max_op_datastore_value_length: 100000,
-                    max_parameters_size: 100000,
-                });
-            //TODO: Real logic
-            loop {
-                select! {
-                    recv(receiver) -> msg => {
-                        match msg {
-                            Ok((peer_id, message_id, message)) => {
-                                block_message_deserializer.set_message_id(message_id);
-                                let (rest, message) = block_message_deserializer
-                                    .deserialize::<DeserializeError>(&message)
-                                    .unwrap();
-                                if !rest.is_empty() {
-                                    println!("Error: message not fully consumed");
-                                    return;
-                                }
-                                println!("Received message from {:?}: {:?}", peer_id, message);
-                            }
-                            Err(err) => {
-                                println!("Error: {:?}", err);
-                                return;
-                            }
-                        }
-                    },
-                    recv(receiver_ext) -> command => {
-                        match command {
-                            Ok(command) => {
-                                println!("Received command: {:?}", command);
-                            }
-                            Err(err) => {
-                                println!("Error: {:?}", err);
-                                return;
-                            }
-                        }
-                    }
-                }
-            }
-        });
-
-        let block_propagation_thread = std::thread::spawn({
-            move || {
-                let _block_message_serializer = BlockMessageSerializer::new();
-                //TODO: Real logic
-                loop {
-                    match internal_receiver.recv() {
-                        Ok(_data) => {
-                            // Example to send data
-                            // {
-                            //     let active_connections = active_connections.read();
-                            //     for (peer_id, connection) in active_connections.iter() {
-                            //         println!("Sending message to {:?}", peer_id);
-                            //         let buf = Vec::new();
-                            //         block_message_serializer.serialize(&data, &mut buf).unwrap();
-                            //         connection.send_message(&buf);
-                            //     }
-                            // }
-                            println!("Received message");
-                        }
-                        Err(err) => {
-                            println!("Error: {:?}", err);
-                            return;
-                        }
-                    }
-                }
-            }
-        });
+        let block_retrieval_thread = start_retrieval_thread(
+            active_connections.clone(),
+            consensus_controller,
+            pool_controller,
+            receiver_network,
+            receiver_ext,
+            internal_sender,
+            peer_cmd_sender.clone(),
+            config.clone(),
+            endorsement_cache,
+            operation_cache,
+            cache.clone(),
+            storage,
+        );
+        let block_propagation_thread = start_propagation_thread(
+            active_connections,
+            internal_receiver,
+            peer_cmd_sender,
+            config,
+            cache,
+        );
         Self {
             block_retrieval_thread: Some(block_retrieval_thread),
             block_propagation_thread: Some(block_propagation_thread),

@@ -20,10 +20,6 @@ impl EndorsementCache {
             endorsements_known_by_peer: LruCache::new(max_known_endorsements_by_peer),
         }
     }
-
-    pub fn insert_checked_endorsement(&mut self, endorsement_id: EndorsementId) {
-        self.checked_endorsements.put(endorsement_id, ());
-    }
 }
 
 pub type SharedEndorsementCache = Arc<RwLock<EndorsementCache>>;

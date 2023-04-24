@@ -1,4 +1,9 @@
-use std::{collections::HashMap, net::SocketAddr, thread::JoinHandle, time::Duration};
+use std::{
+    collections::HashMap,
+    net::SocketAddr,
+    thread::JoinHandle,
+    time::{Duration, SystemTime, UNIX_EPOCH},
+};
 
 use crossbeam::channel::Sender;
 use massa_protocol_exports_2::ProtocolConfig;
@@ -14,7 +19,6 @@ use peernet::{
     types::KeyPair,
 };
 use std::cmp::Reverse;
-use tracing::log::warn;
 
 use super::{
     announcement::{AnnouncementDeserializer, AnnouncementDeserializerArgs},
@@ -68,8 +72,13 @@ impl HandshakeHandler for TesterHandshake {
         _: TesterMessagesHandler,
     ) -> PeerNetResult<PeerId> {
         let data = endpoint.receive()?;
+        if data.is_empty() {
+            return Err(PeerNetError::HandshakeError.error(
+                "Tester Handshake",
+                Some(String::from("Peer didn't accepted us")),
+            ));
+        }
         let peer_id = PeerId::from_bytes(&data[..32].try_into().unwrap())?;
-
         let res = {
             {
                 // check if peer is banned else set state to InHandshake
@@ -127,11 +136,14 @@ impl HandshakeHandler for TesterHandshake {
         // if handshake failed, we set the peer state to HandshakeFailed
         if res.is_err() {
             let mut peer_db_write = self.peer_db.write();
-            peer_db_write.peers.entry(peer_id).and_modify(|info| {
-                info.state = super::PeerState::HandshakeFailed;
-            });
+            peer_db_write
+                .peers
+                .entry(peer_id.clone())
+                .and_modify(|info| {
+                    info.state = super::PeerState::HandshakeFailed;
+                });
         }
-
+        endpoint.shutdown();
         res
     }
 }
@@ -176,18 +188,29 @@ impl Tester {
             config.max_out_connections = 1;
 
             let mut network_manager = PeerNetManager::new(config);
-
             loop {
                 crossbeam::select! {
                     recv(receiver) -> res => {
                         match res {
                             Ok(listener) => {
+                                if let Some(peer_info) = db.read().peers.get(&listener.0) {
+                                    let timestamp = SystemTime::now()
+                                    .duration_since(UNIX_EPOCH)
+                                    .expect("Time went backward")
+                                    .as_millis();
+                                    let elapsed_secs = (timestamp - peer_info.last_announce.timestamp) / 1000000;
+                                    if elapsed_secs < 60 {
+                                        continue;
+                                    }
+                                }
+                                //TODO: Don't launch test if peer is already connected to us as a normal connection.
+                                // Maybe we need to have a way to still update his last announce timestamp because he is a great peer
+
                                 // receive new listener to test
                                 listener.1.iter().for_each(|(addr, _transport)| {
-                                    dbg!("New listener to test : {:?}", addr);
                                     let _res =  network_manager.try_connect(
                                         *addr,
-                                        Duration::from_millis(200),
+                                        Duration::from_millis(500),
                                         &OutConnectionConfig::Tcp(Box::new(TcpOutConnectionConfig {})),
                                     );
                                 });
@@ -203,6 +226,15 @@ impl Tester {
                             dbg!("No peer to test");
                             continue;
                         };
+
+                        let timestamp = SystemTime::now()
+                        .duration_since(UNIX_EPOCH)
+                        .expect("Time went backward")
+                        .as_millis();
+                        let elapsed_secs = (timestamp - peer_info.last_announce.timestamp) / 1000;
+                        if elapsed_secs < 60 {
+                            continue;
+                        }
 
                         dbg!("Testing peer {}", peer_id);
                         // we try to connect to all peer listener (For now we have only one listener)
@@ -229,7 +261,6 @@ pub fn empty_fallback(
     _endpoint: &mut Endpoint,
     _listeners: &HashMap<SocketAddr, TransportType>,
 ) -> PeerNetResult<()> {
-    println!("Fallback function called");
     std::thread::sleep(Duration::from_millis(10000));
     Ok(())
 }

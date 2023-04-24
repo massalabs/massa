@@ -60,6 +60,8 @@ pub struct ProtocolConfig {
     pub max_operation_storage_time: MassaTime,
     /// Maximum of operations sent in one message.
     pub max_operations_per_message: u64,
+    /// Maximum of operations sent in one block.
+    pub max_operations_per_block: u64,
     /// Maximum size in bytes of all serialized operations size in a block
     pub max_serialized_operations_size_per_block: usize,
     /// Controller channel size
@@ -76,4 +78,6 @@ pub struct ProtocolConfig {
     pub max_endorsements_propagation_time: MassaTime,
     /// number of thread tester
     pub thread_tester_count: u8,
+    /// debug prints
+    pub debug: bool,
 }

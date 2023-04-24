@@ -25,14 +25,14 @@ pub type SharedPeerDB = Arc<RwLock<PeerDB>>;
 
 pub type PeerMessageTuple = (PeerId, u64, Vec<u8>);
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct PeerInfo {
     pub last_announce: Announcement,
     pub state: PeerState,
 }
 
 #[warn(dead_code)]
-#[derive(Eq, PartialEq, Clone)]
+#[derive(Eq, PartialEq, Clone, Debug)]
 pub enum PeerState {
     Banned,
     InHandshake,
