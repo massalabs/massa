@@ -272,13 +272,6 @@
 <a href="#272" id="272">272</a>
 <a href="#273" id="273">273</a>
 <a href="#274" id="274">274</a>
-<a href="#275" id="275">275</a>
-<a href="#276" id="276">276</a>
-<a href="#277" id="277">277</a>
-<a href="#278" id="278">278</a>
-<a href="#279" id="279">279</a>
-<a href="#280" id="280">280</a>
-<a href="#281" id="281">281</a>
 </pre><pre class="rust"><code><span class="doccomment">//! DEFAULT VALUES USED TO INITIALIZE DIVERS CONFIGURATIONS STRUCTURES
 //!
 //!
@@ -354,9 +347,9 @@
     <span class="doccomment">/// node version
     </span><span class="kw">pub static </span><span class="kw-2">ref </span>VERSION: Version = {
         <span class="kw">if </span><span class="macro">cfg!</span>(feature = <span class="string">&quot;sandbox&quot;</span>) {
-            <span class="string">&quot;SAND.22.0&quot;
+            <span class="string">&quot;SAND.21.0&quot;
         </span>} <span class="kw">else </span>{
-            <span class="string">&quot;TEST.22.0&quot;
+            <span class="string">&quot;TEST.21.0&quot;
         </span>}
         .parse()
         .unwrap()
@@ -544,14 +537,7 @@
 </span><span class="doccomment">/// denunciation expiration delta (in cycle count)
 </span><span class="kw">pub const </span>DENUNCIATION_EXPIRE_PERIODS: u64 = PERIODS_PER_CYCLE;
 <span class="doccomment">/// Cycle delta to accept items in denunciation factory
-/// TODO / FIXME: unused?
 </span><span class="kw">pub const </span>DENUNCIATION_ITEMS_MAX_CYCLE_DELTA: u64 = <span class="number">1</span>;
-<span class="doccomment">/// Max number of denunciations that can be included in a block header
-</span><span class="kw">pub const </span>MAX_DENUNCIATIONS_PER_BLOCK_HEADER: u32 = <span class="number">128</span>;
-<span class="doccomment">/// Number of roll to remove per denunciation
-</span><span class="kw">pub const </span>ROLL_COUNT_TO_SLASH_ON_DENUNCIATION: u64 = <span class="number">1</span>;
-<span class="doccomment">/// Maximum size of processed denunciations
-</span><span class="kw">pub const </span>MAX_DENUNCIATION_CHANGES_LENGTH: u64 = <span class="number">1_000</span>;
 
 <span class="comment">// Some checks at compile time that should not be ignored!
 </span><span class="attr">#[allow(clippy::assertions_on_constants)]

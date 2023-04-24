@@ -1481,73 +1481,6 @@
 <a href="#1481" id="1481">1481</a>
 <a href="#1482" id="1482">1482</a>
 <a href="#1483" id="1483">1483</a>
-<a href="#1484" id="1484">1484</a>
-<a href="#1485" id="1485">1485</a>
-<a href="#1486" id="1486">1486</a>
-<a href="#1487" id="1487">1487</a>
-<a href="#1488" id="1488">1488</a>
-<a href="#1489" id="1489">1489</a>
-<a href="#1490" id="1490">1490</a>
-<a href="#1491" id="1491">1491</a>
-<a href="#1492" id="1492">1492</a>
-<a href="#1493" id="1493">1493</a>
-<a href="#1494" id="1494">1494</a>
-<a href="#1495" id="1495">1495</a>
-<a href="#1496" id="1496">1496</a>
-<a href="#1497" id="1497">1497</a>
-<a href="#1498" id="1498">1498</a>
-<a href="#1499" id="1499">1499</a>
-<a href="#1500" id="1500">1500</a>
-<a href="#1501" id="1501">1501</a>
-<a href="#1502" id="1502">1502</a>
-<a href="#1503" id="1503">1503</a>
-<a href="#1504" id="1504">1504</a>
-<a href="#1505" id="1505">1505</a>
-<a href="#1506" id="1506">1506</a>
-<a href="#1507" id="1507">1507</a>
-<a href="#1508" id="1508">1508</a>
-<a href="#1509" id="1509">1509</a>
-<a href="#1510" id="1510">1510</a>
-<a href="#1511" id="1511">1511</a>
-<a href="#1512" id="1512">1512</a>
-<a href="#1513" id="1513">1513</a>
-<a href="#1514" id="1514">1514</a>
-<a href="#1515" id="1515">1515</a>
-<a href="#1516" id="1516">1516</a>
-<a href="#1517" id="1517">1517</a>
-<a href="#1518" id="1518">1518</a>
-<a href="#1519" id="1519">1519</a>
-<a href="#1520" id="1520">1520</a>
-<a href="#1521" id="1521">1521</a>
-<a href="#1522" id="1522">1522</a>
-<a href="#1523" id="1523">1523</a>
-<a href="#1524" id="1524">1524</a>
-<a href="#1525" id="1525">1525</a>
-<a href="#1526" id="1526">1526</a>
-<a href="#1527" id="1527">1527</a>
-<a href="#1528" id="1528">1528</a>
-<a href="#1529" id="1529">1529</a>
-<a href="#1530" id="1530">1530</a>
-<a href="#1531" id="1531">1531</a>
-<a href="#1532" id="1532">1532</a>
-<a href="#1533" id="1533">1533</a>
-<a href="#1534" id="1534">1534</a>
-<a href="#1535" id="1535">1535</a>
-<a href="#1536" id="1536">1536</a>
-<a href="#1537" id="1537">1537</a>
-<a href="#1538" id="1538">1538</a>
-<a href="#1539" id="1539">1539</a>
-<a href="#1540" id="1540">1540</a>
-<a href="#1541" id="1541">1541</a>
-<a href="#1542" id="1542">1542</a>
-<a href="#1543" id="1543">1543</a>
-<a href="#1544" id="1544">1544</a>
-<a href="#1545" id="1545">1545</a>
-<a href="#1546" id="1546">1546</a>
-<a href="#1547" id="1547">1547</a>
-<a href="#1548" id="1548">1548</a>
-<a href="#1549" id="1549">1549</a>
-<a href="#1550" id="1550">1550</a>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="doccomment">//! This module deals with executing final and active slots, as well as read-only requests.
@@ -1572,7 +1505,6 @@
 <span class="kw">use </span>massa_ledger_exports::{SetOrDelete, SetUpdateOrDelete};
 <span class="kw">use </span>massa_models::address::ExecutionAddressCycleInfo;
 <span class="kw">use </span>massa_models::bytecode::Bytecode;
-<span class="kw">use </span>massa_models::denunciation::{Denunciation, DenunciationIndex};
 <span class="kw">use </span>massa_models::execution::EventFilter;
 <span class="kw">use </span>massa_models::output_event::SCOutputEvent;
 <span class="kw">use </span>massa_models::prehash::PreHashSet;
@@ -1803,11 +1735,6 @@
             ));
         }
 
-        <span class="comment">// Set the creator coin spending allowance.
-        // Note that this needs to be initialized before any spending from the creator.
-        </span>context.creator_coin_spending_allowance =
-            <span class="prelude-val">Some</span>(operation.get_max_spending(<span class="self">self</span>.config.roll_price));
-
         <span class="comment">// debit the fee from the operation sender
         // fail execution if there are not enough coins
         </span><span class="kw">if let </span><span class="prelude-val">Err</span>(err) =
@@ -1940,56 +1867,6 @@
                         Slot::new(operation.content.expire_period, op_thread),
                     )
                 }
-            }
-        }
-
-        <span class="prelude-val">Ok</span>(())
-    }
-
-    <span class="doccomment">/// Process a denunciation in the context of a block.
-    ///
-    /// # Arguments
-    /// * `denunciation`: denunciation to process
-    /// * `block_credits`: mutable reference towards the total block reward/fee credits
-    </span><span class="kw">fn </span>process_denunciation(
-        <span class="kw-2">&amp;</span><span class="self">self</span>,
-        denunciation: <span class="kw-2">&amp;</span>Denunciation,
-        block_credits: <span class="kw-2">&amp;mut </span>Amount,
-    ) -&gt; <span class="prelude-ty">Result</span>&lt;(), ExecutionError&gt; {
-        <span class="kw">let </span>addr_denounced = Address::from_public_key(denunciation.get_public_key());
-
-        <span class="comment">// acquire write access to the context
-        </span><span class="kw">let </span><span class="kw-2">mut </span>context = <span class="macro">context_guard!</span>(<span class="self">self</span>);
-
-        <span class="comment">// ignore the denunciation if it was already processed
-        </span><span class="kw">let </span>de_idx = DenunciationIndex::from(denunciation);
-        <span class="kw">if </span>context.is_de_processed(<span class="kw-2">&amp;</span>de_idx) {
-            <span class="kw">return </span><span class="prelude-val">Err</span>(ExecutionError::IncludeOperationError(
-                <span class="string">&quot;denunciation was processed previously&quot;</span>.to_string(),
-            ));
-        }
-
-        <span class="kw">let </span>slashed = context.try_slash_rolls(
-            <span class="kw-2">&amp;</span>addr_denounced,
-            <span class="self">self</span>.config.roll_count_to_slash_on_denunciation,
-        );
-
-        <span class="kw">let </span>de_idx_slot = <span class="kw-2">*</span>de_idx.get_slot();
-        <span class="kw">match </span>slashed {
-            <span class="prelude-val">Ok</span>(slashed_amount) =&gt; {
-                <span class="comment">// Add slashed amount / 2 to block reward
-                </span><span class="kw">let </span>amount = slashed_amount.checked_div_u64(<span class="number">2</span>).ok_or_else(|| {
-                    ExecutionError::RuntimeError(<span class="macro">format!</span>(
-                        <span class="string">&quot;Unable to divide slashed amount: {} by 2&quot;</span>,
-                        slashed_amount
-                    ))
-                })<span class="question-mark">?</span>;
-                <span class="kw-2">*</span>block_credits = block_credits.saturating_add(amount);
-                context.insert_executed_de(<span class="kw-2">&amp;</span>de_idx, <span class="bool-val">true</span>, de_idx_slot);
-            }
-            <span class="prelude-val">Err</span>(e) =&gt; {
-                context.insert_executed_de(<span class="kw-2">&amp;</span>de_idx, <span class="bool-val">false</span>, de_idx_slot);
-                <span class="macro">warn!</span>(<span class="string">&quot;Unable to slash rolls or deferred credits: {}&quot;</span>, e);
             }
         }
 
@@ -2327,7 +2204,6 @@
             context_snapshot = context.get_snapshot();
             context.max_gas = message.max_gas;
             context.creator_address = <span class="prelude-val">None</span>;
-            context.creator_coin_spending_allowance = <span class="prelude-val">None</span>;
             context.stack = <span class="macro">vec!</span>[
                 ExecutionStackElement {
                     address: message.sender,
@@ -2529,16 +2405,6 @@
                     <span class="macro">debug!</span>(
                         <span class="string">&quot;failed executing operation {} in block {}: {}&quot;</span>,
                         operation.id, block_id, err
-                    );
-                }
-            }
-
-            <span class="comment">// Try executing the denunciations of this block
-            </span><span class="kw">for </span>denunciation <span class="kw">in </span><span class="kw-2">&amp;</span>stored_block.content.header.content.denunciations {
-                <span class="kw">if let </span><span class="prelude-val">Err</span>(e) = <span class="self">self</span>.process_denunciation(denunciation, <span class="kw-2">&amp;mut </span>block_credits) {
-                    <span class="macro">debug!</span>(
-                        <span class="string">&quot;Failed processing denunciation: {:?}, in block: {}: {}&quot;</span>,
-                        denunciation, block_id, e
                     );
                 }
             }

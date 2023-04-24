@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"mod":["block_graph_export","block_status","bootstrapable_graph","channels","controller_trait","error","events","export_active_block","settings"],"struct":["ConsensusChannels","ConsensusConfig"],"trait":["ConsensusController","ConsensusManager"]};
+window.SIDEBAR_ITEMS = {"mod":["block_graph_export","block_status","bootstrapable_graph","channels","controller_trait","error","events","export_active_block","settings","test_exports"],"struct":["ConsensusChannels","ConsensusConfig"],"trait":["ConsensusController","ConsensusManager"]};

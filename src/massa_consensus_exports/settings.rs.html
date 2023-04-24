@@ -107,12 +107,12 @@
     </span><span class="kw">pub </span>bootstrap_part_size: u64,
     <span class="doccomment">/// whether broadcast is enabled
     </span><span class="kw">pub </span>broadcast_enabled: bool,
-    <span class="doccomment">/// blocks headers channel capacity
-    </span><span class="kw">pub </span>broadcast_blocks_headers_channel_capacity: usize,
-    <span class="doccomment">/// blocks channel capacity
-    </span><span class="kw">pub </span>broadcast_blocks_channel_capacity: usize,
-    <span class="doccomment">/// filled blocks channel capacity
-    </span><span class="kw">pub </span>broadcast_filled_blocks_channel_capacity: usize,
+    <span class="doccomment">/// blocks headers sender(channel) capacity
+    </span><span class="kw">pub </span>broadcast_blocks_headers_capacity: usize,
+    <span class="doccomment">/// blocks sender(channel) capacity
+    </span><span class="kw">pub </span>broadcast_blocks_capacity: usize,
+    <span class="doccomment">/// filled blocks sender(channel) capacity
+    </span><span class="kw">pub </span>broadcast_filled_blocks_capacity: usize,
     <span class="doccomment">/// last start period
     </span><span class="kw">pub </span>last_start_period: u64,
 }

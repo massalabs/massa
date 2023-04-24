@@ -259,32 +259,6 @@
 <a href="#259" id="259">259</a>
 <a href="#260" id="260">260</a>
 <a href="#261" id="261">261</a>
-<a href="#262" id="262">262</a>
-<a href="#263" id="263">263</a>
-<a href="#264" id="264">264</a>
-<a href="#265" id="265">265</a>
-<a href="#266" id="266">266</a>
-<a href="#267" id="267">267</a>
-<a href="#268" id="268">268</a>
-<a href="#269" id="269">269</a>
-<a href="#270" id="270">270</a>
-<a href="#271" id="271">271</a>
-<a href="#272" id="272">272</a>
-<a href="#273" id="273">273</a>
-<a href="#274" id="274">274</a>
-<a href="#275" id="275">275</a>
-<a href="#276" id="276">276</a>
-<a href="#277" id="277">277</a>
-<a href="#278" id="278">278</a>
-<a href="#279" id="279">279</a>
-<a href="#280" id="280">280</a>
-<a href="#281" id="281">281</a>
-<a href="#282" id="282">282</a>
-<a href="#283" id="283">283</a>
-<a href="#284" id="284">284</a>
-<a href="#285" id="285">285</a>
-<a href="#286" id="286">286</a>
-<a href="#287" id="287">287</a>
 </pre><pre class="rust"><code><span class="doccomment">//! Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 //! This file provides structures representing changes to the final state
@@ -294,8 +268,6 @@
 };
 <span class="kw">use </span>massa_executed_ops::{
     ExecutedOpsChanges, ExecutedOpsChangesDeserializer, ExecutedOpsChangesSerializer,
-    ProcessedDenunciationsChanges, ProcessedDenunciationsChangesDeserializer,
-    ProcessedDenunciationsChangesSerializer,
 };
 <span class="kw">use </span>massa_ledger_exports::{LedgerChanges, LedgerChangesDeserializer, LedgerChangesSerializer};
 <span class="kw">use </span>massa_pos_exports::{PoSChanges, PoSChangesDeserializer, PoSChangesSerializer};
@@ -318,8 +290,6 @@
     </span><span class="kw">pub </span>pos_changes: PoSChanges,
     <span class="doccomment">/// executed operations changes
     </span><span class="kw">pub </span>executed_ops_changes: ExecutedOpsChanges,
-    <span class="doccomment">/// processed denunciations changes
-    </span><span class="kw">pub </span>processed_de_changes: ProcessedDenunciationsChanges,
 }
 
 <span class="doccomment">/// Basic `StateChanges` serializer.
@@ -328,7 +298,6 @@
     async_pool_changes_serializer: AsyncPoolChangesSerializer,
     pos_changes_serializer: PoSChangesSerializer,
     ops_changes_serializer: ExecutedOpsChangesSerializer,
-    de_changes_serializer: ProcessedDenunciationsChangesSerializer,
 }
 
 <span class="kw">impl </span>Default <span class="kw">for </span>StateChangesSerializer {
@@ -345,7 +314,6 @@
             async_pool_changes_serializer: AsyncPoolChangesSerializer::new(),
             pos_changes_serializer: PoSChangesSerializer::new(),
             ops_changes_serializer: ExecutedOpsChangesSerializer::new(),
-            de_changes_serializer: ProcessedDenunciationsChangesSerializer::new(),
         }
     }
 }
@@ -404,8 +372,6 @@
             .serialize(<span class="kw-2">&amp;</span>value.pos_changes, buffer)<span class="question-mark">?</span>;
         <span class="self">self</span>.ops_changes_serializer
             .serialize(<span class="kw-2">&amp;</span>value.executed_ops_changes, buffer)<span class="question-mark">?</span>;
-        <span class="self">self</span>.de_changes_serializer
-            .serialize(<span class="kw-2">&amp;</span>value.processed_de_changes, buffer)<span class="question-mark">?</span>;
         <span class="prelude-val">Ok</span>(())
     }
 }
@@ -416,7 +382,6 @@
     async_pool_changes_deserializer: AsyncPoolChangesDeserializer,
     pos_changes_deserializer: PoSChangesDeserializer,
     ops_changes_deserializer: ExecutedOpsChangesDeserializer,
-    de_changes_deserializer: ProcessedDenunciationsChangesDeserializer,
 }
 
 <span class="kw">impl </span>StateChangesDeserializer {
@@ -434,8 +399,6 @@
         max_production_stats_length: u64,
         max_credits_length: u64,
         max_ops_changes_length: u64,
-        endorsement_count: u32,
-        max_de_changes_length: u64,
     ) -&gt; <span class="self">Self </span>{
         <span class="self">Self </span>{
             ledger_changes_deserializer: LedgerChangesDeserializer::new(
@@ -459,11 +422,6 @@
             ops_changes_deserializer: ExecutedOpsChangesDeserializer::new(
                 thread_count,
                 max_ops_changes_length,
-            ),
-            de_changes_deserializer: ProcessedDenunciationsChangesDeserializer::new(
-                thread_count,
-                endorsement_count,
-                max_de_changes_length,
             ),
         }
     }
@@ -513,7 +471,7 @@
     /// state_changes.ledger_changes = ledger_changes;
     /// let mut serialized = Vec::new();
     /// StateChangesSerializer::new().serialize(&amp;state_changes, &amp;mut serialized).unwrap();
-    /// let (rest, state_changes_deser) = StateChangesDeserializer::new(32, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 32, 1000).deserialize::&lt;DeserializeError&gt;(&amp;serialized).unwrap();
+    /// let (rest, state_changes_deser) = StateChangesDeserializer::new(32, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255).deserialize::&lt;DeserializeError&gt;(&amp;serialized).unwrap();
     /// assert!(rest.is_empty());
     /// assert_eq!(state_changes_deser.ledger_changes, state_changes.ledger_changes);
     /// assert_eq!(state_changes_deser.async_pool_changes, state_changes.async_pool_changes);
@@ -537,24 +495,14 @@
                 context(<span class="string">&quot;Failed executed_ops_changes deserialization&quot;</span>, |input| {
                     <span class="self">self</span>.ops_changes_deserializer.deserialize(input)
                 }),
-                context(<span class="string">&quot;Failed processed_de_changes deserialization&quot;</span>, |input| {
-                    <span class="self">self</span>.de_changes_deserializer.deserialize(input)
-                }),
             )),
         )
         .map(
-            |(
-                ledger_changes,
-                async_pool_changes,
-                roll_state_changes,
-                executed_ops,
-                processed_de,
-            )| StateChanges {
+            |(ledger_changes, async_pool_changes, roll_state_changes, executed_ops)| StateChanges {
                 ledger_changes,
                 async_pool_changes,
                 pos_changes: roll_state_changes,
                 executed_ops_changes: executed_ops,
-                processed_de_changes: processed_de,
             },
         )
         .parse(buffer)

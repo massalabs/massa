@@ -270,7 +270,6 @@
 <a href="#270" id="270">270</a>
 <a href="#271" id="271">271</a>
 <a href="#272" id="272">272</a>
-<a href="#273" id="273">273</a>
 </pre><pre class="rust"><code><span class="doccomment">//! Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="kw">use </span>massa_factory_exports::{FactoryChannels, FactoryConfig};
@@ -489,8 +488,7 @@
                 parents: parents.into_iter().map(|(id, _period)| id).collect(),
                 operation_merkle_root: global_operations_hash,
                 endorsements,
-                denunciations: Vec::new(), <span class="comment">// TODO / FIXME: feed
-            </span>},
+            },
             BlockHeaderSerializer::new(), <span class="comment">// TODO reuse self.block_header_serializer
             </span>block_producer_keypair,
         )

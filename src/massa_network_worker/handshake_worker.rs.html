@@ -217,8 +217,6 @@
 <a href="#217" id="217">217</a>
 <a href="#218" id="218">218</a>
 <a href="#219" id="219">219</a>
-<a href="#220" id="220">220</a>
-<a href="#221" id="221">221</a>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="doccomment">//! Here are happening handshakes.
@@ -232,7 +230,6 @@
 <span class="kw">use </span>futures::future::try_join;
 <span class="kw">use </span>massa_hash::Hash;
 <span class="kw">use </span>massa_logging::massa_trace;
-<span class="kw">use </span>massa_models::config::MAX_DENUNCIATIONS_PER_BLOCK_HEADER;
 <span class="kw">use </span>massa_models::{
     config::{
         constants::{MAX_DATASTORE_VALUE_LENGTH, MAX_FUNCTION_NAME_LENGTH, MAX_PARAMETERS_SIZE},
@@ -333,7 +330,6 @@
                             MAX_OPERATION_DATASTORE_ENTRY_COUNT,
                             MAX_OPERATION_DATASTORE_KEY_LENGTH,
                             MAX_OPERATION_DATASTORE_VALUE_LENGTH,
-                            MAX_DENUNCIATIONS_PER_BLOCK_HEADER,
                             <span class="prelude-val">Some</span>(last_start_period),
                         ),
                     ),

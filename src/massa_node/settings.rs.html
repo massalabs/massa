@@ -289,8 +289,6 @@
 <a href="#289" id="289">289</a>
 <a href="#290" id="290">290</a>
 <a href="#291" id="291">291</a>
-<a href="#292" id="292">292</a>
-<a href="#293" id="293">293</a>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="doccomment">//! Build here the default node settings from the configuration file toml
@@ -411,10 +409,8 @@
     <span class="kw">pub </span>max_operation_future_validity_start_periods: u64,
     <span class="kw">pub </span>max_endorsement_count: u64,
     <span class="kw">pub </span>max_item_return_count: usize,
-    <span class="doccomment">/// endorsements channel capacity
-    </span><span class="kw">pub </span>broadcast_endorsements_channel_capacity: usize,
-    <span class="doccomment">/// operations channel capacity
-    </span><span class="kw">pub </span>broadcast_operations_channel_capacity: usize,
+    <span class="doccomment">/// operations sender(channel) capacity
+    </span><span class="kw">pub </span>broadcast_operations_capacity: usize,
 }
 
 <span class="doccomment">/// API and server configuration, read from a file configuration.
@@ -478,12 +474,12 @@
     </span><span class="kw">pub </span>block_db_prune_interval: MassaTime,
     <span class="doccomment">/// max number of items returned while querying
     </span><span class="kw">pub </span>max_item_return_count: usize,
-    <span class="doccomment">/// blocks headers channel capacity
-    </span><span class="kw">pub </span>broadcast_blocks_headers_channel_capacity: usize,
-    <span class="doccomment">/// blocks channel capacity
-    </span><span class="kw">pub </span>broadcast_blocks_channel_capacity: usize,
-    <span class="doccomment">/// filled blocks channel capacity
-    </span><span class="kw">pub </span>broadcast_filled_blocks_channel_capacity: usize,
+    <span class="doccomment">/// blocks headers sender(channel) capacity
+    </span><span class="kw">pub </span>broadcast_blocks_headers_capacity: usize,
+    <span class="doccomment">/// blocks sender(channel) capacity
+    </span><span class="kw">pub </span>broadcast_blocks_capacity: usize,
+    <span class="doccomment">/// filled blocks sender(channel) capacity
+    </span><span class="kw">pub </span>broadcast_filled_blocks_capacity: usize,
 }
 
 <span class="doccomment">/// Protocol Configuration, read from toml user configuration file
