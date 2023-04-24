@@ -16,6 +16,7 @@ use massa_models::{
     operation::{OperationId, SecureShareOperation},
     prehash::{CapacityAllocator, PreHashSet},
     secure_share::{Id, SecureShare},
+    timeslots::get_block_slot_timestamp,
 };
 use massa_network_exports::{AskForBlocksInfo, BlockInfoReply, NetworkEvent};
 use massa_protocol_exports::ProtocolError;
@@ -238,9 +239,17 @@ impl ProtocolWorker {
         &self,
         header: &SecuredHeader,
     ) -> Result<(), ProtocolError> {
-        if header.content.current_version != self.mip_store.get_network_version_current() {
+        let slot = header.content.slot;
+        let ts = get_block_slot_timestamp(
+            self.config.thread_count,
+            self.config.t0,
+            self.config.genesis_timestamp,
+            slot,
+        )?;
+        let version = self.mip_store.get_network_version_active_at(ts);
+        if header.content.current_version != version {
             Err(ProtocolError::IncompatibleNetworkVersion {
-                current: self.mip_store.get_network_version_current(),
+                current: version,
                 received: header.content.current_version,
             })
         } else {
