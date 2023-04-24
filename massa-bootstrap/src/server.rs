@@ -471,7 +471,7 @@ fn run_bootstrap_session(
         deadline,
         mip_store,
     );
-    // TODO: handle the deadline management
+
     // This drop allows the server to accept new connections before having to complete the error notifications
     // account for this session being finished, as well as the root-instance
     massa_trace!("bootstrap.session.finished", {
@@ -517,6 +517,7 @@ pub fn stream_bootstrap_information(
     mut last_ops_step: StreamingStep<Slot>,
     mut last_consensus_step: StreamingStep<PreHashSet<BlockId>>,
     mut send_last_start_period: bool,
+    bs_deadline: &Instant,
     write_timeout: Duration,
 ) -> Result<(), BootstrapError> {
     loop {
@@ -657,6 +658,7 @@ pub fn stream_bootstrap_information(
         }
 
         // If the consensus streaming is finished (also meaning that consensus slot == final state slot) exit
+        // We don't bother with the bs-deadline, as this is the last step of the bootstrap process - defer to general write-timeout
         if final_state_global_step.finished()
             && final_state_changes_step.finished()
             && last_consensus_step.finished()
@@ -665,6 +667,9 @@ pub fn stream_bootstrap_information(
             break;
         }
 
+        let Some(write_timeout) = step_timeout_duration(bs_deadline, &write_timeout) else {
+            return Err(BootstrapError::Interupted("insufficient time left to provide next bootstrap part".to_string()));
+        };
         // At this point we know that consensus, final state or both are not finished
         server.send_msg(
             write_timeout,
@@ -685,6 +690,17 @@ pub fn stream_bootstrap_information(
     Ok(())
 }
 
+// derives the duration allowed for a step in the bootstrap process.
+// Returns None if the deadline for the entire bs-process has been reached
+fn step_timeout_duration(bs_deadline: &Instant, step_timeout: &Duration) -> Option<Duration> {
+    let now = Instant::now();
+    if now >= *bs_deadline {
+        return None;
+    }
+
+    let remaining = *bs_deadline - now;
+    Some(std::cmp::min(remaining, *step_timeout))
+}
 #[allow(clippy::too_many_arguments)]
 fn manage_bootstrap(
     bootstrap_config: &BootstrapConfig,
@@ -693,15 +709,27 @@ fn manage_bootstrap(
     version: Version,
     consensus_controller: Box<dyn ConsensusController>,
     network_command_sender: NetworkCommandSender,
-    _deadline: Instant,
+    deadline: Instant,
     mip_store: MipStore,
 ) -> Result<(), BootstrapError> {
     massa_trace!("bootstrap.lib.manage_bootstrap", {});
     let read_error_timeout: Duration = bootstrap_config.read_error_timeout.into();
+
+    // TODO: make network_command_sender non-async and remove both the variable and the method
     let rt_hack = massa_network_exports::make_runtime();
 
-    server.handshake_timeout(version, Some(bootstrap_config.read_timeout.into()))?;
+    let Some(hs_timeout) = step_timeout_duration(&deadline, &bootstrap_config.read_timeout.to_duration()) else {
+        return Err(BootstrapError::Interupted("insufficient time left to begin handshake".to_string()));
+    };
 
+    server.handshake_timeout(version, Some(hs_timeout))?;
+
+    // Check for error from client
+    if Instant::now() + read_error_timeout >= deadline {
+        return Err(BootstrapError::Interupted(
+            "insufficient time to check for error from client".to_string(),
+        ));
+    };
     match server.next_timeout(Some(read_error_timeout)) {
         Err(BootstrapError::TimedOut(_)) => {}
         Err(e) => return Err(e),
@@ -711,25 +739,33 @@ fn manage_bootstrap(
         Ok(msg) => return Err(BootstrapError::UnexpectedClientMessage(Box::new(msg))),
     };
 
-    let write_timeout: Duration = bootstrap_config.write_timeout.into();
-
-    // Sync clocks.
-    let server_time = MassaTime::now()?;
-
+    // Sync clocks
+    let send_time_timeout =
+        step_timeout_duration(&deadline, &bootstrap_config.write_timeout.to_duration());
+    let Some(next_step_timeout) = send_time_timeout else {
+        return Err(BootstrapError::Interupted("insufficient time left to send server time".to_string()));
+    };
     server.send_msg(
-        write_timeout,
+        next_step_timeout,
         BootstrapServerMessage::BootstrapTime {
-            server_time,
+            server_time: MassaTime::now()?,
             version,
         },
     )?;
 
     loop {
-        match server.next_timeout(Some(bootstrap_config.read_timeout.into())) {
+        let Some(read_timeout) = step_timeout_duration(&deadline, &bootstrap_config.read_timeout.to_duration()) else {
+            return Err(BootstrapError::Interupted("insufficient time left to process next message".to_string()));
+        };
+        match server.next_timeout(Some(read_timeout)) {
             Err(BootstrapError::TimedOut(_)) => break Ok(()),
             Err(e) => break Err(e),
             Ok(msg) => match msg {
                 BootstrapClientMessage::AskBootstrapPeers => {
+                    let Some(write_timeout) = step_timeout_duration(&deadline, &bootstrap_config.write_timeout.to_duration()) else {
+                        return Err(BootstrapError::Interupted("insufficient time left to respond te request for peers".to_string()));
+                    };
+
                     server.send_msg(
                         write_timeout,
                         BootstrapServerMessage::BootstrapPeers {
@@ -760,11 +796,16 @@ fn manage_bootstrap(
                         last_ops_step,
                         last_consensus_step,
                         send_last_start_period,
-                        write_timeout,
+                        &deadline,
+                        bootstrap_config.write_timeout.to_duration(),
                     )?;
                 }
                 BootstrapClientMessage::AskBootstrapMipStore => {
                     let vs = mip_store.0.read().to_owned();
+                    let Some(write_timeout) = step_timeout_duration(&deadline, &bootstrap_config.write_timeout.to_duration()) else {
+                        return Err(BootstrapError::Interupted("insufficient time left to respond te request for mip-store".to_string()));
+                    };
+
                     server.send_msg(
                         write_timeout,
                         BootstrapServerMessage::BootstrapMipStore { store: vs.clone() },
