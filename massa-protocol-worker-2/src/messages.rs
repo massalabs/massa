@@ -244,7 +244,7 @@ impl PeerNetMessagesHandler for MessagesHandler {
                         Some(format!("Failed to send block message to channel: {}", err)),
                     )
                 })
-        } else if id < endorsement_max_id {
+        } else if id < endorsement_max_id + block_max_id {
             self.sender_endorsements
                 .send((peer_id.clone(), id - block_max_id, data.to_vec()))
                 .map_err(|err| {
@@ -256,7 +256,7 @@ impl PeerNetMessagesHandler for MessagesHandler {
                         )),
                     )
                 })
-        } else if id < operation_max_id {
+        } else if id < operation_max_id + block_max_id + endorsement_max_id {
             self.sender_operations
                 .send((
                     peer_id.clone(),
@@ -272,7 +272,8 @@ impl PeerNetMessagesHandler for MessagesHandler {
                         )),
                     )
                 })
-        } else if id < peer_management_max_id {
+        } else if id < peer_management_max_id + block_max_id + endorsement_max_id + operation_max_id
+        {
             self.sender_peers
                 .send((
                     peer_id.clone(),

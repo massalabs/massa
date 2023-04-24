@@ -1,8 +1,4 @@
-use massa_models::{
-    block_header::SecuredHeader,
-    block_id::BlockId,
-    prehash::{PreHashMap, PreHashSet},
-};
+use massa_models::block_id::BlockId;
 use massa_storage::Storage;
 
 /// Commands that the block handler can process
@@ -17,11 +13,4 @@ pub enum BlockHandlerCommand {
     },
     /// A block, or it's header, amounted to an attempted attack.
     AttackBlockDetected(BlockId),
-    /// Wish list delta
-    WishlistDelta {
-        /// add to wish list
-        new: PreHashMap<BlockId, Option<SecuredHeader>>,
-        /// remove from wish list
-        remove: PreHashSet<BlockId>,
-    },
 }

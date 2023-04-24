@@ -19,7 +19,7 @@ mod retrieval;
 
 pub(crate) use messages::{EndorsementMessage, EndorsementMessageSerializer};
 
-use super::peer_handler::models::PeerMessageTuple;
+use super::peer_handler::models::{PeerManagementCmd, PeerMessageTuple};
 
 pub struct EndorsementHandler {
     pub endorsement_retrieval_thread: Option<JoinHandle<()>>,
@@ -36,10 +36,12 @@ impl EndorsementHandler {
         receiver: Receiver<PeerMessageTuple>,
         local_sender: Sender<EndorsementHandlerCommand>,
         local_receiver: Receiver<EndorsementHandlerCommand>,
+        sender_peer_cmd: Sender<PeerManagementCmd>,
     ) -> Self {
         let endorsement_retrieval_thread = start_retrieval_thread(
             receiver,
             local_sender,
+            sender_peer_cmd,
             cache.clone(),
             pool_controller,
             config.clone(),

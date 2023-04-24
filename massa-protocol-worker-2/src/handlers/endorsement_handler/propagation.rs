@@ -51,7 +51,7 @@ impl PropagationThread {
                             {
                                 let mut cache_write = self.cache.write();
                                 for endorsement_id in endorsements_ids.iter().copied() {
-                                    cache_write.insert_checked_endorsement(endorsement_id);
+                                    cache_write.checked_endorsements.put(endorsement_id, ());
                                 }
                                 // Add peers that potentially don't exist in cache
                                 {
