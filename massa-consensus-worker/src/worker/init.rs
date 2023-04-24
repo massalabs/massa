@@ -46,6 +46,7 @@ pub fn create_genesis_block(
             parents: Vec::new(),
             operation_merkle_root: Hash::compute_from(&Vec::new()),
             endorsements: Vec::new(),
+            denunciations: Vec::new(),
         },
         BlockHeaderSerializer::new(),
         keypair,

@@ -14,6 +14,8 @@
     - [GetBlocksBySlotsResponse](#massa-api-v1-GetBlocksBySlotsResponse)
     - [GetDatastoreEntriesRequest](#massa-api-v1-GetDatastoreEntriesRequest)
     - [GetDatastoreEntriesResponse](#massa-api-v1-GetDatastoreEntriesResponse)
+    - [GetLargestStakersRequest](#massa-api-v1-GetLargestStakersRequest)
+    - [GetLargestStakersResponse](#massa-api-v1-GetLargestStakersResponse)
     - [GetNextBlockBestParentsRequest](#massa-api-v1-GetNextBlockBestParentsRequest)
     - [GetNextBlockBestParentsResponse](#massa-api-v1-GetNextBlockBestParentsResponse)
     - [GetSelectorDrawsRequest](#massa-api-v1-GetSelectorDrawsRequest)
@@ -22,10 +24,16 @@
     - [GetTransactionsThroughputResponse](#massa-api-v1-GetTransactionsThroughputResponse)
     - [GetVersionRequest](#massa-api-v1-GetVersionRequest)
     - [GetVersionResponse](#massa-api-v1-GetVersionResponse)
+    - [LargestStakerEntry](#massa-api-v1-LargestStakerEntry)
+    - [LargestStakersContext](#massa-api-v1-LargestStakersContext)
+    - [LargestStakersFilter](#massa-api-v1-LargestStakersFilter)
+    - [LargestStakersQuery](#massa-api-v1-LargestStakersQuery)
     - [NewBlocksHeadersRequest](#massa-api-v1-NewBlocksHeadersRequest)
     - [NewBlocksHeadersResponse](#massa-api-v1-NewBlocksHeadersResponse)
     - [NewBlocksRequest](#massa-api-v1-NewBlocksRequest)
     - [NewBlocksResponse](#massa-api-v1-NewBlocksResponse)
+    - [NewEndorsementsRequest](#massa-api-v1-NewEndorsementsRequest)
+    - [NewEndorsementsResponse](#massa-api-v1-NewEndorsementsResponse)
     - [NewFilledBlocksRequest](#massa-api-v1-NewFilledBlocksRequest)
     - [NewFilledBlocksResponse](#massa-api-v1-NewFilledBlocksResponse)
     - [NewOperationsFilter](#massa-api-v1-NewOperationsFilter)
@@ -48,6 +56,36 @@
     - [OpType](#massa-api-v1-OpType)
   
     - [MassaService](#massa-api-v1-MassaService)
+  
+- [block.proto](#block-proto)
+    - [Block](#massa-api-v1-Block)
+    - [BlockHeader](#massa-api-v1-BlockHeader)
+    - [FilledBlock](#massa-api-v1-FilledBlock)
+    - [FilledOperationTuple](#massa-api-v1-FilledOperationTuple)
+    - [SignedBlock](#massa-api-v1-SignedBlock)
+    - [SignedBlockHeader](#massa-api-v1-SignedBlockHeader)
+  
+- [common.proto](#common-proto)
+    - [BytesMapFieldEntry](#massa-api-v1-BytesMapFieldEntry)
+    - [SecureShare](#massa-api-v1-SecureShare)
+  
+- [endorsement.proto](#endorsement-proto)
+    - [Endorsement](#massa-api-v1-Endorsement)
+    - [SignedEndorsement](#massa-api-v1-SignedEndorsement)
+  
+- [operation.proto](#operation-proto)
+    - [CallSC](#massa-api-v1-CallSC)
+    - [ExecuteSC](#massa-api-v1-ExecuteSC)
+    - [Operation](#massa-api-v1-Operation)
+    - [OperationType](#massa-api-v1-OperationType)
+    - [RollBuy](#massa-api-v1-RollBuy)
+    - [RollSell](#massa-api-v1-RollSell)
+    - [SignedOperation](#massa-api-v1-SignedOperation)
+    - [Transaction](#massa-api-v1-Transaction)
+  
+- [slot.proto](#slot-proto)
+    - [IndexedSlot](#massa-api-v1-IndexedSlot)
+    - [Slot](#massa-api-v1-Slot)
   
 - [Scalar Value Types](#scalar-value-types)
 
@@ -217,6 +255,39 @@ GetDatastoreEntriesResponse holds response from GetDatastoreEntries
 
 
 
+<a name="massa-api-v1-GetLargestStakersRequest"></a>
+
+### GetLargestStakersRequest
+GetLargestStakersRequest holds request from GetLargestStakers
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| id | [string](#string) |  | Request id |
+| query | [LargestStakersQuery](#massa-api-v1-LargestStakersQuery) |  | Query |
+
+
+
+
+
+
+<a name="massa-api-v1-GetLargestStakersResponse"></a>
+
+### GetLargestStakersResponse
+GetLargestStakersResponse holds response from GetLargestStakers
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| id | [string](#string) |  | Request id |
+| context | [LargestStakersContext](#massa-api-v1-LargestStakersContext) |  | Context |
+| stakers | [LargestStakerEntry](#massa-api-v1-LargestStakerEntry) | repeated | Largest stakers |
+
+
+
+
+
+
 <a name="massa-api-v1-GetNextBlockBestParentsRequest"></a>
 
 ### GetNextBlockBestParentsRequest
@@ -342,6 +413,70 @@ GetVersionResponse holds response from GetVersion
 
 
 
+<a name="massa-api-v1-LargestStakerEntry"></a>
+
+### LargestStakerEntry
+LargestStakerEntry
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| address | [string](#string) |  | Address |
+| rolls | [fixed64](#fixed64) |  | Rolls |
+
+
+
+
+
+
+<a name="massa-api-v1-LargestStakersContext"></a>
+
+### LargestStakersContext
+LargestStakers context
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| slot | [Slot](#massa-api-v1-Slot) |  | Slot |
+
+
+
+
+
+
+<a name="massa-api-v1-LargestStakersFilter"></a>
+
+### LargestStakersFilter
+LargestStakers Filter
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| min_rolls | [fixed64](#fixed64) | optional | Minimum rolls (Optional) |
+| max_rolls | [fixed64](#fixed64) | optional | Maximum rolls (Optional) |
+
+
+
+
+
+
+<a name="massa-api-v1-LargestStakersQuery"></a>
+
+### LargestStakersQuery
+LargestStakers Query
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| offset | [fixed64](#fixed64) |  | Starting offset for the list of stakers. Defaults to 1 |
+| limit | [fixed64](#fixed64) |  | Limits the number of stakers to return. Defaults to 50 |
+| filter | [LargestStakersFilter](#massa-api-v1-LargestStakersFilter) |  | Filter |
+
+
+
+
+
+
 <a name="massa-api-v1-NewBlocksHeadersRequest"></a>
 
 ### NewBlocksHeadersRequest
@@ -398,6 +533,37 @@ NewBlocksResponse holds response from NewBlocks
 | ----- | ---- | ----- | ----------- |
 | id | [string](#string) |  | Request id |
 | block | [SignedBlock](#massa-api-v1-SignedBlock) |  | Signed block |
+
+
+
+
+
+
+<a name="massa-api-v1-NewEndorsementsRequest"></a>
+
+### NewEndorsementsRequest
+NewEndorsementsRequest holds request for NewEndorsements
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| id | [string](#string) |  | Request id |
+
+
+
+
+
+
+<a name="massa-api-v1-NewEndorsementsResponse"></a>
+
+### NewEndorsementsResponse
+NewEndorsementsResponse holds response from NewEndorsements
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| id | [string](#string) |  | Request id |
+| endorsement | [SignedEndorsement](#massa-api-v1-SignedEndorsement) |  | Signed endorsement |
 
 
 
@@ -505,7 +671,7 @@ Holds Operation response
 
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
-| operations_ids | [string](#string) | repeated | Operation(s) id(s) |
+| operations_ids | [string](#string) | repeated | Operations ids |
 
 
 
@@ -667,7 +833,7 @@ TransactionsThroughputRequest holds request for TransactionsThroughput
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | id | [string](#string) |  | Request id |
-| interval | [fixed64](#fixed64) | optional | Optional timer interval in sec. Defaults to 10s |
+| interval | [fixed64](#fixed64) | optional | Timer interval in seconds (Optional). Defaults to 10s |
 
 
 
@@ -721,18 +887,445 @@ Massa gRPC service
 | ----------- | ------------ | ------------- | ------------|
 | GetBlocksBySlots | [GetBlocksBySlotsRequest](#massa-api-v1-GetBlocksBySlotsRequest) | [GetBlocksBySlotsResponse](#massa-api-v1-GetBlocksBySlotsResponse) | Get blocks by slots |
 | GetDatastoreEntries | [GetDatastoreEntriesRequest](#massa-api-v1-GetDatastoreEntriesRequest) | [GetDatastoreEntriesResponse](#massa-api-v1-GetDatastoreEntriesResponse) | Get datastore entries |
+| GetLargestStakers | [GetLargestStakersRequest](#massa-api-v1-GetLargestStakersRequest) | [GetLargestStakersResponse](#massa-api-v1-GetLargestStakersResponse) | Get largest stakers |
 | GetNextBlockBestParents | [GetNextBlockBestParentsRequest](#massa-api-v1-GetNextBlockBestParentsRequest) | [GetNextBlockBestParentsResponse](#massa-api-v1-GetNextBlockBestParentsResponse) | Get next block best parents |
 | GetSelectorDraws | [GetSelectorDrawsRequest](#massa-api-v1-GetSelectorDrawsRequest) | [GetSelectorDrawsResponse](#massa-api-v1-GetSelectorDrawsResponse) | Get selector draws |
 | GetTransactionsThroughput | [GetTransactionsThroughputRequest](#massa-api-v1-GetTransactionsThroughputRequest) | [GetTransactionsThroughputResponse](#massa-api-v1-GetTransactionsThroughputResponse) | Get transactions throughput |
 | GetVersion | [GetVersionRequest](#massa-api-v1-GetVersionRequest) | [GetVersionResponse](#massa-api-v1-GetVersionResponse) | Get node version |
 | NewBlocks | [NewBlocksRequest](#massa-api-v1-NewBlocksRequest) stream | [NewBlocksResponse](#massa-api-v1-NewBlocksResponse) stream | New received and produced blocks |
 | NewBlocksHeaders | [NewBlocksHeadersRequest](#massa-api-v1-NewBlocksHeadersRequest) stream | [NewBlocksHeadersResponse](#massa-api-v1-NewBlocksHeadersResponse) stream | New received and produced blocks headers |
+| NewEndorsements | [NewEndorsementsRequest](#massa-api-v1-NewEndorsementsRequest) stream | [NewEndorsementsResponse](#massa-api-v1-NewEndorsementsResponse) stream | New received and produced endorsements |
 | NewFilledBlocks | [NewFilledBlocksRequest](#massa-api-v1-NewFilledBlocksRequest) stream | [NewFilledBlocksResponse](#massa-api-v1-NewFilledBlocksResponse) stream | New received and produced blocks with operations |
 | NewOperations | [NewOperationsRequest](#massa-api-v1-NewOperationsRequest) stream | [NewOperationsResponse](#massa-api-v1-NewOperationsResponse) stream | New received and produced perations |
 | SendBlocks | [SendBlocksRequest](#massa-api-v1-SendBlocksRequest) stream | [SendBlocksResponse](#massa-api-v1-SendBlocksResponse) stream | Send blocks |
 | SendEndorsements | [SendEndorsementsRequest](#massa-api-v1-SendEndorsementsRequest) stream | [SendEndorsementsResponse](#massa-api-v1-SendEndorsementsResponse) stream | Send endorsements |
 | SendOperations | [SendOperationsRequest](#massa-api-v1-SendOperationsRequest) stream | [SendOperationsResponse](#massa-api-v1-SendOperationsResponse) stream | Send operations |
 | TransactionsThroughput | [TransactionsThroughputRequest](#massa-api-v1-TransactionsThroughputRequest) stream | [TransactionsThroughputResponse](#massa-api-v1-TransactionsThroughputResponse) stream | Transactions throughput per second |
+
+ 
+
+
+
+<a name="block-proto"></a>
+<p align="right"><a href="#top">Top</a></p>
+
+## block.proto
+
+
+
+<a name="massa-api-v1-Block"></a>
+
+### Block
+Block
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| header | [SignedBlockHeader](#massa-api-v1-SignedBlockHeader) |  | Signed header |
+| operations | [string](#string) | repeated | Operations ids |
+
+
+
+
+
+
+<a name="massa-api-v1-BlockHeader"></a>
+
+### BlockHeader
+Block header
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| slot | [Slot](#massa-api-v1-Slot) |  | Slot |
+| parents | [string](#string) | repeated | parents |
+| operation_merkle_root | [string](#string) |  | All operations hash |
+| endorsements | [SignedEndorsement](#massa-api-v1-SignedEndorsement) | repeated | Signed endorsements |
+
+
+
+
+
+
+<a name="massa-api-v1-FilledBlock"></a>
+
+### FilledBlock
+Filled block
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| header | [SignedBlockHeader](#massa-api-v1-SignedBlockHeader) |  | Signed header |
+| operations | [FilledOperationTuple](#massa-api-v1-FilledOperationTuple) | repeated | Operations |
+
+
+
+
+
+
+<a name="massa-api-v1-FilledOperationTuple"></a>
+
+### FilledOperationTuple
+Filled Operation Tuple
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| operation_id | [string](#string) |  | Operation id |
+| operation | [SignedOperation](#massa-api-v1-SignedOperation) |  | Signed operation |
+
+
+
+
+
+
+<a name="massa-api-v1-SignedBlock"></a>
+
+### SignedBlock
+Signed block
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| content | [Block](#massa-api-v1-Block) |  | Block |
+| signature | [string](#string) |  | A cryptographically generated value using `serialized_data` and a public key. |
+| content_creator_pub_key | [string](#string) |  | The public-key component used in the generation of the signature |
+| content_creator_address | [string](#string) |  | Derived from the same public key used to generate the signature |
+| id | [string](#string) |  | A secure hash of the data. See also [massa_hash::Hash] |
+
+
+
+
+
+
+<a name="massa-api-v1-SignedBlockHeader"></a>
+
+### SignedBlockHeader
+Signed block header
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| content | [BlockHeader](#massa-api-v1-BlockHeader) |  | BlockHeader |
+| signature | [string](#string) |  | A cryptographically generated value using `serialized_data` and a public key. |
+| content_creator_pub_key | [string](#string) |  | The public-key component used in the generation of the signature |
+| content_creator_address | [string](#string) |  | Derived from the same public key used to generate the signature |
+| id | [string](#string) |  | A secure hash of the data. See also [massa_hash::Hash] |
+
+
+
+
+
+ 
+
+ 
+
+ 
+
+ 
+
+
+
+<a name="common-proto"></a>
+<p align="right"><a href="#top">Top</a></p>
+
+## common.proto
+
+
+
+<a name="massa-api-v1-BytesMapFieldEntry"></a>
+
+### BytesMapFieldEntry
+BytesMapFieldEntry
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| key | [bytes](#bytes) |  | bytes key |
+| value | [bytes](#bytes) |  | bytes key |
+
+
+
+
+
+
+<a name="massa-api-v1-SecureShare"></a>
+
+### SecureShare
+Packages a type such that it can be securely sent and received in a trust-free network
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| serialized_data | [bytes](#bytes) |  | Content in sharable, deserializable form. Is used in the secure verification protocols |
+| signature | [string](#string) |  | A cryptographically generated value using `serialized_data` and a public key. |
+| content_creator_pub_key | [string](#string) |  | The public-key component used in the generation of the signature |
+| content_creator_address | [string](#string) |  | Derived from the same public key used to generate the signature |
+| id | [string](#string) |  | A secure hash of the data. See also [massa_hash::Hash] |
+
+
+
+
+
+ 
+
+ 
+
+ 
+
+ 
+
+
+
+<a name="endorsement-proto"></a>
+<p align="right"><a href="#top">Top</a></p>
+
+## endorsement.proto
+
+
+
+<a name="massa-api-v1-Endorsement"></a>
+
+### Endorsement
+An endorsement, as sent in the network
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| slot | [Slot](#massa-api-v1-Slot) |  | Slot in which the endorsement can be included |
+| index | [fixed32](#fixed32) |  | Endorsement index inside the including block |
+| endorsed_block | [string](#string) |  | Hash of endorsed block This is the parent in thread `self.slot.thread` of the block in which the endorsement is included |
+
+
+
+
+
+
+<a name="massa-api-v1-SignedEndorsement"></a>
+
+### SignedEndorsement
+Signed endorsement
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| content | [Endorsement](#massa-api-v1-Endorsement) |  | Endorsement |
+| signature | [string](#string) |  | A cryptographically generated value using `serialized_data` and a public key. |
+| content_creator_pub_key | [string](#string) |  | The public-key component used in the generation of the signature |
+| content_creator_address | [string](#string) |  | Derived from the same public key used to generate the signature |
+| id | [string](#string) |  | A secure hash of the data. See also [massa_hash::Hash] |
+
+
+
+
+
+ 
+
+ 
+
+ 
+
+ 
+
+
+
+<a name="operation-proto"></a>
+<p align="right"><a href="#top">Top</a></p>
+
+## operation.proto
+
+
+
+<a name="massa-api-v1-CallSC"></a>
+
+### CallSC
+Calls an exported function from a stored smart contract
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| target_addr | [string](#string) |  | Target smart contract address |
+| target_func | [string](#string) |  | Target function name. No function is called if empty |
+| param | [bytes](#bytes) |  | Parameter to pass to the target function |
+| max_gas | [fixed64](#fixed64) |  | The maximum amount of gas that the execution of the contract is allowed to cost |
+| coins | [fixed64](#fixed64) |  | Extra coins that are spent from the caller&#39;s balance and transferred to the target |
+
+
+
+
+
+
+<a name="massa-api-v1-ExecuteSC"></a>
+
+### ExecuteSC
+Execute a smart contract
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| data | [bytes](#bytes) |  | Smart contract bytecode. |
+| max_coins | [fixed64](#fixed64) |  | The maximum of coins that could be spent by the operation sender |
+| max_gas | [fixed64](#fixed64) |  | The maximum amount of gas that the execution of the contract is allowed to cost |
+| datastore | [BytesMapFieldEntry](#massa-api-v1-BytesMapFieldEntry) | repeated | A key-value store associating a hash to arbitrary bytes |
+
+
+
+
+
+
+<a name="massa-api-v1-Operation"></a>
+
+### Operation
+The operation as sent in the network
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| fee | [fixed64](#fixed64) |  | The fee they have decided for this operation |
+| expire_period | [fixed64](#fixed64) |  | After `expire_period` slot the operation won&#39;t be included in a block |
+| op | [OperationType](#massa-api-v1-OperationType) |  | The type specific operation part |
+
+
+
+
+
+
+<a name="massa-api-v1-OperationType"></a>
+
+### OperationType
+Type specific operation content
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| transaction | [Transaction](#massa-api-v1-Transaction) |  | Transfer coins from sender to recipient |
+| roll_buy | [RollBuy](#massa-api-v1-RollBuy) |  | The sender buys `roll_count` rolls. Roll price is defined in configuration |
+| roll_sell | [RollSell](#massa-api-v1-RollSell) |  | The sender sells `roll_count` rolls. Roll price is defined in configuration |
+| execut_sc | [ExecuteSC](#massa-api-v1-ExecuteSC) |  | Execute a smart contract |
+| call_sc | [CallSC](#massa-api-v1-CallSC) |  | Calls an exported function from a stored smart contract |
+
+
+
+
+
+
+<a name="massa-api-v1-RollBuy"></a>
+
+### RollBuy
+The sender buys `roll_count` rolls. Roll price is defined in configuration
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| roll_count | [fixed64](#fixed64) |  | Roll count |
+
+
+
+
+
+
+<a name="massa-api-v1-RollSell"></a>
+
+### RollSell
+The sender sells `roll_count` rolls. Roll price is defined in configuration
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| roll_count | [fixed64](#fixed64) |  | Roll count |
+
+
+
+
+
+
+<a name="massa-api-v1-SignedOperation"></a>
+
+### SignedOperation
+Signed operation
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| content | [Operation](#massa-api-v1-Operation) |  | Operation |
+| signature | [string](#string) |  | A cryptographically generated value using `serialized_data` and a public key. |
+| content_creator_pub_key | [string](#string) |  | The public-key component used in the generation of the signature |
+| content_creator_address | [string](#string) |  | Derived from the same public key used to generate the signature |
+| id | [string](#string) |  | A secure hash of the data. See also [massa_hash::Hash] |
+
+
+
+
+
+
+<a name="massa-api-v1-Transaction"></a>
+
+### Transaction
+Transfer coins from sender to recipient
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| recipient_address | [string](#string) |  | Recipient address |
+| amount | [fixed64](#fixed64) |  | Amount |
+
+
+
+
+
+ 
+
+ 
+
+ 
+
+ 
+
+
+
+<a name="slot-proto"></a>
+<p align="right"><a href="#top">Top</a></p>
+
+## slot.proto
+
+
+
+<a name="massa-api-v1-IndexedSlot"></a>
+
+### IndexedSlot
+When an address is drawn to create an endorsement it is selected for a specific index
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| slot | [Slot](#massa-api-v1-Slot) |  | Slot |
+| index | [fixed64](#fixed64) |  | Endorsement index in the slot |
+
+
+
+
+
+
+<a name="massa-api-v1-Slot"></a>
+
+### Slot
+A point in time where a block is expected
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| period | [fixed64](#fixed64) |  | Period |
+| thread | [fixed32](#fixed32) |  | Thread |
+
+
+
+
+
+ 
+
+ 
+
+ 
 
  
 

@@ -445,7 +445,7 @@ impl RpcClientV2 {
                 .await
         } else {
             Err(JsonRpseeError::Custom(
-                "error, no Http client instance found".to_owned(),
+                "no Http client instance found".to_owned(),
             ))
         }
     }
@@ -458,7 +458,7 @@ impl RpcClientV2 {
                 .await
         } else {
             Err(JsonRpseeError::Custom(
-                "error, no Http client instance found".to_owned(),
+                "no Http client instance found".to_owned(),
             ))
         }
     }
@@ -469,7 +469,7 @@ impl RpcClientV2 {
             client.request("get_version", rpc_params![]).await
         } else {
             Err(JsonRpseeError::Custom(
-                "error, no Http client instance found".to_owned(),
+                "no Http client instance found".to_owned(),
             ))
         }
     }
@@ -489,7 +489,7 @@ impl RpcClientV2 {
         } else {
             Err(CallError::Custom(ErrorObject::owned(
                 -32080,
-                "error, no WebSocket client instance found".to_owned(),
+                "no WebSocket client instance found".to_owned(),
                 None::<()>,
             ))
             .into())
@@ -511,7 +511,7 @@ impl RpcClientV2 {
         } else {
             Err(CallError::Custom(ErrorObject::owned(
                 -32080,
-                "error, no WebSocket client instance found".to_owned(),
+                "no WebSocket client instance found".to_owned(),
                 None::<()>,
             ))
             .into())
@@ -533,7 +533,7 @@ impl RpcClientV2 {
         } else {
             Err(CallError::Custom(ErrorObject::owned(
                 -32080,
-                "error, no WebSocket client instance found".to_owned(),
+                "no WebSocket client instance found".to_owned(),
                 None::<()>,
             ))
             .into())
@@ -555,7 +555,7 @@ impl RpcClientV2 {
         } else {
             Err(CallError::Custom(ErrorObject::owned(
                 -32080,
-                "error, no WebSocket client instance found".to_owned(),
+                "no WebSocket client instance found".to_owned(),
                 None::<()>,
             ))
             .into())

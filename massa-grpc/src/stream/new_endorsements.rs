@@ -11,46 +11,46 @@ use tonic::codegen::futures_core;
 use tonic::{Request, Streaming};
 use tracing::log::{error, warn};
 
-/// Type declaration for NewBlocks
-pub type NewBlocksStreamType = Pin<
+/// Type declaration for NewEndorsements
+pub type NewEndorsementsStreamType = Pin<
     Box<
-        dyn futures_core::Stream<Item = Result<grpc::NewBlocksResponse, tonic::Status>>
+        dyn futures_core::Stream<Item = Result<grpc::NewEndorsementsResponse, tonic::Status>>
             + Send
             + 'static,
     >,
 >;
 
-/// Creates a new stream of new produced and received blocks
-pub(crate) async fn new_blocks(
+/// Creates a new stream of new produced and received endorsements
+pub(crate) async fn new_endorsements(
     grpc: &MassaGrpc,
-    request: Request<Streaming<grpc::NewBlocksRequest>>,
-) -> Result<NewBlocksStreamType, GrpcError> {
+    request: Request<Streaming<grpc::NewEndorsementsRequest>>,
+) -> Result<NewEndorsementsStreamType, GrpcError> {
     // Create a channel to handle communication with the client
     let (tx, rx) = tokio::sync::mpsc::channel(grpc.grpc_config.max_channel_size);
     // Get the inner stream from the request
     let mut in_stream = request.into_inner();
-    // Subscribe to the new blocks channel
-    let mut subscriber = grpc.consensus_channels.block_sender.subscribe();
+    // Subscribe to the new endorsements channel
+    let mut subscriber = grpc.pool_channels.endorsement_sender.subscribe();
 
     tokio::spawn(async move {
         // Initialize the request_id string
         let mut request_id = String::new();
         loop {
             select! {
-                // Receive a new block from the subscriber
+                // Receive a new endorsement from the subscriber
                 event = subscriber.recv() => {
                     match event {
-                        Ok(massa_block) => {
-                            // Send the new block through the channel
-                            if let Err(e) = tx.send(Ok(grpc::NewBlocksResponse {
+                        Ok(massa_endorsement) => {
+                            // Send the new endorsement through the channel
+                            if let Err(e) = tx.send(Ok(grpc::NewEndorsementsResponse {
                                     id: request_id.clone(),
-                                    block: Some(massa_block.into())
+                                    endorsement: Some(massa_endorsement.into())
                             })).await {
-                                error!("failed to send new block : {}", e);
+                                error!("failed to send new endorsement : {}", e);
                                 break;
                             }
                         },
-                        Err(e) => {error!("error on receive new block : {}", e)}
+                        Err(e) => {error!("error on receive new endorsement : {}", e)}
                     }
                 },
                 // Receive a new message from the in_stream
@@ -74,7 +74,7 @@ pub(crate) async fn new_blocks(
                                     error!("{}", err);
                                     // Send the error response back to the client
                                     if let Err(e) = tx.send(Err(err)).await {
-                                        error!("failed to send back new_blocks error response: {}", e);
+                                        error!("failed to send back new_endorsements error response: {}", e);
                                         break;
                                     }
                                 }
@@ -93,6 +93,6 @@ pub(crate) async fn new_blocks(
     // Create a new stream from the received channel.
     let out_stream = tokio_stream::wrappers::ReceiverStream::new(rx);
 
-    // Return the new stream of blocks.
-    Ok(Box::pin(out_stream) as NewBlocksStreamType)
+    // Return the new stream of endorsements.
+    Ok(Box::pin(out_stream) as NewEndorsementsStreamType)
 }

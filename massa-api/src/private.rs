@@ -28,7 +28,7 @@ use massa_models::{
     address::Address, block::Block, block_id::BlockId, endorsement::EndorsementId,
     execution::EventFilter, operation::OperationId, slot::Slot,
 };
-use massa_network_exports::{NetworkCommandSender, NetworkCommandSenderTrait};
+use massa_network_exports::NetworkCommandSender;
 use massa_signature::KeyPair;
 use massa_wallet::Wallet;
 

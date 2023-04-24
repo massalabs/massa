@@ -13,11 +13,13 @@ use massa_models::version::{Version, VersionDeserializer, VersionSerializer};
 use massa_serialization::{DeserializeError, Deserializer, Serializer};
 use massa_signature::KeyPair;
 use massa_time::MassaTime;
-use std::convert::TryInto;
-use std::io::{ErrorKind, Read, Write};
-use std::net::{SocketAddr, TcpStream};
-use std::thread;
-use std::time::Duration;
+use std::{
+    convert::TryInto,
+    io::{ErrorKind, Read, Write},
+    net::{SocketAddr, TcpStream},
+    thread,
+    time::Duration,
+};
 use tracing::error;
 
 /// Bootstrap server binder
@@ -29,6 +31,7 @@ pub struct BootstrapServerBinder {
     randomness_size_bytes: usize,
     size_field_len: usize,
     local_keypair: KeyPair,
+    // TODO: Reintroduce bandwidth limits
     duplex: TcpStream,
     prev_message: Option<Hash>,
     version_serializer: VersionSerializer,
@@ -46,6 +49,7 @@ impl BootstrapServerBinder {
     #[allow(clippy::too_many_arguments)]
     pub fn new(duplex: TcpStream, local_keypair: KeyPair, cfg: BootstrapSrvBindCfg) -> Self {
         let BootstrapSrvBindCfg {
+            // TODO: Reintroduce bandwidth limits
             max_bytes_read_write: _limit,
             max_bootstrap_message_size,
             thread_count,
@@ -71,7 +75,6 @@ impl BootstrapServerBinder {
         }
     }
     /// Performs a handshake. Should be called after connection
-    /// NOT cancel-safe
     /// MUST always be followed by a send of the `BootstrapMessage::BootstrapTime`
     pub fn handshake_timeout(
         &mut self,
@@ -165,7 +168,8 @@ impl BootstrapServerBinder {
         })
     }
 
-    /// Writes the next message. NOT cancel-safe
+    // TODO: use a proper (de)serializer: https://github.com/massalabs/massa/pull/3745#discussion_r1169733161
+    /// Writes the next message.
     pub fn send_timeout(
         &mut self,
         msg: BootstrapServerMessage,
@@ -212,34 +216,45 @@ impl BootstrapServerBinder {
         Ok(())
     }
 
-    #[allow(dead_code)]
-    /// Read a message sent from the client (not signed). NOT cancel-safe
+    // TODO: use a proper (de)serializer: https://github.com/massalabs/massa/pull/3745#discussion_r1169733161
+    /// Read a message sent from the client (not signed).
     pub fn next_timeout(
         &mut self,
         duration: Option<Duration>,
     ) -> Result<BootstrapClientMessage, BootstrapError> {
         self.duplex.set_read_timeout(duration)?;
-        // read prev hash
+
+        let peek_len = HASH_SIZE_BYTES + self.size_field_len;
+        let mut peek_buf = vec![0; peek_len];
+        while self.duplex.peek(&mut peek_buf)? < peek_len {
+            // TODO: backoff spin of some sort
+        }
+        // construct prev-hash from peek
         let received_prev_hash = {
             if self.prev_message.is_some() {
-                let mut hash_bytes = [0u8; HASH_SIZE_BYTES];
-                self.duplex.read_exact(&mut hash_bytes)?;
-                Some(Hash::from_bytes(&hash_bytes))
+                Some(Hash::from_bytes(
+                    peek_buf[..HASH_SIZE_BYTES]
+                        .try_into()
+                        .expect("bad slice logic"),
+                ))
             } else {
                 None
             }
         };
 
-        // read message length
+        // construct msg-len from peek
         let msg_len = {
-            let mut msg_len_bytes = vec![0u8; self.size_field_len];
-            self.duplex.read_exact(&mut msg_len_bytes[..])?;
-            u32::from_be_bytes_min(&msg_len_bytes, self.max_bootstrap_message_size)?.0
+            u32::from_be_bytes_min(
+                &peek_buf[HASH_SIZE_BYTES..],
+                self.max_bootstrap_message_size,
+            )?
+            .0
         };
 
-        // read message
-        let mut msg_bytes = vec![0u8; msg_len as usize];
+        // read message, and discard the peek
+        let mut msg_bytes = vec![0u8; peek_len + (msg_len as usize)];
         self.duplex.read_exact(&mut msg_bytes)?;
+        let msg_bytes = &msg_bytes[peek_len..];
 
         // check previous hash
         if received_prev_hash != self.prev_message {
@@ -254,11 +269,11 @@ impl BootstrapServerBinder {
             let mut hashed_bytes =
                 Vec::with_capacity(HASH_SIZE_BYTES.saturating_add(msg_bytes.len()));
             hashed_bytes.extend(prev_hash.to_bytes());
-            hashed_bytes.extend(&msg_bytes);
+            hashed_bytes.extend(msg_bytes);
             self.prev_message = Some(Hash::compute_from(&hashed_bytes));
         } else {
             // no previous message: hash message only
-            self.prev_message = Some(Hash::compute_from(&msg_bytes));
+            self.prev_message = Some(Hash::compute_from(msg_bytes));
         }
 
         // deserialize message
@@ -267,7 +282,7 @@ impl BootstrapServerBinder {
             self.max_datastore_key_length,
             self.max_consensus_block_ids,
         )
-        .deserialize::<DeserializeError>(&msg_bytes)
+        .deserialize::<DeserializeError>(msg_bytes)
         .map_err(|err| BootstrapError::GeneralError(format!("{}", err)))?;
 
         Ok(msg)

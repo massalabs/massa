@@ -8,6 +8,7 @@ To check if you have `protoc` installed on your system, you can run the followin
 
 ```
 protoc --version
+libprotoc 3.21.12 # Ensure compiler version is 3.15+
 ```
 
 If you see a version number printed out, then you have `protoc` installed. If not, you will need to download and install it.
@@ -21,7 +22,7 @@ To install `protoc` on macOS using Homebrew, run the following command:
 
 ```
 brew install protobuf
-protoc --version  # Ensure compiler version is 3+
+protoc --version  # Ensure compiler version is 3.15+
 ```
 
 ### Linux
@@ -32,7 +33,7 @@ Alternatively, you can use your distribution's package manager to install `proto
 
 ```
 sudo apt install protobuf-compiler
-protoc --version  # Ensure compiler version is 3+
+protoc --version  # Ensure compiler version is 3.15+
 ```
 
 ### Windows
@@ -41,9 +42,7 @@ To install `protoc` on Windows, you can download the binary file for your archit
 
 After installing `protoc`, you should be able to compile proto files using the appropriate language-specific plugin (e.g. `protoc --go_out=./ path/to/my_proto_file.proto`).
 
-
 After installing `protoc`, please verify that the `protoc` command is accessible by running `protoc --version` again and ensure compiler version is 3+.
-
 
 To keep the documentation synchronised with our proto files, you must install `protoc-gen-doc`. You can use your package manager or download the binary from the official [GitHub repository releases](https://github.com/pseudomuto/protoc-gen-doc/releases) and add it to your system's `PATH`
 
@@ -56,38 +55,16 @@ The project is set up to automatically compile proto files during the build proc
 
 When the project is built, `build.rs` is executed and it uses the `tonic-build` crate to generate Rust code from the proto files. The generated Rust code could be found in [massa-proto/src/](../massa-proto/src/).
 
-By default, `build-tonic` feature is disabled, you can update the generated code from protobuf files by running: 
+By default, `build-tonic` feature is disabled, you can update the generated code and documentation from protobuf files by running: 
 ```bash
 cargo build --features massa_proto/build-tonic
-```
-
-Generate html documentation:
-```bash
-protoc \
-  --proto_path=/path/to/workspace/massa-proto/proto/massa/api/v1 \
-  --proto_path=/path/to/workspace/massa-proto/proto/third-party \
-  --doc_out=/path/to/workspace/massa-proto/doc/ \
-  --doc_opt=html,index.html \
-  --descriptor_set_out=/path/to/workspace/massa-proto/src/api.bin \
-  /path/to/workspace/massa-proto/proto/**/*.proto
-```
-
-Generate markdown documentation:
-```bash
-protoc \
-  --proto_path=/path/to/workspace/massa-proto/proto/massa/api/v1 \
-  --proto_path=/path/to/workspace/massa-proto/proto/third-party \
-  --doc_out=/path/to/workspace/massa-proto/doc/ \
-  --doc_opt=markdown,api.md \
-  --descriptor_set_out=/path/to/workspace/massa-proto/src/api.bin \
-  /path/to/workspace/massa-proto/proto/**/*.proto
 ```
 
 Before launching your Massa node, please add this following configuration to your `config.toml` file:
 
 ```toml
 [api]
-    # whether to broadcast for blocks, endorsement and operations
+    # whether to broadcast for blocks, endorsements and operations
     enable_broadcast = true
 [grpc]
     # whether to enable gRPC
@@ -117,10 +94,10 @@ VSCode integration
             "--proto_path=${workspaceRoot}/massa-proto/proto/massa/api/v1",  // Specifies the directory to search for imported protobuf files.
             "--proto_path=${workspaceRoot}/massa-proto/proto/third-party",  // Specifies the directory to search for imported third-party protobuf files.
             // "--java_out=${workspaceRoot}/target/",  // Generates Java code from the protobuf files.
-            "--doc_out=${workspaceRoot}/massa-proto/doc/",  // Generates documentation in HTML/markdown format from the protobuf files.
-            "--doc_opt=html,index.html",  // Specifies the options for generating the HTML documentation.
+            // "--doc_out=${workspaceRoot}/massa-proto/doc/",  // Generates documentation in HTML/markdown format from the protobuf files.
+            // "--doc_opt=html,index.html",  // Specifies the options for generating the HTML documentation.
             // "--doc_opt=markdown,docs.md",  // Specifies the options for generating the markdown documentation.
-            "--descriptor_set_out=${workspaceRoot}/massa-proto/src/api.bin"  // Generates a binary descriptor set for the protobuf files which is used for server reflection.
+            // "--descriptor_set_out=${workspaceRoot}/massa-proto/src/api.bin"  // Generates a binary descriptor set for the protobuf files which is used for server reflection.
         ]
     }
 }
@@ -129,3 +106,35 @@ VSCode integration
 
 3- Add the snippet above to `.vscode/settings.json`.
 
+
+Protoc examples
+---------------
+
+Generate html documentation:
+```bash
+protoc \
+  ./massa-proto/proto/massa/**/*.proto \
+  --proto_path=./massa-proto/proto/massa/api/v1 \
+  --proto_path=./massa-proto/proto/third-party \
+  --doc_out=./massa-proto/doc/ \
+  --doc_opt=html,index.html
+```
+
+Generate markdown documentation:
+```bash
+protoc \
+  ./massa-proto/proto/massa/**/*.proto \
+  --proto_path=./massa-proto/proto/massa/api/v1 \
+  --proto_path=./massa-proto/proto/third-party \
+  --doc_out=./massa-proto/doc/ \
+  --doc_opt=markdown,api.md
+```
+
+Test code generation:
+```bash
+protoc \
+  ./massa-proto/proto/**/*.proto \
+  --proto_path=./massa-proto/proto/massa/api/v1 \
+  --proto_path=./massa-proto/proto/third-party \
+  --java_out=./target/
+```

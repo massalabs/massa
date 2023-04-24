@@ -5,7 +5,6 @@ use crate::{
     error::NetworkError,
     BlockInfoReply, BootstrapPeers, NetworkCommand, NetworkEvent, Peers,
 };
-use async_trait::async_trait;
 use massa_models::{
     block_header::SecuredHeader,
     block_id::BlockId,
@@ -15,7 +14,7 @@ use massa_models::{
     operation::{OperationPrefixIds, SecureShareOperation},
     stats::NetworkStats,
 };
-use mockall::{automock, mock};
+
 use std::{
     collections::{HashMap, VecDeque},
     net::IpAddr,
@@ -32,176 +31,11 @@ use tracing::{info, warn};
 /// Network command sender
 #[derive(Debug, Clone)]
 pub struct NetworkCommandSender(pub mpsc::Sender<NetworkCommand>);
-mock! {
-    pub NetworkCommandSender{}
-    impl Clone for NetworkCommandSender {
-        fn clone(&self) -> Self;
-    }
-    #[async_trait]
-    impl NetworkCommandSenderTrait for NetworkCommandSender {
-    async fn node_ban_by_ids(&self, ids: Vec<NodeId>) -> Result<(), NetworkError>;
 
-    async fn node_ban_by_ips(&self, ips: Vec<IpAddr>) -> Result<(), NetworkError>;
-
-    async fn add_to_whitelist(&self, ips: Vec<IpAddr>) -> Result<(), NetworkError>;
-
-    async fn remove_from_whitelist(&self, ips: Vec<IpAddr>) -> Result<(), NetworkError>;
-
-    async fn node_unban_by_ids(&self, ids: Vec<NodeId>) -> Result<(), NetworkError>;
-
-    async fn node_unban_ips(&self, ips: Vec<IpAddr>) -> Result<(), NetworkError>;
-
-    async fn send_block_info(
-        &self,
-        node: NodeId,
-        info: Vec<(BlockId, BlockInfoReply)>,
-    ) -> Result<(), NetworkError>;
-
-    async fn ask_for_block_list(
-        &self,
-        list: HashMap<NodeId, Vec<(BlockId, AskForBlocksInfo)>>,
-    ) -> Result<(), NetworkError>;
-
-    async fn send_block_header(
-        &self,
-        node: NodeId,
-        header: SecuredHeader,
-    ) -> Result<(), NetworkError>;
-
-    async fn get_peers(&self) -> Result<Peers, NetworkError>;
-
-    async fn get_network_stats(&self) -> Result<NetworkStats, NetworkError>;
-
-    async fn get_bootstrap_peers(&self) -> Result<BootstrapPeers, NetworkError>;
-
-    async fn send_operations(
-        &self,
-        node: NodeId,
-        operations: Vec<SecureShareOperation>,
-    ) -> Result<(), NetworkError>;
-
-    async fn announce_operations(
-        &self,
-        to_node: NodeId,
-        batch: OperationPrefixIds,
-    ) -> Result<(), NetworkError>;
-
-    async fn send_ask_for_operations(
-        &self,
-        to_node: NodeId,
-        wishlist: OperationPrefixIds,
-    ) -> Result<(), NetworkError>;
-
-    async fn send_endorsements(
-        &self,
-        node: NodeId,
-        endorsements: Vec<SecureShareEndorsement>,
-    ) -> Result<(), NetworkError>;
-
-    async fn node_sign_message(&self, msg: Vec<u8>) -> Result<PubkeySig, NetworkError>;
-    }
-}
-
-#[automock]
-#[async_trait]
-/// Network command sender interface. Can be mocked for testing
-pub trait NetworkCommandSenderTrait: Send + 'static {
+#[cfg_attr(any(test, feature = "testing"), mockall::automock)]
+impl NetworkCommandSender {
     /// ban node(s) by id(s)
-    async fn node_ban_by_ids(&self, ids: Vec<NodeId>) -> Result<(), NetworkError>;
-
-    /// ban node(s) by ip(s)
-    async fn node_ban_by_ips(&self, ips: Vec<IpAddr>) -> Result<(), NetworkError>;
-
-    /// add ip to whitelist
-    async fn add_to_whitelist(&self, ips: Vec<IpAddr>) -> Result<(), NetworkError>;
-
-    /// remove ip from whitelist
-    async fn remove_from_whitelist(&self, ips: Vec<IpAddr>) -> Result<(), NetworkError>;
-
-    /// remove from banned node(s) by id(s)
-    async fn node_unban_by_ids(&self, ids: Vec<NodeId>) -> Result<(), NetworkError>;
-
-    /// remove from banned node(s) by ip(s)
-    async fn node_unban_ips(&self, ips: Vec<IpAddr>) -> Result<(), NetworkError>;
-
-    /// Send info about the contents of a block.
-    async fn send_block_info(
-        &self,
-        node: NodeId,
-        info: Vec<(BlockId, BlockInfoReply)>,
-    ) -> Result<(), NetworkError>;
-
-    /// Send the order to ask for a block.
-    async fn ask_for_block_list(
-        &self,
-        list: HashMap<NodeId, Vec<(BlockId, AskForBlocksInfo)>>,
-    ) -> Result<(), NetworkError>;
-
-    /// Send the order to send block header.
-    ///
-    /// Note: with the current use of shared storage,
-    /// sending a header requires having the block stored.
-    /// This matches the current use of `send_block_header`,
-    /// which is only used after a block has been integrated in the graph.
-    async fn send_block_header(
-        &self,
-        node: NodeId,
-        header: SecuredHeader,
-    ) -> Result<(), NetworkError>;
-
-    /// Send the order to get peers.
-    async fn get_peers(&self) -> Result<Peers, NetworkError>;
-
-    /// get network stats
-    async fn get_network_stats(&self) -> Result<NetworkStats, NetworkError>;
-
-    /// Send the order to get bootstrap peers.
-    async fn get_bootstrap_peers(&self) -> Result<BootstrapPeers, NetworkError>;
-
-    /// send operations to node
-    async fn send_operations(
-        &self,
-        node: NodeId,
-        operations: Vec<SecureShareOperation>,
-    ) -> Result<(), NetworkError>;
-
-    /// Create a new call to the network, sending a announcement of operation ID prefixes to a
-    /// target node (`to_node`)
-    ///
-    /// # Returns
-    /// Can return a `[NetworkError::ChannelError]` that must be managed by the direct caller of the
-    /// function.
-    async fn announce_operations(
-        &self,
-        to_node: NodeId,
-        batch: OperationPrefixIds,
-    ) -> Result<(), NetworkError>;
-
-    /// Create a new call to the network, sending a `wishlist` of `operationIds` to a
-    /// target node (`to_node`) in order to receive the full operations in the future.
-    ///
-    /// # Returns
-    /// Can return a `[NetworkError::ChannelError]` that must be managed by the direct caller of the
-    /// function.
-    async fn send_ask_for_operations(
-        &self,
-        to_node: NodeId,
-        wishlist: OperationPrefixIds,
-    ) -> Result<(), NetworkError>;
-
-    /// send endorsements to node id
-    async fn send_endorsements(
-        &self,
-        node: NodeId,
-        endorsements: Vec<SecureShareEndorsement>,
-    ) -> Result<(), NetworkError>;
-
-    /// Sign a message using the node's keypair
-    async fn node_sign_message(&self, msg: Vec<u8>) -> Result<PubkeySig, NetworkError>;
-}
-#[async_trait]
-impl NetworkCommandSenderTrait for NetworkCommandSender {
-    async fn node_ban_by_ids(&self, ids: Vec<NodeId>) -> Result<(), NetworkError> {
+    pub async fn node_ban_by_ids(&self, ids: Vec<NodeId>) -> Result<(), NetworkError> {
         self.0
             .send(NetworkCommand::NodeBanByIds(ids))
             .await
@@ -209,7 +43,8 @@ impl NetworkCommandSenderTrait for NetworkCommandSender {
         Ok(())
     }
 
-    async fn node_ban_by_ips(&self, ips: Vec<IpAddr>) -> Result<(), NetworkError> {
+    /// ban node(s) by ip(s)
+    pub async fn node_ban_by_ips(&self, ips: Vec<IpAddr>) -> Result<(), NetworkError> {
         self.0
             .send(NetworkCommand::NodeBanByIps(ips))
             .await
@@ -217,7 +52,8 @@ impl NetworkCommandSenderTrait for NetworkCommandSender {
         Ok(())
     }
 
-    async fn add_to_whitelist(&self, ips: Vec<IpAddr>) -> Result<(), NetworkError> {
+    /// add ip to whitelist
+    pub async fn add_to_whitelist(&self, ips: Vec<IpAddr>) -> Result<(), NetworkError> {
         self.0
             .send(NetworkCommand::Whitelist(ips))
             .await
@@ -225,7 +61,8 @@ impl NetworkCommandSenderTrait for NetworkCommandSender {
         Ok(())
     }
 
-    async fn remove_from_whitelist(&self, ips: Vec<IpAddr>) -> Result<(), NetworkError> {
+    /// remove ip from whitelist
+    pub async fn remove_from_whitelist(&self, ips: Vec<IpAddr>) -> Result<(), NetworkError> {
         self.0
             .send(NetworkCommand::RemoveFromWhitelist(ips))
             .await
@@ -235,7 +72,8 @@ impl NetworkCommandSenderTrait for NetworkCommandSender {
         Ok(())
     }
 
-    async fn node_unban_by_ids(&self, ids: Vec<NodeId>) -> Result<(), NetworkError> {
+    /// remove from banned node(s) by id(s)
+    pub async fn node_unban_by_ids(&self, ids: Vec<NodeId>) -> Result<(), NetworkError> {
         self.0
             .send(NetworkCommand::NodeUnbanByIds(ids))
             .await
@@ -243,7 +81,8 @@ impl NetworkCommandSenderTrait for NetworkCommandSender {
         Ok(())
     }
 
-    async fn node_unban_ips(&self, ips: Vec<IpAddr>) -> Result<(), NetworkError> {
+    /// remove from banned node(s) by ip(s)
+    pub async fn node_unban_ips(&self, ips: Vec<IpAddr>) -> Result<(), NetworkError> {
         self.0
             .send(NetworkCommand::NodeUnbanByIps(ips))
             .await
@@ -251,7 +90,8 @@ impl NetworkCommandSenderTrait for NetworkCommandSender {
         Ok(())
     }
 
-    async fn send_block_info(
+    /// Send info about the contents of a block.
+    pub async fn send_block_info(
         &self,
         node: NodeId,
         info: Vec<(BlockId, BlockInfoReply)>,
@@ -265,7 +105,8 @@ impl NetworkCommandSenderTrait for NetworkCommandSender {
         Ok(())
     }
 
-    async fn ask_for_block_list(
+    /// Send the order to ask for a block.
+    pub async fn ask_for_block_list(
         &self,
         list: HashMap<NodeId, Vec<(BlockId, AskForBlocksInfo)>>,
     ) -> Result<(), NetworkError> {
@@ -276,7 +117,13 @@ impl NetworkCommandSenderTrait for NetworkCommandSender {
         Ok(())
     }
 
-    async fn send_block_header(
+    /// Send the order to send block header.
+    ///
+    /// Note: with the current use of shared storage,
+    /// sending a header requires having the block stored.
+    /// This matches the current use of `send_block_header`,
+    /// which is only used after a block has been integrated in the graph.
+    pub async fn send_block_header(
         &self,
         node: NodeId,
         header: SecuredHeader,
@@ -290,7 +137,8 @@ impl NetworkCommandSenderTrait for NetworkCommandSender {
         Ok(())
     }
 
-    async fn get_peers(&self) -> Result<Peers, NetworkError> {
+    /// Send the order to get peers.
+    pub async fn get_peers(&self) -> Result<Peers, NetworkError> {
         let (response_tx, response_rx) = oneshot::channel();
         self.0
             .send(NetworkCommand::GetPeers(response_tx))
@@ -303,7 +151,8 @@ impl NetworkCommandSenderTrait for NetworkCommandSender {
         })
     }
 
-    async fn get_network_stats(&self) -> Result<NetworkStats, NetworkError> {
+    #[allow(missing_docs)]
+    pub async fn get_network_stats(&self) -> Result<NetworkStats, NetworkError> {
         let (response_tx, response_rx) = oneshot::channel();
         self.0
             .send(NetworkCommand::GetStats { response_tx })
@@ -314,20 +163,21 @@ impl NetworkCommandSenderTrait for NetworkCommandSender {
             .map_err(|_| NetworkError::ChannelError("could not send GetStats upstream".into()))
     }
 
-    async fn get_bootstrap_peers(&self) -> Result<BootstrapPeers, NetworkError> {
+    /// Send the order to get bootstrap peers.
+    pub fn sync_get_bootstrap_peers(&self) -> Result<BootstrapPeers, NetworkError> {
         let (response_tx, response_rx) = oneshot::channel::<BootstrapPeers>();
         self.0
-            .send(NetworkCommand::GetBootstrapPeers(response_tx))
-            .await
+            .blocking_send(NetworkCommand::GetBootstrapPeers(response_tx))
             .map_err(|_| {
                 NetworkError::ChannelError("could not send GetBootstrapPeers command".into())
             })?;
-        response_rx.await.map_err(|_| {
+        response_rx.blocking_recv().map_err(|_| {
             NetworkError::ChannelError("could not send GetBootstrapPeers response upstream".into())
         })
     }
 
-    async fn send_operations(
+    /// send operations to node
+    pub async fn send_operations(
         &self,
         node: NodeId,
         operations: Vec<SecureShareOperation>,
@@ -341,7 +191,13 @@ impl NetworkCommandSenderTrait for NetworkCommandSender {
         Ok(())
     }
 
-    async fn announce_operations(
+    /// Create a new call to the network, sending a announcement of operation ID prefixes to a
+    /// target node (`to_node`)
+    ///
+    /// # Returns
+    /// Can return a `[NetworkError::ChannelError]` that must be managed by the direct caller of the
+    /// function.
+    pub async fn announce_operations(
         &self,
         to_node: NodeId,
         batch: OperationPrefixIds,
@@ -363,7 +219,13 @@ impl NetworkCommandSenderTrait for NetworkCommandSender {
         Ok(())
     }
 
-    async fn send_ask_for_operations(
+    /// Create a new call to the network, sending a `wishlist` of `operationIds` to a
+    /// target node (`to_node`) in order to receive the full operations in the future.
+    ///
+    /// # Returns
+    /// Can return a `[NetworkError::ChannelError]` that must be managed by the direct caller of the
+    /// function.
+    pub async fn send_ask_for_operations(
         &self,
         to_node: NodeId,
         wishlist: OperationPrefixIds,
@@ -377,7 +239,8 @@ impl NetworkCommandSenderTrait for NetworkCommandSender {
         Ok(())
     }
 
-    async fn send_endorsements(
+    /// send endorsements to node id
+    pub async fn send_endorsements(
         &self,
         node: NodeId,
         endorsements: Vec<SecureShareEndorsement>,
@@ -391,7 +254,8 @@ impl NetworkCommandSenderTrait for NetworkCommandSender {
         Ok(())
     }
 
-    async fn node_sign_message(&self, msg: Vec<u8>) -> Result<PubkeySig, NetworkError> {
+    /// Sign a message using the node's keypair
+    pub async fn node_sign_message(&self, msg: Vec<u8>) -> Result<PubkeySig, NetworkError> {
         let (response_tx, response_rx) = oneshot::channel();
         self.0
             .send(NetworkCommand::NodeSignMessage { msg, response_tx })
@@ -402,6 +266,13 @@ impl NetworkCommandSenderTrait for NetworkCommandSender {
         response_rx.await.map_err(|_| {
             NetworkError::ChannelError("could not send GetBootstrapPeers response upstream".into())
         })
+    }
+
+    #[cfg(any(test, feature = "testing"))]
+    /// Used for mock-testing. Easier than using a clone derive
+    #[allow(clippy::should_implement_trait)]
+    pub fn clone(&self) -> Self {
+        Self(self.0.clone())
     }
 }
 
@@ -449,4 +320,16 @@ impl NetworkManager {
         info!("network manager stopped");
         Ok(())
     }
+}
+
+#[cfg(any(test, feature = "testing"))]
+/// The bootstrap server function `get_state` has to be async due to main.rs `tokio::select!` usage to
+/// cancel on `ctrl-c`
+/// If get state can be cancelled with ctrl-c without an async context, this can be removed
+pub fn make_runtime() -> tokio::runtime::Runtime {
+    tokio::runtime::Builder::new_multi_thread()
+        .enable_all()
+        .thread_name("network-provided-runtime")
+        .build()
+        .expect("failed to create runtime")
 }

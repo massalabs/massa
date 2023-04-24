@@ -48,8 +48,6 @@ pub enum BootstrapError {
     FinalStateError(#[from] FinalStateError),
     /// Proof-of-Stake error: {0}
     PoSError(#[from] PosError),
-    /// join error: {0}
-    JoinError(#[from] tokio::task::JoinError),
     /// missing keypair file
     MissingKeyError,
     /// incompatible version: {0}
@@ -64,13 +62,15 @@ pub enum BootstrapError {
     BlackListed(String),
     /// IP {0} is not in the whitelist
     WhiteListed(String),
+    /// The bootstrap process ended prematurely - e.g. too much time elapsed
+    Interupted(String),
 }
 
 /// # Platform-specific behavior
 ///
 /// Platforms may return a different error code whenever a read times out as
 /// a result of setting this option. For example Unix typically returns an
-/// error of the kind [`WouldBlock`], but Windows may return [`TimedOut`].)
+/// error of the kind [`ErrorKind::WouldBlock`], but Windows may return [`ErrorKind::TimedOut`].)
 impl From<std::io::Error> for BootstrapError {
     fn from(e: std::io::Error) -> Self {
         if e.kind() == ErrorKind::TimedOut || e.kind() == ErrorKind::WouldBlock {

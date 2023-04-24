@@ -118,8 +118,10 @@ pub struct PoolSettings {
     pub max_operation_future_validity_start_periods: u64,
     pub max_endorsement_count: u64,
     pub max_item_return_count: usize,
-    /// operations sender(channel) capacity
-    pub broadcast_operations_capacity: usize,
+    /// endorsements channel capacity
+    pub broadcast_endorsements_channel_capacity: usize,
+    /// operations channel capacity
+    pub broadcast_operations_channel_capacity: usize,
 }
 
 /// API and server configuration, read from a file configuration.
@@ -183,12 +185,12 @@ pub struct ConsensusSettings {
     pub block_db_prune_interval: MassaTime,
     /// max number of items returned while querying
     pub max_item_return_count: usize,
-    /// blocks headers sender(channel) capacity
-    pub broadcast_blocks_headers_capacity: usize,
-    /// blocks sender(channel) capacity
-    pub broadcast_blocks_capacity: usize,
-    /// filled blocks sender(channel) capacity
-    pub broadcast_filled_blocks_capacity: usize,
+    /// blocks headers channel capacity
+    pub broadcast_blocks_headers_channel_capacity: usize,
+    /// blocks channel capacity
+    pub broadcast_blocks_channel_capacity: usize,
+    /// filled blocks channel capacity
+    pub broadcast_filled_blocks_channel_capacity: usize,
 }
 
 /// Protocol Configuration, read from toml user configuration file
@@ -242,6 +244,8 @@ pub struct GrpcSettings {
     pub enabled: bool,
     /// whether to accept HTTP/1.1 requests
     pub accept_http1: bool,
+    /// whether to enable CORS. Works only if `accept_http1` is true
+    pub enable_cors: bool,
     /// whether to enable gRPC reflection
     pub enable_reflection: bool,
     /// bind for the Massa gRPC API

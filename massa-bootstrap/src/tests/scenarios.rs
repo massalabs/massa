@@ -3,7 +3,6 @@
 use super::tools::{
     get_boot_state, get_peers, get_random_final_state_bootstrap, get_random_ledger_changes,
 };
-use crate::error::BootstrapError;
 use crate::listener::PollEvent;
 use crate::tests::tools::{
     get_random_async_pool_changes, get_random_executed_ops_changes, get_random_pos_changes,
@@ -13,7 +12,7 @@ use crate::{
     get_state, start_bootstrap_server,
     tests::tools::{assert_eq_bootstrap_graph, get_bootstrap_config},
 };
-use crate::{BootstrapConfig, BootstrapManager, BootstrapTcpListener, DefaultConnector};
+use crate::{BootstrapConfig, BootstrapManager, BootstrapTcpListener};
 use massa_async_pool::AsyncPoolConfig;
 use massa_consensus_exports::{
     bootstrapable_graph::BootstrapableGraph, test_exports::MockConsensusControllerImpl,
@@ -36,7 +35,11 @@ use massa_models::{
     },
     prehash::PreHashSet,
 };
-use massa_network_exports::MockNetworkCommandSender;
+#[cfg(any(test, feature = "testing"))]
+use massa_network_exports::MockNetworkCommandSender as NetworkCommandSender;
+#[cfg(not(any(test, feature = "testing")))]
+use massa_network_exports::NetworkCommandSender;
+
 use massa_pos_exports::{
     test_exports::assert_eq_pos_selection, PoSConfig, PoSFinalState, SelectorConfig,
 };
@@ -92,10 +95,10 @@ fn mock_bootstrap_manager(addr: SocketAddr, bootstrap_config: BootstrapConfig) -
 
     // start bootstrap manager
     let (_, keypair): &(BootstrapConfig, KeyPair) = &BOOTSTRAP_CONFIG_KEYPAIR;
-    let mut mocked1 = MockNetworkCommandSender::new();
+    let mocked1 = NetworkCommandSender::new();
 
     // start proof-of-stake selectors
-    let (mut server_selector_manager, server_selector_controller) =
+    let (_server_selector_manager, server_selector_controller) =
         start_selector_worker(selector_local_config.clone())
             .expect("could not start server selector controller");
 
@@ -144,7 +147,7 @@ fn mock_bootstrap_manager(addr: SocketAddr, bootstrap_config: BootstrapConfig) -
         .unwrap(),
         final_state_local_config.clone(),
     )));
-    let mut stream_mock1 = Box::new(MockConsensusControllerImpl::new());
+    let stream_mock1 = Box::new(MockConsensusControllerImpl::new());
 
     start_bootstrap_server(
         BootstrapTcpListener::new(addr).unwrap().1,
@@ -162,11 +165,11 @@ fn mock_bootstrap_manager(addr: SocketAddr, bootstrap_config: BootstrapConfig) -
 #[test]
 fn test_bootstrap_whitelist() {
     let addr: SocketAddr = "0.0.0.0:8080".parse().unwrap();
-    let (config, keypair): &(BootstrapConfig, KeyPair) = &BOOTSTRAP_CONFIG_KEYPAIR;
-    let bs_manager = mock_bootstrap_manager(addr.clone(), config.clone());
+    let (config, _keypair): &(BootstrapConfig, KeyPair) = &BOOTSTRAP_CONFIG_KEYPAIR;
+    let _bs_manager = mock_bootstrap_manager(addr.clone(), config.clone());
 
     let conn = TcpStream::connect(addr);
-    dbg!(conn);
+    conn.unwrap();
 }
 
 #[test]
@@ -270,6 +273,9 @@ fn test_bootstrap_server() {
         .unwrap(),
         final_state_local_config,
     )));
+
+    // setup final state mocks.
+    // TODO: work out a way to handle the clone shenanigans in a cleaner manner
     let final_state_client_clone = final_state_client.clone();
     let final_state_server_clone1 = final_state_server.clone();
     let final_state_server_clone2 = final_state_server.clone();
@@ -293,10 +299,10 @@ fn test_bootstrap_server() {
     // .unwrap();
 
     // Setup network command mock-story: hard-code the result of getting bootstrap peers
-    let mut mocked1 = MockNetworkCommandSender::new();
-    let mut mocked2 = MockNetworkCommandSender::new();
+    let mut mocked1 = NetworkCommandSender::new();
+    let mut mocked2 = NetworkCommandSender::new();
     mocked2
-        .expect_get_bootstrap_peers()
+        .expect_sync_get_bootstrap_peers()
         .times(1)
         .returning(|| Ok(get_peers()));
 
@@ -340,7 +346,7 @@ fn test_bootstrap_server() {
     let bootstrap_manager_thread = std::thread::Builder::new()
         .name("bootstrap_thread".to_string())
         .spawn(move || {
-            start_bootstrap_server::<_, MockNetworkCommandSender>(
+            start_bootstrap_server(
                 mock_bs_listener,
                 stream_mock1,
                 mocked1,
@@ -380,13 +386,8 @@ fn test_bootstrap_server() {
         })
         .unwrap();
 
-    // mock_remote_connector
-    //     .expect_connect_timeout()
-    //     .times(1)
-    //     .returning(|_, _| todo!());
     // launch the get_state process
-    let bootstrap_res = tokio::runtime::Runtime::new()
-        .unwrap()
+    let bootstrap_res = massa_network_exports::make_runtime()
         .block_on(get_state(
             bootstrap_config,
             final_state_client_clone,
@@ -501,17 +502,17 @@ fn conn_establishment_mocks() -> (MockBSEventPoller, MockBSConnector) {
     mock_remote_connector
         .expect_connect_timeout()
         .times(1)
-        .returning(move |_, _| Ok(std::net::TcpStream::connect("127.0.0.1:8069").unwrap()))
+        .returning(move |_, _| dbg!(Ok(std::net::TcpStream::connect("127.0.0.1:8069").unwrap())))
         .in_sequence(&mut seq);
-    mock_remote_connector
-        .expect_connect_timeout()
-        .times(1)
-        .returning(move |_, _| {
-            Err(std::io::Error::new(
-                std::io::ErrorKind::ConnectionRefused,
-                "test is over",
-            ))
-        })
-        .in_sequence(&mut seq);
+    // mock_remote_connector
+    //     .expect_connect_timeout()
+    //     .times(1)
+    //     .returning(move |_, _| {
+    //         dbg!(Err(std::io::Error::new(
+    //             std::io::ErrorKind::ConnectionRefused,
+    //             "test is over",
+    //         )))
+    //     })
+    //     .in_sequence(&mut seq);
     (mock_bs_listener, mock_remote_connector)
 }

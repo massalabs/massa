@@ -9,6 +9,7 @@ use nom::{
     IResult, Parser,
 };
 use num_enum::{IntoPrimitive, TryFromPrimitive};
+use serde::{Deserialize, Serialize};
 use thiserror::Error;
 
 use crate::block_header::{
@@ -17,23 +18,19 @@ use crate::block_header::{
 use crate::endorsement::{
     Endorsement, EndorsementDenunciationData, EndorsementSerializer, SecureShareEndorsement,
 };
-use crate::slot::{Slot, SlotDeserializer, SlotSerializer, SLOT_KEY_SIZE};
+use crate::slot::{Slot, SlotDeserializer, SlotSerializer};
 
-use crate::prehash::PreHashed;
-use crate::secure_share::Id;
 use massa_hash::{Hash, HashDeserializer, HashSerializer};
 use massa_serialization::{
     Deserializer, SerializeError, Serializer, U32VarIntDeserializer, U32VarIntSerializer,
-    U64VarIntSerializer,
 };
 use massa_signature::{
     MassaSignatureError, PublicKey, PublicKeyDeserializer, Signature, SignatureDeserializer,
-    PUBLIC_KEY_SIZE_BYTES,
 };
 
 /// A Variant of Denunciation enum for endorsement
 #[allow(dead_code)]
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct EndorsementDenunciation {
     public_key: PublicKey,
     slot: Slot,
@@ -74,7 +71,7 @@ impl EndorsementDenunciation {
 
 /// A Variant of Denunciation enum for block header
 #[allow(dead_code)]
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct BlockHeaderDenunciation {
     public_key: PublicKey,
     slot: Slot,
@@ -112,7 +109,7 @@ impl BlockHeaderDenunciation {
 }
 
 /// A denunciation enum
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[allow(missing_docs)]
 pub enum Denunciation {
     Endorsement(EndorsementDenunciation),
@@ -122,18 +119,17 @@ pub enum Denunciation {
 #[allow(dead_code)]
 impl Denunciation {
     /// Check if it is a Denunciation of several endorsements
-    fn is_for_endorsement(&self) -> bool {
+    pub fn is_for_endorsement(&self) -> bool {
         matches!(self, Denunciation::Endorsement(_))
     }
 
     /// Check if it is a Denunciation of several block headers
-    fn is_for_block_header(&self) -> bool {
+    pub fn is_for_block_header(&self) -> bool {
         matches!(self, Denunciation::BlockHeader(_))
     }
 
     /// Check if it is a Denunciation for this endorsement
-    #[cfg(test)]
-    fn is_also_for_endorsement(
+    pub fn is_also_for_endorsement(
         &self,
         s_endorsement: &SecureShareEndorsement,
     ) -> Result<bool, DenunciationError> {
@@ -164,8 +160,7 @@ impl Denunciation {
     }
 
     /// Check if it is a Denunciation for this block header
-    #[cfg(test)]
-    fn is_also_for_block_header(
+    pub fn is_also_for_block_header(
         &self,
         s_block_header: &SecuredHeader,
     ) -> Result<bool, DenunciationError> {
@@ -195,7 +190,7 @@ impl Denunciation {
 
     /// Check if Denunciation is valid
     /// Should be used if received from the network (prevent against invalid or attacker crafted denunciation)
-    fn is_valid(&self) -> Result<bool, DenunciationError> {
+    pub fn is_valid(&self) -> Result<bool, DenunciationError> {
         let (signature_1, signature_2, hash_1, hash_2, public_key) = match self {
             Denunciation::Endorsement(de) => {
                 let hash_1 = EndorsementDenunciation::compute_hash_for_sig_verif(
@@ -250,8 +245,16 @@ impl Denunciation {
     /// Get Denunciation slot ref
     pub fn get_slot(&self) -> &Slot {
         match self {
-            Denunciation::Endorsement(endo_de) => &endo_de.slot,
-            Denunciation::BlockHeader(blkh_de) => &blkh_de.slot,
+            Denunciation::Endorsement(de) => &de.slot,
+            Denunciation::BlockHeader(de) => &de.slot,
+        }
+    }
+
+    /// Get Denunciation public key ref
+    pub fn get_public_key(&self) -> &PublicKey {
+        match self {
+            Denunciation::Endorsement(de) => &de.public_key,
+            Denunciation::BlockHeader(de) => &de.public_key,
         }
     }
 
@@ -285,6 +288,7 @@ impl TryFrom<(&SecureShareEndorsement, &SecureShareEndorsement)> for Denunciatio
         if s_e1.content.slot != s_e2.content.slot
             || s_e1.content.index != s_e2.content.index
             || s_e1.content_creator_pub_key != s_e2.content_creator_pub_key
+            || s_e1.id == s_e2.id
         {
             return Err(DenunciationError::InvalidInput);
         }
@@ -329,7 +333,7 @@ impl TryFrom<(&SecuredHeader, &SecuredHeader)> for Denunciation {
 
     fn try_from((s_bh1, s_bh2): (&SecuredHeader, &SecuredHeader)) -> Result<Self, Self::Error> {
         // Cannot use the same block header twice
-        // In order to create a Denunciation, there should be the same slot, index & public key
+        // In order to create a Denunciation, there should be the same slot & public key
         if s_bh1.content.slot != s_bh2.content.slot
             || s_bh1.content_creator_pub_key != s_bh2.content_creator_pub_key
             || s_bh1.id == s_bh2.id
@@ -722,109 +726,70 @@ impl Deserializer<Denunciation> for DenunciationDeserializer {
 
 // End Ser / Der
 
-// Denunciation Id
-// TODO: replace with
-// #[derive(Debug, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
-// pub enum DenunciationKey {
-//     Header {
-//        slot: Slot
-//     },
-//     Endorsement {
-//         slot: Slot,
-//         index: u32
-//     }
-// }
+// Denunciation Index
 
-/// Endorsement ID size in bytes
-pub const DENUNCIATION_ID_SIZE_BYTES: usize = massa_hash::HASH_SIZE_BYTES;
+#[derive(Debug, Clone, Hash, PartialEq, Eq)]
+/// Index for Denunciations in collections (e.g. like a HashMap...)
+pub enum DenunciationIndex {
+    /// Variant for Block header denunciation index
+    BlockHeader {
+        /// de slot
+        slot: Slot,
+    },
+    /// Variant for Endorsement denunciation index
+    Endorsement {
+        /// de slot
+        slot: Slot,
+        /// de index
+        index: u32,
+    },
+}
 
-/// endorsement id
-#[derive(Clone, Copy, Eq, PartialEq, Ord, PartialOrd, Hash)]
-pub struct DenunciationId(Hash);
-
-const DENUNCIATION_ID_PREFIX: char = 'D';
-const DENUNCIATION_ID_VERSION: u64 = 0;
-
-impl PreHashed for DenunciationId {}
-
-impl Id for DenunciationId {
-    fn new(hash: Hash) -> Self {
-        Self(hash)
-    }
-
-    fn get_hash(&self) -> &Hash {
-        &self.0
+impl DenunciationIndex {
+    /// Get field: slot
+    pub fn get_slot(&self) -> &Slot {
+        match self {
+            DenunciationIndex::BlockHeader { slot } => slot,
+            DenunciationIndex::Endorsement { slot, .. } => slot,
+        }
     }
 }
 
-impl std::fmt::Display for DenunciationId {
-    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        let u64_serializer = U64VarIntSerializer::new();
-        // might want to allocate the vector with capacity in order to avoid re-allocation
-        let mut bytes: Vec<u8> = Vec::new();
-        u64_serializer
-            .serialize(&DENUNCIATION_ID_VERSION, &mut bytes)
-            .map_err(|_| std::fmt::Error)?;
-        bytes.extend(self.0.to_bytes());
-        write!(
-            f,
-            "{}{}",
-            DENUNCIATION_ID_PREFIX,
-            bs58::encode(bytes).with_check().into_string()
-        )
-    }
-}
-
-impl std::fmt::Debug for DenunciationId {
-    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        write!(f, "{}", self)
-    }
-}
-
-impl DenunciationId {
-    /// denunciation id to bytes
-    pub fn to_bytes(&self) -> &[u8; DENUNCIATION_ID_SIZE_BYTES] {
-        self.0.to_bytes()
-    }
-
-    /// denunciation id into bytes
-    pub fn into_bytes(self) -> [u8; DENUNCIATION_ID_SIZE_BYTES] {
-        self.0.into_bytes()
-    }
-
-    /// denunciation id from bytes
-    pub fn from_bytes(data: &[u8; DENUNCIATION_ID_SIZE_BYTES]) -> DenunciationId {
-        DenunciationId(Hash::from_bytes(data))
-    }
-}
-
-impl From<&Denunciation> for DenunciationId {
+/// Create a `DenunciationIndex` from a `Denunciation`
+impl From<&Denunciation> for DenunciationIndex {
     fn from(value: &Denunciation) -> Self {
         match value {
-            Denunciation::Endorsement(endo_de) => {
-                let mut to_hash = Vec::with_capacity(
-                    std::mem::size_of::<u32>() + PUBLIC_KEY_SIZE_BYTES + SLOT_KEY_SIZE,
-                );
-                to_hash.extend(endo_de.public_key.to_bytes());
-                to_hash.extend(endo_de.slot.to_bytes_key());
-                to_hash.extend(endo_de.index.to_le_bytes());
-                DenunciationId(Hash::compute_from(&to_hash))
-            }
+            Denunciation::Endorsement(endo_de) => DenunciationIndex::Endorsement {
+                slot: endo_de.slot,
+                index: endo_de.index,
+            },
             Denunciation::BlockHeader(blkh_de) => {
-                let mut to_hash = Vec::new();
-                to_hash.extend(blkh_de.public_key.to_bytes());
-                to_hash.extend(blkh_de.slot.to_bytes_key());
-                DenunciationId(Hash::compute_from(&to_hash))
+                DenunciationIndex::BlockHeader { slot: blkh_de.slot }
             }
         }
     }
 }
 
-// End Denunciation Id
+/// Create a `DenunciationIndex` from a `DenunciationPrecursor`
+impl From<&DenunciationPrecursor> for DenunciationIndex {
+    fn from(value: &DenunciationPrecursor) -> Self {
+        match value {
+            DenunciationPrecursor::Endorsement(de_p) => DenunciationIndex::Endorsement {
+                slot: de_p.slot,
+                index: de_p.index,
+            },
+            DenunciationPrecursor::BlockHeader(de_p) => {
+                DenunciationIndex::BlockHeader { slot: de_p.slot }
+            }
+        }
+    }
+}
+
+// End Denunciation Index
 
 // Denunciation interest
 
-/// DenunciationInterest variant for endorsement
+/// DenunciationPrecursor variant for endorsement
 #[derive(Debug, Clone)]
 pub struct EndorsementDenunciationPrecursor {
     /// secure share endorsement public key
@@ -833,29 +798,51 @@ pub struct EndorsementDenunciationPrecursor {
     pub slot: Slot,
     /// endorsement index
     pub index: u32,
+    /// secured header partial hash
     hash: Hash,
+    /// secured header signature
     signature: Signature,
 }
 
-/// DenunciationInterest variant for block header
+/// DenunciationPrecursor variant for block header
 #[derive(Debug, Clone)]
 pub struct BlockHeaderDenunciationPrecursor {
     /// secured header public key
     pub public_key: PublicKey,
     /// block header slot
     pub slot: Slot,
+    /// secured header partial hash
     hash: Hash,
+    /// secured header signature
     signature: Signature,
 }
 
 /// Lightweight data for Denunciation creation
-/// (avoid storing heavyweight secured header or secure share endorsement)
+/// (avoid storing heavyweight secured header or secure share endorsement, see denunciation factory)
 #[derive(Debug, Clone)]
 pub enum DenunciationPrecursor {
     /// Endorsement variant
     Endorsement(EndorsementDenunciationPrecursor),
     /// Block header variant
     BlockHeader(BlockHeaderDenunciationPrecursor),
+}
+
+impl DenunciationPrecursor {
+    /// Get field: slot
+    pub fn get_slot(&self) -> &Slot {
+        match self {
+            DenunciationPrecursor::Endorsement(endo_de_p) => &endo_de_p.slot,
+            DenunciationPrecursor::BlockHeader(blkh_de_p) => &blkh_de_p.slot,
+        }
+    }
+
+    /// Get field: pub key
+    pub fn get_public_key(&self) -> &PublicKey {
+        match self {
+            DenunciationPrecursor::Endorsement(endo_de_p) => &endo_de_p.public_key,
+            DenunciationPrecursor::BlockHeader(blkh_de_p) => &blkh_de_p.public_key,
+        }
+    }
 }
 
 impl TryFrom<&SecureShareEndorsement> for DenunciationPrecursor {
@@ -902,33 +889,93 @@ impl TryFrom<(&DenunciationPrecursor, &DenunciationPrecursor)> for Denunciation 
     fn try_from(
         (de_i_1, de_i_2): (&DenunciationPrecursor, &DenunciationPrecursor),
     ) -> Result<Self, Self::Error> {
-        // TODO: add checks before creating
         match (de_i_1, de_i_2) {
             (
                 DenunciationPrecursor::BlockHeader(de_i_blkh_1),
                 DenunciationPrecursor::BlockHeader(de_i_blkh_2),
-            ) => Ok(Denunciation::BlockHeader(BlockHeaderDenunciation {
-                public_key: de_i_blkh_1.public_key,
-                slot: de_i_blkh_1.slot,
-                signature_1: de_i_blkh_1.signature,
-                signature_2: de_i_blkh_2.signature,
-                hash_1: de_i_blkh_1.hash,
-                hash_2: de_i_blkh_2.hash,
-            })),
+            ) => {
+                // Cannot use the same block header (here: block header denunciation precursor) twice
+                if de_i_blkh_1.slot != de_i_blkh_2.slot
+                    || de_i_blkh_1.public_key != de_i_blkh_2.public_key
+                    || de_i_blkh_1.hash == de_i_blkh_2.hash
+                {
+                    return Err(DenunciationError::InvalidInput);
+                }
+
+                // Check sig
+                let de_i_blkh_1_hash = BlockHeaderDenunciation::compute_hash_for_sig_verif(
+                    &de_i_blkh_1.public_key,
+                    &de_i_blkh_1.slot,
+                    &de_i_blkh_1.hash,
+                );
+                let de_i_blkh_2_hash = BlockHeaderDenunciation::compute_hash_for_sig_verif(
+                    &de_i_blkh_2.public_key,
+                    &de_i_blkh_2.slot,
+                    &de_i_blkh_2.hash,
+                );
+
+                de_i_blkh_1
+                    .public_key
+                    .verify_signature(&de_i_blkh_1_hash, &de_i_blkh_1.signature)?;
+                de_i_blkh_1
+                    .public_key
+                    .verify_signature(&de_i_blkh_2_hash, &de_i_blkh_2.signature)?;
+
+                Ok(Denunciation::BlockHeader(BlockHeaderDenunciation {
+                    public_key: de_i_blkh_1.public_key,
+                    slot: de_i_blkh_1.slot,
+                    signature_1: de_i_blkh_1.signature,
+                    signature_2: de_i_blkh_2.signature,
+                    hash_1: de_i_blkh_1.hash,
+                    hash_2: de_i_blkh_2.hash,
+                }))
+            }
             (
                 DenunciationPrecursor::Endorsement(de_i_endo_1),
                 DenunciationPrecursor::Endorsement(de_i_endo_2),
-            ) => Ok(Denunciation::Endorsement(EndorsementDenunciation {
-                public_key: de_i_endo_1.public_key,
-                slot: de_i_endo_1.slot,
-                index: de_i_endo_1.index,
-                signature_1: de_i_endo_1.signature,
-                signature_2: de_i_endo_2.signature,
-                hash_1: de_i_endo_1.hash,
-                hash_2: de_i_endo_2.hash,
-            })),
+            ) => {
+                // Cannot use the same endorsement (here: endorsement denunciation) twice
+                if de_i_endo_1.slot != de_i_endo_2.slot
+                    || de_i_endo_1.index != de_i_endo_2.index
+                    || de_i_endo_1.public_key != de_i_endo_2.public_key
+                    || de_i_endo_1.hash == de_i_endo_2.hash
+                {
+                    return Err(DenunciationError::InvalidInput);
+                }
+
+                // Check sig
+                let de_i_endo_1_hash = EndorsementDenunciation::compute_hash_for_sig_verif(
+                    &de_i_endo_1.public_key,
+                    &de_i_endo_1.slot,
+                    &de_i_endo_1.index,
+                    &de_i_endo_1.hash,
+                );
+                let de_i_endo_2_hash = EndorsementDenunciation::compute_hash_for_sig_verif(
+                    &de_i_endo_2.public_key,
+                    &de_i_endo_2.slot,
+                    &de_i_endo_2.index,
+                    &de_i_endo_2.hash,
+                );
+
+                de_i_endo_1
+                    .public_key
+                    .verify_signature(&de_i_endo_1_hash, &de_i_endo_1.signature)?;
+                de_i_endo_1
+                    .public_key
+                    .verify_signature(&de_i_endo_2_hash, &de_i_endo_2.signature)?;
+
+                Ok(Denunciation::Endorsement(EndorsementDenunciation {
+                    public_key: de_i_endo_1.public_key,
+                    slot: de_i_endo_1.slot,
+                    index: de_i_endo_1.index,
+                    signature_1: de_i_endo_1.signature,
+                    signature_2: de_i_endo_2.signature,
+                    hash_1: de_i_endo_1.hash,
+                    hash_2: de_i_endo_2.hash,
+                }))
+            }
             _ => {
-                // Different enum variant - this is invalid
+                // Different enum variants - this is invalid
                 Err(DenunciationError::InvalidInput)
             }
         }
@@ -937,74 +984,41 @@ impl TryFrom<(&DenunciationPrecursor, &DenunciationPrecursor)> for Denunciation 
 
 // End Denunciation interest
 
+// testing
+
+#[cfg(any(test, feature = "testing"))]
+impl Denunciation {
+    /// Used under testing conditions to validate an instance of Self
+    pub fn check_invariants(&self) -> Result<(), Box<dyn std::error::Error>> {
+        if let Err(e) = self.is_valid() {
+            return Err(e.into());
+        }
+        Ok(())
+    }
+}
+
+// end testing
+
 #[cfg(test)]
 mod tests {
     use super::*;
+
     use massa_serialization::DeserializeError;
-
-    use crate::block_id::BlockId;
-    use crate::endorsement::{
-        Endorsement, EndorsementSerializer, EndorsementSerializerLW, SecureShareEndorsement,
-    };
-
-    use crate::config::{ENDORSEMENT_COUNT, THREAD_COUNT};
-    use crate::secure_share::{Id, SecureShareContent};
     use massa_signature::KeyPair;
 
-    /// Helper for Endorsement denunciation
-    fn gen_endorsements_for_denunciation() -> (
-        Slot,
-        KeyPair,
-        SecureShareEndorsement,
-        SecureShareEndorsement,
-        SecureShareEndorsement,
-    ) {
-        let keypair = KeyPair::generate();
-
-        let slot = Slot::new(3, 7);
-        let endorsement_1 = Endorsement {
-            slot,
-            index: 0,
-            endorsed_block: BlockId(Hash::compute_from("blk1".as_bytes())),
-        };
-
-        let v_endorsement1 =
-            Endorsement::new_verifiable(endorsement_1, EndorsementSerializer::new(), &keypair)
-                .unwrap();
-
-        let endorsement_2 = Endorsement {
-            slot,
-            index: 0,
-            endorsed_block: BlockId(Hash::compute_from("blk2".as_bytes())),
-        };
-
-        let v_endorsement2 =
-            Endorsement::new_verifiable(endorsement_2, EndorsementSerializer::new(), &keypair)
-                .unwrap();
-
-        let endorsement_3 = Endorsement {
-            slot,
-            index: 0,
-            endorsed_block: BlockId(Hash::compute_from("blk3".as_bytes())),
-        };
-        let v_endorsement_3 =
-            Endorsement::new_verifiable(endorsement_3, EndorsementSerializer::new(), &keypair)
-                .unwrap();
-
-        return (
-            slot,
-            keypair,
-            v_endorsement1,
-            v_endorsement2,
-            v_endorsement_3,
-        );
-    }
+    use crate::block_id::BlockId;
+    use crate::config::{ENDORSEMENT_COUNT, THREAD_COUNT};
+    use crate::endorsement::{Endorsement, EndorsementSerializer, SecureShareEndorsement};
+    use crate::secure_share::{Id, SecureShareContent};
+    use crate::test_exports::{
+        gen_block_headers_for_denunciation, gen_endorsements_for_denunciation,
+    };
 
     #[test]
     fn test_endorsement_denunciation() {
         // Create an endorsement denunciation and check if it is valid
         let (_slot, _keypair, s_endorsement_1, s_endorsement_2, _s_endorsement_3) =
-            gen_endorsements_for_denunciation();
+            gen_endorsements_for_denunciation(None, None);
         let denunciation: Denunciation = (&s_endorsement_1, &s_endorsement_2).try_into().unwrap();
 
         assert_eq!(denunciation.is_for_endorsement(), true);
@@ -1014,7 +1028,7 @@ mod tests {
     #[test]
     fn test_endorsement_denunciation_invalid_1() {
         let (slot, keypair, s_endorsement_1, _s_endorsement_2, _s_endorsement_3) =
-            gen_endorsements_for_denunciation();
+            gen_endorsements_for_denunciation(None, None);
 
         // Try to create a denunciation from 2 endorsements @ != index
         let endorsement_4 = Endorsement {
@@ -1039,7 +1053,7 @@ mod tests {
     #[test]
     fn test_endorsement_denunciation_is_for() {
         let (slot, keypair, s_endorsement_1, s_endorsement_2, s_endorsement_3) =
-            gen_endorsements_for_denunciation();
+            gen_endorsements_for_denunciation(None, None);
 
         let denunciation: Denunciation = (&s_endorsement_1, &s_endorsement_2).try_into().unwrap();
 
@@ -1069,84 +1083,6 @@ mod tests {
             true
         );
         assert_eq!(denunciation.is_valid().unwrap(), true);
-    }
-
-    fn gen_block_headers_for_denunciation(
-    ) -> (Slot, KeyPair, SecuredHeader, SecuredHeader, SecuredHeader) {
-        let keypair = KeyPair::generate();
-
-        let slot = Slot::new(2, 1);
-        let parents_1: Vec<BlockId> = (0..THREAD_COUNT)
-            .map(|i| BlockId(Hash::compute_from(&[i])))
-            .collect();
-        let parents_2: Vec<BlockId> = (0..THREAD_COUNT)
-            .map(|i| BlockId(Hash::compute_from(&[i + 1])))
-            .collect();
-        let parents_3: Vec<BlockId> = (0..THREAD_COUNT)
-            .map(|i| BlockId(Hash::compute_from(&[i + 2])))
-            .collect();
-
-        let endorsement_1 = Endorsement {
-            slot: Slot::new(1, 1),
-            index: 1,
-            endorsed_block: BlockId(Hash::compute_from("blk1".as_bytes())),
-        };
-        let s_endorsement_1 =
-            Endorsement::new_verifiable(endorsement_1, EndorsementSerializerLW::new(), &keypair)
-                .unwrap();
-
-        let block_header_1 = BlockHeader {
-            slot,
-            parents: parents_1,
-            operation_merkle_root: Hash::compute_from("mno".as_bytes()),
-            endorsements: vec![s_endorsement_1.clone()],
-        };
-
-        // create header
-        let s_block_header_1 = BlockHeader::new_verifiable::<BlockHeaderSerializer, BlockId>(
-            block_header_1,
-            BlockHeaderSerializer::new(),
-            &keypair,
-        )
-        .expect("error while producing block header");
-
-        let block_header_2 = BlockHeader {
-            slot,
-            parents: parents_2,
-            operation_merkle_root: Hash::compute_from("mno".as_bytes()),
-            endorsements: vec![s_endorsement_1.clone()],
-        };
-
-        // create header
-        let s_block_header_2 = BlockHeader::new_verifiable::<BlockHeaderSerializer, BlockId>(
-            block_header_2,
-            BlockHeaderSerializer::new(),
-            &keypair,
-        )
-        .expect("error while producing block header");
-
-        let block_header_3 = BlockHeader {
-            slot,
-            parents: parents_3,
-            operation_merkle_root: Hash::compute_from("mno".as_bytes()),
-            endorsements: vec![s_endorsement_1.clone()],
-        };
-
-        // create header
-        let s_block_header_3 = BlockHeader::new_verifiable::<BlockHeaderSerializer, BlockId>(
-            block_header_3,
-            BlockHeaderSerializer::new(),
-            &keypair,
-        )
-        .expect("error while producing block header");
-
-        return (
-            slot,
-            keypair,
-            s_block_header_1.clone(),
-            s_block_header_2,
-            s_block_header_3,
-        );
     }
 
     #[test]
@@ -1225,7 +1161,8 @@ mod tests {
     // SER / DER
     #[test]
     fn test_endorsement_denunciation_ser_der() {
-        let (_, _, s_endorsement_1, s_endorsement_2, _) = gen_endorsements_for_denunciation();
+        let (_, _, s_endorsement_1, s_endorsement_2, _) =
+            gen_endorsements_for_denunciation(None, None);
 
         let denunciation = Denunciation::try_from((&s_endorsement_1, &s_endorsement_2)).unwrap();
 
@@ -1289,7 +1226,8 @@ mod tests {
         assert_eq!(rem.is_empty(), true);
         assert_eq!(denunciation, de_der_res);
 
-        let (_, _, s_endorsement_1, s_endorsement_2, _) = gen_endorsements_for_denunciation();
+        let (_, _, s_endorsement_1, s_endorsement_2, _) =
+            gen_endorsements_for_denunciation(None, None);
         let denunciation = Denunciation::try_from((&s_endorsement_1, &s_endorsement_2)).unwrap();
         buffer.clear();
 
@@ -1300,22 +1238,23 @@ mod tests {
     }
 
     #[test]
-    fn test_denunciation_interest() {
+    fn test_denunciation_precursor() {
         let (_, _, s_block_header_1, s_block_header_2, _) = gen_block_headers_for_denunciation();
         let denunciation: Denunciation = (&s_block_header_1, &s_block_header_2).try_into().unwrap();
 
-        let de_i_1 = DenunciationPrecursor::try_from(&s_block_header_1).unwrap();
-        let de_i_2 = DenunciationPrecursor::try_from(&s_block_header_2).unwrap();
-        let denunciation_2: Denunciation = (&de_i_1, &de_i_2).try_into().unwrap();
+        let de_p_1 = DenunciationPrecursor::try_from(&s_block_header_1).unwrap();
+        let de_p_2 = DenunciationPrecursor::try_from(&s_block_header_2).unwrap();
+        let denunciation_2: Denunciation = (&de_p_1, &de_p_2).try_into().unwrap();
 
         assert_eq!(denunciation, denunciation_2);
 
-        let (_, _, s_endorsement_1, s_endorsement_2, _) = gen_endorsements_for_denunciation();
+        let (_, _, s_endorsement_1, s_endorsement_2, _) =
+            gen_endorsements_for_denunciation(None, None);
         let denunciation_3 = Denunciation::try_from((&s_endorsement_1, &s_endorsement_2)).unwrap();
 
-        let de_i_3 = DenunciationPrecursor::try_from(&s_endorsement_1).unwrap();
-        let de_i_4 = DenunciationPrecursor::try_from(&s_endorsement_2).unwrap();
-        let denunciation_4: Denunciation = (&de_i_3, &de_i_4).try_into().unwrap();
+        let de_p_3 = DenunciationPrecursor::try_from(&s_endorsement_1).unwrap();
+        let de_p_4 = DenunciationPrecursor::try_from(&s_endorsement_2).unwrap();
+        let denunciation_4: Denunciation = (&de_p_3, &de_p_4).try_into().unwrap();
 
         assert_eq!(denunciation_3, denunciation_4);
     }

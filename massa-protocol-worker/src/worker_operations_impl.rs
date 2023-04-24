@@ -17,7 +17,6 @@ use massa_models::{
     operation::{OperationPrefixIds, SecureShareOperation},
     prehash::CapacityAllocator,
 };
-use massa_network_exports::NetworkCommandSenderTrait;
 use massa_protocol_exports::ProtocolError;
 use massa_time::TimeError;
 use std::pin::Pin;

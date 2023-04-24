@@ -10,8 +10,10 @@ use std::{net::SocketAddr, time::Duration};
 pub struct GrpcConfig {
     /// whether to enable gRPC
     pub enabled: bool,
-    /// whether to accept HTTP/1.1 requests.
+    /// whether to accept HTTP/1.1 requests
     pub accept_http1: bool,
+    /// whether to enable CORS. Works only if `accept_http1` is true
+    pub enable_cors: bool,
     /// whether to enable gRPC reflection
     pub enable_reflection: bool,
     /// bind for the Massa gRPC API
@@ -72,10 +74,14 @@ pub struct GrpcConfig {
     pub genesis_timestamp: MassaTime,
     /// t0
     pub t0: MassaTime,
+    /// periods per cycle
+    pub periods_per_cycle: u64,
     /// limits the maximum size of streaming channel
     pub max_channel_size: usize,
     /// when looking for next draw we want to look at max `draw_lookahead_period_count`
     pub draw_lookahead_period_count: u64,
     /// last_start_period of the network, used to deserialize blocks
     pub last_start_period: u64,
+    /// Max denunciations in block header
+    pub max_denunciations_per_block_header: u32,
 }

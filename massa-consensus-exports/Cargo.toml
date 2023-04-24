@@ -15,7 +15,7 @@ serde_json = "1.0"
 thiserror = "1.0"
 jsonrpsee = { git = "https://github.com/paritytech/jsonrpsee.git", rev = "118acc3", features = ["server"] }
 tokio = { version = "1.23", features = ["sync"] }
-mockall = {version =  "0.11.4", features = ["nightly"]}
+mockall = {version =  "0.11.4", features = ["nightly"], optional = true}
 #custom modules
 massa_hash = { path = "../massa-hash"}
 massa_execution_exports = { path = "../massa-execution-exports" }
@@ -29,4 +29,4 @@ massa_time = { path = "../massa-time" }
 massa_signature = { path = "../massa-signature" }
 
 [features]
-testing = ["massa_models/testing", "massa_execution_exports/testing", "massa_pool_exports/testing", "massa_pos_exports/testing", "massa_protocol_exports/testing", "massa_storage/testing"]
+testing = ["massa_models/testing", "massa_execution_exports/testing", "massa_pool_exports/testing", "massa_pos_exports/testing", "massa_protocol_exports/testing", "massa_storage/testing", "dep:mockall"]

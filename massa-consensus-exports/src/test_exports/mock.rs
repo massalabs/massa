@@ -90,6 +90,7 @@ pub enum MockConsensusControllerMessage {
 #[derive(Clone)]
 pub struct ConsensusControllerImpl(Arc<Mutex<mpsc::Sender<MockConsensusControllerMessage>>>);
 
+#[cfg(any(test, feature = "testing"))]
 mockall::mock! {
     pub ConsensusControllerImpl {}
     impl Clone for ConsensusControllerImpl {

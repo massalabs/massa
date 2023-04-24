@@ -15,6 +15,7 @@ pub fn create_empty_block(keypair: &KeyPair, slot: &Slot) -> SecureShareBlock {
             parents: Vec::new(),
             operation_merkle_root: Hash::compute_from(&Vec::new()),
             endorsements: Vec::new(),
+            denunciations: vec![],
         },
         BlockHeaderSerializer::new(),
         keypair,
