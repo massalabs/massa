@@ -525,62 +525,6 @@
 <a href="#525" id="525">525</a>
 <a href="#526" id="526">526</a>
 <a href="#527" id="527">527</a>
-<a href="#528" id="528">528</a>
-<a href="#529" id="529">529</a>
-<a href="#530" id="530">530</a>
-<a href="#531" id="531">531</a>
-<a href="#532" id="532">532</a>
-<a href="#533" id="533">533</a>
-<a href="#534" id="534">534</a>
-<a href="#535" id="535">535</a>
-<a href="#536" id="536">536</a>
-<a href="#537" id="537">537</a>
-<a href="#538" id="538">538</a>
-<a href="#539" id="539">539</a>
-<a href="#540" id="540">540</a>
-<a href="#541" id="541">541</a>
-<a href="#542" id="542">542</a>
-<a href="#543" id="543">543</a>
-<a href="#544" id="544">544</a>
-<a href="#545" id="545">545</a>
-<a href="#546" id="546">546</a>
-<a href="#547" id="547">547</a>
-<a href="#548" id="548">548</a>
-<a href="#549" id="549">549</a>
-<a href="#550" id="550">550</a>
-<a href="#551" id="551">551</a>
-<a href="#552" id="552">552</a>
-<a href="#553" id="553">553</a>
-<a href="#554" id="554">554</a>
-<a href="#555" id="555">555</a>
-<a href="#556" id="556">556</a>
-<a href="#557" id="557">557</a>
-<a href="#558" id="558">558</a>
-<a href="#559" id="559">559</a>
-<a href="#560" id="560">560</a>
-<a href="#561" id="561">561</a>
-<a href="#562" id="562">562</a>
-<a href="#563" id="563">563</a>
-<a href="#564" id="564">564</a>
-<a href="#565" id="565">565</a>
-<a href="#566" id="566">566</a>
-<a href="#567" id="567">567</a>
-<a href="#568" id="568">568</a>
-<a href="#569" id="569">569</a>
-<a href="#570" id="570">570</a>
-<a href="#571" id="571">571</a>
-<a href="#572" id="572">572</a>
-<a href="#573" id="573">573</a>
-<a href="#574" id="574">574</a>
-<a href="#575" id="575">575</a>
-<a href="#576" id="576">576</a>
-<a href="#577" id="577">577</a>
-<a href="#578" id="578">578</a>
-<a href="#579" id="579">579</a>
-<a href="#580" id="580">580</a>
-<a href="#581" id="581">581</a>
-<a href="#582" id="582">582</a>
-<a href="#583" id="583">583</a>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="kw">use </span><span class="kw">crate</span>::active_history::ActiveHistory;
@@ -593,7 +537,6 @@
 <span class="kw">use </span>massa_pos_exports::{DeferredCredits, PoSChanges, ProductionStats};
 <span class="kw">use </span>num::rational::Ratio;
 <span class="kw">use </span>parking_lot::RwLock;
-<span class="kw">use </span>std::cmp::min;
 <span class="kw">use </span>std::collections::{BTreeMap, HashMap};
 <span class="kw">use </span>std::sync::Arc;
 
@@ -730,61 +673,6 @@
             .insert(target_slot, <span class="kw-2">*</span>seller_addr, new_deferred_credits);
 
         <span class="prelude-val">Ok</span>(())
-    }
-
-    <span class="doccomment">/// Try to slash `roll_count` rolls from the given address. If not enough roll, slash
-    /// the available amount and return the value.
-    ///
-    /// # Arguments
-    /// * `addr`: address to slash the rolls from
-    /// * `roll_count`: number of rolls to slash
-    </span><span class="kw">pub fn </span>try_slash_rolls(
-        <span class="kw-2">&amp;mut </span><span class="self">self</span>,
-        addr: <span class="kw-2">&amp;</span>Address,
-        roll_count: u64,
-    ) -&gt; <span class="prelude-ty">Result</span>&lt;u64, ExecutionError&gt; {
-        <span class="comment">// fetch the roll count
-        </span><span class="kw">let </span>owned_count = <span class="self">self</span>.get_rolls(addr);
-        <span class="kw">let </span>roll_to_slash = min(roll_count, owned_count);
-
-        <span class="kw">match </span><span class="self">self</span>.added_changes.roll_changes.get_mut(addr) {
-            <span class="prelude-val">None </span>=&gt; {
-                <span class="comment">// Address does not exist anymore, slash nothing
-                </span><span class="prelude-val">Ok</span>(<span class="number">0</span>)
-            }
-            <span class="prelude-val">Some</span>(current_rolls) =&gt; {
-                <span class="kw-2">*</span>current_rolls = current_rolls.saturating_sub(roll_to_slash);
-                <span class="prelude-val">Ok</span>(roll_to_slash)
-            }
-        }
-    }
-
-    <span class="doccomment">/// Try to slash `amount` credits from the given address. If not enough credits, slash
-    /// the available amount and return the value.
-    ///
-    /// # Arguments
-    /// * `addr`: address to slash the deferred credits from
-    /// * `amount`: number of deferred credits to slash
-    </span><span class="kw">pub fn </span>try_slash_deferred_credits(
-        <span class="kw-2">&amp;mut </span><span class="self">self</span>,
-        slot: <span class="kw-2">&amp;</span>Slot,
-        addr: <span class="kw-2">&amp;</span>Address,
-        amount: <span class="kw-2">&amp;</span>Amount,
-    ) -&gt; Amount {
-        <span class="kw">let </span>credits = <span class="self">self</span>.get_address_deferred_credits(addr, <span class="kw-2">*</span>slot);
-
-        <span class="kw">let </span><span class="kw-2">mut </span>remaining_to_slash = <span class="kw-2">*</span>amount;
-        <span class="kw">for </span>(credit_slot, credit_amount) <span class="kw">in </span>credits.iter() {
-            <span class="kw">let </span>to_slash = min(<span class="kw-2">*</span>credit_amount, remaining_to_slash);
-            <span class="kw">let </span>new_deferred_credits = credit_amount.saturating_sub(to_slash);
-            remaining_to_slash = remaining_to_slash.saturating_sub(to_slash);
-
-            <span class="self">self</span>.added_changes
-                .deferred_credits
-                .insert(<span class="kw-2">*</span>credit_slot, <span class="kw-2">*</span>addr, new_deferred_credits);
-        }
-
-        amount.saturating_sub(remaining_to_slash)
     }
 
     <span class="doccomment">/// Update production statistics of an address.

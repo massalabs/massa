@@ -1253,12 +1253,6 @@
 <a href="#1253" id="1253">1253</a>
 <a href="#1254" id="1254">1254</a>
 <a href="#1255" id="1255">1255</a>
-<a href="#1256" id="1256">1256</a>
-<a href="#1257" id="1257">1257</a>
-<a href="#1258" id="1258">1258</a>
-<a href="#1259" id="1259">1259</a>
-<a href="#1260" id="1260">1260</a>
-<a href="#1261" id="1261">1261</a>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 </span><span class="doccomment">/// An overview of what is a Denunciation and what it is used for can be found here
 /// https://github.com/massalabs/massa/discussions/3113
@@ -1270,7 +1264,6 @@
     IResult, Parser,
 };
 <span class="kw">use </span>num_enum::{IntoPrimitive, TryFromPrimitive};
-<span class="kw">use </span>serde::{Deserialize, Serialize};
 <span class="kw">use </span>thiserror::Error;
 
 <span class="kw">use </span><span class="kw">crate</span>::block_header::{
@@ -1279,19 +1272,23 @@
 <span class="kw">use </span><span class="kw">crate</span>::endorsement::{
     Endorsement, EndorsementDenunciationData, EndorsementSerializer, SecureShareEndorsement,
 };
-<span class="kw">use </span><span class="kw">crate</span>::slot::{Slot, SlotDeserializer, SlotSerializer};
+<span class="kw">use </span><span class="kw">crate</span>::slot::{Slot, SlotDeserializer, SlotSerializer, SLOT_KEY_SIZE};
 
+<span class="kw">use </span><span class="kw">crate</span>::prehash::PreHashed;
+<span class="kw">use </span><span class="kw">crate</span>::secure_share::Id;
 <span class="kw">use </span>massa_hash::{Hash, HashDeserializer, HashSerializer};
 <span class="kw">use </span>massa_serialization::{
     Deserializer, SerializeError, Serializer, U32VarIntDeserializer, U32VarIntSerializer,
+    U64VarIntSerializer,
 };
 <span class="kw">use </span>massa_signature::{
     MassaSignatureError, PublicKey, PublicKeyDeserializer, Signature, SignatureDeserializer,
+    PUBLIC_KEY_SIZE_BYTES,
 };
 
 <span class="doccomment">/// A Variant of Denunciation enum for endorsement
 </span><span class="attr">#[allow(dead_code)]
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq)]
 </span><span class="kw">pub struct </span>EndorsementDenunciation {
     public_key: PublicKey,
     slot: Slot,
@@ -1332,7 +1329,7 @@
 
 <span class="doccomment">/// A Variant of Denunciation enum for block header
 </span><span class="attr">#[allow(dead_code)]
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq)]
 </span><span class="kw">pub struct </span>BlockHeaderDenunciation {
     public_key: PublicKey,
     slot: Slot,
@@ -1370,7 +1367,7 @@
 }
 
 <span class="doccomment">/// A denunciation enum
-</span><span class="attr">#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+</span><span class="attr">#[derive(Debug, Clone, PartialEq)]
 #[allow(missing_docs)]
 </span><span class="kw">pub enum </span>Denunciation {
     Endorsement(EndorsementDenunciation),
@@ -1506,16 +1503,8 @@
     <span class="doccomment">/// Get Denunciation slot ref
     </span><span class="kw">pub fn </span>get_slot(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>Slot {
         <span class="kw">match </span><span class="self">self </span>{
-            Denunciation::Endorsement(de) =&gt; <span class="kw-2">&amp;</span>de.slot,
-            Denunciation::BlockHeader(de) =&gt; <span class="kw-2">&amp;</span>de.slot,
-        }
-    }
-
-    <span class="doccomment">/// Get Denunciation public key ref
-    </span><span class="kw">pub fn </span>get_public_key(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>PublicKey {
-        <span class="kw">match </span><span class="self">self </span>{
-            Denunciation::Endorsement(de) =&gt; <span class="kw-2">&amp;</span>de.public_key,
-            Denunciation::BlockHeader(de) =&gt; <span class="kw-2">&amp;</span>de.public_key,
+            Denunciation::Endorsement(endo_de) =&gt; <span class="kw-2">&amp;</span>endo_de.slot,
+            Denunciation::BlockHeader(blkh_de) =&gt; <span class="kw-2">&amp;</span>blkh_de.slot,
         }
     }
 
@@ -1987,70 +1976,109 @@
 
 <span class="comment">// End Ser / Der
 
-// Denunciation Index
+// Denunciation Id
+// TODO: replace with
+// #[derive(Debug, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
+// pub enum DenunciationKey {
+//     Header {
+//        slot: Slot
+//     },
+//     Endorsement {
+//         slot: Slot,
+//         index: u32
+//     }
+// }
 
-</span><span class="attr">#[derive(Debug, Clone, Hash, PartialEq, Eq)]
-</span><span class="doccomment">/// Index for Denunciations in collections (e.g. like a HashMap...)
-</span><span class="kw">pub enum </span>DenunciationIndex {
-    <span class="doccomment">/// Variant for Block header denunciation index
-    </span>BlockHeader {
-        <span class="doccomment">/// de slot
-        </span>slot: Slot,
-    },
-    <span class="doccomment">/// Variant for Endorsement denunciation index
-    </span>Endorsement {
-        <span class="doccomment">/// de slot
-        </span>slot: Slot,
-        <span class="doccomment">/// de index
-        </span>index: u32,
-    },
+</span><span class="doccomment">/// Endorsement ID size in bytes
+</span><span class="kw">pub const </span>DENUNCIATION_ID_SIZE_BYTES: usize = massa_hash::HASH_SIZE_BYTES;
+
+<span class="doccomment">/// endorsement id
+</span><span class="attr">#[derive(Clone, Copy, Eq, PartialEq, Ord, PartialOrd, Hash)]
+</span><span class="kw">pub struct </span>DenunciationId(Hash);
+
+<span class="kw">const </span>DENUNCIATION_ID_PREFIX: char = <span class="string">&#39;D&#39;</span>;
+<span class="kw">const </span>DENUNCIATION_ID_VERSION: u64 = <span class="number">0</span>;
+
+<span class="kw">impl </span>PreHashed <span class="kw">for </span>DenunciationId {}
+
+<span class="kw">impl </span>Id <span class="kw">for </span>DenunciationId {
+    <span class="kw">fn </span>new(hash: Hash) -&gt; <span class="self">Self </span>{
+        <span class="self">Self</span>(hash)
+    }
+
+    <span class="kw">fn </span>get_hash(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>Hash {
+        <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="number">0
+    </span>}
 }
 
-<span class="kw">impl </span>DenunciationIndex {
-    <span class="doccomment">/// Get field: slot
-    </span><span class="kw">pub fn </span>get_slot(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>Slot {
-        <span class="kw">match </span><span class="self">self </span>{
-            DenunciationIndex::BlockHeader { slot } =&gt; slot,
-            DenunciationIndex::Endorsement { slot, .. } =&gt; slot,
-        }
+<span class="kw">impl </span>std::fmt::Display <span class="kw">for </span>DenunciationId {
+    <span class="kw">fn </span>fmt(<span class="kw-2">&amp;</span><span class="self">self</span>, f: <span class="kw-2">&amp;mut </span>std::fmt::Formatter) -&gt; std::fmt::Result {
+        <span class="kw">let </span>u64_serializer = U64VarIntSerializer::new();
+        <span class="comment">// might want to allocate the vector with capacity in order to avoid re-allocation
+        </span><span class="kw">let </span><span class="kw-2">mut </span>bytes: Vec&lt;u8&gt; = Vec::new();
+        u64_serializer
+            .serialize(<span class="kw-2">&amp;</span>DENUNCIATION_ID_VERSION, <span class="kw-2">&amp;mut </span>bytes)
+            .map_err(|<span class="kw">_</span>| std::fmt::Error)<span class="question-mark">?</span>;
+        bytes.extend(<span class="self">self</span>.<span class="number">0</span>.to_bytes());
+        <span class="macro">write!</span>(
+            f,
+            <span class="string">&quot;{}{}&quot;</span>,
+            DENUNCIATION_ID_PREFIX,
+            bs58::encode(bytes).with_check().into_string()
+        )
     }
 }
 
-<span class="doccomment">/// Create a `DenunciationIndex` from a `Denunciation`
-</span><span class="kw">impl </span>From&lt;<span class="kw-2">&amp;</span>Denunciation&gt; <span class="kw">for </span>DenunciationIndex {
+<span class="kw">impl </span>std::fmt::Debug <span class="kw">for </span>DenunciationId {
+    <span class="kw">fn </span>fmt(<span class="kw-2">&amp;</span><span class="self">self</span>, f: <span class="kw-2">&amp;mut </span>std::fmt::Formatter) -&gt; std::fmt::Result {
+        <span class="macro">write!</span>(f, <span class="string">&quot;{}&quot;</span>, <span class="self">self</span>)
+    }
+}
+
+<span class="kw">impl </span>DenunciationId {
+    <span class="doccomment">/// denunciation id to bytes
+    </span><span class="kw">pub fn </span>to_bytes(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>[u8; DENUNCIATION_ID_SIZE_BYTES] {
+        <span class="self">self</span>.<span class="number">0</span>.to_bytes()
+    }
+
+    <span class="doccomment">/// denunciation id into bytes
+    </span><span class="kw">pub fn </span>into_bytes(<span class="self">self</span>) -&gt; [u8; DENUNCIATION_ID_SIZE_BYTES] {
+        <span class="self">self</span>.<span class="number">0</span>.into_bytes()
+    }
+
+    <span class="doccomment">/// denunciation id from bytes
+    </span><span class="kw">pub fn </span>from_bytes(data: <span class="kw-2">&amp;</span>[u8; DENUNCIATION_ID_SIZE_BYTES]) -&gt; DenunciationId {
+        DenunciationId(Hash::from_bytes(data))
+    }
+}
+
+<span class="kw">impl </span>From&lt;<span class="kw-2">&amp;</span>Denunciation&gt; <span class="kw">for </span>DenunciationId {
     <span class="kw">fn </span>from(value: <span class="kw-2">&amp;</span>Denunciation) -&gt; <span class="self">Self </span>{
         <span class="kw">match </span>value {
-            Denunciation::Endorsement(endo_de) =&gt; DenunciationIndex::Endorsement {
-                slot: endo_de.slot,
-                index: endo_de.index,
-            },
+            Denunciation::Endorsement(endo_de) =&gt; {
+                <span class="kw">let </span><span class="kw-2">mut </span>to_hash = Vec::with_capacity(
+                    std::mem::size_of::&lt;u32&gt;() + PUBLIC_KEY_SIZE_BYTES + SLOT_KEY_SIZE,
+                );
+                to_hash.extend(endo_de.public_key.to_bytes());
+                to_hash.extend(endo_de.slot.to_bytes_key());
+                to_hash.extend(endo_de.index.to_le_bytes());
+                DenunciationId(Hash::compute_from(<span class="kw-2">&amp;</span>to_hash))
+            }
             Denunciation::BlockHeader(blkh_de) =&gt; {
-                DenunciationIndex::BlockHeader { slot: blkh_de.slot }
+                <span class="kw">let </span><span class="kw-2">mut </span>to_hash = Vec::new();
+                to_hash.extend(blkh_de.public_key.to_bytes());
+                to_hash.extend(blkh_de.slot.to_bytes_key());
+                DenunciationId(Hash::compute_from(<span class="kw-2">&amp;</span>to_hash))
             }
         }
     }
 }
 
-<span class="doccomment">/// Create a `DenunciationIndex` from a `DenunciationPrecursor`
-</span><span class="kw">impl </span>From&lt;<span class="kw-2">&amp;</span>DenunciationPrecursor&gt; <span class="kw">for </span>DenunciationIndex {
-    <span class="kw">fn </span>from(value: <span class="kw-2">&amp;</span>DenunciationPrecursor) -&gt; <span class="self">Self </span>{
-        <span class="kw">match </span>value {
-            DenunciationPrecursor::Endorsement(de_p) =&gt; DenunciationIndex::Endorsement {
-                slot: de_p.slot,
-                index: de_p.index,
-            },
-            DenunciationPrecursor::BlockHeader(de_p) =&gt; {
-                DenunciationIndex::BlockHeader { slot: de_p.slot }
-            }
-        }
-    }
-}
-
-<span class="comment">// End Denunciation Index
+<span class="comment">// End Denunciation Id
 
 // Denunciation interest
 
-</span><span class="doccomment">/// DenunciationPrecursor variant for endorsement
+</span><span class="doccomment">/// DenunciationInterest variant for endorsement
 </span><span class="attr">#[derive(Debug, Clone)]
 </span><span class="kw">pub struct </span>EndorsementDenunciationPrecursor {
     <span class="doccomment">/// secure share endorsement public key
@@ -2059,51 +2087,29 @@
     </span><span class="kw">pub </span>slot: Slot,
     <span class="doccomment">/// endorsement index
     </span><span class="kw">pub </span>index: u32,
-    <span class="doccomment">/// secured header partial hash
-    </span>hash: Hash,
-    <span class="doccomment">/// secured header signature
-    </span>signature: Signature,
+    hash: Hash,
+    signature: Signature,
 }
 
-<span class="doccomment">/// DenunciationPrecursor variant for block header
+<span class="doccomment">/// DenunciationInterest variant for block header
 </span><span class="attr">#[derive(Debug, Clone)]
 </span><span class="kw">pub struct </span>BlockHeaderDenunciationPrecursor {
     <span class="doccomment">/// secured header public key
     </span><span class="kw">pub </span>public_key: PublicKey,
     <span class="doccomment">/// block header slot
     </span><span class="kw">pub </span>slot: Slot,
-    <span class="doccomment">/// secured header partial hash
-    </span>hash: Hash,
-    <span class="doccomment">/// secured header signature
-    </span>signature: Signature,
+    hash: Hash,
+    signature: Signature,
 }
 
 <span class="doccomment">/// Lightweight data for Denunciation creation
-/// (avoid storing heavyweight secured header or secure share endorsement, see denunciation factory)
+/// (avoid storing heavyweight secured header or secure share endorsement)
 </span><span class="attr">#[derive(Debug, Clone)]
 </span><span class="kw">pub enum </span>DenunciationPrecursor {
     <span class="doccomment">/// Endorsement variant
     </span>Endorsement(EndorsementDenunciationPrecursor),
     <span class="doccomment">/// Block header variant
     </span>BlockHeader(BlockHeaderDenunciationPrecursor),
-}
-
-<span class="kw">impl </span>DenunciationPrecursor {
-    <span class="doccomment">/// Get field: slot
-    </span><span class="kw">pub fn </span>get_slot(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>Slot {
-        <span class="kw">match </span><span class="self">self </span>{
-            DenunciationPrecursor::Endorsement(endo_de_p) =&gt; <span class="kw-2">&amp;</span>endo_de_p.slot,
-            DenunciationPrecursor::BlockHeader(blkh_de_p) =&gt; <span class="kw-2">&amp;</span>blkh_de_p.slot,
-        }
-    }
-
-    <span class="doccomment">/// Get field: pub key
-    </span><span class="kw">pub fn </span>get_public_key(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>PublicKey {
-        <span class="kw">match </span><span class="self">self </span>{
-            DenunciationPrecursor::Endorsement(endo_de_p) =&gt; <span class="kw-2">&amp;</span>endo_de_p.public_key,
-            DenunciationPrecursor::BlockHeader(blkh_de_p) =&gt; <span class="kw-2">&amp;</span>blkh_de_p.public_key,
-        }
-    }
 }
 
 <span class="kw">impl </span>TryFrom&lt;<span class="kw-2">&amp;</span>SecureShareEndorsement&gt; <span class="kw">for </span>DenunciationPrecursor {
@@ -2236,7 +2242,7 @@
                 }))
             }
             <span class="kw">_ </span>=&gt; {
-                <span class="comment">// Different enum variants - this is invalid
+                <span class="comment">// Different enum variant - this is invalid
                 </span><span class="prelude-val">Err</span>(DenunciationError::InvalidInput)
             }
         }
@@ -2245,41 +2251,26 @@
 
 <span class="comment">// End Denunciation interest
 
-// testing
-
-</span><span class="attr">#[cfg(any(test, feature = <span class="string">&quot;testing&quot;</span>))]
-</span><span class="kw">impl </span>Denunciation {
-    <span class="doccomment">/// Used under testing conditions to validate an instance of Self
-    </span><span class="kw">pub fn </span>check_invariants(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span>&lt;(), Box&lt;<span class="kw">dyn </span>std::error::Error&gt;&gt; {
-        <span class="kw">if let </span><span class="prelude-val">Err</span>(e) = <span class="self">self</span>.is_valid() {
-            <span class="kw">return </span><span class="prelude-val">Err</span>(e.into());
-        }
-        <span class="prelude-val">Ok</span>(())
-    }
-}
-
-<span class="comment">// end testing
-
 </span><span class="attr">#[cfg(test)]
 </span><span class="kw">mod </span>tests {
     <span class="kw">use super</span>::<span class="kw-2">*</span>;
-
     <span class="kw">use </span>massa_serialization::DeserializeError;
-    <span class="kw">use </span>massa_signature::KeyPair;
 
     <span class="kw">use </span><span class="kw">crate</span>::block_id::BlockId;
-    <span class="kw">use </span><span class="kw">crate</span>::config::{ENDORSEMENT_COUNT, THREAD_COUNT};
     <span class="kw">use </span><span class="kw">crate</span>::endorsement::{Endorsement, EndorsementSerializer, SecureShareEndorsement};
+
+    <span class="kw">use </span><span class="kw">crate</span>::config::{ENDORSEMENT_COUNT, THREAD_COUNT};
     <span class="kw">use </span><span class="kw">crate</span>::secure_share::{Id, SecureShareContent};
     <span class="kw">use </span><span class="kw">crate</span>::test_exports::{
         gen_block_headers_for_denunciation, gen_endorsements_for_denunciation,
     };
+    <span class="kw">use </span>massa_signature::KeyPair;
 
     <span class="attr">#[test]
     </span><span class="kw">fn </span>test_endorsement_denunciation() {
         <span class="comment">// Create an endorsement denunciation and check if it is valid
         </span><span class="kw">let </span>(_slot, _keypair, s_endorsement_1, s_endorsement_2, _s_endorsement_3) =
-            gen_endorsements_for_denunciation(<span class="prelude-val">None</span>, <span class="prelude-val">None</span>);
+            gen_endorsements_for_denunciation();
         <span class="kw">let </span>denunciation: Denunciation = (<span class="kw-2">&amp;</span>s_endorsement_1, <span class="kw-2">&amp;</span>s_endorsement_2).try_into().unwrap();
 
         <span class="macro">assert_eq!</span>(denunciation.is_for_endorsement(), <span class="bool-val">true</span>);
@@ -2289,7 +2280,7 @@
     <span class="attr">#[test]
     </span><span class="kw">fn </span>test_endorsement_denunciation_invalid_1() {
         <span class="kw">let </span>(slot, keypair, s_endorsement_1, _s_endorsement_2, _s_endorsement_3) =
-            gen_endorsements_for_denunciation(<span class="prelude-val">None</span>, <span class="prelude-val">None</span>);
+            gen_endorsements_for_denunciation();
 
         <span class="comment">// Try to create a denunciation from 2 endorsements @ != index
         </span><span class="kw">let </span>endorsement_4 = Endorsement {
@@ -2314,7 +2305,7 @@
     <span class="attr">#[test]
     </span><span class="kw">fn </span>test_endorsement_denunciation_is_for() {
         <span class="kw">let </span>(slot, keypair, s_endorsement_1, s_endorsement_2, s_endorsement_3) =
-            gen_endorsements_for_denunciation(<span class="prelude-val">None</span>, <span class="prelude-val">None</span>);
+            gen_endorsements_for_denunciation();
 
         <span class="kw">let </span>denunciation: Denunciation = (<span class="kw-2">&amp;</span>s_endorsement_1, <span class="kw-2">&amp;</span>s_endorsement_2).try_into().unwrap();
 
@@ -2422,8 +2413,7 @@
     <span class="comment">// SER / DER
     </span><span class="attr">#[test]
     </span><span class="kw">fn </span>test_endorsement_denunciation_ser_der() {
-        <span class="kw">let </span>(<span class="kw">_</span>, <span class="kw">_</span>, s_endorsement_1, s_endorsement_2, <span class="kw">_</span>) =
-            gen_endorsements_for_denunciation(<span class="prelude-val">None</span>, <span class="prelude-val">None</span>);
+        <span class="kw">let </span>(<span class="kw">_</span>, <span class="kw">_</span>, s_endorsement_1, s_endorsement_2, <span class="kw">_</span>) = gen_endorsements_for_denunciation();
 
         <span class="kw">let </span>denunciation = Denunciation::try_from((<span class="kw-2">&amp;</span>s_endorsement_1, <span class="kw-2">&amp;</span>s_endorsement_2)).unwrap();
 
@@ -2487,8 +2477,7 @@
         <span class="macro">assert_eq!</span>(rem.is_empty(), <span class="bool-val">true</span>);
         <span class="macro">assert_eq!</span>(denunciation, de_der_res);
 
-        <span class="kw">let </span>(<span class="kw">_</span>, <span class="kw">_</span>, s_endorsement_1, s_endorsement_2, <span class="kw">_</span>) =
-            gen_endorsements_for_denunciation(<span class="prelude-val">None</span>, <span class="prelude-val">None</span>);
+        <span class="kw">let </span>(<span class="kw">_</span>, <span class="kw">_</span>, s_endorsement_1, s_endorsement_2, <span class="kw">_</span>) = gen_endorsements_for_denunciation();
         <span class="kw">let </span>denunciation = Denunciation::try_from((<span class="kw-2">&amp;</span>s_endorsement_1, <span class="kw-2">&amp;</span>s_endorsement_2)).unwrap();
         buffer.clear();
 
@@ -2509,8 +2498,7 @@
 
         <span class="macro">assert_eq!</span>(denunciation, denunciation_2);
 
-        <span class="kw">let </span>(<span class="kw">_</span>, <span class="kw">_</span>, s_endorsement_1, s_endorsement_2, <span class="kw">_</span>) =
-            gen_endorsements_for_denunciation(<span class="prelude-val">None</span>, <span class="prelude-val">None</span>);
+        <span class="kw">let </span>(<span class="kw">_</span>, <span class="kw">_</span>, s_endorsement_1, s_endorsement_2, <span class="kw">_</span>) = gen_endorsements_for_denunciation();
         <span class="kw">let </span>denunciation_3 = Denunciation::try_from((<span class="kw-2">&amp;</span>s_endorsement_1, <span class="kw-2">&amp;</span>s_endorsement_2)).unwrap();
 
         <span class="kw">let </span>de_p_3 = DenunciationPrecursor::try_from(<span class="kw-2">&amp;</span>s_endorsement_1).unwrap();

@@ -128,8 +128,8 @@
 <span class="kw">use </span>tonic::{Request, Streaming};
 <span class="kw">use </span>tracing::log::error;
 
-<span class="doccomment">/// Type declaration for NewOperations
-</span><span class="kw">pub type </span>NewOperationsStreamType = Pin&lt;
+<span class="doccomment">/// Type declaration for StreamTransactionsThroughput
+</span><span class="kw">pub type </span>NewOperationsStream = Pin&lt;
     Box&lt;
         <span class="kw">dyn </span>futures_core::Stream&lt;Item = <span class="prelude-ty">Result</span>&lt;grpc::NewOperationsResponse, tonic::Status&gt;&gt;
             + Send
@@ -141,7 +141,7 @@
 </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">async fn </span>new_operations(
     grpc: <span class="kw-2">&amp;</span>MassaGrpc,
     request: Request&lt;Streaming&lt;grpc::NewOperationsRequest&gt;&gt;,
-) -&gt; <span class="prelude-ty">Result</span>&lt;NewOperationsStreamType, GrpcError&gt; {
+) -&gt; <span class="prelude-ty">Result</span>&lt;NewOperationsStream, GrpcError&gt; {
     <span class="comment">// Create a channel to handle communication with the client
     </span><span class="kw">let </span>(tx, rx) = tokio::sync::mpsc::channel(grpc.grpc_config.max_channel_size);
     <span class="comment">// Get the inner stream from the request
@@ -154,7 +154,7 @@
             <span class="kw">let </span><span class="kw-2">mut </span>request_id = request.id;
             <span class="kw">let </span><span class="kw-2">mut </span>filter = request.query.and_then(|q| q.filter);
 
-            <span class="comment">// Spawn a new task for sending new operations
+            <span class="comment">// Spawn a new task for sending new blocks
             </span><span class="kw">loop </span>{
                 <span class="macro">select! </span>{
                     <span class="comment">// Receive a new operation from the subscriber
@@ -217,7 +217,7 @@
     });
 
     <span class="kw">let </span>out_stream = tokio_stream::wrappers::ReceiverStream::new(rx);
-    <span class="prelude-val">Ok</span>(Box::pin(out_stream) <span class="kw">as </span>NewOperationsStreamType)
+    <span class="prelude-val">Ok</span>(Box::pin(out_stream) <span class="kw">as </span>NewOperationsStream)
 }
 
 <span class="doccomment">/// Return if the type of operation should be send to client

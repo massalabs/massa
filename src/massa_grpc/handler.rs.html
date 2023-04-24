@@ -183,25 +183,31 @@
 <a href="#183" id="183">183</a>
 <a href="#184" id="184">184</a>
 <a href="#185" id="185">185</a>
+<a href="#186" id="186">186</a>
+<a href="#187" id="187">187</a>
+<a href="#188" id="188">188</a>
+<a href="#189" id="189">189</a>
+<a href="#190" id="190">190</a>
+<a href="#191" id="191">191</a>
+<a href="#192" id="192">192</a>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2023 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="kw">use </span>massa_proto::massa::api::v1 <span class="kw">as </span>grpc;
 
 <span class="kw">use </span><span class="kw">crate</span>::api::{
-    get_blocks_by_slots, get_datastore_entries, get_largest_stakers, get_next_block_best_parents,
-    get_selector_draws, get_transactions_throughput, get_version,
+    get_blocks_by_slots, get_datastore_entries, get_next_block_best_parents, get_selector_draws,
+    get_transactions_throughput, get_version,
 };
 <span class="kw">use </span><span class="kw">crate</span>::server::MassaGrpc;
+<span class="kw">use </span><span class="kw">crate</span>::stream::new_blocks::{new_blocks, NewBlocksStream};
+<span class="kw">use </span><span class="kw">crate</span>::stream::new_blocks_headers::{new_blocks_headers, NewBlocksHeadersStream};
+<span class="kw">use </span><span class="kw">crate</span>::stream::new_filled_blocks::{new_filled_blocks, NewFilledBlocksStream};
+<span class="kw">use </span><span class="kw">crate</span>::stream::new_operations::{new_operations, NewOperationsStream};
+<span class="kw">use </span><span class="kw">crate</span>::stream::tx_throughput::{transactions_throughput, TransactionsThroughputStream};
 <span class="kw">use </span><span class="kw">crate</span>::stream::{
-    new_blocks::{new_blocks, NewBlocksStreamType},
-    new_blocks_headers::{new_blocks_headers, NewBlocksHeadersStreamType},
-    new_endorsements::{new_endorsements, NewEndorsementsStreamType},
-    new_filled_blocks::{new_filled_blocks, NewFilledBlocksStreamType},
-    new_operations::{new_operations, NewOperationsStreamType},
-    send_blocks::{send_blocks, SendBlocksStreamType},
-    send_endorsements::{send_endorsements, SendEndorsementsStreamType},
-    send_operations::{send_operations, SendOperationsStreamType},
-    tx_throughput::{transactions_throughput, TransactionsThroughputStreamType},
+    send_blocks::{send_blocks, SendBlocksStream},
+    send_endorsements::{send_endorsements, SendEndorsementsStream},
+    send_operations::{send_operations, SendOperationsStream},
 };
 
 <span class="attr">#[tonic::async_trait]
@@ -211,15 +217,10 @@
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         request: tonic::Request&lt;grpc::GetDatastoreEntriesRequest&gt;,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;tonic::Response&lt;grpc::GetDatastoreEntriesResponse&gt;, tonic::Status&gt; {
-        <span class="prelude-val">Ok</span>(tonic::Response::new(get_datastore_entries(<span class="self">self</span>, request)<span class="question-mark">?</span>))
-    }
-
-    <span class="doccomment">/// handler for get largest stakers.
-    </span><span class="kw">async fn </span>get_largest_stakers(
-        <span class="kw-2">&amp;</span><span class="self">self</span>,
-        request: tonic::Request&lt;grpc::GetLargestStakersRequest&gt;,
-    ) -&gt; <span class="prelude-ty">Result</span>&lt;tonic::Response&lt;grpc::GetLargestStakersResponse&gt;, tonic::Status&gt; {
-        <span class="prelude-val">Ok</span>(tonic::Response::new(get_largest_stakers(<span class="self">self</span>, request)<span class="question-mark">?</span>))
+        <span class="kw">match </span>get_datastore_entries(<span class="self">self</span>, request) {
+            <span class="prelude-val">Ok</span>(response) =&gt; <span class="prelude-val">Ok</span>(tonic::Response::new(response)),
+            <span class="prelude-val">Err</span>(e) =&gt; <span class="prelude-val">Err</span>(e.into()),
+        }
     }
 
     <span class="doccomment">/// handler for get selector draws
@@ -227,16 +228,20 @@
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         request: tonic::Request&lt;grpc::GetSelectorDrawsRequest&gt;,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;tonic::Response&lt;grpc::GetSelectorDrawsResponse&gt;, tonic::Status&gt; {
-        <span class="prelude-val">Ok</span>(tonic::Response::new(get_selector_draws(<span class="self">self</span>, request)<span class="question-mark">?</span>))
+        <span class="kw">match </span>get_selector_draws(<span class="self">self</span>, request) {
+            <span class="prelude-val">Ok</span>(response) =&gt; <span class="prelude-val">Ok</span>(tonic::Response::new(response)),
+            <span class="prelude-val">Err</span>(e) =&gt; <span class="prelude-val">Err</span>(e.into()),
+        }
     }
 
     <span class="kw">async fn </span>get_transactions_throughput(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         request: tonic::Request&lt;grpc::GetTransactionsThroughputRequest&gt;,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;tonic::Response&lt;grpc::GetTransactionsThroughputResponse&gt;, tonic::Status&gt; {
-        <span class="prelude-val">Ok</span>(tonic::Response::new(get_transactions_throughput(
-            <span class="self">self</span>, request,
-        )<span class="question-mark">?</span>))
+        <span class="kw">match </span>get_transactions_throughput(<span class="self">self</span>, request) {
+            <span class="prelude-val">Ok</span>(response) =&gt; <span class="prelude-val">Ok</span>(tonic::Response::new(response)),
+            <span class="prelude-val">Err</span>(e) =&gt; <span class="prelude-val">Err</span>(e.into()),
+        }
     }
 
     <span class="doccomment">/// handler for get_next_block_best_parents
@@ -244,16 +249,20 @@
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         request: tonic::Request&lt;grpc::GetNextBlockBestParentsRequest&gt;,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;tonic::Response&lt;grpc::GetNextBlockBestParentsResponse&gt;, tonic::Status&gt; {
-        <span class="prelude-val">Ok</span>(tonic::Response::new(get_next_block_best_parents(
-            <span class="self">self</span>, request,
-        )<span class="question-mark">?</span>))
+        <span class="kw">match </span>get_next_block_best_parents(<span class="self">self</span>, request) {
+            <span class="prelude-val">Ok</span>(response) =&gt; <span class="prelude-val">Ok</span>(tonic::Response::new(response)),
+            <span class="prelude-val">Err</span>(e) =&gt; <span class="prelude-val">Err</span>(e.into()),
+        }
     }
 
     <span class="kw">async fn </span>get_blocks_by_slots(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         request: tonic::Request&lt;grpc::GetBlocksBySlotsRequest&gt;,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;tonic::Response&lt;grpc::GetBlocksBySlotsResponse&gt;, tonic::Status&gt; {
-        <span class="prelude-val">Ok</span>(tonic::Response::new(get_blocks_by_slots(<span class="self">self</span>, request)<span class="question-mark">?</span>))
+        <span class="kw">match </span>get_blocks_by_slots(<span class="self">self</span>, request) {
+            <span class="prelude-val">Ok</span>(response) =&gt; <span class="prelude-val">Ok</span>(tonic::Response::new(response)),
+            <span class="prelude-val">Err</span>(e) =&gt; <span class="prelude-val">Err</span>(e.into()),
+        }
     }
 
     <span class="doccomment">/// handler for get version
@@ -261,7 +270,10 @@
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         request: tonic::Request&lt;grpc::GetVersionRequest&gt;,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;tonic::Response&lt;grpc::GetVersionResponse&gt;, tonic::Status&gt; {
-        <span class="prelude-val">Ok</span>(tonic::Response::new(get_version(<span class="self">self</span>, request)<span class="question-mark">?</span>))
+        <span class="kw">match </span>get_version(<span class="self">self</span>, request) {
+            <span class="prelude-val">Ok</span>(response) =&gt; <span class="prelude-val">Ok</span>(tonic::Response::new(response)),
+            <span class="prelude-val">Err</span>(e) =&gt; <span class="prelude-val">Err</span>(e.into()),
+        }
     }
 
     <span class="comment">// ███████╗████████╗██████╗ ███████╗ █████╗ ███╗   ███╗
@@ -270,102 +282,104 @@
     // ╚════██║   ██║   ██╔══██╗██╔══╝  ██╔══██║██║╚██╔╝██║
     // ███████║   ██║   ██║  ██║███████╗██║  ██║██║ ╚═╝ ██║
 
-    </span><span class="kw">type </span>NewBlocksStream = NewBlocksStreamType;
-
-    <span class="doccomment">/// handler for subscribe new blocks
-    </span><span class="kw">async fn </span>new_blocks(
-        <span class="kw-2">&amp;</span><span class="self">self</span>,
-        request: tonic::Request&lt;tonic::Streaming&lt;grpc::NewBlocksRequest&gt;&gt;,
-    ) -&gt; <span class="prelude-ty">Result</span>&lt;tonic::Response&lt;<span class="self">Self</span>::NewBlocksStream&gt;, tonic::Status&gt; {
-        <span class="prelude-val">Ok</span>(tonic::Response::new(new_blocks(<span class="self">self</span>, request).<span class="kw">await</span><span class="question-mark">?</span>))
-    }
-
-    <span class="kw">type </span>NewBlocksHeadersStream = NewBlocksHeadersStreamType;
-
-    <span class="doccomment">/// handler for subscribe new blocks headers
-    </span><span class="kw">async fn </span>new_blocks_headers(
-        <span class="kw-2">&amp;</span><span class="self">self</span>,
-        request: tonic::Request&lt;tonic::Streaming&lt;grpc::NewBlocksHeadersRequest&gt;&gt;,
-    ) -&gt; <span class="prelude-ty">Result</span>&lt;tonic::Response&lt;<span class="self">Self</span>::NewBlocksHeadersStream&gt;, tonic::Status&gt; {
-        <span class="prelude-val">Ok</span>(tonic::Response::new(
-            new_blocks_headers(<span class="self">self</span>, request).<span class="kw">await</span><span class="question-mark">?</span>,
-        ))
-    }
-
-    <span class="kw">type </span>NewEndorsementsStream = NewEndorsementsStreamType;
-
-    <span class="doccomment">/// handler for subscribe new operations stream
-    </span><span class="kw">async fn </span>new_endorsements(
-        <span class="kw-2">&amp;</span><span class="self">self</span>,
-        request: tonic::Request&lt;tonic::Streaming&lt;grpc::NewEndorsementsRequest&gt;&gt;,
-    ) -&gt; <span class="prelude-ty">Result</span>&lt;tonic::Response&lt;<span class="self">Self</span>::NewEndorsementsStream&gt;, tonic::Status&gt; {
-        <span class="prelude-val">Ok</span>(tonic::Response::new(new_endorsements(<span class="self">self</span>, request).<span class="kw">await</span><span class="question-mark">?</span>))
-    }
-
-    <span class="kw">type </span>NewFilledBlocksStream = NewFilledBlocksStreamType;
-
-    <span class="doccomment">/// handler for subscribe new blocks with operations content
-    </span><span class="kw">async fn </span>new_filled_blocks(
-        <span class="kw-2">&amp;</span><span class="self">self</span>,
-        request: tonic::Request&lt;tonic::Streaming&lt;grpc::NewFilledBlocksRequest&gt;&gt;,
-    ) -&gt; <span class="prelude-ty">Result</span>&lt;tonic::Response&lt;<span class="self">Self</span>::NewFilledBlocksStream&gt;, tonic::Status&gt; {
-        <span class="prelude-val">Ok</span>(tonic::Response::new(
-            new_filled_blocks(<span class="self">self</span>, request).<span class="kw">await</span><span class="question-mark">?</span>,
-        ))
-    }
-
-    <span class="kw">type </span>NewOperationsStream = NewOperationsStreamType;
-
-    <span class="doccomment">/// handler for subscribe new operations stream
-    </span><span class="kw">async fn </span>new_operations(
-        <span class="kw-2">&amp;</span><span class="self">self</span>,
-        request: tonic::Request&lt;tonic::Streaming&lt;grpc::NewOperationsRequest&gt;&gt;,
-    ) -&gt; <span class="prelude-ty">Result</span>&lt;tonic::Response&lt;<span class="self">Self</span>::NewOperationsStream&gt;, tonic::Status&gt; {
-        <span class="prelude-val">Ok</span>(tonic::Response::new(new_operations(<span class="self">self</span>, request).<span class="kw">await</span><span class="question-mark">?</span>))
-    }
-
-    <span class="kw">type </span>SendBlocksStream = SendBlocksStreamType;
+    </span><span class="kw">type </span>SendBlocksStream = SendBlocksStream;
 
     <span class="doccomment">/// handler for send_blocks_stream
     </span><span class="kw">async fn </span>send_blocks(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         request: tonic::Request&lt;tonic::Streaming&lt;grpc::SendBlocksRequest&gt;&gt;,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;tonic::Response&lt;<span class="self">Self</span>::SendBlocksStream&gt;, tonic::Status&gt; {
-        <span class="prelude-val">Ok</span>(tonic::Response::new(send_blocks(<span class="self">self</span>, request).<span class="kw">await</span><span class="question-mark">?</span>))
+        <span class="kw">match </span>send_blocks(<span class="self">self</span>, request).<span class="kw">await </span>{
+            <span class="prelude-val">Ok</span>(res) =&gt; <span class="prelude-val">Ok</span>(tonic::Response::new(res)),
+            <span class="prelude-val">Err</span>(e) =&gt; <span class="prelude-val">Err</span>(e.into()),
+        }
     }
-
-    <span class="kw">type </span>SendEndorsementsStream = SendEndorsementsStreamType;
-
+    <span class="kw">type </span>SendEndorsementsStream = SendEndorsementsStream;
     <span class="doccomment">/// handler for send_endorsements
     </span><span class="kw">async fn </span>send_endorsements(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         request: tonic::Request&lt;tonic::Streaming&lt;grpc::SendEndorsementsRequest&gt;&gt;,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;tonic::Response&lt;<span class="self">Self</span>::SendEndorsementsStream&gt;, tonic::Status&gt; {
-        <span class="prelude-val">Ok</span>(tonic::Response::new(
-            send_endorsements(<span class="self">self</span>, request).<span class="kw">await</span><span class="question-mark">?</span>,
-        ))
+        <span class="kw">match </span>send_endorsements(<span class="self">self</span>, request).<span class="kw">await </span>{
+            <span class="prelude-val">Ok</span>(res) =&gt; <span class="prelude-val">Ok</span>(tonic::Response::new(res)),
+            <span class="prelude-val">Err</span>(e) =&gt; <span class="prelude-val">Err</span>(e.into()),
+        }
     }
-
-    <span class="kw">type </span>SendOperationsStream = SendOperationsStreamType;
-
+    <span class="kw">type </span>SendOperationsStream = SendOperationsStream;
     <span class="doccomment">/// handler for send_operations
     </span><span class="kw">async fn </span>send_operations(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         request: tonic::Request&lt;tonic::Streaming&lt;grpc::SendOperationsRequest&gt;&gt;,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;tonic::Response&lt;<span class="self">Self</span>::SendOperationsStream&gt;, tonic::Status&gt; {
-        <span class="prelude-val">Ok</span>(tonic::Response::new(send_operations(<span class="self">self</span>, request).<span class="kw">await</span><span class="question-mark">?</span>))
+        <span class="kw">match </span>send_operations(<span class="self">self</span>, request).<span class="kw">await </span>{
+            <span class="prelude-val">Ok</span>(res) =&gt; <span class="prelude-val">Ok</span>(tonic::Response::new(res)),
+            <span class="prelude-val">Err</span>(e) =&gt; <span class="prelude-val">Err</span>(e.into()),
+        }
     }
 
-    <span class="kw">type </span>TransactionsThroughputStream = TransactionsThroughputStreamType;
+    <span class="kw">type </span>TransactionsThroughputStream = TransactionsThroughputStream;
 
     <span class="doccomment">/// handler for transactions throughput
     </span><span class="kw">async fn </span>transactions_throughput(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         request: tonic::Request&lt;tonic::Streaming&lt;grpc::TransactionsThroughputRequest&gt;&gt;,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;tonic::Response&lt;<span class="self">Self</span>::TransactionsThroughputStream&gt;, tonic::Status&gt; {
-        <span class="prelude-val">Ok</span>(tonic::Response::new(
-            transactions_throughput(<span class="self">self</span>, request).<span class="kw">await</span><span class="question-mark">?</span>,
-        ))
+        <span class="kw">match </span>transactions_throughput(<span class="self">self</span>, request).<span class="kw">await </span>{
+            <span class="prelude-val">Ok</span>(res) =&gt; <span class="prelude-val">Ok</span>(tonic::Response::new(res)),
+            <span class="prelude-val">Err</span>(e) =&gt; <span class="prelude-val">Err</span>(e.into()),
+        }
+    }
+
+    <span class="kw">type </span>NewOperationsStream = NewOperationsStream;
+
+    <span class="doccomment">/// handler for subscribe new operations stream
+    </span><span class="kw">async fn </span>new_operations(
+        <span class="kw-2">&amp;</span><span class="self">self</span>,
+        request: tonic::Request&lt;tonic::Streaming&lt;grpc::NewOperationsRequest&gt;&gt;,
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;tonic::Response&lt;<span class="self">Self</span>::NewOperationsStream&gt;, tonic::Status&gt; {
+        <span class="kw">match </span>new_operations(<span class="self">self</span>, request).<span class="kw">await </span>{
+            <span class="prelude-val">Ok</span>(res) =&gt; <span class="prelude-val">Ok</span>(tonic::Response::new(res)),
+            <span class="prelude-val">Err</span>(e) =&gt; <span class="prelude-val">Err</span>(e.into()),
+        }
+    }
+
+    <span class="kw">type </span>NewBlocksStream = NewBlocksStream;
+
+    <span class="doccomment">/// handler for subscribe new blocks
+    </span><span class="kw">async fn </span>new_blocks(
+        <span class="kw-2">&amp;</span><span class="self">self</span>,
+        request: tonic::Request&lt;tonic::Streaming&lt;grpc::NewBlocksRequest&gt;&gt;,
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;tonic::Response&lt;<span class="self">Self</span>::NewBlocksStream&gt;, tonic::Status&gt; {
+        <span class="kw">match </span>new_blocks(<span class="self">self</span>, request).<span class="kw">await </span>{
+            <span class="prelude-val">Ok</span>(res) =&gt; <span class="prelude-val">Ok</span>(tonic::Response::new(res)),
+            <span class="prelude-val">Err</span>(e) =&gt; <span class="prelude-val">Err</span>(e.into()),
+        }
+    }
+
+    <span class="kw">type </span>NewBlocksHeadersStream = NewBlocksHeadersStream;
+
+    <span class="doccomment">/// handler for subscribe new blocks headers
+    </span><span class="kw">async fn </span>new_blocks_headers(
+        <span class="kw-2">&amp;</span><span class="self">self</span>,
+        request: tonic::Request&lt;tonic::Streaming&lt;grpc::NewBlocksHeadersRequest&gt;&gt;,
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;tonic::Response&lt;<span class="self">Self</span>::NewBlocksHeadersStream&gt;, tonic::Status&gt; {
+        <span class="kw">match </span>new_blocks_headers(<span class="self">self</span>, request).<span class="kw">await </span>{
+            <span class="prelude-val">Ok</span>(res) =&gt; <span class="prelude-val">Ok</span>(tonic::Response::new(res)),
+            <span class="prelude-val">Err</span>(e) =&gt; <span class="prelude-val">Err</span>(e.into()),
+        }
+    }
+
+    <span class="kw">type </span>NewFilledBlocksStream = NewFilledBlocksStream;
+
+    <span class="doccomment">/// handler for subscribe new blocks with operations content
+    </span><span class="kw">async fn </span>new_filled_blocks(
+        <span class="kw-2">&amp;</span><span class="self">self</span>,
+        request: tonic::Request&lt;tonic::Streaming&lt;grpc::NewFilledBlocksRequest&gt;&gt;,
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;tonic::Response&lt;<span class="self">Self</span>::NewFilledBlocksStream&gt;, tonic::Status&gt; {
+        <span class="kw">match </span>new_filled_blocks(<span class="self">self</span>, request).<span class="kw">await </span>{
+            <span class="prelude-val">Ok</span>(res) =&gt; <span class="prelude-val">Ok</span>(tonic::Response::new(res)),
+            <span class="prelude-val">Err</span>(e) =&gt; <span class="prelude-val">Err</span>(e.into()),
+        }
     }
 }
 </code></pre></div>
