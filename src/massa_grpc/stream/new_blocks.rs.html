@@ -110,7 +110,7 @@
 <span class="kw">use </span>tracing::log::{error, warn};
 
 <span class="doccomment">/// Type declaration for NewBlocks
-</span><span class="kw">pub type </span>NewBlocksStream = Pin&lt;
+</span><span class="kw">pub type </span>NewBlocksStreamType = Pin&lt;
     Box&lt;
         <span class="kw">dyn </span>futures_core::Stream&lt;Item = <span class="prelude-ty">Result</span>&lt;grpc::NewBlocksResponse, tonic::Status&gt;&gt;
             + Send
@@ -122,7 +122,7 @@
 </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">async fn </span>new_blocks(
     grpc: <span class="kw-2">&amp;</span>MassaGrpc,
     request: Request&lt;Streaming&lt;grpc::NewBlocksRequest&gt;&gt;,
-) -&gt; <span class="prelude-ty">Result</span>&lt;NewBlocksStream, GrpcError&gt; {
+) -&gt; <span class="prelude-ty">Result</span>&lt;NewBlocksStreamType, GrpcError&gt; {
     <span class="comment">// Create a channel to handle communication with the client
     </span><span class="kw">let </span>(tx, rx) = tokio::sync::mpsc::channel(grpc.grpc_config.max_channel_size);
     <span class="comment">// Get the inner stream from the request
@@ -192,7 +192,7 @@
     </span><span class="kw">let </span>out_stream = tokio_stream::wrappers::ReceiverStream::new(rx);
 
     <span class="comment">// Return the new stream of blocks.
-    </span><span class="prelude-val">Ok</span>(Box::pin(out_stream) <span class="kw">as </span>NewBlocksStream)
+    </span><span class="prelude-val">Ok</span>(Box::pin(out_stream) <span class="kw">as </span>NewBlocksStreamType)
 }
 </code></pre></div>
 </section></main><div id="rustdoc-vars" data-root-path="../../../" data-static-root-path="../../../static.files/" data-current-crate="massa_grpc" data-themes="" data-resource-suffix="" data-rustdoc-version="1.69.0-nightly (d962ea578 2023-02-26)" data-search-js="search-14421e1532aead08.js" data-settings-js="settings-f0c5c39777a9a2f6.js" data-settings-css="settings-0bcba95ff279c1db.css" ></div></body></html>

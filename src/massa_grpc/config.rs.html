@@ -81,6 +81,10 @@
 <a href="#81" id="81">81</a>
 <a href="#82" id="82">82</a>
 <a href="#83" id="83">83</a>
+<a href="#84" id="84">84</a>
+<a href="#85" id="85">85</a>
+<a href="#86" id="86">86</a>
+<a href="#87" id="87">87</a>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2023 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="kw">use </span>massa_time::MassaTime;
@@ -157,12 +161,16 @@
     </span><span class="kw">pub </span>genesis_timestamp: MassaTime,
     <span class="doccomment">/// t0
     </span><span class="kw">pub </span>t0: MassaTime,
+    <span class="doccomment">/// periods per cycle
+    </span><span class="kw">pub </span>periods_per_cycle: u64,
     <span class="doccomment">/// limits the maximum size of streaming channel
     </span><span class="kw">pub </span>max_channel_size: usize,
     <span class="doccomment">/// when looking for next draw we want to look at max `draw_lookahead_period_count`
     </span><span class="kw">pub </span>draw_lookahead_period_count: u64,
     <span class="doccomment">/// last_start_period of the network, used to deserialize blocks
     </span><span class="kw">pub </span>last_start_period: u64,
+    <span class="doccomment">/// Max denunciations in block header
+    </span><span class="kw">pub </span>max_denunciations_per_block_header: u32,
 }
 </code></pre></div>
 </section></main><div id="rustdoc-vars" data-root-path="../../" data-static-root-path="../../static.files/" data-current-crate="massa_grpc" data-themes="" data-resource-suffix="" data-rustdoc-version="1.69.0-nightly (d962ea578 2023-02-26)" data-search-js="search-14421e1532aead08.js" data-settings-js="settings-f0c5c39777a9a2f6.js" data-settings-css="settings-0bcba95ff279c1db.css" ></div></body></html>
