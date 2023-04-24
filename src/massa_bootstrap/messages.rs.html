@@ -929,6 +929,42 @@
 <a href="#929" id="929">929</a>
 <a href="#930" id="930">930</a>
 <a href="#931" id="931">931</a>
+<a href="#932" id="932">932</a>
+<a href="#933" id="933">933</a>
+<a href="#934" id="934">934</a>
+<a href="#935" id="935">935</a>
+<a href="#936" id="936">936</a>
+<a href="#937" id="937">937</a>
+<a href="#938" id="938">938</a>
+<a href="#939" id="939">939</a>
+<a href="#940" id="940">940</a>
+<a href="#941" id="941">941</a>
+<a href="#942" id="942">942</a>
+<a href="#943" id="943">943</a>
+<a href="#944" id="944">944</a>
+<a href="#945" id="945">945</a>
+<a href="#946" id="946">946</a>
+<a href="#947" id="947">947</a>
+<a href="#948" id="948">948</a>
+<a href="#949" id="949">949</a>
+<a href="#950" id="950">950</a>
+<a href="#951" id="951">951</a>
+<a href="#952" id="952">952</a>
+<a href="#953" id="953">953</a>
+<a href="#954" id="954">954</a>
+<a href="#955" id="955">955</a>
+<a href="#956" id="956">956</a>
+<a href="#957" id="957">957</a>
+<a href="#958" id="958">958</a>
+<a href="#959" id="959">959</a>
+<a href="#960" id="960">960</a>
+<a href="#961" id="961">961</a>
+<a href="#962" id="962">962</a>
+<a href="#963" id="963">963</a>
+<a href="#964" id="964">964</a>
+<a href="#965" id="965">965</a>
+<a href="#966" id="966">966</a>
+<a href="#967" id="967">967</a>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="kw">use </span><span class="kw">crate</span>::settings::BootstrapServerMessageDeserializerArgs;
@@ -939,10 +975,14 @@
 <span class="kw">use </span>massa_consensus_exports::bootstrapable_graph::{
     BootstrapableGraph, BootstrapableGraphDeserializer, BootstrapableGraphSerializer,
 };
-<span class="kw">use </span>massa_executed_ops::{ExecutedOpsDeserializer, ExecutedOpsSerializer};
+<span class="kw">use </span>massa_executed_ops::{
+    ExecutedOpsDeserializer, ExecutedOpsSerializer, ProcessedDenunciationsDeserializer,
+    ProcessedDenunciationsSerializer,
+};
 <span class="kw">use </span>massa_final_state::{StateChanges, StateChangesDeserializer, StateChangesSerializer};
 <span class="kw">use </span>massa_ledger_exports::{Key <span class="kw">as </span>LedgerKey, KeyDeserializer, KeySerializer};
 <span class="kw">use </span>massa_models::block_id::{BlockId, BlockIdDeserializer, BlockIdSerializer};
+<span class="kw">use </span>massa_models::denunciation::DenunciationIndex;
 <span class="kw">use </span>massa_models::operation::OperationId;
 <span class="kw">use </span>massa_models::prehash::PreHashSet;
 <span class="kw">use </span>massa_models::serialization::{
@@ -975,7 +1015,7 @@
     IResult,
 };
 <span class="kw">use </span>num_enum::{IntoPrimitive, TryFromPrimitive};
-<span class="kw">use </span>std::collections::BTreeMap;
+<span class="kw">use </span>std::collections::{BTreeMap, HashSet};
 <span class="kw">use </span>std::convert::TryInto;
 <span class="kw">use </span>std::ops::Bound::{Excluded, Included};
 
@@ -1009,6 +1049,8 @@
         </span>pos_credits_part: DeferredCredits,
         <span class="doccomment">/// Part of the executed operations
         </span>exec_ops_part: BTreeMap&lt;Slot, PreHashSet&lt;OperationId&gt;&gt;,
+        <span class="doccomment">/// Part of the executed operations
+        </span>processed_de_part: BTreeMap&lt;Slot, HashSet&lt;DenunciationIndex&gt;&gt;,
         <span class="doccomment">/// Ledger change for addresses inferior to `address` of the client message until the actual slot.
         </span>final_state_changes: Vec&lt;(Slot, StateChanges)&gt;,
         <span class="doccomment">/// Part of the consensus graph
@@ -1080,6 +1122,7 @@
     opt_pos_cycle_serializer: OptionSerializer&lt;CycleInfo, CycleInfoSerializer&gt;,
     pos_credits_serializer: DeferredCreditsSerializer,
     exec_ops_serializer: ExecutedOpsSerializer,
+    processed_de_serializer: ProcessedDenunciationsSerializer,
     opt_last_start_period_serializer: OptionSerializer&lt;u64, U64VarIntSerializer&gt;,
     store_serializer: MipStoreRawSerializer,
 }
@@ -1108,6 +1151,7 @@
             opt_pos_cycle_serializer: OptionSerializer::new(CycleInfoSerializer::new()),
             pos_credits_serializer: DeferredCreditsSerializer::new(),
             exec_ops_serializer: ExecutedOpsSerializer::new(),
+            processed_de_serializer: ProcessedDenunciationsSerializer::new(),
             opt_last_start_period_serializer: OptionSerializer::new(U64VarIntSerializer::new()),
             store_serializer: MipStoreRawSerializer::new(),
         }
@@ -1158,6 +1202,7 @@
                 pos_cycle_part,
                 pos_credits_part,
                 exec_ops_part,
+                processed_de_part,
                 final_state_changes,
                 consensus_part,
                 consensus_outdated_ids,
@@ -1181,6 +1226,9 @@
                     .serialize(pos_credits_part, buffer)<span class="question-mark">?</span>;
                 <span class="comment">// executed operations
                 </span><span class="self">self</span>.exec_ops_serializer.serialize(exec_ops_part, buffer)<span class="question-mark">?</span>;
+                <span class="comment">// processed denunciations
+                </span><span class="self">self</span>.processed_de_serializer
+                    .serialize(processed_de_part, buffer)<span class="question-mark">?</span>;
                 <span class="comment">// changes length
                 </span><span class="self">self</span>.u64_serializer
                     .serialize(<span class="kw-2">&amp;</span>(final_state_changes.len() <span class="kw">as </span>u64), buffer)<span class="question-mark">?</span>;
@@ -1246,6 +1294,7 @@
     opt_pos_cycle_deserializer: OptionDeserializer&lt;CycleInfo, CycleInfoDeserializer&gt;,
     pos_credits_deserializer: DeferredCreditsDeserializer,
     exec_ops_deserializer: ExecutedOpsDeserializer,
+    processed_de_deserializer: ProcessedDenunciationsDeserializer,
     opt_last_start_period_deserializer: OptionDeserializer&lt;u64, U64VarIntDeserializer&gt;,
     store_deserializer: MipStoreRawDeserializer,
 }
@@ -1274,6 +1323,8 @@
                 args.max_production_stats_length,
                 args.max_credits_length,
                 args.max_ops_changes_length,
+                args.endorsement_count,
+                args.max_de_changes_length,
             ),
             length_state_changes: U64VarIntDeserializer::new(
                 Included(<span class="number">0</span>),
@@ -1320,6 +1371,12 @@
                 args.max_executed_ops_length,
                 args.max_operations_per_block <span class="kw">as </span>u64,
             ),
+            processed_de_deserializer: ProcessedDenunciationsDeserializer::new(
+                args.thread_count,
+                args.endorsement_count,
+                args.max_de_changes_length,
+                args.max_denunciations_per_block_header <span class="kw">as </span>u64,
+            ),
             opt_last_start_period_deserializer: OptionDeserializer::new(
                 U64VarIntDeserializer::new(Included(u64::MIN), Included(u64::MAX)),
             ),
@@ -1353,7 +1410,7 @@
     ///     max_rolls_length: 1000, max_production_stats_length: 1000, max_credits_length: 1000,
     ///     max_executed_ops_length: 1000, max_ops_changes_length: 1000,
     ///     mip_store_stats_block_considered: 100, mip_store_stats_counters_max: 10,
-    ///     max_denunciations_per_block_header: 128,};
+    ///     max_denunciations_per_block_header: 128, max_de_changes_length: 1000,};
     /// let message_deserializer = BootstrapServerMessageDeserializer::new(args);
     /// let bootstrap_server_message = BootstrapServerMessage::BootstrapTime {
     ///    server_time: MassaTime::from(0),
@@ -1438,6 +1495,9 @@
                     context(<span class="string">&quot;Failed exec_ops_part deserialization&quot;</span>, |input| {
                         <span class="self">self</span>.exec_ops_deserializer.deserialize(input)
                     }),
+                    context(<span class="string">&quot;Failed processed_de_part deserialization&quot;</span>, |input| {
+                        <span class="self">self</span>.processed_de_deserializer.deserialize(input)
+                    }),
                     context(
                         <span class="string">&quot;Failed final_state_changes deserialization&quot;</span>,
                         length_count(
@@ -1468,6 +1528,7 @@
                         pos_cycle_part,
                         pos_credits_part,
                         exec_ops_part,
+                        processed_de_part,
                         final_state_changes,
                         consensus_part,
                         consensus_outdated_ids,
@@ -1480,6 +1541,7 @@
                             pos_cycle_part,
                             pos_credits_part,
                             exec_ops_part,
+                            processed_de_part,
                             final_state_changes,
                             consensus_part,
                             consensus_outdated_ids,
@@ -1528,6 +1590,8 @@
         </span>last_credits_step: StreamingStep&lt;Slot&gt;,
         <span class="doccomment">/// Last received executed operation associated slot
         </span>last_ops_step: StreamingStep&lt;Slot&gt;,
+        <span class="doccomment">/// Last received processed denunciations associated slot
+        </span>last_de_step: StreamingStep&lt;Slot&gt;,
         <span class="doccomment">/// Last received consensus block slot
         </span>last_consensus_step: StreamingStep&lt;PreHashSet&lt;BlockId&gt;&gt;,
         <span class="doccomment">/// Should be true only for the first part, false later
@@ -1624,6 +1688,7 @@
                 last_cycle_step,
                 last_credits_step,
                 last_ops_step,
+                last_de_step,
                 last_consensus_step,
                 send_last_start_period,
             } =&gt; {
@@ -1640,6 +1705,7 @@
                     <span class="self">self</span>.slot_step_serializer
                         .serialize(last_credits_step, buffer)<span class="question-mark">?</span>;
                     <span class="self">self</span>.slot_step_serializer.serialize(last_ops_step, buffer)<span class="question-mark">?</span>;
+                    <span class="self">self</span>.slot_step_serializer.serialize(last_de_step, buffer)<span class="question-mark">?</span>;
                     <span class="self">self</span>.block_ids_step_serializer
                         .serialize(last_consensus_step, buffer)<span class="question-mark">?</span>;
                     <span class="self">self</span>.bool_serializer
@@ -1785,6 +1851,7 @@
                                 last_cycle_step: StreamingStep::Started,
                                 last_credits_step: StreamingStep::Started,
                                 last_ops_step: StreamingStep::Started,
+                                last_de_step: StreamingStep::Started,
                                 last_consensus_step: StreamingStep::Started,
                                 send_last_start_period: <span class="bool-val">true</span>,
                             },
@@ -1809,6 +1876,9 @@
                             context(<span class="string">&quot;Failed last_ops_step deserialization&quot;</span>, |input| {
                                 <span class="self">self</span>.slot_step_deserializer.deserialize(input)
                             }),
+                            context(<span class="string">&quot;Failed last_de_step deserialization&quot;</span>, |input| {
+                                <span class="self">self</span>.slot_step_deserializer.deserialize(input)
+                            }),
                             context(<span class="string">&quot;Failed last_consensus_step deserialization&quot;</span>, |input| {
                                 <span class="self">self</span>.block_ids_step_deserializer.deserialize(input)
                             }),
@@ -1824,6 +1894,7 @@
                                 last_cycle_step,
                                 last_credits_step,
                                 last_ops_step,
+                                last_de_step,
                                 last_consensus_step,
                                 send_last_start_period,
                             )| {
@@ -1834,6 +1905,7 @@
                                     last_cycle_step,
                                     last_credits_step,
                                     last_ops_step,
+                                    last_de_step,
                                     last_consensus_step,
                                     send_last_start_period,
                                 }

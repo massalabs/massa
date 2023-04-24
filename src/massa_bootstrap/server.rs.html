@@ -799,6 +799,21 @@
 <a href="#799" id="799">799</a>
 <a href="#800" id="800">800</a>
 <a href="#801" id="801">801</a>
+<a href="#802" id="802">802</a>
+<a href="#803" id="803">803</a>
+<a href="#804" id="804">804</a>
+<a href="#805" id="805">805</a>
+<a href="#806" id="806">806</a>
+<a href="#807" id="807">807</a>
+<a href="#808" id="808">808</a>
+<a href="#809" id="809">809</a>
+<a href="#810" id="810">810</a>
+<a href="#811" id="811">811</a>
+<a href="#812" id="812">812</a>
+<a href="#813" id="813">813</a>
+<a href="#814" id="814">814</a>
+<a href="#815" id="815">815</a>
+<a href="#816" id="816">816</a>
 </pre><pre class="rust"><code><span class="doccomment">//! start the bootstrapping system using [`start_bootstrap_server`]
 //! Once your node will be ready, you may want other to bootstrap from you.
 //!
@@ -1316,6 +1331,7 @@
     <span class="kw-2">mut </span>last_cycle_step: StreamingStep&lt;u64&gt;,
     <span class="kw-2">mut </span>last_credits_step: StreamingStep&lt;Slot&gt;,
     <span class="kw-2">mut </span>last_ops_step: StreamingStep&lt;Slot&gt;,
+    <span class="kw-2">mut </span>last_de_step: StreamingStep&lt;Slot&gt;,
     <span class="kw-2">mut </span>last_consensus_step: StreamingStep&lt;PreHashSet&lt;BlockId&gt;&gt;,
     <span class="kw-2">mut </span>send_last_start_period: bool,
     write_timeout: Duration,
@@ -1333,6 +1349,7 @@
         <span class="kw">let </span>pos_cycle_part;
         <span class="kw">let </span>pos_credits_part;
         <span class="kw">let </span>exec_ops_part;
+        <span class="kw">let </span>processed_de_part;
         <span class="kw">let </span>final_state_changes;
         <span class="kw">let </span>last_start_period;
 
@@ -1372,6 +1389,11 @@
                 .get_executed_ops_part(last_ops_step);
             exec_ops_part = ops_data;
 
+            <span class="kw">let </span>(de_data, new_de_step) = final_state_read
+                .processed_denunciations
+                .get_processed_de_part(last_de_step);
+            processed_de_part = de_data;
+
             <span class="kw">if let </span><span class="prelude-val">Some</span>(slot) = last_slot &amp;&amp; slot != final_state_read.slot {
                 <span class="kw">if </span>slot &gt; final_state_read.slot {
                     <span class="kw">return </span><span class="prelude-val">Err</span>(BootstrapError::GeneralError(
@@ -1385,6 +1407,7 @@
                     new_cycle_step,
                     new_credits_step,
                     new_ops_step,
+                    new_de_step,
                 ) {
                     <span class="prelude-val">Ok</span>(data) =&gt; data,
                     <span class="prelude-val">Err</span>(err) <span class="kw">if </span><span class="macro">matches!</span>(err, FinalStateError::InvalidSlot(<span class="kw">_</span>)) =&gt; {
@@ -1403,6 +1426,7 @@
             last_cycle_step = new_cycle_step;
             last_credits_step = new_credits_step;
             last_ops_step = new_ops_step;
+            last_de_step = new_de_step;
             last_slot = <span class="prelude-val">Some</span>(final_state_read.slot);
             current_slot = final_state_read.slot;
             send_last_start_period = <span class="bool-val">false</span>;
@@ -1418,6 +1442,7 @@
             &amp;&amp; last_cycle_step.finished()
             &amp;&amp; last_credits_step.finished()
             &amp;&amp; last_ops_step.finished()
+            &amp;&amp; last_de_step.finished()
         {
             StreamingStep::Finished(<span class="prelude-val">Some</span>(current_slot))
         } <span class="kw">else </span>{
@@ -1476,6 +1501,7 @@
                 pos_cycle_part,
                 pos_credits_part,
                 exec_ops_part,
+                processed_de_part,
                 final_state_changes,
                 consensus_part,
                 consensus_outdated_ids,
@@ -1499,6 +1525,7 @@
 ) -&gt; <span class="prelude-ty">Result</span>&lt;(), BootstrapError&gt; {
     <span class="macro">massa_trace!</span>(<span class="string">&quot;bootstrap.lib.manage_bootstrap&quot;</span>, {});
     <span class="kw">let </span>read_error_timeout: Duration = bootstrap_config.read_error_timeout.into();
+    <span class="kw">let </span>rt_hack = massa_network_exports::make_runtime();
 
     server.handshake_timeout(version, <span class="prelude-val">Some</span>(bootstrap_config.read_timeout.into()))<span class="question-mark">?</span>;
 
@@ -1533,7 +1560,8 @@
                     server.send_msg(
                         write_timeout,
                         BootstrapServerMessage::BootstrapPeers {
-                            peers: network_command_sender.sync_get_bootstrap_peers()<span class="question-mark">?</span>,
+                            peers: rt_hack
+                                .block_on(network_command_sender.get_bootstrap_peers())<span class="question-mark">?</span>,
                         },
                     )<span class="question-mark">?</span>;
                 }
@@ -1544,6 +1572,7 @@
                     last_cycle_step,
                     last_credits_step,
                     last_ops_step,
+                    last_de_step,
                     last_consensus_step,
                     send_last_start_period,
                 } =&gt; {
@@ -1557,6 +1586,7 @@
                         last_cycle_step,
                         last_credits_step,
                         last_ops_step,
+                        last_de_step,
                         last_consensus_step,
                         send_last_start_period,
                         write_timeout,

@@ -332,7 +332,6 @@
 <a href="#332" id="332">332</a>
 <a href="#333" id="333">333</a>
 <a href="#334" id="334">334</a>
-<a href="#335" id="335">335</a>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="kw">use crate</span>::{
@@ -499,14 +498,15 @@
     }
 
     <span class="doccomment">/// Send the order to get bootstrap peers.
-    </span><span class="kw">pub fn </span>sync_get_bootstrap_peers(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span>&lt;BootstrapPeers, NetworkError&gt; {
+    </span><span class="kw">pub async fn </span>get_bootstrap_peers(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span>&lt;BootstrapPeers, NetworkError&gt; {
         <span class="kw">let </span>(response_tx, response_rx) = oneshot::channel::&lt;BootstrapPeers&gt;();
         <span class="self">self</span>.<span class="number">0
-            </span>.blocking_send(NetworkCommand::GetBootstrapPeers(response_tx))
-            .map_err(|<span class="kw">_</span>| {
+            </span>.send(NetworkCommand::GetBootstrapPeers(response_tx))
+            .<span class="kw">await
+            </span>.map_err(|<span class="kw">_</span>| {
                 NetworkError::ChannelError(<span class="string">&quot;could not send GetBootstrapPeers command&quot;</span>.into())
             })<span class="question-mark">?</span>;
-        response_rx.blocking_recv().map_err(|<span class="kw">_</span>| {
+        response_rx.<span class="kw">await</span>.map_err(|<span class="kw">_</span>| {
             NetworkError::ChannelError(<span class="string">&quot;could not send GetBootstrapPeers response upstream&quot;</span>.into())
         })
     }
@@ -657,10 +657,8 @@
     }
 }
 
-<span class="attr">#[cfg(any(test, feature = <span class="string">&quot;testing&quot;</span>))]
-</span><span class="doccomment">/// The bootstrap server function `get_state` has to be async due to main.rs `tokio::select!` usage to
-/// cancel on `ctrl-c`
-/// If get state can be cancelled with ctrl-c without an async context, this can be removed
+<span class="doccomment">/// Used by the bootstrap server to run async tasks, allowing the bootstrap module to
+/// remove the tokio dependency.
 </span><span class="kw">pub fn </span>make_runtime() -&gt; tokio::runtime::Runtime {
     tokio::runtime::Builder::new_multi_thread()
         .enable_all()
