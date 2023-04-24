@@ -112,7 +112,8 @@ impl Serializer<AsyncPoolChanges> for AsyncPoolChangesSerializer {
     /// use massa_serialization::Serializer;
     /// use massa_models::{address::Address, amount::Amount, slot::Slot};
     /// use std::str::FromStr;
-    /// use massa_async_pool::{AsyncMessage, Change, AsyncPoolChanges, AsyncPoolChangesSerializer};
+    /// use massa_async_pool::{AsyncMessage, AsyncPoolChanges, AsyncPoolChangesSerializer};
+    /// use massa_ledger_exports::SetUpdateOrDelete;
     ///
     /// let message = AsyncMessage::new_with_hash(
     ///     Slot::new(1, 0),
@@ -129,7 +130,10 @@ impl Serializer<AsyncPoolChanges> for AsyncPoolChangesSerializer {
     ///     None,
     ///     None
     /// );
-    /// let changes: AsyncPoolChanges = AsyncPoolChanges(vec![Change::Add(message.compute_id(), message)]);
+    /// let mut changes = AsyncPoolChanges::default();
+    ///    changes
+    ///    .0
+    ///    .insert(message.compute_id(), SetUpdateOrDelete::Set(message));
     /// let mut serialized = Vec::new();
     /// let serializer = AsyncPoolChangesSerializer::new();
     /// serializer.serialize(&changes, &mut serialized).unwrap();
@@ -203,7 +207,8 @@ impl Deserializer<AsyncPoolChanges> for AsyncPoolChangesDeserializer {
     /// use massa_serialization::{Serializer, Deserializer, DeserializeError};
     /// use massa_models::{address::Address, amount::Amount, slot::Slot};
     /// use std::str::FromStr;
-    /// use massa_async_pool::{AsyncMessage, AsyncMessageTrigger, Change, AsyncPoolChanges, AsyncPoolChangesSerializer, AsyncPoolChangesDeserializer};
+    /// use massa_async_pool::{AsyncMessage, AsyncMessageTrigger, AsyncPoolChanges, AsyncPoolChangesSerializer, AsyncPoolChangesDeserializer};
+    /// use massa_ledger_exports::SetUpdateOrDelete;
     ///
     /// let message = AsyncMessage::new_with_hash(
     ///     Slot::new(1, 0),
@@ -223,7 +228,13 @@ impl Deserializer<AsyncPoolChanges> for AsyncPoolChangesDeserializer {
     ///     }),
     ///     None
     /// );
-    /// let changes: AsyncPoolChanges = AsyncPoolChanges(vec![Change::Add(message.compute_id(), message.clone()), Change::Delete(message.compute_id())]);
+    /// let mut changes = AsyncPoolChanges::default();
+    /// changes
+    ///    .0
+    ///    .insert(message.compute_id(), SetUpdateOrDelete::Set(message.clone()));
+    /// changes
+    ///    .0
+    ///    .insert(message.compute_id(), SetUpdateOrDelete::Delete);
     /// let mut serialized = Vec::new();
     /// let serializer = AsyncPoolChangesSerializer::new();
     /// let deserializer = AsyncPoolChangesDeserializer::new(32, 100000, 100000, 100000);

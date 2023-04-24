@@ -276,7 +276,7 @@ pub fn get_random_final_state_bootstrap(
         config.ledger_config.clone(),
         sorted_ledger,
     );
-    let async_pool = create_async_pool(
+    let mut async_pool = create_async_pool(
         rocks_db_instance.clone(),
         config.async_pool_config.clone(),
         BTreeMap::new(),

@@ -113,19 +113,28 @@ impl AsyncPool {
     ///
     /// # arguments
     /// * `changes`: `AsyncPoolChanges` listing all asynchronous pool changes (message insertions/deletions)
-    pub fn apply_changes_to_batch(&self, changes: &AsyncPoolChanges, batch: &mut DBBatch) {
+    pub fn apply_changes_to_batch(&mut self, changes: &AsyncPoolChanges, batch: &mut DBBatch) {
         for change in changes.0.iter() {
             match change {
                 (id, SetUpdateOrDelete::Set(message)) => {
                     self.put_entry(id, message.clone(), batch);
+                    self.message_info_cache
+                        .insert(*id, AsyncMessageInfo::from(message.clone()));
                 }
 
                 (id, SetUpdateOrDelete::Update(message_update)) => {
                     self.update_entry(id, message_update.clone(), batch);
+
+                    self.message_info_cache
+                        .entry(*id)
+                        .and_modify(|message_info| {
+                            message_info.apply(message_update.clone());
+                        });
                 }
 
                 (id, SetUpdateOrDelete::Delete) => {
                     self.delete_entry(id, batch);
+                    self.message_info_cache.remove(id);
                 }
             }
         }
