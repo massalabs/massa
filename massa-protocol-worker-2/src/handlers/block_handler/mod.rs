@@ -5,7 +5,7 @@ use massa_consensus_exports::ConsensusController;
 use massa_pool_exports::PoolController;
 use massa_protocol_exports_2::ProtocolConfig;
 use massa_storage::Storage;
-use peernet::{network_manager::SharedActiveConnections, peer_id::PeerId};
+use peernet::network_manager::SharedActiveConnections;
 
 use self::{
     cache::SharedBlockCache, commands_propagation::BlockHandlerCommand,
@@ -24,7 +24,8 @@ pub(crate) use messages::{BlockMessage, BlockMessageSerializer};
 
 use super::{
     endorsement_handler::cache::SharedEndorsementCache,
-    operation_handler::cache::SharedOperationCache, peer_handler::models::PeerManagementCmd,
+    operation_handler::cache::SharedOperationCache,
+    peer_handler::models::{PeerManagementCmd, PeerMessageTuple},
 };
 
 pub struct BlockHandler {
@@ -37,7 +38,7 @@ impl BlockHandler {
         active_connections: SharedActiveConnections,
         consensus_controller: Box<dyn ConsensusController>,
         pool_controller: Box<dyn PoolController>,
-        receiver_network: Receiver<(PeerId, u64, Vec<u8>)>,
+        receiver_network: Receiver<PeerMessageTuple>,
         receiver_ext: Receiver<BlockHandlerRetrievalCommand>,
         internal_receiver: Receiver<BlockHandlerCommand>,
         internal_sender: Sender<BlockHandlerCommand>,

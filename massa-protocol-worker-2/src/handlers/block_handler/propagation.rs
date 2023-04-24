@@ -138,8 +138,8 @@ impl PropagationThread {
                         }
                     }
                 }
-                Err(err) => {
-                    println!("Error in receive propagation block: {:?}", err);
+                Err(_) => {
+                    println!("Stop block propagation thread");
                     return;
                 }
             }

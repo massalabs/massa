@@ -165,8 +165,8 @@ impl RetrievalThread {
                                 }
                             }
                         },
-                        Err(err) => {
-                            println!("Error in retrieval block handler: {:?}", err);
+                        Err(_) => {
+                            println!("Stop block retrieval thread");
                             return;
                         }
                     }
@@ -184,9 +184,7 @@ impl RetrievalThread {
                                         );
                                     }
                                     // Remove the knowledge that we asked this block to nodes.
-                                    if let Err(err) = self.remove_asked_blocks_of_node(&remove) {
-                                        warn!("Error in remove_asked_blocks_of_node: {:?}", err);
-                                    }
+                                    self.remove_asked_blocks_of_node(&remove);
 
                                     // Remove from the wishlist.
                                     for block_id in remove.iter() {
@@ -202,8 +200,8 @@ impl RetrievalThread {
                                 }
                             }
                         },
-                        Err(err) => {
-                            println!("Error in retrieval block handler channel command: {:?}", err);
+                        Err(_) => {
+                            println!("Stop block retrieval thread from command receiver");
                             return;
                         }
                     }
@@ -261,8 +259,13 @@ impl RetrievalThread {
                         let operations = self.storage.read_operations();
                         operations_ids
                             .into_iter()
-                            .filter(|id| op_ids.contains(id))
-                            .filter_map(|id| operations.get(&id))
+                            .filter_map(|id| {
+                                if op_ids.contains(&id) {
+                                    operations.get(&id)
+                                } else {
+                                    None
+                                }
+                            })
                             .cloned()
                             .collect()
                     };
@@ -402,7 +405,7 @@ impl RetrievalThread {
         // to do this. But maybe it's still trigger there it need verifications.
         let mut set = PreHashSet::<BlockId>::with_capacity(1);
         set.insert(block_id);
-        self.remove_asked_blocks_of_node(&set)?;
+        self.remove_asked_blocks_of_node(&set);
         Ok(())
     }
 
@@ -428,6 +431,7 @@ impl RetrievalThread {
         header: &SecuredHeader,
         from_peer_id: &PeerId,
     ) -> Result<Option<(BlockId, bool)>, ProtocolError> {
+        //TODO: Check if the error is used here ?
         // refuse genesis blocks
         if header.content.slot.period == 0 || header.content.parents.is_empty() {
             return Ok(None);
@@ -541,17 +545,13 @@ impl RetrievalThread {
     }
 
     /// Remove the given blocks from the local wishlist
-    pub(crate) fn remove_asked_blocks_of_node(
-        &mut self,
-        remove_hashes: &PreHashSet<BlockId>,
-    ) -> Result<(), ProtocolError> {
+    pub(crate) fn remove_asked_blocks_of_node(&mut self, remove_hashes: &PreHashSet<BlockId>) {
         massa_trace!("protocol.protocol_worker.remove_asked_blocks_of_node", {
             "remove": remove_hashes
         });
         for asked_blocks in self.asked_blocks.values_mut() {
             asked_blocks.retain(|h, _| !remove_hashes.contains(h));
         }
-        Ok(())
     }
 
     /// Note endorsements coming from a given node,
@@ -758,7 +758,7 @@ impl RetrievalThread {
             // Update ask block
             let mut set = PreHashSet::<BlockId>::with_capacity(1);
             set.insert(block_id);
-            self.remove_asked_blocks_of_node(&set)?;
+            self.remove_asked_blocks_of_node(&set);
 
             // If the block is empty, go straight to processing the full block info.
             if operation_ids.is_empty() {
@@ -937,7 +937,8 @@ impl RetrievalThread {
 
         // Update ask block
         let remove_hashes = vec![block_id].into_iter().collect();
-        self.remove_asked_blocks_of_node(&remove_hashes)
+        self.remove_asked_blocks_of_node(&remove_hashes);
+        Ok(())
     }
 
     fn note_operations_from_peer(

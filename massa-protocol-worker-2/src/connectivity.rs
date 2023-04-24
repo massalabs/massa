@@ -23,7 +23,7 @@ use crate::{
         block_handler::{cache::BlockCache, BlockHandler},
         endorsement_handler::{cache::EndorsementCache, EndorsementHandler},
         operation_handler::{cache::OperationCache, OperationHandler},
-        peer_handler::{self, fallback_function, MassaHandshake, PeerManagementHandler},
+        peer_handler::{fallback_function, MassaHandshake, PeerManagementHandler},
     },
     messages::MessagesHandler,
 };
@@ -150,7 +150,6 @@ pub fn start_connectivity_thread(
                 storage.clone_without_refs(),
             );
 
-            println!("Protocol started");
             //Try to connect to peers
             loop {
                 select! {
@@ -158,8 +157,6 @@ pub fn start_connectivity_thread(
                             if let Ok(ConnectivityCommand::Stop) = msg {
                                 drop(manager);
                                 operation_handler.stop();
-                                drop(operation_handler);
-                                println!("Operation stopped");
                                 endorsement_handler.stop();
                                 block_handler.stop();
                                 peer_management_handler.stop();

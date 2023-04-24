@@ -140,7 +140,6 @@ impl PeerManagementHandler {
         });
 
         for (peer_id, listeners) in &initial_peers {
-            println!("Sending initial peer: {:?}", peer_id);
             let mut message = Vec::new();
             message_serializer
                 .serialize(
@@ -300,7 +299,6 @@ impl HandshakeHandler for MassaHandshake {
             // check their signature
             peer_id.verify_signature(&self_random_hash, &other_signature)?;
 
-            println!("Handshake Massa on peer {} finished", peer_id);
             Ok(peer_id.clone())
         };
 

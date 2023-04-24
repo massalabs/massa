@@ -44,7 +44,7 @@ impl Default for ProtocolConfig {
                 .to_path_buf(),
             listeners: HashMap::default(),
             thread_tester_count: 2,
-            debug: false,
+            debug: true,
         }
     }
 }

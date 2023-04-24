@@ -2,7 +2,7 @@ use std::{
     collections::HashMap,
     net::SocketAddr,
     thread::JoinHandle,
-    time::{Duration, Instant, SystemTime, UNIX_EPOCH},
+    time::{Duration, SystemTime, UNIX_EPOCH},
 };
 
 use crossbeam::channel::Sender;
@@ -19,7 +19,6 @@ use peernet::{
     types::KeyPair,
 };
 use std::cmp::Reverse;
-use tracing::log::warn;
 
 use super::{
     announcement::{AnnouncementDeserializer, AnnouncementDeserializerArgs},
@@ -144,7 +143,6 @@ impl HandshakeHandler for TesterHandshake {
                     info.state = super::PeerState::HandshakeFailed;
                 });
         }
-        println!("Tester Handshake success on Peer {}", &peer_id);
         endpoint.shutdown();
         res
     }
@@ -190,7 +188,6 @@ impl Tester {
             config.max_out_connections = 1;
 
             let mut network_manager = PeerNetManager::new(config);
-            println!("Tester launched");
             loop {
                 crossbeam::select! {
                     recv(receiver) -> res => {
@@ -211,9 +208,6 @@ impl Tester {
 
                                 // receive new listener to test
                                 listener.1.iter().for_each(|(addr, _transport)| {
-                                    println!("Tester try to connect to {}", addr);
-                                    println!("Tester Active connections: {:?}", network_manager.active_connections.read().connections);
-                                    println!("Tester max out connections: {:?}", network_manager.config.max_out_connections);
                                     let _res =  network_manager.try_connect(
                                         *addr,
                                         Duration::from_millis(500),
@@ -267,7 +261,6 @@ pub fn empty_fallback(
     _endpoint: &mut Endpoint,
     _listeners: &HashMap<SocketAddr, TransportType>,
 ) -> PeerNetResult<()> {
-    println!("Fallback function called");
     std::thread::sleep(Duration::from_millis(10000));
     Ok(())
 }
