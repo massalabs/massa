@@ -85,7 +85,11 @@
 <a href="#85" id="85">85</a>
 <a href="#86" id="86">86</a>
 <a href="#87" id="87">87</a>
+<a href="#88" id="88">88</a>
+<a href="#89" id="89">89</a>
 </pre><pre class="rust"><code><span class="doccomment">//! Copyright (c) 2023 MASSA LABS &lt;info@massa.net&gt;
+
+//! Speculative list of previously processed denunciations, to prevent reuse.
 
 </span><span class="kw">use </span>std::sync::Arc;
 
@@ -96,7 +100,8 @@
 <span class="kw">use </span>massa_final_state::FinalState;
 <span class="kw">use </span>massa_models::denunciation::DenunciationIndex;
 
-<span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">struct </span>SpeculativeProcessedDenunciations {
+<span class="doccomment">/// Speculative state of processed denunciations
+</span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">struct </span>SpeculativeProcessedDenunciations {
     <span class="doccomment">/// Thread-safe shared access to the final state. For reading only.
     </span>final_state: Arc&lt;RwLock&lt;FinalState&gt;&gt;,
 
@@ -167,7 +172,6 @@
     }
 
     <span class="doccomment">/// Insert a processed denunciation.
-    /// Does not check for reuse, please use `SpeculativeExecutedOps::is_de_processed` before.
     </span><span class="kw">pub fn </span>insert_processed_de(<span class="kw-2">&amp;mut </span><span class="self">self</span>, de_idx: DenunciationIndex) {
         <span class="self">self</span>.processed_denunciations.insert(de_idx);
     }

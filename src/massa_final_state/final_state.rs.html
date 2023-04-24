@@ -940,6 +940,7 @@
 <a href="#940" id="940">940</a>
 <a href="#941" id="941">941</a>
 <a href="#942" id="942">942</a>
+<a href="#943" id="943">943</a>
 </pre><pre class="rust"><code><span class="doccomment">//! Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 //! This file defines the final state of the node, which includes
@@ -1406,7 +1407,7 @@
         </span><span class="self">self</span>.executed_ops
             .apply_changes(changes.executed_ops_changes.clone(), <span class="self">self</span>.slot);
         <span class="self">self</span>.processed_denunciations
-            .apply_changes(changes.processed_de_changes.clone(), <span class="self">self</span>.slot);
+            .apply_changes(changes.processed_denunciations_changes.clone(), <span class="self">self</span>.slot);
 
         <span class="kw">let </span><span class="kw-2">mut </span>final_state_data = <span class="prelude-val">None</span>;
 
@@ -1610,7 +1611,8 @@
                 slot_changes.executed_ops_changes = changes.executed_ops_changes.clone();
             }
             <span class="kw">if </span>de_step.finished() {
-                slot_changes.processed_de_changes = changes.processed_de_changes.clone();
+                slot_changes.processed_denunciations_changes =
+                    changes.processed_denunciations_changes.clone();
             }
 
             <span class="comment">// Push the slot changes
@@ -1754,7 +1756,7 @@
             processed_denunciations_deser: ProcessedDenunciationsDeserializer::new(
                 config.thread_count,
                 config.endorsement_count,
-                config.max_processed_de_length,
+                config.max_processed_denunciations_length,
                 config.max_denunciations_per_block_header <span class="kw">as </span>u64,
             ),
             slot_deser: SlotDeserializer::new(

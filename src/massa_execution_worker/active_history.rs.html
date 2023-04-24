@@ -360,7 +360,7 @@
         <span class="kw">for </span>history_element <span class="kw">in </span><span class="self">self</span>.<span class="number">0</span>.iter().rev() {
             <span class="kw">if </span>history_element
                 .state_changes
-                .processed_de_changes
+                .processed_denunciations_changes
                 .contains(de_idx)
             {
                 <span class="kw">return </span>HistorySearchResult::Present(());

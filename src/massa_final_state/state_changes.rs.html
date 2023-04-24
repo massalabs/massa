@@ -319,7 +319,7 @@
     <span class="doccomment">/// executed operations changes
     </span><span class="kw">pub </span>executed_ops_changes: ExecutedOpsChanges,
     <span class="doccomment">/// processed denunciations changes
-    </span><span class="kw">pub </span>processed_de_changes: ProcessedDenunciationsChanges,
+    </span><span class="kw">pub </span>processed_denunciations_changes: ProcessedDenunciationsChanges,
 }
 
 <span class="doccomment">/// Basic `StateChanges` serializer.
@@ -405,7 +405,7 @@
         <span class="self">self</span>.ops_changes_serializer
             .serialize(<span class="kw-2">&amp;</span>value.executed_ops_changes, buffer)<span class="question-mark">?</span>;
         <span class="self">self</span>.de_changes_serializer
-            .serialize(<span class="kw-2">&amp;</span>value.processed_de_changes, buffer)<span class="question-mark">?</span>;
+            .serialize(<span class="kw-2">&amp;</span>value.processed_denunciations_changes, buffer)<span class="question-mark">?</span>;
         <span class="prelude-val">Ok</span>(())
     }
 }
@@ -548,13 +548,13 @@
                 async_pool_changes,
                 roll_state_changes,
                 executed_ops,
-                processed_de,
+                processed_denunciations,
             )| StateChanges {
                 ledger_changes,
                 async_pool_changes,
                 pos_changes: roll_state_changes,
                 executed_ops_changes: executed_ops,
-                processed_de_changes: processed_de,
+                processed_denunciations_changes: processed_denunciations,
             },
         )
         .parse(buffer)
