@@ -5,7 +5,7 @@
 use std::collections::VecDeque;
 
 use massa_async_pool::AsyncPool;
-use massa_executed_ops::{ExecutedOps, ProcessedDenunciations};
+use massa_executed_ops::{ExecutedDenunciations, ExecutedOps};
 use massa_hash::{Hash, HASH_SIZE_BYTES};
 use massa_ledger_exports::LedgerController;
 use massa_models::slot::Slot;
@@ -22,7 +22,7 @@ pub fn create_final_state(
     changes_history: VecDeque<(Slot, StateChanges)>,
     pos_state: PoSFinalState,
     executed_ops: ExecutedOps,
-    processed_denunciations: ProcessedDenunciations,
+    processed_denunciations: ExecutedDenunciations,
 ) -> FinalState {
     FinalState {
         config,
@@ -32,7 +32,7 @@ pub fn create_final_state(
         changes_history,
         pos_state,
         executed_ops,
-        processed_denunciations,
+        executed_denunciations: processed_denunciations,
         final_state_hash: Hash::from_bytes(&[0; HASH_SIZE_BYTES]),
         last_start_period: 0,
     }

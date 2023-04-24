@@ -6,9 +6,9 @@ use massa_async_pool::{
     AsyncPoolChanges, AsyncPoolChangesDeserializer, AsyncPoolChangesSerializer,
 };
 use massa_executed_ops::{
-    ExecutedOpsChanges, ExecutedOpsChangesDeserializer, ExecutedOpsChangesSerializer,
-    ProcessedDenunciationsChanges, ProcessedDenunciationsChangesDeserializer,
-    ProcessedDenunciationsChangesSerializer,
+    ExecutedDenunciationsChanges, ExecutedDenunciationsChangesDeserializer,
+    ExecutedDenunciationsChangesSerializer, ExecutedOpsChanges, ExecutedOpsChangesDeserializer,
+    ExecutedOpsChangesSerializer,
 };
 use massa_ledger_exports::{LedgerChanges, LedgerChangesDeserializer, LedgerChangesSerializer};
 use massa_pos_exports::{PoSChanges, PoSChangesDeserializer, PoSChangesSerializer};
@@ -31,8 +31,8 @@ pub struct StateChanges {
     pub pos_changes: PoSChanges,
     /// executed operations changes
     pub executed_ops_changes: ExecutedOpsChanges,
-    /// processed denunciations changes
-    pub processed_denunciations_changes: ProcessedDenunciationsChanges,
+    /// executed denunciations changes
+    pub executed_denunciations_changes: ExecutedDenunciationsChanges,
 }
 
 /// Basic `StateChanges` serializer.
@@ -41,7 +41,7 @@ pub struct StateChangesSerializer {
     async_pool_changes_serializer: AsyncPoolChangesSerializer,
     pos_changes_serializer: PoSChangesSerializer,
     ops_changes_serializer: ExecutedOpsChangesSerializer,
-    de_changes_serializer: ProcessedDenunciationsChangesSerializer,
+    de_changes_serializer: ExecutedDenunciationsChangesSerializer,
 }
 
 impl Default for StateChangesSerializer {
@@ -58,7 +58,7 @@ impl StateChangesSerializer {
             async_pool_changes_serializer: AsyncPoolChangesSerializer::new(),
             pos_changes_serializer: PoSChangesSerializer::new(),
             ops_changes_serializer: ExecutedOpsChangesSerializer::new(),
-            de_changes_serializer: ProcessedDenunciationsChangesSerializer::new(),
+            de_changes_serializer: ExecutedDenunciationsChangesSerializer::new(),
         }
     }
 }
@@ -118,7 +118,7 @@ impl Serializer<StateChanges> for StateChangesSerializer {
         self.ops_changes_serializer
             .serialize(&value.executed_ops_changes, buffer)?;
         self.de_changes_serializer
-            .serialize(&value.processed_denunciations_changes, buffer)?;
+            .serialize(&value.executed_denunciations_changes, buffer)?;
         Ok(())
     }
 }
@@ -129,7 +129,7 @@ pub struct StateChangesDeserializer {
     async_pool_changes_deserializer: AsyncPoolChangesDeserializer,
     pos_changes_deserializer: PoSChangesDeserializer,
     ops_changes_deserializer: ExecutedOpsChangesDeserializer,
-    de_changes_deserializer: ProcessedDenunciationsChangesDeserializer,
+    de_changes_deserializer: ExecutedDenunciationsChangesDeserializer,
 }
 
 impl StateChangesDeserializer {
@@ -173,7 +173,7 @@ impl StateChangesDeserializer {
                 thread_count,
                 max_ops_changes_length,
             ),
-            de_changes_deserializer: ProcessedDenunciationsChangesDeserializer::new(
+            de_changes_deserializer: ExecutedDenunciationsChangesDeserializer::new(
                 thread_count,
                 endorsement_count,
                 max_de_changes_length,
@@ -267,7 +267,7 @@ impl Deserializer<StateChanges> for StateChangesDeserializer {
                 async_pool_changes,
                 pos_changes: roll_state_changes,
                 executed_ops_changes: executed_ops,
-                processed_denunciations_changes: processed_denunciations,
+                executed_denunciations_changes: processed_denunciations,
             },
         )
         .parse(buffer)

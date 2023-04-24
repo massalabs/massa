@@ -13,7 +13,7 @@ use nom::{
     IResult, Parser,
 };
 
-use crate::{ProcessedDenunciationsChanges, ProcessedDenunciationsConfig};
+use crate::{ExecutedDenunciationsConfig, ExecutedDenunciationsChanges};
 
 use massa_hash::{Hash, HASH_SIZE_BYTES};
 use massa_models::streaming_step::StreamingStep;
@@ -25,13 +25,13 @@ use massa_serialization::{
     Deserializer, SerializeError, Serializer, U64VarIntDeserializer, U64VarIntSerializer,
 };
 
-const PROCESSED_DENUNCIATIONS_HASH_INITIAL_BYTES: &[u8; 32] = &[0; HASH_SIZE_BYTES];
+const EXECUTED_DENUNCIATIONS_HASH_INITIAL_BYTES: &[u8; 32] = &[0; HASH_SIZE_BYTES];
 
 /// A structure to list and prune previously processed denunciations
 #[derive(Debug, Clone)]
-pub struct ProcessedDenunciations {
+pub struct ExecutedDenunciations {
     /// Processed denunciations configuration
-    config: ProcessedDenunciationsConfig,
+    config: ExecutedDenunciationsConfig,
     /// for better pruning complexity
     pub sorted_denunciations: BTreeMap<Slot, HashSet<DenunciationIndex>>,
     /// for better insertion complexity
@@ -40,14 +40,14 @@ pub struct ProcessedDenunciations {
     pub hash: Hash,
 }
 
-impl ProcessedDenunciations {
+impl ExecutedDenunciations {
     /// Create a new `ProcessedDenunciations`
-    pub fn new(config: ProcessedDenunciationsConfig) -> Self {
+    pub fn new(config: ExecutedDenunciationsConfig) -> Self {
         Self {
             config,
             sorted_denunciations: Default::default(),
             denunciations: Default::default(),
-            hash: Hash::from_bytes(PROCESSED_DENUNCIATIONS_HASH_INITIAL_BYTES),
+            hash: Hash::from_bytes(EXECUTED_DENUNCIATIONS_HASH_INITIAL_BYTES),
         }
     }
 
@@ -57,7 +57,7 @@ impl ProcessedDenunciations {
     pub fn reset(&mut self) {
         self.sorted_denunciations.clear();
         self.denunciations.clear();
-        self.hash = Hash::from_bytes(PROCESSED_DENUNCIATIONS_HASH_INITIAL_BYTES);
+        self.hash = Hash::from_bytes(EXECUTED_DENUNCIATIONS_HASH_INITIAL_BYTES);
     }
 
     /// Returns the number of executed operations
@@ -88,7 +88,7 @@ impl ProcessedDenunciations {
     }
 
     /// Apply speculative operations changes to the final processed denunciations state
-    pub fn apply_changes(&mut self, changes: ProcessedDenunciationsChanges, slot: Slot) {
+    pub fn apply_changes(&mut self, changes: ExecutedDenunciationsChanges, slot: Slot) {
         self.extend_and_compute_hash(changes.iter());
         for de_idx in changes {
             self.sorted_denunciations

@@ -16,22 +16,22 @@ use std::collections::HashSet;
 use std::ops::Bound::Included;
 
 /// Speculative changes for ExecutedOps
-pub type ProcessedDenunciationsChanges = HashSet<DenunciationIndex>;
+pub type ExecutedDenunciationsChanges = HashSet<DenunciationIndex>;
 
 /// `ExecutedOps` Serializer
-pub struct ProcessedDenunciationsChangesSerializer {
+pub struct ExecutedDenunciationsChangesSerializer {
     u64_serializer: U64VarIntSerializer,
     de_idx_serializer: DenunciationIndexSerializer,
 }
 
-impl Default for ProcessedDenunciationsChangesSerializer {
+impl Default for ExecutedDenunciationsChangesSerializer {
     fn default() -> Self {
         Self::new()
     }
 }
 
-impl ProcessedDenunciationsChangesSerializer {
-    /// Create a new `ProcessedDenunciations` Serializer
+impl ExecutedDenunciationsChangesSerializer {
+    /// Create a new `ExecutedDenunciations` Serializer
     pub fn new() -> Self {
         Self {
             u64_serializer: U64VarIntSerializer::new(),
@@ -40,10 +40,10 @@ impl ProcessedDenunciationsChangesSerializer {
     }
 }
 
-impl Serializer<ProcessedDenunciationsChanges> for ProcessedDenunciationsChangesSerializer {
+impl Serializer<ExecutedDenunciationsChanges> for ExecutedDenunciationsChangesSerializer {
     fn serialize(
         &self,
-        value: &ProcessedDenunciationsChanges,
+        value: &ExecutedDenunciationsChanges,
         buffer: &mut Vec<u8>,
     ) -> Result<(), SerializeError> {
         self.u64_serializer
@@ -56,18 +56,18 @@ impl Serializer<ProcessedDenunciationsChanges> for ProcessedDenunciationsChanges
 }
 
 /// Deserializer for `ExecutedOps`
-pub struct ProcessedDenunciationsChangesDeserializer {
+pub struct ExecutedDenunciationsChangesDeserializer {
     u64_deserializer: U64VarIntDeserializer,
     de_idx_deserializer: DenunciationIndexDeserializer,
 }
 
-impl ProcessedDenunciationsChangesDeserializer {
+impl ExecutedDenunciationsChangesDeserializer {
     /// Create a new deserializer for `ExecutedOps`
     pub fn new(
         thread_count: u8,
         endorsement_count: u32,
         max_de_changes_length: u64,
-    ) -> ProcessedDenunciationsChangesDeserializer {
+    ) -> ExecutedDenunciationsChangesDeserializer {
         Self {
             u64_deserializer: U64VarIntDeserializer::new(
                 Included(u64::MIN),
@@ -81,11 +81,11 @@ impl ProcessedDenunciationsChangesDeserializer {
     }
 }
 
-impl Deserializer<ProcessedDenunciationsChanges> for ProcessedDenunciationsChangesDeserializer {
+impl Deserializer<ExecutedDenunciationsChanges> for ExecutedDenunciationsChangesDeserializer {
     fn deserialize<'a, E: ParseError<&'a [u8]> + ContextError<&'a [u8]>>(
         &self,
         buffer: &'a [u8],
-    ) -> IResult<&'a [u8], ProcessedDenunciationsChanges, E> {
+    ) -> IResult<&'a [u8], ExecutedDenunciationsChanges, E> {
         context(
             "ProcessedDenunciationsChanges",
             length_count(
@@ -117,7 +117,7 @@ mod tests {
     use massa_serialization::DeserializeError;
 
     #[test]
-    fn test_processed_denunciations_changes_ser_der() {
+    fn test_executed_denunciations_changes_ser_der() {
         let (_, _, s_block_header_1, s_block_header_2, _) = gen_block_headers_for_denunciation();
         let denunciation_1: Denunciation =
             (&s_block_header_1, &s_block_header_2).try_into().unwrap();
@@ -128,14 +128,14 @@ mod tests {
         let denunciation_2 = Denunciation::try_from((&s_endorsement_1, &s_endorsement_2)).unwrap();
         let denunciation_index_2 = DenunciationIndex::from(&denunciation_2);
 
-        let p_de_changes: ProcessedDenunciationsChanges =
+        let p_de_changes: ExecutedDenunciationsChanges =
             HashSet::from([(denunciation_index_1), (denunciation_index_2)]);
 
         let mut buffer = Vec::new();
-        let p_de_ser = ProcessedDenunciationsChangesSerializer::new();
+        let p_de_ser = ExecutedDenunciationsChangesSerializer::new();
         p_de_ser.serialize(&p_de_changes, &mut buffer).unwrap();
 
-        let p_de_der = ProcessedDenunciationsChangesDeserializer::new(
+        let p_de_der = ExecutedDenunciationsChangesDeserializer::new(
             THREAD_COUNT,
             ENDORSEMENT_COUNT,
             MAX_DENUNCIATION_CHANGES_LENGTH,

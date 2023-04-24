@@ -74,7 +74,7 @@ fn stream_final_state_and_consensus(
                         .executed_ops
                         .set_executed_ops_part(exec_ops_part);
                     let last_de_step = write_final_state
-                        .processed_denunciations
+                        .executed_denunciations
                         .set_processed_de_part(processed_de_part);
                     for (changes_slot, changes) in final_state_changes.iter() {
                         write_final_state.ledger.apply_changes(

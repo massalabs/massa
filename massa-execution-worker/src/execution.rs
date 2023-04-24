@@ -429,7 +429,7 @@ impl ExecutionState {
         {
             // too old - cannot be denounced anymore
             return Err(ExecutionError::IncludeDenunciationError(
-                "denunciation is too old".to_string(),
+                "denunciation target is too old with respect to the block".to_string(),
             ));
         }
 
@@ -439,7 +439,7 @@ impl ExecutionState {
             //       for example if the block producer wants to denounce someone who multi-endorsed
             //       for the block's slot
             return Err(ExecutionError::IncludeDenunciationError(
-                "denunciation is too much in the future".to_string(),
+                "denunciation target is at a later slot than the block slot".to_string(),
             ));
         }
 

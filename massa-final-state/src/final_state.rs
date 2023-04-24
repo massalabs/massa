@@ -11,7 +11,7 @@ use massa_async_pool::{
     AsyncPoolSerializer, Change,
 };
 use massa_executed_ops::{
-    ExecutedOps, ExecutedOpsDeserializer, ExecutedOpsSerializer, ProcessedDenunciations,
+    ExecutedDenunciations, ExecutedOps, ExecutedOpsDeserializer, ExecutedOpsSerializer,
     ProcessedDenunciationsDeserializer, ProcessedDenunciationsSerializer,
 };
 use massa_hash::{Hash, HashDeserializer, HASH_SIZE_BYTES};
@@ -53,8 +53,8 @@ pub struct FinalState {
     pub pos_state: PoSFinalState,
     /// executed operations
     pub executed_ops: ExecutedOps,
-    /// processed denunciations
-    pub processed_denunciations: ProcessedDenunciations,
+    /// executed denunciations
+    pub executed_denunciations: ExecutedDenunciations,
     /// history of recent final state changes, useful for streaming bootstrap
     /// `front = oldest`, `back = newest`
     pub changes_history: VecDeque<(Slot, StateChanges)>,
@@ -102,7 +102,7 @@ impl FinalState {
 
         // create a default processed denunciations
         let processed_denunciations =
-            ProcessedDenunciations::new(config.processed_denunciations_config.clone());
+            ExecutedDenunciations::new(config.executed_denunciations_config.clone());
 
         // create the final state
         Ok(FinalState {
@@ -112,7 +112,7 @@ impl FinalState {
             pos_state,
             config,
             executed_ops,
-            processed_denunciations,
+            executed_denunciations: processed_denunciations,
             changes_history: Default::default(), // no changes in history
             final_state_hash: Hash::from_bytes(FINAL_STATE_HASH_INITIAL_BYTES),
             last_start_period: 0,
@@ -384,7 +384,7 @@ impl FinalState {
         self.async_pool.reset();
         self.pos_state.reset();
         self.executed_ops.reset();
-        self.processed_denunciations.reset();
+        self.executed_denunciations.reset();
         self.changes_history.clear();
         // reset the final state hash
         self.final_state_hash = Hash::from_bytes(FINAL_STATE_HASH_INITIAL_BYTES);
@@ -418,7 +418,7 @@ impl FinalState {
         // 5. executed operations hash
         hash_concat.extend(self.executed_ops.hash.to_bytes());
         // 6. processed denunciations hash
-        hash_concat.extend(self.processed_denunciations.hash.to_bytes());
+        hash_concat.extend(self.executed_denunciations.hash.to_bytes());
         // 7. compute and save final state hash
         self.final_state_hash = Hash::compute_from(&hash_concat);
 
@@ -463,8 +463,8 @@ impl FinalState {
         // bootstrap again instead
         self.executed_ops
             .apply_changes(changes.executed_ops_changes.clone(), self.slot);
-        self.processed_denunciations
-            .apply_changes(changes.processed_denunciations_changes.clone(), self.slot);
+        self.executed_denunciations
+            .apply_changes(changes.executed_denunciations_changes.clone(), self.slot);
 
         let mut final_state_data = None;
 
@@ -668,8 +668,8 @@ impl FinalState {
                 slot_changes.executed_ops_changes = changes.executed_ops_changes.clone();
             }
             if de_step.finished() {
-                slot_changes.processed_denunciations_changes =
-                    changes.processed_denunciations_changes.clone();
+                slot_changes.executed_denunciations_changes =
+                    changes.executed_denunciations_changes.clone();
             }
 
             // Push the slot changes
@@ -702,7 +702,7 @@ impl From<FinalState> for FinalStateRaw {
             cycle_history: value.pos_state.cycle_history,
             deferred_credits: value.pos_state.deferred_credits,
             sorted_ops: value.executed_ops.sorted_ops,
-            sorted_denunciations: value.processed_denunciations.sorted_denunciations,
+            sorted_denunciations: value.executed_denunciations.sorted_denunciations,
             latest_consistent_slot: value.slot,
             final_state_hash_from_snapshot: value.final_state_hash,
         }
@@ -813,7 +813,7 @@ impl FinalStateRawDeserializer {
             processed_denunciations_deser: ProcessedDenunciationsDeserializer::new(
                 config.thread_count,
                 config.endorsement_count,
-                config.max_processed_denunciations_length,
+                config.max_executed_denunciations_length,
                 config.max_denunciations_per_block_header as u64,
             ),
             slot_deser: SlotDeserializer::new(

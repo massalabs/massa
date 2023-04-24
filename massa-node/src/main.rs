@@ -19,7 +19,7 @@ use massa_bootstrap::{
 use massa_consensus_exports::events::ConsensusEvent;
 use massa_consensus_exports::{ConsensusChannels, ConsensusConfig, ConsensusManager};
 use massa_consensus_worker::start_consensus_worker;
-use massa_executed_ops::{ExecutedOpsConfig, ProcessedDenunciationsConfig};
+use massa_executed_ops::{ExecutedDenunciationsConfig, ExecutedOpsConfig};
 use massa_execution_exports::{ExecutionConfig, ExecutionManager, GasCosts, StorageCostsConstants};
 use massa_execution_worker::start_execution_worker;
 use massa_factory_exports::{FactoryChannels, FactoryConfig, FactoryManager};
@@ -189,7 +189,7 @@ async fn launch(
         thread_count: THREAD_COUNT,
         bootstrap_part_size: EXECUTED_OPS_BOOTSTRAP_PART_SIZE,
     };
-    let processed_denunciations_config = ProcessedDenunciationsConfig {
+    let executed_denunciations_config = ExecutedDenunciationsConfig {
         denunciation_expire_periods: DENUNCIATION_EXPIRE_PERIODS,
         bootstrap_part_size: EXECUTED_OPS_BOOTSTRAP_PART_SIZE,
     };
@@ -198,14 +198,14 @@ async fn launch(
         async_pool_config,
         pos_config,
         executed_ops_config,
-        processed_denunciations_config,
+        executed_denunciations_config,
         final_history_length: SETTINGS.ledger.final_history_length,
         thread_count: THREAD_COUNT,
         periods_per_cycle: PERIODS_PER_CYCLE,
         initial_seed_string: INITIAL_DRAW_SEED.into(),
         initial_rolls_path: SETTINGS.selector.initial_rolls_path.clone(),
         endorsement_count: ENDORSEMENT_COUNT,
-        max_processed_denunciations_length: MAX_DENUNCIATION_CHANGES_LENGTH,
+        max_executed_denunciations_length: MAX_DENUNCIATION_CHANGES_LENGTH,
         max_denunciations_per_block_header: MAX_DENUNCIATIONS_PER_BLOCK_HEADER,
     };
 

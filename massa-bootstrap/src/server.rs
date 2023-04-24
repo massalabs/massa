@@ -574,7 +574,7 @@ pub fn stream_bootstrap_information(
             exec_ops_part = ops_data;
 
             let (de_data, new_de_step) = final_state_read
-                .processed_denunciations
+                .executed_denunciations
                 .get_processed_de_part(last_de_step);
             processed_de_part = de_data;
 

@@ -9,7 +9,7 @@ pub struct ExecutedOpsConfig {
 }
 
 #[derive(Debug, Clone)]
-pub struct ProcessedDenunciationsConfig {
+pub struct ExecutedDenunciationsConfig {
     /// Period delta for denunciation to expire
     pub denunciation_expire_periods: u64,
     /// Maximum size of a bootstrap part

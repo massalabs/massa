@@ -11,8 +11,8 @@ use massa_consensus_exports::{
     export_active_block::{ExportActiveBlock, ExportActiveBlockSerializer},
 };
 use massa_executed_ops::{
-    ExecutedOps, ExecutedOpsConfig, ProcessedDenunciations, ProcessedDenunciationsChanges,
-    ProcessedDenunciationsConfig,
+    ExecutedDenunciations, ExecutedDenunciationsChanges, ExecutedDenunciationsConfig, ExecutedOps,
+    ExecutedOpsConfig,
 };
 use massa_final_state::test_exports::create_final_state;
 use massa_final_state::{FinalState, FinalStateConfig};
@@ -231,17 +231,17 @@ pub fn get_random_executed_ops_changes(r_limit: u64) -> PreHashMap<OperationId, 
     ops_changes
 }
 
-pub fn get_random_processed_de(
+pub fn get_random_executed_de(
     _r_limit: u64,
     slot: Slot,
-    config: ProcessedDenunciationsConfig,
-) -> ProcessedDenunciations {
-    let mut processed_de = ProcessedDenunciations::new(config);
-    processed_de.apply_changes(get_random_processed_de_changes(10), slot);
-    processed_de
+    config: ExecutedDenunciationsConfig,
+) -> ExecutedDenunciations {
+    let mut executed_de = ExecutedDenunciations::new(config);
+    executed_de.apply_changes(get_random_executed_de_changes(10), slot);
+    executed_de
 }
 
-pub fn get_random_processed_de_changes(r_limit: u64) -> ProcessedDenunciationsChanges {
+pub fn get_random_executed_de_changes(r_limit: u64) -> ExecutedDenunciationsChanges {
     let mut de_changes = HashSet::default();
 
     for i in 0..r_limit {
@@ -299,7 +299,7 @@ pub fn get_random_final_state_bootstrap(
         VecDeque::new(),
         get_random_pos_state(r_limit, pos),
         get_random_executed_ops(r_limit, slot, config.executed_ops_config),
-        get_random_processed_de(r_limit, slot, config.processed_denunciations_config),
+        get_random_executed_de(r_limit, slot, config.executed_denunciations_config),
     )
 }
 

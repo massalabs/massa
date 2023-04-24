@@ -10,11 +10,11 @@
 use crate::speculative_async_pool::SpeculativeAsyncPool;
 use crate::speculative_executed_ops::SpeculativeExecutedOps;
 use crate::speculative_ledger::SpeculativeLedger;
-use crate::speculative_processed_denunciations::SpeculativeProcessedDenunciations;
+use crate::speculative_processed_denunciations::SpeculativeExecutedDenunciations;
 use crate::vesting_manager::VestingManager;
 use crate::{active_history::ActiveHistory, speculative_roll_state::SpeculativeRollState};
 use massa_async_pool::{AsyncMessage, AsyncMessageId};
-use massa_executed_ops::{ExecutedOpsChanges, ProcessedDenunciationsChanges};
+use massa_executed_ops::{ExecutedOpsChanges, ExecutedDenunciationsChanges};
 use massa_execution_exports::{
     EventStore, ExecutionConfig, ExecutionError, ExecutionOutput, ExecutionStackElement,
 };
@@ -53,7 +53,7 @@ pub struct ExecutionContextSnapshot {
     pub executed_ops: ExecutedOpsChanges,
 
     /// speculative list of processed denunciations
-    pub processed_denunciations: ProcessedDenunciationsChanges,
+    pub processed_denunciations: ExecutedDenunciationsChanges,
 
     /// speculative roll state changes caused so far in the context
     pub pos_changes: PoSChanges,
@@ -108,7 +108,7 @@ pub struct ExecutionContext {
     speculative_executed_ops: SpeculativeExecutedOps,
 
     /// speculative list of processed denunciations
-    speculative_processed_denunciations: SpeculativeProcessedDenunciations,
+    speculative_processed_denunciations: SpeculativeExecutedDenunciations,
 
     /// max gas for this execution
     pub max_gas: u64,
@@ -195,7 +195,7 @@ impl ExecutionContext {
                 final_state.clone(),
                 active_history.clone(),
             ),
-            speculative_processed_denunciations: SpeculativeProcessedDenunciations::new(
+            speculative_processed_denunciations: SpeculativeExecutedDenunciations::new(
                 final_state,
                 active_history,
             ),
@@ -880,7 +880,7 @@ impl ExecutionContext {
             async_pool_changes: self.speculative_async_pool.take(),
             pos_changes: self.speculative_roll_state.take(),
             executed_ops_changes: self.speculative_executed_ops.take(),
-            processed_denunciations_changes: self.speculative_processed_denunciations.take(),
+            executed_denunciations_changes: self.speculative_processed_denunciations.take(),
         };
         ExecutionOutput {
             slot,

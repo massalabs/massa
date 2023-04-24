@@ -67,7 +67,7 @@ impl ActiveHistory {
         for history_element in self.0.iter().rev() {
             if history_element
                 .state_changes
-                .processed_denunciations_changes
+                .executed_denunciations_changes
                 .contains(de_idx)
             {
                 return HistorySearchResult::Present(());
