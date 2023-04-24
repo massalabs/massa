@@ -1156,6 +1156,11 @@
 <a href="#1156" id="1156">1156</a>
 <a href="#1157" id="1157">1157</a>
 <a href="#1158" id="1158">1158</a>
+<a href="#1159" id="1159">1159</a>
+<a href="#1160" id="1160">1160</a>
+<a href="#1161" id="1161">1161</a>
+<a href="#1162" id="1162">1162</a>
+<a href="#1163" id="1163">1163</a>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="attr">#![doc = <span class="macro">include_str!</span>(<span class="string">&quot;../../README.md&quot;</span>)]
@@ -1213,9 +1218,9 @@
 };
 <span class="kw">use </span>massa_models::config::{
     CONSENSUS_BOOTSTRAP_PART_SIZE, DENUNCIATION_EXPIRE_PERIODS, DENUNCIATION_ITEMS_MAX_CYCLE_DELTA,
-    MAX_OPERATIONS_PER_MESSAGE,
+    MAX_DENUNCIATIONS_PER_BLOCK_HEADER, MAX_OPERATIONS_PER_MESSAGE,
+    ROLL_COUNT_TO_SLASH_ON_DENUNCIATION,
 };
-<span class="kw">use </span>massa_models::denunciation::DenunciationPrecursor;
 <span class="kw">use </span>massa_network_exports::{Establisher, NetworkConfig, NetworkManager};
 <span class="kw">use </span>massa_network_worker::start_network_controller;
 <span class="kw">use </span>massa_pool_exports::{PoolChannels, PoolConfig, PoolManager};
@@ -1238,7 +1243,6 @@
 <span class="kw">use </span>std::time::Duration;
 <span class="kw">use </span>std::{path::Path, process, sync::Arc};
 <span class="kw">use </span>structopt::StructOpt;
-<span class="kw">use </span>tokio::net::TcpStream;
 <span class="kw">use </span>tokio::signal;
 <span class="kw">use </span>tokio::sync::{broadcast, mpsc};
 <span class="kw">use </span>tracing::{error, info, warn};
@@ -1251,7 +1255,7 @@
     node_wallet: Arc&lt;RwLock&lt;Wallet&gt;&gt;,
 ) -&gt; (
     Receiver&lt;ConsensusEvent&gt;,
-    <span class="prelude-ty">Option</span>&lt;BootstrapManager&lt;TcpStream&gt;&gt;,
+    <span class="prelude-ty">Option</span>&lt;BootstrapManager&gt;,
     Box&lt;<span class="kw">dyn </span>ConsensusManager&gt;,
     Box&lt;<span class="kw">dyn </span>ExecutionManager&gt;,
     Box&lt;<span class="kw">dyn </span>SelectorManager&gt;,
@@ -1462,6 +1466,7 @@
         max_consensus_block_ids: MAX_CONSENSUS_BLOCKS_IDS,
         mip_store_stats_block_considered: MIP_STORE_STATS_BLOCK_CONSIDERED,
         mip_store_stats_counters_max: MIP_STORE_STATS_COUNTERS_MAX,
+        max_denunciations_per_block_header: MAX_DENUNCIATIONS_PER_BLOCK_HEADER,
     };
 
     <span class="comment">// bootstrap
@@ -1473,7 +1478,7 @@
         res = get_state(
             <span class="kw-2">&amp;</span>bootstrap_config,
             final_state.clone(),
-            DefaultConnector(bootstrap_config.connect_timeout),
+            DefaultConnector,
             <span class="kw-2">*</span>VERSION,
             <span class="kw-2">*</span>GENESIS_TIMESTAMP,
             <span class="kw-2">*</span>END_TIMESTAMP,
@@ -1526,6 +1531,7 @@
         node_command_channel_size: NETWORK_NODE_COMMAND_CHANNEL_SIZE,
         node_event_channel_size: NETWORK_NODE_EVENT_CHANNEL_SIZE,
         last_start_period: final_state.read().last_start_period,
+        max_denunciations_per_block_header: MAX_DENUNCIATIONS_PER_BLOCK_HEADER,
     };
 
     <span class="comment">// launch network controller
@@ -1607,6 +1613,7 @@
         lru_cache_size: SETTINGS.execution.lru_cache_size,
         hd_cache_size: SETTINGS.execution.hd_cache_size,
         snip_amount: SETTINGS.execution.snip_amount,
+        roll_count_to_slash_on_denunciation: ROLL_COUNT_TO_SLASH_ON_DENUNCIATION,
     };
     <span class="kw">let </span>(execution_manager, execution_controller) = start_execution_worker(
         execution_config,
@@ -1628,7 +1635,10 @@
         max_endorsements_pool_size_per_thread: SETTINGS.pool.max_pool_size_per_thread,
         channels_size: POOL_CONTROLLER_CHANNEL_SIZE,
         broadcast_enabled: SETTINGS.api.enable_broadcast,
-        broadcast_operations_capacity: SETTINGS.pool.broadcast_operations_capacity,
+        broadcast_endorsements_channel_capacity: SETTINGS
+            .pool
+            .broadcast_endorsements_channel_capacity,
+        broadcast_operations_channel_capacity: SETTINGS.pool.broadcast_operations_channel_capacity,
         genesis_timestamp: <span class="kw-2">*</span>GENESIS_TIMESTAMP,
         t0: T0,
         periods_per_cycle: PERIODS_PER_CYCLE,
@@ -1636,17 +1646,17 @@
     };
 
     <span class="kw">let </span>pool_channels = PoolChannels {
-        operation_sender: broadcast::channel(pool_config.broadcast_operations_capacity).<span class="number">0</span>,
+        endorsement_sender: broadcast::channel(pool_config.broadcast_endorsements_channel_capacity)
+            .<span class="number">0</span>,
+        operation_sender: broadcast::channel(pool_config.broadcast_operations_channel_capacity).<span class="number">0</span>,
+        selector: selector_controller.clone(),
     };
-    <span class="kw">let </span>(denunciation_factory_tx, denunciation_factory_rx) =
-        crossbeam_channel::unbounded::&lt;DenunciationPrecursor&gt;();
 
     <span class="kw">let </span>(pool_manager, pool_controller) = start_pool_controller(
         pool_config,
         <span class="kw-2">&amp;</span>shared_storage,
         execution_controller.clone(),
         pool_channels.clone(),
-        denunciation_factory_tx,
     );
 
     <span class="kw">let </span>(protocol_command_sender, protocol_command_receiver) =
@@ -1675,15 +1685,17 @@
         channel_size: CHANNEL_SIZE,
         bootstrap_part_size: CONSENSUS_BOOTSTRAP_PART_SIZE,
         broadcast_enabled: SETTINGS.api.enable_broadcast,
-        broadcast_blocks_headers_capacity: SETTINGS.consensus.broadcast_blocks_headers_capacity,
-        broadcast_blocks_capacity: SETTINGS.consensus.broadcast_blocks_capacity,
-        broadcast_filled_blocks_capacity: SETTINGS.consensus.broadcast_filled_blocks_capacity,
+        broadcast_blocks_headers_channel_capacity: SETTINGS
+            .consensus
+            .broadcast_blocks_headers_channel_capacity,
+        broadcast_blocks_channel_capacity: SETTINGS.consensus.broadcast_blocks_channel_capacity,
+        broadcast_filled_blocks_channel_capacity: SETTINGS
+            .consensus
+            .broadcast_filled_blocks_channel_capacity,
         last_start_period: final_state.read().last_start_period,
     };
 
     <span class="kw">let </span>(consensus_event_sender, consensus_event_receiver) =
-        crossbeam_channel::bounded(CHANNEL_SIZE);
-    <span class="kw">let </span>(denunciation_factory_sender, denunciation_factory_receiver) =
         crossbeam_channel::bounded(CHANNEL_SIZE);
     <span class="kw">let </span>consensus_channels = ConsensusChannels {
         execution_controller: execution_controller.clone(),
@@ -1691,12 +1703,15 @@
         pool_command_sender: pool_controller.clone(),
         controller_event_tx: consensus_event_sender,
         protocol_command_sender: ProtocolCommandSender(protocol_command_sender.clone()),
-        block_header_sender: broadcast::channel(consensus_config.broadcast_blocks_headers_capacity)
-            .<span class="number">0</span>,
-        block_sender: broadcast::channel(consensus_config.broadcast_blocks_capacity).<span class="number">0</span>,
-        filled_block_sender: broadcast::channel(consensus_config.broadcast_filled_blocks_capacity)
-            .<span class="number">0</span>,
-        denunciation_factory_sender,
+        block_header_sender: broadcast::channel(
+            consensus_config.broadcast_blocks_headers_channel_capacity,
+        )
+        .<span class="number">0</span>,
+        block_sender: broadcast::channel(consensus_config.broadcast_blocks_channel_capacity).<span class="number">0</span>,
+        filled_block_sender: broadcast::channel(
+            consensus_config.broadcast_filled_blocks_channel_capacity,
+        )
+        .<span class="number">0</span>,
     };
 
     <span class="kw">let </span>(consensus_controller, consensus_manager) = start_consensus_worker(
@@ -1781,18 +1796,12 @@
         protocol: ProtocolCommandSender(protocol_command_sender.clone()),
         storage: shared_storage.clone(),
     };
-    <span class="kw">let </span>factory_manager = start_factory(
-        factory_config,
-        node_wallet.clone(),
-        factory_channels,
-        denunciation_factory_receiver,
-        denunciation_factory_rx,
-    );
+    <span class="kw">let </span>factory_manager = start_factory(factory_config, node_wallet.clone(), factory_channels);
 
     <span class="comment">// launch bootstrap server
     // TODO: use std::net::TcpStream
     </span><span class="kw">let </span>bootstrap_manager = <span class="kw">match </span>bootstrap_config.listen_addr {
-        <span class="prelude-val">Some</span>(addr) =&gt; start_bootstrap_server::&lt;TcpStream&gt;(
+        <span class="prelude-val">Some</span>(addr) =&gt; start_bootstrap_server(
             consensus_controller.clone(),
             network_command_sender.clone(),
             final_state.clone(),
@@ -1902,9 +1911,11 @@
             max_operations_per_message: MAX_OPERATIONS_PER_MESSAGE,
             genesis_timestamp: <span class="kw-2">*</span>GENESIS_TIMESTAMP,
             t0: T0,
+            periods_per_cycle: PERIODS_PER_CYCLE,
             max_channel_size: SETTINGS.grpc.max_channel_size,
             draw_lookahead_period_count: SETTINGS.grpc.draw_lookahead_period_count,
             last_start_period: final_state.read().last_start_period,
+            max_denunciations_per_block_header: MAX_DENUNCIATIONS_PER_BLOCK_HEADER,
         };
 
         <span class="kw">let </span>grpc_api = MassaGrpc {
@@ -2029,7 +2040,7 @@
 }
 
 <span class="kw">struct </span>Managers {
-    bootstrap_manager: <span class="prelude-ty">Option</span>&lt;BootstrapManager&lt;TcpStream&gt;&gt;,
+    bootstrap_manager: <span class="prelude-ty">Option</span>&lt;BootstrapManager&gt;,
     consensus_manager: Box&lt;<span class="kw">dyn </span>ConsensusManager&gt;,
     execution_manager: Box&lt;<span class="kw">dyn </span>ExecutionManager&gt;,
     selector_manager: Box&lt;<span class="kw">dyn </span>SelectorManager&gt;,
@@ -2060,8 +2071,7 @@
     </span><span class="kw">if let </span><span class="prelude-val">Some</span>(bootstrap_manager) = bootstrap_manager {
         bootstrap_manager
             .stop()
-            .<span class="kw">await
-            </span>.expect(<span class="string">&quot;bootstrap server shutdown failed&quot;</span>)
+            .expect(<span class="string">&quot;bootstrap server shutdown failed&quot;</span>)
     }
 
     <span class="macro">info!</span>(<span class="string">&quot;Start stopping API&#39;s: gRPC, EXPERIMENTAL, PUBLIC, PRIVATE&quot;</span>);

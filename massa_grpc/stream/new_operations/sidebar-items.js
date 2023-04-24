@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"constant":["BRANCHES"],"fn":["new_operations","should_send"],"opaque":[""],"type":["NewOperationsStream"]};
+window.SIDEBAR_ITEMS = {"constant":["BRANCHES"],"fn":["new_operations","should_send"],"opaque":[""],"type":["NewOperationsStreamType"]};
