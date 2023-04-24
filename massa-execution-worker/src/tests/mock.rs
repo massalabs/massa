@@ -3,6 +3,7 @@ use massa_final_state::{FinalState, FinalStateConfig};
 use massa_hash::Hash;
 use massa_ledger_exports::{LedgerConfig, LedgerController, LedgerEntry, LedgerError};
 use massa_ledger_worker::FinalLedger;
+use massa_models::config::ENDORSEMENT_COUNT;
 use massa_models::denunciation::Denunciation;
 use massa_models::execution::TempFileVestingRange;
 use massa_models::prehash::PreHashMap;
@@ -118,11 +119,16 @@ pub fn get_sample_state(
         async_pool_config: default_config.async_pool_config,
         pos_config: default_config.pos_config,
         executed_ops_config: default_config.executed_ops_config,
+        processed_denunciations_config: default_config.processed_denunciations_config,
         final_history_length: 128,
         thread_count: THREAD_COUNT,
         initial_rolls_path: rolls_file.path().to_path_buf(),
+        endorsement_count: ENDORSEMENT_COUNT,
+        max_processed_de_length: 1000,
         initial_seed_string: "".to_string(),
         periods_per_cycle: 10,
+
+        max_denunciations_per_block_header: 0,
     };
     let (_, selector_controller) = start_selector_worker(SelectorConfig::default())
         .expect("could not start selector controller");

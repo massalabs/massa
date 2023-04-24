@@ -10,7 +10,10 @@ use massa_consensus_exports::{
     },
     export_active_block::{ExportActiveBlock, ExportActiveBlockSerializer},
 };
-use massa_executed_ops::{ExecutedOps, ExecutedOpsConfig};
+use massa_executed_ops::{
+    ExecutedOps, ExecutedOpsConfig, ProcessedDenunciations, ProcessedDenunciationsChanges,
+    ProcessedDenunciationsConfig,
+};
 use massa_final_state::test_exports::create_final_state;
 use massa_final_state::{FinalState, FinalStateConfig};
 use massa_hash::Hash;
@@ -25,12 +28,14 @@ use massa_models::config::{
     MAX_BOOTSTRAP_FINAL_STATE_PARTS_SIZE, MAX_BOOTSTRAP_MESSAGE_SIZE, MAX_CONSENSUS_BLOCKS_IDS,
     MAX_DATASTORE_ENTRY_COUNT, MAX_DATASTORE_KEY_LENGTH, MAX_DATASTORE_VALUE_LENGTH,
     MAX_DEFERRED_CREDITS_LENGTH, MAX_DENUNCIATIONS_PER_BLOCK_HEADER,
-    MAX_EXECUTED_OPS_CHANGES_LENGTH, MAX_EXECUTED_OPS_LENGTH, MAX_FUNCTION_NAME_LENGTH,
-    MAX_LEDGER_CHANGES_COUNT, MAX_OPERATIONS_PER_BLOCK, MAX_OPERATION_DATASTORE_ENTRY_COUNT,
-    MAX_OPERATION_DATASTORE_KEY_LENGTH, MAX_OPERATION_DATASTORE_VALUE_LENGTH, MAX_PARAMETERS_SIZE,
-    MAX_PRODUCTION_STATS_LENGTH, MAX_ROLLS_COUNT_LENGTH, MIP_STORE_STATS_BLOCK_CONSIDERED,
-    MIP_STORE_STATS_COUNTERS_MAX, PERIODS_PER_CYCLE, THREAD_COUNT,
+    MAX_DENUNCIATION_CHANGES_LENGTH, MAX_EXECUTED_OPS_CHANGES_LENGTH, MAX_EXECUTED_OPS_LENGTH,
+    MAX_FUNCTION_NAME_LENGTH, MAX_LEDGER_CHANGES_COUNT, MAX_OPERATIONS_PER_BLOCK,
+    MAX_OPERATION_DATASTORE_ENTRY_COUNT, MAX_OPERATION_DATASTORE_KEY_LENGTH,
+    MAX_OPERATION_DATASTORE_VALUE_LENGTH, MAX_PARAMETERS_SIZE, MAX_PRODUCTION_STATS_LENGTH,
+    MAX_ROLLS_COUNT_LENGTH, MIP_STORE_STATS_BLOCK_CONSIDERED, MIP_STORE_STATS_COUNTERS_MAX,
+    PERIODS_PER_CYCLE, THREAD_COUNT,
 };
+use massa_models::denunciation::DenunciationIndex;
 use massa_models::node::NodeId;
 use massa_models::{
     address::Address,
@@ -226,6 +231,53 @@ pub fn get_random_executed_ops_changes(r_limit: u64) -> PreHashMap<OperationId, 
     ops_changes
 }
 
+pub fn get_random_processed_de(
+    _r_limit: u64,
+    slot: Slot,
+    config: ProcessedDenunciationsConfig,
+) -> ProcessedDenunciations {
+    let mut processed_de = ProcessedDenunciations::new(config);
+    processed_de.apply_changes(get_random_processed_de_changes(10), slot);
+    processed_de
+}
+
+pub fn get_random_processed_de_changes(r_limit: u64) -> ProcessedDenunciationsChanges {
+    let mut de_changes = HashMap::default();
+
+    for i in 0..r_limit {
+        if i % 2 == 0 {
+            de_changes.insert(
+                DenunciationIndex::BlockHeader {
+                    slot: Slot::new(i + 2, 0),
+                },
+                (
+                    true,
+                    Slot {
+                        period: i + 10,
+                        thread: 0,
+                    },
+                ),
+            );
+        } else {
+            de_changes.insert(
+                DenunciationIndex::Endorsement {
+                    slot: Slot::new(i + 2, 0),
+                    index: i as u32,
+                },
+                (
+                    true,
+                    Slot {
+                        period: i + 10,
+                        thread: 0,
+                    },
+                ),
+            );
+        }
+    }
+
+    de_changes
+}
+
 /// generates a random bootstrap state for the final state
 pub fn get_random_final_state_bootstrap(
     pos: PoSFinalState,
@@ -265,6 +317,7 @@ pub fn get_random_final_state_bootstrap(
         VecDeque::new(),
         get_random_pos_state(r_limit, pos),
         get_random_executed_ops(r_limit, slot, config.executed_ops_config),
+        get_random_processed_de(r_limit, slot, config.processed_denunciations_config),
     )
 }
 
@@ -339,6 +392,7 @@ pub fn get_bootstrap_config(bootstrap_public_key: NodeId) -> BootstrapConfig {
         mip_store_stats_block_considered: MIP_STORE_STATS_BLOCK_CONSIDERED,
         mip_store_stats_counters_max: MIP_STORE_STATS_COUNTERS_MAX,
         max_denunciations_per_block_header: MAX_DENUNCIATIONS_PER_BLOCK_HEADER,
+        max_de_changes_length: MAX_DENUNCIATION_CHANGES_LENGTH,
     }
 }
 
