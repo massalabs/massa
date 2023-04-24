@@ -984,38 +984,6 @@
 <a href="#984" id="984">984</a>
 <a href="#985" id="985">985</a>
 <a href="#986" id="986">986</a>
-<a href="#987" id="987">987</a>
-<a href="#988" id="988">988</a>
-<a href="#989" id="989">989</a>
-<a href="#990" id="990">990</a>
-<a href="#991" id="991">991</a>
-<a href="#992" id="992">992</a>
-<a href="#993" id="993">993</a>
-<a href="#994" id="994">994</a>
-<a href="#995" id="995">995</a>
-<a href="#996" id="996">996</a>
-<a href="#997" id="997">997</a>
-<a href="#998" id="998">998</a>
-<a href="#999" id="999">999</a>
-<a href="#1000" id="1000">1000</a>
-<a href="#1001" id="1001">1001</a>
-<a href="#1002" id="1002">1002</a>
-<a href="#1003" id="1003">1003</a>
-<a href="#1004" id="1004">1004</a>
-<a href="#1005" id="1005">1005</a>
-<a href="#1006" id="1006">1006</a>
-<a href="#1007" id="1007">1007</a>
-<a href="#1008" id="1008">1008</a>
-<a href="#1009" id="1009">1009</a>
-<a href="#1010" id="1010">1010</a>
-<a href="#1011" id="1011">1011</a>
-<a href="#1012" id="1012">1012</a>
-<a href="#1013" id="1013">1013</a>
-<a href="#1014" id="1014">1014</a>
-<a href="#1015" id="1015">1015</a>
-<a href="#1016" id="1016">1016</a>
-<a href="#1017" id="1017">1017</a>
-<a href="#1018" id="1018">1018</a>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="doccomment">//! This module represents the context in which the VM executes bytecode.
@@ -1028,11 +996,10 @@
 </span><span class="kw">use </span><span class="kw">crate</span>::speculative_async_pool::SpeculativeAsyncPool;
 <span class="kw">use </span><span class="kw">crate</span>::speculative_executed_ops::SpeculativeExecutedOps;
 <span class="kw">use </span><span class="kw">crate</span>::speculative_ledger::SpeculativeLedger;
-<span class="kw">use </span><span class="kw">crate</span>::speculative_processed_denunciations::SpeculativeProcessedDenunciations;
 <span class="kw">use </span><span class="kw">crate</span>::vesting_manager::VestingManager;
 <span class="kw">use crate</span>::{active_history::ActiveHistory, speculative_roll_state::SpeculativeRollState};
 <span class="kw">use </span>massa_async_pool::{AsyncMessage, AsyncMessageId};
-<span class="kw">use </span>massa_executed_ops::{ExecutedOpsChanges, ProcessedDenunciationsChanges};
+<span class="kw">use </span>massa_executed_ops::ExecutedOpsChanges;
 <span class="kw">use </span>massa_execution_exports::{
     EventStore, ExecutionConfig, ExecutionError, ExecutionOutput, ExecutionStackElement,
 };
@@ -1040,7 +1007,6 @@
 <span class="kw">use </span>massa_ledger_exports::LedgerChanges;
 <span class="kw">use </span>massa_models::address::{ExecutionAddressCycleInfo, SCAddress};
 <span class="kw">use </span>massa_models::bytecode::Bytecode;
-<span class="kw">use </span>massa_models::denunciation::DenunciationIndex;
 <span class="kw">use </span>massa_models::{
     address::Address,
     amount::Amount,
@@ -1069,9 +1035,6 @@
 
     <span class="doccomment">/// speculative list of operations executed
     </span><span class="kw">pub </span>executed_ops: ExecutedOpsChanges,
-
-    <span class="doccomment">/// speculative list of processed denunciations
-    </span><span class="kw">pub </span>processed_denunciations: ProcessedDenunciationsChanges,
 
     <span class="doccomment">/// speculative roll state changes caused so far in the context
     </span><span class="kw">pub </span>pos_changes: PoSChanges,
@@ -1124,9 +1087,6 @@
 
     <span class="doccomment">/// speculative list of executed operations
     </span>speculative_executed_ops: SpeculativeExecutedOps,
-
-    <span class="doccomment">/// speculative list of processed denunciations
-    </span>speculative_processed_denunciations: SpeculativeProcessedDenunciations,
 
     <span class="doccomment">/// max gas for this execution
     </span><span class="kw">pub </span>max_gas: u64,
@@ -1209,14 +1169,7 @@
                 final_state.clone(),
                 active_history.clone(),
             ),
-            speculative_executed_ops: SpeculativeExecutedOps::new(
-                final_state.clone(),
-                active_history.clone(),
-            ),
-            speculative_processed_denunciations: SpeculativeProcessedDenunciations::new(
-                final_state,
-                active_history,
-            ),
+            speculative_executed_ops: SpeculativeExecutedOps::new(final_state, active_history),
             max_gas: Default::default(),
             creator_coin_spending_allowance: Default::default(),
             slot: Slot::new(<span class="number">0</span>, <span class="number">0</span>),
@@ -1244,7 +1197,6 @@
             async_pool_changes: <span class="self">self</span>.speculative_async_pool.get_snapshot(),
             pos_changes: <span class="self">self</span>.speculative_roll_state.get_snapshot(),
             executed_ops: <span class="self">self</span>.speculative_executed_ops.get_snapshot(),
-            processed_denunciations: <span class="self">self</span>.speculative_processed_denunciations.get_snapshot(),
             created_addr_index: <span class="self">self</span>.created_addr_index,
             created_event_index: <span class="self">self</span>.created_event_index,
             stack: <span class="self">self</span>.stack.clone(),
@@ -1270,8 +1222,6 @@
             .reset_to_snapshot(snapshot.pos_changes);
         <span class="self">self</span>.speculative_executed_ops
             .reset_to_snapshot(snapshot.executed_ops);
-        <span class="self">self</span>.speculative_processed_denunciations
-            .reset_to_snapshot(snapshot.processed_denunciations);
         <span class="self">self</span>.created_addr_index = snapshot.created_addr_index;
         <span class="self">self</span>.created_event_index = snapshot.created_event_index;
         <span class="self">self</span>.stack = snapshot.stack;
@@ -1898,7 +1848,6 @@
             async_pool_changes: <span class="self">self</span>.speculative_async_pool.take(),
             pos_changes: <span class="self">self</span>.speculative_roll_state.take(),
             executed_ops_changes: <span class="self">self</span>.speculative_executed_ops.take(),
-            processed_denunciations_changes: <span class="self">self</span>.speculative_processed_denunciations.take(),
         };
         ExecutionOutput {
             slot,
@@ -1980,12 +1929,6 @@
         <span class="self">self</span>.speculative_executed_ops.is_op_executed(op_id)
     }
 
-    <span class="doccomment">/// Check if a denunciation was previously processed (to prevent reuse)
-    </span><span class="kw">pub fn </span>is_denunciation_processed(<span class="kw-2">&amp;</span><span class="self">self</span>, de_idx: <span class="kw-2">&amp;</span>DenunciationIndex) -&gt; bool {
-        <span class="self">self</span>.speculative_processed_denunciations
-            .is_de_processed(de_idx)
-    }
-
     <span class="doccomment">/// Insert an executed operation.
     /// Does not check for reuse, please use `is_op_executed` before.
     ///
@@ -2001,13 +1944,6 @@
     ) {
         <span class="self">self</span>.speculative_executed_ops
             .insert_executed_op(op_id, op_exec_status, op_valid_until_slot)
-    }
-
-    <span class="doccomment">/// Insert a processed denunciation.
-    ///
-    </span><span class="kw">pub fn </span>insert_executed_denunciation(<span class="kw-2">&amp;mut </span><span class="self">self</span>, denunciation_idx: <span class="kw-2">&amp;</span>DenunciationIndex) {
-        <span class="self">self</span>.speculative_processed_denunciations
-            .insert_processed_de(denunciation_idx.clone());
     }
 
     <span class="doccomment">/// gets the cycle information for an address

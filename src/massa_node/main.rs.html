@@ -1161,15 +1161,6 @@
 <a href="#1161" id="1161">1161</a>
 <a href="#1162" id="1162">1162</a>
 <a href="#1163" id="1163">1163</a>
-<a href="#1164" id="1164">1164</a>
-<a href="#1165" id="1165">1165</a>
-<a href="#1166" id="1166">1166</a>
-<a href="#1167" id="1167">1167</a>
-<a href="#1168" id="1168">1168</a>
-<a href="#1169" id="1169">1169</a>
-<a href="#1170" id="1170">1170</a>
-<a href="#1171" id="1171">1171</a>
-<a href="#1172" id="1172">1172</a>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="attr">#![doc = <span class="macro">include_str!</span>(<span class="string">&quot;../../README.md&quot;</span>)]
@@ -1191,7 +1182,7 @@
 <span class="kw">use </span>massa_consensus_exports::events::ConsensusEvent;
 <span class="kw">use </span>massa_consensus_exports::{ConsensusChannels, ConsensusConfig, ConsensusManager};
 <span class="kw">use </span>massa_consensus_worker::start_consensus_worker;
-<span class="kw">use </span>massa_executed_ops::{ExecutedOpsConfig, ProcessedDenunciationsConfig};
+<span class="kw">use </span>massa_executed_ops::ExecutedOpsConfig;
 <span class="kw">use </span>massa_execution_exports::{ExecutionConfig, ExecutionManager, GasCosts, StorageCostsConstants};
 <span class="kw">use </span>massa_execution_worker::start_execution_worker;
 <span class="kw">use </span>massa_factory_exports::{FactoryChannels, FactoryConfig, FactoryManager};
@@ -1226,8 +1217,8 @@
     VERSION,
 };
 <span class="kw">use </span>massa_models::config::{
-    CONSENSUS_BOOTSTRAP_PART_SIZE, DENUNCIATION_EXPIRE_PERIODS, MAX_DENUNCIATIONS_PER_BLOCK_HEADER,
-    MAX_DENUNCIATION_CHANGES_LENGTH, MAX_OPERATIONS_PER_MESSAGE,
+    CONSENSUS_BOOTSTRAP_PART_SIZE, DENUNCIATION_EXPIRE_PERIODS, DENUNCIATION_ITEMS_MAX_CYCLE_DELTA,
+    MAX_DENUNCIATIONS_PER_BLOCK_HEADER, MAX_OPERATIONS_PER_MESSAGE,
     ROLL_COUNT_TO_SLASH_ON_DENUNCIATION,
 };
 <span class="kw">use </span>massa_network_exports::{Establisher, NetworkConfig, NetworkManager};
@@ -1361,24 +1352,16 @@
         thread_count: THREAD_COUNT,
         bootstrap_part_size: EXECUTED_OPS_BOOTSTRAP_PART_SIZE,
     };
-    <span class="kw">let </span>processed_denunciations_config = ProcessedDenunciationsConfig {
-        denunciation_expire_periods: DENUNCIATION_EXPIRE_PERIODS,
-        bootstrap_part_size: EXECUTED_OPS_BOOTSTRAP_PART_SIZE,
-    };
     <span class="kw">let </span>final_state_config = FinalStateConfig {
         ledger_config: ledger_config.clone(),
         async_pool_config,
         pos_config,
         executed_ops_config,
-        processed_denunciations_config,
         final_history_length: SETTINGS.ledger.final_history_length,
         thread_count: THREAD_COUNT,
         periods_per_cycle: PERIODS_PER_CYCLE,
         initial_seed_string: INITIAL_DRAW_SEED.into(),
         initial_rolls_path: SETTINGS.selector.initial_rolls_path.clone(),
-        endorsement_count: ENDORSEMENT_COUNT,
-        max_processed_denunciations_length: MAX_DENUNCIATION_CHANGES_LENGTH,
-        max_denunciations_per_block_header: MAX_DENUNCIATIONS_PER_BLOCK_HEADER,
     };
 
     <span class="comment">// Remove current disk ledger if there is one and we don&#39;t want to restart from snapshot
@@ -1484,7 +1467,6 @@
         mip_store_stats_block_considered: MIP_STORE_STATS_BLOCK_CONSIDERED,
         mip_store_stats_counters_max: MIP_STORE_STATS_COUNTERS_MAX,
         max_denunciations_per_block_header: MAX_DENUNCIATIONS_PER_BLOCK_HEADER,
-        max_denunciation_changes_length: MAX_DENUNCIATION_CHANGES_LENGTH,
     };
 
     <span class="comment">// bootstrap
@@ -1632,7 +1614,6 @@
         hd_cache_size: SETTINGS.execution.hd_cache_size,
         snip_amount: SETTINGS.execution.snip_amount,
         roll_count_to_slash_on_denunciation: ROLL_COUNT_TO_SLASH_ON_DENUNCIATION,
-        denunciation_expire_periods: DENUNCIATION_EXPIRE_PERIODS,
     };
     <span class="kw">let </span>(execution_manager, execution_controller) = start_execution_worker(
         execution_config,
@@ -1806,6 +1787,7 @@
         last_start_period: final_state.read().last_start_period,
         periods_per_cycle: PERIODS_PER_CYCLE,
         denunciation_expire_periods: DENUNCIATION_EXPIRE_PERIODS,
+        denunciation_items_max_cycle_delta: DENUNCIATION_ITEMS_MAX_CYCLE_DELTA,
     };
     <span class="kw">let </span>factory_channels = FactoryChannels {
         selector: selector_controller.clone(),

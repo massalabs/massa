@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"fn":["make_runtime"],"opaque":[""],"static":["CALLSITE","META"],"struct":["NetworkCommandSender","NetworkEventReceiver","NetworkManager"]};
+window.SIDEBAR_ITEMS = {"opaque":[""],"static":["CALLSITE","META"],"struct":["NetworkCommandSender","NetworkEventReceiver","NetworkManager"]};
