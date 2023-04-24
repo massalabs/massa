@@ -2,6 +2,7 @@ use massa_execution_exports::ExecutionOutput;
 use massa_ledger_exports::{
     LedgerEntry, LedgerEntryUpdate, SetOrDelete, SetOrKeep, SetUpdateOrDelete,
 };
+use massa_models::denunciation::DenunciationIndex;
 use massa_models::{
     address::Address, amount::Amount, bytecode::Bytecode, operation::OperationId, slot::Slot,
 };
@@ -52,6 +53,22 @@ impl ActiveHistory {
                 .state_changes
                 .executed_ops_changes
                 .contains_key(op_id)
+            {
+                return HistorySearchResult::Present(());
+            }
+        }
+        HistorySearchResult::NoInfo
+    }
+
+    /// Lazily query (from end to beginning) the active list of proccessed denunciations.
+    ///
+    /// Returns a `HistorySearchResult`.
+    pub fn fetch_processed_de(&self, de_idx: &DenunciationIndex) -> HistorySearchResult<()> {
+        for history_element in self.0.iter().rev() {
+            if history_element
+                .state_changes
+                .executed_denunciations_changes
+                .contains(de_idx)
             {
                 return HistorySearchResult::Present(());
             }

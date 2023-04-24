@@ -19,7 +19,7 @@ use massa_bootstrap::{
 use massa_consensus_exports::events::ConsensusEvent;
 use massa_consensus_exports::{ConsensusChannels, ConsensusConfig, ConsensusManager};
 use massa_consensus_worker::start_consensus_worker;
-use massa_executed_ops::ExecutedOpsConfig;
+use massa_executed_ops::{ExecutedDenunciationsConfig, ExecutedOpsConfig};
 use massa_execution_exports::{ExecutionConfig, ExecutionManager, GasCosts, StorageCostsConstants};
 use massa_execution_worker::start_execution_worker;
 use massa_factory_exports::{FactoryChannels, FactoryConfig, FactoryManager};
@@ -54,8 +54,8 @@ use massa_models::config::constants::{
     VERSION,
 };
 use massa_models::config::{
-    CONSENSUS_BOOTSTRAP_PART_SIZE, DENUNCIATION_EXPIRE_PERIODS, DENUNCIATION_ITEMS_MAX_CYCLE_DELTA,
-    MAX_DENUNCIATIONS_PER_BLOCK_HEADER, MAX_OPERATIONS_PER_MESSAGE,
+    CONSENSUS_BOOTSTRAP_PART_SIZE, DENUNCIATION_EXPIRE_PERIODS, MAX_DENUNCIATIONS_PER_BLOCK_HEADER,
+    MAX_DENUNCIATION_CHANGES_LENGTH, MAX_OPERATIONS_PER_MESSAGE,
     ROLL_COUNT_TO_SLASH_ON_DENUNCIATION,
 };
 use massa_network_exports::{Establisher, NetworkConfig, NetworkManager};
@@ -189,16 +189,24 @@ async fn launch(
         thread_count: THREAD_COUNT,
         bootstrap_part_size: EXECUTED_OPS_BOOTSTRAP_PART_SIZE,
     };
+    let executed_denunciations_config = ExecutedDenunciationsConfig {
+        denunciation_expire_periods: DENUNCIATION_EXPIRE_PERIODS,
+        bootstrap_part_size: EXECUTED_OPS_BOOTSTRAP_PART_SIZE,
+    };
     let final_state_config = FinalStateConfig {
         ledger_config: ledger_config.clone(),
         async_pool_config,
         pos_config,
         executed_ops_config,
+        executed_denunciations_config,
         final_history_length: SETTINGS.ledger.final_history_length,
         thread_count: THREAD_COUNT,
         periods_per_cycle: PERIODS_PER_CYCLE,
         initial_seed_string: INITIAL_DRAW_SEED.into(),
         initial_rolls_path: SETTINGS.selector.initial_rolls_path.clone(),
+        endorsement_count: ENDORSEMENT_COUNT,
+        max_executed_denunciations_length: MAX_DENUNCIATION_CHANGES_LENGTH,
+        max_denunciations_per_block_header: MAX_DENUNCIATIONS_PER_BLOCK_HEADER,
     };
 
     // Remove current disk ledger if there is one and we don't want to restart from snapshot
@@ -304,6 +312,7 @@ async fn launch(
         mip_store_stats_block_considered: MIP_STORE_STATS_BLOCK_CONSIDERED,
         mip_store_stats_counters_max: MIP_STORE_STATS_COUNTERS_MAX,
         max_denunciations_per_block_header: MAX_DENUNCIATIONS_PER_BLOCK_HEADER,
+        max_denunciation_changes_length: MAX_DENUNCIATION_CHANGES_LENGTH,
     };
 
     // bootstrap
@@ -451,6 +460,7 @@ async fn launch(
         hd_cache_size: SETTINGS.execution.hd_cache_size,
         snip_amount: SETTINGS.execution.snip_amount,
         roll_count_to_slash_on_denunciation: ROLL_COUNT_TO_SLASH_ON_DENUNCIATION,
+        denunciation_expire_periods: DENUNCIATION_EXPIRE_PERIODS,
     };
     let (execution_manager, execution_controller) = start_execution_worker(
         execution_config,
@@ -624,7 +634,6 @@ async fn launch(
         last_start_period: final_state.read().last_start_period,
         periods_per_cycle: PERIODS_PER_CYCLE,
         denunciation_expire_periods: DENUNCIATION_EXPIRE_PERIODS,
-        denunciation_items_max_cycle_delta: DENUNCIATION_ITEMS_MAX_CYCLE_DELTA,
     };
     let factory_channels = FactoryChannels {
         selector: selector_controller.clone(),

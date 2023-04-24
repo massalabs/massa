@@ -4,7 +4,8 @@ use super::tools::{
     get_boot_state, get_peers, get_random_final_state_bootstrap, get_random_ledger_changes,
 };
 use crate::tests::tools::{
-    get_random_async_pool_changes, get_random_executed_ops_changes, get_random_pos_changes,
+    get_random_async_pool_changes, get_random_executed_de_changes, get_random_executed_ops_changes,
+    get_random_pos_changes,
 };
 use crate::BootstrapConfig;
 use crate::{
@@ -16,14 +17,17 @@ use massa_async_pool::AsyncPoolConfig;
 use massa_consensus_exports::{
     bootstrapable_graph::BootstrapableGraph, test_exports::MockConsensusControllerImpl,
 };
-use massa_executed_ops::ExecutedOpsConfig;
+use massa_executed_ops::{ExecutedDenunciationsConfig, ExecutedOpsConfig};
 use massa_final_state::{
     test_exports::{assert_eq_final_state, assert_eq_final_state_hash},
     FinalState, FinalStateConfig, StateChanges,
 };
 use massa_hash::{Hash, HASH_SIZE_BYTES};
 use massa_ledger_exports::LedgerConfig;
-use massa_models::config::{MIP_STORE_STATS_BLOCK_CONSIDERED, MIP_STORE_STATS_COUNTERS_MAX};
+use massa_models::config::{
+    DENUNCIATION_EXPIRE_PERIODS, ENDORSEMENT_COUNT, MAX_DENUNCIATIONS_PER_BLOCK_HEADER,
+    MIP_STORE_STATS_BLOCK_CONSIDERED, MIP_STORE_STATS_COUNTERS_MAX,
+};
 use massa_models::{
     address::Address, config::MAX_DATASTORE_VALUE_LENGTH, node::NodeId, slot::Slot,
     streaming_step::StreamingStep, version::Version,
@@ -115,11 +119,18 @@ fn test_bootstrap_server() {
             thread_count,
             bootstrap_part_size: 10,
         },
+        executed_denunciations_config: ExecutedDenunciationsConfig {
+            denunciation_expire_periods: DENUNCIATION_EXPIRE_PERIODS,
+            bootstrap_part_size: 10,
+        },
         final_history_length: 100,
         initial_seed_string: "".into(),
         initial_rolls_path: "".into(),
+        endorsement_count: ENDORSEMENT_COUNT,
+        max_executed_denunciations_length: 1000,
         thread_count,
         periods_per_cycle,
+        max_denunciations_per_block_header: MAX_DENUNCIATIONS_PER_BLOCK_HEADER,
     };
 
     // setup selector local config
@@ -249,6 +260,7 @@ fn test_bootstrap_server() {
                     ledger_changes: get_random_ledger_changes(10),
                     async_pool_changes: get_random_async_pool_changes(10),
                     executed_ops_changes: get_random_executed_ops_changes(10),
+                    executed_denunciations_changes: get_random_executed_de_changes(10),
                 };
                 final_write
                     .changes_history

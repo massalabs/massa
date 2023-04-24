@@ -515,6 +515,7 @@ pub fn stream_bootstrap_information(
     mut last_cycle_step: StreamingStep<u64>,
     mut last_credits_step: StreamingStep<Slot>,
     mut last_ops_step: StreamingStep<Slot>,
+    mut last_de_step: StreamingStep<Slot>,
     mut last_consensus_step: StreamingStep<PreHashSet<BlockId>>,
     mut send_last_start_period: bool,
     bs_deadline: &Instant,
@@ -533,6 +534,7 @@ pub fn stream_bootstrap_information(
         let pos_cycle_part;
         let pos_credits_part;
         let exec_ops_part;
+        let processed_de_part;
         let final_state_changes;
         let last_start_period;
 
@@ -572,6 +574,11 @@ pub fn stream_bootstrap_information(
                 .get_executed_ops_part(last_ops_step);
             exec_ops_part = ops_data;
 
+            let (de_data, new_de_step) = final_state_read
+                .executed_denunciations
+                .get_processed_de_part(last_de_step);
+            processed_de_part = de_data;
+
             if let Some(slot) = last_slot && slot != final_state_read.slot {
                 if slot > final_state_read.slot {
                     return Err(BootstrapError::GeneralError(
@@ -585,6 +592,7 @@ pub fn stream_bootstrap_information(
                     new_cycle_step,
                     new_credits_step,
                     new_ops_step,
+                    new_de_step,
                 ) {
                     Ok(data) => data,
                     Err(err) if matches!(err, FinalStateError::InvalidSlot(_)) => {
@@ -603,6 +611,7 @@ pub fn stream_bootstrap_information(
             last_cycle_step = new_cycle_step;
             last_credits_step = new_credits_step;
             last_ops_step = new_ops_step;
+            last_de_step = new_de_step;
             last_slot = Some(final_state_read.slot);
             current_slot = final_state_read.slot;
             send_last_start_period = false;
@@ -618,6 +627,7 @@ pub fn stream_bootstrap_information(
             && last_cycle_step.finished()
             && last_credits_step.finished()
             && last_ops_step.finished()
+            && last_de_step.finished()
         {
             StreamingStep::Finished(Some(current_slot))
         } else {
@@ -680,6 +690,7 @@ pub fn stream_bootstrap_information(
                 pos_cycle_part,
                 pos_credits_part,
                 exec_ops_part,
+                processed_de_part,
                 final_state_changes,
                 consensus_part,
                 consensus_outdated_ids,
@@ -777,6 +788,7 @@ fn manage_bootstrap(
                     last_cycle_step,
                     last_credits_step,
                     last_ops_step,
+                    last_de_step,
                     last_consensus_step,
                     send_last_start_period,
                 } => {
@@ -790,6 +802,7 @@ fn manage_bootstrap(
                         last_cycle_step,
                         last_credits_step,
                         last_ops_step,
+                        last_de_step,
                         last_consensus_step,
                         send_last_start_period,
                         &deadline,

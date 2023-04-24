@@ -72,7 +72,6 @@ impl DenunciationPool {
             now,
         );
 
-        // let last_final_periods = self.channels.pool.get_final_cs_periods();
         if slot.period
             < self.last_cs_final_periods[slot.thread as usize]
                 .saturating_sub(self.config.denunciation_expire_periods)

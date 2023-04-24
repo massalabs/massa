@@ -22,7 +22,7 @@ use massa_final_state::FinalState;
 use massa_ledger_exports::{SetOrDelete, SetUpdateOrDelete};
 use massa_models::address::ExecutionAddressCycleInfo;
 use massa_models::bytecode::Bytecode;
-use massa_models::denunciation::Denunciation;
+use massa_models::denunciation::{Denunciation, DenunciationIndex};
 use massa_models::execution::EventFilter;
 use massa_models::output_event::SCOutputEvent;
 use massa_models::prehash::PreHashSet;
@@ -404,16 +404,59 @@ impl ExecutionState {
     fn process_denunciation(
         &self,
         denunciation: &Denunciation,
+        block_slot: &Slot,
         block_credits: &mut Amount,
     ) -> Result<(), ExecutionError> {
         let addr_denounced = Address::from_public_key(denunciation.get_public_key());
 
         // acquire write access to the context
         let mut context = context_guard!(self);
+
+        // ignore denunciation if not valid
+        if !denunciation.is_valid() {
+            return Err(ExecutionError::IncludeDenunciationError(
+                "denunciation is not valid".to_string(),
+            ));
+        }
+
+        // ignore denunciation if too old or expired
+        let de_slot = denunciation.get_slot();
+
+        if de_slot.period
+            < block_slot
+                .period
+                .saturating_sub(self.config.denunciation_expire_periods)
+        {
+            // too old - cannot be denounced anymore
+            return Err(ExecutionError::IncludeDenunciationError(
+                "denunciation target is too old with respect to the block".to_string(),
+            ));
+        }
+
+        if de_slot > block_slot {
+            // too much in the future - ignored
+            // Note: de_slot == block_slot is OK,
+            //       for example if the block producer wants to denounce someone who multi-endorsed
+            //       for the block's slot
+            return Err(ExecutionError::IncludeDenunciationError(
+                "denunciation target is at a later slot than the block slot".to_string(),
+            ));
+        }
+
+        // ignore the denunciation if it was already processed
+        let de_idx = DenunciationIndex::from(denunciation);
+        if context.is_denunciation_processed(&de_idx) {
+            return Err(ExecutionError::IncludeDenunciationError(
+                "denunciation was processed previously".to_string(),
+            ));
+        }
+
         let slashed = context.try_slash_rolls(
             &addr_denounced,
             self.config.roll_count_to_slash_on_denunciation,
         );
+
+        context.insert_executed_denunciation(&de_idx);
 
         match slashed {
             Ok(slashed_amount) => {
@@ -426,7 +469,9 @@ impl ExecutionState {
                 })?;
                 *block_credits = block_credits.saturating_add(amount);
             }
-            Err(e) => warn!("Unable to slash rolls or deferred credits: {}", e),
+            Err(e) => {
+                warn!("Unable to slash rolls or deferred credits: {}", e);
+            }
         }
 
         Ok(())
@@ -971,7 +1016,11 @@ impl ExecutionState {
 
             // Try executing the denunciations of this block
             for denunciation in &stored_block.content.header.content.denunciations {
-                if let Err(e) = self.process_denunciation(denunciation, &mut block_credits) {
+                if let Err(e) = self.process_denunciation(
+                    denunciation,
+                    &stored_block.content.header.content.slot,
+                    &mut block_credits,
+                ) {
                     debug!(
                         "Failed processing denunciation: {:?}, in block: {}: {}",
                         denunciation, block_id, e
