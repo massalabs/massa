@@ -150,6 +150,7 @@ pub fn start_connectivity_thread(
                 ));
             }
 
+            println!("Protocol started");
             //Try to connect to peers
             loop {
                 select! {
@@ -165,16 +166,23 @@ pub fn start_connectivity_thread(
                                 break;
                             }
                         }
-                    default(Duration::from_millis(2000)) => {
+                    default(Duration::from_millis(500)) => {
                         // Check if we need to connect to peers
                         let nb_connection_to_try = {
                             let active_connections = manager.active_connections.read();
+                            if config.debug {
+                                dbg!(&manager.active_connections.read().connections);
+                                dbg!(&manager.active_connections.read().connection_queue);
+                            }
                             let nb_connection_to_try = active_connections.max_out_connections - active_connections.nb_out_connections;
                             if nb_connection_to_try == 0 {
                                 continue;
                             }
                             nb_connection_to_try
                         };
+                        if config.debug {
+                            println!("Trying to connect to {} peers", nb_connection_to_try);
+                        }
                         // Get the best peers
                         {
                             let peer_db_read = peer_management_handler.peer_db.read();
@@ -189,15 +197,19 @@ pub fn start_connectivity_thread(
                                 {
                                     {
                                         let active_connections = manager.active_connections.read();
-                                        println!("Checking addr: {:?}", addr);
-                                        println!("Connections queue = {:#?}", active_connections.connection_queue);
-                                        println!("Connections = {:#?}", active_connections.connections);
+                                        if config.debug {
+                                            println!("Checking addr: {:?}", addr);
+                                            println!("Connections queue = {:#?}", active_connections.connection_queue);
+                                            println!("Connections = {:#?}", active_connections.connections);
+                                        }
                                         if !active_connections.check_addr_accepted(&addr) {
                                             println!("Address already connected");
                                             continue;
                                         }
                                     }
-                                    println!("Trying to connect to peer {:?}", addr);
+                                    if config.debug {
+                                        println!("Trying to connect to peer {:?}", addr);
+                                    }
                                     // We only manage TCP for now
                                     manager.try_connect(*addr, Duration::from_millis(200), &OutConnectionConfig::Tcp(Box::new(TcpOutConnectionConfig {}))).unwrap();
                                 };

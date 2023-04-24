@@ -166,7 +166,7 @@ impl RetrievalThread {
                             }
                         },
                         Err(err) => {
-                            println!("Error: {:?}", err);
+                            println!("Error in retrieval block handler: {:?}", err);
                             return;
                         }
                     }
@@ -203,7 +203,7 @@ impl RetrievalThread {
                             }
                         },
                         Err(err) => {
-                            println!("Error: {:?}", err);
+                            println!("Error in retrieval block handler channel command: {:?}", err);
                             return;
                         }
                     }

@@ -1,4 +1,9 @@
-use std::{collections::HashMap, net::SocketAddr, thread::JoinHandle, time::Duration};
+use std::{
+    collections::HashMap,
+    net::SocketAddr,
+    thread::JoinHandle,
+    time::{Duration, Instant, SystemTime, UNIX_EPOCH},
+};
 
 use crossbeam::channel::Sender;
 use massa_protocol_exports_2::ProtocolConfig;
@@ -67,7 +72,6 @@ impl HandshakeHandler for TesterHandshake {
         _: &HashMap<SocketAddr, TransportType>,
         _: TesterMessagesHandler,
     ) -> PeerNetResult<PeerId> {
-        println!("Performing Tester handshake");
         let data = endpoint.receive()?;
         let peer_id = PeerId::from_bytes(&data[..32].try_into().unwrap())?;
 
@@ -128,11 +132,15 @@ impl HandshakeHandler for TesterHandshake {
         // if handshake failed, we set the peer state to HandshakeFailed
         if res.is_err() {
             let mut peer_db_write = self.peer_db.write();
-            peer_db_write.peers.entry(peer_id).and_modify(|info| {
-                info.state = super::PeerState::HandshakeFailed;
-            });
+            peer_db_write
+                .peers
+                .entry(peer_id.clone())
+                .and_modify(|info| {
+                    info.state = super::PeerState::HandshakeFailed;
+                });
         }
-
+        println!("Tester Handshake success on Peer {}", &peer_id);
+        endpoint.shutdown();
         res
     }
 }
@@ -177,18 +185,31 @@ impl Tester {
             config.max_out_connections = 1;
 
             let mut network_manager = PeerNetManager::new(config);
-
+            println!("Tester launched");
             loop {
                 crossbeam::select! {
                     recv(receiver) -> res => {
                         match res {
                             Ok(listener) => {
+                                if let Some(peer_info) = db.read().peers.get(&listener.0) {
+                                    let timestamp = SystemTime::now()
+                                    .duration_since(UNIX_EPOCH)
+                                    .expect("Time went backward")
+                                    .as_millis();
+                                    let elapsed_secs = (timestamp - peer_info.last_announce.timestamp) / 1000000;
+                                    if elapsed_secs < 60 {
+                                        continue;
+                                    }
+                                }
+
                                 // receive new listener to test
                                 listener.1.iter().for_each(|(addr, _transport)| {
-                                    dbg!("New listener to test : {:?}", addr);
+                                    println!("Tester try to connect to {}", addr);
+                                    println!("Tester Active connections: {:?}", network_manager.active_connections.read().connections);
+                                    println!("Tester max out connections: {:?}", network_manager.config.max_out_connections);
                                     let _res =  network_manager.try_connect(
                                         *addr,
-                                        Duration::from_millis(200),
+                                        Duration::from_millis(500),
                                         &OutConnectionConfig::Tcp(Box::new(TcpOutConnectionConfig {})),
                                     );
                                 });
@@ -204,6 +225,15 @@ impl Tester {
                             dbg!("No peer to test");
                             continue;
                         };
+
+                        let timestamp = SystemTime::now()
+                        .duration_since(UNIX_EPOCH)
+                        .expect("Time went backward")
+                        .as_millis();
+                        let elapsed_secs = (timestamp - peer_info.last_announce.timestamp) / 1000;
+                        if elapsed_secs < 60 {
+                            continue;
+                        }
 
                         dbg!("Testing peer {}", peer_id);
                         // we try to connect to all peer listener (For now we have only one listener)

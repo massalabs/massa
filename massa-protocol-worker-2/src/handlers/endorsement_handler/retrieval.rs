@@ -78,7 +78,7 @@ impl RetrievalThread {
                     }
                 }
                 Err(err) => {
-                    println!("Error: {:?}", err);
+                    println!("Error in retrieval endorsements: {:?}", err);
                     return;
                 }
             }

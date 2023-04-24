@@ -52,6 +52,7 @@ fn basic() {
     config1.initial_peers = initial_peers_file.path().to_path_buf();
     config1.max_in_connections = 5;
     config1.max_out_connections = 1;
+    config1.debug = true;
     config2.initial_peers = initial_peers_file_2.path().to_path_buf();
     config2.max_in_connections = 5;
     config2.max_out_connections = 0;

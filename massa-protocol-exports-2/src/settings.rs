@@ -78,4 +78,6 @@ pub struct ProtocolConfig {
     pub max_endorsements_propagation_time: MassaTime,
     /// number of thread tester
     pub thread_tester_count: u8,
+    /// debug prints
+    pub debug: bool,
 }

@@ -113,13 +113,10 @@ impl PeerManagementHandler {
                                 }
                             }
 
-                            println!("Received message len: {}", message.len());
                             message_deserializer.set_message(message_id);
                             let (_, message) = message_deserializer
                                 .deserialize::<DeserializeError>(&message)
                                 .unwrap();
-                            println!("Received message from peer: {:?}", peer_id);
-                            println!("Message: {:?}", message);
                             // TODO: Bufferize launch of test thread
                             // TODO: Add wait group or something like that to wait for all threads to finish when stop
                             match message {
@@ -210,7 +207,6 @@ impl HandshakeHandler for MassaHandshake {
         listeners: &HashMap<SocketAddr, TransportType>,
         messages_handler: MassaMessagesHandler,
     ) -> PeerNetResult<PeerId> {
-        println!("Performing Massa handshake");
         let mut bytes = PeerId::from_public_key(keypair.get_public_key()).to_bytes();
         //TODO: Add version in announce
         let listeners_announcement = Announcement::new(listeners.clone(), keypair).unwrap();
@@ -304,7 +300,7 @@ impl HandshakeHandler for MassaHandshake {
             // check their signature
             peer_id.verify_signature(&self_random_hash, &other_signature)?;
 
-            println!("Handshake finished");
+            println!("Handshake Massa on peer {} finished", peer_id);
             Ok(peer_id.clone())
         };
 
