@@ -8,13 +8,13 @@
 //! and does not write anything persistent to the consensus state.
 
 use crate::speculative_async_pool::SpeculativeAsyncPool;
+use crate::speculative_executed_denunciations::SpeculativeExecutedDenunciations;
 use crate::speculative_executed_ops::SpeculativeExecutedOps;
 use crate::speculative_ledger::SpeculativeLedger;
-use crate::speculative_processed_denunciations::SpeculativeExecutedDenunciations;
 use crate::vesting_manager::VestingManager;
 use crate::{active_history::ActiveHistory, speculative_roll_state::SpeculativeRollState};
 use massa_async_pool::{AsyncMessage, AsyncMessageId};
-use massa_executed_ops::{ExecutedOpsChanges, ExecutedDenunciationsChanges};
+use massa_executed_ops::{ExecutedDenunciationsChanges, ExecutedOpsChanges};
 use massa_execution_exports::{
     EventStore, ExecutionConfig, ExecutionError, ExecutionOutput, ExecutionStackElement,
 };
