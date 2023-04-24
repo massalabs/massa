@@ -15,7 +15,7 @@
 //! (`default_testing.rs`) But as for the current file you shouldn't modify it.
 use std::str::FromStr;
 
-use crate::{address::ADDRESS_SIZE_BYTES, amount::Amount, version::Version};
+use crate::{amount::Amount, version::Version};
 use massa_signature::KeyPair;
 use massa_time::MassaTime;
 use num::rational::Ratio;
@@ -103,6 +103,8 @@ pub const ROLL_PRICE: Amount = Amount::from_mantissa_scale(100, 0);
 pub const BLOCK_REWARD: Amount = Amount::from_mantissa_scale(3, 1);
 /// Cost to store one byte in the ledger
 pub const LEDGER_COST_PER_BYTE: Amount = Amount::from_mantissa_scale(25, 5);
+/// Address size in bytes
+pub const ADDRESS_SIZE_BYTES: usize = 32;
 /// Cost for a base entry (address + balance (5 bytes constant))
 pub const LEDGER_ENTRY_BASE_SIZE: usize = ADDRESS_SIZE_BYTES + 8;
 /// Cost for a base entry datastore 10 bytes constant to avoid paying more for longer keys

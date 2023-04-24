@@ -18,6 +18,7 @@ config = "0.13"
 bs58 = { version = "0.4", features = ["check"] }
 bitvec = { version = "1.0", features = ["serde"] }
 nom = "7.1"
+const_format = "0.2.30"
 
 # custom modules
 massa_hash = { path = "../massa-hash" }
@@ -25,7 +26,7 @@ massa_serialization = { path = "../massa-serialization" }
 massa_signature = { path = "../massa-signature" }
 massa_time = { path = "../massa-time" }
 massa_proto = { path = "../massa-proto" }
-const_format = "0.2.30"
+transition = { git = "https://github.com/massalabs/transition.git" }
 
 [dev-dependencies]
 serial_test = "1.0"
