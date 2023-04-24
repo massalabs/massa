@@ -73,8 +73,13 @@ impl HandshakeHandler for TesterHandshake {
         _: TesterMessagesHandler,
     ) -> PeerNetResult<PeerId> {
         let data = endpoint.receive()?;
+        if data.is_empty() {
+            return Err(PeerNetError::HandshakeError.error(
+                "Tester Handshake",
+                Some(String::from("Peer didn't accepted us")),
+            ));
+        }
         let peer_id = PeerId::from_bytes(&data[..32].try_into().unwrap())?;
-
         let res = {
             {
                 // check if peer is banned else set state to InHandshake
@@ -201,6 +206,8 @@ impl Tester {
                                         continue;
                                     }
                                 }
+                                //TODO: Don't launch test if peer is already connected to us as a normal connection.
+                                // Maybe we need to have a way to still update his last announce timestamp because he is a great peer
 
                                 // receive new listener to test
                                 listener.1.iter().for_each(|(addr, _transport)| {

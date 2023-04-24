@@ -88,6 +88,13 @@ pub fn start_connectivity_thread(
 
             let mut manager = PeerNetManager::new(peernet_config);
 
+            for (addr, transport) in &config.listeners {
+                manager.start_listener(*transport, *addr).expect(&format!(
+                    "Failed to start listener {:?} of transport {:?} in protocol",
+                    addr, transport
+                ));
+            }
+
             // Create cache outside of the op handler because it could be used by other handlers
             //TODO: Add real config values
             let operation_cache = Arc::new(RwLock::new(OperationCache::new(
@@ -143,13 +150,6 @@ pub fn start_connectivity_thread(
                 storage.clone_without_refs(),
             );
 
-            for (addr, transport) in config.listeners {
-                manager.start_listener(transport, addr).expect(&format!(
-                    "Failed to start listener {:?} of transport {:?} in protocol",
-                    addr, transport
-                ));
-            }
-
             println!("Protocol started");
             //Try to connect to peers
             loop {
@@ -166,13 +166,14 @@ pub fn start_connectivity_thread(
                                 break;
                             }
                         }
-                    default(Duration::from_millis(500)) => {
+                    default(Duration::from_millis(1000)) => {
                         // Check if we need to connect to peers
                         let nb_connection_to_try = {
                             let active_connections = manager.active_connections.read();
                             if config.debug {
                                 dbg!(&manager.active_connections.read().connections);
                                 dbg!(&manager.active_connections.read().connection_queue);
+                                dbg!(&peer_management_handler.peer_db.read().peers);
                             }
                             let nb_connection_to_try = active_connections.max_out_connections - active_connections.nb_out_connections;
                             if nb_connection_to_try == 0 {
