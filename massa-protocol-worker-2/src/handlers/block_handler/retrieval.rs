@@ -160,7 +160,9 @@ impl RetrievalThread {
                                             or a loss of sync between us and the remote peer",
                                             peer_id,
                                         );
-                                        let _ = self.ban_node(&peer_id);
+                                        if let Err(err) = self.ban_node(&peer_id) {
+                                            warn!("Error while banning peer {} err: {:?}", peer_id, err);
+                                        }
                                     }
                                 }
                             }
@@ -393,7 +395,9 @@ impl RetrievalThread {
                 or a loss of sync between us and the remote node. Err = {}",
                 from_peer_id, err
             );
-            let _ = self.ban_node(&from_peer_id);
+            if let Err(err) = self.ban_node(&from_peer_id) {
+                warn!("Error while banning peer {} err: {:?}", from_peer_id, err);
+            }
             return Ok(());
         };
         if let Some(info) = self.block_wishlist.get_mut(&block_id) {
@@ -729,7 +733,9 @@ impl RetrievalThread {
         if header.content.operation_merkle_root == Hash::compute_from(&total_hash) {
             if operation_ids.len() > self.config.max_operations_per_block as usize {
                 warn!("Peer id {} sent us an operations list for block id {} that contains more operations than the max allowed for a block.", from_peer_id, block_id);
-                let _ = self.ban_node(&from_peer_id);
+                if let Err(err) = self.ban_node(&from_peer_id) {
+                    warn!("Error while banning peer {} err: {:?}", from_peer_id, err);
+                }
                 return Ok(());
             }
 
@@ -751,7 +757,9 @@ impl RetrievalThread {
 
             if info.operations_size > self.config.max_serialized_operations_size_per_block {
                 warn!("Peer id {} sent us a operation list for block id {} but the operations we already have in our records exceed max size.", from_peer_id, block_id);
-                let _ = self.ban_node(&from_peer_id);
+                if let Err(err) = self.ban_node(&from_peer_id) {
+                    warn!("Error while banning peer {} err: {:?}", from_peer_id, err);
+                }
                 return Ok(());
             }
 
@@ -770,7 +778,9 @@ impl RetrievalThread {
             }
         } else {
             warn!("Peer id {} sent us a operation list for block id {} but the hash in header doesn't match.", from_peer_id, block_id);
-            let _ = self.ban_node(&from_peer_id);
+            if let Err(err) = self.ban_node(&from_peer_id) {
+                warn!("Error while banning peer {} err: {:?}", from_peer_id, err);
+            }
         }
         Ok(())
     }
@@ -813,7 +823,9 @@ impl RetrievalThread {
                 "Peer id {} sent us operations for block id {} but they failed at verifications. Err = {}",
                 from_peer_id, block_id, err
             );
-            let _ = self.ban_node(&from_peer_id);
+            if let Err(err) = self.ban_node(&from_peer_id) {
+                warn!("Error while banning peer {} err: {:?}", from_peer_id, err);
+            }
             return Ok(());
         }
 
@@ -864,7 +876,9 @@ impl RetrievalThread {
                 };
                 if full_op_size > self.config.max_serialized_operations_size_per_block {
                     warn!("Peer id {} sent us full operations for block id {} but they exceed max size.", from_peer_id, block_id);
-                    let _ = self.ban_node(&from_peer_id);
+                    if let Err(err) = self.ban_node(&from_peer_id) {
+                        warn!("Error while banning peer {} err: {:?}", from_peer_id, err);
+                    }
                     self.block_wishlist.remove(&block_id);
                     self.consensus_controller
                         .mark_invalid_block(block_id, header);

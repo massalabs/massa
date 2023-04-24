@@ -118,7 +118,6 @@ impl PropagationThread {
                             }
                         }
                         BlockHandlerCommand::AttackBlockDetected(block_id) => {
-                            //TODO: Ban all nodes that sent us this object
                             let to_ban: Vec<PeerId> = self
                                 .cache
                                 .read()
@@ -133,7 +132,9 @@ impl PropagationThread {
                                 .collect();
                             for id in to_ban.iter() {
                                 massa_trace!("protocol.protocol_worker.process_command.attack_block_detected.ban_node", { "node": id, "block_id": block_id });
-                                let _ = self.ban_node(id);
+                                if let Err(err) = self.ban_node(id) {
+                                    warn!("Error while banning peer {} err: {:?}", id, err);
+                                }
                             }
                         }
                     }

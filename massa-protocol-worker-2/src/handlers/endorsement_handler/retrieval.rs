@@ -72,7 +72,9 @@ impl RetrievalThread {
                                     loss of sync between us and the remote node. Err = {}",
                                     peer_id, err
                                 );
-                                let _ = self.ban_node(&peer_id);
+                                if let Err(err) = self.ban_node(&peer_id) {
+                                    warn!("Error while banning peer {} err: {:?}", peer_id, err);
+                                }
                             }
                         }
                     }
