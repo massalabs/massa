@@ -1219,7 +1219,7 @@
             Endorsement::new_verifiable(endorsement_1, EndorsementSerializer::new(), <span class="kw-2">&amp;</span>keypair)
                 .unwrap();
 
-        <span class="kw">let </span>(slot_a, <span class="kw">_</span>, s_header_1, s_header_2, <span class="kw">_</span>) = gen_block_headers_for_denunciation(<span class="prelude-val">None</span>, <span class="prelude-val">None</span>);
+        <span class="kw">let </span>(slot_a, <span class="kw">_</span>, s_header_1, s_header_2, <span class="kw">_</span>) = gen_block_headers_for_denunciation();
         <span class="macro">assert!</span>(slot_a &lt; slot);
         <span class="kw">let </span>de_a = Denunciation::try_from((<span class="kw-2">&amp;</span>s_header_1, <span class="kw-2">&amp;</span>s_header_2)).unwrap();
         <span class="kw">let </span>(slot_b, <span class="kw">_</span>, s_endo_1, s_endo_2, <span class="kw">_</span>) = gen_endorsements_for_denunciation(<span class="prelude-val">None</span>, <span class="prelude-val">None</span>);

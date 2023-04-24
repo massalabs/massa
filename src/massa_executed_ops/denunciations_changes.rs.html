@@ -147,7 +147,6 @@
 <a href="#147" id="147">147</a>
 <a href="#148" id="148">148</a>
 <a href="#149" id="149">149</a>
-<a href="#150" id="150">150</a>
 </pre><pre class="rust"><code><span class="doccomment">//! Copyright (c) 2023 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="kw">use </span>massa_models::denunciation::{
@@ -268,8 +267,7 @@
 
     <span class="attr">#[test]
     </span><span class="kw">fn </span>test_executed_denunciations_changes_ser_der() {
-        <span class="kw">let </span>(<span class="kw">_</span>, <span class="kw">_</span>, s_block_header_1, s_block_header_2, <span class="kw">_</span>) =
-            gen_block_headers_for_denunciation(<span class="prelude-val">None</span>, <span class="prelude-val">None</span>);
+        <span class="kw">let </span>(<span class="kw">_</span>, <span class="kw">_</span>, s_block_header_1, s_block_header_2, <span class="kw">_</span>) = gen_block_headers_for_denunciation();
         <span class="kw">let </span>denunciation_1: Denunciation =
             (<span class="kw-2">&amp;</span>s_block_header_1, <span class="kw-2">&amp;</span>s_block_header_2).try_into().unwrap();
         <span class="kw">let </span>denunciation_index_1 = DenunciationIndex::from(<span class="kw-2">&amp;</span>denunciation_1);

@@ -1426,10 +1426,6 @@
 <a href="#1426" id="1426">1426</a>
 <a href="#1427" id="1427">1427</a>
 <a href="#1428" id="1428">1428</a>
-<a href="#1429" id="1429">1429</a>
-<a href="#1430" id="1430">1430</a>
-<a href="#1431" id="1431">1431</a>
-<a href="#1432" id="1432">1432</a>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 </span><span class="doccomment">/// An overview of what is a Denunciation and what it is used for can be found here
 /// https://github.com/massalabs/massa/discussions/3113
@@ -2653,7 +2649,7 @@
     </span><span class="kw">fn </span>test_block_header_denunciation() {
         <span class="comment">// Create an block header denunciation and check if it is valid
         </span><span class="kw">let </span>(_slot, _keypair, s_block_header_1, s_block_header_2, s_block_header_3) =
-            gen_block_headers_for_denunciation(<span class="prelude-val">None</span>, <span class="prelude-val">None</span>);
+            gen_block_headers_for_denunciation();
         <span class="kw">let </span>denunciation: Denunciation = (<span class="kw-2">&amp;</span>s_block_header_1, <span class="kw-2">&amp;</span>s_block_header_2).try_into().unwrap();
 
         <span class="macro">assert_eq!</span>(denunciation.is_for_block_header(), <span class="bool-val">true</span>);
@@ -2752,8 +2748,7 @@
 
     <span class="attr">#[test]
     </span><span class="kw">fn </span>test_block_header_denunciation_ser_der() {
-        <span class="kw">let </span>(<span class="kw">_</span>, <span class="kw">_</span>, s_block_header_1, s_block_header_2, <span class="kw">_</span>) =
-            gen_block_headers_for_denunciation(<span class="prelude-val">None</span>, <span class="prelude-val">None</span>);
+        <span class="kw">let </span>(<span class="kw">_</span>, <span class="kw">_</span>, s_block_header_1, s_block_header_2, <span class="kw">_</span>) = gen_block_headers_for_denunciation();
         <span class="kw">let </span>denunciation: Denunciation = (<span class="kw-2">&amp;</span>s_block_header_1, <span class="kw-2">&amp;</span>s_block_header_2).try_into().unwrap();
 
         <span class="kw">let </span><span class="kw-2">mut </span>buffer = Vec::new();
@@ -2777,8 +2772,7 @@
 
     <span class="attr">#[test]
     </span><span class="kw">fn </span>test_denunciation_ser_der() {
-        <span class="kw">let </span>(<span class="kw">_</span>, <span class="kw">_</span>, s_block_header_1, s_block_header_2, <span class="kw">_</span>) =
-            gen_block_headers_for_denunciation(<span class="prelude-val">None</span>, <span class="prelude-val">None</span>);
+        <span class="kw">let </span>(<span class="kw">_</span>, <span class="kw">_</span>, s_block_header_1, s_block_header_2, <span class="kw">_</span>) = gen_block_headers_for_denunciation();
         <span class="kw">let </span>denunciation: Denunciation = (<span class="kw-2">&amp;</span>s_block_header_1, <span class="kw-2">&amp;</span>s_block_header_2).try_into().unwrap();
 
         <span class="kw">let </span><span class="kw-2">mut </span>buffer = Vec::new();
@@ -2805,8 +2799,7 @@
 
     <span class="attr">#[test]
     </span><span class="kw">fn </span>test_denunciation_precursor() {
-        <span class="kw">let </span>(<span class="kw">_</span>, <span class="kw">_</span>, s_block_header_1, s_block_header_2, <span class="kw">_</span>) =
-            gen_block_headers_for_denunciation(<span class="prelude-val">None</span>, <span class="prelude-val">None</span>);
+        <span class="kw">let </span>(<span class="kw">_</span>, <span class="kw">_</span>, s_block_header_1, s_block_header_2, <span class="kw">_</span>) = gen_block_headers_for_denunciation();
         <span class="kw">let </span>denunciation: Denunciation = (<span class="kw-2">&amp;</span>s_block_header_1, <span class="kw-2">&amp;</span>s_block_header_2).try_into().unwrap();
 
         <span class="kw">let </span>de_p_1 = DenunciationPrecursor::try_from(<span class="kw-2">&amp;</span>s_block_header_1).unwrap();
@@ -2828,8 +2821,7 @@
 
     <span class="attr">#[test]
     </span><span class="kw">fn </span>test_denunciation_index_ser_der() {
-        <span class="kw">let </span>(<span class="kw">_</span>, <span class="kw">_</span>, s_block_header_1, s_block_header_2, <span class="kw">_</span>) =
-            gen_block_headers_for_denunciation(<span class="prelude-val">None</span>, <span class="prelude-val">None</span>);
+        <span class="kw">let </span>(<span class="kw">_</span>, <span class="kw">_</span>, s_block_header_1, s_block_header_2, <span class="kw">_</span>) = gen_block_headers_for_denunciation();
         <span class="kw">let </span>denunciation_1: Denunciation =
             (<span class="kw-2">&amp;</span>s_block_header_1, <span class="kw-2">&amp;</span>s_block_header_2).try_into().unwrap();
         <span class="kw">let </span>denunciation_index_1 = DenunciationIndex::from(<span class="kw-2">&amp;</span>denunciation_1);
