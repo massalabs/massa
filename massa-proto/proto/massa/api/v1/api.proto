@@ -6,6 +6,7 @@ package massa.api.v1;
 
 import "block.proto";
 import "common.proto";
+import "endorsement.proto";
 import "google/api/annotations.proto";
 import "google/rpc/status.proto";
 import "operation.proto";
@@ -33,6 +34,11 @@ service MassaService {
       post: "/v1/get_datastore_entries"
       body: "*"
     };
+  }
+
+  // Get largest stakers
+  rpc GetLargestStakers(GetLargestStakersRequest) returns (GetLargestStakersResponse) {
+      option (google.api.http) = {get: "/v1/get_largest_stakers"};
   }
 
   // Get next block best parents
@@ -69,6 +75,9 @@ service MassaService {
 
   // New received and produced blocks headers
   rpc NewBlocksHeaders(stream NewBlocksHeadersRequest) returns (stream NewBlocksHeadersResponse) {}
+
+  // New received and produced endorsements
+  rpc NewEndorsements(stream NewEndorsementsRequest) returns (stream NewEndorsementsResponse) {}
 
   // New received and produced blocks with operations
   rpc NewFilledBlocks(stream NewFilledBlocksRequest) returns (stream NewFilledBlocksResponse) {}
@@ -140,6 +149,56 @@ message DatastoreEntry {
   bytes final_value = 1;
   // candidate_value datastore entry value
   bytes candidate_value = 2;
+}
+
+// GetLargestStakersRequest holds request from GetLargestStakers
+message GetLargestStakersRequest {
+  // Request id
+  string id = 1;
+  // Query
+  LargestStakersQuery query = 2;
+}
+
+// LargestStakers Query
+message LargestStakersQuery {
+  // Starting offset for the list of stakers. Defaults to 1
+  fixed64 offset = 1;
+  // Limits the number of stakers to return. Defaults to 50
+  fixed64 limit = 2;
+  // Filter
+  LargestStakersFilter filter = 3;
+}
+
+// LargestStakers Filter
+message LargestStakersFilter {
+  // Minimum rolls (Optional)
+  optional fixed64 min_rolls = 1;
+  // Maximum rolls (Optional)
+  optional fixed64 max_rolls = 2;
+}
+
+// GetLargestStakersResponse holds response from GetLargestStakers
+message GetLargestStakersResponse {
+  // Request id
+  string id = 1;
+  // Context
+  LargestStakersContext context = 2;
+  // Largest stakers
+  repeated LargestStakerEntry stakers = 3;
+}
+
+// LargestStakers context
+message LargestStakersContext {
+  // Slot
+  Slot slot = 1;
+}
+
+// LargestStakerEntry
+message LargestStakerEntry {
+  // Address
+  string address = 1;
+  // Rolls
+  fixed64 rolls = 2;
 }
 
 // GetNextBlockBestParentsRequest holds request for GetNextBlockBestParents
@@ -256,6 +315,20 @@ message NewBlocksHeadersResponse {
   string id = 1;
   // Signed block header
   SignedBlockHeader block_header = 2;
+}
+
+// NewEndorsementsRequest holds request for NewEndorsements
+message NewEndorsementsRequest {
+  // Request id
+  string id = 1;
+}
+
+// NewEndorsementsResponse holds response from NewEndorsements
+message NewEndorsementsResponse {
+  // Request id
+  string id = 1;
+  // Signed endorsement
+  SignedEndorsement endorsement = 2;
 }
 
 // NewFilledBlocksRequest holds request for NewFilledBlocks
@@ -387,7 +460,7 @@ message SendOperationsResponse {
 
 // Holds Operation response
 message OperationResult {
-  // Operation(s) id(s)
+  // Operations ids
   repeated string operations_ids = 1;
 }
 
@@ -395,7 +468,7 @@ message OperationResult {
 message TransactionsThroughputRequest {
   // Request id
   string id = 1;
-  // Optional timer interval in sec. Defaults to 10s
+  // Timer interval in seconds (Optional). Defaults to 10s
   optional fixed64 interval = 2;
 }
 

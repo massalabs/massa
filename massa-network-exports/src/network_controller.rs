@@ -14,6 +14,7 @@ use massa_models::{
     operation::{OperationPrefixIds, SecureShareOperation},
     stats::NetworkStats,
 };
+
 use std::{
     collections::{HashMap, VecDeque},
     net::IpAddr,
@@ -28,9 +29,10 @@ use tokio::{
 use tracing::{info, warn};
 
 /// Network command sender
-#[derive(Clone)]
+#[derive(Debug, Clone)]
 pub struct NetworkCommandSender(pub mpsc::Sender<NetworkCommand>);
 
+#[cfg_attr(any(test, feature = "testing"), mockall::automock)]
 impl NetworkCommandSender {
     /// ban node(s) by id(s)
     pub async fn node_ban_by_ids(&self, ids: Vec<NodeId>) -> Result<(), NetworkError> {
@@ -149,7 +151,7 @@ impl NetworkCommandSender {
         })
     }
 
-    /// get network stats
+    #[allow(missing_docs)]
     pub async fn get_network_stats(&self) -> Result<NetworkStats, NetworkError> {
         let (response_tx, response_rx) = oneshot::channel();
         self.0
@@ -162,15 +164,14 @@ impl NetworkCommandSender {
     }
 
     /// Send the order to get bootstrap peers.
-    pub async fn get_bootstrap_peers(&self) -> Result<BootstrapPeers, NetworkError> {
+    pub fn sync_get_bootstrap_peers(&self) -> Result<BootstrapPeers, NetworkError> {
         let (response_tx, response_rx) = oneshot::channel::<BootstrapPeers>();
         self.0
-            .send(NetworkCommand::GetBootstrapPeers(response_tx))
-            .await
+            .blocking_send(NetworkCommand::GetBootstrapPeers(response_tx))
             .map_err(|_| {
                 NetworkError::ChannelError("could not send GetBootstrapPeers command".into())
             })?;
-        response_rx.await.map_err(|_| {
+        response_rx.blocking_recv().map_err(|_| {
             NetworkError::ChannelError("could not send GetBootstrapPeers response upstream".into())
         })
     }
@@ -266,6 +267,13 @@ impl NetworkCommandSender {
             NetworkError::ChannelError("could not send GetBootstrapPeers response upstream".into())
         })
     }
+
+    #[cfg(any(test, feature = "testing"))]
+    /// Used for mock-testing. Easier than using a clone derive
+    #[allow(clippy::should_implement_trait)]
+    pub fn clone(&self) -> Self {
+        Self(self.0.clone())
+    }
 }
 
 /// network event receiver
@@ -312,4 +320,16 @@ impl NetworkManager {
         info!("network manager stopped");
         Ok(())
     }
+}
+
+#[cfg(any(test, feature = "testing"))]
+/// The bootstrap server function `get_state` has to be async due to main.rs `tokio::select!` usage to
+/// cancel on `ctrl-c`
+/// If get state can be cancelled with ctrl-c without an async context, this can be removed
+pub fn make_runtime() -> tokio::runtime::Runtime {
+    tokio::runtime::Builder::new_multi_thread()
+        .enable_all()
+        .thread_name("network-provided-runtime")
+        .build()
+        .expect("failed to create runtime")
 }

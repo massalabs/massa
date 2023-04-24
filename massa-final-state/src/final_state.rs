@@ -11,9 +11,13 @@ use massa_async_pool::{
     AsyncPoolSerializer,
 };
 use massa_db::{write_batch, DBBatch};
-use massa_executed_ops::{ExecutedOps, ExecutedOpsDeserializer, ExecutedOpsSerializer};
+use massa_executed_ops::{
+    ExecutedDenunciations, ExecutedOps, ExecutedOpsDeserializer, ExecutedOpsSerializer,
+    ProcessedDenunciationsDeserializer, ProcessedDenunciationsSerializer,
+};
 use massa_hash::{Hash, HashDeserializer, HASH_SIZE_BYTES};
 use massa_ledger_exports::{Key as LedgerKey, LedgerChanges, LedgerController};
+use massa_models::denunciation::DenunciationIndex;
 use massa_models::{
     // TODO: uncomment when deserializing the final state from ledger
     /*config::{
@@ -34,6 +38,7 @@ use massa_serialization::{Deserializer, SerializeError, Serializer};
 use nom::{error::context, sequence::tuple, IResult, Parser};
 use parking_lot::RwLock;
 use rocksdb::DB;
+use std::collections::{BTreeMap, HashSet, VecDeque};
 use std::ops::Bound::{Excluded, Included};
 use std::{
     collections::{BTreeMap, VecDeque},
@@ -41,7 +46,7 @@ use std::{
 };
 use tracing::{debug, info};
 
-/// Represents a final state `(ledger, async pool, executed_ops and the state of the PoS)`
+/// Represents a final state `(ledger, async pool, executed_ops, processed_de and the state of the PoS)`
 pub struct FinalState {
     /// execution state configuration
     pub(crate) config: FinalStateConfig,
@@ -55,6 +60,8 @@ pub struct FinalState {
     pub pos_state: PoSFinalState,
     /// executed operations
     pub executed_ops: ExecutedOps,
+    /// executed denunciations
+    pub executed_denunciations: ExecutedDenunciations,
     /// history of recent final state changes, useful for streaming bootstrap
     /// `front = oldest`, `back = newest`
     pub changes_history: VecDeque<(Slot, StateChanges)>,
@@ -121,6 +128,10 @@ impl FinalState {
         // create a default executed ops
         let executed_ops = ExecutedOps::new(config.executed_ops_config.clone(), rocks_db.clone());
 
+        // create a default processed denunciations
+        let processed_denunciations =
+            ExecutedDenunciations::new(config.executed_denunciations_config.clone());
+
         // create the final state
         Ok(FinalState {
             slot,
@@ -129,6 +140,7 @@ impl FinalState {
             pos_state,
             config,
             executed_ops,
+            executed_denunciations: processed_denunciations,
             changes_history: Default::default(), // no changes in history
             final_state_hash: Hash::from_bytes(FINAL_STATE_HASH_INITIAL_BYTES),
             last_start_period: 0,
@@ -404,6 +416,7 @@ impl FinalState {
         self.async_pool.reset();
         self.pos_state.reset();
         self.executed_ops.reset();
+        self.executed_denunciations.reset();
         self.changes_history.clear();
         // reset the final state hash
         self.final_state_hash = Hash::from_bytes(FINAL_STATE_HASH_INITIAL_BYTES);
@@ -436,7 +449,9 @@ impl FinalState {
         }
         // 5. executed operations hash
         hash_concat.extend(self.executed_ops.hash.to_bytes());
-        // 6. compute and save final state hash
+        // 6. processed denunciations hash
+        hash_concat.extend(self.executed_denunciations.hash.to_bytes());
+        // 7. compute and save final state hash
         self.final_state_hash = Hash::compute_from(&hash_concat);
 
         info!(
@@ -477,6 +492,8 @@ impl FinalState {
         // TODO:
         // do not panic above, it might just mean that the lookback cycle is not available
         // bootstrap again instead
+        self.executed_denunciations
+            .apply_changes(changes.executed_denunciations_changes.clone(), self.slot);
 
         let mut db_batch = DBBatch::new(
             Some(self.ledger.get_ledger_hash()),
@@ -564,6 +581,7 @@ impl FinalState {
     /// * executed ops change if main bootstrap process is finished
     ///
     /// Produces an error when the `slot` is too old for `self.changes_history`
+    #[allow(clippy::too_many_arguments)]
     pub fn get_state_changes_part(
         &self,
         slot: Slot,
@@ -572,6 +590,7 @@ impl FinalState {
         cycle_step: StreamingStep<u64>,
         credits_step: StreamingStep<Slot>,
         ops_step: StreamingStep<Slot>,
+        de_step: StreamingStep<Slot>,
     ) -> Result<Vec<(Slot, StateChanges)>, FinalStateError> {
         let position_slot = if let Some((first_slot, _)) = self.changes_history.front() {
             // Safe because we checked that there is changes just above.
@@ -684,6 +703,10 @@ impl FinalState {
             if ops_step.finished() {
                 slot_changes.executed_ops_changes = changes.executed_ops_changes.clone();
             }
+            if de_step.finished() {
+                slot_changes.executed_denunciations_changes =
+                    changes.executed_denunciations_changes.clone();
+            }
 
             // Push the slot changes
             res_changes.push((*slot, slot_changes));
@@ -698,6 +721,7 @@ pub struct FinalStateRawSerializer {
     cycle_history_serializer: CycleHistorySerializer,
     deferred_credits_serializer: DeferredCreditsSerializer,
     executed_ops_serializer: ExecutedOpsSerializer,
+    processed_denunciations_serializer: ProcessedDenunciationsSerializer,
     slot_serializer: SlotSerializer,
 }
 
@@ -714,6 +738,7 @@ impl Default for FinalStateRawSerializer {
             cycle_history: value.pos_state.cycle_history,
             deferred_credits: value.pos_state.deferred_credits,
             sorted_ops: value.executed_ops.sorted_ops,
+            sorted_denunciations: value.executed_denunciations.sorted_denunciations,
             latest_consistent_slot: value.slot,
             final_state_hash_from_snapshot: value.final_state_hash,
         }
@@ -728,6 +753,7 @@ impl FinalStateRawSerializer {
             cycle_history_serializer: CycleHistorySerializer::new(),
             deferred_credits_serializer: DeferredCreditsSerializer::new(),
             executed_ops_serializer: ExecutedOpsSerializer::new(),
+            processed_denunciations_serializer: ProcessedDenunciationsSerializer::new(),
             slot_serializer: SlotSerializer::new(),
         }
     }
@@ -748,6 +774,9 @@ impl Serializer<FinalStateRaw> for FinalStateRawSerializer {
         // Serialize Executed Ops
         self.executed_ops_serializer
             .serialize(&value.sorted_ops, buffer)?;
+        // Serialize Processed Denunciations
+        self.processed_denunciations_serializer
+            .serialize(&value.sorted_denunciations, buffer)?;
 
         // Serialize metadata
         self.slot_serializer
@@ -764,6 +793,7 @@ pub struct FinalStateRaw {
     cycle_history: VecDeque<CycleInfo>,
     deferred_credits: DeferredCredits,
     sorted_ops: BTreeMap<Slot, PreHashSet<OperationId>>,
+    sorted_denunciations: BTreeMap<Slot, HashSet<DenunciationIndex>>,
     latest_consistent_slot: Slot,
     #[allow(dead_code)]
     final_state_hash_from_snapshot: Hash,
@@ -775,6 +805,7 @@ pub struct FinalStateRawDeserializer {
     cycle_history_deser: CycleHistoryDeserializer,
     deferred_credits_deser: DeferredCreditsDeserializer,
     executed_ops_deser: ExecutedOpsDeserializer,
+    processed_denunciations_deser: ProcessedDenunciationsDeserializer,
     slot_deser: SlotDeserializer,
     hash_deser: HashDeserializer,
 }
@@ -815,6 +846,12 @@ impl FinalStateRawDeserializer {
                 max_executed_ops_length,
                 max_operations_per_block as u64,
             ),
+            processed_denunciations_deser: ProcessedDenunciationsDeserializer::new(
+                config.thread_count,
+                config.endorsement_count,
+                config.max_executed_denunciations_length,
+                config.max_denunciations_per_block_header as u64,
+            ),
             slot_deser: SlotDeserializer::new(
                 (Included(u64::MIN), Included(u64::MAX)),
                 (Included(0), Excluded(config.thread_count)),
@@ -843,6 +880,9 @@ impl Deserializer<FinalStateRaw> for FinalStateRawDeserializer {
                 context("Failed executed_ops deserialization", |input| {
                     self.executed_ops_deser.deserialize(input)
                 }),
+                context("Failed processed_denunciations deserialization", |input| {
+                    self.processed_denunciations_deser.deserialize(input)
+                }),
                 context("Failed slot deserialization", |input| {
                     self.slot_deser.deserialize(input)
                 }),
@@ -856,6 +896,7 @@ impl Deserializer<FinalStateRaw> for FinalStateRawDeserializer {
                     cycle_history,
                     deferred_credits,
                     sorted_ops,
+                    sorted_denunciations,
                     latest_consistent_slot,
                     final_state_hash_from_snapshot,
                 )| FinalStateRaw {
@@ -863,6 +904,7 @@ impl Deserializer<FinalStateRaw> for FinalStateRawDeserializer {
                     cycle_history: cycle_history.into(),
                     deferred_credits,
                     sorted_ops,
+                    sorted_denunciations,
                     latest_consistent_slot,
                     final_state_hash_from_snapshot,
                 },

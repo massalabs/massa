@@ -35,7 +35,7 @@
     enable_http = true
     # whether to enable WS.
     enable_ws = false
-    # whether to broadcast for blocks, endorsement and operations
+    # whether to broadcast for blocks, endorsements and operations
     enable_broadcast = false
 
 [grpc]
@@ -43,6 +43,8 @@
     enabled = false
     # whether to add HTTP 1 layer
     accept_http1 = false
+    # whether to enable CORS. works only if `accept_http1` is true
+    enable_cors = false
     # whether to enable gRPC reflection(introspection)
     enable_reflection = true
     # bind for the Massa gRPC API
@@ -128,12 +130,12 @@
     # max number of item returned per query
     max_item_return_count = 100
 
-    # blocks headers sender(channel) capacity
-    broadcast_blocks_headers_capacity = 128
-    # blocks sender(channel) capacity
-    broadcast_blocks_capacity = 128
-    # filled blocks sender(channel) capacity
-    broadcast_filled_blocks_capacity = 128
+    # blocks headers channel capacity
+    broadcast_blocks_headers_channel_capacity = 128
+    # blocks channel capacity
+    broadcast_blocks_channel_capacity = 128
+    # filled blocks channel capacity
+    broadcast_filled_blocks_channel_capacity = 128
 
 [protocol]
     # timeout after which without answer a hanshake is ended
@@ -297,8 +299,10 @@
     max_endorsement_count = 10000
     # max number of items returned per query
     max_item_return_count = 100
-    # operations sender(channel) capacity
-    broadcast_operations_capacity = 5000
+    # endorsements channel capacity
+    broadcast_endorsements_channel_capacity = 2000
+    # operations channel capacity
+    broadcast_operations_channel_capacity = 5000
 
 [selector]
     # maximum number of computed cycle's draws we keep in cache

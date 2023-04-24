@@ -12,6 +12,10 @@ pub use commands::{
 pub use common::{ConnectionClosureReason, ConnectionId};
 pub use error::{HandshakeErrorType, NetworkConnectionErrorType, NetworkError};
 pub use establisher::{Establisher, Listener, ReadHalf, WriteHalf};
+
+#[cfg(any(test, feature = "testing"))]
+pub use network_controller::{make_runtime, MockNetworkCommandSender};
+
 pub use network_controller::{NetworkCommandSender, NetworkEventReceiver, NetworkManager};
 pub use peers::{
     BootstrapPeers, BootstrapPeersDeserializer, BootstrapPeersSerializer, ConnectionCount, Peer,

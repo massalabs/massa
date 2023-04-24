@@ -1,6 +1,5 @@
 // Copyright (c) 2022 MASSA LABS <info@massa.net>
 
-use crate::establisher::Duplex;
 use crate::settings::{BootstrapConfig, IpType};
 use bitvec::vec::BitVec;
 use massa_async_pool::test_exports::{create_async_pool, get_random_message};
@@ -12,7 +11,10 @@ use massa_consensus_exports::{
     export_active_block::{ExportActiveBlock, ExportActiveBlockSerializer},
 };
 use massa_db::{write_batch, DBBatch};
-use massa_executed_ops::{ExecutedOps, ExecutedOpsConfig};
+use massa_executed_ops::{
+    ExecutedDenunciations, ExecutedDenunciationsChanges, ExecutedDenunciationsConfig, ExecutedOps,
+    ExecutedOpsConfig,
+};
 use massa_final_state::test_exports::create_final_state;
 use massa_final_state::{FinalState, FinalStateConfig};
 use massa_hash::Hash;
@@ -26,13 +28,15 @@ use massa_models::config::{
     MAX_BOOTSTRAP_ASYNC_POOL_CHANGES, MAX_BOOTSTRAP_BLOCKS, MAX_BOOTSTRAP_ERROR_LENGTH,
     MAX_BOOTSTRAP_FINAL_STATE_PARTS_SIZE, MAX_BOOTSTRAP_MESSAGE_SIZE, MAX_CONSENSUS_BLOCKS_IDS,
     MAX_DATASTORE_ENTRY_COUNT, MAX_DATASTORE_KEY_LENGTH, MAX_DATASTORE_VALUE_LENGTH,
-    MAX_DEFERRED_CREDITS_LENGTH, MAX_EXECUTED_OPS_CHANGES_LENGTH, MAX_EXECUTED_OPS_LENGTH,
+    MAX_DEFERRED_CREDITS_LENGTH, MAX_DENUNCIATIONS_PER_BLOCK_HEADER,
+    MAX_DENUNCIATION_CHANGES_LENGTH, MAX_EXECUTED_OPS_CHANGES_LENGTH, MAX_EXECUTED_OPS_LENGTH,
     MAX_FUNCTION_NAME_LENGTH, MAX_LEDGER_CHANGES_COUNT, MAX_OPERATIONS_PER_BLOCK,
     MAX_OPERATION_DATASTORE_ENTRY_COUNT, MAX_OPERATION_DATASTORE_KEY_LENGTH,
     MAX_OPERATION_DATASTORE_VALUE_LENGTH, MAX_PARAMETERS_SIZE, MAX_PRODUCTION_STATS_LENGTH,
     MAX_ROLLS_COUNT_LENGTH, MIP_STORE_STATS_BLOCK_CONSIDERED, MIP_STORE_STATS_COUNTERS_MAX,
     PERIODS_PER_CYCLE, THREAD_COUNT,
 };
+use massa_models::denunciation::DenunciationIndex;
 use massa_models::node::NodeId;
 use massa_models::{
     address::Address,
@@ -49,7 +53,7 @@ use massa_models::{
     secure_share::SecureShareContent,
     slot::Slot,
 };
-use massa_network_exports::{BootstrapPeers, NetworkCommand};
+use massa_network_exports::BootstrapPeers;
 use massa_pos_exports::{CycleInfo, DeferredCredits, PoSChanges, PoSFinalState, ProductionStats};
 use massa_serialization::{DeserializeError, Deserializer, Serializer};
 use massa_signature::KeyPair;
@@ -57,7 +61,7 @@ use massa_time::MassaTime;
 use parking_lot::RwLock;
 use rand::Rng;
 use rocksdb::DB;
-use std::collections::{HashMap, VecDeque};
+use std::collections::{HashMap, HashSet, VecDeque};
 use std::str::FromStr;
 use std::sync::Arc;
 use std::{
@@ -65,7 +69,6 @@ use std::{
     net::{IpAddr, Ipv4Addr, SocketAddr},
     path::PathBuf,
 };
-use tokio::{sync::mpsc::Receiver, time::sleep};
 
 // Use loop-back address. use port 0 to auto-assign a port
 pub const BASE_BOOTSTRAP_IP: IpAddr = IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1));
@@ -240,6 +243,35 @@ pub fn get_random_executed_ops_changes(r_limit: u64) -> PreHashMap<OperationId, 
     ops_changes
 }
 
+pub fn get_random_executed_de(
+    _r_limit: u64,
+    slot: Slot,
+    config: ExecutedDenunciationsConfig,
+) -> ExecutedDenunciations {
+    let mut executed_de = ExecutedDenunciations::new(config);
+    executed_de.apply_changes(get_random_executed_de_changes(10), slot);
+    executed_de
+}
+
+pub fn get_random_executed_de_changes(r_limit: u64) -> ExecutedDenunciationsChanges {
+    let mut de_changes = HashSet::default();
+
+    for i in 0..r_limit {
+        if i % 2 == 0 {
+            de_changes.insert(DenunciationIndex::BlockHeader {
+                slot: Slot::new(i + 2, 0),
+            });
+        } else {
+            de_changes.insert(DenunciationIndex::Endorsement {
+                slot: Slot::new(i + 2, 0),
+                index: i as u32,
+            });
+        }
+    }
+
+    de_changes
+}
+
 /// generates a random bootstrap state for the final state
 pub fn get_random_final_state_bootstrap(
     pos: PoSFinalState,
@@ -300,6 +332,7 @@ pub fn get_random_final_state_bootstrap(
         VecDeque::new(),
         get_random_pos_state(r_limit, pos),
         executed_ops,
+        get_random_executed_de(r_limit, slot, config.executed_denunciations_config),
         rocks_db_instance,
     )
 }
@@ -374,27 +407,8 @@ pub fn get_bootstrap_config(bootstrap_public_key: NodeId) -> BootstrapConfig {
         max_consensus_block_ids: MAX_CONSENSUS_BLOCKS_IDS,
         mip_store_stats_block_considered: MIP_STORE_STATS_BLOCK_CONSIDERED,
         mip_store_stats_counters_max: MIP_STORE_STATS_COUNTERS_MAX,
-    }
-}
-
-pub async fn wait_network_command<F, T>(
-    network_command_receiver: &mut Receiver<NetworkCommand>,
-    timeout: MassaTime,
-    filter_map: F,
-) -> Option<T>
-where
-    F: Fn(NetworkCommand) -> Option<T>,
-{
-    let timer = sleep(timeout.into());
-    tokio::pin!(timer);
-    loop {
-        tokio::select! {
-            cmd = network_command_receiver.recv() => match cmd {
-                Some(orig_evt) => if let Some(res_evt) = filter_map(orig_evt) { return Some(res_evt); },
-                _ => panic!("network event channel died")
-            },
-            _ = &mut timer => return None
-        }
+        max_denunciations_per_block_header: MAX_DENUNCIATIONS_PER_BLOCK_HEADER,
+        max_denunciation_changes_length: MAX_DENUNCIATION_CHANGES_LENGTH,
     }
 }
 
@@ -449,6 +463,7 @@ pub fn get_boot_state() -> BootstrapableGraph {
                         )
                         .unwrap(),
                     ],
+                    denunciations: vec![],
                 },
                 BlockHeaderSerializer::new(),
                 &keypair,
@@ -477,6 +492,7 @@ pub fn get_boot_state() -> BootstrapableGraph {
         thread_count: THREAD_COUNT,
         max_operations_per_block: MAX_OPERATIONS_PER_BLOCK,
         endorsement_count: ENDORSEMENT_COUNT,
+        max_denunciations_per_block_header: MAX_DENUNCIATIONS_PER_BLOCK_HEADER,
         last_start_period: Some(0),
     };
     let bootstrapable_graph_deserializer =
@@ -500,39 +516,4 @@ pub fn get_peers() -> BootstrapPeers {
         "82.245.123.77".parse().unwrap(),
         "82.220.123.78".parse().unwrap(),
     ])
-}
-
-pub async fn bridge_mock_streams<D: Duplex>(mut side1: D, mut side2: D) {
-    let mut buf1 = vec![0u8; 1024];
-    let mut buf2 = vec![0u8; 1024];
-    loop {
-        tokio::select! {
-            res1 = side1.read(&mut buf1) => match res1 {
-                Ok(n1) => {
-                    if n1 == 0 {
-                        return;
-                    }
-                    if side2.write_all(&buf1[..n1]).await.is_err() {
-                        return;
-                    }
-                },
-                Err(_err) => {
-                    return;
-                }
-            },
-            res2 = side2.read(&mut buf2) => match res2 {
-                Ok(n2) => {
-                    if n2 == 0 {
-                        return;
-                    }
-                    if side1.write_all(&buf2[..n2]).await.is_err() {
-                        return;
-                    }
-                },
-                Err(_err) => {
-                    return;
-                }
-            },
-        }
-    }
 }

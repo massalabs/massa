@@ -60,7 +60,7 @@ fn test_pool() {
     let pool_config = PoolConfig::default();
     pool_test(
         pool_config,
-        |mut pool_manager, mut pool, execution_receiver, storage_base| {
+        |mut pool_manager, mut pool, execution_receiver, _selector_receiver, storage_base| {
             // generate (id, transactions, range of validity) by threads
             let mut thread_tx_lists = vec![Vec::new(); pool_config.thread_count as usize];
 

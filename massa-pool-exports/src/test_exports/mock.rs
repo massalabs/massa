@@ -1,12 +1,16 @@
 // Copyright (c) 2022 MASSA LABS <info@massa.net>
 
+use crossbeam_channel::{Receiver, Sender};
 use std::sync::{
-    mpsc::{self, Receiver},
+    mpsc::{
+        self,
+        // Receiver
+    },
     Arc, Mutex,
 };
 
 use massa_models::config::THREAD_COUNT;
-use massa_models::denunciation::Denunciation;
+use massa_models::denunciation::{Denunciation, DenunciationPrecursor};
 use massa_models::{
     block_id::BlockId, endorsement::EndorsementId, operation::OperationId, slot::Slot,
 };
@@ -22,6 +26,7 @@ pub struct PoolEventReceiver(pub Receiver<MockPoolControllerMessage>);
 /// Each variant corresponds to a unique method in `PoolController`,
 /// Some variants wait for a response on their `response_tx` field, if present.
 /// See the documentation of `PoolController` for details on parameters and return values.
+#[derive(Debug)]
 pub enum MockPoolControllerMessage {
     /// Add endorsements to the pool
     AddEndorsements {
@@ -34,9 +39,9 @@ pub enum MockPoolControllerMessage {
         operations: Storage,
     },
     /// Add denunciation to the pool
-    AddDenunciation {
-        /// The denunciation to add
-        denunciation: Denunciation,
+    AddDenunciationPrecursor {
+        /// The denunciation precursor to add
+        denunciation_precursor: DenunciationPrecursor,
     },
     /// Get block endorsements
     GetBlockEndorsements {
@@ -104,7 +109,7 @@ pub enum MockPoolControllerMessage {
 #[derive(Clone)]
 // pub struct MockPoolController(Arc<Mutex<mpsc::Sender<MockPoolControllerMessage>>>);
 pub struct MockPoolController {
-    q: Arc<Mutex<mpsc::Sender<MockPoolControllerMessage>>>,
+    q: Arc<Mutex<Sender<MockPoolControllerMessage>>>,
     last_final_cs_periods: Vec<u64>,
 }
 
@@ -112,7 +117,7 @@ impl MockPoolController {
     /// Create a new pair (mock execution controller, mpsc receiver for emitted messages)
     /// Note that unbounded mpsc channels are used
     pub fn new_with_receiver() -> (Box<dyn PoolController>, PoolEventReceiver) {
-        let (tx, rx) = mpsc::channel();
+        let (tx, rx) = crossbeam_channel::unbounded();
         (
             Box::new(MockPoolController {
                 q: Arc::new(Mutex::new(tx)),
@@ -250,16 +255,18 @@ impl PoolController for MockPoolController {
         Box::new(self.clone())
     }
 
-    fn add_denunciation(&mut self, denunciation: Denunciation) {
+    fn get_final_cs_periods(&self) -> &Vec<u64> {
+        &self.last_final_cs_periods
+    }
+
+    fn add_denunciation_precursor(&self, denunciation_precursor: DenunciationPrecursor) {
         self.q
             .lock()
             .unwrap()
-            .send(MockPoolControllerMessage::AddDenunciation { denunciation })
+            .send(MockPoolControllerMessage::AddDenunciationPrecursor {
+                denunciation_precursor,
+            })
             .unwrap();
-    }
-
-    fn get_final_cs_periods(&self) -> &Vec<u64> {
-        &self.last_final_cs_periods
     }
 
     fn get_denunciation_count(&self) -> usize {
@@ -270,5 +277,9 @@ impl PoolController for MockPoolController {
             .send(MockPoolControllerMessage::GetDenunciationCount { response_tx })
             .unwrap();
         response_rx.recv().unwrap()
+    }
+
+    fn contains_denunciation(&self, _denunciation: &Denunciation) -> bool {
+        false
     }
 }
