@@ -1,6 +1,6 @@
 //! Copyright (c) 2023 MASSA LABS <info@massa.net>
 
-use std::collections::{BTreeMap, HashMap, HashSet};
+use std::collections::{BTreeMap, HashSet};
 use std::ops::Bound::{Excluded, Included, Unbounded};
 
 use nom::{
@@ -35,8 +35,8 @@ pub struct ProcessedDenunciations {
     pub denunciations: HashSet<DenunciationIndex>,
     /// Accumulated hash of the processed denunciations
     pub hash: Hash,
-    /// processed status of denunciations (true: success, false: fail)
-    pub de_processed_status: HashMap<DenunciationIndex, bool>,
+    // /// processed status of denunciations (true: success, false: fail)
+    // pub de_processed_status: HashMap<DenunciationIndex, bool>,
 }
 
 impl ProcessedDenunciations {
@@ -47,7 +47,7 @@ impl ProcessedDenunciations {
             sorted_denunciations: Default::default(),
             denunciations: Default::default(),
             hash: Hash::from_bytes(PROCESSED_DENUNCIATIONS_HASH_INITIAL_BYTES),
-            de_processed_status: Default::default(),
+            // de_processed_status: Default::default(),
         }
     }
 
@@ -89,10 +89,10 @@ impl ProcessedDenunciations {
 
     /// Apply speculative operations changes to the final processed denunciations state
     pub fn apply_changes(&mut self, changes: ProcessedDenunciationsChanges, slot: Slot) {
-        self.extend_and_compute_hash(changes.keys());
-        for (de_idx, (de_process_succeeded, de_idx_slot)) in changes {
+        self.extend_and_compute_hash(changes.iter());
+        for de_idx in changes {
             self.sorted_denunciations
-                .entry(de_idx_slot)
+                .entry(*de_idx.get_slot())
                 .and_modify(|ids| {
                     ids.insert(de_idx.clone());
                 })
@@ -102,8 +102,8 @@ impl ProcessedDenunciations {
                     new
                 });
 
-            self.de_processed_status
-                .insert(de_idx, de_process_succeeded);
+            // self.de_processed_status
+            //     .insert(de_idx, de_process_succeeded);
         }
 
         self.prune(slot);
@@ -122,7 +122,7 @@ impl ProcessedDenunciations {
         for (_slot, de_indexes) in drained {
             for de_idx in de_indexes {
                 self.denunciations.remove(&de_idx);
-                self.de_processed_status.remove(&de_idx);
+                // self.de_processed_status.remove(&de_idx);
                 self.hash ^= de_idx.get_hash();
             }
         }

@@ -190,7 +190,7 @@ impl Denunciation {
 
     /// Check if Denunciation is valid
     /// Should be used if received from the network (prevent against invalid or attacker crafted denunciation)
-    pub fn is_valid(&self) -> Result<bool, DenunciationError> {
+    pub fn is_valid(&self) -> bool {
         let (signature_1, signature_2, hash_1, hash_2, public_key) = match self {
             Denunciation::Endorsement(de) => {
                 let hash_1 = EndorsementDenunciation::compute_hash_for_sig_verif(
@@ -236,10 +236,10 @@ impl Denunciation {
             }
         };
 
-        Ok(hash_1 != hash_2
+        hash_1 != hash_2
             && signature_1 != signature_2
             && public_key.verify_signature(&hash_1, &signature_1).is_ok()
-            && public_key.verify_signature(&hash_2, &signature_2).is_ok())
+            && public_key.verify_signature(&hash_2, &signature_2).is_ok()
     }
 
     /// Get Denunciation slot ref
@@ -1123,8 +1123,8 @@ impl TryFrom<(&DenunciationPrecursor, &DenunciationPrecursor)> for Denunciation 
 impl Denunciation {
     /// Used under testing conditions to validate an instance of Self
     pub fn check_invariants(&self) -> Result<(), Box<dyn std::error::Error>> {
-        if let Err(e) = self.is_valid() {
-            return Err(e.into());
+        if !self.is_valid() {
+            return Err(format!("Denunciation is invalid: {:?}", self).into());
         }
         Ok(())
     }
@@ -1155,7 +1155,7 @@ mod tests {
         let denunciation: Denunciation = (&s_endorsement_1, &s_endorsement_2).try_into().unwrap();
 
         assert_eq!(denunciation.is_for_endorsement(), true);
-        assert_eq!(denunciation.is_valid().unwrap(), true);
+        assert_eq!(denunciation.is_valid(), true);
     }
 
     #[test]
@@ -1191,7 +1191,7 @@ mod tests {
         let denunciation: Denunciation = (&s_endorsement_1, &s_endorsement_2).try_into().unwrap();
 
         assert_eq!(denunciation.is_for_endorsement(), true);
-        assert_eq!(denunciation.is_valid().unwrap(), true);
+        assert_eq!(denunciation.is_valid(), true);
 
         // Try to create a denunciation from 2 endorsements @ != index
         let endorsement_4 = Endorsement {
@@ -1215,7 +1215,7 @@ mod tests {
                 .unwrap(),
             true
         );
-        assert_eq!(denunciation.is_valid().unwrap(), true);
+        assert_eq!(denunciation.is_valid(), true);
     }
 
     #[test]
@@ -1226,7 +1226,7 @@ mod tests {
         let denunciation: Denunciation = (&s_block_header_1, &s_block_header_2).try_into().unwrap();
 
         assert_eq!(denunciation.is_for_block_header(), true);
-        assert_eq!(denunciation.is_valid().unwrap(), true);
+        assert_eq!(denunciation.is_valid(), true);
         assert_eq!(
             denunciation
                 .is_also_for_block_header(&s_block_header_3)
@@ -1273,7 +1273,7 @@ mod tests {
         });
 
         // hash_1 == hash_2 -> this is invalid
-        assert_eq!(de_forged_1.is_valid().unwrap(), false);
+        assert_eq!(de_forged_1.is_valid(), false);
 
         // from an attacker - building manually a Denunciation object
         let de_forged_2 = Denunciation::Endorsement(EndorsementDenunciation {
@@ -1288,7 +1288,7 @@ mod tests {
 
         // An attacker uses an old s_endorsement_1 to forge a Denunciation object @ slot_2
         // This has to be detected if Denunciation are send via the network
-        assert_eq!(de_forged_2.is_valid().unwrap(), false);
+        assert_eq!(de_forged_2.is_valid(), false);
     }
 
     // SER / DER

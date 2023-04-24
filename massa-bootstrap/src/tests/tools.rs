@@ -58,7 +58,7 @@ use massa_serialization::{DeserializeError, Deserializer, Serializer};
 use massa_signature::KeyPair;
 use massa_time::MassaTime;
 use rand::Rng;
-use std::collections::{HashMap, VecDeque};
+use std::collections::{HashMap, HashSet, VecDeque};
 use std::str::FromStr;
 use std::{
     collections::BTreeMap,
@@ -242,36 +242,18 @@ pub fn get_random_processed_de(
 }
 
 pub fn get_random_processed_de_changes(r_limit: u64) -> ProcessedDenunciationsChanges {
-    let mut de_changes = HashMap::default();
+    let mut de_changes = HashSet::default();
 
     for i in 0..r_limit {
         if i % 2 == 0 {
-            de_changes.insert(
-                DenunciationIndex::BlockHeader {
-                    slot: Slot::new(i + 2, 0),
-                },
-                (
-                    true,
-                    Slot {
-                        period: i + 10,
-                        thread: 0,
-                    },
-                ),
-            );
+            de_changes.insert(DenunciationIndex::BlockHeader {
+                slot: Slot::new(i + 2, 0),
+            });
         } else {
-            de_changes.insert(
-                DenunciationIndex::Endorsement {
-                    slot: Slot::new(i + 2, 0),
-                    index: i as u32,
-                },
-                (
-                    true,
-                    Slot {
-                        period: i + 10,
-                        thread: 0,
-                    },
-                ),
-            );
+            de_changes.insert(DenunciationIndex::Endorsement {
+                slot: Slot::new(i + 2, 0),
+                index: i as u32,
+            });
         }
     }
 

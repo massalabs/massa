@@ -260,11 +260,11 @@ pub const MIP_STORE_STATS_COUNTERS_MAX: usize = 10;
 // Constants for denunciation factory
 //
 
-/// denunciation expiration delta (in cycle count)
+/// denunciation expiration delta
 pub const DENUNCIATION_EXPIRE_PERIODS: u64 = PERIODS_PER_CYCLE;
-/// Cycle delta to accept items in denunciation factory
-/// TODO / FIXME: unused?
-pub const DENUNCIATION_ITEMS_MAX_CYCLE_DELTA: u64 = 1;
+// /// Cycle delta to accept items in denunciation factory
+// /// TODO / FIXME: unused?
+// pub const DENUNCIATION_ITEMS_MAX_CYCLE_DELTA: u64 = 1;
 /// Max number of denunciations that can be included in a block header
 pub const MAX_DENUNCIATIONS_PER_BLOCK_HEADER: u32 = 128;
 /// Number of roll to remove per denunciation

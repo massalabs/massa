@@ -404,6 +404,7 @@ impl ExecutionState {
     fn process_denunciation(
         &self,
         denunciation: &Denunciation,
+        block_slot: &Slot,
         block_credits: &mut Amount,
     ) -> Result<(), ExecutionError> {
         let addr_denounced = Address::from_public_key(denunciation.get_public_key());
@@ -411,10 +412,41 @@ impl ExecutionState {
         // acquire write access to the context
         let mut context = context_guard!(self);
 
+        // ignore denunciation if not valid
+        if !denunciation.is_valid() {
+            return Err(ExecutionError::IncludeDenunciationError(
+                "denunciation is not valid".to_string(),
+            ));
+        }
+
+        // ignore denunciation if too old or expired
+        let de_slot = denunciation.get_slot();
+
+        if de_slot.period
+            < self
+                .final_cursor
+                .period
+                .saturating_sub(self.config.denunciation_expire_periods)
+        {
+            // too old - cannot be denounced anymore
+            return Err(ExecutionError::IncludeDenunciationError(
+                "denunciation is too old".to_string(),
+            ));
+        }
+
+        if de_slot.period.saturating_sub(block_slot.period)
+            > self.config.denunciation_expire_periods
+        {
+            // too much in the future - ignored
+            return Err(ExecutionError::IncludeDenunciationError(
+                "denunciation is too much in the future".to_string(),
+            ));
+        }
+
         // ignore the denunciation if it was already processed
         let de_idx = DenunciationIndex::from(denunciation);
         if context.is_de_processed(&de_idx) {
-            return Err(ExecutionError::IncludeOperationError(
+            return Err(ExecutionError::IncludeDenunciationError(
                 "denunciation was processed previously".to_string(),
             ));
         }
@@ -424,7 +456,6 @@ impl ExecutionState {
             self.config.roll_count_to_slash_on_denunciation,
         );
 
-        let de_idx_slot = *de_idx.get_slot();
         match slashed {
             Ok(slashed_amount) => {
                 // Add slashed amount / 2 to block reward
@@ -435,14 +466,13 @@ impl ExecutionState {
                     ))
                 })?;
                 *block_credits = block_credits.saturating_add(amount);
-                context.insert_executed_de(&de_idx, true, de_idx_slot);
             }
             Err(e) => {
-                context.insert_executed_de(&de_idx, false, de_idx_slot);
                 warn!("Unable to slash rolls or deferred credits: {}", e);
             }
         }
 
+        context.insert_executed_de(&de_idx);
         Ok(())
     }
 
@@ -985,7 +1015,11 @@ impl ExecutionState {
 
             // Try executing the denunciations of this block
             for denunciation in &stored_block.content.header.content.denunciations {
-                if let Err(e) = self.process_denunciation(denunciation, &mut block_credits) {
+                if let Err(e) = self.process_denunciation(
+                    denunciation,
+                    &stored_block.content.header.content.slot,
+                    &mut block_credits,
+                ) {
                     debug!(
                         "Failed processing denunciation: {:?}, in block: {}: {}",
                         denunciation, block_id, e

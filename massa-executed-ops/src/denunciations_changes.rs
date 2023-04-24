@@ -1,14 +1,10 @@
 //! Copyright (c) 2023 MASSA LABS <info@massa.net>
 
-use massa_models::{
-    denunciation::{DenunciationIndex, DenunciationIndexDeserializer, DenunciationIndexSerializer},
-    // operation::{OperationId, OperationIdDeserializer, OperationIdSerializer},
-    // prehash::PreHashMap,
-    slot::{Slot, SlotDeserializer, SlotSerializer},
+use massa_models::denunciation::{
+    DenunciationIndex, DenunciationIndexDeserializer, DenunciationIndexSerializer,
 };
 use massa_serialization::{
-    BoolDeserializer, BoolSerializer, Deserializer, SerializeError, Serializer,
-    U64VarIntDeserializer, U64VarIntSerializer,
+    Deserializer, SerializeError, Serializer, U64VarIntDeserializer, U64VarIntSerializer,
 };
 use nom::{
     error::{context, ContextError, ParseError},
@@ -16,18 +12,16 @@ use nom::{
     sequence::tuple,
     IResult, Parser,
 };
-use std::collections::HashMap;
-use std::ops::Bound::{Excluded, Included};
+use std::collections::HashSet;
+use std::ops::Bound::Included;
 
 /// Speculative changes for ExecutedOps
-pub type ProcessedDenunciationsChanges = HashMap<DenunciationIndex, (bool, Slot)>;
+pub type ProcessedDenunciationsChanges = HashSet<DenunciationIndex>;
 
 /// `ExecutedOps` Serializer
 pub struct ProcessedDenunciationsChangesSerializer {
     u64_serializer: U64VarIntSerializer,
     de_idx_serializer: DenunciationIndexSerializer,
-    de_process: BoolSerializer,
-    slot_serializer: SlotSerializer,
 }
 
 impl Default for ProcessedDenunciationsChangesSerializer {
@@ -42,8 +36,6 @@ impl ProcessedDenunciationsChangesSerializer {
         Self {
             u64_serializer: U64VarIntSerializer::new(),
             de_idx_serializer: DenunciationIndexSerializer::new(),
-            de_process: BoolSerializer::new(),
-            slot_serializer: SlotSerializer::new(),
         }
     }
 }
@@ -56,10 +48,8 @@ impl Serializer<ProcessedDenunciationsChanges> for ProcessedDenunciationsChanges
     ) -> Result<(), SerializeError> {
         self.u64_serializer
             .serialize(&(value.len() as u64), buffer)?;
-        for (de_idx, (de_process_succeeded, slot)) in value {
+        for de_idx in value {
             self.de_idx_serializer.serialize(de_idx, buffer)?;
-            self.de_process.serialize(de_process_succeeded, buffer)?;
-            self.slot_serializer.serialize(slot, buffer)?;
         }
         Ok(())
     }
@@ -69,8 +59,6 @@ impl Serializer<ProcessedDenunciationsChanges> for ProcessedDenunciationsChanges
 pub struct ProcessedDenunciationsChangesDeserializer {
     u64_deserializer: U64VarIntDeserializer,
     de_idx_deserializer: DenunciationIndexDeserializer,
-    de_process_deserializer: BoolDeserializer,
-    slot_deserializer: SlotDeserializer,
 }
 
 impl ProcessedDenunciationsChangesDeserializer {
@@ -89,11 +77,6 @@ impl ProcessedDenunciationsChangesDeserializer {
                 thread_count,
                 endorsement_count,
             ),
-            de_process_deserializer: BoolDeserializer::new(),
-            slot_deserializer: SlotDeserializer::new(
-                (Included(u64::MIN), Included(u64::MAX)),
-                (Included(0), Excluded(thread_count)),
-            ),
         }
     }
 }
@@ -109,24 +92,14 @@ impl Deserializer<ProcessedDenunciationsChanges> for ProcessedDenunciationsChang
                 context("ProcessedDenunciationsChanges length", |input| {
                     self.u64_deserializer.deserialize(input)
                 }),
-                tuple((
-                    context("denunciation index", |input| {
-                        self.de_idx_deserializer.deserialize(input)
-                    }),
-                    context("de process", |input| {
-                        self.de_process_deserializer.deserialize(input)
-                    }),
-                    context("expiration slot", |input| {
-                        self.slot_deserializer.deserialize(input)
-                    }),
-                )),
+                tuple((context("denunciation index", |input| {
+                    self.de_idx_deserializer.deserialize(input)
+                }),)),
             ),
         )
         .map(|items| {
-            items
-                .into_iter()
-                .map(|(de_idx, de_process, slot)| (de_idx, (de_process, slot)))
-                .collect()
+            // TODO: remove tuple ret
+            items.into_iter().map(|(de_idx,)| de_idx).collect()
         })
         .parse(buffer)
     }
@@ -155,13 +128,8 @@ mod tests {
         let denunciation_2 = Denunciation::try_from((&s_endorsement_1, &s_endorsement_2)).unwrap();
         let denunciation_index_2 = DenunciationIndex::from(&denunciation_2);
 
-        let slot_1 = Slot::new(4, 8);
-        let slot_2 = Slot::new(6, 1);
-
-        let p_de_changes: ProcessedDenunciationsChanges = HashMap::from([
-            (denunciation_index_1, (true, slot_1)),
-            (denunciation_index_2, (false, slot_2)),
-        ]);
+        let p_de_changes: ProcessedDenunciationsChanges =
+            HashSet::from([(denunciation_index_1), (denunciation_index_2)]);
 
         let mut buffer = Vec::new();
         let p_de_ser = ProcessedDenunciationsChangesSerializer::new();

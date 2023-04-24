@@ -68,7 +68,7 @@ impl ActiveHistory {
             if history_element
                 .state_changes
                 .processed_de_changes
-                .contains_key(de_idx)
+                .contains(de_idx)
             {
                 return HistorySearchResult::Present(());
             }

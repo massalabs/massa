@@ -988,14 +988,9 @@ impl ExecutionContext {
     /// Insert a processed denunciation.
     /// Does not check for reuse, please use `de_exec_status` before.
     ///
-    pub fn insert_executed_de(
-        &mut self,
-        de_idx: &DenunciationIndex,
-        de_exec_status: bool,
-        de_idx_slot: Slot,
-    ) {
+    pub fn insert_executed_de(&mut self, de_idx: &DenunciationIndex) {
         self.speculative_processed_denunciations
-            .insert_processed_de(de_idx.clone(), de_exec_status, de_idx_slot);
+            .insert_processed_de(de_idx.clone());
     }
 
     /// gets the cycle information for an address

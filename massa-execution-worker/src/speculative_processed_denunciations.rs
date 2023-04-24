@@ -8,7 +8,6 @@ use crate::active_history::{ActiveHistory, HistorySearchResult};
 use massa_executed_ops::ProcessedDenunciationsChanges;
 use massa_final_state::FinalState;
 use massa_models::denunciation::DenunciationIndex;
-use massa_models::slot::Slot;
 
 pub(crate) struct SpeculativeProcessedDenunciations {
     /// Thread-safe shared access to the final state. For reading only.
@@ -58,7 +57,7 @@ impl SpeculativeProcessedDenunciations {
     /// Checks if a denunciation was processed previously
     pub fn is_de_processed(&self, de_idx: &DenunciationIndex) -> bool {
         // check in the current changes
-        if self.processed_denunciations.contains_key(de_idx) {
+        if self.processed_denunciations.contains(de_idx) {
             return true;
         }
 
@@ -82,13 +81,7 @@ impl SpeculativeProcessedDenunciations {
 
     /// Insert a processed denunciation.
     /// Does not check for reuse, please use `SpeculativeExecutedOps::is_de_processed` before.
-    pub fn insert_processed_de(
-        &mut self,
-        de_idx: DenunciationIndex,
-        de_process_status: bool,
-        de_valid_until_slot: Slot,
-    ) {
-        self.processed_denunciations
-            .insert(de_idx, (de_process_status, de_valid_until_slot));
+    pub fn insert_processed_de(&mut self, de_idx: DenunciationIndex) {
+        self.processed_denunciations.insert(de_idx);
     }
 }
