@@ -175,6 +175,8 @@
     max_operations_propagation_time = 32000
     # time threshold after which endorsement are not propagated
     max_endorsements_propagation_time = 48000
+    # number of thread tester
+    thread_tester_count = 5
 
 [network]
     # port on which to listen for protocol communication. You may need to change this to "0.0.0.0:port" if IPv6 is disabled system-wide.

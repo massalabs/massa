@@ -4,6 +4,7 @@ use crossbeam::{
     channel::{Receiver, Sender},
     select,
 };
+use massa_protocol_exports_2::ProtocolConfig;
 use massa_serialization::{DeserializeError, Deserializer, Serializer};
 use parking_lot::RwLock;
 use rand::{rngs::StdRng, RngCore, SeedableRng};
@@ -50,10 +51,11 @@ pub struct PeerManagementHandler {
     pub peer_db: SharedPeerDB,
     pub thread_join: Option<JoinHandle<()>>,
     pub sender: PeerManagementChannel,
+    testers: Vec<Tester>,
 }
 
 impl PeerManagementHandler {
-    pub fn new(initial_peers: InitialPeers) -> Self {
+    pub fn new(initial_peers: InitialPeers, config: &ProtocolConfig) -> Self {
         let (sender, receiver): (Sender<PeerMessageTuple>, Receiver<PeerMessageTuple>) =
             crossbeam::channel::unbounded();
         let (sender_cmd, receiver_cmd): (Sender<PeerManagementCmd>, Receiver<PeerManagementCmd>) =
@@ -61,6 +63,9 @@ impl PeerManagementHandler {
         let message_serializer = PeerManagementMessageSerializer::new();
 
         let peer_db: SharedPeerDB = Arc::new(RwLock::new(Default::default()));
+
+        let (test_sender, testers) = Tester::run(config, peer_db.clone());
+
         let thread_join = std::thread::spawn({
             let peer_db = peer_db.clone();
             let mut message_deserializer =
@@ -77,12 +82,15 @@ impl PeerManagementHandler {
                            match cmd {
                              Ok(PeerManagementCmd::Ban(peer_id)) => {
 
-                                // remove runing handshake ?
+                                // remove running handshake ?
 
                                 // close peer connection ?
 
                                 // update peer_db
                                 peer_db.write().ban_peer(&peer_id);
+                             },
+                             Ok(PeerManagementCmd::Stop) => {
+                                return;
                              },
                             Err(e) => {
                                 error!("error receiving command: {:?}", e);
@@ -115,15 +123,15 @@ impl PeerManagementHandler {
                             // TODO: Bufferize launch of test thread
                             // TODO: Add wait group or something like that to wait for all threads to finish when stop
                             match message {
-                                PeerManagementMessage::NewPeerConnected((_peer_id, listeners)) => {
-                                    for listener in listeners.into_iter() {
-                                        let _tester = Tester::new(peer_db.clone(), listener);
-                                    }
+                                PeerManagementMessage::NewPeerConnected((peer_id, listeners)) => {
+                                   if let Err(e) = test_sender.send((peer_id, listeners)) {
+                                        error!("error when sending msg to peer tester : {}", e);
+                                   }
                                 }
                                 PeerManagementMessage::ListPeers(peers) => {
-                                    for (_peer_id, listeners) in peers.into_iter() {
-                                        for listener in listeners.into_iter() {
-                                            let _tester = Tester::new(peer_db.clone(), listener);
+                                    for (peer_id, listeners) in peers.into_iter() {
+                                        if let Err(e) = test_sender.send((peer_id, listeners)) {
+                                            error!("error when sending msg to peer tester : {}", e);
                                         }
                                     }
                                 }
@@ -153,14 +161,22 @@ impl PeerManagementHandler {
                 msg_sender: sender,
                 command_sender: sender_cmd,
             },
+            testers,
         }
     }
 
-    pub fn stop(mut self) {
-        drop(self.sender);
-        if let Some(handle) = self.thread_join.take() {
-            handle.join().expect("Failed to join peer manager thread");
-        }
+    pub fn stop(&mut self) {
+        self.sender
+            .command_sender
+            .send(PeerManagementCmd::Stop)
+            .unwrap();
+
+        // waiting for all threads to finish
+        self.testers.iter_mut().for_each(|tester| {
+            if let Some(join_handle) = tester.handler.take() {
+                join_handle.join().expect("Failed to join tester thread");
+            }
+        });
     }
 }
 
