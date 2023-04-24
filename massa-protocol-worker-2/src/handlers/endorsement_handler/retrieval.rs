@@ -1,6 +1,9 @@
 use std::{num::NonZeroUsize, thread::JoinHandle};
 
-use crossbeam::channel::{Receiver, Sender};
+use crossbeam::{
+    channel::{Receiver, Sender},
+    select,
+};
 use lru::LruCache;
 use massa_logging::massa_trace;
 use massa_models::{
@@ -27,14 +30,16 @@ use crate::{
 
 use super::{
     cache::SharedEndorsementCache,
-    commands_propagation::EndorsementHandlerCommand,
+    commands_propagation::EndorsementHandlerPropagationCommand,
+    commands_retrieval::EndorsementHandlerRetrievalCommand,
     messages::{EndorsementMessageDeserializer, EndorsementMessageDeserializerArgs},
 };
 
 pub struct RetrievalThread {
     receiver: Receiver<PeerMessageTuple>,
+    receiver_ext: Receiver<EndorsementHandlerRetrievalCommand>,
     cache: SharedEndorsementCache,
-    internal_sender: Sender<EndorsementHandlerCommand>,
+    internal_sender: Sender<EndorsementHandlerPropagationCommand>,
     pool_controller: Box<dyn PoolController>,
     config: ProtocolConfig,
     storage: Storage,
@@ -51,37 +56,57 @@ impl RetrievalThread {
                 endorsement_count: 32,
             });
         loop {
-            match self.receiver.recv() {
-                Ok((peer_id, message_id, message)) => {
-                    endorsement_message_deserializer.set_message_id(message_id);
-                    let (rest, message) = endorsement_message_deserializer
-                        .deserialize::<DeserializeError>(&message)
-                        .unwrap();
-                    if !rest.is_empty() {
-                        println!("Error: message not fully consumed");
-                        return;
-                    }
-                    match message {
-                        EndorsementMessage::Endorsements(endorsements) => {
-                            if let Err(err) =
-                                self.note_endorsements_from_peer(endorsements, &peer_id)
-                            {
-                                warn!(
-                                    "peer {} sent us critically incorrect endorsements, \
-                                    which may be an attack attempt by the remote node or a \
-                                    loss of sync between us and the remote node. Err = {}",
-                                    peer_id, err
-                                );
-                                if let Err(err) = self.ban_node(&peer_id) {
-                                    warn!("Error while banning peer {} err: {:?}", peer_id, err);
+            select! {
+                recv(self.receiver) -> msg => {
+                    match msg {
+                        Ok((peer_id, message_id, message)) => {
+                            endorsement_message_deserializer.set_message_id(message_id);
+                            let (rest, message) = endorsement_message_deserializer
+                                .deserialize::<DeserializeError>(&message)
+                                .unwrap();
+                            if !rest.is_empty() {
+                                println!("Error: message not fully consumed");
+                                return;
+                            }
+                            match message {
+                                EndorsementMessage::Endorsements(endorsements) => {
+                                    if let Err(err) =
+                                        self.note_endorsements_from_peer(endorsements, &peer_id)
+                                    {
+                                        warn!(
+                                            "peer {} sent us critically incorrect endorsements, \
+                                            which may be an attack attempt by the remote node or a \
+                                            loss of sync between us and the remote node. Err = {}",
+                                            peer_id, err
+                                        );
+                                        if let Err(err) = self.ban_node(&peer_id) {
+                                            warn!("Error while banning peer {} err: {:?}", peer_id, err);
+                                        }
+                                    }
                                 }
                             }
                         }
+                        Err(_) => {
+                            println!("Stop endorsement retrieval thread");
+                            return;
+                        }
                     }
-                }
-                Err(_) => {
-                    println!("Stop endorsement retrieval thread");
-                    return;
+                },
+                recv(self.receiver_ext) -> msg => {
+                    match msg {
+                        Ok(msg) => {
+                            match msg {
+                                EndorsementHandlerRetrievalCommand::Stop => {
+                                    println!("Stop endorsement retrieval thread");
+                                    return;
+                                }
+                            }
+                        }
+                        Err(_) => {
+                            println!("Stop endorsement retrieval thread");
+                            return;
+                        }
+                    }
                 }
             }
         }
@@ -192,12 +217,11 @@ impl RetrievalThread {
                     .collect()
             };
             endorsements_to_propagate.drop_endorsement_refs(&endorsements_to_not_propagate);
-            if let Err(err) =
-                self.internal_sender
-                    .send(EndorsementHandlerCommand::PropagateEndorsements(
-                        endorsements_to_propagate,
-                    ))
-            {
+            if let Err(err) = self.internal_sender.send(
+                EndorsementHandlerPropagationCommand::PropagateEndorsements(
+                    endorsements_to_propagate,
+                ),
+            ) {
                 warn!("Failed to send from retrieval thread of endorsement handler to propagation: {:?}", err);
             }
             // Add to pool
@@ -218,7 +242,8 @@ impl RetrievalThread {
 
 pub fn start_retrieval_thread(
     receiver: Receiver<PeerMessageTuple>,
-    internal_sender: Sender<EndorsementHandlerCommand>,
+    receiver_ext: Receiver<EndorsementHandlerRetrievalCommand>,
+    internal_sender: Sender<EndorsementHandlerPropagationCommand>,
     peer_cmd_sender: Sender<PeerManagementCmd>,
     cache: SharedEndorsementCache,
     pool_controller: Box<dyn PoolController>,
@@ -228,6 +253,7 @@ pub fn start_retrieval_thread(
     std::thread::spawn(move || {
         let mut retrieval_thread = RetrievalThread {
             receiver,
+            receiver_ext,
             peer_cmd_sender,
             cache,
             internal_sender,

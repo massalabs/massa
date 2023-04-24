@@ -7,12 +7,14 @@ use massa_storage::Storage;
 use peernet::network_manager::SharedActiveConnections;
 
 use self::{
-    cache::SharedOperationCache, commands_propagation::OperationHandlerCommand,
-    propagation::start_propagation_thread, retrieval::start_retrieval_thread,
+    cache::SharedOperationCache, commands_propagation::OperationHandlerPropagationCommand,
+    commands_retrieval::OperationHandlerRetrievalCommand, propagation::start_propagation_thread,
+    retrieval::start_retrieval_thread,
 };
 
 pub mod cache;
 pub mod commands_propagation;
+pub mod commands_retrieval;
 mod messages;
 mod propagation;
 mod retrieval;
@@ -22,8 +24,10 @@ pub(crate) use messages::{OperationMessage, OperationMessageSerializer};
 use super::peer_handler::models::{PeerManagementCmd, PeerMessageTuple};
 
 pub struct OperationHandler {
-    pub operation_retrieval_thread: Option<JoinHandle<()>>,
-    pub operation_propagation_thread: Option<JoinHandle<()>>,
+    pub operation_retrieval_thread:
+        Option<(Sender<OperationHandlerRetrievalCommand>, JoinHandle<()>)>,
+    pub operation_propagation_thread:
+        Option<(Sender<OperationHandlerPropagationCommand>, JoinHandle<()>)>,
 }
 
 impl OperationHandler {
@@ -34,8 +38,10 @@ impl OperationHandler {
         cache: SharedOperationCache,
         active_connections: SharedActiveConnections,
         receiver_network: Receiver<PeerMessageTuple>,
-        local_sender: Sender<OperationHandlerCommand>,
-        local_receiver: Receiver<OperationHandlerCommand>,
+        sender_retrieval_ext: Sender<OperationHandlerRetrievalCommand>,
+        receiver_retrieval_ext: Receiver<OperationHandlerRetrievalCommand>,
+        local_sender: Sender<OperationHandlerPropagationCommand>,
+        local_receiver: Receiver<OperationHandlerPropagationCommand>,
         peer_cmd_sender: Sender<PeerManagementCmd>,
     ) -> Self {
         //TODO: Define bound channel
@@ -46,23 +52,26 @@ impl OperationHandler {
             config.clone(),
             cache.clone(),
             active_connections.clone(),
-            local_sender,
+            receiver_retrieval_ext,
+            local_sender.clone(),
             peer_cmd_sender,
         );
 
         let operation_propagation_thread =
             start_propagation_thread(local_receiver, active_connections, config, cache);
         Self {
-            operation_retrieval_thread: Some(operation_retrieval_thread),
-            operation_propagation_thread: Some(operation_propagation_thread),
+            operation_retrieval_thread: Some((sender_retrieval_ext, operation_retrieval_thread)),
+            operation_propagation_thread: Some((local_sender, operation_propagation_thread)),
         }
     }
 
     pub fn stop(&mut self) {
-        if let Some(thread) = self.operation_retrieval_thread.take() {
+        if let Some((tx, thread)) = self.operation_retrieval_thread.take() {
+            let _ = tx.send(OperationHandlerRetrievalCommand::Stop);
             thread.join().unwrap();
         }
-        if let Some(thread) = self.operation_propagation_thread.take() {
+        if let Some((tx, thread)) = self.operation_propagation_thread.take() {
+            let _ = tx.send(OperationHandlerPropagationCommand::Stop);
             thread.join().unwrap();
         }
     }

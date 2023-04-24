@@ -50,15 +50,17 @@ pub fn start_connectivity_thread(
     )?;
     //TODO: Bound the channel
     // Channels handlers <-> outside world
-    let (sender_operations_ext, receiver_operations_ext) = unbounded();
-    let (sender_endorsements_ext, receiver_endorsements_ext) = unbounded();
+    let (sender_operations_retrieval_ext, receiver_operations_retrieval_ext) = unbounded();
+    let (sender_operations_propagation_ext, receiver_operations_propagation_ext) = unbounded();
+    let (sender_endorsements_retrieval_ext, receiver_endorsements_retrieval_ext) = unbounded();
+    let (sender_endorsements_propagation_ext, receiver_endorsements_propagation_ext) = unbounded();
     let (sender_blocks_ext, receiver_blocks_ext) = unbounded();
     let (sender_blocks_retrieval_ext, receiver_blocks_retrieval_ext) = unbounded();
 
     let handle = std::thread::spawn({
-        let sender_endorsements_ext = sender_endorsements_ext.clone();
+        let sender_endorsements_propagation_ext = sender_endorsements_propagation_ext.clone();
         let sender_blocks_ext = sender_blocks_ext.clone();
-        let sender_operations_ext = sender_operations_ext.clone();
+        let sender_operations_propagation_ext = sender_operations_propagation_ext.clone();
         move || {
             let mut peer_management_handler = PeerManagementHandler::new(initial_peers, &config);
             //TODO: Bound the channel
@@ -119,8 +121,10 @@ pub fn start_connectivity_thread(
                 operation_cache.clone(),
                 manager.active_connections.clone(),
                 receiver_operations,
-                sender_operations_ext,
-                receiver_operations_ext,
+                sender_operations_retrieval_ext,
+                receiver_operations_retrieval_ext,
+                sender_operations_propagation_ext,
+                receiver_operations_propagation_ext,
                 peer_management_handler.sender.command_sender.clone(),
             );
             let mut endorsement_handler = EndorsementHandler::new(
@@ -130,8 +134,10 @@ pub fn start_connectivity_thread(
                 config.clone(),
                 manager.active_connections.clone(),
                 receiver_endorsements,
-                sender_endorsements_ext,
-                receiver_endorsements_ext,
+                sender_endorsements_retrieval_ext,
+                receiver_endorsements_retrieval_ext,
+                sender_endorsements_propagation_ext,
+                receiver_endorsements_propagation_ext,
                 peer_management_handler.sender.command_sender.clone(),
             );
             let mut block_handler = BlockHandler::new(
@@ -156,10 +162,15 @@ pub fn start_connectivity_thread(
                         recv(receiver) -> msg => {
                             if let Ok(ConnectivityCommand::Stop) = msg {
                                 drop(manager);
+                                println!("Stopped manager");
                                 operation_handler.stop();
+                                println!("Stopped operation handler");
                                 endorsement_handler.stop();
+                                println!("Stopped endorsement handler");
                                 block_handler.stop();
+                                println!("Stopped block handler");
                                 peer_management_handler.stop();
+                                println!("Stopped peer management handler");
                                 break;
                             }
                         }
@@ -222,8 +233,8 @@ pub fn start_connectivity_thread(
     let controller = ProtocolControllerImpl::new(
         sender_blocks_retrieval_ext,
         sender_blocks_ext,
-        sender_operations_ext,
-        sender_endorsements_ext,
+        sender_operations_propagation_ext,
+        sender_endorsements_propagation_ext,
     );
     Ok(((sender, handle), controller))
 }

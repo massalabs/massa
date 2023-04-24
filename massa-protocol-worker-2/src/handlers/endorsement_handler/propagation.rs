@@ -13,12 +13,12 @@ use tracing::log::warn;
 use crate::messages::MessagesSerializer;
 
 use super::{
-    cache::SharedEndorsementCache, commands_propagation::EndorsementHandlerCommand,
+    cache::SharedEndorsementCache, commands_propagation::EndorsementHandlerPropagationCommand,
     messages::EndorsementMessageSerializer, EndorsementMessage,
 };
 
 struct PropagationThread {
-    receiver: Receiver<EndorsementHandlerCommand>,
+    receiver: Receiver<EndorsementHandlerPropagationCommand>,
     config: ProtocolConfig,
     cache: SharedEndorsementCache,
     active_connections: SharedActiveConnections,
@@ -31,15 +31,21 @@ impl PropagationThread {
             match self.receiver.recv() {
                 Ok(msg) => {
                     match msg {
-                        EndorsementHandlerCommand::PropagateEndorsements(mut endorsements) => {
+                        EndorsementHandlerPropagationCommand::PropagateEndorsements(
+                            mut endorsements,
+                        ) => {
                             // IMPORTANT: This is there to batch all "waiting to propagate endorsements" but will not work anymore if there is
-                            // other variants in EndorsementHandlerCommand
+                            // other variants in EndorsementHandlerPropagationCommand
                             while let Ok(msg) = self.receiver.try_recv() {
                                 match msg {
-                                    EndorsementHandlerCommand::PropagateEndorsements(
+                                    EndorsementHandlerPropagationCommand::PropagateEndorsements(
                                         endorsements2,
                                     ) => {
                                         endorsements.extend(endorsements2);
+                                    }
+                                    EndorsementHandlerPropagationCommand::Stop => {
+                                        println!("Stop endorsement propagation thread");
+                                        return;
                                     }
                                 }
                             }
@@ -122,13 +128,14 @@ impl PropagationThread {
                                 }
                             }
                         }
+                        EndorsementHandlerPropagationCommand::Stop => {
+                            println!("Stop endorsement propagation thread");
+                            return;
+                        }
                     }
                 }
-                Err(err) => {
-                    warn!(
-                        "Error in propagation thread of endorsement handler: {:#?}",
-                        err
-                    );
+                Err(_) => {
+                    println!("Stop endorsement propagation thread");
                     return;
                 }
             }
@@ -137,7 +144,7 @@ impl PropagationThread {
 }
 
 pub fn start_propagation_thread(
-    receiver: Receiver<EndorsementHandlerCommand>,
+    receiver: Receiver<EndorsementHandlerPropagationCommand>,
     cache: SharedEndorsementCache,
     config: ProtocolConfig,
     active_connections: SharedActiveConnections,
