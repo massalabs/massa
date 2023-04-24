@@ -225,6 +225,7 @@
 <a href="#225" id="225">225</a>
 <a href="#226" id="226">226</a>
 <a href="#227" id="227">227</a>
+<a href="#228" id="228">228</a>
 </pre><pre class="rust"><code><span class="doccomment">//! Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="kw">use </span>std::collections::{hash_map::Entry, HashMap};
@@ -299,7 +300,8 @@
             now,
         );
 
-        <span class="kw">if </span>slot.period
+        <span class="comment">// let last_final_periods = self.channels.pool.get_final_cs_periods();
+        </span><span class="kw">if </span>slot.period
             &lt; <span class="self">self</span>.last_cs_final_periods[slot.thread <span class="kw">as </span>usize]
                 .saturating_sub(<span class="self">self</span>.config.denunciation_expire_periods)
         {

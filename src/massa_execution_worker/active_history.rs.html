@@ -274,28 +274,10 @@
 <a href="#274" id="274">274</a>
 <a href="#275" id="275">275</a>
 <a href="#276" id="276">276</a>
-<a href="#277" id="277">277</a>
-<a href="#278" id="278">278</a>
-<a href="#279" id="279">279</a>
-<a href="#280" id="280">280</a>
-<a href="#281" id="281">281</a>
-<a href="#282" id="282">282</a>
-<a href="#283" id="283">283</a>
-<a href="#284" id="284">284</a>
-<a href="#285" id="285">285</a>
-<a href="#286" id="286">286</a>
-<a href="#287" id="287">287</a>
-<a href="#288" id="288">288</a>
-<a href="#289" id="289">289</a>
-<a href="#290" id="290">290</a>
-<a href="#291" id="291">291</a>
-<a href="#292" id="292">292</a>
-<a href="#293" id="293">293</a>
 </pre><pre class="rust"><code><span class="kw">use </span>massa_execution_exports::ExecutionOutput;
 <span class="kw">use </span>massa_ledger_exports::{
     LedgerEntry, LedgerEntryUpdate, SetOrDelete, SetOrKeep, SetUpdateOrDelete,
 };
-<span class="kw">use </span>massa_models::denunciation::DenunciationIndex;
 <span class="kw">use </span>massa_models::{
     address::Address, amount::Amount, bytecode::Bytecode, operation::OperationId, slot::Slot,
 };
@@ -346,22 +328,6 @@
                 .state_changes
                 .executed_ops_changes
                 .contains_key(op_id)
-            {
-                <span class="kw">return </span>HistorySearchResult::Present(());
-            }
-        }
-        HistorySearchResult::NoInfo
-    }
-
-    <span class="doccomment">/// Lazily query (from end to beginning) the active list of proccessed denunciations.
-    ///
-    /// Returns a `HistorySearchResult`.
-    </span><span class="kw">pub fn </span>fetch_processed_de(<span class="kw-2">&amp;</span><span class="self">self</span>, de_idx: <span class="kw-2">&amp;</span>DenunciationIndex) -&gt; HistorySearchResult&lt;()&gt; {
-        <span class="kw">for </span>history_element <span class="kw">in </span><span class="self">self</span>.<span class="number">0</span>.iter().rev() {
-            <span class="kw">if </span>history_element
-                .state_changes
-                .executed_denunciations_changes
-                .contains(de_idx)
             {
                 <span class="kw">return </span>HistorySearchResult::Present(());
             }
