@@ -4,12 +4,13 @@ use crate::error::GrpcError;
 use crate::server::MassaGrpc;
 use itertools::izip;
 use massa_models::address::Address;
+use massa_models::block::BlockGraphStatus;
 use massa_models::block_id::BlockId;
 use massa_models::operation::{OperationId, SecureShareOperation};
 use massa_models::prehash::PreHashSet;
 use massa_models::slot::Slot;
 use massa_models::timeslots::{self, get_latest_block_slot_at_timestamp};
-use massa_proto::massa::api::v1::{self as grpc};
+use massa_proto::massa::api::v1 as grpc;
 use massa_time::MassaTime;
 use std::str::FromStr;
 use tracing::log::warn;
@@ -26,11 +27,13 @@ pub(crate) fn get_blocks(
 ) -> Result<grpc::GetBlocksResponse, GrpcError> {
     let inner_req = request.into_inner();
 
+    // Get the block IDs from the request.
     let blocks_ids: Vec<BlockId> = inner_req
         .queries
         .into_iter()
         .take(grpc.grpc_config.max_block_ids_per_request as usize + 1)
         .map(|query| {
+            // Get the block ID from the query.
             query
                 .filter
                 .ok_or_else(|| GrpcError::InvalidArgument("filter is missing".to_string()))
@@ -64,7 +67,49 @@ pub(crate) fn get_blocks(
         slot: Some(current_slot.into()),
     });
 
-    let blocks = Vec::new();
+    let storage = grpc.storage.clone_without_refs();
+    let blocks = blocks_ids
+        .into_iter()
+        .filter_map(|id| {
+            let content = if let Some(wrapped_block) = storage.read_blocks().get(&id) {
+                wrapped_block.content.clone()
+            } else {
+                return None;
+            };
+
+            if let Some(graph_status) = grpc
+                .consensus_controller
+                .get_block_statuses(&[id])
+                .into_iter()
+                .next()
+            {
+                let mut status = Vec::new();
+
+                if graph_status == BlockGraphStatus::Final {
+                    status.push(grpc::BlockStatus::Final.into());
+                };
+                if graph_status == BlockGraphStatus::ActiveInBlockclique {
+                    status.push(grpc::BlockStatus::InBlockclique.into());
+                };
+                if graph_status == BlockGraphStatus::ActiveInBlockclique
+                    || graph_status == BlockGraphStatus::ActiveInAlternativeCliques
+                {
+                    status.push(grpc::BlockStatus::Candidate.into());
+                };
+                if graph_status == BlockGraphStatus::Discarded {
+                    status.push(grpc::BlockStatus::Discarded.into());
+                };
+
+                return Some(grpc::BlockWrapper {
+                    id: id.to_string(),
+                    block: Some(content.into()),
+                    status,
+                });
+            }
+
+            None
+        })
+        .collect::<Vec<grpc::BlockWrapper>>();
 
     Ok(grpc::GetBlocksResponse {
         id: inner_req.id,

@@ -94,7 +94,7 @@ message BlockWrapper {
     // The unique ID of the block.
     string id = 1;
     // The block object itself
-    SignedBlock block = 6;
+    Block block = 2;
     // The execution statuses of the block
-    repeated BlockStatus status = 7;
+    repeated BlockStatus status = 3;
 }

@@ -363,10 +363,10 @@ pub struct BlockWrapper {
     #[prost(string, tag = "1")]
     pub id: ::prost::alloc::string::String,
     /// The block object itself
-    #[prost(message, optional, tag = "6")]
-    pub block: ::core::option::Option<SignedBlock>,
+    #[prost(message, optional, tag = "2")]
+    pub block: ::core::option::Option<Block>,
     /// The execution statuses of the block
-    #[prost(enumeration = "BlockStatus", repeated, tag = "7")]
+    #[prost(enumeration = "BlockStatus", repeated, tag = "3")]
     pub status: ::prost::alloc::vec::Vec<i32>,
 }
 /// Possible statuses for a block

@@ -1130,7 +1130,7 @@ A wrapper around a block with its metadata
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | id | [string](#string) |  | The unique ID of the block. |
-| block | [SignedBlock](#massa-api-v1-SignedBlock) |  | The block object itself |
+| block | [Block](#massa-api-v1-Block) |  | The block object itself |
 | status | [BlockStatus](#massa-api-v1-BlockStatus) | repeated | The execution statuses of the block |
 
 
