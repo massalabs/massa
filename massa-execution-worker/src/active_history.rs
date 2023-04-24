@@ -90,7 +90,8 @@ impl ActiveHistory {
         }
 
         HistorySearchResult::Present(SetUpdateOrDelete::Update(current_updates))
-      
+    }
+
     /// Lazily query (from end to beginning) the active list of proccessed denunciations.
     ///
     /// Returns a `HistorySearchResult`.

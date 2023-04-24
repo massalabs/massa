@@ -270,7 +270,7 @@ fn test_bootstrap_server() {
                 let changes = StateChanges {
                     pos_changes: get_random_pos_changes(10),
                     ledger_changes: get_random_ledger_changes(10),
-                    async_pool_changes: get_random_async_pool_changes(10),
+                    async_pool_changes: get_random_async_pool_changes(10, thread_count),
                     executed_ops_changes: get_random_executed_ops_changes(10),
                     executed_denunciations_changes: get_random_executed_de_changes(10),
                 };
@@ -295,7 +295,7 @@ fn test_bootstrap_server() {
             None,
         ))
         .unwrap();
-  
+
     // apply the changes to the server state before matching with the client
     {
         let mut final_state_server_write = final_state_server.write();

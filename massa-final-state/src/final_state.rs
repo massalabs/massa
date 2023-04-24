@@ -38,10 +38,9 @@ use massa_serialization::{Deserializer, SerializeError, Serializer};
 use nom::{error::context, sequence::tuple, IResult, Parser};
 use parking_lot::RwLock;
 use rocksdb::DB;
-use std::collections::{BTreeMap, HashSet, VecDeque};
 use std::ops::Bound::{Excluded, Included};
 use std::{
-    collections::{BTreeMap, VecDeque},
+    collections::{BTreeMap, HashSet, VecDeque},
     sync::Arc,
 };
 use tracing::{debug, info};
