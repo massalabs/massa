@@ -19,7 +19,61 @@ const DEFAULT_OFFSET: u64 = 1;
 /// Default limit
 const DEFAULT_LIMIT: u64 = 50;
 
-/// Get blocks by slots
+/// Get blocks
+pub(crate) fn get_blocks(
+    grpc: &MassaGrpc,
+    request: tonic::Request<grpc::GetBlocksRequest>,
+) -> Result<grpc::GetBlocksResponse, GrpcError> {
+    let inner_req = request.into_inner();
+
+    let blocks_ids: Vec<BlockId> = inner_req
+        .queries
+        .into_iter()
+        .take(grpc.grpc_config.max_block_ids_per_request as usize + 1)
+        .map(|query| {
+            query
+                .filter
+                .ok_or_else(|| GrpcError::InvalidArgument("filter is missing".to_string()))
+                .and_then(|filter| {
+                    BlockId::from_str(filter.id.as_str()).map_err(|_| {
+                        GrpcError::InvalidArgument(format!("invalid block id: {}", filter.id))
+                    })
+                })
+        })
+        .collect::<Result<_, _>>()?;
+
+    if blocks_ids.len() as u32 > grpc.grpc_config.max_block_ids_per_request {
+        return Err(GrpcError::InvalidArgument(format!(
+            "too many block ids received. Only a maximum of {} block ids are accepted per request",
+            grpc.grpc_config.max_block_ids_per_request
+        )));
+    }
+
+    // Get the current slot.
+    let now: MassaTime = MassaTime::now()?;
+    let current_slot = get_latest_block_slot_at_timestamp(
+        grpc.grpc_config.thread_count,
+        grpc.grpc_config.t0,
+        grpc.grpc_config.genesis_timestamp,
+        now,
+    )?
+    .unwrap_or_else(|| Slot::new(0, 0));
+
+    // Create the context for the response.
+    let context = Some(grpc::BlocksContext {
+        slot: Some(current_slot.into()),
+    });
+
+    let blocks = Vec::new();
+
+    Ok(grpc::GetBlocksResponse {
+        id: inner_req.id,
+        context,
+        blocks,
+    })
+}
+
+/// get blocks by slots
 pub(crate) fn get_blocks_by_slots(
     grpc: &MassaGrpc,
     request: tonic::Request<grpc::GetBlocksBySlotsRequest>,
