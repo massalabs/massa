@@ -3,7 +3,8 @@ use massa_storage::Storage;
 
 /// Commands that the block handler can process
 #[derive(Debug)]
-pub enum BlockHandlerCommand {
+pub enum BlockHandlerPropagationCommand {
+    Stop,
     /// Notify block integration of a given block.
     IntegratedBlock {
         /// block id

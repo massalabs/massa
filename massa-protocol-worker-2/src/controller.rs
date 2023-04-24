@@ -9,7 +9,8 @@ use massa_storage::Storage;
 
 use crate::handlers::{
     block_handler::{
-        commands_propagation::BlockHandlerCommand, commands_retrieval::BlockHandlerRetrievalCommand,
+        commands_propagation::BlockHandlerPropagationCommand,
+        commands_retrieval::BlockHandlerRetrievalCommand,
     },
     endorsement_handler::commands_propagation::EndorsementHandlerPropagationCommand,
     operation_handler::commands_propagation::OperationHandlerPropagationCommand,
@@ -23,7 +24,7 @@ pub struct ProtocolControllerImpl {
     // if not, the handler will deadlock on `recv`
     // As this is never None, we allow ourselves to use `unwrap` to acceed to the senders
     pub sender_block_retrieval_handler: Option<Sender<BlockHandlerRetrievalCommand>>,
-    pub sender_block_handler: Option<Sender<BlockHandlerCommand>>,
+    pub sender_block_handler: Option<Sender<BlockHandlerPropagationCommand>>,
     pub sender_operation_handler: Option<Sender<OperationHandlerPropagationCommand>>,
     pub sender_endorsement_handler: Option<Sender<EndorsementHandlerPropagationCommand>>,
 }
@@ -31,7 +32,7 @@ pub struct ProtocolControllerImpl {
 impl ProtocolControllerImpl {
     pub fn new(
         sender_block_retrieval_handler: Sender<BlockHandlerRetrievalCommand>,
-        sender_block_handler: Sender<BlockHandlerCommand>,
+        sender_block_handler: Sender<BlockHandlerPropagationCommand>,
         sender_operation_handler: Sender<OperationHandlerPropagationCommand>,
         sender_endorsement_handler: Sender<EndorsementHandlerPropagationCommand>,
     ) -> Self {
@@ -60,7 +61,7 @@ impl ProtocolController for ProtocolControllerImpl {
         self.sender_block_handler
             .as_ref()
             .unwrap()
-            .send(BlockHandlerCommand::IntegratedBlock { block_id, storage })
+            .send(BlockHandlerPropagationCommand::IntegratedBlock { block_id, storage })
             .map_err(|_| ProtocolError::ChannelError("integrated_block command send error".into()))
     }
 
@@ -69,7 +70,9 @@ impl ProtocolController for ProtocolControllerImpl {
         self.sender_block_handler
             .as_ref()
             .unwrap()
-            .send(BlockHandlerCommand::AttackBlockDetected(block_id))
+            .send(BlockHandlerPropagationCommand::AttackBlockDetected(
+                block_id,
+            ))
             .map_err(|_| {
                 ProtocolError::ChannelError("notify_block_attack command send error".into())
             })

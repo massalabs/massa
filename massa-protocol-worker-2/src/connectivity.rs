@@ -54,12 +54,13 @@ pub fn start_connectivity_thread(
     let (sender_operations_propagation_ext, receiver_operations_propagation_ext) = unbounded();
     let (sender_endorsements_retrieval_ext, receiver_endorsements_retrieval_ext) = unbounded();
     let (sender_endorsements_propagation_ext, receiver_endorsements_propagation_ext) = unbounded();
-    let (sender_blocks_ext, receiver_blocks_ext) = unbounded();
+    let (sender_blocks_propagation_ext, receiver_blocks_propatation_ext) = unbounded();
     let (sender_blocks_retrieval_ext, receiver_blocks_retrieval_ext) = unbounded();
 
     let handle = std::thread::spawn({
         let sender_endorsements_propagation_ext = sender_endorsements_propagation_ext.clone();
-        let sender_blocks_ext = sender_blocks_ext.clone();
+        let sender_blocks_retrieval_ext = sender_blocks_retrieval_ext.clone();
+        let sender_blocks_propagation_ext = sender_blocks_propagation_ext.clone();
         let sender_operations_propagation_ext = sender_operations_propagation_ext.clone();
         move || {
             let mut peer_management_handler = PeerManagementHandler::new(initial_peers, &config);
@@ -145,9 +146,10 @@ pub fn start_connectivity_thread(
                 consensus_controller,
                 pool_controller,
                 receiver_blocks,
+                sender_blocks_retrieval_ext,
                 receiver_blocks_retrieval_ext,
-                receiver_blocks_ext,
-                sender_blocks_ext,
+                receiver_blocks_propatation_ext,
+                sender_blocks_propagation_ext,
                 peer_management_handler.sender.command_sender.clone(),
                 config.clone(),
                 endorsement_cache,
@@ -162,15 +164,10 @@ pub fn start_connectivity_thread(
                         recv(receiver) -> msg => {
                             if let Ok(ConnectivityCommand::Stop) = msg {
                                 drop(manager);
-                                println!("Stopped manager");
                                 operation_handler.stop();
-                                println!("Stopped operation handler");
                                 endorsement_handler.stop();
-                                println!("Stopped endorsement handler");
                                 block_handler.stop();
-                                println!("Stopped block handler");
                                 peer_management_handler.stop();
-                                println!("Stopped peer management handler");
                                 break;
                             }
                         }
@@ -232,7 +229,7 @@ pub fn start_connectivity_thread(
     // Start controller
     let controller = ProtocolControllerImpl::new(
         sender_blocks_retrieval_ext,
-        sender_blocks_ext,
+        sender_blocks_propagation_ext,
         sender_operations_propagation_ext,
         sender_endorsements_propagation_ext,
     );

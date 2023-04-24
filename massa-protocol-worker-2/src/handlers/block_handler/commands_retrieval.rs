@@ -5,6 +5,7 @@ use massa_models::{
 };
 
 pub enum BlockHandlerRetrievalCommand {
+    Stop,
     /// Wish list delta
     WishlistDelta {
         /// add to wish list

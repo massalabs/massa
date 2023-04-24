@@ -8,7 +8,7 @@ use massa_storage::Storage;
 use peernet::network_manager::SharedActiveConnections;
 
 use self::{
-    cache::SharedBlockCache, commands_propagation::BlockHandlerCommand,
+    cache::SharedBlockCache, commands_propagation::BlockHandlerPropagationCommand,
     commands_retrieval::BlockHandlerRetrievalCommand, propagation::start_propagation_thread,
     retrieval::start_retrieval_thread,
 };
@@ -29,8 +29,8 @@ use super::{
 };
 
 pub struct BlockHandler {
-    pub block_retrieval_thread: Option<JoinHandle<()>>,
-    pub block_propagation_thread: Option<JoinHandle<()>>,
+    pub block_retrieval_thread: Option<(Sender<BlockHandlerRetrievalCommand>, JoinHandle<()>)>,
+    pub block_propagation_thread: Option<(Sender<BlockHandlerPropagationCommand>, JoinHandle<()>)>,
 }
 
 impl BlockHandler {
@@ -39,9 +39,10 @@ impl BlockHandler {
         consensus_controller: Box<dyn ConsensusController>,
         pool_controller: Box<dyn PoolController>,
         receiver_network: Receiver<PeerMessageTuple>,
+        sender_ext: Sender<BlockHandlerRetrievalCommand>,
         receiver_ext: Receiver<BlockHandlerRetrievalCommand>,
-        internal_receiver: Receiver<BlockHandlerCommand>,
-        internal_sender: Sender<BlockHandlerCommand>,
+        internal_receiver: Receiver<BlockHandlerPropagationCommand>,
+        internal_sender: Sender<BlockHandlerPropagationCommand>,
         peer_cmd_sender: Sender<PeerManagementCmd>,
         config: ProtocolConfig,
         endorsement_cache: SharedEndorsementCache,
@@ -55,7 +56,7 @@ impl BlockHandler {
             pool_controller,
             receiver_network,
             receiver_ext,
-            internal_sender,
+            internal_sender.clone(),
             peer_cmd_sender.clone(),
             config.clone(),
             endorsement_cache,
@@ -71,16 +72,18 @@ impl BlockHandler {
             cache,
         );
         Self {
-            block_retrieval_thread: Some(block_retrieval_thread),
-            block_propagation_thread: Some(block_propagation_thread),
+            block_retrieval_thread: Some((sender_ext, block_retrieval_thread)),
+            block_propagation_thread: Some((internal_sender, block_propagation_thread)),
         }
     }
 
     pub fn stop(&mut self) {
-        if let Some(thread) = self.block_retrieval_thread.take() {
+        if let Some((tx, thread)) = self.block_retrieval_thread.take() {
+            let _ = tx.send(BlockHandlerRetrievalCommand::Stop);
             thread.join().unwrap();
         }
-        if let Some(thread) = self.block_propagation_thread.take() {
+        if let Some((tx, thread)) = self.block_propagation_thread.take() {
+            let _ = tx.send(BlockHandlerPropagationCommand::Stop);
             thread.join().unwrap();
         }
     }
