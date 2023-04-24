@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"struct":["ExecutedOpsConfig"]};
+window.SIDEBAR_ITEMS = {"struct":["ExecutedDenunciationsConfig","ExecutedOpsConfig"]};

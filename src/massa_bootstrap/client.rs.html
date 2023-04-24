@@ -518,6 +518,13 @@
 <a href="#518" id="518">518</a>
 <a href="#519" id="519">519</a>
 <a href="#520" id="520">520</a>
+<a href="#521" id="521">521</a>
+<a href="#522" id="522">522</a>
+<a href="#523" id="523">523</a>
+<a href="#524" id="524">524</a>
+<a href="#525" id="525">525</a>
+<a href="#526" id="526">526</a>
+<a href="#527" id="527">527</a>
 </pre><pre class="rust"><code><span class="kw">use </span>humantime::format_duration;
 <span class="kw">use </span>std::{collections::HashSet, net::SocketAddr, sync::Arc, time::Duration};
 
@@ -567,6 +574,7 @@
                     pos_cycle_part,
                     pos_credits_part,
                     exec_ops_part,
+                    processed_de_part,
                     final_state_changes,
                     consensus_part,
                     consensus_outdated_ids,
@@ -592,6 +600,9 @@
                     <span class="kw">let </span>last_ops_step = write_final_state
                         .executed_ops
                         .set_executed_ops_part(exec_ops_part);
+                    <span class="kw">let </span>last_de_step = write_final_state
+                        .executed_denunciations
+                        .set_processed_de_part(processed_de_part);
                     <span class="kw">for </span>(changes_slot, changes) <span class="kw">in </span>final_state_changes.iter() {
                         write_final_state.ledger.apply_changes(
                             changes.ledger_changes.clone(),
@@ -647,6 +658,7 @@
                         last_cycle_step,
                         last_credits_step,
                         last_ops_step,
+                        last_de_step,
                         last_consensus_step,
                         send_last_start_period: <span class="bool-val">false</span>,
                     };
@@ -676,6 +688,7 @@
                         last_cycle_step: StreamingStep::Started,
                         last_credits_step: StreamingStep::Started,
                         last_ops_step: StreamingStep::Started,
+                        last_de_step: StreamingStep::Started,
                         last_consensus_step: StreamingStep::Started,
                         send_last_start_period: <span class="bool-val">true</span>,
                     };
@@ -969,6 +982,7 @@
             last_cycle_step: StreamingStep::Started,
             last_credits_step: StreamingStep::Started,
             last_ops_step: StreamingStep::Started,
+            last_de_step: StreamingStep::Started,
             last_consensus_step: StreamingStep::Started,
             send_last_start_period: <span class="bool-val">true</span>,
         };
