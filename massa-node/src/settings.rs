@@ -30,8 +30,11 @@ pub struct ExecutionSettings {
     pub max_read_only_gas: u64,
     pub abi_gas_costs_file: PathBuf,
     pub wasm_gas_costs_file: PathBuf,
-    pub max_module_cache_size: u32,
     pub initial_vesting_path: PathBuf,
+    pub hd_cache_path: PathBuf,
+    pub lru_cache_size: u32,
+    pub hd_cache_size: usize,
+    pub snip_amount: usize,
 }
 
 #[derive(Clone, Debug, Deserialize)]
@@ -138,6 +141,8 @@ pub struct APISettings {
     pub ping_interval: MassaTime,
     pub enable_http: bool,
     pub enable_ws: bool,
+    // whether to broadcast for blocks, endorsement and operations
+    pub enable_broadcast: bool,
 }
 
 #[derive(Debug, Deserialize, Clone)]
@@ -153,6 +158,7 @@ pub struct Settings {
     pub ledger: LedgerSettings,
     pub selector: SelectionSettings,
     pub factory: FactorySettings,
+    pub grpc: GrpcSettings,
 }
 
 /// Consensus configuration
@@ -226,6 +232,56 @@ pub struct ProtocolSettings {
     pub max_operations_propagation_time: MassaTime,
     /// Time threshold after which operation are not propagated
     pub max_endorsements_propagation_time: MassaTime,
+}
+
+/// gRPC settings
+/// the gRPC settings
+#[derive(Debug, Deserialize, Clone)]
+pub struct GrpcSettings {
+    /// whether to enable gRPC
+    pub enabled: bool,
+    /// whether to accept HTTP/1.1 requests
+    pub accept_http1: bool,
+    /// whether to enable CORS. Works only if `accept_http1` is true
+    pub enable_cors: bool,
+    /// whether to enable gRPC reflection
+    pub enable_reflection: bool,
+    /// bind for the Massa gRPC API
+    pub bind: SocketAddr,
+    /// which compression encodings does the server accept for requests
+    pub accept_compressed: Option<String>,
+    /// which compression encodings might the server use for responses
+    pub send_compressed: Option<String>,
+    /// limits the maximum size of a decoded message. Defaults to 4MB
+    pub max_decoding_message_size: usize,
+    /// limits the maximum size of an encoded message. Defaults to 4MB
+    pub max_encoding_message_size: usize,
+    /// limits the maximum size of streaming channel
+    pub max_channel_size: usize,
+    /// set the concurrency limit applied to on requests inbound per connection. Defaults to 32
+    pub concurrency_limit_per_connection: usize,
+    /// set a timeout on for all request handlers
+    pub timeout: MassaTime,
+    /// sets the SETTINGS_INITIAL_WINDOW_SIZE spec option for HTTP2 stream-level flow control. Default is 65,535
+    pub initial_stream_window_size: Option<u32>,
+    /// sets the max connection-level flow control for HTTP2. Default is 65,535
+    pub initial_connection_window_size: Option<u32>,
+    /// sets the SETTINGS_MAX_CONCURRENT_STREAMS spec option for HTTP2 connections. Default is no limit (`None`)
+    pub max_concurrent_streams: Option<u32>,
+    /// set whether TCP keepalive messages are enabled on accepted connections
+    pub tcp_keepalive: Option<MassaTime>,
+    /// set the value of `TCP_NODELAY` option for accepted connections. Enabled by default
+    pub tcp_nodelay: bool,
+    /// set whether HTTP2 Ping frames are enabled on accepted connections. Default is no HTTP2 keepalive (`None`)
+    pub http2_keepalive_interval: Option<MassaTime>,
+    /// sets a timeout for receiving an acknowledgement of the keepalive ping. Default is 20 seconds
+    pub http2_keepalive_timeout: Option<MassaTime>,
+    /// sets whether to use an adaptive flow control. Defaults to false
+    pub http2_adaptive_window: Option<bool>,
+    /// sets the maximum frame size to use for HTTP2(must be within 16,384 and 16,777,215). If not set, will default from underlying transport
+    pub max_frame_size: Option<u32>,
+    /// when looking for next draw we want to look at max `draw_lookahead_period_count`
+    pub draw_lookahead_period_count: u64,
 }
 
 #[cfg(test)]

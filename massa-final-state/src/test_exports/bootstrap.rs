@@ -32,6 +32,7 @@ pub fn create_final_state(
         pos_state,
         executed_ops,
         final_state_hash: Hash::from_bytes(&[0; HASH_SIZE_BYTES]),
+        last_start_period: 0,
     }
 }
 
@@ -74,7 +75,8 @@ pub fn assert_eq_final_state_hash(v1: &FinalState, v2: &FinalState) {
         "async pool hash mismatch"
     );
     assert_eq!(
-        v1.pos_state.deferred_credits.hash, v2.pos_state.deferred_credits.hash,
+        v1.pos_state.deferred_credits.get_hash(),
+        v2.pos_state.deferred_credits.get_hash(),
         "deferred credits hash mismatch"
     );
     for (cycle1, cycle2) in v1

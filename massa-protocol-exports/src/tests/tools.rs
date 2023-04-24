@@ -227,6 +227,7 @@ pub fn create_protocol_config() -> ProtocolConfig {
         t0: MassaTime::from_millis(16000),
         max_operations_propagation_time: MassaTime::from_millis(30000),
         max_endorsements_propagation_time: MassaTime::from_millis(60000),
+        last_start_period: 0,
     }
 }
 

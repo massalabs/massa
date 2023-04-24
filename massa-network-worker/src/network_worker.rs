@@ -703,6 +703,7 @@ impl NetworkWorker {
             let max_op_datastore_entry_count = self.cfg.max_op_datastore_entry_count;
             let max_op_datastore_key_length = self.cfg.max_op_datastore_key_length;
             let max_op_datastore_value_length = self.cfg.max_op_datastore_value_length;
+            let last_start_period = self.cfg.last_start_period;
             self.handshake_peer_list_futures
                 .push(tokio::spawn(async move {
                     let mut writer = WriteBinder::new(writer, max_bytes_read, max_message_size);
@@ -724,6 +725,7 @@ impl NetworkWorker {
                             max_op_datastore_entry_count,
                             max_op_datastore_key_length,
                             max_op_datastore_value_length,
+                            Some(last_start_period),
                         ),
                     );
                     match tokio::time::timeout(
@@ -771,6 +773,7 @@ impl NetworkWorker {
             connection_id,
             self.cfg.max_bytes_read,
             self.cfg.max_bytes_write,
+            self.cfg.last_start_period,
         ));
         Ok(())
     }

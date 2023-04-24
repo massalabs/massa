@@ -9,8 +9,10 @@ use std::collections::{BTreeMap, HashMap};
 use tracing::debug;
 
 /// Draws block and creators for a given cycle.
-///
 /// Then prune the `cache` pointer if max cache is exceeded.
+/// It uses BTreeMap to store the address <->rolls mapping.
+/// Although not efficient as a hashmap, it still
+/// is the best choice since the order has to be maintained.
 ///
 /// # Parameters
 /// * `cycle`: Cycle to draw

@@ -37,7 +37,6 @@ Here is a list of tools to easily build applications on the Massa blockchain:
 
 ## Join the Testnet
 
-
 With decentralization as a core value, we've gone to great lengths to lower the barrier of entry for community
 participation in our community testnet, and we
 [invite you to join in](https://docs.massa.net/en/latest/testnet/install.html#testnet-install), and register for the

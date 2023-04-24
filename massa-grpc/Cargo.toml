@@ -1,0 +1,45 @@
+# Copyright (c) 2023 MASSA LABS <info@massa.net>
+
+[package]
+name = "massa_grpc"
+version = "0.1.0"
+edition = "2021"
+description = "GRPC API for Massa Blockchain"
+repository = "https://github.com/massalabs/massa/"
+homepage = "https://massa.net"
+documentation = "https://docs.massa.net/"
+
+[dependencies]
+displaydoc = "0.2"
+thiserror = "1.0"
+tonic = { version = "0.9.1", features = ["gzip"] }
+tonic-web = "0.9.1"
+tonic-reflection = "0.9.1"
+tonic-health = "0.9.1"
+tower-http = { version = "0.4.0", features = ["cors"] }
+hyper = "0.14.25"
+futures-util = "0.3.25"
+serde = { version = "1.0", features = ["derive"] }
+tokio = { version = "1.23", features = ["rt-multi-thread", "macros"] }
+tokio-stream = "0.1.12"
+itertools = "0.10"
+h2 = "0.3.17"
+tracing = "0.1"
+# custom modules
+massa_consensus_exports = { path = "../massa-consensus-exports" }
+massa_hash = { path = "../massa-hash" }
+massa_models = { path = "../massa-models" }
+massa_network_exports = { path = "../massa-network-exports" }
+massa_pos_exports = { path = "../massa-pos-exports" }
+massa_pool_exports = { path = "../massa-pool-exports" }
+massa_protocol_exports = { path = "../massa-protocol-exports" }
+massa_execution_exports = { path = "../massa-execution-exports" }
+massa_storage = { path = "../massa-storage" }
+massa_time = { path = "../massa-time" }
+massa_wallet = { path = "../massa-wallet" }
+massa_serialization = { path = "../massa-serialization" }
+massa_proto = { path = "../massa-proto" }
+
+[dev-dependencies]
+crossbeam = "0.8.2"
+massa_consensus_exports = { path = "../massa-consensus-exports", features = ["testing"] }

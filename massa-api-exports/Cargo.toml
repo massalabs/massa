@@ -8,8 +8,7 @@ edition = "2021"
 paginate = "1.1.11"
 displaydoc = "0.2"
 thiserror = "1.0"
-jsonrpsee-core = { version = "0.16.2" }
-jsonrpsee-types = { version = "0.16.2" }
+jsonrpsee = { git = "https://github.com/paritytech/jsonrpsee.git", rev = "118acc3", features = ["jsonrpsee-core", "jsonrpsee-types"] }
 serde = { version = "1.0", features = ["derive"] }
 strum = { version = "0.24", features = ["derive"] }
 

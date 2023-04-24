@@ -1,6 +1,6 @@
+use crate::establisher::Duplex;
 use crate::messages::{BootstrapClientMessage, BootstrapServerMessage};
 use crate::settings::{BootstrapClientConfig, BootstrapSrvBindCfg};
-use crate::types::Duplex;
 use crate::BootstrapConfig;
 use crate::{
     client_binder::BootstrapClientBinder, server_binder::BootstrapServerBinder,
@@ -13,7 +13,8 @@ use massa_models::config::{
     MAX_BOOTSTRAP_FINAL_STATE_PARTS_SIZE, MAX_BOOTSTRAP_MESSAGE_SIZE, MAX_DATASTORE_ENTRY_COUNT,
     MAX_DATASTORE_KEY_LENGTH, MAX_DATASTORE_VALUE_LENGTH, MAX_DEFERRED_CREDITS_LENGTH,
     MAX_EXECUTED_OPS_CHANGES_LENGTH, MAX_EXECUTED_OPS_LENGTH, MAX_LEDGER_CHANGES_COUNT,
-    MAX_OPERATIONS_PER_BLOCK, MAX_PRODUCTION_STATS_LENGTH, MAX_ROLLS_COUNT_LENGTH, THREAD_COUNT,
+    MAX_OPERATIONS_PER_BLOCK, MAX_PRODUCTION_STATS_LENGTH, MAX_ROLLS_COUNT_LENGTH,
+    MIP_STORE_STATS_BLOCK_CONSIDERED, MIP_STORE_STATS_COUNTERS_MAX, THREAD_COUNT,
 };
 use massa_models::node::NodeId;
 use massa_models::version::Version;
@@ -21,7 +22,6 @@ use massa_signature::{KeyPair, PublicKey};
 use massa_time::MassaTime;
 use serial_test::serial;
 use std::str::FromStr;
-use tokio::io::duplex;
 
 lazy_static::lazy_static! {
     pub static ref BOOTSTRAP_CONFIG_KEYPAIR: (BootstrapConfig, KeyPair) = {
@@ -30,8 +30,8 @@ lazy_static::lazy_static! {
     };
 }
 
-impl BootstrapClientBinder {
-    pub fn test_default(client_duplex: Duplex, remote_pubkey: PublicKey) -> Self {
+impl<D: Duplex> BootstrapClientBinder<D> {
+    pub fn test_default(client_duplex: D, remote_pubkey: PublicKey) -> Self {
         let cfg = BootstrapClientConfig {
             max_bytes_read_write: f64::INFINITY,
             max_bootstrap_message_size: MAX_BOOTSTRAP_MESSAGE_SIZE,
@@ -56,6 +56,8 @@ impl BootstrapClientBinder {
             max_credits_length: MAX_DEFERRED_CREDITS_LENGTH,
             max_executed_ops_length: MAX_EXECUTED_OPS_LENGTH,
             max_ops_changes_length: MAX_EXECUTED_OPS_CHANGES_LENGTH,
+            mip_store_stats_block_considered: MIP_STORE_STATS_BLOCK_CONSIDERED,
+            mip_store_stats_counters_max: MIP_STORE_STATS_COUNTERS_MAX,
         };
         BootstrapClientBinder::new(client_duplex, remote_pubkey, cfg)
     }
@@ -66,9 +68,13 @@ impl BootstrapClientBinder {
 #[serial]
 async fn test_binders() {
     let (bootstrap_config, server_keypair): &(BootstrapConfig, KeyPair) = &BOOTSTRAP_CONFIG_KEYPAIR;
-    let (client, server) = duplex(1000000);
+    let server = tokio::net::TcpListener::bind("localhost:0").await.unwrap();
+    let addr = server.local_addr().unwrap();
+    let client = tokio::net::TcpStream::connect(addr).await.unwrap();
+    let server = server.accept().await.unwrap();
+    // let (client, server) = duplex(1000000);
     let mut server = BootstrapServerBinder::new(
-        server,
+        server.0,
         server_keypair.clone(),
         BootstrapSrvBindCfg {
             max_bytes_read_write: f64::INFINITY,
@@ -165,10 +171,14 @@ async fn test_binders() {
 async fn test_binders_double_send_server_works() {
     let (bootstrap_config, server_keypair): &(BootstrapConfig, KeyPair) = &BOOTSTRAP_CONFIG_KEYPAIR;
 
-    let (client, server) = duplex(1000000);
+    let server = tokio::net::TcpListener::bind("localhost:0").await.unwrap();
+    let client = tokio::net::TcpStream::connect(server.local_addr().unwrap())
+        .await
+        .unwrap();
+    let server = server.accept().await.unwrap();
 
     let mut server = BootstrapServerBinder::new(
-        server,
+        server.0,
         server_keypair.clone(),
         BootstrapSrvBindCfg {
             max_bytes_read_write: f64::INFINITY,
@@ -250,9 +260,12 @@ async fn test_binders_double_send_server_works() {
 async fn test_binders_try_double_send_client_works() {
     let (bootstrap_config, server_keypair): &(BootstrapConfig, KeyPair) = &BOOTSTRAP_CONFIG_KEYPAIR;
 
-    let (client, server) = duplex(1000000);
+    let server = tokio::net::TcpListener::bind("localhost:0").await.unwrap();
+    let addr = server.local_addr().unwrap();
+    let client = tokio::net::TcpStream::connect(addr).await.unwrap();
+    let server = server.accept().await.unwrap();
     let mut server = BootstrapServerBinder::new(
-        server,
+        server.0,
         server_keypair.clone(),
         BootstrapSrvBindCfg {
             max_bytes_read_write: f64::INFINITY,

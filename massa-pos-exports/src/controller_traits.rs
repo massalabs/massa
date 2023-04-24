@@ -89,7 +89,7 @@ impl Clone for Box<dyn SelectorController> {
 pub trait SelectorManager {
     /// Stop the selector thread
     /// Note that we do not take self by value to consume it
-    /// because it is not allowed to move out of Box<dyn SelectorManager>
+    /// because it is not allowed to move out of `Box<dyn SelectorManager>`
     /// This will improve if the `unsized_fn_params` feature stabilizes enough to be safely usable.
     fn stop(&mut self);
 }

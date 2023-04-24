@@ -53,6 +53,8 @@ pub struct BootstrapConfig {
     pub max_clock_delta: MassaTime,
     /// Cache duration
     pub cache_duration: MassaTime,
+    /// Keep ledger or not if not bootstrap
+    pub keep_ledger: bool,
     /// Max simultaneous bootstraps
     pub max_simultaneous_bootstraps: u32,
     /// Minimum interval between two bootstrap attempts from a given IP
@@ -121,6 +123,10 @@ pub struct BootstrapConfig {
     pub consensus_bootstrap_part_size: u64,
     /// max number of consensus block ids when sending a bootstrap cursor from the client
     pub max_consensus_block_ids: u64,
+    /// block count to check / process for versioning stats
+    pub mip_store_stats_block_considered: usize,
+    /// max number of counters for versioning stats
+    pub mip_store_stats_counters_max: usize,
 }
 
 /// Bootstrap server binding
@@ -165,6 +171,8 @@ pub struct BootstrapClientConfig {
     pub max_credits_length: u64,
     pub max_executed_ops_length: u64,
     pub max_ops_changes_length: u64,
+    pub mip_store_stats_block_considered: usize,
+    pub mip_store_stats_counters_max: usize,
 }
 
 /// Bootstrap Message der args
@@ -192,15 +200,19 @@ pub struct BootstrapServerMessageDeserializerArgs {
     pub max_credits_length: u64,
     pub max_executed_ops_length: u64,
     pub max_ops_changes_length: u64,
+    pub mip_store_stats_block_considered: usize,
+    pub mip_store_stats_counters_max: usize,
 }
 
 // TODO: add a proc macro for this case
+// We set last_start_period to None because we set the value during Bootstrap
 impl From<&BootstrapServerMessageDeserializerArgs> for BlockDeserializerArgs {
     fn from(value: &BootstrapServerMessageDeserializerArgs) -> Self {
         Self {
             thread_count: value.thread_count,
             max_operations_per_block: value.max_operations_per_block,
             endorsement_count: value.endorsement_count,
+            last_start_period: None,
         }
     }
 }
