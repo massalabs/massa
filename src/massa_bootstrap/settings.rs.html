@@ -221,6 +221,10 @@
 <a href="#221" id="221">221</a>
 <a href="#222" id="222">222</a>
 <a href="#223" id="223">223</a>
+<a href="#224" id="224">224</a>
+<a href="#225" id="225">225</a>
+<a href="#226" id="226">226</a>
+<a href="#227" id="227">227</a>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="kw">use </span>massa_models::block::BlockDeserializerArgs;
@@ -352,6 +356,8 @@
     </span><span class="kw">pub </span>mip_store_stats_counters_max: usize,
     <span class="doccomment">/// max denunciations in block header
     </span><span class="kw">pub </span>max_denunciations_per_block_header: u32,
+    <span class="doccomment">/// max processed denunciations changes
+    </span><span class="kw">pub </span>max_denunciation_changes_length: u64,
 }
 
 <span class="doccomment">/// Bootstrap server binding
@@ -399,6 +405,7 @@
     <span class="kw">pub </span>mip_store_stats_block_considered: usize,
     <span class="kw">pub </span>mip_store_stats_counters_max: usize,
     <span class="kw">pub </span>max_denunciations_per_block_header: u32,
+    <span class="kw">pub </span>max_denunciation_changes_length: u64,
 }
 
 <span class="doccomment">/// Bootstrap Message der args
@@ -429,6 +436,7 @@
     <span class="kw">pub </span>mip_store_stats_block_considered: usize,
     <span class="kw">pub </span>mip_store_stats_counters_max: usize,
     <span class="kw">pub </span>max_denunciations_per_block_header: u32,
+    <span class="kw">pub </span>max_denunciation_changes_length: u64,
 }
 
 <span class="comment">// TODO: add a proc macro for this case

@@ -900,6 +900,47 @@
 <a href="#900" id="900">900</a>
 <a href="#901" id="901">901</a>
 <a href="#902" id="902">902</a>
+<a href="#903" id="903">903</a>
+<a href="#904" id="904">904</a>
+<a href="#905" id="905">905</a>
+<a href="#906" id="906">906</a>
+<a href="#907" id="907">907</a>
+<a href="#908" id="908">908</a>
+<a href="#909" id="909">909</a>
+<a href="#910" id="910">910</a>
+<a href="#911" id="911">911</a>
+<a href="#912" id="912">912</a>
+<a href="#913" id="913">913</a>
+<a href="#914" id="914">914</a>
+<a href="#915" id="915">915</a>
+<a href="#916" id="916">916</a>
+<a href="#917" id="917">917</a>
+<a href="#918" id="918">918</a>
+<a href="#919" id="919">919</a>
+<a href="#920" id="920">920</a>
+<a href="#921" id="921">921</a>
+<a href="#922" id="922">922</a>
+<a href="#923" id="923">923</a>
+<a href="#924" id="924">924</a>
+<a href="#925" id="925">925</a>
+<a href="#926" id="926">926</a>
+<a href="#927" id="927">927</a>
+<a href="#928" id="928">928</a>
+<a href="#929" id="929">929</a>
+<a href="#930" id="930">930</a>
+<a href="#931" id="931">931</a>
+<a href="#932" id="932">932</a>
+<a href="#933" id="933">933</a>
+<a href="#934" id="934">934</a>
+<a href="#935" id="935">935</a>
+<a href="#936" id="936">936</a>
+<a href="#937" id="937">937</a>
+<a href="#938" id="938">938</a>
+<a href="#939" id="939">939</a>
+<a href="#940" id="940">940</a>
+<a href="#941" id="941">941</a>
+<a href="#942" id="942">942</a>
+<a href="#943" id="943">943</a>
 </pre><pre class="rust"><code><span class="doccomment">//! Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 //! This file defines the final state of the node, which includes
@@ -912,9 +953,13 @@
     AsyncMessage, AsyncMessageId, AsyncPool, AsyncPoolChanges, AsyncPoolDeserializer,
     AsyncPoolSerializer, Change,
 };
-<span class="kw">use </span>massa_executed_ops::{ExecutedOps, ExecutedOpsDeserializer, ExecutedOpsSerializer};
+<span class="kw">use </span>massa_executed_ops::{
+    ExecutedDenunciations, ExecutedOps, ExecutedOpsDeserializer, ExecutedOpsSerializer,
+    ProcessedDenunciationsDeserializer, ProcessedDenunciationsSerializer,
+};
 <span class="kw">use </span>massa_hash::{Hash, HashDeserializer, HASH_SIZE_BYTES};
 <span class="kw">use </span>massa_ledger_exports::{Key <span class="kw">as </span>LedgerKey, LedgerChanges, LedgerController};
+<span class="kw">use </span>massa_models::denunciation::DenunciationIndex;
 <span class="kw">use </span>massa_models::{
     <span class="comment">// TODO: uncomment when deserializing the final state from ledger
     /*config::{
@@ -933,11 +978,11 @@
 };
 <span class="kw">use </span>massa_serialization::{Deserializer, SerializeError, Serializer};
 <span class="kw">use </span>nom::{error::context, sequence::tuple, IResult, Parser};
-<span class="kw">use </span>std::collections::{BTreeMap, VecDeque};
+<span class="kw">use </span>std::collections::{BTreeMap, HashSet, VecDeque};
 <span class="kw">use </span>std::ops::Bound::{Excluded, Included};
 <span class="kw">use </span>tracing::{debug, info};
 
-<span class="doccomment">/// Represents a final state `(ledger, async pool, executed_ops and the state of the PoS)`
+<span class="doccomment">/// Represents a final state `(ledger, async pool, executed_ops, processed_de and the state of the PoS)`
 </span><span class="kw">pub struct </span>FinalState {
     <span class="doccomment">/// execution state configuration
     </span><span class="kw">pub</span>(<span class="kw">crate</span>) config: FinalStateConfig,
@@ -951,6 +996,8 @@
     </span><span class="kw">pub </span>pos_state: PoSFinalState,
     <span class="doccomment">/// executed operations
     </span><span class="kw">pub </span>executed_ops: ExecutedOps,
+    <span class="doccomment">/// executed denunciations
+    </span><span class="kw">pub </span>executed_denunciations: ExecutedDenunciations,
     <span class="doccomment">/// history of recent final state changes, useful for streaming bootstrap
     /// `front = oldest`, `back = newest`
     </span><span class="kw">pub </span>changes_history: VecDeque&lt;(Slot, StateChanges)&gt;,
@@ -996,6 +1043,10 @@
         <span class="comment">// create a default executed ops
         </span><span class="kw">let </span>executed_ops = ExecutedOps::new(config.executed_ops_config.clone());
 
+        <span class="comment">// create a default processed denunciations
+        </span><span class="kw">let </span>processed_denunciations =
+            ExecutedDenunciations::new(config.executed_denunciations_config.clone());
+
         <span class="comment">// create the final state
         </span><span class="prelude-val">Ok</span>(FinalState {
             slot,
@@ -1004,6 +1055,7 @@
             pos_state,
             config,
             executed_ops,
+            executed_denunciations: processed_denunciations,
             changes_history: Default::default(), <span class="comment">// no changes in history
             </span>final_state_hash: Hash::from_bytes(FINAL_STATE_HASH_INITIAL_BYTES),
             last_start_period: <span class="number">0</span>,
@@ -1275,6 +1327,7 @@
         <span class="self">self</span>.async_pool.reset();
         <span class="self">self</span>.pos_state.reset();
         <span class="self">self</span>.executed_ops.reset();
+        <span class="self">self</span>.executed_denunciations.reset();
         <span class="self">self</span>.changes_history.clear();
         <span class="comment">// reset the final state hash
         </span><span class="self">self</span>.final_state_hash = Hash::from_bytes(FINAL_STATE_HASH_INITIAL_BYTES);
@@ -1307,7 +1360,9 @@
         }
         <span class="comment">// 5. executed operations hash
         </span>hash_concat.extend(<span class="self">self</span>.executed_ops.hash.to_bytes());
-        <span class="comment">// 6. compute and save final state hash
+        <span class="comment">// 6. processed denunciations hash
+        </span>hash_concat.extend(<span class="self">self</span>.executed_denunciations.hash.to_bytes());
+        <span class="comment">// 7. compute and save final state hash
         </span><span class="self">self</span>.final_state_hash = Hash::compute_from(<span class="kw-2">&amp;</span>hash_concat);
 
         <span class="macro">info!</span>(
@@ -1351,6 +1406,8 @@
         // bootstrap again instead
         </span><span class="self">self</span>.executed_ops
             .apply_changes(changes.executed_ops_changes.clone(), <span class="self">self</span>.slot);
+        <span class="self">self</span>.executed_denunciations
+            .apply_changes(changes.executed_denunciations_changes.clone(), <span class="self">self</span>.slot);
 
         <span class="kw">let </span><span class="kw-2">mut </span>final_state_data = <span class="prelude-val">None</span>;
 
@@ -1427,6 +1484,7 @@
     /// * executed ops change if main bootstrap process is finished
     ///
     /// Produces an error when the `slot` is too old for `self.changes_history`
+    </span><span class="attr">#[allow(clippy::too_many_arguments)]
     </span><span class="kw">pub fn </span>get_state_changes_part(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         slot: Slot,
@@ -1435,6 +1493,7 @@
         cycle_step: StreamingStep&lt;u64&gt;,
         credits_step: StreamingStep&lt;Slot&gt;,
         ops_step: StreamingStep&lt;Slot&gt;,
+        de_step: StreamingStep&lt;Slot&gt;,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;Vec&lt;(Slot, StateChanges)&gt;, FinalStateError&gt; {
         <span class="kw">let </span>position_slot = <span class="kw">if let </span><span class="prelude-val">Some</span>((first_slot, <span class="kw">_</span>)) = <span class="self">self</span>.changes_history.front() {
             <span class="comment">// Safe because we checked that there is changes just above.
@@ -1551,6 +1610,10 @@
             </span><span class="kw">if </span>ops_step.finished() {
                 slot_changes.executed_ops_changes = changes.executed_ops_changes.clone();
             }
+            <span class="kw">if </span>de_step.finished() {
+                slot_changes.executed_denunciations_changes =
+                    changes.executed_denunciations_changes.clone();
+            }
 
             <span class="comment">// Push the slot changes
             </span>res_changes.push((<span class="kw-2">*</span>slot, slot_changes));
@@ -1565,6 +1628,7 @@
     cycle_history_serializer: CycleHistorySerializer,
     deferred_credits_serializer: DeferredCreditsSerializer,
     executed_ops_serializer: ExecutedOpsSerializer,
+    processed_denunciations_serializer: ProcessedDenunciationsSerializer,
     slot_serializer: SlotSerializer,
 }
 
@@ -1581,6 +1645,7 @@
             cycle_history: value.pos_state.cycle_history,
             deferred_credits: value.pos_state.deferred_credits,
             sorted_ops: value.executed_ops.sorted_ops,
+            sorted_denunciations: value.executed_denunciations.sorted_denunciations,
             latest_consistent_slot: value.slot,
             final_state_hash_from_snapshot: value.final_state_hash,
         }
@@ -1595,6 +1660,7 @@
             cycle_history_serializer: CycleHistorySerializer::new(),
             deferred_credits_serializer: DeferredCreditsSerializer::new(),
             executed_ops_serializer: ExecutedOpsSerializer::new(),
+            processed_denunciations_serializer: ProcessedDenunciationsSerializer::new(),
             slot_serializer: SlotSerializer::new(),
         }
     }
@@ -1615,6 +1681,9 @@
         <span class="comment">// Serialize Executed Ops
         </span><span class="self">self</span>.executed_ops_serializer
             .serialize(<span class="kw-2">&amp;</span>value.sorted_ops, buffer)<span class="question-mark">?</span>;
+        <span class="comment">// Serialize Processed Denunciations
+        </span><span class="self">self</span>.processed_denunciations_serializer
+            .serialize(<span class="kw-2">&amp;</span>value.sorted_denunciations, buffer)<span class="question-mark">?</span>;
 
         <span class="comment">// Serialize metadata
         </span><span class="self">self</span>.slot_serializer
@@ -1631,6 +1700,7 @@
     cycle_history: VecDeque&lt;CycleInfo&gt;,
     deferred_credits: DeferredCredits,
     sorted_ops: BTreeMap&lt;Slot, PreHashSet&lt;OperationId&gt;&gt;,
+    sorted_denunciations: BTreeMap&lt;Slot, HashSet&lt;DenunciationIndex&gt;&gt;,
     latest_consistent_slot: Slot,
     <span class="attr">#[allow(dead_code)]
     </span>final_state_hash_from_snapshot: Hash,
@@ -1642,6 +1712,7 @@
     cycle_history_deser: CycleHistoryDeserializer,
     deferred_credits_deser: DeferredCreditsDeserializer,
     executed_ops_deser: ExecutedOpsDeserializer,
+    processed_denunciations_deser: ProcessedDenunciationsDeserializer,
     slot_deser: SlotDeserializer,
     hash_deser: HashDeserializer,
 }
@@ -1682,6 +1753,12 @@
                 max_executed_ops_length,
                 max_operations_per_block <span class="kw">as </span>u64,
             ),
+            processed_denunciations_deser: ProcessedDenunciationsDeserializer::new(
+                config.thread_count,
+                config.endorsement_count,
+                config.max_executed_denunciations_length,
+                config.max_denunciations_per_block_header <span class="kw">as </span>u64,
+            ),
             slot_deser: SlotDeserializer::new(
                 (Included(u64::MIN), Included(u64::MAX)),
                 (Included(<span class="number">0</span>), Excluded(config.thread_count)),
@@ -1710,6 +1787,9 @@
                 context(<span class="string">&quot;Failed executed_ops deserialization&quot;</span>, |input| {
                     <span class="self">self</span>.executed_ops_deser.deserialize(input)
                 }),
+                context(<span class="string">&quot;Failed processed_denunciations deserialization&quot;</span>, |input| {
+                    <span class="self">self</span>.processed_denunciations_deser.deserialize(input)
+                }),
                 context(<span class="string">&quot;Failed slot deserialization&quot;</span>, |input| {
                     <span class="self">self</span>.slot_deser.deserialize(input)
                 }),
@@ -1723,6 +1803,7 @@
                     cycle_history,
                     deferred_credits,
                     sorted_ops,
+                    sorted_denunciations,
                     latest_consistent_slot,
                     final_state_hash_from_snapshot,
                 )| FinalStateRaw {
@@ -1730,6 +1811,7 @@
                     cycle_history: cycle_history.into(),
                     deferred_credits,
                     sorted_ops,
+                    sorted_denunciations,
                     latest_consistent_slot,
                     final_state_hash_from_snapshot,
                 },
