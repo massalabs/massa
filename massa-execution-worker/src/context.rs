@@ -12,7 +12,7 @@ use crate::speculative_executed_ops::SpeculativeExecutedOps;
 use crate::speculative_ledger::SpeculativeLedger;
 use crate::vesting_manager::VestingManager;
 use crate::{active_history::ActiveHistory, speculative_roll_state::SpeculativeRollState};
-use massa_async_pool::{AsyncMessage, AsyncMessageId};
+use massa_async_pool::{AsyncMessage, AsyncPoolChanges};
 use massa_executed_ops::ExecutedOpsChanges;
 use massa_execution_exports::{
     EventStore, ExecutionConfig, ExecutionError, ExecutionOutput, ExecutionStackElement,
@@ -45,7 +45,7 @@ pub struct ExecutionContextSnapshot {
     pub ledger_changes: LedgerChanges,
 
     /// speculative asynchronous pool messages emitted so far in the context
-    pub async_pool_changes: Vec<(AsyncMessageId, AsyncMessage)>,
+    pub async_pool_changes: AsyncPoolChanges,
 
     /// speculative list of operations executed
     pub executed_ops: ExecutedOpsChanges,

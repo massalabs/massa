@@ -3,7 +3,10 @@ use std::{
     ops::Bound::Included,
 };
 
-use massa_ledger_exports::{Applicable, SetOrDelete};
+use massa_ledger_exports::{
+    Applicable, SetOrKeep, SetUpdateOrDelete, SetUpdateOrDeleteDeserializer,
+    SetUpdateOrDeleteSerializer,
+};
 use massa_serialization::{
     Deserializer, SerializeError, Serializer, U64VarIntDeserializer, U64VarIntSerializer,
 };
@@ -19,7 +22,10 @@ use serde::{Deserialize, Serialize};
 
 ///! This file provides structures representing changes to the asynchronous message pool
 use crate::{
-    message::{AsyncMessage, AsyncMessageId, AsyncMessageIdDeserializer, AsyncMessageIdSerializer},
+    message::{
+        AsyncMessage, AsyncMessageId, AsyncMessageIdDeserializer, AsyncMessageIdSerializer,
+        AsyncMessageUpdate, AsyncMessageUpdateDeserializer, AsyncMessageUpdateSerializer,
+    },
     AsyncMessageDeserializer, AsyncMessageSerializer,
 };
 
@@ -46,7 +52,9 @@ enum ChangeId {
 /// represents a list of additions and deletions to the asynchronous message pool
 #[derive(Default, Debug, Clone, PartialEq, Eq, Deserialize, Serialize)]
 //pub struct AsyncPoolChanges(pub Vec<Change<AsyncMessageId, AsyncMessage>>);
-pub struct AsyncPoolChanges(pub BTreeMap<AsyncMessageId, SetOrDelete<AsyncMessage>>);
+pub struct AsyncPoolChanges(
+    pub BTreeMap<AsyncMessageId, SetUpdateOrDelete<AsyncMessage, AsyncMessageUpdate>>,
+);
 
 impl Applicable<AsyncPoolChanges> for AsyncPoolChanges {
     /// extends the current `AsyncPoolChanges` with another one
@@ -70,7 +78,12 @@ impl Applicable<AsyncPoolChanges> for AsyncPoolChanges {
 pub struct AsyncPoolChangesSerializer {
     u64_serializer: U64VarIntSerializer,
     id_serializer: AsyncMessageIdSerializer,
-    message_serializer: AsyncMessageSerializer,
+    set_update_or_delete_message_serializer: SetUpdateOrDeleteSerializer<
+        AsyncMessage,
+        AsyncMessageUpdate,
+        AsyncMessageSerializer,
+        AsyncMessageUpdateSerializer,
+    >,
 }
 
 impl AsyncPoolChangesSerializer {
@@ -78,7 +91,10 @@ impl AsyncPoolChangesSerializer {
         Self {
             u64_serializer: U64VarIntSerializer::new(),
             id_serializer: AsyncMessageIdSerializer::new(),
-            message_serializer: AsyncMessageSerializer::new(false),
+            set_update_or_delete_message_serializer: SetUpdateOrDeleteSerializer::new(
+                AsyncMessageSerializer::new(false),
+                AsyncMessageUpdateSerializer::new(false),
+            ),
         }
     }
 }
@@ -129,19 +145,10 @@ impl Serializer<AsyncPoolChanges> for AsyncPoolChangesSerializer {
             })?),
             buffer,
         )?;
-        for change in &value.0 {
-            match change {
-                (id, SetOrDelete::Set(message)) => {
-                    buffer.push(0);
-                    self.id_serializer.serialize(id, buffer)?;
-                    self.message_serializer.serialize(message, buffer)?;
-                }
-
-                (id, SetOrDelete::Delete) => {
-                    buffer.push(1);
-                    self.id_serializer.serialize(id, buffer)?;
-                }
-            }
+        for (id, change) in &value.0 {
+            self.id_serializer.serialize(id, buffer)?;
+            self.set_update_or_delete_message_serializer
+                .serialize(change, buffer)?;
         }
         Ok(())
     }
@@ -150,7 +157,12 @@ impl Serializer<AsyncPoolChanges> for AsyncPoolChangesSerializer {
 pub struct AsyncPoolChangesDeserializer {
     async_pool_changes_length: U64VarIntDeserializer,
     id_deserializer: AsyncMessageIdDeserializer,
-    message_deserializer: AsyncMessageDeserializer,
+    set_update_or_delete_message_deserializer: SetUpdateOrDeleteDeserializer<
+        AsyncMessage,
+        AsyncMessageUpdate,
+        AsyncMessageDeserializer,
+        AsyncMessageUpdateDeserializer,
+    >,
 }
 
 impl AsyncPoolChangesDeserializer {
@@ -166,11 +178,19 @@ impl AsyncPoolChangesDeserializer {
                 Included(max_async_pool_changes),
             ),
             id_deserializer: AsyncMessageIdDeserializer::new(thread_count),
-            message_deserializer: AsyncMessageDeserializer::new(
-                thread_count,
-                max_async_message_data,
-                max_key_length,
-                false,
+            set_update_or_delete_message_deserializer: SetUpdateOrDeleteDeserializer::new(
+                AsyncMessageDeserializer::new(
+                    thread_count,
+                    max_async_message_data,
+                    max_key_length,
+                    false,
+                ),
+                AsyncMessageUpdateDeserializer::new(
+                    thread_count,
+                    max_async_message_data,
+                    max_key_length,
+                    false,
+                ),
             ),
         }
     }
@@ -222,36 +242,19 @@ impl Deserializer<AsyncPoolChanges> for AsyncPoolChangesDeserializer {
                 context("Failed length deserialization", |input| {
                     self.async_pool_changes_length.deserialize(input)
                 }),
-                |input: &'a [u8]| match input.first() {
-                    Some(0) => context(
-                        "Failed SetOrDelete::Set deserialization",
-                        tuple((
-                            context("Failed id deserialization", |input| {
-                                self.id_deserializer.deserialize(input)
-                            }),
-                            context("Failed message deserialization", |input| {
-                                self.message_deserializer.deserialize(input)
-                            }),
-                        )),
-                    )
-                    .map(|(id, message)| (id, SetOrDelete::Set(message)))
-                    .parse(&input[1..]),
-                    Some(1) => context(
-                        "Failed SetOrDelete::Delete deserialization",
+                |input: &'a [u8]| {
+                    tuple((
                         context("Failed id deserialization", |input| {
                             self.id_deserializer.deserialize(input)
                         }),
-                    )
-                    .map(|id| (id, SetOrDelete::Delete))
-                    .parse(&input[1..]),
-                    Some(_) => Err(nom::Err::Error(ParseError::from_error_kind(
-                        buffer,
-                        nom::error::ErrorKind::Digit,
-                    ))),
-                    None => Err(nom::Err::Error(ParseError::from_error_kind(
-                        buffer,
-                        nom::error::ErrorKind::LengthValue,
-                    ))),
+                        context(
+                            "Failed set_update_or_delete_message deserialization",
+                            |input| {
+                                self.set_update_or_delete_message_deserializer
+                                    .deserialize(input)
+                            },
+                        ),
+                    ))(input)
                 },
             ),
         )
@@ -276,7 +279,7 @@ impl AsyncPoolChanges {
     /// * `msg`: message to push as added to the list of changes
     pub fn push_add(&mut self, msg_id: AsyncMessageId, msg: AsyncMessage) {
         let mut change = AsyncPoolChanges::default();
-        change.0.insert(msg_id, SetOrDelete::Set(msg));
+        change.0.insert(msg_id, SetUpdateOrDelete::Set(msg));
         self.apply(change);
     }
 
@@ -287,7 +290,7 @@ impl AsyncPoolChanges {
     /// * `msg_id`: ID of the message to push as deleted to the list of changes
     pub fn push_delete(&mut self, msg_id: AsyncMessageId) {
         let mut change = AsyncPoolChanges::default();
-        change.0.insert(msg_id, SetOrDelete::Delete);
+        change.0.insert(msg_id, SetUpdateOrDelete::Delete);
         self.apply(change);
     }
 
@@ -295,11 +298,17 @@ impl AsyncPoolChanges {
     ///
     /// Arguments:
     /// * `msg_id`: ID of the message to push as ready to be executed to the list of changes
-    pub fn push_activate(&mut self, msg_id: AsyncMessageId, prev_message: AsyncMessage) {
+    pub fn push_activate(&mut self, msg_id: AsyncMessageId) {
         let mut change = AsyncPoolChanges::default();
-        let mut new_message = prev_message;
-        new_message.can_be_executed = true;
-        change.0.insert(msg_id, SetOrDelete::Set(new_message));
+
+        let msg_update = AsyncMessageUpdate {
+            can_be_executed: SetOrKeep::Set(true),
+            ..Default::default()
+        };
+
+        change
+            .0
+            .insert(msg_id, SetUpdateOrDelete::Update(msg_update));
         self.apply(change);
     }
 }

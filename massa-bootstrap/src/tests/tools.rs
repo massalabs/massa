@@ -16,7 +16,7 @@ use massa_executed_ops::{ExecutedOps, ExecutedOpsConfig};
 use massa_final_state::test_exports::create_final_state;
 use massa_final_state::{FinalState, FinalStateConfig};
 use massa_hash::Hash;
-use massa_ledger_exports::{LedgerChanges, LedgerEntry, SetOrDelete, SetUpdateOrDelete};
+use massa_ledger_exports::{LedgerChanges, LedgerEntry, SetUpdateOrDelete};
 use massa_ledger_worker::test_exports::create_final_ledger;
 use massa_models::block::BlockDeserializerArgs;
 use massa_models::bytecode::Bytecode;
@@ -198,14 +198,14 @@ pub fn get_random_async_pool_changes(r_limit: u64, thread_count: u8) -> AsyncPoo
         let message = get_random_message(Some(Amount::from_str("10").unwrap()), thread_count);
         changes
             .0
-            .insert(message.compute_id(), SetOrDelete::Set(message));
+            .insert(message.compute_id(), SetUpdateOrDelete::Set(message));
     }
     for _ in (r_limit / 2)..r_limit {
         let message =
             get_random_message(Some(Amount::from_str("1_000_000").unwrap()), thread_count);
         changes
             .0
-            .insert(message.compute_id(), SetOrDelete::Set(message));
+            .insert(message.compute_id(), SetUpdateOrDelete::Set(message));
     }
     changes
 }
@@ -254,7 +254,7 @@ pub fn get_random_final_state_bootstrap(
         let message = get_random_message(None, config.thread_count);
         messages
             .0
-            .insert(message.compute_id(), SetOrDelete::Set(message));
+            .insert(message.compute_id(), SetUpdateOrDelete::Set(message));
     }
     for _ in 0..r_limit {
         sorted_ledger.insert(get_random_address(), get_random_ledger_entry());

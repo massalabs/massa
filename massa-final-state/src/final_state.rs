@@ -880,7 +880,7 @@ mod tests {
 
     use crate::StateChanges;
     use massa_async_pool::test_exports::get_random_message;
-    use massa_ledger_exports::{SetOrDelete, SetUpdateOrDelete};
+    use massa_ledger_exports::SetUpdateOrDelete;
     use massa_models::{address::Address, config::THREAD_COUNT, slot::Slot};
     use massa_signature::KeyPair;
 
@@ -911,7 +911,7 @@ mod tests {
         state_changes
             .async_pool_changes
             .0
-            .insert(message.compute_id(), SetOrDelete::Set(message));
+            .insert(message.compute_id(), SetUpdateOrDelete::Set(message));
         history_state_changes.push_front((Slot::new(3, 0), state_changes));
         let mut state_changes = StateChanges::default();
         state_changes

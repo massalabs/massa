@@ -4,43 +4,26 @@
 //! the pool at an arbitrary execution slot.
 
 use crate::active_history::{ActiveHistory, HistorySearchResult::Present};
-use massa_async_pool::{AsyncMessage, AsyncMessageId, AsyncMessageTrigger, AsyncPoolChanges};
+use massa_async_pool::{
+    AsyncMessage, AsyncMessageId, AsyncMessageInfo, AsyncMessageTrigger, AsyncMessageUpdate,
+    AsyncPoolChanges,
+};
 use massa_final_state::FinalState;
-use massa_ledger_exports::LedgerChanges;
+use massa_ledger_exports::{Applicable, LedgerChanges, SetUpdateOrDelete};
 use massa_models::slot::Slot;
 use parking_lot::RwLock;
-use std::{collections::BTreeMap, sync::Arc};
+use std::{
+    collections::{BTreeMap, HashMap},
+    sync::Arc,
+};
 
 pub(crate) struct SpeculativeAsyncPool {
     final_state: Arc<RwLock<FinalState>>,
     active_history: Arc<RwLock<ActiveHistory>>,
-    // newly emitted messages
-    emitted: Vec<(AsyncMessageId, AsyncMessage)>,
     // current speculative pool changes
     pool_changes: AsyncPoolChanges,
     // Used to know which messages we want to take
     message_infos: BTreeMap<AsyncMessageId, AsyncMessageInfo>,
-}
-
-#[derive(Clone, Debug, Eq, PartialEq)]
-pub struct AsyncMessageInfo {
-    pub validity_start: Slot,
-    pub validity_end: Slot,
-    pub max_gas: u64,
-    pub can_be_executed: bool,
-    pub trigger: Option<AsyncMessageTrigger>,
-}
-
-impl From<AsyncMessage> for AsyncMessageInfo {
-    fn from(value: AsyncMessage) -> Self {
-        Self {
-            validity_start: value.validity_start,
-            validity_end: value.validity_end,
-            max_gas: value.max_gas,
-            can_be_executed: value.can_be_executed,
-            trigger: value.trigger,
-        }
-    }
 }
 
 impl SpeculativeAsyncPool {
@@ -51,12 +34,33 @@ impl SpeculativeAsyncPool {
         final_state: Arc<RwLock<FinalState>>,
         active_history: Arc<RwLock<ActiveHistory>>,
     ) -> Self {
+        let mut message_infos = final_state.read().async_pool.message_info_cache.clone();
+
+        for history_item in active_history.read().0.iter() {
+            for change in history_item.state_changes.async_pool_changes.0.iter() {
+                match change {
+                    (id, SetUpdateOrDelete::Set(message)) => {
+                        message_infos.insert(*id, AsyncMessageInfo::from(message.clone()));
+                    }
+
+                    (id, SetUpdateOrDelete::Update(message_update)) => {
+                        message_infos.entry(*id).and_modify(|message_info| {
+                            message_info.apply(message_update.clone());
+                        });
+                    }
+
+                    (id, SetUpdateOrDelete::Delete) => {
+                        message_infos.remove(id);
+                    }
+                }
+            }
+        }
+
         SpeculativeAsyncPool {
             final_state,
             active_history,
-            emitted: Default::default(),
             pool_changes: Default::default(),
-            message_infos: Default::default(),
+            message_infos,
         }
     }
 
@@ -68,18 +72,20 @@ impl SpeculativeAsyncPool {
     }
 
     /// Takes a snapshot (clone) of the emitted messages
-    pub fn get_snapshot(&self) -> Vec<(AsyncMessageId, AsyncMessage)> {
-        self.emitted.clone()
+    pub fn get_snapshot(&self) -> AsyncPoolChanges {
+        self.pool_changes.clone()
     }
 
     /// Resets the `SpeculativeAsyncPool` emitted messages to a snapshot (see `get_snapshot` method)
-    pub fn reset_to_snapshot(&mut self, snapshot: Vec<(AsyncMessageId, AsyncMessage)>) {
-        self.emitted = snapshot;
+    pub fn reset_to_snapshot(&mut self, snapshot: AsyncPoolChanges) {
+        self.pool_changes = snapshot;
     }
 
     /// Add a new message to the list of changes of this `SpeculativeAsyncPool`
     pub fn push_new_message(&mut self, msg: AsyncMessage) {
-        self.emitted.push((msg.compute_id(), msg));
+        println!("NEW MESSAGE ADDED TO POOL CHANGES: {:?}", msg);
+        self.pool_changes.push_add(msg.compute_id(), msg.clone());
+        self.message_infos.insert(msg.compute_id(), msg.into());
     }
 
     /// Takes a batch of asynchronous messages to execute,
@@ -105,6 +111,10 @@ impl SpeculativeAsyncPool {
 
         let message_infos = self.message_infos.clone();
 
+        if !message_infos.is_empty() {
+            println!("message_infos LEN IN TAKE BATCH: {:?}", message_infos.len());
+        }
+
         for (message_id, message_info) in message_infos.iter() {
             if available_gas >= message_info.max_gas
                 && slot >= message_info.validity_start
@@ -121,6 +131,10 @@ impl SpeculativeAsyncPool {
 
         for (message_id, _) in taken.iter() {
             self.message_infos.remove(message_id);
+        }
+
+        if !taken.is_empty() {
+            println!("TAKEN LEN: {:?}", taken.len());
         }
 
         taken
@@ -144,15 +158,43 @@ impl SpeculativeAsyncPool {
         // Filter out all messages for which the validity end is expired.
         // Note that the validity_end bound is NOT included in the validity interval of the message.
 
+        if !self.pool_changes.0.is_empty() {
+            println!("pool_changes LEN: {:?}", self.pool_changes.0.len());
+            println!("pool_changes: {:?}", self.pool_changes.0);
+        }
+        if !self.message_infos.is_empty() {
+            println!("message_infos LEN: {:?}", self.message_infos.len());
+            println!("message_infos: {:?}", self.message_infos);
+        }
+
         let mut eliminated_infos: Vec<_> = self
             .message_infos
             .drain_filter(|_k, v| *slot >= v.validity_end)
             .collect();
 
-        let eliminated_new_messages = self.emitted.drain_filter(|(_k, v)| *slot >= v.validity_end);
+        let eliminated_new_messages: Vec<_> = self
+            .pool_changes
+            .0
+            .drain_filter(|_k, v| match v {
+                SetUpdateOrDelete::Set(v) => *slot >= v.validity_end,
+                SetUpdateOrDelete::Update(_v) => false,
+                SetUpdateOrDelete::Delete => false,
+            })
+            .collect();
 
-        eliminated_infos
-            .extend(eliminated_new_messages.map(|(k, v)| (k, AsyncMessageInfo::from(v))));
+        if !eliminated_new_messages.is_empty() {
+            println!(
+                "eliminated_new_messages LEN: {:?}",
+                eliminated_new_messages.len()
+            );
+            println!("eliminated_new_messages: {:?}", eliminated_new_messages);
+        }
+
+        eliminated_infos.extend(eliminated_new_messages.iter().filter_map(|(k, v)| match v {
+            SetUpdateOrDelete::Set(v) => Some((*k, AsyncMessageInfo::from(v.clone()))),
+            SetUpdateOrDelete::Update(_v) => None,
+            SetUpdateOrDelete::Delete => None,
+        }));
 
         // Truncate message pool to its max size, removing non-prioritary items
         let excess_count = self
@@ -165,77 +207,50 @@ impl SpeculativeAsyncPool {
             eliminated_infos.push(self.message_infos.pop_last().unwrap()); // will not panic (checked at excess_count computation)
         }
 
+        if !eliminated_new_messages.is_empty() {
+            println!(
+                "eliminated_new_messages LEN: {:?}",
+                eliminated_new_messages.len()
+            );
+            println!("eliminated_new_messages: {:?}", eliminated_new_messages);
+        }
+
         // Activate the messages that can be activated (triggered)
         let mut triggered_info = Vec::new();
         for (id, message_info) in self.message_infos.iter_mut() {
-            if let Some(filter) = &message_info.trigger && !message_info.can_be_executed && is_triggered(filter, ledger_changes)
+            if let Some(filter) = &message_info.trigger /*&& !message_info.can_be_executed*/ && is_triggered(filter, ledger_changes)
             {
                 message_info.can_be_executed = true;
                 triggered_info.push((*id, message_info.clone()));
             }
         }
 
-        for (msg_id, msg) in std::mem::take(&mut self.emitted) {
-            self.pool_changes.push_add(msg_id, msg);
-        }
-
         // Query triggered messages
         let triggered_msg =
-            self.fetch_msgs(eliminated_infos.iter().map(|(id, _)| id).collect(), false);
+            self.fetch_msgs(triggered_info.iter().map(|(id, _)| id).collect(), false);
 
-        for (msg_id, msg) in triggered_msg.iter() {
-            self.pool_changes.push_activate(*msg_id, msg.clone());
+        for (msg_id, _msg) in triggered_msg.iter() {
+            self.pool_changes.push_activate(*msg_id);
+        }
+
+        if !triggered_msg.is_empty() {
+            println!("triggered_msg LEN: {:?}", triggered_msg.len());
+        }
+
+        if !triggered_info.is_empty() {
+            println!("triggered_info LEN: {:?}", triggered_info.len());
         }
 
         // Query eliminated messages
         let eliminated_msg =
             self.fetch_msgs(eliminated_infos.iter().map(|(id, _)| id).collect(), true);
 
+        if !self.message_infos.is_empty() {
+            println!("message_infos LEN END : {:?}", self.message_infos.len());
+            println!("message_infos END: {:?}", self.message_infos);
+        }
+
         eliminated_msg
-
-        /*
-        let (deleted_messages, triggered_messages) =
-        self.async_pool
-            .settle_slot(slot, &mut self.emitted, ledger_changes);*/
-
-        /*let mut eliminated: Vec<_> = self
-            .messages
-            .drain_filter(|_k, v| *slot >= v.validity_end)
-            .chain(self.emitted.drain_filter(|(_k, v)| *slot >= v.validity_end))
-            .collect();
-
-        // Insert new messages into the pool
-        self.messages.extend(new_messages.clone());
-
-        // Truncate message pool to its max size, removing non-prioritary items
-        let excess_count = self
-            .messages
-            .len()
-            .saturating_sub(self.config.max_length as usize);
-        eliminated.reserve_exact(excess_count);
-        for _ in 0..excess_count {
-            eliminated.push(self.messages.pop_last().unwrap()); // will not panic (checked at excess_count computation)
-        }
-        let mut triggered = Vec::new();
-        for (id, message) in self.messages.iter_mut() {
-            if let Some(filter) = &message.trigger && !message.can_be_executed && is_triggered(filter, ledger_changes)
-            {
-                message.can_be_executed = true;
-                triggered.push((*id, message.clone()));
-            }
-        }
-
-        for (msg_id, msg) in std::mem::take(&mut self.emitted) {
-            self.pool_changes.push_add(msg_id, msg);
-        }
-
-        for (msg_id, _msg) in deleted_messages.iter() {
-            self.pool_changes.push_delete(*msg_id);
-        }
-        for (msg_id, msg) in triggered_messages.iter() {
-            self.pool_changes.push_activate(*msg_id, msg);
-        }
-        deleted_messages*/
     }
 
     fn fetch_msgs(
@@ -245,28 +260,55 @@ impl SpeculativeAsyncPool {
     ) -> Vec<(AsyncMessageId, AsyncMessage)> {
         let mut msgs = Vec::new();
 
+        let mut current_changes = HashMap::new();
+        for id in wanted_ids.iter() {
+            current_changes.insert(*id, AsyncMessageUpdate::default());
+        }
+
+        let pool_changes_clone = self.pool_changes.clone();
+
         // First, look in speculative pool
-        wanted_ids.drain_filter(|&mut message_id| {
-            for (id, msg) in self.emitted.iter() {
-                if id == message_id {
+        wanted_ids.drain_filter(
+            |&mut message_id| match pool_changes_clone.0.get(message_id) {
+                Some(SetUpdateOrDelete::Set(msg)) => {
                     if delete_existing {
                         self.pool_changes.push_delete(*message_id);
                     }
                     msgs.push((*message_id, msg.clone()));
-                    return true;
+                    true
                 }
-            }
-            false
-        });
+                Some(SetUpdateOrDelete::Update(msg_update)) => {
+                    current_changes.entry(message_id).and_modify(|e| {
+                        e.apply(msg_update.clone());
+                    });
+                    false
+                }
+                Some(SetUpdateOrDelete::Delete) => false,
+                None => false,
+            },
+        );
 
         // Then, search the active history
         wanted_ids.drain_filter(|&mut message_id| {
-            if let Present(msg) = self.active_history.read().fetch_message(message_id) {
-                if delete_existing {
-                    self.pool_changes.push_delete(*message_id);
+            match self.active_history.read().fetch_message(
+                message_id,
+                current_changes.get(message_id).cloned().unwrap_or_default(),
+            ) {
+                Present(SetUpdateOrDelete::Set(mut msg)) => {
+                    msg.apply(current_changes.get(message_id).cloned().unwrap_or_default());
+                    if delete_existing {
+                        self.pool_changes.push_delete(*message_id);
+                    }
+                    msgs.push((*message_id, msg));
+                    return true;
                 }
-                msgs.push((*message_id, msg));
-                return true;
+                Present(SetUpdateOrDelete::Update(msg_update)) => {
+                    current_changes.entry(message_id).and_modify(|e| {
+                        e.apply(msg_update.clone());
+                    });
+                    return false;
+                }
+                _ => {}
             }
             false
         });
@@ -280,6 +322,8 @@ impl SpeculativeAsyncPool {
 
         for (message_id, message) in fetched_msgs {
             if let Some(msg) = message {
+                let mut msg = msg.clone();
+                msg.apply(current_changes.get(message_id).cloned().unwrap_or_default());
                 if delete_existing {
                     self.pool_changes.push_delete(*message_id);
                 }
@@ -290,40 +334,6 @@ impl SpeculativeAsyncPool {
         msgs
     }
 }
-
-/*
-
-// Filter out all messages for which the validity end is expired.
-        // Note that the validity_end bound is NOT included in the validity interval of the message.
-        let mut eliminated: Vec<_> = self
-            .messages
-            .drain_filter(|_k, v| *slot >= v.validity_end)
-            .chain(new_messages.drain_filter(|(_k, v)| *slot >= v.validity_end))
-            .collect();
-
-        // Insert new messages into the pool
-        self.messages.extend(new_messages.clone());
-
-        // Truncate message pool to its max size, removing non-prioritary items
-        let excess_count = self
-            .messages
-            .len()
-            .saturating_sub(self.config.max_length as usize);
-        eliminated.reserve_exact(excess_count);
-        for _ in 0..excess_count {
-            eliminated.push(self.messages.pop_last().unwrap()); // will not panic (checked at excess_count computation)
-        }
-        let mut triggered = Vec::new();
-        for (id, message) in self.messages.iter_mut() {
-            if let Some(filter) = &message.trigger && !message.can_be_executed && is_triggered(filter, ledger_changes)
-            {
-                message.can_be_executed = true;
-                triggered.push((*id, message.clone()));
-            }
-        }
-        (eliminated, triggered)
-
- */
 
 /// Check in the ledger changes if a message trigger has been triggered
 fn is_triggered(filter: &AsyncMessageTrigger, ledger_changes: &LedgerChanges) -> bool {

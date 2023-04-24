@@ -1,7 +1,7 @@
-use massa_async_pool::{AsyncMessage, AsyncMessageId};
+use massa_async_pool::{AsyncMessage, AsyncMessageId, AsyncMessageUpdate};
 use massa_execution_exports::ExecutionOutput;
 use massa_ledger_exports::{
-    LedgerEntry, LedgerEntryUpdate, SetOrDelete, SetOrKeep, SetUpdateOrDelete,
+    Applicable, LedgerEntry, LedgerEntryUpdate, SetOrDelete, SetOrKeep, SetUpdateOrDelete,
 };
 use massa_models::{
     address::Address, amount::Amount, bytecode::Bytecode, operation::OperationId, slot::Slot,
@@ -63,7 +63,11 @@ impl ActiveHistory {
     /// Lazily query (from end to beginning) the a message based on its id
     ///
     /// Returns a `HistorySearchResult`.
-    pub fn fetch_message(&self, message_id: &AsyncMessageId) -> HistorySearchResult<AsyncMessage> {
+    pub fn fetch_message(
+        &self,
+        message_id: &AsyncMessageId,
+        mut current_updates: AsyncMessageUpdate,
+    ) -> HistorySearchResult<SetUpdateOrDelete<AsyncMessage, AsyncMessageUpdate>> {
         for history_element in self.0.iter().rev() {
             match history_element
                 .state_changes
@@ -71,12 +75,20 @@ impl ActiveHistory {
                 .0
                 .get(message_id)
             {
-                Some(SetOrDelete::Set(msg)) => return HistorySearchResult::Present(msg.clone()),
-                Some(SetOrDelete::Delete) => return HistorySearchResult::Absent,
+                Some(SetUpdateOrDelete::Set(msg)) => {
+                    let mut msg = msg.clone();
+                    msg.apply(current_updates);
+                    return HistorySearchResult::Present(SetUpdateOrDelete::Set(msg));
+                }
+                Some(SetUpdateOrDelete::Update(msg_update)) => {
+                    current_updates.apply(msg_update.clone());
+                }
+                Some(SetUpdateOrDelete::Delete) => return HistorySearchResult::Absent,
                 _ => (),
             }
         }
-        HistorySearchResult::NoInfo
+
+        HistorySearchResult::Present(SetUpdateOrDelete::Update(current_updates))
     }
 
     /// Lazily query (from end to beginning) the active balance of an address after a given index.

@@ -5,7 +5,7 @@
 use crate::{
     changes::AsyncPoolChanges,
     config::AsyncPoolConfig,
-    message::{AsyncMessage, AsyncMessageId},
+    message::{AsyncMessage, AsyncMessageId, AsyncMessageInfo, AsyncMessageUpdate},
     AsyncMessageDeserializer, AsyncMessageIdDeserializer, AsyncMessageIdSerializer,
     AsyncMessageSerializer, AsyncMessageTrigger,
 };
@@ -15,7 +15,7 @@ use massa_db::{
     MESSAGE_ID_SER_ERROR, MESSAGE_SER_ERROR, METADATA_CF, WRONG_BATCH_TYPE_ERROR,
 };
 use massa_hash::Hash;
-use massa_ledger_exports::{LedgerChanges, SetOrDelete};
+use massa_ledger_exports::{Applicable, LedgerChanges, SetUpdateOrDelete};
 use massa_models::{slot::Slot, streaming_step::StreamingStep};
 use massa_serialization::{
     DeserializeError, Deserializer, SerializeError, Serializer, U64VarIntDeserializer,
@@ -40,6 +40,7 @@ pub struct AsyncPool {
     /// Asynchronous pool configuration
     pub config: AsyncPoolConfig,
     pub db: Arc<RwLock<DB>>,
+    pub message_info_cache: BTreeMap<AsyncMessageId, AsyncMessageInfo>,
     message_id_serializer: AsyncMessageIdSerializer,
     message_serializer: AsyncMessageSerializer,
     message_id_deserializer: AsyncMessageIdDeserializer,
@@ -49,9 +50,10 @@ pub struct AsyncPool {
 impl AsyncPool {
     /// Creates an empty `AsyncPool`
     pub fn new(config: AsyncPoolConfig, db: Arc<RwLock<DB>>) -> AsyncPool {
-        AsyncPool {
+        let mut async_pool = AsyncPool {
             config: config.clone(),
             db,
+            message_info_cache: Default::default(),
             message_id_serializer: AsyncMessageIdSerializer::new(),
             message_serializer: AsyncMessageSerializer::new(true),
             message_id_deserializer: AsyncMessageIdDeserializer::new(config.thread_count),
@@ -61,6 +63,30 @@ impl AsyncPool {
                 config.max_key_length,
                 true,
             ),
+        };
+        async_pool.recompute_message_info_cache();
+        async_pool
+    }
+
+    pub fn recompute_message_info_cache(&mut self) {
+        self.message_info_cache.clear();
+
+        let db = self.db.read();
+        let handle = db.cf_handle(ASYNC_POOL_CF).expect(CF_ERROR);
+
+        for (serialized_message_id, serialized_message) in
+            db.iterator_cf(handle, IteratorMode::Start).flatten()
+        {
+            let (_, message_id) = self
+                .message_id_deserializer
+                .deserialize::<DeserializeError>(&serialized_message_id)
+                .expect(MESSAGE_ID_DESER_ERROR);
+            let (_, message) = self
+                .message_deserializer_db
+                .deserialize::<DeserializeError>(&serialized_message)
+                .expect(MESSAGE_DESER_ERROR);
+
+            self.message_info_cache.insert(message_id, message.into());
         }
     }
 
@@ -68,15 +94,18 @@ impl AsyncPool {
     ///
     /// USED ONLY FOR BOOTSTRAP
     pub fn reset(&mut self) {
-        let mut db = self.db.write();
-        (*db)
-            .drop_cf(ASYNC_POOL_CF)
-            .expect("Error dropping async_pool cf");
-        let mut db_opts = Options::default();
-        db_opts.set_error_if_exists(true);
-        (*db)
-            .create_cf(ASYNC_POOL_CF, &db_opts)
-            .expect("Error creating async_pool cf");
+        {
+            let mut db = self.db.write();
+            (*db)
+                .drop_cf(ASYNC_POOL_CF)
+                .expect("Error dropping async_pool cf");
+            let mut db_opts = Options::default();
+            db_opts.set_error_if_exists(true);
+            (*db)
+                .create_cf(ASYNC_POOL_CF, &db_opts)
+                .expect("Error creating async_pool cf");
+        }
+        self.recompute_message_info_cache();
     }
 
     /// Applies pre-compiled `AsyncPoolChanges` to the pool without checking for overflows.
@@ -87,11 +116,15 @@ impl AsyncPool {
     pub fn apply_changes_to_batch(&self, changes: &AsyncPoolChanges, batch: &mut DBBatch) {
         for change in changes.0.iter() {
             match change {
-                (id, SetOrDelete::Set(message)) => {
+                (id, SetUpdateOrDelete::Set(message)) => {
                     self.put_entry(id, message.clone(), batch);
                 }
 
-                (id, SetOrDelete::Delete) => {
+                (id, SetUpdateOrDelete::Update(message_update)) => {
+                    self.update_entry(id, message_update.clone(), batch);
+                }
+
+                (id, SetUpdateOrDelete::Delete) => {
                     self.delete_entry(id, batch);
                 }
             }
@@ -582,6 +615,58 @@ impl AsyncPool {
         batch
             .write_batch
             .put_cf(handle, serialized_message_id, serialized_message);
+    }
+
+    /// Update the ledger entry of a given address.
+    ///
+    /// # Arguments
+    /// * `entry_update`: a descriptor of the entry updates to be applied
+    /// * `batch`: the given operation batch to update
+    fn update_entry(
+        &self,
+        message_id: &AsyncMessageId,
+        message_update: AsyncMessageUpdate,
+        batch: &mut DBBatch,
+    ) {
+        let db = self.db.read();
+
+        let handle = db.cf_handle(ASYNC_POOL_CF).expect(CF_ERROR);
+        let mut serialized_message_id = Vec::new();
+        self.message_id_serializer
+            .serialize(message_id, &mut serialized_message_id)
+            .expect(MESSAGE_ID_SER_ERROR);
+
+        if let Some(prev_bytes) = db.get_cf(handle, &serialized_message_id).expect(CRUD_ERROR) {
+            *batch
+                .async_pool_hash
+                .as_mut()
+                .expect(WRONG_BATCH_TYPE_ERROR) ^=
+                Hash::compute_from(&[&serialized_message_id, &prev_bytes[..]].concat());
+
+            let (_rest, mut message) = self
+                .message_deserializer_db
+                .deserialize::<DeserializeError>(&prev_bytes)
+                .expect(MESSAGE_DESER_ERROR);
+
+            message.apply(message_update);
+
+            let mut serialized_message = Vec::new();
+            self.message_serializer
+                .serialize(&message, &mut serialized_message)
+                .expect(MESSAGE_SER_ERROR);
+
+            let hash = Hash::compute_from(
+                &[serialized_message_id.clone(), serialized_message.clone()].concat(),
+            );
+            *batch
+                .async_pool_hash
+                .as_mut()
+                .expect(WRONG_BATCH_TYPE_ERROR) ^= hash;
+            batch.aeh_list.insert(serialized_message_id.clone(), hash);
+            batch
+                .write_batch
+                .put_cf(handle, serialized_message_id, serialized_message.clone());
+        }
     }
 
     /// Update the ledger entry of a given address.
