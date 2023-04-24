@@ -20,9 +20,10 @@
 that supports more than 10'000 transactions per second in a fully decentralized network with thousands of nodes. A short
 introduction video is available [here](https://www.youtube.com/watch?v=NUUFhvd7ulY).
 
-Massa's purpose is to make it easy to deploy fully decentralized applications. To achieve this purpose, Massa is the
-first blockchain to provide [autonomous smart contracts](https://docs.massa.net/en/latest/general-doc/autonomous-sc.html)
-and native [front-end hosting](https://docs.massa.net/en/latest/general-doc/decentralized-web.html).
+Massa's purpose is to make it easy to deploy fully decentralized applications. We've developed two key technologies that
+are exclusive to Massa to help make this possible:
+[autonomous smart contracts](https://docs.massa.net/en/latest/general-doc/autonomous-sc.html) and native
+[front-end hosting](https://docs.massa.net/en/latest/general-doc/decentralized-web.html).
 
 Here is a list of tools to easily build applications on the Massa blockchain:
 
@@ -36,18 +37,20 @@ Here is a list of tools to easily build applications on the Massa blockchain:
 
 ## Join the Testnet
 
-As decentralization is our core value, we would like to help you start
-and run a Massa node. You'll find a full tutorial on how to run a node on the testnet
-[here](https://docs.massa.net/en/latest/testnet/install.html#testnet-install).
 
-Running a node during the testnet phase also helps
-us find bugs and improve usability, so it will be rewarded with real
-Massa on mainnet launch.
+With decentralization as a core value, we've gone to great lengths to lower the barrier of entry for community
+participation in our community testnet, and we
+[invite you to join in](https://docs.massa.net/en/latest/testnet/install.html#testnet-install), and register for the
+testnet participation reward program.
+
+Your participation will help improve decentralization, usability, and network reliability leading up to, and following,
+the launch of mainnet.
 
 ## Community
 
-If you have any questions regarding the project or wish to discuss technical aspects in more depth, feel free to reach
-out to us in our community channels:
+We have active community discussions on several platforms, and we invite you to join the conversations. If you wish to
+go into some depth about technical aspects, speak with people working in the ecosystem full-time, or just have a chat
+with other like-minded people, these can be good places to start:
 
 - [Discord](https://discord.com/invite/massa)
 - [Telegram](https://t.me/massanetwork)
@@ -55,8 +58,9 @@ out to us in our community channels:
 
 ## Contributing
 
-We welcome contributions from community members. If you’d like to work on some issue, don’t hesitate to ask questions
-and we’ll try to help you as soon as possible.
+We welcome contributions from the community at large, from anywhere between seasoned OSS contributors, to those hoping
+to try it for the first time.
 
-Issues tagged as "good first issue" are a great place to start. If you are unsure with how and where to start, feel free
-to reach out to us on the [Discord](https://discord.com/invite/massa) discord.
+If you would like some help to get started, reach out to us on our community [Discord](https://discord.com/invite/massa)
+server. If you're comfortable enough to get started on you're own, check out our
+[good first issue](https://github.com/massalabs/massa/labels/good%20first%20issue) label.
