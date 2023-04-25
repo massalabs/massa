@@ -98,8 +98,7 @@ pub fn start_connectivity_thread(
             let mut peer_management_handler = PeerManagementHandler::new(
                 initial_peers,
                 peer_db,
-                sender_msg,
-                receiver_msg,
+                (sender_msg, receiver_msg),
                 manager.active_connections.clone(),
                 &config,
             );

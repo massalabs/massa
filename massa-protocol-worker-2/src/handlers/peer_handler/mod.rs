@@ -59,8 +59,7 @@ impl PeerManagementHandler {
     pub fn new(
         initial_peers: InitialPeers,
         peer_db: SharedPeerDB,
-        sender_msg: Sender<PeerMessageTuple>,
-        receiver_msg: Receiver<PeerMessageTuple>,
+        (sender_msg, receiver_msg): (Sender<PeerMessageTuple>, Receiver<PeerMessageTuple>),
         active_connections: SharedActiveConnections,
         config: &ProtocolConfig,
     ) -> Self {
