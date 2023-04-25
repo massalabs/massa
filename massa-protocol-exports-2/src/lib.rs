@@ -7,4 +7,4 @@ pub use error::ProtocolError;
 pub use settings::ProtocolConfig;
 
 #[cfg(feature = "testing")]
-mod test_exports;
+pub mod test_exports;

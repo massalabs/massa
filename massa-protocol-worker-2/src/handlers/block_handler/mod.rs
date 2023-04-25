@@ -22,6 +22,9 @@ mod retrieval;
 
 pub(crate) use messages::{BlockMessage, BlockMessageSerializer};
 
+#[cfg(feature = "testing")]
+pub use messages::{BlockMessageDeserializer, BlockMessageDeserializerArgs};
+
 use super::{
     endorsement_handler::cache::SharedEndorsementCache,
     operation_handler::cache::SharedOperationCache,
