@@ -1,14 +1,15 @@
-use std::{collections::HashMap, net::SocketAddr, sync::Arc, thread::JoinHandle, time::Duration};
+use std::{collections::HashMap, net::SocketAddr, thread::JoinHandle, time::Duration};
 
+use crossbeam::channel::tick;
 use crossbeam::{
     channel::{Receiver, Sender},
     select,
 };
 use massa_protocol_exports_2::ProtocolConfig;
 use massa_serialization::{DeserializeError, Deserializer, Serializer};
-use parking_lot::RwLock;
 use rand::{rngs::StdRng, RngCore, SeedableRng};
 
+use peernet::network_manager::SharedActiveConnections;
 use peernet::{
     error::{PeerNetError, PeerNetResult},
     messages::MessagesHandler as PeerNetMessagesHandler,
@@ -21,6 +22,7 @@ use peernet::{
 use tracing::log::{error, warn};
 
 use crate::handlers::peer_handler::models::PeerState;
+use crate::wrap_network::ActiveConnectionsTrait;
 
 use self::{
     models::{
@@ -55,19 +57,25 @@ pub struct PeerManagementHandler {
 }
 
 impl PeerManagementHandler {
-    pub fn new(initial_peers: InitialPeers, config: &ProtocolConfig) -> Self {
-        let (sender, receiver): (Sender<PeerMessageTuple>, Receiver<PeerMessageTuple>) =
-            crossbeam::channel::unbounded();
+    pub fn new(
+        initial_peers: InitialPeers,
+        peer_db: SharedPeerDB,
+        (sender_msg, receiver_msg): (Sender<PeerMessageTuple>, Receiver<PeerMessageTuple>),
+        active_connections: Box<dyn ActiveConnectionsTrait>,
+        config: &ProtocolConfig,
+    ) -> Self {
         let (sender_cmd, receiver_cmd): (Sender<PeerManagementCmd>, Receiver<PeerManagementCmd>) =
             crossbeam::channel::unbounded();
         let message_serializer = PeerManagementMessageSerializer::new();
-
-        let peer_db: SharedPeerDB = Arc::new(RwLock::new(Default::default()));
 
         let (test_sender, testers) = Tester::run(config, peer_db.clone());
 
         let thread_join = std::thread::spawn({
             let peer_db = peer_db.clone();
+            let ticker = tick(Duration::from_secs(10));
+
+            let message_serializer = crate::messages::MessagesSerializer::new()
+                .with_peer_management_message_serializer(PeerManagementMessageSerializer::new());
             let mut message_deserializer =
                 PeerManagementMessageDeserializer::new(PeerManagementMessageDeserializerArgs {
                     //TODO: Real config values
@@ -77,8 +85,23 @@ impl PeerManagementHandler {
             move || {
                 loop {
                     select! {
-                        // internal command
+                        recv(ticker) -> _ => {
+                            let peers_to_send = peer_db.read().get_rand_peers_to_send(100);
+                            if peers_to_send.is_empty() {
+                                continue;
+                            }
+
+                            let msg = PeerManagementMessage::ListPeers(peers_to_send);
+
+                            for peer_id in &active_connections.get_peer_ids_connected() {
+                               if let Err(e) = active_connections
+                                    .send_to_peer(&peer_id, &message_serializer, msg.clone().into(), false) {
+                                    error!("error sending ListPeers message to peer: {:?}", e);
+                               }
+                            }
+                        }
                         recv(receiver_cmd) -> cmd => {
+                            // internal command
                            match cmd {
                              Ok(PeerManagementCmd::Ban(peer_id)) => {
 
@@ -97,7 +120,7 @@ impl PeerManagementHandler {
                             }
                            }
                         },
-                        recv(receiver) -> msg => {
+                        recv(receiver_msg) -> msg => {
                             let (peer_id, message_id, message) = match msg {
                                 Ok((peer_id, message_id, message)) => (peer_id, message_id, message),
                                 Err(_) => {
@@ -147,14 +170,14 @@ impl PeerManagementHandler {
                     &mut message,
                 )
                 .unwrap();
-            sender.send((peer_id.clone(), 0, message)).unwrap();
+            sender_msg.send((peer_id.clone(), 0, message)).unwrap();
         }
 
         Self {
             peer_db,
             thread_join: Some(thread_join),
             sender: PeerManagementChannel {
-                msg_sender: sender,
+                msg_sender: sender_msg,
                 command_sender: sender_cmd,
             },
             testers,

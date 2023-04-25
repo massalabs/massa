@@ -7,17 +7,22 @@ use massa_pool_exports::PoolController;
 use massa_protocol_exports_2::{ProtocolConfig, ProtocolError};
 use massa_storage::Storage;
 use parking_lot::RwLock;
-use peernet::transports::{OutConnectionConfig, TcpOutConnectionConfig};
+use peernet::peer_id::PeerId;
+use peernet::transports::{OutConnectionConfig, TcpOutConnectionConfig, TransportType};
+use std::collections::HashMap;
+use std::net::SocketAddr;
 use std::{num::NonZeroUsize, sync::Arc};
 use std::{thread::JoinHandle, time::Duration};
 
+use crate::handlers::peer_handler::models::{PeerManagementCmd, SharedPeerDB};
+use crate::handlers::peer_handler::PeerManagementHandler;
 use crate::{
     controller::ProtocolControllerImpl,
     handlers::{
         block_handler::{cache::BlockCache, BlockHandler},
         endorsement_handler::{cache::EndorsementCache, EndorsementHandler},
         operation_handler::{cache::OperationCache, OperationHandler},
-        peer_handler::{models::PeerMessageTuple, PeerManagementHandler},
+        peer_handler::models::PeerMessageTuple,
     },
     wrap_network::NetworkController,
 };
@@ -34,7 +39,8 @@ pub fn start_connectivity_thread(
     channel_blocks: (Sender<PeerMessageTuple>, Receiver<PeerMessageTuple>),
     channel_endorsements: (Sender<PeerMessageTuple>, Receiver<PeerMessageTuple>),
     channel_operations: (Sender<PeerMessageTuple>, Receiver<PeerMessageTuple>),
-    mut peer_management_handler: PeerManagementHandler,
+    channel_peers: (Sender<PeerMessageTuple>, Receiver<PeerMessageTuple>),
+    peer_db: SharedPeerDB,
     storage: Storage,
 ) -> Result<
     (
@@ -43,6 +49,9 @@ pub fn start_connectivity_thread(
     ),
     ProtocolError,
 > {
+    let initial_peers = serde_json::from_str::<HashMap<PeerId, HashMap<SocketAddr, TransportType>>>(
+        &std::fs::read_to_string(&config.initial_peers)?,
+    )?;
     let (sender, receiver) = unbounded();
     //TODO: Bound the channel
     // Channels handlers <-> outside world
@@ -85,6 +94,14 @@ pub fn start_connectivity_thread(
             )));
 
             // Start handlers
+            let mut peer_management_handler = PeerManagementHandler::new(
+                initial_peers,
+                peer_db,
+                channel_peers,
+                network_controller.get_active_connections(),
+                &config,
+            );
+
             let mut operation_handler = OperationHandler::new(
                 pool_controller.clone(),
                 storage.clone_without_refs(),
