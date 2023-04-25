@@ -1170,7 +1170,6 @@
 <a href="#1170" id="1170">1170</a>
 <a href="#1171" id="1171">1171</a>
 <a href="#1172" id="1172">1172</a>
-<a href="#1173" id="1173">1173</a>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="attr">#![doc = <span class="macro">include_str!</span>(<span class="string">&quot;../../README.md&quot;</span>)]
@@ -1186,8 +1185,8 @@
 <span class="kw">use </span>massa_api_exports::config::APIConfig;
 <span class="kw">use </span>massa_async_pool::AsyncPoolConfig;
 <span class="kw">use </span>massa_bootstrap::{
-    get_state, start_bootstrap_server, BootstrapConfig, BootstrapManager, BootstrapTcpListener,
-    DefaultConnector,
+    get_state, start_bootstrap_server, BootstrapConfig, BootstrapManager, DefaultConnector,
+    DefaultListener,
 };
 <span class="kw">use </span>massa_consensus_exports::events::ConsensusEvent;
 <span class="kw">use </span>massa_consensus_exports::{ConsensusChannels, ConsensusConfig, ConsensusManager};
@@ -1817,23 +1816,22 @@
     };
     <span class="kw">let </span>factory_manager = start_factory(factory_config, node_wallet.clone(), factory_channels);
 
-    <span class="kw">let </span>bootstrap_manager = bootstrap_config.listen_addr.map(|addr| {
-        <span class="kw">let </span>(waker, listener) = BootstrapTcpListener::new(addr)
-            .expect(<span class="macro">format!</span>(<span class="string">&quot;Could not bind to address: {}&quot;</span>, addr).as_str());
-        <span class="kw">let </span><span class="kw-2">mut </span>manager = start_bootstrap_server(
-            listener,
+    <span class="comment">// launch bootstrap server
+    // TODO: use std::net::TcpStream
+    </span><span class="kw">let </span>bootstrap_manager = <span class="kw">match </span>bootstrap_config.listen_addr {
+        <span class="prelude-val">Some</span>(addr) =&gt; start_bootstrap_server(
             consensus_controller.clone(),
             network_command_sender.clone(),
             final_state.clone(),
             bootstrap_config,
+            DefaultListener::new(<span class="kw-2">&amp;</span>addr).unwrap(),
             private_key,
             <span class="kw-2">*</span>VERSION,
             mip_store.clone(),
         )
-        .expect(<span class="string">&quot;Could not start bootstrap server&quot;</span>);
-        manager.set_listener_stopper(waker);
-        manager
-    });
+        .unwrap(),
+        <span class="prelude-val">None </span>=&gt; <span class="prelude-val">None</span>,
+    };
 
     <span class="kw">let </span>api_config: APIConfig = APIConfig {
         bind_private: SETTINGS.api.bind_private,
