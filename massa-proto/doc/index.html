@@ -271,6 +271,26 @@
                 </li>
               
                 <li>
+                  <a href="#massa.api.v1.GetScExecutionEventsContext"><span class="badge">M</span>GetScExecutionEventsContext</a>
+                </li>
+              
+                <li>
+                  <a href="#massa.api.v1.GetScExecutionEventsFilter"><span class="badge">M</span>GetScExecutionEventsFilter</a>
+                </li>
+              
+                <li>
+                  <a href="#massa.api.v1.GetScExecutionEventsQuery"><span class="badge">M</span>GetScExecutionEventsQuery</a>
+                </li>
+              
+                <li>
+                  <a href="#massa.api.v1.GetScExecutionEventsRequest"><span class="badge">M</span>GetScExecutionEventsRequest</a>
+                </li>
+              
+                <li>
+                  <a href="#massa.api.v1.GetScExecutionEventsResponse"><span class="badge">M</span>GetScExecutionEventsResponse</a>
+                </li>
+              
+                <li>
                   <a href="#massa.api.v1.GetSelectorDrawsRequest"><span class="badge">M</span>GetSelectorDrawsRequest</a>
                 </li>
               
@@ -367,6 +387,14 @@
                 </li>
               
                 <li>
+                  <a href="#massa.api.v1.ScExecutionEventContext"><span class="badge">M</span>ScExecutionEventContext</a>
+                </li>
+              
+                <li>
+                  <a href="#massa.api.v1.ScExecutionEventWrapper"><span class="badge">M</span>ScExecutionEventWrapper</a>
+                </li>
+              
+                <li>
                   <a href="#massa.api.v1.SelectorDraws"><span class="badge">M</span>SelectorDraws</a>
                 </li>
               
@@ -413,6 +441,10 @@
               
                 <li>
                   <a href="#massa.api.v1.OpType"><span class="badge">E</span>OpType</a>
+                </li>
+              
+                <li>
+                  <a href="#massa.api.v1.ScExecutionEventStatus"><span class="badge">E</span>ScExecutionEventStatus</a>
                 </li>
               
               
@@ -1258,6 +1290,182 @@
 
         
       
+        <h3 id="massa.api.v1.GetScExecutionEventsContext">GetScExecutionEventsContext</h3>
+        <p>ScExecutionEvents context</p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>slot</td>
+                  <td><a href="#massa.api.v1.Slot">Slot</a></td>
+                  <td></td>
+                  <td><p>Slot </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
+        <h3 id="massa.api.v1.GetScExecutionEventsFilter">GetScExecutionEventsFilter</h3>
+        <p>GetScExecutionEvents Filter</p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>start_slot</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p>Start slot </p></td>
+                </tr>
+              
+                <tr>
+                  <td>end_slot</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p>End slot </p></td>
+                </tr>
+              
+                <tr>
+                  <td>caller_address</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p>Caller address </p></td>
+                </tr>
+              
+                <tr>
+                  <td>emitter_address</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p>Emitter address </p></td>
+                </tr>
+              
+                <tr>
+                  <td>original_operation_id</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p>Original operation id </p></td>
+                </tr>
+              
+                <tr>
+                  <td>status</td>
+                  <td><a href="#massa.api.v1.ScExecutionEventStatus">ScExecutionEventStatus</a></td>
+                  <td>repeated</td>
+                  <td><p>Status </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
+        <h3 id="massa.api.v1.GetScExecutionEventsQuery">GetScExecutionEventsQuery</h3>
+        <p>GetScExecutionEvents Query</p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>filter</td>
+                  <td><a href="#massa.api.v1.GetScExecutionEventsFilter">GetScExecutionEventsFilter</a></td>
+                  <td></td>
+                  <td><p>Filter </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
+        <h3 id="massa.api.v1.GetScExecutionEventsRequest">GetScExecutionEventsRequest</h3>
+        <p>GetScExecutionEventsRequest holds request for GetScExecutionEvents</p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>id</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p>Request id </p></td>
+                </tr>
+              
+                <tr>
+                  <td>queries</td>
+                  <td><a href="#massa.api.v1.GetScExecutionEventsQuery">GetScExecutionEventsQuery</a></td>
+                  <td>repeated</td>
+                  <td><p>Queries </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
+        <h3 id="massa.api.v1.GetScExecutionEventsResponse">GetScExecutionEventsResponse</h3>
+        <p>GetScExecutionEventsResponse holds response from GetScExecutionEvents</p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>id</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p>Request id </p></td>
+                </tr>
+              
+                <tr>
+                  <td>context</td>
+                  <td><a href="#massa.api.v1.GetScExecutionEventsContext">GetScExecutionEventsContext</a></td>
+                  <td></td>
+                  <td><p>Context </p></td>
+                </tr>
+              
+                <tr>
+                  <td>events</td>
+                  <td><a href="#massa.api.v1.ScExecutionEventWrapper">ScExecutionEventWrapper</a></td>
+                  <td>repeated</td>
+                  <td><p>ScExecutionEvents wrappers </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
         <h3 id="massa.api.v1.GetSelectorDrawsRequest">GetSelectorDrawsRequest</h3>
         <p>GetSelectorDrawsRequest holds request from GetSelectorDraws</p>
 
@@ -1932,6 +2140,96 @@
 
         
       
+        <h3 id="massa.api.v1.ScExecutionEventContext">ScExecutionEventContext</h3>
+        <p>ScExecutionEvent context</p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>origin_slot</td>
+                  <td><a href="#massa.api.v1.Slot">Slot</a></td>
+                  <td></td>
+                  <td><p>When was it generated </p></td>
+                </tr>
+              
+                <tr>
+                  <td>block_id</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p>Block id if there was a block at that slot </p></td>
+                </tr>
+              
+                <tr>
+                  <td>index_in_slot</td>
+                  <td><a href="#fixed64">fixed64</a></td>
+                  <td></td>
+                  <td><p>Index of the event in the slot </p></td>
+                </tr>
+              
+                <tr>
+                  <td>call_stack</td>
+                  <td><a href="#string">string</a></td>
+                  <td>repeated</td>
+                  <td><p>Call stack addresses. most recent at the end </p></td>
+                </tr>
+              
+                <tr>
+                  <td>origin_operation_id</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p>Origin operation id </p></td>
+                </tr>
+              
+                <tr>
+                  <td>status</td>
+                  <td><a href="#massa.api.v1.ScExecutionEventStatus">ScExecutionEventStatus</a></td>
+                  <td>repeated</td>
+                  <td><p>Status </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
+        <h3 id="massa.api.v1.ScExecutionEventWrapper">ScExecutionEventWrapper</h3>
+        <p>ScExecutionEvent wrapper</p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>context</td>
+                  <td><a href="#massa.api.v1.ScExecutionEventContext">ScExecutionEventContext</a></td>
+                  <td></td>
+                  <td><p>Sc execution context </p></td>
+                </tr>
+              
+                <tr>
+                  <td>data</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p>json data string </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
         <h3 id="massa.api.v1.SelectorDraws">SelectorDraws</h3>
         <p>Selector draws</p>
 
@@ -2336,6 +2634,41 @@
           </tbody>
         </table>
       
+        <h3 id="massa.api.v1.ScExecutionEventStatus">ScExecutionEventStatus</h3>
+        <p>ScExecutionEventStatus type enum</p>
+        <table class="enum-table">
+          <thead>
+            <tr><td>Name</td><td>Number</td><td>Description</td></tr>
+          </thead>
+          <tbody>
+            
+              <tr>
+                <td>SC_EXECUTION_EVENT_STATUS_UNSPECIFIED</td>
+                <td>0</td>
+                <td><p>Defaut enum value</p></td>
+              </tr>
+            
+              <tr>
+                <td>SC_EXECUTION_EVENT_STATUS_FINAL</td>
+                <td>1</td>
+                <td><p>Final status</p></td>
+              </tr>
+            
+              <tr>
+                <td>SC_EXECUTION_EVENT_STATUS_READ_ONLY</td>
+                <td>2</td>
+                <td><p>Read only status</p></td>
+              </tr>
+            
+              <tr>
+                <td>SC_EXECUTION_EVENT_STATUS_FAILURE</td>
+                <td>3</td>
+                <td><p>Failure status</p></td>
+              </tr>
+            
+          </tbody>
+        </table>
+      
 
       
 
@@ -2388,6 +2721,13 @@
                 <td><a href="#massa.api.v1.GetOperationsRequest">GetOperationsRequest</a></td>
                 <td><a href="#massa.api.v1.GetOperationsResponse">GetOperationsResponse</a></td>
                 <td><p>Get operations</p></td>
+              </tr>
+            
+              <tr>
+                <td>GetScExecutionEvents</td>
+                <td><a href="#massa.api.v1.GetScExecutionEventsRequest">GetScExecutionEventsRequest</a></td>
+                <td><a href="#massa.api.v1.GetScExecutionEventsResponse">GetScExecutionEventsResponse</a></td>
+                <td><p>Get smart contracts execution events</p></td>
               </tr>
             
               <tr>
@@ -2548,6 +2888,16 @@
                 <td>GetOperations</td>
                 <td>POST</td>
                 <td>/v1/get_operations</td>
+                <td>*</td>
+              </tr>
+              
+            
+              
+              
+              <tr>
+                <td>GetScExecutionEvents</td>
+                <td>POST</td>
+                <td>/v1/get_sc_execution_events</td>
                 <td>*</td>
               </tr>
               

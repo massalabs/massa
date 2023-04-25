@@ -491,6 +491,39 @@ pub(crate) fn get_operations(
     })
 }
 
+//TODO: to be implemented
+/// Get smart contract execution events
+pub(crate) fn get_sc_execution_events(
+    grpc: &MassaGrpc,
+    request: tonic::Request<grpc::GetScExecutionEventsRequest>,
+) -> Result<grpc::GetScExecutionEventsResponse, GrpcError> {
+    let inner_req: grpc::GetScExecutionEventsRequest = request.into_inner();
+    let id = inner_req.id;
+
+    // Get the current slot.
+    let now: MassaTime = MassaTime::now()?;
+    let current_slot = get_latest_block_slot_at_timestamp(
+        grpc.grpc_config.thread_count,
+        grpc.grpc_config.t0,
+        grpc.grpc_config.genesis_timestamp,
+        now,
+    )?
+    .unwrap_or_else(|| Slot::new(0, 0));
+
+    // Create the context for the response.
+    let context = Some(grpc::GetScExecutionEventsContext {
+        slot: Some(current_slot.into()),
+    });
+
+    let events = Vec::new();
+
+    Ok(grpc::GetScExecutionEventsResponse {
+        id,
+        context,
+        events,
+    })
+}
+
 //  Get selector draws
 pub(crate) fn get_selector_draws(
     grpc: &MassaGrpc,
