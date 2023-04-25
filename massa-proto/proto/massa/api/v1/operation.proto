@@ -101,11 +101,12 @@ message SignedOperation {
 
 // Possible statuses for an operation
 enum OperationStatus {
-  PENDING = 0;  // The operation is still pending
-  FINAL = 1;  // The operation is final
-  SUCCESS = 2;  // The operation was executed successfully
-  FAILURE = 3;  // The operation failed to execute
-  UNKNOWN = 4;  // The status of the operation is unknown
+  OPERATION_STATUS_UNSPECIFIED = 0;  // Defaut enum value
+  OPERATION_STATUS_PENDING = 1;  // The operation is still pending
+  OPERATION_STATUS_FINAL = 2;  // The operation is final
+  OPERATION_STATUS_SUCCESS = 3;  // The operation was executed successfully
+  OPERATION_STATUS_FAILURE = 4;  // The operation failed to execute
+  OPERATION_STATUS_UNKNOWN = 5;  // The status of the operation is unknown
 }
 
 // A wrapper around an operation with its metadata

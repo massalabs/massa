@@ -6,12 +6,17 @@
 - [api.proto](#api-proto)
     - [BlockParent](#massa-api-v1-BlockParent)
     - [BlockResult](#massa-api-v1-BlockResult)
+    - [BlocksContext](#massa-api-v1-BlocksContext)
     - [DatastoreEntriesQuery](#massa-api-v1-DatastoreEntriesQuery)
     - [DatastoreEntry](#massa-api-v1-DatastoreEntry)
     - [DatastoreEntryFilter](#massa-api-v1-DatastoreEntryFilter)
     - [EndorsementResult](#massa-api-v1-EndorsementResult)
     - [GetBlocksBySlotsRequest](#massa-api-v1-GetBlocksBySlotsRequest)
     - [GetBlocksBySlotsResponse](#massa-api-v1-GetBlocksBySlotsResponse)
+    - [GetBlocksFilter](#massa-api-v1-GetBlocksFilter)
+    - [GetBlocksQuery](#massa-api-v1-GetBlocksQuery)
+    - [GetBlocksRequest](#massa-api-v1-GetBlocksRequest)
+    - [GetBlocksResponse](#massa-api-v1-GetBlocksResponse)
     - [GetDatastoreEntriesRequest](#massa-api-v1-GetDatastoreEntriesRequest)
     - [GetDatastoreEntriesResponse](#massa-api-v1-GetDatastoreEntriesResponse)
     - [GetLargestStakersRequest](#massa-api-v1-GetLargestStakersRequest)
@@ -65,10 +70,13 @@
 - [block.proto](#block-proto)
     - [Block](#massa-api-v1-Block)
     - [BlockHeader](#massa-api-v1-BlockHeader)
+    - [BlockWrapper](#massa-api-v1-BlockWrapper)
     - [FilledBlock](#massa-api-v1-FilledBlock)
     - [FilledOperationTuple](#massa-api-v1-FilledOperationTuple)
     - [SignedBlock](#massa-api-v1-SignedBlock)
     - [SignedBlockHeader](#massa-api-v1-SignedBlockHeader)
+  
+    - [BlockStatus](#massa-api-v1-BlockStatus)
   
 - [common.proto](#common-proto)
     - [BytesMapFieldEntry](#massa-api-v1-BytesMapFieldEntry)
@@ -131,6 +139,21 @@ Holds Block response
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | block_id | [string](#string) |  | Block id |
+
+
+
+
+
+
+<a name="massa-api-v1-BlocksContext"></a>
+
+### BlocksContext
+Blocks context
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| slot | [Slot](#massa-api-v1-Slot) |  | Slot |
 
 
 
@@ -225,6 +248,69 @@ GetBlocksBySlotsResponse holds response from GetBlocksBySlots
 | ----- | ---- | ----- | ----------- |
 | id | [string](#string) |  | Request id |
 | blocks | [Block](#massa-api-v1-Block) | repeated | Blocks |
+
+
+
+
+
+
+<a name="massa-api-v1-GetBlocksFilter"></a>
+
+### GetBlocksFilter
+GetBlocks Filter
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| id | [string](#string) |  | Block id |
+
+
+
+
+
+
+<a name="massa-api-v1-GetBlocksQuery"></a>
+
+### GetBlocksQuery
+GetBlocks Query
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| filter | [GetBlocksFilter](#massa-api-v1-GetBlocksFilter) |  | Filter |
+
+
+
+
+
+
+<a name="massa-api-v1-GetBlocksRequest"></a>
+
+### GetBlocksRequest
+GetBlocksRequest holds request for GetBlocks
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| id | [string](#string) |  | Request id |
+| queries | [GetBlocksQuery](#massa-api-v1-GetBlocksQuery) | repeated | Queries |
+
+
+
+
+
+
+<a name="massa-api-v1-GetBlocksResponse"></a>
+
+### GetBlocksResponse
+GetBlocksResponse holds response from GetBlocks
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| id | [string](#string) |  | Request id |
+| context | [BlocksContext](#massa-api-v1-BlocksContext) |  | Context |
+| blocks | [BlockWrapper](#massa-api-v1-BlockWrapper) | repeated | Blocks wrappers |
 
 
 
@@ -971,6 +1057,7 @@ Massa gRPC service
 
 | Method Name | Request Type | Response Type | Description |
 | ----------- | ------------ | ------------- | ------------|
+| GetBlocks | [GetBlocksRequest](#massa-api-v1-GetBlocksRequest) | [GetBlocksResponse](#massa-api-v1-GetBlocksResponse) | Get blocks by ids |
 | GetBlocksBySlots | [GetBlocksBySlotsRequest](#massa-api-v1-GetBlocksBySlotsRequest) | [GetBlocksBySlotsResponse](#massa-api-v1-GetBlocksBySlotsResponse) | Get blocks by slots |
 | GetDatastoreEntries | [GetDatastoreEntriesRequest](#massa-api-v1-GetDatastoreEntriesRequest) | [GetDatastoreEntriesResponse](#massa-api-v1-GetDatastoreEntriesResponse) | Get datastore entries |
 | GetLargestStakers | [GetLargestStakersRequest](#massa-api-v1-GetLargestStakersRequest) | [GetLargestStakersResponse](#massa-api-v1-GetLargestStakersResponse) | Get largest stakers |
@@ -1028,6 +1115,23 @@ Block header
 | parents | [string](#string) | repeated | parents |
 | operation_merkle_root | [string](#string) |  | All operations hash |
 | endorsements | [SignedEndorsement](#massa-api-v1-SignedEndorsement) | repeated | Signed endorsements |
+
+
+
+
+
+
+<a name="massa-api-v1-BlockWrapper"></a>
+
+### BlockWrapper
+A wrapper around a block with its metadata
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| id | [string](#string) |  | The unique ID of the block. |
+| block | [Block](#massa-api-v1-Block) |  | The block object itself |
+| status | [BlockStatus](#massa-api-v1-BlockStatus) | repeated | The execution statuses of the block |
 
 
 
@@ -1104,6 +1208,21 @@ Signed block header
 
 
  
+
+
+<a name="massa-api-v1-BlockStatus"></a>
+
+### BlockStatus
+Possible statuses for a block
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| BLOCK_STATUS_UNSPECIFIED | 0 | Defaut enum value |
+| BLOCK_STATUS_IN_BLOCKCLIQUE | 1 | The block is in the greatest clique (and not final) |
+| BLOCK_STATUS_FINAL | 2 | The block is final |
+| BLOCK_STATUS_CANDIDATE | 3 | The block is candidate (active any clique but not final) |
+| BLOCK_STATUS_DISCARDED | 4 | The block is discarded |
+
 
  
 
@@ -1389,11 +1508,12 @@ Possible statuses for an operation
 
 | Name | Number | Description |
 | ---- | ------ | ----------- |
-| PENDING | 0 | The operation is still pending |
-| FINAL | 1 | The operation is final |
-| SUCCESS | 2 | The operation was executed successfully |
-| FAILURE | 3 | The operation failed to execute |
-| UNKNOWN | 4 | The status of the operation is unknown |
+| OPERATION_STATUS_UNSPECIFIED | 0 | Defaut enum value |
+| OPERATION_STATUS_PENDING | 1 | The operation is still pending |
+| OPERATION_STATUS_FINAL | 2 | The operation is final |
+| OPERATION_STATUS_SUCCESS | 3 | The operation was executed successfully |
+| OPERATION_STATUS_FAILURE | 4 | The operation failed to execute |
+| OPERATION_STATUS_UNKNOWN | 5 | The status of the operation is unknown |
 
 
  

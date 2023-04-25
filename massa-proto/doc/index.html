@@ -187,6 +187,10 @@
                 </li>
               
                 <li>
+                  <a href="#massa.api.v1.BlocksContext"><span class="badge">M</span>BlocksContext</a>
+                </li>
+              
+                <li>
                   <a href="#massa.api.v1.DatastoreEntriesQuery"><span class="badge">M</span>DatastoreEntriesQuery</a>
                 </li>
               
@@ -208,6 +212,22 @@
               
                 <li>
                   <a href="#massa.api.v1.GetBlocksBySlotsResponse"><span class="badge">M</span>GetBlocksBySlotsResponse</a>
+                </li>
+              
+                <li>
+                  <a href="#massa.api.v1.GetBlocksFilter"><span class="badge">M</span>GetBlocksFilter</a>
+                </li>
+              
+                <li>
+                  <a href="#massa.api.v1.GetBlocksQuery"><span class="badge">M</span>GetBlocksQuery</a>
+                </li>
+              
+                <li>
+                  <a href="#massa.api.v1.GetBlocksRequest"><span class="badge">M</span>GetBlocksRequest</a>
+                </li>
+              
+                <li>
+                  <a href="#massa.api.v1.GetBlocksResponse"><span class="badge">M</span>GetBlocksResponse</a>
                 </li>
               
                 <li>
@@ -418,6 +438,10 @@
                 </li>
               
                 <li>
+                  <a href="#massa.api.v1.BlockWrapper"><span class="badge">M</span>BlockWrapper</a>
+                </li>
+              
+                <li>
                   <a href="#massa.api.v1.FilledBlock"><span class="badge">M</span>FilledBlock</a>
                 </li>
               
@@ -433,6 +457,10 @@
                   <a href="#massa.api.v1.SignedBlockHeader"><span class="badge">M</span>SignedBlockHeader</a>
                 </li>
               
+              
+                <li>
+                  <a href="#massa.api.v1.BlockStatus"><span class="badge">E</span>BlockStatus</a>
+                </li>
               
               
               
@@ -614,6 +642,30 @@
 
         
       
+        <h3 id="massa.api.v1.BlocksContext">BlocksContext</h3>
+        <p>Blocks context</p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>slot</td>
+                  <td><a href="#massa.api.v1.Slot">Slot</a></td>
+                  <td></td>
+                  <td><p>Slot </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
         <h3 id="massa.api.v1.DatastoreEntriesQuery">DatastoreEntriesQuery</h3>
         <p>DatastoreEntries Query</p>
 
@@ -777,6 +829,123 @@
                   <td><a href="#massa.api.v1.Block">Block</a></td>
                   <td>repeated</td>
                   <td><p>Blocks </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
+        <h3 id="massa.api.v1.GetBlocksFilter">GetBlocksFilter</h3>
+        <p>GetBlocks Filter</p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>id</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p>Block id </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
+        <h3 id="massa.api.v1.GetBlocksQuery">GetBlocksQuery</h3>
+        <p>GetBlocks Query</p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>filter</td>
+                  <td><a href="#massa.api.v1.GetBlocksFilter">GetBlocksFilter</a></td>
+                  <td></td>
+                  <td><p>Filter </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
+        <h3 id="massa.api.v1.GetBlocksRequest">GetBlocksRequest</h3>
+        <p>GetBlocksRequest holds request for GetBlocks</p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>id</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p>Request id </p></td>
+                </tr>
+              
+                <tr>
+                  <td>queries</td>
+                  <td><a href="#massa.api.v1.GetBlocksQuery">GetBlocksQuery</a></td>
+                  <td>repeated</td>
+                  <td><p>Queries </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
+        <h3 id="massa.api.v1.GetBlocksResponse">GetBlocksResponse</h3>
+        <p>GetBlocksResponse holds response from GetBlocks</p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>id</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p>Request id </p></td>
+                </tr>
+              
+                <tr>
+                  <td>context</td>
+                  <td><a href="#massa.api.v1.BlocksContext">BlocksContext</a></td>
+                  <td></td>
+                  <td><p>Context </p></td>
+                </tr>
+              
+                <tr>
+                  <td>blocks</td>
+                  <td><a href="#massa.api.v1.BlockWrapper">BlockWrapper</a></td>
+                  <td>repeated</td>
+                  <td><p>Blocks wrappers </p></td>
                 </tr>
               
             </tbody>
@@ -2180,6 +2349,13 @@
           <tbody>
             
               <tr>
+                <td>GetBlocks</td>
+                <td><a href="#massa.api.v1.GetBlocksRequest">GetBlocksRequest</a></td>
+                <td><a href="#massa.api.v1.GetBlocksResponse">GetBlocksResponse</a></td>
+                <td><p>Get blocks by ids</p></td>
+              </tr>
+            
+              <tr>
                 <td>GetBlocksBySlots</td>
                 <td><a href="#massa.api.v1.GetBlocksBySlotsRequest">GetBlocksBySlotsRequest</a></td>
                 <td><a href="#massa.api.v1.GetBlocksBySlotsResponse">GetBlocksBySlotsResponse</a></td>
@@ -2319,10 +2495,20 @@
               
               
               <tr>
+                <td>GetBlocks</td>
+                <td>POST</td>
+                <td>/v1/get_blocks</td>
+                <td>*</td>
+              </tr>
+              
+            
+              
+              
+              <tr>
                 <td>GetBlocksBySlots</td>
-                <td>GET</td>
+                <td>POST</td>
                 <td>/v1/get_blocks_by_slots</td>
-                <td></td>
+                <td>*</td>
               </tr>
               
             
@@ -2340,9 +2526,9 @@
               
               <tr>
                 <td>GetLargestStakers</td>
-                <td>GET</td>
+                <td>POST</td>
                 <td>/v1/get_largest_stakers</td>
-                <td></td>
+                <td>*</td>
               </tr>
               
             
@@ -2360,9 +2546,9 @@
               
               <tr>
                 <td>GetOperations</td>
-                <td>GET</td>
+                <td>POST</td>
                 <td>/v1/get_operations</td>
-                <td></td>
+                <td>*</td>
               </tr>
               
             
@@ -2475,6 +2661,44 @@
                   <td><a href="#massa.api.v1.SignedEndorsement">SignedEndorsement</a></td>
                   <td>repeated</td>
                   <td><p>Signed endorsements </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
+        <h3 id="massa.api.v1.BlockWrapper">BlockWrapper</h3>
+        <p>A wrapper around a block with its metadata</p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>id</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p>The unique ID of the block. </p></td>
+                </tr>
+              
+                <tr>
+                  <td>block</td>
+                  <td><a href="#massa.api.v1.Block">Block</a></td>
+                  <td></td>
+                  <td><p>The block object itself </p></td>
+                </tr>
+              
+                <tr>
+                  <td>status</td>
+                  <td><a href="#massa.api.v1.BlockStatus">BlockStatus</a></td>
+                  <td>repeated</td>
+                  <td><p>The execution statuses of the block </p></td>
                 </tr>
               
             </tbody>
@@ -2651,6 +2875,47 @@
         
       
 
+      
+        <h3 id="massa.api.v1.BlockStatus">BlockStatus</h3>
+        <p>Possible statuses for a block</p>
+        <table class="enum-table">
+          <thead>
+            <tr><td>Name</td><td>Number</td><td>Description</td></tr>
+          </thead>
+          <tbody>
+            
+              <tr>
+                <td>BLOCK_STATUS_UNSPECIFIED</td>
+                <td>0</td>
+                <td><p>Defaut enum value</p></td>
+              </tr>
+            
+              <tr>
+                <td>BLOCK_STATUS_IN_BLOCKCLIQUE</td>
+                <td>1</td>
+                <td><p>The block is in the greatest clique (and not final)</p></td>
+              </tr>
+            
+              <tr>
+                <td>BLOCK_STATUS_FINAL</td>
+                <td>2</td>
+                <td><p>The block is final</p></td>
+              </tr>
+            
+              <tr>
+                <td>BLOCK_STATUS_CANDIDATE</td>
+                <td>3</td>
+                <td><p>The block is candidate (active any clique but not final)</p></td>
+              </tr>
+            
+              <tr>
+                <td>BLOCK_STATUS_DISCARDED</td>
+                <td>4</td>
+                <td><p>The block is discarded</p></td>
+              </tr>
+            
+          </tbody>
+        </table>
       
 
       
@@ -3247,32 +3512,38 @@ This is the parent in thread `self.slot.thread` of the block in which the endors
           <tbody>
             
               <tr>
-                <td>PENDING</td>
+                <td>OPERATION_STATUS_UNSPECIFIED</td>
                 <td>0</td>
+                <td><p>Defaut enum value</p></td>
+              </tr>
+            
+              <tr>
+                <td>OPERATION_STATUS_PENDING</td>
+                <td>1</td>
                 <td><p>The operation is still pending</p></td>
               </tr>
             
               <tr>
-                <td>FINAL</td>
-                <td>1</td>
+                <td>OPERATION_STATUS_FINAL</td>
+                <td>2</td>
                 <td><p>The operation is final</p></td>
               </tr>
             
               <tr>
-                <td>SUCCESS</td>
-                <td>2</td>
+                <td>OPERATION_STATUS_SUCCESS</td>
+                <td>3</td>
                 <td><p>The operation was executed successfully</p></td>
               </tr>
             
               <tr>
-                <td>FAILURE</td>
-                <td>3</td>
+                <td>OPERATION_STATUS_FAILURE</td>
+                <td>4</td>
                 <td><p>The operation failed to execute</p></td>
               </tr>
             
               <tr>
-                <td>UNKNOWN</td>
-                <td>4</td>
+                <td>OPERATION_STATUS_UNKNOWN</td>
+                <td>5</td>
                 <td><p>The status of the operation is unknown</p></td>
               </tr>
             

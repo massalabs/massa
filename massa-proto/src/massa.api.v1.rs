@@ -228,16 +228,18 @@ pub struct OperationWrapper {
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, ::prost::Enumeration)]
 #[repr(i32)]
 pub enum OperationStatus {
+    /// Defaut enum value
+    Unspecified = 0,
     /// The operation is still pending
-    Pending = 0,
+    Pending = 1,
     /// The operation is final
-    Final = 1,
+    Final = 2,
     /// The operation was executed successfully
-    Success = 2,
+    Success = 3,
     /// The operation failed to execute
-    Failure = 3,
+    Failure = 4,
     /// The status of the operation is unknown
-    Unknown = 4,
+    Unknown = 5,
 }
 impl OperationStatus {
     /// String value of the enum field names used in the ProtoBuf definition.
@@ -246,21 +248,23 @@ impl OperationStatus {
     /// (if the ProtoBuf definition does not change) and safe for programmatic use.
     pub fn as_str_name(&self) -> &'static str {
         match self {
-            OperationStatus::Pending => "PENDING",
-            OperationStatus::Final => "FINAL",
-            OperationStatus::Success => "SUCCESS",
-            OperationStatus::Failure => "FAILURE",
-            OperationStatus::Unknown => "UNKNOWN",
+            OperationStatus::Unspecified => "OPERATION_STATUS_UNSPECIFIED",
+            OperationStatus::Pending => "OPERATION_STATUS_PENDING",
+            OperationStatus::Final => "OPERATION_STATUS_FINAL",
+            OperationStatus::Success => "OPERATION_STATUS_SUCCESS",
+            OperationStatus::Failure => "OPERATION_STATUS_FAILURE",
+            OperationStatus::Unknown => "OPERATION_STATUS_UNKNOWN",
         }
     }
     /// Creates an enum from field names used in the ProtoBuf definition.
     pub fn from_str_name(value: &str) -> ::core::option::Option<Self> {
         match value {
-            "PENDING" => Some(Self::Pending),
-            "FINAL" => Some(Self::Final),
-            "SUCCESS" => Some(Self::Success),
-            "FAILURE" => Some(Self::Failure),
-            "UNKNOWN" => Some(Self::Unknown),
+            "OPERATION_STATUS_UNSPECIFIED" => Some(Self::Unspecified),
+            "OPERATION_STATUS_PENDING" => Some(Self::Pending),
+            "OPERATION_STATUS_FINAL" => Some(Self::Final),
+            "OPERATION_STATUS_SUCCESS" => Some(Self::Success),
+            "OPERATION_STATUS_FAILURE" => Some(Self::Failure),
+            "OPERATION_STATUS_UNKNOWN" => Some(Self::Unknown),
             _ => None,
         }
     }
@@ -354,6 +358,110 @@ pub struct SignedBlockHeader {
     /// A secure hash of the data. See also \[massa_hash::Hash\]
     #[prost(string, tag = "5")]
     pub id: ::prost::alloc::string::String,
+}
+/// A wrapper around a block with its metadata
+#[allow(clippy::derive_partial_eq_without_eq)]
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct BlockWrapper {
+    /// The unique ID of the block.
+    #[prost(string, tag = "1")]
+    pub id: ::prost::alloc::string::String,
+    /// The block object itself
+    #[prost(message, optional, tag = "2")]
+    pub block: ::core::option::Option<Block>,
+    /// The execution statuses of the block
+    #[prost(enumeration = "BlockStatus", repeated, tag = "3")]
+    pub status: ::prost::alloc::vec::Vec<i32>,
+}
+/// Possible statuses for a block
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, ::prost::Enumeration)]
+#[repr(i32)]
+pub enum BlockStatus {
+    /// Defaut enum value
+    Unspecified = 0,
+    /// The block is in the greatest clique (and not final)
+    InBlockclique = 1,
+    /// The block is final
+    Final = 2,
+    /// The block is candidate (active any clique but not final)
+    Candidate = 3,
+    /// The block is discarded
+    Discarded = 4,
+}
+impl BlockStatus {
+    /// String value of the enum field names used in the ProtoBuf definition.
+    ///
+    /// The values are not transformed in any way and thus are considered stable
+    /// (if the ProtoBuf definition does not change) and safe for programmatic use.
+    pub fn as_str_name(&self) -> &'static str {
+        match self {
+            BlockStatus::Unspecified => "BLOCK_STATUS_UNSPECIFIED",
+            BlockStatus::InBlockclique => "BLOCK_STATUS_IN_BLOCKCLIQUE",
+            BlockStatus::Final => "BLOCK_STATUS_FINAL",
+            BlockStatus::Candidate => "BLOCK_STATUS_CANDIDATE",
+            BlockStatus::Discarded => "BLOCK_STATUS_DISCARDED",
+        }
+    }
+    /// Creates an enum from field names used in the ProtoBuf definition.
+    pub fn from_str_name(value: &str) -> ::core::option::Option<Self> {
+        match value {
+            "BLOCK_STATUS_UNSPECIFIED" => Some(Self::Unspecified),
+            "BLOCK_STATUS_IN_BLOCKCLIQUE" => Some(Self::InBlockclique),
+            "BLOCK_STATUS_FINAL" => Some(Self::Final),
+            "BLOCK_STATUS_CANDIDATE" => Some(Self::Candidate),
+            "BLOCK_STATUS_DISCARDED" => Some(Self::Discarded),
+            _ => None,
+        }
+    }
+}
+/// GetBlocksRequest holds request for GetBlocks
+#[allow(clippy::derive_partial_eq_without_eq)]
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct GetBlocksRequest {
+    /// Request id
+    #[prost(string, tag = "1")]
+    pub id: ::prost::alloc::string::String,
+    /// Queries
+    #[prost(message, repeated, tag = "2")]
+    pub queries: ::prost::alloc::vec::Vec<GetBlocksQuery>,
+}
+/// GetBlocks Query
+#[allow(clippy::derive_partial_eq_without_eq)]
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct GetBlocksQuery {
+    /// Filter
+    #[prost(message, optional, tag = "1")]
+    pub filter: ::core::option::Option<GetBlocksFilter>,
+}
+/// GetBlocks Filter
+#[allow(clippy::derive_partial_eq_without_eq)]
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct GetBlocksFilter {
+    /// Block id
+    #[prost(string, tag = "1")]
+    pub id: ::prost::alloc::string::String,
+}
+/// GetBlocksResponse holds response from GetBlocks
+#[allow(clippy::derive_partial_eq_without_eq)]
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct GetBlocksResponse {
+    /// Request id
+    #[prost(string, tag = "1")]
+    pub id: ::prost::alloc::string::String,
+    /// Context
+    #[prost(message, optional, tag = "2")]
+    pub context: ::core::option::Option<BlocksContext>,
+    /// Blocks wrappers
+    #[prost(message, repeated, tag = "3")]
+    pub blocks: ::prost::alloc::vec::Vec<BlockWrapper>,
+}
+/// Blocks context
+#[allow(clippy::derive_partial_eq_without_eq)]
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct BlocksContext {
+    /// Slot
+    #[prost(message, optional, tag = "1")]
+    pub slot: ::core::option::Option<Slot>,
 }
 /// GetBlocksBySlotsRequest holds request for GetBlocksBySlots
 #[allow(clippy::derive_partial_eq_without_eq)]
@@ -1065,6 +1173,32 @@ pub mod massa_service_client {
             self.inner = self.inner.max_encoding_message_size(limit);
             self
         }
+        /// Get blocks by ids
+        pub async fn get_blocks(
+            &mut self,
+            request: impl tonic::IntoRequest<super::GetBlocksRequest>,
+        ) -> std::result::Result<
+            tonic::Response<super::GetBlocksResponse>,
+            tonic::Status,
+        > {
+            self.inner
+                .ready()
+                .await
+                .map_err(|e| {
+                    tonic::Status::new(
+                        tonic::Code::Unknown,
+                        format!("Service was not ready: {}", e.into()),
+                    )
+                })?;
+            let codec = tonic::codec::ProstCodec::default();
+            let path = http::uri::PathAndQuery::from_static(
+                "/massa.api.v1.MassaService/GetBlocks",
+            );
+            let mut req = request.into_request();
+            req.extensions_mut()
+                .insert(GrpcMethod::new("massa.api.v1.MassaService", "GetBlocks"));
+            self.inner.unary(req, path, codec).await
+        }
         /// Get blocks by slots
         pub async fn get_blocks_by_slots(
             &mut self,
@@ -1559,6 +1693,14 @@ pub mod massa_service_server {
     /// Generated trait containing gRPC methods that should be implemented for use with MassaServiceServer.
     #[async_trait]
     pub trait MassaService: Send + Sync + 'static {
+        /// Get blocks by ids
+        async fn get_blocks(
+            &self,
+            request: tonic::Request<super::GetBlocksRequest>,
+        ) -> std::result::Result<
+            tonic::Response<super::GetBlocksResponse>,
+            tonic::Status,
+        >;
         /// Get blocks by slots
         async fn get_blocks_by_slots(
             &self,
@@ -1835,6 +1977,50 @@ pub mod massa_service_server {
         fn call(&mut self, req: http::Request<B>) -> Self::Future {
             let inner = self.inner.clone();
             match req.uri().path() {
+                "/massa.api.v1.MassaService/GetBlocks" => {
+                    #[allow(non_camel_case_types)]
+                    struct GetBlocksSvc<T: MassaService>(pub Arc<T>);
+                    impl<
+                        T: MassaService,
+                    > tonic::server::UnaryService<super::GetBlocksRequest>
+                    for GetBlocksSvc<T> {
+                        type Response = super::GetBlocksResponse;
+                        type Future = BoxFuture<
+                            tonic::Response<Self::Response>,
+                            tonic::Status,
+                        >;
+                        fn call(
+                            &mut self,
+                            request: tonic::Request<super::GetBlocksRequest>,
+                        ) -> Self::Future {
+                            let inner = Arc::clone(&self.0);
+                            let fut = async move { (*inner).get_blocks(request).await };
+                            Box::pin(fut)
+                        }
+                    }
+                    let accept_compression_encodings = self.accept_compression_encodings;
+                    let send_compression_encodings = self.send_compression_encodings;
+                    let max_decoding_message_size = self.max_decoding_message_size;
+                    let max_encoding_message_size = self.max_encoding_message_size;
+                    let inner = self.inner.clone();
+                    let fut = async move {
+                        let inner = inner.0;
+                        let method = GetBlocksSvc(inner);
+                        let codec = tonic::codec::ProstCodec::default();
+                        let mut grpc = tonic::server::Grpc::new(codec)
+                            .apply_compression_config(
+                                accept_compression_encodings,
+                                send_compression_encodings,
+                            )
+                            .apply_max_message_size_config(
+                                max_decoding_message_size,
+                                max_encoding_message_size,
+                            );
+                        let res = grpc.unary(method, req).await;
+                        Ok(res)
+                    };
+                    Box::pin(fut)
+                }
                 "/massa.api.v1.MassaService/GetBlocksBySlots" => {
                     #[allow(non_camel_case_types)]
                     struct GetBlocksBySlotsSvc<T: MassaService>(pub Arc<T>);
