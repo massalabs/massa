@@ -155,24 +155,6 @@ pub fn create_operation_with_expire_period(
     Operation::new_verifiable(content, OperationSerializer::new(), keypair).unwrap()
 }
 
-// /// assert block id has been asked to node
-// pub async fn assert_hash_asked_to_node(
-//     hash_1: BlockId,
-//     node_id: NodeId,
-//     network_controller: &mut MockNetworkController,
-// ) {
-//     let ask_for_block_cmd_filter = |cmd| match cmd {
-//         NetworkCommand::AskForBlocks { list } => Some(list),
-//         _ => None,
-//     };
-//     let mut list = network_controller
-//         .wait_command(1000.into(), ask_for_block_cmd_filter)
-//         .await
-//         .expect("Hash not asked for before timer.");
-
-//     assert_eq!(list.get_mut(&node_id).unwrap().pop().unwrap().0, hash_1);
-// }
-
 // /// retrieve what blocks where asked to which nodes
 // pub async fn asked_list(
 //     network_controller: &mut MockNetworkController,

@@ -14,7 +14,7 @@ use std::net::SocketAddr;
 use std::{num::NonZeroUsize, sync::Arc};
 use std::{thread::JoinHandle, time::Duration};
 
-use crate::handlers::peer_handler::models::{PeerManagementCmd, SharedPeerDB};
+use crate::handlers::peer_handler::models::SharedPeerDB;
 use crate::handlers::peer_handler::PeerManagementHandler;
 use crate::{
     controller::ProtocolControllerImpl,

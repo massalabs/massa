@@ -8,16 +8,15 @@ use massa_serialization::U64VarIntDeserializer;
 use massa_storage::Storage;
 use parking_lot::RwLock;
 use peernet::{
-    config::PeerNetConfiguration, network_manager::PeerNetManager, peer_id::PeerId,
-    transports::TransportType,
+    config::PeerNetConfiguration, network_manager::PeerNetManager
 };
-use std::{collections::HashMap, net::SocketAddr, ops::Bound::Included, sync::Arc};
+use std::{ops::Bound::Included, sync::Arc};
 use tracing::debug;
 
 use crate::{
     connectivity::start_connectivity_thread,
     handlers::peer_handler::{
-        fallback_function, models::PeerDB, MassaHandshake, PeerManagementHandler,
+        fallback_function, models::PeerDB, MassaHandshake
     },
     manager::ProtocolManagerImpl,
     messages::MessagesHandler,

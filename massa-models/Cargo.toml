@@ -25,7 +25,6 @@ massa_serialization = { path = "../massa-serialization" }
 massa_signature = { path = "../massa-signature" }
 massa_time = { path = "../massa-time" }
 massa_proto = { path = "../massa-proto" }
-const_format = "0.2.30"
 
 [dev-dependencies]
 serial_test = "1.0"

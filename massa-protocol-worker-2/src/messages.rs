@@ -17,6 +17,7 @@ use crate::handlers::{
     peer_handler::{PeerManagementMessage, PeerManagementMessageSerializer},
 };
 
+#[derive(Debug)]
 pub enum Message {
     Block(Box<BlockMessage>),
     Endorsement(EndorsementMessage),

@@ -102,7 +102,7 @@ impl RetrievalThread {
         //TODO: Add real values
         let mut block_message_deserializer =
             BlockMessageDeserializer::new(BlockMessageDeserializerArgs {
-                thread_count: 32,
+                thread_count: self.config.thread_count,
                 endorsement_count: 10000,
                 block_infos_length_max: 10000,
                 max_operations_per_block: 10000,
