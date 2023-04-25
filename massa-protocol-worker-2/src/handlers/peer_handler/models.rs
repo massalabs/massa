@@ -102,25 +102,36 @@ impl PeerDB {
             .expect("Time went backward")
             .as_nanos();
         let min_time = now - THREE_DAYS_NS;
-
-        // todo update for random
-        self.index_by_newest
+        //  todo update for random
+        self.peers
             .iter()
-            .filter_map(|(timestamp, peer_id)| {
-                if timestamp.0 < min_time {
+            .filter_map(|(k, v)| {
+                if v.last_announce.timestamp < min_time {
                     None
                 } else {
-                    self.peers.get(peer_id).and_then(|peer| {
-                        if peer.last_announce.listeners.is_empty() {
-                            None
-                        } else {
-                            Option::from((peer_id.clone(), peer.last_announce.listeners.clone()))
-                        }
-                    })
+                    Some((k.clone(), v.last_announce.listeners.clone()))
                 }
             })
             .take(100)
             .collect()
+
+        // self.index_by_newest
+        //     .iter()
+        //     .filter_map(|(timestamp, peer_id)| {
+        //         if timestamp.0 < min_time {
+        //             None
+        //         } else {
+        //             self.peers.get(peer_id).and_then(|peer| {
+        //                 if peer.last_announce.listeners.is_empty() {
+        //                     None
+        //                 } else {
+        //                     Option::from((peer_id.clone(), peer.last_announce.listeners.clone()))
+        //                 }
+        //             })
+        //         }
+        //     })
+        //     .take(100)
+        //     .collect()
     }
 
     // Flush PeerDB to disk ?
