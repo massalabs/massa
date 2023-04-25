@@ -204,6 +204,67 @@ pub struct SignedOperation {
     #[prost(string, tag = "5")]
     pub id: ::prost::alloc::string::String,
 }
+/// A wrapper around an operation with its metadata
+#[allow(clippy::derive_partial_eq_without_eq)]
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct OperationWrapper {
+    /// The unique ID of the operation.
+    #[prost(string, tag = "1")]
+    pub id: ::prost::alloc::string::String,
+    /// The IDs of the blocks in which the operation appears
+    #[prost(string, repeated, tag = "3")]
+    pub block_ids: ::prost::alloc::vec::Vec<::prost::alloc::string::String>,
+    /// The thread in which the operation can be included
+    #[prost(fixed32, tag = "5")]
+    pub thread: u32,
+    /// The operation object itself
+    #[prost(message, optional, tag = "6")]
+    pub operation: ::core::option::Option<SignedOperation>,
+    /// The execution statuses of the operation
+    #[prost(enumeration = "OperationStatus", repeated, tag = "7")]
+    pub status: ::prost::alloc::vec::Vec<i32>,
+}
+/// Possible statuses for an operation
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, ::prost::Enumeration)]
+#[repr(i32)]
+pub enum OperationStatus {
+    /// The operation is still pending
+    Pending = 0,
+    /// The operation is final
+    Final = 1,
+    /// The operation was executed successfully
+    Success = 2,
+    /// The operation failed to execute
+    Failure = 3,
+    /// The status of the operation is unknown
+    Unknown = 4,
+}
+impl OperationStatus {
+    /// String value of the enum field names used in the ProtoBuf definition.
+    ///
+    /// The values are not transformed in any way and thus are considered stable
+    /// (if the ProtoBuf definition does not change) and safe for programmatic use.
+    pub fn as_str_name(&self) -> &'static str {
+        match self {
+            OperationStatus::Pending => "PENDING",
+            OperationStatus::Final => "FINAL",
+            OperationStatus::Success => "SUCCESS",
+            OperationStatus::Failure => "FAILURE",
+            OperationStatus::Unknown => "UNKNOWN",
+        }
+    }
+    /// Creates an enum from field names used in the ProtoBuf definition.
+    pub fn from_str_name(value: &str) -> ::core::option::Option<Self> {
+        match value {
+            "PENDING" => Some(Self::Pending),
+            "FINAL" => Some(Self::Final),
+            "SUCCESS" => Some(Self::Success),
+            "FAILURE" => Some(Self::Failure),
+            "UNKNOWN" => Some(Self::Unknown),
+            _ => None,
+        }
+    }
+}
 /// Block
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
@@ -465,6 +526,55 @@ pub struct BlockParent {
     /// Period
     #[prost(fixed64, tag = "2")]
     pub period: u64,
+}
+/// GetOperationsRequest holds request for GetOperations
+#[allow(clippy::derive_partial_eq_without_eq)]
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct GetOperationsRequest {
+    /// Request id
+    #[prost(string, tag = "1")]
+    pub id: ::prost::alloc::string::String,
+    /// Queries
+    #[prost(message, repeated, tag = "2")]
+    pub queries: ::prost::alloc::vec::Vec<GetOperationsQuery>,
+}
+/// GetOperations Query
+#[allow(clippy::derive_partial_eq_without_eq)]
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct GetOperationsQuery {
+    /// Filter
+    #[prost(message, optional, tag = "1")]
+    pub filter: ::core::option::Option<GetOperationsFilter>,
+}
+/// GetOperations Filter
+#[allow(clippy::derive_partial_eq_without_eq)]
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct GetOperationsFilter {
+    /// Operation id
+    #[prost(string, tag = "1")]
+    pub id: ::prost::alloc::string::String,
+}
+/// GetOperationsResponse holds response from GetOperations
+#[allow(clippy::derive_partial_eq_without_eq)]
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct GetOperationsResponse {
+    /// Request id
+    #[prost(string, tag = "1")]
+    pub id: ::prost::alloc::string::String,
+    /// Context
+    #[prost(message, optional, tag = "2")]
+    pub context: ::core::option::Option<OperationsContext>,
+    /// Operations wrappers
+    #[prost(message, repeated, tag = "3")]
+    pub operations: ::prost::alloc::vec::Vec<OperationWrapper>,
+}
+/// Operations context
+#[allow(clippy::derive_partial_eq_without_eq)]
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct OperationsContext {
+    /// Slot
+    #[prost(message, optional, tag = "1")]
+    pub slot: ::core::option::Option<Slot>,
 }
 /// GetSelectorDrawsRequest holds request from GetSelectorDraws
 #[allow(clippy::derive_partial_eq_without_eq)]
@@ -1070,6 +1180,32 @@ pub mod massa_service_client {
                 );
             self.inner.unary(req, path, codec).await
         }
+        /// Get operations
+        pub async fn get_operations(
+            &mut self,
+            request: impl tonic::IntoRequest<super::GetOperationsRequest>,
+        ) -> std::result::Result<
+            tonic::Response<super::GetOperationsResponse>,
+            tonic::Status,
+        > {
+            self.inner
+                .ready()
+                .await
+                .map_err(|e| {
+                    tonic::Status::new(
+                        tonic::Code::Unknown,
+                        format!("Service was not ready: {}", e.into()),
+                    )
+                })?;
+            let codec = tonic::codec::ProstCodec::default();
+            let path = http::uri::PathAndQuery::from_static(
+                "/massa.api.v1.MassaService/GetOperations",
+            );
+            let mut req = request.into_request();
+            req.extensions_mut()
+                .insert(GrpcMethod::new("massa.api.v1.MassaService", "GetOperations"));
+            self.inner.unary(req, path, codec).await
+        }
         /// Get selector draws
         pub async fn get_selector_draws(
             &mut self,
@@ -1379,7 +1515,7 @@ pub mod massa_service_client {
                 .insert(GrpcMethod::new("massa.api.v1.MassaService", "SendOperations"));
             self.inner.streaming(req, path, codec).await
         }
-        /// Transactions throughput per second
+        /// Transactions throughput
         pub async fn transactions_throughput(
             &mut self,
             request: impl tonic::IntoStreamingRequest<
@@ -1453,6 +1589,14 @@ pub mod massa_service_server {
             request: tonic::Request<super::GetNextBlockBestParentsRequest>,
         ) -> std::result::Result<
             tonic::Response<super::GetNextBlockBestParentsResponse>,
+            tonic::Status,
+        >;
+        /// Get operations
+        async fn get_operations(
+            &self,
+            request: tonic::Request<super::GetOperationsRequest>,
+        ) -> std::result::Result<
+            tonic::Response<super::GetOperationsResponse>,
             tonic::Status,
         >;
         /// Get selector draws
@@ -1600,7 +1744,7 @@ pub mod massa_service_server {
             >
             + Send
             + 'static;
-        /// Transactions throughput per second
+        /// Transactions throughput
         async fn transactions_throughput(
             &self,
             request: tonic::Request<
@@ -1862,6 +2006,52 @@ pub mod massa_service_server {
                     let fut = async move {
                         let inner = inner.0;
                         let method = GetNextBlockBestParentsSvc(inner);
+                        let codec = tonic::codec::ProstCodec::default();
+                        let mut grpc = tonic::server::Grpc::new(codec)
+                            .apply_compression_config(
+                                accept_compression_encodings,
+                                send_compression_encodings,
+                            )
+                            .apply_max_message_size_config(
+                                max_decoding_message_size,
+                                max_encoding_message_size,
+                            );
+                        let res = grpc.unary(method, req).await;
+                        Ok(res)
+                    };
+                    Box::pin(fut)
+                }
+                "/massa.api.v1.MassaService/GetOperations" => {
+                    #[allow(non_camel_case_types)]
+                    struct GetOperationsSvc<T: MassaService>(pub Arc<T>);
+                    impl<
+                        T: MassaService,
+                    > tonic::server::UnaryService<super::GetOperationsRequest>
+                    for GetOperationsSvc<T> {
+                        type Response = super::GetOperationsResponse;
+                        type Future = BoxFuture<
+                            tonic::Response<Self::Response>,
+                            tonic::Status,
+                        >;
+                        fn call(
+                            &mut self,
+                            request: tonic::Request<super::GetOperationsRequest>,
+                        ) -> Self::Future {
+                            let inner = Arc::clone(&self.0);
+                            let fut = async move {
+                                (*inner).get_operations(request).await
+                            };
+                            Box::pin(fut)
+                        }
+                    }
+                    let accept_compression_encodings = self.accept_compression_encodings;
+                    let send_compression_encodings = self.send_compression_encodings;
+                    let max_decoding_message_size = self.max_decoding_message_size;
+                    let max_encoding_message_size = self.max_encoding_message_size;
+                    let inner = self.inner.clone();
+                    let fut = async move {
+                        let inner = inner.0;
+                        let method = GetOperationsSvc(inner);
                         let codec = tonic::codec::ProstCodec::default();
                         let mut grpc = tonic::server::Grpc::new(codec)
                             .apply_compression_config(

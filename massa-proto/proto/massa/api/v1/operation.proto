@@ -98,3 +98,26 @@ message SignedOperation {
   // A secure hash of the data. See also [massa_hash::Hash]
   string id = 5;
 }
+
+// Possible statuses for an operation
+enum OperationStatus {
+  PENDING = 0;  // The operation is still pending
+  FINAL = 1;  // The operation is final
+  SUCCESS = 2;  // The operation was executed successfully
+  FAILURE = 3;  // The operation failed to execute
+  UNKNOWN = 4;  // The status of the operation is unknown
+}
+
+// A wrapper around an operation with its metadata
+message OperationWrapper {
+    // The unique ID of the operation.
+    string id = 1;
+    // The IDs of the blocks in which the operation appears
+    repeated string block_ids = 3;
+    // The thread in which the operation can be included
+    fixed32 thread = 5;
+    // The operation object itself
+    SignedOperation operation = 6;
+    // The execution statuses of the operation
+    repeated OperationStatus status = 7;
+}

@@ -18,6 +18,10 @@
     - [GetLargestStakersResponse](#massa-api-v1-GetLargestStakersResponse)
     - [GetNextBlockBestParentsRequest](#massa-api-v1-GetNextBlockBestParentsRequest)
     - [GetNextBlockBestParentsResponse](#massa-api-v1-GetNextBlockBestParentsResponse)
+    - [GetOperationsFilter](#massa-api-v1-GetOperationsFilter)
+    - [GetOperationsQuery](#massa-api-v1-GetOperationsQuery)
+    - [GetOperationsRequest](#massa-api-v1-GetOperationsRequest)
+    - [GetOperationsResponse](#massa-api-v1-GetOperationsResponse)
     - [GetSelectorDrawsRequest](#massa-api-v1-GetSelectorDrawsRequest)
     - [GetSelectorDrawsResponse](#massa-api-v1-GetSelectorDrawsResponse)
     - [GetTransactionsThroughputRequest](#massa-api-v1-GetTransactionsThroughputRequest)
@@ -41,6 +45,7 @@
     - [NewOperationsRequest](#massa-api-v1-NewOperationsRequest)
     - [NewOperationsResponse](#massa-api-v1-NewOperationsResponse)
     - [OperationResult](#massa-api-v1-OperationResult)
+    - [OperationsContext](#massa-api-v1-OperationsContext)
     - [SelectorDraws](#massa-api-v1-SelectorDraws)
     - [SelectorDrawsFilter](#massa-api-v1-SelectorDrawsFilter)
     - [SelectorDrawsQuery](#massa-api-v1-SelectorDrawsQuery)
@@ -78,10 +83,13 @@
     - [ExecuteSC](#massa-api-v1-ExecuteSC)
     - [Operation](#massa-api-v1-Operation)
     - [OperationType](#massa-api-v1-OperationType)
+    - [OperationWrapper](#massa-api-v1-OperationWrapper)
     - [RollBuy](#massa-api-v1-RollBuy)
     - [RollSell](#massa-api-v1-RollSell)
     - [SignedOperation](#massa-api-v1-SignedOperation)
     - [Transaction](#massa-api-v1-Transaction)
+  
+    - [OperationStatus](#massa-api-v1-OperationStatus)
   
 - [slot.proto](#slot-proto)
     - [IndexedSlot](#massa-api-v1-IndexedSlot)
@@ -313,6 +321,69 @@ GetNextBlockBestParentsResponse holds response from GetNextBlockBestParents
 | ----- | ---- | ----- | ----------- |
 | id | [string](#string) |  | Request id |
 | parents | [BlockParent](#massa-api-v1-BlockParent) | repeated | Best parents |
+
+
+
+
+
+
+<a name="massa-api-v1-GetOperationsFilter"></a>
+
+### GetOperationsFilter
+GetOperations Filter
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| id | [string](#string) |  | Operation id |
+
+
+
+
+
+
+<a name="massa-api-v1-GetOperationsQuery"></a>
+
+### GetOperationsQuery
+GetOperations Query
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| filter | [GetOperationsFilter](#massa-api-v1-GetOperationsFilter) |  | Filter |
+
+
+
+
+
+
+<a name="massa-api-v1-GetOperationsRequest"></a>
+
+### GetOperationsRequest
+GetOperationsRequest holds request for GetOperations
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| id | [string](#string) |  | Request id |
+| queries | [GetOperationsQuery](#massa-api-v1-GetOperationsQuery) | repeated | Queries |
+
+
+
+
+
+
+<a name="massa-api-v1-GetOperationsResponse"></a>
+
+### GetOperationsResponse
+GetOperationsResponse holds response from GetOperations
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| id | [string](#string) |  | Request id |
+| context | [OperationsContext](#massa-api-v1-OperationsContext) |  | Context |
+| operations | [OperationWrapper](#massa-api-v1-OperationWrapper) | repeated | Operations wrappers |
 
 
 
@@ -678,6 +749,21 @@ Holds Operation response
 
 
 
+<a name="massa-api-v1-OperationsContext"></a>
+
+### OperationsContext
+Operations context
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| slot | [Slot](#massa-api-v1-Slot) |  | Slot |
+
+
+
+
+
+
 <a name="massa-api-v1-SelectorDraws"></a>
 
 ### SelectorDraws
@@ -889,6 +975,7 @@ Massa gRPC service
 | GetDatastoreEntries | [GetDatastoreEntriesRequest](#massa-api-v1-GetDatastoreEntriesRequest) | [GetDatastoreEntriesResponse](#massa-api-v1-GetDatastoreEntriesResponse) | Get datastore entries |
 | GetLargestStakers | [GetLargestStakersRequest](#massa-api-v1-GetLargestStakersRequest) | [GetLargestStakersResponse](#massa-api-v1-GetLargestStakersResponse) | Get largest stakers |
 | GetNextBlockBestParents | [GetNextBlockBestParentsRequest](#massa-api-v1-GetNextBlockBestParentsRequest) | [GetNextBlockBestParentsResponse](#massa-api-v1-GetNextBlockBestParentsResponse) | Get next block best parents |
+| GetOperations | [GetOperationsRequest](#massa-api-v1-GetOperationsRequest) | [GetOperationsResponse](#massa-api-v1-GetOperationsResponse) | Get operations |
 | GetSelectorDraws | [GetSelectorDrawsRequest](#massa-api-v1-GetSelectorDrawsRequest) | [GetSelectorDrawsResponse](#massa-api-v1-GetSelectorDrawsResponse) | Get selector draws |
 | GetTransactionsThroughput | [GetTransactionsThroughputRequest](#massa-api-v1-GetTransactionsThroughputRequest) | [GetTransactionsThroughputResponse](#massa-api-v1-GetTransactionsThroughputResponse) | Get transactions throughput |
 | GetVersion | [GetVersionRequest](#massa-api-v1-GetVersionRequest) | [GetVersionResponse](#massa-api-v1-GetVersionResponse) | Get node version |
@@ -900,7 +987,7 @@ Massa gRPC service
 | SendBlocks | [SendBlocksRequest](#massa-api-v1-SendBlocksRequest) stream | [SendBlocksResponse](#massa-api-v1-SendBlocksResponse) stream | Send blocks |
 | SendEndorsements | [SendEndorsementsRequest](#massa-api-v1-SendEndorsementsRequest) stream | [SendEndorsementsResponse](#massa-api-v1-SendEndorsementsResponse) stream | Send endorsements |
 | SendOperations | [SendOperationsRequest](#massa-api-v1-SendOperationsRequest) stream | [SendOperationsResponse](#massa-api-v1-SendOperationsResponse) stream | Send operations |
-| TransactionsThroughput | [TransactionsThroughputRequest](#massa-api-v1-TransactionsThroughputRequest) stream | [TransactionsThroughputResponse](#massa-api-v1-TransactionsThroughputResponse) stream | Transactions throughput per second |
+| TransactionsThroughput | [TransactionsThroughputRequest](#massa-api-v1-TransactionsThroughputRequest) stream | [TransactionsThroughputResponse](#massa-api-v1-TransactionsThroughputResponse) stream | Transactions throughput |
 
  
 
@@ -1209,6 +1296,25 @@ Type specific operation content
 
 
 
+<a name="massa-api-v1-OperationWrapper"></a>
+
+### OperationWrapper
+A wrapper around an operation with its metadata
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| id | [string](#string) |  | The unique ID of the operation. |
+| block_ids | [string](#string) | repeated | The IDs of the blocks in which the operation appears |
+| thread | [fixed32](#fixed32) |  | The thread in which the operation can be included |
+| operation | [SignedOperation](#massa-api-v1-SignedOperation) |  | The operation object itself |
+| status | [OperationStatus](#massa-api-v1-OperationStatus) | repeated | The execution statuses of the operation |
+
+
+
+
+
+
 <a name="massa-api-v1-RollBuy"></a>
 
 ### RollBuy
@@ -1274,6 +1380,21 @@ Transfer coins from sender to recipient
 
 
  
+
+
+<a name="massa-api-v1-OperationStatus"></a>
+
+### OperationStatus
+Possible statuses for an operation
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| PENDING | 0 | The operation is still pending |
+| FINAL | 1 | The operation is final |
+| SUCCESS | 2 | The operation was executed successfully |
+| FAILURE | 3 | The operation failed to execute |
+| UNKNOWN | 4 | The status of the operation is unknown |
+
 
  
 

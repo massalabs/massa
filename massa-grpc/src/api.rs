@@ -4,6 +4,9 @@ use crate::error::GrpcError;
 use crate::server::MassaGrpc;
 use itertools::izip;
 use massa_models::address::Address;
+use massa_models::block_id::BlockId;
+use massa_models::operation::{OperationId, SecureShareOperation};
+use massa_models::prehash::PreHashSet;
 use massa_models::slot::Slot;
 use massa_models::timeslots::{self, get_latest_block_slot_at_timestamp};
 use massa_proto::massa::api::v1::{self as grpc};
@@ -11,12 +14,12 @@ use massa_time::MassaTime;
 use std::str::FromStr;
 use tracing::log::warn;
 
-/// default offset
+/// Default offset
 const DEFAULT_OFFSET: u64 = 1;
-/// default limit
+/// Default limit
 const DEFAULT_LIMIT: u64 = 50;
 
-/// get blocks by slots
+/// Get blocks by slots
 pub(crate) fn get_blocks_by_slots(
     grpc: &MassaGrpc,
     request: tonic::Request<grpc::GetBlocksBySlotsRequest>,
@@ -95,7 +98,7 @@ pub(crate) fn get_blocks_by_slots(
     })
 }
 
-/// get multiple datastore entries
+/// Get multiple datastore entries
 pub(crate) fn get_datastore_entries(
     grpc: &MassaGrpc,
     request: tonic::Request<grpc::GetDatastoreEntriesRequest>,
@@ -127,7 +130,7 @@ pub(crate) fn get_datastore_entries(
     Ok(grpc::GetDatastoreEntriesResponse { id, entries })
 }
 
-/// Get the largest stakers.
+/// Get the largest stakers
 pub(crate) fn get_largest_stakers(
     grpc: &MassaGrpc,
     request: tonic::Request<grpc::GetLargestStakersRequest>,
@@ -236,7 +239,7 @@ pub(crate) fn get_largest_stakers(
     })
 }
 
-/// get next block best parents
+/// Get next block best parents
 pub(crate) fn get_next_block_best_parents(
     grpc: &MassaGrpc,
     request: tonic::Request<grpc::GetNextBlockBestParentsRequest>,
@@ -257,6 +260,139 @@ pub(crate) fn get_next_block_best_parents(
     })
 }
 
+/// Get operations
+pub(crate) fn get_operations(
+    grpc: &MassaGrpc,
+    request: tonic::Request<grpc::GetOperationsRequest>,
+) -> Result<grpc::GetOperationsResponse, GrpcError> {
+    let storage = grpc.storage.clone_without_refs();
+    let inner_req: grpc::GetOperationsRequest = request.into_inner();
+    let id = inner_req.id;
+
+    let operations_ids: Vec<OperationId> = inner_req
+        .queries
+        .into_iter()
+        .take(grpc.grpc_config.max_operations_per_message as usize + 1)
+        .map(|query| {
+            query
+                .filter
+                .ok_or_else(|| GrpcError::InvalidArgument("filter is missing".to_string()))
+                .and_then(|filter| {
+                    OperationId::from_str(filter.id.as_str()).map_err(|_| {
+                        GrpcError::InvalidArgument(format!("invalid operation id: {}", filter.id))
+                    })
+                })
+        })
+        .collect::<Result<_, _>>()?;
+
+    if operations_ids.len() as u32 > grpc.grpc_config.max_operations_per_message {
+        return Err(GrpcError::InvalidArgument(format!("too many operations received. Only a maximum of {} operations are accepted per request", grpc.grpc_config.max_operations_per_message)));
+    }
+
+    // Get the current slot.
+    let now: MassaTime = MassaTime::now()?;
+    let current_slot = get_latest_block_slot_at_timestamp(
+        grpc.grpc_config.thread_count,
+        grpc.grpc_config.t0,
+        grpc.grpc_config.genesis_timestamp,
+        now,
+    )?
+    .unwrap_or_else(|| Slot::new(0, 0));
+
+    // Create the context for the response.
+    let context = Some(grpc::OperationsContext {
+        slot: Some(current_slot.into()),
+    });
+
+    // Get the operations and the list of blocks that contain them from storage
+    let storage_info: Vec<(SecureShareOperation, PreHashSet<BlockId>)> = {
+        let read_blocks = storage.read_blocks();
+        let read_ops = storage.read_operations();
+        operations_ids
+            .iter()
+            .filter_map(|id| {
+                read_ops.get(id).cloned().map(|op| {
+                    (
+                        op,
+                        read_blocks
+                            .get_blocks_by_operation(id)
+                            .cloned()
+                            .unwrap_or_default(),
+                    )
+                })
+            })
+            .collect()
+    };
+
+    // Keep only the ops id (found in storage)
+    let ops: Vec<OperationId> = storage_info.iter().map(|(op, _)| op.id).collect();
+
+    // Ask pool whether it carries the operations
+    let in_pool = grpc.pool_command_sender.contains_operations(&ops);
+
+    let (speculative_op_exec_statuses, final_op_exec_statuses) =
+        grpc.execution_controller.get_op_exec_status();
+
+    // Compute operation finality and execution status
+    let (is_operation_final, statuses): (Vec<Option<bool>>, Vec<Option<bool>>) = ops
+        .iter()
+        .map(|op| {
+            let final_status = final_op_exec_statuses.get(op);
+            let is_final = final_status.copied();
+            let status = final_status
+                .or(speculative_op_exec_statuses.get(op))
+                .copied();
+            (is_final, status)
+        })
+        .unzip();
+
+    // Gather all values into a vector of OperationWrapper instances
+    let mut operations: Vec<grpc::OperationWrapper> = Vec::with_capacity(ops.len());
+    let zipped_iterator = izip!(
+        ops.into_iter(),
+        storage_info.into_iter(),
+        in_pool.into_iter(),
+        is_operation_final.into_iter(),
+        statuses.into_iter(),
+    );
+    for (id, (operation, in_blocks), in_pool, is_operation_final, op_exec_status) in zipped_iterator
+    {
+        let mut status: Vec<i32> = Vec::new();
+        if let Some(op_exec_status) = op_exec_status {
+            if op_exec_status {
+                status.push(grpc::OperationStatus::Success.into());
+            } else {
+                status.push(grpc::OperationStatus::Failure.into());
+            }
+        } else {
+            status.push(grpc::OperationStatus::Unknown.into());
+        }
+        if is_operation_final.unwrap_or_default() {
+            status.push(grpc::OperationStatus::Final.into());
+        }
+        if in_pool {
+            status.push(grpc::OperationStatus::Pending.into());
+        }
+
+        operations.push(grpc::OperationWrapper {
+            id: id.to_string(),
+            thread: operation
+                .content_creator_address
+                .get_thread(grpc.grpc_config.thread_count) as u32,
+            operation: Some(operation.into()),
+            block_ids: in_blocks.into_iter().map(|id| id.to_string()).collect(),
+            status,
+        });
+    }
+
+    Ok(grpc::GetOperationsResponse {
+        id,
+        context,
+        operations,
+    })
+}
+
+//  Get selector draws
 pub(crate) fn get_selector_draws(
     grpc: &MassaGrpc,
     request: tonic::Request<grpc::GetSelectorDrawsRequest>,
@@ -314,7 +450,7 @@ pub(crate) fn get_selector_draws(
             .collect::<Vec<_>>()
     };
 
-    // compile results
+    // Compile results
     let mut res = Vec::with_capacity(addresses.len());
     let iterator = izip!(addresses.into_iter(), selection_draws.into_iter());
     for (address, (next_block_draws, next_endorsement_draws)) in iterator {
@@ -331,7 +467,7 @@ pub(crate) fn get_selector_draws(
     })
 }
 
-/// get transactions throughput
+/// Get transactions throughput
 pub(crate) fn get_transactions_throughput(
     grpc: &MassaGrpc,
     request: tonic::Request<grpc::GetTransactionsThroughputRequest>,
@@ -355,7 +491,7 @@ pub(crate) fn get_transactions_throughput(
     })
 }
 
-// get node version
+// Get node version
 pub(crate) fn get_version(
     grpc: &MassaGrpc,
     request: tonic::Request<grpc::GetVersionRequest>,
