@@ -1221,7 +1221,7 @@ mod tests {
     fn test_block_header_denunciation() {
         // Create an block header denunciation and check if it is valid
         let (_slot, _keypair, s_block_header_1, s_block_header_2, s_block_header_3) =
-            gen_block_headers_for_denunciation();
+            gen_block_headers_for_denunciation(None, None);
         let denunciation: Denunciation = (&s_block_header_1, &s_block_header_2).try_into().unwrap();
 
         assert_eq!(denunciation.is_for_block_header(), true);
@@ -1320,7 +1320,8 @@ mod tests {
 
     #[test]
     fn test_block_header_denunciation_ser_der() {
-        let (_, _, s_block_header_1, s_block_header_2, _) = gen_block_headers_for_denunciation();
+        let (_, _, s_block_header_1, s_block_header_2, _) =
+            gen_block_headers_for_denunciation(None, None);
         let denunciation: Denunciation = (&s_block_header_1, &s_block_header_2).try_into().unwrap();
 
         let mut buffer = Vec::new();
@@ -1344,7 +1345,8 @@ mod tests {
 
     #[test]
     fn test_denunciation_ser_der() {
-        let (_, _, s_block_header_1, s_block_header_2, _) = gen_block_headers_for_denunciation();
+        let (_, _, s_block_header_1, s_block_header_2, _) =
+            gen_block_headers_for_denunciation(None, None);
         let denunciation: Denunciation = (&s_block_header_1, &s_block_header_2).try_into().unwrap();
 
         let mut buffer = Vec::new();
@@ -1371,7 +1373,8 @@ mod tests {
 
     #[test]
     fn test_denunciation_precursor() {
-        let (_, _, s_block_header_1, s_block_header_2, _) = gen_block_headers_for_denunciation();
+        let (_, _, s_block_header_1, s_block_header_2, _) =
+            gen_block_headers_for_denunciation(None, None);
         let denunciation: Denunciation = (&s_block_header_1, &s_block_header_2).try_into().unwrap();
 
         let de_p_1 = DenunciationPrecursor::try_from(&s_block_header_1).unwrap();
@@ -1393,7 +1396,8 @@ mod tests {
 
     #[test]
     fn test_denunciation_index_ser_der() {
-        let (_, _, s_block_header_1, s_block_header_2, _) = gen_block_headers_for_denunciation();
+        let (_, _, s_block_header_1, s_block_header_2, _) =
+            gen_block_headers_for_denunciation(None, None);
         let denunciation_1: Denunciation =
             (&s_block_header_1, &s_block_header_2).try_into().unwrap();
         let denunciation_index_1 = DenunciationIndex::from(&denunciation_1);

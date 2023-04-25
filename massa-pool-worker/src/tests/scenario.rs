@@ -208,7 +208,7 @@ fn test_get_operations_overflow() {
 #[test]
 fn test_block_header_denunciation_creation() {
     let (_slot, keypair, secured_header_1, secured_header_2, _secured_header_3) =
-        gen_block_headers_for_denunciation();
+        gen_block_headers_for_denunciation(None, None);
     let address = Address::from_public_key(&keypair.get_public_key());
 
     let de_p_1 = DenunciationPrecursor::try_from(&secured_header_1).unwrap();
