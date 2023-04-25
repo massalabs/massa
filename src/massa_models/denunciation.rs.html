@@ -1430,7 +1430,34 @@
 <a href="#1430" id="1430">1430</a>
 <a href="#1431" id="1431">1431</a>
 <a href="#1432" id="1432">1432</a>
-</pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
+<a href="#1433" id="1433">1433</a>
+<a href="#1434" id="1434">1434</a>
+<a href="#1435" id="1435">1435</a>
+<a href="#1436" id="1436">1436</a>
+<a href="#1437" id="1437">1437</a>
+<a href="#1438" id="1438">1438</a>
+<a href="#1439" id="1439">1439</a>
+<a href="#1440" id="1440">1440</a>
+<a href="#1441" id="1441">1441</a>
+<a href="#1442" id="1442">1442</a>
+<a href="#1443" id="1443">1443</a>
+<a href="#1444" id="1444">1444</a>
+<a href="#1445" id="1445">1445</a>
+<a href="#1446" id="1446">1446</a>
+<a href="#1447" id="1447">1447</a>
+<a href="#1448" id="1448">1448</a>
+<a href="#1449" id="1449">1449</a>
+<a href="#1450" id="1450">1450</a>
+<a href="#1451" id="1451">1451</a>
+<a href="#1452" id="1452">1452</a>
+<a href="#1453" id="1453">1453</a>
+<a href="#1454" id="1454">1454</a>
+<a href="#1455" id="1455">1455</a>
+<a href="#1456" id="1456">1456</a>
+<a href="#1457" id="1457">1457</a>
+<a href="#1458" id="1458">1458</a>
+</pre><pre class="rust"><code><span class="kw">use </span>std::cmp::Ordering;
+<span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 </span><span class="doccomment">/// An overview of what is a Denunciation and what it is used for can be found here
 /// https://github.com/massalabs/massa/discussions/3113
 </span><span class="kw">use </span>std::ops::Bound::{Excluded, Included};
@@ -2229,6 +2256,31 @@
     }
 }
 
+<span class="kw">impl </span>Ord <span class="kw">for </span>DenunciationIndex {
+    <span class="kw">fn </span>cmp(<span class="kw-2">&amp;</span><span class="self">self</span>, other: <span class="kw-2">&amp;</span><span class="self">Self</span>) -&gt; Ordering {
+        <span class="kw">match </span>(<span class="self">self</span>, other) {
+            (
+                DenunciationIndex::Endorsement { slot, index },
+                DenunciationIndex::Endorsement {
+                    slot: other_slot,
+                    index: other_index,
+                },
+            ) =&gt; slot.cmp(other_slot).then(index.cmp(other_index)),
+            (self_de, other_de) =&gt; {
+                <span class="comment">// Note: does not specify an order for Block header de idx versus Endorsement de idx
+                //       but this should not be an issue
+                </span>self_de.get_slot().cmp(other_de.get_slot())
+            }
+        }
+    }
+}
+
+<span class="kw">impl </span>PartialOrd <span class="kw">for </span>DenunciationIndex {
+    <span class="kw">fn </span>partial_cmp(<span class="kw-2">&amp;</span><span class="self">self</span>, other: <span class="kw-2">&amp;</span><span class="self">Self</span>) -&gt; <span class="prelude-ty">Option</span>&lt;Ordering&gt; {
+        <span class="prelude-val">Some</span>(<span class="self">self</span>.cmp(other))
+    }
+}
+
 <span class="comment">// End Denunciation Index
 
 // Denunciation Index ser der
@@ -2382,7 +2434,7 @@
 }
 
 <span class="doccomment">/// Lightweight data for Denunciation creation
-/// (avoid storing heavyweight secured header or secure share endorsement, see denunciation factory)
+/// (avoid storing heavyweight secured header or secure share endorsement, see denunciation pool)
 </span><span class="attr">#[derive(Debug, Clone)]
 </span><span class="kw">pub enum </span>DenunciationPrecursor {
     <span class="doccomment">/// Endorsement variant
