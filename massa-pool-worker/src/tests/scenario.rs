@@ -328,7 +328,7 @@ fn test_denunciation_pool_get() {
 
     // gen a block header denunciation
     let (_slot, keypair_2, secured_header_1, secured_header_2, _secured_header_3) =
-        gen_block_headers_for_denunciation();
+        gen_block_headers_for_denunciation(None, None);
     let address_2 = Address::from_public_key(&keypair_2.get_public_key());
 
     let de_p_3 = DenunciationPrecursor::try_from(&secured_header_1).unwrap();
