@@ -119,7 +119,6 @@ impl ExecutedDenunciations {
         for (_slot, de_indexes) in drained {
             for de_idx in de_indexes {
                 self.denunciations.remove(&de_idx);
-                // self.de_processed_status.remove(&de_idx);
                 self.hash ^= de_idx.get_hash();
             }
         }

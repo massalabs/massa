@@ -1527,6 +1527,25 @@ impl ExecutionState {
         ops
     }
 
+    /// Check if a denunciation has been executed given a `DenunciationIndex`
+    pub fn is_denunciation_unexecuted(&self, denunciation_index: &DenunciationIndex) -> bool {
+        // check active history
+        let history = self.active_history.read();
+
+        if matches!(
+            history.fetch_processed_de(denunciation_index),
+            HistorySearchResult::Present(())
+        ) {
+            return true;
+        }
+
+        // check final state
+        let final_state = self.final_state.read();
+        final_state
+            .executed_denunciations
+            .contains(denunciation_index)
+    }
+
     /// Gets the production stats for an address at all cycles
     pub fn get_address_cycle_infos(&self, address: &Address) -> Vec<ExecutionAddressCycleInfo> {
         context_guard!(self).get_address_cycle_infos(address, self.config.periods_per_cycle)

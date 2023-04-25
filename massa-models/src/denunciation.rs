@@ -1,3 +1,4 @@
+use std::cmp::Ordering;
 // Copyright (c) 2022 MASSA LABS <info@massa.net>
 /// An overview of what is a Denunciation and what it is used for can be found here
 /// https://github.com/massalabs/massa/discussions/3113
@@ -797,6 +798,31 @@ impl From<&DenunciationPrecursor> for DenunciationIndex {
     }
 }
 
+impl Ord for DenunciationIndex {
+    fn cmp(&self, other: &Self) -> Ordering {
+        match (self, other) {
+            (
+                DenunciationIndex::Endorsement { slot, index },
+                DenunciationIndex::Endorsement {
+                    slot: other_slot,
+                    index: other_index,
+                },
+            ) => slot.cmp(other_slot).then(index.cmp(other_index)),
+            (self_de, other_de) => {
+                // Note: does not specify an order for Block header de idx versus Endorsement de idx
+                //       but this should not be an issue
+                self_de.get_slot().cmp(other_de.get_slot())
+            }
+        }
+    }
+}
+
+impl PartialOrd for DenunciationIndex {
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+        Some(self.cmp(other))
+    }
+}
+
 // End Denunciation Index
 
 // Denunciation Index ser der
@@ -950,7 +976,7 @@ pub struct BlockHeaderDenunciationPrecursor {
 }
 
 /// Lightweight data for Denunciation creation
-/// (avoid storing heavyweight secured header or secure share endorsement, see denunciation factory)
+/// (avoid storing heavyweight secured header or secure share endorsement, see denunciation pool)
 #[derive(Debug, Clone)]
 pub enum DenunciationPrecursor {
     /// Endorsement variant

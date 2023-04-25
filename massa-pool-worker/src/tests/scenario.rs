@@ -13,15 +13,18 @@
 //! configurations are taken into account.
 
 use std::sync::mpsc::Receiver;
+use std::thread;
 use std::time::Duration;
 
 use crate::tests::tools::create_some_operations;
 use crate::tests::tools::pool_test;
 use crate::tests::tools::OpGenerator;
-use massa_execution_exports::test_exports::MockExecutionControllerMessage as ControllerMsg;
+use massa_execution_exports::test_exports::{
+    MockExecutionControllerMessage as ControllerMsg, MockExecutionControllerMessage,
+};
 use massa_models::address::Address;
 use massa_models::amount::Amount;
-use massa_models::denunciation::{Denunciation, DenunciationPrecursor};
+use massa_models::denunciation::{Denunciation, DenunciationIndex, DenunciationPrecursor};
 use massa_models::operation::OperationId;
 use massa_models::prehash::PreHashSet;
 use massa_models::slot::Slot;
@@ -310,4 +313,119 @@ fn test_endorsement_denunciation_creation() {
             pool_manager.stop();
         },
     );
+}
+
+#[test]
+fn test_denunciation_pool_get() {
+    // gen a endorsement denunciation
+    let (_slot, keypair_1, s_endorsement_1, s_endorsement_2, _) =
+        gen_endorsements_for_denunciation(None, None);
+    let address_1 = Address::from_public_key(&keypair_1.get_public_key());
+
+    let de_p_1 = DenunciationPrecursor::try_from(&s_endorsement_1).unwrap();
+    let de_p_2 = DenunciationPrecursor::try_from(&s_endorsement_2).unwrap();
+    let denunciation_orig_1 = Denunciation::try_from((&s_endorsement_1, &s_endorsement_2)).unwrap();
+
+    // gen a block header denunciation
+    let (_slot, keypair_2, secured_header_1, secured_header_2, _secured_header_3) =
+        gen_block_headers_for_denunciation();
+    let address_2 = Address::from_public_key(&keypair_2.get_public_key());
+
+    let de_p_3 = DenunciationPrecursor::try_from(&secured_header_1).unwrap();
+    let de_p_4 = DenunciationPrecursor::try_from(&secured_header_2).unwrap();
+    let denunciation_orig_2 =
+        Denunciation::try_from((&secured_header_1, &secured_header_2)).unwrap();
+    let de_idx_2 = DenunciationIndex::from(&denunciation_orig_2);
+
+    let config = PoolConfig::default();
+    pool_test(
+        config,
+        |mut pool_manager, pool_controller, execution_receiver, selector_receiver, _storage| {
+            // ~ random order (but need to keep the precursor order otherwise Denunciation::PartialEq will fail)
+            pool_controller.add_denunciation_precursor(de_p_3);
+            pool_controller.add_denunciation_precursor(de_p_1);
+            pool_controller.add_denunciation_precursor(de_p_4);
+            pool_controller.add_denunciation_precursor(de_p_2);
+
+            // Allow some time for the pool to add the operations
+            loop {
+                match selector_receiver.recv_timeout(Duration::from_millis(100)) {
+                    Ok(MockSelectorControllerMessage::GetProducer {
+                        slot: _slot,
+                        response_tx,
+                    }) => {
+                        response_tx.send(PosResult::Ok(address_2)).unwrap();
+                    }
+                    Ok(MockSelectorControllerMessage::GetSelection {
+                        slot: _slot,
+                        response_tx,
+                    }) => {
+                        let selection = Selection {
+                            endorsements: vec![address_1; usize::from(config.thread_count)],
+                            producer: address_1,
+                        };
+
+                        response_tx.send(PosResult::Ok(selection)).unwrap();
+                    }
+                    Ok(msg) => {
+                        panic!(
+                            "Received an unexpected message from mock selector: {:?}",
+                            msg
+                        );
+                    }
+                    Err(_) => {
+                        // timeout, exit the loop
+                        break;
+                    }
+                }
+            }
+
+            assert_eq!(pool_controller.get_denunciation_count(), 2);
+            assert_eq!(
+                pool_controller.contains_denunciation(&denunciation_orig_1),
+                true
+            );
+            assert_eq!(
+                pool_controller.contains_denunciation(&denunciation_orig_2),
+                true
+            );
+
+            // Now ask for denunciations
+            // Note that we need 2 threads as the get_block_denunciations call will wait for
+            // the mock execution controller to return
+
+            let target_slot_1 = Slot::new(4, 0);
+            let thread_1 = thread::spawn(move || loop {
+                match execution_receiver.recv_timeout(Duration::from_millis(100)) {
+                    Ok(MockExecutionControllerMessage::IsDenunciationUnexecuted {
+                        de_idx,
+                        response_tx,
+                    }) => {
+                        // Note: this should prevent denunciation_orig_1 to be included
+                        if de_idx == de_idx_2 {
+                            response_tx.send(true).unwrap();
+                        } else {
+                            response_tx.send(false).unwrap();
+                        }
+                    }
+                    Ok(msg) => {
+                        panic!(
+                            "Received an unexpected message from mock execution: {:?}",
+                            msg
+                        );
+                    }
+                    Err(_) => break,
+                }
+            });
+            let thread_2 =
+                thread::spawn(move || pool_controller.get_block_denunciations(&target_slot_1));
+
+            thread_1.join().unwrap();
+            let denunciations = thread_2.join().unwrap();
+
+            assert_eq!(denunciations, vec![denunciation_orig_2]);
+
+            pool_manager.stop();
+        },
+    )
 }

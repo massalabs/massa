@@ -9,6 +9,7 @@ use massa_execution_exports::{
     ExecutionAddressInfo, ExecutionConfig, ExecutionController, ExecutionError, ExecutionManager,
     ReadOnlyExecutionOutput, ReadOnlyExecutionRequest,
 };
+use massa_models::denunciation::DenunciationIndex;
 use massa_models::execution::EventFilter;
 use massa_models::output_event::SCOutputEvent;
 use massa_models::prehash::{PreHashMap, PreHashSet};
@@ -224,6 +225,13 @@ impl ExecutionController for ExecutionControllerImpl {
         self.execution_state
             .read()
             .unexecuted_ops_among(ops, thread)
+    }
+
+    /// Check if a denunciation has been executed given a `DenunciationIndex`
+    fn is_denunciation_unexecuted(&self, denunciation_index: &DenunciationIndex) -> bool {
+        self.execution_state
+            .read()
+            .is_denunciation_unexecuted(denunciation_index)
     }
 
     /// Gets information about a batch of addresses

@@ -60,7 +60,7 @@ impl ActiveHistory {
         HistorySearchResult::NoInfo
     }
 
-    /// Lazily query (from end to beginning) the active list of proccessed denunciations.
+    /// Lazily query (from end to beginning) the active list of processed denunciations.
     ///
     /// Returns a `HistorySearchResult`.
     pub fn fetch_processed_de(&self, de_idx: &DenunciationIndex) -> HistorySearchResult<()> {

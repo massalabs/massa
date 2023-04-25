@@ -7,6 +7,7 @@ use crate::{
     ReadOnlyExecutionRequest,
 };
 use massa_ledger_exports::LedgerEntry;
+use massa_models::denunciation::DenunciationIndex;
 use massa_models::{
     address::Address,
     amount::Amount,
@@ -75,6 +76,13 @@ pub enum MockExecutionControllerMessage {
         thread: u8,
         /// response channel
         response_tx: mpsc::Sender<PreHashSet<OperationId>>,
+    },
+    /// Is denunciation unexecuted call
+    IsDenunciationUnexecuted {
+        /// denunciation index
+        de_idx: DenunciationIndex,
+        /// response channel
+        response_tx: mpsc::Sender<bool>,
     },
     /// Get final and candidate balances by addresses
     GetFinalAndCandidateBalance {
@@ -211,6 +219,23 @@ impl ExecutionController for MockExecutionController {
                 thread,
                 response_tx,
             })
+        {
+            println!("mock error {err}");
+        }
+        response_rx
+            .recv_timeout(Duration::from_millis(100))
+            .unwrap()
+    }
+
+    fn is_denunciation_unexecuted(&self, denunciation_index: &DenunciationIndex) -> bool {
+        let (response_tx, response_rx) = mpsc::channel();
+        if let Err(err) =
+            self.0
+                .lock()
+                .send(MockExecutionControllerMessage::IsDenunciationUnexecuted {
+                    de_idx: denunciation_index.clone(),
+                    response_tx,
+                })
         {
             println!("mock error {err}");
         }

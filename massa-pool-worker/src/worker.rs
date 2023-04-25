@@ -190,7 +190,7 @@ pub fn start_pool_controller(
     let operation_pool = Arc::new(RwLock::new(OperationPool::init(
         config,
         storage,
-        execution_controller,
+        execution_controller.clone(),
         channels.clone(),
     )));
     let endorsement_pool = Arc::new(RwLock::new(EndorsementPool::init(
@@ -201,6 +201,7 @@ pub fn start_pool_controller(
     let denunciation_pool = Arc::new(RwLock::new(DenunciationPool::init(
         config,
         channels.selector.clone(),
+        execution_controller,
     )));
     let controller = PoolControllerImpl {
         _config: config,
