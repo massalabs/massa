@@ -5,6 +5,7 @@
 
 use std::collections::{BTreeMap, HashSet};
 use std::ops::Bound::{Excluded, Included, Unbounded};
+use std::sync::Arc;
 
 use nom::{
     error::{context, ContextError, ParseError},
@@ -12,10 +13,14 @@ use nom::{
     sequence::tuple,
     IResult, Parser,
 };
+use parking_lot::RwLock;
 
 use crate::{ExecutedDenunciationsChanges, ExecutedDenunciationsConfig};
-
-use massa_hash::{Hash, HASH_SIZE_BYTES};
+use massa_db::{
+    DBBatch, CF_ERROR, CRUD_ERROR, EXECUTED_DENUNCIATIONS_CF, EXECUTED_DENUNCIATIONS_HASH_ERROR,
+    EXECUTED_DENUNCIATIONS_HASH_INITIAL_BYTES, EXECUTED_DENUNCIATIONS_HASH_KEY, METADATA_CF,
+};
+use massa_hash::Hash;
 use massa_models::streaming_step::StreamingStep;
 use massa_models::{
     denunciation::{DenunciationIndex, DenunciationIndexDeserializer, DenunciationIndexSerializer},
@@ -24,14 +29,15 @@ use massa_models::{
 use massa_serialization::{
     Deserializer, SerializeError, Serializer, U64VarIntDeserializer, U64VarIntSerializer,
 };
-
-const EXECUTED_DENUNCIATIONS_HASH_INITIAL_BYTES: &[u8; 32] = &[0; HASH_SIZE_BYTES];
+use rocksdb::DB;
 
 /// A structure to list and prune previously processed denunciations
 #[derive(Debug, Clone)]
 pub struct ExecutedDenunciations {
     /// Processed denunciations configuration
     config: ExecutedDenunciationsConfig,
+    /// Access to the RocksDB database
+    pub db: Arc<RwLock<DB>>,
     /// for better pruning complexity
     pub sorted_denunciations: BTreeMap<Slot, HashSet<DenunciationIndex>>,
     /// for better insertion complexity
@@ -42,9 +48,10 @@ pub struct ExecutedDenunciations {
 
 impl ExecutedDenunciations {
     /// Create a new `ProcessedDenunciations`
-    pub fn new(config: ExecutedDenunciationsConfig) -> Self {
+    pub fn new(config: ExecutedDenunciationsConfig, db: Arc<RwLock<DB>>) -> Self {
         Self {
             config,
+            db,
             sorted_denunciations: Default::default(),
             denunciations: Default::default(),
             hash: Hash::from_bytes(EXECUTED_DENUNCIATIONS_HASH_INITIAL_BYTES),
@@ -88,7 +95,12 @@ impl ExecutedDenunciations {
     }
 
     /// Apply speculative operations changes to the final processed denunciations state
-    pub fn apply_changes(&mut self, changes: ExecutedDenunciationsChanges, slot: Slot) {
+    pub fn apply_changes_to_batch(
+        &mut self,
+        changes: ExecutedDenunciationsChanges,
+        slot: Slot,
+        batch: &mut DBBatch,
+    ) {
         self.extend_and_compute_hash(changes.iter());
         for de_idx in changes {
             self.sorted_denunciations
@@ -179,6 +191,28 @@ impl ExecutedDenunciations {
             StreamingStep::Ongoing(*slot)
         } else {
             StreamingStep::Finished(None)
+        }
+    }
+
+    /// Get the current executed denunciations hash
+    pub fn get_hash(&self) -> Hash {
+        let db = self.db.read();
+        let handle = db.cf_handle(METADATA_CF).expect(CF_ERROR);
+        if let Some(executed_denunciations_hash) = db
+            .get_cf(handle, EXECUTED_DENUNCIATIONS_HASH_KEY)
+            .expect(CRUD_ERROR)
+            .as_deref()
+        {
+            Hash::from_bytes(
+                executed_denunciations_hash
+                    .try_into()
+                    .expect(EXECUTED_DENUNCIATIONS_HASH_ERROR),
+            )
+        } else {
+            // initial executed_denunciations value to avoid matching an option in every XOR operation
+            // because of a one time case being an empty ledger
+            // also note that the if you XOR a hash with itself result is EXECUTED_DENUNCIATIONS_HASH_INITIAL_BYTES
+            Hash::from_bytes(EXECUTED_DENUNCIATIONS_HASH_INITIAL_BYTES)
         }
     }
 }

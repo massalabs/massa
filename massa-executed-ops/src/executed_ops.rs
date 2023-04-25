@@ -4,7 +4,10 @@
 //! Used to detect operation reuse.
 
 use crate::{ops_changes::ExecutedOpsChanges, ExecutedOpsConfig};
-use massa_db::{DBBatch, EXECUTED_OPS_CF, EXECUTED_OPS_HASH_INITIAL_BYTES};
+use massa_db::{
+    DBBatch, CF_ERROR, CRUD_ERROR, EXECUTED_OPS_CF, EXECUTED_OPS_HASH_ERROR,
+    EXECUTED_OPS_HASH_INITIAL_BYTES, EXECUTED_OPS_HASH_KEY, METADATA_CF,
+};
 use massa_hash::Hash;
 use massa_models::{
     operation::{OperationId, OperationIdDeserializer},
@@ -223,6 +226,28 @@ impl ExecutedOps {
             StreamingStep::Finished(None)
         }
     }
+
+    /// Get the current executed ops hash
+    pub fn get_hash(&self) -> Hash {
+        let db = self.db.read();
+        let handle = db.cf_handle(METADATA_CF).expect(CF_ERROR);
+        if let Some(executed_denunciations_hash) = db
+            .get_cf(handle, EXECUTED_OPS_HASH_KEY)
+            .expect(CRUD_ERROR)
+            .as_deref()
+        {
+            Hash::from_bytes(
+                executed_denunciations_hash
+                    .try_into()
+                    .expect(EXECUTED_OPS_HASH_ERROR),
+            )
+        } else {
+            // initial executed_denunciations value to avoid matching an option in every XOR operation
+            // because of a one time case being an empty ledger
+            // also note that the if you XOR a hash with itself result is EXECUTED_DENUNCIATIONS_HASH_INITIAL_BYTES
+            Hash::from_bytes(EXECUTED_OPS_HASH_INITIAL_BYTES)
+        }
+    }
 }
 
 #[test]
@@ -281,8 +306,8 @@ fn test_executed_ops_xor_computing() {
         thread: 0,
     };
 
-    let mut batch_a = DBBatch::new(None, None, None, None, Some(a.hash));
-    let mut batch_c = DBBatch::new(None, None, None, None, Some(c.hash));
+    let mut batch_a = DBBatch::new(None, None, None, None, Some(a.hash), None);
+    let mut batch_c = DBBatch::new(None, None, None, None, Some(c.hash), None);
     a.apply_changes_to_batch(change_a, apply_slot, &mut batch_a);
     a.apply_changes_to_batch(change_b, apply_slot, &mut batch_a);
     c.apply_changes_to_batch(change_c, apply_slot, &mut batch_c);
@@ -297,7 +322,7 @@ fn test_executed_ops_xor_computing() {
         period: 20,
         thread: 0,
     };
-    let mut batch_a = DBBatch::new(None, None, None, None, Some(a.hash));
+    let mut batch_a = DBBatch::new(None, None, None, None, Some(a.hash), None);
     a.apply_changes_to_batch(PreHashMap::default(), prune_slot, &mut batch_a);
     a.prune(prune_slot);
     write_batch(&rocks_db_instance_a.read(), batch_a);

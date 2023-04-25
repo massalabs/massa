@@ -119,7 +119,7 @@ impl LedgerDB {
 
     pub fn set_initial_slot(&mut self, slot: Slot) {
         let ledger_hash = self.get_ledger_hash();
-        let mut batch = DBBatch::new(Some(ledger_hash), None, None, None, None);
+        let mut batch = DBBatch::new(Some(ledger_hash), None, None, None, None, None);
         self.set_slot(slot, &mut batch);
         massa_db::write_batch(&self.db.read(), batch);
     }
@@ -131,7 +131,7 @@ impl LedgerDB {
         // initial ledger_hash value to avoid matching an option in every XOR operation
         // because of a one time case being an empty ledger
         let ledger_hash = Hash::from_bytes(LEDGER_HASH_INITIAL_BYTES);
-        let mut batch = DBBatch::new(Some(ledger_hash), None, None, None, None);
+        let mut batch = DBBatch::new(Some(ledger_hash), None, None, None, None, None);
         for (address, entry) in initial_ledger {
             self.put_entry(&address, entry, &mut batch);
         }
@@ -164,7 +164,7 @@ impl LedgerDB {
     /// * final_state_data: the serialized final state data to include, in case we use the feature `create_snapshot`
     pub fn apply_changes(&mut self, changes: LedgerChanges, slot: Slot) {
         // create the batch
-        let mut batch = DBBatch::new(Some(self.get_ledger_hash()), None, None, None, None);
+        let mut batch = DBBatch::new(Some(self.get_ledger_hash()), None, None, None, None, None);
         // for all incoming changes
         for (addr, change) in changes.0 {
             match change {
@@ -376,7 +376,7 @@ impl LedgerDB {
         let vec_u8_deserializer =
             VecU8Deserializer::new(Bound::Included(0), Bound::Excluded(u64::MAX));
         let mut last_key: Rc<Option<Key>> = Rc::new(None);
-        let mut batch = DBBatch::new(Some(self.get_ledger_hash()), None, None, None, None);
+        let mut batch = DBBatch::new(Some(self.get_ledger_hash()), None, None, None, None, None);
         // Since this data is coming from the network, deser to address and ser back to bytes for a security check.
         let (rest, _) = many0(|input: &'a [u8]| {
             let (rest, (key, value)) = tuple((
@@ -810,6 +810,7 @@ mod tests {
             None,
             None,
             None,
+            None,
         );
         db.put_entry(&addr, entry, &mut batch);
         db.update_entry(&addr, entry_update, &mut batch);
@@ -847,7 +848,7 @@ mod tests {
         );
 
         // delete entry
-        let mut batch = DBBatch::new(Some(ledger_hash), None, None, None, None);
+        let mut batch = DBBatch::new(Some(ledger_hash), None, None, None, None, None);
         db.delete_entry(&addr, &mut batch);
 
         write_batch(&db.db.read(), batch);

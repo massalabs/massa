@@ -166,6 +166,7 @@ fn test_bootstrap_server() {
             &rolls_path,
             server_selector_controller.clone(),
             Hash::from_bytes(&[0; HASH_SIZE_BYTES]),
+            rocks_db_instance_server.clone(),
         )
         .unwrap(),
         final_state_local_config.clone(),
@@ -178,6 +179,7 @@ fn test_bootstrap_server() {
             &rolls_path,
             client_selector_controller.clone(),
             Hash::from_bytes(&[0; HASH_SIZE_BYTES]),
+            rocks_db_instance_client.clone(),
         )
         .unwrap(),
         final_state_local_config,
@@ -311,10 +313,11 @@ fn test_bootstrap_server() {
                 None,
                 None,
                 Some(executed_ops_hash),
+                None,
             );
             final_state_server_write
                 .pos_state
-                .apply_changes(change.pos_changes.clone(), *slot, false)
+                .apply_changes_to_batch(change.pos_changes.clone(), *slot, false, &mut batch)
                 .unwrap();
             final_state_server_write.ledger.apply_changes_to_batch(
                 change.ledger_changes.clone(),

@@ -115,6 +115,7 @@ impl FinalState {
             &config.initial_rolls_path,
             selector,
             ledger.get_ledger_hash(),
+            rocks_db.clone(),
         )
         .map_err(|err| FinalStateError::PosError(format!("PoS final state init error: {}", err)))?;
 
@@ -128,8 +129,10 @@ impl FinalState {
         let executed_ops = ExecutedOps::new(config.executed_ops_config.clone(), rocks_db.clone());
 
         // create a default processed denunciations
-        let processed_denunciations =
-            ExecutedDenunciations::new(config.executed_denunciations_config.clone());
+        let processed_denunciations = ExecutedDenunciations::new(
+            config.executed_denunciations_config.clone(),
+            rocks_db.clone(),
+        );
 
         // create the final state
         Ok(FinalState {
@@ -483,37 +486,32 @@ impl FinalState {
         // update current slot
         self.slot = slot;
 
-        /*self.async_pool
-        .apply_changes_unchecked(&changes.async_pool_changes);*/
-        self.pos_state
-            .apply_changes(changes.pos_changes.clone(), self.slot, true)
-            .expect("could not settle slot in final state proof-of-stake");
-        // TODO:
-        // do not panic above, it might just mean that the lookback cycle is not available
-        // bootstrap again instead
-        self.executed_denunciations
-            .apply_changes(changes.executed_denunciations_changes.clone(), self.slot);
-
         let mut db_batch = DBBatch::new(
             Some(self.ledger.get_ledger_hash()),
             Some(self.async_pool.get_hash()),
-            None,
-            None,
-            Some(self.executed_ops.hash),
+            Some(self.pos_state.get_cycle_history_hash()),
+            Some(self.pos_state.get_deferred_credits_hash()),
+            Some(self.executed_ops.get_hash()),
+            Some(self.executed_denunciations.get_hash()),
         );
 
         // apply the state changes to the batch
 
         self.async_pool
             .apply_changes_to_batch(&changes.async_pool_changes, &mut db_batch);
-        /*self.pos_state
-            .apply_changes_to_batch(changes.pos_changes.clone(), self.slot, true, db_batch)
+
+        self.pos_state
+            .apply_changes_to_batch(changes.pos_changes.clone(), self.slot, true, &mut db_batch)
             .expect("could not settle slot in final state proof-of-stake");
-        self.executed_ops.apply_changes_to_batch(
-            changes.executed_ops_changes.clone(),
+        // TODO:
+        // do not panic above, it might just mean that the lookback cycle is not available
+        // bootstrap again instead
+
+        self.ledger.apply_changes_to_batch(
+            changes.ledger_changes.clone(),
             self.slot,
-            ledger_batch,
-        );*/
+            &mut db_batch,
+        );
 
         self.executed_ops.apply_changes_to_batch(
             changes.executed_ops_changes.clone(),
@@ -521,8 +519,8 @@ impl FinalState {
             &mut db_batch,
         );
 
-        self.ledger.apply_changes_to_batch(
-            changes.ledger_changes.clone(),
+        self.executed_denunciations.apply_changes_to_batch(
+            changes.executed_denunciations_changes.clone(),
             self.slot,
             &mut db_batch,
         );

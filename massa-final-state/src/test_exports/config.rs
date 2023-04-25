@@ -45,6 +45,7 @@ impl FinalState {
             executed_ops: ExecutedOps::new(config.executed_ops_config.clone(), rocks_db.clone()),
             executed_denunciations: ExecutedDenunciations::new(
                 config.executed_denunciations_config.clone(),
+                rocks_db.clone(),
             ),
             changes_history: Default::default(),
             config,

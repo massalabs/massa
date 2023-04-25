@@ -220,7 +220,7 @@ pub fn get_random_executed_ops(
     db: Arc<RwLock<DB>>,
 ) -> ExecutedOps {
     let mut executed_ops = ExecutedOps::new(config.clone(), db.clone());
-    let mut batch = DBBatch::new(None, None, None, None, Some(executed_ops.hash));
+    let mut batch = DBBatch::new(None, None, None, None, Some(executed_ops.hash), None);
     executed_ops.apply_changes_to_batch(get_random_executed_ops_changes(10), slot, &mut batch);
     write_batch(&db.read(), batch);
     executed_ops
@@ -247,9 +247,15 @@ pub fn get_random_executed_de(
     _r_limit: u64,
     slot: Slot,
     config: ExecutedDenunciationsConfig,
+    rocks_db_instance: Arc<RwLock<DB>>,
 ) -> ExecutedDenunciations {
-    let mut executed_de = ExecutedDenunciations::new(config);
-    executed_de.apply_changes(get_random_executed_de_changes(10), slot);
+    let mut executed_de = ExecutedDenunciations::new(config, rocks_db_instance);
+
+    let mut batch = DBBatch::new(None, None, None, None, None, Some(executed_de.hash));
+    executed_de.apply_changes_to_batch(get_random_executed_de_changes(10), slot, &mut batch);
+
+    write_batch(&executed_de.db.read(), batch);
+
     executed_de
 }
 
@@ -313,9 +319,10 @@ pub fn get_random_final_state_bootstrap(
         config.async_pool_config.clone(),
         BTreeMap::new(),
     );
-    let mut batch = DBBatch::new(None, Some(async_pool.get_hash()), None, None, None);
+    let mut batch = DBBatch::new(None, Some(async_pool.get_hash()), None, None, None, None);
     async_pool.apply_changes_to_batch(&messages, &mut batch);
-    async_pool.write_batch(batch);
+
+    write_batch(&async_pool.db.read(), batch);
 
     let executed_ops = get_random_executed_ops(
         r_limit,
@@ -324,15 +331,22 @@ pub fn get_random_final_state_bootstrap(
         rocks_db_instance.clone(),
     );
 
+    let executed_denunciations = get_random_executed_de(
+        r_limit,
+        slot,
+        config.executed_denunciations_config.clone(),
+        rocks_db_instance.clone(),
+    );
+
     create_final_state(
-        config.clone(),
+        config,
         slot,
         Box::new(final_ledger),
         async_pool,
         VecDeque::new(),
         get_random_pos_state(r_limit, pos),
         executed_ops,
-        get_random_executed_de(r_limit, slot, config.executed_denunciations_config),
+        executed_denunciations,
         rocks_db_instance,
     )
 }

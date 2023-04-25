@@ -81,12 +81,15 @@ fn stream_final_state_and_consensus(
                         let ledger_hash = write_final_state.ledger.get_ledger_hash();
                         let async_pool_hash = write_final_state.async_pool.get_hash();
                         let executed_ops_hash = write_final_state.executed_ops.hash;
+                        let executed_denunciations_hash =
+                            write_final_state.executed_denunciations.hash;
                         let mut batch = DBBatch::new(
                             Some(ledger_hash),
                             Some(async_pool_hash),
                             None,
                             None,
                             Some(executed_ops_hash),
+                            Some(executed_denunciations_hash),
                         );
                         write_final_state.ledger.apply_changes_to_batch(
                             changes.ledger_changes.clone(),
@@ -97,10 +100,11 @@ fn stream_final_state_and_consensus(
                             .async_pool
                             .apply_changes_to_batch(&changes.async_pool_changes, &mut batch);
                         if !changes.pos_changes.is_empty() {
-                            write_final_state.pos_state.apply_changes(
+                            write_final_state.pos_state.apply_changes_to_batch(
                                 changes.pos_changes.clone(),
                                 *changes_slot,
                                 false,
+                                &mut batch,
                             )?;
                         }
                         if !changes.executed_ops_changes.is_empty() {

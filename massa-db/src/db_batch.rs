@@ -4,7 +4,8 @@ use std::{collections::BTreeMap, path::PathBuf};
 
 use crate::{
     ASYNC_POOL_CF, ASYNC_POOL_HASH_KEY, CF_ERROR, CRUD_ERROR, CYCLE_HISTORY_CF,
-    CYCLE_HISTORY_HASH_KEY, DEFERRED_CREDITS_CF, DEFERRED_CREDITS_HASH_KEY, EXECUTED_OPS_CF,
+    CYCLE_HISTORY_HASH_KEY, DEFERRED_CREDITS_CF, DEFERRED_CREDITS_HASH_KEY,
+    EXECUTED_DENUNCIATIONS_CF, EXECUTED_DENUNCIATIONS_HASH_KEY, EXECUTED_OPS_CF,
     EXECUTED_OPS_HASH_KEY, LEDGER_CF, LEDGER_HASH_KEY, METADATA_CF, OPEN_ERROR,
 };
 
@@ -22,6 +23,8 @@ pub struct DBBatch {
     pub deferred_credits_hash: Option<Hash>,
     // executed ops hash state in the current batch
     pub executed_ops_hash: Option<Hash>,
+    // executed denunciations hash state in the current batch
+    pub executed_denunciations_hash: Option<Hash>,
     // Added entry hashes in the current batch
     pub aeh_list: BTreeMap<Vec<u8>, Hash>,
 }
@@ -33,6 +36,7 @@ impl DBBatch {
         cycle_history_hash: Option<Hash>,
         deferred_credits_hash: Option<Hash>,
         executed_ops_hash: Option<Hash>,
+        executed_denunciations_hash: Option<Hash>,
     ) -> Self {
         Self {
             write_batch: WriteBatch::default(),
@@ -41,6 +45,7 @@ impl DBBatch {
             cycle_history_hash,
             deferred_credits_hash,
             executed_ops_hash,
+            executed_denunciations_hash,
             aeh_list: BTreeMap::new(),
         }
     }
@@ -52,12 +57,14 @@ pub fn write_batch(db: &DB, mut batch: DBBatch) {
         cycle_history_hash,
         deferred_credits_hash,
         executed_ops_hash,
+        executed_denunciations_hash,
         ledger_hash,
     ) = (
         batch.async_pool_hash,
         batch.cycle_history_hash,
         batch.deferred_credits_hash,
         batch.executed_ops_hash,
+        batch.executed_denunciations_hash,
         batch.ledger_hash,
     );
     try_put_hash_in_batch(db, &mut batch, ASYNC_POOL_HASH_KEY, async_pool_hash);
@@ -69,6 +76,12 @@ pub fn write_batch(db: &DB, mut batch: DBBatch) {
         deferred_credits_hash,
     );
     try_put_hash_in_batch(db, &mut batch, EXECUTED_OPS_HASH_KEY, executed_ops_hash);
+    try_put_hash_in_batch(
+        db,
+        &mut batch,
+        EXECUTED_DENUNCIATIONS_HASH_KEY,
+        executed_denunciations_hash,
+    );
     try_put_hash_in_batch(db, &mut batch, LEDGER_HASH_KEY, ledger_hash);
 
     db.write(batch.write_batch).expect(CRUD_ERROR);
@@ -98,6 +111,7 @@ pub fn new_rocks_db_instance(path: PathBuf) -> DB {
             ColumnFamilyDescriptor::new(CYCLE_HISTORY_CF, Options::default()),
             ColumnFamilyDescriptor::new(DEFERRED_CREDITS_CF, Options::default()),
             ColumnFamilyDescriptor::new(EXECUTED_OPS_CF, Options::default()),
+            ColumnFamilyDescriptor::new(EXECUTED_DENUNCIATIONS_CF, Options::default()),
         ],
     )
     .expect(OPEN_ERROR)

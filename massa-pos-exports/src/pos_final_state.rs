@@ -1,13 +1,22 @@
 use crate::{CycleInfo, PoSChanges, PosError, PosResult, ProductionStats, SelectorController};
 use crate::{DeferredCredits, PoSConfig};
 use bitvec::vec::BitVec;
+use massa_db::{
+    DBBatch, CF_ERROR, CRUD_ERROR, CYCLE_HISTORY_CF, CYCLE_HISTORY_HASH_ERROR,
+    CYCLE_HISTORY_HASH_INITIAL_BYTES, CYCLE_HISTORY_HASH_KEY, DEFERRED_CREDITS_CF,
+    DEFERRED_CREDITS_HASH_ERROR, DEFERRED_CREDITS_HASH_INITIAL_BYTES, DEFERRED_CREDITS_HASH_KEY,
+    METADATA_CF,
+};
 use massa_hash::Hash;
 use massa_models::error::ModelsError;
 use massa_models::streaming_step::StreamingStep;
 use massa_models::{address::Address, prehash::PreHashMap, slot::Slot};
 use massa_serialization::{Serializer, U64VarIntSerializer};
+use parking_lot::RwLock;
+use rocksdb::DB;
 use std::collections::VecDeque;
 use std::ops::RangeBounds;
+use std::sync::Arc;
 use std::{
     collections::BTreeMap,
     ops::Bound::{Excluded, Unbounded},
@@ -20,6 +29,8 @@ use tracing::debug;
 pub struct PoSFinalState {
     /// proof-of-stake configuration
     pub config: PoSConfig,
+    /// Access to the RocksDB database
+    pub db: Arc<RwLock<DB>>,
     /// contiguous cycle history, back = newest
     pub cycle_history: VecDeque<CycleInfo>,
     /// coins to be credited at the end of the slot
@@ -42,6 +53,7 @@ impl PoSFinalState {
         initial_rolls_path: &PathBuf,
         selector: Box<dyn SelectorController>,
         initial_ledger_hash: Hash,
+        db: Arc<RwLock<DB>>,
     ) -> Result<Self, PosError> {
         // load get initial rolls from file
         let initial_rolls = serde_json::from_str::<BTreeMap<Address, u64>>(
@@ -57,6 +69,7 @@ impl PoSFinalState {
 
         Ok(Self {
             config,
+            db,
             cycle_history: Default::default(),
             deferred_credits: DeferredCredits::new_with_hash(),
             selector,
@@ -66,9 +79,11 @@ impl PoSFinalState {
         })
     }
 
+    #[allow(clippy::too_many_arguments)]
     /// create a `PoSFinalState` from an existing snapshot
     pub fn from_snapshot(
         config: PoSConfig,
+        db: Arc<RwLock<DB>>,
         cycle_history: VecDeque<CycleInfo>,
         deferred_credits: DeferredCredits,
         initial_seed_string: &str,
@@ -89,6 +104,7 @@ impl PoSFinalState {
 
         Ok(Self {
             config,
+            db,
             cycle_history,
             deferred_credits,
             selector,
@@ -234,11 +250,12 @@ impl PoSFinalState {
     ///     set complete=true for cycle C in the history
     ///     compute the seed hash and notifies the `PoSDrawer` for cycle `C+3`
     ///
-    pub fn apply_changes(
+    pub fn apply_changes_to_batch(
         &mut self,
         changes: PoSChanges,
         slot: Slot,
         feed_selector: bool,
+        batch: &mut DBBatch,
     ) -> PosResult<()> {
         let slots_per_cycle: usize = self
             .config
@@ -556,6 +573,50 @@ impl PoSFinalState {
             StreamingStep::Ongoing(slot)
         } else {
             StreamingStep::Finished(None)
+        }
+    }
+
+    /// Get the current cycle history hash
+    pub fn get_cycle_history_hash(&self) -> Hash {
+        let db = self.db.read();
+        let handle = db.cf_handle(METADATA_CF).expect(CF_ERROR);
+        if let Some(executed_denunciations_hash) = db
+            .get_cf(handle, CYCLE_HISTORY_HASH_KEY)
+            .expect(CRUD_ERROR)
+            .as_deref()
+        {
+            Hash::from_bytes(
+                executed_denunciations_hash
+                    .try_into()
+                    .expect(CYCLE_HISTORY_HASH_ERROR),
+            )
+        } else {
+            // initial executed_denunciations value to avoid matching an option in every XOR operation
+            // because of a one time case being an empty ledger
+            // also note that the if you XOR a hash with itself result is EXECUTED_DENUNCIATIONS_HASH_INITIAL_BYTES
+            Hash::from_bytes(CYCLE_HISTORY_HASH_INITIAL_BYTES)
+        }
+    }
+
+    /// Get the current deferred credits hash
+    pub fn get_deferred_credits_hash(&self) -> Hash {
+        let db = self.db.read();
+        let handle = db.cf_handle(METADATA_CF).expect(CF_ERROR);
+        if let Some(executed_denunciations_hash) = db
+            .get_cf(handle, DEFERRED_CREDITS_HASH_KEY)
+            .expect(CRUD_ERROR)
+            .as_deref()
+        {
+            Hash::from_bytes(
+                executed_denunciations_hash
+                    .try_into()
+                    .expect(DEFERRED_CREDITS_HASH_ERROR),
+            )
+        } else {
+            // initial executed_denunciations value to avoid matching an option in every XOR operation
+            // because of a one time case being an empty ledger
+            // also note that the if you XOR a hash with itself result is EXECUTED_DENUNCIATIONS_HASH_INITIAL_BYTES
+            Hash::from_bytes(DEFERRED_CREDITS_HASH_INITIAL_BYTES)
         }
     }
 }

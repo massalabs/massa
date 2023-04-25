@@ -83,7 +83,6 @@ impl SpeculativeAsyncPool {
 
     /// Add a new message to the list of changes of this `SpeculativeAsyncPool`
     pub fn push_new_message(&mut self, msg: AsyncMessage) {
-        println!("NEW MESSAGE ADDED TO POOL CHANGES: {:?}", msg);
         self.pool_changes.push_add(msg.compute_id(), msg.clone());
         self.message_infos.insert(msg.compute_id(), msg.into());
     }
@@ -111,10 +110,6 @@ impl SpeculativeAsyncPool {
 
         let message_infos = self.message_infos.clone();
 
-        if !message_infos.is_empty() {
-            println!("message_infos LEN IN TAKE BATCH: {:?}", message_infos.len());
-        }
-
         for (message_id, message_info) in message_infos.iter() {
             if available_gas >= message_info.max_gas
                 && slot >= message_info.validity_start
@@ -131,10 +126,6 @@ impl SpeculativeAsyncPool {
 
         for (message_id, _) in taken.iter() {
             self.message_infos.remove(message_id);
-        }
-
-        if !taken.is_empty() {
-            println!("TAKEN LEN: {:?}", taken.len());
         }
 
         taken
@@ -158,15 +149,6 @@ impl SpeculativeAsyncPool {
         // Filter out all messages for which the validity end is expired.
         // Note that the validity_end bound is NOT included in the validity interval of the message.
 
-        if !self.pool_changes.0.is_empty() {
-            println!("pool_changes LEN: {:?}", self.pool_changes.0.len());
-            println!("pool_changes: {:?}", self.pool_changes.0);
-        }
-        if !self.message_infos.is_empty() {
-            println!("message_infos LEN: {:?}", self.message_infos.len());
-            println!("message_infos: {:?}", self.message_infos);
-        }
-
         let mut eliminated_infos: Vec<_> = self
             .message_infos
             .drain_filter(|_k, v| *slot >= v.validity_end)
@@ -181,14 +163,6 @@ impl SpeculativeAsyncPool {
                 SetUpdateOrDelete::Delete => false,
             })
             .collect();
-
-        if !eliminated_new_messages.is_empty() {
-            println!(
-                "eliminated_new_messages LEN: {:?}",
-                eliminated_new_messages.len()
-            );
-            println!("eliminated_new_messages: {:?}", eliminated_new_messages);
-        }
 
         eliminated_infos.extend(eliminated_new_messages.iter().filter_map(|(k, v)| match v {
             SetUpdateOrDelete::Set(v) => Some((*k, AsyncMessageInfo::from(v.clone()))),
@@ -205,14 +179,6 @@ impl SpeculativeAsyncPool {
         eliminated_infos.reserve_exact(excess_count);
         for _ in 0..excess_count {
             eliminated_infos.push(self.message_infos.pop_last().unwrap()); // will not panic (checked at excess_count computation)
-        }
-
-        if !eliminated_new_messages.is_empty() {
-            println!(
-                "eliminated_new_messages LEN: {:?}",
-                eliminated_new_messages.len()
-            );
-            println!("eliminated_new_messages: {:?}", eliminated_new_messages);
         }
 
         // Activate the messages that can be activated (triggered)
@@ -233,22 +199,9 @@ impl SpeculativeAsyncPool {
             self.pool_changes.push_activate(*msg_id);
         }
 
-        if !triggered_msg.is_empty() {
-            println!("triggered_msg LEN: {:?}", triggered_msg.len());
-        }
-
-        if !triggered_info.is_empty() {
-            println!("triggered_info LEN: {:?}", triggered_info.len());
-        }
-
         // Query eliminated messages
         let eliminated_msg =
             self.fetch_msgs(eliminated_infos.iter().map(|(id, _)| id).collect(), true);
-
-        if !self.message_infos.is_empty() {
-            println!("message_infos LEN END : {:?}", self.message_infos.len());
-            println!("message_infos END: {:?}", self.message_infos);
-        }
 
         eliminated_msg
     }
