@@ -230,7 +230,6 @@
 <a href="#230" id="230">230</a>
 <a href="#231" id="231">231</a>
 <a href="#232" id="232">232</a>
-<a href="#233" id="233">233</a>
 </pre><pre class="rust"><code><span class="doccomment">//! Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 //! Write worker for the pools, allowing asynchronous writes.
@@ -423,7 +422,7 @@
     <span class="kw">let </span>operation_pool = Arc::new(RwLock::new(OperationPool::init(
         config,
         storage,
-        execution_controller.clone(),
+        execution_controller,
         channels.clone(),
     )));
     <span class="kw">let </span>endorsement_pool = Arc::new(RwLock::new(EndorsementPool::init(
@@ -434,7 +433,6 @@
     <span class="kw">let </span>denunciation_pool = Arc::new(RwLock::new(DenunciationPool::init(
         config,
         channels.selector.clone(),
-        execution_controller,
     )));
     <span class="kw">let </span>controller = PoolControllerImpl {
         _config: config,
