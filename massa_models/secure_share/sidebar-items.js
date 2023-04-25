@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"constant":["FIELDS"],"enum":["__Field"],"struct":["SecureShare","SecureShareDeserializer","SecureShareSerializer","__FieldVisitor","__Visitor"],"trait":["Id","SecureShareContent"]};
+window.SIDEBAR_ITEMS = {"struct":["SecureShare","SecureShareDeserializer","SecureShareSerializer"],"trait":["Id","SecureShareContent"]};

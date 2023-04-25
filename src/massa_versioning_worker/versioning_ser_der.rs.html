@@ -1185,9 +1185,6 @@
 <a href="#1185" id="1185">1185</a>
 <a href="#1186" id="1186">1186</a>
 <a href="#1187" id="1187">1187</a>
-<a href="#1188" id="1188">1188</a>
-<a href="#1189" id="1189">1189</a>
-<a href="#1190" id="1190">1190</a>
 </pre><pre class="rust"><code><span class="kw">use </span>std::collections::BTreeMap;
 <span class="kw">use </span>std::mem;
 <span class="kw">use </span>std::ops::Bound::{Excluded, Included};
@@ -1819,47 +1816,44 @@
         // self.u32_serializer.serialize(&amp;cfg_2, buffer)?;
 
         // stats data
-        </span>{
-            <span class="kw">let </span>entry_count_ = value.latest_announcements.len();
-            <span class="kw">let </span>entry_count = u32::try_from(entry_count_).map_err(|e| {
-                SerializeError::GeneralError(<span class="macro">format!</span>(<span class="string">&quot;Could not convert to u32: {}&quot;</span>, e))
-            })<span class="question-mark">?</span>;
-            <span class="kw">let </span>entry_count_max = u32::try_from(MIP_STORE_STATS_BLOCK_CONSIDERED).map_err(|e| {
-                SerializeError::GeneralError(<span class="macro">format!</span>(<span class="string">&quot;Could not convert to u32: {}&quot;</span>, e))
-            })<span class="question-mark">?</span>;
 
-            <span class="kw">if </span>entry_count &gt; entry_count_max {
-                <span class="kw">return </span><span class="prelude-val">Err</span>(SerializeError::GeneralError(<span class="macro">format!</span>(
-                    <span class="string">&quot;Too many entries in MipStoreStats latest announcements, max: {}&quot;</span>,
-                    MIP_STORE_STATS_BLOCK_CONSIDERED
-                )));
-            }
-            <span class="self">self</span>.u32_serializer.serialize(<span class="kw-2">&amp;</span>entry_count, buffer)<span class="question-mark">?</span>;
-            <span class="kw">for </span>v <span class="kw">in </span>value.latest_announcements.iter() {
-                <span class="self">self</span>.u32_serializer.serialize(v, buffer)<span class="question-mark">?</span>;
-            }
+        </span><span class="kw">let </span>entry_count_ = value.latest_announcements.len();
+        <span class="kw">let </span>entry_count = u32::try_from(entry_count_).map_err(|e| {
+            SerializeError::GeneralError(<span class="macro">format!</span>(<span class="string">&quot;Could not convert to u32: {}&quot;</span>, e))
+        })<span class="question-mark">?</span>;
+        <span class="kw">let </span>entry_count_max = u32::try_from(MIP_STORE_STATS_BLOCK_CONSIDERED).map_err(|e| {
+            SerializeError::GeneralError(<span class="macro">format!</span>(<span class="string">&quot;Could not convert to u32: {}&quot;</span>, e))
+        })<span class="question-mark">?</span>;
+
+        <span class="kw">if </span>entry_count &gt; entry_count_max {
+            <span class="kw">return </span><span class="prelude-val">Err</span>(SerializeError::GeneralError(<span class="macro">format!</span>(
+                <span class="string">&quot;Too many entries in MipStoreStats latest announcements, max: {}&quot;</span>,
+                MIP_STORE_STATS_BLOCK_CONSIDERED
+            )));
+        }
+        <span class="self">self</span>.u32_serializer.serialize(<span class="kw-2">&amp;</span>entry_count, buffer)<span class="question-mark">?</span>;
+        <span class="kw">for </span>v <span class="kw">in </span>value.latest_announcements.iter() {
+            <span class="self">self</span>.u32_serializer.serialize(v, buffer)<span class="question-mark">?</span>;
         }
 
-        {
-            <span class="kw">let </span>entry_count_2_ = value.network_version_counters.len();
-            <span class="kw">let </span>entry_count_2 = u32::try_from(entry_count_2_).map_err(|e| {
-                SerializeError::GeneralError(<span class="macro">format!</span>(<span class="string">&quot;Could not convert to u32: {}&quot;</span>, e))
-            })<span class="question-mark">?</span>;
-            <span class="kw">let </span>entry_count_2_max = u32::try_from(MIP_STORE_STATS_COUNTERS_MAX).map_err(|e| {
-                SerializeError::GeneralError(<span class="macro">format!</span>(<span class="string">&quot;Could not convert to u32: {}&quot;</span>, e))
-            })<span class="question-mark">?</span>;
+        <span class="kw">let </span>entry_count_2_ = value.network_version_counters.len();
+        <span class="kw">let </span>entry_count_2 = u32::try_from(entry_count_2_).map_err(|e| {
+            SerializeError::GeneralError(<span class="macro">format!</span>(<span class="string">&quot;Could not convert to u32: {}&quot;</span>, e))
+        })<span class="question-mark">?</span>;
+        <span class="kw">let </span>entry_count_2_max = u32::try_from(MIP_STORE_STATS_COUNTERS_MAX).map_err(|e| {
+            SerializeError::GeneralError(<span class="macro">format!</span>(<span class="string">&quot;Could not convert to u32: {}&quot;</span>, e))
+        })<span class="question-mark">?</span>;
 
-            <span class="kw">if </span>entry_count_2 &gt; entry_count_2_max {
-                <span class="kw">return </span><span class="prelude-val">Err</span>(SerializeError::GeneralError(<span class="macro">format!</span>(
-                    <span class="string">&quot;Too many entries in MipStoreStats version counters, max: {}&quot;</span>,
-                    MIP_STORE_STATS_COUNTERS_MAX
-                )));
-            }
-            <span class="self">self</span>.u32_serializer.serialize(<span class="kw-2">&amp;</span>entry_count_2, buffer)<span class="question-mark">?</span>;
-            <span class="kw">for </span>(v, c) <span class="kw">in </span>value.network_version_counters.iter() {
-                <span class="self">self</span>.u32_serializer.serialize(v, buffer)<span class="question-mark">?</span>;
-                <span class="self">self</span>.u64_serializer.serialize(c, buffer)<span class="question-mark">?</span>;
-            }
+        <span class="kw">if </span>entry_count_2 &gt; entry_count_2_max {
+            <span class="kw">return </span><span class="prelude-val">Err</span>(SerializeError::GeneralError(<span class="macro">format!</span>(
+                <span class="string">&quot;Too many entries in MipStoreStats version counters, max: {}&quot;</span>,
+                MIP_STORE_STATS_COUNTERS_MAX
+            )));
+        }
+        <span class="self">self</span>.u32_serializer.serialize(<span class="kw-2">&amp;</span>entry_count, buffer)<span class="question-mark">?</span>;
+        <span class="kw">for </span>(v, c) <span class="kw">in </span>value.network_version_counters.iter() {
+            <span class="self">self</span>.u32_serializer.serialize(v, buffer)<span class="question-mark">?</span>;
+            <span class="self">self</span>.u64_serializer.serialize(c, buffer)<span class="question-mark">?</span>;
         }
 
         <span class="prelude-val">Ok</span>(())

@@ -221,8 +221,6 @@
 <a href="#221" id="221">221</a>
 <a href="#222" id="222">222</a>
 <a href="#223" id="223">223</a>
-<a href="#224" id="224">224</a>
-<a href="#225" id="225">225</a>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2023 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="kw">use </span><span class="kw">crate</span>::error::{match_for_io_error, GrpcError};
@@ -242,7 +240,7 @@
 <span class="kw">use </span>tracing::log::{error, warn};
 
 <span class="doccomment">/// Type declaration for SendBlockStream
-</span><span class="kw">pub type </span>SendBlocksStreamType = Pin&lt;
+</span><span class="kw">pub type </span>SendBlocksStream = Pin&lt;
     Box&lt;
         <span class="kw">dyn </span>futures_core::Stream&lt;Item = <span class="prelude-ty">Result</span>&lt;grpc::SendBlocksResponse, tonic::Status&gt;&gt;
             + Send
@@ -256,7 +254,7 @@
 </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">async fn </span>send_blocks(
     grpc: <span class="kw-2">&amp;</span>MassaGrpc,
     request: Request&lt;tonic::Streaming&lt;grpc::SendBlocksRequest&gt;&gt;,
-) -&gt; <span class="prelude-ty">Result</span>&lt;SendBlocksStreamType, GrpcError&gt; {
+) -&gt; <span class="prelude-ty">Result</span>&lt;SendBlocksStream, GrpcError&gt; {
     <span class="kw">let </span>consensus_controller = grpc.consensus_controller.clone();
     <span class="kw">let </span><span class="kw-2">mut </span>protocol_command_sender = grpc.protocol_command_sender.clone();
     <span class="kw">let </span>storage = grpc.storage.clone_without_refs();
@@ -298,8 +296,6 @@
                         thread_count: config.thread_count,
                         max_operations_per_block: config.max_operations_per_block,
                         endorsement_count: config.endorsement_count,
-                        max_denunciations_per_block_header: config
-                            .max_denunciations_per_block_header,
                         last_start_period: <span class="prelude-val">Some</span>(config.last_start_period),
                     };
                     <span class="comment">// Deserialize and verify received block in the incoming message
@@ -421,7 +417,7 @@
     });
 
     <span class="kw">let </span>out_stream = tokio_stream::wrappers::ReceiverStream::new(rx);
-    <span class="prelude-val">Ok</span>(Box::pin(out_stream) <span class="kw">as </span>SendBlocksStreamType)
+    <span class="prelude-val">Ok</span>(Box::pin(out_stream) <span class="kw">as </span>SendBlocksStream)
 }
 
 <span class="doccomment">/// This function reports an error to the sender by sending a gRPC response message to the client

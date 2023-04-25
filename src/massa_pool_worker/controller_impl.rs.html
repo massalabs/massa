@@ -253,37 +253,11 @@
 <a href="#253" id="253">253</a>
 <a href="#254" id="254">254</a>
 <a href="#255" id="255">255</a>
-<a href="#256" id="256">256</a>
-<a href="#257" id="257">257</a>
-<a href="#258" id="258">258</a>
-<a href="#259" id="259">259</a>
-<a href="#260" id="260">260</a>
-<a href="#261" id="261">261</a>
-<a href="#262" id="262">262</a>
-<a href="#263" id="263">263</a>
-<a href="#264" id="264">264</a>
-<a href="#265" id="265">265</a>
-<a href="#266" id="266">266</a>
-<a href="#267" id="267">267</a>
-<a href="#268" id="268">268</a>
-<a href="#269" id="269">269</a>
-<a href="#270" id="270">270</a>
-<a href="#271" id="271">271</a>
-<a href="#272" id="272">272</a>
-<a href="#273" id="273">273</a>
-<a href="#274" id="274">274</a>
-<a href="#275" id="275">275</a>
-<a href="#276" id="276">276</a>
-<a href="#277" id="277">277</a>
-<a href="#278" id="278">278</a>
-<a href="#279" id="279">279</a>
-<a href="#280" id="280">280</a>
-<a href="#281" id="281">281</a>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="doccomment">//! Pool controller implementation
 
-</span><span class="kw">use </span>massa_models::denunciation::DenunciationPrecursor;
+</span><span class="kw">use </span>massa_models::denunciation::Denunciation;
 <span class="kw">use </span>massa_models::{
     block_id::BlockId, endorsement::EndorsementId, operation::OperationId, slot::Slot,
 };
@@ -299,16 +273,13 @@
     operation_pool::OperationPool,
 };
 
-<span class="attr">#[cfg(feature = <span class="string">&quot;testing&quot;</span>)]
-</span><span class="kw">use </span>massa_models::denunciation::Denunciation;
-
 <span class="doccomment">/// A generic command to send commands to a pool
 </span><span class="attr">#[allow(clippy::large_enum_variant)]
 </span><span class="kw">pub enum </span>Command {
     <span class="doccomment">/// Add items to the pool
     </span>AddItems(Storage),
-    <span class="doccomment">/// Add denunciation precursor to the pool
-    </span>AddDenunciationPrecursor(DenunciationPrecursor),
+    <span class="doccomment">/// Add denunciation to the pool
+    </span>AddDenunciation(Denunciation),
     <span class="doccomment">/// Notify of new final consensus periods
     </span>NotifyFinalCsPeriods(Vec&lt;u64&gt;),
     <span class="doccomment">/// Stop the worker
@@ -355,23 +326,7 @@
 
     <span class="doccomment">/// Asynchronously add endorsements to pool. Simply print a warning on failure.
     </span><span class="kw">fn </span>add_endorsements(<span class="kw-2">&amp;mut </span><span class="self">self</span>, endorsements: Storage) {
-        <span class="comment">// Send endorsements to the denunciation pool - so we got unfiltered endorsements
-        // from protocol &amp; endorsement factory
-        </span><span class="kw">match </span><span class="self">self
-            </span>.denunciations_input_sender
-            .try_send(Command::AddItems(endorsements.clone()))
-        {
-            <span class="prelude-val">Err</span>(TrySendError::Disconnected(<span class="kw">_</span>)) =&gt; {
-                <span class="macro">warn!</span>(<span class="string">&quot;Could not add endorsements to pool: worker is unreachable.&quot;</span>);
-            }
-            <span class="prelude-val">Err</span>(TrySendError::Full(<span class="kw">_</span>)) =&gt; {
-                <span class="macro">warn!</span>(<span class="string">&quot;Could not add endorsements to pool: worker channel is full.&quot;</span>);
-            }
-            <span class="prelude-val">Ok</span>(<span class="kw">_</span>) =&gt; {}
-        }
-
-        <span class="comment">// Now send endorsements to endorsement pool - storage is cleaned up
-        </span><span class="kw">match </span><span class="self">self
+        <span class="kw">match </span><span class="self">self
             </span>.endorsements_input_sender
             .try_send(Command::AddItems(endorsements))
         {
@@ -380,22 +335,6 @@
             }
             <span class="prelude-val">Err</span>(TrySendError::Full(<span class="kw">_</span>)) =&gt; {
                 <span class="macro">warn!</span>(<span class="string">&quot;Could not add endorsements to pool: worker channel is full.&quot;</span>);
-            }
-            <span class="prelude-val">Ok</span>(<span class="kw">_</span>) =&gt; {}
-        }
-    }
-
-    <span class="doccomment">/// Add denunciation precursor to pool
-    </span><span class="kw">fn </span>add_denunciation_precursor(<span class="kw-2">&amp;</span><span class="self">self</span>, denunciation_precursor: DenunciationPrecursor) {
-        <span class="kw">match </span><span class="self">self
-            </span>.denunciations_input_sender
-            .try_send(Command::AddDenunciationPrecursor(denunciation_precursor))
-        {
-            <span class="prelude-val">Err</span>(TrySendError::Disconnected(<span class="kw">_</span>)) =&gt; {
-                <span class="macro">warn!</span>(<span class="string">&quot;Could not add denunciation precursor to pool: worker is unreachable.&quot;</span>);
-            }
-            <span class="prelude-val">Err</span>(TrySendError::Full(<span class="kw">_</span>)) =&gt; {
-                <span class="macro">warn!</span>(<span class="string">&quot;Could not add denunciation precursor to pool: worker channel is full.&quot;</span>);
             }
             <span class="prelude-val">Ok</span>(<span class="kw">_</span>) =&gt; {}
         }
@@ -471,6 +410,12 @@
             .get_block_endorsements(target_slot, target_block)
     }
 
+    <span class="doccomment">/// Returns a boxed clone of self.
+    /// Allows cloning `Box&lt;dyn PoolController&gt;`,
+    </span><span class="kw">fn </span>clone_box(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; Box&lt;<span class="kw">dyn </span>PoolController&gt; {
+        Box::new(<span class="self">self</span>.clone())
+    }
+
     <span class="doccomment">/// Get the number of endorsements in the pool
     </span><span class="kw">fn </span>get_endorsement_count(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; usize {
         <span class="self">self</span>.endorsement_pool.read().len()
@@ -493,22 +438,25 @@
         operations.iter().map(|id| lck.contains(id)).collect()
     }
 
-    <span class="doccomment">/// Check if the pool contains a denunciation. Returns a boolean
-    </span><span class="attr">#[cfg(feature = <span class="string">&quot;testing&quot;</span>)]
-    </span><span class="kw">fn </span>contains_denunciation(<span class="kw-2">&amp;</span><span class="self">self</span>, denunciation: <span class="kw-2">&amp;</span>Denunciation) -&gt; bool {
-        <span class="kw">let </span>lock = <span class="self">self</span>.denunciation_pool.read();
-        lock.contains(denunciation)
+    <span class="doccomment">/// Add denunciation to pool
+    </span><span class="kw">fn </span>add_denunciation(<span class="kw-2">&amp;mut </span><span class="self">self</span>, denunciation: Denunciation) {
+        <span class="kw">match </span><span class="self">self
+            </span>.denunciations_input_sender
+            .try_send(Command::AddDenunciation(denunciation))
+        {
+            <span class="prelude-val">Err</span>(TrySendError::Disconnected(<span class="kw">_</span>)) =&gt; {
+                <span class="macro">warn!</span>(<span class="string">&quot;Could not add denunciations to pool: worker is unreachable.&quot;</span>);
+            }
+            <span class="prelude-val">Err</span>(TrySendError::Full(<span class="kw">_</span>)) =&gt; {
+                <span class="macro">warn!</span>(<span class="string">&quot;Could not add denunciations to pool: worker channel is full.&quot;</span>);
+            }
+            <span class="prelude-val">Ok</span>(<span class="kw">_</span>) =&gt; {}
+        }
     }
 
     <span class="doccomment">/// Get the number of denunciations in the pool
     </span><span class="kw">fn </span>get_denunciation_count(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; usize {
         <span class="self">self</span>.denunciation_pool.read().len()
-    }
-
-    <span class="doccomment">/// Returns a boxed clone of self.
-    /// Allows cloning `Box&lt;dyn PoolController&gt;`,
-    </span><span class="kw">fn </span>clone_box(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; Box&lt;<span class="kw">dyn </span>PoolController&gt; {
-        Box::new(<span class="self">self</span>.clone())
     }
 
     <span class="doccomment">/// Get final consensus periods

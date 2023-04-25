@@ -191,18 +191,30 @@
 <a href="#191" id="191">191</a>
 <a href="#192" id="192">192</a>
 <a href="#193" id="193">193</a>
+<a href="#194" id="194">194</a>
+<a href="#195" id="195">195</a>
+<a href="#196" id="196">196</a>
+<a href="#197" id="197">197</a>
+<a href="#198" id="198">198</a>
+<a href="#199" id="199">199</a>
+<a href="#200" id="200">200</a>
+<a href="#201" id="201">201</a>
+<a href="#202" id="202">202</a>
+<a href="#203" id="203">203</a>
 </pre><pre class="rust"><code><span class="doccomment">//! Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
-</span><span class="kw">use </span>massa_models::{
+</span><span class="kw">use </span>crossbeam_channel::Sender;
+<span class="kw">use </span>massa_models::denunciation::DenunciationPrecursor;
+<span class="kw">use </span>massa_models::{
     block_id::BlockId,
     endorsement::EndorsementId,
     prehash::{CapacityAllocator, PreHashSet},
     slot::Slot,
 };
-<span class="kw">use </span>massa_pool_exports::{PoolChannels, PoolConfig};
+<span class="kw">use </span>massa_pool_exports::PoolConfig;
 <span class="kw">use </span>massa_storage::Storage;
 <span class="kw">use </span>std::collections::{BTreeMap, HashMap};
-<span class="kw">use </span>tracing::trace;
+<span class="kw">use </span>tracing::warn;
 
 <span class="kw">pub struct </span>EndorsementPool {
     <span class="doccomment">/// configuration
@@ -221,19 +233,23 @@
     <span class="doccomment">/// last consensus final periods, per thread
     </span>last_cs_final_periods: Vec&lt;u64&gt;,
 
-    <span class="doccomment">/// channels used by the pool worker
-    </span>channels: PoolChannels,
+    <span class="doccomment">/// Queue to Denunciation factory
+    </span>denunciation_factory_tx: Sender&lt;DenunciationPrecursor&gt;,
 }
 
 <span class="kw">impl </span>EndorsementPool {
-    <span class="kw">pub fn </span>init(config: PoolConfig, storage: <span class="kw-2">&amp;</span>Storage, channels: PoolChannels) -&gt; <span class="self">Self </span>{
+    <span class="kw">pub fn </span>init(
+        config: PoolConfig,
+        storage: <span class="kw-2">&amp;</span>Storage,
+        denunciation_factory_tx: Sender&lt;DenunciationPrecursor&gt;,
+    ) -&gt; <span class="self">Self </span>{
         EndorsementPool {
             last_cs_final_periods: <span class="macro">vec!</span>[<span class="number">0u64</span>; config.thread_count <span class="kw">as </span>usize],
             endorsements_indexed: Default::default(),
             endorsements_sorted: <span class="macro">vec!</span>[Default::default(); config.thread_count <span class="kw">as </span>usize],
             config,
             storage: storage.clone_without_refs(),
-            channels,
+            denunciation_factory_tx,
         }
     }
 
@@ -291,17 +307,6 @@
                     .get(<span class="kw-2">&amp;</span>endo_id)
                     .expect(<span class="string">&quot;attempting to add endorsement to pool, but it is absent from storage&quot;</span>);
 
-                <span class="comment">// Broadcast endorsement to active channel subscribers.
-                </span><span class="kw">if </span><span class="self">self</span>.config.broadcast_enabled {
-                    <span class="kw">if let </span><span class="prelude-val">Err</span>(err) = <span class="self">self</span>.channels.endorsement_sender.send(endo.clone()) {
-                        <span class="macro">trace!</span>(
-                            <span class="string">&quot;error, failed to broadcast endorsement with id {} due to: {}&quot;</span>,
-                            endo.id.clone(),
-                            err
-                        );
-                    }
-                }
-
                 <span class="kw">if </span>endo.content.slot.period
                     &lt; <span class="self">self</span>.last_cs_final_periods[endo.content.slot.thread <span class="kw">as </span>usize]
                 {
@@ -324,6 +329,21 @@
                         <span class="macro">panic!</span>(<span class="string">&quot;endorsement is expected to be absent from endorsements_sorted at this point&quot;</span>);
                     }
                     added.insert(endo.id);
+                }
+
+                <span class="comment">// And send endorsements to Denunciation Factory
+                </span><span class="kw">match </span>DenunciationPrecursor::try_from(endo) {
+                    <span class="prelude-val">Ok</span>(de_i) =&gt; {
+                        <span class="kw">if let </span><span class="prelude-val">Err</span>(e) = <span class="self">self</span>.denunciation_factory_tx.send(de_i) {
+                            <span class="macro">warn!</span>(<span class="string">&quot;Cannot send endorsement to Denunciation factory: {}&quot;</span>, e);
+                        }
+                    }
+                    <span class="prelude-val">Err</span>(e) =&gt; {
+                        <span class="macro">warn!</span>(
+                            <span class="string">&quot;Cannot create denunciation interest from endorsement: {}&quot;</span>,
+                            e
+                        );
+                    }
                 }
             }
         }
