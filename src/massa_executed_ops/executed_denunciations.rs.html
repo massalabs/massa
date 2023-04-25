@@ -305,6 +305,7 @@
 <a href="#305" id="305">305</a>
 <a href="#306" id="306">306</a>
 <a href="#307" id="307">307</a>
+<a href="#308" id="308">308</a>
 </pre><pre class="rust"><code><span class="doccomment">//! Copyright (c) 2023 MASSA LABS &lt;info@massa.net&gt;
 
 //! This file defines a structure to list and prune previously processed denunciations.
@@ -426,7 +427,8 @@
         <span class="kw">for </span>(_slot, de_indexes) <span class="kw">in </span>drained {
             <span class="kw">for </span>de_idx <span class="kw">in </span>de_indexes {
                 <span class="self">self</span>.denunciations.remove(<span class="kw-2">&amp;</span>de_idx);
-                <span class="self">self</span>.hash ^= de_idx.get_hash();
+                <span class="comment">// self.de_processed_status.remove(&amp;de_idx);
+                </span><span class="self">self</span>.hash ^= de_idx.get_hash();
             }
         }
     }
