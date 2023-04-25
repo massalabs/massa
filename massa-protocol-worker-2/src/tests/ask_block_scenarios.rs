@@ -1,7 +1,6 @@
 // Copyright (c) 2022 MASSA LABS <info@massa.net>
 
 use super::context::protocol_test;
-use super::mock_peer::MockPeer;
 use massa_consensus_exports::test_exports::MockConsensusControllerMessage;
 use massa_models::prehash::PreHashSet;
 use massa_models::{block_id::BlockId, slot::Slot};
@@ -23,7 +22,6 @@ fn test_full_ask_block_workflow() {
     protocol_test(
         &protocol_config,
         move |protocol_manager, mut consensus_event_receiver, pool_event_receiver| {
-            let peer = MockPeer::new(KeyPair::generate(), "127.0.0.1:8080".parse().unwrap());
             (
                 protocol_manager,
                 consensus_event_receiver,

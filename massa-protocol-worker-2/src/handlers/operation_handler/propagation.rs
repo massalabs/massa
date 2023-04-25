@@ -5,10 +5,13 @@ use lru::LruCache;
 use massa_logging::massa_trace;
 use massa_models::operation::OperationId;
 use massa_protocol_exports_2::ProtocolConfig;
-use peernet::{network_manager::SharedActiveConnections, peer_id::PeerId};
-use tracing::debug;
+use peernet::peer_id::PeerId;
+use tracing::log::warn;
 
-use crate::{handlers::operation_handler::OperationMessage, messages::MessagesSerializer};
+use crate::{
+    handlers::operation_handler::OperationMessage, messages::MessagesSerializer,
+    wrap_network::ActiveConnectionsTrait,
+};
 
 use super::{
     cache::SharedOperationCache, commands_propagation::OperationHandlerPropagationCommand,
@@ -17,7 +20,7 @@ use super::{
 
 struct PropagationThread {
     internal_receiver: Receiver<OperationHandlerPropagationCommand>,
-    active_connections: SharedActiveConnections,
+    active_connections: Box<dyn ActiveConnectionsTrait>,
     operations_to_announce: Vec<OperationId>,
     config: ProtocolConfig,
     cache: SharedOperationCache,
@@ -86,28 +89,26 @@ impl PropagationThread {
                 .iter()
                 .map(|(id, _)| id.clone())
                 .collect();
+            let peers_connected = self.active_connections.get_peer_ids_connected();
             // Clean shared cache if peers do not exist anymore
-            {
-                let active_connections_read = self.active_connections.read();
-                for peer_id in peers {
-                    if !active_connections_read.connections.contains_key(&peer_id) {
-                        cache_write.ops_known_by_peer.pop(&peer_id);
-                    }
+
+            for peer_id in peers {
+                if !peers_connected.contains(&peer_id) {
+                    cache_write.ops_known_by_peer.pop(&peer_id);
                 }
             }
+
             // Add new potential peers
-            {
-                let active_connections_read = self.active_connections.read();
-                for peer_id in active_connections_read.connections.keys() {
-                    cache_write.ops_known_by_peer.put(
-                        peer_id.clone(),
-                        LruCache::new(
-                            NonZeroUsize::new(self.config.max_node_known_ops_size)
-                                .expect("max_node_known_endorsements_size in config is > 0"),
-                        ),
-                    );
-                }
+            for peer_id in peers_connected {
+                cache_write.ops_known_by_peer.put(
+                    peer_id.clone(),
+                    LruCache::new(
+                        NonZeroUsize::new(self.config.max_node_known_ops_size)
+                            .expect("max_node_known_endorsements_size in config is > 0"),
+                    ),
+                );
             }
+
             // Propagate to peers
             for (peer_id, ops) in cache_write.ops_known_by_peer.iter_mut() {
                 let new_ops: Vec<OperationId> = operation_ids
@@ -119,23 +120,19 @@ impl PropagationThread {
                     for id in &new_ops {
                         ops.put(id.prefix(), ());
                     }
-                    {
-                        let active_connections = self.active_connections.read();
-                        if let Some(connection) = active_connections.connections.get(peer_id) {
-                            if let Err(err) = connection.send_channels.send(
-                                &self.operation_message_serializer,
-                                OperationMessage::OperationsAnnouncement(
-                                    new_ops.iter().map(|id| id.into_prefix()).collect(),
-                                )
-                                .into(),
-                                false,
-                            ) {
-                                debug!(
-                                    "could not send operation batch to node {}: {}",
-                                    peer_id, err
-                                );
-                            }
-                        }
+                    if let Err(err) = self.active_connections.send_to_peer(
+                        peer_id,
+                        &self.operation_message_serializer,
+                        OperationMessage::OperationsAnnouncement(
+                            new_ops.iter().map(|id| id.into_prefix()).collect(),
+                        )
+                        .into(),
+                        false,
+                    ) {
+                        warn!(
+                            "Failed to send OperationsAnnouncement message to peer: {}",
+                            err
+                        );
                     }
                 }
             }
@@ -145,7 +142,7 @@ impl PropagationThread {
 
 pub fn start_propagation_thread(
     internal_receiver: Receiver<OperationHandlerPropagationCommand>,
-    active_connections: SharedActiveConnections,
+    active_connections: Box<dyn ActiveConnectionsTrait>,
     config: ProtocolConfig,
     cache: SharedOperationCache,
 ) -> JoinHandle<()> {

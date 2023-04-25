@@ -8,6 +8,7 @@ mod manager;
 mod messages;
 mod sig_verifier;
 mod worker;
+mod wrap_network;
 
 pub use worker::start_protocol_controller;
 

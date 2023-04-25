@@ -1,21 +1,15 @@
 use crossbeam::{
-    channel::{unbounded, Sender},
+    channel::{unbounded, Receiver, Sender},
     select,
 };
 use massa_consensus_exports::ConsensusController;
 use massa_pool_exports::PoolController;
 use massa_protocol_exports_2::{ProtocolConfig, ProtocolError};
-use massa_serialization::U64VarIntDeserializer;
 use massa_storage::Storage;
 use parking_lot::RwLock;
-use peernet::{
-    config::PeerNetConfiguration,
-    network_manager::PeerNetManager,
-    peer_id::PeerId,
-    transports::{OutConnectionConfig, TcpOutConnectionConfig, TransportType},
-};
-use std::{collections::HashMap, net::SocketAddr, thread::JoinHandle, time::Duration};
-use std::{num::NonZeroUsize, ops::Bound::Included, sync::Arc};
+use peernet::transports::{OutConnectionConfig, TcpOutConnectionConfig};
+use std::{num::NonZeroUsize, sync::Arc};
+use std::{thread::JoinHandle, time::Duration};
 
 use crate::{
     controller::ProtocolControllerImpl,
@@ -23,9 +17,9 @@ use crate::{
         block_handler::{cache::BlockCache, BlockHandler},
         endorsement_handler::{cache::EndorsementCache, EndorsementHandler},
         operation_handler::{cache::OperationCache, OperationHandler},
-        peer_handler::{fallback_function, MassaHandshake, PeerManagementHandler},
+        peer_handler::{models::PeerMessageTuple, PeerManagementHandler},
     },
-    messages::MessagesHandler,
+    wrap_network::NetworkController,
 };
 
 pub enum ConnectivityCommand {
@@ -34,8 +28,13 @@ pub enum ConnectivityCommand {
 
 pub fn start_connectivity_thread(
     config: ProtocolConfig,
+    mut network_controller: Box<dyn NetworkController>,
     consensus_controller: Box<dyn ConsensusController>,
     pool_controller: Box<dyn PoolController>,
+    channel_blocks: (Sender<PeerMessageTuple>, Receiver<PeerMessageTuple>),
+    channel_endorsements: (Sender<PeerMessageTuple>, Receiver<PeerMessageTuple>),
+    channel_operations: (Sender<PeerMessageTuple>, Receiver<PeerMessageTuple>),
+    mut peer_management_handler: PeerManagementHandler,
     storage: Storage,
 ) -> Result<
     (
@@ -45,16 +44,13 @@ pub fn start_connectivity_thread(
     ProtocolError,
 > {
     let (sender, receiver) = unbounded();
-    let initial_peers = serde_json::from_str::<HashMap<PeerId, HashMap<SocketAddr, TransportType>>>(
-        &std::fs::read_to_string(&config.initial_peers)?,
-    )?;
     //TODO: Bound the channel
     // Channels handlers <-> outside world
     let (sender_operations_retrieval_ext, receiver_operations_retrieval_ext) = unbounded();
     let (sender_operations_propagation_ext, receiver_operations_propagation_ext) = unbounded();
     let (sender_endorsements_retrieval_ext, receiver_endorsements_retrieval_ext) = unbounded();
     let (sender_endorsements_propagation_ext, receiver_endorsements_propagation_ext) = unbounded();
-    let (sender_blocks_propagation_ext, receiver_blocks_propatation_ext) = unbounded();
+    let (sender_blocks_propagation_ext, receiver_blocks_propagation_ext) = unbounded();
     let (sender_blocks_retrieval_ext, receiver_blocks_retrieval_ext) = unbounded();
 
     let handle = std::thread::spawn({
@@ -63,39 +59,13 @@ pub fn start_connectivity_thread(
         let sender_blocks_propagation_ext = sender_blocks_propagation_ext.clone();
         let sender_operations_propagation_ext = sender_operations_propagation_ext.clone();
         move || {
-            let mut peer_management_handler = PeerManagementHandler::new(initial_peers, &config);
-            //TODO: Bound the channel
-            // Channels network <-> handlers
-            let (sender_operations, receiver_operations) = unbounded();
-            let (sender_endorsements, receiver_endorsements) = unbounded();
-            let (sender_blocks, receiver_blocks) = unbounded();
-
-            // Register channels for handlers
-            let message_handlers: MessagesHandler = MessagesHandler {
-                sender_blocks,
-                sender_endorsements,
-                sender_operations,
-                sender_peers: peer_management_handler.sender.msg_sender.clone(),
-                id_deserializer: U64VarIntDeserializer::new(Included(0), Included(u64::MAX)),
-            };
-
-            let mut peernet_config = PeerNetConfiguration::default(
-                MassaHandshake::new(peer_management_handler.peer_db.clone()),
-                message_handlers,
-            );
-            peernet_config.self_keypair = config.keypair.clone();
-            peernet_config.fallback_function = Some(&fallback_function);
-            //TODO: Add the rest of the config
-            peernet_config.max_in_connections = config.max_in_connections;
-            peernet_config.max_out_connections = config.max_out_connections;
-
-            let mut manager = PeerNetManager::new(peernet_config);
-
             for (addr, transport) in &config.listeners {
-                manager.start_listener(*transport, *addr).expect(&format!(
-                    "Failed to start listener {:?} of transport {:?} in protocol",
-                    addr, transport
-                ));
+                network_controller
+                    .start_listener(*transport, *addr)
+                    .expect(&format!(
+                        "Failed to start listener {:?} of transport {:?} in protocol",
+                        addr, transport
+                    ));
             }
 
             // Create cache outside of the op handler because it could be used by other handlers
@@ -120,8 +90,8 @@ pub fn start_connectivity_thread(
                 storage.clone_without_refs(),
                 config.clone(),
                 operation_cache.clone(),
-                manager.active_connections.clone(),
-                receiver_operations,
+                network_controller.get_active_connections(),
+                channel_operations.1,
                 sender_operations_retrieval_ext,
                 receiver_operations_retrieval_ext,
                 sender_operations_propagation_ext,
@@ -133,8 +103,8 @@ pub fn start_connectivity_thread(
                 endorsement_cache.clone(),
                 storage.clone_without_refs(),
                 config.clone(),
-                manager.active_connections.clone(),
-                receiver_endorsements,
+                network_controller.get_active_connections(),
+                channel_endorsements.1,
                 sender_endorsements_retrieval_ext,
                 receiver_endorsements_retrieval_ext,
                 sender_endorsements_propagation_ext,
@@ -142,13 +112,13 @@ pub fn start_connectivity_thread(
                 peer_management_handler.sender.command_sender.clone(),
             );
             let mut block_handler = BlockHandler::new(
-                manager.active_connections.clone(),
+                network_controller.get_active_connections(),
                 consensus_controller,
                 pool_controller,
-                receiver_blocks,
+                channel_blocks.1,
                 sender_blocks_retrieval_ext,
                 receiver_blocks_retrieval_ext,
-                receiver_blocks_propatation_ext,
+                receiver_blocks_propagation_ext,
                 sender_blocks_propagation_ext,
                 peer_management_handler.sender.command_sender.clone(),
                 config.clone(),
@@ -163,7 +133,7 @@ pub fn start_connectivity_thread(
                 select! {
                         recv(receiver) -> msg => {
                             if let Ok(ConnectivityCommand::Stop) = msg {
-                                drop(manager);
+                                drop(network_controller);
                                 operation_handler.stop();
                                 endorsement_handler.stop();
                                 block_handler.stop();
@@ -174,13 +144,7 @@ pub fn start_connectivity_thread(
                     default(Duration::from_millis(1000)) => {
                         // Check if we need to connect to peers
                         let nb_connection_to_try = {
-                            let active_connections = manager.active_connections.read();
-                            if config.debug {
-                                dbg!(&manager.active_connections.read().connections);
-                                dbg!(&manager.active_connections.read().connection_queue);
-                                dbg!(&peer_management_handler.peer_db.read().peers);
-                            }
-                            let nb_connection_to_try = active_connections.max_out_connections - active_connections.nb_out_connections;
+                            let nb_connection_to_try = network_controller.get_active_connections().get_max_out_connections() - network_controller.get_active_connections().get_nb_out_connections();
                             if nb_connection_to_try == 0 {
                                 continue;
                             }
@@ -202,13 +166,7 @@ pub fn start_connectivity_thread(
                                 }
                                 {
                                     {
-                                        let active_connections = manager.active_connections.read();
-                                        if config.debug {
-                                            println!("Checking addr: {:?}", addr);
-                                            println!("Connections queue = {:#?}", active_connections.connection_queue);
-                                            println!("Connections = {:#?}", active_connections.connections);
-                                        }
-                                        if !active_connections.check_addr_accepted(&addr) {
+                                        if !network_controller.get_active_connections().check_addr_accepted(&addr) {
                                             println!("Address already connected");
                                             continue;
                                         }
@@ -217,7 +175,7 @@ pub fn start_connectivity_thread(
                                         println!("Trying to connect to peer {:?}", addr);
                                     }
                                     // We only manage TCP for now
-                                    manager.try_connect(*addr, Duration::from_millis(200), &OutConnectionConfig::Tcp(Box::new(TcpOutConnectionConfig {}))).unwrap();
+                                    network_controller.try_connect(*addr, Duration::from_millis(200), &OutConnectionConfig::Tcp(Box::new(TcpOutConnectionConfig {}))).unwrap();
                                 };
                             };
                         }

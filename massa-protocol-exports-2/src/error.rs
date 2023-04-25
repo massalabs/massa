@@ -39,6 +39,8 @@ pub enum ProtocolError {
     ContainerInconsistencyError(String),
     /// Invalid operation error: {0}
     InvalidOperationError(String),
+    /// Listener error: {0}
+    ListenerError(String),
 }
 
 #[derive(Debug)]
