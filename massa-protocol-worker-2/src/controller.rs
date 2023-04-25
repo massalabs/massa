@@ -9,10 +9,11 @@ use massa_storage::Storage;
 
 use crate::handlers::{
     block_handler::{
-        commands_propagation::BlockHandlerCommand, commands_retrieval::BlockHandlerRetrievalCommand,
+        commands_propagation::BlockHandlerPropagationCommand,
+        commands_retrieval::BlockHandlerRetrievalCommand,
     },
-    endorsement_handler::commands_propagation::EndorsementHandlerCommand,
-    operation_handler::commands_propagation::OperationHandlerCommand,
+    endorsement_handler::commands_propagation::EndorsementHandlerPropagationCommand,
+    operation_handler::commands_propagation::OperationHandlerPropagationCommand,
 };
 
 #[derive(Clone)]
@@ -23,17 +24,17 @@ pub struct ProtocolControllerImpl {
     // if not, the handler will deadlock on `recv`
     // As this is never None, we allow ourselves to use `unwrap` to acceed to the senders
     pub sender_block_retrieval_handler: Option<Sender<BlockHandlerRetrievalCommand>>,
-    pub sender_block_handler: Option<Sender<BlockHandlerCommand>>,
-    pub sender_operation_handler: Option<Sender<OperationHandlerCommand>>,
-    pub sender_endorsement_handler: Option<Sender<EndorsementHandlerCommand>>,
+    pub sender_block_handler: Option<Sender<BlockHandlerPropagationCommand>>,
+    pub sender_operation_handler: Option<Sender<OperationHandlerPropagationCommand>>,
+    pub sender_endorsement_handler: Option<Sender<EndorsementHandlerPropagationCommand>>,
 }
 
 impl ProtocolControllerImpl {
     pub fn new(
         sender_block_retrieval_handler: Sender<BlockHandlerRetrievalCommand>,
-        sender_block_handler: Sender<BlockHandlerCommand>,
-        sender_operation_handler: Sender<OperationHandlerCommand>,
-        sender_endorsement_handler: Sender<EndorsementHandlerCommand>,
+        sender_block_handler: Sender<BlockHandlerPropagationCommand>,
+        sender_operation_handler: Sender<OperationHandlerPropagationCommand>,
+        sender_endorsement_handler: Sender<EndorsementHandlerPropagationCommand>,
     ) -> Self {
         ProtocolControllerImpl {
             sender_block_retrieval_handler: Some(sender_block_retrieval_handler),
@@ -60,7 +61,7 @@ impl ProtocolController for ProtocolControllerImpl {
         self.sender_block_handler
             .as_ref()
             .unwrap()
-            .send(BlockHandlerCommand::IntegratedBlock { block_id, storage })
+            .send(BlockHandlerPropagationCommand::IntegratedBlock { block_id, storage })
             .map_err(|_| ProtocolError::ChannelError("integrated_block command send error".into()))
     }
 
@@ -69,7 +70,9 @@ impl ProtocolController for ProtocolControllerImpl {
         self.sender_block_handler
             .as_ref()
             .unwrap()
-            .send(BlockHandlerCommand::AttackBlockDetected(block_id))
+            .send(BlockHandlerPropagationCommand::AttackBlockDetected(
+                block_id,
+            ))
             .map_err(|_| {
                 ProtocolError::ChannelError("notify_block_attack command send error".into())
             })
@@ -99,7 +102,9 @@ impl ProtocolController for ProtocolControllerImpl {
         self.sender_operation_handler
             .as_ref()
             .unwrap()
-            .send(OperationHandlerCommand::AnnounceOperations(operations))
+            .send(OperationHandlerPropagationCommand::AnnounceOperations(
+                operations,
+            ))
             .map_err(|_| {
                 ProtocolError::ChannelError("propagate_operations command send error".into())
             })
@@ -110,7 +115,7 @@ impl ProtocolController for ProtocolControllerImpl {
         self.sender_endorsement_handler
             .as_ref()
             .unwrap()
-            .send(EndorsementHandlerCommand::PropagateEndorsements(
+            .send(EndorsementHandlerPropagationCommand::PropagateEndorsements(
                 endorsements,
             ))
             .map_err(|_| {

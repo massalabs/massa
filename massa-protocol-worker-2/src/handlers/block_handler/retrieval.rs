@@ -41,7 +41,7 @@ use tracing::warn;
 
 use super::{
     cache::SharedBlockCache,
-    commands_propagation::BlockHandlerCommand,
+    commands_propagation::BlockHandlerPropagationCommand,
     commands_retrieval::BlockHandlerRetrievalCommand,
     messages::{
         AskForBlocksInfo, BlockInfoReply, BlockMessage, BlockMessageDeserializer,
@@ -82,7 +82,7 @@ pub struct RetrievalThread {
     consensus_controller: Box<dyn ConsensusController>,
     pool_controller: Box<dyn PoolController>,
     receiver_network: Receiver<PeerMessageTuple>,
-    _internal_sender: Sender<BlockHandlerCommand>,
+    _internal_sender: Sender<BlockHandlerPropagationCommand>,
     receiver: Receiver<BlockHandlerRetrievalCommand>,
     block_message_serializer: MessagesSerializer,
     block_wishlist: PreHashMap<BlockId, BlockInfo>,
@@ -199,6 +199,10 @@ impl RetrievalThread {
                                         "protocol.protocol_worker.process_command.wishlist_delta.end",
                                         {}
                                     );
+                                },
+                                BlockHandlerRetrievalCommand::Stop => {
+                                    println!("Stop block retrieval thread from command receiver");
+                                    return;
                                 }
                             }
                         },
@@ -1261,7 +1265,7 @@ pub fn start_retrieval_thread(
     pool_controller: Box<dyn PoolController>,
     receiver_network: Receiver<PeerMessageTuple>,
     receiver: Receiver<BlockHandlerRetrievalCommand>,
-    _internal_sender: Sender<BlockHandlerCommand>,
+    _internal_sender: Sender<BlockHandlerPropagationCommand>,
     peer_cmd_sender: Sender<PeerManagementCmd>,
     config: ProtocolConfig,
     endorsement_cache: SharedEndorsementCache,

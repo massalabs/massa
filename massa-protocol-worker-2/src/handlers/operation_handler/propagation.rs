@@ -11,12 +11,12 @@ use tracing::debug;
 use crate::{handlers::operation_handler::OperationMessage, messages::MessagesSerializer};
 
 use super::{
-    cache::SharedOperationCache, commands_propagation::OperationHandlerCommand,
+    cache::SharedOperationCache, commands_propagation::OperationHandlerPropagationCommand,
     OperationMessageSerializer,
 };
 
 struct PropagationThread {
-    internal_receiver: Receiver<OperationHandlerCommand>,
+    internal_receiver: Receiver<OperationHandlerPropagationCommand>,
     active_connections: SharedActiveConnections,
     operations_to_announce: Vec<OperationId>,
     config: ProtocolConfig,
@@ -32,7 +32,7 @@ impl PropagationThread {
         loop {
             match self.internal_receiver.recv_deadline(next_announce) {
                 Ok(internal_message) => match internal_message {
-                    OperationHandlerCommand::AnnounceOperations(operations_ids) => {
+                    OperationHandlerPropagationCommand::AnnounceOperations(operations_ids) => {
                         // Note operations as checked.
                         {
                             let mut cache_write = self.cache.write();
@@ -51,6 +51,10 @@ impl PropagationThread {
                                 )
                                 .expect("Can't init interval op propagation");
                         }
+                    }
+                    OperationHandlerPropagationCommand::Stop => {
+                        println!("Stop operation propagation thread");
+                        return;
                     }
                 },
                 Err(RecvTimeoutError::Timeout) => {
@@ -140,7 +144,7 @@ impl PropagationThread {
 }
 
 pub fn start_propagation_thread(
-    internal_receiver: Receiver<OperationHandlerCommand>,
+    internal_receiver: Receiver<OperationHandlerPropagationCommand>,
     active_connections: SharedActiveConnections,
     config: ProtocolConfig,
     cache: SharedOperationCache,
