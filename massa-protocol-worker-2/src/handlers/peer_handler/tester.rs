@@ -136,12 +136,9 @@ impl HandshakeHandler for TesterHandshake {
         // if handshake failed, we set the peer state to HandshakeFailed
         if res.is_err() {
             let mut peer_db_write = self.peer_db.write();
-            peer_db_write
-                .peers
-                .entry(peer_id.clone())
-                .and_modify(|info| {
-                    info.state = super::PeerState::HandshakeFailed;
-                });
+            peer_db_write.peers.entry(peer_id).and_modify(|info| {
+                info.state = super::PeerState::HandshakeFailed;
+            });
         }
         endpoint.shutdown();
         res
