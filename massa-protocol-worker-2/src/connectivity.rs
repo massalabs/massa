@@ -1,3 +1,4 @@
+use crossbeam::channel::Receiver;
 use crossbeam::{
     channel::{unbounded, Sender},
     select,
@@ -17,6 +18,7 @@ use peernet::{
 use std::{collections::HashMap, net::SocketAddr, thread::JoinHandle, time::Duration};
 use std::{num::NonZeroUsize, ops::Bound::Included, sync::Arc};
 
+use crate::handlers::peer_handler::models::{PeerMessageTuple, SharedPeerDB};
 use crate::{
     controller::ProtocolControllerImpl,
     handlers::{
@@ -63,24 +65,26 @@ pub fn start_connectivity_thread(
         let sender_blocks_propagation_ext = sender_blocks_propagation_ext.clone();
         let sender_operations_propagation_ext = sender_operations_propagation_ext.clone();
         move || {
-            let mut peer_management_handler = PeerManagementHandler::new(initial_peers, &config);
+            let peer_db: SharedPeerDB = Arc::new(RwLock::new(Default::default()));
             //TODO: Bound the channel
             // Channels network <-> handlers
             let (sender_operations, receiver_operations) = unbounded();
             let (sender_endorsements, receiver_endorsements) = unbounded();
             let (sender_blocks, receiver_blocks) = unbounded();
+            let (sender_msg, receiver_msg): (Sender<PeerMessageTuple>, Receiver<PeerMessageTuple>) =
+                unbounded();
 
             // Register channels for handlers
             let message_handlers: MessagesHandler = MessagesHandler {
                 sender_blocks,
                 sender_endorsements,
                 sender_operations,
-                sender_peers: peer_management_handler.sender.msg_sender.clone(),
+                sender_peers: sender_msg.clone(),
                 id_deserializer: U64VarIntDeserializer::new(Included(0), Included(u64::MAX)),
             };
 
             let mut peernet_config = PeerNetConfiguration::default(
-                MassaHandshake::new(peer_management_handler.peer_db.clone()),
+                MassaHandshake::new(peer_db.clone()),
                 message_handlers,
             );
             peernet_config.self_keypair = config.keypair.clone();
@@ -90,6 +94,14 @@ pub fn start_connectivity_thread(
             peernet_config.max_out_connections = config.max_out_connections;
 
             let mut manager = PeerNetManager::new(peernet_config);
+
+            let mut peer_management_handler = PeerManagementHandler::new(
+                initial_peers,
+                peer_db,
+                (sender_msg, receiver_msg),
+                manager.active_connections.clone(),
+                &config,
+            );
 
             for (addr, transport) in &config.listeners {
                 manager.start_listener(*transport, *addr).expect(&format!(

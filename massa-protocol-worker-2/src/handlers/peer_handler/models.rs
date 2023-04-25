@@ -2,7 +2,9 @@ use crossbeam::channel::Sender;
 use massa_protocol_exports_2::ProtocolError;
 use parking_lot::RwLock;
 use peernet::{peer_id::PeerId, transports::TransportType};
+use rand::seq::SliceRandom;
 use std::cmp::Reverse;
+use std::time::{SystemTime, UNIX_EPOCH};
 use std::{
     collections::{BTreeMap, HashMap},
     net::SocketAddr,
@@ -11,6 +13,8 @@ use std::{
 use tracing::log::info;
 
 use super::announcement::Announcement;
+
+const THREE_DAYS_NS: u128 = 3 * 24 * 60 * 60 * 1_000_000_000;
 
 pub type InitialPeers = HashMap<PeerId, HashMap<SocketAddr, TransportType>>;
 
@@ -89,6 +93,43 @@ impl PeerDB {
                 .clone();
             (peer_id, peer_info)
         })
+    }
+
+    /// Select max 100 peers to send to another peer
+    /// The selected peers should has been online within the last 3 days
+    pub fn get_rand_peers_to_send(
+        &self,
+        nb_peers: usize,
+    ) -> Vec<(PeerId, HashMap<SocketAddr, TransportType>)> {
+        let now = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .expect("Time went backward")
+            .as_nanos();
+        let min_time = now - THREE_DAYS_NS;
+
+        let mut keys = self.peers.keys().cloned().collect::<Vec<_>>();
+        let mut rng = rand::thread_rng();
+        keys.shuffle(&mut rng);
+
+        let mut result = Vec::new();
+
+        for key in keys {
+            if result.len() >= nb_peers {
+                break;
+            }
+            if let Some(peer) = self.peers.get(&key) {
+                // skip old peers
+                if peer.last_announce.timestamp < min_time {
+                    continue;
+                }
+                // skip peers with no listeners
+                if peer.last_announce.listeners.is_empty() {
+                    continue;
+                }
+                result.push((key, peer.last_announce.listeners.clone()));
+            }
+        }
+        result
     }
 
     // Flush PeerDB to disk ?
