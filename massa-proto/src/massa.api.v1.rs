@@ -228,16 +228,18 @@ pub struct OperationWrapper {
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, ::prost::Enumeration)]
 #[repr(i32)]
 pub enum OperationStatus {
+    /// Defaut enum value
+    Unspecified = 0,
     /// The operation is still pending
-    Pending = 0,
+    Pending = 1,
     /// The operation is final
-    Final = 1,
+    Final = 2,
     /// The operation was executed successfully
-    Success = 2,
+    Success = 3,
     /// The operation failed to execute
-    Failure = 3,
+    Failure = 4,
     /// The status of the operation is unknown
-    Unknown = 4,
+    Unknown = 5,
 }
 impl OperationStatus {
     /// String value of the enum field names used in the ProtoBuf definition.
@@ -246,21 +248,23 @@ impl OperationStatus {
     /// (if the ProtoBuf definition does not change) and safe for programmatic use.
     pub fn as_str_name(&self) -> &'static str {
         match self {
-            OperationStatus::Pending => "PENDING",
-            OperationStatus::Final => "FINAL",
-            OperationStatus::Success => "SUCCESS",
-            OperationStatus::Failure => "FAILURE",
-            OperationStatus::Unknown => "UNKNOWN",
+            OperationStatus::Unspecified => "OPERATION_STATUS_UNSPECIFIED",
+            OperationStatus::Pending => "OPERATION_STATUS_PENDING",
+            OperationStatus::Final => "OPERATION_STATUS_FINAL",
+            OperationStatus::Success => "OPERATION_STATUS_SUCCESS",
+            OperationStatus::Failure => "OPERATION_STATUS_FAILURE",
+            OperationStatus::Unknown => "OPERATION_STATUS_UNKNOWN",
         }
     }
     /// Creates an enum from field names used in the ProtoBuf definition.
     pub fn from_str_name(value: &str) -> ::core::option::Option<Self> {
         match value {
-            "PENDING" => Some(Self::Pending),
-            "FINAL" => Some(Self::Final),
-            "SUCCESS" => Some(Self::Success),
-            "FAILURE" => Some(Self::Failure),
-            "UNKNOWN" => Some(Self::Unknown),
+            "OPERATION_STATUS_UNSPECIFIED" => Some(Self::Unspecified),
+            "OPERATION_STATUS_PENDING" => Some(Self::Pending),
+            "OPERATION_STATUS_FINAL" => Some(Self::Final),
+            "OPERATION_STATUS_SUCCESS" => Some(Self::Success),
+            "OPERATION_STATUS_FAILURE" => Some(Self::Failure),
+            "OPERATION_STATUS_UNKNOWN" => Some(Self::Unknown),
             _ => None,
         }
     }
@@ -373,14 +377,16 @@ pub struct BlockWrapper {
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, ::prost::Enumeration)]
 #[repr(i32)]
 pub enum BlockStatus {
+    /// Defaut enum value
+    Unspecified = 0,
     /// The block is in the greatest clique (and not final)
-    InBlockclique = 0,
+    InBlockclique = 1,
     /// The block is final
-    Final = 1,
+    Final = 2,
     /// The block is candidate (active any clique but not final)
-    Candidate = 2,
+    Candidate = 3,
     /// The block is discarded
-    Discarded = 3,
+    Discarded = 4,
 }
 impl BlockStatus {
     /// String value of the enum field names used in the ProtoBuf definition.
@@ -389,19 +395,21 @@ impl BlockStatus {
     /// (if the ProtoBuf definition does not change) and safe for programmatic use.
     pub fn as_str_name(&self) -> &'static str {
         match self {
-            BlockStatus::InBlockclique => "IN_BLOCKCLIQUE",
-            BlockStatus::Final => "FINAL",
-            BlockStatus::Candidate => "CANDIDATE",
-            BlockStatus::Discarded => "DISCARDED",
+            BlockStatus::Unspecified => "BLOCK_STATUS_UNSPECIFIED",
+            BlockStatus::InBlockclique => "BLOCK_STATUS_IN_BLOCKCLIQUE",
+            BlockStatus::Final => "BLOCK_STATUS_FINAL",
+            BlockStatus::Candidate => "BLOCK_STATUS_CANDIDATE",
+            BlockStatus::Discarded => "BLOCK_STATUS_DISCARDED",
         }
     }
     /// Creates an enum from field names used in the ProtoBuf definition.
     pub fn from_str_name(value: &str) -> ::core::option::Option<Self> {
         match value {
-            "IN_BLOCKCLIQUE" => Some(Self::InBlockclique),
-            "FINAL" => Some(Self::Final),
-            "CANDIDATE" => Some(Self::Candidate),
-            "DISCARDED" => Some(Self::Discarded),
+            "BLOCK_STATUS_UNSPECIFIED" => Some(Self::Unspecified),
+            "BLOCK_STATUS_IN_BLOCKCLIQUE" => Some(Self::InBlockclique),
+            "BLOCK_STATUS_FINAL" => Some(Self::Final),
+            "BLOCK_STATUS_CANDIDATE" => Some(Self::Candidate),
+            "BLOCK_STATUS_DISCARDED" => Some(Self::Discarded),
             _ => None,
         }
     }
@@ -429,7 +437,7 @@ pub struct GetBlocksQuery {
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct GetBlocksFilter {
-    /// Operation id
+    /// Block id
     #[prost(string, tag = "1")]
     pub id: ::prost::alloc::string::String,
 }

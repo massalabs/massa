@@ -852,7 +852,7 @@
                   <td>id</td>
                   <td><a href="#string">string</a></td>
                   <td></td>
-                  <td><p>Operation id </p></td>
+                  <td><p>Block id </p></td>
                 </tr>
               
             </tbody>
@@ -2546,9 +2546,9 @@
               
               <tr>
                 <td>GetOperations</td>
-                <td>GET</td>
+                <td>POST</td>
                 <td>/v1/get_operations</td>
-                <td></td>
+                <td>*</td>
               </tr>
               
             
@@ -2885,26 +2885,32 @@
           <tbody>
             
               <tr>
-                <td>IN_BLOCKCLIQUE</td>
+                <td>BLOCK_STATUS_UNSPECIFIED</td>
                 <td>0</td>
+                <td><p>Defaut enum value</p></td>
+              </tr>
+            
+              <tr>
+                <td>BLOCK_STATUS_IN_BLOCKCLIQUE</td>
+                <td>1</td>
                 <td><p>The block is in the greatest clique (and not final)</p></td>
               </tr>
             
               <tr>
-                <td>FINAL</td>
-                <td>1</td>
+                <td>BLOCK_STATUS_FINAL</td>
+                <td>2</td>
                 <td><p>The block is final</p></td>
               </tr>
             
               <tr>
-                <td>CANDIDATE</td>
-                <td>2</td>
+                <td>BLOCK_STATUS_CANDIDATE</td>
+                <td>3</td>
                 <td><p>The block is candidate (active any clique but not final)</p></td>
               </tr>
             
               <tr>
-                <td>DISCARDED</td>
-                <td>3</td>
+                <td>BLOCK_STATUS_DISCARDED</td>
+                <td>4</td>
                 <td><p>The block is discarded</p></td>
               </tr>
             
@@ -3506,32 +3512,38 @@ This is the parent in thread `self.slot.thread` of the block in which the endors
           <tbody>
             
               <tr>
-                <td>PENDING</td>
+                <td>OPERATION_STATUS_UNSPECIFIED</td>
                 <td>0</td>
+                <td><p>Defaut enum value</p></td>
+              </tr>
+            
+              <tr>
+                <td>OPERATION_STATUS_PENDING</td>
+                <td>1</td>
                 <td><p>The operation is still pending</p></td>
               </tr>
             
               <tr>
-                <td>FINAL</td>
-                <td>1</td>
+                <td>OPERATION_STATUS_FINAL</td>
+                <td>2</td>
                 <td><p>The operation is final</p></td>
               </tr>
             
               <tr>
-                <td>SUCCESS</td>
-                <td>2</td>
+                <td>OPERATION_STATUS_SUCCESS</td>
+                <td>3</td>
                 <td><p>The operation was executed successfully</p></td>
               </tr>
             
               <tr>
-                <td>FAILURE</td>
-                <td>3</td>
+                <td>OPERATION_STATUS_FAILURE</td>
+                <td>4</td>
                 <td><p>The operation failed to execute</p></td>
               </tr>
             
               <tr>
-                <td>UNKNOWN</td>
-                <td>4</td>
+                <td>OPERATION_STATUS_UNKNOWN</td>
+                <td>5</td>
                 <td><p>The status of the operation is unknown</p></td>
               </tr>
             

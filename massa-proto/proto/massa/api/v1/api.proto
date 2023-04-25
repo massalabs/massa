@@ -63,7 +63,10 @@ service MassaService {
 
   // Get operations
   rpc GetOperations(GetOperationsRequest) returns (GetOperationsResponse) {
-    option (google.api.http) = {get: "/v1/get_operations"};
+    option (google.api.http) = { 
+      post: "/v1/get_operations"
+      body: "*"
+    };
   }
 
   // Get selector draws
@@ -134,7 +137,7 @@ message GetBlocksQuery {
 
 // GetBlocks Filter
 message GetBlocksFilter {
-  // Operation id
+  // Block id
   string id = 1;
 }
 

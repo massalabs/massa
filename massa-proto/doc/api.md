@@ -262,7 +262,7 @@ GetBlocks Filter
 
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
-| id | [string](#string) |  | Operation id |
+| id | [string](#string) |  | Block id |
 
 
 
@@ -1217,10 +1217,11 @@ Possible statuses for a block
 
 | Name | Number | Description |
 | ---- | ------ | ----------- |
-| IN_BLOCKCLIQUE | 0 | The block is in the greatest clique (and not final) |
-| FINAL | 1 | The block is final |
-| CANDIDATE | 2 | The block is candidate (active any clique but not final) |
-| DISCARDED | 3 | The block is discarded |
+| BLOCK_STATUS_UNSPECIFIED | 0 | Defaut enum value |
+| BLOCK_STATUS_IN_BLOCKCLIQUE | 1 | The block is in the greatest clique (and not final) |
+| BLOCK_STATUS_FINAL | 2 | The block is final |
+| BLOCK_STATUS_CANDIDATE | 3 | The block is candidate (active any clique but not final) |
+| BLOCK_STATUS_DISCARDED | 4 | The block is discarded |
 
 
  
@@ -1507,11 +1508,12 @@ Possible statuses for an operation
 
 | Name | Number | Description |
 | ---- | ------ | ----------- |
-| PENDING | 0 | The operation is still pending |
-| FINAL | 1 | The operation is final |
-| SUCCESS | 2 | The operation was executed successfully |
-| FAILURE | 3 | The operation failed to execute |
-| UNKNOWN | 4 | The status of the operation is unknown |
+| OPERATION_STATUS_UNSPECIFIED | 0 | Defaut enum value |
+| OPERATION_STATUS_PENDING | 1 | The operation is still pending |
+| OPERATION_STATUS_FINAL | 2 | The operation is final |
+| OPERATION_STATUS_SUCCESS | 3 | The operation was executed successfully |
+| OPERATION_STATUS_FAILURE | 4 | The operation failed to execute |
+| OPERATION_STATUS_UNKNOWN | 5 | The status of the operation is unknown |
 
 
  
