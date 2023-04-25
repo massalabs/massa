@@ -100,13 +100,15 @@ impl PropagationThread {
 
             // Add new potential peers
             for peer_id in peers_connected {
-                cache_write.ops_known_by_peer.put(
-                    peer_id.clone(),
-                    LruCache::new(
-                        NonZeroUsize::new(self.config.max_node_known_ops_size)
-                            .expect("max_node_known_endorsements_size in config is > 0"),
-                    ),
-                );
+                if !cache_write.ops_known_by_peer.contains(&peer_id) {
+                    cache_write.ops_known_by_peer.put(
+                        peer_id.clone(),
+                        LruCache::new(
+                            NonZeroUsize::new(self.config.max_node_known_ops_size)
+                                .expect("max_node_known_endorsements_size in config is > 0"),
+                        ),
+                    );
+                }
             }
 
             // Propagate to peers
