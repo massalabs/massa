@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"struct":["DenunciationPool"]};
+window.SIDEBAR_ITEMS = {"enum":["DenunciationStatus"],"static":["CALLSITE","META"],"struct":["DenunciationPool"]};

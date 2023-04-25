@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"struct":["PoSChanges","PoSChangesDeserializer","PoSChangesSerializer"]};
+window.SIDEBAR_ITEMS = {"constant":["FIELDS"],"enum":["__Field"],"struct":["PoSChanges","PoSChangesDeserializer","PoSChangesSerializer","__FieldVisitor","__Visitor"]};

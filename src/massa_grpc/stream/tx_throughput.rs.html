@@ -114,7 +114,7 @@
 </span><span class="kw">const </span>DEFAULT_THROUGHPUT_INTERVAL: u64 = <span class="number">10</span>;
 
 <span class="doccomment">/// Type declaration for TransactionsThroughput
-</span><span class="kw">pub type </span>TransactionsThroughputStream = Pin&lt;
+</span><span class="kw">pub type </span>TransactionsThroughputStreamType = Pin&lt;
     Box&lt;
         <span class="kw">dyn </span>futures_core::Stream&lt;Item = <span class="prelude-ty">Result</span>&lt;grpc::TransactionsThroughputResponse, tonic::Status&gt;&gt;
             + Send
@@ -126,7 +126,7 @@
 </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">async fn </span>transactions_throughput(
     grpc: <span class="kw-2">&amp;</span>MassaGrpc,
     request: tonic::Request&lt;tonic::Streaming&lt;grpc::TransactionsThroughputRequest&gt;&gt;,
-) -&gt; <span class="prelude-ty">Result</span>&lt;TransactionsThroughputStream, GrpcError&gt; {
+) -&gt; <span class="prelude-ty">Result</span>&lt;TransactionsThroughputStreamType, GrpcError&gt; {
     <span class="kw">let </span>execution_controller = grpc.execution_controller.clone();
 
     <span class="comment">// Create a channel for sending responses to the client
@@ -190,7 +190,7 @@
     });
 
     <span class="kw">let </span>out_stream = tokio_stream::wrappers::ReceiverStream::new(rx);
-    <span class="prelude-val">Ok</span>(Box::pin(out_stream) <span class="kw">as </span>TransactionsThroughputStream)
+    <span class="prelude-val">Ok</span>(Box::pin(out_stream) <span class="kw">as </span>TransactionsThroughputStreamType)
 }
 </code></pre></div>
 </section></main><div id="rustdoc-vars" data-root-path="../../../" data-static-root-path="../../../static.files/" data-current-crate="massa_grpc" data-themes="" data-resource-suffix="" data-rustdoc-version="1.69.0-nightly (d962ea578 2023-02-26)" data-search-js="search-14421e1532aead08.js" data-settings-js="settings-f0c5c39777a9a2f6.js" data-settings-css="settings-0bcba95ff279c1db.css" ></div></body></html>

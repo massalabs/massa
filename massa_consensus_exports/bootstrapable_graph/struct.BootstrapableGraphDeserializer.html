@@ -21,7 +21,7 @@
 <span class="kw">let </span><span class="kw-2">mut </span>buffer = Vec::new();
 BootstrapableGraphSerializer::new().serialize(<span class="kw-2">&amp;</span>bootstrapable_graph, <span class="kw-2">&amp;mut </span>buffer).unwrap();
 <span class="kw">let </span>args = BlockDeserializerArgs {
-thread_count: <span class="number">32</span>,max_operations_per_block: <span class="number">16</span>,endorsement_count: <span class="number">10</span>,last_start_period: <span class="prelude-val">Some</span>(<span class="number">0</span>),};
+thread_count: <span class="number">32</span>,max_operations_per_block: <span class="number">16</span>,endorsement_count: <span class="number">10</span>,max_denunciations_per_block_header: <span class="number">128</span>,last_start_period: <span class="prelude-val">Some</span>(<span class="number">0</span>),};
 <span class="kw">let </span>(rest, bootstrapable_graph_deserialized) = BootstrapableGraphDeserializer::new(args, <span class="number">10</span>).deserialize::&lt;DeserializeError&gt;(<span class="kw-2">&amp;</span>buffer).unwrap();
 <span class="kw">let </span><span class="kw-2">mut </span>buffer2 = Vec::new();
 BootstrapableGraphSerializer::new().serialize(<span class="kw-2">&amp;</span>bootstrapable_graph_deserialized, <span class="kw-2">&amp;mut </span>buffer2).unwrap();
