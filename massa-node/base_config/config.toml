@@ -228,9 +228,9 @@
     # that send a list of peers
     max_in_connection_overflow = 100
     # read limitation for a connection in bytes per seconds
-    max_bytes_read = 20_000_000.0
+    max_bytes_read = 20_000_000
     # write limitation for a connection in bytes per seconds
-    max_bytes_write = 20_000_000.0
+    max_bytes_write = 20_000_000
 
     [network.peer_types_config]
     Standard = { target_out_connections = 10, max_out_attempts = 10, max_in_connections = 15}
@@ -288,7 +288,7 @@
     # refuse consecutive bootstrap attempts from a given IP when the interval between them is lower than per_ip_min_interval milliseconds
     per_ip_min_interval = 180000
     # read-write limitation for a connection in bytes per seconds (about the bootstrap specifically)
-    max_bytes_read_write = 20_000_000.0
+    max_bytes_read_write = 20_000_000
 
 [pool]
     # max number of operations kept per thread

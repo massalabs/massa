@@ -340,7 +340,7 @@ pub fn get_bootstrap_config(bootstrap_public_key: NodeId) -> BootstrapConfig {
         max_simultaneous_bootstraps: 2,
         ip_list_max_size: 10,
         per_ip_min_interval: 10000.into(),
-        max_bytes_read_write: std::f64::INFINITY,
+        max_bytes_read_write: u64::MAX,
         max_bootstrap_message_size: MAX_BOOTSTRAP_MESSAGE_SIZE,
         max_datastore_key_length: MAX_DATASTORE_KEY_LENGTH,
         randomness_size_bytes: BOOTSTRAP_RANDOMNESS_SIZE_BYTES,

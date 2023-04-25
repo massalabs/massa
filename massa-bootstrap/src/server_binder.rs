@@ -20,6 +20,7 @@ use std::{
     thread,
     time::Duration,
 };
+use stream_limiter::Limiter;
 use tracing::error;
 
 /// Bootstrap server binder
@@ -31,8 +32,7 @@ pub struct BootstrapServerBinder {
     randomness_size_bytes: usize,
     size_field_len: usize,
     local_keypair: KeyPair,
-    // TODO: Reintroduce bandwidth limits
-    duplex: TcpStream,
+    duplex: Limiter<TcpStream>,
     prev_message: Option<Hash>,
     version_serializer: VersionSerializer,
     version_deserializer: VersionDeserializer,
@@ -50,7 +50,7 @@ impl BootstrapServerBinder {
     pub fn new(duplex: TcpStream, local_keypair: KeyPair, cfg: BootstrapSrvBindCfg) -> Self {
         let BootstrapSrvBindCfg {
             // TODO: Reintroduce bandwidth limits
-            max_bytes_read_write: _limit,
+            max_bytes_read_write: limit,
             max_bootstrap_message_size,
             thread_count,
             max_datastore_key_length,
@@ -64,7 +64,7 @@ impl BootstrapServerBinder {
             max_consensus_block_ids: consensus_bootstrap_part_size,
             size_field_len,
             local_keypair,
-            duplex,
+            duplex: Limiter::new(duplex, limit.into(), Duration::from_secs(1)),
             prev_message: None,
             thread_count,
             max_datastore_key_length,
@@ -87,7 +87,7 @@ impl BootstrapServerBinder {
             self.version_serializer
                 .serialize(&version, &mut version_bytes)?;
             let mut msg_bytes = vec![0u8; version_bytes.len() + self.randomness_size_bytes];
-            self.duplex.set_read_timeout(duration)?;
+            self.duplex.stream.set_read_timeout(duration)?;
             self.duplex.read_exact(&mut msg_bytes)?;
             let (_, received_version) = self
                 .version_deserializer
@@ -198,7 +198,7 @@ impl BootstrapServerBinder {
         };
 
         // send signature
-        self.duplex.set_write_timeout(duration)?;
+        self.duplex.stream.set_write_timeout(duration)?;
         self.duplex.write_all(&sig.to_bytes())?;
 
         // send message length
@@ -222,11 +222,11 @@ impl BootstrapServerBinder {
         &mut self,
         duration: Option<Duration>,
     ) -> Result<BootstrapClientMessage, BootstrapError> {
-        self.duplex.set_read_timeout(duration)?;
+        self.duplex.stream.set_read_timeout(duration)?;
 
         let peek_len = HASH_SIZE_BYTES + self.size_field_len;
         let mut peek_buf = vec![0; peek_len];
-        while self.duplex.peek(&mut peek_buf)? < peek_len {
+        while self.duplex.stream.peek(&mut peek_buf)? < peek_len {
             // TODO: backoff spin of some sort
         }
         // construct prev-hash from peek

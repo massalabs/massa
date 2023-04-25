@@ -33,7 +33,7 @@ lazy_static::lazy_static! {
 impl BootstrapClientBinder {
     pub fn test_default(client_duplex: TcpStream, remote_pubkey: PublicKey) -> Self {
         let cfg = BootstrapClientConfig {
-            max_bytes_read_write: f64::INFINITY,
+            max_bytes_read_write: u64::MAX,
             max_bootstrap_message_size: MAX_BOOTSTRAP_MESSAGE_SIZE,
             endorsement_count: ENDORSEMENT_COUNT,
             max_advertise_length: MAX_ADVERTISE_LENGTH,
@@ -78,7 +78,7 @@ fn test_binders() {
         server.0,
         server_keypair.clone(),
         BootstrapSrvBindCfg {
-            max_bytes_read_write: f64::INFINITY,
+            max_bytes_read_write: u64::MAX,
             max_bootstrap_message_size: MAX_BOOTSTRAP_MESSAGE_SIZE,
             thread_count: THREAD_COUNT,
             max_datastore_key_length: MAX_DATASTORE_KEY_LENGTH,
@@ -192,7 +192,7 @@ fn test_binders_double_send_server_works() {
         server.0,
         server_keypair.clone(),
         BootstrapSrvBindCfg {
-            max_bytes_read_write: f64::INFINITY,
+            max_bytes_read_write: u64::MAX,
             max_bootstrap_message_size: MAX_BOOTSTRAP_MESSAGE_SIZE,
             thread_count: THREAD_COUNT,
             max_datastore_key_length: MAX_DATASTORE_KEY_LENGTH,
@@ -288,7 +288,7 @@ fn test_binders_try_double_send_client_works() {
         server.0,
         server_keypair.clone(),
         BootstrapSrvBindCfg {
-            max_bytes_read_write: f64::INFINITY,
+            max_bytes_read_write: u64::MAX,
             max_bootstrap_message_size: MAX_BOOTSTRAP_MESSAGE_SIZE,
             thread_count: THREAD_COUNT,
             max_datastore_key_length: MAX_DATASTORE_KEY_LENGTH,
