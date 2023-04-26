@@ -1604,6 +1604,9 @@
 <a href="#1604" id="1604">1604</a>
 <a href="#1605" id="1605">1605</a>
 <a href="#1606" id="1606">1606</a>
+<a href="#1607" id="1607">1607</a>
+<a href="#1608" id="1608">1608</a>
+<a href="#1609" id="1609">1609</a>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="doccomment">//! This module deals with executing final and active slots, as well as read-only requests.
@@ -1791,6 +1794,9 @@
             <span class="self">self</span>.stats_counter.register_final_blocks(<span class="number">1</span>);
             <span class="self">self</span>.stats_counter.register_final_executed_operations(
                 exec_out.state_changes.executed_ops_changes.len(),
+            );
+            <span class="self">self</span>.stats_counter.register_final_executed_denunciations(
+                exec_out.state_changes.executed_denunciations_changes.len(),
             );
         }
 
