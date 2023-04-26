@@ -396,12 +396,12 @@ impl ExecutionState {
         Ok(())
     }
 
-    /// Process a denunciation in the context of a block.
+    /// Execute a denunciation in the context of a block.
     ///
     /// # Arguments
     /// * `denunciation`: denunciation to process
     /// * `block_credits`: mutable reference towards the total block reward/fee credits
-    fn process_denunciation(
+    fn execute_denunciation(
         &self,
         denunciation: &Denunciation,
         block_slot: &Slot,
@@ -422,15 +422,16 @@ impl ExecutionState {
         // ignore denunciation if too old or expired
         let de_slot = denunciation.get_slot();
 
-        if de_slot.period
-            < block_slot
-                .period
-                .saturating_sub(self.config.denunciation_expire_periods)
-        {
+        if Denunciation::is_expired(
+            &de_slot.period,
+            &block_slot.period,
+            &self.config.denunciation_expire_periods,
+        ) {
             // too old - cannot be denounced anymore
-            return Err(ExecutionError::IncludeDenunciationError(
-                "denunciation target is too old with respect to the block".to_string(),
-            ));
+            return Err(ExecutionError::IncludeDenunciationError(format!(
+                "Denunciation target ({}) is too old with respect to the block ({})",
+                de_slot, block_slot
+            )));
         }
 
         if de_slot > block_slot {
@@ -438,16 +439,17 @@ impl ExecutionState {
             // Note: de_slot == block_slot is OK,
             //       for example if the block producer wants to denounce someone who multi-endorsed
             //       for the block's slot
-            return Err(ExecutionError::IncludeDenunciationError(
-                "denunciation target is at a later slot than the block slot".to_string(),
-            ));
+            return Err(ExecutionError::IncludeDenunciationError(format!(
+                "Denunciation target ({}) is at a later slot than the block slot ({})",
+                de_slot, block_slot
+            )));
         }
 
-        // ignore the denunciation if it was already processed
+        // ignore the denunciation if it was already executed
         let de_idx = DenunciationIndex::from(denunciation);
         if context.is_denunciation_processed(&de_idx) {
             return Err(ExecutionError::IncludeDenunciationError(
-                "denunciation was processed previously".to_string(),
+                "Denunciation was already executed".to_string(),
             ));
         }
 
@@ -1016,7 +1018,7 @@ impl ExecutionState {
 
             // Try executing the denunciations of this block
             for denunciation in &stored_block.content.header.content.denunciations {
-                if let Err(e) = self.process_denunciation(
+                if let Err(e) = self.execute_denunciation(
                     denunciation,
                     &stored_block.content.header.content.slot,
                     &mut block_credits,

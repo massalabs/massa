@@ -177,10 +177,11 @@ impl DenunciationPool {
     /// cleanup internal cache, removing too old denunciation
     fn cleanup_caches(&mut self) {
         self.denunciations_cache.retain(|de_idx, _| {
+            let slot = de_idx.get_slot();
             !Denunciation::is_expired(
-                de_idx.get_slot(),
-                &self.last_cs_final_periods,
-                self.config.denunciation_expire_periods,
+                &slot.period,
+                &self.last_cs_final_periods[slot.thread as usize],
+                &self.config.denunciation_expire_periods,
             )
         });
     }
@@ -197,10 +198,11 @@ impl DenunciationPool {
                 let de_slot = de.get_slot();
                 if !self.execution_controller.is_denunciation_executed(de_idx)
                     && de_slot <= target_slot
-                    && de_slot.period
-                        >= target_slot
-                            .period
-                            .saturating_sub(self.config.denunciation_expire_periods)
+                    && !Denunciation::is_expired(
+                        &de_slot.period,
+                        &target_slot.period,
+                        &self.config.denunciation_expire_periods,
+                    )
                 {
                     res.push(de.clone());
                 }

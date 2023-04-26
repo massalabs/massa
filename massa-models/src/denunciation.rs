@@ -258,6 +258,18 @@ impl Denunciation {
         }
     }
 
+    /// Check if denunciation has expired given a slot period (assuming the slot is final)
+    pub fn is_expired(
+        denunciation_slot_period: &u64,
+        final_slot_period: &u64,
+        denunciation_expire_periods: &u64,
+    ) -> bool {
+        // If the Slot is final, a Denunciation can still be made for 1 cycle
+        final_slot_period.checked_sub(*denunciation_slot_period)
+            > Some(*denunciation_expire_periods)
+    }
+
+    /*
     /// For a given slot (and given the slot at now()), check if it can be denounced
     /// Can be used to check if block header | endorsement is not too old (at reception or too cleanup cache)
     pub fn is_expired(
@@ -269,6 +281,7 @@ impl Denunciation {
         last_cs_final_periods[slot.thread as usize].checked_sub(slot.period)
             > Some(denunciation_expire_periods)
     }
+    */
 }
 
 /// Create a new Denunciation from 2 SecureShareEndorsement
@@ -754,7 +767,7 @@ impl DenunciationIndex {
         }
     }
 
-    /// Get field: index (None if for a block header)
+    /// Get field: index (return None for a block header denunciation index)
     pub fn get_index(&self) -> Option<&u32> {
         match self {
             DenunciationIndex::BlockHeader { .. } => None,
@@ -765,6 +778,7 @@ impl DenunciationIndex {
     /// Compute the hash
     pub fn get_hash(&self) -> Hash {
         let mut buffer = vec![];
+        buffer.extend(u32::from(DenunciationIndexTypeId::from(self)).to_le_bytes());
         match self {
             DenunciationIndex::BlockHeader { slot } => buffer.extend(slot.to_bytes_key()),
             DenunciationIndex::Endorsement { slot, index } => {
