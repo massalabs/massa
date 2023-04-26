@@ -39,7 +39,7 @@ fn test_full_ask_block_workflow() {
                 PeerId::from_bytes(node_b_keypair.get_public_key().to_bytes()).unwrap(),
             );
 
-            //2. Create a block coming from node 0.
+            //2. Create a block coming from node a.
             let op_1 = tools::create_operation_with_expire_period(&node_a_keypair, 5);
             let op_2 = tools::create_operation_with_expire_period(&node_a_keypair, 5);
             let op_thread = op_1
