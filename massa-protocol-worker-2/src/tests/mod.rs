@@ -14,6 +14,7 @@ mod context;
 mod endorsements_scenarios;
 mod in_block_operations_scenarios;
 mod mock_network;
+mod operations_scenarios;
 mod tools;
 
 #[test]

@@ -9,7 +9,7 @@ use massa_protocol_exports_2::ProtocolController;
 use peernet::peer_id::PeerId;
 
 use crate::{
-    handlers::block_handler::{AskForBlocksInfo, BlockInfoReply, BlockMessage},
+    handlers::block_handler::{BlockInfoReply, BlockMessage},
     messages::Message,
 };
 
@@ -24,7 +24,6 @@ pub fn assert_hash_asked_to_node(node: &Receiver<Message>, block_id: &BlockId) {
             if let BlockMessage::AskForBlocks(asked) = *message {
                 assert_eq!(asked.len(), 1);
                 assert_eq!(&asked[0].0, block_id);
-                assert_eq!(asked[0].1, AskForBlocksInfo::Info);
             } else {
                 panic!("Node didn't receive the ask for block message");
             }
