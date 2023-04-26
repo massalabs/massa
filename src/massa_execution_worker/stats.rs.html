@@ -83,17 +83,6 @@
 <a href="#83" id="83">83</a>
 <a href="#84" id="84">84</a>
 <a href="#85" id="85">85</a>
-<a href="#86" id="86">86</a>
-<a href="#87" id="87">87</a>
-<a href="#88" id="88">88</a>
-<a href="#89" id="89">89</a>
-<a href="#90" id="90">90</a>
-<a href="#91" id="91">91</a>
-<a href="#92" id="92">92</a>
-<a href="#93" id="93">93</a>
-<a href="#94" id="94">94</a>
-<a href="#95" id="95">95</a>
-<a href="#96" id="96">96</a>
 </pre><pre class="rust"><code><span class="doccomment">//! Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="kw">use </span>massa_models::slot::Slot;
@@ -109,8 +98,6 @@
     </span>final_blocks: VecDeque&lt;(usize, MassaTime)&gt;,
     <span class="doccomment">/// final operations executed in the time window (count, instant)
     </span>final_executed_ops: VecDeque&lt;(usize, MassaTime)&gt;,
-    <span class="doccomment">/// final denunciations executed in the time window (count, instant)
-    </span>final_executed_denunciations: VecDeque&lt;(usize, MassaTime)&gt;,
 }
 
 <span class="kw">impl </span>ExecutionStatsCounter {
@@ -120,7 +107,6 @@
             time_window_duration,
             final_blocks: Default::default(),
             final_executed_ops: Default::default(),
-            final_executed_denunciations: Default::default(),
         }
     }
 
@@ -158,14 +144,6 @@
     </span><span class="kw">pub fn </span>register_final_executed_operations(<span class="kw-2">&amp;mut </span><span class="self">self</span>, count: usize) {
         <span class="kw">let </span>current_time = MassaTime::now().expect(<span class="string">&quot;could not get current time&quot;</span>);
         <span class="self">self</span>.final_executed_ops.push_back((count, current_time));
-        <span class="self">self</span>.refresh(current_time);
-    }
-
-    <span class="doccomment">/// register final executed denunciations
-    </span><span class="kw">pub fn </span>register_final_executed_denunciations(<span class="kw-2">&amp;mut </span><span class="self">self</span>, count: usize) {
-        <span class="kw">let </span>current_time = MassaTime::now().expect(<span class="string">&quot;could not get current time&quot;</span>);
-        <span class="self">self</span>.final_executed_denunciations
-            .push_back((count, current_time));
         <span class="self">self</span>.refresh(current_time);
     }
 
