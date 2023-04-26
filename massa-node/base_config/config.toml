@@ -308,8 +308,6 @@
     broadcast_operations_channel_capacity = 5000
 
 [selector]
-    # maximum number of computed cycle's draws we keep in cache
-    max_draw_cache = 10
     # path to the initial roll distribution
     initial_rolls_path = "base_config/initial_rolls.json"
 

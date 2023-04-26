@@ -129,12 +129,17 @@ pub const MAX_ASYNC_MESSAGE_DATA: u64 = 1_000_000;
 pub const OPERATION_VALIDITY_PERIODS: u64 = 10;
 /// cycle duration in periods
 pub const PERIODS_PER_CYCLE: u64 = 128;
-/// PoS saved cycles: number of cycles saved in `PoSFinalState`
+/// Number of cycles saved in `PoSFinalState`
 ///
 /// 6 for PoS itself so we can check denuncations on selections at C-2 after a bootstrap
 /// See https://github.com/massalabs/massa/pull/3871
-/// And 1 for pruned cycle safety during bootstrap
+/// 1 for pruned cycle safety during bootstrap
 pub const POS_SAVED_CYCLES: usize = 7;
+/// Number of cycle draws saved in the selector cache
+///
+/// 5 to have a C-2 to C+2 range (6 cycles post-bootstrap give 5 cycle draws)
+/// 1 for margin
+pub const SELECTOR_DRAW_CACHE_SIZE: usize = 6;
 /// Maximum size batch of data in a part of the ledger
 pub const LEDGER_PART_SIZE_MESSAGE_BYTES: u64 = 1_000_000;
 /// Maximum async messages in a batch of the bootstrap of the async pool
