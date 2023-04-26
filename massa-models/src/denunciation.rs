@@ -764,8 +764,9 @@ impl DenunciationIndex {
 
     /// Compute the hash
     pub fn get_hash(&self) -> Hash {
-        let mut buffer = vec![];
-        buffer.extend(u32::from(DenunciationIndexTypeId::from(self)).to_le_bytes());
+        let mut buffer = u32::from(DenunciationIndexTypeId::from(self))
+            .to_le_bytes()
+            .to_vec();
         match self {
             DenunciationIndex::BlockHeader { slot } => buffer.extend(slot.to_bytes_key()),
             DenunciationIndex::Endorsement { slot, index } => {
