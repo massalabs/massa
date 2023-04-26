@@ -29,7 +29,7 @@ fn test_full_ask_block_workflow() {
               protocol_manager,
               mut consensus_event_receiver,
               pool_event_receiver| {
-            //1. Create 3 nodes
+            //1. Create 2 nodes
             let node_a_keypair = KeyPair::generate();
             let node_b_keypair = KeyPair::generate();
             let (node_a_peer_id, node_a) = network_controller.create_fake_connection(
