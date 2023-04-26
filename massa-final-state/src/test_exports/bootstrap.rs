@@ -100,7 +100,8 @@ pub fn assert_eq_final_state_hash(v1: &FinalState, v2: &FinalState) {
         );
     }
     assert_eq!(
-        v1.executed_ops.get_hash(), v2.executed_ops.get_hash(),
+        v1.executed_ops.get_hash(),
+        v2.executed_ops.get_hash(),
         "executed ops hash mismatch"
     );
 }

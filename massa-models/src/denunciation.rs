@@ -808,7 +808,6 @@ enum DenunciationIndexTypeId {
     Endorsement = 1,
 }
 
-
 #[derive(Clone)]
 /// Serializer for `DenunciationIndex`
 pub struct DenunciationIndexSerializer {
@@ -856,7 +855,6 @@ impl Serializer<DenunciationIndex> for DenunciationIndexSerializer {
         Ok(())
     }
 }
-
 
 #[derive(Clone)]
 /// Deserializer for `DenunciationIndex`

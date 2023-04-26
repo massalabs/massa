@@ -17,8 +17,10 @@ use parking_lot::RwLock;
 
 use crate::{ExecutedDenunciationsChanges, ExecutedDenunciationsConfig};
 use massa_db::{
-    DBBatch, CF_ERROR, CRUD_ERROR, EXECUTED_DENUNCIATIONS_CF, EXECUTED_DENUNCIATIONS_HASH_ERROR,
-    EXECUTED_DENUNCIATIONS_HASH_INITIAL_BYTES, EXECUTED_DENUNCIATIONS_HASH_KEY, METADATA_CF, EXECUTED_DENUNCIATIONS_INDEX_DESER_ERROR, EXECUTED_DENUNCIATIONS_INDEX_SER_ERROR, WRONG_BATCH_TYPE_ERROR, write_batch,
+    write_batch, DBBatch, CF_ERROR, CRUD_ERROR, EXECUTED_DENUNCIATIONS_CF,
+    EXECUTED_DENUNCIATIONS_HASH_ERROR, EXECUTED_DENUNCIATIONS_HASH_INITIAL_BYTES,
+    EXECUTED_DENUNCIATIONS_HASH_KEY, EXECUTED_DENUNCIATIONS_INDEX_DESER_ERROR,
+    EXECUTED_DENUNCIATIONS_INDEX_SER_ERROR, METADATA_CF, WRONG_BATCH_TYPE_ERROR,
 };
 use massa_hash::Hash;
 use massa_models::streaming_step::StreamingStep;
@@ -27,9 +29,10 @@ use massa_models::{
     slot::{Slot, SlotDeserializer, SlotSerializer},
 };
 use massa_serialization::{
-    Deserializer, SerializeError, Serializer, U64VarIntDeserializer, U64VarIntSerializer, DeserializeError,
+    DeserializeError, Deserializer, SerializeError, Serializer, U64VarIntDeserializer,
+    U64VarIntSerializer,
 };
-use rocksdb::{DB, IteratorMode, Options};
+use rocksdb::{IteratorMode, Options, DB};
 
 /// A structure to list and prune previously processed denunciations
 #[derive(Clone)]
@@ -41,13 +44,14 @@ pub struct ExecutedDenunciations {
     /// for better pruning complexity
     pub sorted_denunciations: BTreeMap<Slot, HashSet<DenunciationIndex>>,
     denunciation_index_serializer: DenunciationIndexSerializer,
-    denunciation_index_deserializer: DenunciationIndexDeserializer
+    denunciation_index_deserializer: DenunciationIndexDeserializer,
 }
 
 impl ExecutedDenunciations {
     /// Create a new `ProcessedDenunciations`
     pub fn new(config: ExecutedDenunciationsConfig, db: Arc<RwLock<DB>>) -> Self {
-        let denunciation_index_deserializer = DenunciationIndexDeserializer::new(config.thread_count, config.endorsement_count);
+        let denunciation_index_deserializer =
+            DenunciationIndexDeserializer::new(config.thread_count, config.endorsement_count);
         Self {
             config,
             db,
@@ -63,11 +67,9 @@ impl ExecutedDenunciations {
         let db = self.db.read();
         let handle = db.cf_handle(EXECUTED_DENUNCIATIONS_CF).expect(CF_ERROR);
 
-        for (serialized_de_idx, _) in
-            db.iterator_cf(handle, IteratorMode::Start).flatten()
-        {
-            let (_, de_idx) = self.
-                denunciation_index_deserializer
+        for (serialized_de_idx, _) in db.iterator_cf(handle, IteratorMode::Start).flatten() {
+            let (_, de_idx) = self
+                .denunciation_index_deserializer
                 .deserialize::<DeserializeError>(&serialized_de_idx)
                 .expect(EXECUTED_DENUNCIATIONS_INDEX_DESER_ERROR);
 
@@ -88,12 +90,11 @@ impl ExecutedDenunciations {
     ///
     /// USED FOR BOOTSTRAP ONLY
     pub fn reset(&mut self) {
-
         {
             let mut db = self.db.write();
-                (*db)
-                    .drop_cf(EXECUTED_DENUNCIATIONS_CF)
-                    .expect("Error dropping executed_denunciations cf");
+            (*db)
+                .drop_cf(EXECUTED_DENUNCIATIONS_CF)
+                .expect("Error dropping executed_denunciations cf");
             let mut db_opts = Options::default();
             db_opts.set_error_if_exists(true);
             (*db)
@@ -117,15 +118,15 @@ impl ExecutedDenunciations {
     pub fn contains(&self, de_idx: &DenunciationIndex) -> bool {
         let db = self.db.read();
         let handle = db.cf_handle(EXECUTED_DENUNCIATIONS_CF).expect(CF_ERROR);
-        
+
         let mut serialized_de_idx = Vec::new();
         self.denunciation_index_serializer
             .serialize(de_idx, &mut serialized_de_idx)
             .expect(EXECUTED_DENUNCIATIONS_INDEX_SER_ERROR);
 
-        db
-            .get_cf(handle, &serialized_de_idx)
-            .expect(CRUD_ERROR).is_some()
+        db.get_cf(handle, &serialized_de_idx)
+            .expect(CRUD_ERROR)
+            .is_some()
     }
 
     /// Apply speculative operations changes to the final processed denunciations state
@@ -135,7 +136,6 @@ impl ExecutedDenunciations {
         slot: Slot,
         batch: &mut DBBatch,
     ) {
-
         for de_idx in changes {
             self.put_entry(&de_idx, batch);
             self.sorted_denunciations
@@ -179,22 +179,24 @@ impl ExecutedDenunciations {
     fn put_entry(&self, de_idx: &DenunciationIndex, batch: &mut DBBatch) {
         let db = self.db.read();
         let handle = db.cf_handle(EXECUTED_DENUNCIATIONS_CF).expect(CF_ERROR);
-        
+
         let mut serialized_de_idx = Vec::new();
         self.denunciation_index_serializer
             .serialize(de_idx, &mut serialized_de_idx)
             .expect(EXECUTED_DENUNCIATIONS_INDEX_SER_ERROR);
 
-        if let None = db.get_cf(handle, &serialized_de_idx).expect(CRUD_ERROR) {
+        if db
+            .get_cf(handle, &serialized_de_idx)
+            .expect(CRUD_ERROR)
+            .is_none()
+        {
             let hash = de_idx.get_hash();
             batch.aeh_list.insert(serialized_de_idx.clone(), hash);
             *batch
                 .executed_denunciations_hash
                 .as_mut()
                 .expect(WRONG_BATCH_TYPE_ERROR) ^= hash;
-            batch
-                .write_batch
-                .put_cf(handle, serialized_de_idx, "");
+            batch.write_batch.put_cf(handle, serialized_de_idx, "");
         }
     }
 
@@ -205,7 +207,7 @@ impl ExecutedDenunciations {
     fn delete_entry(&self, de_idx: &DenunciationIndex, batch: &mut DBBatch) {
         let db = self.db.read();
         let handle = db.cf_handle(EXECUTED_DENUNCIATIONS_CF).expect(CF_ERROR);
-        
+
         let mut serialized_de_idx = Vec::new();
         self.denunciation_index_serializer
             .serialize(de_idx, &mut serialized_de_idx)
@@ -216,9 +218,10 @@ impl ExecutedDenunciations {
                 .executed_denunciations_hash
                 .as_mut()
                 .expect(WRONG_BATCH_TYPE_ERROR) ^= *added_hash;
-        } else if let Some(_) = db
+        } else if db
             .get_pinned_cf(handle, &serialized_de_idx)
             .expect(CRUD_ERROR)
+            .is_some()
         {
             let hash = de_idx.get_hash();
             *batch
@@ -278,7 +281,7 @@ impl ExecutedDenunciations {
         self.sorted_denunciations.extend(part.clone());
 
         for de_idx in part.iter().flat_map(|(_, ids)| ids) {
-            self.put_entry(&de_idx, &mut batch);
+            self.put_entry(de_idx, &mut batch);
         }
 
         write_batch(&self.db.read(), batch);
