@@ -450,9 +450,9 @@ impl FinalState {
             hash_concat.extend(cycle_info.cycle_global_hash.to_bytes());
         }
         // 5. executed operations hash
-        hash_concat.extend(self.executed_ops.hash.to_bytes());
+        hash_concat.extend(self.executed_ops.get_hash().to_bytes());
         // 6. processed denunciations hash
-        hash_concat.extend(self.executed_denunciations.hash.to_bytes());
+        hash_concat.extend(self.executed_denunciations.get_hash().to_bytes());
         // 7. compute and save final state hash
         self.final_state_hash = Hash::compute_from(&hash_concat);
 

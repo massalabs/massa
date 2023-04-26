@@ -194,6 +194,8 @@ async fn launch(
     let executed_denunciations_config = ExecutedDenunciationsConfig {
         denunciation_expire_periods: DENUNCIATION_EXPIRE_PERIODS,
         bootstrap_part_size: EXECUTED_OPS_BOOTSTRAP_PART_SIZE,
+        thread_count: THREAD_COUNT,
+        endorsement_count: ENDORSEMENT_COUNT,
     };
     let final_state_config = FinalStateConfig {
         ledger_config: ledger_config.clone(),

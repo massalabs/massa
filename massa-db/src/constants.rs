@@ -38,6 +38,8 @@ pub const EXECUTED_OPS_CF: &str = "executed_ops";
 pub const EXECUTED_OPS_HASH_ERROR: &str = "critical: saved executed_ops hash is corrupted";
 pub const EXECUTED_OPS_HASH_KEY: &[u8; 4] = b"eo_h";
 pub const EXECUTED_OPS_HASH_INITIAL_BYTES: &[u8; 32] = &[0; HASH_SIZE_BYTES];
+pub const EXECUTED_OPS_ID_DESER_ERROR: &str = "critical: executed_ops_id deserialization failed";
+pub const EXECUTED_OPS_ID_SER_ERROR: &str = "critical: executed_ops_id serialization failed";
 
 // Executed Denunciations
 
@@ -46,6 +48,8 @@ pub const EXECUTED_DENUNCIATIONS_HASH_ERROR: &str =
     "critical: saved executed_denunciations hash is corrupted";
 pub const EXECUTED_DENUNCIATIONS_HASH_KEY: &[u8; 4] = b"ed_h";
 pub const EXECUTED_DENUNCIATIONS_HASH_INITIAL_BYTES: &[u8; 32] = &[0; HASH_SIZE_BYTES];
+pub const EXECUTED_DENUNCIATIONS_INDEX_DESER_ERROR: &str = "critical: executed_denunciations_index deserialization failed";
+pub const EXECUTED_DENUNCIATIONS_INDEX_SER_ERROR: &str = "critical: executed_denunciations_index serialization failed";
 
 // Ledger
 

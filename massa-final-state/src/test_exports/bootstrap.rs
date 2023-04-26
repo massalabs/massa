@@ -55,15 +55,6 @@ pub fn assert_eq_final_state(v1: &FinalState, v2: &FinalState) {
     );
     massa_pos_exports::test_exports::assert_eq_pos_state(&v1.pos_state, &v2.pos_state);
     assert_eq!(
-        v1.executed_ops.ops.len(),
-        v2.executed_ops.ops.len(),
-        "executed_ops.ops lenght mismatch"
-    );
-    assert_eq!(
-        v1.executed_ops.ops, v2.executed_ops.ops,
-        "executed_ops.ops mismatch"
-    );
-    assert_eq!(
         v1.executed_ops.sorted_ops, v2.executed_ops.sorted_ops,
         "executed_ops.sorted_ops mismatch"
     );
@@ -109,7 +100,7 @@ pub fn assert_eq_final_state_hash(v1: &FinalState, v2: &FinalState) {
         );
     }
     assert_eq!(
-        v1.executed_ops.hash, v2.executed_ops.hash,
+        v1.executed_ops.get_hash(), v2.executed_ops.get_hash(),
         "executed ops hash mismatch"
     );
 }

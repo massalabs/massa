@@ -220,7 +220,7 @@ pub fn get_random_executed_ops(
     db: Arc<RwLock<DB>>,
 ) -> ExecutedOps {
     let mut executed_ops = ExecutedOps::new(config.clone(), db.clone());
-    let mut batch = DBBatch::new(None, None, None, None, Some(executed_ops.hash), None);
+    let mut batch = DBBatch::new(None, None, None, None, Some(executed_ops.get_hash()), None);
     executed_ops.apply_changes_to_batch(get_random_executed_ops_changes(10), slot, &mut batch);
     write_batch(&db.read(), batch);
     executed_ops
@@ -251,7 +251,7 @@ pub fn get_random_executed_de(
 ) -> ExecutedDenunciations {
     let mut executed_de = ExecutedDenunciations::new(config, rocks_db_instance);
 
-    let mut batch = DBBatch::new(None, None, None, None, None, Some(executed_de.hash));
+    let mut batch = DBBatch::new(None, None, None, None, None, Some(executed_de.get_hash()));
     executed_de.apply_changes_to_batch(get_random_executed_de_changes(10), slot, &mut batch);
 
     write_batch(&executed_de.db.read(), batch);

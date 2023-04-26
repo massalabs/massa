@@ -80,9 +80,9 @@ fn stream_final_state_and_consensus(
                     for (changes_slot, changes) in final_state_changes.iter() {
                         let ledger_hash = write_final_state.ledger.get_ledger_hash();
                         let async_pool_hash = write_final_state.async_pool.get_hash();
-                        let executed_ops_hash = write_final_state.executed_ops.hash;
+                        let executed_ops_hash = write_final_state.executed_ops.get_hash();
                         let executed_denunciations_hash =
-                            write_final_state.executed_denunciations.hash;
+                            write_final_state.executed_denunciations.get_hash();
                         let mut batch = DBBatch::new(
                             Some(ledger_hash),
                             Some(async_pool_hash),

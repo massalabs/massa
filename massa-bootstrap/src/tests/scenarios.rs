@@ -132,6 +132,8 @@ fn test_bootstrap_server() {
         executed_denunciations_config: ExecutedDenunciationsConfig {
             denunciation_expire_periods: DENUNCIATION_EXPIRE_PERIODS,
             bootstrap_part_size: 10,
+            thread_count,
+            endorsement_count: ENDORSEMENT_COUNT,
         },
         final_history_length: 100,
         initial_seed_string: "".into(),
@@ -306,7 +308,7 @@ fn test_bootstrap_server() {
         for (slot, change) in list_changes_read.iter().skip(1) {
             let ledger_hash = final_state_server_write.ledger.get_ledger_hash();
             let async_pool_hash = final_state_server_write.async_pool.get_hash();
-            let executed_ops_hash = final_state_server_write.executed_ops.hash;
+            let executed_ops_hash = final_state_server_write.executed_ops.get_hash();
             let mut batch = DBBatch::new(
                 Some(ledger_hash),
                 Some(async_pool_hash),

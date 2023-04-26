@@ -808,6 +808,8 @@ enum DenunciationIndexTypeId {
     Endorsement = 1,
 }
 
+
+#[derive(Clone)]
 /// Serializer for `DenunciationIndex`
 pub struct DenunciationIndexSerializer {
     u32_serializer: U32VarIntSerializer,
@@ -855,6 +857,8 @@ impl Serializer<DenunciationIndex> for DenunciationIndexSerializer {
     }
 }
 
+
+#[derive(Clone)]
 /// Deserializer for `DenunciationIndex`
 pub struct DenunciationIndexDeserializer {
     id_deserializer: U32VarIntDeserializer,
