@@ -86,7 +86,7 @@ impl DenunciationPool {
         // So Denunciations can only be expired when they cannot be included in any thread
         if Denunciation::is_expired(
             &slot.period,
-            &self.last_cs_final_periods.iter().min().unwrap_or(&0),
+            self.last_cs_final_periods.iter().min().unwrap_or(&0),
             &self.config.denunciation_expire_periods,
         ) {
             // too old - cannot be denounced anymore
@@ -185,7 +185,7 @@ impl DenunciationPool {
             // Check add_denunciation_precursor notes about last_cs_final_periods.iter().min()
             !Denunciation::is_expired(
                 &slot.period,
-                &self.last_cs_final_periods.iter().min().unwrap_or(&0),
+                self.last_cs_final_periods.iter().min().unwrap_or(&0),
                 &self.config.denunciation_expire_periods,
             )
         });
