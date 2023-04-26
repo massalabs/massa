@@ -68,7 +68,7 @@ impl BlockHandler {
             endorsement_cache,
             operation_cache,
             cache.clone(),
-            storage,
+            storage.clone_without_refs(),
         );
         let block_propagation_thread = start_propagation_thread(
             active_connections,
@@ -76,6 +76,7 @@ impl BlockHandler {
             peer_cmd_sender,
             config,
             cache,
+            storage,
         );
         Self {
             block_retrieval_thread: Some((sender_ext, block_retrieval_thread)),

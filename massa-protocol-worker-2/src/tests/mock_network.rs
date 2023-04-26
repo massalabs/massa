@@ -113,7 +113,7 @@ impl MockNetworkController {
         self.connections
             .write()
             .connections
-            .insert(peer_id.clone(), sender.clone());
+            .insert(peer_id.clone(), sender);
         (peer_id, receiver)
     }
 

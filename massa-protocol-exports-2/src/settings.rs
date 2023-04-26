@@ -24,6 +24,8 @@ pub struct ProtocolConfig {
     pub thread_count: u8,
     /// after `ask_block_timeout` milliseconds we try to ask a block to another node
     pub ask_block_timeout: MassaTime,
+    /// Max known blocks we keep in block_handler
+    pub max_known_blocks_saved_size: usize,
     /// max known blocks of current nodes we keep in memory (by node)
     pub max_known_blocks_size: usize,
     /// max known blocks of foreign nodes we keep in memory (by node)

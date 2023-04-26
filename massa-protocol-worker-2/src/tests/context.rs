@@ -126,7 +126,7 @@ where
     protocol_manager.stop()
 }
 
-pub fn _protocol_test_with_storage<F>(protocol_config: &ProtocolConfig, test: F)
+pub fn protocol_test_with_storage<F>(protocol_config: &ProtocolConfig, test: F)
 where
     F: FnOnce(
         Box<MockNetworkController>,

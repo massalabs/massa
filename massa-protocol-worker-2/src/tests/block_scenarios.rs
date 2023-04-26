@@ -6,8 +6,8 @@ use std::time::Duration;
 use crate::handlers::block_handler::{AskForBlocksInfo, BlockInfoReply, BlockMessage};
 use crate::messages::Message;
 
-use super::context::protocol_test;
-use super::tools::assert_hash_asked_to_node;
+use super::context::{protocol_test, protocol_test_with_storage};
+use super::tools::{assert_block_info_sent_to_node, assert_hash_asked_to_node};
 use massa_consensus_exports::test_exports::MockConsensusControllerMessage;
 use massa_models::prehash::PreHashSet;
 use massa_models::{block_id::BlockId, slot::Slot};
@@ -548,6 +548,209 @@ fn test_multiple_blocks_without_a_priori() {
                 _ => panic!("Node didn't receive the ask for block message"),
             }
             assert_eq!(to_be_asked_blocks.len(), 0);
+            (
+                network_controller,
+                protocol_controller,
+                protocol_manager,
+                consensus_event_receiver,
+                pool_event_receiver,
+            )
+        },
+    )
+}
+
+#[test]
+#[serial]
+fn test_protocol_sends_blocks_when_asked_for() {
+    let mut protocol_config = ProtocolConfig::default();
+    protocol_config.thread_count = 2;
+    protocol_config.initial_peers = "./src/tests/empty_initial_peers.json".to_string().into();
+    protocol_test_with_storage(
+        &protocol_config,
+        move |mut network_controller,
+              protocol_controller,
+              protocol_manager,
+              consensus_event_receiver,
+              pool_event_receiver,
+              mut storage| {
+            //1. Create 3 nodes
+            let node_a_keypair = KeyPair::generate();
+            let node_b_keypair = KeyPair::generate();
+            let node_c_keypair = KeyPair::generate();
+            let (node_a_peer_id, node_a) = network_controller.create_fake_connection(
+                PeerId::from_bytes(node_a_keypair.get_public_key().to_bytes()).unwrap(),
+            );
+            let (node_b_peer_id, node_b) = network_controller.create_fake_connection(
+                PeerId::from_bytes(node_b_keypair.get_public_key().to_bytes()).unwrap(),
+            );
+            let (_node_c_peer_id, node_c) = network_controller.create_fake_connection(
+                PeerId::from_bytes(node_c_keypair.get_public_key().to_bytes()).unwrap(),
+            );
+
+            //2. Create a block coming from node a.
+            let block = tools::create_block(&node_a_keypair);
+            //end setup
+
+            //3. Consensus inform us that a block has been integrated
+            storage.store_block(block.clone());
+            protocol_controller
+                .integrated_block(block.id, storage)
+                .unwrap();
+
+            std::thread::sleep(Duration::from_millis(100));
+            //4. Two nodes are asking for the block
+            network_controller
+                .send_from_peer(
+                    &node_a_peer_id,
+                    Message::Block(Box::new(BlockMessage::AskForBlocks(vec![(
+                        block.id,
+                        AskForBlocksInfo::Info,
+                    )]))),
+                )
+                .unwrap();
+            network_controller
+                .send_from_peer(
+                    &node_b_peer_id,
+                    Message::Block(Box::new(BlockMessage::AskForBlocks(vec![(
+                        block.id,
+                        AskForBlocksInfo::Info,
+                    )]))),
+                )
+                .unwrap();
+
+            //5. Check that protocol send the block to the two nodes
+            assert_block_info_sent_to_node(&node_a, &block.id);
+            assert_block_info_sent_to_node(&node_b, &block.id);
+
+            //6. Make sure we didn't sent the block info to node c
+            let _ = node_c
+                .recv_timeout(Duration::from_millis(1500))
+                .expect("Node c should receive the header");
+            let _ = node_c
+                .recv_timeout(Duration::from_millis(1500))
+                .expect_err("Node c shouldn't receive the block info");
+            (
+                network_controller,
+                protocol_controller,
+                protocol_manager,
+                consensus_event_receiver,
+                pool_event_receiver,
+            )
+        },
+    )
+}
+
+#[test]
+#[serial]
+fn test_protocol_propagates_block_to_node_who_asked_for_operations_and_only_header_to_others() {
+    let mut protocol_config = ProtocolConfig::default();
+    protocol_config.thread_count = 2;
+    protocol_config.initial_peers = "./src/tests/empty_initial_peers.json".to_string().into();
+    protocol_test_with_storage(
+        &protocol_config,
+        move |mut network_controller,
+              protocol_controller,
+              protocol_manager,
+              mut consensus_event_receiver,
+              pool_event_receiver,
+              mut storage| {
+            //1. Create 3 nodes
+            let node_a_keypair = KeyPair::generate();
+            let node_b_keypair = KeyPair::generate();
+            let node_c_keypair = KeyPair::generate();
+            let (node_a_peer_id, node_a) = network_controller.create_fake_connection(
+                PeerId::from_bytes(node_a_keypair.get_public_key().to_bytes()).unwrap(),
+            );
+            let (node_b_peer_id, node_b) = network_controller.create_fake_connection(
+                PeerId::from_bytes(node_b_keypair.get_public_key().to_bytes()).unwrap(),
+            );
+            let (_node_c_peer_id, node_c) = network_controller.create_fake_connection(
+                PeerId::from_bytes(node_c_keypair.get_public_key().to_bytes()).unwrap(),
+            );
+
+            //2. Create a block coming from node a.
+            let block = tools::create_block(&node_a_keypair);
+            //end setup
+
+            //3. Node A send the block to us
+            network_controller
+                .send_from_peer(
+                    &node_a_peer_id,
+                    Message::Block(Box::new(BlockMessage::BlockHeader(
+                        block.content.header.clone(),
+                    ))),
+                )
+                .unwrap();
+
+            //4. Check that we sent the block header to consensus
+            loop {
+                match consensus_event_receiver.wait_command(
+                    MassaTime::from_millis(100),
+                    |command| match command {
+                        MockConsensusControllerMessage::RegisterBlockHeader {
+                            header,
+                            block_id,
+                        } => {
+                            assert_eq!(header.id, block.content.header.id);
+                            assert_eq!(block_id, block.id);
+                            Some(())
+                        }
+                        _evt => None,
+                    },
+                ) {
+                    Some(()) => {
+                        break;
+                    }
+                    None => {
+                        continue;
+                    }
+                }
+            }
+
+            //5. Consensus inform us that a block has been integrated and so we propagate it
+            storage.store_block(block.clone());
+            protocol_controller
+                .integrated_block(block.id, storage)
+                .unwrap();
+
+            std::thread::sleep(Duration::from_millis(100));
+
+            //6. Node B is asking for the block
+            network_controller
+                .send_from_peer(
+                    &node_b_peer_id,
+                    Message::Block(Box::new(BlockMessage::AskForBlocks(vec![(
+                        block.id,
+                        AskForBlocksInfo::Info,
+                    )]))),
+                )
+                .unwrap();
+
+            //7. Verify that we sent the right informations to each node :
+            // - node a should receive nothing because he sent the block
+            // - node b should receive the block header and the infos as asked
+            // - node c should receive the block header only
+            let _ = node_a
+                .recv_timeout(Duration::from_millis(1500))
+                .expect_err("Node a shouldn't receive the block");
+            assert_block_info_sent_to_node(&node_b, &block.id);
+            let msg = node_c
+                .recv_timeout(Duration::from_millis(1500))
+                .expect("Node c should receive the block header");
+            match msg {
+                Message::Block(block_msg) => match *block_msg {
+                    BlockMessage::BlockHeader(header) => {
+                        assert_eq!(header.id, block.content.header.id);
+                    }
+                    _ => {
+                        panic!("Node c should receive the block header");
+                    }
+                },
+                _ => {
+                    panic!("Node c should receive the block header");
+                }
+            }
+
             (
                 network_controller,
                 protocol_controller,

@@ -402,6 +402,7 @@ async fn test_protocol_propagates_block_to_node_who_asked_for_operations_and_onl
             // node_c did nothing, it should receive the header
             // node_d was disconnected, so nothing should be send to it
             let mut expected_headers = HashSet::new();
+            expected_headers.insert(node_a.id);
             expected_headers.insert(node_c.id);
             expected_headers.insert(node_b.id);
 
