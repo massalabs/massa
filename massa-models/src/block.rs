@@ -520,7 +520,11 @@ mod test {
             ed.verify_signature().unwrap();
         }
 
-        res_block.content.header.assert_invariants().unwrap();
+        res_block
+            .content
+            .header
+            .assert_invariants(THREAD_COUNT, ENDORSEMENT_COUNT)
+            .unwrap();
     }
 
     #[test]
@@ -567,7 +571,11 @@ mod test {
                 .deserialize::<DeserializeError>(&ser_block)
                 .unwrap();
 
-        res_block.content.header.assert_invariants().unwrap();
+        res_block
+            .content
+            .header
+            .assert_invariants(THREAD_COUNT, ENDORSEMENT_COUNT)
+            .unwrap();
 
         // check equality
 
@@ -872,7 +880,10 @@ mod test {
                 .deserialize::<DeserializeError>(&ser_block)
                 .unwrap();
 
-        res.content.header.assert_invariants().unwrap();
+        res.content
+            .header
+            .assert_invariants(THREAD_COUNT, ENDORSEMENT_COUNT)
+            .unwrap();
     }
     #[test]
     #[serial]

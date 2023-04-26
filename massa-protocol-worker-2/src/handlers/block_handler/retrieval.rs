@@ -13,6 +13,7 @@ use crate::{
     },
     messages::MessagesSerializer,
     sig_verifier::verify_sigs_batch,
+    wrap_network::ActiveConnectionsTrait,
 };
 use crossbeam::{
     channel::{at, Receiver, Sender},
@@ -36,7 +37,7 @@ use massa_protocol_exports_2::{ProtocolConfig, ProtocolError};
 use massa_serialization::{DeserializeError, Deserializer, Serializer};
 use massa_storage::Storage;
 use massa_time::TimeError;
-use peernet::{network_manager::SharedActiveConnections, peer_id::PeerId};
+use peernet::peer_id::PeerId;
 use tracing::warn;
 
 use super::{
@@ -78,7 +79,7 @@ impl BlockInfo {
 }
 
 pub struct RetrievalThread {
-    active_connections: SharedActiveConnections,
+    active_connections: Box<dyn ActiveConnectionsTrait>,
     consensus_controller: Box<dyn ConsensusController>,
     pool_controller: Box<dyn PoolController>,
     receiver_network: Receiver<PeerMessageTuple>,
@@ -101,7 +102,7 @@ impl RetrievalThread {
         //TODO: Add real values
         let mut block_message_deserializer =
             BlockMessageDeserializer::new(BlockMessageDeserializerArgs {
-                thread_count: 32,
+                thread_count: self.config.thread_count,
                 endorsement_count: 10000,
                 block_infos_length_max: 10000,
                 max_operations_per_block: 10000,
@@ -288,36 +289,21 @@ impl RetrievalThread {
                 .iter()
                 .map(|(id, _)| id.clone())
                 .collect();
-            {
-                let active_connections_read = self.active_connections.read();
-                for peer_id in peers {
-                    if !active_connections_read.connections.contains_key(&peer_id) {
-                        cache_write.blocks_known_by_peer.pop(&peer_id);
-                        self.asked_blocks.remove(&peer_id);
-                    }
+            let connected_peers = self.active_connections.get_peer_ids_connected();
+            for peer_id in peers {
+                if !connected_peers.contains(&peer_id) {
+                    cache_write.blocks_known_by_peer.pop(&peer_id);
+                    self.asked_blocks.remove(&peer_id);
                 }
             }
         }
-        {
-            let active_connections_read = self.active_connections.read();
-            let connection = active_connections_read
-                .connections
-                .get(&from_peer_id)
-                .ok_or(ProtocolError::SendError(format!(
-                    "Send block info peer {} isn't connected anymore",
-                    &from_peer_id
-                )))?;
-            connection
-                .send_channels
-                .send(
-                    &self.block_message_serializer,
-                    BlockMessage::ReplyForBlocks(all_blocks_info).into(),
-                    true,
-                )
-                .map_err(|err| {
-                    ProtocolError::SendError(format!("Send block info error: {:?}", err))
-                })
-        }
+
+        self.active_connections.send_to_peer(
+            &from_peer_id,
+            &self.block_message_serializer,
+            BlockMessage::ReplyForBlocks(all_blocks_info).into(),
+            true,
+        )
     }
 
     fn on_block_info_received(
@@ -1045,13 +1031,8 @@ impl RetrievalThread {
             {
                 let mut cache_write = self.cache.write();
                 // Clean old peers that aren't active anymore
-                let peers_connected: HashSet<PeerId> = self
-                    .active_connections
-                    .read()
-                    .connections
-                    .keys()
-                    .cloned()
-                    .collect();
+                let peers_connected: HashSet<PeerId> =
+                    self.active_connections.get_peer_ids_connected();
                 let peers_in_cache: Vec<PeerId> = cache_write
                     .blocks_known_by_peer
                     .iter()
@@ -1236,20 +1217,16 @@ impl RetrievalThread {
         // send AskBlockEvents
         if !ask_block_list.is_empty() {
             for (peer_id, list) in ask_block_list.iter() {
-                {
-                    let active_connections_read = self.active_connections.read();
-                    if let Some(peer) = active_connections_read.connections.get(peer_id) {
-                        if let Err(err) = peer.send_channels.send(
-                            &self.block_message_serializer,
-                            BlockMessage::AskForBlocks(list.clone()).into(),
-                            true,
-                        ) {
-                            warn!(
-                                "Failed to send AskForBlocks to peer {} err: {}",
-                                peer_id, err
-                            );
-                        }
-                    }
+                if let Err(err) = self.active_connections.send_to_peer(
+                    peer_id,
+                    &self.block_message_serializer,
+                    BlockMessage::AskForBlocks(list.clone()).into(),
+                    true,
+                ) {
+                    warn!(
+                        "Failed to send AskForBlocks to peer {} err: {}",
+                        peer_id, err
+                    );
                 }
             }
         }
@@ -1260,7 +1237,7 @@ impl RetrievalThread {
 }
 
 pub fn start_retrieval_thread(
-    active_connections: SharedActiveConnections,
+    active_connections: Box<dyn ActiveConnectionsTrait>,
     consensus_controller: Box<dyn ConsensusController>,
     pool_controller: Box<dyn PoolController>,
     receiver_network: Receiver<PeerMessageTuple>,

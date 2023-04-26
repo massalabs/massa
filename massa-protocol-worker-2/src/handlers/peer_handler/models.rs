@@ -133,7 +133,7 @@ impl PeerDB {
     }
 
     // Flush PeerDB to disk ?
-    fn flush(&self) -> Result<(), ProtocolError> {
+    fn _flush(&self) -> Result<(), ProtocolError> {
         unimplemented!()
     }
 }

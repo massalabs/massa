@@ -23,12 +23,13 @@ use massa_protocol_exports_2::{ProtocolConfig, ProtocolError};
 use massa_serialization::{DeserializeError, Deserializer};
 use massa_storage::Storage;
 use massa_time::{MassaTime, TimeError};
-use peernet::{network_manager::SharedActiveConnections, peer_id::PeerId};
+use peernet::peer_id::PeerId;
 
 use crate::{
     handlers::peer_handler::models::{PeerManagementCmd, PeerMessageTuple},
     messages::MessagesSerializer,
     sig_verifier::verify_sigs_batch,
+    wrap_network::ActiveConnectionsTrait,
 };
 use tracing::warn;
 
@@ -57,7 +58,7 @@ pub struct RetrievalThread {
     pool_controller: Box<dyn PoolController>,
     cache: SharedOperationCache,
     asked_operations: LruCache<OperationPrefixId, (Instant, Vec<PeerId>)>,
-    active_connections: SharedActiveConnections,
+    active_connections: Box<dyn ActiveConnectionsTrait>,
     op_batch_buffer: VecDeque<OperationBatchItem>,
     stored_operations: HashMap<Instant, PreHashSet<OperationId>>,
     storage: Storage,
@@ -375,27 +376,20 @@ impl RetrievalThread {
             });
         }
         if !ask_set.is_empty() {
-            {
-                let active_connections_read = self.active_connections.read();
-                if let Some(peer) = active_connections_read.connections.get(peer_id) {
-                    peer.send_channels
-                        .send(
-                            &self.operation_message_serializer,
-                            OperationMessage::AskForOperations(ask_set).into(),
-                            false,
-                        )
-                        .map_err(|err| ProtocolError::SendError(err.to_string()))
-                } else {
-                    {
-                        let mut cache_write = self.cache.write();
-                        cache_write.ops_known_by_peer.pop(peer_id);
-                    }
-                    Ok(())
+            if let Err(err) = self.active_connections.send_to_peer(
+                peer_id,
+                &self.operation_message_serializer,
+                OperationMessage::AskForOperations(ask_set).into(),
+                false,
+            ) {
+                warn!("Failed to send AskForOperations message to peer: {}", err);
+                {
+                    let mut cache_write = self.cache.write();
+                    cache_write.ops_known_by_peer.pop(peer_id);
                 }
             }
-        } else {
-            Ok(())
         }
+        Ok(())
     }
 
     fn update_ask_operation(&mut self) -> Result<(), ProtocolError> {
@@ -443,24 +437,19 @@ impl RetrievalThread {
                 }
             }
         }
-        {
-            let active_connections_read = self.active_connections.read();
-            if let Some(peer) = active_connections_read.connections.get(peer_id) {
-                peer.send_channels
-                    .send(
-                        &self.operation_message_serializer,
-                        OperationMessage::Operations(ops).into(),
-                        false,
-                    )
-                    .map_err(|err| ProtocolError::SendError(err.to_string()))
-            } else {
-                {
-                    let mut cache_write = self.cache.write();
-                    cache_write.ops_known_by_peer.pop(peer_id);
-                }
-                Ok(())
+        if let Err(err) = self.active_connections.send_to_peer(
+            peer_id,
+            &self.operation_message_serializer,
+            OperationMessage::Operations(ops).into(),
+            false,
+        ) {
+            warn!("Failed to send Operations message to peer: {}", err);
+            {
+                let mut cache_write = self.cache.write();
+                cache_write.ops_known_by_peer.pop(peer_id);
             }
         }
+        Ok(())
     }
 
     /// send a ban peer command to the peer handler
@@ -478,7 +467,7 @@ pub fn start_retrieval_thread(
     storage: Storage,
     config: ProtocolConfig,
     cache: SharedOperationCache,
-    active_connections: SharedActiveConnections,
+    active_connections: Box<dyn ActiveConnectionsTrait>,
     receiver_ext: Receiver<OperationHandlerRetrievalCommand>,
     internal_sender: Sender<OperationHandlerPropagationCommand>,
     peer_cmd_sender: Sender<PeerManagementCmd>,

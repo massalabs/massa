@@ -7,10 +7,10 @@ use massa_models::{
     prehash::{PreHashMap, PreHashSet},
 };
 use massa_protocol_exports_2::ProtocolConfig;
-use peernet::{network_manager::SharedActiveConnections, peer_id::PeerId};
+use peernet::peer_id::PeerId;
 use tracing::log::warn;
 
-use crate::messages::MessagesSerializer;
+use crate::{messages::MessagesSerializer, wrap_network::ActiveConnectionsTrait};
 
 use super::{
     cache::SharedEndorsementCache, commands_propagation::EndorsementHandlerPropagationCommand,
@@ -21,7 +21,7 @@ struct PropagationThread {
     receiver: Receiver<EndorsementHandlerPropagationCommand>,
     config: ProtocolConfig,
     cache: SharedEndorsementCache,
-    active_connections: SharedActiveConnections,
+    active_connections: Box<dyn ActiveConnectionsTrait>,
     endorsement_serializer: MessagesSerializer,
 }
 
@@ -60,11 +60,20 @@ impl PropagationThread {
                                     cache_write.checked_endorsements.put(endorsement_id, ());
                                 }
                                 // Add peers that potentially don't exist in cache
-                                {
-                                    let active_connections_read = self.active_connections.read();
-                                    for peer_id in active_connections_read.connections.keys() {
-                                        cache_write.endorsements_known_by_peer.put(peer_id.clone(), LruCache::new(NonZeroUsize::new(self.config.max_node_known_endorsements_size).expect("max_node_known_endorsements_size in config is > 0")));
-                                    }
+                                let peer_connected =
+                                    self.active_connections.get_peer_ids_connected();
+                                for peer_id in &peer_connected {
+                                    cache_write.endorsements_known_by_peer.put(
+                                        peer_id.clone(),
+                                        LruCache::new(
+                                            NonZeroUsize::new(
+                                                self.config.max_node_known_endorsements_size,
+                                            )
+                                            .expect(
+                                                "max_node_known_endorsements_size in config is > 0",
+                                            ),
+                                        ),
+                                    );
                                 }
                                 let peers: Vec<PeerId> = cache_write
                                     .endorsements_known_by_peer
@@ -72,15 +81,9 @@ impl PropagationThread {
                                     .map(|(id, _)| id.clone())
                                     .collect();
                                 // Clean shared cache if peers do not exist anymore
-                                {
-                                    let active_connections_read = self.active_connections.read();
-                                    for peer_id in peers {
-                                        if !active_connections_read
-                                            .connections
-                                            .contains_key(&peer_id)
-                                        {
-                                            cache_write.endorsements_known_by_peer.pop(&peer_id);
-                                        }
+                                for peer_id in peers {
+                                    if !peer_connected.contains(&peer_id) {
+                                        cache_write.endorsements_known_by_peer.pop(&peer_id);
                                     }
                                 }
                                 for (peer_id, endorsement_ids) in
@@ -111,18 +114,16 @@ impl PropagationThread {
                                     let to_send =
                                         new_endorsements.into_values().collect::<Vec<_>>();
                                     if !to_send.is_empty() {
-                                        let active_connections_read =
-                                            self.active_connections.read();
-                                        if let Some(peer) =
-                                            active_connections_read.connections.get(peer_id)
-                                        {
-                                            if let Err(err) = peer.send_channels.send(
-                                                &self.endorsement_serializer,
-                                                EndorsementMessage::Endorsements(to_send).into(),
-                                                false,
-                                            ) {
-                                                warn!("could not send endorsements batch to node {}: {}", peer_id, err);
-                                            }
+                                        if let Err(err) = self.active_connections.send_to_peer(
+                                            peer_id,
+                                            &self.endorsement_serializer,
+                                            EndorsementMessage::Endorsements(to_send).into(),
+                                            false,
+                                        ) {
+                                            warn!(
+                                                "could not send endorsements batch to node {}: {}",
+                                                peer_id, err
+                                            );
                                         }
                                     }
                                 }
@@ -147,7 +148,7 @@ pub fn start_propagation_thread(
     receiver: Receiver<EndorsementHandlerPropagationCommand>,
     cache: SharedEndorsementCache,
     config: ProtocolConfig,
-    active_connections: SharedActiveConnections,
+    active_connections: Box<dyn ActiveConnectionsTrait>,
 ) -> JoinHandle<()> {
     //TODO: Here and everywhere add id to threads
     std::thread::spawn(move || {

@@ -9,7 +9,9 @@ use tempfile::NamedTempFile;
 
 use crate::{handlers::peer_handler::models::InitialPeers, start_protocol_controller};
 
-mod tools;
+mod ask_block_scenarios;
+mod context;
+mod mock_network;
 
 #[test]
 fn basic() {

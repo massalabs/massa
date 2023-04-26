@@ -1,15 +1,16 @@
-use std::{collections::HashSet, num::NonZeroUsize, thread::JoinHandle, time::Instant};
+use std::{num::NonZeroUsize, thread::JoinHandle, time::Instant};
 
 use crossbeam::channel::{Receiver, Sender};
 use lru::LruCache;
 use massa_logging::massa_trace;
 use massa_protocol_exports_2::{ProtocolConfig, ProtocolError};
-use peernet::{network_manager::SharedActiveConnections, peer_id::PeerId};
+use peernet::peer_id::PeerId;
 use tracing::warn;
 
 use crate::{
     handlers::{block_handler::BlockMessage, peer_handler::models::PeerManagementCmd},
     messages::MessagesSerializer,
+    wrap_network::ActiveConnectionsTrait,
 };
 
 use super::{
@@ -21,7 +22,7 @@ pub struct PropagationThread {
     receiver: Receiver<BlockHandlerPropagationCommand>,
     config: ProtocolConfig,
     cache: SharedBlockCache,
-    active_connections: SharedActiveConnections,
+    active_connections: Box<dyn ActiveConnectionsTrait>,
     peer_cmd_sender: Sender<PeerManagementCmd>,
     block_serializer: MessagesSerializer,
 }
@@ -58,24 +59,13 @@ impl PropagationThread {
                                     .iter()
                                     .map(|(id, _)| id.clone())
                                     .collect();
-                                {
-                                    let active_connections_read = self.active_connections.read();
-                                    for peer_id in peers {
-                                        if !active_connections_read
-                                            .connections
-                                            .contains_key(&peer_id)
-                                        {
-                                            cache_write.blocks_known_by_peer.pop(&peer_id);
-                                        }
+                                let peers_connected =
+                                    self.active_connections.get_peer_ids_connected();
+                                for peer_id in peers {
+                                    if !peers_connected.contains(&peer_id) {
+                                        cache_write.blocks_known_by_peer.pop(&peer_id);
                                     }
                                 }
-                                let peers_connected: HashSet<PeerId> = self
-                                    .active_connections
-                                    .read()
-                                    .connections
-                                    .keys()
-                                    .cloned()
-                                    .collect();
                                 for peer_id in peers_connected {
                                     if !cache_write.blocks_known_by_peer.contains(&peer_id) {
                                         //TODO: Change to detect the connection before
@@ -101,16 +91,13 @@ impl PropagationThread {
                                     // if we don't know if that peer knows that hash or if we know it doesn't
                                     if !cond.map_or_else(|| false, |v| v.0) {
                                         massa_trace!("protocol.protocol_worker.process_command.integrated_block.send_header", { "peer_id": peer_id, "block_id": block_id});
-                                        if let Some(connection) =
-                                            self.active_connections.read().connections.get(&peer_id)
-                                        {
-                                            if let Err(err) = connection.send_channels.send(
-                                                &self.block_serializer,
-                                                BlockMessage::BlockHeader(header.clone()).into(),
-                                                true,
-                                            ) {
-                                                warn!("Error while sending block header to peer {} err: {:?}", peer_id, err);
-                                            }
+                                        if let Err(err) = self.active_connections.send_to_peer(
+                                            &peer_id,
+                                            &self.block_serializer,
+                                            BlockMessage::BlockHeader(header.clone()).into(),
+                                            true,
+                                        ) {
+                                            warn!("Error while sending block header to peer {} err: {:?}", peer_id, err);
                                         }
                                     } else {
                                         massa_trace!("protocol.protocol_worker.process_command.integrated_block.do_not_send", { "peer_id": peer_id, "block_id": block_id });
@@ -162,7 +149,7 @@ impl PropagationThread {
 }
 
 pub fn start_propagation_thread(
-    active_connections: SharedActiveConnections,
+    active_connections: Box<dyn ActiveConnectionsTrait>,
     receiver: Receiver<BlockHandlerPropagationCommand>,
     peer_cmd_sender: Sender<PeerManagementCmd>,
     config: ProtocolConfig,

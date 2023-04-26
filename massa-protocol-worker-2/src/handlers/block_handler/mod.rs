@@ -5,7 +5,8 @@ use massa_consensus_exports::ConsensusController;
 use massa_pool_exports::PoolController;
 use massa_protocol_exports_2::ProtocolConfig;
 use massa_storage::Storage;
-use peernet::network_manager::SharedActiveConnections;
+
+use crate::wrap_network::ActiveConnectionsTrait;
 
 use self::{
     cache::SharedBlockCache, commands_propagation::BlockHandlerPropagationCommand,
@@ -22,6 +23,11 @@ mod retrieval;
 
 pub(crate) use messages::{BlockMessage, BlockMessageSerializer};
 
+#[cfg(feature = "testing")]
+pub use messages::{
+    AskForBlocksInfo, BlockInfoReply, BlockMessageDeserializer, BlockMessageDeserializerArgs,
+};
+
 use super::{
     endorsement_handler::cache::SharedEndorsementCache,
     operation_handler::cache::SharedOperationCache,
@@ -35,7 +41,7 @@ pub struct BlockHandler {
 
 impl BlockHandler {
     pub fn new(
-        active_connections: SharedActiveConnections,
+        active_connections: Box<dyn ActiveConnectionsTrait>,
         consensus_controller: Box<dyn ConsensusController>,
         pool_controller: Box<dyn PoolController>,
         receiver_network: Receiver<PeerMessageTuple>,

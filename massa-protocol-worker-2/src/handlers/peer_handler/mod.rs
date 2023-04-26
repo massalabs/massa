@@ -9,7 +9,6 @@ use massa_protocol_exports_2::ProtocolConfig;
 use massa_serialization::{DeserializeError, Deserializer, Serializer};
 use rand::{rngs::StdRng, RngCore, SeedableRng};
 
-use peernet::network_manager::SharedActiveConnections;
 use peernet::{
     error::{PeerNetError, PeerNetResult},
     messages::MessagesHandler as PeerNetMessagesHandler,
@@ -22,6 +21,7 @@ use peernet::{
 use tracing::log::{error, warn};
 
 use crate::handlers::peer_handler::models::PeerState;
+use crate::wrap_network::ActiveConnectionsTrait;
 
 use self::{
     models::{
@@ -60,7 +60,7 @@ impl PeerManagementHandler {
         initial_peers: InitialPeers,
         peer_db: SharedPeerDB,
         (sender_msg, receiver_msg): (Sender<PeerMessageTuple>, Receiver<PeerMessageTuple>),
-        active_connections: SharedActiveConnections,
+        active_connections: Box<dyn ActiveConnectionsTrait>,
         config: &ProtocolConfig,
     ) -> Self {
         let (sender_cmd, receiver_cmd): (Sender<PeerManagementCmd>, Receiver<PeerManagementCmd>) =
@@ -92,9 +92,9 @@ impl PeerManagementHandler {
 
                             let msg = PeerManagementMessage::ListPeers(peers_to_send);
 
-                            for (_peer_id, conn) in &active_connections.read().connections {
-                               if let Err(e) = conn.send_channels
-                                    .send(&message_serializer, msg.clone().into(), false) {
+                            for peer_id in &active_connections.get_peer_ids_connected() {
+                               if let Err(e) = active_connections
+                                    .send_to_peer(&peer_id, &message_serializer, msg.clone().into(), false) {
                                     error!("error sending ListPeers message to peer: {:?}", e);
                                }
                             }

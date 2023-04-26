@@ -19,7 +19,7 @@ use num_enum::{IntoPrimitive, TryFromPrimitive};
 use std::ops::Bound::Included;
 
 /// Ask for the info about a block.
-#[derive(Debug, Clone, Default)]
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub enum AskForBlocksInfo {
     /// Ask header
     Header,

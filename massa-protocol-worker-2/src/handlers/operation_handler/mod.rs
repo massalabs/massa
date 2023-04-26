@@ -4,7 +4,8 @@ use crossbeam::channel::{Receiver, Sender};
 use massa_pool_exports::PoolController;
 use massa_protocol_exports_2::ProtocolConfig;
 use massa_storage::Storage;
-use peernet::network_manager::SharedActiveConnections;
+
+use crate::wrap_network::ActiveConnectionsTrait;
 
 use self::{
     cache::SharedOperationCache, commands_propagation::OperationHandlerPropagationCommand,
@@ -36,7 +37,7 @@ impl OperationHandler {
         storage: Storage,
         config: ProtocolConfig,
         cache: SharedOperationCache,
-        active_connections: SharedActiveConnections,
+        active_connections: Box<dyn ActiveConnectionsTrait>,
         receiver_network: Receiver<PeerMessageTuple>,
         sender_retrieval_ext: Sender<OperationHandlerRetrievalCommand>,
         receiver_retrieval_ext: Receiver<OperationHandlerRetrievalCommand>,

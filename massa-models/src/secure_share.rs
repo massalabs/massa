@@ -199,7 +199,7 @@ where
 
 // NOTE FOR EXPLICATION: No content serializer because serialized data is already here.
 /// Serializer for `SecureShare` structure
-#[derive(Default)]
+#[derive(Default, Clone)]
 pub struct SecureShareSerializer;
 
 impl SecureShareSerializer {
