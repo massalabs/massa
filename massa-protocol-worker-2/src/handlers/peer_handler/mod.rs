@@ -230,6 +230,20 @@ impl HandshakeHandler for MassaHandshake {
         listeners: &HashMap<SocketAddr, TransportType>,
         messages_handler: MassaMessagesHandler,
     ) -> PeerNetResult<PeerId> {
+        {
+            // Send 100 peers to the other peer
+            let peers_to_send = self.peer_db.read().get_rand_peers_to_send(100);
+
+            let message_serializer = crate::messages::MessagesSerializer::new()
+                .with_peer_management_message_serializer(PeerManagementMessageSerializer::new());
+            let mut buf = Vec::new();
+            let msg = PeerManagementMessage::ListPeers(peers_to_send);
+            let message = Message::PeerManagement(Box::from(msg));
+
+            message_serializer.serialize(&message, &mut buf)?;
+            endpoint.send(buf.as_slice())?;
+        }
+
         let mut bytes = PeerId::from_public_key(keypair.get_public_key()).to_bytes();
         //TODO: Add version in announce
         let listeners_announcement = Announcement::new(listeners.clone(), keypair).unwrap();
@@ -337,18 +351,6 @@ impl HandshakeHandler for MassaHandshake {
                 info.state = PeerState::Trusted;
             });
         }
-
-        // Send 100 peers to the other peer
-        let peers_to_send = peer_db_write.get_rand_peers_to_send(100);
-
-        let message_serializer = crate::messages::MessagesSerializer::new()
-            .with_peer_management_message_serializer(PeerManagementMessageSerializer::new());
-        let mut buf = Vec::new();
-        let msg = PeerManagementMessage::ListPeers(peers_to_send);
-        let message = Message::PeerManagement(Box::from(msg));
-
-        message_serializer.serialize(&message, &mut buf)?;
-        endpoint.send(buf.as_slice())?;
 
         res
     }
