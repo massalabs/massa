@@ -340,7 +340,7 @@ impl HandshakeHandler for MassaHandshake {
 
         {
             // Send 100 peers to the other peer
-            let peers_to_send = self.peer_db.read().get_rand_peers_to_send(100);
+            let peers_to_send = peer_db_write.get_rand_peers_to_send(100);
 
             let message_serializer = crate::messages::MessagesSerializer::new()
                 .with_peer_management_message_serializer(PeerManagementMessageSerializer::new());
