@@ -59,6 +59,13 @@ pub enum MockPoolControllerMessage {
         /// Response channel
         response_tx: mpsc::Sender<(Vec<OperationId>, Storage)>,
     },
+    /// Get denunciations for a block header
+    GetBlockDenunciations {
+        /// Slot of the block to search denunciations in
+        slot: Slot,
+        /// Response channel
+        response_tx: mpsc::Sender<Vec<Denunciation>>,
+    },
     /// Get endorsement ids
     GetEndorsementCount {
         /// Response channel
@@ -281,5 +288,18 @@ impl PoolController for MockPoolController {
 
     fn contains_denunciation(&self, _denunciation: &Denunciation) -> bool {
         false
+    }
+
+    fn get_block_denunciations(&self, target_slot: &Slot) -> Vec<Denunciation> {
+        let (response_tx, response_rx) = mpsc::channel();
+        self.q
+            .lock()
+            .unwrap()
+            .send(MockPoolControllerMessage::GetBlockDenunciations {
+                slot: *target_slot,
+                response_tx,
+            })
+            .unwrap();
+        response_rx.recv().unwrap()
     }
 }

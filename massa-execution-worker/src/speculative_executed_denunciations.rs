@@ -57,15 +57,19 @@ impl SpeculativeExecutedDenunciations {
         self.executed_denunciations = snapshot;
     }
 
-    /// Checks if a denunciation was processed previously
-    pub fn is_de_processed(&self, de_idx: &DenunciationIndex) -> bool {
+    /// Checks if a denunciation was executed previously
+    pub fn is_denunciation_executed(&self, de_idx: &DenunciationIndex) -> bool {
         // check in the current changes
         if self.executed_denunciations.contains(de_idx) {
             return true;
         }
 
         // check in the active history, backwards
-        match self.active_history.read().fetch_processed_de(de_idx) {
+        match self
+            .active_history
+            .read()
+            .fetch_executed_denunciation(de_idx)
+        {
             HistorySearchResult::Present(_) => {
                 return true;
             }
@@ -82,8 +86,8 @@ impl SpeculativeExecutedDenunciations {
             .contains(de_idx)
     }
 
-    /// Insert a processed denunciation.
-    pub fn insert_processed_de(&mut self, de_idx: DenunciationIndex) {
+    /// Insert an executed denunciation.
+    pub fn insert_executed_denunciation(&mut self, de_idx: DenunciationIndex) {
         self.executed_denunciations.insert(de_idx);
     }
 }

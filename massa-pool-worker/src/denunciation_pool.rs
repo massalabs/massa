@@ -1,9 +1,11 @@
-//! Copyright (c) 2022 MASSA LABS <info@massa.net>
+//! Copyright (c) 2023 MASSA LABS <info@massa.net>
 
-use std::collections::{hash_map::Entry, HashMap};
+use massa_execution_exports::ExecutionController;
+use std::collections::{btree_map::Entry, BTreeMap};
 use tracing::{debug, info, warn};
 
 use massa_models::denunciation::DenunciationIndex;
+use massa_models::slot::Slot;
 use massa_models::{
     address::Address,
     denunciation::{Denunciation, DenunciationPrecursor},
@@ -19,17 +21,24 @@ pub struct DenunciationPool {
     config: PoolConfig,
     /// selector controller to get draws
     pub selector: Box<dyn SelectorController>,
+    /// execution controller
+    execution_controller: Box<dyn ExecutionController>,
     /// last consensus final periods, per thread
     last_cs_final_periods: Vec<u64>,
     /// Internal cache for denunciations
-    denunciations_cache: HashMap<DenunciationIndex, DenunciationStatus>,
+    denunciations_cache: BTreeMap<DenunciationIndex, DenunciationStatus>,
 }
 
 impl DenunciationPool {
-    pub fn init(config: PoolConfig, selector: Box<dyn SelectorController>) -> Self {
+    pub fn init(
+        config: PoolConfig,
+        selector: Box<dyn SelectorController>,
+        execution_controller: Box<dyn ExecutionController>,
+    ) -> Self {
         Self {
             config,
             selector,
+            execution_controller,
             last_cs_final_periods: vec![0u64; config.thread_count as usize],
             denunciations_cache: Default::default(),
         }
@@ -72,10 +81,14 @@ impl DenunciationPool {
             now,
         );
 
-        if slot.period
-            < self.last_cs_final_periods[slot.thread as usize]
-                .saturating_sub(self.config.denunciation_expire_periods)
-        {
+        // Note about last_cs_final_periods.iter().min()
+        // Unlike operations, denunciations can be included in any thread
+        // So Denunciations can only be expired when they cannot be included in any thread
+        if Denunciation::is_expired(
+            &slot.period,
+            self.last_cs_final_periods.iter().min().unwrap_or(&0),
+            &self.config.denunciation_expire_periods,
+        ) {
             // too old - cannot be denounced anymore
             return;
         }
@@ -168,24 +181,44 @@ impl DenunciationPool {
     /// cleanup internal cache, removing too old denunciation
     fn cleanup_caches(&mut self) {
         self.denunciations_cache.retain(|de_idx, _| {
+            let slot = de_idx.get_slot();
+            // Check add_denunciation_precursor notes about last_cs_final_periods.iter().min()
             !Denunciation::is_expired(
-                de_idx.get_slot(),
-                &self.last_cs_final_periods,
-                self.config.denunciation_expire_periods,
+                &slot.period,
+                self.last_cs_final_periods.iter().min().unwrap_or(&0),
+                &self.config.denunciation_expire_periods,
             )
         });
     }
 
-    // In next PR
-    /*
-    pub fn get_block_denunciations(
-        &self,
-        slot: &Slot,
-        target_block: &BlockId,
-    ) -> Vec<DenunciationId> {
-        todo!()
+    /// get denunciations for block creation
+    pub fn get_block_denunciations(&self, target_slot: &Slot) -> Vec<Denunciation> {
+        let mut res = Vec::with_capacity(self.config.max_denunciations_per_block_header as usize);
+        for (de_idx, de_status) in &self.denunciations_cache {
+            if let DenunciationStatus::DenunciationEmitted(de) = de_status {
+                // Checks
+                // 1. the denunciation has not been executed already
+                // 2. Denounced item slot is equal or before target slot of block header
+                // 3. Denounced item slot is not too old
+                let de_slot = de.get_slot();
+                if !self.execution_controller.is_denunciation_executed(de_idx)
+                    && de_slot <= target_slot
+                    && !Denunciation::is_expired(
+                        &de_slot.period,
+                        &target_slot.period,
+                        &self.config.denunciation_expire_periods,
+                    )
+                {
+                    res.push(de.clone());
+                }
+            }
+
+            if res.len() >= self.config.max_denunciations_per_block_header as usize {
+                break;
+            }
+        }
+        res
     }
-    */
 
     /// Notify of final periods
     pub(crate) fn notify_final_cs_periods(&mut self, final_cs_periods: &[u64]) {
@@ -219,6 +252,7 @@ impl DenunciationPool {
 }
 
 /// A Value (as in Key/Value) for denunciation pool internal cache
+#[derive(Debug)]
 enum DenunciationStatus {
     /// Only 1 DenunciationPrecursor received for this key
     Accumulating(DenunciationPrecursor),

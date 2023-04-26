@@ -41,4 +41,6 @@ pub struct PoolConfig {
     pub periods_per_cycle: u64,
     /// denunciation expiration (in periods)
     pub denunciation_expire_periods: u64,
+    /// max number of denunciations that can be included in a block header
+    pub max_denunciations_per_block_header: u32,
 }

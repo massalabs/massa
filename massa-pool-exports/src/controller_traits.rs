@@ -1,14 +1,13 @@
 // Copyright (c) 2022 MASSA LABS <info@massa.net>
 
-use massa_models::denunciation::DenunciationPrecursor;
-
 use massa_models::{
-    block_id::BlockId, endorsement::EndorsementId, operation::OperationId, slot::Slot,
+    block_id::BlockId,
+    denunciation::{Denunciation, DenunciationPrecursor},
+    endorsement::EndorsementId,
+    operation::OperationId,
+    slot::Slot,
 };
 use massa_storage::Storage;
-
-#[cfg(feature = "testing")]
-use massa_models::denunciation::Denunciation;
 
 /// Trait defining a pool controller
 pub trait PoolController: Send + Sync {
@@ -33,6 +32,9 @@ pub trait PoolController: Send + Sync {
         target_block: &BlockId,
         slot: &Slot,
     ) -> (Vec<Option<EndorsementId>>, Storage);
+
+    /// Get denunciations for a block header.
+    fn get_block_denunciations(&self, target_slot: &Slot) -> Vec<Denunciation>;
 
     /// Get the number of endorsements in the pool
     fn get_endorsement_count(&self) -> usize;
