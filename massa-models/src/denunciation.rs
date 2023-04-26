@@ -153,7 +153,7 @@ impl Denunciation {
                 let hash = BlockHeaderDenunciation::compute_hash_for_sig_verif(
                     &endo_bh.public_key,
                     &endo_bh.slot,
-                    &content_hash,
+                    content_hash,
                 );
 
                 Ok(endo_bh.slot == s_block_header.content.slot
@@ -325,13 +325,13 @@ impl TryFrom<(&SecuredHeader, &SecuredHeader)> for Denunciation {
         let s_bh1_hash = BlockHeaderDenunciation::compute_hash_for_sig_verif(
             &s_bh1.content_creator_pub_key,
             &s_bh1.content.slot,
-            &s_bh1_hash_content,
+            s_bh1_hash_content,
         );
         let s_bh2_hash_content = s_bh2.id.get_hash();
         let s_bh2_hash = BlockHeaderDenunciation::compute_hash_for_sig_verif(
             &s_bh1.content_creator_pub_key,
             &s_bh1.content.slot,
-            &s_bh2_hash_content,
+            s_bh2_hash_content,
         );
 
         s_bh1

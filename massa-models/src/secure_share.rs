@@ -68,7 +68,7 @@ where
         content_hash: &Hash,
         signature: &Signature,
     ) -> Result<(), ModelsError> {
-        Ok(public_key.verify_signature(&content_hash, signature)?)
+        Ok(public_key.verify_signature(content_hash, signature)?)
     }
 
     /// Using the provided key-pair, applies a cryptographic signature, and packages
@@ -84,7 +84,7 @@ where
         let hash = Self::compute_hash(&content, &content_serialized, &public_key);
         let creator_address = Address::from_public_key(&public_key);
         Ok(SecureShare {
-            signature: content.sign(&keypair, &hash)?,
+            signature: content.sign(keypair, &hash)?,
             content_creator_pub_key: public_key,
             content_creator_address: creator_address,
             content,
@@ -207,11 +207,11 @@ where
 
     /// check if self has been signed by public key
     pub fn verify_signature(&self) -> Result<(), ModelsError> {
-        Ok(self.content.verify_signature(
+        self.content.verify_signature(
             &self.content_creator_pub_key,
-            &self.id.get_hash(),
+            self.id.get_hash(),
             &self.signature,
-        )?)
+        )
     }
 
     /// get full serialized size
