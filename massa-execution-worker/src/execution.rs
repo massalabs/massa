@@ -466,44 +466,33 @@ impl ExecutionState {
         match &denunciation {
             Denunciation::Endorsement(_de) => {
                 // Get selected address from selector and check
-                let selected = self.selector.get_selection(*de_slot);
-                match selected {
-                    Ok(selection) => {
-                        if let Some(address) = selection
-                            .endorsements
-                            .get(*denunciation.get_index().unwrap_or(&0) as usize)
-                        {
-                            if *address != addr_denounced {
-                                return Err(ExecutionError::IncludeDenunciationError(
-                                    "Attempt to execute a denunciation but address was not selected".to_string()
-                                ));
-                            }
-                        } else {
-                            // Panic here as this should never happen
-                            panic!("Could not get selected address for endorsements at index");
-                        }
-                    }
-                    Err(e) => {
-                        // We panic here as this should never happen
-                        panic!("Cannot get producer from selector: {}", e);
-                    }
+                let selection = self
+                    .selector
+                    .get_selection(*de_slot)
+                    .expect("Could not get producer from selector");
+                let selected_addr = selection
+                    .endorsements
+                    .get(*denunciation.get_index().unwrap_or(&0) as usize)
+                    .expect("could not get selection for endorsement at index");
+
+                if *selected_addr != addr_denounced {
+                    return Err(ExecutionError::IncludeDenunciationError(
+                        "Attempt to execute a denunciation but address was not selected"
+                            .to_string(),
+                    ));
                 }
             }
             Denunciation::BlockHeader(_de) => {
-                let selected_address = self.selector.get_producer(*de_slot);
-                match selected_address {
-                    Ok(address) => {
-                        if address != addr_denounced {
-                            return Err(ExecutionError::IncludeDenunciationError(
-                                "Attempt to execute a denunciation but address was not selected"
-                                    .to_string(),
-                            ));
-                        }
-                    }
-                    Err(e) => {
-                        // We panic here as this should never happen
-                        panic!("Cannot get producer from selector: {}", e);
-                    }
+                let selected_addr = self
+                    .selector
+                    .get_producer(*de_slot)
+                    .expect("Cannot get producer from selector");
+
+                if selected_addr != addr_denounced {
+                    return Err(ExecutionError::IncludeDenunciationError(
+                        "Attempt to execute a denunciation but address was not selected"
+                            .to_string(),
+                    ));
                 }
             }
         }
