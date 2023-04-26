@@ -338,19 +338,17 @@ impl HandshakeHandler for MassaHandshake {
             });
         }
 
-        {
-            // Send 100 peers to the other peer
-            let peers_to_send = peer_db_write.get_rand_peers_to_send(100);
+        // Send 100 peers to the other peer
+        let peers_to_send = peer_db_write.get_rand_peers_to_send(100);
 
-            let message_serializer = crate::messages::MessagesSerializer::new()
-                .with_peer_management_message_serializer(PeerManagementMessageSerializer::new());
-            let mut buf = Vec::new();
-            let msg = PeerManagementMessage::ListPeers(peers_to_send);
-            let message = Message::PeerManagement(Box::from(msg));
+        let message_serializer = crate::messages::MessagesSerializer::new()
+            .with_peer_management_message_serializer(PeerManagementMessageSerializer::new());
+        let mut buf = Vec::new();
+        let msg = PeerManagementMessage::ListPeers(peers_to_send);
+        let message = Message::PeerManagement(Box::from(msg));
 
-            message_serializer.serialize(&message, &mut buf)?;
-            endpoint.send(buf.as_slice())?;
-        }
+        message_serializer.serialize(&message, &mut buf)?;
+        endpoint.send(buf.as_slice())?;
 
         res
     }
