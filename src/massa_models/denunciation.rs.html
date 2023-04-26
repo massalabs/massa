@@ -1474,14 +1474,6 @@
 <a href="#1474" id="1474">1474</a>
 <a href="#1475" id="1475">1475</a>
 <a href="#1476" id="1476">1476</a>
-<a href="#1477" id="1477">1477</a>
-<a href="#1478" id="1478">1478</a>
-<a href="#1479" id="1479">1479</a>
-<a href="#1480" id="1480">1480</a>
-<a href="#1481" id="1481">1481</a>
-<a href="#1482" id="1482">1482</a>
-<a href="#1483" id="1483">1483</a>
-<a href="#1484" id="1484">1484</a>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 </span><span class="doccomment">/// An overview of what is a Denunciation and what it is used for can be found here
 /// https://github.com/massalabs/massa/discussions/3113
@@ -1731,14 +1723,6 @@
         <span class="kw">match </span><span class="self">self </span>{
             Denunciation::Endorsement(de) =&gt; <span class="kw-2">&amp;</span>de.slot,
             Denunciation::BlockHeader(de) =&gt; <span class="kw-2">&amp;</span>de.slot,
-        }
-    }
-
-    <span class="doccomment">/// Get field: index (return None for a block header denunciation)
-    </span><span class="kw">pub fn </span>get_index(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span>u32&gt; {
-        <span class="kw">match </span><span class="self">self </span>{
-            Denunciation::BlockHeader(<span class="kw">_</span>) =&gt; <span class="prelude-val">None</span>,
-            Denunciation::Endorsement(de) =&gt; <span class="prelude-val">Some</span>(<span class="kw-2">&amp;</span>de.index),
         }
     }
 
