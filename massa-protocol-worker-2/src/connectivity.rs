@@ -161,7 +161,7 @@ pub fn start_connectivity_thread(
                     default(Duration::from_millis(1000)) => {
                         // Check if we need to connect to peers
                         let nb_connection_to_try = {
-                            let nb_connection_to_try = network_controller.get_active_connections().get_max_out_connections() - network_controller.get_active_connections().get_nb_out_connections();
+                            let nb_connection_to_try = network_controller.get_active_connections().get_max_out_connections().saturating_sub(network_controller.get_active_connections().get_nb_out_connections());
                             if nb_connection_to_try == 0 {
                                 continue;
                             }
