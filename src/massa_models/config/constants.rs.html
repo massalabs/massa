@@ -278,6 +278,11 @@
 <a href="#278" id="278">278</a>
 <a href="#279" id="279">279</a>
 <a href="#280" id="280">280</a>
+<a href="#281" id="281">281</a>
+<a href="#282" id="282">282</a>
+<a href="#283" id="283">283</a>
+<a href="#284" id="284">284</a>
+<a href="#285" id="285">285</a>
 </pre><pre class="rust"><code><span class="doccomment">//! DEFAULT VALUES USED TO INITIALIZE DIVERS CONFIGURATIONS STRUCTURES
 //!
 //!
@@ -409,12 +414,17 @@
 </span><span class="kw">pub const </span>OPERATION_VALIDITY_PERIODS: u64 = <span class="number">10</span>;
 <span class="doccomment">/// cycle duration in periods
 </span><span class="kw">pub const </span>PERIODS_PER_CYCLE: u64 = <span class="number">128</span>;
-<span class="doccomment">/// PoS saved cycles: number of cycles saved in `PoSFinalState`
+<span class="doccomment">/// Number of cycles saved in `PoSFinalState`
 ///
 /// 6 for PoS itself so we can check denuncations on selections at C-2 after a bootstrap
 /// See https://github.com/massalabs/massa/pull/3871
-/// And 1 for pruned cycle safety during bootstrap
+/// 1 for pruned cycle safety during bootstrap
 </span><span class="kw">pub const </span>POS_SAVED_CYCLES: usize = <span class="number">7</span>;
+<span class="doccomment">/// Number of cycle draws saved in the selector cache
+///
+/// 5 to have a C-2 to C+2 range (6 cycles post-bootstrap give 5 cycle draws)
+/// 1 for margin
+</span><span class="kw">pub const </span>SELECTOR_DRAW_CACHE_SIZE: usize = <span class="number">6</span>;
 <span class="doccomment">/// Maximum size batch of data in a part of the ledger
 </span><span class="kw">pub const </span>LEDGER_PART_SIZE_MESSAGE_BYTES: u64 = <span class="number">1_000_000</span>;
 <span class="doccomment">/// Maximum async messages in a batch of the bootstrap of the async pool
