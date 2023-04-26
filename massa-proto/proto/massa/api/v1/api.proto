@@ -330,8 +330,8 @@ message OperationsContext {
 message GetScExecutionEventsRequest {
   // Request id
   string id = 1;
-  // Queries
-  repeated GetScExecutionEventsQuery queries = 2;
+  // Query
+  GetScExecutionEventsQuery query = 2;
 }
 
 // GetScExecutionEvents Query
@@ -343,15 +343,15 @@ message GetScExecutionEventsQuery {
 // GetScExecutionEvents Filter
 message GetScExecutionEventsFilter {
   // Start slot
-  string start_slot = 1;
+  optional Slot start_slot = 1;
   // End slot
-  string end_slot = 2;
+  optional Slot end_slot = 2;
   // Caller address
-  string caller_address = 3;
+  optional string caller_address = 3;
   // Emitter address
-  string emitter_address = 4;
+  optional string emitter_address = 4;
   // Original operation id
-  string original_operation_id = 5;
+  optional string original_operation_id = 5;
   // Status
   repeated ScExecutionEventStatus status = 6;
 }

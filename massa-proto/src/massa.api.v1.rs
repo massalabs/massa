@@ -691,9 +691,9 @@ pub struct GetScExecutionEventsRequest {
     /// Request id
     #[prost(string, tag = "1")]
     pub id: ::prost::alloc::string::String,
-    /// Queries
-    #[prost(message, repeated, tag = "2")]
-    pub queries: ::prost::alloc::vec::Vec<GetScExecutionEventsQuery>,
+    /// Query
+    #[prost(message, optional, tag = "2")]
+    pub query: ::core::option::Option<GetScExecutionEventsQuery>,
 }
 /// GetScExecutionEvents Query
 #[allow(clippy::derive_partial_eq_without_eq)]
@@ -708,20 +708,20 @@ pub struct GetScExecutionEventsQuery {
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct GetScExecutionEventsFilter {
     /// Start slot
-    #[prost(string, tag = "1")]
-    pub start_slot: ::prost::alloc::string::String,
+    #[prost(message, optional, tag = "1")]
+    pub start_slot: ::core::option::Option<Slot>,
     /// End slot
-    #[prost(string, tag = "2")]
-    pub end_slot: ::prost::alloc::string::String,
+    #[prost(message, optional, tag = "2")]
+    pub end_slot: ::core::option::Option<Slot>,
     /// Caller address
-    #[prost(string, tag = "3")]
-    pub caller_address: ::prost::alloc::string::String,
+    #[prost(string, optional, tag = "3")]
+    pub caller_address: ::core::option::Option<::prost::alloc::string::String>,
     /// Emitter address
-    #[prost(string, tag = "4")]
-    pub emitter_address: ::prost::alloc::string::String,
+    #[prost(string, optional, tag = "4")]
+    pub emitter_address: ::core::option::Option<::prost::alloc::string::String>,
     /// Original operation id
-    #[prost(string, tag = "5")]
-    pub original_operation_id: ::prost::alloc::string::String,
+    #[prost(string, optional, tag = "5")]
+    pub original_operation_id: ::core::option::Option<::prost::alloc::string::String>,
     /// Status
     #[prost(enumeration = "ScExecutionEventStatus", repeated, tag = "6")]
     pub status: ::prost::alloc::vec::Vec<i32>,

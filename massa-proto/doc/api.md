@@ -507,11 +507,11 @@ GetScExecutionEvents Filter
 
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
-| start_slot | [string](#string) |  | Start slot |
-| end_slot | [string](#string) |  | End slot |
-| caller_address | [string](#string) |  | Caller address |
-| emitter_address | [string](#string) |  | Emitter address |
-| original_operation_id | [string](#string) |  | Original operation id |
+| start_slot | [Slot](#massa-api-v1-Slot) | optional | Start slot |
+| end_slot | [Slot](#massa-api-v1-Slot) | optional | End slot |
+| caller_address | [string](#string) | optional | Caller address |
+| emitter_address | [string](#string) | optional | Emitter address |
+| original_operation_id | [string](#string) | optional | Original operation id |
 | status | [ScExecutionEventStatus](#massa-api-v1-ScExecutionEventStatus) | repeated | Status |
 
 
@@ -543,7 +543,7 @@ GetScExecutionEventsRequest holds request for GetScExecutionEvents
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | id | [string](#string) |  | Request id |
-| queries | [GetScExecutionEventsQuery](#massa-api-v1-GetScExecutionEventsQuery) | repeated | Queries |
+| query | [GetScExecutionEventsQuery](#massa-api-v1-GetScExecutionEventsQuery) |  | Query |
 
 
 
