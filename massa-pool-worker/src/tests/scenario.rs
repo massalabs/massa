@@ -214,8 +214,8 @@ fn test_block_header_denunciation_creation() {
         gen_block_headers_for_denunciation(None, None);
     let address = Address::from_public_key(&keypair.get_public_key());
 
-    let de_p_1 = DenunciationPrecursor::try_from(&secured_header_1).unwrap();
-    let de_p_2 = DenunciationPrecursor::try_from(&secured_header_2).unwrap();
+    let de_p_1 = DenunciationPrecursor::from(&secured_header_1);
+    let de_p_2 = DenunciationPrecursor::from(&secured_header_2);
 
     // Built it to compare with what the factory will produce
     let denunciation_orig = Denunciation::try_from((&secured_header_1, &secured_header_2)).unwrap();
@@ -265,8 +265,8 @@ fn test_endorsement_denunciation_creation() {
         gen_endorsements_for_denunciation(None, None);
     let address = Address::from_public_key(&keypair.get_public_key());
 
-    let de_p_1 = DenunciationPrecursor::try_from(&s_endorsement_1).unwrap();
-    let de_p_2 = DenunciationPrecursor::try_from(&s_endorsement_2).unwrap();
+    let de_p_1 = DenunciationPrecursor::from(&s_endorsement_1);
+    let de_p_2 = DenunciationPrecursor::from(&s_endorsement_2);
 
     // Built it to compare with what the factory will produce
     let denunciation_orig = Denunciation::try_from((&s_endorsement_1, &s_endorsement_2)).unwrap();
@@ -322,8 +322,8 @@ fn test_denunciation_pool_get() {
         gen_endorsements_for_denunciation(None, None);
     let address_1 = Address::from_public_key(&keypair_1.get_public_key());
 
-    let de_p_1 = DenunciationPrecursor::try_from(&s_endorsement_1).unwrap();
-    let de_p_2 = DenunciationPrecursor::try_from(&s_endorsement_2).unwrap();
+    let de_p_1 = DenunciationPrecursor::from(&s_endorsement_1);
+    let de_p_2 = DenunciationPrecursor::from(&s_endorsement_2);
     let denunciation_orig_1 = Denunciation::try_from((&s_endorsement_1, &s_endorsement_2)).unwrap();
 
     // gen a block header denunciation
@@ -331,8 +331,8 @@ fn test_denunciation_pool_get() {
         gen_block_headers_for_denunciation(None, None);
     let address_2 = Address::from_public_key(&keypair_2.get_public_key());
 
-    let de_p_3 = DenunciationPrecursor::try_from(&secured_header_1).unwrap();
-    let de_p_4 = DenunciationPrecursor::try_from(&secured_header_2).unwrap();
+    let de_p_3 = DenunciationPrecursor::from(&secured_header_1);
+    let de_p_4 = DenunciationPrecursor::from(&secured_header_2);
     let denunciation_orig_2 =
         Denunciation::try_from((&secured_header_1, &secured_header_2)).unwrap();
     let de_idx_2 = DenunciationIndex::from(&denunciation_orig_2);

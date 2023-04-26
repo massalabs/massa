@@ -5,6 +5,7 @@ use crate::endorsement::{
     Endorsement, EndorsementDeserializerLW, EndorsementId, EndorsementSerializer,
     EndorsementSerializerLW, SecureShareEndorsement,
 };
+use crate::error::ModelsError;
 use crate::secure_share::{
     SecureShare, SecureShareContent, SecureShareDeserializer, SecureShareSerializer,
 };
@@ -13,7 +14,7 @@ use massa_hash::{Hash, HashDeserializer};
 use massa_serialization::{
     Deserializer, SerializeError, Serializer, U32VarIntDeserializer, U32VarIntSerializer,
 };
-use massa_signature::PublicKey;
+use massa_signature::{KeyPair, PublicKey, Signature};
 use nom::branch::alt;
 use nom::bytes::complete::tag;
 use nom::error::{context, ContextError, ParseError};
@@ -92,19 +93,29 @@ impl BlockHeader {
 pub type SecuredHeader = SecureShare<BlockHeader, BlockId>;
 
 impl SecureShareContent for BlockHeader {
-    /// Compute hash for Block header in SecuredHeader - taking care of Denunciation verification
-    fn compute_hash(
-        content: &Self,
-        content_serialized: &[u8],
-        content_creator_pub_key: &PublicKey,
-    ) -> Hash {
-        let de_data = BlockHeaderDenunciationData::new(content.slot);
+    /// Sign the SecureShare given the content
+    fn sign(&self, keypair: &KeyPair, content_hash: &Hash) -> Result<Signature, ModelsError> {
+        let mut signed_data: Vec<u8> = Vec::new();
+        signed_data.extend(keypair.get_public_key().to_bytes());
+        signed_data.extend(BlockHeaderDenunciationData::new(self.slot).to_bytes());
+        signed_data.extend(content_hash.to_bytes());
+        let signed_hash = Hash::compute_from(&signed_data);
+        Ok(keypair.sign(&signed_hash)?)
+    }
 
-        let mut hash_data = Vec::new();
-        hash_data.extend(content_creator_pub_key.to_bytes());
-        hash_data.extend(de_data.to_bytes());
-        hash_data.extend(Hash::compute_from(content_serialized).to_bytes());
-        Hash::compute_from(&hash_data)
+    /// verify signature
+    fn verify_signature(
+        &self,
+        public_key: &PublicKey,
+        content_hash: &Hash,
+        signature: &Signature,
+    ) -> Result<(), ModelsError> {
+        let mut signed_data: Vec<u8> = Vec::new();
+        signed_data.extend(public_key.to_bytes());
+        signed_data.extend(BlockHeaderDenunciationData::new(self.slot).to_bytes());
+        signed_data.extend(content_hash.to_bytes());
+        let signed_hash = Hash::compute_from(&signed_data);
+        Ok(public_key.verify_signature(&signed_hash, signature)?)
     }
 }
 

@@ -56,6 +56,21 @@ pub trait SecureShareContent
 where
     Self: Sized + Display,
 {
+    /// Sign the SecureShare given the content
+    fn sign(&self, keypair: &KeyPair, content_hash: &Hash) -> Result<Signature, ModelsError> {
+        Ok(keypair.sign(content_hash)?)
+    }
+
+    /// verify signature
+    fn verify_signature(
+        &self,
+        public_key: &PublicKey,
+        content_hash: &Hash,
+        signature: &Signature,
+    ) -> Result<(), ModelsError> {
+        Ok(public_key.verify_signature(&content_hash, signature)?)
+    }
+
     /// Using the provided key-pair, applies a cryptographic signature, and packages
     /// the data required to share and verify the data in a trust-free network of peers.
     fn new_verifiable<Ser: Serializer<Self>, ID: Id>(
@@ -69,7 +84,7 @@ where
         let hash = Self::compute_hash(&content, &content_serialized, &public_key);
         let creator_address = Address::from_public_key(&public_key);
         Ok(SecureShare {
-            signature: keypair.sign(&hash)?,
+            signature: content.sign(&keypair, &hash)?,
             content_creator_pub_key: public_key,
             content_creator_address: creator_address,
             content,
@@ -181,11 +196,22 @@ where
     T: Display + SecureShareContent,
     ID: Id,
 {
+    /// Sign the SecureShare given the content
+    pub fn sign(
+        keypair: &KeyPair,
+        content_hash: &Hash,
+        _content: &T,
+    ) -> Result<Signature, ModelsError> {
+        Ok(keypair.sign(content_hash)?)
+    }
+
     /// check if self has been signed by public key
     pub fn verify_signature(&self) -> Result<(), ModelsError> {
-        Ok(self
-            .content_creator_pub_key
-            .verify_signature(self.id.get_hash(), &self.signature)?)
+        Ok(self.content.verify_signature(
+            &self.content_creator_pub_key,
+            &self.id.get_hash(),
+            &self.signature,
+        )?)
     }
 
     /// get full serialized size

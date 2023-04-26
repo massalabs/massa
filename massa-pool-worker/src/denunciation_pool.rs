@@ -244,9 +244,8 @@ impl DenunciationPool {
                 "Attempting to add endorsement to denunciation pool, but it is absent from storage",
             );
 
-            if let Ok(de_p) = DenunciationPrecursor::try_from(endo) {
-                self.add_denunciation_precursor(de_p)
-            }
+            let de_p = DenunciationPrecursor::from(endo);
+            self.add_denunciation_precursor(de_p);
         }
     }
 }
