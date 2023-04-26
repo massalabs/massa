@@ -9,6 +9,7 @@ use massa_protocol_exports_2::ProtocolConfig;
 use massa_serialization::{DeserializeError, Deserializer, Serializer};
 use rand::{rngs::StdRng, RngCore, SeedableRng};
 
+use peernet::messages::MessagesSerializer;
 use peernet::{
     error::{PeerNetError, PeerNetResult},
     messages::MessagesHandler as PeerNetMessagesHandler,
@@ -46,6 +47,7 @@ mod messages;
 pub mod models;
 mod tester;
 
+use crate::messages::Message;
 pub(crate) use messages::{PeerManagementMessage, PeerManagementMessageSerializer};
 
 pub struct PeerManagementHandler {
@@ -94,7 +96,7 @@ impl PeerManagementHandler {
 
                             for peer_id in &active_connections.get_peer_ids_connected() {
                                if let Err(e) = active_connections
-                                    .send_to_peer(&peer_id, &message_serializer, msg.clone().into(), false) {
+                                    .send_to_peer(peer_id, &message_serializer, msg.clone().into(), false) {
                                     error!("error sending ListPeers message to peer: {:?}", e);
                                }
                             }
@@ -334,6 +336,20 @@ impl HandshakeHandler for MassaHandshake {
             peer_db_write.peers.entry(peer_id).and_modify(|info| {
                 info.state = PeerState::Trusted;
             });
+        }
+
+        {
+            // Send 100 peers to the other peer
+            let peers_to_send = self.peer_db.read().get_rand_peers_to_send(100);
+
+            let message_serializer = crate::messages::MessagesSerializer::new()
+                .with_peer_management_message_serializer(PeerManagementMessageSerializer::new());
+            let mut buf = Vec::new();
+            let msg = PeerManagementMessage::ListPeers(peers_to_send);
+            let message = Message::PeerManagement(Box::from(msg));
+
+            message_serializer.serialize(&message, &mut buf)?;
+            endpoint.send(buf.as_slice())?;
         }
 
         res
