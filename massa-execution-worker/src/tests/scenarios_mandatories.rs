@@ -14,9 +14,7 @@ mod tests {
         MIP_STORE_STATS_COUNTERS_MAX,
     };
     use massa_models::prehash::PreHashMap;
-    use massa_models::test_exports::{
-        gen_block_headers_for_denunciation, gen_endorsements_for_denunciation,
-    };
+    use massa_models::test_exports::gen_endorsements_for_denunciation;
     use massa_models::{address::Address, amount::Amount, slot::Slot};
     use massa_models::{
         block_id::BlockId,
@@ -1846,7 +1844,7 @@ mod tests {
 
         // create a denunciation
         let (_slot, _keypair, s_endorsement_1, s_endorsement_2, _) =
-            gen_block_headers_for_denunciation(Some(Slot::new(2, 4)), Some(keypair));
+            gen_endorsements_for_denunciation(Some(Slot::new(2, 4)), Some(keypair));
         let denunciation = Denunciation::try_from((&s_endorsement_1, &s_endorsement_2)).unwrap();
 
         // create the block containing the roll buy operation
