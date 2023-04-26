@@ -131,8 +131,10 @@ pub const OPERATION_VALIDITY_PERIODS: u64 = 10;
 pub const PERIODS_PER_CYCLE: u64 = 128;
 /// PoS saved cycles: number of cycles saved in `PoSFinalState`
 ///
-/// 4 for PoS itself and 1 for bootstrap safety
-pub const POS_SAVED_CYCLES: usize = 6;
+/// 6 for PoS itself so we can check denuncations on selections at C-2 after a bootstrap
+/// See https://github.com/massalabs/massa/pull/3871
+/// And 1 for pruned cycle safety during bootstrap
+pub const POS_SAVED_CYCLES: usize = 7;
 /// Maximum size batch of data in a part of the ledger
 pub const LEDGER_PART_SIZE_MESSAGE_BYTES: u64 = 1_000_000;
 /// Maximum async messages in a batch of the bootstrap of the async pool
