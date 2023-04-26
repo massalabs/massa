@@ -1,7 +1,7 @@
-use std::cmp::Ordering;
 // Copyright (c) 2022 MASSA LABS <info@massa.net>
 /// An overview of what is a Denunciation and what it is used for can be found here
 /// https://github.com/massalabs/massa/discussions/3113
+use std::cmp::Ordering;
 use std::ops::Bound::{Excluded, Included};
 
 use nom::{
@@ -258,30 +258,17 @@ impl Denunciation {
         }
     }
 
-    /// Check if denunciation has expired given a slot period (assuming the slot is final)
+    /// Check if denunciation has expired given a slot period
+    /// Note that slot_period can be:
+    /// * A final slot period (for example in order to cleanup denunciation pool caches)
+    /// * A block slot period (in execution (execute_denunciation(...)))
     pub fn is_expired(
         denunciation_slot_period: &u64,
-        final_slot_period: &u64,
+        slot_period: &u64,
         denunciation_expire_periods: &u64,
     ) -> bool {
-        // If the Slot is final, a Denunciation can still be made for 1 cycle
-        final_slot_period.checked_sub(*denunciation_slot_period)
-            > Some(*denunciation_expire_periods)
+        slot_period.checked_sub(*denunciation_slot_period) > Some(*denunciation_expire_periods)
     }
-
-    /*
-    /// For a given slot (and given the slot at now()), check if it can be denounced
-    /// Can be used to check if block header | endorsement is not too old (at reception or too cleanup cache)
-    pub fn is_expired(
-        slot: &Slot,
-        last_cs_final_periods: &[u64],
-        denunciation_expire_periods: u64,
-    ) -> bool {
-        // If the Slot is final, a Denunciation can still be made for 1 cycle
-        last_cs_final_periods[slot.thread as usize].checked_sub(slot.period)
-            > Some(denunciation_expire_periods)
-    }
-    */
 }
 
 /// Create a new Denunciation from 2 SecureShareEndorsement
@@ -822,6 +809,8 @@ impl From<&DenunciationPrecursor> for DenunciationIndex {
 
 impl Ord for DenunciationIndex {
     fn cmp(&self, other: &Self) -> Ordering {
+        // key ends with type id so that we avoid prioritizing one type over the other
+        // when filling block headers (comparison of tuples is from left to right).
         let self_key = (
             self.get_slot(),
             self.get_index().unwrap_or(&0),

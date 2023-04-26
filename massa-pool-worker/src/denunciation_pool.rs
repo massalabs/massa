@@ -81,10 +81,11 @@ impl DenunciationPool {
             now,
         );
 
-        if slot.period
-            < self.last_cs_final_periods[slot.thread as usize]
-                .saturating_sub(self.config.denunciation_expire_periods)
-        {
+        if Denunciation::is_expired(
+            &slot.period,
+            &self.last_cs_final_periods[slot.thread as usize],
+            &self.config.denunciation_expire_periods,
+        ) {
             // too old - cannot be denounced anymore
             return;
         }
