@@ -1473,6 +1473,7 @@
 <a href="#1473" id="1473">1473</a>
 <a href="#1474" id="1474">1474</a>
 <a href="#1475" id="1475">1475</a>
+<a href="#1476" id="1476">1476</a>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 </span><span class="doccomment">/// An overview of what is a Denunciation and what it is used for can be found here
 /// https://github.com/massalabs/massa/discussions/3113
@@ -2239,8 +2240,9 @@
 
     <span class="doccomment">/// Compute the hash
     </span><span class="kw">pub fn </span>get_hash(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; Hash {
-        <span class="kw">let </span><span class="kw-2">mut </span>buffer = <span class="macro">vec!</span>[];
-        buffer.extend(u32::from(DenunciationIndexTypeId::from(<span class="self">self</span>)).to_le_bytes());
+        <span class="kw">let </span><span class="kw-2">mut </span>buffer = u32::from(DenunciationIndexTypeId::from(<span class="self">self</span>))
+            .to_le_bytes()
+            .to_vec();
         <span class="kw">match </span><span class="self">self </span>{
             DenunciationIndex::BlockHeader { slot } =&gt; buffer.extend(slot.to_bytes_key()),
             DenunciationIndex::Endorsement { slot, index } =&gt; {

@@ -255,6 +255,10 @@
 <a href="#255" id="255">255</a>
 <a href="#256" id="256">256</a>
 <a href="#257" id="257">257</a>
+<a href="#258" id="258">258</a>
+<a href="#259" id="259">259</a>
+<a href="#260" id="260">260</a>
+<a href="#261" id="261">261</a>
 </pre><pre class="rust"><code><span class="doccomment">//! Copyright (c) 2023 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="kw">use </span>massa_execution_exports::ExecutionController;
@@ -338,9 +342,12 @@
             now,
         );
 
-        <span class="kw">if </span>Denunciation::is_expired(
+        <span class="comment">// Note about last_cs_final_periods.iter().min()
+        // Unlike operations, denunciations can be included in any thread
+        // So Denunciations can only be expired when they cannot be included in any thread
+        </span><span class="kw">if </span>Denunciation::is_expired(
             <span class="kw-2">&amp;</span>slot.period,
-            <span class="kw-2">&amp;</span><span class="self">self</span>.last_cs_final_periods[slot.thread <span class="kw">as </span>usize],
+            <span class="kw-2">&amp;</span><span class="self">self</span>.last_cs_final_periods.iter().min().unwrap_or(<span class="kw-2">&amp;</span><span class="number">0</span>),
             <span class="kw-2">&amp;</span><span class="self">self</span>.config.denunciation_expire_periods,
         ) {
             <span class="comment">// too old - cannot be denounced anymore
@@ -436,9 +443,10 @@
     </span><span class="kw">fn </span>cleanup_caches(<span class="kw-2">&amp;mut </span><span class="self">self</span>) {
         <span class="self">self</span>.denunciations_cache.retain(|de_idx, <span class="kw">_</span>| {
             <span class="kw">let </span>slot = de_idx.get_slot();
-            !Denunciation::is_expired(
+            <span class="comment">// Check add_denunciation_precursor notes about last_cs_final_periods.iter().min()
+            </span>!Denunciation::is_expired(
                 <span class="kw-2">&amp;</span>slot.period,
-                <span class="kw-2">&amp;</span><span class="self">self</span>.last_cs_final_periods[slot.thread <span class="kw">as </span>usize],
+                <span class="kw-2">&amp;</span><span class="self">self</span>.last_cs_final_periods.iter().min().unwrap_or(<span class="kw-2">&amp;</span><span class="number">0</span>),
                 <span class="kw-2">&amp;</span><span class="self">self</span>.config.denunciation_expire_periods,
             )
         });
