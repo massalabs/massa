@@ -186,6 +186,9 @@ impl ExecutionState {
             self.stats_counter.register_final_executed_operations(
                 exec_out.state_changes.executed_ops_changes.len(),
             );
+            self.stats_counter.register_final_executed_denunciations(
+                exec_out.state_changes.executed_denunciations_changes.len(),
+            );
         }
 
         // apply state changes to the final ledger
