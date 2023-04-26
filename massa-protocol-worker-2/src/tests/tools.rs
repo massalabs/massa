@@ -1,12 +1,19 @@
 use std::time::Duration;
 
 use crossbeam::channel::Receiver;
-use massa_models::block_id::BlockId;
+use massa_models::{
+    block::SecureShareBlock, block_id::BlockId, operation::SecureShareOperation,
+    prehash::PreHashSet,
+};
+use massa_protocol_exports_2::ProtocolController;
+use peernet::peer_id::PeerId;
 
 use crate::{
     handlers::block_handler::{AskForBlocksInfo, BlockInfoReply, BlockMessage},
     messages::Message,
 };
+
+use super::mock_network::MockNetworkController;
 
 pub fn assert_hash_asked_to_node(node: &Receiver<Message>, block_id: &BlockId) {
     let msg = node
@@ -59,4 +66,52 @@ pub fn assert_block_info_sent_to_node(node: &Receiver<Message>, block_id: &Block
         }
         _ => panic!("Node didn't receive the infos block message"),
     }
+}
+
+/// send a block and assert it has been propagate (or not)
+pub fn send_and_propagate_block(
+    network_controller: &mut MockNetworkController,
+    block: SecureShareBlock,
+    node_id: &PeerId,
+    protocol_controller: &Box<dyn ProtocolController>,
+    operations: Vec<SecureShareOperation>,
+) {
+    network_controller
+        .send_from_peer(
+            &node_id,
+            Message::Block(Box::new(BlockMessage::BlockHeader(
+                block.content.header.clone(),
+            ))),
+        )
+        .unwrap();
+
+    protocol_controller
+        .send_wishlist_delta(
+            vec![(block.id, Some(block.content.header.clone()))]
+                .into_iter()
+                .collect(),
+            PreHashSet::<BlockId>::default(),
+        )
+        .unwrap();
+
+    // Send block info to protocol.
+    let info = vec![(
+        block.id,
+        BlockInfoReply::Info(block.content.operations.clone()),
+    )];
+    network_controller
+        .send_from_peer(
+            &node_id,
+            Message::Block(Box::new(BlockMessage::ReplyForBlocks(info))),
+        )
+        .unwrap();
+
+    // Send full ops.
+    let info = vec![(block.id, BlockInfoReply::Operations(operations))];
+    network_controller
+        .send_from_peer(
+            &node_id,
+            Message::Block(Box::new(BlockMessage::ReplyForBlocks(info))),
+        )
+        .unwrap();
 }

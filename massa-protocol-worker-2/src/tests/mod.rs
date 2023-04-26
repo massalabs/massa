@@ -11,6 +11,7 @@ use crate::{handlers::peer_handler::models::InitialPeers, start_protocol_control
 
 mod block_scenarios;
 mod context;
+mod in_block_operations_scenarios;
 mod mock_network;
 mod tools;
 
