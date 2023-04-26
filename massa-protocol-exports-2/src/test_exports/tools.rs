@@ -1,6 +1,7 @@
 // Copyright (c) 2022 MASSA LABS <info@massa.net>
 
 use massa_hash::Hash;
+use massa_models::endorsement::EndorsementSerializer;
 use massa_models::operation::OperationSerializer;
 use massa_models::secure_share::SecureShareContent;
 use massa_models::{
@@ -9,7 +10,7 @@ use massa_models::{
     block::{Block, BlockSerializer, SecureShareBlock},
     block_header::{BlockHeader, BlockHeaderSerializer},
     block_id::BlockId,
-    endorsement::{Endorsement, EndorsementSerializerLW, SecureShareEndorsement},
+    endorsement::{Endorsement, SecureShareEndorsement},
     operation::{Operation, OperationType, SecureShareOperation},
     slot::Slot,
 };
@@ -133,7 +134,7 @@ pub fn create_endorsement() -> SecureShareEndorsement {
         index: 0,
         endorsed_block: BlockId(Hash::compute_from(&[])),
     };
-    Endorsement::new_verifiable(content, EndorsementSerializerLW::new(), &keypair).unwrap()
+    Endorsement::new_verifiable(content, EndorsementSerializer::new(), &keypair).unwrap()
 }
 
 /// Create an operation, from a specific sender, and with a specific expire period.

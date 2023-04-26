@@ -570,7 +570,7 @@ impl RetrievalThread {
         endorsements: Vec<SecureShareEndorsement>,
         from_peer_id: &PeerId,
     ) -> Result<(), ProtocolError> {
-        massa_trace!("protocol.protocol_worker.note_endorsements_from_node", { "node": from_peer_id, "endorsements": endorsements});
+        massa_trace!("protocol.protocol_worker.note_endorsements_from_peer", { "peer": from_peer_id, "endorsements": endorsements});
         let length = endorsements.len();
         let mut new_endorsements = PreHashMap::with_capacity(length);
         let mut endorsement_ids = PreHashSet::with_capacity(length);

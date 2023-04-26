@@ -22,6 +22,7 @@ pub struct PoolEventReceiver(pub Receiver<MockPoolControllerMessage>);
 /// Each variant corresponds to a unique method in `PoolController`,
 /// Some variants wait for a response on their `response_tx` field, if present.
 /// See the documentation of `PoolController` for details on parameters and return values.
+#[derive(Debug)]
 pub enum MockPoolControllerMessage {
     /// Add endorsements to the pool
     AddEndorsements {
