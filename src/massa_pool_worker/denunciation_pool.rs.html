@@ -347,7 +347,7 @@
         // So Denunciations can only be expired when they cannot be included in any thread
         </span><span class="kw">if </span>Denunciation::is_expired(
             <span class="kw-2">&amp;</span>slot.period,
-            <span class="kw-2">&amp;</span><span class="self">self</span>.last_cs_final_periods.iter().min().unwrap_or(<span class="kw-2">&amp;</span><span class="number">0</span>),
+            <span class="self">self</span>.last_cs_final_periods.iter().min().unwrap_or(<span class="kw-2">&amp;</span><span class="number">0</span>),
             <span class="kw-2">&amp;</span><span class="self">self</span>.config.denunciation_expire_periods,
         ) {
             <span class="comment">// too old - cannot be denounced anymore
@@ -446,7 +446,7 @@
             <span class="comment">// Check add_denunciation_precursor notes about last_cs_final_periods.iter().min()
             </span>!Denunciation::is_expired(
                 <span class="kw-2">&amp;</span>slot.period,
-                <span class="kw-2">&amp;</span><span class="self">self</span>.last_cs_final_periods.iter().min().unwrap_or(<span class="kw-2">&amp;</span><span class="number">0</span>),
+                <span class="self">self</span>.last_cs_final_periods.iter().min().unwrap_or(<span class="kw-2">&amp;</span><span class="number">0</span>),
                 <span class="kw-2">&amp;</span><span class="self">self</span>.config.denunciation_expire_periods,
             )
         });
