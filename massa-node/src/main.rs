@@ -56,7 +56,7 @@ use massa_models::config::constants::{
 use massa_models::config::{
     CONSENSUS_BOOTSTRAP_PART_SIZE, DENUNCIATION_EXPIRE_PERIODS, MAX_DENUNCIATIONS_PER_BLOCK_HEADER,
     MAX_DENUNCIATION_CHANGES_LENGTH, MAX_OPERATIONS_PER_MESSAGE,
-    ROLL_COUNT_TO_SLASH_ON_DENUNCIATION,
+    ROLL_COUNT_TO_SLASH_ON_DENUNCIATION, SELECTOR_DRAW_CACHE_SIZE,
 };
 use massa_network_exports::{Establisher, NetworkConfig, NetworkManager};
 use massa_network_worker::start_network_controller;
@@ -226,7 +226,7 @@ async fn launch(
 
     // launch selector worker
     let (selector_manager, selector_controller) = start_selector_worker(SelectorConfig {
-        max_draw_cache: SETTINGS.selector.max_draw_cache,
+        max_draw_cache: SELECTOR_DRAW_CACHE_SIZE,
         channel_size: CHANNEL_SIZE,
         thread_count: THREAD_COUNT,
         endorsement_count: ENDORSEMENT_COUNT,
