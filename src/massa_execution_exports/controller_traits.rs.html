@@ -124,6 +124,10 @@
 <a href="#124" id="124">124</a>
 <a href="#125" id="125">125</a>
 <a href="#126" id="126">126</a>
+<a href="#127" id="127">127</a>
+<a href="#128" id="128">128</a>
+<a href="#129" id="129">129</a>
+<a href="#130" id="130">130</a>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="doccomment">//! This module exports generic traits representing interfaces for interacting with the Execution worker
@@ -134,6 +138,7 @@
 <span class="kw">use </span>massa_models::address::Address;
 <span class="kw">use </span>massa_models::amount::Amount;
 <span class="kw">use </span>massa_models::block_id::BlockId;
+<span class="kw">use </span>massa_models::denunciation::DenunciationIndex;
 <span class="kw">use </span>massa_models::execution::EventFilter;
 <span class="kw">use </span>massa_models::operation::OperationId;
 <span class="kw">use </span>massa_models::output_event::SCOutputEvent;
@@ -222,6 +227,9 @@
         ops: <span class="kw-2">&amp;</span>PreHashSet&lt;OperationId&gt;,
         thread: u8,
     ) -&gt; PreHashSet&lt;OperationId&gt;;
+
+    <span class="doccomment">/// Check if a denunciation has been executed given a `DenunciationIndex`
+    </span><span class="kw">fn </span>is_denunciation_executed(<span class="kw-2">&amp;</span><span class="self">self</span>, denunciation_index: <span class="kw-2">&amp;</span>DenunciationIndex) -&gt; bool;
 
     <span class="doccomment">/// Gets information about a batch of addresses
     </span><span class="kw">fn </span>get_addresses_infos(<span class="kw-2">&amp;</span><span class="self">self</span>, addresses: <span class="kw-2">&amp;</span>[Address]) -&gt; Vec&lt;ExecutionAddressInfo&gt;;

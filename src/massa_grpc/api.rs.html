@@ -600,39 +600,6 @@
 <a href="#600" id="600">600</a>
 <a href="#601" id="601">601</a>
 <a href="#602" id="602">602</a>
-<a href="#603" id="603">603</a>
-<a href="#604" id="604">604</a>
-<a href="#605" id="605">605</a>
-<a href="#606" id="606">606</a>
-<a href="#607" id="607">607</a>
-<a href="#608" id="608">608</a>
-<a href="#609" id="609">609</a>
-<a href="#610" id="610">610</a>
-<a href="#611" id="611">611</a>
-<a href="#612" id="612">612</a>
-<a href="#613" id="613">613</a>
-<a href="#614" id="614">614</a>
-<a href="#615" id="615">615</a>
-<a href="#616" id="616">616</a>
-<a href="#617" id="617">617</a>
-<a href="#618" id="618">618</a>
-<a href="#619" id="619">619</a>
-<a href="#620" id="620">620</a>
-<a href="#621" id="621">621</a>
-<a href="#622" id="622">622</a>
-<a href="#623" id="623">623</a>
-<a href="#624" id="624">624</a>
-<a href="#625" id="625">625</a>
-<a href="#626" id="626">626</a>
-<a href="#627" id="627">627</a>
-<a href="#628" id="628">628</a>
-<a href="#629" id="629">629</a>
-<a href="#630" id="630">630</a>
-<a href="#631" id="631">631</a>
-<a href="#632" id="632">632</a>
-<a href="#633" id="633">633</a>
-<a href="#634" id="634">634</a>
-<a href="#635" id="635">635</a>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2023 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="kw">use </span><span class="kw">crate</span>::error::GrpcError;
@@ -1123,39 +1090,6 @@
         id,
         context,
         operations,
-    })
-}
-
-<span class="comment">//TODO: to be implemented
-</span><span class="doccomment">/// Get smart contract execution events
-</span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>get_sc_execution_events(
-    grpc: <span class="kw-2">&amp;</span>MassaGrpc,
-    request: tonic::Request&lt;grpc::GetScExecutionEventsRequest&gt;,
-) -&gt; <span class="prelude-ty">Result</span>&lt;grpc::GetScExecutionEventsResponse, GrpcError&gt; {
-    <span class="kw">let </span>inner_req: grpc::GetScExecutionEventsRequest = request.into_inner();
-    <span class="kw">let </span>id = inner_req.id;
-
-    <span class="comment">// Get the current slot.
-    </span><span class="kw">let </span>now: MassaTime = MassaTime::now()<span class="question-mark">?</span>;
-    <span class="kw">let </span>current_slot = get_latest_block_slot_at_timestamp(
-        grpc.grpc_config.thread_count,
-        grpc.grpc_config.t0,
-        grpc.grpc_config.genesis_timestamp,
-        now,
-    )<span class="question-mark">?
-    </span>.unwrap_or_else(|| Slot::new(<span class="number">0</span>, <span class="number">0</span>));
-
-    <span class="comment">// Create the context for the response.
-    </span><span class="kw">let </span>context = <span class="prelude-val">Some</span>(grpc::GetScExecutionEventsContext {
-        slot: <span class="prelude-val">Some</span>(current_slot.into()),
-    });
-
-    <span class="kw">let </span>events = Vec::new();
-
-    <span class="prelude-val">Ok</span>(grpc::GetScExecutionEventsResponse {
-        id,
-        context,
-        events,
     })
 }
 
