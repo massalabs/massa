@@ -83,6 +83,8 @@ pub(crate) struct ExecutionState {
     vesting_manager: Arc<VestingManager>,
     // MipStore (Versioning)
     mip_store: MipStore,
+    // selector controller to get draws
+    selector: Box<dyn SelectorController>,
 }
 
 impl ExecutionState {
@@ -98,6 +100,7 @@ impl ExecutionState {
         config: ExecutionConfig,
         final_state: Arc<RwLock<FinalState>>,
         mip_store: MipStore,
+        selector: Box<dyn SelectorController>,
     ) -> ExecutionState {
         // Get the slot at the output of which the final state is attached.
         // This should be among the latest final slots.
@@ -162,6 +165,7 @@ impl ExecutionState {
             config,
             vesting_manager,
             mip_store,
+            selector,
         }
     }
 
@@ -450,18 +454,58 @@ impl ExecutionState {
 
         // ignore the denunciation if it was already executed
         let de_idx = DenunciationIndex::from(denunciation);
-        if context.is_denunciation_processed(&de_idx) {
+        if context.is_denunciation_executed(&de_idx) {
             return Err(ExecutionError::IncludeDenunciationError(
                 "Denunciation was already executed".to_string(),
             ));
         }
 
+        // Check selector
+        // Note 1: Has to be done after slot limit and executed check
+        // Note 2: that this is done for a node to create a Block with 'fake' denunciation thus
+        //       include them in executed denunciation and prevent (by occupying the corresponding entry)
+        //       any further 'real' denunciation.
+
+        match &denunciation {
+            Denunciation::Endorsement(_de) => {
+                // Get selected address from selector and check
+                let selection = self
+                    .selector
+                    .get_selection(*de_slot)
+                    .expect("Could not get producer from selector");
+                let selected_addr = selection
+                    .endorsements
+                    .get(*denunciation.get_index().unwrap_or(&0) as usize)
+                    .expect("could not get selection for endorsement at index");
+
+                if *selected_addr != addr_denounced {
+                    return Err(ExecutionError::IncludeDenunciationError(
+                        "Attempt to execute a denunciation but address was not selected"
+                            .to_string(),
+                    ));
+                }
+            }
+            Denunciation::BlockHeader(_de) => {
+                let selected_addr = self
+                    .selector
+                    .get_producer(*de_slot)
+                    .expect("Cannot get producer from selector");
+
+                if selected_addr != addr_denounced {
+                    return Err(ExecutionError::IncludeDenunciationError(
+                        "Attempt to execute a denunciation but address was not selected"
+                            .to_string(),
+                    ));
+                }
+            }
+        }
+
+        context.insert_executed_denunciation(&de_idx);
+
         let slashed = context.try_slash_rolls(
             &addr_denounced,
             self.config.roll_count_to_slash_on_denunciation,
         );
-
-        context.insert_executed_denunciation(&de_idx);
 
         match slashed {
             Ok(slashed_amount) => {

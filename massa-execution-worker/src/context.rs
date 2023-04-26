@@ -962,8 +962,8 @@ impl ExecutionContext {
         self.speculative_executed_ops.is_op_executed(op_id)
     }
 
-    /// Check if a denunciation was previously processed (to prevent reuse)
-    pub fn is_denunciation_processed(&self, de_idx: &DenunciationIndex) -> bool {
+    /// Check if a denunciation was previously executed (to prevent reuse)
+    pub fn is_denunciation_executed(&self, de_idx: &DenunciationIndex) -> bool {
         self.speculative_processed_denunciations
             .is_denunciation_executed(de_idx)
     }

@@ -250,6 +250,14 @@ impl Denunciation {
         }
     }
 
+    /// Get field: index (return None for a block header denunciation)
+    pub fn get_index(&self) -> Option<&u32> {
+        match self {
+            Denunciation::BlockHeader(_) => None,
+            Denunciation::Endorsement(de) => Some(&de.index),
+        }
+    }
+
     /// Get Denunciation public key ref
     pub fn get_public_key(&self) -> &PublicKey {
         match self {

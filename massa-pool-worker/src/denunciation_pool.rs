@@ -110,11 +110,11 @@ impl DenunciationPool {
                     Ok(selection) => {
                         if let Some(address) = selection.endorsements.get(de_p.index as usize) {
                             if *address != Address::from_public_key(&de_p.public_key) {
-                                warn!("Denunciation factory received a secure share endorsement but address was not selected");
+                                warn!("Denunciation pool received a secure share endorsement but address was not selected");
                                 return;
                             }
                         } else {
-                            warn!("Denunciation factory could not get selected address for endorsements at index");
+                            warn!("Denunciation pool could not get selected address for endorsements at index");
                             return;
                         }
                     }
@@ -131,7 +131,7 @@ impl DenunciationPool {
                         if address
                             != Address::from_public_key(denunciation_precursor.get_public_key())
                         {
-                            warn!("Denunciation factory received a secured header but address was not selected");
+                            warn!("Denunciation pool received a secured header but address was not selected");
                             return;
                         }
                     }
