@@ -1602,6 +1602,8 @@
 <a href="#1602" id="1602">1602</a>
 <a href="#1603" id="1603">1603</a>
 <a href="#1604" id="1604">1604</a>
+<a href="#1605" id="1605">1605</a>
+<a href="#1606" id="1606">1606</a>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="doccomment">//! This module deals with executing final and active slots, as well as read-only requests.
@@ -2000,12 +2002,12 @@
         <span class="prelude-val">Ok</span>(())
     }
 
-    <span class="doccomment">/// Process a denunciation in the context of a block.
+    <span class="doccomment">/// Execute a denunciation in the context of a block.
     ///
     /// # Arguments
     /// * `denunciation`: denunciation to process
     /// * `block_credits`: mutable reference towards the total block reward/fee credits
-    </span><span class="kw">fn </span>process_denunciation(
+    </span><span class="kw">fn </span>execute_denunciation(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         denunciation: <span class="kw-2">&amp;</span>Denunciation,
         block_slot: <span class="kw-2">&amp;</span>Slot,
@@ -2026,15 +2028,16 @@
         <span class="comment">// ignore denunciation if too old or expired
         </span><span class="kw">let </span>de_slot = denunciation.get_slot();
 
-        <span class="kw">if </span>de_slot.period
-            &lt; block_slot
-                .period
-                .saturating_sub(<span class="self">self</span>.config.denunciation_expire_periods)
-        {
+        <span class="kw">if </span>Denunciation::is_expired(
+            <span class="kw-2">&amp;</span>de_slot.period,
+            <span class="kw-2">&amp;</span>block_slot.period,
+            <span class="kw-2">&amp;</span><span class="self">self</span>.config.denunciation_expire_periods,
+        ) {
             <span class="comment">// too old - cannot be denounced anymore
-            </span><span class="kw">return </span><span class="prelude-val">Err</span>(ExecutionError::IncludeDenunciationError(
-                <span class="string">&quot;denunciation target is too old with respect to the block&quot;</span>.to_string(),
-            ));
+            </span><span class="kw">return </span><span class="prelude-val">Err</span>(ExecutionError::IncludeDenunciationError(<span class="macro">format!</span>(
+                <span class="string">&quot;Denunciation target ({}) is too old with respect to the block ({})&quot;</span>,
+                de_slot, block_slot
+            )));
         }
 
         <span class="kw">if </span>de_slot &gt; block_slot {
@@ -2042,16 +2045,17 @@
             // Note: de_slot == block_slot is OK,
             //       for example if the block producer wants to denounce someone who multi-endorsed
             //       for the block&#39;s slot
-            </span><span class="kw">return </span><span class="prelude-val">Err</span>(ExecutionError::IncludeDenunciationError(
-                <span class="string">&quot;denunciation target is at a later slot than the block slot&quot;</span>.to_string(),
-            ));
+            </span><span class="kw">return </span><span class="prelude-val">Err</span>(ExecutionError::IncludeDenunciationError(<span class="macro">format!</span>(
+                <span class="string">&quot;Denunciation target ({}) is at a later slot than the block slot ({})&quot;</span>,
+                de_slot, block_slot
+            )));
         }
 
-        <span class="comment">// ignore the denunciation if it was already processed
+        <span class="comment">// ignore the denunciation if it was already executed
         </span><span class="kw">let </span>de_idx = DenunciationIndex::from(denunciation);
         <span class="kw">if </span>context.is_denunciation_processed(<span class="kw-2">&amp;</span>de_idx) {
             <span class="kw">return </span><span class="prelude-val">Err</span>(ExecutionError::IncludeDenunciationError(
-                <span class="string">&quot;denunciation was processed previously&quot;</span>.to_string(),
+                <span class="string">&quot;Denunciation was already executed&quot;</span>.to_string(),
             ));
         }
 
@@ -2620,7 +2624,7 @@
 
             <span class="comment">// Try executing the denunciations of this block
             </span><span class="kw">for </span>denunciation <span class="kw">in </span><span class="kw-2">&amp;</span>stored_block.content.header.content.denunciations {
-                <span class="kw">if let </span><span class="prelude-val">Err</span>(e) = <span class="self">self</span>.process_denunciation(
+                <span class="kw">if let </span><span class="prelude-val">Err</span>(e) = <span class="self">self</span>.execute_denunciation(
                     denunciation,
                     <span class="kw-2">&amp;</span>stored_block.content.header.content.slot,
                     <span class="kw-2">&amp;mut </span>block_credits,

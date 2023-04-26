@@ -150,8 +150,8 @@
         <span class="self">self</span>.executed_denunciations = snapshot;
     }
 
-    <span class="doccomment">/// Checks if a denunciation was processed previously
-    </span><span class="kw">pub fn </span>is_de_processed(<span class="kw-2">&amp;</span><span class="self">self</span>, de_idx: <span class="kw-2">&amp;</span>DenunciationIndex) -&gt; bool {
+    <span class="doccomment">/// Checks if a denunciation was executed previously
+    </span><span class="kw">pub fn </span>is_denunciation_executed(<span class="kw-2">&amp;</span><span class="self">self</span>, de_idx: <span class="kw-2">&amp;</span>DenunciationIndex) -&gt; bool {
         <span class="comment">// check in the current changes
         </span><span class="kw">if </span><span class="self">self</span>.executed_denunciations.contains(de_idx) {
             <span class="kw">return </span><span class="bool-val">true</span>;
@@ -179,8 +179,8 @@
             .contains(de_idx)
     }
 
-    <span class="doccomment">/// Insert a processed denunciation.
-    </span><span class="kw">pub fn </span>insert_processed_de(<span class="kw-2">&amp;mut </span><span class="self">self</span>, de_idx: DenunciationIndex) {
+    <span class="doccomment">/// Insert an executed denunciation.
+    </span><span class="kw">pub fn </span>insert_executed_denunciation(<span class="kw-2">&amp;mut </span><span class="self">self</span>, de_idx: DenunciationIndex) {
         <span class="self">self</span>.executed_denunciations.insert(de_idx);
     }
 }

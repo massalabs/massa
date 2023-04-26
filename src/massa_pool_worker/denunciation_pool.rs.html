@@ -252,6 +252,8 @@
 <a href="#252" id="252">252</a>
 <a href="#253" id="253">253</a>
 <a href="#254" id="254">254</a>
+<a href="#255" id="255">255</a>
+<a href="#256" id="256">256</a>
 </pre><pre class="rust"><code><span class="doccomment">//! Copyright (c) 2023 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="kw">use </span>massa_execution_exports::ExecutionController;
@@ -431,10 +433,11 @@
     <span class="doccomment">/// cleanup internal cache, removing too old denunciation
     </span><span class="kw">fn </span>cleanup_caches(<span class="kw-2">&amp;mut </span><span class="self">self</span>) {
         <span class="self">self</span>.denunciations_cache.retain(|de_idx, <span class="kw">_</span>| {
+            <span class="kw">let </span>slot = de_idx.get_slot();
             !Denunciation::is_expired(
-                de_idx.get_slot(),
-                <span class="kw-2">&amp;</span><span class="self">self</span>.last_cs_final_periods,
-                <span class="self">self</span>.config.denunciation_expire_periods,
+                <span class="kw-2">&amp;</span>slot.period,
+                <span class="kw-2">&amp;</span><span class="self">self</span>.last_cs_final_periods[slot.thread <span class="kw">as </span>usize],
+                <span class="kw-2">&amp;</span><span class="self">self</span>.config.denunciation_expire_periods,
             )
         });
     }
@@ -451,10 +454,11 @@
                 </span><span class="kw">let </span>de_slot = de.get_slot();
                 <span class="kw">if </span>!<span class="self">self</span>.execution_controller.is_denunciation_executed(de_idx)
                     &amp;&amp; de_slot &lt;= target_slot
-                    &amp;&amp; de_slot.period
-                        &gt;= target_slot
-                            .period
-                            .saturating_sub(<span class="self">self</span>.config.denunciation_expire_periods)
+                    &amp;&amp; !Denunciation::is_expired(
+                        <span class="kw-2">&amp;</span>de_slot.period,
+                        <span class="kw-2">&amp;</span>target_slot.period,
+                        <span class="kw-2">&amp;</span><span class="self">self</span>.config.denunciation_expire_periods,
+                    )
                 {
                     res.push(de.clone());
                 }
