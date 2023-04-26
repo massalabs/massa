@@ -48,7 +48,7 @@ impl ActiveConnectionsTrait for SharedMockActiveConnections {
     }
 
     fn get_nb_out_connections(&self) -> usize {
-        //TODO: O
+        //TODO: Place a coherent value
         0
     }
 
