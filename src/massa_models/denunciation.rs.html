@@ -1473,22 +1473,11 @@
 <a href="#1473" id="1473">1473</a>
 <a href="#1474" id="1474">1474</a>
 <a href="#1475" id="1475">1475</a>
-<a href="#1476" id="1476">1476</a>
-<a href="#1477" id="1477">1477</a>
-<a href="#1478" id="1478">1478</a>
-<a href="#1479" id="1479">1479</a>
-<a href="#1480" id="1480">1480</a>
-<a href="#1481" id="1481">1481</a>
-<a href="#1482" id="1482">1482</a>
-<a href="#1483" id="1483">1483</a>
-<a href="#1484" id="1484">1484</a>
-<a href="#1485" id="1485">1485</a>
-<a href="#1486" id="1486">1486</a>
-</pre><pre class="rust"><code><span class="kw">use </span>std::cmp::Ordering;
-<span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
+</pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 </span><span class="doccomment">/// An overview of what is a Denunciation and what it is used for can be found here
 /// https://github.com/massalabs/massa/discussions/3113
-</span><span class="kw">use </span>std::ops::Bound::{Excluded, Included};
+</span><span class="kw">use </span>std::cmp::Ordering;
+<span class="kw">use </span>std::ops::Bound::{Excluded, Included};
 
 <span class="kw">use </span>nom::{
     error::{context, ContextError, ParseError},
@@ -1744,31 +1733,18 @@
         }
     }
 
-    <span class="doccomment">/// Check if denunciation has expired given a slot period (assuming the slot is final)
+    <span class="doccomment">/// Check if denunciation has expired given a slot period
+    /// Note that slot_period can be:
+    /// * A final slot period (for example in order to cleanup denunciation pool caches)
+    /// * A block slot period (in execution (execute_denunciation(...)))
     </span><span class="kw">pub fn </span>is_expired(
         denunciation_slot_period: <span class="kw-2">&amp;</span>u64,
-        final_slot_period: <span class="kw-2">&amp;</span>u64,
+        slot_period: <span class="kw-2">&amp;</span>u64,
         denunciation_expire_periods: <span class="kw-2">&amp;</span>u64,
     ) -&gt; bool {
-        <span class="comment">// If the Slot is final, a Denunciation can still be made for 1 cycle
-        </span>final_slot_period.checked_sub(<span class="kw-2">*</span>denunciation_slot_period)
-            &gt; <span class="prelude-val">Some</span>(<span class="kw-2">*</span>denunciation_expire_periods)
+        slot_period.checked_sub(<span class="kw-2">*</span>denunciation_slot_period) &gt; <span class="prelude-val">Some</span>(<span class="kw-2">*</span>denunciation_expire_periods)
     }
-
-    <span class="comment">/*
-    /// For a given slot (and given the slot at now()), check if it can be denounced
-    /// Can be used to check if block header | endorsement is not too old (at reception or too cleanup cache)
-    pub fn is_expired(
-        slot: &amp;Slot,
-        last_cs_final_periods: &amp;[u64],
-        denunciation_expire_periods: u64,
-    ) -&gt; bool {
-        // If the Slot is final, a Denunciation can still be made for 1 cycle
-        last_cs_final_periods[slot.thread as usize].checked_sub(slot.period)
-            &gt; Some(denunciation_expire_periods)
-    }
-    */
-</span>}
+}
 
 <span class="doccomment">/// Create a new Denunciation from 2 SecureShareEndorsement
 </span><span class="kw">impl </span>TryFrom&lt;(<span class="kw-2">&amp;</span>SecureShareEndorsement, <span class="kw-2">&amp;</span>SecureShareEndorsement)&gt; <span class="kw">for </span>Denunciation {
@@ -2308,7 +2284,9 @@
 
 <span class="kw">impl </span>Ord <span class="kw">for </span>DenunciationIndex {
     <span class="kw">fn </span>cmp(<span class="kw-2">&amp;</span><span class="self">self</span>, other: <span class="kw-2">&amp;</span><span class="self">Self</span>) -&gt; Ordering {
-        <span class="kw">let </span>self_key = (
+        <span class="comment">// key ends with type id so that we avoid prioritizing one type over the other
+        // when filling block headers (comparison of tuples is from left to right).
+        </span><span class="kw">let </span>self_key = (
             <span class="self">self</span>.get_slot(),
             <span class="self">self</span>.get_index().unwrap_or(<span class="kw-2">&amp;</span><span class="number">0</span>),
             u32::from(DenunciationIndexTypeId::from(<span class="self">self</span>)),

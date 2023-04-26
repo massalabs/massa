@@ -254,6 +254,7 @@
 <a href="#254" id="254">254</a>
 <a href="#255" id="255">255</a>
 <a href="#256" id="256">256</a>
+<a href="#257" id="257">257</a>
 </pre><pre class="rust"><code><span class="doccomment">//! Copyright (c) 2023 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="kw">use </span>massa_execution_exports::ExecutionController;
@@ -337,10 +338,11 @@
             now,
         );
 
-        <span class="kw">if </span>slot.period
-            &lt; <span class="self">self</span>.last_cs_final_periods[slot.thread <span class="kw">as </span>usize]
-                .saturating_sub(<span class="self">self</span>.config.denunciation_expire_periods)
-        {
+        <span class="kw">if </span>Denunciation::is_expired(
+            <span class="kw-2">&amp;</span>slot.period,
+            <span class="kw-2">&amp;</span><span class="self">self</span>.last_cs_final_periods[slot.thread <span class="kw">as </span>usize],
+            <span class="kw-2">&amp;</span><span class="self">self</span>.config.denunciation_expire_periods,
+        ) {
             <span class="comment">// too old - cannot be denounced anymore
             </span><span class="kw">return</span>;
         }
