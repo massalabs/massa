@@ -1980,8 +1980,8 @@
         <span class="self">self</span>.speculative_executed_ops.is_op_executed(op_id)
     }
 
-    <span class="doccomment">/// Check if a denunciation was previously executed (to prevent reuse)
-    </span><span class="kw">pub fn </span>is_denunciation_executed(<span class="kw-2">&amp;</span><span class="self">self</span>, de_idx: <span class="kw-2">&amp;</span>DenunciationIndex) -&gt; bool {
+    <span class="doccomment">/// Check if a denunciation was previously processed (to prevent reuse)
+    </span><span class="kw">pub fn </span>is_denunciation_processed(<span class="kw-2">&amp;</span><span class="self">self</span>, de_idx: <span class="kw-2">&amp;</span>DenunciationIndex) -&gt; bool {
         <span class="self">self</span>.speculative_processed_denunciations
             .is_denunciation_executed(de_idx)
     }

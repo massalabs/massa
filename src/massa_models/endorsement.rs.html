@@ -485,6 +485,18 @@
 <a href="#485" id="485">485</a>
 <a href="#486" id="486">486</a>
 <a href="#487" id="487">487</a>
+<a href="#488" id="488">488</a>
+<a href="#489" id="489">489</a>
+<a href="#490" id="490">490</a>
+<a href="#491" id="491">491</a>
+<a href="#492" id="492">492</a>
+<a href="#493" id="493">493</a>
+<a href="#494" id="494">494</a>
+<a href="#495" id="495">495</a>
+<a href="#496" id="496">496</a>
+<a href="#497" id="497">497</a>
+<a href="#498" id="498">498</a>
+<a href="#499" id="499">499</a>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="kw">use </span><span class="kw">crate</span>::prehash::PreHashed;
@@ -496,7 +508,7 @@
     DeserializeError, Deserializer, SerializeError, Serializer, U32VarIntDeserializer,
     U32VarIntSerializer, U64VarIntDeserializer, U64VarIntSerializer,
 };
-<span class="kw">use </span>massa_signature::PublicKey;
+<span class="kw">use </span>massa_signature::{KeyPair, PublicKey, Signature};
 <span class="kw">use </span>nom::error::context;
 <span class="kw">use </span>nom::sequence::tuple;
 <span class="kw">use </span>nom::Parser;
@@ -655,18 +667,29 @@
 </span><span class="kw">pub type </span>SecureShareEndorsement = SecureShare&lt;Endorsement, EndorsementId&gt;;
 
 <span class="kw">impl </span>SecureShareContent <span class="kw">for </span>Endorsement {
-    <span class="doccomment">/// Compute hash for Endorsement in SecuredHeader - taking care of Denunciation verification
-    </span><span class="kw">fn </span>compute_hash(
-        content: <span class="kw-2">&amp;</span><span class="self">Self</span>,
-        content_serialized: <span class="kw-2">&amp;</span>[u8],
-        content_creator_pub_key: <span class="kw-2">&amp;</span>PublicKey,
-    ) -&gt; Hash {
-        <span class="kw">let </span>de_data = EndorsementDenunciationData::new(content.slot, content.index);
-        <span class="kw">let </span><span class="kw-2">mut </span>hash_data = Vec::new();
-        hash_data.extend(content_creator_pub_key.to_bytes());
-        hash_data.extend(de_data.to_bytes());
-        hash_data.extend(Hash::compute_from(content_serialized).to_bytes());
-        Hash::compute_from(<span class="kw-2">&amp;</span>hash_data)
+    <span class="doccomment">/// Sign the SecureShare given the content
+    </span><span class="kw">fn </span>sign(<span class="kw-2">&amp;</span><span class="self">self</span>, keypair: <span class="kw-2">&amp;</span>KeyPair, content_hash: <span class="kw-2">&amp;</span>Hash) -&gt; <span class="prelude-ty">Result</span>&lt;Signature, ModelsError&gt; {
+        <span class="kw">let </span><span class="kw-2">mut </span>signed_data: Vec&lt;u8&gt; = Vec::new();
+        signed_data.extend(keypair.get_public_key().to_bytes());
+        signed_data.extend(EndorsementDenunciationData::new(<span class="self">self</span>.slot, <span class="self">self</span>.index).to_bytes());
+        signed_data.extend(content_hash.to_bytes());
+        <span class="kw">let </span>signed_hash = Hash::compute_from(<span class="kw-2">&amp;</span>signed_data);
+        <span class="prelude-val">Ok</span>(keypair.sign(<span class="kw-2">&amp;</span>signed_hash)<span class="question-mark">?</span>)
+    }
+
+    <span class="doccomment">/// verify signature
+    </span><span class="kw">fn </span>verify_signature(
+        <span class="kw-2">&amp;</span><span class="self">self</span>,
+        public_key: <span class="kw-2">&amp;</span>PublicKey,
+        content_hash: <span class="kw-2">&amp;</span>Hash,
+        signature: <span class="kw-2">&amp;</span>Signature,
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;(), ModelsError&gt; {
+        <span class="kw">let </span><span class="kw-2">mut </span>signed_data: Vec&lt;u8&gt; = Vec::new();
+        signed_data.extend(public_key.to_bytes());
+        signed_data.extend(EndorsementDenunciationData::new(<span class="self">self</span>.slot, <span class="self">self</span>.index).to_bytes());
+        signed_data.extend(content_hash.to_bytes());
+        <span class="kw">let </span>signed_hash = Hash::compute_from(<span class="kw-2">&amp;</span>signed_data);
+        <span class="prelude-val">Ok</span>(public_key.verify_signature(<span class="kw-2">&amp;</span>signed_hash, signature)<span class="question-mark">?</span>)
     }
 }
 
@@ -888,6 +911,7 @@
 }
 
 <span class="doccomment">/// A denunciation data for endorsement
+</span><span class="attr">#[derive(Debug)]
 </span><span class="kw">pub struct </span>EndorsementDenunciationData {
     slot: Slot,
     index: u32,
