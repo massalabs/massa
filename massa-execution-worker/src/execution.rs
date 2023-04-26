@@ -1528,12 +1528,12 @@ impl ExecutionState {
     }
 
     /// Check if a denunciation has been executed given a `DenunciationIndex`
-    pub fn is_denunciation_unexecuted(&self, denunciation_index: &DenunciationIndex) -> bool {
+    pub fn is_denunciation_executed(&self, denunciation_index: &DenunciationIndex) -> bool {
         // check active history
         let history = self.active_history.read();
 
         if matches!(
-            history.fetch_processed_de(denunciation_index),
+            history.fetch_executed_denunciation(denunciation_index),
             HistorySearchResult::Present(())
         ) {
             return true;

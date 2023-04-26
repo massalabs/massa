@@ -228,10 +228,10 @@ impl ExecutionController for ExecutionControllerImpl {
     }
 
     /// Check if a denunciation has been executed given a `DenunciationIndex`
-    fn is_denunciation_unexecuted(&self, denunciation_index: &DenunciationIndex) -> bool {
+    fn is_denunciation_executed(&self, denunciation_index: &DenunciationIndex) -> bool {
         self.execution_state
             .read()
-            .is_denunciation_unexecuted(denunciation_index)
+            .is_denunciation_executed(denunciation_index)
     }
 
     /// Gets information about a batch of addresses

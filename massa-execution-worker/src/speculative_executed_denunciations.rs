@@ -65,7 +65,11 @@ impl SpeculativeExecutedDenunciations {
         }
 
         // check in the active history, backwards
-        match self.active_history.read().fetch_processed_de(de_idx) {
+        match self
+            .active_history
+            .read()
+            .fetch_executed_denunciation(de_idx)
+        {
             HistorySearchResult::Present(_) => {
                 return true;
             }

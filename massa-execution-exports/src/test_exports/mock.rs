@@ -77,8 +77,8 @@ pub enum MockExecutionControllerMessage {
         /// response channel
         response_tx: mpsc::Sender<PreHashSet<OperationId>>,
     },
-    /// Is denunciation unexecuted call
-    IsDenunciationUnexecuted {
+    /// Is denunciation executed call
+    IsDenunciationExecuted {
         /// denunciation index
         de_idx: DenunciationIndex,
         /// response channel
@@ -227,12 +227,12 @@ impl ExecutionController for MockExecutionController {
             .unwrap()
     }
 
-    fn is_denunciation_unexecuted(&self, denunciation_index: &DenunciationIndex) -> bool {
+    fn is_denunciation_executed(&self, denunciation_index: &DenunciationIndex) -> bool {
         let (response_tx, response_rx) = mpsc::channel();
         if let Err(err) =
             self.0
                 .lock()
-                .send(MockExecutionControllerMessage::IsDenunciationUnexecuted {
+                .send(MockExecutionControllerMessage::IsDenunciationExecuted {
                     de_idx: denunciation_index.clone(),
                     response_tx,
                 })

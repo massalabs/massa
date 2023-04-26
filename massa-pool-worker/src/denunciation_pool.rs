@@ -185,7 +185,7 @@ impl DenunciationPool {
         });
     }
 
-    // In next PR
+    /// get denunciations for block creation
     pub fn get_block_denunciations(&self, target_slot: &Slot) -> Vec<Denunciation> {
         let mut res = Vec::with_capacity(self.config.max_denunciations_per_block_header as usize);
         for (de_idx, de_status) in &self.denunciations_cache {
@@ -195,7 +195,7 @@ impl DenunciationPool {
                 // 2. Denounced item slot is equal or before target slot of block header
                 // 3. Denounced item slot is not too old
                 let de_slot = de.get_slot();
-                if self.execution_controller.is_denunciation_unexecuted(de_idx)
+                if !self.execution_controller.is_denunciation_executed(de_idx)
                     && de_slot <= target_slot
                     && de_slot.period
                         >= target_slot

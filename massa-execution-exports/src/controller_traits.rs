@@ -99,7 +99,7 @@ pub trait ExecutionController: Send + Sync {
     ) -> PreHashSet<OperationId>;
 
     /// Check if a denunciation has been executed given a `DenunciationIndex`
-    fn is_denunciation_unexecuted(&self, denunciation_index: &DenunciationIndex) -> bool;
+    fn is_denunciation_executed(&self, denunciation_index: &DenunciationIndex) -> bool;
 
     /// Gets information about a batch of addresses
     fn get_addresses_infos(&self, addresses: &[Address]) -> Vec<ExecutionAddressInfo>;

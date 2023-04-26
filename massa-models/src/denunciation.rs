@@ -754,6 +754,14 @@ impl DenunciationIndex {
         }
     }
 
+    /// Get field: index (None if for a block header)
+    pub fn get_index(&self) -> Option<&u32> {
+        match self {
+            DenunciationIndex::BlockHeader { .. } => None,
+            DenunciationIndex::Endorsement { slot: _, index } => Some(index),
+        }
+    }
+
     /// Compute the hash
     pub fn get_hash(&self) -> Hash {
         let mut buffer = vec![];
@@ -800,20 +808,17 @@ impl From<&DenunciationPrecursor> for DenunciationIndex {
 
 impl Ord for DenunciationIndex {
     fn cmp(&self, other: &Self) -> Ordering {
-        match (self, other) {
-            (
-                DenunciationIndex::Endorsement { slot, index },
-                DenunciationIndex::Endorsement {
-                    slot: other_slot,
-                    index: other_index,
-                },
-            ) => slot.cmp(other_slot).then(index.cmp(other_index)),
-            (self_de, other_de) => {
-                // Note: does not specify an order for Block header de idx versus Endorsement de idx
-                //       but this should not be an issue
-                self_de.get_slot().cmp(other_de.get_slot())
-            }
-        }
+        let self_key = (
+            self.get_slot(),
+            self.get_index().unwrap_or(&0),
+            u32::from(DenunciationIndexTypeId::from(self)),
+        );
+        let other_key = (
+            other.get_slot(),
+            other.get_index().unwrap_or(&0),
+            u32::from(DenunciationIndexTypeId::from(other)),
+        );
+        self_key.cmp(&other_key)
     }
 }
 
@@ -832,6 +837,15 @@ impl PartialOrd for DenunciationIndex {
 enum DenunciationIndexTypeId {
     BlockHeader = 0,
     Endorsement = 1,
+}
+
+impl From<&DenunciationIndex> for DenunciationIndexTypeId {
+    fn from(value: &DenunciationIndex) -> Self {
+        match value {
+            DenunciationIndex::BlockHeader { .. } => DenunciationIndexTypeId::BlockHeader,
+            DenunciationIndex::Endorsement { .. } => DenunciationIndexTypeId::Endorsement,
+        }
+    }
 }
 
 /// Serializer for `DenunciationIndex`

@@ -397,15 +397,15 @@ fn test_denunciation_pool_get() {
             let target_slot_1 = Slot::new(4, 0);
             let thread_1 = thread::spawn(move || loop {
                 match execution_receiver.recv_timeout(Duration::from_millis(100)) {
-                    Ok(MockExecutionControllerMessage::IsDenunciationUnexecuted {
+                    Ok(MockExecutionControllerMessage::IsDenunciationExecuted {
                         de_idx,
                         response_tx,
                     }) => {
                         // Note: this should prevent denunciation_orig_1 to be included
                         if de_idx == de_idx_2 {
-                            response_tx.send(true).unwrap();
-                        } else {
                             response_tx.send(false).unwrap();
+                        } else {
+                            response_tx.send(true).unwrap();
                         }
                     }
                     Ok(msg) => {
