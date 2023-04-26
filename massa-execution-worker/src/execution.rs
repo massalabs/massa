@@ -449,8 +449,16 @@ impl ExecutionState {
             )));
         }
 
+        // ignore the denunciation if it was already executed
+        let de_idx = DenunciationIndex::from(denunciation);
+        if context.is_denunciation_executed(&de_idx) {
+            return Err(ExecutionError::IncludeDenunciationError(
+                "Denunciation was already executed".to_string(),
+            ));
+        }
+
         // Check selector
-        // Note 1: Has to be done after slot limit but before executed check
+        // Note 1: Has to be done after slot limit and executed check
         // Note 2: that this is done for a node to create a Block with 'fake' denunciation thus
         //       include them in executed denunciation and prevent (by occupying the corresponding entry)
         //       any further 'real' denunciation.
@@ -500,20 +508,12 @@ impl ExecutionState {
             }
         }
 
-        // ignore the denunciation if it was already executed
-        let de_idx = DenunciationIndex::from(denunciation);
-        if context.is_denunciation_processed(&de_idx) {
-            return Err(ExecutionError::IncludeDenunciationError(
-                "Denunciation was already executed".to_string(),
-            ));
-        }
+        context.insert_executed_denunciation(&de_idx);
 
         let slashed = context.try_slash_rolls(
             &addr_denounced,
             self.config.roll_count_to_slash_on_denunciation,
         );
-
-        context.insert_executed_denunciation(&de_idx);
 
         match slashed {
             Ok(slashed_amount) => {
