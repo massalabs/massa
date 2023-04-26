@@ -117,6 +117,10 @@ impl MockNetworkController {
         (peer_id, receiver)
     }
 
+    pub fn remove_fake_connection(&mut self, peer_id: &PeerId) {
+        self.connections.write().connections.remove(peer_id);
+    }
+
     /// Simulate a peer that send a message to us
     pub fn send_from_peer(
         &mut self,

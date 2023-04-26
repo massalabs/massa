@@ -12,6 +12,7 @@ use crate::{handlers::peer_handler::models::InitialPeers, start_protocol_control
 mod ask_block_scenarios;
 mod context;
 mod mock_network;
+mod tools;
 
 #[test]
 fn basic() {
