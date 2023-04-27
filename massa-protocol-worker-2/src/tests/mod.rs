@@ -11,6 +11,7 @@ use crate::{handlers::peer_handler::models::InitialPeers, start_protocol_control
 
 mod ban_nodes_scenarios;
 mod block_scenarios;
+mod cache_scenarios;
 mod context;
 mod endorsements_scenarios;
 mod in_block_operations_scenarios;
