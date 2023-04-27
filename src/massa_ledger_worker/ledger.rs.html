@@ -232,14 +232,12 @@
 <a href="#232" id="232">232</a>
 <a href="#233" id="233">233</a>
 <a href="#234" id="234">234</a>
-<a href="#235" id="235">235</a>
-<a href="#236" id="236">236</a>
-<a href="#237" id="237">237</a>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="doccomment">//! This file defines the final ledger associating addresses to their balances, bytecode and data.
 
 </span><span class="kw">use </span><span class="kw">crate</span>::ledger_db::{LedgerDB, LedgerSubEntry};
+<span class="kw">use </span>massa_db::DBBatch;
 <span class="kw">use </span>massa_hash::Hash;
 <span class="kw">use </span>massa_ledger_exports::{
     Key, LedgerChanges, LedgerConfig, LedgerController, LedgerEntry, LedgerError,
@@ -254,8 +252,13 @@
 };
 <span class="kw">use </span>massa_serialization::{DeserializeError, Deserializer};
 <span class="kw">use </span>nom::AsBytes;
-<span class="kw">use </span>std::collections::{BTreeSet, HashMap};
+<span class="kw">use </span>parking_lot::RwLock;
+<span class="kw">use </span>rocksdb::DB;
 <span class="kw">use </span>std::ops::Bound::Included;
+<span class="kw">use </span>std::{
+    collections::{BTreeSet, HashMap},
+    sync::Arc,
+};
 
 <span class="doccomment">/// Represents a final ledger associating addresses to their balances, bytecode and data.
 /// The final ledger is part of the final state which is attached to a final slot, can be bootstrapped and allows others to bootstrap.
@@ -271,14 +274,13 @@
 
 <span class="kw">impl </span>FinalLedger {
     <span class="doccomment">/// Initializes a new `FinalLedger` by reading its initial state from file.
-    </span><span class="kw">pub fn </span>new(config: LedgerConfig, with_final_state: bool) -&gt; <span class="self">Self </span>{
+    </span><span class="kw">pub fn </span>new(config: LedgerConfig, db: Arc&lt;RwLock&lt;DB&gt;&gt;) -&gt; <span class="self">Self </span>{
         <span class="comment">// create and initialize the disk ledger
         </span><span class="kw">let </span>sorted_ledger = LedgerDB::new(
-            config.disk_ledger_path.clone(),
+            db,
             config.thread_count,
             config.max_key_length,
             config.max_ledger_part_size,
-            with_final_state,
         );
 
         <span class="comment">// generate the final ledger
@@ -290,17 +292,6 @@
 }
 
 <span class="kw">impl </span>LedgerController <span class="kw">for </span>FinalLedger {
-    <span class="doccomment">/// Allows applying `LedgerChanges` to the final ledger
-    </span><span class="kw">fn </span>apply_changes(
-        <span class="kw-2">&amp;mut </span><span class="self">self</span>,
-        changes: LedgerChanges,
-        slot: Slot,
-        final_state_data: <span class="prelude-ty">Option</span>&lt;Vec&lt;u8&gt;&gt;,
-    ) {
-        <span class="self">self</span>.sorted_ledger
-            .apply_changes(changes, slot, final_state_data);
-    }
-
     <span class="doccomment">/// Loads ledger from file
     </span><span class="kw">fn </span>load_initial_ledger(<span class="kw-2">&amp;mut </span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span>&lt;(), LedgerError&gt; {
         <span class="comment">// load the ledger tree from file
@@ -439,15 +430,18 @@
         <span class="self">self</span>.sorted_ledger.get_slot()
     }
 
-    <span class="doccomment">/// Set the final_state_hash of the slot associated with the current ledger
-    /// Can be used to verify the integrity of the final state saved when restarting from snapshot
-    </span><span class="kw">fn </span>set_final_state_hash(<span class="kw-2">&amp;mut </span><span class="self">self</span>, data: Vec&lt;u8&gt;) {
-        <span class="self">self</span>.sorted_ledger.set_final_state_hash(<span class="kw-2">&amp;</span>data)
+    <span class="kw">fn </span>backup_db(<span class="kw-2">&amp;</span><span class="self">self</span>, slot: Slot) {
+        <span class="self">self</span>.sorted_ledger.backup_db(slot);
     }
 
-    <span class="doccomment">/// Get the final state stored in the ledger, to restart from snapshot
-    </span><span class="kw">fn </span>get_final_state(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span>&lt;Vec&lt;u8&gt;, ModelsError&gt; {
-        <span class="self">self</span>.sorted_ledger.get_final_state()
+    <span class="kw">fn </span>apply_changes_to_batch(
+        <span class="kw-2">&amp;mut </span><span class="self">self</span>,
+        changes: LedgerChanges,
+        slot: Slot,
+        ledger_batch: <span class="kw-2">&amp;mut </span>DBBatch,
+    ) {
+        <span class="self">self</span>.sorted_ledger
+            .apply_changes_to_batch(changes, slot, ledger_batch);
     }
 
     <span class="doccomment">/// Get every address and their corresponding balance.

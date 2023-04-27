@@ -1482,6 +1482,8 @@
 <a href="#1482" id="1482">1482</a>
 <a href="#1483" id="1483">1483</a>
 <a href="#1484" id="1484">1484</a>
+<a href="#1485" id="1485">1485</a>
+<a href="#1486" id="1486">1486</a>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 </span><span class="doccomment">/// An overview of what is a Denunciation and what it is used for can be found here
 /// https://github.com/massalabs/massa/discussions/3113
@@ -2344,7 +2346,8 @@
     }
 }
 
-<span class="doccomment">/// Serializer for `DenunciationIndex`
+<span class="attr">#[derive(Clone)]
+</span><span class="doccomment">/// Serializer for `DenunciationIndex`
 </span><span class="kw">pub struct </span>DenunciationIndexSerializer {
     u32_serializer: U32VarIntSerializer,
     slot_serializer: SlotSerializer,
@@ -2391,7 +2394,8 @@
     }
 }
 
-<span class="doccomment">/// Deserializer for `DenunciationIndex`
+<span class="attr">#[derive(Clone)]
+</span><span class="doccomment">/// Deserializer for `DenunciationIndex`
 </span><span class="kw">pub struct </span>DenunciationIndexDeserializer {
     id_deserializer: U32VarIntDeserializer,
     slot_deserializer: SlotDeserializer,
