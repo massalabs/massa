@@ -42,7 +42,7 @@ pub enum MessageTypeId {
     Operations = 2,
 }
 
-#[derive(Default)]
+#[derive(Default, Clone)]
 pub struct OperationMessageSerializer {
     operation_prefix_ids_serializer: OperationPrefixIdsSerializer,
     operations_serializer: OperationsSerializer,

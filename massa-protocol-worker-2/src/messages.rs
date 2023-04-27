@@ -69,6 +69,7 @@ impl Message {
     }
 }
 
+#[derive(Clone)]
 pub struct MessagesSerializer {
     id_serializer: U64VarIntSerializer,
     block_message_serializer: Option<BlockMessageSerializer>,

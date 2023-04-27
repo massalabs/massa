@@ -36,7 +36,7 @@ pub enum MessageTypeId {
     Endorsements,
 }
 
-#[derive(Default)]
+#[derive(Default, Clone)]
 pub struct EndorsementMessageSerializer {
     length_endorsements_serializer: U64VarIntSerializer,
     secure_share_serializer: SecureShareSerializer,
