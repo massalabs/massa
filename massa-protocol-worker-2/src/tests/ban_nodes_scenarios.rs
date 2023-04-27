@@ -56,7 +56,7 @@ fn test_protocol_bans_node_sending_block_header_with_invalid_signature() {
                 .unwrap();
 
             std::thread::sleep(std::time::Duration::from_millis(1000));
-            //4. Check that node is banned.
+            //4. Check that node connection is closed (node should be banned)
             assert_eq!(
                 network_controller
                     .get_connections()
@@ -116,7 +116,7 @@ fn test_protocol_bans_node_sending_operation_with_invalid_signature() {
                 .unwrap();
 
             std::thread::sleep(std::time::Duration::from_millis(1000));
-            //4. Check that node is banned.
+            //4. Check that node connection is closed (node should be banned)
             assert_eq!(
                 network_controller
                     .get_connections()
@@ -205,7 +205,7 @@ fn test_protocol_bans_node_sending_header_with_invalid_signature() {
                 )
                 .unwrap();
             std::thread::sleep(std::time::Duration::from_millis(1000));
-            //7. Check that node is banned.
+            //7. Check that node connection is closed (node should be banned)
             assert_eq!(
                 network_controller
                     .get_connections()
@@ -314,7 +314,7 @@ fn test_protocol_does_not_asks_for_block_from_banned_node_who_propagated_header(
                     ))),
                 )
                 .unwrap();
-            //7. Check that node is banned.
+            //7. Check that node connection is closed (node should be banned)
             std::thread::sleep(std::time::Duration::from_millis(1000));
             assert_eq!(
                 network_controller
