@@ -20,6 +20,7 @@ use massa_time::MassaTime;
 #[repr(u32)]
 pub enum MipComponent {
     Address,
+    KeyPair,
     Block,
     VM,
 }
