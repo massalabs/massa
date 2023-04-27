@@ -283,6 +283,8 @@ impl MessageDeserializer {
         max_op_datastore_entry_count: u64,
         max_op_datastore_key_length: u8,
         max_op_datastore_value_length: u64,
+        max_denunciations_per_block_header: u32,
+        last_start_period: Option<u64>,
     ) -> Self {
         MessageDeserializer {
             public_key_deserializer: PublicKeyDeserializer::new(),
@@ -319,6 +321,8 @@ impl MessageDeserializer {
             block_header_deserializer: SecureShareDeserializer::new(BlockHeaderDeserializer::new(
                 thread_count,
                 endorsement_count,
+                max_denunciations_per_block_header,
+                last_start_period,
             )),
             endorsements_length_deserializer: U32VarIntDeserializer::new(
                 Included(0),
@@ -549,8 +553,9 @@ mod tests {
     use super::*;
     use massa_models::config::{
         ENDORSEMENT_COUNT, MAX_ADVERTISE_LENGTH, MAX_ASK_BLOCKS_PER_MESSAGE,
-        MAX_DATASTORE_VALUE_LENGTH, MAX_ENDORSEMENTS_PER_MESSAGE, MAX_FUNCTION_NAME_LENGTH,
-        MAX_OPERATIONS_PER_BLOCK, MAX_OPERATIONS_PER_MESSAGE, MAX_OPERATION_DATASTORE_ENTRY_COUNT,
+        MAX_DATASTORE_VALUE_LENGTH, MAX_DENUNCIATIONS_PER_BLOCK_HEADER,
+        MAX_ENDORSEMENTS_PER_MESSAGE, MAX_FUNCTION_NAME_LENGTH, MAX_OPERATIONS_PER_BLOCK,
+        MAX_OPERATIONS_PER_MESSAGE, MAX_OPERATION_DATASTORE_ENTRY_COUNT,
         MAX_OPERATION_DATASTORE_KEY_LENGTH, MAX_OPERATION_DATASTORE_VALUE_LENGTH,
         MAX_PARAMETERS_SIZE, THREAD_COUNT,
     };
@@ -578,6 +583,8 @@ mod tests {
             MAX_OPERATION_DATASTORE_ENTRY_COUNT,
             MAX_OPERATION_DATASTORE_KEY_LENGTH,
             MAX_OPERATION_DATASTORE_VALUE_LENGTH,
+            MAX_DENUNCIATIONS_PER_BLOCK_HEADER,
+            Some(0),
         );
         let mut random_bytes = [0u8; 32];
         StdRng::from_entropy().fill_bytes(&mut random_bytes);

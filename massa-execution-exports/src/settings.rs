@@ -66,6 +66,8 @@ pub struct ExecutionConfig {
     pub gas_costs: GasCosts,
     /// Path to the initial vesting file
     pub initial_vesting_path: PathBuf,
+    /// last start period, used to attach to the correct execution slot if the network has restarted
+    pub last_start_period: u64,
     /// Path to the hard drive cache storage
     pub hd_cache_path: PathBuf,
     /// Maximum number of entries we want to keep in the LRU cache
@@ -74,4 +76,8 @@ pub struct ExecutionConfig {
     pub hd_cache_size: usize,
     /// Amount of entries removed when `hd_cache_size` is reached
     pub snip_amount: usize,
+    /// Number of roll to remove per denunciation
+    pub roll_count_to_slash_on_denunciation: u64,
+    /// Denunciation expire delta
+    pub denunciation_expire_periods: u64,
 }

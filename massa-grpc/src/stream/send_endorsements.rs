@@ -14,7 +14,7 @@ use tonic::codegen::futures_core;
 use tracing::log::{error, warn};
 
 /// Type declaration for SendEndorsements
-pub type SendEndorsementsStream = Pin<
+pub type SendEndorsementsStreamType = Pin<
     Box<
         dyn futures_core::Stream<Item = Result<grpc::SendEndorsementsResponse, tonic::Status>>
             + Send
@@ -28,7 +28,7 @@ pub type SendEndorsementsStream = Pin<
 pub(crate) async fn send_endorsements(
     grpc: &MassaGrpc,
     request: tonic::Request<tonic::Streaming<grpc::SendEndorsementsRequest>>,
-) -> Result<SendEndorsementsStream, GrpcError> {
+) -> Result<SendEndorsementsStreamType, GrpcError> {
     let mut pool_command_sender = grpc.pool_command_sender.clone();
     let mut protocol_command_sender = grpc.protocol_command_sender.clone();
     let config = grpc.grpc_config.clone();
@@ -194,7 +194,7 @@ pub(crate) async fn send_endorsements(
     });
 
     let out_stream = tokio_stream::wrappers::ReceiverStream::new(rx);
-    Ok(Box::pin(out_stream) as SendEndorsementsStream)
+    Ok(Box::pin(out_stream) as SendEndorsementsStreamType)
 }
 
 /// This function reports an error to the sender by sending a gRPC response message to the client

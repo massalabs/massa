@@ -11,7 +11,7 @@ mass adoption.
 [![Open in Gitpod](https://shields.io/badge/Gitpod-contribute-brightgreen?logo=gitpod&style=flat)](https://gitpod.io/#https://github.com/massalabs/massa)
 
 [![OpenRPC Playground](https://img.shields.io/static/v1?label=INTERACTIVE-JSONRPC-API-SPECIFICATION&message=massa&style=for-the-badge&color=blue)](https://playground.open-rpc.org/?schemaUrl=https://test.massa.net/api/v2&uiSchema\[appBar\]\[ui:input\]=false&uiSchema\[appBar\]\[ui:inputPlaceholder\]=Enter+Massa+JSON-RPC+server+URL&uiSchema\[appBar\]\[ui:logoUrl\]=https://massa.net/favicons/favicon.ico&uiSchema\[appBar\]\[ui:splitView\]=false&uiSchema\[appBar\]\[ui:darkMode\]=false&uiSchema\[appBar\]\[ui:title\]=Massa&uiSchema\[appBar\]\[ui:examplesDropdown\]=false&uiSchema\[methods\]\[ui:defaultExpanded\]=false&uiSchema\[methods\]\[ui:methodPlugins\]=true&uiSchema\[params\]\[ui:defaultExpanded\]=false)
-[![gRPC documentation](https://img.shields.io/static/v1?label=GRPC-API-DOCUMENTATION&message=massa&style=for-the-badge&color=yellow)](./massa-proto/doc/index.html) 
+[![gRPC documentation](https://img.shields.io/static/v1?label=GRPC-API-DOCUMENTATION&message=massa&style=for-the-badge&color=yellow)](https://htmlpreview.github.io/?https://github.com/massalabs/massa/blob/main/massa-proto/doc/index.html) 
 [![Postman workspace](https://img.shields.io/static/v1?logo=postman&label=POSTMAN-WORKSPACE&message=massa&style=for-the-badge&color=orange)](https://www.postman.com/massalabs)
 
 ## Introduction

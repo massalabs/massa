@@ -1,6 +1,6 @@
 //! Copyright (c) 2022 MASSA LABS <info@massa.net>
 //! Json RPC API for a massa-node
-use jsonrpsee::core::RpcResult;
+use jsonrpsee::core::{RpcResult, SubscriptionResult};
 use jsonrpsee::proc_macros::rpc;
 use massa_api_exports::page::PagedVecV2;
 use massa_api_exports::ApiRequest;
@@ -32,7 +32,7 @@ pub trait MassaApi {
 		unsubscribe = "unsubscribe_new_blocks",
 		item = Block
 	)]
-    fn subscribe_new_blocks(&self);
+    async fn subscribe_new_blocks(&self) -> SubscriptionResult;
 
     /// New produced blocks headers.
     #[subscription(
@@ -40,7 +40,7 @@ pub trait MassaApi {
         unsubscribe = "unsubscribe_new_blocks_headers",
         item = SecureShare<BlockHeader, BlockId>
     )]
-    fn subscribe_new_blocks_headers(&self);
+    async fn subscribe_new_blocks_headers(&self) -> SubscriptionResult;
 
     /// New produced blocks with operations content.
     #[subscription(
@@ -48,7 +48,7 @@ pub trait MassaApi {
 		unsubscribe = "unsubscribe_new_filled_blocks",
 		item = FilledBlock
 	)]
-    fn subscribe_new_filled_blocks(&self);
+    async fn subscribe_new_filled_blocks(&self) -> SubscriptionResult;
 
     /// New produced operations.
     #[subscription(
@@ -56,5 +56,5 @@ pub trait MassaApi {
 		unsubscribe = "unsubscribe_new_operations",
 		item = Operation
 	)]
-    fn subscribe_new_operations(&self);
+    async fn subscribe_new_operations(&self) -> SubscriptionResult;
 }
