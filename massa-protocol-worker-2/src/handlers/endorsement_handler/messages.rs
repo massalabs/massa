@@ -11,7 +11,6 @@ use nom::{
 use num_enum::{IntoPrimitive, TryFromPrimitive};
 use std::ops::Bound::Included;
 
-//TODO: Upgrade to use a similar workflow as operations
 #[derive(Debug)]
 pub enum EndorsementMessage {
     /// Endorsements

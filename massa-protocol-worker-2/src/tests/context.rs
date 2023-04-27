@@ -5,7 +5,7 @@ use crate::{
     manager::ProtocolManagerImpl, messages::MessagesHandler,
     tests::mock_network::MockNetworkController,
 };
-use crossbeam::channel::unbounded;
+use crossbeam::channel::bounded;
 use massa_consensus_exports::{
     test_exports::{ConsensusControllerImpl, ConsensusEventReceiver},
     ConsensusController,
@@ -46,10 +46,13 @@ pub fn start_protocol_controller_with_mock_network(
     debug!("starting protocol controller with mock network");
     let peer_db = Arc::new(RwLock::new(PeerDB::default()));
 
-    let (sender_operations, receiver_operations) = unbounded();
-    let (sender_endorsements, receiver_endorsements) = unbounded();
-    let (sender_blocks, receiver_blocks) = unbounded();
-    let (sender_peers, receiver_peers) = unbounded();
+    let (sender_operations, receiver_operations) =
+        bounded(config.max_size_channel_network_to_operation_handler);
+    let (sender_endorsements, receiver_endorsements) =
+        bounded(config.max_size_channel_network_to_endorsement_handler);
+    let (sender_blocks, receiver_blocks) =
+        bounded(config.max_size_channel_network_to_block_handler);
+    let (sender_peers, receiver_peers) = bounded(config.max_size_channel_network_to_peer_handler);
 
     // Register channels for handlers
     let message_handlers: MessagesHandler = MessagesHandler {

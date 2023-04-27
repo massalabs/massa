@@ -102,20 +102,19 @@ pub struct RetrievalThread {
 
 impl RetrievalThread {
     fn run(&mut self) {
-        //TODO: Add real values
         let mut block_message_deserializer =
             BlockMessageDeserializer::new(BlockMessageDeserializerArgs {
                 thread_count: self.config.thread_count,
-                endorsement_count: 10000,
-                block_infos_length_max: 10000,
-                max_operations_per_block: 10000,
-                max_datastore_value_length: 10000,
-                max_function_name_length: 10000,
-                max_parameters_size: 10000,
-                max_op_datastore_entry_count: 10000,
-                max_op_datastore_key_length: 100,
-                max_op_datastore_value_length: 10000,
-                max_denunciations_in_block_header: 10000,
+                endorsement_count: self.config.endorsement_count,
+                block_infos_length_max: self.config.max_size_block_infos,
+                max_operations_per_block: self.config.max_operations_per_block as u32,
+                max_datastore_value_length: self.config.max_size_value_datastore,
+                max_function_name_length: self.config.max_size_function_name,
+                max_parameters_size: self.config.max_size_call_sc_parameter,
+                max_op_datastore_entry_count: self.config.max_op_datastore_entry_count,
+                max_op_datastore_key_length: self.config.max_op_datastore_key_length,
+                max_op_datastore_value_length: self.config.max_op_datastore_value_length,
+                max_denunciations_in_block_header: self.config.max_denunciations_in_block_header,
                 last_start_period: None,
             });
         loop {

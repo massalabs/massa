@@ -1,6 +1,7 @@
 use std::collections::HashMap;
 
 use crate::ProtocolConfig;
+use massa_models::config::ENDORSEMENT_COUNT;
 use massa_time::MassaTime;
 use peernet::types::KeyPair;
 use tempfile::NamedTempFile;
@@ -45,12 +46,31 @@ impl Default for ProtocolConfig {
                 .to_path_buf(),
             listeners: HashMap::default(),
             thread_tester_count: 2,
+            max_size_channel_commands_connectivity: 1000,
             max_size_channel_commands_retrieval_operations: 10000,
             max_size_channel_commands_propagation_operations: 10000,
             max_size_channel_commands_retrieval_blocks: 1000,
             max_size_channel_commands_propagation_blocks: 1000,
             max_size_channel_commands_propagation_endorsements: 5000,
             max_size_channel_commands_retrieval_endorsements: 5000,
+            max_size_channel_network_to_block_handler: 1000,
+            max_size_channel_network_to_endorsement_handler: 1000,
+            max_size_channel_network_to_operation_handler: 10000,
+            max_size_channel_network_to_peer_handler: 1000,
+            max_size_channel_commands_peer_testers: 10000,
+            max_size_channel_commands_peers: 300,
+            endorsement_count: ENDORSEMENT_COUNT,
+            max_size_block_infos: 200,
+            max_size_value_datastore: 1_000_000,
+            max_size_function_name: u16::MAX,
+            max_size_call_sc_parameter: 10_000_000,
+            max_denunciations_in_block_header: 100,
+            max_op_datastore_entry_count: 100000,
+            max_op_datastore_key_length: u8::MAX,
+            max_op_datastore_value_length: 1000000,
+            max_endorsements_per_message: 1000,
+            max_size_listeners_per_peer: 100,
+            max_size_peers_announcement: 100,
             debug: true,
         }
     }

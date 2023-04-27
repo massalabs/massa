@@ -33,13 +33,12 @@ pub struct TesterHandshake {
 }
 
 impl TesterHandshake {
-    pub fn new(peer_db: SharedPeerDB) -> Self {
+    pub fn new(peer_db: SharedPeerDB, config: ProtocolConfig) -> Self {
         Self {
             peer_db,
             announcement_deserializer: AnnouncementDeserializer::new(
                 AnnouncementDeserializerArgs {
-                    //TODO: Config
-                    max_listeners: 100,
+                    max_listeners: config.max_size_listeners_per_peer,
                 },
             ),
         }
@@ -160,10 +159,15 @@ impl Tester {
         let mut testers = Vec::new();
 
         // create shared channel between thread for launching test
-        let (test_sender, test_receiver) = crossbeam::channel::unbounded();
+        let (test_sender, test_receiver) =
+            crossbeam::channel::bounded(config.max_size_channel_commands_peer_testers);
 
         for _ in 0..config.thread_tester_count {
-            testers.push(Tester::new(peer_db.clone(), test_receiver.clone()));
+            testers.push(Tester::new(
+                peer_db.clone(),
+                config.clone(),
+                test_receiver.clone(),
+            ));
         }
 
         (test_sender, testers)
@@ -172,6 +176,7 @@ impl Tester {
     /// Create a new tester (spawn a thread)
     pub fn new(
         peer_db: SharedPeerDB,
+        config: ProtocolConfig,
         receiver: crossbeam::channel::Receiver<(PeerId, HashMap<SocketAddr, TransportType>)>,
     ) -> Self {
         tracing::log::debug!("running new tester");
@@ -181,7 +186,7 @@ impl Tester {
         .spawn(move || {
             let db = peer_db.clone();
             let mut config = PeerNetConfiguration::default(
-                TesterHandshake::new(peer_db),
+                TesterHandshake::new(peer_db, config),
                 TesterMessagesHandler {},
             );
             config.fallback_function = Some(&empty_fallback);
@@ -231,7 +236,7 @@ impl Tester {
                         .duration_since(UNIX_EPOCH)
                         .expect("Time went backward")
                         .as_millis();
-                        let elapsed_secs = (timestamp - peer_info.last_announce.timestamp) / 1000;
+                        let elapsed_secs = (timestamp - peer_info.last_announce.timestamp) / 1000000;
                         if elapsed_secs < 60 {
                             continue;
                         }

@@ -20,8 +20,6 @@ pub struct ProtocolConfig {
     pub max_in_connections: usize,
     /// max number of out connections
     pub max_out_connections: usize,
-    /// running threads count
-    pub thread_count: u8,
     /// after `ask_block_timeout` milliseconds we try to ask a block to another node
     pub ask_block_timeout: MassaTime,
     /// Max known blocks we keep in block_handler
@@ -61,7 +59,7 @@ pub struct ProtocolConfig {
     /// Maximum time we keep an operation in the storage
     pub max_operation_storage_time: MassaTime,
     /// Maximum of operations sent in one message.
-    pub max_operations_per_message: u64,
+    pub max_operations_per_message: u32,
     /// Maximum of operations sent in one block.
     pub max_operations_per_block: u64,
     /// Maximum size in bytes of all serialized operations size in a block
@@ -80,6 +78,8 @@ pub struct ProtocolConfig {
     pub max_endorsements_propagation_time: MassaTime,
     /// number of thread tester
     pub thread_tester_count: u8,
+    /// Max size of the channel for command to the connectivity thread
+    pub max_size_channel_commands_connectivity: usize,
     /// Max size of channel to send commands to retrieval thread of operations
     pub max_size_channel_commands_retrieval_operations: usize,
     /// Max size of channel to send commands to propagation thread of operations
@@ -92,6 +92,44 @@ pub struct ProtocolConfig {
     pub max_size_channel_commands_retrieval_blocks: usize,
     /// Max size of channel to send commands to propagation thread of blocks
     pub max_size_channel_commands_propagation_blocks: usize,
+    /// Max size of channel to send commands to thread of peers
+    pub max_size_channel_commands_peers: usize,
+    /// Max size of channel to send commands to the peer testers
+    pub max_size_channel_commands_peer_testers: usize,
+    /// Max size of channel that transfer message from network to operation handler
+    pub max_size_channel_network_to_operation_handler: usize,
+    /// Max size of channel that transfer message from network to block handler
+    pub max_size_channel_network_to_block_handler: usize,
+    /// Max size of channel that transfer message from network to endorsement handler
+    pub max_size_channel_network_to_endorsement_handler: usize,
+    /// Max size of channel that transfer message from network to peer handler
+    pub max_size_channel_network_to_peer_handler: usize,
+    /// endorsements per block
+    pub endorsement_count: u32,
+    /// running threads count
+    pub thread_count: u8,
+    /// Max of block infos you can send
+    pub max_size_block_infos: u64,
+    /// Maximum size of an value user datastore
+    pub max_size_value_datastore: u64,
+    /// Maximum size of a function name
+    pub max_size_function_name: u16,
+    /// Maximum size of a parameter of a call in ops
+    pub max_size_call_sc_parameter: u32,
+    // Maximum size of an op datastore in ops
+    pub max_op_datastore_entry_count: u64,
+    // Maximum size of a key the in op datastore in ops
+    pub max_op_datastore_key_length: u8,
+    // Maximum size of a value in the op datastore in ops
+    pub max_op_datastore_value_length: u64,
+    /// Maximum number of denunciations in a block header
+    pub max_denunciations_in_block_header: u32,
+    /// Maximum number of endorsements that can be propagated in one message
+    pub max_endorsements_per_message: u64,
+    /// Maximum number of peers per announcement
+    pub max_size_peers_announcement: u64,
+    /// Maximum number of listeners per peer
+    pub max_size_listeners_per_peer: u64,
     /// debug prints
     pub debug: bool,
 }

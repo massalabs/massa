@@ -48,12 +48,11 @@ pub struct RetrievalThread {
 
 impl RetrievalThread {
     fn run(&mut self) {
-        //TODO: Real values
         let mut endorsement_message_deserializer =
             EndorsementMessageDeserializer::new(EndorsementMessageDeserializerArgs {
-                thread_count: 32,
-                max_length_endorsements: 10000,
-                endorsement_count: 32,
+                thread_count: self.config.thread_count,
+                max_length_endorsements: self.config.max_endorsements_per_message,
+                endorsement_count: self.config.endorsement_count,
             });
         loop {
             select! {
@@ -61,9 +60,14 @@ impl RetrievalThread {
                     match msg {
                         Ok((peer_id, message_id, message)) => {
                             endorsement_message_deserializer.set_message_id(message_id);
-                            let (rest, message) = endorsement_message_deserializer
-                                .deserialize::<DeserializeError>(&message)
-                                .unwrap();
+                            let (rest, message) = match endorsement_message_deserializer
+                                .deserialize::<DeserializeError>(&message) {
+                                Ok((rest, message)) => (rest, message),
+                                Err(err) => {
+                                    warn!("Error while deserializing message from peer {} err: {:?}", peer_id, err);
+                                    continue;
+                                }
+                            };
                             if !rest.is_empty() {
                                 println!("Error: message not fully consumed");
                                 return;

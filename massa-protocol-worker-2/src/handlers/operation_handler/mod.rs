@@ -45,7 +45,6 @@ impl OperationHandler {
         local_receiver: Receiver<OperationHandlerPropagationCommand>,
         peer_cmd_sender: Sender<PeerManagementCmd>,
     ) -> Self {
-        //TODO: Define bound channel
         let operation_retrieval_thread = start_retrieval_thread(
             receiver_network,
             pool_controller,

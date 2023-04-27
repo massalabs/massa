@@ -1,5 +1,5 @@
 use crossbeam::{
-    channel::{bounded, unbounded, Receiver, Sender},
+    channel::{bounded, Receiver, Sender},
     select,
 };
 use massa_consensus_exports::ConsensusController;
@@ -13,6 +13,7 @@ use std::collections::HashMap;
 use std::net::SocketAddr;
 use std::{num::NonZeroUsize, sync::Arc};
 use std::{thread::JoinHandle, time::Duration};
+use tracing::warn;
 
 use crate::handlers::peer_handler::models::SharedPeerDB;
 use crate::handlers::peer_handler::PeerManagementHandler;
@@ -52,7 +53,7 @@ pub fn start_connectivity_thread(
     let initial_peers = serde_json::from_str::<HashMap<PeerId, HashMap<SocketAddr, TransportType>>>(
         &std::fs::read_to_string(&config.initial_peers)?,
     )?;
-    let (sender, receiver) = unbounded();
+    let (sender, receiver) = bounded(config.max_size_channel_commands_connectivity);
     // Channels handlers <-> outside world
     let (sender_operations_retrieval_ext, receiver_operations_retrieval_ext) =
         bounded(config.max_size_channel_commands_retrieval_operations);
@@ -83,6 +84,7 @@ pub fn start_connectivity_thread(
                         addr, transport
                     ));
             }
+            std::thread::sleep(Duration::from_millis(100));
 
             // Create cache outside of the op handler because it could be used by other handlers
             let operation_cache = Arc::new(RwLock::new(OperationCache::new(
@@ -182,7 +184,10 @@ pub fn start_connectivity_thread(
                             let peer_db_read = peer_management_handler.peer_db.read();
                             let best_peers = peer_db_read.get_best_peers(nb_connection_to_try);
                             for peer_id in best_peers {
-                                let peer_info = peer_db_read.peers.get(&peer_id).unwrap();
+                                let Some(peer_info) = peer_db_read.peers.get(&peer_id) else {
+                                    warn!("Peer {} not found in peer_db", peer_id);
+                                    continue;
+                                };
                                 //TODO: Adapt for multiple listeners
                                 let (addr, _) = peer_info.last_announce.listeners.iter().next().unwrap();
                                 if peer_info.last_announce.listeners.is_empty() {
@@ -199,7 +204,9 @@ pub fn start_connectivity_thread(
                                         println!("Trying to connect to peer {:?}", addr);
                                     }
                                     // We only manage TCP for now
-                                    network_controller.try_connect(*addr, Duration::from_millis(200), &OutConnectionConfig::Tcp(Box::new(TcpOutConnectionConfig {}))).unwrap();
+                                    if let Err(err) = network_controller.try_connect(*addr, Duration::from_millis(200), &OutConnectionConfig::Tcp(Box::new(TcpOutConnectionConfig {}))) {
+                                        warn!("Failed to connect to peer {:?}: {:?}", addr, err);
+                                    }
                                 };
                             };
                         }
