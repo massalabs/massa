@@ -97,7 +97,6 @@ where
     }
 
     /// Compute hash
-    #[allow(unused_variables)]
     fn compute_hash(&self, content_serialized: &[u8], content_creator_pub_key: &PublicKey) -> Hash {
         let mut hash_data = Vec::new();
         hash_data.extend(content_creator_pub_key.to_bytes());
@@ -106,8 +105,7 @@ where
     }
 
     /// Compute hash used for signature
-    #[allow(unused_variables)]
-    fn compute_signed_hash(&self, public_key: &PublicKey, content_hash: &Hash) -> Hash {
+    fn compute_signed_hash(&self, _public_key: &PublicKey, content_hash: &Hash) -> Hash {
         *content_hash
     }
 
