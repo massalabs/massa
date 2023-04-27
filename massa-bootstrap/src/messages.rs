@@ -260,8 +260,7 @@ impl Serializer<BootstrapServerMessage> for BootstrapServerMessageSerializer {
                 // executed operations
                 self.exec_ops_serializer.serialize(exec_ops_part, buffer)?;
                 // processed denunciations
-                self.exec_de_serializer
-                    .serialize(exec_de_part, buffer)?;
+                self.exec_de_serializer.serialize(exec_de_part, buffer)?;
                 // changes length
                 self.u64_serializer
                     .serialize(&(final_state_changes.len() as u64), buffer)?;
