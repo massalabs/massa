@@ -383,17 +383,17 @@ message ScExecutionEventWrapper {
 // ScExecutionEvent context
 message ScExecutionEventContext {
   // When was it generated
-  Slot origin_slot = 2;
+  Slot origin_slot = 1;
   // Block id if there was a block at that slot
-  string block_id = 3;
+  string block_id = 2;
   // Index of the event in the slot
-  fixed64 index_in_slot = 4;
+  fixed64 index_in_slot = 3;
   // Call stack addresses. most recent at the end
-  repeated string call_stack = 5;
+  repeated string call_stack = 4;
   // Origin operation id
-  string origin_operation_id = 6;
+  string origin_operation_id = 5;
   // Status
-  repeated ScExecutionEventStatus status = 7;
+  repeated ScExecutionEventStatus status = 6;
 }
 
 // ScExecutionEventStatus type enum
