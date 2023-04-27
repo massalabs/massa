@@ -13,9 +13,9 @@ use peernet::{
     error::{PeerNetError, PeerNetResult},
     messages::MessagesHandler,
     network_manager::PeerNetManager,
-    peer::HandshakeHandler,
+    peer::InitConnectionHandler,
     peer_id::PeerId,
-    transports::{endpoint::Endpoint, OutConnectionConfig, TcpOutConnectionConfig, TransportType},
+    transports::{endpoint::Endpoint, OutConnectionConfig, TransportType},
     types::KeyPair,
 };
 use std::cmp::Reverse;
@@ -62,7 +62,7 @@ impl MessagesHandler for TesterMessagesHandler {
     }
 }
 
-impl HandshakeHandler for TesterHandshake {
+impl InitConnectionHandler for TesterHandshake {
     fn perform_handshake<TesterMessagesHandler>(
         &mut self,
         _: &KeyPair,
@@ -142,6 +142,16 @@ impl HandshakeHandler for TesterHandshake {
         endpoint.shutdown();
         res
     }
+
+    fn fallback_function(
+        &mut self,
+        _keypair: &KeyPair,
+        _endpoint: &mut Endpoint,
+        _listeners: &HashMap<SocketAddr, TransportType>,
+    ) -> PeerNetResult<()> {
+        std::thread::sleep(Duration::from_millis(10000));
+        Ok(())
+    }
 }
 
 pub struct Tester {
@@ -190,7 +200,6 @@ impl Tester {
                 TesterHandshake::new(peer_db, config),
                 TesterMessagesHandler {},
             );
-            config.fallback_function = Some(&empty_fallback);
             config.max_out_connections = 1;
 
             let mut network_manager = PeerNetManager::new(config);
@@ -217,7 +226,7 @@ impl Tester {
                                     let _res =  network_manager.try_connect(
                                         *addr,
                                         Duration::from_millis(500),
-                                        &OutConnectionConfig::Tcp(Box::new(TcpOutConnectionConfig {})),
+                                        &OutConnectionConfig::Tcp(Box::default()),
                                     );
                                 });
                             },
@@ -242,13 +251,12 @@ impl Tester {
                             continue;
                         }
 
-                        dbg!("Testing peer {}", peer_id);
                         // we try to connect to all peer listener (For now we have only one listener)
                         peer_info.last_announce.listeners.iter().for_each(|listener| {
                            let _res =  network_manager.try_connect(
                                 *listener.0,
                                 Duration::from_millis(200),
-                                &OutConnectionConfig::Tcp(Box::new(TcpOutConnectionConfig {})),
+                                &OutConnectionConfig::Tcp(Box::default()),
                             );
                         });
                     }
@@ -260,13 +268,4 @@ impl Tester {
             handler: Some(handle),
         }
     }
-}
-
-pub fn empty_fallback(
-    _keypair: &KeyPair,
-    _endpoint: &mut Endpoint,
-    _listeners: &HashMap<SocketAddr, TransportType>,
-) -> PeerNetResult<()> {
-    std::thread::sleep(Duration::from_millis(10000));
-    Ok(())
 }

@@ -6,6 +6,7 @@ use massa_protocol_exports_2::ProtocolConfig;
 use massa_storage::Storage;
 use peernet::{peer_id::PeerId, transports::TransportType};
 use tempfile::NamedTempFile;
+use tracing::log::error;
 
 use crate::{handlers::peer_handler::models::InitialPeers, start_protocol_controller};
 
@@ -21,6 +22,16 @@ mod tools;
 
 #[test]
 fn basic() {
+    // Setup panic handlers,
+    // and when a panic occurs,
+    // run default handler,
+    // and then shutdown.
+    let default_panic = std::panic::take_hook();
+    std::panic::set_hook(Box::new(move |info| {
+        default_panic(info);
+        std::process::exit(1);
+    }));
+
     let (pool_controller1, _) = MockPoolController::new_with_receiver();
     let (pool_controller2, _) = MockPoolController::new_with_receiver();
 
@@ -87,6 +98,12 @@ fn basic() {
 
 #[test]
 fn stop_with_controller_still_exists() {
+    let default_panic = std::panic::take_hook();
+    std::panic::set_hook(Box::new(move |info| {
+        default_panic(info);
+        std::process::exit(1);
+    }));
+
     let (pool_controller1, _) = MockPoolController::new_with_receiver();
     let (pool_controller2, _) = MockPoolController::new_with_receiver();
 
@@ -143,7 +160,7 @@ fn stop_with_controller_still_exists() {
         start_protocol_controller(config2, consensus_controller2, pool_controller2, storage2)
             .expect("Failed to start protocol 2");
 
-    std::thread::sleep(Duration::from_secs(5));
+    std::thread::sleep(Duration::from_secs(15));
     // Stop the protocols
     manager1.stop();
     manager2.stop();

@@ -13,7 +13,7 @@ use tracing::debug;
 
 use crate::{
     connectivity::start_connectivity_thread,
-    handlers::peer_handler::{fallback_function, models::PeerDB, MassaHandshake},
+    handlers::peer_handler::{models::PeerDB, MassaHandshake},
     manager::ProtocolManagerImpl,
     messages::MessagesHandler,
     wrap_network::NetworkControllerImpl,
@@ -57,7 +57,7 @@ pub fn start_protocol_controller(
         message_handlers,
     );
     peernet_config.self_keypair = config.keypair.clone();
-    peernet_config.fallback_function = Some(&fallback_function);
+    //TODO: Add the rest of the config
     peernet_config.max_in_connections = config.max_in_connections;
     peernet_config.max_out_connections = config.max_out_connections;
 

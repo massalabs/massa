@@ -87,7 +87,7 @@ pub enum BlockInfoType {
     NotFound = 3,
 }
 
-#[derive(Default)]
+#[derive(Default, Clone)]
 pub struct BlockMessageSerializer {
     id_serializer: U64VarIntSerializer,
     secure_share_serializer: SecureShareSerializer,

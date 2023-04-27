@@ -135,7 +135,7 @@ pub fn u8_from_slice(buffer: &[u8]) -> Result<u8, ModelsError> {
 }
 
 /// Serializer for `IpAddr`
-#[derive(Default)]
+#[derive(Default, Clone)]
 pub struct IpAddrSerializer;
 
 impl IpAddrSerializer {

@@ -20,6 +20,12 @@ use super::{context::protocol_test, tools::assert_hash_asked_to_node};
 #[test]
 #[serial]
 fn test_noting_block_does_not_panic_with_one_max_node_known_blocks_size() {
+    let default_panic = std::panic::take_hook();
+    std::panic::set_hook(Box::new(move |info| {
+        default_panic(info);
+        std::process::exit(1);
+    }));
+
     let mut protocol_config = ProtocolConfig::default();
     protocol_config.thread_count = 2;
     protocol_config.max_node_known_blocks_size = 1;

@@ -42,7 +42,7 @@ pub enum MessageTypeId {
     ListPeers = 1,
 }
 
-#[derive(Default)]
+#[derive(Default, Clone)]
 pub struct PeerManagementMessageSerializer {
     length_serializer: U64VarIntSerializer,
     ip_addr_serializer: IpAddrSerializer,

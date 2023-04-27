@@ -1107,6 +1107,7 @@ impl Deserializer<OperationPrefixIds> for OperationPrefixIdsDeserializer {
 }
 
 /// Serializer for `OperationPrefixIds`
+#[derive(Clone)]
 pub struct OperationPrefixIdsSerializer {
     u32_serializer: U32VarIntSerializer,
 }
@@ -1146,6 +1147,7 @@ impl Serializer<OperationPrefixIds> for OperationPrefixIdsSerializer {
 }
 
 /// Serializer for `Operations`
+#[derive(Clone)]
 pub struct OperationsSerializer {
     u32_serializer: U32VarIntSerializer,
     signed_op_serializer: SecureShareSerializer,
