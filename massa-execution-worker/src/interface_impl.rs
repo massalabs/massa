@@ -74,7 +74,7 @@ impl InterfaceImpl {
 
         let vesting_file = super::tests::get_initials_vesting(false);
         let config = ExecutionConfig::default();
-        let (final_state, _tempfile, _tempdir) = super::tests::get_sample_state().unwrap();
+        let (final_state, _tempfile, _tempdir) = super::tests::get_sample_state(0).unwrap();
         let module_cache = Arc::new(RwLock::new(ModuleCache::new(ModuleCacheConfig {
             hd_cache_path: config.hd_cache_path.clone(),
             gas_costs: config.gas_costs.clone(),

@@ -2,10 +2,11 @@ use massa_execution_exports::ExecutionOutput;
 use massa_ledger_exports::{
     LedgerEntry, LedgerEntryUpdate, SetOrDelete, SetOrKeep, SetUpdateOrDelete,
 };
+use massa_models::denunciation::DenunciationIndex;
 use massa_models::{
-    address::Address, amount::Amount, bytecode::Bytecode, operation::OperationId,
-    prehash::PreHashMap, slot::Slot,
+    address::Address, amount::Amount, bytecode::Bytecode, operation::OperationId, slot::Slot,
 };
+use massa_pos_exports::DeferredCredits;
 use std::collections::{HashMap, VecDeque};
 
 #[derive(Default)]
@@ -52,6 +53,25 @@ impl ActiveHistory {
                 .state_changes
                 .executed_ops_changes
                 .contains_key(op_id)
+            {
+                return HistorySearchResult::Present(());
+            }
+        }
+        HistorySearchResult::NoInfo
+    }
+
+    /// Lazily query (from end to beginning) the active list of executed denunciations.
+    ///
+    /// Returns a `HistorySearchResult`.
+    pub fn fetch_executed_denunciation(
+        &self,
+        de_idx: &DenunciationIndex,
+    ) -> HistorySearchResult<()> {
+        for history_element in self.0.iter().rev() {
+            if history_element
+                .state_changes
+                .executed_denunciations_changes
+                .contains(de_idx)
             {
                 return HistorySearchResult::Present(());
             }
@@ -144,21 +164,19 @@ impl ActiveHistory {
         })
     }
 
-    /// Gets all the deferred credits that will be credited at a given slot
-    pub fn get_all_deferred_credits_for(&self, slot: &Slot) -> PreHashMap<Address, Amount> {
+    /// Gets all the deferred credits that will be credited until a given slot (included)
+    pub fn get_all_deferred_credits_until(&self, slot: &Slot) -> DeferredCredits {
         self.0
             .iter()
-            .filter_map(|output| {
-                output
-                    .state_changes
-                    .pos_changes
-                    .deferred_credits
-                    .credits
-                    .get(slot)
-                    .cloned()
+            .fold(DeferredCredits::new_without_hash(), |mut acc, e| {
+                acc.extend(
+                    e.state_changes
+                        .pos_changes
+                        .deferred_credits
+                        .get_slot_range(..=slot, false),
+                );
+                acc
             })
-            .flatten()
-            .collect()
     }
 
     /// Gets the deferred credits for a given address that will be credited at a given slot
@@ -172,7 +190,7 @@ impl ActiveHistory {
                 .state_changes
                 .pos_changes
                 .deferred_credits
-                .get_address_deferred_credit_for_slot(addr, slot)
+                .get_address_credits_for_slot(addr, slot)
             {
                 return Some(v);
             }

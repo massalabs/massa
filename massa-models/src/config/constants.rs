@@ -20,6 +20,11 @@ use massa_signature::KeyPair;
 use massa_time::MassaTime;
 use num::rational::Ratio;
 
+/// Start of the downtime simulation
+pub const DOWNTIME_START_TIMESTAMP: MassaTime = MassaTime::from_millis(1681372800000); // 13/04/2023 10AM CET
+/// End of the downtime simulation
+pub const DOWNTIME_END_TIMESTAMP: MassaTime = MassaTime::from_millis(1681390800000); // 13/04/2023 16AM CET
+
 /// Limit on the number of peers we advertise to others.
 pub const MAX_ADVERTISE_LENGTH: u32 = 10000;
 /// Maximum message length in bytes
@@ -38,21 +43,27 @@ pub const CHANNEL_SIZE: usize = 1024;
 
 lazy_static::lazy_static! {
     /// Time in milliseconds when the blockclique started.
+    /// In sandbox mode, the value depends on starting time and on the --restart-from-snapshot-at-period argument in CLI,
+    /// so that the network starts or restarts 10 seconds after launch
     pub static ref GENESIS_TIMESTAMP: MassaTime = if cfg!(feature = "sandbox") {
         std::env::var("GENESIS_TIMESTAMP").map(|timestamp| timestamp.parse::<u64>().unwrap().into()).unwrap_or_else(|_|
             MassaTime::now()
                 .unwrap()
-                .saturating_add(MassaTime::from_millis(1000 * 10))
+                .saturating_sub(
+                    T0.checked_mul(get_period_from_args()).unwrap()
+                )
+                .saturating_add(MassaTime::from_millis(1000 * 10)
+            )
         )
     } else {
-        1679481900000.into()  // Wednesday, March 22, 2023 10:45:00 AM UTC
+        1680872400000.into()  // Friday, April 7, 2023 01:00:00 PM UTC
     };
 
     /// TESTNET: time when the blockclique is ended.
     pub static ref END_TIMESTAMP: Option<MassaTime> = if cfg!(feature = "sandbox") {
         None
     } else {
-        Some(1680292800000.into())  // Friday, March 31, 2023 08:00:00 PM UTC
+        Some(1682877600000.into())  // Sunday, April 30, 2023 06:00:00 PM UTC
     };
     /// `KeyPair` to sign genesis blocks.
     pub static ref GENESIS_KEY: KeyPair = KeyPair::from_str("S1UxdCJv5ckDK8z87E5Jq5fEfSVLi2cTHgtpfZy7iURs3KpPns8")
@@ -62,13 +73,28 @@ lazy_static::lazy_static! {
     /// node version
     pub static ref VERSION: Version = {
         if cfg!(feature = "sandbox") {
-            "SAND.20.0"
+            "SAND.22.0"
         } else {
-            "TEST.21.0"
+            "TEST.22.0"
         }
         .parse()
         .unwrap()
     };
+
+}
+
+/// Helper function to parse args for lazy_static evaluations
+pub fn get_period_from_args() -> u64 {
+    let mut last_start_period = 0;
+    let mut parse_next = false;
+    for args in std::env::args() {
+        if parse_next {
+            last_start_period = u64::from_str(&args).unwrap_or_default();
+            break;
+        }
+        parse_next = args == *"--restart-from-snapshot-at-period";
+    }
+    last_start_period
 }
 
 /// Price of a roll in the network
@@ -103,10 +129,17 @@ pub const MAX_ASYNC_MESSAGE_DATA: u64 = 1_000_000;
 pub const OPERATION_VALIDITY_PERIODS: u64 = 10;
 /// cycle duration in periods
 pub const PERIODS_PER_CYCLE: u64 = 128;
-/// PoS saved cycles: number of cycles saved in `PoSFinalState`
+/// Number of cycles saved in `PoSFinalState`
 ///
-/// 4 for PoS itself and 1 for bootstrap safety
-pub const POS_SAVED_CYCLES: usize = 5;
+/// 6 for PoS itself so we can check denuncations on selections at C-2 after a bootstrap
+/// See https://github.com/massalabs/massa/pull/3871
+/// 1 for pruned cycle safety during bootstrap
+pub const POS_SAVED_CYCLES: usize = 7;
+/// Number of cycle draws saved in the selector cache
+///
+/// 5 to have a C-2 to C+2 range (6 cycles post-bootstrap give 5 cycle draws)
+/// 1 for margin
+pub const SELECTOR_DRAW_CACHE_SIZE: usize = 6;
 /// Maximum size batch of data in a part of the ledger
 pub const LEDGER_PART_SIZE_MESSAGE_BYTES: u64 = 1_000_000;
 /// Maximum async messages in a batch of the bootstrap of the async pool
@@ -234,10 +267,14 @@ pub const MIP_STORE_STATS_COUNTERS_MAX: usize = 10;
 // Constants for denunciation factory
 //
 
-/// denunciation expiration delta (in cycle count)
+/// denunciation expiration delta
 pub const DENUNCIATION_EXPIRE_PERIODS: u64 = PERIODS_PER_CYCLE;
-/// Cycle delta to accept items in denunciation factory
-pub const DENUNCIATION_ITEMS_MAX_CYCLE_DELTA: u64 = 1;
+/// Max number of denunciations that can be included in a block header
+pub const MAX_DENUNCIATIONS_PER_BLOCK_HEADER: u32 = 128;
+/// Number of roll to remove per denunciation
+pub const ROLL_COUNT_TO_SLASH_ON_DENUNCIATION: u64 = 1;
+/// Maximum size of processed denunciations
+pub const MAX_DENUNCIATION_CHANGES_LENGTH: u64 = 1_000;
 
 // Some checks at compile time that should not be ignored!
 #[allow(clippy::assertions_on_constants)]

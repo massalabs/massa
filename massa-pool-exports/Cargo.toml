@@ -7,13 +7,18 @@ edition = "2021"
 [dependencies]
 serde = { version = "1.0", features = ["derive"] }
 tokio = { version = "1.23", features = ["sync"] }
+crossbeam-channel = { version="0.5", optional=true }
 # custom modules
 massa_models = { path = "../massa-models" }
 massa_storage = { path = "../massa-storage" }
 massa_time = { path = "../massa-time"}
+massa_pos_exports = { path = "../massa-pos-exports" }
 
 [dev-dependencies]
 
+
 # for more information on what are the following features used for, see the cargo.toml at workspace level
 [features]
-testing = []
+testing = [
+    "crossbeam-channel"
+]

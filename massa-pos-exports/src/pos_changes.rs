@@ -17,7 +17,7 @@ use nom::{
 use serde::{Deserialize, Serialize};
 
 /// Recap of all PoS changes
-#[derive(Default, Debug, Clone, Deserialize, Serialize)]
+#[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct PoSChanges {
     /// extra block seed bits added
     pub seed_bits: BitVec<u8>,
@@ -31,6 +31,17 @@ pub struct PoSChanges {
     /// set deferred credits indexed by target slot (can be set to 0 to cancel some, in case of slash)
     /// ordered structure to ensure slot iteration order is deterministic
     pub deferred_credits: DeferredCredits,
+}
+
+impl Default for PoSChanges {
+    fn default() -> Self {
+        Self {
+            seed_bits: Default::default(),
+            roll_changes: Default::default(),
+            production_stats: Default::default(),
+            deferred_credits: DeferredCredits::new_with_hash(),
+        }
+    }
 }
 
 impl PoSChanges {
@@ -59,7 +70,7 @@ impl PoSChanges {
         }
 
         // extend deferred credits
-        self.deferred_credits.nested_extend(other.deferred_credits);
+        self.deferred_credits.extend(other.deferred_credits);
     }
 }
 
@@ -142,6 +153,7 @@ impl PoSChangesDeserializer {
             deferred_credits_deserializer: DeferredCreditsDeserializer::new(
                 thread_count,
                 max_credits_length,
+                true,
             ),
         }
     }

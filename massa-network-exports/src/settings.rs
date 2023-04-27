@@ -92,6 +92,10 @@ pub struct NetworkConfig {
     pub node_command_channel_size: usize,
     /// Node event channel size
     pub node_event_channel_size: usize,
+    /// last start period, used in message deserialization
+    pub last_start_period: u64,
+    /// max denunciations in block header
+    pub max_denunciations_per_block_header: u32,
 }
 
 /// Connection configuration for a peer type
@@ -114,8 +118,9 @@ pub mod tests {
     use enum_map::enum_map;
     use massa_models::config::{
         ENDORSEMENT_COUNT, MAX_ADVERTISE_LENGTH, MAX_ASK_BLOCKS_PER_MESSAGE,
-        MAX_DATASTORE_VALUE_LENGTH, MAX_ENDORSEMENTS_PER_MESSAGE, MAX_FUNCTION_NAME_LENGTH,
-        MAX_MESSAGE_SIZE, MAX_OPERATIONS_PER_MESSAGE, MAX_OPERATION_DATASTORE_ENTRY_COUNT,
+        MAX_DATASTORE_VALUE_LENGTH, MAX_DENUNCIATIONS_PER_BLOCK_HEADER,
+        MAX_ENDORSEMENTS_PER_MESSAGE, MAX_FUNCTION_NAME_LENGTH, MAX_MESSAGE_SIZE,
+        MAX_OPERATIONS_PER_MESSAGE, MAX_OPERATION_DATASTORE_ENTRY_COUNT,
         MAX_OPERATION_DATASTORE_KEY_LENGTH, MAX_OPERATION_DATASTORE_VALUE_LENGTH,
         MAX_PARAMETERS_SIZE, NETWORK_CONTROLLER_CHANNEL_SIZE, NETWORK_EVENT_CHANNEL_SIZE,
         NETWORK_NODE_COMMAND_CHANNEL_SIZE, NETWORK_NODE_EVENT_CHANNEL_SIZE, THREAD_COUNT,
@@ -185,6 +190,8 @@ pub mod tests {
                 event_channel_size: NETWORK_EVENT_CHANNEL_SIZE,
                 node_command_channel_size: NETWORK_NODE_COMMAND_CHANNEL_SIZE,
                 node_event_channel_size: NETWORK_NODE_EVENT_CHANNEL_SIZE,
+                last_start_period: 0,
+                max_denunciations_per_block_header: MAX_DENUNCIATIONS_PER_BLOCK_HEADER,
             }
         }
     }
@@ -252,6 +259,8 @@ pub mod tests {
                 event_channel_size: NETWORK_EVENT_CHANNEL_SIZE,
                 node_command_channel_size: NETWORK_NODE_COMMAND_CHANNEL_SIZE,
                 node_event_channel_size: NETWORK_NODE_EVENT_CHANNEL_SIZE,
+                last_start_period: 0,
+                max_denunciations_per_block_header: MAX_DENUNCIATIONS_PER_BLOCK_HEADER,
             }
         }
     }

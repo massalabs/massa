@@ -183,6 +183,7 @@ impl Serializer<Block> for BlockSerializer {
     ///             )
     ///             .unwrap(),
     ///         ],
+    ///         denunciations: Vec::new(),
     ///     },
     ///     BlockHeaderSerializer::new(),
     ///     &keypair,
@@ -214,6 +215,10 @@ pub struct BlockDeserializerArgs {
     pub max_operations_per_block: u32,
     /// Number of endorsements in a block
     pub endorsement_count: u32,
+    /// Max denunciations in a block
+    pub max_denunciations_per_block_header: u32,
+    /// If Some(lsp), this will through if trying to deserialize a block with a period before the genesis blocks
+    pub last_start_period: Option<u64>,
 }
 
 /// Deserializer for `Block`
@@ -224,12 +229,13 @@ pub struct BlockDeserializer {
 
 impl BlockDeserializer {
     /// Creates a new `BlockDeserializer`
-    // pub fn new(thread_count: u8, max_operations_per_block: u32, endorsement_count: u32) -> Self {
     pub fn new(args: BlockDeserializerArgs) -> Self {
         BlockDeserializer {
             header_deserializer: SecureShareDeserializer::new(BlockHeaderDeserializer::new(
                 args.thread_count,
                 args.endorsement_count,
+                args.max_denunciations_per_block_header,
+                args.last_start_period,
             )),
             op_ids_deserializer: OperationIdsDeserializer::new(args.max_operations_per_block),
         }
@@ -278,6 +284,7 @@ impl Deserializer<Block> for BlockDeserializer {
     ///             )
     ///             .unwrap(),
     ///         ],
+    ///         denunciations: Vec::new(),
     ///     },
     ///     BlockHeaderSerializer::new(),
     ///     &keypair,
@@ -292,7 +299,13 @@ impl Deserializer<Block> for BlockDeserializer {
     ///
     /// let mut buffer = Vec::new();
     /// BlockSerializer::new().serialize(&orig_block, &mut buffer).unwrap();
-    /// let args = BlockDeserializerArgs { thread_count: THREAD_COUNT, max_operations_per_block: 100, endorsement_count: 9};
+    /// let args = BlockDeserializerArgs {
+    ///     thread_count: THREAD_COUNT,
+    ///     max_operations_per_block: 100,
+    ///     endorsement_count: 9,
+    ///     max_denunciations_per_block_header: 10,
+    ///     last_start_period: Some(0)
+    /// };
     /// let (rest, res_block) = BlockDeserializer::new(args).deserialize::<DeserializeError>(&mut buffer).unwrap();
     ///
     /// assert!(rest.is_empty());
@@ -400,6 +413,7 @@ pub enum BlockGraphStatus {
 #[cfg(test)]
 mod test {
     use super::*;
+    use crate::config::MAX_DENUNCIATIONS_PER_BLOCK_HEADER;
     use crate::{
         block_header::BlockHeaderSerializer,
         config::{ENDORSEMENT_COUNT, MAX_OPERATIONS_PER_BLOCK, THREAD_COUNT},
@@ -461,6 +475,7 @@ mod test {
                 parents,
                 operation_merkle_root: Hash::compute_from("mno".as_bytes()),
                 endorsements: vec![endo1, endo2],
+                denunciations: Vec::new(), // FIXME
             },
             BlockHeaderSerializer::new(),
             &keypair,
@@ -486,6 +501,8 @@ mod test {
             thread_count: THREAD_COUNT,
             max_operations_per_block: MAX_OPERATIONS_PER_BLOCK,
             endorsement_count: ENDORSEMENT_COUNT,
+            max_denunciations_per_block_header: MAX_DENUNCIATIONS_PER_BLOCK_HEADER,
+            last_start_period: Some(0),
         };
         let (rest, res_block): (&[u8], SecureShareBlock) =
             SecureShareDeserializer::new(BlockDeserializer::new(args))
@@ -540,6 +557,7 @@ mod test {
                 parents,
                 operation_merkle_root: Hash::compute_from("mno".as_bytes()),
                 endorsements: vec![],
+                denunciations: vec![],
             },
             BlockHeaderSerializer::new(),
             &keypair,
@@ -565,6 +583,8 @@ mod test {
             thread_count: THREAD_COUNT,
             max_operations_per_block: MAX_OPERATIONS_PER_BLOCK,
             endorsement_count: ENDORSEMENT_COUNT,
+            max_denunciations_per_block_header: MAX_DENUNCIATIONS_PER_BLOCK_HEADER,
+            last_start_period: Some(0),
         };
         let (rest, res_block): (&[u8], SecureShareBlock) =
             SecureShareDeserializer::new(BlockDeserializer::new(args))
@@ -628,6 +648,7 @@ mod test {
                     &keypair,
                 )
                 .unwrap()],
+                denunciations: vec![],
             },
             BlockHeaderSerializer::new(),
             &keypair,
@@ -653,6 +674,8 @@ mod test {
             thread_count: THREAD_COUNT,
             max_operations_per_block: MAX_OPERATIONS_PER_BLOCK,
             endorsement_count: ENDORSEMENT_COUNT,
+            max_denunciations_per_block_header: MAX_DENUNCIATIONS_PER_BLOCK_HEADER,
+            last_start_period: Some(0),
         };
         let res: Result<(&[u8], SecureShareBlock), _> =
             SecureShareDeserializer::new(BlockDeserializer::new(args))
@@ -680,6 +703,7 @@ mod test {
                 parents,
                 operation_merkle_root: Hash::compute_from("mno".as_bytes()),
                 endorsements: vec![],
+                denunciations: vec![],
             },
             BlockHeaderSerializer::new(),
             &keypair,
@@ -705,6 +729,8 @@ mod test {
             thread_count: THREAD_COUNT,
             max_operations_per_block: MAX_OPERATIONS_PER_BLOCK,
             endorsement_count: ENDORSEMENT_COUNT,
+            max_denunciations_per_block_header: MAX_DENUNCIATIONS_PER_BLOCK_HEADER,
+            last_start_period: Some(0),
         };
         let res: Result<(&[u8], SecureShareBlock), _> =
             SecureShareDeserializer::new(BlockDeserializer::new(args))
@@ -727,6 +753,7 @@ mod test {
                 parents: vec![],
                 operation_merkle_root: Hash::compute_from("mno".as_bytes()),
                 endorsements: vec![],
+                denunciations: vec![],
             },
             BlockHeaderSerializer::new(),
             &keypair,
@@ -752,6 +779,8 @@ mod test {
             thread_count: THREAD_COUNT,
             max_operations_per_block: MAX_OPERATIONS_PER_BLOCK,
             endorsement_count: ENDORSEMENT_COUNT,
+            max_denunciations_per_block_header: MAX_DENUNCIATIONS_PER_BLOCK_HEADER,
+            last_start_period: Some(0),
         };
         let res: Result<(&[u8], SecureShareBlock), _> =
             SecureShareDeserializer::new(BlockDeserializer::new(args))
@@ -777,6 +806,7 @@ mod test {
                 parents,
                 operation_merkle_root: Hash::compute_from("mno".as_bytes()),
                 endorsements: vec![],
+                denunciations: vec![],
             },
             BlockHeaderSerializer::new(),
             &keypair,
@@ -802,6 +832,8 @@ mod test {
             thread_count: THREAD_COUNT,
             max_operations_per_block: MAX_OPERATIONS_PER_BLOCK,
             endorsement_count: ENDORSEMENT_COUNT,
+            max_denunciations_per_block_header: MAX_DENUNCIATIONS_PER_BLOCK_HEADER,
+            last_start_period: Some(0),
         };
         let res: Result<(&[u8], SecureShareBlock), _> =
             SecureShareDeserializer::new(BlockDeserializer::new(args))
@@ -849,6 +881,7 @@ mod test {
                 parents,
                 operation_merkle_root: Hash::compute_from("mno".as_bytes()),
                 endorsements,
+                denunciations: vec![],
             },
             BlockHeaderSerializer::new(),
             &keypair,
@@ -874,6 +907,8 @@ mod test {
             thread_count: THREAD_COUNT,
             max_operations_per_block: MAX_OPERATIONS_PER_BLOCK,
             endorsement_count: ENDORSEMENT_COUNT,
+            max_denunciations_per_block_header: MAX_DENUNCIATIONS_PER_BLOCK_HEADER,
+            last_start_period: Some(0),
         };
         let (_, res): (&[u8], SecureShareBlock) =
             SecureShareDeserializer::new(BlockDeserializer::new(args))
@@ -901,6 +936,7 @@ mod test {
                 parents,
                 operation_merkle_root: Hash::compute_from("mno".as_bytes()),
                 endorsements: vec![],
+                denunciations: vec![],
             },
             BlockHeaderSerializer::new(),
             &keypair,
@@ -926,6 +962,8 @@ mod test {
             thread_count: THREAD_COUNT,
             max_operations_per_block: MAX_OPERATIONS_PER_BLOCK,
             endorsement_count: ENDORSEMENT_COUNT,
+            max_denunciations_per_block_header: MAX_DENUNCIATIONS_PER_BLOCK_HEADER,
+            last_start_period: Some(0),
         };
         let res: Result<(&[u8], SecureShareBlock), _> =
             SecureShareDeserializer::new(BlockDeserializer::new(args))
@@ -965,6 +1003,7 @@ mod test {
                 parents,
                 operation_merkle_root: Hash::compute_from("mno".as_bytes()),
                 endorsements,
+                denunciations: vec![],
             },
             BlockHeaderSerializer::new(),
             &keypair,
@@ -990,6 +1029,8 @@ mod test {
             thread_count: THREAD_COUNT,
             max_operations_per_block: MAX_OPERATIONS_PER_BLOCK,
             endorsement_count: ENDORSEMENT_COUNT,
+            max_denunciations_per_block_header: MAX_DENUNCIATIONS_PER_BLOCK_HEADER,
+            last_start_period: Some(0),
         };
         let res: Result<(&[u8], SecureShareBlock), _> =
             SecureShareDeserializer::new(BlockDeserializer::new(args))
@@ -1034,6 +1075,7 @@ mod test {
                 parents,
                 operation_merkle_root: Hash::compute_from("mno".as_bytes()),
                 endorsements: vec![endo1],
+                denunciations: vec![],
             },
             BlockHeaderSerializer::new(),
             &keypair,
@@ -1059,6 +1101,8 @@ mod test {
             thread_count: THREAD_COUNT,
             max_operations_per_block: MAX_OPERATIONS_PER_BLOCK,
             endorsement_count: ENDORSEMENT_COUNT,
+            max_denunciations_per_block_header: MAX_DENUNCIATIONS_PER_BLOCK_HEADER,
+            last_start_period: Some(0),
         };
         let res: Result<(&[u8], SecureShareBlock), _> =
             SecureShareDeserializer::new(BlockDeserializer::new(args))
@@ -1115,6 +1159,7 @@ mod test {
                 parents,
                 operation_merkle_root: Hash::compute_from("mno".as_bytes()),
                 endorsements: vec![endo1, endo2],
+                denunciations: vec![],
             },
             BlockHeaderSerializer::new(),
             &keypair,
@@ -1140,6 +1185,8 @@ mod test {
             thread_count: THREAD_COUNT,
             max_operations_per_block: MAX_OPERATIONS_PER_BLOCK,
             endorsement_count: ENDORSEMENT_COUNT,
+            max_denunciations_per_block_header: MAX_DENUNCIATIONS_PER_BLOCK_HEADER,
+            last_start_period: Some(0),
         };
         let res: Result<(&[u8], SecureShareBlock), _> =
             SecureShareDeserializer::new(BlockDeserializer::new(args))

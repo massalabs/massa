@@ -67,16 +67,18 @@ impl std::fmt::Display for OperationInfo {
 
 #[cfg(test)]
 mod tests {
-    use jsonrpsee_core::__reexports::serde_json::{self, Value};
-    use massa_models::operation::OperationType;
+    use jsonrpsee::core::__reexports::serde_json::{self, Value};
+    use massa_models::{amount::Amount, operation::OperationType};
     use serial_test::serial;
     use std::collections::BTreeMap;
+    use std::str::FromStr;
 
     #[test]
     #[serial]
     fn test_execute_sc_with_datastore() {
         let given_op = OperationType::ExecuteSC {
             max_gas: 123,
+            max_coins: Amount::from_str("5000000").unwrap(),
             data: vec![23u8, 123u8, 44u8],
             datastore: BTreeMap::from([
                 (vec![1, 2, 3], vec![4, 5, 6, 7, 8, 9]),

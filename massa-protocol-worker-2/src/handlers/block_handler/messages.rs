@@ -207,6 +207,8 @@ pub struct BlockMessageDeserializerArgs {
     pub max_op_datastore_entry_count: u64,
     pub max_op_datastore_key_length: u8,
     pub max_op_datastore_value_length: u64,
+    pub max_denunciations_in_block_header: u32,
+    pub last_start_period: Option<u64>,
 }
 
 impl BlockMessageDeserializer {
@@ -217,6 +219,8 @@ impl BlockMessageDeserializer {
             block_header_deserializer: SecureShareDeserializer::new(BlockHeaderDeserializer::new(
                 args.thread_count,
                 args.endorsement_count,
+                args.max_denunciations_in_block_header,
+                args.last_start_period,
             )),
             block_infos_length_deserializer: U64VarIntDeserializer::new(
                 Included(0),

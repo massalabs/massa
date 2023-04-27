@@ -10,6 +10,7 @@ use massa_models::{
 use massa_pos_exports::{DeferredCredits, PoSChanges, ProductionStats};
 use num::rational::Ratio;
 use parking_lot::RwLock;
+use std::cmp::min;
 use std::collections::{BTreeMap, HashMap};
 use std::sync::Arc;
 
@@ -143,9 +144,64 @@ impl SpeculativeRollState {
         // Add deferred credits (reimbursement) corresponding to the sold rolls value
         self.added_changes
             .deferred_credits
-            .insert(*seller_addr, target_slot, new_deferred_credits);
+            .insert(target_slot, *seller_addr, new_deferred_credits);
 
         Ok(())
+    }
+
+    /// Try to slash `roll_count` rolls from the given address. If not enough roll, slash
+    /// the available amount and return the value.
+    ///
+    /// # Arguments
+    /// * `addr`: address to slash the rolls from
+    /// * `roll_count`: number of rolls to slash
+    pub fn try_slash_rolls(
+        &mut self,
+        addr: &Address,
+        roll_count: u64,
+    ) -> Result<u64, ExecutionError> {
+        // fetch the roll count
+        let owned_count = self.get_rolls(addr);
+        let roll_to_slash = min(roll_count, owned_count);
+
+        match self.added_changes.roll_changes.get_mut(addr) {
+            None => {
+                // Address does not exist anymore, slash nothing
+                Ok(0)
+            }
+            Some(current_rolls) => {
+                *current_rolls = current_rolls.saturating_sub(roll_to_slash);
+                Ok(roll_to_slash)
+            }
+        }
+    }
+
+    /// Try to slash `amount` credits from the given address. If not enough credits, slash
+    /// the available amount and return the value.
+    ///
+    /// # Arguments
+    /// * `addr`: address to slash the deferred credits from
+    /// * `amount`: number of deferred credits to slash
+    pub fn try_slash_deferred_credits(
+        &mut self,
+        slot: &Slot,
+        addr: &Address,
+        amount: &Amount,
+    ) -> Amount {
+        let credits = self.get_address_deferred_credits(addr, *slot);
+
+        let mut remaining_to_slash = *amount;
+        for (credit_slot, credit_amount) in credits.iter() {
+            let to_slash = min(*credit_amount, remaining_to_slash);
+            let new_deferred_credits = credit_amount.saturating_sub(to_slash);
+            remaining_to_slash = remaining_to_slash.saturating_sub(to_slash);
+
+            self.added_changes
+                .deferred_credits
+                .insert(*credit_slot, *addr, new_deferred_credits);
+        }
+
+        amount.saturating_sub(remaining_to_slash)
     }
 
     /// Update production statistics of an address.
@@ -222,9 +278,9 @@ impl SpeculativeRollState {
             }
         }
         if !target_credits.is_empty() {
-            let mut credits = DeferredCredits::default();
+            let mut credits = DeferredCredits::new_with_hash();
             credits.credits.insert(target_slot, target_credits);
-            self.added_changes.deferred_credits.nested_extend(credits);
+            self.added_changes.deferred_credits.extend(credits);
         }
     }
 
@@ -290,7 +346,7 @@ impl SpeculativeRollState {
         if let Some(v) = self
             .added_changes
             .deferred_credits
-            .get_address_deferred_credit_for_slot(addr, slot)
+            .get_address_credits_for_slot(addr, slot)
         {
             return Some(v);
         }
@@ -310,7 +366,7 @@ impl SpeculativeRollState {
             .read()
             .pos_state
             .deferred_credits
-            .get_address_deferred_credit_for_slot(addr, slot)
+            .get_address_credits_for_slot(addr, slot)
         {
             return Some(v);
         }
@@ -482,37 +538,46 @@ impl SpeculativeRollState {
         (accumulated_stats, !underflow && !overflow)
     }
 
-    /// Get the deferred credits of `slot`.
+    /// Take the non-zero deferred credits at or before `slot`.
+    /// Set them to zero in the speculative state.
     ///
     /// # Arguments
     /// * `slot`: associated slot of the deferred credits to be executed
-    pub fn get_deferred_credits(&mut self, slot: &Slot) -> PreHashMap<Address, Amount> {
-        // NOTE:
-        // There is no need to sum the credits for similar entries between
-        // the final state and the active history.
-        // Credits come from cycle C-3 so there will never be similar entries.
-        // Even in the case of final credits being removed because of active slashing
-        // we want the active value to override the final one in this function.
+    pub fn take_unexecuted_deferred_credits(&mut self, slot: &Slot) -> DeferredCredits {
+        // NOTE: Deferred credits are overridden. Zeros will be deleted at finality.
 
         // get final deferred credits
         let mut credits = self
             .final_state
             .read()
             .pos_state
-            .get_deferred_credits_at(slot);
+            .get_deferred_credits_range(..=slot);
 
         // fetch active history deferred credits
         credits.extend(
             self.active_history
                 .read()
-                .get_all_deferred_credits_for(slot),
+                .get_all_deferred_credits_until(slot),
         );
 
         // added deferred credits
-        if let Some(creds) = self.added_changes.deferred_credits.credits.get(slot) {
-            credits.extend(creds.clone());
-        }
+        credits.extend(
+            self.added_changes
+                .deferred_credits
+                .get_slot_range(..=slot, false),
+        );
 
+        // filter out zeros
+        credits.remove_zeros();
+
+        // set all the taken ones to zero in added_changes
+        credits.for_each(|slot, address, _amount| {
+            self.added_changes
+                .deferred_credits
+                .insert(*slot, *address, Amount::zero());
+        });
+
+        // return taken credits
         credits
     }
 }

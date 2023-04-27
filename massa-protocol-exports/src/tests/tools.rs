@@ -67,6 +67,7 @@ pub fn create_block(keypair: &KeyPair) -> SecureShareBlock {
             ],
             operation_merkle_root: Hash::compute_from(&Vec::new()),
             endorsements: Vec::new(),
+            denunciations: Vec::new(),
         },
         BlockHeaderSerializer::new(),
         keypair,
@@ -108,6 +109,7 @@ pub fn create_block_with_operations(
             ],
             operation_merkle_root,
             endorsements: Vec::new(),
+            denunciations: Vec::new(),
         },
         BlockHeaderSerializer::new(),
         keypair,
@@ -145,6 +147,7 @@ pub fn create_block_with_endorsements(
             ],
             operation_merkle_root: Hash::compute_from(&Vec::new()),
             endorsements,
+            denunciations: Vec::new(),
         },
         BlockHeaderSerializer::new(),
         keypair,
@@ -227,6 +230,7 @@ pub fn create_protocol_config() -> ProtocolConfig {
         t0: MassaTime::from_millis(16000),
         max_operations_propagation_time: MassaTime::from_millis(30000),
         max_endorsements_propagation_time: MassaTime::from_millis(60000),
+        last_start_period: 0,
     }
 }
 

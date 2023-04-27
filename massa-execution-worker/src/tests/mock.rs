@@ -3,6 +3,8 @@ use massa_final_state::{FinalState, FinalStateConfig};
 use massa_hash::Hash;
 use massa_ledger_exports::{LedgerConfig, LedgerController, LedgerEntry, LedgerError};
 use massa_ledger_worker::FinalLedger;
+use massa_models::config::ENDORSEMENT_COUNT;
+use massa_models::denunciation::Denunciation;
 use massa_models::execution::TempFileVestingRange;
 use massa_models::prehash::PreHashMap;
 use massa_models::{
@@ -104,11 +106,12 @@ pub fn get_random_address_full() -> (Address, KeyPair) {
     (Address::from_public_key(&keypair.get_public_key()), keypair)
 }
 
-pub fn get_sample_state() -> Result<(Arc<RwLock<FinalState>>, NamedTempFile, TempDir), LedgerError>
-{
+pub fn get_sample_state(
+    last_start_period: u64,
+) -> Result<(Arc<RwLock<FinalState>>, NamedTempFile, TempDir), LedgerError> {
     let (rolls_file, ledger) = get_initials();
     let (ledger_config, tempfile, tempdir) = LedgerConfig::sample(&ledger);
-    let mut ledger = FinalLedger::new(ledger_config.clone());
+    let mut ledger = FinalLedger::new(ledger_config.clone(), false);
     ledger.load_initial_ledger().unwrap();
     let default_config = FinalStateConfig::default();
     let cfg = FinalStateConfig {
@@ -116,15 +119,30 @@ pub fn get_sample_state() -> Result<(Arc<RwLock<FinalState>>, NamedTempFile, Tem
         async_pool_config: default_config.async_pool_config,
         pos_config: default_config.pos_config,
         executed_ops_config: default_config.executed_ops_config,
+        executed_denunciations_config: default_config.executed_denunciations_config,
         final_history_length: 128,
         thread_count: THREAD_COUNT,
         initial_rolls_path: rolls_file.path().to_path_buf(),
+        endorsement_count: ENDORSEMENT_COUNT,
+        max_executed_denunciations_length: 1000,
         initial_seed_string: "".to_string(),
         periods_per_cycle: 10,
+
+        max_denunciations_per_block_header: 0,
     };
     let (_, selector_controller) = start_selector_worker(SelectorConfig::default())
         .expect("could not start selector controller");
-    let mut final_state = FinalState::new(cfg, Box::new(ledger), selector_controller).unwrap();
+    let mut final_state = if last_start_period > 0 {
+        FinalState::new_derived_from_snapshot(
+            cfg,
+            Box::new(ledger),
+            selector_controller,
+            last_start_period,
+        )
+        .unwrap()
+    } else {
+        FinalState::new(cfg, Box::new(ledger), selector_controller).unwrap()
+    };
     final_state.compute_initial_draws().unwrap();
     final_state.pos_state.create_initial_cycle();
     Ok((Arc::new(RwLock::new(final_state)), tempfile, tempdir))
@@ -138,6 +156,7 @@ pub fn get_sample_state() -> Result<(Arc<RwLock<FinalState>>, NamedTempFile, Tem
 pub fn create_block(
     creator_keypair: KeyPair,
     operations: Vec<SecureShareOperation>,
+    denunciations: Vec<Denunciation>,
     slot: Slot,
 ) -> Result<SecureShareBlock, ExecutionError> {
     let operation_merkle_root = Hash::compute_from(
@@ -152,6 +171,7 @@ pub fn create_block(
             parents: vec![],
             operation_merkle_root,
             endorsements: vec![],
+            denunciations,
         },
         BlockHeaderSerializer::new(),
         &creator_keypair,

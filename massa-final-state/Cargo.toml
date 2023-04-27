@@ -36,3 +36,4 @@ testing = [
     "massa_pos_exports/testing",
 ]
 sandbox = ["massa_async_pool/sandbox"]
+create_snapshot = []

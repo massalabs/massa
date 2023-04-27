@@ -6,9 +6,7 @@ use crate::controller_impl::{Command, PoolManagerImpl};
 use crate::denunciation_pool::DenunciationPool;
 use crate::operation_pool::OperationPool;
 use crate::{controller_impl::PoolControllerImpl, endorsement_pool::EndorsementPool};
-use crossbeam_channel::Sender;
 use massa_execution_exports::ExecutionController;
-use massa_models::denunciation::DenunciationPrecursor;
 use massa_pool_exports::PoolConfig;
 use massa_pool_exports::{PoolChannels, PoolController, PoolManager};
 use massa_storage::Storage;
@@ -52,7 +50,9 @@ impl EndorsementPoolThread {
         loop {
             match self.receiver.recv() {
                 Err(RecvError) => break,
-                Ok(Command::Stop) => break,
+                Ok(Command::Stop) => {
+                    break;
+                }
                 Ok(Command::AddItems(endorsements)) => {
                     self.endorsement_pool.write().add_endorsements(endorsements)
                 }
@@ -100,7 +100,9 @@ impl OperationPoolThread {
         loop {
             match self.receiver.recv() {
                 Err(RecvError) => break,
-                Ok(Command::Stop) => break,
+                Ok(Command::Stop) => {
+                    break;
+                }
                 Ok(Command::AddItems(operations)) => {
                     self.operation_pool.write().add_operations(operations)
                 }
@@ -140,26 +142,31 @@ impl DenunciationPoolThread {
                 };
                 this.run()
             })
-            .expect("failed to spawn thread : operation-pool")
+            .expect("failed to spawn thread : denunciation-pool")
     }
 
     /// Run the thread.
     fn run(self) {
         loop {
             match self.receiver.recv() {
-                Err(RecvError) => break,
-                Ok(Command::Stop) => break,
-                Ok(Command::AddDenunciation(de)) => {
-                    self.denunciation_pool.write().add_denunciation(de)
+                Err(RecvError) => {
+                    break;
                 }
+                Ok(Command::Stop) => {
+                    break;
+                }
+                Ok(Command::AddDenunciationPrecursor(de_p)) => self
+                    .denunciation_pool
+                    .write()
+                    .add_denunciation_precursor(de_p),
+                Ok(Command::AddItems(endorsements)) => self
+                    .denunciation_pool
+                    .write()
+                    .add_endorsements(endorsements),
                 Ok(Command::NotifyFinalCsPeriods(final_cs_periods)) => self
                     .denunciation_pool
                     .write()
                     .notify_final_cs_periods(&final_cs_periods),
-                _ => {
-                    warn!("DenunciationPoolThread received an unexpected command");
-                    continue;
-                }
             };
         }
     }
@@ -172,7 +179,8 @@ pub fn start_pool_controller(
     storage: &Storage,
     execution_controller: Box<dyn ExecutionController>,
     channels: PoolChannels,
-    denunciation_factory_tx: Sender<DenunciationPrecursor>,
+    // denunciation_factory_tx: Sender<DenunciationPrecursor>,
+    // denunciation_factory_rx: Receiver<DenunciationPrecursor>,
 ) -> (Box<dyn PoolManager>, Box<dyn PoolController>) {
     let (operations_input_sender, operations_input_receiver) = sync_channel(config.channels_size);
     let (endorsements_input_sender, endorsements_input_receiver) =
@@ -182,15 +190,19 @@ pub fn start_pool_controller(
     let operation_pool = Arc::new(RwLock::new(OperationPool::init(
         config,
         storage,
-        execution_controller,
-        channels,
+        execution_controller.clone(),
+        channels.clone(),
     )));
     let endorsement_pool = Arc::new(RwLock::new(EndorsementPool::init(
         config,
         storage,
-        denunciation_factory_tx,
+        channels.clone(),
     )));
-    let denunciation_pool = Arc::new(RwLock::new(DenunciationPool::init(config)));
+    let denunciation_pool = Arc::new(RwLock::new(DenunciationPool::init(
+        config,
+        channels.selector.clone(),
+        execution_controller,
+    )));
     let controller = PoolControllerImpl {
         _config: config,
         operation_pool: operation_pool.clone(),

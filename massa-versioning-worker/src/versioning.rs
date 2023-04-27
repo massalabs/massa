@@ -467,6 +467,16 @@ impl MipStore {
         let mut lock = self.0.write();
         lock.update_network_version_stats(slot_timestamp, network_versions);
     }
+
+    #[allow(clippy::result_unit_err)]
+    pub fn update_with(
+        &mut self,
+        mip_store: &MipStore,
+    ) -> Result<(Vec<MipInfo>, Vec<MipInfo>), ()> {
+        let mut lock = self.0.write();
+        let lock_other = mip_store.0.read();
+        lock.update_with(lock_other.deref())
+    }
 }
 
 impl<const N: usize> TryFrom<([(MipInfo, MipState); N], MipStatsConfig)> for MipStore {
@@ -514,7 +524,11 @@ pub struct MipStoreRaw {
 impl MipStoreRaw {
     /// Update our store with another (usually after a bootstrap where we received another store)
     /// Return list of updated / added if update is successful
-    fn update_with(&mut self, store_raw: &MipStoreRaw) -> Result<(Vec<MipInfo>, Vec<MipInfo>), ()> {
+    #[allow(clippy::result_unit_err)]
+    pub fn update_with(
+        &mut self,
+        store_raw: &MipStoreRaw,
+    ) -> Result<(Vec<MipInfo>, Vec<MipInfo>), ()> {
         // iter over items in given store:
         // -> 2 cases:
         // * MipInfo is already in self store -> add to 'to_update' list

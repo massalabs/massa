@@ -3,6 +3,7 @@
 use crate::config::GrpcConfig;
 use crate::error::GrpcError;
 use futures_util::FutureExt;
+use hyper::Method;
 use massa_consensus_exports::{ConsensusChannels, ConsensusController};
 use massa_execution_exports::ExecutionController;
 use massa_pool_exports::{PoolChannels, PoolController};
@@ -14,6 +15,7 @@ use massa_storage::Storage;
 use tokio::sync::oneshot;
 use tonic::codec::CompressionEncoding;
 use tonic_web::GrpcWebLayer;
+use tower_http::cors::{Any, CorsLayer};
 use tracing::log::{info, warn};
 
 /// gRPC API content
@@ -75,22 +77,49 @@ impl MassaGrpc {
             .max_frame_size(config.max_frame_size);
 
         if config.accept_http1 {
-            let mut router_with_http1 = server_builder
-                .accept_http1(true)
-                .layer(GrpcWebLayer::new())
-                .add_service(svc);
+            if config.enable_cors {
+                let cors = CorsLayer::new()
+                    // Allow `GET`, `POST` and `OPTIONS` when accessing the resource
+                    .allow_methods([Method::GET, Method::POST, Method::OPTIONS])
+                    // Allow requests from any origin
+                    .allow_origin(Any)
+                    .allow_headers([hyper::header::CONTENT_TYPE]);
 
-            if config.enable_reflection {
-                let reflection_service = tonic_reflection::server::Builder::configure()
-                    .register_encoded_file_descriptor_set(FILE_DESCRIPTOR_SET)
-                    .build()?;
+                let mut router_with_http1 = server_builder
+                    .accept_http1(true)
+                    .layer(cors)
+                    .layer(GrpcWebLayer::new())
+                    .add_service(svc);
 
-                router_with_http1 = router_with_http1.add_service(reflection_service);
+                if config.enable_reflection {
+                    let reflection_service = tonic_reflection::server::Builder::configure()
+                        .register_encoded_file_descriptor_set(FILE_DESCRIPTOR_SET)
+                        .build()?;
+
+                    router_with_http1 = router_with_http1.add_service(reflection_service);
+                }
+
+                tokio::spawn(
+                    router_with_http1.serve_with_shutdown(config.bind, shutdown_recv.map(drop)),
+                );
+            } else {
+                let mut router_with_http1 = server_builder
+                    .accept_http1(true)
+                    .layer(GrpcWebLayer::new())
+                    .add_service(svc);
+
+                if config.enable_reflection {
+                    let reflection_service = tonic_reflection::server::Builder::configure()
+                        .register_encoded_file_descriptor_set(FILE_DESCRIPTOR_SET)
+                        .build()?;
+
+                    router_with_http1 = router_with_http1.add_service(reflection_service);
+                }
+
+                tokio::spawn(
+                    router_with_http1.serve_with_shutdown(config.bind, shutdown_recv.map(drop)),
+                );
             }
-
-            tokio::spawn(
-                router_with_http1.serve_with_shutdown(config.bind, shutdown_recv.map(drop)),
-            );
         } else {
             let mut router = server_builder.add_service(svc);
 
@@ -122,7 +151,7 @@ impl StopHandle {
         if let Err(e) = self.stop_cmd_sender.send(()) {
             warn!("gRPC API thread panicked: {:?}", e);
         } else {
-            info!("gRPC API finished cleanly");
+            info!("gRPC API stop signal sent successfully");
         }
     }
 }
