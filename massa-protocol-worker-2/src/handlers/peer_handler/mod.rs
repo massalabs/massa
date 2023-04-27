@@ -350,13 +350,8 @@ impl InitConnectionHandler for MassaHandshake {
         let mut buf = Vec::new();
         let msg = PeerManagementMessage::ListPeers(peers_to_send).into();
 
-        // todo unwrap
-        self.peer_mngt_msg_serializer
-            .serialize_id(&msg, &mut buf)
-            .unwrap();
-        self.peer_mngt_msg_serializer
-            .serialize(&msg, &mut buf)
-            .unwrap();
+        self.peer_mngt_msg_serializer.serialize_id(&msg, &mut buf)?;
+        self.peer_mngt_msg_serializer.serialize(&msg, &mut buf)?;
         endpoint.send(buf.as_slice())?;
 
         res
@@ -368,12 +363,20 @@ impl InitConnectionHandler for MassaHandshake {
         endpoint: &mut Endpoint,
         listeners: &HashMap<SocketAddr, TransportType>,
     ) -> PeerNetResult<()> {
-        // todo send list peers
         //TODO: Fix this clone
         let keypair = keypair.clone();
         let mut endpoint = endpoint.clone();
         let listeners = listeners.clone();
+        let db = self.peer_db.clone();
+        let serializer = self.peer_mngt_msg_serializer.clone();
         std::thread::spawn(move || {
+            let peers_to_send = db.read().get_rand_peers_to_send(100);
+            let mut buf = Vec::new();
+            let msg = PeerManagementMessage::ListPeers(peers_to_send).into();
+            serializer.serialize_id(&msg, &mut buf).unwrap();
+            serializer.serialize(&msg, &mut buf).unwrap();
+            endpoint.send(buf.as_slice()).unwrap();
+
             let mut bytes = PeerId::from_public_key(keypair.get_public_key()).to_bytes();
             //TODO: Add version in announce
             let listeners_announcement = Announcement::new(listeners.clone(), &keypair).unwrap();
