@@ -1255,18 +1255,18 @@
 
 <span class="kw">impl </span>SecureShareContent <span class="kw">for </span>Block {
     <span class="kw">fn </span>new_verifiable&lt;SC: Serializer&lt;<span class="self">Self</span>&gt;, U: Id&gt;(
-        content: <span class="self">Self</span>,
+        <span class="self">self</span>,
         content_serializer: SC,
         _keypair: <span class="kw-2">&amp;</span>KeyPair,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;SecureShare&lt;<span class="self">Self</span>, U&gt;, ModelsError&gt; {
         <span class="kw">let </span><span class="kw-2">mut </span>content_serialized = Vec::new();
-        content_serializer.serialize(<span class="kw-2">&amp;</span>content, <span class="kw-2">&amp;mut </span>content_serialized)<span class="question-mark">?</span>;
+        content_serializer.serialize(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="kw-2">&amp;mut </span>content_serialized)<span class="question-mark">?</span>;
         <span class="prelude-val">Ok</span>(SecureShare {
-            signature: content.header.signature,
-            content_creator_pub_key: content.header.content_creator_pub_key,
-            content_creator_address: content.header.content_creator_address,
-            id: U::new(<span class="kw-2">*</span>content.header.id.get_hash()),
-            content,
+            signature: <span class="self">self</span>.header.signature,
+            content_creator_pub_key: <span class="self">self</span>.header.content_creator_pub_key,
+            content_creator_address: <span class="self">self</span>.header.content_creator_address,
+            id: U::new(<span class="kw-2">*</span><span class="self">self</span>.header.id.get_hash()),
+            content: <span class="self">self</span>,
             serialized_data: content_serialized,
         })
     }

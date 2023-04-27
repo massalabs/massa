@@ -399,12 +399,6 @@
 <a href="#399" id="399">399</a>
 <a href="#400" id="400">400</a>
 <a href="#401" id="401">401</a>
-<a href="#402" id="402">402</a>
-<a href="#403" id="403">403</a>
-<a href="#404" id="404">404</a>
-<a href="#405" id="405">405</a>
-<a href="#406" id="406">406</a>
-<a href="#407" id="407">407</a>
 </pre><pre class="rust"><code><span class="kw">use </span>std::fmt::Display;
 
 <span class="kw">use crate</span>::{address::Address, error::ModelsError};
@@ -484,32 +478,27 @@
     <span class="doccomment">/// Using the provided key-pair, applies a cryptographic signature, and packages
     /// the data required to share and verify the data in a trust-free network of peers.
     </span><span class="kw">fn </span>new_verifiable&lt;Ser: Serializer&lt;<span class="self">Self</span>&gt;, ID: Id&gt;(
-        content: <span class="self">Self</span>,
+        <span class="self">self</span>,
         content_serializer: Ser,
         keypair: <span class="kw-2">&amp;</span>KeyPair,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;SecureShare&lt;<span class="self">Self</span>, ID&gt;, ModelsError&gt; {
         <span class="kw">let </span><span class="kw-2">mut </span>content_serialized = Vec::new();
-        content_serializer.serialize(<span class="kw-2">&amp;</span>content, <span class="kw-2">&amp;mut </span>content_serialized)<span class="question-mark">?</span>;
+        content_serializer.serialize(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="kw-2">&amp;mut </span>content_serialized)<span class="question-mark">?</span>;
         <span class="kw">let </span>public_key = keypair.get_public_key();
-        <span class="kw">let </span>hash = <span class="self">Self</span>::compute_hash(<span class="kw-2">&amp;</span>content, <span class="kw-2">&amp;</span>content_serialized, <span class="kw-2">&amp;</span>public_key);
+        <span class="kw">let </span>hash = <span class="self">Self</span>::compute_hash(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="kw-2">&amp;</span>content_serialized, <span class="kw-2">&amp;</span>public_key);
         <span class="kw">let </span>creator_address = Address::from_public_key(<span class="kw-2">&amp;</span>public_key);
         <span class="prelude-val">Ok</span>(SecureShare {
-            signature: content.sign(keypair, <span class="kw-2">&amp;</span>hash)<span class="question-mark">?</span>,
+            signature: <span class="self">self</span>.sign(keypair, <span class="kw-2">&amp;</span>hash)<span class="question-mark">?</span>,
             content_creator_pub_key: public_key,
             content_creator_address: creator_address,
-            content,
+            content: <span class="self">self</span>,
             serialized_data: content_serialized,
             id: ID::new(hash),
         })
     }
 
     <span class="doccomment">/// Compute hash
-    </span><span class="attr">#[allow(unused_variables)]
-    </span><span class="kw">fn </span>compute_hash(
-        content: <span class="kw-2">&amp;</span><span class="self">Self</span>, <span class="comment">// use only for Denounce able object
-        </span>content_serialized: <span class="kw-2">&amp;</span>[u8],
-        content_creator_pub_key: <span class="kw-2">&amp;</span>PublicKey,
-    ) -&gt; Hash {
+    </span><span class="kw">fn </span>compute_hash(<span class="kw-2">&amp;</span><span class="self">self</span>, content_serialized: <span class="kw-2">&amp;</span>[u8], content_creator_pub_key: <span class="kw-2">&amp;</span>PublicKey) -&gt; Hash {
         <span class="kw">let </span><span class="kw-2">mut </span>hash_data = Vec::new();
         hash_data.extend(content_creator_pub_key.to_bytes());
         hash_data.extend(content_serialized);
@@ -517,8 +506,7 @@
     }
 
     <span class="doccomment">/// Compute hash used for signature
-    </span><span class="attr">#[allow(unused_variables)]
-    </span><span class="kw">fn </span>compute_signed_hash(<span class="kw-2">&amp;</span><span class="self">self</span>, public_key: <span class="kw-2">&amp;</span>PublicKey, content_hash: <span class="kw-2">&amp;</span>Hash) -&gt; Hash {
+    </span><span class="kw">fn </span>compute_signed_hash(<span class="kw-2">&amp;</span><span class="self">self</span>, _public_key: <span class="kw-2">&amp;</span>PublicKey, content_hash: <span class="kw-2">&amp;</span>Hash) -&gt; Hash {
         <span class="kw-2">*</span>content_hash
     }
 
