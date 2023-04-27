@@ -364,32 +364,6 @@
 <a href="#364" id="364">364</a>
 <a href="#365" id="365">365</a>
 <a href="#366" id="366">366</a>
-<a href="#367" id="367">367</a>
-<a href="#368" id="368">368</a>
-<a href="#369" id="369">369</a>
-<a href="#370" id="370">370</a>
-<a href="#371" id="371">371</a>
-<a href="#372" id="372">372</a>
-<a href="#373" id="373">373</a>
-<a href="#374" id="374">374</a>
-<a href="#375" id="375">375</a>
-<a href="#376" id="376">376</a>
-<a href="#377" id="377">377</a>
-<a href="#378" id="378">378</a>
-<a href="#379" id="379">379</a>
-<a href="#380" id="380">380</a>
-<a href="#381" id="381">381</a>
-<a href="#382" id="382">382</a>
-<a href="#383" id="383">383</a>
-<a href="#384" id="384">384</a>
-<a href="#385" id="385">385</a>
-<a href="#386" id="386">386</a>
-<a href="#387" id="387">387</a>
-<a href="#388" id="388">388</a>
-<a href="#389" id="389">389</a>
-<a href="#390" id="390">390</a>
-<a href="#391" id="391">391</a>
-<a href="#392" id="392">392</a>
 </pre><pre class="rust"><code><span class="kw">use </span>std::fmt::Display;
 
 <span class="kw">use crate</span>::{address::Address, error::ModelsError};
@@ -448,21 +422,6 @@
 <span class="kw">where
     </span><span class="self">Self</span>: Sized + Display,
 {
-    <span class="doccomment">/// Sign the SecureShare given the content
-    </span><span class="kw">fn </span>sign(<span class="kw-2">&amp;</span><span class="self">self</span>, keypair: <span class="kw-2">&amp;</span>KeyPair, content_hash: <span class="kw-2">&amp;</span>Hash) -&gt; <span class="prelude-ty">Result</span>&lt;Signature, ModelsError&gt; {
-        <span class="prelude-val">Ok</span>(keypair.sign(content_hash)<span class="question-mark">?</span>)
-    }
-
-    <span class="doccomment">/// verify signature
-    </span><span class="kw">fn </span>verify_signature(
-        <span class="kw-2">&amp;</span><span class="self">self</span>,
-        public_key: <span class="kw-2">&amp;</span>PublicKey,
-        content_hash: <span class="kw-2">&amp;</span>Hash,
-        signature: <span class="kw-2">&amp;</span>Signature,
-    ) -&gt; <span class="prelude-ty">Result</span>&lt;(), ModelsError&gt; {
-        <span class="prelude-val">Ok</span>(public_key.verify_signature(content_hash, signature)<span class="question-mark">?</span>)
-    }
-
     <span class="doccomment">/// Using the provided key-pair, applies a cryptographic signature, and packages
     /// the data required to share and verify the data in a trust-free network of peers.
     </span><span class="kw">fn </span>new_verifiable&lt;Ser: Serializer&lt;<span class="self">Self</span>&gt;, ID: Id&gt;(
@@ -476,7 +435,7 @@
         <span class="kw">let </span>hash = <span class="self">Self</span>::compute_hash(<span class="kw-2">&amp;</span>content, <span class="kw-2">&amp;</span>content_serialized, <span class="kw-2">&amp;</span>public_key);
         <span class="kw">let </span>creator_address = Address::from_public_key(<span class="kw-2">&amp;</span>public_key);
         <span class="prelude-val">Ok</span>(SecureShare {
-            signature: content.sign(keypair, <span class="kw-2">&amp;</span>hash)<span class="question-mark">?</span>,
+            signature: keypair.sign(<span class="kw-2">&amp;</span>hash)<span class="question-mark">?</span>,
             content_creator_pub_key: public_key,
             content_creator_address: creator_address,
             content,
@@ -588,22 +547,11 @@
     </span>T: Display + SecureShareContent,
     ID: Id,
 {
-    <span class="doccomment">/// Sign the SecureShare given the content
-    </span><span class="kw">pub fn </span>sign(
-        keypair: <span class="kw-2">&amp;</span>KeyPair,
-        content_hash: <span class="kw-2">&amp;</span>Hash,
-        _content: <span class="kw-2">&amp;</span>T,
-    ) -&gt; <span class="prelude-ty">Result</span>&lt;Signature, ModelsError&gt; {
-        <span class="prelude-val">Ok</span>(keypair.sign(content_hash)<span class="question-mark">?</span>)
-    }
-
     <span class="doccomment">/// check if self has been signed by public key
     </span><span class="kw">pub fn </span>verify_signature(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span>&lt;(), ModelsError&gt; {
-        <span class="self">self</span>.content.verify_signature(
-            <span class="kw-2">&amp;</span><span class="self">self</span>.content_creator_pub_key,
-            <span class="self">self</span>.id.get_hash(),
-            <span class="kw-2">&amp;</span><span class="self">self</span>.signature,
-        )
+        <span class="prelude-val">Ok</span>(<span class="self">self
+            </span>.content_creator_pub_key
+            .verify_signature(<span class="self">self</span>.id.get_hash(), <span class="kw-2">&amp;</span><span class="self">self</span>.signature)<span class="question-mark">?</span>)
     }
 
     <span class="doccomment">/// get full serialized size
@@ -617,7 +565,7 @@
 
 <span class="comment">// NOTE FOR EXPLICATION: No content serializer because serialized data is already here.
 </span><span class="doccomment">/// Serializer for `SecureShare` structure
-</span><span class="attr">#[derive(Default)]
+</span><span class="attr">#[derive(Default, Clone)]
 </span><span class="kw">pub struct </span>SecureShareSerializer;
 
 <span class="kw">impl </span>SecureShareSerializer {

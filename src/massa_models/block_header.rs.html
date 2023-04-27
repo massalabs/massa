@@ -633,16 +633,12 @@
 <a href="#633" id="633">633</a>
 <a href="#634" id="634">634</a>
 <a href="#635" id="635">635</a>
-<a href="#636" id="636">636</a>
-<a href="#637" id="637">637</a>
 </pre><pre class="rust"><code><span class="kw">use </span><span class="kw">crate</span>::block_id::BlockId;
-<span class="kw">use </span><span class="kw">crate</span>::config::THREAD_COUNT;
 <span class="kw">use </span><span class="kw">crate</span>::denunciation::{Denunciation, DenunciationDeserializer, DenunciationSerializer};
 <span class="kw">use </span><span class="kw">crate</span>::endorsement::{
     Endorsement, EndorsementDeserializerLW, EndorsementId, EndorsementSerializer,
     EndorsementSerializerLW, SecureShareEndorsement,
 };
-<span class="kw">use </span><span class="kw">crate</span>::error::ModelsError;
 <span class="kw">use </span><span class="kw">crate</span>::secure_share::{
     SecureShare, SecureShareContent, SecureShareDeserializer, SecureShareSerializer,
 };
@@ -651,7 +647,7 @@
 <span class="kw">use </span>massa_serialization::{
     Deserializer, SerializeError, Serializer, U32VarIntDeserializer, U32VarIntSerializer,
 };
-<span class="kw">use </span>massa_signature::{KeyPair, PublicKey, Signature};
+<span class="kw">use </span>massa_signature::PublicKey;
 <span class="kw">use </span>nom::branch::alt;
 <span class="kw">use </span>nom::bytes::complete::tag;
 <span class="kw">use </span>nom::error::{context, ContextError, ParseError};
@@ -681,7 +677,11 @@
 <span class="comment">// TODO: gh-issue #3398
 </span><span class="attr">#[cfg(any(test, feature = <span class="string">&quot;testing&quot;</span>))]
 </span><span class="kw">impl </span>BlockHeader {
-    <span class="kw">fn </span>assert_invariants(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span>&lt;(), Box&lt;<span class="kw">dyn </span>std::error::Error&gt;&gt; {
+    <span class="kw">fn </span>assert_invariants(
+        <span class="kw-2">&amp;</span><span class="self">self</span>,
+        thread_count: u8,
+        endorsement_count: u32,
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;(), Box&lt;<span class="kw">dyn </span>std::error::Error&gt;&gt; {
         <span class="kw">if </span><span class="self">self</span>.slot.period == <span class="number">0 </span>{
             <span class="kw">if </span>!<span class="self">self</span>.parents.is_empty() {
                 <span class="kw">return </span><span class="prelude-val">Err</span>(<span class="string">&quot;Invariant broken: genesis block with parent(s)&quot;</span>.into());
@@ -690,12 +690,12 @@
                 <span class="kw">return </span><span class="prelude-val">Err</span>(<span class="string">&quot;Invariant broken: genesis block with endorsement(s)&quot;</span>.into());
             }
         } <span class="kw">else </span>{
-            <span class="kw">if </span><span class="self">self</span>.parents.len() != <span class="kw">crate</span>::config::THREAD_COUNT <span class="kw">as </span>usize {
+            <span class="kw">if </span><span class="self">self</span>.parents.len() != thread_count <span class="kw">as </span>usize {
                 <span class="kw">return </span><span class="prelude-val">Err</span>(
                     <span class="string">&quot;Invariant broken: non-genesis block with incorrect number of parents&quot;</span>.into(),
                 );
             }
-            <span class="kw">if </span><span class="self">self</span>.endorsements.len() &gt; <span class="kw">crate</span>::config::ENDORSEMENT_COUNT <span class="kw">as </span>usize {
+            <span class="kw">if </span><span class="self">self</span>.endorsements.len() &gt; endorsement_count <span class="kw">as </span>usize {
                 <span class="kw">return </span><span class="prelude-val">Err</span>(<span class="string">&quot;Invariant broken: endorsement count too high&quot;</span>.into());
             }
 
@@ -730,29 +730,19 @@
 </span><span class="kw">pub type </span>SecuredHeader = SecureShare&lt;BlockHeader, BlockId&gt;;
 
 <span class="kw">impl </span>SecureShareContent <span class="kw">for </span>BlockHeader {
-    <span class="doccomment">/// Sign the SecureShare given the content
-    </span><span class="kw">fn </span>sign(<span class="kw-2">&amp;</span><span class="self">self</span>, keypair: <span class="kw-2">&amp;</span>KeyPair, content_hash: <span class="kw-2">&amp;</span>Hash) -&gt; <span class="prelude-ty">Result</span>&lt;Signature, ModelsError&gt; {
-        <span class="kw">let </span><span class="kw-2">mut </span>signed_data: Vec&lt;u8&gt; = Vec::new();
-        signed_data.extend(keypair.get_public_key().to_bytes());
-        signed_data.extend(BlockHeaderDenunciationData::new(<span class="self">self</span>.slot).to_bytes());
-        signed_data.extend(content_hash.to_bytes());
-        <span class="kw">let </span>signed_hash = Hash::compute_from(<span class="kw-2">&amp;</span>signed_data);
-        <span class="prelude-val">Ok</span>(keypair.sign(<span class="kw-2">&amp;</span>signed_hash)<span class="question-mark">?</span>)
-    }
+    <span class="doccomment">/// Compute hash for Block header in SecuredHeader - taking care of Denunciation verification
+    </span><span class="kw">fn </span>compute_hash(
+        content: <span class="kw-2">&amp;</span><span class="self">Self</span>,
+        content_serialized: <span class="kw-2">&amp;</span>[u8],
+        content_creator_pub_key: <span class="kw-2">&amp;</span>PublicKey,
+    ) -&gt; Hash {
+        <span class="kw">let </span>de_data = BlockHeaderDenunciationData::new(content.slot);
 
-    <span class="doccomment">/// verify signature
-    </span><span class="kw">fn </span>verify_signature(
-        <span class="kw-2">&amp;</span><span class="self">self</span>,
-        public_key: <span class="kw-2">&amp;</span>PublicKey,
-        content_hash: <span class="kw-2">&amp;</span>Hash,
-        signature: <span class="kw-2">&amp;</span>Signature,
-    ) -&gt; <span class="prelude-ty">Result</span>&lt;(), ModelsError&gt; {
-        <span class="kw">let </span><span class="kw-2">mut </span>signed_data: Vec&lt;u8&gt; = Vec::new();
-        signed_data.extend(public_key.to_bytes());
-        signed_data.extend(BlockHeaderDenunciationData::new(<span class="self">self</span>.slot).to_bytes());
-        signed_data.extend(content_hash.to_bytes());
-        <span class="kw">let </span>signed_hash = Hash::compute_from(<span class="kw-2">&amp;</span>signed_data);
-        <span class="prelude-val">Ok</span>(public_key.verify_signature(<span class="kw-2">&amp;</span>signed_hash, signature)<span class="question-mark">?</span>)
+        <span class="kw">let </span><span class="kw-2">mut </span>hash_data = Vec::new();
+        hash_data.extend(content_creator_pub_key.to_bytes());
+        hash_data.extend(de_data.to_bytes());
+        hash_data.extend(Hash::compute_from(content_serialized).to_bytes());
+        Hash::compute_from(<span class="kw-2">&amp;</span>hash_data)
     }
 }
 
@@ -764,8 +754,13 @@
     <span class="comment">// TODO: gh-issue #3398
     </span><span class="attr">#[allow(dead_code)]
     #[cfg(any(test, feature = <span class="string">&quot;testing&quot;</span>))]
-    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>assert_invariants(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span>&lt;(), Box&lt;<span class="kw">dyn </span>std::error::Error&gt;&gt; {
-        <span class="self">self</span>.content.assert_invariants()<span class="question-mark">?</span>;
+    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>assert_invariants(
+        <span class="kw-2">&amp;</span><span class="self">self</span>,
+        thread_count: u8,
+        endorsement_count: u32,
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;(), Box&lt;<span class="kw">dyn </span>std::error::Error&gt;&gt; {
+        <span class="self">self</span>.content
+            .assert_invariants(thread_count, endorsement_count)<span class="question-mark">?</span>;
         <span class="self">self</span>.verify_signature()
             .map_err(|er| <span class="macro">format!</span>(<span class="string">&quot;{}&quot;</span>, er).into())
     }
@@ -1027,14 +1022,11 @@
                             ParseError::from_error_kind(rest, nom::error::ErrorKind::Fail),
                         )));
                     } <span class="kw">else if </span>slot.period != last_start_period
-                        &amp;&amp; parents.len() != THREAD_COUNT <span class="kw">as </span>usize
+                        &amp;&amp; parents.len() != <span class="self">self</span>.thread_count <span class="kw">as </span>usize
                     {
                         <span class="kw">return </span><span class="prelude-val">Err</span>(nom::Err::Failure(ContextError::add_context(
                             rest,
-                            <span class="macro">const_format::formatcp!</span>(
-                                <span class="string">&quot;Non-genesis block must have {} parents&quot;</span>,
-                                THREAD_COUNT
-                            ),
+                            <span class="string">&quot;Non-genesis block must have same numbers of parents as threads count&quot;</span>,
                             ParseError::from_error_kind(rest, nom::error::ErrorKind::Fail),
                         )));
                     }
@@ -1059,7 +1051,9 @@
 
             <span class="comment">// TODO: gh-issue #3398
             </span><span class="attr">#[cfg(any(test, feature = <span class="string">&quot;testing&quot;</span>))]
-            </span>res.assert_invariants().unwrap();
+            </span>res.assert_invariants(<span class="self">self</span>.thread_count, <span class="self">self</span>.endorsement_count)
+                .unwrap();
+
             <span class="kw">return </span><span class="prelude-val">Ok</span>((
                 <span class="kw-2">&amp;</span>rest[<span class="number">2</span>..], <span class="comment">// Because there is 0 endorsements &amp; 0 denunciations, we have a remaining [0, 0] in rest and we don&#39;t need it
                 </span>res,
@@ -1134,7 +1128,9 @@
 
         <span class="comment">// TODO: gh-issue #3398
         </span><span class="attr">#[cfg(any(test, feature = <span class="string">&quot;testing&quot;</span>))]
-        </span>header.assert_invariants().unwrap();
+        </span>header
+            .assert_invariants(<span class="self">self</span>.thread_count, <span class="self">self</span>.endorsement_count)
+            .unwrap();
 
         <span class="prelude-val">Ok</span>((rest, header))
     }
