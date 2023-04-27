@@ -274,7 +274,7 @@ impl ConsensusController for ConsensusControllerImpl {
         if let Some(verifiable_block) = block_storage.read_blocks().get(&block_id) {
             if let Ok(de_p) = DenunciationPrecursor::try_from(&verifiable_block.content.header) {
                 self.channels
-                    .pool_command_sender
+                    .pool_controller
                     .add_denunciation_precursor(de_p);
             }
         }
@@ -305,7 +305,7 @@ impl ConsensusController for ConsensusControllerImpl {
 
         if let Ok(de_p) = DenunciationPrecursor::try_from(&header) {
             self.channels
-                .pool_command_sender
+                .pool_controller
                 .add_denunciation_precursor(de_p);
         } else {
             warn!(

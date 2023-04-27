@@ -4,7 +4,7 @@ use std::{
 };
 
 use crossbeam::channel::{Receiver, Sender};
-use massa_protocol_exports_2::ProtocolError;
+use massa_protocol_exports::ProtocolError;
 use parking_lot::RwLock;
 use peernet::{
     messages::{
@@ -65,7 +65,7 @@ impl ActiveConnectionsTrait for SharedMockActiveConnections {
         _message_serializer: &crate::messages::MessagesSerializer,
         message: Message,
         _high_priority: bool,
-    ) -> Result<(), massa_protocol_exports_2::ProtocolError> {
+    ) -> Result<(), massa_protocol_exports::ProtocolError> {
         self.read()
             .connections
             .get(peer_id)
@@ -173,7 +173,7 @@ impl NetworkController for MockNetworkController {
         &mut self,
         _transport_type: peernet::transports::TransportType,
         _addr: std::net::SocketAddr,
-    ) -> Result<(), massa_protocol_exports_2::ProtocolError> {
+    ) -> Result<(), massa_protocol_exports::ProtocolError> {
         Ok(())
     }
 
@@ -181,7 +181,7 @@ impl NetworkController for MockNetworkController {
         &mut self,
         _transport_type: peernet::transports::TransportType,
         _addr: std::net::SocketAddr,
-    ) -> Result<(), massa_protocol_exports_2::ProtocolError> {
+    ) -> Result<(), massa_protocol_exports::ProtocolError> {
         Ok(())
     }
 
@@ -190,7 +190,7 @@ impl NetworkController for MockNetworkController {
         _addr: std::net::SocketAddr,
         _timeout: std::time::Duration,
         _out_connection_config: &peernet::transports::OutConnectionConfig,
-    ) -> Result<(), massa_protocol_exports_2::ProtocolError> {
+    ) -> Result<(), massa_protocol_exports::ProtocolError> {
         Ok(())
     }
 

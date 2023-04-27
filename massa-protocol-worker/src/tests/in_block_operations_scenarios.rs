@@ -14,7 +14,7 @@ use massa_models::{
     secure_share::{Id, SecureShare, SecureShareContent},
     slot::Slot,
 };
-use massa_protocol_exports_2::{test_exports::tools, ProtocolConfig};
+use massa_protocol_exports::{test_exports::tools, ProtocolConfig};
 use massa_signature::KeyPair;
 use massa_time::MassaTime;
 use peernet::peer_id::PeerId;

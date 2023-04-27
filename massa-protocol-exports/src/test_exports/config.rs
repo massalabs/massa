@@ -3,7 +3,6 @@ use std::collections::HashMap;
 use crate::ProtocolConfig;
 use massa_models::config::ENDORSEMENT_COUNT;
 use massa_time::MassaTime;
-use peernet::types::KeyPair;
 use tempfile::NamedTempFile;
 
 impl Default for ProtocolConfig {
@@ -11,7 +10,7 @@ impl Default for ProtocolConfig {
         ProtocolConfig {
             max_in_connections: 10,
             max_out_connections: 10,
-            keypair: KeyPair::generate(),
+            keypair_file: "".into(),
             ask_block_timeout: 500.into(),
             max_known_blocks_saved_size: 300,
             max_known_blocks_size: 100,
@@ -71,6 +70,7 @@ impl Default for ProtocolConfig {
             max_endorsements_per_message: 1000,
             max_size_listeners_per_peer: 100,
             max_size_peers_announcement: 100,
+            last_start_period: 0,
             debug: true,
         }
     }

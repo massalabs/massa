@@ -5,7 +5,7 @@ use massa_models::{
     block::SecureShareBlock, block_id::BlockId, operation::SecureShareOperation,
     prehash::PreHashSet,
 };
-use massa_protocol_exports_2::ProtocolController;
+use massa_protocol_exports::ProtocolController;
 use peernet::peer_id::PeerId;
 
 use crate::{

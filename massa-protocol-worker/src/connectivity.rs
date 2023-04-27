@@ -15,10 +15,9 @@ use std::{num::NonZeroUsize, sync::Arc};
 use std::{thread::JoinHandle, time::Duration};
 use tracing::warn;
 
-use crate::handlers::peer_handler::models::SharedPeerDB;
+use crate::{handlers::peer_handler::models::SharedPeerDB, worker::ProtocolChannels};
 use crate::handlers::peer_handler::PeerManagementHandler;
 use crate::{
-    controller::ProtocolControllerImpl,
     handlers::{
         block_handler::{cache::BlockCache, BlockHandler},
         endorsement_handler::{cache::EndorsementCache, EndorsementHandler},
@@ -32,7 +31,6 @@ pub enum ConnectivityCommand {
     Stop,
 }
 
-#[allow(clippy::type_complexity)]
 #[allow(clippy::too_many_arguments)]
 pub(crate) fn start_connectivity_thread(
     config: ProtocolConfig,
@@ -45,38 +43,20 @@ pub(crate) fn start_connectivity_thread(
     channel_peers: (Sender<PeerMessageTuple>, Receiver<PeerMessageTuple>),
     peer_db: SharedPeerDB,
     storage: Storage,
-) -> Result<
-    (
-        (Sender<ConnectivityCommand>, JoinHandle<()>),
-        ProtocolControllerImpl,
-    ),
-    ProtocolError,
-> {
+    protocol_channels: ProtocolChannels,
+) -> Result<(Sender<ConnectivityCommand>, JoinHandle<()>), ProtocolError> {
     let initial_peers = serde_json::from_str::<HashMap<PeerId, HashMap<SocketAddr, TransportType>>>(
         &std::fs::read_to_string(&config.initial_peers)?,
     )?;
     let (sender, receiver) = bounded(config.max_size_channel_commands_connectivity);
-    // Channels handlers <-> outside world
-    let (sender_operations_retrieval_ext, receiver_operations_retrieval_ext) =
-        bounded(config.max_size_channel_commands_retrieval_operations);
-    let (sender_operations_propagation_ext, receiver_operations_propagation_ext) =
-        bounded(config.max_size_channel_commands_propagation_operations);
-    let (sender_endorsements_retrieval_ext, receiver_endorsements_retrieval_ext) =
-        bounded(config.max_size_channel_commands_retrieval_endorsements);
-    let (sender_endorsements_propagation_ext, receiver_endorsements_propagation_ext) =
-        bounded(config.max_size_channel_commands_propagation_endorsements);
-    let (sender_blocks_propagation_ext, receiver_blocks_propagation_ext) =
-        bounded(config.max_size_channel_commands_retrieval_blocks);
-    let (sender_blocks_retrieval_ext, receiver_blocks_retrieval_ext) =
-        bounded(config.max_size_channel_commands_propagation_blocks);
 
     let handle = std::thread::Builder::new()
     .name("protocol-connectivity".to_string())
     .spawn({
-        let sender_endorsements_propagation_ext = sender_endorsements_propagation_ext.clone();
-        let sender_blocks_retrieval_ext = sender_blocks_retrieval_ext.clone();
-        let sender_blocks_propagation_ext = sender_blocks_propagation_ext.clone();
-        let sender_operations_propagation_ext = sender_operations_propagation_ext.clone();
+        let sender_endorsements_propagation_ext = protocol_channels.endorsement_handler_propagation.0.clone();
+        let sender_blocks_retrieval_ext = protocol_channels.block_handler_retrieval.0.clone();
+        let sender_blocks_propagation_ext = protocol_channels.block_handler_propagation.0.clone();
+        let sender_operations_propagation_ext = protocol_channels.operation_handler_propagation.0.clone();
         move || {
             for (addr, transport) in &config.listeners {
                 network_controller
@@ -119,10 +99,10 @@ pub(crate) fn start_connectivity_thread(
                 operation_cache.clone(),
                 network_controller.get_active_connections(),
                 channel_operations.1,
-                sender_operations_retrieval_ext,
-                receiver_operations_retrieval_ext,
+                protocol_channels.operation_handler_retrieval.0.clone(),
+                protocol_channels.operation_handler_retrieval.1.clone(),
                 sender_operations_propagation_ext.clone(),
-                receiver_operations_propagation_ext,
+                protocol_channels.operation_handler_propagation.1.clone(),
                 peer_management_handler.sender.command_sender.clone(),
             );
             let mut endorsement_handler = EndorsementHandler::new(
@@ -132,10 +112,10 @@ pub(crate) fn start_connectivity_thread(
                 config.clone(),
                 network_controller.get_active_connections(),
                 channel_endorsements.1,
-                sender_endorsements_retrieval_ext,
-                receiver_endorsements_retrieval_ext,
+                protocol_channels.endorsement_handler_retrieval.0.clone(),
+                protocol_channels.endorsement_handler_retrieval.1.clone(),
                 sender_endorsements_propagation_ext,
-                receiver_endorsements_propagation_ext,
+                protocol_channels.endorsement_handler_propagation.1.clone(),
                 peer_management_handler.sender.command_sender.clone(),
             );
             let mut block_handler = BlockHandler::new(
@@ -144,8 +124,8 @@ pub(crate) fn start_connectivity_thread(
                 pool_controller,
                 channel_blocks.1,
                 sender_blocks_retrieval_ext,
-                receiver_blocks_retrieval_ext,
-                receiver_blocks_propagation_ext,
+                protocol_channels.block_handler_retrieval.1.clone(),
+                protocol_channels.block_handler_propagation.1.clone(),
                 sender_blocks_propagation_ext,
                 sender_operations_propagation_ext,
                 peer_management_handler.sender.command_sender.clone(),
@@ -219,11 +199,5 @@ pub(crate) fn start_connectivity_thread(
     }).expect("OS failed to start connectivity thread");
 
     // Start controller
-    let controller = ProtocolControllerImpl::new(
-        sender_blocks_retrieval_ext,
-        sender_blocks_propagation_ext,
-        sender_operations_propagation_ext,
-        sender_endorsements_propagation_ext,
-    );
-    Ok(((sender, handle), controller))
+    Ok((sender, handle))
 }

@@ -193,7 +193,7 @@ pub struct ConsensusSettings {
 }
 
 /// Protocol Configuration, read from toml user configuration file
-#[derive(Debug, Deserialize, Clone, Copy)]
+#[derive(Debug, Deserialize, Clone)]
 pub struct ProtocolSettings {
     /// after `ask_block_timeout` milliseconds we try to ask a block to another node
     pub ask_block_timeout: MassaTime,
@@ -233,6 +233,24 @@ pub struct ProtocolSettings {
     pub max_operations_propagation_time: MassaTime,
     /// Time threshold after which operation are not propagated
     pub max_endorsements_propagation_time: MassaTime,
+    /// Path for initial peers
+    pub initial_peers_file: PathBuf,
+    /// Keypair
+    pub keypair_file: PathBuf,
+    /// Ip we are bind to listen to
+    pub bind: SocketAddr,
+    /// Ip seen by others. If none the bind ip is used
+    pub routable_ip: Option<IpAddr>,
+    /// Port we are bind to connect to
+    pub protocol_port: u16,
+    /// Time threshold to have a connection to a node
+    pub connect_timeout: MassaTime,
+    /// Max number of connection in
+    pub max_incoming_connections: usize,
+    /// Max number of connection out
+    pub max_outgoing_connections: usize,
+    /// Number of tester threads
+    pub thread_tester_count: u8,
 }
 
 /// gRPC settings

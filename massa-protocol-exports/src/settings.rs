@@ -4,14 +4,13 @@ use std::{collections::HashMap, net::SocketAddr, path::PathBuf};
 
 use massa_time::MassaTime;
 use peernet::transports::TransportType;
-use peernet::types::KeyPair;
 use serde::Deserialize;
 
 /// Dynamic protocol configuration mix in static settings and constants configurations.
 #[derive(Debug, Deserialize, Clone)]
 pub struct ProtocolConfig {
     /// self keypair
-    pub keypair: KeyPair,
+    pub keypair_file: PathBuf,
     /// listeners from where we can receive messages
     pub listeners: HashMap<SocketAddr, TransportType>,
     /// initial peers path
@@ -59,9 +58,9 @@ pub struct ProtocolConfig {
     /// Maximum time we keep an operation in the storage
     pub max_operation_storage_time: MassaTime,
     /// Maximum of operations sent in one message.
-    pub max_operations_per_message: u32,
+    pub max_operations_per_message: u64,
     /// Maximum of operations sent in one block.
-    pub max_operations_per_block: u64,
+    pub max_operations_per_block: u32,
     /// Maximum size in bytes of all serialized operations size in a block
     pub max_serialized_operations_size_per_block: usize,
     /// Controller channel size
@@ -130,6 +129,8 @@ pub struct ProtocolConfig {
     pub max_size_peers_announcement: u64,
     /// Maximum number of listeners per peer
     pub max_size_listeners_per_peer: u64,
+    /// Last start period
+    pub last_start_period: u64,
     /// debug prints
     pub debug: bool,
 }

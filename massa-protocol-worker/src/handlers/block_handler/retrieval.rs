@@ -107,7 +107,7 @@ impl RetrievalThread {
                 thread_count: self.config.thread_count,
                 endorsement_count: self.config.endorsement_count,
                 block_infos_length_max: self.config.max_size_block_infos,
-                max_operations_per_block: self.config.max_operations_per_block as u32,
+                max_operations_per_block: self.config.max_operations_per_block,
                 max_datastore_value_length: self.config.max_size_value_datastore,
                 max_function_name_length: self.config.max_size_function_name,
                 max_parameters_size: self.config.max_size_call_sc_parameter,
@@ -115,7 +115,7 @@ impl RetrievalThread {
                 max_op_datastore_key_length: self.config.max_op_datastore_key_length,
                 max_op_datastore_value_length: self.config.max_op_datastore_value_length,
                 max_denunciations_in_block_header: self.config.max_denunciations_in_block_header,
-                last_start_period: None,
+                last_start_period: Some(self.config.last_start_period),
             });
         loop {
             select! {

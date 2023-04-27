@@ -15,9 +15,7 @@ use massa_pool_exports::{
     test_exports::{MockPoolController, PoolEventReceiver},
     PoolController,
 };
-use massa_protocol_exports_2::{
-    ProtocolConfig, ProtocolController, ProtocolError, ProtocolManager,
-};
+use massa_protocol_exports::{ProtocolConfig, ProtocolController, ProtocolError, ProtocolManager};
 use massa_serialization::U64VarIntDeserializer;
 use massa_storage::Storage;
 use parking_lot::RwLock;

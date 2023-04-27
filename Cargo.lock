@@ -2378,6 +2378,7 @@ dependencies = [
  "massa_wallet",
  "parking_lot",
  "paw",
+ "peernet",
  "serde",
  "serde_json",
  "structopt",

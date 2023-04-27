@@ -73,8 +73,8 @@ impl RetrievalThread {
     fn run(&mut self) {
         let mut operation_message_deserializer =
             OperationMessageDeserializer::new(OperationMessageDeserializerArgs {
-                max_operations_prefix_ids: self.config.max_operations_per_message,
-                max_operations: self.config.max_operations_per_message,
+                max_operations_prefix_ids: self.config.max_operations_per_message as u32,
+                max_operations: self.config.max_operations_per_message as u32,
                 max_datastore_value_length: self.config.max_op_datastore_value_length,
                 max_function_name_length: self.config.max_size_function_name,
                 max_parameters_size: self.config.max_size_call_sc_parameter,

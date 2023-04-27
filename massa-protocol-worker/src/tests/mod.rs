@@ -2,7 +2,7 @@ use std::{collections::HashMap, time::Duration};
 
 use massa_consensus_exports::test_exports::ConsensusControllerImpl;
 use massa_pool_exports::test_exports::MockPoolController;
-use massa_protocol_exports_2::ProtocolConfig;
+use massa_protocol_exports::ProtocolConfig;
 use massa_storage::Storage;
 use peernet::{peer_id::PeerId, transports::TransportType};
 use tempfile::NamedTempFile;
