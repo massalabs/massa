@@ -278,6 +278,7 @@ impl UserAddress {
 
     /// Computes the address associated with the given public key
     fn from_public_key(public_key: &PublicKey) -> Self {
+        // TODO HERE
         UserAddressVariant!["0"](<UserAddress!["0"]>::from_public_key(public_key))
     }
 
@@ -368,7 +369,7 @@ impl UserAddress {
 impl UserAddress {
     /// Computes address associated with given public key
     pub fn from_public_key(public_key: &PublicKey) -> Self {
-        UserAddress(Hash::compute_from(public_key.to_bytes()))
+        UserAddress(Hash::compute_from(&public_key.to_bytes()))
     }
 }
 

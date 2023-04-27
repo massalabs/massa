@@ -3066,6 +3066,7 @@ dependencies = [
  "serde_json",
  "serial_test 1.0.0",
  "thiserror",
+ "transition",
 ]
 
 [[package]]

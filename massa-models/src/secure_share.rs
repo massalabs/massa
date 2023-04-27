@@ -98,8 +98,8 @@ where
         serialized_content: &[u8],
         buffer: &mut Vec<u8>,
     ) -> Result<(), SerializeError> {
-        buffer.extend(signature.into_bytes());
-        buffer.extend(creator_public_key.into_bytes());
+        buffer.extend(signature.to_bytes());
+        buffer.extend(creator_public_key.to_bytes());
         buffer.extend(serialized_content);
         Ok(())
     }
