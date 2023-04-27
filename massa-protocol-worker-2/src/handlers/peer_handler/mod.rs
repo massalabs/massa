@@ -95,7 +95,7 @@ impl PeerManagementHandler {
 
                             for peer_id in &active_connections.get_peer_ids_connected() {
                                if let Err(e) = active_connections
-                                    .send_to_peer(&peer_id, &message_serializer, msg.clone().into(), false) {
+                                    .send_to_peer(peer_id, &message_serializer, msg.clone().into(), false) {
                                     error!("error sending ListPeers message to peer: {:?}", e);
                                }
                             }

@@ -32,7 +32,9 @@ pub enum ConnectivityCommand {
     Stop,
 }
 
-pub fn start_connectivity_thread(
+#[allow(clippy::type_complexity)]
+#[allow(clippy::too_many_arguments)]
+pub(crate) fn start_connectivity_thread(
     config: ProtocolConfig,
     mut network_controller: Box<dyn NetworkController>,
     consensus_controller: Box<dyn ConsensusController>,
@@ -79,7 +81,7 @@ pub fn start_connectivity_thread(
             for (addr, transport) in &config.listeners {
                 network_controller
                     .start_listener(*transport, *addr)
-                    .expect(&format!(
+                    .unwrap_or_else(|_| panic!(
                         "Failed to start listener {:?} of transport {:?} in protocol",
                         addr, transport
                     ));
@@ -195,7 +197,7 @@ pub fn start_connectivity_thread(
                                 }
                                 {
                                     {
-                                        if !network_controller.get_active_connections().check_addr_accepted(&addr) {
+                                        if !network_controller.get_active_connections().check_addr_accepted(addr) {
                                             println!("Address already connected");
                                             continue;
                                         }

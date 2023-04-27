@@ -464,6 +464,7 @@ impl RetrievalThread {
     }
 }
 
+#[allow(clippy::too_many_arguments)]
 pub fn start_retrieval_thread(
     receiver: Receiver<(PeerId, u64, Vec<u8>)>,
     pool_controller: Box<dyn PoolController>,

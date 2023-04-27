@@ -244,6 +244,7 @@ impl RetrievalThread {
     }
 }
 
+#[allow(clippy::too_many_arguments)]
 pub fn start_retrieval_thread(
     receiver: Receiver<PeerMessageTuple>,
     receiver_ext: Receiver<EndorsementHandlerRetrievalCommand>,

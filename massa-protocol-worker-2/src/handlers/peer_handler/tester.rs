@@ -148,6 +148,7 @@ pub struct Tester {
     pub handler: Option<JoinHandle<()>>,
 }
 
+#[allow(clippy::type_complexity)]
 impl Tester {
     pub fn run(
         config: &ProtocolConfig,

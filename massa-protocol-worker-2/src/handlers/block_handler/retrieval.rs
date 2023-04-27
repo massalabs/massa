@@ -447,9 +447,9 @@ impl RetrievalThread {
         {
             let mut cache_write = self.cache.write();
             if let Some(block_header) = cache_write.checked_headers.get(&block_id).cloned() {
-                cache_write.insert_blocks_known(&from_peer_id, &[block_id], true, Instant::now());
+                cache_write.insert_blocks_known(from_peer_id, &[block_id], true, Instant::now());
                 cache_write.insert_blocks_known(
-                    &from_peer_id,
+                    from_peer_id,
                     &block_header.content.parents,
                     true,
                     Instant::now(),
@@ -513,9 +513,9 @@ impl RetrievalThread {
         {
             let mut cache_write = self.cache.write();
             cache_write.checked_headers.put(block_id, header.clone());
-            cache_write.insert_blocks_known(&from_peer_id, &[block_id], true, Instant::now());
+            cache_write.insert_blocks_known(from_peer_id, &[block_id], true, Instant::now());
             cache_write.insert_blocks_known(
-                &from_peer_id,
+                from_peer_id,
                 &header.content.parents,
                 true,
                 Instant::now(),
@@ -1249,6 +1249,7 @@ impl RetrievalThread {
     }
 }
 
+#[allow(clippy::too_many_arguments)]
 pub fn start_retrieval_thread(
     active_connections: Box<dyn ActiveConnectionsTrait>,
     consensus_controller: Box<dyn ConsensusController>,

@@ -32,6 +32,7 @@ pub struct OperationHandler {
 }
 
 impl OperationHandler {
+    #[allow(clippy::too_many_arguments)]
     pub fn new(
         pool_controller: Box<dyn PoolController>,
         storage: Storage,

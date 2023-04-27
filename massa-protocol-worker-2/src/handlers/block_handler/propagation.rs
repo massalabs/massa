@@ -106,7 +106,7 @@ impl PropagationThread {
                                     if !cond.map_or_else(|| false, |v| v.0) {
                                         massa_trace!("protocol.protocol_worker.process_command.integrated_block.send_header", { "peer_id": peer_id, "block_id": block_id});
                                         if let Err(err) = self.active_connections.send_to_peer(
-                                            &peer_id,
+                                            peer_id,
                                             &self.block_serializer,
                                             BlockMessage::BlockHeader(header.clone()).into(),
                                             true,

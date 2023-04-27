@@ -25,6 +25,7 @@ use crate::{
 /// * `config`: protocol settings
 /// * `consensus_controller`: interact with consensus module
 /// * `storage`: Shared storage to fetch data that are fetch across all modules
+#[allow(clippy::type_complexity)]
 pub fn start_protocol_controller(
     config: ProtocolConfig,
     consensus_controller: Box<dyn ConsensusController>,

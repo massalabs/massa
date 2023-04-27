@@ -77,6 +77,12 @@ pub struct MessagesSerializer {
     peer_management_message_serializer: Option<PeerManagementMessageSerializer>,
 }
 
+impl Default for MessagesSerializer {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl MessagesSerializer {
     pub fn new() -> Self {
         Self {
