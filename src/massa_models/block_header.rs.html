@@ -624,6 +624,34 @@
 <a href="#624" id="624">624</a>
 <a href="#625" id="625">625</a>
 <a href="#626" id="626">626</a>
+<a href="#627" id="627">627</a>
+<a href="#628" id="628">628</a>
+<a href="#629" id="629">629</a>
+<a href="#630" id="630">630</a>
+<a href="#631" id="631">631</a>
+<a href="#632" id="632">632</a>
+<a href="#633" id="633">633</a>
+<a href="#634" id="634">634</a>
+<a href="#635" id="635">635</a>
+<a href="#636" id="636">636</a>
+<a href="#637" id="637">637</a>
+<a href="#638" id="638">638</a>
+<a href="#639" id="639">639</a>
+<a href="#640" id="640">640</a>
+<a href="#641" id="641">641</a>
+<a href="#642" id="642">642</a>
+<a href="#643" id="643">643</a>
+<a href="#644" id="644">644</a>
+<a href="#645" id="645">645</a>
+<a href="#646" id="646">646</a>
+<a href="#647" id="647">647</a>
+<a href="#648" id="648">648</a>
+<a href="#649" id="649">649</a>
+<a href="#650" id="650">650</a>
+<a href="#651" id="651">651</a>
+<a href="#652" id="652">652</a>
+<a href="#653" id="653">653</a>
+<a href="#654" id="654">654</a>
 </pre><pre class="rust"><code><span class="kw">use </span><span class="kw">crate</span>::block_id::BlockId;
 <span class="kw">use </span><span class="kw">crate</span>::config::THREAD_COUNT;
 <span class="kw">use </span><span class="kw">crate</span>::denunciation::{Denunciation, DenunciationDeserializer, DenunciationSerializer};
@@ -718,19 +746,13 @@
 </span><span class="kw">pub type </span>SecuredHeader = SecureShare&lt;BlockHeader, BlockId&gt;;
 
 <span class="kw">impl </span>SecureShareContent <span class="kw">for </span>BlockHeader {
-    <span class="doccomment">/// Compute hash for Block header in SecuredHeader - taking care of Denunciation verification
-    </span><span class="kw">fn </span>compute_hash(
-        content: <span class="kw-2">&amp;</span><span class="self">Self</span>,
-        content_serialized: <span class="kw-2">&amp;</span>[u8],
-        content_creator_pub_key: <span class="kw-2">&amp;</span>PublicKey,
-    ) -&gt; Hash {
-        <span class="kw">let </span>de_data = BlockHeaderDenunciationData::new(content.slot);
-
-        <span class="kw">let </span><span class="kw-2">mut </span>hash_data = Vec::new();
-        hash_data.extend(content_creator_pub_key.to_bytes());
-        hash_data.extend(de_data.to_bytes());
-        hash_data.extend(Hash::compute_from(content_serialized).to_bytes());
-        Hash::compute_from(<span class="kw-2">&amp;</span>hash_data)
+    <span class="doccomment">/// compute the signed hash
+    </span><span class="kw">fn </span>compute_signed_hash(<span class="kw-2">&amp;</span><span class="self">self</span>, public_key: <span class="kw-2">&amp;</span>PublicKey, content_hash: <span class="kw-2">&amp;</span>Hash) -&gt; Hash {
+        <span class="kw">let </span><span class="kw-2">mut </span>signed_data: Vec&lt;u8&gt; = Vec::new();
+        signed_data.extend(public_key.to_bytes());
+        signed_data.extend(BlockHeaderDenunciationData::new(<span class="self">self</span>.slot).to_bytes());
+        signed_data.extend(content_hash.to_bytes());
+        Hash::compute_from(<span class="kw-2">&amp;</span>signed_data)
     }
 }
 
@@ -1185,7 +1207,7 @@
     <span class="kw">use </span><span class="kw">crate</span>::test_exports::{
         gen_block_headers_for_denunciation, gen_endorsements_for_denunciation,
     };
-    <span class="kw">use </span>massa_signature::KeyPair;
+    <span class="kw">use </span>massa_signature::{verify_signature_batch, KeyPair};
 
     <span class="comment">// Only for testing purpose
     </span><span class="kw">impl </span>PartialEq <span class="kw">for </span>BlockHeader {
@@ -1248,6 +1270,40 @@
 
         <span class="macro">assert_eq!</span>(rem.is_empty(), <span class="bool-val">true</span>);
         <span class="macro">assert_eq!</span>(block_header_1, block_header_der);
+    }
+
+    <span class="attr">#[test]
+    </span><span class="kw">fn </span>test_verify_sig_batch() {
+        <span class="kw">let </span>(_slot, _keypair, secured_header_1, secured_header_2, secured_header_3) =
+            gen_block_headers_for_denunciation(<span class="prelude-val">None</span>, <span class="prelude-val">None</span>);
+
+        <span class="comment">// Test with batch len == 1 (no // verif)
+        </span><span class="kw">let </span>batch_1 = [(
+            secured_header_1.compute_signed_hash(),
+            secured_header_1.signature,
+            secured_header_1.content_creator_pub_key,
+        )];
+        verify_signature_batch(<span class="kw-2">&amp;</span>batch_1).unwrap();
+
+        <span class="comment">// Test with batch len &gt; 1 (// verif)
+        </span><span class="kw">let </span>batch_2 = [
+            (
+                secured_header_1.compute_signed_hash(),
+                secured_header_1.signature,
+                secured_header_1.content_creator_pub_key,
+            ),
+            (
+                secured_header_2.compute_signed_hash(),
+                secured_header_2.signature,
+                secured_header_2.content_creator_pub_key,
+            ),
+            (
+                secured_header_3.compute_signed_hash(),
+                secured_header_3.signature,
+                secured_header_3.content_creator_pub_key,
+            ),
+        ];
+        verify_signature_batch(<span class="kw-2">&amp;</span>batch_2).unwrap();
     }
 }
 </code></pre></div>
