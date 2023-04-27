@@ -136,6 +136,7 @@ impl ExecutionState {
             active_history.clone(),
             module_cache.clone(),
             vesting_manager.clone(),
+            mip_store.clone(),
         )));
 
         // Instantiate the interface providing ABI access to the VM, share the execution context with it
@@ -836,6 +837,7 @@ impl ExecutionState {
             self.active_history.clone(),
             self.module_cache.clone(),
             self.vesting_manager.clone(),
+            self.mip_store.clone(),
         );
 
         // Get asynchronous messages to execute
@@ -1153,6 +1155,7 @@ impl ExecutionState {
             self.active_history.clone(),
             self.module_cache.clone(),
             self.vesting_manager.clone(),
+            self.mip_store.clone(),
         );
 
         // run the interpreter according to the target type

@@ -244,10 +244,11 @@ impl FromStr for Address {
 impl Address {
     /// Gets the associated thread. Depends on the `thread_count`
     /// Returns None for SC addresses, even though we may want to get_thread on them in the future
-    pub fn get_thread(&self, thread_count: u8) -> Option<u8> {
+    pub fn get_thread(&self, thread_count: u8) -> u8 {
         match self {
-            Address::User(addr) => Some(addr.get_thread(thread_count)),
-            Address::SC(_addr) => None,
+            Address::User(addr) => addr.get_thread(thread_count),
+            // CURRENT TODO: TMP BEHAVIOUR
+            Address::SC(_addr) => 0,
         }
     }
 

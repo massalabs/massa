@@ -7,11 +7,12 @@ use massa_models::address::{
     Address, SCAddress, SCAddressV0, SCAddressV1, UserAddress, UserAddressV0, UserAddressV1,
 };
 
-struct AddressFactory {
-    versioning_store: MipStore,
+#[derive(Clone)]
+pub struct AddressFactory {
+    pub mip_store: MipStore,
 }
 
-enum AddressArgs {
+pub enum AddressArgs {
     User { hash: Hash },
     SC { hash: Hash },
 }
@@ -26,7 +27,7 @@ impl VersioningFactory for AddressFactory {
     }
 
     fn get_versioning_store(&self) -> MipStore {
-        self.versioning_store.clone()
+        self.mip_store.clone()
     }
 
     fn create(
