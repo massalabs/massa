@@ -1,5 +1,5 @@
 use crossbeam::{
-    channel::{unbounded, Receiver, Sender},
+    channel::{bounded, unbounded, Receiver, Sender},
     select,
 };
 use massa_consensus_exports::ConsensusController;
@@ -53,16 +53,23 @@ pub fn start_connectivity_thread(
         &std::fs::read_to_string(&config.initial_peers)?,
     )?;
     let (sender, receiver) = unbounded();
-    //TODO: Bound the channel
     // Channels handlers <-> outside world
-    let (sender_operations_retrieval_ext, receiver_operations_retrieval_ext) = unbounded();
-    let (sender_operations_propagation_ext, receiver_operations_propagation_ext) = unbounded();
-    let (sender_endorsements_retrieval_ext, receiver_endorsements_retrieval_ext) = unbounded();
-    let (sender_endorsements_propagation_ext, receiver_endorsements_propagation_ext) = unbounded();
-    let (sender_blocks_propagation_ext, receiver_blocks_propagation_ext) = unbounded();
-    let (sender_blocks_retrieval_ext, receiver_blocks_retrieval_ext) = unbounded();
+    let (sender_operations_retrieval_ext, receiver_operations_retrieval_ext) =
+        bounded(config.max_size_channel_commands_retrieval_operations);
+    let (sender_operations_propagation_ext, receiver_operations_propagation_ext) =
+        bounded(config.max_size_channel_commands_propagation_operations);
+    let (sender_endorsements_retrieval_ext, receiver_endorsements_retrieval_ext) =
+        bounded(config.max_size_channel_commands_retrieval_endorsements);
+    let (sender_endorsements_propagation_ext, receiver_endorsements_propagation_ext) =
+        bounded(config.max_size_channel_commands_propagation_endorsements);
+    let (sender_blocks_propagation_ext, receiver_blocks_propagation_ext) =
+        bounded(config.max_size_channel_commands_retrieval_blocks);
+    let (sender_blocks_retrieval_ext, receiver_blocks_retrieval_ext) =
+        bounded(config.max_size_channel_commands_propagation_blocks);
 
-    let handle = std::thread::spawn({
+    let handle = std::thread::Builder::new()
+    .name("protocol-connectivity".to_string())
+    .spawn({
         let sender_endorsements_propagation_ext = sender_endorsements_propagation_ext.clone();
         let sender_blocks_retrieval_ext = sender_blocks_retrieval_ext.clone();
         let sender_blocks_propagation_ext = sender_blocks_propagation_ext.clone();
@@ -78,19 +85,18 @@ pub fn start_connectivity_thread(
             }
 
             // Create cache outside of the op handler because it could be used by other handlers
-            //TODO: Add real config values
             let operation_cache = Arc::new(RwLock::new(OperationCache::new(
-                NonZeroUsize::new(10000).unwrap(),
-                NonZeroUsize::new(10000).unwrap(),
+                NonZeroUsize::new(config.max_known_ops_size).unwrap(),
+                NonZeroUsize::new(config.max_in_connections + config.max_out_connections).unwrap(),
             )));
             let endorsement_cache = Arc::new(RwLock::new(EndorsementCache::new(
-                NonZeroUsize::new(10000).unwrap(),
-                NonZeroUsize::new(10000).unwrap(),
+                NonZeroUsize::new(config.max_known_endorsements_size).unwrap(),
+                NonZeroUsize::new(config.max_in_connections + config.max_out_connections).unwrap(),
             )));
 
             let block_cache = Arc::new(RwLock::new(BlockCache::new(
-                NonZeroUsize::new(10000).unwrap(),
-                NonZeroUsize::new(10000).unwrap(),
+                NonZeroUsize::new(config.max_known_blocks_size).unwrap(),
+                NonZeroUsize::new(config.max_in_connections + config.max_out_connections).unwrap(),
             )));
 
             // Start handlers
@@ -201,7 +207,8 @@ pub fn start_connectivity_thread(
                 }
             }
         }
-    });
+    }).expect("OS failed to start connectivity thread");
+
     // Start controller
     let controller = ProtocolControllerImpl::new(
         sender_blocks_retrieval_ext,

@@ -148,16 +148,19 @@ pub fn start_propagation_thread(
     config: ProtocolConfig,
     cache: SharedOperationCache,
 ) -> JoinHandle<()> {
-    std::thread::spawn(move || {
-        let mut propagation_thread = PropagationThread {
-            internal_receiver,
-            active_connections,
-            operations_to_announce: Vec::new(),
-            config,
-            cache,
-            operation_message_serializer: MessagesSerializer::new()
-                .with_operation_message_serializer(OperationMessageSerializer::new()),
-        };
-        propagation_thread.run();
-    })
+    std::thread::Builder::new()
+        .name("protocol-operation-handler-propagation".to_string())
+        .spawn(move || {
+            let mut propagation_thread = PropagationThread {
+                internal_receiver,
+                active_connections,
+                operations_to_announce: Vec::new(),
+                config,
+                cache,
+                operation_message_serializer: MessagesSerializer::new()
+                    .with_operation_message_serializer(OperationMessageSerializer::new()),
+            };
+            propagation_thread.run();
+        })
+        .expect("OS failed to start operation propagation thread")
 }

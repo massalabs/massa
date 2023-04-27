@@ -26,7 +26,7 @@ pub struct ProtocolConfig {
     pub ask_block_timeout: MassaTime,
     /// Max known blocks we keep in block_handler
     pub max_known_blocks_saved_size: usize,
-    /// max known blocks of current nodes we keep in memory (by node)
+    /// max known blocks of current nodes we keep in memory
     pub max_known_blocks_size: usize,
     /// max known blocks of foreign nodes we keep in memory (by node)
     pub max_node_known_blocks_size: usize,
@@ -80,6 +80,18 @@ pub struct ProtocolConfig {
     pub max_endorsements_propagation_time: MassaTime,
     /// number of thread tester
     pub thread_tester_count: u8,
+    /// Max size of channel to send commands to retrieval thread of operations
+    pub max_size_channel_commands_retrieval_operations: usize,
+    /// Max size of channel to send commands to propagation thread of operations
+    pub max_size_channel_commands_propagation_operations: usize,
+    /// Max size of channel to send commands to retrieval thread of endorsements
+    pub max_size_channel_commands_retrieval_endorsements: usize,
+    /// Max size of channel to send commands to propagation thread of blocks
+    pub max_size_channel_commands_propagation_endorsements: usize,
+    /// Max size of channel to send commands to retrieval thread of blocks
+    pub max_size_channel_commands_retrieval_blocks: usize,
+    /// Max size of channel to send commands to propagation thread of blocks
+    pub max_size_channel_commands_propagation_blocks: usize,
     /// debug prints
     pub debug: bool,
 }

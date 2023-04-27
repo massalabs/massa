@@ -170,20 +170,22 @@ pub fn start_propagation_thread(
     cache: SharedBlockCache,
     storage: Storage,
 ) -> JoinHandle<()> {
-    //TODO: Here and everywhere add id to threads
-    std::thread::spawn(move || {
-        let block_serializer =
-            MessagesSerializer::new().with_block_message_serializer(BlockMessageSerializer::new());
-        let mut propagation_thread = PropagationThread {
-            receiver,
-            config,
-            cache,
-            peer_cmd_sender,
-            active_connections,
-            block_serializer,
-            storage,
-            saved_blocks: VecDeque::default(),
-        };
-        propagation_thread.run();
-    })
+    std::thread::Builder::new()
+        .name("protocol-block-handler-propagation".to_string())
+        .spawn(move || {
+            let block_serializer = MessagesSerializer::new()
+                .with_block_message_serializer(BlockMessageSerializer::new());
+            let mut propagation_thread = PropagationThread {
+                receiver,
+                config,
+                cache,
+                peer_cmd_sender,
+                active_connections,
+                block_serializer,
+                storage,
+                saved_blocks: VecDeque::default(),
+            };
+            propagation_thread.run();
+        })
+        .expect("OS failed to start block propagation thread")
 }

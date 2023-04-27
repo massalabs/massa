@@ -7,7 +7,6 @@ use peernet::peer_id::PeerId;
 
 pub struct BlockCache {
     pub checked_headers: LruCache<BlockId, SecuredHeader>,
-    //TODO: Add the val true fal as a value
     pub blocks_known_by_peer: LruCache<PeerId, (LruCache<BlockId, (bool, Instant)>, Instant)>,
     pub max_known_blocks_by_peer: NonZeroUsize,
 }

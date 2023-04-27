@@ -250,17 +250,20 @@ pub fn start_retrieval_thread(
     config: ProtocolConfig,
     storage: Storage,
 ) -> JoinHandle<()> {
-    std::thread::spawn(move || {
-        let mut retrieval_thread = RetrievalThread {
-            receiver,
-            receiver_ext,
-            peer_cmd_sender,
-            cache,
-            internal_sender,
-            pool_controller,
-            config,
-            storage,
-        };
-        retrieval_thread.run();
-    })
+    std::thread::Builder::new()
+        .name("protocol-endorsement-handler-retrieval".to_string())
+        .spawn(move || {
+            let mut retrieval_thread = RetrievalThread {
+                receiver,
+                receiver_ext,
+                peer_cmd_sender,
+                cache,
+                internal_sender,
+                pool_controller,
+                config,
+                storage,
+            };
+            retrieval_thread.run();
+        })
+        .expect("OS failed to start endorsement retrieval thread")
 }

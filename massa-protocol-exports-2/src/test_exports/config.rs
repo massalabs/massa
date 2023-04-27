@@ -45,6 +45,12 @@ impl Default for ProtocolConfig {
                 .to_path_buf(),
             listeners: HashMap::default(),
             thread_tester_count: 2,
+            max_size_channel_commands_retrieval_operations: 10000,
+            max_size_channel_commands_propagation_operations: 10000,
+            max_size_channel_commands_retrieval_blocks: 1000,
+            max_size_channel_commands_propagation_blocks: 1000,
+            max_size_channel_commands_propagation_endorsements: 5000,
+            max_size_channel_commands_retrieval_endorsements: 5000,
             debug: true,
         }
     }

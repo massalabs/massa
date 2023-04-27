@@ -1267,26 +1267,29 @@ pub fn start_retrieval_thread(
 ) -> JoinHandle<()> {
     let block_message_serializer =
         MessagesSerializer::new().with_block_message_serializer(BlockMessageSerializer::new());
-    std::thread::spawn(move || {
-        let mut retrieval_thread = RetrievalThread {
-            active_connections,
-            consensus_controller,
-            pool_controller,
-            next_timer_ask_block: Instant::now() + config.ask_block_timeout.to_duration(),
-            block_wishlist: PreHashMap::default(),
-            asked_blocks: HashMap::default(),
-            peer_cmd_sender,
-            sender_propagation_ops,
-            receiver_network,
-            block_message_serializer,
-            receiver,
-            _internal_sender,
-            cache,
-            endorsement_cache,
-            operation_cache,
-            config,
-            storage,
-        };
-        retrieval_thread.run();
-    })
+    std::thread::Builder::new()
+        .name("protocol-block-handler-retrieval".to_string())
+        .spawn(move || {
+            let mut retrieval_thread = RetrievalThread {
+                active_connections,
+                consensus_controller,
+                pool_controller,
+                next_timer_ask_block: Instant::now() + config.ask_block_timeout.to_duration(),
+                block_wishlist: PreHashMap::default(),
+                asked_blocks: HashMap::default(),
+                peer_cmd_sender,
+                sender_propagation_ops,
+                receiver_network,
+                block_message_serializer,
+                receiver,
+                _internal_sender,
+                cache,
+                endorsement_cache,
+                operation_cache,
+                config,
+                storage,
+            };
+            retrieval_thread.run();
+        })
+        .expect("OS failed to start block retrieval thread")
 }

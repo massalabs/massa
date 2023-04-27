@@ -472,26 +472,29 @@ pub fn start_retrieval_thread(
     internal_sender: Sender<OperationHandlerPropagationCommand>,
     peer_cmd_sender: Sender<PeerManagementCmd>,
 ) -> JoinHandle<()> {
-    std::thread::spawn(move || {
-        let mut retrieval_thread = RetrievalThread {
-            receiver,
-            pool_controller,
-            stored_operations: HashMap::new(),
-            storage,
-            internal_sender,
-            receiver_ext,
-            cache,
-            active_connections,
-            asked_operations: LruCache::new(
-                NonZeroUsize::new(config.asked_operations_buffer_capacity)
-                    .expect("asked_operations_buffer_capacity in config must be > 0"),
-            ),
-            config,
-            operation_message_serializer: MessagesSerializer::new()
-                .with_operation_message_serializer(OperationMessageSerializer::new()),
-            op_batch_buffer: VecDeque::new(),
-            peer_cmd_sender,
-        };
-        retrieval_thread.run();
-    })
+    std::thread::Builder::new()
+        .name("protocol-operation-handler-retrieval".to_string())
+        .spawn(move || {
+            let mut retrieval_thread = RetrievalThread {
+                receiver,
+                pool_controller,
+                stored_operations: HashMap::new(),
+                storage,
+                internal_sender,
+                receiver_ext,
+                cache,
+                active_connections,
+                asked_operations: LruCache::new(
+                    NonZeroUsize::new(config.asked_operations_buffer_capacity)
+                        .expect("asked_operations_buffer_capacity in config must be > 0"),
+                ),
+                config,
+                operation_message_serializer: MessagesSerializer::new()
+                    .with_operation_message_serializer(OperationMessageSerializer::new()),
+                op_batch_buffer: VecDeque::new(),
+                peer_cmd_sender,
+            };
+            retrieval_thread.run();
+        })
+        .expect("OS failed to start operation retrieval thread")
 }

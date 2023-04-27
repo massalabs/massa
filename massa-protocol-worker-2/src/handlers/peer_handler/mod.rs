@@ -69,7 +69,9 @@ impl PeerManagementHandler {
 
         let (test_sender, testers) = Tester::run(config, peer_db.clone());
 
-        let thread_join = std::thread::spawn({
+        let thread_join = std::thread::Builder::new()
+        .name("protocol-peer-handler".to_string())
+        .spawn({
             let peer_db = peer_db.clone();
             let ticker = tick(Duration::from_secs(10));
 
@@ -159,7 +161,7 @@ impl PeerManagementHandler {
                     }
                 }
             }
-        });
+        }).expect("OS failed to start peer management thread");
 
         for (peer_id, listeners) in &initial_peers {
             let mut message = Vec::new();

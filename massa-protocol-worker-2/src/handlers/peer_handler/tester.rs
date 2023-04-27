@@ -176,7 +176,9 @@ impl Tester {
     ) -> Self {
         tracing::log::debug!("running new tester");
 
-        let handle = std::thread::spawn(move || {
+        let handle = std::thread::Builder::new()
+        .name("protocol-peer-handler-tester".to_string())
+        .spawn(move || {
             let db = peer_db.clone();
             let mut config = PeerNetConfiguration::default(
                 TesterHandshake::new(peer_db),
@@ -246,7 +248,7 @@ impl Tester {
                     }
                 }
             }
-        });
+        }).expect("OS failed to start peer tester thread");
 
         Self {
             handler: Some(handle),
