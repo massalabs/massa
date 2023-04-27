@@ -10,7 +10,10 @@ impl Default for ProtocolConfig {
         ProtocolConfig {
             max_in_connections: 10,
             max_out_connections: 10,
-            keypair_file: "".into(),
+            keypair_file: NamedTempFile::new()
+                .expect("cannot create temp file")
+                .path()
+                .to_path_buf(),
             ask_block_timeout: 500.into(),
             max_known_blocks_saved_size: 300,
             max_known_blocks_size: 100,

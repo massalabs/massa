@@ -1,9 +1,9 @@
 use std::sync::Arc;
 
 use crate::{
-    connectivity::start_connectivity_thread, handlers::peer_handler::models::PeerDB,
-    manager::ProtocolManagerImpl, messages::MessagesHandler,
-    tests::mock_network::MockNetworkController,
+    connectivity::start_connectivity_thread, create_protocol_controller,
+    handlers::peer_handler::models::PeerDB, manager::ProtocolManagerImpl,
+    messages::MessagesHandler, tests::mock_network::MockNetworkController,
 };
 use crossbeam::channel::bounded;
 use massa_consensus_exports::{
@@ -61,9 +61,11 @@ pub fn start_protocol_controller_with_mock_network(
         id_deserializer: U64VarIntDeserializer::new(Included(0), Included(u64::MAX)),
     };
 
+    let (controller, channels) = create_protocol_controller(config.clone());
+
     let network_controller = Box::new(MockNetworkController::new(message_handlers));
 
-    let (connectivity_thread_handle, controller) = start_connectivity_thread(
+    let connectivity_thread_handle = start_connectivity_thread(
         config,
         network_controller.clone(),
         consensus_controller,
@@ -74,11 +76,12 @@ pub fn start_protocol_controller_with_mock_network(
         (sender_peers, receiver_peers),
         peer_db,
         storage,
+        channels,
     )?;
 
     let manager = ProtocolManagerImpl::new(connectivity_thread_handle);
 
-    Ok((network_controller, Box::new(controller), Box::new(manager)))
+    Ok((network_controller, controller, Box::new(manager)))
 }
 
 pub fn protocol_test<F>(protocol_config: &ProtocolConfig, test: F)

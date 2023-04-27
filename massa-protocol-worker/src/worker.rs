@@ -1,4 +1,4 @@
-use crossbeam::channel::{bounded, Sender, Receiver};
+use crossbeam::channel::{bounded, Receiver, Sender};
 use massa_consensus_exports::ConsensusController;
 use massa_pool_exports::PoolController;
 use massa_protocol_exports::{ProtocolConfig, ProtocolController, ProtocolError, ProtocolManager};
@@ -12,24 +12,58 @@ use tracing::{debug, log::warn};
 use crate::{
     connectivity::start_connectivity_thread,
     controller::ProtocolControllerImpl,
-    handlers::{peer_handler::{models::PeerDB, MassaHandshake}, block_handler::{commands_retrieval::BlockHandlerRetrievalCommand, commands_propagation::BlockHandlerPropagationCommand}, operation_handler::{commands_retrieval::OperationHandlerRetrievalCommand, commands_propagation::OperationHandlerPropagationCommand}, endorsement_handler::{commands_retrieval::EndorsementHandlerRetrievalCommand, commands_propagation::EndorsementHandlerPropagationCommand}},
+    handlers::{
+        block_handler::{
+            commands_propagation::BlockHandlerPropagationCommand,
+            commands_retrieval::BlockHandlerRetrievalCommand,
+        },
+        endorsement_handler::{
+            commands_propagation::EndorsementHandlerPropagationCommand,
+            commands_retrieval::EndorsementHandlerRetrievalCommand,
+        },
+        operation_handler::{
+            commands_propagation::OperationHandlerPropagationCommand,
+            commands_retrieval::OperationHandlerRetrievalCommand,
+        },
+        peer_handler::{models::PeerDB, MassaHandshake},
+    },
     manager::ProtocolManagerImpl,
     messages::MessagesHandler,
     wrap_network::NetworkControllerImpl,
 };
 
 pub struct ProtocolChannels {
-    pub operation_handler_retrieval: (Sender<OperationHandlerRetrievalCommand>, Receiver<OperationHandlerRetrievalCommand>),
-    pub operation_handler_propagation: (Sender<OperationHandlerPropagationCommand>, Receiver<OperationHandlerPropagationCommand>),
-    pub endorsement_handler_retrieval: (Sender<EndorsementHandlerRetrievalCommand>, Receiver<EndorsementHandlerRetrievalCommand>),
-    pub endorsement_handler_propagation: (Sender<EndorsementHandlerPropagationCommand>, Receiver<EndorsementHandlerPropagationCommand>),
-    pub block_handler_retrieval: (Sender<BlockHandlerRetrievalCommand>, Receiver<BlockHandlerRetrievalCommand>),
-    pub block_handler_propagation: (Sender<BlockHandlerPropagationCommand>, Receiver<BlockHandlerPropagationCommand>),
+    pub operation_handler_retrieval: (
+        Sender<OperationHandlerRetrievalCommand>,
+        Receiver<OperationHandlerRetrievalCommand>,
+    ),
+    pub operation_handler_propagation: (
+        Sender<OperationHandlerPropagationCommand>,
+        Receiver<OperationHandlerPropagationCommand>,
+    ),
+    pub endorsement_handler_retrieval: (
+        Sender<EndorsementHandlerRetrievalCommand>,
+        Receiver<EndorsementHandlerRetrievalCommand>,
+    ),
+    pub endorsement_handler_propagation: (
+        Sender<EndorsementHandlerPropagationCommand>,
+        Receiver<EndorsementHandlerPropagationCommand>,
+    ),
+    pub block_handler_retrieval: (
+        Sender<BlockHandlerRetrievalCommand>,
+        Receiver<BlockHandlerRetrievalCommand>,
+    ),
+    pub block_handler_propagation: (
+        Sender<BlockHandlerPropagationCommand>,
+        Receiver<BlockHandlerPropagationCommand>,
+    ),
 }
 
 /// This function exists because consensus need the protocol controller and we need consensus controller.
 /// Someone has to be created first.
-pub fn create_protocol_controller(config: ProtocolConfig) -> (Box<dyn ProtocolController>, ProtocolChannels) {
+pub fn create_protocol_controller(
+    config: ProtocolConfig,
+) -> (Box<dyn ProtocolController>, ProtocolChannels) {
     let (sender_operations_retrieval_ext, receiver_operations_retrieval_ext) =
         bounded(config.max_size_channel_commands_retrieval_operations);
     let (sender_operations_propagation_ext, receiver_operations_propagation_ext) =
@@ -50,12 +84,27 @@ pub fn create_protocol_controller(config: ProtocolConfig) -> (Box<dyn ProtocolCo
             sender_endorsements_propagation_ext.clone(),
         )),
         ProtocolChannels {
-            operation_handler_retrieval: (sender_operations_retrieval_ext, receiver_operations_retrieval_ext),
-            operation_handler_propagation: (sender_operations_propagation_ext, receiver_operations_propagation_ext),
-            endorsement_handler_retrieval: (sender_endorsements_retrieval_ext, receiver_endorsements_retrieval_ext),
-            endorsement_handler_propagation: (sender_endorsements_propagation_ext, receiver_endorsements_propagation_ext),
+            operation_handler_retrieval: (
+                sender_operations_retrieval_ext,
+                receiver_operations_retrieval_ext,
+            ),
+            operation_handler_propagation: (
+                sender_operations_propagation_ext,
+                receiver_operations_propagation_ext,
+            ),
+            endorsement_handler_retrieval: (
+                sender_endorsements_retrieval_ext,
+                receiver_endorsements_retrieval_ext,
+            ),
+            endorsement_handler_propagation: (
+                sender_endorsements_propagation_ext,
+                receiver_endorsements_propagation_ext,
+            ),
             block_handler_retrieval: (sender_blocks_retrieval_ext, receiver_blocks_retrieval_ext),
-            block_handler_propagation: (sender_blocks_propagation_ext, receiver_blocks_propagation_ext),
+            block_handler_propagation: (
+                sender_blocks_propagation_ext,
+                receiver_blocks_propagation_ext,
+            ),
         },
     )
 }
@@ -134,7 +183,7 @@ pub fn start_protocol_controller(
         (sender_peers, receiver_peers),
         peer_db,
         storage,
-        protocol_channels
+        protocol_channels,
     )?;
 
     let manager = ProtocolManagerImpl::new(connectivity_thread_handle);

@@ -75,7 +75,7 @@ use massa_pool_worker::start_pool_controller;
 use massa_pos_exports::{PoSConfig, SelectorConfig, SelectorManager};
 use massa_pos_worker::start_selector_worker;
 use massa_protocol_exports::{ProtocolConfig, ProtocolManager};
-use massa_protocol_worker::{start_protocol_controller, create_protocol_controller};
+use massa_protocol_worker::{create_protocol_controller, start_protocol_controller};
 use massa_storage::Storage;
 use massa_time::MassaTime;
 use massa_versioning_worker::versioning::{MipStatsConfig, MipStore};
@@ -517,7 +517,6 @@ async fn launch(
         pool_channels.clone(),
     );
 
-
     // launch protocol controller
     let mut listeners = HashMap::default();
     if let Some(ip) = SETTINGS.protocol.routable_ip {
@@ -600,7 +599,8 @@ async fn launch(
         debug: false,
     };
 
-    let (protocol_controller, protocol_channels) = create_protocol_controller(protocol_config.clone());
+    let (protocol_controller, protocol_channels) =
+        create_protocol_controller(protocol_config.clone());
 
     let consensus_config = ConsensusConfig {
         genesis_timestamp: *GENESIS_TIMESTAMP,

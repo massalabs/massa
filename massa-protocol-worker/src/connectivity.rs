@@ -15,8 +15,8 @@ use std::{num::NonZeroUsize, sync::Arc};
 use std::{thread::JoinHandle, time::Duration};
 use tracing::warn;
 
-use crate::{handlers::peer_handler::models::SharedPeerDB, worker::ProtocolChannels};
 use crate::handlers::peer_handler::PeerManagementHandler;
+use crate::{handlers::peer_handler::models::SharedPeerDB, worker::ProtocolChannels};
 use crate::{
     handlers::{
         block_handler::{cache::BlockCache, BlockHandler},
@@ -150,6 +150,9 @@ pub(crate) fn start_connectivity_thread(
                             }
                         }
                     default(Duration::from_millis(1000)) => {
+                        if config.debug {
+                            println!("nb peers connected: {}", network_controller.get_active_connections().get_peer_ids_connected().len());
+                        }
                         // Check if we need to connect to peers
                         let nb_connection_to_try = {
                             let nb_connection_to_try = network_controller.get_active_connections().get_max_out_connections().saturating_sub(network_controller.get_active_connections().get_nb_out_connections());
