@@ -553,7 +553,7 @@ mod test {
     use crate::test_exports::{
         gen_block_headers_for_denunciation, gen_endorsements_for_denunciation,
     };
-    use massa_signature::KeyPair;
+    use massa_signature::{verify_signature_batch, KeyPair};
 
     // Only for testing purpose
     impl PartialEq for BlockHeader {
@@ -616,5 +616,39 @@ mod test {
 
         assert_eq!(rem.is_empty(), true);
         assert_eq!(block_header_1, block_header_der);
+    }
+
+    #[test]
+    fn test_verify_sig_batch() {
+        let (_slot, _keypair, secured_header_1, secured_header_2, secured_header_3) =
+            gen_block_headers_for_denunciation(None, None);
+
+        // Test with batch len == 1 (no // verif)
+        let batch_1 = [(
+            secured_header_1.compute_signed_hash(),
+            secured_header_1.signature,
+            secured_header_1.content_creator_pub_key,
+        )];
+        verify_signature_batch(&batch_1).unwrap();
+
+        // Test with batch len > 1 (// verif)
+        let batch_2 = [
+            (
+                secured_header_1.compute_signed_hash(),
+                secured_header_1.signature,
+                secured_header_1.content_creator_pub_key,
+            ),
+            (
+                secured_header_2.compute_signed_hash(),
+                secured_header_2.signature,
+                secured_header_2.content_creator_pub_key,
+            ),
+            (
+                secured_header_3.compute_signed_hash(),
+                secured_header_3.signature,
+                secured_header_3.content_creator_pub_key,
+            ),
+        ];
+        verify_signature_batch(&batch_2).unwrap();
     }
 }

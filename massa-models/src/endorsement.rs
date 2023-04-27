@@ -420,6 +420,7 @@ impl EndorsementDenunciationData {
 #[cfg(test)]
 mod tests {
     use crate::secure_share::{SecureShareContent, SecureShareDeserializer, SecureShareSerializer};
+    use massa_signature::verify_signature_batch;
 
     use super::*;
     use massa_serialization::DeserializeError;
@@ -479,5 +480,53 @@ mod tests {
         .unwrap();
         // Test only endorsement index as with the lw ser. we only process this field
         assert_eq!(res_endorsement.content.index, endorsement.content.index);
+    }
+
+    #[test]
+    fn test_verify_sig_batch() {
+        // test verify_signature_batch as we override SecureShareEndorsements compute_hash
+
+        let sender_keypair = KeyPair::generate();
+        let content_1 = Endorsement {
+            slot: Slot::new(10, 1),
+            index: 0,
+            endorsed_block: BlockId(Hash::compute_from("blk1".as_bytes())),
+        };
+        let s_endorsement_1: SecureShareEndorsement =
+            Endorsement::new_verifiable(content_1, EndorsementSerializer::new(), &sender_keypair)
+                .unwrap();
+
+        let sender_keypair = KeyPair::generate();
+        let content_2 = Endorsement {
+            slot: Slot::new(2, 5),
+            index: 0,
+            endorsed_block: BlockId(Hash::compute_from("blk2".as_bytes())),
+        };
+        let s_endorsement_2: SecureShareEndorsement =
+            Endorsement::new_verifiable(content_2, EndorsementSerializerLW::new(), &sender_keypair)
+                .unwrap();
+
+        // Test with batch len == 1 (no // verif)
+        let batch_1 = [(
+            s_endorsement_1.compute_signed_hash(),
+            s_endorsement_1.signature,
+            s_endorsement_1.content_creator_pub_key,
+        )];
+        verify_signature_batch(&batch_1).unwrap();
+
+        // Test with batch len > 1 (// verif)
+        let batch_2 = [
+            (
+                s_endorsement_1.compute_signed_hash(),
+                s_endorsement_1.signature,
+                s_endorsement_1.content_creator_pub_key,
+            ),
+            (
+                s_endorsement_2.compute_signed_hash(),
+                s_endorsement_2.signature,
+                s_endorsement_2.content_creator_pub_key,
+            ),
+        ];
+        verify_signature_batch(&batch_2).unwrap();
     }
 }
