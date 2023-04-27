@@ -77,20 +77,20 @@ where
     /// Using the provided key-pair, applies a cryptographic signature, and packages
     /// the data required to share and verify the data in a trust-free network of peers.
     fn new_verifiable<Ser: Serializer<Self>, ID: Id>(
-        content: Self,
+        self,
         content_serializer: Ser,
         keypair: &KeyPair,
     ) -> Result<SecureShare<Self, ID>, ModelsError> {
         let mut content_serialized = Vec::new();
-        content_serializer.serialize(&content, &mut content_serialized)?;
+        content_serializer.serialize(&self, &mut content_serialized)?;
         let public_key = keypair.get_public_key();
-        let hash = Self::compute_hash(&content, &content_serialized, &public_key);
+        let hash = Self::compute_hash(&self, &content_serialized, &public_key);
         let creator_address = Address::from_public_key(&public_key);
         Ok(SecureShare {
-            signature: content.sign(keypair, &hash)?,
+            signature: self.sign(keypair, &hash)?,
             content_creator_pub_key: public_key,
             content_creator_address: creator_address,
-            content,
+            content: self,
             serialized_data: content_serialized,
             id: ID::new(hash),
         })
@@ -98,11 +98,7 @@ where
 
     /// Compute hash
     #[allow(unused_variables)]
-    fn compute_hash(
-        content: &Self, // use only for Denounce able object
-        content_serialized: &[u8],
-        content_creator_pub_key: &PublicKey,
-    ) -> Hash {
+    fn compute_hash(&self, content_serialized: &[u8], content_creator_pub_key: &PublicKey) -> Hash {
         let mut hash_data = Vec::new();
         hash_data.extend(content_creator_pub_key.to_bytes());
         hash_data.extend(content_serialized);
