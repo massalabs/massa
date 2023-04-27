@@ -8,6 +8,7 @@ use crate::{ExecutionAddressInfo, ReadOnlyExecutionOutput};
 use massa_models::address::Address;
 use massa_models::amount::Amount;
 use massa_models::block_id::BlockId;
+use massa_models::denunciation::DenunciationIndex;
 use massa_models::execution::EventFilter;
 use massa_models::operation::OperationId;
 use massa_models::output_event::SCOutputEvent;
@@ -96,6 +97,9 @@ pub trait ExecutionController: Send + Sync {
         ops: &PreHashSet<OperationId>,
         thread: u8,
     ) -> PreHashSet<OperationId>;
+
+    /// Check if a denunciation has been executed given a `DenunciationIndex`
+    fn is_denunciation_executed(&self, denunciation_index: &DenunciationIndex) -> bool;
 
     /// Gets information about a batch of addresses
     fn get_addresses_infos(&self, addresses: &[Address]) -> Vec<ExecutionAddressInfo>;

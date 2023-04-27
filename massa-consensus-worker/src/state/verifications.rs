@@ -447,7 +447,7 @@ impl ConsensusState {
                     )));
                 }
                 gp_max_slots[parent_i as usize] = parent_period;
-                if parent_period == 0 {
+                if parent_period == self.config.last_start_period {
                     // genesis
                     continue;
                 }

@@ -1,6 +1,6 @@
 //! Copyright (c) 2022 MASSA LABS <info@massa.net>
 
-//! Pool of operation and endorsements waiting to be included in a block
+//! Pool of operation && endorsements && denunciations waiting to be included in a block
 
 #![warn(missing_docs)]
 #![warn(unused_crate_dependencies)]

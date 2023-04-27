@@ -9,6 +9,7 @@ use massa_execution_exports::{
     ExecutionAddressInfo, ExecutionConfig, ExecutionController, ExecutionError, ExecutionManager,
     ReadOnlyExecutionOutput, ReadOnlyExecutionRequest,
 };
+use massa_models::denunciation::DenunciationIndex;
 use massa_models::execution::EventFilter;
 use massa_models::output_event::SCOutputEvent;
 use massa_models::prehash::{PreHashMap, PreHashSet};
@@ -161,8 +162,8 @@ impl ExecutionController for ExecutionControllerImpl {
         &self,
         input: Vec<(Address, Vec<u8>)>,
     ) -> Vec<(Option<Vec<u8>>, Option<Vec<u8>>)> {
-        let lock = self.execution_state.read();
         let mut result = Vec::with_capacity(input.len());
+        let lock = self.execution_state.read();
         for (addr, key) in input {
             result.push(lock.get_final_and_active_data_entry(&addr, &key));
         }
@@ -224,6 +225,13 @@ impl ExecutionController for ExecutionControllerImpl {
         self.execution_state
             .read()
             .unexecuted_ops_among(ops, thread)
+    }
+
+    /// Check if a denunciation has been executed given a `DenunciationIndex`
+    fn is_denunciation_executed(&self, denunciation_index: &DenunciationIndex) -> bool {
+        self.execution_state
+            .read()
+            .is_denunciation_executed(denunciation_index)
     }
 
     /// Gets information about a batch of addresses

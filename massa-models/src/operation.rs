@@ -448,6 +448,8 @@ pub enum OperationType {
         data: Vec<u8>,
         /// The maximum amount of gas that the execution of the contract is allowed to cost.
         max_gas: u64,
+        /// Max amount of coins allowed to be spent by the execution
+        max_coins: Amount,
         /// A key-value store associating a hash to arbitrary bytes
         #[serde_as(as = "Vec<(_, _)>")]
         datastore: Datastore,
@@ -488,10 +490,12 @@ impl std::fmt::Display for OperationType {
             }
             OperationType::ExecuteSC {
                 max_gas,
+                max_coins,
                 ..
                 // data & datastore, // these fields are ignored because bytes eh
             } => {
                 writeln!(f, "ExecuteSC: ")?;
+                writeln!(f, "\t- max_coins:{}", max_coins)?;
                 writeln!(f, "\t- max_gas:{}", max_gas)?;
             },
             OperationType::CallSC {
@@ -558,6 +562,7 @@ impl Serializer<OperationType> for OperationTypeSerializer {
     /// let op = OperationType::ExecuteSC {
     ///    data: vec![0x01, 0x02, 0x03],
     ///    max_gas: 100,
+    ///    max_coins: Amount::from_str("5000000").unwrap(),
     ///    datastore: BTreeMap::default(),
     /// };
     /// let mut buffer = Vec::new();
@@ -588,11 +593,13 @@ impl Serializer<OperationType> for OperationTypeSerializer {
             OperationType::ExecuteSC {
                 data,
                 max_gas,
+                max_coins,
                 datastore,
             } => {
                 self.u32_serializer
                     .serialize(&u32::from(OperationTypeId::ExecuteSC), buffer)?;
                 self.u64_serializer.serialize(max_gas, buffer)?;
+                self.amount_serializer.serialize(max_coins, buffer)?;
                 self.vec_u8_serializer.serialize(data, buffer)?;
                 self.datastore_serializer.serialize(datastore, buffer)?;
             }
@@ -683,6 +690,7 @@ impl Deserializer<OperationType> for OperationTypeDeserializer {
     /// let op = OperationType::ExecuteSC {
     ///    data: vec![0x01, 0x02, 0x03],
     ///    max_gas: 100,
+    ///    max_coins: Amount::from_str("5000000").unwrap(),
     ///    datastore: BTreeMap::from([(vec![1, 2], vec![254, 255])])
     /// };
     /// let mut buffer = Vec::new();
@@ -693,10 +701,12 @@ impl Deserializer<OperationType> for OperationTypeDeserializer {
     ///    OperationType::ExecuteSC {
     ///      data,
     ///      max_gas,
+    ///      max_coins,
     ///      datastore
     ///   } => {
     ///     assert_eq!(data, vec![0x01, 0x02, 0x03]);
     ///     assert_eq!(max_gas, 100);
+    ///     assert_eq!(max_coins, Amount::from_str("5000000").unwrap());
     ///     assert_eq!(datastore, BTreeMap::from([(vec![1, 2], vec![254, 255])]))
     ///   }
     ///   _ => panic!("Unexpected operation type"),
@@ -747,6 +757,9 @@ impl Deserializer<OperationType> for OperationTypeDeserializer {
                         context("Failed max_gas deserialization", |input| {
                             self.max_gas_deserializer.deserialize(input)
                         }),
+                        context("Failed max_coins deserialization", |input| {
+                            self.amount_deserializer.deserialize(input)
+                        }),
                         context("Failed data deserialization", |input| {
                             self.data_deserializer.deserialize(input)
                         }),
@@ -755,11 +768,14 @@ impl Deserializer<OperationType> for OperationTypeDeserializer {
                         }),
                     )),
                 )
-                .map(|(max_gas, data, datastore)| OperationType::ExecuteSC {
-                    data,
-                    max_gas,
-                    datastore,
-                })
+                .map(
+                    |(max_gas, max_coins, data, datastore)| OperationType::ExecuteSC {
+                        data,
+                        max_gas,
+                        max_coins,
+                        datastore,
+                    },
+                )
                 .parse(input),
                 OperationTypeId::CallSC => context(
                     "Failed CallSC deserialization",
@@ -847,7 +863,7 @@ impl SecureShareOperation {
             OperationType::Transaction { amount, .. } => *amount,
             OperationType::RollBuy { roll_count } => roll_price.saturating_mul_u64(*roll_count),
             OperationType::RollSell { .. } => Amount::zero(),
-            OperationType::ExecuteSC { .. } => Amount::zero(),
+            OperationType::ExecuteSC { max_coins, .. } => *max_coins,
             OperationType::CallSC { coins, .. } => *coins,
         };
 
@@ -1367,6 +1383,7 @@ mod tests {
 
         let op = OperationType::ExecuteSC {
             max_gas: 123,
+            max_coins: Amount::from_str("1.0").unwrap(),
             data: vec![23u8, 123u8, 44u8],
             datastore: BTreeMap::from([
                 (vec![1, 2, 3], vec![4, 5, 6, 7, 8, 9]),

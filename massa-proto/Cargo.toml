@@ -10,13 +10,14 @@ homepage = "https://massa.net"
 documentation = "https://docs.massa.net/"
 
 [dependencies]
-prost = "0.11.6"
-prost-types = "0.11.6"
-#TODO add stable version when released
-tonic = { git = "https://github.com/hyperium/tonic", rev = "ff33119" }
+prost = "0.11.8"
+prost-types = "0.11.8"
+tonic = "0.9.1"
 
 [build-dependencies]
 glob = "0.3.1"
 prost-build = "0.11.8"
-#TODO add stable version when released
-tonic-build = { git = "https://github.com/hyperium/tonic", rev = "ff33119" }
+tonic-build = "0.9.1"
+
+[features]
+build-tonic = []

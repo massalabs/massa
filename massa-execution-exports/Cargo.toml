@@ -25,5 +25,5 @@ massa-sc-runtime = { git = "https://github.com/massalabs/massa-sc-runtime", bran
 # for more information on what are the following features used for, see the cargo.toml at workspace level
 
 [features]
-gas_calibration = ["massa_ledger_exports/testing", "parking_lot"]
+gas_calibration = ["massa_ledger_exports/testing", "parking_lot", "tempfile"]
 testing = ["massa_models/testing", "massa_ledger_exports/testing", "parking_lot", "tempfile"]

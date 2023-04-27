@@ -58,10 +58,13 @@ impl Default for ExecutionConfig {
             )
             .unwrap(),
             initial_vesting_path: PathBuf::default(),
+            last_start_period: 0,
             hd_cache_path: TempDir::new().unwrap().path().to_path_buf(),
             lru_cache_size: 1000,
             hd_cache_size: 10_000,
             snip_amount: 10,
+            roll_count_to_slash_on_denunciation: 1,
+            denunciation_expire_periods: DENUNCIATION_EXPIRE_PERIODS,
         }
     }
 }

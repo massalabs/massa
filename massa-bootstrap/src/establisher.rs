@@ -5,22 +5,20 @@ use std::{
     net::{SocketAddr, TcpListener, TcpStream},
 };
 
-/// duplex connection
-pub trait Duplex:
-    Send + tokio::io::AsyncReadExt + tokio::io::AsyncWriteExt + std::marker::Unpin
-{
-}
-
-impl Duplex for tokio::net::TcpStream {}
-
 /// Specifies a common interface that can be used by standard, or mockers
+#[cfg_attr(test, mockall::automock)]
 pub trait BSListener {
     fn accept(&mut self) -> io::Result<(TcpStream, SocketAddr)>;
 }
 
 /// Specifies a common interface that can be used by standard, or mockers
+#[cfg_attr(test, mockall::automock)]
 pub trait BSConnector {
-    fn connect(&mut self, addr: SocketAddr) -> io::Result<TcpStream>;
+    fn connect_timeout(
+        &self,
+        addr: SocketAddr,
+        duration: Option<MassaTime>,
+    ) -> io::Result<TcpStream>;
 }
 
 /// The listener we are using
@@ -46,6 +44,7 @@ impl DefaultListener {
 
         // Number of connections to queue, set to the hardcoded value used by tokio
         socket.listen(1024)?;
+        socket.set_nonblocking(false)?;
         Ok(DefaultListener(socket.into()))
     }
 }
@@ -62,14 +61,21 @@ impl BSListener for DefaultListener {
 }
 /// Initiates a connection with given timeout in milliseconds
 #[derive(Debug)]
-pub struct DefaultConnector(pub MassaTime);
+pub struct DefaultConnector;
 
 impl BSConnector for DefaultConnector {
     /// Tries to connect to address
     ///
     /// # Argument
     /// * `addr`: `SocketAddr` we are trying to connect to.
-    fn connect(&mut self, addr: SocketAddr) -> io::Result<TcpStream> {
-        TcpStream::connect_timeout(&addr, self.0.to_duration())
+    fn connect_timeout(
+        &self,
+        addr: SocketAddr,
+        duration: Option<MassaTime>,
+    ) -> io::Result<TcpStream> {
+        let Some(duration) = duration else {
+            return TcpStream::connect(addr);
+        };
+        TcpStream::connect_timeout(&addr, duration.to_duration())
     }
 }
