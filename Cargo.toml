@@ -27,8 +27,6 @@ members = [
   "massa-pool-exports",
   "massa-protocol-exports",
   "massa-protocol-worker",
-  "massa-protocol-exports-2",
-  "massa-protocol-worker-2",
   "massa-module-cache",
   "massa-serialization",
   "massa-signature",

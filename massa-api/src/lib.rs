@@ -37,7 +37,7 @@ use massa_models::{
 use massa_network_exports::{NetworkCommandSender, NetworkConfig};
 use massa_pool_exports::{PoolChannels, PoolController};
 use massa_pos_exports::SelectorController;
-use massa_protocol_exports::ProtocolCommandSender;
+use massa_protocol_exports::ProtocolController;
 use massa_storage::Storage;
 use massa_wallet::Wallet;
 use parking_lot::RwLock;
@@ -64,7 +64,7 @@ pub struct Public {
     /// link to the pool component
     pub pool_command_sender: Box<dyn PoolController>,
     /// link to the protocol component
-    pub protocol_command_sender: ProtocolCommandSender,
+    pub protocol_controller: Box<dyn ProtocolController>,
     /// Massa storage
     pub storage: Storage,
     /// API settings

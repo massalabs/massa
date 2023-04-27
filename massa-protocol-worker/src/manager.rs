@@ -1,7 +1,7 @@
 use std::thread::JoinHandle;
 
 use crossbeam::channel::Sender;
-use massa_protocol_exports_2::ProtocolManager;
+use massa_protocol_exports::ProtocolManager;
 use tracing::info;
 
 use crate::connectivity::ConnectivityCommand;

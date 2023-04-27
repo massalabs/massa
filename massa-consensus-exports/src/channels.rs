@@ -5,7 +5,7 @@ use massa_models::block_id::BlockId;
 use massa_models::secure_share::SecureShare;
 use massa_pool_exports::PoolController;
 use massa_pos_exports::SelectorController;
-use massa_protocol_exports::ProtocolCommandSender;
+use massa_protocol_exports::ProtocolController;
 
 use crate::events::ConsensusEvent;
 
@@ -18,10 +18,10 @@ pub struct ConsensusChannels {
     pub selector_controller: Box<dyn SelectorController>,
     /// Interface to interact with Pool module
     pub pool_command_sender: Box<dyn PoolController>,
+    /// Interface to interact with Protocol module
+    pub protocol_command_sender: Box<dyn ProtocolController>,
     /// Channel used by the consensus to send events to the node globally
     pub controller_event_tx: crossbeam_channel::Sender<ConsensusEvent>,
-    /// Channel to send commands to the Protocol module
-    pub protocol_command_sender: ProtocolCommandSender,
     /// Channel used for Websocket broadcast (if enabled) of new blocks being integrated in the graph
     pub block_sender: tokio::sync::broadcast::Sender<SecureShareBlock>,
     /// Channel used for Websocket broadcast (if enabled) of new block headers being integrated in the graph

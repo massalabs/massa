@@ -5,7 +5,7 @@ use crossbeam::{
     channel::{Receiver, Sender},
     select,
 };
-use massa_protocol_exports_2::ProtocolConfig;
+use massa_protocol_exports::ProtocolConfig;
 use massa_serialization::{DeserializeError, Deserializer, Serializer};
 use rand::{rngs::StdRng, RngCore, SeedableRng};
 

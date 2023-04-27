@@ -65,6 +65,5 @@ sandbox = [
     "massa_execution_worker/sandbox",
     "massa_final_state/sandbox",
     "massa_models/sandbox",
-    "massa_protocol_exports/sandbox"
 ]
 create_snapshot = ["massa_final_state/create_snapshot"]

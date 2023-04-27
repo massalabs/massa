@@ -3,7 +3,7 @@
 //! Optimized batch signature verifier
 
 use massa_hash::Hash;
-use massa_protocol_exports_2::ProtocolError;
+use massa_protocol_exports::ProtocolError;
 use massa_signature::{verify_signature_batch, PublicKey, Signature};
 use rayon::{prelude::ParallelIterator, slice::ParallelSlice};
 

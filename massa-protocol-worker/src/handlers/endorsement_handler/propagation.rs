@@ -6,7 +6,7 @@ use massa_models::{
     endorsement::{EndorsementId, SecureShareEndorsement},
     prehash::{PreHashMap, PreHashSet},
 };
-use massa_protocol_exports_2::ProtocolConfig;
+use massa_protocol_exports::ProtocolConfig;
 use peernet::peer_id::PeerId;
 use tracing::log::warn;
 

@@ -1,9 +1,7 @@
 use crossbeam::channel::bounded;
 use massa_consensus_exports::ConsensusController;
 use massa_pool_exports::PoolController;
-use massa_protocol_exports_2::{
-    ProtocolConfig, ProtocolController, ProtocolError, ProtocolManager,
-};
+use massa_protocol_exports::{ProtocolConfig, ProtocolController, ProtocolError, ProtocolManager};
 use massa_serialization::U64VarIntDeserializer;
 use massa_storage::Storage;
 use parking_lot::RwLock;

@@ -3022,27 +3022,6 @@ name = "massa_protocol_exports"
 version = "0.1.0"
 dependencies = [
  "displaydoc",
- "futures",
- "lazy_static",
- "massa_hash 0.1.0",
- "massa_logging",
- "massa_models",
- "massa_network_exports",
- "massa_signature 0.1.0",
- "massa_storage",
- "massa_time",
- "serde",
- "serde_json",
- "thiserror",
- "tokio",
- "tracing",
-]
-
-[[package]]
-name = "massa_protocol_exports_2"
-version = "0.1.0"
-dependencies = [
- "displaydoc",
  "massa_hash 0.1.0",
  "massa_models",
  "massa_signature 0.1.0",
@@ -3059,30 +3038,6 @@ dependencies = [
 name = "massa_protocol_worker"
 version = "0.1.0"
 dependencies = [
- "futures",
- "lazy_static",
- "massa_consensus_exports",
- "massa_hash 0.1.0",
- "massa_logging",
- "massa_models",
- "massa_network_exports",
- "massa_pool_exports",
- "massa_protocol_exports",
- "massa_serialization 0.1.0",
- "massa_signature 0.1.0",
- "massa_storage",
- "massa_time",
- "rayon",
- "serde_json",
- "serial_test 1.0.0",
- "tokio",
- "tracing",
-]
-
-[[package]]
-name = "massa_protocol_worker_2"
-version = "0.1.0"
-dependencies = [
  "crossbeam",
  "lru",
  "massa_consensus_exports",
@@ -3090,7 +3045,7 @@ dependencies = [
  "massa_logging",
  "massa_models",
  "massa_pool_exports",
- "massa_protocol_exports_2",
+ "massa_protocol_exports",
  "massa_serialization 0.1.0",
  "massa_signature 0.1.0",
  "massa_storage",

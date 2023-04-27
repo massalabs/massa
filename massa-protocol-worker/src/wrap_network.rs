@@ -1,6 +1,6 @@
 use std::{collections::HashSet, net::SocketAddr};
 
-use massa_protocol_exports_2::ProtocolError;
+use massa_protocol_exports::ProtocolError;
 use peernet::{
     network_manager::{PeerNetManager, SharedActiveConnections},
     peer_id::PeerId,

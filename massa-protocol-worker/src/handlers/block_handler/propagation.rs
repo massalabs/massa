@@ -4,7 +4,7 @@ use crossbeam::channel::{Receiver, Sender};
 use lru::LruCache;
 use massa_logging::massa_trace;
 use massa_models::{block_id::BlockId, prehash::PreHashSet};
-use massa_protocol_exports_2::{ProtocolConfig, ProtocolError};
+use massa_protocol_exports::{ProtocolConfig, ProtocolError};
 use massa_storage::Storage;
 use peernet::peer_id::PeerId;
 use tracing::warn;

@@ -1,5 +1,5 @@
 use crossbeam::channel::Sender;
-use massa_protocol_exports_2::ProtocolError;
+use massa_protocol_exports::ProtocolError;
 use parking_lot::RwLock;
 use peernet::{peer_id::PeerId, transports::TransportType};
 use rand::seq::SliceRandom;

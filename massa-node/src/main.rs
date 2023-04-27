@@ -64,10 +64,7 @@ use massa_pool_exports::{PoolChannels, PoolConfig, PoolManager};
 use massa_pool_worker::start_pool_controller;
 use massa_pos_exports::{PoSConfig, SelectorConfig, SelectorManager};
 use massa_pos_worker::start_selector_worker;
-use massa_protocol_exports::{
-    ProtocolCommand, ProtocolCommandSender, ProtocolConfig, ProtocolManager, ProtocolReceivers,
-    ProtocolSenders,
-};
+use massa_protocol_exports::{ProtocolConfig, ProtocolController, ProtocolManager};
 use massa_protocol_worker::start_protocol_controller;
 use massa_storage::Storage;
 use massa_time::MassaTime;
@@ -97,7 +94,7 @@ async fn launch(
     Box<dyn ExecutionManager>,
     Box<dyn SelectorManager>,
     Box<dyn PoolManager>,
-    ProtocolManager,
+    Box<dyn ProtocolManager>,
     NetworkManager,
     Box<dyn FactoryManager>,
     mpsc::Receiver<()>,
@@ -377,7 +374,6 @@ async fn launch(
         node_command_channel_size: NETWORK_NODE_COMMAND_CHANNEL_SIZE,
         node_event_channel_size: NETWORK_NODE_EVENT_CHANNEL_SIZE,
         last_start_period: final_state.read().last_start_period,
-        max_denunciations_per_block_header: MAX_DENUNCIATIONS_PER_BLOCK_HEADER,
     };
 
     // launch network controller
@@ -506,9 +502,6 @@ async fn launch(
         execution_controller.clone(),
         pool_channels.clone(),
     );
-
-    let (protocol_command_sender, protocol_command_receiver) =
-        mpsc::channel::<ProtocolCommand>(PROTOCOL_CONTROLLER_CHANNEL_SIZE);
 
     let consensus_config = ConsensusConfig {
         genesis_timestamp: *GENESIS_TIMESTAMP,

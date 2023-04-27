@@ -4,7 +4,7 @@ use crossbeam::{
 };
 use massa_consensus_exports::ConsensusController;
 use massa_pool_exports::PoolController;
-use massa_protocol_exports_2::{ProtocolConfig, ProtocolError};
+use massa_protocol_exports::{ProtocolConfig, ProtocolError};
 use massa_storage::Storage;
 use parking_lot::RwLock;
 use peernet::peer_id::PeerId;

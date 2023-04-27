@@ -4,7 +4,7 @@ use massa_models::{
     block_id::BlockId,
     prehash::{PreHashMap, PreHashSet},
 };
-use massa_protocol_exports_2::{ProtocolController, ProtocolError};
+use massa_protocol_exports::{ProtocolController, ProtocolError};
 use massa_storage::Storage;
 
 use crate::handlers::{

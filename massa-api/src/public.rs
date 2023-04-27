@@ -33,7 +33,7 @@ use massa_models::{
     timeslots,
 };
 use massa_pos_exports::SelectorController;
-use massa_protocol_exports::ProtocolCommandSender;
+use massa_protocol_exports::ProtocolController;
 use massa_serialization::{DeserializeError, Deserializer};
 
 use itertools::{izip, Itertools};
@@ -70,7 +70,7 @@ impl API<Public> {
         api_settings: APIConfig,
         selector_controller: Box<dyn SelectorController>,
         pool_command_sender: Box<dyn PoolController>,
-        protocol_command_sender: ProtocolCommandSender,
+        protocol_controller: Box<dyn ProtocolController>,
         network_settings: NetworkConfig,
         version: Version,
         network_command_sender: NetworkCommandSender,
@@ -84,7 +84,7 @@ impl API<Public> {
             network_settings,
             version,
             network_command_sender,
-            protocol_command_sender,
+            protocol_controller,
             node_id,
             execution_controller,
             selector_controller,
@@ -914,7 +914,7 @@ impl MassaRpcServer for API<Public> {
 
     async fn send_operations(&self, ops: Vec<OperationInput>) -> RpcResult<Vec<OperationId>> {
         let mut cmd_sender = self.0.pool_command_sender.clone();
-        let mut protocol_sender = self.0.protocol_command_sender.clone();
+        let protocol_sender = self.0.protocol_controller.clone();
         let api_cfg = self.0.api_settings.clone();
         let mut to_send = self.0.storage.clone_without_refs();
 

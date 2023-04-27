@@ -6,7 +6,7 @@ use std::{
 };
 
 use crossbeam::channel::Sender;
-use massa_protocol_exports_2::ProtocolConfig;
+use massa_protocol_exports::ProtocolConfig;
 use massa_serialization::{DeserializeError, Deserializer};
 use peernet::{
     config::PeerNetConfiguration,

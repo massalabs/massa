@@ -3,7 +3,7 @@ use std::thread::JoinHandle;
 use crossbeam::channel::{Receiver, Sender};
 use massa_consensus_exports::ConsensusController;
 use massa_pool_exports::PoolController;
-use massa_protocol_exports_2::ProtocolConfig;
+use massa_protocol_exports::ProtocolConfig;
 use massa_storage::Storage;
 
 use crate::wrap_network::ActiveConnectionsTrait;

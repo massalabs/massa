@@ -35,7 +35,7 @@ use massa_models::{
     secure_share::{Id, SecureShare},
 };
 use massa_pool_exports::PoolController;
-use massa_protocol_exports_2::{ProtocolConfig, ProtocolError};
+use massa_protocol_exports::{ProtocolConfig, ProtocolError};
 use massa_serialization::{DeserializeError, Deserializer, Serializer};
 use massa_storage::Storage;
 use massa_time::TimeError;
