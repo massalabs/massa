@@ -111,7 +111,7 @@ pub fn start_connectivity_thread(
                 channel_operations.1,
                 sender_operations_retrieval_ext,
                 receiver_operations_retrieval_ext,
-                sender_operations_propagation_ext,
+                sender_operations_propagation_ext.clone(),
                 receiver_operations_propagation_ext,
                 peer_management_handler.sender.command_sender.clone(),
             );
@@ -137,6 +137,7 @@ pub fn start_connectivity_thread(
                 receiver_blocks_retrieval_ext,
                 receiver_blocks_propagation_ext,
                 sender_blocks_propagation_ext,
+                sender_operations_propagation_ext,
                 peer_management_handler.sender.command_sender.clone(),
                 config.clone(),
                 endorsement_cache,

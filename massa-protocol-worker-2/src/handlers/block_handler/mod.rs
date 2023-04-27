@@ -30,7 +30,9 @@ pub use messages::{
 
 use super::{
     endorsement_handler::cache::SharedEndorsementCache,
-    operation_handler::cache::SharedOperationCache,
+    operation_handler::{
+        cache::SharedOperationCache, commands_propagation::OperationHandlerPropagationCommand,
+    },
     peer_handler::models::{PeerManagementCmd, PeerMessageTuple},
 };
 
@@ -49,6 +51,7 @@ impl BlockHandler {
         receiver_ext: Receiver<BlockHandlerRetrievalCommand>,
         internal_receiver: Receiver<BlockHandlerPropagationCommand>,
         internal_sender: Sender<BlockHandlerPropagationCommand>,
+        sender_propagations_ops: Sender<OperationHandlerPropagationCommand>,
         peer_cmd_sender: Sender<PeerManagementCmd>,
         config: ProtocolConfig,
         endorsement_cache: SharedEndorsementCache,
@@ -63,12 +66,13 @@ impl BlockHandler {
             receiver_network,
             receiver_ext,
             internal_sender.clone(),
+            sender_propagations_ops.clone(),
             peer_cmd_sender.clone(),
             config.clone(),
             endorsement_cache,
             operation_cache,
             cache.clone(),
-            storage,
+            storage.clone_without_refs(),
         );
         let block_propagation_thread = start_propagation_thread(
             active_connections,
@@ -76,6 +80,7 @@ impl BlockHandler {
             peer_cmd_sender,
             config,
             cache,
+            storage,
         );
         Self {
             block_retrieval_thread: Some((sender_ext, block_retrieval_thread)),

@@ -7,7 +7,7 @@ use crate::{
 };
 use crossbeam::channel::unbounded;
 use massa_consensus_exports::{
-    test_exports::{ConsensusEventReceiver, MockConsensusController},
+    test_exports::{ConsensusControllerImpl, ConsensusEventReceiver},
     ConsensusController,
 };
 //use crate::handlers::block_handler::BlockInfoReply;
@@ -98,7 +98,7 @@ where
 {
     let (pool_controller, pool_event_receiver) = MockPoolController::new_with_receiver();
     let (consensus_controller, consensus_event_receiver) =
-        MockConsensusController::new_with_receiver();
+        ConsensusControllerImpl::new_with_receiver();
     // start protocol controller
     let (network_controller, protocol_controller, protocol_manager) =
         start_protocol_controller_with_mock_network(
@@ -126,7 +126,7 @@ where
     protocol_manager.stop()
 }
 
-pub fn _protocol_test_with_storage<F>(protocol_config: &ProtocolConfig, test: F)
+pub fn protocol_test_with_storage<F>(protocol_config: &ProtocolConfig, test: F)
 where
     F: FnOnce(
         Box<MockNetworkController>,
@@ -145,7 +145,7 @@ where
 {
     let (pool_controller, pool_event_receiver) = MockPoolController::new_with_receiver();
     let (consensus_controller, consensus_event_receiver) =
-        MockConsensusController::new_with_receiver();
+        ConsensusControllerImpl::new_with_receiver();
     let storage = Storage::create_root();
     // start protocol controller
     let (network_controller, protocol_controller, protocol_manager) =

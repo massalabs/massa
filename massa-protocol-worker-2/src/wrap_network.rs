@@ -25,6 +25,7 @@ pub trait ActiveConnectionsTrait: Send + Sync {
     fn check_addr_accepted(&self, addr: &SocketAddr) -> bool;
     fn get_max_out_connections(&self) -> usize;
     fn get_nb_out_connections(&self) -> usize;
+    fn shutdown_connection(&mut self, peer_id: &PeerId);
 }
 
 impl Clone for Box<dyn ActiveConnectionsTrait> {
@@ -71,6 +72,12 @@ impl ActiveConnectionsTrait for SharedActiveConnections {
 
     fn get_nb_out_connections(&self) -> usize {
         self.read().connections.len()
+    }
+
+    fn shutdown_connection(&mut self, peer_id: &PeerId) {
+        if let Some(connection) = self.write().connections.get_mut(peer_id) {
+            connection.shutdown();
+        }
     }
 }
 
