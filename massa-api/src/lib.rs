@@ -39,6 +39,7 @@ use massa_pool_exports::{PoolChannels, PoolController};
 use massa_pos_exports::SelectorController;
 use massa_protocol_exports::ProtocolCommandSender;
 use massa_storage::Storage;
+use massa_versioning::keypair_factory::KeyPairFactory;
 use massa_wallet::Wallet;
 use parking_lot::RwLock;
 use serde_json::Value;
@@ -77,6 +78,8 @@ pub struct Public {
     pub network_command_sender: NetworkCommandSender,
     /// our node id
     pub node_id: NodeId,
+    /// keypair factory
+    pub keypair_factory: KeyPairFactory,
 }
 
 /// Private API content

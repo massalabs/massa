@@ -56,9 +56,11 @@ use massa_models::{
 };
 use massa_network_exports::{NetworkCommandSender, NetworkConfig};
 use massa_pool_exports::PoolController;
-use massa_signature::KeyPair;
 use massa_storage::Storage;
 use massa_time::MassaTime;
+use massa_versioning::{
+    keypair_factory::KeyPairFactory, versioning::MipStore, versioning_factory::VersioningFactory,
+};
 use std::collections::BTreeMap;
 use std::net::{IpAddr, SocketAddr};
 
@@ -76,6 +78,7 @@ impl API<Public> {
         network_command_sender: NetworkCommandSender,
         node_id: NodeId,
         storage: Storage,
+        mip_store: MipStore,
     ) -> Self {
         API(Public {
             consensus_controller,
@@ -89,6 +92,7 @@ impl API<Public> {
             execution_controller,
             selector_controller,
             storage,
+            keypair_factory: KeyPairFactory { mip_store },
         })
     }
 }
@@ -138,7 +142,9 @@ impl MassaRpcServer for API<Public> {
         {
             let address = address.unwrap_or_else(|| {
                 // if no addr provided, use a random one
-                Address::from_public_key(&KeyPair::generate().get_public_key())
+                // CURRENT TODO: ERROR HANDLING
+                let keypair = self.0.keypair_factory.create(&(), None).unwrap();
+                Address::from_public_key(&keypair.get_public_key())
             });
 
             let op_datastore = match operation_datastore {
@@ -226,7 +232,9 @@ impl MassaRpcServer for API<Public> {
         {
             let caller_address = caller_address.unwrap_or_else(|| {
                 // if no addr provided, use a random one
-                Address::from_public_key(&KeyPair::generate().get_public_key())
+                // CURRENT TODO: ERROR HANDLING
+                let keypair = self.0.keypair_factory.create(&(), None).unwrap();
+                Address::from_public_key(&keypair.get_public_key())
             });
 
             // TODO:

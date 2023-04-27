@@ -372,6 +372,19 @@ async fn launch(
         max_denunciations_per_block_header: MAX_DENUNCIATIONS_PER_BLOCK_HEADER,
     };
 
+    // Creates an empty default store
+    let mip_stats_config = MipStatsConfig {
+        block_count_considered: MIP_STORE_STATS_BLOCK_CONSIDERED,
+        counters_max: MIP_STORE_STATS_COUNTERS_MAX,
+    };
+    let mut mip_store =
+        MipStore::try_from(([], mip_stats_config)).expect("Cannot create an empty MIP store");
+    if let Some(bootstrap_mip_store) = bootstrap_state.mip_store {
+        mip_store
+            .update_with(&bootstrap_mip_store)
+            .expect("Cannot update MIP store with bootstrap mip store");
+    }
+
     // launch network controller
     let (network_command_sender, network_event_receiver, network_manager, private_key, node_id) =
         start_network_controller(
@@ -379,6 +392,7 @@ async fn launch(
             Establisher::new(),
             bootstrap_state.peers,
             *VERSION,
+            mip_store.clone(),
         )
         .await
         .expect("could not start network controller");
@@ -404,19 +418,6 @@ async fn launch(
             .checked_mul_u64(LEDGER_ENTRY_DATASTORE_BASE_SIZE as u64)
             .expect("Overflow when creating constant ledger_entry_datastore_base_size"),
     };
-
-    // Creates an empty default store
-    let mip_stats_config = MipStatsConfig {
-        block_count_considered: MIP_STORE_STATS_BLOCK_CONSIDERED,
-        counters_max: MIP_STORE_STATS_COUNTERS_MAX,
-    };
-    let mut mip_store =
-        MipStore::try_from(([], mip_stats_config)).expect("Cannot create an empty MIP store");
-    if let Some(bootstrap_mip_store) = bootstrap_state.mip_store {
-        mip_store
-            .update_with(&bootstrap_mip_store)
-            .expect("Cannot update MIP store with bootstrap mip store");
-    }
 
     // launch execution module
     let execution_config = ExecutionConfig {
@@ -818,6 +819,7 @@ async fn launch(
         network_command_sender.clone(),
         node_id,
         shared_storage.clone(),
+        mip_store.clone(),
     );
     let api_public_handle = api_public
         .serve(&SETTINGS.api.bind_public, &api_config)

@@ -137,6 +137,24 @@ pub trait VersioningFactory {
             .collect()
     }
 
+    /// Get the version the current component with the given startegy
+    fn get_component_version_with_strategy(
+        &self,
+        strategy: Option<FactoryStrategy>,
+    ) -> Result<u32, FactoryError> {
+        match strategy {
+            Some(FactoryStrategy::Exact(v)) => match self.get_all_component_versions().get(&v) {
+                Some(s) if *s == ComponentStateTypeId::Active => Ok(v),
+                Some(s) if *s != ComponentStateTypeId::Active => {
+                    Err(FactoryError::OnStateNotReady(v))
+                }
+                _ => Err(FactoryError::UnknownVersion(v)),
+            },
+            Some(FactoryStrategy::At(ts)) => self.get_latest_component_version_at(ts),
+            None | Some(FactoryStrategy::Latest) => Ok(self.get_latest_component_version()),
+        }
+    }
+
     /// Create an object of type Self::Output
     fn create(
         &self,

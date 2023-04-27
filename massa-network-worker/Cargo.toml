@@ -25,6 +25,7 @@ massa_models = { path = "../massa-models" }
 massa_serialization = { path = "../massa-serialization" }
 massa_signature = { path = "../massa-signature" }
 massa_time = { path = "../massa-time" }
+massa_versioning = { path = "../massa-versioning" }
 
 [dev-dependencies]
 serial_test = "1.0"

@@ -18,6 +18,9 @@ use massa_network_exports::{
     NetworkEvent, NetworkEventReceiver, NetworkManagementCommand, NetworkManager,
 };
 use massa_signature::KeyPair;
+use massa_versioning::{
+    keypair_factory::KeyPairFactory, versioning::MipStore, versioning_factory::VersioningFactory,
+};
 use tokio::sync::mpsc;
 use tracing::{debug, error, info, warn};
 
@@ -43,6 +46,7 @@ pub async fn start_network_controller(
     mut establisher: Establisher,
     initial_peers: Option<BootstrapPeers>,
     version: Version,
+    mip_store: MipStore,
 ) -> Result<
     (
         NetworkCommandSender,
@@ -73,7 +77,9 @@ pub async fn start_network_controller(
         serde_json::from_slice::<KeyPair>(keypair_bs58_check_encoded.as_bytes())?
     } else {
         // node file does not exist: generate the key and save it
-        let keypair = KeyPair::generate();
+        let keypair_factory = KeyPairFactory { mip_store };
+        // CURRENT TODO: ERROR HANDLING
+        let keypair = keypair_factory.create(&(), None).unwrap();
         if let Err(e) = tokio::fs::write(
             &network_settings.keypair_file,
             serde_json::to_string(&keypair)?,

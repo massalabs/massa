@@ -2,7 +2,7 @@ use massa_signature::KeyPair;
 
 use crate::{
     versioning::{MipComponent, MipStore},
-    versioning_factory::{FactoryError, VersioningFactory},
+    versioning_factory::{FactoryError, FactoryStrategy, VersioningFactory},
 };
 
 #[derive(Clone)]
@@ -21,5 +21,18 @@ impl VersioningFactory for KeyPairFactory {
 
     fn get_versioning_store(&self) -> MipStore {
         self.mip_store.clone()
+    }
+
+    fn create(
+        &self,
+        _args: &Self::Arguments,
+        strategy: Option<FactoryStrategy>,
+    ) -> Result<Self::Output, Self::Error> {
+        let version = self.get_component_version_with_strategy(strategy)?;
+
+        let output = KeyPair::generate(version.into())
+            .map_err(|_| FactoryError::UnimplementedVersion(version))?;
+
+        Ok(output)
     }
 }

@@ -1,5 +1,5 @@
 use crate::{
-    versioning::{ComponentStateTypeId, MipComponent, MipStore},
+    versioning::{MipComponent, MipStore},
     versioning_factory::{FactoryError, FactoryStrategy, VersioningFactory},
 };
 use massa_hash::Hash;
@@ -35,17 +35,7 @@ impl VersioningFactory for AddressFactory {
         args: &Self::Arguments,
         strategy: Option<FactoryStrategy>,
     ) -> Result<Self::Output, Self::Error> {
-        let version = match strategy {
-            Some(FactoryStrategy::Exact(v)) => match self.get_all_component_versions().get(&v) {
-                Some(s) if *s == ComponentStateTypeId::Active => Ok(v),
-                Some(s) if *s != ComponentStateTypeId::Active => {
-                    Err(FactoryError::OnStateNotReady(v))
-                }
-                _ => Err(FactoryError::UnknownVersion(v)),
-            },
-            Some(FactoryStrategy::At(ts)) => self.get_latest_component_version_at(ts),
-            None | Some(FactoryStrategy::Latest) => Ok(self.get_latest_component_version()),
-        }?;
+        let version = self.get_component_version_with_strategy(strategy)?;
 
         let output: Address = match version {
             0 => match args {
