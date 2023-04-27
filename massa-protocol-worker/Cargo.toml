@@ -1,5 +1,5 @@
 [package]
-name = "massa_protocol_worker_2"
+name = "massa_protocol_worker"
 version = "0.1.0"
 authors = ["Massa Labs <info@massa.net>"]
 edition = "2021"
