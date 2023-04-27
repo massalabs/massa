@@ -10,7 +10,7 @@
 //!
 //! Denunciation structure
 //!
-//! A denunciation embed some information such as
+//! A denunciation embeds some information such as
 //! Slot, the slot from the block header or the endorsements (+ index)
 //! A public key: the public key of the secure share endorsement or secured header
 //! 2 Hashes & 2 Signatures
