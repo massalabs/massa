@@ -62,7 +62,7 @@ fn basic() {
     config1.max_out_connections = 1;
     config2.initial_peers = initial_peers_file_2.path().to_path_buf();
     config2.max_in_connections = 5;
-    config2.max_out_connections = 1;
+    config2.max_out_connections = 0;
     config2.debug = false;
 
     // Setup the storages
