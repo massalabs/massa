@@ -272,11 +272,10 @@ impl ConsensusController for ConsensusControllerImpl {
         }
 
         if let Some(verifiable_block) = block_storage.read_blocks().get(&block_id) {
-            if let Ok(de_p) = DenunciationPrecursor::try_from(&verifiable_block.content.header) {
-                self.channels
-                    .pool_command_sender
-                    .add_denunciation_precursor(de_p);
-            }
+            let de_p = DenunciationPrecursor::from(&verifiable_block.content.header);
+            self.channels
+                .pool_command_sender
+                .add_denunciation_precursor(de_p);
         }
 
         if let Err(err) = self
@@ -303,16 +302,10 @@ impl ConsensusController for ConsensusControllerImpl {
             }
         }
 
-        if let Ok(de_p) = DenunciationPrecursor::try_from(&header) {
-            self.channels
-                .pool_command_sender
-                .add_denunciation_precursor(de_p);
-        } else {
-            warn!(
-                "Cannot create denunciation precursor from header: {}",
-                &header
-            );
-        }
+        let de_p = DenunciationPrecursor::from(&header);
+        self.channels
+            .pool_command_sender
+            .add_denunciation_precursor(de_p);
 
         if let Err(err) = self
             .command_sender
