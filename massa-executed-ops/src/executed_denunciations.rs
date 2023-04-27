@@ -1,6 +1,6 @@
 //! Copyright (c) 2023 MASSA LABS <info@massa.net>
 
-//! This file defines a structure to list and prune previously processed denunciations.
+//! This file defines a structure to list and prune previously executed denunciations.
 //! Used to detect denunciation reuse.
 
 use std::collections::{BTreeMap, HashSet};
@@ -28,21 +28,21 @@ use massa_serialization::{
 
 const EXECUTED_DENUNCIATIONS_HASH_INITIAL_BYTES: &[u8; 32] = &[0; HASH_SIZE_BYTES];
 
-/// A structure to list and prune previously processed denunciations
+/// A structure to list and prune previously executed denunciations
 #[derive(Debug, Clone)]
 pub struct ExecutedDenunciations {
-    /// Processed denunciations configuration
+    /// Executed denunciations configuration
     config: ExecutedDenunciationsConfig,
     /// for better pruning complexity
     pub sorted_denunciations: BTreeMap<Slot, HashSet<DenunciationIndex>>,
     /// for better insertion complexity
     pub denunciations: HashSet<DenunciationIndex>,
-    /// Accumulated hash of the processed denunciations
+    /// Accumulated hash of the executed denunciations
     pub hash: Hash,
 }
 
 impl ExecutedDenunciations {
-    /// Create a new `ProcessedDenunciations`
+    /// Create a new `ExecutedDenunciations`
     pub fn new(config: ExecutedDenunciationsConfig) -> Self {
         Self {
             config,
@@ -71,7 +71,7 @@ impl ExecutedDenunciations {
         self.denunciations.is_empty()
     }
 
-    /// Check if a denunciation (e.g. a denunciation index) was processed
+    /// Check if a denunciation (e.g. a denunciation index) was executed
     pub fn contains(&self, de_idx: &DenunciationIndex) -> bool {
         self.denunciations.contains(de_idx)
     }
@@ -88,7 +88,7 @@ impl ExecutedDenunciations {
         }
     }
 
-    /// Apply speculative operations changes to the final processed denunciations state
+    /// Apply speculative operations changes to the final executed denunciations state
     pub fn apply_changes(&mut self, changes: ExecutedDenunciationsChanges, slot: Slot) {
         self.extend_and_compute_hash(changes.iter());
         for de_idx in changes {
@@ -128,12 +128,12 @@ impl ExecutedDenunciations {
         }
     }
 
-    /// Get a part of the processed denunciations.
+    /// Get a part of the executed denunciations.
     /// Used exclusively by the bootstrap server.
     ///
     /// # Returns
     /// A tuple containing the data and the next executed de streaming step
-    pub fn get_processed_de_part(
+    pub fn get_executed_de_part(
         &self,
         cursor: StreamingStep<Slot>,
     ) -> (
@@ -162,13 +162,13 @@ impl ExecutedDenunciations {
         }
     }
 
-    /// Set a part of the processed denunciations.
+    /// Set a part of the executed denunciations.
     /// Used exclusively by the bootstrap client.
-    /// Takes the data returned from `get_processed_de_part` as input.
+    /// Takes the data returned from `get_executed_de_part` as input.
     ///
     /// # Returns
     /// The next executed de streaming step
-    pub fn set_processed_de_part(
+    pub fn set_executed_de_part(
         &mut self,
         part: BTreeMap<Slot, HashSet<DenunciationIndex>>,
     ) -> StreamingStep<Slot> {
@@ -186,21 +186,21 @@ impl ExecutedDenunciations {
     }
 }
 
-/// `ProcessedDenunciations` Serializer
-pub struct ProcessedDenunciationsSerializer {
+/// `ExecutedDenunciations` Serializer
+pub struct ExecutedDenunciationsSerializer {
     slot_serializer: SlotSerializer,
     de_idx_serializer: DenunciationIndexSerializer,
     u64_serializer: U64VarIntSerializer,
 }
 
-impl Default for ProcessedDenunciationsSerializer {
+impl Default for ExecutedDenunciationsSerializer {
     fn default() -> Self {
         Self::new()
     }
 }
 
-impl ProcessedDenunciationsSerializer {
-    /// Create a new `ProcessedDenunciations` Serializer
+impl ExecutedDenunciationsSerializer {
+    /// Create a new `ExecutedDenunciations` Serializer
     pub fn new() -> Self {
         Self {
             slot_serializer: SlotSerializer::new(),
@@ -210,13 +210,13 @@ impl ProcessedDenunciationsSerializer {
     }
 }
 
-impl Serializer<BTreeMap<Slot, HashSet<DenunciationIndex>>> for ProcessedDenunciationsSerializer {
+impl Serializer<BTreeMap<Slot, HashSet<DenunciationIndex>>> for ExecutedDenunciationsSerializer {
     fn serialize(
         &self,
         value: &BTreeMap<Slot, HashSet<DenunciationIndex>>,
         buffer: &mut Vec<u8>,
     ) -> Result<(), SerializeError> {
-        // processed denunciations length
+        // exec denunciations length
         self.u64_serializer
             .serialize(&(value.len() as u64), buffer)?;
         // executed ops
@@ -234,20 +234,20 @@ impl Serializer<BTreeMap<Slot, HashSet<DenunciationIndex>>> for ProcessedDenunci
     }
 }
 
-/// Deserializer for `ProcessedDenunciations`
-pub struct ProcessedDenunciationsDeserializer {
+/// Deserializer for `ExecutedDenunciations`
+pub struct ExecutedDenunciationsDeserializer {
     de_idx_deserializer: DenunciationIndexDeserializer,
     slot_deserializer: SlotDeserializer,
     ops_length_deserializer: U64VarIntDeserializer,
     slot_ops_length_deserializer: U64VarIntDeserializer,
 }
 
-impl ProcessedDenunciationsDeserializer {
-    /// Create a new deserializer for `ProcessedDenunciations`
+impl ExecutedDenunciationsDeserializer {
+    /// Create a new deserializer for `ExecutedDenunciations`
     pub fn new(
         thread_count: u8,
         endorsement_count: u32,
-        max_processed_de_length: u64,
+        max_executed_de_length: u64,
         max_denunciations_per_block_header: u64,
     ) -> Self {
         Self {
@@ -261,7 +261,7 @@ impl ProcessedDenunciationsDeserializer {
             ),
             ops_length_deserializer: U64VarIntDeserializer::new(
                 Included(u64::MIN),
-                Included(max_processed_de_length),
+                Included(max_executed_de_length),
             ),
             slot_ops_length_deserializer: U64VarIntDeserializer::new(
                 Included(u64::MIN),
@@ -272,14 +272,14 @@ impl ProcessedDenunciationsDeserializer {
 }
 
 impl Deserializer<BTreeMap<Slot, HashSet<DenunciationIndex>>>
-    for ProcessedDenunciationsDeserializer
+    for ExecutedDenunciationsDeserializer
 {
     fn deserialize<'a, E: ParseError<&'a [u8]> + ContextError<&'a [u8]>>(
         &self,
         buffer: &'a [u8],
     ) -> IResult<&'a [u8], BTreeMap<Slot, HashSet<DenunciationIndex>>, E> {
         context(
-            "ProcessedDenunciations",
+            "ExecutedDenunciations",
             length_count(
                 context("length", |input| {
                     self.ops_length_deserializer.deserialize(input)

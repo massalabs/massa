@@ -52,8 +52,8 @@ pub struct ExecutionContextSnapshot {
     /// speculative list of operations executed
     pub executed_ops: ExecutedOpsChanges,
 
-    /// speculative list of processed denunciations
-    pub processed_denunciations: ExecutedDenunciationsChanges,
+    /// speculative list of executed denunciations
+    pub executed_denunciations: ExecutedDenunciationsChanges,
 
     /// speculative roll state changes caused so far in the context
     pub pos_changes: PoSChanges,
@@ -107,8 +107,8 @@ pub struct ExecutionContext {
     /// speculative list of executed operations
     speculative_executed_ops: SpeculativeExecutedOps,
 
-    /// speculative list of processed denunciations
-    speculative_processed_denunciations: SpeculativeExecutedDenunciations,
+    /// speculative list of executed denunciations
+    speculative_executed_denunciations: SpeculativeExecutedDenunciations,
 
     /// max gas for this execution
     pub max_gas: u64,
@@ -195,7 +195,7 @@ impl ExecutionContext {
                 final_state.clone(),
                 active_history.clone(),
             ),
-            speculative_processed_denunciations: SpeculativeExecutedDenunciations::new(
+            speculative_executed_denunciations: SpeculativeExecutedDenunciations::new(
                 final_state,
                 active_history,
             ),
@@ -226,7 +226,7 @@ impl ExecutionContext {
             async_pool_changes: self.speculative_async_pool.get_snapshot(),
             pos_changes: self.speculative_roll_state.get_snapshot(),
             executed_ops: self.speculative_executed_ops.get_snapshot(),
-            processed_denunciations: self.speculative_processed_denunciations.get_snapshot(),
+            executed_denunciations: self.speculative_executed_denunciations.get_snapshot(),
             created_addr_index: self.created_addr_index,
             created_event_index: self.created_event_index,
             stack: self.stack.clone(),
@@ -252,8 +252,8 @@ impl ExecutionContext {
             .reset_to_snapshot(snapshot.pos_changes);
         self.speculative_executed_ops
             .reset_to_snapshot(snapshot.executed_ops);
-        self.speculative_processed_denunciations
-            .reset_to_snapshot(snapshot.processed_denunciations);
+        self.speculative_executed_denunciations
+            .reset_to_snapshot(snapshot.executed_denunciations);
         self.created_addr_index = snapshot.created_addr_index;
         self.created_event_index = snapshot.created_event_index;
         self.stack = snapshot.stack;
@@ -880,7 +880,7 @@ impl ExecutionContext {
             async_pool_changes: self.speculative_async_pool.take(),
             pos_changes: self.speculative_roll_state.take(),
             executed_ops_changes: self.speculative_executed_ops.take(),
-            executed_denunciations_changes: self.speculative_processed_denunciations.take(),
+            executed_denunciations_changes: self.speculative_executed_denunciations.take(),
         };
         ExecutionOutput {
             slot,
@@ -964,7 +964,7 @@ impl ExecutionContext {
 
     /// Check if a denunciation was previously executed (to prevent reuse)
     pub fn is_denunciation_executed(&self, de_idx: &DenunciationIndex) -> bool {
-        self.speculative_processed_denunciations
+        self.speculative_executed_denunciations
             .is_denunciation_executed(de_idx)
     }
 
@@ -985,10 +985,10 @@ impl ExecutionContext {
             .insert_executed_op(op_id, op_exec_status, op_valid_until_slot)
     }
 
-    /// Insert a processed denunciation.
+    /// Insert a executed denunciation.
     ///
     pub fn insert_executed_denunciation(&mut self, denunciation_idx: &DenunciationIndex) {
-        self.speculative_processed_denunciations
+        self.speculative_executed_denunciations
             .insert_executed_denunciation(denunciation_idx.clone());
     }
 
