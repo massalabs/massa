@@ -12,6 +12,8 @@ use num_enum::{IntoPrimitive, TryFromPrimitive};
 use peernet::{peer_id::PeerId, transports::TransportType, types::PUBLIC_KEY_SIZE_BYTES};
 
 #[derive(Debug, Clone)]
+//TODO: Fix this clippy warning
+#[allow(clippy::large_enum_variant)]
 pub enum PeerManagementMessage {
     // Receive the ip addresses sent by a peer when connecting.
     NewPeerConnected((PeerId, HashMap<SocketAddr, TransportType>)),
@@ -40,6 +42,7 @@ pub enum MessageTypeId {
     ListPeers = 1,
 }
 
+#[derive(Default)]
 pub struct PeerManagementMessageSerializer {
     length_serializer: U64VarIntSerializer,
     ip_addr_serializer: IpAddrSerializer,

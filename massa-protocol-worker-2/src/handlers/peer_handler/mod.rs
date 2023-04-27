@@ -66,12 +66,14 @@ impl PeerManagementHandler {
         config: &ProtocolConfig,
     ) -> Self {
         let (sender_cmd, receiver_cmd): (Sender<PeerManagementCmd>, Receiver<PeerManagementCmd>) =
-            crossbeam::channel::unbounded();
+            crossbeam::channel::bounded(config.max_size_channel_commands_peers);
         let message_serializer = PeerManagementMessageSerializer::new();
 
         let (test_sender, testers) = Tester::run(config, peer_db.clone());
 
-        let thread_join = std::thread::spawn({
+        let thread_join = std::thread::Builder::new()
+        .name("protocol-peer-handler".to_string())
+        .spawn({
             let peer_db = peer_db.clone();
             let ticker = tick(Duration::from_secs(10));
 
@@ -79,9 +81,8 @@ impl PeerManagementHandler {
                 .with_peer_management_message_serializer(PeerManagementMessageSerializer::new());
             let mut message_deserializer =
                 PeerManagementMessageDeserializer::new(PeerManagementMessageDeserializerArgs {
-                    //TODO: Real config values
-                    max_peers_per_announcement: 1000,
-                    max_listeners_per_peer: 100,
+                    max_peers_per_announcement: config.max_size_peers_announcement,
+                    max_listeners_per_peer: config.max_size_listeners_per_peer,
                 });
             move || {
                 loop {
@@ -138,11 +139,18 @@ impl PeerManagementHandler {
                             }
 
                             message_deserializer.set_message(message_id);
-                            let (_, message) = message_deserializer
-                                .deserialize::<DeserializeError>(&message)
-                                .unwrap();
-                            // TODO: Bufferize launch of test thread
-                            // TODO: Add wait group or something like that to wait for all threads to finish when stop
+                            let (rest, message) = match message_deserializer
+                                .deserialize::<DeserializeError>(&message) {
+                                Ok((rest, message)) => (rest, message),
+                                Err(e) => {
+                                    warn!("error when deserializing message: {:?}", e);
+                                    continue;
+                                }
+                            };
+                            if !rest.is_empty() {
+                                warn!("message not fully deserialized");
+                                continue;
+                            }
                             match message {
                                 PeerManagementMessage::NewPeerConnected((peer_id, listeners)) => {
                                    if let Err(e) = test_sender.send((peer_id, listeners)) {
@@ -161,7 +169,7 @@ impl PeerManagementHandler {
                     }
                 }
             }
-        });
+        }).expect("OS failed to start peer management thread");
 
         for (peer_id, listeners) in &initial_peers {
             let mut message = Vec::new();
@@ -204,20 +212,21 @@ impl PeerManagementHandler {
 pub struct MassaHandshake {
     pub announcement_serializer: AnnouncementSerializer,
     pub announcement_deserializer: AnnouncementDeserializer,
+    pub config: ProtocolConfig,
     pub peer_db: SharedPeerDB,
 }
 
 impl MassaHandshake {
-    pub fn new(peer_db: SharedPeerDB) -> Self {
+    pub fn new(peer_db: SharedPeerDB, config: ProtocolConfig) -> Self {
         Self {
             peer_db,
             announcement_serializer: AnnouncementSerializer::new(),
             announcement_deserializer: AnnouncementDeserializer::new(
                 AnnouncementDeserializerArgs {
-                    //TODO: Config
-                    max_listeners: 1000,
+                    max_listeners: config.max_size_listeners_per_peer,
                 },
             ),
+            config,
         }
     }
 }
@@ -277,9 +286,6 @@ impl HandshakeHandler for MassaHandshake {
                     });
             }
 
-            //TODO: We use this to verify the signature before sending it to the handler.
-            //This will be done also in the handler but as we are in the handshake we want to do it to invalid the handshake in case it fails.
-
             offset += 32;
             let (_, announcement) = self
                 .announcement_deserializer
@@ -336,7 +342,6 @@ impl HandshakeHandler for MassaHandshake {
 
             // check their signature
             peer_id.verify_signature(&self_random_hash, &other_signature)?;
-
             Ok(peer_id.clone())
         };
 
@@ -351,7 +356,6 @@ impl HandshakeHandler for MassaHandshake {
                 info.state = PeerState::Trusted;
             });
         }
-
         res
     }
 }

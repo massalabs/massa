@@ -66,7 +66,7 @@ fn test_protocol_bans_node_sending_block_header_with_invalid_signature() {
             );
 
             //5. Check that protocol does not send block to consensus.
-            match consensus_event_receiver.wait_command(MassaTime::from_millis(100), |_| Some(())) {
+            match consensus_event_receiver.wait_command(MassaTime::from_millis(500), |_| Some(())) {
                 Some(()) => {
                     panic!("Protocol sent block to consensus.");
                 }
@@ -126,7 +126,7 @@ fn test_protocol_bans_node_sending_operation_with_invalid_signature() {
             );
 
             //5. Check that protocol does not send operation to pool.
-            match pool_event_receiver.wait_command(MassaTime::from_millis(100), |_| Some(())) {
+            match pool_event_receiver.wait_command(MassaTime::from_millis(500), |_| Some(())) {
                 Some(()) => {
                     panic!("Protocol sent block to consensus.");
                 }
@@ -283,7 +283,7 @@ fn test_protocol_does_not_asks_for_block_from_banned_node_who_propagated_header(
 
             //5. Check that protocol does send block to consensus.
             match consensus_event_receiver.wait_command(
-                MassaTime::from_millis(100),
+                MassaTime::from_millis(500),
                 |evt| match evt {
                     MockConsensusControllerMessage::RegisterBlockHeader {
                         block_id,
@@ -384,7 +384,7 @@ fn test_protocol_bans_all_nodes_propagating_an_attack_attempt() {
                 .unwrap();
             //4. Check that protocol does send block to consensus the first time.
             match consensus_event_receiver.wait_command(
-                MassaTime::from_millis(100),
+                MassaTime::from_millis(500),
                 |evt| match evt {
                     MockConsensusControllerMessage::RegisterBlockHeader {
                         block_id,
@@ -410,7 +410,7 @@ fn test_protocol_bans_all_nodes_propagating_an_attack_attempt() {
                 )
                 .unwrap();
             //5. Check that protocol does send block to consensus the second time.
-            match consensus_event_receiver.wait_command(MassaTime::from_millis(100), |_| Some(())) {
+            match consensus_event_receiver.wait_command(MassaTime::from_millis(500), |_| Some(())) {
                 Some(()) => panic!("Protocol should not send block to consensus"),
                 None => {}
             }

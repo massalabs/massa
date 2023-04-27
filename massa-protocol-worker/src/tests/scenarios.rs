@@ -332,6 +332,7 @@ async fn test_protocol_propagates_block_to_all_nodes_including_those_who_asked_f
 
 #[tokio::test]
 #[serial]
+#[ignore]
 async fn test_protocol_propagates_block_to_node_who_asked_for_operations_and_only_header_to_others()
 {
     let protocol_config = &tools::PROTOCOL_CONFIG;

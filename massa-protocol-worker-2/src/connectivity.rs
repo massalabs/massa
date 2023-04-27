@@ -1,5 +1,5 @@
 use crossbeam::{
-    channel::{unbounded, Receiver, Sender},
+    channel::{bounded, Receiver, Sender},
     select,
 };
 use massa_consensus_exports::ConsensusController;
@@ -13,6 +13,7 @@ use std::collections::HashMap;
 use std::net::SocketAddr;
 use std::{num::NonZeroUsize, sync::Arc};
 use std::{thread::JoinHandle, time::Duration};
+use tracing::warn;
 
 use crate::handlers::peer_handler::models::SharedPeerDB;
 use crate::handlers::peer_handler::PeerManagementHandler;
@@ -31,7 +32,9 @@ pub enum ConnectivityCommand {
     Stop,
 }
 
-pub fn start_connectivity_thread(
+#[allow(clippy::type_complexity)]
+#[allow(clippy::too_many_arguments)]
+pub(crate) fn start_connectivity_thread(
     config: ProtocolConfig,
     mut network_controller: Box<dyn NetworkController>,
     consensus_controller: Box<dyn ConsensusController>,
@@ -52,17 +55,24 @@ pub fn start_connectivity_thread(
     let initial_peers = serde_json::from_str::<HashMap<PeerId, HashMap<SocketAddr, TransportType>>>(
         &std::fs::read_to_string(&config.initial_peers)?,
     )?;
-    let (sender, receiver) = unbounded();
-    //TODO: Bound the channel
+    let (sender, receiver) = bounded(config.max_size_channel_commands_connectivity);
     // Channels handlers <-> outside world
-    let (sender_operations_retrieval_ext, receiver_operations_retrieval_ext) = unbounded();
-    let (sender_operations_propagation_ext, receiver_operations_propagation_ext) = unbounded();
-    let (sender_endorsements_retrieval_ext, receiver_endorsements_retrieval_ext) = unbounded();
-    let (sender_endorsements_propagation_ext, receiver_endorsements_propagation_ext) = unbounded();
-    let (sender_blocks_propagation_ext, receiver_blocks_propagation_ext) = unbounded();
-    let (sender_blocks_retrieval_ext, receiver_blocks_retrieval_ext) = unbounded();
+    let (sender_operations_retrieval_ext, receiver_operations_retrieval_ext) =
+        bounded(config.max_size_channel_commands_retrieval_operations);
+    let (sender_operations_propagation_ext, receiver_operations_propagation_ext) =
+        bounded(config.max_size_channel_commands_propagation_operations);
+    let (sender_endorsements_retrieval_ext, receiver_endorsements_retrieval_ext) =
+        bounded(config.max_size_channel_commands_retrieval_endorsements);
+    let (sender_endorsements_propagation_ext, receiver_endorsements_propagation_ext) =
+        bounded(config.max_size_channel_commands_propagation_endorsements);
+    let (sender_blocks_propagation_ext, receiver_blocks_propagation_ext) =
+        bounded(config.max_size_channel_commands_retrieval_blocks);
+    let (sender_blocks_retrieval_ext, receiver_blocks_retrieval_ext) =
+        bounded(config.max_size_channel_commands_propagation_blocks);
 
-    let handle = std::thread::spawn({
+    let handle = std::thread::Builder::new()
+    .name("protocol-connectivity".to_string())
+    .spawn({
         let sender_endorsements_propagation_ext = sender_endorsements_propagation_ext.clone();
         let sender_blocks_retrieval_ext = sender_blocks_retrieval_ext.clone();
         let sender_blocks_propagation_ext = sender_blocks_propagation_ext.clone();
@@ -71,26 +81,26 @@ pub fn start_connectivity_thread(
             for (addr, transport) in &config.listeners {
                 network_controller
                     .start_listener(*transport, *addr)
-                    .expect(&format!(
+                    .unwrap_or_else(|_| panic!(
                         "Failed to start listener {:?} of transport {:?} in protocol",
                         addr, transport
                     ));
             }
+            std::thread::sleep(Duration::from_millis(100));
 
             // Create cache outside of the op handler because it could be used by other handlers
-            //TODO: Add real config values
             let operation_cache = Arc::new(RwLock::new(OperationCache::new(
-                NonZeroUsize::new(10000).unwrap(),
-                NonZeroUsize::new(10000).unwrap(),
+                NonZeroUsize::new(config.max_known_ops_size).unwrap(),
+                NonZeroUsize::new(config.max_in_connections + config.max_out_connections).unwrap(),
             )));
             let endorsement_cache = Arc::new(RwLock::new(EndorsementCache::new(
-                NonZeroUsize::new(10000).unwrap(),
-                NonZeroUsize::new(10000).unwrap(),
+                NonZeroUsize::new(config.max_known_endorsements_size).unwrap(),
+                NonZeroUsize::new(config.max_in_connections + config.max_out_connections).unwrap(),
             )));
 
             let block_cache = Arc::new(RwLock::new(BlockCache::new(
-                NonZeroUsize::new(10000).unwrap(),
-                NonZeroUsize::new(10000).unwrap(),
+                NonZeroUsize::new(config.max_known_blocks_size).unwrap(),
+                NonZeroUsize::new(config.max_in_connections + config.max_out_connections).unwrap(),
             )));
 
             // Start handlers
@@ -176,7 +186,10 @@ pub fn start_connectivity_thread(
                             let peer_db_read = peer_management_handler.peer_db.read();
                             let best_peers = peer_db_read.get_best_peers(nb_connection_to_try);
                             for peer_id in best_peers {
-                                let peer_info = peer_db_read.peers.get(&peer_id).unwrap();
+                                let Some(peer_info) = peer_db_read.peers.get(&peer_id) else {
+                                    warn!("Peer {} not found in peer_db", peer_id);
+                                    continue;
+                                };
                                 //TODO: Adapt for multiple listeners
                                 let (addr, _) = peer_info.last_announce.listeners.iter().next().unwrap();
                                 if peer_info.last_announce.listeners.is_empty() {
@@ -184,7 +197,7 @@ pub fn start_connectivity_thread(
                                 }
                                 {
                                     {
-                                        if !network_controller.get_active_connections().check_addr_accepted(&addr) {
+                                        if !network_controller.get_active_connections().check_addr_accepted(addr) {
                                             println!("Address already connected");
                                             continue;
                                         }
@@ -193,7 +206,9 @@ pub fn start_connectivity_thread(
                                         println!("Trying to connect to peer {:?}", addr);
                                     }
                                     // We only manage TCP for now
-                                    network_controller.try_connect(*addr, Duration::from_millis(200), &OutConnectionConfig::Tcp(Box::new(TcpOutConnectionConfig {}))).unwrap();
+                                    if let Err(err) = network_controller.try_connect(*addr, Duration::from_millis(200), &OutConnectionConfig::Tcp(Box::new(TcpOutConnectionConfig {}))) {
+                                        warn!("Failed to connect to peer {:?}: {:?}", addr, err);
+                                    }
                                 };
                             };
                         }
@@ -201,7 +216,8 @@ pub fn start_connectivity_thread(
                 }
             }
         }
-    });
+    }).expect("OS failed to start connectivity thread");
+
     // Start controller
     let controller = ProtocolControllerImpl::new(
         sender_blocks_retrieval_ext,

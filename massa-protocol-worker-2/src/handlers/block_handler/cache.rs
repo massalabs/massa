@@ -7,7 +7,7 @@ use peernet::peer_id::PeerId;
 
 pub struct BlockCache {
     pub checked_headers: LruCache<BlockId, SecuredHeader>,
-    //TODO: Add the val true fal as a value
+    #[allow(clippy::type_complexity)]
     pub blocks_known_by_peer: LruCache<PeerId, (LruCache<BlockId, (bool, Instant)>, Instant)>,
     pub max_known_blocks_by_peer: NonZeroUsize,
 }
@@ -36,7 +36,7 @@ impl BlockCache {
         Self {
             checked_headers: LruCache::new(max_known_blocks),
             blocks_known_by_peer: LruCache::new(max_known_blocks_by_peer),
-            max_known_blocks_by_peer: max_known_blocks_by_peer,
+            max_known_blocks_by_peer,
         }
     }
 }

@@ -152,17 +152,19 @@ pub fn start_propagation_thread(
     config: ProtocolConfig,
     active_connections: Box<dyn ActiveConnectionsTrait>,
 ) -> JoinHandle<()> {
-    //TODO: Here and everywhere add id to threads
-    std::thread::spawn(move || {
-        let endorsement_serializer = MessagesSerializer::new()
-            .with_endorsement_message_serializer(EndorsementMessageSerializer::new());
-        let mut propagation_thread = PropagationThread {
-            receiver,
-            config,
-            active_connections,
-            cache,
-            endorsement_serializer,
-        };
-        propagation_thread.run();
-    })
+    std::thread::Builder::new()
+        .name("protocol-endorsement-handler-propagation".to_string())
+        .spawn(move || {
+            let endorsement_serializer = MessagesSerializer::new()
+                .with_endorsement_message_serializer(EndorsementMessageSerializer::new());
+            let mut propagation_thread = PropagationThread {
+                receiver,
+                config,
+                active_connections,
+                cache,
+                endorsement_serializer,
+            };
+            propagation_thread.run();
+        })
+        .expect("OS failed to start endorsement propagation thread")
 }

@@ -32,6 +32,7 @@ pub struct EndorsementHandler {
 }
 
 impl EndorsementHandler {
+    #[allow(clippy::too_many_arguments)]
     pub fn new(
         pool_controller: Box<dyn PoolController>,
         cache: SharedEndorsementCache,

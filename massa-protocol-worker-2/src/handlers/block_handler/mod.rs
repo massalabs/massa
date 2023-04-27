@@ -42,6 +42,7 @@ pub struct BlockHandler {
 }
 
 impl BlockHandler {
+    #[allow(clippy::too_many_arguments)]
     pub fn new(
         active_connections: Box<dyn ActiveConnectionsTrait>,
         consensus_controller: Box<dyn ConsensusController>,
@@ -66,7 +67,7 @@ impl BlockHandler {
             receiver_network,
             receiver_ext,
             internal_sender.clone(),
-            sender_propagations_ops.clone(),
+            sender_propagations_ops,
             peer_cmd_sender.clone(),
             config.clone(),
             endorsement_cache,
