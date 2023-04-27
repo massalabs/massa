@@ -112,6 +112,8 @@ impl RetrievalThread {
                 max_op_datastore_entry_count: 10000,
                 max_op_datastore_key_length: 100,
                 max_op_datastore_value_length: 10000,
+                max_denunciations_in_block_header: 10000,
+                last_start_period: None,
             });
         loop {
             select! {
