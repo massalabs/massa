@@ -481,10 +481,6 @@
 <a href="#481" id="481">481</a>
 <a href="#482" id="482">482</a>
 <a href="#483" id="483">483</a>
-<a href="#484" id="484">484</a>
-<a href="#485" id="485">485</a>
-<a href="#486" id="486">486</a>
-<a href="#487" id="487">487</a>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="kw">use </span><span class="kw">crate</span>::prehash::PreHashed;
@@ -655,18 +651,13 @@
 </span><span class="kw">pub type </span>SecureShareEndorsement = SecureShare&lt;Endorsement, EndorsementId&gt;;
 
 <span class="kw">impl </span>SecureShareContent <span class="kw">for </span>Endorsement {
-    <span class="doccomment">/// Compute hash for Endorsement in SecuredHeader - taking care of Denunciation verification
-    </span><span class="kw">fn </span>compute_hash(
-        content: <span class="kw-2">&amp;</span><span class="self">Self</span>,
-        content_serialized: <span class="kw-2">&amp;</span>[u8],
-        content_creator_pub_key: <span class="kw-2">&amp;</span>PublicKey,
-    ) -&gt; Hash {
-        <span class="kw">let </span>de_data = EndorsementDenunciationData::new(content.slot, content.index);
-        <span class="kw">let </span><span class="kw-2">mut </span>hash_data = Vec::new();
-        hash_data.extend(content_creator_pub_key.to_bytes());
-        hash_data.extend(de_data.to_bytes());
-        hash_data.extend(Hash::compute_from(content_serialized).to_bytes());
-        Hash::compute_from(<span class="kw-2">&amp;</span>hash_data)
+    <span class="doccomment">/// Compute the signed hash
+    </span><span class="kw">fn </span>compute_signed_hash(<span class="kw-2">&amp;</span><span class="self">self</span>, public_key: <span class="kw-2">&amp;</span>PublicKey, content_hash: <span class="kw-2">&amp;</span>Hash) -&gt; Hash {
+        <span class="kw">let </span><span class="kw-2">mut </span>signed_data: Vec&lt;u8&gt; = Vec::new();
+        signed_data.extend(public_key.to_bytes());
+        signed_data.extend(EndorsementDenunciationData::new(<span class="self">self</span>.slot, <span class="self">self</span>.index).to_bytes());
+        signed_data.extend(content_hash.to_bytes());
+        Hash::compute_from(<span class="kw-2">&amp;</span>signed_data)
     }
 }
 
@@ -888,6 +879,7 @@
 }
 
 <span class="doccomment">/// A denunciation data for endorsement
+</span><span class="attr">#[derive(Debug)]
 </span><span class="kw">pub struct </span>EndorsementDenunciationData {
     slot: Slot,
     index: u32,
