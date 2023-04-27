@@ -15,7 +15,7 @@
 //! A public key: the public key of the secure share endorsement or secured header
 //! 2 Hashes & 2 Signatures
 //!
-//! All of this consist of a proof (and is verifiable) that a user produce multiple (at least 2) blocks or endorsements
+//! All of this constitutes a proof (and is verifiable) that a user produced multiple (at least 2) blocks or endorsements
 //!
 //! Denunciation creation
 //!
