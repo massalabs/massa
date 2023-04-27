@@ -1,4 +1,7 @@
-use std::{collections::HashMap, sync::Arc};
+use std::{
+    collections::{HashMap, HashSet},
+    sync::Arc,
+};
 
 use crossbeam::channel::{Receiver, Sender};
 use massa_protocol_exports_2::ProtocolError;
@@ -71,6 +74,10 @@ impl ActiveConnectionsTrait for SharedMockActiveConnections {
             .unwrap();
         Ok(())
     }
+
+    fn shutdown_connection(&mut self, peer_id: &PeerId) {
+        self.write().connections.remove(peer_id);
+    }
 }
 
 pub struct MockNetworkController {
@@ -127,6 +134,18 @@ impl MockNetworkController {
         peer_id: &PeerId,
         message: Message,
     ) -> Result<(), ProtocolError> {
+        let peers_connected: HashSet<PeerId> = self
+            .connections
+            .read()
+            .connections
+            .keys()
+            .cloned()
+            .collect();
+        if !peers_connected.contains(peer_id) {
+            return Err(ProtocolError::GeneralProtocolError(
+                "Peer not connected".to_string(),
+            ));
+        }
         let mut data = Vec::new();
         self.message_serializer
             .serialize_id(&message, &mut data)
@@ -142,6 +161,10 @@ impl MockNetworkController {
             .handle(id, rest, peer_id)
             .map_err(|err| ProtocolError::GeneralProtocolError(err.to_string()))?;
         Ok(())
+    }
+
+    pub fn get_connections(&self) -> SharedMockActiveConnections {
+        self.connections.clone()
     }
 }
 

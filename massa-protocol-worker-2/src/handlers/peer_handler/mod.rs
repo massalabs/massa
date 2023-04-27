@@ -60,7 +60,7 @@ impl PeerManagementHandler {
         initial_peers: InitialPeers,
         peer_db: SharedPeerDB,
         (sender_msg, receiver_msg): (Sender<PeerMessageTuple>, Receiver<PeerMessageTuple>),
-        active_connections: Box<dyn ActiveConnectionsTrait>,
+        mut active_connections: Box<dyn ActiveConnectionsTrait>,
         config: &ProtocolConfig,
     ) -> Self {
         let (sender_cmd, receiver_cmd): (Sender<PeerManagementCmd>, Receiver<PeerManagementCmd>) =
@@ -106,7 +106,7 @@ impl PeerManagementHandler {
 
                                 // remove running handshake ?
 
-                                // close peer connection ?
+                                active_connections.shutdown_connection(&peer_id);
 
                                 // update peer_db
                                 peer_db.write().ban_peer(&peer_id);

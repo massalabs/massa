@@ -811,12 +811,10 @@ fn test_protocol_does_not_re_ask_operations_to_another_node_if_received() {
             network_controller
                 .send_from_peer(
                     &node_a_peer_id,
-                    Message::Operation(OperationMessage::Operations(
-                        vec![operation.clone()],
-                    )),
+                    Message::Operation(OperationMessage::Operations(vec![operation.clone()])),
                 )
                 .unwrap();
-            
+
             //6. Node B send the ops
             network_controller
                 .send_from_peer(
@@ -826,7 +824,7 @@ fn test_protocol_does_not_re_ask_operations_to_another_node_if_received() {
                     )),
                 )
                 .unwrap();
-            
+
             //7. Node B doesn't receive an ask for ops
             let _ = node_b
                 .recv_timeout(Duration::from_millis(1000))
@@ -872,9 +870,7 @@ fn test_protocol_on_ask_operations() {
             network_controller
                 .send_from_peer(
                     &node_a_peer_id,
-                    Message::Operation(OperationMessage::Operations(
-                        vec![operation.clone()],
-                    )),
+                    Message::Operation(OperationMessage::Operations(vec![operation.clone()])),
                 )
                 .unwrap();
 

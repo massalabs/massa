@@ -9,6 +9,7 @@ use tempfile::NamedTempFile;
 
 use crate::{handlers::peer_handler::models::InitialPeers, start_protocol_controller};
 
+mod ban_nodes_scenarios;
 mod block_scenarios;
 mod context;
 mod endorsements_scenarios;
