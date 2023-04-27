@@ -7,7 +7,7 @@ use massa_serialization::{
     DeserializeError, Deserializer, SerializeError, Serializer, U64VarIntDeserializer,
     U64VarIntSerializer,
 };
-use massa_signature::PublicKey;
+use massa_signature::{PublicKey, PublicKeyV0, PublicKeyV1};
 use nom::error::{context, ContextError, ErrorKind, ParseError};
 use nom::{IResult, Parser};
 use serde::{Deserialize, Serialize};
@@ -278,8 +278,14 @@ impl UserAddress {
 
     /// Computes the address associated with the given public key
     fn from_public_key(public_key: &PublicKey) -> Self {
-        // TODO HERE
-        UserAddressVariant!["0"](<UserAddress!["0"]>::from_public_key(public_key))
+        match public_key {
+            PublicKey::PublicKeyV0(pk) => {
+                UserAddressVariant!["0"](<UserAddress!["0"]>::from_public_key(pk))
+            }
+            PublicKey::PublicKeyV1(pk) => {
+                UserAddressVariant!["1"](<UserAddress!["1"]>::from_public_key(pk))
+            }
+        }
     }
 
     fn from_str_without_prefixed_type(s: &str) -> Result<Self, ModelsError> {
@@ -365,7 +371,7 @@ impl UserAddress {
     }
 }
 
-#[transition::impl_version(versions("0", "1"), structures("UserAddress"))]
+#[transition::impl_version(versions("0", "1"), structures("UserAddress", "PublicKey"))]
 impl UserAddress {
     /// Computes address associated with given public key
     pub fn from_public_key(public_key: &PublicKey) -> Self {
