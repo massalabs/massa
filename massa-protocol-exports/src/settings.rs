@@ -131,6 +131,8 @@ pub struct ProtocolConfig {
     pub max_size_listeners_per_peer: u64,
     /// Last start period
     pub last_start_period: u64,
+    /// Number of bytes per second that can be read/write in a connection (should be a 10 multiplier)
+    pub read_write_limit_bytes_per_second: u128,
     /// debug prints
     pub debug: bool,
 }

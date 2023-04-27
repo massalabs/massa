@@ -15,7 +15,7 @@ use peernet::{
     network_manager::PeerNetManager,
     peer::InitConnectionHandler,
     peer_id::PeerId,
-    transports::{endpoint::Endpoint, OutConnectionConfig, TransportType},
+    transports::{endpoint::Endpoint, OutConnectionConfig, TcpOutConnectionConfig, TransportType},
     types::KeyPair,
 };
 use std::cmp::Reverse;
@@ -187,7 +187,7 @@ impl Tester {
     /// Create a new tester (spawn a thread)
     pub fn new(
         peer_db: SharedPeerDB,
-        config: ProtocolConfig,
+        protocol_config: ProtocolConfig,
         receiver: crossbeam::channel::Receiver<(PeerId, HashMap<SocketAddr, TransportType>)>,
     ) -> Self {
         tracing::log::debug!("running new tester");
@@ -197,7 +197,7 @@ impl Tester {
         .spawn(move || {
             let db = peer_db.clone();
             let mut config = PeerNetConfiguration::default(
-                TesterHandshake::new(peer_db, config),
+                TesterHandshake::new(peer_db, protocol_config.clone()),
                 TesterMessagesHandler {},
             );
             config.max_out_connections = 1;
@@ -226,7 +226,7 @@ impl Tester {
                                     let _res =  network_manager.try_connect(
                                         *addr,
                                         Duration::from_millis(500),
-                                        &OutConnectionConfig::Tcp(Box::default()),
+                                        &OutConnectionConfig::Tcp(Box::new(TcpOutConnectionConfig::new(protocol_config.read_write_limit_bytes_per_second / 10, Duration::from_millis(100)))),
                                     );
                                 });
                             },
@@ -256,7 +256,7 @@ impl Tester {
                            let _res =  network_manager.try_connect(
                                 *listener.0,
                                 Duration::from_millis(200),
-                                &OutConnectionConfig::Tcp(Box::default()),
+                                &OutConnectionConfig::Tcp(Box::new(TcpOutConnectionConfig::new(protocol_config.read_write_limit_bytes_per_second / 10, Duration::from_millis(100)))),
                             );
                         });
                     }

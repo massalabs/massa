@@ -74,6 +74,7 @@ impl Default for ProtocolConfig {
             max_size_listeners_per_peer: 100,
             max_size_peers_announcement: 100,
             last_start_period: 0,
+            read_write_limit_bytes_per_second: 1024 * 1000,
             debug: true,
         }
     }

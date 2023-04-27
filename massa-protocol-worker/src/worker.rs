@@ -163,7 +163,7 @@ pub fn start_protocol_controller(
         keypair
     };
 
-    peernet_config.self_keypair = keypair.clone();
+    peernet_config.self_keypair = keypair;
     //TODO: Add the rest of the config
     peernet_config.max_in_connections = config.max_in_connections;
     peernet_config.max_out_connections = config.max_out_connections;

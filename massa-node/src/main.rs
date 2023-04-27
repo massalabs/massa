@@ -596,6 +596,7 @@ async fn launch(
         max_size_block_infos: MAX_ASK_BLOCKS_PER_MESSAGE as u64,
         max_size_listeners_per_peer: MAX_LISTENERS_PER_PEER,
         max_size_peers_announcement: MAX_PEERS_IN_ANNOUNCEMENT_LIST,
+        read_write_limit_bytes_per_second: SETTINGS.protocol.read_write_limit_bytes_per_second,
         debug: false,
     };
 
