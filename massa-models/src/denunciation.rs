@@ -26,7 +26,7 @@
 //!
 //! Denunciation execution
 //!
-//! When a Denunciation is proven valid, we then need to ensure that the user have sufficient funds. If we cannot puncture on node
+//! When a Denunciation is proven valid, we then need to ensure that the user has sufficient funds. If we cannot deduct the funds on node
 //! balance or staked rolls, we will use 'locked' rolls` (or Deferred credits).
 //! Selling a roll will lock it for some time (== 4 cycles). Note that it restricts the time,
 //! a denunciation can be produced (A constant value will be defined for this).
