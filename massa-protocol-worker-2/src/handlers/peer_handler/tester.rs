@@ -13,7 +13,7 @@ use peernet::{
     error::{PeerNetError, PeerNetResult},
     messages::MessagesHandler,
     network_manager::PeerNetManager,
-    peer::HandshakeHandler,
+    peer::InitConnectionHandler,
     peer_id::PeerId,
     transports::{endpoint::Endpoint, OutConnectionConfig, TcpOutConnectionConfig, TransportType},
     types::KeyPair,
@@ -62,7 +62,7 @@ impl MessagesHandler for TesterMessagesHandler {
     }
 }
 
-impl HandshakeHandler for TesterHandshake {
+impl InitConnectionHandler for TesterHandshake {
     fn perform_handshake<TesterMessagesHandler>(
         &mut self,
         _: &KeyPair,
@@ -142,6 +142,16 @@ impl HandshakeHandler for TesterHandshake {
         endpoint.shutdown();
         res
     }
+
+    fn fallback_function(
+        &mut self,
+        _keypair: &KeyPair,
+        _endpoint: &mut Endpoint,
+        _listeners: &HashMap<SocketAddr, TransportType>,
+    ) -> PeerNetResult<()> {
+        std::thread::sleep(Duration::from_millis(10000));
+        Ok(())
+    }
 }
 
 pub struct Tester {
@@ -190,7 +200,6 @@ impl Tester {
                 TesterHandshake::new(peer_db, config),
                 TesterMessagesHandler {},
             );
-            config.fallback_function = Some(&empty_fallback);
             config.max_out_connections = 1;
 
             let mut network_manager = PeerNetManager::new(config);
@@ -205,6 +214,7 @@ impl Tester {
                                     .expect("Time went backward")
                                     .as_millis();
                                     let elapsed_secs = (timestamp - peer_info.last_announce.timestamp) / 1000000;
+                                    dbg!(elapsed_secs);
                                     if elapsed_secs < 60 {
                                         continue;
                                     }
@@ -260,13 +270,4 @@ impl Tester {
             handler: Some(handle),
         }
     }
-}
-
-pub fn empty_fallback(
-    _keypair: &KeyPair,
-    _endpoint: &mut Endpoint,
-    _listeners: &HashMap<SocketAddr, TransportType>,
-) -> PeerNetResult<()> {
-    std::thread::sleep(Duration::from_millis(10000));
-    Ok(())
 }
