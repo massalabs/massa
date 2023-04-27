@@ -8,7 +8,7 @@ use massa_protocol_exports_2::{ProtocolConfig, ProtocolError};
 use massa_storage::Storage;
 use parking_lot::RwLock;
 use peernet::peer_id::PeerId;
-use peernet::transports::{OutConnectionConfig, TcpOutConnectionConfig, TransportType};
+use peernet::transports::{OutConnectionConfig, TransportType};
 use std::collections::HashMap;
 use std::net::SocketAddr;
 use std::{num::NonZeroUsize, sync::Arc};
@@ -206,7 +206,7 @@ pub(crate) fn start_connectivity_thread(
                                         println!("Trying to connect to peer {:?}", addr);
                                     }
                                     // We only manage TCP for now
-                                    if let Err(err) = network_controller.try_connect(*addr, Duration::from_millis(200), &OutConnectionConfig::Tcp(Box::new(TcpOutConnectionConfig {}))) {
+                                    if let Err(err) = network_controller.try_connect(*addr, Duration::from_millis(200), &OutConnectionConfig::Tcp(Box::default())) {
                                         warn!("Failed to connect to peer {:?}: {:?}", addr, err);
                                     }
                                 };

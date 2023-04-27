@@ -15,7 +15,7 @@ use peernet::{
     network_manager::PeerNetManager,
     peer::InitConnectionHandler,
     peer_id::PeerId,
-    transports::{endpoint::Endpoint, OutConnectionConfig, TcpOutConnectionConfig, TransportType},
+    transports::{endpoint::Endpoint, OutConnectionConfig, TransportType},
     types::KeyPair,
 };
 use std::cmp::Reverse;
@@ -227,7 +227,7 @@ impl Tester {
                                     let _res =  network_manager.try_connect(
                                         *addr,
                                         Duration::from_millis(500),
-                                        &OutConnectionConfig::Tcp(Box::new(TcpOutConnectionConfig {})),
+                                        &OutConnectionConfig::Tcp(Box::default()),
                                     );
                                 });
                             },
@@ -258,7 +258,7 @@ impl Tester {
                            let _res =  network_manager.try_connect(
                                 *listener.0,
                                 Duration::from_millis(200),
-                                &OutConnectionConfig::Tcp(Box::new(TcpOutConnectionConfig {})),
+                                &OutConnectionConfig::Tcp(Box::default()),
                             );
                         });
                     }
