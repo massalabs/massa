@@ -252,7 +252,7 @@ pub struct ProtocolSettings {
     /// Number of tester threads
     pub thread_tester_count: u8,
     /// Number of bytes we can read/write by seconds in a connection (must be a 10 multiple)
-    pub read_write_limit_bytes_per_second: u128,
+    pub read_write_limit_bytes_per_second: u64,
 }
 
 /// gRPC settings
