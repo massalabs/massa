@@ -618,6 +618,12 @@
 <a href="#618" id="618">618</a>
 <a href="#619" id="619">619</a>
 <a href="#620" id="620">620</a>
+<a href="#621" id="621">621</a>
+<a href="#622" id="622">622</a>
+<a href="#623" id="623">623</a>
+<a href="#624" id="624">624</a>
+<a href="#625" id="625">625</a>
+<a href="#626" id="626">626</a>
 </pre><pre class="rust"><code><span class="kw">use </span><span class="kw">crate</span>::block_id::BlockId;
 <span class="kw">use </span><span class="kw">crate</span>::config::THREAD_COUNT;
 <span class="kw">use </span><span class="kw">crate</span>::denunciation::{Denunciation, DenunciationDeserializer, DenunciationSerializer};
@@ -712,13 +718,19 @@
 </span><span class="kw">pub type </span>SecuredHeader = SecureShare&lt;BlockHeader, BlockId&gt;;
 
 <span class="kw">impl </span>SecureShareContent <span class="kw">for </span>BlockHeader {
-    <span class="doccomment">/// compute the signed hash
-    </span><span class="kw">fn </span>compute_signed_hash(<span class="kw-2">&amp;</span><span class="self">self</span>, public_key: <span class="kw-2">&amp;</span>PublicKey, content_hash: <span class="kw-2">&amp;</span>Hash) -&gt; Hash {
-        <span class="kw">let </span><span class="kw-2">mut </span>signed_data: Vec&lt;u8&gt; = Vec::new();
-        signed_data.extend(public_key.to_bytes());
-        signed_data.extend(BlockHeaderDenunciationData::new(<span class="self">self</span>.slot).to_bytes());
-        signed_data.extend(content_hash.to_bytes());
-        Hash::compute_from(<span class="kw-2">&amp;</span>signed_data)
+    <span class="doccomment">/// Compute hash for Block header in SecuredHeader - taking care of Denunciation verification
+    </span><span class="kw">fn </span>compute_hash(
+        content: <span class="kw-2">&amp;</span><span class="self">Self</span>,
+        content_serialized: <span class="kw-2">&amp;</span>[u8],
+        content_creator_pub_key: <span class="kw-2">&amp;</span>PublicKey,
+    ) -&gt; Hash {
+        <span class="kw">let </span>de_data = BlockHeaderDenunciationData::new(content.slot);
+
+        <span class="kw">let </span><span class="kw-2">mut </span>hash_data = Vec::new();
+        hash_data.extend(content_creator_pub_key.to_bytes());
+        hash_data.extend(de_data.to_bytes());
+        hash_data.extend(Hash::compute_from(content_serialized).to_bytes());
+        Hash::compute_from(<span class="kw-2">&amp;</span>hash_data)
     }
 }
 

@@ -2171,10 +2171,10 @@
         // optimized signature verification
         </span>verify_sigs_batch(
             <span class="kw-2">&amp;</span>new_endorsements
-                .values()
-                .map(|endorsement| {
+                .iter()
+                .map(|(endorsement_id, endorsement)| {
                     (
-                        endorsement.compute_signed_hash(),
+                        <span class="kw-2">*</span>endorsement_id.get_hash(),
                         endorsement.signature,
                         endorsement.content_creator_pub_key,
                     )
