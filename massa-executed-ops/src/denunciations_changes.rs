@@ -87,9 +87,9 @@ impl Deserializer<ExecutedDenunciationsChanges> for ExecutedDenunciationsChanges
         buffer: &'a [u8],
     ) -> IResult<&'a [u8], ExecutedDenunciationsChanges, E> {
         context(
-            "ProcessedDenunciationsChanges",
+            "ExecutedDenunciationsChanges",
             length_count(
-                context("ProcessedDenunciationsChanges length", |input| {
+                context("ExecutedDenunciationsChanges length", |input| {
                     self.u64_deserializer.deserialize(input)
                 }),
                 tuple((context("denunciation index", |input| {

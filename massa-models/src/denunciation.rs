@@ -1,6 +1,36 @@
-// Copyright (c) 2022 MASSA LABS <info@massa.net>
-/// An overview of what is a Denunciation and what it is used for can be found here
-/// https://github.com/massalabs/massa/discussions/3113
+//! Copyright (c) 2022 MASSA LABS <info@massa.net>
+
+//! Denunciation intro
+//!
+//! Currently, nothing prevent a user to produce multiple blocks (for the same Slot) or to endorse a block multiple times.
+//! By allowing nodes to produce a denunciation; every user will have an incentive of not doing it.
+//! If an invalid Denunciation will just be ignored, a valid Denunciation will slash some locked rolls.
+//! Note that this proposal is to prevent against 'rational' user but cannot do anything against 'pathological' user
+//! that just want to disturb or break the blockclique (at any cost).
+//!
+//! Denunciation structure
+//!
+//! A denunciation embed some information such as
+//! Slot, the slot from the block header or the endorsements (+ index)
+//! A public key: the public key of the secure share endorsement or secured header
+//! 2 Hashes & 2 Signatures
+//!
+//! All of this consist of a proof (and is verifiable) that a user produce multiple (at least 2) blocks or endorsements
+//!
+//! Denunciation creation
+//!
+//! Denunciations are created in a Denunciation pool, receiving new blocks & block headers & endorsements from various places.
+//! The denunciation pool is also responsible to return a list of denunciations to insert into a new block header.
+//! After execution, the denunciation is kept for some times into a structure: executed_denunciations
+//! in order to prevent multiple execution. Note that this structure is part of the final state hash and thus is bootstrapped.
+//!
+//! Denunciation execution
+//!
+//! When a Denunciation is proven valid, we then need to ensure that the user have sufficient funds. If we cannot puncture on node
+//! balance or staked rolls, we will use 'locked' rolls` (or Deferred credits).
+//! Selling a roll will lock it for some time (== 4 cycles). Note that it restricts the time,
+//! a denunciation can be produced (A constant value will be defined for this).
+
 use std::cmp::Ordering;
 use std::ops::Bound::{Excluded, Included};
 
