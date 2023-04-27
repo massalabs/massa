@@ -22,7 +22,7 @@
 //! Denunciations are created in a Denunciation pool, receiving new blocks & block headers & endorsements from various places.
 //! The denunciation pool is also responsible of returning a list of denunciations to insert into a new block header.
 //! After execution, the denunciation is kept for some time inside `executed_denunciations`
-//! in order to prevent multiple execution. Note that this structure is part of the final state hash and thus is bootstrapped.
+//! in order to prevent multiple executions. Note that this structure is part of the final state hash and thus is bootstrapped.
 //!
 //! Denunciation execution
 //!
