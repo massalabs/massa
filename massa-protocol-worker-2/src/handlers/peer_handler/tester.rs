@@ -214,7 +214,6 @@ impl Tester {
                                     .expect("Time went backward")
                                     .as_millis();
                                     let elapsed_secs = (timestamp - peer_info.last_announce.timestamp) / 1000000;
-                                    dbg!(elapsed_secs);
                                     if elapsed_secs < 60 {
                                         continue;
                                     }
@@ -252,7 +251,6 @@ impl Tester {
                             continue;
                         }
 
-                        dbg!("Testing peer {}", peer_id);
                         // we try to connect to all peer listener (For now we have only one listener)
                         peer_info.last_announce.listeners.iter().for_each(|listener| {
                            let _res =  network_manager.try_connect(
