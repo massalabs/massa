@@ -1,1 +1,0 @@
-window.SIDEBAR_ITEMS = {"constant":["_LEN"],"fn":["fallback_function","unbind"],"mod":["announcement","messages","models","tester"],"struct":["MassaHandshake","PeerManagementHandler"]};

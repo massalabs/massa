@@ -1,3 +1,0 @@
-(function() {var implementors = {
-"massa_protocol_worker_2":[["impl MessagesSerializer&lt;<a class=\"enum\" href=\"massa_protocol_worker_2/messages/enum.Message.html\" title=\"enum massa_protocol_worker_2::messages::Message\">Message</a>&gt; for <a class=\"struct\" href=\"massa_protocol_worker_2/messages/struct.MessagesSerializer.html\" title=\"struct massa_protocol_worker_2::messages::MessagesSerializer\">MessagesSerializer</a>"]]
-};if (window.register_implementors) {window.register_implementors(implementors);} else {window.pending_implementors = implementors;}})()
