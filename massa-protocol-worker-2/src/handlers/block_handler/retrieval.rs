@@ -8,7 +8,9 @@ use std::{
 use crate::{
     handlers::{
         endorsement_handler::cache::SharedEndorsementCache,
-        operation_handler::cache::SharedOperationCache,
+        operation_handler::{
+            cache::SharedOperationCache, commands_propagation::OperationHandlerPropagationCommand,
+        },
         peer_handler::models::{PeerManagementCmd, PeerMessageTuple},
     },
     messages::MessagesSerializer,
@@ -89,6 +91,7 @@ pub struct RetrievalThread {
     block_wishlist: PreHashMap<BlockId, BlockInfo>,
     asked_blocks: HashMap<PeerId, PreHashMap<BlockId, Instant>>,
     peer_cmd_sender: Sender<PeerManagementCmd>,
+    sender_propagation_ops: Sender<OperationHandlerPropagationCommand>,
     endorsement_cache: SharedEndorsementCache,
     operation_cache: SharedOperationCache,
     next_timer_ask_block: Instant,
@@ -121,9 +124,15 @@ impl RetrievalThread {
                     match msg {
                         Ok((peer_id, message_id, message)) => {
                             block_message_deserializer.set_message_id(message_id);
-                            let (rest, message) = block_message_deserializer
-                                .deserialize::<DeserializeError>(&message)
-                                .unwrap();
+                            let (rest, message) = match block_message_deserializer
+                                .deserialize::<DeserializeError>(&message) {
+                                Ok((rest, message)) => (rest, message),
+                                Err(err) => {
+                                    warn!("Error in deserializing block message: {:?}", err);
+                                    continue;
+                                }
+                            };
+
                             if !rest.is_empty() {
                                 println!("Error: message not fully consumed");
                                 return;
@@ -299,7 +308,6 @@ impl RetrievalThread {
                 }
             }
         }
-
         self.active_connections.send_to_peer(
             &from_peer_id,
             &self.block_message_serializer,
@@ -440,11 +448,11 @@ impl RetrievalThread {
         {
             let mut cache_write = self.cache.write();
             if let Some(block_header) = cache_write.checked_headers.get(&block_id).cloned() {
-                cache_write.insert_blocks_known(&from_peer_id, &[block_id], false, Instant::now());
+                cache_write.insert_blocks_known(&from_peer_id, &[block_id], true, Instant::now());
                 cache_write.insert_blocks_known(
                     &from_peer_id,
                     &block_header.content.parents,
-                    false,
+                    true,
                     Instant::now(),
                 );
                 {
@@ -506,11 +514,11 @@ impl RetrievalThread {
         {
             let mut cache_write = self.cache.write();
             cache_write.checked_headers.put(block_id, header.clone());
-            cache_write.insert_blocks_known(&from_peer_id, &[block_id], false, Instant::now());
+            cache_write.insert_blocks_known(&from_peer_id, &[block_id], true, Instant::now());
             cache_write.insert_blocks_known(
                 &from_peer_id,
                 &header.content.parents,
-                false,
+                true,
                 Instant::now(),
             );
             {
@@ -564,7 +572,7 @@ impl RetrievalThread {
         endorsements: Vec<SecureShareEndorsement>,
         from_peer_id: &PeerId,
     ) -> Result<(), ProtocolError> {
-        massa_trace!("protocol.protocol_worker.note_endorsements_from_node", { "node": from_peer_id, "endorsements": endorsements});
+        massa_trace!("protocol.protocol_worker.note_endorsements_from_peer", { "peer": from_peer_id, "endorsements": endorsements});
         let length = endorsements.len();
         let mut new_endorsements = PreHashMap::with_capacity(length);
         let mut endorsement_ids = PreHashSet::with_capacity(length);
@@ -991,7 +999,11 @@ impl RetrievalThread {
                 cache_write.insert_checked_operation(op_id);
             }
         }
-        //TODO: Send to operation propagation thread
+        self.sender_propagation_ops
+            .send(OperationHandlerPropagationCommand::AnnounceOperations(
+                new_operations.keys().copied().collect(),
+            ))
+            .map_err(|err| ProtocolError::ChannelError(err.to_string()))?;
         Ok(())
     }
 
@@ -1245,6 +1257,7 @@ pub fn start_retrieval_thread(
     receiver_network: Receiver<PeerMessageTuple>,
     receiver: Receiver<BlockHandlerRetrievalCommand>,
     _internal_sender: Sender<BlockHandlerPropagationCommand>,
+    sender_propagation_ops: Sender<OperationHandlerPropagationCommand>,
     peer_cmd_sender: Sender<PeerManagementCmd>,
     config: ProtocolConfig,
     endorsement_cache: SharedEndorsementCache,
@@ -1263,6 +1276,7 @@ pub fn start_retrieval_thread(
             block_wishlist: PreHashMap::default(),
             asked_blocks: HashMap::default(),
             peer_cmd_sender,
+            sender_propagation_ops,
             receiver_network,
             block_message_serializer,
             receiver,

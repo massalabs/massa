@@ -63,17 +63,19 @@ impl PropagationThread {
                                 let peer_connected =
                                     self.active_connections.get_peer_ids_connected();
                                 for peer_id in &peer_connected {
-                                    cache_write.endorsements_known_by_peer.put(
-                                        peer_id.clone(),
-                                        LruCache::new(
-                                            NonZeroUsize::new(
-                                                self.config.max_node_known_endorsements_size,
-                                            )
-                                            .expect(
-                                                "max_node_known_endorsements_size in config is > 0",
+                                    if !cache_write.endorsements_known_by_peer.contains(peer_id) {
+                                        cache_write.endorsements_known_by_peer.put(
+                                            peer_id.clone(),
+                                            LruCache::new(
+                                                NonZeroUsize::new(
+                                                    self.config.max_node_known_endorsements_size,
+                                                )
+                                                .expect(
+                                                    "max_node_known_endorsements_size in config is > 0",
+                                                ),
                                             ),
-                                        ),
-                                    );
+                                        );
+                                    }
                                 }
                                 let peers: Vec<PeerId> = cache_write
                                     .endorsements_known_by_peer

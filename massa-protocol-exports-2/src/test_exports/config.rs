@@ -12,6 +12,7 @@ impl Default for ProtocolConfig {
             max_out_connections: 10,
             keypair: KeyPair::generate(),
             ask_block_timeout: 500.into(),
+            max_known_blocks_saved_size: 300,
             max_known_blocks_size: 100,
             max_node_known_blocks_size: 100,
             max_node_wanted_blocks_size: 100,

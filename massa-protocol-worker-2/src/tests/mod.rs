@@ -1,6 +1,6 @@
 use std::{collections::HashMap, time::Duration};
 
-use massa_consensus_exports::test_exports::MockConsensusController;
+use massa_consensus_exports::test_exports::ConsensusControllerImpl;
 use massa_pool_exports::test_exports::MockPoolController;
 use massa_protocol_exports_2::ProtocolConfig;
 use massa_storage::Storage;
@@ -9,17 +9,23 @@ use tempfile::NamedTempFile;
 
 use crate::{handlers::peer_handler::models::InitialPeers, start_protocol_controller};
 
-mod ask_block_scenarios;
+mod ban_nodes_scenarios;
+mod block_scenarios;
+mod cache_scenarios;
 mod context;
+mod endorsements_scenarios;
+mod in_block_operations_scenarios;
 mod mock_network;
+mod operations_scenarios;
+mod tools;
 
 #[test]
 fn basic() {
     let (pool_controller1, _) = MockPoolController::new_with_receiver();
     let (pool_controller2, _) = MockPoolController::new_with_receiver();
 
-    let (consensus_controller1, _) = MockConsensusController::new_with_receiver();
-    let (consensus_controller2, _) = MockConsensusController::new_with_receiver();
+    let (consensus_controller1, _) = ConsensusControllerImpl::new_with_receiver();
+    let (consensus_controller2, _) = ConsensusControllerImpl::new_with_receiver();
     // Setup the configs
     let mut config1 = ProtocolConfig::default();
     config1
@@ -84,8 +90,8 @@ fn stop_with_controller_still_exists() {
     let (pool_controller1, _) = MockPoolController::new_with_receiver();
     let (pool_controller2, _) = MockPoolController::new_with_receiver();
 
-    let (consensus_controller1, _) = MockConsensusController::new_with_receiver();
-    let (consensus_controller2, _) = MockConsensusController::new_with_receiver();
+    let (consensus_controller1, _) = ConsensusControllerImpl::new_with_receiver();
+    let (consensus_controller2, _) = ConsensusControllerImpl::new_with_receiver();
     // Setup the configs
     let mut config1 = ProtocolConfig::default();
     config1

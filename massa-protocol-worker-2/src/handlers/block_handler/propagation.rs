@@ -1,9 +1,11 @@
-use std::{num::NonZeroUsize, thread::JoinHandle, time::Instant};
+use std::{collections::VecDeque, num::NonZeroUsize, thread::JoinHandle, time::Instant};
 
 use crossbeam::channel::{Receiver, Sender};
 use lru::LruCache;
 use massa_logging::massa_trace;
+use massa_models::{block_id::BlockId, prehash::PreHashSet};
 use massa_protocol_exports_2::{ProtocolConfig, ProtocolError};
+use massa_storage::Storage;
 use peernet::peer_id::PeerId;
 use tracing::warn;
 
@@ -22,6 +24,8 @@ pub struct PropagationThread {
     receiver: Receiver<BlockHandlerPropagationCommand>,
     config: ProtocolConfig,
     cache: SharedBlockCache,
+    storage: Storage,
+    saved_blocks: VecDeque<BlockId>,
     active_connections: Box<dyn ActiveConnectionsTrait>,
     peer_cmd_sender: Sender<PeerManagementCmd>,
     block_serializer: MessagesSerializer,
@@ -39,18 +43,28 @@ impl PropagationThread {
                                 { "block_id": block_id }
                             );
                             let header = {
-                                let blocks = storage.read_blocks();
-                                blocks
-                                    .get(&block_id)
-                                    .map(|block| block.content.header.clone())
-                                    .ok_or_else(|| {
-                                        ProtocolError::ContainerInconsistencyError(format!(
-                                            "header of id {} not found.",
-                                            block_id
-                                        ))
-                                    })
-                                    .unwrap()
+                                let block = {
+                                    let blocks = storage.read_blocks();
+                                    blocks.get(&block_id).cloned()
+                                };
+                                if let Some(block) = block {
+                                    self.storage.store_block(block.clone());
+                                    self.saved_blocks.push_back(block.id);
+                                    if self.saved_blocks.len()
+                                        > self.config.max_known_blocks_saved_size
+                                    {
+                                        let block_id = self.saved_blocks.pop_front().unwrap();
+                                        let mut ids_to_delete = PreHashSet::default();
+                                        ids_to_delete.insert(block_id);
+                                        self.storage.drop_block_refs(&ids_to_delete);
+                                    }
+                                    block.content.header.clone()
+                                } else {
+                                    warn!("Block {} not found in storage", &block_id);
+                                    continue;
+                                }
                             };
+
                             // Clean shared cache if peers do not exist anymore
                             {
                                 let mut cache_write = self.cache.write();
@@ -154,6 +168,7 @@ pub fn start_propagation_thread(
     peer_cmd_sender: Sender<PeerManagementCmd>,
     config: ProtocolConfig,
     cache: SharedBlockCache,
+    storage: Storage,
 ) -> JoinHandle<()> {
     //TODO: Here and everywhere add id to threads
     std::thread::spawn(move || {
@@ -166,6 +181,8 @@ pub fn start_propagation_thread(
             peer_cmd_sender,
             active_connections,
             block_serializer,
+            storage,
+            saved_blocks: VecDeque::default(),
         };
         propagation_thread.run();
     })
