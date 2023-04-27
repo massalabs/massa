@@ -402,7 +402,7 @@
             <span class="comment">// check endorsement signature if not already checked
             </span>{
                 <span class="kw">let </span>read_cache = <span class="self">self</span>.cache.read();
-                <span class="kw">if </span>read_cache.checked_endorsements.contains(<span class="kw-2">&amp;</span>endorsement_id) {
+                <span class="kw">if </span>!read_cache.checked_endorsements.contains(<span class="kw-2">&amp;</span>endorsement_id) {
                     new_endorsements.insert(endorsement_id, endorsement);
                 }
             }

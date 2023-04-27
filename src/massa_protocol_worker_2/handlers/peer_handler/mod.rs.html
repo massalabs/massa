@@ -425,7 +425,7 @@
         initial_peers: InitialPeers,
         peer_db: SharedPeerDB,
         (sender_msg, receiver_msg): (Sender&lt;PeerMessageTuple&gt;, Receiver&lt;PeerMessageTuple&gt;),
-        active_connections: Box&lt;<span class="kw">dyn </span>ActiveConnectionsTrait&gt;,
+        <span class="kw-2">mut </span>active_connections: Box&lt;<span class="kw">dyn </span>ActiveConnectionsTrait&gt;,
         config: <span class="kw-2">&amp;</span>ProtocolConfig,
     ) -&gt; <span class="self">Self </span>{
         <span class="kw">let </span>(sender_cmd, receiver_cmd): (Sender&lt;PeerManagementCmd&gt;, Receiver&lt;PeerManagementCmd&gt;) =
@@ -471,9 +471,9 @@
 
                                 <span class="comment">// remove running handshake ?
 
-                                // close peer connection ?
+                                </span>active_connections.shutdown_connection(<span class="kw-2">&amp;</span>peer_id);
 
-                                // update peer_db
+                                <span class="comment">// update peer_db
                                 </span>peer_db.write().ban_peer(<span class="kw-2">&amp;</span>peer_id);
                              },
                              <span class="prelude-val">Ok</span>(PeerManagementCmd::Stop) =&gt; {

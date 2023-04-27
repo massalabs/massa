@@ -1276,6 +1276,20 @@
 <a href="#1276" id="1276">1276</a>
 <a href="#1277" id="1277">1277</a>
 <a href="#1278" id="1278">1278</a>
+<a href="#1279" id="1279">1279</a>
+<a href="#1280" id="1280">1280</a>
+<a href="#1281" id="1281">1281</a>
+<a href="#1282" id="1282">1282</a>
+<a href="#1283" id="1283">1283</a>
+<a href="#1284" id="1284">1284</a>
+<a href="#1285" id="1285">1285</a>
+<a href="#1286" id="1286">1286</a>
+<a href="#1287" id="1287">1287</a>
+<a href="#1288" id="1288">1288</a>
+<a href="#1289" id="1289">1289</a>
+<a href="#1290" id="1290">1290</a>
+<a href="#1291" id="1291">1291</a>
+<a href="#1292" id="1292">1292</a>
 </pre><pre class="rust"><code><span class="kw">use </span>std::{
     collections::{hash_map::Entry, HashMap, HashSet},
     num::NonZeroUsize,
@@ -1286,7 +1300,9 @@
 <span class="kw">use crate</span>::{
     handlers::{
         endorsement_handler::cache::SharedEndorsementCache,
-        operation_handler::cache::SharedOperationCache,
+        operation_handler::{
+            cache::SharedOperationCache, commands_propagation::OperationHandlerPropagationCommand,
+        },
         peer_handler::models::{PeerManagementCmd, PeerMessageTuple},
     },
     messages::MessagesSerializer,
@@ -1367,6 +1383,7 @@
     block_wishlist: PreHashMap&lt;BlockId, BlockInfo&gt;,
     asked_blocks: HashMap&lt;PeerId, PreHashMap&lt;BlockId, Instant&gt;&gt;,
     peer_cmd_sender: Sender&lt;PeerManagementCmd&gt;,
+    sender_propagation_ops: Sender&lt;OperationHandlerPropagationCommand&gt;,
     endorsement_cache: SharedEndorsementCache,
     operation_cache: SharedOperationCache,
     next_timer_ask_block: Instant,
@@ -1399,9 +1416,15 @@
                     <span class="kw">match </span>msg {
                         <span class="prelude-val">Ok</span>((peer_id, message_id, message)) =&gt; {
                             block_message_deserializer.set_message_id(message_id);
-                            <span class="kw">let </span>(rest, message) = block_message_deserializer
-                                .deserialize::&lt;DeserializeError&gt;(<span class="kw-2">&amp;</span>message)
-                                .unwrap();
+                            <span class="kw">let </span>(rest, message) = <span class="kw">match </span>block_message_deserializer
+                                .deserialize::&lt;DeserializeError&gt;(<span class="kw-2">&amp;</span>message) {
+                                <span class="prelude-val">Ok</span>((rest, message)) =&gt; (rest, message),
+                                <span class="prelude-val">Err</span>(err) =&gt; {
+                                    <span class="macro">warn!</span>(<span class="string">&quot;Error in deserializing block message: {:?}&quot;</span>, err);
+                                    <span class="kw">continue</span>;
+                                }
+                            };
+
                             <span class="kw">if </span>!rest.is_empty() {
                                 <span class="macro">println!</span>(<span class="string">&quot;Error: message not fully consumed&quot;</span>);
                                 <span class="kw">return</span>;
@@ -1577,7 +1600,6 @@
                 }
             }
         }
-
         <span class="self">self</span>.active_connections.send_to_peer(
             <span class="kw-2">&amp;</span>from_peer_id,
             <span class="kw-2">&amp;</span><span class="self">self</span>.block_message_serializer,
@@ -1718,11 +1740,11 @@
         </span>{
             <span class="kw">let </span><span class="kw-2">mut </span>cache_write = <span class="self">self</span>.cache.write();
             <span class="kw">if let </span><span class="prelude-val">Some</span>(block_header) = cache_write.checked_headers.get(<span class="kw-2">&amp;</span>block_id).cloned() {
-                cache_write.insert_blocks_known(<span class="kw-2">&amp;</span>from_peer_id, <span class="kw-2">&amp;</span>[block_id], <span class="bool-val">false</span>, Instant::now());
+                cache_write.insert_blocks_known(<span class="kw-2">&amp;</span>from_peer_id, <span class="kw-2">&amp;</span>[block_id], <span class="bool-val">true</span>, Instant::now());
                 cache_write.insert_blocks_known(
                     <span class="kw-2">&amp;</span>from_peer_id,
                     <span class="kw-2">&amp;</span>block_header.content.parents,
-                    <span class="bool-val">false</span>,
+                    <span class="bool-val">true</span>,
                     Instant::now(),
                 );
                 {
@@ -1784,11 +1806,11 @@
         {
             <span class="kw">let </span><span class="kw-2">mut </span>cache_write = <span class="self">self</span>.cache.write();
             cache_write.checked_headers.put(block_id, header.clone());
-            cache_write.insert_blocks_known(<span class="kw-2">&amp;</span>from_peer_id, <span class="kw-2">&amp;</span>[block_id], <span class="bool-val">false</span>, Instant::now());
+            cache_write.insert_blocks_known(<span class="kw-2">&amp;</span>from_peer_id, <span class="kw-2">&amp;</span>[block_id], <span class="bool-val">true</span>, Instant::now());
             cache_write.insert_blocks_known(
                 <span class="kw-2">&amp;</span>from_peer_id,
                 <span class="kw-2">&amp;</span>header.content.parents,
-                <span class="bool-val">false</span>,
+                <span class="bool-val">true</span>,
                 Instant::now(),
             );
             {
@@ -1842,7 +1864,7 @@
         endorsements: Vec&lt;SecureShareEndorsement&gt;,
         from_peer_id: <span class="kw-2">&amp;</span>PeerId,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;(), ProtocolError&gt; {
-        <span class="macro">massa_trace!</span>(<span class="string">&quot;protocol.protocol_worker.note_endorsements_from_node&quot;</span>, { <span class="string">&quot;node&quot;</span>: from_peer_id, <span class="string">&quot;endorsements&quot;</span>: endorsements});
+        <span class="macro">massa_trace!</span>(<span class="string">&quot;protocol.protocol_worker.note_endorsements_from_peer&quot;</span>, { <span class="string">&quot;peer&quot;</span>: from_peer_id, <span class="string">&quot;endorsements&quot;</span>: endorsements});
         <span class="kw">let </span>length = endorsements.len();
         <span class="kw">let </span><span class="kw-2">mut </span>new_endorsements = PreHashMap::with_capacity(length);
         <span class="kw">let </span><span class="kw-2">mut </span>endorsement_ids = PreHashSet::with_capacity(length);
@@ -2269,8 +2291,12 @@
                 cache_write.insert_checked_operation(op_id);
             }
         }
-        <span class="comment">//TODO: Send to operation propagation thread
-        </span><span class="prelude-val">Ok</span>(())
+        <span class="self">self</span>.sender_propagation_ops
+            .send(OperationHandlerPropagationCommand::AnnounceOperations(
+                new_operations.keys().copied().collect(),
+            ))
+            .map_err(|err| ProtocolError::ChannelError(err.to_string()))<span class="question-mark">?</span>;
+        <span class="prelude-val">Ok</span>(())
     }
 
     <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>update_ask_block(<span class="kw-2">&amp;mut </span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span>&lt;(), ProtocolError&gt; {
@@ -2523,6 +2549,7 @@
     receiver_network: Receiver&lt;PeerMessageTuple&gt;,
     receiver: Receiver&lt;BlockHandlerRetrievalCommand&gt;,
     _internal_sender: Sender&lt;BlockHandlerPropagationCommand&gt;,
+    sender_propagation_ops: Sender&lt;OperationHandlerPropagationCommand&gt;,
     peer_cmd_sender: Sender&lt;PeerManagementCmd&gt;,
     config: ProtocolConfig,
     endorsement_cache: SharedEndorsementCache,
@@ -2541,6 +2568,7 @@
             block_wishlist: PreHashMap::default(),
             asked_blocks: HashMap::default(),
             peer_cmd_sender,
+            sender_propagation_ops,
             receiver_network,
             block_message_serializer,
             receiver,

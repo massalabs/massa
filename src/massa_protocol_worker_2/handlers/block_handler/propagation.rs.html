@@ -170,12 +170,31 @@
 <a href="#170" id="170">170</a>
 <a href="#171" id="171">171</a>
 <a href="#172" id="172">172</a>
-</pre><pre class="rust"><code><span class="kw">use </span>std::{num::NonZeroUsize, thread::JoinHandle, time::Instant};
+<a href="#173" id="173">173</a>
+<a href="#174" id="174">174</a>
+<a href="#175" id="175">175</a>
+<a href="#176" id="176">176</a>
+<a href="#177" id="177">177</a>
+<a href="#178" id="178">178</a>
+<a href="#179" id="179">179</a>
+<a href="#180" id="180">180</a>
+<a href="#181" id="181">181</a>
+<a href="#182" id="182">182</a>
+<a href="#183" id="183">183</a>
+<a href="#184" id="184">184</a>
+<a href="#185" id="185">185</a>
+<a href="#186" id="186">186</a>
+<a href="#187" id="187">187</a>
+<a href="#188" id="188">188</a>
+<a href="#189" id="189">189</a>
+</pre><pre class="rust"><code><span class="kw">use </span>std::{collections::VecDeque, num::NonZeroUsize, thread::JoinHandle, time::Instant};
 
 <span class="kw">use </span>crossbeam::channel::{Receiver, Sender};
 <span class="kw">use </span>lru::LruCache;
 <span class="kw">use </span>massa_logging::massa_trace;
+<span class="kw">use </span>massa_models::{block_id::BlockId, prehash::PreHashSet};
 <span class="kw">use </span>massa_protocol_exports_2::{ProtocolConfig, ProtocolError};
+<span class="kw">use </span>massa_storage::Storage;
 <span class="kw">use </span>peernet::peer_id::PeerId;
 <span class="kw">use </span>tracing::warn;
 
@@ -194,6 +213,8 @@
     receiver: Receiver&lt;BlockHandlerPropagationCommand&gt;,
     config: ProtocolConfig,
     cache: SharedBlockCache,
+    storage: Storage,
+    saved_blocks: VecDeque&lt;BlockId&gt;,
     active_connections: Box&lt;<span class="kw">dyn </span>ActiveConnectionsTrait&gt;,
     peer_cmd_sender: Sender&lt;PeerManagementCmd&gt;,
     block_serializer: MessagesSerializer,
@@ -211,18 +232,28 @@
                                 { <span class="string">&quot;block_id&quot;</span>: block_id }
                             );
                             <span class="kw">let </span>header = {
-                                <span class="kw">let </span>blocks = storage.read_blocks();
-                                blocks
-                                    .get(<span class="kw-2">&amp;</span>block_id)
-                                    .map(|block| block.content.header.clone())
-                                    .ok_or_else(|| {
-                                        ProtocolError::ContainerInconsistencyError(<span class="macro">format!</span>(
-                                            <span class="string">&quot;header of id {} not found.&quot;</span>,
-                                            block_id
-                                        ))
-                                    })
-                                    .unwrap()
+                                <span class="kw">let </span>block = {
+                                    <span class="kw">let </span>blocks = storage.read_blocks();
+                                    blocks.get(<span class="kw-2">&amp;</span>block_id).cloned()
+                                };
+                                <span class="kw">if let </span><span class="prelude-val">Some</span>(block) = block {
+                                    <span class="self">self</span>.storage.store_block(block.clone());
+                                    <span class="self">self</span>.saved_blocks.push_back(block.id);
+                                    <span class="kw">if </span><span class="self">self</span>.saved_blocks.len()
+                                        &gt; <span class="self">self</span>.config.max_known_blocks_saved_size
+                                    {
+                                        <span class="kw">let </span>block_id = <span class="self">self</span>.saved_blocks.pop_front().unwrap();
+                                        <span class="kw">let </span><span class="kw-2">mut </span>ids_to_delete = PreHashSet::default();
+                                        ids_to_delete.insert(block_id);
+                                        <span class="self">self</span>.storage.drop_block_refs(<span class="kw-2">&amp;</span>ids_to_delete);
+                                    }
+                                    block.content.header.clone()
+                                } <span class="kw">else </span>{
+                                    <span class="macro">warn!</span>(<span class="string">&quot;Block {} not found in storage&quot;</span>, <span class="kw-2">&amp;</span>block_id);
+                                    <span class="kw">continue</span>;
+                                }
                             };
+
                             <span class="comment">// Clean shared cache if peers do not exist anymore
                             </span>{
                                 <span class="kw">let </span><span class="kw-2">mut </span>cache_write = <span class="self">self</span>.cache.write();
@@ -326,6 +357,7 @@
     peer_cmd_sender: Sender&lt;PeerManagementCmd&gt;,
     config: ProtocolConfig,
     cache: SharedBlockCache,
+    storage: Storage,
 ) -&gt; JoinHandle&lt;()&gt; {
     <span class="comment">//TODO: Here and everywhere add id to threads
     </span>std::thread::spawn(<span class="kw">move </span>|| {
@@ -338,6 +370,8 @@
             peer_cmd_sender,
             active_connections,
             block_serializer,
+            storage,
+            saved_blocks: VecDeque::default(),
         };
         propagation_thread.run();
     })

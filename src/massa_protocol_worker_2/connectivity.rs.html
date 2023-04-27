@@ -210,6 +210,7 @@
 <a href="#210" id="210">210</a>
 <a href="#211" id="211">211</a>
 <a href="#212" id="212">212</a>
+<a href="#213" id="213">213</a>
 </pre><pre class="rust"><code><span class="kw">use </span>crossbeam::{
     channel::{unbounded, Receiver, Sender},
     select,
@@ -323,7 +324,7 @@
                 channel_operations.<span class="number">1</span>,
                 sender_operations_retrieval_ext,
                 receiver_operations_retrieval_ext,
-                sender_operations_propagation_ext,
+                sender_operations_propagation_ext.clone(),
                 receiver_operations_propagation_ext,
                 peer_management_handler.sender.command_sender.clone(),
             );
@@ -349,6 +350,7 @@
                 receiver_blocks_retrieval_ext,
                 receiver_blocks_propagation_ext,
                 sender_blocks_propagation_ext,
+                sender_operations_propagation_ext,
                 peer_management_handler.sender.command_sender.clone(),
                 config.clone(),
                 endorsement_cache,

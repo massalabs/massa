@@ -141,6 +141,13 @@
 <a href="#141" id="141">141</a>
 <a href="#142" id="142">142</a>
 <a href="#143" id="143">143</a>
+<a href="#144" id="144">144</a>
+<a href="#145" id="145">145</a>
+<a href="#146" id="146">146</a>
+<a href="#147" id="147">147</a>
+<a href="#148" id="148">148</a>
+<a href="#149" id="149">149</a>
+<a href="#150" id="150">150</a>
 </pre><pre class="rust"><code><span class="kw">use </span>std::{collections::HashSet, net::SocketAddr};
 
 <span class="kw">use </span>massa_protocol_exports_2::ProtocolError;
@@ -168,6 +175,7 @@
     <span class="kw">fn </span>check_addr_accepted(<span class="kw-2">&amp;</span><span class="self">self</span>, addr: <span class="kw-2">&amp;</span>SocketAddr) -&gt; bool;
     <span class="kw">fn </span>get_max_out_connections(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; usize;
     <span class="kw">fn </span>get_nb_out_connections(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; usize;
+    <span class="kw">fn </span>shutdown_connection(<span class="kw-2">&amp;mut </span><span class="self">self</span>, peer_id: <span class="kw-2">&amp;</span>PeerId);
 }
 
 <span class="kw">impl </span>Clone <span class="kw">for </span>Box&lt;<span class="kw">dyn </span>ActiveConnectionsTrait&gt; {
@@ -214,6 +222,12 @@
 
     <span class="kw">fn </span>get_nb_out_connections(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; usize {
         <span class="self">self</span>.read().connections.len()
+    }
+
+    <span class="kw">fn </span>shutdown_connection(<span class="kw-2">&amp;mut </span><span class="self">self</span>, peer_id: <span class="kw-2">&amp;</span>PeerId) {
+        <span class="kw">if let </span><span class="prelude-val">Some</span>(connection) = <span class="self">self</span>.write().connections.get_mut(peer_id) {
+            connection.shutdown();
+        }
     }
 }
 

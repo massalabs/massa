@@ -94,6 +94,11 @@
 <a href="#94" id="94">94</a>
 <a href="#95" id="95">95</a>
 <a href="#96" id="96">96</a>
+<a href="#97" id="97">97</a>
+<a href="#98" id="98">98</a>
+<a href="#99" id="99">99</a>
+<a href="#100" id="100">100</a>
+<a href="#101" id="101">101</a>
 </pre><pre class="rust"><code><span class="kw">use </span>std::thread::JoinHandle;
 
 <span class="kw">use </span>crossbeam::channel::{Receiver, Sender};
@@ -126,7 +131,9 @@
 
 <span class="kw">use super</span>::{
     endorsement_handler::cache::SharedEndorsementCache,
-    operation_handler::cache::SharedOperationCache,
+    operation_handler::{
+        cache::SharedOperationCache, commands_propagation::OperationHandlerPropagationCommand,
+    },
     peer_handler::models::{PeerManagementCmd, PeerMessageTuple},
 };
 
@@ -145,6 +152,7 @@
         receiver_ext: Receiver&lt;BlockHandlerRetrievalCommand&gt;,
         internal_receiver: Receiver&lt;BlockHandlerPropagationCommand&gt;,
         internal_sender: Sender&lt;BlockHandlerPropagationCommand&gt;,
+        sender_propagations_ops: Sender&lt;OperationHandlerPropagationCommand&gt;,
         peer_cmd_sender: Sender&lt;PeerManagementCmd&gt;,
         config: ProtocolConfig,
         endorsement_cache: SharedEndorsementCache,
@@ -159,12 +167,13 @@
             receiver_network,
             receiver_ext,
             internal_sender.clone(),
+            sender_propagations_ops.clone(),
             peer_cmd_sender.clone(),
             config.clone(),
             endorsement_cache,
             operation_cache,
             cache.clone(),
-            storage,
+            storage.clone_without_refs(),
         );
         <span class="kw">let </span>block_propagation_thread = start_propagation_thread(
             active_connections,
@@ -172,6 +181,7 @@
             peer_cmd_sender,
             config,
             cache,
+            storage,
         );
         <span class="self">Self </span>{
             block_retrieval_thread: <span class="prelude-val">Some</span>((sender_ext, block_retrieval_thread)),

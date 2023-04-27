@@ -164,6 +164,8 @@
 <a href="#164" id="164">164</a>
 <a href="#165" id="165">165</a>
 <a href="#166" id="166">166</a>
+<a href="#167" id="167">167</a>
+<a href="#168" id="168">168</a>
 </pre><pre class="rust"><code><span class="kw">use </span>std::{num::NonZeroUsize, thread::JoinHandle};
 
 <span class="kw">use </span>crossbeam::channel::Receiver;
@@ -229,17 +231,19 @@
                                 </span><span class="kw">let </span>peer_connected =
                                     <span class="self">self</span>.active_connections.get_peer_ids_connected();
                                 <span class="kw">for </span>peer_id <span class="kw">in </span><span class="kw-2">&amp;</span>peer_connected {
-                                    cache_write.endorsements_known_by_peer.put(
-                                        peer_id.clone(),
-                                        LruCache::new(
-                                            NonZeroUsize::new(
-                                                <span class="self">self</span>.config.max_node_known_endorsements_size,
-                                            )
-                                            .expect(
-                                                <span class="string">&quot;max_node_known_endorsements_size in config is &gt; 0&quot;</span>,
+                                    <span class="kw">if </span>!cache_write.endorsements_known_by_peer.contains(peer_id) {
+                                        cache_write.endorsements_known_by_peer.put(
+                                            peer_id.clone(),
+                                            LruCache::new(
+                                                NonZeroUsize::new(
+                                                    <span class="self">self</span>.config.max_node_known_endorsements_size,
+                                                )
+                                                .expect(
+                                                    <span class="string">&quot;max_node_known_endorsements_size in config is &gt; 0&quot;</span>,
+                                                ),
                                             ),
-                                        ),
-                                    );
+                                        );
+                                    }
                                 }
                                 <span class="kw">let </span>peers: Vec&lt;PeerId&gt; = cache_write
                                     .endorsements_known_by_peer
