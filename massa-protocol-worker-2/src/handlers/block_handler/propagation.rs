@@ -106,7 +106,7 @@ impl PropagationThread {
                                     if !cond.map_or_else(|| false, |v| v.0) {
                                         massa_trace!("protocol.protocol_worker.process_command.integrated_block.send_header", { "peer_id": peer_id, "block_id": block_id});
                                         if let Err(err) = self.active_connections.send_to_peer(
-                                            &peer_id,
+                                            peer_id,
                                             &self.block_serializer,
                                             BlockMessage::BlockHeader(header.clone()).into(),
                                             true,
@@ -170,20 +170,22 @@ pub fn start_propagation_thread(
     cache: SharedBlockCache,
     storage: Storage,
 ) -> JoinHandle<()> {
-    //TODO: Here and everywhere add id to threads
-    std::thread::spawn(move || {
-        let block_serializer =
-            MessagesSerializer::new().with_block_message_serializer(BlockMessageSerializer::new());
-        let mut propagation_thread = PropagationThread {
-            receiver,
-            config,
-            cache,
-            peer_cmd_sender,
-            active_connections,
-            block_serializer,
-            storage,
-            saved_blocks: VecDeque::default(),
-        };
-        propagation_thread.run();
-    })
+    std::thread::Builder::new()
+        .name("protocol-block-handler-propagation".to_string())
+        .spawn(move || {
+            let block_serializer = MessagesSerializer::new()
+                .with_block_message_serializer(BlockMessageSerializer::new());
+            let mut propagation_thread = PropagationThread {
+                receiver,
+                config,
+                cache,
+                peer_cmd_sender,
+                active_connections,
+                block_serializer,
+                storage,
+                saved_blocks: VecDeque::default(),
+            };
+            propagation_thread.run();
+        })
+        .expect("OS failed to start block propagation thread")
 }

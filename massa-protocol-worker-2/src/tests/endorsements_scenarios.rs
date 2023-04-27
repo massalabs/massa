@@ -217,7 +217,6 @@ fn test_protocol_propagates_endorsements_only_to_nodes_that_dont_know_about_it_b
             let (node_a_peer_id, node_a) = network_controller.create_fake_connection(
                 PeerId::from_bytes(node_a_keypair.get_public_key().to_bytes()).unwrap(),
             );
-            println!("Node A peer id: {:?}", node_a_peer_id);
             let (_node_b_peer_id, node_b) = network_controller.create_fake_connection(
                 PeerId::from_bytes(node_b_keypair.get_public_key().to_bytes()).unwrap(),
             );

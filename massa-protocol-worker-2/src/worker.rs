@@ -1,4 +1,4 @@
-use crossbeam::channel::unbounded;
+use crossbeam::channel::bounded;
 use massa_consensus_exports::ConsensusController;
 use massa_pool_exports::PoolController;
 use massa_protocol_exports_2::{
@@ -25,6 +25,7 @@ use crate::{
 /// * `config`: protocol settings
 /// * `consensus_controller`: interact with consensus module
 /// * `storage`: Shared storage to fetch data that are fetch across all modules
+#[allow(clippy::type_complexity)]
 pub fn start_protocol_controller(
     config: ProtocolConfig,
     consensus_controller: Box<dyn ConsensusController>,
@@ -34,10 +35,13 @@ pub fn start_protocol_controller(
     debug!("starting protocol controller");
     let peer_db = Arc::new(RwLock::new(PeerDB::default()));
 
-    let (sender_operations, receiver_operations) = unbounded();
-    let (sender_endorsements, receiver_endorsements) = unbounded();
-    let (sender_blocks, receiver_blocks) = unbounded();
-    let (sender_peers, receiver_peers) = unbounded();
+    let (sender_operations, receiver_operations) =
+        bounded(config.max_size_channel_network_to_operation_handler);
+    let (sender_endorsements, receiver_endorsements) =
+        bounded(config.max_size_channel_network_to_endorsement_handler);
+    let (sender_blocks, receiver_blocks) =
+        bounded(config.max_size_channel_network_to_block_handler);
+    let (sender_peers, receiver_peers) = bounded(config.max_size_channel_network_to_peer_handler);
 
     // Register channels for handlers
     let message_handlers: MessagesHandler = MessagesHandler {
@@ -48,11 +52,12 @@ pub fn start_protocol_controller(
         id_deserializer: U64VarIntDeserializer::new(Included(0), Included(u64::MAX)),
     };
 
-    let mut peernet_config =
-        PeerNetConfiguration::default(MassaHandshake::new(peer_db.clone()), message_handlers);
+    let mut peernet_config = PeerNetConfiguration::default(
+        MassaHandshake::new(peer_db.clone(), config.clone()),
+        message_handlers,
+    );
     peernet_config.self_keypair = config.keypair.clone();
     peernet_config.fallback_function = Some(&fallback_function);
-    //TODO: Add the rest of the config
     peernet_config.max_in_connections = config.max_in_connections;
     peernet_config.max_out_connections = config.max_out_connections;
 

@@ -44,6 +44,8 @@ pub enum BlockInfoReply {
 }
 
 #[derive(Debug)]
+//TODO: Fix this clippy warning
+#[allow(clippy::large_enum_variant)]
 pub enum BlockMessage {
     /// Block header
     BlockHeader(SecuredHeader),

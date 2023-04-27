@@ -71,18 +71,16 @@ pub struct RetrievalThread {
 
 impl RetrievalThread {
     fn run(&mut self) {
-        //TODO: Real values
         let mut operation_message_deserializer =
             OperationMessageDeserializer::new(OperationMessageDeserializerArgs {
-                //TODO: Real value from config
-                max_operations_prefix_ids: u32::MAX,
-                max_operations: u32::MAX,
-                max_datastore_value_length: u64::MAX,
-                max_function_name_length: u16::MAX,
-                max_parameters_size: u32::MAX,
-                max_op_datastore_entry_count: u64::MAX,
-                max_op_datastore_key_length: u8::MAX,
-                max_op_datastore_value_length: u64::MAX,
+                max_operations_prefix_ids: self.config.max_operations_per_message,
+                max_operations: self.config.max_operations_per_message,
+                max_datastore_value_length: self.config.max_op_datastore_value_length,
+                max_function_name_length: self.config.max_size_function_name,
+                max_parameters_size: self.config.max_size_call_sc_parameter,
+                max_op_datastore_entry_count: self.config.max_op_datastore_entry_count,
+                max_op_datastore_key_length: self.config.max_op_datastore_key_length,
+                max_op_datastore_value_length: self.config.max_op_datastore_value_length,
             });
         let tick_ask_operations = tick(self.config.operation_batch_proc_period.to_duration());
         let tick_clear_storage = tick(self.config.asked_operations_pruning_period.to_duration());
@@ -92,9 +90,14 @@ impl RetrievalThread {
                     match msg {
                         Ok((peer_id, message_id, message)) => {
                             operation_message_deserializer.set_message_id(message_id);
-                            let (rest, message) = operation_message_deserializer
-                                .deserialize::<DeserializeError>(&message)
-                                .unwrap();
+                            let (rest, message) = match operation_message_deserializer
+                                .deserialize::<DeserializeError>(&message) {
+                                    Ok((rest, message)) => (rest, message),
+                                    Err(err) => {
+                                        warn!("Error when deserializing message from peer {}: Err = {}", peer_id, err);
+                                        continue;
+                                    }
+                                };
                             if !rest.is_empty() {
                                 println!("Error: message not fully consumed");
                                 return;
@@ -461,6 +464,7 @@ impl RetrievalThread {
     }
 }
 
+#[allow(clippy::too_many_arguments)]
 pub fn start_retrieval_thread(
     receiver: Receiver<(PeerId, u64, Vec<u8>)>,
     pool_controller: Box<dyn PoolController>,
@@ -472,26 +476,29 @@ pub fn start_retrieval_thread(
     internal_sender: Sender<OperationHandlerPropagationCommand>,
     peer_cmd_sender: Sender<PeerManagementCmd>,
 ) -> JoinHandle<()> {
-    std::thread::spawn(move || {
-        let mut retrieval_thread = RetrievalThread {
-            receiver,
-            pool_controller,
-            stored_operations: HashMap::new(),
-            storage,
-            internal_sender,
-            receiver_ext,
-            cache,
-            active_connections,
-            asked_operations: LruCache::new(
-                NonZeroUsize::new(config.asked_operations_buffer_capacity)
-                    .expect("asked_operations_buffer_capacity in config must be > 0"),
-            ),
-            config,
-            operation_message_serializer: MessagesSerializer::new()
-                .with_operation_message_serializer(OperationMessageSerializer::new()),
-            op_batch_buffer: VecDeque::new(),
-            peer_cmd_sender,
-        };
-        retrieval_thread.run();
-    })
+    std::thread::Builder::new()
+        .name("protocol-operation-handler-retrieval".to_string())
+        .spawn(move || {
+            let mut retrieval_thread = RetrievalThread {
+                receiver,
+                pool_controller,
+                stored_operations: HashMap::new(),
+                storage,
+                internal_sender,
+                receiver_ext,
+                cache,
+                active_connections,
+                asked_operations: LruCache::new(
+                    NonZeroUsize::new(config.asked_operations_buffer_capacity)
+                        .expect("asked_operations_buffer_capacity in config must be > 0"),
+                ),
+                config,
+                operation_message_serializer: MessagesSerializer::new()
+                    .with_operation_message_serializer(OperationMessageSerializer::new()),
+                op_batch_buffer: VecDeque::new(),
+                peer_cmd_sender,
+            };
+            retrieval_thread.run();
+        })
+        .expect("OS failed to start operation retrieval thread")
 }
