@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"constant":["VARIANTS"],"enum":["AskForBlocksInfo","BlockInfoReply","NetworkCommand","NetworkEvent","NetworkManagementCommand","NodeCommand","NodeEventType","__Field"],"struct":["NodeEvent","__FieldVisitor","__Visitor"]};
+window.SIDEBAR_ITEMS = {"enum":["AskForBlocksInfo","BlockInfoReply","NetworkCommand","NetworkEvent","NetworkManagementCommand","NodeCommand","NodeEventType"],"struct":["NodeEvent"]};
