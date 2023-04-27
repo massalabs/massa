@@ -162,43 +162,6 @@ impl LedgerDB {
     /// * changes: ledger changes to be applied
     /// * slot: new slot associated to the final ledger
     /// * final_state_data: the serialized final state data to include, in case we use the feature `create_snapshot`
-    pub fn apply_changes(&mut self, changes: LedgerChanges, slot: Slot) {
-        // create the batch
-        let mut batch = DBBatch::new(Some(self.get_ledger_hash()), None, None, None, None, None);
-        // for all incoming changes
-        for (addr, change) in changes.0 {
-            match change {
-                // the incoming change sets a ledger entry to a new one
-                SetUpdateOrDelete::Set(new_entry) => {
-                    // inserts/overwrites the entry with the incoming one
-                    self.put_entry(&addr, new_entry, &mut batch);
-                }
-                // the incoming change updates an existing ledger entry
-                SetUpdateOrDelete::Update(entry_update) => {
-                    // applies the updates to the entry
-                    // if the entry does not exist, inserts a default one and applies the updates to it
-                    self.update_entry(&addr, entry_update, &mut batch);
-                }
-                // the incoming change deletes a ledger entry
-                SetUpdateOrDelete::Delete => {
-                    // delete the entry, if it exists
-                    self.delete_entry(&addr, &mut batch);
-                }
-            }
-        }
-        // set the associated slot in metadata
-        self.set_slot(slot, &mut batch);
-
-        // write the batch
-        write_batch(&self.db.read(), batch);
-    }
-
-    /// Allows applying `LedgerChanges` to the disk ledger
-    ///
-    /// # Arguments
-    /// * changes: ledger changes to be applied
-    /// * slot: new slot associated to the final ledger
-    /// * final_state_data: the serialized final state data to include, in case we use the feature `create_snapshot`
     pub fn apply_changes_to_batch(
         &mut self,
         changes: LedgerChanges,

@@ -2,8 +2,8 @@ use crate::{CycleInfo, PoSChanges, PosError, PosResult, ProductionStats, Selecto
 use crate::{DeferredCredits, PoSConfig};
 use bitvec::vec::BitVec;
 use massa_db::{
-    DBBatch, CF_ERROR, CRUD_ERROR, CYCLE_HISTORY_CF, CYCLE_HISTORY_HASH_ERROR,
-    CYCLE_HISTORY_HASH_INITIAL_BYTES, CYCLE_HISTORY_HASH_KEY, DEFERRED_CREDITS_CF,
+    DBBatch, CF_ERROR, CRUD_ERROR, /*CYCLE_HISTORY_CF,*/ CYCLE_HISTORY_HASH_ERROR,
+    CYCLE_HISTORY_HASH_INITIAL_BYTES, CYCLE_HISTORY_HASH_KEY, /*DEFERRED_CREDITS_CF,*/
     DEFERRED_CREDITS_HASH_ERROR, DEFERRED_CREDITS_HASH_INITIAL_BYTES, DEFERRED_CREDITS_HASH_KEY,
     METADATA_CF,
 };
@@ -255,7 +255,7 @@ impl PoSFinalState {
         changes: PoSChanges,
         slot: Slot,
         feed_selector: bool,
-        batch: &mut DBBatch,
+        _batch: &mut DBBatch,
     ) -> PosResult<()> {
         let slots_per_cycle: usize = self
             .config

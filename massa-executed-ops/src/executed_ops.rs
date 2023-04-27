@@ -398,6 +398,9 @@ fn test_executed_ops_xor_computing() {
     let mut batch_a = DBBatch::new(None, None, None, None, Some(a.get_hash()), None);
     let mut batch_c = DBBatch::new(None, None, None, None, Some(c.get_hash()), None);
     a.apply_changes_to_batch(change_a, apply_slot, &mut batch_a);
+    write_batch(&rocks_db_instance_a.read(), batch_a);
+    let mut batch_a = DBBatch::new(None, None, None, None, Some(a.get_hash()), None);
+
     a.apply_changes_to_batch(change_b, apply_slot, &mut batch_a);
     c.apply_changes_to_batch(change_c, apply_slot, &mut batch_c);
     write_batch(&rocks_db_instance_a.read(), batch_a);

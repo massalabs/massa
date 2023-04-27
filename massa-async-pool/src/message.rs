@@ -183,7 +183,7 @@ pub struct AsyncMessageTrigger {
 
 #[derive(Clone)]
 /// Serializer for a trigger for an asynchronous message
-struct AsyncMessageTriggerSerializer {
+pub struct AsyncMessageTriggerSerializer {
     address_serializer: AddressSerializer,
     key_serializer: OptionSerializer<Vec<u8>, VecU8Serializer>,
 }
@@ -194,6 +194,12 @@ impl AsyncMessageTriggerSerializer {
             address_serializer: AddressSerializer::new(),
             key_serializer: OptionSerializer::new(VecU8Serializer::new()),
         }
+    }
+}
+
+impl Default for AsyncMessageTriggerSerializer {
+    fn default() -> Self {
+        Self::new()
     }
 }
 
@@ -212,7 +218,7 @@ impl Serializer<AsyncMessageTrigger> for AsyncMessageTriggerSerializer {
 
 #[derive(Clone)]
 /// Deserializer for a trigger for an asynchronous message
-struct AsyncMessageTriggerDeserializer {
+pub struct AsyncMessageTriggerDeserializer {
     address_deserializer: AddressDeserializer,
     key_serializer: OptionDeserializer<Vec<u8>, VecU8Deserializer>,
 }
@@ -388,14 +394,14 @@ impl AsyncMessage {
 
 #[derive(Clone)]
 pub struct AsyncMessageSerializer {
-    slot_serializer: SlotSerializer,
-    amount_serializer: AmountSerializer,
-    u64_serializer: U64VarIntSerializer,
-    vec_u8_serializer: VecU8Serializer,
-    address_serializer: AddressSerializer,
-    trigger_serializer: OptionSerializer<AsyncMessageTrigger, AsyncMessageTriggerSerializer>,
-    bool_serializer: BoolSerializer,
-    for_db: bool,
+    pub slot_serializer: SlotSerializer,
+    pub amount_serializer: AmountSerializer,
+    pub u64_serializer: U64VarIntSerializer,
+    pub vec_u8_serializer: VecU8Serializer,
+    pub address_serializer: AddressSerializer,
+    pub trigger_serializer: OptionSerializer<AsyncMessageTrigger, AsyncMessageTriggerSerializer>,
+    pub bool_serializer: BoolSerializer,
+    pub for_db: bool,
 }
 
 impl AsyncMessageSerializer {
@@ -487,15 +493,16 @@ impl Serializer<AsyncMessage> for AsyncMessageSerializer {
 
 #[derive(Clone)]
 pub struct AsyncMessageDeserializer {
-    slot_deserializer: SlotDeserializer,
-    amount_deserializer: AmountDeserializer,
-    emission_index_deserializer: U64VarIntDeserializer,
-    max_gas_deserializer: U64VarIntDeserializer,
-    data_deserializer: VecU8Deserializer,
-    address_deserializer: AddressDeserializer,
-    trigger_deserializer: OptionDeserializer<AsyncMessageTrigger, AsyncMessageTriggerDeserializer>,
-    bool_deserializer: BoolDeserializer,
-    for_db: bool,
+    pub slot_deserializer: SlotDeserializer,
+    pub amount_deserializer: AmountDeserializer,
+    pub emission_index_deserializer: U64VarIntDeserializer,
+    pub max_gas_deserializer: U64VarIntDeserializer,
+    pub data_deserializer: VecU8Deserializer,
+    pub address_deserializer: AddressDeserializer,
+    pub trigger_deserializer:
+        OptionDeserializer<AsyncMessageTrigger, AsyncMessageTriggerDeserializer>,
+    pub bool_deserializer: BoolDeserializer,
+    pub for_db: bool,
 }
 
 impl AsyncMessageDeserializer {

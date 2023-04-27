@@ -2,7 +2,10 @@
 
 use std::{collections::BTreeMap, str::FromStr, sync::Arc};
 
-use crate::{AsyncMessage, AsyncMessageDeserializer, AsyncMessageId, AsyncPool, AsyncPoolConfig};
+use crate::{
+    AsyncMessage, AsyncMessageDeserializer, AsyncMessageId, AsyncMessageIdDeserializer, AsyncPool,
+    AsyncPoolConfig,
+};
 use massa_db::ASYNC_POOL_CF;
 use massa_models::{
     address::Address,
@@ -76,6 +79,7 @@ pub fn assert_eq_async_message(v1: &AsyncMessage, v2: &AsyncMessage) {
 
 /// asserts that two `AsyncPool` are equal
 pub fn assert_eq_async_pool_bootstrap_state(v1: &AsyncPool, v2: &AsyncPool) {
+    let message_id_deserializer = AsyncMessageIdDeserializer::new(THREAD_COUNT);
     let message_deserializer = AsyncMessageDeserializer::new(
         THREAD_COUNT,
         MAX_ASYNC_MESSAGE_DATA,
@@ -89,8 +93,16 @@ pub fn assert_eq_async_pool_bootstrap_state(v1: &AsyncPool, v2: &AsyncPool) {
     assert_eq!(
         db1.iterator_cf(handle1, IteratorMode::Start).count(),
         db2.iterator_cf(handle2, IteratorMode::Start).count(),
-        "message count mismatch"
+        "message values count mismatch"
     );
+
+    // Iterates over the whole database
+    let mut current_id: Option<AsyncMessageId> = None;
+    let mut current_message_1: Vec<u8> = Vec::new();
+    let mut current_message_2: Vec<u8> = Vec::new();
+    let mut current_count = 0u8;
+    const TOTAL_FIELDS_COUNT: u8 = 13;
+
     for (val1, val2) in db1
         .iterator_cf(handle1, IteratorMode::Start)
         .zip(db2.iterator_cf(handle2, IteratorMode::Start))
@@ -98,12 +110,39 @@ pub fn assert_eq_async_pool_bootstrap_state(v1: &AsyncPool, v2: &AsyncPool) {
         let val1 = val1.unwrap();
         let val2 = val2.unwrap();
 
-        let (_rest, message1) = message_deserializer
-            .deserialize::<DeserializeError>(&val1.1)
+        let (_, message_id_1) = message_id_deserializer
+            .deserialize::<DeserializeError>(&val1.0)
             .unwrap();
-        let (_rest, message2) = message_deserializer
-            .deserialize::<DeserializeError>(&val2.1)
+        let (_, message_id_2) = message_id_deserializer
+            .deserialize::<DeserializeError>(&val2.0)
             .unwrap();
-        assert_eq_async_message(&message1, &message2);
+
+        if Some(message_id_1) == current_id && message_id_1 == message_id_2 {
+            current_count += 1;
+            current_message_1.extend(val1.1.iter());
+            current_message_2.extend(val2.1.iter());
+            if current_count == TOTAL_FIELDS_COUNT {
+                let (_rest, message1) = message_deserializer
+                    .deserialize::<DeserializeError>(&current_message_1)
+                    .unwrap();
+                let (_rest, message2) = message_deserializer
+                    .deserialize::<DeserializeError>(&current_message_2)
+                    .unwrap();
+                assert_eq_async_message(&message1, &message2);
+
+                current_count = 0;
+                current_message_1.clear();
+                current_message_2.clear();
+                current_id = None;
+            }
+        } else {
+            // We reset the current values
+            current_id = Some(message_id_1);
+            current_count = 1;
+            current_message_1.clear();
+            current_message_1.extend(val1.1.iter());
+            current_message_2.clear();
+            current_message_2.extend(val2.1.iter());
+        }
     }
 }

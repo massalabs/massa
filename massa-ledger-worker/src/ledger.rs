@@ -58,11 +58,6 @@ impl FinalLedger {
 }
 
 impl LedgerController for FinalLedger {
-    /// Allows applying `LedgerChanges` to the final ledger
-    fn apply_changes(&mut self, changes: LedgerChanges, slot: Slot) {
-        self.sorted_ledger.apply_changes(changes, slot);
-    }
-
     /// Loads ledger from file
     fn load_initial_ledger(&mut self) -> Result<(), LedgerError> {
         // load the ledger tree from file

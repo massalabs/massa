@@ -99,7 +99,7 @@ pub use config::AsyncPoolConfig;
 pub use message::{
     AsyncMessage, AsyncMessageDeserializer, AsyncMessageId, AsyncMessageIdDeserializer,
     AsyncMessageIdSerializer, AsyncMessageInfo, AsyncMessageSerializer, AsyncMessageTrigger,
-    AsyncMessageUpdate,
+    AsyncMessageTriggerSerializer, AsyncMessageUpdate,
 };
 pub use pool::{AsyncPool, AsyncPoolDeserializer, AsyncPoolSerializer};
 

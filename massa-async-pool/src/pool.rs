@@ -15,7 +15,7 @@ use massa_db::{
     MESSAGE_ID_SER_ERROR, MESSAGE_SER_ERROR, METADATA_CF, WRONG_BATCH_TYPE_ERROR,
 };
 use massa_hash::Hash;
-use massa_ledger_exports::{Applicable, SetUpdateOrDelete};
+use massa_ledger_exports::{Applicable, SetOrKeep, SetUpdateOrDelete};
 use massa_models::streaming_step::StreamingStep;
 use massa_serialization::{
     DeserializeError, Deserializer, SerializeError, Serializer, U64VarIntDeserializer,
@@ -28,9 +28,128 @@ use nom::{
     IResult, Parser,
 };
 use parking_lot::RwLock;
-use rocksdb::{Direction, IteratorMode, Options, ReadOptions, DB};
+use rocksdb::{ColumnFamily, Direction, IteratorMode, Options, ReadOptions, DB};
 use std::ops::Bound::Included;
 use std::{collections::BTreeMap, sync::Arc};
+
+const EMISSION_SLOT_IDENT: u8 = 0u8;
+const EMISSION_INDEX_IDENT: u8 = 1u8;
+const SENDER_IDENT: u8 = 2u8;
+const DESTINATION_IDENT: u8 = 3u8;
+const HANDLER_IDENT: u8 = 4u8;
+const MAX_GAS_IDENT: u8 = 5u8;
+const FEE_IDENT: u8 = 6u8;
+const COINS_IDENT: u8 = 7u8;
+const VALIDITY_START_IDENT: u8 = 8u8;
+const VALIDITY_END_IDENT: u8 = 9u8;
+const DATA_IDENT: u8 = 10u8;
+const TRIGGER_IDENT: u8 = 11u8;
+const CAN_BE_EXECUTED_IDENT: u8 = 12u8;
+const TOTAL_FIELDS_COUNT: u8 = 13u8;
+
+/// Emission slot key formatting macro
+#[macro_export]
+macro_rules! emission_slot_key {
+    ($id:expr) => {
+        [&$id[..], &[EMISSION_SLOT_IDENT]].concat()
+    };
+}
+
+/// Emission index key formatting macro
+#[macro_export]
+macro_rules! emission_index_key {
+    ($id:expr) => {
+        [&$id[..], &[EMISSION_INDEX_IDENT]].concat()
+    };
+}
+
+/// Sender key formatting macro
+#[macro_export]
+macro_rules! sender_key {
+    ($id:expr) => {
+        [&$id[..], &[SENDER_IDENT]].concat()
+    };
+}
+
+/// Destination key formatting macro
+#[macro_export]
+macro_rules! destination_key {
+    ($id:expr) => {
+        [&$id[..], &[DESTINATION_IDENT]].concat()
+    };
+}
+
+/// Handler key formatting macro
+#[macro_export]
+macro_rules! handler_key {
+    ($id:expr) => {
+        [&$id[..], &[HANDLER_IDENT]].concat()
+    };
+}
+
+/// Max gas key formatting macro
+#[macro_export]
+macro_rules! max_gas_key {
+    ($id:expr) => {
+        [&$id[..], &[MAX_GAS_IDENT]].concat()
+    };
+}
+
+/// Fee key formatting macro
+#[macro_export]
+macro_rules! fee_key {
+    ($id:expr) => {
+        [&$id[..], &[FEE_IDENT]].concat()
+    };
+}
+
+/// Coins key formatting macro
+#[macro_export]
+macro_rules! coins_key {
+    ($id:expr) => {
+        [&$id[..], &[COINS_IDENT]].concat()
+    };
+}
+
+/// Validity start key formatting macro
+#[macro_export]
+macro_rules! validity_start_key {
+    ($id:expr) => {
+        [&$id[..], &[VALIDITY_START_IDENT]].concat()
+    };
+}
+
+/// Validity end key formatting macro
+#[macro_export]
+macro_rules! validity_end_key {
+    ($id:expr) => {
+        [&$id[..], &[VALIDITY_END_IDENT]].concat()
+    };
+}
+
+/// Data key formatting macro
+#[macro_export]
+macro_rules! data_key {
+    ($id:expr) => {
+        [&$id[..], &[DATA_IDENT]].concat()
+    };
+}
+
+/// Trigger key formatting macro
+#[macro_export]
+macro_rules! trigger_key {
+    ($id:expr) => {
+        [&$id[..], &[TRIGGER_IDENT]].concat()
+    };
+}
+
+/// Can be executed key formatting macro
+#[macro_export]
+macro_rules! can_be_executed_key {
+    ($id:expr) => {
+        [&$id[..], &[CAN_BE_EXECUTED_IDENT]].concat()
+    };
+}
 
 #[derive(Clone)]
 /// Represents a pool of sorted messages in a deterministic way.
@@ -74,19 +193,41 @@ impl AsyncPool {
         let db = self.db.read();
         let handle = db.cf_handle(ASYNC_POOL_CF).expect(CF_ERROR);
 
-        for (serialized_message_id, serialized_message) in
+        // Iterates over the whole database
+        let mut current_id: Option<AsyncMessageId> = None;
+        let mut current_message: Vec<u8> = Vec::new();
+        let mut current_count = 0u8;
+
+        for (serialized_message_id, serialized_value) in
             db.iterator_cf(handle, IteratorMode::Start).flatten()
         {
             let (_, message_id) = self
                 .message_id_deserializer
                 .deserialize::<DeserializeError>(&serialized_message_id)
                 .expect(MESSAGE_ID_DESER_ERROR);
-            let (_, message) = self
-                .message_deserializer_db
-                .deserialize::<DeserializeError>(&serialized_message)
-                .expect(MESSAGE_DESER_ERROR);
 
-            self.message_info_cache.insert(message_id, message.into());
+            if Some(message_id) == current_id {
+                current_count += 1;
+                current_message.extend(serialized_value.iter());
+                if current_count == TOTAL_FIELDS_COUNT {
+                    let (_, message) = self
+                        .message_deserializer_db
+                        .deserialize::<DeserializeError>(&current_message)
+                        .expect(MESSAGE_DESER_ERROR);
+
+                    self.message_info_cache.insert(message_id, message.into());
+
+                    current_count = 0;
+                    current_message.clear();
+                    current_id = None;
+                }
+            } else {
+                // We reset the current values
+                current_id = Some(message_id);
+                current_count = 1;
+                current_message.clear();
+                current_message.extend(serialized_value.iter());
+            }
         }
     }
 
@@ -148,33 +289,49 @@ impl AsyncPool {
         let handle = db.cf_handle(ASYNC_POOL_CF).expect(CF_ERROR);
 
         let mut serialized_message_ids = Vec::new();
+        let mut fetched_messages = Vec::new();
 
         for message_id in message_ids.iter() {
             let mut serialized_message_id = Vec::new();
             self.message_id_serializer
                 .serialize(message_id, &mut serialized_message_id)
                 .expect(MESSAGE_ID_SER_ERROR);
-            serialized_message_ids.push((handle, serialized_message_id));
+            serialized_message_ids.push((handle, emission_slot_key!(serialized_message_id)));
+            serialized_message_ids.push((handle, emission_index_key!(serialized_message_id)));
+            serialized_message_ids.push((handle, sender_key!(serialized_message_id)));
+            serialized_message_ids.push((handle, destination_key!(serialized_message_id)));
+            serialized_message_ids.push((handle, handler_key!(serialized_message_id)));
+            serialized_message_ids.push((handle, max_gas_key!(serialized_message_id)));
+            serialized_message_ids.push((handle, fee_key!(serialized_message_id)));
+            serialized_message_ids.push((handle, coins_key!(serialized_message_id)));
+            serialized_message_ids.push((handle, validity_start_key!(serialized_message_id)));
+            serialized_message_ids.push((handle, validity_end_key!(serialized_message_id)));
+            serialized_message_ids.push((handle, data_key!(serialized_message_id)));
+            serialized_message_ids.push((handle, trigger_key!(serialized_message_id)));
+            serialized_message_ids.push((handle, can_be_executed_key!(serialized_message_id)));
         }
 
         let result_messages = db.multi_get_cf(serialized_message_ids);
 
-        let ret = message_ids
-            .iter()
-            .zip(result_messages)
-            .map(|(message_id, serialized_message)| {
-                if let Ok(Some(serialized_message)) = serialized_message {
-                    let (_, message) = self
-                        .message_deserializer_db
-                        .deserialize::<DeserializeError>(&serialized_message)
-                        .expect(MESSAGE_DESER_ERROR);
-                    (*message_id, Some(message))
+        'msgs_iter: for message_id in message_ids.iter() {
+            let mut serialized_message: Vec<u8> = Vec::new();
+            let vals = result_messages.iter().take(13);
+            for val in vals {
+                if let Ok(Some(serialized_value)) = val {
+                    serialized_message.extend(serialized_value);
                 } else {
-                    (*message_id, None)
+                    fetched_messages.push((*message_id, None));
+                    continue 'msgs_iter;
                 }
-            })
-            .collect();
-        ret
+            }
+            let (_, message) = self
+                .message_deserializer_db
+                .deserialize::<DeserializeError>(&serialized_message)
+                .expect(MESSAGE_DESER_ERROR);
+            fetched_messages.push((*message_id, Some(message)));
+        }
+
+        fetched_messages
     }
 
     /// Get a part of the async pool.
@@ -220,19 +377,40 @@ impl AsyncPool {
         };
 
         // Iterates over the whole database
-        for (serialized_message_id, serialized_message) in db_iterator.flatten() {
+        let mut current_id: Option<AsyncMessageId> = None;
+        let mut current_message: Vec<u8> = Vec::new();
+        let mut current_count = 0u8;
+
+        for (serialized_message_id, serialized_value) in db_iterator.flatten() {
             if pool_part.len() < self.config.bootstrap_part_size as usize {
                 let (_, message_id) = self
                     .message_id_deserializer
                     .deserialize::<DeserializeError>(&serialized_message_id)
-                    .expect("MESSAGE_ID_DESER_ERROR");
-                let (_, message) = self
-                    .message_deserializer_db
-                    .deserialize::<DeserializeError>(&serialized_message)
-                    .expect(MESSAGE_DESER_ERROR);
-                pool_part.insert(message_id, message.clone());
+                    .expect(MESSAGE_ID_DESER_ERROR);
 
-                new_cursor = StreamingStep::Ongoing(message_id);
+                if Some(message_id) == current_id {
+                    current_count += 1;
+                    current_message.extend(serialized_value.iter());
+                    if current_count == TOTAL_FIELDS_COUNT {
+                        let (_, message) = self
+                            .message_deserializer_db
+                            .deserialize::<DeserializeError>(&current_message)
+                            .expect(MESSAGE_DESER_ERROR);
+
+                        pool_part.insert(message_id, message.clone());
+                        new_cursor = StreamingStep::Ongoing(message_id);
+
+                        current_count = 0;
+                        current_message.clear();
+                        current_id = None;
+                    }
+                } else {
+                    // We reset the current values
+                    current_id = Some(message_id);
+                    current_count = 1;
+                    current_message.clear();
+                    current_message.extend(serialized_value.iter());
+                }
             } else {
                 break;
             }
@@ -371,6 +549,23 @@ impl Deserializer<BTreeMap<AsyncMessageId, AsyncMessage>> for AsyncPoolDeseriali
 
 // Private helpers
 impl AsyncPool {
+    /// Internal function to put a key & value and perform the hash XORs
+    fn put_entry_value(
+        &self,
+        handle: &ColumnFamily,
+        batch: &mut DBBatch,
+        key: Vec<u8>,
+        value: &[u8],
+    ) {
+        let hash = Hash::compute_from(&[&key, value].concat());
+        *batch
+            .async_pool_hash
+            .as_mut()
+            .expect(WRONG_BATCH_TYPE_ERROR) ^= hash;
+        batch.aeh_list.insert(key.clone(), hash);
+        batch.write_batch.put_cf(handle, &key, value);
+    }
+
     /// Add every sub-entry individually for a given entry.
     ///
     /// # Arguments
@@ -380,26 +575,210 @@ impl AsyncPool {
     fn put_entry(&self, message_id: &AsyncMessageId, message: AsyncMessage, batch: &mut DBBatch) {
         let db = self.db.read();
         let handle = db.cf_handle(ASYNC_POOL_CF).expect(CF_ERROR);
+
         let mut serialized_message_id = Vec::new();
         self.message_id_serializer
             .serialize(message_id, &mut serialized_message_id)
             .expect(MESSAGE_ID_SER_ERROR);
-        let mut serialized_message = Vec::new();
-        self.message_serializer
-            .serialize(&message, &mut serialized_message)
-            .expect(MESSAGE_SER_ERROR);
 
-        let hash = Hash::compute_from(
-            &[serialized_message_id.clone(), serialized_message.clone()].concat(),
+        // Emission slot
+        let mut serialized_emission_slot = Vec::new();
+        self.message_serializer
+            .slot_serializer
+            .serialize(&message.emission_slot, &mut serialized_emission_slot)
+            .expect(MESSAGE_SER_ERROR);
+        self.put_entry_value(
+            handle,
+            batch,
+            emission_slot_key!(serialized_message_id),
+            &serialized_emission_slot,
         );
+
+        // Emission index
+        let mut serialized_emission_index = Vec::new();
+        self.message_serializer
+            .u64_serializer
+            .serialize(&message.emission_index, &mut serialized_emission_index)
+            .expect(MESSAGE_SER_ERROR);
+        self.put_entry_value(
+            handle,
+            batch,
+            emission_index_key!(serialized_message_id),
+            &serialized_emission_index,
+        );
+
+        // Sender
+        let mut serialized_sender = Vec::new();
+        self.message_serializer
+            .address_serializer
+            .serialize(&message.sender, &mut serialized_sender)
+            .expect(MESSAGE_SER_ERROR);
+        self.put_entry_value(
+            handle,
+            batch,
+            sender_key!(serialized_message_id),
+            &serialized_sender,
+        );
+
+        // Destination
+        let mut serialized_destination = Vec::new();
+        self.message_serializer
+            .address_serializer
+            .serialize(&message.destination, &mut serialized_destination)
+            .expect(MESSAGE_SER_ERROR);
+        self.put_entry_value(
+            handle,
+            batch,
+            destination_key!(serialized_message_id),
+            &serialized_destination,
+        );
+
+        // Handler
+        let mut serialized_handler = Vec::new();
+        let handler_bytes = message.handler.as_bytes();
+        let handler_name_len: u8 = handler_bytes.len().try_into().expect(MESSAGE_SER_ERROR);
+        serialized_handler.extend([handler_name_len]);
+        serialized_handler.extend(handler_bytes);
+        self.put_entry_value(
+            handle,
+            batch,
+            handler_key!(serialized_message_id),
+            &serialized_handler,
+        );
+
+        // Max gas
+        let mut serialized_max_gas = Vec::new();
+        self.message_serializer
+            .u64_serializer
+            .serialize(&message.max_gas, &mut serialized_max_gas)
+            .expect(MESSAGE_SER_ERROR);
+        self.put_entry_value(
+            handle,
+            batch,
+            max_gas_key!(serialized_message_id),
+            &serialized_max_gas,
+        );
+
+        // Fee
+        let mut serialized_fee = Vec::new();
+        self.message_serializer
+            .amount_serializer
+            .serialize(&message.fee, &mut serialized_fee)
+            .expect(MESSAGE_SER_ERROR);
+        self.put_entry_value(
+            handle,
+            batch,
+            fee_key!(serialized_message_id),
+            &serialized_fee,
+        );
+
+        // Coins
+        let mut serialized_coins = Vec::new();
+        self.message_serializer
+            .amount_serializer
+            .serialize(&message.coins, &mut serialized_coins)
+            .expect(MESSAGE_SER_ERROR);
+        self.put_entry_value(
+            handle,
+            batch,
+            coins_key!(serialized_message_id),
+            &serialized_coins,
+        );
+
+        // Validity start
+        let mut serialized_validity_start = Vec::new();
+        self.message_serializer
+            .slot_serializer
+            .serialize(&message.validity_start, &mut serialized_validity_start)
+            .expect(MESSAGE_SER_ERROR);
+        self.put_entry_value(
+            handle,
+            batch,
+            validity_start_key!(serialized_message_id),
+            &serialized_validity_start,
+        );
+
+        // Validity end
+        let mut serialized_validity_end = Vec::new();
+        self.message_serializer
+            .slot_serializer
+            .serialize(&message.validity_end, &mut serialized_validity_end)
+            .expect(MESSAGE_SER_ERROR);
+        self.put_entry_value(
+            handle,
+            batch,
+            validity_end_key!(serialized_message_id),
+            &serialized_validity_end,
+        );
+
+        // Data
+        let mut serialized_data = Vec::new();
+        self.message_serializer
+            .vec_u8_serializer
+            .serialize(&message.data, &mut serialized_data)
+            .expect(MESSAGE_SER_ERROR);
+        self.put_entry_value(
+            handle,
+            batch,
+            data_key!(serialized_message_id),
+            &serialized_data,
+        );
+
+        // Trigger
+        let mut serialized_trigger = Vec::new();
+        self.message_serializer
+            .trigger_serializer
+            .serialize(&message.trigger, &mut serialized_trigger)
+            .expect(MESSAGE_SER_ERROR);
+        self.put_entry_value(
+            handle,
+            batch,
+            trigger_key!(serialized_message_id),
+            &serialized_trigger,
+        );
+
+        // Can be executed
+        let mut serialized_can_be_executed = Vec::new();
+        self.message_serializer
+            .bool_serializer
+            .serialize(&message.can_be_executed, &mut serialized_can_be_executed)
+            .expect(MESSAGE_SER_ERROR);
+        self.put_entry_value(
+            handle,
+            batch,
+            can_be_executed_key!(serialized_message_id),
+            &serialized_can_be_executed,
+        );
+    }
+
+    /// Internal function to update a key & value and perform the hash XORs
+    fn update_key_value(
+        &self,
+        handle: &ColumnFamily,
+        batch: &mut DBBatch,
+        key: Vec<u8>,
+        value: &[u8],
+    ) {
+        let db = self.db.read();
+        if let Some(added_hash) = batch.aeh_list.get(&key) {
+            *batch
+                .async_pool_hash
+                .as_mut()
+                .expect(WRONG_BATCH_TYPE_ERROR) ^= *added_hash;
+        } else if let Some(prev_bytes) = db.get_pinned_cf(handle, &key).expect(CRUD_ERROR) {
+            *batch
+                .async_pool_hash
+                .as_mut()
+                .expect(WRONG_BATCH_TYPE_ERROR) ^=
+                Hash::compute_from(&[&key, &prev_bytes[..]].concat());
+        }
+        let hash = Hash::compute_from(&[&key, value].concat());
         *batch
             .async_pool_hash
             .as_mut()
             .expect(WRONG_BATCH_TYPE_ERROR) ^= hash;
-        batch.aeh_list.insert(serialized_message_id.clone(), hash);
-        batch
-            .write_batch
-            .put_cf(handle, serialized_message_id, serialized_message);
+        batch.aeh_list.insert(key.clone(), hash);
+        batch.write_batch.put_cf(handle, key, value);
     }
 
     /// Update the ledger entry of a given address.
@@ -421,37 +800,218 @@ impl AsyncPool {
             .serialize(message_id, &mut serialized_message_id)
             .expect(MESSAGE_ID_SER_ERROR);
 
-        if let Some(prev_bytes) = db.get_cf(handle, &serialized_message_id).expect(CRUD_ERROR) {
+        // Emission slot
+        if let SetOrKeep::Set(emission_slot) = message_update.emission_slot {
+            let mut serialized_emission_slot = Vec::new();
+            self.message_serializer
+                .slot_serializer
+                .serialize(&emission_slot, &mut serialized_emission_slot)
+                .expect(MESSAGE_SER_ERROR);
+            self.update_key_value(
+                handle,
+                batch,
+                emission_slot_key!(serialized_message_id),
+                &serialized_emission_slot,
+            );
+        }
+
+        // Emission index
+        if let SetOrKeep::Set(emission_index) = message_update.emission_index {
+            let mut serialized_emission_index = Vec::new();
+            self.message_serializer
+                .u64_serializer
+                .serialize(&emission_index, &mut serialized_emission_index)
+                .expect(MESSAGE_SER_ERROR);
+            self.update_key_value(
+                handle,
+                batch,
+                emission_index_key!(serialized_message_id),
+                &serialized_emission_index,
+            );
+        }
+
+        // Sender
+        if let SetOrKeep::Set(sender) = message_update.sender {
+            let mut serialized_sender = Vec::new();
+            self.message_serializer
+                .address_serializer
+                .serialize(&sender, &mut serialized_sender)
+                .expect(MESSAGE_SER_ERROR);
+            self.update_key_value(
+                handle,
+                batch,
+                sender_key!(serialized_message_id),
+                &serialized_sender,
+            );
+        }
+
+        // Destination
+        if let SetOrKeep::Set(destination) = message_update.destination {
+            let mut serialized_destination = Vec::new();
+            self.message_serializer
+                .address_serializer
+                .serialize(&destination, &mut serialized_destination)
+                .expect(MESSAGE_SER_ERROR);
+            self.update_key_value(
+                handle,
+                batch,
+                destination_key!(serialized_message_id),
+                &serialized_destination,
+            );
+        }
+
+        // Handler
+        if let SetOrKeep::Set(handler) = message_update.handler {
+            let mut serialized_handler = Vec::new();
+            let handler_bytes = handler.as_bytes();
+            let handler_name_len: u8 = handler_bytes.len().try_into().expect(MESSAGE_SER_ERROR);
+            serialized_handler.extend([handler_name_len]);
+            serialized_handler.extend(handler_bytes);
+            self.update_key_value(
+                handle,
+                batch,
+                handler_key!(serialized_message_id),
+                &serialized_handler,
+            );
+        }
+
+        // Max gas
+        if let SetOrKeep::Set(max_gas) = message_update.max_gas {
+            let mut serialized_max_gas = Vec::new();
+            self.message_serializer
+                .u64_serializer
+                .serialize(&max_gas, &mut serialized_max_gas)
+                .expect(MESSAGE_SER_ERROR);
+            self.update_key_value(
+                handle,
+                batch,
+                max_gas_key!(serialized_message_id),
+                &serialized_max_gas,
+            );
+        }
+
+        // Fee
+        if let SetOrKeep::Set(fee) = message_update.fee {
+            let mut serialized_fee = Vec::new();
+            self.message_serializer
+                .amount_serializer
+                .serialize(&fee, &mut serialized_fee)
+                .expect(MESSAGE_SER_ERROR);
+            self.update_key_value(
+                handle,
+                batch,
+                fee_key!(serialized_message_id),
+                &serialized_fee,
+            );
+        }
+
+        // Coins
+        if let SetOrKeep::Set(coins) = message_update.coins {
+            let mut serialized_coins = Vec::new();
+            self.message_serializer
+                .amount_serializer
+                .serialize(&coins, &mut serialized_coins)
+                .expect(MESSAGE_SER_ERROR);
+            self.update_key_value(
+                handle,
+                batch,
+                coins_key!(serialized_message_id),
+                &serialized_coins,
+            );
+        }
+
+        // Validity start
+        if let SetOrKeep::Set(validity_start) = message_update.validity_start {
+            let mut serialized_validity_start = Vec::new();
+            self.message_serializer
+                .slot_serializer
+                .serialize(&validity_start, &mut serialized_validity_start)
+                .expect(MESSAGE_SER_ERROR);
+            self.update_key_value(
+                handle,
+                batch,
+                validity_start_key!(serialized_message_id),
+                &serialized_validity_start,
+            );
+        }
+
+        // Validity end
+        if let SetOrKeep::Set(validity_end) = message_update.validity_end {
+            let mut serialized_validity_end = Vec::new();
+            self.message_serializer
+                .slot_serializer
+                .serialize(&validity_end, &mut serialized_validity_end)
+                .expect(MESSAGE_SER_ERROR);
+            self.update_key_value(
+                handle,
+                batch,
+                validity_end_key!(serialized_message_id),
+                &serialized_validity_end,
+            );
+        }
+
+        // Data
+        if let SetOrKeep::Set(data) = message_update.data {
+            let mut serialized_data = Vec::new();
+            self.message_serializer
+                .vec_u8_serializer
+                .serialize(&data, &mut serialized_data)
+                .expect(MESSAGE_SER_ERROR);
+            self.update_key_value(
+                handle,
+                batch,
+                data_key!(serialized_message_id),
+                &serialized_data,
+            );
+        }
+
+        // Trigger
+        if let SetOrKeep::Set(trigger) = message_update.trigger {
+            let mut serialized_trigger = Vec::new();
+            self.message_serializer
+                .trigger_serializer
+                .serialize(&trigger, &mut serialized_trigger)
+                .expect(MESSAGE_SER_ERROR);
+            self.update_key_value(
+                handle,
+                batch,
+                trigger_key!(serialized_message_id),
+                &serialized_trigger,
+            );
+        }
+
+        // Can be executed
+        if let SetOrKeep::Set(can_be_executed) = message_update.can_be_executed {
+            let mut serialized_can_be_executed = Vec::new();
+            self.message_serializer
+                .bool_serializer
+                .serialize(&can_be_executed, &mut serialized_can_be_executed)
+                .expect(MESSAGE_SER_ERROR);
+            self.update_key_value(
+                handle,
+                batch,
+                can_be_executed_key!(serialized_message_id),
+                &serialized_can_be_executed,
+            );
+        }
+    }
+
+    /// Internal function to delete a key and perform the hash XOR
+    fn delete_key(&self, handle: &ColumnFamily, batch: &mut DBBatch, key: Vec<u8>) {
+        let db = self.db.read();
+        if let Some(added_hash) = batch.aeh_list.get(&key) {
+            *batch
+                .async_pool_hash
+                .as_mut()
+                .expect(WRONG_BATCH_TYPE_ERROR) ^= *added_hash;
+        } else if let Some(prev_bytes) = db.get_pinned_cf(handle, &key).expect(CRUD_ERROR) {
             *batch
                 .async_pool_hash
                 .as_mut()
                 .expect(WRONG_BATCH_TYPE_ERROR) ^=
-                Hash::compute_from(&[&serialized_message_id, &prev_bytes[..]].concat());
-
-            let (_rest, mut message) = self
-                .message_deserializer_db
-                .deserialize::<DeserializeError>(&prev_bytes)
-                .expect(MESSAGE_DESER_ERROR);
-
-            message.apply(message_update);
-
-            let mut serialized_message = Vec::new();
-            self.message_serializer
-                .serialize(&message, &mut serialized_message)
-                .expect(MESSAGE_SER_ERROR);
-
-            let hash = Hash::compute_from(
-                &[serialized_message_id.clone(), serialized_message.clone()].concat(),
-            );
-            *batch
-                .async_pool_hash
-                .as_mut()
-                .expect(WRONG_BATCH_TYPE_ERROR) ^= hash;
-            batch.aeh_list.insert(serialized_message_id.clone(), hash);
-            batch
-                .write_batch
-                .put_cf(handle, serialized_message_id, serialized_message.clone());
+                Hash::compute_from(&[&key, &prev_bytes[..]].concat());
         }
+        batch.write_batch.delete_cf(handle, key);
     }
 
     /// Delete every sub-entry associated to the given address.
@@ -466,22 +1026,19 @@ impl AsyncPool {
             .serialize(message_id, &mut serialized_message_id)
             .expect(MESSAGE_ID_SER_ERROR);
 
-        if let Some(added_hash) = batch.aeh_list.get(&serialized_message_id) {
-            *batch
-                .async_pool_hash
-                .as_mut()
-                .expect(WRONG_BATCH_TYPE_ERROR) ^= *added_hash;
-        } else if let Some(prev_bytes) = db
-            .get_pinned_cf(handle, &serialized_message_id)
-            .expect(CRUD_ERROR)
-        {
-            *batch
-                .async_pool_hash
-                .as_mut()
-                .expect(WRONG_BATCH_TYPE_ERROR) ^=
-                Hash::compute_from(&[&serialized_message_id, &prev_bytes[..]].concat());
-        }
-        batch.write_batch.delete_cf(handle, serialized_message_id);
+        self.delete_key(handle, batch, emission_slot_key!(serialized_message_id));
+        self.delete_key(handle, batch, emission_index_key!(serialized_message_id));
+        self.delete_key(handle, batch, sender_key!(serialized_message_id));
+        self.delete_key(handle, batch, destination_key!(serialized_message_id));
+        self.delete_key(handle, batch, handler_key!(serialized_message_id));
+        self.delete_key(handle, batch, max_gas_key!(serialized_message_id));
+        self.delete_key(handle, batch, fee_key!(serialized_message_id));
+        self.delete_key(handle, batch, coins_key!(serialized_message_id));
+        self.delete_key(handle, batch, validity_start_key!(serialized_message_id));
+        self.delete_key(handle, batch, validity_end_key!(serialized_message_id));
+        self.delete_key(handle, batch, data_key!(serialized_message_id));
+        self.delete_key(handle, batch, trigger_key!(serialized_message_id));
+        self.delete_key(handle, batch, can_be_executed_key!(serialized_message_id));
     }
 
     /// Get the current async pool hash
