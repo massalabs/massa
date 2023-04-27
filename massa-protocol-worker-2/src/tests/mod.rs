@@ -6,7 +6,6 @@ use massa_protocol_exports_2::ProtocolConfig;
 use massa_storage::Storage;
 use peernet::{peer_id::PeerId, transports::TransportType};
 use tempfile::NamedTempFile;
-use tracing::log::error;
 
 use crate::{handlers::peer_handler::models::InitialPeers, start_protocol_controller};
 

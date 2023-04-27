@@ -237,7 +237,7 @@ impl Tester {
                         // If no message in 2 seconds they will test a peer that hasn't been tested for long time
 
                         // we find the last peer that has been tested
-                        let Some((peer_id, peer_info)) = db.read().get_oldest_peer() else {
+                        let Some((_peer_id, peer_info)) = db.read().get_oldest_peer() else {
                             dbg!("No peer to test");
                             continue;
                         };
