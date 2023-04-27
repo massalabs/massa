@@ -213,6 +213,7 @@ pub struct MassaHandshake {
     pub announcement_deserializer: AnnouncementDeserializer,
     pub config: ProtocolConfig,
     pub peer_db: SharedPeerDB,
+    peer_mngt_msg_serializer: crate::messages::MessagesSerializer,
 }
 
 impl MassaHandshake {
@@ -226,6 +227,8 @@ impl MassaHandshake {
                 },
             ),
             config,
+            peer_mngt_msg_serializer: crate::messages::MessagesSerializer::new()
+                .with_peer_management_message_serializer(PeerManagementMessageSerializer::new()),
         }
     }
 }
@@ -344,15 +347,16 @@ impl InitConnectionHandler for MassaHandshake {
 
         // Send 100 peers to the other peer
         let peers_to_send = peer_db_write.get_rand_peers_to_send(100);
-        // todo add serializer in MassaHandshake ?
-        let message_serializer = crate::messages::MessagesSerializer::new()
-            .with_peer_management_message_serializer(PeerManagementMessageSerializer::new());
         let mut buf = Vec::new();
         let msg = PeerManagementMessage::ListPeers(peers_to_send).into();
 
         // todo unwrap
-        message_serializer.serialize_id(&msg, &mut buf).unwrap();
-        message_serializer.serialize(&msg, &mut buf).unwrap();
+        self.peer_mngt_msg_serializer
+            .serialize_id(&msg, &mut buf)
+            .unwrap();
+        self.peer_mngt_msg_serializer
+            .serialize(&msg, &mut buf)
+            .unwrap();
         endpoint.send(buf.as_slice())?;
 
         res
