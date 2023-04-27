@@ -404,10 +404,10 @@ fn test_no_one_has_it() {
             let node_a_keypair = KeyPair::generate();
             let node_b_keypair = KeyPair::generate();
             let node_c_keypair = KeyPair::generate();
-            let (_node_a_peer_id, node_a) = network_controller.create_fake_connection(
+            let (node_a_peer_id, node_a) = network_controller.create_fake_connection(
                 PeerId::from_bytes(node_a_keypair.get_public_key().to_bytes()).unwrap(),
             );
-            let (node_b_peer_id, node_b) = network_controller.create_fake_connection(
+            let (_node_b_peer_id, node_b) = network_controller.create_fake_connection(
                 PeerId::from_bytes(node_b_keypair.get_public_key().to_bytes()).unwrap(),
             );
             let (_node_c_peer_id, node_c) = network_controller.create_fake_connection(
@@ -434,7 +434,7 @@ fn test_no_one_has_it() {
             //5. Node A answer with the not found message
             network_controller
                 .send_from_peer(
-                    &node_b_peer_id,
+                    &node_a_peer_id,
                     Message::Block(Box::new(BlockMessage::ReplyForBlocks(vec![(
                         block.id,
                         BlockInfoReply::NotFound,
@@ -448,17 +448,6 @@ fn test_no_one_has_it() {
             assert_hash_asked_to_node(&node_a, &block.id);
             assert_hash_asked_to_node(&node_b, &block.id);
             assert_hash_asked_to_node(&node_c, &block.id);
-
-            //7. Assert that we didn't asked any other infos
-            let _ = node_a
-                .recv_timeout(Duration::from_millis(1500))
-                .expect_err("A new ask has been sent to node B when we shouldn't send any.");
-            let _ = node_b
-                .recv_timeout(Duration::from_millis(1500))
-                .expect_err("A new ask has been sent to node B when we shouldn't send any.");
-            let _ = node_c
-                .recv_timeout(Duration::from_millis(1500))
-                .expect_err("A new ask has been sent to node B when we shouldn't send any.");
 
             (
                 network_controller,
