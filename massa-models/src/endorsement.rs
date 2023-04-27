@@ -9,7 +9,7 @@ use massa_serialization::{
     DeserializeError, Deserializer, SerializeError, Serializer, U32VarIntDeserializer,
     U32VarIntSerializer, U64VarIntDeserializer, U64VarIntSerializer,
 };
-use massa_signature::{KeyPair, PublicKey, Signature};
+use massa_signature::PublicKey;
 use nom::error::context;
 use nom::sequence::tuple;
 use nom::Parser;
@@ -168,29 +168,13 @@ impl SecureShareEndorsement {
 pub type SecureShareEndorsement = SecureShare<Endorsement, EndorsementId>;
 
 impl SecureShareContent for Endorsement {
-    /// Sign the SecureShare given the content
-    fn sign(&self, keypair: &KeyPair, content_hash: &Hash) -> Result<Signature, ModelsError> {
-        let mut signed_data: Vec<u8> = Vec::new();
-        signed_data.extend(keypair.get_public_key().to_bytes());
-        signed_data.extend(EndorsementDenunciationData::new(self.slot, self.index).to_bytes());
-        signed_data.extend(content_hash.to_bytes());
-        let signed_hash = Hash::compute_from(&signed_data);
-        Ok(keypair.sign(&signed_hash)?)
-    }
-
-    /// verify signature
-    fn verify_signature(
-        &self,
-        public_key: &PublicKey,
-        content_hash: &Hash,
-        signature: &Signature,
-    ) -> Result<(), ModelsError> {
+    /// Compute the signed hash
+    fn compute_signed_hash(&self, public_key: &PublicKey, content_hash: &Hash) -> Hash {
         let mut signed_data: Vec<u8> = Vec::new();
         signed_data.extend(public_key.to_bytes());
         signed_data.extend(EndorsementDenunciationData::new(self.slot, self.index).to_bytes());
         signed_data.extend(content_hash.to_bytes());
-        let signed_hash = Hash::compute_from(&signed_data);
-        Ok(public_key.verify_signature(&signed_hash, signature)?)
+        Hash::compute_from(&signed_data)
     }
 }
 

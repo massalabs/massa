@@ -58,7 +58,7 @@ where
 {
     /// Sign the SecureShare given the content
     fn sign(&self, keypair: &KeyPair, content_hash: &Hash) -> Result<Signature, ModelsError> {
-        Ok(keypair.sign(content_hash)?)
+        Ok(keypair.sign(&self.compute_signed_hash(&keypair.get_public_key(), content_hash))?)
     }
 
     /// verify signature
@@ -68,7 +68,10 @@ where
         content_hash: &Hash,
         signature: &Signature,
     ) -> Result<(), ModelsError> {
-        Ok(public_key.verify_signature(content_hash, signature)?)
+        Ok(public_key.verify_signature(
+            &self.compute_signed_hash(public_key, content_hash),
+            signature,
+        )?)
     }
 
     /// Using the provided key-pair, applies a cryptographic signature, and packages
@@ -104,6 +107,12 @@ where
         hash_data.extend(content_creator_pub_key.to_bytes());
         hash_data.extend(content_serialized);
         Hash::compute_from(&hash_data)
+    }
+
+    /// Compute hash used for signature
+    #[allow(unused_variables)]
+    fn compute_signed_hash(&self, public_key: &PublicKey, content_hash: &Hash) -> Hash {
+        *content_hash
     }
 
     /// Serialize the secured structure
@@ -212,6 +221,12 @@ where
             self.id.get_hash(),
             &self.signature,
         )
+    }
+
+    /// Compute the signed hash
+    pub fn compute_signed_hash(&self) -> Hash {
+        self.content
+            .compute_signed_hash(&self.content_creator_pub_key, self.id.get_hash())
     }
 
     /// get full serialized size
