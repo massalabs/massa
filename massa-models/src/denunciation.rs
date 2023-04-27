@@ -1,6 +1,7 @@
 // Copyright (c) 2022 MASSA LABS <info@massa.net>
 /// An overview of what is a Denunciation and what it is used for can be found here
 /// https://github.com/massalabs/massa/discussions/3113
+use std::cmp::Ordering;
 use std::ops::Bound::{Excluded, Included};
 
 use nom::{
@@ -249,6 +250,14 @@ impl Denunciation {
         }
     }
 
+    /// Get field: index (return None for a block header denunciation)
+    pub fn get_index(&self) -> Option<&u32> {
+        match self {
+            Denunciation::BlockHeader(_) => None,
+            Denunciation::Endorsement(de) => Some(&de.index),
+        }
+    }
+
     /// Get Denunciation public key ref
     pub fn get_public_key(&self) -> &PublicKey {
         match self {
@@ -257,16 +266,16 @@ impl Denunciation {
         }
     }
 
-    /// For a given slot (and given the slot at now()), check if it can be denounced
-    /// Can be used to check if block header | endorsement is not too old (at reception or too cleanup cache)
+    /// Check if denunciation has expired given a slot period
+    /// Note that slot_period can be:
+    /// * A final slot period (for example in order to cleanup denunciation pool caches)
+    /// * A block slot period (in execution (execute_denunciation(...)))
     pub fn is_expired(
-        slot: &Slot,
-        last_cs_final_periods: &[u64],
-        denunciation_expire_periods: u64,
+        denunciation_slot_period: &u64,
+        slot_period: &u64,
+        denunciation_expire_periods: &u64,
     ) -> bool {
-        // If the Slot is final, a Denunciation can still be made for 1 cycle
-        last_cs_final_periods[slot.thread as usize].checked_sub(slot.period)
-            > Some(denunciation_expire_periods)
+        slot_period.checked_sub(*denunciation_slot_period) > Some(*denunciation_expire_periods)
     }
 }
 
@@ -753,9 +762,19 @@ impl DenunciationIndex {
         }
     }
 
+    /// Get field: index (return None for a block header denunciation index)
+    pub fn get_index(&self) -> Option<&u32> {
+        match self {
+            DenunciationIndex::BlockHeader { .. } => None,
+            DenunciationIndex::Endorsement { slot: _, index } => Some(index),
+        }
+    }
+
     /// Compute the hash
     pub fn get_hash(&self) -> Hash {
-        let mut buffer = vec![];
+        let mut buffer = u32::from(DenunciationIndexTypeId::from(self))
+            .to_le_bytes()
+            .to_vec();
         match self {
             DenunciationIndex::BlockHeader { slot } => buffer.extend(slot.to_bytes_key()),
             DenunciationIndex::Endorsement { slot, index } => {
@@ -797,6 +816,30 @@ impl From<&DenunciationPrecursor> for DenunciationIndex {
     }
 }
 
+impl Ord for DenunciationIndex {
+    fn cmp(&self, other: &Self) -> Ordering {
+        // key ends with type id so that we avoid prioritizing one type over the other
+        // when filling block headers (comparison of tuples is from left to right).
+        let self_key = (
+            self.get_slot(),
+            self.get_index().unwrap_or(&0),
+            u32::from(DenunciationIndexTypeId::from(self)),
+        );
+        let other_key = (
+            other.get_slot(),
+            other.get_index().unwrap_or(&0),
+            u32::from(DenunciationIndexTypeId::from(other)),
+        );
+        self_key.cmp(&other_key)
+    }
+}
+
+impl PartialOrd for DenunciationIndex {
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+        Some(self.cmp(other))
+    }
+}
+
 // End Denunciation Index
 
 // Denunciation Index ser der
@@ -806,6 +849,15 @@ impl From<&DenunciationPrecursor> for DenunciationIndex {
 enum DenunciationIndexTypeId {
     BlockHeader = 0,
     Endorsement = 1,
+}
+
+impl From<&DenunciationIndex> for DenunciationIndexTypeId {
+    fn from(value: &DenunciationIndex) -> Self {
+        match value {
+            DenunciationIndex::BlockHeader { .. } => DenunciationIndexTypeId::BlockHeader,
+            DenunciationIndex::Endorsement { .. } => DenunciationIndexTypeId::Endorsement,
+        }
+    }
 }
 
 #[derive(Clone)]
@@ -952,7 +1004,7 @@ pub struct BlockHeaderDenunciationPrecursor {
 }
 
 /// Lightweight data for Denunciation creation
-/// (avoid storing heavyweight secured header or secure share endorsement, see denunciation factory)
+/// (avoid storing heavyweight secured header or secure share endorsement, see denunciation pool)
 #[derive(Debug, Clone)]
 pub enum DenunciationPrecursor {
     /// Endorsement variant
@@ -1223,7 +1275,7 @@ mod tests {
     fn test_block_header_denunciation() {
         // Create an block header denunciation and check if it is valid
         let (_slot, _keypair, s_block_header_1, s_block_header_2, s_block_header_3) =
-            gen_block_headers_for_denunciation();
+            gen_block_headers_for_denunciation(None, None);
         let denunciation: Denunciation = (&s_block_header_1, &s_block_header_2).try_into().unwrap();
 
         assert_eq!(denunciation.is_for_block_header(), true);
@@ -1322,7 +1374,8 @@ mod tests {
 
     #[test]
     fn test_block_header_denunciation_ser_der() {
-        let (_, _, s_block_header_1, s_block_header_2, _) = gen_block_headers_for_denunciation();
+        let (_, _, s_block_header_1, s_block_header_2, _) =
+            gen_block_headers_for_denunciation(None, None);
         let denunciation: Denunciation = (&s_block_header_1, &s_block_header_2).try_into().unwrap();
 
         let mut buffer = Vec::new();
@@ -1346,7 +1399,8 @@ mod tests {
 
     #[test]
     fn test_denunciation_ser_der() {
-        let (_, _, s_block_header_1, s_block_header_2, _) = gen_block_headers_for_denunciation();
+        let (_, _, s_block_header_1, s_block_header_2, _) =
+            gen_block_headers_for_denunciation(None, None);
         let denunciation: Denunciation = (&s_block_header_1, &s_block_header_2).try_into().unwrap();
 
         let mut buffer = Vec::new();
@@ -1373,7 +1427,8 @@ mod tests {
 
     #[test]
     fn test_denunciation_precursor() {
-        let (_, _, s_block_header_1, s_block_header_2, _) = gen_block_headers_for_denunciation();
+        let (_, _, s_block_header_1, s_block_header_2, _) =
+            gen_block_headers_for_denunciation(None, None);
         let denunciation: Denunciation = (&s_block_header_1, &s_block_header_2).try_into().unwrap();
 
         let de_p_1 = DenunciationPrecursor::try_from(&s_block_header_1).unwrap();
@@ -1395,7 +1450,8 @@ mod tests {
 
     #[test]
     fn test_denunciation_index_ser_der() {
-        let (_, _, s_block_header_1, s_block_header_2, _) = gen_block_headers_for_denunciation();
+        let (_, _, s_block_header_1, s_block_header_2, _) =
+            gen_block_headers_for_denunciation(None, None);
         let denunciation_1: Denunciation =
             (&s_block_header_1, &s_block_header_2).try_into().unwrap();
         let denunciation_index_1 = DenunciationIndex::from(&denunciation_1);

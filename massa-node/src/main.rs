@@ -57,7 +57,7 @@ use massa_models::config::constants::{
 use massa_models::config::{
     CONSENSUS_BOOTSTRAP_PART_SIZE, DENUNCIATION_EXPIRE_PERIODS, MAX_DENUNCIATIONS_PER_BLOCK_HEADER,
     MAX_DENUNCIATION_CHANGES_LENGTH, MAX_OPERATIONS_PER_MESSAGE,
-    ROLL_COUNT_TO_SLASH_ON_DENUNCIATION,
+    ROLL_COUNT_TO_SLASH_ON_DENUNCIATION, SELECTOR_DRAW_CACHE_SIZE,
 };
 use massa_network_exports::{Establisher, NetworkConfig, NetworkManager};
 use massa_network_worker::start_network_controller;
@@ -231,7 +231,7 @@ async fn launch(
 
     // launch selector worker
     let (selector_manager, selector_controller) = start_selector_worker(SelectorConfig {
-        max_draw_cache: SETTINGS.selector.max_draw_cache,
+        max_draw_cache: SELECTOR_DRAW_CACHE_SIZE,
         channel_size: CHANNEL_SIZE,
         thread_count: THREAD_COUNT,
         endorsement_count: ENDORSEMENT_COUNT,
@@ -497,6 +497,7 @@ async fn launch(
         t0: T0,
         periods_per_cycle: PERIODS_PER_CYCLE,
         denunciation_expire_periods: DENUNCIATION_EXPIRE_PERIODS,
+        max_denunciations_per_block_header: MAX_DENUNCIATIONS_PER_BLOCK_HEADER,
     };
 
     let pool_channels = PoolChannels {
@@ -769,6 +770,7 @@ async fn launch(
             draw_lookahead_period_count: SETTINGS.grpc.draw_lookahead_period_count,
             last_start_period: final_state.read().last_start_period,
             max_denunciations_per_block_header: MAX_DENUNCIATIONS_PER_BLOCK_HEADER,
+            max_block_ids_per_request: SETTINGS.grpc.max_block_ids_per_request,
         };
 
         let grpc_api = MassaGrpc {

@@ -1688,7 +1688,7 @@ mod tests {
         let block = create_block(
             KeyPair::generate(),
             vec![operation1], //, operation2],
-            vec![denunciation],
+            vec![denunciation.clone(), denunciation],
             Slot::new(3, 0),
         )
         .unwrap();
@@ -1854,7 +1854,7 @@ mod tests {
         let block = create_block(
             KeyPair::generate(),
             vec![operation1, operation2],
-            vec![denunciation],
+            vec![denunciation.clone(), denunciation],
             Slot::new(3, 0),
         )
         .unwrap();

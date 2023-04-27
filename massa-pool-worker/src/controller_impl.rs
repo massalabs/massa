@@ -2,9 +2,9 @@
 
 //! Pool controller implementation
 
-use massa_models::denunciation::DenunciationPrecursor;
 use massa_models::{
-    block_id::BlockId, endorsement::EndorsementId, operation::OperationId, slot::Slot,
+    block_id::BlockId, denunciation::Denunciation, denunciation::DenunciationPrecursor,
+    endorsement::EndorsementId, operation::OperationId, slot::Slot,
 };
 use massa_pool_exports::{PoolConfig, PoolController, PoolManager};
 use massa_storage::Storage;
@@ -17,9 +17,6 @@ use crate::{
     denunciation_pool::DenunciationPool, endorsement_pool::EndorsementPool,
     operation_pool::OperationPool,
 };
-
-#[cfg(feature = "testing")]
-use massa_models::denunciation::Denunciation;
 
 /// A generic command to send commands to a pool
 #[allow(clippy::large_enum_variant)]
@@ -188,6 +185,13 @@ impl PoolController for PoolControllerImpl {
         self.endorsement_pool
             .read()
             .get_block_endorsements(target_slot, target_block)
+    }
+
+    /// get denunciationsq for a block
+    fn get_block_denunciations(&self, target_slot: &Slot) -> Vec<Denunciation> {
+        self.denunciation_pool
+            .read()
+            .get_block_denunciations(target_slot)
     }
 
     /// Get the number of endorsements in the pool

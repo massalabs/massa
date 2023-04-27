@@ -253,6 +253,7 @@ pub fn start_execution_worker(
         config.clone(),
         final_state,
         mip_store,
+        selector.clone(),
     )));
 
     // define the input data interface

@@ -39,7 +39,6 @@ pub struct ExecutionSettings {
 
 #[derive(Clone, Debug, Deserialize)]
 pub struct SelectionSettings {
-    pub max_draw_cache: usize,
     pub initial_rolls_path: PathBuf,
 }
 
@@ -284,6 +283,8 @@ pub struct GrpcSettings {
     pub max_frame_size: Option<u32>,
     /// when looking for next draw we want to look at max `draw_lookahead_period_count`
     pub draw_lookahead_period_count: u64,
+    /// max number of block ids that can be included in a single request
+    pub max_block_ids_per_request: u32,
 }
 
 #[cfg(test)]

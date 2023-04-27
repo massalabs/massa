@@ -3,8 +3,9 @@
 use massa_proto::massa::api::v1 as grpc;
 
 use crate::api::{
-    get_blocks_by_slots, get_datastore_entries, get_largest_stakers, get_next_block_best_parents,
-    get_selector_draws, get_transactions_throughput, get_version,
+    get_blocks, get_blocks_by_slots, get_datastore_entries, get_largest_stakers,
+    get_next_block_best_parents, get_operations, get_selector_draws, get_transactions_throughput,
+    get_version,
 };
 use crate::server::MassaGrpc;
 use crate::stream::{
@@ -21,7 +22,23 @@ use crate::stream::{
 
 #[tonic::async_trait]
 impl grpc::massa_service_server::MassaService for MassaGrpc {
-    /// handler for get multiple datastore entries.
+    /// handler for get blocks
+    async fn get_blocks(
+        &self,
+        request: tonic::Request<grpc::GetBlocksRequest>,
+    ) -> Result<tonic::Response<grpc::GetBlocksResponse>, tonic::Status> {
+        Ok(tonic::Response::new(get_blocks(self, request)?))
+    }
+
+    /// handler for get blocks by slots
+    async fn get_blocks_by_slots(
+        &self,
+        request: tonic::Request<grpc::GetBlocksBySlotsRequest>,
+    ) -> Result<tonic::Response<grpc::GetBlocksBySlotsResponse>, tonic::Status> {
+        Ok(tonic::Response::new(get_blocks_by_slots(self, request)?))
+    }
+
+    /// handler for get multiple datastore entries
     async fn get_datastore_entries(
         &self,
         request: tonic::Request<grpc::GetDatastoreEntriesRequest>,
@@ -29,12 +46,30 @@ impl grpc::massa_service_server::MassaService for MassaGrpc {
         Ok(tonic::Response::new(get_datastore_entries(self, request)?))
     }
 
-    /// handler for get largest stakers.
+    /// handler for get largest stakers
     async fn get_largest_stakers(
         &self,
         request: tonic::Request<grpc::GetLargestStakersRequest>,
     ) -> Result<tonic::Response<grpc::GetLargestStakersResponse>, tonic::Status> {
         Ok(tonic::Response::new(get_largest_stakers(self, request)?))
+    }
+
+    /// handler for get next block best parents
+    async fn get_next_block_best_parents(
+        &self,
+        request: tonic::Request<grpc::GetNextBlockBestParentsRequest>,
+    ) -> Result<tonic::Response<grpc::GetNextBlockBestParentsResponse>, tonic::Status> {
+        Ok(tonic::Response::new(get_next_block_best_parents(
+            self, request,
+        )?))
+    }
+
+    /// handler for get operations
+    async fn get_operations(
+        &self,
+        request: tonic::Request<grpc::GetOperationsRequest>,
+    ) -> Result<tonic::Response<grpc::GetOperationsResponse>, tonic::Status> {
+        Ok(tonic::Response::new(get_operations(self, request)?))
     }
 
     /// handler for get selector draws
@@ -45,6 +80,7 @@ impl grpc::massa_service_server::MassaService for MassaGrpc {
         Ok(tonic::Response::new(get_selector_draws(self, request)?))
     }
 
+    /// handler for get transactions throughput
     async fn get_transactions_throughput(
         &self,
         request: tonic::Request<grpc::GetTransactionsThroughputRequest>,
@@ -52,23 +88,6 @@ impl grpc::massa_service_server::MassaService for MassaGrpc {
         Ok(tonic::Response::new(get_transactions_throughput(
             self, request,
         )?))
-    }
-
-    /// handler for get_next_block_best_parents
-    async fn get_next_block_best_parents(
-        &self,
-        request: tonic::Request<grpc::GetNextBlockBestParentsRequest>,
-    ) -> Result<tonic::Response<grpc::GetNextBlockBestParentsResponse>, tonic::Status> {
-        Ok(tonic::Response::new(get_next_block_best_parents(
-            self, request,
-        )?))
-    }
-
-    async fn get_blocks_by_slots(
-        &self,
-        request: tonic::Request<grpc::GetBlocksBySlotsRequest>,
-    ) -> Result<tonic::Response<grpc::GetBlocksBySlotsResponse>, tonic::Status> {
-        Ok(tonic::Response::new(get_blocks_by_slots(self, request)?))
     }
 
     /// handler for get version

@@ -23,9 +23,21 @@ option swift_prefix = "GRPC";
 
 // Massa gRPC service
 service MassaService {
+
+  // Get blocks by ids
+  rpc GetBlocks(GetBlocksRequest) returns (GetBlocksResponse) {
+    option (google.api.http) = { 
+      post: "/v1/get_blocks"
+      body: "*"
+    };
+  }
+
   // Get blocks by slots
   rpc GetBlocksBySlots(GetBlocksBySlotsRequest) returns (GetBlocksBySlotsResponse) {
-    option (google.api.http) = {get: "/v1/get_blocks_by_slots"};
+    option (google.api.http) = { 
+      post: "/v1/get_blocks_by_slots"
+      body: "*"
+    };
   }
 
   // Get datastore entries
@@ -38,12 +50,23 @@ service MassaService {
 
   // Get largest stakers
   rpc GetLargestStakers(GetLargestStakersRequest) returns (GetLargestStakersResponse) {
-      option (google.api.http) = {get: "/v1/get_largest_stakers"};
+      option (google.api.http) = { 
+        post: "/v1/get_largest_stakers"
+        body: "*"
+      };
   }
 
   // Get next block best parents
   rpc GetNextBlockBestParents(GetNextBlockBestParentsRequest) returns (GetNextBlockBestParentsResponse) {
     option (google.api.http) = {get: "/v1/get_next_block_best_parents"};
+  }
+
+  // Get operations
+  rpc GetOperations(GetOperationsRequest) returns (GetOperationsResponse) {
+    option (google.api.http) = { 
+      post: "/v1/get_operations"
+      body: "*"
+    };
   }
 
   // Get selector draws
@@ -94,8 +117,44 @@ service MassaService {
   // Send operations
   rpc SendOperations(stream SendOperationsRequest) returns (stream SendOperationsResponse) {}
 
-  // Transactions throughput per second
+  // Transactions throughput
   rpc TransactionsThroughput(stream TransactionsThroughputRequest) returns (stream TransactionsThroughputResponse) {}
+}
+
+// GetBlocksRequest holds request for GetBlocks
+message GetBlocksRequest {
+  // Request id
+  string id = 1;
+  // Queries
+  repeated GetBlocksQuery queries = 2;
+}
+
+// GetBlocks Query
+message GetBlocksQuery {
+  // Filter
+  GetBlocksFilter filter = 1;
+}
+
+// GetBlocks Filter
+message GetBlocksFilter {
+  // Block id
+  string id = 1;
+}
+
+// GetBlocksResponse holds response from GetBlocks
+message GetBlocksResponse {
+  // Request id
+  string id = 1;
+  // Context
+  BlocksContext context = 2;
+  // Blocks wrappers
+  repeated BlockWrapper blocks = 3;
+}
+
+// Blocks context
+message BlocksContext {
+  // Slot
+  Slot slot = 1;
 }
 
 // GetBlocksBySlotsRequest holds request for GetBlocksBySlots
@@ -221,6 +280,42 @@ message BlockParent {
   string block_id = 1;
   // Period
   fixed64 period = 2;
+}
+
+// GetOperationsRequest holds request for GetOperations
+message GetOperationsRequest {
+  // Request id
+  string id = 1;
+  // Queries
+  repeated GetOperationsQuery queries = 2;
+}
+
+// GetOperations Query
+message GetOperationsQuery {
+  // Filter
+  GetOperationsFilter filter = 1;
+}
+
+// GetOperations Filter
+message GetOperationsFilter {
+  // Operation id
+  string id = 1;
+}
+
+// GetOperationsResponse holds response from GetOperations
+message GetOperationsResponse {
+  // Request id
+  string id = 1;
+  // Context
+  OperationsContext context = 2;
+  //Operations wrappers
+  repeated OperationWrapper operations = 3;
+}
+
+// Operations context
+message OperationsContext {
+  // Slot
+  Slot slot = 1;
 }
 
 // GetSelectorDrawsRequest holds request from GetSelectorDraws

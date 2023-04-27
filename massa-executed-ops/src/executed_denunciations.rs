@@ -23,6 +23,7 @@ use massa_db::{
     EXECUTED_DENUNCIATIONS_INDEX_SER_ERROR, METADATA_CF, WRONG_BATCH_TYPE_ERROR,
 };
 use massa_hash::Hash;
+use massa_models::denunciation::Denunciation;
 use massa_models::streaming_step::StreamingStep;
 use massa_models::{
     denunciation::{DenunciationIndex, DenunciationIndexDeserializer, DenunciationIndexSerializer},
@@ -158,8 +159,11 @@ impl ExecutedDenunciations {
         let drained: Vec<(Slot, HashSet<DenunciationIndex>)> = self
             .sorted_denunciations
             .drain_filter(|de_idx_slot, _| {
-                slot.period.checked_sub(de_idx_slot.period)
-                    > Some(self.config.denunciation_expire_periods)
+                Denunciation::is_expired(
+                    &de_idx_slot.period,
+                    &slot.period,
+                    &self.config.denunciation_expire_periods,
+                )
             })
             .collect();
 

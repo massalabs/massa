@@ -118,7 +118,8 @@ mod tests {
 
     #[test]
     fn test_executed_denunciations_changes_ser_der() {
-        let (_, _, s_block_header_1, s_block_header_2, _) = gen_block_headers_for_denunciation();
+        let (_, _, s_block_header_1, s_block_header_2, _) =
+            gen_block_headers_for_denunciation(None, None);
         let denunciation_1: Denunciation =
             (&s_block_header_1, &s_block_header_2).try_into().unwrap();
         let denunciation_index_1 = DenunciationIndex::from(&denunciation_1);

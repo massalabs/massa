@@ -962,10 +962,10 @@ impl ExecutionContext {
         self.speculative_executed_ops.is_op_executed(op_id)
     }
 
-    /// Check if a denunciation was previously processed (to prevent reuse)
-    pub fn is_denunciation_processed(&self, de_idx: &DenunciationIndex) -> bool {
+    /// Check if a denunciation was previously executed (to prevent reuse)
+    pub fn is_denunciation_executed(&self, de_idx: &DenunciationIndex) -> bool {
         self.speculative_processed_denunciations
-            .is_de_processed(de_idx)
+            .is_denunciation_executed(de_idx)
     }
 
     /// Insert an executed operation.
@@ -989,7 +989,7 @@ impl ExecutionContext {
     ///
     pub fn insert_executed_denunciation(&mut self, denunciation_idx: &DenunciationIndex) {
         self.speculative_processed_denunciations
-            .insert_processed_de(denunciation_idx.clone());
+            .insert_executed_denunciation(denunciation_idx.clone());
     }
 
     /// gets the cycle information for an address
