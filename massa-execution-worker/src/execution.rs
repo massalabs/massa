@@ -15,8 +15,9 @@ use crate::stats::ExecutionStatsCounter;
 use crate::vesting_manager::VestingManager;
 use massa_async_pool::AsyncMessage;
 use massa_execution_exports::{
-    EventStore, ExecutionConfig, ExecutionError, ExecutionOutput, ExecutionStackElement,
-    ReadOnlyExecutionOutput, ReadOnlyExecutionRequest, ReadOnlyExecutionTarget,
+    EventStore, ExecutionChannels, ExecutionConfig, ExecutionError, ExecutionOutput,
+    ExecutionStackElement, ReadOnlyExecutionOutput, ReadOnlyExecutionRequest,
+    ReadOnlyExecutionTarget,
 };
 use massa_final_state::FinalState;
 use massa_ledger_exports::{SetOrDelete, SetUpdateOrDelete};
@@ -43,7 +44,7 @@ use massa_versioning_worker::versioning::MipStore;
 use parking_lot::{Mutex, RwLock};
 use std::collections::{BTreeMap, BTreeSet, HashMap};
 use std::sync::Arc;
-use tracing::{debug, info, warn};
+use tracing::{debug, info, trace, warn};
 
 /// Used to acquire a lock on the execution context
 macro_rules! context_guard {
@@ -85,6 +86,8 @@ pub(crate) struct ExecutionState {
     mip_store: MipStore,
     // selector controller to get draws
     selector: Box<dyn SelectorController>,
+    // channels used by the execution worker
+    channels: ExecutionChannels,
 }
 
 impl ExecutionState {
@@ -101,6 +104,7 @@ impl ExecutionState {
         final_state: Arc<RwLock<FinalState>>,
         mip_store: MipStore,
         selector: Box<dyn SelectorController>,
+        channels: ExecutionChannels,
     ) -> ExecutionState {
         // Get the slot at the output of which the final state is attached.
         // This should be among the latest final slots.
@@ -166,6 +170,7 @@ impl ExecutionState {
             vesting_manager,
             mip_store,
             selector,
+            channels,
         }
     }
 
@@ -1260,12 +1265,26 @@ impl ExecutionState {
         let exec_out = self.execute_slot(slot, exec_target, selector);
 
         // apply execution output to final state
-        self.apply_final_execution_output(exec_out);
+        self.apply_final_execution_output(exec_out.clone());
 
         self.update_versioning_stats(exec_target, slot);
         debug!(
             "execute_final_slot: execution finished & result applied & versioning stats updated"
         );
+        // Broadcast a final execution output to active channel subscribers.
+        if self.config.broadcast_enabled {
+            if let Err(err) = self
+                .channels
+                .sc_execution_output_sender
+                .send(exec_out.clone())
+            {
+                trace!(
+                    "error, failed to broadcast final execution output in slot {} due to: {}",
+                    exec_out.slot,
+                    err
+                );
+            }
+        }
     }
 
     /// Runs a read-only execution request.

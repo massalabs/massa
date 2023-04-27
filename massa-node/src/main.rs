@@ -20,7 +20,9 @@ use massa_consensus_exports::events::ConsensusEvent;
 use massa_consensus_exports::{ConsensusChannels, ConsensusConfig, ConsensusManager};
 use massa_consensus_worker::start_consensus_worker;
 use massa_executed_ops::{ExecutedDenunciationsConfig, ExecutedOpsConfig};
-use massa_execution_exports::{ExecutionConfig, ExecutionManager, GasCosts, StorageCostsConstants};
+use massa_execution_exports::{
+    ExecutionChannels, ExecutionConfig, ExecutionManager, GasCosts, StorageCostsConstants,
+};
 use massa_execution_worker::start_execution_worker;
 use massa_factory_exports::{FactoryChannels, FactoryConfig, FactoryManager};
 use massa_factory_worker::start_factory;
@@ -461,12 +463,25 @@ async fn launch(
         snip_amount: SETTINGS.execution.snip_amount,
         roll_count_to_slash_on_denunciation: ROLL_COUNT_TO_SLASH_ON_DENUNCIATION,
         denunciation_expire_periods: DENUNCIATION_EXPIRE_PERIODS,
+        broadcast_enabled: SETTINGS.api.enable_broadcast,
+        broadcast_sc_execution_output_channel_capacity: SETTINGS
+            .execution
+            .broadcast_sc_execution_output_channel_capacity,
     };
+
+    let execution_channels = ExecutionChannels {
+        sc_execution_output_sender: broadcast::channel(
+            execution_config.broadcast_sc_execution_output_channel_capacity,
+        )
+        .0,
+    };
+
     let (execution_manager, execution_controller) = start_execution_worker(
         execution_config,
         final_state.clone(),
         selector_controller.clone(),
         mip_store.clone(),
+        execution_channels,
     );
 
     // launch pool controller

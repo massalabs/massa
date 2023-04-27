@@ -44,12 +44,14 @@
 
 #![warn(missing_docs)]
 #![warn(unused_crate_dependencies)]
+mod channels;
 mod controller_traits;
 mod error;
 mod event_store;
 mod settings;
 mod types;
 
+pub use channels::ExecutionChannels;
 pub use controller_traits::{ExecutionController, ExecutionManager};
 pub use error::ExecutionError;
 pub use event_store::EventStore;

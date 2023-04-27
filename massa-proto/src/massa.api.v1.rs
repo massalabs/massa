@@ -414,6 +414,131 @@ impl BlockStatus {
         }
     }
 }
+/// ScExecutionOutput
+#[allow(clippy::derive_partial_eq_without_eq)]
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct ScExecutionOutput {
+    /// Slot
+    #[prost(message, optional, tag = "1")]
+    pub slot: ::core::option::Option<Slot>,
+    /// Block id at that slot (optional)
+    #[prost(string, tag = "2")]
+    pub block_id: ::prost::alloc::string::String,
+    /// Status
+    #[prost(enumeration = "ScExecutionOutputStatus", repeated, tag = "3")]
+    pub status: ::prost::alloc::vec::Vec<i32>,
+    /// Events emitted by the execution step
+    #[prost(message, repeated, tag = "4")]
+    pub events: ::prost::alloc::vec::Vec<ScExecutionEvent>,
+}
+/// ScExecutionEvent
+#[allow(clippy::derive_partial_eq_without_eq)]
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct ScExecutionEvent {
+    /// Sc execution context
+    #[prost(message, optional, tag = "1")]
+    pub context: ::core::option::Option<ScExecutionEventContext>,
+    /// json data string
+    #[prost(string, tag = "2")]
+    pub data: ::prost::alloc::string::String,
+}
+/// ScExecutionEvent context
+#[allow(clippy::derive_partial_eq_without_eq)]
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct ScExecutionEventContext {
+    /// When was it generated
+    #[prost(message, optional, tag = "1")]
+    pub origin_slot: ::core::option::Option<Slot>,
+    /// Block id if there was a block at that slot
+    #[prost(string, tag = "2")]
+    pub block_id: ::prost::alloc::string::String,
+    /// Index of the event in the slot
+    #[prost(fixed64, tag = "3")]
+    pub index_in_slot: u64,
+    /// Call stack addresses. most recent at the end
+    #[prost(string, repeated, tag = "4")]
+    pub call_stack: ::prost::alloc::vec::Vec<::prost::alloc::string::String>,
+    /// Origin operation id
+    #[prost(string, tag = "5")]
+    pub origin_operation_id: ::prost::alloc::string::String,
+    /// Status
+    #[prost(enumeration = "ScExecutionEventStatus", repeated, tag = "6")]
+    pub status: ::prost::alloc::vec::Vec<i32>,
+}
+/// ScExecutionEventStatus type enum
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, ::prost::Enumeration)]
+#[repr(i32)]
+pub enum ScExecutionEventStatus {
+    /// Defaut enum value
+    Unspecified = 0,
+    /// Final status
+    Final = 1,
+    /// Read only status
+    ReadOnly = 2,
+    /// Failure status
+    Failure = 3,
+}
+impl ScExecutionEventStatus {
+    /// String value of the enum field names used in the ProtoBuf definition.
+    ///
+    /// The values are not transformed in any way and thus are considered stable
+    /// (if the ProtoBuf definition does not change) and safe for programmatic use.
+    pub fn as_str_name(&self) -> &'static str {
+        match self {
+            ScExecutionEventStatus::Unspecified => {
+                "SC_EXECUTION_EVENT_STATUS_UNSPECIFIED"
+            }
+            ScExecutionEventStatus::Final => "SC_EXECUTION_EVENT_STATUS_FINAL",
+            ScExecutionEventStatus::ReadOnly => "SC_EXECUTION_EVENT_STATUS_READ_ONLY",
+            ScExecutionEventStatus::Failure => "SC_EXECUTION_EVENT_STATUS_FAILURE",
+        }
+    }
+    /// Creates an enum from field names used in the ProtoBuf definition.
+    pub fn from_str_name(value: &str) -> ::core::option::Option<Self> {
+        match value {
+            "SC_EXECUTION_EVENT_STATUS_UNSPECIFIED" => Some(Self::Unspecified),
+            "SC_EXECUTION_EVENT_STATUS_FINAL" => Some(Self::Final),
+            "SC_EXECUTION_EVENT_STATUS_READ_ONLY" => Some(Self::ReadOnly),
+            "SC_EXECUTION_EVENT_STATUS_FAILURE" => Some(Self::Failure),
+            _ => None,
+        }
+    }
+}
+/// ScExecutionOutputStatus type enum
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, ::prost::Enumeration)]
+#[repr(i32)]
+pub enum ScExecutionOutputStatus {
+    /// Defaut enum value
+    Unspecified = 0,
+    /// Final status
+    Final = 1,
+    /// Read only status
+    Candidate = 2,
+}
+impl ScExecutionOutputStatus {
+    /// String value of the enum field names used in the ProtoBuf definition.
+    ///
+    /// The values are not transformed in any way and thus are considered stable
+    /// (if the ProtoBuf definition does not change) and safe for programmatic use.
+    pub fn as_str_name(&self) -> &'static str {
+        match self {
+            ScExecutionOutputStatus::Unspecified => {
+                "SC_EXECUTION_OUTPUT_STATUS_UNSPECIFIED"
+            }
+            ScExecutionOutputStatus::Final => "SC_EXECUTION_OUTPUT_STATUS_FINAL",
+            ScExecutionOutputStatus::Candidate => "SC_EXECUTION_OUTPUT_STATUS_CANDIDATE",
+        }
+    }
+    /// Creates an enum from field names used in the ProtoBuf definition.
+    pub fn from_str_name(value: &str) -> ::core::option::Option<Self> {
+        match value {
+            "SC_EXECUTION_OUTPUT_STATUS_UNSPECIFIED" => Some(Self::Unspecified),
+            "SC_EXECUTION_OUTPUT_STATUS_FINAL" => Some(Self::Final),
+            "SC_EXECUTION_OUTPUT_STATUS_CANDIDATE" => Some(Self::Candidate),
+            _ => None,
+        }
+    }
+}
 /// GetBlocksRequest holds request for GetBlocks
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
@@ -736,9 +861,9 @@ pub struct GetScExecutionEventsResponse {
     /// Context
     #[prost(message, optional, tag = "2")]
     pub context: ::core::option::Option<GetScExecutionEventsContext>,
-    /// ScExecutionEvents wrappers
+    /// ScExecutionEvents
     #[prost(message, repeated, tag = "3")]
-    pub events: ::prost::alloc::vec::Vec<ScExecutionEventWrapper>,
+    pub events: ::prost::alloc::vec::Vec<ScExecutionEvent>,
 }
 /// ScExecutionEvents context
 #[allow(clippy::derive_partial_eq_without_eq)]
@@ -747,40 +872,6 @@ pub struct GetScExecutionEventsContext {
     /// Slot
     #[prost(message, optional, tag = "1")]
     pub slot: ::core::option::Option<Slot>,
-}
-/// ScExecutionEvent wrapper
-#[allow(clippy::derive_partial_eq_without_eq)]
-#[derive(Clone, PartialEq, ::prost::Message)]
-pub struct ScExecutionEventWrapper {
-    /// Sc execution context
-    #[prost(message, optional, tag = "1")]
-    pub context: ::core::option::Option<ScExecutionEventContext>,
-    /// json data string
-    #[prost(string, tag = "2")]
-    pub data: ::prost::alloc::string::String,
-}
-/// ScExecutionEvent context
-#[allow(clippy::derive_partial_eq_without_eq)]
-#[derive(Clone, PartialEq, ::prost::Message)]
-pub struct ScExecutionEventContext {
-    /// When was it generated
-    #[prost(message, optional, tag = "2")]
-    pub origin_slot: ::core::option::Option<Slot>,
-    /// Block id if there was a block at that slot
-    #[prost(string, tag = "3")]
-    pub block_id: ::prost::alloc::string::String,
-    /// Index of the event in the slot
-    #[prost(fixed64, tag = "4")]
-    pub index_in_slot: u64,
-    /// Call stack addresses. most recent at the end
-    #[prost(string, repeated, tag = "5")]
-    pub call_stack: ::prost::alloc::vec::Vec<::prost::alloc::string::String>,
-    /// Origin operation id
-    #[prost(string, tag = "6")]
-    pub origin_operation_id: ::prost::alloc::string::String,
-    /// Status
-    #[prost(enumeration = "ScExecutionEventStatus", repeated, tag = "7")]
-    pub status: ::prost::alloc::vec::Vec<i32>,
 }
 /// GetSelectorDrawsRequest holds request from GetSelectorDraws
 #[allow(clippy::derive_partial_eq_without_eq)]
@@ -986,6 +1077,53 @@ pub struct NewOperationsResponse {
     #[prost(message, optional, tag = "2")]
     pub operation: ::core::option::Option<SignedOperation>,
 }
+/// NewScExecutionOutputsRequest holds request for NewScExecutionOutputs
+#[allow(clippy::derive_partial_eq_without_eq)]
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct NewScExecutionOutputsRequest {
+    /// Request id
+    #[prost(string, tag = "1")]
+    pub id: ::prost::alloc::string::String,
+    /// Query
+    #[prost(message, optional, tag = "2")]
+    pub query: ::core::option::Option<NewScExecutionOutputsQuery>,
+}
+/// NewScExecutionOutputs Query
+#[allow(clippy::derive_partial_eq_without_eq)]
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct NewScExecutionOutputsQuery {
+    /// Filter
+    #[prost(message, optional, tag = "1")]
+    pub filter: ::core::option::Option<NewScExecutionOutputsFilter>,
+}
+/// NewScExecutionOutputs Filter
+#[allow(clippy::derive_partial_eq_without_eq)]
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct NewScExecutionOutputsFilter {
+    /// Caller address
+    #[prost(string, optional, tag = "1")]
+    pub caller_address: ::core::option::Option<::prost::alloc::string::String>,
+    /// Emitter address
+    #[prost(string, optional, tag = "2")]
+    pub emitter_address: ::core::option::Option<::prost::alloc::string::String>,
+    /// Original operation id
+    #[prost(string, optional, tag = "3")]
+    pub original_operation_id: ::core::option::Option<::prost::alloc::string::String>,
+    /// Status
+    #[prost(enumeration = "ScExecutionEventStatus", repeated, tag = "4")]
+    pub status: ::prost::alloc::vec::Vec<i32>,
+}
+/// NewScExecutionOutputsResponse holds response from NewScExecutionOutputs
+#[allow(clippy::derive_partial_eq_without_eq)]
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct NewScExecutionOutputsResponse {
+    /// Request id
+    #[prost(string, tag = "1")]
+    pub id: ::prost::alloc::string::String,
+    /// Execution output
+    #[prost(message, optional, tag = "2")]
+    pub execution_output: ::core::option::Option<ScExecutionOutput>,
+}
 /// SendBlocksRequest holds parameters to SendBlocks
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
@@ -1139,45 +1277,6 @@ pub struct TransactionsThroughputResponse {
     /// Transactions throughput
     #[prost(fixed32, tag = "2")]
     pub throughput: u32,
-}
-/// ScExecutionEventStatus type enum
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, ::prost::Enumeration)]
-#[repr(i32)]
-pub enum ScExecutionEventStatus {
-    /// Defaut enum value
-    Unspecified = 0,
-    /// Final status
-    Final = 1,
-    /// Read only status
-    ReadOnly = 2,
-    /// Failure status
-    Failure = 3,
-}
-impl ScExecutionEventStatus {
-    /// String value of the enum field names used in the ProtoBuf definition.
-    ///
-    /// The values are not transformed in any way and thus are considered stable
-    /// (if the ProtoBuf definition does not change) and safe for programmatic use.
-    pub fn as_str_name(&self) -> &'static str {
-        match self {
-            ScExecutionEventStatus::Unspecified => {
-                "SC_EXECUTION_EVENT_STATUS_UNSPECIFIED"
-            }
-            ScExecutionEventStatus::Final => "SC_EXECUTION_EVENT_STATUS_FINAL",
-            ScExecutionEventStatus::ReadOnly => "SC_EXECUTION_EVENT_STATUS_READ_ONLY",
-            ScExecutionEventStatus::Failure => "SC_EXECUTION_EVENT_STATUS_FAILURE",
-        }
-    }
-    /// Creates an enum from field names used in the ProtoBuf definition.
-    pub fn from_str_name(value: &str) -> ::core::option::Option<Self> {
-        match value {
-            "SC_EXECUTION_EVENT_STATUS_UNSPECIFIED" => Some(Self::Unspecified),
-            "SC_EXECUTION_EVENT_STATUS_FINAL" => Some(Self::Final),
-            "SC_EXECUTION_EVENT_STATUS_READ_ONLY" => Some(Self::ReadOnly),
-            "SC_EXECUTION_EVENT_STATUS_FAILURE" => Some(Self::Failure),
-            _ => None,
-        }
-    }
 }
 /// Operation type enum
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, ::prost::Enumeration)]
@@ -1702,7 +1801,7 @@ pub mod massa_service_client {
                 .insert(GrpcMethod::new("massa.api.v1.MassaService", "NewFilledBlocks"));
             self.inner.streaming(req, path, codec).await
         }
-        /// New received and produced perations
+        /// New received and produced operations
         pub async fn new_operations(
             &mut self,
             request: impl tonic::IntoStreamingRequest<
@@ -1728,6 +1827,38 @@ pub mod massa_service_client {
             let mut req = request.into_streaming_request();
             req.extensions_mut()
                 .insert(GrpcMethod::new("massa.api.v1.MassaService", "NewOperations"));
+            self.inner.streaming(req, path, codec).await
+        }
+        /// New received and produced smart contract execution events
+        pub async fn new_sc_execution_outputs(
+            &mut self,
+            request: impl tonic::IntoStreamingRequest<
+                Message = super::NewScExecutionOutputsRequest,
+            >,
+        ) -> std::result::Result<
+            tonic::Response<
+                tonic::codec::Streaming<super::NewScExecutionOutputsResponse>,
+            >,
+            tonic::Status,
+        > {
+            self.inner
+                .ready()
+                .await
+                .map_err(|e| {
+                    tonic::Status::new(
+                        tonic::Code::Unknown,
+                        format!("Service was not ready: {}", e.into()),
+                    )
+                })?;
+            let codec = tonic::codec::ProstCodec::default();
+            let path = http::uri::PathAndQuery::from_static(
+                "/massa.api.v1.MassaService/NewScExecutionOutputs",
+            );
+            let mut req = request.into_streaming_request();
+            req.extensions_mut()
+                .insert(
+                    GrpcMethod::new("massa.api.v1.MassaService", "NewScExecutionOutputs"),
+                );
             self.inner.streaming(req, path, codec).await
         }
         /// Send blocks
@@ -2000,12 +2131,31 @@ pub mod massa_service_server {
             >
             + Send
             + 'static;
-        /// New received and produced perations
+        /// New received and produced operations
         async fn new_operations(
             &self,
             request: tonic::Request<tonic::Streaming<super::NewOperationsRequest>>,
         ) -> std::result::Result<
             tonic::Response<Self::NewOperationsStream>,
+            tonic::Status,
+        >;
+        /// Server streaming response type for the NewScExecutionOutputs method.
+        type NewScExecutionOutputsStream: futures_core::Stream<
+                Item = std::result::Result<
+                    super::NewScExecutionOutputsResponse,
+                    tonic::Status,
+                >,
+            >
+            + Send
+            + 'static;
+        /// New received and produced smart contract execution events
+        async fn new_sc_execution_outputs(
+            &self,
+            request: tonic::Request<
+                tonic::Streaming<super::NewScExecutionOutputsRequest>,
+            >,
+        ) -> std::result::Result<
+            tonic::Response<Self::NewScExecutionOutputsStream>,
             tonic::Status,
         >;
         /// Server streaming response type for the SendBlocks method.
@@ -2839,6 +2989,56 @@ pub mod massa_service_server {
                     let fut = async move {
                         let inner = inner.0;
                         let method = NewOperationsSvc(inner);
+                        let codec = tonic::codec::ProstCodec::default();
+                        let mut grpc = tonic::server::Grpc::new(codec)
+                            .apply_compression_config(
+                                accept_compression_encodings,
+                                send_compression_encodings,
+                            )
+                            .apply_max_message_size_config(
+                                max_decoding_message_size,
+                                max_encoding_message_size,
+                            );
+                        let res = grpc.streaming(method, req).await;
+                        Ok(res)
+                    };
+                    Box::pin(fut)
+                }
+                "/massa.api.v1.MassaService/NewScExecutionOutputs" => {
+                    #[allow(non_camel_case_types)]
+                    struct NewScExecutionOutputsSvc<T: MassaService>(pub Arc<T>);
+                    impl<
+                        T: MassaService,
+                    > tonic::server::StreamingService<
+                        super::NewScExecutionOutputsRequest,
+                    > for NewScExecutionOutputsSvc<T> {
+                        type Response = super::NewScExecutionOutputsResponse;
+                        type ResponseStream = T::NewScExecutionOutputsStream;
+                        type Future = BoxFuture<
+                            tonic::Response<Self::ResponseStream>,
+                            tonic::Status,
+                        >;
+                        fn call(
+                            &mut self,
+                            request: tonic::Request<
+                                tonic::Streaming<super::NewScExecutionOutputsRequest>,
+                            >,
+                        ) -> Self::Future {
+                            let inner = Arc::clone(&self.0);
+                            let fut = async move {
+                                (*inner).new_sc_execution_outputs(request).await
+                            };
+                            Box::pin(fut)
+                        }
+                    }
+                    let accept_compression_encodings = self.accept_compression_encodings;
+                    let send_compression_encodings = self.send_compression_encodings;
+                    let max_decoding_message_size = self.max_decoding_message_size;
+                    let max_encoding_message_size = self.max_encoding_message_size;
+                    let inner = self.inner.clone();
+                    let fut = async move {
+                        let inner = inner.0;
+                        let method = NewScExecutionOutputsSvc(inner);
                         let codec = tonic::codec::ProstCodec::default();
                         let mut grpc = tonic::server::Grpc::new(codec)
                             .apply_compression_config(

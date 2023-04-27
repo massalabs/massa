@@ -253,9 +253,9 @@ impl TryFrom<grpc::GetScExecutionEventsFilter> for EventFilter {
     }
 }
 
-impl From<SCOutputEvent> for grpc::ScExecutionEventWrapper {
+impl From<SCOutputEvent> for grpc::ScExecutionEvent {
     fn from(value: SCOutputEvent) -> Self {
-        grpc::ScExecutionEventWrapper {
+        grpc::ScExecutionEvent {
             context: Some(value.context.into()),
             data: value.data,
         }

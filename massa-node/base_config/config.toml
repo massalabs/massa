@@ -104,6 +104,8 @@
     hd_cache_size = 2000
     # amount of entries removed when `hd_cache_size` is reached
     snip_amount = 10
+    # smart contract execution outputs channel capacity
+    broadcast_sc_execution_output_channel_capacity = 5000
 
 [ledger]
     # path to the initial ledger

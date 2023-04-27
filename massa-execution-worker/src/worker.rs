@@ -10,7 +10,7 @@ use crate::execution::ExecutionState;
 use crate::request_queue::RequestQueue;
 use crate::slot_sequencer::SlotSequencer;
 use massa_execution_exports::{
-    ExecutionConfig, ExecutionController, ExecutionError, ExecutionManager,
+    ExecutionChannels, ExecutionConfig, ExecutionController, ExecutionError, ExecutionManager,
     ReadOnlyExecutionOutput, ReadOnlyExecutionRequest,
 };
 use massa_final_state::FinalState;
@@ -247,6 +247,7 @@ pub fn start_execution_worker(
     final_state: Arc<RwLock<FinalState>>,
     selector: Box<dyn SelectorController>,
     mip_store: MipStore,
+    channels: ExecutionChannels,
 ) -> (Box<dyn ExecutionManager>, Box<dyn ExecutionController>) {
     // create an execution state
     let execution_state = Arc::new(RwLock::new(ExecutionState::new(
@@ -254,6 +255,7 @@ pub fn start_execution_worker(
         final_state,
         mip_store,
         selector.clone(),
+        channels,
     )));
 
     // define the input data interface

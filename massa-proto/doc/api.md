@@ -54,10 +54,12 @@
     - [NewOperationsQuery](#massa-api-v1-NewOperationsQuery)
     - [NewOperationsRequest](#massa-api-v1-NewOperationsRequest)
     - [NewOperationsResponse](#massa-api-v1-NewOperationsResponse)
+    - [NewScExecutionOutputsFilter](#massa-api-v1-NewScExecutionOutputsFilter)
+    - [NewScExecutionOutputsQuery](#massa-api-v1-NewScExecutionOutputsQuery)
+    - [NewScExecutionOutputsRequest](#massa-api-v1-NewScExecutionOutputsRequest)
+    - [NewScExecutionOutputsResponse](#massa-api-v1-NewScExecutionOutputsResponse)
     - [OperationResult](#massa-api-v1-OperationResult)
     - [OperationsContext](#massa-api-v1-OperationsContext)
-    - [ScExecutionEventContext](#massa-api-v1-ScExecutionEventContext)
-    - [ScExecutionEventWrapper](#massa-api-v1-ScExecutionEventWrapper)
     - [SelectorDraws](#massa-api-v1-SelectorDraws)
     - [SelectorDrawsFilter](#massa-api-v1-SelectorDrawsFilter)
     - [SelectorDrawsQuery](#massa-api-v1-SelectorDrawsQuery)
@@ -71,7 +73,6 @@
     - [TransactionsThroughputResponse](#massa-api-v1-TransactionsThroughputResponse)
   
     - [OpType](#massa-api-v1-OpType)
-    - [ScExecutionEventStatus](#massa-api-v1-ScExecutionEventStatus)
   
     - [MassaService](#massa-api-v1-MassaService)
   
@@ -93,6 +94,14 @@
 - [endorsement.proto](#endorsement-proto)
     - [Endorsement](#massa-api-v1-Endorsement)
     - [SignedEndorsement](#massa-api-v1-SignedEndorsement)
+  
+- [execution.proto](#execution-proto)
+    - [ScExecutionEvent](#massa-api-v1-ScExecutionEvent)
+    - [ScExecutionEventContext](#massa-api-v1-ScExecutionEventContext)
+    - [ScExecutionOutput](#massa-api-v1-ScExecutionOutput)
+  
+    - [ScExecutionEventStatus](#massa-api-v1-ScExecutionEventStatus)
+    - [ScExecutionOutputStatus](#massa-api-v1-ScExecutionOutputStatus)
   
 - [operation.proto](#operation-proto)
     - [CallSC](#massa-api-v1-CallSC)
@@ -560,7 +569,7 @@ GetScExecutionEventsResponse holds response from GetScExecutionEvents
 | ----- | ---- | ----- | ----------- |
 | id | [string](#string) |  | Request id |
 | context | [GetScExecutionEventsContext](#massa-api-v1-GetScExecutionEventsContext) |  | Context |
-| events | [ScExecutionEventWrapper](#massa-api-v1-ScExecutionEventWrapper) | repeated | ScExecutionEvents wrappers |
+| events | [ScExecutionEvent](#massa-api-v1-ScExecutionEvent) | repeated | ScExecutionEvents |
 
 
 
@@ -911,6 +920,71 @@ NewOperationsResponse holds response from NewOperations
 
 
 
+<a name="massa-api-v1-NewScExecutionOutputsFilter"></a>
+
+### NewScExecutionOutputsFilter
+NewScExecutionOutputs Filter
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| caller_address | [string](#string) | optional | Caller address |
+| emitter_address | [string](#string) | optional | Emitter address |
+| original_operation_id | [string](#string) | optional | Original operation id |
+| status | [ScExecutionEventStatus](#massa-api-v1-ScExecutionEventStatus) | repeated | Status |
+
+
+
+
+
+
+<a name="massa-api-v1-NewScExecutionOutputsQuery"></a>
+
+### NewScExecutionOutputsQuery
+NewScExecutionOutputs Query
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| filter | [NewScExecutionOutputsFilter](#massa-api-v1-NewScExecutionOutputsFilter) |  | Filter |
+
+
+
+
+
+
+<a name="massa-api-v1-NewScExecutionOutputsRequest"></a>
+
+### NewScExecutionOutputsRequest
+NewScExecutionOutputsRequest holds request for NewScExecutionOutputs
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| id | [string](#string) |  | Request id |
+| query | [NewScExecutionOutputsQuery](#massa-api-v1-NewScExecutionOutputsQuery) |  | Query |
+
+
+
+
+
+
+<a name="massa-api-v1-NewScExecutionOutputsResponse"></a>
+
+### NewScExecutionOutputsResponse
+NewScExecutionOutputsResponse holds response from NewScExecutionOutputs
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| id | [string](#string) |  | Request id |
+| execution_output | [ScExecutionOutput](#massa-api-v1-ScExecutionOutput) |  | Execution output |
+
+
+
+
+
+
 <a name="massa-api-v1-OperationResult"></a>
 
 ### OperationResult
@@ -935,42 +1009,6 @@ Operations context
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | slot | [Slot](#massa-api-v1-Slot) |  | Slot |
-
-
-
-
-
-
-<a name="massa-api-v1-ScExecutionEventContext"></a>
-
-### ScExecutionEventContext
-ScExecutionEvent context
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| origin_slot | [Slot](#massa-api-v1-Slot) |  | When was it generated |
-| block_id | [string](#string) |  | Block id if there was a block at that slot |
-| index_in_slot | [fixed64](#fixed64) |  | Index of the event in the slot |
-| call_stack | [string](#string) | repeated | Call stack addresses. most recent at the end |
-| origin_operation_id | [string](#string) |  | Origin operation id |
-| status | [ScExecutionEventStatus](#massa-api-v1-ScExecutionEventStatus) | repeated | Status |
-
-
-
-
-
-
-<a name="massa-api-v1-ScExecutionEventWrapper"></a>
-
-### ScExecutionEventWrapper
-ScExecutionEvent wrapper
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| context | [ScExecutionEventContext](#massa-api-v1-ScExecutionEventContext) |  | Sc execution context |
-| data | [string](#string) |  | json data string |
 
 
 
@@ -1172,20 +1210,6 @@ Operation type enum
 | OP_TYPE_CALL_SC | 5 | Call smart contract |
 
 
-
-<a name="massa-api-v1-ScExecutionEventStatus"></a>
-
-### ScExecutionEventStatus
-ScExecutionEventStatus type enum
-
-| Name | Number | Description |
-| ---- | ------ | ----------- |
-| SC_EXECUTION_EVENT_STATUS_UNSPECIFIED | 0 | Defaut enum value |
-| SC_EXECUTION_EVENT_STATUS_FINAL | 1 | Final status |
-| SC_EXECUTION_EVENT_STATUS_READ_ONLY | 2 | Read only status |
-| SC_EXECUTION_EVENT_STATUS_FAILURE | 3 | Failure status |
-
-
  
 
  
@@ -1212,7 +1236,8 @@ Massa gRPC service
 | NewBlocksHeaders | [NewBlocksHeadersRequest](#massa-api-v1-NewBlocksHeadersRequest) stream | [NewBlocksHeadersResponse](#massa-api-v1-NewBlocksHeadersResponse) stream | New received and produced blocks headers |
 | NewEndorsements | [NewEndorsementsRequest](#massa-api-v1-NewEndorsementsRequest) stream | [NewEndorsementsResponse](#massa-api-v1-NewEndorsementsResponse) stream | New received and produced endorsements |
 | NewFilledBlocks | [NewFilledBlocksRequest](#massa-api-v1-NewFilledBlocksRequest) stream | [NewFilledBlocksResponse](#massa-api-v1-NewFilledBlocksResponse) stream | New received and produced blocks with operations |
-| NewOperations | [NewOperationsRequest](#massa-api-v1-NewOperationsRequest) stream | [NewOperationsResponse](#massa-api-v1-NewOperationsResponse) stream | New received and produced perations |
+| NewOperations | [NewOperationsRequest](#massa-api-v1-NewOperationsRequest) stream | [NewOperationsResponse](#massa-api-v1-NewOperationsResponse) stream | New received and produced operations |
+| NewScExecutionOutputs | [NewScExecutionOutputsRequest](#massa-api-v1-NewScExecutionOutputsRequest) stream | [NewScExecutionOutputsResponse](#massa-api-v1-NewScExecutionOutputsResponse) stream | New received and produced smart contract execution events |
 | SendBlocks | [SendBlocksRequest](#massa-api-v1-SendBlocksRequest) stream | [SendBlocksResponse](#massa-api-v1-SendBlocksResponse) stream | Send blocks |
 | SendEndorsements | [SendEndorsementsRequest](#massa-api-v1-SendEndorsementsRequest) stream | [SendEndorsementsResponse](#massa-api-v1-SendEndorsementsResponse) stream | Send endorsements |
 | SendOperations | [SendOperationsRequest](#massa-api-v1-SendOperationsRequest) stream | [SendOperationsResponse](#massa-api-v1-SendOperationsResponse) stream | Send operations |
@@ -1468,6 +1493,103 @@ Signed endorsement
 
 
  
+
+ 
+
+ 
+
+ 
+
+
+
+<a name="execution-proto"></a>
+<p align="right"><a href="#top">Top</a></p>
+
+## execution.proto
+
+
+
+<a name="massa-api-v1-ScExecutionEvent"></a>
+
+### ScExecutionEvent
+ScExecutionEvent
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| context | [ScExecutionEventContext](#massa-api-v1-ScExecutionEventContext) |  | Sc execution context |
+| data | [string](#string) |  | json data string |
+
+
+
+
+
+
+<a name="massa-api-v1-ScExecutionEventContext"></a>
+
+### ScExecutionEventContext
+ScExecutionEvent context
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| origin_slot | [Slot](#massa-api-v1-Slot) |  | When was it generated |
+| block_id | [string](#string) |  | Block id if there was a block at that slot |
+| index_in_slot | [fixed64](#fixed64) |  | Index of the event in the slot |
+| call_stack | [string](#string) | repeated | Call stack addresses. most recent at the end |
+| origin_operation_id | [string](#string) |  | Origin operation id |
+| status | [ScExecutionEventStatus](#massa-api-v1-ScExecutionEventStatus) | repeated | Status |
+
+
+
+
+
+
+<a name="massa-api-v1-ScExecutionOutput"></a>
+
+### ScExecutionOutput
+ScExecutionOutput
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| slot | [Slot](#massa-api-v1-Slot) |  | Slot |
+| block_id | [string](#string) |  | Block id at that slot (optional) |
+| status | [ScExecutionOutputStatus](#massa-api-v1-ScExecutionOutputStatus) | repeated | Status |
+| events | [ScExecutionEvent](#massa-api-v1-ScExecutionEvent) | repeated | Events emitted by the execution step |
+
+
+
+
+
+ 
+
+
+<a name="massa-api-v1-ScExecutionEventStatus"></a>
+
+### ScExecutionEventStatus
+ScExecutionEventStatus type enum
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| SC_EXECUTION_EVENT_STATUS_UNSPECIFIED | 0 | Defaut enum value |
+| SC_EXECUTION_EVENT_STATUS_FINAL | 1 | Final status |
+| SC_EXECUTION_EVENT_STATUS_READ_ONLY | 2 | Read only status |
+| SC_EXECUTION_EVENT_STATUS_FAILURE | 3 | Failure status |
+
+
+
+<a name="massa-api-v1-ScExecutionOutputStatus"></a>
+
+### ScExecutionOutputStatus
+ScExecutionOutputStatus type enum
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| SC_EXECUTION_OUTPUT_STATUS_UNSPECIFIED | 0 | Defaut enum value |
+| SC_EXECUTION_OUTPUT_STATUS_FINAL | 1 | Final status |
+| SC_EXECUTION_OUTPUT_STATUS_CANDIDATE | 2 | Read only status |
+
 
  
 

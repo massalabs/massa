@@ -14,6 +14,7 @@ use crate::stream::{
     new_endorsements::{new_endorsements, NewEndorsementsStreamType},
     new_filled_blocks::{new_filled_blocks, NewFilledBlocksStreamType},
     new_operations::{new_operations, NewOperationsStreamType},
+    new_sc_execution_outputs::{new_sc_execution_outputs, NewScExecutionOutputsStreamType},
     send_blocks::{send_blocks, SendBlocksStreamType},
     send_endorsements::{send_endorsements, SendEndorsementsStreamType},
     send_operations::{send_operations, SendOperationsStreamType},
@@ -166,6 +167,18 @@ impl grpc::massa_service_server::MassaService for MassaGrpc {
         request: tonic::Request<tonic::Streaming<grpc::NewOperationsRequest>>,
     ) -> Result<tonic::Response<Self::NewOperationsStream>, tonic::Status> {
         Ok(tonic::Response::new(new_operations(self, request).await?))
+    }
+
+    type NewScExecutionOutputsStream = NewScExecutionOutputsStreamType;
+
+    /// handler for subscribe new smart contracts execution output stream
+    async fn new_sc_execution_outputs(
+        &self,
+        request: tonic::Request<tonic::Streaming<grpc::NewScExecutionOutputsRequest>>,
+    ) -> Result<tonic::Response<Self::NewScExecutionOutputsStream>, tonic::Status> {
+        Ok(tonic::Response::new(
+            new_sc_execution_outputs(self, request).await?,
+        ))
     }
 
     type SendBlocksStream = SendBlocksStreamType;

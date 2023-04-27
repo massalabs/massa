@@ -1,0 +1,68 @@
+// Copyright (c) 2023 MASSA LABS <info@massa.net>
+
+syntax = "proto3";
+
+package massa.api.v1;
+
+import "slot.proto";
+
+option csharp_namespace = "Com.Massa.Api.V1";
+option go_package = "github.com/massalabs/massa/api/v1;v1";
+option java_multiple_files = true;
+option java_package = "com.massa.api.v1";
+option objc_class_prefix = "GRPC";
+option php_namespace = "Com\\Massa\\Api\\V1";
+option ruby_package = "Com::Massa::Api::V1";
+option swift_prefix = "GRPC";
+
+
+// ScExecutionOutput
+message ScExecutionOutput {
+  // Slot
+  Slot slot = 1;
+  // Block id at that slot (optional)
+  string block_id = 2;
+  // Status
+  repeated ScExecutionOutputStatus status = 3;
+  // Events emitted by the execution step
+  repeated ScExecutionEvent events = 4;
+}
+
+// ScExecutionEvent
+message ScExecutionEvent {
+  // Sc execution context
+  ScExecutionEventContext context = 1;
+  // json data string
+  string data = 2;
+}
+
+// ScExecutionEvent context
+message ScExecutionEventContext {
+  // When was it generated
+  Slot origin_slot = 1;
+  // Block id if there was a block at that slot
+  string block_id = 2;
+  // Index of the event in the slot
+  fixed64 index_in_slot = 3;
+  // Call stack addresses. most recent at the end
+  repeated string call_stack = 4;
+  // Origin operation id
+  string origin_operation_id = 5;
+  // Status
+  repeated ScExecutionEventStatus status = 6;
+}
+
+// ScExecutionEventStatus type enum
+enum ScExecutionEventStatus {
+  SC_EXECUTION_EVENT_STATUS_UNSPECIFIED = 0; // Defaut enum value
+  SC_EXECUTION_EVENT_STATUS_FINAL = 1; // Final status
+  SC_EXECUTION_EVENT_STATUS_READ_ONLY = 2; // Read only status
+  SC_EXECUTION_EVENT_STATUS_FAILURE = 3; // Failure status
+}
+
+// ScExecutionOutputStatus type enum
+enum ScExecutionOutputStatus {
+  SC_EXECUTION_OUTPUT_STATUS_UNSPECIFIED = 0; // Defaut enum value
+  SC_EXECUTION_OUTPUT_STATUS_FINAL = 1; // Final status
+  SC_EXECUTION_OUTPUT_STATUS_CANDIDATE = 2; // Read only status
+}

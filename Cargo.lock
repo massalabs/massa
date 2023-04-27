@@ -2591,6 +2591,7 @@ dependencies = [
  "parking_lot",
  "tempfile",
  "thiserror",
+ "tokio",
 ]
 
 [[package]]

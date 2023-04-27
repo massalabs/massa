@@ -7,6 +7,7 @@ package massa.api.v1;
 import "block.proto";
 import "common.proto";
 import "endorsement.proto";
+import "execution.proto";
 import "google/api/annotations.proto";
 import "google/rpc/status.proto";
 import "operation.proto";
@@ -113,8 +114,11 @@ service MassaService {
   // New received and produced blocks with operations
   rpc NewFilledBlocks(stream NewFilledBlocksRequest) returns (stream NewFilledBlocksResponse) {}
 
-  // New received and produced perations
+  // New received and produced operations
   rpc NewOperations(stream NewOperationsRequest) returns (stream NewOperationsResponse) {}
+
+  // New received and produced smart contract execution events
+  rpc NewScExecutionOutputs(stream NewScExecutionOutputsRequest) returns (stream NewScExecutionOutputsResponse) {}
 
   // Send blocks
   rpc SendBlocks(stream SendBlocksRequest) returns (stream SendBlocksResponse) {}
@@ -362,46 +366,14 @@ message GetScExecutionEventsResponse {
   string id = 1;
   // Context
   GetScExecutionEventsContext context = 2;
-  //ScExecutionEvents wrappers
-  repeated ScExecutionEventWrapper events = 3;
+  //ScExecutionEvents
+  repeated ScExecutionEvent events = 3;
 }
 
 // ScExecutionEvents context
 message GetScExecutionEventsContext {
   // Slot
   Slot slot = 1;
-}
-
-// ScExecutionEvent wrapper
-message ScExecutionEventWrapper {
-  // Sc execution context
-  ScExecutionEventContext context = 1;
-  // json data string
-  string data = 2;
-}
-
-// ScExecutionEvent context
-message ScExecutionEventContext {
-  // When was it generated
-  Slot origin_slot = 1;
-  // Block id if there was a block at that slot
-  string block_id = 2;
-  // Index of the event in the slot
-  fixed64 index_in_slot = 3;
-  // Call stack addresses. most recent at the end
-  repeated string call_stack = 4;
-  // Origin operation id
-  string origin_operation_id = 5;
-  // Status
-  repeated ScExecutionEventStatus status = 6;
-}
-
-// ScExecutionEventStatus type enum
-enum ScExecutionEventStatus {
-  SC_EXECUTION_EVENT_STATUS_UNSPECIFIED = 0; // Defaut enum value
-  SC_EXECUTION_EVENT_STATUS_FINAL = 1; // Final status
-  SC_EXECUTION_EVENT_STATUS_READ_ONLY = 2; // Read only status
-  SC_EXECUTION_EVENT_STATUS_FAILURE = 3; // Failure status
 }
 
 // GetSelectorDrawsRequest holds request from GetSelectorDraws
@@ -562,6 +534,40 @@ message NewOperationsResponse {
   string id = 1;
   // Signed operation
   SignedOperation operation = 2;
+}
+
+// NewScExecutionOutputsRequest holds request for NewScExecutionOutputs
+message NewScExecutionOutputsRequest {
+  // Request id
+  string id = 1;
+  // Query
+  NewScExecutionOutputsQuery query = 2;
+}
+
+// NewScExecutionOutputs Query
+message NewScExecutionOutputsQuery {
+  // Filter
+  NewScExecutionOutputsFilter filter = 1;
+}
+
+// NewScExecutionOutputs Filter
+message NewScExecutionOutputsFilter {
+  // Caller address
+  optional string caller_address = 1;
+  // Emitter address
+  optional string emitter_address = 2;
+  // Original operation id
+  optional string original_operation_id = 3;
+  // Status
+  repeated ScExecutionEventStatus status = 4;
+}
+
+// NewScExecutionOutputsResponse holds response from NewScExecutionOutputs
+message NewScExecutionOutputsResponse {
+  // Request id
+  string id = 1;
+  // Execution output
+  ScExecutionOutput execution_output = 2;
 }
 
 // SendBlocksRequest holds parameters to SendBlocks
