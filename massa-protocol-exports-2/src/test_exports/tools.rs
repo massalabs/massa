@@ -29,6 +29,7 @@ pub fn create_block(keypair: &KeyPair) -> SecureShareBlock {
             ],
             operation_merkle_root: Hash::compute_from(&Vec::new()),
             endorsements: Vec::new(),
+            denunciations: Vec::new(),
         },
         BlockHeaderSerializer::new(),
         keypair,
@@ -70,6 +71,7 @@ pub fn create_block_with_operations(
             ],
             operation_merkle_root,
             endorsements: Vec::new(),
+            denunciations: Vec::new(),
         },
         BlockHeaderSerializer::new(),
         keypair,
@@ -107,6 +109,7 @@ pub fn create_block_with_endorsements(
             ],
             operation_merkle_root: Hash::compute_from(&Vec::new()),
             endorsements,
+            denunciations: Vec::new(),
         },
         BlockHeaderSerializer::new(),
         keypair,
@@ -155,43 +158,3 @@ pub fn create_operation_with_expire_period(
     };
     Operation::new_verifiable(content, OperationSerializer::new(), keypair).unwrap()
 }
-
-// /// retrieve what blocks where asked to which nodes
-// pub async fn asked_list(
-//     network_controller: &mut MockNetworkController,
-// ) -> HashMap<NodeId, Vec<(BlockId, AskForBlocksInfo)>> {
-//     let ask_for_block_cmd_filter = |cmd| match cmd {
-//         NetworkCommand::AskForBlocks { list } => Some(list),
-//         _ => None,
-//     };
-//     network_controller
-//         .wait_command(1000.into(), ask_for_block_cmd_filter)
-//         .await
-//         .expect("Hash not asked for before timer.")
-// }
-
-// /// assert a list of node(s) has been banned
-// pub async fn assert_banned_nodes(
-//     mut nodes: Vec<NodeId>,
-//     network_controller: &mut MockNetworkController,
-// ) {
-//     let timer = sleep(MassaTime::from_millis(5000).into());
-//     tokio::pin!(timer);
-//     loop {
-//         tokio::select! {
-//             msg = network_controller
-//                    .wait_command(2000.into(), |cmd| match cmd {
-//                        NetworkCommand::NodeBanByIds(node) => Some(node),
-//                        _ => None,
-//                    })
-//              =>  {
-//                  let banned_nodes = msg.expect("Nodes not banned before timeout.");
-//                  nodes.drain_filter(|id| banned_nodes.contains(id));
-//                  if nodes.is_empty() {
-//                      break;
-//                  }
-//             },
-//             _ = &mut timer => panic!("Nodes not banned before timeout.")
-//         }
-//     }
-// }

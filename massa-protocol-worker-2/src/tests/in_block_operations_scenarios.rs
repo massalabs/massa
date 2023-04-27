@@ -202,6 +202,7 @@ fn test_protocol_sends_blocks_with_operations_to_consensus() {
                                 BlockId(Hash::compute_from("Genesis 0".as_bytes())),
                                 BlockId(Hash::compute_from("Genesis 1".as_bytes())),
                             ],
+                            denunciations: Vec::new(),
                             operation_merkle_root,
                             endorsements: Vec::new(),
                         },
