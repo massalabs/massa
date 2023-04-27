@@ -24,6 +24,12 @@ use super::{context::protocol_test, tools::assert_hash_asked_to_node};
 #[test]
 #[serial]
 fn test_protocol_bans_node_sending_block_header_with_invalid_signature() {
+    let default_panic = std::panic::take_hook();
+    std::panic::set_hook(Box::new(move |info| {
+        default_panic(info);
+        std::process::exit(1);
+    }));
+
     let mut protocol_config = ProtocolConfig::default();
     protocol_config.thread_count = 2;
     protocol_config.initial_peers = "./src/tests/empty_initial_peers.json".to_string().into();
@@ -86,6 +92,12 @@ fn test_protocol_bans_node_sending_block_header_with_invalid_signature() {
 #[test]
 #[serial]
 fn test_protocol_bans_node_sending_operation_with_invalid_signature() {
+    let default_panic = std::panic::take_hook();
+    std::panic::set_hook(Box::new(move |info| {
+        default_panic(info);
+        std::process::exit(1);
+    }));
+
     let mut protocol_config = ProtocolConfig::default();
     protocol_config.thread_count = 2;
     protocol_config.initial_peers = "./src/tests/empty_initial_peers.json".to_string().into();
@@ -146,6 +158,12 @@ fn test_protocol_bans_node_sending_operation_with_invalid_signature() {
 #[test]
 #[serial]
 fn test_protocol_bans_node_sending_header_with_invalid_signature() {
+    let default_panic = std::panic::take_hook();
+    std::panic::set_hook(Box::new(move |info| {
+        default_panic(info);
+        std::process::exit(1);
+    }));
+
     let mut protocol_config = ProtocolConfig::default();
     protocol_config.thread_count = 2;
     protocol_config.initial_peers = "./src/tests/empty_initial_peers.json".to_string().into();
@@ -251,6 +269,12 @@ fn test_protocol_bans_node_sending_header_with_invalid_signature() {
 #[test]
 #[serial]
 fn test_protocol_does_not_asks_for_block_from_banned_node_who_propagated_header() {
+    let default_panic = std::panic::take_hook();
+    std::panic::set_hook(Box::new(move |info| {
+        default_panic(info);
+        std::process::exit(1);
+    }));
+
     let mut protocol_config = ProtocolConfig::default();
     protocol_config.thread_count = 2;
     protocol_config.initial_peers = "./src/tests/empty_initial_peers.json".to_string().into();
@@ -349,6 +373,12 @@ fn test_protocol_does_not_asks_for_block_from_banned_node_who_propagated_header(
 #[test]
 #[serial]
 fn test_protocol_bans_all_nodes_propagating_an_attack_attempt() {
+    let default_panic = std::panic::take_hook();
+    std::panic::set_hook(Box::new(move |info| {
+        default_panic(info);
+        std::process::exit(1);
+    }));
+
     let mut protocol_config = ProtocolConfig::default();
     protocol_config.thread_count = 2;
     protocol_config.initial_peers = "./src/tests/empty_initial_peers.json".to_string().into();

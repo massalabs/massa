@@ -25,6 +25,12 @@ use super::{context::protocol_test, tools::send_and_propagate_block};
 #[test]
 #[serial]
 fn test_protocol_does_propagate_operations_received_in_blocks() {
+    let default_panic = std::panic::take_hook();
+    std::panic::set_hook(Box::new(move |info| {
+        default_panic(info);
+        std::process::exit(1);
+    }));
+
     let mut protocol_config = ProtocolConfig::default();
     protocol_config.thread_count = 2;
     protocol_config.initial_peers = "./src/tests/empty_initial_peers.json".to_string().into();

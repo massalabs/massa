@@ -27,6 +27,12 @@ use super::{
 #[test]
 #[serial]
 fn test_protocol_sends_valid_operations_it_receives_to_pool() {
+    let default_panic = std::panic::take_hook();
+    std::panic::set_hook(Box::new(move |info| {
+        default_panic(info);
+        std::process::exit(1);
+    }));
+
     let mut protocol_config = ProtocolConfig::default();
     protocol_config.thread_count = 2;
     protocol_config.initial_peers = "./src/tests/empty_initial_peers.json".to_string().into();
@@ -90,6 +96,12 @@ fn test_protocol_sends_valid_operations_it_receives_to_pool() {
 #[test]
 #[serial]
 fn test_protocol_does_not_send_invalid_operations_it_receives_to_pool() {
+    let default_panic = std::panic::take_hook();
+    std::panic::set_hook(Box::new(move |info| {
+        default_panic(info);
+        std::process::exit(1);
+    }));
+
     let mut protocol_config = ProtocolConfig::default();
     protocol_config.thread_count = 2;
     protocol_config.initial_peers = "./src/tests/empty_initial_peers.json".to_string().into();
@@ -139,6 +151,12 @@ fn test_protocol_does_not_send_invalid_operations_it_receives_to_pool() {
 #[test]
 #[serial]
 fn test_protocol_propagates_operations_to_active_nodes() {
+    let default_panic = std::panic::take_hook();
+    std::panic::set_hook(Box::new(move |info| {
+        default_panic(info);
+        std::process::exit(1);
+    }));
+
     let mut protocol_config = ProtocolConfig::default();
     protocol_config.thread_count = 2;
     protocol_config.initial_peers = "./src/tests/empty_initial_peers.json".to_string().into();
@@ -214,6 +232,12 @@ fn test_protocol_propagates_operations_to_active_nodes() {
 #[serial]
 fn test_protocol_propagates_operations_received_over_the_network_only_to_nodes_that_dont_know_about_it(
 ) {
+    let default_panic = std::panic::take_hook();
+    std::panic::set_hook(Box::new(move |info| {
+        default_panic(info);
+        std::process::exit(1);
+    }));
+
     let mut protocol_config = ProtocolConfig::default();
     protocol_config.thread_count = 2;
     protocol_config.initial_peers = "./src/tests/empty_initial_peers.json".to_string().into();
@@ -283,6 +307,12 @@ fn test_protocol_propagates_operations_received_over_the_network_only_to_nodes_t
 #[test]
 #[serial]
 fn test_protocol_batches_propagation_of_operations_received_over_the_network_and_from_the_api() {
+    let default_panic = std::panic::take_hook();
+    std::panic::set_hook(Box::new(move |info| {
+        default_panic(info);
+        std::process::exit(1);
+    }));
+
     let mut protocol_config = ProtocolConfig::default();
     protocol_config.thread_count = 2;
     protocol_config.initial_peers = "./src/tests/empty_initial_peers.json".to_string().into();
@@ -372,6 +402,12 @@ fn test_protocol_batches_propagation_of_operations_received_over_the_network_and
 #[serial]
 fn test_protocol_propagates_operations_only_to_nodes_that_dont_know_about_it_indirect_knowledge_via_header(
 ) {
+    let default_panic = std::panic::take_hook();
+    std::panic::set_hook(Box::new(move |info| {
+        default_panic(info);
+        std::process::exit(1);
+    }));
+
     let mut protocol_config = ProtocolConfig::default();
     protocol_config.thread_count = 2;
     protocol_config.initial_peers = "./src/tests/empty_initial_peers.json".to_string().into();
@@ -494,6 +530,12 @@ fn test_protocol_propagates_operations_only_to_nodes_that_dont_know_about_it_ind
 #[serial]
 fn test_protocol_propagates_operations_only_to_nodes_that_dont_know_about_it_indirect_knowledge_via_wrong_root_hash_header(
 ) {
+    let default_panic = std::panic::take_hook();
+    std::panic::set_hook(Box::new(move |info| {
+        default_panic(info);
+        std::process::exit(1);
+    }));
+
     let mut protocol_config = ProtocolConfig::default();
     protocol_config.thread_count = 2;
     protocol_config.initial_peers = "./src/tests/empty_initial_peers.json".to_string().into();
@@ -629,6 +671,12 @@ fn test_protocol_propagates_operations_only_to_nodes_that_dont_know_about_it_ind
 #[test]
 #[serial]
 fn test_protocol_ask_operations_on_batch_received() {
+    let default_panic = std::panic::take_hook();
+    std::panic::set_hook(Box::new(move |info| {
+        default_panic(info);
+        std::process::exit(1);
+    }));
+
     let mut protocol_config = ProtocolConfig::default();
     protocol_config.thread_count = 2;
     protocol_config.initial_peers = "./src/tests/empty_initial_peers.json".to_string().into();
@@ -683,6 +731,12 @@ fn test_protocol_ask_operations_on_batch_received() {
 #[test]
 #[serial]
 fn test_protocol_re_ask_operations_to_another_node_on_batch_received_after_delay() {
+    let default_panic = std::panic::take_hook();
+    std::panic::set_hook(Box::new(move |info| {
+        default_panic(info);
+        std::process::exit(1);
+    }));
+
     let mut protocol_config = ProtocolConfig::default();
     protocol_config.thread_count = 2;
     protocol_config.initial_peers = "./src/tests/empty_initial_peers.json".to_string().into();
@@ -763,6 +817,12 @@ fn test_protocol_re_ask_operations_to_another_node_on_batch_received_after_delay
 #[test]
 #[serial]
 fn test_protocol_does_not_re_ask_operations_to_another_node_if_received() {
+    let default_panic = std::panic::take_hook();
+    std::panic::set_hook(Box::new(move |info| {
+        default_panic(info);
+        std::process::exit(1);
+    }));
+
     let mut protocol_config = ProtocolConfig::default();
     protocol_config.thread_count = 2;
     protocol_config.initial_peers = "./src/tests/empty_initial_peers.json".to_string().into();
@@ -844,6 +904,12 @@ fn test_protocol_does_not_re_ask_operations_to_another_node_if_received() {
 #[test]
 #[serial]
 fn test_protocol_on_ask_operations() {
+    let default_panic = std::panic::take_hook();
+    std::panic::set_hook(Box::new(move |info| {
+        default_panic(info);
+        std::process::exit(1);
+    }));
+
     let mut protocol_config = ProtocolConfig::default();
     protocol_config.thread_count = 2;
     protocol_config.initial_peers = "./src/tests/empty_initial_peers.json".to_string().into();

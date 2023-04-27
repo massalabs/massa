@@ -98,6 +98,12 @@ fn basic() {
 
 #[test]
 fn stop_with_controller_still_exists() {
+    let default_panic = std::panic::take_hook();
+    std::panic::set_hook(Box::new(move |info| {
+        default_panic(info);
+        std::process::exit(1);
+    }));
+
     let (pool_controller1, _) = MockPoolController::new_with_receiver();
     let (pool_controller2, _) = MockPoolController::new_with_receiver();
 

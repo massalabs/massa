@@ -23,6 +23,12 @@ use super::context::{protocol_test, protocol_test_with_storage};
 #[test]
 #[serial]
 fn test_protocol_sends_valid_endorsements_it_receives_to_pool() {
+    let default_panic = std::panic::take_hook();
+    std::panic::set_hook(Box::new(move |info| {
+        default_panic(info);
+        std::process::exit(1);
+    }));
+
     let mut protocol_config = ProtocolConfig::default();
     protocol_config.thread_count = 2;
     protocol_config.initial_peers = "./src/tests/empty_initial_peers.json".to_string().into();
@@ -80,6 +86,12 @@ fn test_protocol_sends_valid_endorsements_it_receives_to_pool() {
 #[test]
 #[serial]
 fn test_protocol_does_not_send_invalid_endorsements_it_receives_to_pool() {
+    let default_panic = std::panic::take_hook();
+    std::panic::set_hook(Box::new(move |info| {
+        default_panic(info);
+        std::process::exit(1);
+    }));
+
     let mut protocol_config = ProtocolConfig::default();
     protocol_config.thread_count = 2;
     protocol_config.initial_peers = "./src/tests/empty_initial_peers.json".to_string().into();
@@ -132,6 +144,12 @@ fn test_protocol_does_not_send_invalid_endorsements_it_receives_to_pool() {
 #[test]
 #[serial]
 fn test_protocol_propagates_endorsements_to_active_nodes() {
+    let default_panic = std::panic::take_hook();
+    std::panic::set_hook(Box::new(move |info| {
+        default_panic(info);
+        std::process::exit(1);
+    }));
+
     let mut protocol_config = ProtocolConfig::default();
     protocol_config.thread_count = 2;
     protocol_config.initial_peers = "./src/tests/empty_initial_peers.json".to_string().into();
@@ -200,6 +218,12 @@ fn test_protocol_propagates_endorsements_to_active_nodes() {
 #[test]
 #[serial]
 fn test_protocol_propagates_endorsements_only_to_nodes_that_dont_know_about_it_block_integration() {
+    let default_panic = std::panic::take_hook();
+    std::panic::set_hook(Box::new(move |info| {
+        default_panic(info);
+        std::process::exit(1);
+    }));
+
     let mut protocol_config = ProtocolConfig::default();
     protocol_config.thread_count = 2;
     protocol_config.initial_peers = "./src/tests/empty_initial_peers.json".to_string().into();
