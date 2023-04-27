@@ -155,6 +155,7 @@ impl Deserializer<Announcement> for AnnouncementDeserializer {
 impl Announcement {
     pub fn new(
         listeners: HashMap<SocketAddr, TransportType>,
+        routable_ip: Option<IpAddr>,
         keypair: &KeyPair,
     ) -> PeerNetResult<Self> {
         let mut buf: Vec<u8> = vec![];
@@ -166,7 +167,8 @@ impl Announcement {
                     .error("Announcement serialization", Some(err.to_string()))
             })?;
         for listener in &listeners {
-            let ip_bytes = match listener.0.ip() {
+            let ip = routable_ip.unwrap_or_else(|| listener.0.ip());
+            let ip_bytes = match ip {
                 IpAddr::V4(ip) => {
                     buf.push(4);
                     ip.octets().to_vec()
@@ -215,7 +217,7 @@ mod tests {
         let mut listeners = HashMap::new();
         listeners.insert("127.0.0.1:8081".parse().unwrap(), TransportType::Tcp);
         listeners.insert("127.0.0.1:8082".parse().unwrap(), TransportType::Quic);
-        let announcement = Announcement::new(listeners, &KeyPair::generate()).unwrap();
+        let announcement = Announcement::new(listeners, None, &KeyPair::generate()).unwrap();
         let announcement_serializer = AnnouncementSerializer::new();
         let announcement_deserializer =
             AnnouncementDeserializer::new(AnnouncementDeserializerArgs { max_listeners: 100 });

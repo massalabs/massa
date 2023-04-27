@@ -1,6 +1,6 @@
 // Copyright (c) 2022 MASSA LABS <info@massa.net>
 
-use std::{collections::HashMap, net::SocketAddr, path::PathBuf};
+use std::{collections::HashMap, net::{SocketAddr, IpAddr}, path::PathBuf};
 
 use massa_time::MassaTime;
 use peernet::transports::TransportType;
@@ -133,6 +133,8 @@ pub struct ProtocolConfig {
     pub last_start_period: u64,
     /// Number of bytes per second that can be read/write in a connection (should be a 10 multiplier)
     pub read_write_limit_bytes_per_second: u128,
+    /// Optional routable ip
+    pub routable_ip: Option<IpAddr>,
     /// debug prints
     pub debug: bool,
 }

@@ -83,7 +83,6 @@ use massa_wallet::Wallet;
 use parking_lot::RwLock;
 use peernet::transports::TransportType;
 use std::collections::HashMap;
-use std::net::SocketAddr;
 use std::path::PathBuf;
 use std::sync::atomic::{AtomicUsize, Ordering};
 use std::thread::sleep;
@@ -519,12 +518,10 @@ async fn launch(
 
     // launch protocol controller
     let mut listeners = HashMap::default();
-    if let Some(ip) = SETTINGS.protocol.routable_ip {
-        listeners.insert(
-            SocketAddr::new(ip.to_canonical(), SETTINGS.protocol.protocol_port),
-            TransportType::Tcp,
-        );
-    }
+    listeners.insert(
+        SETTINGS.protocol.bind,
+        TransportType::Tcp,
+    );
     let protocol_config = ProtocolConfig {
         thread_count: THREAD_COUNT,
         ask_block_timeout: SETTINGS.protocol.ask_block_timeout,
@@ -597,6 +594,7 @@ async fn launch(
         max_size_listeners_per_peer: MAX_LISTENERS_PER_PEER,
         max_size_peers_announcement: MAX_PEERS_IN_ANNOUNCEMENT_LIST,
         read_write_limit_bytes_per_second: SETTINGS.protocol.read_write_limit_bytes_per_second,
+        routable_ip: SETTINGS.protocol.routable_ip,
         debug: false,
     };
 

@@ -75,6 +75,7 @@ impl Default for ProtocolConfig {
             max_size_peers_announcement: 100,
             last_start_period: 0,
             read_write_limit_bytes_per_second: 1024 * 1000,
+            routable_ip: None,
             debug: true,
         }
     }

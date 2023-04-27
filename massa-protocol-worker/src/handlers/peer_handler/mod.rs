@@ -243,7 +243,7 @@ impl InitConnectionHandler for MassaHandshake {
     ) -> PeerNetResult<PeerId> {
         let mut bytes = PeerId::from_public_key(keypair.get_public_key()).to_bytes();
         //TODO: Add version in announce
-        let listeners_announcement = Announcement::new(listeners.clone(), keypair).unwrap();
+        let listeners_announcement = Announcement::new(listeners.clone(), self.config.routable_ip, keypair).unwrap();
         self.announcement_serializer
             .serialize(&listeners_announcement, &mut bytes)
             .map_err(|err| {
@@ -379,7 +379,7 @@ impl InitConnectionHandler for MassaHandshake {
 
             let mut bytes = PeerId::from_public_key(keypair.get_public_key()).to_bytes();
             //TODO: Add version in announce
-            let listeners_announcement = Announcement::new(listeners.clone(), &keypair).unwrap();
+            let listeners_announcement = Announcement::new(listeners.clone(), None, &keypair).unwrap();
             let announcement_serializer = AnnouncementSerializer::new();
             announcement_serializer
                 .serialize(&listeners_announcement, &mut bytes)
