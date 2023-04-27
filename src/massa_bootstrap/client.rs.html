@@ -525,26 +525,7 @@
 <a href="#525" id="525">525</a>
 <a href="#526" id="526">526</a>
 <a href="#527" id="527">527</a>
-<a href="#528" id="528">528</a>
-<a href="#529" id="529">529</a>
-<a href="#530" id="530">530</a>
-<a href="#531" id="531">531</a>
-<a href="#532" id="532">532</a>
-<a href="#533" id="533">533</a>
-<a href="#534" id="534">534</a>
-<a href="#535" id="535">535</a>
-<a href="#536" id="536">536</a>
-<a href="#537" id="537">537</a>
-<a href="#538" id="538">538</a>
-<a href="#539" id="539">539</a>
-<a href="#540" id="540">540</a>
-<a href="#541" id="541">541</a>
-<a href="#542" id="542">542</a>
-<a href="#543" id="543">543</a>
-<a href="#544" id="544">544</a>
-<a href="#545" id="545">545</a>
 </pre><pre class="rust"><code><span class="kw">use </span>humantime::format_duration;
-<span class="kw">use </span>massa_db::{write_batch, DBBatch};
 <span class="kw">use </span>std::{collections::HashSet, net::SocketAddr, sync::Arc, time::Duration};
 
 <span class="kw">use </span>massa_final_state::FinalState;
@@ -623,43 +604,26 @@
                         .executed_denunciations
                         .set_processed_de_part(processed_de_part);
                     <span class="kw">for </span>(changes_slot, changes) <span class="kw">in </span>final_state_changes.iter() {
-                        <span class="kw">let </span>ledger_hash = write_final_state.ledger.get_ledger_hash();
-                        <span class="kw">let </span>async_pool_hash = write_final_state.async_pool.get_hash();
-                        <span class="kw">let </span>executed_ops_hash = write_final_state.executed_ops.get_hash();
-                        <span class="kw">let </span>executed_denunciations_hash =
-                            write_final_state.executed_denunciations.get_hash();
-                        <span class="kw">let </span><span class="kw-2">mut </span>batch = DBBatch::new(
-                            <span class="prelude-val">Some</span>(ledger_hash),
-                            <span class="prelude-val">Some</span>(async_pool_hash),
-                            <span class="prelude-val">None</span>,
-                            <span class="prelude-val">None</span>,
-                            <span class="prelude-val">Some</span>(executed_ops_hash),
-                            <span class="prelude-val">Some</span>(executed_denunciations_hash),
-                        );
-                        write_final_state.ledger.apply_changes_to_batch(
+                        write_final_state.ledger.apply_changes(
                             changes.ledger_changes.clone(),
                             <span class="kw-2">*</span>changes_slot,
-                            <span class="kw-2">&amp;mut </span>batch,
+                            <span class="prelude-val">None</span>,
                         );
                         write_final_state
                             .async_pool
-                            .apply_changes_to_batch(<span class="kw-2">&amp;</span>changes.async_pool_changes, <span class="kw-2">&amp;mut </span>batch);
+                            .apply_changes_unchecked(<span class="kw-2">&amp;</span>changes.async_pool_changes);
                         <span class="kw">if </span>!changes.pos_changes.is_empty() {
-                            write_final_state.pos_state.apply_changes_to_batch(
+                            write_final_state.pos_state.apply_changes(
                                 changes.pos_changes.clone(),
                                 <span class="kw-2">*</span>changes_slot,
                                 <span class="bool-val">false</span>,
-                                <span class="kw-2">&amp;mut </span>batch,
                             )<span class="question-mark">?</span>;
                         }
                         <span class="kw">if </span>!changes.executed_ops_changes.is_empty() {
-                            write_final_state.executed_ops.apply_changes_to_batch(
-                                changes.executed_ops_changes.clone(),
-                                <span class="kw-2">*</span>changes_slot,
-                                <span class="kw-2">&amp;mut </span>batch,
-                            );
+                            write_final_state
+                                .executed_ops
+                                .apply_changes(changes.executed_ops_changes.clone(), <span class="kw-2">*</span>changes_slot);
                         }
-                        write_batch(<span class="kw-2">&amp;</span>write_final_state.rocks_db.read(), batch);
                     }
                     write_final_state.slot = slot;
 

@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"constant":["CAN_BE_EXECUTED_IDENT","COINS_IDENT","DATA_IDENT","DESTINATION_IDENT","EMISSION_INDEX_IDENT","EMISSION_SLOT_IDENT","FEE_IDENT","HANDLER_IDENT","MAX_GAS_IDENT","SENDER_IDENT","TOTAL_FIELDS_COUNT","TRIGGER_IDENT","VALIDITY_END_IDENT","VALIDITY_START_IDENT"],"struct":["AsyncPool","AsyncPoolDeserializer","AsyncPoolSerializer"]};
+window.SIDEBAR_ITEMS = {"constant":["ASYNC_POOL_HASH_INITIAL_BYTES"],"fn":["is_triggered"],"struct":["AsyncPool","AsyncPoolDeserializer","AsyncPoolSerializer"]};
