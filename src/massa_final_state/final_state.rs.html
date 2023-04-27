@@ -954,8 +954,8 @@
     AsyncPoolSerializer, Change,
 };
 <span class="kw">use </span>massa_executed_ops::{
-    ExecutedDenunciations, ExecutedDenunciationsDeserializer, ExecutedDenunciationsSerializer,
-    ExecutedOps, ExecutedOpsDeserializer, ExecutedOpsSerializer,
+    ExecutedDenunciations, ExecutedOps, ExecutedOpsDeserializer, ExecutedOpsSerializer,
+    ProcessedDenunciationsDeserializer, ProcessedDenunciationsSerializer,
 };
 <span class="kw">use </span>massa_hash::{Hash, HashDeserializer, HASH_SIZE_BYTES};
 <span class="kw">use </span>massa_ledger_exports::{Key <span class="kw">as </span>LedgerKey, LedgerChanges, LedgerController};
@@ -982,7 +982,7 @@
 <span class="kw">use </span>std::ops::Bound::{Excluded, Included};
 <span class="kw">use </span>tracing::{debug, info};
 
-<span class="doccomment">/// Represents a final state `(ledger, async pool, executed_ops, executed_de and the state of the PoS)`
+<span class="doccomment">/// Represents a final state `(ledger, async pool, executed_ops, processed_de and the state of the PoS)`
 </span><span class="kw">pub struct </span>FinalState {
     <span class="doccomment">/// execution state configuration
     </span><span class="kw">pub</span>(<span class="kw">crate</span>) config: FinalStateConfig,
@@ -1043,8 +1043,8 @@
         <span class="comment">// create a default executed ops
         </span><span class="kw">let </span>executed_ops = ExecutedOps::new(config.executed_ops_config.clone());
 
-        <span class="comment">// create a default executed denunciations
-        </span><span class="kw">let </span>executed_denunciations =
+        <span class="comment">// create a default processed denunciations
+        </span><span class="kw">let </span>processed_denunciations =
             ExecutedDenunciations::new(config.executed_denunciations_config.clone());
 
         <span class="comment">// create the final state
@@ -1055,7 +1055,7 @@
             pos_state,
             config,
             executed_ops,
-            executed_denunciations,
+            executed_denunciations: processed_denunciations,
             changes_history: Default::default(), <span class="comment">// no changes in history
             </span>final_state_hash: Hash::from_bytes(FINAL_STATE_HASH_INITIAL_BYTES),
             last_start_period: <span class="number">0</span>,
@@ -1360,7 +1360,7 @@
         }
         <span class="comment">// 5. executed operations hash
         </span>hash_concat.extend(<span class="self">self</span>.executed_ops.hash.to_bytes());
-        <span class="comment">// 6. executed denunciations hash
+        <span class="comment">// 6. processed denunciations hash
         </span>hash_concat.extend(<span class="self">self</span>.executed_denunciations.hash.to_bytes());
         <span class="comment">// 7. compute and save final state hash
         </span><span class="self">self</span>.final_state_hash = Hash::compute_from(<span class="kw-2">&amp;</span>hash_concat);
@@ -1628,7 +1628,7 @@
     cycle_history_serializer: CycleHistorySerializer,
     deferred_credits_serializer: DeferredCreditsSerializer,
     executed_ops_serializer: ExecutedOpsSerializer,
-    executed_denunciations_serializer: ExecutedDenunciationsSerializer,
+    processed_denunciations_serializer: ProcessedDenunciationsSerializer,
     slot_serializer: SlotSerializer,
 }
 
@@ -1660,7 +1660,7 @@
             cycle_history_serializer: CycleHistorySerializer::new(),
             deferred_credits_serializer: DeferredCreditsSerializer::new(),
             executed_ops_serializer: ExecutedOpsSerializer::new(),
-            executed_denunciations_serializer: ExecutedDenunciationsSerializer::new(),
+            processed_denunciations_serializer: ProcessedDenunciationsSerializer::new(),
             slot_serializer: SlotSerializer::new(),
         }
     }
@@ -1681,8 +1681,8 @@
         <span class="comment">// Serialize Executed Ops
         </span><span class="self">self</span>.executed_ops_serializer
             .serialize(<span class="kw-2">&amp;</span>value.sorted_ops, buffer)<span class="question-mark">?</span>;
-        <span class="comment">// Serialize Executed Denunciations
-        </span><span class="self">self</span>.executed_denunciations_serializer
+        <span class="comment">// Serialize Processed Denunciations
+        </span><span class="self">self</span>.processed_denunciations_serializer
             .serialize(<span class="kw-2">&amp;</span>value.sorted_denunciations, buffer)<span class="question-mark">?</span>;
 
         <span class="comment">// Serialize metadata
@@ -1712,7 +1712,7 @@
     cycle_history_deser: CycleHistoryDeserializer,
     deferred_credits_deser: DeferredCreditsDeserializer,
     executed_ops_deser: ExecutedOpsDeserializer,
-    executed_denunciations_deser: ExecutedDenunciationsDeserializer,
+    processed_denunciations_deser: ProcessedDenunciationsDeserializer,
     slot_deser: SlotDeserializer,
     hash_deser: HashDeserializer,
 }
@@ -1753,7 +1753,7 @@
                 max_executed_ops_length,
                 max_operations_per_block <span class="kw">as </span>u64,
             ),
-            executed_denunciations_deser: ExecutedDenunciationsDeserializer::new(
+            processed_denunciations_deser: ProcessedDenunciationsDeserializer::new(
                 config.thread_count,
                 config.endorsement_count,
                 config.max_executed_denunciations_length,
@@ -1787,8 +1787,8 @@
                 context(<span class="string">&quot;Failed executed_ops deserialization&quot;</span>, |input| {
                     <span class="self">self</span>.executed_ops_deser.deserialize(input)
                 }),
-                context(<span class="string">&quot;Failed executed_denunciations deserialization&quot;</span>, |input| {
-                    <span class="self">self</span>.executed_denunciations_deser.deserialize(input)
+                context(<span class="string">&quot;Failed processed_denunciations deserialization&quot;</span>, |input| {
+                    <span class="self">self</span>.processed_denunciations_deser.deserialize(input)
                 }),
                 context(<span class="string">&quot;Failed slot deserialization&quot;</span>, |input| {
                     <span class="self">self</span>.slot_deser.deserialize(input)

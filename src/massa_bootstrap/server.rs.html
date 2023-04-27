@@ -1387,7 +1387,7 @@
         <span class="kw">let </span>pos_cycle_part;
         <span class="kw">let </span>pos_credits_part;
         <span class="kw">let </span>exec_ops_part;
-        <span class="kw">let </span>exec_de_part;
+        <span class="kw">let </span>processed_de_part;
         <span class="kw">let </span>final_state_changes;
         <span class="kw">let </span>last_start_period;
 
@@ -1429,8 +1429,8 @@
 
             <span class="kw">let </span>(de_data, new_de_step) = final_state_read
                 .executed_denunciations
-                .get_executed_de_part(last_de_step);
-            exec_de_part = de_data;
+                .get_processed_de_part(last_de_step);
+            processed_de_part = de_data;
 
             <span class="kw">if let </span><span class="prelude-val">Some</span>(slot) = last_slot &amp;&amp; slot != final_state_read.slot {
                 <span class="kw">if </span>slot &gt; final_state_read.slot {
@@ -1543,7 +1543,7 @@
                 pos_cycle_part,
                 pos_credits_part,
                 exec_ops_part,
-                exec_de_part,
+                processed_de_part,
                 final_state_changes,
                 consensus_part,
                 consensus_outdated_ids,

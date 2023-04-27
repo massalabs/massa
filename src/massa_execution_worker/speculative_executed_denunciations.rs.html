@@ -104,7 +104,7 @@
 <span class="kw">use </span>massa_final_state::FinalState;
 <span class="kw">use </span>massa_models::denunciation::DenunciationIndex;
 
-<span class="doccomment">/// Speculative state of executed denunciations
+<span class="doccomment">/// Speculative state of processed denunciations
 </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">struct </span>SpeculativeExecutedDenunciations {
     <span class="doccomment">/// Thread-safe shared access to the final state. For reading only.
     </span>final_state: Arc&lt;RwLock&lt;FinalState&gt;&gt;,
@@ -118,7 +118,7 @@
 }
 
 <span class="kw">impl </span>SpeculativeExecutedDenunciations {
-    <span class="doccomment">/// Creates a new `SpeculativeExecutedDenunciations`
+    <span class="doccomment">/// Creates a new `SpeculativeProcessedDenunciations`
     ///
     /// # Arguments
     /// * `final_state`: thread-safe shared access the the final state
@@ -134,7 +134,7 @@
         }
     }
 
-    <span class="doccomment">/// Returns the set of operation IDs caused to the `SpeculativeExecutedDenunciations` since
+    <span class="doccomment">/// Returns the set of operation IDs caused to the `SpeculativeProcessedDenunciations` since
     /// its creation, and resets their local value to nothing
     </span><span class="kw">pub fn </span>take(<span class="kw-2">&amp;mut </span><span class="self">self</span>) -&gt; ExecutedDenunciationsChanges {
         std::mem::take(<span class="kw-2">&amp;mut </span><span class="self">self</span>.executed_denunciations)

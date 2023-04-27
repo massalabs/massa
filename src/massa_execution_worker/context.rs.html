@@ -1070,8 +1070,8 @@
     <span class="doccomment">/// speculative list of operations executed
     </span><span class="kw">pub </span>executed_ops: ExecutedOpsChanges,
 
-    <span class="doccomment">/// speculative list of executed denunciations
-    </span><span class="kw">pub </span>executed_denunciations: ExecutedDenunciationsChanges,
+    <span class="doccomment">/// speculative list of processed denunciations
+    </span><span class="kw">pub </span>processed_denunciations: ExecutedDenunciationsChanges,
 
     <span class="doccomment">/// speculative roll state changes caused so far in the context
     </span><span class="kw">pub </span>pos_changes: PoSChanges,
@@ -1125,8 +1125,8 @@
     <span class="doccomment">/// speculative list of executed operations
     </span>speculative_executed_ops: SpeculativeExecutedOps,
 
-    <span class="doccomment">/// speculative list of executed denunciations
-    </span>speculative_executed_denunciations: SpeculativeExecutedDenunciations,
+    <span class="doccomment">/// speculative list of processed denunciations
+    </span>speculative_processed_denunciations: SpeculativeExecutedDenunciations,
 
     <span class="doccomment">/// max gas for this execution
     </span><span class="kw">pub </span>max_gas: u64,
@@ -1213,7 +1213,7 @@
                 final_state.clone(),
                 active_history.clone(),
             ),
-            speculative_executed_denunciations: SpeculativeExecutedDenunciations::new(
+            speculative_processed_denunciations: SpeculativeExecutedDenunciations::new(
                 final_state,
                 active_history,
             ),
@@ -1244,7 +1244,7 @@
             async_pool_changes: <span class="self">self</span>.speculative_async_pool.get_snapshot(),
             pos_changes: <span class="self">self</span>.speculative_roll_state.get_snapshot(),
             executed_ops: <span class="self">self</span>.speculative_executed_ops.get_snapshot(),
-            executed_denunciations: <span class="self">self</span>.speculative_executed_denunciations.get_snapshot(),
+            processed_denunciations: <span class="self">self</span>.speculative_processed_denunciations.get_snapshot(),
             created_addr_index: <span class="self">self</span>.created_addr_index,
             created_event_index: <span class="self">self</span>.created_event_index,
             stack: <span class="self">self</span>.stack.clone(),
@@ -1270,8 +1270,8 @@
             .reset_to_snapshot(snapshot.pos_changes);
         <span class="self">self</span>.speculative_executed_ops
             .reset_to_snapshot(snapshot.executed_ops);
-        <span class="self">self</span>.speculative_executed_denunciations
-            .reset_to_snapshot(snapshot.executed_denunciations);
+        <span class="self">self</span>.speculative_processed_denunciations
+            .reset_to_snapshot(snapshot.processed_denunciations);
         <span class="self">self</span>.created_addr_index = snapshot.created_addr_index;
         <span class="self">self</span>.created_event_index = snapshot.created_event_index;
         <span class="self">self</span>.stack = snapshot.stack;
@@ -1898,7 +1898,7 @@
             async_pool_changes: <span class="self">self</span>.speculative_async_pool.take(),
             pos_changes: <span class="self">self</span>.speculative_roll_state.take(),
             executed_ops_changes: <span class="self">self</span>.speculative_executed_ops.take(),
-            executed_denunciations_changes: <span class="self">self</span>.speculative_executed_denunciations.take(),
+            executed_denunciations_changes: <span class="self">self</span>.speculative_processed_denunciations.take(),
         };
         ExecutionOutput {
             slot,
@@ -1982,7 +1982,7 @@
 
     <span class="doccomment">/// Check if a denunciation was previously executed (to prevent reuse)
     </span><span class="kw">pub fn </span>is_denunciation_executed(<span class="kw-2">&amp;</span><span class="self">self</span>, de_idx: <span class="kw-2">&amp;</span>DenunciationIndex) -&gt; bool {
-        <span class="self">self</span>.speculative_executed_denunciations
+        <span class="self">self</span>.speculative_processed_denunciations
             .is_denunciation_executed(de_idx)
     }
 
@@ -2003,10 +2003,10 @@
             .insert_executed_op(op_id, op_exec_status, op_valid_until_slot)
     }
 
-    <span class="doccomment">/// Insert a executed denunciation.
+    <span class="doccomment">/// Insert a processed denunciation.
     ///
     </span><span class="kw">pub fn </span>insert_executed_denunciation(<span class="kw-2">&amp;mut </span><span class="self">self</span>, denunciation_idx: <span class="kw-2">&amp;</span>DenunciationIndex) {
-        <span class="self">self</span>.speculative_executed_denunciations
+        <span class="self">self</span>.speculative_processed_denunciations
             .insert_executed_denunciation(denunciation_idx.clone());
     }
 

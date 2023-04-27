@@ -537,7 +537,7 @@
                 context(<span class="string">&quot;Failed executed_ops_changes deserialization&quot;</span>, |input| {
                     <span class="self">self</span>.ops_changes_deserializer.deserialize(input)
                 }),
-                context(<span class="string">&quot;Failed de_changes deserialization&quot;</span>, |input| {
+                context(<span class="string">&quot;Failed processed_de_changes deserialization&quot;</span>, |input| {
                     <span class="self">self</span>.de_changes_deserializer.deserialize(input)
                 }),
             )),
@@ -548,13 +548,13 @@
                 async_pool_changes,
                 roll_state_changes,
                 executed_ops,
-                executed_denunciations,
+                processed_denunciations,
             )| StateChanges {
                 ledger_changes,
                 async_pool_changes,
                 pos_changes: roll_state_changes,
                 executed_ops_changes: executed_ops,
-                executed_denunciations_changes: executed_denunciations,
+                executed_denunciations_changes: processed_denunciations,
             },
         )
         .parse(buffer)

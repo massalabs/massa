@@ -964,6 +964,7 @@
 <a href="#964" id="964">964</a>
 <a href="#965" id="965">965</a>
 <a href="#966" id="966">966</a>
+<a href="#967" id="967">967</a>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="kw">use </span><span class="kw">crate</span>::settings::BootstrapServerMessageDeserializerArgs;
@@ -975,8 +976,8 @@
     BootstrapableGraph, BootstrapableGraphDeserializer, BootstrapableGraphSerializer,
 };
 <span class="kw">use </span>massa_executed_ops::{
-    ExecutedDenunciationsDeserializer, ExecutedDenunciationsSerializer, ExecutedOpsDeserializer,
-    ExecutedOpsSerializer,
+    ExecutedOpsDeserializer, ExecutedOpsSerializer, ProcessedDenunciationsDeserializer,
+    ProcessedDenunciationsSerializer,
 };
 <span class="kw">use </span>massa_final_state::{StateChanges, StateChangesDeserializer, StateChangesSerializer};
 <span class="kw">use </span>massa_ledger_exports::{Key <span class="kw">as </span>LedgerKey, KeyDeserializer, KeySerializer};
@@ -1049,7 +1050,7 @@
         <span class="doccomment">/// Part of the executed operations
         </span>exec_ops_part: BTreeMap&lt;Slot, PreHashSet&lt;OperationId&gt;&gt;,
         <span class="doccomment">/// Part of the executed operations
-        </span>exec_de_part: BTreeMap&lt;Slot, HashSet&lt;DenunciationIndex&gt;&gt;,
+        </span>processed_de_part: BTreeMap&lt;Slot, HashSet&lt;DenunciationIndex&gt;&gt;,
         <span class="doccomment">/// Ledger change for addresses inferior to `address` of the client message until the actual slot.
         </span>final_state_changes: Vec&lt;(Slot, StateChanges)&gt;,
         <span class="doccomment">/// Part of the consensus graph
@@ -1121,7 +1122,7 @@
     opt_pos_cycle_serializer: OptionSerializer&lt;CycleInfo, CycleInfoSerializer&gt;,
     pos_credits_serializer: DeferredCreditsSerializer,
     exec_ops_serializer: ExecutedOpsSerializer,
-    exec_de_serializer: ExecutedDenunciationsSerializer,
+    processed_de_serializer: ProcessedDenunciationsSerializer,
     opt_last_start_period_serializer: OptionSerializer&lt;u64, U64VarIntSerializer&gt;,
     store_serializer: MipStoreRawSerializer,
 }
@@ -1150,7 +1151,7 @@
             opt_pos_cycle_serializer: OptionSerializer::new(CycleInfoSerializer::new()),
             pos_credits_serializer: DeferredCreditsSerializer::new(),
             exec_ops_serializer: ExecutedOpsSerializer::new(),
-            exec_de_serializer: ExecutedDenunciationsSerializer::new(),
+            processed_de_serializer: ProcessedDenunciationsSerializer::new(),
             opt_last_start_period_serializer: OptionSerializer::new(U64VarIntSerializer::new()),
             store_serializer: MipStoreRawSerializer::new(),
         }
@@ -1201,7 +1202,7 @@
                 pos_cycle_part,
                 pos_credits_part,
                 exec_ops_part,
-                exec_de_part,
+                processed_de_part,
                 final_state_changes,
                 consensus_part,
                 consensus_outdated_ids,
@@ -1226,7 +1227,8 @@
                 <span class="comment">// executed operations
                 </span><span class="self">self</span>.exec_ops_serializer.serialize(exec_ops_part, buffer)<span class="question-mark">?</span>;
                 <span class="comment">// processed denunciations
-                </span><span class="self">self</span>.exec_de_serializer.serialize(exec_de_part, buffer)<span class="question-mark">?</span>;
+                </span><span class="self">self</span>.processed_de_serializer
+                    .serialize(processed_de_part, buffer)<span class="question-mark">?</span>;
                 <span class="comment">// changes length
                 </span><span class="self">self</span>.u64_serializer
                     .serialize(<span class="kw-2">&amp;</span>(final_state_changes.len() <span class="kw">as </span>u64), buffer)<span class="question-mark">?</span>;
@@ -1292,7 +1294,7 @@
     opt_pos_cycle_deserializer: OptionDeserializer&lt;CycleInfo, CycleInfoDeserializer&gt;,
     pos_credits_deserializer: DeferredCreditsDeserializer,
     exec_ops_deserializer: ExecutedOpsDeserializer,
-    executed_de_deserializer: ExecutedDenunciationsDeserializer,
+    processed_de_deserializer: ProcessedDenunciationsDeserializer,
     opt_last_start_period_deserializer: OptionDeserializer&lt;u64, U64VarIntDeserializer&gt;,
     store_deserializer: MipStoreRawDeserializer,
 }
@@ -1369,7 +1371,7 @@
                 args.max_executed_ops_length,
                 args.max_operations_per_block <span class="kw">as </span>u64,
             ),
-            executed_de_deserializer: ExecutedDenunciationsDeserializer::new(
+            processed_de_deserializer: ProcessedDenunciationsDeserializer::new(
                 args.thread_count,
                 args.endorsement_count,
                 args.max_denunciation_changes_length,
@@ -1493,8 +1495,8 @@
                     context(<span class="string">&quot;Failed exec_ops_part deserialization&quot;</span>, |input| {
                         <span class="self">self</span>.exec_ops_deserializer.deserialize(input)
                     }),
-                    context(<span class="string">&quot;Failed exec_de_part deserialization&quot;</span>, |input| {
-                        <span class="self">self</span>.executed_de_deserializer.deserialize(input)
+                    context(<span class="string">&quot;Failed processed_de_part deserialization&quot;</span>, |input| {
+                        <span class="self">self</span>.processed_de_deserializer.deserialize(input)
                     }),
                     context(
                         <span class="string">&quot;Failed final_state_changes deserialization&quot;</span>,
@@ -1526,7 +1528,7 @@
                         pos_cycle_part,
                         pos_credits_part,
                         exec_ops_part,
-                        exec_de_part,
+                        processed_de_part,
                         final_state_changes,
                         consensus_part,
                         consensus_outdated_ids,
@@ -1539,7 +1541,7 @@
                             pos_cycle_part,
                             pos_credits_part,
                             exec_ops_part,
-                            exec_de_part,
+                            processed_de_part,
                             final_state_changes,
                             consensus_part,
                             consensus_outdated_ids,
@@ -1588,7 +1590,7 @@
         </span>last_credits_step: StreamingStep&lt;Slot&gt;,
         <span class="doccomment">/// Last received executed operation associated slot
         </span>last_ops_step: StreamingStep&lt;Slot&gt;,
-        <span class="doccomment">/// Last received executed denunciations associated slot
+        <span class="doccomment">/// Last received processed denunciations associated slot
         </span>last_de_step: StreamingStep&lt;Slot&gt;,
         <span class="doccomment">/// Last received consensus block slot
         </span>last_consensus_step: StreamingStep&lt;PreHashSet&lt;BlockId&gt;&gt;,
