@@ -285,6 +285,9 @@
 <a href="#285" id="285">285</a>
 <a href="#286" id="286">286</a>
 <a href="#287" id="287">287</a>
+<a href="#288" id="288">288</a>
+<a href="#289" id="289">289</a>
+<a href="#290" id="290">290</a>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="kw">use </span><span class="kw">crate</span>::error::BootstrapError;
@@ -462,14 +465,14 @@
         msg: BootstrapServerMessage,
         duration: <span class="prelude-ty">Option</span>&lt;Duration&gt;,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;(), BootstrapError&gt; {
-        <span class="comment">// serialize the message to bytes
+        <span class="comment">// serialize message
         </span><span class="kw">let </span><span class="kw-2">mut </span>msg_bytes = Vec::new();
         BootstrapServerMessageSerializer::new().serialize(<span class="kw-2">&amp;</span>msg, <span class="kw-2">&amp;mut </span>msg_bytes)<span class="question-mark">?</span>;
         <span class="kw">let </span>msg_len: u32 = msg_bytes.len().try_into().map_err(|e| {
             BootstrapError::GeneralError(<span class="macro">format!</span>(<span class="string">&quot;bootstrap message too large to encode: {}&quot;</span>, e))
         })<span class="question-mark">?</span>;
 
-        <span class="comment">// compute signature, and extract the bytes
+        <span class="comment">// compute signature
         </span><span class="kw">let </span>sig = {
             <span class="kw">if let </span><span class="prelude-val">Some</span>(prev_message) = <span class="self">self</span>.prev_message {
                 <span class="comment">// there was a previous message: sign(prev_msg_hash + msg)
@@ -484,17 +487,20 @@
             </span>}
         };
 
-        <span class="comment">// construct msg length, and convert to bytes
-        </span><span class="kw">let </span>msg_len_bytes = msg_len.to_be_bytes_min(<span class="self">self</span>.max_bootstrap_message_size)<span class="question-mark">?</span>;
-
-        <span class="comment">// organize the bytes into a sendable array
-        </span><span class="kw">let </span>stream_data = [sig.to_bytes().as_slice(), <span class="kw-2">&amp;</span>msg_len_bytes, <span class="kw-2">&amp;</span>msg_bytes].concat();
-
-        <span class="comment">// send the data
+        <span class="comment">// send signature
         </span><span class="self">self</span>.duplex.set_write_timeout(duration)<span class="question-mark">?</span>;
-        <span class="self">self</span>.duplex.write_all(<span class="kw-2">&amp;</span>stream_data)<span class="question-mark">?</span>;
+        <span class="self">self</span>.duplex.write_all(<span class="kw-2">&amp;</span>sig.to_bytes())<span class="question-mark">?</span>;
 
-        <span class="comment">// update prev sig
+        <span class="comment">// send message length
+        </span>{
+            <span class="kw">let </span>msg_len_bytes = msg_len.to_be_bytes_min(<span class="self">self</span>.max_bootstrap_message_size)<span class="question-mark">?</span>;
+            <span class="self">self</span>.duplex.write_all(<span class="kw-2">&amp;</span>msg_len_bytes)<span class="question-mark">?</span>;
+        }
+
+        <span class="comment">// send message
+        </span><span class="self">self</span>.duplex.write_all(<span class="kw-2">&amp;</span>msg_bytes)<span class="question-mark">?</span>;
+
+        <span class="comment">// save prev sig
         </span><span class="self">self</span>.prev_message = <span class="prelude-val">Some</span>(Hash::compute_from(<span class="kw-2">&amp;</span>sig.to_bytes()));
 
         <span class="prelude-val">Ok</span>(())
