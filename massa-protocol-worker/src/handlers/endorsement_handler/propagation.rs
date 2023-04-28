@@ -8,7 +8,7 @@ use massa_models::{
 };
 use massa_protocol_exports::ProtocolConfig;
 use peernet::peer_id::PeerId;
-use tracing::log::warn;
+use tracing::{info, log::warn};
 
 use crate::{messages::MessagesSerializer, wrap_network::ActiveConnectionsTrait};
 
@@ -44,7 +44,7 @@ impl PropagationThread {
                                         endorsements.extend(endorsements2);
                                     }
                                     EndorsementHandlerPropagationCommand::Stop => {
-                                        println!("Stop endorsement propagation thread");
+                                        info!("Stop endorsement propagation thread");
                                         return;
                                     }
                                 }
@@ -132,13 +132,13 @@ impl PropagationThread {
                             }
                         }
                         EndorsementHandlerPropagationCommand::Stop => {
-                            println!("Stop endorsement propagation thread");
+                            info!("Stop endorsement propagation thread");
                             return;
                         }
                     }
                 }
                 Err(_) => {
-                    println!("Stop endorsement propagation thread");
+                    info!("Stop endorsement propagation thread");
                     return;
                 }
             }

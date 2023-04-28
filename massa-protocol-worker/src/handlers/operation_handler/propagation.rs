@@ -6,7 +6,7 @@ use massa_logging::massa_trace;
 use massa_models::operation::OperationId;
 use massa_protocol_exports::ProtocolConfig;
 use peernet::peer_id::PeerId;
-use tracing::log::warn;
+use tracing::{info, log::warn};
 
 use crate::{
     handlers::operation_handler::OperationMessage, messages::MessagesSerializer,
@@ -56,7 +56,7 @@ impl PropagationThread {
                         }
                     }
                     OperationHandlerPropagationCommand::Stop => {
-                        println!("Stop operation propagation thread");
+                        info!("Stop operation propagation thread");
                         return;
                     }
                 },

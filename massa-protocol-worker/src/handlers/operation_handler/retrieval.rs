@@ -31,7 +31,7 @@ use crate::{
     sig_verifier::verify_sigs_batch,
     wrap_network::ActiveConnectionsTrait,
 };
-use tracing::warn;
+use tracing::{info, warn};
 
 use super::{
     cache::SharedOperationCache,
@@ -127,7 +127,7 @@ impl RetrievalThread {
                             }
                         }
                         Err(_) => {
-                            println!("Stop operation retrieval thread");
+                            info!("Stop operation retrieval thread");
                             return;
                         }
                     }
@@ -136,12 +136,12 @@ impl RetrievalThread {
                     match msg {
                         Ok(cmd) => match cmd {
                             OperationHandlerRetrievalCommand::Stop => {
-                                println!("Stop operation retrieval thread");
+                                info!("Stop operation retrieval thread");
                                 return;
                             }
                         },
                         Err(_) => {
-                            println!("Stop operation retrieval thread");
+                            info!("Stop operation retrieval thread");
                             return;
                         }
                     }

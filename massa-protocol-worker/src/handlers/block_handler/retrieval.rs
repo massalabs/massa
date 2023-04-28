@@ -40,7 +40,7 @@ use massa_serialization::{DeserializeError, Deserializer, Serializer};
 use massa_storage::Storage;
 use massa_time::TimeError;
 use peernet::peer_id::PeerId;
-use tracing::warn;
+use tracing::{info, warn};
 
 use super::{
     cache::SharedBlockCache,
@@ -179,7 +179,7 @@ impl RetrievalThread {
                             }
                         },
                         Err(_) => {
-                            println!("Stop block retrieval thread");
+                            info!("Stop block retrieval thread");
                             return;
                         }
                     }
@@ -212,13 +212,13 @@ impl RetrievalThread {
                                     );
                                 },
                                 BlockHandlerRetrievalCommand::Stop => {
-                                    println!("Stop block retrieval thread from command receiver");
+                                    info!("Stop block retrieval thread from command receiver");
                                     return;
                                 }
                             }
                         },
                         Err(_) => {
-                            println!("Stop block retrieval thread from command receiver");
+                            info!("Stop block retrieval thread from command receiver");
                             return;
                         }
                     }

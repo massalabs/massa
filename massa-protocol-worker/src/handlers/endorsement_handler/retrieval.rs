@@ -18,7 +18,7 @@ use massa_serialization::{DeserializeError, Deserializer};
 use massa_storage::Storage;
 use massa_time::MassaTime;
 use peernet::peer_id::PeerId;
-use tracing::warn;
+use tracing::{info, warn};
 
 use crate::{
     handlers::{
@@ -91,7 +91,7 @@ impl RetrievalThread {
                             }
                         }
                         Err(_) => {
-                            println!("Stop endorsement retrieval thread");
+                            info!("Stop endorsement retrieval thread");
                             return;
                         }
                     }
@@ -101,13 +101,13 @@ impl RetrievalThread {
                         Ok(msg) => {
                             match msg {
                                 EndorsementHandlerRetrievalCommand::Stop => {
-                                    println!("Stop endorsement retrieval thread");
+                                    info!("Stop endorsement retrieval thread");
                                     return;
                                 }
                             }
                         }
                         Err(_) => {
-                            println!("Stop endorsement retrieval thread");
+                            info!("Stop endorsement retrieval thread");
                             return;
                         }
                     }

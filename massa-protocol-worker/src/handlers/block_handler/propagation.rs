@@ -7,7 +7,7 @@ use massa_models::{block_id::BlockId, prehash::PreHashSet};
 use massa_protocol_exports::{ProtocolConfig, ProtocolError};
 use massa_storage::Storage;
 use peernet::peer_id::PeerId;
-use tracing::warn;
+use tracing::{info, warn};
 
 use crate::{
     handlers::{block_handler::BlockMessage, peer_handler::models::PeerManagementCmd},
@@ -140,13 +140,13 @@ impl PropagationThread {
                             }
                         }
                         BlockHandlerPropagationCommand::Stop => {
-                            println!("Stop block propagation thread");
+                            info!("Stop block propagation thread");
                             return;
                         }
                     }
                 }
                 Err(_) => {
-                    println!("Stop block propagation thread");
+                    info!("Stop block propagation thread");
                     return;
                 }
             }
