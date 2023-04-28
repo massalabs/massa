@@ -23,13 +23,6 @@ use std::{convert::TryInto, str::FromStr};
 
 use transition::Versioned;
 
-// LEGACY TODO (not sure what this meant): REMOVE THESE DECLARATIONS AND HANDLE ERRORS
-
-/// Size in bytes of a public key
-pub const PUBLIC_KEY_SIZE_BYTES: usize = 32;
-/// Size in bytes of signature key
-pub const SIGNATURE_SIZE_BYTES: usize = 32;
-
 #[allow(missing_docs)]
 /// A versioned KeyPair used for signature and decryption
 #[transition::versioned(versions("0", "1"))]
@@ -824,6 +817,9 @@ impl PublicKeyDeserializer {
     }
 }
 
+/// IMPORTANT TODO
+pub const PUBLIC_KEY_SIZE_BYTES: usize = 32;
+
 impl Deserializer<PublicKey> for PublicKeyDeserializer {
     /// ```
     /// use massa_signature::{PublicKey, PublicKeyDeserializer, KeyPair};
@@ -1074,7 +1070,7 @@ impl Signature {
     /// let data = Hash::compute_from("Hello World!".as_bytes());
     /// let signature = keypair.sign(&data).unwrap();
     ///
-    /// let serialized = signature.into_bytes();
+    /// let serialized = signature.to_bytes();
     /// let deserialized: Signature = Signature::from_bytes(&serialized).unwrap();
     /// ```
     pub fn from_bytes(data: &[u8]) -> Result<Self, MassaSignatureError> {
@@ -1332,6 +1328,9 @@ impl SignatureDeserializer {
     }
 }
 
+/// IMPORTANT TODO
+pub const SIGNATURE_SIZE_BYTES: usize = 64;
+
 impl Deserializer<Signature> for SignatureDeserializer {
     /// ```
     /// use massa_signature::{Signature, SignatureDeserializer, KeyPair};
@@ -1341,7 +1340,7 @@ impl Deserializer<Signature> for SignatureDeserializer {
     /// let keypair = KeyPair::generate(0).unwrap();
     /// let data = Hash::compute_from("Hello World!".as_bytes());
     /// let signature = keypair.sign(&data).unwrap();
-    /// let serialized = signature.into_bytes();
+    /// let serialized = signature.to_bytes();
     /// let (rest, deser_signature) = SignatureDeserializer::new().deserialize::<DeserializeError>(&serialized).unwrap();
     /// assert!(rest.is_empty());
     /// assert_eq!(signature, deser_signature);
@@ -1351,21 +1350,20 @@ impl Deserializer<Signature> for SignatureDeserializer {
         buffer: &'a [u8],
     ) -> IResult<&'a [u8], Signature, E> {
         // Can't use try into directly because it fails if there is more data in the buffer
-        if buffer.len() < SIGNATURE_SIZE_BYTES {
+        if buffer.len() < SIGNATURE_SIZE_BYTES + 1 {
             return Err(nom::Err::Error(ParseError::from_error_kind(
                 buffer,
                 nom::error::ErrorKind::LengthValue,
             )));
         }
-        let signature = Signature::from_bytes(buffer[..SIGNATURE_SIZE_BYTES].try_into().unwrap())
-            .map_err(|_| {
+        let signature = Signature::from_bytes(buffer).map_err(|_| {
             nom::Err::Error(ParseError::from_error_kind(
                 buffer,
                 nom::error::ErrorKind::Fail,
             ))
         })?;
         // Safe because the signature deserialization success
-        Ok((&buffer[SIGNATURE_SIZE_BYTES..], signature))
+        Ok((&buffer[SIGNATURE_SIZE_BYTES + 1..], signature))
     }
 }
 
