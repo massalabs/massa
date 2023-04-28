@@ -421,13 +421,12 @@ impl ExecutionState {
 
         let de_slot = denunciation.get_slot();
 
-        let last_start_period = self.final_state.read().last_start_period;
-        if de_slot.period <= last_start_period {
+        if de_slot.period <= self.config.last_start_period {
             // denunciation created before last restart (can be 0 or >= 0 after a network restart) - ignored
             // Note: as we use '<=', also ignore denunciation created for genesis block
             return Err(ExecutionError::IncludeDenunciationError(format!(
                 "Denunciation target ({}) is before the last start period: {}",
-                de_slot, last_start_period
+                de_slot, self.config.last_start_period
             )));
         }
 
