@@ -16,7 +16,7 @@ use std::str::FromStr;
 #[test]
 #[ignore]
 fn basic_creation() {
-    let keypair = KeyPair::generate();
+    let keypair = KeyPair::generate(0).unwrap();
     let mut test_factory = TestFactory::new(&keypair);
     let (block_id, storage) = test_factory.get_next_created_block(None, None);
     assert_eq!(block_id, storage.read_blocks().get(&block_id).unwrap().id);
@@ -26,7 +26,7 @@ fn basic_creation() {
 #[test]
 #[ignore]
 fn basic_creation_with_operation() {
-    let keypair = KeyPair::generate();
+    let keypair = KeyPair::generate(0).unwrap();
     let mut test_factory = TestFactory::new(&keypair);
 
     let content = Operation {
@@ -49,7 +49,7 @@ fn basic_creation_with_operation() {
 #[test]
 #[ignore]
 fn basic_creation_with_multiple_operations() {
-    let keypair = KeyPair::generate();
+    let keypair = KeyPair::generate(0).unwrap();
     let mut test_factory = TestFactory::new(&keypair);
 
     let content = Operation {

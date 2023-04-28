@@ -62,7 +62,7 @@ impl std::str::FromStr for NodeId {
     /// # use serde::{Deserialize, Serialize};
     /// # use std::str::FromStr;
     /// # use massa_models::node::NodeId;
-    /// # let keypair = KeyPair::generate();
+    /// # let keypair = KeyPair::generate(0).unwrap();
     /// # let node_id = NodeId::new(keypair.get_public_key());
     /// let ser = node_id.to_string();
     /// let res_node_id = NodeId::from_str(&ser).unwrap();

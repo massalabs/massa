@@ -52,7 +52,7 @@ fn test_simple_get_operations() {
         config,
         |mut pool_manager, mut pool_controller, execution_receiver, mut storage| {
             //setup meta-data
-            let keypair = KeyPair::generate();
+            let keypair = KeyPair::generate(0).unwrap();
             let op_gen = OpGenerator::default().creator(keypair.clone()).expirery(1);
             let creator_address = Address::from_public_key(&keypair.get_public_key());
             let creator_thread = creator_address.get_thread(config.thread_count);
@@ -148,7 +148,7 @@ fn test_get_operations_overflow() {
     static OP_LEN: usize = 10;
     static MAX_OP_LEN: usize = 5;
     let mut max_block_size = 0;
-    let keypair = KeyPair::generate();
+    let keypair = KeyPair::generate(0).unwrap();
     let creator_address = Address::from_public_key(&keypair.get_public_key());
     let op_gen = OpGenerator::default().expirery(1).creator(keypair);
     let operations = create_some_operations(OP_LEN, &op_gen);

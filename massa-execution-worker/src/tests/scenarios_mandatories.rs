@@ -154,7 +154,7 @@ mod tests {
         storage: &Storage,
         execution_controller: Box<dyn ExecutionController>,
     ) {
-        let genesis_keypair = KeyPair::generate();
+        let genesis_keypair = KeyPair::generate(0).unwrap();
         let mut finalized_blocks: HashMap<Slot, BlockId> = HashMap::new();
         let mut block_storage: PreHashMap<BlockId, Storage> = PreHashMap::default();
         for thread in 0..config.thread_count {
@@ -224,7 +224,12 @@ mod tests {
         // create the block containing the smart contract execution operation
         let operation = create_execute_sc_operation(&keypair, bytecode, datastore).unwrap();
         storage.store_operations(vec![operation.clone()]);
-        let block = create_block(KeyPair::generate(), vec![operation], Slot::new(1, 0)).unwrap();
+        let block = create_block(
+            KeyPair::generate(0).unwrap(),
+            vec![operation],
+            Slot::new(1, 0),
+        )
+        .unwrap();
         // store the block in storage
         storage.store_block(block.clone());
 
@@ -288,7 +293,12 @@ mod tests {
         // Init new storage for this block
         let mut storage = Storage::create_root();
         storage.store_operations(vec![operation.clone()]);
-        let block = create_block(KeyPair::generate(), vec![operation], Slot::new(2, 0)).unwrap();
+        let block = create_block(
+            KeyPair::generate(0).unwrap(),
+            vec![operation],
+            Slot::new(2, 0),
+        )
+        .unwrap();
         // store the block in storage
         storage.store_block(block.clone());
         // set our block as a final block so the message is sent
@@ -365,7 +375,12 @@ mod tests {
         // create the block containing the smart contract execution operation
         let operation = create_execute_sc_operation(&keypair, bytecode, datastore).unwrap();
         storage.store_operations(vec![operation.clone()]);
-        let block = create_block(KeyPair::generate(), vec![operation], Slot::new(1, 0)).unwrap();
+        let block = create_block(
+            KeyPair::generate(0).unwrap(),
+            vec![operation],
+            Slot::new(1, 0),
+        )
+        .unwrap();
         // store the block in storage
         storage.store_block(block.clone());
 
@@ -407,7 +422,12 @@ mod tests {
         // Init new storage for this block
         let mut storage = Storage::create_root();
         storage.store_operations(vec![operation.clone()]);
-        let block = create_block(KeyPair::generate(), vec![operation], Slot::new(2, 0)).unwrap();
+        let block = create_block(
+            KeyPair::generate(0).unwrap(),
+            vec![operation],
+            Slot::new(2, 0),
+        )
+        .unwrap();
         // store the block in storage
         storage.store_block(block.clone());
         // set our block as a final block so the message is sent
@@ -499,7 +519,12 @@ mod tests {
         // create the block contaning the smart contract execution operation
         let operation = create_execute_sc_operation(&keypair, bytecode, datastore).unwrap();
         storage.store_operations(vec![operation.clone()]);
-        let block = create_block(KeyPair::generate(), vec![operation], Slot::new(1, 0)).unwrap();
+        let block = create_block(
+            KeyPair::generate(0).unwrap(),
+            vec![operation],
+            Slot::new(1, 0),
+        )
+        .unwrap();
         // store the block in storage
         storage.store_block(block.clone());
 
@@ -597,7 +622,12 @@ mod tests {
         let operation = create_execute_sc_operation(&keypair, bytecode, datastore).unwrap();
         let tested_op_id = operation.id.clone();
         storage.store_operations(vec![operation.clone()]);
-        let block = create_block(KeyPair::generate(), vec![operation], Slot::new(1, 0)).unwrap();
+        let block = create_block(
+            KeyPair::generate(0).unwrap(),
+            vec![operation],
+            Slot::new(1, 0),
+        )
+        .unwrap();
         // store the block in storage
         storage.store_block(block.clone());
 
@@ -698,7 +728,7 @@ mod tests {
             create_execute_sc_operation(&keypair, call_bytecode, datastore).unwrap();
         storage.store_operations(vec![local_exec_op.clone(), local_call_op.clone()]);
         let block = create_block(
-            KeyPair::generate(),
+            KeyPair::generate(0).unwrap(),
             vec![local_exec_op.clone(), local_call_op.clone()],
             Slot::new(1, 0),
         )
@@ -808,7 +838,7 @@ mod tests {
         // create the block contaning the operation
         let op = create_execute_sc_operation(&keypair, op_bytecode, datastore.clone()).unwrap();
         storage.store_operations(vec![op.clone()]);
-        let block = create_block(KeyPair::generate(), vec![op], Slot::new(1, 0)).unwrap();
+        let block = create_block(KeyPair::generate(0).unwrap(), vec![op], Slot::new(1, 0)).unwrap();
         // store the block in storage
         storage.store_block(block.clone());
 
@@ -1066,7 +1096,12 @@ mod tests {
         .unwrap();
         // create the block containing the transaction operation
         storage.store_operations(vec![operation.clone()]);
-        let block = create_block(KeyPair::generate(), vec![operation], Slot::new(1, 0)).unwrap();
+        let block = create_block(
+            KeyPair::generate(0).unwrap(),
+            vec![operation],
+            Slot::new(1, 0),
+        )
+        .unwrap();
         // store the block in storage
         storage.store_block(block.clone());
         // set our block as a final block so the transaction is processed
@@ -1155,7 +1190,12 @@ mod tests {
         .unwrap();
         // create the block containing the transaction operation
         storage.store_operations(vec![operation.clone()]);
-        let block = create_block(KeyPair::generate(), vec![operation], Slot::new(1, 0)).unwrap();
+        let block = create_block(
+            KeyPair::generate(0).unwrap(),
+            vec![operation],
+            Slot::new(1, 0),
+        )
+        .unwrap();
         // store the block in storage
         storage.store_block(block.clone());
         // set our block as a final block so the transaction is processed
@@ -1248,7 +1288,12 @@ mod tests {
         .unwrap();
         // create the block containing the roll buy operation
         storage.store_operations(vec![operation.clone()]);
-        let block = create_block(KeyPair::generate(), vec![operation], Slot::new(1, 0)).unwrap();
+        let block = create_block(
+            KeyPair::generate(0).unwrap(),
+            vec![operation],
+            Slot::new(1, 0),
+        )
+        .unwrap();
         // store the block in storage
         storage.store_block(block.clone());
         // set our block as a final block so the purchase is processed
@@ -1330,7 +1375,12 @@ mod tests {
         .unwrap();
         // create the block containing the roll buy operation
         storage.store_operations(vec![operation.clone()]);
-        let block = create_block(KeyPair::generate(), vec![operation], Slot::new(1, 0)).unwrap();
+        let block = create_block(
+            KeyPair::generate(0).unwrap(),
+            vec![operation],
+            Slot::new(1, 0),
+        )
+        .unwrap();
         // store the block in storage
         storage.store_block(block.clone());
         // set our block as a final block so the purchase is processed
@@ -1447,7 +1497,7 @@ mod tests {
         // create the block containing the roll buy operation
         storage.store_operations(vec![operation1.clone(), operation2.clone()]);
         let block = create_block(
-            KeyPair::generate(),
+            KeyPair::generate(0).unwrap(),
             vec![operation1, operation2],
             Slot::new(3, 0),
         )
@@ -1581,7 +1631,12 @@ mod tests {
         let operation =
             create_execute_sc_operation(&keypair, bytecode, BTreeMap::default()).unwrap();
         storage.store_operations(vec![operation.clone()]);
-        let block = create_block(KeyPair::generate(), vec![operation], Slot::new(1, 0)).unwrap();
+        let block = create_block(
+            KeyPair::generate(0).unwrap(),
+            vec![operation],
+            Slot::new(1, 0),
+        )
+        .unwrap();
         // store the block in storage
         storage.store_block(block.clone());
         // set our block as a final block
@@ -1657,7 +1712,12 @@ mod tests {
         // create the block containing the erroneous smart contract execution operation
         let operation = create_execute_sc_operation(&keypair, bytecode, datastore).unwrap();
         storage.store_operations(vec![operation.clone()]);
-        let block = create_block(KeyPair::generate(), vec![operation], Slot::new(1, 0)).unwrap();
+        let block = create_block(
+            KeyPair::generate(0).unwrap(),
+            vec![operation],
+            Slot::new(1, 0),
+        )
+        .unwrap();
         // store the block in storage
         storage.store_block(block.clone());
         // set our block as a final block
@@ -1731,7 +1791,12 @@ mod tests {
         // create the block containing the erroneous smart contract execution operation
         let operation = create_execute_sc_operation(&keypair, bytecode, datastore).unwrap();
         storage.store_operations(vec![operation.clone()]);
-        let block = create_block(KeyPair::generate(), vec![operation], Slot::new(1, 0)).unwrap();
+        let block = create_block(
+            KeyPair::generate(0).unwrap(),
+            vec![operation],
+            Slot::new(1, 0),
+        )
+        .unwrap();
         // store the block in storage
         storage.store_block(block.clone());
         // set our block as a final block
@@ -1803,7 +1868,12 @@ mod tests {
         let operation =
             create_execute_sc_operation(&keypair, bytecode, BTreeMap::default()).unwrap();
         storage.store_operations(vec![operation.clone()]);
-        let block = create_block(KeyPair::generate(), vec![operation], Slot::new(1, 0)).unwrap();
+        let block = create_block(
+            KeyPair::generate(0).unwrap(),
+            vec![operation],
+            Slot::new(1, 0),
+        )
+        .unwrap();
         // store the block in storage
         storage.store_block(block.clone());
         // set our block as a final block
@@ -2037,7 +2107,12 @@ mod tests {
         )
         .unwrap();
         storage.store_operations(vec![operation.clone()]);
-        let block = create_block(KeyPair::generate(), vec![operation], Slot::new(1, 0)).unwrap();
+        let block = create_block(
+            KeyPair::generate(0).unwrap(),
+            vec![operation],
+            Slot::new(1, 0),
+        )
+        .unwrap();
         // store the block in storage
         storage.store_block(block.clone());
         // set our block as a final block
@@ -2154,7 +2229,12 @@ mod tests {
         let operation =
             create_execute_sc_operation(&keypair, bytecode, BTreeMap::default()).unwrap();
         storage.store_operations(vec![operation.clone()]);
-        let block = create_block(KeyPair::generate(), vec![operation], Slot::new(1, 0)).unwrap();
+        let block = create_block(
+            KeyPair::generate(0).unwrap(),
+            vec![operation],
+            Slot::new(1, 0),
+        )
+        .unwrap();
         // store the block in storage
         storage.store_block(block.clone());
         // set our block as a final block
@@ -2239,7 +2319,12 @@ mod tests {
         let operation =
             create_execute_sc_operation(&keypair, bytecode, BTreeMap::default()).unwrap();
         storage.store_operations(vec![operation.clone()]);
-        let block = create_block(KeyPair::generate(), vec![operation], Slot::new(1, 0)).unwrap();
+        let block = create_block(
+            KeyPair::generate(0).unwrap(),
+            vec![operation],
+            Slot::new(1, 0),
+        )
+        .unwrap();
 
         // store the block in storage
         storage.store_block(block.clone());

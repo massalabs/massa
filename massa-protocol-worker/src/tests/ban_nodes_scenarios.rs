@@ -351,7 +351,7 @@ async fn test_protocol_does_not_asks_for_block_from_banned_node_who_propagated_h
 
             // 4. Get the node banned.
             // New keypair to avoid getting same block id
-            let keypair = KeyPair::generate();
+            let keypair = KeyPair::generate(0).unwrap();
             let mut block = tools::create_block(&keypair);
             block.content.header.id = BlockId::new(Hash::compute_from("invalid".as_bytes()));
             network_controller

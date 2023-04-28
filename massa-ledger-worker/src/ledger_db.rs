@@ -867,7 +867,7 @@ mod tests {
     /// Functional test of `LedgerDB`
     #[test]
     fn test_ledger_db() {
-        let addr = Address::from_public_key(&KeyPair::generate().get_public_key());
+        let addr = Address::from_public_key(&KeyPair::generate(0).unwrap().get_public_key());
         let (db, data) = init_test_ledger(addr);
 
         let ledger_hash = db.get_ledger_hash();
@@ -907,7 +907,7 @@ mod tests {
 
     #[test]
     fn test_ledger_parts() {
-        let pub_a = KeyPair::generate().get_public_key();
+        let pub_a = KeyPair::generate(0).unwrap().get_public_key();
         let a = Address::from_public_key(&pub_a);
         let (db, _) = init_test_ledger(a);
         let res = db.get_ledger_part(StreamingStep::Started).unwrap();

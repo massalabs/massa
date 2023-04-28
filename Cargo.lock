@@ -2814,6 +2814,7 @@ dependencies = [
  "num_enum",
  "rust_decimal",
  "serde",
+ "serde_json",
  "serde_with",
  "serial_test 1.0.0",
  "thiserror",

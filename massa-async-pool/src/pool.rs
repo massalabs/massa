@@ -369,7 +369,7 @@ impl Deserializer<BTreeMap<AsyncMessageId, AsyncMessage>> for AsyncPoolDeseriali
 fn test_take_batch() {
     use massa_hash::Hash;
     use massa_models::{
-        address::{Address, UserAddress},
+        address::{Address, UserAddress, UserAddressV0},
         amount::Amount,
         slot::Slot,
     };
@@ -382,7 +382,9 @@ fn test_take_batch() {
         bootstrap_part_size: 100,
     };
     let mut pool = AsyncPool::new(config);
-    let address = Address::User(UserAddress(Hash::compute_from(b"abc")));
+    let address = Address::User(UserAddress::UserAddressV0(UserAddressV0(
+        Hash::compute_from(b"abc"),
+    )));
     for i in 1..10 {
         let message = AsyncMessage::new_with_hash(
             Slot::new(0, 0),

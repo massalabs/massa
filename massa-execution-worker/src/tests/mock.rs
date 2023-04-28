@@ -100,7 +100,7 @@ fn get_initials() -> (NamedTempFile, HashMap<Address, LedgerEntry>) {
 /// to the address.
 #[allow(dead_code)] // to avoid warnings on gas_calibration feature
 pub fn get_random_address_full() -> (Address, KeyPair) {
-    let keypair = KeyPair::generate();
+    let keypair = KeyPair::generate(0).unwrap();
     (Address::from_public_key(&keypair.get_public_key()), keypair)
 }
 
@@ -159,6 +159,8 @@ pub fn create_block(
 
     let header = BlockHeader::new_verifiable(
         BlockHeader {
+            current_version: 0,
+            announced_version: 0,
             slot,
             parents: vec![],
             operation_merkle_root,

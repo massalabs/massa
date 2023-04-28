@@ -1107,7 +1107,8 @@ mod test {
             activation_delay: MassaTime::from(2),
         };
 
-        let state_2 = advance_state_until(ComponentState::active(), &mi_2);
+        let _time = MassaTime::now().unwrap();
+        let state_2 = advance_state_until(ComponentState::active(_time), &mi_2);
         let state_3 = advance_state_until(
             ComponentState::started(Amount::from_str("42.4242").unwrap()),
             &mi_3,
@@ -1147,6 +1148,7 @@ mod test {
 
         let mut all_state_size = 0;
 
+        let _time = MassaTime::now().unwrap();
         let store_raw_: Vec<(MipInfo, MipState)> = (0..MIP_STORE_MAX_ENTRIES)
             .map(|_i| {
                 mi_base.version += 1;
@@ -1157,7 +1159,7 @@ mod test {
                 mi_base.start = mi_base.timeout.saturating_add(MassaTime::from(1));
                 mi_base.timeout = mi_base.start.saturating_add(MassaTime::from(2));
 
-                let state = advance_state_until(ComponentState::active(), &mi_base);
+                let state = advance_state_until(ComponentState::active(_time), &mi_base);
 
                 all_state_size += size_of_val(&state.state);
                 all_state_size += state.history.len() * (size_of::<Advance>() + size_of::<u32>());

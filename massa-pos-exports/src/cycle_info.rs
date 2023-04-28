@@ -237,6 +237,7 @@ impl CycleInfo {
 fn test_cycle_info_hash_computation() {
     use crate::DeferredCredits;
     use bitvec::prelude::*;
+    use massa_models::address::{UserAddress, UserAddressV0};
 
     // cycle and address
     let mut cycle_a = CycleInfo::new_with_hash(
@@ -246,7 +247,9 @@ fn test_cycle_info_hash_computation() {
         BitVec::default(),
         PreHashMap::default(),
     );
-    let addr = Address::from_prefixed_bytes(&[0; 33].as_slice()).unwrap();
+    let addr = Address::User(UserAddress::UserAddressV0(UserAddressV0(
+        Hash::compute_from(&[0]),
+    )));
 
     // add changes
     let mut roll_changes = PreHashMap::default();

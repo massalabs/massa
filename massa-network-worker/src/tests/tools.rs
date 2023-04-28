@@ -10,6 +10,7 @@ use crate::NetworkError;
 use crate::NetworkEvent;
 
 use massa_hash::Hash;
+use massa_models::config::{MIP_STORE_STATS_BLOCK_CONSIDERED, MIP_STORE_STATS_COUNTERS_MAX};
 use massa_models::node::NodeId;
 use massa_models::secure_share::SecureShareContent;
 use massa_models::{
@@ -25,6 +26,7 @@ use massa_network_exports::{
 };
 use massa_signature::KeyPair;
 use massa_time::MassaTime;
+use massa_versioning::versioning::{MipStatsConfig, MipStore};
 use std::str::FromStr;
 use std::{
     future::Future,
@@ -82,7 +84,7 @@ pub async fn full_connection_to_controller(
     .expect("connection towards controller failed");
 
     // perform handshake
-    let keypair = KeyPair::generate();
+    let keypair = KeyPair::generate(0).unwrap();
     let mock_node_id = NodeId::new(keypair.get_public_key());
     let res = HandshakeWorker::spawn(
         mock_read_half,
@@ -142,7 +144,7 @@ pub async fn rejected_connection_to_controller(
     .expect("connection towards controller failed");
 
     // perform handshake and ignore errors
-    let keypair = KeyPair::generate();
+    let keypair = KeyPair::generate(0).unwrap();
     let mock_node_id = NodeId::new(keypair.get_public_key());
     let result = HandshakeWorker::spawn(
         mock_read_half,
@@ -228,7 +230,7 @@ pub async fn full_connection_from_controller(
     resp_tx.send(true).expect("resp_tx failed");
 
     // perform handshake
-    let keypair = KeyPair::generate();
+    let keypair = KeyPair::generate(0).unwrap();
     let mock_node_id = NodeId::new(keypair.get_public_key());
     let res = HandshakeWorker::spawn(
         mock_read_half,
@@ -328,9 +330,9 @@ pub async fn incoming_message_drain_stop(
 }
 
 pub fn get_transaction(expire_period: u64, fee: u64) -> SecureShareOperation {
-    let sender_keypair = KeyPair::generate();
+    let sender_keypair = KeyPair::generate(0).unwrap();
 
-    let recv_keypair = KeyPair::generate();
+    let recv_keypair = KeyPair::generate(0).unwrap();
 
     let op = OperationType::Transaction {
         recipient_address: Address::from_public_key(&recv_keypair.get_public_key()),
@@ -366,6 +368,14 @@ pub async fn network_test<F, V>(
         ),
     >,
 {
+    // create an empty default store
+    let mip_stats_config = MipStatsConfig {
+        block_count_considered: MIP_STORE_STATS_BLOCK_CONSIDERED,
+        counters_max: MIP_STORE_STATS_COUNTERS_MAX,
+    };
+    let mip_store =
+        MipStore::try_from(([], mip_stats_config)).expect("Cannot create an empty MIP store");
+
     // create establisher
     let (establisher, mock_interface) = mock_establisher::new();
     // launch network controller
@@ -375,6 +385,7 @@ pub async fn network_test<F, V>(
             establisher,
             None,
             Version::from_str("TEST.1.10").unwrap(),
+            mip_store,
         )
         .await
         .expect("could not start network controller");

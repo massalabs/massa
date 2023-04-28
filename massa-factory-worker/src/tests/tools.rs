@@ -3,6 +3,10 @@ use crossbeam_channel::Sender;
 use massa_consensus_exports::test_exports::{
     ConsensusEventReceiver, MockConsensusController, MockConsensusControllerMessage,
 };
+use massa_models::config::MIP_STORE_STATS_BLOCK_CONSIDERED;
+use massa_models::config::MIP_STORE_STATS_COUNTERS_MAX;
+use massa_versioning::versioning::MipStatsConfig;
+use massa_versioning::versioning::MipStore;
 use parking_lot::RwLock;
 use std::{sync::Arc, thread::sleep, time::Duration};
 
@@ -84,6 +88,15 @@ impl TestFactory {
             .genesis_timestamp
             .checked_sub(factory_config.t0)
             .unwrap();
+
+        // create an empty default store
+        let mip_stats_config = MipStatsConfig {
+            block_count_considered: MIP_STORE_STATS_BLOCK_CONSIDERED,
+            counters_max: MIP_STORE_STATS_COUNTERS_MAX,
+        };
+        let mip_store =
+            MipStore::try_from(([], mip_stats_config)).expect("Cannot create an empty MIP store");
+
         let factory_manager = start_factory(
             factory_config.clone(),
             Arc::new(RwLock::new(create_test_wallet(Some(accounts)))),
@@ -96,6 +109,7 @@ impl TestFactory {
             },
             denunciation_factory_receiver,
             denunciation_factory_rx,
+            mip_store,
         );
 
         TestFactory {

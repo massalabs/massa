@@ -877,19 +877,19 @@ mod test {
 
         advance_msg.now = advance_msg.timeout.saturating_add(MassaTime::from(1));
         state = state.on_advance(advance_msg);
-        assert_eq!(state, ComponentState::active());
+        assert!(matches!(state, ComponentState::Active(_)));
     }
 
     #[test]
     fn test_state_advance_from_active() {
         // Test Versioning state transition (from state: Active)
-        let (_, _, mi) = get_a_version_info();
-        let mut state = ComponentState::active();
+        let (start, _, mi) = get_a_version_info();
+        let mut state = ComponentState::active(MassaTime::from(start.timestamp() as u64));
         let now = mi.start;
         let advance = Advance::from((&mi, &Amount::zero(), &now));
 
         state = state.on_advance(advance);
-        assert_eq!(state, ComponentState::active());
+        assert!(matches!(state, ComponentState::Active(_)));
     }
 
     #[test]
@@ -1003,7 +1003,7 @@ mod test {
     fn test_versioning_store_announce_current() {
         // Test VersioningInfo::get_version_to_announce() & ::get_version_current()
 
-        let (_start, timeout, mi) = get_a_version_info();
+        let (start, timeout, mi) = get_a_version_info();
 
         let mut mi_2 = mi.clone();
         mi_2.version += 1;
@@ -1014,7 +1014,7 @@ mod test {
 
         // Can only build such object in test - history is empty :-/
         let vs_1 = MipState {
-            state: ComponentState::active(),
+            state: ComponentState::active(MassaTime::from(start.timestamp() as u64)),
             history: Default::default(),
         };
         let vs_2 = MipState {
@@ -1130,8 +1130,9 @@ mod test {
             activation_delay: MassaTime::from(2),
         };
 
-        let vs_1 = advance_state_until(ComponentState::active(), &vi_1);
-        assert_eq!(vs_1, ComponentState::active());
+        let _time = MassaTime::now().unwrap();
+        let vs_1 = advance_state_until(ComponentState::active(_time), &vi_1);
+        assert!(matches!(vs_1.state, ComponentState::Active(_)));
 
         let vi_2 = MipInfo {
             name: "MIP-0003".to_string(),
@@ -1152,8 +1153,8 @@ mod test {
             stats: MipStoreStats::new(mip_stats_cfg.clone()),
         };
 
-        let vs_2_2 = advance_state_until(ComponentState::active(), &vi_2);
-        assert_eq!(vs_2_2, ComponentState::active());
+        let vs_2_2 = advance_state_until(ComponentState::active(_time), &vi_2);
+        assert!(matches!(vs_2_2.state, ComponentState::Active(_)));
 
         let vs_raw_2 = MipStoreRaw::try_from((
             [(vi_1.clone(), vs_1.clone()), (vi_2.clone(), vs_2_2.clone())],
@@ -1182,8 +1183,9 @@ mod test {
             timeout: MassaTime::from(5),
             activation_delay: MassaTime::from(2),
         };
-        let vs_1 = advance_state_until(ComponentState::active(), &vi_1);
-        assert_eq!(vs_1, ComponentState::active());
+        let _time = MassaTime::now().unwrap();
+        let vs_1 = advance_state_until(ComponentState::active(_time), &vi_1);
+        assert!(matches!(vs_1.state, ComponentState::Active(_)));
 
         let vi_2 = MipInfo {
             name: "MIP-0003".to_string(),

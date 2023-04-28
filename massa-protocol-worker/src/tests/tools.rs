@@ -2,7 +2,11 @@ use crate::start_protocol_controller;
 use futures::Future;
 use massa_consensus_exports::test_exports::{ConsensusEventReceiver, MockConsensusController};
 use massa_models::{
-    block::SecureShareBlock, block_id::BlockId, node::NodeId, operation::SecureShareOperation,
+    block::SecureShareBlock,
+    block_id::BlockId,
+    config::{MIP_STORE_STATS_BLOCK_CONSIDERED, MIP_STORE_STATS_COUNTERS_MAX},
+    node::NodeId,
+    operation::SecureShareOperation,
     prehash::PreHashSet,
 };
 use massa_network_exports::BlockInfoReply;
@@ -12,6 +16,7 @@ use massa_protocol_exports::{
     ProtocolManager, ProtocolReceivers, ProtocolSenders,
 };
 use massa_storage::Storage;
+use massa_versioning::versioning::{MipStatsConfig, MipStore};
 use tokio::sync::mpsc;
 
 pub async fn protocol_test<F, V>(protocol_config: &ProtocolConfig, test: F)
@@ -49,6 +54,15 @@ where
     let protocol_senders = ProtocolSenders {
         network_command_sender,
     };
+
+    // create an empty default store
+    let mip_stats_config = MipStatsConfig {
+        block_count_considered: MIP_STORE_STATS_BLOCK_CONSIDERED,
+        counters_max: MIP_STORE_STATS_COUNTERS_MAX,
+    };
+    let mip_store =
+        MipStore::try_from(([], mip_stats_config)).expect("Cannot create an empty MIP store");
+
     // start protocol controller
     let protocol_manager: ProtocolManager = start_protocol_controller(
         *protocol_config,
@@ -57,6 +71,7 @@ where
         consensus_controller,
         pool_controller,
         Storage::create_root(),
+        mip_store,
     )
     .await
     .expect("could not start protocol controller");
@@ -122,6 +137,14 @@ where
         protocol_command_receiver,
     };
 
+    // create an empty default store
+    let mip_stats_config = MipStatsConfig {
+        block_count_considered: MIP_STORE_STATS_BLOCK_CONSIDERED,
+        counters_max: MIP_STORE_STATS_COUNTERS_MAX,
+    };
+    let mip_store =
+        MipStore::try_from(([], mip_stats_config)).expect("Cannot create an empty MIP store");
+
     let protocol_manager = start_protocol_controller(
         *protocol_config,
         protocol_receivers,
@@ -129,6 +152,7 @@ where
         consensus_controller,
         pool_controller,
         storage.clone(),
+        mip_store,
     )
     .await
     .expect("could not start protocol controller");

@@ -357,7 +357,7 @@ impl UserAddress {
             .unwrap_or(0)
     }
 
-    /// Serialize the address as bytes. Includes only the hash bytes
+    /// Deserialize the address without considering the version byte
     fn from_bytes_without_version(data: &[u8]) -> Result<UserAddress, ModelsError> {
         Ok(UserAddress(Hash::from_bytes(&data.try_into().map_err(
             |_| {
@@ -425,7 +425,7 @@ impl SCAddress {
         }
     }
 
-    /// Serialize the address as bytes. Includes only the content bytes
+    /// Deserialize the address without considering the version byte
     pub fn from_bytes_without_version(version: u64, data: &[u8]) -> Result<SCAddress, ModelsError> {
         match version {
             <SCAddress!["0"]>::VERSION => Ok(SCAddressVariant!["0"](
@@ -467,6 +467,7 @@ impl SCAddress {
         buff
     }
 
+    /// Deserialize the address without considering the version byte
     fn from_bytes_without_version(data: &[u8]) -> Result<SCAddress, ModelsError> {
         Ok(SCAddress(Hash::from_bytes(&data.try_into().map_err(
             |_| {
@@ -683,60 +684,6 @@ impl Deserializer<SCAddress> for AddressDeserializer {
         })
         .map(|h| SCAddress(h))
         .parse(buffer)
-    }
-}
-
-/// Deserializer for `Address`
-#[derive(Default, Clone)]
-pub struct U64Deserializer {}
-
-impl U64Deserializer {
-    /// Creates a new deserializer for `Address`
-    pub const fn new() -> Self {
-        Self {}
-    }
-}
-/// Deserializer for `Address`
-#[derive(Default, Clone)]
-pub struct U8Deserializer {}
-
-impl U8Deserializer {
-    /// Creates a new deserializer for `Address`
-    pub const fn new() -> Self {
-        Self {}
-    }
-}
-
-impl Deserializer<u64> for U64Deserializer {
-    fn deserialize<'a, E: ParseError<&'a [u8]> + ContextError<&'a [u8]>>(
-        &self,
-        buffer: &'a [u8],
-    ) -> IResult<&'a [u8], u64, E> {
-        if buffer.len() < 8 {
-            return Err(nom::Err::Error(E::from_error_kind(buffer, ErrorKind::Eof)));
-        }
-        let (u64_bytes, rest) = buffer.split_at(8);
-
-        let u64 = u64::from_be_bytes(
-            u64_bytes
-                .try_into()
-                .map_err(|_| nom::Err::Error(E::from_error_kind(buffer, ErrorKind::Eof)))?,
-        );
-        Ok((rest, u64))
-    }
-}
-
-impl Deserializer<u8> for U8Deserializer {
-    fn deserialize<'a, E: ParseError<&'a [u8]> + ContextError<&'a [u8]>>(
-        &self,
-        buffer: &'a [u8],
-    ) -> IResult<&'a [u8], u8, E> {
-        if buffer.len() < 2 {
-            return Err(nom::Err::Error(E::from_error_kind(buffer, ErrorKind::Eof)));
-        }
-        let u8 = buffer[0];
-        let rest = &buffer[1..];
-        Ok((rest, u8))
     }
 }
 

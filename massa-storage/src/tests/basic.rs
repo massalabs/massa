@@ -7,7 +7,7 @@ use massa_signature::KeyPair;
 /// Store a block and retrieve it.
 fn test_basic_insert() {
     let mut storage = Storage::create_root();
-    let block = create_empty_block(&KeyPair::generate(), &Slot::new(0, 0));
+    let block = create_empty_block(&KeyPair::generate(0).unwrap(), &Slot::new(0, 0));
 
     storage.store_block(block.clone());
     let blocks = storage.read_blocks();
@@ -21,7 +21,7 @@ fn test_basic_insert() {
 /// We expect that it's stored only one time
 fn test_double_insert() {
     let mut storage = Storage::create_root();
-    let block = create_empty_block(&KeyPair::generate(), &Slot::new(0, 0));
+    let block = create_empty_block(&KeyPair::generate(0).unwrap(), &Slot::new(0, 0));
 
     storage.store_block(block.clone());
     storage.store_block(block.clone());
