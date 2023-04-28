@@ -1,1 +1,0 @@
-window.SIDEBAR_ITEMS = {"fn":["new_sc_execution_outputs"],"opaque":[""],"type":["NewScExecutionOutputsStreamType"]};
