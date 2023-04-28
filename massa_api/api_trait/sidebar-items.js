@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"static":["CALLSITE","META"],"struct":["ParamsObject"],"trait":["MassaApiServer"]};
+window.SIDEBAR_ITEMS = {"constant":["FIELDS"],"enum":["__Field"],"static":["CALLSITE","META"],"struct":["ParamsObject","__FieldVisitor","__Visitor"],"trait":["MassaApiServer"]};

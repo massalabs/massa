@@ -1476,13 +1476,11 @@
 <a href="#1476" id="1476">1476</a>
 <a href="#1477" id="1477">1477</a>
 <a href="#1478" id="1478">1478</a>
-<a href="#1479" id="1479">1479</a>
 </pre><pre class="rust"><code><span class="doccomment">//! Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 //! Denunciation intro
 //!
 //! Currently, nothing prevents a user from producing multiple blocks (for the same Slot) or endorsing a block multiple times.
-//! By allowing nodes to produce a denunciation; every user will have an incentive of not doing it.
 //! If an invalid Denunciation will just be ignored, a valid Denunciation will slash some locked rolls.
 //! Note that this proposal aims at dissuading &#39;rational&#39; users from causing damage but does help against &#39;byzantine&#39; actors
 //! that just want to disturb or break the blockclique (at any cost).

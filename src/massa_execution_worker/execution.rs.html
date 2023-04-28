@@ -1651,6 +1651,17 @@
 <a href="#1651" id="1651">1651</a>
 <a href="#1652" id="1652">1652</a>
 <a href="#1653" id="1653">1653</a>
+<a href="#1654" id="1654">1654</a>
+<a href="#1655" id="1655">1655</a>
+<a href="#1656" id="1656">1656</a>
+<a href="#1657" id="1657">1657</a>
+<a href="#1658" id="1658">1658</a>
+<a href="#1659" id="1659">1659</a>
+<a href="#1660" id="1660">1660</a>
+<a href="#1661" id="1661">1661</a>
+<a href="#1662" id="1662">1662</a>
+<a href="#1663" id="1663">1663</a>
+<a href="#1664" id="1664">1664</a>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="doccomment">//! This module deals with executing final and active slots, as well as read-only requests.
@@ -2072,6 +2083,18 @@
         <span class="comment">// acquire write access to the context
         </span><span class="kw">let </span><span class="kw-2">mut </span>context = <span class="macro">context_guard!</span>(<span class="self">self</span>);
 
+        <span class="kw">let </span>de_slot = denunciation.get_slot();
+
+        <span class="kw">let </span>last_start_period = <span class="self">self</span>.final_state.read().last_start_period;
+        <span class="kw">if </span>de_slot.period &lt;= last_start_period {
+            <span class="comment">// denunciation created before last restart (can be 0 or &gt;= 0 after a network restart) - ignored
+            // Note: as we use &#39;&lt;=&#39;, also ignore denunciation created for genesis block
+            </span><span class="kw">return </span><span class="prelude-val">Err</span>(ExecutionError::IncludeDenunciationError(<span class="macro">format!</span>(
+                <span class="string">&quot;Denunciation target ({}) is before the last start period: {}&quot;</span>,
+                de_slot, last_start_period
+            )));
+        }
+
         <span class="comment">// ignore denunciation if not valid
         </span><span class="kw">if </span>!denunciation.is_valid() {
             <span class="kw">return </span><span class="prelude-val">Err</span>(ExecutionError::IncludeDenunciationError(
@@ -2080,9 +2103,8 @@
         }
 
         <span class="comment">// ignore denunciation if too old or expired
-        </span><span class="kw">let </span>de_slot = denunciation.get_slot();
 
-        <span class="kw">if </span>Denunciation::is_expired(
+        </span><span class="kw">if </span>Denunciation::is_expired(
             <span class="kw-2">&amp;</span>de_slot.period,
             <span class="kw-2">&amp;</span>block_slot.period,
             <span class="kw-2">&amp;</span><span class="self">self</span>.config.denunciation_expire_periods,

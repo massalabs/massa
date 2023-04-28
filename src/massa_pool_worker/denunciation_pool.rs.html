@@ -258,6 +258,12 @@
 <a href="#258" id="258">258</a>
 <a href="#259" id="259">259</a>
 <a href="#260" id="260">260</a>
+<a href="#261" id="261">261</a>
+<a href="#262" id="262">262</a>
+<a href="#263" id="263">263</a>
+<a href="#264" id="264">264</a>
+<a href="#265" id="265">265</a>
+<a href="#266" id="266">266</a>
 </pre><pre class="rust"><code><span class="doccomment">//! Copyright (c) 2023 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="kw">use </span>massa_execution_exports::ExecutionController;
@@ -331,7 +337,13 @@
 
         <span class="comment">// Do some checkups before adding the denunciation precursor
 
-        </span><span class="kw">let </span>now = MassaTime::now().expect(<span class="string">&quot;could not get current time&quot;</span>);
+        </span><span class="kw">if </span>slot.period &lt;= <span class="self">self</span>.config.last_start_period {
+            <span class="comment">// denunciation created before last restart (can be 0 or &gt;= 0 after a network restart) - ignored
+            // Note: as we use &#39;&lt;=&#39;, also ignore denunciation created for genesis block
+            </span><span class="kw">return</span>;
+        }
+
+        <span class="kw">let </span>now = MassaTime::now().expect(<span class="string">&quot;could not get current time&quot;</span>);
 
         <span class="comment">// get closest slot according to the current absolute time
         </span><span class="kw">let </span>slot_now = get_closest_slot_to_timestamp(

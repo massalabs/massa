@@ -1173,6 +1173,8 @@
 <a href="#1173" id="1173">1173</a>
 <a href="#1174" id="1174">1174</a>
 <a href="#1175" id="1175">1175</a>
+<a href="#1176" id="1176">1176</a>
+<a href="#1177" id="1177">1177</a>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="attr">#![doc = <span class="macro">include_str!</span>(<span class="string">&quot;../../README.md&quot;</span>)]
@@ -1645,7 +1647,8 @@
     );
 
     <span class="comment">// launch pool controller
-    </span><span class="kw">let </span>pool_config = PoolConfig {
+    </span><span class="kw">let </span>last_start_period = args.restart_from_snapshot_at_period.unwrap_or(<span class="number">0</span>);
+    <span class="kw">let </span>pool_config = PoolConfig {
         thread_count: THREAD_COUNT,
         max_block_size: MAX_BLOCK_SIZE,
         max_block_gas: MAX_GAS_PER_BLOCK,
@@ -1666,6 +1669,7 @@
         periods_per_cycle: PERIODS_PER_CYCLE,
         denunciation_expire_periods: DENUNCIATION_EXPIRE_PERIODS,
         max_denunciations_per_block_header: MAX_DENUNCIATIONS_PER_BLOCK_HEADER,
+        last_start_period,
     };
 
     <span class="kw">let </span>pool_channels = PoolChannels {
