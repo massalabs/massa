@@ -659,7 +659,7 @@ async fn launch(
     );
 
     let protocol_manager = start_protocol_controller(
-        protocol_config,
+        protocol_config.clone(),
         consensus_controller.clone(),
         pool_controller.clone(),
         shared_storage.clone(),
@@ -848,7 +848,7 @@ async fn launch(
 
     // spawn private API
     let (api_private, api_private_stop_rx) = API::<Private>::new(
-        network_command_sender.clone(),
+        protocol_controller.clone(),
         execution_controller.clone(),
         api_config.clone(),
         node_wallet,
@@ -870,9 +870,8 @@ async fn launch(
         selector_controller.clone(),
         pool_controller.clone(),
         protocol_controller.clone(),
-        network_config,
+        protocol_config.clone(),
         *VERSION,
-        network_command_sender.clone(),
         node_id,
         shared_storage.clone(),
     );
