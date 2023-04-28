@@ -71,6 +71,12 @@ impl DenunciationPool {
 
         // Do some checkups before adding the denunciation precursor
 
+        if slot.period <= self.config.last_start_period {
+            // denunciation created before last restart (can be 0 or >= 0 after a network restart) - ignored
+            // Note: as we use '<=', also ignore denunciation created for genesis block
+            return;
+        }
+
         let now = MassaTime::now().expect("could not get current time");
 
         // get closest slot according to the current absolute time

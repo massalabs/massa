@@ -29,6 +29,7 @@ impl Default for PoolConfig {
             periods_per_cycle: PERIODS_PER_CYCLE,
             denunciation_expire_periods: DENUNCIATION_EXPIRE_PERIODS,
             max_denunciations_per_block_header: MAX_DENUNCIATIONS_PER_BLOCK_HEADER,
+            last_start_period: 0,
         }
     }
 }
