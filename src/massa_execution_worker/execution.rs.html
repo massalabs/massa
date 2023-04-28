@@ -1661,7 +1661,6 @@
 <a href="#1661" id="1661">1661</a>
 <a href="#1662" id="1662">1662</a>
 <a href="#1663" id="1663">1663</a>
-<a href="#1664" id="1664">1664</a>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="doccomment">//! This module deals with executing final and active slots, as well as read-only requests.
@@ -2085,13 +2084,12 @@
 
         <span class="kw">let </span>de_slot = denunciation.get_slot();
 
-        <span class="kw">let </span>last_start_period = <span class="self">self</span>.final_state.read().last_start_period;
-        <span class="kw">if </span>de_slot.period &lt;= last_start_period {
+        <span class="kw">if </span>de_slot.period &lt;= <span class="self">self</span>.config.last_start_period {
             <span class="comment">// denunciation created before last restart (can be 0 or &gt;= 0 after a network restart) - ignored
             // Note: as we use &#39;&lt;=&#39;, also ignore denunciation created for genesis block
             </span><span class="kw">return </span><span class="prelude-val">Err</span>(ExecutionError::IncludeDenunciationError(<span class="macro">format!</span>(
                 <span class="string">&quot;Denunciation target ({}) is before the last start period: {}&quot;</span>,
-                de_slot, last_start_period
+                de_slot, <span class="self">self</span>.config.last_start_period
             )));
         }
 
