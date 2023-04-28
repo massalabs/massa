@@ -34,10 +34,9 @@ use massa_models::{
     address::Address, block::Block, block_id::BlockId, endorsement::EndorsementId,
     execution::EventFilter, slot::Slot, version::Version,
 };
-use massa_network_exports::{NetworkCommandSender, NetworkConfig};
 use massa_pool_exports::{PoolChannels, PoolController};
 use massa_pos_exports::SelectorController;
-use massa_protocol_exports::ProtocolController;
+use massa_protocol_exports::{ProtocolConfig, ProtocolController};
 use massa_storage::Storage;
 use massa_wallet::Wallet;
 use parking_lot::RwLock;
@@ -69,20 +68,18 @@ pub struct Public {
     pub storage: Storage,
     /// API settings
     pub api_settings: APIConfig,
-    /// network setting
-    pub network_settings: NetworkConfig,
+    /// Protocol config
+    pub protocol_config: ProtocolConfig,
     /// node version (TODO remove, can be retrieved via an endpoint)
     pub version: Version,
-    /// link to the network component
-    pub network_command_sender: NetworkCommandSender,
     /// our node id
     pub node_id: NodeId,
 }
 
 /// Private API content
 pub struct Private {
-    /// link to the network component
-    pub network_command_sender: NetworkCommandSender,
+    /// link to the protocol component
+    pub protocol_controller: Box<dyn ProtocolController>,
     /// link to the execution component
     pub execution_controller: Box<dyn ExecutionController>,
     /// API settings

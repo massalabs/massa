@@ -1,6 +1,10 @@
 // Copyright (c) 2022 MASSA LABS <info@massa.net>
 
-use std::{collections::HashMap, net::{SocketAddr, IpAddr}, path::PathBuf};
+use std::{
+    collections::HashMap,
+    net::{IpAddr, SocketAddr},
+    path::PathBuf,
+};
 
 use massa_time::MassaTime;
 use peernet::transports::TransportType;

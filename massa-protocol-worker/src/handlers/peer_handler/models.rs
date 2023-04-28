@@ -45,7 +45,8 @@ pub enum PeerState {
 }
 
 pub enum PeerManagementCmd {
-    Ban(PeerId),
+    Ban(Vec<PeerId>),
+    Unban(Vec<PeerId>),
     Stop,
 }
 
@@ -61,6 +62,15 @@ impl PeerDB {
             info!("Banned peer: {:?}", peer_id);
         } else {
             info!("Tried to ban unknown peer: {:?}", peer_id);
+        };
+    }
+
+    pub fn unban_peer(&mut self, peer_id: &PeerId) {
+        if self.peers.contains_key(peer_id) {
+            self.peers.remove(peer_id);
+            info!("Unbanned peer: {:?}", peer_id);
+        } else {
+            info!("Tried to unban unknown peer: {:?}", peer_id);
         };
     }
 
@@ -130,6 +140,13 @@ impl PeerDB {
             }
         }
         result
+    }
+
+    pub fn get_banned_peer_count(&self) -> u64 {
+        self.peers
+            .values()
+            .filter(|peer| peer.state == PeerState::Banned)
+            .count() as u64
     }
 
     // Flush PeerDB to disk ?

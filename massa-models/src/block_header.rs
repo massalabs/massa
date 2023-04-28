@@ -563,7 +563,7 @@ mod test {
     use super::*;
     use massa_serialization::DeserializeError;
 
-    use crate::config::{ENDORSEMENT_COUNT, MAX_DENUNCIATIONS_PER_BLOCK_HEADER};
+    use crate::config::{ENDORSEMENT_COUNT, MAX_DENUNCIATIONS_PER_BLOCK_HEADER, THREAD_COUNT};
 
     use crate::test_exports::{
         gen_block_headers_for_denunciation, gen_endorsements_for_denunciation,

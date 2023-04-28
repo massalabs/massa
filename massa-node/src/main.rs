@@ -518,10 +518,7 @@ async fn launch(
 
     // launch protocol controller
     let mut listeners = HashMap::default();
-    listeners.insert(
-        SETTINGS.protocol.bind,
-        TransportType::Tcp,
-    );
+    listeners.insert(SETTINGS.protocol.bind, TransportType::Tcp);
     let protocol_config = ProtocolConfig {
         thread_count: THREAD_COUNT,
         ask_block_timeout: SETTINGS.protocol.ask_block_timeout,
@@ -593,7 +590,8 @@ async fn launch(
         max_size_block_infos: MAX_ASK_BLOCKS_PER_MESSAGE as u64,
         max_size_listeners_per_peer: MAX_LISTENERS_PER_PEER,
         max_size_peers_announcement: MAX_PEERS_IN_ANNOUNCEMENT_LIST,
-        read_write_limit_bytes_per_second: SETTINGS.protocol.read_write_limit_bytes_per_second as u128,
+        read_write_limit_bytes_per_second: SETTINGS.protocol.read_write_limit_bytes_per_second
+            as u128,
         routable_ip: SETTINGS.protocol.routable_ip,
         debug: false,
     };
@@ -734,6 +732,7 @@ async fn launch(
         max_function_name_length: MAX_FUNCTION_NAME_LENGTH,
         max_parameter_size: MAX_PARAMETERS_SIZE,
         thread_count: THREAD_COUNT,
+        keypair_file: SETTINGS.protocol.keypair_file.clone(),
         genesis_timestamp: *GENESIS_TIMESTAMP,
         t0: T0,
         periods_per_cycle: PERIODS_PER_CYCLE,

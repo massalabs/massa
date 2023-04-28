@@ -10,6 +10,7 @@ use peernet::{
     messages::{
         MessagesHandler as PeerNetMessagesHandler, MessagesSerializer as PeerNetMessagesSerializer,
     },
+    peer::PeerConnectionType,
     peer_id::PeerId,
 };
 
@@ -53,6 +54,27 @@ impl ActiveConnectionsTrait for SharedMockActiveConnections {
     fn get_nb_out_connections(&self) -> usize {
         //TODO: Place a coherent value
         0
+    }
+
+    fn get_nb_in_connections(&self) -> usize {
+        //TODO: Place a coherent value
+        0
+    }
+
+    fn get_peers_connected(&self) -> HashMap<PeerId, (std::net::SocketAddr, PeerConnectionType)> {
+        self.read()
+            .connections
+            .iter()
+            .map(|(peer_id, _)| {
+                (
+                    peer_id.clone(),
+                    (
+                        std::net::SocketAddr::from(([127, 0, 0, 1], 0)),
+                        PeerConnectionType::OUT,
+                    ),
+                )
+            })
+            .collect()
     }
 
     fn get_peer_ids_connected(&self) -> std::collections::HashSet<PeerId> {

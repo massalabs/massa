@@ -1,13 +1,17 @@
 use crossbeam::{
-    channel::{bounded, Receiver, Sender},
+    channel::{Receiver, Sender},
     select,
 };
 use massa_consensus_exports::ConsensusController;
+use massa_models::stats::NetworkStats;
 use massa_pool_exports::PoolController;
 use massa_protocol_exports::{ProtocolConfig, ProtocolError};
 use massa_storage::Storage;
 use parking_lot::RwLock;
-use peernet::transports::{OutConnectionConfig, TransportType};
+use peernet::{
+    peer::PeerConnectionType,
+    transports::{OutConnectionConfig, TransportType},
+};
 use peernet::{peer_id::PeerId, transports::TcpOutConnectionConfig};
 use std::collections::HashMap;
 use std::net::SocketAddr;
@@ -29,6 +33,12 @@ use crate::{
 
 pub enum ConnectivityCommand {
     Stop,
+    GetStats {
+        responder: Sender<(
+            NetworkStats,
+            HashMap<PeerId, (SocketAddr, PeerConnectionType)>,
+        )>,
+    },
 }
 
 #[allow(clippy::too_many_arguments)]
@@ -48,7 +58,6 @@ pub(crate) fn start_connectivity_thread(
     let initial_peers = serde_json::from_str::<HashMap<PeerId, HashMap<SocketAddr, TransportType>>>(
         &std::fs::read_to_string(&config.initial_peers)?,
     )?;
-    let (sender, receiver) = bounded(config.max_size_channel_commands_connectivity);
 
     let handle = std::thread::Builder::new()
     .name("protocol-connectivity".to_string())
@@ -86,8 +95,9 @@ pub(crate) fn start_connectivity_thread(
             // Start handlers
             let mut peer_management_handler = PeerManagementHandler::new(
                 initial_peers,
-                peer_db,
+                peer_db.clone(),
                 channel_peers,
+                protocol_channels.peer_management_handler,
                 network_controller.get_active_connections(),
                 &config,
             );
@@ -139,14 +149,34 @@ pub(crate) fn start_connectivity_thread(
             //Try to connect to peers
             loop {
                 select! {
-                        recv(receiver) -> msg => {
-                            if let Ok(ConnectivityCommand::Stop) = msg {
-                                drop(network_controller);
-                                operation_handler.stop();
-                                endorsement_handler.stop();
-                                block_handler.stop();
-                                peer_management_handler.stop();
-                                break;
+                        recv(protocol_channels.connectivity_thread.1) -> msg => {
+                            match msg {
+                                Ok(ConnectivityCommand::Stop) => {
+                                    drop(network_controller);
+                                    operation_handler.stop();
+                                    endorsement_handler.stop();
+                                    block_handler.stop();
+                                    peer_management_handler.stop();
+                                    break;
+                                },
+                                Ok(ConnectivityCommand::GetStats { responder }) => {
+                                    let active_node_count = network_controller.get_active_connections().get_peer_ids_connected().len() as u64;
+                                    let in_connection_count = network_controller.get_active_connections().get_nb_in_connections() as u64;
+                                    let out_connection_count = network_controller.get_active_connections().get_nb_out_connections() as u64;
+                                    let stats = NetworkStats {
+                                        active_node_count,
+                                        in_connection_count,
+                                        out_connection_count,
+                                        banned_peer_count: peer_db.read().get_banned_peer_count(),
+                                        known_peer_count: peer_db.read().peers.len() as u64,
+                                    };
+                                    let peers: HashMap<PeerId, (SocketAddr, PeerConnectionType)> = network_controller.get_active_connections().get_peers_connected();
+                                    responder.send((stats, peers)).unwrap_or_else(|_| warn!("Failed to send stats to responder"));
+                                }
+                                Err(_) => {
+                                    warn!("Channel to connectivity thread is closed. Stopping the protocol");
+                                    break;
+                                }
                             }
                         }
                     default(Duration::from_millis(1000)) => {
@@ -202,5 +232,5 @@ pub(crate) fn start_connectivity_thread(
     }).expect("OS failed to start connectivity thread");
 
     // Start controller
-    Ok((sender, handle))
+    Ok((protocol_channels.connectivity_thread.0, handle))
 }

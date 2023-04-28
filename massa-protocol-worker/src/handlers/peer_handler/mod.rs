@@ -61,11 +61,10 @@ impl PeerManagementHandler {
         initial_peers: InitialPeers,
         peer_db: SharedPeerDB,
         (sender_msg, receiver_msg): (Sender<PeerMessageTuple>, Receiver<PeerMessageTuple>),
+        (sender_cmd, receiver_cmd): (Sender<PeerManagementCmd>, Receiver<PeerManagementCmd>),
         mut active_connections: Box<dyn ActiveConnectionsTrait>,
         config: &ProtocolConfig,
     ) -> Self {
-        let (sender_cmd, receiver_cmd): (Sender<PeerManagementCmd>, Receiver<PeerManagementCmd>) =
-            crossbeam::channel::bounded(config.max_size_channel_commands_peers);
         let message_serializer = PeerManagementMessageSerializer::new();
 
         let (test_sender, testers) = Tester::run(config, peer_db.clone());
@@ -104,14 +103,20 @@ impl PeerManagementHandler {
                         recv(receiver_cmd) -> cmd => {
                             // internal command
                            match cmd {
-                             Ok(PeerManagementCmd::Ban(peer_id)) => {
+                             Ok(PeerManagementCmd::Ban(peer_ids)) => {
 
                                 // remove running handshake ?
+                                for peer_id in peer_ids {
+                                    active_connections.shutdown_connection(&peer_id);
 
-                                active_connections.shutdown_connection(&peer_id);
-
-                                // update peer_db
-                                peer_db.write().ban_peer(&peer_id);
+                                    // update peer_db
+                                    peer_db.write().ban_peer(&peer_id);
+                                }
+                             },
+                             Ok(PeerManagementCmd::Unban(peer_ids)) => {
+                                for peer_id in peer_ids {
+                                    peer_db.write().unban_peer(&peer_id);
+                                }
                              },
                              Ok(PeerManagementCmd::Stop) => {
                                 return;
@@ -243,7 +248,8 @@ impl InitConnectionHandler for MassaHandshake {
     ) -> PeerNetResult<PeerId> {
         let mut bytes = PeerId::from_public_key(keypair.get_public_key()).to_bytes();
         //TODO: Add version in announce
-        let listeners_announcement = Announcement::new(listeners.clone(), self.config.routable_ip, keypair).unwrap();
+        let listeners_announcement =
+            Announcement::new(listeners.clone(), self.config.routable_ip, keypair).unwrap();
         self.announcement_serializer
             .serialize(&listeners_announcement, &mut bytes)
             .map_err(|err| {
@@ -379,7 +385,8 @@ impl InitConnectionHandler for MassaHandshake {
 
             let mut bytes = PeerId::from_public_key(keypair.get_public_key()).to_bytes();
             //TODO: Add version in announce
-            let listeners_announcement = Announcement::new(listeners.clone(), None, &keypair).unwrap();
+            let listeners_announcement =
+                Announcement::new(listeners.clone(), None, &keypair).unwrap();
             let announcement_serializer = AnnouncementSerializer::new();
             announcement_serializer
                 .serialize(&listeners_announcement, &mut bytes)

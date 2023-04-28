@@ -10,7 +10,7 @@ use std::{fs::read_to_string, ops::Bound::Included, sync::Arc};
 use tracing::{debug, log::warn};
 
 use crate::{
-    connectivity::start_connectivity_thread,
+    connectivity::{start_connectivity_thread, ConnectivityCommand},
     controller::ProtocolControllerImpl,
     handlers::{
         block_handler::{
@@ -25,7 +25,10 @@ use crate::{
             commands_propagation::OperationHandlerPropagationCommand,
             commands_retrieval::OperationHandlerRetrievalCommand,
         },
-        peer_handler::{models::PeerDB, MassaHandshake},
+        peer_handler::{
+            models::{PeerDB, PeerManagementCmd},
+            MassaHandshake,
+        },
     },
     manager::ProtocolManagerImpl,
     messages::MessagesHandler,
@@ -57,6 +60,8 @@ pub struct ProtocolChannels {
         Sender<BlockHandlerPropagationCommand>,
         Receiver<BlockHandlerPropagationCommand>,
     ),
+    pub connectivity_thread: (Sender<ConnectivityCommand>, Receiver<ConnectivityCommand>),
+    pub peer_management_handler: (Sender<PeerManagementCmd>, Receiver<PeerManagementCmd>),
 }
 
 /// This function exists because consensus need the protocol controller and we need consensus controller.
@@ -76,12 +81,20 @@ pub fn create_protocol_controller(
         bounded(config.max_size_channel_commands_retrieval_blocks);
     let (sender_blocks_retrieval_ext, receiver_blocks_retrieval_ext) =
         bounded(config.max_size_channel_commands_propagation_blocks);
+    let (sender_connectivity_ext, receiver_connectivity_ext) =
+        bounded(config.max_size_channel_commands_connectivity);
+    let (sender_peer_management_ext, receiver_peer_management_ext): (
+        Sender<PeerManagementCmd>,
+        Receiver<PeerManagementCmd>,
+    ) = crossbeam::channel::bounded(config.max_size_channel_commands_peers);
     (
         Box::new(ProtocolControllerImpl::new(
             sender_blocks_retrieval_ext.clone(),
             sender_blocks_propagation_ext.clone(),
             sender_operations_propagation_ext.clone(),
             sender_endorsements_propagation_ext.clone(),
+            sender_connectivity_ext.clone(),
+            sender_peer_management_ext.clone(),
         )),
         ProtocolChannels {
             operation_handler_retrieval: (
@@ -105,6 +118,8 @@ pub fn create_protocol_controller(
                 sender_blocks_propagation_ext,
                 receiver_blocks_propagation_ext,
             ),
+            connectivity_thread: (sender_connectivity_ext, receiver_connectivity_ext),
+            peer_management_handler: (sender_peer_management_ext, receiver_peer_management_ext),
         },
     )
 }

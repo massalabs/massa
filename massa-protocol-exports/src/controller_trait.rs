@@ -1,10 +1,16 @@
 // Copyright (c) 2022 MASSA LABS <info@massa.net>
 
+use std::collections::HashMap;
+use std::net::SocketAddr;
+
 use crate::error::ProtocolError;
 
 use massa_models::prehash::{PreHashMap, PreHashSet};
+use massa_models::stats::NetworkStats;
 use massa_models::{block_header::SecuredHeader, block_id::BlockId};
 use massa_storage::Storage;
+use peernet::peer::PeerConnectionType;
+use peernet::peer_id::PeerId;
 
 pub trait ProtocolController: Send + Sync {
     /// Perform all operations needed to stop the ProtocolController
@@ -47,6 +53,24 @@ pub trait ProtocolController: Send + Sync {
     /// # Arguments:
     /// * `endorsements`: endorsements to propagate
     fn propagate_endorsements(&self, endorsements: Storage) -> Result<(), ProtocolError>;
+
+    /// Get the stats from the protocol
+    /// Returns a tuple containing the stats and the list of peers
+    fn get_stats(
+        &self,
+    ) -> Result<
+        (
+            NetworkStats,
+            HashMap<PeerId, (SocketAddr, PeerConnectionType)>,
+        ),
+        ProtocolError,
+    >;
+
+    /// Ban a list of Peer Id
+    fn ban_peers(&self, peer_ids: Vec<PeerId>) -> Result<(), ProtocolError>;
+
+    /// Unban a list of Peer Id
+    fn unban_peers(&self, peer_ids: Vec<PeerId>) -> Result<(), ProtocolError>;
 
     /// Returns a boxed clone of self.
     /// Useful to allow cloning `Box<dyn ProtocolController>`.

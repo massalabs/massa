@@ -2429,8 +2429,8 @@ dependencies = [
  "massa_api_exports",
  "massa_consensus_exports",
  "massa_execution_exports",
+ "massa_hash 0.1.0",
  "massa_models",
- "massa_network_exports",
  "massa_pool_exports",
  "massa_pos_exports",
  "massa_protocol_exports",
@@ -3658,7 +3658,7 @@ checksum = "19b17cddbe7ec3f8bc800887bab5e717348c95ea2ca0b1bf0837fb964dc67099"
 [[package]]
 name = "peernet"
 version = "0.1.0"
-source = "git+https://github.com/massalabs/PeerNet#7ab574b62bbb9880705ec6e58188f2571be69d09"
+source = "git+https://github.com/massalabs/PeerNet#373d724964b0817a370153e51d0236dee49c440c"
 dependencies = [
  "crossbeam",
  "enum_delegate",

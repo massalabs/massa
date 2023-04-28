@@ -1,19 +1,27 @@
+use std::{collections::HashMap, net::SocketAddr, time::Duration};
+
 use crossbeam::channel::Sender;
 use massa_models::{
     block_header::SecuredHeader,
     block_id::BlockId,
     prehash::{PreHashMap, PreHashSet},
+    stats::NetworkStats,
 };
 use massa_protocol_exports::{ProtocolController, ProtocolError};
 use massa_storage::Storage;
+use peernet::{peer::PeerConnectionType, peer_id::PeerId};
 
-use crate::handlers::{
-    block_handler::{
-        commands_propagation::BlockHandlerPropagationCommand,
-        commands_retrieval::BlockHandlerRetrievalCommand,
+use crate::{
+    connectivity::ConnectivityCommand,
+    handlers::{
+        block_handler::{
+            commands_propagation::BlockHandlerPropagationCommand,
+            commands_retrieval::BlockHandlerRetrievalCommand,
+        },
+        endorsement_handler::commands_propagation::EndorsementHandlerPropagationCommand,
+        operation_handler::commands_propagation::OperationHandlerPropagationCommand,
+        peer_handler::models::PeerManagementCmd,
     },
-    endorsement_handler::commands_propagation::EndorsementHandlerPropagationCommand,
-    operation_handler::commands_propagation::OperationHandlerPropagationCommand,
 };
 
 #[derive(Clone)]
@@ -27,6 +35,8 @@ pub struct ProtocolControllerImpl {
     pub sender_block_handler: Option<Sender<BlockHandlerPropagationCommand>>,
     pub sender_operation_handler: Option<Sender<OperationHandlerPropagationCommand>>,
     pub sender_endorsement_handler: Option<Sender<EndorsementHandlerPropagationCommand>>,
+    pub sender_connectivity_thread: Option<Sender<ConnectivityCommand>>,
+    pub sender_peer_management_thread: Option<Sender<PeerManagementCmd>>,
 }
 
 impl ProtocolControllerImpl {
@@ -35,12 +45,16 @@ impl ProtocolControllerImpl {
         sender_block_handler: Sender<BlockHandlerPropagationCommand>,
         sender_operation_handler: Sender<OperationHandlerPropagationCommand>,
         sender_endorsement_handler: Sender<EndorsementHandlerPropagationCommand>,
+        sender_connectivity_thread: Sender<ConnectivityCommand>,
+        sender_peer_management_thread: Sender<PeerManagementCmd>,
     ) -> Self {
         ProtocolControllerImpl {
             sender_block_retrieval_handler: Some(sender_block_retrieval_handler),
             sender_block_handler: Some(sender_block_handler),
             sender_operation_handler: Some(sender_operation_handler),
             sender_endorsement_handler: Some(sender_endorsement_handler),
+            sender_connectivity_thread: Some(sender_connectivity_thread),
+            sender_peer_management_thread: Some(sender_peer_management_thread),
         }
     }
 }
@@ -50,6 +64,7 @@ impl ProtocolController for ProtocolControllerImpl {
         drop(self.sender_block_handler.take());
         drop(self.sender_operation_handler.take());
         drop(self.sender_endorsement_handler.take());
+        drop(self.sender_block_retrieval_handler.take());
     }
 
     /// Sends the order to propagate the header of a block
@@ -121,6 +136,42 @@ impl ProtocolController for ProtocolControllerImpl {
             .map_err(|_| {
                 ProtocolError::ChannelError("propagate_endorsements command send error".into())
             })
+    }
+
+    fn get_stats(
+        &self,
+    ) -> Result<
+        (
+            NetworkStats,
+            HashMap<PeerId, (SocketAddr, PeerConnectionType)>,
+        ),
+        ProtocolError,
+    > {
+        let (sender, receiver) = crossbeam::channel::bounded(1);
+        self.sender_connectivity_thread
+            .as_ref()
+            .unwrap()
+            .send(ConnectivityCommand::GetStats { responder: sender })
+            .map_err(|_| ProtocolError::ChannelError("get_stats command send error".into()))?;
+        receiver
+            .recv_timeout(Duration::from_secs(10))
+            .map_err(|_| ProtocolError::ChannelError("get_stats command receive error".into()))
+    }
+
+    fn ban_peers(&self, peer_ids: Vec<PeerId>) -> Result<(), ProtocolError> {
+        self.sender_peer_management_thread
+            .as_ref()
+            .unwrap()
+            .send(PeerManagementCmd::Ban(peer_ids))
+            .map_err(|_| ProtocolError::ChannelError("ban_peers command send error".into()))
+    }
+
+    fn unban_peers(&self, peer_ids: Vec<PeerId>) -> Result<(), ProtocolError> {
+        self.sender_peer_management_thread
+            .as_ref()
+            .unwrap()
+            .send(PeerManagementCmd::Unban(peer_ids))
+            .map_err(|_| ProtocolError::ChannelError("unban_peers command send error".into()))
     }
 
     fn clone_box(&self) -> Box<dyn ProtocolController> {

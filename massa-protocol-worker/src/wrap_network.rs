@@ -1,8 +1,12 @@
-use std::{collections::HashSet, net::SocketAddr};
+use std::{
+    collections::{HashMap, HashSet},
+    net::SocketAddr,
+};
 
 use massa_protocol_exports::ProtocolError;
 use peernet::{
     network_manager::{PeerNetManager, SharedActiveConnections},
+    peer::PeerConnectionType,
     peer_id::PeerId,
     transports::{OutConnectionConfig, TransportType},
 };
@@ -22,9 +26,11 @@ pub trait ActiveConnectionsTrait: Send + Sync {
     ) -> Result<(), ProtocolError>;
     fn clone_box(&self) -> Box<dyn ActiveConnectionsTrait>;
     fn get_peer_ids_connected(&self) -> HashSet<PeerId>;
+    fn get_peers_connected(&self) -> HashMap<PeerId, (SocketAddr, PeerConnectionType)>;
     fn check_addr_accepted(&self, addr: &SocketAddr) -> bool;
     fn get_max_out_connections(&self) -> usize;
     fn get_nb_out_connections(&self) -> usize;
+    fn get_nb_in_connections(&self) -> usize;
     fn shutdown_connection(&mut self, peer_id: &PeerId);
 }
 
@@ -62,6 +68,22 @@ impl ActiveConnectionsTrait for SharedActiveConnections {
         self.read().connections.keys().cloned().collect()
     }
 
+    fn get_peers_connected(&self) -> HashMap<PeerId, (SocketAddr, PeerConnectionType)> {
+        self.read()
+            .connections
+            .iter()
+            .map(|(peer_id, connection)| {
+                (
+                    peer_id.clone(),
+                    (
+                        connection.endpoint.get_target_addr().clone(),
+                        connection.connection_type,
+                    ),
+                )
+            })
+            .collect()
+    }
+
     fn check_addr_accepted(&self, addr: &SocketAddr) -> bool {
         self.read().check_addr_accepted(addr)
     }
@@ -71,7 +93,11 @@ impl ActiveConnectionsTrait for SharedActiveConnections {
     }
 
     fn get_nb_out_connections(&self) -> usize {
-        self.read().connections.len()
+        self.read().nb_out_connections
+    }
+
+    fn get_nb_in_connections(&self) -> usize {
+        self.read().nb_in_connections
     }
 
     fn shutdown_connection(&mut self, peer_id: &PeerId) {

@@ -66,4 +66,6 @@ pub struct APIConfig {
     pub t0: MassaTime,
     /// periods per cycle
     pub periods_per_cycle: u64,
+    /// keypair file
+    pub keypair_file: PathBuf,
 }
