@@ -3,7 +3,6 @@
 //! Denunciation intro
 //!
 //! Currently, nothing prevents a user from producing multiple blocks (for the same Slot) or endorsing a block multiple times.
-//! By allowing nodes to produce a denunciation; every user will have an incentive of not doing it.
 //! If an invalid Denunciation will just be ignored, a valid Denunciation will slash some locked rolls.
 //! Note that this proposal aims at dissuading 'rational' users from causing damage but does help against 'byzantine' actors
 //! that just want to disturb or break the blockclique (at any cost).

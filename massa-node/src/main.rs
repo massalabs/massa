@@ -470,6 +470,7 @@ async fn launch(
     );
 
     // launch pool controller
+    let last_start_period = args.restart_from_snapshot_at_period.unwrap_or(0);
     let pool_config = PoolConfig {
         thread_count: THREAD_COUNT,
         max_block_size: MAX_BLOCK_SIZE,
@@ -491,6 +492,7 @@ async fn launch(
         periods_per_cycle: PERIODS_PER_CYCLE,
         denunciation_expire_periods: DENUNCIATION_EXPIRE_PERIODS,
         max_denunciations_per_block_header: MAX_DENUNCIATIONS_PER_BLOCK_HEADER,
+        last_start_period
     };
 
     let pool_channels = PoolChannels {
