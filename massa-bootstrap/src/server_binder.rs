@@ -174,7 +174,6 @@ impl BootstrapServerBinder {
         })
     }
 
-    // TODO: use a proper (de)serializer: https://github.com/massalabs/massa/pull/3745#discussion_r1169733161
     /// Writes the next message.
     pub fn send_timeout(
         &mut self,

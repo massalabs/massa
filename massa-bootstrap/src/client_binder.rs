@@ -75,7 +75,6 @@ impl BootstrapClientBinder {
         Ok(())
     }
 
-    // TODO: use a proper (de)serializer: https://github.com/massalabs/massa/pull/3745#discussion_r1169733161
     /// Reads the next message.
     pub fn next_timeout(
         &mut self,
