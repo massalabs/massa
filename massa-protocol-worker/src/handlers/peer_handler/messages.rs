@@ -287,7 +287,7 @@ fn listener_deserializer<'a, E: ParseError<&'a [u8]> + ContextError<&'a [u8]>>(
 mod tests {
     use std::collections::HashMap;
 
-    use massa_serialization::{DeserializeError, Deserializer, Serializer, U64VarIntDeserializer};
+    use massa_serialization::{DeserializeError, Deserializer, Serializer};
     use peernet::{peer_id::PeerId, transports::TransportType, types::KeyPair};
 
     use super::{
@@ -301,37 +301,36 @@ mod tests {
         let mut listeners = HashMap::new();
         listeners.insert("127.0.0.1:33036".parse().unwrap(), TransportType::Tcp);
         listeners.insert("127.0.0.1:33035".parse().unwrap(), TransportType::Quic);
-        let message = PeerManagementMessage::NewPeerConnected((
-            PeerId::from_public_key(keypair.get_public_key()),
-            listeners.clone(),
-        ));
+
         let serializer = PeerManagementMessageSerializer::new();
         let mut buffer = vec![];
-        serializer.serialize(&message, &mut buffer).unwrap();
+        let msg = PeerManagementMessage::NewPeerConnected((
+            PeerId::from_public_key(keypair.get_public_key()),
+            listeners.clone(),
+        ))
+        .into();
+
+        serializer.serialize(&msg, &mut buffer).unwrap();
+
         let mut deserializer =
             PeerManagementMessageDeserializer::new(PeerManagementMessageDeserializerArgs {
                 max_listeners_per_peer: 1000,
                 max_peers_per_announcement: 1000,
             });
-        let id_deserializer = U64VarIntDeserializer::new(
-            std::ops::Bound::Included(0),
-            std::ops::Bound::Included(u64::MAX),
-        );
-        let (rest, id) = id_deserializer
+        deserializer.set_message(0);
+
+        let (rest, message) = deserializer
             .deserialize::<DeserializeError>(&buffer)
             .unwrap();
-        deserializer.set_message(id);
-        let (rest, message) = deserializer.deserialize::<DeserializeError>(rest).unwrap();
         assert!(rest.is_empty());
         match message {
             PeerManagementMessage::NewPeerConnected((peer_id, message_listeners)) => {
                 assert_eq!(peer_id, PeerId::from_public_key(keypair.get_public_key()));
                 assert_eq!(message_listeners.len(), 2);
-                let listeners = listeners.clone();
-                let iter = listeners.iter().zip(message_listeners.iter());
-                for ((addr, transport_type), (message_addr, message_transport_type)) in iter {
-                    assert_eq!(addr, message_addr);
-                    assert_eq!(transport_type, message_transport_type);
+
+                for (addr, transport) in listeners.iter() {
+                    assert!(message_listeners.contains_key(addr));
+                    assert_eq!(message_listeners.get(addr).unwrap(), transport);
                 }
             }
             _ => panic!("Bad message deserialized"),
@@ -354,6 +353,7 @@ mod tests {
                 listeners.clone(),
             ),
         ]);
+
         let serializer = PeerManagementMessageSerializer::new();
         let mut buffer = vec![];
         serializer.serialize(&message, &mut buffer).unwrap();
@@ -362,15 +362,10 @@ mod tests {
                 max_listeners_per_peer: 1000,
                 max_peers_per_announcement: 1000,
             });
-        let id_deserializer = U64VarIntDeserializer::new(
-            std::ops::Bound::Included(0),
-            std::ops::Bound::Included(u64::MAX),
-        );
-        let (rest, id) = id_deserializer
+        deserializer.set_message(1);
+        let (rest, message) = deserializer
             .deserialize::<DeserializeError>(&buffer)
             .unwrap();
-        deserializer.set_message(id);
-        let (rest, message) = deserializer.deserialize::<DeserializeError>(rest).unwrap();
         assert!(rest.is_empty());
         match message {
             PeerManagementMessage::ListPeers(peers) => {
@@ -380,11 +375,9 @@ mod tests {
                 for ((peer_id, message_listeners), public_key) in iter {
                     assert_eq!(peer_id, &PeerId::from_public_key(*public_key));
                     assert_eq!(message_listeners.len(), 1);
-                    let listeners = listeners.clone();
-                    let iter = listeners.iter().zip(message_listeners.iter());
-                    for ((addr, transport_type), (message_addr, message_transport_type)) in iter {
-                        assert_eq!(addr, message_addr);
-                        assert_eq!(transport_type, message_transport_type);
+                    for (addr, transport) in listeners.iter() {
+                        assert!(message_listeners.contains_key(addr));
+                        assert_eq!(message_listeners.get(addr).unwrap(), transport);
                     }
                 }
             }
