@@ -5,7 +5,7 @@ use crossbeam::{
 use massa_consensus_exports::ConsensusController;
 use massa_models::stats::NetworkStats;
 use massa_pool_exports::PoolController;
-use massa_protocol_exports::{ProtocolConfig, ProtocolError};
+use massa_protocol_exports::{BootstrapPeers, ProtocolConfig, ProtocolError};
 use massa_storage::Storage;
 use parking_lot::RwLock;
 use peernet::{
@@ -52,13 +52,18 @@ pub(crate) fn start_connectivity_thread(
     channel_endorsements: (Sender<PeerMessageTuple>, Receiver<PeerMessageTuple>),
     channel_operations: (Sender<PeerMessageTuple>, Receiver<PeerMessageTuple>),
     channel_peers: (Sender<PeerMessageTuple>, Receiver<PeerMessageTuple>),
+    bootstrap_peers: Option<BootstrapPeers>,
     peer_db: SharedPeerDB,
     storage: Storage,
     protocol_channels: ProtocolChannels,
 ) -> Result<(Sender<ConnectivityCommand>, JoinHandle<()>), ProtocolError> {
-    let initial_peers = serde_json::from_str::<HashMap<PeerId, HashMap<SocketAddr, TransportType>>>(
-        &std::fs::read_to_string(&config.initial_peers)?,
-    )?;
+    let initial_peers = if let Some(bootstrap_peers) = bootstrap_peers {
+        bootstrap_peers.0.into_iter().collect()
+    } else {
+        serde_json::from_str::<HashMap<PeerId, HashMap<SocketAddr, TransportType>>>(
+            &std::fs::read_to_string(&config.initial_peers)?,
+        )?
+    };
 
     let handle = std::thread::Builder::new()
     .name("protocol-connectivity".to_string())

@@ -98,6 +98,7 @@ fn basic() {
     let (mut manager1, _, _) = start_protocol_controller(
         config1,
         consensus_controller1,
+        None,
         pool_controller1,
         storage1,
         channels1,
@@ -106,6 +107,7 @@ fn basic() {
     let (mut manager2, _, _) = start_protocol_controller(
         config2,
         consensus_controller2,
+        None,
         pool_controller2,
         storage2,
         channels2,
@@ -192,6 +194,7 @@ fn stop_with_controller_still_exists() {
     let (mut manager1, _, _) = start_protocol_controller(
         config1,
         consensus_controller1,
+        None,
         pool_controller1,
         storage1,
         channels1,
@@ -200,6 +203,7 @@ fn stop_with_controller_still_exists() {
     let (mut manager2, _, _) = start_protocol_controller(
         config2,
         consensus_controller2,
+        None,
         pool_controller2,
         storage2,
         channels2,

@@ -74,6 +74,7 @@ pub fn start_protocol_controller_with_mock_network(
         (sender_endorsements, receiver_endorsements),
         (sender_operations, receiver_operations),
         (sender_peers, receiver_peers),
+        None,
         peer_db,
         storage,
         channels,

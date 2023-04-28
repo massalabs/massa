@@ -2,7 +2,9 @@ use crossbeam::channel::{bounded, Receiver, Sender};
 use massa_consensus_exports::ConsensusController;
 use massa_models::node::NodeId;
 use massa_pool_exports::PoolController;
-use massa_protocol_exports::{ProtocolConfig, ProtocolController, ProtocolError, ProtocolManager};
+use massa_protocol_exports::{
+    BootstrapPeers, ProtocolConfig, ProtocolController, ProtocolError, ProtocolManager,
+};
 use massa_serialization::U64VarIntDeserializer;
 use massa_signature::KeyPair;
 use massa_storage::Storage;
@@ -133,10 +135,12 @@ pub fn create_protocol_controller(
 /// # Arguments
 /// * `config`: protocol settings
 /// * `consensus_controller`: interact with consensus module
+/// * `bootstrap_peers`: list of peers to connect to retrieved from the bootstrap
 /// * `storage`: Shared storage to fetch data that are fetch across all modules
 pub fn start_protocol_controller(
     config: ProtocolConfig,
     consensus_controller: Box<dyn ConsensusController>,
+    bootstrap_peers: Option<BootstrapPeers>,
     pool_controller: Box<dyn PoolController>,
     storage: Storage,
     protocol_channels: ProtocolChannels,
@@ -200,6 +204,7 @@ pub fn start_protocol_controller(
         (sender_endorsements, receiver_endorsements),
         (sender_operations, receiver_operations),
         (sender_peers, receiver_peers),
+        bootstrap_peers,
         peer_db,
         storage,
         protocol_channels,
