@@ -194,6 +194,7 @@ impl BootstrapClientBinder {
         Ok(())
     }
 
+    /// Like read_exact_timeout, but does not consume bytes from the stream
     fn peek_exact_timeout(
         &mut self,
         buf: &mut [u8],
@@ -216,6 +217,7 @@ impl BootstrapClientBinder {
         Ok(())
     }
 
+    /// Similar to std::net::TcpStream::read_exact, but the timeout is global, not per-syscall read
     fn read_exact_timeout(
         &mut self,
         buf: &mut [u8],
