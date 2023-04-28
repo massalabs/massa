@@ -45,12 +45,10 @@ massa_async_pool = { path = "../massa-async-pool", features = ["testing"] }
 massa_ledger_worker = { path = "../massa-ledger-worker", features = [
     "testing",
 ] }
+tokio = { version = "1.0", features = ["full"] }
 massa_pos_worker = { path = "../massa-pos-worker", features = ["testing"] }
 massa_pos_exports = { path = "../massa-pos-exports", features = ["testing"] }
 massa_consensus_exports = { path = "../massa-consensus-exports", features = [
-    "testing",
-] }
-massa_network_exports = { path = "../massa-network-exports", features = [
     "testing",
 ] }
 lazy_static = "1.4"

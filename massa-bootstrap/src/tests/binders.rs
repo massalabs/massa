@@ -13,13 +13,16 @@ use massa_models::config::{
     MAX_DATASTORE_KEY_LENGTH, MAX_DATASTORE_VALUE_LENGTH, MAX_DEFERRED_CREDITS_LENGTH,
     MAX_DENUNCIATIONS_PER_BLOCK_HEADER, MAX_DENUNCIATION_CHANGES_LENGTH,
     MAX_EXECUTED_OPS_CHANGES_LENGTH, MAX_EXECUTED_OPS_LENGTH, MAX_LEDGER_CHANGES_COUNT,
-    MAX_OPERATIONS_PER_BLOCK, MAX_PRODUCTION_STATS_LENGTH, MAX_ROLLS_COUNT_LENGTH,
-    MIP_STORE_STATS_BLOCK_CONSIDERED, MIP_STORE_STATS_COUNTERS_MAX, THREAD_COUNT,
+    MAX_LISTENERS_PER_PEER, MAX_OPERATIONS_PER_BLOCK, MAX_PRODUCTION_STATS_LENGTH,
+    MAX_ROLLS_COUNT_LENGTH, MIP_STORE_STATS_BLOCK_CONSIDERED, MIP_STORE_STATS_COUNTERS_MAX,
+    THREAD_COUNT,
 };
 use massa_models::node::NodeId;
 use massa_models::version::Version;
+use massa_protocol_exports::{PeerId, TransportType};
 use massa_signature::{KeyPair, PublicKey};
 use massa_time::MassaTime;
+use std::collections::HashMap;
 use std::net::TcpStream;
 use std::str::FromStr;
 
@@ -35,6 +38,7 @@ impl BootstrapClientBinder {
         let cfg = BootstrapClientConfig {
             max_bytes_read_write: f64::INFINITY,
             max_bootstrap_message_size: MAX_BOOTSTRAP_MESSAGE_SIZE,
+            max_listeners_per_peer: MAX_LISTENERS_PER_PEER as u32,
             endorsement_count: ENDORSEMENT_COUNT,
             max_advertise_length: MAX_ADVERTISE_LENGTH,
             max_bootstrap_blocks_length: MAX_BOOTSTRAP_BLOCKS,
@@ -96,7 +100,15 @@ fn test_binders() {
         .name("test_binders::server_thread".to_string())
         .spawn(move || {
             // Test message 1
-            let vector_peers = vec![bootstrap_config.bootstrap_list[0].0.ip()];
+            let mut listeners = HashMap::default();
+            listeners.insert(
+                bootstrap_config.bootstrap_list[0].0.clone(),
+                TransportType::Tcp,
+            );
+            let vector_peers = vec![(
+                PeerId::from_bytes(KeyPair::generate().get_public_key().to_bytes()).unwrap(),
+                listeners,
+            )];
             let test_peers_message = BootstrapServerMessage::BootstrapPeers {
                 peers: BootstrapPeers(vector_peers.clone()),
             };
@@ -118,10 +130,24 @@ fn test_binders() {
             }
 
             // Test message 3
+            let mut listeners = HashMap::default();
+            listeners.insert(
+                bootstrap_config.bootstrap_list[0].0.clone(),
+                TransportType::Tcp,
+            );
             let vector_peers = vec![
-                bootstrap_config.bootstrap_list[0].0.ip(),
-                bootstrap_config.bootstrap_list[0].0.ip(),
-                bootstrap_config.bootstrap_list[0].0.ip(),
+                (
+                    PeerId::from_bytes(KeyPair::generate().get_public_key().to_bytes()).unwrap(),
+                    listeners.clone(),
+                ),
+                (
+                    PeerId::from_bytes(KeyPair::generate().get_public_key().to_bytes()).unwrap(),
+                    listeners.clone(),
+                ),
+                (
+                    PeerId::from_bytes(KeyPair::generate().get_public_key().to_bytes()).unwrap(),
+                    listeners.clone(),
+                ),
             ];
             let test_peers_message = BootstrapServerMessage::BootstrapPeers {
                 peers: BootstrapPeers(vector_peers.clone()),
@@ -137,7 +163,15 @@ fn test_binders() {
         .name("test_binders::server_thread".to_string())
         .spawn(move || {
             // Test message 1
-            let vector_peers = vec![bootstrap_config.bootstrap_list[0].0.ip()];
+            let mut listeners = HashMap::default();
+            listeners.insert(
+                bootstrap_config.bootstrap_list[0].0.clone(),
+                TransportType::Tcp,
+            );
+            let vector_peers = vec![(
+                PeerId::from_bytes(KeyPair::generate().get_public_key().to_bytes()).unwrap(),
+                listeners,
+            )];
 
             let version: Version = Version::from_str("TEST.1.10").unwrap();
 
@@ -160,10 +194,24 @@ fn test_binders() {
                 .unwrap();
 
             // Test message 3
+            let mut listeners = HashMap::default();
+            listeners.insert(
+                bootstrap_config.bootstrap_list[0].0.clone(),
+                TransportType::Tcp,
+            );
             let vector_peers = vec![
-                bootstrap_config.bootstrap_list[0].0.ip(),
-                bootstrap_config.bootstrap_list[0].0.ip(),
-                bootstrap_config.bootstrap_list[0].0.ip(),
+                (
+                    PeerId::from_bytes(KeyPair::generate().get_public_key().to_bytes()).unwrap(),
+                    listeners.clone(),
+                ),
+                (
+                    PeerId::from_bytes(KeyPair::generate().get_public_key().to_bytes()).unwrap(),
+                    listeners.clone(),
+                ),
+                (
+                    PeerId::from_bytes(KeyPair::generate().get_public_key().to_bytes()).unwrap(),
+                    listeners.clone(),
+                ),
             ];
             let message = client.next_timeout(None).unwrap();
             match message {
@@ -210,7 +258,15 @@ fn test_binders_double_send_server_works() {
         .name("test_buinders_double_send_server_works::server_thread".to_string())
         .spawn(move || {
             // Test message 1
-            let vector_peers = vec![bootstrap_config.bootstrap_list[0].0.ip()];
+            let mut listeners = HashMap::default();
+            listeners.insert(
+                bootstrap_config.bootstrap_list[0].0.clone(),
+                TransportType::Tcp,
+            );
+            let vector_peers = vec![(
+                PeerId::from_bytes(KeyPair::generate().get_public_key().to_bytes()).unwrap(),
+                listeners.clone(),
+            )];
             let test_peers_message = BootstrapServerMessage::BootstrapPeers {
                 peers: BootstrapPeers(vector_peers.clone()),
             };
@@ -223,10 +279,24 @@ fn test_binders_double_send_server_works() {
                 .unwrap();
 
             // Test message 2
+            let mut listeners = HashMap::default();
+            listeners.insert(
+                bootstrap_config.bootstrap_list[0].0.clone(),
+                TransportType::Tcp,
+            );
             let vector_peers = vec![
-                bootstrap_config.bootstrap_list[0].0.ip(),
-                bootstrap_config.bootstrap_list[0].0.ip(),
-                bootstrap_config.bootstrap_list[0].0.ip(),
+                (
+                    PeerId::from_bytes(KeyPair::generate().get_public_key().to_bytes()).unwrap(),
+                    listeners.clone(),
+                ),
+                (
+                    PeerId::from_bytes(KeyPair::generate().get_public_key().to_bytes()).unwrap(),
+                    listeners.clone(),
+                ),
+                (
+                    PeerId::from_bytes(KeyPair::generate().get_public_key().to_bytes()).unwrap(),
+                    listeners.clone(),
+                ),
             ];
             let test_peers_message = BootstrapServerMessage::BootstrapPeers {
                 peers: BootstrapPeers(vector_peers.clone()),
@@ -242,8 +312,15 @@ fn test_binders_double_send_server_works() {
         .name("test_buinders_double_send_server_works::client_thread".to_string())
         .spawn(move || {
             // Test message 1
-            let vector_peers = vec![bootstrap_config.bootstrap_list[0].0.ip()];
-
+            let mut listeners = HashMap::default();
+            listeners.insert(
+                bootstrap_config.bootstrap_list[0].0.clone(),
+                TransportType::Tcp,
+            );
+            let vector_peers = vec![(
+                PeerId::from_bytes(KeyPair::generate().get_public_key().to_bytes()).unwrap(),
+                listeners.clone(),
+            )];
             let version: Version = Version::from_str("TEST.1.10").unwrap();
 
             client.handshake(version).unwrap();
@@ -256,10 +333,24 @@ fn test_binders_double_send_server_works() {
             }
 
             // Test message 2
+            let mut listeners = HashMap::default();
+            listeners.insert(
+                bootstrap_config.bootstrap_list[0].0.clone(),
+                TransportType::Tcp,
+            );
             let vector_peers = vec![
-                bootstrap_config.bootstrap_list[0].0.ip(),
-                bootstrap_config.bootstrap_list[0].0.ip(),
-                bootstrap_config.bootstrap_list[0].0.ip(),
+                (
+                    PeerId::from_bytes(KeyPair::generate().get_public_key().to_bytes()).unwrap(),
+                    listeners.clone(),
+                ),
+                (
+                    PeerId::from_bytes(KeyPair::generate().get_public_key().to_bytes()).unwrap(),
+                    listeners.clone(),
+                ),
+                (
+                    PeerId::from_bytes(KeyPair::generate().get_public_key().to_bytes()).unwrap(),
+                    listeners.clone(),
+                ),
             ];
             let message = client.next_timeout(None).unwrap();
             match message {
@@ -306,7 +397,15 @@ fn test_binders_try_double_send_client_works() {
         .name("test_buinders_double_send_client_works::server_thread".to_string())
         .spawn(move || {
             // Test message 1
-            let vector_peers = vec![bootstrap_config.bootstrap_list[0].0.ip()];
+            let mut listeners = HashMap::default();
+            listeners.insert(
+                bootstrap_config.bootstrap_list[0].0.clone(),
+                TransportType::Tcp,
+            );
+            let vector_peers = vec![(
+                PeerId::from_bytes(KeyPair::generate().get_public_key().to_bytes()).unwrap(),
+                listeners.clone(),
+            )];
             let test_peers_message = BootstrapServerMessage::BootstrapPeers {
                 peers: BootstrapPeers(vector_peers.clone()),
             };
@@ -343,7 +442,15 @@ fn test_binders_try_double_send_client_works() {
         .name("test_buinders_double_send_client_works::client_thread".to_string())
         .spawn(move || {
             // Test message 1
-            let vector_peers = vec![bootstrap_config.bootstrap_list[0].0.ip()];
+            let mut listeners = HashMap::default();
+            listeners.insert(
+                bootstrap_config.bootstrap_list[0].0.clone(),
+                TransportType::Tcp,
+            );
+            let vector_peers = vec![(
+                PeerId::from_bytes(KeyPair::generate().get_public_key().to_bytes()).unwrap(),
+                listeners.clone(),
+            )];
             let version: Version = Version::from_str("TEST.1.10").unwrap();
 
             client.handshake(version).unwrap();
@@ -374,7 +481,15 @@ fn test_binders_try_double_send_client_works() {
                 )
                 .unwrap();
 
-            let vector_peers = vec![bootstrap_config.bootstrap_list[0].0.ip()];
+            let mut listeners = HashMap::default();
+            listeners.insert(
+                bootstrap_config.bootstrap_list[0].0.clone(),
+                TransportType::Tcp,
+            );
+            let vector_peers = vec![(
+                PeerId::from_bytes(KeyPair::generate().get_public_key().to_bytes()).unwrap(),
+                listeners.clone(),
+            )];
             let message = client.next_timeout(None).unwrap();
             match message {
                 BootstrapServerMessage::BootstrapPeers { peers } => {

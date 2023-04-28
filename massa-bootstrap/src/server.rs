@@ -38,10 +38,6 @@ use massa_models::{
     version::Version,
 };
 
-//TODO AURELIEN: Readd
-//#[cfg(any(test, feature = "test"))]
-//use massa_network_exports::MockNetworkCommandSender as NetworkCommandSender;
-//#[cfg(not(any(test, feature = "test")))]
 use massa_protocol_exports::ProtocolController;
 use massa_signature::KeyPair;
 use massa_time::MassaTime;

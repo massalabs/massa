@@ -13,3 +13,6 @@ pub use settings::ProtocolConfig;
 
 #[cfg(feature = "testing")]
 pub mod test_exports;
+
+#[cfg(feature = "testing")]
+pub use controller_trait::MockProtocolController;

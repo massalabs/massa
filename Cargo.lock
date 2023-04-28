@@ -1228,27 +1228,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "enum-map"
-version = "2.5.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "988f0d17a0fa38291e5f41f71ea8d46a5d5497b9054d5a759fae2cbb819f2356"
-dependencies = [
- "enum-map-derive",
- "serde",
-]
-
-[[package]]
-name = "enum-map-derive"
-version = "0.11.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "2a4da76b3b6116d758c7ba93f7ec6a35d2e2cf24feda76c6e38a375f4d5c59f2"
-dependencies = [
- "proc-macro2 1.0.56",
- "quote 1.0.26",
- "syn 1.0.109",
-]
-
-[[package]]
 name = "enum_delegate"
 version = "0.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2511,7 +2490,6 @@ dependencies = [
  "massa_ledger_worker",
  "massa_logging",
  "massa_models",
- "massa_network_exports",
  "massa_pos_exports",
  "massa_pos_worker",
  "massa_protocol_exports",
@@ -2530,6 +2508,7 @@ dependencies = [
  "substruct",
  "tempfile",
  "thiserror",
+ "tokio",
  "tracing",
 ]
 
@@ -2741,7 +2720,6 @@ dependencies = [
  "massa_execution_exports",
  "massa_hash 0.1.0",
  "massa_models",
- "massa_network_exports",
  "massa_pool_exports",
  "massa_pos_exports",
  "massa_proto",
@@ -2881,53 +2859,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "massa_network_exports"
-version = "0.1.0"
-dependencies = [
- "displaydoc",
- "enum-map",
- "massa_hash 0.1.0",
- "massa_models",
- "massa_serialization 0.1.0",
- "massa_signature 0.1.0",
- "massa_time",
- "mockall",
- "nom",
- "serde",
- "serde_json",
- "socket2",
- "tempfile",
- "thiserror",
- "tokio",
- "tracing",
-]
-
-[[package]]
-name = "massa_network_worker"
-version = "0.1.0"
-dependencies = [
- "enum-map",
- "futures",
- "itertools",
- "massa_hash 0.1.0",
- "massa_logging",
- "massa_models",
- "massa_network_exports",
- "massa_serialization 0.1.0",
- "massa_signature 0.1.0",
- "massa_time",
- "nom",
- "num_enum",
- "rand 0.8.5",
- "serde",
- "serde_json",
- "serial_test 1.0.0",
- "tempfile",
- "tokio",
- "tracing",
-]
-
-[[package]]
 name = "massa_pool_exports"
 version = "0.1.0"
 dependencies = [
@@ -3026,6 +2957,7 @@ dependencies = [
  "massa_signature 0.1.0",
  "massa_storage",
  "massa_time",
+ "mockall",
  "nom",
  "peernet",
  "serde",
