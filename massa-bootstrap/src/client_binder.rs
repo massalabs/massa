@@ -29,6 +29,48 @@ pub struct BootstrapClientBinder {
     cfg: BootstrapClientConfig,
 }
 
+/// The known-length component of a message to be received.
+struct ServerMessageLeader {
+    sig: Signature,
+    msg_len: u32,
+}
+/// Encapsulates the meta-data needed to derive a [`ServerMessageLeader`] from a peeked buffer.
+struct ServerMessageLeaderDeserializer {
+    /// numbor of bytes used to encode the message length
+    size_field_len: usize,
+    max_msg_size: u32,
+}
+impl ServerMessageLeaderDeserializer {
+    fn new(size_field_len: usize, max_msg_size: u32) -> Self {
+        Self {
+            size_field_len,
+            max_msg_size,
+        }
+    }
+
+    /// We are using this instead of of our library deserializer as the process is relatively straight forward
+    /// and makes error-type management cleaner
+    fn concrete_deserialize(
+        &self,
+        peek_buff: &[u8],
+    ) -> Result<ServerMessageLeader, BootstrapError> {
+        // todo: make the byte-count for the message len known at compile time so an array can be used
+        if peek_buff.len() != SIGNATURE_SIZE_BYTES + self.size_field_len {
+            panic!("todo: make the peek-buff length a compile-time constant");
+        }
+
+        let sig_array = peek_buff[0..SIGNATURE_SIZE_BYTES]
+            .try_into()
+            .expect("logic error in array manipulations");
+        let sig = Signature::from_bytes(&sig_array)?;
+
+        // construct the message len from the peek
+        let msg_len =
+            u32::from_be_bytes_min(&peek_buff[SIGNATURE_SIZE_BYTES..], self.max_msg_size)?.0;
+        Ok(ServerMessageLeader { sig, msg_len })
+    }
+}
+
 impl BootstrapClientBinder {
     /// Creates a new `WriteBinder`.
     ///
@@ -85,18 +127,12 @@ impl BootstrapClientBinder {
             // TODO: Backoff spin of some sort
         }
 
-        // construct the signature from the peek
-        let sig_array = peek_buff.as_slice()[0..SIGNATURE_SIZE_BYTES]
-            .try_into()
-            .expect("logic error in array manipulations");
-        let sig = Signature::from_bytes(&sig_array)?;
-
-        // construct the message len from the peek
-        let msg_len = u32::from_be_bytes_min(
-            &peek_buff[SIGNATURE_SIZE_BYTES..],
+        let leader_decoder = ServerMessageLeaderDeserializer::new(
+            self.size_field_len,
             self.cfg.max_bootstrap_message_size,
-        )?
-        .0;
+        );
+        let ServerMessageLeader { sig, msg_len } =
+            leader_decoder.concrete_deserialize(&peek_buff)?;
 
         // Update this bindings "most recently received" message hash, retaining the replaced value
         let message_deserializer = BootstrapServerMessageDeserializer::new((&self.cfg).into());
