@@ -118,7 +118,7 @@ service MassaService {
   rpc NewOperations(stream NewOperationsRequest) returns (stream NewOperationsResponse) {}
 
   // New received and produced smart contract execution events
-  rpc NewScExecutionOutputs(stream NewScExecutionOutputsRequest) returns (stream NewScExecutionOutputsResponse) {}
+  rpc NewSlotExecutionOutputs(stream NewSlotExecutionOutputsRequest) returns (stream NewSlotExecutionOutputsResponse) {}
 
   // Send blocks
   rpc SendBlocks(stream SendBlocksRequest) returns (stream SendBlocksResponse) {}
@@ -536,38 +536,18 @@ message NewOperationsResponse {
   SignedOperation operation = 2;
 }
 
-// NewScExecutionOutputsRequest holds request for NewScExecutionOutputs
-message NewScExecutionOutputsRequest {
+// NewSlotExecutionOutputsRequest holds request for NewSlotExecutionOutputs
+message NewSlotExecutionOutputsRequest {
   // Request id
   string id = 1;
-  // Query
-  NewScExecutionOutputsQuery query = 2;
 }
 
-// NewScExecutionOutputs Query
-message NewScExecutionOutputsQuery {
-  // Filter
-  NewScExecutionOutputsFilter filter = 1;
-}
-
-// NewScExecutionOutputs Filter
-message NewScExecutionOutputsFilter {
-  // Caller address
-  optional string caller_address = 1;
-  // Emitter address
-  optional string emitter_address = 2;
-  // Original operation id
-  optional string original_operation_id = 3;
-  // Status
-  repeated ScExecutionEventStatus status = 4;
-}
-
-// NewScExecutionOutputsResponse holds response from NewScExecutionOutputs
-message NewScExecutionOutputsResponse {
+// NewSlotExecutionOutputsResponse holds response from NewSlotExecutionOutputs
+message NewSlotExecutionOutputsResponse {
   // Request id
   string id = 1;
-  // Execution output
-  ScExecutionOutput execution_output = 2;
+  // Slot execution output
+  SlotExecutionOutput output = 2;
 }
 
 // SendBlocksRequest holds parameters to SendBlocks

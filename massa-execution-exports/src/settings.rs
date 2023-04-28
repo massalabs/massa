@@ -82,6 +82,6 @@ pub struct ExecutionConfig {
     pub denunciation_expire_periods: u64,
     /// whether smart contract execution outputs broadcast is enabled
     pub broadcast_enabled: bool,
-    /// smart contract execution outputs channel capacity
-    pub broadcast_sc_execution_output_channel_capacity: usize,
+    /// slot execution outputs channel capacity
+    pub broadcast_slot_execution_output_channel_capacity: usize,
 }

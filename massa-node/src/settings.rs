@@ -36,7 +36,7 @@ pub struct ExecutionSettings {
     pub hd_cache_size: usize,
     pub snip_amount: usize,
     /// smart contract execution outputs channel capacity
-    pub broadcast_sc_execution_output_channel_capacity: usize,
+    pub broadcast_slot_execution_output_channel_capacity: usize,
 }
 
 #[derive(Clone, Debug, Deserialize)]

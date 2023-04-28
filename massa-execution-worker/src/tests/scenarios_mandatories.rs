@@ -50,10 +50,10 @@ mod tests {
         };
         let mip_store = MipStore::try_from(([], mip_stats_config)).unwrap();
 
-        let sc_execution_output_sender = broadcast::channel(5000).0;
+        let slot_execution_output_sender = broadcast::channel(5000).0;
 
         let channels = ExecutionChannels {
-            sc_execution_output_sender,
+            slot_execution_output_sender,
         };
 
         let (sample_state, _keep_file, _keep_dir) = get_sample_state(0).unwrap();
@@ -82,10 +82,10 @@ mod tests {
         };
         let mip_store = MipStore::try_from(([], mip_stats_config)).unwrap();
 
-        let sc_execution_output_sender = broadcast::channel(5000).0;
+        let slot_execution_output_sender = broadcast::channel(5000).0;
 
         let channels = ExecutionChannels {
-            sc_execution_output_sender,
+            slot_execution_output_sender,
         };
 
         let (sample_state, _keep_file, _keep_dir) = get_sample_state(0).unwrap();
@@ -126,10 +126,10 @@ mod tests {
         // init the storage
         let storage = Storage::create_root();
 
-        let sc_execution_output_sender = broadcast::channel(5000).0;
+        let slot_execution_output_sender = broadcast::channel(5000).0;
 
         let channels = ExecutionChannels {
-            sc_execution_output_sender,
+            slot_execution_output_sender,
         };
 
         // start the execution worker
@@ -227,10 +227,10 @@ mod tests {
         // init the storage
         let mut storage = Storage::create_root();
 
-        let sc_execution_output_sender = broadcast::channel(5000).0;
+        let slot_execution_output_sender = broadcast::channel(5000).0;
 
         let channels = ExecutionChannels {
-            sc_execution_output_sender,
+            slot_execution_output_sender,
         };
 
         // start the execution worker
@@ -388,10 +388,10 @@ mod tests {
         // init the storage
         let mut storage = Storage::create_root();
 
-        let sc_execution_output_sender = broadcast::channel(5000).0;
+        let slot_execution_output_sender = broadcast::channel(5000).0;
 
         let channels = ExecutionChannels {
-            sc_execution_output_sender,
+            slot_execution_output_sender,
         };
 
         // start the execution worker
@@ -540,10 +540,10 @@ mod tests {
         };
         let mip_store = MipStore::try_from(([], mip_stats_config)).unwrap();
 
-        let sc_execution_output_sender = broadcast::channel(5000).0;
+        let slot_execution_output_sender = broadcast::channel(5000).0;
 
         let channels = ExecutionChannels {
-            sc_execution_output_sender,
+            slot_execution_output_sender,
         };
 
         // init the storage
@@ -653,10 +653,10 @@ mod tests {
         // init the storage
         let mut storage = Storage::create_root();
 
-        let sc_execution_output_sender = broadcast::channel(5000).0;
+        let slot_execution_output_sender = broadcast::channel(5000).0;
 
         let channels = ExecutionChannels {
-            sc_execution_output_sender,
+            slot_execution_output_sender,
         };
 
         // start the execution worker
@@ -764,10 +764,10 @@ mod tests {
         // init the storage
         let mut storage = Storage::create_root();
 
-        let sc_execution_output_sender = broadcast::channel(5000).0;
+        let slot_execution_output_sender = broadcast::channel(5000).0;
 
         let channels = ExecutionChannels {
-            sc_execution_output_sender,
+            slot_execution_output_sender,
         };
 
         // start the execution worker
@@ -888,10 +888,10 @@ mod tests {
         // init the storage
         let mut storage = Storage::create_root();
 
-        let sc_execution_output_sender = broadcast::channel(5000).0;
+        let slot_execution_output_sender = broadcast::channel(5000).0;
 
         let channels = ExecutionChannels {
-            sc_execution_output_sender,
+            slot_execution_output_sender,
         };
 
         // start the execution worker
@@ -996,10 +996,10 @@ mod tests {
         // init the storage
         let mut storage = Storage::create_root();
 
-        let sc_execution_output_sender = broadcast::channel(5000).0;
+        let slot_execution_output_sender = broadcast::channel(5000).0;
 
         let channels = ExecutionChannels {
-            sc_execution_output_sender,
+            slot_execution_output_sender,
         };
 
         // start the execution worker
@@ -1155,10 +1155,10 @@ mod tests {
         // init the storage
         let mut storage = Storage::create_root();
 
-        let sc_execution_output_sender = broadcast::channel(5000).0;
+        let slot_execution_output_sender = broadcast::channel(5000).0;
 
         let channels = ExecutionChannels {
-            sc_execution_output_sender,
+            slot_execution_output_sender,
         };
 
         // start the execution worker
@@ -1257,10 +1257,10 @@ mod tests {
         // init the storage
         let mut storage = Storage::create_root();
 
-        let sc_execution_output_sender = broadcast::channel(5000).0;
+        let slot_execution_output_sender = broadcast::channel(5000).0;
 
         let channels = ExecutionChannels {
-            sc_execution_output_sender,
+            slot_execution_output_sender,
         };
 
         // start the execution worker
@@ -1367,10 +1367,10 @@ mod tests {
         // init the storage
         let mut storage = Storage::create_root();
 
-        let sc_execution_output_sender = broadcast::channel(5000).0;
+        let slot_execution_output_sender = broadcast::channel(5000).0;
 
         let channels = ExecutionChannels {
-            sc_execution_output_sender,
+            slot_execution_output_sender,
         };
 
         // start the execution worker
@@ -1464,10 +1464,10 @@ mod tests {
         // init the storage
         let mut storage = Storage::create_root();
 
-        let sc_execution_output_sender = broadcast::channel(5000).0;
+        let slot_execution_output_sender = broadcast::channel(5000).0;
 
         let channels = ExecutionChannels {
-            sc_execution_output_sender,
+            slot_execution_output_sender,
         };
 
         // start the execution worker
@@ -1563,10 +1563,10 @@ mod tests {
         // init the storage
         let mut storage = Storage::create_root();
 
-        let sc_execution_output_sender = broadcast::channel(5000).0;
+        let slot_execution_output_sender = broadcast::channel(5000).0;
 
         let channels = ExecutionChannels {
-            sc_execution_output_sender,
+            slot_execution_output_sender,
         };
 
         // start the execution worker
@@ -1758,10 +1758,10 @@ mod tests {
         // init the storage
         let mut storage = Storage::create_root();
 
-        let sc_execution_output_sender = broadcast::channel(5000).0;
+        let slot_execution_output_sender = broadcast::channel(5000).0;
 
         let channels = ExecutionChannels {
-            sc_execution_output_sender,
+            slot_execution_output_sender,
         };
 
         // start the execution worker
@@ -1920,10 +1920,10 @@ mod tests {
         // init the storage
         let mut storage = Storage::create_root();
 
-        let sc_execution_output_sender = broadcast::channel(5000).0;
+        let slot_execution_output_sender = broadcast::channel(5000).0;
 
         let channels = ExecutionChannels {
-            sc_execution_output_sender,
+            slot_execution_output_sender,
         };
 
         // start the execution worker
@@ -2089,10 +2089,10 @@ mod tests {
         // init the storage
         let mut storage = Storage::create_root();
 
-        let sc_execution_output_sender = broadcast::channel(5000).0;
+        let slot_execution_output_sender = broadcast::channel(5000).0;
 
         let channels = ExecutionChannels {
-            sc_execution_output_sender,
+            slot_execution_output_sender,
         };
 
         // start the execution worker
@@ -2178,10 +2178,10 @@ mod tests {
         // init the storage
         let mut storage = Storage::create_root();
 
-        let sc_execution_output_sender = broadcast::channel(5000).0;
+        let slot_execution_output_sender = broadcast::channel(5000).0;
 
         let channels = ExecutionChannels {
-            sc_execution_output_sender,
+            slot_execution_output_sender,
         };
 
         // start the execution worker
@@ -2264,10 +2264,10 @@ mod tests {
         // init the storage
         let mut storage = Storage::create_root();
 
-        let sc_execution_output_sender = broadcast::channel(5000).0;
+        let slot_execution_output_sender = broadcast::channel(5000).0;
 
         let channels = ExecutionChannels {
-            sc_execution_output_sender,
+            slot_execution_output_sender,
         };
 
         // start the execution worker
@@ -2350,10 +2350,10 @@ mod tests {
         // init the storage
         let mut storage = Storage::create_root();
 
-        let sc_execution_output_sender = broadcast::channel(5000).0;
+        let slot_execution_output_sender = broadcast::channel(5000).0;
 
         let channels = ExecutionChannels {
-            sc_execution_output_sender,
+            slot_execution_output_sender,
         };
 
         // start the execution worker
@@ -2494,10 +2494,10 @@ mod tests {
         };
         let mip_store = MipStore::try_from(([], mip_stats_config)).unwrap();
 
-        let sc_execution_output_sender = broadcast::channel(5000).0;
+        let slot_execution_output_sender = broadcast::channel(5000).0;
 
         let channels = ExecutionChannels {
-            sc_execution_output_sender,
+            slot_execution_output_sender,
         };
 
         let (mut manager, controller) = start_execution_worker(
@@ -2605,10 +2605,10 @@ mod tests {
         };
         let mip_store = MipStore::try_from(([], mip_stats_config)).unwrap();
 
-        let sc_execution_output_sender = broadcast::channel(5000).0;
+        let slot_execution_output_sender = broadcast::channel(5000).0;
 
         let channels = ExecutionChannels {
-            sc_execution_output_sender,
+            slot_execution_output_sender,
         };
 
         // start the execution worker
@@ -2752,10 +2752,10 @@ mod tests {
         // init the storage
         let mut storage = Storage::create_root();
 
-        let sc_execution_output_sender = broadcast::channel(5000).0;
+        let slot_execution_output_sender = broadcast::channel(5000).0;
 
         let channels = ExecutionChannels {
-            sc_execution_output_sender,
+            slot_execution_output_sender,
         };
 
         // start the execution worker
@@ -2847,10 +2847,10 @@ mod tests {
         // init the storage
         let mut storage = Storage::create_root();
 
-        let sc_execution_output_sender = broadcast::channel(5000).0;
+        let slot_execution_output_sender = broadcast::channel(5000).0;
 
         let channels = ExecutionChannels {
-            sc_execution_output_sender,
+            slot_execution_output_sender,
         };
 
         // start the execution worker

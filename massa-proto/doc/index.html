@@ -379,19 +379,11 @@
                 </li>
               
                 <li>
-                  <a href="#massa.api.v1.NewScExecutionOutputsFilter"><span class="badge">M</span>NewScExecutionOutputsFilter</a>
+                  <a href="#massa.api.v1.NewSlotExecutionOutputsRequest"><span class="badge">M</span>NewSlotExecutionOutputsRequest</a>
                 </li>
               
                 <li>
-                  <a href="#massa.api.v1.NewScExecutionOutputsQuery"><span class="badge">M</span>NewScExecutionOutputsQuery</a>
-                </li>
-              
-                <li>
-                  <a href="#massa.api.v1.NewScExecutionOutputsRequest"><span class="badge">M</span>NewScExecutionOutputsRequest</a>
-                </li>
-              
-                <li>
-                  <a href="#massa.api.v1.NewScExecutionOutputsResponse"><span class="badge">M</span>NewScExecutionOutputsResponse</a>
+                  <a href="#massa.api.v1.NewSlotExecutionOutputsResponse"><span class="badge">M</span>NewSlotExecutionOutputsResponse</a>
                 </li>
               
                 <li>
@@ -547,6 +539,14 @@
             <ul>
               
                 <li>
+                  <a href="#massa.api.v1.ExecutionOutput"><span class="badge">M</span>ExecutionOutput</a>
+                </li>
+              
+                <li>
+                  <a href="#massa.api.v1.FinalizedExecutionOutput"><span class="badge">M</span>FinalizedExecutionOutput</a>
+                </li>
+              
+                <li>
                   <a href="#massa.api.v1.ScExecutionEvent"><span class="badge">M</span>ScExecutionEvent</a>
                 </li>
               
@@ -555,7 +555,7 @@
                 </li>
               
                 <li>
-                  <a href="#massa.api.v1.ScExecutionOutput"><span class="badge">M</span>ScExecutionOutput</a>
+                  <a href="#massa.api.v1.SlotExecutionOutput"><span class="badge">M</span>SlotExecutionOutput</a>
                 </li>
               
               
@@ -2127,8 +2127,8 @@
 
         
       
-        <h3 id="massa.api.v1.NewScExecutionOutputsFilter">NewScExecutionOutputsFilter</h3>
-        <p>NewScExecutionOutputs Filter</p>
+        <h3 id="massa.api.v1.NewSlotExecutionOutputsRequest">NewSlotExecutionOutputsRequest</h3>
+        <p>NewSlotExecutionOutputsRequest holds request for NewSlotExecutionOutputs</p>
 
         
           <table class="field-table">
@@ -2138,55 +2138,10 @@
             <tbody>
               
                 <tr>
-                  <td>caller_address</td>
+                  <td>id</td>
                   <td><a href="#string">string</a></td>
-                  <td>optional</td>
-                  <td><p>Caller address </p></td>
-                </tr>
-              
-                <tr>
-                  <td>emitter_address</td>
-                  <td><a href="#string">string</a></td>
-                  <td>optional</td>
-                  <td><p>Emitter address </p></td>
-                </tr>
-              
-                <tr>
-                  <td>original_operation_id</td>
-                  <td><a href="#string">string</a></td>
-                  <td>optional</td>
-                  <td><p>Original operation id </p></td>
-                </tr>
-              
-                <tr>
-                  <td>status</td>
-                  <td><a href="#massa.api.v1.ScExecutionEventStatus">ScExecutionEventStatus</a></td>
-                  <td>repeated</td>
-                  <td><p>Status </p></td>
-                </tr>
-              
-            </tbody>
-          </table>
-
-          
-
-        
-      
-        <h3 id="massa.api.v1.NewScExecutionOutputsQuery">NewScExecutionOutputsQuery</h3>
-        <p>NewScExecutionOutputs Query</p>
-
-        
-          <table class="field-table">
-            <thead>
-              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
-            </thead>
-            <tbody>
-              
-                <tr>
-                  <td>filter</td>
-                  <td><a href="#massa.api.v1.NewScExecutionOutputsFilter">NewScExecutionOutputsFilter</a></td>
                   <td></td>
-                  <td><p>Filter </p></td>
+                  <td><p>Request id </p></td>
                 </tr>
               
             </tbody>
@@ -2196,8 +2151,8 @@
 
         
       
-        <h3 id="massa.api.v1.NewScExecutionOutputsRequest">NewScExecutionOutputsRequest</h3>
-        <p>NewScExecutionOutputsRequest holds request for NewScExecutionOutputs</p>
+        <h3 id="massa.api.v1.NewSlotExecutionOutputsResponse">NewSlotExecutionOutputsResponse</h3>
+        <p>NewSlotExecutionOutputsResponse holds response from NewSlotExecutionOutputs</p>
 
         
           <table class="field-table">
@@ -2214,41 +2169,10 @@
                 </tr>
               
                 <tr>
-                  <td>query</td>
-                  <td><a href="#massa.api.v1.NewScExecutionOutputsQuery">NewScExecutionOutputsQuery</a></td>
+                  <td>output</td>
+                  <td><a href="#massa.api.v1.SlotExecutionOutput">SlotExecutionOutput</a></td>
                   <td></td>
-                  <td><p>Query </p></td>
-                </tr>
-              
-            </tbody>
-          </table>
-
-          
-
-        
-      
-        <h3 id="massa.api.v1.NewScExecutionOutputsResponse">NewScExecutionOutputsResponse</h3>
-        <p>NewScExecutionOutputsResponse holds response from NewScExecutionOutputs</p>
-
-        
-          <table class="field-table">
-            <thead>
-              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
-            </thead>
-            <tbody>
-              
-                <tr>
-                  <td>id</td>
-                  <td><a href="#string">string</a></td>
-                  <td></td>
-                  <td><p>Request id </p></td>
-                </tr>
-              
-                <tr>
-                  <td>execution_output</td>
-                  <td><a href="#massa.api.v1.ScExecutionOutput">ScExecutionOutput</a></td>
-                  <td></td>
-                  <td><p>Execution output </p></td>
+                  <td><p>Slot execution output </p></td>
                 </tr>
               
             </tbody>
@@ -2828,9 +2752,9 @@
               </tr>
             
               <tr>
-                <td>NewScExecutionOutputs</td>
-                <td><a href="#massa.api.v1.NewScExecutionOutputsRequest">NewScExecutionOutputsRequest</a> stream</td>
-                <td><a href="#massa.api.v1.NewScExecutionOutputsResponse">NewScExecutionOutputsResponse</a> stream</td>
+                <td>NewSlotExecutionOutputs</td>
+                <td><a href="#massa.api.v1.NewSlotExecutionOutputsRequest">NewSlotExecutionOutputsRequest</a> stream</td>
+                <td><a href="#massa.api.v1.NewSlotExecutionOutputsResponse">NewSlotExecutionOutputsResponse</a> stream</td>
                 <td><p>New received and produced smart contract execution events</p></td>
               </tr>
             
@@ -3529,6 +3453,68 @@ This is the parent in thread `self.slot.thread` of the block in which the endors
       <p></p>
 
       
+        <h3 id="massa.api.v1.ExecutionOutput">ExecutionOutput</h3>
+        <p>ExecutionOutput</p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>slot</td>
+                  <td><a href="#massa.api.v1.Slot">Slot</a></td>
+                  <td></td>
+                  <td><p>Slot </p></td>
+                </tr>
+              
+                <tr>
+                  <td>block_id</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p>Block id at that slot (optional) </p></td>
+                </tr>
+              
+                <tr>
+                  <td>events</td>
+                  <td><a href="#massa.api.v1.ScExecutionEvent">ScExecutionEvent</a></td>
+                  <td>repeated</td>
+                  <td><p>Events emitted by the execution step </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
+        <h3 id="massa.api.v1.FinalizedExecutionOutput">FinalizedExecutionOutput</h3>
+        <p>FinalizedExecutionOutput</p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>slot</td>
+                  <td><a href="#massa.api.v1.Slot">Slot</a></td>
+                  <td></td>
+                  <td><p>Slot </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
         <h3 id="massa.api.v1.ScExecutionEvent">ScExecutionEvent</h3>
         <p>ScExecutionEvent</p>
 
@@ -3619,8 +3605,8 @@ This is the parent in thread `self.slot.thread` of the block in which the endors
 
         
       
-        <h3 id="massa.api.v1.ScExecutionOutput">ScExecutionOutput</h3>
-        <p>ScExecutionOutput</p>
+        <h3 id="massa.api.v1.SlotExecutionOutput">SlotExecutionOutput</h3>
+        <p>SlotExecutionOutput</p>
 
         
           <table class="field-table">
@@ -3630,31 +3616,17 @@ This is the parent in thread `self.slot.thread` of the block in which the endors
             <tbody>
               
                 <tr>
-                  <td>slot</td>
-                  <td><a href="#massa.api.v1.Slot">Slot</a></td>
+                  <td>execution_output</td>
+                  <td><a href="#massa.api.v1.ExecutionOutput">ExecutionOutput</a></td>
                   <td></td>
-                  <td><p>Slot </p></td>
+                  <td><p>Executed slot output </p></td>
                 </tr>
               
                 <tr>
-                  <td>block_id</td>
-                  <td><a href="#string">string</a></td>
+                  <td>final_execution_output</td>
+                  <td><a href="#massa.api.v1.FinalizedExecutionOutput">FinalizedExecutionOutput</a></td>
                   <td></td>
-                  <td><p>Block id at that slot (optional) </p></td>
-                </tr>
-              
-                <tr>
-                  <td>status</td>
-                  <td><a href="#massa.api.v1.ScExecutionOutputStatus">ScExecutionOutputStatus</a></td>
-                  <td>repeated</td>
-                  <td><p>Status </p></td>
-                </tr>
-              
-                <tr>
-                  <td>events</td>
-                  <td><a href="#massa.api.v1.ScExecutionEvent">ScExecutionEvent</a></td>
-                  <td>repeated</td>
-                  <td><p>Events emitted by the execution step </p></td>
+                  <td><p>Executed final slot </p></td>
                 </tr>
               
             </tbody>

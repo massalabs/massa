@@ -1170,7 +1170,11 @@ impl ExecutionState {
         // Broadcast a slot execution output to active channel subscribers.
         if self.config.broadcast_enabled {
             let slot_exec_out = SlotExecutionOutput::ExecutedSlot(exec_out.clone());
-            if let Err(err) = self.channels.sc_execution_output_sender.send(slot_exec_out) {
+            if let Err(err) = self
+                .channels
+                .slot_execution_output_sender
+                .send(slot_exec_out)
+            {
                 trace!(
                     "error, failed to broadcast execution output for slot {} due to: {}",
                     exec_out.slot.clone(),
@@ -1289,13 +1293,11 @@ impl ExecutionState {
 
         // Broadcast a final slot execution output to active channel subscribers.
         if self.config.broadcast_enabled {
-            let slot_exec_out = SlotExecutionOutput::FinalizedSlot {
-                slot: exec_out.slot,
-            };
+            let slot_exec_out = SlotExecutionOutput::FinalizedSlot(exec_out.slot);
             if let Err(err) = self
                 .channels
-                .sc_execution_output_sender
-                .send(slot_exec_out.clone())
+                .slot_execution_output_sender
+                .send(slot_exec_out)
             {
                 trace!(
                     "error, failed to broadcast final execution output for slot {} due to: {}",

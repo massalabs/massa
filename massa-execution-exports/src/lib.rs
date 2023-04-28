@@ -48,6 +48,7 @@ mod channels;
 mod controller_traits;
 mod error;
 mod event_store;
+mod mapping_grpc;
 mod settings;
 mod types;
 

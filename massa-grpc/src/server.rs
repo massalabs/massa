@@ -5,7 +5,7 @@ use crate::error::GrpcError;
 use futures_util::FutureExt;
 use hyper::Method;
 use massa_consensus_exports::{ConsensusChannels, ConsensusController};
-use massa_execution_exports::ExecutionController;
+use massa_execution_exports::{ExecutionChannels, ExecutionController};
 use massa_pool_exports::{PoolChannels, PoolController};
 use massa_pos_exports::SelectorController;
 use massa_proto::massa::api::v1::massa_service_server::MassaServiceServer;
@@ -26,6 +26,8 @@ pub struct MassaGrpc {
     pub consensus_channels: ConsensusChannels,
     /// link to the execution component
     pub execution_controller: Box<dyn ExecutionController>,
+    /// link(channels) to the execution component
+    pub execution_channels: ExecutionChannels,
     /// link(channels) to the pool component
     pub pool_channels: PoolChannels,
     /// link to the pool component

@@ -414,21 +414,48 @@ impl BlockStatus {
         }
     }
 }
-/// ScExecutionOutput
+/// SlotExecutionOutput
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
-pub struct ScExecutionOutput {
+pub struct SlotExecutionOutput {
+    /// ExecutionOutput or FinalizedExecutionOutput
+    #[prost(oneof = "slot_execution_output::Message", tags = "1, 2")]
+    pub message: ::core::option::Option<slot_execution_output::Message>,
+}
+/// Nested message and enum types in `SlotExecutionOutput`.
+pub mod slot_execution_output {
+    /// ExecutionOutput or FinalizedExecutionOutput
+    #[allow(clippy::derive_partial_eq_without_eq)]
+    #[derive(Clone, PartialEq, ::prost::Oneof)]
+    pub enum Message {
+        /// Executed slot output
+        #[prost(message, tag = "1")]
+        ExecutionOutput(super::ExecutionOutput),
+        /// Executed final slot
+        #[prost(message, tag = "2")]
+        FinalExecutionOutput(super::FinalizedExecutionOutput),
+    }
+}
+/// FinalizedExecutionOutput
+#[allow(clippy::derive_partial_eq_without_eq)]
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct FinalizedExecutionOutput {
+    /// Slot
+    #[prost(message, optional, tag = "1")]
+    pub slot: ::core::option::Option<Slot>,
+}
+/// ExecutionOutput
+#[allow(clippy::derive_partial_eq_without_eq)]
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct ExecutionOutput {
     /// Slot
     #[prost(message, optional, tag = "1")]
     pub slot: ::core::option::Option<Slot>,
     /// Block id at that slot (optional)
     #[prost(string, tag = "2")]
     pub block_id: ::prost::alloc::string::String,
-    /// Status
-    #[prost(enumeration = "ScExecutionOutputStatus", repeated, tag = "3")]
-    pub status: ::prost::alloc::vec::Vec<i32>,
     /// Events emitted by the execution step
-    #[prost(message, repeated, tag = "4")]
+    #[prost(message, repeated, tag = "3")]
     pub events: ::prost::alloc::vec::Vec<ScExecutionEvent>,
 }
 /// ScExecutionEvent
@@ -1077,52 +1104,24 @@ pub struct NewOperationsResponse {
     #[prost(message, optional, tag = "2")]
     pub operation: ::core::option::Option<SignedOperation>,
 }
-/// NewScExecutionOutputsRequest holds request for NewScExecutionOutputs
+/// NewSlotExecutionOutputsRequest holds request for NewSlotExecutionOutputs
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
-pub struct NewScExecutionOutputsRequest {
+pub struct NewSlotExecutionOutputsRequest {
     /// Request id
     #[prost(string, tag = "1")]
     pub id: ::prost::alloc::string::String,
-    /// Query
-    #[prost(message, optional, tag = "2")]
-    pub query: ::core::option::Option<NewScExecutionOutputsQuery>,
 }
-/// NewScExecutionOutputs Query
+/// NewSlotExecutionOutputsResponse holds response from NewSlotExecutionOutputs
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
-pub struct NewScExecutionOutputsQuery {
-    /// Filter
-    #[prost(message, optional, tag = "1")]
-    pub filter: ::core::option::Option<NewScExecutionOutputsFilter>,
-}
-/// NewScExecutionOutputs Filter
-#[allow(clippy::derive_partial_eq_without_eq)]
-#[derive(Clone, PartialEq, ::prost::Message)]
-pub struct NewScExecutionOutputsFilter {
-    /// Caller address
-    #[prost(string, optional, tag = "1")]
-    pub caller_address: ::core::option::Option<::prost::alloc::string::String>,
-    /// Emitter address
-    #[prost(string, optional, tag = "2")]
-    pub emitter_address: ::core::option::Option<::prost::alloc::string::String>,
-    /// Original operation id
-    #[prost(string, optional, tag = "3")]
-    pub original_operation_id: ::core::option::Option<::prost::alloc::string::String>,
-    /// Status
-    #[prost(enumeration = "ScExecutionEventStatus", repeated, tag = "4")]
-    pub status: ::prost::alloc::vec::Vec<i32>,
-}
-/// NewScExecutionOutputsResponse holds response from NewScExecutionOutputs
-#[allow(clippy::derive_partial_eq_without_eq)]
-#[derive(Clone, PartialEq, ::prost::Message)]
-pub struct NewScExecutionOutputsResponse {
+pub struct NewSlotExecutionOutputsResponse {
     /// Request id
     #[prost(string, tag = "1")]
     pub id: ::prost::alloc::string::String,
-    /// Execution output
+    /// Slot execution output
     #[prost(message, optional, tag = "2")]
-    pub execution_output: ::core::option::Option<ScExecutionOutput>,
+    pub output: ::core::option::Option<SlotExecutionOutput>,
 }
 /// SendBlocksRequest holds parameters to SendBlocks
 #[allow(clippy::derive_partial_eq_without_eq)]
@@ -1830,14 +1829,14 @@ pub mod massa_service_client {
             self.inner.streaming(req, path, codec).await
         }
         /// New received and produced smart contract execution events
-        pub async fn new_sc_execution_outputs(
+        pub async fn new_slot_execution_outputs(
             &mut self,
             request: impl tonic::IntoStreamingRequest<
-                Message = super::NewScExecutionOutputsRequest,
+                Message = super::NewSlotExecutionOutputsRequest,
             >,
         ) -> std::result::Result<
             tonic::Response<
-                tonic::codec::Streaming<super::NewScExecutionOutputsResponse>,
+                tonic::codec::Streaming<super::NewSlotExecutionOutputsResponse>,
             >,
             tonic::Status,
         > {
@@ -1852,12 +1851,15 @@ pub mod massa_service_client {
                 })?;
             let codec = tonic::codec::ProstCodec::default();
             let path = http::uri::PathAndQuery::from_static(
-                "/massa.api.v1.MassaService/NewScExecutionOutputs",
+                "/massa.api.v1.MassaService/NewSlotExecutionOutputs",
             );
             let mut req = request.into_streaming_request();
             req.extensions_mut()
                 .insert(
-                    GrpcMethod::new("massa.api.v1.MassaService", "NewScExecutionOutputs"),
+                    GrpcMethod::new(
+                        "massa.api.v1.MassaService",
+                        "NewSlotExecutionOutputs",
+                    ),
                 );
             self.inner.streaming(req, path, codec).await
         }
@@ -2139,23 +2141,23 @@ pub mod massa_service_server {
             tonic::Response<Self::NewOperationsStream>,
             tonic::Status,
         >;
-        /// Server streaming response type for the NewScExecutionOutputs method.
-        type NewScExecutionOutputsStream: futures_core::Stream<
+        /// Server streaming response type for the NewSlotExecutionOutputs method.
+        type NewSlotExecutionOutputsStream: futures_core::Stream<
                 Item = std::result::Result<
-                    super::NewScExecutionOutputsResponse,
+                    super::NewSlotExecutionOutputsResponse,
                     tonic::Status,
                 >,
             >
             + Send
             + 'static;
         /// New received and produced smart contract execution events
-        async fn new_sc_execution_outputs(
+        async fn new_slot_execution_outputs(
             &self,
             request: tonic::Request<
-                tonic::Streaming<super::NewScExecutionOutputsRequest>,
+                tonic::Streaming<super::NewSlotExecutionOutputsRequest>,
             >,
         ) -> std::result::Result<
-            tonic::Response<Self::NewScExecutionOutputsStream>,
+            tonic::Response<Self::NewSlotExecutionOutputsStream>,
             tonic::Status,
         >;
         /// Server streaming response type for the SendBlocks method.
@@ -3004,16 +3006,16 @@ pub mod massa_service_server {
                     };
                     Box::pin(fut)
                 }
-                "/massa.api.v1.MassaService/NewScExecutionOutputs" => {
+                "/massa.api.v1.MassaService/NewSlotExecutionOutputs" => {
                     #[allow(non_camel_case_types)]
-                    struct NewScExecutionOutputsSvc<T: MassaService>(pub Arc<T>);
+                    struct NewSlotExecutionOutputsSvc<T: MassaService>(pub Arc<T>);
                     impl<
                         T: MassaService,
                     > tonic::server::StreamingService<
-                        super::NewScExecutionOutputsRequest,
-                    > for NewScExecutionOutputsSvc<T> {
-                        type Response = super::NewScExecutionOutputsResponse;
-                        type ResponseStream = T::NewScExecutionOutputsStream;
+                        super::NewSlotExecutionOutputsRequest,
+                    > for NewSlotExecutionOutputsSvc<T> {
+                        type Response = super::NewSlotExecutionOutputsResponse;
+                        type ResponseStream = T::NewSlotExecutionOutputsStream;
                         type Future = BoxFuture<
                             tonic::Response<Self::ResponseStream>,
                             tonic::Status,
@@ -3021,12 +3023,12 @@ pub mod massa_service_server {
                         fn call(
                             &mut self,
                             request: tonic::Request<
-                                tonic::Streaming<super::NewScExecutionOutputsRequest>,
+                                tonic::Streaming<super::NewSlotExecutionOutputsRequest>,
                             >,
                         ) -> Self::Future {
                             let inner = Arc::clone(&self.0);
                             let fut = async move {
-                                (*inner).new_sc_execution_outputs(request).await
+                                (*inner).new_slot_execution_outputs(request).await
                             };
                             Box::pin(fut)
                         }
@@ -3038,7 +3040,7 @@ pub mod massa_service_server {
                     let inner = self.inner.clone();
                     let fut = async move {
                         let inner = inner.0;
-                        let method = NewScExecutionOutputsSvc(inner);
+                        let method = NewSlotExecutionOutputsSvc(inner);
                         let codec = tonic::codec::ProstCodec::default();
                         let mut grpc = tonic::server::Grpc::new(codec)
                             .apply_compression_config(

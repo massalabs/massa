@@ -54,10 +54,8 @@
     - [NewOperationsQuery](#massa-api-v1-NewOperationsQuery)
     - [NewOperationsRequest](#massa-api-v1-NewOperationsRequest)
     - [NewOperationsResponse](#massa-api-v1-NewOperationsResponse)
-    - [NewScExecutionOutputsFilter](#massa-api-v1-NewScExecutionOutputsFilter)
-    - [NewScExecutionOutputsQuery](#massa-api-v1-NewScExecutionOutputsQuery)
-    - [NewScExecutionOutputsRequest](#massa-api-v1-NewScExecutionOutputsRequest)
-    - [NewScExecutionOutputsResponse](#massa-api-v1-NewScExecutionOutputsResponse)
+    - [NewSlotExecutionOutputsRequest](#massa-api-v1-NewSlotExecutionOutputsRequest)
+    - [NewSlotExecutionOutputsResponse](#massa-api-v1-NewSlotExecutionOutputsResponse)
     - [OperationResult](#massa-api-v1-OperationResult)
     - [OperationsContext](#massa-api-v1-OperationsContext)
     - [SelectorDraws](#massa-api-v1-SelectorDraws)
@@ -96,9 +94,11 @@
     - [SignedEndorsement](#massa-api-v1-SignedEndorsement)
   
 - [execution.proto](#execution-proto)
+    - [ExecutionOutput](#massa-api-v1-ExecutionOutput)
+    - [FinalizedExecutionOutput](#massa-api-v1-FinalizedExecutionOutput)
     - [ScExecutionEvent](#massa-api-v1-ScExecutionEvent)
     - [ScExecutionEventContext](#massa-api-v1-ScExecutionEventContext)
-    - [ScExecutionOutput](#massa-api-v1-ScExecutionOutput)
+    - [SlotExecutionOutput](#massa-api-v1-SlotExecutionOutput)
   
     - [ScExecutionEventStatus](#massa-api-v1-ScExecutionEventStatus)
     - [ScExecutionOutputStatus](#massa-api-v1-ScExecutionOutputStatus)
@@ -920,65 +920,31 @@ NewOperationsResponse holds response from NewOperations
 
 
 
-<a name="massa-api-v1-NewScExecutionOutputsFilter"></a>
+<a name="massa-api-v1-NewSlotExecutionOutputsRequest"></a>
 
-### NewScExecutionOutputsFilter
-NewScExecutionOutputs Filter
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| caller_address | [string](#string) | optional | Caller address |
-| emitter_address | [string](#string) | optional | Emitter address |
-| original_operation_id | [string](#string) | optional | Original operation id |
-| status | [ScExecutionEventStatus](#massa-api-v1-ScExecutionEventStatus) | repeated | Status |
-
-
-
-
-
-
-<a name="massa-api-v1-NewScExecutionOutputsQuery"></a>
-
-### NewScExecutionOutputsQuery
-NewScExecutionOutputs Query
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| filter | [NewScExecutionOutputsFilter](#massa-api-v1-NewScExecutionOutputsFilter) |  | Filter |
-
-
-
-
-
-
-<a name="massa-api-v1-NewScExecutionOutputsRequest"></a>
-
-### NewScExecutionOutputsRequest
-NewScExecutionOutputsRequest holds request for NewScExecutionOutputs
+### NewSlotExecutionOutputsRequest
+NewSlotExecutionOutputsRequest holds request for NewSlotExecutionOutputs
 
 
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | id | [string](#string) |  | Request id |
-| query | [NewScExecutionOutputsQuery](#massa-api-v1-NewScExecutionOutputsQuery) |  | Query |
 
 
 
 
 
 
-<a name="massa-api-v1-NewScExecutionOutputsResponse"></a>
+<a name="massa-api-v1-NewSlotExecutionOutputsResponse"></a>
 
-### NewScExecutionOutputsResponse
-NewScExecutionOutputsResponse holds response from NewScExecutionOutputs
+### NewSlotExecutionOutputsResponse
+NewSlotExecutionOutputsResponse holds response from NewSlotExecutionOutputs
 
 
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | id | [string](#string) |  | Request id |
-| execution_output | [ScExecutionOutput](#massa-api-v1-ScExecutionOutput) |  | Execution output |
+| output | [SlotExecutionOutput](#massa-api-v1-SlotExecutionOutput) |  | Slot execution output |
 
 
 
@@ -1237,7 +1203,7 @@ Massa gRPC service
 | NewEndorsements | [NewEndorsementsRequest](#massa-api-v1-NewEndorsementsRequest) stream | [NewEndorsementsResponse](#massa-api-v1-NewEndorsementsResponse) stream | New received and produced endorsements |
 | NewFilledBlocks | [NewFilledBlocksRequest](#massa-api-v1-NewFilledBlocksRequest) stream | [NewFilledBlocksResponse](#massa-api-v1-NewFilledBlocksResponse) stream | New received and produced blocks with operations |
 | NewOperations | [NewOperationsRequest](#massa-api-v1-NewOperationsRequest) stream | [NewOperationsResponse](#massa-api-v1-NewOperationsResponse) stream | New received and produced operations |
-| NewScExecutionOutputs | [NewScExecutionOutputsRequest](#massa-api-v1-NewScExecutionOutputsRequest) stream | [NewScExecutionOutputsResponse](#massa-api-v1-NewScExecutionOutputsResponse) stream | New received and produced smart contract execution events |
+| NewSlotExecutionOutputs | [NewSlotExecutionOutputsRequest](#massa-api-v1-NewSlotExecutionOutputsRequest) stream | [NewSlotExecutionOutputsResponse](#massa-api-v1-NewSlotExecutionOutputsResponse) stream | New received and produced smart contract execution events |
 | SendBlocks | [SendBlocksRequest](#massa-api-v1-SendBlocksRequest) stream | [SendBlocksResponse](#massa-api-v1-SendBlocksResponse) stream | Send blocks |
 | SendEndorsements | [SendEndorsementsRequest](#massa-api-v1-SendEndorsementsRequest) stream | [SendEndorsementsResponse](#massa-api-v1-SendEndorsementsResponse) stream | Send endorsements |
 | SendOperations | [SendOperationsRequest](#massa-api-v1-SendOperationsRequest) stream | [SendOperationsResponse](#massa-api-v1-SendOperationsResponse) stream | Send operations |
@@ -1509,6 +1475,38 @@ Signed endorsement
 
 
 
+<a name="massa-api-v1-ExecutionOutput"></a>
+
+### ExecutionOutput
+ExecutionOutput
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| slot | [Slot](#massa-api-v1-Slot) |  | Slot |
+| block_id | [string](#string) |  | Block id at that slot (optional) |
+| events | [ScExecutionEvent](#massa-api-v1-ScExecutionEvent) | repeated | Events emitted by the execution step |
+
+
+
+
+
+
+<a name="massa-api-v1-FinalizedExecutionOutput"></a>
+
+### FinalizedExecutionOutput
+FinalizedExecutionOutput
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| slot | [Slot](#massa-api-v1-Slot) |  | Slot |
+
+
+
+
+
+
 <a name="massa-api-v1-ScExecutionEvent"></a>
 
 ### ScExecutionEvent
@@ -1545,18 +1543,16 @@ ScExecutionEvent context
 
 
 
-<a name="massa-api-v1-ScExecutionOutput"></a>
+<a name="massa-api-v1-SlotExecutionOutput"></a>
 
-### ScExecutionOutput
-ScExecutionOutput
+### SlotExecutionOutput
+SlotExecutionOutput
 
 
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
-| slot | [Slot](#massa-api-v1-Slot) |  | Slot |
-| block_id | [string](#string) |  | Block id at that slot (optional) |
-| status | [ScExecutionOutputStatus](#massa-api-v1-ScExecutionOutputStatus) | repeated | Status |
-| events | [ScExecutionEvent](#massa-api-v1-ScExecutionEvent) | repeated | Events emitted by the execution step |
+| execution_output | [ExecutionOutput](#massa-api-v1-ExecutionOutput) |  | Executed slot output |
+| final_execution_output | [FinalizedExecutionOutput](#massa-api-v1-FinalizedExecutionOutput) |  | Executed final slot |
 
 
 

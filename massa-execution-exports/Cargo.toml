@@ -14,6 +14,7 @@ parking_lot = { version = "0.12", features = ["deadlock_detection"], optional = 
 tempfile = { version = "3.3", optional = true }
 tokio = { version = "1.23", features = ["sync"] }
 # custom modules
+massa_proto = { path = "../massa-proto" }
 massa_hash = { path = "../massa-hash" }
 massa_models = { path = "../massa-models" }
 massa_time = { path = "../massa-time" }

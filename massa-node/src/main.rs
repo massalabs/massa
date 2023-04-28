@@ -464,14 +464,14 @@ async fn launch(
         roll_count_to_slash_on_denunciation: ROLL_COUNT_TO_SLASH_ON_DENUNCIATION,
         denunciation_expire_periods: DENUNCIATION_EXPIRE_PERIODS,
         broadcast_enabled: SETTINGS.api.enable_broadcast,
-        broadcast_sc_execution_output_channel_capacity: SETTINGS
+        broadcast_slot_execution_output_channel_capacity: SETTINGS
             .execution
-            .broadcast_sc_execution_output_channel_capacity,
+            .broadcast_slot_execution_output_channel_capacity,
     };
 
     let execution_channels = ExecutionChannels {
-        sc_execution_output_sender: broadcast::channel(
-            execution_config.broadcast_sc_execution_output_channel_capacity,
+        slot_execution_output_sender: broadcast::channel(
+            execution_config.broadcast_slot_execution_output_channel_capacity,
         )
         .0,
     };
@@ -481,7 +481,7 @@ async fn launch(
         final_state.clone(),
         selector_controller.clone(),
         mip_store.clone(),
-        execution_channels,
+        execution_channels.clone(),
     );
 
     // launch pool controller
@@ -787,6 +787,7 @@ async fn launch(
             consensus_controller: consensus_controller.clone(),
             consensus_channels: consensus_channels.clone(),
             execution_controller: execution_controller.clone(),
+            execution_channels,
             pool_channels,
             pool_command_sender: pool_controller.clone(),
             protocol_command_sender: ProtocolCommandSender(protocol_command_sender.clone()),

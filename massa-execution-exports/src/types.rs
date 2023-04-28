@@ -43,10 +43,7 @@ pub enum SlotExecutionOutput {
     ExecutedSlot(ExecutionOutput),
 
     /// Finalized slot output
-    FinalizedSlot {
-        /// slot
-        slot: Slot,
-    },
+    FinalizedSlot(Slot),
 }
 
 /// structure describing the output of a single execution

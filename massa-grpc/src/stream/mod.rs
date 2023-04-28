@@ -11,7 +11,7 @@ pub mod new_filled_blocks;
 /// subscribe new operations
 pub mod new_operations;
 /// subscribe new smart contract execution outputs
-pub mod new_sc_execution_outputs;
+pub mod new_slot_execution_outputs;
 /// send_blocks streaming
 pub mod send_blocks;
 /// send endorsements
