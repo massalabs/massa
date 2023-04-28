@@ -22,6 +22,12 @@ use std::{
 };
 use tracing::error;
 
+/// The known-length component of a message to be received.
+struct ClientMessageLeader {
+    received_prev_hash: Option<Hash>,
+    msg_len: u32,
+}
+
 /// Bootstrap server binder
 pub struct BootstrapServerBinder {
     max_bootstrap_message_size: u32,
@@ -229,27 +235,11 @@ impl BootstrapServerBinder {
         while self.duplex.peek(&mut peek_buf)? < peek_len {
             // TODO: backoff spin of some sort
         }
-        // construct prev-hash from peek
-        let received_prev_hash = {
-            if self.prev_message.is_some() {
-                Some(Hash::from_bytes(
-                    peek_buf[..HASH_SIZE_BYTES]
-                        .try_into()
-                        .expect("bad slice logic"),
-                ))
-            } else {
-                None
-            }
-        };
 
-        // construct msg-len from peek
-        let msg_len = {
-            u32::from_be_bytes_min(
-                &peek_buf[HASH_SIZE_BYTES..],
-                self.max_bootstrap_message_size,
-            )?
-            .0
-        };
+        let ClientMessageLeader {
+            received_prev_hash,
+            msg_len,
+        } = self.decode_message_leader(&peek_buf)?;
 
         // read message, and discard the peek
         let mut msg_bytes = vec![0u8; peek_len + (msg_len as usize)];
@@ -286,5 +276,38 @@ impl BootstrapServerBinder {
         .map_err(|err| BootstrapError::GeneralError(format!("{}", err)))?;
 
         Ok(msg)
+    }
+
+    /// We are using this instead of of our library deserializer as the process is relatively straight forward
+    /// and makes error-type management cleaner
+    fn decode_message_leader(
+        &self,
+        peek_buf: &[u8],
+    ) -> Result<ClientMessageLeader, BootstrapError> {
+        // construct prev-hash from peek
+        let received_prev_hash = {
+            if self.prev_message.is_some() {
+                Some(Hash::from_bytes(
+                    peek_buf[..HASH_SIZE_BYTES]
+                        .try_into()
+                        .expect("bad slice logic"),
+                ))
+            } else {
+                None
+            }
+        };
+
+        // construct msg-len from peek
+        let msg_len = {
+            u32::from_be_bytes_min(
+                &peek_buf[HASH_SIZE_BYTES..],
+                self.max_bootstrap_message_size,
+            )?
+            .0
+        };
+        Ok(ClientMessageLeader {
+            received_prev_hash,
+            msg_len,
+        })
     }
 }
