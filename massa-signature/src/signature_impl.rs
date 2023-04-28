@@ -818,7 +818,7 @@ impl PublicKeyDeserializer {
 }
 
 /// IMPORTANT TODO
-pub const PUBLIC_KEY_SIZE_BYTES: usize = 32;
+pub const PUBLIC_KEY_SIZE_BYTES: usize = 32 + 1;
 
 impl Deserializer<PublicKey> for PublicKeyDeserializer {
     /// ```
@@ -1074,32 +1074,31 @@ impl Signature {
     /// let deserialized: Signature = Signature::from_bytes(&serialized).unwrap();
     /// ```
     pub fn from_bytes(data: &[u8]) -> Result<Self, MassaSignatureError> {
-        // DEBUG
-        dbg!(data.len());
         let u64_deserializer = U64VarIntDeserializer::new(Included(0), Included(u64::MAX));
         let (rest, version) = u64_deserializer
             .deserialize::<DeserializeError>(data)
             .map_err(|err| MassaSignatureError::ParsingError(err.to_string()))?;
         match version {
             <Signature!["0"]>::VERSION => {
-                dbg!(rest.len());
                 Ok(SignatureVariant!["0"](<Signature!["0"]>::from_bytes(
-                    rest.try_into().map_err(|err| {
+                    rest[..SIGNATURE_SIZE_BYTES - 1].try_into().map_err(|err| {
                         MassaSignatureError::ParsingError(format!(
-                            "TEST0 signature bytes parsing error: {}",
+                            "signature bytes parsing error: {}",
                             err
                         ))
                     })?,
                 )?))
             }
-            <Signature!["1"]>::VERSION => Ok(SignatureVariant!["1"](
-                <Signature!["1"]>::from_bytes(rest.try_into().map_err(|err| {
-                    MassaSignatureError::ParsingError(format!(
-                        "signature bytes parsing error: {}",
-                        err
-                    ))
-                })?)?,
-            )),
+            <Signature!["1"]>::VERSION => {
+                Ok(SignatureVariant!["1"](<Signature!["1"]>::from_bytes(
+                    rest[..SIGNATURE_SIZE_BYTES - 1].try_into().map_err(|err| {
+                        MassaSignatureError::ParsingError(format!(
+                            "signature bytes parsing error: {}",
+                            err
+                        ))
+                    })?,
+                )?))
+            }
             _ => Err(MassaSignatureError::InvalidVersionError(format!(
                 "Unknown signature version: {}",
                 version
@@ -1356,8 +1355,6 @@ impl Deserializer<Signature> for SignatureDeserializer {
         &self,
         buffer: &'a [u8],
     ) -> IResult<&'a [u8], Signature, E> {
-        // DEBUG
-        dbg!("DESER");
         // Can't use try into directly because it fails if there is more data in the buffer
         if buffer.len() < SIGNATURE_SIZE_BYTES {
             return Err(nom::Err::Error(ParseError::from_error_kind(

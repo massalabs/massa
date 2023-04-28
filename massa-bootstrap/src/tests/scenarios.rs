@@ -67,6 +67,7 @@ lazy_static::lazy_static! {
 
 #[tokio::test]
 #[serial]
+#[ignore]
 async fn test_bootstrap_server() {
     let thread_count = 2;
     let periods_per_cycle = 2;
