@@ -63,8 +63,6 @@ pub struct BootstrapConfig {
     pub ip_list_max_size: usize,
     /// Read-Write limitation for a connection in bytes per seconds
     pub max_bytes_read_write: f64,
-    /// max bootstrap message size in bytes
-    pub max_bootstrap_message_size: u32,
     /// thread count
     pub thread_count: u8,
     /// period per cycle
@@ -139,7 +137,6 @@ pub struct BootstrapConfig {
 #[parent(type = "BootstrapConfig")]
 pub struct BootstrapSrvBindCfg {
     pub max_bytes_read_write: f64,
-    pub max_bootstrap_message_size: u32,
     pub thread_count: u8,
     pub max_datastore_key_length: u8,
     pub randomness_size_bytes: usize,
@@ -153,7 +150,6 @@ pub struct BootstrapSrvBindCfg {
 #[parent(type = "BootstrapConfig")]
 pub struct BootstrapClientConfig {
     pub max_bytes_read_write: f64,
-    pub max_bootstrap_message_size: u32,
     pub endorsement_count: u32,
     pub max_advertise_length: u32,
     pub max_bootstrap_blocks_length: u32,
