@@ -12,6 +12,8 @@ use massa_models::version::{Version, VersionSerializer};
 use massa_serialization::{DeserializeError, Deserializer, Serializer};
 use massa_signature::{PublicKey, Signature, SIGNATURE_SIZE_BYTES};
 use rand::{rngs::StdRng, RngCore, SeedableRng};
+use std::io::ErrorKind;
+use std::time::Instant;
 use std::{
     io::{Read, Write},
     net::TcpStream,
@@ -75,15 +77,13 @@ impl BootstrapClientBinder {
         &mut self,
         duration: Option<Duration>,
     ) -> Result<BootstrapServerMessage, BootstrapError> {
-        self.duplex.set_read_timeout(duration)?;
+        let deadline = duration.map(|d| Instant::now() + d);
 
         // peek the signature and message len
         let peek_len = SIGNATURE_SIZE_BYTES + self.size_field_len;
         let mut peek_buff = vec![0u8; peek_len];
-        // problematic if we can only peek some of it
-        while self.duplex.peek(&mut peek_buff)? < peek_len {
-            // TODO: Backoff spin of some sort
-        }
+
+        self.peek_exact_timeout(&mut peek_buff, duration)?;
 
         // construct the signature from the peek
         let sig_array = peek_buff.as_slice()[0..SIGNATURE_SIZE_BYTES]
@@ -108,8 +108,10 @@ impl BootstrapClientBinder {
             if let Some(prev_msg) = prev_msg {
                 // Consume the stream, and discard the peek
                 let mut stream_bytes = vec![0u8; peek_len + (msg_len as usize)];
-                // TODO: under the hood, this isn't actually atomic. For now, we use the ostrich algorithm.
-                self.duplex.read_exact(&mut stream_bytes[..])?;
+
+                // TODO: handle a partial read
+                self.read_exact_timeout(&mut stream_bytes[..], deadline)
+                    .map_err(|(e, _)| e)?;
                 let msg_bytes = &mut stream_bytes[peek_len..];
 
                 // prepend the received message with the previous messages hash, and derive the new hash.
@@ -126,8 +128,10 @@ impl BootstrapClientBinder {
             } else {
                 // Consume the stream and discard the peek
                 let mut stream_bytes = vec![0u8; peek_len + msg_len as usize];
-                // TODO: under the hood, this isn't actually atomic. For now, we use the ostrich algorithm.
-                self.duplex.read_exact(&mut stream_bytes[..])?;
+
+                // TODO: handle a partial read
+                self.read_exact_timeout(&mut stream_bytes[..], deadline)
+                    .map_err(|(e, _)| e)?;
                 let sig_msg_bytes = &mut stream_bytes[peek_len..];
 
                 // Compute the hash and verify
@@ -188,5 +192,71 @@ impl BootstrapClientBinder {
         // send message
         self.duplex.write_all(&msg_bytes)?;
         Ok(())
+    }
+
+    fn peek_exact_timeout(
+        &mut self,
+        buf: &mut [u8],
+        duration: Option<Duration>,
+    ) -> Result<(), std::io::Error> {
+        let start = Instant::now();
+        self.duplex.set_read_timeout(duration)?;
+        while self.duplex.peek(buf)? < buf.len() {
+            if let Some(duration) = duration {
+                let new_duration = duration.saturating_sub(start.elapsed());
+                if new_duration.is_zero() {
+                    return Err(std::io::Error::new(
+                        ErrorKind::TimedOut,
+                        "deadline has elapsed",
+                    ));
+                }
+                self.duplex.set_read_timeout(Some(new_duration))?;
+            }
+        }
+        Ok(())
+    }
+
+    fn read_exact_timeout(
+        &mut self,
+        buf: &mut [u8],
+        deadline: Option<Instant>,
+    ) -> Result<(), (std::io::Error, usize)> {
+        let mut count = 0;
+        self.duplex
+            .set_read_timeout(None)
+            .map_err(|err| (err, count))?;
+        while count < buf.len() {
+            // update the timeout
+            if let Some(deadline) = deadline {
+                let dur = deadline.saturating_duration_since(Instant::now());
+                if dur.is_zero() {
+                    return Err((
+                        std::io::Error::new(ErrorKind::TimedOut, "deadline has elapsed"),
+                        count,
+                    ));
+                }
+                self.duplex
+                    .set_read_timeout(Some(dur))
+                    .map_err(|err| (err, count))?;
+            }
+
+            // do the read
+            match self.duplex.read(&mut buf[count..]) {
+                Ok(0) => break,
+                Ok(n) => {
+                    count += n;
+                }
+                Err(ref e) if e.kind() == std::io::ErrorKind::Interrupted => {}
+                Err(e) => return Err((e, count)),
+            }
+        }
+        if count != buf.len() {
+            Err((
+                std::io::Error::new(ErrorKind::UnexpectedEof, "failed to fill whole buffer"),
+                count,
+            ))
+        } else {
+            Ok(())
+        }
     }
 }
