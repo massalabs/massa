@@ -52,18 +52,20 @@ message ScExecutionEvent {
 
 // ScExecutionEvent context
 message ScExecutionEventContext {
+  // base58 encoded slot + index_in_slot
+  string id = 1;
   // When was it generated
-  Slot origin_slot = 1;
+  Slot origin_slot = 2;
   // Block id if there was a block at that slot
-  string block_id = 2;
+  string block_id = 3;
   // Index of the event in the slot
-  fixed64 index_in_slot = 3;
+  fixed64 index_in_slot = 4;
   // Call stack addresses. most recent at the end
-  repeated string call_stack = 4;
+  repeated string call_stack = 5;
   // Origin operation id
-  string origin_operation_id = 5;
+  string origin_operation_id = 6;
   // Status
-  repeated ScExecutionEventStatus status = 6;
+  repeated ScExecutionEventStatus status = 7;
 }
 
 // ScExecutionEventStatus type enum

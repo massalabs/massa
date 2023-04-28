@@ -473,23 +473,26 @@ pub struct ScExecutionEvent {
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct ScExecutionEventContext {
+    /// base58 encoded slot + index_in_slot
+    #[prost(string, tag = "1")]
+    pub id: ::prost::alloc::string::String,
     /// When was it generated
-    #[prost(message, optional, tag = "1")]
+    #[prost(message, optional, tag = "2")]
     pub origin_slot: ::core::option::Option<Slot>,
     /// Block id if there was a block at that slot
-    #[prost(string, tag = "2")]
+    #[prost(string, tag = "3")]
     pub block_id: ::prost::alloc::string::String,
     /// Index of the event in the slot
-    #[prost(fixed64, tag = "3")]
+    #[prost(fixed64, tag = "4")]
     pub index_in_slot: u64,
     /// Call stack addresses. most recent at the end
-    #[prost(string, repeated, tag = "4")]
+    #[prost(string, repeated, tag = "5")]
     pub call_stack: ::prost::alloc::vec::Vec<::prost::alloc::string::String>,
     /// Origin operation id
-    #[prost(string, tag = "5")]
+    #[prost(string, tag = "6")]
     pub origin_operation_id: ::prost::alloc::string::String,
     /// Status
-    #[prost(enumeration = "ScExecutionEventStatus", repeated, tag = "6")]
+    #[prost(enumeration = "ScExecutionEventStatus", repeated, tag = "7")]
     pub status: ::prost::alloc::vec::Vec<i32>,
 }
 /// ScExecutionEventStatus type enum

@@ -264,7 +264,13 @@ impl From<SCOutputEvent> for grpc::ScExecutionEvent {
 
 impl From<EventExecutionContext> for grpc::ScExecutionEventContext {
     fn from(value: EventExecutionContext) -> Self {
+        let id_str = format!(
+            "{}{}{}",
+            &value.slot.period, &value.slot.thread, &value.index_in_slot
+        );
+        let id = bs58::encode(id_str.as_bytes()).with_check().into_string();
         Self {
+            id,
             origin_slot: Some(value.slot.into()),
             block_id: value.block.map(|id| id.to_string()).unwrap_or_default(),
             index_in_slot: value.index_in_slot,

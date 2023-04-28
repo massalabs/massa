@@ -1531,6 +1531,7 @@ ScExecutionEvent context
 
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
+| id | [string](#string) |  | base58 encoded slot &#43; index_in_slot |
 | origin_slot | [Slot](#massa-api-v1-Slot) |  | When was it generated |
 | block_id | [string](#string) |  | Block id if there was a block at that slot |
 | index_in_slot | [fixed64](#fixed64) |  | Index of the event in the slot |
