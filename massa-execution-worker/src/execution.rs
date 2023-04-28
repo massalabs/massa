@@ -17,7 +17,7 @@ use massa_async_pool::AsyncMessage;
 use massa_execution_exports::{
     EventStore, ExecutionChannels, ExecutionConfig, ExecutionError, ExecutionOutput,
     ExecutionStackElement, ReadOnlyExecutionOutput, ReadOnlyExecutionRequest,
-    ReadOnlyExecutionTarget,
+    ReadOnlyExecutionTarget, SlotExecutionOutput,
 };
 use massa_final_state::FinalState;
 use massa_ledger_exports::{SetOrDelete, SetUpdateOrDelete};
@@ -1164,8 +1164,23 @@ impl ExecutionState {
             context_guard!(self).update_production_stats(&producer_addr, *slot, None);
         }
 
-        // Finish slot and return the execution output
-        context_guard!(self).settle_slot()
+        // Finish slot
+        let exec_out = context_guard!(self).settle_slot();
+
+        // Broadcast a slot execution output to active channel subscribers.
+        if self.config.broadcast_enabled {
+            let slot_exec_out = SlotExecutionOutput::ExecutedSlot(exec_out.clone());
+            if let Err(err) = self.channels.sc_execution_output_sender.send(slot_exec_out) {
+                trace!(
+                    "error, failed to broadcast execution output for slot {} due to: {}",
+                    exec_out.slot.clone(),
+                    err
+                );
+            }
+        }
+
+        // Return the execution output
+        exec_out
     }
 
     /// Execute a candidate slot
@@ -1271,15 +1286,19 @@ impl ExecutionState {
         debug!(
             "execute_final_slot: execution finished & result applied & versioning stats updated"
         );
-        // Broadcast a final execution output to active channel subscribers.
+
+        // Broadcast a final slot execution output to active channel subscribers.
         if self.config.broadcast_enabled {
+            let slot_exec_out = SlotExecutionOutput::FinalizedSlot {
+                slot: exec_out.slot,
+            };
             if let Err(err) = self
                 .channels
                 .sc_execution_output_sender
-                .send(exec_out.clone())
+                .send(slot_exec_out.clone())
             {
                 trace!(
-                    "error, failed to broadcast final execution output in slot {} due to: {}",
+                    "error, failed to broadcast final execution output for slot {} due to: {}",
                     exec_out.slot,
                     err
                 );

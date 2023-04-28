@@ -37,6 +37,7 @@ massa_final_state = { path = "../massa-final-state" }
 massa_versioning_worker = { path = "../massa-versioning-worker" }
 
 [dev-dependencies]
+tokio = { version = "1.23", features = ["sync"] }
 massa_pos_worker = { path = "../massa-pos-worker" }
 massa_ledger_worker = { path = "../massa-ledger-worker" }
 serial_test = "0.10"

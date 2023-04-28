@@ -60,6 +60,7 @@ pub use settings::{ExecutionConfig, StorageCostsConstants};
 pub use types::{
     ExecutionAddressInfo, ExecutionOutput, ExecutionStackElement, ReadOnlyCallRequest,
     ReadOnlyExecutionOutput, ReadOnlyExecutionRequest, ReadOnlyExecutionTarget,
+    SlotExecutionOutput,
 };
 
 #[cfg(any(feature = "testing", feature = "gas_calibration"))]
