@@ -76,7 +76,7 @@ impl ActiveConnectionsTrait for SharedActiveConnections {
                 (
                     peer_id.clone(),
                     (
-                        connection.endpoint.get_target_addr().clone(),
+                        *connection.endpoint.get_target_addr(),
                         connection.connection_type,
                     ),
                 )

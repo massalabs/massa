@@ -88,12 +88,7 @@ impl ActiveConnectionsTrait for SharedMockActiveConnections {
         message: Message,
         _high_priority: bool,
     ) -> Result<(), massa_protocol_exports::ProtocolError> {
-        self.read()
-            .connections
-            .get(peer_id)
-            .unwrap()
-            .send(message)
-            .unwrap();
+        let _ = self.read().connections.get(peer_id).unwrap().send(message);
         Ok(())
     }
 

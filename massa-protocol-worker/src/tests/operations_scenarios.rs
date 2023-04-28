@@ -595,7 +595,7 @@ fn test_protocol_propagates_operations_only_to_nodes_that_dont_know_about_it_ind
             assert_hash_asked_to_node(&node_b, &block.id);
             assert_hash_asked_to_node(&node_c, &block.id);
 
-            //6. Node B sends block info with bad ops list
+            //6. Node B sends block info with bad ops list. Making him ban
             network_controller
                 .send_from_peer(
                     &node_b_peer_id,
@@ -637,7 +637,7 @@ fn test_protocol_propagates_operations_only_to_nodes_that_dont_know_about_it_ind
                     .expect("Node B should have received the operations."),
                 node_b
                     .recv_timeout(Duration::from_millis(1000))
-                    .expect("Node B should have received the operations."),
+                    .expect_err("Node B should not have received the operations."),
                 node_c
                     .recv_timeout(Duration::from_millis(1000))
                     .expect("Node B should have received the operations."),
@@ -645,13 +645,11 @@ fn test_protocol_propagates_operations_only_to_nodes_that_dont_know_about_it_ind
             match msgs {
                 (
                     Message::Operation(OperationMessage::OperationsAnnouncement(operations)),
-                    Message::Operation(OperationMessage::OperationsAnnouncement(operations2)),
+                    _,
                     Message::Operation(OperationMessage::OperationsAnnouncement(operations3)),
                 ) => {
                     assert_eq!(operations.len(), 2);
                     assert!(operations.contains(&operation_2.id.into_prefix()));
-                    assert_eq!(operations2.len(), 1);
-                    assert!(operations2.contains(&operation_1.id.into_prefix()));
                     assert_eq!(operations3.len(), 1);
                     assert!(operations3.contains(&operation_2.id.into_prefix()));
                 }

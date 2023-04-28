@@ -34,6 +34,7 @@ use crate::{
 pub enum ConnectivityCommand {
     Stop,
     GetStats {
+        #[allow(clippy::type_complexity)]
         responder: Sender<(
             NetworkStats,
             HashMap<PeerId, (SocketAddr, PeerConnectionType)>,

@@ -439,6 +439,7 @@ impl Deserializer<BootstrapServerMessage> for BootstrapServerMessageDeserializer
     /// let message_serializer = BootstrapServerMessageSerializer::new();
     /// let args = BootstrapServerMessageDeserializerArgs {
     ///     thread_count: 32, endorsement_count: 16,
+    ///     max_listeners_per_peer: 1000,
     ///     max_advertise_length: 1000, max_bootstrap_blocks_length: 1000,
     ///     max_operations_per_block: 1000, max_bootstrap_final_state_parts_size: 1000,
     ///     max_async_pool_changes: 1000, max_async_pool_length: 1000, max_async_message_data: 1000,

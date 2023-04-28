@@ -478,21 +478,19 @@ pub fn get_boot_state() -> BootstrapableGraph {
     boot_graph
 }
 
-pub fn get_peers() -> BootstrapPeers {
-    let keypair1 = KeyPair::generate();
+pub fn get_peers(keypair: &KeyPair) -> BootstrapPeers {
     let mut listeners1 = HashMap::default();
-    listeners1.insert("82.245.123.77".parse().unwrap(), TransportType::Tcp);
+    listeners1.insert("82.245.123.77:8080".parse().unwrap(), TransportType::Tcp);
 
-    let keypair2 = KeyPair::generate();
     let mut listeners2 = HashMap::default();
-    listeners2.insert("82.220.123.78".parse().unwrap(), TransportType::Tcp);
+    listeners2.insert("82.220.123.78:8080".parse().unwrap(), TransportType::Tcp);
     BootstrapPeers(vec![
         (
-            PeerId::from_bytes(keypair1.get_public_key().to_bytes()).unwrap(),
+            PeerId::from_bytes(keypair.get_public_key().to_bytes()).unwrap(),
             listeners1,
         ),
         (
-            PeerId::from_bytes(keypair2.get_public_key().to_bytes()).unwrap(),
+            PeerId::from_bytes(keypair.get_public_key().to_bytes()).unwrap(),
             listeners2,
         ),
     ])

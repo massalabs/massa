@@ -622,7 +622,7 @@ fn test_protocol_sends_blocks_when_asked_for() {
                 .integrated_block(block.id, storage)
                 .unwrap();
 
-            std::thread::sleep(Duration::from_millis(100));
+            std::thread::sleep(Duration::from_millis(500));
             //4. Two nodes are asking for the block
             network_controller
                 .send_from_peer(

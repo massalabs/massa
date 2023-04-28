@@ -238,7 +238,6 @@ impl Tester {
 
                         // we find the last peer that has been tested
                         let Some((_peer_id, peer_info)) = db.read().get_oldest_peer() else {
-                            dbg!("No peer to test");
                             continue;
                         };
 

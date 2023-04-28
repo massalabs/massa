@@ -58,6 +58,7 @@ pub trait ProtocolController: Send + Sync {
 
     /// Get the stats from the protocol
     /// Returns a tuple containing the stats and the list of peers
+    #[allow(clippy::type_complexity)]
     fn get_stats(
         &self,
     ) -> Result<

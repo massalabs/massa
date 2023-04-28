@@ -88,7 +88,7 @@ impl Serializer<BootstrapPeers> for BootstrapPeersSerializer {
             for (addr, transport_type) in listeners.iter() {
                 self.ip_addr_serializer.serialize(&addr.ip(), buffer)?;
                 self.port_serializer.serialize(&addr.port(), buffer)?;
-                buffer.push(transport_type.clone() as u8);
+                buffer.push(*transport_type as u8);
             }
         }
         Ok(())

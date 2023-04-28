@@ -43,7 +43,7 @@ use massa_pos_exports::{
     test_exports::assert_eq_pos_selection, PoSConfig, PoSFinalState, SelectorConfig,
 };
 use massa_pos_worker::start_selector_worker;
-use massa_protocol_exports::{MockProtocolController, ProtocolController};
+use massa_protocol_exports::MockProtocolController;
 use massa_signature::KeyPair;
 use massa_time::MassaTime;
 use massa_versioning_worker::versioning::{
@@ -180,15 +180,14 @@ fn test_bootstrap_server() {
 
     // Setup network command mock-story: hard-code the result of getting bootstrap peers
     let mut mocked1 = MockProtocolController::new();
-    let mut mocked2 = MockProtocolController::new();
+    let mut mocked2 = Box::new(MockProtocolController::new());
     mocked2
         .expect_get_bootstrap_peers()
         .times(1)
-        .returning(|| Ok(get_peers()));
+        .returning(|| Ok(get_peers(&keypair.clone())));
 
-    mocked1
-        .expect_clone_box()
-        .return_once(move || mocked2.clone_box());
+    mocked1.expect_clone_box().return_once(move || mocked2);
+
     let mut stream_mock1 = Box::new(MockConsensusControllerImpl::new());
     let mut stream_mock2 = Box::new(MockConsensusControllerImpl::new());
     let mut stream_mock3 = Box::new(MockConsensusControllerImpl::new());
@@ -324,7 +323,7 @@ fn test_bootstrap_server() {
 
     // check peers
     assert_eq!(
-        get_peers().0,
+        get_peers(&keypair).0,
         bootstrap_res.peers.unwrap().0,
         "mismatch between sent and received peers"
     );
