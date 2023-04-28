@@ -5,7 +5,7 @@ use crossbeam::{
     channel::{Receiver, Sender},
     select,
 };
-use massa_protocol_exports::ProtocolConfig;
+use massa_protocol_exports::{BootstrapPeers, ProtocolConfig};
 use massa_serialization::{DeserializeError, Deserializer, Serializer};
 use rand::{rngs::StdRng, RngCore, SeedableRng};
 
@@ -116,6 +116,11 @@ impl PeerManagementHandler {
                              Ok(PeerManagementCmd::Unban(peer_ids)) => {
                                 for peer_id in peer_ids {
                                     peer_db.write().unban_peer(&peer_id);
+                                }
+                             },
+                             Ok(PeerManagementCmd::GetBootstrapPeers { responder }) => {
+                                if let Err(err) = responder.send(BootstrapPeers(peer_db.read().get_rand_peers_to_send(100))) {
+                                    warn!("error sending bootstrap peers: {:?}", err);
                                 }
                              },
                              Ok(PeerManagementCmd::Stop) => {

@@ -26,10 +26,12 @@ use massa_models::streaming_step::{
     StreamingStep, StreamingStepDeserializer, StreamingStepSerializer,
 };
 use massa_models::version::{Version, VersionDeserializer, VersionSerializer};
-use massa_network_exports::{BootstrapPeers, BootstrapPeersDeserializer, BootstrapPeersSerializer};
 use massa_pos_exports::{
     CycleInfo, CycleInfoDeserializer, CycleInfoSerializer, DeferredCredits,
     DeferredCreditsDeserializer, DeferredCreditsSerializer,
+};
+use massa_protocol_exports::{
+    BootstrapPeers, BootstrapPeersDeserializer, BootstrapPeersSerializer,
 };
 use massa_serialization::{
     BoolDeserializer, BoolSerializer, Deserializer, OptionDeserializer, OptionSerializer,
@@ -343,7 +345,10 @@ impl BootstrapServerMessageDeserializer {
                 Included(MassaTime::from_millis(u64::MAX)),
             )),
             version_deserializer: VersionDeserializer::new(),
-            peers_deserializer: BootstrapPeersDeserializer::new(args.max_advertise_length),
+            peers_deserializer: BootstrapPeersDeserializer::new(
+                args.max_advertise_length,
+                args.max_listeners_per_peer,
+            ),
             state_changes_deserializer: StateChangesDeserializer::new(
                 args.thread_count,
                 args.max_async_pool_changes,

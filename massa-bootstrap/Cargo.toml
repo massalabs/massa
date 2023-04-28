@@ -30,7 +30,7 @@ massa_hash = { path = "../massa-hash" }
 massa_ledger_exports = { path = "../massa-ledger-exports" }
 massa_logging = { path = "../massa-logging" }
 massa_models = { path = "../massa-models" }
-massa_network_exports = { path = "../massa-network-exports" }
+massa_protocol_exports = { path = "../massa-protocol-exports" }
 massa_serialization = { path = "../massa-serialization" }
 massa_signature = { path = "../massa-signature" }
 massa_pos_exports = { path = "../massa-pos-exports" }

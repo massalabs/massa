@@ -9,7 +9,6 @@ edition = "2021"
 [dependencies]
 crossbeam-channel = "0.5.6"
 anyhow = "1.0"
-enum-map = { version = "2.4", features = ["serde"] }
 lazy_static = "1.4"
 parking_lot = { version = "0.12", features = ["deadlock_detection"] }
 serde = { version = "1.0", features = ["derive"] }
@@ -39,8 +38,6 @@ massa_final_state = { path = "../massa-final-state" }
 massa_ledger_exports = { path = "../massa-ledger-exports" }
 massa_ledger_worker = { path = "../massa-ledger-worker" }
 massa_models = { path = "../massa-models" }
-massa_network_exports = { path = "../massa-network-exports" }
-massa_network_worker = { path = "../massa-network-worker" }
 massa_pool_exports = { path = "../massa-pool-exports" }
 massa_pool_worker = { path = "../massa-pool-worker" }
 massa_protocol_exports = { path = "../massa-protocol-exports" }

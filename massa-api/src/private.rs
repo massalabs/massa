@@ -33,12 +33,12 @@ use massa_signature::{KeyPair, PUBLIC_KEY_SIZE_BYTES};
 use massa_wallet::Wallet;
 
 use parking_lot::RwLock;
+use std::collections::BTreeSet;
 use std::fs::{remove_file, OpenOptions};
 use std::net::{IpAddr, SocketAddr};
 use std::path::PathBuf;
 use std::str::FromStr;
 use std::sync::Arc;
-use std::{collections::BTreeSet, fs::read_to_string};
 use tokio::sync::mpsc;
 
 impl API<Private> {
@@ -86,24 +86,12 @@ impl MassaRpcServer for API<Private> {
     }
 
     async fn node_sign_message(&self, message: Vec<u8>) -> RpcResult<PubkeySig> {
-        let keypair = if std::path::Path::is_file(&self.0.api_settings.keypair_file) {
-            // file exists: try to load it
-            let keypair_bs58_check_encoded = read_to_string(&self.0.api_settings.keypair_file)
-                .map_err(|err| {
-                    std::io::Error::new(
-                        err.kind(),
-                        format!("could not load node key file: {}", err),
-                    )
-                })?;
-            serde_json::from_slice::<KeyPair>(keypair_bs58_check_encoded.as_bytes())?
-        } else {
-            return Err(ApiError::MissingConfig(format!(
-                "node key file {} does not exist",
-                self.0.api_settings.keypair_file.as_path().display()
-            ))
-            .into());
-        };
-        let signature = match keypair.sign(&Hash::compute_from(&message)) {
+        let signature = match self
+            .0
+            .api_settings
+            .keypair
+            .sign(&Hash::compute_from(&message))
+        {
             Ok(signature) => signature,
             Err(e) => {
                 return Err(
@@ -112,7 +100,7 @@ impl MassaRpcServer for API<Private> {
             }
         };
         Ok(PubkeySig {
-            public_key: keypair.get_public_key(),
+            public_key: self.0.api_settings.keypair.get_public_key(),
             signature,
         })
     }

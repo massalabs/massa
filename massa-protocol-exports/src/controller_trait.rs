@@ -4,6 +4,7 @@ use std::collections::HashMap;
 use std::net::SocketAddr;
 
 use crate::error::ProtocolError;
+use crate::BootstrapPeers;
 
 use massa_models::prehash::{PreHashMap, PreHashSet};
 use massa_models::stats::NetworkStats;
@@ -65,6 +66,9 @@ pub trait ProtocolController: Send + Sync {
         ),
         ProtocolError,
     >;
+
+    /// Get a list of peers to be sent to someone that bootstrap to us
+    fn get_bootstrap_peers(&self) -> Result<BootstrapPeers, ProtocolError>;
 
     /// Ban a list of Peer Id
     fn ban_peers(&self, peer_ids: Vec<PeerId>) -> Result<(), ProtocolError>;

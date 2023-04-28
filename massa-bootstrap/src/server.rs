@@ -38,10 +38,11 @@ use massa_models::{
     version::Version,
 };
 
-#[cfg(any(test, feature = "test"))]
-use massa_network_exports::MockNetworkCommandSender as NetworkCommandSender;
-#[cfg(not(any(test, feature = "test")))]
-use massa_network_exports::NetworkCommandSender;
+//TODO AURELIEN: Readd
+//#[cfg(any(test, feature = "test"))]
+//use massa_network_exports::MockNetworkCommandSender as NetworkCommandSender;
+//#[cfg(not(any(test, feature = "test")))]
+use massa_protocol_exports::ProtocolController;
 use massa_signature::KeyPair;
 use massa_time::MassaTime;
 use massa_versioning_worker::versioning::MipStore;
@@ -108,7 +109,7 @@ impl BootstrapManager {
 #[allow(clippy::too_many_arguments)]
 pub fn start_bootstrap_server(
     consensus_controller: Box<dyn ConsensusController>,
-    network_command_sender: NetworkCommandSender,
+    protocol_controller: Box<dyn ProtocolController>,
     final_state: Arc<RwLock<FinalState>>,
     config: BootstrapConfig,
     listener: impl BSListener + Send + 'static,
@@ -162,7 +163,7 @@ pub fn start_bootstrap_server(
         .spawn(move || {
             BootstrapServer {
                 consensus_controller,
-                network_command_sender,
+                protocol_controller,
                 final_state,
                 listener_rx,
                 listen_stopper_rx,
@@ -189,7 +190,7 @@ pub fn start_bootstrap_server(
 
 struct BootstrapServer<'a> {
     consensus_controller: Box<dyn ConsensusController>,
-    network_command_sender: NetworkCommandSender,
+    protocol_controller: Box<dyn ProtocolController>,
     final_state: Arc<RwLock<FinalState>>,
     listener_rx: crossbeam::channel::Receiver<BsConn>,
     listen_stopper_rx: crossbeam::channel::Receiver<()>,
@@ -323,7 +324,7 @@ impl BootstrapServer<'_> {
                 let version = self.version;
                 let data_execution = self.final_state.clone();
                 let consensus_command_sender = self.consensus_controller.clone();
-                let network_command_sender = self.network_command_sender.clone();
+                let protocol_controller = self.protocol_controller.clone();
                 let config = self.bootstrap_config.clone();
 
                 let bootstrap_count_token = bootstrap_sessions_counter.clone();
@@ -340,7 +341,7 @@ impl BootstrapServer<'_> {
                             data_execution,
                             version,
                             consensus_command_sender,
-                            network_command_sender,
+                            protocol_controller,
                             mip_store,
                         )
                     });
@@ -455,7 +456,7 @@ fn run_bootstrap_session(
     data_execution: Arc<RwLock<FinalState>>,
     version: Version,
     consensus_command_sender: Box<dyn ConsensusController>,
-    network_command_sender: NetworkCommandSender,
+    protocol_controller: Box<dyn ProtocolController>,
     mip_store: MipStore,
 ) {
     debug!("running bootstrap for peer {}", remote_addr);
@@ -467,7 +468,7 @@ fn run_bootstrap_session(
         data_execution,
         version,
         consensus_command_sender,
-        network_command_sender,
+        protocol_controller,
         deadline,
         mip_store,
     );
@@ -719,7 +720,7 @@ fn manage_bootstrap(
     final_state: Arc<RwLock<FinalState>>,
     version: Version,
     consensus_controller: Box<dyn ConsensusController>,
-    network_command_sender: NetworkCommandSender,
+    protocol_controller: Box<dyn ProtocolController>,
     deadline: Instant,
     mip_store: MipStore,
 ) -> Result<(), BootstrapError> {
@@ -777,7 +778,7 @@ fn manage_bootstrap(
                     server.send_msg(
                         write_timeout,
                         BootstrapServerMessage::BootstrapPeers {
-                            peers: network_command_sender.sync_get_bootstrap_peers()?,
+                            peers: protocol_controller.get_bootstrap_peers()?,
                         },
                     )?;
                 }

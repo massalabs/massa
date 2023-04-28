@@ -95,7 +95,7 @@ fn basic() {
     let (mut sender_manager1, channels1) = create_protocol_controller(config1.clone());
     let (mut sender_manager2, channels2) = create_protocol_controller(config2.clone());
     // Setup the protocols
-    let mut manager1 = start_protocol_controller(
+    let (mut manager1, _, _) = start_protocol_controller(
         config1,
         consensus_controller1,
         pool_controller1,
@@ -103,7 +103,7 @@ fn basic() {
         channels1,
     )
     .expect("Failed to start protocol 1");
-    let mut manager2 = start_protocol_controller(
+    let (mut manager2, _, _) = start_protocol_controller(
         config2,
         consensus_controller2,
         pool_controller2,
@@ -189,7 +189,7 @@ fn stop_with_controller_still_exists() {
     // Setup the protocols
     let (mut sender_manager1, channels1) = create_protocol_controller(config1.clone());
     let (mut sender_manager2, channels2) = create_protocol_controller(config2.clone());
-    let mut manager1 = start_protocol_controller(
+    let (mut manager1, _, _) = start_protocol_controller(
         config1,
         consensus_controller1,
         pool_controller1,
@@ -197,7 +197,7 @@ fn stop_with_controller_still_exists() {
         channels1,
     )
     .expect("Failed to start protocol 1");
-    let mut manager2 = start_protocol_controller(
+    let (mut manager2, _, _) = start_protocol_controller(
         config2,
         consensus_controller2,
         pool_controller2,

@@ -7,7 +7,7 @@ use massa_models::{
     prehash::{PreHashMap, PreHashSet},
     stats::NetworkStats,
 };
-use massa_protocol_exports::{ProtocolController, ProtocolError};
+use massa_protocol_exports::{BootstrapPeers, ProtocolController, ProtocolError};
 use massa_storage::Storage;
 use peernet::{peer::PeerConnectionType, peer_id::PeerId};
 
@@ -172,6 +172,20 @@ impl ProtocolController for ProtocolControllerImpl {
             .unwrap()
             .send(PeerManagementCmd::Unban(peer_ids))
             .map_err(|_| ProtocolError::ChannelError("unban_peers command send error".into()))
+    }
+
+    fn get_bootstrap_peers(&self) -> Result<BootstrapPeers, ProtocolError> {
+        let (sender, receiver) = crossbeam::channel::bounded(1);
+        self.sender_peer_management_thread
+            .as_ref()
+            .unwrap()
+            .send(PeerManagementCmd::GetBootstrapPeers { responder: sender })
+            .map_err(|_| {
+                ProtocolError::ChannelError("get_bootstrap_peers command send error".into())
+            })?;
+        receiver
+            .recv_timeout(Duration::from_secs(10))
+            .map_err(|_| ProtocolError::ChannelError("get_stats command receive error".into()))
     }
 
     fn clone_box(&self) -> Box<dyn ProtocolController> {

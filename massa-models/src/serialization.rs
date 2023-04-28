@@ -188,9 +188,9 @@ impl Deserializer<IpAddr> for IpAddrDeserializer {
     /// use massa_models::{address::Address, amount::Amount, slot::Slot, serialization::{IpAddrSerializer, IpAddrDeserializer}};
     /// use massa_serialization::{Serializer, Deserializer, DeserializeError};
     /// use std::str::FromStr;
-    /// use std::net::{IpAddr, Ipv4Addr};
+    /// use std::net::{IpAddr, Ipv6Addr};
     ///
-    /// let ip = IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1));
+    /// let ip = IpAddr::V6(Ipv6Addr::new(0, 0, 0, 0, 0, 0, 0, 1));
     /// let ip_serializer = IpAddrSerializer::new();
     /// let ip_deserializer = IpAddrDeserializer::new();
     /// let mut serialized = Vec::new();

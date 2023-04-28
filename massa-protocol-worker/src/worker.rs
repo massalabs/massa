@@ -1,12 +1,16 @@
 use crossbeam::channel::{bounded, Receiver, Sender};
 use massa_consensus_exports::ConsensusController;
+use massa_models::node::NodeId;
 use massa_pool_exports::PoolController;
 use massa_protocol_exports::{ProtocolConfig, ProtocolController, ProtocolError, ProtocolManager};
 use massa_serialization::U64VarIntDeserializer;
+use massa_signature::KeyPair;
 use massa_storage::Storage;
 use parking_lot::RwLock;
-use peernet::{config::PeerNetConfiguration, network_manager::PeerNetManager, types::KeyPair};
-use std::{fs::read_to_string, ops::Bound::Included, sync::Arc};
+use peernet::{
+    config::PeerNetConfiguration, network_manager::PeerNetManager, types::KeyPair as PeerNetKeyPair,
+};
+use std::{fs::read_to_string, ops::Bound::Included, str::FromStr, sync::Arc};
 use tracing::{debug, log::warn};
 
 use crate::{
@@ -136,7 +140,7 @@ pub fn start_protocol_controller(
     pool_controller: Box<dyn PoolController>,
     storage: Storage,
     protocol_channels: ProtocolChannels,
-) -> Result<Box<dyn ProtocolManager>, ProtocolError> {
+) -> Result<(Box<dyn ProtocolManager>, KeyPair, NodeId), ProtocolError> {
     debug!("starting protocol controller");
     let peer_db = Arc::new(RwLock::new(PeerDB::default()));
 
@@ -178,7 +182,7 @@ pub fn start_protocol_controller(
         keypair
     };
 
-    peernet_config.self_keypair = keypair;
+    peernet_config.self_keypair = PeerNetKeyPair::from_str(&keypair.to_string()).unwrap();
     //TODO: Add the rest of the config
     peernet_config.max_in_connections = config.max_in_connections;
     peernet_config.max_out_connections = config.max_out_connections;
@@ -203,5 +207,9 @@ pub fn start_protocol_controller(
 
     let manager = ProtocolManagerImpl::new(connectivity_thread_handle);
 
-    Ok(Box::new(manager))
+    Ok((
+        Box::new(manager),
+        keypair.clone(),
+        NodeId::new(keypair.get_public_key()),
+    ))
 }

@@ -1,5 +1,5 @@
 use crossbeam::channel::Sender;
-use massa_protocol_exports::ProtocolError;
+use massa_protocol_exports::{BootstrapPeers, ProtocolError};
 use parking_lot::RwLock;
 use peernet::{peer_id::PeerId, transports::TransportType};
 use rand::seq::SliceRandom;
@@ -47,6 +47,7 @@ pub enum PeerState {
 pub enum PeerManagementCmd {
     Ban(Vec<PeerId>),
     Unban(Vec<PeerId>),
+    GetBootstrapPeers { responder: Sender<BootstrapPeers> },
     Stop,
 }
 
