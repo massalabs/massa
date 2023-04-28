@@ -7,6 +7,7 @@ use crate::messages::{
 };
 use crate::settings::BootstrapClientConfig;
 use massa_hash::Hash;
+use massa_models::config::{MAX_BOOTSTRAP_MESSAGE_SIZE, MAX_BOOTSTRAP_MESSAGE_SIZE_BYTES};
 use massa_models::serialization::{DeserializeMinBEInt, SerializeMinBEInt};
 use massa_models::version::{Version, VersionSerializer};
 use massa_serialization::{DeserializeError, Deserializer, Serializer};
@@ -20,8 +21,6 @@ use std::{
 
 /// Bootstrap client binder
 pub struct BootstrapClientBinder {
-    // max_bootstrap_message_size: u32,
-    size_field_len: usize,
     remote_pubkey: PublicKey,
     duplex: TcpStream,
     prev_message: Option<Hash>,
@@ -29,6 +28,7 @@ pub struct BootstrapClientBinder {
     cfg: BootstrapClientConfig,
 }
 
+const KNOWN_PREFIX_LEN: usize = SIGNATURE_SIZE_BYTES + MAX_BOOTSTRAP_MESSAGE_SIZE_BYTES;
 /// The known-length component of a message to be received.
 struct ServerMessageLeader {
     sig: Signature,
@@ -43,9 +43,7 @@ impl BootstrapClientBinder {
     /// * limit: limit max bytes per second (up and down)
     #[allow(clippy::too_many_arguments)]
     pub fn new(duplex: TcpStream, remote_pubkey: PublicKey, cfg: BootstrapClientConfig) -> Self {
-        let size_field_len = u32::be_bytes_min_length(cfg.max_bootstrap_message_size);
         BootstrapClientBinder {
-            size_field_len,
             remote_pubkey,
             duplex,
             prev_message: None,
@@ -82,11 +80,9 @@ impl BootstrapClientBinder {
     ) -> Result<BootstrapServerMessage, BootstrapError> {
         self.duplex.set_read_timeout(duration)?;
 
-        // peek the signature and message len
-        let peek_len = SIGNATURE_SIZE_BYTES + self.size_field_len;
-        let mut peek_buff = vec![0u8; peek_len];
+        let mut peek_buff = [0u8; KNOWN_PREFIX_LEN];
         // problematic if we can only peek some of it
-        while self.duplex.peek(&mut peek_buff)? < peek_len {
+        while self.duplex.peek(&mut peek_buff)? < KNOWN_PREFIX_LEN {
             // TODO: Backoff spin of some sort
         }
 
@@ -101,10 +97,10 @@ impl BootstrapClientBinder {
         let message = {
             if let Some(prev_msg) = prev_msg {
                 // Consume the stream, and discard the peek
-                let mut stream_bytes = vec![0u8; peek_len + (msg_len as usize)];
+                let mut stream_bytes = vec![0u8; KNOWN_PREFIX_LEN + (msg_len as usize)];
                 // TODO: under the hood, this isn't actually atomic. For now, we use the ostrich algorithm.
                 self.duplex.read_exact(&mut stream_bytes[..])?;
-                let msg_bytes = &mut stream_bytes[peek_len..];
+                let msg_bytes = &mut stream_bytes[KNOWN_PREFIX_LEN..];
 
                 // prepend the received message with the previous messages hash, and derive the new hash.
                 // TODO: some sort of recovery if this fails?
@@ -119,10 +115,10 @@ impl BootstrapClientBinder {
                 msg
             } else {
                 // Consume the stream and discard the peek
-                let mut stream_bytes = vec![0u8; peek_len + msg_len as usize];
+                let mut stream_bytes = vec![0u8; KNOWN_PREFIX_LEN + msg_len as usize];
                 // TODO: under the hood, this isn't actually atomic. For now, we use the ostrich algorithm.
                 self.duplex.read_exact(&mut stream_bytes[..])?;
-                let sig_msg_bytes = &mut stream_bytes[peek_len..];
+                let sig_msg_bytes = &mut stream_bytes[KNOWN_PREFIX_LEN..];
 
                 // Compute the hash and verify
                 let msg_hash = Hash::compute_from(sig_msg_bytes);
@@ -175,7 +171,7 @@ impl BootstrapClientBinder {
         // send message length
         {
             self.duplex.set_write_timeout(duration)?;
-            let msg_len_bytes = msg_len.to_be_bytes_min(self.cfg.max_bootstrap_message_size)?;
+            let msg_len_bytes = msg_len.to_be_bytes_min(MAX_BOOTSTRAP_MESSAGE_SIZE)?;
             self.duplex.write_all(&msg_len_bytes)?;
         }
 
@@ -186,12 +182,10 @@ impl BootstrapClientBinder {
 
     /// We are using this instead of of our library deserializer as the process is relatively straight forward
     /// and makes error-type management cleaner
-    fn decode_msg_leader(&self, peek_buff: &[u8]) -> Result<ServerMessageLeader, BootstrapError> {
-        // todo: make the byte-count for the message len known at compile time so an array can be used
-        if peek_buff.len() != SIGNATURE_SIZE_BYTES + self.size_field_len {
-            panic!("todo: make the peek-buff length a compile-time constant");
-        }
-
+    fn decode_msg_leader(
+        &self,
+        peek_buff: &[u8; SIGNATURE_SIZE_BYTES + MAX_BOOTSTRAP_MESSAGE_SIZE_BYTES],
+    ) -> Result<ServerMessageLeader, BootstrapError> {
         let sig_array = peek_buff[0..SIGNATURE_SIZE_BYTES]
             .try_into()
             .expect("logic error in array manipulations");
@@ -200,7 +194,7 @@ impl BootstrapClientBinder {
         // construct the message len from the peek
         let msg_len = u32::from_be_bytes_min(
             &peek_buff[SIGNATURE_SIZE_BYTES..],
-            self.cfg.max_bootstrap_message_size,
+            MAX_BOOTSTRAP_MESSAGE_SIZE,
         )?
         .0;
         Ok(ServerMessageLeader { sig, msg_len })

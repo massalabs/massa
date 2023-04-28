@@ -8,6 +8,7 @@ use crate::messages::{
 use crate::settings::BootstrapSrvBindCfg;
 use massa_hash::Hash;
 use massa_hash::HASH_SIZE_BYTES;
+use massa_models::config::{MAX_BOOTSTRAP_MESSAGE_SIZE, MAX_BOOTSTRAP_MESSAGE_SIZE_BYTES};
 use massa_models::serialization::{DeserializeMinBEInt, SerializeMinBEInt};
 use massa_models::version::{Version, VersionDeserializer, VersionSerializer};
 use massa_serialization::{DeserializeError, Deserializer, Serializer};
@@ -30,12 +31,10 @@ struct ClientMessageLeader {
 
 /// Bootstrap server binder
 pub struct BootstrapServerBinder {
-    max_bootstrap_message_size: u32,
     max_consensus_block_ids: u64,
     thread_count: u8,
     max_datastore_key_length: u8,
     randomness_size_bytes: usize,
-    size_field_len: usize,
     local_keypair: KeyPair,
     // TODO: Reintroduce bandwidth limits
     duplex: TcpStream,
@@ -57,18 +56,14 @@ impl BootstrapServerBinder {
         let BootstrapSrvBindCfg {
             // TODO: Reintroduce bandwidth limits
             max_bytes_read_write: _limit,
-            max_bootstrap_message_size,
             thread_count,
             max_datastore_key_length,
             randomness_size_bytes,
             consensus_bootstrap_part_size,
             write_error_timeout,
         } = cfg;
-        let size_field_len = u32::be_bytes_min_length(max_bootstrap_message_size);
         BootstrapServerBinder {
-            max_bootstrap_message_size,
             max_consensus_block_ids: consensus_bootstrap_part_size,
-            size_field_len,
             local_keypair,
             duplex,
             prev_message: None,
@@ -208,7 +203,7 @@ impl BootstrapServerBinder {
 
         // send message length
         {
-            let msg_len_bytes = msg_len.to_be_bytes_min(self.max_bootstrap_message_size)?;
+            let msg_len_bytes = msg_len.to_be_bytes_min(MAX_BOOTSTRAP_MESSAGE_SIZE)?;
             self.duplex.write_all(&msg_len_bytes)?;
         }
 
@@ -229,7 +224,7 @@ impl BootstrapServerBinder {
     ) -> Result<BootstrapClientMessage, BootstrapError> {
         self.duplex.set_read_timeout(duration)?;
 
-        let peek_len = HASH_SIZE_BYTES + self.size_field_len;
+        let peek_len = HASH_SIZE_BYTES + MAX_BOOTSTRAP_MESSAGE_SIZE_BYTES;
         let mut peek_buf = vec![0; peek_len];
         while self.duplex.peek(&mut peek_buf)? < peek_len {
             // TODO: backoff spin of some sort
@@ -297,13 +292,8 @@ impl BootstrapServerBinder {
         };
 
         // construct msg-len from peek
-        let msg_len = {
-            u32::from_be_bytes_min(
-                &peek_buf[HASH_SIZE_BYTES..],
-                self.max_bootstrap_message_size,
-            )?
-            .0
-        };
+        let msg_len =
+            { u32::from_be_bytes_min(&peek_buf[HASH_SIZE_BYTES..], MAX_BOOTSTRAP_MESSAGE_SIZE)?.0 };
         Ok(ClientMessageLeader {
             received_prev_hash,
             msg_len,
