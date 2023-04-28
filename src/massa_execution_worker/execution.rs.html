@@ -1661,6 +1661,44 @@
 <a href="#1661" id="1661">1661</a>
 <a href="#1662" id="1662">1662</a>
 <a href="#1663" id="1663">1663</a>
+<a href="#1664" id="1664">1664</a>
+<a href="#1665" id="1665">1665</a>
+<a href="#1666" id="1666">1666</a>
+<a href="#1667" id="1667">1667</a>
+<a href="#1668" id="1668">1668</a>
+<a href="#1669" id="1669">1669</a>
+<a href="#1670" id="1670">1670</a>
+<a href="#1671" id="1671">1671</a>
+<a href="#1672" id="1672">1672</a>
+<a href="#1673" id="1673">1673</a>
+<a href="#1674" id="1674">1674</a>
+<a href="#1675" id="1675">1675</a>
+<a href="#1676" id="1676">1676</a>
+<a href="#1677" id="1677">1677</a>
+<a href="#1678" id="1678">1678</a>
+<a href="#1679" id="1679">1679</a>
+<a href="#1680" id="1680">1680</a>
+<a href="#1681" id="1681">1681</a>
+<a href="#1682" id="1682">1682</a>
+<a href="#1683" id="1683">1683</a>
+<a href="#1684" id="1684">1684</a>
+<a href="#1685" id="1685">1685</a>
+<a href="#1686" id="1686">1686</a>
+<a href="#1687" id="1687">1687</a>
+<a href="#1688" id="1688">1688</a>
+<a href="#1689" id="1689">1689</a>
+<a href="#1690" id="1690">1690</a>
+<a href="#1691" id="1691">1691</a>
+<a href="#1692" id="1692">1692</a>
+<a href="#1693" id="1693">1693</a>
+<a href="#1694" id="1694">1694</a>
+<a href="#1695" id="1695">1695</a>
+<a href="#1696" id="1696">1696</a>
+<a href="#1697" id="1697">1697</a>
+<a href="#1698" id="1698">1698</a>
+<a href="#1699" id="1699">1699</a>
+<a href="#1700" id="1700">1700</a>
+<a href="#1701" id="1701">1701</a>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="doccomment">//! This module deals with executing final and active slots, as well as read-only requests.
@@ -1678,8 +1716,9 @@
 <span class="kw">use </span><span class="kw">crate</span>::vesting_manager::VestingManager;
 <span class="kw">use </span>massa_async_pool::AsyncMessage;
 <span class="kw">use </span>massa_execution_exports::{
-    EventStore, ExecutionConfig, ExecutionError, ExecutionOutput, ExecutionStackElement,
-    ReadOnlyExecutionOutput, ReadOnlyExecutionRequest, ReadOnlyExecutionTarget,
+    EventStore, ExecutionChannels, ExecutionConfig, ExecutionError, ExecutionOutput,
+    ExecutionStackElement, ReadOnlyExecutionOutput, ReadOnlyExecutionRequest,
+    ReadOnlyExecutionTarget, SlotExecutionOutput,
 };
 <span class="kw">use </span>massa_final_state::FinalState;
 <span class="kw">use </span>massa_ledger_exports::{SetOrDelete, SetUpdateOrDelete};
@@ -1706,7 +1745,7 @@
 <span class="kw">use </span>parking_lot::{Mutex, RwLock};
 <span class="kw">use </span>std::collections::{BTreeMap, BTreeSet, HashMap};
 <span class="kw">use </span>std::sync::Arc;
-<span class="kw">use </span>tracing::{debug, info, warn};
+<span class="kw">use </span>tracing::{debug, info, trace, warn};
 
 <span class="doccomment">/// Used to acquire a lock on the execution context
 </span><span class="macro">macro_rules! </span>context_guard {
@@ -1748,6 +1787,8 @@
     </span>mip_store: MipStore,
     <span class="comment">// selector controller to get draws
     </span>selector: Box&lt;<span class="kw">dyn </span>SelectorController&gt;,
+    <span class="comment">// channels used by the execution worker
+    </span>channels: ExecutionChannels,
 }
 
 <span class="kw">impl </span>ExecutionState {
@@ -1764,6 +1805,7 @@
         final_state: Arc&lt;RwLock&lt;FinalState&gt;&gt;,
         mip_store: MipStore,
         selector: Box&lt;<span class="kw">dyn </span>SelectorController&gt;,
+        channels: ExecutionChannels,
     ) -&gt; ExecutionState {
         <span class="comment">// Get the slot at the output of which the final state is attached.
         // This should be among the latest final slots.
@@ -1829,6 +1871,7 @@
             vesting_manager,
             mip_store,
             selector,
+            channels,
         }
     }
 
@@ -2822,8 +2865,23 @@
             <span class="macro">context_guard!</span>(<span class="self">self</span>).update_production_stats(<span class="kw-2">&amp;</span>producer_addr, <span class="kw-2">*</span>slot, <span class="prelude-val">None</span>);
         }
 
-        <span class="comment">// Finish slot and return the execution output
-        </span><span class="macro">context_guard!</span>(<span class="self">self</span>).settle_slot()
+        <span class="comment">// Finish slot
+        </span><span class="kw">let </span>exec_out = <span class="macro">context_guard!</span>(<span class="self">self</span>).settle_slot();
+
+        <span class="comment">// Broadcast a slot execution output to active channel subscribers.
+        </span><span class="kw">if </span><span class="self">self</span>.config.broadcast_enabled {
+            <span class="kw">let </span>slot_exec_out = SlotExecutionOutput::ExecutedSlot(exec_out.clone());
+            <span class="kw">if let </span><span class="prelude-val">Err</span>(err) = <span class="self">self</span>.channels.sc_execution_output_sender.send(slot_exec_out) {
+                <span class="macro">trace!</span>(
+                    <span class="string">&quot;error, failed to broadcast execution output for slot {} due to: {}&quot;</span>,
+                    exec_out.slot.clone(),
+                    err
+                );
+            }
+        }
+
+        <span class="comment">// Return the execution output
+        </span>exec_out
     }
 
     <span class="doccomment">/// Execute a candidate slot
@@ -2923,12 +2981,30 @@
         <span class="kw">let </span>exec_out = <span class="self">self</span>.execute_slot(slot, exec_target, selector);
 
         <span class="comment">// apply execution output to final state
-        </span><span class="self">self</span>.apply_final_execution_output(exec_out);
+        </span><span class="self">self</span>.apply_final_execution_output(exec_out.clone());
 
         <span class="self">self</span>.update_versioning_stats(exec_target, slot);
         <span class="macro">debug!</span>(
             <span class="string">&quot;execute_final_slot: execution finished &amp; result applied &amp; versioning stats updated&quot;
         </span>);
+
+        <span class="comment">// Broadcast a final slot execution output to active channel subscribers.
+        </span><span class="kw">if </span><span class="self">self</span>.config.broadcast_enabled {
+            <span class="kw">let </span>slot_exec_out = SlotExecutionOutput::FinalizedSlot {
+                slot: exec_out.slot,
+            };
+            <span class="kw">if let </span><span class="prelude-val">Err</span>(err) = <span class="self">self
+                </span>.channels
+                .sc_execution_output_sender
+                .send(slot_exec_out.clone())
+            {
+                <span class="macro">trace!</span>(
+                    <span class="string">&quot;error, failed to broadcast final execution output for slot {} due to: {}&quot;</span>,
+                    exec_out.slot,
+                    err
+                );
+            }
+        }
     }
 
     <span class="doccomment">/// Runs a read-only execution request.

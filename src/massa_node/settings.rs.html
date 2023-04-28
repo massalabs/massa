@@ -294,6 +294,8 @@
 <a href="#294" id="294">294</a>
 <a href="#295" id="295">295</a>
 <a href="#296" id="296">296</a>
+<a href="#297" id="297">297</a>
+<a href="#298" id="298">298</a>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="doccomment">//! Build here the default node settings from the configuration file toml
@@ -331,6 +333,8 @@
     <span class="kw">pub </span>lru_cache_size: u32,
     <span class="kw">pub </span>hd_cache_size: usize,
     <span class="kw">pub </span>snip_amount: usize,
+    <span class="doccomment">/// smart contract execution outputs channel capacity
+    </span><span class="kw">pub </span>broadcast_sc_execution_output_channel_capacity: usize,
 }
 
 <span class="attr">#[derive(Clone, Debug, Deserialize)]

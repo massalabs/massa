@@ -536,9 +536,9 @@
     }
 }
 
-<span class="kw">impl </span>From&lt;SCOutputEvent&gt; <span class="kw">for </span>grpc::ScExecutionEventWrapper {
+<span class="kw">impl </span>From&lt;SCOutputEvent&gt; <span class="kw">for </span>grpc::ScExecutionEvent {
     <span class="kw">fn </span>from(value: SCOutputEvent) -&gt; <span class="self">Self </span>{
-        grpc::ScExecutionEventWrapper {
+        grpc::ScExecutionEvent {
             context: <span class="prelude-val">Some</span>(value.context.into()),
             data: value.data,
         }

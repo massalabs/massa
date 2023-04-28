@@ -212,6 +212,19 @@
 <a href="#212" id="212">212</a>
 <a href="#213" id="213">213</a>
 <a href="#214" id="214">214</a>
+<a href="#215" id="215">215</a>
+<a href="#216" id="216">216</a>
+<a href="#217" id="217">217</a>
+<a href="#218" id="218">218</a>
+<a href="#219" id="219">219</a>
+<a href="#220" id="220">220</a>
+<a href="#221" id="221">221</a>
+<a href="#222" id="222">222</a>
+<a href="#223" id="223">223</a>
+<a href="#224" id="224">224</a>
+<a href="#225" id="225">225</a>
+<a href="#226" id="226">226</a>
+<a href="#227" id="227">227</a>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2023 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="kw">use </span>massa_proto::massa::api::v1 <span class="kw">as </span>grpc;
@@ -228,6 +241,7 @@
     new_endorsements::{new_endorsements, NewEndorsementsStreamType},
     new_filled_blocks::{new_filled_blocks, NewFilledBlocksStreamType},
     new_operations::{new_operations, NewOperationsStreamType},
+    new_sc_execution_outputs::{new_sc_execution_outputs, NewScExecutionOutputsStreamType},
     send_blocks::{send_blocks, SendBlocksStreamType},
     send_endorsements::{send_endorsements, SendEndorsementsStreamType},
     send_operations::{send_operations, SendOperationsStreamType},
@@ -380,6 +394,18 @@
         request: tonic::Request&lt;tonic::Streaming&lt;grpc::NewOperationsRequest&gt;&gt;,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;tonic::Response&lt;<span class="self">Self</span>::NewOperationsStream&gt;, tonic::Status&gt; {
         <span class="prelude-val">Ok</span>(tonic::Response::new(new_operations(<span class="self">self</span>, request).<span class="kw">await</span><span class="question-mark">?</span>))
+    }
+
+    <span class="kw">type </span>NewScExecutionOutputsStream = NewScExecutionOutputsStreamType;
+
+    <span class="doccomment">/// handler for subscribe new smart contracts execution output stream
+    </span><span class="kw">async fn </span>new_sc_execution_outputs(
+        <span class="kw-2">&amp;</span><span class="self">self</span>,
+        request: tonic::Request&lt;tonic::Streaming&lt;grpc::NewScExecutionOutputsRequest&gt;&gt;,
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;tonic::Response&lt;<span class="self">Self</span>::NewScExecutionOutputsStream&gt;, tonic::Status&gt; {
+        <span class="prelude-val">Ok</span>(tonic::Response::new(
+            new_sc_execution_outputs(<span class="self">self</span>, request).<span class="kw">await</span><span class="question-mark">?</span>,
+        ))
     }
 
     <span class="kw">type </span>SendBlocksStream = SendBlocksStreamType;
