@@ -197,20 +197,15 @@ impl BootstrapServerBinder {
             }
         };
 
-        // send signature
+        // construct msg length
+        let msg_len_bytes = msg_len.to_be_bytes_min(self.max_bootstrap_message_size)?;
         self.duplex.set_write_timeout(duration)?;
-        self.duplex.write_all(&sig.to_bytes())?;
 
-        // send message length
-        {
-            let msg_len_bytes = msg_len.to_be_bytes_min(self.max_bootstrap_message_size)?;
-            self.duplex.write_all(&msg_len_bytes)?;
-        }
+        // send the message
+        self.duplex
+            .write_all(&[sig.to_bytes().as_slice(), &msg_len_bytes, &msg_bytes].concat())?;
 
-        // send message
-        self.duplex.write_all(&msg_bytes)?;
-
-        // save prev sig
+        // update prev sig
         self.prev_message = Some(Hash::compute_from(&sig.to_bytes()));
 
         Ok(())
