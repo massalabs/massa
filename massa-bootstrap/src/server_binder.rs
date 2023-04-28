@@ -175,14 +175,14 @@ impl BootstrapServerBinder {
         msg: BootstrapServerMessage,
         duration: Option<Duration>,
     ) -> Result<(), BootstrapError> {
-        // serialize message
+        // serialize the message to bytes
         let mut msg_bytes = Vec::new();
         BootstrapServerMessageSerializer::new().serialize(&msg, &mut msg_bytes)?;
         let msg_len: u32 = msg_bytes.len().try_into().map_err(|e| {
             BootstrapError::GeneralError(format!("bootstrap message too large to encode: {}", e))
         })?;
 
-        // compute signature
+        // compute signature, and extract the bytes
         let sig = {
             if let Some(prev_message) = self.prev_message {
                 // there was a previous message: sign(prev_msg_hash + msg)
@@ -197,13 +197,15 @@ impl BootstrapServerBinder {
             }
         };
 
-        // construct msg length
+        // construct msg length, and convert to bytes
         let msg_len_bytes = msg_len.to_be_bytes_min(self.max_bootstrap_message_size)?;
-        self.duplex.set_write_timeout(duration)?;
 
-        // send the message
-        self.duplex
-            .write_all(&[sig.to_bytes().as_slice(), &msg_len_bytes, &msg_bytes].concat())?;
+        // organize the bytes into a sendable array
+        let stream_data = [sig.to_bytes().as_slice(), &msg_len_bytes, &msg_bytes].concat();
+
+        // send the data
+        self.duplex.set_write_timeout(duration)?;
+        self.duplex.write_all(&stream_data)?;
 
         // update prev sig
         self.prev_message = Some(Hash::compute_from(&sig.to_bytes()));
