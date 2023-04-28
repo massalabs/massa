@@ -198,7 +198,7 @@
 <span class="kw">use </span><span class="kw">super</span>::messages::Message;
 <span class="kw">use </span>massa_models::{
     error::ModelsError,
-    serialization::{u32_be_bytes_min_length, DeserializeMinBEInt, SerializeMinBEInt},
+    serialization::{DeserializeMinBEInt, SerializeMinBEInt},
 };
 <span class="kw">use </span>massa_network_exports::{NetworkError, ReadHalf, WriteHalf};
 <span class="kw">use </span>massa_serialization::Serializer;
@@ -303,7 +303,7 @@
         <span class="comment">// check if we are in the process of reading the message length
         </span><span class="kw">if </span><span class="self">self</span>.msg_size.is_none() {
             <span class="comment">// pre-allocate the buffer to fit the encoded message size if the buffer is not already allocated
-            </span><span class="kw">let </span>size_field_len = u32_be_bytes_min_length(<span class="self">self</span>.max_message_size);
+            </span><span class="kw">let </span>size_field_len = u32::be_bytes_min_length(<span class="self">self</span>.max_message_size);
             <span class="kw">if </span><span class="self">self</span>.buf.len() != size_field_len {
                 <span class="self">self</span>.buf = <span class="macro">vec!</span>[<span class="number">0u8</span>; size_field_len];
             }

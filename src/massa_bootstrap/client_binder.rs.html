@@ -190,16 +190,6 @@
 <a href="#190" id="190">190</a>
 <a href="#191" id="191">191</a>
 <a href="#192" id="192">192</a>
-<a href="#193" id="193">193</a>
-<a href="#194" id="194">194</a>
-<a href="#195" id="195">195</a>
-<a href="#196" id="196">196</a>
-<a href="#197" id="197">197</a>
-<a href="#198" id="198">198</a>
-<a href="#199" id="199">199</a>
-<a href="#200" id="200">200</a>
-<a href="#201" id="201">201</a>
-<a href="#202" id="202">202</a>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="kw">use </span><span class="kw">crate</span>::error::BootstrapError;
@@ -209,7 +199,6 @@
 };
 <span class="kw">use </span><span class="kw">crate</span>::settings::BootstrapClientConfig;
 <span class="kw">use </span>massa_hash::Hash;
-<span class="kw">use </span>massa_models::config::{MAX_BOOTSTRAP_MESSAGE_SIZE, MAX_BOOTSTRAP_MESSAGE_SIZE_BYTES};
 <span class="kw">use </span>massa_models::serialization::{DeserializeMinBEInt, SerializeMinBEInt};
 <span class="kw">use </span>massa_models::version::{Version, VersionSerializer};
 <span class="kw">use </span>massa_serialization::{DeserializeError, Deserializer, Serializer};
@@ -223,18 +212,13 @@
 
 <span class="doccomment">/// Bootstrap client binder
 </span><span class="kw">pub struct </span>BootstrapClientBinder {
+    <span class="comment">// max_bootstrap_message_size: u32,
+    </span>size_field_len: usize,
     remote_pubkey: PublicKey,
     duplex: TcpStream,
     prev_message: <span class="prelude-ty">Option</span>&lt;Hash&gt;,
     version_serializer: VersionSerializer,
     cfg: BootstrapClientConfig,
-}
-
-<span class="kw">const </span>KNOWN_PREFIX_LEN: usize = SIGNATURE_SIZE_BYTES + MAX_BOOTSTRAP_MESSAGE_SIZE_BYTES;
-<span class="doccomment">/// The known-length component of a message to be received.
-</span><span class="kw">struct </span>ServerMessageLeader {
-    sig: Signature,
-    msg_len: u32,
 }
 
 <span class="kw">impl </span>BootstrapClientBinder {
@@ -245,7 +229,9 @@
     /// * limit: limit max bytes per second (up and down)
     </span><span class="attr">#[allow(clippy::too_many_arguments)]
     </span><span class="kw">pub fn </span>new(duplex: TcpStream, remote_pubkey: PublicKey, cfg: BootstrapClientConfig) -&gt; <span class="self">Self </span>{
+        <span class="kw">let </span>size_field_len = u32::be_bytes_min_length(cfg.max_bootstrap_message_size);
         BootstrapClientBinder {
+            size_field_len,
             remote_pubkey,
             duplex,
             prev_message: <span class="prelude-val">None</span>,
@@ -275,20 +261,34 @@
         <span class="prelude-val">Ok</span>(())
     }
 
-    <span class="doccomment">/// Reads the next message.
+    <span class="comment">// TODO: use a proper (de)serializer: https://github.com/massalabs/massa/pull/3745#discussion_r1169733161
+    </span><span class="doccomment">/// Reads the next message.
     </span><span class="kw">pub fn </span>next_timeout(
         <span class="kw-2">&amp;mut </span><span class="self">self</span>,
         duration: <span class="prelude-ty">Option</span>&lt;Duration&gt;,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;BootstrapServerMessage, BootstrapError&gt; {
         <span class="self">self</span>.duplex.set_read_timeout(duration)<span class="question-mark">?</span>;
 
-        <span class="kw">let </span><span class="kw-2">mut </span>peek_buff = [<span class="number">0u8</span>; KNOWN_PREFIX_LEN];
+        <span class="comment">// peek the signature and message len
+        </span><span class="kw">let </span>peek_len = SIGNATURE_SIZE_BYTES + <span class="self">self</span>.size_field_len;
+        <span class="kw">let </span><span class="kw-2">mut </span>peek_buff = <span class="macro">vec!</span>[<span class="number">0u8</span>; peek_len];
         <span class="comment">// problematic if we can only peek some of it
-        </span><span class="kw">while </span><span class="self">self</span>.duplex.peek(<span class="kw-2">&amp;mut </span>peek_buff)<span class="question-mark">? </span>&lt; KNOWN_PREFIX_LEN {
+        </span><span class="kw">while </span><span class="self">self</span>.duplex.peek(<span class="kw-2">&amp;mut </span>peek_buff)<span class="question-mark">? </span>&lt; peek_len {
             <span class="comment">// TODO: Backoff spin of some sort
         </span>}
 
-        <span class="kw">let </span>ServerMessageLeader { sig, msg_len } = <span class="self">self</span>.decode_msg_leader(<span class="kw-2">&amp;</span>peek_buff)<span class="question-mark">?</span>;
+        <span class="comment">// construct the signature from the peek
+        </span><span class="kw">let </span>sig_array = peek_buff.as_slice()[<span class="number">0</span>..SIGNATURE_SIZE_BYTES]
+            .try_into()
+            .expect(<span class="string">&quot;logic error in array manipulations&quot;</span>);
+        <span class="kw">let </span>sig = Signature::from_bytes(<span class="kw-2">&amp;</span>sig_array)<span class="question-mark">?</span>;
+
+        <span class="comment">// construct the message len from the peek
+        </span><span class="kw">let </span>msg_len = u32::from_be_bytes_min(
+            <span class="kw-2">&amp;</span>peek_buff[SIGNATURE_SIZE_BYTES..],
+            <span class="self">self</span>.cfg.max_bootstrap_message_size,
+        )<span class="question-mark">?
+        </span>.<span class="number">0</span>;
 
         <span class="comment">// Update this bindings &quot;most recently received&quot; message hash, retaining the replaced value
         </span><span class="kw">let </span>message_deserializer = BootstrapServerMessageDeserializer::new((<span class="kw-2">&amp;</span><span class="self">self</span>.cfg).into());
@@ -299,10 +299,10 @@
         <span class="kw">let </span>message = {
             <span class="kw">if let </span><span class="prelude-val">Some</span>(prev_msg) = prev_msg {
                 <span class="comment">// Consume the stream, and discard the peek
-                </span><span class="kw">let </span><span class="kw-2">mut </span>stream_bytes = <span class="macro">vec!</span>[<span class="number">0u8</span>; KNOWN_PREFIX_LEN + (msg_len <span class="kw">as </span>usize)];
+                </span><span class="kw">let </span><span class="kw-2">mut </span>stream_bytes = <span class="macro">vec!</span>[<span class="number">0u8</span>; peek_len + (msg_len <span class="kw">as </span>usize)];
                 <span class="comment">// TODO: under the hood, this isn&#39;t actually atomic. For now, we use the ostrich algorithm.
                 </span><span class="self">self</span>.duplex.read_exact(<span class="kw-2">&amp;mut </span>stream_bytes[..])<span class="question-mark">?</span>;
-                <span class="kw">let </span>msg_bytes = <span class="kw-2">&amp;mut </span>stream_bytes[KNOWN_PREFIX_LEN..];
+                <span class="kw">let </span>msg_bytes = <span class="kw-2">&amp;mut </span>stream_bytes[peek_len..];
 
                 <span class="comment">// prepend the received message with the previous messages hash, and derive the new hash.
                 // TODO: some sort of recovery if this fails?
@@ -317,10 +317,10 @@
                 msg
             } <span class="kw">else </span>{
                 <span class="comment">// Consume the stream and discard the peek
-                </span><span class="kw">let </span><span class="kw-2">mut </span>stream_bytes = <span class="macro">vec!</span>[<span class="number">0u8</span>; KNOWN_PREFIX_LEN + msg_len <span class="kw">as </span>usize];
+                </span><span class="kw">let </span><span class="kw-2">mut </span>stream_bytes = <span class="macro">vec!</span>[<span class="number">0u8</span>; peek_len + msg_len <span class="kw">as </span>usize];
                 <span class="comment">// TODO: under the hood, this isn&#39;t actually atomic. For now, we use the ostrich algorithm.
                 </span><span class="self">self</span>.duplex.read_exact(<span class="kw-2">&amp;mut </span>stream_bytes[..])<span class="question-mark">?</span>;
-                <span class="kw">let </span>sig_msg_bytes = <span class="kw-2">&amp;mut </span>stream_bytes[KNOWN_PREFIX_LEN..];
+                <span class="kw">let </span>sig_msg_bytes = <span class="kw-2">&amp;mut </span>stream_bytes[peek_len..];
 
                 <span class="comment">// Compute the hash and verify
                 </span><span class="kw">let </span>msg_hash = Hash::compute_from(sig_msg_bytes);
@@ -373,33 +373,13 @@
         <span class="comment">// send message length
         </span>{
             <span class="self">self</span>.duplex.set_write_timeout(duration)<span class="question-mark">?</span>;
-            <span class="kw">let </span>msg_len_bytes = msg_len.to_be_bytes_min(MAX_BOOTSTRAP_MESSAGE_SIZE)<span class="question-mark">?</span>;
+            <span class="kw">let </span>msg_len_bytes = msg_len.to_be_bytes_min(<span class="self">self</span>.cfg.max_bootstrap_message_size)<span class="question-mark">?</span>;
             <span class="self">self</span>.duplex.write_all(<span class="kw-2">&amp;</span>msg_len_bytes)<span class="question-mark">?</span>;
         }
 
         <span class="comment">// send message
         </span><span class="self">self</span>.duplex.write_all(<span class="kw-2">&amp;</span>msg_bytes)<span class="question-mark">?</span>;
         <span class="prelude-val">Ok</span>(())
-    }
-
-    <span class="doccomment">/// We are using this instead of of our library deserializer as the process is relatively straight forward
-    /// and makes error-type management cleaner
-    </span><span class="kw">fn </span>decode_msg_leader(
-        <span class="kw-2">&amp;</span><span class="self">self</span>,
-        peek_buff: <span class="kw-2">&amp;</span>[u8; SIGNATURE_SIZE_BYTES + MAX_BOOTSTRAP_MESSAGE_SIZE_BYTES],
-    ) -&gt; <span class="prelude-ty">Result</span>&lt;ServerMessageLeader, BootstrapError&gt; {
-        <span class="kw">let </span>sig_array = peek_buff[<span class="number">0</span>..SIGNATURE_SIZE_BYTES]
-            .try_into()
-            .expect(<span class="string">&quot;logic error in array manipulations&quot;</span>);
-        <span class="kw">let </span>sig = Signature::from_bytes(<span class="kw-2">&amp;</span>sig_array)<span class="question-mark">?</span>;
-
-        <span class="comment">// construct the message len from the peek
-        </span><span class="kw">let </span>msg_len = u32::from_be_bytes_min(
-            <span class="kw-2">&amp;</span>peek_buff[SIGNATURE_SIZE_BYTES..],
-            MAX_BOOTSTRAP_MESSAGE_SIZE,
-        )<span class="question-mark">?
-        </span>.<span class="number">0</span>;
-        <span class="prelude-val">Ok</span>(ServerMessageLeader { sig, msg_len })
     }
 }
 </code></pre></div>

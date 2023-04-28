@@ -756,6 +756,14 @@
 <a href="#756" id="756">756</a>
 <a href="#757" id="757">757</a>
 <a href="#758" id="758">758</a>
+<a href="#759" id="759">759</a>
+<a href="#760" id="760">760</a>
+<a href="#761" id="761">761</a>
+<a href="#762" id="762">762</a>
+<a href="#763" id="763">763</a>
+<a href="#764" id="764">764</a>
+<a href="#765" id="765">765</a>
+<a href="#766" id="766">766</a>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="kw">use </span><span class="kw">crate</span>::error::ModelsError;
@@ -775,7 +783,6 @@
 };
 <span class="kw">use </span>std::convert::TryInto;
 <span class="kw">use </span>std::marker::PhantomData;
-<span class="kw">use </span>std::mem::size_of;
 <span class="kw">use </span>std::net::{IpAddr, Ipv4Addr, Ipv6Addr};
 <span class="kw">use </span>std::ops::Bound;
 <span class="kw">use </span>Bound::Included;
@@ -808,28 +815,31 @@
 
 <span class="doccomment">/// Deserialize min big endian
 </span><span class="kw">pub trait </span>DeserializeMinBEInt: Sized {
+    <span class="doccomment">/// min big endian integer base size
+    </span><span class="kw">const </span>MIN_BE_INT_BASE_SIZE: usize;
+
+    <span class="doccomment">/// Compute the minimal big endian deserialization size
+    </span><span class="kw">fn </span>be_bytes_min_length(max_value: <span class="self">Self</span>) -&gt; usize;
+
     <span class="doccomment">/// Deserializes a minimally sized big endian integer to Self from the provided buffer and checks that its value is within given bounds.
     /// In case of success, return the deserialized data and the number of bytes read
     </span><span class="kw">fn </span>from_be_bytes_min(buffer: <span class="kw-2">&amp;</span>[u8], max_value: <span class="self">Self</span>) -&gt; <span class="prelude-ty">Result</span>&lt;(<span class="self">Self</span>, usize), ModelsError&gt;;
 }
 
-<span class="doccomment">/// Compute the minimal big endian deserialization size
-</span><span class="kw">pub const fn </span>u32_be_bytes_min_length(max_value: u32) -&gt; usize {
-    size_of::&lt;u32&gt;() - (max_value.leading_zeros() <span class="kw">as </span>usize) / <span class="number">8
-</span>}
-
-<span class="doccomment">/// Compute the minimal big endian deserialization size
-</span><span class="kw">pub const fn </span>u64_be_bytes_min_length(max_value: u64) -&gt; usize {
-    size_of::&lt;u64&gt;() - (max_value.leading_zeros() <span class="kw">as </span>usize) / <span class="number">8
-</span>}
 <span class="kw">impl </span>DeserializeMinBEInt <span class="kw">for </span>u32 {
+    <span class="kw">const </span>MIN_BE_INT_BASE_SIZE: usize = <span class="number">4</span>;
+
+    <span class="kw">fn </span>be_bytes_min_length(max_value: <span class="self">Self</span>) -&gt; usize {
+        <span class="self">Self</span>::MIN_BE_INT_BASE_SIZE - (max_value.leading_zeros() <span class="kw">as </span>usize) / <span class="number">8
+    </span>}
+
     <span class="kw">fn </span>from_be_bytes_min(buffer: <span class="kw-2">&amp;</span>[u8], max_value: <span class="self">Self</span>) -&gt; <span class="prelude-ty">Result</span>&lt;(<span class="self">Self</span>, usize), ModelsError&gt; {
-        <span class="kw">let </span>read_bytes = u32_be_bytes_min_length(max_value);
-        <span class="kw">let </span>skip_bytes = size_of::&lt;<span class="self">Self</span>&gt;() - read_bytes;
+        <span class="kw">let </span>read_bytes = <span class="self">Self</span>::be_bytes_min_length(max_value);
+        <span class="kw">let </span>skip_bytes = <span class="self">Self</span>::MIN_BE_INT_BASE_SIZE - read_bytes;
         <span class="kw">if </span>buffer.len() &lt; read_bytes {
             <span class="kw">return </span><span class="prelude-val">Err</span>(ModelsError::SerializeError(<span class="string">&quot;unexpected buffer END&quot;</span>.into()));
         }
-        <span class="kw">let </span><span class="kw-2">mut </span>buf = [<span class="number">0u8</span>; size_of::&lt;<span class="self">Self</span>&gt;()];
+        <span class="kw">let </span><span class="kw-2">mut </span>buf = [<span class="number">0u8</span>; <span class="self">Self</span>::MIN_BE_INT_BASE_SIZE];
         buf[skip_bytes..].clone_from_slice(<span class="kw-2">&amp;</span>buffer[..read_bytes]);
         <span class="kw">let </span>res = u32::from_be_bytes(buf);
         <span class="kw">if </span>res &gt; max_value {
@@ -842,13 +852,19 @@
 }
 
 <span class="kw">impl </span>DeserializeMinBEInt <span class="kw">for </span>u64 {
+    <span class="kw">const </span>MIN_BE_INT_BASE_SIZE: usize = <span class="number">8</span>;
+
+    <span class="kw">fn </span>be_bytes_min_length(max_value: <span class="self">Self</span>) -&gt; usize {
+        <span class="self">Self</span>::MIN_BE_INT_BASE_SIZE - (max_value.leading_zeros() <span class="kw">as </span>usize) / <span class="number">8
+    </span>}
+
     <span class="kw">fn </span>from_be_bytes_min(buffer: <span class="kw-2">&amp;</span>[u8], max_value: <span class="self">Self</span>) -&gt; <span class="prelude-ty">Result</span>&lt;(<span class="self">Self</span>, usize), ModelsError&gt; {
-        <span class="kw">let </span>read_bytes = u64_be_bytes_min_length(max_value);
-        <span class="kw">let </span>skip_bytes = size_of::&lt;<span class="self">Self</span>&gt;() - read_bytes;
+        <span class="kw">let </span>read_bytes = <span class="self">Self</span>::be_bytes_min_length(max_value);
+        <span class="kw">let </span>skip_bytes = <span class="self">Self</span>::MIN_BE_INT_BASE_SIZE - read_bytes;
         <span class="kw">if </span>buffer.len() &lt; read_bytes {
             <span class="kw">return </span><span class="prelude-val">Err</span>(ModelsError::SerializeError(<span class="string">&quot;unexpected buffer END&quot;</span>.into()));
         }
-        <span class="kw">let </span><span class="kw-2">mut </span>buf = [<span class="number">0u8</span>; size_of::&lt;<span class="self">Self</span>&gt;()];
+        <span class="kw">let </span><span class="kw-2">mut </span>buf = [<span class="number">0u8</span>; <span class="self">Self</span>::MIN_BE_INT_BASE_SIZE];
         buf[skip_bytes..].clone_from_slice(<span class="kw-2">&amp;</span>buffer[..read_bytes]);
         <span class="kw">let </span>res = u64::from_be_bytes(buf);
         <span class="kw">if </span>res &gt; max_value {
