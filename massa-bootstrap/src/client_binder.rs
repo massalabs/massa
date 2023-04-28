@@ -7,7 +7,9 @@ use crate::messages::{
 };
 use crate::settings::BootstrapClientConfig;
 use massa_hash::Hash;
-use massa_models::serialization::{DeserializeMinBEInt, SerializeMinBEInt};
+use massa_models::serialization::{
+    u32_be_bytes_min_length, DeserializeMinBEInt, SerializeMinBEInt,
+};
 use massa_models::version::{Version, VersionSerializer};
 use massa_serialization::{DeserializeError, Deserializer, Serializer};
 use massa_signature::{PublicKey, Signature, SIGNATURE_SIZE_BYTES};
@@ -43,7 +45,7 @@ impl BootstrapClientBinder {
     /// * limit: limit max bytes per second (up and down)
     #[allow(clippy::too_many_arguments)]
     pub fn new(duplex: TcpStream, remote_pubkey: PublicKey, cfg: BootstrapClientConfig) -> Self {
-        let size_field_len = u32::be_bytes_min_length(cfg.max_bootstrap_message_size);
+        let size_field_len = u32_be_bytes_min_length(cfg.max_bootstrap_message_size);
         BootstrapClientBinder {
             size_field_len,
             remote_pubkey,

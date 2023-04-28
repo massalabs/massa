@@ -6,7 +6,7 @@ use crate::messages::{MessageDeserializer, MessageSerializer};
 use super::messages::Message;
 use massa_models::{
     error::ModelsError,
-    serialization::{DeserializeMinBEInt, SerializeMinBEInt},
+    serialization::{u32_be_bytes_min_length, DeserializeMinBEInt, SerializeMinBEInt},
 };
 use massa_network_exports::{NetworkError, ReadHalf, WriteHalf};
 use massa_serialization::Serializer;
@@ -111,7 +111,7 @@ impl ReadBinder {
         // check if we are in the process of reading the message length
         if self.msg_size.is_none() {
             // pre-allocate the buffer to fit the encoded message size if the buffer is not already allocated
-            let size_field_len = u32::be_bytes_min_length(self.max_message_size);
+            let size_field_len = u32_be_bytes_min_length(self.max_message_size);
             if self.buf.len() != size_field_len {
                 self.buf = vec![0u8; size_field_len];
             }

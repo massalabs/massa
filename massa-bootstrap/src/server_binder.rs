@@ -8,7 +8,9 @@ use crate::messages::{
 use crate::settings::BootstrapSrvBindCfg;
 use massa_hash::Hash;
 use massa_hash::HASH_SIZE_BYTES;
-use massa_models::serialization::{DeserializeMinBEInt, SerializeMinBEInt};
+use massa_models::serialization::{
+    u32_be_bytes_min_length, DeserializeMinBEInt, SerializeMinBEInt,
+};
 use massa_models::version::{Version, VersionDeserializer, VersionSerializer};
 use massa_serialization::{DeserializeError, Deserializer, Serializer};
 use massa_signature::KeyPair;
@@ -64,7 +66,7 @@ impl BootstrapServerBinder {
             consensus_bootstrap_part_size,
             write_error_timeout,
         } = cfg;
-        let size_field_len = u32::be_bytes_min_length(max_bootstrap_message_size);
+        let size_field_len = u32_be_bytes_min_length(max_bootstrap_message_size);
         BootstrapServerBinder {
             max_bootstrap_message_size,
             max_consensus_block_ids: consensus_bootstrap_part_size,
