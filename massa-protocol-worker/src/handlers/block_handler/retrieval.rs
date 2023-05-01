@@ -598,10 +598,10 @@ impl RetrievalThread {
         // optimized signature verification
         verify_sigs_batch(
             &new_endorsements
-                .iter()
-                .map(|(endorsement_id, endorsement)| {
+                .values()
+                .map(|endorsement| {
                     (
-                        *endorsement_id.get_hash(),
+                        endorsement.compute_signed_hash(),
                         endorsement.signature,
                         endorsement.content_creator_pub_key,
                     )

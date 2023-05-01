@@ -9,7 +9,6 @@ use massa_logging::massa_trace;
 use massa_models::{
     endorsement::SecureShareEndorsement,
     prehash::{CapacityAllocator, PreHashMap, PreHashSet},
-    secure_share::Id,
     timeslots::get_block_slot_timestamp,
 };
 use massa_pool_exports::PoolController;
@@ -151,10 +150,10 @@ impl RetrievalThread {
         // optimized signature verification
         verify_sigs_batch(
             &new_endorsements
-                .iter()
-                .map(|(endorsement_id, endorsement)| {
+                .values()
+                .map(|endorsement| {
                     (
-                        *endorsement_id.get_hash(),
+                        endorsement.compute_signed_hash(),
                         endorsement.signature,
                         endorsement.content_creator_pub_key,
                     )
