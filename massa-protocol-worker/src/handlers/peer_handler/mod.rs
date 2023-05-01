@@ -19,6 +19,7 @@ use peernet::{
     types::Hash,
     types::{KeyPair, Signature},
 };
+use tracing::info;
 use tracing::log::{debug, error, warn};
 
 use crate::handlers::peer_handler::models::PeerState;
@@ -362,6 +363,7 @@ impl InitConnectionHandler for MassaHandshake {
         // if handshake failed, we set the peer state to HandshakeFailed
         match &res {
             Ok((peer_id, announcement)) => {
+                info!("Peer connected: {:?}", peer_id);
                 peer_db_write
                     .peers
                     .entry(peer_id.clone())
