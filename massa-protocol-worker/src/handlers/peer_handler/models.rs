@@ -58,6 +58,7 @@ pub struct PeerManagementChannel {
 
 impl PeerDB {
     pub fn ban_peer(&mut self, peer_id: &PeerId) {
+        println!("peers: {:?}", self.peers);
         if let Some(peer) = self.peers.get_mut(peer_id) {
             peer.state = PeerState::Banned;
             info!("Banned peer: {:?}", peer_id);

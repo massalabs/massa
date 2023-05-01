@@ -197,9 +197,10 @@ impl EndorsementFactoryWorker {
         // send endorsement to pool for listing and propagation
         self.channels.pool.add_endorsements(endo_storage.clone());
 
-        if let Err(err) = self.channels.protocol.propagate_endorsements(endo_storage) {
-            warn!("could not propagate endorsements to protocol: {}", err);
-        }
+        // TODO: Aurelien remove
+        // if let Err(err) = self.channels.protocol.propagate_endorsements(endo_storage) {
+        //     warn!("could not propagate endorsements to protocol: {}", err);
+        // }
     }
 
     /// main run loop of the endorsement creator thread
