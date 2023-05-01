@@ -121,7 +121,14 @@ impl PropagationThread {
                                             to_send.len(),
                                             peer_id
                                         );
-                                        println!("AURELIEN: Send endorsements {:#?}", to_send);
+                                        println!("AURELIEN: Send endorsements {:?}", to_send);
+                                        for endorsement in &to_send {
+                                            println!(
+                                                "AURELIEN: send endorsement id:{:?} hash sign:{:?}",
+                                                endorsement.id,
+                                                endorsement.compute_signed_hash()
+                                            );
+                                        }
                                         if let Err(err) = self.active_connections.send_to_peer(
                                             peer_id,
                                             &self.endorsement_serializer,

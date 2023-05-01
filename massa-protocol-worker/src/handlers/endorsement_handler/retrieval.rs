@@ -156,6 +156,11 @@ impl RetrievalThread {
             &new_endorsements
                 .values()
                 .map(|endorsement| {
+                    println!(
+                        "AURELIEN: check signature endorsement id:{:?} hash sign:{:?}",
+                        endorsement.id,
+                        endorsement.compute_signed_hash()
+                    );
                     (
                         endorsement.compute_signed_hash(),
                         endorsement.signature,
