@@ -57,7 +57,6 @@ impl Serializer<EndorsementMessage> for EndorsementMessageSerializer {
         value: &EndorsementMessage,
         buffer: &mut Vec<u8>,
     ) -> Result<(), massa_serialization::SerializeError> {
-        println!("AURELIEN: EndorsementMessageSerializer {:?}", value);
         match value {
             EndorsementMessage::Endorsements(endorsements) => {
                 self.length_endorsements_serializer
@@ -68,7 +67,6 @@ impl Serializer<EndorsementMessage> for EndorsementMessageSerializer {
                 }
             }
         }
-        println!("AURELIEN: Serialized buffer {:?}", buffer);
         Ok(())
     }
 }

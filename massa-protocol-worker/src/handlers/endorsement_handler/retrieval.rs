@@ -130,7 +130,6 @@ impl RetrievalThread {
         endorsements: Vec<SecureShareEndorsement>,
         from_peer_id: &PeerId,
     ) -> Result<(), ProtocolError> {
-        println!("AURELIEN: note_endorsements_from_peer {:?}", endorsements);
         massa_trace!("protocol.protocol_worker.note_endorsements_from_node", { "node": from_peer_id, "endorsements": endorsements});
         let length = endorsements.len();
         let mut new_endorsements = PreHashMap::with_capacity(length);
@@ -142,7 +141,6 @@ impl RetrievalThread {
             {
                 let read_cache = self.cache.read();
                 if !read_cache.checked_endorsements.contains(&endorsement_id) {
-                    println!("AURELIEN: id:{} not found in cache added to endorsement to check signature", endorsement_id);
                     new_endorsements.insert(endorsement_id, endorsement);
                 }
             }
@@ -150,19 +148,10 @@ impl RetrievalThread {
 
         // Batch signature verification
         // optimized signature verification
-        println!(
-            "AURELIEN in endorsement handler: new_endorsements {:?}",
-            new_endorsements
-        );
         verify_sigs_batch(
             &new_endorsements
                 .values()
                 .map(|endorsement| {
-                    println!(
-                        "AURELIEN: check signature endorsement id:{:?} hash sign:{:?}",
-                        endorsement.id,
-                        endorsement.compute_signed_hash()
-                    );
                     (
                         endorsement.compute_signed_hash(),
                         endorsement.signature,
@@ -171,8 +160,6 @@ impl RetrievalThread {
                 })
                 .collect::<Vec<_>>(),
         )?;
-        println!("AURELIEN: signature verified");
-
         {
             let mut cache_write = self.cache.write();
             // add to verified signature cache
