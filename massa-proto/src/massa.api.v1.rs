@@ -684,6 +684,104 @@ pub struct OperationsContext {
     #[prost(message, optional, tag = "1")]
     pub slot: ::core::option::Option<Slot>,
 }
+/// GetScExecutionEventsRequest holds request for GetScExecutionEvents
+#[allow(clippy::derive_partial_eq_without_eq)]
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct GetScExecutionEventsRequest {
+    /// Request id
+    #[prost(string, tag = "1")]
+    pub id: ::prost::alloc::string::String,
+    /// Query
+    #[prost(message, optional, tag = "2")]
+    pub query: ::core::option::Option<GetScExecutionEventsQuery>,
+}
+/// GetScExecutionEvents Query
+#[allow(clippy::derive_partial_eq_without_eq)]
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct GetScExecutionEventsQuery {
+    /// Filter
+    #[prost(message, optional, tag = "1")]
+    pub filter: ::core::option::Option<GetScExecutionEventsFilter>,
+}
+/// GetScExecutionEvents Filter
+#[allow(clippy::derive_partial_eq_without_eq)]
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct GetScExecutionEventsFilter {
+    /// Start slot
+    #[prost(message, optional, tag = "1")]
+    pub start_slot: ::core::option::Option<Slot>,
+    /// End slot
+    #[prost(message, optional, tag = "2")]
+    pub end_slot: ::core::option::Option<Slot>,
+    /// Caller address
+    #[prost(string, optional, tag = "3")]
+    pub caller_address: ::core::option::Option<::prost::alloc::string::String>,
+    /// Emitter address
+    #[prost(string, optional, tag = "4")]
+    pub emitter_address: ::core::option::Option<::prost::alloc::string::String>,
+    /// Original operation id
+    #[prost(string, optional, tag = "5")]
+    pub original_operation_id: ::core::option::Option<::prost::alloc::string::String>,
+    /// Status
+    #[prost(enumeration = "ScExecutionEventStatus", repeated, tag = "6")]
+    pub status: ::prost::alloc::vec::Vec<i32>,
+}
+/// GetScExecutionEventsResponse holds response from GetScExecutionEvents
+#[allow(clippy::derive_partial_eq_without_eq)]
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct GetScExecutionEventsResponse {
+    /// Request id
+    #[prost(string, tag = "1")]
+    pub id: ::prost::alloc::string::String,
+    /// Context
+    #[prost(message, optional, tag = "2")]
+    pub context: ::core::option::Option<GetScExecutionEventsContext>,
+    /// ScExecutionEvents wrappers
+    #[prost(message, repeated, tag = "3")]
+    pub events: ::prost::alloc::vec::Vec<ScExecutionEventWrapper>,
+}
+/// ScExecutionEvents context
+#[allow(clippy::derive_partial_eq_without_eq)]
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct GetScExecutionEventsContext {
+    /// Slot
+    #[prost(message, optional, tag = "1")]
+    pub slot: ::core::option::Option<Slot>,
+}
+/// ScExecutionEvent wrapper
+#[allow(clippy::derive_partial_eq_without_eq)]
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct ScExecutionEventWrapper {
+    /// Sc execution context
+    #[prost(message, optional, tag = "1")]
+    pub context: ::core::option::Option<ScExecutionEventContext>,
+    /// json data string
+    #[prost(string, tag = "2")]
+    pub data: ::prost::alloc::string::String,
+}
+/// ScExecutionEvent context
+#[allow(clippy::derive_partial_eq_without_eq)]
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct ScExecutionEventContext {
+    /// When was it generated
+    #[prost(message, optional, tag = "2")]
+    pub origin_slot: ::core::option::Option<Slot>,
+    /// Block id if there was a block at that slot
+    #[prost(string, tag = "3")]
+    pub block_id: ::prost::alloc::string::String,
+    /// Index of the event in the slot
+    #[prost(fixed64, tag = "4")]
+    pub index_in_slot: u64,
+    /// Call stack addresses. most recent at the end
+    #[prost(string, repeated, tag = "5")]
+    pub call_stack: ::prost::alloc::vec::Vec<::prost::alloc::string::String>,
+    /// Origin operation id
+    #[prost(string, tag = "6")]
+    pub origin_operation_id: ::prost::alloc::string::String,
+    /// Status
+    #[prost(enumeration = "ScExecutionEventStatus", repeated, tag = "7")]
+    pub status: ::prost::alloc::vec::Vec<i32>,
+}
 /// GetSelectorDrawsRequest holds request from GetSelectorDraws
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
@@ -1042,6 +1140,45 @@ pub struct TransactionsThroughputResponse {
     #[prost(fixed32, tag = "2")]
     pub throughput: u32,
 }
+/// ScExecutionEventStatus type enum
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, ::prost::Enumeration)]
+#[repr(i32)]
+pub enum ScExecutionEventStatus {
+    /// Defaut enum value
+    Unspecified = 0,
+    /// Final status
+    Final = 1,
+    /// Read only status
+    ReadOnly = 2,
+    /// Failure status
+    Failure = 3,
+}
+impl ScExecutionEventStatus {
+    /// String value of the enum field names used in the ProtoBuf definition.
+    ///
+    /// The values are not transformed in any way and thus are considered stable
+    /// (if the ProtoBuf definition does not change) and safe for programmatic use.
+    pub fn as_str_name(&self) -> &'static str {
+        match self {
+            ScExecutionEventStatus::Unspecified => {
+                "SC_EXECUTION_EVENT_STATUS_UNSPECIFIED"
+            }
+            ScExecutionEventStatus::Final => "SC_EXECUTION_EVENT_STATUS_FINAL",
+            ScExecutionEventStatus::ReadOnly => "SC_EXECUTION_EVENT_STATUS_READ_ONLY",
+            ScExecutionEventStatus::Failure => "SC_EXECUTION_EVENT_STATUS_FAILURE",
+        }
+    }
+    /// Creates an enum from field names used in the ProtoBuf definition.
+    pub fn from_str_name(value: &str) -> ::core::option::Option<Self> {
+        match value {
+            "SC_EXECUTION_EVENT_STATUS_UNSPECIFIED" => Some(Self::Unspecified),
+            "SC_EXECUTION_EVENT_STATUS_FINAL" => Some(Self::Final),
+            "SC_EXECUTION_EVENT_STATUS_READ_ONLY" => Some(Self::ReadOnly),
+            "SC_EXECUTION_EVENT_STATUS_FAILURE" => Some(Self::Failure),
+            _ => None,
+        }
+    }
+}
 /// Operation type enum
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, ::prost::Enumeration)]
 #[repr(i32)]
@@ -1338,6 +1475,34 @@ pub mod massa_service_client {
             let mut req = request.into_request();
             req.extensions_mut()
                 .insert(GrpcMethod::new("massa.api.v1.MassaService", "GetOperations"));
+            self.inner.unary(req, path, codec).await
+        }
+        /// Get smart contracts execution events
+        pub async fn get_sc_execution_events(
+            &mut self,
+            request: impl tonic::IntoRequest<super::GetScExecutionEventsRequest>,
+        ) -> std::result::Result<
+            tonic::Response<super::GetScExecutionEventsResponse>,
+            tonic::Status,
+        > {
+            self.inner
+                .ready()
+                .await
+                .map_err(|e| {
+                    tonic::Status::new(
+                        tonic::Code::Unknown,
+                        format!("Service was not ready: {}", e.into()),
+                    )
+                })?;
+            let codec = tonic::codec::ProstCodec::default();
+            let path = http::uri::PathAndQuery::from_static(
+                "/massa.api.v1.MassaService/GetScExecutionEvents",
+            );
+            let mut req = request.into_request();
+            req.extensions_mut()
+                .insert(
+                    GrpcMethod::new("massa.api.v1.MassaService", "GetScExecutionEvents"),
+                );
             self.inner.unary(req, path, codec).await
         }
         /// Get selector draws
@@ -1739,6 +1904,14 @@ pub mod massa_service_server {
             request: tonic::Request<super::GetOperationsRequest>,
         ) -> std::result::Result<
             tonic::Response<super::GetOperationsResponse>,
+            tonic::Status,
+        >;
+        /// Get smart contracts execution events
+        async fn get_sc_execution_events(
+            &self,
+            request: tonic::Request<super::GetScExecutionEventsRequest>,
+        ) -> std::result::Result<
+            tonic::Response<super::GetScExecutionEventsResponse>,
             tonic::Status,
         >;
         /// Get selector draws
@@ -2238,6 +2411,52 @@ pub mod massa_service_server {
                     let fut = async move {
                         let inner = inner.0;
                         let method = GetOperationsSvc(inner);
+                        let codec = tonic::codec::ProstCodec::default();
+                        let mut grpc = tonic::server::Grpc::new(codec)
+                            .apply_compression_config(
+                                accept_compression_encodings,
+                                send_compression_encodings,
+                            )
+                            .apply_max_message_size_config(
+                                max_decoding_message_size,
+                                max_encoding_message_size,
+                            );
+                        let res = grpc.unary(method, req).await;
+                        Ok(res)
+                    };
+                    Box::pin(fut)
+                }
+                "/massa.api.v1.MassaService/GetScExecutionEvents" => {
+                    #[allow(non_camel_case_types)]
+                    struct GetScExecutionEventsSvc<T: MassaService>(pub Arc<T>);
+                    impl<
+                        T: MassaService,
+                    > tonic::server::UnaryService<super::GetScExecutionEventsRequest>
+                    for GetScExecutionEventsSvc<T> {
+                        type Response = super::GetScExecutionEventsResponse;
+                        type Future = BoxFuture<
+                            tonic::Response<Self::Response>,
+                            tonic::Status,
+                        >;
+                        fn call(
+                            &mut self,
+                            request: tonic::Request<super::GetScExecutionEventsRequest>,
+                        ) -> Self::Future {
+                            let inner = Arc::clone(&self.0);
+                            let fut = async move {
+                                (*inner).get_sc_execution_events(request).await
+                            };
+                            Box::pin(fut)
+                        }
+                    }
+                    let accept_compression_encodings = self.accept_compression_encodings;
+                    let send_compression_encodings = self.send_compression_encodings;
+                    let max_decoding_message_size = self.max_decoding_message_size;
+                    let max_encoding_message_size = self.max_encoding_message_size;
+                    let inner = self.inner.clone();
+                    let fut = async move {
+                        let inner = inner.0;
+                        let method = GetScExecutionEventsSvc(inner);
                         let codec = tonic::codec::ProstCodec::default();
                         let mut grpc = tonic::server::Grpc::new(codec)
                             .apply_compression_config(

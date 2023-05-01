@@ -1,9 +1,14 @@
 // Copyright (c) 2023 MASSA LABS <info@massa.net>
 
+use std::str::FromStr;
+
+use crate::address::Address;
 use crate::block::{Block, FilledBlock, SecureShareBlock};
 use crate::block_header::{BlockHeader, SecuredHeader};
 use crate::endorsement::{Endorsement, SecureShareEndorsement};
-use crate::operation::{Operation, OperationType, SecureShareOperation};
+use crate::execution::EventFilter;
+use crate::operation::{Operation, OperationId, OperationType, SecureShareOperation};
+use crate::output_event::{EventExecutionContext, SCOutputEvent};
 use crate::slot::{IndexedSlot, Slot};
 use massa_proto::massa::api::v1 as grpc;
 
@@ -208,6 +213,71 @@ impl From<Slot> for grpc::Slot {
         grpc::Slot {
             period: s.period,
             thread: s.thread as u32,
+        }
+    }
+}
+
+impl From<grpc::Slot> for Slot {
+    fn from(s: grpc::Slot) -> Self {
+        Slot {
+            period: s.period,
+            thread: s.thread as u8,
+        }
+    }
+}
+
+impl TryFrom<grpc::GetScExecutionEventsFilter> for EventFilter {
+    type Error = crate::error::ModelsError;
+
+    fn try_from(filter: grpc::GetScExecutionEventsFilter) -> Result<Self, Self::Error> {
+        let status_final = grpc::ScExecutionEventStatus::Final as i32;
+        let status_error = grpc::ScExecutionEventStatus::Failure as i32;
+        Ok(Self {
+            start: filter.start_slot.map(|slot| slot.into()),
+            end: filter.end_slot.map(|slot| slot.into()),
+            emitter_address: filter
+                .emitter_address
+                .map(|address| Address::from_str(&address))
+                .transpose()?,
+            original_caller_address: filter
+                .caller_address
+                .map(|address| Address::from_str(&address))
+                .transpose()?,
+            original_operation_id: filter
+                .original_operation_id
+                .map(|operation_id| OperationId::from_str(&operation_id))
+                .transpose()?,
+            is_final: Some(filter.status.contains(&status_final)),
+            is_error: Some(filter.status.contains(&status_error)),
+        })
+    }
+}
+
+impl From<SCOutputEvent> for grpc::ScExecutionEventWrapper {
+    fn from(value: SCOutputEvent) -> Self {
+        grpc::ScExecutionEventWrapper {
+            context: Some(value.context.into()),
+            data: value.data,
+        }
+    }
+}
+
+impl From<EventExecutionContext> for grpc::ScExecutionEventContext {
+    fn from(ctx: EventExecutionContext) -> Self {
+        Self {
+            origin_slot: Some(ctx.slot.into()),
+            block_id: ctx.block.map(|id| id.to_string()).unwrap_or_default(),
+            index_in_slot: ctx.index_in_slot,
+            call_stack: ctx.call_stack.into_iter().map(|a| a.to_string()).collect(),
+            origin_operation_id: ctx
+                .origin_operation_id
+                .map(|id| id.to_string())
+                .unwrap_or_default(),
+            status: vec![
+                ctx.is_error.into(),
+                ctx.read_only.into(),
+                ctx.is_final.into(),
+            ],
         }
     }
 }

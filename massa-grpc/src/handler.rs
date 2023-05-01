@@ -4,8 +4,8 @@ use massa_proto::massa::api::v1 as grpc;
 
 use crate::api::{
     get_blocks, get_blocks_by_slots, get_datastore_entries, get_largest_stakers,
-    get_next_block_best_parents, get_operations, get_selector_draws, get_transactions_throughput,
-    get_version,
+    get_next_block_best_parents, get_operations, get_sc_execution_events, get_selector_draws,
+    get_transactions_throughput, get_version,
 };
 use crate::server::MassaGrpc;
 use crate::stream::{
@@ -70,6 +70,16 @@ impl grpc::massa_service_server::MassaService for MassaGrpc {
         request: tonic::Request<grpc::GetOperationsRequest>,
     ) -> Result<tonic::Response<grpc::GetOperationsResponse>, tonic::Status> {
         Ok(tonic::Response::new(get_operations(self, request)?))
+    }
+
+    /// handler for get smart contract execution events
+    async fn get_sc_execution_events(
+        &self,
+        request: tonic::Request<grpc::GetScExecutionEventsRequest>,
+    ) -> Result<tonic::Response<grpc::GetScExecutionEventsResponse>, tonic::Status> {
+        Ok(tonic::Response::new(get_sc_execution_events(
+            self, request,
+        )?))
     }
 
     /// handler for get selector draws

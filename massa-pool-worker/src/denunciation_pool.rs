@@ -71,6 +71,12 @@ impl DenunciationPool {
 
         // Do some checkups before adding the denunciation precursor
 
+        if slot.period <= self.config.last_start_period {
+            // denunciation created before last restart (can be 0 or >= 0 after a network restart) - ignored
+            // Note: as we use '<=', also ignore denunciation created for genesis block
+            return;
+        }
+
         let now = MassaTime::now().expect("could not get current time");
 
         // get closest slot according to the current absolute time
@@ -244,9 +250,8 @@ impl DenunciationPool {
                 "Attempting to add endorsement to denunciation pool, but it is absent from storage",
             );
 
-            if let Ok(de_p) = DenunciationPrecursor::try_from(endo) {
-                self.add_denunciation_precursor(de_p)
-            }
+            let de_p = DenunciationPrecursor::from(endo);
+            self.add_denunciation_precursor(de_p);
         }
     }
 }

@@ -6,6 +6,7 @@ use itertools::izip;
 use massa_models::address::Address;
 use massa_models::block::BlockGraphStatus;
 use massa_models::block_id::BlockId;
+use massa_models::execution::EventFilter;
 use massa_models::operation::{OperationId, SecureShareOperation};
 use massa_models::prehash::PreHashSet;
 use massa_models::slot::Slot;
@@ -371,7 +372,7 @@ pub(crate) fn get_operations(
     let operations_ids: Vec<OperationId> = inner_req
         .queries
         .into_iter()
-        .take(grpc.grpc_config.max_operations_per_message as usize + 1)
+        .take(grpc.grpc_config.max_operation_ids_per_request as usize + 1)
         .map(|query| {
             query
                 .filter
@@ -384,8 +385,8 @@ pub(crate) fn get_operations(
         })
         .collect::<Result<_, _>>()?;
 
-    if operations_ids.len() as u32 > grpc.grpc_config.max_operations_per_message {
-        return Err(GrpcError::InvalidArgument(format!("too many operations received. Only a maximum of {} operations are accepted per request", grpc.grpc_config.max_operations_per_message)));
+    if operations_ids.len() as u32 > grpc.grpc_config.max_operation_ids_per_request {
+        return Err(GrpcError::InvalidArgument(format!("too many operations received. Only a maximum of {} operations are accepted per request", grpc.grpc_config.max_operation_ids_per_request)));
     }
 
     // Get the current slot.
@@ -488,6 +489,54 @@ pub(crate) fn get_operations(
         id,
         context,
         operations,
+    })
+}
+
+//TODO: to be implemented
+/// Get smart contract execution events
+pub(crate) fn get_sc_execution_events(
+    grpc: &MassaGrpc,
+    request: tonic::Request<grpc::GetScExecutionEventsRequest>,
+) -> Result<grpc::GetScExecutionEventsResponse, GrpcError> {
+    let inner_req: grpc::GetScExecutionEventsRequest = request.into_inner();
+    let id = inner_req.id;
+
+    let event_filter = inner_req
+        .query
+        .map_or(Ok(EventFilter::default()), |query| {
+            query.filter.map_or(Ok(EventFilter::default()), |filter| {
+                filter.try_into().map_err(|e| {
+                    GrpcError::InvalidArgument(format!("failed to parse filter due to: {}", e))
+                })
+            })
+        })?;
+
+    // Get the current slot.
+    let now: MassaTime = MassaTime::now()?;
+    let current_slot = get_latest_block_slot_at_timestamp(
+        grpc.grpc_config.thread_count,
+        grpc.grpc_config.t0,
+        grpc.grpc_config.genesis_timestamp,
+        now,
+    )?
+    .unwrap_or_else(|| Slot::new(0, 0));
+
+    // Create the context for the response.
+    let context = Some(grpc::GetScExecutionEventsContext {
+        slot: Some(current_slot.into()),
+    });
+
+    let events: Vec<grpc::ScExecutionEventWrapper> = grpc
+        .execution_controller
+        .get_filtered_sc_output_event(event_filter)
+        .into_iter()
+        .map(|event| event.into())
+        .collect();
+
+    Ok(grpc::GetScExecutionEventsResponse {
+        id,
+        context,
+        events,
     })
 }
 

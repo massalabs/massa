@@ -129,7 +129,7 @@ pub struct BootstrapConfig {
     pub mip_store_stats_counters_max: usize,
     /// max denunciations in block header
     pub max_denunciations_per_block_header: u32,
-    /// max processed denunciations changes
+    /// max executed denunciations changes
     pub max_denunciation_changes_length: u64,
 }
 

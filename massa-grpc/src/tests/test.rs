@@ -86,6 +86,7 @@ async fn test_start_grpc_server() {
         last_start_period: 0,
         max_denunciations_per_block_header: MAX_DENUNCIATIONS_PER_BLOCK_HEADER,
         max_block_ids_per_request: 50,
+        max_operation_ids_per_request: 250,
     };
 
     let service = MassaGrpc {

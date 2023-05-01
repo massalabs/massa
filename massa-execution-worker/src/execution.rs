@@ -419,6 +419,17 @@ impl ExecutionState {
         // acquire write access to the context
         let mut context = context_guard!(self);
 
+        let de_slot = denunciation.get_slot();
+
+        if de_slot.period <= self.config.last_start_period {
+            // denunciation created before last restart (can be 0 or >= 0 after a network restart) - ignored
+            // Note: as we use '<=', also ignore denunciation created for genesis block
+            return Err(ExecutionError::IncludeDenunciationError(format!(
+                "Denunciation target ({}) is before the last start period: {}",
+                de_slot, self.config.last_start_period
+            )));
+        }
+
         // ignore denunciation if not valid
         if !denunciation.is_valid() {
             return Err(ExecutionError::IncludeDenunciationError(
@@ -427,7 +438,6 @@ impl ExecutionState {
         }
 
         // ignore denunciation if too old or expired
-        let de_slot = denunciation.get_slot();
 
         if Denunciation::is_expired(
             &de_slot.period,
