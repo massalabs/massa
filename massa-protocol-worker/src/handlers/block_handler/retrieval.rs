@@ -596,6 +596,7 @@ impl RetrievalThread {
 
         // Batch signature verification
         // optimized signature verification
+        println!("AURELIEN: new_endorsements {:?}", new_endorsements);
         verify_sigs_batch(
             &new_endorsements
                 .values()

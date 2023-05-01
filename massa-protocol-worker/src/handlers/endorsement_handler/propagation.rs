@@ -121,6 +121,7 @@ impl PropagationThread {
                                             to_send.len(),
                                             peer_id
                                         );
+                                        println!("AURELIEN: Send endorsements {:#?}", to_send);
                                         if let Err(err) = self.active_connections.send_to_peer(
                                             peer_id,
                                             &self.endorsement_serializer,
