@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"constant":["FIELDS"],"enum":["__Field"],"struct":["PageRequest","PagedVec","PagedVecV2","__FieldVisitor","__Visitor"]};
+window.SIDEBAR_ITEMS = {"struct":["PageRequest","PagedVec","PagedVecV2"]};
