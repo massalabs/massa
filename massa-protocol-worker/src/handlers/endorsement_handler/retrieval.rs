@@ -169,6 +169,7 @@ impl RetrievalThread {
                 })
                 .collect::<Vec<_>>(),
         )?;
+        println!("AURELIEN: signature verified");
 
         {
             let mut cache_write = self.cache.write();
