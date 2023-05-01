@@ -1,1 +1,0 @@
-window.SIDEBAR_ITEMS = {"enum":["AskForBlocksInfo","BlockInfoReply","NetworkCommand","NetworkEvent","NetworkManagementCommand","NodeCommand","NodeEventType"],"struct":["NodeEvent"]};

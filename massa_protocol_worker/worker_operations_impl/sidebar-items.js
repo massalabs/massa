@@ -1,1 +1,0 @@
-window.SIDEBAR_ITEMS = {"opaque":[""],"static":["CALLSITE","META"],"struct":["OperationBatchItem"],"type":["OperationBatchBuffer"]};

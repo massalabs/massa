@@ -7,9 +7,9 @@
 <div class="example-wrap"><pre class="rust rust-example-rendered"><code><span class="kw">use </span>massa_models::{address::Address, amount::Amount, slot::Slot, serialization::{IpAddrSerializer, IpAddrDeserializer}};
 <span class="kw">use </span>massa_serialization::{Serializer, Deserializer, DeserializeError};
 <span class="kw">use </span>std::str::FromStr;
-<span class="kw">use </span>std::net::{IpAddr, Ipv4Addr};
+<span class="kw">use </span>std::net::{IpAddr, Ipv6Addr};
 
-<span class="kw">let </span>ip = IpAddr::V4(Ipv4Addr::new(<span class="number">127</span>, <span class="number">0</span>, <span class="number">0</span>, <span class="number">1</span>));
+<span class="kw">let </span>ip = IpAddr::V6(Ipv6Addr::new(<span class="number">0</span>, <span class="number">0</span>, <span class="number">0</span>, <span class="number">0</span>, <span class="number">0</span>, <span class="number">0</span>, <span class="number">0</span>, <span class="number">1</span>));
 <span class="kw">let </span>ip_serializer = IpAddrSerializer::new();
 <span class="kw">let </span>ip_deserializer = IpAddrDeserializer::new();
 <span class="kw">let </span><span class="kw-2">mut </span>serialized = Vec::new();

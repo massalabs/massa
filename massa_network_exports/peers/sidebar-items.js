@@ -1,1 +1,0 @@
-window.SIDEBAR_ITEMS = {"constant":["_DERIVE_Display_FOR_PeerType"],"enum":["PeerType"],"mod":["test"],"struct":["BootstrapPeers","BootstrapPeersDeserializer","BootstrapPeersSerializer","ConnectionCount","Peer","PeerInfo","Peers"],"trait":["DisplayToDisplayDoc","PathToDisplayDoc"]};
