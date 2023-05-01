@@ -40,7 +40,7 @@ use massa_serialization::{DeserializeError, Deserializer, Serializer};
 use massa_storage::Storage;
 use massa_time::TimeError;
 use peernet::peer_id::PeerId;
-use tracing::{info, warn};
+use tracing::{debug, info, warn};
 
 use super::{
     cache::SharedBlockCache,
@@ -131,6 +131,8 @@ impl RetrievalThread {
                                     continue;
                                 }
                             };
+
+                            debug!("Received block message: {:?} from {}", message, peer_id);
 
                             if !rest.is_empty() {
                                 println!("Error: message not fully consumed");
@@ -307,6 +309,11 @@ impl RetrievalThread {
                 }
             }
         }
+        debug!(
+            "Send reply for blocks of len {} to {}",
+            all_blocks_info.len(),
+            from_peer_id
+        );
         self.active_connections.send_to_peer(
             &from_peer_id,
             &self.block_message_serializer,
@@ -1230,6 +1237,7 @@ impl RetrievalThread {
         // send AskBlockEvents
         if !ask_block_list.is_empty() {
             for (peer_id, list) in ask_block_list.iter() {
+                debug!("Send ask for blocks of len {} to {}", list.len(), peer_id);
                 if let Err(err) = self.active_connections.send_to_peer(
                     peer_id,
                     &self.block_message_serializer,

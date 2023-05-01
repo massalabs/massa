@@ -19,7 +19,7 @@ use peernet::{
     types::Hash,
     types::{KeyPair, Signature},
 };
-use tracing::log::{error, warn};
+use tracing::log::{debug, error, warn};
 
 use crate::handlers::peer_handler::models::PeerState;
 use crate::wrap_network::ActiveConnectionsTrait;
@@ -139,6 +139,7 @@ impl PeerManagementHandler {
                                     return;
                                 }
                             };
+                            debug!("Received peer message: {:?} from {}", message, peer_id);
 
                             // check if peer is banned
                             if let Some(peer) = peer_db.read().peers.get(&peer_id) {

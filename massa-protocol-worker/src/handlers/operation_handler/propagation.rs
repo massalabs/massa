@@ -6,7 +6,7 @@ use massa_logging::massa_trace;
 use massa_models::operation::OperationId;
 use massa_protocol_exports::ProtocolConfig;
 use peernet::peer_id::PeerId;
-use tracing::{info, log::warn};
+use tracing::{debug, info, log::warn};
 
 use crate::{
     handlers::operation_handler::OperationMessage, messages::MessagesSerializer,
@@ -122,6 +122,11 @@ impl PropagationThread {
                     for id in &new_ops {
                         ops.put(id.prefix(), ());
                     }
+                    debug!(
+                        "Send operations announcement of len {} to {}",
+                        new_ops.len(),
+                        peer_id
+                    );
                     if let Err(err) = self.active_connections.send_to_peer(
                         peer_id,
                         &self.operation_message_serializer,

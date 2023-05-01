@@ -7,7 +7,7 @@ use massa_models::{block_id::BlockId, prehash::PreHashSet};
 use massa_protocol_exports::{ProtocolConfig, ProtocolError};
 use massa_storage::Storage;
 use peernet::peer_id::PeerId;
-use tracing::{info, warn};
+use tracing::{debug, info, warn};
 
 use crate::{
     handlers::{block_handler::BlockMessage, peer_handler::models::PeerManagementCmd},
@@ -105,6 +105,10 @@ impl PropagationThread {
                                     // if we don't know if that peer knows that hash or if we know it doesn't
                                     if !cond.map_or_else(|| false, |v| v.0) {
                                         massa_trace!("protocol.protocol_worker.process_command.integrated_block.send_header", { "peer_id": peer_id, "block_id": block_id});
+                                        debug!(
+                                            "Send block header for slot {} to peer {}",
+                                            peer_id, header.content.slot
+                                        );
                                         if let Err(err) = self.active_connections.send_to_peer(
                                             peer_id,
                                             &self.block_serializer,

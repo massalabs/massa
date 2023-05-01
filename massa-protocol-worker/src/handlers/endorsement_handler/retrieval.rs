@@ -18,7 +18,7 @@ use massa_serialization::{DeserializeError, Deserializer};
 use massa_storage::Storage;
 use massa_time::MassaTime;
 use peernet::peer_id::PeerId;
-use tracing::{info, warn};
+use tracing::{debug, info, warn};
 
 use crate::{
     handlers::{
@@ -72,6 +72,7 @@ impl RetrievalThread {
                                 println!("Error: message not fully consumed");
                                 return;
                             }
+                            debug!("Received endorsement message: {:?} from {}", message, peer_id);
                             match message {
                                 EndorsementMessage::Endorsements(endorsements) => {
                                     if let Err(err) =

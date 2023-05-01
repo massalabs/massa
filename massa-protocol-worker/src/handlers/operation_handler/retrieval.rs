@@ -31,7 +31,7 @@ use crate::{
     sig_verifier::verify_sigs_batch,
     wrap_network::ActiveConnectionsTrait,
 };
-use tracing::{info, warn};
+use tracing::{debug, info, warn};
 
 use super::{
     cache::SharedOperationCache,
@@ -102,6 +102,7 @@ impl RetrievalThread {
                                 println!("Error: message not fully consumed");
                                 return;
                             }
+                            debug!("Received operation message: {:?} from {}", message, peer_id);
                             match message {
                                 OperationMessage::Operations(ops) => {
                                     if let Err(err) = self.note_operations_from_peer(ops, &peer_id) {
@@ -379,6 +380,11 @@ impl RetrievalThread {
             });
         }
         if !ask_set.is_empty() {
+            debug!(
+                "Send ask operations of len {} to {}",
+                ask_set.len(),
+                peer_id
+            );
             if let Err(err) = self.active_connections.send_to_peer(
                 peer_id,
                 &self.operation_message_serializer,
@@ -440,6 +446,7 @@ impl RetrievalThread {
                 }
             }
         }
+        debug!("Send full operations of len {} to {}", ops.len(), peer_id);
         if let Err(err) = self.active_connections.send_to_peer(
             peer_id,
             &self.operation_message_serializer,

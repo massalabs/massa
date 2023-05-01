@@ -8,7 +8,7 @@ use massa_models::{
 };
 use massa_protocol_exports::ProtocolConfig;
 use peernet::peer_id::PeerId;
-use tracing::{info, log::warn};
+use tracing::{debug, info, log::warn};
 
 use crate::{messages::MessagesSerializer, wrap_network::ActiveConnectionsTrait};
 
@@ -116,6 +116,11 @@ impl PropagationThread {
                                     let to_send =
                                         new_endorsements.into_values().collect::<Vec<_>>();
                                     if !to_send.is_empty() {
+                                        debug!(
+                                            "Send endorsements of len {} to {}",
+                                            to_send.len(),
+                                            peer_id
+                                        );
                                         if let Err(err) = self.active_connections.send_to_peer(
                                             peer_id,
                                             &self.endorsement_serializer,
