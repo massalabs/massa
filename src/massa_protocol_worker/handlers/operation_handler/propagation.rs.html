@@ -169,6 +169,8 @@
 <a href="#169" id="169">169</a>
 <a href="#170" id="170">170</a>
 <a href="#171" id="171">171</a>
+<a href="#172" id="172">172</a>
+<a href="#173" id="173">173</a>
 </pre><pre class="rust"><code><span class="kw">use </span>std::{mem, num::NonZeroUsize, thread::JoinHandle};
 
 <span class="kw">use </span>crossbeam::channel::{Receiver, RecvTimeoutError};
@@ -205,32 +207,34 @@
             .expect(<span class="string">&quot;Can&#39;t init interval op propagation&quot;</span>);
         <span class="kw">loop </span>{
             <span class="kw">match </span><span class="self">self</span>.internal_receiver.recv_deadline(next_announce) {
-                <span class="prelude-val">Ok</span>(internal_message) =&gt; <span class="kw">match </span>internal_message {
-                    OperationHandlerPropagationCommand::AnnounceOperations(operations_ids) =&gt; {
-                        <span class="comment">// Note operations as checked.
-                        </span>{
-                            <span class="kw">let </span><span class="kw-2">mut </span>cache_write = <span class="self">self</span>.cache.write();
-                            <span class="kw">for </span>op_id <span class="kw">in </span>operations_ids.iter().copied() {
-                                cache_write.insert_checked_operation(op_id);
+                <span class="prelude-val">Ok</span>(internal_message) =&gt; {
+                    <span class="kw">match </span>internal_message {
+                        OperationHandlerPropagationCommand::AnnounceOperations(operations_ids) =&gt; {
+                            <span class="comment">// Note operations as checked.
+                            </span>{
+                                <span class="kw">let </span><span class="kw-2">mut </span>cache_write = <span class="self">self</span>.cache.write();
+                                <span class="kw">for </span>op_id <span class="kw">in </span>operations_ids.iter().copied() {
+                                    cache_write.insert_checked_operation(op_id);
+                                }
+                            }
+                            <span class="self">self</span>.operations_to_announce.extend(operations_ids);
+                            <span class="kw">if </span><span class="self">self</span>.operations_to_announce.len()
+                                &gt; <span class="self">self</span>.config.operation_announcement_buffer_capacity
+                            {
+                                <span class="self">self</span>.announce_ops();
+                                next_announce = std::time::Instant::now()
+                                    .checked_add(
+                                        <span class="self">self</span>.config.operation_announcement_interval.to_duration(),
+                                    )
+                                    .expect(<span class="string">&quot;Can&#39;t init interval op propagation&quot;</span>);
                             }
                         }
-                        <span class="self">self</span>.operations_to_announce.extend(operations_ids);
-                        <span class="kw">if </span><span class="self">self</span>.operations_to_announce.len()
-                            &gt; <span class="self">self</span>.config.operation_announcement_buffer_capacity
-                        {
-                            <span class="self">self</span>.announce_ops();
-                            next_announce = std::time::Instant::now()
-                                .checked_add(
-                                    <span class="self">self</span>.config.operation_announcement_interval.to_duration(),
-                                )
-                                .expect(<span class="string">&quot;Can&#39;t init interval op propagation&quot;</span>);
+                        OperationHandlerPropagationCommand::Stop =&gt; {
+                            <span class="macro">info!</span>(<span class="string">&quot;Stop operation propagation thread&quot;</span>);
+                            <span class="kw">return</span>;
                         }
                     }
-                    OperationHandlerPropagationCommand::Stop =&gt; {
-                        <span class="macro">info!</span>(<span class="string">&quot;Stop operation propagation thread&quot;</span>);
-                        <span class="kw">return</span>;
-                    }
-                },
+                }
                 <span class="prelude-val">Err</span>(RecvTimeoutError::Timeout) =&gt; {
                     <span class="self">self</span>.announce_ops();
                     next_announce = std::time::Instant::now()

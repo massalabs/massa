@@ -427,6 +427,7 @@
 <a href="#427" id="427">427</a>
 <a href="#428" id="428">428</a>
 <a href="#429" id="429">429</a>
+<a href="#430" id="430">430</a>
 </pre><pre class="rust"><code><span class="kw">use </span>std::{collections::HashMap, net::SocketAddr, thread::JoinHandle, time::Duration};
 
 <span class="kw">use </span>crossbeam::channel::tick;
@@ -448,7 +449,7 @@
     types::Hash,
     types::{KeyPair, Signature},
 };
-<span class="kw">use </span>tracing::log::{debug, error, warn};
+<span class="kw">use </span>tracing::log::{debug, error, info, warn};
 
 <span class="kw">use </span><span class="kw">crate</span>::handlers::peer_handler::models::PeerState;
 <span class="kw">use </span><span class="kw">crate</span>::wrap_network::ActiveConnectionsTrait;
@@ -791,6 +792,7 @@
         <span class="comment">// if handshake failed, we set the peer state to HandshakeFailed
         </span><span class="kw">match </span><span class="kw-2">&amp;</span>res {
             <span class="prelude-val">Ok</span>((peer_id, announcement)) =&gt; {
+                <span class="macro">info!</span>(<span class="string">&quot;Peer connected: {:?}&quot;</span>, peer_id);
                 peer_db_write
                     .peers
                     .entry(peer_id.clone())

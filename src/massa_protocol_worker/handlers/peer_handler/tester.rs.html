@@ -287,6 +287,8 @@
 <a href="#287" id="287">287</a>
 <a href="#288" id="288">288</a>
 <a href="#289" id="289">289</a>
+<a href="#290" id="290">290</a>
+<a href="#291" id="291">291</a>
 </pre><pre class="rust"><code><span class="kw">use </span>std::{
     collections::HashMap,
     net::SocketAddr,
@@ -308,14 +310,14 @@
     types::KeyPair,
 };
 <span class="kw">use </span>std::cmp::Reverse;
-
-<span class="kw">use </span><span class="kw">crate</span>::wrap_network::ActiveConnectionsTrait;
+<span class="kw">use </span>tracing::debug;
 
 <span class="kw">use super</span>::{
     announcement::{AnnouncementDeserializer, AnnouncementDeserializerArgs},
     models::PeerInfo,
     SharedPeerDB,
 };
+<span class="kw">use </span><span class="kw">crate</span>::wrap_network::ActiveConnectionsTrait;
 
 <span class="attr">#[derive(Clone)]
 </span><span class="kw">pub struct </span>TesterHandshake {
@@ -530,6 +532,7 @@
                                             <span class="kw">return</span>;
                                         }
                                     }
+                                    <span class="macro">debug!</span>(<span class="string">&quot;testing peer {} listener addr: {}&quot;</span>, <span class="kw-2">&amp;</span>listener.<span class="number">0</span>, <span class="kw-2">&amp;</span>addr);
                                     <span class="kw">let </span>_res =  network_manager.try_connect(
                                         <span class="kw-2">*</span>addr,
                                         Duration::from_millis(<span class="number">500</span>),
@@ -545,7 +548,7 @@
                         <span class="comment">// If no message in 2 seconds they will test a peer that hasn&#39;t been tested for long time
 
                         // we find the last peer that has been tested
-                        </span><span class="kw">let </span><span class="prelude-val">Some</span>((_peer_id, peer_info)) = db.read().get_oldest_peer() <span class="kw">else </span>{
+                        </span><span class="kw">let </span><span class="prelude-val">Some</span>((peer_id, peer_info)) = db.read().get_oldest_peer() <span class="kw">else </span>{
                             <span class="kw">continue</span>;
                         };
 
@@ -560,7 +563,8 @@
 
                         <span class="comment">// we try to connect to all peer listener (For now we have only one listener)
                         </span>peer_info.last_announce.listeners.iter().for_each(|listener| {
-                           <span class="kw">let </span>_res =  network_manager.try_connect(
+                            <span class="macro">debug!</span>(<span class="string">&quot;testing peer {} listener addr: {}&quot;</span>, peer_id, <span class="kw-2">&amp;</span>listener.<span class="number">0</span>);
+                            <span class="kw">let </span>_res =  network_manager.try_connect(
                                 <span class="kw-2">*</span>listener.<span class="number">0</span>,
                                 Duration::from_millis(<span class="number">200</span>),
                                 <span class="kw-2">&amp;</span>OutConnectionConfig::Tcp(Box::new(TcpOutConnectionConfig::new(protocol_config.read_write_limit_bytes_per_second / <span class="number">10</span>, Duration::from_millis(<span class="number">100</span>)))),

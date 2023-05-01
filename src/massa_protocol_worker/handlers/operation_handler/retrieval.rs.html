@@ -729,8 +729,8 @@
                     .ops_known_by_peer
                     .get_or_insert_mut(source_peer_id.clone(), || {
                         LruCache::new(
-                            NonZeroUsize::new(<span class="self">self</span>.config.max_known_ops_size)
-                                .expect(<span class="string">&quot;max_known_ops_size in config must be &gt; 0&quot;</span>),
+                            NonZeroUsize::new(<span class="self">self</span>.config.max_node_known_ops_size)
+                                .expect(<span class="string">&quot;max_node_known_ops_size in config must be &gt; 0&quot;</span>),
                         )
                     });
             <span class="kw">for </span>id <span class="kw">in </span>received_ids {
@@ -823,8 +823,8 @@
                     .ops_known_by_peer
                     .get_or_insert_mut(peer_id.clone(), || {
                         LruCache::new(
-                            NonZeroUsize::new(<span class="self">self</span>.config.max_known_ops_size)
-                                .expect(<span class="string">&quot;max_known_ops_size in config must be &gt; 0&quot;</span>),
+                            NonZeroUsize::new(<span class="self">self</span>.config.max_node_known_ops_size)
+                                .expect(<span class="string">&quot;max_node_known_ops_size in config must be &gt; 0&quot;</span>),
                         )
                     });
             <span class="kw">for </span>prefix <span class="kw">in </span><span class="kw-2">&amp;</span>op_batch {
