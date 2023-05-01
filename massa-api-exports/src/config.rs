@@ -1,5 +1,6 @@
 // Copyright (c) 2022 MASSA LABS <info@massa.net>
 
+use massa_signature::KeyPair;
 use massa_time::MassaTime;
 use std::net::SocketAddr;
 use std::path::PathBuf;
@@ -66,4 +67,6 @@ pub struct APIConfig {
     pub t0: MassaTime,
     /// periods per cycle
     pub periods_per_cycle: u64,
+    /// keypair file
+    pub keypair: KeyPair,
 }

@@ -3,7 +3,6 @@
 use crate::{MassaRpcServer, Private, RpcServer, StopHandle, Value, API};
 
 use async_trait::async_trait;
-use itertools::Itertools;
 use jsonrpsee::core::{Error as JsonRpseeError, RpcResult};
 use massa_api_exports::{
     address::AddressInfo,
@@ -19,6 +18,7 @@ use massa_api_exports::{
     ListType, ScrudOperation, TimeInterval,
 };
 use massa_execution_exports::ExecutionController;
+use massa_hash::Hash;
 use massa_models::clique::Clique;
 use massa_models::composite::PubkeySig;
 use massa_models::node::NodeId;
@@ -28,8 +28,8 @@ use massa_models::{
     address::Address, block::Block, block_id::BlockId, endorsement::EndorsementId,
     execution::EventFilter, operation::OperationId, slot::Slot,
 };
-use massa_network_exports::NetworkCommandSender;
-use massa_signature::KeyPair;
+use massa_protocol_exports::{PeerId, ProtocolController};
+use massa_signature::{KeyPair, PUBLIC_KEY_SIZE_BYTES};
 use massa_wallet::Wallet;
 
 use parking_lot::RwLock;
@@ -44,7 +44,7 @@ use tokio::sync::mpsc;
 impl API<Private> {
     /// generate a new private API
     pub fn new(
-        network_command_sender: NetworkCommandSender,
+        protocol_controller: Box<dyn ProtocolController>,
         execution_controller: Box<dyn ExecutionController>,
         api_settings: APIConfig,
         node_wallet: Arc<RwLock<Wallet>>,
@@ -52,7 +52,7 @@ impl API<Private> {
         let (stop_node_channel, rx) = mpsc::channel(1);
         (
             API(Private {
-                network_command_sender,
+                protocol_controller,
                 execution_controller,
                 api_settings,
                 stop_node_channel,
@@ -86,11 +86,23 @@ impl MassaRpcServer for API<Private> {
     }
 
     async fn node_sign_message(&self, message: Vec<u8>) -> RpcResult<PubkeySig> {
-        let network_command_sender = self.0.network_command_sender.clone();
-        network_command_sender
-            .node_sign_message(message)
-            .await
-            .map_err(|e| ApiError::NetworkError(e).into())
+        let signature = match self
+            .0
+            .api_settings
+            .keypair
+            .sign(&Hash::compute_from(&message))
+        {
+            Ok(signature) => signature,
+            Err(e) => {
+                return Err(
+                    ApiError::InconsistencyError(format!("error signing message: {}", e)).into(),
+                );
+            }
+        };
+        Ok(PubkeySig {
+            public_key: self.0.api_settings.keypair.get_public_key(),
+            signature,
+        })
     }
 
     async fn add_staking_secret_keys(&self, secret_keys: Vec<String>) -> RpcResult<()> {
@@ -135,36 +147,64 @@ impl MassaRpcServer for API<Private> {
         Ok(w_wallet.get_wallet_address_list())
     }
 
-    async fn node_ban_by_ip(&self, ips: Vec<IpAddr>) -> RpcResult<()> {
-        let network_command_sender = self.0.network_command_sender.clone();
-        network_command_sender
-            .node_ban_by_ips(ips)
-            .await
-            .map_err(|e| ApiError::NetworkError(e).into())
+    async fn node_ban_by_ip(&self, _ips: Vec<IpAddr>) -> RpcResult<()> {
+        // let network_command_sender = self.0.network_command_sender.clone();
+        // network_command_sender
+        //    .node_ban_by_ips(ips)
+        //    .await
+        //    .map_err(|e| ApiError::NetworkError(e).into())
+        return Err(
+            ApiError::BadRequest("This request is currently not available".to_string()).into(),
+        );
     }
 
     async fn node_ban_by_id(&self, ids: Vec<NodeId>) -> RpcResult<()> {
-        let network_command_sender = self.0.network_command_sender.clone();
-        network_command_sender
-            .node_ban_by_ids(ids)
-            .await
-            .map_err(|e| ApiError::NetworkError(e).into())
+        let protocol_controller = self.0.protocol_controller.clone();
+        //TODO: Change when unify node id and peer id
+        let peer_ids = ids
+            .into_iter()
+            .map(|id| {
+                PeerId::from_bytes(
+                    id.get_public_key().to_bytes()[..PUBLIC_KEY_SIZE_BYTES]
+                        .try_into()
+                        .unwrap(),
+                )
+                .unwrap()
+            })
+            .collect();
+        protocol_controller
+            .ban_peers(peer_ids)
+            .map_err(|e| ApiError::ProtocolError(e).into())
     }
 
     async fn node_unban_by_id(&self, ids: Vec<NodeId>) -> RpcResult<()> {
-        let network_command_sender = self.0.network_command_sender.clone();
-        network_command_sender
-            .node_unban_by_ids(ids)
-            .await
-            .map_err(|e| ApiError::NetworkError(e).into())
+        let protocol_controller = self.0.protocol_controller.clone();
+        //TODO: Change when unify node id and peer id
+        let peer_ids = ids
+            .into_iter()
+            .map(|id| {
+                PeerId::from_bytes(
+                    id.get_public_key().to_bytes()[..PUBLIC_KEY_SIZE_BYTES]
+                        .try_into()
+                        .unwrap(),
+                )
+                .unwrap()
+            })
+            .collect();
+        protocol_controller
+            .unban_peers(peer_ids)
+            .map_err(|e| ApiError::ProtocolError(e).into())
     }
 
-    async fn node_unban_by_ip(&self, ips: Vec<IpAddr>) -> RpcResult<()> {
-        let network_command_sender = self.0.network_command_sender.clone();
-        network_command_sender
-            .node_unban_ips(ips)
-            .await
-            .map_err(|e| ApiError::NetworkError(e).into())
+    async fn node_unban_by_ip(&self, _ips: Vec<IpAddr>) -> RpcResult<()> {
+        // let network_command_sender = self.0.network_command_sender.clone();
+        // network_command_sender
+        //     .node_unban_ips(ips)
+        //     .await
+        //     .map_err(|e| ApiError::NetworkError(e).into())
+        return Err(
+            ApiError::BadRequest("This request is currently not available".to_string()).into(),
+        );
     }
 
     async fn get_status(&self) -> RpcResult<NodeStatus> {
@@ -219,27 +259,38 @@ impl MassaRpcServer for API<Private> {
     }
 
     async fn node_peers_whitelist(&self) -> RpcResult<Vec<IpAddr>> {
-        let network_command_sender = self.0.network_command_sender.clone();
-        match network_command_sender.get_peers().await {
-            Ok(peers) => Ok(peers.peers.into_keys().sorted().collect::<Vec<IpAddr>>()),
-            Err(e) => Err(ApiError::NetworkError(e).into()),
-        }
+        // let network_command_sender = self.0.network_command_sender.clone();
+        // match network_command_sender.get_peers().await {
+        //     Ok(peers) => Ok(peers.peers.into_keys().sorted().collect::<Vec<IpAddr>>()),
+        //     Err(e) => Err(ApiError::NetworkError(e).into()),
+        // }
+        return Err(
+            ApiError::BadRequest("This request is currently not available".to_string()).into(),
+        );
     }
 
-    async fn node_add_to_peers_whitelist(&self, ips: Vec<IpAddr>) -> RpcResult<()> {
-        let network_command_sender = self.0.network_command_sender.clone();
-        network_command_sender
-            .add_to_whitelist(ips)
-            .await
-            .map_err(|e| ApiError::NetworkError(e).into())
+    async fn node_add_to_peers_whitelist(&self, _ips: Vec<IpAddr>) -> RpcResult<()> {
+        //TODO: Readd in network refactoring
+        // let network_command_sender = self.0.network_command_sender.clone();
+        // network_command_sender
+        //     .add_to_whitelist(ips)
+        //     .await
+        //     .map_err(|e| ApiError::NetworkError(e).into())
+        return Err(
+            ApiError::BadRequest("This request is currently not available".to_string()).into(),
+        );
     }
 
-    async fn node_remove_from_peers_whitelist(&self, ips: Vec<IpAddr>) -> RpcResult<()> {
-        let network_command_sender = self.0.network_command_sender.clone();
-        network_command_sender
-            .remove_from_whitelist(ips)
-            .await
-            .map_err(|e| ApiError::NetworkError(e).into())
+    async fn node_remove_from_peers_whitelist(&self, _ips: Vec<IpAddr>) -> RpcResult<()> {
+        //TODO: Readd in network refactoring
+        // let network_command_sender = self.0.network_command_sender.clone();
+        // network_command_sender
+        //     .remove_from_whitelist(ips)
+        //     .await
+        //     .map_err(|e| ApiError::NetworkError(e).into())
+        return Err(
+            ApiError::BadRequest("This request is currently not available".to_string()).into(),
+        );
     }
 
     async fn node_bootstrap_whitelist(&self) -> RpcResult<Vec<IpAddr>> {

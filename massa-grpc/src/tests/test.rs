@@ -10,15 +10,14 @@ use massa_models::config::{
     MAX_DENUNCIATIONS_PER_BLOCK_HEADER, MAX_ENDORSEMENTS_PER_MESSAGE, MAX_FUNCTION_NAME_LENGTH,
     MAX_OPERATIONS_PER_BLOCK, MAX_OPERATIONS_PER_MESSAGE, MAX_OPERATION_DATASTORE_ENTRY_COUNT,
     MAX_OPERATION_DATASTORE_KEY_LENGTH, MAX_OPERATION_DATASTORE_VALUE_LENGTH, MAX_PARAMETERS_SIZE,
-    PERIODS_PER_CYCLE, PROTOCOL_CONTROLLER_CHANNEL_SIZE, T0, THREAD_COUNT, VERSION,
+    PERIODS_PER_CYCLE, T0, THREAD_COUNT, VERSION,
 };
 use massa_pool_exports::test_exports::MockPoolController;
 use massa_pool_exports::PoolChannels;
 use massa_pos_exports::test_exports::MockSelectorController;
 use massa_proto::massa::api::v1::massa_service_client::MassaServiceClient;
-use massa_protocol_exports::{ProtocolCommand, ProtocolCommandSender};
+use massa_protocol_exports::MockProtocolController;
 use std::net::{IpAddr, Ipv4Addr, SocketAddr};
-use tokio::sync::mpsc;
 
 #[tokio::test]
 async fn test_start_grpc_server() {
@@ -29,15 +28,12 @@ async fn test_start_grpc_server() {
     let pool_ctrl = MockPoolController::new_with_receiver();
     let (consensus_event_sender, _consensus_event_receiver) = crossbeam::channel::bounded(1024);
 
-    let (protocol_command_sender, _protocol_command_receiver) =
-        mpsc::channel::<ProtocolCommand>(PROTOCOL_CONTROLLER_CHANNEL_SIZE);
-
     let consensus_channels = ConsensusChannels {
         execution_controller: execution_ctrl.0.clone(),
         selector_controller: selector_ctrl.0.clone(),
-        pool_command_sender: pool_ctrl.0.clone(),
+        pool_controller: pool_ctrl.0.clone(),
+        protocol_controller: Box::new(MockProtocolController::new()),
         controller_event_tx: consensus_event_sender,
-        protocol_command_sender: ProtocolCommandSender(protocol_command_sender.clone()),
         block_sender: tokio::sync::broadcast::channel(100).0,
         block_header_sender: tokio::sync::broadcast::channel(100).0,
         filled_block_sender: tokio::sync::broadcast::channel(100).0,
@@ -99,7 +95,7 @@ async fn test_start_grpc_server() {
             selector: selector_ctrl.0.clone(),
         },
         pool_command_sender: pool_ctrl.0,
-        protocol_command_sender: ProtocolCommandSender(protocol_command_sender.clone()),
+        protocol_command_sender: Box::new(MockProtocolController::new()),
         selector_controller: selector_ctrl.0,
         storage: shared_storage,
         grpc_config: grpc_config.clone(),

@@ -30,7 +30,7 @@ pub(crate) async fn send_endorsements(
     request: tonic::Request<tonic::Streaming<grpc::SendEndorsementsRequest>>,
 ) -> Result<SendEndorsementsStreamType, GrpcError> {
     let mut pool_command_sender = grpc.pool_command_sender.clone();
-    let mut protocol_command_sender = grpc.protocol_command_sender.clone();
+    let protocol_command_sender = grpc.protocol_command_sender.clone();
     let config = grpc.grpc_config.clone();
     let storage = grpc.storage.clone_without_refs();
 

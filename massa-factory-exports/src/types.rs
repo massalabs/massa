@@ -2,7 +2,7 @@ use massa_consensus_exports::ConsensusController;
 use massa_models::block::Block;
 use massa_pool_exports::PoolController;
 use massa_pos_exports::SelectorController;
-use massa_protocol_exports::ProtocolCommandSender;
+use massa_protocol_exports::ProtocolController;
 use massa_storage::Storage;
 
 /// History of block production from latest to oldest
@@ -19,7 +19,7 @@ pub struct FactoryChannels {
     /// pool controller
     pub pool: Box<dyn PoolController>,
     /// protocol controller
-    pub protocol: ProtocolCommandSender,
+    pub protocol: Box<dyn ProtocolController>,
     /// storage instance
     pub storage: Storage,
 }
