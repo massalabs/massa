@@ -21,13 +21,12 @@ use peernet::{
 use std::cmp::Reverse;
 use tracing::debug;
 
-use crate::wrap_network::ActiveConnectionsTrait;
-
 use super::{
     announcement::{AnnouncementDeserializer, AnnouncementDeserializerArgs},
     models::PeerInfo,
     SharedPeerDB,
 };
+use crate::wrap_network::ActiveConnectionsTrait;
 
 #[derive(Clone)]
 pub struct TesterHandshake {

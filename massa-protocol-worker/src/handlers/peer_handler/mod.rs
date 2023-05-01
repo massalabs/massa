@@ -19,8 +19,7 @@ use peernet::{
     types::Hash,
     types::{KeyPair, Signature},
 };
-use tracing::info;
-use tracing::log::{debug, error, warn};
+use tracing::log::{debug, error, info, warn};
 
 use crate::handlers::peer_handler::models::PeerState;
 use crate::wrap_network::ActiveConnectionsTrait;
