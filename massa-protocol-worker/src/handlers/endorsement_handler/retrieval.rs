@@ -130,6 +130,7 @@ impl RetrievalThread {
         endorsements: Vec<SecureShareEndorsement>,
         from_peer_id: &PeerId,
     ) -> Result<(), ProtocolError> {
+        println!("AURELIEN: note_endorsements_from_peer {:?}", endorsements);
         massa_trace!("protocol.protocol_worker.note_endorsements_from_node", { "node": from_peer_id, "endorsements": endorsements});
         let length = endorsements.len();
         let mut new_endorsements = PreHashMap::with_capacity(length);
@@ -141,6 +142,7 @@ impl RetrievalThread {
             {
                 let read_cache = self.cache.read();
                 if !read_cache.checked_endorsements.contains(&endorsement_id) {
+                    println!("AURELIEN: id:{} not found in cache added to endorsement to check signature", endorsement_id);
                     new_endorsements.insert(endorsement_id, endorsement);
                 }
             }

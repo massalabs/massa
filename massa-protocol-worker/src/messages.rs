@@ -253,6 +253,7 @@ impl PeerNetMessagesHandler for MessagesHandler {
                     )
                 })
         } else if id < endorsement_max_id + block_max_id {
+            println!("AURELIEN: Received endorsement message. Data : {:?}", data);
             self.sender_endorsements
                 .send((peer_id.clone(), id - block_max_id, data.to_vec()))
                 .map_err(|err| {
