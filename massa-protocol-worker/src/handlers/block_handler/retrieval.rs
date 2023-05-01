@@ -588,7 +588,7 @@ impl RetrievalThread {
             // check endorsement signature if not already checked
             {
                 let read_cache = self.endorsement_cache.read();
-                if read_cache.checked_endorsements.contains(&endorsement_id) {
+                if !read_cache.checked_endorsements.contains(&endorsement_id) {
                     new_endorsements.insert(endorsement_id, endorsement);
                 }
             }
