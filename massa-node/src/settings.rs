@@ -210,8 +210,6 @@ pub struct ProtocolSettings {
     pub bind: SocketAddr,
     /// Ip seen by others. If none the bind ip is used
     pub routable_ip: Option<IpAddr>,
-    /// Port we are bind to connect to
-    pub protocol_port: u16,
     /// Time threshold to have a connection to a node
     pub connect_timeout: MassaTime,
     /// Max number of connection in

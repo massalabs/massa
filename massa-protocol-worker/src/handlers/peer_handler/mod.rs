@@ -67,7 +67,8 @@ impl PeerManagementHandler {
     ) -> Self {
         let message_serializer = PeerManagementMessageSerializer::new();
 
-        let (test_sender, testers) = Tester::run(config, peer_db.clone());
+        let (test_sender, testers) =
+            Tester::run(config, active_connections.clone(), peer_db.clone());
 
         let thread_join = std::thread::Builder::new()
         .name("protocol-peer-handler".to_string())

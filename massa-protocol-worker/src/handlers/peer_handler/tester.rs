@@ -20,6 +20,8 @@ use peernet::{
 };
 use std::cmp::Reverse;
 
+use crate::wrap_network::ActiveConnectionsTrait;
+
 use super::{
     announcement::{AnnouncementDeserializer, AnnouncementDeserializerArgs},
     models::PeerInfo,
@@ -162,6 +164,7 @@ pub struct Tester {
 impl Tester {
     pub fn run(
         config: &ProtocolConfig,
+        active_connections: Box<dyn ActiveConnectionsTrait>,
         peer_db: SharedPeerDB,
     ) -> (
         Sender<(PeerId, HashMap<SocketAddr, TransportType>)>,
@@ -176,6 +179,7 @@ impl Tester {
         for _ in 0..config.thread_tester_count {
             testers.push(Tester::new(
                 peer_db.clone(),
+                active_connections.clone(),
                 config.clone(),
                 test_receiver.clone(),
             ));
@@ -187,6 +191,7 @@ impl Tester {
     /// Create a new tester (spawn a thread)
     pub fn new(
         peer_db: SharedPeerDB,
+        active_connections: Box<dyn ActiveConnectionsTrait>,
         protocol_config: ProtocolConfig,
         receiver: crossbeam::channel::Receiver<(PeerId, HashMap<SocketAddr, TransportType>)>,
     ) -> Self {
@@ -196,6 +201,7 @@ impl Tester {
         .name("protocol-peer-handler-tester".to_string())
         .spawn(move || {
             let db = peer_db.clone();
+            let active_connections = active_connections.clone();
             let mut config = PeerNetConfiguration::default(
                 TesterHandshake::new(peer_db, protocol_config.clone()),
                 TesterMessagesHandler {},
@@ -218,16 +224,17 @@ impl Tester {
                                         continue;
                                     }
                                 }
-                                //TODO: Don't launch test if peer is already connected to us as a normal connection.
-                                // Maybe we need to have a way to still update his last announce timestamp because he is a great peer
-
                                 // receive new listener to test
                                 listener.1.iter().for_each(|(addr, _transport)| {
+                                    // Don't launch test if peer is already connected to us as a normal connection.
+                                    // Maybe we need to have a way to still update his last announce timestamp because he is a great peer
+                                    if active_connections.check_addr_accepted(addr) {
                                     let _res =  network_manager.try_connect(
                                         *addr,
                                         Duration::from_millis(500),
                                         &OutConnectionConfig::Tcp(Box::new(TcpOutConnectionConfig::new(protocol_config.read_write_limit_bytes_per_second / 10, Duration::from_millis(100)))),
                                     );
+                                    }
                                 });
                             },
                             Err(_e) => break,

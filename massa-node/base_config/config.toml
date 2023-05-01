@@ -143,8 +143,6 @@
 [protocol]
     # port on which to listen for protocol communication. You may need to change this to "0.0.0.0:port" if IPv6 is disabled system-wide.
     bind = "[::]:31244"
-    # port used by protocol
-    protocol_port = 31244
     # timeout for connection establishment
     connect_timeout = 3000
     # path to the node key (not the staking key)
