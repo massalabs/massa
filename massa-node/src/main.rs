@@ -438,6 +438,7 @@ async fn launch(
         periods_per_cycle: PERIODS_PER_CYCLE,
         denunciation_expire_periods: DENUNCIATION_EXPIRE_PERIODS,
         max_denunciations_per_block_header: MAX_DENUNCIATIONS_PER_BLOCK_HEADER,
+        last_start_period: final_state.read().last_start_period,
     };
 
     let pool_channels = PoolChannels {
@@ -749,6 +750,7 @@ async fn launch(
             last_start_period: final_state.read().last_start_period,
             max_denunciations_per_block_header: MAX_DENUNCIATIONS_PER_BLOCK_HEADER,
             max_block_ids_per_request: SETTINGS.grpc.max_block_ids_per_request,
+            max_operation_ids_per_request: SETTINGS.grpc.max_operation_ids_per_request,
         };
 
         let grpc_api = MassaGrpc {

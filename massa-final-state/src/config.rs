@@ -33,9 +33,9 @@ pub struct FinalStateConfig {
     pub initial_rolls_path: PathBuf,
     /// endorsement count
     pub endorsement_count: u32,
-    /// max number of denunciation index in processed denunciations struct
+    /// max number of denunciation index in executed denunciations struct
     pub max_executed_denunciations_length: u64,
     /// max number of denunciations that can be included in a block header
-    /// or in processed denunciations struct
+    /// or in executed denunciations struct
     pub max_denunciations_per_block_header: u32,
 }

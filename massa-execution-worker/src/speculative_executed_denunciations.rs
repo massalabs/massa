@@ -11,7 +11,7 @@ use massa_executed_ops::ExecutedDenunciationsChanges;
 use massa_final_state::FinalState;
 use massa_models::denunciation::DenunciationIndex;
 
-/// Speculative state of processed denunciations
+/// Speculative state of executed denunciations
 pub(crate) struct SpeculativeExecutedDenunciations {
     /// Thread-safe shared access to the final state. For reading only.
     final_state: Arc<RwLock<FinalState>>,
@@ -25,7 +25,7 @@ pub(crate) struct SpeculativeExecutedDenunciations {
 }
 
 impl SpeculativeExecutedDenunciations {
-    /// Creates a new `SpeculativeProcessedDenunciations`
+    /// Creates a new `SpeculativeExecutedDenunciations`
     ///
     /// # Arguments
     /// * `final_state`: thread-safe shared access the the final state
@@ -41,7 +41,7 @@ impl SpeculativeExecutedDenunciations {
         }
     }
 
-    /// Returns the set of operation IDs caused to the `SpeculativeProcessedDenunciations` since
+    /// Returns the set of operation IDs caused to the `SpeculativeExecutedDenunciations` since
     /// its creation, and resets their local value to nothing
     pub fn take(&mut self) -> ExecutedDenunciationsChanges {
         std::mem::take(&mut self.executed_denunciations)

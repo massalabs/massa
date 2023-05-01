@@ -308,7 +308,7 @@ pub const DENUNCIATION_EXPIRE_PERIODS: u64 = PERIODS_PER_CYCLE;
 pub const MAX_DENUNCIATIONS_PER_BLOCK_HEADER: u32 = 128;
 /// Number of roll to remove per denunciation
 pub const ROLL_COUNT_TO_SLASH_ON_DENUNCIATION: u64 = 1;
-/// Maximum size of processed denunciations
+/// Maximum size of executed denunciations
 pub const MAX_DENUNCIATION_CHANGES_LENGTH: u64 = 1_000;
 
 // Some checks at compile time that should not be ignored!

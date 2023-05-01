@@ -531,7 +531,7 @@ pub fn stream_bootstrap_information(
         let pos_cycle_part;
         let pos_credits_part;
         let exec_ops_part;
-        let processed_de_part;
+        let exec_de_part;
         let final_state_changes;
         let last_start_period;
 
@@ -573,8 +573,8 @@ pub fn stream_bootstrap_information(
 
             let (de_data, new_de_step) = final_state_read
                 .executed_denunciations
-                .get_processed_de_part(last_de_step);
-            processed_de_part = de_data;
+                .get_executed_de_part(last_de_step);
+            exec_de_part = de_data;
 
             if let Some(slot) = last_slot && slot != final_state_read.slot {
                 if slot > final_state_read.slot {
@@ -687,7 +687,7 @@ pub fn stream_bootstrap_information(
                 pos_cycle_part,
                 pos_credits_part,
                 exec_ops_part,
-                processed_de_part,
+                exec_de_part,
                 final_state_changes,
                 consensus_part,
                 consensus_outdated_ids,

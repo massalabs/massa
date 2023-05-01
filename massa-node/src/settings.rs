@@ -272,6 +272,8 @@ pub struct GrpcSettings {
     pub draw_lookahead_period_count: u64,
     /// max number of block ids that can be included in a single request
     pub max_block_ids_per_request: u32,
+    /// max number of operation ids that can be included in a single request
+    pub max_operation_ids_per_request: u32,
 }
 
 #[cfg(test)]

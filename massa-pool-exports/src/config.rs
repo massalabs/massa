@@ -43,4 +43,9 @@ pub struct PoolConfig {
     pub denunciation_expire_periods: u64,
     /// max number of denunciations that can be included in a block header
     pub max_denunciations_per_block_header: u32,
+    /// last_start_period
+    /// * If start all new network: set to 0
+    /// * If from snapshot: retrieve from args
+    /// * If from bootstrap: set during bootstrap
+    pub last_start_period: u64,
 }

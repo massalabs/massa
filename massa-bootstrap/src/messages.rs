@@ -9,8 +9,8 @@ use massa_consensus_exports::bootstrapable_graph::{
     BootstrapableGraph, BootstrapableGraphDeserializer, BootstrapableGraphSerializer,
 };
 use massa_executed_ops::{
-    ExecutedOpsDeserializer, ExecutedOpsSerializer, ProcessedDenunciationsDeserializer,
-    ProcessedDenunciationsSerializer,
+    ExecutedDenunciationsDeserializer, ExecutedDenunciationsSerializer, ExecutedOpsDeserializer,
+    ExecutedOpsSerializer,
 };
 use massa_final_state::{StateChanges, StateChangesDeserializer, StateChangesSerializer};
 use massa_ledger_exports::{Key as LedgerKey, KeyDeserializer, KeySerializer};
@@ -85,7 +85,7 @@ pub enum BootstrapServerMessage {
         /// Part of the executed operations
         exec_ops_part: BTreeMap<Slot, PreHashSet<OperationId>>,
         /// Part of the executed operations
-        processed_de_part: BTreeMap<Slot, HashSet<DenunciationIndex>>,
+        exec_de_part: BTreeMap<Slot, HashSet<DenunciationIndex>>,
         /// Ledger change for addresses inferior to `address` of the client message until the actual slot.
         final_state_changes: Vec<(Slot, StateChanges)>,
         /// Part of the consensus graph
@@ -157,7 +157,7 @@ pub struct BootstrapServerMessageSerializer {
     opt_pos_cycle_serializer: OptionSerializer<CycleInfo, CycleInfoSerializer>,
     pos_credits_serializer: DeferredCreditsSerializer,
     exec_ops_serializer: ExecutedOpsSerializer,
-    processed_de_serializer: ProcessedDenunciationsSerializer,
+    exec_de_serializer: ExecutedDenunciationsSerializer,
     opt_last_start_period_serializer: OptionSerializer<u64, U64VarIntSerializer>,
     store_serializer: MipStoreRawSerializer,
 }
@@ -186,7 +186,7 @@ impl BootstrapServerMessageSerializer {
             opt_pos_cycle_serializer: OptionSerializer::new(CycleInfoSerializer::new()),
             pos_credits_serializer: DeferredCreditsSerializer::new(),
             exec_ops_serializer: ExecutedOpsSerializer::new(),
-            processed_de_serializer: ProcessedDenunciationsSerializer::new(),
+            exec_de_serializer: ExecutedDenunciationsSerializer::new(),
             opt_last_start_period_serializer: OptionSerializer::new(U64VarIntSerializer::new()),
             store_serializer: MipStoreRawSerializer::new(),
         }
@@ -237,7 +237,7 @@ impl Serializer<BootstrapServerMessage> for BootstrapServerMessageSerializer {
                 pos_cycle_part,
                 pos_credits_part,
                 exec_ops_part,
-                processed_de_part,
+                exec_de_part,
                 final_state_changes,
                 consensus_part,
                 consensus_outdated_ids,
@@ -262,8 +262,7 @@ impl Serializer<BootstrapServerMessage> for BootstrapServerMessageSerializer {
                 // executed operations
                 self.exec_ops_serializer.serialize(exec_ops_part, buffer)?;
                 // processed denunciations
-                self.processed_de_serializer
-                    .serialize(processed_de_part, buffer)?;
+                self.exec_de_serializer.serialize(exec_de_part, buffer)?;
                 // changes length
                 self.u64_serializer
                     .serialize(&(final_state_changes.len() as u64), buffer)?;
@@ -329,7 +328,7 @@ pub struct BootstrapServerMessageDeserializer {
     opt_pos_cycle_deserializer: OptionDeserializer<CycleInfo, CycleInfoDeserializer>,
     pos_credits_deserializer: DeferredCreditsDeserializer,
     exec_ops_deserializer: ExecutedOpsDeserializer,
-    processed_de_deserializer: ProcessedDenunciationsDeserializer,
+    executed_de_deserializer: ExecutedDenunciationsDeserializer,
     opt_last_start_period_deserializer: OptionDeserializer<u64, U64VarIntDeserializer>,
     store_deserializer: MipStoreRawDeserializer,
 }
@@ -409,7 +408,7 @@ impl BootstrapServerMessageDeserializer {
                 args.max_executed_ops_length,
                 args.max_operations_per_block as u64,
             ),
-            processed_de_deserializer: ProcessedDenunciationsDeserializer::new(
+            executed_de_deserializer: ExecutedDenunciationsDeserializer::new(
                 args.thread_count,
                 args.endorsement_count,
                 args.max_denunciation_changes_length,
@@ -534,8 +533,8 @@ impl Deserializer<BootstrapServerMessage> for BootstrapServerMessageDeserializer
                     context("Failed exec_ops_part deserialization", |input| {
                         self.exec_ops_deserializer.deserialize(input)
                     }),
-                    context("Failed processed_de_part deserialization", |input| {
-                        self.processed_de_deserializer.deserialize(input)
+                    context("Failed exec_de_part deserialization", |input| {
+                        self.executed_de_deserializer.deserialize(input)
                     }),
                     context(
                         "Failed final_state_changes deserialization",
@@ -567,7 +566,7 @@ impl Deserializer<BootstrapServerMessage> for BootstrapServerMessageDeserializer
                         pos_cycle_part,
                         pos_credits_part,
                         exec_ops_part,
-                        processed_de_part,
+                        exec_de_part,
                         final_state_changes,
                         consensus_part,
                         consensus_outdated_ids,
@@ -580,7 +579,7 @@ impl Deserializer<BootstrapServerMessage> for BootstrapServerMessageDeserializer
                             pos_cycle_part,
                             pos_credits_part,
                             exec_ops_part,
-                            processed_de_part,
+                            exec_de_part,
                             final_state_changes,
                             consensus_part,
                             consensus_outdated_ids,
@@ -629,7 +628,7 @@ pub enum BootstrapClientMessage {
         last_credits_step: StreamingStep<Slot>,
         /// Last received executed operation associated slot
         last_ops_step: StreamingStep<Slot>,
-        /// Last received processed denunciations associated slot
+        /// Last received executed denunciations associated slot
         last_de_step: StreamingStep<Slot>,
         /// Last received consensus block slot
         last_consensus_step: StreamingStep<PreHashSet<BlockId>>,

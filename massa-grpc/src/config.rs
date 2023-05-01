@@ -86,4 +86,6 @@ pub struct GrpcConfig {
     pub max_denunciations_per_block_header: u32,
     /// max number of block ids that can be included in a single request
     pub max_block_ids_per_request: u32,
+    /// max number of operation ids that can be included in a single request
+    pub max_operation_ids_per_request: u32,
 }
