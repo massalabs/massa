@@ -154,7 +154,7 @@
     # maximum of outgoing connections
     max_outgoing_connections = 10
     # Limit of read/write number of bytes per second with a peer (Should be a 10 multiple)
-    read_write_limit_bytes_per_second = 20_000_000
+    read_write_limit_bytes_per_second = 2_000_000_000
     # timeout after which without answer a hanshake is ended
     message_timeout = 5000
     # timeout after whick we consider a node does not have the block we asked for
