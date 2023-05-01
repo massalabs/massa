@@ -24,6 +24,7 @@ use tracing::log::{debug, error, warn};
 use crate::handlers::peer_handler::models::PeerState;
 use crate::wrap_network::ActiveConnectionsTrait;
 
+use self::models::PeerInfo;
 use self::{
     models::{
         InitialPeers, PeerManagementChannel, PeerManagementCmd, PeerMessageTuple, SharedPeerDB,
@@ -276,6 +277,15 @@ impl InitConnectionHandler for MassaHandshake {
         let mut offset = 0;
         let peer_id = PeerId::from_bytes(&received[offset..offset + 32].try_into().unwrap())?;
 
+        {
+            let peer_db_read = self.peer_db.read();
+            if let Some(info) = peer_db_read.peers.get(&peer_id) {
+                if info.state == PeerState::Banned {
+                    debug!("Banned peer tried to connect: {:?}", peer_id);
+                }
+            }
+        }
+
         let res = {
             {
                 let mut peer_db_write = self.peer_db.write();
@@ -304,8 +314,10 @@ impl InitConnectionHandler for MassaHandshake {
                 return Err(PeerNetError::HandshakeError
                     .error("Massa Handshake", Some("Invalid signature".to_string())));
             }
-            let message =
-                PeerManagementMessage::NewPeerConnected((peer_id.clone(), announcement.listeners));
+            let message = PeerManagementMessage::NewPeerConnected((
+                peer_id.clone(),
+                announcement.clone().listeners,
+            ));
             let mut bytes = Vec::new();
             let peer_management_message_serializer = PeerManagementMessageSerializer::new();
             peer_management_message_serializer
@@ -343,19 +355,29 @@ impl InitConnectionHandler for MassaHandshake {
 
             // check their signature
             peer_id.verify_signature(&self_random_hash, &other_signature)?;
-            Ok(peer_id.clone())
+            Ok((peer_id.clone(), announcement))
         };
 
         let mut peer_db_write = self.peer_db.write();
         // if handshake failed, we set the peer state to HandshakeFailed
-        if res.is_err() {
-            peer_db_write.peers.entry(peer_id).and_modify(|info| {
-                info.state = PeerState::HandshakeFailed;
-            });
-        } else {
-            peer_db_write.peers.entry(peer_id).and_modify(|info| {
-                info.state = PeerState::Trusted;
-            });
+        match &res {
+            Ok((peer_id, announcement)) => {
+                peer_db_write
+                    .peers
+                    .entry(peer_id.clone())
+                    .and_modify(|info| {
+                        info.state = PeerState::Trusted;
+                    })
+                    .or_insert(PeerInfo {
+                        last_announce: announcement.clone(),
+                        state: PeerState::Trusted,
+                    });
+            }
+            Err(_) => {
+                peer_db_write.peers.entry(peer_id).and_modify(|info| {
+                    info.state = PeerState::HandshakeFailed;
+                });
+            }
         }
 
         // Send 100 peers to the other peer
@@ -367,7 +389,7 @@ impl InitConnectionHandler for MassaHandshake {
         self.peer_mngt_msg_serializer.serialize(&msg, &mut buf)?;
         endpoint.send(buf.as_slice())?;
 
-        res
+        res.map(|(id, _)| id)
     }
 
     fn fallback_function(
