@@ -28,6 +28,7 @@ struct PropagationThread {
 impl PropagationThread {
     fn run(&mut self) {
         loop {
+            println!("AURELIEN CACHE: propagation endorsements thread channel EndorsementHandlerPropagationCommand: {}", &self.receiver.len());
             match self.receiver.recv() {
                 Ok(msg) => {
                     match msg {

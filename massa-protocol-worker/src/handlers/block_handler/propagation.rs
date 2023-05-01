@@ -36,6 +36,7 @@ impl PropagationThread {
         loop {
             match self.receiver.recv() {
                 Ok(command) => {
+                    println!("AURELIEN CACHE: propagation block thread BlockHandlerPropagationCommand channel: {}", &self.receiver.len());
                     match command {
                         BlockHandlerPropagationCommand::IntegratedBlock { block_id, storage } => {
                             massa_trace!(
@@ -47,6 +48,14 @@ impl PropagationThread {
                                     let blocks = storage.read_blocks();
                                     blocks.get(&block_id).cloned()
                                 };
+                                println!(
+                                    "AURELIEN CACHE: Storage propagation block thread: {:?}",
+                                    &self.storage.get_block_refs().len()
+                                );
+                                println!(
+                                    "AURELIEN CACHE: saved blocks propagation block thread: {:?}",
+                                    &self.saved_blocks.len()
+                                );
                                 if let Some(block) = block {
                                     self.storage.store_block(block.clone());
                                     self.saved_blocks.push_back(block.id);
@@ -95,6 +104,15 @@ impl PropagationThread {
                                         );
                                     }
                                 }
+                            }
+
+                            {
+                                let cache_read = self.cache.read();
+                                println!("AURELIEN CACHE: shared cache blocks_known_by_peer propagation block thread: {:?}", &cache_read.blocks_known_by_peer.len());
+                                for (peer_id, blocks) in cache_read.blocks_known_by_peer.iter() {
+                                    println!("AURELIEN CACHE: shared cache blocks_known_by_peer peer {} propagation block thread: {:?}", &peer_id, &blocks.0.len());
+                                }
+                                println!("AURELIEN CACHE: shared cache checked_headers propagation block thread: {:?}", &cache_read.checked_headers.len());
                             }
                             {
                                 let cache_read = self.cache.read();

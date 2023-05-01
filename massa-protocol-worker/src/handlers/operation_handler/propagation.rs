@@ -33,33 +33,37 @@ impl PropagationThread {
             .checked_add(self.config.operation_announcement_interval.to_duration())
             .expect("Can't init interval op propagation");
         loop {
+            println!("AURELIEN CACHE: retrieval operation thread channel OperationHandlerPropagationCommand: {}", &self.internal_receiver.len());
             match self.internal_receiver.recv_deadline(next_announce) {
-                Ok(internal_message) => match internal_message {
-                    OperationHandlerPropagationCommand::AnnounceOperations(operations_ids) => {
-                        // Note operations as checked.
-                        {
-                            let mut cache_write = self.cache.write();
-                            for op_id in operations_ids.iter().copied() {
-                                cache_write.insert_checked_operation(op_id);
+                Ok(internal_message) => {
+                    match internal_message {
+                        OperationHandlerPropagationCommand::AnnounceOperations(operations_ids) => {
+                            // Note operations as checked.
+                            {
+                                let mut cache_write = self.cache.write();
+                                for op_id in operations_ids.iter().copied() {
+                                    cache_write.insert_checked_operation(op_id);
+                                }
+                            }
+                            println!("AURELIEN CACHE: propagate operation thread operations_to_announce: {}", &self.operations_to_announce.len());
+                            self.operations_to_announce.extend(operations_ids);
+                            if self.operations_to_announce.len()
+                                > self.config.operation_announcement_buffer_capacity
+                            {
+                                self.announce_ops();
+                                next_announce = std::time::Instant::now()
+                                    .checked_add(
+                                        self.config.operation_announcement_interval.to_duration(),
+                                    )
+                                    .expect("Can't init interval op propagation");
                             }
                         }
-                        self.operations_to_announce.extend(operations_ids);
-                        if self.operations_to_announce.len()
-                            > self.config.operation_announcement_buffer_capacity
-                        {
-                            self.announce_ops();
-                            next_announce = std::time::Instant::now()
-                                .checked_add(
-                                    self.config.operation_announcement_interval.to_duration(),
-                                )
-                                .expect("Can't init interval op propagation");
+                        OperationHandlerPropagationCommand::Stop => {
+                            info!("Stop operation propagation thread");
+                            return;
                         }
                     }
-                    OperationHandlerPropagationCommand::Stop => {
-                        info!("Stop operation propagation thread");
-                        return;
-                    }
-                },
+                }
                 Err(RecvTimeoutError::Timeout) => {
                     self.announce_ops();
                     next_announce = std::time::Instant::now()
