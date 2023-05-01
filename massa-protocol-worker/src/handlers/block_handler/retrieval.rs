@@ -120,7 +120,6 @@ impl RetrievalThread {
         loop {
             select! {
                 recv(self.receiver_network) -> msg => {
-                    println!("AURELIEN CACHE: retrieval block thread network channel: {}", &self.receiver_network.len());
                     match msg {
                         Ok((peer_id, message_id, message)) => {
                             block_message_deserializer.set_message_id(message_id);
@@ -188,7 +187,6 @@ impl RetrievalThread {
                     }
                 },
                 recv(self.receiver) -> msg => {
-                    println!("AURELIEN CACHE: retrieval block thread BlockHandlerRetrievalCommand channel: {}", &self.receiver.len());
                     match msg {
                         Ok(command) => {
                             match command {
@@ -372,35 +370,6 @@ impl RetrievalThread {
         block_id: BlockId,
         header: SecuredHeader,
     ) -> Result<(), ProtocolError> {
-        {
-            println!(
-                "AURELIEN CACHE: retrieval block thread block wishlist: {}",
-                &self.block_wishlist.len()
-            );
-            println!(
-                "AURELIEN CACHE: retrieval block thread block asked_blocks: {}",
-                &self.asked_blocks.len()
-            );
-            for (peer_id, blocks) in &self.asked_blocks {
-                println!(
-                    "AURELIEN CACHE: retrieval block thread asked_blocks peer_id: {} blocks: {}",
-                    &peer_id,
-                    &blocks.len()
-                );
-            }
-            println!(
-                "AURELIEN CACHE: retrieval block thread storage blocks: {}",
-                &self.storage.get_block_refs().len()
-            );
-            println!(
-                "AURELIEN CACHE: retrieval block thread storage ops: {}",
-                &self.storage.get_op_refs().len()
-            );
-            println!(
-                "AURELIEN CACHE: retrieval block thread storage endorsements: {}",
-                &self.storage.get_endorsement_refs().len()
-            );
-        }
         if let Some(info) = self.block_wishlist.get(&block_id) {
             if info.header.is_some() {
                 warn!(
