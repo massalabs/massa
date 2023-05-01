@@ -160,7 +160,6 @@ impl RetrievalThread {
                 })
                 .collect::<Vec<_>>(),
         )?;
-
         {
             let mut cache_write = self.cache.write();
             // add to verified signature cache

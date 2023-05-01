@@ -19,14 +19,14 @@ use peernet::{
     types::KeyPair,
 };
 use std::cmp::Reverse;
-
-use crate::wrap_network::ActiveConnectionsTrait;
+use tracing::debug;
 
 use super::{
     announcement::{AnnouncementDeserializer, AnnouncementDeserializerArgs},
     models::PeerInfo,
     SharedPeerDB,
 };
+use crate::wrap_network::ActiveConnectionsTrait;
 
 #[derive(Clone)]
 pub struct TesterHandshake {
@@ -241,6 +241,7 @@ impl Tester {
                                             return;
                                         }
                                     }
+                                    debug!("testing peer {} listener addr: {}", &listener.0, &addr);
                                     let _res =  network_manager.try_connect(
                                         *addr,
                                         Duration::from_millis(500),
@@ -256,7 +257,7 @@ impl Tester {
                         // If no message in 2 seconds they will test a peer that hasn't been tested for long time
 
                         // we find the last peer that has been tested
-                        let Some((_peer_id, peer_info)) = db.read().get_oldest_peer() else {
+                        let Some((peer_id, peer_info)) = db.read().get_oldest_peer() else {
                             continue;
                         };
 
@@ -271,7 +272,8 @@ impl Tester {
 
                         // we try to connect to all peer listener (For now we have only one listener)
                         peer_info.last_announce.listeners.iter().for_each(|listener| {
-                           let _res =  network_manager.try_connect(
+                            debug!("testing peer {} listener addr: {}", peer_id, &listener.0);
+                            let _res =  network_manager.try_connect(
                                 *listener.0,
                                 Duration::from_millis(200),
                                 &OutConnectionConfig::Tcp(Box::new(TcpOutConnectionConfig::new(protocol_config.read_write_limit_bytes_per_second / 10, Duration::from_millis(100)))),

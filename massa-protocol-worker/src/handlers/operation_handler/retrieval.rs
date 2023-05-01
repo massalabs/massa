@@ -218,8 +218,8 @@ impl RetrievalThread {
                     .ops_known_by_peer
                     .get_or_insert_mut(source_peer_id.clone(), || {
                         LruCache::new(
-                            NonZeroUsize::new(self.config.max_known_ops_size)
-                                .expect("max_known_ops_size in config must be > 0"),
+                            NonZeroUsize::new(self.config.max_node_known_ops_size)
+                                .expect("max_node_known_ops_size in config must be > 0"),
                         )
                     });
             for id in received_ids {
@@ -312,8 +312,8 @@ impl RetrievalThread {
                     .ops_known_by_peer
                     .get_or_insert_mut(peer_id.clone(), || {
                         LruCache::new(
-                            NonZeroUsize::new(self.config.max_known_ops_size)
-                                .expect("max_known_ops_size in config must be > 0"),
+                            NonZeroUsize::new(self.config.max_node_known_ops_size)
+                                .expect("max_node_known_ops_size in config must be > 0"),
                         )
                     });
             for prefix in &op_batch {
