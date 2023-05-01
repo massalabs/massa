@@ -1,5 +1,6 @@
 #![feature(map_try_insert)]
 #![feature(let_chains)]
+#![feature(ip)]
 
 mod connectivity;
 mod controller;

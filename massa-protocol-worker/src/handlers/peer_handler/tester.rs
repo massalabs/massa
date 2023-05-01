@@ -228,7 +228,19 @@ impl Tester {
                                 listener.1.iter().for_each(|(addr, _transport)| {
                                     // Don't launch test if peer is already connected to us as a normal connection.
                                     // Maybe we need to have a way to still update his last announce timestamp because he is a great peer
-                                    if active_connections.check_addr_accepted(addr) {
+                                    if active_connections.check_addr_accepted(addr)  {
+                                    //Don't test our local addresses
+                                    for (local_addr, _transport) in protocol_config.listeners.iter() {
+                                        if addr == local_addr {
+                                            return;
+                                        }
+                                    }
+                                    //Don't test our proper ip
+                                    if let Some(ip) = protocol_config.routable_ip {
+                                        if ip.to_canonical() == addr.ip().to_canonical() {
+                                            return;
+                                        }
+                                    }
                                     let _res =  network_manager.try_connect(
                                         *addr,
                                         Duration::from_millis(500),
