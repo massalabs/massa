@@ -33,6 +33,7 @@ impl PropagationThread {
             .checked_add(self.config.operation_announcement_interval.to_duration())
             .expect("Can't init interval op propagation");
         loop {
+            println!("AURELIEN CACHE: retrieval operation thread channel OperationHandlerPropagationCommand: {}", &self.internal_receiver.len());
             match self.internal_receiver.recv_deadline(next_announce) {
                 Ok(internal_message) => {
                     match internal_message {
@@ -44,6 +45,7 @@ impl PropagationThread {
                                     cache_write.insert_checked_operation(op_id);
                                 }
                             }
+                            println!("AURELIEN CACHE: propagate operation thread operations_to_announce: {}", &self.operations_to_announce.len());
                             self.operations_to_announce.extend(operations_ids);
                             if self.operations_to_announce.len()
                                 > self.config.operation_announcement_buffer_capacity

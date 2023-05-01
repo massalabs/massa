@@ -56,6 +56,7 @@ impl RetrievalThread {
         loop {
             select! {
                 recv(self.receiver) -> msg => {
+                    println!("AURELIEN CACHE: retrieval endorsements thread channel network: {}", &self.receiver.len());
                     match msg {
                         Ok((peer_id, message_id, message)) => {
                             endorsement_message_deserializer.set_message_id(message_id);
@@ -97,6 +98,7 @@ impl RetrievalThread {
                     }
                 },
                 recv(self.receiver_ext) -> msg => {
+                    println!("AURELIEN CACHE: retrieval endorsements thread channel EndorsementHandlerRetrievalCommand: {}", &self.receiver_ext.len());
                     match msg {
                         Ok(msg) => {
                             match msg {
@@ -130,6 +132,32 @@ impl RetrievalThread {
         endorsements: Vec<SecureShareEndorsement>,
         from_peer_id: &PeerId,
     ) -> Result<(), ProtocolError> {
+        {
+            println!(
+                "AURELIEN CACHE: retrieval endorsements thread storage blocks: {}",
+                &self.storage.get_block_refs().len()
+            );
+            println!(
+                "AURELIEN CACHE: retrieval endorsements thread storage ops: {}",
+                &self.storage.get_op_refs().len()
+            );
+            println!(
+                "AURELIEN CACHE: retrieval endorsements thread storage endorsements: {}",
+                &self.storage.get_endorsement_refs().len()
+            );
+            let read_cache = self.cache.read();
+            println!(
+                "AURELIEN CACHE: retrieval endorsements thread checked_endorsements: {}",
+                &read_cache.checked_endorsements.len()
+            );
+            println!(
+                "AURELIEN CACHE: retrieval endorsements thread endorsements known by peer: {}",
+                &read_cache.endorsements_known_by_peer.len()
+            );
+            for (peer_id, endorsements) in read_cache.endorsements_known_by_peer.iter() {
+                println!("AURELIEN CACHE: retrieval endorsements thread endorsements known by peer: {} {}", &peer_id, &endorsements.len());
+            }
+        }
         massa_trace!("protocol.protocol_worker.note_endorsements_from_node", { "node": from_peer_id, "endorsements": endorsements});
         let length = endorsements.len();
         let mut new_endorsements = PreHashMap::with_capacity(length);

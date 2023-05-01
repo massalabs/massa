@@ -112,6 +112,7 @@ impl PeerManagementHandler {
                             }
                         }
                         recv(receiver_cmd) -> cmd => {
+                            println!("AURELIEN CACHE: peer management thread channel PeerManagementCmd: {}", &receiver_cmd.len());
                             // internal command
                            match cmd {
                              Ok(PeerManagementCmd::Ban(peer_ids)) => {
@@ -150,6 +151,7 @@ impl PeerManagementHandler {
                            }
                         },
                         recv(receiver_msg) -> msg => {
+                            println!("AURELIEN CACHE: peer management thread channel network: {}", &receiver_msg.len());
                             let (peer_id, message_id, message) = match msg {
                                 Ok((peer_id, message_id, message)) => (peer_id, message_id, message),
                                 Err(_) => {
