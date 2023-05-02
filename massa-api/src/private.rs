@@ -148,6 +148,7 @@ impl MassaRpcServer for API<Private> {
     }
 
     async fn node_ban_by_ip(&self, _ips: Vec<IpAddr>) -> RpcResult<()> {
+        //TODO: Reinvoke
         // let network_command_sender = self.0.network_command_sender.clone();
         // network_command_sender
         //    .node_ban_by_ips(ips)
@@ -197,6 +198,7 @@ impl MassaRpcServer for API<Private> {
     }
 
     async fn node_unban_by_ip(&self, _ips: Vec<IpAddr>) -> RpcResult<()> {
+        //TODO: Reinvoke
         // let network_command_sender = self.0.network_command_sender.clone();
         // network_command_sender
         //     .node_unban_ips(ips)
