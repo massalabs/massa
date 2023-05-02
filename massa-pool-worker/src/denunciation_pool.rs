@@ -161,7 +161,7 @@ impl DenunciationPool {
                             Some(de)
                         }
                         Err(e) => {
-                            debug!("Denunciation factory cannot create denunciation from endorsements: {}", e);
+                            debug!("Denunciation pool cannot create denunciation from endorsements: {}", e);
                             None
                         }
                     }
