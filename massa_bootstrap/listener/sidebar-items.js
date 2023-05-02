@@ -1,1 +1,0 @@
-window.SIDEBAR_ITEMS = {"constant":["NEW_CONNECTION","STOP_LISTENER"],"enum":["PollEvent"],"static":["CALLSITE","META"],"struct":["BootstrapListenerStopHandle","BootstrapTcpListener"]};

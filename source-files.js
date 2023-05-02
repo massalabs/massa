@@ -2,7 +2,7 @@ var sourcesIndex = JSON.parse('{\
 "massa_api":["",[],["api.rs","api_trait.rs","lib.rs","private.rs","public.rs"]],\
 "massa_api_exports":["",[],["address.rs","block.rs","config.rs","datastore.rs","endorsement.rs","error.rs","execution.rs","ledger.rs","lib.rs","node.rs","operation.rs","page.rs","rolls.rs","slot.rs"]],\
 "massa_async_pool":["",[],["changes.rs","config.rs","lib.rs","message.rs","pool.rs"]],\
-"massa_bootstrap":["",[["server",[],["white_black_list.rs"]]],["client.rs","client_binder.rs","error.rs","establisher.rs","lib.rs","listener.rs","messages.rs","server.rs","server_binder.rs","settings.rs","tools.rs"]],\
+"massa_bootstrap":["",[["server",[],["white_black_list.rs"]]],["client.rs","client_binder.rs","error.rs","establisher.rs","lib.rs","messages.rs","server.rs","server_binder.rs","settings.rs","tools.rs"]],\
 "massa_cipher":["",[],["constants.rs","decrypt.rs","encrypt.rs","error.rs","lib.rs"]],\
 "massa_client":["",[],["cmds.rs","display.rs","main.rs","repl.rs","settings.rs"]],\
 "massa_consensus_exports":["",[],["block_graph_export.rs","block_status.rs","bootstrapable_graph.rs","channels.rs","controller_trait.rs","error.rs","events.rs","export_active_block.rs","lib.rs","settings.rs"]],\
@@ -20,16 +20,14 @@ var sourcesIndex = JSON.parse('{\
 "massa_logging":["",[],["lib.rs"]],\
 "massa_models":["",[["config",[],["compact_config.rs","constants.rs","massa_settings.rs","mod.rs"]]],["active_block.rs","address.rs","amount.rs","block.rs","block_header.rs","block_id.rs","bytecode.rs","clique.rs","composite.rs","datastore.rs","denunciation.rs","endorsement.rs","error.rs","execution.rs","ledger.rs","lib.rs","mapping_grpc.rs","node.rs","operation.rs","output_event.rs","prehash.rs","rolls.rs","secure_share.rs","serialization.rs","slot.rs","stats.rs","streaming_step.rs","timeslots.rs","version.rs"]],\
 "massa_module_cache":["",[],["config.rs","controller.rs","error.rs","hd_cache.rs","lib.rs","lru_cache.rs","types.rs"]],\
-"massa_network_exports":["",[],["commands.rs","common.rs","error.rs","establisher.rs","lib.rs","network_controller.rs","peers.rs","settings.rs"]],\
-"massa_network_worker":["",[],["binders.rs","handshake_worker.rs","lib.rs","messages.rs","network_cmd_impl.rs","network_event.rs","network_worker.rs","node_worker.rs","peer_info_database.rs"]],\
 "massa_node":["",[],["main.rs","settings.rs"]],\
 "massa_pool_exports":["",[],["channels.rs","config.rs","controller_traits.rs","lib.rs"]],\
 "massa_pool_worker":["",[],["controller_impl.rs","denunciation_pool.rs","endorsement_pool.rs","lib.rs","operation_pool.rs","types.rs","worker.rs"]],\
 "massa_pos_exports":["",[],["config.rs","controller_traits.rs","cycle_info.rs","deferred_credits.rs","error.rs","lib.rs","pos_changes.rs","pos_final_state.rs","settings.rs"]],\
 "massa_pos_worker":["",[],["controller.rs","draw.rs","lib.rs","worker.rs"]],\
 "massa_proto":["",[],["google.api.rs","google.rpc.rs","lib.rs","massa.api.v1.rs"]],\
-"massa_protocol_exports":["",[["tests",[],["mock_network_controller.rs","mod.rs","tools.rs"]]],["channels.rs","error.rs","lib.rs","protocol_controller.rs","settings.rs"]],\
-"massa_protocol_worker":["",[],["cache.rs","checked_operations.rs","lib.rs","node_info.rs","protocol_network.rs","protocol_worker.rs","sig_verifier.rs","worker_operations_impl.rs"]],\
+"massa_protocol_exports":["",[],["bootstrap_peers.rs","controller_trait.rs","error.rs","lib.rs","settings.rs"]],\
+"massa_protocol_worker":["",[["handlers",[["block_handler",[],["cache.rs","commands_propagation.rs","commands_retrieval.rs","messages.rs","mod.rs","propagation.rs","retrieval.rs"]],["endorsement_handler",[],["cache.rs","commands_propagation.rs","commands_retrieval.rs","messages.rs","mod.rs","propagation.rs","retrieval.rs"]],["operation_handler",[],["cache.rs","commands_propagation.rs","commands_retrieval.rs","messages.rs","mod.rs","propagation.rs","retrieval.rs"]],["peer_handler",[],["announcement.rs","messages.rs","mod.rs","models.rs","tester.rs"]]],["mod.rs"]]],["connectivity.rs","controller.rs","lib.rs","manager.rs","messages.rs","sig_verifier.rs","worker.rs","wrap_network.rs"]],\
 "massa_sdk":["",[],["config.rs","lib.rs"]],\
 "massa_serialization":["",[],["lib.rs"]],\
 "massa_signature":["",[],["error.rs","lib.rs","signature_impl.rs"]],\

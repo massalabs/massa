@@ -16,41 +16,23 @@
 <a href="#16" id="16">16</a>
 <a href="#17" id="17">17</a>
 <a href="#18" id="18">18</a>
-<a href="#19" id="19">19</a>
-<a href="#20" id="20">20</a>
-<a href="#21" id="21">21</a>
-<a href="#22" id="22">22</a>
-<a href="#23" id="23">23</a>
-<a href="#24" id="24">24</a>
-<a href="#25" id="25">25</a>
-<a href="#26" id="26">26</a>
-<a href="#27" id="27">27</a>
-</pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
-</span><span class="doccomment">//! protocol component exports
-</span><span class="attr">#![feature(async_closure)]
-#![feature(drain_filter)]
-#![feature(ip)]
-#![warn(missing_docs)]
-#![warn(unused_crate_dependencies)]
-</span><span class="kw">mod </span>channels;
+</pre><pre class="rust"><code><span class="kw">mod </span>bootstrap_peers;
+<span class="kw">mod </span>controller_trait;
 <span class="kw">mod </span>error;
-<span class="kw">mod </span>protocol_controller;
 <span class="kw">mod </span>settings;
 
-<span class="kw">pub use </span>channels::{ProtocolReceivers, ProtocolSenders};
+<span class="kw">pub use </span>bootstrap_peers::{BootstrapPeers, BootstrapPeersDeserializer, BootstrapPeersSerializer};
+<span class="kw">pub use </span>controller_trait::{ProtocolController, ProtocolManager};
 <span class="kw">pub use </span>error::ProtocolError;
-<span class="kw">pub use </span>protocol_controller::{
-    BlocksResults, ProtocolCommand, ProtocolCommandSender, ProtocolManagementCommand,
-    ProtocolManager,
-};
+<span class="kw">pub use </span>peernet::peer::PeerConnectionType;
+<span class="kw">pub use </span>peernet::peer_id::PeerId;
+<span class="kw">pub use </span>peernet::transports::TransportType;
 <span class="kw">pub use </span>settings::ProtocolConfig;
 
-<span class="doccomment">/// TODO: Add only if test. Removed the configuration test because don&#39;t work if running cargo test on an other sub-crate.
-</span><span class="kw">pub mod </span>tests;
-
-<span class="doccomment">/// Tests utils
-</span><span class="attr">#[cfg(feature = <span class="string">&quot;testing&quot;</span>)]
-</span><span class="doccomment">/// Exports testing tools as mock, functions helpers and configurations
+<span class="attr">#[cfg(feature = <span class="string">&quot;testing&quot;</span>)]
 </span><span class="kw">pub mod </span>test_exports;
+
+<span class="attr">#[cfg(feature = <span class="string">&quot;testing&quot;</span>)]
+</span><span class="kw">pub use </span>controller_trait::MockProtocolController;
 </code></pre></div>
 </section></main><div id="rustdoc-vars" data-root-path="../../" data-static-root-path="../../static.files/" data-current-crate="massa_protocol_exports" data-themes="" data-resource-suffix="" data-rustdoc-version="1.69.0-nightly (d962ea578 2023-02-26)" data-search-js="search-14421e1532aead08.js" data-settings-js="settings-f0c5c39777a9a2f6.js" data-settings-css="settings-0bcba95ff279c1db.css" ></div></body></html>

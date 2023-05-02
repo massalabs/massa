@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"constant":["AskForOperations__num_enum_0__","OperationsAnnouncement__num_enum_0__","Operations__num_enum_0__"],"enum":["MessageTypeId","OperationMessage"],"struct":["OperationMessageDeserializer","OperationMessageDeserializerArgs","OperationMessageSerializer"]};

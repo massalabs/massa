@@ -89,8 +89,8 @@
 <span class="kw">use </span>massa_consensus_exports::error::ConsensusError;
 <span class="kw">use </span>massa_final_state::FinalStateError;
 <span class="kw">use </span>massa_hash::MassaHashError;
-<span class="kw">use </span>massa_network_exports::NetworkError;
 <span class="kw">use </span>massa_pos_exports::PosError;
+<span class="kw">use </span>massa_protocol_exports::ProtocolError;
 <span class="kw">use </span>massa_serialization::SerializeError;
 <span class="kw">use </span>massa_time::TimeError;
 <span class="kw">use </span>thiserror::Error;
@@ -124,8 +124,8 @@
     </span>MassaSignatureError(<span class="attr">#[from] </span>massa_signature::MassaSignatureError),
     <span class="doccomment">/// time error: {0}
     </span>TimeError(<span class="attr">#[from] </span>TimeError),
-    <span class="doccomment">/// network error: {0}
-    </span>NetworkError(<span class="attr">#[from] </span>NetworkError),
+    <span class="doccomment">/// protocol error: {0}
+    </span>ProtocolError(<span class="attr">#[from] </span>ProtocolError),
     <span class="doccomment">/// final state error: {0}
     </span>FinalStateError(<span class="attr">#[from] </span>FinalStateError),
     <span class="doccomment">/// Proof-of-Stake error: {0}
