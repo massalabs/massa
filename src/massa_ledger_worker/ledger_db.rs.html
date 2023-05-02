@@ -824,16 +824,107 @@
 <a href="#824" id="824">824</a>
 <a href="#825" id="825">825</a>
 <a href="#826" id="826">826</a>
+<a href="#827" id="827">827</a>
+<a href="#828" id="828">828</a>
+<a href="#829" id="829">829</a>
+<a href="#830" id="830">830</a>
+<a href="#831" id="831">831</a>
+<a href="#832" id="832">832</a>
+<a href="#833" id="833">833</a>
+<a href="#834" id="834">834</a>
+<a href="#835" id="835">835</a>
+<a href="#836" id="836">836</a>
+<a href="#837" id="837">837</a>
+<a href="#838" id="838">838</a>
+<a href="#839" id="839">839</a>
+<a href="#840" id="840">840</a>
+<a href="#841" id="841">841</a>
+<a href="#842" id="842">842</a>
+<a href="#843" id="843">843</a>
+<a href="#844" id="844">844</a>
+<a href="#845" id="845">845</a>
+<a href="#846" id="846">846</a>
+<a href="#847" id="847">847</a>
+<a href="#848" id="848">848</a>
+<a href="#849" id="849">849</a>
+<a href="#850" id="850">850</a>
+<a href="#851" id="851">851</a>
+<a href="#852" id="852">852</a>
+<a href="#853" id="853">853</a>
+<a href="#854" id="854">854</a>
+<a href="#855" id="855">855</a>
+<a href="#856" id="856">856</a>
+<a href="#857" id="857">857</a>
+<a href="#858" id="858">858</a>
+<a href="#859" id="859">859</a>
+<a href="#860" id="860">860</a>
+<a href="#861" id="861">861</a>
+<a href="#862" id="862">862</a>
+<a href="#863" id="863">863</a>
+<a href="#864" id="864">864</a>
+<a href="#865" id="865">865</a>
+<a href="#866" id="866">866</a>
+<a href="#867" id="867">867</a>
+<a href="#868" id="868">868</a>
+<a href="#869" id="869">869</a>
+<a href="#870" id="870">870</a>
+<a href="#871" id="871">871</a>
+<a href="#872" id="872">872</a>
+<a href="#873" id="873">873</a>
+<a href="#874" id="874">874</a>
+<a href="#875" id="875">875</a>
+<a href="#876" id="876">876</a>
+<a href="#877" id="877">877</a>
+<a href="#878" id="878">878</a>
+<a href="#879" id="879">879</a>
+<a href="#880" id="880">880</a>
+<a href="#881" id="881">881</a>
+<a href="#882" id="882">882</a>
+<a href="#883" id="883">883</a>
+<a href="#884" id="884">884</a>
+<a href="#885" id="885">885</a>
+<a href="#886" id="886">886</a>
+<a href="#887" id="887">887</a>
+<a href="#888" id="888">888</a>
+<a href="#889" id="889">889</a>
+<a href="#890" id="890">890</a>
+<a href="#891" id="891">891</a>
+<a href="#892" id="892">892</a>
+<a href="#893" id="893">893</a>
+<a href="#894" id="894">894</a>
+<a href="#895" id="895">895</a>
+<a href="#896" id="896">896</a>
+<a href="#897" id="897">897</a>
+<a href="#898" id="898">898</a>
+<a href="#899" id="899">899</a>
+<a href="#900" id="900">900</a>
+<a href="#901" id="901">901</a>
+<a href="#902" id="902">902</a>
+<a href="#903" id="903">903</a>
+<a href="#904" id="904">904</a>
+<a href="#905" id="905">905</a>
+<a href="#906" id="906">906</a>
+<a href="#907" id="907">907</a>
+<a href="#908" id="908">908</a>
+<a href="#909" id="909">909</a>
+<a href="#910" id="910">910</a>
+<a href="#911" id="911">911</a>
+<a href="#912" id="912">912</a>
+<a href="#913" id="913">913</a>
+<a href="#914" id="914">914</a>
+<a href="#915" id="915">915</a>
+<a href="#916" id="916">916</a>
+<a href="#917" id="917">917</a>
+<a href="#918" id="918">918</a>
+<a href="#919" id="919">919</a>
+<a href="#920" id="920">920</a>
+<a href="#921" id="921">921</a>
+<a href="#922" id="922">922</a>
 </pre><pre class="rust"><code><span class="doccomment">//! Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 //! Module to interact with the disk ledger
 
-</span><span class="kw">use </span>massa_db::{
-    write_batch, DBBatch, CF_ERROR, CRUD_ERROR, KEY_DESER_ERROR, KEY_LEN_SER_ERROR, KEY_SER_ERROR,
-    LEDGER_CF, LEDGER_HASH_ERROR, LEDGER_HASH_INITIAL_BYTES, LEDGER_HASH_KEY, METADATA_CF,
-    SLOT_KEY, WRONG_BATCH_TYPE_ERROR,
-};
-<span class="kw">use </span>massa_hash::Hash;
+</span><span class="kw">use </span>massa_hash::{Hash, HASH_SIZE_BYTES};
 <span class="kw">use </span>massa_ledger_exports::<span class="kw-2">*</span>;
 <span class="kw">use </span>massa_models::{
     address::Address,
@@ -847,17 +938,38 @@
 <span class="kw">use </span>massa_serialization::{DeserializeError, Deserializer, Serializer, U64VarIntSerializer};
 <span class="kw">use </span>nom::multi::many0;
 <span class="kw">use </span>nom::sequence::tuple;
-<span class="kw">use </span>rocksdb::{ColumnFamily, Direction, IteratorMode, Options, ReadOptions, DB};
+<span class="kw">use </span>rocksdb::{
+    ColumnFamily, ColumnFamilyDescriptor, Direction, IteratorMode, Options, ReadOptions,
+    WriteBatch, DB,
+};
 <span class="kw">use </span>std::ops::Bound;
+<span class="kw">use </span>std::path::PathBuf;
 <span class="kw">use </span>std::rc::Rc;
+<span class="kw">use </span>std::{collections::BTreeMap, fmt::Debug};
 <span class="kw">use </span>std::{
     collections::{BTreeSet, HashMap},
     convert::TryInto,
 };
-<span class="kw">use </span>std::{fmt::Debug, sync::Arc};
+<span class="kw">use </span>tracing::{debug, info};
 
 <span class="attr">#[cfg(feature = <span class="string">&quot;testing&quot;</span>)]
 </span><span class="kw">use </span>massa_models::amount::{Amount, AmountDeserializer};
+
+<span class="kw">const </span>LEDGER_CF: <span class="kw-2">&amp;</span>str = <span class="string">&quot;ledger&quot;</span>;
+<span class="kw">const </span>METADATA_CF: <span class="kw-2">&amp;</span>str = <span class="string">&quot;metadata&quot;</span>;
+<span class="kw">const </span>FINAL_STATE_CF: <span class="kw-2">&amp;</span>str = <span class="string">&quot;final_state&quot;</span>;
+<span class="kw">const </span>OPEN_ERROR: <span class="kw-2">&amp;</span>str = <span class="string">&quot;critical: rocksdb open operation failed&quot;</span>;
+<span class="kw">const </span>CRUD_ERROR: <span class="kw-2">&amp;</span>str = <span class="string">&quot;critical: rocksdb crud operation failed&quot;</span>;
+<span class="kw">const </span>CF_ERROR: <span class="kw-2">&amp;</span>str = <span class="string">&quot;critical: rocksdb column family operation failed&quot;</span>;
+<span class="kw">const </span>LEDGER_HASH_ERROR: <span class="kw-2">&amp;</span>str = <span class="string">&quot;critical: saved ledger hash is corrupted&quot;</span>;
+<span class="kw">const </span>KEY_DESER_ERROR: <span class="kw-2">&amp;</span>str = <span class="string">&quot;critical: key deserialization failed&quot;</span>;
+<span class="kw">const </span>KEY_SER_ERROR: <span class="kw-2">&amp;</span>str = <span class="string">&quot;critical: key serialization failed&quot;</span>;
+<span class="kw">const </span>KEY_LEN_SER_ERROR: <span class="kw-2">&amp;</span>str = <span class="string">&quot;critical: key length serialization failed&quot;</span>;
+<span class="kw">const </span>SLOT_KEY: <span class="kw-2">&amp;</span>[u8; <span class="number">1</span>] = <span class="string">b&quot;s&quot;</span>;
+<span class="kw">const </span>LEDGER_HASH_KEY: <span class="kw-2">&amp;</span>[u8; <span class="number">1</span>] = <span class="string">b&quot;h&quot;</span>;
+<span class="kw">const </span>LEDGER_FINAL_STATE_KEY: <span class="kw-2">&amp;</span>[u8; <span class="number">2</span>] = <span class="string">b&quot;fs&quot;</span>;
+<span class="kw">const </span>LEDGER_FINAL_STATE_HASH_KEY: <span class="kw-2">&amp;</span>[u8; <span class="number">3</span>] = <span class="string">b&quot;fsh&quot;</span>;
+<span class="kw">const </span>LEDGER_HASH_INITIAL_BYTES: <span class="kw-2">&amp;</span>[u8; <span class="number">32</span>] = <span class="kw-2">&amp;</span>[<span class="number">0</span>; HASH_SIZE_BYTES];
 
 <span class="doccomment">/// Ledger sub entry enum
 </span><span class="kw">pub enum </span>LedgerSubEntry {
@@ -882,8 +994,8 @@
 <span class="doccomment">/// Disk ledger DB module
 ///
 /// Contains a `RocksDB` DB instance
-</span><span class="kw">pub struct </span>LedgerDB {
-    db: Arc&lt;parking_lot::RwLock&lt;DB&gt;&gt;,
+</span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">struct </span>LedgerDB {
+    db: DB,
     thread_count: u8,
     key_serializer: KeySerializer,
     key_serializer_db: KeySerializer,
@@ -901,8 +1013,27 @@
 
 <span class="kw">impl </span>Debug <span class="kw">for </span>LedgerDB {
     <span class="kw">fn </span>fmt(<span class="kw-2">&amp;</span><span class="self">self</span>, f: <span class="kw-2">&amp;mut </span>std::fmt::Formatter&lt;<span class="lifetime">&#39;_</span>&gt;) -&gt; std::fmt::Result {
-        <span class="kw">let </span>db = <span class="self">self</span>.db.read();
-        <span class="macro">write!</span>(f, <span class="string">&quot;{:#?}&quot;</span>, db)
+        <span class="macro">write!</span>(f, <span class="string">&quot;{:#?}&quot;</span>, <span class="self">self</span>.db)
+    }
+}
+
+<span class="doccomment">/// Batch containing write operations to perform on disk and cache for the ledger hash computing
+</span><span class="kw">pub struct </span>LedgerBatch {
+    <span class="comment">// Rocksdb write batch
+    </span>write_batch: WriteBatch,
+    <span class="comment">// Ledger hash state in the current batch
+    </span>ledger_hash: Hash,
+    <span class="comment">// Added entry hashes in the current batch
+    </span>aeh_list: BTreeMap&lt;Vec&lt;u8&gt;, Hash&gt;,
+}
+
+<span class="kw">impl </span>LedgerBatch {
+    <span class="kw">pub fn </span>new(ledger_hash: Hash) -&gt; <span class="self">Self </span>{
+        <span class="self">Self </span>{
+            write_batch: WriteBatch::default(),
+            ledger_hash,
+            aeh_list: BTreeMap::new(),
+        }
     }
 }
 
@@ -912,11 +1043,42 @@
     /// # Arguments
     /// * path: path to the desired disk ledger db directory
     </span><span class="kw">pub fn </span>new(
-        db: Arc&lt;parking_lot::RwLock&lt;DB&gt;&gt;,
+        path: PathBuf,
         thread_count: u8,
         max_datastore_key_length: u8,
         ledger_part_size_message_bytes: u64,
+        with_final_state: bool,
     ) -&gt; <span class="self">Self </span>{
+        <span class="kw">let </span><span class="kw-2">mut </span>db_opts = Options::default();
+        db_opts.create_if_missing(<span class="bool-val">true</span>);
+        db_opts.create_missing_column_families(<span class="bool-val">true</span>);
+
+        <span class="macro">info!</span>(<span class="string">&quot;Init LedgerDB, with_final_state = {}&quot;</span>, with_final_state);
+        <span class="macro">debug!</span>(<span class="string">&quot;Init LedgerDB, with_final_state = {}&quot;</span>, with_final_state);
+
+        <span class="kw">let </span>db = <span class="kw">if </span>with_final_state {
+            DB::open_cf_descriptors(
+                <span class="kw-2">&amp;</span>db_opts,
+                path,
+                <span class="macro">vec!</span>[
+                    ColumnFamilyDescriptor::new(LEDGER_CF, Options::default()),
+                    ColumnFamilyDescriptor::new(METADATA_CF, Options::default()),
+                    ColumnFamilyDescriptor::new(FINAL_STATE_CF, Options::default()),
+                ],
+            )
+            .expect(OPEN_ERROR)
+        } <span class="kw">else </span>{
+            DB::open_cf_descriptors(
+                <span class="kw-2">&amp;</span>db_opts,
+                path,
+                <span class="macro">vec!</span>[
+                    ColumnFamilyDescriptor::new(LEDGER_CF, Options::default()),
+                    ColumnFamilyDescriptor::new(METADATA_CF, Options::default()),
+                ],
+            )
+            .expect(OPEN_ERROR)
+        };
+
         LedgerDB {
             db,
             thread_count,
@@ -943,9 +1105,9 @@
 
     <span class="kw">pub fn </span>set_initial_slot(<span class="kw-2">&amp;mut </span><span class="self">self</span>, slot: Slot) {
         <span class="kw">let </span>ledger_hash = <span class="self">self</span>.get_ledger_hash();
-        <span class="kw">let </span><span class="kw-2">mut </span>batch = DBBatch::new(<span class="prelude-val">Some</span>(ledger_hash), <span class="prelude-val">None</span>, <span class="prelude-val">None</span>, <span class="prelude-val">None</span>, <span class="prelude-val">None</span>, <span class="prelude-val">None</span>);
+        <span class="kw">let </span><span class="kw-2">mut </span>batch = LedgerBatch::new(ledger_hash);
         <span class="self">self</span>.set_slot(slot, <span class="kw-2">&amp;mut </span>batch);
-        massa_db::write_batch(<span class="kw-2">&amp;</span><span class="self">self</span>.db.read(), batch);
+        <span class="self">self</span>.write_batch(batch);
     }
 
     <span class="doccomment">/// Loads the initial disk ledger
@@ -955,7 +1117,7 @@
         <span class="comment">// initial ledger_hash value to avoid matching an option in every XOR operation
         // because of a one time case being an empty ledger
         </span><span class="kw">let </span>ledger_hash = Hash::from_bytes(LEDGER_HASH_INITIAL_BYTES);
-        <span class="kw">let </span><span class="kw-2">mut </span>batch = DBBatch::new(<span class="prelude-val">Some</span>(ledger_hash), <span class="prelude-val">None</span>, <span class="prelude-val">None</span>, <span class="prelude-val">None</span>, <span class="prelude-val">None</span>, <span class="prelude-val">None</span>);
+        <span class="kw">let </span><span class="kw-2">mut </span>batch = LedgerBatch::new(ledger_hash);
         <span class="kw">for </span>(address, entry) <span class="kw">in </span>initial_ledger {
             <span class="self">self</span>.put_entry(<span class="kw-2">&amp;</span>address, entry, <span class="kw-2">&amp;mut </span>batch);
         }
@@ -963,7 +1125,7 @@
             Slot::new(<span class="number">0</span>, <span class="self">self</span>.thread_count.saturating_sub(<span class="number">1</span>)),
             <span class="kw-2">&amp;mut </span>batch,
         );
-        write_batch(<span class="kw-2">&amp;</span><span class="self">self</span>.db.read(), batch);
+        <span class="self">self</span>.write_batch(batch);
     }
 
     <span class="doccomment">/// Allows applying `LedgerChanges` to the disk ledger
@@ -972,43 +1134,55 @@
     /// * changes: ledger changes to be applied
     /// * slot: new slot associated to the final ledger
     /// * final_state_data: the serialized final state data to include, in case we use the feature `create_snapshot`
-    </span><span class="kw">pub fn </span>apply_changes_to_batch(
+    </span><span class="kw">pub fn </span>apply_changes(
         <span class="kw-2">&amp;mut </span><span class="self">self</span>,
         changes: LedgerChanges,
         slot: Slot,
-        ledger_batch: <span class="kw-2">&amp;mut </span>DBBatch,
+        final_state_data: <span class="prelude-ty">Option</span>&lt;Vec&lt;u8&gt;&gt;,
     ) {
+        <span class="comment">// create the batch
+        </span><span class="kw">let </span><span class="kw-2">mut </span>batch = LedgerBatch::new(<span class="self">self</span>.get_ledger_hash());
         <span class="comment">// for all incoming changes
         </span><span class="kw">for </span>(addr, change) <span class="kw">in </span>changes.<span class="number">0 </span>{
             <span class="kw">match </span>change {
                 <span class="comment">// the incoming change sets a ledger entry to a new one
                 </span>SetUpdateOrDelete::Set(new_entry) =&gt; {
                     <span class="comment">// inserts/overwrites the entry with the incoming one
-                    </span><span class="self">self</span>.put_entry(<span class="kw-2">&amp;</span>addr, new_entry, ledger_batch);
+                    </span><span class="self">self</span>.put_entry(<span class="kw-2">&amp;</span>addr, new_entry, <span class="kw-2">&amp;mut </span>batch);
                 }
                 <span class="comment">// the incoming change updates an existing ledger entry
                 </span>SetUpdateOrDelete::Update(entry_update) =&gt; {
                     <span class="comment">// applies the updates to the entry
                     // if the entry does not exist, inserts a default one and applies the updates to it
-                    </span><span class="self">self</span>.update_entry(<span class="kw-2">&amp;</span>addr, entry_update, ledger_batch);
+                    </span><span class="self">self</span>.update_entry(<span class="kw-2">&amp;</span>addr, entry_update, <span class="kw-2">&amp;mut </span>batch);
                 }
                 <span class="comment">// the incoming change deletes a ledger entry
                 </span>SetUpdateOrDelete::Delete =&gt; {
                     <span class="comment">// delete the entry, if it exists
-                    </span><span class="self">self</span>.delete_entry(<span class="kw-2">&amp;</span>addr, ledger_batch);
+                    </span><span class="self">self</span>.delete_entry(<span class="kw-2">&amp;</span>addr, <span class="kw-2">&amp;mut </span>batch);
                 }
             }
         }
         <span class="comment">// set the associated slot in metadata
-        </span><span class="self">self</span>.set_slot(slot, ledger_batch);
+        </span><span class="self">self</span>.set_slot(slot, <span class="kw-2">&amp;mut </span>batch);
+
+        <span class="kw">if let </span><span class="prelude-val">Some</span>(final_state) = final_state_data {
+            <span class="kw">let </span>fs_handle = <span class="self">self</span>.db.cf_handle(FINAL_STATE_CF).expect(CF_ERROR);
+            batch
+                .write_batch
+                .put_cf(fs_handle, LEDGER_FINAL_STATE_KEY, final_state);
+        }
+
+        <span class="comment">// write the batch
+        </span><span class="self">self</span>.write_batch(batch);
     }
 
     <span class="doccomment">/// Get the current disk ledger hash
     </span><span class="kw">pub fn </span>get_ledger_hash(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; Hash {
-        <span class="kw">let </span>db = <span class="self">self</span>.db.read();
-        <span class="kw">let </span>handle = db.cf_handle(METADATA_CF).expect(CF_ERROR);
-        <span class="kw">if let </span><span class="prelude-val">Some</span>(ledger_hash_bytes) = db
-            .get_cf(handle, LEDGER_HASH_KEY)
+        <span class="kw">let </span>handle = <span class="self">self</span>.db.cf_handle(METADATA_CF).expect(CF_ERROR);
+        <span class="kw">if let </span><span class="prelude-val">Some</span>(ledger_hash_bytes) = <span class="self">self
+            </span>.db
+            .get_pinned_cf(handle, LEDGER_HASH_KEY)
             .expect(CRUD_ERROR)
             .as_deref()
         {
@@ -1030,14 +1204,13 @@
     /// # Returns
     /// An Option of the sub-entry value as bytes
     </span><span class="kw">pub fn </span>get_sub_entry(<span class="kw-2">&amp;</span><span class="self">self</span>, addr: <span class="kw-2">&amp;</span>Address, ty: LedgerSubEntry) -&gt; <span class="prelude-ty">Option</span>&lt;Vec&lt;u8&gt;&gt; {
-        <span class="kw">let </span>db = <span class="self">self</span>.db.read();
-        <span class="kw">let </span>handle = db.cf_handle(LEDGER_CF).expect(CF_ERROR);
+        <span class="kw">let </span>handle = <span class="self">self</span>.db.cf_handle(LEDGER_CF).expect(CF_ERROR);
         <span class="kw">let </span>key = ty.derive_key(addr);
         <span class="kw">let </span><span class="kw-2">mut </span>serialized_key = Vec::new();
         <span class="self">self</span>.key_serializer_db
             .serialize(<span class="kw-2">&amp;</span>key, <span class="kw-2">&amp;mut </span>serialized_key)
             .expect(KEY_SER_ERROR);
-        db.get_cf(handle, serialized_key).expect(CRUD_ERROR)
+        <span class="self">self</span>.db.get_cf(handle, serialized_key).expect(CRUD_ERROR)
     }
 
     <span class="doccomment">/// Get every key of the datastore for a given address.
@@ -1045,15 +1218,15 @@
     /// # Returns
     /// A `BTreeSet` of the datastore keys
     </span><span class="kw">pub fn </span>get_datastore_keys(<span class="kw-2">&amp;</span><span class="self">self</span>, addr: <span class="kw-2">&amp;</span>Address) -&gt; <span class="prelude-ty">Option</span>&lt;BTreeSet&lt;Vec&lt;u8&gt;&gt;&gt; {
-        <span class="kw">let </span>db = <span class="self">self</span>.db.read();
-        <span class="kw">let </span>handle = db.cf_handle(LEDGER_CF).expect(CF_ERROR);
+        <span class="kw">let </span>handle = <span class="self">self</span>.db.cf_handle(LEDGER_CF).expect(CF_ERROR);
 
         <span class="kw">let </span><span class="kw-2">mut </span>opt = ReadOptions::default();
         <span class="kw">let </span>key_prefix = datastore_prefix_from_address(addr);
 
         opt.set_iterate_range(key_prefix.clone()..end_prefix(<span class="kw-2">&amp;</span>key_prefix).unwrap());
 
-        <span class="kw">let </span><span class="kw-2">mut </span>iter = db
+        <span class="kw">let </span><span class="kw-2">mut </span>iter = <span class="self">self
+            </span>.db
             .iterator_cf_opt(handle, opt, IteratorMode::Start)
             .flatten()
             .map(|(key, <span class="kw">_</span>)| {
@@ -1091,8 +1264,7 @@
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         cursor: StreamingStep&lt;Key&gt;,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;(Vec&lt;u8&gt;, StreamingStep&lt;Key&gt;), ModelsError&gt; {
-        <span class="kw">let </span>db = <span class="self">self</span>.db.read();
-        <span class="kw">let </span>handle = db.cf_handle(LEDGER_CF).expect(CF_ERROR);
+        <span class="kw">let </span>handle = <span class="self">self</span>.db.cf_handle(LEDGER_CF).expect(CF_ERROR);
         <span class="kw">let </span>opt = ReadOptions::default();
         <span class="kw">let </span>ser = VecU8Serializer::new();
         <span class="kw">let </span><span class="kw-2">mut </span>ledger_part = Vec::new();
@@ -1100,14 +1272,14 @@
         <span class="comment">// Creates an iterator from the next element after the last if defined, otherwise initialize it at the first key of the ledger.
         </span><span class="kw">let </span>(db_iterator, <span class="kw-2">mut </span>new_cursor) = <span class="kw">match </span>cursor {
             StreamingStep::Started =&gt; (
-                db.iterator_cf_opt(handle, opt, IteratorMode::Start),
+                <span class="self">self</span>.db.iterator_cf_opt(handle, opt, IteratorMode::Start),
                 StreamingStep::&lt;Key&gt;::Started,
             ),
             StreamingStep::Ongoing(last_key) =&gt; {
                 <span class="kw">let </span><span class="kw-2">mut </span>serialized_key = Vec::new();
                 <span class="self">self</span>.key_serializer_db
                     .serialize(<span class="kw-2">&amp;</span>last_key, <span class="kw-2">&amp;mut </span>serialized_key)<span class="question-mark">?</span>;
-                <span class="kw">let </span><span class="kw-2">mut </span>iter = db.iterator_cf_opt(
+                <span class="kw">let </span><span class="kw-2">mut </span>iter = <span class="self">self</span>.db.iterator_cf_opt(
                     handle,
                     opt,
                     IteratorMode::From(<span class="kw-2">&amp;</span>serialized_key, Direction::Forward),
@@ -1144,12 +1316,12 @@
     /// # Returns
     /// The last key of the inserted entry (this is an optimization to easily keep a reference to the last key)
     </span><span class="kw">pub fn </span>set_ledger_part&lt;<span class="lifetime">&#39;a</span>&gt;(<span class="kw-2">&amp;</span><span class="self">self</span>, data: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>[u8]) -&gt; <span class="prelude-ty">Result</span>&lt;StreamingStep&lt;Key&gt;, ModelsError&gt; {
-        <span class="kw">let </span>db = <span class="self">self</span>.db.read();
-        <span class="kw">let </span>handle = db.cf_handle(LEDGER_CF).expect(CF_ERROR);
+        <span class="kw">let </span>handle = <span class="self">self</span>.db.cf_handle(LEDGER_CF).expect(CF_ERROR);
         <span class="kw">let </span>vec_u8_deserializer =
             VecU8Deserializer::new(Bound::Included(<span class="number">0</span>), Bound::Excluded(u64::MAX));
         <span class="kw">let </span><span class="kw-2">mut </span>last_key: Rc&lt;<span class="prelude-ty">Option</span>&lt;Key&gt;&gt; = Rc::new(<span class="prelude-val">None</span>);
-        <span class="kw">let </span><span class="kw-2">mut </span>batch = DBBatch::new(<span class="prelude-val">Some</span>(<span class="self">self</span>.get_ledger_hash()), <span class="prelude-val">None</span>, <span class="prelude-val">None</span>, <span class="prelude-val">None</span>, <span class="prelude-val">None</span>, <span class="prelude-val">None</span>);
+        <span class="kw">let </span><span class="kw-2">mut </span>batch = LedgerBatch::new(<span class="self">self</span>.get_ledger_hash());
+
         <span class="comment">// Since this data is coming from the network, deser to address and ser back to bytes for a security check.
         </span><span class="kw">let </span>(rest, <span class="kw">_</span>) = many0(|input: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>[u8]| {
             <span class="kw">let </span>(rest, (key, value)) = tuple((
@@ -1167,7 +1339,7 @@
         <span class="kw">match </span>last_key.as_ref() {
             <span class="prelude-val">Some</span>(last_key) =&gt; {
                 <span class="kw">if </span>rest.is_empty() {
-                    write_batch(<span class="kw-2">&amp;</span><span class="self">self</span>.db.read(), batch);
+                    <span class="self">self</span>.write_batch(batch);
                     <span class="prelude-val">Ok</span>(StreamingStep::Ongoing(last_key.clone()))
                 } <span class="kw">else </span>{
                     <span class="prelude-val">Err</span>(ModelsError::SerializeError(
@@ -1180,32 +1352,66 @@
     }
 
     <span class="kw">pub fn </span>reset(<span class="kw-2">&amp;mut </span><span class="self">self</span>) {
-        <span class="kw">let </span><span class="kw-2">mut </span>db = <span class="self">self</span>.db.write();
-        (<span class="kw-2">*</span>db).drop_cf(LEDGER_CF).expect(<span class="string">&quot;Error dropping ledger cf&quot;</span>);
-        (<span class="kw-2">*</span>db)
+        <span class="self">self</span>.db
+            .drop_cf(LEDGER_CF)
+            .expect(<span class="string">&quot;Error dropping ledger cf&quot;</span>);
+        <span class="self">self</span>.db
             .drop_cf(METADATA_CF)
             .expect(<span class="string">&quot;Error dropping metadata cf&quot;</span>);
         <span class="kw">let </span><span class="kw-2">mut </span>db_opts = Options::default();
         db_opts.set_error_if_exists(<span class="bool-val">true</span>);
-        (<span class="kw-2">*</span>db)
+        <span class="self">self</span>.db
             .create_cf(LEDGER_CF, <span class="kw-2">&amp;</span>db_opts)
             .expect(<span class="string">&quot;Error creating ledger cf&quot;</span>);
-        (<span class="kw-2">*</span>db)
+        <span class="self">self</span>.db
             .create_cf(METADATA_CF, <span class="kw-2">&amp;</span>db_opts)
             .expect(<span class="string">&quot;Error creating metadata cf&quot;</span>);
+    }
+
+    <span class="kw">pub fn </span>set_final_state_hash(<span class="kw-2">&amp;mut </span><span class="self">self</span>, data: <span class="kw-2">&amp;</span>[u8]) {
+        <span class="kw">let </span>handle = <span class="self">self</span>.db.cf_handle(FINAL_STATE_CF).expect(CF_ERROR);
+        <span class="kw">let </span><span class="kw-2">mut </span>batch = WriteBatch::default();
+
+        batch.put_cf(handle, LEDGER_FINAL_STATE_HASH_KEY, data);
+        <span class="self">self</span>.db.write(batch).expect(CRUD_ERROR);
+    }
+
+    <span class="kw">pub fn </span>get_final_state(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span>&lt;Vec&lt;u8&gt;, ModelsError&gt; {
+        <span class="kw">let </span>handle = <span class="self">self</span>.db.cf_handle(FINAL_STATE_CF).expect(CF_ERROR);
+        <span class="kw">let </span>opt = ReadOptions::default();
+
+        <span class="kw">let </span><span class="prelude-val">Ok</span>(<span class="prelude-val">Some</span>(final_state_data)) = <span class="self">self</span>.db.get_cf_opt(handle, LEDGER_FINAL_STATE_KEY, <span class="kw-2">&amp;</span>opt) <span class="kw">else </span>{
+            <span class="kw">return </span><span class="prelude-val">Err</span>(ModelsError::BufferError(String::from(<span class="string">&quot;Could not recover final_state_data&quot;</span>)));
+        };
+        <span class="kw">let </span><span class="prelude-val">Ok</span>(<span class="prelude-val">Some</span>(final_state_hash)) = <span class="self">self</span>.db.get_pinned_cf_opt(handle, LEDGER_FINAL_STATE_HASH_KEY, <span class="kw-2">&amp;</span>opt) <span class="kw">else </span>{
+            <span class="kw">return </span><span class="prelude-val">Err</span>(ModelsError::BufferError(String::from(<span class="string">&quot;Could not recover final_state_hash&quot;</span>)));
+        };
+
+        <span class="kw">let </span><span class="kw-2">mut </span>final_state = final_state_data;
+        final_state.extend_from_slice(<span class="kw-2">&amp;</span>final_state_hash);
+
+        <span class="prelude-val">Ok</span>(final_state)
     }
 }
 
 <span class="comment">// Private helpers
 </span><span class="kw">impl </span>LedgerDB {
+    <span class="doccomment">/// Apply the given operation batch to the disk ledger
+    </span><span class="kw">fn </span>write_batch(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="kw-2">mut </span>batch: LedgerBatch) {
+        <span class="kw">let </span>handle = <span class="self">self</span>.db.cf_handle(METADATA_CF).expect(CF_ERROR);
+        batch
+            .write_batch
+            .put_cf(handle, LEDGER_HASH_KEY, batch.ledger_hash.to_bytes());
+        <span class="self">self</span>.db.write(batch.write_batch).expect(CRUD_ERROR);
+    }
+
     <span class="doccomment">/// Set the disk ledger slot metadata
     ///
     /// # Arguments
     /// * slot: associated slot of the current ledger
     /// * batch: the given operation batch to update
-    </span><span class="kw">fn </span>set_slot(<span class="kw-2">&amp;</span><span class="self">self</span>, slot: Slot, batch: <span class="kw-2">&amp;mut </span>DBBatch) {
-        <span class="kw">let </span>db = <span class="self">self</span>.db.read();
-        <span class="kw">let </span>handle = db.cf_handle(METADATA_CF).expect(CF_ERROR);
+    </span><span class="kw">fn </span>set_slot(<span class="kw-2">&amp;</span><span class="self">self</span>, slot: Slot, batch: <span class="kw-2">&amp;mut </span>LedgerBatch) {
+        <span class="kw">let </span>handle = <span class="self">self</span>.db.cf_handle(METADATA_CF).expect(CF_ERROR);
         <span class="kw">let </span><span class="kw-2">mut </span>slot_bytes = Vec::new();
         <span class="comment">// Slot serialization never fails
         </span><span class="self">self</span>.slot_serializer
@@ -1215,20 +1421,17 @@
             .write_batch
             .put_cf(handle, SLOT_KEY, slot_bytes.clone());
         <span class="comment">// XOR previous slot and new one
-        </span><span class="kw">if let </span><span class="prelude-val">Some</span>(prev_bytes) = db.get_pinned_cf(handle, SLOT_KEY).expect(CRUD_ERROR) {
-            <span class="kw-2">*</span>batch.ledger_hash.as_mut().expect(WRONG_BATCH_TYPE_ERROR) ^=
-                Hash::compute_from(<span class="kw-2">&amp;</span>prev_bytes);
+        </span><span class="kw">if let </span><span class="prelude-val">Some</span>(prev_bytes) = <span class="self">self</span>.db.get_pinned_cf(handle, SLOT_KEY).expect(CRUD_ERROR) {
+            batch.ledger_hash ^= Hash::compute_from(<span class="kw-2">&amp;</span>prev_bytes);
         }
-        <span class="kw-2">*</span>batch.ledger_hash.as_mut().expect(WRONG_BATCH_TYPE_ERROR) ^=
-            Hash::compute_from(<span class="kw-2">&amp;</span>slot_bytes);
+        batch.ledger_hash ^= Hash::compute_from(<span class="kw-2">&amp;</span>slot_bytes);
     }
 
     <span class="kw">pub fn </span>get_slot(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span>&lt;Slot, ModelsError&gt; {
-        <span class="kw">let </span>db = <span class="self">self</span>.db.read();
-        <span class="kw">let </span>handle = db.cf_handle(METADATA_CF).expect(CF_ERROR);
+        <span class="kw">let </span>handle = <span class="self">self</span>.db.cf_handle(METADATA_CF).expect(CF_ERROR);
 
-        <span class="kw">let </span><span class="prelude-val">Ok</span>(<span class="prelude-val">Some</span>(slot_bytes)) = db.get_pinned_cf(handle, SLOT_KEY) <span class="kw">else </span>{
-            <span class="kw">return </span><span class="prelude-val">Err</span>(ModelsError::BufferError(String::from(<span class="string">&quot;Could not recover ledger_slot&quot;</span>)));
+        <span class="kw">let </span><span class="prelude-val">Ok</span>(<span class="prelude-val">Some</span>(slot_bytes)) = <span class="self">self</span>.db.get_pinned_cf(handle, SLOT_KEY) <span class="kw">else </span>{
+            <span class="kw">return </span><span class="prelude-val">Err</span>(ModelsError::BufferError(String::from(<span class="string">&quot;Could not recover final_state_hash&quot;</span>)));
         };
 
         <span class="kw">let </span>(_rest, slot) = <span class="self">self</span>.slot_deserializer.deserialize(<span class="kw-2">&amp;</span>slot_bytes)<span class="question-mark">?</span>;
@@ -1237,7 +1440,13 @@
     }
 
     <span class="doccomment">/// Internal function to put a key &amp; value and perform the ledger hash XORs
-    </span><span class="kw">fn </span>put_entry_value(<span class="kw-2">&amp;</span><span class="self">self</span>, handle: <span class="kw-2">&amp;</span>ColumnFamily, batch: <span class="kw-2">&amp;mut </span>DBBatch, key: <span class="kw-2">&amp;</span>Key, value: <span class="kw-2">&amp;</span>[u8]) {
+    </span><span class="kw">fn </span>put_entry_value(
+        <span class="kw-2">&amp;</span><span class="self">self</span>,
+        handle: <span class="kw-2">&amp;</span>ColumnFamily,
+        batch: <span class="kw-2">&amp;mut </span>LedgerBatch,
+        key: <span class="kw-2">&amp;</span>Key,
+        value: <span class="kw-2">&amp;</span>[u8],
+    ) {
         <span class="kw">let </span><span class="kw-2">mut </span>serialized_key = Vec::new();
         <span class="self">self</span>.key_serializer_db
             .serialize(key, <span class="kw-2">&amp;mut </span>serialized_key)
@@ -1247,7 +1456,7 @@
             .serialize(<span class="kw-2">&amp;</span>(serialized_key.len() <span class="kw">as </span>u64), <span class="kw-2">&amp;mut </span>len_bytes)
             .expect(KEY_LEN_SER_ERROR);
         <span class="kw">let </span>hash = Hash::compute_from(<span class="kw-2">&amp;</span>[<span class="kw-2">&amp;</span>len_bytes, <span class="kw-2">&amp;</span>serialized_key, value].concat());
-        <span class="kw-2">*</span>batch.ledger_hash.as_mut().expect(WRONG_BATCH_TYPE_ERROR) ^= hash;
+        batch.ledger_hash ^= hash;
         batch.aeh_list.insert(serialized_key.clone(), hash);
         batch.write_batch.put_cf(handle, serialized_key, value);
     }
@@ -1258,9 +1467,8 @@
     /// * `addr`: associated address
     /// * `ledger_entry`: complete entry to be added
     /// * `batch`: the given operation batch to update
-    </span><span class="kw">fn </span>put_entry(<span class="kw-2">&amp;mut </span><span class="self">self</span>, addr: <span class="kw-2">&amp;</span>Address, ledger_entry: LedgerEntry, batch: <span class="kw-2">&amp;mut </span>DBBatch) {
-        <span class="kw">let </span>db = <span class="self">self</span>.db.read();
-        <span class="kw">let </span>handle = db.cf_handle(LEDGER_CF).expect(CF_ERROR);
+    </span><span class="kw">fn </span>put_entry(<span class="kw-2">&amp;mut </span><span class="self">self</span>, addr: <span class="kw-2">&amp;</span>Address, ledger_entry: LedgerEntry, batch: <span class="kw-2">&amp;mut </span>LedgerBatch) {
+        <span class="kw">let </span>handle = <span class="self">self</span>.db.cf_handle(LEDGER_CF).expect(CF_ERROR);
         <span class="comment">// Amount serialization never fails
         </span><span class="kw">let </span><span class="kw-2">mut </span>bytes_balance = Vec::new();
         <span class="self">self</span>.amount_serializer
@@ -1303,11 +1511,10 @@
     </span><span class="kw">fn </span>update_key_value(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         handle: <span class="kw-2">&amp;</span>ColumnFamily,
-        batch: <span class="kw-2">&amp;mut </span>DBBatch,
+        batch: <span class="kw-2">&amp;mut </span>LedgerBatch,
         key: <span class="kw-2">&amp;</span>Key,
         value: <span class="kw-2">&amp;</span>[u8],
     ) {
-        <span class="kw">let </span>db = <span class="self">self</span>.db.read();
         <span class="kw">let </span><span class="kw-2">mut </span>serialized_key = Vec::new();
         <span class="self">self</span>.key_serializer_db
             .serialize(key, <span class="kw-2">&amp;mut </span>serialized_key)
@@ -1318,15 +1525,17 @@
             .serialize(<span class="kw-2">&amp;</span>(serialized_key.len() <span class="kw">as </span>u64), <span class="kw-2">&amp;mut </span>len_bytes)
             .expect(KEY_LEN_SER_ERROR);
         <span class="kw">if let </span><span class="prelude-val">Some</span>(added_hash) = batch.aeh_list.get(<span class="kw-2">&amp;</span>serialized_key) {
-            <span class="kw-2">*</span>batch.ledger_hash.as_mut().expect(WRONG_BATCH_TYPE_ERROR) ^= <span class="kw-2">*</span>added_hash;
-        } <span class="kw">else if let </span><span class="prelude-val">Some</span>(prev_bytes) =
-            db.get_pinned_cf(handle, <span class="kw-2">&amp;</span>serialized_key).expect(CRUD_ERROR)
+            batch.ledger_hash ^= <span class="kw-2">*</span>added_hash;
+        } <span class="kw">else if let </span><span class="prelude-val">Some</span>(prev_bytes) = <span class="self">self
+            </span>.db
+            .get_pinned_cf(handle, <span class="kw-2">&amp;</span>serialized_key)
+            .expect(CRUD_ERROR)
         {
-            <span class="kw-2">*</span>batch.ledger_hash.as_mut().expect(WRONG_BATCH_TYPE_ERROR) ^=
+            batch.ledger_hash ^=
                 Hash::compute_from(<span class="kw-2">&amp;</span>[<span class="kw-2">&amp;</span>len_bytes, <span class="kw-2">&amp;</span>serialized_key, <span class="kw-2">&amp;</span>prev_bytes[..]].concat());
         }
         <span class="kw">let </span>hash = Hash::compute_from(<span class="kw-2">&amp;</span>[<span class="kw-2">&amp;</span>len_bytes, <span class="kw-2">&amp;</span>serialized_key, value].concat());
-        <span class="kw-2">*</span>batch.ledger_hash.as_mut().expect(WRONG_BATCH_TYPE_ERROR) ^= hash;
+        batch.ledger_hash ^= hash;
         batch.aeh_list.insert(serialized_key.clone(), hash);
         batch.write_batch.put_cf(handle, serialized_key, value);
     }
@@ -1340,10 +1549,9 @@
         <span class="kw-2">&amp;mut </span><span class="self">self</span>,
         addr: <span class="kw-2">&amp;</span>Address,
         entry_update: LedgerEntryUpdate,
-        batch: <span class="kw-2">&amp;mut </span>DBBatch,
+        batch: <span class="kw-2">&amp;mut </span>LedgerBatch,
     ) {
-        <span class="kw">let </span>db = <span class="self">self</span>.db.read();
-        <span class="kw">let </span>handle = db.cf_handle(LEDGER_CF).expect(CF_ERROR);
+        <span class="kw">let </span>handle = <span class="self">self</span>.db.cf_handle(LEDGER_CF).expect(CF_ERROR);
 
         <span class="comment">// balance
         </span><span class="kw">if let </span>SetOrKeep::Set(balance) = entry_update.balance {
@@ -1381,22 +1589,23 @@
     }
 
     <span class="doccomment">/// Internal function to delete a key and perform the ledger hash XOR
-    </span><span class="kw">fn </span>delete_key(<span class="kw-2">&amp;</span><span class="self">self</span>, handle: <span class="kw-2">&amp;</span>ColumnFamily, batch: <span class="kw-2">&amp;mut </span>DBBatch, key: <span class="kw-2">&amp;</span>Key) {
-        <span class="kw">let </span>db = <span class="self">self</span>.db.read();
+    </span><span class="kw">fn </span>delete_key(<span class="kw-2">&amp;</span><span class="self">self</span>, handle: <span class="kw-2">&amp;</span>ColumnFamily, batch: <span class="kw-2">&amp;mut </span>LedgerBatch, key: <span class="kw-2">&amp;</span>Key) {
         <span class="kw">let </span><span class="kw-2">mut </span>serialized_key = Vec::new();
         <span class="self">self</span>.key_serializer_db
             .serialize(key, <span class="kw-2">&amp;mut </span>serialized_key)
             .expect(KEY_SER_ERROR);
         <span class="kw">if let </span><span class="prelude-val">Some</span>(added_hash) = batch.aeh_list.get(<span class="kw-2">&amp;</span>serialized_key) {
-            <span class="kw-2">*</span>batch.ledger_hash.as_mut().expect(WRONG_BATCH_TYPE_ERROR) ^= <span class="kw-2">*</span>added_hash;
-        } <span class="kw">else if let </span><span class="prelude-val">Some</span>(prev_bytes) =
-            db.get_pinned_cf(handle, <span class="kw-2">&amp;</span>serialized_key).expect(CRUD_ERROR)
+            batch.ledger_hash ^= <span class="kw-2">*</span>added_hash;
+        } <span class="kw">else if let </span><span class="prelude-val">Some</span>(prev_bytes) = <span class="self">self
+            </span>.db
+            .get_pinned_cf(handle, <span class="kw-2">&amp;</span>serialized_key)
+            .expect(CRUD_ERROR)
         {
             <span class="kw">let </span><span class="kw-2">mut </span>len_bytes = Vec::new();
             <span class="self">self</span>.len_serializer
                 .serialize(<span class="kw-2">&amp;</span>(serialized_key.len() <span class="kw">as </span>u64), <span class="kw-2">&amp;mut </span>len_bytes)
                 .expect(KEY_LEN_SER_ERROR);
-            <span class="kw-2">*</span>batch.ledger_hash.as_mut().expect(WRONG_BATCH_TYPE_ERROR) ^=
+            batch.ledger_hash ^=
                 Hash::compute_from(<span class="kw-2">&amp;</span>[<span class="kw-2">&amp;</span>len_bytes, <span class="kw-2">&amp;</span>serialized_key, <span class="kw-2">&amp;</span>prev_bytes[..]].concat());
         }
         batch.write_batch.delete_cf(handle, serialized_key);
@@ -1406,9 +1615,8 @@
     ///
     /// # Arguments
     /// * batch: the given operation batch to update
-    </span><span class="kw">fn </span>delete_entry(<span class="kw-2">&amp;</span><span class="self">self</span>, addr: <span class="kw-2">&amp;</span>Address, batch: <span class="kw-2">&amp;mut </span>DBBatch) {
-        <span class="kw">let </span>db = <span class="self">self</span>.db.read();
-        <span class="kw">let </span>handle = db.cf_handle(LEDGER_CF).expect(CF_ERROR);
+    </span><span class="kw">fn </span>delete_entry(<span class="kw-2">&amp;</span><span class="self">self</span>, addr: <span class="kw-2">&amp;</span>Address, batch: <span class="kw-2">&amp;mut </span>LedgerBatch) {
+        <span class="kw">let </span>handle = <span class="self">self</span>.db.cf_handle(LEDGER_CF).expect(CF_ERROR);
 
         <span class="comment">// balance
         </span><span class="self">self</span>.delete_key(handle, batch, <span class="kw-2">&amp;</span>Key::new(addr, KeyType::BALANCE));
@@ -1420,7 +1628,8 @@
         </span><span class="kw">let </span><span class="kw-2">mut </span>opt = ReadOptions::default();
         <span class="kw">let </span>key_prefix = datastore_prefix_from_address(addr);
         opt.set_iterate_upper_bound(end_prefix(<span class="kw-2">&amp;</span>key_prefix).unwrap());
-        <span class="kw">for </span>(key, <span class="kw">_</span>) <span class="kw">in </span>db
+        <span class="kw">for </span>(key, <span class="kw">_</span>) <span class="kw">in </span><span class="self">self
+            </span>.db
             .iterator_cf_opt(
                 handle,
                 opt,
@@ -1450,11 +1659,11 @@
         <span class="kw-2">&amp;</span><span class="self">self</span>,
     ) -&gt; std::collections::BTreeMap&lt;Address, massa_models::amount::Amount&gt; {
         <span class="kw">use </span>massa_models::address::AddressDeserializer;
-        <span class="kw">let </span>db = <span class="self">self</span>.db.write();
 
-        <span class="kw">let </span>handle = db.cf_handle(LEDGER_CF).expect(CF_ERROR);
+        <span class="kw">let </span>handle = <span class="self">self</span>.db.cf_handle(LEDGER_CF).expect(CF_ERROR);
 
-        <span class="kw">let </span>ledger = db
+        <span class="kw">let </span>ledger = <span class="self">self
+            </span>.db
             .iterator_cf(handle, IteratorMode::Start)
             .collect::&lt;Vec&lt;<span class="kw">_</span>&gt;&gt;();
 
@@ -1486,31 +1695,30 @@
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         addr: <span class="kw-2">&amp;</span>Address,
     ) -&gt; std::collections::BTreeMap&lt;Vec&lt;u8&gt;, Vec&lt;u8&gt;&gt; {
-        <span class="kw">let </span>db = <span class="self">self</span>.db.read();
-
         <span class="kw">let </span>key_prefix = datastore_prefix_from_address(addr);
-        <span class="kw">let </span>handle = db.cf_handle(LEDGER_CF).expect(CF_ERROR);
+        <span class="kw">let </span>handle = <span class="self">self</span>.db.cf_handle(LEDGER_CF).expect(CF_ERROR);
 
         <span class="kw">let </span><span class="kw-2">mut </span>opt = ReadOptions::default();
         opt.set_iterate_upper_bound(end_prefix(<span class="kw-2">&amp;</span>key_prefix).unwrap());
 
-        db.iterator_cf_opt(
-            handle,
-            opt,
-            IteratorMode::From(<span class="kw-2">&amp;</span>key_prefix, Direction::Forward),
-        )
-        .flatten()
-        .map(|(key, data)| {
-            <span class="kw">let </span>(_rest, key) = <span class="self">self
-                </span>.key_deserializer_db
-                .deserialize::&lt;DeserializeError&gt;(<span class="kw-2">&amp;</span>key)
-                .unwrap();
-            <span class="kw">match </span>key.key_type {
-                KeyType::DATASTORE(datastore_vec) =&gt; (datastore_vec, data.to_vec()),
-                <span class="kw">_ </span>=&gt; (<span class="macro">vec!</span>[], <span class="macro">vec!</span>[]),
-            }
-        })
-        .collect()
+        <span class="self">self</span>.db
+            .iterator_cf_opt(
+                handle,
+                opt,
+                IteratorMode::From(<span class="kw-2">&amp;</span>key_prefix, Direction::Forward),
+            )
+            .flatten()
+            .map(|(key, data)| {
+                <span class="kw">let </span>(_rest, key) = <span class="self">self
+                    </span>.key_deserializer_db
+                    .deserialize::&lt;DeserializeError&gt;(<span class="kw-2">&amp;</span>key)
+                    .unwrap();
+                <span class="kw">match </span>key.key_type {
+                    KeyType::DATASTORE(datastore_vec) =&gt; (datastore_vec, data.to_vec()),
+                    <span class="kw">_ </span>=&gt; (<span class="macro">vec!</span>[], <span class="macro">vec!</span>[]),
+                }
+            })
+            .collect()
     }
 }
 
@@ -1534,7 +1742,6 @@
 <span class="attr">#[cfg(test)]
 </span><span class="kw">mod </span>tests {
     <span class="kw">use super</span>::<span class="kw-2">*</span>;
-    <span class="kw">use </span>massa_db::new_rocks_db_instance;
     <span class="kw">use </span>massa_hash::Hash;
     <span class="kw">use </span>massa_ledger_exports::{LedgerEntry, LedgerEntryUpdate, SetOrKeep};
     <span class="kw">use </span>massa_models::{
@@ -1552,9 +1759,7 @@
     <span class="attr">#[cfg(test)]
     </span><span class="kw">fn </span>init_test_ledger(addr: Address) -&gt; (LedgerDB, BTreeMap&lt;Vec&lt;u8&gt;, Vec&lt;u8&gt;&gt;) {
         <span class="comment">// init data
-
-        </span><span class="kw">use </span>parking_lot::RwLock;
-        <span class="kw">let </span><span class="kw-2">mut </span>data = BTreeMap::new();
+        </span><span class="kw">let </span><span class="kw-2">mut </span>data = BTreeMap::new();
         data.insert(<span class="string">b&quot;1&quot;</span>.to_vec(), <span class="string">b&quot;a&quot;</span>.to_vec());
         data.insert(<span class="string">b&quot;2&quot;</span>.to_vec(), <span class="string">b&quot;b&quot;</span>.to_vec());
         data.insert(<span class="string">b&quot;3&quot;</span>.to_vec(), <span class="string">b&quot;c&quot;</span>.to_vec());
@@ -1571,23 +1776,11 @@
 
         <span class="comment">// write data
         </span><span class="kw">let </span>temp_dir = TempDir::new().unwrap();
-
-        <span class="kw">let </span>rocks_db_instance = Arc::new(RwLock::new(new_rocks_db_instance(
-            temp_dir.path().to_path_buf(),
-        )));
-
-        <span class="kw">let </span><span class="kw-2">mut </span>db = LedgerDB::new(rocks_db_instance.clone(), <span class="number">32</span>, <span class="number">255</span>, <span class="number">1_000_000</span>);
-        <span class="kw">let </span><span class="kw-2">mut </span>batch = DBBatch::new(
-            <span class="prelude-val">Some</span>(Hash::from_bytes(LEDGER_HASH_INITIAL_BYTES)),
-            <span class="prelude-val">None</span>,
-            <span class="prelude-val">None</span>,
-            <span class="prelude-val">None</span>,
-            <span class="prelude-val">None</span>,
-            <span class="prelude-val">None</span>,
-        );
+        <span class="kw">let </span><span class="kw-2">mut </span>db = LedgerDB::new(temp_dir.path().to_path_buf(), <span class="number">32</span>, <span class="number">255</span>, <span class="number">1_000_000</span>, <span class="bool-val">false</span>);
+        <span class="kw">let </span><span class="kw-2">mut </span>batch = LedgerBatch::new(Hash::from_bytes(LEDGER_HASH_INITIAL_BYTES));
         db.put_entry(<span class="kw-2">&amp;</span>addr, entry, <span class="kw-2">&amp;mut </span>batch);
         db.update_entry(<span class="kw-2">&amp;</span>addr, entry_update, <span class="kw-2">&amp;mut </span>batch);
-        write_batch(<span class="kw-2">&amp;</span>rocks_db_instance.read(), batch);
+        db.write_batch(batch);
 
         <span class="comment">// return db and initial data
         </span>(db, data)
@@ -1621,10 +1814,9 @@
         );
 
         <span class="comment">// delete entry
-        </span><span class="kw">let </span><span class="kw-2">mut </span>batch = DBBatch::new(<span class="prelude-val">Some</span>(ledger_hash), <span class="prelude-val">None</span>, <span class="prelude-val">None</span>, <span class="prelude-val">None</span>, <span class="prelude-val">None</span>, <span class="prelude-val">None</span>);
+        </span><span class="kw">let </span><span class="kw-2">mut </span>batch = LedgerBatch::new(ledger_hash);
         db.delete_entry(<span class="kw-2">&amp;</span>addr, <span class="kw-2">&amp;mut </span>batch);
-
-        write_batch(<span class="kw-2">&amp;</span>db.db.read(), batch);
+        db.write_batch(batch);
 
         <span class="comment">// check deleted address and ledger hash
         </span><span class="macro">assert_eq!</span>(
