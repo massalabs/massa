@@ -26,8 +26,9 @@ use massa_final_state::{
 use massa_hash::{Hash, HASH_SIZE_BYTES};
 use massa_ledger_exports::LedgerConfig;
 use massa_models::config::{
-    DENUNCIATION_EXPIRE_PERIODS, ENDORSEMENT_COUNT, MAX_DENUNCIATIONS_PER_BLOCK_HEADER,
-    MIP_STORE_STATS_BLOCK_CONSIDERED, MIP_STORE_STATS_COUNTERS_MAX,
+    DENUNCIATION_EXPIRE_PERIODS, ENDORSEMENT_COUNT, EXECUTED_OPS_BOOTSTRAP_PART_SIZE,
+    MAX_DENUNCIATIONS_PER_BLOCK_HEADER, MIP_STORE_STATS_BLOCK_CONSIDERED,
+    MIP_STORE_STATS_COUNTERS_MAX,
 };
 use massa_models::{
     address::Address, config::MAX_DATASTORE_VALUE_LENGTH, node::NodeId, slot::Slot,
@@ -139,8 +140,8 @@ fn mock_bootstrap_manager(addr: SocketAddr, bootstrap_config: BootstrapConfig) -
         thread_count,
         periods_per_cycle,
         executed_denunciations_config: ExecutedDenunciationsConfig {
-            denunciation_expire_periods: u64::MAX,
-            bootstrap_part_size: u64::MAX,
+            denunciation_expire_periods: DENUNCIATION_EXPIRE_PERIODS,
+            bootstrap_part_size: EXECUTED_OPS_BOOTSTRAP_PART_SIZE,
         },
         endorsement_count: ENDORSEMENT_COUNT,
         max_executed_denunciations_length: 1000,
