@@ -155,6 +155,8 @@
 <a href="#155" id="155">155</a>
 <a href="#156" id="156">156</a>
 <a href="#157" id="157">157</a>
+<a href="#158" id="158">158</a>
+<a href="#159" id="159">159</a>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2023 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="kw">use </span><span class="kw">crate</span>::config::GrpcConfig;
@@ -162,12 +164,12 @@
 <span class="kw">use </span>futures_util::FutureExt;
 <span class="kw">use </span>hyper::Method;
 <span class="kw">use </span>massa_consensus_exports::{ConsensusChannels, ConsensusController};
-<span class="kw">use </span>massa_execution_exports::ExecutionController;
+<span class="kw">use </span>massa_execution_exports::{ExecutionChannels, ExecutionController};
 <span class="kw">use </span>massa_pool_exports::{PoolChannels, PoolController};
 <span class="kw">use </span>massa_pos_exports::SelectorController;
 <span class="kw">use </span>massa_proto::massa::api::v1::massa_service_server::MassaServiceServer;
 <span class="kw">use </span>massa_proto::massa::api::v1::FILE_DESCRIPTOR_SET;
-<span class="kw">use </span>massa_protocol_exports::ProtocolController;
+<span class="kw">use </span>massa_protocol_exports::ProtocolCommandSender;
 <span class="kw">use </span>massa_storage::Storage;
 <span class="kw">use </span>tokio::sync::oneshot;
 <span class="kw">use </span>tonic::codec::CompressionEncoding;
@@ -177,18 +179,20 @@
 
 <span class="doccomment">/// gRPC API content
 </span><span class="kw">pub struct </span>MassaGrpc {
-    <span class="doccomment">/// link to the consensus component
+    <span class="doccomment">/// link(channels) to the consensus component
     </span><span class="kw">pub </span>consensus_controller: Box&lt;<span class="kw">dyn </span>ConsensusController&gt;,
     <span class="doccomment">/// link(channels) to the consensus component
     </span><span class="kw">pub </span>consensus_channels: ConsensusChannels,
     <span class="doccomment">/// link to the execution component
     </span><span class="kw">pub </span>execution_controller: Box&lt;<span class="kw">dyn </span>ExecutionController&gt;,
+    <span class="doccomment">/// link(channels) to the execution component
+    </span><span class="kw">pub </span>execution_channels: ExecutionChannels,
     <span class="doccomment">/// link(channels) to the pool component
     </span><span class="kw">pub </span>pool_channels: PoolChannels,
     <span class="doccomment">/// link to the pool component
     </span><span class="kw">pub </span>pool_command_sender: Box&lt;<span class="kw">dyn </span>PoolController&gt;,
-    <span class="doccomment">/// link to the protocol component
-    </span><span class="kw">pub </span>protocol_command_sender: Box&lt;<span class="kw">dyn </span>ProtocolController&gt;,
+    <span class="doccomment">/// link(channels) to the protocol component
+    </span><span class="kw">pub </span>protocol_command_sender: ProtocolCommandSender,
     <span class="doccomment">/// link to the selector component
     </span><span class="kw">pub </span>selector_controller: Box&lt;<span class="kw">dyn </span>SelectorController&gt;,
     <span class="doccomment">/// link to the storage component

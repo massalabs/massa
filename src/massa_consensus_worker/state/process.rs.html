@@ -1308,14 +1308,14 @@
                     <span class="string">&quot;block_id&quot;</span>: block_id
                 });
                 <span class="self">self</span>.channels
-                    .protocol_controller
+                    .protocol_command_sender
                     .integrated_block(block_id, storage)<span class="question-mark">?</span>;
             }
 
             <span class="comment">// Notify protocol of attack attempts.
             </span><span class="kw">for </span>hash <span class="kw">in </span>mem::take(<span class="kw-2">&amp;mut </span><span class="self">self</span>.attack_attempts).into_iter() {
                 <span class="self">self</span>.channels
-                    .protocol_controller
+                    .protocol_command_sender
                     .notify_block_attack(hash)<span class="question-mark">?</span>;
                 <span class="macro">massa_trace!</span>(<span class="string">&quot;consensus.consensus_worker.block_db_changed.attack&quot;</span>, {
                     <span class="string">&quot;hash&quot;</span>: hash
@@ -1388,7 +1388,7 @@
         <span class="kw">if </span>!new_blocks.is_empty() || !remove_blocks.is_empty() {
             <span class="macro">massa_trace!</span>(<span class="string">&quot;consensus.consensus_worker.block_db_changed.send_wishlist_delta&quot;</span>, { <span class="string">&quot;new&quot;</span>: new_wishlist, <span class="string">&quot;remove&quot;</span>: remove_blocks });
             <span class="self">self</span>.channels
-                .protocol_controller
+                .protocol_command_sender
                 .send_wishlist_delta(new_blocks, remove_blocks)<span class="question-mark">?</span>;
             <span class="self">self</span>.wishlist = new_wishlist;
         }
@@ -1403,7 +1403,7 @@
         </span><span class="kw">if </span><span class="self">self</span>.save_final_periods != latest_final_periods {
             <span class="comment">// signal new last final periods to pool
             </span><span class="self">self</span>.channels
-                .pool_controller
+                .pool_command_sender
                 .notify_final_cs_periods(<span class="kw-2">&amp;</span>latest_final_periods);
             <span class="comment">// update final periods
             </span><span class="self">self</span>.save_final_periods = latest_final_periods;
