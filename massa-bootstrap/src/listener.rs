@@ -28,10 +28,9 @@ pub enum PollEvent {
     Stop,
 }
 impl BootstrapTcpListener {
-    /// Start a new bootstrap listener on the given address.
+    /// Setup a mio-listener that functions as a `select!` on a connection, or a waker
     ///
     /// * `addr` - the address to listen on
-    /// * `connection_tx` - the channel to send new connections to
     pub fn new(addr: SocketAddr) -> Result<(BootstrapListenerStopHandle, Self), BootstrapError> {
         info!("Starting bootstrap listener on {}", &addr);
         let server = TcpListener::bind(addr)?;
