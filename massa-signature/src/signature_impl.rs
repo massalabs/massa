@@ -23,6 +23,10 @@ use std::{convert::TryInto, str::FromStr};
 
 use transition::Versioned;
 
+/// IMPORTANT TODO: FIX THIS
+pub const SIGNATURE_SIZE_BYTES: usize = 64 + 1;
+const SECRET_KEY_BYTES_SIZE: usize = 32;
+
 #[allow(missing_docs)]
 /// A versioned KeyPair used for signature and decryption
 #[transition::versioned(versions("0", "1"))]
@@ -76,32 +80,7 @@ impl FromStr for KeyPair {
                         .map_err(|_| {
                             MassaSignatureError::ParsingError(format!("bad secret key bs58: {}", s))
                         })?;
-                let u64_deserializer = U64VarIntDeserializer::new(Included(0), Included(u64::MAX));
-                let (rest, version) = u64_deserializer
-                    .deserialize::<DeserializeError>(&decoded_bs58_check[..])
-                    .map_err(|err| MassaSignatureError::ParsingError(err.to_string()))?;
-                match version {
-                    <KeyPair!["0"]>::VERSION => Ok(KeyPairVariant!["0"](
-                        <KeyPair!["0"]>::from_bytes(rest.try_into().map_err(|_| {
-                            MassaSignatureError::ParsingError(format!(
-                                "secret key not long enough for: {}",
-                                s
-                            ))
-                        })?)?,
-                    )),
-                    <KeyPair!["1"]>::VERSION => Ok(KeyPairVariant!["1"](
-                        <KeyPair!["1"]>::from_bytes(rest.try_into().map_err(|_| {
-                            MassaSignatureError::ParsingError(format!(
-                                "secret key not long enough for: {}",
-                                s
-                            ))
-                        })?)?,
-                    )),
-                    _ => Err(MassaSignatureError::InvalidVersionError(format!(
-                        "Unknown keypair version: {}",
-                        version
-                    ))),
-                }
+                KeyPair::from_bytes(&decoded_bs58_check)
             }
             _ => Err(MassaSignatureError::ParsingError(format!(
                 "bad secret prefix for: {}",
@@ -204,7 +183,7 @@ impl KeyPair {
     /// ```
     /// # use massa_signature::KeyPair;
     /// let keypair = KeyPair::generate(0).unwrap();
-    /// let bytes = keypair.into_bytes();
+    /// let bytes = keypair.to_bytes();
     /// let keypair2 = KeyPair::from_bytes(&bytes).unwrap();
     /// ```
     pub fn from_bytes(data: &[u8]) -> Result<Self, MassaSignatureError> {
@@ -212,22 +191,17 @@ impl KeyPair {
         let (rest, version) = u64_deserializer
             .deserialize::<DeserializeError>(data)
             .map_err(|err| MassaSignatureError::ParsingError(err.to_string()))?;
+        if rest.len() < SECRET_KEY_BYTES_SIZE {
+            return Err(MassaSignatureError::ParsingError(
+                "not enough bytes".to_string(),
+            ));
+        }
         match version {
             <KeyPair!["0"]>::VERSION => Ok(KeyPairVariant!["0"](<KeyPair!["0"]>::from_bytes(
-                rest.try_into().map_err(|err| {
-                    MassaSignatureError::ParsingError(format!(
-                        "keypair bytes parsing error: {}",
-                        err
-                    ))
-                })?,
+                rest[..32].try_into().unwrap(),
             )?)),
             <KeyPair!["1"]>::VERSION => Ok(KeyPairVariant!["1"](<KeyPair!["1"]>::from_bytes(
-                rest.try_into().map_err(|err| {
-                    MassaSignatureError::ParsingError(format!(
-                        "keypair bytes parsing error: {}",
-                        err
-                    ))
-                })?,
+                rest[..32].try_into().unwrap(),
             )?)),
             _ => Err(MassaSignatureError::InvalidVersionError(format!(
                 "Unknown keypair version: {}",
@@ -318,7 +292,7 @@ impl KeyPair {
     /// ```
     /// # use massa_signature::KeyPair;
     /// let keypair = KeyPair::generate(0).unwrap();
-    /// let bytes = keypair.into_bytes();
+    /// let bytes = keypair.to_bytes();
     /// let keypair2 = KeyPair::from_bytes(&bytes).unwrap();
     /// ```
     pub fn from_bytes(
@@ -663,7 +637,7 @@ impl PublicKey {
     /// # use serde::{Deserialize, Serialize};
     /// let keypair = KeyPair::generate(0).unwrap();
     ///
-    /// let serialized = keypair.get_public_key().into_bytes();
+    /// let serialized = keypair.get_public_key().to_bytes();
     /// let deserialized: PublicKey = PublicKey::from_bytes(&serialized).unwrap();
     /// ```
     pub fn from_bytes(data: &[u8]) -> Result<PublicKey, MassaSignatureError> {
@@ -794,7 +768,7 @@ impl PublicKey {
     /// # use serde::{Deserialize, Serialize};
     /// let keypair = KeyPair::generate(0).unwrap();
     ///
-    /// let serialized = keypair.get_public_key().into_bytes();
+    /// let serialized = keypair.get_public_key().to_bytes();
     /// let deserialized: PublicKey = PublicKey::from_bytes(&serialized).unwrap();
     /// ```
     pub fn from_bytes(
@@ -829,7 +803,7 @@ impl Deserializer<PublicKey> for PublicKeyDeserializer {
     /// let keypair = KeyPair::generate(0).unwrap();
     /// let public_key = keypair.get_public_key();
     /// let serialized = public_key.to_bytes();
-    /// let (rest, deser_public_key) = PublicKeyDeserializer::new().deserialize::<DeserializeError>(serialized).unwrap();
+    /// let (rest, deser_public_key) = PublicKeyDeserializer::new().deserialize::<DeserializeError>(&serialized).unwrap();
     /// assert!(rest.is_empty());
     /// assert_eq!(keypair.get_public_key(), deser_public_key);
     /// ```
@@ -1050,7 +1024,7 @@ impl Signature {
     /// let data = Hash::compute_from("Hello World!".as_bytes());
     /// let signature = keypair.sign(&data).unwrap();
     ///
-    /// let serialized = signature.into_bytes();
+    /// let serialized = signature.to_bytes();
     /// ```
     pub fn to_bytes(&self) -> Vec<u8> {
         match self {
@@ -1144,7 +1118,7 @@ impl Signature {
     /// let data = Hash::compute_from("Hello World!".as_bytes());
     /// let signature = keypair.sign(&data).unwrap();
     ///
-    /// let serialized = signature.into_bytes();
+    /// let serialized = signature.to_bytes();
     /// ```
     pub fn to_bytes(self) -> Vec<u8> {
         let version_serializer = U64VarIntSerializer::new();
@@ -1153,8 +1127,6 @@ impl Signature {
             .serialize(&Self::VERSION, &mut bytes)
             .unwrap();
         bytes.extend_from_slice(&self.0.to_bytes());
-        // DEBUG
-        dbg!(bytes.len());
         bytes
     }
 
@@ -1206,7 +1178,7 @@ impl Signature {
     /// let data = Hash::compute_from("Hello World!".as_bytes());
     /// let signature = keypair.sign(&data).unwrap();
     ///
-    /// let serialized = signature.into_bytes();
+    /// let serialized = signature.to_bytes();
     /// let deserialized: Signature = Signature::from_bytes(&serialized).unwrap();
     /// ```
     pub fn from_bytes(
@@ -1333,9 +1305,6 @@ impl SignatureDeserializer {
         Self
     }
 }
-
-/// IMPORTANT TODO
-pub const SIGNATURE_SIZE_BYTES: usize = 64 + 1;
 
 impl Deserializer<Signature> for SignatureDeserializer {
     /// ```

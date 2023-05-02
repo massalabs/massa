@@ -34,52 +34,12 @@ fn get_initials() -> (NamedTempFile, HashMap<Address, LedgerEntry>) {
     let mut rolls: BTreeMap<Address, u64> = BTreeMap::new();
     let mut ledger: HashMap<Address, LedgerEntry> = HashMap::new();
 
-    // thread 0 / 31
     let keypair_0 =
-        KeyPair::from_str("S1JJeHiZv1C1zZN5GLFcbz6EXYiccmUPLkYuDFA3kayjxP39kFQ").unwrap();
+        KeyPair::from_str("S113NgPbYkpX7WiyojYGtRSiPYEMwhEjFCK8fjWmNw3MQvJKVqD4cUDvbfqSpp1qoEBgnnCPoNfD6YtRdvMmjvjWMBpLVr6L").unwrap();
     let addr_0 = Address::from_public_key(&keypair_0.get_public_key());
     rolls.insert(addr_0, 100);
     ledger.insert(
         addr_0,
-        LedgerEntry {
-            balance: Amount::from_str("300_000").unwrap(),
-            ..Default::default()
-        },
-    );
-
-    // thread 1 / 31
-    let keypair_1 =
-        KeyPair::from_str("S1kEBGgxHFBdsNC4HtRHhsZsB5irAtYHEmuAKATkfiomYmj58tm").unwrap();
-    let addr_1 = Address::from_public_key(&keypair_1.get_public_key());
-    rolls.insert(addr_1, 100);
-    ledger.insert(
-        addr_1,
-        LedgerEntry {
-            balance: Amount::from_str("300_000").unwrap(),
-            ..Default::default()
-        },
-    );
-
-    // thread 2 / 31
-    let keypair_2 =
-        KeyPair::from_str("S12APSAzMPsJjVGWzUJ61ZwwGFTNapA4YtArMKDyW4edLu6jHvCr").unwrap();
-    let addr_2 = Address::from_public_key(&keypair_2.get_public_key());
-    rolls.insert(addr_2, 100);
-    ledger.insert(
-        addr_2,
-        LedgerEntry {
-            balance: Amount::from_str("300_000").unwrap(),
-            ..Default::default()
-        },
-    );
-
-    // thread 3 / 31
-    let keypair_3 =
-        KeyPair::from_str("S12onbtxzgHcDSrVMp9bzP1cUjno8V5hZd4yYiqaMmC3nq4z7fSv").unwrap();
-    let addr_3 = Address::from_public_key(&keypair_3.get_public_key());
-    rolls.insert(addr_3, 100);
-    ledger.insert(
-        addr_3,
         LedgerEntry {
             balance: Amount::from_str("300_000").unwrap(),
             ..Default::default()

@@ -171,6 +171,8 @@ impl Serializer<BlockHeader> for BlockHeaderSerializer {
     ///   .map(|i| BlockId(Hash::compute_from(&[i])))
     ///   .collect();
     /// let header = BlockHeader {
+    ///   current_version: 0,
+    ///   announced_version: 0,
     ///   slot: Slot::new(1, 1),
     ///   parents,
     ///   operation_merkle_root: Hash::compute_from("mno".as_bytes()),
@@ -322,6 +324,8 @@ impl Deserializer<BlockHeader> for BlockHeaderDeserializer {
     ///   .map(|i| BlockId(Hash::compute_from(&[i])))
     ///   .collect();
     /// let header = BlockHeader {
+    ///   current_version: 0,
+    ///   announced_version: 0,
     ///   slot: Slot::new(1, 1),
     ///   parents: parents.clone(),
     ///   operation_merkle_root: Hash::compute_from("mno".as_bytes()),

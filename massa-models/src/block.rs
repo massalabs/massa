@@ -158,6 +158,8 @@ impl Serializer<Block> for BlockSerializer {
     /// // create block header
     /// let orig_header = BlockHeader::new_verifiable(
     ///     BlockHeader {
+    ///         current_version: 0,
+    ///         announced_version: 0,
     ///         slot: Slot::new(1, 1),
     ///         parents,
     ///         operation_merkle_root: Hash::compute_from("mno".as_bytes()),
@@ -259,6 +261,8 @@ impl Deserializer<Block> for BlockDeserializer {
     /// // create block header
     /// let orig_header = BlockHeader::new_verifiable(
     ///     BlockHeader {
+    ///         current_version: 0,
+    ///         announced_version: 0,
     ///         slot: Slot::new(1, 1),
     ///         parents: parents.clone(),
     ///         operation_merkle_root: Hash::compute_from("mno".as_bytes()),
