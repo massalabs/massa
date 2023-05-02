@@ -65,7 +65,8 @@ impl Default for ExecutionConfig {
             snip_amount: 10,
             roll_count_to_slash_on_denunciation: 1,
             denunciation_expire_periods: DENUNCIATION_EXPIRE_PERIODS,
-            ..Default::default()
+            broadcast_enabled: true,
+            broadcast_slot_execution_output_channel_capacity: 5000,
         }
     }
 }
