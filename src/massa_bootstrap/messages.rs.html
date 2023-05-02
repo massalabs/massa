@@ -964,12 +964,6 @@
 <a href="#964" id="964">964</a>
 <a href="#965" id="965">965</a>
 <a href="#966" id="966">966</a>
-<a href="#967" id="967">967</a>
-<a href="#968" id="968">968</a>
-<a href="#969" id="969">969</a>
-<a href="#970" id="970">970</a>
-<a href="#971" id="971">971</a>
-<a href="#972" id="972">972</a>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="kw">use </span><span class="kw">crate</span>::settings::BootstrapServerMessageDeserializerArgs;
@@ -998,12 +992,10 @@
     StreamingStep, StreamingStepDeserializer, StreamingStepSerializer,
 };
 <span class="kw">use </span>massa_models::version::{Version, VersionDeserializer, VersionSerializer};
+<span class="kw">use </span>massa_network_exports::{BootstrapPeers, BootstrapPeersDeserializer, BootstrapPeersSerializer};
 <span class="kw">use </span>massa_pos_exports::{
     CycleInfo, CycleInfoDeserializer, CycleInfoSerializer, DeferredCredits,
     DeferredCreditsDeserializer, DeferredCreditsSerializer,
-};
-<span class="kw">use </span>massa_protocol_exports::{
-    BootstrapPeers, BootstrapPeersDeserializer, BootstrapPeersSerializer,
 };
 <span class="kw">use </span>massa_serialization::{
     BoolDeserializer, BoolSerializer, Deserializer, OptionDeserializer, OptionSerializer,
@@ -1316,10 +1308,7 @@
                 Included(MassaTime::from_millis(u64::MAX)),
             )),
             version_deserializer: VersionDeserializer::new(),
-            peers_deserializer: BootstrapPeersDeserializer::new(
-                args.max_advertise_length,
-                args.max_listeners_per_peer,
-            ),
+            peers_deserializer: BootstrapPeersDeserializer::new(args.max_advertise_length),
             state_changes_deserializer: StateChangesDeserializer::new(
                 args.thread_count,
                 args.max_async_pool_changes,
@@ -1410,7 +1399,6 @@
     /// let message_serializer = BootstrapServerMessageSerializer::new();
     /// let args = BootstrapServerMessageDeserializerArgs {
     ///     thread_count: 32, endorsement_count: 16,
-    ///     max_listeners_per_peer: 1000,
     ///     max_advertise_length: 1000, max_bootstrap_blocks_length: 1000,
     ///     max_operations_per_block: 1000, max_bootstrap_final_state_parts_size: 1000,
     ///     max_async_pool_changes: 1000, max_async_pool_length: 1000, max_async_message_data: 1000,

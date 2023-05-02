@@ -1,1 +1,0 @@
-window.SIDEBAR_ITEMS = {"mod":["block_handler","endorsement_handler","operation_handler","peer_handler"]};
