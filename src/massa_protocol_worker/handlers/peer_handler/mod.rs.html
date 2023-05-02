@@ -798,7 +798,7 @@
             PeerId::from_bytes(<span class="kw-2">&amp;</span>received[offset..offset + <span class="number">32</span>].try_into().map_err(|<span class="kw">_</span>| {
                 PeerNetError::HandshakeError.error(
                     <span class="string">&quot;Massa Handshake&quot;</span>,
-                    <span class="prelude-val">Some</span>(<span class="macro">format!</span>(<span class="string">&quot;Failed to deserialize PeerId&quot;</span>)),
+                    <span class="prelude-val">Some</span>(<span class="string">&quot;Failed to deserialize PeerId&quot;</span>.to_string()),
                 )
             })<span class="question-mark">?</span>)<span class="question-mark">?</span>;
 
@@ -825,7 +825,7 @@
             offset += <span class="number">32</span>;
             <span class="kw">let </span>id = received.get(offset).ok_or(
                 PeerNetError::HandshakeError
-                    .error(<span class="string">&quot;Massa Handshake&quot;</span>, <span class="prelude-val">Some</span>(<span class="macro">format!</span>(<span class="string">&quot;Failed to get id&quot;</span>))),
+                    .error(<span class="string">&quot;Massa Handshake&quot;</span>, <span class="prelude-val">Some</span>(<span class="string">&quot;Failed to get id&quot;</span>.to_string())),
             )<span class="question-mark">?</span>;
             offset += <span class="number">1</span>;
             <span class="kw">match </span>id {
@@ -874,7 +874,7 @@
                         received.as_slice()[..<span class="number">32</span>].try_into().map_err(|<span class="kw">_</span>| {
                             PeerNetError::HandshakeError.error(
                                 <span class="string">&quot;Massa Handshake&quot;</span>,
-                                <span class="prelude-val">Some</span>(<span class="macro">format!</span>(<span class="string">&quot;Failed to deserialize random bytes&quot;</span>)),
+                                <span class="prelude-val">Some</span>(<span class="string">&quot;Failed to deserialize random bytes&quot;</span>.to_string()),
                             )
                         })<span class="question-mark">?</span>;
 
@@ -883,7 +883,7 @@
                     <span class="kw">let </span>self_signature = keypair.sign(<span class="kw-2">&amp;</span>other_random_hash).map_err(|<span class="kw">_</span>| {
                         PeerNetError::HandshakeError.error(
                             <span class="string">&quot;Massa Handshake&quot;</span>,
-                            <span class="prelude-val">Some</span>(<span class="macro">format!</span>(<span class="string">&quot;Failed to sign random bytes&quot;</span>)),
+                            <span class="prelude-val">Some</span>(<span class="string">&quot;Failed to sign random bytes&quot;</span>.to_string()),
                         )
                     })<span class="question-mark">?</span>;
 
@@ -897,13 +897,13 @@
                         Signature::from_bytes(received.as_slice().try_into().map_err(|<span class="kw">_</span>| {
                             PeerNetError::HandshakeError.error(
                                 <span class="string">&quot;Massa Handshake&quot;</span>,
-                                <span class="prelude-val">Some</span>(<span class="macro">format!</span>(<span class="string">&quot;Failed to get random bytes&quot;</span>)),
+                                <span class="prelude-val">Some</span>(<span class="string">&quot;Failed to get random bytes&quot;</span>.to_string()),
                             )
                         })<span class="question-mark">?</span>)
                         .map_err(|<span class="kw">_</span>| {
                             PeerNetError::HandshakeError.error(
                                 <span class="string">&quot;Massa Handshake&quot;</span>,
-                                <span class="prelude-val">Some</span>(<span class="macro">format!</span>(<span class="string">&quot;Failed to sign 2 random bytes&quot;</span>)),
+                                <span class="prelude-val">Some</span>(<span class="string">&quot;Failed to sign 2 random bytes&quot;</span>.to_string()),
                             )
                         })<span class="question-mark">?</span>;
 
@@ -915,7 +915,7 @@
                     <span class="kw">let </span>(received, id) = <span class="self">self
                         </span>.message_handlers
                         .deserialize_id(<span class="kw-2">&amp;</span>received[offset..], <span class="kw-2">&amp;</span>peer_id)<span class="question-mark">?</span>;
-                    <span class="self">self</span>.message_handlers.handle(id, <span class="kw-2">&amp;</span>received, <span class="kw-2">&amp;</span>peer_id)<span class="question-mark">?</span>;
+                    <span class="self">self</span>.message_handlers.handle(id, received, <span class="kw-2">&amp;</span>peer_id)<span class="question-mark">?</span>;
                     <span class="prelude-val">Err</span>(PeerNetError::HandshakeError.error(
                         <span class="string">&quot;Massa Handshake&quot;</span>,
                         <span class="prelude-val">Some</span>(<span class="string">&quot;Handshake failed received a message that are connection has been refused&quot;</span>.to_string()),

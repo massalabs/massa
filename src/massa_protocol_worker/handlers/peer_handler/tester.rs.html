@@ -308,18 +308,6 @@
 <a href="#308" id="308">308</a>
 <a href="#309" id="309">309</a>
 <a href="#310" id="310">310</a>
-<a href="#311" id="311">311</a>
-<a href="#312" id="312">312</a>
-<a href="#313" id="313">313</a>
-<a href="#314" id="314">314</a>
-<a href="#315" id="315">315</a>
-<a href="#316" id="316">316</a>
-<a href="#317" id="317">317</a>
-<a href="#318" id="318">318</a>
-<a href="#319" id="319">319</a>
-<a href="#320" id="320">320</a>
-<a href="#321" id="321">321</a>
-<a href="#322" id="322">322</a>
 </pre><pre class="rust"><code><span class="kw">use </span>std::{
     collections::HashMap,
     net::SocketAddr,
@@ -401,14 +389,12 @@
                 <span class="prelude-val">Some</span>(String::from(<span class="string">&quot;Peer didn&#39;t accepted us&quot;</span>)),
             ));
         }
-        <span class="macro">println!</span>(<span class="string">&quot;AURELIEN HANDSHAKE: Received data in handshake: {:?}&quot;</span>, data);
         <span class="kw">let </span>peer_id = PeerId::from_bytes(<span class="kw-2">&amp;</span>data[..<span class="number">32</span>].try_into().map_err(|<span class="kw">_</span>| {
             PeerNetError::HandshakeError.error(
                 <span class="string">&quot;Massa Handshake&quot;</span>,
-                <span class="prelude-val">Some</span>(<span class="macro">format!</span>(<span class="string">&quot;Failed to deserialize PeerId&quot;</span>)),
+                <span class="prelude-val">Some</span>(<span class="string">&quot;Failed to deserialize PeerId&quot;</span>.to_string()),
             )
         })<span class="question-mark">?</span>)<span class="question-mark">?</span>;
-        <span class="macro">println!</span>(<span class="string">&quot;AURELIEN HANDSHAKE: Peer id: {:?}&quot;</span>, peer_id);
         <span class="kw">let </span>res = {
             {
                 <span class="comment">// check if peer is banned else set state to InHandshake
@@ -424,11 +410,10 @@
             }
             <span class="kw">let </span>id = data.get(<span class="number">32</span>).ok_or(
                 PeerNetError::HandshakeError
-                    .error(<span class="string">&quot;Massa Handshake&quot;</span>, <span class="prelude-val">Some</span>(<span class="macro">format!</span>(<span class="string">&quot;Failed to get id&quot;</span>))),
+                    .error(<span class="string">&quot;Massa Handshake&quot;</span>, <span class="prelude-val">Some</span>(<span class="string">&quot;Failed to get id&quot;</span>.to_string())),
             )<span class="question-mark">?</span>;
             <span class="kw">match </span>id {
                 <span class="number">0 </span>=&gt; {
-                    <span class="macro">println!</span>(<span class="string">&quot;AURELIEN HANDSHAKE: deserializing data: {:?}&quot;</span>, <span class="kw-2">&amp;</span>data[<span class="number">32</span>..]);
                     <span class="kw">let </span>(<span class="kw">_</span>, announcement) = <span class="self">self
                         </span>.announcement_deserializer
                         .deserialize::&lt;DeserializeError&gt;(<span class="kw-2">&amp;</span>data[<span class="number">33</span>..])
@@ -437,13 +422,8 @@
                                 <span class="string">&quot;Tester Handshake&quot;</span>,
                                 <span class="prelude-val">Some</span>(<span class="macro">format!</span>(<span class="string">&quot;Failed to deserialize announcement: {}&quot;</span>, err)),
                             )
-                        })
-                        .inspect_err(|e| <span class="macro">println!</span>(<span class="string">&quot;AURELIEN: error: {:?}&quot;</span>, e))<span class="question-mark">?</span>;
+                        })<span class="question-mark">?</span>;
 
-                    <span class="macro">println!</span>(
-                        <span class="string">&quot;AURELIEN HANDSHAKE: Received announcement: {:?}&quot;</span>,
-                        announcement
-                    );
                     <span class="kw">if </span>peer_id
                         .verify_signature(<span class="kw-2">&amp;</span>announcement.hash, <span class="kw-2">&amp;</span>announcement.signature)
                         .is_err()
@@ -470,19 +450,15 @@
                                 last_announce: announcement,
                                 state: <span class="kw">super</span>::PeerState::Trusted,
                             });
-                        <span class="macro">println!</span>(<span class="string">&quot;AURELIEN HANDSHAKE: Peer {:?} added to peer_db&quot;</span>, peer_id);
-                        <span class="macro">println!</span>(<span class="string">&quot;AURELIEN HANDSHAKE: Peer_db: {:?}&quot;</span>, peer_db_write.peers);
                     }
-
                     <span class="prelude-val">Ok</span>(peer_id.clone())
                 }
                 <span class="kw">_ </span>=&gt; {
                     {
                         <span class="comment">//TODO: Add the peerdb but for now impossible as we don&#39;t have announcement and we need one to place in peerdb
-                        </span><span class="macro">println!</span>(<span class="string">&quot;AURELIEN HANDSHAKE: tester handshake fail {}&quot;</span>, peer_id);
-                    }
+                    </span>}
                     <span class="prelude-val">Err</span>(PeerNetError::HandshakeError
-                        .error(<span class="string">&quot;Massa handshake&quot;</span>, <span class="prelude-val">Some</span>(<span class="macro">format!</span>(<span class="string">&quot;Invalid id&quot;</span>))))
+                        .error(<span class="string">&quot;Massa handshake&quot;</span>, <span class="prelude-val">Some</span>(<span class="string">&quot;Invalid id&quot;</span>.to_string())))
                 }
             }
         };
