@@ -71,9 +71,9 @@ impl BSEventPoller for BootstrapTcpListener {
 
         // Ther could be more than one connection ready, but we want to re-check for the stop
         // signal after processing each connection.
-        return Ok(PollEvent::NewConnection(
+        Ok(PollEvent::NewConnection(
             self.server.accept().map_err(BootstrapError::from)?,
-        ));
+        ))
     }
 }
 

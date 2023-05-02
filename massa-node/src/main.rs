@@ -636,8 +636,12 @@ async fn launch(
     let factory_manager = start_factory(factory_config, node_wallet.clone(), factory_channels);
 
     let bootstrap_manager = bootstrap_config.listen_addr.map(|addr| {
-        let (waker, listener) = BootstrapTcpListener::new(addr)
-            .expect(format!("Could not bind to address: {}", addr).as_str());
+        let (waker, listener) = BootstrapTcpListener::new(addr).unwrap_or_else(|_| {
+            panic!(
+                "{}",
+                format!("Could not bind to address: {}", addr).as_str()
+            )
+        });
         let mut manager = start_bootstrap_server(
             listener,
             consensus_controller.clone(),

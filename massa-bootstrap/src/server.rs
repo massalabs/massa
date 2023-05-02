@@ -233,7 +233,7 @@ impl<L: BSEventPoller> BootstrapServer<'_, L> {
         let bootstrap_sessions_counter: Arc<()> = Arc::new(());
         let per_ip_min_interval = self.bootstrap_config.per_ip_min_interval.to_duration();
         // TODO: Work out how to integration-test this
-        let res = loop {
+        loop {
             // block until we have a connection to work with, or break out of main-loop
             // let Ok((dplx, remote_addr)) = self.listener_rx.recv().map_err(|_e| {
             //     BootstrapError::GeneralError("Bootstrap listener channel disconnected".to_string())
@@ -344,9 +344,7 @@ impl<L: BSEventPoller> BootstrapServer<'_, L> {
                     move || debug!("did not bootstrap {}: no available slots", remote_addr),
                 );
             }
-        };
-
-        res
+        }
     }
 
     /// Checks latest attempt. If too recent, provides the bad news (as an error).
