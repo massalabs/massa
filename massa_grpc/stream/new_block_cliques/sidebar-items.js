@@ -1,1 +1,0 @@
-window.SIDEBAR_ITEMS = {"fn":["new_block_cliques"],"opaque":[""],"type":["NewBlockCliquesStreamType"]};

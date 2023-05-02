@@ -1,1 +1,0 @@
-window.SIDEBAR_ITEMS = {"enum":["ProtocolCommand","ProtocolManagementCommand"],"opaque":[""],"static":["CALLSITE","META"],"struct":["ProtocolCommandSender","ProtocolManager"],"type":["BlocksResults"]};
