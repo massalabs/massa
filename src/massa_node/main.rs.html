@@ -1179,6 +1179,8 @@
 <a href="#1179" id="1179">1179</a>
 <a href="#1180" id="1180">1180</a>
 <a href="#1181" id="1181">1181</a>
+<a href="#1182" id="1182">1182</a>
+<a href="#1183" id="1183">1183</a>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="attr">#![doc = <span class="macro">include_str!</span>(<span class="string">&quot;../../README.md&quot;</span>)]
@@ -1194,12 +1196,13 @@
 <span class="kw">use </span>massa_api_exports::config::APIConfig;
 <span class="kw">use </span>massa_async_pool::AsyncPoolConfig;
 <span class="kw">use </span>massa_bootstrap::{
-    get_state, start_bootstrap_server, BootstrapConfig, BootstrapManager, BootstrapTcpListener,
-    DefaultConnector,
+    get_state, start_bootstrap_server, BootstrapConfig, BootstrapManager, DefaultConnector,
+    DefaultListener,
 };
 <span class="kw">use </span>massa_consensus_exports::events::ConsensusEvent;
 <span class="kw">use </span>massa_consensus_exports::{ConsensusChannels, ConsensusConfig, ConsensusManager};
 <span class="kw">use </span>massa_consensus_worker::start_consensus_worker;
+<span class="kw">use </span>massa_db::new_rocks_db_instance;
 <span class="kw">use </span>massa_executed_ops::{ExecutedDenunciationsConfig, ExecutedOpsConfig};
 <span class="kw">use </span>massa_execution_exports::{ExecutionConfig, ExecutionManager, GasCosts, StorageCostsConstants};
 <span class="kw">use </span>massa_execution_worker::start_execution_worker;
@@ -1359,6 +1362,7 @@
         thread_count: THREAD_COUNT,
         bootstrap_part_size: ASYNC_POOL_BOOTSTRAP_PART_SIZE,
         max_async_message_data: MAX_ASYNC_MESSAGE_DATA,
+        max_key_length: MAX_DATASTORE_KEY_LENGTH <span class="kw">as </span>u32,
     };
     <span class="kw">let </span>pos_config = PoSConfig {
         periods_per_cycle: PERIODS_PER_CYCLE,
@@ -1373,6 +1377,8 @@
     <span class="kw">let </span>executed_denunciations_config = ExecutedDenunciationsConfig {
         denunciation_expire_periods: DENUNCIATION_EXPIRE_PERIODS,
         bootstrap_part_size: EXECUTED_OPS_BOOTSTRAP_PART_SIZE,
+        thread_count: THREAD_COUNT,
+        endorsement_count: ENDORSEMENT_COUNT,
     };
     <span class="kw">let </span>final_state_config = FinalStateConfig {
         ledger_config: ledger_config.clone(),
@@ -1399,11 +1405,12 @@
             .expect(<span class="string">&quot;disk ledger delete failed&quot;</span>);
     }
 
+    <span class="kw">let </span>rocks_db_instance = Arc::new(RwLock::new(new_rocks_db_instance(
+        SETTINGS.ledger.disk_ledger_path.clone(),
+    )));
+
     <span class="comment">// Create final ledger
-    </span><span class="kw">let </span>ledger = FinalLedger::new(
-        ledger_config.clone(),
-        args.restart_from_snapshot_at_period.is_some() || <span class="macro">cfg!</span>(feature = <span class="string">&quot;create_snapshot&quot;</span>),
-    );
+    </span><span class="kw">let </span>ledger = FinalLedger::new(ledger_config.clone(), rocks_db_instance.clone());
 
     <span class="comment">// launch selector worker
     </span><span class="kw">let </span>(selector_manager, selector_controller) = start_selector_worker(SelectorConfig {
@@ -1420,6 +1427,7 @@
     </span><span class="kw">let </span>final_state = Arc::new(parking_lot::RwLock::new(
         <span class="kw">match </span>args.restart_from_snapshot_at_period {
             <span class="prelude-val">Some</span>(last_start_period) =&gt; FinalState::new_derived_from_snapshot(
+                rocks_db_instance.clone(),
                 final_state_config,
                 Box::new(ledger),
                 selector_controller.clone(),
@@ -1427,6 +1435,7 @@
             )
             .expect(<span class="string">&quot;could not init final state&quot;</span>),
             <span class="prelude-val">None </span>=&gt; FinalState::new(
+                rocks_db_instance.clone(),
                 final_state_config,
                 Box::new(ledger),
                 selector_controller.clone(),
@@ -1827,27 +1836,22 @@
     };
     <span class="kw">let </span>factory_manager = start_factory(factory_config, node_wallet.clone(), factory_channels);
 
-    <span class="kw">let </span>bootstrap_manager = bootstrap_config.listen_addr.map(|addr| {
-        <span class="kw">let </span>(waker, listener) = BootstrapTcpListener::new(addr).unwrap_or_else(|<span class="kw">_</span>| {
-            <span class="macro">panic!</span>(
-                <span class="string">&quot;{}&quot;</span>,
-                <span class="macro">format!</span>(<span class="string">&quot;Could not bind to address: {}&quot;</span>, addr).as_str()
-            )
-        });
-        <span class="kw">let </span><span class="kw-2">mut </span>manager = start_bootstrap_server(
-            listener,
+    <span class="comment">// launch bootstrap server
+    // TODO: use std::net::TcpStream
+    </span><span class="kw">let </span>bootstrap_manager = <span class="kw">match </span>bootstrap_config.listen_addr {
+        <span class="prelude-val">Some</span>(addr) =&gt; start_bootstrap_server(
             consensus_controller.clone(),
             network_command_sender.clone(),
             final_state.clone(),
             bootstrap_config,
+            DefaultListener::new(<span class="kw-2">&amp;</span>addr).unwrap(),
             private_key,
             <span class="kw-2">*</span>VERSION,
             mip_store.clone(),
         )
-        .expect(<span class="string">&quot;Could not start bootstrap server&quot;</span>);
-        manager.set_listener_stopper(waker);
-        manager
-    });
+        .unwrap(),
+        <span class="prelude-val">None </span>=&gt; <span class="prelude-val">None</span>,
+    };
 
     <span class="kw">let </span>api_config: APIConfig = APIConfig {
         bind_private: SETTINGS.api.bind_private,
