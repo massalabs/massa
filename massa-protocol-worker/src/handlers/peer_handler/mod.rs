@@ -129,7 +129,7 @@ impl PeerManagementHandler {
                                     for mut listener in &mut listeners {
                                         listener.0 = &SocketAddr::new(routable_ip, listener.0.port());
                                     }
-                                    peers.push((peer_id.clone(), config.listeners.clone()));
+                                    peers.push((peer_id.clone(), listeners));
                                 }
                                 if let Err(err) = responder.send(BootstrapPeers(peers)) {
                                     warn!("error sending bootstrap peers: {:?}", err);
