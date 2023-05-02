@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"struct":["DefaultConnector","DefaultListener"],"trait":["BSConnector","BSEventPoller"]};
+window.SIDEBAR_ITEMS = {"struct":["DefaultConnector","DefaultListener"],"trait":["BSConnector","BSListener"]};
