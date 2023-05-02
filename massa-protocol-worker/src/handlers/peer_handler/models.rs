@@ -14,7 +14,7 @@ use tracing::log::info;
 
 use super::announcement::Announcement;
 
-const THREE_DAYS_NS: u128 = 3 * 24 * 60 * 60 * 1_000_000_000;
+const THREE_DAYS_MS: u128 = 3 * 24 * 60 * 60 * 1_000_000;
 
 pub type InitialPeers = HashMap<PeerId, HashMap<SocketAddr, TransportType>>;
 
@@ -116,8 +116,9 @@ impl PeerDB {
         let now = SystemTime::now()
             .duration_since(UNIX_EPOCH)
             .expect("Time went backward")
-            .as_nanos();
-        let min_time = now - THREE_DAYS_NS;
+            .as_millis();
+
+        let min_time = now - THREE_DAYS_MS;
 
         let mut keys = self.peers.keys().cloned().collect::<Vec<_>>();
         let mut rng = rand::thread_rng();
@@ -126,12 +127,14 @@ impl PeerDB {
         let mut result = Vec::new();
 
         for key in keys {
+            println!("AURELIEN: Try to include {} in peer announcement", key);
             if result.len() >= nb_peers {
                 break;
             }
             if let Some(peer) = self.peers.get(&key) {
                 // skip old peers
                 if peer.last_announce.timestamp < min_time {
+                    println!("AURELIEN: Don't include too old");
                     continue;
                 }
                 // skip peers with no listeners
@@ -141,6 +144,7 @@ impl PeerDB {
                 result.push((key, peer.last_announce.listeners.clone()));
             }
         }
+        println!("AURELIEN: Peer announcement: {:?}", result);
         result
     }
 

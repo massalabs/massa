@@ -455,7 +455,6 @@ async fn launch(
         pool_channels.clone(),
     );
 
-    //TODO AURELIEN: Use peers retrieved from bootstrap_state
     // launch protocol controller
     let mut listeners = HashMap::default();
     listeners.insert(SETTINGS.protocol.bind, TransportType::Tcp);
