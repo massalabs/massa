@@ -294,13 +294,6 @@ impl TryFrom<(&SecureShareEndorsement, &SecureShareEndorsement)> for Denunciatio
     fn try_from(
         (s_e1, s_e2): (&SecureShareEndorsement, &SecureShareEndorsement),
     ) -> Result<Self, Self::Error> {
-        /*
-        // Cannot use the same endorsement twice
-        if s_e1.id == s_e2.id {
-            return Err(DenunciationError::InvalidInput("Same hash".to_string()));
-        }
-        */
-
         // In order to create a Denunciation, there should be the same
         // slot, index & public key
         if s_e1.content.slot != s_e2.content.slot
