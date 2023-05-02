@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"fn":["create_protocol_controller","start_protocol_controller"],"mod":["connectivity","controller","handlers","manager","messages","sig_verifier","worker","wrap_network"]};
+window.SIDEBAR_ITEMS = {"mod":["cache","checked_operations","node_info","protocol_network","protocol_worker","sig_verifier","worker_operations_impl"]};
