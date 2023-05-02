@@ -28,8 +28,10 @@ massa_async_pool = { path = "../massa-async-pool", features = ["testing"] }
 massa_ledger_worker = { path = "../massa-ledger-worker", features = [
     "testing",
 ] }
+massa_pos_worker = { path = "../massa-pos-worker", features = ["testing"] }
 massa_pos_exports = { path = "../massa-pos-exports", features = ["testing"] }
 massa_signature = { path = "../massa-signature" }
+tempfile = "3.3"
 
 # for more information on what are the following features used for, see the cargo.toml at workspace level
 [features]

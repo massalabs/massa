@@ -108,8 +108,7 @@ impl FinalState {
             rocks_db.clone(),
         );
 
-        // create the final state
-        Ok(FinalState {
+        let mut final_state = FinalState {
             slot,
             ledger,
             async_pool,
@@ -121,7 +120,11 @@ impl FinalState {
             final_state_hash: Hash::from_bytes(FINAL_STATE_HASH_INITIAL_BYTES),
             last_start_period: 0,
             rocks_db,
-        })
+        };
+
+        final_state.compute_state_hash_at_slot(slot);
+        // create the final state
+        Ok(final_state)
     }
 
     /// Initializes a `FinalState` from a snapshot. Currently, we do not use the final_state from the ledger,
