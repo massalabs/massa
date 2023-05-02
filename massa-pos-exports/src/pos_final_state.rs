@@ -74,41 +74,6 @@ impl PoSFinalState {
         })
     }
 
-    #[allow(clippy::too_many_arguments)]
-    /// create a `PoSFinalState` from an existing snapshot
-    pub fn from_snapshot(
-        config: PoSConfig,
-        db: Arc<RwLock<DB>>,
-        cycle_history: VecDeque<CycleInfo>,
-        deferred_credits: DeferredCredits,
-        initial_seed_string: &str,
-        initial_rolls_path: &PathBuf,
-        selector: Box<dyn SelectorController>,
-        initial_ledger_hash: Hash,
-    ) -> Result<Self, PosError> {
-        // Seeds used as the initial seeds for negative cycles (-2 and -1 respectively)
-        let init_seed = Hash::compute_from(initial_seed_string.as_bytes());
-        let initial_seeds = vec![Hash::compute_from(init_seed.to_bytes()), init_seed];
-        // load get initial rolls from file
-        let initial_rolls = serde_json::from_str::<BTreeMap<Address, u64>>(
-            &std::fs::read_to_string(initial_rolls_path).map_err(|err| {
-                PosError::RollsFileLoadingError(format!("error while deserializing: {}", err))
-            })?,
-        )
-        .map_err(|err| PosError::RollsFileLoadingError(format!("error opening file: {}", err)))?;
-
-        Ok(Self {
-            config,
-            db,
-            cycle_history,
-            deferred_credits,
-            selector,
-            initial_rolls,
-            initial_seeds,
-            initial_ledger_hash,
-        })
-    }
-
     /// Reset the state of the PoS final state
     ///
     /// USED ONLY FOR BOOTSTRAP

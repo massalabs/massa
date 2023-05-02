@@ -402,7 +402,7 @@ impl LedgerDB {
         let handle = db.cf_handle(METADATA_CF).expect(CF_ERROR);
 
         let Ok(Some(slot_bytes)) = db.get_pinned_cf(handle, SLOT_KEY) else {
-            return Err(ModelsError::BufferError(String::from("Could not recover final_state_hash")));
+            return Err(ModelsError::BufferError(String::from("Could not recover ledger_slot")));
         };
 
         let (_rest, slot) = self.slot_deserializer.deserialize(&slot_bytes)?;

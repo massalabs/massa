@@ -143,13 +143,7 @@ impl FinalState {
 
         // FIRST, we recover the last known final_state
         let mut final_state = FinalState::new(rocks_db, config, ledger, selector)?;
-        let _final_state_hash_from_snapshot = Hash::from_bytes(FINAL_STATE_HASH_INITIAL_BYTES);
         final_state.pos_state.create_initial_cycle();
-
-        // TODO: We recover the final_state from the RocksDB instance instead
-        /*let final_state_data = ledger
-        .get_final_state()
-        .expect("Cannot retrieve ledger final_state data");*/
 
         final_state.slot = final_state.ledger.get_slot().map_err(|_| {
             FinalStateError::InvalidSlot(String::from("Could not recover Slot in Ledger"))
@@ -161,12 +155,6 @@ impl FinalState {
         );
 
         final_state.compute_state_hash_at_slot(final_state.slot);
-
-        // Check the hash to see if we correctly recovered the snapshot
-        // TODO: Redo this check when we get the final_state from the ledger
-        /*if final_state.final_state_hash != final_state_hash_from_snapshot {
-            warn!("The hash of the final_state recovered from the snapshot is different from the hash saved.");
-        }*/
 
         // Then, interpolate the downtime, to attach at end_slot;
         final_state.last_start_period = last_start_period;
