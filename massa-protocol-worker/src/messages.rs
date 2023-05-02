@@ -14,7 +14,9 @@ use crate::handlers::{
     block_handler::{BlockMessage, BlockMessageSerializer},
     endorsement_handler::{EndorsementMessage, EndorsementMessageSerializer},
     operation_handler::{OperationMessage, OperationMessageSerializer},
-    peer_handler::{PeerManagementMessage, PeerManagementMessageSerializer},
+    peer_handler::{
+        models::PeerMessageTuple, PeerManagementMessage, PeerManagementMessageSerializer,
+    },
 };
 
 #[derive(Debug)]
@@ -209,10 +211,10 @@ impl PeerNetMessagesSerializer<Message> for MessagesSerializer {
 
 #[derive(Clone)]
 pub struct MessagesHandler {
-    pub sender_blocks: Sender<(PeerId, u64, Vec<u8>)>,
-    pub sender_endorsements: Sender<(PeerId, u64, Vec<u8>)>,
-    pub sender_operations: Sender<(PeerId, u64, Vec<u8>)>,
-    pub sender_peers: Sender<(PeerId, u64, Vec<u8>)>,
+    pub sender_blocks: Sender<PeerMessageTuple>,
+    pub sender_endorsements: Sender<PeerMessageTuple>,
+    pub sender_operations: Sender<PeerMessageTuple>,
+    pub sender_peers: Sender<PeerMessageTuple>,
     pub id_deserializer: U64VarIntDeserializer,
 }
 
