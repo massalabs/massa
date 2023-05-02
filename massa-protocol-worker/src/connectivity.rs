@@ -81,6 +81,8 @@ pub(crate) fn start_connectivity_thread(
                         addr, transport
                     ));
             }
+
+            // Little hack to be sure that listeners are started before trying to connect to peers
             std::thread::sleep(Duration::from_millis(100));
 
             // Create cache outside of the op handler because it could be used by other handlers
