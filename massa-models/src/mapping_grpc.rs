@@ -272,17 +272,14 @@ impl From<EventExecutionContext> for grpc::ScExecutionEventContext {
         Self {
             id,
             origin_slot: Some(value.slot.into()),
-            block_id: value.block.map(|id| id.to_string()).unwrap_or_default(),
+            block_id: value.block.map(|id| id.to_string()),
             index_in_slot: value.index_in_slot,
             call_stack: value
                 .call_stack
                 .into_iter()
                 .map(|a| a.to_string())
                 .collect(),
-            origin_operation_id: value
-                .origin_operation_id
-                .map(|id| id.to_string())
-                .unwrap_or_default(),
+            origin_operation_id: value.origin_operation_id.map(|id| id.to_string()),
             status: vec![
                 value.is_error.into(),
                 value.read_only.into(),

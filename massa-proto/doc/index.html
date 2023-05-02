@@ -2755,7 +2755,7 @@
                 <td>NewSlotExecutionOutputs</td>
                 <td><a href="#massa.api.v1.NewSlotExecutionOutputsRequest">NewSlotExecutionOutputsRequest</a> stream</td>
                 <td><a href="#massa.api.v1.NewSlotExecutionOutputsResponse">NewSlotExecutionOutputsResponse</a> stream</td>
-                <td><p>New received and produced smart contract execution events</p></td>
+                <td><p>New received and slot execution events</p></td>
               </tr>
             
               <tr>
@@ -3473,7 +3473,7 @@ This is the parent in thread `self.slot.thread` of the block in which the endors
                 <tr>
                   <td>block_id</td>
                   <td><a href="#string">string</a></td>
-                  <td></td>
+                  <td>optional</td>
                   <td><p>Block id at that slot (optional) </p></td>
                 </tr>
               
@@ -3560,7 +3560,7 @@ This is the parent in thread `self.slot.thread` of the block in which the endors
                   <td>id</td>
                   <td><a href="#string">string</a></td>
                   <td></td>
-                  <td><p>base58 encoded slot &#43; index_in_slot </p></td>
+                  <td><p>base58 encoded slot(period &#43; thread) &#43; index_in_slot </p></td>
                 </tr>
               
                 <tr>
@@ -3573,8 +3573,8 @@ This is the parent in thread `self.slot.thread` of the block in which the endors
                 <tr>
                   <td>block_id</td>
                   <td><a href="#string">string</a></td>
-                  <td></td>
-                  <td><p>Block id if there was a block at that slot </p></td>
+                  <td>optional</td>
+                  <td><p>Block id if there was a block at that slot (optional) </p></td>
                 </tr>
               
                 <tr>
@@ -3594,8 +3594,8 @@ This is the parent in thread `self.slot.thread` of the block in which the endors
                 <tr>
                   <td>origin_operation_id</td>
                   <td><a href="#string">string</a></td>
-                  <td></td>
-                  <td><p>Origin operation id </p></td>
+                  <td>optional</td>
+                  <td><p>Origin operation id (optional) </p></td>
                 </tr>
               
                 <tr>

@@ -26,7 +26,7 @@ impl From<ExecutionOutput> for grpc::ExecutionOutput {
     fn from(value: ExecutionOutput) -> Self {
         grpc::ExecutionOutput {
             slot: Some(value.slot.into()),
-            block_id: value.block_id.map(|id| id.to_string()).unwrap_or_default(),
+            block_id: value.block_id.map(|id| id.to_string()),
             events: value
                 .events
                 .0

@@ -117,7 +117,7 @@ service MassaService {
   // New received and produced operations
   rpc NewOperations(stream NewOperationsRequest) returns (stream NewOperationsResponse) {}
 
-  // New received and produced smart contract execution events
+  // New received and slot execution events
   rpc NewSlotExecutionOutputs(stream NewSlotExecutionOutputsRequest) returns (stream NewSlotExecutionOutputsResponse) {}
 
   // Send blocks

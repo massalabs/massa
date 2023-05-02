@@ -10,7 +10,7 @@ pub mod new_endorsements;
 pub mod new_filled_blocks;
 /// subscribe new operations
 pub mod new_operations;
-/// subscribe new smart contract execution outputs
+/// subscribe new slot execution outputs
 pub mod new_slot_execution_outputs;
 /// send_blocks streaming
 pub mod send_blocks;

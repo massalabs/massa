@@ -95,9 +95,9 @@ pub(crate) async fn new_slot_execution_outputs(
         }
     });
 
-    // Create a new stream from the received channel.
+    // Create a new stream from the received channel
     let out_stream = tokio_stream::wrappers::ReceiverStream::new(rx);
 
-    // Return the new stream of slot execution output.
+    // Return the new stream of slot execution output
     Ok(Box::pin(out_stream) as NewSlotExecutionOutputsStreamType)
 }

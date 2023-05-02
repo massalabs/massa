@@ -1203,7 +1203,7 @@ Massa gRPC service
 | NewEndorsements | [NewEndorsementsRequest](#massa-api-v1-NewEndorsementsRequest) stream | [NewEndorsementsResponse](#massa-api-v1-NewEndorsementsResponse) stream | New received and produced endorsements |
 | NewFilledBlocks | [NewFilledBlocksRequest](#massa-api-v1-NewFilledBlocksRequest) stream | [NewFilledBlocksResponse](#massa-api-v1-NewFilledBlocksResponse) stream | New received and produced blocks with operations |
 | NewOperations | [NewOperationsRequest](#massa-api-v1-NewOperationsRequest) stream | [NewOperationsResponse](#massa-api-v1-NewOperationsResponse) stream | New received and produced operations |
-| NewSlotExecutionOutputs | [NewSlotExecutionOutputsRequest](#massa-api-v1-NewSlotExecutionOutputsRequest) stream | [NewSlotExecutionOutputsResponse](#massa-api-v1-NewSlotExecutionOutputsResponse) stream | New received and produced smart contract execution events |
+| NewSlotExecutionOutputs | [NewSlotExecutionOutputsRequest](#massa-api-v1-NewSlotExecutionOutputsRequest) stream | [NewSlotExecutionOutputsResponse](#massa-api-v1-NewSlotExecutionOutputsResponse) stream | New received and slot execution events |
 | SendBlocks | [SendBlocksRequest](#massa-api-v1-SendBlocksRequest) stream | [SendBlocksResponse](#massa-api-v1-SendBlocksResponse) stream | Send blocks |
 | SendEndorsements | [SendEndorsementsRequest](#massa-api-v1-SendEndorsementsRequest) stream | [SendEndorsementsResponse](#massa-api-v1-SendEndorsementsResponse) stream | Send endorsements |
 | SendOperations | [SendOperationsRequest](#massa-api-v1-SendOperationsRequest) stream | [SendOperationsResponse](#massa-api-v1-SendOperationsResponse) stream | Send operations |
@@ -1484,7 +1484,7 @@ ExecutionOutput
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | slot | [Slot](#massa-api-v1-Slot) |  | Slot |
-| block_id | [string](#string) |  | Block id at that slot (optional) |
+| block_id | [string](#string) | optional | Block id at that slot (optional) |
 | events | [ScExecutionEvent](#massa-api-v1-ScExecutionEvent) | repeated | Events emitted by the execution step |
 
 
@@ -1531,12 +1531,12 @@ ScExecutionEvent context
 
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
-| id | [string](#string) |  | base58 encoded slot &#43; index_in_slot |
+| id | [string](#string) |  | base58 encoded slot(period &#43; thread) &#43; index_in_slot |
 | origin_slot | [Slot](#massa-api-v1-Slot) |  | When was it generated |
-| block_id | [string](#string) |  | Block id if there was a block at that slot |
+| block_id | [string](#string) | optional | Block id if there was a block at that slot (optional) |
 | index_in_slot | [fixed64](#fixed64) |  | Index of the event in the slot |
 | call_stack | [string](#string) | repeated | Call stack addresses. most recent at the end |
-| origin_operation_id | [string](#string) |  | Origin operation id |
+| origin_operation_id | [string](#string) | optional | Origin operation id (optional) |
 | status | [ScExecutionEventStatus](#massa-api-v1-ScExecutionEventStatus) | repeated | Status |
 
 

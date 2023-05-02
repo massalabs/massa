@@ -452,8 +452,8 @@ pub struct ExecutionOutput {
     #[prost(message, optional, tag = "1")]
     pub slot: ::core::option::Option<Slot>,
     /// Block id at that slot (optional)
-    #[prost(string, tag = "2")]
-    pub block_id: ::prost::alloc::string::String,
+    #[prost(string, optional, tag = "2")]
+    pub block_id: ::core::option::Option<::prost::alloc::string::String>,
     /// Events emitted by the execution step
     #[prost(message, repeated, tag = "3")]
     pub events: ::prost::alloc::vec::Vec<ScExecutionEvent>,
@@ -473,24 +473,24 @@ pub struct ScExecutionEvent {
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct ScExecutionEventContext {
-    /// base58 encoded slot + index_in_slot
+    /// base58 encoded slot(period + thread) + index_in_slot
     #[prost(string, tag = "1")]
     pub id: ::prost::alloc::string::String,
     /// When was it generated
     #[prost(message, optional, tag = "2")]
     pub origin_slot: ::core::option::Option<Slot>,
-    /// Block id if there was a block at that slot
-    #[prost(string, tag = "3")]
-    pub block_id: ::prost::alloc::string::String,
+    /// Block id if there was a block at that slot (optional)
+    #[prost(string, optional, tag = "3")]
+    pub block_id: ::core::option::Option<::prost::alloc::string::String>,
     /// Index of the event in the slot
     #[prost(fixed64, tag = "4")]
     pub index_in_slot: u64,
     /// Call stack addresses. most recent at the end
     #[prost(string, repeated, tag = "5")]
     pub call_stack: ::prost::alloc::vec::Vec<::prost::alloc::string::String>,
-    /// Origin operation id
-    #[prost(string, tag = "6")]
-    pub origin_operation_id: ::prost::alloc::string::String,
+    /// Origin operation id (optional)
+    #[prost(string, optional, tag = "6")]
+    pub origin_operation_id: ::core::option::Option<::prost::alloc::string::String>,
     /// Status
     #[prost(enumeration = "ScExecutionEventStatus", repeated, tag = "7")]
     pub status: ::prost::alloc::vec::Vec<i32>,
@@ -1831,7 +1831,7 @@ pub mod massa_service_client {
                 .insert(GrpcMethod::new("massa.api.v1.MassaService", "NewOperations"));
             self.inner.streaming(req, path, codec).await
         }
-        /// New received and produced smart contract execution events
+        /// New received and slot execution events
         pub async fn new_slot_execution_outputs(
             &mut self,
             request: impl tonic::IntoStreamingRequest<
@@ -2153,7 +2153,7 @@ pub mod massa_service_server {
             >
             + Send
             + 'static;
-        /// New received and produced smart contract execution events
+        /// New received and slot execution events
         async fn new_slot_execution_outputs(
             &self,
             request: tonic::Request<
