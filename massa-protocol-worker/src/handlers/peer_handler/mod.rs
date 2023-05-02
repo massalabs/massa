@@ -125,10 +125,9 @@ impl PeerManagementHandler {
                                 let mut peers = peer_db.read().get_rand_peers_to_send(100);
                                 // Add myself
                                 if let Some(routable_ip) = config.routable_ip {
-                                    let mut listeners = config.listeners.clone();
-                                    for mut listener in &mut listeners {
-                                        listener.0 = &SocketAddr::new(routable_ip, listener.0.port());
-                                    }
+                                    let listeners = config.listeners.iter().map(|(addr, ty)| {
+                                        (SocketAddr::new(routable_ip, addr.port()), *ty)
+                                    }).collect();
                                     peers.push((peer_id.clone(), listeners));
                                 }
                                 if let Err(err) = responder.send(BootstrapPeers(peers)) {
