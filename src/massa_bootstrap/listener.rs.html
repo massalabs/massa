@@ -82,7 +82,6 @@
 <a href="#82" id="82">82</a>
 <a href="#83" id="83">83</a>
 <a href="#84" id="84">84</a>
-<a href="#85" id="85">85</a>
 </pre><pre class="rust"><code><span class="kw">use </span>std::net::{SocketAddr, TcpListener, TcpStream};
 
 <span class="kw">use </span>mio::net::TcpListener <span class="kw">as </span>MioTcpListener;
@@ -113,10 +112,9 @@
     Stop,
 }
 <span class="kw">impl </span>BootstrapTcpListener {
-    <span class="doccomment">/// Start a new bootstrap listener on the given address.
+    <span class="doccomment">/// Setup a mio-listener that functions as a `select!` on a connection, or a waker
     ///
     /// * `addr` - the address to listen on
-    /// * `connection_tx` - the channel to send new connections to
     </span><span class="kw">pub fn </span>new(addr: SocketAddr) -&gt; <span class="prelude-ty">Result</span>&lt;(BootstrapListenerStopHandle, <span class="self">Self</span>), BootstrapError&gt; {
         <span class="macro">info!</span>(<span class="string">&quot;Starting bootstrap listener on {}&quot;</span>, <span class="kw-2">&amp;</span>addr);
         <span class="kw">let </span>server = TcpListener::bind(addr)<span class="question-mark">?</span>;
