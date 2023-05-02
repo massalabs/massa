@@ -1,0 +1,3 @@
+(function() {var implementors = {
+"massa_protocol_worker":[["impl InitConnectionHandler for <a class=\"struct\" href=\"massa_protocol_worker/handlers/peer_handler/struct.MassaHandshake.html\" title=\"struct massa_protocol_worker::handlers::peer_handler::MassaHandshake\">MassaHandshake</a>"],["impl InitConnectionHandler for <a class=\"struct\" href=\"massa_protocol_worker/handlers/peer_handler/tester/struct.TesterHandshake.html\" title=\"struct massa_protocol_worker::handlers::peer_handler::tester::TesterHandshake\">TesterHandshake</a>"]]
+};if (window.register_implementors) {window.register_implementors(implementors);} else {window.pending_implementors = implementors;}})()

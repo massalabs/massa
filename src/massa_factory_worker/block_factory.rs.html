@@ -489,8 +489,8 @@
                 parents: parents.into_iter().map(|(id, _period)| id).collect(),
                 operation_merkle_root: global_operations_hash,
                 endorsements,
-                denunciations: <span class="self">self</span>.channels.pool.get_block_denunciations(<span class="kw-2">&amp;</span>slot),
-            },
+                denunciations: Vec::new(), <span class="comment">// TODO / FIXME: feed
+            </span>},
             BlockHeaderSerializer::new(), <span class="comment">// TODO reuse self.block_header_serializer
             </span>block_producer_keypair,
         )

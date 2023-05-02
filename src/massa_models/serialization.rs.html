@@ -901,7 +901,7 @@
 }
 
 <span class="doccomment">/// Serializer for `IpAddr`
-</span><span class="attr">#[derive(Default)]
+</span><span class="attr">#[derive(Default, Clone)]
 </span><span class="kw">pub struct </span>IpAddrSerializer;
 
 <span class="kw">impl </span>IpAddrSerializer {
@@ -939,7 +939,7 @@
 }
 
 <span class="doccomment">/// Deserializer for `IpAddr`
-</span><span class="attr">#[derive(Default)]
+</span><span class="attr">#[derive(Default, Clone)]
 </span><span class="kw">pub struct </span>IpAddrDeserializer;
 
 <span class="kw">impl </span>IpAddrDeserializer {
@@ -954,9 +954,9 @@
     /// use massa_models::{address::Address, amount::Amount, slot::Slot, serialization::{IpAddrSerializer, IpAddrDeserializer}};
     /// use massa_serialization::{Serializer, Deserializer, DeserializeError};
     /// use std::str::FromStr;
-    /// use std::net::{IpAddr, Ipv4Addr};
+    /// use std::net::{IpAddr, Ipv6Addr};
     ///
-    /// let ip = IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1));
+    /// let ip = IpAddr::V6(Ipv6Addr::new(0, 0, 0, 0, 0, 0, 0, 1));
     /// let ip_serializer = IpAddrSerializer::new();
     /// let ip_deserializer = IpAddrDeserializer::new();
     /// let mut serialized = Vec::new();
