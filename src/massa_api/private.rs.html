@@ -493,6 +493,8 @@
 <a href="#493" id="493">493</a>
 <a href="#494" id="494">494</a>
 <a href="#495" id="495">495</a>
+<a href="#496" id="496">496</a>
+<a href="#497" id="497">497</a>
 </pre><pre class="rust"><code><span class="doccomment">//! Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="kw">use crate</span>::{MassaRpcServer, Private, RpcServer, StopHandle, Value, API};
@@ -643,7 +645,8 @@
     }
 
     <span class="kw">async fn </span>node_ban_by_ip(<span class="kw-2">&amp;</span><span class="self">self</span>, _ips: Vec&lt;IpAddr&gt;) -&gt; RpcResult&lt;()&gt; {
-        <span class="comment">// let network_command_sender = self.0.network_command_sender.clone();
+        <span class="comment">//TODO: Reinvoke
+        // let network_command_sender = self.0.network_command_sender.clone();
         // network_command_sender
         //    .node_ban_by_ips(ips)
         //    .await
@@ -692,7 +695,8 @@
     }
 
     <span class="kw">async fn </span>node_unban_by_ip(<span class="kw-2">&amp;</span><span class="self">self</span>, _ips: Vec&lt;IpAddr&gt;) -&gt; RpcResult&lt;()&gt; {
-        <span class="comment">// let network_command_sender = self.0.network_command_sender.clone();
+        <span class="comment">//TODO: Reinvoke
+        // let network_command_sender = self.0.network_command_sender.clone();
         // network_command_sender
         //     .node_unban_ips(ips)
         //     .await
