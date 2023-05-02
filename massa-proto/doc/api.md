@@ -42,6 +42,8 @@
     - [LargestStakersContext](#massa-api-v1-LargestStakersContext)
     - [LargestStakersFilter](#massa-api-v1-LargestStakersFilter)
     - [LargestStakersQuery](#massa-api-v1-LargestStakersQuery)
+    - [NewBlockCliquesRequest](#massa-api-v1-NewBlockCliquesRequest)
+    - [NewBlockCliquesResponse](#massa-api-v1-NewBlockCliquesResponse)
     - [NewBlocksHeadersRequest](#massa-api-v1-NewBlocksHeadersRequest)
     - [NewBlocksHeadersResponse](#massa-api-v1-NewBlocksHeadersResponse)
     - [NewBlocksRequest](#massa-api-v1-NewBlocksRequest)
@@ -734,6 +736,37 @@ LargestStakers Query
 
 
 
+<a name="massa-api-v1-NewBlockCliquesRequest"></a>
+
+### NewBlockCliquesRequest
+NewBlockCliquesRequest holds request for NewBlockCliques
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| id | [string](#string) |  | Request id |
+
+
+
+
+
+
+<a name="massa-api-v1-NewBlockCliquesResponse"></a>
+
+### NewBlockCliquesResponse
+NewBlockCliquesResponse holds response from NewBlockCliques
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| id | [string](#string) |  | Request id |
+| clique | [string](#string) | repeated | Clique, set of addresses |
+
+
+
+
+
+
 <a name="massa-api-v1-NewBlocksHeadersRequest"></a>
 
 ### NewBlocksHeadersRequest
@@ -1198,6 +1231,7 @@ Massa gRPC service
 | GetSelectorDraws | [GetSelectorDrawsRequest](#massa-api-v1-GetSelectorDrawsRequest) | [GetSelectorDrawsResponse](#massa-api-v1-GetSelectorDrawsResponse) | Get selector draws |
 | GetTransactionsThroughput | [GetTransactionsThroughputRequest](#massa-api-v1-GetTransactionsThroughputRequest) | [GetTransactionsThroughputResponse](#massa-api-v1-GetTransactionsThroughputResponse) | Get transactions throughput |
 | GetVersion | [GetVersionRequest](#massa-api-v1-GetVersionRequest) | [GetVersionResponse](#massa-api-v1-GetVersionResponse) | Get node version |
+| NewBlockCliques | [NewBlockCliquesRequest](#massa-api-v1-NewBlockCliquesRequest) stream | [NewBlockCliquesResponse](#massa-api-v1-NewBlockCliquesResponse) stream | New received and produced blockcliques |
 | NewBlocks | [NewBlocksRequest](#massa-api-v1-NewBlocksRequest) stream | [NewBlocksResponse](#massa-api-v1-NewBlocksResponse) stream | New received and produced blocks |
 | NewBlocksHeaders | [NewBlocksHeadersRequest](#massa-api-v1-NewBlocksHeadersRequest) stream | [NewBlocksHeadersResponse](#massa-api-v1-NewBlocksHeadersResponse) stream | New received and produced blocks headers |
 | NewEndorsements | [NewEndorsementsRequest](#massa-api-v1-NewEndorsementsRequest) stream | [NewEndorsementsResponse](#massa-api-v1-NewEndorsementsResponse) stream | New received and produced endorsements |

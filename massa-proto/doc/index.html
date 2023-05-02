@@ -331,6 +331,14 @@
                 </li>
               
                 <li>
+                  <a href="#massa.api.v1.NewBlockCliquesRequest"><span class="badge">M</span>NewBlockCliquesRequest</a>
+                </li>
+              
+                <li>
+                  <a href="#massa.api.v1.NewBlockCliquesResponse"><span class="badge">M</span>NewBlockCliquesResponse</a>
+                </li>
+              
+                <li>
                   <a href="#massa.api.v1.NewBlocksHeadersRequest"><span class="badge">M</span>NewBlocksHeadersRequest</a>
                 </li>
               
@@ -1797,6 +1805,61 @@
 
         
       
+        <h3 id="massa.api.v1.NewBlockCliquesRequest">NewBlockCliquesRequest</h3>
+        <p>NewBlockCliquesRequest holds request for NewBlockCliques</p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>id</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p>Request id </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
+        <h3 id="massa.api.v1.NewBlockCliquesResponse">NewBlockCliquesResponse</h3>
+        <p>NewBlockCliquesResponse holds response from NewBlockCliques</p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>id</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p>Request id </p></td>
+                </tr>
+              
+                <tr>
+                  <td>clique</td>
+                  <td><a href="#string">string</a></td>
+                  <td>repeated</td>
+                  <td><p>Clique, set of addresses </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
         <h3 id="massa.api.v1.NewBlocksHeadersRequest">NewBlocksHeadersRequest</h3>
         <p>NewBlocksHeadersRequest holds request for NewBlocksHeaders</p>
 
@@ -2714,6 +2777,13 @@
                 <td><a href="#massa.api.v1.GetVersionRequest">GetVersionRequest</a></td>
                 <td><a href="#massa.api.v1.GetVersionResponse">GetVersionResponse</a></td>
                 <td><p>Get node version</p></td>
+              </tr>
+            
+              <tr>
+                <td>NewBlockCliques</td>
+                <td><a href="#massa.api.v1.NewBlockCliquesRequest">NewBlockCliquesRequest</a> stream</td>
+                <td><a href="#massa.api.v1.NewBlockCliquesResponse">NewBlockCliquesResponse</a> stream</td>
+                <td><p>New received and produced blockcliques</p></td>
               </tr>
             
               <tr>

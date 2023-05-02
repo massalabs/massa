@@ -993,6 +993,25 @@ pub struct GetVersionResponse {
     #[prost(string, tag = "2")]
     pub version: ::prost::alloc::string::String,
 }
+/// NewBlockCliquesRequest holds request for NewBlockCliques
+#[allow(clippy::derive_partial_eq_without_eq)]
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct NewBlockCliquesRequest {
+    /// Request id
+    #[prost(string, tag = "1")]
+    pub id: ::prost::alloc::string::String,
+}
+/// NewBlockCliquesResponse holds response from NewBlockCliques
+#[allow(clippy::derive_partial_eq_without_eq)]
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct NewBlockCliquesResponse {
+    /// Request id
+    #[prost(string, tag = "1")]
+    pub id: ::prost::alloc::string::String,
+    /// Clique, set of addresses
+    #[prost(string, repeated, tag = "2")]
+    pub clique: ::prost::alloc::vec::Vec<::prost::alloc::string::String>,
+}
 /// NewBlocksRequest holds request for NewBlocks
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
@@ -1691,6 +1710,34 @@ pub mod massa_service_client {
                 .insert(GrpcMethod::new("massa.api.v1.MassaService", "GetVersion"));
             self.inner.unary(req, path, codec).await
         }
+        /// New received and produced blockcliques
+        pub async fn new_block_cliques(
+            &mut self,
+            request: impl tonic::IntoStreamingRequest<
+                Message = super::NewBlockCliquesRequest,
+            >,
+        ) -> std::result::Result<
+            tonic::Response<tonic::codec::Streaming<super::NewBlockCliquesResponse>>,
+            tonic::Status,
+        > {
+            self.inner
+                .ready()
+                .await
+                .map_err(|e| {
+                    tonic::Status::new(
+                        tonic::Code::Unknown,
+                        format!("Service was not ready: {}", e.into()),
+                    )
+                })?;
+            let codec = tonic::codec::ProstCodec::default();
+            let path = http::uri::PathAndQuery::from_static(
+                "/massa.api.v1.MassaService/NewBlockCliques",
+            );
+            let mut req = request.into_streaming_request();
+            req.extensions_mut()
+                .insert(GrpcMethod::new("massa.api.v1.MassaService", "NewBlockCliques"));
+            self.inner.streaming(req, path, codec).await
+        }
         /// New received and produced blocks
         pub async fn new_blocks(
             &mut self,
@@ -2072,6 +2119,20 @@ pub mod massa_service_server {
             request: tonic::Request<super::GetVersionRequest>,
         ) -> std::result::Result<
             tonic::Response<super::GetVersionResponse>,
+            tonic::Status,
+        >;
+        /// Server streaming response type for the NewBlockCliques method.
+        type NewBlockCliquesStream: futures_core::Stream<
+                Item = std::result::Result<super::NewBlockCliquesResponse, tonic::Status>,
+            >
+            + Send
+            + 'static;
+        /// New received and produced blockcliques
+        async fn new_block_cliques(
+            &self,
+            request: tonic::Request<tonic::Streaming<super::NewBlockCliquesRequest>>,
+        ) -> std::result::Result<
+            tonic::Response<Self::NewBlockCliquesStream>,
             tonic::Status,
         >;
         /// Server streaming response type for the NewBlocks method.
@@ -2762,6 +2823,55 @@ pub mod massa_service_server {
                                 max_encoding_message_size,
                             );
                         let res = grpc.unary(method, req).await;
+                        Ok(res)
+                    };
+                    Box::pin(fut)
+                }
+                "/massa.api.v1.MassaService/NewBlockCliques" => {
+                    #[allow(non_camel_case_types)]
+                    struct NewBlockCliquesSvc<T: MassaService>(pub Arc<T>);
+                    impl<
+                        T: MassaService,
+                    > tonic::server::StreamingService<super::NewBlockCliquesRequest>
+                    for NewBlockCliquesSvc<T> {
+                        type Response = super::NewBlockCliquesResponse;
+                        type ResponseStream = T::NewBlockCliquesStream;
+                        type Future = BoxFuture<
+                            tonic::Response<Self::ResponseStream>,
+                            tonic::Status,
+                        >;
+                        fn call(
+                            &mut self,
+                            request: tonic::Request<
+                                tonic::Streaming<super::NewBlockCliquesRequest>,
+                            >,
+                        ) -> Self::Future {
+                            let inner = Arc::clone(&self.0);
+                            let fut = async move {
+                                (*inner).new_block_cliques(request).await
+                            };
+                            Box::pin(fut)
+                        }
+                    }
+                    let accept_compression_encodings = self.accept_compression_encodings;
+                    let send_compression_encodings = self.send_compression_encodings;
+                    let max_decoding_message_size = self.max_decoding_message_size;
+                    let max_encoding_message_size = self.max_encoding_message_size;
+                    let inner = self.inner.clone();
+                    let fut = async move {
+                        let inner = inner.0;
+                        let method = NewBlockCliquesSvc(inner);
+                        let codec = tonic::codec::ProstCodec::default();
+                        let mut grpc = tonic::server::Grpc::new(codec)
+                            .apply_compression_config(
+                                accept_compression_encodings,
+                                send_compression_encodings,
+                            )
+                            .apply_max_message_size_config(
+                                max_decoding_message_size,
+                                max_encoding_message_size,
+                            );
+                        let res = grpc.streaming(method, req).await;
                         Ok(res)
                     };
                     Box::pin(fut)

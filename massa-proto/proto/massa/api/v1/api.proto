@@ -102,6 +102,9 @@ service MassaService {
   // ╚════██║   ██║   ██╔══██╗██╔══╝  ██╔══██║██║╚██╔╝██║
   // ███████║   ██║   ██║  ██║███████╗██║  ██║██║ ╚═╝ ██║
 
+  // New received and produced blockcliques
+  rpc NewBlockCliques(stream NewBlockCliquesRequest) returns (stream NewBlockCliquesResponse) {}
+
   // New received and produced blocks
   rpc NewBlocks(stream NewBlocksRequest) returns (stream NewBlocksResponse) {}
 
@@ -440,6 +443,20 @@ message GetVersionResponse {
   string id = 1;
   // Version
   string version = 2;
+}
+
+// NewBlockCliquesRequest holds request for NewBlockCliques
+message NewBlockCliquesRequest {
+  // Request id
+  string id = 1;
+}
+
+// NewBlockCliquesResponse holds response from NewBlockCliques
+message NewBlockCliquesResponse {
+  // Request id
+  string id = 1;
+  // Clique, set of addresses
+  repeated string clique = 2;
 }
 
 // NewBlocksRequest holds request for NewBlocks
