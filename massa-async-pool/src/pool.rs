@@ -326,7 +326,7 @@ impl AsyncPool {
         let handle = db.cf_handle(ASYNC_POOL_CF).expect(CF_ERROR);
 
         let mut pool_part = BTreeMap::new();
-        // Creates an iterator from the next element after the last if defined, otherwise initialize it at the first key of the ledger.
+        // Creates an iterator from the next element after the last if defined, otherwise initialize it at the first key.
         let (mut last_id, mut new_cursor) = match cursor {
             StreamingStep::Started => (None, StreamingStep::<AsyncMessageId>::Started),
             StreamingStep::Ongoing(last_id) => {

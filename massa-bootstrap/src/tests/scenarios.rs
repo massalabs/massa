@@ -309,13 +309,15 @@ fn test_bootstrap_server() {
             let ledger_hash = final_state_server_write.ledger.get_ledger_hash();
             let async_pool_hash = final_state_server_write.async_pool.get_hash();
             let executed_ops_hash = final_state_server_write.executed_ops.get_hash();
+            let executed_denunciations_hash =
+                final_state_server_write.executed_denunciations.get_hash();
             let mut batch = DBBatch::new(
                 Some(ledger_hash),
                 Some(async_pool_hash),
                 None,
                 None,
                 Some(executed_ops_hash),
-                None,
+                Some(executed_denunciations_hash),
             );
             final_state_server_write
                 .pos_state

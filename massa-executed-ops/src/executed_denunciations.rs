@@ -36,7 +36,7 @@ use massa_serialization::{
 use rocksdb::{IteratorMode, Options, DB};
 
 /// A structure to list and prune previously executed denunciations
-#[derive(Debug, Clone)]
+#[derive(Clone)]
 pub struct ExecutedDenunciations {
     /// Executed denunciations configuration
     config: ExecutedDenunciationsConfig,
@@ -44,9 +44,9 @@ pub struct ExecutedDenunciations {
     pub db: Arc<RwLock<DB>>,
     /// for better pruning complexity
     pub sorted_denunciations: BTreeMap<Slot, HashSet<DenunciationIndex>>,
-    /// for better insertion complexity
-    pub denunciations: HashSet<DenunciationIndex>,
+    /// for rocksdb serialization
     denunciation_index_serializer: DenunciationIndexSerializer,
+    /// for rocksdb deserialization
     denunciation_index_deserializer: DenunciationIndexDeserializer,
 }
 
