@@ -569,7 +569,7 @@
                                     <span class="kw">for </span><span class="kw-2">mut </span>listener <span class="kw">in </span><span class="kw-2">&amp;mut </span>listeners {
                                         listener.<span class="number">0 </span>= <span class="kw-2">&amp;</span>SocketAddr::new(routable_ip, listener.<span class="number">0</span>.port());
                                     }
-                                    peers.push((peer_id.clone(), config.listeners.clone()));
+                                    peers.push((peer_id.clone(), listeners));
                                 }
                                 <span class="kw">if let </span><span class="prelude-val">Err</span>(err) = responder.send(BootstrapPeers(peers)) {
                                     <span class="macro">warn!</span>(<span class="string">&quot;error sending bootstrap peers: {:?}&quot;</span>, err);
