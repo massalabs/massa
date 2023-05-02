@@ -261,6 +261,7 @@ impl MassaRpcServer for API<Private> {
     }
 
     async fn node_peers_whitelist(&self) -> RpcResult<Vec<IpAddr>> {
+        //TODO: Reinvoke
         // let network_command_sender = self.0.network_command_sender.clone();
         // match network_command_sender.get_peers().await {
         //     Ok(peers) => Ok(peers.peers.into_keys().sorted().collect::<Vec<IpAddr>>()),
@@ -284,6 +285,7 @@ impl MassaRpcServer for API<Private> {
     }
 
     async fn node_remove_from_peers_whitelist(&self, _ips: Vec<IpAddr>) -> RpcResult<()> {
+        //TODO: Reinvoke
         //TODO: Readd in network refactoring
         // let network_command_sender = self.0.network_command_sender.clone();
         // network_command_sender
