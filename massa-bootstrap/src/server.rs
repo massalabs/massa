@@ -238,9 +238,6 @@ impl<L: BSEventPoller> BootstrapServer<'_, L> {
         // TODO: Work out how to integration-test this
         loop {
             // block until we have a connection to work with, or break out of main-loop
-            // let Ok((dplx, remote_addr)) = self.listener_rx.recv().map_err(|_e| {
-            //     BootstrapError::GeneralError("Bootstrap listener channel disconnected".to_string())
-            // }) else { break; };
             let (dplx, remote_addr) = match self.ev_poller.poll() {
                 Ok(PollEvent::NewConnection((dplx, remote_addr))) => (dplx, remote_addr),
                 Ok(PollEvent::Stop) => break Ok(()),

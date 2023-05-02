@@ -281,23 +281,6 @@ fn test_bootstrap_server() {
     let final_state_server_clone2 = final_state_server.clone();
 
     let (mock_bs_listener, mock_remote_connector) = conn_establishment_mocks();
-    // // start bootstrap server
-    // let (mut mock_bs_listener, bootstrap_interface) = mock_establisher::new();
-    // let bootstrap_manager = start_bootstrap_server::<TcpStream>(
-    //     consensus_controller,
-    //     NetworkCommandSender(network_cmd_tx),
-    //     final_state_server.clone(),
-    //     bootstrap_config.clone(),
-    //     mock_bs_listener
-    //         .get_listener(&bootstrap_config.listen_addr.unwrap())
-    //         .unwrap(),
-    //     keypair.clone(),
-    //     Version::from_str("TEST.1.10").unwrap(),
-    //     mip_store.clone(),
-    // )
-    // .unwrap()
-    // .unwrap();
-
     // Setup network command mock-story: hard-code the result of getting bootstrap peers
     let mut mocked1 = NetworkCommandSender::new();
     let mut mocked2 = NetworkCommandSender::new();
@@ -343,6 +326,8 @@ fn test_bootstrap_server() {
         .return_once(move || stream_mock2);
 
     let cloned_store = mip_store.clone();
+
+    // Start the bootstrap server thread
     let bootstrap_manager_thread = std::thread::Builder::new()
         .name("bootstrap_thread".to_string())
         .spawn(move || {
@@ -504,15 +489,5 @@ fn conn_establishment_mocks() -> (MockBSEventPoller, MockBSConnector) {
         .times(1)
         .returning(move |_, _| dbg!(Ok(std::net::TcpStream::connect("127.0.0.1:8069").unwrap())))
         .in_sequence(&mut seq);
-    // mock_remote_connector
-    //     .expect_connect_timeout()
-    //     .times(1)
-    //     .returning(move |_, _| {
-    //         dbg!(Err(std::io::Error::new(
-    //             std::io::ErrorKind::ConnectionRefused,
-    //             "test is over",
-    //         )))
-    //     })
-    //     .in_sequence(&mut seq);
     (mock_bs_listener, mock_remote_connector)
 }
