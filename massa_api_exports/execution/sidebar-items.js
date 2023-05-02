@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"constant":["FIELDS","VARIANTS"],"enum":["ReadOnlyResult","__Field"],"struct":["ExecuteReadOnlyResponse","ReadOnlyBytecodeExecution","ReadOnlyCall","__FieldVisitor","__Visitor"]};
+window.SIDEBAR_ITEMS = {"enum":["ReadOnlyResult"],"struct":["ExecuteReadOnlyResponse","ReadOnlyBytecodeExecution","ReadOnlyCall"]};

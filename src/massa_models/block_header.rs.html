@@ -652,8 +652,16 @@
 <a href="#652" id="652">652</a>
 <a href="#653" id="653">653</a>
 <a href="#654" id="654">654</a>
+<a href="#655" id="655">655</a>
+<a href="#656" id="656">656</a>
+<a href="#657" id="657">657</a>
+<a href="#658" id="658">658</a>
+<a href="#659" id="659">659</a>
+<a href="#660" id="660">660</a>
+<a href="#661" id="661">661</a>
+<a href="#662" id="662">662</a>
+<a href="#663" id="663">663</a>
 </pre><pre class="rust"><code><span class="kw">use </span><span class="kw">crate</span>::block_id::BlockId;
-<span class="kw">use </span><span class="kw">crate</span>::config::THREAD_COUNT;
 <span class="kw">use </span><span class="kw">crate</span>::denunciation::{Denunciation, DenunciationDeserializer, DenunciationSerializer};
 <span class="kw">use </span><span class="kw">crate</span>::endorsement::{
     Endorsement, EndorsementDeserializerLW, EndorsementId, EndorsementSerializer,
@@ -697,7 +705,11 @@
 <span class="comment">// TODO: gh-issue #3398
 </span><span class="attr">#[cfg(any(test, feature = <span class="string">&quot;testing&quot;</span>))]
 </span><span class="kw">impl </span>BlockHeader {
-    <span class="kw">fn </span>assert_invariants(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span>&lt;(), Box&lt;<span class="kw">dyn </span>std::error::Error&gt;&gt; {
+    <span class="kw">fn </span>assert_invariants(
+        <span class="kw-2">&amp;</span><span class="self">self</span>,
+        thread_count: u8,
+        endorsement_count: u32,
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;(), Box&lt;<span class="kw">dyn </span>std::error::Error&gt;&gt; {
         <span class="kw">if </span><span class="self">self</span>.slot.period == <span class="number">0 </span>{
             <span class="kw">if </span>!<span class="self">self</span>.parents.is_empty() {
                 <span class="kw">return </span><span class="prelude-val">Err</span>(<span class="string">&quot;Invariant broken: genesis block with parent(s)&quot;</span>.into());
@@ -706,12 +718,12 @@
                 <span class="kw">return </span><span class="prelude-val">Err</span>(<span class="string">&quot;Invariant broken: genesis block with endorsement(s)&quot;</span>.into());
             }
         } <span class="kw">else </span>{
-            <span class="kw">if </span><span class="self">self</span>.parents.len() != <span class="kw">crate</span>::config::THREAD_COUNT <span class="kw">as </span>usize {
+            <span class="kw">if </span><span class="self">self</span>.parents.len() != thread_count <span class="kw">as </span>usize {
                 <span class="kw">return </span><span class="prelude-val">Err</span>(
                     <span class="string">&quot;Invariant broken: non-genesis block with incorrect number of parents&quot;</span>.into(),
                 );
             }
-            <span class="kw">if </span><span class="self">self</span>.endorsements.len() &gt; <span class="kw">crate</span>::config::ENDORSEMENT_COUNT <span class="kw">as </span>usize {
+            <span class="kw">if </span><span class="self">self</span>.endorsements.len() &gt; endorsement_count <span class="kw">as </span>usize {
                 <span class="kw">return </span><span class="prelude-val">Err</span>(<span class="string">&quot;Invariant broken: endorsement count too high&quot;</span>.into());
             }
 
@@ -764,8 +776,13 @@
     <span class="comment">// TODO: gh-issue #3398
     </span><span class="attr">#[allow(dead_code)]
     #[cfg(any(test, feature = <span class="string">&quot;testing&quot;</span>))]
-    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>assert_invariants(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span>&lt;(), Box&lt;<span class="kw">dyn </span>std::error::Error&gt;&gt; {
-        <span class="self">self</span>.content.assert_invariants()<span class="question-mark">?</span>;
+    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>assert_invariants(
+        <span class="kw-2">&amp;</span><span class="self">self</span>,
+        thread_count: u8,
+        endorsement_count: u32,
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;(), Box&lt;<span class="kw">dyn </span>std::error::Error&gt;&gt; {
+        <span class="self">self</span>.content
+            .assert_invariants(thread_count, endorsement_count)<span class="question-mark">?</span>;
         <span class="self">self</span>.verify_signature()
             .map_err(|er| <span class="macro">format!</span>(<span class="string">&quot;{}&quot;</span>, er).into())
     }
@@ -1027,14 +1044,11 @@
                             ParseError::from_error_kind(rest, nom::error::ErrorKind::Fail),
                         )));
                     } <span class="kw">else if </span>slot.period != last_start_period
-                        &amp;&amp; parents.len() != THREAD_COUNT <span class="kw">as </span>usize
+                        &amp;&amp; parents.len() != <span class="self">self</span>.thread_count <span class="kw">as </span>usize
                     {
                         <span class="kw">return </span><span class="prelude-val">Err</span>(nom::Err::Failure(ContextError::add_context(
                             rest,
-                            <span class="macro">const_format::formatcp!</span>(
-                                <span class="string">&quot;Non-genesis block must have {} parents&quot;</span>,
-                                THREAD_COUNT
-                            ),
+                            <span class="string">&quot;Non-genesis block must have same numbers of parents as threads count&quot;</span>,
                             ParseError::from_error_kind(rest, nom::error::ErrorKind::Fail),
                         )));
                     }
@@ -1059,7 +1073,9 @@
 
             <span class="comment">// TODO: gh-issue #3398
             </span><span class="attr">#[cfg(any(test, feature = <span class="string">&quot;testing&quot;</span>))]
-            </span>res.assert_invariants().unwrap();
+            </span>res.assert_invariants(<span class="self">self</span>.thread_count, <span class="self">self</span>.endorsement_count)
+                .unwrap();
+
             <span class="kw">return </span><span class="prelude-val">Ok</span>((
                 <span class="kw-2">&amp;</span>rest[<span class="number">2</span>..], <span class="comment">// Because there is 0 endorsements &amp; 0 denunciations, we have a remaining [0, 0] in rest and we don&#39;t need it
                 </span>res,
@@ -1134,7 +1150,9 @@
 
         <span class="comment">// TODO: gh-issue #3398
         </span><span class="attr">#[cfg(any(test, feature = <span class="string">&quot;testing&quot;</span>))]
-        </span>header.assert_invariants().unwrap();
+        </span>header
+            .assert_invariants(<span class="self">self</span>.thread_count, <span class="self">self</span>.endorsement_count)
+            .unwrap();
 
         <span class="prelude-val">Ok</span>((rest, header))
     }
@@ -1202,7 +1220,7 @@
     <span class="kw">use super</span>::<span class="kw-2">*</span>;
     <span class="kw">use </span>massa_serialization::DeserializeError;
 
-    <span class="kw">use </span><span class="kw">crate</span>::config::{ENDORSEMENT_COUNT, MAX_DENUNCIATIONS_PER_BLOCK_HEADER};
+    <span class="kw">use </span><span class="kw">crate</span>::config::{ENDORSEMENT_COUNT, MAX_DENUNCIATIONS_PER_BLOCK_HEADER, THREAD_COUNT};
 
     <span class="kw">use </span><span class="kw">crate</span>::test_exports::{
         gen_block_headers_for_denunciation, gen_endorsements_for_denunciation,

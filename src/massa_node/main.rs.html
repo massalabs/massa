@@ -1143,58 +1143,12 @@
 <a href="#1143" id="1143">1143</a>
 <a href="#1144" id="1144">1144</a>
 <a href="#1145" id="1145">1145</a>
-<a href="#1146" id="1146">1146</a>
-<a href="#1147" id="1147">1147</a>
-<a href="#1148" id="1148">1148</a>
-<a href="#1149" id="1149">1149</a>
-<a href="#1150" id="1150">1150</a>
-<a href="#1151" id="1151">1151</a>
-<a href="#1152" id="1152">1152</a>
-<a href="#1153" id="1153">1153</a>
-<a href="#1154" id="1154">1154</a>
-<a href="#1155" id="1155">1155</a>
-<a href="#1156" id="1156">1156</a>
-<a href="#1157" id="1157">1157</a>
-<a href="#1158" id="1158">1158</a>
-<a href="#1159" id="1159">1159</a>
-<a href="#1160" id="1160">1160</a>
-<a href="#1161" id="1161">1161</a>
-<a href="#1162" id="1162">1162</a>
-<a href="#1163" id="1163">1163</a>
-<a href="#1164" id="1164">1164</a>
-<a href="#1165" id="1165">1165</a>
-<a href="#1166" id="1166">1166</a>
-<a href="#1167" id="1167">1167</a>
-<a href="#1168" id="1168">1168</a>
-<a href="#1169" id="1169">1169</a>
-<a href="#1170" id="1170">1170</a>
-<a href="#1171" id="1171">1171</a>
-<a href="#1172" id="1172">1172</a>
-<a href="#1173" id="1173">1173</a>
-<a href="#1174" id="1174">1174</a>
-<a href="#1175" id="1175">1175</a>
-<a href="#1176" id="1176">1176</a>
-<a href="#1177" id="1177">1177</a>
-<a href="#1178" id="1178">1178</a>
-<a href="#1179" id="1179">1179</a>
-<a href="#1180" id="1180">1180</a>
-<a href="#1181" id="1181">1181</a>
-<a href="#1182" id="1182">1182</a>
-<a href="#1183" id="1183">1183</a>
-<a href="#1184" id="1184">1184</a>
-<a href="#1185" id="1185">1185</a>
-<a href="#1186" id="1186">1186</a>
-<a href="#1187" id="1187">1187</a>
-<a href="#1188" id="1188">1188</a>
-<a href="#1189" id="1189">1189</a>
-<a href="#1190" id="1190">1190</a>
-<a href="#1191" id="1191">1191</a>
-<a href="#1192" id="1192">1192</a>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="attr">#![doc = <span class="macro">include_str!</span>(<span class="string">&quot;../../README.md&quot;</span>)]
 #![warn(missing_docs)]
 #![warn(unused_crate_dependencies)]
+#![feature(ip)]
 </span><span class="kw">extern crate </span>massa_logging;
 
 <span class="kw">use </span><span class="kw">crate</span>::settings::SETTINGS;
@@ -1212,9 +1166,7 @@
 <span class="kw">use </span>massa_consensus_exports::{ConsensusChannels, ConsensusConfig, ConsensusManager};
 <span class="kw">use </span>massa_consensus_worker::start_consensus_worker;
 <span class="kw">use </span>massa_executed_ops::{ExecutedDenunciationsConfig, ExecutedOpsConfig};
-<span class="kw">use </span>massa_execution_exports::{
-    ExecutionChannels, ExecutionConfig, ExecutionManager, GasCosts, StorageCostsConstants,
-};
+<span class="kw">use </span>massa_execution_exports::{ExecutionConfig, ExecutionManager, GasCosts, StorageCostsConstants};
 <span class="kw">use </span>massa_execution_worker::start_execution_worker;
 <span class="kw">use </span>massa_factory_exports::{FactoryChannels, FactoryConfig, FactoryManager};
 <span class="kw">use </span>massa_factory_worker::start_factory;
@@ -1227,7 +1179,8 @@
 <span class="kw">use </span>massa_models::address::Address;
 <span class="kw">use </span>massa_models::config::constants::{
     ASYNC_POOL_BOOTSTRAP_PART_SIZE, BLOCK_REWARD, BOOTSTRAP_RANDOMNESS_SIZE_BYTES, CHANNEL_SIZE,
-    DEFERRED_CREDITS_BOOTSTRAP_PART_SIZE, DELTA_F0, ENDORSEMENT_COUNT, END_TIMESTAMP,
+    CONSENSUS_BOOTSTRAP_PART_SIZE, DEFERRED_CREDITS_BOOTSTRAP_PART_SIZE, DELTA_F0,
+    DENUNCIATION_EXPIRE_PERIODS, ENDORSEMENT_COUNT, END_TIMESTAMP,
     EXECUTED_OPS_BOOTSTRAP_PART_SIZE, GENESIS_KEY, GENESIS_TIMESTAMP, INITIAL_DRAW_SEED,
     LEDGER_COST_PER_BYTE, LEDGER_ENTRY_BASE_SIZE, LEDGER_ENTRY_DATASTORE_BASE_SIZE,
     LEDGER_PART_SIZE_MESSAGE_BYTES, MAX_ADVERTISE_LENGTH, MAX_ASK_BLOCKS_PER_MESSAGE,
@@ -1235,39 +1188,40 @@
     MAX_BOOTSTRAP_ASYNC_POOL_CHANGES, MAX_BOOTSTRAP_BLOCKS, MAX_BOOTSTRAP_ERROR_LENGTH,
     MAX_BOOTSTRAP_FINAL_STATE_PARTS_SIZE, MAX_BOOTSTRAP_MESSAGE_SIZE, MAX_BYTECODE_LENGTH,
     MAX_CONSENSUS_BLOCKS_IDS, MAX_DATASTORE_ENTRY_COUNT, MAX_DATASTORE_KEY_LENGTH,
-    MAX_DATASTORE_VALUE_LENGTH, MAX_DEFERRED_CREDITS_LENGTH, MAX_ENDORSEMENTS_PER_MESSAGE,
-    MAX_EXECUTED_OPS_CHANGES_LENGTH, MAX_EXECUTED_OPS_LENGTH, MAX_FUNCTION_NAME_LENGTH,
-    MAX_GAS_PER_BLOCK, MAX_LEDGER_CHANGES_COUNT, MAX_MESSAGE_SIZE, MAX_OPERATIONS_PER_BLOCK,
+    MAX_DATASTORE_VALUE_LENGTH, MAX_DEFERRED_CREDITS_LENGTH, MAX_DENUNCIATIONS_PER_BLOCK_HEADER,
+    MAX_DENUNCIATION_CHANGES_LENGTH, MAX_ENDORSEMENTS_PER_MESSAGE, MAX_EXECUTED_OPS_CHANGES_LENGTH,
+    MAX_EXECUTED_OPS_LENGTH, MAX_FUNCTION_NAME_LENGTH, MAX_GAS_PER_BLOCK, MAX_LEDGER_CHANGES_COUNT,
+    MAX_LISTENERS_PER_PEER, MAX_OPERATIONS_PER_BLOCK, MAX_OPERATIONS_PER_MESSAGE,
     MAX_OPERATION_DATASTORE_ENTRY_COUNT, MAX_OPERATION_DATASTORE_KEY_LENGTH,
-    MAX_OPERATION_DATASTORE_VALUE_LENGTH, MAX_PARAMETERS_SIZE, MAX_PRODUCTION_STATS_LENGTH,
-    MAX_ROLLS_COUNT_LENGTH, MIP_STORE_STATS_BLOCK_CONSIDERED, MIP_STORE_STATS_COUNTERS_MAX,
-    NETWORK_CONTROLLER_CHANNEL_SIZE, NETWORK_EVENT_CHANNEL_SIZE, NETWORK_NODE_COMMAND_CHANNEL_SIZE,
-    NETWORK_NODE_EVENT_CHANNEL_SIZE, OPERATION_VALIDITY_PERIODS, PERIODS_PER_CYCLE,
+    MAX_OPERATION_DATASTORE_VALUE_LENGTH, MAX_OPERATION_STORAGE_TIME, MAX_PARAMETERS_SIZE,
+    MAX_PEERS_IN_ANNOUNCEMENT_LIST, MAX_PRODUCTION_STATS_LENGTH, MAX_ROLLS_COUNT_LENGTH,
+    MAX_SIZE_CHANNEL_COMMANDS_CONNECTIVITY, MAX_SIZE_CHANNEL_COMMANDS_PEERS,
+    MAX_SIZE_CHANNEL_COMMANDS_PEER_TESTERS, MAX_SIZE_CHANNEL_COMMANDS_PROPAGATION_BLOCKS,
+    MAX_SIZE_CHANNEL_COMMANDS_PROPAGATION_ENDORSEMENTS,
+    MAX_SIZE_CHANNEL_COMMANDS_PROPAGATION_OPERATIONS, MAX_SIZE_CHANNEL_COMMANDS_RETRIEVAL_BLOCKS,
+    MAX_SIZE_CHANNEL_COMMANDS_RETRIEVAL_ENDORSEMENTS,
+    MAX_SIZE_CHANNEL_COMMANDS_RETRIEVAL_OPERATIONS, MAX_SIZE_CHANNEL_NETWORK_TO_BLOCK_HANDLER,
+    MAX_SIZE_CHANNEL_NETWORK_TO_ENDORSEMENT_HANDLER, MAX_SIZE_CHANNEL_NETWORK_TO_OPERATION_HANDLER,
+    MAX_SIZE_CHANNEL_NETWORK_TO_PEER_HANDLER, MIP_STORE_STATS_BLOCK_CONSIDERED,
+    MIP_STORE_STATS_COUNTERS_MAX, OPERATION_VALIDITY_PERIODS, PERIODS_PER_CYCLE,
     POOL_CONTROLLER_CHANNEL_SIZE, POS_MISS_RATE_DEACTIVATION_THRESHOLD, POS_SAVED_CYCLES,
-    PROTOCOL_CONTROLLER_CHANNEL_SIZE, PROTOCOL_EVENT_CHANNEL_SIZE, ROLL_PRICE, T0, THREAD_COUNT,
+    PROTOCOL_CONTROLLER_CHANNEL_SIZE, PROTOCOL_EVENT_CHANNEL_SIZE,
+    ROLL_COUNT_TO_SLASH_ON_DENUNCIATION, ROLL_PRICE, SELECTOR_DRAW_CACHE_SIZE, T0, THREAD_COUNT,
     VERSION,
 };
-<span class="kw">use </span>massa_models::config::{
-    CONSENSUS_BOOTSTRAP_PART_SIZE, DENUNCIATION_EXPIRE_PERIODS, MAX_DENUNCIATIONS_PER_BLOCK_HEADER,
-    MAX_DENUNCIATION_CHANGES_LENGTH, MAX_OPERATIONS_PER_MESSAGE,
-    ROLL_COUNT_TO_SLASH_ON_DENUNCIATION, SELECTOR_DRAW_CACHE_SIZE,
-};
-<span class="kw">use </span>massa_network_exports::{Establisher, NetworkConfig, NetworkManager};
-<span class="kw">use </span>massa_network_worker::start_network_controller;
 <span class="kw">use </span>massa_pool_exports::{PoolChannels, PoolConfig, PoolManager};
 <span class="kw">use </span>massa_pool_worker::start_pool_controller;
 <span class="kw">use </span>massa_pos_exports::{PoSConfig, SelectorConfig, SelectorManager};
 <span class="kw">use </span>massa_pos_worker::start_selector_worker;
-<span class="kw">use </span>massa_protocol_exports::{
-    ProtocolCommand, ProtocolCommandSender, ProtocolConfig, ProtocolManager, ProtocolReceivers,
-    ProtocolSenders,
-};
-<span class="kw">use </span>massa_protocol_worker::start_protocol_controller;
+<span class="kw">use </span>massa_protocol_exports::{ProtocolConfig, ProtocolManager};
+<span class="kw">use </span>massa_protocol_worker::{create_protocol_controller, start_protocol_controller};
 <span class="kw">use </span>massa_storage::Storage;
 <span class="kw">use </span>massa_time::MassaTime;
 <span class="kw">use </span>massa_versioning_worker::versioning::{MipStatsConfig, MipStore};
 <span class="kw">use </span>massa_wallet::Wallet;
 <span class="kw">use </span>parking_lot::RwLock;
+<span class="kw">use </span>peernet::transports::TransportType;
+<span class="kw">use </span>std::collections::HashMap;
 <span class="kw">use </span>std::path::PathBuf;
 <span class="kw">use </span>std::sync::atomic::{AtomicUsize, Ordering};
 <span class="kw">use </span>std::thread::sleep;
@@ -1291,8 +1245,7 @@
     Box&lt;<span class="kw">dyn </span>ExecutionManager&gt;,
     Box&lt;<span class="kw">dyn </span>SelectorManager&gt;,
     Box&lt;<span class="kw">dyn </span>PoolManager&gt;,
-    ProtocolManager,
-    NetworkManager,
+    Box&lt;<span class="kw">dyn </span>ProtocolManager&gt;,
     Box&lt;<span class="kw">dyn </span>FactoryManager&gt;,
     mpsc::Receiver&lt;()&gt;,
     StopHandle,
@@ -1469,6 +1422,7 @@
         max_clock_delta: SETTINGS.bootstrap.max_clock_delta,
         cache_duration: SETTINGS.bootstrap.cache_duration,
         keep_ledger: args.keep_ledger,
+        max_listeners_per_peer: MAX_LISTENERS_PER_PEER <span class="kw">as </span>u32,
         max_simultaneous_bootstraps: SETTINGS.bootstrap.max_simultaneous_bootstraps,
         per_ip_min_interval: SETTINGS.bootstrap.per_ip_min_interval,
         ip_list_max_size: SETTINGS.bootstrap.ip_list_max_size,
@@ -1528,62 +1482,6 @@
             <span class="prelude-val">Err</span>(err) =&gt; <span class="macro">panic!</span>(<span class="string">&quot;critical error detected in the bootstrap process: {}&quot;</span>, err)
         }
     };
-
-    <span class="kw">let </span>network_config: NetworkConfig = NetworkConfig {
-        bind: SETTINGS.network.bind,
-        routable_ip: SETTINGS.network.routable_ip,
-        protocol_port: SETTINGS.network.protocol_port,
-        connect_timeout: SETTINGS.network.connect_timeout,
-        wakeup_interval: SETTINGS.network.wakeup_interval,
-        initial_peers_file: SETTINGS.network.initial_peers_file.clone(),
-        peers_file: SETTINGS.network.peers_file.clone(),
-        keypair_file: SETTINGS.network.keypair_file.clone(),
-        peer_types_config: SETTINGS.network.peer_types_config.clone(),
-        max_in_connections_per_ip: SETTINGS.network.max_in_connections_per_ip,
-        max_idle_peers: SETTINGS.network.max_idle_peers,
-        max_banned_peers: SETTINGS.network.max_banned_peers,
-        peers_file_dump_interval: SETTINGS.network.peers_file_dump_interval,
-        message_timeout: SETTINGS.network.message_timeout,
-        ask_peer_list_interval: SETTINGS.network.ask_peer_list_interval,
-        max_send_wait_node_event: SETTINGS.network.max_send_wait_node_event,
-        max_send_wait_network_event: SETTINGS.network.max_send_wait_network_event,
-        ban_timeout: SETTINGS.network.ban_timeout,
-        peer_list_send_timeout: SETTINGS.network.peer_list_send_timeout,
-        max_in_connection_overflow: SETTINGS.network.max_in_connection_overflow,
-        max_operations_per_message: SETTINGS.network.max_operations_per_message,
-        max_bytes_read: SETTINGS.network.max_bytes_read,
-        max_bytes_write: SETTINGS.network.max_bytes_write,
-        max_ask_blocks: MAX_ASK_BLOCKS_PER_MESSAGE,
-        max_operations_per_block: MAX_OPERATIONS_PER_BLOCK,
-        thread_count: THREAD_COUNT,
-        endorsement_count: ENDORSEMENT_COUNT,
-        max_peer_advertise_length: MAX_ADVERTISE_LENGTH,
-        max_endorsements_per_message: MAX_ENDORSEMENTS_PER_MESSAGE,
-        max_message_size: MAX_MESSAGE_SIZE,
-        max_datastore_value_length: MAX_DATASTORE_VALUE_LENGTH,
-        max_op_datastore_entry_count: MAX_OPERATION_DATASTORE_ENTRY_COUNT,
-        max_op_datastore_key_length: MAX_OPERATION_DATASTORE_KEY_LENGTH,
-        max_op_datastore_value_length: MAX_OPERATION_DATASTORE_VALUE_LENGTH,
-        max_function_name_length: MAX_FUNCTION_NAME_LENGTH,
-        max_parameters_size: MAX_PARAMETERS_SIZE,
-        controller_channel_size: NETWORK_CONTROLLER_CHANNEL_SIZE,
-        event_channel_size: NETWORK_EVENT_CHANNEL_SIZE,
-        node_command_channel_size: NETWORK_NODE_COMMAND_CHANNEL_SIZE,
-        node_event_channel_size: NETWORK_NODE_EVENT_CHANNEL_SIZE,
-        last_start_period: final_state.read().last_start_period,
-        max_denunciations_per_block_header: MAX_DENUNCIATIONS_PER_BLOCK_HEADER,
-    };
-
-    <span class="comment">// launch network controller
-    </span><span class="kw">let </span>(network_command_sender, network_event_receiver, network_manager, private_key, node_id) =
-        start_network_controller(
-            <span class="kw-2">&amp;</span>network_config,
-            Establisher::new(),
-            bootstrap_state.peers,
-            <span class="kw-2">*</span>VERSION,
-        )
-        .<span class="kw">await
-        </span>.expect(<span class="string">&quot;could not start network controller&quot;</span>);
 
     <span class="kw">if </span>args.restart_from_snapshot_at_period.is_none() {
         <span class="kw">let </span>last_start_period = final_state.read().last_start_period;
@@ -1655,25 +1553,12 @@
         snip_amount: SETTINGS.execution.snip_amount,
         roll_count_to_slash_on_denunciation: ROLL_COUNT_TO_SLASH_ON_DENUNCIATION,
         denunciation_expire_periods: DENUNCIATION_EXPIRE_PERIODS,
-        broadcast_enabled: SETTINGS.api.enable_broadcast,
-        broadcast_slot_execution_output_channel_capacity: SETTINGS
-            .execution
-            .broadcast_slot_execution_output_channel_capacity,
     };
-
-    <span class="kw">let </span>execution_channels = ExecutionChannels {
-        slot_execution_output_sender: broadcast::channel(
-            execution_config.broadcast_slot_execution_output_channel_capacity,
-        )
-        .<span class="number">0</span>,
-    };
-
     <span class="kw">let </span>(execution_manager, execution_controller) = start_execution_worker(
         execution_config,
         final_state.clone(),
         selector_controller.clone(),
         mip_store.clone(),
-        execution_channels.clone(),
     );
 
     <span class="comment">// launch pool controller
@@ -1715,8 +1600,88 @@
         pool_channels.clone(),
     );
 
-    <span class="kw">let </span>(protocol_command_sender, protocol_command_receiver) =
-        mpsc::channel::&lt;ProtocolCommand&gt;(PROTOCOL_CONTROLLER_CHANNEL_SIZE);
+    <span class="comment">// launch protocol controller
+    </span><span class="kw">let </span><span class="kw-2">mut </span>listeners = HashMap::default();
+    listeners.insert(SETTINGS.protocol.bind, TransportType::Tcp);
+    <span class="kw">let </span>protocol_config = ProtocolConfig {
+        thread_count: THREAD_COUNT,
+        ask_block_timeout: SETTINGS.protocol.ask_block_timeout,
+        max_known_blocks_size: SETTINGS.protocol.max_known_blocks_size,
+        max_node_known_blocks_size: SETTINGS.protocol.max_node_known_blocks_size,
+        max_node_wanted_blocks_size: SETTINGS.protocol.max_node_wanted_blocks_size,
+        max_known_ops_size: SETTINGS.protocol.max_known_ops_size,
+        max_node_known_ops_size: SETTINGS.protocol.max_node_known_ops_size,
+        max_known_endorsements_size: SETTINGS.protocol.max_known_endorsements_size,
+        max_node_known_endorsements_size: SETTINGS.protocol.max_node_known_endorsements_size,
+        max_simultaneous_ask_blocks_per_node: SETTINGS
+            .protocol
+            .max_simultaneous_ask_blocks_per_node,
+        max_send_wait: SETTINGS.protocol.max_send_wait,
+        operation_batch_buffer_capacity: SETTINGS.protocol.operation_batch_buffer_capacity,
+        operation_announcement_buffer_capacity: SETTINGS
+            .protocol
+            .operation_announcement_buffer_capacity,
+        operation_batch_proc_period: SETTINGS.protocol.operation_batch_proc_period,
+        asked_operations_pruning_period: SETTINGS.protocol.asked_operations_pruning_period,
+        operation_announcement_interval: SETTINGS.protocol.operation_announcement_interval,
+        max_operations_per_message: SETTINGS.protocol.max_operations_per_message,
+        max_serialized_operations_size_per_block: MAX_BLOCK_SIZE <span class="kw">as </span>usize,
+        max_operations_per_block: MAX_OPERATIONS_PER_BLOCK,
+        controller_channel_size: PROTOCOL_CONTROLLER_CHANNEL_SIZE,
+        event_channel_size: PROTOCOL_EVENT_CHANNEL_SIZE,
+        genesis_timestamp: <span class="kw-2">*</span>GENESIS_TIMESTAMP,
+        t0: T0,
+        endorsement_count: ENDORSEMENT_COUNT,
+        max_operations_propagation_time: SETTINGS.protocol.max_operations_propagation_time,
+        max_endorsements_propagation_time: SETTINGS.protocol.max_endorsements_propagation_time,
+        last_start_period: final_state.read().last_start_period,
+        max_endorsements_per_message: MAX_ENDORSEMENTS_PER_MESSAGE <span class="kw">as </span>u64,
+        max_denunciations_in_block_header: MAX_DENUNCIATIONS_PER_BLOCK_HEADER,
+        initial_peers: SETTINGS.protocol.initial_peers_file.clone(),
+        listeners,
+        keypair_file: SETTINGS.protocol.keypair_file.clone(),
+        max_in_connections: SETTINGS.protocol.max_incoming_connections,
+        max_out_connections: SETTINGS.protocol.max_outgoing_connections,
+        max_known_blocks_saved_size: SETTINGS.protocol.max_known_blocks_size,
+        asked_operations_buffer_capacity: SETTINGS.protocol.max_known_ops_size,
+        thread_tester_count: SETTINGS.protocol.thread_tester_count,
+        max_operation_storage_time: MAX_OPERATION_STORAGE_TIME,
+        max_size_channel_commands_propagation_blocks: MAX_SIZE_CHANNEL_COMMANDS_PROPAGATION_BLOCKS,
+        max_size_channel_commands_propagation_operations:
+            MAX_SIZE_CHANNEL_COMMANDS_PROPAGATION_OPERATIONS,
+        max_size_channel_commands_propagation_endorsements:
+            MAX_SIZE_CHANNEL_COMMANDS_PROPAGATION_ENDORSEMENTS,
+        max_size_channel_commands_retrieval_blocks: MAX_SIZE_CHANNEL_COMMANDS_RETRIEVAL_BLOCKS,
+        max_size_channel_commands_retrieval_operations:
+            MAX_SIZE_CHANNEL_COMMANDS_RETRIEVAL_OPERATIONS,
+        max_size_channel_commands_retrieval_endorsements:
+            MAX_SIZE_CHANNEL_COMMANDS_RETRIEVAL_ENDORSEMENTS,
+        max_size_channel_commands_connectivity: MAX_SIZE_CHANNEL_COMMANDS_CONNECTIVITY,
+        max_size_channel_commands_peers: MAX_SIZE_CHANNEL_COMMANDS_PEERS,
+        max_size_channel_commands_peer_testers: MAX_SIZE_CHANNEL_COMMANDS_PEER_TESTERS,
+        max_size_channel_network_to_block_handler: MAX_SIZE_CHANNEL_NETWORK_TO_BLOCK_HANDLER,
+        max_size_channel_network_to_operation_handler:
+            MAX_SIZE_CHANNEL_NETWORK_TO_OPERATION_HANDLER,
+        max_size_channel_network_to_endorsement_handler:
+            MAX_SIZE_CHANNEL_NETWORK_TO_ENDORSEMENT_HANDLER,
+        max_size_channel_network_to_peer_handler: MAX_SIZE_CHANNEL_NETWORK_TO_PEER_HANDLER,
+        max_size_value_datastore: MAX_DATASTORE_VALUE_LENGTH,
+        max_op_datastore_entry_count: MAX_OPERATION_DATASTORE_ENTRY_COUNT,
+        max_op_datastore_key_length: MAX_OPERATION_DATASTORE_KEY_LENGTH,
+        max_op_datastore_value_length: MAX_OPERATION_DATASTORE_VALUE_LENGTH,
+        max_size_function_name: MAX_FUNCTION_NAME_LENGTH,
+        max_size_call_sc_parameter: MAX_PARAMETERS_SIZE,
+        max_size_block_infos: MAX_ASK_BLOCKS_PER_MESSAGE <span class="kw">as </span>u64,
+        max_size_listeners_per_peer: MAX_LISTENERS_PER_PEER,
+        max_size_peers_announcement: MAX_PEERS_IN_ANNOUNCEMENT_LIST,
+        read_write_limit_bytes_per_second: SETTINGS.protocol.read_write_limit_bytes_per_second
+            <span class="kw">as </span>u128,
+        routable_ip: SETTINGS.protocol.routable_ip,
+        debug: <span class="bool-val">false</span>,
+    };
+
+    <span class="kw">let </span>(protocol_controller, protocol_channels) =
+        create_protocol_controller(protocol_config.clone());
 
     <span class="kw">let </span>consensus_config = ConsensusConfig {
         genesis_timestamp: <span class="kw-2">*</span>GENESIS_TIMESTAMP,
@@ -1756,9 +1721,9 @@
     <span class="kw">let </span>consensus_channels = ConsensusChannels {
         execution_controller: execution_controller.clone(),
         selector_controller: selector_controller.clone(),
-        pool_command_sender: pool_controller.clone(),
+        pool_controller: pool_controller.clone(),
         controller_event_tx: consensus_event_sender,
-        protocol_command_sender: ProtocolCommandSender(protocol_command_sender.clone()),
+        protocol_controller: protocol_controller.clone(),
         block_header_sender: broadcast::channel(
             consensus_config.broadcast_blocks_headers_channel_capacity,
         )
@@ -1777,59 +1742,15 @@
         shared_storage.clone(),
     );
 
-    <span class="comment">// launch protocol controller
-    </span><span class="kw">let </span>protocol_config = ProtocolConfig {
-        thread_count: THREAD_COUNT,
-        ask_block_timeout: SETTINGS.protocol.ask_block_timeout,
-        max_known_blocks_size: SETTINGS.protocol.max_known_blocks_size,
-        max_node_known_blocks_size: SETTINGS.protocol.max_node_known_blocks_size,
-        max_node_wanted_blocks_size: SETTINGS.protocol.max_node_wanted_blocks_size,
-        max_known_ops_size: SETTINGS.protocol.max_known_ops_size,
-        max_node_known_ops_size: SETTINGS.protocol.max_node_known_ops_size,
-        max_known_endorsements_size: SETTINGS.protocol.max_known_endorsements_size,
-        max_node_known_endorsements_size: SETTINGS.protocol.max_node_known_endorsements_size,
-        max_simultaneous_ask_blocks_per_node: SETTINGS
-            .protocol
-            .max_simultaneous_ask_blocks_per_node,
-        max_send_wait: SETTINGS.protocol.max_send_wait,
-        operation_batch_buffer_capacity: SETTINGS.protocol.operation_batch_buffer_capacity,
-        operation_announcement_buffer_capacity: SETTINGS
-            .protocol
-            .operation_announcement_buffer_capacity,
-        operation_batch_proc_period: SETTINGS.protocol.operation_batch_proc_period,
-        asked_operations_pruning_period: SETTINGS.protocol.asked_operations_pruning_period,
-        operation_announcement_interval: SETTINGS.protocol.operation_announcement_interval,
-        max_operations_per_message: SETTINGS.protocol.max_operations_per_message,
-        max_serialized_operations_size_per_block: MAX_BLOCK_SIZE <span class="kw">as </span>usize,
-        max_operations_per_block: MAX_OPERATIONS_PER_BLOCK,
-        controller_channel_size: PROTOCOL_CONTROLLER_CHANNEL_SIZE,
-        event_channel_size: PROTOCOL_EVENT_CHANNEL_SIZE,
-        genesis_timestamp: <span class="kw-2">*</span>GENESIS_TIMESTAMP,
-        t0: T0,
-        max_operations_propagation_time: SETTINGS.protocol.max_operations_propagation_time,
-        max_endorsements_propagation_time: SETTINGS.protocol.max_endorsements_propagation_time,
-        last_start_period: final_state.read().last_start_period,
-    };
-
-    <span class="kw">let </span>protocol_senders = ProtocolSenders {
-        network_command_sender: network_command_sender.clone(),
-    };
-
-    <span class="kw">let </span>protocol_receivers = ProtocolReceivers {
-        network_event_receiver,
-        protocol_command_receiver,
-    };
-
-    <span class="kw">let </span>protocol_manager = start_protocol_controller(
-        protocol_config,
-        protocol_receivers,
-        protocol_senders.clone(),
+    <span class="kw">let </span>(protocol_manager, keypair, node_id) = start_protocol_controller(
+        protocol_config.clone(),
         consensus_controller.clone(),
+        bootstrap_state.peers,
         pool_controller.clone(),
         shared_storage.clone(),
+        protocol_channels,
     )
-    .<span class="kw">await
-    </span>.expect(<span class="string">&quot;could not start protocol controller&quot;</span>);
+    .expect(<span class="string">&quot;could not start protocol controller&quot;</span>);
 
     <span class="comment">// launch factory
     </span><span class="kw">let </span>factory_config = FactoryConfig {
@@ -1848,7 +1769,7 @@
         selector: selector_controller.clone(),
         consensus: consensus_controller.clone(),
         pool: pool_controller.clone(),
-        protocol: ProtocolCommandSender(protocol_command_sender.clone()),
+        protocol: protocol_controller.clone(),
         storage: shared_storage.clone(),
     };
     <span class="kw">let </span>factory_manager = start_factory(factory_config, node_wallet.clone(), factory_channels);
@@ -1858,11 +1779,11 @@
     </span><span class="kw">let </span>bootstrap_manager = <span class="kw">match </span>bootstrap_config.listen_addr {
         <span class="prelude-val">Some</span>(addr) =&gt; start_bootstrap_server(
             consensus_controller.clone(),
-            network_command_sender.clone(),
+            protocol_controller.clone(),
             final_state.clone(),
             bootstrap_config,
             DefaultListener::new(<span class="kw-2">&amp;</span>addr).unwrap(),
-            private_key,
+            keypair.clone(),
             <span class="kw-2">*</span>VERSION,
             mip_store.clone(),
         )
@@ -1896,6 +1817,7 @@
         max_function_name_length: MAX_FUNCTION_NAME_LENGTH,
         max_parameter_size: MAX_PARAMETERS_SIZE,
         thread_count: THREAD_COUNT,
+        keypair,
         genesis_timestamp: <span class="kw-2">*</span>GENESIS_TIMESTAMP,
         t0: T0,
         periods_per_cycle: PERIODS_PER_CYCLE,
@@ -1979,10 +1901,9 @@
             consensus_controller: consensus_controller.clone(),
             consensus_channels: consensus_channels.clone(),
             execution_controller: execution_controller.clone(),
-            execution_channels,
             pool_channels,
             pool_command_sender: pool_controller.clone(),
-            protocol_command_sender: ProtocolCommandSender(protocol_command_sender.clone()),
+            protocol_command_sender: protocol_controller.clone(),
             selector_controller: selector_controller.clone(),
             storage: shared_storage.clone(),
             grpc_config: grpc_config.clone(),
@@ -2013,7 +1934,7 @@
 
     <span class="comment">// spawn private API
     </span><span class="kw">let </span>(api_private, api_private_stop_rx) = API::&lt;Private&gt;::new(
-        network_command_sender.clone(),
+        protocol_controller.clone(),
         execution_controller.clone(),
         api_config.clone(),
         node_wallet,
@@ -2034,10 +1955,9 @@
         api_config.clone(),
         selector_controller.clone(),
         pool_controller.clone(),
-        ProtocolCommandSender(protocol_command_sender.clone()),
-        network_config,
+        protocol_controller.clone(),
+        protocol_config.clone(),
         <span class="kw-2">*</span>VERSION,
-        network_command_sender.clone(),
         node_id,
         shared_storage.clone(),
     );
@@ -2087,7 +2007,6 @@
         selector_manager,
         pool_manager,
         protocol_manager,
-        network_manager,
         factory_manager,
         api_private_stop_rx,
         api_private_handle,
@@ -2103,8 +2022,7 @@
     execution_manager: Box&lt;<span class="kw">dyn </span>ExecutionManager&gt;,
     selector_manager: Box&lt;<span class="kw">dyn </span>SelectorManager&gt;,
     pool_manager: Box&lt;<span class="kw">dyn </span>PoolManager&gt;,
-    protocol_manager: ProtocolManager,
-    network_manager: NetworkManager,
+    protocol_manager: Box&lt;<span class="kw">dyn </span>ProtocolManager&gt;,
     factory_manager: Box&lt;<span class="kw">dyn </span>FactoryManager&gt;,
 }
 
@@ -2116,8 +2034,7 @@
         <span class="kw-2">mut </span>consensus_manager,
         <span class="kw-2">mut </span>selector_manager,
         <span class="kw-2">mut </span>pool_manager,
-        protocol_manager,
-        network_manager,
+        <span class="kw-2">mut </span>protocol_manager,
         <span class="kw-2">mut </span>factory_manager,
     }: Managers,
     api_private_handle: StopHandle,
@@ -2155,10 +2072,7 @@
     </span>factory_manager.stop();
 
     <span class="comment">// stop protocol controller
-    </span><span class="kw">let </span>network_event_receiver = protocol_manager
-        .stop()
-        .<span class="kw">await
-        </span>.expect(<span class="string">&quot;protocol shutdown failed&quot;</span>);
+    </span>protocol_manager.stop();
 
     <span class="comment">// stop consensus
     </span>consensus_manager.stop();
@@ -2176,13 +2090,7 @@
     // TODO
     //let protocol_pool_event_receiver = pool_manager.stop().await.expect(&quot;pool shutdown failed&quot;);
 
-    // stop network controller
-    </span>network_manager
-        .stop(network_event_receiver)
-        .<span class="kw">await
-        </span>.expect(<span class="string">&quot;network shutdown failed&quot;</span>);
-
-    <span class="comment">// note that FinalLedger gets destroyed as soon as its Arc count goes to zero
+    // note that FinalLedger gets destroyed as soon as its Arc count goes to zero
 </span>}
 
 <span class="attr">#[derive(StructOpt)]
@@ -2294,7 +2202,6 @@
             selector_manager,
             pool_manager,
             protocol_manager,
-            network_manager,
             factory_manager,
             <span class="kw-2">mut </span>api_private_stop_rx,
             api_private_handle,
@@ -2363,7 +2270,6 @@
                 selector_manager,
                 pool_manager,
                 protocol_manager,
-                network_manager,
                 factory_manager,
             },
             api_private_handle,

@@ -15,36 +15,22 @@
 <a href="#15" id="15">15</a>
 <a href="#16" id="16">16</a>
 <a href="#17" id="17">17</a>
-<a href="#18" id="18">18</a>
-<a href="#19" id="19">19</a>
-<a href="#20" id="20">20</a>
-<a href="#21" id="21">21</a>
-<a href="#22" id="22">22</a>
-<a href="#23" id="23">23</a>
-<a href="#24" id="24">24</a>
-</pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
-</span><span class="doccomment">//! Protocol component
-//! High level management of communications between nodes
-
-</span><span class="attr">#![feature(async_closure)]
-#![feature(drain_filter)]
-#![feature(ip)]
-#![warn(missing_docs)]
-#![warn(unused_crate_dependencies)]
+</pre><pre class="rust"><code><span class="attr">#![feature(map_try_insert)]
 #![feature(let_chains)]
-#![feature(map_try_insert)]
+#![feature(ip)]
 
-</span><span class="doccomment">/// protocol worker
-</span><span class="kw">pub mod </span>protocol_worker;
-<span class="kw">pub mod </span>worker_operations_impl;
-<span class="kw">pub use </span>protocol_worker::start_protocol_controller;
-<span class="kw">mod </span>cache;
-<span class="kw">mod </span>checked_operations;
-<span class="kw">mod </span>node_info;
-<span class="kw">mod </span>protocol_network;
+</span><span class="kw">mod </span>connectivity;
+<span class="kw">mod </span>controller;
+<span class="kw">mod </span>handlers;
+<span class="kw">mod </span>manager;
+<span class="kw">mod </span>messages;
 <span class="kw">mod </span>sig_verifier;
+<span class="kw">mod </span>worker;
+<span class="kw">mod </span>wrap_network;
+
+<span class="kw">pub use </span>worker::{create_protocol_controller, start_protocol_controller};
 
 <span class="attr">#[cfg(test)]
-</span><span class="kw">pub mod </span>tests;
+</span><span class="kw">mod </span>tests;
 </code></pre></div>
 </section></main><div id="rustdoc-vars" data-root-path="../../" data-static-root-path="../../static.files/" data-current-crate="massa_protocol_worker" data-themes="" data-resource-suffix="" data-rustdoc-version="1.69.0-nightly (d962ea578 2023-02-26)" data-search-js="search-14421e1532aead08.js" data-settings-js="settings-f0c5c39777a9a2f6.js" data-settings-css="settings-0bcba95ff279c1db.css" ></div></body></html>
