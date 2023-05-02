@@ -58,6 +58,7 @@ pub(crate) fn start_connectivity_thread(
     storage: Storage,
     protocol_channels: ProtocolChannels,
 ) -> Result<(Sender<ConnectivityCommand>, JoinHandle<()>), ProtocolError> {
+    println!("AURELIEN: {:?}", bootstrap_peers);
     let initial_peers = if let Some(bootstrap_peers) = bootstrap_peers {
         bootstrap_peers.0.into_iter().collect()
     } else {
@@ -173,12 +174,16 @@ pub(crate) fn start_connectivity_thread(
                                     let active_node_count = network_controller.get_active_connections().get_peer_ids_connected().len() as u64;
                                     let in_connection_count = network_controller.get_active_connections().get_nb_in_connections() as u64;
                                     let out_connection_count = network_controller.get_active_connections().get_nb_out_connections() as u64;
+                                    let (banned_peer_count, known_peer_count) = {
+                                        let peer_db_read = peer_db.read();
+                                        (peer_db_read.get_banned_peer_count(), peer_db_read.peers.len() as u64)
+                                    };
                                     let stats = NetworkStats {
                                         active_node_count,
                                         in_connection_count,
                                         out_connection_count,
-                                        banned_peer_count: peer_db.read().get_banned_peer_count(),
-                                        known_peer_count: peer_db.read().peers.len() as u64,
+                                        banned_peer_count,
+                                        known_peer_count,
                                     };
                                     let peers: HashMap<PeerId, (SocketAddr, PeerConnectionType)> = network_controller.get_active_connections().get_peers_connected();
                                     responder.send((stats, peers)).unwrap_or_else(|_| warn!("Failed to send stats to responder"));
@@ -190,6 +195,8 @@ pub(crate) fn start_connectivity_thread(
                             }
                         }
                     default(Duration::from_millis(1000)) => {
+                        println!("AURELIEN: PeerDB: {:?}", peer_db.read().peers);
+                        println!("AURELIEN: active connections: {:?}", network_controller.get_active_connections().get_peers_connected());
                         if config.debug {
                             println!("nb peers connected: {}", network_controller.get_active_connections().get_peer_ids_connected().len());
                         }

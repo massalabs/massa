@@ -183,9 +183,9 @@ impl ProtocolController for ProtocolControllerImpl {
             .map_err(|_| {
                 ProtocolError::ChannelError("get_bootstrap_peers command send error".into())
             })?;
-        receiver
-            .recv_timeout(Duration::from_secs(10))
-            .map_err(|_| ProtocolError::ChannelError("get_stats command receive error".into()))
+        receiver.recv_timeout(Duration::from_secs(10)).map_err(|_| {
+            ProtocolError::ChannelError("get_bootstrap_peers command receive error".into())
+        })
     }
 
     fn clone_box(&self) -> Box<dyn ProtocolController> {

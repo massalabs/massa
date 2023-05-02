@@ -87,6 +87,7 @@ impl PeerManagementHandler {
                 });
             move || {
                 loop {
+                    println!("AURELIEN: LOOP");
                     select! {
                         recv(ticker) -> _ => {
                             let peers_to_send = peer_db.read().get_rand_peers_to_send(100);
@@ -158,6 +159,7 @@ impl PeerManagementHandler {
                                     continue;
                                 }
                             }
+                            println!("AURELIEN: Check ban");
 
                             message_deserializer.set_message(message_id);
                             let (rest, message) = match message_deserializer
@@ -168,17 +170,21 @@ impl PeerManagementHandler {
                                     continue;
                                 }
                             };
+                            println!("AURELIEN: deserialize");
                             if !rest.is_empty() {
                                 warn!("message not fully deserialized");
                                 continue;
                             }
                             match message {
                                 PeerManagementMessage::NewPeerConnected((peer_id, listeners)) => {
-                                   if let Err(e) = test_sender.send((peer_id, listeners)) {
+                                    println!("AURELIEN: new peer");
+                                    println!("New peer connected: {:?}", peer_id);
+                                    if let Err(e) = test_sender.send((peer_id, listeners)) {
                                         error!("error when sending msg to peer tester : {}", e);
-                                   }
+                                    }
                                 }
                                 PeerManagementMessage::ListPeers(peers) => {
+                                    println!("AURELIEN: peer list");
                                     for (peer_id, listeners) in peers.into_iter() {
                                         if let Err(e) = test_sender.send((peer_id, listeners)) {
                                             error!("error when sending msg to peer tester : {}", e);
@@ -366,32 +372,36 @@ impl InitConnectionHandler for MassaHandshake {
             peer_id.verify_signature(&self_random_hash, &other_signature)?;
             Ok((peer_id.clone(), announcement))
         };
-
-        let mut peer_db_write = self.peer_db.write();
-        // if handshake failed, we set the peer state to HandshakeFailed
-        match &res {
-            Ok((peer_id, announcement)) => {
-                info!("Peer connected: {:?}", peer_id);
-                peer_db_write
-                    .peers
-                    .entry(peer_id.clone())
-                    .and_modify(|info| {
-                        info.state = PeerState::Trusted;
-                    })
-                    .or_insert(PeerInfo {
-                        last_announce: announcement.clone(),
-                        state: PeerState::Trusted,
+        {
+            let mut peer_db_write = self.peer_db.write();
+            // if handshake failed, we set the peer state to HandshakeFailed
+            match &res {
+                Ok((peer_id, announcement)) => {
+                    info!("Peer connected: {:?}", peer_id);
+                    peer_db_write
+                        .peers
+                        .entry(peer_id.clone())
+                        .and_modify(|info| {
+                            info.state = PeerState::Trusted;
+                        })
+                        .or_insert(PeerInfo {
+                            last_announce: announcement.clone(),
+                            state: PeerState::Trusted,
+                        });
+                }
+                Err(_) => {
+                    peer_db_write.peers.entry(peer_id).and_modify(|info| {
+                        info.state = PeerState::HandshakeFailed;
                     });
-            }
-            Err(_) => {
-                peer_db_write.peers.entry(peer_id).and_modify(|info| {
-                    info.state = PeerState::HandshakeFailed;
-                });
+                }
             }
         }
 
         // Send 100 peers to the other peer
-        let peers_to_send = peer_db_write.get_rand_peers_to_send(100);
+        let peers_to_send = {
+            let peer_db_read = self.peer_db.read();
+            peer_db_read.get_rand_peers_to_send(100)
+        };
         let mut buf = Vec::new();
         let msg = PeerManagementMessage::ListPeers(peers_to_send).into();
 

@@ -19,7 +19,7 @@ use peernet::{
     types::KeyPair,
 };
 use std::cmp::Reverse;
-use tracing::debug;
+use tracing::{debug, info};
 
 use super::{
     announcement::{AnnouncementDeserializer, AnnouncementDeserializerArgs},
@@ -79,6 +79,7 @@ impl InitConnectionHandler for TesterHandshake {
                 Some(String::from("Peer didn't accepted us")),
             ));
         }
+        println!("Received data: {:?}", data);
         let peer_id = PeerId::from_bytes(&data[..32].try_into().unwrap())?;
         let res = {
             {
@@ -103,6 +104,7 @@ impl InitConnectionHandler for TesterHandshake {
                         Some(format!("Failed to deserialize announcement: {}", err)),
                     )
                 })?;
+            println!("Received announcement: {:?}", announcement);
             if peer_id
                 .verify_signature(&announcement.hash, &announcement.signature)
                 .is_err()
@@ -129,6 +131,8 @@ impl InitConnectionHandler for TesterHandshake {
                         last_announce: announcement,
                         state: super::PeerState::Trusted,
                     });
+                println!("Peer {:?} added to peer_db", peer_id);
+                println!("Peer_db: {:?}", peer_db_write.peers);
             }
 
             Ok(peer_id.clone())
@@ -241,7 +245,7 @@ impl Tester {
                                             return;
                                         }
                                     }
-                                    debug!("testing peer {} listener addr: {}", &listener.0, &addr);
+                                    info!("testing peer {} listener addr: {}", &listener.0, &addr);
                                     let _res =  network_manager.try_connect(
                                         *addr,
                                         Duration::from_millis(500),
@@ -272,7 +276,7 @@ impl Tester {
 
                         // we try to connect to all peer listener (For now we have only one listener)
                         peer_info.last_announce.listeners.iter().for_each(|listener| {
-                            debug!("testing peer {} listener addr: {}", peer_id, &listener.0);
+                            info!("testing peer {} listener addr: {}", peer_id, &listener.0);
                             let _res =  network_manager.try_connect(
                                 *listener.0,
                                 Duration::from_millis(200),
