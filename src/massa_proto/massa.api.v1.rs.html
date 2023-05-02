@@ -3856,22 +3856,22 @@
 #[derive(Clone, PartialEq, ::prost::Message)]
 </span><span class="kw">pub struct </span>ScExecutionEventContext {
     <span class="doccomment">/// When was it generated
-    </span><span class="attr">#[prost(message, optional, tag = <span class="string">&quot;2&quot;</span>)]
+    </span><span class="attr">#[prost(message, optional, tag = <span class="string">&quot;1&quot;</span>)]
     </span><span class="kw">pub </span>origin_slot: ::core::option::Option&lt;Slot&gt;,
     <span class="doccomment">/// Block id if there was a block at that slot
-    </span><span class="attr">#[prost(string, tag = <span class="string">&quot;3&quot;</span>)]
+    </span><span class="attr">#[prost(string, tag = <span class="string">&quot;2&quot;</span>)]
     </span><span class="kw">pub </span>block_id: ::prost::alloc::string::String,
     <span class="doccomment">/// Index of the event in the slot
-    </span><span class="attr">#[prost(fixed64, tag = <span class="string">&quot;4&quot;</span>)]
+    </span><span class="attr">#[prost(fixed64, tag = <span class="string">&quot;3&quot;</span>)]
     </span><span class="kw">pub </span>index_in_slot: u64,
     <span class="doccomment">/// Call stack addresses. most recent at the end
-    </span><span class="attr">#[prost(string, repeated, tag = <span class="string">&quot;5&quot;</span>)]
+    </span><span class="attr">#[prost(string, repeated, tag = <span class="string">&quot;4&quot;</span>)]
     </span><span class="kw">pub </span>call_stack: ::prost::alloc::vec::Vec&lt;::prost::alloc::string::String&gt;,
     <span class="doccomment">/// Origin operation id
-    </span><span class="attr">#[prost(string, tag = <span class="string">&quot;6&quot;</span>)]
+    </span><span class="attr">#[prost(string, tag = <span class="string">&quot;5&quot;</span>)]
     </span><span class="kw">pub </span>origin_operation_id: ::prost::alloc::string::String,
     <span class="doccomment">/// Status
-    </span><span class="attr">#[prost(enumeration = <span class="string">&quot;ScExecutionEventStatus&quot;</span>, repeated, tag = <span class="string">&quot;7&quot;</span>)]
+    </span><span class="attr">#[prost(enumeration = <span class="string">&quot;ScExecutionEventStatus&quot;</span>, repeated, tag = <span class="string">&quot;6&quot;</span>)]
     </span><span class="kw">pub </span>status: ::prost::alloc::vec::Vec&lt;i32&gt;,
 }
 <span class="doccomment">/// GetSelectorDrawsRequest holds request from GetSelectorDraws

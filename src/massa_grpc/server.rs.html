@@ -155,6 +155,28 @@
 <a href="#155" id="155">155</a>
 <a href="#156" id="156">156</a>
 <a href="#157" id="157">157</a>
+<a href="#158" id="158">158</a>
+<a href="#159" id="159">159</a>
+<a href="#160" id="160">160</a>
+<a href="#161" id="161">161</a>
+<a href="#162" id="162">162</a>
+<a href="#163" id="163">163</a>
+<a href="#164" id="164">164</a>
+<a href="#165" id="165">165</a>
+<a href="#166" id="166">166</a>
+<a href="#167" id="167">167</a>
+<a href="#168" id="168">168</a>
+<a href="#169" id="169">169</a>
+<a href="#170" id="170">170</a>
+<a href="#171" id="171">171</a>
+<a href="#172" id="172">172</a>
+<a href="#173" id="173">173</a>
+<a href="#174" id="174">174</a>
+<a href="#175" id="175">175</a>
+<a href="#176" id="176">176</a>
+<a href="#177" id="177">177</a>
+<a href="#178" id="178">178</a>
+<a href="#179" id="179">179</a>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2023 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="kw">use </span><span class="kw">crate</span>::config::GrpcConfig;
@@ -171,6 +193,7 @@
 <span class="kw">use </span>massa_storage::Storage;
 <span class="kw">use </span>tokio::sync::oneshot;
 <span class="kw">use </span>tonic::codec::CompressionEncoding;
+<span class="kw">use </span>tonic_health::server::HealthReporter;
 <span class="kw">use </span>tonic_web::GrpcWebLayer;
 <span class="kw">use </span>tower_http::cors::{Any, CorsLayer};
 <span class="kw">use </span>tracing::log::{info, warn};
@@ -233,6 +256,18 @@
             .http2_adaptive_window(config.http2_adaptive_window)
             .max_frame_size(config.max_frame_size);
 
+        <span class="kw">let </span>health_service_opt = <span class="kw">if </span>config.enable_health {
+            <span class="kw">let </span>(<span class="kw-2">mut </span>health_reporter, health_service) = tonic_health::server::health_reporter();
+            health_reporter
+                .set_serving::&lt;MassaServiceServer&lt;MassaGrpc&gt;&gt;()
+                .<span class="kw">await</span>;
+            tokio::spawn(massa_service_status(health_reporter.clone()));
+            <span class="macro">info!</span>(<span class="string">&quot;gRPC health service enabled&quot;</span>);
+            <span class="prelude-val">Some</span>(health_service)
+        } <span class="kw">else </span>{
+            <span class="prelude-val">None
+        </span>};
+
         <span class="kw">if </span>config.accept_http1 {
             <span class="kw">if </span>config.enable_cors {
                 <span class="kw">let </span>cors = CorsLayer::new()
@@ -246,6 +281,7 @@
                     .accept_http1(<span class="bool-val">true</span>)
                     .layer(cors)
                     .layer(GrpcWebLayer::new())
+                    .add_optional_service(health_service_opt)
                     .add_service(svc);
 
                 <span class="kw">if </span>config.enable_reflection {
@@ -311,6 +347,14 @@
             <span class="macro">info!</span>(<span class="string">&quot;gRPC API stop signal sent successfully&quot;</span>);
         }
     }
+}
+
+<span class="doccomment">/// Massa service health check implementation
+</span><span class="kw">async fn </span>massa_service_status(<span class="kw-2">mut </span>reporter: HealthReporter) {
+    <span class="comment">//TODO add a complete health check based on Massa modules health
+    </span>reporter
+        .set_serving::&lt;MassaServiceServer&lt;MassaGrpc&gt;&gt;()
+        .<span class="kw">await</span>;
 }
 </code></pre></div>
 </section></main><div id="rustdoc-vars" data-root-path="../../" data-static-root-path="../../static.files/" data-current-crate="massa_grpc" data-themes="" data-resource-suffix="" data-rustdoc-version="1.69.0-nightly (d962ea578 2023-02-26)" data-search-js="search-14421e1532aead08.js" data-settings-js="settings-f0c5c39777a9a2f6.js" data-settings-css="settings-0bcba95ff279c1db.css" ></div></body></html>
