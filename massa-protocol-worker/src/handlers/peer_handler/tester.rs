@@ -79,14 +79,12 @@ impl InitConnectionHandler for TesterHandshake {
                 Some(String::from("Peer didn't accepted us")),
             ));
         }
-        println!("AURELIEN HANDSHAKE: Received data in handshake: {:?}", data);
         let peer_id = PeerId::from_bytes(&data[..32].try_into().map_err(|_| {
             PeerNetError::HandshakeError.error(
                 "Massa Handshake",
-                Some(format!("Failed to deserialize PeerId")),
+                Some("Failed to deserialize PeerId".to_string()),
             )
         })?)?;
-        println!("AURELIEN HANDSHAKE: Peer id: {:?}", peer_id);
         let res = {
             {
                 // check if peer is banned else set state to InHandshake
@@ -102,11 +100,10 @@ impl InitConnectionHandler for TesterHandshake {
             }
             let id = data.get(32).ok_or(
                 PeerNetError::HandshakeError
-                    .error("Massa Handshake", Some(format!("Failed to get id"))),
+                    .error("Massa Handshake", Some("Failed to get id".to_string())),
             )?;
             match id {
                 0 => {
-                    println!("AURELIEN HANDSHAKE: deserializing data: {:?}", &data[32..]);
                     let (_, announcement) = self
                         .announcement_deserializer
                         .deserialize::<DeserializeError>(&data[33..])
@@ -115,13 +112,8 @@ impl InitConnectionHandler for TesterHandshake {
                                 "Tester Handshake",
                                 Some(format!("Failed to deserialize announcement: {}", err)),
                             )
-                        })
-                        .inspect_err(|e| println!("AURELIEN: error: {:?}", e))?;
+                        })?;
 
-                    println!(
-                        "AURELIEN HANDSHAKE: Received announcement: {:?}",
-                        announcement
-                    );
                     if peer_id
                         .verify_signature(&announcement.hash, &announcement.signature)
                         .is_err()
@@ -148,19 +140,15 @@ impl InitConnectionHandler for TesterHandshake {
                                 last_announce: announcement,
                                 state: super::PeerState::Trusted,
                             });
-                        println!("AURELIEN HANDSHAKE: Peer {:?} added to peer_db", peer_id);
-                        println!("AURELIEN HANDSHAKE: Peer_db: {:?}", peer_db_write.peers);
                     }
-
                     Ok(peer_id.clone())
                 }
                 _ => {
                     {
                         //TODO: Add the peerdb but for now impossible as we don't have announcement and we need one to place in peerdb
-                        println!("AURELIEN HANDSHAKE: tester handshake fail {}", peer_id);
                     }
                     Err(PeerNetError::HandshakeError
-                        .error("Massa handshake", Some(format!("Invalid id"))))
+                        .error("Massa handshake", Some("Invalid id".to_string())))
                 }
             }
         };

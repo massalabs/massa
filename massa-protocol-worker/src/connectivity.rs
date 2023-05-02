@@ -58,7 +58,6 @@ pub(crate) fn start_connectivity_thread(
     storage: Storage,
     protocol_channels: ProtocolChannels,
 ) -> Result<(Sender<ConnectivityCommand>, JoinHandle<()>), ProtocolError> {
-    println!("AURELIEN: {:?}", bootstrap_peers);
     let initial_peers = if let Some(bootstrap_peers) = bootstrap_peers {
         bootstrap_peers.0.into_iter().collect()
     } else {
@@ -195,8 +194,6 @@ pub(crate) fn start_connectivity_thread(
                             }
                         }
                     default(Duration::from_millis(1000)) => {
-                        println!("AURELIEN: PeerDB: {:?}", peer_db.read().peers);
-                        println!("AURELIEN: active connections: {:?}", network_controller.get_active_connections().get_peers_connected());
                         if config.debug {
                             println!("nb peers connected: {}", network_controller.get_active_connections().get_peer_ids_connected().len());
                         }

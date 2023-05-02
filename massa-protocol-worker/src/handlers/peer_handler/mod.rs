@@ -302,7 +302,7 @@ impl InitConnectionHandler for MassaHandshake {
             PeerId::from_bytes(&received[offset..offset + 32].try_into().map_err(|_| {
                 PeerNetError::HandshakeError.error(
                     "Massa Handshake",
-                    Some(format!("Failed to deserialize PeerId")),
+                    Some("Failed to deserialize PeerId".to_string()),
                 )
             })?)?;
 
@@ -329,7 +329,7 @@ impl InitConnectionHandler for MassaHandshake {
             offset += 32;
             let id = received.get(offset).ok_or(
                 PeerNetError::HandshakeError
-                    .error("Massa Handshake", Some(format!("Failed to get id"))),
+                    .error("Massa Handshake", Some("Failed to get id".to_string())),
             )?;
             offset += 1;
             match id {
@@ -378,7 +378,7 @@ impl InitConnectionHandler for MassaHandshake {
                         received.as_slice()[..32].try_into().map_err(|_| {
                             PeerNetError::HandshakeError.error(
                                 "Massa Handshake",
-                                Some(format!("Failed to deserialize random bytes")),
+                                Some("Failed to deserialize random bytes".to_string()),
                             )
                         })?;
 
@@ -387,7 +387,7 @@ impl InitConnectionHandler for MassaHandshake {
                     let self_signature = keypair.sign(&other_random_hash).map_err(|_| {
                         PeerNetError::HandshakeError.error(
                             "Massa Handshake",
-                            Some(format!("Failed to sign random bytes")),
+                            Some("Failed to sign random bytes".to_string()),
                         )
                     })?;
 
@@ -401,13 +401,13 @@ impl InitConnectionHandler for MassaHandshake {
                         Signature::from_bytes(received.as_slice().try_into().map_err(|_| {
                             PeerNetError::HandshakeError.error(
                                 "Massa Handshake",
-                                Some(format!("Failed to get random bytes")),
+                                Some("Failed to get random bytes".to_string()),
                             )
                         })?)
                         .map_err(|_| {
                             PeerNetError::HandshakeError.error(
                                 "Massa Handshake",
-                                Some(format!("Failed to sign 2 random bytes")),
+                                Some("Failed to sign 2 random bytes".to_string()),
                             )
                         })?;
 
@@ -419,7 +419,7 @@ impl InitConnectionHandler for MassaHandshake {
                     let (received, id) = self
                         .message_handlers
                         .deserialize_id(&received[offset..], &peer_id)?;
-                    self.message_handlers.handle(id, &received, &peer_id)?;
+                    self.message_handlers.handle(id, received, &peer_id)?;
                     Err(PeerNetError::HandshakeError.error(
                         "Massa Handshake",
                         Some("Handshake failed received a message that are connection has been refused".to_string()),

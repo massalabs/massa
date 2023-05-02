@@ -1,4 +1,4 @@
-use std::sync::Arc;
+use std::{fs::read_to_string, sync::Arc};
 
 use crate::{
     connectivity::start_connectivity_thread, create_protocol_controller,
@@ -15,12 +15,15 @@ use massa_pool_exports::{
     test_exports::{MockPoolController, PoolEventReceiver},
     PoolController,
 };
-use massa_protocol_exports::{ProtocolConfig, ProtocolController, ProtocolError, ProtocolManager};
+use massa_protocol_exports::{
+    PeerId, ProtocolConfig, ProtocolController, ProtocolError, ProtocolManager,
+};
 use massa_serialization::U64VarIntDeserializer;
 use massa_storage::Storage;
 use parking_lot::RwLock;
+use peernet::types::KeyPair;
 use std::ops::Bound::Included;
-use tracing::debug;
+use tracing::{debug, log::warn};
 
 /// start a new `ProtocolController` from a `ProtocolConfig`
 ///
@@ -41,6 +44,21 @@ pub fn start_protocol_controller_with_mock_network(
     ),
     ProtocolError,
 > {
+    // try to read node keypair from file, otherwise generate it & write to file. Then derive nodeId
+    let keypair = if std::path::Path::is_file(&config.keypair_file) {
+        // file exists: try to load it
+        let keypair_bs58_check_encoded = read_to_string(&config.keypair_file).map_err(|err| {
+            std::io::Error::new(err.kind(), format!("could not load node key file: {}", err))
+        })?;
+        serde_json::from_slice::<KeyPair>(keypair_bs58_check_encoded.as_bytes())?
+    } else {
+        // node file does not exist: generate the key and save it
+        let keypair = KeyPair::generate();
+        if let Err(e) = std::fs::write(&config.keypair_file, serde_json::to_string(&keypair)?) {
+            warn!("could not generate node key file: {}", e);
+        }
+        keypair
+    };
     debug!("starting protocol controller with mock network");
     let peer_db = Arc::new(RwLock::new(PeerDB::default()));
 
@@ -67,6 +85,7 @@ pub fn start_protocol_controller_with_mock_network(
 
     let connectivity_thread_handle = start_connectivity_thread(
         config,
+        PeerId::from_public_key(keypair.get_public_key()),
         network_controller.clone(),
         consensus_controller,
         pool_controller,
