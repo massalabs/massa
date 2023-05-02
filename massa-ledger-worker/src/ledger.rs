@@ -196,10 +196,6 @@ impl LedgerController for FinalLedger {
         self.sorted_ledger.get_slot()
     }
 
-    fn backup_db(&self, slot: Slot) {
-        self.sorted_ledger.backup_db(slot);
-    }
-
     fn apply_changes_to_batch(
         &mut self,
         changes: LedgerChanges,

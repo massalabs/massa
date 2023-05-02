@@ -21,9 +21,7 @@ use massa_models::{
 use massa_serialization::{DeserializeError, Deserializer, Serializer, U64VarIntSerializer};
 use nom::multi::many0;
 use nom::sequence::tuple;
-use rocksdb::{
-    checkpoint::Checkpoint, ColumnFamily, Direction, IteratorMode, Options, ReadOptions, DB,
-};
+use rocksdb::{ColumnFamily, Direction, IteratorMode, Options, ReadOptions, DB};
 use std::ops::Bound;
 use std::rc::Rc;
 use std::{
@@ -140,20 +138,6 @@ impl LedgerDB {
             &mut batch,
         );
         write_batch(&self.db.read(), batch);
-    }
-
-    pub fn backup_db(&self, slot: Slot) {
-        let mut subpath = String::from("backup_");
-        subpath.push_str(slot.period.to_string().as_str());
-        subpath.push('_');
-        subpath.push_str(slot.thread.to_string().as_str());
-
-        let db = self.db.read();
-
-        Checkpoint::new(&db)
-            .expect("Cannot init checkpoint")
-            .create_checkpoint(db.path().join(subpath))
-            .expect("Failed to create checkpoint");
     }
 
     /// Allows applying `LedgerChanges` to the disk ledger

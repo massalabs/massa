@@ -10,13 +10,14 @@ use massa_async_pool::{
     AsyncMessage, AsyncMessageId, AsyncPool, AsyncPoolChanges, AsyncPoolDeserializer,
     AsyncPoolSerializer,
 };
-use massa_db::{write_batch, DBBatch};
+use massa_db::{backup_db, write_batch, DBBatch};
 use massa_executed_ops::{
     ExecutedDenunciations, ExecutedDenunciationsDeserializer, ExecutedDenunciationsSerializer,
     ExecutedOps, ExecutedOpsDeserializer, ExecutedOpsSerializer,
 };
 use massa_hash::{Hash, HashDeserializer, HASH_SIZE_BYTES};
 use massa_ledger_exports::{Key as LedgerKey, LedgerChanges, LedgerController};
+use massa_models::config::PERIODS_BETWEEN_BACKUPS;
 use massa_models::denunciation::DenunciationIndex;
 use massa_models::{
     // TODO: uncomment when deserializing the final state from ledger
@@ -489,7 +490,7 @@ impl FinalState {
         let mut db_batch = DBBatch::new(
             Some(self.ledger.get_ledger_hash()),
             Some(self.async_pool.get_hash()),
-            Some(self.pos_state.get_cycle_history_hash()),
+            None,
             Some(self.pos_state.get_deferred_credits_hash()),
             Some(self.executed_ops.get_hash()),
             Some(self.executed_denunciations.get_hash()),
@@ -536,7 +537,7 @@ impl FinalState {
         }
 
         // Backup DB if needed
-        if self.slot.is_first_of_cycle(self.config.periods_per_cycle) {
+        if self.slot.period % PERIODS_BETWEEN_BACKUPS == 0 && self.slot.period != 0 {
             let ledger_slot = self.ledger.get_slot();
             match ledger_slot {
                 Ok(slot) => {
@@ -556,7 +557,7 @@ impl FinalState {
                 }
             }
 
-            self.ledger.backup_db(self.slot);
+            backup_db(&self.rocks_db.read(), self.slot);
         }
 
         // feed final_state_hash to the last cycle

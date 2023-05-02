@@ -72,8 +72,6 @@ pub trait LedgerController: Send + Sync + Debug {
 
     fn get_slot(&self) -> Result<Slot, ModelsError>;
 
-    fn backup_db(&self, slot: Slot);
-
     fn apply_changes_to_batch(
         &mut self,
         changes: LedgerChanges,

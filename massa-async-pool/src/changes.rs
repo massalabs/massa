@@ -29,29 +29,8 @@ use crate::{
     AsyncMessageDeserializer, AsyncMessageSerializer,
 };
 
-/*/// Enum representing a value U with identifier T being added or deleted
-#[derive(Debug, Clone, PartialEq, Eq, Deserialize, Serialize)]
-pub enum Change<T, U> {
-    /// an item with identifier T and value U is added
-    Add(T, U),
-
-    /// an item with identifier T is ready to be executed
-    Activate(T),
-
-    /// an item with identifier T is deleted
-    Delete(T),
-}*/
-
-/*#[repr(u32)]
-enum ChangeId {
-    Add = 0,
-    Activate = 1,
-    Delete = 2,
-}*/
-
-/// represents a list of additions and deletions to the asynchronous message pool
+/// Consolidated changes to the asynchronous message pool
 #[derive(Default, Debug, Clone, PartialEq, Eq, Deserialize, Serialize)]
-//pub struct AsyncPoolChanges(pub Vec<Change<AsyncMessageId, AsyncMessage>>);
 pub struct AsyncPoolChanges(
     pub BTreeMap<AsyncMessageId, SetUpdateOrDelete<AsyncMessage, AsyncMessageUpdate>>,
 );
@@ -275,13 +254,6 @@ impl Deserializer<AsyncPoolChanges> for AsyncPoolChangesDeserializer {
 }
 
 impl AsyncPoolChanges {
-    /// Extends self with another another `AsyncPoolChanges`.
-    /// This simply appends the contents of other to self.
-    /// No add/delete compensations are done.
-    /*pub fn extend(&mut self, other: AsyncPoolChanges) {
-        self.0.extend(other.0);
-    }*/
-
     /// Pushes a message addition to the list of changes.
     /// No add/delete compensations are done.
     ///

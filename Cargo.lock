@@ -2577,6 +2577,7 @@ name = "massa_db"
 version = "0.1.0"
 dependencies = [
  "massa_hash 0.1.0",
+ "massa_models",
  "rocksdb",
 ]
 

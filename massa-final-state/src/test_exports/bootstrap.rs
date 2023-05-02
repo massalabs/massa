@@ -44,6 +44,7 @@ pub fn create_final_state(
 
 /// asserts that two `FinalState` are equal
 pub fn assert_eq_final_state(v1: &FinalState, v2: &FinalState) {
+    // TODO: Better compare equality of structures in rocks_db (e.g. add a cfg testing enabled function to dump the db to memory)
     // compare slot
     assert_eq!(v1.slot, v2.slot, "final slot mismatch");
 
