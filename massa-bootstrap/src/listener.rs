@@ -79,7 +79,7 @@ impl BSEventPoller for BootstrapTcpListener {
 
 impl BootstrapListenerStopHandle {
     /// Stop the bootstrap listener.
-    pub fn stop(self) -> Result<(), BootstrapError> {
+    pub fn stop(&self) -> Result<(), BootstrapError> {
         self.0.wake().map_err(BootstrapError::from)
     }
 }

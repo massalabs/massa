@@ -102,7 +102,10 @@ impl BootstrapManager {
     /// stop the bootstrap server
     pub fn stop(self) -> Result<(), BootstrapError> {
         massa_trace!("bootstrap.lib.stop", {});
-        if let Some(listen_stop_handle) = self.listener_stopper {
+        // `as_ref` is critical here, as the stopper has to be alive until the poll in the event
+        // loop acts on the stop-signal
+        // TODO: Refactor the waker so that its existance is tied to the life of the event-loop
+        if let Some(listen_stop_handle) = self.listener_stopper.as_ref() {
             if listen_stop_handle.stop().is_err() {
                 warn!("bootstrap server already dropped");
             }
