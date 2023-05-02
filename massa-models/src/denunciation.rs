@@ -983,7 +983,7 @@ impl Deserializer<DenunciationIndex> for DenunciationIndexDeserializer {
 // Denunciation interest
 
 /// DenunciationPrecursor variant for endorsement
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct EndorsementDenunciationPrecursor {
     /// secure share endorsement public key
     pub public_key: PublicKey,
@@ -998,7 +998,7 @@ pub struct EndorsementDenunciationPrecursor {
 }
 
 /// DenunciationPrecursor variant for block header
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct BlockHeaderDenunciationPrecursor {
     /// secured header public key
     pub public_key: PublicKey,
@@ -1012,7 +1012,7 @@ pub struct BlockHeaderDenunciationPrecursor {
 
 /// Lightweight data for Denunciation creation
 /// (avoid storing heavyweight secured header or secure share endorsement, see denunciation pool)
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum DenunciationPrecursor {
     /// Endorsement variant
     Endorsement(EndorsementDenunciationPrecursor),
