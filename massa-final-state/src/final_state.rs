@@ -6,44 +6,17 @@
 //! and need to be bootstrapped by nodes joining the network.
 
 use crate::{config::FinalStateConfig, error::FinalStateError, state_changes::StateChanges};
-use massa_async_pool::{
-    AsyncMessage, AsyncMessageId, AsyncPool, AsyncPoolChanges, AsyncPoolDeserializer,
-    AsyncPoolSerializer,
-};
+use massa_async_pool::{AsyncMessageId, AsyncPool, AsyncPoolChanges};
 use massa_db::{backup_db, write_batch, DBBatch};
-use massa_executed_ops::{
-    ExecutedDenunciations, ExecutedDenunciationsDeserializer, ExecutedDenunciationsSerializer,
-    ExecutedOps, ExecutedOpsDeserializer, ExecutedOpsSerializer,
-};
-use massa_hash::{Hash, HashDeserializer, HASH_SIZE_BYTES};
+use massa_executed_ops::{ExecutedDenunciations, ExecutedOps};
+use massa_hash::{Hash, HASH_SIZE_BYTES};
 use massa_ledger_exports::{Key as LedgerKey, LedgerChanges, LedgerController};
 use massa_models::config::PERIODS_BETWEEN_BACKUPS;
-use massa_models::denunciation::DenunciationIndex;
-use massa_models::{
-    // TODO: uncomment when deserializing the final state from ledger
-    /*config::{
-        MAX_ASYNC_POOL_LENGTH, MAX_DATASTORE_KEY_LENGTH, MAX_DEFERRED_CREDITS_LENGTH,
-        MAX_EXECUTED_OPS_LENGTH, MAX_OPERATIONS_PER_BLOCK, MAX_PRODUCTION_STATS_LENGTH,
-        MAX_ROLLS_COUNT_LENGTH,
-    },*/
-    operation::OperationId,
-    prehash::PreHashSet,
-    slot::{Slot, SlotDeserializer, SlotSerializer},
-    streaming_step::StreamingStep,
-};
-use massa_pos_exports::{
-    CycleHistoryDeserializer, CycleHistorySerializer, CycleInfo, DeferredCredits,
-    DeferredCreditsDeserializer, DeferredCreditsSerializer, PoSFinalState, SelectorController,
-};
-use massa_serialization::{Deserializer, SerializeError, Serializer};
-use nom::{error::context, sequence::tuple, IResult, Parser};
+use massa_models::{slot::Slot, streaming_step::StreamingStep};
+use massa_pos_exports::{DeferredCredits, PoSFinalState, SelectorController};
 use parking_lot::RwLock;
 use rocksdb::DB;
-use std::ops::Bound::{Excluded, Included};
-use std::{
-    collections::{BTreeMap, HashSet, VecDeque},
-    sync::Arc,
-};
+use std::{collections::VecDeque, sync::Arc};
 use tracing::{debug, info};
 
 /// Represents a final state `(ledger, async pool, executed_ops, executed_de and the state of the PoS)`
@@ -536,6 +509,9 @@ impl FinalState {
             self.changes_history.push_back((slot, changes));
         }
 
+        // compute the final state hash
+        self.compute_state_hash_at_slot(slot);
+
         // Backup DB if needed
         if self.slot.period % PERIODS_BETWEEN_BACKUPS == 0 && self.slot.period != 0 {
             let ledger_slot = self.ledger.get_slot();
@@ -710,206 +686,6 @@ impl FinalState {
             res_changes.push((*slot, slot_changes));
         }
         Ok(res_changes)
-    }
-}
-
-/// Serializer for `FinalStateRaw`
-pub struct FinalStateRawSerializer {
-    async_pool_serializer: AsyncPoolSerializer,
-    cycle_history_serializer: CycleHistorySerializer,
-    deferred_credits_serializer: DeferredCreditsSerializer,
-    executed_ops_serializer: ExecutedOpsSerializer,
-    executed_denunciations_serializer: ExecutedDenunciationsSerializer,
-    slot_serializer: SlotSerializer,
-}
-
-impl Default for FinalStateRawSerializer {
-    fn default() -> Self {
-        Self::new()
-    }
-}
-
-/*impl From<FinalState> for FinalStateRaw {
-    fn from(value: FinalState) -> Self {
-        Self {
-            async_pool_messages: value.async_pool.messages,
-            cycle_history: value.pos_state.cycle_history,
-            deferred_credits: value.pos_state.deferred_credits,
-            sorted_ops: value.executed_ops.sorted_ops,
-            sorted_denunciations: value.executed_denunciations.sorted_denunciations,
-            latest_consistent_slot: value.slot,
-            final_state_hash_from_snapshot: value.final_state_hash,
-        }
-    }
-}*/
-
-impl FinalStateRawSerializer {
-    /// Initialize a `FinalStateRaweSerializer`
-    pub fn new() -> Self {
-        Self {
-            async_pool_serializer: AsyncPoolSerializer::new(),
-            cycle_history_serializer: CycleHistorySerializer::new(),
-            deferred_credits_serializer: DeferredCreditsSerializer::new(),
-            executed_ops_serializer: ExecutedOpsSerializer::new(),
-            executed_denunciations_serializer: ExecutedDenunciationsSerializer::new(),
-            slot_serializer: SlotSerializer::new(),
-        }
-    }
-}
-
-impl Serializer<FinalStateRaw> for FinalStateRawSerializer {
-    fn serialize(&self, value: &FinalStateRaw, buffer: &mut Vec<u8>) -> Result<(), SerializeError> {
-        // Serialize Async Pool
-        self.async_pool_serializer
-            .serialize(&value.async_pool_messages, buffer)?;
-
-        // Serialize pos state
-        self.cycle_history_serializer
-            .serialize(&value.cycle_history, buffer)?;
-        self.deferred_credits_serializer
-            .serialize(&value.deferred_credits, buffer)?;
-
-        // Serialize Executed Ops
-        self.executed_ops_serializer
-            .serialize(&value.sorted_ops, buffer)?;
-        // Serialize Executed Denunciations
-        self.executed_denunciations_serializer
-            .serialize(&value.sorted_denunciations, buffer)?;
-
-        // Serialize metadata
-        self.slot_serializer
-            .serialize(&value.latest_consistent_slot, buffer)?;
-
-        // /!\ The final_state_hash has to be serialized separately!
-
-        Ok(())
-    }
-}
-
-pub struct FinalStateRaw {
-    async_pool_messages: BTreeMap<AsyncMessageId, AsyncMessage>,
-    cycle_history: VecDeque<CycleInfo>,
-    deferred_credits: DeferredCredits,
-    sorted_ops: BTreeMap<Slot, PreHashSet<OperationId>>,
-    sorted_denunciations: BTreeMap<Slot, HashSet<DenunciationIndex>>,
-    latest_consistent_slot: Slot,
-    #[allow(dead_code)]
-    final_state_hash_from_snapshot: Hash,
-}
-
-/// Deserializer for `FinalStateRaw`
-pub struct FinalStateRawDeserializer {
-    async_deser: AsyncPoolDeserializer,
-    cycle_history_deser: CycleHistoryDeserializer,
-    deferred_credits_deser: DeferredCreditsDeserializer,
-    executed_ops_deser: ExecutedOpsDeserializer,
-    executed_denunciations_deser: ExecutedDenunciationsDeserializer,
-    slot_deser: SlotDeserializer,
-    hash_deser: HashDeserializer,
-}
-
-impl FinalStateRawDeserializer {
-    #[allow(clippy::too_many_arguments)]
-    #[allow(dead_code)]
-    /// Initialize a `FinalStateRawDeserializer`
-    pub fn new(
-        config: FinalStateConfig,
-        max_async_pool_length: u64,
-        max_datastore_key_length: u8,
-        max_rolls_length: u64,
-        max_production_stats_length: u64,
-        max_credit_length: u64,
-        max_executed_ops_length: u64,
-        max_operations_per_block: u32,
-    ) -> Self {
-        Self {
-            async_deser: AsyncPoolDeserializer::new(
-                config.thread_count,
-                max_async_pool_length,
-                config.async_pool_config.max_async_message_data,
-                max_datastore_key_length as u32,
-            ),
-            cycle_history_deser: CycleHistoryDeserializer::new(
-                config.pos_config.cycle_history_length as u64,
-                max_rolls_length,
-                max_production_stats_length,
-            ),
-            deferred_credits_deser: DeferredCreditsDeserializer::new(
-                config.thread_count,
-                max_credit_length,
-                true,
-            ),
-            executed_ops_deser: ExecutedOpsDeserializer::new(
-                config.thread_count,
-                max_executed_ops_length,
-                max_operations_per_block as u64,
-            ),
-            executed_denunciations_deser: ExecutedDenunciationsDeserializer::new(
-                config.thread_count,
-                config.endorsement_count,
-                config.max_executed_denunciations_length,
-                config.max_denunciations_per_block_header as u64,
-            ),
-            slot_deser: SlotDeserializer::new(
-                (Included(u64::MIN), Included(u64::MAX)),
-                (Included(0), Excluded(config.thread_count)),
-            ),
-            hash_deser: HashDeserializer::new(),
-        }
-    }
-}
-
-impl Deserializer<FinalStateRaw> for FinalStateRawDeserializer {
-    fn deserialize<'a, E: nom::error::ParseError<&'a [u8]> + nom::error::ContextError<&'a [u8]>>(
-        &self,
-        buffer: &'a [u8],
-    ) -> IResult<&'a [u8], FinalStateRaw, E> {
-        context("Failed FinalStateRaw deserialization", |buffer| {
-            tuple((
-                context("Failed async_pool_messages deserialization", |input| {
-                    self.async_deser.deserialize(input)
-                }),
-                context("Failed cycle_history deserialization", |input| {
-                    self.cycle_history_deser.deserialize(input)
-                }),
-                context("Failed deferred_credits deserialization", |input| {
-                    self.deferred_credits_deser.deserialize(input)
-                }),
-                context("Failed executed_ops deserialization", |input| {
-                    self.executed_ops_deser.deserialize(input)
-                }),
-                context("Failed executed_denunciations deserialization", |input| {
-                    self.executed_denunciations_deser.deserialize(input)
-                }),
-                context("Failed slot deserialization", |input| {
-                    self.slot_deser.deserialize(input)
-                }),
-                context("Failed hash deserialization", |input| {
-                    self.hash_deser.deserialize(input)
-                }),
-            ))
-            .map(
-                |(
-                    async_pool_messages,
-                    cycle_history,
-                    deferred_credits,
-                    sorted_ops,
-                    sorted_denunciations,
-                    latest_consistent_slot,
-                    final_state_hash_from_snapshot,
-                )| FinalStateRaw {
-                    async_pool_messages,
-                    cycle_history: cycle_history.into(),
-                    deferred_credits,
-                    sorted_ops,
-                    sorted_denunciations,
-                    latest_consistent_slot,
-                    final_state_hash_from_snapshot,
-                },
-            )
-            .parse(buffer)
-        })
-        .parse(buffer)
     }
 }
 

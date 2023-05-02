@@ -55,7 +55,7 @@ pub struct ExecutedOps {
 impl ExecutedOps {
     /// Creates a new `ExecutedOps`
     pub fn new(config: ExecutedOpsConfig, db: Arc<RwLock<DB>>) -> Self {
-        Self {
+        let mut executed_ops = Self {
             config,
             db,
             sorted_ops: BTreeMap::new(),
@@ -64,7 +64,9 @@ impl ExecutedOps {
             operation_id_serializer: OperationIdSerializer::new(),
             bool_serializer: BoolSerializer::new(),
             slot_serializer: SlotSerializer::new(),
-        }
+        };
+        executed_ops.recompute_sorted_ops_and_op_exec_status();
+        executed_ops
     }
 
     fn recompute_sorted_ops_and_op_exec_status(&mut self) {

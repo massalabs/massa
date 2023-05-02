@@ -55,13 +55,15 @@ impl ExecutedDenunciations {
     pub fn new(config: ExecutedDenunciationsConfig, db: Arc<RwLock<DB>>) -> Self {
         let denunciation_index_deserializer =
             DenunciationIndexDeserializer::new(config.thread_count, config.endorsement_count);
-        Self {
+        let mut executed_denunciations = Self {
             config,
             db,
             sorted_denunciations: Default::default(),
             denunciation_index_serializer: DenunciationIndexSerializer::new(),
             denunciation_index_deserializer,
-        }
+        };
+        executed_denunciations.recompute_sorted_denunciations();
+        executed_denunciations
     }
 
     fn recompute_sorted_denunciations(&mut self) {
