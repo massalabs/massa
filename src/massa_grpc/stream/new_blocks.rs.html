@@ -188,10 +188,10 @@
         }
     });
 
-    <span class="comment">// Create a new stream from the received channel
+    <span class="comment">// Create a new stream from the received channel.
     </span><span class="kw">let </span>out_stream = tokio_stream::wrappers::ReceiverStream::new(rx);
 
-    <span class="comment">// Return the new stream of blocks
+    <span class="comment">// Return the new stream of blocks.
     </span><span class="prelude-val">Ok</span>(Box::pin(out_stream) <span class="kw">as </span>NewBlocksStreamType)
 }
 </code></pre></div>

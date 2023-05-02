@@ -281,13 +281,6 @@
 <a href="#281" id="281">281</a>
 <a href="#282" id="282">282</a>
 <a href="#283" id="283">283</a>
-<a href="#284" id="284">284</a>
-<a href="#285" id="285">285</a>
-<a href="#286" id="286">286</a>
-<a href="#287" id="287">287</a>
-<a href="#288" id="288">288</a>
-<a href="#289" id="289">289</a>
-<a href="#290" id="290">290</a>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2023 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="kw">use </span>std::str::FromStr;
@@ -543,9 +536,9 @@
     }
 }
 
-<span class="kw">impl </span>From&lt;SCOutputEvent&gt; <span class="kw">for </span>grpc::ScExecutionEvent {
+<span class="kw">impl </span>From&lt;SCOutputEvent&gt; <span class="kw">for </span>grpc::ScExecutionEventWrapper {
     <span class="kw">fn </span>from(value: SCOutputEvent) -&gt; <span class="self">Self </span>{
-        grpc::ScExecutionEvent {
+        grpc::ScExecutionEventWrapper {
             context: <span class="prelude-val">Some</span>(value.context.into()),
             data: value.data,
         }
@@ -553,27 +546,20 @@
 }
 
 <span class="kw">impl </span>From&lt;EventExecutionContext&gt; <span class="kw">for </span>grpc::ScExecutionEventContext {
-    <span class="kw">fn </span>from(value: EventExecutionContext) -&gt; <span class="self">Self </span>{
-        <span class="kw">let </span>id_str = <span class="macro">format!</span>(
-            <span class="string">&quot;{}{}{}&quot;</span>,
-            <span class="kw-2">&amp;</span>value.slot.period, <span class="kw-2">&amp;</span>value.slot.thread, <span class="kw-2">&amp;</span>value.index_in_slot
-        );
-        <span class="kw">let </span>id = bs58::encode(id_str.as_bytes()).with_check().into_string();
+    <span class="kw">fn </span>from(ctx: EventExecutionContext) -&gt; <span class="self">Self </span>{
         <span class="self">Self </span>{
-            id,
-            origin_slot: <span class="prelude-val">Some</span>(value.slot.into()),
-            block_id: value.block.map(|id| id.to_string()),
-            index_in_slot: value.index_in_slot,
-            call_stack: value
-                .call_stack
-                .into_iter()
-                .map(|a| a.to_string())
-                .collect(),
-            origin_operation_id: value.origin_operation_id.map(|id| id.to_string()),
+            origin_slot: <span class="prelude-val">Some</span>(ctx.slot.into()),
+            block_id: ctx.block.map(|id| id.to_string()).unwrap_or_default(),
+            index_in_slot: ctx.index_in_slot,
+            call_stack: ctx.call_stack.into_iter().map(|a| a.to_string()).collect(),
+            origin_operation_id: ctx
+                .origin_operation_id
+                .map(|id| id.to_string())
+                .unwrap_or_default(),
             status: <span class="macro">vec!</span>[
-                value.is_error.into(),
-                value.read_only.into(),
-                value.is_final.into(),
+                ctx.is_error.into(),
+                ctx.read_only.into(),
+                ctx.is_final.into(),
             ],
         }
     }
