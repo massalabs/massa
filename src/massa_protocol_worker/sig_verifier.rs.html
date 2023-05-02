@@ -27,6 +27,7 @@
 <a href="#27" id="27">27</a>
 <a href="#28" id="28">28</a>
 <a href="#29" id="29">29</a>
+<a href="#30" id="30">30</a>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="doccomment">//! Optimized batch signature verifier
@@ -36,7 +37,8 @@
 <span class="kw">use </span>massa_signature::{verify_signature_batch, PublicKey, Signature};
 <span class="kw">use </span>rayon::{prelude::ParallelIterator, slice::ParallelSlice};
 
-<span class="doccomment">/// Limit for small batch optimization
+<span class="comment">//TODO: Benchmark
+</span><span class="doccomment">/// Limit for small batch optimization
 </span><span class="kw">const </span>SMALL_BATCH_LIMIT: usize = <span class="number">2</span>;
 
 <span class="doccomment">/// Efficiently verifies a batch of signatures in parallel.

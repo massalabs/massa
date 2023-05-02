@@ -285,14 +285,6 @@
 <a href="#285" id="285">285</a>
 <a href="#286" id="286">286</a>
 <a href="#287" id="287">287</a>
-<a href="#288" id="288">288</a>
-<a href="#289" id="289">289</a>
-<a href="#290" id="290">290</a>
-<a href="#291" id="291">291</a>
-<a href="#292" id="292">292</a>
-<a href="#293" id="293">293</a>
-<a href="#294" id="294">294</a>
-<a href="#295" id="295">295</a>
 </pre><pre class="rust"><code><span class="doccomment">//! Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 //! This file provides structures representing changes to the final state
@@ -367,7 +359,7 @@
     /// use std::str::FromStr;
     /// use std::collections::BTreeMap;
     /// use massa_ledger_exports::{LedgerEntryUpdate, SetOrKeep, SetUpdateOrDelete, LedgerChanges};
-    /// use massa_async_pool::{AsyncMessage, AsyncPoolChanges};
+    /// use massa_async_pool::{AsyncMessage, Change, AsyncPoolChanges};
     ///
     /// let mut state_changes = StateChanges::default();
     /// let message = AsyncMessage::new_with_hash(
@@ -383,12 +375,8 @@
     ///     Slot::new(3, 0),
     ///     vec![1, 2, 3, 4],
     ///     None,
-    ///     None,
     /// );
-    /// let mut async_pool_changes = AsyncPoolChanges::default();
-    /// async_pool_changes
-    ///    .0
-    ///    .insert(message.compute_id(), SetUpdateOrDelete::Set(message.clone()));
+    /// let async_pool_changes: AsyncPoolChanges = AsyncPoolChanges(vec![Change::Add(message.compute_id(), message)]);
     /// state_changes.async_pool_changes = async_pool_changes;
     ///
     /// let amount = Amount::from_str(&quot;1&quot;).unwrap();
@@ -490,7 +478,7 @@
     /// use std::str::FromStr;
     /// use std::collections::BTreeMap;
     /// use massa_ledger_exports::{LedgerEntryUpdate, SetOrKeep, SetUpdateOrDelete, LedgerChanges};
-    /// use massa_async_pool::{AsyncMessage, AsyncPoolChanges};
+    /// use massa_async_pool::{AsyncMessage, Change, AsyncPoolChanges};
     ///
     /// let mut state_changes = StateChanges::default();
     /// let message = AsyncMessage::new_with_hash(
@@ -506,12 +494,8 @@
     ///     Slot::new(3, 0),
     ///     vec![1, 2, 3, 4],
     ///     None,
-    ///     None
     /// );
-    /// let mut async_pool_changes = AsyncPoolChanges::default();
-    /// async_pool_changes
-    ///    .0
-    ///    .insert(message.compute_id(), SetUpdateOrDelete::Set(message.clone()));
+    /// let async_pool_changes: AsyncPoolChanges = AsyncPoolChanges(vec![Change::Add(message.compute_id(), message)]);
     /// state_changes.async_pool_changes = async_pool_changes;
     ///
     /// let amount = Amount::from_str(&quot;1&quot;).unwrap();
@@ -582,7 +566,7 @@
     </span><span class="kw">pub fn </span>apply(<span class="kw-2">&amp;mut </span><span class="self">self</span>, changes: StateChanges) {
         <span class="kw">use </span>massa_ledger_exports::Applicable;
         <span class="self">self</span>.ledger_changes.apply(changes.ledger_changes);
-        <span class="self">self</span>.async_pool_changes.apply(changes.async_pool_changes);
+        <span class="self">self</span>.async_pool_changes.extend(changes.async_pool_changes);
         <span class="self">self</span>.pos_changes.extend(changes.pos_changes);
         <span class="self">self</span>.executed_ops_changes
             .extend(changes.executed_ops_changes);
