@@ -12,8 +12,8 @@ use massa_async_pool::{
 };
 use massa_db::{write_batch, DBBatch};
 use massa_executed_ops::{
-    ExecutedDenunciations, ExecutedOps, ExecutedOpsDeserializer, ExecutedOpsSerializer,
-    ProcessedDenunciationsDeserializer, ProcessedDenunciationsSerializer,
+    ExecutedDenunciations, ExecutedDenunciationsDeserializer, ExecutedDenunciationsSerializer,
+    ExecutedOps, ExecutedOpsDeserializer, ExecutedOpsSerializer,
 };
 use massa_hash::{Hash, HashDeserializer, HASH_SIZE_BYTES};
 use massa_ledger_exports::{Key as LedgerKey, LedgerChanges, LedgerController};
@@ -45,7 +45,7 @@ use std::{
 };
 use tracing::{debug, info};
 
-/// Represents a final state `(ledger, async pool, executed_ops, processed_de and the state of the PoS)`
+/// Represents a final state `(ledger, async pool, executed_ops, executed_de and the state of the PoS)`
 pub struct FinalState {
     /// execution state configuration
     pub(crate) config: FinalStateConfig,
@@ -128,8 +128,8 @@ impl FinalState {
         // create a default executed ops
         let executed_ops = ExecutedOps::new(config.executed_ops_config.clone(), rocks_db.clone());
 
-        // create a default processed denunciations
-        let processed_denunciations = ExecutedDenunciations::new(
+        // create a default executed denunciations
+        let executed_denunciations = ExecutedDenunciations::new(
             config.executed_denunciations_config.clone(),
             rocks_db.clone(),
         );
@@ -142,7 +142,7 @@ impl FinalState {
             pos_state,
             config,
             executed_ops,
-            executed_denunciations: processed_denunciations,
+            executed_denunciations,
             changes_history: Default::default(), // no changes in history
             final_state_hash: Hash::from_bytes(FINAL_STATE_HASH_INITIAL_BYTES),
             last_start_period: 0,
@@ -451,7 +451,7 @@ impl FinalState {
         }
         // 5. executed operations hash
         hash_concat.extend(self.executed_ops.get_hash().to_bytes());
-        // 6. processed denunciations hash
+        // 6. executed denunciations hash
         hash_concat.extend(self.executed_denunciations.get_hash().to_bytes());
         // 7. compute and save final state hash
         self.final_state_hash = Hash::compute_from(&hash_concat);
@@ -718,7 +718,7 @@ pub struct FinalStateRawSerializer {
     cycle_history_serializer: CycleHistorySerializer,
     deferred_credits_serializer: DeferredCreditsSerializer,
     executed_ops_serializer: ExecutedOpsSerializer,
-    processed_denunciations_serializer: ProcessedDenunciationsSerializer,
+    executed_denunciations_serializer: ExecutedDenunciationsSerializer,
     slot_serializer: SlotSerializer,
 }
 
@@ -750,7 +750,7 @@ impl FinalStateRawSerializer {
             cycle_history_serializer: CycleHistorySerializer::new(),
             deferred_credits_serializer: DeferredCreditsSerializer::new(),
             executed_ops_serializer: ExecutedOpsSerializer::new(),
-            processed_denunciations_serializer: ProcessedDenunciationsSerializer::new(),
+            executed_denunciations_serializer: ExecutedDenunciationsSerializer::new(),
             slot_serializer: SlotSerializer::new(),
         }
     }
@@ -771,8 +771,8 @@ impl Serializer<FinalStateRaw> for FinalStateRawSerializer {
         // Serialize Executed Ops
         self.executed_ops_serializer
             .serialize(&value.sorted_ops, buffer)?;
-        // Serialize Processed Denunciations
-        self.processed_denunciations_serializer
+        // Serialize Executed Denunciations
+        self.executed_denunciations_serializer
             .serialize(&value.sorted_denunciations, buffer)?;
 
         // Serialize metadata
@@ -802,7 +802,7 @@ pub struct FinalStateRawDeserializer {
     cycle_history_deser: CycleHistoryDeserializer,
     deferred_credits_deser: DeferredCreditsDeserializer,
     executed_ops_deser: ExecutedOpsDeserializer,
-    processed_denunciations_deser: ProcessedDenunciationsDeserializer,
+    executed_denunciations_deser: ExecutedDenunciationsDeserializer,
     slot_deser: SlotDeserializer,
     hash_deser: HashDeserializer,
 }
@@ -843,7 +843,7 @@ impl FinalStateRawDeserializer {
                 max_executed_ops_length,
                 max_operations_per_block as u64,
             ),
-            processed_denunciations_deser: ProcessedDenunciationsDeserializer::new(
+            executed_denunciations_deser: ExecutedDenunciationsDeserializer::new(
                 config.thread_count,
                 config.endorsement_count,
                 config.max_executed_denunciations_length,
@@ -877,8 +877,8 @@ impl Deserializer<FinalStateRaw> for FinalStateRawDeserializer {
                 context("Failed executed_ops deserialization", |input| {
                     self.executed_ops_deser.deserialize(input)
                 }),
-                context("Failed processed_denunciations deserialization", |input| {
-                    self.processed_denunciations_deser.deserialize(input)
+                context("Failed executed_denunciations deserialization", |input| {
+                    self.executed_denunciations_deser.deserialize(input)
                 }),
                 context("Failed slot deserialization", |input| {
                     self.slot_deser.deserialize(input)

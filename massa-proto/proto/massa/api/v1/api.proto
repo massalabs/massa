@@ -69,6 +69,14 @@ service MassaService {
     };
   }
 
+  // Get smart contracts execution events
+  rpc GetScExecutionEvents(GetScExecutionEventsRequest) returns (GetScExecutionEventsResponse) {
+    option (google.api.http) = { 
+      post: "/v1/get_sc_execution_events"
+      body: "*"
+    };
+  }
+
   // Get selector draws
   rpc GetSelectorDraws(GetSelectorDrawsRequest) returns (GetSelectorDrawsResponse) {
     option (google.api.http) = {
@@ -316,6 +324,84 @@ message GetOperationsResponse {
 message OperationsContext {
   // Slot
   Slot slot = 1;
+}
+
+// GetScExecutionEventsRequest holds request for GetScExecutionEvents
+message GetScExecutionEventsRequest {
+  // Request id
+  string id = 1;
+  // Query
+  GetScExecutionEventsQuery query = 2;
+}
+
+// GetScExecutionEvents Query
+message GetScExecutionEventsQuery {
+  // Filter
+  GetScExecutionEventsFilter filter = 1;
+}
+
+// GetScExecutionEvents Filter
+message GetScExecutionEventsFilter {
+  // Start slot
+  optional Slot start_slot = 1;
+  // End slot
+  optional Slot end_slot = 2;
+  // Caller address
+  optional string caller_address = 3;
+  // Emitter address
+  optional string emitter_address = 4;
+  // Original operation id
+  optional string original_operation_id = 5;
+  // Status
+  repeated ScExecutionEventStatus status = 6;
+}
+
+// GetScExecutionEventsResponse holds response from GetScExecutionEvents
+message GetScExecutionEventsResponse {
+  // Request id
+  string id = 1;
+  // Context
+  GetScExecutionEventsContext context = 2;
+  //ScExecutionEvents wrappers
+  repeated ScExecutionEventWrapper events = 3;
+}
+
+// ScExecutionEvents context
+message GetScExecutionEventsContext {
+  // Slot
+  Slot slot = 1;
+}
+
+// ScExecutionEvent wrapper
+message ScExecutionEventWrapper {
+  // Sc execution context
+  ScExecutionEventContext context = 1;
+  // json data string
+  string data = 2;
+}
+
+// ScExecutionEvent context
+message ScExecutionEventContext {
+  // When was it generated
+  Slot origin_slot = 1;
+  // Block id if there was a block at that slot
+  string block_id = 2;
+  // Index of the event in the slot
+  fixed64 index_in_slot = 3;
+  // Call stack addresses. most recent at the end
+  repeated string call_stack = 4;
+  // Origin operation id
+  string origin_operation_id = 5;
+  // Status
+  repeated ScExecutionEventStatus status = 6;
+}
+
+// ScExecutionEventStatus type enum
+enum ScExecutionEventStatus {
+  SC_EXECUTION_EVENT_STATUS_UNSPECIFIED = 0; // Defaut enum value
+  SC_EXECUTION_EVENT_STATUS_FINAL = 1; // Final status
+  SC_EXECUTION_EVENT_STATUS_READ_ONLY = 2; // Read only status
+  SC_EXECUTION_EVENT_STATUS_FAILURE = 3; // Failure status
 }
 
 // GetSelectorDrawsRequest holds request from GetSelectorDraws

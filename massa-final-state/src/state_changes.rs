@@ -258,7 +258,7 @@ impl Deserializer<StateChanges> for StateChangesDeserializer {
                 context("Failed executed_ops_changes deserialization", |input| {
                     self.ops_changes_deserializer.deserialize(input)
                 }),
-                context("Failed processed_de_changes deserialization", |input| {
+                context("Failed de_changes deserialization", |input| {
                     self.de_changes_deserializer.deserialize(input)
                 }),
             )),
@@ -269,13 +269,13 @@ impl Deserializer<StateChanges> for StateChangesDeserializer {
                 async_pool_changes,
                 roll_state_changes,
                 executed_ops,
-                processed_denunciations,
+                executed_denunciations,
             )| StateChanges {
                 ledger_changes,
                 async_pool_changes,
                 pos_changes: roll_state_changes,
                 executed_ops_changes: executed_ops,
-                executed_denunciations_changes: processed_denunciations,
+                executed_denunciations_changes: executed_denunciations,
             },
         )
         .parse(buffer)

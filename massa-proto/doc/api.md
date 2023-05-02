@@ -27,6 +27,11 @@
     - [GetOperationsQuery](#massa-api-v1-GetOperationsQuery)
     - [GetOperationsRequest](#massa-api-v1-GetOperationsRequest)
     - [GetOperationsResponse](#massa-api-v1-GetOperationsResponse)
+    - [GetScExecutionEventsContext](#massa-api-v1-GetScExecutionEventsContext)
+    - [GetScExecutionEventsFilter](#massa-api-v1-GetScExecutionEventsFilter)
+    - [GetScExecutionEventsQuery](#massa-api-v1-GetScExecutionEventsQuery)
+    - [GetScExecutionEventsRequest](#massa-api-v1-GetScExecutionEventsRequest)
+    - [GetScExecutionEventsResponse](#massa-api-v1-GetScExecutionEventsResponse)
     - [GetSelectorDrawsRequest](#massa-api-v1-GetSelectorDrawsRequest)
     - [GetSelectorDrawsResponse](#massa-api-v1-GetSelectorDrawsResponse)
     - [GetTransactionsThroughputRequest](#massa-api-v1-GetTransactionsThroughputRequest)
@@ -51,6 +56,8 @@
     - [NewOperationsResponse](#massa-api-v1-NewOperationsResponse)
     - [OperationResult](#massa-api-v1-OperationResult)
     - [OperationsContext](#massa-api-v1-OperationsContext)
+    - [ScExecutionEventContext](#massa-api-v1-ScExecutionEventContext)
+    - [ScExecutionEventWrapper](#massa-api-v1-ScExecutionEventWrapper)
     - [SelectorDraws](#massa-api-v1-SelectorDraws)
     - [SelectorDrawsFilter](#massa-api-v1-SelectorDrawsFilter)
     - [SelectorDrawsQuery](#massa-api-v1-SelectorDrawsQuery)
@@ -64,6 +71,7 @@
     - [TransactionsThroughputResponse](#massa-api-v1-TransactionsThroughputResponse)
   
     - [OpType](#massa-api-v1-OpType)
+    - [ScExecutionEventStatus](#massa-api-v1-ScExecutionEventStatus)
   
     - [MassaService](#massa-api-v1-MassaService)
   
@@ -476,6 +484,89 @@ GetOperationsResponse holds response from GetOperations
 
 
 
+<a name="massa-api-v1-GetScExecutionEventsContext"></a>
+
+### GetScExecutionEventsContext
+ScExecutionEvents context
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| slot | [Slot](#massa-api-v1-Slot) |  | Slot |
+
+
+
+
+
+
+<a name="massa-api-v1-GetScExecutionEventsFilter"></a>
+
+### GetScExecutionEventsFilter
+GetScExecutionEvents Filter
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| start_slot | [Slot](#massa-api-v1-Slot) | optional | Start slot |
+| end_slot | [Slot](#massa-api-v1-Slot) | optional | End slot |
+| caller_address | [string](#string) | optional | Caller address |
+| emitter_address | [string](#string) | optional | Emitter address |
+| original_operation_id | [string](#string) | optional | Original operation id |
+| status | [ScExecutionEventStatus](#massa-api-v1-ScExecutionEventStatus) | repeated | Status |
+
+
+
+
+
+
+<a name="massa-api-v1-GetScExecutionEventsQuery"></a>
+
+### GetScExecutionEventsQuery
+GetScExecutionEvents Query
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| filter | [GetScExecutionEventsFilter](#massa-api-v1-GetScExecutionEventsFilter) |  | Filter |
+
+
+
+
+
+
+<a name="massa-api-v1-GetScExecutionEventsRequest"></a>
+
+### GetScExecutionEventsRequest
+GetScExecutionEventsRequest holds request for GetScExecutionEvents
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| id | [string](#string) |  | Request id |
+| query | [GetScExecutionEventsQuery](#massa-api-v1-GetScExecutionEventsQuery) |  | Query |
+
+
+
+
+
+
+<a name="massa-api-v1-GetScExecutionEventsResponse"></a>
+
+### GetScExecutionEventsResponse
+GetScExecutionEventsResponse holds response from GetScExecutionEvents
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| id | [string](#string) |  | Request id |
+| context | [GetScExecutionEventsContext](#massa-api-v1-GetScExecutionEventsContext) |  | Context |
+| events | [ScExecutionEventWrapper](#massa-api-v1-ScExecutionEventWrapper) | repeated | ScExecutionEvents wrappers |
+
+
+
+
+
+
 <a name="massa-api-v1-GetSelectorDrawsRequest"></a>
 
 ### GetSelectorDrawsRequest
@@ -850,6 +941,42 @@ Operations context
 
 
 
+<a name="massa-api-v1-ScExecutionEventContext"></a>
+
+### ScExecutionEventContext
+ScExecutionEvent context
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| origin_slot | [Slot](#massa-api-v1-Slot) |  | When was it generated |
+| block_id | [string](#string) |  | Block id if there was a block at that slot |
+| index_in_slot | [fixed64](#fixed64) |  | Index of the event in the slot |
+| call_stack | [string](#string) | repeated | Call stack addresses. most recent at the end |
+| origin_operation_id | [string](#string) |  | Origin operation id |
+| status | [ScExecutionEventStatus](#massa-api-v1-ScExecutionEventStatus) | repeated | Status |
+
+
+
+
+
+
+<a name="massa-api-v1-ScExecutionEventWrapper"></a>
+
+### ScExecutionEventWrapper
+ScExecutionEvent wrapper
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| context | [ScExecutionEventContext](#massa-api-v1-ScExecutionEventContext) |  | Sc execution context |
+| data | [string](#string) |  | json data string |
+
+
+
+
+
+
 <a name="massa-api-v1-SelectorDraws"></a>
 
 ### SelectorDraws
@@ -1045,6 +1172,20 @@ Operation type enum
 | OP_TYPE_CALL_SC | 5 | Call smart contract |
 
 
+
+<a name="massa-api-v1-ScExecutionEventStatus"></a>
+
+### ScExecutionEventStatus
+ScExecutionEventStatus type enum
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| SC_EXECUTION_EVENT_STATUS_UNSPECIFIED | 0 | Defaut enum value |
+| SC_EXECUTION_EVENT_STATUS_FINAL | 1 | Final status |
+| SC_EXECUTION_EVENT_STATUS_READ_ONLY | 2 | Read only status |
+| SC_EXECUTION_EVENT_STATUS_FAILURE | 3 | Failure status |
+
+
  
 
  
@@ -1063,6 +1204,7 @@ Massa gRPC service
 | GetLargestStakers | [GetLargestStakersRequest](#massa-api-v1-GetLargestStakersRequest) | [GetLargestStakersResponse](#massa-api-v1-GetLargestStakersResponse) | Get largest stakers |
 | GetNextBlockBestParents | [GetNextBlockBestParentsRequest](#massa-api-v1-GetNextBlockBestParentsRequest) | [GetNextBlockBestParentsResponse](#massa-api-v1-GetNextBlockBestParentsResponse) | Get next block best parents |
 | GetOperations | [GetOperationsRequest](#massa-api-v1-GetOperationsRequest) | [GetOperationsResponse](#massa-api-v1-GetOperationsResponse) | Get operations |
+| GetScExecutionEvents | [GetScExecutionEventsRequest](#massa-api-v1-GetScExecutionEventsRequest) | [GetScExecutionEventsResponse](#massa-api-v1-GetScExecutionEventsResponse) | Get smart contracts execution events |
 | GetSelectorDraws | [GetSelectorDrawsRequest](#massa-api-v1-GetSelectorDrawsRequest) | [GetSelectorDrawsResponse](#massa-api-v1-GetSelectorDrawsResponse) | Get selector draws |
 | GetTransactionsThroughput | [GetTransactionsThroughputRequest](#massa-api-v1-GetTransactionsThroughputRequest) | [GetTransactionsThroughputResponse](#massa-api-v1-GetTransactionsThroughputResponse) | Get transactions throughput |
 | GetVersion | [GetVersionRequest](#massa-api-v1-GetVersionRequest) | [GetVersionResponse](#massa-api-v1-GetVersionResponse) | Get node version |

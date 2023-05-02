@@ -1629,7 +1629,8 @@ mod tests {
         exec_cfg.max_miss_ratio = Ratio::new(1, 1);
 
         // get a sample final state
-        let (sample_state, _keep_file, _keep_dir) = get_sample_state(2).unwrap();
+        let (sample_state, _keep_file, _keep_dir) =
+            get_sample_state(exec_cfg.last_start_period).unwrap();
 
         // init the MIP store
         let mip_stats_config = MipStatsConfig {
@@ -1680,15 +1681,23 @@ mod tests {
 
         // create a denunciation
         let (_slot, _keypair, s_endorsement_1, s_endorsement_2, _) =
-            gen_endorsements_for_denunciation(Some(Slot::new(2, 4)), Some(keypair));
+            gen_endorsements_for_denunciation(Some(Slot::new(3, 0)), Some(keypair.clone()));
         let denunciation = Denunciation::try_from((&s_endorsement_1, &s_endorsement_2)).unwrap();
+
+        // create a denunciation (that will be ignored as it has been created at the last start period)
+        let (_slot, _keypair, s_endorsement_1, s_endorsement_2, _) =
+            gen_endorsements_for_denunciation(
+                Some(Slot::new(exec_cfg.last_start_period, 4)),
+                Some(keypair),
+            );
+        let denunciation_2 = Denunciation::try_from((&s_endorsement_1, &s_endorsement_2)).unwrap();
 
         // create the block containing the roll buy operation
         storage.store_operations(vec![operation1.clone()]);
         let block = create_block(
             KeyPair::generate(),
-            vec![operation1], //, operation2],
-            vec![denunciation.clone(), denunciation],
+            vec![operation1],
+            vec![denunciation.clone(), denunciation, denunciation_2],
             Slot::new(3, 0),
         )
         .unwrap();
@@ -1774,7 +1783,8 @@ mod tests {
         exec_cfg.max_miss_ratio = Ratio::new(1, 1);
 
         // get a sample final state
-        let (sample_state, _keep_file, _keep_dir) = get_sample_state(2).unwrap();
+        let (sample_state, _keep_file, _keep_dir) =
+            get_sample_state(exec_cfg.last_start_period).unwrap();
 
         // init the MIP store
         let mip_stats_config = MipStatsConfig {
@@ -1846,7 +1856,7 @@ mod tests {
 
         // create a denunciation
         let (_slot, _keypair, s_endorsement_1, s_endorsement_2, _) =
-            gen_endorsements_for_denunciation(Some(Slot::new(2, 4)), Some(keypair));
+            gen_endorsements_for_denunciation(Some(Slot::new(3, 0)), Some(keypair));
         let denunciation = Denunciation::try_from((&s_endorsement_1, &s_endorsement_2)).unwrap();
 
         // create the block containing the roll buy operation

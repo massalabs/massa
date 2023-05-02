@@ -48,7 +48,7 @@ fn stream_final_state_and_consensus(
                     pos_cycle_part,
                     pos_credits_part,
                     exec_ops_part,
-                    processed_de_part,
+                    exec_de_part,
                     final_state_changes,
                     consensus_part,
                     consensus_outdated_ids,
@@ -76,7 +76,7 @@ fn stream_final_state_and_consensus(
                         .set_executed_ops_part(exec_ops_part);
                     let last_de_step = write_final_state
                         .executed_denunciations
-                        .set_processed_de_part(processed_de_part);
+                        .set_executed_de_part(exec_de_part);
                     for (changes_slot, changes) in final_state_changes.iter() {
                         let ledger_hash = write_final_state.ledger.get_ledger_hash();
                         let async_pool_hash = write_final_state.async_pool.get_hash();

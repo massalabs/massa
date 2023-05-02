@@ -1,6 +1,35 @@
-// Copyright (c) 2022 MASSA LABS <info@massa.net>
-/// An overview of what is a Denunciation and what it is used for can be found here
-/// https://github.com/massalabs/massa/discussions/3113
+//! Copyright (c) 2022 MASSA LABS <info@massa.net>
+
+//! Denunciation intro
+//!
+//! Currently, nothing prevents a user from producing multiple blocks (for the same Slot) or endorsing a block multiple times.
+//! If an invalid Denunciation will just be ignored, a valid Denunciation will slash some locked rolls.
+//! Note that this proposal aims at dissuading 'rational' users from causing damage but does help against 'byzantine' actors
+//! that just want to disturb or break the blockclique (at any cost).
+//!
+//! Denunciation structure
+//!
+//! A denunciation embeds some information such as
+//! Slot, the slot from the block header or the endorsements (+ index)
+//! A public key: the public key of the secure share endorsement or secured header
+//! 2 Hashes & 2 Signatures
+//!
+//! All of this constitutes a proof (and is verifiable) that a user produced multiple (at least 2) blocks or endorsements
+//!
+//! Denunciation creation
+//!
+//! Denunciations are created in a Denunciation pool, receiving new blocks & block headers & endorsements from various places.
+//! The denunciation pool is also responsible of returning a list of denunciations to insert into a new block header.
+//! After execution, the denunciation is kept for some time inside `executed_denunciations`
+//! in order to prevent multiple executions. Note that this structure is part of the final state hash and thus is bootstrapped.
+//!
+//! Denunciation execution
+//!
+//! When a Denunciation is proven valid, we then need to ensure that the user has sufficient funds. If we cannot deduct the funds on node
+//! balance or staked rolls, we will use 'locked' rolls` (or Deferred credits).
+//! Selling a roll will lock it for some time (== 4 cycles). Note that it restricts the time,
+//! a denunciation can be produced (A constant value will be defined for this).
+
 use std::cmp::Ordering;
 use std::ops::Bound::{Excluded, Included};
 
@@ -13,14 +42,11 @@ use num_enum::{IntoPrimitive, TryFromPrimitive};
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
 
-use crate::block_header::{
-    BlockHeader, BlockHeaderDenunciationData, BlockHeaderSerializer, SecuredHeader,
-};
-use crate::endorsement::{
-    Endorsement, EndorsementDenunciationData, EndorsementSerializer, SecureShareEndorsement,
-};
+use crate::block_header::{BlockHeaderDenunciationData, SecuredHeader};
+use crate::endorsement::{EndorsementDenunciationData, SecureShareEndorsement};
 use crate::slot::{Slot, SlotDeserializer, SlotSerializer};
 
+use crate::secure_share::Id;
 use massa_hash::{Hash, HashDeserializer, HashSerializer};
 use massa_serialization::{
     Deserializer, SerializeError, Serializer, U32VarIntDeserializer, U32VarIntSerializer,
@@ -43,14 +69,6 @@ pub struct EndorsementDenunciation {
 }
 
 impl EndorsementDenunciation {
-    /// Compute hash for Endorsement content
-    fn compute_content_hash(content: &Endorsement) -> Result<Hash, SerializeError> {
-        let mut buf = Vec::new();
-        let endorsement_serializer = EndorsementSerializer::new();
-        endorsement_serializer.serialize(content, &mut buf)?;
-        Ok(Hash::compute_from(&buf))
-    }
-
     /// Rebuild full hash of SecureShareEndorsement from given arguments
     fn compute_hash_for_sig_verif(
         public_key: &PublicKey,
@@ -83,14 +101,6 @@ pub struct BlockHeaderDenunciation {
 }
 
 impl BlockHeaderDenunciation {
-    /// Compute hash for Block header content
-    fn compute_content_hash(content: &BlockHeader) -> Result<Hash, SerializeError> {
-        let mut buf = Vec::new();
-        let block_header_serializer = BlockHeaderSerializer::new();
-        block_header_serializer.serialize(content, &mut buf)?;
-        Ok(Hash::compute_from(&buf))
-    }
-
     /// Rebuild full hash of SecuredHeader from given arguments
     fn compute_hash_for_sig_verif(
         public_key: &PublicKey,
@@ -137,21 +147,20 @@ impl Denunciation {
         match self {
             Denunciation::BlockHeader(_) => Ok(false),
             Denunciation::Endorsement(endo_de) => {
-                let content_hash =
-                    EndorsementDenunciation::compute_content_hash(&s_endorsement.content)?;
+                let content_hash = s_endorsement.id.get_hash();
 
                 let hash = EndorsementDenunciation::compute_hash_for_sig_verif(
                     &endo_de.public_key,
                     &endo_de.slot,
                     &endo_de.index,
-                    &content_hash,
+                    content_hash,
                 );
 
                 Ok(endo_de.slot == s_endorsement.content.slot
                     && endo_de.index == s_endorsement.content.index
                     && endo_de.public_key == s_endorsement.content_creator_pub_key
-                    && endo_de.hash_1 != content_hash
-                    && endo_de.hash_2 != content_hash
+                    && endo_de.hash_1 != *content_hash
+                    && endo_de.hash_2 != *content_hash
                     && endo_de
                         .public_key
                         .verify_signature(&hash, &s_endorsement.signature)
@@ -168,19 +177,18 @@ impl Denunciation {
         match self {
             Denunciation::Endorsement(_) => Ok(false),
             Denunciation::BlockHeader(endo_bh) => {
-                let content_hash =
-                    BlockHeaderDenunciation::compute_content_hash(&s_block_header.content)?;
+                let content_hash = s_block_header.id.get_hash();
 
                 let hash = BlockHeaderDenunciation::compute_hash_for_sig_verif(
                     &endo_bh.public_key,
                     &endo_bh.slot,
-                    &content_hash,
+                    content_hash,
                 );
 
                 Ok(endo_bh.slot == s_block_header.content.slot
                     && endo_bh.public_key == s_block_header.content_creator_pub_key
-                    && endo_bh.hash_1 != content_hash
-                    && endo_bh.hash_2 != content_hash
+                    && endo_bh.hash_1 != *content_hash
+                    && endo_bh.hash_2 != *content_hash
                     && endo_bh
                         .public_key
                         .verify_signature(&hash, &s_block_header.signature)
@@ -302,20 +310,20 @@ impl TryFrom<(&SecureShareEndorsement, &SecureShareEndorsement)> for Denunciatio
         }
 
         // Check sig of s_e1 with s_e1.public_key, s_e1.slot, s_e1.index
-        let s_e1_hash_content = EndorsementDenunciation::compute_content_hash(&s_e1.content)?;
+        let s_e1_hash_content = s_e1.id.get_hash();
         let s_e1_hash = EndorsementDenunciation::compute_hash_for_sig_verif(
             &s_e1.content_creator_pub_key,
             &s_e1.content.slot,
             &s_e1.content.index,
-            &s_e1_hash_content,
+            s_e1_hash_content,
         );
         // Check sig of s_e2 but with s_e1.public_key, s_e1.slot, s_e1.index
-        let s_e2_hash_content = EndorsementDenunciation::compute_content_hash(&s_e2.content)?;
+        let s_e2_hash_content = s_e2.id.get_hash();
         let s_e2_hash = EndorsementDenunciation::compute_hash_for_sig_verif(
             &s_e1.content_creator_pub_key,
             &s_e1.content.slot,
             &s_e1.content.index,
-            &s_e2_hash_content,
+            s_e2_hash_content,
         );
 
         s_e1.content_creator_pub_key
@@ -329,8 +337,8 @@ impl TryFrom<(&SecureShareEndorsement, &SecureShareEndorsement)> for Denunciatio
             index: s_e1.content.index,
             signature_1: s_e1.signature,
             signature_2: s_e2.signature,
-            hash_1: s_e1_hash_content,
-            hash_2: s_e2_hash_content,
+            hash_1: *s_e1_hash_content,
+            hash_2: *s_e2_hash_content,
         }))
     }
 }
@@ -350,17 +358,17 @@ impl TryFrom<(&SecuredHeader, &SecuredHeader)> for Denunciation {
         }
 
         // Check sig of s_bh2 but with s_bh1.public_key, s_bh1.slot, s_bh1.index
-        let s_bh1_hash_content = BlockHeaderDenunciation::compute_content_hash(&s_bh1.content)?;
+        let s_bh1_hash_content = s_bh1.id.get_hash();
         let s_bh1_hash = BlockHeaderDenunciation::compute_hash_for_sig_verif(
             &s_bh1.content_creator_pub_key,
             &s_bh1.content.slot,
-            &s_bh1_hash_content,
+            s_bh1_hash_content,
         );
-        let s_bh2_hash_content = BlockHeaderDenunciation::compute_content_hash(&s_bh2.content)?;
+        let s_bh2_hash_content = s_bh2.id.get_hash();
         let s_bh2_hash = BlockHeaderDenunciation::compute_hash_for_sig_verif(
             &s_bh1.content_creator_pub_key,
             &s_bh1.content.slot,
-            &s_bh2_hash_content,
+            s_bh2_hash_content,
         );
 
         s_bh1
@@ -375,8 +383,8 @@ impl TryFrom<(&SecuredHeader, &SecuredHeader)> for Denunciation {
             slot: s_bh1.content.slot,
             signature_1: s_bh1.signature,
             signature_2: s_bh2.signature,
-            hash_1: s_bh1_hash_content,
-            hash_2: s_bh2_hash_content,
+            hash_1: *s_bh1_hash_content,
+            hash_2: *s_bh2_hash_content,
         }))
     }
 }
@@ -1031,40 +1039,26 @@ impl DenunciationPrecursor {
     }
 }
 
-impl TryFrom<&SecureShareEndorsement> for DenunciationPrecursor {
-    type Error = DenunciationError;
-
-    fn try_from(value: &SecureShareEndorsement) -> Result<Self, Self::Error> {
-        // TODO: find a way to avoid recomputing a hash
-        let hash = EndorsementDenunciation::compute_content_hash(&value.content)?;
-
-        Ok(DenunciationPrecursor::Endorsement(
-            EndorsementDenunciationPrecursor {
-                public_key: value.content_creator_pub_key,
-                slot: value.content.slot,
-                index: value.content.index,
-                hash,
-                signature: value.signature,
-            },
-        ))
+impl From<&SecureShareEndorsement> for DenunciationPrecursor {
+    fn from(value: &SecureShareEndorsement) -> Self {
+        DenunciationPrecursor::Endorsement(EndorsementDenunciationPrecursor {
+            public_key: value.content_creator_pub_key,
+            slot: value.content.slot,
+            index: value.content.index,
+            hash: *value.id.get_hash(),
+            signature: value.signature,
+        })
     }
 }
 
-impl TryFrom<&SecuredHeader> for DenunciationPrecursor {
-    type Error = DenunciationError;
-
-    fn try_from(value: &SecuredHeader) -> Result<Self, Self::Error> {
-        // TODO: find a way to avoid recomputing a hash
-        let hash = BlockHeaderDenunciation::compute_content_hash(&value.content)?;
-
-        Ok(DenunciationPrecursor::BlockHeader(
-            BlockHeaderDenunciationPrecursor {
-                public_key: value.content_creator_pub_key,
-                slot: value.content.slot,
-                hash,
-                signature: value.signature,
-            },
-        ))
+impl From<&SecuredHeader> for DenunciationPrecursor {
+    fn from(value: &SecuredHeader) -> Self {
+        DenunciationPrecursor::BlockHeader(BlockHeaderDenunciationPrecursor {
+            public_key: value.content_creator_pub_key,
+            slot: value.content.slot,
+            hash: *value.id.get_hash(),
+            signature: value.signature,
+        })
     }
 }
 
@@ -1431,8 +1425,8 @@ mod tests {
             gen_block_headers_for_denunciation(None, None);
         let denunciation: Denunciation = (&s_block_header_1, &s_block_header_2).try_into().unwrap();
 
-        let de_p_1 = DenunciationPrecursor::try_from(&s_block_header_1).unwrap();
-        let de_p_2 = DenunciationPrecursor::try_from(&s_block_header_2).unwrap();
+        let de_p_1 = DenunciationPrecursor::from(&s_block_header_1);
+        let de_p_2 = DenunciationPrecursor::from(&s_block_header_2);
         let denunciation_2: Denunciation = (&de_p_1, &de_p_2).try_into().unwrap();
 
         assert_eq!(denunciation, denunciation_2);
@@ -1441,8 +1435,8 @@ mod tests {
             gen_endorsements_for_denunciation(None, None);
         let denunciation_3 = Denunciation::try_from((&s_endorsement_1, &s_endorsement_2)).unwrap();
 
-        let de_p_3 = DenunciationPrecursor::try_from(&s_endorsement_1).unwrap();
-        let de_p_4 = DenunciationPrecursor::try_from(&s_endorsement_2).unwrap();
+        let de_p_3 = DenunciationPrecursor::from(&s_endorsement_1);
+        let de_p_4 = DenunciationPrecursor::from(&s_endorsement_2);
         let denunciation_4: Denunciation = (&de_p_3, &de_p_4).try_into().unwrap();
 
         assert_eq!(denunciation_3, denunciation_4);
