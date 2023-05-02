@@ -137,14 +137,20 @@ impl PeerDB {
                     println!("AURELIEN: Don't include too old");
                     continue;
                 }
-                // skip peers with no listeners
-                if peer.last_announce.listeners.is_empty() {
+                let listeners: HashMap<SocketAddr, TransportType> = peer
+                    .last_announce
+                    .listeners
+                    .clone()
+                    .into_iter()
+                    .filter(|(addr, _)| addr.ip().is_global())
+                    .collect();
+                if listeners.is_empty() {
                     continue;
                 }
-                result.push((key, peer.last_announce.listeners.clone()));
+                result.push((key, listeners));
             }
         }
-        println!("AURELIEN: Peer announcement: {:?}", result);
+
         result
     }
 

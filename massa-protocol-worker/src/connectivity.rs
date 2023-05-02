@@ -45,6 +45,7 @@ pub enum ConnectivityCommand {
 #[allow(clippy::too_many_arguments)]
 pub(crate) fn start_connectivity_thread(
     config: ProtocolConfig,
+    peer_id: PeerId,
     mut network_controller: Box<dyn NetworkController>,
     consensus_controller: Box<dyn ConsensusController>,
     pool_controller: Box<dyn PoolController>,
@@ -103,6 +104,7 @@ pub(crate) fn start_connectivity_thread(
             // Start handlers
             let mut peer_management_handler = PeerManagementHandler::new(
                 initial_peers,
+                peer_id,
                 peer_db.clone(),
                 channel_peers,
                 protocol_channels.peer_management_handler,

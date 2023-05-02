@@ -3,7 +3,7 @@ use massa_consensus_exports::ConsensusController;
 use massa_models::node::NodeId;
 use massa_pool_exports::PoolController;
 use massa_protocol_exports::{
-    BootstrapPeers, ProtocolConfig, ProtocolController, ProtocolError, ProtocolManager,
+    BootstrapPeers, PeerId, ProtocolConfig, ProtocolController, ProtocolError, ProtocolManager,
 };
 use massa_serialization::U64VarIntDeserializer;
 use massa_signature::KeyPair;
@@ -186,7 +186,8 @@ pub fn start_protocol_controller(
         keypair
     };
 
-    peernet_config.self_keypair = PeerNetKeyPair::from_str(&keypair.to_string()).unwrap();
+    let peernet_keypair = PeerNetKeyPair::from_str(&keypair.to_string()).unwrap();
+    peernet_config.self_keypair = peernet_keypair.clone();
     //TODO: Add the rest of the config
     peernet_config.max_in_connections = config.max_in_connections;
     peernet_config.max_out_connections = config.max_out_connections;
@@ -197,6 +198,7 @@ pub fn start_protocol_controller(
 
     let connectivity_thread_handle = start_connectivity_thread(
         config,
+        PeerId::from_public_key(peernet_keypair.get_public_key()),
         network_controller,
         consensus_controller,
         pool_controller,

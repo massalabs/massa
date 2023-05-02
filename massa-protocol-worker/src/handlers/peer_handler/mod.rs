@@ -60,6 +60,7 @@ pub struct PeerManagementHandler {
 impl PeerManagementHandler {
     pub fn new(
         initial_peers: InitialPeers,
+        peer_id: PeerId,
         peer_db: SharedPeerDB,
         (sender_msg, receiver_msg): (Sender<PeerMessageTuple>, Receiver<PeerMessageTuple>),
         (sender_cmd, receiver_cmd): (Sender<PeerManagementCmd>, Receiver<PeerManagementCmd>),
@@ -76,7 +77,7 @@ impl PeerManagementHandler {
         .spawn({
             let peer_db = peer_db.clone();
             let ticker = tick(Duration::from_secs(10));
-
+            let config = config.clone();
             let message_serializer = crate::messages::MessagesSerializer::new()
                 .with_peer_management_message_serializer(PeerManagementMessageSerializer::new());
             let mut message_deserializer =
@@ -121,7 +122,16 @@ impl PeerManagementHandler {
                                 }
                              },
                              Ok(PeerManagementCmd::GetBootstrapPeers { responder }) => {
-                                if let Err(err) = responder.send(BootstrapPeers(peer_db.read().get_rand_peers_to_send(100))) {
+                                let mut peers = peer_db.read().get_rand_peers_to_send(100);
+                                // Add myself
+                                if let Some(routable_ip) = config.routable_ip {
+                                    let mut listeners = config.listeners.clone();
+                                    for mut listener in &mut listeners {
+                                        listener.0 = &SocketAddr::new(routable_ip, listener.0.port());
+                                    }
+                                    peers.push((peer_id.clone(), config.listeners.clone()));
+                                }
+                                if let Err(err) = responder.send(BootstrapPeers(peers)) {
                                     warn!("error sending bootstrap peers: {:?}", err);
                                 }
                              },
