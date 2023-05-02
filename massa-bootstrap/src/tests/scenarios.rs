@@ -138,6 +138,13 @@ fn mock_bootstrap_manager(addr: SocketAddr, bootstrap_config: BootstrapConfig) -
         initial_rolls_path: "".into(),
         thread_count,
         periods_per_cycle,
+        executed_denunciations_config: ExecutedDenunciationsConfig {
+            denunciation_expire_periods: u64::MAX,
+            bootstrap_part_size: u64::MAX,
+        },
+        endorsement_count: ENDORSEMENT_COUNT,
+        max_executed_denunciations_length: 1000,
+        max_denunciations_per_block_header: MAX_DENUNCIATIONS_PER_BLOCK_HEADER,
     };
 
     let final_state_server = Arc::new(RwLock::new(get_random_final_state_bootstrap(
