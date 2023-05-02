@@ -1,1 +1,0 @@
-window.SIDEBAR_ITEMS = {"opaque":[""],"struct":["DefaultConnector","DefaultEstablisher","DefaultListener"],"type":["Establisher","Listener","ReadHalf","WriteHalf"]};
