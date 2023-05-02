@@ -1476,6 +1476,8 @@
 <a href="#1476" id="1476">1476</a>
 <a href="#1477" id="1477">1477</a>
 <a href="#1478" id="1478">1478</a>
+<a href="#1479" id="1479">1479</a>
+<a href="#1480" id="1480">1480</a>
 </pre><pre class="rust"><code><span class="doccomment">//! Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 //! Denunciation intro
@@ -2346,7 +2348,8 @@
     }
 }
 
-<span class="doccomment">/// Serializer for `DenunciationIndex`
+<span class="attr">#[derive(Clone)]
+</span><span class="doccomment">/// Serializer for `DenunciationIndex`
 </span><span class="kw">pub struct </span>DenunciationIndexSerializer {
     u32_serializer: U32VarIntSerializer,
     slot_serializer: SlotSerializer,
@@ -2393,7 +2396,8 @@
     }
 }
 
-<span class="doccomment">/// Deserializer for `DenunciationIndex`
+<span class="attr">#[derive(Clone)]
+</span><span class="doccomment">/// Deserializer for `DenunciationIndex`
 </span><span class="kw">pub struct </span>DenunciationIndexDeserializer {
     id_deserializer: U32VarIntDeserializer,
     slot_deserializer: SlotDeserializer,

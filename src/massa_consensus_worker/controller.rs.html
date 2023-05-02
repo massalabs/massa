@@ -604,7 +604,7 @@
         <span class="kw">if let </span><span class="prelude-val">Some</span>(verifiable_block) = block_storage.read_blocks().get(<span class="kw-2">&amp;</span>block_id) {
             <span class="kw">let </span>de_p = DenunciationPrecursor::from(<span class="kw-2">&amp;</span>verifiable_block.content.header);
             <span class="self">self</span>.channels
-                .pool_controller
+                .pool_command_sender
                 .add_denunciation_precursor(de_p);
         }
 
@@ -634,7 +634,7 @@
 
         <span class="kw">let </span>de_p = DenunciationPrecursor::from(<span class="kw-2">&amp;</span>header);
         <span class="self">self</span>.channels
-            .pool_controller
+            .pool_command_sender
             .add_denunciation_precursor(de_p);
 
         <span class="kw">if let </span><span class="prelude-val">Err</span>(err) = <span class="self">self
