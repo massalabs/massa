@@ -109,7 +109,7 @@ impl InitConnectionHandler for TesterHandshake {
                     println!("AURELIEN HANDSHAKE: deserializing data: {:?}", &data[32..]);
                     let (_, announcement) = self
                         .announcement_deserializer
-                        .deserialize::<DeserializeError>(&data[32..])
+                        .deserialize::<DeserializeError>(&data[33..])
                         .map_err(|err| {
                             PeerNetError::HandshakeError.error(
                                 "Tester Handshake",
