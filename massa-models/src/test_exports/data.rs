@@ -61,10 +61,12 @@ pub fn gen_endorsements_for_denunciation(
 
 /// Helper to generate block headers ready for denunciation
 pub fn gen_block_headers_for_denunciation(
+    with_slot: Option<Slot>,
+    with_keypair: Option<KeyPair>,
 ) -> (Slot, KeyPair, SecuredHeader, SecuredHeader, SecuredHeader) {
-    let keypair = KeyPair::generate();
+    let keypair = with_keypair.unwrap_or(KeyPair::generate());
+    let slot = with_slot.unwrap_or(Slot::new(2, 1));
 
-    let slot = Slot::new(2, 1);
     let parents_1: Vec<BlockId> = (0..THREAD_COUNT)
         .map(|i| BlockId(Hash::compute_from(&[i])))
         .collect();

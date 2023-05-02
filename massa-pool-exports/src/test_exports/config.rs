@@ -2,8 +2,8 @@
 
 use massa_models::config::{
     DENUNCIATION_EXPIRE_PERIODS, ENDORSEMENT_COUNT, GENESIS_TIMESTAMP, MAX_BLOCK_SIZE,
-    MAX_GAS_PER_BLOCK, MAX_OPERATIONS_PER_BLOCK, OPERATION_VALIDITY_PERIODS, PERIODS_PER_CYCLE,
-    ROLL_PRICE, T0, THREAD_COUNT,
+    MAX_DENUNCIATIONS_PER_BLOCK_HEADER, MAX_GAS_PER_BLOCK, MAX_OPERATIONS_PER_BLOCK,
+    OPERATION_VALIDITY_PERIODS, PERIODS_PER_CYCLE, ROLL_PRICE, T0, THREAD_COUNT,
 };
 
 use crate::PoolConfig;
@@ -28,6 +28,8 @@ impl Default for PoolConfig {
             t0: T0,
             periods_per_cycle: PERIODS_PER_CYCLE,
             denunciation_expire_periods: DENUNCIATION_EXPIRE_PERIODS,
+            max_denunciations_per_block_header: MAX_DENUNCIATIONS_PER_BLOCK_HEADER,
+            last_start_period: 0,
         }
     }
 }

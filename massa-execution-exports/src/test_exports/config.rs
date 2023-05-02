@@ -64,6 +64,7 @@ impl Default for ExecutionConfig {
             hd_cache_size: 10_000,
             snip_amount: 10,
             roll_count_to_slash_on_denunciation: 1,
+            denunciation_expire_periods: DENUNCIATION_EXPIRE_PERIODS,
         }
     }
 }

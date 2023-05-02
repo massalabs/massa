@@ -22,7 +22,7 @@ use massa_final_state::FinalState;
 use massa_ledger_exports::{SetOrDelete, SetUpdateOrDelete};
 use massa_models::address::ExecutionAddressCycleInfo;
 use massa_models::bytecode::Bytecode;
-use massa_models::denunciation::Denunciation;
+use massa_models::denunciation::{Denunciation, DenunciationIndex};
 use massa_models::execution::EventFilter;
 use massa_models::output_event::SCOutputEvent;
 use massa_models::prehash::PreHashSet;
@@ -83,6 +83,8 @@ pub(crate) struct ExecutionState {
     vesting_manager: Arc<VestingManager>,
     // MipStore (Versioning)
     mip_store: MipStore,
+    // selector controller to get draws
+    selector: Box<dyn SelectorController>,
 }
 
 impl ExecutionState {
@@ -98,6 +100,7 @@ impl ExecutionState {
         config: ExecutionConfig,
         final_state: Arc<RwLock<FinalState>>,
         mip_store: MipStore,
+        selector: Box<dyn SelectorController>,
     ) -> ExecutionState {
         // Get the slot at the output of which the final state is attached.
         // This should be among the latest final slots.
@@ -162,6 +165,7 @@ impl ExecutionState {
             config,
             vesting_manager,
             mip_store,
+            selector,
         }
     }
 
@@ -185,6 +189,9 @@ impl ExecutionState {
             self.stats_counter.register_final_blocks(1);
             self.stats_counter.register_final_executed_operations(
                 exec_out.state_changes.executed_ops_changes.len(),
+            );
+            self.stats_counter.register_final_executed_denunciations(
+                exec_out.state_changes.executed_denunciations_changes.len(),
             );
         }
 
@@ -396,20 +403,115 @@ impl ExecutionState {
         Ok(())
     }
 
-    /// Process a denunciation in the context of a block.
+    /// Execute a denunciation in the context of a block.
     ///
     /// # Arguments
     /// * `denunciation`: denunciation to process
     /// * `block_credits`: mutable reference towards the total block reward/fee credits
-    fn process_denunciation(
+    fn execute_denunciation(
         &self,
         denunciation: &Denunciation,
+        block_slot: &Slot,
         block_credits: &mut Amount,
     ) -> Result<(), ExecutionError> {
         let addr_denounced = Address::from_public_key(denunciation.get_public_key());
 
         // acquire write access to the context
         let mut context = context_guard!(self);
+
+        let de_slot = denunciation.get_slot();
+
+        if de_slot.period <= self.config.last_start_period {
+            // denunciation created before last restart (can be 0 or >= 0 after a network restart) - ignored
+            // Note: as we use '<=', also ignore denunciation created for genesis block
+            return Err(ExecutionError::IncludeDenunciationError(format!(
+                "Denunciation target ({}) is before the last start period: {}",
+                de_slot, self.config.last_start_period
+            )));
+        }
+
+        // ignore denunciation if not valid
+        if !denunciation.is_valid() {
+            return Err(ExecutionError::IncludeDenunciationError(
+                "denunciation is not valid".to_string(),
+            ));
+        }
+
+        // ignore denunciation if too old or expired
+
+        if Denunciation::is_expired(
+            &de_slot.period,
+            &block_slot.period,
+            &self.config.denunciation_expire_periods,
+        ) {
+            // too old - cannot be denounced anymore
+            return Err(ExecutionError::IncludeDenunciationError(format!(
+                "Denunciation target ({}) is too old with respect to the block ({})",
+                de_slot, block_slot
+            )));
+        }
+
+        if de_slot > block_slot {
+            // too much in the future - ignored
+            // Note: de_slot == block_slot is OK,
+            //       for example if the block producer wants to denounce someone who multi-endorsed
+            //       for the block's slot
+            return Err(ExecutionError::IncludeDenunciationError(format!(
+                "Denunciation target ({}) is at a later slot than the block slot ({})",
+                de_slot, block_slot
+            )));
+        }
+
+        // ignore the denunciation if it was already executed
+        let de_idx = DenunciationIndex::from(denunciation);
+        if context.is_denunciation_executed(&de_idx) {
+            return Err(ExecutionError::IncludeDenunciationError(
+                "Denunciation was already executed".to_string(),
+            ));
+        }
+
+        // Check selector
+        // Note 1: Has to be done after slot limit and executed check
+        // Note 2: that this is done for a node to create a Block with 'fake' denunciation thus
+        //       include them in executed denunciation and prevent (by occupying the corresponding entry)
+        //       any further 'real' denunciation.
+
+        match &denunciation {
+            Denunciation::Endorsement(_de) => {
+                // Get selected address from selector and check
+                let selection = self
+                    .selector
+                    .get_selection(*de_slot)
+                    .expect("Could not get producer from selector");
+                let selected_addr = selection
+                    .endorsements
+                    .get(*denunciation.get_index().unwrap_or(&0) as usize)
+                    .expect("could not get selection for endorsement at index");
+
+                if *selected_addr != addr_denounced {
+                    return Err(ExecutionError::IncludeDenunciationError(
+                        "Attempt to execute a denunciation but address was not selected"
+                            .to_string(),
+                    ));
+                }
+            }
+            Denunciation::BlockHeader(_de) => {
+                let selected_addr = self
+                    .selector
+                    .get_producer(*de_slot)
+                    .expect("Cannot get producer from selector");
+
+                if selected_addr != addr_denounced {
+                    return Err(ExecutionError::IncludeDenunciationError(
+                        "Attempt to execute a denunciation but address was not selected"
+                            .to_string(),
+                    ));
+                }
+            }
+        }
+
+        context.insert_executed_denunciation(&de_idx);
+
         let slashed = context.try_slash_rolls(
             &addr_denounced,
             self.config.roll_count_to_slash_on_denunciation,
@@ -426,7 +528,9 @@ impl ExecutionState {
                 })?;
                 *block_credits = block_credits.saturating_add(amount);
             }
-            Err(e) => warn!("Unable to slash rolls or deferred credits: {}", e),
+            Err(e) => {
+                warn!("Unable to slash rolls or deferred credits: {}", e);
+            }
         }
 
         Ok(())
@@ -971,7 +1075,11 @@ impl ExecutionState {
 
             // Try executing the denunciations of this block
             for denunciation in &stored_block.content.header.content.denunciations {
-                if let Err(e) = self.process_denunciation(denunciation, &mut block_credits) {
+                if let Err(e) = self.execute_denunciation(
+                    denunciation,
+                    &stored_block.content.header.content.slot,
+                    &mut block_credits,
+                ) {
                     debug!(
                         "Failed processing denunciation: {:?}, in block: {}: {}",
                         denunciation, block_id, e
@@ -1476,6 +1584,25 @@ impl ExecutionState {
         }
 
         ops
+    }
+
+    /// Check if a denunciation has been executed given a `DenunciationIndex`
+    pub fn is_denunciation_executed(&self, denunciation_index: &DenunciationIndex) -> bool {
+        // check active history
+        let history = self.active_history.read();
+
+        if matches!(
+            history.fetch_executed_denunciation(denunciation_index),
+            HistorySearchResult::Present(())
+        ) {
+            return true;
+        }
+
+        // check final state
+        let final_state = self.final_state.read();
+        final_state
+            .executed_denunciations
+            .contains(denunciation_index)
     }
 
     /// Gets the production stats for an address at all cycles

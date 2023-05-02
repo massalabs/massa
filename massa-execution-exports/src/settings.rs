@@ -78,4 +78,6 @@ pub struct ExecutionConfig {
     pub snip_amount: usize,
     /// Number of roll to remove per denunciation
     pub roll_count_to_slash_on_denunciation: u64,
+    /// Denunciation expire delta
+    pub denunciation_expire_periods: u64,
 }

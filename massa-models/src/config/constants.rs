@@ -129,10 +129,17 @@ pub const MAX_ASYNC_MESSAGE_DATA: u64 = 1_000_000;
 pub const OPERATION_VALIDITY_PERIODS: u64 = 10;
 /// cycle duration in periods
 pub const PERIODS_PER_CYCLE: u64 = 128;
-/// PoS saved cycles: number of cycles saved in `PoSFinalState`
+/// Number of cycles saved in `PoSFinalState`
 ///
-/// 4 for PoS itself and 1 for bootstrap safety
-pub const POS_SAVED_CYCLES: usize = 5;
+/// 6 for PoS itself so we can check denuncations on selections at C-2 after a bootstrap
+/// See https://github.com/massalabs/massa/pull/3871
+/// 1 for pruned cycle safety during bootstrap
+pub const POS_SAVED_CYCLES: usize = 7;
+/// Number of cycle draws saved in the selector cache
+///
+/// 5 to have a C-2 to C+2 range (6 cycles post-bootstrap give 5 cycle draws)
+/// 1 for margin
+pub const SELECTOR_DRAW_CACHE_SIZE: usize = 6;
 /// Maximum size batch of data in a part of the ledger
 pub const LEDGER_PART_SIZE_MESSAGE_BYTES: u64 = 1_000_000;
 /// Maximum async messages in a batch of the bootstrap of the async pool
@@ -260,15 +267,14 @@ pub const MIP_STORE_STATS_COUNTERS_MAX: usize = 10;
 // Constants for denunciation factory
 //
 
-/// denunciation expiration delta (in cycle count)
+/// denunciation expiration delta
 pub const DENUNCIATION_EXPIRE_PERIODS: u64 = PERIODS_PER_CYCLE;
-/// Cycle delta to accept items in denunciation factory
-/// TODO / FIXME: unused?
-pub const DENUNCIATION_ITEMS_MAX_CYCLE_DELTA: u64 = 1;
 /// Max number of denunciations that can be included in a block header
 pub const MAX_DENUNCIATIONS_PER_BLOCK_HEADER: u32 = 128;
 /// Number of roll to remove per denunciation
 pub const ROLL_COUNT_TO_SLASH_ON_DENUNCIATION: u64 = 1;
+/// Maximum size of executed denunciations
+pub const MAX_DENUNCIATION_CHANGES_LENGTH: u64 = 1_000;
 
 // Some checks at compile time that should not be ignored!
 #[allow(clippy::assertions_on_constants)]

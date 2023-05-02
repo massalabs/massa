@@ -13,6 +13,8 @@ pub struct ExecutionStatsCounter {
     final_blocks: VecDeque<(usize, MassaTime)>,
     /// final operations executed in the time window (count, instant)
     final_executed_ops: VecDeque<(usize, MassaTime)>,
+    /// final denunciations executed in the time window (count, instant)
+    final_executed_denunciations: VecDeque<(usize, MassaTime)>,
 }
 
 impl ExecutionStatsCounter {
@@ -22,6 +24,7 @@ impl ExecutionStatsCounter {
             time_window_duration,
             final_blocks: Default::default(),
             final_executed_ops: Default::default(),
+            final_executed_denunciations: Default::default(),
         }
     }
 
@@ -59,6 +62,14 @@ impl ExecutionStatsCounter {
     pub fn register_final_executed_operations(&mut self, count: usize) {
         let current_time = MassaTime::now().expect("could not get current time");
         self.final_executed_ops.push_back((count, current_time));
+        self.refresh(current_time);
+    }
+
+    /// register final executed denunciations
+    pub fn register_final_executed_denunciations(&mut self, count: usize) {
+        let current_time = MassaTime::now().expect("could not get current time");
+        self.final_executed_denunciations
+            .push_back((count, current_time));
         self.refresh(current_time);
     }
 

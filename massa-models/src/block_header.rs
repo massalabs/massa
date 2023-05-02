@@ -92,19 +92,13 @@ impl BlockHeader {
 pub type SecuredHeader = SecureShare<BlockHeader, BlockId>;
 
 impl SecureShareContent for BlockHeader {
-    /// Compute hash for Block header in SecuredHeader - taking care of Denunciation verification
-    fn compute_hash(
-        content: &Self,
-        content_serialized: &[u8],
-        content_creator_pub_key: &PublicKey,
-    ) -> Hash {
-        let de_data = BlockHeaderDenunciationData::new(content.slot);
-
-        let mut hash_data = Vec::new();
-        hash_data.extend(content_creator_pub_key.to_bytes());
-        hash_data.extend(de_data.to_bytes());
-        hash_data.extend(Hash::compute_from(content_serialized).to_bytes());
-        Hash::compute_from(&hash_data)
+    /// compute the signed hash
+    fn compute_signed_hash(&self, public_key: &PublicKey, content_hash: &Hash) -> Hash {
+        let mut signed_data: Vec<u8> = Vec::new();
+        signed_data.extend(public_key.to_bytes());
+        signed_data.extend(BlockHeaderDenunciationData::new(self.slot).to_bytes());
+        signed_data.extend(content_hash.to_bytes());
+        Hash::compute_from(&signed_data)
     }
 }
 
@@ -559,7 +553,7 @@ mod test {
     use crate::test_exports::{
         gen_block_headers_for_denunciation, gen_endorsements_for_denunciation,
     };
-    use massa_signature::KeyPair;
+    use massa_signature::{verify_signature_batch, KeyPair};
 
     // Only for testing purpose
     impl PartialEq for BlockHeader {
@@ -593,7 +587,7 @@ mod test {
             Endorsement::new_verifiable(endorsement_1, EndorsementSerializer::new(), &keypair)
                 .unwrap();
 
-        let (slot_a, _, s_header_1, s_header_2, _) = gen_block_headers_for_denunciation();
+        let (slot_a, _, s_header_1, s_header_2, _) = gen_block_headers_for_denunciation(None, None);
         assert!(slot_a < slot);
         let de_a = Denunciation::try_from((&s_header_1, &s_header_2)).unwrap();
         let (slot_b, _, s_endo_1, s_endo_2, _) = gen_endorsements_for_denunciation(None, None);
@@ -622,5 +616,39 @@ mod test {
 
         assert_eq!(rem.is_empty(), true);
         assert_eq!(block_header_1, block_header_der);
+    }
+
+    #[test]
+    fn test_verify_sig_batch() {
+        let (_slot, _keypair, secured_header_1, secured_header_2, secured_header_3) =
+            gen_block_headers_for_denunciation(None, None);
+
+        // Test with batch len == 1 (no // verif)
+        let batch_1 = [(
+            secured_header_1.compute_signed_hash(),
+            secured_header_1.signature,
+            secured_header_1.content_creator_pub_key,
+        )];
+        verify_signature_batch(&batch_1).unwrap();
+
+        // Test with batch len > 1 (// verif)
+        let batch_2 = [
+            (
+                secured_header_1.compute_signed_hash(),
+                secured_header_1.signature,
+                secured_header_1.content_creator_pub_key,
+            ),
+            (
+                secured_header_2.compute_signed_hash(),
+                secured_header_2.signature,
+                secured_header_2.content_creator_pub_key,
+            ),
+            (
+                secured_header_3.compute_signed_hash(),
+                secured_header_3.signature,
+                secured_header_3.content_creator_pub_key,
+            ),
+        ];
+        verify_signature_batch(&batch_2).unwrap();
     }
 }
