@@ -1,3 +1,0 @@
-(function() {var implementors = {
-"massa_protocol_worker":[["impl <a class=\"trait\" href=\"massa_protocol_exports/controller_trait/trait.ProtocolManager.html\" title=\"trait massa_protocol_exports::controller_trait::ProtocolManager\">ProtocolManager</a> for <a class=\"struct\" href=\"massa_protocol_worker/manager/struct.ProtocolManagerImpl.html\" title=\"struct massa_protocol_worker::manager::ProtocolManagerImpl\">ProtocolManagerImpl</a>"]]
-};if (window.register_implementors) {window.register_implementors(implementors);} else {window.pending_implementors = implementors;}})()

@@ -27,7 +27,7 @@
 <span class="kw">use </span>massa_models::block::Block;
 <span class="kw">use </span>massa_pool_exports::PoolController;
 <span class="kw">use </span>massa_pos_exports::SelectorController;
-<span class="kw">use </span>massa_protocol_exports::ProtocolController;
+<span class="kw">use </span>massa_protocol_exports::ProtocolCommandSender;
 <span class="kw">use </span>massa_storage::Storage;
 
 <span class="doccomment">/// History of block production from latest to oldest
@@ -44,7 +44,7 @@
     <span class="doccomment">/// pool controller
     </span><span class="kw">pub </span>pool: Box&lt;<span class="kw">dyn </span>PoolController&gt;,
     <span class="doccomment">/// protocol controller
-    </span><span class="kw">pub </span>protocol: Box&lt;<span class="kw">dyn </span>ProtocolController&gt;,
+    </span><span class="kw">pub </span>protocol: ProtocolCommandSender,
     <span class="doccomment">/// storage instance
     </span><span class="kw">pub </span>storage: Storage,
 }
