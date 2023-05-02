@@ -100,7 +100,9 @@ fn mock_bootstrap_manager(addr: SocketAddr, bootstrap_config: BootstrapConfig) -
 
     // start bootstrap manager
     let (_, keypair): &(BootstrapConfig, KeyPair) = &BOOTSTRAP_CONFIG_KEYPAIR;
-    let mocked1 = NetworkCommandSender::new();
+    let mut mocked1 = NetworkCommandSender::new();
+    let mocked2 = NetworkCommandSender::new();
+    mocked1.expect_clone().return_once(move || mocked2);
 
     // start proof-of-stake selectors
     let (_server_selector_manager, server_selector_controller) =
@@ -159,7 +161,15 @@ fn mock_bootstrap_manager(addr: SocketAddr, bootstrap_config: BootstrapConfig) -
         .unwrap(),
         final_state_local_config.clone(),
     )));
-    let stream_mock1 = Box::new(MockConsensusControllerImpl::new());
+    let mut stream_mock1 = Box::new(MockConsensusControllerImpl::new());
+    let mut stream_mock2 = Box::new(MockConsensusControllerImpl::new());
+    let stream_mock3 = Box::new(MockConsensusControllerImpl::new());
+    stream_mock2
+        .expect_clone_box()
+        .return_once(move || stream_mock3);
+    stream_mock1
+        .expect_clone_box()
+        .return_once(move || stream_mock2);
 
     start_bootstrap_server(
         BootstrapTcpListener::new(addr).unwrap().1,
@@ -507,7 +517,7 @@ fn conn_establishment_mocks() -> (MockBSEventPoller, MockBSConnector) {
     mock_remote_connector
         .expect_connect_timeout()
         .times(1)
-        .returning(move |_, _| dbg!(Ok(std::net::TcpStream::connect("127.0.0.1:8069").unwrap())))
+        .returning(move |_, _| Ok(std::net::TcpStream::connect("127.0.0.1:8069").unwrap()))
         .in_sequence(&mut seq);
     (mock_bs_listener, mock_remote_connector)
 }
