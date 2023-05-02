@@ -11,8 +11,8 @@ use crate::{
 };
 use massa_db::{
     write_batch, DBBatch, ASYNC_POOL_CF, ASYNC_POOL_HASH_ERROR, ASYNC_POOL_HASH_INITIAL_BYTES,
-    ASYNC_POOL_HASH_KEY, CF_ERROR, CRUD_ERROR, MESSAGE_DESER_ERROR, MESSAGE_ID_DESER_ERROR,
-    MESSAGE_ID_SER_ERROR, MESSAGE_SER_ERROR, METADATA_CF, WRONG_BATCH_TYPE_ERROR,
+    ASYNC_POOL_HASH_KEY, CF_ERROR, CRUD_ERROR, MESSAGE_ID_DESER_ERROR, MESSAGE_ID_SER_ERROR,
+    MESSAGE_SER_ERROR, METADATA_CF, WRONG_BATCH_TYPE_ERROR,
 };
 use massa_hash::Hash;
 use massa_ledger_exports::{Applicable, SetOrKeep, SetUpdateOrDelete};
@@ -28,7 +28,7 @@ use nom::{
     IResult, Parser,
 };
 use parking_lot::RwLock;
-use rocksdb::{ColumnFamily, Direction, IteratorMode, Options, ReadOptions, DB};
+use rocksdb::{ColumnFamily, Direction, IteratorMode, Options, DB};
 use std::ops::Bound::Included;
 use std::{collections::BTreeMap, sync::Arc};
 
@@ -45,7 +45,6 @@ const VALIDITY_END_IDENT: u8 = 9u8;
 const DATA_IDENT: u8 = 10u8;
 const TRIGGER_IDENT: u8 = 11u8;
 const CAN_BE_EXECUTED_IDENT: u8 = 12u8;
-const TOTAL_FIELDS_COUNT: u8 = 13u8;
 
 /// Emission slot key formatting macro
 #[macro_export]
@@ -194,40 +193,27 @@ impl AsyncPool {
         let handle = db.cf_handle(ASYNC_POOL_CF).expect(CF_ERROR);
 
         // Iterates over the whole database
-        let mut current_id: Option<AsyncMessageId> = None;
-        let mut current_message: Vec<u8> = Vec::new();
-        let mut current_count = 0u8;
+        let mut last_id: Option<Vec<u8>> = None;
 
-        for (serialized_message_id, serialized_value) in
-            db.iterator_cf(handle, IteratorMode::Start).flatten()
-        {
+        while let Some(Ok((serialized_message_id, _))) = match last_id {
+            Some(id) => db
+                .iterator_cf(
+                    handle,
+                    IteratorMode::From(&can_be_executed_key!(id), Direction::Forward),
+                )
+                .nth(1),
+            None => db.iterator_cf(handle, IteratorMode::Start).next(),
+        } {
             let (_, message_id) = self
                 .message_id_deserializer
                 .deserialize::<DeserializeError>(&serialized_message_id)
                 .expect(MESSAGE_ID_DESER_ERROR);
 
-            if Some(message_id) == current_id {
-                current_count += 1;
-                current_message.extend(serialized_value.iter());
-                if current_count == TOTAL_FIELDS_COUNT {
-                    let (_, message) = self
-                        .message_deserializer_db
-                        .deserialize::<DeserializeError>(&current_message)
-                        .expect(MESSAGE_DESER_ERROR);
-
-                    self.message_info_cache.insert(message_id, message.into());
-
-                    current_count = 0;
-                    current_message.clear();
-                    current_id = None;
-                }
-            } else {
-                // We reset the current values
-                current_id = Some(message_id);
-                current_count = 1;
-                current_message.clear();
-                current_message.extend(serialized_value.iter());
+            if let Some(message) = self.fetch_message(&message_id) {
+                self.message_info_cache.insert(message_id, message.into());
             }
+
+            last_id = Some(serialized_message_id.to_vec());
         }
     }
 
@@ -281,54 +267,41 @@ impl AsyncPool {
         }
     }
 
+    pub fn fetch_message(&self, message_id: &AsyncMessageId) -> Option<AsyncMessage> {
+        let db = self.db.read();
+        let handle = db.cf_handle(ASYNC_POOL_CF).expect(CF_ERROR);
+
+        let mut serialized_message_id = Vec::new();
+        self.message_id_serializer
+            .serialize(message_id, &mut serialized_message_id)
+            .expect(MESSAGE_ID_SER_ERROR);
+
+        let mut serialized_message: Vec<u8> = Vec::new();
+        for (_, serialized_value) in db
+            .prefix_iterator_cf(handle, serialized_message_id)
+            .flatten()
+        {
+            serialized_message.extend(serialized_value.iter());
+        }
+
+        match self
+            .message_deserializer_db
+            .deserialize::<DeserializeError>(&serialized_message)
+        {
+            Ok((_, message)) => Some(message),
+            _ => None,
+        }
+    }
+
     pub fn fetch_messages<'a>(
         &self,
         message_ids: Vec<&'a AsyncMessageId>,
     ) -> Vec<(&'a AsyncMessageId, Option<AsyncMessage>)> {
-        let db = self.db.read();
-        let handle = db.cf_handle(ASYNC_POOL_CF).expect(CF_ERROR);
-
-        let mut serialized_message_ids = Vec::new();
         let mut fetched_messages = Vec::new();
 
         for message_id in message_ids.iter() {
-            let mut serialized_message_id = Vec::new();
-            self.message_id_serializer
-                .serialize(message_id, &mut serialized_message_id)
-                .expect(MESSAGE_ID_SER_ERROR);
-            serialized_message_ids.push((handle, emission_slot_key!(serialized_message_id)));
-            serialized_message_ids.push((handle, emission_index_key!(serialized_message_id)));
-            serialized_message_ids.push((handle, sender_key!(serialized_message_id)));
-            serialized_message_ids.push((handle, destination_key!(serialized_message_id)));
-            serialized_message_ids.push((handle, handler_key!(serialized_message_id)));
-            serialized_message_ids.push((handle, max_gas_key!(serialized_message_id)));
-            serialized_message_ids.push((handle, fee_key!(serialized_message_id)));
-            serialized_message_ids.push((handle, coins_key!(serialized_message_id)));
-            serialized_message_ids.push((handle, validity_start_key!(serialized_message_id)));
-            serialized_message_ids.push((handle, validity_end_key!(serialized_message_id)));
-            serialized_message_ids.push((handle, data_key!(serialized_message_id)));
-            serialized_message_ids.push((handle, trigger_key!(serialized_message_id)));
-            serialized_message_ids.push((handle, can_be_executed_key!(serialized_message_id)));
-        }
-
-        let result_messages = db.multi_get_cf(serialized_message_ids);
-
-        'msgs_iter: for message_id in message_ids.iter() {
-            let mut serialized_message: Vec<u8> = Vec::new();
-            let vals = result_messages.iter().take(13);
-            for val in vals {
-                if let Ok(Some(serialized_value)) = val {
-                    serialized_message.extend(serialized_value);
-                } else {
-                    fetched_messages.push((*message_id, None));
-                    continue 'msgs_iter;
-                }
-            }
-            let (_, message) = self
-                .message_deserializer_db
-                .deserialize::<DeserializeError>(&serialized_message)
-                .expect(MESSAGE_DESER_ERROR);
-            fetched_messages.push((*message_id, Some(message)));
+            let message = self.fetch_message(message_id);
+            fetched_messages.push((*message_id, message));
         }
 
         fetched_messages
@@ -351,69 +324,34 @@ impl AsyncPool {
     ) {
         let db = self.db.read();
         let handle = db.cf_handle(ASYNC_POOL_CF).expect(CF_ERROR);
-        let opt = ReadOptions::default();
 
         let mut pool_part = BTreeMap::new();
         // Creates an iterator from the next element after the last if defined, otherwise initialize it at the first key of the ledger.
-        let (db_iterator, mut new_cursor) = match cursor {
-            StreamingStep::Started => (
-                db.iterator_cf_opt(handle, opt, IteratorMode::Start),
-                StreamingStep::<AsyncMessageId>::Started,
-            ),
+        let (mut last_id, mut new_cursor) = match cursor {
+            StreamingStep::Started => (None, StreamingStep::<AsyncMessageId>::Started),
             StreamingStep::Ongoing(last_id) => {
                 let mut serialized_message_id = Vec::new();
                 self.message_id_serializer
                     .serialize(&last_id, &mut serialized_message_id)
                     .expect(MESSAGE_ID_SER_ERROR);
-                let mut iter = db.iterator_cf_opt(
-                    handle,
-                    opt,
-                    IteratorMode::From(&serialized_message_id, Direction::Forward),
-                );
-                iter.next();
-                (iter, StreamingStep::Finished(None))
+                (Some(serialized_message_id), StreamingStep::Finished(None))
             }
             StreamingStep::<AsyncMessageId>::Finished(_) => return (pool_part, cursor),
         };
 
-        // Iterates over the whole database
-        let mut current_id: Option<AsyncMessageId> = None;
-        let mut current_message: Vec<u8> = Vec::new();
-        let mut current_count = 0u8;
-
-        for (serialized_message_id, serialized_value) in db_iterator.flatten() {
-            if pool_part.len() < self.config.bootstrap_part_size as usize {
-                let (_, message_id) = self
-                    .message_id_deserializer
-                    .deserialize::<DeserializeError>(&serialized_message_id)
-                    .expect(MESSAGE_ID_DESER_ERROR);
-
-                if Some(message_id) == current_id {
-                    current_count += 1;
-                    current_message.extend(serialized_value.iter());
-                    if current_count == TOTAL_FIELDS_COUNT {
-                        let (_, message) = self
-                            .message_deserializer_db
-                            .deserialize::<DeserializeError>(&current_message)
-                            .expect(MESSAGE_DESER_ERROR);
-
-                        pool_part.insert(message_id, message.clone());
-                        new_cursor = StreamingStep::Ongoing(message_id);
-
-                        current_count = 0;
-                        current_message.clear();
-                        current_id = None;
-                    }
-                } else {
-                    // We reset the current values
-                    current_id = Some(message_id);
-                    current_count = 1;
-                    current_message.clear();
-                    current_message.extend(serialized_value.iter());
-                }
-            } else {
-                break;
+        while pool_part.len() < self.config.bootstrap_part_size as usize && let Some(Ok((serialized_message_id, _))) = match last_id {
+                Some(id) => db.iterator_cf(handle, IteratorMode::From(&can_be_executed_key!(id), Direction::Forward)).nth(1),
+                None => db.iterator_cf(handle, IteratorMode::Start).next(),
+            } {
+            let (_, message_id) = self
+                .message_id_deserializer
+                .deserialize::<DeserializeError>(&serialized_message_id)
+                .expect(MESSAGE_ID_DESER_ERROR);
+            if let Some(message) = self.fetch_message(&message_id) {
+                    pool_part.insert(message_id, message.clone());
+                    new_cursor = StreamingStep::Ongoing(message_id);
             }
+            last_id = Some(serialized_message_id.to_vec());
         }
         (pool_part, new_cursor)
     }
