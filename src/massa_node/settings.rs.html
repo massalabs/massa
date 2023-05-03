@@ -281,6 +281,8 @@
 <a href="#281" id="281">281</a>
 <a href="#282" id="282">282</a>
 <a href="#283" id="283">283</a>
+<a href="#284" id="284">284</a>
+<a href="#285" id="285">285</a>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="doccomment">//! Build here the default node settings from the configuration file toml
@@ -315,6 +317,8 @@
     <span class="kw">pub </span>lru_cache_size: u32,
     <span class="kw">pub </span>hd_cache_size: usize,
     <span class="kw">pub </span>snip_amount: usize,
+    <span class="doccomment">/// slot execution outputs channel capacity
+    </span><span class="kw">pub </span>broadcast_slot_execution_output_channel_capacity: usize,
 }
 
 <span class="attr">#[derive(Clone, Debug, Deserialize)]

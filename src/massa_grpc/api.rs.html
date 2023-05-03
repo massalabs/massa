@@ -648,7 +648,6 @@
 <a href="#648" id="648">648</a>
 <a href="#649" id="649">649</a>
 <a href="#650" id="650">650</a>
-<a href="#651" id="651">651</a>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2023 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="kw">use </span><span class="kw">crate</span>::error::GrpcError;
@@ -1143,8 +1142,7 @@
     })
 }
 
-<span class="comment">//TODO: to be implemented
-</span><span class="doccomment">/// Get smart contract execution events
+<span class="doccomment">/// Get smart contract execution events
 </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>get_sc_execution_events(
     grpc: <span class="kw-2">&amp;</span>MassaGrpc,
     request: tonic::Request&lt;grpc::GetScExecutionEventsRequest&gt;,
@@ -1177,7 +1175,7 @@
         slot: <span class="prelude-val">Some</span>(current_slot.into()),
     });
 
-    <span class="kw">let </span>events: Vec&lt;grpc::ScExecutionEventWrapper&gt; = grpc
+    <span class="kw">let </span>events: Vec&lt;grpc::ScExecutionEvent&gt; = grpc
         .execution_controller
         .get_filtered_sc_output_event(event_filter)
         .into_iter()

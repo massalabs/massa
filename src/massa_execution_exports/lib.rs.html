@@ -62,6 +62,10 @@
 <a href="#62" id="62">62</a>
 <a href="#63" id="63">63</a>
 <a href="#64" id="64">64</a>
+<a href="#65" id="65">65</a>
+<a href="#66" id="66">66</a>
+<a href="#67" id="67">67</a>
+<a href="#68" id="68">68</a>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="doccomment">//! # Overview
@@ -108,12 +112,15 @@
 
 </span><span class="attr">#![warn(missing_docs)]
 #![warn(unused_crate_dependencies)]
-</span><span class="kw">mod </span>controller_traits;
+</span><span class="kw">mod </span>channels;
+<span class="kw">mod </span>controller_traits;
 <span class="kw">mod </span>error;
 <span class="kw">mod </span>event_store;
+<span class="kw">mod </span>mapping_grpc;
 <span class="kw">mod </span>settings;
 <span class="kw">mod </span>types;
 
+<span class="kw">pub use </span>channels::ExecutionChannels;
 <span class="kw">pub use </span>controller_traits::{ExecutionController, ExecutionManager};
 <span class="kw">pub use </span>error::ExecutionError;
 <span class="kw">pub use </span>event_store::EventStore;
@@ -122,6 +129,7 @@
 <span class="kw">pub use </span>types::{
     ExecutionAddressInfo, ExecutionOutput, ExecutionStackElement, ReadOnlyCallRequest,
     ReadOnlyExecutionOutput, ReadOnlyExecutionRequest, ReadOnlyExecutionTarget,
+    SlotExecutionOutput,
 };
 
 <span class="attr">#[cfg(any(feature = <span class="string">&quot;testing&quot;</span>, feature = <span class="string">&quot;gas_calibration&quot;</span>))]

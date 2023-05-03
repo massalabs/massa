@@ -492,6 +492,9 @@
 <a href="#492" id="492">492</a>
 <a href="#493" id="493">493</a>
 <a href="#494" id="494">494</a>
+<a href="#495" id="495">495</a>
+<a href="#496" id="496">496</a>
+<a href="#497" id="497">497</a>
 </pre><pre class="rust"><code><span class="kw">use </span>std::cmp::Reverse;
 <span class="kw">use </span>std::{collections::HashMap, net::SocketAddr, thread::JoinHandle, time::Duration};
 
@@ -925,6 +928,9 @@
                     peer_db_write
                         .index_by_newest
                         .insert(Reverse(announcement.timestamp), peer_id.clone());
+                    peer_db_write
+                        .index_by_newest
+                        .retain(|<span class="kw">_</span>, peer_id_stored| peer_id_stored != peer_id);
                     peer_db_write
                         .peers
                         .entry(peer_id.clone())
