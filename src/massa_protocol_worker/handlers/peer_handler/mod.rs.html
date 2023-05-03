@@ -501,18 +501,6 @@
 <a href="#501" id="501">501</a>
 <a href="#502" id="502">502</a>
 <a href="#503" id="503">503</a>
-<a href="#504" id="504">504</a>
-<a href="#505" id="505">505</a>
-<a href="#506" id="506">506</a>
-<a href="#507" id="507">507</a>
-<a href="#508" id="508">508</a>
-<a href="#509" id="509">509</a>
-<a href="#510" id="510">510</a>
-<a href="#511" id="511">511</a>
-<a href="#512" id="512">512</a>
-<a href="#513" id="513">513</a>
-<a href="#514" id="514">514</a>
-<a href="#515" id="515">515</a>
 </pre><pre class="rust"><code><span class="kw">use </span>std::cmp::Reverse;
 <span class="kw">use </span>std::{collections::HashMap, net::SocketAddr, thread::JoinHandle, time::Duration};
 
@@ -784,7 +772,6 @@
         listeners: <span class="kw-2">&amp;</span>HashMap&lt;SocketAddr, TransportType&gt;,
         messages_handler: MassaMessagesHandler,
     ) -&gt; PeerNetResult&lt;PeerId&gt; {
-        <span class="macro">println!</span>(<span class="string">&quot;AURELIEN: NEW HANDSHAKE MASSA&quot;</span>);
         <span class="kw">let </span><span class="kw-2">mut </span>bytes = PeerId::from_public_key(keypair.get_public_key()).to_bytes();
         <span class="comment">//TODO: Add version in announce
         </span>bytes.push(<span class="number">0</span>);
@@ -814,7 +801,6 @@
                     <span class="prelude-val">Some</span>(<span class="string">&quot;Failed to deserialize PeerId&quot;</span>.to_string()),
                 )
             })<span class="question-mark">?</span>)<span class="question-mark">?</span>;
-        <span class="macro">println!</span>(<span class="string">&quot;AURELIEN: ON PEERID {:?}&quot;</span>, peer_id);
         {
             <span class="kw">let </span>peer_db_read = <span class="self">self</span>.peer_db.read();
             <span class="kw">if let </span><span class="prelude-val">Some</span>(info) = peer_db_read.peers.get(<span class="kw-2">&amp;</span>peer_id) {
@@ -860,10 +846,6 @@
                                 <span class="prelude-val">Some</span>(<span class="macro">format!</span>(<span class="string">&quot;Failed to serialize announcement: {}&quot;</span>, err)),
                             )
                         })<span class="question-mark">?</span>;
-                    <span class="macro">println!</span>(
-                        <span class="string">&quot;AURELIEN: ON PEERID {:?} ANNOUNCEMENT {:?}&quot;</span>,
-                        peer_id, announcement
-                    );
                     <span class="kw">if </span>peer_id
                         .verify_signature(<span class="kw-2">&amp;</span>announcement.hash, <span class="kw-2">&amp;</span>announcement.signature)
                         .is_err()
@@ -871,10 +853,6 @@
                         <span class="kw">return </span><span class="prelude-val">Err</span>(PeerNetError::HandshakeError
                             .error(<span class="string">&quot;Massa Handshake&quot;</span>, <span class="prelude-val">Some</span>(<span class="string">&quot;Invalid signature&quot;</span>.to_string())));
                     }
-                    <span class="macro">println!</span>(
-                        <span class="string">&quot;AURELIEN: ON PEERID {:?} ANNOUNCEMENT SIGNATURE OK&quot;</span>,
-                        peer_id
-                    );
                     <span class="kw">let </span>message = PeerManagementMessage::NewPeerConnected((
                         peer_id.clone(),
                         announcement.clone().listeners,
@@ -890,7 +868,6 @@
                             )
                         })<span class="question-mark">?</span>;
                     messages_handler.handle(<span class="number">7</span>, <span class="kw-2">&amp;</span>bytes, <span class="kw-2">&amp;</span>peer_id)<span class="question-mark">?</span>;
-                    <span class="macro">println!</span>(<span class="string">&quot;AURELIEN: ON PEERID {:?} ANNOUNCEMENT SEND OK&quot;</span>, peer_id);
                     <span class="kw">let </span><span class="kw-2">mut </span>self_random_bytes = [<span class="number">0u8</span>; <span class="number">32</span>];
                     StdRng::from_entropy().fill_bytes(<span class="kw-2">&amp;mut </span>self_random_bytes);
                     <span class="kw">let </span>self_random_hash = Hash::compute_from(<span class="kw-2">&amp;</span>self_random_bytes);
@@ -979,7 +956,6 @@
                         });
                 }
                 <span class="prelude-val">Err</span>(<span class="kw">_</span>) =&gt; {
-                    <span class="macro">println!</span>(<span class="string">&quot;AURELIEN: ON PEERID {:?} HANDSHAKE FAILED&quot;</span>, peer_id);
                     peer_db_write.peers.entry(peer_id).and_modify(|info| {
                         <span class="comment">//TODO: Add the peerdb but for now impossible as we don&#39;t have announcement and we need one to place in peerdb
                         </span>info.state = PeerState::HandshakeFailed;
