@@ -13,13 +13,8 @@ use massa_models::version::{Version, VersionSerializer};
 use massa_serialization::{DeserializeError, Deserializer, Serializer};
 use massa_signature::{PublicKey, Signature, SIGNATURE_SIZE_BYTES};
 use rand::{rngs::StdRng, RngCore, SeedableRng};
-use std::io::ErrorKind;
 use std::time::Instant;
-use std::{
-    io::{Read, Write},
-    net::TcpStream,
-    time::Duration,
-};
+use std::{io::Write, net::TcpStream, time::Duration};
 
 /// Bootstrap client binder
 pub struct BootstrapClientBinder {
