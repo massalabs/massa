@@ -90,9 +90,9 @@ pub(crate) async fn new_blocks(
         }
     });
 
-    // Create a new stream from the received channel.
+    // Create a new stream from the received channel
     let out_stream = tokio_stream::wrappers::ReceiverStream::new(rx);
 
-    // Return the new stream of blocks.
+    // Return the new stream of blocks
     Ok(Box::pin(out_stream) as NewBlocksStreamType)
 }

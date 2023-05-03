@@ -80,4 +80,8 @@ pub struct ExecutionConfig {
     pub roll_count_to_slash_on_denunciation: u64,
     /// Denunciation expire delta
     pub denunciation_expire_periods: u64,
+    /// whether slot execution outputs broadcast is enabled
+    pub broadcast_enabled: bool,
+    /// slot execution outputs channel capacity
+    pub broadcast_slot_execution_output_channel_capacity: usize,
 }

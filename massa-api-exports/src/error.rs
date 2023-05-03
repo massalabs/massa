@@ -8,7 +8,6 @@ use massa_consensus_exports::error::ConsensusError;
 use massa_execution_exports::ExecutionError;
 use massa_hash::MassaHashError;
 use massa_models::error::ModelsError;
-use massa_network_exports::NetworkError;
 use massa_protocol_exports::ProtocolError;
 use massa_time::TimeError;
 use massa_wallet::WalletError;
@@ -27,8 +26,6 @@ pub enum ApiError {
     ConsensusError(#[from] ConsensusError),
     /// execution error: {0}
     ExecutionError(#[from] ExecutionError),
-    /// Network error: {0}
-    NetworkError(#[from] NetworkError),
     /// Protocol error: {0}
     ProtocolError(#[from] ProtocolError),
     /// Models error: {0}
@@ -65,7 +62,6 @@ impl From<ApiError> for JsonRpseeError {
             ApiError::MassaHashError(_) => -32008,
             ApiError::ConsensusError(_) => -32009,
             ApiError::ExecutionError(_) => -32010,
-            ApiError::NetworkError(_) => -32011,
             ApiError::ProtocolError(_) => -32012,
             ApiError::ModelsError(_) => -32013,
             ApiError::TimeError(_) => -32014,

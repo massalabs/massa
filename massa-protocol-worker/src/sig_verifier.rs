@@ -7,6 +7,7 @@ use massa_protocol_exports::ProtocolError;
 use massa_signature::{verify_signature_batch, PublicKey, Signature};
 use rayon::{prelude::ParallelIterator, slice::ParallelSlice};
 
+//TODO: Benchmark
 /// Limit for small batch optimization
 const SMALL_BATCH_LIMIT: usize = 2;
 

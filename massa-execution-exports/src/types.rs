@@ -36,6 +36,16 @@ pub struct ExecutionAddressInfo {
     pub cycle_infos: Vec<ExecutionAddressCycleInfo>,
 }
 
+/// structure describing the output of the execution of a slot
+#[derive(Debug, Clone)]
+pub enum SlotExecutionOutput {
+    /// Executed slot output
+    ExecutedSlot(ExecutionOutput),
+
+    /// Finalized slot output
+    FinalizedSlot(Slot),
+}
+
 /// structure describing the output of a single execution
 #[derive(Debug, Clone)]
 pub struct ExecutionOutput {

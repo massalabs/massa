@@ -15,7 +15,7 @@
 
 use massa_consensus_exports::bootstrapable_graph::BootstrapableGraph;
 use massa_final_state::FinalState;
-use massa_network_exports::BootstrapPeers;
+use massa_protocol_exports::BootstrapPeers;
 use parking_lot::RwLock;
 use std::sync::Arc;
 
@@ -23,6 +23,8 @@ mod client;
 mod client_binder;
 mod error;
 mod establisher;
+mod listener;
+pub use listener::BootstrapTcpListener;
 mod messages;
 mod server;
 mod server_binder;

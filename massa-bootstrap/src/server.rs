@@ -26,7 +26,7 @@
 //!    This thread creates a new tokio runtime, and runs it with `block_on`
 mod white_black_list;
 
-use crossbeam::channel::{tick, Select, SendError};
+use crossbeam::channel::tick;
 use humantime::format_duration;
 use massa_async_pool::AsyncMessageId;
 use massa_consensus_exports::{bootstrapable_graph::BootstrapableGraph, ConsensusController};
@@ -38,10 +38,7 @@ use massa_models::{
     version::Version,
 };
 
-#[cfg(any(test, feature = "test"))]
-use massa_network_exports::MockNetworkCommandSender as NetworkCommandSender;
-#[cfg(not(any(test, feature = "test")))]
-use massa_network_exports::NetworkCommandSender;
+use massa_protocol_exports::ProtocolController;
 use massa_signature::KeyPair;
 use massa_time::MassaTime;
 use massa_versioning_worker::versioning::MipStore;
@@ -49,7 +46,7 @@ use massa_versioning_worker::versioning::MipStore;
 use parking_lot::RwLock;
 use std::{
     collections::HashMap,
-    net::{IpAddr, SocketAddr, TcpStream},
+    net::{IpAddr, SocketAddr},
     sync::Arc,
     thread,
     time::{Duration, Instant},
@@ -59,7 +56,8 @@ use white_black_list::*;
 
 use crate::{
     error::BootstrapError,
-    establisher::BSListener,
+    establisher::BSEventPoller,
+    listener::{BootstrapListenerStopHandle, PollEvent},
     messages::{BootstrapClientMessage, BootstrapServerMessage},
     server_binder::BootstrapServerBinder,
     BootstrapConfig,
@@ -67,25 +65,47 @@ use crate::{
 
 /// Abstraction layer over data produced by the listener, and transported
 /// over to the worker via a channel
-type BsConn = (TcpStream, SocketAddr);
 
 /// handle on the bootstrap server
 pub struct BootstrapManager {
     update_handle: thread::JoinHandle<Result<(), BootstrapError>>,
     // need to preserve the listener handle up to here to prevent it being destroyed
     #[allow(clippy::type_complexity)]
-    _listen_handle: thread::JoinHandle<Result<Result<(), BsConn>, BootstrapError>>,
     main_handle: thread::JoinHandle<Result<(), BootstrapError>>,
-    listen_stopper_tx: crossbeam::channel::Sender<()>,
+    listener_stopper: Option<BootstrapListenerStopHandle>,
     update_stopper_tx: crossbeam::channel::Sender<()>,
 }
 
 impl BootstrapManager {
+    /// create a new bootstrap manager, but no means of stopping the listener
+    /// use [`set_listen_stop_handle`] to set the handle
+    pub(crate) fn new(
+        update_handle: thread::JoinHandle<Result<(), BootstrapError>>,
+        main_handle: thread::JoinHandle<Result<(), BootstrapError>>,
+        update_stopper_tx: crossbeam::channel::Sender<()>,
+    ) -> Self {
+        Self {
+            update_handle,
+            main_handle,
+            update_stopper_tx,
+            listener_stopper: None,
+        }
+    }
+    /// Sets an event-emmiter. `Self::stop`] will use this stopper to signal the listener that created this stopper.
+    pub fn set_listener_stopper(&mut self, listener_stopper: BootstrapListenerStopHandle) {
+        self.listener_stopper = Some(listener_stopper);
+    }
+
     /// stop the bootstrap server
     pub fn stop(self) -> Result<(), BootstrapError> {
         massa_trace!("bootstrap.lib.stop", {});
-        if self.listen_stopper_tx.send(()).is_err() {
-            warn!("bootstrap server already dropped");
+        // `as_ref` is critical here, as the stopper has to be alive until the poll in the event
+        // loop acts on the stop-signal
+        // TODO: Refactor the waker so that its existance is tied to the life of the event-loop
+        if let Some(listen_stop_handle) = self.listener_stopper.as_ref() {
+            if listen_stop_handle.stop().is_err() {
+                warn!("bootstrap server already dropped");
+            }
         }
         if self.update_stopper_tx.send(()).is_err() {
             warn!("bootstrap ip-list-updater already dropped");
@@ -106,28 +126,24 @@ impl BootstrapManager {
 
 /// See module level documentation for details
 #[allow(clippy::too_many_arguments)]
-pub fn start_bootstrap_server(
+pub fn start_bootstrap_server<L: BSEventPoller + Send + 'static>(
+    ev_poller: L,
     consensus_controller: Box<dyn ConsensusController>,
-    network_command_sender: NetworkCommandSender,
+    protocol_controller: Box<dyn ProtocolController>,
     final_state: Arc<RwLock<FinalState>>,
     config: BootstrapConfig,
-    listener: impl BSListener + Send + 'static,
     keypair: KeyPair,
     version: Version,
     mip_store: MipStore,
-) -> Result<Option<BootstrapManager>, BootstrapError> {
+) -> Result<BootstrapManager, BootstrapError> {
     massa_trace!("bootstrap.lib.start_bootstrap_server", {});
 
     // TODO(low prio): See if a zero capacity channel model can work
-    let (listen_stopper_tx, listen_stopper_rx) = crossbeam::channel::bounded::<()>(1);
     let (update_stopper_tx, update_stopper_rx) = crossbeam::channel::bounded::<()>(1);
 
     let Ok(max_bootstraps) = config.max_simultaneous_bootstraps.try_into() else {
         return Err(BootstrapError::GeneralError("Fail to convert u32 to usize".to_string()));
     };
-
-    // This is needed for now, as there is no ergonomic to "select!" on both a channel and a blocking std::net::TcpStream
-    let (listener_tx, listener_rx) = crossbeam::channel::bounded::<BsConn>(max_bootstraps * 2);
 
     let white_black_list = SharedWhiteBlackList::new(
         config.bootstrap_whitelist_path.clone(),
@@ -138,7 +154,7 @@ pub fn start_bootstrap_server(
     let update_handle = thread::Builder::new()
         .name("wb_list_updater".to_string())
         .spawn(move || {
-            let res = BootstrapServer::run_updater(
+            let res = BootstrapServer::<L>::run_updater(
                 updater_lists,
                 config.cache_duration.into(),
                 update_stopper_rx,
@@ -150,22 +166,15 @@ pub fn start_bootstrap_server(
             res
         })
         .expect("in `start_bootstrap_server`, OS failed to spawn list-updater thread");
-    let listen_handle = thread::Builder::new()
-        .name("bs_listener".to_string())
-        // FIXME: The interface being used shouldn't have `: Send + 'static` as a constraint on the listener assosciated type.
-        // GAT lifetime is likely to remedy this, however.
-        .spawn(move || BootstrapServer::run_listener(listener, listener_tx))
-        .expect("in `start_bootstrap_server`, OS failed to spawn listener thread");
 
     let main_handle = thread::Builder::new()
         .name("bs-main-loop".to_string())
         .spawn(move || {
             BootstrapServer {
                 consensus_controller,
-                network_command_sender,
+                protocol_controller,
                 final_state,
-                listener_rx,
-                listen_stopper_rx,
+                ev_poller,
                 white_black_list,
                 keypair,
                 version,
@@ -173,26 +182,23 @@ pub fn start_bootstrap_server(
                 bootstrap_config: config,
                 mip_store,
             }
-            .run_loop(max_bootstraps)
+            .event_loop(max_bootstraps)
         })
         .expect("in `start_bootstrap_server`, OS failed to spawn main-loop thread");
     // Give the runtime to the bootstrap manager, otherwise it will be dropped, forcibly aborting the spawned tasks.
     // TODO: make the tasks sync, so the runtime is redundant
-    Ok(Some(BootstrapManager {
+    Ok(BootstrapManager::new(
         update_handle,
-        _listen_handle: listen_handle,
         main_handle,
-        listen_stopper_tx,
         update_stopper_tx,
-    }))
+    ))
 }
 
-struct BootstrapServer<'a> {
+struct BootstrapServer<'a, L: BSEventPoller> {
     consensus_controller: Box<dyn ConsensusController>,
-    network_command_sender: NetworkCommandSender,
+    protocol_controller: Box<dyn ProtocolController>,
     final_state: Arc<RwLock<FinalState>>,
-    listener_rx: crossbeam::channel::Receiver<BsConn>,
-    listen_stopper_rx: crossbeam::channel::Receiver<()>,
+    ev_poller: L,
     white_black_list: SharedWhiteBlackList<'a>,
     keypair: KeyPair,
     bootstrap_config: BootstrapConfig,
@@ -201,7 +207,7 @@ struct BootstrapServer<'a> {
     mip_store: MipStore,
 }
 
-impl BootstrapServer<'_> {
+impl<L: BSEventPoller> BootstrapServer<'_, L> {
     fn run_updater(
         mut list: SharedWhiteBlackList<'_>,
         interval: Duration,
@@ -222,42 +228,22 @@ impl BootstrapServer<'_> {
         }
     }
 
-    /// Listens on a channel for incoming connections, and loads them onto a crossbeam channel
-    /// for the main-loop to process.
-    ///
-    /// Ok(Ok(())) listener closed without issue
-    /// Ok(Err((dplx, address))) listener accepted a connection then tried sending on a disconnected channel
-    /// Err(..) Error accepting a connection
-    /// TODO: Integrate the listener into the bootstrap-main-loop
-    fn run_listener(
-        mut listener: impl BSListener,
-        listener_tx: crossbeam::channel::Sender<BsConn>,
-    ) -> Result<Result<(), BsConn>, BootstrapError> {
-        loop {
-            let (msg, addr) = listener.accept().map_err(BootstrapError::IoError)?;
-
-            if let Err(SendError((dplx, remote_addr))) = listener_tx.send((msg, addr)) {
-                warn!(
-                    "listener channel disconnected after accepting connection from {}",
-                    remote_addr
-                );
-                return Ok(Err((dplx, remote_addr)));
-            };
-        }
-    }
-
-    fn run_loop(mut self, max_bootstraps: usize) -> Result<(), BootstrapError> {
+    fn event_loop(mut self, max_bootstraps: usize) -> Result<(), BootstrapError> {
         // Use the strong-count of this variable to track the session count
         let bootstrap_sessions_counter: Arc<()> = Arc::new(());
         let per_ip_min_interval = self.bootstrap_config.per_ip_min_interval.to_duration();
-        let mut selector = Select::new();
-        selector.recv(&self.listen_stopper_rx);
-        selector.recv(&self.listener_rx);
         // TODO: Work out how to integration-test this
         loop {
             // block until we have a connection to work with, or break out of main-loop
-            // if a stop-signal is received
-            let Some((dplx, remote_addr)) = self.receive_connection(&mut selector)? else { break; };
+            let (dplx, remote_addr) = match self.ev_poller.poll() {
+                Ok(PollEvent::NewConnection((dplx, remote_addr))) => (dplx, remote_addr),
+                Ok(PollEvent::Stop) => break Ok(()),
+                Err(e) => {
+                    error!("bootstrap listener error: {}", e);
+                    break Err(e);
+                }
+            };
+
             // claim a slot in the max_bootstrap_sessions
             let server_binding = BootstrapServerBinder::new(
                 dplx,
@@ -295,7 +281,7 @@ impl BootstrapServer<'_> {
                 }
 
                 // check IP's bootstrap attempt history
-                if let Err(msg) = BootstrapServer::greedy_client_check(
+                if let Err(msg) = BootstrapServer::<L>::greedy_client_check(
                     &mut self.ip_hist_map,
                     remote_addr,
                     now,
@@ -323,7 +309,7 @@ impl BootstrapServer<'_> {
                 let version = self.version;
                 let data_execution = self.final_state.clone();
                 let consensus_command_sender = self.consensus_controller.clone();
-                let network_command_sender = self.network_command_sender.clone();
+                let protocol_controller = self.protocol_controller.clone();
                 let config = self.bootstrap_config.clone();
 
                 let bootstrap_count_token = bootstrap_sessions_counter.clone();
@@ -340,7 +326,7 @@ impl BootstrapServer<'_> {
                             data_execution,
                             version,
                             consensus_command_sender,
-                            network_command_sender,
+                            protocol_controller,
                             mip_store,
                         )
                     });
@@ -356,58 +342,6 @@ impl BootstrapServer<'_> {
                 );
             }
         }
-
-        // Give any remaining processes 20 seconds to clean up, otherwise force them to shutdown
-        Ok(())
-    }
-
-    /// These are the steps to ensure that a connection is only processed if the server is active:
-    ///
-    /// - 1. Block until _something_ is ready
-    /// - 2. If that something is a stop-signal, stop
-    /// - 3. If that something is anything else:
-    /// - 3.a. double check the stop-signal is absent
-    /// - 3.b. If present, fall-back to the stop behaviour
-    /// - 3.c. If absent, all's clear to rock-n-roll.
-    fn receive_connection(&self, selector: &mut Select) -> Result<Option<BsConn>, BootstrapError> {
-        // 1. Block until _something_ is ready
-        let rdy = selector.ready();
-
-        // 2. If that something is a stop-signal, stop
-        // from `crossbeam::Select::read()` documentation:
-        // "Note that this method might return with success spuriously, so it’s a good idea
-        // to always double check if the operation is really ready."
-        if rdy == 0 && self.listen_stopper_rx.try_recv().is_ok() {
-            return Ok(None);
-            // - 3. If that something is anything else:
-        } else {
-            massa_trace!("bootstrap.lib.run.select", {});
-
-            // - 3.a. double check the stop-signal is absent
-            let stop = self.listen_stopper_rx.try_recv();
-            if unlikely(stop.is_ok()) {
-                massa_trace!("bootstrap.lib.run.select.manager", {});
-                // 3.b. If present, fall-back to the stop behaviour
-                return Ok(None);
-            } else if unlikely(stop == Err(crossbeam::channel::TryRecvError::Disconnected)) {
-                return Err(BootstrapError::GeneralError(
-                    "Unexpected stop-channel disconnection".to_string(),
-                ));
-            };
-        }
-        // - 3.c. If absent, all's clear to rock-n-roll.
-        let msg = match self.listener_rx.try_recv() {
-            Ok(msg) => msg,
-            Err(try_rcv_err) => match try_rcv_err {
-                crossbeam::channel::TryRecvError::Empty => return Ok(None),
-                crossbeam::channel::TryRecvError::Disconnected => {
-                    return Err(BootstrapError::GeneralError(
-                        "listener recv channel disconnected unexpectedly".to_string(),
-                    ));
-                }
-            },
-        };
-        Ok(Some(msg))
     }
 
     /// Checks latest attempt. If too recent, provides the bad news (as an error).
@@ -455,7 +389,7 @@ fn run_bootstrap_session(
     data_execution: Arc<RwLock<FinalState>>,
     version: Version,
     consensus_command_sender: Box<dyn ConsensusController>,
-    network_command_sender: NetworkCommandSender,
+    protocol_controller: Box<dyn ProtocolController>,
     mip_store: MipStore,
 ) {
     debug!("running bootstrap for peer {}", remote_addr);
@@ -467,7 +401,7 @@ fn run_bootstrap_session(
         data_execution,
         version,
         consensus_command_sender,
-        network_command_sender,
+        protocol_controller,
         deadline,
         mip_store,
     );
@@ -719,7 +653,7 @@ fn manage_bootstrap(
     final_state: Arc<RwLock<FinalState>>,
     version: Version,
     consensus_controller: Box<dyn ConsensusController>,
-    network_command_sender: NetworkCommandSender,
+    protocol_controller: Box<dyn ProtocolController>,
     deadline: Instant,
     mip_store: MipStore,
 ) -> Result<(), BootstrapError> {
@@ -777,7 +711,7 @@ fn manage_bootstrap(
                     server.send_msg(
                         write_timeout,
                         BootstrapServerMessage::BootstrapPeers {
-                            peers: network_command_sender.sync_get_bootstrap_peers()?,
+                            peers: protocol_controller.get_bootstrap_peers()?,
                         },
                     )?;
                 }
@@ -827,27 +761,4 @@ fn manage_bootstrap(
             },
         };
     }
-}
-
-// Stable means of providing compiler optimisation hints
-// Also provides a self-documenting tool to communicate likely/unlikely code-paths
-// https://users.rust-lang.org/t/compiler-hint-for-unlikely-likely-for-if-branches/62102/4
-#[inline]
-#[cold]
-fn cold() {}
-
-#[inline]
-fn _likely(b: bool) -> bool {
-    if !b {
-        cold()
-    }
-    b
-}
-
-#[inline]
-fn unlikely(b: bool) -> bool {
-    if b {
-        cold()
-    }
-    b
 }

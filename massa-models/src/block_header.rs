@@ -1,5 +1,4 @@
 use crate::block_id::BlockId;
-use crate::config::THREAD_COUNT;
 use crate::denunciation::{Denunciation, DenunciationDeserializer, DenunciationSerializer};
 use crate::endorsement::{
     Endorsement, EndorsementDeserializerLW, EndorsementId, EndorsementSerializer,
@@ -43,7 +42,11 @@ pub struct BlockHeader {
 // TODO: gh-issue #3398
 #[cfg(any(test, feature = "testing"))]
 impl BlockHeader {
-    fn assert_invariants(&self) -> Result<(), Box<dyn std::error::Error>> {
+    fn assert_invariants(
+        &self,
+        thread_count: u8,
+        endorsement_count: u32,
+    ) -> Result<(), Box<dyn std::error::Error>> {
         if self.slot.period == 0 {
             if !self.parents.is_empty() {
                 return Err("Invariant broken: genesis block with parent(s)".into());
@@ -52,12 +55,12 @@ impl BlockHeader {
                 return Err("Invariant broken: genesis block with endorsement(s)".into());
             }
         } else {
-            if self.parents.len() != crate::config::THREAD_COUNT as usize {
+            if self.parents.len() != thread_count as usize {
                 return Err(
                     "Invariant broken: non-genesis block with incorrect number of parents".into(),
                 );
             }
-            if self.endorsements.len() > crate::config::ENDORSEMENT_COUNT as usize {
+            if self.endorsements.len() > endorsement_count as usize {
                 return Err("Invariant broken: endorsement count too high".into());
             }
 
@@ -110,8 +113,13 @@ impl SecuredHeader {
     // TODO: gh-issue #3398
     #[allow(dead_code)]
     #[cfg(any(test, feature = "testing"))]
-    pub(crate) fn assert_invariants(&self) -> Result<(), Box<dyn std::error::Error>> {
-        self.content.assert_invariants()?;
+    pub(crate) fn assert_invariants(
+        &self,
+        thread_count: u8,
+        endorsement_count: u32,
+    ) -> Result<(), Box<dyn std::error::Error>> {
+        self.content
+            .assert_invariants(thread_count, endorsement_count)?;
         self.verify_signature()
             .map_err(|er| format!("{}", er).into())
     }
@@ -373,14 +381,11 @@ impl Deserializer<BlockHeader> for BlockHeaderDeserializer {
                             ParseError::from_error_kind(rest, nom::error::ErrorKind::Fail),
                         )));
                     } else if slot.period != last_start_period
-                        && parents.len() != THREAD_COUNT as usize
+                        && parents.len() != self.thread_count as usize
                     {
                         return Err(nom::Err::Failure(ContextError::add_context(
                             rest,
-                            const_format::formatcp!(
-                                "Non-genesis block must have {} parents",
-                                THREAD_COUNT
-                            ),
+                            "Non-genesis block must have same numbers of parents as threads count",
                             ParseError::from_error_kind(rest, nom::error::ErrorKind::Fail),
                         )));
                     }
@@ -405,7 +410,9 @@ impl Deserializer<BlockHeader> for BlockHeaderDeserializer {
 
             // TODO: gh-issue #3398
             #[cfg(any(test, feature = "testing"))]
-            res.assert_invariants().unwrap();
+            res.assert_invariants(self.thread_count, self.endorsement_count)
+                .unwrap();
+
             return Ok((
                 &rest[2..], // Because there is 0 endorsements & 0 denunciations, we have a remaining [0, 0] in rest and we don't need it
                 res,
@@ -480,7 +487,9 @@ impl Deserializer<BlockHeader> for BlockHeaderDeserializer {
 
         // TODO: gh-issue #3398
         #[cfg(any(test, feature = "testing"))]
-        header.assert_invariants().unwrap();
+        header
+            .assert_invariants(self.thread_count, self.endorsement_count)
+            .unwrap();
 
         Ok((rest, header))
     }
@@ -548,7 +557,7 @@ mod test {
     use super::*;
     use massa_serialization::DeserializeError;
 
-    use crate::config::{ENDORSEMENT_COUNT, MAX_DENUNCIATIONS_PER_BLOCK_HEADER};
+    use crate::config::{ENDORSEMENT_COUNT, MAX_DENUNCIATIONS_PER_BLOCK_HEADER, THREAD_COUNT};
 
     use crate::test_exports::{
         gen_block_headers_for_denunciation, gen_endorsements_for_denunciation,

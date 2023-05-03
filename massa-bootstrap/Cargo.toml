@@ -20,6 +20,7 @@ tracing = "0.1"
 substruct = { git = "https://github.com/sydhds/substruct" }
 socket2 = "0.4.7"
 crossbeam = "0.8.2"
+mio =  { version = "0.8", features = ["net", "os-poll"] }
 
 # custom modules
 massa_async_pool = { path = "../massa-async-pool" }
@@ -30,7 +31,7 @@ massa_hash = { path = "../massa-hash" }
 massa_ledger_exports = { path = "../massa-ledger-exports" }
 massa_logging = { path = "../massa-logging" }
 massa_models = { path = "../massa-models" }
-massa_network_exports = { path = "../massa-network-exports" }
+massa_protocol_exports = { path = "../massa-protocol-exports" }
 massa_serialization = { path = "../massa-serialization" }
 massa_signature = { path = "../massa-signature" }
 massa_pos_exports = { path = "../massa-pos-exports" }
@@ -45,12 +46,10 @@ massa_async_pool = { path = "../massa-async-pool", features = ["testing"] }
 massa_ledger_worker = { path = "../massa-ledger-worker", features = [
     "testing",
 ] }
+tokio = { version = "1.0", features = ["full"] }
 massa_pos_worker = { path = "../massa-pos-worker", features = ["testing"] }
 massa_pos_exports = { path = "../massa-pos-exports", features = ["testing"] }
 massa_consensus_exports = { path = "../massa-consensus-exports", features = [
-    "testing",
-] }
-massa_network_exports = { path = "../massa-network-exports", features = [
     "testing",
 ] }
 lazy_static = "1.4"

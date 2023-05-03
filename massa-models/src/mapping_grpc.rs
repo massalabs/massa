@@ -253,9 +253,9 @@ impl TryFrom<grpc::GetScExecutionEventsFilter> for EventFilter {
     }
 }
 
-impl From<SCOutputEvent> for grpc::ScExecutionEventWrapper {
+impl From<SCOutputEvent> for grpc::ScExecutionEvent {
     fn from(value: SCOutputEvent) -> Self {
-        grpc::ScExecutionEventWrapper {
+        grpc::ScExecutionEvent {
             context: Some(value.context.into()),
             data: value.data,
         }
@@ -263,20 +263,27 @@ impl From<SCOutputEvent> for grpc::ScExecutionEventWrapper {
 }
 
 impl From<EventExecutionContext> for grpc::ScExecutionEventContext {
-    fn from(ctx: EventExecutionContext) -> Self {
+    fn from(value: EventExecutionContext) -> Self {
+        let id_str = format!(
+            "{}{}{}",
+            &value.slot.period, &value.slot.thread, &value.index_in_slot
+        );
+        let id = bs58::encode(id_str.as_bytes()).with_check().into_string();
         Self {
-            origin_slot: Some(ctx.slot.into()),
-            block_id: ctx.block.map(|id| id.to_string()).unwrap_or_default(),
-            index_in_slot: ctx.index_in_slot,
-            call_stack: ctx.call_stack.into_iter().map(|a| a.to_string()).collect(),
-            origin_operation_id: ctx
-                .origin_operation_id
-                .map(|id| id.to_string())
-                .unwrap_or_default(),
+            id,
+            origin_slot: Some(value.slot.into()),
+            block_id: value.block.map(|id| id.to_string()),
+            index_in_slot: value.index_in_slot,
+            call_stack: value
+                .call_stack
+                .into_iter()
+                .map(|a| a.to_string())
+                .collect(),
+            origin_operation_id: value.origin_operation_id.map(|id| id.to_string()),
             status: vec![
-                ctx.is_error.into(),
-                ctx.read_only.into(),
-                ctx.is_final.into(),
+                value.is_error.into(),
+                value.read_only.into(),
+                value.is_final.into(),
             ],
         }
     }
