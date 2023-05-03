@@ -110,6 +110,9 @@ fn mock_bootstrap_manager(addr: SocketAddr, bootstrap_config: BootstrapConfig) -
 
     // setup final state local config
     let temp_dir = TempDir::new().unwrap();
+    let rocks_db_instance = Arc::new(RwLock::new(new_rocks_db_instance(
+        temp_dir.path().to_path_buf(),
+    )));
     let final_state_local_config = FinalStateConfig {
         ledger_config: LedgerConfig {
             thread_count,
@@ -124,6 +127,7 @@ fn mock_bootstrap_manager(addr: SocketAddr, bootstrap_config: BootstrapConfig) -
             max_length: MAX_ASYNC_POOL_LENGTH,
             max_async_message_data: MAX_ASYNC_MESSAGE_DATA,
             bootstrap_part_size: 100,
+            max_key_length: MAX_DATASTORE_KEY_LENGTH as u32,
         },
         pos_config: PoSConfig {
             periods_per_cycle,
@@ -143,6 +147,8 @@ fn mock_bootstrap_manager(addr: SocketAddr, bootstrap_config: BootstrapConfig) -
         executed_denunciations_config: ExecutedDenunciationsConfig {
             denunciation_expire_periods: DENUNCIATION_EXPIRE_PERIODS,
             bootstrap_part_size: EXECUTED_OPS_BOOTSTRAP_PART_SIZE,
+            thread_count,
+            endorsement_count: ENDORSEMENT_COUNT,
         },
         endorsement_count: ENDORSEMENT_COUNT,
         max_executed_denunciations_length: 1000,
@@ -156,9 +162,11 @@ fn mock_bootstrap_manager(addr: SocketAddr, bootstrap_config: BootstrapConfig) -
             &rolls_path,
             server_selector_controller.clone(),
             Hash::from_bytes(&[0; HASH_SIZE_BYTES]),
+            rocks_db_instance.clone(),
         )
         .unwrap(),
         final_state_local_config.clone(),
+        rocks_db_instance.clone(),
     )));
     let mut stream_mock1 = Box::new(MockConsensusControllerImpl::new());
     let mut stream_mock2 = Box::new(MockConsensusControllerImpl::new());
