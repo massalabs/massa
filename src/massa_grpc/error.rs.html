@@ -80,6 +80,10 @@
 <a href="#80" id="80">80</a>
 <a href="#81" id="81">81</a>
 <a href="#82" id="82">82</a>
+<a href="#83" id="83">83</a>
+<a href="#84" id="84">84</a>
+<a href="#85" id="85">85</a>
+<a href="#86" id="86">86</a>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2023 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="kw">use </span>std::error::Error;
@@ -90,6 +94,7 @@
 <span class="kw">use </span>massa_execution_exports::ExecutionError;
 <span class="kw">use </span>massa_hash::MassaHashError;
 <span class="kw">use </span>massa_models::error::ModelsError;
+<span class="kw">use </span>massa_network_exports::NetworkError;
 <span class="kw">use </span>massa_protocol_exports::ProtocolError;
 <span class="kw">use </span>massa_time::TimeError;
 <span class="kw">use </span>massa_wallet::WalletError;
@@ -105,6 +110,8 @@
     </span>ConsensusError(<span class="attr">#[from] </span>ConsensusError),
     <span class="doccomment">/// execution error: {0}
     </span>ExecutionError(<span class="attr">#[from] </span>ExecutionError),
+    <span class="doccomment">/// Network error: {0}
+    </span>NetworkError(<span class="attr">#[from] </span>NetworkError),
     <span class="doccomment">/// Protocol error: {0}
     </span>ProtocolError(<span class="attr">#[from] </span>ProtocolError),
     <span class="doccomment">/// Reflection error : {0}
@@ -128,6 +135,7 @@
             GrpcError::MassaHashError(e) =&gt; tonic::Status::internal(e.to_string()),
             GrpcError::ConsensusError(e) =&gt; tonic::Status::internal(e.to_string()),
             GrpcError::ExecutionError(e) =&gt; tonic::Status::internal(e.to_string()),
+            GrpcError::NetworkError(e) =&gt; tonic::Status::internal(e.to_string()),
             GrpcError::ProtocolError(e) =&gt; tonic::Status::internal(e.to_string()),
             GrpcError::ModelsError(e) =&gt; tonic::Status::internal(e.to_string()),
             GrpcError::TimeError(e) =&gt; tonic::Status::internal(e.to_string()),

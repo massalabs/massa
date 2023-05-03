@@ -285,39 +285,6 @@
 <a href="#285" id="285">285</a>
 <a href="#286" id="286">286</a>
 <a href="#287" id="287">287</a>
-<a href="#288" id="288">288</a>
-<a href="#289" id="289">289</a>
-<a href="#290" id="290">290</a>
-<a href="#291" id="291">291</a>
-<a href="#292" id="292">292</a>
-<a href="#293" id="293">293</a>
-<a href="#294" id="294">294</a>
-<a href="#295" id="295">295</a>
-<a href="#296" id="296">296</a>
-<a href="#297" id="297">297</a>
-<a href="#298" id="298">298</a>
-<a href="#299" id="299">299</a>
-<a href="#300" id="300">300</a>
-<a href="#301" id="301">301</a>
-<a href="#302" id="302">302</a>
-<a href="#303" id="303">303</a>
-<a href="#304" id="304">304</a>
-<a href="#305" id="305">305</a>
-<a href="#306" id="306">306</a>
-<a href="#307" id="307">307</a>
-<a href="#308" id="308">308</a>
-<a href="#309" id="309">309</a>
-<a href="#310" id="310">310</a>
-<a href="#311" id="311">311</a>
-<a href="#312" id="312">312</a>
-<a href="#313" id="313">313</a>
-<a href="#314" id="314">314</a>
-<a href="#315" id="315">315</a>
-<a href="#316" id="316">316</a>
-<a href="#317" id="317">317</a>
-<a href="#318" id="318">318</a>
-<a href="#319" id="319">319</a>
-<a href="#320" id="320">320</a>
 </pre><pre class="rust"><code><span class="doccomment">//! DEFAULT VALUES USED TO INITIALIZE DIVERS CONFIGURATIONS STRUCTURES
 //!
 //!
@@ -449,6 +416,8 @@
 </span><span class="kw">pub const </span>OPERATION_VALIDITY_PERIODS: u64 = <span class="number">10</span>;
 <span class="doccomment">/// cycle duration in periods
 </span><span class="kw">pub const </span>PERIODS_PER_CYCLE: u64 = <span class="number">128</span>;
+<span class="doccomment">/// cycle duration in periods
+</span><span class="kw">pub const </span>PERIODS_BETWEEN_BACKUPS: u64 = <span class="number">128</span>;
 <span class="doccomment">/// Number of cycles saved in `PoSFinalState`
 ///
 /// 6 for PoS itself so we can check denuncations on selections at C-2 after a bootstrap
@@ -573,41 +542,6 @@
 <span class="doccomment">/// network node event channel size
 </span><span class="kw">pub const </span>NETWORK_NODE_EVENT_CHANNEL_SIZE: usize = <span class="number">10_000</span>;
 
-<span class="comment">//
-// Constants used in protocol
-//
-</span><span class="doccomment">/// Maximum of time we keep the operations in the storage of the propagation thread
-</span><span class="kw">pub const </span>MAX_OPERATION_STORAGE_TIME: MassaTime = MassaTime::from_millis(<span class="number">60000</span>);
-<span class="doccomment">/// Maximum size of channel used for commands in retrieval thread of operations
-</span><span class="kw">pub const </span>MAX_SIZE_CHANNEL_COMMANDS_RETRIEVAL_OPERATIONS: usize = <span class="number">10000</span>;
-<span class="doccomment">/// Maximum size of channel used for commands in propagation thread of operations
-</span><span class="kw">pub const </span>MAX_SIZE_CHANNEL_COMMANDS_PROPAGATION_OPERATIONS: usize = <span class="number">10000</span>;
-<span class="doccomment">/// Maximum size of channel used for commands in retrieval thread of block
-</span><span class="kw">pub const </span>MAX_SIZE_CHANNEL_COMMANDS_RETRIEVAL_BLOCKS: usize = <span class="number">10000</span>;
-<span class="doccomment">/// Maximum size of channel used for commands in propagation thread of block
-</span><span class="kw">pub const </span>MAX_SIZE_CHANNEL_COMMANDS_PROPAGATION_BLOCKS: usize = <span class="number">10000</span>;
-<span class="doccomment">/// Maximum size of channel used for commands in retrieval thread of endorsements
-</span><span class="kw">pub const </span>MAX_SIZE_CHANNEL_COMMANDS_RETRIEVAL_ENDORSEMENTS: usize = <span class="number">10000</span>;
-<span class="doccomment">/// Maximum size of channel used for commands in propagation thread of endorsements
-</span><span class="kw">pub const </span>MAX_SIZE_CHANNEL_COMMANDS_PROPAGATION_ENDORSEMENTS: usize = <span class="number">10000</span>;
-<span class="doccomment">/// Maximum size of channel used for commands in connectivity thread
-</span><span class="kw">pub const </span>MAX_SIZE_CHANNEL_COMMANDS_CONNECTIVITY: usize = <span class="number">10000</span>;
-<span class="doccomment">/// Maximum size of channel used for commands in peers management thread
-</span><span class="kw">pub const </span>MAX_SIZE_CHANNEL_COMMANDS_PEERS: usize = <span class="number">10000</span>;
-<span class="doccomment">/// Maximum size of channel used for commands in peer testers thread
-</span><span class="kw">pub const </span>MAX_SIZE_CHANNEL_COMMANDS_PEER_TESTERS: usize = <span class="number">10000</span>;
-<span class="doccomment">/// Maximum size of channel used to send network events to the operation handler
-</span><span class="kw">pub const </span>MAX_SIZE_CHANNEL_NETWORK_TO_OPERATION_HANDLER: usize = <span class="number">10000</span>;
-<span class="doccomment">/// Maximum size of channel used to send network events to the block handler
-</span><span class="kw">pub const </span>MAX_SIZE_CHANNEL_NETWORK_TO_BLOCK_HANDLER: usize = <span class="number">10000</span>;
-<span class="doccomment">/// Maximum size of channel used to send network events to the endorsement handler
-</span><span class="kw">pub const </span>MAX_SIZE_CHANNEL_NETWORK_TO_ENDORSEMENT_HANDLER: usize = <span class="number">10000</span>;
-<span class="doccomment">/// Maximum size of channel used to send network events to the peer handler
-</span><span class="kw">pub const </span>MAX_SIZE_CHANNEL_NETWORK_TO_PEER_HANDLER: usize = <span class="number">10000</span>;
-<span class="doccomment">/// Maximum number of peer in a announcement list of peer
-</span><span class="kw">pub const </span>MAX_PEERS_IN_ANNOUNCEMENT_LIST: u64 = <span class="number">100</span>;
-<span class="doccomment">/// Maximum number of listeners for a peer
-</span><span class="kw">pub const </span>MAX_LISTENERS_PER_PEER: u64 = <span class="number">100</span>;
 <span class="comment">//
 // Constants used in versioning
 //

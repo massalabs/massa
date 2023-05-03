@@ -1053,6 +1053,9 @@
 <a href="#1053" id="1053">1053</a>
 <a href="#1054" id="1054">1054</a>
 <a href="#1055" id="1055">1055</a>
+<a href="#1056" id="1056">1056</a>
+<a href="#1057" id="1057">1057</a>
+<a href="#1058" id="1058">1058</a>
 </pre><pre class="rust"><code><span class="doccomment">//! Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 </span><span class="attr">#![allow(clippy::too_many_arguments)]
 
@@ -1088,7 +1091,7 @@
     timeslots,
 };
 <span class="kw">use </span>massa_pos_exports::SelectorController;
-<span class="kw">use </span>massa_protocol_exports::{PeerConnectionType, ProtocolConfig, ProtocolController};
+<span class="kw">use </span>massa_protocol_exports::ProtocolCommandSender;
 <span class="kw">use </span>massa_serialization::{DeserializeError, Deserializer};
 
 <span class="kw">use </span>itertools::{izip, Itertools};
@@ -1109,8 +1112,9 @@
     timeslots::{get_latest_block_slot_at_timestamp, time_range_to_slot_range},
     version::Version,
 };
+<span class="kw">use </span>massa_network_exports::{NetworkCommandSender, NetworkConfig};
 <span class="kw">use </span>massa_pool_exports::PoolController;
-<span class="kw">use </span>massa_signature::{KeyPair, PublicKey, PUBLIC_KEY_SIZE_BYTES};
+<span class="kw">use </span>massa_signature::KeyPair;
 <span class="kw">use </span>massa_storage::Storage;
 <span class="kw">use </span>massa_time::MassaTime;
 <span class="kw">use </span>std::collections::BTreeMap;
@@ -1124,9 +1128,10 @@
         api_settings: APIConfig,
         selector_controller: Box&lt;<span class="kw">dyn </span>SelectorController&gt;,
         pool_command_sender: Box&lt;<span class="kw">dyn </span>PoolController&gt;,
-        protocol_controller: Box&lt;<span class="kw">dyn </span>ProtocolController&gt;,
-        protocol_config: ProtocolConfig,
+        protocol_command_sender: ProtocolCommandSender,
+        network_settings: NetworkConfig,
         version: Version,
+        network_command_sender: NetworkCommandSender,
         node_id: NodeId,
         storage: Storage,
     ) -&gt; <span class="self">Self </span>{
@@ -1134,12 +1139,13 @@
             consensus_controller,
             api_settings,
             pool_command_sender,
+            network_settings,
             version,
-            protocol_controller,
+            network_command_sender,
+            protocol_command_sender,
             node_id,
             execution_controller,
             selector_controller,
-            protocol_config,
             storage,
         })
     }
@@ -1364,10 +1370,10 @@
     <span class="kw">async fn </span>get_status(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; RpcResult&lt;NodeStatus&gt; {
         <span class="kw">let </span>execution_controller = <span class="self">self</span>.<span class="number">0</span>.execution_controller.clone();
         <span class="kw">let </span>consensus_controller = <span class="self">self</span>.<span class="number">0</span>.consensus_controller.clone();
+        <span class="kw">let </span>network_command_sender = <span class="self">self</span>.<span class="number">0</span>.network_command_sender.clone();
+        <span class="kw">let </span>network_config = <span class="self">self</span>.<span class="number">0</span>.network_settings.clone();
         <span class="kw">let </span>version = <span class="self">self</span>.<span class="number">0</span>.version;
         <span class="kw">let </span>api_settings = <span class="self">self</span>.<span class="number">0</span>.api_settings.clone();
-        <span class="kw">let </span>protocol_controller = <span class="self">self</span>.<span class="number">0</span>.protocol_controller.clone();
-        <span class="kw">let </span>protocol_config = <span class="self">self</span>.<span class="number">0</span>.protocol_config.clone();
         <span class="kw">let </span>pool_command_sender = <span class="self">self</span>.<span class="number">0</span>.pool_command_sender.clone();
         <span class="kw">let </span>node_id = <span class="self">self</span>.<span class="number">0</span>.node_id;
         <span class="kw">let </span>config = CompactConfig::default();
@@ -1394,9 +1400,19 @@
             <span class="prelude-val">Err</span>(e) =&gt; <span class="kw">return </span><span class="prelude-val">Err</span>(ApiError::ConsensusError(e).into()),
         };
 
-        <span class="kw">let </span>(network_stats, peers) = <span class="kw">match </span>protocol_controller.get_stats() {
-            <span class="prelude-val">Ok</span>((stats, peers)) =&gt; (stats, peers),
-            <span class="prelude-val">Err</span>(e) =&gt; <span class="kw">return </span><span class="prelude-val">Err</span>(ApiError::ProtocolError(e).into()),
+        <span class="kw">let </span>(network_stats_result, peers_result) = <span class="macro">tokio::join!</span>(
+            network_command_sender.get_network_stats(),
+            network_command_sender.get_peers()
+        );
+
+        <span class="kw">let </span>network_stats = <span class="kw">match </span>network_stats_result {
+            <span class="prelude-val">Ok</span>(network_stats) =&gt; network_stats,
+            <span class="prelude-val">Err</span>(e) =&gt; <span class="kw">return </span><span class="prelude-val">Err</span>(ApiError::NetworkError(e).into()),
+        };
+
+        <span class="kw">let </span>peers = <span class="kw">match </span>peers_result {
+            <span class="prelude-val">Ok</span>(peers) =&gt; peers,
+            <span class="prelude-val">Err</span>(e) =&gt; <span class="kw">return </span><span class="prelude-val">Err</span>(ApiError::NetworkError(e).into()),
         };
 
         <span class="kw">let </span>pool_stats = (
@@ -1414,22 +1430,12 @@
         };
 
         <span class="kw">let </span>connected_nodes = peers
+            .peers
             .iter()
-            .map(|(id, peer)| {
-                <span class="kw">let </span>is_outgoing = <span class="kw">match </span>peer.<span class="number">1 </span>{
-                    PeerConnectionType::IN =&gt; <span class="bool-val">false</span>,
-                    PeerConnectionType::OUT =&gt; <span class="bool-val">true</span>,
-                };
-                <span class="comment">//TODO: Use the peerid correctly
-                </span>(
-                    NodeId::new(
-                        PublicKey::from_bytes(
-                            id.to_bytes()[..PUBLIC_KEY_SIZE_BYTES].try_into().unwrap(),
-                        )
-                        .unwrap(),
-                    ),
-                    (peer.<span class="number">0</span>.ip(), is_outgoing),
-                )
+            .flat_map(|(ip, peer)| {
+                peer.active_nodes
+                    .iter()
+                    .map(<span class="kw">move </span>|(id, is_outgoing)| (<span class="kw-2">*</span>id, (<span class="kw-2">*</span>ip, <span class="kw-2">*</span>is_outgoing)))
             })
             .collect::&lt;BTreeMap&lt;<span class="kw">_</span>, <span class="kw">_</span>&gt;&gt;();
 
@@ -1466,7 +1472,7 @@
 
         <span class="prelude-val">Ok</span>(NodeStatus {
             node_id,
-            node_ip: protocol_config.routable_ip,
+            node_ip: network_config.routable_ip,
             version,
             current_time: now,
             current_cycle_time,
@@ -1966,7 +1972,7 @@
 
     <span class="kw">async fn </span>send_operations(<span class="kw-2">&amp;</span><span class="self">self</span>, ops: Vec&lt;OperationInput&gt;) -&gt; RpcResult&lt;Vec&lt;OperationId&gt;&gt; {
         <span class="kw">let </span><span class="kw-2">mut </span>cmd_sender = <span class="self">self</span>.<span class="number">0</span>.pool_command_sender.clone();
-        <span class="kw">let </span>protocol_sender = <span class="self">self</span>.<span class="number">0</span>.protocol_controller.clone();
+        <span class="kw">let </span><span class="kw-2">mut </span>protocol_sender = <span class="self">self</span>.<span class="number">0</span>.protocol_command_sender.clone();
         <span class="kw">let </span>api_cfg = <span class="self">self</span>.<span class="number">0</span>.api_settings.clone();
         <span class="kw">let </span><span class="kw-2">mut </span>to_send = <span class="self">self</span>.<span class="number">0</span>.storage.clone_without_refs();
 

@@ -50,10 +50,20 @@
 <a href="#50" id="50">50</a>
 <a href="#51" id="51">51</a>
 <a href="#52" id="52">52</a>
+<a href="#53" id="53">53</a>
+<a href="#54" id="54">54</a>
+<a href="#55" id="55">55</a>
+<a href="#56" id="56">56</a>
+<a href="#57" id="57">57</a>
+<a href="#58" id="58">58</a>
+<a href="#59" id="59">59</a>
+<a href="#60" id="60">60</a>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="kw">use </span>displaydoc::Display;
 <span class="kw">use </span>massa_models::error::ModelsError;
+<span class="kw">use </span>massa_network_exports::ConnectionId;
+<span class="kw">use </span>massa_network_exports::NetworkError;
 <span class="kw">use </span>std::net::IpAddr;
 <span class="kw">use </span>thiserror::Error;
 
@@ -67,14 +77,22 @@
     </span>GeneralProtocolError(String),
     <span class="doccomment">/// An error occurred during channel communication: {0}
     </span>ChannelError(String),
+    <span class="doccomment">/// A tokio task has crashed err: {0}
+    </span>TokioTaskJoinError(<span class="attr">#[from] </span>tokio::task::JoinError),
+    <span class="doccomment">/// Error receiving one shot response: {0}
+    </span>TokioRecvError(<span class="attr">#[from] </span>tokio::sync::oneshot::error::RecvError),
     <span class="doccomment">/// Error during network connection: `{0:?}`
     </span>PeerConnectionError(NetworkConnectionErrorType),
     <span class="doccomment">/// The ip: `{0}` address is not valid
     </span>InvalidIpError(IpAddr),
+    <span class="doccomment">/// Active connection missing: `{0}`
+    </span>ActiveConnectionMissing(ConnectionId),
     <span class="doccomment">/// IO error: {0}
     </span>IOError(<span class="attr">#[from] </span>std::io::Error),
     <span class="doccomment">/// Serde error: {0}
     </span>SerdeError(<span class="attr">#[from] </span>serde_json::Error),
+    <span class="doccomment">/// `massa_hash` error: {0}
+    </span>MassaHashError(<span class="attr">#[from] </span>massa_hash::MassaHashError),
     <span class="doccomment">/// The network controller should not drop a node command sender before shutting down the node.
     </span>UnexpectedNodeCommandChannelClosure,
     <span class="doccomment">/// The writer of a node should not drop its event sender before sending a `clean_exit` message.
@@ -85,14 +103,12 @@
     </span>MissingPeersError,
     <span class="doccomment">/// Models error: {0}
     </span>ModelsError(<span class="attr">#[from] </span>ModelsError),
-    <span class="doccomment">/// Send error: {0}
-    </span>SendError(String),
+    <span class="doccomment">/// Network error: {0}
+    </span>NetworkError(<span class="attr">#[from] </span>NetworkError),
     <span class="doccomment">/// Container inconsistency error: {0}
     </span>ContainerInconsistencyError(String),
     <span class="doccomment">/// Invalid operation error: {0}
     </span>InvalidOperationError(String),
-    <span class="doccomment">/// Listener error: {0}
-    </span>ListenerError(String),
 }
 
 <span class="attr">#[derive(Debug)]

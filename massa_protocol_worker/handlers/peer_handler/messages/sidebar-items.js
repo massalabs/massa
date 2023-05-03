@@ -1,1 +1,0 @@
-window.SIDEBAR_ITEMS = {"constant":["ListPeers__num_enum_0__","NewPeerConnected__num_enum_0__"],"enum":["MessageTypeId","PeerManagementMessage"],"fn":["listener_deserializer"],"struct":["PeerManagementMessageDeserializer","PeerManagementMessageDeserializerArgs","PeerManagementMessageSerializer"]};
