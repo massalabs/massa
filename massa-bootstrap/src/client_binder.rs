@@ -6,6 +6,7 @@ use crate::messages::{
     BootstrapServerMessageDeserializer,
 };
 use crate::settings::BootstrapClientConfig;
+use crate::BindingReadExact;
 use massa_hash::Hash;
 use massa_models::serialization::{DeserializeMinBEInt, SerializeMinBEInt};
 use massa_models::version::{Version, VersionSerializer};
@@ -217,49 +218,16 @@ impl BootstrapClientBinder {
         }
         Ok(())
     }
+}
 
-    /// Similar to std::net::TcpStream::read_exact, but the timeout is global, not per-syscall read
-    fn read_exact_timeout(
-        &mut self,
-        buf: &mut [u8],
-        deadline: Option<Instant>,
-    ) -> Result<(), (std::io::Error, usize)> {
-        let mut count = 0;
-        self.duplex
-            .set_read_timeout(None)
-            .map_err(|err| (err, count))?;
-        while count < buf.len() {
-            // update the timeout
-            if let Some(deadline) = deadline {
-                let dur = deadline.saturating_duration_since(Instant::now());
-                if dur.is_zero() {
-                    return Err((
-                        std::io::Error::new(ErrorKind::TimedOut, "deadline has elapsed"),
-                        count,
-                    ));
-                }
-                self.duplex
-                    .set_read_timeout(Some(dur))
-                    .map_err(|err| (err, count))?;
-            }
+impl crate::BindingReadExact for BootstrapClientBinder {
+    fn set_read_timeout(&mut self, deadline: Option<Duration>) -> Result<(), std::io::Error> {
+        self.duplex.set_read_timeout(deadline)
+    }
+}
 
-            // do the read
-            match self.duplex.read(&mut buf[count..]) {
-                Ok(0) => break,
-                Ok(n) => {
-                    count += n;
-                }
-                Err(ref e) if e.kind() == std::io::ErrorKind::Interrupted => {}
-                Err(e) => return Err((e, count)),
-            }
-        }
-        if count != buf.len() {
-            Err((
-                std::io::Error::new(ErrorKind::UnexpectedEof, "failed to fill whole buffer"),
-                count,
-            ))
-        } else {
-            Ok(())
-        }
+impl std::io::Read for BootstrapClientBinder {
+    fn read(&mut self, buf: &mut [u8]) -> Result<usize, std::io::Error> {
+        self.duplex.read(buf)
     }
 }
