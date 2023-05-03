@@ -248,24 +248,24 @@ impl Tester {
                                     // Don't launch test if peer is already connected to us as a normal connection.
                                     // Maybe we need to have a way to still update his last announce timestamp because he is a great peer
                                     if active_connections.check_addr_accepted(addr)  {
-                                    //Don't test our local addresses
-                                    for (local_addr, _transport) in protocol_config.listeners.iter() {
-                                        if addr == local_addr {
-                                            return;
+                                        //Don't test our local addresses
+                                        for (local_addr, _transport) in protocol_config.listeners.iter() {
+                                            if addr == local_addr {
+                                                return;
+                                            }
                                         }
-                                    }
-                                    //Don't test our proper ip
-                                    if let Some(ip) = protocol_config.routable_ip {
-                                        if ip.to_canonical() == addr.ip().to_canonical() {
-                                            return;
+                                        //Don't test our proper ip
+                                        if let Some(ip) = protocol_config.routable_ip {
+                                            if ip.to_canonical() == addr.ip().to_canonical() {
+                                                return;
+                                            }
                                         }
-                                    }
-                                    info!("testing peer {} listener addr: {}", &listener.0, &addr);
-                                    let _res =  network_manager.try_connect(
-                                        *addr,
-                                        Duration::from_millis(500),
-                                        &OutConnectionConfig::Tcp(Box::new(TcpOutConnectionConfig::new(protocol_config.read_write_limit_bytes_per_second / 10, Duration::from_millis(100)))),
-                                    );
+                                        info!("testing peer {} listener addr: {}", &listener.0, &addr);
+                                        let _res =  network_manager.try_connect(
+                                            *addr,
+                                            Duration::from_millis(500),
+                                            &OutConnectionConfig::Tcp(Box::new(TcpOutConnectionConfig::new(protocol_config.read_write_limit_bytes_per_second / 10, Duration::from_millis(100)))),
+                                        );
                                     }
                                 });
                             },
@@ -291,6 +291,21 @@ impl Tester {
 
                         // we try to connect to all peer listener (For now we have only one listener)
                         peer_info.last_announce.listeners.iter().for_each(|listener| {
+                            if !listener.0.ip().is_global() || !active_connections.check_addr_accepted(listener.0) {
+                                return;
+                            }
+                            //Don't test our local addresses
+                            for (local_addr, _transport) in protocol_config.listeners.iter() {
+                                if listener.0 == local_addr {
+                                    return;
+                                }
+                            }
+                            //Don't test our proper ip
+                            if let Some(ip) = protocol_config.routable_ip {
+                                if ip.to_canonical() == listener.0.ip().to_canonical() {
+                                    return;
+                                }
+                            }
                             info!("testing peer {} listener addr: {}", peer_id, &listener.0);
                             let _res =  network_manager.try_connect(
                                 *listener.0,

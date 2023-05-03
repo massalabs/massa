@@ -200,8 +200,6 @@ pub(crate) fn start_connectivity_thread(
                             }
                         }
                     default(Duration::from_millis(1000)) => {
-                        println!("AURELIEN: Peerdb: {:?}", peer_db.read().peers);
-                        println!("AURELIEN: Active connections: {:?}", network_controller.get_active_connections().get_peers_connected());
                         if config.debug {
                             println!("nb peers connected: {}", network_controller.get_active_connections().get_peer_ids_connected().len());
                         }
@@ -231,7 +229,7 @@ pub(crate) fn start_connectivity_thread(
                                     continue;
                                 }
                                 {
-                                    if !network_controller.get_active_connections().check_addr_accepted(addr) {
+                                    if !addr.ip().is_global() || !network_controller.get_active_connections().check_addr_accepted(addr) {
                                         continue;
                                     }
                                 }

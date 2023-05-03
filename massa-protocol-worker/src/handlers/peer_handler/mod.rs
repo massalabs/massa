@@ -1,3 +1,4 @@
+use std::cmp::Reverse;
 use std::{collections::HashMap, net::SocketAddr, thread::JoinHandle, time::Duration};
 
 use crossbeam::channel::tick;
@@ -428,6 +429,9 @@ impl InitConnectionHandler for MassaHandshake {
             match &res {
                 Ok((peer_id, announcement)) => {
                     info!("Peer connected: {:?}", peer_id);
+                    peer_db_write
+                        .index_by_newest
+                        .insert(Reverse(announcement.timestamp), peer_id.clone());
                     peer_db_write
                         .peers
                         .entry(peer_id.clone())
