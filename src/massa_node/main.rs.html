@@ -1164,13 +1164,6 @@
 <a href="#1164" id="1164">1164</a>
 <a href="#1165" id="1165">1165</a>
 <a href="#1166" id="1166">1166</a>
-<a href="#1167" id="1167">1167</a>
-<a href="#1168" id="1168">1168</a>
-<a href="#1169" id="1169">1169</a>
-<a href="#1170" id="1170">1170</a>
-<a href="#1171" id="1171">1171</a>
-<a href="#1172" id="1172">1172</a>
-<a href="#1173" id="1173">1173</a>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="attr">#![doc = <span class="macro">include_str!</span>(<span class="string">&quot;../../README.md&quot;</span>)]
@@ -1749,13 +1742,10 @@
         channel_size: CHANNEL_SIZE,
         bootstrap_part_size: CONSENSUS_BOOTSTRAP_PART_SIZE,
         broadcast_enabled: SETTINGS.api.enable_broadcast,
-        broadcast_block_cliques_channel_capacity: SETTINGS
-            .consensus
-            .broadcast_block_cliques_channel_capacity,
-        broadcast_blocks_channel_capacity: SETTINGS.consensus.broadcast_blocks_channel_capacity,
         broadcast_blocks_headers_channel_capacity: SETTINGS
             .consensus
             .broadcast_blocks_headers_channel_capacity,
+        broadcast_blocks_channel_capacity: SETTINGS.consensus.broadcast_blocks_channel_capacity,
         broadcast_filled_blocks_channel_capacity: SETTINGS
             .consensus
             .broadcast_filled_blocks_channel_capacity,
@@ -1768,17 +1758,13 @@
         execution_controller: execution_controller.clone(),
         selector_controller: selector_controller.clone(),
         pool_controller: pool_controller.clone(),
-        protocol_controller: protocol_controller.clone(),
         controller_event_tx: consensus_event_sender,
-        block_clique_sender: broadcast::channel(
-            consensus_config.broadcast_block_cliques_channel_capacity,
-        )
-        .<span class="number">0</span>,
-        block_sender: broadcast::channel(consensus_config.broadcast_blocks_channel_capacity).<span class="number">0</span>,
+        protocol_controller: protocol_controller.clone(),
         block_header_sender: broadcast::channel(
             consensus_config.broadcast_blocks_headers_channel_capacity,
         )
         .<span class="number">0</span>,
+        block_sender: broadcast::channel(consensus_config.broadcast_blocks_channel_capacity).<span class="number">0</span>,
         filled_block_sender: broadcast::channel(
             consensus_config.broadcast_filled_blocks_channel_capacity,
         )

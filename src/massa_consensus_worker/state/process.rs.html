@@ -705,19 +705,6 @@
 <a href="#705" id="705">705</a>
 <a href="#706" id="706">706</a>
 <a href="#707" id="707">707</a>
-<a href="#708" id="708">708</a>
-<a href="#709" id="709">709</a>
-<a href="#710" id="710">710</a>
-<a href="#711" id="711">711</a>
-<a href="#712" id="712">712</a>
-<a href="#713" id="713">713</a>
-<a href="#714" id="714">714</a>
-<a href="#715" id="715">715</a>
-<a href="#716" id="716">716</a>
-<a href="#717" id="717">717</a>
-<a href="#718" id="718">718</a>
-<a href="#719" id="719">719</a>
-<a href="#720" id="720">720</a>
 </pre><pre class="rust"><code><span class="kw">use </span>std::{
     collections::{BTreeSet, HashMap, VecDeque},
     mem,
@@ -740,7 +727,7 @@
 <span class="kw">use </span>massa_signature::PublicKey;
 <span class="kw">use </span>massa_storage::Storage;
 <span class="kw">use </span>massa_time::MassaTime;
-<span class="kw">use </span>tracing::log::{debug, info, trace};
+<span class="kw">use </span>tracing::log::{debug, info};
 
 <span class="kw">use </span><span class="kw">super</span>::ConsensusState;
 
@@ -1289,20 +1276,7 @@
             .update_blockclique_status(
                 finalized_blocks,
                 <span class="kw">if </span>blockclique_changed {
-                    <span class="kw">let </span>blockclique: HashMap&lt;Slot, BlockId&gt; =
-                        new_blockclique.into_iter().map(|(k, v)| (v, k)).collect();
-                    <span class="comment">// Broadcast blockclique changes to active channel subscribers
-                    </span><span class="kw">if </span><span class="self">self</span>.config.broadcast_enabled {
-                        <span class="kw">if let </span><span class="prelude-val">Err</span>(err) =
-                            <span class="self">self</span>.channels.block_clique_sender.send(blockclique.clone())
-                        {
-                            <span class="macro">trace!</span>(
-                                <span class="string">&quot;error, failed to broadcast blockclique changes due to: {}&quot;</span>,
-                                err
-                            );
-                        }
-                    }
-                    <span class="prelude-val">Some</span>(blockclique)
+                    <span class="prelude-val">Some</span>(new_blockclique.into_iter().map(|(k, v)| (v, k)).collect())
                 } <span class="kw">else </span>{
                     <span class="prelude-val">None
                 </span>},

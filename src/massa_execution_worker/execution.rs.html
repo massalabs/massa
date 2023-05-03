@@ -1701,6 +1701,7 @@
 <a href="#1701" id="1701">1701</a>
 <a href="#1702" id="1702">1702</a>
 <a href="#1703" id="1703">1703</a>
+<a href="#1704" id="1704">1704</a>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="doccomment">//! This module deals with executing final and active slots, as well as read-only requests.
@@ -2543,10 +2544,11 @@
             <span class="self">self</span>.config.gas_costs.clone(),
         );
         <span class="kw">match </span>response {
-            <span class="prelude-val">Ok</span>(Response { init_cost, .. }) | <span class="prelude-val">Err</span>(VMError::ExecutionError { init_cost, .. }) =&gt; {
+            <span class="prelude-val">Ok</span>(Response { init_gas_cost, .. })
+            | <span class="prelude-val">Err</span>(VMError::ExecutionError { init_gas_cost, .. }) =&gt; {
                 <span class="self">self</span>.module_cache
                     .write()
-                    .set_init_cost(<span class="kw-2">&amp;</span>bytecode, init_cost);
+                    .set_init_cost(<span class="kw-2">&amp;</span>bytecode, init_gas_cost);
             }
             <span class="kw">_ </span>=&gt; (),
         }
@@ -2641,17 +2643,17 @@
             <span class="self">self</span>.config.gas_costs.clone(),
         );
         <span class="kw">match </span>response {
-            <span class="prelude-val">Ok</span>(Response { init_cost, .. }) =&gt; {
+            <span class="prelude-val">Ok</span>(Response { init_gas_cost, .. }) =&gt; {
                 <span class="self">self</span>.module_cache
                     .write()
-                    .set_init_cost(<span class="kw-2">&amp;</span>bytecode, init_cost);
+                    .set_init_cost(<span class="kw-2">&amp;</span>bytecode, init_gas_cost);
                 <span class="prelude-val">Ok</span>(())
             }
             <span class="prelude-val">Err</span>(error) =&gt; {
-                <span class="kw">if let </span>VMError::ExecutionError { init_cost, .. } = error {
+                <span class="kw">if let </span>VMError::ExecutionError { init_gas_cost, .. } = error {
                     <span class="self">self</span>.module_cache
                         .write()
-                        .set_init_cost(<span class="kw-2">&amp;</span>bytecode, init_cost);
+                        .set_init_cost(<span class="kw-2">&amp;</span>bytecode, init_gas_cost);
                 }
                 <span class="comment">// execution failed: reset context to snapshot and reimburse sender
                 </span><span class="kw">let </span>err = ExecutionError::VMError {
@@ -3111,11 +3113,11 @@
                     <span class="self">self</span>.config.gas_costs.clone(),
                 );
                 <span class="kw">match </span>response {
-                    <span class="prelude-val">Ok</span>(Response { init_cost, .. })
-                    | <span class="prelude-val">Err</span>(VMError::ExecutionError { init_cost, .. }) =&gt; {
+                    <span class="prelude-val">Ok</span>(Response { init_gas_cost, .. })
+                    | <span class="prelude-val">Err</span>(VMError::ExecutionError { init_gas_cost, .. }) =&gt; {
                         <span class="self">self</span>.module_cache
                             .write()
-                            .set_init_cost(<span class="kw-2">&amp;</span>bytecode, init_cost);
+                            .set_init_cost(<span class="kw-2">&amp;</span>bytecode, init_gas_cost);
                     }
                     <span class="kw">_ </span>=&gt; (),
                 }
