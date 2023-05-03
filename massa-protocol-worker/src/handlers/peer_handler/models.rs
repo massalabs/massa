@@ -21,7 +21,7 @@ pub type InitialPeers = HashMap<PeerId, HashMap<SocketAddr, TransportType>>;
 #[derive(Default)]
 pub struct PeerDB {
     pub peers: HashMap<PeerId, PeerInfo>,
-    /// last is the oldest value
+    /// last is the oldest value (only routable peers)
     pub index_by_newest: BTreeMap<Reverse<u128>, PeerId>,
 }
 
@@ -140,7 +140,7 @@ impl PeerDB {
                     .listeners
                     .clone()
                     .into_iter()
-                    .filter(|(addr, _)| addr.ip().is_global())
+                    .filter(|(addr, _)| addr.ip().to_canonical().is_global())
                     .collect();
                 if listeners.is_empty() {
                     continue;

@@ -434,12 +434,15 @@ impl InitConnectionHandler for MassaHandshake {
             match &res {
                 Ok((peer_id, announcement)) => {
                     info!("Peer connected: {:?}", peer_id);
-                    peer_db_write
-                        .index_by_newest
-                        .retain(|_, peer_id_stored| peer_id_stored != peer_id);
-                    peer_db_write
-                        .index_by_newest
-                        .insert(Reverse(announcement.timestamp), peer_id.clone());
+                    //TODO: Hacky organize better when multiple ip/listeners
+                    if !announcement.listeners.is_empty() {
+                        peer_db_write
+                            .index_by_newest
+                            .retain(|_, peer_id_stored| peer_id_stored != peer_id);
+                        peer_db_write
+                            .index_by_newest
+                            .insert(Reverse(announcement.timestamp), peer_id.clone());
+                    }
                     peer_db_write
                         .peers
                         .entry(peer_id.clone())
