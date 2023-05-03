@@ -1,14 +1,19 @@
 // Copyright (c) 2022 MASSA LABS <info@massa.net>
 #[cfg(test)]
 mod tests {
+    use crate::active_history::ActiveHistory;
+    use crate::speculative_async_pool::SpeculativeAsyncPool;
     use crate::start_execution_worker;
     use crate::tests::mock::{
         create_block, get_initials_vesting, get_random_address_full, get_sample_state,
     };
+    use massa_async_pool::AsyncMessage;
     use massa_execution_exports::{
         ExecutionConfig, ExecutionController, ExecutionError, ReadOnlyExecutionRequest,
         ReadOnlyExecutionTarget,
     };
+    use massa_hash::Hash;
+    use massa_models::address::UserAddress;
     use massa_models::config::{
         LEDGER_ENTRY_BASE_SIZE, LEDGER_ENTRY_DATASTORE_BASE_SIZE, MIP_STORE_STATS_BLOCK_CONSIDERED,
         MIP_STORE_STATS_COUNTERS_MAX,
@@ -29,7 +34,9 @@ mod tests {
     use massa_time::MassaTime;
     use massa_versioning_worker::versioning::{MipStatsConfig, MipStore};
     use num::rational::Ratio;
+    use parking_lot::RwLock;
     use serial_test::serial;
+    use std::sync::Arc;
     use std::{
         cmp::Reverse, collections::BTreeMap, collections::HashMap, str::FromStr, time::Duration,
     };
@@ -2732,5 +2739,36 @@ mod tests {
 
         // stop the execution controller
         manager.stop();
+    }
+
+    #[test]
+    fn test_take_batch() {
+        let final_state = get_sample_state(0).unwrap().0;
+        let active_history = Arc::new(RwLock::new(ActiveHistory::default()));
+
+        let mut speculative_pool = SpeculativeAsyncPool::new(final_state, active_history);
+
+        let address = Address::User(UserAddress(Hash::compute_from(b"abc")));
+        for i in 1..10 {
+            let message = AsyncMessage::new_with_hash(
+                Slot::new(0, 0),
+                0,
+                address,
+                address,
+                "function".to_string(),
+                i,
+                Amount::from_str("0.1").unwrap(),
+                Amount::from_str("0.3").unwrap(),
+                Slot::new(1, 0),
+                Slot::new(3, 0),
+                Vec::new(),
+                None,
+                None,
+            );
+            speculative_pool.push_new_message(message)
+        }
+        assert_eq!(speculative_pool.get_message_infos().len(), 9);
+        speculative_pool.take_batch_to_execute(Slot::new(2, 0), 19);
+        assert_eq!(speculative_pool.get_message_infos().len(), 4);
     }
 }

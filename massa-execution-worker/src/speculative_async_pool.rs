@@ -286,6 +286,11 @@ impl SpeculativeAsyncPool {
 
         msgs
     }
+
+    #[cfg(any(test, feature = "test"))]
+    pub fn get_message_infos(&self) -> BTreeMap<AsyncMessageId, AsyncMessageInfo> {
+        self.message_infos.clone()
+    }
 }
 
 /// Check in the ledger changes if a message trigger has been triggered
