@@ -762,10 +762,6 @@
 <a href="#762" id="762">762</a>
 <a href="#763" id="763">763</a>
 <a href="#764" id="764">764</a>
-<a href="#765" id="765">765</a>
-<a href="#766" id="766">766</a>
-<a href="#767" id="767">767</a>
-<a href="#768" id="768">768</a>
 </pre><pre class="rust"><code><span class="doccomment">//! start the bootstrapping system using [`start_bootstrap_server`]
 //! Once your node will be ready, you may want other to bootstrap from you.
 //!
@@ -823,18 +819,14 @@
 <span class="kw">use </span>white_black_list::<span class="kw-2">*</span>;
 
 <span class="kw">use crate</span>::{
+    bindings::BootstrapServerBinder,
     error::BootstrapError,
+    establisher::BSEventPoller,
     listener::{BootstrapListenerStopHandle, PollEvent},
     messages::{BootstrapClientMessage, BootstrapServerMessage},
-    server_binder::BootstrapServerBinder,
     BootstrapConfig,
 };
 
-<span class="doccomment">/// Specifies a common interface that can be used by standard, or mockers
-</span><span class="attr">#[cfg_attr(test, mockall::automock)]
-</span><span class="kw">pub trait </span>BSEventPoller {
-    <span class="kw">fn </span>poll(<span class="kw-2">&amp;mut </span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span>&lt;PollEvent, BootstrapError&gt;;
-}
 <span class="doccomment">/// Abstraction layer over data produced by the listener, and transported
 /// over to the worker via a channel
 

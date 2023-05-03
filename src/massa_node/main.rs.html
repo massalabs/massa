@@ -1180,8 +1180,8 @@
 <span class="kw">use </span>massa_api_exports::config::APIConfig;
 <span class="kw">use </span>massa_async_pool::AsyncPoolConfig;
 <span class="kw">use </span>massa_bootstrap::{
-    client::DefaultConnector, get_state, start_bootstrap_server, BootstrapConfig, BootstrapManager,
-    BootstrapTcpListener,
+    get_state, start_bootstrap_server, BootstrapConfig, BootstrapManager, BootstrapTcpListener,
+    DefaultConnector,
 };
 <span class="kw">use </span>massa_consensus_exports::events::ConsensusEvent;
 <span class="kw">use </span>massa_consensus_exports::{ConsensusChannels, ConsensusConfig, ConsensusManager};
@@ -1811,7 +1811,7 @@
     <span class="kw">let </span>factory_manager = start_factory(factory_config, node_wallet.clone(), factory_channels);
 
     <span class="kw">let </span>bootstrap_manager = bootstrap_config.listen_addr.map(|addr| {
-        <span class="kw">let </span>(waker, listener) = BootstrapTcpListener::new(<span class="kw-2">&amp;</span>addr).unwrap_or_else(|<span class="kw">_</span>| {
+        <span class="kw">let </span>(waker, listener) = BootstrapTcpListener::new(addr).unwrap_or_else(|<span class="kw">_</span>| {
             <span class="macro">panic!</span>(
                 <span class="string">&quot;{}&quot;</span>,
                 <span class="macro">format!</span>(<span class="string">&quot;Could not bind to address: {}&quot;</span>, addr).as_str()
