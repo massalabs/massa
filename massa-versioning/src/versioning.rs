@@ -19,6 +19,7 @@ use massa_time::MassaTime;
 #[derive(Clone, Debug, PartialEq, Eq, Hash, TryFromPrimitive, IntoPrimitive)]
 #[repr(u32)]
 pub enum MipComponent {
+    // Address and KeyPair versions are directly related
     Address,
     KeyPair,
     Block,
@@ -88,8 +89,8 @@ machine!(
         Defined,
         /// Past start, can only go to LockedIn after the threshold is above a given value
         Started { pub(crate) threshold: Amount },
-        /// Wait for some time before going to active (to let user the time to upgrade)
-        LockedIn { pub(crate) delay: MassaTime },
+        /// Locked but wait for some time before going to active (to let users the time to upgrade)
+        LockedIn { pub(crate) at: MassaTime },
         /// After LockedIn, deployment is considered successful (after activation delay)
         Active { pub(crate) at: MassaTime },
         /// Past the timeout, if LockedIn is not reach
@@ -208,10 +209,10 @@ impl Started {
 impl LockedIn {
     /// Update state from state LockedIn ...
     pub fn on_advance(self, input: Advance) -> ComponentState {
-        if input.now > self.delay.saturating_add(input.activation_delay) {
+        if input.now > self.at.saturating_add(input.activation_delay) {
             ComponentState::active(input.now)
         } else {
-            ComponentState::locked_in(self.delay)
+            ComponentState::locked_in(self.at)
         }
     }
 }

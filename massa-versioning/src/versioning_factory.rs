@@ -247,20 +247,7 @@ mod test {
             args: &Self::Arguments,
             strategy: Option<FactoryStrategy>,
         ) -> Result<Self::Output, Self::Error> {
-            let version = match strategy {
-                Some(FactoryStrategy::Exact(v)) => {
-                    // This is not optimal - can use get_versions and return a less descriptive error
-                    match self.get_all_component_versions().get(&v) {
-                        Some(s) if *s == ComponentStateTypeId::Active => Ok(v),
-                        Some(s) if *s != ComponentStateTypeId::Active => {
-                            Err(FactoryError::OnStateNotReady(v))
-                        }
-                        _ => Err(FactoryError::UnknownVersion(v)),
-                    }
-                }
-                Some(FactoryStrategy::At(ts)) => self.get_latest_component_version_at(ts),
-                None | Some(FactoryStrategy::Latest) => Ok(self.get_latest_component_version()),
-            };
+            let version = self.get_component_version_with_strategy(strategy);
 
             match version {
                 Ok(0) => Ok(TestAddress::V0(TestAddressV0 {
