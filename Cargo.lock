@@ -2497,6 +2497,7 @@ dependencies = [
  "massa_signature 0.1.0",
  "massa_time",
  "massa_versioning_worker",
+ "mio",
  "mockall",
  "nom",
  "num_enum",
