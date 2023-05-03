@@ -56,13 +56,17 @@ use white_black_list::*;
 
 use crate::{
     error::BootstrapError,
-    establisher::BSEventPoller,
     listener::{BootstrapListenerStopHandle, PollEvent},
     messages::{BootstrapClientMessage, BootstrapServerMessage},
     server_binder::BootstrapServerBinder,
     BootstrapConfig,
 };
 
+/// Specifies a common interface that can be used by standard, or mockers
+#[cfg_attr(test, mockall::automock)]
+pub trait BSEventPoller {
+    fn poll(&mut self) -> Result<PollEvent, BootstrapError>;
+}
 /// Abstraction layer over data produced by the listener, and transported
 /// over to the worker via a channel
 

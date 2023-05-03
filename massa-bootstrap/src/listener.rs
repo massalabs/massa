@@ -6,7 +6,7 @@ use mio::{Events, Interest, Poll, Token, Waker};
 use tracing::info;
 
 use crate::error::BootstrapError;
-use crate::establisher::BSEventPoller;
+use crate::server::BSEventPoller;
 
 const NEW_CONNECTION: Token = Token(0);
 const STOP_LISTENER: Token = Token(10);
