@@ -284,10 +284,10 @@ impl InitConnectionHandler for MassaHandshake {
             })?;
         endpoint.send(&bytes)?;
         let received = endpoint.receive()?;
-        if received.is_empty() {
+        if received.len() < 32 {
             return Err(PeerNetError::HandshakeError.error(
                 "Massa Handshake",
-                Some(String::from("Received empty message")),
+                Some(format!("Received too short message len:{}", received.len())),
             ));
         }
         let mut offset = 0;
@@ -368,7 +368,7 @@ impl InitConnectionHandler for MassaHandshake {
                     endpoint.send(&bytes)?;
                     let received = endpoint.receive()?;
                     let other_random_bytes: &[u8; 32] =
-                        received.as_slice()[..32].try_into().map_err(|_| {
+                        received.as_slice().try_into().map_err(|_| {
                             PeerNetError::HandshakeError.error(
                                 "Massa Handshake",
                                 Some("Failed to deserialize random bytes".to_string()),
@@ -431,7 +431,9 @@ impl InitConnectionHandler for MassaHandshake {
                     peer_db_write
                         .index_by_newest
                         .insert(Reverse(announcement.timestamp), peer_id.clone());
-                    peer_db_write.index_by_newest.retain(|_, peer_id_stored| peer_id_stored != peer_id);
+                    peer_db_write
+                        .index_by_newest
+                        .retain(|_, peer_id_stored| peer_id_stored != peer_id);
                     peer_db_write
                         .peers
                         .entry(peer_id.clone())
