@@ -124,12 +124,15 @@ impl InitConnectionHandler for TesterHandshake {
                     //TODO: Check ip we are connected match one of the announced ips
                     {
                         let mut peer_db_write = self.peer_db.write();
-                        peer_db_write
-                            .index_by_newest
-                            .retain(|_, peer_id_stored| peer_id_stored != &peer_id);
-                        peer_db_write
-                            .index_by_newest
-                            .insert(Reverse(announcement.timestamp), peer_id.clone());
+                        //TODO: Hacky change it when better management ip/listeners
+                        if !announcement.listeners.is_empty() {
+                            peer_db_write
+                                .index_by_newest
+                                .retain(|_, peer_id_stored| peer_id_stored != &peer_id);
+                            peer_db_write
+                                .index_by_newest
+                                .insert(Reverse(announcement.timestamp), peer_id.clone());
+                        }
                         peer_db_write
                             .peers
                             .entry(peer_id.clone())
@@ -294,7 +297,7 @@ impl Tester {
 
                         // we try to connect to all peer listener (For now we have only one listener)
                         peer_info.last_announce.listeners.iter().for_each(|listener| {
-                            if !listener.0.ip().is_global() || !active_connections.check_addr_accepted(listener.0) {
+                            if !listener.0.ip().to_canonical().is_global() || !active_connections.check_addr_accepted(listener.0) {
                                 return;
                             }
                             //Don't test our local addresses
