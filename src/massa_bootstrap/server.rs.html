@@ -819,11 +819,11 @@
 <span class="kw">use </span>white_black_list::<span class="kw-2">*</span>;
 
 <span class="kw">use crate</span>::{
+    bindings::BootstrapServerBinder,
     error::BootstrapError,
     establisher::BSEventPoller,
     listener::{BootstrapListenerStopHandle, PollEvent},
     messages::{BootstrapClientMessage, BootstrapServerMessage},
-    server_binder::BootstrapServerBinder,
     BootstrapConfig,
 };
 

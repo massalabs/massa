@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"mod":["new_block_cliques","new_blocks","new_blocks_headers","new_endorsements","new_filled_blocks","new_operations","new_slot_execution_outputs","send_blocks","send_endorsements","send_operations","tx_throughput"]};
+window.SIDEBAR_ITEMS = {"mod":["new_blocks","new_blocks_headers","new_endorsements","new_filled_blocks","new_operations","new_slot_execution_outputs","send_blocks","send_endorsements","send_operations","tx_throughput"]};
