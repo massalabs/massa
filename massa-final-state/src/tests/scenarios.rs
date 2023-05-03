@@ -104,7 +104,7 @@ fn create_final_state(temp_dir: &TempDir) -> Arc<RwLock<FinalState>> {
             final_state_local_config.clone(),
             Box::new(ledger),
             selector_controller,
-            true,
+            false,
         )
         .unwrap(),
     ));
