@@ -71,6 +71,7 @@ impl GlobalBootstrapState {
 }
 
 trait BindingReadExact: io::Read {
+    /// similar to std::io::Read::read_exact, but with a timeout that is function-global instead of per-individual-read
     fn read_exact_timeout(
         &mut self,
         buf: &mut [u8],
@@ -112,5 +113,6 @@ trait BindingReadExact: io::Read {
         }
     }
 
+    /// Internal helper
     fn set_read_timeout(&mut self, deadline: Option<Duration>) -> Result<(), std::io::Error>;
 }
