@@ -241,7 +241,7 @@ impl Tester {
                                     .duration_since(UNIX_EPOCH)
                                     .expect("Time went backward")
                                     .as_millis();
-                                    let elapsed_secs = (timestamp - peer_info.last_announce.timestamp) / 1000000;
+                                    let elapsed_secs = (timestamp - peer_info.last_announce.timestamp) / 1000;
                                     if elapsed_secs < 60 {
                                         continue;
                                     }
@@ -287,7 +287,7 @@ impl Tester {
                         .duration_since(UNIX_EPOCH)
                         .expect("Time went backward")
                         .as_millis();
-                        let elapsed_secs = (timestamp - peer_info.last_announce.timestamp) / 1000000;
+                        let elapsed_secs = (timestamp - peer_info.last_announce.timestamp) / 1000;
                         if elapsed_secs < 60 {
                             continue;
                         }
