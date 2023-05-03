@@ -7,8 +7,8 @@ use displaydoc::Display;
 use massa_consensus_exports::error::ConsensusError;
 use massa_final_state::FinalStateError;
 use massa_hash::MassaHashError;
-use massa_network_exports::NetworkError;
 use massa_pos_exports::PosError;
+use massa_protocol_exports::ProtocolError;
 use massa_serialization::SerializeError;
 use massa_time::TimeError;
 use thiserror::Error;
@@ -42,8 +42,8 @@ pub enum BootstrapError {
     MassaSignatureError(#[from] massa_signature::MassaSignatureError),
     /// time error: {0}
     TimeError(#[from] TimeError),
-    /// network error: {0}
-    NetworkError(#[from] NetworkError),
+    /// protocol error: {0}
+    ProtocolError(#[from] ProtocolError),
     /// final state error: {0}
     FinalStateError(#[from] FinalStateError),
     /// Proof-of-Stake error: {0}
