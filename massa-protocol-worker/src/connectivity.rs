@@ -162,11 +162,17 @@ pub(crate) fn start_connectivity_thread(
                         recv(protocol_channels.connectivity_thread.1) -> msg => {
                             match msg {
                                 Ok(ConnectivityCommand::Stop) => {
+                                    println!("Stopping protocol");
                                     drop(network_controller);
+                                    println!("Stoppeed network controller");
                                     operation_handler.stop();
+                                    println!("Stopped operation handler");
                                     endorsement_handler.stop();
+                                    println!("Stopped endorsement handler");
                                     block_handler.stop();
+                                    println!("Stopped block handler");
                                     peer_management_handler.stop();
+                                    println!("Stopped peer handler");
                                     break;
                                 },
                                 Ok(ConnectivityCommand::GetStats { responder }) => {
@@ -194,6 +200,8 @@ pub(crate) fn start_connectivity_thread(
                             }
                         }
                     default(Duration::from_millis(1000)) => {
+                        println!("AURELIEN: connections {:?}", network_controller.get_active_connections().get_peers_connected());
+                        println!("AURELIEN: peerdb {:?}", peer_db.read().peers);
                         if config.debug {
                             println!("nb peers connected: {}", network_controller.get_active_connections().get_peer_ids_connected().len());
                         }
@@ -224,7 +232,6 @@ pub(crate) fn start_connectivity_thread(
                                 }
                                 {
                                     if !network_controller.get_active_connections().check_addr_accepted(addr) {
-                                        println!("Address already connected");
                                         continue;
                                     }
                                 }
