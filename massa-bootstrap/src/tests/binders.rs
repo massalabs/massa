@@ -2,8 +2,9 @@ use crate::messages::{BootstrapClientMessage, BootstrapServerMessage};
 use crate::settings::{BootstrapClientConfig, BootstrapSrvBindCfg};
 use crate::BootstrapConfig;
 use crate::{
-    client_binder::BootstrapClientBinder, server_binder::BootstrapServerBinder,
-    tests::tools::get_bootstrap_config, BootstrapPeers,
+    bindings::{BootstrapClientBinder, BootstrapServerBinder},
+    tests::tools::get_bootstrap_config,
+    BootstrapPeers,
 };
 use massa_models::config::{
     BOOTSTRAP_RANDOMNESS_SIZE_BYTES, CONSENSUS_BOOTSTRAP_PART_SIZE, ENDORSEMENT_COUNT,
