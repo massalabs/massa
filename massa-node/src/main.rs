@@ -727,6 +727,7 @@ async fn launch(
             enabled: SETTINGS.grpc.enabled,
             accept_http1: SETTINGS.grpc.accept_http1,
             enable_cors: SETTINGS.grpc.enable_cors,
+            enable_health: SETTINGS.grpc.enable_health,
             enable_reflection: SETTINGS.grpc.enable_reflection,
             bind: SETTINGS.grpc.bind,
             accept_compressed: SETTINGS.grpc.accept_compressed.clone(),
