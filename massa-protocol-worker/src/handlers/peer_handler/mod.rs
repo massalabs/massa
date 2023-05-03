@@ -88,57 +88,41 @@ impl PeerManagementHandler {
                 });
             move || {
                 loop {
-                    println!("AURELIEN: LOOP");
                     select! {
                         recv(ticker) -> _ => {
-                            println!("AURELIEN: TICK");
                             let peers_to_send = peer_db.read().get_rand_peers_to_send(100);
-                            println!("AURELIEN: TICK RANDOM PEERS");
                             if peers_to_send.is_empty() {
                                 continue;
                             }
 
                             let msg = PeerManagementMessage::ListPeers(peers_to_send);
 
-                            println!("AURELIEN: TICK GET PEER IDS");
                             for peer_id in &active_connections.get_peer_ids_connected() {
-                                println!("AURELIEN: TICK SEND");
                                 if let Err(e) = active_connections
                                     .send_to_peer(peer_id, &message_serializer, msg.clone().into(), false) {
                                     error!("error sending ListPeers message to peer: {:?}", e);
                                }
                             }
-                            println!("AURELIEN: TICK END");
                         }
                         recv(receiver_cmd) -> cmd => {
-                            println!("AURELIEN: COMMAND");
                             // internal command
                            match cmd {
                              Ok(PeerManagementCmd::Ban(peer_ids)) => {
-                                println!("AURELIEN: BAN");
                                 // remove running handshake ?
                                 for peer_id in peer_ids {
-                                    println!("AURELIEN: BAN");
                                     active_connections.shutdown_connection(&peer_id);
 
                                     // update peer_db
-                                    println!("AURELIEN: BAN 2");
                                     peer_db.write().ban_peer(&peer_id);
                                 }
-                                println!("AURELIEN: BAN END");
                             },
                              Ok(PeerManagementCmd::Unban(peer_ids)) => {
-                                println!("AURELIEN: UNBAN");
                                 for peer_id in peer_ids {
-                                    println!("AURELIEN: UNBAN IN LOOP");
                                     peer_db.write().unban_peer(&peer_id);
                                 }
-                                println!("AURELIEN: UNBAN END");
                             },
                              Ok(PeerManagementCmd::GetBootstrapPeers { responder }) => {
-                                println!("AURELIEN: GET BOOTSTRAP PEERS");
                                 let mut peers = peer_db.read().get_rand_peers_to_send(100);
-                                println!("AURELIEN: GET BOOTSTRAP PEERS 2");
                                 // Add myself
                                 if let Some(routable_ip) = config.routable_ip {
                                     let listeners = config.listeners.iter().map(|(addr, ty)| {
@@ -146,11 +130,9 @@ impl PeerManagementHandler {
                                     }).collect();
                                     peers.push((peer_id.clone(), listeners));
                                 }
-                                println!("AURELIEN: GET BOOTSTRAP PEERS 3");
                                 if let Err(err) = responder.send(BootstrapPeers(peers)) {
                                     warn!("error sending bootstrap peers: {:?}", err);
                                 }
-                                println!("AURELIEN: GET BOOTSTRAP PEERS END");
                              },
                              Ok(PeerManagementCmd::Stop) => {
                                 return;
@@ -176,8 +158,6 @@ impl PeerManagementHandler {
                                     continue;
                                 }
                             }
-                            println!("AURELIEN: Check ban");
-
                             message_deserializer.set_message(message_id);
                             let (rest, message) = match message_deserializer
                                 .deserialize::<DeserializeError>(&message) {
@@ -187,21 +167,18 @@ impl PeerManagementHandler {
                                     continue;
                                 }
                             };
-                            println!("AURELIEN: deserialize");
                             if !rest.is_empty() {
                                 warn!("message not fully deserialized");
                                 continue;
                             }
                             match message {
                                 PeerManagementMessage::NewPeerConnected((peer_id, listeners)) => {
-                                    println!("AURELIEN: new peer");
                                     println!("New peer connected: {:?}", peer_id);
                                     if let Err(e) = test_sender.send((peer_id, listeners)) {
                                         error!("error when sending msg to peer tester : {}", e);
                                     }
                                 }
                                 PeerManagementMessage::ListPeers(peers) => {
-                                    println!("AURELIEN: peer list");
                                     for (peer_id, listeners) in peers.into_iter() {
                                         if let Err(e) = test_sender.send((peer_id, listeners)) {
                                             error!("error when sending msg to peer tester : {}", e);

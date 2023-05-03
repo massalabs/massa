@@ -127,14 +127,12 @@ impl PeerDB {
         let mut result = Vec::new();
 
         for key in keys {
-            println!("AURELIEN: Try to include {} in peer announcement", key);
             if result.len() >= nb_peers {
                 break;
             }
             if let Some(peer) = self.peers.get(&key) {
                 // skip old peers
                 if peer.last_announce.timestamp < min_time {
-                    println!("AURELIEN: Don't include too old");
                     continue;
                 }
                 let listeners: HashMap<SocketAddr, TransportType> = peer

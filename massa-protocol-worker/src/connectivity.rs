@@ -200,8 +200,6 @@ pub(crate) fn start_connectivity_thread(
                             }
                         }
                     default(Duration::from_millis(1000)) => {
-                        println!("AURELIEN: connections {:?}", network_controller.get_active_connections().get_peers_connected());
-                        println!("AURELIEN: peerdb {:?}", peer_db.read().peers);
                         if config.debug {
                             println!("nb peers connected: {}", network_controller.get_active_connections().get_peer_ids_connected().len());
                         }
