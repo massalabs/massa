@@ -492,7 +492,6 @@
 <a href="#492" id="492">492</a>
 <a href="#493" id="493">493</a>
 <a href="#494" id="494">494</a>
-<a href="#495" id="495">495</a>
 </pre><pre class="rust"><code><span class="kw">use </span>std::cmp::Reverse;
 <span class="kw">use </span>std::{collections::HashMap, net::SocketAddr, thread::JoinHandle, time::Duration};
 
@@ -669,7 +668,6 @@
                             }
                             <span class="kw">match </span>message {
                                 PeerManagementMessage::NewPeerConnected((peer_id, listeners)) =&gt; {
-                                    <span class="macro">println!</span>(<span class="string">&quot;New peer connected: {:?}&quot;</span>, peer_id);
                                     <span class="kw">if let </span><span class="prelude-val">Err</span>(e) = test_sender.send((peer_id, listeners)) {
                                         <span class="macro">error!</span>(<span class="string">&quot;error when sending msg to peer tester : {}&quot;</span>, e);
                                     }
