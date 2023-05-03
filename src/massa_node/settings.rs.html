@@ -283,6 +283,8 @@
 <a href="#283" id="283">283</a>
 <a href="#284" id="284">284</a>
 <a href="#285" id="285">285</a>
+<a href="#286" id="286">286</a>
+<a href="#287" id="287">287</a>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="doccomment">//! Build here the default node settings from the configuration file toml
@@ -440,10 +442,12 @@
     </span><span class="kw">pub </span>block_db_prune_interval: MassaTime,
     <span class="doccomment">/// max number of items returned while querying
     </span><span class="kw">pub </span>max_item_return_count: usize,
-    <span class="doccomment">/// blocks headers channel capacity
-    </span><span class="kw">pub </span>broadcast_blocks_headers_channel_capacity: usize,
+    <span class="doccomment">/// blockclique channel capacity
+    </span><span class="kw">pub </span>broadcast_block_cliques_channel_capacity: usize,
     <span class="doccomment">/// blocks channel capacity
     </span><span class="kw">pub </span>broadcast_blocks_channel_capacity: usize,
+    <span class="doccomment">/// blocks headers channel capacity
+    </span><span class="kw">pub </span>broadcast_blocks_headers_channel_capacity: usize,
     <span class="doccomment">/// filled blocks channel capacity
     </span><span class="kw">pub </span>broadcast_filled_blocks_channel_capacity: usize,
 }

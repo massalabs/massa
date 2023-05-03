@@ -1171,7 +1171,6 @@
 <a href="#1171" id="1171">1171</a>
 <a href="#1172" id="1172">1172</a>
 <a href="#1173" id="1173">1173</a>
-<a href="#1174" id="1174">1174</a>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="attr">#![doc = <span class="macro">include_str!</span>(<span class="string">&quot;../../README.md&quot;</span>)]
@@ -1194,7 +1193,6 @@
 <span class="kw">use </span>massa_consensus_exports::events::ConsensusEvent;
 <span class="kw">use </span>massa_consensus_exports::{ConsensusChannels, ConsensusConfig, ConsensusManager};
 <span class="kw">use </span>massa_consensus_worker::start_consensus_worker;
-<span class="kw">use </span>massa_db::new_rocks_db_instance;
 <span class="kw">use </span>massa_executed_ops::{ExecutedDenunciationsConfig, ExecutedOpsConfig};
 <span class="kw">use </span>massa_execution_exports::{
     ExecutionChannels, ExecutionConfig, ExecutionManager, GasCosts, StorageCostsConstants,
@@ -1357,7 +1355,6 @@
         thread_count: THREAD_COUNT,
         bootstrap_part_size: ASYNC_POOL_BOOTSTRAP_PART_SIZE,
         max_async_message_data: MAX_ASYNC_MESSAGE_DATA,
-        max_key_length: MAX_DATASTORE_KEY_LENGTH <span class="kw">as </span>u32,
     };
     <span class="kw">let </span>pos_config = PoSConfig {
         periods_per_cycle: PERIODS_PER_CYCLE,
@@ -1372,8 +1369,6 @@
     <span class="kw">let </span>executed_denunciations_config = ExecutedDenunciationsConfig {
         denunciation_expire_periods: DENUNCIATION_EXPIRE_PERIODS,
         bootstrap_part_size: EXECUTED_OPS_BOOTSTRAP_PART_SIZE,
-        thread_count: THREAD_COUNT,
-        endorsement_count: ENDORSEMENT_COUNT,
     };
     <span class="kw">let </span>final_state_config = FinalStateConfig {
         ledger_config: ledger_config.clone(),
@@ -1400,12 +1395,11 @@
             .expect(<span class="string">&quot;disk ledger delete failed&quot;</span>);
     }
 
-    <span class="kw">let </span>rocks_db_instance = Arc::new(RwLock::new(new_rocks_db_instance(
-        SETTINGS.ledger.disk_ledger_path.clone(),
-    )));
-
     <span class="comment">// Create final ledger
-    </span><span class="kw">let </span>ledger = FinalLedger::new(ledger_config.clone(), rocks_db_instance.clone());
+    </span><span class="kw">let </span>ledger = FinalLedger::new(
+        ledger_config.clone(),
+        args.restart_from_snapshot_at_period.is_some() || <span class="macro">cfg!</span>(feature = <span class="string">&quot;create_snapshot&quot;</span>),
+    );
 
     <span class="comment">// launch selector worker
     </span><span class="kw">let </span>(selector_manager, selector_controller) = start_selector_worker(SelectorConfig {
@@ -1422,7 +1416,6 @@
     </span><span class="kw">let </span>final_state = Arc::new(parking_lot::RwLock::new(
         <span class="kw">match </span>args.restart_from_snapshot_at_period {
             <span class="prelude-val">Some</span>(last_start_period) =&gt; FinalState::new_derived_from_snapshot(
-                rocks_db_instance.clone(),
                 final_state_config,
                 Box::new(ledger),
                 selector_controller.clone(),
@@ -1430,11 +1423,9 @@
             )
             .expect(<span class="string">&quot;could not init final state&quot;</span>),
             <span class="prelude-val">None </span>=&gt; FinalState::new(
-                rocks_db_instance.clone(),
                 final_state_config,
                 Box::new(ledger),
                 selector_controller.clone(),
-                <span class="bool-val">true</span>,
             )
             .expect(<span class="string">&quot;could not init final state&quot;</span>),
         },
@@ -1758,10 +1749,13 @@
         channel_size: CHANNEL_SIZE,
         bootstrap_part_size: CONSENSUS_BOOTSTRAP_PART_SIZE,
         broadcast_enabled: SETTINGS.api.enable_broadcast,
+        broadcast_block_cliques_channel_capacity: SETTINGS
+            .consensus
+            .broadcast_block_cliques_channel_capacity,
+        broadcast_blocks_channel_capacity: SETTINGS.consensus.broadcast_blocks_channel_capacity,
         broadcast_blocks_headers_channel_capacity: SETTINGS
             .consensus
             .broadcast_blocks_headers_channel_capacity,
-        broadcast_blocks_channel_capacity: SETTINGS.consensus.broadcast_blocks_channel_capacity,
         broadcast_filled_blocks_channel_capacity: SETTINGS
             .consensus
             .broadcast_filled_blocks_channel_capacity,
@@ -1774,13 +1768,17 @@
         execution_controller: execution_controller.clone(),
         selector_controller: selector_controller.clone(),
         pool_controller: pool_controller.clone(),
-        controller_event_tx: consensus_event_sender,
         protocol_controller: protocol_controller.clone(),
+        controller_event_tx: consensus_event_sender,
+        block_clique_sender: broadcast::channel(
+            consensus_config.broadcast_block_cliques_channel_capacity,
+        )
+        .<span class="number">0</span>,
+        block_sender: broadcast::channel(consensus_config.broadcast_blocks_channel_capacity).<span class="number">0</span>,
         block_header_sender: broadcast::channel(
             consensus_config.broadcast_blocks_headers_channel_capacity,
         )
         .<span class="number">0</span>,
-        block_sender: broadcast::channel(consensus_config.broadcast_blocks_channel_capacity).<span class="number">0</span>,
         filled_block_sender: broadcast::channel(
             consensus_config.broadcast_filled_blocks_channel_capacity,
         )
