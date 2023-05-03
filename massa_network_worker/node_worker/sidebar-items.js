@@ -1,1 +1,0 @@
-window.SIDEBAR_ITEMS = {"constant":["BRANCHES"],"fn":["node_reader_handle","node_writer_handle","send_node_event"],"opaque":[""],"static":["CALLSITE","META"],"struct":["NodeWorker"]};

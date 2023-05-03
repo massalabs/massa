@@ -848,9 +848,6 @@
 <a href="#848" id="848">848</a>
 <a href="#849" id="849">849</a>
 <a href="#850" id="850">850</a>
-<a href="#851" id="851">851</a>
-<a href="#852" id="852">852</a>
-<a href="#853" id="853">853</a>
 </pre><pre class="rust"><code><span class="doccomment">//! start the bootstrapping system using [`start_bootstrap_server`]
 //! Once your node will be ready, you may want other to bootstrap from you.
 //!
@@ -891,10 +888,7 @@
     version::Version,
 };
 
-<span class="attr">#[cfg(any(test, feature = <span class="string">&quot;test&quot;</span>))]
-</span><span class="kw">use </span>massa_network_exports::MockNetworkCommandSender <span class="kw">as </span>NetworkCommandSender;
-<span class="attr">#[cfg(not(any(test, feature = <span class="string">&quot;test&quot;</span>)))]
-</span><span class="kw">use </span>massa_network_exports::NetworkCommandSender;
+<span class="kw">use </span>massa_protocol_exports::ProtocolController;
 <span class="kw">use </span>massa_signature::KeyPair;
 <span class="kw">use </span>massa_time::MassaTime;
 <span class="kw">use </span>massa_versioning_worker::versioning::MipStore;
@@ -961,7 +955,7 @@
 </span><span class="attr">#[allow(clippy::too_many_arguments)]
 </span><span class="kw">pub fn </span>start_bootstrap_server(
     consensus_controller: Box&lt;<span class="kw">dyn </span>ConsensusController&gt;,
-    network_command_sender: NetworkCommandSender,
+    protocol_controller: Box&lt;<span class="kw">dyn </span>ProtocolController&gt;,
     final_state: Arc&lt;RwLock&lt;FinalState&gt;&gt;,
     config: BootstrapConfig,
     listener: <span class="kw">impl </span>BSListener + Send + <span class="lifetime">&#39;static</span>,
@@ -1015,7 +1009,7 @@
         .spawn(<span class="kw">move </span>|| {
             BootstrapServer {
                 consensus_controller,
-                network_command_sender,
+                protocol_controller,
                 final_state,
                 listener_rx,
                 listen_stopper_rx,
@@ -1042,7 +1036,7 @@
 
 <span class="kw">struct </span>BootstrapServer&lt;<span class="lifetime">&#39;a</span>&gt; {
     consensus_controller: Box&lt;<span class="kw">dyn </span>ConsensusController&gt;,
-    network_command_sender: NetworkCommandSender,
+    protocol_controller: Box&lt;<span class="kw">dyn </span>ProtocolController&gt;,
     final_state: Arc&lt;RwLock&lt;FinalState&gt;&gt;,
     listener_rx: crossbeam::channel::Receiver&lt;BsConn&gt;,
     listen_stopper_rx: crossbeam::channel::Receiver&lt;()&gt;,
@@ -1176,7 +1170,7 @@
                 </span><span class="kw">let </span>version = <span class="self">self</span>.version;
                 <span class="kw">let </span>data_execution = <span class="self">self</span>.final_state.clone();
                 <span class="kw">let </span>consensus_command_sender = <span class="self">self</span>.consensus_controller.clone();
-                <span class="kw">let </span>network_command_sender = <span class="self">self</span>.network_command_sender.clone();
+                <span class="kw">let </span>protocol_controller = <span class="self">self</span>.protocol_controller.clone();
                 <span class="kw">let </span>config = <span class="self">self</span>.bootstrap_config.clone();
 
                 <span class="kw">let </span>bootstrap_count_token = bootstrap_sessions_counter.clone();
@@ -1193,7 +1187,7 @@
                             data_execution,
                             version,
                             consensus_command_sender,
-                            network_command_sender,
+                            protocol_controller,
                             mip_store,
                         )
                     });
@@ -1308,7 +1302,7 @@
     data_execution: Arc&lt;RwLock&lt;FinalState&gt;&gt;,
     version: Version,
     consensus_command_sender: Box&lt;<span class="kw">dyn </span>ConsensusController&gt;,
-    network_command_sender: NetworkCommandSender,
+    protocol_controller: Box&lt;<span class="kw">dyn </span>ProtocolController&gt;,
     mip_store: MipStore,
 ) {
     <span class="macro">debug!</span>(<span class="string">&quot;running bootstrap for peer {}&quot;</span>, remote_addr);
@@ -1320,7 +1314,7 @@
         data_execution,
         version,
         consensus_command_sender,
-        network_command_sender,
+        protocol_controller,
         deadline,
         mip_store,
     );
@@ -1572,7 +1566,7 @@
     final_state: Arc&lt;RwLock&lt;FinalState&gt;&gt;,
     version: Version,
     consensus_controller: Box&lt;<span class="kw">dyn </span>ConsensusController&gt;,
-    network_command_sender: NetworkCommandSender,
+    protocol_controller: Box&lt;<span class="kw">dyn </span>ProtocolController&gt;,
     deadline: Instant,
     mip_store: MipStore,
 ) -&gt; <span class="prelude-ty">Result</span>&lt;(), BootstrapError&gt; {
@@ -1630,7 +1624,7 @@
                     server.send_msg(
                         write_timeout,
                         BootstrapServerMessage::BootstrapPeers {
-                            peers: network_command_sender.sync_get_bootstrap_peers()<span class="question-mark">?</span>,
+                            peers: protocol_controller.get_bootstrap_peers()<span class="question-mark">?</span>,
                         },
                     )<span class="question-mark">?</span>;
                 }
