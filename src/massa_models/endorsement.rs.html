@@ -530,6 +530,13 @@
 <a href="#530" id="530">530</a>
 <a href="#531" id="531">531</a>
 <a href="#532" id="532">532</a>
+<a href="#533" id="533">533</a>
+<a href="#534" id="534">534</a>
+<a href="#535" id="535">535</a>
+<a href="#536" id="536">536</a>
+<a href="#537" id="537">537</a>
+<a href="#538" id="538">538</a>
+<a href="#539" id="539">539</a>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="kw">use </span><span class="kw">crate</span>::prehash::PreHashed;
@@ -1027,7 +1034,14 @@
         <span class="kw">let </span>s_endorsement_1: SecureShareEndorsement =
             Endorsement::new_verifiable(content_1, EndorsementSerializer::new(), <span class="kw-2">&amp;</span>sender_keypair)
                 .unwrap();
-
+        <span class="kw">let </span><span class="kw-2">mut </span>serialized = <span class="macro">vec!</span>[];
+        SecureShareSerializer::new()
+            .serialize(<span class="kw-2">&amp;</span>s_endorsement_1, <span class="kw-2">&amp;mut </span>serialized)
+            .unwrap();
+        <span class="kw">let </span>(<span class="kw">_</span>, s_endorsement_1): (<span class="kw-2">&amp;</span>[u8], SecureShare&lt;Endorsement, EndorsementId&gt;) =
+            SecureShareDeserializer::new(EndorsementDeserializer::new(<span class="number">32</span>, <span class="number">32</span>))
+                .deserialize::&lt;DeserializeError&gt;(<span class="kw-2">&amp;</span>serialized)
+                .unwrap();
         <span class="kw">let </span>sender_keypair = KeyPair::generate();
         <span class="kw">let </span>content_2 = Endorsement {
             slot: Slot::new(<span class="number">2</span>, <span class="number">5</span>),

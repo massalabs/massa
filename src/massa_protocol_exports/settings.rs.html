@@ -60,18 +60,118 @@
 <a href="#60" id="60">60</a>
 <a href="#61" id="61">61</a>
 <a href="#62" id="62">62</a>
+<a href="#63" id="63">63</a>
+<a href="#64" id="64">64</a>
+<a href="#65" id="65">65</a>
+<a href="#66" id="66">66</a>
+<a href="#67" id="67">67</a>
+<a href="#68" id="68">68</a>
+<a href="#69" id="69">69</a>
+<a href="#70" id="70">70</a>
+<a href="#71" id="71">71</a>
+<a href="#72" id="72">72</a>
+<a href="#73" id="73">73</a>
+<a href="#74" id="74">74</a>
+<a href="#75" id="75">75</a>
+<a href="#76" id="76">76</a>
+<a href="#77" id="77">77</a>
+<a href="#78" id="78">78</a>
+<a href="#79" id="79">79</a>
+<a href="#80" id="80">80</a>
+<a href="#81" id="81">81</a>
+<a href="#82" id="82">82</a>
+<a href="#83" id="83">83</a>
+<a href="#84" id="84">84</a>
+<a href="#85" id="85">85</a>
+<a href="#86" id="86">86</a>
+<a href="#87" id="87">87</a>
+<a href="#88" id="88">88</a>
+<a href="#89" id="89">89</a>
+<a href="#90" id="90">90</a>
+<a href="#91" id="91">91</a>
+<a href="#92" id="92">92</a>
+<a href="#93" id="93">93</a>
+<a href="#94" id="94">94</a>
+<a href="#95" id="95">95</a>
+<a href="#96" id="96">96</a>
+<a href="#97" id="97">97</a>
+<a href="#98" id="98">98</a>
+<a href="#99" id="99">99</a>
+<a href="#100" id="100">100</a>
+<a href="#101" id="101">101</a>
+<a href="#102" id="102">102</a>
+<a href="#103" id="103">103</a>
+<a href="#104" id="104">104</a>
+<a href="#105" id="105">105</a>
+<a href="#106" id="106">106</a>
+<a href="#107" id="107">107</a>
+<a href="#108" id="108">108</a>
+<a href="#109" id="109">109</a>
+<a href="#110" id="110">110</a>
+<a href="#111" id="111">111</a>
+<a href="#112" id="112">112</a>
+<a href="#113" id="113">113</a>
+<a href="#114" id="114">114</a>
+<a href="#115" id="115">115</a>
+<a href="#116" id="116">116</a>
+<a href="#117" id="117">117</a>
+<a href="#118" id="118">118</a>
+<a href="#119" id="119">119</a>
+<a href="#120" id="120">120</a>
+<a href="#121" id="121">121</a>
+<a href="#122" id="122">122</a>
+<a href="#123" id="123">123</a>
+<a href="#124" id="124">124</a>
+<a href="#125" id="125">125</a>
+<a href="#126" id="126">126</a>
+<a href="#127" id="127">127</a>
+<a href="#128" id="128">128</a>
+<a href="#129" id="129">129</a>
+<a href="#130" id="130">130</a>
+<a href="#131" id="131">131</a>
+<a href="#132" id="132">132</a>
+<a href="#133" id="133">133</a>
+<a href="#134" id="134">134</a>
+<a href="#135" id="135">135</a>
+<a href="#136" id="136">136</a>
+<a href="#137" id="137">137</a>
+<a href="#138" id="138">138</a>
+<a href="#139" id="139">139</a>
+<a href="#140" id="140">140</a>
+<a href="#141" id="141">141</a>
+<a href="#142" id="142">142</a>
+<a href="#143" id="143">143</a>
+<a href="#144" id="144">144</a>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
-</span><span class="kw">use </span>massa_time::MassaTime;
+</span><span class="kw">use </span>std::{
+    collections::HashMap,
+    net::{IpAddr, SocketAddr},
+    path::PathBuf,
+};
+
+<span class="kw">use </span>massa_time::MassaTime;
+<span class="kw">use </span>peernet::transports::TransportType;
 <span class="kw">use </span>serde::Deserialize;
+
 <span class="doccomment">/// Dynamic protocol configuration mix in static settings and constants configurations.
-</span><span class="attr">#[derive(Debug, Deserialize, Clone, Copy)]
+</span><span class="attr">#[derive(Debug, Deserialize, Clone)]
 </span><span class="kw">pub struct </span>ProtocolConfig {
-    <span class="doccomment">/// running threads count
-    </span><span class="kw">pub </span>thread_count: u8,
+    <span class="doccomment">/// self keypair
+    </span><span class="kw">pub </span>keypair_file: PathBuf,
+    <span class="doccomment">/// listeners from where we can receive messages
+    </span><span class="kw">pub </span>listeners: HashMap&lt;SocketAddr, TransportType&gt;,
+    <span class="doccomment">/// initial peers path
+    </span><span class="kw">pub </span>initial_peers: PathBuf,
+    <span class="doccomment">/// max number of in connections
+    </span><span class="kw">pub </span>max_in_connections: usize,
+    <span class="doccomment">/// max number of out connections
+    </span><span class="kw">pub </span>max_out_connections: usize,
     <span class="doccomment">/// after `ask_block_timeout` milliseconds we try to ask a block to another node
     </span><span class="kw">pub </span>ask_block_timeout: MassaTime,
-    <span class="doccomment">/// max known blocks of current nodes we keep in memory (by node)
+    <span class="doccomment">/// Max known blocks we keep in block_handler
+    </span><span class="kw">pub </span>max_known_blocks_saved_size: usize,
+    <span class="doccomment">/// max known blocks of current nodes we keep in memory
     </span><span class="kw">pub </span>max_known_blocks_size: usize,
     <span class="doccomment">/// max known blocks of foreign nodes we keep in memory (by node)
     </span><span class="kw">pub </span>max_node_known_blocks_size: usize,
@@ -97,16 +197,20 @@
     </span><span class="kw">pub </span>operation_announcement_buffer_capacity: usize,
     <span class="doccomment">/// Start processing batches in the buffer each `operation_batch_proc_period` in millisecond
     </span><span class="kw">pub </span>operation_batch_proc_period: MassaTime,
+    <span class="doccomment">/// Maximum number of asked operations in the memory buffer.
+    </span><span class="kw">pub </span>asked_operations_buffer_capacity: usize,
     <span class="doccomment">/// All operations asked are prune each `operation_asked_pruning_period` millisecond
     </span><span class="kw">pub </span>asked_operations_pruning_period: MassaTime,
     <span class="doccomment">/// Interval at which operations are announced in batches.
     </span><span class="kw">pub </span>operation_announcement_interval: MassaTime,
+    <span class="doccomment">/// Maximum time we keep an operation in the storage
+    </span><span class="kw">pub </span>max_operation_storage_time: MassaTime,
     <span class="doccomment">/// Maximum of operations sent in one message.
     </span><span class="kw">pub </span>max_operations_per_message: u64,
+    <span class="doccomment">/// Maximum of operations sent in one block.
+    </span><span class="kw">pub </span>max_operations_per_block: u32,
     <span class="doccomment">/// Maximum size in bytes of all serialized operations size in a block
     </span><span class="kw">pub </span>max_serialized_operations_size_per_block: usize,
-    <span class="doccomment">/// Maximum operations in a block
-    </span><span class="kw">pub </span>max_operations_per_block: u32,
     <span class="doccomment">/// Controller channel size
     </span><span class="kw">pub </span>controller_channel_size: usize,
     <span class="doccomment">/// Event channel size
@@ -119,8 +223,68 @@
     </span><span class="kw">pub </span>max_operations_propagation_time: MassaTime,
     <span class="doccomment">/// max time we propagate endorsements
     </span><span class="kw">pub </span>max_endorsements_propagation_time: MassaTime,
-    <span class="doccomment">/// last start period, used to discard genesis blocks
+    <span class="doccomment">/// number of thread tester
+    </span><span class="kw">pub </span>thread_tester_count: u8,
+    <span class="doccomment">/// Max size of the channel for command to the connectivity thread
+    </span><span class="kw">pub </span>max_size_channel_commands_connectivity: usize,
+    <span class="doccomment">/// Max size of channel to send commands to retrieval thread of operations
+    </span><span class="kw">pub </span>max_size_channel_commands_retrieval_operations: usize,
+    <span class="doccomment">/// Max size of channel to send commands to propagation thread of operations
+    </span><span class="kw">pub </span>max_size_channel_commands_propagation_operations: usize,
+    <span class="doccomment">/// Max size of channel to send commands to retrieval thread of endorsements
+    </span><span class="kw">pub </span>max_size_channel_commands_retrieval_endorsements: usize,
+    <span class="doccomment">/// Max size of channel to send commands to propagation thread of blocks
+    </span><span class="kw">pub </span>max_size_channel_commands_propagation_endorsements: usize,
+    <span class="doccomment">/// Max size of channel to send commands to retrieval thread of blocks
+    </span><span class="kw">pub </span>max_size_channel_commands_retrieval_blocks: usize,
+    <span class="doccomment">/// Max size of channel to send commands to propagation thread of blocks
+    </span><span class="kw">pub </span>max_size_channel_commands_propagation_blocks: usize,
+    <span class="doccomment">/// Max size of channel to send commands to thread of peers
+    </span><span class="kw">pub </span>max_size_channel_commands_peers: usize,
+    <span class="doccomment">/// Max size of channel to send commands to the peer testers
+    </span><span class="kw">pub </span>max_size_channel_commands_peer_testers: usize,
+    <span class="doccomment">/// Max size of channel that transfer message from network to operation handler
+    </span><span class="kw">pub </span>max_size_channel_network_to_operation_handler: usize,
+    <span class="doccomment">/// Max size of channel that transfer message from network to block handler
+    </span><span class="kw">pub </span>max_size_channel_network_to_block_handler: usize,
+    <span class="doccomment">/// Max size of channel that transfer message from network to endorsement handler
+    </span><span class="kw">pub </span>max_size_channel_network_to_endorsement_handler: usize,
+    <span class="doccomment">/// Max size of channel that transfer message from network to peer handler
+    </span><span class="kw">pub </span>max_size_channel_network_to_peer_handler: usize,
+    <span class="doccomment">/// endorsements per block
+    </span><span class="kw">pub </span>endorsement_count: u32,
+    <span class="doccomment">/// running threads count
+    </span><span class="kw">pub </span>thread_count: u8,
+    <span class="doccomment">/// Max of block infos you can send
+    </span><span class="kw">pub </span>max_size_block_infos: u64,
+    <span class="doccomment">/// Maximum size of an value user datastore
+    </span><span class="kw">pub </span>max_size_value_datastore: u64,
+    <span class="doccomment">/// Maximum size of a function name
+    </span><span class="kw">pub </span>max_size_function_name: u16,
+    <span class="doccomment">/// Maximum size of a parameter of a call in ops
+    </span><span class="kw">pub </span>max_size_call_sc_parameter: u32,
+    <span class="comment">// Maximum size of an op datastore in ops
+    </span><span class="kw">pub </span>max_op_datastore_entry_count: u64,
+    <span class="comment">// Maximum size of a key the in op datastore in ops
+    </span><span class="kw">pub </span>max_op_datastore_key_length: u8,
+    <span class="comment">// Maximum size of a value in the op datastore in ops
+    </span><span class="kw">pub </span>max_op_datastore_value_length: u64,
+    <span class="doccomment">/// Maximum number of denunciations in a block header
+    </span><span class="kw">pub </span>max_denunciations_in_block_header: u32,
+    <span class="doccomment">/// Maximum number of endorsements that can be propagated in one message
+    </span><span class="kw">pub </span>max_endorsements_per_message: u64,
+    <span class="doccomment">/// Maximum number of peers per announcement
+    </span><span class="kw">pub </span>max_size_peers_announcement: u64,
+    <span class="doccomment">/// Maximum number of listeners per peer
+    </span><span class="kw">pub </span>max_size_listeners_per_peer: u64,
+    <span class="doccomment">/// Last start period
     </span><span class="kw">pub </span>last_start_period: u64,
+    <span class="doccomment">/// Number of bytes per second that can be read/write in a connection (should be a 10 multiplier)
+    </span><span class="kw">pub </span>read_write_limit_bytes_per_second: u128,
+    <span class="doccomment">/// Optional routable ip
+    </span><span class="kw">pub </span>routable_ip: <span class="prelude-ty">Option</span>&lt;IpAddr&gt;,
+    <span class="doccomment">/// debug prints
+    </span><span class="kw">pub </span>debug: bool,
 }
 </code></pre></div>
 </section></main><div id="rustdoc-vars" data-root-path="../../" data-static-root-path="../../static.files/" data-current-crate="massa_protocol_exports" data-themes="" data-resource-suffix="" data-rustdoc-version="1.69.0-nightly (d962ea578 2023-02-26)" data-search-js="search-14421e1532aead08.js" data-settings-js="settings-f0c5c39777a9a2f6.js" data-settings-css="settings-0bcba95ff279c1db.css" ></div></body></html>

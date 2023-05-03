@@ -225,6 +225,10 @@
 <a href="#225" id="225">225</a>
 <a href="#226" id="226">226</a>
 <a href="#227" id="227">227</a>
+<a href="#228" id="228">228</a>
+<a href="#229" id="229">229</a>
+<a href="#230" id="230">230</a>
+<a href="#231" id="231">231</a>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="kw">use </span>massa_models::block::BlockDeserializerArgs;
@@ -304,6 +308,8 @@
     </span><span class="kw">pub </span>endorsement_count: u32,
     <span class="doccomment">/// max advertise length
     </span><span class="kw">pub </span>max_advertise_length: u32,
+    <span class="doccomment">/// max listeners per peer
+    </span><span class="kw">pub </span>max_listeners_per_peer: u32,
     <span class="doccomment">/// max bootstrap blocks length
     </span><span class="kw">pub </span>max_bootstrap_blocks_length: u32,
     <span class="doccomment">/// max operations per block
@@ -382,6 +388,7 @@
     <span class="kw">pub </span>max_bytes_read_write: f64,
     <span class="kw">pub </span>max_bootstrap_message_size: u32,
     <span class="kw">pub </span>endorsement_count: u32,
+    <span class="kw">pub </span>max_listeners_per_peer: u32,
     <span class="kw">pub </span>max_advertise_length: u32,
     <span class="kw">pub </span>max_bootstrap_blocks_length: u32,
     <span class="kw">pub </span>max_operations_per_block: u32,
@@ -416,6 +423,7 @@
     <span class="kw">pub </span>thread_count: u8,
     <span class="kw">pub </span>endorsement_count: u32,
     <span class="kw">pub </span>max_advertise_length: u32,
+    <span class="kw">pub </span>max_listeners_per_peer: u32,
     <span class="kw">pub </span>max_bootstrap_blocks_length: u32,
     <span class="kw">pub </span>max_operations_per_block: u32,
     <span class="kw">pub </span>max_bootstrap_final_state_parts_size: u64,
