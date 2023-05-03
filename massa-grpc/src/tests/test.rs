@@ -4,7 +4,7 @@ use crate::config::GrpcConfig;
 use crate::server::MassaGrpc;
 use massa_consensus_exports::test_exports::MockConsensusControllerImpl;
 use massa_consensus_exports::ConsensusChannels;
-use massa_execution_exports::test_exports::MockExecutionController;
+use massa_execution_exports::{test_exports::MockExecutionController, ExecutionChannels};
 use massa_models::config::{
     ENDORSEMENT_COUNT, GENESIS_TIMESTAMP, MAX_DATASTORE_VALUE_LENGTH,
     MAX_DENUNCIATIONS_PER_BLOCK_HEADER, MAX_ENDORSEMENTS_PER_MESSAGE, MAX_FUNCTION_NAME_LENGTH,
@@ -41,6 +41,7 @@ async fn test_start_grpc_server() {
 
     let endorsement_sender = tokio::sync::broadcast::channel(2000).0;
     let operation_sender = tokio::sync::broadcast::channel(5000).0;
+    let slot_execution_output_sender = tokio::sync::broadcast::channel(5000).0;
 
     let grpc_config = GrpcConfig {
         enabled: true,
@@ -89,6 +90,9 @@ async fn test_start_grpc_server() {
         consensus_controller: Box::new(consensus_controller),
         consensus_channels,
         execution_controller: execution_ctrl.0,
+        execution_channels: ExecutionChannels {
+            slot_execution_output_sender,
+        },
         pool_channels: PoolChannels {
             endorsement_sender,
             operation_sender,

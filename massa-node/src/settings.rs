@@ -32,6 +32,8 @@ pub struct ExecutionSettings {
     pub lru_cache_size: u32,
     pub hd_cache_size: usize,
     pub snip_amount: usize,
+    /// slot execution outputs channel capacity
+    pub broadcast_slot_execution_output_channel_capacity: usize,
 }
 
 #[derive(Clone, Debug, Deserialize)]

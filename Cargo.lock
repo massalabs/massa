@@ -2593,12 +2593,14 @@ dependencies = [
  "massa_ledger_exports",
  "massa_models",
  "massa_module_cache",
+ "massa_proto",
  "massa_storage",
  "massa_time",
  "num",
  "parking_lot",
  "tempfile",
  "thiserror",
+ "tokio",
 ]
 
 [[package]]
@@ -2632,6 +2634,7 @@ dependencies = [
  "serial_test 0.10.0",
  "sha2 0.10.6",
  "tempfile",
+ "tokio",
  "tracing",
 ]
 
