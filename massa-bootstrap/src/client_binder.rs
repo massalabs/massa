@@ -195,29 +195,6 @@ impl BootstrapClientBinder {
         self.duplex.write_all(&msg_bytes)?;
         Ok(())
     }
-
-    /// Like read_exact_timeout, but does not consume bytes from the stream
-    fn peek_exact_timeout(
-        &mut self,
-        buf: &mut [u8],
-        duration: Option<Duration>,
-    ) -> Result<(), std::io::Error> {
-        let start = Instant::now();
-        self.duplex.set_read_timeout(duration)?;
-        while self.duplex.peek(buf)? < buf.len() {
-            if let Some(duration) = duration {
-                let new_duration = duration.saturating_sub(start.elapsed());
-                if new_duration.is_zero() {
-                    return Err(std::io::Error::new(
-                        ErrorKind::TimedOut,
-                        "deadline has elapsed",
-                    ));
-                }
-                self.duplex.set_read_timeout(Some(new_duration))?;
-            }
-        }
-        Ok(())
-    }
 }
 
 impl crate::BindingReadExact for BootstrapClientBinder {
