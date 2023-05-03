@@ -159,6 +159,7 @@ impl BootstrapClientBinder {
             BootstrapError::GeneralError(format!("bootstrap message too large to encode: {}", e))
         })?;
 
+        let mut write_buf = Vec::new();
         if let Some(prev_message) = self.prev_message {
             // there was a previous message
             let prev_message = prev_message.to_bytes();
@@ -170,24 +171,23 @@ impl BootstrapClientBinder {
             hash_data.extend(&msg_bytes);
             self.prev_message = Some(Hash::compute_from(&hash_data));
 
-            // send old previous message
-            self.duplex.write_all(prev_message)?;
+            // Provide the signature saved as the previous message
+            write_buf.extend(prev_message);
         } else {
-            // there was no previous message
-
-            //update current previous message
+            //update previous message
             self.prev_message = Some(Hash::compute_from(&msg_bytes));
         }
 
-        // send message length
-        {
-            self.duplex.set_write_timeout(duration)?;
-            let msg_len_bytes = msg_len.to_be_bytes_min(self.cfg.max_bootstrap_message_size)?;
-            self.duplex.write_all(&msg_len_bytes)?;
-        }
+        // Provide the message length
+        self.duplex.set_write_timeout(duration)?;
+        let msg_len_bytes = msg_len.to_be_bytes_min(self.cfg.max_bootstrap_message_size)?;
+        write_buf.extend(&msg_len_bytes);
 
-        // send message
-        self.duplex.write_all(&msg_bytes)?;
+        // Provide the message
+        write_buf.extend(&msg_bytes);
+
+        // And send it off
+        self.duplex.write_all(&write_buf)?;
         Ok(())
     }
 }
