@@ -174,7 +174,7 @@ impl BootstrapClientBinder {
             // Provide the signature saved as the previous message
             write_buf.extend(prev_message);
         } else {
-            //update previous message
+            // No previous message, so we set the hash-chain genesis to the hash of the first msg
             self.prev_message = Some(Hash::compute_from(&msg_bytes));
         }
 
