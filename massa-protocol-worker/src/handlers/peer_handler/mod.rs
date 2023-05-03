@@ -174,7 +174,6 @@ impl PeerManagementHandler {
                             }
                             match message {
                                 PeerManagementMessage::NewPeerConnected((peer_id, listeners)) => {
-                                    println!("New peer connected: {:?}", peer_id);
                                     if let Err(e) = test_sender.send((peer_id, listeners)) {
                                         error!("error when sending msg to peer tester : {}", e);
                                     }
