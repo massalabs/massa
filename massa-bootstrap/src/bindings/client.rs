@@ -1,12 +1,12 @@
 // Copyright (c) 2022 MASSA LABS <info@massa.net>
 
+use crate::bindings::BindingReadExact;
 use crate::error::BootstrapError;
 use crate::messages::{
     BootstrapClientMessage, BootstrapClientMessageSerializer, BootstrapServerMessage,
     BootstrapServerMessageDeserializer,
 };
 use crate::settings::BootstrapClientConfig;
-use crate::BindingReadExact;
 use massa_hash::Hash;
 use massa_models::serialization::{DeserializeMinBEInt, SerializeMinBEInt};
 use massa_models::version::{Version, VersionSerializer};
@@ -192,9 +192,9 @@ impl BootstrapClientBinder {
     }
 }
 
-impl crate::BindingReadExact for BootstrapClientBinder {
-    fn set_read_timeout(&mut self, deadline: Option<Duration>) -> Result<(), std::io::Error> {
-        self.duplex.set_read_timeout(deadline)
+impl crate::bindings::BindingReadExact for BootstrapClientBinder {
+    fn set_read_timeout(&mut self, duration: Option<Duration>) -> Result<(), std::io::Error> {
+        self.duplex.set_read_timeout(duration)
     }
 }
 

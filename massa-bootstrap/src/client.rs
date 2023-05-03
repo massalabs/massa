@@ -15,7 +15,7 @@ use rand::{
 use tracing::{debug, info, warn};
 
 use crate::{
-    client_binder::BootstrapClientBinder,
+    bindings::BootstrapClientBinder,
     error::BootstrapError,
     establisher::BSConnector,
     messages::{BootstrapClientMessage, BootstrapServerMessage},

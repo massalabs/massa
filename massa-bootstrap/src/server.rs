@@ -58,10 +58,10 @@ use tracing::{debug, error, info, warn};
 use white_black_list::*;
 
 use crate::{
+    bindings::BootstrapServerBinder,
     error::BootstrapError,
     establisher::BSListener,
     messages::{BootstrapClientMessage, BootstrapServerMessage},
-    server_binder::BootstrapServerBinder,
     BootstrapConfig,
 };
 

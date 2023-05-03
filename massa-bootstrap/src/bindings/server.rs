@@ -1,5 +1,6 @@
 // Copyright (c) 2022 MASSA LABS <info@massa.net>
 
+use crate::bindings::BindingReadExact;
 use crate::error::BootstrapError;
 use crate::messages::{
     BootstrapClientMessage, BootstrapClientMessageDeserializer, BootstrapServerMessage,
@@ -13,6 +14,8 @@ use massa_models::version::{Version, VersionDeserializer, VersionSerializer};
 use massa_serialization::{DeserializeError, Deserializer, Serializer};
 use massa_signature::KeyPair;
 use massa_time::MassaTime;
+use std::io;
+use std::time::Instant;
 use std::{
     convert::TryInto,
     io::{ErrorKind, Read, Write},
@@ -252,6 +255,7 @@ impl BootstrapServerBinder {
         // read the rest of the message
         let mut msg_bytes = vec![0u8; msg_len as usize];
         self.duplex.read_exact(&mut msg_bytes)?;
+        // let msg_bytes = &msg_bytes[known_len..];
 
         // check previous hash
         if received_prev_hash != self.prev_message {

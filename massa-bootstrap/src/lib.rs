@@ -21,13 +21,12 @@ use std::io::{self, ErrorKind};
 use std::sync::Arc;
 use std::time::{Duration, Instant};
 
+mod bindings;
 mod client;
-mod client_binder;
 mod error;
 mod establisher;
 mod messages;
 mod server;
-mod server_binder;
 mod settings;
 mod tools;
 pub use client::get_state;
