@@ -9,8 +9,8 @@ mod tests {
     };
     use massa_async_pool::AsyncMessage;
     use massa_execution_exports::{
-        ExecutionConfig, ExecutionController, ExecutionError, ReadOnlyExecutionRequest,
-        ReadOnlyExecutionTarget,
+        ExecutionChannels, ExecutionConfig, ExecutionController, ExecutionError,
+        ReadOnlyExecutionRequest, ReadOnlyExecutionTarget,
     };
     use massa_hash::Hash;
     use massa_models::address::UserAddress;
@@ -40,6 +40,7 @@ mod tests {
     use std::{
         cmp::Reverse, collections::BTreeMap, collections::HashMap, str::FromStr, time::Duration,
     };
+    use tokio::sync::broadcast;
 
     #[test]
     #[serial]
@@ -56,12 +57,19 @@ mod tests {
         };
         let mip_store = MipStore::try_from(([], mip_stats_config)).unwrap();
 
+        let slot_execution_output_sender = broadcast::channel(5000).0;
+
+        let channels = ExecutionChannels {
+            slot_execution_output_sender,
+        };
+
         let (sample_state, _keep_file, _keep_dir) = get_sample_state(0).unwrap();
         let (mut manager, _controller) = start_execution_worker(
             config,
             sample_state.clone(),
             sample_state.read().pos_state.selector.clone(),
             mip_store,
+            channels,
         );
         manager.stop();
     }
@@ -81,12 +89,19 @@ mod tests {
         };
         let mip_store = MipStore::try_from(([], mip_stats_config)).unwrap();
 
+        let slot_execution_output_sender = broadcast::channel(5000).0;
+
+        let channels = ExecutionChannels {
+            slot_execution_output_sender,
+        };
+
         let (sample_state, _keep_file, _keep_dir) = get_sample_state(0).unwrap();
         let (mut manager, controller) = start_execution_worker(
             config,
             sample_state.clone(),
             sample_state.read().pos_state.selector.clone(),
             mip_store,
+            channels,
         );
         controller.update_blockclique_status(
             Default::default(),
@@ -117,12 +132,20 @@ mod tests {
         let (sample_state, _keep_file, _keep_dir) = get_sample_state(0).unwrap();
         // init the storage
         let storage = Storage::create_root();
+
+        let slot_execution_output_sender = broadcast::channel(5000).0;
+
+        let channels = ExecutionChannels {
+            slot_execution_output_sender,
+        };
+
         // start the execution worker
         let (mut manager, controller) = start_execution_worker(
             exec_cfg.clone(),
             sample_state.clone(),
             sample_state.read().pos_state.selector.clone(),
             mip_store,
+            channels,
         );
         // initialize the execution system with genesis blocks
         init_execution_worker(&exec_cfg, &storage, controller.clone());
@@ -212,12 +235,20 @@ mod tests {
         let (sample_state, _keep_file, _keep_dir) = get_sample_state(0).unwrap();
         // init the storage
         let mut storage = Storage::create_root();
+
+        let slot_execution_output_sender = broadcast::channel(5000).0;
+
+        let channels = ExecutionChannels {
+            slot_execution_output_sender,
+        };
+
         // start the execution worker
         let (mut manager, controller) = start_execution_worker(
             exec_cfg.clone(),
             sample_state.clone(),
             sample_state.read().pos_state.selector.clone(),
             mip_store,
+            channels,
         );
         // initialize the execution system with genesis blocks
         init_execution_worker(&exec_cfg, &storage, controller.clone());
@@ -365,12 +396,20 @@ mod tests {
         let (sample_state, _keep_file, _keep_dir) = get_sample_state(0).unwrap();
         // init the storage
         let mut storage = Storage::create_root();
+
+        let slot_execution_output_sender = broadcast::channel(5000).0;
+
+        let channels = ExecutionChannels {
+            slot_execution_output_sender,
+        };
+
         // start the execution worker
         let (mut manager, controller) = start_execution_worker(
             exec_cfg.clone(),
             sample_state.clone(),
             sample_state.read().pos_state.selector.clone(),
             mip_store,
+            channels,
         );
         // initialize the execution system with genesis blocks
         init_execution_worker(&exec_cfg, &storage, controller.clone());
@@ -510,6 +549,12 @@ mod tests {
         };
         let mip_store = MipStore::try_from(([], mip_stats_config)).unwrap();
 
+        let slot_execution_output_sender = broadcast::channel(5000).0;
+
+        let channels = ExecutionChannels {
+            slot_execution_output_sender,
+        };
+
         // init the storage
         let mut storage = Storage::create_root();
         // start the execution worker
@@ -518,6 +563,7 @@ mod tests {
             sample_state.clone(),
             sample_state.read().pos_state.selector.clone(),
             mip_store,
+            channels,
         );
         // initialize the execution system with genesis blocks
         init_execution_worker(&exec_cfg, &storage, controller.clone());
@@ -615,12 +661,20 @@ mod tests {
 
         // init the storage
         let mut storage = Storage::create_root();
+
+        let slot_execution_output_sender = broadcast::channel(5000).0;
+
+        let channels = ExecutionChannels {
+            slot_execution_output_sender,
+        };
+
         // start the execution worker
         let (mut manager, controller) = start_execution_worker(
             exec_cfg.clone(),
             sample_state.clone(),
             sample_state.read().pos_state.selector.clone(),
             mip_store,
+            channels,
         );
         // initialize the execution system with genesis blocks
         init_execution_worker(&exec_cfg, &storage, controller.clone());
@@ -718,12 +772,20 @@ mod tests {
 
         // init the storage
         let mut storage = Storage::create_root();
+
+        let slot_execution_output_sender = broadcast::channel(5000).0;
+
+        let channels = ExecutionChannels {
+            slot_execution_output_sender,
+        };
+
         // start the execution worker
         let (mut manager, controller) = start_execution_worker(
             exec_cfg.clone(),
             sample_state.clone(),
             sample_state.read().pos_state.selector.clone(),
             mip_store,
+            channels,
         );
         // initialize the execution system with genesis blocks
         init_execution_worker(&exec_cfg, &storage, controller.clone());
@@ -834,12 +896,20 @@ mod tests {
 
         // init the storage
         let mut storage = Storage::create_root();
+
+        let slot_execution_output_sender = broadcast::channel(5000).0;
+
+        let channels = ExecutionChannels {
+            slot_execution_output_sender,
+        };
+
         // start the execution worker
         let (mut manager, controller) = start_execution_worker(
             exec_cfg.clone(),
             sample_state.clone(),
             sample_state.read().pos_state.selector.clone(),
             mip_store,
+            channels,
         );
         // initialize the execution system with genesis blocks
         init_execution_worker(&exec_cfg, &storage, controller.clone());
@@ -934,12 +1004,20 @@ mod tests {
         let mut blockclique_blocks: HashMap<Slot, BlockId> = HashMap::new();
         // init the storage
         let mut storage = Storage::create_root();
+
+        let slot_execution_output_sender = broadcast::channel(5000).0;
+
+        let channels = ExecutionChannels {
+            slot_execution_output_sender,
+        };
+
         // start the execution worker
         let (mut manager, controller) = start_execution_worker(
             exec_cfg.clone(),
             sample_state.clone(),
             sample_state.read().pos_state.selector.clone(),
             mip_store,
+            channels,
         );
         // initialize the execution system with genesis blocks
         init_execution_worker(&exec_cfg, &storage, controller.clone());
@@ -1085,12 +1163,20 @@ mod tests {
 
         // init the storage
         let mut storage = Storage::create_root();
+
+        let slot_execution_output_sender = broadcast::channel(5000).0;
+
+        let channels = ExecutionChannels {
+            slot_execution_output_sender,
+        };
+
         // start the execution worker
         let (mut manager, controller) = start_execution_worker(
             exec_cfg.clone(),
             sample_state.clone(),
             sample_state.read().pos_state.selector.clone(),
             mip_store,
+            channels,
         );
         // initialize the execution system with genesis blocks
         init_execution_worker(&exec_cfg, &storage, controller.clone());
@@ -1179,12 +1265,20 @@ mod tests {
 
         // init the storage
         let mut storage = Storage::create_root();
+
+        let slot_execution_output_sender = broadcast::channel(5000).0;
+
+        let channels = ExecutionChannels {
+            slot_execution_output_sender,
+        };
+
         // start the execution worker
         let (mut manager, controller) = start_execution_worker(
             exec_cfg.clone(),
             sample_state.clone(),
             sample_state.read().pos_state.selector.clone(),
             mip_store,
+            channels,
         );
         // initialize the execution system with genesis blocks
         init_execution_worker(&exec_cfg, &storage, controller.clone());
@@ -1281,12 +1375,20 @@ mod tests {
 
         // init the storage
         let mut storage = Storage::create_root();
+
+        let slot_execution_output_sender = broadcast::channel(5000).0;
+
+        let channels = ExecutionChannels {
+            slot_execution_output_sender,
+        };
+
         // start the execution worker
         let (mut manager, controller) = start_execution_worker(
             exec_cfg.clone(),
             sample_state.clone(),
             sample_state.read().pos_state.selector.clone(),
             mip_store,
+            channels,
         );
         // initialize the execution system with genesis blocks
         init_execution_worker(&exec_cfg, &storage, controller.clone());
@@ -1370,12 +1472,20 @@ mod tests {
 
         // init the storage
         let mut storage = Storage::create_root();
+
+        let slot_execution_output_sender = broadcast::channel(5000).0;
+
+        let channels = ExecutionChannels {
+            slot_execution_output_sender,
+        };
+
         // start the execution worker
         let (mut manager, controller) = start_execution_worker(
             exec_cfg.clone(),
             sample_state.clone(),
             sample_state.read().pos_state.selector.clone(),
             mip_store,
+            channels,
         );
         // initialize the execution system with genesis blocks
         init_execution_worker(&exec_cfg, &storage, controller.clone());
@@ -1461,12 +1571,20 @@ mod tests {
 
         // init the storage
         let mut storage = Storage::create_root();
+
+        let slot_execution_output_sender = broadcast::channel(5000).0;
+
+        let channels = ExecutionChannels {
+            slot_execution_output_sender,
+        };
+
         // start the execution worker
         let (mut manager, controller) = start_execution_worker(
             exec_cfg.clone(),
             sample_state.clone(),
             sample_state.read().pos_state.selector.clone(),
             mip_store,
+            channels,
         );
         // initialize the execution system with genesis blocks
         init_execution_worker(&exec_cfg, &storage, controller.clone());
@@ -1648,12 +1766,20 @@ mod tests {
 
         // init the storage
         let mut storage = Storage::create_root();
+
+        let slot_execution_output_sender = broadcast::channel(5000).0;
+
+        let channels = ExecutionChannels {
+            slot_execution_output_sender,
+        };
+
         // start the execution worker
         let (mut manager, controller) = start_execution_worker(
             exec_cfg.clone(),
             sample_state.clone(),
             sample_state.read().pos_state.selector.clone(),
             mip_store,
+            channels,
         );
         // initialize the execution system with genesis blocks
         init_execution_worker(&exec_cfg, &storage, controller.clone());
@@ -1802,12 +1928,20 @@ mod tests {
 
         // init the storage
         let mut storage = Storage::create_root();
+
+        let slot_execution_output_sender = broadcast::channel(5000).0;
+
+        let channels = ExecutionChannels {
+            slot_execution_output_sender,
+        };
+
         // start the execution worker
         let (mut manager, controller) = start_execution_worker(
             exec_cfg.clone(),
             sample_state.clone(),
             sample_state.read().pos_state.selector.clone(),
             mip_store,
+            channels,
         );
         // initialize the execution system with genesis blocks
         init_execution_worker(&exec_cfg, &storage, controller.clone());
@@ -1963,12 +2097,20 @@ mod tests {
 
         // init the storage
         let mut storage = Storage::create_root();
+
+        let slot_execution_output_sender = broadcast::channel(5000).0;
+
+        let channels = ExecutionChannels {
+            slot_execution_output_sender,
+        };
+
         // start the execution worker
         let (mut manager, controller) = start_execution_worker(
             exec_cfg.clone(),
             sample_state.clone(),
             sample_state.read().pos_state.selector.clone(),
             mip_store,
+            channels,
         );
         // initialize the execution system with genesis blocks
         init_execution_worker(&exec_cfg, &storage, controller.clone());
@@ -2044,12 +2186,20 @@ mod tests {
 
         // init the storage
         let mut storage = Storage::create_root();
+
+        let slot_execution_output_sender = broadcast::channel(5000).0;
+
+        let channels = ExecutionChannels {
+            slot_execution_output_sender,
+        };
+
         // start the execution worker
         let (mut manager, controller) = start_execution_worker(
             exec_cfg.clone(),
             sample_state.clone(),
             sample_state.read().pos_state.selector.clone(),
             mip_store,
+            channels,
         );
         // initialize the execution system with genesis blocks
         init_execution_worker(&exec_cfg, &storage, controller.clone());
@@ -2122,12 +2272,20 @@ mod tests {
 
         // init the storage
         let mut storage = Storage::create_root();
+
+        let slot_execution_output_sender = broadcast::channel(5000).0;
+
+        let channels = ExecutionChannels {
+            slot_execution_output_sender,
+        };
+
         // start the execution worker
         let (_manager, controller) = start_execution_worker(
             exec_cfg.clone(),
             sample_state.clone(),
             sample_state.read().pos_state.selector.clone(),
             mip_store,
+            channels,
         );
         // initialize the execution system with genesis blocks
         init_execution_worker(&exec_cfg, &storage, controller.clone());
@@ -2200,12 +2358,20 @@ mod tests {
 
         // init the storage
         let mut storage = Storage::create_root();
+
+        let slot_execution_output_sender = broadcast::channel(5000).0;
+
+        let channels = ExecutionChannels {
+            slot_execution_output_sender,
+        };
+
         // start the execution worker
         let (mut manager, controller) = start_execution_worker(
             exec_cfg.clone(),
             sample_state.clone(),
             sample_state.read().pos_state.selector.clone(),
             mip_store,
+            channels,
         );
         // initialize the execution system with genesis blocks
         init_execution_worker(&exec_cfg, &storage, controller.clone());
@@ -2336,11 +2502,19 @@ mod tests {
             counters_max: MIP_STORE_STATS_COUNTERS_MAX,
         };
         let mip_store = MipStore::try_from(([], mip_stats_config)).unwrap();
+
+        let slot_execution_output_sender = broadcast::channel(5000).0;
+
+        let channels = ExecutionChannels {
+            slot_execution_output_sender,
+        };
+
         let (mut manager, controller) = start_execution_worker(
             exec_cfg.clone(),
             sample_state.clone(),
             sample_state.read().pos_state.selector.clone(),
             mip_store,
+            channels,
         );
         // initialize the execution system with genesis blocks
         init_execution_worker(&exec_cfg, &storage, controller.clone());
@@ -2439,12 +2613,20 @@ mod tests {
             counters_max: MIP_STORE_STATS_COUNTERS_MAX,
         };
         let mip_store = MipStore::try_from(([], mip_stats_config)).unwrap();
+
+        let slot_execution_output_sender = broadcast::channel(5000).0;
+
+        let channels = ExecutionChannels {
+            slot_execution_output_sender,
+        };
+
         // start the execution worker
         let (mut manager, controller) = start_execution_worker(
             exec_cfg.clone(),
             sample_state.clone(),
             sample_state.read().pos_state.selector.clone(),
             mip_store,
+            channels,
         );
         // initialize the execution system with genesis blocks
         init_execution_worker(&exec_cfg, &storage, controller.clone());
@@ -2578,12 +2760,20 @@ mod tests {
         let mip_store = MipStore::try_from(([], mip_stats_config)).unwrap();
         // init the storage
         let mut storage = Storage::create_root();
+
+        let slot_execution_output_sender = broadcast::channel(5000).0;
+
+        let channels = ExecutionChannels {
+            slot_execution_output_sender,
+        };
+
         // start the execution worker
         let (mut manager, controller) = start_execution_worker(
             exec_cfg.clone(),
             sample_state.clone(),
             sample_state.read().pos_state.selector.clone(),
             mip_store,
+            channels,
         );
         // initialize the execution system with genesis blocks
         init_execution_worker(&exec_cfg, &storage, controller.clone());
@@ -2665,12 +2855,20 @@ mod tests {
         let mip_store = MipStore::try_from(([], mip_stats_config)).unwrap();
         // init the storage
         let mut storage = Storage::create_root();
+
+        let slot_execution_output_sender = broadcast::channel(5000).0;
+
+        let channels = ExecutionChannels {
+            slot_execution_output_sender,
+        };
+
         // start the execution worker
         let (mut manager, controller) = start_execution_worker(
             exec_cfg.clone(),
             sample_state.clone(),
             sample_state.read().pos_state.selector.clone(),
             mip_store,
+            channels,
         );
         // initialize the execution system with genesis blocks
         init_execution_worker(&exec_cfg, &storage, controller.clone());

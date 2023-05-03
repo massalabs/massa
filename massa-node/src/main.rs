@@ -14,15 +14,17 @@ use massa_api::{ApiServer, ApiV2, Private, Public, RpcServer, StopHandle, API};
 use massa_api_exports::config::APIConfig;
 use massa_async_pool::AsyncPoolConfig;
 use massa_bootstrap::{
-    get_state, start_bootstrap_server, BootstrapConfig, BootstrapManager, DefaultConnector,
-    DefaultListener,
+    get_state, start_bootstrap_server, BootstrapConfig, BootstrapManager, BootstrapTcpListener,
+    DefaultConnector,
 };
 use massa_consensus_exports::events::ConsensusEvent;
 use massa_consensus_exports::{ConsensusChannels, ConsensusConfig, ConsensusManager};
 use massa_consensus_worker::start_consensus_worker;
 use massa_db::new_rocks_db_instance;
 use massa_executed_ops::{ExecutedDenunciationsConfig, ExecutedOpsConfig};
-use massa_execution_exports::{ExecutionConfig, ExecutionManager, GasCosts, StorageCostsConstants};
+use massa_execution_exports::{
+    ExecutionChannels, ExecutionConfig, ExecutionManager, GasCosts, StorageCostsConstants,
+};
 use massa_execution_worker::start_execution_worker;
 use massa_factory_exports::{FactoryChannels, FactoryConfig, FactoryManager};
 use massa_factory_worker::start_factory;
@@ -416,12 +418,25 @@ async fn launch(
         snip_amount: SETTINGS.execution.snip_amount,
         roll_count_to_slash_on_denunciation: ROLL_COUNT_TO_SLASH_ON_DENUNCIATION,
         denunciation_expire_periods: DENUNCIATION_EXPIRE_PERIODS,
+        broadcast_enabled: SETTINGS.api.enable_broadcast,
+        broadcast_slot_execution_output_channel_capacity: SETTINGS
+            .execution
+            .broadcast_slot_execution_output_channel_capacity,
     };
+
+    let execution_channels = ExecutionChannels {
+        slot_execution_output_sender: broadcast::channel(
+            execution_config.broadcast_slot_execution_output_channel_capacity,
+        )
+        .0,
+    };
+
     let (execution_manager, execution_controller) = start_execution_worker(
         execution_config,
         final_state.clone(),
         selector_controller.clone(),
         mip_store.clone(),
+        execution_channels.clone(),
     );
 
     // launch pool controller
@@ -637,22 +652,27 @@ async fn launch(
     };
     let factory_manager = start_factory(factory_config, node_wallet.clone(), factory_channels);
 
-    // launch bootstrap server
-    // TODO: use std::net::TcpStream
-    let bootstrap_manager = match bootstrap_config.listen_addr {
-        Some(addr) => start_bootstrap_server(
+    let bootstrap_manager = bootstrap_config.listen_addr.map(|addr| {
+        let (waker, listener) = BootstrapTcpListener::new(addr).unwrap_or_else(|_| {
+            panic!(
+                "{}",
+                format!("Could not bind to address: {}", addr).as_str()
+            )
+        });
+        let mut manager = start_bootstrap_server(
+            listener,
             consensus_controller.clone(),
             protocol_controller.clone(),
             final_state.clone(),
             bootstrap_config,
-            DefaultListener::new(&addr).unwrap(),
             keypair.clone(),
             *VERSION,
             mip_store.clone(),
         )
-        .unwrap(),
-        None => None,
-    };
+        .expect("Could not start bootstrap server");
+        manager.set_listener_stopper(waker);
+        manager
+    });
 
     let api_config: APIConfig = APIConfig {
         bind_private: SETTINGS.api.bind_private,
@@ -764,6 +784,7 @@ async fn launch(
             consensus_controller: consensus_controller.clone(),
             consensus_channels: consensus_channels.clone(),
             execution_controller: execution_controller.clone(),
+            execution_channels,
             pool_channels,
             pool_command_sender: pool_controller.clone(),
             protocol_command_sender: protocol_controller.clone(),

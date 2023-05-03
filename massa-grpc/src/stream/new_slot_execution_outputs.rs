@@ -11,46 +11,51 @@ use tonic::codegen::futures_core;
 use tonic::{Request, Streaming};
 use tracing::log::{error, warn};
 
-/// Type declaration for NewEndorsements
-pub type NewEndorsementsStreamType = Pin<
+/// Type declaration for NewSlotExecutionOutputs
+pub type NewSlotExecutionOutputsStreamType = Pin<
     Box<
-        dyn futures_core::Stream<Item = Result<grpc::NewEndorsementsResponse, tonic::Status>>
-            + Send
+        dyn futures_core::Stream<
+                Item = Result<grpc::NewSlotExecutionOutputsResponse, tonic::Status>,
+            > + Send
             + 'static,
     >,
 >;
 
-/// Creates a new stream of new produced and received endorsements
-pub(crate) async fn new_endorsements(
+/// Creates a new stream of new produced and received slot execution outputs
+pub(crate) async fn new_slot_execution_outputs(
     grpc: &MassaGrpc,
-    request: Request<Streaming<grpc::NewEndorsementsRequest>>,
-) -> Result<NewEndorsementsStreamType, GrpcError> {
+    request: Request<Streaming<grpc::NewSlotExecutionOutputsRequest>>,
+) -> Result<NewSlotExecutionOutputsStreamType, GrpcError> {
     // Create a channel to handle communication with the client
     let (tx, rx) = tokio::sync::mpsc::channel(grpc.grpc_config.max_channel_size);
     // Get the inner stream from the request
     let mut in_stream = request.into_inner();
-    // Subscribe to the new endorsements channel
-    let mut subscriber = grpc.pool_channels.endorsement_sender.subscribe();
+    // Subscribe to the new slot execution events channel
+    let mut subscriber = grpc
+        .execution_channels
+        .slot_execution_output_sender
+        .subscribe();
 
     tokio::spawn(async move {
         // Initialize the request_id string
         let mut request_id = String::new();
         loop {
             select! {
-                // Receive a new endorsement from the subscriber
+                // Receive a new slot execution output from the subscriber
                 event = subscriber.recv() => {
                     match event {
-                        Ok(massa_endorsement) => {
-                            // Send the new endorsement through the channel
-                            if let Err(e) = tx.send(Ok(grpc::NewEndorsementsResponse {
+                        Ok(massa_slot_execution_output) => {
+                            // Send the new slot execution output through the channel
+                            if let Err(e) = tx.send(Ok(grpc::NewSlotExecutionOutputsResponse {
                                     id: request_id.clone(),
-                                    endorsement: Some(massa_endorsement.into())
+                                    output: Some(massa_slot_execution_output.into())
                             })).await {
-                                error!("failed to send new endorsement : {}", e);
+                                error!("failed to send new slot execution output : {}", e);
                                 break;
                             }
                         },
-                        Err(e) => {error!("error on receive new endorsement : {}", e)}
+
+                        Err(e) => {error!("error on receive new slot execution output : {}", e)}
                     }
                 },
                 // Receive a new message from the in_stream
@@ -74,7 +79,7 @@ pub(crate) async fn new_endorsements(
                                     error!("{}", err);
                                     // Send the error response back to the client
                                     if let Err(e) = tx.send(Err(err)).await {
-                                        error!("failed to send back new_endorsements error response: {}", e);
+                                        error!("failed to send back new_slot_execution_outputs error response: {}", e);
                                         break;
                                     }
                                 }
@@ -93,6 +98,6 @@ pub(crate) async fn new_endorsements(
     // Create a new stream from the received channel
     let out_stream = tokio_stream::wrappers::ReceiverStream::new(rx);
 
-    // Return the new stream of endorsements
-    Ok(Box::pin(out_stream) as NewEndorsementsStreamType)
+    // Return the new stream of slot execution output
+    Ok(Box::pin(out_stream) as NewSlotExecutionOutputsStreamType)
 }
