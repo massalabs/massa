@@ -178,7 +178,7 @@ pub fn get_initials_vesting(with_value: bool) -> NamedTempFile {
         ];
 
         let keypair_0 =
-            KeyPair::from_str("S1JJeHiZv1C1zZN5GLFcbz6EXYiccmUPLkYuDFA3kayjxP39kFQ").unwrap();
+            KeyPair::from_str("S18r2i8oJJyhF7Kprx98zwxAc3W4szf7RKuVMX6JydZz8zSxHeC").unwrap();
         let addr_0 = Address::from_public_key(&keypair_0.get_public_key());
 
         map.insert(addr_0, vec);

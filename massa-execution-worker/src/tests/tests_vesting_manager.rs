@@ -31,11 +31,11 @@ mod test {
     fn test_get_addr_vesting_at_time() {
         let manager = mock_manager(true);
 
-        let keypair_0 = massa_signature::KeyPair::from_str(
-            "S1JJeHiZv1C1zZN5GLFcbz6EXYiccmUPLkYuDFA3kayjxP39kFQ",
+        let keypair = massa_signature::KeyPair::from_str(
+            "S18r2i8oJJyhF7Kprx98zwxAc3W4szf7RKuVMX6JydZz8zSxHeC",
         )
         .unwrap();
-        let addr = Address::from_public_key(&keypair_0.get_public_key());
+        let addr = Address::from_public_key(&keypair.get_public_key());
 
         {
             // addr not vested

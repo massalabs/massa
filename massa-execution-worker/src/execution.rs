@@ -318,16 +318,12 @@ impl ExecutionState {
         // get the thread to which the operation belongs
         let op_thread = sender_addr.get_thread(self.config.thread_count);
 
-        // TODO
-        dbg!(op_thread, block_slot.thread);
         // check block/op thread compatibility
         if op_thread != block_slot.thread {
             return Err(ExecutionError::IncludeOperationError(
                 "operation vs block thread mismatch".to_string(),
             ));
         }
-        dbg!("compatibility ok");
-        // TODO
 
         // get operation ID
         let operation_id = operation.id;

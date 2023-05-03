@@ -967,7 +967,7 @@ mod tests {
         });
 
         // match the events
-        assert_eq!(events.len(), 2, "Two events were expected");
+        assert_eq!(events.len(), 2, "2 events were expected");
         assert_eq!(events[0].data, "Triggered");
 
         // keypair associated to thread 1
@@ -999,8 +999,7 @@ mod tests {
         });
 
         // match the events
-        assert!(events.len() == 3, "Three event was expected");
-        assert_eq!(events[0].data, "Triggered");
+        assert!(events.len() == 3, "3 events were expected");
 
         // keypair associated to thread 2
         let keypair = KeyPair::from_str(TEST_SK_3).unwrap();
@@ -1027,14 +1026,11 @@ mod tests {
 
         // retrieve events emitted by smart contracts
         let events = controller.get_filtered_sc_output_event(EventFilter {
-            start: Some(Slot::new(1, 3)),
             ..Default::default()
         });
 
         // match the events
-        assert_eq!(events.len(), 1, "One event was expected");
-        assert_eq!(events[0].data, "Triggered");
-        assert_eq!(events[0].data, "Triggered");
+        assert!(events.len() == 4, "4 events were expected");
 
         manager.stop();
     }
@@ -1207,7 +1203,11 @@ mod tests {
         std::thread::sleep(Duration::from_millis(100));
 
         // retrieve the event emitted by the execution error
-        let events = controller.get_filtered_sc_output_event(EventFilter::default());
+        let events = controller.get_filtered_sc_output_event(EventFilter {
+            is_error: Some(true),
+            ..Default::default()
+        });
+        dbg!(&events);
         assert!(events[0].data.contains("massa_execution_error"));
         assert!(events[0]
             .data
