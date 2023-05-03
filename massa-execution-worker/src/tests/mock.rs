@@ -152,6 +152,7 @@ pub fn get_sample_state(
             cfg,
             Box::new(ledger),
             selector_controller,
+            true,
         )
         .unwrap()
     };

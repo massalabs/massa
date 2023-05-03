@@ -63,6 +63,7 @@ impl FinalState {
         config: FinalStateConfig,
         ledger: Box<dyn LedgerController>,
         selector: Box<dyn SelectorController>,
+        reset_final_state: bool,
     ) -> Result<Self, FinalStateError> {
         let ledger_slot = ledger.get_slot();
         match ledger_slot {
@@ -73,8 +74,7 @@ impl FinalState {
                     ledger.get_ledger_hash()
                 );
             }
-            Err(e) => {
-                info!("{}", e);
+            Err(_e) => {
                 info!(
                     "Recovered ledger. Unknown ledger slot, ledger hash: {}",
                     ledger.get_ledger_hash()
@@ -122,6 +122,13 @@ impl FinalState {
             rocks_db,
         };
 
+        if reset_final_state {
+            final_state.async_pool.reset();
+            final_state.pos_state.reset();
+            final_state.executed_ops.reset();
+            final_state.executed_denunciations.reset();
+        }
+
         final_state.compute_state_hash_at_slot(slot);
         // create the final state
         Ok(final_state)
@@ -145,7 +152,7 @@ impl FinalState {
         info!("Restarting from snapshot");
 
         // FIRST, we recover the last known final_state
-        let mut final_state = FinalState::new(rocks_db, config, ledger, selector)?;
+        let mut final_state = FinalState::new(rocks_db, config, ledger, selector, false)?;
         final_state.pos_state.create_initial_cycle();
 
         final_state.slot = final_state.ledger.get_slot().map_err(|_| {
