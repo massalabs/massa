@@ -385,16 +385,25 @@ impl RetrievalThread {
                 ask_set.len(),
                 peer_id
             );
-            if let Err(err) = self.active_connections.send_to_peer(
-                peer_id,
-                &self.operation_message_serializer,
-                OperationMessage::AskForOperations(ask_set).into(),
-                false,
-            ) {
-                warn!("Failed to send AskForOperations message to peer: {}", err);
-                {
-                    let mut cache_write = self.cache.write();
-                    cache_write.ops_known_by_peer.pop(peer_id);
+            for sub_list in ask_set
+                .into_iter()
+                .collect::<Vec<OperationPrefixId>>()
+                .chunks(self.config.max_operations_per_message as usize)
+            {
+                if let Err(err) = self.active_connections.send_to_peer(
+                    peer_id,
+                    &self.operation_message_serializer,
+                    OperationMessage::AskForOperations(
+                        sub_list.iter().cloned().collect::<OperationPrefixIds>(),
+                    )
+                    .into(),
+                    false,
+                ) {
+                    warn!("Failed to send AskForOperations message to peer: {}", err);
+                    {
+                        let mut cache_write = self.cache.write();
+                        cache_write.ops_known_by_peer.pop(peer_id);
+                    }
                 }
             }
         }
@@ -447,16 +456,18 @@ impl RetrievalThread {
             }
         }
         debug!("Send full operations of len {} to {}", ops.len(), peer_id);
-        if let Err(err) = self.active_connections.send_to_peer(
-            peer_id,
-            &self.operation_message_serializer,
-            OperationMessage::Operations(ops).into(),
-            false,
-        ) {
-            warn!("Failed to send Operations message to peer: {}", err);
-            {
-                let mut cache_write = self.cache.write();
-                cache_write.ops_known_by_peer.pop(peer_id);
+        for sub_list in ops.chunks(self.config.max_operations_per_message as usize) {
+            if let Err(err) = self.active_connections.send_to_peer(
+                peer_id,
+                &self.operation_message_serializer,
+                OperationMessage::Operations(sub_list.to_vec()).into(),
+                false,
+            ) {
+                warn!("Failed to send Operations message to peer: {}", err);
+                {
+                    let mut cache_write = self.cache.write();
+                    cache_write.ops_known_by_peer.pop(peer_id);
+                }
             }
         }
         Ok(())

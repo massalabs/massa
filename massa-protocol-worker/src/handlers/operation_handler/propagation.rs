@@ -129,19 +129,22 @@ impl PropagationThread {
                         new_ops.len(),
                         peer_id
                     );
-                    if let Err(err) = self.active_connections.send_to_peer(
-                        peer_id,
-                        &self.operation_message_serializer,
-                        OperationMessage::OperationsAnnouncement(
-                            new_ops.iter().map(|id| id.into_prefix()).collect(),
-                        )
-                        .into(),
-                        false,
-                    ) {
-                        warn!(
-                            "Failed to send OperationsAnnouncement message to peer: {}",
-                            err
-                        );
+                    for sub_list in new_ops.chunks(self.config.max_operations_per_message as usize)
+                    {
+                        if let Err(err) = self.active_connections.send_to_peer(
+                            peer_id,
+                            &self.operation_message_serializer,
+                            OperationMessage::OperationsAnnouncement(
+                                sub_list.iter().map(|id| id.into_prefix()).collect(),
+                            )
+                            .into(),
+                            false,
+                        ) {
+                            warn!(
+                                "Failed to send OperationsAnnouncement message to peer: {}",
+                                err
+                            );
+                        }
                     }
                 }
             }
