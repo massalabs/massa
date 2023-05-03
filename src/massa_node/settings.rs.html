@@ -283,6 +283,8 @@
 <a href="#283" id="283">283</a>
 <a href="#284" id="284">284</a>
 <a href="#285" id="285">285</a>
+<a href="#286" id="286">286</a>
+<a href="#287" id="287">287</a>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="doccomment">//! Build here the default node settings from the configuration file toml
@@ -519,6 +521,8 @@
     </span><span class="kw">pub </span>accept_http1: bool,
     <span class="doccomment">/// whether to enable CORS. Works only if `accept_http1` is true
     </span><span class="kw">pub </span>enable_cors: bool,
+    <span class="doccomment">/// whether to enable gRPC health service
+    </span><span class="kw">pub </span>enable_health: bool,
     <span class="doccomment">/// whether to enable gRPC reflection
     </span><span class="kw">pub </span>enable_reflection: bool,
     <span class="doccomment">/// bind for the Massa gRPC API
