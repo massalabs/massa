@@ -642,7 +642,7 @@ async fn launch(
             protocol_controller.clone(),
             final_state.clone(),
             bootstrap_config,
-            private_key,
+            keypair.clone(),
             *VERSION,
             mip_store.clone(),
         )

@@ -97,9 +97,9 @@ fn mock_bootstrap_manager(addr: SocketAddr, bootstrap_config: BootstrapConfig) -
 
     // start bootstrap manager
     let (_, keypair): &(BootstrapConfig, KeyPair) = &BOOTSTRAP_CONFIG_KEYPAIR;
-    let mut mocked1 = NetworkCommandSender::new();
-    let mocked2 = NetworkCommandSender::new();
-    mocked1.expect_clone().return_once(move || mocked2);
+    let mut mocked1 = Box::new(MockProtocolController::new());
+    let mocked2 = Box::new(MockProtocolController::new());
+    mocked1.expect_clone_box().return_once(move || mocked2);
 
     // start proof-of-stake selectors
     let (_server_selector_manager, server_selector_controller) =
