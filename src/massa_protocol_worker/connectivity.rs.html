@@ -482,7 +482,7 @@
                                     <span class="kw">continue</span>;
                                 }
                                 {
-                                    <span class="kw">if </span>!addr.ip().is_global() || !network_controller.get_active_connections().check_addr_accepted(addr) {
+                                    <span class="kw">if </span>!addr.ip().to_canonical().is_global() || !network_controller.get_active_connections().check_addr_accepted(addr) {
                                         <span class="kw">continue</span>;
                                     }
                                 }

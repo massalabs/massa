@@ -501,6 +501,9 @@
 <a href="#501" id="501">501</a>
 <a href="#502" id="502">502</a>
 <a href="#503" id="503">503</a>
+<a href="#504" id="504">504</a>
+<a href="#505" id="505">505</a>
+<a href="#506" id="506">506</a>
 </pre><pre class="rust"><code><span class="kw">use </span>std::cmp::Reverse;
 <span class="kw">use </span>std::{collections::HashMap, net::SocketAddr, thread::JoinHandle, time::Duration};
 
@@ -937,12 +940,15 @@
             </span><span class="kw">match </span><span class="kw-2">&amp;</span>res {
                 <span class="prelude-val">Ok</span>((peer_id, announcement)) =&gt; {
                     <span class="macro">info!</span>(<span class="string">&quot;Peer connected: {:?}&quot;</span>, peer_id);
-                    peer_db_write
-                        .index_by_newest
-                        .retain(|<span class="kw">_</span>, peer_id_stored| peer_id_stored != peer_id);
-                    peer_db_write
-                        .index_by_newest
-                        .insert(Reverse(announcement.timestamp), peer_id.clone());
+                    <span class="comment">//TODO: Hacky organize better when multiple ip/listeners
+                    </span><span class="kw">if </span>!announcement.listeners.is_empty() {
+                        peer_db_write
+                            .index_by_newest
+                            .retain(|<span class="kw">_</span>, peer_id_stored| peer_id_stored != peer_id);
+                        peer_db_write
+                            .index_by_newest
+                            .insert(Reverse(announcement.timestamp), peer_id.clone());
+                    }
                     peer_db_write
                         .peers
                         .entry(peer_id.clone())

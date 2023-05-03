@@ -231,6 +231,10 @@
 <a href="#231" id="231">231</a>
 <a href="#232" id="232">232</a>
 <a href="#233" id="233">233</a>
+<a href="#234" id="234">234</a>
+<a href="#235" id="235">235</a>
+<a href="#236" id="236">236</a>
+<a href="#237" id="237">237</a>
 </pre><pre class="rust"><code><span class="kw">use </span>std::{
     collections::HashMap,
     net::{IpAddr, SocketAddr},
@@ -387,12 +391,16 @@
 
 <span class="kw">impl </span>Announcement {
     <span class="kw">pub fn </span>new(
-        listeners: HashMap&lt;SocketAddr, TransportType&gt;,
+        <span class="kw-2">mut </span>listeners: HashMap&lt;SocketAddr, TransportType&gt;,
         routable_ip: <span class="prelude-ty">Option</span>&lt;IpAddr&gt;,
         keypair: <span class="kw-2">&amp;</span>KeyPair,
     ) -&gt; PeerNetResult&lt;<span class="self">Self</span>&gt; {
         <span class="kw">let </span><span class="kw-2">mut </span>buf: Vec&lt;u8&gt; = <span class="macro">vec!</span>[];
         <span class="kw">let </span>length_serializer = U64VarIntSerializer::new();
+        <span class="comment">//TODO: Hacky to fix and adapt to support multiple ip/listeners
+        </span><span class="kw">if </span>routable_ip.is_none() {
+            listeners = HashMap::default()
+        }
         length_serializer
             .serialize(<span class="kw-2">&amp;</span>(listeners.len() <span class="kw">as </span>u64), <span class="kw-2">&amp;mut </span>buf)
             .map_err(|err| {

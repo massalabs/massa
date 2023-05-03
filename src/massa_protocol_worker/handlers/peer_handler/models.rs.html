@@ -187,7 +187,7 @@
 <span class="attr">#[derive(Default)]
 </span><span class="kw">pub struct </span>PeerDB {
     <span class="kw">pub </span>peers: HashMap&lt;PeerId, PeerInfo&gt;,
-    <span class="doccomment">/// last is the oldest value
+    <span class="doccomment">/// last is the oldest value (only routable peers)
     </span><span class="kw">pub </span>index_by_newest: BTreeMap&lt;Reverse&lt;u128&gt;, PeerId&gt;,
 }
 
@@ -306,7 +306,7 @@
                     .listeners
                     .clone()
                     .into_iter()
-                    .filter(|(addr, <span class="kw">_</span>)| addr.ip().is_global())
+                    .filter(|(addr, <span class="kw">_</span>)| addr.ip().to_canonical().is_global())
                     .collect();
                 <span class="kw">if </span>listeners.is_empty() {
                     <span class="kw">continue</span>;
