@@ -432,6 +432,7 @@ impl InitConnectionHandler for MassaHandshake {
                         .peers
                         .entry(peer_id.clone())
                         .and_modify(|info| {
+                            info.last_announce = announcement.clone();
                             info.state = PeerState::Trusted;
                         })
                         .or_insert(PeerInfo {
@@ -441,6 +442,7 @@ impl InitConnectionHandler for MassaHandshake {
                 }
                 Err(_) => {
                     peer_db_write.peers.entry(peer_id).and_modify(|info| {
+                        //TODO: Add the peerdb but for now impossible as we don't have announcement and we need one to place in peerdb
                         info.state = PeerState::HandshakeFailed;
                     });
                 }
