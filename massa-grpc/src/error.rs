@@ -8,7 +8,6 @@ use massa_consensus_exports::error::ConsensusError;
 use massa_execution_exports::ExecutionError;
 use massa_hash::MassaHashError;
 use massa_models::error::ModelsError;
-use massa_network_exports::NetworkError;
 use massa_protocol_exports::ProtocolError;
 use massa_time::TimeError;
 use massa_wallet::WalletError;
@@ -24,8 +23,6 @@ pub enum GrpcError {
     ConsensusError(#[from] ConsensusError),
     /// execution error: {0}
     ExecutionError(#[from] ExecutionError),
-    /// Network error: {0}
-    NetworkError(#[from] NetworkError),
     /// Protocol error: {0}
     ProtocolError(#[from] ProtocolError),
     /// Reflection error : {0}
@@ -49,7 +46,6 @@ impl From<GrpcError> for tonic::Status {
             GrpcError::MassaHashError(e) => tonic::Status::internal(e.to_string()),
             GrpcError::ConsensusError(e) => tonic::Status::internal(e.to_string()),
             GrpcError::ExecutionError(e) => tonic::Status::internal(e.to_string()),
-            GrpcError::NetworkError(e) => tonic::Status::internal(e.to_string()),
             GrpcError::ProtocolError(e) => tonic::Status::internal(e.to_string()),
             GrpcError::ModelsError(e) => tonic::Status::internal(e.to_string()),
             GrpcError::TimeError(e) => tonic::Status::internal(e.to_string()),

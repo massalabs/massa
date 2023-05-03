@@ -77,6 +77,8 @@ pub struct BootstrapConfig {
     pub endorsement_count: u32,
     /// max advertise length
     pub max_advertise_length: u32,
+    /// max listeners per peer
+    pub max_listeners_per_peer: u32,
     /// max bootstrap blocks length
     pub max_bootstrap_blocks_length: u32,
     /// max operations per block
@@ -155,6 +157,7 @@ pub struct BootstrapClientConfig {
     pub max_bytes_read_write: f64,
     pub max_bootstrap_message_size: u32,
     pub endorsement_count: u32,
+    pub max_listeners_per_peer: u32,
     pub max_advertise_length: u32,
     pub max_bootstrap_blocks_length: u32,
     pub max_operations_per_block: u32,
@@ -189,6 +192,7 @@ pub struct BootstrapServerMessageDeserializerArgs {
     pub thread_count: u8,
     pub endorsement_count: u32,
     pub max_advertise_length: u32,
+    pub max_listeners_per_peer: u32,
     pub max_bootstrap_blocks_length: u32,
     pub max_operations_per_block: u32,
     pub max_bootstrap_final_state_parts_size: u64,

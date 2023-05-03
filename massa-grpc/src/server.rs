@@ -10,7 +10,7 @@ use massa_pool_exports::{PoolChannels, PoolController};
 use massa_pos_exports::SelectorController;
 use massa_proto::massa::api::v1::massa_service_server::MassaServiceServer;
 use massa_proto::massa::api::v1::FILE_DESCRIPTOR_SET;
-use massa_protocol_exports::ProtocolCommandSender;
+use massa_protocol_exports::ProtocolController;
 use massa_storage::Storage;
 use tokio::sync::oneshot;
 use tonic::codec::CompressionEncoding;
@@ -20,7 +20,7 @@ use tracing::log::{info, warn};
 
 /// gRPC API content
 pub struct MassaGrpc {
-    /// link(channels) to the consensus component
+    /// link to the consensus component
     pub consensus_controller: Box<dyn ConsensusController>,
     /// link(channels) to the consensus component
     pub consensus_channels: ConsensusChannels,
@@ -30,8 +30,8 @@ pub struct MassaGrpc {
     pub pool_channels: PoolChannels,
     /// link to the pool component
     pub pool_command_sender: Box<dyn PoolController>,
-    /// link(channels) to the protocol component
-    pub protocol_command_sender: ProtocolCommandSender,
+    /// link to the protocol component
+    pub protocol_command_sender: Box<dyn ProtocolController>,
     /// link to the selector component
     pub selector_controller: Box<dyn SelectorController>,
     /// link to the storage component

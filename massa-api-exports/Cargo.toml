@@ -20,7 +20,6 @@ massa_final_state = { path = "../massa-final-state" }
 
 massa_consensus_exports = { path = "../massa-consensus-exports" }
 massa_hash = { path = "../massa-hash" }
-massa_network_exports = { path = "../massa-network-exports" }
 massa_protocol_exports = { path = "../massa-protocol-exports" }
 massa_execution_exports = { path = "../massa-execution-exports" }
 massa_wallet = { path = "../massa-wallet" }
