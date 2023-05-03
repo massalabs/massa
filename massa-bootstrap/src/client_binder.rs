@@ -79,21 +79,22 @@ impl BootstrapClientBinder {
     ) -> Result<BootstrapServerMessage, BootstrapError> {
         let deadline = duration.map(|d| Instant::now() + d);
 
-        // peek the signature and message len
-        let peek_len = SIGNATURE_SIZE_BYTES + self.size_field_len;
-        let mut peek_buff = vec![0u8; peek_len];
+        // read the known-len component of the message
+        let known_len = SIGNATURE_SIZE_BYTES + self.size_field_len;
+        let mut known_len_buff = vec![0u8; known_len];
+        // TODO: handle a partial read
+        self.read_exact_timeout(&mut known_len_buff, deadline)
+            .map_err(|(err, _consumed)| err)?;
 
-        self.peek_exact_timeout(&mut peek_buff, duration)?;
-
-        // construct the signature from the peek
-        let sig_array = peek_buff.as_slice()[0..SIGNATURE_SIZE_BYTES]
+        // construct the signature
+        let sig_array = known_len_buff.as_slice()[0..SIGNATURE_SIZE_BYTES]
             .try_into()
             .expect("logic error in array manipulations");
         let sig = Signature::from_bytes(&sig_array)?;
 
         // construct the message len from the peek
         let msg_len = u32::from_be_bytes_min(
-            &peek_buff[SIGNATURE_SIZE_BYTES..],
+            &known_len_buff[SIGNATURE_SIZE_BYTES..],
             self.cfg.max_bootstrap_message_size,
         )?
         .0;
@@ -106,13 +107,13 @@ impl BootstrapClientBinder {
 
         let message = {
             if let Some(prev_msg) = prev_msg {
-                // Consume the stream, and discard the peek
-                let mut stream_bytes = vec![0u8; peek_len + (msg_len as usize)];
+                // Consume the rest of the message from the stream
+                let mut stream_bytes = vec![0u8; msg_len as usize];
 
                 // TODO: handle a partial read
                 self.read_exact_timeout(&mut stream_bytes[..], deadline)
-                    .map_err(|(e, _)| e)?;
-                let msg_bytes = &mut stream_bytes[peek_len..];
+                    .map_err(|(e, _consumed)| e)?;
+                let msg_bytes = &mut stream_bytes[..];
 
                 // prepend the received message with the previous messages hash, and derive the new hash.
                 // TODO: some sort of recovery if this fails?
@@ -126,13 +127,13 @@ impl BootstrapClientBinder {
                     .map_err(|err| BootstrapError::DeserializeError(format!("{}", err)))?;
                 msg
             } else {
-                // Consume the stream and discard the peek
-                let mut stream_bytes = vec![0u8; peek_len + msg_len as usize];
+                // Consume the rest of the message from the stream
+                let mut stream_bytes = vec![0u8; msg_len as usize];
 
                 // TODO: handle a partial read
                 self.read_exact_timeout(&mut stream_bytes[..], deadline)
                     .map_err(|(e, _)| e)?;
-                let sig_msg_bytes = &mut stream_bytes[peek_len..];
+                let sig_msg_bytes = &mut stream_bytes[..];
 
                 // Compute the hash and verify
                 let msg_hash = Hash::compute_from(sig_msg_bytes);
