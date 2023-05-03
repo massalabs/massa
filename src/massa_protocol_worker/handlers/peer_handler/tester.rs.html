@@ -569,7 +569,7 @@
                                     .duration_since(UNIX_EPOCH)
                                     .expect(<span class="string">&quot;Time went backward&quot;</span>)
                                     .as_millis();
-                                    <span class="kw">let </span>elapsed_secs = (timestamp - peer_info.last_announce.timestamp) / <span class="number">1000000</span>;
+                                    <span class="kw">let </span>elapsed_secs = (timestamp - peer_info.last_announce.timestamp) / <span class="number">1000</span>;
                                     <span class="kw">if </span>elapsed_secs &lt; <span class="number">60 </span>{
                                         <span class="kw">continue</span>;
                                     }
@@ -615,7 +615,7 @@
                         .duration_since(UNIX_EPOCH)
                         .expect(<span class="string">&quot;Time went backward&quot;</span>)
                         .as_millis();
-                        <span class="kw">let </span>elapsed_secs = (timestamp - peer_info.last_announce.timestamp) / <span class="number">1000000</span>;
+                        <span class="kw">let </span>elapsed_secs = (timestamp - peer_info.last_announce.timestamp) / <span class="number">1000</span>;
                         <span class="kw">if </span>elapsed_secs &lt; <span class="number">60 </span>{
                             <span class="kw">continue</span>;
                         }
