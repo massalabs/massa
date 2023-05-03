@@ -164,8 +164,6 @@
 <a href="#164" id="164">164</a>
 <a href="#165" id="165">165</a>
 <a href="#166" id="166">166</a>
-<a href="#167" id="167">167</a>
-<a href="#168" id="168">168</a>
 </pre><pre class="rust"><code><span class="kw">use </span>crossbeam::channel::Sender;
 <span class="kw">use </span>massa_protocol_exports::{BootstrapPeers, ProtocolError};
 <span class="kw">use </span>parking_lot::RwLock;
@@ -295,14 +293,12 @@
         <span class="kw">let </span><span class="kw-2">mut </span>result = Vec::new();
 
         <span class="kw">for </span>key <span class="kw">in </span>keys {
-            <span class="macro">println!</span>(<span class="string">&quot;AURELIEN: Try to include {} in peer announcement&quot;</span>, key);
             <span class="kw">if </span>result.len() &gt;= nb_peers {
                 <span class="kw">break</span>;
             }
             <span class="kw">if let </span><span class="prelude-val">Some</span>(peer) = <span class="self">self</span>.peers.get(<span class="kw-2">&amp;</span>key) {
                 <span class="comment">// skip old peers
                 </span><span class="kw">if </span>peer.last_announce.timestamp &lt; min_time {
-                    <span class="macro">println!</span>(<span class="string">&quot;AURELIEN: Don&#39;t include too old&quot;</span>);
                     <span class="kw">continue</span>;
                 }
                 <span class="kw">let </span>listeners: HashMap&lt;SocketAddr, TransportType&gt; = peer
