@@ -68,6 +68,17 @@ impl std::fmt::Debug for KeyPair {
 
 impl FromStr for KeyPair {
     type Err = MassaSignatureError;
+
+    /// # Example
+    /// ```
+    /// # use massa_signature::KeyPair;
+    /// # use std::str::FromStr;
+    ///
+    /// let keypair = KeyPair::generate(0).unwrap();
+    /// let string = keypair.to_string();
+    /// let keypair2 = KeyPair::from_str(&string).unwrap();
+    /// assert_eq!(keypair.to_string(), keypair2.to_string());
+    /// ```
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         let mut chars = s.chars();
         match chars.next() {
@@ -540,6 +551,17 @@ impl std::fmt::Debug for PublicKey {
 
 impl FromStr for PublicKey {
     type Err = MassaSignatureError;
+
+    /// # Example
+    /// ```
+    /// # use massa_signature::{KeyPair, PublicKey};
+    /// # use std::str::FromStr;
+    ///
+    /// let pubkey = KeyPair::generate(0).unwrap().get_public_key();
+    /// let string = pubkey.to_string();
+    /// let pubkey_2 = PublicKey::from_str(&string).unwrap();
+    /// assert_eq!(pubkey.to_string(), pubkey_2.to_string());
+    /// ```
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         let mut chars = s.chars();
         match chars.next() {
@@ -552,32 +574,7 @@ impl FromStr for PublicKey {
                         .map_err(|_| {
                             MassaSignatureError::ParsingError("Bad public key bs58".to_owned())
                         })?;
-                let u64_deserializer = U64VarIntDeserializer::new(Included(0), Included(u64::MAX));
-                let (rest, version) = u64_deserializer
-                    .deserialize::<DeserializeError>(&decoded_bs58_check[..])
-                    .map_err(|err| MassaSignatureError::ParsingError(err.to_string()))?;
-
-                match version {
-                    <PublicKey!["0"]>::VERSION => Ok(PublicKeyVariant!["0"](
-                        <PublicKey!["0"]>::from_bytes(rest.try_into().map_err(|_| {
-                            MassaSignatureError::ParsingError(format!(
-                                "public key not long enough for: {}",
-                                s
-                            ))
-                        })?)?,
-                    )),
-                    <PublicKey!["1"]>::VERSION => Ok(PublicKeyVariant!["1"](
-                        <PublicKey!["1"]>::from_bytes(rest.try_into().map_err(|_| {
-                            MassaSignatureError::ParsingError(format!(
-                                "public key not long enough for: {}",
-                                s
-                            ))
-                        })?)?,
-                    )),
-                    _ => Err(MassaSignatureError::InvalidVersionError(String::from(
-                        "Unknown PublicKey version",
-                    ))),
-                }
+                PublicKey::from_bytes(&decoded_bs58_check)
             }
             _ => Err(MassaSignatureError::ParsingError(
                 "Bad public key prefix".to_owned(),
@@ -657,40 +654,11 @@ impl PublicKey {
                     ))
                 })?)?,
             )),
-            _ => Ok(PublicKeyVariant!["0"](<PublicKey!["0"]>::from_bytes(
-                data.try_into().map_err(|err| {
-                    MassaSignatureError::ParsingError(format!(
-                        "pubkey bytes parsing error: {}",
-                        err
-                    ))
-                })?,
-            )?)),
-            /*_ => Err(MassaSignatureError::InvalidVersionError(format!(
-                "Unknown PublicKey version: {}", version
-            ))),*/
+            _ => Err(MassaSignatureError::InvalidVersionError(format!(
+                "Unknown PublicKey version: {}",
+                version
+            ))),
         }
-    }
-}
-
-#[transition::impl_version(versions("0", "1"), structures("PublicKey"))]
-impl PublicKey {
-    /// Return the bytes representing the keypair (should be a reference in the future)
-    ///
-    /// # Example
-    /// ```
-    /// # use massa_signature::KeyPair;
-    /// let keypair = KeyPair::generate(0).unwrap();
-    /// let bytes = keypair.to_bytes();
-    /// ```
-    pub fn to_bytes(&self) -> Vec<u8> {
-        let version_serializer = U64VarIntSerializer::new();
-        let mut bytes: Vec<u8> =
-            Vec::with_capacity(Self::VERSION_VARINT_SIZE_BYTES + Self::PUBLIC_KEY_SIZE_BYTES);
-        version_serializer
-            .serialize(&Self::VERSION, &mut bytes)
-            .unwrap();
-        bytes.extend_from_slice(&self.0.to_bytes());
-        bytes
     }
 }
 
@@ -719,17 +687,11 @@ impl Ord for PublicKey {
 #[transition::impl_version(versions("0", "1"))]
 impl std::fmt::Display for PublicKey {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        let u64_serializer = U64VarIntSerializer::new();
-        let mut bytes = Vec::new();
-        u64_serializer
-            .serialize(&Self::VERSION, &mut bytes)
-            .map_err(|_| std::fmt::Error)?;
-        bytes.extend(self.0.to_bytes());
         write!(
             f,
             "{}{}",
             PUBLIC_PREFIX,
-            bs58::encode(bytes).with_check().into_string()
+            bs58::encode(self.to_bytes()).with_check().into_string()
         )
     }
 }
@@ -753,6 +715,25 @@ impl PublicKey {
         self.0.verify(hash.to_bytes(), &signature.0).map_err(|err| {
             MassaSignatureError::SignatureError(format!("Signature verification failed: {}", err))
         })
+    }
+
+    /// Return the bytes representing the keypair (should be a reference in the future)
+    ///
+    /// # Example
+    /// ```
+    /// # use massa_signature::KeyPair;
+    /// let keypair = KeyPair::generate(0).unwrap();
+    /// let bytes = keypair.to_bytes();
+    /// ```
+    pub fn to_bytes(&self) -> Vec<u8> {
+        let version_serializer = U64VarIntSerializer::new();
+        let mut bytes: Vec<u8> =
+            Vec::with_capacity(Self::VERSION_VARINT_SIZE_BYTES + Self::PUBLIC_KEY_SIZE_BYTES);
+        version_serializer
+            .serialize(&Self::VERSION, &mut bytes)
+            .unwrap();
+        bytes.extend_from_slice(&self.0.to_bytes());
+        bytes
     }
 
     /// Deserialize a `PublicKey` from bytes.
@@ -925,38 +906,26 @@ impl std::fmt::Display for Signature {
 
 impl FromStr for Signature {
     type Err = MassaSignatureError;
+
+    /// # Example
+    /// ```
+    /// # use massa_signature::{KeyPair, Signature};
+    /// # use massa_hash::Hash;
+    /// # use std::str::FromStr;
+    ///
+    /// let hash = Hash::compute_from("Hello World!".as_bytes());
+    /// let signature = KeyPair::generate(0).unwrap().sign(&hash).unwrap();
+    /// let string = signature.to_string();
+    /// let signature_2 = Signature::from_str(&string).unwrap();
+    /// assert_eq!(signature, signature_2);
+    /// ```
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         let data = s.chars().collect::<String>();
         let decoded_bs58_check = bs58::decode(data)
             .with_check(None)
             .into_vec()
             .map_err(|_| MassaSignatureError::ParsingError(format!("bad signature bs58: {}", s)))?;
-        let u64_deserializer = U64VarIntDeserializer::new(Included(0), Included(u64::MAX));
-        let (rest, version) = u64_deserializer
-            .deserialize::<DeserializeError>(&decoded_bs58_check[..])
-            .map_err(|err| MassaSignatureError::ParsingError(err.to_string()))?;
-        match version {
-            <Signature!["0"]>::VERSION => Ok(SignatureVariant!["0"](
-                <Signature!["0"]>::from_bytes(rest.try_into().map_err(|_| {
-                    MassaSignatureError::ParsingError(format!(
-                        "signature not long enough for: {}",
-                        s
-                    ))
-                })?)?,
-            )),
-            <Signature!["1"]>::VERSION => Ok(SignatureVariant!["1"](
-                <Signature!["1"]>::from_bytes(rest.try_into().map_err(|_| {
-                    MassaSignatureError::ParsingError(format!(
-                        "signature not long enough for: {}",
-                        s
-                    ))
-                })?)?,
-            )),
-            _ => Err(MassaSignatureError::InvalidVersionError(format!(
-                "Unknown signature version: {}",
-                version
-            ))),
-        }
+        Signature::from_bytes(&decoded_bs58_check)
     }
 }
 
