@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"fn":["massa_service_status"],"opaque":[""],"struct":["MassaGrpc","StopHandle"]};
+window.SIDEBAR_ITEMS = {"opaque":[""],"struct":["MassaGrpc","StopHandle"]};

@@ -57,6 +57,8 @@
 <a href="#57" id="57">57</a>
 <a href="#58" id="58">58</a>
 <a href="#59" id="59">59</a>
+<a href="#60" id="60">60</a>
+<a href="#61" id="61">61</a>
 </pre><pre class="rust"><code><span class="kw">use </span>massa_signature::KeyPair;
 <span class="kw">use </span>massa_time::MassaTime;
 <span class="kw">use </span>serde::{Deserialize, Serialize};
@@ -107,10 +109,12 @@
     </span><span class="kw">pub </span>bootstrap_part_size: u64,
     <span class="doccomment">/// whether broadcast is enabled
     </span><span class="kw">pub </span>broadcast_enabled: bool,
-    <span class="doccomment">/// blocks headers channel capacity
-    </span><span class="kw">pub </span>broadcast_blocks_headers_channel_capacity: usize,
+    <span class="doccomment">/// blockcliques channel capacity
+    </span><span class="kw">pub </span>broadcast_block_cliques_channel_capacity: usize,
     <span class="doccomment">/// blocks channel capacity
     </span><span class="kw">pub </span>broadcast_blocks_channel_capacity: usize,
+    <span class="doccomment">/// blocks headers channel capacity
+    </span><span class="kw">pub </span>broadcast_blocks_headers_channel_capacity: usize,
     <span class="doccomment">/// filled blocks channel capacity
     </span><span class="kw">pub </span>broadcast_filled_blocks_channel_capacity: usize,
     <span class="doccomment">/// last start period

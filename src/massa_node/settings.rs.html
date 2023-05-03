@@ -442,10 +442,12 @@
     </span><span class="kw">pub </span>block_db_prune_interval: MassaTime,
     <span class="doccomment">/// max number of items returned while querying
     </span><span class="kw">pub </span>max_item_return_count: usize,
-    <span class="doccomment">/// blocks headers channel capacity
-    </span><span class="kw">pub </span>broadcast_blocks_headers_channel_capacity: usize,
+    <span class="doccomment">/// blockcliques channel capacity
+    </span><span class="kw">pub </span>broadcast_block_cliques_channel_capacity: usize,
     <span class="doccomment">/// blocks channel capacity
     </span><span class="kw">pub </span>broadcast_blocks_channel_capacity: usize,
+    <span class="doccomment">/// blocks headers channel capacity
+    </span><span class="kw">pub </span>broadcast_blocks_headers_channel_capacity: usize,
     <span class="doccomment">/// filled blocks channel capacity
     </span><span class="kw">pub </span>broadcast_filled_blocks_channel_capacity: usize,
 }
@@ -521,8 +523,6 @@
     </span><span class="kw">pub </span>accept_http1: bool,
     <span class="doccomment">/// whether to enable CORS. Works only if `accept_http1` is true
     </span><span class="kw">pub </span>enable_cors: bool,
-    <span class="doccomment">/// whether to enable gRPC health service
-    </span><span class="kw">pub </span>enable_health: bool,
     <span class="doccomment">/// whether to enable gRPC reflection
     </span><span class="kw">pub </span>enable_reflection: bool,
     <span class="doccomment">/// bind for the Massa gRPC API
