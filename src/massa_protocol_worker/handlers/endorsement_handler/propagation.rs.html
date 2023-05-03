@@ -173,6 +173,11 @@
 <a href="#173" id="173">173</a>
 <a href="#174" id="174">174</a>
 <a href="#175" id="175">175</a>
+<a href="#176" id="176">176</a>
+<a href="#177" id="177">177</a>
+<a href="#178" id="178">178</a>
+<a href="#179" id="179">179</a>
+<a href="#180" id="180">180</a>
 </pre><pre class="rust"><code><span class="kw">use </span>std::{num::NonZeroUsize, thread::JoinHandle};
 
 <span class="kw">use </span>crossbeam::channel::Receiver;
@@ -296,16 +301,21 @@
                                             to_send.len(),
                                             peer_id
                                         );
-                                        <span class="kw">if let </span><span class="prelude-val">Err</span>(err) = <span class="self">self</span>.active_connections.send_to_peer(
-                                            peer_id,
-                                            <span class="kw-2">&amp;</span><span class="self">self</span>.endorsement_serializer,
-                                            EndorsementMessage::Endorsements(to_send).into(),
-                                            <span class="bool-val">false</span>,
+                                        <span class="kw">for </span>sub_list <span class="kw">in </span>to_send.chunks(
+                                            <span class="self">self</span>.config.max_endorsements_per_message <span class="kw">as </span>usize,
                                         ) {
-                                            <span class="macro">warn!</span>(
-                                                <span class="string">&quot;could not send endorsements batch to node {}: {}&quot;</span>,
-                                                peer_id, err
-                                            );
+                                            <span class="kw">if let </span><span class="prelude-val">Err</span>(err) = <span class="self">self</span>.active_connections.send_to_peer(
+                                                peer_id,
+                                                <span class="kw-2">&amp;</span><span class="self">self</span>.endorsement_serializer,
+                                                EndorsementMessage::Endorsements(sub_list.to_vec())
+                                                    .into(),
+                                                <span class="bool-val">false</span>,
+                                            ) {
+                                                <span class="macro">warn!</span>(
+                                                    <span class="string">&quot;could not send endorsements batch to node {}: {}&quot;</span>,
+                                                    peer_id, err
+                                                );
+                                            }
                                         }
                                     }
                                 }

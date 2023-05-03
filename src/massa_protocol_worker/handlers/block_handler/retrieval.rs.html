@@ -1301,6 +1301,16 @@
 <a href="#1301" id="1301">1301</a>
 <a href="#1302" id="1302">1302</a>
 <a href="#1303" id="1303">1303</a>
+<a href="#1304" id="1304">1304</a>
+<a href="#1305" id="1305">1305</a>
+<a href="#1306" id="1306">1306</a>
+<a href="#1307" id="1307">1307</a>
+<a href="#1308" id="1308">1308</a>
+<a href="#1309" id="1309">1309</a>
+<a href="#1310" id="1310">1310</a>
+<a href="#1311" id="1311">1311</a>
+<a href="#1312" id="1312">1312</a>
+<a href="#1313" id="1313">1313</a>
 </pre><pre class="rust"><code><span class="kw">use </span>std::{
     collections::{hash_map::Entry, HashMap, HashSet},
     num::NonZeroUsize,
@@ -1617,12 +1627,20 @@
             all_blocks_info.len(),
             from_peer_id
         );
-        <span class="self">self</span>.active_connections.send_to_peer(
-            <span class="kw-2">&amp;</span>from_peer_id,
-            <span class="kw-2">&amp;</span><span class="self">self</span>.block_message_serializer,
-            BlockMessage::ReplyForBlocks(all_blocks_info).into(),
-            <span class="bool-val">true</span>,
-        )
+        <span class="kw">for </span>sub_list <span class="kw">in </span>all_blocks_info.chunks(<span class="self">self</span>.config.max_size_block_infos <span class="kw">as </span>usize) {
+            <span class="kw">if let </span><span class="prelude-val">Err</span>(err) = <span class="self">self</span>.active_connections.send_to_peer(
+                <span class="kw-2">&amp;</span>from_peer_id,
+                <span class="kw-2">&amp;</span><span class="self">self</span>.block_message_serializer,
+                BlockMessage::ReplyForBlocks(sub_list.to_vec()).into(),
+                <span class="bool-val">true</span>,
+            ) {
+                <span class="macro">warn!</span>(
+                    <span class="string">&quot;Error while sending reply for blocks to {}: {:?}&quot;</span>,
+                    from_peer_id, err
+                );
+            }
+        }
+        <span class="prelude-val">Ok</span>(())
     }
 
     <span class="kw">fn </span>on_block_info_received(
@@ -2540,17 +2558,19 @@
         <span class="comment">// send AskBlockEvents
         </span><span class="kw">if </span>!ask_block_list.is_empty() {
             <span class="kw">for </span>(peer_id, list) <span class="kw">in </span>ask_block_list.iter() {
-                <span class="macro">debug!</span>(<span class="string">&quot;Send ask for blocks of len {} to {}&quot;</span>, list.len(), peer_id);
-                <span class="kw">if let </span><span class="prelude-val">Err</span>(err) = <span class="self">self</span>.active_connections.send_to_peer(
-                    peer_id,
-                    <span class="kw-2">&amp;</span><span class="self">self</span>.block_message_serializer,
-                    BlockMessage::AskForBlocks(list.clone()).into(),
-                    <span class="bool-val">true</span>,
-                ) {
-                    <span class="macro">warn!</span>(
-                        <span class="string">&quot;Failed to send AskForBlocks to peer {} err: {}&quot;</span>,
-                        peer_id, err
-                    );
+                <span class="kw">for </span>sub_list <span class="kw">in </span>list.chunks(<span class="self">self</span>.config.max_size_block_infos <span class="kw">as </span>usize) {
+                    <span class="macro">debug!</span>(<span class="string">&quot;Send ask for blocks of len {} to {}&quot;</span>, list.len(), peer_id);
+                    <span class="kw">if let </span><span class="prelude-val">Err</span>(err) = <span class="self">self</span>.active_connections.send_to_peer(
+                        peer_id,
+                        <span class="kw-2">&amp;</span><span class="self">self</span>.block_message_serializer,
+                        BlockMessage::AskForBlocks(sub_list.to_vec()).into(),
+                        <span class="bool-val">true</span>,
+                    ) {
+                        <span class="macro">warn!</span>(
+                            <span class="string">&quot;Failed to send AskForBlocks to peer {} err: {}&quot;</span>,
+                            peer_id, err
+                        );
+                    }
                 }
             }
         }

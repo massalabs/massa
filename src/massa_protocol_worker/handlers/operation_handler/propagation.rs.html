@@ -171,6 +171,9 @@
 <a href="#171" id="171">171</a>
 <a href="#172" id="172">172</a>
 <a href="#173" id="173">173</a>
+<a href="#174" id="174">174</a>
+<a href="#175" id="175">175</a>
+<a href="#176" id="176">176</a>
 </pre><pre class="rust"><code><span class="kw">use </span>std::{mem, num::NonZeroUsize, thread::JoinHandle};
 
 <span class="kw">use </span>crossbeam::channel::{Receiver, RecvTimeoutError};
@@ -302,19 +305,22 @@
                         new_ops.len(),
                         peer_id
                     );
-                    <span class="kw">if let </span><span class="prelude-val">Err</span>(err) = <span class="self">self</span>.active_connections.send_to_peer(
-                        peer_id,
-                        <span class="kw-2">&amp;</span><span class="self">self</span>.operation_message_serializer,
-                        OperationMessage::OperationsAnnouncement(
-                            new_ops.iter().map(|id| id.into_prefix()).collect(),
-                        )
-                        .into(),
-                        <span class="bool-val">false</span>,
-                    ) {
-                        <span class="macro">warn!</span>(
-                            <span class="string">&quot;Failed to send OperationsAnnouncement message to peer: {}&quot;</span>,
-                            err
-                        );
+                    <span class="kw">for </span>sub_list <span class="kw">in </span>new_ops.chunks(<span class="self">self</span>.config.max_operations_per_message <span class="kw">as </span>usize)
+                    {
+                        <span class="kw">if let </span><span class="prelude-val">Err</span>(err) = <span class="self">self</span>.active_connections.send_to_peer(
+                            peer_id,
+                            <span class="kw-2">&amp;</span><span class="self">self</span>.operation_message_serializer,
+                            OperationMessage::OperationsAnnouncement(
+                                sub_list.iter().map(|id| id.into_prefix()).collect(),
+                            )
+                            .into(),
+                            <span class="bool-val">false</span>,
+                        ) {
+                            <span class="macro">warn!</span>(
+                                <span class="string">&quot;Failed to send OperationsAnnouncement message to peer: {}&quot;</span>,
+                                err
+                            );
+                        }
                     }
                 }
             }
