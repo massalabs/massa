@@ -487,6 +487,8 @@
 <a href="#487" id="487">487</a>
 <a href="#488" id="488">488</a>
 <a href="#489" id="489">489</a>
+<a href="#490" id="490">490</a>
+<a href="#491" id="491">491</a>
 </pre><pre class="rust"><code><span class="kw">use </span>std::{collections::HashMap, net::SocketAddr, thread::JoinHandle, time::Duration};
 
 <span class="kw">use </span>crossbeam::channel::tick;
@@ -921,6 +923,7 @@
                         .peers
                         .entry(peer_id.clone())
                         .and_modify(|info| {
+                            info.last_announce = announcement.clone();
                             info.state = PeerState::Trusted;
                         })
                         .or_insert(PeerInfo {
@@ -930,7 +933,8 @@
                 }
                 <span class="prelude-val">Err</span>(<span class="kw">_</span>) =&gt; {
                     peer_db_write.peers.entry(peer_id).and_modify(|info| {
-                        info.state = PeerState::HandshakeFailed;
+                        <span class="comment">//TODO: Add the peerdb but for now impossible as we don&#39;t have announcement and we need one to place in peerdb
+                        </span>info.state = PeerState::HandshakeFailed;
                     });
                 }
             }
