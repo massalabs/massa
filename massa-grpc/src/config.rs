@@ -14,6 +14,8 @@ pub struct GrpcConfig {
     pub accept_http1: bool,
     /// whether to enable CORS. Works only if `accept_http1` is true
     pub enable_cors: bool,
+    /// whether to enable gRPC health service
+    pub enable_health: bool,
     /// whether to enable gRPC reflection
     pub enable_reflection: bool,
     /// bind for the Massa gRPC API
