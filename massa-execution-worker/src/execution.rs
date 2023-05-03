@@ -840,10 +840,11 @@ impl ExecutionState {
             self.config.gas_costs.clone(),
         );
         match response {
-            Ok(Response { init_cost, .. }) | Err(VMError::ExecutionError { init_cost, .. }) => {
+            Ok(Response { init_gas_cost, .. })
+            | Err(VMError::ExecutionError { init_gas_cost, .. }) => {
                 self.module_cache
                     .write()
-                    .set_init_cost(&bytecode, init_cost);
+                    .set_init_cost(&bytecode, init_gas_cost);
             }
             _ => (),
         }
@@ -938,17 +939,17 @@ impl ExecutionState {
             self.config.gas_costs.clone(),
         );
         match response {
-            Ok(Response { init_cost, .. }) => {
+            Ok(Response { init_gas_cost, .. }) => {
                 self.module_cache
                     .write()
-                    .set_init_cost(&bytecode, init_cost);
+                    .set_init_cost(&bytecode, init_gas_cost);
                 Ok(())
             }
             Err(error) => {
-                if let VMError::ExecutionError { init_cost, .. } = error {
+                if let VMError::ExecutionError { init_gas_cost, .. } = error {
                     self.module_cache
                         .write()
-                        .set_init_cost(&bytecode, init_cost);
+                        .set_init_cost(&bytecode, init_gas_cost);
                 }
                 // execution failed: reset context to snapshot and reimburse sender
                 let err = ExecutionError::VMError {
@@ -1408,11 +1409,11 @@ impl ExecutionState {
                     self.config.gas_costs.clone(),
                 );
                 match response {
-                    Ok(Response { init_cost, .. })
-                    | Err(VMError::ExecutionError { init_cost, .. }) => {
+                    Ok(Response { init_gas_cost, .. })
+                    | Err(VMError::ExecutionError { init_gas_cost, .. }) => {
                         self.module_cache
                             .write()
-                            .set_init_cost(&bytecode, init_cost);
+                            .set_init_cost(&bytecode, init_gas_cost);
                     }
                     _ => (),
                 }
