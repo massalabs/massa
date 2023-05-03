@@ -324,6 +324,8 @@
 <a href="#324" id="324">324</a>
 <a href="#325" id="325">325</a>
 <a href="#326" id="326">326</a>
+<a href="#327" id="327">327</a>
+<a href="#328" id="328">328</a>
 </pre><pre class="rust"><code><span class="kw">use </span>std::{
     collections::HashMap,
     net::SocketAddr,
@@ -450,7 +452,9 @@
                     <span class="comment">//TODO: Check ip we are connected match one of the announced ips
                     </span>{
                         <span class="kw">let </span><span class="kw-2">mut </span>peer_db_write = <span class="self">self</span>.peer_db.write();
-                        peer_db_write.index_by_newest.retain(|<span class="kw">_</span>, peer_id_stored| peer_id_stored != <span class="kw-2">&amp;</span>peer_id);
+                        peer_db_write
+                            .index_by_newest
+                            .retain(|<span class="kw">_</span>, peer_id_stored| peer_id_stored != <span class="kw-2">&amp;</span>peer_id);
                         peer_db_write
                             .index_by_newest
                             .insert(Reverse(announcement.timestamp), peer_id.clone());

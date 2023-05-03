@@ -82,6 +82,23 @@
 <a href="#82" id="82">82</a>
 <a href="#83" id="83">83</a>
 <a href="#84" id="84">84</a>
+<a href="#85" id="85">85</a>
+<a href="#86" id="86">86</a>
+<a href="#87" id="87">87</a>
+<a href="#88" id="88">88</a>
+<a href="#89" id="89">89</a>
+<a href="#90" id="90">90</a>
+<a href="#91" id="91">91</a>
+<a href="#92" id="92">92</a>
+<a href="#93" id="93">93</a>
+<a href="#94" id="94">94</a>
+<a href="#95" id="95">95</a>
+<a href="#96" id="96">96</a>
+<a href="#97" id="97">97</a>
+<a href="#98" id="98">98</a>
+<a href="#99" id="99">99</a>
+<a href="#100" id="100">100</a>
+<a href="#101" id="101">101</a>
 </pre><pre class="rust"><code><span class="kw">use </span>std::net::{SocketAddr, TcpListener, TcpStream};
 
 <span class="kw">use </span>mio::net::TcpListener <span class="kw">as </span>MioTcpListener;
@@ -90,7 +107,7 @@
 <span class="kw">use </span>tracing::info;
 
 <span class="kw">use </span><span class="kw">crate</span>::error::BootstrapError;
-<span class="kw">use </span><span class="kw">crate</span>::establisher::BSEventPoller;
+<span class="kw">use </span><span class="kw">crate</span>::server::BSEventPoller;
 
 <span class="kw">const </span>NEW_CONNECTION: Token = Token(<span class="number">0</span>);
 <span class="kw">const </span>STOP_LISTENER: Token = Token(<span class="number">10</span>);
@@ -115,9 +132,26 @@
     <span class="doccomment">/// Setup a mio-listener that functions as a `select!` on a connection, or a waker
     ///
     /// * `addr` - the address to listen on
-    </span><span class="kw">pub fn </span>new(addr: SocketAddr) -&gt; <span class="prelude-ty">Result</span>&lt;(BootstrapListenerStopHandle, <span class="self">Self</span>), BootstrapError&gt; {
+    </span><span class="kw">pub fn </span>new(addr: <span class="kw-2">&amp;</span>SocketAddr) -&gt; <span class="prelude-ty">Result</span>&lt;(BootstrapListenerStopHandle, <span class="self">Self</span>), BootstrapError&gt; {
+        <span class="kw">let </span>domain = <span class="kw">if </span>addr.is_ipv4() {
+            socket2::Domain::IPV4
+        } <span class="kw">else </span>{
+            socket2::Domain::IPV6
+        };
+
+        <span class="kw">let </span>socket = socket2::Socket::new(domain, socket2::Type::STREAM, <span class="prelude-val">None</span>)<span class="question-mark">?</span>;
+
+        <span class="kw">if </span>addr.is_ipv6() {
+            socket.set_only_v6(<span class="bool-val">false</span>)<span class="question-mark">?</span>;
+        }
+        socket.bind(<span class="kw-2">&amp;</span>(<span class="kw-2">*</span>addr).into())<span class="question-mark">?</span>;
+
+        <span class="comment">// Number of connections to queue, set to the hardcoded value used by tokio
+        </span>socket.listen(<span class="number">1024</span>)<span class="question-mark">?</span>;
+
         <span class="macro">info!</span>(<span class="string">&quot;Starting bootstrap listener on {}&quot;</span>, <span class="kw-2">&amp;</span>addr);
-        <span class="kw">let </span>server = TcpListener::bind(addr)<span class="question-mark">?</span>;
+        <span class="kw">let </span>server: TcpListener = socket.into();
+
         <span class="kw">let </span><span class="kw-2">mut </span>mio_server =
             MioTcpListener::from_std(server.try_clone().expect(<span class="string">&quot;Unable to clone server socket&quot;</span>));
 
