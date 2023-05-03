@@ -1,7 +1,7 @@
 // Copyright (c) 2023 MASSA LABS <info@massa.net>
 
-/// stream new blockcliques
-pub mod new_block_cliques;
+/// stream new blockclique changes
+pub mod new_block_clique_changes;
 /// stream new blocks
 pub mod new_blocks;
 /// stream new blocks with operations content

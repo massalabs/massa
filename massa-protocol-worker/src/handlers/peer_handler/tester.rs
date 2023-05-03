@@ -124,7 +124,9 @@ impl InitConnectionHandler for TesterHandshake {
                     //TODO: Check ip we are connected match one of the announced ips
                     {
                         let mut peer_db_write = self.peer_db.write();
-                        peer_db_write.index_by_newest.retain(|_, peer_id_stored| peer_id_stored != &peer_id);
+                        peer_db_write
+                            .index_by_newest
+                            .retain(|_, peer_id_stored| peer_id_stored != &peer_id);
                         peer_db_write
                             .index_by_newest
                             .insert(Reverse(announcement.timestamp), peer_id.clone());

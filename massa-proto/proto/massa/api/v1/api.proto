@@ -102,8 +102,8 @@ service MassaService {
   // ╚════██║   ██║   ██╔══██╗██╔══╝  ██╔══██║██║╚██╔╝██║
   // ███████║   ██║   ██║  ██║███████╗██║  ██║██║ ╚═╝ ██║
 
-  // New received and produced blockcliques
-  rpc NewBlockCliques(stream NewBlockCliquesRequest) returns (stream NewBlockCliquesResponse) {}
+  // New received and produced blockclique
+  rpc NewBlockCliqueChanges(stream NewBlockCliqueChangesRequest) returns (stream NewBlockCliqueChangesResponse) {}
 
   // New received and produced blocks
   rpc NewBlocks(stream NewBlocksRequest) returns (stream NewBlocksResponse) {}
@@ -202,6 +202,7 @@ message DatastoreEntriesQuery {
   DatastoreEntryFilter filter = 1;
 }
 
+// DatastoreEntry Filter
 message DatastoreEntryFilter {
   /// Associated address of the entry
   string address = 1;
@@ -445,18 +446,18 @@ message GetVersionResponse {
   string version = 2;
 }
 
-// NewBlockCliquesRequest holds request for NewBlockCliques
-message NewBlockCliquesRequest {
+// NewBlockCliqueChangesRequest holds request for NewBlockCliqueChanges
+message NewBlockCliqueChangesRequest {
   // Request id
   string id = 1;
 }
 
-// NewBlockCliquesResponse holds response from NewBlockCliques
-message NewBlockCliquesResponse {
+// NewBlockCliqueChangesResponse holds response from NewBlockCliqueChanges
+message NewBlockCliqueChangesResponse {
   // Request id
   string id = 1;
-  // Clique, set of addresses
-  repeated string clique = 2;
+  // Blockclique state
+  BlockCliqueChange state = 2;
 }
 
 // NewBlocksRequest holds request for NewBlocks

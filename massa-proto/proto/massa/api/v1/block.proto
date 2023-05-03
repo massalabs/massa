@@ -99,3 +99,17 @@ message BlockWrapper {
     // The execution statuses of the block
     repeated BlockStatus status = 3;
 }
+
+// Blockclique state
+message BlockCliqueChange {
+  // Blockclique entries
+  repeated BlockCliqueStateEntry changes = 2;
+}
+
+// Blockclique entry
+message BlockCliqueStateEntry {
+  // BlockId
+  string block_id = 1;
+  // Slot
+  Slot slot = 2;
+}

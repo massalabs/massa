@@ -155,10 +155,12 @@ pub struct ConsensusSettings {
     pub block_db_prune_interval: MassaTime,
     /// max number of items returned while querying
     pub max_item_return_count: usize,
-    /// blocks headers channel capacity
-    pub broadcast_blocks_headers_channel_capacity: usize,
+    /// blockclique channel capacity
+    pub broadcast_block_cliques_channel_capacity: usize,
     /// blocks channel capacity
     pub broadcast_blocks_channel_capacity: usize,
+    /// blocks headers channel capacity
+    pub broadcast_blocks_headers_channel_capacity: usize,
     /// filled blocks channel capacity
     pub broadcast_filled_blocks_channel_capacity: usize,
 }

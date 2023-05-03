@@ -48,10 +48,12 @@ pub struct ConsensusConfig {
     pub bootstrap_part_size: u64,
     /// whether broadcast is enabled
     pub broadcast_enabled: bool,
-    /// blocks headers channel capacity
-    pub broadcast_blocks_headers_channel_capacity: usize,
+    /// blockclique channel capacity
+    pub broadcast_block_cliques_channel_capacity: usize,
     /// blocks channel capacity
     pub broadcast_blocks_channel_capacity: usize,
+    /// blocks headers channel capacity
+    pub broadcast_blocks_headers_channel_capacity: usize,
     /// filled blocks channel capacity
     pub broadcast_filled_blocks_channel_capacity: usize,
     /// last start period

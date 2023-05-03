@@ -42,8 +42,8 @@
     - [LargestStakersContext](#massa-api-v1-LargestStakersContext)
     - [LargestStakersFilter](#massa-api-v1-LargestStakersFilter)
     - [LargestStakersQuery](#massa-api-v1-LargestStakersQuery)
-    - [NewBlockCliquesRequest](#massa-api-v1-NewBlockCliquesRequest)
-    - [NewBlockCliquesResponse](#massa-api-v1-NewBlockCliquesResponse)
+    - [NewBlockCliqueChangesRequest](#massa-api-v1-NewBlockCliqueChangesRequest)
+    - [NewBlockCliqueChangesResponse](#massa-api-v1-NewBlockCliqueChangesResponse)
     - [NewBlocksHeadersRequest](#massa-api-v1-NewBlocksHeadersRequest)
     - [NewBlocksHeadersResponse](#massa-api-v1-NewBlocksHeadersResponse)
     - [NewBlocksRequest](#massa-api-v1-NewBlocksRequest)
@@ -78,6 +78,8 @@
   
 - [block.proto](#block-proto)
     - [Block](#massa-api-v1-Block)
+    - [BlockCliqueChange](#massa-api-v1-BlockCliqueChange)
+    - [BlockCliqueStateEntry](#massa-api-v1-BlockCliqueStateEntry)
     - [BlockHeader](#massa-api-v1-BlockHeader)
     - [BlockWrapper](#massa-api-v1-BlockWrapper)
     - [FilledBlock](#massa-api-v1-FilledBlock)
@@ -213,7 +215,7 @@ DatastoreEntry
 <a name="massa-api-v1-DatastoreEntryFilter"></a>
 
 ### DatastoreEntryFilter
-
+DatastoreEntry Filter
 
 
 | Field | Type | Label | Description |
@@ -736,31 +738,31 @@ LargestStakers Query
 
 
 
-<a name="massa-api-v1-NewBlockCliquesRequest"></a>
+<a name="massa-api-v1-NewBlockCliqueChangesRequest"></a>
 
-### NewBlockCliquesRequest
-NewBlockCliquesRequest holds request for NewBlockCliques
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| id | [string](#string) |  | Request id |
-
-
-
-
-
-
-<a name="massa-api-v1-NewBlockCliquesResponse"></a>
-
-### NewBlockCliquesResponse
-NewBlockCliquesResponse holds response from NewBlockCliques
+### NewBlockCliqueChangesRequest
+NewBlockCliqueChangesRequest holds request for NewBlockCliqueChanges
 
 
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | id | [string](#string) |  | Request id |
-| clique | [string](#string) | repeated | Clique, set of addresses |
+
+
+
+
+
+
+<a name="massa-api-v1-NewBlockCliqueChangesResponse"></a>
+
+### NewBlockCliqueChangesResponse
+NewBlockCliqueChangesResponse holds response from NewBlockCliqueChanges
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| id | [string](#string) |  | Request id |
+| state | [BlockCliqueChange](#massa-api-v1-BlockCliqueChange) |  | Blockclique state |
 
 
 
@@ -1231,7 +1233,7 @@ Massa gRPC service
 | GetSelectorDraws | [GetSelectorDrawsRequest](#massa-api-v1-GetSelectorDrawsRequest) | [GetSelectorDrawsResponse](#massa-api-v1-GetSelectorDrawsResponse) | Get selector draws |
 | GetTransactionsThroughput | [GetTransactionsThroughputRequest](#massa-api-v1-GetTransactionsThroughputRequest) | [GetTransactionsThroughputResponse](#massa-api-v1-GetTransactionsThroughputResponse) | Get transactions throughput |
 | GetVersion | [GetVersionRequest](#massa-api-v1-GetVersionRequest) | [GetVersionResponse](#massa-api-v1-GetVersionResponse) | Get node version |
-| NewBlockCliques | [NewBlockCliquesRequest](#massa-api-v1-NewBlockCliquesRequest) stream | [NewBlockCliquesResponse](#massa-api-v1-NewBlockCliquesResponse) stream | New received and produced blockcliques |
+| NewBlockCliqueChanges | [NewBlockCliqueChangesRequest](#massa-api-v1-NewBlockCliqueChangesRequest) stream | [NewBlockCliqueChangesResponse](#massa-api-v1-NewBlockCliqueChangesResponse) stream | New received and produced blockclique |
 | NewBlocks | [NewBlocksRequest](#massa-api-v1-NewBlocksRequest) stream | [NewBlocksResponse](#massa-api-v1-NewBlocksResponse) stream | New received and produced blocks |
 | NewBlocksHeaders | [NewBlocksHeadersRequest](#massa-api-v1-NewBlocksHeadersRequest) stream | [NewBlocksHeadersResponse](#massa-api-v1-NewBlocksHeadersResponse) stream | New received and produced blocks headers |
 | NewEndorsements | [NewEndorsementsRequest](#massa-api-v1-NewEndorsementsRequest) stream | [NewEndorsementsResponse](#massa-api-v1-NewEndorsementsResponse) stream | New received and produced endorsements |
@@ -1264,6 +1266,37 @@ Block
 | ----- | ---- | ----- | ----------- |
 | header | [SignedBlockHeader](#massa-api-v1-SignedBlockHeader) |  | Signed header |
 | operations | [string](#string) | repeated | Operations ids |
+
+
+
+
+
+
+<a name="massa-api-v1-BlockCliqueChange"></a>
+
+### BlockCliqueChange
+Blockclique state
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| changes | [BlockCliqueStateEntry](#massa-api-v1-BlockCliqueStateEntry) | repeated | Blockclique entries |
+
+
+
+
+
+
+<a name="massa-api-v1-BlockCliqueStateEntry"></a>
+
+### BlockCliqueStateEntry
+Blockclique entry
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| block_id | [string](#string) |  | BlockId |
+| slot | [Slot](#massa-api-v1-Slot) |  | Slot |
 
 
 

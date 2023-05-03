@@ -8,8 +8,8 @@ use crate::api::{
     get_transactions_throughput, get_version,
 };
 use crate::server::MassaGrpc;
-use crate::stream::new_block_cliques::{new_block_cliques, NewBlockCliquesStreamType};
 use crate::stream::{
+    new_block_clique_changes::{new_block_clique_changes, NewBlockCliqueChangesStreamType},
     new_blocks::{new_blocks, NewBlocksStreamType},
     new_blocks_headers::{new_blocks_headers, NewBlocksHeadersStreamType},
     new_endorsements::{new_endorsements, NewEndorsementsStreamType},
@@ -116,15 +116,15 @@ impl grpc::massa_service_server::MassaService for MassaGrpc {
     // ╚════██║   ██║   ██╔══██╗██╔══╝  ██╔══██║██║╚██╔╝██║
     // ███████║   ██║   ██║  ██║███████╗██║  ██║██║ ╚═╝ ██║
 
-    type NewBlockCliquesStream = NewBlockCliquesStreamType;
+    type NewBlockCliqueChangesStream = NewBlockCliqueChangesStreamType;
 
-    /// handler for subscribe new blockcliques
-    async fn new_block_cliques(
+    /// handler for subscribe new blockclique changes
+    async fn new_block_clique_changes(
         &self,
-        request: tonic::Request<tonic::Streaming<grpc::NewBlockCliquesRequest>>,
-    ) -> Result<tonic::Response<Self::NewBlockCliquesStream>, tonic::Status> {
+        request: tonic::Request<tonic::Streaming<grpc::NewBlockCliqueChangesRequest>>,
+    ) -> Result<tonic::Response<Self::NewBlockCliqueChangesStream>, tonic::Status> {
         Ok(tonic::Response::new(
-            new_block_cliques(self, request).await?,
+            new_block_clique_changes(self, request).await?,
         ))
     }
 

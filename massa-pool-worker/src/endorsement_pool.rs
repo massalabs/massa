@@ -98,7 +98,7 @@ impl EndorsementPool {
                     .get(&endo_id)
                     .expect("attempting to add endorsement to pool, but it is absent from storage");
 
-                // Broadcast endorsement to active channel subscribers.
+                // Broadcast endorsement to active channel subscribers
                 if self.config.broadcast_enabled {
                     if let Err(err) = self.channels.endorsement_sender.send(endo.clone()) {
                         trace!(

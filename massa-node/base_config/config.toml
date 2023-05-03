@@ -136,11 +136,12 @@
     stats_timespan = 60000
     # max number of item returned per query
     max_item_return_count = 100
-
-    # blocks headers channel capacity
-    broadcast_blocks_headers_channel_capacity = 128
+    # blockclique channel capacity
+    broadcast_block_cliques_channel_capacity = 128
     # blocks channel capacity
     broadcast_blocks_channel_capacity = 128
+    # blocks headers channel capacity
+    broadcast_blocks_headers_channel_capacity = 128
     # filled blocks channel capacity
     broadcast_filled_blocks_channel_capacity = 128
 

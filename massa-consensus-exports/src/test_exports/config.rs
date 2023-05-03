@@ -34,8 +34,9 @@ impl Default for ConsensusConfig {
             channel_size: CHANNEL_SIZE,
             bootstrap_part_size: CONSENSUS_BOOTSTRAP_PART_SIZE,
             broadcast_enabled: true,
-            broadcast_blocks_headers_channel_capacity: 128,
+            broadcast_block_cliques_channel_capacity: 128,
             broadcast_blocks_channel_capacity: 128,
+            broadcast_blocks_headers_channel_capacity: 128,
             broadcast_filled_blocks_channel_capacity: 128,
             last_start_period: 0,
         }

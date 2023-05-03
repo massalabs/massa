@@ -431,7 +431,9 @@ impl InitConnectionHandler for MassaHandshake {
                     peer_db_write
                         .index_by_newest
                         .insert(Reverse(announcement.timestamp), peer_id.clone());
-                    peer_db_write.index_by_newest.retain(|_, peer_id_stored| peer_id_stored != peer_id);
+                    peer_db_write
+                        .index_by_newest
+                        .retain(|_, peer_id_stored| peer_id_stored != peer_id);
                     peer_db_write
                         .peers
                         .entry(peer_id.clone())

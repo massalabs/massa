@@ -20,7 +20,7 @@ use massa_models::{
 use massa_signature::PublicKey;
 use massa_storage::Storage;
 use massa_time::MassaTime;
-use tracing::log::{debug, info};
+use tracing::log::{debug, info, trace};
 
 use super::ConsensusState;
 
@@ -569,7 +569,20 @@ impl ConsensusState {
             .update_blockclique_status(
                 finalized_blocks,
                 if blockclique_changed {
-                    Some(new_blockclique.into_iter().map(|(k, v)| (v, k)).collect())
+                    let blockclique: HashMap<Slot, BlockId> =
+                        new_blockclique.into_iter().map(|(k, v)| (v, k)).collect();
+                    // Broadcast blockclique changes to active channel subscribers
+                    if self.config.broadcast_enabled {
+                        if let Err(err) =
+                            self.channels.block_clique_sender.send(blockclique.clone())
+                        {
+                            trace!(
+                                "error, failed to broadcast blockclique changes due to: {}",
+                                err
+                            );
+                        }
+                    }
+                    Some(blockclique)
                 } else {
                     None
                 },

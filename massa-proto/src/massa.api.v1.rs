@@ -373,6 +373,25 @@ pub struct BlockWrapper {
     #[prost(enumeration = "BlockStatus", repeated, tag = "3")]
     pub status: ::prost::alloc::vec::Vec<i32>,
 }
+/// Blockclique state
+#[allow(clippy::derive_partial_eq_without_eq)]
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct BlockCliqueChange {
+    /// Blockclique entries
+    #[prost(message, repeated, tag = "2")]
+    pub changes: ::prost::alloc::vec::Vec<BlockCliqueStateEntry>,
+}
+/// Blockclique entry
+#[allow(clippy::derive_partial_eq_without_eq)]
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct BlockCliqueStateEntry {
+    /// BlockId
+    #[prost(string, tag = "1")]
+    pub block_id: ::prost::alloc::string::String,
+    /// Slot
+    #[prost(message, optional, tag = "2")]
+    pub slot: ::core::option::Option<Slot>,
+}
 /// Possible statuses for a block
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, ::prost::Enumeration)]
 #[repr(i32)]
@@ -659,6 +678,7 @@ pub struct DatastoreEntriesQuery {
     #[prost(message, optional, tag = "1")]
     pub filter: ::core::option::Option<DatastoreEntryFilter>,
 }
+/// DatastoreEntry Filter
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct DatastoreEntryFilter {
@@ -993,24 +1013,24 @@ pub struct GetVersionResponse {
     #[prost(string, tag = "2")]
     pub version: ::prost::alloc::string::String,
 }
-/// NewBlockCliquesRequest holds request for NewBlockCliques
+/// NewBlockCliqueChangesRequest holds request for NewBlockCliqueChanges
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
-pub struct NewBlockCliquesRequest {
+pub struct NewBlockCliqueChangesRequest {
     /// Request id
     #[prost(string, tag = "1")]
     pub id: ::prost::alloc::string::String,
 }
-/// NewBlockCliquesResponse holds response from NewBlockCliques
+/// NewBlockCliqueChangesResponse holds response from NewBlockCliqueChanges
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
-pub struct NewBlockCliquesResponse {
+pub struct NewBlockCliqueChangesResponse {
     /// Request id
     #[prost(string, tag = "1")]
     pub id: ::prost::alloc::string::String,
-    /// Clique, set of addresses
-    #[prost(string, repeated, tag = "2")]
-    pub clique: ::prost::alloc::vec::Vec<::prost::alloc::string::String>,
+    /// Blockclique state
+    #[prost(message, optional, tag = "2")]
+    pub state: ::core::option::Option<BlockCliqueChange>,
 }
 /// NewBlocksRequest holds request for NewBlocks
 #[allow(clippy::derive_partial_eq_without_eq)]
@@ -1710,14 +1730,16 @@ pub mod massa_service_client {
                 .insert(GrpcMethod::new("massa.api.v1.MassaService", "GetVersion"));
             self.inner.unary(req, path, codec).await
         }
-        /// New received and produced blockcliques
-        pub async fn new_block_cliques(
+        /// New received and produced blockclique
+        pub async fn new_block_clique_changes(
             &mut self,
             request: impl tonic::IntoStreamingRequest<
-                Message = super::NewBlockCliquesRequest,
+                Message = super::NewBlockCliqueChangesRequest,
             >,
         ) -> std::result::Result<
-            tonic::Response<tonic::codec::Streaming<super::NewBlockCliquesResponse>>,
+            tonic::Response<
+                tonic::codec::Streaming<super::NewBlockCliqueChangesResponse>,
+            >,
             tonic::Status,
         > {
             self.inner
@@ -1731,11 +1753,13 @@ pub mod massa_service_client {
                 })?;
             let codec = tonic::codec::ProstCodec::default();
             let path = http::uri::PathAndQuery::from_static(
-                "/massa.api.v1.MassaService/NewBlockCliques",
+                "/massa.api.v1.MassaService/NewBlockCliqueChanges",
             );
             let mut req = request.into_streaming_request();
             req.extensions_mut()
-                .insert(GrpcMethod::new("massa.api.v1.MassaService", "NewBlockCliques"));
+                .insert(
+                    GrpcMethod::new("massa.api.v1.MassaService", "NewBlockCliqueChanges"),
+                );
             self.inner.streaming(req, path, codec).await
         }
         /// New received and produced blocks
@@ -2121,18 +2145,23 @@ pub mod massa_service_server {
             tonic::Response<super::GetVersionResponse>,
             tonic::Status,
         >;
-        /// Server streaming response type for the NewBlockCliques method.
-        type NewBlockCliquesStream: futures_core::Stream<
-                Item = std::result::Result<super::NewBlockCliquesResponse, tonic::Status>,
+        /// Server streaming response type for the NewBlockCliqueChanges method.
+        type NewBlockCliqueChangesStream: futures_core::Stream<
+                Item = std::result::Result<
+                    super::NewBlockCliqueChangesResponse,
+                    tonic::Status,
+                >,
             >
             + Send
             + 'static;
-        /// New received and produced blockcliques
-        async fn new_block_cliques(
+        /// New received and produced blockclique
+        async fn new_block_clique_changes(
             &self,
-            request: tonic::Request<tonic::Streaming<super::NewBlockCliquesRequest>>,
+            request: tonic::Request<
+                tonic::Streaming<super::NewBlockCliqueChangesRequest>,
+            >,
         ) -> std::result::Result<
-            tonic::Response<Self::NewBlockCliquesStream>,
+            tonic::Response<Self::NewBlockCliqueChangesStream>,
             tonic::Status,
         >;
         /// Server streaming response type for the NewBlocks method.
@@ -2827,15 +2856,16 @@ pub mod massa_service_server {
                     };
                     Box::pin(fut)
                 }
-                "/massa.api.v1.MassaService/NewBlockCliques" => {
+                "/massa.api.v1.MassaService/NewBlockCliqueChanges" => {
                     #[allow(non_camel_case_types)]
-                    struct NewBlockCliquesSvc<T: MassaService>(pub Arc<T>);
+                    struct NewBlockCliqueChangesSvc<T: MassaService>(pub Arc<T>);
                     impl<
                         T: MassaService,
-                    > tonic::server::StreamingService<super::NewBlockCliquesRequest>
-                    for NewBlockCliquesSvc<T> {
-                        type Response = super::NewBlockCliquesResponse;
-                        type ResponseStream = T::NewBlockCliquesStream;
+                    > tonic::server::StreamingService<
+                        super::NewBlockCliqueChangesRequest,
+                    > for NewBlockCliqueChangesSvc<T> {
+                        type Response = super::NewBlockCliqueChangesResponse;
+                        type ResponseStream = T::NewBlockCliqueChangesStream;
                         type Future = BoxFuture<
                             tonic::Response<Self::ResponseStream>,
                             tonic::Status,
@@ -2843,12 +2873,12 @@ pub mod massa_service_server {
                         fn call(
                             &mut self,
                             request: tonic::Request<
-                                tonic::Streaming<super::NewBlockCliquesRequest>,
+                                tonic::Streaming<super::NewBlockCliqueChangesRequest>,
                             >,
                         ) -> Self::Future {
                             let inner = Arc::clone(&self.0);
                             let fut = async move {
-                                (*inner).new_block_cliques(request).await
+                                (*inner).new_block_clique_changes(request).await
                             };
                             Box::pin(fut)
                         }
@@ -2860,7 +2890,7 @@ pub mod massa_service_server {
                     let inner = self.inner.clone();
                     let fut = async move {
                         let inner = inner.0;
-                        let method = NewBlockCliquesSvc(inner);
+                        let method = NewBlockCliqueChangesSvc(inner);
                         let codec = tonic::codec::ProstCodec::default();
                         let mut grpc = tonic::server::Grpc::new(codec)
                             .apply_compression_config(

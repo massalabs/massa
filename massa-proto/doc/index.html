@@ -331,11 +331,11 @@
                 </li>
               
                 <li>
-                  <a href="#massa.api.v1.NewBlockCliquesRequest"><span class="badge">M</span>NewBlockCliquesRequest</a>
+                  <a href="#massa.api.v1.NewBlockCliqueChangesRequest"><span class="badge">M</span>NewBlockCliqueChangesRequest</a>
                 </li>
               
                 <li>
-                  <a href="#massa.api.v1.NewBlockCliquesResponse"><span class="badge">M</span>NewBlockCliquesResponse</a>
+                  <a href="#massa.api.v1.NewBlockCliqueChangesResponse"><span class="badge">M</span>NewBlockCliqueChangesResponse</a>
                 </li>
               
                 <li>
@@ -467,6 +467,14 @@
               
                 <li>
                   <a href="#massa.api.v1.Block"><span class="badge">M</span>Block</a>
+                </li>
+              
+                <li>
+                  <a href="#massa.api.v1.BlockCliqueChange"><span class="badge">M</span>BlockCliqueChange</a>
+                </li>
+              
+                <li>
+                  <a href="#massa.api.v1.BlockCliqueStateEntry"><span class="badge">M</span>BlockCliqueStateEntry</a>
                 </li>
               
                 <li>
@@ -797,7 +805,7 @@
         
       
         <h3 id="massa.api.v1.DatastoreEntryFilter">DatastoreEntryFilter</h3>
-        <p></p>
+        <p>DatastoreEntry Filter</p>
 
         
           <table class="field-table">
@@ -1805,8 +1813,8 @@
 
         
       
-        <h3 id="massa.api.v1.NewBlockCliquesRequest">NewBlockCliquesRequest</h3>
-        <p>NewBlockCliquesRequest holds request for NewBlockCliques</p>
+        <h3 id="massa.api.v1.NewBlockCliqueChangesRequest">NewBlockCliqueChangesRequest</h3>
+        <p>NewBlockCliqueChangesRequest holds request for NewBlockCliqueChanges</p>
 
         
           <table class="field-table">
@@ -1829,8 +1837,8 @@
 
         
       
-        <h3 id="massa.api.v1.NewBlockCliquesResponse">NewBlockCliquesResponse</h3>
-        <p>NewBlockCliquesResponse holds response from NewBlockCliques</p>
+        <h3 id="massa.api.v1.NewBlockCliqueChangesResponse">NewBlockCliqueChangesResponse</h3>
+        <p>NewBlockCliqueChangesResponse holds response from NewBlockCliqueChanges</p>
 
         
           <table class="field-table">
@@ -1847,10 +1855,10 @@
                 </tr>
               
                 <tr>
-                  <td>clique</td>
-                  <td><a href="#string">string</a></td>
-                  <td>repeated</td>
-                  <td><p>Clique, set of addresses </p></td>
+                  <td>state</td>
+                  <td><a href="#massa.api.v1.BlockCliqueChange">BlockCliqueChange</a></td>
+                  <td></td>
+                  <td><p>Blockclique state </p></td>
                 </tr>
               
             </tbody>
@@ -2780,10 +2788,10 @@
               </tr>
             
               <tr>
-                <td>NewBlockCliques</td>
-                <td><a href="#massa.api.v1.NewBlockCliquesRequest">NewBlockCliquesRequest</a> stream</td>
-                <td><a href="#massa.api.v1.NewBlockCliquesResponse">NewBlockCliquesResponse</a> stream</td>
-                <td><p>New received and produced blockcliques</p></td>
+                <td>NewBlockCliqueChanges</td>
+                <td><a href="#massa.api.v1.NewBlockCliqueChangesRequest">NewBlockCliqueChangesRequest</a> stream</td>
+                <td><a href="#massa.api.v1.NewBlockCliqueChangesResponse">NewBlockCliqueChangesResponse</a> stream</td>
+                <td><p>New received and produced blockclique</p></td>
               </tr>
             
               <tr>
@@ -3008,6 +3016,61 @@
                   <td><a href="#string">string</a></td>
                   <td>repeated</td>
                   <td><p>Operations ids </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
+        <h3 id="massa.api.v1.BlockCliqueChange">BlockCliqueChange</h3>
+        <p>Blockclique state</p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>changes</td>
+                  <td><a href="#massa.api.v1.BlockCliqueStateEntry">BlockCliqueStateEntry</a></td>
+                  <td>repeated</td>
+                  <td><p>Blockclique entries </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
+        <h3 id="massa.api.v1.BlockCliqueStateEntry">BlockCliqueStateEntry</h3>
+        <p>Blockclique entry</p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>block_id</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p>BlockId </p></td>
+                </tr>
+              
+                <tr>
+                  <td>slot</td>
+                  <td><a href="#massa.api.v1.Slot">Slot</a></td>
+                  <td></td>
+                  <td><p>Slot </p></td>
                 </tr>
               
             </tbody>

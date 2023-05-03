@@ -576,10 +576,13 @@ async fn launch(
         channel_size: CHANNEL_SIZE,
         bootstrap_part_size: CONSENSUS_BOOTSTRAP_PART_SIZE,
         broadcast_enabled: SETTINGS.api.enable_broadcast,
+        broadcast_block_cliques_channel_capacity: SETTINGS
+            .consensus
+            .broadcast_block_cliques_channel_capacity,
+        broadcast_blocks_channel_capacity: SETTINGS.consensus.broadcast_blocks_channel_capacity,
         broadcast_blocks_headers_channel_capacity: SETTINGS
             .consensus
             .broadcast_blocks_headers_channel_capacity,
-        broadcast_blocks_channel_capacity: SETTINGS.consensus.broadcast_blocks_channel_capacity,
         broadcast_filled_blocks_channel_capacity: SETTINGS
             .consensus
             .broadcast_filled_blocks_channel_capacity,
@@ -592,13 +595,17 @@ async fn launch(
         execution_controller: execution_controller.clone(),
         selector_controller: selector_controller.clone(),
         pool_controller: pool_controller.clone(),
-        controller_event_tx: consensus_event_sender,
         protocol_controller: protocol_controller.clone(),
+        controller_event_tx: consensus_event_sender,
+        block_clique_sender: broadcast::channel(
+            consensus_config.broadcast_block_cliques_channel_capacity,
+        )
+        .0,
+        block_sender: broadcast::channel(consensus_config.broadcast_blocks_channel_capacity).0,
         block_header_sender: broadcast::channel(
             consensus_config.broadcast_blocks_headers_channel_capacity,
         )
         .0,
-        block_sender: broadcast::channel(consensus_config.broadcast_blocks_channel_capacity).0,
         filled_block_sender: broadcast::channel(
             consensus_config.broadcast_filled_blocks_channel_capacity,
         )

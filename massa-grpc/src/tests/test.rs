@@ -34,9 +34,10 @@ async fn test_start_grpc_server() {
         pool_controller: pool_ctrl.0.clone(),
         protocol_controller: Box::new(MockProtocolController::new()),
         controller_event_tx: consensus_event_sender,
-        block_sender: tokio::sync::broadcast::channel(100).0,
-        block_header_sender: tokio::sync::broadcast::channel(100).0,
-        filled_block_sender: tokio::sync::broadcast::channel(100).0,
+        block_clique_sender: tokio::sync::broadcast::channel(128).0,
+        block_sender: tokio::sync::broadcast::channel(128).0,
+        block_header_sender: tokio::sync::broadcast::channel(128).0,
+        filled_block_sender: tokio::sync::broadcast::channel(128).0,
     };
 
     let endorsement_sender = tokio::sync::broadcast::channel(2000).0;
