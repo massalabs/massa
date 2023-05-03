@@ -155,15 +155,20 @@ impl DenunciationPool {
             Entry::Occupied(mut eo) => match eo.get_mut() {
                 DenunciationStatus::Accumulating(de_p_) => {
                     let de_p: &DenunciationPrecursor = de_p_;
-                    match Denunciation::try_from((de_p, &denunciation_precursor)) {
-                        Ok(de) => {
-                            eo.insert(DenunciationStatus::DenunciationEmitted(de.clone()));
-                            Some(de)
+                    if *de_p != denunciation_precursor {
+                        match Denunciation::try_from((de_p, &denunciation_precursor)) {
+                            Ok(de) => {
+                                eo.insert(DenunciationStatus::DenunciationEmitted(de.clone()));
+                                Some(de)
+                            }
+                            Err(e) => {
+                                debug!("Denunciation pool cannot create denunciation from endorsements: {}", e);
+                                None
+                            }
                         }
-                        Err(e) => {
-                            debug!("Denunciation factory cannot create denunciation from endorsements: {}", e);
-                            None
-                        }
+                    } else {
+                        // same denunciation precursor - do nothing
+                        None
                     }
                 }
                 DenunciationStatus::DenunciationEmitted(..) => {

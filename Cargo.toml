@@ -19,8 +19,6 @@ members = [
   "massa-hash",
   "massa-logging",
   "massa-models",
-  "massa-network-worker",
-  "massa-network-exports",
   "massa-node",
   "massa-sdk",
   "massa-storage",

@@ -1,48 +1,65 @@
-// Copyright (c) 2022 MASSA LABS <info@massa.net>
-
-// RUST_BACKTRACE=1 cargo test test_one_handshake -- --nocapture --test-threads=1
-
-use super::tools::protocol_test;
-use massa_consensus_exports::test_exports::MockConsensusControllerMessage;
-use massa_models::{address::Address, slot::Slot};
-use massa_network_exports::NetworkCommand;
-use massa_pool_exports::test_exports::MockPoolControllerMessage;
-use massa_protocol_exports::tests::tools;
-use massa_storage::Storage;
-use massa_time::MassaTime;
-use serial_test::serial;
-use std::thread;
 use std::time::Duration;
 
-#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+use massa_hash::Hash;
+use massa_models::{
+    block_id::BlockId,
+    endorsement::{Endorsement, EndorsementSerializer},
+    secure_share::SecureShareContent,
+    slot::Slot,
+};
+use massa_pool_exports::test_exports::MockPoolControllerMessage;
+use massa_protocol_exports::{test_exports::tools, ProtocolConfig};
+use massa_signature::KeyPair;
+use peernet::peer_id::PeerId;
+use serial_test::serial;
+
+use crate::{
+    handlers::{block_handler::BlockMessage, endorsement_handler::EndorsementMessage},
+    messages::Message,
+};
+
+use super::context::{protocol_test, protocol_test_with_storage};
+
+#[test]
 #[serial]
-async fn test_protocol_sends_valid_endorsements_it_receives_to_pool() {
-    let protocol_config = &tools::PROTOCOL_CONFIG;
+fn test_protocol_sends_valid_endorsements_it_receives_to_pool() {
+    let default_panic = std::panic::take_hook();
+    std::panic::set_hook(Box::new(move |info| {
+        default_panic(info);
+        std::process::exit(1);
+    }));
+
+    let mut protocol_config = ProtocolConfig::default();
+    protocol_config.thread_count = 2;
+    protocol_config.initial_peers = "./src/tests/empty_initial_peers.json".to_string().into();
     protocol_test(
-        protocol_config,
-        async move |mut network_controller,
-                    protocol_command_sender,
-                    protocol_manager,
-                    protocol_consensus_event_receiver,
-                    mut pool_event_receiver| {
-            // Create 1 node.
-            let mut nodes = tools::create_and_connect_nodes(1, &mut network_controller).await;
+        &protocol_config,
+        move |mut network_controller,
+              protocol_controller,
+              protocol_manager,
+              consensus_event_receiver,
+              mut pool_event_receiver| {
+            //1. Create 1 nodes
+            let node_a_keypair = KeyPair::generate();
+            let (node_a_peer_id, _node_a) = network_controller.create_fake_connection(
+                PeerId::from_bytes(node_a_keypair.get_public_key().to_bytes()).unwrap(),
+            );
 
-            let creator_node = nodes.pop().expect("Failed to get node info.");
-
-            // 1. Create an endorsement
+            //2. Create an endorsement
             let endorsement = tools::create_endorsement();
 
-            let expected_endorsement_id = endorsement.id;
-
-            // 3. Send endorsement to protocol.
             network_controller
-                .send_endorsements(creator_node.id, vec![endorsement])
-                .await;
+                .send_from_peer(
+                    &node_a_peer_id,
+                    Message::Endorsement(EndorsementMessage::Endorsements(vec![
+                        endorsement.clone()
+                    ])),
+                )
+                .unwrap();
 
-            // Check protocol sends endorsements to pool.
+            //3. Check protocol sends endorsements to pool.
             let received_endorsements =
-                match pool_event_receiver.wait_command(1000.into(), |evt| match evt {
+                match pool_event_receiver.wait_command(1500.into(), |evt| match evt {
                     evt @ MockPoolControllerMessage::AddEndorsements { .. } => Some(evt),
                     _ => None,
                 }) {
@@ -53,89 +70,119 @@ async fn test_protocol_sends_valid_endorsements_it_receives_to_pool() {
                 };
             assert!(received_endorsements
                 .get_endorsement_refs()
-                .contains(&expected_endorsement_id));
-
+                .contains(&endorsement.id));
+            std::thread::sleep(std::time::Duration::from_millis(1000));
             (
                 network_controller,
-                protocol_command_sender,
+                protocol_controller,
                 protocol_manager,
-                protocol_consensus_event_receiver,
+                consensus_event_receiver,
                 pool_event_receiver,
             )
         },
     )
-    .await;
 }
 
-#[tokio::test]
+#[test]
 #[serial]
-async fn test_protocol_does_not_send_invalid_endorsements_it_receives_to_pool() {
-    let protocol_config = &tools::PROTOCOL_CONFIG;
+fn test_protocol_does_not_send_invalid_endorsements_it_receives_to_pool() {
+    let default_panic = std::panic::take_hook();
+    std::panic::set_hook(Box::new(move |info| {
+        default_panic(info);
+        std::process::exit(1);
+    }));
+
+    let mut protocol_config = ProtocolConfig::default();
+    protocol_config.thread_count = 2;
+    protocol_config.initial_peers = "./src/tests/empty_initial_peers.json".to_string().into();
     protocol_test(
-        protocol_config,
-        async move |mut network_controller,
-                    protocol_command_sender,
-                    protocol_manager,
-                    protocol_consensus_event_receiver,
-                    mut pool_event_receiver| {
-            // Create 1 node.
-            let mut nodes = tools::create_and_connect_nodes(1, &mut network_controller).await;
+        &protocol_config,
+        move |mut network_controller,
+              protocol_controller,
+              protocol_manager,
+              consensus_event_receiver,
+              mut pool_event_receiver| {
+            //1. Create 1 nodes
+            let node_a_keypair = KeyPair::generate();
+            let (node_a_peer_id, _node_a) = network_controller.create_fake_connection(
+                PeerId::from_bytes(node_a_keypair.get_public_key().to_bytes()).unwrap(),
+            );
 
-            let creator_node = nodes.pop().expect("Failed to get node info.");
-
-            // 1. Create an endorsement.
+            //2. Create an endorsement
             let mut endorsement = tools::create_endorsement();
 
-            // Change the slot, making the signature invalid.
-            endorsement.content.slot = Slot::new(1, 1);
+            //3. Change endorsement to make signature is invalid
+            endorsement.content_creator_pub_key = node_a_keypair.get_public_key().clone();
 
-            // 3. Send operation to protocol.
             network_controller
-                .send_endorsements(creator_node.id, vec![endorsement])
-                .await;
+                .send_from_peer(
+                    &node_a_peer_id,
+                    Message::Endorsement(EndorsementMessage::Endorsements(vec![
+                        endorsement.clone()
+                    ])),
+                )
+                .unwrap();
 
-            // Check protocol does not send endorsements to pool.
+            //4. Check protocol does not send endorsements to pool.
             pool_event_receiver.wait_command(1000.into(), |evt| match evt {
                 MockPoolControllerMessage::AddEndorsements { .. } => {
                     panic!("Protocol send invalid endorsements.")
                 }
                 _ => Some(MockPoolControllerMessage::Any),
             });
-
             (
                 network_controller,
-                protocol_command_sender,
+                protocol_controller,
                 protocol_manager,
-                protocol_consensus_event_receiver,
+                consensus_event_receiver,
                 pool_event_receiver,
             )
         },
     )
-    .await;
 }
 
-#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+#[test]
 #[serial]
-async fn test_protocol_propagates_endorsements_to_active_nodes() {
-    let protocol_config = &tools::PROTOCOL_CONFIG;
-    protocol_test(
-        protocol_config,
-        async move |mut network_controller,
-                    protocol_command_sender,
-                    protocol_manager,
-                    protocol_consensus_event_receiver,
-                    mut pool_event_receiver| {
-            // Create 2 nodes.
-            let nodes = tools::create_and_connect_nodes(2, &mut network_controller).await;
+fn test_protocol_propagates_endorsements_to_active_nodes() {
+    let default_panic = std::panic::take_hook();
+    std::panic::set_hook(Box::new(move |info| {
+        default_panic(info);
+        std::process::exit(1);
+    }));
 
-            // 1. Create an endorsement
+    let mut protocol_config = ProtocolConfig::default();
+    protocol_config.thread_count = 2;
+    protocol_config.initial_peers = "./src/tests/empty_initial_peers.json".to_string().into();
+    protocol_test(
+        &protocol_config,
+        move |mut network_controller,
+              protocol_controller,
+              protocol_manager,
+              consensus_event_receiver,
+              mut pool_event_receiver| {
+            //1. Create 2 nodes
+            let node_a_keypair = KeyPair::generate();
+            let node_b_keypair = KeyPair::generate();
+            let (node_a_peer_id, node_a) = network_controller.create_fake_connection(
+                PeerId::from_bytes(node_a_keypair.get_public_key().to_bytes()).unwrap(),
+            );
+            let (_node_b_peer_id, node_b) = network_controller.create_fake_connection(
+                PeerId::from_bytes(node_b_keypair.get_public_key().to_bytes()).unwrap(),
+            );
+
+            //2. Create an endorsement
             let endorsement = tools::create_endorsement();
 
-            // Send endorsement and wait for the protocol event,
-            // just to be sure the nodes are connected before sending the propagate command.
             network_controller
-                .send_endorsements(nodes[0].id, vec![endorsement.clone()])
-                .await;
+                .send_from_peer(
+                    &node_a_peer_id,
+                    Message::Endorsement(EndorsementMessage::Endorsements(vec![
+                        endorsement.clone()
+                    ])),
+                )
+                .unwrap();
+
+            //3. Check protocol sends endorsements to pool.
             pool_event_receiver.wait_command(1000.into(), |evt| match evt {
                 MockPoolControllerMessage::AddEndorsements { .. } => {
                     Some(MockPoolControllerMessage::Any)
@@ -143,66 +190,93 @@ async fn test_protocol_propagates_endorsements_to_active_nodes() {
                 _ => panic!("Unexpected or no protocol pool event."),
             });
 
-            let expected_endorsement_id = endorsement.id;
-
-            let mut sender = protocol_command_sender.clone();
-            thread::spawn(move || {
-                let mut storage = Storage::create_root();
-                storage.store_endorsements(vec![endorsement]);
-                sender.propagate_endorsements(storage).unwrap();
-            });
-
-            loop {
-                match network_controller
-                    .wait_command(1000.into(), |cmd| match cmd {
-                        cmd @ NetworkCommand::SendEndorsements { .. } => Some(cmd),
-                        _ => None,
-                    })
-                    .await
-                {
-                    Some(NetworkCommand::SendEndorsements { node, endorsements }) => {
-                        let id = endorsements[0].id;
-                        assert_eq!(id, expected_endorsement_id);
-                        assert_eq!(nodes[1].id, node);
-                        break;
-                    }
-                    _ => panic!("Unexpected or no network command."),
-                };
+            //4. Check that we propagated the endorsement to the node B that don't know it but not to A that already know it
+            let _ = node_a
+                .recv_timeout(Duration::from_millis(1500))
+                .expect_err("Node A should not receive the endorsement");
+            let msg = node_b
+                .recv_timeout(Duration::from_millis(1500))
+                .expect("Node B should receive the endorsement");
+            match msg {
+                Message::Endorsement(EndorsementMessage::Endorsements(endorsements)) => {
+                    assert_eq!(endorsements.len(), 1);
+                    assert_eq!(endorsements[0], endorsement);
+                }
+                _ => panic!("Unexpected message type"),
             }
             (
                 network_controller,
-                protocol_command_sender,
+                protocol_controller,
                 protocol_manager,
-                protocol_consensus_event_receiver,
+                consensus_event_receiver,
                 pool_event_receiver,
             )
         },
     )
-    .await;
 }
 
-#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+#[test]
 #[serial]
-async fn test_protocol_propagates_endorsements_only_to_nodes_that_dont_know_about_it() {
-    let protocol_config = &tools::PROTOCOL_CONFIG;
-    protocol_test(
-        protocol_config,
-        async move |mut network_controller,
-                    protocol_command_sender,
-                    protocol_manager,
-                    protocol_consensus_event_receiver,
-                    mut pool_event_receiver| {
-            // Create 1 node.
-            let nodes = tools::create_and_connect_nodes(1, &mut network_controller).await;
+fn test_protocol_propagates_endorsements_only_to_nodes_that_dont_know_about_it_block_integration() {
+    let default_panic = std::panic::take_hook();
+    std::panic::set_hook(Box::new(move |info| {
+        default_panic(info);
+        std::process::exit(1);
+    }));
 
-            // 1. Create an endorsement
-            let endorsement = tools::create_endorsement();
+    let mut protocol_config = ProtocolConfig::default();
+    protocol_config.thread_count = 2;
+    protocol_config.initial_peers = "./src/tests/empty_initial_peers.json".to_string().into();
+    protocol_test_with_storage(
+        &protocol_config,
+        move |mut network_controller,
+              protocol_controller,
+              protocol_manager,
+              consensus_event_receiver,
+              mut pool_event_receiver,
+              mut storage| {
+            //1. Create 2 nodes
+            let node_a_keypair = KeyPair::generate();
+            let node_b_keypair = KeyPair::generate();
+            let (node_a_peer_id, node_a) = network_controller.create_fake_connection(
+                PeerId::from_bytes(node_a_keypair.get_public_key().to_bytes()).unwrap(),
+            );
+            let (_node_b_peer_id, node_b) = network_controller.create_fake_connection(
+                PeerId::from_bytes(node_b_keypair.get_public_key().to_bytes()).unwrap(),
+            );
 
-            // Send endorsement and wait for the protocol event,
-            // just to be sure the nodes are connected before sending the propagate command.
+            //2. Create an endorsement
+            let content = Endorsement {
+                slot: Slot::new(1, 1),
+                index: 0,
+                endorsed_block: BlockId(Hash::compute_from("Genesis 1".as_bytes())),
+            };
+            let endorsement =
+                Endorsement::new_verifiable(content, EndorsementSerializer::new(), &node_a_keypair)
+                    .unwrap();
+            //3. Creates a block with the endorsement
+            let block = tools::create_block_with_endorsements(
+                &node_a_keypair,
+                Slot::new(1, 1),
+                vec![endorsement.clone()],
+            );
             network_controller
-                .send_endorsements(nodes[0].id, vec![endorsement.clone()])
-                .await;
+                .send_from_peer(
+                    &node_a_peer_id,
+                    Message::Block(Box::new(BlockMessage::BlockHeader(
+                        block.content.header.clone(),
+                    ))),
+                )
+                .unwrap();
+
+            std::thread::sleep(Duration::from_millis(300));
+            // Send the endorsement to protocol
+            // it should not propagate to the node that already knows about it
+            // because of the previously received header.
+            storage.store_endorsements(vec![endorsement.clone()]);
+            protocol_controller.propagate_endorsements(storage).unwrap();
+
+            //3. Check protocol sends endorsements to pool.
             pool_event_receiver.wait_command(1000.into(), |evt| match evt {
                 MockPoolControllerMessage::AddEndorsements { .. } => {
                     Some(MockPoolControllerMessage::Any)
@@ -210,352 +284,27 @@ async fn test_protocol_propagates_endorsements_only_to_nodes_that_dont_know_abou
                 _ => panic!("Unexpected or no protocol pool event."),
             });
 
-            // create and connect a node that does not know about the endorsement
-            let new_nodes = tools::create_and_connect_nodes(1, &mut network_controller).await;
-
-            // wait for things to settle
-            tokio::time::sleep(Duration::from_millis(250)).await;
-
-            let expected_endorsement_id = endorsement.id;
-
-            // send the endorsement to protocol
-            // it should propagate it to nodes that don't know about it
-            let mut sender = protocol_command_sender.clone();
-            thread::spawn(move || {
-                let mut storage = Storage::create_root();
-                storage.store_endorsements(vec![endorsement]);
-                sender.propagate_endorsements(storage).unwrap();
-            });
-
-            loop {
-                match network_controller
-                    .wait_command(1000.into(), |cmd| match cmd {
-                        cmd @ NetworkCommand::SendEndorsements { .. } => Some(cmd),
-                        _ => None,
-                    })
-                    .await
-                {
-                    Some(NetworkCommand::SendEndorsements { node, endorsements }) => {
-                        let id = endorsements[0].id;
-                        assert_eq!(id, expected_endorsement_id);
-                        assert_eq!(new_nodes[0].id, node);
-                        break;
-                    }
-                    None => panic!("no network command"),
-                    Some(cmd) => panic!("Unexpected network command.{:?}", cmd),
-                };
+            //4. Check that we propagated the endorsement to the node B that don't know it but not to A that already know it through the block
+            let _ = node_a
+                .recv_timeout(Duration::from_millis(1500))
+                .expect_err("Node A should not receive the endorsement");
+            let msg = node_b
+                .recv_timeout(Duration::from_millis(1500))
+                .expect("Node B should receive the endorsement");
+            match msg {
+                Message::Endorsement(EndorsementMessage::Endorsements(endorsements)) => {
+                    assert_eq!(endorsements.len(), 1);
+                    assert_eq!(endorsements[0], endorsement);
+                }
+                _ => panic!("Unexpected message type"),
             }
             (
                 network_controller,
-                protocol_command_sender,
+                protocol_controller,
                 protocol_manager,
-                protocol_consensus_event_receiver,
+                consensus_event_receiver,
                 pool_event_receiver,
             )
         },
     )
-    .await;
-}
-
-#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
-#[serial]
-async fn test_protocol_propagates_endorsements_only_to_nodes_that_dont_know_about_it_block_integration(
-) {
-    let protocol_config = &tools::PROTOCOL_CONFIG;
-    protocol_test(
-        protocol_config,
-        async move |mut network_controller,
-                    protocol_command_sender,
-                    protocol_manager,
-                    protocol_consensus_event_receiver,
-                    protocol_pool_event_receiver| {
-            // Create 1 node.
-            let nodes = tools::create_and_connect_nodes(1, &mut network_controller).await;
-
-            let address = Address::from_public_key(&nodes[0].id.get_public_key());
-            let thread = address.get_thread(2);
-
-            let endorsement = tools::create_endorsement();
-            let endorsement_id = endorsement.id;
-
-            let block = tools::create_block_with_endorsements(
-                &nodes[0].keypair,
-                Slot::new(1, thread),
-                vec![endorsement.clone()],
-            );
-
-            // Send the header,
-            // this should note the node as knowing about the endorsement.
-            network_controller
-                .send_header(nodes[0].id, block.content.header)
-                .await;
-
-            // Send the endorsement to protocol
-            // it should not propagate to the node that already knows about it
-            // because of the previously received header.
-            let mut sender = protocol_command_sender.clone();
-            thread::spawn(move || {
-                std::thread::sleep(Duration::from_millis(300));
-                let mut storage = Storage::create_root();
-                storage.store_endorsements(vec![endorsement]);
-                sender.propagate_endorsements(storage).unwrap();
-            });
-
-            match network_controller
-                .wait_command(1000.into(), |cmd| match cmd {
-                    cmd @ NetworkCommand::SendEndorsements { .. } => Some(cmd),
-                    _ => None,
-                })
-                .await
-            {
-                Some(NetworkCommand::SendEndorsements { node, endorsements }) => {
-                    let id = endorsements[0].id;
-                    assert_eq!(id, endorsement_id);
-                    assert_eq!(nodes[0].id, node);
-                    panic!("Unexpected propagated of endorsement.");
-                }
-                None => {}
-                Some(cmd) => panic!("Unexpected network command.{:?}", cmd),
-            };
-
-            (
-                network_controller,
-                protocol_command_sender,
-                protocol_manager,
-                protocol_consensus_event_receiver,
-                protocol_pool_event_receiver,
-            )
-        },
-    )
-    .await;
-}
-
-#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
-#[serial]
-#[ignore]
-async fn test_protocol_propagates_endorsements_only_to_nodes_that_dont_know_about_it_get_block_results(
-) {
-    let protocol_config = &tools::PROTOCOL_CONFIG;
-    protocol_test(
-        protocol_config,
-        async move |mut network_controller,
-                    protocol_command_sender,
-                    protocol_manager,
-                    protocol_consensus_event_receiver,
-                    protocol_pool_event_receiver| {
-            // Create 1 node.
-            let nodes = tools::create_and_connect_nodes(1, &mut network_controller).await;
-
-            let address = Address::from_public_key(&nodes[0].id.get_public_key());
-            let thread = address.get_thread(2);
-
-            let endorsement = tools::create_endorsement();
-            let endorsement_id = endorsement.id;
-
-            let block = tools::create_block_with_endorsements(
-                &nodes[0].keypair,
-                Slot::new(1, thread),
-                vec![endorsement.clone()],
-            );
-
-            // Send the header,
-            // this should note the node as knowing about the endorsement.
-            network_controller
-                .send_header(nodes[0].id, block.content.header)
-                .await;
-
-            // Send the endorsement to protocol
-            // it should not propagate to the node that already knows about it
-            // because of the previously integrated block.
-            let mut sender = protocol_command_sender.clone();
-            thread::spawn(move || {
-                std::thread::sleep(std::time::Duration::from_millis(100));
-                let mut storage = Storage::create_root();
-                storage.store_endorsements(vec![endorsement]);
-                sender.propagate_endorsements(storage).unwrap();
-            });
-
-            match network_controller
-                .wait_command(300.into(), |cmd| match cmd {
-                    cmd @ NetworkCommand::SendEndorsements { .. } => Some(cmd),
-                    _ => None,
-                })
-                .await
-            {
-                Some(NetworkCommand::SendEndorsements { node, endorsements }) => {
-                    let id = endorsements[0].id;
-                    assert_eq!(id, endorsement_id);
-                    assert_eq!(nodes[0].id, node);
-                    panic!("Unexpected propagation of endorsement.");
-                }
-                None => {}
-                Some(cmd) => panic!("Unexpected network command.{:?}", cmd),
-            };
-
-            (
-                network_controller,
-                protocol_command_sender,
-                protocol_manager,
-                protocol_consensus_event_receiver,
-                protocol_pool_event_receiver,
-            )
-        },
-    )
-    .await;
-}
-
-#[tokio::test]
-#[serial]
-async fn test_protocol_propagates_endorsements_only_to_nodes_that_dont_know_about_it_indirect_knowledge_via_header(
-) {
-    let protocol_config = &tools::PROTOCOL_CONFIG;
-    protocol_test(
-        protocol_config,
-        async move |mut network_controller,
-                    protocol_command_sender,
-                    protocol_manager,
-                    mut protocol_consensus_event_receiver,
-                    protocol_pool_event_receiver| {
-            // Create 2 nodes.
-            let nodes = tools::create_and_connect_nodes(2, &mut network_controller).await;
-
-            let address = Address::from_public_key(&nodes[0].id.get_public_key());
-            let thread = address.get_thread(2);
-
-            let endorsement = tools::create_endorsement();
-            let endorsement_id = endorsement.id;
-
-            let block = tools::create_block_with_endorsements(
-                &nodes[0].keypair,
-                Slot::new(1, thread),
-                vec![endorsement.clone()],
-            );
-
-            // Node 2 sends block, resulting in endorsements noted in block info.
-            // TODO: rewrite
-
-            // Node 1 sends header, resulting in protocol using the block info to determine
-            // the node knows about the endorsements contained in the block header.
-            network_controller
-                .send_header(nodes[0].id, block.content.header.clone())
-                .await;
-
-            // Wait for the event to be sure that the node is connected,
-            // and noted as knowing the block and its endorsements.
-            let protocol_consensus_event_receiver = tokio::task::spawn_blocking(move || {
-                protocol_consensus_event_receiver.wait_command(
-                    MassaTime::from_millis(1000),
-                    |command| match command {
-                        MockConsensusControllerMessage::RegisterBlockHeader { .. } => Some(()),
-                        _ => panic!("Node isn't connected or didn't mark block as known."),
-                    },
-                );
-                protocol_consensus_event_receiver
-            })
-            .await
-            .unwrap();
-
-            // Send the endorsement to protocol
-            // it should not propagate to the node that already knows about it
-            // because of the previously received header.
-            let mut sender = protocol_command_sender.clone();
-            thread::spawn(move || {
-                let mut storage = Storage::create_root();
-                storage.store_endorsements(vec![endorsement]);
-                sender.propagate_endorsements(storage).unwrap();
-            });
-
-            match network_controller
-                .wait_command(1000.into(), |cmd| match cmd {
-                    cmd @ NetworkCommand::SendEndorsements { .. } => Some(cmd),
-                    _ => None,
-                })
-                .await
-            {
-                Some(NetworkCommand::SendEndorsements { node, endorsements }) => {
-                    let id = endorsements[0].id;
-                    assert_eq!(id, endorsement_id);
-                    if nodes[0].id == node {
-                        panic!("Unexpected propagated of endorsement.");
-                    }
-                }
-                None => {}
-                Some(cmd) => panic!("Unexpected network command.{:?}", cmd),
-            };
-
-            (
-                network_controller,
-                protocol_command_sender,
-                protocol_manager,
-                protocol_consensus_event_receiver,
-                protocol_pool_event_receiver,
-            )
-        },
-    )
-    .await;
-}
-
-#[tokio::test]
-#[serial]
-async fn test_protocol_does_not_propagates_endorsements_when_receiving_those_inside_a_header() {
-    let protocol_config = &tools::PROTOCOL_CONFIG;
-    protocol_test(
-        protocol_config,
-        async move |mut network_controller,
-                    protocol_command_sender,
-                    protocol_manager,
-                    protocol_consensus_event_receiver,
-                    protocol_pool_event_receiver| {
-            // Create 2 nodes.
-            let mut nodes = tools::create_and_connect_nodes(2, &mut network_controller).await;
-
-            // 1. Create an endorsement
-            let endorsement = tools::create_endorsement();
-
-            let creator_node = nodes.pop().expect("Failed to get node info.");
-
-            // 2. Create a block coming from node creator_node.
-            let mut block = tools::create_block(&creator_node.keypair);
-
-            // 3. Add endorsement to block
-            block.content.header.content.endorsements = vec![endorsement.clone()];
-
-            // 4. Send header to protocol.
-            network_controller
-                .send_header(creator_node.id, block.content.header.clone())
-                .await;
-
-            let expected_endorsement_id = endorsement.id;
-
-            // 5. Check that the endorsements included in the header are propagated.
-            loop {
-                match network_controller
-                    .wait_command(1000.into(), |cmd| match cmd {
-                        cmd @ NetworkCommand::SendEndorsements { .. } => Some(cmd),
-                        _ => None,
-                    })
-                    .await
-                {
-                    Some(NetworkCommand::SendEndorsements {
-                        node: _node,
-                        endorsements,
-                    }) => {
-                        let id = endorsements[0].id;
-                        assert_eq!(id, expected_endorsement_id);
-                        panic!("Unexpected propagation of endorsement.");
-                    }
-                    Some(_) => panic!("Unexpected network command.."),
-                    None => break,
-                };
-            }
-            (
-                network_controller,
-                protocol_command_sender,
-                protocol_manager,
-                protocol_consensus_event_receiver,
-                protocol_pool_event_receiver,
-            )
-        },
-    )
-    .await;
 }

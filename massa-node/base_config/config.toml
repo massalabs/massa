@@ -143,6 +143,20 @@
     broadcast_filled_blocks_channel_capacity = 128
 
 [protocol]
+    # port on which to listen for protocol communication. You may need to change this to "0.0.0.0:port" if IPv6 is disabled system-wide.
+    bind = "[::]:31244"
+    # timeout for connection establishment
+    connect_timeout = 3000
+    # path to the node key (not the staking key)
+    keypair_file = "config/node_privkey.key"
+    # path to the initial peers file
+    initial_peers_file = "base_config/initial_peers.json"
+    # maximum of incoming connections
+    max_incoming_connections = 15
+    # maximum of outgoing connections
+    max_outgoing_connections = 10
+    # Limit of read/write number of bytes per second with a peer (Should be a 10 multiple)
+    read_write_limit_bytes_per_second = 2_000_000_000
     # timeout after which without answer a hanshake is ended
     message_timeout = 5000
     # timeout after whick we consider a node does not have the block we asked for
@@ -182,65 +196,8 @@
     max_operations_propagation_time = 32000
     # time threshold after which endorsement are not propagated
     max_endorsements_propagation_time = 48000
-
-[network]
-    # port on which to listen for protocol communication. You may need to change this to "0.0.0.0:port" if IPv6 is disabled system-wide.
-    bind = "[::]:31244"
-    # port used by protocol
-    protocol_port = 31244
-    # timeout for connection establishment
-    connect_timeout = 3000
-    # attempt a connection to available peers when needed every wakeup_interval milliseconds
-    wakeup_interval = 5000
-    # path to the local peers storage file
-    peers_file = "storage/peers.json"
-    # path to the initial peers file
-    initial_peers_file = "base_config/initial_peers.json"
-    # max number of inbound connections per ip
-    max_in_connections_per_ip = 5
-    # max number of stored idle peers
-    max_idle_peers = 10000
-    # max number of stored banned peers
-    max_banned_peers = 100
-    # max number of advertized peers
-    max_advertise_length = 5000
-    # peers are dumped to file every peers_file_dump_interval milliseconds
-    peers_file_dump_interval = 30000
-    # max size of sent messages
-    max_message_size = 1048576000
-    # timeout when waiting for a message from a foreign node
-    message_timeout = 5000
-    # interval in milliseconds for asking peer lists from peers we are connected to
-    ask_peer_list_interval = 600000
-    # path to the node key (not the staking key)
-    keypair_file = "config/node_privkey.key"
-    # max number of asked blocks per message
-    max_ask_blocks_per_message = 128
-    # max number of operations per message
-    max_operations_per_message = 1024
-    # max number of endorsements per message
-    max_endorsements_per_message = 1024
-    # max milliseconds to wait while sending a node event before dropping it
-    max_send_wait_node_event = 5_000
-    # max milliseconds to wait while sending a network event before dropping it
-    max_send_wait_network_event = 0
-    # we forget we banned a node after ban_timeout milliseconds
-    ban_timeout = 3600000
-    # timeout duration when in handshake we respond with a PeerList
-    # (on max in connection reached we send a list of peers)
-    peer_list_send_timeout = 100
-    # max number of in connection overflowed managed by the handshake
-    # that send a list of peers
-    max_in_connection_overflow = 100
-    # read limitation for a connection in bytes per seconds
-    max_bytes_read = 20_000_000.0
-    # write limitation for a connection in bytes per seconds
-    max_bytes_write = 20_000_000.0
-
-    [network.peer_types_config]
-    Standard = { target_out_connections = 10, max_out_attempts = 10, max_in_connections = 15}
-    Bootstrap = { target_out_connections = 1, max_out_attempts = 1, max_in_connections = 1}
-    WhiteListed = { target_out_connections = 2, max_out_attempts = 2, max_in_connections = 3}
+    # number of thread tester
+    thread_tester_count = 5
 
 [bootstrap]
     # list of bootstrap (ip, node id)

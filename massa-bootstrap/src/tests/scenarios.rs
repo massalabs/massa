@@ -5,7 +5,7 @@ use super::tools::{
 };
 use crate::tests::tools::{
     get_random_async_pool_changes, get_random_executed_de_changes, get_random_executed_ops_changes,
-    get_random_pos_changes,
+    get_random_pos_changes, make_runtime,
 };
 use crate::BootstrapConfig;
 use crate::{
@@ -40,15 +40,12 @@ use massa_models::{
     },
     prehash::PreHashSet,
 };
-#[cfg(any(test, feature = "testing"))]
-use massa_network_exports::MockNetworkCommandSender as NetworkCommandSender;
-#[cfg(not(any(test, feature = "testing")))]
-use massa_network_exports::NetworkCommandSender;
 
 use massa_pos_exports::{
     test_exports::assert_eq_pos_selection, PoSConfig, PoSFinalState, SelectorConfig,
 };
 use massa_pos_worker::start_selector_worker;
+use massa_protocol_exports::MockProtocolController;
 use massa_signature::KeyPair;
 use massa_time::MassaTime;
 use massa_versioning_worker::versioning::{
@@ -197,14 +194,15 @@ fn test_bootstrap_server() {
     let (mock_bs_listener, mock_remote_connector) = conn_establishment_mocks();
 
     // Setup network command mock-story: hard-code the result of getting bootstrap peers
-    let mut mocked1 = NetworkCommandSender::new();
-    let mut mocked2 = NetworkCommandSender::new();
+    let mut mocked1 = MockProtocolController::new();
+    let mut mocked2 = Box::new(MockProtocolController::new());
     mocked2
-        .expect_sync_get_bootstrap_peers()
+        .expect_get_bootstrap_peers()
         .times(1)
-        .returning(|| Ok(get_peers()));
+        .returning(|| Ok(get_peers(&keypair.clone())));
 
-    mocked1.expect_clone().return_once(move || mocked2);
+    mocked1.expect_clone_box().return_once(move || mocked2);
+
     let mut stream_mock1 = Box::new(MockConsensusControllerImpl::new());
     let mut stream_mock2 = Box::new(MockConsensusControllerImpl::new());
     let mut stream_mock3 = Box::new(MockConsensusControllerImpl::new());
@@ -247,7 +245,7 @@ fn test_bootstrap_server() {
         .spawn(move || {
             start_bootstrap_server(
                 stream_mock1,
-                mocked1,
+                Box::new(mocked1),
                 final_state_server_clone1,
                 bootstrap_config.clone(),
                 mock_bs_listener,
@@ -288,7 +286,7 @@ fn test_bootstrap_server() {
         .unwrap();
 
     // launch the get_state process
-    let bootstrap_res = massa_network_exports::make_runtime()
+    let bootstrap_res = make_runtime()
         .block_on(get_state(
             bootstrap_config,
             final_state_client_clone,
@@ -356,7 +354,7 @@ fn test_bootstrap_server() {
 
     // check peers
     assert_eq!(
-        get_peers().0,
+        get_peers(&keypair).0,
         bootstrap_res.peers.unwrap().0,
         "mismatch between sent and received peers"
     );

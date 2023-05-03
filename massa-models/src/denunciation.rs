@@ -294,11 +294,6 @@ impl TryFrom<(&SecureShareEndorsement, &SecureShareEndorsement)> for Denunciatio
     fn try_from(
         (s_e1, s_e2): (&SecureShareEndorsement, &SecureShareEndorsement),
     ) -> Result<Self, Self::Error> {
-        // Cannot use the same endorsement twice
-        if s_e1.id == s_e2.id {
-            return Err(DenunciationError::InvalidInput);
-        }
-
         // In order to create a Denunciation, there should be the same
         // slot, index & public key
         if s_e1.content.slot != s_e2.content.slot
@@ -306,7 +301,10 @@ impl TryFrom<(&SecureShareEndorsement, &SecureShareEndorsement)> for Denunciatio
             || s_e1.content_creator_pub_key != s_e2.content_creator_pub_key
             || s_e1.id == s_e2.id
         {
-            return Err(DenunciationError::InvalidInput);
+            return Err(DenunciationError::InvalidInput(format!(
+                "Not the same slot, index or public key or same hash for {:?} & {:?}",
+                s_e1, s_e2
+            )));
         }
 
         // Check sig of s_e1 with s_e1.public_key, s_e1.slot, s_e1.index
@@ -354,7 +352,10 @@ impl TryFrom<(&SecuredHeader, &SecuredHeader)> for Denunciation {
             || s_bh1.content_creator_pub_key != s_bh2.content_creator_pub_key
             || s_bh1.id == s_bh2.id
         {
-            return Err(DenunciationError::InvalidInput);
+            return Err(DenunciationError::InvalidInput(format!(
+                "Not the same slot or public key or same hash for {:?} & {:?}",
+                s_bh1, s_bh2
+            )));
         }
 
         // Check sig of s_bh2 but with s_bh1.public_key, s_bh1.slot, s_bh1.index
@@ -410,8 +411,8 @@ impl From<&Denunciation> for DenunciationTypeId {
 #[allow(missing_docs)]
 #[derive(Error, Debug)]
 pub enum DenunciationError {
-    #[error("Invalid endorsements or block headers, cannot create denunciation")]
-    InvalidInput,
+    #[error("Invalid endorsements or block headers, cannot create denunciation: {0}")]
+    InvalidInput(String),
     #[error("signature error: {0}")]
     Signature(#[from] MassaSignatureError),
     #[error("serialization error: {0}")]
@@ -984,7 +985,7 @@ impl Deserializer<DenunciationIndex> for DenunciationIndexDeserializer {
 // Denunciation interest
 
 /// DenunciationPrecursor variant for endorsement
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct EndorsementDenunciationPrecursor {
     /// secure share endorsement public key
     pub public_key: PublicKey,
@@ -999,7 +1000,7 @@ pub struct EndorsementDenunciationPrecursor {
 }
 
 /// DenunciationPrecursor variant for block header
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct BlockHeaderDenunciationPrecursor {
     /// secured header public key
     pub public_key: PublicKey,
@@ -1013,7 +1014,7 @@ pub struct BlockHeaderDenunciationPrecursor {
 
 /// Lightweight data for Denunciation creation
 /// (avoid storing heavyweight secured header or secure share endorsement, see denunciation pool)
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum DenunciationPrecursor {
     /// Endorsement variant
     Endorsement(EndorsementDenunciationPrecursor),
@@ -1067,96 +1068,102 @@ impl TryFrom<(&DenunciationPrecursor, &DenunciationPrecursor)> for Denunciation 
     type Error = DenunciationError;
 
     fn try_from(
-        (de_i_1, de_i_2): (&DenunciationPrecursor, &DenunciationPrecursor),
+        (de_p_1, de_p_2): (&DenunciationPrecursor, &DenunciationPrecursor),
     ) -> Result<Self, Self::Error> {
-        match (de_i_1, de_i_2) {
+        match (de_p_1, de_p_2) {
             (
-                DenunciationPrecursor::BlockHeader(de_i_blkh_1),
-                DenunciationPrecursor::BlockHeader(de_i_blkh_2),
+                DenunciationPrecursor::BlockHeader(de_p_blkh_1),
+                DenunciationPrecursor::BlockHeader(de_p_blkh_2),
             ) => {
                 // Cannot use the same block header (here: block header denunciation precursor) twice
-                if de_i_blkh_1.slot != de_i_blkh_2.slot
-                    || de_i_blkh_1.public_key != de_i_blkh_2.public_key
-                    || de_i_blkh_1.hash == de_i_blkh_2.hash
+                if de_p_blkh_1.slot != de_p_blkh_2.slot
+                    || de_p_blkh_1.public_key != de_p_blkh_2.public_key
+                    || de_p_blkh_1.hash == de_p_blkh_2.hash
                 {
-                    return Err(DenunciationError::InvalidInput);
+                    return Err(DenunciationError::InvalidInput(
+                        format!("Not the same slot or public key or same hash for de precursor: {:?} & {:?}", de_p_blkh_1, de_p_blkh_2)
+                    ));
                 }
 
                 // Check sig
-                let de_i_blkh_1_hash = BlockHeaderDenunciation::compute_hash_for_sig_verif(
-                    &de_i_blkh_1.public_key,
-                    &de_i_blkh_1.slot,
-                    &de_i_blkh_1.hash,
+                let de_p_blkh_1_hash = BlockHeaderDenunciation::compute_hash_for_sig_verif(
+                    &de_p_blkh_1.public_key,
+                    &de_p_blkh_1.slot,
+                    &de_p_blkh_1.hash,
                 );
-                let de_i_blkh_2_hash = BlockHeaderDenunciation::compute_hash_for_sig_verif(
-                    &de_i_blkh_2.public_key,
-                    &de_i_blkh_2.slot,
-                    &de_i_blkh_2.hash,
+                let de_p_blkh_2_hash = BlockHeaderDenunciation::compute_hash_for_sig_verif(
+                    &de_p_blkh_2.public_key,
+                    &de_p_blkh_2.slot,
+                    &de_p_blkh_2.hash,
                 );
 
-                de_i_blkh_1
+                de_p_blkh_1
                     .public_key
-                    .verify_signature(&de_i_blkh_1_hash, &de_i_blkh_1.signature)?;
-                de_i_blkh_1
+                    .verify_signature(&de_p_blkh_1_hash, &de_p_blkh_1.signature)?;
+                de_p_blkh_1
                     .public_key
-                    .verify_signature(&de_i_blkh_2_hash, &de_i_blkh_2.signature)?;
+                    .verify_signature(&de_p_blkh_2_hash, &de_p_blkh_2.signature)?;
 
                 Ok(Denunciation::BlockHeader(BlockHeaderDenunciation {
-                    public_key: de_i_blkh_1.public_key,
-                    slot: de_i_blkh_1.slot,
-                    signature_1: de_i_blkh_1.signature,
-                    signature_2: de_i_blkh_2.signature,
-                    hash_1: de_i_blkh_1.hash,
-                    hash_2: de_i_blkh_2.hash,
+                    public_key: de_p_blkh_1.public_key,
+                    slot: de_p_blkh_1.slot,
+                    signature_1: de_p_blkh_1.signature,
+                    signature_2: de_p_blkh_2.signature,
+                    hash_1: de_p_blkh_1.hash,
+                    hash_2: de_p_blkh_2.hash,
                 }))
             }
             (
-                DenunciationPrecursor::Endorsement(de_i_endo_1),
-                DenunciationPrecursor::Endorsement(de_i_endo_2),
+                DenunciationPrecursor::Endorsement(de_p_endo_1),
+                DenunciationPrecursor::Endorsement(de_p_endo_2),
             ) => {
                 // Cannot use the same endorsement (here: endorsement denunciation) twice
-                if de_i_endo_1.slot != de_i_endo_2.slot
-                    || de_i_endo_1.index != de_i_endo_2.index
-                    || de_i_endo_1.public_key != de_i_endo_2.public_key
-                    || de_i_endo_1.hash == de_i_endo_2.hash
+                if de_p_endo_1.slot != de_p_endo_2.slot
+                    || de_p_endo_1.index != de_p_endo_2.index
+                    || de_p_endo_1.public_key != de_p_endo_2.public_key
+                    || de_p_endo_1.hash == de_p_endo_2.hash
                 {
-                    return Err(DenunciationError::InvalidInput);
+                    return Err(DenunciationError::InvalidInput(
+                        format!("Not the same slot, index or public key or same hash for de precursor: {:?} & {:?}", de_p_endo_1, de_p_endo_2)
+                    ));
                 }
 
                 // Check sig
-                let de_i_endo_1_hash = EndorsementDenunciation::compute_hash_for_sig_verif(
-                    &de_i_endo_1.public_key,
-                    &de_i_endo_1.slot,
-                    &de_i_endo_1.index,
-                    &de_i_endo_1.hash,
+                let de_p_endo_1_hash = EndorsementDenunciation::compute_hash_for_sig_verif(
+                    &de_p_endo_1.public_key,
+                    &de_p_endo_1.slot,
+                    &de_p_endo_1.index,
+                    &de_p_endo_1.hash,
                 );
-                let de_i_endo_2_hash = EndorsementDenunciation::compute_hash_for_sig_verif(
-                    &de_i_endo_2.public_key,
-                    &de_i_endo_2.slot,
-                    &de_i_endo_2.index,
-                    &de_i_endo_2.hash,
+                let de_p_endo_2_hash = EndorsementDenunciation::compute_hash_for_sig_verif(
+                    &de_p_endo_2.public_key,
+                    &de_p_endo_2.slot,
+                    &de_p_endo_2.index,
+                    &de_p_endo_2.hash,
                 );
 
-                de_i_endo_1
+                de_p_endo_1
                     .public_key
-                    .verify_signature(&de_i_endo_1_hash, &de_i_endo_1.signature)?;
-                de_i_endo_1
+                    .verify_signature(&de_p_endo_1_hash, &de_p_endo_1.signature)?;
+                de_p_endo_1
                     .public_key
-                    .verify_signature(&de_i_endo_2_hash, &de_i_endo_2.signature)?;
+                    .verify_signature(&de_p_endo_2_hash, &de_p_endo_2.signature)?;
 
                 Ok(Denunciation::Endorsement(EndorsementDenunciation {
-                    public_key: de_i_endo_1.public_key,
-                    slot: de_i_endo_1.slot,
-                    index: de_i_endo_1.index,
-                    signature_1: de_i_endo_1.signature,
-                    signature_2: de_i_endo_2.signature,
-                    hash_1: de_i_endo_1.hash,
-                    hash_2: de_i_endo_2.hash,
+                    public_key: de_p_endo_1.public_key,
+                    slot: de_p_endo_1.slot,
+                    index: de_p_endo_1.index,
+                    signature_1: de_p_endo_1.signature,
+                    signature_2: de_p_endo_2.signature,
+                    hash_1: de_p_endo_1.hash,
+                    hash_2: de_p_endo_2.hash,
                 }))
             }
             _ => {
                 // Different enum variants - this is invalid
-                Err(DenunciationError::InvalidInput)
+                Err(DenunciationError::InvalidInput(
+                    "Mixed endorsement and block header denunciation precursors".to_string(),
+                ))
             }
         }
     }
@@ -1222,12 +1229,18 @@ mod tests {
 
         let denunciation = Denunciation::try_from((&s_endorsement_1, &s_endorsement_4));
 
-        assert!(matches!(denunciation, Err(DenunciationError::InvalidInput)));
+        assert!(matches!(
+            denunciation,
+            Err(DenunciationError::InvalidInput(..))
+        ));
 
         // Try to create a denunciation from only 1 endorsement
         let denunciation = Denunciation::try_from((&s_endorsement_1, &s_endorsement_1));
 
-        assert!(matches!(denunciation, Err(DenunciationError::InvalidInput)));
+        assert!(matches!(
+            denunciation,
+            Err(DenunciationError::InvalidInput(..))
+        ));
     }
 
     #[test]

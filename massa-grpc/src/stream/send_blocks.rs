@@ -33,7 +33,7 @@ pub(crate) async fn send_blocks(
     request: Request<tonic::Streaming<grpc::SendBlocksRequest>>,
 ) -> Result<SendBlocksStreamType, GrpcError> {
     let consensus_controller = grpc.consensus_controller.clone();
-    let mut protocol_command_sender = grpc.protocol_command_sender.clone();
+    let protocol_command_sender = grpc.protocol_command_sender.clone();
     let storage = grpc.storage.clone_without_refs();
     let config = grpc.grpc_config.clone();
 

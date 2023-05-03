@@ -256,6 +256,41 @@ pub const NETWORK_NODE_COMMAND_CHANNEL_SIZE: usize = 10_000;
 pub const NETWORK_NODE_EVENT_CHANNEL_SIZE: usize = 10_000;
 
 //
+// Constants used in protocol
+//
+/// Maximum of time we keep the operations in the storage of the propagation thread
+pub const MAX_OPERATION_STORAGE_TIME: MassaTime = MassaTime::from_millis(60000);
+/// Maximum size of channel used for commands in retrieval thread of operations
+pub const MAX_SIZE_CHANNEL_COMMANDS_RETRIEVAL_OPERATIONS: usize = 10000;
+/// Maximum size of channel used for commands in propagation thread of operations
+pub const MAX_SIZE_CHANNEL_COMMANDS_PROPAGATION_OPERATIONS: usize = 10000;
+/// Maximum size of channel used for commands in retrieval thread of block
+pub const MAX_SIZE_CHANNEL_COMMANDS_RETRIEVAL_BLOCKS: usize = 10000;
+/// Maximum size of channel used for commands in propagation thread of block
+pub const MAX_SIZE_CHANNEL_COMMANDS_PROPAGATION_BLOCKS: usize = 10000;
+/// Maximum size of channel used for commands in retrieval thread of endorsements
+pub const MAX_SIZE_CHANNEL_COMMANDS_RETRIEVAL_ENDORSEMENTS: usize = 10000;
+/// Maximum size of channel used for commands in propagation thread of endorsements
+pub const MAX_SIZE_CHANNEL_COMMANDS_PROPAGATION_ENDORSEMENTS: usize = 10000;
+/// Maximum size of channel used for commands in connectivity thread
+pub const MAX_SIZE_CHANNEL_COMMANDS_CONNECTIVITY: usize = 10000;
+/// Maximum size of channel used for commands in peers management thread
+pub const MAX_SIZE_CHANNEL_COMMANDS_PEERS: usize = 10000;
+/// Maximum size of channel used for commands in peer testers thread
+pub const MAX_SIZE_CHANNEL_COMMANDS_PEER_TESTERS: usize = 10000;
+/// Maximum size of channel used to send network events to the operation handler
+pub const MAX_SIZE_CHANNEL_NETWORK_TO_OPERATION_HANDLER: usize = 10000;
+/// Maximum size of channel used to send network events to the block handler
+pub const MAX_SIZE_CHANNEL_NETWORK_TO_BLOCK_HANDLER: usize = 10000;
+/// Maximum size of channel used to send network events to the endorsement handler
+pub const MAX_SIZE_CHANNEL_NETWORK_TO_ENDORSEMENT_HANDLER: usize = 10000;
+/// Maximum size of channel used to send network events to the peer handler
+pub const MAX_SIZE_CHANNEL_NETWORK_TO_PEER_HANDLER: usize = 10000;
+/// Maximum number of peer in a announcement list of peer
+pub const MAX_PEERS_IN_ANNOUNCEMENT_LIST: u64 = 100;
+/// Maximum number of listeners for a peer
+pub const MAX_LISTENERS_PER_PEER: u64 = 100;
+//
 // Constants used in versioning
 //
 /// Threshold to accept a new versioning
