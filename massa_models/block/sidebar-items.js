@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"enum":["BlockGraphStatus"],"struct":["Block","BlockDeserializer","BlockDeserializerArgs","BlockSerializer","FilledBlock"],"type":["SecureShareBlock"]};
+window.SIDEBAR_ITEMS = {"constant":["FIELDS","VARIANTS"],"enum":["BlockGraphStatus","__Field"],"struct":["Block","BlockDeserializer","BlockDeserializerArgs","BlockSerializer","FilledBlock","__FieldVisitor","__Visitor"],"type":["SecureShareBlock"]};

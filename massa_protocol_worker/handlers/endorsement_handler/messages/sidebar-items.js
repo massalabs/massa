@@ -1,1 +1,0 @@
-window.SIDEBAR_ITEMS = {"constant":["Endorsements__num_enum_0__"],"enum":["EndorsementMessage","MessageTypeId"],"struct":["EndorsementMessageDeserializer","EndorsementMessageDeserializerArgs","EndorsementMessageSerializer"]};

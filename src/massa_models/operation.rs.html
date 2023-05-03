@@ -1527,8 +1527,6 @@
 <a href="#1527" id="1527">1527</a>
 <a href="#1528" id="1528">1528</a>
 <a href="#1529" id="1529">1529</a>
-<a href="#1530" id="1530">1530</a>
-<a href="#1531" id="1531">1531</a>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="kw">use </span><span class="kw">crate</span>::address::AddressSerializer;
@@ -2638,7 +2636,6 @@
 }
 
 <span class="doccomment">/// Serializer for `OperationPrefixIds`
-</span><span class="attr">#[derive(Clone)]
 </span><span class="kw">pub struct </span>OperationPrefixIdsSerializer {
     u32_serializer: U32VarIntSerializer,
 }
@@ -2678,7 +2675,6 @@
 }
 
 <span class="doccomment">/// Serializer for `Operations`
-</span><span class="attr">#[derive(Clone)]
 </span><span class="kw">pub struct </span>OperationsSerializer {
     u32_serializer: U32VarIntSerializer,
     signed_op_serializer: SecureShareSerializer,
