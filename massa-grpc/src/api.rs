@@ -492,7 +492,6 @@ pub(crate) fn get_operations(
     })
 }
 
-//TODO: to be implemented
 /// Get smart contract execution events
 pub(crate) fn get_sc_execution_events(
     grpc: &MassaGrpc,
@@ -526,7 +525,7 @@ pub(crate) fn get_sc_execution_events(
         slot: Some(current_slot.into()),
     });
 
-    let events: Vec<grpc::ScExecutionEventWrapper> = grpc
+    let events: Vec<grpc::ScExecutionEvent> = grpc
         .execution_controller
         .get_filtered_sc_output_event(event_filter)
         .into_iter()

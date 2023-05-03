@@ -52,8 +52,8 @@ use massa_models::{
     secure_share::SecureShareContent,
     slot::Slot,
 };
-use massa_network_exports::BootstrapPeers;
 use massa_pos_exports::{CycleInfo, DeferredCredits, PoSChanges, PoSFinalState, ProductionStats};
+use massa_protocol_exports::{BootstrapPeers, PeerId, TransportType};
 use massa_serialization::{DeserializeError, Deserializer, Serializer};
 use massa_signature::KeyPair;
 use massa_time::MassaTime;
@@ -324,6 +324,7 @@ pub fn get_bootstrap_config(bootstrap_public_key: NodeId) -> BootstrapConfig {
         write_timeout: 1000.into(),
         read_error_timeout: 200.into(),
         write_error_timeout: 200.into(),
+        max_listeners_per_peer: 100,
         bootstrap_list: vec![(
             SocketAddr::new(BASE_BOOTSTRAP_IP, 8069),
             bootstrap_public_key,
@@ -477,9 +478,31 @@ pub fn get_boot_state() -> BootstrapableGraph {
     boot_graph
 }
 
-pub fn get_peers() -> BootstrapPeers {
+pub fn get_peers(keypair: &KeyPair) -> BootstrapPeers {
+    let mut listeners1 = HashMap::default();
+    listeners1.insert("82.245.123.77:8080".parse().unwrap(), TransportType::Tcp);
+
+    let mut listeners2 = HashMap::default();
+    listeners2.insert("82.220.123.78:8080".parse().unwrap(), TransportType::Tcp);
     BootstrapPeers(vec![
-        "82.245.123.77".parse().unwrap(),
-        "82.220.123.78".parse().unwrap(),
+        (
+            PeerId::from_bytes(keypair.get_public_key().to_bytes()).unwrap(),
+            listeners1,
+        ),
+        (
+            PeerId::from_bytes(keypair.get_public_key().to_bytes()).unwrap(),
+            listeners2,
+        ),
     ])
+}
+
+/// The bootstrap server function `get_state` has to be async due to main.rs `tokio::select!` usage to
+/// cancel on `ctrl-c`
+/// If get state can be cancelled with ctrl-c without an async context, this can be removed
+pub fn make_runtime() -> tokio::runtime::Runtime {
+    tokio::runtime::Builder::new_multi_thread()
+        .enable_all()
+        .thread_name("network-provided-runtime")
+        .build()
+        .expect("failed to create runtime")
 }

@@ -90,9 +90,9 @@ pub(crate) async fn new_endorsements(
         }
     });
 
-    // Create a new stream from the received channel.
+    // Create a new stream from the received channel
     let out_stream = tokio_stream::wrappers::ReceiverStream::new(rx);
 
-    // Return the new stream of endorsements.
+    // Return the new stream of endorsements
     Ok(Box::pin(out_stream) as NewEndorsementsStreamType)
 }

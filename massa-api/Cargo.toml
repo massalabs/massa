@@ -23,7 +23,6 @@ parking_lot = { version = "0.12", features = ["deadlock_detection"] }
 massa_consensus_exports = { path = "../massa-consensus-exports" }
 massa_api_exports = { path = "../massa-api-exports" }
 massa_models = { path = "../massa-models" }
-massa_network_exports = { path = "../massa-network-exports" }
 massa_pool_exports = { path = "../massa-pool-exports" }
 massa_protocol_exports = { path = "../massa-protocol-exports" }
 massa_execution_exports = { path = "../massa-execution-exports" }
@@ -32,4 +31,5 @@ massa_storage = { path = "../massa-storage" }
 massa_serialization = { path = "../massa-serialization"}
 massa_signature = { path = "../massa-signature" }
 massa_time = { path = "../massa-time" }
+massa_hash = { path = "../massa-hash" }
 massa_wallet = { path = "../massa-wallet" }

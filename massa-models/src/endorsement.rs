@@ -495,7 +495,14 @@ mod tests {
         let s_endorsement_1: SecureShareEndorsement =
             Endorsement::new_verifiable(content_1, EndorsementSerializer::new(), &sender_keypair)
                 .unwrap();
-
+        let mut serialized = vec![];
+        SecureShareSerializer::new()
+            .serialize(&s_endorsement_1, &mut serialized)
+            .unwrap();
+        let (_, s_endorsement_1): (&[u8], SecureShare<Endorsement, EndorsementId>) =
+            SecureShareDeserializer::new(EndorsementDeserializer::new(32, 32))
+                .deserialize::<DeserializeError>(&serialized)
+                .unwrap();
         let sender_keypair = KeyPair::generate();
         let content_2 = Endorsement {
             slot: Slot::new(2, 5),
