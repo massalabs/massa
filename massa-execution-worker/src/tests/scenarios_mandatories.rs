@@ -32,7 +32,9 @@ mod tests {
         cmp::Reverse, collections::BTreeMap, collections::HashMap, str::FromStr, time::Duration,
     };
 
-    const TEST_SK: &str = "S113NgPbYkpX7WiyojYGtRSiPYEMwhEjFCK8fjWmNw3MQvJKVqD4cUDvbfqSpp1qoEBgnnCPoNfD6YtRdvMmjvjWMBpLVr6L";
+    const TEST_SK_1: &str = "S18r2i8oJJyhF7Kprx98zwxAc3W4szf7RKuVMX6JydZz8zSxHeC";
+    const TEST_SK_2: &str = "S1FpYC4ugG9ivZZbLVrTwWtF9diSRiAwwrVX5Gx1ANSRLfouUjq";
+    const TEST_SK_3: &str = "S1LgXhWLEgAgCX3nm6y8PVPzpybmsYpi6yg6ZySwu5Z4ERnD7Bu";
 
     #[test]
     #[serial]
@@ -214,7 +216,7 @@ mod tests {
         init_execution_worker(&exec_cfg, &storage, controller.clone());
 
         // get random keypair
-        let keypair = KeyPair::from_str(TEST_SK).unwrap();
+        let keypair = KeyPair::from_str(TEST_SK_1).unwrap();
         // load bytecodes
         // you can check the source code of the following wasm file in massa-unit-tests-src
         let bytecode = include_bytes!("./wasm/nested_call.wasm");
@@ -364,7 +366,7 @@ mod tests {
         init_execution_worker(&exec_cfg, &storage, controller.clone());
 
         // get random keypair
-        let keypair = KeyPair::from_str(TEST_SK).unwrap();
+        let keypair = KeyPair::from_str(TEST_SK_1).unwrap();
         // load bytecodes
         // you can check the source code of the following wasm file in massa-unit-tests-src
         let bytecode = include_bytes!("./wasm/get_call_coins_main.wasm");
@@ -507,7 +509,7 @@ mod tests {
         // initialize the execution system with genesis blocks
         init_execution_worker(&exec_cfg, &storage, controller.clone());
         // keypair associated to thread 0
-        let keypair = KeyPair::from_str(TEST_SK).unwrap();
+        let keypair = KeyPair::from_str(TEST_SK_1).unwrap();
         // load bytecodes
         // you can check the source code of the following wasm file in massa-unit-tests-src
         let bytecode = include_bytes!("./wasm/send_message.wasm");
@@ -608,7 +610,7 @@ mod tests {
         // initialize the execution system with genesis blocks
         init_execution_worker(&exec_cfg, &storage, controller.clone());
         // keypair associated to thread 0
-        let keypair = KeyPair::from_str(TEST_SK).unwrap();
+        let keypair = KeyPair::from_str(TEST_SK_1).unwrap();
         // load bytecodes
         // you can check the source code of the following wasm file in massa-unit-tests-src
         let bytecode = include_bytes!("./wasm/send_message.wasm");
@@ -709,7 +711,7 @@ mod tests {
         // initialize the execution system with genesis blocks
         init_execution_worker(&exec_cfg, &storage, controller.clone());
         // keypair associated to thread 0
-        let keypair = KeyPair::from_str(TEST_SK).unwrap();
+        let keypair = KeyPair::from_str(TEST_SK_1).unwrap();
         // load bytecodes
         // you can check the source code of the following wasm files in massa-unit-tests-src
         let exec_bytecode = include_bytes!("./wasm/local_execution.wasm");
@@ -760,7 +762,7 @@ mod tests {
         assert_eq!(events[1].context.call_stack.len(), 1);
         assert_eq!(
             events[1].context.call_stack.back().unwrap(),
-            &Address::from_str("AU12eS5qggxuvqviD5eQ72oM2QhGwnmNbT1BaxVXU4hqQ8rAYXFe").unwrap()
+            &Address::from_public_key(&keypair.get_public_key())
         );
         assert_eq!(events[2].data, "one local execution completed");
         let amount = Amount::from_raw(events[5].data.parse().unwrap());
@@ -772,7 +774,7 @@ mod tests {
         assert_eq!(events[5].context.call_stack.len(), 1);
         assert_eq!(
             events[1].context.call_stack.back().unwrap(),
-            &Address::from_str("AU12eS5qggxuvqviD5eQ72oM2QhGwnmNbT1BaxVXU4hqQ8rAYXFe").unwrap()
+            &Address::from_public_key(&keypair.get_public_key())
         );
         assert_eq!(events[6].data, "one local call completed");
 
@@ -823,7 +825,7 @@ mod tests {
         // initialize the execution system with genesis blocks
         init_execution_worker(&exec_cfg, &storage, controller.clone());
         // keypair associated to thread 0
-        let keypair = KeyPair::from_str(TEST_SK).unwrap();
+        let keypair = KeyPair::from_str(TEST_SK_1).unwrap();
         // load bytecodes
         // you can check the source code of the following wasm files in massa-unit-tests-src
         let op_bytecode = include_bytes!("./wasm/deploy_sc.wasm");
@@ -922,7 +924,7 @@ mod tests {
         // initialize the execution system with genesis blocks
         init_execution_worker(&exec_cfg, &storage, controller.clone());
         // keypair associated to thread 0
-        let keypair = KeyPair::from_str(TEST_SK).unwrap();
+        let keypair = KeyPair::from_str(TEST_SK_1).unwrap();
         // load bytecode
         // you can check the source code of the following wasm file in massa-unit-tests-src
         let bytecode = include_bytes!("./wasm/send_message_deploy_condition.wasm");
@@ -969,7 +971,7 @@ mod tests {
         assert_eq!(events[0].data, "Triggered");
 
         // keypair associated to thread 1
-        let keypair = KeyPair::from_str(TEST_SK).unwrap();
+        let keypair = KeyPair::from_str(TEST_SK_2).unwrap();
         // load bytecode
         // you can check the source code of the following wasm file in massa-unit-tests-src
         let bytecode = include_bytes!("./wasm/send_message_wrong_trigger.wasm");
@@ -1001,7 +1003,7 @@ mod tests {
         assert_eq!(events[0].data, "Triggered");
 
         // keypair associated to thread 2
-        let keypair = KeyPair::from_str(TEST_SK).unwrap();
+        let keypair = KeyPair::from_str(TEST_SK_3).unwrap();
         // load bytecode
         // you can check the source code of the following wasm file in massa-unit-tests-src
         // This line execute the smart contract that will modify the data entry and then trigger the SC.
@@ -1071,12 +1073,8 @@ mod tests {
         init_execution_worker(&exec_cfg, &storage, controller.clone());
         // generate the sender_keypair and recipient_address
 
-        // WIP START
-        let sender_keypair = KeyPair::from_str(TEST_SK).unwrap();
-        let addr = Address::from_public_key(&sender_keypair.get_public_key());
-        dbg!(sample_state.read().ledger.get_balance(&addr));
+        let sender_keypair = KeyPair::from_str(TEST_SK_1).unwrap();
         let (recipient_address, _keypair) = get_random_address_full();
-        // WIP START
 
         // create the operation
         let operation = Operation::new_verifiable(
@@ -1100,7 +1098,7 @@ mod tests {
             Slot::new(1, 0),
         )
         .unwrap();
-        dbg!(block.id);
+
         // store the block in storage
         storage.store_block(block.clone());
         // set our block as a final block so the transaction is processed
@@ -1169,7 +1167,7 @@ mod tests {
         // initialize the execution system with genesis blocks
         init_execution_worker(&exec_cfg, &storage, controller.clone());
         // generate the sender_keypair and recipient_address
-        let sender_keypair = KeyPair::from_str(TEST_SK).unwrap();
+        let sender_keypair = KeyPair::from_str(TEST_SK_1).unwrap();
         let sender_addr = Address::from_public_key(&sender_keypair.get_public_key());
         let (recipient_address, _keypair) = get_random_address_full();
         // create the operation
@@ -1269,7 +1267,7 @@ mod tests {
         // initialize the execution system with genesis blocks
         init_execution_worker(&exec_cfg, &storage, controller.clone());
         // generate the keypair and its corresponding address
-        let keypair = KeyPair::from_str(TEST_SK).unwrap();
+        let keypair = KeyPair::from_str(TEST_SK_1).unwrap();
         let address = Address::from_public_key(&keypair.get_public_key());
         // create the operation
         // try to buy 60 rolls so (100+60) and the max rolls specified for this address in vesting is 150
@@ -1356,7 +1354,7 @@ mod tests {
         // initialize the execution system with genesis blocks
         init_execution_worker(&exec_cfg, &storage, controller.clone());
         // generate the keypair and its corresponding address
-        let keypair = KeyPair::from_str(TEST_SK).unwrap();
+        let keypair = KeyPair::from_str(TEST_SK_1).unwrap();
         let address = Address::from_public_key(&keypair.get_public_key());
         // create the operation
         let operation = Operation::new_verifiable(
@@ -1445,7 +1443,7 @@ mod tests {
         // initialize the execution system with genesis blocks
         init_execution_worker(&exec_cfg, &storage, controller.clone());
         // generate the keypair and its corresponding address
-        let keypair = KeyPair::from_str(TEST_SK).unwrap();
+        let keypair = KeyPair::from_str(TEST_SK_1).unwrap();
         let address = Address::from_public_key(&keypair.get_public_key());
 
         // get initial balance
@@ -1617,7 +1615,7 @@ mod tests {
         // initialize the execution system with genesis blocks
         init_execution_worker(&exec_cfg, &storage, controller.clone());
         // keypair associated to thread 0
-        let keypair = KeyPair::from_str(TEST_SK).unwrap();
+        let keypair = KeyPair::from_str(TEST_SK_1).unwrap();
         // load bytecode
         // you can check the source code of the following wasm file in massa-unit-tests-src
         let bytecode = include_bytes!("./wasm/execution_error.wasm");
@@ -1696,7 +1694,7 @@ mod tests {
         // initialize the execution system with genesis blocks
         init_execution_worker(&exec_cfg, &storage, controller.clone());
         // keypair associated to thread 0
-        let keypair = KeyPair::from_str(TEST_SK).unwrap();
+        let keypair = KeyPair::from_str(TEST_SK_1).unwrap();
         // load bytecode
         // you can check the source code of the following wasm file in massa-unit-tests-src
         let bytecode = include_bytes!("./wasm/datastore.wasm");
@@ -1772,7 +1770,7 @@ mod tests {
         // initialize the execution system with genesis blocks
         init_execution_worker(&exec_cfg, &storage, controller.clone());
         // keypair associated to thread 0
-        let keypair = KeyPair::from_str(TEST_SK).unwrap();
+        let keypair = KeyPair::from_str(TEST_SK_1).unwrap();
         // load bytecodes
         // you can check the source code of the following wasm file in massa-unit-tests-src
         let bytecode = include_bytes!("./wasm/set_bytecode_fail.wasm");
@@ -1849,7 +1847,7 @@ mod tests {
         init_execution_worker(&exec_cfg, &storage, controller.clone());
 
         // keypair associated to thread 0
-        let keypair = KeyPair::from_str(TEST_SK).unwrap();
+        let keypair = KeyPair::from_str(TEST_SK_1).unwrap();
         // let address = Address::from_public_key(&keypair.get_public_key());
 
         // load bytecode
@@ -1987,7 +1985,7 @@ mod tests {
         // create blockclique block at slot (1,1)
         {
             let blockclique_block_slot = Slot::new(1, 1);
-            let keypair = KeyPair::from_str(TEST_SK).unwrap();
+            let keypair = KeyPair::from_str(TEST_SK_2).unwrap();
             let event_test_data = include_bytes!("./wasm/event_test.wasm");
             let operation =
                 create_execute_sc_operation(&keypair, event_test_data, BTreeMap::default())
@@ -2014,7 +2012,7 @@ mod tests {
         // create blockclique block at slot (1,0)
         {
             let blockclique_block_slot = Slot::new(1, 0);
-            let keypair = KeyPair::from_str(TEST_SK).unwrap();
+            let keypair = KeyPair::from_str(TEST_SK_1).unwrap();
             let event_test_data = include_bytes!("./wasm/event_test.wasm");
             let operation =
                 create_execute_sc_operation(&keypair, event_test_data, BTreeMap::default())
@@ -2074,7 +2072,7 @@ mod tests {
         init_execution_worker(&exec_cfg, &storage, controller.clone());
 
         // keypair associated to thread 0
-        let keypair = KeyPair::from_str(TEST_SK).unwrap();
+        let keypair = KeyPair::from_str(TEST_SK_1).unwrap();
 
         // load bytecode
         // you can check the source code of the following wasm file in massa-unit-tests-src
@@ -2208,7 +2206,7 @@ mod tests {
         // initialize the execution system with genesis blocks
         init_execution_worker(&exec_cfg, &storage, controller.clone());
         // keypair associated to thread 0
-        let keypair = KeyPair::from_str(TEST_SK).unwrap();
+        let keypair = KeyPair::from_str(TEST_SK_1).unwrap();
         // load bytecode
         // you can check the source code of the following wasm file in massa-unit-tests-src
         let bytecode = include_bytes!("./wasm/use_builtins.wasm");
@@ -2294,7 +2292,7 @@ mod tests {
         init_execution_worker(&exec_cfg, &storage, controller.clone());
 
         // keypair associated to thread 0
-        let keypair = KeyPair::from_str(TEST_SK).unwrap();
+        let keypair = KeyPair::from_str(TEST_SK_1).unwrap();
         // let address = Address::from_public_key(&keypair.get_public_key());
 
         // load bytecode

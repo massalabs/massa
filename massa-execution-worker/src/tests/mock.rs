@@ -34,17 +34,24 @@ fn get_initials() -> (NamedTempFile, HashMap<Address, LedgerEntry>) {
     let mut rolls: BTreeMap<Address, u64> = BTreeMap::new();
     let mut ledger: HashMap<Address, LedgerEntry> = HashMap::new();
 
-    let keypair_0 =
-        KeyPair::from_str("S113NgPbYkpX7WiyojYGtRSiPYEMwhEjFCK8fjWmNw3MQvJKVqD4cUDvbfqSpp1qoEBgnnCPoNfD6YtRdvMmjvjWMBpLVr6L").unwrap();
-    let addr_0 = Address::from_public_key(&keypair_0.get_public_key());
-    rolls.insert(addr_0, 100);
-    ledger.insert(
-        addr_0,
-        LedgerEntry {
-            balance: Amount::from_str("300_000").unwrap(),
-            ..Default::default()
-        },
-    );
+    let raw_keypairs = [
+        "S18r2i8oJJyhF7Kprx98zwxAc3W4szf7RKuVMX6JydZz8zSxHeC", // thread 0
+        "S1FpYC4ugG9ivZZbLVrTwWtF9diSRiAwwrVX5Gx1ANSRLfouUjq", // thread 1
+        "S1LgXhWLEgAgCX3nm6y8PVPzpybmsYpi6yg6ZySwu5Z4ERnD7Bu", // thread 2
+    ];
+
+    for s in raw_keypairs {
+        let keypair = KeyPair::from_str(s).unwrap();
+        let addr = Address::from_public_key(&keypair.get_public_key());
+        rolls.insert(addr, 100);
+        ledger.insert(
+            addr,
+            LedgerEntry {
+                balance: Amount::from_str("300_000").unwrap(),
+                ..Default::default()
+            },
+        );
+    }
 
     // write file
     serde_json::to_writer_pretty::<&File, BTreeMap<Address, u64>>(file.as_file(), &rolls)

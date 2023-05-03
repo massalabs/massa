@@ -185,23 +185,24 @@ impl KeyPair {
     /// let keypair = KeyPair::generate(0).unwrap();
     /// let bytes = keypair.to_bytes();
     /// let keypair2 = KeyPair::from_bytes(&bytes).unwrap();
+    /// assert_eq!(keypair.to_string(), keypair2.to_string());
     /// ```
     pub fn from_bytes(data: &[u8]) -> Result<Self, MassaSignatureError> {
         let u64_deserializer = U64VarIntDeserializer::new(Included(0), Included(u64::MAX));
         let (rest, version) = u64_deserializer
             .deserialize::<DeserializeError>(data)
             .map_err(|err| MassaSignatureError::ParsingError(err.to_string()))?;
-        if rest.len() < SECRET_KEY_BYTES_SIZE {
+        if rest.len() != SECRET_KEY_BYTES_SIZE {
             return Err(MassaSignatureError::ParsingError(
-                "not enough bytes".to_string(),
+                "invalid number of bytes".to_string(),
             ));
         }
         match version {
             <KeyPair!["0"]>::VERSION => Ok(KeyPairVariant!["0"](<KeyPair!["0"]>::from_bytes(
-                rest[..32].try_into().unwrap(),
+                rest.try_into().unwrap(),
             )?)),
             <KeyPair!["1"]>::VERSION => Ok(KeyPairVariant!["1"](<KeyPair!["1"]>::from_bytes(
-                rest[..32].try_into().unwrap(),
+                rest.try_into().unwrap(),
             )?)),
             _ => Err(MassaSignatureError::InvalidVersionError(format!(
                 "Unknown keypair version: {}",
@@ -225,17 +226,11 @@ impl Clone for KeyPair {
 #[transition::impl_version(versions("0", "1"))]
 impl std::fmt::Display for KeyPair {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        let u64_serializer = U64VarIntSerializer::new();
-        let mut bytes = Vec::new();
-        u64_serializer
-            .serialize(&Self::VERSION, &mut bytes)
-            .map_err(|_| std::fmt::Error)?;
-        bytes.extend(self.to_bytes());
         write!(
             f,
             "{}{}",
             SECRET_PREFIX,
-            bs58::encode(bytes).with_check().into_string()
+            bs58::encode(self.to_bytes()).with_check().into_string()
         )
     }
 }
@@ -324,7 +319,7 @@ impl KeyPair {
         version_serializer
             .serialize(&Self::VERSION, &mut bytes)
             .expect("Failed to serialize KeyPair version");
-        bytes.extend_from_slice(&self.0.to_bytes());
+        bytes.extend_from_slice(&self.0.secret.to_bytes());
         bytes
     }
 }
