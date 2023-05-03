@@ -1,14 +1,13 @@
 use crate::{CycleInfo, PoSChanges, PosError, PosResult, ProductionStats, SelectorController};
 use crate::{DeferredCredits, PoSConfig};
 use bitvec::vec::BitVec;
-use massa_db::DBBatch;
+use massa_db::{DBBatch, MassaDB};
 use massa_hash::Hash;
 use massa_models::error::ModelsError;
 use massa_models::streaming_step::StreamingStep;
 use massa_models::{address::Address, prehash::PreHashMap, slot::Slot};
 use massa_serialization::{Serializer, U64VarIntSerializer};
 use parking_lot::RwLock;
-use rocksdb::DB;
 use std::collections::VecDeque;
 use std::ops::RangeBounds;
 use std::sync::Arc;
@@ -25,7 +24,7 @@ pub struct PoSFinalState {
     /// proof-of-stake configuration
     pub config: PoSConfig,
     /// Access to the RocksDB database
-    pub db: Arc<RwLock<DB>>,
+    pub db: Arc<RwLock<MassaDB>>,
     /// contiguous cycle history, back = newest
     pub cycle_history: VecDeque<CycleInfo>,
     /// coins to be credited at the end of the slot
@@ -48,7 +47,7 @@ impl PoSFinalState {
         initial_rolls_path: &PathBuf,
         selector: Box<dyn SelectorController>,
         initial_ledger_hash: Hash,
-        db: Arc<RwLock<DB>>,
+        db: Arc<RwLock<MassaDB>>,
     ) -> Result<Self, PosError> {
         // load get initial rolls from file
         let initial_rolls = serde_json::from_str::<BTreeMap<Address, u64>>(
@@ -540,7 +539,7 @@ impl PoSFinalState {
         /// Get the current cycle history hash
         pub fn get_cycle_history_hash(&self) -> Hash {
             let db = self.db.read();
-            let handle = db.cf_handle(METADATA_CF).expect(CF_ERROR);
+            let handle = db.0.cf_handle(METADATA_CF).expect(CF_ERROR);
             if let Some(cycle_history_hash) = db
                 .get_cf(handle, CYCLE_HISTORY_HASH_KEY)
                 .expect(CRUD_ERROR)
@@ -564,9 +563,8 @@ impl PoSFinalState {
             None => *self.deferred_credits.enable_hash_tracker_and_compute_hash(),
         }
         /*let db = self.db.read();
-        let handle = db.cf_handle(METADATA_CF).expect(CF_ERROR);
-        if let Some(deferred_credits_hash) = db
-            .get_cf(handle, DEFERRED_CREDITS_HASH_KEY)
+        let handle = db.0.cf_handle(METADATA_CF).expect(CF_ERROR);
+        if let Some(deferred_credits_hash) = db.0.get_cf(handle, DEFERRED_CREDITS_HASH_KEY)
             .expect(CRUD_ERROR)
             .as_deref()
         {

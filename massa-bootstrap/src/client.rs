@@ -1,5 +1,5 @@
 use humantime::format_duration;
-use massa_db::{write_batch, DBBatch};
+use massa_db::DBBatch;
 use std::{collections::HashSet, net::SocketAddr, sync::Arc, time::Duration};
 
 use massa_final_state::FinalState;
@@ -78,24 +78,10 @@ fn stream_final_state_and_consensus(
                         .executed_denunciations
                         .set_executed_de_part(exec_de_part);
                     for (changes_slot, changes) in final_state_changes.iter() {
-                        let ledger_hash = write_final_state.ledger.get_ledger_hash();
-                        let async_pool_hash = write_final_state.async_pool.get_hash();
-                        let executed_ops_hash = write_final_state.executed_ops.get_hash();
-                        let executed_denunciations_hash =
-                            write_final_state.executed_denunciations.get_hash();
-                        let mut batch = DBBatch::new(
-                            Some(ledger_hash),
-                            Some(async_pool_hash),
-                            None,
-                            None,
-                            Some(executed_ops_hash),
-                            Some(executed_denunciations_hash),
-                        );
-                        write_final_state.ledger.apply_changes_to_batch(
-                            changes.ledger_changes.clone(),
-                            *changes_slot,
-                            &mut batch,
-                        );
+                        let mut batch = DBBatch::new(write_final_state.db.read().get_db_hash());
+                        write_final_state
+                            .ledger
+                            .apply_changes_to_batch(changes.ledger_changes.clone(), &mut batch);
                         write_final_state
                             .async_pool
                             .apply_changes_to_batch(&changes.async_pool_changes, &mut batch);
@@ -114,7 +100,7 @@ fn stream_final_state_and_consensus(
                                 &mut batch,
                             );
                         }
-                        write_batch(&write_final_state.rocks_db.read(), batch);
+                        write_final_state.db.read().write_batch(batch);
                     }
                     write_final_state.slot = slot;
 

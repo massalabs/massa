@@ -11,3 +11,4 @@ rocksdb = "0.20"
 # Custom modules
 massa_hash = { path = "../massa-hash" }
 massa_models = { path = "../massa-models" }
+massa_serialization = { path = "../massa-serialization" }

@@ -5,7 +5,7 @@ use crate::{
     FinalState, FinalStateConfig, StateChanges,
 };
 use massa_async_pool::{AsyncMessage, AsyncPoolChanges, AsyncPoolConfig};
-use massa_db::new_rocks_db_instance;
+use massa_db::MassaDB;
 use massa_executed_ops::{ExecutedDenunciationsConfig, ExecutedOpsConfig};
 use massa_ledger_exports::{
     LedgerChanges, LedgerConfig, LedgerEntryUpdate, SetOrKeep, SetUpdateOrDelete,
@@ -29,9 +29,7 @@ use std::{path::PathBuf, str::FromStr, sync::Arc};
 use tempfile::TempDir;
 
 fn create_final_state(temp_dir: &TempDir) -> Arc<RwLock<FinalState>> {
-    let rocks_db_instance = Arc::new(RwLock::new(new_rocks_db_instance(
-        temp_dir.path().to_path_buf(),
-    )));
+    let db = Arc::new(RwLock::new(MassaDB::new(temp_dir.path().to_path_buf())));
 
     let rolls_path = PathBuf::from_str("../massa-node/base_config/initial_rolls.json").unwrap();
 
@@ -93,14 +91,11 @@ fn create_final_state(temp_dir: &TempDir) -> Arc<RwLock<FinalState>> {
             .expect("could not start server selector controller");
     // setup final states
 
-    let ledger = FinalLedger::new(
-        final_state_local_config.ledger_config.clone(),
-        rocks_db_instance.clone(),
-    );
+    let ledger = FinalLedger::new(final_state_local_config.ledger_config.clone(), db.clone());
 
     let final_state = Arc::new(RwLock::new(
         FinalState::new(
-            rocks_db_instance.clone(),
+            db.clone(),
             final_state_local_config.clone(),
             Box::new(ledger),
             selector_controller,

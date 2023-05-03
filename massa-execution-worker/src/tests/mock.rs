@@ -1,4 +1,4 @@
-use massa_db::new_rocks_db_instance;
+use massa_db::MassaDB;
 use massa_execution_exports::ExecutionError;
 use massa_final_state::{FinalState, FinalStateConfig};
 use massa_hash::Hash;
@@ -112,11 +112,9 @@ pub fn get_sample_state(
 ) -> Result<(Arc<RwLock<FinalState>>, NamedTempFile, TempDir), LedgerError> {
     let (rolls_file, ledger) = get_initials();
     let (ledger_config, tempfile, tempdir) = LedgerConfig::sample(&ledger);
-    let rocks_db_instance = Arc::new(RwLock::new(new_rocks_db_instance(
-        tempdir.path().to_path_buf(),
-    )));
+    let db = Arc::new(RwLock::new(MassaDB::new(tempdir.path().to_path_buf())));
 
-    let mut ledger = FinalLedger::new(ledger_config.clone(), rocks_db_instance.clone());
+    let mut ledger = FinalLedger::new(ledger_config.clone(), db.clone());
     ledger.load_initial_ledger().unwrap();
     let default_config = FinalStateConfig::default();
     let cfg = FinalStateConfig {
@@ -139,7 +137,7 @@ pub fn get_sample_state(
         .expect("could not start selector controller");
     let mut final_state = if last_start_period > 0 {
         FinalState::new_derived_from_snapshot(
-            rocks_db_instance.clone(),
+            db.clone(),
             cfg,
             Box::new(ledger),
             selector_controller,
@@ -147,14 +145,7 @@ pub fn get_sample_state(
         )
         .unwrap()
     } else {
-        FinalState::new(
-            rocks_db_instance.clone(),
-            cfg,
-            Box::new(ledger),
-            selector_controller,
-            true,
-        )
-        .unwrap()
+        FinalState::new(db.clone(), cfg, Box::new(ledger), selector_controller, true).unwrap()
     };
     final_state.compute_initial_draws().unwrap();
     final_state.pos_state.create_initial_cycle();

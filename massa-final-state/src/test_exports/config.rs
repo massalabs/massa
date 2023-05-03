@@ -6,6 +6,7 @@ use std::{path::PathBuf, sync::Arc};
 
 use crate::{FinalState, FinalStateConfig};
 use massa_async_pool::{AsyncPool, AsyncPoolConfig};
+use massa_db::MassaDB;
 use massa_executed_ops::{
     ExecutedDenunciations, ExecutedDenunciationsConfig, ExecutedOps, ExecutedOpsConfig,
 };
@@ -25,33 +26,29 @@ use massa_models::{
 };
 use massa_pos_exports::{PoSConfig, PoSFinalState};
 use parking_lot::RwLock;
-use rocksdb::DB;
 
 impl FinalState {
     /// Create a final stat
     pub fn create_final_state(
         pos_state: PoSFinalState,
         config: FinalStateConfig,
-        rocks_db: Arc<RwLock<DB>>,
+        db: Arc<RwLock<MassaDB>>,
     ) -> Self {
         FinalState {
             slot: Slot::new(0, 0),
-            ledger: Box::new(FinalLedger::new(
-                config.ledger_config.clone(),
-                rocks_db.clone(),
-            )),
-            async_pool: AsyncPool::new(config.async_pool_config.clone(), rocks_db.clone()),
+            ledger: Box::new(FinalLedger::new(config.ledger_config.clone(), db.clone())),
+            async_pool: AsyncPool::new(config.async_pool_config.clone(), db.clone()),
             pos_state,
-            executed_ops: ExecutedOps::new(config.executed_ops_config.clone(), rocks_db.clone()),
+            executed_ops: ExecutedOps::new(config.executed_ops_config.clone(), db.clone()),
             executed_denunciations: ExecutedDenunciations::new(
                 config.executed_denunciations_config.clone(),
-                rocks_db.clone(),
+                db.clone(),
             ),
             changes_history: Default::default(),
             config,
             final_state_hash: Hash::from_bytes(&[0; HASH_SIZE_BYTES]),
             last_start_period: 0,
-            rocks_db,
+            db,
         }
     }
 }

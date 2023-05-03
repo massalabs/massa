@@ -18,8 +18,7 @@ use massa_async_pool::AsyncPoolConfig;
 use massa_consensus_exports::{
     bootstrapable_graph::BootstrapableGraph, test_exports::MockConsensusControllerImpl,
 };
-use massa_db::new_rocks_db_instance;
-use massa_db::{write_batch, DBBatch};
+use massa_db::{DBBatch, MassaDB};
 use massa_executed_ops::{ExecutedDenunciationsConfig, ExecutedOpsConfig};
 use massa_final_state::{
     test_exports::{assert_eq_final_state, assert_eq_final_state_hash},
@@ -110,9 +109,7 @@ fn mock_bootstrap_manager(addr: SocketAddr, bootstrap_config: BootstrapConfig) -
 
     // setup final state local config
     let temp_dir = TempDir::new().unwrap();
-    let rocks_db_instance = Arc::new(RwLock::new(new_rocks_db_instance(
-        temp_dir.path().to_path_buf(),
-    )));
+    let db = Arc::new(RwLock::new(MassaDB::new(temp_dir.path().to_path_buf())));
     let final_state_local_config = FinalStateConfig {
         ledger_config: LedgerConfig {
             thread_count,
@@ -162,11 +159,11 @@ fn mock_bootstrap_manager(addr: SocketAddr, bootstrap_config: BootstrapConfig) -
             &rolls_path,
             server_selector_controller.clone(),
             Hash::from_bytes(&[0; HASH_SIZE_BYTES]),
-            rocks_db_instance.clone(),
+            db.clone(),
         )
         .unwrap(),
         final_state_local_config.clone(),
-        rocks_db_instance.clone(),
+        db.clone(),
     )));
     let mut stream_mock1 = Box::new(MockConsensusControllerImpl::new());
     let mut stream_mock2 = Box::new(MockConsensusControllerImpl::new());
@@ -231,11 +228,11 @@ fn test_bootstrap_server() {
 
     // setup final state local config
     let temp_dir_server = TempDir::new().unwrap();
-    let rocks_db_instance_server = Arc::new(RwLock::new(new_rocks_db_instance(
+    let db_server = Arc::new(RwLock::new(MassaDB::new(
         temp_dir_server.path().to_path_buf(),
     )));
     let temp_dir_client = TempDir::new().unwrap();
-    let rocks_db_instance_client = Arc::new(RwLock::new(new_rocks_db_instance(
+    let db_client = Arc::new(RwLock::new(MassaDB::new(
         temp_dir_client.path().to_path_buf(),
     )));
     let final_state_local_config = FinalStateConfig {
@@ -303,11 +300,11 @@ fn test_bootstrap_server() {
             &rolls_path,
             server_selector_controller.clone(),
             Hash::from_bytes(&[0; HASH_SIZE_BYTES]),
-            rocks_db_instance_server.clone(),
+            db_server.clone(),
         )
         .unwrap(),
         final_state_local_config.clone(),
-        rocks_db_instance_server.clone(),
+        db_server.clone(),
     )));
     let final_state_client = Arc::new(RwLock::new(FinalState::create_final_state(
         PoSFinalState::new(
@@ -316,11 +313,11 @@ fn test_bootstrap_server() {
             &rolls_path,
             client_selector_controller.clone(),
             Hash::from_bytes(&[0; HASH_SIZE_BYTES]),
-            rocks_db_instance_client.clone(),
+            db_client.clone(),
         )
         .unwrap(),
         final_state_local_config,
-        rocks_db_instance_client.clone(),
+        db_client.clone(),
     )));
 
     // setup final state mocks.
@@ -442,28 +439,14 @@ fn test_bootstrap_server() {
         let list_changes_read = list_changes.read().clone();
         // note: skip the first change to match the update loop behaviour
         for (slot, change) in list_changes_read.iter().skip(1) {
-            let ledger_hash = final_state_server_write.ledger.get_ledger_hash();
-            let async_pool_hash = final_state_server_write.async_pool.get_hash();
-            let executed_ops_hash = final_state_server_write.executed_ops.get_hash();
-            let executed_denunciations_hash =
-                final_state_server_write.executed_denunciations.get_hash();
-            let mut batch = DBBatch::new(
-                Some(ledger_hash),
-                Some(async_pool_hash),
-                None,
-                None,
-                Some(executed_ops_hash),
-                Some(executed_denunciations_hash),
-            );
+            let mut batch = DBBatch::new(final_state_server_write.db.read().get_db_hash());
             final_state_server_write
                 .pos_state
                 .apply_changes_to_batch(change.pos_changes.clone(), *slot, false, &mut batch)
                 .unwrap();
-            final_state_server_write.ledger.apply_changes_to_batch(
-                change.ledger_changes.clone(),
-                *slot,
-                &mut batch,
-            );
+            final_state_server_write
+                .ledger
+                .apply_changes_to_batch(change.ledger_changes.clone(), &mut batch);
             final_state_server_write
                 .async_pool
                 .apply_changes_to_batch(&change.async_pool_changes, &mut batch);
@@ -471,7 +454,7 @@ fn test_bootstrap_server() {
                 .executed_ops
                 .apply_changes_to_batch(change.executed_ops_changes.clone(), *slot, &mut batch);
 
-            write_batch(&final_state_server_write.rocks_db.read(), batch);
+            final_state_server_write.db.read().write_batch(batch);
         }
     }
 

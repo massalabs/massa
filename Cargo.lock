@@ -2510,7 +2510,6 @@ dependencies = [
  "num_enum",
  "parking_lot",
  "rand 0.8.5",
- "rocksdb",
  "serde",
  "serde_json",
  "socket2",
@@ -2587,6 +2586,7 @@ version = "0.1.0"
 dependencies = [
  "massa_hash 0.1.0",
  "massa_models",
+ "massa_serialization 0.1.0",
  "rocksdb",
 ]
 
@@ -2731,7 +2731,6 @@ dependencies = [
  "massa_signature 0.1.0",
  "nom",
  "parking_lot",
- "rocksdb",
  "serde",
  "tempfile",
  "thiserror",

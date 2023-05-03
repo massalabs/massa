@@ -1,7 +1,5 @@
-mod backup;
 mod constants;
-mod db_batch;
+mod massa_db;
 
-pub use backup::backup_db;
 pub use constants::*;
-pub use db_batch::{new_rocks_db_instance, write_batch, DBBatch};
+pub use massa_db::*;

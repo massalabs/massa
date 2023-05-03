@@ -3,7 +3,7 @@
 //! This file defines the final ledger associating addresses to their balances, bytecode and data.
 
 use crate::ledger_db::{LedgerDB, LedgerSubEntry};
-use massa_db::DBBatch;
+use massa_db::{DBBatch, MassaDB};
 use massa_hash::Hash;
 use massa_ledger_exports::{
     Key, LedgerChanges, LedgerConfig, LedgerController, LedgerEntry, LedgerError,
@@ -13,13 +13,11 @@ use massa_models::{
     amount::{Amount, AmountDeserializer},
     bytecode::{Bytecode, BytecodeDeserializer},
     error::ModelsError,
-    slot::Slot,
     streaming_step::StreamingStep,
 };
 use massa_serialization::{DeserializeError, Deserializer};
 use nom::AsBytes;
 use parking_lot::RwLock;
-use rocksdb::DB;
 use std::ops::Bound::Included;
 use std::{
     collections::{BTreeSet, HashMap},
@@ -40,7 +38,7 @@ pub struct FinalLedger {
 
 impl FinalLedger {
     /// Initializes a new `FinalLedger` by reading its initial state from file.
-    pub fn new(config: LedgerConfig, db: Arc<RwLock<DB>>) -> Self {
+    pub fn new(config: LedgerConfig, db: Arc<RwLock<MassaDB>>) -> Self {
         // create and initialize the disk ledger
         let sorted_ledger = LedgerDB::new(
             db,
@@ -187,23 +185,9 @@ impl LedgerController for FinalLedger {
         self.sorted_ledger.reset();
     }
 
-    fn set_initial_slot(&mut self, slot: Slot) {
-        self.sorted_ledger.set_initial_slot(slot);
-    }
-
-    /// Get the slot associated with the current ledger
-    fn get_slot(&self) -> Result<Slot, ModelsError> {
-        self.sorted_ledger.get_slot()
-    }
-
-    fn apply_changes_to_batch(
-        &mut self,
-        changes: LedgerChanges,
-        slot: Slot,
-        ledger_batch: &mut DBBatch,
-    ) {
+    fn apply_changes_to_batch(&mut self, changes: LedgerChanges, ledger_batch: &mut DBBatch) {
         self.sorted_ledger
-            .apply_changes_to_batch(changes, slot, ledger_batch);
+            .apply_changes_to_batch(changes, ledger_batch);
     }
 
     /// Get every address and their corresponding balance.

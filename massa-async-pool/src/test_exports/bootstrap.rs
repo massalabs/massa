@@ -6,7 +6,7 @@ use crate::{
     AsyncMessage, AsyncMessageDeserializer, AsyncMessageId, AsyncMessageIdDeserializer, AsyncPool,
     AsyncPoolConfig,
 };
-use massa_db::ASYNC_POOL_CF;
+use massa_db::{MassaDB, STATE_CF};
 use massa_models::{
     address::Address,
     amount::Amount,
@@ -17,13 +17,13 @@ use massa_serialization::{DeserializeError, Deserializer};
 use massa_signature::KeyPair;
 use parking_lot::RwLock;
 use rand::Rng;
-use rocksdb::{IteratorMode, DB};
+use rocksdb::IteratorMode;
 
 /// This file defines tools to test the asynchronous pool bootstrap
 
 /// Creates a `AsyncPool` from pre-set values
 pub fn create_async_pool(
-    db: Arc<RwLock<DB>>,
+    db: Arc<RwLock<MassaDB>>,
     config: AsyncPoolConfig,
     messages: BTreeMap<AsyncMessageId, AsyncMessage>,
 ) -> AsyncPool {
@@ -88,11 +88,11 @@ pub fn assert_eq_async_pool_bootstrap_state(v1: &AsyncPool, v2: &AsyncPool) {
     );
     let db1 = v1.db.read();
     let db2 = v2.db.read();
-    let handle1 = db1.cf_handle(ASYNC_POOL_CF).unwrap();
-    let handle2 = db2.cf_handle(ASYNC_POOL_CF).unwrap();
+    let handle1 = db1.0.cf_handle(STATE_CF).unwrap();
+    let handle2 = db2.0.cf_handle(STATE_CF).unwrap();
     assert_eq!(
-        db1.iterator_cf(handle1, IteratorMode::Start).count(),
-        db2.iterator_cf(handle2, IteratorMode::Start).count(),
+        db1.0.iterator_cf(handle1, IteratorMode::Start).count(),
+        db2.0.iterator_cf(handle2, IteratorMode::Start).count(),
         "message values count mismatch"
     );
 
@@ -104,8 +104,9 @@ pub fn assert_eq_async_pool_bootstrap_state(v1: &AsyncPool, v2: &AsyncPool) {
     const TOTAL_FIELDS_COUNT: u8 = 13;
 
     for (val1, val2) in db1
+        .0
         .iterator_cf(handle1, IteratorMode::Start)
-        .zip(db2.iterator_cf(handle2, IteratorMode::Start))
+        .zip(db2.0.iterator_cf(handle2, IteratorMode::Start))
     {
         let val1 = val1.unwrap();
         let val2 = val2.unwrap();

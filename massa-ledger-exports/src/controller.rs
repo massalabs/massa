@@ -1,6 +1,6 @@
 use massa_hash::Hash;
 use massa_models::{
-    address::Address, amount::Amount, bytecode::Bytecode, error::ModelsError, slot::Slot,
+    address::Address, amount::Amount, bytecode::Bytecode, error::ModelsError,
     streaming_step::StreamingStep,
 };
 use std::collections::BTreeSet;
@@ -68,16 +68,7 @@ pub trait LedgerController: Send + Sync + Debug {
     /// USED FOR BOOTSTRAP ONLY
     fn reset(&mut self);
 
-    fn set_initial_slot(&mut self, slot: Slot);
-
-    fn get_slot(&self) -> Result<Slot, ModelsError>;
-
-    fn apply_changes_to_batch(
-        &mut self,
-        changes: LedgerChanges,
-        slot: Slot,
-        ledger_batch: &mut DBBatch,
-    );
+    fn apply_changes_to_batch(&mut self, changes: LedgerChanges, ledger_batch: &mut DBBatch);
 
     /// Get every address and their corresponding balance.
     ///

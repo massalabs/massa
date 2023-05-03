@@ -7,7 +7,7 @@
 
 use crate::{config::FinalStateConfig, error::FinalStateError, state_changes::StateChanges};
 use massa_async_pool::{AsyncMessageId, AsyncPool, AsyncPoolChanges};
-use massa_db::{backup_db, write_batch, DBBatch};
+use massa_db::{DBBatch, MassaDB};
 use massa_executed_ops::{ExecutedDenunciations, ExecutedOps};
 use massa_hash::{Hash, HASH_SIZE_BYTES};
 use massa_ledger_exports::{Key as LedgerKey, LedgerChanges, LedgerController};
@@ -15,7 +15,6 @@ use massa_models::config::PERIODS_BETWEEN_BACKUPS;
 use massa_models::{slot::Slot, streaming_step::StreamingStep};
 use massa_pos_exports::{DeferredCredits, PoSFinalState, SelectorController};
 use parking_lot::RwLock;
-use rocksdb::DB;
 use std::{collections::VecDeque, sync::Arc};
 use tracing::{debug, info};
 
@@ -46,7 +45,7 @@ pub struct FinalState {
     /// * If from bootstrap: set during bootstrap
     pub last_start_period: u64,
     /// the rocksdb instance used to write every final_state struct on disk
-    pub rocks_db: Arc<RwLock<DB>>,
+    pub db: Arc<RwLock<MassaDB>>,
 }
 
 const FINAL_STATE_HASH_INITIAL_BYTES: &[u8; 32] = &[0; HASH_SIZE_BYTES];
@@ -59,13 +58,13 @@ impl FinalState {
     /// * `ledger`: the instance of the ledger on disk. Used to apply changes to the ledger.
     /// * `selector`: the pos selector. Used to send draw inputs when a new cycle is completed.
     pub fn new(
-        rocks_db: Arc<RwLock<DB>>,
+        db: Arc<RwLock<MassaDB>>,
         config: FinalStateConfig,
         ledger: Box<dyn LedgerController>,
         selector: Box<dyn SelectorController>,
         reset_final_state: bool,
     ) -> Result<Self, FinalStateError> {
-        let ledger_slot = ledger.get_slot();
+        let ledger_slot = db.read().get_slot(config.thread_count);
         match ledger_slot {
             Ok(slot) => {
                 info!(
@@ -89,7 +88,7 @@ impl FinalState {
             &config.initial_rolls_path,
             selector,
             ledger.get_ledger_hash(),
-            rocks_db.clone(),
+            db.clone(),
         )
         .map_err(|err| FinalStateError::PosError(format!("PoS final state init error: {}", err)))?;
 
@@ -97,16 +96,14 @@ impl FinalState {
         let slot = Slot::new(0, config.thread_count.saturating_sub(1));
 
         // create the async pool
-        let async_pool = AsyncPool::new(config.async_pool_config.clone(), rocks_db.clone());
+        let async_pool = AsyncPool::new(config.async_pool_config.clone(), db.clone());
 
         // create a default executed ops
-        let executed_ops = ExecutedOps::new(config.executed_ops_config.clone(), rocks_db.clone());
+        let executed_ops = ExecutedOps::new(config.executed_ops_config.clone(), db.clone());
 
         // create a default executed denunciations
-        let executed_denunciations = ExecutedDenunciations::new(
-            config.executed_denunciations_config.clone(),
-            rocks_db.clone(),
-        );
+        let executed_denunciations =
+            ExecutedDenunciations::new(config.executed_denunciations_config.clone(), db.clone());
 
         let mut final_state = FinalState {
             slot,
@@ -119,7 +116,7 @@ impl FinalState {
             changes_history: Default::default(), // no changes in history
             final_state_hash: Hash::from_bytes(FINAL_STATE_HASH_INITIAL_BYTES),
             last_start_period: 0,
-            rocks_db,
+            db,
         };
 
         if reset_final_state {
@@ -129,7 +126,12 @@ impl FinalState {
             final_state.executed_denunciations.reset();
         }
 
-        final_state.compute_state_hash_at_slot(slot);
+        info!(
+            "final_state hash at slot {}: {}",
+            slot,
+            final_state.db.read().get_db_hash()
+        );
+
         // create the final state
         Ok(final_state)
     }
@@ -143,7 +145,7 @@ impl FinalState {
     /// * `selector`: the pos selector. Used to send draw inputs when a new cycle is completed.
     /// * `last_start_period`: at what period we should attach the final_state
     pub fn new_derived_from_snapshot(
-        rocks_db: Arc<RwLock<DB>>,
+        db: Arc<RwLock<MassaDB>>,
         config: FinalStateConfig,
         ledger: Box<dyn LedgerController>,
         selector: Box<dyn SelectorController>,
@@ -152,19 +154,27 @@ impl FinalState {
         info!("Restarting from snapshot");
 
         // FIRST, we recover the last known final_state
-        let mut final_state = FinalState::new(rocks_db, config, ledger, selector, false)?;
+        let mut final_state = FinalState::new(db, config, ledger, selector, false)?;
         final_state.pos_state.create_initial_cycle();
 
-        final_state.slot = final_state.ledger.get_slot().map_err(|_| {
-            FinalStateError::InvalidSlot(String::from("Could not recover Slot in Ledger"))
-        })?;
+        final_state.slot = final_state
+            .db
+            .read()
+            .get_slot(final_state.config.thread_count)
+            .map_err(|_| {
+                FinalStateError::InvalidSlot(String::from("Could not recover Slot in Ledger"))
+            })?;
 
         debug!(
             "Latest consistent slot found in snapshot data: {}",
             final_state.slot
         );
 
-        final_state.compute_state_hash_at_slot(final_state.slot);
+        info!(
+            "final_state hash at slot {}: {}",
+            final_state.slot,
+            final_state.db.read().get_db_hash()
+        );
 
         // Then, interpolate the downtime, to attach at end_slot;
         final_state.last_start_period = last_start_period;
@@ -185,7 +195,9 @@ impl FinalState {
             last_start_period,
             self.config.thread_count.saturating_sub(1),
         );
-        self.ledger.set_initial_slot(slot);
+        let mut batch = DBBatch::new(self.db.read().get_db_hash());
+        self.db.read().set_slot(slot, &mut batch);
+        self.db.read().write_batch(batch);
         self.pos_state.initial_ledger_hash = self.ledger.get_ledger_hash();
 
         info!(
@@ -224,7 +236,11 @@ impl FinalState {
         self.slot = end_slot;
 
         // Recompute the hash with the updated data and feed it to POS_state.
-        self.compute_state_hash_at_slot(self.slot);
+        info!(
+            "final_state hash at slot {}: {}",
+            self.slot,
+            self.db.read().get_db_hash()
+        );
 
         // feed final_state_hash to the last cycle
         let cycle = self.slot.get_cycle(self.config.periods_per_cycle);
@@ -396,44 +412,6 @@ impl FinalState {
         self.final_state_hash = Hash::from_bytes(FINAL_STATE_HASH_INITIAL_BYTES);
     }
 
-    /// Compute the current state hash.
-    ///
-    /// Used when finalizing a slot.
-    /// Slot information is only used for logging.
-    pub fn compute_state_hash_at_slot(&mut self, slot: Slot) {
-        // 1. init hash concatenation with the ledger hash
-        let ledger_hash = self.ledger.get_ledger_hash();
-        let mut hash_concat: Vec<u8> = ledger_hash.to_bytes().to_vec();
-        // 2. async_pool hash
-        hash_concat.extend(self.async_pool.get_hash().to_bytes());
-        // 3. pos deferred_credit hash
-        let deferred_credit_hash = match self.pos_state.deferred_credits.get_hash() {
-            Some(hash) => hash,
-            None => self
-                .pos_state
-                .deferred_credits
-                .enable_hash_tracker_and_compute_hash(),
-        };
-        hash_concat.extend(deferred_credit_hash.to_bytes());
-        // 4. pos cycle history hashes, skip the bootstrap safety cycle if there is one
-        let n = (self.pos_state.cycle_history.len() == self.config.pos_config.cycle_history_length)
-            as usize;
-        for cycle_info in self.pos_state.cycle_history.iter().skip(n) {
-            hash_concat.extend(cycle_info.cycle_global_hash.to_bytes());
-        }
-        // 5. executed operations hash
-        hash_concat.extend(self.executed_ops.get_hash().to_bytes());
-        // 6. executed denunciations hash
-        hash_concat.extend(self.executed_denunciations.get_hash().to_bytes());
-        // 7. compute and save final state hash
-        self.final_state_hash = Hash::compute_from(&hash_concat);
-
-        info!(
-            "final_state hash at slot {}: {}",
-            slot, self.final_state_hash
-        );
-    }
-
     /// Performs the initial draws.
     pub fn compute_initial_draws(&mut self) -> Result<(), FinalStateError> {
         self.pos_state
@@ -458,14 +436,8 @@ impl FinalState {
         // update current slot
         self.slot = slot;
 
-        let mut db_batch = DBBatch::new(
-            Some(self.ledger.get_ledger_hash()),
-            Some(self.async_pool.get_hash()),
-            None,
-            Some(self.pos_state.get_deferred_credits_hash()),
-            Some(self.executed_ops.get_hash()),
-            Some(self.executed_denunciations.get_hash()),
-        );
+        let db = self.db.read();
+        let mut db_batch = DBBatch::new(db.get_db_hash());
 
         // apply the state changes to the batch
 
@@ -479,11 +451,8 @@ impl FinalState {
         // do not panic above, it might just mean that the lookback cycle is not available
         // bootstrap again instead
 
-        self.ledger.apply_changes_to_batch(
-            changes.ledger_changes.clone(),
-            self.slot,
-            &mut db_batch,
-        );
+        self.ledger
+            .apply_changes_to_batch(changes.ledger_changes.clone(), &mut db_batch);
 
         self.executed_ops.apply_changes_to_batch(
             changes.executed_ops_changes.clone(),
@@ -497,7 +466,9 @@ impl FinalState {
             &mut db_batch,
         );
 
-        write_batch(&self.rocks_db.read(), db_batch);
+        self.db.read().set_slot(slot, &mut db_batch);
+
+        self.db.read().write_batch(db_batch);
 
         // push history element and limit history size
         if self.config.final_history_length > 0 {
@@ -508,11 +479,15 @@ impl FinalState {
         }
 
         // compute the final state hash
-        self.compute_state_hash_at_slot(slot);
+        info!(
+            "final_state hash at slot {}: {}",
+            self.slot,
+            self.db.read().get_db_hash()
+        );
 
         // Backup DB if needed
         if self.slot.period % PERIODS_BETWEEN_BACKUPS == 0 && self.slot.period != 0 {
-            let ledger_slot = self.ledger.get_slot();
+            let ledger_slot = self.db.read().get_slot(self.config.thread_count);
             match ledger_slot {
                 Ok(slot) => {
                     info!(
@@ -531,7 +506,7 @@ impl FinalState {
                 }
             }
 
-            backup_db(&self.rocks_db.read(), self.slot);
+            self.db.read().backup_db(self.slot);
         }
 
         // feed final_state_hash to the last cycle
@@ -539,6 +514,17 @@ impl FinalState {
         self.pos_state
             .feed_cycle_state_hash(cycle, self.final_state_hash);
     }
+
+    /*pub fn get_state_part(
+        &self,
+        step: StreamingStep<Vec<u8>>,
+    ) -> Result<(Vec<u8>, StreamingStep<Vec<u8>>), FinalStateError> {
+
+    }
+
+    pub fn set_state_part(&self, data: &[u8]) -> Result<StreamingStep<Vec<u8>>, FinalStateError> {
+
+    }*/
 
     /// Used for bootstrap.
     ///

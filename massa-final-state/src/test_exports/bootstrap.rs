@@ -5,13 +5,13 @@
 use std::{collections::VecDeque, sync::Arc};
 
 use massa_async_pool::AsyncPool;
+use massa_db::MassaDB;
 use massa_executed_ops::{ExecutedDenunciations, ExecutedOps};
 use massa_hash::{Hash, HASH_SIZE_BYTES};
 use massa_ledger_exports::LedgerController;
 use massa_models::slot::Slot;
 use massa_pos_exports::PoSFinalState;
 use parking_lot::RwLock;
-use rocksdb::DB;
 
 use crate::{FinalState, FinalStateConfig, StateChanges};
 
@@ -25,7 +25,7 @@ pub fn create_final_state(
     pos_state: PoSFinalState,
     executed_ops: ExecutedOps,
     executed_denunciations: ExecutedDenunciations,
-    rocks_db: Arc<RwLock<DB>>,
+    db: Arc<RwLock<MassaDB>>,
 ) -> FinalState {
     FinalState {
         config,
@@ -38,7 +38,7 @@ pub fn create_final_state(
         executed_denunciations,
         final_state_hash: Hash::from_bytes(&[0; HASH_SIZE_BYTES]),
         last_start_period: 0,
-        rocks_db,
+        db,
     }
 }
 
@@ -64,14 +64,9 @@ pub fn assert_eq_final_state(v1: &FinalState, v2: &FinalState) {
 /// asserts that two `FinalState` hashes are equal
 pub fn assert_eq_final_state_hash(v1: &FinalState, v2: &FinalState) {
     assert_eq!(
-        v1.ledger.get_ledger_hash(),
-        v2.ledger.get_ledger_hash(),
-        "ledger hash mismatch"
-    );
-    assert_eq!(
-        v1.async_pool.get_hash(),
-        v2.async_pool.get_hash(),
-        "async pool hash mismatch"
+        v1.db.read().get_db_hash(),
+        v2.db.read().get_db_hash(),
+        "rocks_db hash mismatch"
     );
     assert_eq!(
         v1.pos_state.deferred_credits.get_hash(),
@@ -100,9 +95,4 @@ pub fn assert_eq_final_state_hash(v1: &FinalState, v2: &FinalState) {
             cycle1.cycle
         );
     }
-    assert_eq!(
-        v1.executed_ops.get_hash(),
-        v2.executed_ops.get_hash(),
-        "executed ops hash mismatch"
-    );
 }

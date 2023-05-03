@@ -10,7 +10,7 @@ use massa_consensus_exports::{
     },
     export_active_block::{ExportActiveBlock, ExportActiveBlockSerializer},
 };
-use massa_db::{write_batch, DBBatch};
+use massa_db::{DBBatch, MassaDB};
 use massa_executed_ops::{
     ExecutedDenunciations, ExecutedDenunciationsChanges, ExecutedDenunciationsConfig, ExecutedOps,
     ExecutedOpsConfig,
@@ -60,7 +60,6 @@ use massa_signature::KeyPair;
 use massa_time::MassaTime;
 use parking_lot::RwLock;
 use rand::Rng;
-use rocksdb::DB;
 use std::collections::{HashMap, HashSet, VecDeque};
 use std::str::FromStr;
 use std::sync::Arc;
@@ -217,12 +216,12 @@ pub fn get_random_executed_ops(
     _r_limit: u64,
     slot: Slot,
     config: ExecutedOpsConfig,
-    db: Arc<RwLock<DB>>,
+    db: Arc<RwLock<MassaDB>>,
 ) -> ExecutedOps {
     let mut executed_ops = ExecutedOps::new(config.clone(), db.clone());
-    let mut batch = DBBatch::new(None, None, None, None, Some(executed_ops.get_hash()), None);
+    let mut batch = DBBatch::new(executed_ops.db.read().get_db_hash());
     executed_ops.apply_changes_to_batch(get_random_executed_ops_changes(10), slot, &mut batch);
-    write_batch(&db.read(), batch);
+    db.read().write_batch(batch);
     executed_ops
 }
 
@@ -247,14 +246,13 @@ pub fn get_random_executed_de(
     _r_limit: u64,
     slot: Slot,
     config: ExecutedDenunciationsConfig,
-    rocks_db_instance: Arc<RwLock<DB>>,
+    db: Arc<RwLock<MassaDB>>,
 ) -> ExecutedDenunciations {
-    let mut executed_de = ExecutedDenunciations::new(config, rocks_db_instance);
-
-    let mut batch = DBBatch::new(None, None, None, None, None, Some(executed_de.get_hash()));
+    let mut executed_de = ExecutedDenunciations::new(config, db);
+    let mut batch = DBBatch::new(executed_de.db.read().get_db_hash());
     executed_de.apply_changes_to_batch(get_random_executed_de_changes(10), slot, &mut batch);
 
-    write_batch(&executed_de.db.read(), batch);
+    executed_de.db.read().write_batch(batch);
 
     executed_de
 }
@@ -282,7 +280,7 @@ pub fn get_random_executed_de_changes(r_limit: u64) -> ExecutedDenunciationsChan
 pub fn get_random_final_state_bootstrap(
     pos: PoSFinalState,
     config: FinalStateConfig,
-    rocks_db_instance: Arc<RwLock<DB>>,
+    db: Arc<RwLock<MassaDB>>,
 ) -> FinalState {
     let r_limit: u64 = 50;
 
@@ -309,33 +307,30 @@ pub fn get_random_final_state_bootstrap(
 
     let slot = Slot::new(0, 0);
 
-    let final_ledger = create_final_ledger(
-        rocks_db_instance.clone(),
-        config.ledger_config.clone(),
-        sorted_ledger,
-    );
+    let final_ledger = create_final_ledger(db.clone(), config.ledger_config.clone(), sorted_ledger);
     let mut async_pool = create_async_pool(
-        rocks_db_instance.clone(),
+        db.clone(),
         config.async_pool_config.clone(),
         BTreeMap::new(),
     );
-    let mut batch = DBBatch::new(None, Some(async_pool.get_hash()), None, None, None, None);
+    let mut batch = DBBatch::new(async_pool.db.read().get_db_hash());
+
     async_pool.apply_changes_to_batch(&messages, &mut batch);
 
-    write_batch(&async_pool.db.read(), batch);
+    async_pool.db.read().write_batch(batch);
 
     let executed_ops = get_random_executed_ops(
         r_limit,
         slot,
         config.executed_ops_config.clone(),
-        rocks_db_instance.clone(),
+        db.clone(),
     );
 
     let executed_denunciations = get_random_executed_de(
         r_limit,
         slot,
         config.executed_denunciations_config.clone(),
-        rocks_db_instance.clone(),
+        db.clone(),
     );
 
     create_final_state(
@@ -347,7 +342,7 @@ pub fn get_random_final_state_bootstrap(
         get_random_pos_state(r_limit, pos),
         executed_ops,
         executed_denunciations,
-        rocks_db_instance,
+        db,
     )
 }
 

@@ -20,7 +20,7 @@ use massa_bootstrap::{
 use massa_consensus_exports::events::ConsensusEvent;
 use massa_consensus_exports::{ConsensusChannels, ConsensusConfig, ConsensusManager};
 use massa_consensus_worker::start_consensus_worker;
-use massa_db::new_rocks_db_instance;
+use massa_db::MassaDB;
 use massa_executed_ops::{ExecutedDenunciationsConfig, ExecutedOpsConfig};
 use massa_execution_exports::{
     ExecutionChannels, ExecutionConfig, ExecutionManager, GasCosts, StorageCostsConstants,
@@ -226,12 +226,12 @@ async fn launch(
             .expect("disk ledger delete failed");
     }
 
-    let rocks_db_instance = Arc::new(RwLock::new(new_rocks_db_instance(
+    let db = Arc::new(RwLock::new(MassaDB::new(
         SETTINGS.ledger.disk_ledger_path.clone(),
     )));
 
     // Create final ledger
-    let ledger = FinalLedger::new(ledger_config.clone(), rocks_db_instance.clone());
+    let ledger = FinalLedger::new(ledger_config.clone(), db.clone());
 
     // launch selector worker
     let (selector_manager, selector_controller) = start_selector_worker(SelectorConfig {
@@ -248,7 +248,7 @@ async fn launch(
     let final_state = Arc::new(parking_lot::RwLock::new(
         match args.restart_from_snapshot_at_period {
             Some(last_start_period) => FinalState::new_derived_from_snapshot(
-                rocks_db_instance.clone(),
+                db.clone(),
                 final_state_config,
                 Box::new(ledger),
                 selector_controller.clone(),
@@ -256,7 +256,7 @@ async fn launch(
             )
             .expect("could not init final state"),
             None => FinalState::new(
-                rocks_db_instance.clone(),
+                db.clone(),
                 final_state_config,
                 Box::new(ledger),
                 selector_controller.clone(),

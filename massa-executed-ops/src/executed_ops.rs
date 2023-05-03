@@ -5,15 +5,12 @@
 
 use crate::{ops_changes::ExecutedOpsChanges, ExecutedOpsConfig};
 use massa_db::{
-    write_batch, DBBatch, CF_ERROR, CRUD_ERROR, EXECUTED_OPS_CF, EXECUTED_OPS_HASH_ERROR,
-    EXECUTED_OPS_HASH_INITIAL_BYTES, EXECUTED_OPS_HASH_KEY, EXECUTED_OPS_ID_DESER_ERROR,
-    EXECUTED_OPS_ID_SER_ERROR, METADATA_CF, WRONG_BATCH_TYPE_ERROR,
+    DBBatch, MassaDB, CF_ERROR, CRUD_ERROR, EXECUTED_OPS_ID_DESER_ERROR, EXECUTED_OPS_ID_SER_ERROR,
+    EXECUTED_OPS_PREFIX, STATE_CF,
 };
-use massa_hash::Hash;
 use massa_models::{
     operation::{OperationId, OperationIdDeserializer, OperationIdSerializer},
     prehash::PreHashSet,
-    secure_share::Id,
     slot::{Slot, SlotDeserializer, SlotSerializer},
     streaming_step::StreamingStep,
 };
@@ -28,12 +25,19 @@ use nom::{
     IResult, Parser,
 };
 use parking_lot::RwLock;
-use rocksdb::{IteratorMode, Options, DB};
 use std::{
     collections::{BTreeMap, HashMap, HashSet},
     ops::Bound::{Excluded, Included, Unbounded},
     sync::Arc,
 };
+
+/// Op id key formatting macro
+#[macro_export]
+macro_rules! op_id_key {
+    ($id:expr) => {
+        [&EXECUTED_OPS_PREFIX.as_bytes(), &$id[..]].concat()
+    };
+}
 
 /// A structure to list and prune previously executed operations
 #[derive(Clone)]
@@ -41,7 +45,7 @@ pub struct ExecutedOps {
     /// Executed operations configuration
     config: ExecutedOpsConfig,
     /// RocksDB Instance
-    pub db: Arc<RwLock<DB>>,
+    pub db: Arc<RwLock<MassaDB>>,
     /// Executed operations btreemap with slot as index for better pruning complexity
     pub sorted_ops: BTreeMap<Slot, PreHashSet<OperationId>>,
     /// execution status of operations (true: success, false: fail)
@@ -54,7 +58,7 @@ pub struct ExecutedOps {
 
 impl ExecutedOps {
     /// Creates a new `ExecutedOps`
-    pub fn new(config: ExecutedOpsConfig, db: Arc<RwLock<DB>>) -> Self {
+    pub fn new(config: ExecutedOpsConfig, db: Arc<RwLock<MassaDB>>) -> Self {
         let mut executed_ops = Self {
             config,
             db,
@@ -74,7 +78,7 @@ impl ExecutedOps {
         self.op_exec_status.clear();
 
         let db = self.db.read();
-        let handle = db.cf_handle(EXECUTED_OPS_CF).expect(CF_ERROR);
+        let handle = db.0.cf_handle(STATE_CF).expect(CF_ERROR);
 
         let bool_deserializer = BoolDeserializer::new();
         let slot_deserializer = SlotDeserializer::new(
@@ -83,11 +87,12 @@ impl ExecutedOps {
         );
 
         for (serialized_op_id, serialized_value) in
-            db.iterator_cf(handle, IteratorMode::Start).flatten()
+            db.0.prefix_iterator_cf(handle, EXECUTED_OPS_PREFIX)
+                .flatten()
         {
             let (_, op_id) = self
                 .operation_id_deserializer
-                .deserialize::<DeserializeError>(&serialized_op_id)
+                .deserialize::<DeserializeError>(&serialized_op_id[EXECUTED_OPS_PREFIX.len()..])
                 .expect(EXECUTED_OPS_ID_DESER_ERROR);
 
             let (rest, op_exec_status) = bool_deserializer
@@ -116,15 +121,8 @@ impl ExecutedOps {
     /// USED FOR BOOTSTRAP ONLY
     pub fn reset(&mut self) {
         {
-            let mut db = self.db.write();
-            (*db)
-                .drop_cf(EXECUTED_OPS_CF)
-                .expect("Error dropping executed_ops cf");
-            let mut db_opts = Options::default();
-            db_opts.set_error_if_exists(true);
-            (*db)
-                .create_cf(EXECUTED_OPS_CF, &db_opts)
-                .expect("Error creating executed_ops cf");
+            let db = self.db.read();
+            db.delete_prefix(EXECUTED_OPS_PREFIX);
         }
 
         self.recompute_sorted_ops_and_op_exec_status();
@@ -161,14 +159,14 @@ impl ExecutedOps {
     /// Check if an operation was executed
     pub fn contains(&self, op_id: &OperationId) -> bool {
         let db = self.db.read();
-        let handle = db.cf_handle(EXECUTED_OPS_CF).expect(CF_ERROR);
+        let handle = db.0.cf_handle(STATE_CF).expect(CF_ERROR);
 
         let mut serialized_op_id = Vec::new();
         self.operation_id_serializer
             .serialize(op_id, &mut serialized_op_id)
             .expect(EXECUTED_OPS_ID_SER_ERROR);
 
-        db.get_cf(handle, &serialized_op_id)
+        db.0.get_cf(handle, &op_id_key!(serialized_op_id))
             .expect(CRUD_ERROR)
             .is_some()
     }
@@ -193,7 +191,7 @@ impl ExecutedOps {
     /// * `batch`: the given operation batch to update
     fn put_entry(&self, op_id: &OperationId, value: &(bool, Slot), batch: &mut DBBatch) {
         let db = self.db.read();
-        let handle = db.cf_handle(EXECUTED_OPS_CF).expect(CF_ERROR);
+        let handle = db.0.cf_handle(STATE_CF).expect(CF_ERROR);
 
         let mut serialized_op_id = Vec::new();
         self.operation_id_serializer
@@ -208,21 +206,12 @@ impl ExecutedOps {
             .serialize(&value.1, &mut serialized_op_value)
             .expect(EXECUTED_OPS_ID_SER_ERROR);
 
-        if db
-            .get_cf(handle, &serialized_op_id)
-            .expect(CRUD_ERROR)
-            .is_none()
-        {
-            let hash = op_id.get_hash();
-            batch.aeh_list.insert(serialized_op_id.clone(), *hash);
-            *batch
-                .executed_ops_hash
-                .as_mut()
-                .expect(WRONG_BATCH_TYPE_ERROR) ^= *hash;
-            batch
-                .write_batch
-                .put_cf(handle, serialized_op_id, serialized_op_value);
-        }
+        db.put_or_update_entry_value(
+            handle,
+            batch,
+            op_id_key!(serialized_op_id),
+            &serialized_op_value,
+        );
     }
 
     /// Remove a denunciation_index from the DB
@@ -231,30 +220,14 @@ impl ExecutedOps {
     /// * batch: the given operation batch to update
     fn delete_entry(&self, op_id: &OperationId, batch: &mut DBBatch) {
         let db = self.db.read();
-        let handle = db.cf_handle(EXECUTED_OPS_CF).expect(CF_ERROR);
+        let handle = db.0.cf_handle(STATE_CF).expect(CF_ERROR);
 
         let mut serialized_op_id = Vec::new();
         self.operation_id_serializer
             .serialize(op_id, &mut serialized_op_id)
             .expect(EXECUTED_OPS_ID_SER_ERROR);
 
-        if let Some(added_hash) = batch.aeh_list.get(&serialized_op_id) {
-            *batch
-                .executed_ops_hash
-                .as_mut()
-                .expect(WRONG_BATCH_TYPE_ERROR) ^= *added_hash;
-        } else if db
-            .get_pinned_cf(handle, &serialized_op_id)
-            .expect(CRUD_ERROR)
-            .is_some()
-        {
-            let hash = op_id.get_hash();
-            *batch
-                .executed_ops_hash
-                .as_mut()
-                .expect(WRONG_BATCH_TYPE_ERROR) ^= *hash
-        }
-        batch.write_batch.delete_cf(handle, serialized_op_id);
+        db.delete_key(handle, batch, op_id_key!(serialized_op_id));
     }
 
     /// Get a part of the executed operations.
@@ -298,7 +271,8 @@ impl ExecutedOps {
         &mut self,
         part: BTreeMap<Slot, PreHashSet<OperationId>>,
     ) -> StreamingStep<Slot> {
-        let mut batch = DBBatch::new(None, None, None, None, Some(self.get_hash()), None);
+        let db = self.db.read();
+        let mut batch = DBBatch::new(db.get_db_hash());
 
         self.sorted_ops.extend(part.clone());
 
@@ -309,7 +283,7 @@ impl ExecutedOps {
             }
         }
 
-        write_batch(&self.db.read(), batch);
+        db.write_batch(batch);
 
         if let Some(slot) = self.sorted_ops.last_key_value().map(|(slot, _)| slot) {
             StreamingStep::Ongoing(*slot)
@@ -317,34 +291,12 @@ impl ExecutedOps {
             StreamingStep::Finished(None)
         }
     }
-
-    /// Get the current executed ops hash
-    pub fn get_hash(&self) -> Hash {
-        let db = self.db.read();
-        let handle = db.cf_handle(METADATA_CF).expect(CF_ERROR);
-        if let Some(executed_denunciations_hash) = db
-            .get_cf(handle, EXECUTED_OPS_HASH_KEY)
-            .expect(CRUD_ERROR)
-            .as_deref()
-        {
-            Hash::from_bytes(
-                executed_denunciations_hash
-                    .try_into()
-                    .expect(EXECUTED_OPS_HASH_ERROR),
-            )
-        } else {
-            // initial executed_denunciations value to avoid matching an option in every XOR operation
-            // because of a one time case being an empty ledger
-            // also note that the if you XOR a hash with itself result is EXECUTED_DENUNCIATIONS_HASH_INITIAL_BYTES
-            Hash::from_bytes(EXECUTED_OPS_HASH_INITIAL_BYTES)
-        }
-    }
 }
 
 #[test]
 fn test_executed_ops_xor_computing() {
-    use massa_db::new_rocks_db_instance;
-    use massa_db::write_batch;
+    use massa_db::{MassaDB, STATE_HASH_INITIAL_BYTES};
+    use massa_hash::Hash;
     use massa_models::prehash::PreHashMap;
     use massa_models::secure_share::Id;
     use tempfile::TempDir;
@@ -356,15 +308,11 @@ fn test_executed_ops_xor_computing() {
     };
     let tempdir_a = TempDir::new().expect("cannot create temp directory");
     let tempdir_c = TempDir::new().expect("cannot create temp directory");
-    let rocks_db_instance_a = Arc::new(RwLock::new(new_rocks_db_instance(
-        tempdir_a.path().to_path_buf(),
-    )));
-    let rocks_db_instance_c = Arc::new(RwLock::new(new_rocks_db_instance(
-        tempdir_c.path().to_path_buf(),
-    )));
+    let db_a = Arc::new(RwLock::new(MassaDB::new(tempdir_a.path().to_path_buf())));
+    let db_c = Arc::new(RwLock::new(MassaDB::new(tempdir_c.path().to_path_buf())));
     // initialize the executed ops and executed ops changes
-    let mut a = ExecutedOps::new(config.clone(), rocks_db_instance_a.clone());
-    let mut c = ExecutedOps::new(config, rocks_db_instance_c.clone());
+    let mut a = ExecutedOps::new(config.clone(), db_a.clone());
+    let mut c = ExecutedOps::new(config, db_c.clone());
     let mut change_a = PreHashMap::default();
     let mut change_b = PreHashMap::default();
     let mut change_c = PreHashMap::default();
@@ -397,21 +345,20 @@ fn test_executed_ops_xor_computing() {
         thread: 0,
     };
 
-    let mut batch_a = DBBatch::new(None, None, None, None, Some(a.get_hash()), None);
-    let mut batch_c = DBBatch::new(None, None, None, None, Some(c.get_hash()), None);
+    let mut batch_a = DBBatch::new(db_a.read().get_db_hash());
+    let mut batch_c = DBBatch::new(db_c.read().get_db_hash());
     a.apply_changes_to_batch(change_a, apply_slot, &mut batch_a);
-    write_batch(&rocks_db_instance_a.read(), batch_a);
-    let mut batch_a = DBBatch::new(None, None, None, None, Some(a.get_hash()), None);
-
+    db_a.read().write_batch(batch_a);
+    let mut batch_a = DBBatch::new(db_a.read().get_db_hash());
     a.apply_changes_to_batch(change_b, apply_slot, &mut batch_a);
     c.apply_changes_to_batch(change_c, apply_slot, &mut batch_c);
-    write_batch(&rocks_db_instance_a.read(), batch_a);
-    write_batch(&rocks_db_instance_c.read(), batch_c);
+    db_a.read().write_batch(batch_a);
+    db_c.read().write_batch(batch_c);
 
     // check that a.hash ^ $(change_b) = c.hash
     assert_eq!(
-        a.get_hash(),
-        c.get_hash(),
+        db_a.read().get_db_hash(),
+        db_c.read().get_db_hash(),
         "'a' and 'c' hashes are not equal"
     );
 
@@ -420,15 +367,15 @@ fn test_executed_ops_xor_computing() {
         period: 20,
         thread: 0,
     };
-    let mut batch_a = DBBatch::new(None, None, None, None, Some(a.get_hash()), None);
+    let mut batch_a = DBBatch::new(db_a.read().get_db_hash());
     a.apply_changes_to_batch(PreHashMap::default(), prune_slot, &mut batch_a);
     a.prune_to_batch(prune_slot, &mut batch_a);
-    write_batch(&rocks_db_instance_a.read(), batch_a);
+    db_a.read().write_batch(batch_a);
 
     // at this point the hash should have been XORed with itself
     assert_eq!(
-        a.get_hash(),
-        Hash::from_bytes(EXECUTED_OPS_HASH_INITIAL_BYTES),
+        db_a.read().get_db_hash(),
+        Hash::from_bytes(STATE_HASH_INITIAL_BYTES),
         "'a' was not reset to its initial value"
     );
 }
