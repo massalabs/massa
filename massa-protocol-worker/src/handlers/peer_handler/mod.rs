@@ -269,6 +269,7 @@ impl InitConnectionHandler for MassaHandshake {
         listeners: &HashMap<SocketAddr, TransportType>,
         messages_handler: MassaMessagesHandler,
     ) -> PeerNetResult<PeerId> {
+        println!("AURELIEN: NEW HANDSHAKE MASSA");
         let mut bytes = PeerId::from_public_key(keypair.get_public_key()).to_bytes();
         //TODO: Add version in announce
         bytes.push(0);
@@ -298,7 +299,15 @@ impl InitConnectionHandler for MassaHandshake {
                     Some("Failed to deserialize PeerId".to_string()),
                 )
             })?)?;
-
+        println!("AURELIEN: ON PEERID {:?}", peer_id);
+        {
+            let peer_db_read = self.peer_db.read();
+            if let Some(info) = peer_db_read.peers.get(&peer_id) {
+                if info.state == PeerState::Banned {
+                    debug!("Banned peer tried to connect: {:?}", peer_id);
+                }
+            }
+        }
         {
             let peer_db_read = self.peer_db.read();
             if let Some(info) = peer_db_read.peers.get(&peer_id) {
@@ -336,6 +345,10 @@ impl InitConnectionHandler for MassaHandshake {
                                 Some(format!("Failed to serialize announcement: {}", err)),
                             )
                         })?;
+                    println!(
+                        "AURELIEN: ON PEERID {:?} ANNOUNCEMENT {:?}",
+                        peer_id, announcement
+                    );
                     if peer_id
                         .verify_signature(&announcement.hash, &announcement.signature)
                         .is_err()
@@ -343,6 +356,10 @@ impl InitConnectionHandler for MassaHandshake {
                         return Err(PeerNetError::HandshakeError
                             .error("Massa Handshake", Some("Invalid signature".to_string())));
                     }
+                    println!(
+                        "AURELIEN: ON PEERID {:?} ANNOUNCEMENT SIGNATURE OK",
+                        peer_id
+                    );
                     let message = PeerManagementMessage::NewPeerConnected((
                         peer_id.clone(),
                         announcement.clone().listeners,
@@ -358,7 +375,7 @@ impl InitConnectionHandler for MassaHandshake {
                             )
                         })?;
                     messages_handler.handle(7, &bytes, &peer_id)?;
-
+                    println!("AURELIEN: ON PEERID {:?} ANNOUNCEMENT SEND OK", peer_id);
                     let mut self_random_bytes = [0u8; 32];
                     StdRng::from_entropy().fill_bytes(&mut self_random_bytes);
                     let self_random_hash = Hash::compute_from(&self_random_bytes);
@@ -430,10 +447,10 @@ impl InitConnectionHandler for MassaHandshake {
                     info!("Peer connected: {:?}", peer_id);
                     peer_db_write
                         .index_by_newest
-                        .insert(Reverse(announcement.timestamp), peer_id.clone());
+                        .retain(|_, peer_id_stored| peer_id_stored != peer_id);
                     peer_db_write
                         .index_by_newest
-                        .retain(|_, peer_id_stored| peer_id_stored != peer_id);
+                        .insert(Reverse(announcement.timestamp), peer_id.clone());
                     peer_db_write
                         .peers
                         .entry(peer_id.clone())
@@ -447,6 +464,7 @@ impl InitConnectionHandler for MassaHandshake {
                         });
                 }
                 Err(_) => {
+                    println!("AURELIEN: ON PEERID {:?} HANDSHAKE FAILED", peer_id);
                     peer_db_write.peers.entry(peer_id).and_modify(|info| {
                         //TODO: Add the peerdb but for now impossible as we don't have announcement and we need one to place in peerdb
                         info.state = PeerState::HandshakeFailed;
