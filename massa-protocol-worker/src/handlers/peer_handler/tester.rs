@@ -124,6 +124,7 @@ impl InitConnectionHandler for TesterHandshake {
                     //TODO: Check ip we are connected match one of the announced ips
                     {
                         let mut peer_db_write = self.peer_db.write();
+                        //TODO: Hacky change it when better management ip/listeners
                         if !announcement.listeners.is_empty() {
                             peer_db_write
                                 .index_by_newest
