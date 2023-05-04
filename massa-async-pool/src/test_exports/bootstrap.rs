@@ -1,12 +1,9 @@
 // Copyright (c) 2022 MASSA LABS <info@massa.net>
 
-use std::{collections::BTreeMap, str::FromStr, sync::Arc};
-
 use crate::{
     AsyncMessage, AsyncMessageDeserializer, AsyncMessageId, AsyncMessageIdDeserializer, AsyncPool,
-    AsyncPoolConfig,
 };
-use massa_db::{MassaDB, STATE_CF};
+use massa_db::STATE_CF;
 use massa_models::{
     address::Address,
     amount::Amount,
@@ -15,22 +12,11 @@ use massa_models::{
 };
 use massa_serialization::{DeserializeError, Deserializer};
 use massa_signature::KeyPair;
-use parking_lot::RwLock;
 use rand::Rng;
 use rocksdb::IteratorMode;
+use std::str::FromStr;
 
 /// This file defines tools to test the asynchronous pool bootstrap
-
-/// Creates a `AsyncPool` from pre-set values
-pub fn create_async_pool(
-    db: Arc<RwLock<MassaDB>>,
-    config: AsyncPoolConfig,
-    messages: BTreeMap<AsyncMessageId, AsyncMessage>,
-) -> AsyncPool {
-    let mut async_pool = AsyncPool::new(config, db);
-    async_pool.set_pool_part(messages);
-    async_pool
-}
 
 fn get_random_address() -> Address {
     let keypair = KeyPair::generate();

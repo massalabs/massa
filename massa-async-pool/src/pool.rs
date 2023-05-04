@@ -14,7 +14,6 @@ use massa_db::{
     MESSAGE_SER_ERROR, STATE_CF,
 };
 use massa_ledger_exports::{Applicable, SetOrKeep, SetUpdateOrDelete};
-use massa_models::streaming_step::StreamingStep;
 use massa_serialization::{
     DeserializeError, Deserializer, SerializeError, Serializer, U64VarIntDeserializer,
     U64VarIntSerializer,
@@ -346,85 +345,6 @@ impl AsyncPool {
         }
 
         fetched_messages
-    }
-
-    /// Get a part of the async pool.
-    /// Used for bootstrap.
-    ///
-    /// # Arguments
-    /// * cursor: current bootstrap state
-    ///
-    /// # Returns
-    /// The async pool part and the updated cursor
-    pub fn get_pool_part(
-        &self,
-        cursor: StreamingStep<AsyncMessageId>,
-    ) -> (
-        BTreeMap<AsyncMessageId, AsyncMessage>,
-        StreamingStep<AsyncMessageId>,
-    ) {
-        let db = self.db.read();
-        let handle = db.0.cf_handle(STATE_CF).expect(CF_ERROR);
-
-        let mut pool_part = BTreeMap::new();
-        // Creates an iterator from the next element after the last if defined, otherwise initialize it at the first key.
-        let (mut last_id, mut new_cursor) = match cursor {
-            StreamingStep::Started => (None, StreamingStep::<AsyncMessageId>::Started),
-            StreamingStep::Ongoing(last_id) => {
-                let mut serialized_message_id = Vec::new();
-                self.message_id_serializer
-                    .serialize(&last_id, &mut serialized_message_id)
-                    .expect(MESSAGE_ID_SER_ERROR);
-                (Some(serialized_message_id), StreamingStep::Finished(None))
-            }
-            StreamingStep::<AsyncMessageId>::Finished(_) => return (pool_part, cursor),
-        };
-
-        while pool_part.len() < self.config.bootstrap_part_size as usize && let Some(Ok((serialized_message_id, _))) = match last_id {
-                Some(id) => db.0.iterator_cf(handle, IteratorMode::From(&can_be_executed_key!(id), Direction::Forward)).nth(1),
-                None => db.0.iterator_cf(handle, IteratorMode::Start).next(),
-            } {
-            let (_, message_id) = self
-                .message_id_deserializer
-                .deserialize::<DeserializeError>(&serialized_message_id)
-                .expect(MESSAGE_ID_DESER_ERROR);
-            if let Some(message) = self.fetch_message(&message_id) {
-                    pool_part.insert(message_id, message.clone());
-                    new_cursor = StreamingStep::Ongoing(message_id);
-            }
-            last_id = Some(serialized_message_id.to_vec());
-        }
-        (pool_part, new_cursor)
-    }
-
-    /// Set a part of the async pool.
-    /// Used for bootstrap.
-    ///
-    /// # Arguments
-    /// * part: the async pool part provided by `get_pool_part`
-    ///
-    /// # Returns
-    /// The updated cursor after the current insert
-    pub fn set_pool_part(
-        &mut self,
-        part: BTreeMap<AsyncMessageId, AsyncMessage>,
-    ) -> StreamingStep<AsyncMessageId> {
-        let db = self.db.read();
-        let mut batch = DBBatch::new(db.get_db_hash());
-
-        let cursor = if let Some(message_id) = part.last_key_value().map(|(&id, _)| id) {
-            StreamingStep::Ongoing(message_id)
-        } else {
-            StreamingStep::Finished(None)
-        };
-
-        for (message_id, message) in part {
-            self.put_entry(&message_id, message, &mut batch);
-        }
-
-        db.write_batch(batch);
-
-        cursor
     }
 }
 /// Serializer for `AsyncPool`

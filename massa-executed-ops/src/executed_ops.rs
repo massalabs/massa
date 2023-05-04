@@ -12,7 +12,6 @@ use massa_models::{
     operation::{OperationId, OperationIdDeserializer, OperationIdSerializer},
     prehash::PreHashSet,
     slot::{Slot, SlotDeserializer, SlotSerializer},
-    streaming_step::StreamingStep,
 };
 use massa_serialization::{
     BoolDeserializer, BoolSerializer, DeserializeError, Deserializer, SerializeError, Serializer,
@@ -27,7 +26,7 @@ use nom::{
 use parking_lot::RwLock;
 use std::{
     collections::{BTreeMap, HashMap, HashSet},
-    ops::Bound::{Excluded, Included, Unbounded},
+    ops::Bound::{Excluded, Included},
     sync::Arc,
 };
 
@@ -228,68 +227,6 @@ impl ExecutedOps {
             .expect(EXECUTED_OPS_ID_SER_ERROR);
 
         db.delete_key(handle, batch, op_id_key!(serialized_op_id));
-    }
-
-    /// Get a part of the executed operations.
-    /// Used exclusively by the bootstrap server.
-    ///
-    /// # Returns
-    /// A tuple containing the data and the next executed ops streaming step
-    pub fn get_executed_ops_part(
-        &self,
-        cursor: StreamingStep<Slot>,
-    ) -> (BTreeMap<Slot, PreHashSet<OperationId>>, StreamingStep<Slot>) {
-        let mut ops_part = BTreeMap::new();
-        let left_bound = match cursor {
-            StreamingStep::Started => Unbounded,
-            StreamingStep::Ongoing(slot) => Excluded(slot),
-            StreamingStep::Finished(_) => return (ops_part, cursor),
-        };
-        let mut ops_part_last_slot: Option<Slot> = None;
-        for (slot, ids) in self.sorted_ops.range((left_bound, Unbounded)) {
-            if ops_part.len() < self.config.bootstrap_part_size as usize {
-                ops_part.insert(*slot, ids.clone());
-                ops_part_last_slot = Some(*slot);
-            } else {
-                break;
-            }
-        }
-        if let Some(last_slot) = ops_part_last_slot {
-            (ops_part, StreamingStep::Ongoing(last_slot))
-        } else {
-            (ops_part, StreamingStep::Finished(None))
-        }
-    }
-
-    /// Set a part of the executed operations.
-    /// Used exclusively by the bootstrap client.
-    /// Takes the data returned from `get_executed_ops_part` as input.
-    ///
-    /// # Returns
-    /// The next executed ops streaming step
-    pub fn set_executed_ops_part(
-        &mut self,
-        part: BTreeMap<Slot, PreHashSet<OperationId>>,
-    ) -> StreamingStep<Slot> {
-        let db = self.db.read();
-        let mut batch = DBBatch::new(db.get_db_hash());
-
-        self.sorted_ops.extend(part.clone());
-
-        for (slot, ids) in part.iter() {
-            for op_id in ids.iter() {
-                let value = (false, *slot);
-                self.put_entry(op_id, &value, &mut batch);
-            }
-        }
-
-        db.write_batch(batch);
-
-        if let Some(slot) = self.sorted_ops.last_key_value().map(|(slot, _)| slot) {
-            StreamingStep::Ongoing(*slot)
-        } else {
-            StreamingStep::Finished(None)
-        }
     }
 }
 

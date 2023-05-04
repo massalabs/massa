@@ -38,6 +38,7 @@
 #![feature(hash_drain_filter)]
 #![feature(async_closure)]
 #![feature(map_try_insert)]
+#![feature(let_chains)]
 
 mod config;
 mod error;

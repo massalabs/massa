@@ -4,7 +4,7 @@
 //! Used to detect denunciation reuse.
 
 use std::collections::{BTreeMap, HashSet};
-use std::ops::Bound::{Excluded, Included, Unbounded};
+use std::ops::Bound::{Excluded, Included};
 use std::sync::Arc;
 
 use nom::{
@@ -21,7 +21,6 @@ use massa_db::{
     EXECUTED_DENUNCIATIONS_INDEX_SER_ERROR, EXECUTED_DENUNCIATIONS_PREFIX, STATE_CF,
 };
 use massa_models::denunciation::Denunciation;
-use massa_models::streaming_step::StreamingStep;
 use massa_models::{
     denunciation::{DenunciationIndex, DenunciationIndexDeserializer, DenunciationIndexSerializer},
     slot::{Slot, SlotDeserializer, SlotSerializer},
@@ -217,72 +216,6 @@ impl ExecutedDenunciations {
             .expect(EXECUTED_DENUNCIATIONS_INDEX_SER_ERROR);
 
         db.delete_key(handle, batch, denunciation_index_key!(serialized_de_idx));
-    }
-
-    /// Get a part of the executed denunciations.
-    /// Used exclusively by the bootstrap server.
-    ///
-    /// # Returns
-    /// A tuple containing the data and the next executed de streaming step
-    pub fn get_executed_de_part(
-        &self,
-        cursor: StreamingStep<Slot>,
-    ) -> (
-        BTreeMap<Slot, HashSet<DenunciationIndex>>,
-        StreamingStep<Slot>,
-    ) {
-        let mut de_part = BTreeMap::new();
-        let left_bound = match cursor {
-            StreamingStep::Started => Unbounded,
-            StreamingStep::Ongoing(slot) => Excluded(slot),
-            StreamingStep::Finished(_) => return (de_part, cursor),
-        };
-        let mut de_part_last_slot: Option<Slot> = None;
-        for (slot, ids) in self.sorted_denunciations.range((left_bound, Unbounded)) {
-            if de_part.len() < self.config.bootstrap_part_size as usize {
-                de_part.insert(*slot, ids.clone());
-                de_part_last_slot = Some(*slot);
-            } else {
-                break;
-            }
-        }
-        if let Some(last_slot) = de_part_last_slot {
-            (de_part, StreamingStep::Ongoing(last_slot))
-        } else {
-            (de_part, StreamingStep::Finished(None))
-        }
-    }
-
-    /// Set a part of the executed denunciations.
-    /// Used exclusively by the bootstrap client.
-    /// Takes the data returned from `get_executed_de_part` as input.
-    ///
-    /// # Returns
-    /// The next executed de streaming step
-    pub fn set_executed_de_part(
-        &mut self,
-        part: BTreeMap<Slot, HashSet<DenunciationIndex>>,
-    ) -> StreamingStep<Slot> {
-        let db = self.db.read();
-        let mut batch = DBBatch::new(db.get_db_hash());
-
-        self.sorted_denunciations.extend(part.clone());
-
-        for de_idx in part.iter().flat_map(|(_, ids)| ids) {
-            self.put_entry(de_idx, &mut batch);
-        }
-
-        db.write_batch(batch);
-
-        if let Some(slot) = self
-            .sorted_denunciations
-            .last_key_value()
-            .map(|(slot, _)| slot)
-        {
-            StreamingStep::Ongoing(*slot)
-        } else {
-            StreamingStep::Finished(None)
-        }
     }
 }
 

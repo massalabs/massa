@@ -1,12 +1,8 @@
-use massa_hash::Hash;
-use massa_models::{
-    address::Address, amount::Amount, bytecode::Bytecode, error::ModelsError,
-    streaming_step::StreamingStep,
-};
+use massa_models::{address::Address, amount::Amount, bytecode::Bytecode};
 use std::collections::BTreeSet;
 use std::fmt::Debug;
 
-use crate::{Key, LedgerChanges, LedgerError};
+use crate::{LedgerChanges, LedgerError};
 use ::massa_db::DBBatch;
 
 pub trait LedgerController: Send + Sync + Debug {
@@ -46,22 +42,6 @@ pub trait LedgerController: Send + Sync + Debug {
     /// # Returns
     /// A `BTreeSet` of the datastore keys
     fn get_datastore_keys(&self, addr: &Address) -> Option<BTreeSet<Vec<u8>>>;
-
-    /// Get the current disk ledger hash
-    fn get_ledger_hash(&self) -> Hash;
-
-    /// Get a part of the ledger
-    /// Used for bootstrap
-    /// Return: Tuple with data and last key
-    fn get_ledger_part(
-        &self,
-        last_key: StreamingStep<Key>,
-    ) -> Result<(Vec<u8>, StreamingStep<Key>), ModelsError>;
-
-    /// Set a part of the ledger
-    /// Used for bootstrap
-    /// Return: Last key inserted
-    fn set_ledger_part(&self, data: Vec<u8>) -> Result<StreamingStep<Key>, ModelsError>;
 
     /// Reset the ledger
     ///

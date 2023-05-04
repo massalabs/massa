@@ -3,32 +3,22 @@
 //! Module to interact with the disk ledger
 
 use massa_db::{
-    DBBatch, MassaDB, CF_ERROR, CRUD_ERROR, KEY_DESER_ERROR, KEY_SER_ERROR, LEDGER_HASH_ERROR,
-    LEDGER_HASH_INITIAL_BYTES, LEDGER_HASH_KEY, LEDGER_PREFIX, METADATA_CF, STATE_CF,
+    DBBatch, MassaDB, CF_ERROR, CRUD_ERROR, KEY_DESER_ERROR, KEY_SER_ERROR, LEDGER_PREFIX, STATE_CF,
 };
-use massa_hash::Hash;
 use massa_ledger_exports::*;
 use massa_models::{
-    address::Address,
-    amount::AmountSerializer,
-    bytecode::BytecodeSerializer,
-    error::ModelsError,
-    serialization::{VecU8Deserializer, VecU8Serializer},
-    slot::Slot,
-    streaming_step::StreamingStep,
+    address::Address, amount::AmountSerializer, bytecode::BytecodeSerializer, slot::Slot,
 };
 use massa_serialization::{DeserializeError, Deserializer, Serializer};
-use nom::multi::many0;
-use nom::sequence::tuple;
 use parking_lot::RwLock;
 use rocksdb::{ColumnFamily, Direction, IteratorMode, ReadOptions};
 use std::collections::{BTreeSet, HashMap};
-use std::ops::Bound;
-use std::rc::Rc;
 use std::{fmt::Debug, sync::Arc};
 
 #[cfg(feature = "testing")]
 use massa_models::amount::{Amount, AmountDeserializer};
+#[cfg(feature = "testing")]
+use std::ops::Bound;
 
 /// Ledger sub entry enum
 pub enum LedgerSubEntry {
@@ -56,13 +46,10 @@ impl LedgerSubEntry {
 pub struct LedgerDB {
     db: Arc<RwLock<MassaDB>>,
     thread_count: u8,
-    key_serializer: KeySerializer,
     key_serializer_db: KeySerializer,
-    key_deserializer: KeyDeserializer,
     key_deserializer_db: KeyDeserializer,
     amount_serializer: AmountSerializer,
     bytecode_serializer: BytecodeSerializer,
-    ledger_part_size_message_bytes: u64,
     #[cfg(feature = "testing")]
     amount_deserializer: AmountDeserializer,
 }
@@ -79,22 +66,14 @@ impl LedgerDB {
     ///
     /// # Arguments
     /// * path: path to the desired disk ledger db directory
-    pub fn new(
-        db: Arc<RwLock<MassaDB>>,
-        thread_count: u8,
-        max_datastore_key_length: u8,
-        ledger_part_size_message_bytes: u64,
-    ) -> Self {
+    pub fn new(db: Arc<RwLock<MassaDB>>, thread_count: u8, max_datastore_key_length: u8) -> Self {
         LedgerDB {
             db,
             thread_count,
-            key_serializer: KeySerializer::new(true),
             key_serializer_db: KeySerializer::new(false),
-            key_deserializer: KeyDeserializer::new(max_datastore_key_length, true),
             key_deserializer_db: KeyDeserializer::new(max_datastore_key_length, false),
             amount_serializer: AmountSerializer::new(),
             bytecode_serializer: BytecodeSerializer::new(),
-            ledger_part_size_message_bytes,
             #[cfg(feature = "testing")]
             amount_deserializer: AmountDeserializer::new(
                 Bound::Included(Amount::MIN),
@@ -147,24 +126,6 @@ impl LedgerDB {
                     self.delete_entry(&addr, ledger_batch);
                 }
             }
-        }
-    }
-
-    /// Get the current disk ledger hash
-    pub fn get_ledger_hash(&self) -> Hash {
-        let db = self.db.read();
-        let handle = db.0.cf_handle(METADATA_CF).expect(CF_ERROR);
-        if let Some(ledger_hash_bytes) =
-            db.0.get_cf(handle, LEDGER_HASH_KEY)
-                .expect(CRUD_ERROR)
-                .as_deref()
-        {
-            Hash::from_bytes(ledger_hash_bytes.try_into().expect(LEDGER_HASH_ERROR))
-        } else {
-            // initial ledger_hash value to avoid matching an option in every XOR operation
-            // because of a one time case being an empty ledger
-            // also note that the if you XOR a hash with itself result is LEDGER_HASH_INITIAL_BYTES
-            Hash::from_bytes(LEDGER_HASH_INITIAL_BYTES)
         }
     }
 
@@ -222,110 +183,6 @@ impl LedgerDB {
         // and Some([]) if it does but datastore is empty
         iter.peek()?;
         Some(iter.collect())
-    }
-
-    /// Get a part of the disk Ledger.
-    /// Mainly used in the bootstrap process.
-    ///
-    /// # Arguments
-    /// * `last_key`: key where the part retrieving must start
-    ///
-    /// # Returns
-    /// A tuple containing:
-    /// * The ledger part as bytes
-    /// * The last taken key (this is an optimization to easily keep a reference to the last key)
-    pub fn get_ledger_part(
-        &self,
-        cursor: StreamingStep<Key>,
-    ) -> Result<(Vec<u8>, StreamingStep<Key>), ModelsError> {
-        let db = self.db.read();
-        let handle = db.0.cf_handle(STATE_CF).expect(CF_ERROR);
-        let opt = ReadOptions::default();
-        let ser = VecU8Serializer::new();
-        let mut ledger_part = Vec::new();
-
-        // Creates an iterator from the next element after the last if defined, otherwise initialize it at the first key of the ledger.
-        let (db_iterator, mut new_cursor) = match cursor {
-            StreamingStep::Started => (
-                db.0.iterator_cf_opt(handle, opt, IteratorMode::Start),
-                StreamingStep::<Key>::Started,
-            ),
-            StreamingStep::Ongoing(last_key) => {
-                let mut serialized_key = Vec::new();
-                self.key_serializer_db
-                    .serialize(&last_key, &mut serialized_key)?;
-                let mut iter = db.0.iterator_cf_opt(
-                    handle,
-                    opt,
-                    IteratorMode::From(&serialized_key, Direction::Forward),
-                );
-                iter.next();
-                (iter, StreamingStep::Finished(None))
-            }
-            StreamingStep::<Key>::Finished(_) => return Ok((ledger_part, cursor)),
-        };
-
-        // Iterates over the whole database
-        for (key, entry) in db_iterator.flatten() {
-            if (ledger_part.len() as u64) < (self.ledger_part_size_message_bytes) {
-                // We deserialize and re-serialize the key to change the key format from the
-                // database one to a format we can use outside of the ledger.
-                let (_, key) = self.key_deserializer_db.deserialize(&key)?;
-                self.key_serializer.serialize(&key, &mut ledger_part)?;
-                ser.serialize(&entry.to_vec(), &mut ledger_part)?;
-                new_cursor = StreamingStep::Ongoing(key);
-            } else {
-                break;
-            }
-        }
-        Ok((ledger_part, new_cursor))
-    }
-
-    /// Set a part of the ledger in the database.
-    /// We deserialize in this function because we insert in the ledger while deserializing.
-    /// Used for bootstrap.
-    ///
-    /// # Arguments
-    /// * data: must be the serialized version provided by `get_ledger_part`
-    ///
-    /// # Returns
-    /// The last key of the inserted entry (this is an optimization to easily keep a reference to the last key)
-    pub fn set_ledger_part<'a>(&self, data: &'a [u8]) -> Result<StreamingStep<Key>, ModelsError> {
-        let db = self.db.read();
-        let handle = db.0.cf_handle(STATE_CF).expect(CF_ERROR);
-        let vec_u8_deserializer =
-            VecU8Deserializer::new(Bound::Included(0), Bound::Excluded(u64::MAX));
-        let mut last_key: Rc<Option<Key>> = Rc::new(None);
-        let db = self.db.read();
-        let mut batch = DBBatch::new(db.get_db_hash());
-
-        // Since this data is coming from the network, deser to address and ser back to bytes for a security check.
-        let (rest, _) = many0(|input: &'a [u8]| {
-            let (rest, (key, value)) = tuple((
-                |input| self.key_deserializer.deserialize(input),
-                |input| vec_u8_deserializer.deserialize(input),
-            ))(input)?;
-            *Rc::get_mut(&mut last_key).ok_or_else(|| {
-                nom::Err::Error(nom::error::Error::new(input, nom::error::ErrorKind::Fail))
-            })? = Some(key.clone());
-            self.put_entry_value(handle, &mut batch, &key, &value);
-            Ok((rest, ()))
-        })(data)
-        .map_err(|_| ModelsError::SerializeError("Error in deserialization".to_string()))?;
-
-        match last_key.as_ref() {
-            Some(last_key) => {
-                if rest.is_empty() {
-                    db.write_batch(batch);
-                    Ok(StreamingStep::Ongoing(last_key.clone()))
-                } else {
-                    Err(ModelsError::SerializeError(
-                        "Error in deserialization".to_string(),
-                    ))
-                }
-            }
-            None => Ok(StreamingStep::Finished(None)),
-        }
     }
 
     pub fn reset(&self) {
@@ -639,13 +496,12 @@ fn end_prefix(prefix: &[u8]) -> Option<Vec<u8>> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use massa_db::MassaDB;
+    use massa_db::{MassaDB, STATE_HASH_INITIAL_BYTES};
     use massa_hash::Hash;
     use massa_ledger_exports::{LedgerEntry, LedgerEntryUpdate, SetOrKeep};
     use massa_models::{
         address::Address,
         amount::{Amount, AmountDeserializer},
-        streaming_step::StreamingStep,
     };
     use massa_serialization::{DeserializeError, Deserializer};
     use massa_signature::KeyPair;
@@ -678,7 +534,7 @@ mod tests {
 
         let db = Arc::new(RwLock::new(MassaDB::new(temp_dir.path().to_path_buf())));
 
-        let ledger_db = LedgerDB::new(db.clone(), 32, 255, 1_000_000);
+        let ledger_db = LedgerDB::new(db.clone(), 32, 255);
         let mut batch = DBBatch::new(ledger_db.db.read().get_db_hash());
 
         ledger_db.put_entry(&addr, entry, &mut batch);
@@ -715,8 +571,8 @@ mod tests {
         );
         assert_eq!(data, ledger_db.get_entire_datastore(&addr));
         assert_ne!(
-            Hash::from_bytes(LEDGER_HASH_INITIAL_BYTES),
-            ledger_db.get_ledger_hash()
+            Hash::from_bytes(STATE_HASH_INITIAL_BYTES),
+            ledger_db.db.read().get_db_hash()
         );
 
         // delete entry
@@ -728,22 +584,13 @@ mod tests {
 
         // check deleted address and ledger hash
         assert_eq!(
-            Hash::from_bytes(LEDGER_HASH_INITIAL_BYTES),
-            ledger_db.get_ledger_hash()
+            Hash::from_bytes(STATE_HASH_INITIAL_BYTES),
+            ledger_db.db.read().get_db_hash()
         );
         assert!(ledger_db
             .get_sub_entry(&addr, LedgerSubEntry::Balance)
             .is_none());
         assert!(ledger_db.get_entire_datastore(&addr).is_empty());
-    }
-
-    #[test]
-    fn test_ledger_parts() {
-        let pub_a = KeyPair::generate().get_public_key();
-        let a = Address::from_public_key(&pub_a);
-        let (db, _) = init_test_ledger(a);
-        let res = db.get_ledger_part(StreamingStep::Started).unwrap();
-        db.set_ledger_part(&res.0[..]).unwrap();
     }
 
     #[test]

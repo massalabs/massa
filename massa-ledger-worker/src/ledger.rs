@@ -4,19 +4,15 @@
 
 use crate::ledger_db::{LedgerDB, LedgerSubEntry};
 use massa_db::{DBBatch, MassaDB};
-use massa_hash::Hash;
 use massa_ledger_exports::{
-    Key, LedgerChanges, LedgerConfig, LedgerController, LedgerEntry, LedgerError,
+    LedgerChanges, LedgerConfig, LedgerController, LedgerEntry, LedgerError,
 };
 use massa_models::{
     address::Address,
     amount::{Amount, AmountDeserializer},
     bytecode::{Bytecode, BytecodeDeserializer},
-    error::ModelsError,
-    streaming_step::StreamingStep,
 };
 use massa_serialization::{DeserializeError, Deserializer};
-use nom::AsBytes;
 use parking_lot::RwLock;
 use std::ops::Bound::Included;
 use std::{
@@ -40,12 +36,7 @@ impl FinalLedger {
     /// Initializes a new `FinalLedger` by reading its initial state from file.
     pub fn new(config: LedgerConfig, db: Arc<RwLock<MassaDB>>) -> Self {
         // create and initialize the disk ledger
-        let sorted_ledger = LedgerDB::new(
-            db,
-            config.thread_count,
-            config.max_key_length,
-            config.max_ledger_part_size,
-        );
+        let sorted_ledger = LedgerDB::new(db, config.thread_count, config.max_key_length);
 
         // generate the final ledger
         FinalLedger {
@@ -148,34 +139,6 @@ impl LedgerController for FinalLedger {
     /// A `BTreeSet` of the datastore keys
     fn get_datastore_keys(&self, addr: &Address) -> Option<BTreeSet<Vec<u8>>> {
         self.sorted_ledger.get_datastore_keys(addr)
-    }
-
-    /// Get the current disk ledger hash
-    fn get_ledger_hash(&self) -> Hash {
-        self.sorted_ledger.get_ledger_hash()
-    }
-
-    /// Get a part of the disk ledger.
-    ///
-    /// Solely used by the bootstrap.
-    ///
-    /// # Returns
-    /// A tuple containing the data and the last returned key
-    fn get_ledger_part(
-        &self,
-        last_key: StreamingStep<Key>,
-    ) -> Result<(Vec<u8>, StreamingStep<Key>), ModelsError> {
-        self.sorted_ledger.get_ledger_part(last_key)
-    }
-
-    /// Set a part of the disk ledger.
-    ///
-    /// Solely used by the bootstrap.
-    ///
-    /// # Returns
-    /// The last key inserted
-    fn set_ledger_part(&self, data: Vec<u8>) -> Result<StreamingStep<Key>, ModelsError> {
-        self.sorted_ledger.set_ledger_part(data.as_bytes())
     }
 
     /// Reset the disk ledger.

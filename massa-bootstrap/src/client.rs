@@ -80,12 +80,7 @@ fn stream_final_state_and_consensus(
             match client.next_timeout(Some(cfg.read_timeout.to_duration()))? {
                 BootstrapServerMessage::BootstrapPart {
                     slot,
-                    ledger_part,
-                    async_pool_part,
-                    pos_cycle_part,
-                    pos_credits_part,
-                    exec_ops_part,
-                    exec_de_part,
+                    state_part,
                     final_state_changes,
                     consensus_part,
                     consensus_outdated_ids,
@@ -99,21 +94,8 @@ fn stream_final_state_and_consensus(
                         write_final_state.last_start_period = last_start_period;
                     }
 
-                    let last_ledger_step = write_final_state.ledger.set_ledger_part(ledger_part)?;
-                    let last_pool_step =
-                        write_final_state.async_pool.set_pool_part(async_pool_part);
-                    let last_cycle_step = write_final_state
-                        .pos_state
-                        .set_cycle_history_part(pos_cycle_part);
-                    let last_credits_step = write_final_state
-                        .pos_state
-                        .set_deferred_credits_part(pos_credits_part);
-                    let last_ops_step = write_final_state
-                        .executed_ops
-                        .set_executed_ops_part(exec_ops_part);
-                    let last_de_step = write_final_state
-                        .executed_denunciations
-                        .set_executed_de_part(exec_de_part);
+                    let last_state_step = write_final_state.set_state_part(state_part);
+
                     for (changes_slot, changes) in final_state_changes.iter() {
                         let mut batch = DBBatch::new(write_final_state.db.read().get_db_hash());
                         write_final_state
@@ -167,12 +149,7 @@ fn stream_final_state_and_consensus(
                     // Set new message in case of disconnection
                     *next_bootstrap_message = BootstrapClientMessage::AskBootstrapPart {
                         last_slot: Some(slot),
-                        last_ledger_step,
-                        last_pool_step,
-                        last_cycle_step,
-                        last_credits_step,
-                        last_ops_step,
-                        last_de_step,
+                        last_state_step,
                         last_consensus_step,
                         send_last_start_period: false,
                     };
@@ -197,12 +174,7 @@ fn stream_final_state_and_consensus(
                     info!("Slot is too old retry bootstrap from scratch");
                     *next_bootstrap_message = BootstrapClientMessage::AskBootstrapPart {
                         last_slot: None,
-                        last_ledger_step: StreamingStep::Started,
-                        last_pool_step: StreamingStep::Started,
-                        last_cycle_step: StreamingStep::Started,
-                        last_credits_step: StreamingStep::Started,
-                        last_ops_step: StreamingStep::Started,
-                        last_de_step: StreamingStep::Started,
+                        last_state_step: StreamingStep::Started,
                         last_consensus_step: StreamingStep::Started,
                         send_last_start_period: true,
                     };
@@ -491,12 +463,7 @@ pub async fn get_state(
     let mut next_bootstrap_message: BootstrapClientMessage =
         BootstrapClientMessage::AskBootstrapPart {
             last_slot: None,
-            last_ledger_step: StreamingStep::Started,
-            last_pool_step: StreamingStep::Started,
-            last_cycle_step: StreamingStep::Started,
-            last_credits_step: StreamingStep::Started,
-            last_ops_step: StreamingStep::Started,
-            last_de_step: StreamingStep::Started,
+            last_state_step: StreamingStep::Started,
             last_consensus_step: StreamingStep::Started,
             send_last_start_period: true,
         };

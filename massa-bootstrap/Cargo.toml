@@ -23,12 +23,9 @@ crossbeam = "0.8.2"
 mio =  { version = "0.8", features = ["net", "os-poll"] }
 
 # custom modules
-massa_async_pool = { path = "../massa-async-pool" }
 massa_consensus_exports = { path = "../massa-consensus-exports" }
-massa_executed_ops = { path = "../massa-executed-ops" }
 massa_final_state = { path = "../massa-final-state" }
 massa_hash = { path = "../massa-hash" }
-massa_ledger_exports = { path = "../massa-ledger-exports" }
 massa_logging = { path = "../massa-logging" }
 massa_models = { path = "../massa-models" }
 massa_protocol_exports = { path = "../massa-protocol-exports" }
@@ -42,19 +39,21 @@ massa_db = { path = "../massa-db" }
 [dev-dependencies]
 mockall = "0.11.4"
 bitvec = { version = "1.0", features = ["serde"] }
+tokio = { version = "1.0", features = ["full"] }
+lazy_static = "1.4"
+tempfile = "3.3"
 massa_final_state = { path = "../massa-final-state", features = ["testing"] }
 massa_async_pool = { path = "../massa-async-pool", features = ["testing"] }
+massa_ledger_exports = { path = "../massa-ledger-exports" }
 massa_ledger_worker = { path = "../massa-ledger-worker", features = [
     "testing",
 ] }
-tokio = { version = "1.0", features = ["full"] }
+massa_executed_ops = { path = "../massa-executed-ops" }
 massa_pos_worker = { path = "../massa-pos-worker", features = ["testing"] }
 massa_pos_exports = { path = "../massa-pos-exports", features = ["testing"] }
 massa_consensus_exports = { path = "../massa-consensus-exports", features = [
     "testing",
 ] }
-lazy_static = "1.4"
-tempfile = "3.3"
 
 # for more information on what are the following features used for, see the cargo.toml at workspace level
 [features]

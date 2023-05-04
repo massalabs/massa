@@ -2,8 +2,8 @@
 
 use crate::settings::{BootstrapConfig, IpType};
 use bitvec::vec::BitVec;
-use massa_async_pool::test_exports::{create_async_pool, get_random_message};
 use massa_async_pool::AsyncPoolChanges;
+use massa_async_pool::{test_exports::get_random_message, AsyncPool};
 use massa_consensus_exports::{
     bootstrapable_graph::{
         BootstrapableGraph, BootstrapableGraphDeserializer, BootstrapableGraphSerializer,
@@ -308,11 +308,7 @@ pub fn get_random_final_state_bootstrap(
     let slot = Slot::new(0, 0);
 
     let final_ledger = create_final_ledger(db.clone(), config.ledger_config.clone(), sorted_ledger);
-    let mut async_pool = create_async_pool(
-        db.clone(),
-        config.async_pool_config.clone(),
-        BTreeMap::new(),
-    );
+    let mut async_pool = AsyncPool::new(config.async_pool_config.clone(), db.clone());
     let mut batch = DBBatch::new(async_pool.db.read().get_db_hash());
 
     async_pool.apply_changes_to_batch(&messages, &mut batch);

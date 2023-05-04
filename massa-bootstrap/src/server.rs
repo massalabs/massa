@@ -28,10 +28,8 @@ mod white_black_list;
 
 use crossbeam::channel::tick;
 use humantime::format_duration;
-use massa_async_pool::AsyncMessageId;
 use massa_consensus_exports::{bootstrapable_graph::BootstrapableGraph, ConsensusController};
 use massa_final_state::{FinalState, FinalStateError};
-use massa_ledger_exports::Key as LedgerKey;
 use massa_logging::massa_trace;
 use massa_models::{
     block_id::BlockId, prehash::PreHashSet, slot::Slot, streaming_step::StreamingStep,
@@ -448,12 +446,7 @@ pub fn stream_bootstrap_information(
     final_state: Arc<RwLock<FinalState>>,
     consensus_controller: Box<dyn ConsensusController>,
     mut last_slot: Option<Slot>,
-    mut last_ledger_step: StreamingStep<LedgerKey>,
-    mut last_pool_step: StreamingStep<AsyncMessageId>,
-    mut last_cycle_step: StreamingStep<u64>,
-    mut last_credits_step: StreamingStep<Slot>,
-    mut last_ops_step: StreamingStep<Slot>,
-    mut last_de_step: StreamingStep<Slot>,
+    mut last_state_step: StreamingStep<Vec<u8>>,
     mut last_consensus_step: StreamingStep<PreHashSet<BlockId>>,
     mut send_last_start_period: bool,
     bs_deadline: &Instant,
@@ -467,12 +460,7 @@ pub fn stream_bootstrap_information(
         }
 
         let current_slot;
-        let ledger_part;
-        let async_pool_part;
-        let pos_cycle_part;
-        let pos_credits_part;
-        let exec_ops_part;
-        let exec_de_part;
+        let state_part;
         let final_state_changes;
         let last_start_period;
 
@@ -488,34 +476,8 @@ pub fn stream_bootstrap_information(
                 None
             };
 
-            let (data, new_ledger_step) = final_state_read
-                .ledger
-                .get_ledger_part(last_ledger_step.clone())?;
-            ledger_part = data;
-
-            let (pool_data, new_pool_step) =
-                final_state_read.async_pool.get_pool_part(last_pool_step);
-            async_pool_part = pool_data;
-
-            let (cycle_data, new_cycle_step) = final_state_read
-                .pos_state
-                .get_cycle_history_part(last_cycle_step)?;
-            pos_cycle_part = cycle_data;
-
-            let (credits_data, new_credits_step) = final_state_read
-                .pos_state
-                .get_deferred_credits_part(last_credits_step);
-            pos_credits_part = credits_data;
-
-            let (ops_data, new_ops_step) = final_state_read
-                .executed_ops
-                .get_executed_ops_part(last_ops_step);
-            exec_ops_part = ops_data;
-
-            let (de_data, new_de_step) = final_state_read
-                .executed_denunciations
-                .get_executed_de_part(last_de_step);
-            exec_de_part = de_data;
+            let (data, new_state_step) = final_state_read.get_state_part(last_state_step.clone());
+            state_part = data;
 
             if let Some(slot) = last_slot && slot != final_state_read.slot {
                 if slot > final_state_read.slot {
@@ -525,12 +487,7 @@ pub fn stream_bootstrap_information(
                 }
                 final_state_changes = match final_state_read.get_state_changes_part(
                     slot,
-                    new_ledger_step.clone(),
-                    new_pool_step,
-                    new_cycle_step,
-                    new_credits_step,
-                    new_ops_step,
-                    new_de_step,
+                    new_state_step.clone()
                 ) {
                     Ok(data) => data,
                     Err(err) if matches!(err, FinalStateError::InvalidSlot(_)) => {
@@ -544,12 +501,7 @@ pub fn stream_bootstrap_information(
             }
 
             // Update cursors for next turn
-            last_ledger_step = new_ledger_step;
-            last_pool_step = new_pool_step;
-            last_cycle_step = new_cycle_step;
-            last_credits_step = new_credits_step;
-            last_ops_step = new_ops_step;
-            last_de_step = new_de_step;
+            last_state_step = new_state_step;
             last_slot = Some(final_state_read.slot);
             current_slot = final_state_read.slot;
             send_last_start_period = false;
@@ -560,13 +512,7 @@ pub fn stream_bootstrap_information(
         }
 
         // Setup final state global cursor
-        let final_state_global_step = if last_ledger_step.finished()
-            && last_pool_step.finished()
-            && last_cycle_step.finished()
-            && last_credits_step.finished()
-            && last_ops_step.finished()
-            && last_de_step.finished()
-        {
+        let final_state_global_step = if last_state_step.finished() {
             StreamingStep::Finished(Some(current_slot))
         } else {
             StreamingStep::Ongoing(current_slot)
@@ -623,12 +569,7 @@ pub fn stream_bootstrap_information(
             write_timeout,
             BootstrapServerMessage::BootstrapPart {
                 slot: current_slot,
-                ledger_part,
-                async_pool_part,
-                pos_cycle_part,
-                pos_credits_part,
-                exec_ops_part,
-                exec_de_part,
+                state_part,
                 final_state_changes,
                 consensus_part,
                 consensus_outdated_ids,
@@ -721,12 +662,7 @@ fn manage_bootstrap(
                 }
                 BootstrapClientMessage::AskBootstrapPart {
                     last_slot,
-                    last_ledger_step,
-                    last_pool_step,
-                    last_cycle_step,
-                    last_credits_step,
-                    last_ops_step,
-                    last_de_step,
+                    last_state_step,
                     last_consensus_step,
                     send_last_start_period,
                 } => {
@@ -735,12 +671,7 @@ fn manage_bootstrap(
                         final_state.clone(),
                         consensus_controller.clone(),
                         last_slot,
-                        last_ledger_step,
-                        last_pool_step,
-                        last_cycle_step,
-                        last_credits_step,
-                        last_ops_step,
-                        last_de_step,
+                        last_state_step,
                         last_consensus_step,
                         send_last_start_period,
                         &deadline,
