@@ -269,6 +269,13 @@
 <a href="#269" id="269">269</a>
 <a href="#270" id="270">270</a>
 <a href="#271" id="271">271</a>
+<a href="#272" id="272">272</a>
+<a href="#273" id="273">273</a>
+<a href="#274" id="274">274</a>
+<a href="#275" id="275">275</a>
+<a href="#276" id="276">276</a>
+<a href="#277" id="277">277</a>
+<a href="#278" id="278">278</a>
 </pre><pre class="rust"><code><span class="doccomment">//! Copyright (c) 2023 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="kw">use </span>massa_execution_exports::ExecutionController;
@@ -456,8 +463,15 @@
         <span class="kw">if let </span><span class="prelude-val">Some</span>(denunciation) = denunciation_ {
             <span class="macro">info!</span>(<span class="string">&quot;Created a new denunciation : {:?}&quot;</span>, denunciation);
         }
-
+        <span class="macro">println!</span>(
+            <span class="string">&quot;AURELIEN CACHE DENUNCIATION BEFORE CLEAN: {}&quot;</span>,
+            <span class="self">self</span>.denunciations_cache.len()
+        );
         <span class="self">self</span>.cleanup_caches();
+        <span class="macro">println!</span>(
+            <span class="string">&quot;AURELIEN CACHE DENUNCIATION AFTER CLEAN: {}&quot;</span>,
+            <span class="self">self</span>.denunciations_cache.len()
+        );
     }
 
     <span class="doccomment">/// cleanup internal cache, removing too old denunciation
