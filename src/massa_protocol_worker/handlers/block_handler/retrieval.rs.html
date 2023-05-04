@@ -1312,6 +1312,7 @@
 <a href="#1312" id="1312">1312</a>
 <a href="#1313" id="1313">1313</a>
 <a href="#1314" id="1314">1314</a>
+<a href="#1315" id="1315">1315</a>
 </pre><pre class="rust"><code><span class="kw">use </span>std::{
     collections::{hash_map::Entry, HashMap, HashSet},
     num::NonZeroUsize,
@@ -2347,28 +2348,28 @@
             Default::default();
 
         <span class="comment">// list blocks to re-ask and from whom
-        </span><span class="kw">for </span>(hash, block_info) <span class="kw">in </span><span class="self">self</span>.block_wishlist.iter() {
-            <span class="kw">let </span>required_info = <span class="kw">if </span>block_info.header.is_none() {
-                AskForBlocksInfo::Header
-            } <span class="kw">else if </span>block_info.operation_ids.is_none() {
-                AskForBlocksInfo::Info
-            } <span class="kw">else </span>{
-                <span class="kw">let </span>already_stored_operations = block_info.storage.get_op_refs();
-                <span class="comment">// Unwrap safety: Check if `operation_ids` is none just above
-                </span>AskForBlocksInfo::Operations(
-                    block_info
-                        .operation_ids
-                        .as_ref()
-                        .unwrap()
-                        .iter()
-                        .filter(|id| !already_stored_operations.contains(id))
-                        .copied()
-                        .collect(),
-                )
-            };
-            <span class="kw">let </span><span class="kw-2">mut </span>needs_ask = <span class="bool-val">true</span>;
-            {
-                <span class="kw">let </span><span class="kw-2">mut </span>cache_write = <span class="self">self</span>.cache.write();
+        </span>{
+            <span class="kw">let </span><span class="kw-2">mut </span>cache_write = <span class="self">self</span>.cache.write();
+            <span class="kw">for </span>(hash, block_info) <span class="kw">in </span><span class="self">self</span>.block_wishlist.iter() {
+                <span class="kw">let </span>required_info = <span class="kw">if </span>block_info.header.is_none() {
+                    AskForBlocksInfo::Header
+                } <span class="kw">else if </span>block_info.operation_ids.is_none() {
+                    AskForBlocksInfo::Info
+                } <span class="kw">else </span>{
+                    <span class="kw">let </span>already_stored_operations = block_info.storage.get_op_refs();
+                    <span class="comment">// Unwrap safety: Check if `operation_ids` is none just above
+                    </span>AskForBlocksInfo::Operations(
+                        block_info
+                            .operation_ids
+                            .as_ref()
+                            .unwrap()
+                            .iter()
+                            .filter(|id| !already_stored_operations.contains(id))
+                            .copied()
+                            .collect(),
+                    )
+                };
+                <span class="kw">let </span><span class="kw-2">mut </span>needs_ask = <span class="bool-val">true</span>;
                 <span class="comment">// Clean old peers that aren&#39;t active anymore
                 </span><span class="kw">let </span>peers_connected: HashSet&lt;PeerId&gt; =
                     <span class="self">self</span>.active_connections.get_peer_ids_connected();
@@ -2511,49 +2512,50 @@
                 )
             })
             .collect();
-
-        <span class="kw">for </span>(hash, criteria) <span class="kw">in </span>candidate_nodes.into_iter() {
-            <span class="comment">// find the best node
-            </span><span class="kw">if let </span><span class="prelude-val">Some</span>((_knowledge, best_node, required_info, <span class="kw">_</span>)) = criteria
-                .into_iter()
-                .filter_map(|(knowledge, peer_id, required_info)| {
-                    <span class="comment">// filter out nodes with too many active block requests
-                    </span><span class="kw">if </span><span class="kw-2">*</span>active_block_req_count.get(<span class="kw-2">&amp;</span>peer_id).unwrap_or(<span class="kw-2">&amp;</span><span class="number">0</span>)
-                        &lt;= <span class="self">self</span>.config.max_simultaneous_ask_blocks_per_node
-                    {
-                        <span class="self">self</span>.cache
-                            .read()
-                            .blocks_known_by_peer
-                            .peek(<span class="kw-2">&amp;</span>peer_id)
-                            .map(|peer_data| (knowledge, peer_id, required_info, peer_data.<span class="number">1</span>))
-                    } <span class="kw">else </span>{
-                        <span class="prelude-val">None
+        {
+            <span class="kw">let </span>cache_read = <span class="self">self</span>.cache.read();
+            <span class="kw">for </span>(hash, criteria) <span class="kw">in </span>candidate_nodes.into_iter() {
+                <span class="comment">// find the best node
+                </span><span class="kw">if let </span><span class="prelude-val">Some</span>((_knowledge, best_node, required_info, <span class="kw">_</span>)) = criteria
+                    .into_iter()
+                    .filter_map(|(knowledge, peer_id, required_info)| {
+                        <span class="comment">// filter out nodes with too many active block requests
+                        </span><span class="kw">if </span><span class="kw-2">*</span>active_block_req_count.get(<span class="kw-2">&amp;</span>peer_id).unwrap_or(<span class="kw-2">&amp;</span><span class="number">0</span>)
+                            &lt;= <span class="self">self</span>.config.max_simultaneous_ask_blocks_per_node
+                        {
+                            cache_read
+                                .blocks_known_by_peer
+                                .peek(<span class="kw-2">&amp;</span>peer_id)
+                                .map(|peer_data| (knowledge, peer_id, required_info, peer_data.<span class="number">1</span>))
+                        } <span class="kw">else </span>{
+                            <span class="prelude-val">None
+                        </span>}
+                    })
+                    .min_by_key(|(knowledge, peer_id, <span class="kw">_</span>, instant)| {
+                        (
+                            <span class="kw-2">*</span>knowledge,                                         <span class="comment">// block knowledge
+                            </span><span class="kw-2">*</span>active_block_req_count.get(peer_id).unwrap_or(<span class="kw-2">&amp;</span><span class="number">0</span>), <span class="comment">// active requests
+                            </span><span class="kw-2">*</span>instant,                                           <span class="comment">// node age
+                            </span>peer_id.clone(),                                    <span class="comment">// node ID
+                        </span>)
+                    })
+                {
+                    <span class="kw">let </span>asked_blocks = <span class="self">self</span>.asked_blocks.get_mut(<span class="kw-2">&amp;</span>best_node).unwrap(); <span class="comment">// will not panic, already checked
+                    </span>asked_blocks.insert(hash, now);
+                    <span class="kw">if let </span><span class="prelude-val">Some</span>(cnt) = active_block_req_count.get_mut(<span class="kw-2">&amp;</span>best_node) {
+                        <span class="kw-2">*</span>cnt += <span class="number">1</span>; <span class="comment">// increase the number of actively asked blocks
                     </span>}
-                })
-                .min_by_key(|(knowledge, peer_id, <span class="kw">_</span>, instant)| {
-                    (
-                        <span class="kw-2">*</span>knowledge,                                         <span class="comment">// block knowledge
-                        </span><span class="kw-2">*</span>active_block_req_count.get(peer_id).unwrap_or(<span class="kw-2">&amp;</span><span class="number">0</span>), <span class="comment">// active requests
-                        </span><span class="kw-2">*</span>instant,                                           <span class="comment">// node age
-                        </span>peer_id.clone(),                                    <span class="comment">// node ID
-                    </span>)
-                })
-            {
-                <span class="kw">let </span>asked_blocks = <span class="self">self</span>.asked_blocks.get_mut(<span class="kw-2">&amp;</span>best_node).unwrap(); <span class="comment">// will not panic, already checked
-                </span>asked_blocks.insert(hash, now);
-                <span class="kw">if let </span><span class="prelude-val">Some</span>(cnt) = active_block_req_count.get_mut(<span class="kw-2">&amp;</span>best_node) {
-                    <span class="kw-2">*</span>cnt += <span class="number">1</span>; <span class="comment">// increase the number of actively asked blocks
-                </span>}
 
-                ask_block_list
-                    .entry(best_node.clone())
-                    .or_insert_with(Vec::new)
-                    .push((hash, required_info.clone()));
+                    ask_block_list
+                        .entry(best_node.clone())
+                        .or_insert_with(Vec::new)
+                        .push((hash, required_info.clone()));
 
-                <span class="kw">let </span>timeout_at = now
-                    .checked_add(<span class="self">self</span>.config.ask_block_timeout.into())
-                    .ok_or(TimeError::TimeOverflowError)<span class="question-mark">?</span>;
-                next_tick = std::cmp::min(next_tick, timeout_at);
+                    <span class="kw">let </span>timeout_at = now
+                        .checked_add(<span class="self">self</span>.config.ask_block_timeout.into())
+                        .ok_or(TimeError::TimeOverflowError)<span class="question-mark">?</span>;
+                    next_tick = std::cmp::min(next_tick, timeout_at);
+                }
             }
         }
 
