@@ -1312,8 +1312,6 @@
 <a href="#1312" id="1312">1312</a>
 <a href="#1313" id="1313">1313</a>
 <a href="#1314" id="1314">1314</a>
-<a href="#1315" id="1315">1315</a>
-<a href="#1316" id="1316">1316</a>
 </pre><pre class="rust"><code><span class="kw">use </span>std::{
     collections::{hash_map::Entry, HashMap, HashSet},
     num::NonZeroUsize,
@@ -2523,13 +2521,11 @@
                     </span><span class="kw">if </span><span class="kw-2">*</span>active_block_req_count.get(<span class="kw-2">&amp;</span>peer_id).unwrap_or(<span class="kw-2">&amp;</span><span class="number">0</span>)
                         &lt;= <span class="self">self</span>.config.max_simultaneous_ask_blocks_per_node
                     {
-                        <span class="kw">if let </span><span class="prelude-val">Some</span>(peer_data) =
-                            <span class="self">self</span>.cache.read().blocks_known_by_peer.peek(<span class="kw-2">&amp;</span>peer_id)
-                        {
-                            <span class="prelude-val">Some</span>((knowledge, peer_id, required_info, peer_data.<span class="number">1</span>))
-                        } <span class="kw">else </span>{
-                            <span class="prelude-val">None
-                        </span>}
+                        <span class="self">self</span>.cache
+                            .read()
+                            .blocks_known_by_peer
+                            .peek(<span class="kw-2">&amp;</span>peer_id)
+                            .map(|peer_data| (knowledge, peer_id, required_info, peer_data.<span class="number">1</span>))
                     } <span class="kw">else </span>{
                         <span class="prelude-val">None
                     </span>}
