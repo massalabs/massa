@@ -81,7 +81,7 @@ pub fn start_protocol_controller_with_mock_network(
 
     let (controller, channels) = create_protocol_controller(config.clone());
 
-    let network_controller = Box::new(MockNetworkController::new(message_handlers));
+    let network_controller = Box::new(MockNetworkController::new(message_handlers.clone()));
 
     let connectivity_thread_handle = start_connectivity_thread(
         config,
@@ -97,6 +97,7 @@ pub fn start_protocol_controller_with_mock_network(
         peer_db,
         storage,
         channels,
+        message_handlers,
     )?;
 
     let manager = ProtocolManagerImpl::new(connectivity_thread_handle);

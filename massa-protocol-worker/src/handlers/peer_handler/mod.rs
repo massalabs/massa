@@ -66,13 +66,18 @@ impl PeerManagementHandler {
         peer_db: SharedPeerDB,
         (sender_msg, receiver_msg): (Sender<PeerMessageTuple>, Receiver<PeerMessageTuple>),
         (sender_cmd, receiver_cmd): (Sender<PeerManagementCmd>, Receiver<PeerManagementCmd>),
+        messages_handler: MessagesHandler,
         mut active_connections: Box<dyn ActiveConnectionsTrait>,
         config: &ProtocolConfig,
     ) -> Self {
         let message_serializer = PeerManagementMessageSerializer::new();
 
-        let (test_sender, testers) =
-            Tester::run(config, active_connections.clone(), peer_db.clone());
+        let (test_sender, testers) = Tester::run(
+            config,
+            active_connections.clone(),
+            peer_db.clone(),
+            messages_handler.clone(),
+        );
 
         let thread_join = std::thread::Builder::new()
         .name("protocol-peer-handler".to_string())
@@ -421,7 +426,7 @@ impl InitConnectionHandler for MassaHandshake {
                     self.message_handlers.handle(id, received, &peer_id)?;
                     Err(PeerNetError::HandshakeError.error(
                         "Massa Handshake",
-                        Some("Handshake failed received a message that are connection has been refused".to_string()),
+                        Some("Handshake failed received a message that our connection has been refused".to_string()),
                     ))
                 }
                 _ => Err(PeerNetError::HandshakeError

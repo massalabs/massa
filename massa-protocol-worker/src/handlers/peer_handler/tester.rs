@@ -5,13 +5,14 @@ use std::{
     time::{Duration, SystemTime, UNIX_EPOCH},
 };
 
+use crate::messages::MessagesHandler;
 use crossbeam::channel::Sender;
 use massa_protocol_exports::ProtocolConfig;
 use massa_serialization::{DeserializeError, Deserializer};
 use peernet::{
     config::PeerNetConfiguration,
     error::{PeerNetError, PeerNetResult},
-    messages::MessagesHandler,
+    messages::MessagesHandler as PeerNetMessagesHandler,
     network_manager::PeerNetManager,
     peer::InitConnectionHandler,
     peer_id::PeerId,
@@ -47,30 +48,13 @@ impl TesterHandshake {
     }
 }
 
-#[derive(Clone)]
-pub struct TesterMessagesHandler;
-
-impl MessagesHandler for TesterMessagesHandler {
-    fn deserialize_id<'a>(
-        &self,
-        data: &'a [u8],
-        _peer_id: &PeerId,
-    ) -> PeerNetResult<(&'a [u8], u64)> {
-        Ok((data, 0))
-    }
-
-    fn handle(&self, _id: u64, _data: &[u8], _peer_id: &PeerId) -> PeerNetResult<()> {
-        Ok(())
-    }
-}
-
 impl InitConnectionHandler for TesterHandshake {
-    fn perform_handshake<TesterMessagesHandler>(
+    fn perform_handshake<MassaMessagesHandler: PeerNetMessagesHandler>(
         &mut self,
         _: &KeyPair,
         endpoint: &mut Endpoint,
         _: &HashMap<SocketAddr, TransportType>,
-        _: TesterMessagesHandler,
+        messages_handler: MassaMessagesHandler,
     ) -> PeerNetResult<PeerId> {
         let data = endpoint.receive()?;
         if data.is_empty() {
@@ -149,13 +133,17 @@ impl InitConnectionHandler for TesterHandshake {
                     }
                     Ok(peer_id.clone())
                 }
-                _ => {
-                    {
-                        //TODO: Add the peerdb but for now impossible as we don't have announcement and we need one to place in peerdb
-                    }
-                    Err(PeerNetError::HandshakeError
-                        .error("Massa handshake", Some("Invalid id".to_string())))
+                1 => {
+                    let (received, id) = messages_handler.deserialize_id(&data[33..], &peer_id)?;
+                    messages_handler.handle(id, received, &peer_id)?;
+                    Err(PeerNetError::HandshakeError.error(
+                            "Massa Handshake",
+                            Some("Tester Handshake failed received a message that our connection has been refused".to_string()),
+                        ))
+                    //TODO: Add the peerdb but for now impossible as we don't have announcement and we need one to place in peerdb
                 }
+                _ => Err(PeerNetError::HandshakeError
+                    .error("Massa handshake", Some("Invalid id".to_string()))),
             }
         };
 
@@ -191,6 +179,7 @@ impl Tester {
         config: &ProtocolConfig,
         active_connections: Box<dyn ActiveConnectionsTrait>,
         peer_db: SharedPeerDB,
+        messages_handler: MessagesHandler,
     ) -> (
         Sender<(PeerId, HashMap<SocketAddr, TransportType>)>,
         Vec<Tester>,
@@ -207,6 +196,7 @@ impl Tester {
                 active_connections.clone(),
                 config.clone(),
                 test_receiver.clone(),
+                messages_handler.clone(),
             ));
         }
 
@@ -219,6 +209,7 @@ impl Tester {
         active_connections: Box<dyn ActiveConnectionsTrait>,
         protocol_config: ProtocolConfig,
         receiver: crossbeam::channel::Receiver<(PeerId, HashMap<SocketAddr, TransportType>)>,
+        messages_handler: MessagesHandler,
     ) -> Self {
         tracing::log::debug!("running new tester");
 
@@ -229,7 +220,7 @@ impl Tester {
             let active_connections = active_connections.clone();
             let mut config = PeerNetConfiguration::default(
                 TesterHandshake::new(peer_db, protocol_config.clone()),
-                TesterMessagesHandler {},
+                messages_handler,
             );
             config.max_out_connections = 1;
 
