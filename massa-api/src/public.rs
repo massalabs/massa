@@ -140,12 +140,16 @@ impl MassaRpcServer for API<Public> {
             is_final,
         } in reqs
         {
-            let address = address.unwrap_or_else(|| {
-                // if no addr provided, use a random one
-                // CURRENT TODO: ERROR HANDLING
-                let keypair = self.0.keypair_factory.create(&(), None).unwrap();
+            let address = if let Some(addr) = address {
+                addr
+            } else {
+                let keypair = self
+                    .0
+                    .keypair_factory
+                    .create(&(), None)
+                    .map_err(|err| ApiError::from(err))?;
                 Address::from_public_key(&keypair.get_public_key())
-            });
+            };
 
             let op_datastore = match operation_datastore {
                 Some(v) => {
@@ -230,12 +234,16 @@ impl MassaRpcServer for API<Public> {
             is_final,
         } in reqs
         {
-            let caller_address = caller_address.unwrap_or_else(|| {
-                // if no addr provided, use a random one
-                // CURRENT TODO: ERROR HANDLING
-                let keypair = self.0.keypair_factory.create(&(), None).unwrap();
+            let caller_address = if let Some(addr) = caller_address {
+                addr
+            } else {
+                let keypair = self
+                    .0
+                    .keypair_factory
+                    .create(&(), None)
+                    .map_err(|err| ApiError::from(err))?;
                 Address::from_public_key(&keypair.get_public_key())
-            });
+            };
 
             // TODO:
             // * set a maximum gas value for read-only executions to prevent attacks

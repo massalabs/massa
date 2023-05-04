@@ -248,8 +248,9 @@ pub fn get_random_final_state_bootstrap(
     // insert the last possible address to prevent the last cursor to move when testing the changes
     // The magic number at idx 0 is to account for address variant leader. At time of writing,
     // the highest value for encoding this variant in serialized form is `1`.
+    // note: when updating the bootstrap test make sure that this address is the last one at
+    // every step of the scenario
     let bytes = [255; 32];
-    // CURRENT TODO: check if this has an impact on the bootstrap test
     sorted_ledger.insert(
         Address::SC(SCAddress::from_bytes_without_version(0, &bytes).unwrap()),
         get_random_ledger_entry(),

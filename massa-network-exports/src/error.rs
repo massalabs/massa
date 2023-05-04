@@ -4,6 +4,7 @@ use crate::{peers::PeerType, ConnectionId};
 use displaydoc::Display;
 use massa_models::error::ModelsError;
 use massa_serialization::SerializeError;
+use massa_versioning::versioning_factory::FactoryError;
 use std::net::IpAddr;
 use thiserror::Error;
 
@@ -55,6 +56,8 @@ pub enum NetworkError {
     SerializeError(#[from] SerializeError),
     /// container inconsistency error: {0}
     ContainerInconsistencyError(String),
+    /// factory error: {0}
+    FactoryError(#[from] FactoryError),
 }
 
 /// Handshake error type

@@ -247,7 +247,7 @@ impl Address {
     pub fn get_thread(&self, thread_count: u8) -> u8 {
         match self {
             Address::User(addr) => addr.get_thread(thread_count),
-            // CURRENT TODO: TMP BEHAVIOUR
+            // TODO: tmp behaviour, discuss how we would want this to work
             Address::SC(_addr) => 0,
         }
     }

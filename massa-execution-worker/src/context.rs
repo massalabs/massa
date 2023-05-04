@@ -454,11 +454,9 @@ impl ExecutionContext {
         }
         // hash the seed to get a unique address
         let hash = Hash::compute_from(&data);
-        // CURRENT TODO: ERROR HANDLING
         let address = self
             .address_factory
-            .create(&AddressArgs::SC { hash }, None)
-            .unwrap();
+            .create(&AddressArgs::SC { hash }, None)?;
 
         // add this address with its bytecode to the speculative ledger
         self.speculative_ledger.create_new_sc_address(

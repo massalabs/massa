@@ -7,7 +7,7 @@ use crate::versioning::{ComponentState, ComponentStateTypeId, MipComponent, MipS
 
 /// Factory error
 #[allow(missing_docs)]
-#[derive(Error, Debug)]
+#[derive(Error, Debug, Clone)]
 pub enum FactoryError {
     #[error("Unknown version, cannot build obj with version: {0}")]
     UnknownVersion(u32),

@@ -78,8 +78,7 @@ pub async fn start_network_controller(
     } else {
         // node file does not exist: generate the key and save it
         let keypair_factory = KeyPairFactory { mip_store };
-        // CURRENT TODO: ERROR HANDLING
-        let keypair = keypair_factory.create(&(), None).unwrap();
+        let keypair = keypair_factory.create(&(), None)?;
         if let Err(e) = tokio::fs::write(
             &network_settings.keypair_file,
             serde_json::to_string(&keypair)?,
