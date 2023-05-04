@@ -60,6 +60,7 @@ pub struct PeerManagementHandler {
 }
 
 impl PeerManagementHandler {
+    #[allow(clippy::too_many_arguments)]
     pub fn new(
         initial_peers: InitialPeers,
         peer_id: PeerId,
@@ -76,7 +77,7 @@ impl PeerManagementHandler {
             config,
             active_connections.clone(),
             peer_db.clone(),
-            messages_handler.clone(),
+            messages_handler,
         );
 
         let thread_join = std::thread::Builder::new()

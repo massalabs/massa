@@ -14,8 +14,8 @@ use massa_api::{ApiServer, ApiV2, Private, Public, RpcServer, StopHandle, API};
 use massa_api_exports::config::APIConfig;
 use massa_async_pool::AsyncPoolConfig;
 use massa_bootstrap::{
-    client::DefaultConnector, get_state, start_bootstrap_server, BootstrapConfig, BootstrapManager,
-    BootstrapTcpListener,
+    get_state, start_bootstrap_server, BootstrapConfig, BootstrapManager, BootstrapTcpListener,
+    DefaultConnector,
 };
 use massa_consensus_exports::events::ConsensusEvent;
 use massa_consensus_exports::{ConsensusChannels, ConsensusConfig, ConsensusManager};
