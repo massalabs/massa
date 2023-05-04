@@ -11,8 +11,8 @@ use nom::{
 };
 
 use crate::versioning::{
-    Advance, ComponentState, ComponentStateTypeId, LockedIn, MipComponent, MipInfo, MipState,
-    MipStatsConfig, MipStoreRaw, MipStoreStats, Started,
+    Active, Advance, ComponentState, ComponentStateTypeId, LockedIn, MipComponent, MipInfo,
+    MipState, MipStatsConfig, MipStoreRaw, MipStoreStats, Started,
 };
 
 use massa_models::amount::{Amount, AmountDeserializer, AmountSerializer};
@@ -251,21 +251,19 @@ impl Serializer<ComponentState> for ComponentStateSerializer {
         value: &ComponentState,
         buffer: &mut Vec<u8>,
     ) -> Result<(), SerializeError> {
+        let state_id = u32::from(ComponentStateTypeId::from(value));
+        self.u32_serializer.serialize(&state_id, buffer)?;
         match value {
             ComponentState::Started(Started { threshold }) => {
-                let state_id = u32::from(ComponentStateTypeId::from(value));
-                self.u32_serializer.serialize(&state_id, buffer)?;
                 self.amount_serializer.serialize(threshold, buffer)?;
             }
             ComponentState::LockedIn(LockedIn { at }) => {
-                let state_id = u32::from(ComponentStateTypeId::from(value));
-                self.u32_serializer.serialize(&state_id, buffer)?;
                 self.time_serializer.serialize(at, buffer)?;
             }
-            _ => {
-                let state_id = u32::from(ComponentStateTypeId::from(value));
-                self.u32_serializer.serialize(&state_id, buffer)?;
+            ComponentState::Active(Active { at }) => {
+                self.time_serializer.serialize(at, buffer)?;
             }
+            _ => {}
         }
         Ok(())
     }
@@ -1083,9 +1081,7 @@ mod test {
         assert_eq!(mip_stats, store_stats_der_res);
     }
 
-    // IMPORTANT TODO: FIX
     #[test]
-    #[ignore]
     fn test_mip_store_raw_ser_der() {
         let mip_stats_cfg = MipStatsConfig {
             block_count_considered: 10,
@@ -1131,9 +1127,7 @@ mod test {
         assert_eq!(store_raw, store_raw_der_res);
     }
 
-    // IMPORTANT TODO: FIX
     #[test]
-    #[ignore]
     fn mip_store_raw_max_size() {
         let mut mi_base = MipInfo {
             name: "A".repeat(254),
