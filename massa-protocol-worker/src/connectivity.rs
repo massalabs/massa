@@ -202,6 +202,8 @@ pub(crate) fn start_connectivity_thread(
                             }
                         }
                     default(Duration::from_millis(1000)) => {
+                        println!("AURELIEN: CACHE PEER DB LEN: {:?}", peer_db.read().peers.len());
+                        println!("AURELIEN: CACHE INDEX BY NEWEST LEN: {:?}", peer_db.read().index_by_newest.len());
                         if config.debug {
                             println!("nb peers connected: {}", network_controller.get_active_connections().get_peer_ids_connected().len());
                         }

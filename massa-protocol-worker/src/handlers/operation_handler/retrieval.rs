@@ -164,13 +164,14 @@ impl RetrievalThread {
     }
 
     fn clear_storage(&mut self) {
-        for (instant, operations) in self.stored_operations.iter() {
+        self.stored_operations.retain(|instant, operations| {
             if instant.elapsed() > self.config.asked_operations_pruning_period.to_duration() {
                 self.storage.drop_operation_refs(operations);
+                false
             } else {
-                break;
+                true
             }
-        }
+        });
     }
 
     fn note_operations_from_peer(
@@ -420,13 +421,13 @@ impl RetrievalThread {
                 "AURELIEN CACHE: retrieval operation thread asked_operations: {}",
                 &self.asked_operations.len()
             );
-            for (key, value) in &self.asked_operations {
-                println!(
-                    "AURELIEN CACHE: retrieval operation thread asked_operations: opid:{} {}",
-                    key,
-                    value.1.len()
-                );
-            }
+            // for (key, value) in &self.asked_operations {
+            //     println!(
+            //         "AURELIEN CACHE: retrieval operation thread asked_operations: opid:{} {}",
+            //         key,
+            //         value.1.len()
+            //     );
+            // }
             println!(
                 "AURELIEN CACHE: retrieval operation thread op_batch_buffer: {}",
                 &self.op_batch_buffer.len()
@@ -435,13 +436,13 @@ impl RetrievalThread {
                 "AURELIEN CACHE: retrieval operation thread stored operations: {}",
                 &self.stored_operations.len()
             );
-            for (key, value) in &self.stored_operations {
-                println!(
-                    "AURELIEN CACHE: retrieval operation thread stored operations: instant:{:?} {}",
-                    key,
-                    value.len()
-                );
-            }
+            // for (key, value) in &self.stored_operations {
+            //     println!(
+            //         "AURELIEN CACHE: retrieval operation thread stored operations: instant:{:?} {}",
+            //         key,
+            //         value.len()
+            //     );
+            // }
             let cache_read = self.cache.read();
             println!(
                 "AURELIEN CACHE: retrieval operation thread checked_operations_prefix: {}",
