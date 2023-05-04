@@ -898,8 +898,12 @@ impl PoSFinalState {
         let handle = db.0.cf_handle(STATE_CF).expect(CF_ERROR);
 
         for (serialized_key, serialized_value) in
-            db.0.iterator_cf(handle, IteratorMode::Start).flatten()
+            db.0.prefix_iterator_cf(handle, DEFERRED_CREDITS_PREFIX)
+                .flatten()
         {
+            if !serialized_key.starts_with(DEFERRED_CREDITS_PREFIX.as_bytes()) {
+                break;
+            }
             let (_, amount) = self
                 .deferred_credits_deserializer
                 .credit_deserializer
@@ -1094,6 +1098,9 @@ impl PoSFinalState {
             }
             None => db.0.iterator_cf(handle, IteratorMode::Start).next(),
         } {
+            if !serialized_key.starts_with(CYCLE_HISTORY_PREFIX.as_bytes()) {
+                break;
+            }
             let (_, cycle) = self
                 .cycle_info_deserializer
                 .cycle_info_deserializer
@@ -1211,8 +1218,12 @@ impl PoSFinalState {
         let mut deferred_credits = DeferredCredits::new_with_hash();
 
         for (serialized_key, serialized_value) in
-            db.0.iterator_cf(handle, IteratorMode::Start).flatten()
+            db.0.prefix_iterator_cf(handle, DEFERRED_CREDITS_PREFIX)
+                .flatten()
         {
+            if !serialized_key.starts_with(DEFERRED_CREDITS_PREFIX.as_bytes()) {
+                break;
+            }
             let (rest, slot) = self
                 .deferred_credits_deserializer
                 .slot_deserializer

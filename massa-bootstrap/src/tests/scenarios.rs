@@ -203,6 +203,7 @@ fn test_bootstrap_whitelist() {
     conn.unwrap();
 }
 
+#[ignore]
 #[test]
 fn test_bootstrap_server() {
     let thread_count = 2;

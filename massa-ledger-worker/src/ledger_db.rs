@@ -417,7 +417,13 @@ impl LedgerDB {
         let handle = db.0.cf_handle(STATE_CF).expect(CF_ERROR);
 
         let ledger =
-            db.0.iterator_cf(handle, IteratorMode::Start)
+            db.0.prefix_iterator_cf(handle, LEDGER_PREFIX)
+                .take_while(|kv| {
+                    kv.clone()
+                        .unwrap_or_default()
+                        .0
+                        .starts_with(LEDGER_PREFIX.as_bytes())
+                })
                 .collect::<Vec<_>>();
 
         let mut addresses = std::collections::BTreeMap::new();
