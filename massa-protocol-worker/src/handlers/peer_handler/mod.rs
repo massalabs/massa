@@ -150,8 +150,6 @@ impl PeerManagementHandler {
                                     return;
                                 }
                             };
-                            debug!("Received peer message: {:?} from {}", message, peer_id);
-
                             // check if peer is banned
                             if let Some(peer) = peer_db.read().peers.get(&peer_id) {
                                 if peer.state == PeerState::Banned {
@@ -174,11 +172,13 @@ impl PeerManagementHandler {
                             }
                             match message {
                                 PeerManagementMessage::NewPeerConnected((peer_id, listeners)) => {
+                                    debug!("Received peer message: NewPeerConnected from {}", peer_id);
                                     if let Err(e) = test_sender.send((peer_id, listeners)) {
                                         error!("error when sending msg to peer tester : {}", e);
                                     }
                                 }
                                 PeerManagementMessage::ListPeers(peers) => {
+                                    debug!("Received peer message: List peers from {}", peer_id);
                                     for (peer_id, listeners) in peers.into_iter() {
                                         if let Err(e) = test_sender.send((peer_id, listeners)) {
                                             error!("error when sending msg to peer tester : {}", e);

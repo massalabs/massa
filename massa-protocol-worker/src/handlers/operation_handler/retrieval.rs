@@ -102,9 +102,9 @@ impl RetrievalThread {
                                 println!("Error: message not fully consumed");
                                 return;
                             }
-                            debug!("Received operation message: {:?} from {}", message, peer_id);
                             match message {
                                 OperationMessage::Operations(ops) => {
+                                    debug!("Received operation message: Operations from {}", peer_id);
                                     if let Err(err) = self.note_operations_from_peer(ops, &peer_id) {
                                         warn!("peer {} sent us critically incorrect operation, which may be an attack attempt by the remote peer or a loss of sync between us and the remote peer. Err = {}", peer_id, err);
 
@@ -114,6 +114,7 @@ impl RetrievalThread {
                                     }
                                 }
                                 OperationMessage::OperationsAnnouncement(announcement) => {
+                                    debug!("Received operation message: OperationsAnnouncement from {}", peer_id);
                                     if let Err(err) =
                                         self.on_operations_announcements_received(announcement, &peer_id)
                                     {
@@ -121,6 +122,7 @@ impl RetrievalThread {
                                     }
                                 }
                                 OperationMessage::AskForOperations(ask) => {
+                                    debug!("Received operation message: AskForOperations from {}", peer_id);
                                     if let Err(err) = self.on_asked_operations_received(&peer_id, ask) {
                                         warn!("error when processing asked operations received from peer {}: Err = {}", peer_id, err);
                                     }

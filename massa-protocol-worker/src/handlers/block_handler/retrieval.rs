@@ -131,20 +131,19 @@ impl RetrievalThread {
                                     continue;
                                 }
                             };
-
-                            debug!("Received block message: {:?} from {}", message, peer_id);
-
                             if !rest.is_empty() {
                                 println!("Error: message not fully consumed");
                                 return;
                             }
                             match message {
                                 BlockMessage::AskForBlocks(block_infos) => {
+                                    debug!("Received block message: AskForBlocks from {}", peer_id);
                                     if let Err(err) = self.on_asked_for_blocks_received(peer_id.clone(), block_infos) {
                                         warn!("Error in on_asked_for_blocks_received: {:?}", err);
                                     }
                                 }
                                 BlockMessage::ReplyForBlocks(block_infos) => {
+                                    debug!("Received block message: ReplyForBlocks from {}", peer_id);
                                     for (block_id, block_info) in block_infos.into_iter() {
                                         if let Err(err) = self.on_block_info_received(peer_id.clone(), block_id, block_info) {
                                             warn!("Error in on_block_info_received: {:?}", err);
@@ -155,6 +154,7 @@ impl RetrievalThread {
                                     }
                                 }
                                 BlockMessage::BlockHeader(header) => {
+                                    debug!("Received block message: BlockHeader from {}", peer_id);
                                     massa_trace!(BLOCK_HEADER, { "peer_id": peer_id, "header": header});
                                     if let Ok(Some((block_id, is_new))) =
                                         self.note_header_from_peer(&header, &peer_id)
@@ -191,6 +191,7 @@ impl RetrievalThread {
                         Ok(command) => {
                             match command {
                                 BlockHandlerRetrievalCommand::WishlistDelta { new, remove } => {
+                                    debug!("Received block message: command WishlistDelta");
                                     massa_trace!("protocol.protocol_worker.process_command.wishlist_delta.begin", { "new": new, "remove": remove });
                                     for (block_id, header) in new.into_iter() {
                                         self.block_wishlist.insert(
@@ -214,6 +215,7 @@ impl RetrievalThread {
                                     );
                                 },
                                 BlockHandlerRetrievalCommand::Stop => {
+                                    debug!("Received block message: command Stop");
                                     info!("Stop block retrieval thread from command receiver");
                                     return;
                                 }
