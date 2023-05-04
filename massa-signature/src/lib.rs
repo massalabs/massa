@@ -9,5 +9,5 @@ mod signature_impl;
 pub use error::MassaSignatureError;
 pub use signature_impl::{
     verify_signature_batch, KeyPair, PublicKey, PublicKeyDeserializer, PublicKeyV0, PublicKeyV1,
-    Signature, SignatureDeserializer, PUBLIC_KEY_SIZE_BYTES, SIGNATURE_SIZE_BYTES,
+    Signature, SignatureDeserializer, PUBLIC_KEY_DESER_SIZE, SIGNATURE_DESER_SIZE,
 };

@@ -13,7 +13,7 @@ use massa_hash::{Hash, HASH_SIZE_BYTES};
 use massa_models::serialization::{DeserializeMinBEInt, SerializeMinBEInt};
 use massa_models::version::{Version, VersionSerializer};
 use massa_serialization::{DeserializeError, Deserializer, Serializer};
-use massa_signature::{PublicKey, Signature, SIGNATURE_SIZE_BYTES};
+use massa_signature::{PublicKey, Signature, SIGNATURE_DESER_SIZE};
 use rand::{rngs::StdRng, RngCore, SeedableRng};
 use tokio::io::AsyncReadExt;
 use tokio::io::AsyncWriteExt;
@@ -73,7 +73,7 @@ impl<D: Duplex> BootstrapClientBinder<D> {
     pub async fn next(&mut self) -> Result<BootstrapServerMessage, BootstrapError> {
         // read signature
         let sig = {
-            let mut sig_bytes = [0u8; SIGNATURE_SIZE_BYTES];
+            let mut sig_bytes = [0u8; SIGNATURE_DESER_SIZE];
             self.duplex.read_exact(&mut sig_bytes).await?;
             Signature::from_bytes(&sig_bytes)?
         };

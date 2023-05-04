@@ -18,8 +18,8 @@ use serde::{
     ser::SerializeStruct,
     Deserialize,
 };
+use std::str::FromStr;
 use std::{borrow::Cow, cmp::Ordering, hash::Hasher, ops::Bound::Included};
-use std::{convert::TryInto, str::FromStr};
 
 use transition::Versioned;
 
@@ -754,8 +754,8 @@ impl PublicKeyDeserializer {
     }
 }
 
-/// IMPORTANT TODO
-pub const PUBLIC_KEY_SIZE_BYTES: usize = 32 + 1;
+/// TODO: handle this constant in a more maintainable way
+pub const PUBLIC_KEY_DESER_SIZE: usize = 32 + 1;
 
 impl Deserializer<PublicKey> for PublicKeyDeserializer {
     /// ```
@@ -774,28 +774,20 @@ impl Deserializer<PublicKey> for PublicKeyDeserializer {
         &self,
         buffer: &'a [u8],
     ) -> IResult<&'a [u8], PublicKey, E> {
-        // Can't use try into directly because it fails if there is more data in the buffer
-        if buffer.len() < PUBLIC_KEY_SIZE_BYTES {
+        if buffer.len() < PUBLIC_KEY_DESER_SIZE {
             return Err(nom::Err::Error(ParseError::from_error_kind(
                 buffer,
                 nom::error::ErrorKind::LengthValue,
             )));
         }
-        let key =
-            PublicKey::from_bytes(buffer[..PUBLIC_KEY_SIZE_BYTES].try_into().map_err(|_| {
-                nom::Err::Error(ParseError::from_error_kind(
-                    buffer,
-                    nom::error::ErrorKind::LengthValue,
-                ))
-            })?)
-            .map_err(|_| {
-                nom::Err::Error(ParseError::from_error_kind(
-                    buffer,
-                    nom::error::ErrorKind::Fail,
-                ))
-            })?;
-        // Safe because the signature deserialization success
-        Ok((&buffer[PUBLIC_KEY_SIZE_BYTES..], key))
+        let key = PublicKey::from_bytes(&buffer[..PUBLIC_KEY_DESER_SIZE]).map_err(|_| {
+            nom::Err::Error(ParseError::from_error_kind(
+                buffer,
+                nom::error::ErrorKind::Fail,
+            ))
+        })?;
+        // Safe because the signature deserialization succeeded
+        Ok((&buffer[PUBLIC_KEY_DESER_SIZE..], key))
     }
 }
 
@@ -1238,9 +1230,8 @@ impl SignatureDeserializer {
         Self
     }
 }
-
-/// IMPORTANT TODO: FIX THIS
-pub const SIGNATURE_SIZE_BYTES: usize = 64 + 1;
+/// TODO: handle this constant in a more maintainable way
+pub const SIGNATURE_DESER_SIZE: usize = 64 + 1;
 
 impl Deserializer<Signature> for SignatureDeserializer {
     /// ```
@@ -1260,21 +1251,20 @@ impl Deserializer<Signature> for SignatureDeserializer {
         &self,
         buffer: &'a [u8],
     ) -> IResult<&'a [u8], Signature, E> {
-        // Can't use try into directly because it fails if there is more data in the buffer
-        if buffer.len() < SIGNATURE_SIZE_BYTES {
+        if buffer.len() < SIGNATURE_DESER_SIZE {
             return Err(nom::Err::Error(ParseError::from_error_kind(
                 buffer,
                 nom::error::ErrorKind::LengthValue,
             )));
         }
-        let signature = Signature::from_bytes(buffer).map_err(|_| {
+        let signature = Signature::from_bytes(&buffer[..SIGNATURE_DESER_SIZE]).map_err(|_| {
             nom::Err::Error(ParseError::from_error_kind(
                 buffer,
                 nom::error::ErrorKind::Fail,
             ))
         })?;
-        // Safe because the signature deserialization success
-        Ok((&buffer[SIGNATURE_SIZE_BYTES..], signature))
+        // Safe because the signature deserialization succeeded
+        Ok((&buffer[SIGNATURE_DESER_SIZE..], signature))
     }
 }
 
