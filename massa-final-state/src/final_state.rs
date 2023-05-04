@@ -49,10 +49,15 @@ pub struct FinalState {
     /// hash of the final state, it is computed on finality
     pub final_state_hash: Hash,
     /// last_start_period
-    /// * If start all new network: set to 0
+    /// * If start new network: set to 0
     /// * If from snapshot: retrieve from args
     /// * If from bootstrap: set during bootstrap
     pub last_start_period: u64,
+    /// last_slot_before_downtime
+    /// * None if start new network
+    /// * If from snapshot: retrieve from the slot attached to the snapshot
+    /// * If from bootstrap: set during bootstrap
+    pub last_slot_before_downtime: Option<Slot>,
     /// the rocksdb instance used to write every final_state struct on disk
     pub db: Arc<RwLock<MassaDB>>,
 }
@@ -125,6 +130,7 @@ impl FinalState {
             changes_history: Default::default(), // no changes in history
             final_state_hash: Hash::from_bytes(FINAL_STATE_HASH_INITIAL_BYTES),
             last_start_period: 0,
+            last_slot_before_downtime: None,
             db,
         };
 
@@ -173,6 +179,8 @@ impl FinalState {
             .map_err(|_| {
                 FinalStateError::InvalidSlot(String::from("Could not recover Slot in Ledger"))
             })?;
+
+        final_state.last_slot_before_downtime = Some(final_state.slot);
 
         debug!(
             "Latest consistent slot found in snapshot data: {}",

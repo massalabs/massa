@@ -49,6 +49,7 @@ impl FinalState {
             config,
             final_state_hash: Hash::from_bytes(&[0; HASH_SIZE_BYTES]),
             last_start_period: 0,
+            last_slot_before_downtime: None,
             db,
         }
     }

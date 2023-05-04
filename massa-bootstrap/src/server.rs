@@ -463,6 +463,7 @@ pub fn stream_bootstrap_information(
         let state_part;
         let final_state_changes;
         let last_start_period;
+        let last_slot_before_downtime;
 
         let mut slot_too_old = false;
 
@@ -475,7 +476,12 @@ pub fn stream_bootstrap_information(
             } else {
                 None
             };
-
+            last_slot_before_downtime = if send_last_start_period {
+                Some(final_state_read.last_slot_before_downtime)
+            } else {
+                None
+            };
+            
             let (data, new_state_step) = final_state_read.get_state_part(last_state_step.clone());
             state_part = data;
 
@@ -574,6 +580,7 @@ pub fn stream_bootstrap_information(
                 consensus_part,
                 consensus_outdated_ids,
                 last_start_period,
+                last_slot_before_downtime
             },
         )?;
     }

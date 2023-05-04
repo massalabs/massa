@@ -85,6 +85,7 @@ fn stream_final_state_and_consensus(
                     consensus_part,
                     consensus_outdated_ids,
                     last_start_period,
+                    last_slot_before_downtime,
                 } => {
                     // Set final state
                     let mut write_final_state = global_bootstrap_state.final_state.write();
@@ -92,6 +93,9 @@ fn stream_final_state_and_consensus(
                     // We only need to receive the initial_state once
                     if let Some(last_start_period) = last_start_period {
                         write_final_state.last_start_period = last_start_period;
+                    }
+                    if let Some(last_slot_before_downtime) = last_slot_before_downtime {
+                        write_final_state.last_slot_before_downtime = last_slot_before_downtime;
                     }
 
                     let last_state_step = write_final_state.set_state_part(state_part);
@@ -449,7 +453,7 @@ pub async fn get_state(
                         ))
                     })?;
             }
-
+            
             // create the initial cycle of PoS cycle_history
             final_state_guard.pos_state.create_initial_cycle();
         }
