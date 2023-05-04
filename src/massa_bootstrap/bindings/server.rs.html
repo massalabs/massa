@@ -300,6 +300,17 @@
 <a href="#300" id="300">300</a>
 <a href="#301" id="301">301</a>
 <a href="#302" id="302">302</a>
+<a href="#303" id="303">303</a>
+<a href="#304" id="304">304</a>
+<a href="#305" id="305">305</a>
+<a href="#306" id="306">306</a>
+<a href="#307" id="307">307</a>
+<a href="#308" id="308">308</a>
+<a href="#309" id="309">309</a>
+<a href="#310" id="310">310</a>
+<a href="#311" id="311">311</a>
+<a href="#312" id="312">312</a>
+<a href="#313" id="313">313</a>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="kw">use </span><span class="kw">crate</span>::bindings::BindingReadExact;
@@ -311,6 +322,7 @@
 <span class="kw">use </span><span class="kw">crate</span>::settings::BootstrapSrvBindCfg;
 <span class="kw">use </span>massa_hash::Hash;
 <span class="kw">use </span>massa_hash::HASH_SIZE_BYTES;
+<span class="kw">use </span>massa_models::config::{MAX_BOOTSTRAP_MESSAGE_SIZE, MAX_BOOTSTRAP_MESSAGE_SIZE_BYTES};
 <span class="kw">use </span>massa_models::serialization::{DeserializeMinBEInt, SerializeMinBEInt};
 <span class="kw">use </span>massa_models::version::{Version, VersionDeserializer, VersionSerializer};
 <span class="kw">use </span>massa_serialization::{DeserializeError, Deserializer, Serializer};
@@ -327,14 +339,18 @@
 };
 <span class="kw">use </span>tracing::error;
 
+<span class="doccomment">/// The known-length component of a message to be received.
+</span><span class="kw">struct </span>ClientMessageLeader {
+    received_prev_hash: <span class="prelude-ty">Option</span>&lt;Hash&gt;,
+    msg_len: u32,
+}
+
 <span class="doccomment">/// Bootstrap server binder
 </span><span class="kw">pub struct </span>BootstrapServerBinder {
-    max_bootstrap_message_size: u32,
     max_consensus_block_ids: u64,
     thread_count: u8,
     max_datastore_key_length: u8,
     randomness_size_bytes: usize,
-    size_field_len: usize,
     local_keypair: KeyPair,
     <span class="comment">// TODO: Reintroduce bandwidth limits
     </span>duplex: TcpStream,
@@ -356,18 +372,14 @@
         <span class="kw">let </span>BootstrapSrvBindCfg {
             <span class="comment">// TODO: Reintroduce bandwidth limits
             </span>max_bytes_read_write: _limit,
-            max_bootstrap_message_size,
             thread_count,
             max_datastore_key_length,
             randomness_size_bytes,
             consensus_bootstrap_part_size,
             write_error_timeout,
         } = cfg;
-        <span class="kw">let </span>size_field_len = u32::be_bytes_min_length(max_bootstrap_message_size);
         BootstrapServerBinder {
-            max_bootstrap_message_size,
             max_consensus_block_ids: consensus_bootstrap_part_size,
-            size_field_len,
             local_keypair,
             duplex,
             prev_message: <span class="prelude-val">None</span>,
@@ -473,8 +485,7 @@
         })
     }
 
-    <span class="comment">// TODO: use a proper (de)serializer: https://github.com/massalabs/massa/pull/3745#discussion_r1169733161
-    </span><span class="doccomment">/// Writes the next message.
+    <span class="doccomment">/// Writes the next message.
     </span><span class="kw">pub fn </span>send_timeout(
         <span class="kw-2">&amp;mut </span><span class="self">self</span>,
         msg: BootstrapServerMessage,
@@ -503,7 +514,7 @@
         };
 
         <span class="comment">// construct msg length, and convert to bytes
-        </span><span class="kw">let </span>msg_len_bytes = msg_len.to_be_bytes_min(<span class="self">self</span>.max_bootstrap_message_size)<span class="question-mark">?</span>;
+        </span><span class="kw">let </span>msg_len_bytes = msg_len.to_be_bytes_min(MAX_BOOTSTRAP_MESSAGE_SIZE)<span class="question-mark">?</span>;
 
         <span class="comment">// organize the bytes into a sendable array
         </span><span class="kw">let </span>stream_data = [sig.to_bytes().as_slice(), <span class="kw-2">&amp;</span>msg_len_bytes, <span class="kw-2">&amp;</span>msg_bytes].concat();
@@ -526,33 +537,16 @@
     ) -&gt; <span class="prelude-ty">Result</span>&lt;BootstrapClientMessage, BootstrapError&gt; {
         <span class="kw">let </span>deadline = duration.map(|d| Instant::now() + d);
 
-        <span class="kw">let </span>known_len = HASH_SIZE_BYTES + <span class="self">self</span>.size_field_len;
+        <span class="kw">let </span>known_len = HASH_SIZE_BYTES + MAX_BOOTSTRAP_MESSAGE_SIZE_BYTES;
         <span class="kw">let </span><span class="kw-2">mut </span>known_len_buf = <span class="macro">vec!</span>[<span class="number">0</span>; known_len];
         <span class="comment">// TODO: handle a partial read
         </span><span class="self">self</span>.read_exact_timeout(<span class="kw-2">&amp;mut </span>known_len_buf, deadline)
             .map_err(|(err, _consumed)| err)<span class="question-mark">?</span>;
 
-        <span class="comment">// construct prev-hash from peek
-        </span><span class="kw">let </span>received_prev_hash = {
-            <span class="kw">if </span><span class="self">self</span>.prev_message.is_some() {
-                <span class="prelude-val">Some</span>(Hash::from_bytes(
-                    known_len_buf[..HASH_SIZE_BYTES]
-                        .try_into()
-                        .expect(<span class="string">&quot;bad slice logic&quot;</span>),
-                ))
-            } <span class="kw">else </span>{
-                <span class="prelude-val">None
-            </span>}
-        };
-
-        <span class="comment">// construct msg-len from peek
-        </span><span class="kw">let </span>msg_len = {
-            u32::from_be_bytes_min(
-                <span class="kw-2">&amp;</span>known_len_buf[HASH_SIZE_BYTES..],
-                <span class="self">self</span>.max_bootstrap_message_size,
-            )<span class="question-mark">?
-            </span>.<span class="number">0
-        </span>};
+        <span class="kw">let </span>ClientMessageLeader {
+            received_prev_hash,
+            msg_len,
+        } = <span class="self">self</span>.decode_message_leader(<span class="kw-2">&amp;</span>known_len_buf)<span class="question-mark">?</span>;
 
         <span class="comment">// read the rest of the message
         </span><span class="kw">let </span><span class="kw-2">mut </span>msg_bytes = <span class="macro">vec!</span>[<span class="number">0u8</span>; msg_len <span class="kw">as </span>usize];
@@ -588,6 +582,34 @@
         .map_err(|err| BootstrapError::GeneralError(<span class="macro">format!</span>(<span class="string">&quot;{}&quot;</span>, err)))<span class="question-mark">?</span>;
 
         <span class="prelude-val">Ok</span>(msg)
+    }
+
+    <span class="doccomment">/// We are using this instead of of our library deserializer as the process is relatively straight forward
+    /// and makes error-type management cleaner
+    </span><span class="kw">fn </span>decode_message_leader(
+        <span class="kw-2">&amp;</span><span class="self">self</span>,
+        peek_buf: <span class="kw-2">&amp;</span>[u8],
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;ClientMessageLeader, BootstrapError&gt; {
+        <span class="comment">// construct prev-hash from peek
+        </span><span class="kw">let </span>received_prev_hash = {
+            <span class="kw">if </span><span class="self">self</span>.prev_message.is_some() {
+                <span class="prelude-val">Some</span>(Hash::from_bytes(
+                    peek_buf[..HASH_SIZE_BYTES]
+                        .try_into()
+                        .expect(<span class="string">&quot;bad slice logic&quot;</span>),
+                ))
+            } <span class="kw">else </span>{
+                <span class="prelude-val">None
+            </span>}
+        };
+
+        <span class="comment">// construct msg-len from peek
+        </span><span class="kw">let </span>msg_len =
+            { u32::from_be_bytes_min(<span class="kw-2">&amp;</span>peek_buf[HASH_SIZE_BYTES..], MAX_BOOTSTRAP_MESSAGE_SIZE)<span class="question-mark">?</span>.<span class="number">0 </span>};
+        <span class="prelude-val">Ok</span>(ClientMessageLeader {
+            received_prev_hash,
+            msg_len,
+        })
     }
 }
 

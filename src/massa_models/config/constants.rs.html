@@ -318,6 +318,12 @@
 <a href="#318" id="318">318</a>
 <a href="#319" id="319">319</a>
 <a href="#320" id="320">320</a>
+<a href="#321" id="321">321</a>
+<a href="#322" id="322">322</a>
+<a href="#323" id="323">323</a>
+<a href="#324" id="324">324</a>
+<a href="#325" id="325">325</a>
+<a href="#326" id="326">326</a>
 </pre><pre class="rust"><code><span class="doccomment">//! DEFAULT VALUES USED TO INITIALIZE DIVERS CONFIGURATIONS STRUCTURES
 //!
 //!
@@ -335,7 +341,10 @@
 //! (`default_testing.rs`) But as for the current file you shouldn&#39;t modify it.
 </span><span class="kw">use </span>std::str::FromStr;
 
-<span class="kw">use crate</span>::{address::ADDRESS_SIZE_BYTES, amount::Amount, version::Version};
+<span class="kw">use crate</span>::{
+    address::ADDRESS_SIZE_BYTES, amount::Amount, serialization::u32_be_bytes_min_length,
+    version::Version,
+};
 <span class="kw">use </span>massa_signature::KeyPair;
 <span class="kw">use </span>massa_time::MassaTime;
 <span class="kw">use </span>num::rational::Ratio;
@@ -515,6 +524,9 @@
 
 </span><span class="doccomment">/// Max message size for bootstrap
 </span><span class="kw">pub const </span>MAX_BOOTSTRAP_MESSAGE_SIZE: u32 = <span class="number">1048576000</span>;
+<span class="doccomment">/// The number of bytes needed to encode [`MAX_BOOTSTRAP_MESSAGE_SIZE`]
+</span><span class="kw">pub const </span>MAX_BOOTSTRAP_MESSAGE_SIZE_BYTES: usize =
+    u32_be_bytes_min_length(MAX_BOOTSTRAP_MESSAGE_SIZE);
 <span class="doccomment">/// Max number of blocks we provide/ take into account while bootstrapping
 </span><span class="kw">pub const </span>MAX_BOOTSTRAP_BLOCKS: u32 = <span class="number">1000000</span>;
 <span class="doccomment">/// max bootstrapped cliques
