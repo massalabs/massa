@@ -537,8 +537,32 @@
 <a href="#537" id="537">537</a>
 <a href="#538" id="538">538</a>
 <a href="#539" id="539">539</a>
+<a href="#540" id="540">540</a>
+<a href="#541" id="541">541</a>
+<a href="#542" id="542">542</a>
+<a href="#543" id="543">543</a>
+<a href="#544" id="544">544</a>
+<a href="#545" id="545">545</a>
+<a href="#546" id="546">546</a>
+<a href="#547" id="547">547</a>
+<a href="#548" id="548">548</a>
+<a href="#549" id="549">549</a>
+<a href="#550" id="550">550</a>
+<a href="#551" id="551">551</a>
+<a href="#552" id="552">552</a>
+<a href="#553" id="553">553</a>
+<a href="#554" id="554">554</a>
+<a href="#555" id="555">555</a>
+<a href="#556" id="556">556</a>
+<a href="#557" id="557">557</a>
+<a href="#558" id="558">558</a>
+<a href="#559" id="559">559</a>
+<a href="#560" id="560">560</a>
+<a href="#561" id="561">561</a>
+<a href="#562" id="562">562</a>
+<a href="#563" id="563">563</a>
+<a href="#564" id="564">564</a>
 </pre><pre class="rust"><code><span class="kw">use </span>humantime::format_duration;
-<span class="kw">use </span>massa_db::DBBatch;
 <span class="kw">use </span>std::{
     collections::HashSet,
     io,
@@ -619,12 +643,16 @@
             <span class="kw">match </span>client.next_timeout(<span class="prelude-val">Some</span>(cfg.read_timeout.to_duration()))<span class="question-mark">? </span>{
                 BootstrapServerMessage::BootstrapPart {
                     slot,
-                    state_part,
+                    ledger_part,
+                    async_pool_part,
+                    pos_cycle_part,
+                    pos_credits_part,
+                    exec_ops_part,
+                    exec_de_part,
                     final_state_changes,
                     consensus_part,
                     consensus_outdated_ids,
                     last_start_period,
-                    last_slot_before_downtime,
                 } =&gt; {
                     <span class="comment">// Set final state
                     </span><span class="kw">let </span><span class="kw-2">mut </span>write_final_state = global_bootstrap_state.final_state.write();
@@ -633,36 +661,43 @@
                     </span><span class="kw">if let </span><span class="prelude-val">Some</span>(last_start_period) = last_start_period {
                         write_final_state.last_start_period = last_start_period;
                     }
-                    <span class="kw">if let </span><span class="prelude-val">Some</span>(last_slot_before_downtime) = last_slot_before_downtime {
-                        write_final_state.last_slot_before_downtime = last_slot_before_downtime;
-                    }
 
-                    <span class="kw">let </span>last_state_step = write_final_state.set_state_part(state_part);
-
+                    <span class="kw">let </span>last_ledger_step = write_final_state.ledger.set_ledger_part(ledger_part)<span class="question-mark">?</span>;
+                    <span class="kw">let </span>last_pool_step =
+                        write_final_state.async_pool.set_pool_part(async_pool_part);
+                    <span class="kw">let </span>last_cycle_step = write_final_state
+                        .pos_state
+                        .set_cycle_history_part(pos_cycle_part);
+                    <span class="kw">let </span>last_credits_step = write_final_state
+                        .pos_state
+                        .set_deferred_credits_part(pos_credits_part);
+                    <span class="kw">let </span>last_ops_step = write_final_state
+                        .executed_ops
+                        .set_executed_ops_part(exec_ops_part);
+                    <span class="kw">let </span>last_de_step = write_final_state
+                        .executed_denunciations
+                        .set_executed_de_part(exec_de_part);
                     <span class="kw">for </span>(changes_slot, changes) <span class="kw">in </span>final_state_changes.iter() {
-                        <span class="kw">let </span><span class="kw-2">mut </span>batch = DBBatch::new(write_final_state.db.read().get_db_hash());
-                        write_final_state
-                            .ledger
-                            .apply_changes_to_batch(changes.ledger_changes.clone(), <span class="kw-2">&amp;mut </span>batch);
+                        write_final_state.ledger.apply_changes(
+                            changes.ledger_changes.clone(),
+                            <span class="kw-2">*</span>changes_slot,
+                            <span class="prelude-val">None</span>,
+                        );
                         write_final_state
                             .async_pool
-                            .apply_changes_to_batch(<span class="kw-2">&amp;</span>changes.async_pool_changes, <span class="kw-2">&amp;mut </span>batch);
+                            .apply_changes_unchecked(<span class="kw-2">&amp;</span>changes.async_pool_changes);
                         <span class="kw">if </span>!changes.pos_changes.is_empty() {
-                            write_final_state.pos_state.apply_changes_to_batch(
+                            write_final_state.pos_state.apply_changes(
                                 changes.pos_changes.clone(),
                                 <span class="kw-2">*</span>changes_slot,
                                 <span class="bool-val">false</span>,
-                                <span class="kw-2">&amp;mut </span>batch,
                             )<span class="question-mark">?</span>;
                         }
                         <span class="kw">if </span>!changes.executed_ops_changes.is_empty() {
-                            write_final_state.executed_ops.apply_changes_to_batch(
-                                changes.executed_ops_changes.clone(),
-                                <span class="kw-2">*</span>changes_slot,
-                                <span class="kw-2">&amp;mut </span>batch,
-                            );
+                            write_final_state
+                                .executed_ops
+                                .apply_changes(changes.executed_ops_changes.clone(), <span class="kw-2">*</span>changes_slot);
                         }
-                        write_final_state.db.read().write_batch(batch);
                     }
                     write_final_state.slot = slot;
 
@@ -692,7 +727,12 @@
                     <span class="comment">// Set new message in case of disconnection
                     </span><span class="kw-2">*</span>next_bootstrap_message = BootstrapClientMessage::AskBootstrapPart {
                         last_slot: <span class="prelude-val">Some</span>(slot),
-                        last_state_step,
+                        last_ledger_step,
+                        last_pool_step,
+                        last_cycle_step,
+                        last_credits_step,
+                        last_ops_step,
+                        last_de_step,
                         last_consensus_step,
                         send_last_start_period: <span class="bool-val">false</span>,
                     };
@@ -717,7 +757,12 @@
                     <span class="macro">info!</span>(<span class="string">&quot;Slot is too old retry bootstrap from scratch&quot;</span>);
                     <span class="kw-2">*</span>next_bootstrap_message = BootstrapClientMessage::AskBootstrapPart {
                         last_slot: <span class="prelude-val">None</span>,
-                        last_state_step: StreamingStep::Started,
+                        last_ledger_step: StreamingStep::Started,
+                        last_pool_step: StreamingStep::Started,
+                        last_cycle_step: StreamingStep::Started,
+                        last_credits_step: StreamingStep::Started,
+                        last_ops_step: StreamingStep::Started,
+                        last_de_step: StreamingStep::Started,
                         last_consensus_step: StreamingStep::Started,
                         send_last_start_period: <span class="bool-val">true</span>,
                     };
@@ -992,7 +1037,7 @@
                         ))
                     })<span class="question-mark">?</span>;
             }
-            
+
             <span class="comment">// create the initial cycle of PoS cycle_history
             </span>final_state_guard.pos_state.create_initial_cycle();
         }
@@ -1006,7 +1051,12 @@
     <span class="kw">let </span><span class="kw-2">mut </span>next_bootstrap_message: BootstrapClientMessage =
         BootstrapClientMessage::AskBootstrapPart {
             last_slot: <span class="prelude-val">None</span>,
-            last_state_step: StreamingStep::Started,
+            last_ledger_step: StreamingStep::Started,
+            last_pool_step: StreamingStep::Started,
+            last_cycle_step: StreamingStep::Started,
+            last_credits_step: StreamingStep::Started,
+            last_ops_step: StreamingStep::Started,
+            last_de_step: StreamingStep::Started,
             last_consensus_step: StreamingStep::Started,
             send_last_start_period: <span class="bool-val">true</span>,
         };

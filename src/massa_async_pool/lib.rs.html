@@ -108,6 +108,7 @@
 <a href="#108" id="108">108</a>
 <a href="#109" id="109">109</a>
 <a href="#110" id="110">110</a>
+<a href="#111" id="111">111</a>
 </pre><pre class="rust"><code><span class="doccomment">//! Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 //! # General description
@@ -204,12 +205,13 @@
 <span class="kw">mod </span>message;
 <span class="kw">mod </span>pool;
 
-<span class="kw">pub use </span>changes::{AsyncPoolChanges, AsyncPoolChangesDeserializer, AsyncPoolChangesSerializer};
+<span class="kw">pub use </span>changes::{
+    AsyncPoolChanges, AsyncPoolChangesDeserializer, AsyncPoolChangesSerializer, Change,
+};
 <span class="kw">pub use </span>config::AsyncPoolConfig;
 <span class="kw">pub use </span>message::{
     AsyncMessage, AsyncMessageDeserializer, AsyncMessageId, AsyncMessageIdDeserializer,
-    AsyncMessageIdSerializer, AsyncMessageInfo, AsyncMessageSerializer, AsyncMessageTrigger,
-    AsyncMessageTriggerSerializer, AsyncMessageUpdate,
+    AsyncMessageIdSerializer, AsyncMessageSerializer, AsyncMessageTrigger,
 };
 <span class="kw">pub use </span>pool::{AsyncPool, AsyncPoolDeserializer, AsyncPoolSerializer};
 
