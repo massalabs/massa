@@ -56,7 +56,18 @@ impl InitConnectionHandler for TesterHandshake {
         _: &HashMap<SocketAddr, TransportType>,
         messages_handler: MassaMessagesHandler,
     ) -> PeerNetResult<PeerId> {
-        let data = endpoint.receive()?;
+        println!(
+            "AURELIEN: Tester handshake on {}",
+            endpoint.get_target_addr()
+        );
+        let data = match endpoint.receive() {
+            Ok(data) => data,
+            Err(e) => {
+                println!("AURELIEN: Tester handshake error: {:?}", e);
+                return Err(e);
+            }
+        };
+        println!("AURELIEN: Tester handshake data: {:?}", data);
         if data.is_empty() {
             return Err(PeerNetError::HandshakeError.error(
                 "Tester Handshake",
@@ -86,6 +97,7 @@ impl InitConnectionHandler for TesterHandshake {
                 PeerNetError::HandshakeError
                     .error("Massa Handshake", Some("Failed to get id".to_string())),
             )?;
+            println!("AURELIEN: Tester handshake peer: {} id: {}", peer_id, id);
             match id {
                 0 => {
                     let (_, announcement) = self
@@ -113,9 +125,17 @@ impl InitConnectionHandler for TesterHandshake {
                             peer_db_write
                                 .index_by_newest
                                 .retain(|_, peer_id_stored| peer_id_stored != &peer_id);
+                            println!(
+                                "AURELIEN: Tester handshake peer: {} added to index by newest",
+                                peer_id
+                            );
                             peer_db_write
                                 .index_by_newest
                                 .insert(Reverse(announcement.timestamp), peer_id.clone());
+                            println!(
+                                "AURELIEN: Tester handshake peer: index by newest {:?}",
+                                peer_db_write.index_by_newest
+                            );
                         }
                         peer_db_write
                             .peers
@@ -260,7 +280,7 @@ impl Tester {
                                         info!("testing peer {} listener addr: {}", &listener.0, &addr);
                                         let _res =  network_manager.try_connect(
                                             *addr,
-                                            Duration::from_millis(500),
+                                            Duration::from_millis(1000),
                                             &OutConnectionConfig::Tcp(Box::new(TcpOutConnectionConfig::new(protocol_config.read_write_limit_bytes_per_second / 10, Duration::from_millis(100)))),
                                         );
                                     }
@@ -306,7 +326,7 @@ impl Tester {
                             info!("testing peer {} listener addr: {}", peer_id, &listener.0);
                             let _res =  network_manager.try_connect(
                                 *listener.0,
-                                Duration::from_millis(200),
+                                Duration::from_millis(1000),
                                 &OutConnectionConfig::Tcp(Box::new(TcpOutConnectionConfig::new(protocol_config.read_write_limit_bytes_per_second / 10, Duration::from_millis(100)))),
                             );
                         });

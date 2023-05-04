@@ -2376,7 +2376,7 @@ dependencies = [
  "function_name",
  "glob",
  "loupe",
- "massa_hash 0.1.0 (git+https://github.com/massalabs/massa.git)",
+ "massa_hash 0.1.0 (git+https://github.com/massalabs/massa)",
  "more-asserts 0.3.1",
  "num_enum",
  "parking_lot",
@@ -2766,12 +2766,12 @@ dependencies = [
 [[package]]
 name = "massa_hash"
 version = "0.1.0"
-source = "git+https://github.com/massalabs/massa.git#426a6ef7119a92249fed5f3b60e60cfa82ca2d08"
+source = "git+https://github.com/massalabs/massa#426a6ef7119a92249fed5f3b60e60cfa82ca2d08"
 dependencies = [
  "blake3",
  "bs58",
  "displaydoc",
- "massa_serialization 0.1.0 (git+https://github.com/massalabs/massa.git)",
+ "massa_serialization 0.1.0 (git+https://github.com/massalabs/massa)",
  "nom",
  "serde",
  "thiserror",
@@ -3028,7 +3028,7 @@ dependencies = [
 [[package]]
 name = "massa_serialization"
 version = "0.1.0"
-source = "git+https://github.com/massalabs/massa.git#426a6ef7119a92249fed5f3b60e60cfa82ca2d08"
+source = "git+https://github.com/massalabs/massa#426a6ef7119a92249fed5f3b60e60cfa82ca2d08"
 dependencies = [
  "displaydoc",
  "nom",
@@ -3056,13 +3056,13 @@ dependencies = [
 [[package]]
 name = "massa_signature"
 version = "0.1.0"
-source = "git+https://github.com/massalabs/massa.git#426a6ef7119a92249fed5f3b60e60cfa82ca2d08"
+source = "git+https://github.com/massalabs/massa#426a6ef7119a92249fed5f3b60e60cfa82ca2d08"
 dependencies = [
  "bs58",
  "displaydoc",
  "ed25519-dalek",
- "massa_hash 0.1.0 (git+https://github.com/massalabs/massa.git)",
- "massa_serialization 0.1.0 (git+https://github.com/massalabs/massa.git)",
+ "massa_hash 0.1.0 (git+https://github.com/massalabs/massa)",
+ "massa_serialization 0.1.0 (git+https://github.com/massalabs/massa)",
  "nom",
  "rand 0.7.3",
  "serde",
@@ -3606,13 +3606,13 @@ checksum = "19b17cddbe7ec3f8bc800887bab5e717348c95ea2ca0b1bf0837fb964dc67099"
 [[package]]
 name = "peernet"
 version = "0.1.0"
-source = "git+https://github.com/massalabs/PeerNet?rev=959a7a651ff9c346b6fc5a123a5a44f0bd0cc8d5#959a7a651ff9c346b6fc5a123a5a44f0bd0cc8d5"
+source = "git+https://github.com/massalabs/PeerNet?branch=debug#0aed083c9629024df19b8ee866fb8366a8e2d3ee"
 dependencies = [
  "crossbeam",
  "enum_delegate",
- "massa_hash 0.1.0 (git+https://github.com/massalabs/massa.git)",
- "massa_serialization 0.1.0 (git+https://github.com/massalabs/massa.git)",
- "massa_signature 0.1.0 (git+https://github.com/massalabs/massa.git)",
+ "massa_hash 0.1.0 (git+https://github.com/massalabs/massa)",
+ "massa_serialization 0.1.0 (git+https://github.com/massalabs/massa)",
+ "massa_signature 0.1.0 (git+https://github.com/massalabs/massa)",
  "mio",
  "parking_lot",
  "quiche",

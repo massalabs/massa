@@ -506,7 +506,7 @@ impl InitConnectionHandler for MassaHandshake {
             serializer.serialize_id(&msg, &mut buf).unwrap();
             serializer.serialize(&msg, &mut buf).unwrap();
             endpoint.send(buf.as_slice()).unwrap();
-            std::thread::sleep(Duration::from_millis(200));
+            std::thread::sleep(Duration::from_millis(500));
             endpoint.shutdown();
         });
         Ok(())
