@@ -66,13 +66,18 @@ impl PeerManagementHandler {
         peer_db: SharedPeerDB,
         (sender_msg, receiver_msg): (Sender<PeerMessageTuple>, Receiver<PeerMessageTuple>),
         (sender_cmd, receiver_cmd): (Sender<PeerManagementCmd>, Receiver<PeerManagementCmd>),
+        messages_handler: MessagesHandler,
         mut active_connections: Box<dyn ActiveConnectionsTrait>,
         config: &ProtocolConfig,
     ) -> Self {
         let message_serializer = PeerManagementMessageSerializer::new();
 
-        let (test_sender, testers) =
-            Tester::run(config, active_connections.clone(), peer_db.clone());
+        let (test_sender, testers) = Tester::run(
+            config,
+            active_connections.clone(),
+            peer_db.clone(),
+            messages_handler.clone(),
+        );
 
         let thread_join = std::thread::Builder::new()
         .name("protocol-peer-handler".to_string())
@@ -150,8 +155,6 @@ impl PeerManagementHandler {
                                     return;
                                 }
                             };
-                            debug!("Received peer message: {:?} from {}", message, peer_id);
-
                             // check if peer is banned
                             if let Some(peer) = peer_db.read().peers.get(&peer_id) {
                                 if peer.state == PeerState::Banned {
@@ -174,11 +177,13 @@ impl PeerManagementHandler {
                             }
                             match message {
                                 PeerManagementMessage::NewPeerConnected((peer_id, listeners)) => {
+                                    debug!("Received peer message: NewPeerConnected from {}", peer_id);
                                     if let Err(e) = test_sender.send((peer_id, listeners)) {
                                         error!("error when sending msg to peer tester : {}", e);
                                     }
                                 }
                                 PeerManagementMessage::ListPeers(peers) => {
+                                    debug!("Received peer message: List peers from {}", peer_id);
                                     for (peer_id, listeners) in peers.into_iter() {
                                         if let Err(e) = test_sender.send((peer_id, listeners)) {
                                             error!("error when sending msg to peer tester : {}", e);
@@ -284,10 +289,10 @@ impl InitConnectionHandler for MassaHandshake {
             })?;
         endpoint.send(&bytes)?;
         let received = endpoint.receive()?;
-        if received.is_empty() {
+        if received.len() < 32 {
             return Err(PeerNetError::HandshakeError.error(
                 "Massa Handshake",
-                Some(String::from("Received empty message")),
+                Some(format!("Received too short message len:{}", received.len())),
             ));
         }
         let mut offset = 0;
@@ -298,7 +303,14 @@ impl InitConnectionHandler for MassaHandshake {
                     Some("Failed to deserialize PeerId".to_string()),
                 )
             })?)?;
-
+        {
+            let peer_db_read = self.peer_db.read();
+            if let Some(info) = peer_db_read.peers.get(&peer_id) {
+                if info.state == PeerState::Banned {
+                    debug!("Banned peer tried to connect: {:?}", peer_id);
+                }
+            }
+        }
         {
             let peer_db_read = self.peer_db.read();
             if let Some(info) = peer_db_read.peers.get(&peer_id) {
@@ -358,7 +370,6 @@ impl InitConnectionHandler for MassaHandshake {
                             )
                         })?;
                     messages_handler.handle(7, &bytes, &peer_id)?;
-
                     let mut self_random_bytes = [0u8; 32];
                     StdRng::from_entropy().fill_bytes(&mut self_random_bytes);
                     let self_random_hash = Hash::compute_from(&self_random_bytes);
@@ -368,7 +379,7 @@ impl InitConnectionHandler for MassaHandshake {
                     endpoint.send(&bytes)?;
                     let received = endpoint.receive()?;
                     let other_random_bytes: &[u8; 32] =
-                        received.as_slice()[..32].try_into().map_err(|_| {
+                        received.as_slice().try_into().map_err(|_| {
                             PeerNetError::HandshakeError.error(
                                 "Massa Handshake",
                                 Some("Failed to deserialize random bytes".to_string()),
@@ -415,7 +426,7 @@ impl InitConnectionHandler for MassaHandshake {
                     self.message_handlers.handle(id, received, &peer_id)?;
                     Err(PeerNetError::HandshakeError.error(
                         "Massa Handshake",
-                        Some("Handshake failed received a message that are connection has been refused".to_string()),
+                        Some("Handshake failed received a message that our connection has been refused".to_string()),
                     ))
                 }
                 _ => Err(PeerNetError::HandshakeError
@@ -428,12 +439,15 @@ impl InitConnectionHandler for MassaHandshake {
             match &res {
                 Ok((peer_id, announcement)) => {
                     info!("Peer connected: {:?}", peer_id);
-                    peer_db_write
-                        .index_by_newest
-                        .insert(Reverse(announcement.timestamp), peer_id.clone());
-                    peer_db_write
-                        .index_by_newest
-                        .retain(|_, peer_id_stored| peer_id_stored != peer_id);
+                    //TODO: Hacky organize better when multiple ip/listeners
+                    if !announcement.listeners.is_empty() {
+                        peer_db_write
+                            .index_by_newest
+                            .retain(|_, peer_id_stored| peer_id_stored != peer_id);
+                        peer_db_write
+                            .index_by_newest
+                            .insert(Reverse(announcement.timestamp), peer_id.clone());
+                    }
                     peer_db_write
                         .peers
                         .entry(peer_id.clone())

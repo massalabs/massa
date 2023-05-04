@@ -102,9 +102,9 @@ impl RetrievalThread {
                                 println!("Error: message not fully consumed");
                                 return;
                             }
-                            debug!("Received operation message: {:?} from {}", message, peer_id);
                             match message {
                                 OperationMessage::Operations(ops) => {
+                                    debug!("Received operation message: Operations from {}", peer_id);
                                     if let Err(err) = self.note_operations_from_peer(ops, &peer_id) {
                                         warn!("peer {} sent us critically incorrect operation, which may be an attack attempt by the remote peer or a loss of sync between us and the remote peer. Err = {}", peer_id, err);
 
@@ -114,6 +114,7 @@ impl RetrievalThread {
                                     }
                                 }
                                 OperationMessage::OperationsAnnouncement(announcement) => {
+                                    debug!("Received operation message: OperationsAnnouncement from {}", peer_id);
                                     if let Err(err) =
                                         self.on_operations_announcements_received(announcement, &peer_id)
                                     {
@@ -121,6 +122,7 @@ impl RetrievalThread {
                                     }
                                 }
                                 OperationMessage::AskForOperations(ask) => {
+                                    debug!("Received operation message: AskForOperations from {}", peer_id);
                                     if let Err(err) = self.on_asked_operations_received(&peer_id, ask) {
                                         warn!("error when processing asked operations received from peer {}: Err = {}", peer_id, err);
                                     }
@@ -385,16 +387,25 @@ impl RetrievalThread {
                 ask_set.len(),
                 peer_id
             );
-            if let Err(err) = self.active_connections.send_to_peer(
-                peer_id,
-                &self.operation_message_serializer,
-                OperationMessage::AskForOperations(ask_set).into(),
-                false,
-            ) {
-                warn!("Failed to send AskForOperations message to peer: {}", err);
-                {
-                    let mut cache_write = self.cache.write();
-                    cache_write.ops_known_by_peer.pop(peer_id);
+            for sub_list in ask_set
+                .into_iter()
+                .collect::<Vec<OperationPrefixId>>()
+                .chunks(self.config.max_operations_per_message as usize)
+            {
+                if let Err(err) = self.active_connections.send_to_peer(
+                    peer_id,
+                    &self.operation_message_serializer,
+                    OperationMessage::AskForOperations(
+                        sub_list.iter().cloned().collect::<OperationPrefixIds>(),
+                    )
+                    .into(),
+                    false,
+                ) {
+                    warn!("Failed to send AskForOperations message to peer: {}", err);
+                    {
+                        let mut cache_write = self.cache.write();
+                        cache_write.ops_known_by_peer.pop(peer_id);
+                    }
                 }
             }
         }
@@ -447,16 +458,18 @@ impl RetrievalThread {
             }
         }
         debug!("Send full operations of len {} to {}", ops.len(), peer_id);
-        if let Err(err) = self.active_connections.send_to_peer(
-            peer_id,
-            &self.operation_message_serializer,
-            OperationMessage::Operations(ops).into(),
-            false,
-        ) {
-            warn!("Failed to send Operations message to peer: {}", err);
-            {
-                let mut cache_write = self.cache.write();
-                cache_write.ops_known_by_peer.pop(peer_id);
+        for sub_list in ops.chunks(self.config.max_operations_per_message as usize) {
+            if let Err(err) = self.active_connections.send_to_peer(
+                peer_id,
+                &self.operation_message_serializer,
+                OperationMessage::Operations(sub_list.to_vec()).into(),
+                false,
+            ) {
+                warn!("Failed to send Operations message to peer: {}", err);
+                {
+                    let mut cache_write = self.cache.write();
+                    cache_write.ops_known_by_peer.pop(peer_id);
+                }
             }
         }
         Ok(())

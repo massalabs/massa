@@ -154,12 +154,16 @@ impl Deserializer<Announcement> for AnnouncementDeserializer {
 
 impl Announcement {
     pub fn new(
-        listeners: HashMap<SocketAddr, TransportType>,
+        mut listeners: HashMap<SocketAddr, TransportType>,
         routable_ip: Option<IpAddr>,
         keypair: &KeyPair,
     ) -> PeerNetResult<Self> {
         let mut buf: Vec<u8> = vec![];
         let length_serializer = U64VarIntSerializer::new();
+        //TODO: Hacky to fix and adapt to support multiple ip/listeners
+        if routable_ip.is_none() {
+            listeners = HashMap::default()
+        }
         length_serializer
             .serialize(&(listeners.len() as u64), &mut buf)
             .map_err(|err| {

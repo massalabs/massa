@@ -19,8 +19,8 @@ use std::{num::NonZeroUsize, sync::Arc};
 use std::{thread::JoinHandle, time::Duration};
 use tracing::warn;
 
-use crate::handlers::peer_handler::PeerManagementHandler;
 use crate::{handlers::peer_handler::models::SharedPeerDB, worker::ProtocolChannels};
+use crate::{handlers::peer_handler::PeerManagementHandler, messages::MessagesHandler};
 use crate::{
     handlers::{
         block_handler::{cache::BlockCache, BlockHandler},
@@ -57,6 +57,7 @@ pub(crate) fn start_connectivity_thread(
     peer_db: SharedPeerDB,
     storage: Storage,
     protocol_channels: ProtocolChannels,
+    messages_handler: MessagesHandler,
 ) -> Result<(Sender<ConnectivityCommand>, JoinHandle<()>), ProtocolError> {
     let initial_peers = if let Some(bootstrap_peers) = bootstrap_peers {
         bootstrap_peers.0.into_iter().collect()
@@ -108,6 +109,7 @@ pub(crate) fn start_connectivity_thread(
                 peer_db.clone(),
                 channel_peers,
                 protocol_channels.peer_management_handler,
+                messages_handler,
                 network_controller.get_active_connections(),
                 &config,
             );
@@ -229,7 +231,7 @@ pub(crate) fn start_connectivity_thread(
                                     continue;
                                 }
                                 {
-                                    if !addr.ip().is_global() || !network_controller.get_active_connections().check_addr_accepted(addr) {
+                                    if !addr.ip().to_canonical().is_global() || !network_controller.get_active_connections().check_addr_accepted(addr) {
                                         continue;
                                     }
                                 }

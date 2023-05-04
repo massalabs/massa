@@ -24,15 +24,13 @@ use std::time::{Duration, Instant};
 mod bindings;
 mod client;
 mod error;
-mod establisher;
 mod listener;
 pub use listener::BootstrapTcpListener;
 mod messages;
 mod server;
 mod settings;
 mod tools;
-pub use client::get_state;
-pub use establisher::{DefaultConnector, DefaultListener};
+pub use client::{get_state, DefaultConnector};
 use massa_versioning_worker::versioning::MipStore;
 pub use messages::{
     BootstrapClientMessage, BootstrapClientMessageDeserializer, BootstrapClientMessageSerializer,
