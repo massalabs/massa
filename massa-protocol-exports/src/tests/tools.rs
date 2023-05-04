@@ -143,7 +143,6 @@ pub fn create_block_with_endorsements(
     endorsements: Vec<SecureShareEndorsement>,
 ) -> SecureShareBlock {
     let header = BlockHeader::new_verifiable(
-        // NEW TODO: check if we want to have versions available in this test tool
         BlockHeader {
             current_version: 0,
             announced_version: 0,

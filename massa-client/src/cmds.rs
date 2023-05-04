@@ -769,7 +769,7 @@ impl Command {
             Command::wallet_generate_secret_key => {
                 let wallet = wallet_opt.as_mut().unwrap();
 
-                // NOTE: use factory? link with node?
+                // VERSIONNING TODO: use factory? link with node?
                 let key = KeyPair::generate(0).unwrap();
                 let ad = wallet.add_keypairs(vec![key])?[0];
                 if json {
