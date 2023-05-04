@@ -509,7 +509,6 @@
 <a href="#509" id="509">509</a>
 <a href="#510" id="510">510</a>
 <a href="#511" id="511">511</a>
-<a href="#512" id="512">512</a>
 </pre><pre class="rust"><code><span class="kw">use </span>std::cmp::Reverse;
 <span class="kw">use </span>std::{collections::HashMap, net::SocketAddr, thread::JoinHandle, time::Duration};
 
@@ -572,8 +571,7 @@
 }
 
 <span class="kw">impl </span>PeerManagementHandler {
-    <span class="attr">#[allow(clippy::too_many_arguments)]
-    </span><span class="kw">pub fn </span>new(
+    <span class="kw">pub fn </span>new(
         initial_peers: InitialPeers,
         peer_id: PeerId,
         peer_db: SharedPeerDB,
@@ -589,7 +587,7 @@
             config,
             active_connections.clone(),
             peer_db.clone(),
-            messages_handler,
+            messages_handler.clone(),
         );
 
         <span class="kw">let </span>thread_join = std::thread::Builder::new()
