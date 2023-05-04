@@ -167,7 +167,7 @@ pub fn start_protocol_controller(
 
     let mut peernet_config = PeerNetConfiguration::default(
         MassaHandshake::new(peer_db.clone(), config.clone(), message_handlers.clone()),
-        message_handlers,
+        message_handlers.clone(),
     );
 
     // try to read node keypair from file, otherwise generate it & write to file. Then derive nodeId
@@ -210,6 +210,7 @@ pub fn start_protocol_controller(
         peer_db,
         storage,
         protocol_channels,
+        message_handlers,
     )?;
 
     let manager = ProtocolManagerImpl::new(connectivity_thread_handle);

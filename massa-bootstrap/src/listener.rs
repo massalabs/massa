@@ -6,7 +6,7 @@ use mio::{Events, Interest, Poll, Token, Waker};
 use tracing::info;
 
 use crate::error::BootstrapError;
-use crate::establisher::BSEventPoller;
+use crate::server::BSEventPoller;
 
 const NEW_CONNECTION: Token = Token(0);
 const STOP_LISTENER: Token = Token(10);
@@ -31,9 +31,26 @@ impl BootstrapTcpListener {
     /// Setup a mio-listener that functions as a `select!` on a connection, or a waker
     ///
     /// * `addr` - the address to listen on
-    pub fn new(addr: SocketAddr) -> Result<(BootstrapListenerStopHandle, Self), BootstrapError> {
+    pub fn new(addr: &SocketAddr) -> Result<(BootstrapListenerStopHandle, Self), BootstrapError> {
+        let domain = if addr.is_ipv4() {
+            socket2::Domain::IPV4
+        } else {
+            socket2::Domain::IPV6
+        };
+
+        let socket = socket2::Socket::new(domain, socket2::Type::STREAM, None)?;
+
+        if addr.is_ipv6() {
+            socket.set_only_v6(false)?;
+        }
+        socket.bind(&(*addr).into())?;
+
+        // Number of connections to queue, set to the hardcoded value used by tokio
+        socket.listen(1024)?;
+
         info!("Starting bootstrap listener on {}", &addr);
-        let server = TcpListener::bind(addr)?;
+        let server: TcpListener = socket.into();
+
         let mut mio_server =
             MioTcpListener::from_std(server.try_clone().expect("Unable to clone server socket"));
 
