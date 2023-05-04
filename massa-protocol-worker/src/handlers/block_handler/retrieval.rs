@@ -144,14 +144,34 @@ impl RetrievalThread {
                                 }
                                 BlockMessage::ReplyForBlocks(block_infos) => {
                                     debug!("Received block message: ReplyForBlocks from {}", peer_id);
+                                    for info in &block_infos {
+                                        match info.1 {
+                                            BlockInfoReply::Header(_) => {
+                                                println!("Received block info: for block {:?} of type header ", info.0);
+                                            },
+                                            BlockInfoReply::Operations(_) => {
+                                                println!("Received block info: for block {:?} of type operations ", info.0);
+                                            },
+                                            BlockInfoReply::Info(_) => {
+                                                println!("Received block info: for block {:?} of type info ", info.0);
+                                            },
+                                            BlockInfoReply::NotFound => {
+                                                println!("Received block info: for block {:?} of type not found ", info.0);
+                                            }
+                                        }
+                                    }
                                     for (block_id, block_info) in block_infos.into_iter() {
+                                        println!("AURELIEN: BEFORE ON_BLOCK_INFO_RECEIVED");
                                         if let Err(err) = self.on_block_info_received(peer_id.clone(), block_id, block_info) {
                                             warn!("Error in on_block_info_received: {:?}", err);
                                         }
+                                        println!("AURELIEN: AFTER ON_BLOCK_INFO_RECEIVED");
                                     }
+                                    println!("AURELIEN: BEFORE UPDATE ASK BLOCK");
                                     if let Err(err) = self.update_ask_block() {
                                         warn!("Error in update_ask_blocks: {:?}", err);
                                     }
+                                    println!("AURELIEN: AFTER UPDATE ASK BLOCK");
                                 }
                                 BlockMessage::BlockHeader(header) => {
                                     debug!("Received block message: BlockHeader from {}", peer_id);
@@ -380,6 +400,7 @@ impl RetrievalThread {
         block_id: BlockId,
         header: SecuredHeader,
     ) -> Result<(), ProtocolError> {
+        println!("AURELIEN: BEFORE on_block_header_received");
         if let Some(info) = self.block_wishlist.get(&block_id) {
             if info.header.is_some() {
                 warn!(
@@ -404,6 +425,7 @@ impl RetrievalThread {
                 return Ok(());
             }
         }
+        println!("AURELIEN: on_block_header_received after wishlist check");
         if let Err(err) = self.note_header_from_peer(&header, &from_peer_id) {
             warn!(
                 "peer {} sent us critically incorrect header through protocol, \
@@ -416,6 +438,7 @@ impl RetrievalThread {
             }
             return Ok(());
         };
+        println!("AURELIEN: on_block_header_received after note header");
         if let Some(info) = self.block_wishlist.get_mut(&block_id) {
             info.header = Some(header);
         }
@@ -426,6 +449,7 @@ impl RetrievalThread {
         let mut set = PreHashSet::<BlockId>::with_capacity(1);
         set.insert(block_id);
         self.remove_asked_blocks_of_node(&set);
+        println!("AURELIEN: AFTER on_block_header_received");
         Ok(())
     }
 
@@ -672,6 +696,7 @@ impl RetrievalThread {
         block_id: BlockId,
         operation_ids: Vec<OperationId>,
     ) -> Result<(), ProtocolError> {
+        println!("AURELIEN: BEFORE on_block_operation_list_received");
         // All operation ids sent into a set
         let operation_ids_set: PreHashSet<OperationId> = operation_ids.iter().cloned().collect();
 
@@ -691,6 +716,7 @@ impl RetrievalThread {
                 known_ops.put(op_id.prefix(), ());
             }
         }
+        println!("AURELIEN: on_block_operation_list_received after ops update");
 
         let info = if let Some(info) = self.block_wishlist.get_mut(&block_id) {
             info
@@ -708,6 +734,7 @@ impl RetrievalThread {
             }
             return Ok(());
         };
+        println!("AURELIEN: on_block_operation_list_received after wishlist update");
 
         let header = if let Some(header) = &info.header {
             header
@@ -723,6 +750,8 @@ impl RetrievalThread {
             return Ok(());
         };
 
+        println!("AURELIEN: on_block_operation_list_received after wishlist update2");
+
         if info.operation_ids.is_some() {
             warn!(
                 "Peer {} sent us an operation list for block id {} but we already received it.",
@@ -737,6 +766,8 @@ impl RetrievalThread {
             }
             return Ok(());
         }
+
+        println!("AURELIEN: on_block_operation_list_received after asked block update");
 
         let mut total_hash: Vec<u8> =
             Vec::with_capacity(operation_ids.len().saturating_mul(HASH_SIZE_BYTES));
@@ -792,6 +823,7 @@ impl RetrievalThread {
                     Default::default(),
                 );
             }
+            println!("AURELIEN: AFTER on_block_operation_list_received");
         } else {
             warn!("Peer id {} sent us a operation list for block id {} but the hash in header doesn't match.", from_peer_id, block_id);
             if let Err(err) = self.ban_node(&from_peer_id) {
@@ -834,6 +866,7 @@ impl RetrievalThread {
         block_id: BlockId,
         mut operations: Vec<SecureShareOperation>,
     ) -> Result<(), ProtocolError> {
+        println!("AURELIEN: BEFORE on_block_full_operations_received");
         if let Err(err) = self.note_operations_from_peer(operations.clone(), &from_peer_id) {
             warn!(
                 "Peer id {} sent us operations for block id {} but they failed at verifications. Err = {}",
@@ -844,6 +877,8 @@ impl RetrievalThread {
             }
             return Ok(());
         }
+
+        println!("AURELIEN: on_block_full_operations_received after note ops");
 
         match self.block_wishlist.entry(block_id) {
             Entry::Occupied(mut entry) => {
@@ -874,6 +909,7 @@ impl RetrievalThread {
                     }
                     return Ok(());
                 };
+                println!("AURELIEN: on_block_full_operations_received after update wishlist 2");
                 operations.retain(|op| block_operation_ids.contains(&op.id));
                 // add operations to local storage and claim ref
                 info.storage.store_operations(operations);
@@ -965,9 +1001,12 @@ impl RetrievalThread {
             }
         };
 
+        println!("AURELIEN: on_block_full_operations_received after wishlist update");
+
         // Update ask block
         let remove_hashes = vec![block_id].into_iter().collect();
         self.remove_asked_blocks_of_node(&remove_hashes);
+        println!("AURELIEN: AFTER on_block_full_operations_received");
         Ok(())
     }
 
@@ -1205,23 +1244,29 @@ impl RetrievalThread {
 
         for (hash, criteria) in candidate_nodes.into_iter() {
             // find the best node
-            if let Some((_knowledge, best_node, required_info)) = criteria
+            if let Some((_knowledge, best_node, required_info, _)) = criteria
                 .into_iter()
-                .filter(|(_knowledge, peer_id, _)| {
+                .filter_map(|(knowledge, peer_id, required_info)| {
                     // filter out nodes with too many active block requests
-                    *active_block_req_count.get(peer_id).unwrap_or(&0)
+                    if *active_block_req_count.get(&peer_id).unwrap_or(&0)
                         <= self.config.max_simultaneous_ask_blocks_per_node
+                    {
+                        if let Some(peer_data) =
+                            self.cache.read().blocks_known_by_peer.peek(&peer_id)
+                        {
+                            Some((knowledge, peer_id, required_info, peer_data.1))
+                        } else {
+                            None
+                        }
+                    } else {
+                        None
+                    }
                 })
-                .min_by_key(|(knowledge, peer_id, _)| {
+                .min_by_key(|(knowledge, peer_id, _, instant)| {
                     (
                         *knowledge,                                         // block knowledge
                         *active_block_req_count.get(peer_id).unwrap_or(&0), // active requests
-                        self.cache
-                            .read()
-                            .blocks_known_by_peer
-                            .peek(peer_id)
-                            .unwrap()
-                            .1, // node age (will not panic, already checked)
+                        *instant,                                           // node age
                         peer_id.clone(),                                    // node ID
                     )
                 })
