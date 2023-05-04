@@ -23,10 +23,6 @@ use std::{convert::TryInto, str::FromStr};
 
 use transition::Versioned;
 
-/// IMPORTANT TODO: FIX THIS
-pub const SIGNATURE_SIZE_BYTES: usize = 64 + 1;
-const SECRET_KEY_BYTES_SIZE: usize = 32;
-
 #[allow(missing_docs)]
 /// A versioned KeyPair used for signature and decryption
 #[transition::versioned(versions("0", "1"))]
@@ -203,18 +199,13 @@ impl KeyPair {
         let (rest, version) = u64_deserializer
             .deserialize::<DeserializeError>(data)
             .map_err(|err| MassaSignatureError::ParsingError(err.to_string()))?;
-        if rest.len() != SECRET_KEY_BYTES_SIZE {
-            return Err(MassaSignatureError::ParsingError(
-                "invalid number of bytes".to_string(),
-            ));
-        }
         match version {
-            <KeyPair!["0"]>::VERSION => Ok(KeyPairVariant!["0"](<KeyPair!["0"]>::from_bytes(
-                rest.try_into().unwrap(),
-            )?)),
-            <KeyPair!["1"]>::VERSION => Ok(KeyPairVariant!["1"](<KeyPair!["1"]>::from_bytes(
-                rest.try_into().unwrap(),
-            )?)),
+            <KeyPair!["0"]>::VERSION => {
+                Ok(KeyPairVariant!["0"](<KeyPair!["0"]>::from_bytes(rest)?))
+            }
+            <KeyPair!["1"]>::VERSION => {
+                Ok(KeyPairVariant!["1"](<KeyPair!["1"]>::from_bytes(rest)?))
+            }
             _ => Err(MassaSignatureError::InvalidVersionError(format!(
                 "Unknown keypair version: {}",
                 version
@@ -301,10 +292,13 @@ impl KeyPair {
     /// let bytes = keypair.to_bytes();
     /// let keypair2 = KeyPair::from_bytes(&bytes).unwrap();
     /// ```
-    pub fn from_bytes(
-        data: &[u8; Self::SECRET_KEY_BYTES_SIZE],
-    ) -> Result<Self, MassaSignatureError> {
-        let secret = ed25519_dalek::SecretKey::from_bytes(&data[..]).map_err(|err| {
+    pub fn from_bytes(data: &[u8]) -> Result<Self, MassaSignatureError> {
+        if data.len() != Self::SECRET_KEY_BYTES_SIZE {
+            return Err(MassaSignatureError::ParsingError(
+                "keypair byte array is of invalid size".to_string(),
+            ));
+        }
+        let secret = ed25519_dalek::SecretKey::from_bytes(&data).map_err(|err| {
             MassaSignatureError::ParsingError(format!("keypair bytes parsing error: {}", err))
         })?;
         Ok(KeyPair(ed25519_dalek::Keypair {
@@ -638,22 +632,12 @@ impl PublicKey {
             .deserialize::<DeserializeError>(data)
             .map_err(|err| MassaSignatureError::ParsingError(err.to_string()))?;
         match version {
-            <PublicKey!["0"]>::VERSION => Ok(PublicKeyVariant!["0"](
-                <PublicKey!["0"]>::from_bytes(rest.try_into().map_err(|err| {
-                    MassaSignatureError::ParsingError(format!(
-                        "pubkey bytes parsing error: {}",
-                        err
-                    ))
-                })?)?,
-            )),
-            <PublicKey!["1"]>::VERSION => Ok(PublicKeyVariant!["1"](
-                <PublicKey!["1"]>::from_bytes(rest.try_into().map_err(|err| {
-                    MassaSignatureError::ParsingError(format!(
-                        "pubkey bytes parsing error: {}",
-                        err
-                    ))
-                })?)?,
-            )),
+            <PublicKey!["0"]>::VERSION => {
+                Ok(PublicKeyVariant!["0"](<PublicKey!["0"]>::from_bytes(rest)?))
+            }
+            <PublicKey!["1"]>::VERSION => {
+                Ok(PublicKeyVariant!["1"](<PublicKey!["1"]>::from_bytes(rest)?))
+            }
             _ => Err(MassaSignatureError::InvalidVersionError(format!(
                 "Unknown PublicKey version: {}",
                 version
@@ -747,9 +731,12 @@ impl PublicKey {
     /// let serialized = keypair.get_public_key().to_bytes();
     /// let deserialized: PublicKey = PublicKey::from_bytes(&serialized).unwrap();
     /// ```
-    pub fn from_bytes(
-        data: &[u8; Self::PUBLIC_KEY_SIZE_BYTES],
-    ) -> Result<PublicKey, MassaSignatureError> {
+    pub fn from_bytes(data: &[u8]) -> Result<PublicKey, MassaSignatureError> {
+        if data.len() != Self::PUBLIC_KEY_SIZE_BYTES {
+            return Err(MassaSignatureError::ParsingError(
+                "public key byte array is of invalid size".to_string(),
+            ));
+        }
         ed25519_dalek::PublicKey::from_bytes(data)
             .map(|d| Self(d))
             .map_err(|err| MassaSignatureError::ParsingError(err.to_string()))
@@ -1018,24 +1005,10 @@ impl Signature {
             .map_err(|err| MassaSignatureError::ParsingError(err.to_string()))?;
         match version {
             <Signature!["0"]>::VERSION => {
-                Ok(SignatureVariant!["0"](<Signature!["0"]>::from_bytes(
-                    rest[..SIGNATURE_SIZE_BYTES - 1].try_into().map_err(|err| {
-                        MassaSignatureError::ParsingError(format!(
-                            "signature bytes parsing error: {}",
-                            err
-                        ))
-                    })?,
-                )?))
+                Ok(SignatureVariant!["0"](<Signature!["0"]>::from_bytes(rest)?))
             }
             <Signature!["1"]>::VERSION => {
-                Ok(SignatureVariant!["1"](<Signature!["1"]>::from_bytes(
-                    rest[..SIGNATURE_SIZE_BYTES - 1].try_into().map_err(|err| {
-                        MassaSignatureError::ParsingError(format!(
-                            "signature bytes parsing error: {}",
-                            err
-                        ))
-                    })?,
-                )?))
+                Ok(SignatureVariant!["1"](<Signature!["1"]>::from_bytes(rest)?))
             }
             _ => Err(MassaSignatureError::InvalidVersionError(format!(
                 "Unknown signature version: {}",
@@ -1118,14 +1091,7 @@ impl Signature {
                     err
                 ))
             })
-            .and_then(|signature| {
-                Signature::from_bytes(&signature.try_into().map_err(|err| {
-                    MassaSignatureError::ParsingError(format!(
-                        "signature bs58_check parsing error: {:?}",
-                        err
-                    ))
-                })?)
-            })
+            .and_then(|signature_bytes: Vec<u8>| Signature::from_bytes(&signature_bytes))
     }
 }
 
@@ -1145,9 +1111,12 @@ impl Signature {
     /// let serialized = signature.to_bytes();
     /// let deserialized: Signature = Signature::from_bytes(&serialized).unwrap();
     /// ```
-    pub fn from_bytes(
-        data: &[u8; Self::SIGNATURE_SIZE_BYTES],
-    ) -> Result<Signature, MassaSignatureError> {
+    pub fn from_bytes(data: &[u8]) -> Result<Signature, MassaSignatureError> {
+        if data.len() != Self::SIGNATURE_SIZE_BYTES {
+            return Err(MassaSignatureError::ParsingError(
+                "signature byte array is of invalid size".to_string(),
+            ));
+        }
         ed25519_dalek::Signature::from_bytes(&data[..])
             .map(|s| Self(s))
             .map_err(|err| {
@@ -1269,6 +1238,9 @@ impl SignatureDeserializer {
         Self
     }
 }
+
+/// IMPORTANT TODO: FIX THIS
+pub const SIGNATURE_SIZE_BYTES: usize = 64 + 1;
 
 impl Deserializer<Signature> for SignatureDeserializer {
     /// ```
