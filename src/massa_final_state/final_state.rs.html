@@ -829,6 +829,118 @@
 <a href="#829" id="829">829</a>
 <a href="#830" id="830">830</a>
 <a href="#831" id="831">831</a>
+<a href="#832" id="832">832</a>
+<a href="#833" id="833">833</a>
+<a href="#834" id="834">834</a>
+<a href="#835" id="835">835</a>
+<a href="#836" id="836">836</a>
+<a href="#837" id="837">837</a>
+<a href="#838" id="838">838</a>
+<a href="#839" id="839">839</a>
+<a href="#840" id="840">840</a>
+<a href="#841" id="841">841</a>
+<a href="#842" id="842">842</a>
+<a href="#843" id="843">843</a>
+<a href="#844" id="844">844</a>
+<a href="#845" id="845">845</a>
+<a href="#846" id="846">846</a>
+<a href="#847" id="847">847</a>
+<a href="#848" id="848">848</a>
+<a href="#849" id="849">849</a>
+<a href="#850" id="850">850</a>
+<a href="#851" id="851">851</a>
+<a href="#852" id="852">852</a>
+<a href="#853" id="853">853</a>
+<a href="#854" id="854">854</a>
+<a href="#855" id="855">855</a>
+<a href="#856" id="856">856</a>
+<a href="#857" id="857">857</a>
+<a href="#858" id="858">858</a>
+<a href="#859" id="859">859</a>
+<a href="#860" id="860">860</a>
+<a href="#861" id="861">861</a>
+<a href="#862" id="862">862</a>
+<a href="#863" id="863">863</a>
+<a href="#864" id="864">864</a>
+<a href="#865" id="865">865</a>
+<a href="#866" id="866">866</a>
+<a href="#867" id="867">867</a>
+<a href="#868" id="868">868</a>
+<a href="#869" id="869">869</a>
+<a href="#870" id="870">870</a>
+<a href="#871" id="871">871</a>
+<a href="#872" id="872">872</a>
+<a href="#873" id="873">873</a>
+<a href="#874" id="874">874</a>
+<a href="#875" id="875">875</a>
+<a href="#876" id="876">876</a>
+<a href="#877" id="877">877</a>
+<a href="#878" id="878">878</a>
+<a href="#879" id="879">879</a>
+<a href="#880" id="880">880</a>
+<a href="#881" id="881">881</a>
+<a href="#882" id="882">882</a>
+<a href="#883" id="883">883</a>
+<a href="#884" id="884">884</a>
+<a href="#885" id="885">885</a>
+<a href="#886" id="886">886</a>
+<a href="#887" id="887">887</a>
+<a href="#888" id="888">888</a>
+<a href="#889" id="889">889</a>
+<a href="#890" id="890">890</a>
+<a href="#891" id="891">891</a>
+<a href="#892" id="892">892</a>
+<a href="#893" id="893">893</a>
+<a href="#894" id="894">894</a>
+<a href="#895" id="895">895</a>
+<a href="#896" id="896">896</a>
+<a href="#897" id="897">897</a>
+<a href="#898" id="898">898</a>
+<a href="#899" id="899">899</a>
+<a href="#900" id="900">900</a>
+<a href="#901" id="901">901</a>
+<a href="#902" id="902">902</a>
+<a href="#903" id="903">903</a>
+<a href="#904" id="904">904</a>
+<a href="#905" id="905">905</a>
+<a href="#906" id="906">906</a>
+<a href="#907" id="907">907</a>
+<a href="#908" id="908">908</a>
+<a href="#909" id="909">909</a>
+<a href="#910" id="910">910</a>
+<a href="#911" id="911">911</a>
+<a href="#912" id="912">912</a>
+<a href="#913" id="913">913</a>
+<a href="#914" id="914">914</a>
+<a href="#915" id="915">915</a>
+<a href="#916" id="916">916</a>
+<a href="#917" id="917">917</a>
+<a href="#918" id="918">918</a>
+<a href="#919" id="919">919</a>
+<a href="#920" id="920">920</a>
+<a href="#921" id="921">921</a>
+<a href="#922" id="922">922</a>
+<a href="#923" id="923">923</a>
+<a href="#924" id="924">924</a>
+<a href="#925" id="925">925</a>
+<a href="#926" id="926">926</a>
+<a href="#927" id="927">927</a>
+<a href="#928" id="928">928</a>
+<a href="#929" id="929">929</a>
+<a href="#930" id="930">930</a>
+<a href="#931" id="931">931</a>
+<a href="#932" id="932">932</a>
+<a href="#933" id="933">933</a>
+<a href="#934" id="934">934</a>
+<a href="#935" id="935">935</a>
+<a href="#936" id="936">936</a>
+<a href="#937" id="937">937</a>
+<a href="#938" id="938">938</a>
+<a href="#939" id="939">939</a>
+<a href="#940" id="940">940</a>
+<a href="#941" id="941">941</a>
+<a href="#942" id="942">942</a>
+<a href="#943" id="943">943</a>
 </pre><pre class="rust"><code><span class="doccomment">//! Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 //! This file defines the final state of the node, which includes
@@ -837,25 +949,37 @@
 //! and need to be bootstrapped by nodes joining the network.
 
 </span><span class="kw">use crate</span>::{config::FinalStateConfig, error::FinalStateError, state_changes::StateChanges};
-<span class="kw">use </span>core::ops::Bound::{Excluded, Included};
-<span class="kw">use </span>massa_async_pool::{AsyncMessageIdDeserializer, AsyncPool, AsyncPoolChanges};
-<span class="kw">use </span>massa_db::{
-    DBBatch, MassaDB, ASYNC_POOL_PREFIX, CF_ERROR, CYCLE_HISTORY_PREFIX, DEFERRED_CREDITS_PREFIX,
-    EXECUTED_DENUNCIATIONS_PREFIX, EXECUTED_OPS_PREFIX, KEY_DESER_ERROR, LEDGER_PREFIX,
-    MESSAGE_ID_DESER_ERROR, SLOT_DESER_ERROR, STATE_CF,
+<span class="kw">use </span>massa_async_pool::{
+    AsyncMessage, AsyncMessageId, AsyncPool, AsyncPoolChanges, AsyncPoolDeserializer,
+    AsyncPoolSerializer, Change,
 };
-<span class="kw">use </span>massa_executed_ops::{ExecutedDenunciations, ExecutedOps};
-<span class="kw">use </span>massa_hash::{Hash, HASH_SIZE_BYTES};
-<span class="kw">use </span>massa_ledger_exports::{KeyDeserializer, LedgerChanges, LedgerController};
-<span class="kw">use </span>massa_models::config::PERIODS_BETWEEN_BACKUPS;
-<span class="kw">use </span>massa_models::slot::SlotDeserializer;
-<span class="kw">use </span>massa_models::{slot::Slot, streaming_step::StreamingStep};
-<span class="kw">use </span>massa_pos_exports::{DeferredCredits, PoSFinalState, SelectorController};
-<span class="kw">use </span>massa_serialization::{DeserializeError, Deserializer};
-<span class="kw">use </span>parking_lot::RwLock;
-<span class="kw">use </span>rocksdb::{Direction, IteratorMode};
-<span class="kw">use </span>std::collections::BTreeMap;
-<span class="kw">use </span>std::{collections::VecDeque, sync::Arc};
+<span class="kw">use </span>massa_executed_ops::{
+    ExecutedDenunciations, ExecutedDenunciationsDeserializer, ExecutedDenunciationsSerializer,
+    ExecutedOps, ExecutedOpsDeserializer, ExecutedOpsSerializer,
+};
+<span class="kw">use </span>massa_hash::{Hash, HashDeserializer, HASH_SIZE_BYTES};
+<span class="kw">use </span>massa_ledger_exports::{Key <span class="kw">as </span>LedgerKey, LedgerChanges, LedgerController};
+<span class="kw">use </span>massa_models::denunciation::DenunciationIndex;
+<span class="kw">use </span>massa_models::{
+    <span class="comment">// TODO: uncomment when deserializing the final state from ledger
+    /*config::{
+        MAX_ASYNC_POOL_LENGTH, MAX_DATASTORE_KEY_LENGTH, MAX_DEFERRED_CREDITS_LENGTH,
+        MAX_EXECUTED_OPS_LENGTH, MAX_OPERATIONS_PER_BLOCK, MAX_PRODUCTION_STATS_LENGTH,
+        MAX_ROLLS_COUNT_LENGTH,
+    },*/
+    </span>operation::OperationId,
+    prehash::PreHashSet,
+    slot::{Slot, SlotDeserializer, SlotSerializer},
+    streaming_step::StreamingStep,
+};
+<span class="kw">use </span>massa_pos_exports::{
+    CycleHistoryDeserializer, CycleHistorySerializer, CycleInfo, DeferredCredits,
+    DeferredCreditsDeserializer, DeferredCreditsSerializer, PoSFinalState, SelectorController,
+};
+<span class="kw">use </span>massa_serialization::{Deserializer, SerializeError, Serializer};
+<span class="kw">use </span>nom::{error::context, sequence::tuple, IResult, Parser};
+<span class="kw">use </span>std::collections::{BTreeMap, HashSet, VecDeque};
+<span class="kw">use </span>std::ops::Bound::{Excluded, Included};
 <span class="kw">use </span>tracing::{debug, info};
 
 <span class="doccomment">/// Represents a final state `(ledger, async pool, executed_ops, executed_de and the state of the PoS)`
@@ -880,17 +1004,10 @@
     <span class="doccomment">/// hash of the final state, it is computed on finality
     </span><span class="kw">pub </span>final_state_hash: Hash,
     <span class="doccomment">/// last_start_period
-    /// * If start new network: set to 0
+    /// * If start all new network: set to 0
     /// * If from snapshot: retrieve from args
     /// * If from bootstrap: set during bootstrap
     </span><span class="kw">pub </span>last_start_period: u64,
-    <span class="doccomment">/// last_slot_before_downtime
-    /// * None if start new network
-    /// * If from snapshot: retrieve from the slot attached to the snapshot
-    /// * If from bootstrap: set during bootstrap
-    </span><span class="kw">pub </span>last_slot_before_downtime: <span class="prelude-ty">Option</span>&lt;Slot&gt;,
-    <span class="doccomment">/// the rocksdb instance used to write every final_state struct on disk
-    </span><span class="kw">pub </span>db: Arc&lt;RwLock&lt;MassaDB&gt;&gt;,
 }
 
 <span class="kw">const </span>FINAL_STATE_HASH_INITIAL_BYTES: <span class="kw-2">&amp;</span>[u8; <span class="number">32</span>] = <span class="kw-2">&amp;</span>[<span class="number">0</span>; HASH_SIZE_BYTES];
@@ -903,38 +1020,17 @@
     /// * `ledger`: the instance of the ledger on disk. Used to apply changes to the ledger.
     /// * `selector`: the pos selector. Used to send draw inputs when a new cycle is completed.
     </span><span class="kw">pub fn </span>new(
-        db: Arc&lt;RwLock&lt;MassaDB&gt;&gt;,
         config: FinalStateConfig,
         ledger: Box&lt;<span class="kw">dyn </span>LedgerController&gt;,
         selector: Box&lt;<span class="kw">dyn </span>SelectorController&gt;,
-        reset_final_state: bool,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="self">Self</span>, FinalStateError&gt; {
-        <span class="kw">let </span>state_slot = db.read().get_slot(config.thread_count);
-
-        <span class="kw">match </span>state_slot {
-            <span class="prelude-val">Ok</span>(slot) =&gt; {
-                <span class="macro">info!</span>(
-                    <span class="string">&quot;Recovered ledger. state slot: {}, state hash: {}&quot;</span>,
-                    slot,
-                    db.read().get_db_hash()
-                );
-            }
-            <span class="prelude-val">Err</span>(_e) =&gt; {
-                <span class="macro">info!</span>(
-                    <span class="string">&quot;Recovered ledger. Unknown state slot, state hash: {}&quot;</span>,
-                    db.read().get_db_hash()
-                );
-            }
-        }
-
         <span class="comment">// create the pos state
         </span><span class="kw">let </span>pos_state = PoSFinalState::new(
             config.pos_config.clone(),
             <span class="kw-2">&amp;</span>config.initial_seed_string,
             <span class="kw-2">&amp;</span>config.initial_rolls_path,
             selector,
-            db.read().get_db_hash(),
-            db.clone(),
+            ledger.get_ledger_hash(),
         )
         .map_err(|err| FinalStateError::PosError(<span class="macro">format!</span>(<span class="string">&quot;PoS final state init error: {}&quot;</span>, err)))<span class="question-mark">?</span>;
 
@@ -942,16 +1038,17 @@
         </span><span class="kw">let </span>slot = Slot::new(<span class="number">0</span>, config.thread_count.saturating_sub(<span class="number">1</span>));
 
         <span class="comment">// create the async pool
-        </span><span class="kw">let </span>async_pool = AsyncPool::new(config.async_pool_config.clone(), db.clone());
+        </span><span class="kw">let </span>async_pool = AsyncPool::new(config.async_pool_config.clone());
 
         <span class="comment">// create a default executed ops
-        </span><span class="kw">let </span>executed_ops = ExecutedOps::new(config.executed_ops_config.clone(), db.clone());
+        </span><span class="kw">let </span>executed_ops = ExecutedOps::new(config.executed_ops_config.clone());
 
         <span class="comment">// create a default executed denunciations
         </span><span class="kw">let </span>executed_denunciations =
-            ExecutedDenunciations::new(config.executed_denunciations_config.clone(), db.clone());
+            ExecutedDenunciations::new(config.executed_denunciations_config.clone());
 
-        <span class="kw">let </span><span class="kw-2">mut </span>final_state = FinalState {
+        <span class="comment">// create the final state
+        </span><span class="prelude-val">Ok</span>(FinalState {
             slot,
             ledger,
             async_pool,
@@ -962,25 +1059,7 @@
             changes_history: Default::default(), <span class="comment">// no changes in history
             </span>final_state_hash: Hash::from_bytes(FINAL_STATE_HASH_INITIAL_BYTES),
             last_start_period: <span class="number">0</span>,
-            last_slot_before_downtime: <span class="prelude-val">None</span>,
-            db,
-        };
-
-        <span class="kw">if </span>reset_final_state {
-            final_state.async_pool.reset();
-            final_state.pos_state.reset();
-            final_state.executed_ops.reset();
-            final_state.executed_denunciations.reset();
-        }
-
-        <span class="macro">info!</span>(
-            <span class="string">&quot;final_state hash at slot {}: {}&quot;</span>,
-            slot,
-            final_state.db.read().get_db_hash()
-        );
-
-        <span class="comment">// create the final state
-        </span><span class="prelude-val">Ok</span>(final_state)
+        })
     }
 
     <span class="doccomment">/// Initializes a `FinalState` from a snapshot. Currently, we do not use the final_state from the ledger,
@@ -992,7 +1071,6 @@
     /// * `selector`: the pos selector. Used to send draw inputs when a new cycle is completed.
     /// * `last_start_period`: at what period we should attach the final_state
     </span><span class="kw">pub fn </span>new_derived_from_snapshot(
-        db: Arc&lt;RwLock&lt;MassaDB&gt;&gt;,
         config: FinalStateConfig,
         ledger: Box&lt;<span class="kw">dyn </span>LedgerController&gt;,
         selector: Box&lt;<span class="kw">dyn </span>SelectorController&gt;,
@@ -1001,31 +1079,33 @@
         <span class="macro">info!</span>(<span class="string">&quot;Restarting from snapshot&quot;</span>);
 
         <span class="comment">// FIRST, we recover the last known final_state
-        </span><span class="kw">let </span><span class="kw-2">mut </span>final_state = FinalState::new(db, config, ledger, selector, <span class="bool-val">false</span>)<span class="question-mark">?</span>;
+        </span><span class="kw">let </span><span class="kw-2">mut </span>final_state = FinalState::new(config, ledger, selector)<span class="question-mark">?</span>;
+        <span class="kw">let </span>_final_state_hash_from_snapshot = Hash::from_bytes(FINAL_STATE_HASH_INITIAL_BYTES);
         final_state.pos_state.create_initial_cycle();
 
-        final_state.slot = final_state
-            .db
-            .read()
-            .get_slot(final_state.config.thread_count)
-            .map_err(|<span class="kw">_</span>| {
-                FinalStateError::InvalidSlot(String::from(<span class="string">&quot;Could not recover Slot in Ledger&quot;</span>))
-            })<span class="question-mark">?</span>;
+        <span class="comment">// TODO: We recover the final_state from the RocksDB instance instead
+        /*let final_state_data = ledger
+        .get_final_state()
+        .expect(&quot;Cannot retrieve ledger final_state data&quot;);*/
 
-        final_state.last_slot_before_downtime = <span class="prelude-val">Some</span>(final_state.slot);
+        </span>final_state.slot = final_state.ledger.get_slot().map_err(|<span class="kw">_</span>| {
+            FinalStateError::InvalidSlot(String::from(<span class="string">&quot;Could not recover Slot in Ledger&quot;</span>))
+        })<span class="question-mark">?</span>;
 
         <span class="macro">debug!</span>(
             <span class="string">&quot;Latest consistent slot found in snapshot data: {}&quot;</span>,
             final_state.slot
         );
 
-        <span class="macro">info!</span>(
-            <span class="string">&quot;final_state hash at slot {}: {}&quot;</span>,
-            final_state.slot,
-            final_state.db.read().get_db_hash()
-        );
+        final_state.compute_state_hash_at_slot(final_state.slot);
 
-        <span class="comment">// Then, interpolate the downtime, to attach at end_slot;
+        <span class="comment">// Check the hash to see if we correctly recovered the snapshot
+        // TODO: Redo this check when we get the final_state from the ledger
+        /*if final_state.final_state_hash != final_state_hash_from_snapshot {
+            warn!(&quot;The hash of the final_state recovered from the snapshot is different from the hash saved.&quot;);
+        }*/
+
+        // Then, interpolate the downtime, to attach at end_slot;
         </span>final_state.last_start_period = last_start_period;
 
         final_state.init_ledger_hash(last_start_period);
@@ -1044,14 +1124,12 @@
             last_start_period,
             <span class="self">self</span>.config.thread_count.saturating_sub(<span class="number">1</span>),
         );
-        <span class="kw">let </span><span class="kw-2">mut </span>batch = DBBatch::new(<span class="self">self</span>.db.read().get_db_hash());
-        <span class="self">self</span>.db.read().set_slot(slot, <span class="kw-2">&amp;mut </span>batch);
-        <span class="self">self</span>.db.read().write_batch(batch);
-        <span class="self">self</span>.pos_state.initial_ledger_hash = <span class="self">self</span>.db.read().get_db_hash();
+        <span class="self">self</span>.ledger.set_initial_slot(slot);
+        <span class="self">self</span>.pos_state.initial_ledger_hash = <span class="self">self</span>.ledger.get_ledger_hash();
 
         <span class="macro">info!</span>(
             <span class="string">&quot;Set initial ledger hash to {}&quot;</span>,
-            <span class="self">self</span>.db.read().get_db_hash().to_string()
+            <span class="self">self</span>.ledger.get_ledger_hash().to_string()
         )
     }
 
@@ -1085,11 +1163,7 @@
         <span class="self">self</span>.slot = end_slot;
 
         <span class="comment">// Recompute the hash with the updated data and feed it to POS_state.
-        </span><span class="macro">info!</span>(
-            <span class="string">&quot;final_state hash at slot {}: {}&quot;</span>,
-            <span class="self">self</span>.slot,
-            <span class="self">self</span>.db.read().get_db_hash()
-        );
+        </span><span class="self">self</span>.compute_state_hash_at_slot(<span class="self">self</span>.slot);
 
         <span class="comment">// feed final_state_hash to the last cycle
         </span><span class="kw">let </span>cycle = <span class="self">self</span>.slot.get_cycle(<span class="self">self</span>.config.periods_per_cycle);
@@ -1105,16 +1179,13 @@
         current_slot: Slot,
         end_slot: Slot,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;(), FinalStateError&gt; {
-        <span class="kw">let </span>latest_snapshot_cycle =
+        <span class="kw">let </span>latest_snapshot_cycle_info =
             <span class="self">self</span>.pos_state
-                .cycle_history_cache
+                .cycle_history
                 .pop_back()
                 .ok_or(FinalStateError::SnapshotError(String::from(
                     <span class="string">&quot;Invalid cycle_history&quot;</span>,
                 )))<span class="question-mark">?</span>;
-
-        <span class="kw">let </span>latest_snapshot_cycle_info = <span class="self">self</span>.pos_state.get_cycle_info(latest_snapshot_cycle.<span class="number">0</span>);
-        <span class="self">self</span>.pos_state.delete_cycle_info(latest_snapshot_cycle.<span class="number">0</span>);
 
         <span class="self">self</span>.pos_state
             .create_new_cycle_from_last(
@@ -1137,18 +1208,16 @@
         current_slot_cycle: u64,
         end_slot_cycle: u64,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;(), FinalStateError&gt; {
-        <span class="kw">let </span>latest_snapshot_cycle =
+        <span class="kw">let </span>latest_snapshot_cycle_info =
             <span class="self">self</span>.pos_state
-                .cycle_history_cache
+                .cycle_history
                 .pop_back()
                 .ok_or(FinalStateError::SnapshotError(String::from(
                     <span class="string">&quot;Invalid cycle_history&quot;</span>,
                 )))<span class="question-mark">?</span>;
 
-        <span class="kw">let </span>latest_snapshot_cycle_info = <span class="self">self</span>.pos_state.get_cycle_info(latest_snapshot_cycle.<span class="number">0</span>);
-        <span class="self">self</span>.pos_state.delete_cycle_info(latest_snapshot_cycle.<span class="number">0</span>);
-
         <span class="comment">// Firstly, complete the first cycle
+
         </span><span class="kw">let </span>last_slot = Slot::new_last_of_cycle(
             current_slot_cycle,
             <span class="self">self</span>.config.periods_per_cycle,
@@ -1174,11 +1243,8 @@
         <span class="comment">// Feed final_state_hash to the completed cycle
         </span><span class="self">self</span>.feed_cycle_hash_and_selector_for_interpolation(current_slot_cycle)<span class="question-mark">?</span>;
 
-        <span class="comment">// Then, build all the completed cycles in betweens. If we have to build more cycles than the cycle_history_length, we only build the last ones.
-        </span><span class="kw">let </span>current_slot_cycle = (current_slot_cycle + <span class="number">1</span>)
-            .max(end_slot_cycle.saturating_sub(<span class="self">self</span>.config.pos_config.cycle_history_length <span class="kw">as </span>u64));
-
-        <span class="kw">for </span>cycle <span class="kw">in </span>current_slot_cycle..end_slot_cycle {
+        <span class="comment">// Then, build all the already completed cycles
+        </span><span class="kw">for </span>cycle <span class="kw">in </span>(current_slot_cycle + <span class="number">1</span>)..end_slot_cycle {
             <span class="kw">let </span>first_slot = Slot::new_first_of_cycle(cycle, <span class="self">self</span>.config.periods_per_cycle)
                 .map_err(|err| {
                     FinalStateError::InvalidSlot(<span class="macro">format!</span>(
@@ -1227,11 +1293,8 @@
         }
 
         <span class="comment">// We reduce the cycle_history len as needed
-        </span><span class="kw">while </span><span class="self">self</span>.pos_state.cycle_history_cache.len() &gt; <span class="self">self</span>.pos_state.config.cycle_history_length
-        {
-            <span class="kw">if let </span><span class="prelude-val">Some</span>((cycle, <span class="kw">_</span>)) = <span class="self">self</span>.pos_state.cycle_history_cache.pop_front() {
-                <span class="self">self</span>.pos_state.delete_cycle_info(cycle);
-            }
+        </span><span class="kw">while </span><span class="self">self</span>.pos_state.cycle_history.len() &gt; <span class="self">self</span>.pos_state.config.cycle_history_length {
+            <span class="self">self</span>.pos_state.cycle_history.pop_front();
         }
 
         <span class="prelude-val">Ok</span>(())
@@ -1270,6 +1333,44 @@
         </span><span class="self">self</span>.final_state_hash = Hash::from_bytes(FINAL_STATE_HASH_INITIAL_BYTES);
     }
 
+    <span class="doccomment">/// Compute the current state hash.
+    ///
+    /// Used when finalizing a slot.
+    /// Slot information is only used for logging.
+    </span><span class="kw">pub fn </span>compute_state_hash_at_slot(<span class="kw-2">&amp;mut </span><span class="self">self</span>, slot: Slot) {
+        <span class="comment">// 1. init hash concatenation with the ledger hash
+        </span><span class="kw">let </span>ledger_hash = <span class="self">self</span>.ledger.get_ledger_hash();
+        <span class="kw">let </span><span class="kw-2">mut </span>hash_concat: Vec&lt;u8&gt; = ledger_hash.to_bytes().to_vec();
+        <span class="comment">// 2. async_pool hash
+        </span>hash_concat.extend(<span class="self">self</span>.async_pool.hash.to_bytes());
+        <span class="comment">// 3. pos deferred_credit hash
+        </span><span class="kw">let </span>deferred_credit_hash = <span class="kw">match </span><span class="self">self</span>.pos_state.deferred_credits.get_hash() {
+            <span class="prelude-val">Some</span>(hash) =&gt; hash,
+            <span class="prelude-val">None </span>=&gt; <span class="self">self
+                </span>.pos_state
+                .deferred_credits
+                .enable_hash_tracker_and_compute_hash(),
+        };
+        hash_concat.extend(deferred_credit_hash.to_bytes());
+        <span class="comment">// 4. pos cycle history hashes, skip the bootstrap safety cycle if there is one
+        </span><span class="kw">let </span>n = (<span class="self">self</span>.pos_state.cycle_history.len() == <span class="self">self</span>.config.pos_config.cycle_history_length)
+            <span class="kw">as </span>usize;
+        <span class="kw">for </span>cycle_info <span class="kw">in </span><span class="self">self</span>.pos_state.cycle_history.iter().skip(n) {
+            hash_concat.extend(cycle_info.cycle_global_hash.to_bytes());
+        }
+        <span class="comment">// 5. executed operations hash
+        </span>hash_concat.extend(<span class="self">self</span>.executed_ops.hash.to_bytes());
+        <span class="comment">// 6. executed denunciations hash
+        </span>hash_concat.extend(<span class="self">self</span>.executed_denunciations.hash.to_bytes());
+        <span class="comment">// 7. compute and save final state hash
+        </span><span class="self">self</span>.final_state_hash = Hash::compute_from(<span class="kw-2">&amp;</span>hash_concat);
+
+        <span class="macro">info!</span>(
+            <span class="string">&quot;final_state hash at slot {}: {}&quot;</span>,
+            slot, <span class="self">self</span>.final_state_hash
+        );
+    }
+
     <span class="doccomment">/// Performs the initial draws.
     </span><span class="kw">pub fn </span>compute_initial_draws(<span class="kw-2">&amp;mut </span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span>&lt;(), FinalStateError&gt; {
         <span class="self">self</span>.pos_state
@@ -1294,39 +1395,48 @@
         <span class="comment">// update current slot
         </span><span class="self">self</span>.slot = slot;
 
-        <span class="kw">let </span>db = <span class="self">self</span>.db.read();
-        <span class="kw">let </span><span class="kw-2">mut </span>db_batch = DBBatch::new(db.get_db_hash());
-
-        <span class="comment">// apply the state changes to the batch
-
+        <span class="comment">// apply the state changes
         </span><span class="self">self</span>.async_pool
-            .apply_changes_to_batch(<span class="kw-2">&amp;</span>changes.async_pool_changes, <span class="kw-2">&amp;mut </span>db_batch);
-
+            .apply_changes_unchecked(<span class="kw-2">&amp;</span>changes.async_pool_changes);
         <span class="self">self</span>.pos_state
-            .apply_changes_to_batch(changes.pos_changes.clone(), <span class="self">self</span>.slot, <span class="bool-val">true</span>, <span class="kw-2">&amp;mut </span>db_batch)
+            .apply_changes(changes.pos_changes.clone(), <span class="self">self</span>.slot, <span class="bool-val">true</span>)
             .expect(<span class="string">&quot;could not settle slot in final state proof-of-stake&quot;</span>);
         <span class="comment">// TODO:
         // do not panic above, it might just mean that the lookback cycle is not available
         // bootstrap again instead
+        </span><span class="self">self</span>.executed_ops
+            .apply_changes(changes.executed_ops_changes.clone(), <span class="self">self</span>.slot);
+        <span class="self">self</span>.executed_denunciations
+            .apply_changes(changes.executed_denunciations_changes.clone(), <span class="self">self</span>.slot);
 
-        </span><span class="self">self</span>.ledger
-            .apply_changes_to_batch(changes.ledger_changes.clone(), <span class="kw-2">&amp;mut </span>db_batch);
+        <span class="kw">let </span><span class="kw-2">mut </span>final_state_data = <span class="prelude-val">None</span>;
 
-        <span class="self">self</span>.executed_ops.apply_changes_to_batch(
-            changes.executed_ops_changes.clone(),
-            <span class="self">self</span>.slot,
-            <span class="kw-2">&amp;mut </span>db_batch,
-        );
+        <span class="kw">if </span><span class="macro">cfg!</span>(feature = <span class="string">&quot;create_snapshot&quot;</span>) {
+            <span class="kw">let </span><span class="comment">/*mut*/ </span>final_state_buffer = Vec::new();
 
-        <span class="self">self</span>.executed_denunciations.apply_changes_to_batch(
-            changes.executed_denunciations_changes.clone(),
-            <span class="self">self</span>.slot,
-            <span class="kw-2">&amp;mut </span>db_batch,
-        );
+            <span class="comment">/*let final_state_raw_serializer = FinalStateRawSerializer::new();
 
-        <span class="self">self</span>.db.read().set_slot(slot, <span class="kw-2">&amp;mut </span>db_batch);
+            let final_state_raw = FinalStateRaw {
+                async_pool_messages: self.async_pool.messages.clone(),
+                cycle_history: self.pos_state.cycle_history.clone(),
+                deferred_credits: self.pos_state.deferred_credits.clone(),
+                sorted_ops: self.executed_ops.sorted_ops.clone(),
+                latest_consistent_slot: self.slot,
+                final_state_hash_from_snapshot: self.final_state_hash,
+            };
 
-        <span class="self">self</span>.db.read().write_batch(db_batch);
+            if final_state_raw_serializer
+                .serialize(&amp;final_state_raw, &amp;mut final_state_buffer)
+                .is_err()
+            {
+                debug!(&quot;Error while trying to serialize final_state&quot;);
+            }*/
+
+            </span>final_state_data = <span class="prelude-val">Some</span>(final_state_buffer)
+        }
+
+        <span class="self">self</span>.ledger
+            .apply_changes(changes.ledger_changes.clone(), <span class="self">self</span>.slot, final_state_data);
 
         <span class="comment">// push history element and limit history size
         </span><span class="kw">if </span><span class="self">self</span>.config.final_history_length &gt; <span class="number">0 </span>{
@@ -1337,108 +1447,28 @@
         }
 
         <span class="comment">// compute the final state hash
-        </span><span class="macro">info!</span>(
-            <span class="string">&quot;final_state hash at slot {}: {}&quot;</span>,
-            <span class="self">self</span>.slot,
-            <span class="self">self</span>.db.read().get_db_hash()
-        );
+        </span><span class="self">self</span>.compute_state_hash_at_slot(slot);
 
-        <span class="comment">// Backup DB if needed
-        </span><span class="kw">if </span><span class="self">self</span>.slot.period % PERIODS_BETWEEN_BACKUPS == <span class="number">0 </span>&amp;&amp; <span class="self">self</span>.slot.period != <span class="number">0 </span>{
-            <span class="kw">let </span>state_slot = <span class="self">self</span>.db.read().get_slot(<span class="self">self</span>.config.thread_count);
-            <span class="kw">match </span>state_slot {
-                <span class="prelude-val">Ok</span>(slot) =&gt; {
-                    <span class="macro">info!</span>(
-                        <span class="string">&quot;Backuping db for slot {}, state slot: {}, state hash: {}&quot;</span>,
-                        <span class="self">self</span>.slot,
-                        slot,
-                        <span class="self">self</span>.db.read().get_db_hash()
-                    );
-                }
-                <span class="prelude-val">Err</span>(e) =&gt; {
-                    <span class="macro">info!</span>(<span class="string">&quot;{}&quot;</span>, e);
-                    <span class="macro">info!</span>(
-                        <span class="string">&quot;Backuping db for unknown state slot, state hash: {}&quot;</span>,
-                        <span class="self">self</span>.db.read().get_db_hash()
-                    );
-                }
-            }
+        <span class="kw">if </span><span class="macro">cfg!</span>(feature = <span class="string">&quot;create_snapshot&quot;</span>) {
+            <span class="kw">let </span><span class="comment">/*mut*/ </span>hash_buffer = Vec::new();
 
-            <span class="self">self</span>.db.read().backup_db(<span class="self">self</span>.slot);
+            <span class="comment">/*
+            let hash_serializer = HashSerializer::new();
+
+            if hash_serializer
+                .serialize(&amp;self.final_state_hash, &amp;mut hash_buffer)
+                .is_err()
+            {
+                debug!(&quot;Error while trying to serialize final_state_hash&quot;);
+            }*/
+
+            </span><span class="self">self</span>.ledger.set_final_state_hash(hash_buffer);
         }
 
         <span class="comment">// feed final_state_hash to the last cycle
         </span><span class="kw">let </span>cycle = slot.get_cycle(<span class="self">self</span>.config.periods_per_cycle);
         <span class="self">self</span>.pos_state
             .feed_cycle_state_hash(cycle, <span class="self">self</span>.final_state_hash);
-    }
-
-    <span class="attr">#[allow(clippy::type_complexity)]
-    </span><span class="doccomment">/// Get a part of the state.
-    /// Used for bootstrap.
-    ///
-    /// # Arguments
-    /// * cursor: current bootstrap state
-    ///
-    /// # Returns
-    /// The state part and the updated cursor
-    </span><span class="kw">pub fn </span>get_state_part(
-        <span class="kw-2">&amp;</span><span class="self">self</span>,
-        cursor: StreamingStep&lt;Vec&lt;u8&gt;&gt;,
-    ) -&gt; (BTreeMap&lt;Vec&lt;u8&gt;, Vec&lt;u8&gt;&gt;, StreamingStep&lt;Vec&lt;u8&gt;&gt;) {
-        <span class="kw">let </span>db = <span class="self">self</span>.db.read();
-        <span class="kw">let </span>handle = db.<span class="number">0</span>.cf_handle(STATE_CF).expect(CF_ERROR);
-
-        <span class="kw">let </span><span class="kw-2">mut </span>state_part = BTreeMap::new();
-
-        <span class="comment">// Creates an iterator from the next element after the last if defined, otherwise initialize it at the first key.
-        </span><span class="kw">let </span>(db_iterator, <span class="kw-2">mut </span>new_cursor) = <span class="kw">match </span>cursor {
-            StreamingStep::Started =&gt; (
-                db.<span class="number">0</span>.iterator_cf(handle, IteratorMode::Start),
-                StreamingStep::Started,
-            ),
-            StreamingStep::Ongoing(last_key) =&gt; (
-                db.<span class="number">0</span>.iterator_cf(handle, IteratorMode::From(<span class="kw-2">&amp;</span>last_key, Direction::Forward)),
-                StreamingStep::Finished(<span class="prelude-val">None</span>),
-            ),
-            StreamingStep::Finished(<span class="kw">_</span>) =&gt; <span class="kw">return </span>(state_part, cursor),
-        };
-
-        <span class="kw">for </span>(serialized_key, serialized_value) <span class="kw">in </span>db_iterator.flatten() {
-            <span class="kw">while </span>state_part.len() &lt; <span class="self">self</span>.config.ledger_config.max_ledger_part_size <span class="kw">as </span>usize {
-                state_part.insert(serialized_key.to_vec(), serialized_value.to_vec());
-                new_cursor = StreamingStep::Ongoing(serialized_key.to_vec());
-            }
-        }
-        (state_part, new_cursor)
-    }
-
-    <span class="doccomment">/// Set a part of the async pool.
-    /// Used for bootstrap.
-    ///
-    /// # Arguments
-    /// * part: the async pool part provided by `get_pool_part`
-    ///
-    /// # Returns
-    /// The updated cursor after the current insert
-    </span><span class="kw">pub fn </span>set_state_part(<span class="kw-2">&amp;</span><span class="self">self</span>, part: BTreeMap&lt;Vec&lt;u8&gt;, Vec&lt;u8&gt;&gt;) -&gt; StreamingStep&lt;Vec&lt;u8&gt;&gt; {
-        <span class="kw">let </span>db = <span class="self">self</span>.db.read();
-        <span class="kw">let </span><span class="kw-2">mut </span>batch = DBBatch::new(db.get_db_hash());
-        <span class="kw">let </span>handle = db.<span class="number">0</span>.cf_handle(STATE_CF).expect(CF_ERROR);
-
-        <span class="kw">let </span>cursor = <span class="kw">if let </span><span class="prelude-val">Some</span>(key) = part.last_key_value().map(|kv| kv.<span class="number">0</span>.clone()) {
-            StreamingStep::Ongoing(key)
-        } <span class="kw">else </span>{
-            StreamingStep::Finished(<span class="prelude-val">None</span>)
-        };
-
-        <span class="kw">for </span>(serialized_key, serialized_value) <span class="kw">in </span>part {
-            db.put_or_update_entry_value(handle, <span class="kw-2">&amp;mut </span>batch, serialized_key, <span class="kw-2">&amp;</span>serialized_value);
-        }
-
-        db.write_batch(batch);
-
-        cursor
     }
 
     <span class="doccomment">/// Used for bootstrap.
@@ -1458,7 +1488,12 @@
     </span><span class="kw">pub fn </span>get_state_changes_part(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         slot: Slot,
-        state_step: StreamingStep&lt;Vec&lt;u8&gt;&gt;,
+        ledger_step: StreamingStep&lt;LedgerKey&gt;,
+        pool_step: StreamingStep&lt;AsyncMessageId&gt;,
+        cycle_step: StreamingStep&lt;u64&gt;,
+        credits_step: StreamingStep&lt;Slot&gt;,
+        ops_step: StreamingStep&lt;Slot&gt;,
+        de_step: StreamingStep&lt;Slot&gt;,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;Vec&lt;(Slot, StateChanges)&gt;, FinalStateError&gt; {
         <span class="kw">let </span>position_slot = <span class="kw">if let </span><span class="prelude-val">Some</span>((first_slot, <span class="kw">_</span>)) = <span class="self">self</span>.changes_history.front() {
             <span class="comment">// Safe because we checked that there is changes just above.
@@ -1481,120 +1516,309 @@
         } <span class="kw">else </span>{
             <span class="kw">return </span><span class="prelude-val">Ok</span>(Vec::new());
         };
-
         <span class="kw">let </span><span class="kw-2">mut </span>res_changes: Vec&lt;(Slot, StateChanges)&gt; = Vec::new();
         <span class="kw">for </span>(slot, changes) <span class="kw">in </span><span class="self">self</span>.changes_history.range((position_slot <span class="kw">as </span>usize)..) {
             <span class="kw">let </span><span class="kw-2">mut </span>slot_changes = StateChanges::default();
 
-            <span class="kw">match </span>state_step.clone() {
-                StreamingStep::Ongoing(serialized_key) =&gt; {
-                    <span class="kw">if </span>serialized_key.starts_with(LEDGER_PREFIX.as_bytes()) {
-                        <span class="kw">let </span>(<span class="kw">_</span>, key) =
-                            KeyDeserializer::new(<span class="self">self</span>.config.ledger_config.max_key_length, <span class="bool-val">true</span>)
-                                .deserialize::&lt;DeserializeError&gt;(<span class="kw-2">&amp;</span>serialized_key)
-                                .expect(KEY_DESER_ERROR);
-
-                        <span class="kw">let </span>ledger_changes: LedgerChanges = LedgerChanges(
-                            changes
-                                .ledger_changes
-                                .<span class="number">0
-                                </span>.iter()
-                                .filter_map(|(address, change)| {
-                                    <span class="kw">if </span><span class="kw-2">*</span>address &lt;= key.address {
-                                        <span class="prelude-val">Some</span>((<span class="kw-2">*</span>address, change.clone()))
-                                    } <span class="kw">else </span>{
-                                        <span class="prelude-val">None
-                                    </span>}
-                                })
-                                .collect(),
-                        );
-                        slot_changes.ledger_changes = ledger_changes;
-                    } <span class="kw">else if </span>serialized_key.as_slice() &gt;= LEDGER_PREFIX.as_bytes() {
-                        slot_changes.ledger_changes = changes.ledger_changes.clone();
-                    }
-
-                    <span class="kw">if </span>serialized_key.starts_with(ASYNC_POOL_PREFIX.as_bytes()) {
-                        <span class="kw">let </span>(<span class="kw">_</span>, last_id) =
-                            AsyncMessageIdDeserializer::new(<span class="self">self</span>.config.thread_count)
-                                .deserialize::&lt;DeserializeError&gt;(
-                                    <span class="kw-2">&amp;</span>serialized_key[ASYNC_POOL_PREFIX.len()..],
-                                )
-                                .expect(MESSAGE_ID_DESER_ERROR);
-
-                        <span class="kw">let </span>async_pool_changes: AsyncPoolChanges = AsyncPoolChanges(
-                            changes
-                                .async_pool_changes
-                                .<span class="number">0
-                                </span>.clone()
-                                .into_iter()
-                                .filter_map(|change| <span class="kw">match </span>change {
-                                    (id, <span class="kw">_</span>) <span class="kw">if </span>id &lt;= last_id =&gt; <span class="prelude-val">Some</span>(change.clone()),
-                                    <span class="kw">_ </span>=&gt; <span class="prelude-val">None</span>,
-                                })
-                                .collect(),
-                        );
-                        slot_changes.async_pool_changes = async_pool_changes;
-                    } <span class="kw">else if </span>serialized_key.as_slice() &gt;= ASYNC_POOL_PREFIX.as_bytes() {
-                        slot_changes.async_pool_changes = changes.async_pool_changes.clone();
-                    }
-
-                    <span class="kw">if </span>serialized_key.starts_with(DEFERRED_CREDITS_PREFIX.as_bytes()) {
-                        <span class="kw">let </span>(<span class="kw">_</span>, cursor_slot) = SlotDeserializer::new(
-                            (Included(u64::MIN), Included(u64::MAX)),
-                            (Included(<span class="number">0</span>), Excluded(<span class="self">self</span>.config.thread_count)),
-                        )
-                        .deserialize::&lt;DeserializeError&gt;(
-                            <span class="kw-2">&amp;</span>serialized_key[DEFERRED_CREDITS_PREFIX.len()..],
-                        )
-                        .expect(SLOT_DESER_ERROR);
-
-                        <span class="kw">let </span><span class="kw-2">mut </span>deferred_credits = DeferredCredits::new_with_hash();
-                        deferred_credits.credits = changes
-                            .pos_changes
-                            .deferred_credits
-                            .credits
-                            .iter()
-                            .filter_map(|(credits_slot, credits)| {
-                                <span class="kw">if </span><span class="kw-2">*</span>credits_slot &lt;= cursor_slot {
-                                    <span class="prelude-val">Some</span>((<span class="kw-2">*</span>credits_slot, credits.clone()))
+            <span class="comment">// Get ledger change that concern address &lt;= ledger_step
+            </span><span class="kw">match </span>ledger_step.clone() {
+                StreamingStep::Ongoing(key) =&gt; {
+                    <span class="kw">let </span>ledger_changes: LedgerChanges = LedgerChanges(
+                        changes
+                            .ledger_changes
+                            .<span class="number">0
+                            </span>.iter()
+                            .filter_map(|(address, change)| {
+                                <span class="kw">if </span><span class="kw-2">*</span>address &lt;= key.address {
+                                    <span class="prelude-val">Some</span>((<span class="kw-2">*</span>address, change.clone()))
                                 } <span class="kw">else </span>{
                                     <span class="prelude-val">None
                                 </span>}
                             })
-                            .collect();
-
-                        slot_changes.pos_changes.deferred_credits = deferred_credits;
-                    } <span class="kw">else if </span>serialized_key.as_slice() &gt;= DEFERRED_CREDITS_PREFIX.as_bytes() {
-                        slot_changes.pos_changes.deferred_credits =
-                            changes.pos_changes.deferred_credits.clone();
-                    }
-
-                    <span class="kw">if </span>serialized_key.as_slice() &gt;= CYCLE_HISTORY_PREFIX.as_bytes() {
-                        slot_changes.pos_changes.seed_bits = changes.pos_changes.seed_bits.clone();
-                        slot_changes.pos_changes.roll_changes =
-                            changes.pos_changes.roll_changes.clone();
-                        slot_changes.pos_changes.production_stats =
-                            changes.pos_changes.production_stats.clone();
-                    }
-                    <span class="kw">if </span>serialized_key.as_slice() &gt;= EXECUTED_OPS_PREFIX.as_bytes() {
-                        slot_changes.executed_ops_changes = changes.executed_ops_changes.clone();
-                    }
-
-                    <span class="kw">if </span>serialized_key.as_slice() &gt;= EXECUTED_DENUNCIATIONS_PREFIX.as_bytes() {
-                        slot_changes.executed_denunciations_changes =
-                            changes.executed_denunciations_changes.clone();
-                    }
+                            .collect(),
+                    );
+                    slot_changes.ledger_changes = ledger_changes;
                 }
                 StreamingStep::Finished(<span class="kw">_</span>) =&gt; {
-                    slot_changes = changes.clone();
+                    slot_changes.ledger_changes = changes.ledger_changes.clone();
                 }
                 <span class="kw">_ </span>=&gt; (),
+            }
+
+            <span class="comment">// Get async pool changes that concern ids &lt;= pool_step
+            </span><span class="kw">match </span>pool_step {
+                StreamingStep::Ongoing(last_id) =&gt; {
+                    <span class="kw">let </span>async_pool_changes: AsyncPoolChanges = AsyncPoolChanges(
+                        changes
+                            .async_pool_changes
+                            .<span class="number">0
+                            </span>.iter()
+                            .filter_map(|change| <span class="kw">match </span>change {
+                                Change::Add(id, <span class="kw">_</span>) | Change::Activate(id) | Change::Delete(id)
+                                    <span class="kw">if </span>id &lt;= <span class="kw-2">&amp;</span>last_id =&gt;
+                                {
+                                    <span class="prelude-val">Some</span>(change.clone())
+                                }
+                                <span class="kw">_ </span>=&gt; <span class="prelude-val">None</span>,
+                            })
+                            .collect(),
+                    );
+                    slot_changes.async_pool_changes = async_pool_changes;
+                }
+                StreamingStep::Finished(<span class="kw">_</span>) =&gt; {
+                    slot_changes.async_pool_changes = changes.async_pool_changes.clone();
+                }
+                <span class="kw">_ </span>=&gt; (),
+            }
+
+            <span class="comment">// Get PoS deferred credits changes that concern credits &lt;= credits_step
+            </span><span class="kw">match </span>credits_step {
+                StreamingStep::Ongoing(cursor_slot) =&gt; {
+                    <span class="kw">let </span><span class="kw-2">mut </span>deferred_credits = DeferredCredits::new_with_hash();
+                    deferred_credits.credits = changes
+                        .pos_changes
+                        .deferred_credits
+                        .credits
+                        .iter()
+                        .filter_map(|(credits_slot, credits)| {
+                            <span class="kw">if </span><span class="kw-2">*</span>credits_slot &lt;= cursor_slot {
+                                <span class="prelude-val">Some</span>((<span class="kw-2">*</span>credits_slot, credits.clone()))
+                            } <span class="kw">else </span>{
+                                <span class="prelude-val">None
+                            </span>}
+                        })
+                        .collect();
+
+                    slot_changes.pos_changes.deferred_credits = deferred_credits;
+                }
+                StreamingStep::Finished(<span class="kw">_</span>) =&gt; {
+                    slot_changes.pos_changes.deferred_credits =
+                        changes.pos_changes.deferred_credits.clone();
+                }
+                <span class="kw">_ </span>=&gt; (),
+            }
+
+            <span class="comment">// Get PoS cycle changes if cycle history main bootstrap finished
+            </span><span class="kw">if </span>cycle_step.finished() {
+                slot_changes.pos_changes.seed_bits = changes.pos_changes.seed_bits.clone();
+                slot_changes.pos_changes.roll_changes = changes.pos_changes.roll_changes.clone();
+                slot_changes.pos_changes.production_stats =
+                    changes.pos_changes.production_stats.clone();
+            }
+
+            <span class="comment">// Get executed operations changes if executed ops main bootstrap finished
+            </span><span class="kw">if </span>ops_step.finished() {
+                slot_changes.executed_ops_changes = changes.executed_ops_changes.clone();
+            }
+            <span class="kw">if </span>de_step.finished() {
+                slot_changes.executed_denunciations_changes =
+                    changes.executed_denunciations_changes.clone();
             }
 
             <span class="comment">// Push the slot changes
             </span>res_changes.push((<span class="kw-2">*</span>slot, slot_changes));
         }
         <span class="prelude-val">Ok</span>(res_changes)
+    }
+}
+
+<span class="doccomment">/// Serializer for `FinalStateRaw`
+</span><span class="kw">pub struct </span>FinalStateRawSerializer {
+    async_pool_serializer: AsyncPoolSerializer,
+    cycle_history_serializer: CycleHistorySerializer,
+    deferred_credits_serializer: DeferredCreditsSerializer,
+    executed_ops_serializer: ExecutedOpsSerializer,
+    executed_denunciations_serializer: ExecutedDenunciationsSerializer,
+    slot_serializer: SlotSerializer,
+}
+
+<span class="kw">impl </span>Default <span class="kw">for </span>FinalStateRawSerializer {
+    <span class="kw">fn </span>default() -&gt; <span class="self">Self </span>{
+        <span class="self">Self</span>::new()
+    }
+}
+
+<span class="kw">impl </span>From&lt;FinalState&gt; <span class="kw">for </span>FinalStateRaw {
+    <span class="kw">fn </span>from(value: FinalState) -&gt; <span class="self">Self </span>{
+        <span class="self">Self </span>{
+            async_pool_messages: value.async_pool.messages,
+            cycle_history: value.pos_state.cycle_history,
+            deferred_credits: value.pos_state.deferred_credits,
+            sorted_ops: value.executed_ops.sorted_ops,
+            sorted_denunciations: value.executed_denunciations.sorted_denunciations,
+            latest_consistent_slot: value.slot,
+            final_state_hash_from_snapshot: value.final_state_hash,
+        }
+    }
+}
+
+<span class="kw">impl </span>FinalStateRawSerializer {
+    <span class="doccomment">/// Initialize a `FinalStateRaweSerializer`
+    </span><span class="kw">pub fn </span>new() -&gt; <span class="self">Self </span>{
+        <span class="self">Self </span>{
+            async_pool_serializer: AsyncPoolSerializer::new(),
+            cycle_history_serializer: CycleHistorySerializer::new(),
+            deferred_credits_serializer: DeferredCreditsSerializer::new(),
+            executed_ops_serializer: ExecutedOpsSerializer::new(),
+            executed_denunciations_serializer: ExecutedDenunciationsSerializer::new(),
+            slot_serializer: SlotSerializer::new(),
+        }
+    }
+}
+
+<span class="kw">impl </span>Serializer&lt;FinalStateRaw&gt; <span class="kw">for </span>FinalStateRawSerializer {
+    <span class="kw">fn </span>serialize(<span class="kw-2">&amp;</span><span class="self">self</span>, value: <span class="kw-2">&amp;</span>FinalStateRaw, buffer: <span class="kw-2">&amp;mut </span>Vec&lt;u8&gt;) -&gt; <span class="prelude-ty">Result</span>&lt;(), SerializeError&gt; {
+        <span class="comment">// Serialize Async Pool
+        </span><span class="self">self</span>.async_pool_serializer
+            .serialize(<span class="kw-2">&amp;</span>value.async_pool_messages, buffer)<span class="question-mark">?</span>;
+
+        <span class="comment">// Serialize pos state
+        </span><span class="self">self</span>.cycle_history_serializer
+            .serialize(<span class="kw-2">&amp;</span>value.cycle_history, buffer)<span class="question-mark">?</span>;
+        <span class="self">self</span>.deferred_credits_serializer
+            .serialize(<span class="kw-2">&amp;</span>value.deferred_credits, buffer)<span class="question-mark">?</span>;
+
+        <span class="comment">// Serialize Executed Ops
+        </span><span class="self">self</span>.executed_ops_serializer
+            .serialize(<span class="kw-2">&amp;</span>value.sorted_ops, buffer)<span class="question-mark">?</span>;
+        <span class="comment">// Serialize Executed Denunciations
+        </span><span class="self">self</span>.executed_denunciations_serializer
+            .serialize(<span class="kw-2">&amp;</span>value.sorted_denunciations, buffer)<span class="question-mark">?</span>;
+
+        <span class="comment">// Serialize metadata
+        </span><span class="self">self</span>.slot_serializer
+            .serialize(<span class="kw-2">&amp;</span>value.latest_consistent_slot, buffer)<span class="question-mark">?</span>;
+
+        <span class="comment">// /!\ The final_state_hash has to be serialized separately!
+
+        </span><span class="prelude-val">Ok</span>(())
+    }
+}
+
+<span class="kw">pub struct </span>FinalStateRaw {
+    async_pool_messages: BTreeMap&lt;AsyncMessageId, AsyncMessage&gt;,
+    cycle_history: VecDeque&lt;CycleInfo&gt;,
+    deferred_credits: DeferredCredits,
+    sorted_ops: BTreeMap&lt;Slot, PreHashSet&lt;OperationId&gt;&gt;,
+    sorted_denunciations: BTreeMap&lt;Slot, HashSet&lt;DenunciationIndex&gt;&gt;,
+    latest_consistent_slot: Slot,
+    <span class="attr">#[allow(dead_code)]
+    </span>final_state_hash_from_snapshot: Hash,
+}
+
+<span class="doccomment">/// Deserializer for `FinalStateRaw`
+</span><span class="kw">pub struct </span>FinalStateRawDeserializer {
+    async_deser: AsyncPoolDeserializer,
+    cycle_history_deser: CycleHistoryDeserializer,
+    deferred_credits_deser: DeferredCreditsDeserializer,
+    executed_ops_deser: ExecutedOpsDeserializer,
+    executed_denunciations_deser: ExecutedDenunciationsDeserializer,
+    slot_deser: SlotDeserializer,
+    hash_deser: HashDeserializer,
+}
+
+<span class="kw">impl </span>FinalStateRawDeserializer {
+    <span class="attr">#[allow(clippy::too_many_arguments)]
+    #[allow(dead_code)]
+    </span><span class="doccomment">/// Initialize a `FinalStateRawDeserializer`
+    </span><span class="kw">pub fn </span>new(
+        config: FinalStateConfig,
+        max_async_pool_length: u64,
+        max_datastore_key_length: u8,
+        max_rolls_length: u64,
+        max_production_stats_length: u64,
+        max_credit_length: u64,
+        max_executed_ops_length: u64,
+        max_operations_per_block: u32,
+    ) -&gt; <span class="self">Self </span>{
+        <span class="self">Self </span>{
+            async_deser: AsyncPoolDeserializer::new(
+                config.thread_count,
+                max_async_pool_length,
+                config.async_pool_config.max_async_message_data,
+                max_datastore_key_length <span class="kw">as </span>u32,
+            ),
+            cycle_history_deser: CycleHistoryDeserializer::new(
+                config.pos_config.cycle_history_length <span class="kw">as </span>u64,
+                max_rolls_length,
+                max_production_stats_length,
+            ),
+            deferred_credits_deser: DeferredCreditsDeserializer::new(
+                config.thread_count,
+                max_credit_length,
+                <span class="bool-val">true</span>,
+            ),
+            executed_ops_deser: ExecutedOpsDeserializer::new(
+                config.thread_count,
+                max_executed_ops_length,
+                max_operations_per_block <span class="kw">as </span>u64,
+            ),
+            executed_denunciations_deser: ExecutedDenunciationsDeserializer::new(
+                config.thread_count,
+                config.endorsement_count,
+                config.max_executed_denunciations_length,
+                config.max_denunciations_per_block_header <span class="kw">as </span>u64,
+            ),
+            slot_deser: SlotDeserializer::new(
+                (Included(u64::MIN), Included(u64::MAX)),
+                (Included(<span class="number">0</span>), Excluded(config.thread_count)),
+            ),
+            hash_deser: HashDeserializer::new(),
+        }
+    }
+}
+
+<span class="kw">impl </span>Deserializer&lt;FinalStateRaw&gt; <span class="kw">for </span>FinalStateRawDeserializer {
+    <span class="kw">fn </span>deserialize&lt;<span class="lifetime">&#39;a</span>, E: nom::error::ParseError&lt;<span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>[u8]&gt; + nom::error::ContextError&lt;<span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>[u8]&gt;&gt;(
+        <span class="kw-2">&amp;</span><span class="self">self</span>,
+        buffer: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>[u8],
+    ) -&gt; IResult&lt;<span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>[u8], FinalStateRaw, E&gt; {
+        context(<span class="string">&quot;Failed FinalStateRaw deserialization&quot;</span>, |buffer| {
+            tuple((
+                context(<span class="string">&quot;Failed async_pool_messages deserialization&quot;</span>, |input| {
+                    <span class="self">self</span>.async_deser.deserialize(input)
+                }),
+                context(<span class="string">&quot;Failed cycle_history deserialization&quot;</span>, |input| {
+                    <span class="self">self</span>.cycle_history_deser.deserialize(input)
+                }),
+                context(<span class="string">&quot;Failed deferred_credits deserialization&quot;</span>, |input| {
+                    <span class="self">self</span>.deferred_credits_deser.deserialize(input)
+                }),
+                context(<span class="string">&quot;Failed executed_ops deserialization&quot;</span>, |input| {
+                    <span class="self">self</span>.executed_ops_deser.deserialize(input)
+                }),
+                context(<span class="string">&quot;Failed executed_denunciations deserialization&quot;</span>, |input| {
+                    <span class="self">self</span>.executed_denunciations_deser.deserialize(input)
+                }),
+                context(<span class="string">&quot;Failed slot deserialization&quot;</span>, |input| {
+                    <span class="self">self</span>.slot_deser.deserialize(input)
+                }),
+                context(<span class="string">&quot;Failed hash deserialization&quot;</span>, |input| {
+                    <span class="self">self</span>.hash_deser.deserialize(input)
+                }),
+            ))
+            .map(
+                |(
+                    async_pool_messages,
+                    cycle_history,
+                    deferred_credits,
+                    sorted_ops,
+                    sorted_denunciations,
+                    latest_consistent_slot,
+                    final_state_hash_from_snapshot,
+                )| FinalStateRaw {
+                    async_pool_messages,
+                    cycle_history: cycle_history.into(),
+                    deferred_credits,
+                    sorted_ops,
+                    sorted_denunciations,
+                    latest_consistent_slot,
+                    final_state_hash_from_snapshot,
+                },
+            )
+            .parse(buffer)
+        })
+        .parse(buffer)
     }
 }
 
@@ -1606,7 +1830,7 @@
     <span class="kw">use </span><span class="kw">crate</span>::StateChanges;
     <span class="kw">use </span>massa_async_pool::test_exports::get_random_message;
     <span class="kw">use </span>massa_ledger_exports::SetUpdateOrDelete;
-    <span class="kw">use </span>massa_models::{address::Address, config::THREAD_COUNT, slot::Slot};
+    <span class="kw">use </span>massa_models::{address::Address, slot::Slot};
     <span class="kw">use </span>massa_signature::KeyPair;
 
     <span class="kw">fn </span>get_random_address() -&gt; Address {
@@ -1616,7 +1840,7 @@
 
     <span class="attr">#[test]
     </span><span class="kw">fn </span>get_state_changes_part() {
-        <span class="kw">let </span>message = get_random_message(<span class="prelude-val">None</span>, THREAD_COUNT);
+        <span class="kw">let </span>message = get_random_message(<span class="prelude-val">None</span>);
         <span class="comment">// Building the state changes
         </span><span class="kw">let </span><span class="kw-2">mut </span>history_state_changes: VecDeque&lt;(Slot, StateChanges)&gt; = VecDeque::new();
         <span class="kw">let </span>(low_address, high_address) = {
@@ -1636,7 +1860,7 @@
         state_changes
             .async_pool_changes
             .<span class="number">0
-            </span>.insert(message.compute_id(), SetUpdateOrDelete::Set(message));
+            </span>.push(massa_async_pool::Change::Add(message.compute_id(), message));
         history_state_changes.push_front((Slot::new(<span class="number">3</span>, <span class="number">0</span>), state_changes));
         <span class="kw">let </span><span class="kw-2">mut </span>state_changes = StateChanges::default();
         state_changes
