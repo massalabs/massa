@@ -468,7 +468,7 @@ impl MipStore {
         lock.update_network_version_stats(slot_timestamp, network_versions);
     }
 
-    #[allow(clippy::result_unit_err)]
+    #[allow(clippy::result_large_err)]
     pub fn update_with(
         &mut self,
         mip_store: &MipStore,
@@ -535,6 +535,7 @@ pub struct MipStoreRaw {
 impl MipStoreRaw {
     /// Update our store with another (usually after a bootstrap where we received another store)
     /// Return list of updated / added if update is successful
+    #[allow(clippy::result_large_err)]
     pub fn update_with(
         &mut self,
         store_raw: &MipStoreRaw,
