@@ -166,10 +166,14 @@ impl SpeculativeRollState {
 
         match self.added_changes.roll_changes.get_mut(addr) {
             None => {
-                // Address does not exist anymore, slash nothing
-                Ok(0)
+                // Rolls are in history or final state
+                self.added_changes
+                    .roll_changes
+                    .insert(*addr, owned_count.saturating_sub(roll_to_slash));
+                Ok(roll_to_slash)
             }
             Some(current_rolls) => {
+                // Rolls are in added_changes
                 *current_rolls = current_rolls.saturating_sub(roll_to_slash);
                 Ok(roll_to_slash)
             }
