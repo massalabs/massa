@@ -1207,13 +1207,11 @@ impl RetrievalThread {
                     if *active_block_req_count.get(&peer_id).unwrap_or(&0)
                         <= self.config.max_simultaneous_ask_blocks_per_node
                     {
-                        if let Some(peer_data) =
-                            self.cache.read().blocks_known_by_peer.peek(&peer_id)
-                        {
-                            Some((knowledge, peer_id, required_info, peer_data.1))
-                        } else {
-                            None
-                        }
+                        self.cache
+                            .read()
+                            .blocks_known_by_peer
+                            .peek(&peer_id)
+                            .map(|peer_data| (knowledge, peer_id, required_info, peer_data.1))
                     } else {
                         None
                     }
