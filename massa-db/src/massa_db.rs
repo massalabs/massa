@@ -137,6 +137,10 @@ impl MassaDB {
         let handle = db.cf_handle(STATE_CF).expect(CF_ERROR);
         let mut batch = DBBatch::new(self.get_db_hash());
         for (serialized_key, _) in db.prefix_iterator_cf(handle, prefix).flatten() {
+            if !serialized_key.starts_with(prefix.as_bytes()) {
+                break;
+            }
+
             self.delete_key(handle, &mut batch, serialized_key.to_vec());
         }
     }

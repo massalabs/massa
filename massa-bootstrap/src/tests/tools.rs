@@ -183,6 +183,7 @@ fn get_random_pos_state(r_limit: u64, mut pos: PoSFinalState) -> PoSFinalState {
 
     pos.apply_changes_to_batch(changes, Slot::new(0, 0), false, &mut batch)
         .expect("Critical: Error while applying changes to pos_state");
+
     pos.db.read().write_batch(batch);
 
     pos

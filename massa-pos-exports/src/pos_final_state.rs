@@ -14,6 +14,7 @@ use massa_hash::Hash;
 use massa_models::amount::Amount;
 use massa_models::{address::Address, prehash::PreHashMap, slot::Slot};
 use massa_serialization::{DeserializeError, Deserializer, Serializer, U64VarIntSerializer};
+use nom::AsBytes;
 use parking_lot::RwLock;
 use rocksdb::{Direction, IteratorMode};
 use std::collections::VecDeque;
@@ -273,7 +274,10 @@ impl PoSFinalState {
 
         let prefix = self.cycle_history_cycle_prefix(cycle);
 
-        for (serialized_key, _) in db.0.prefix_iterator_cf(handle, prefix).flatten() {
+        for (serialized_key, _) in db.0.prefix_iterator_cf(handle, &prefix).flatten() {
+            if !serialized_key.starts_with(prefix.as_bytes()) {
+                break;
+            }
             db.delete_key(handle, &mut batch, serialized_key.to_vec());
         }
 
@@ -931,8 +935,12 @@ impl PoSFinalState {
         let mut roll_counts: BTreeMap<Address, u64> = BTreeMap::new();
 
         let prefix = roll_count_prefix!(self.cycle_history_cycle_prefix(cycle));
-        for (serialized_key, serialized_value) in db.0.prefix_iterator_cf(handle, prefix).flatten()
+        for (serialized_key, serialized_value) in db.0.prefix_iterator_cf(handle, &prefix).flatten()
         {
+            if !serialized_key.starts_with(prefix.as_bytes()) {
+                break;
+            }
+
             let (rest, _cycle) = self
                 .cycle_info_deserializer
                 .cycle_info_deserializer
@@ -975,8 +983,11 @@ impl PoSFinalState {
         let mut cur_address = None;
 
         let prefix = prod_stats_prefix!(self.cycle_history_cycle_prefix(cycle));
-        for (serialized_key, serialized_value) in db.0.prefix_iterator_cf(handle, prefix).flatten()
+        for (serialized_key, serialized_value) in db.0.prefix_iterator_cf(handle, &prefix).flatten()
         {
+            if !serialized_key.starts_with(prefix.as_bytes()) {
+                break;
+            }
             let (rest, _cycle) = self
                 .cycle_info_deserializer
                 .cycle_info_deserializer

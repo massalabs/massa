@@ -89,6 +89,10 @@ impl ExecutedOps {
             db.0.prefix_iterator_cf(handle, EXECUTED_OPS_PREFIX)
                 .flatten()
         {
+            if !serialized_op_id.starts_with(EXECUTED_OPS_PREFIX.as_bytes()) {
+                break;
+            }
+
             let (_, op_id) = self
                 .operation_id_deserializer
                 .deserialize::<DeserializeError>(&serialized_op_id[EXECUTED_OPS_PREFIX.len()..])

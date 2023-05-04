@@ -79,6 +79,9 @@ impl ExecutedDenunciations {
             db.0.prefix_iterator_cf(handle, EXECUTED_DENUNCIATIONS_PREFIX)
                 .flatten()
         {
+            if !serialized_de_idx.starts_with(EXECUTED_DENUNCIATIONS_PREFIX.as_bytes()) {
+                break;
+            }
             let (_, de_idx) = self
                 .denunciation_index_deserializer
                 .deserialize::<DeserializeError>(

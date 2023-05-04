@@ -317,10 +317,14 @@ impl AsyncPool {
             .expect(MESSAGE_ID_SER_ERROR);
 
         let mut serialized_message: Vec<u8> = Vec::new();
-        for (_, serialized_value) in
+        for (serialized_key, serialized_value) in
             db.0.prefix_iterator_cf(handle, &message_id_prefix!(serialized_message_id))
                 .flatten()
         {
+            if !serialized_key.starts_with(&message_id_prefix!(serialized_message_id)) {
+                break;
+            }
+
             serialized_message.extend(serialized_value.iter());
         }
 
