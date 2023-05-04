@@ -1311,6 +1311,8 @@
 <a href="#1311" id="1311">1311</a>
 <a href="#1312" id="1312">1312</a>
 <a href="#1313" id="1313">1313</a>
+<a href="#1314" id="1314">1314</a>
+<a href="#1315" id="1315">1315</a>
 </pre><pre class="rust"><code><span class="kw">use </span>std::{
     collections::{hash_map::Entry, HashMap, HashSet},
     num::NonZeroUsize,
@@ -1444,20 +1446,19 @@
                                     <span class="kw">continue</span>;
                                 }
                             };
-
-                            <span class="macro">debug!</span>(<span class="string">&quot;Received block message: {:?} from {}&quot;</span>, message, peer_id);
-
                             <span class="kw">if </span>!rest.is_empty() {
                                 <span class="macro">println!</span>(<span class="string">&quot;Error: message not fully consumed&quot;</span>);
                                 <span class="kw">return</span>;
                             }
                             <span class="kw">match </span>message {
                                 BlockMessage::AskForBlocks(block_infos) =&gt; {
+                                    <span class="macro">debug!</span>(<span class="string">&quot;Received block message: AskForBlocks from {}&quot;</span>, peer_id);
                                     <span class="kw">if let </span><span class="prelude-val">Err</span>(err) = <span class="self">self</span>.on_asked_for_blocks_received(peer_id.clone(), block_infos) {
                                         <span class="macro">warn!</span>(<span class="string">&quot;Error in on_asked_for_blocks_received: {:?}&quot;</span>, err);
                                     }
                                 }
                                 BlockMessage::ReplyForBlocks(block_infos) =&gt; {
+                                    <span class="macro">debug!</span>(<span class="string">&quot;Received block message: ReplyForBlocks from {}&quot;</span>, peer_id);
                                     <span class="kw">for </span>(block_id, block_info) <span class="kw">in </span>block_infos.into_iter() {
                                         <span class="kw">if let </span><span class="prelude-val">Err</span>(err) = <span class="self">self</span>.on_block_info_received(peer_id.clone(), block_id, block_info) {
                                             <span class="macro">warn!</span>(<span class="string">&quot;Error in on_block_info_received: {:?}&quot;</span>, err);
@@ -1468,6 +1469,7 @@
                                     }
                                 }
                                 BlockMessage::BlockHeader(header) =&gt; {
+                                    <span class="macro">debug!</span>(<span class="string">&quot;Received block message: BlockHeader from {}&quot;</span>, peer_id);
                                     <span class="macro">massa_trace!</span>(BLOCK_HEADER, { <span class="string">&quot;peer_id&quot;</span>: peer_id, <span class="string">&quot;header&quot;</span>: header});
                                     <span class="kw">if let </span><span class="prelude-val">Ok</span>(<span class="prelude-val">Some</span>((block_id, is_new))) =
                                         <span class="self">self</span>.note_header_from_peer(<span class="kw-2">&amp;</span>header, <span class="kw-2">&amp;</span>peer_id)
@@ -1504,6 +1506,7 @@
                         <span class="prelude-val">Ok</span>(command) =&gt; {
                             <span class="kw">match </span>command {
                                 BlockHandlerRetrievalCommand::WishlistDelta { new, remove } =&gt; {
+                                    <span class="macro">debug!</span>(<span class="string">&quot;Received block message: command WishlistDelta&quot;</span>);
                                     <span class="macro">massa_trace!</span>(<span class="string">&quot;protocol.protocol_worker.process_command.wishlist_delta.begin&quot;</span>, { <span class="string">&quot;new&quot;</span>: new, <span class="string">&quot;remove&quot;</span>: remove });
                                     <span class="kw">for </span>(block_id, header) <span class="kw">in </span>new.into_iter() {
                                         <span class="self">self</span>.block_wishlist.insert(
@@ -1527,6 +1530,7 @@
                                     );
                                 },
                                 BlockHandlerRetrievalCommand::Stop =&gt; {
+                                    <span class="macro">debug!</span>(<span class="string">&quot;Received block message: command Stop&quot;</span>);
                                     <span class="macro">info!</span>(<span class="string">&quot;Stop block retrieval thread from command receiver&quot;</span>);
                                     <span class="kw">return</span>;
                                 }

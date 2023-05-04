@@ -504,6 +504,11 @@
 <a href="#504" id="504">504</a>
 <a href="#505" id="505">505</a>
 <a href="#506" id="506">506</a>
+<a href="#507" id="507">507</a>
+<a href="#508" id="508">508</a>
+<a href="#509" id="509">509</a>
+<a href="#510" id="510">510</a>
+<a href="#511" id="511">511</a>
 </pre><pre class="rust"><code><span class="kw">use </span>std::cmp::Reverse;
 <span class="kw">use </span>std::{collections::HashMap, net::SocketAddr, thread::JoinHandle, time::Duration};
 
@@ -572,13 +577,18 @@
         peer_db: SharedPeerDB,
         (sender_msg, receiver_msg): (Sender&lt;PeerMessageTuple&gt;, Receiver&lt;PeerMessageTuple&gt;),
         (sender_cmd, receiver_cmd): (Sender&lt;PeerManagementCmd&gt;, Receiver&lt;PeerManagementCmd&gt;),
+        messages_handler: MessagesHandler,
         <span class="kw-2">mut </span>active_connections: Box&lt;<span class="kw">dyn </span>ActiveConnectionsTrait&gt;,
         config: <span class="kw-2">&amp;</span>ProtocolConfig,
     ) -&gt; <span class="self">Self </span>{
         <span class="kw">let </span>message_serializer = PeerManagementMessageSerializer::new();
 
-        <span class="kw">let </span>(test_sender, testers) =
-            Tester::run(config, active_connections.clone(), peer_db.clone());
+        <span class="kw">let </span>(test_sender, testers) = Tester::run(
+            config,
+            active_connections.clone(),
+            peer_db.clone(),
+            messages_handler.clone(),
+        );
 
         <span class="kw">let </span>thread_join = std::thread::Builder::new()
         .name(<span class="string">&quot;protocol-peer-handler&quot;</span>.to_string())
@@ -656,8 +666,6 @@
                                     <span class="kw">return</span>;
                                 }
                             };
-                            <span class="macro">debug!</span>(<span class="string">&quot;Received peer message: {:?} from {}&quot;</span>, message, peer_id);
-
                             <span class="comment">// check if peer is banned
                             </span><span class="kw">if let </span><span class="prelude-val">Some</span>(peer) = peer_db.read().peers.get(<span class="kw-2">&amp;</span>peer_id) {
                                 <span class="kw">if </span>peer.state == PeerState::Banned {
@@ -680,11 +688,13 @@
                             }
                             <span class="kw">match </span>message {
                                 PeerManagementMessage::NewPeerConnected((peer_id, listeners)) =&gt; {
+                                    <span class="macro">debug!</span>(<span class="string">&quot;Received peer message: NewPeerConnected from {}&quot;</span>, peer_id);
                                     <span class="kw">if let </span><span class="prelude-val">Err</span>(e) = test_sender.send((peer_id, listeners)) {
                                         <span class="macro">error!</span>(<span class="string">&quot;error when sending msg to peer tester : {}&quot;</span>, e);
                                     }
                                 }
                                 PeerManagementMessage::ListPeers(peers) =&gt; {
+                                    <span class="macro">debug!</span>(<span class="string">&quot;Received peer message: List peers from {}&quot;</span>, peer_id);
                                     <span class="kw">for </span>(peer_id, listeners) <span class="kw">in </span>peers.into_iter() {
                                         <span class="kw">if let </span><span class="prelude-val">Err</span>(e) = test_sender.send((peer_id, listeners)) {
                                             <span class="macro">error!</span>(<span class="string">&quot;error when sending msg to peer tester : {}&quot;</span>, e);
@@ -927,7 +937,7 @@
                     <span class="self">self</span>.message_handlers.handle(id, received, <span class="kw-2">&amp;</span>peer_id)<span class="question-mark">?</span>;
                     <span class="prelude-val">Err</span>(PeerNetError::HandshakeError.error(
                         <span class="string">&quot;Massa Handshake&quot;</span>,
-                        <span class="prelude-val">Some</span>(<span class="string">&quot;Handshake failed received a message that are connection has been refused&quot;</span>.to_string()),
+                        <span class="prelude-val">Some</span>(<span class="string">&quot;Handshake failed received a message that our connection has been refused&quot;</span>.to_string()),
                     ))
                 }
                 <span class="kw">_ </span>=&gt; <span class="prelude-val">Err</span>(PeerNetError::HandshakeError

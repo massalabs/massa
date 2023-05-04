@@ -320,15 +320,6 @@
 <a href="#320" id="320">320</a>
 <a href="#321" id="321">321</a>
 <a href="#322" id="322">322</a>
-<a href="#323" id="323">323</a>
-<a href="#324" id="324">324</a>
-<a href="#325" id="325">325</a>
-<a href="#326" id="326">326</a>
-<a href="#327" id="327">327</a>
-<a href="#328" id="328">328</a>
-<a href="#329" id="329">329</a>
-<a href="#330" id="330">330</a>
-<a href="#331" id="331">331</a>
 </pre><pre class="rust"><code><span class="kw">use </span>std::{
     collections::HashMap,
     net::SocketAddr,
@@ -336,13 +327,14 @@
     time::{Duration, SystemTime, UNIX_EPOCH},
 };
 
+<span class="kw">use </span><span class="kw">crate</span>::messages::MessagesHandler;
 <span class="kw">use </span>crossbeam::channel::Sender;
 <span class="kw">use </span>massa_protocol_exports::ProtocolConfig;
 <span class="kw">use </span>massa_serialization::{DeserializeError, Deserializer};
 <span class="kw">use </span>peernet::{
     config::PeerNetConfiguration,
     error::{PeerNetError, PeerNetResult},
-    messages::MessagesHandler,
+    messages::MessagesHandler <span class="kw">as </span>PeerNetMessagesHandler,
     network_manager::PeerNetManager,
     peer::InitConnectionHandler,
     peer_id::PeerId,
@@ -378,30 +370,13 @@
     }
 }
 
-<span class="attr">#[derive(Clone)]
-</span><span class="kw">pub struct </span>TesterMessagesHandler;
-
-<span class="kw">impl </span>MessagesHandler <span class="kw">for </span>TesterMessagesHandler {
-    <span class="kw">fn </span>deserialize_id&lt;<span class="lifetime">&#39;a</span>&gt;(
-        <span class="kw-2">&amp;</span><span class="self">self</span>,
-        data: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>[u8],
-        _peer_id: <span class="kw-2">&amp;</span>PeerId,
-    ) -&gt; PeerNetResult&lt;(<span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>[u8], u64)&gt; {
-        <span class="prelude-val">Ok</span>((data, <span class="number">0</span>))
-    }
-
-    <span class="kw">fn </span>handle(<span class="kw-2">&amp;</span><span class="self">self</span>, _id: u64, _data: <span class="kw-2">&amp;</span>[u8], _peer_id: <span class="kw-2">&amp;</span>PeerId) -&gt; PeerNetResult&lt;()&gt; {
-        <span class="prelude-val">Ok</span>(())
-    }
-}
-
 <span class="kw">impl </span>InitConnectionHandler <span class="kw">for </span>TesterHandshake {
-    <span class="kw">fn </span>perform_handshake&lt;TesterMessagesHandler&gt;(
+    <span class="kw">fn </span>perform_handshake&lt;MassaMessagesHandler: PeerNetMessagesHandler&gt;(
         <span class="kw-2">&amp;mut </span><span class="self">self</span>,
         <span class="kw">_</span>: <span class="kw-2">&amp;</span>KeyPair,
         endpoint: <span class="kw-2">&amp;mut </span>Endpoint,
         <span class="kw">_</span>: <span class="kw-2">&amp;</span>HashMap&lt;SocketAddr, TransportType&gt;,
-        <span class="kw">_</span>: TesterMessagesHandler,
+        messages_handler: MassaMessagesHandler,
     ) -&gt; PeerNetResult&lt;PeerId&gt; {
         <span class="kw">let </span>data = endpoint.receive()<span class="question-mark">?</span>;
         <span class="kw">if </span>data.is_empty() {
@@ -480,13 +455,17 @@
                     }
                     <span class="prelude-val">Ok</span>(peer_id.clone())
                 }
-                <span class="kw">_ </span>=&gt; {
-                    {
-                        <span class="comment">//TODO: Add the peerdb but for now impossible as we don&#39;t have announcement and we need one to place in peerdb
-                    </span>}
-                    <span class="prelude-val">Err</span>(PeerNetError::HandshakeError
-                        .error(<span class="string">&quot;Massa handshake&quot;</span>, <span class="prelude-val">Some</span>(<span class="string">&quot;Invalid id&quot;</span>.to_string())))
-                }
+                <span class="number">1 </span>=&gt; {
+                    <span class="kw">let </span>(received, id) = messages_handler.deserialize_id(<span class="kw-2">&amp;</span>data[<span class="number">33</span>..], <span class="kw-2">&amp;</span>peer_id)<span class="question-mark">?</span>;
+                    messages_handler.handle(id, received, <span class="kw-2">&amp;</span>peer_id)<span class="question-mark">?</span>;
+                    <span class="prelude-val">Err</span>(PeerNetError::HandshakeError.error(
+                            <span class="string">&quot;Massa Handshake&quot;</span>,
+                            <span class="prelude-val">Some</span>(<span class="string">&quot;Tester Handshake failed received a message that our connection has been refused&quot;</span>.to_string()),
+                        ))
+                    <span class="comment">//TODO: Add the peerdb but for now impossible as we don&#39;t have announcement and we need one to place in peerdb
+                </span>}
+                <span class="kw">_ </span>=&gt; <span class="prelude-val">Err</span>(PeerNetError::HandshakeError
+                    .error(<span class="string">&quot;Massa handshake&quot;</span>, <span class="prelude-val">Some</span>(<span class="string">&quot;Invalid id&quot;</span>.to_string()))),
             }
         };
 
@@ -522,6 +501,7 @@
         config: <span class="kw-2">&amp;</span>ProtocolConfig,
         active_connections: Box&lt;<span class="kw">dyn </span>ActiveConnectionsTrait&gt;,
         peer_db: SharedPeerDB,
+        messages_handler: MessagesHandler,
     ) -&gt; (
         Sender&lt;(PeerId, HashMap&lt;SocketAddr, TransportType&gt;)&gt;,
         Vec&lt;Tester&gt;,
@@ -538,6 +518,7 @@
                 active_connections.clone(),
                 config.clone(),
                 test_receiver.clone(),
+                messages_handler.clone(),
             ));
         }
 
@@ -550,6 +531,7 @@
         active_connections: Box&lt;<span class="kw">dyn </span>ActiveConnectionsTrait&gt;,
         protocol_config: ProtocolConfig,
         receiver: crossbeam::channel::Receiver&lt;(PeerId, HashMap&lt;SocketAddr, TransportType&gt;)&gt;,
+        messages_handler: MessagesHandler,
     ) -&gt; <span class="self">Self </span>{
         <span class="macro">tracing::log::debug!</span>(<span class="string">&quot;running new tester&quot;</span>);
 
@@ -560,7 +542,7 @@
             <span class="kw">let </span>active_connections = active_connections.clone();
             <span class="kw">let </span><span class="kw-2">mut </span>config = PeerNetConfiguration::default(
                 TesterHandshake::new(peer_db, protocol_config.clone()),
-                TesterMessagesHandler {},
+                messages_handler,
             );
             config.max_out_connections = <span class="number">1</span>;
 
