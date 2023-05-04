@@ -56,18 +56,7 @@ impl InitConnectionHandler for TesterHandshake {
         _: &HashMap<SocketAddr, TransportType>,
         messages_handler: MassaMessagesHandler,
     ) -> PeerNetResult<PeerId> {
-        println!(
-            "AURELIEN: Tester handshake on {}",
-            endpoint.get_target_addr()
-        );
-        let data = match endpoint.receive() {
-            Ok(data) => data,
-            Err(e) => {
-                println!("AURELIEN: Tester handshake error: {:?}", e);
-                return Err(e);
-            }
-        };
-        println!("AURELIEN: Tester handshake data: {:?}", data);
+        let data = endpoint.receive()?;
         if data.is_empty() {
             return Err(PeerNetError::HandshakeError.error(
                 "Tester Handshake",
@@ -97,7 +86,6 @@ impl InitConnectionHandler for TesterHandshake {
                 PeerNetError::HandshakeError
                     .error("Massa Handshake", Some("Failed to get id".to_string())),
             )?;
-            println!("AURELIEN: Tester handshake peer: {} id: {}", peer_id, id);
             match id {
                 0 => {
                     let (_, announcement) = self
@@ -124,18 +112,10 @@ impl InitConnectionHandler for TesterHandshake {
                         if !announcement.listeners.is_empty() {
                             peer_db_write
                                 .index_by_newest
-                                .retain(|_, peer_id_stored| peer_id_stored != &peer_id);
-                            println!(
-                                "AURELIEN: Tester handshake peer: {} added to index by newest",
-                                peer_id
-                            );
+                                .retain(|(_, peer_id_stored)| peer_id_stored != &peer_id);
                             peer_db_write
                                 .index_by_newest
-                                .insert(Reverse(announcement.timestamp), peer_id.clone());
-                            println!(
-                                "AURELIEN: Tester handshake peer: index by newest {:?}",
-                                peer_db_write.index_by_newest
-                            );
+                                .insert((Reverse(announcement.timestamp), peer_id.clone()));
                         }
                         peer_db_write
                             .peers

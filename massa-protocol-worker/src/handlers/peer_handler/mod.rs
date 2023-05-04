@@ -112,7 +112,6 @@ impl PeerManagementHandler {
                             }
                         }
                         recv(receiver_cmd) -> cmd => {
-                            println!("AURELIEN CACHE: peer management thread channel PeerManagementCmd: {}", &receiver_cmd.len());
                             // internal command
                            match cmd {
                              Ok(PeerManagementCmd::Ban(peer_ids)) => {
@@ -151,7 +150,6 @@ impl PeerManagementHandler {
                            }
                         },
                         recv(receiver_msg) -> msg => {
-                            println!("AURELIEN CACHE: peer management thread channel network: {}", &receiver_msg.len());
                             let (peer_id, message_id, message) = match msg {
                                 Ok((peer_id, message_id, message)) => (peer_id, message_id, message),
                                 Err(_) => {
@@ -446,10 +444,10 @@ impl InitConnectionHandler for MassaHandshake {
                     if !announcement.listeners.is_empty() {
                         peer_db_write
                             .index_by_newest
-                            .retain(|_, peer_id_stored| peer_id_stored != peer_id);
+                            .retain(|(_, peer_id_stored)| peer_id_stored != peer_id);
                         peer_db_write
                             .index_by_newest
-                            .insert(Reverse(announcement.timestamp), peer_id.clone());
+                            .insert((Reverse(announcement.timestamp), peer_id.clone()));
                     }
                     peer_db_write
                         .peers

@@ -17,7 +17,7 @@ use std::collections::HashMap;
 use std::net::SocketAddr;
 use std::{num::NonZeroUsize, sync::Arc};
 use std::{thread::JoinHandle, time::Duration};
-use tracing::warn;
+use tracing::{info, warn};
 
 use crate::{handlers::peer_handler::models::SharedPeerDB, worker::ProtocolChannels};
 use crate::{handlers::peer_handler::PeerManagementHandler, messages::MessagesHandler};
@@ -202,10 +202,6 @@ pub(crate) fn start_connectivity_thread(
                             }
                         }
                     default(Duration::from_millis(1000)) => {
-                        println!("AURELIEN: CACHE PEER DB LEN: {:?}", peer_db.read().peers.len());
-                        println!("AURELIEN: CACHE PEER DB: {:?}", peer_db.read().peers);
-                        println!("AURELIEN: CACHE INDEX BY NEWEST LEN: {:?}", peer_db.read().index_by_newest.len());
-                        println!("AURELIEN: CACHE PEER DB: {:?}", peer_db.read().index_by_newest);
                         if config.debug {
                             println!("nb peers connected: {}", network_controller.get_active_connections().get_peer_ids_connected().len());
                         }
@@ -239,7 +235,7 @@ pub(crate) fn start_connectivity_thread(
                                         continue;
                                     }
                                 }
-                                println!("AURELIEN: Trying to connect to peer {:?}", addr);
+                                info!("Trying to connect to addr {} of peer {}", addr, peer_id);
                                 // We only manage TCP for now
                                 if let Err(err) = network_controller.try_connect(*addr, Duration::from_millis(200), &OutConnectionConfig::Tcp(Box::new(TcpOutConnectionConfig::new(config.read_write_limit_bytes_per_second / 10, Duration::from_millis(100))))) {
                                     warn!("Failed to connect to peer {:?}: {:?}", addr, err);

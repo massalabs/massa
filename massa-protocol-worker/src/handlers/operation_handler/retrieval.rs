@@ -87,7 +87,6 @@ impl RetrievalThread {
         loop {
             select! {
                 recv(self.receiver) -> msg => {
-                    println!("AURELIEN CACHE: retrieval operation thread channel network: {}", &self.receiver.len());
                     match msg {
                         Ok((peer_id, message_id, message)) => {
                             operation_message_deserializer.set_message_id(message_id);
@@ -137,7 +136,6 @@ impl RetrievalThread {
                     }
                 },
                 recv(self.receiver_ext) -> msg => {
-                    println!("AURELIEN CACHE: retrieval operation thread channel OperationHandlerRetrievalCommand: {}", &self.receiver_ext.len());
                     match msg {
                         Ok(cmd) => match cmd {
                             OperationHandlerRetrievalCommand::Stop => {
@@ -416,66 +414,6 @@ impl RetrievalThread {
     }
 
     fn update_ask_operation(&mut self) -> Result<(), ProtocolError> {
-        {
-            println!(
-                "AURELIEN CACHE: retrieval operation thread asked_operations: {}",
-                &self.asked_operations.len()
-            );
-            // for (key, value) in &self.asked_operations {
-            //     println!(
-            //         "AURELIEN CACHE: retrieval operation thread asked_operations: opid:{} {}",
-            //         key,
-            //         value.1.len()
-            //     );
-            // }
-            println!(
-                "AURELIEN CACHE: retrieval operation thread op_batch_buffer: {}",
-                &self.op_batch_buffer.len()
-            );
-            println!(
-                "AURELIEN CACHE: retrieval operation thread stored operations: {}",
-                &self.stored_operations.len()
-            );
-            // for (key, value) in &self.stored_operations {
-            //     println!(
-            //         "AURELIEN CACHE: retrieval operation thread stored operations: instant:{:?} {}",
-            //         key,
-            //         value.len()
-            //     );
-            // }
-            let cache_read = self.cache.read();
-            println!(
-                "AURELIEN CACHE: retrieval operation thread checked_operations_prefix: {}",
-                &cache_read.checked_operations_prefix.len()
-            );
-            println!(
-                "AURELIEN CACHE: retrieval operation thread ops_known_by_peer: {}",
-                &cache_read.ops_known_by_peer.len()
-            );
-            for (key, value) in &cache_read.ops_known_by_peer {
-                println!(
-                    "AURELIEN CACHE: retrieval operation thread ops_known_by_peer: peerid:{} {}",
-                    key,
-                    value.len()
-                );
-            }
-            println!(
-                "AURELIEN CACHE: retrieval operation thread  checked_operations: {}",
-                &cache_read.checked_operations.len()
-            );
-            println!(
-                "AURELIEN CACHE: retrieval operation thread storage blocks: {}",
-                &self.storage.get_block_refs().len()
-            );
-            println!(
-                "AURELIEN CACHE: retrieval operation thread storage ops: {}",
-                &self.storage.get_op_refs().len()
-            );
-            println!(
-                "AURELIEN CACHE: retrieval operation thread storage endorsements: {}",
-                &self.storage.get_endorsement_refs().len()
-            );
-        }
         let now = Instant::now();
         while !self.op_batch_buffer.is_empty()
         // This unwrap is ok because we checked that it's not empty just before.
