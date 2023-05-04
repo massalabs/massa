@@ -559,16 +559,38 @@
 <a href="#559" id="559">559</a>
 <a href="#560" id="560">560</a>
 <a href="#561" id="561">561</a>
+<a href="#562" id="562">562</a>
+<a href="#563" id="563">563</a>
+<a href="#564" id="564">564</a>
+<a href="#565" id="565">565</a>
+<a href="#566" id="566">566</a>
+<a href="#567" id="567">567</a>
+<a href="#568" id="568">568</a>
+<a href="#569" id="569">569</a>
+<a href="#570" id="570">570</a>
+<a href="#571" id="571">571</a>
+<a href="#572" id="572">572</a>
+<a href="#573" id="573">573</a>
+<a href="#574" id="574">574</a>
+<a href="#575" id="575">575</a>
+<a href="#576" id="576">576</a>
+<a href="#577" id="577">577</a>
+<a href="#578" id="578">578</a>
+<a href="#579" id="579">579</a>
+<a href="#580" id="580">580</a>
 </pre><pre class="rust"><code><span class="kw">use crate</span>::{CycleInfo, PoSChanges, PosError, PosResult, ProductionStats, SelectorController};
 <span class="kw">use crate</span>::{DeferredCredits, PoSConfig};
 <span class="kw">use </span>bitvec::vec::BitVec;
+<span class="kw">use </span>massa_db::{DBBatch, MassaDB};
 <span class="kw">use </span>massa_hash::Hash;
 <span class="kw">use </span>massa_models::error::ModelsError;
 <span class="kw">use </span>massa_models::streaming_step::StreamingStep;
 <span class="kw">use </span>massa_models::{address::Address, prehash::PreHashMap, slot::Slot};
 <span class="kw">use </span>massa_serialization::{Serializer, U64VarIntSerializer};
+<span class="kw">use </span>parking_lot::RwLock;
 <span class="kw">use </span>std::collections::VecDeque;
 <span class="kw">use </span>std::ops::RangeBounds;
+<span class="kw">use </span>std::sync::Arc;
 <span class="kw">use </span>std::{
     collections::BTreeMap,
     ops::Bound::{Excluded, Unbounded},
@@ -581,6 +603,8 @@
 </span><span class="kw">pub struct </span>PoSFinalState {
     <span class="doccomment">/// proof-of-stake configuration
     </span><span class="kw">pub </span>config: PoSConfig,
+    <span class="doccomment">/// Access to the RocksDB database
+    </span><span class="kw">pub </span>db: Arc&lt;RwLock&lt;MassaDB&gt;&gt;,
     <span class="doccomment">/// contiguous cycle history, back = newest
     </span><span class="kw">pub </span>cycle_history: VecDeque&lt;CycleInfo&gt;,
     <span class="doccomment">/// coins to be credited at the end of the slot
@@ -603,6 +627,7 @@
         initial_rolls_path: <span class="kw-2">&amp;</span>PathBuf,
         selector: Box&lt;<span class="kw">dyn </span>SelectorController&gt;,
         initial_ledger_hash: Hash,
+        db: Arc&lt;RwLock&lt;MassaDB&gt;&gt;,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="self">Self</span>, PosError&gt; {
         <span class="comment">// load get initial rolls from file
         </span><span class="kw">let </span>initial_rolls = serde_json::from_str::&lt;BTreeMap&lt;Address, u64&gt;&gt;(
@@ -618,40 +643,9 @@
 
         <span class="prelude-val">Ok</span>(<span class="self">Self </span>{
             config,
+            db,
             cycle_history: Default::default(),
             deferred_credits: DeferredCredits::new_with_hash(),
-            selector,
-            initial_rolls,
-            initial_seeds,
-            initial_ledger_hash,
-        })
-    }
-
-    <span class="doccomment">/// create a `PoSFinalState` from an existing snapshot
-    </span><span class="kw">pub fn </span>from_snapshot(
-        config: PoSConfig,
-        cycle_history: VecDeque&lt;CycleInfo&gt;,
-        deferred_credits: DeferredCredits,
-        initial_seed_string: <span class="kw-2">&amp;</span>str,
-        initial_rolls_path: <span class="kw-2">&amp;</span>PathBuf,
-        selector: Box&lt;<span class="kw">dyn </span>SelectorController&gt;,
-        initial_ledger_hash: Hash,
-    ) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="self">Self</span>, PosError&gt; {
-        <span class="comment">// Seeds used as the initial seeds for negative cycles (-2 and -1 respectively)
-        </span><span class="kw">let </span>init_seed = Hash::compute_from(initial_seed_string.as_bytes());
-        <span class="kw">let </span>initial_seeds = <span class="macro">vec!</span>[Hash::compute_from(init_seed.to_bytes()), init_seed];
-        <span class="comment">// load get initial rolls from file
-        </span><span class="kw">let </span>initial_rolls = serde_json::from_str::&lt;BTreeMap&lt;Address, u64&gt;&gt;(
-            <span class="kw-2">&amp;</span>std::fs::read_to_string(initial_rolls_path).map_err(|err| {
-                PosError::RollsFileLoadingError(<span class="macro">format!</span>(<span class="string">&quot;error while deserializing: {}&quot;</span>, err))
-            })<span class="question-mark">?</span>,
-        )
-        .map_err(|err| PosError::RollsFileLoadingError(<span class="macro">format!</span>(<span class="string">&quot;error opening file: {}&quot;</span>, err)))<span class="question-mark">?</span>;
-
-        <span class="prelude-val">Ok</span>(<span class="self">Self </span>{
-            config,
-            cycle_history,
-            deferred_credits,
             selector,
             initial_rolls,
             initial_seeds,
@@ -795,11 +789,12 @@
     ///     set complete=true for cycle C in the history
     ///     compute the seed hash and notifies the `PoSDrawer` for cycle `C+3`
     ///
-    </span><span class="kw">pub fn </span>apply_changes(
+    </span><span class="kw">pub fn </span>apply_changes_to_batch(
         <span class="kw-2">&amp;mut </span><span class="self">self</span>,
         changes: PoSChanges,
         slot: Slot,
         feed_selector: bool,
+        _batch: <span class="kw-2">&amp;mut </span>DBBatch,
     ) -&gt; PosResult&lt;()&gt; {
         <span class="kw">let </span>slots_per_cycle: usize = <span class="self">self
             </span>.config
@@ -1119,6 +1114,49 @@
             StreamingStep::Finished(<span class="prelude-val">None</span>)
         }
     }
+
+    <span class="comment">/*
+        /// Get the current cycle history hash
+        pub fn get_cycle_history_hash(&amp;self) -&gt; Hash {
+            let db = self.db.read();
+            let handle = db.0.cf_handle(METADATA_CF).expect(CF_ERROR);
+            if let Some(cycle_history_hash) = db
+                .get_cf(handle, CYCLE_HISTORY_HASH_KEY)
+                .expect(CRUD_ERROR)
+                .as_deref()
+            {
+                Hash::from_bytes(
+                    cycle_history_hash
+                        .try_into()
+                        .expect(CYCLE_HISTORY_HASH_ERROR),
+                )
+            } else {
+                Hash::from_bytes(CYCLE_HISTORY_HASH_INITIAL_BYTES)
+            }
+        }
+    */
+
+    </span><span class="doccomment">/// Get the current deferred credits hash
+    </span><span class="kw">pub fn </span>get_deferred_credits_hash(<span class="kw-2">&amp;mut </span><span class="self">self</span>) -&gt; Hash {
+        <span class="kw">match </span><span class="self">self</span>.deferred_credits.get_hash() {
+            <span class="prelude-val">Some</span>(hash) =&gt; <span class="kw-2">*</span>hash,
+            <span class="prelude-val">None </span>=&gt; <span class="kw-2">*</span><span class="self">self</span>.deferred_credits.enable_hash_tracker_and_compute_hash(),
+        }
+        <span class="comment">/*let db = self.db.read();
+        let handle = db.0.cf_handle(METADATA_CF).expect(CF_ERROR);
+        if let Some(deferred_credits_hash) = db.0.get_cf(handle, DEFERRED_CREDITS_HASH_KEY)
+            .expect(CRUD_ERROR)
+            .as_deref()
+        {
+            Hash::from_bytes(
+                deferred_credits_hash
+                    .try_into()
+                    .expect(DEFERRED_CREDITS_HASH_ERROR),
+            )
+        } else {
+            Hash::from_bytes(DEFERRED_CREDITS_HASH_INITIAL_BYTES)
+        }*/
+    </span>}
 }
 </code></pre></div>
 </section></main><div id="rustdoc-vars" data-root-path="../../" data-static-root-path="../../static.files/" data-current-crate="massa_pos_exports" data-themes="" data-resource-suffix="" data-rustdoc-version="1.69.0-nightly (d962ea578 2023-02-26)" data-search-js="search-14421e1532aead08.js" data-settings-js="settings-f0c5c39777a9a2f6.js" data-settings-css="settings-0bcba95ff279c1db.css" ></div></body></html>

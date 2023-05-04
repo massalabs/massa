@@ -562,7 +562,12 @@
 <a href="#562" id="562">562</a>
 <a href="#563" id="563">563</a>
 <a href="#564" id="564">564</a>
+<a href="#565" id="565">565</a>
+<a href="#566" id="566">566</a>
+<a href="#567" id="567">567</a>
+<a href="#568" id="568">568</a>
 </pre><pre class="rust"><code><span class="kw">use </span>humantime::format_duration;
+<span class="kw">use </span>massa_db::DBBatch;
 <span class="kw">use </span>std::{
     collections::HashSet,
     io,
@@ -678,26 +683,29 @@
                         .executed_denunciations
                         .set_executed_de_part(exec_de_part);
                     <span class="kw">for </span>(changes_slot, changes) <span class="kw">in </span>final_state_changes.iter() {
-                        write_final_state.ledger.apply_changes(
-                            changes.ledger_changes.clone(),
-                            <span class="kw-2">*</span>changes_slot,
-                            <span class="prelude-val">None</span>,
-                        );
+                        <span class="kw">let </span><span class="kw-2">mut </span>batch = DBBatch::new(write_final_state.db.read().get_db_hash());
+                        write_final_state
+                            .ledger
+                            .apply_changes_to_batch(changes.ledger_changes.clone(), <span class="kw-2">&amp;mut </span>batch);
                         write_final_state
                             .async_pool
-                            .apply_changes_unchecked(<span class="kw-2">&amp;</span>changes.async_pool_changes);
+                            .apply_changes_to_batch(<span class="kw-2">&amp;</span>changes.async_pool_changes, <span class="kw-2">&amp;mut </span>batch);
                         <span class="kw">if </span>!changes.pos_changes.is_empty() {
-                            write_final_state.pos_state.apply_changes(
+                            write_final_state.pos_state.apply_changes_to_batch(
                                 changes.pos_changes.clone(),
                                 <span class="kw-2">*</span>changes_slot,
                                 <span class="bool-val">false</span>,
+                                <span class="kw-2">&amp;mut </span>batch,
                             )<span class="question-mark">?</span>;
                         }
                         <span class="kw">if </span>!changes.executed_ops_changes.is_empty() {
-                            write_final_state
-                                .executed_ops
-                                .apply_changes(changes.executed_ops_changes.clone(), <span class="kw-2">*</span>changes_slot);
+                            write_final_state.executed_ops.apply_changes_to_batch(
+                                changes.executed_ops_changes.clone(),
+                                <span class="kw-2">*</span>changes_slot,
+                                <span class="kw-2">&amp;mut </span>batch,
+                            );
                         }
+                        write_final_state.db.read().write_batch(batch);
                     }
                     write_final_state.slot = slot;
 

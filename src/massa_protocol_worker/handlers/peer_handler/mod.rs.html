@@ -504,6 +504,7 @@
 <a href="#504" id="504">504</a>
 <a href="#505" id="505">505</a>
 <a href="#506" id="506">506</a>
+<a href="#507" id="507">507</a>
 </pre><pre class="rust"><code><span class="kw">use </span>std::cmp::Reverse;
 <span class="kw">use </span>std::{collections::HashMap, net::SocketAddr, thread::JoinHandle, time::Duration};
 
@@ -940,6 +941,7 @@
             </span><span class="kw">match </span><span class="kw-2">&amp;</span>res {
                 <span class="prelude-val">Ok</span>((peer_id, announcement)) =&gt; {
                     <span class="macro">info!</span>(<span class="string">&quot;Peer connected: {:?}&quot;</span>, peer_id);
+
                     <span class="comment">//TODO: Hacky organize better when multiple ip/listeners
                     </span><span class="kw">if </span>!announcement.listeners.is_empty() {
                         peer_db_write
