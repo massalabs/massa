@@ -13,6 +13,7 @@ use dialoguer::Password;
 use massa_api::{ApiServer, ApiV2, Private, Public, RpcServer, StopHandle, API};
 use massa_api_exports::config::APIConfig;
 use massa_async_pool::AsyncPoolConfig;
+use massa_bootstrap::BootstrapError;
 use massa_bootstrap::{
     client::DefaultConnector, get_state, start_bootstrap_server, BootstrapConfig, BootstrapManager,
     BootstrapTcpListener,
@@ -80,7 +81,7 @@ use parking_lot::RwLock;
 use peernet::transports::TransportType;
 use std::collections::HashMap;
 use std::path::PathBuf;
-use std::sync::atomic::{AtomicUsize, Ordering};
+use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
 use std::thread::sleep;
 use std::time::Duration;
 use std::{path::Path, process, sync::Arc};
@@ -259,8 +260,13 @@ async fn launch(
     ));
 
     // interrupt signal listener
-    let stop_signal = signal::ctrl_c();
-    tokio::pin!(stop_signal);
+    let interupted = Arc::new(AtomicBool::new(false));
+    let handler_clone = Arc::clone(&interupted);
+
+    ctrlc::set_handler(move || {
+        handler_clone.store(true, Ordering::SeqCst);
+    })
+    .expect("Error setting Ctrl-C handler");
 
     let bootstrap_config: BootstrapConfig = BootstrapConfig {
         bootstrap_list: SETTINGS.bootstrap.bootstrap_list.clone(),
@@ -320,24 +326,22 @@ async fn launch(
         max_denunciation_changes_length: MAX_DENUNCIATION_CHANGES_LENGTH,
     };
 
-    // bootstrap
-    let bootstrap_state = tokio::select! {
-        _ = &mut stop_signal => {
-            info!("interrupt signal received in bootstrap loop");
+    let bootstrap_state = match get_state(
+        &bootstrap_config,
+        final_state.clone(),
+        DefaultConnector,
+        *VERSION,
+        *GENESIS_TIMESTAMP,
+        *END_TIMESTAMP,
+        args.restart_from_snapshot_at_period,
+        interupted,
+    ) {
+        Ok(vals) => vals,
+        Err(BootstrapError::Interupted(msg)) => {
+            info!("{}", msg);
             process::exit(0);
-        },
-        res = get_state(
-            &bootstrap_config,
-            final_state.clone(),
-            DefaultConnector,
-            *VERSION,
-            *GENESIS_TIMESTAMP,
-            *END_TIMESTAMP,
-            args.restart_from_snapshot_at_period
-        ) => match res {
-            Ok(vals) => vals,
-            Err(err) => panic!("critical error detected in the bootstrap process: {}", err)
         }
+        Err(err) => panic!("critical error detected in the bootstrap process: {}", err),
     };
 
     if args.restart_from_snapshot_at_period.is_none() {

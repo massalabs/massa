@@ -3,7 +3,10 @@ use std::{
     collections::HashSet,
     io,
     net::{SocketAddr, TcpStream},
-    sync::Arc,
+    sync::{
+        atomic::{AtomicBool, Ordering},
+        Arc,
+    },
     time::Duration,
 };
 
@@ -437,7 +440,7 @@ fn filter_bootstrap_list(
 
 /// Gets the state from a bootstrap server
 /// needs to be CANCELLABLE
-pub async fn get_state(
+pub fn get_state(
     bootstrap_config: &BootstrapConfig,
     final_state: Arc<RwLock<FinalState>>,
     mut connector: impl BSConnector,
@@ -445,6 +448,7 @@ pub async fn get_state(
     genesis_timestamp: MassaTime,
     end_timestamp: Option<MassaTime>,
     restart_from_snapshot_at_period: Option<u64>,
+    interupted: Arc<AtomicBool>,
 ) -> Result<GlobalBootstrapState, BootstrapError> {
     massa_trace!("bootstrap.lib.get_state", {});
 
@@ -499,6 +503,12 @@ pub async fn get_state(
     let mut global_bootstrap_state = GlobalBootstrapState::new(final_state);
 
     loop {
+        // check for interuption
+        if interupted.load(Ordering::Relaxed) {
+            return Err(BootstrapError::Interupted(
+                "Sig INT received while getting state".to_string(),
+            ));
+        }
         for (addr, node_id) in filtered_bootstrap_list.iter() {
             if let Some(end) = end_timestamp {
                 if MassaTime::now().expect("could not get now time") > end {

@@ -6,7 +6,7 @@ use super::tools::{
 use crate::listener::PollEvent;
 use crate::tests::tools::{
     get_random_async_pool_changes, get_random_executed_de_changes, get_random_executed_ops_changes,
-    get_random_pos_changes, make_runtime,
+    get_random_pos_changes,
 };
 use crate::{
     client::MockBSConnector,
@@ -57,6 +57,7 @@ use mockall::Sequence;
 use parking_lot::RwLock;
 use std::collections::HashMap;
 use std::net::{SocketAddr, TcpStream};
+use std::sync::atomic::AtomicBool;
 use std::{path::PathBuf, str::FromStr, sync::Arc, time::Duration};
 use tempfile::TempDir;
 
@@ -402,17 +403,17 @@ fn test_bootstrap_server() {
         .unwrap();
 
     // launch the get_state process
-    let bootstrap_res = make_runtime()
-        .block_on(get_state(
-            bootstrap_config,
-            final_state_client_clone,
-            mock_remote_connector,
-            Version::from_str("TEST.1.10").unwrap(),
-            MassaTime::now().unwrap().saturating_sub(1000.into()),
-            None,
-            None,
-        ))
-        .unwrap();
+    let bootstrap_res = get_state(
+        bootstrap_config,
+        final_state_client_clone,
+        mock_remote_connector,
+        Version::from_str("TEST.1.10").unwrap(),
+        MassaTime::now().unwrap().saturating_sub(1000.into()),
+        None,
+        None,
+        Arc::new(AtomicBool::new(false)),
+    )
+    .unwrap();
 
     // apply the changes to the server state before matching with the client
     {
