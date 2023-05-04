@@ -26,6 +26,7 @@ use std::{
 };
 use tracing::error;
 
+const KNOWN_PREFIX_LEN: usize = HASH_SIZE_BYTES + MAX_BOOTSTRAP_MESSAGE_SIZE_BYTES;
 /// The known-length component of a message to be received.
 struct ClientMessageLeader {
     received_prev_hash: Option<Hash>,
@@ -224,8 +225,7 @@ impl BootstrapServerBinder {
     ) -> Result<BootstrapClientMessage, BootstrapError> {
         let deadline = duration.map(|d| Instant::now() + d);
 
-        let known_len = HASH_SIZE_BYTES + MAX_BOOTSTRAP_MESSAGE_SIZE_BYTES;
-        let mut known_len_buf = vec![0; known_len];
+        let mut known_len_buf = vec![0; KNOWN_PREFIX_LEN];
         // TODO: handle a partial read
         self.read_exact_timeout(&mut known_len_buf, deadline)
             .map_err(|(err, _consumed)| err)?;
