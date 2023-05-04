@@ -279,15 +279,9 @@
 <a href="#279" id="279">279</a>
 <a href="#280" id="280">280</a>
 <a href="#281" id="281">281</a>
-</pre><pre class="rust"><code><span class="doccomment">///! Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
+<a href="#282" id="282">282</a>
+</pre><pre class="rust"><code><span class="kw">use </span>std::ops::Bound::Included;
 
-///! This file provides structures representing changes to the asynchronous message pool
-</span><span class="kw">use </span>std::ops::Bound::Included;
-
-<span class="kw">use crate</span>::{
-    message::{AsyncMessage, AsyncMessageId, AsyncMessageIdDeserializer, AsyncMessageIdSerializer},
-    AsyncMessageDeserializer, AsyncMessageSerializer,
-};
 <span class="kw">use </span>massa_serialization::{
     Deserializer, SerializeError, Serializer, U64VarIntDeserializer, U64VarIntSerializer,
 };
@@ -298,6 +292,14 @@
     IResult, Parser,
 };
 <span class="kw">use </span>serde::{Deserialize, Serialize};
+
+<span class="doccomment">///! Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
+
+///! This file provides structures representing changes to the asynchronous message pool
+</span><span class="kw">use crate</span>::{
+    message::{AsyncMessage, AsyncMessageId, AsyncMessageIdDeserializer, AsyncMessageIdSerializer},
+    AsyncMessageDeserializer, AsyncMessageSerializer,
+};
 
 <span class="doccomment">/// Enum representing a value U with identifier T being added or deleted
 </span><span class="attr">#[derive(Debug, Clone, PartialEq, Eq, Deserialize, Serialize)]

@@ -1165,6 +1165,7 @@
 <a href="#1165" id="1165">1165</a>
 <a href="#1166" id="1166">1166</a>
 <a href="#1167" id="1167">1167</a>
+<a href="#1168" id="1168">1168</a>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="attr">#![doc = <span class="macro">include_str!</span>(<span class="string">&quot;../../README.md&quot;</span>)]
@@ -1181,8 +1182,8 @@
 <span class="kw">use </span>massa_api_exports::config::APIConfig;
 <span class="kw">use </span>massa_async_pool::AsyncPoolConfig;
 <span class="kw">use </span>massa_bootstrap::{
-    client::DefaultConnector, get_state, start_bootstrap_server, BootstrapConfig, BootstrapManager,
-    BootstrapTcpListener,
+    get_state, start_bootstrap_server, BootstrapConfig, BootstrapManager, BootstrapTcpListener,
+    DefaultConnector,
 };
 <span class="kw">use </span>massa_consensus_exports::events::ConsensusEvent;
 <span class="kw">use </span>massa_consensus_exports::{ConsensusChannels, ConsensusConfig, ConsensusManager};
@@ -1896,6 +1897,7 @@
             enable_cors: SETTINGS.grpc.enable_cors,
             enable_health: SETTINGS.grpc.enable_health,
             enable_reflection: SETTINGS.grpc.enable_reflection,
+            enable_mtls: SETTINGS.grpc.enable_mtls,
             bind: SETTINGS.grpc.bind,
             accept_compressed: SETTINGS.grpc.accept_compressed.clone(),
             send_compressed: SETTINGS.grpc.send_compressed.clone(),
