@@ -8,6 +8,7 @@ mod tests {
         create_block, get_initials_vesting, get_random_address_full, get_sample_state,
     };
     use massa_async_pool::AsyncMessage;
+    use massa_db::DBBatch;
     use massa_execution_exports::{
         ExecutionChannels, ExecutionConfig, ExecutionController, ExecutionError,
         ReadOnlyExecutionRequest, ReadOnlyExecutionTarget,
@@ -1602,12 +1603,18 @@ mod tests {
         let roll_sell_2 = 1;
 
         let initial_deferred_credits = Amount::from_str("100").unwrap();
+
+        let mut batch = DBBatch::new(sample_state.read().db.read().get_db_hash());
+
         // set initial_deferred_credits that will be reimbursed at first block
-        sample_state.write().pos_state.deferred_credits.insert(
-            Slot::new(1, 0),
-            address,
-            initial_deferred_credits,
+        sample_state.write().pos_state.put_deferred_credits_entry(
+            &Slot::new(1, 0),
+            &address,
+            &initial_deferred_credits,
+            &mut batch,
         );
+
+        sample_state.read().db.read().write_batch(batch);
 
         // create operation 1
         let operation1 = Operation::new_verifiable(

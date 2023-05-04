@@ -53,7 +53,7 @@ use massa_models::{
     secure_share::SecureShareContent,
     slot::Slot,
 };
-use massa_pos_exports::{CycleInfo, DeferredCredits, PoSChanges, PoSFinalState, ProductionStats};
+use massa_pos_exports::{DeferredCredits, PoSChanges, PoSFinalState, ProductionStats};
 use massa_protocol_exports::{BootstrapPeers, PeerId, TransportType};
 use massa_serialization::{DeserializeError, Deserializer, Serializer};
 use massa_signature::KeyPair;
@@ -167,19 +167,25 @@ fn get_random_deferred_credits(r_limit: u64) -> DeferredCredits {
 }
 
 /// generates a random PoS final state
-fn get_random_pos_state(r_limit: u64, pos: PoSFinalState) -> PoSFinalState {
-    let mut cycle_history = VecDeque::new();
+fn get_random_pos_state(r_limit: u64, mut pos: PoSFinalState) -> PoSFinalState {
     let (roll_counts, production_stats, rng_seed) = get_random_pos_cycles_info(r_limit, true);
-    let mut cycle = CycleInfo::new_with_hash(0, false, roll_counts, rng_seed, production_stats);
-    cycle.final_state_hash_snapshot = Some(Hash::from_bytes(&[0; 32]));
-    cycle_history.push_back(cycle);
     let mut deferred_credits = DeferredCredits::new_with_hash();
     deferred_credits.extend(get_random_deferred_credits(r_limit));
-    PoSFinalState {
-        cycle_history,
+
+    let mut batch = DBBatch::new(pos.db.read().get_db_hash());
+
+    let changes = PoSChanges {
+        seed_bits: rng_seed,
+        roll_changes: roll_counts.into_iter().collect(),
+        production_stats,
         deferred_credits,
-        ..pos
-    }
+    };
+
+    pos.apply_changes_to_batch(changes, Slot::new(0, 0), false, &mut batch)
+        .expect("Critical: Error while applying changes to pos_state");
+    pos.db.read().write_batch(batch);
+
+    pos
 }
 
 /// generates random PoS changes

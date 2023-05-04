@@ -36,10 +36,14 @@ pub const MESSAGE_ID_SER_ERROR: &str = "critical: message_id serialization faile
 pub const CYCLE_HISTORY_HASH_ERROR: &str = "critical: saved cycle_history hash is corrupted";
 pub const CYCLE_HISTORY_HASH_KEY: &[u8; 4] = b"ch_h";
 pub const CYCLE_HISTORY_HASH_INITIAL_BYTES: &[u8; 32] = &[0; HASH_SIZE_BYTES];
+pub const CYCLE_HISTORY_DESER_ERROR: &str = "critical: cycle_history deserialization failed";
+pub const CYCLE_HISTORY_SER_ERROR: &str = "critical: cycle_history serialization failed";
 
 pub const DEFERRED_CREDITS_HASH_ERROR: &str = "critical: saved deferred_credits hash is corrupted";
 pub const DEFERRED_CREDITS_HASH_KEY: &[u8; 4] = b"dc_h";
 pub const DEFERRED_CREDITS_HASH_INITIAL_BYTES: &[u8; 32] = &[0; HASH_SIZE_BYTES];
+pub const DEFERRED_CREDITS_DESER_ERROR: &str = "critical: deferred_credits deserialization failed";
+pub const DEFERRED_CREDITS_SER_ERROR: &str = "critical: deferred_credits serialization failed";
 
 // Executed Ops
 

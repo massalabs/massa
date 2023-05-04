@@ -265,13 +265,16 @@ impl FinalState {
         current_slot: Slot,
         end_slot: Slot,
     ) -> Result<(), FinalStateError> {
-        let latest_snapshot_cycle_info =
+        let latest_snapshot_cycle =
             self.pos_state
-                .cycle_history
+                .cycle_history_cache
                 .pop_back()
                 .ok_or(FinalStateError::SnapshotError(String::from(
                     "Invalid cycle_history",
                 )))?;
+
+        let latest_snapshot_cycle_info = self.pos_state.get_cycle_info(latest_snapshot_cycle.0);
+        self.pos_state.delete_cycle_info(latest_snapshot_cycle.0);
 
         self.pos_state
             .create_new_cycle_from_last(
@@ -294,13 +297,16 @@ impl FinalState {
         current_slot_cycle: u64,
         end_slot_cycle: u64,
     ) -> Result<(), FinalStateError> {
-        let latest_snapshot_cycle_info =
+        let latest_snapshot_cycle =
             self.pos_state
-                .cycle_history
+                .cycle_history_cache
                 .pop_back()
                 .ok_or(FinalStateError::SnapshotError(String::from(
                     "Invalid cycle_history",
                 )))?;
+
+        let latest_snapshot_cycle_info = self.pos_state.get_cycle_info(latest_snapshot_cycle.0);
+        self.pos_state.delete_cycle_info(latest_snapshot_cycle.0);
 
         // Firstly, complete the first cycle
         let last_slot = Slot::new_last_of_cycle(
@@ -381,8 +387,11 @@ impl FinalState {
         }
 
         // We reduce the cycle_history len as needed
-        while self.pos_state.cycle_history.len() > self.pos_state.config.cycle_history_length {
-            self.pos_state.cycle_history.pop_front();
+        while self.pos_state.cycle_history_cache.len() > self.pos_state.config.cycle_history_length
+        {
+            if let Some((cycle, _)) = self.pos_state.cycle_history_cache.pop_front() {
+                self.pos_state.delete_cycle_info(cycle);
+            }
         }
 
         Ok(())

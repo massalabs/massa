@@ -1537,15 +1537,8 @@ impl ExecutionState {
 
         match cycle.checked_sub(3) {
             Some(lookback_cycle) => {
-                let lookback_cycle_index =
-                    match final_state.pos_state.get_cycle_index(lookback_cycle) {
-                        Some(v) => v,
-                        None => Default::default(),
-                    };
                 // get rolls
-                final_state.pos_state.cycle_history[lookback_cycle_index]
-                    .roll_counts
-                    .clone()
+                final_state.pos_state.get_all_roll_counts(lookback_cycle)
             }
             None => final_state.pos_state.initial_rolls.clone(),
         }

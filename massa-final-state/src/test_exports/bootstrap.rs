@@ -68,31 +68,4 @@ pub fn assert_eq_final_state_hash(v1: &FinalState, v2: &FinalState) {
         v2.db.read().get_db_hash(),
         "rocks_db hash mismatch"
     );
-    assert_eq!(
-        v1.pos_state.deferred_credits.get_hash(),
-        v2.pos_state.deferred_credits.get_hash(),
-        "deferred credits hash mismatch"
-    );
-    for (cycle1, cycle2) in v1
-        .pos_state
-        .cycle_history
-        .iter()
-        .zip(v2.pos_state.cycle_history.iter())
-    {
-        assert_eq!(
-            cycle1.roll_counts_hash, cycle2.roll_counts_hash,
-            "cycle ({}) roll_counts_hash mismatch",
-            cycle1.cycle
-        );
-        assert_eq!(
-            cycle1.production_stats_hash, cycle2.production_stats_hash,
-            "cycle ({}) roll_counts_hash mismatch",
-            cycle1.cycle
-        );
-        assert_eq!(
-            cycle1.cycle_global_hash, cycle2.cycle_global_hash,
-            "cycle ({}) global_hash mismatch",
-            cycle1.cycle
-        );
-    }
 }

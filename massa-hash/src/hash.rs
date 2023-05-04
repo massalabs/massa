@@ -209,7 +209,7 @@ impl Hash {
 }
 
 /// Serializer for `Hash`
-#[derive(Default)]
+#[derive(Default, Clone)]
 pub struct HashSerializer;
 
 impl HashSerializer {

@@ -4,7 +4,6 @@ use massa_models::{
     address::{Address, AddressDeserializer, AddressSerializer},
     prehash::PreHashMap,
     serialization::{BitVecDeserializer, BitVecSerializer},
-    slot::Slot,
 };
 use massa_serialization::{
     Deserializer, OptionDeserializer, OptionSerializer, SerializeError, Serializer,
@@ -24,6 +23,10 @@ use serde::{Deserialize, Serialize};
 use std::collections::{BTreeMap, VecDeque};
 use std::ops::Bound::Included;
 
+#[cfg(test)]
+use massa_models::slot::Slot;
+
+#[cfg(test)]
 use crate::PoSChanges;
 
 const CYCLE_INFO_HASH_INITIAL_BYTES: &[u8; 32] = &[0; HASH_SIZE_BYTES];
@@ -156,6 +159,7 @@ impl CycleInfo {
         }
     }
 
+    #[cfg(test)]
     /// Apply every part of a `PoSChanges` to a cycle info, except for `deferred_credits`
     pub(crate) fn apply_changes(
         &mut self,
@@ -327,13 +331,15 @@ fn test_cycle_info_hash_computation() {
     );
 }
 
+#[derive(Clone)]
+#[allow(missing_docs)]
 /// Serializer for `CycleInfo`
 pub struct CycleInfoSerializer {
-    u64_ser: U64VarIntSerializer,
-    bitvec_ser: BitVecSerializer,
-    production_stats_ser: ProductionStatsSerializer,
-    address_ser: AddressSerializer,
-    opt_hash_ser: OptionSerializer<Hash, HashSerializer>,
+    pub u64_ser: U64VarIntSerializer,
+    pub bitvec_ser: BitVecSerializer,
+    pub production_stats_ser: ProductionStatsSerializer,
+    pub address_ser: AddressSerializer,
+    pub opt_hash_ser: OptionSerializer<Hash, HashSerializer>,
 }
 
 impl Default for CycleInfoSerializer {
@@ -386,13 +392,15 @@ impl Serializer<CycleInfo> for CycleInfoSerializer {
     }
 }
 
+#[derive(Clone)]
+#[allow(missing_docs)]
 /// Deserializer for `CycleInfo`
 pub struct CycleInfoDeserializer {
-    u64_deser: U64VarIntDeserializer,
-    rolls_deser: RollsDeserializer,
-    bitvec_deser: BitVecDeserializer,
-    production_stats_deser: ProductionStatsDeserializer,
-    opt_hash_deser: OptionDeserializer<Hash, HashDeserializer>,
+    pub u64_deser: U64VarIntDeserializer,
+    pub rolls_deser: RollsDeserializer,
+    pub bitvec_deser: BitVecDeserializer,
+    pub production_stats_deser: ProductionStatsDeserializer,
+    pub opt_hash_deser: OptionDeserializer<Hash, HashDeserializer>,
 }
 
 impl CycleInfoDeserializer {
@@ -486,9 +494,11 @@ impl ProductionStats {
     }
 }
 
+#[derive(Clone)]
+#[allow(missing_docs)]
 /// Serializer for `ProductionStats`
 pub struct ProductionStatsSerializer {
-    u64_ser: U64VarIntSerializer,
+    pub u64_ser: U64VarIntSerializer,
     address_ser: AddressSerializer,
 }
 
@@ -531,11 +541,13 @@ impl Serializer<PreHashMap<Address, ProductionStats>> for ProductionStatsSeriali
     }
 }
 
+#[derive(Clone)]
+#[allow(missing_docs)]
 /// Deserializer for `ProductionStats`
 pub struct ProductionStatsDeserializer {
     length_deserializer: U64VarIntDeserializer,
-    address_deserializer: AddressDeserializer,
-    u64_deserializer: U64VarIntDeserializer,
+    pub address_deserializer: AddressDeserializer,
+    pub u64_deserializer: U64VarIntDeserializer,
 }
 
 impl ProductionStatsDeserializer {
@@ -594,11 +606,13 @@ impl Deserializer<PreHashMap<Address, ProductionStats>> for ProductionStatsDeser
     }
 }
 
+#[derive(Clone)]
+#[allow(missing_docs)]
 /// Deserializer for rolls
 pub struct RollsDeserializer {
     length_deserializer: U64VarIntDeserializer,
-    address_deserializer: AddressDeserializer,
-    u64_deserializer: U64VarIntDeserializer,
+    pub address_deserializer: AddressDeserializer,
+    pub u64_deserializer: U64VarIntDeserializer,
 }
 
 impl RollsDeserializer {
@@ -640,10 +654,12 @@ impl Deserializer<Vec<(Address, u64)>> for RollsDeserializer {
     }
 }
 
+#[derive(Clone)]
+#[allow(missing_docs)]
 /// Serializer for cycle history
 pub struct CycleHistorySerializer {
-    u64_serializer: U64VarIntSerializer,
-    cycle_info_serializer: CycleInfoSerializer,
+    pub u64_serializer: U64VarIntSerializer,
+    pub cycle_info_serializer: CycleInfoSerializer,
 }
 
 impl CycleHistorySerializer {
@@ -677,10 +693,12 @@ impl Serializer<VecDeque<CycleInfo>> for CycleHistorySerializer {
     }
 }
 
+#[derive(Clone)]
+#[allow(missing_docs)]
 /// Deserializer for cycle history, useful when restarting from a snapshot
 pub struct CycleHistoryDeserializer {
-    u64_deserializer: U64VarIntDeserializer,
-    cycle_info_deserializer: CycleInfoDeserializer,
+    pub u64_deserializer: U64VarIntDeserializer,
+    pub cycle_info_deserializer: CycleInfoDeserializer,
 }
 
 impl CycleHistoryDeserializer {

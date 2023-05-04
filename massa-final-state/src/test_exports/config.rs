@@ -14,8 +14,9 @@ use massa_hash::{Hash, HASH_SIZE_BYTES};
 use massa_ledger_exports::LedgerConfig;
 use massa_ledger_worker::FinalLedger;
 use massa_models::config::{
-    DENUNCIATION_EXPIRE_PERIODS, ENDORSEMENT_COUNT, MAX_DENUNCIATIONS_PER_BLOCK_HEADER,
-    MAX_DENUNCIATION_CHANGES_LENGTH,
+    DENUNCIATION_EXPIRE_PERIODS, ENDORSEMENT_COUNT, MAX_DEFERRED_CREDITS_LENGTH,
+    MAX_DENUNCIATIONS_PER_BLOCK_HEADER, MAX_DENUNCIATION_CHANGES_LENGTH,
+    MAX_PRODUCTION_STATS_LENGTH, MAX_ROLLS_COUNT_LENGTH,
 };
 use massa_models::{
     config::{
@@ -74,6 +75,9 @@ impl Default for FinalStateConfig {
                 thread_count: THREAD_COUNT,
                 cycle_history_length: POS_SAVED_CYCLES,
                 credits_bootstrap_part_size: DEFERRED_CREDITS_BOOTSTRAP_PART_SIZE,
+                max_rolls_length: MAX_ROLLS_COUNT_LENGTH,
+                max_production_stats_length: MAX_PRODUCTION_STATS_LENGTH,
+                max_credit_length: MAX_DEFERRED_CREDITS_LENGTH,
             },
             final_history_length: 10,
             thread_count: 2,
