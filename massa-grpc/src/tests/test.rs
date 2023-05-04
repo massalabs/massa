@@ -47,6 +47,7 @@ async fn test_start_grpc_server() {
         enabled: true,
         accept_http1: true,
         enable_cors: true,
+        enable_health: true,
         enable_reflection: true,
         bind: SocketAddr::new(IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1)), 8888),
         accept_compressed: None,

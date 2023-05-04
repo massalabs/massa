@@ -9,8 +9,10 @@ use crate::tests::tools::{
     get_random_pos_changes, make_runtime,
 };
 use crate::{
-    establisher::{MockBSConnector, MockBSEventPoller},
-    get_state, start_bootstrap_server,
+    client::MockBSConnector,
+    get_state,
+    server::MockBSEventPoller,
+    start_bootstrap_server,
     tests::tools::{assert_eq_bootstrap_graph, get_bootstrap_config},
 };
 use crate::{BootstrapConfig, BootstrapManager, BootstrapTcpListener};
@@ -176,7 +178,7 @@ fn mock_bootstrap_manager(addr: SocketAddr, bootstrap_config: BootstrapConfig) -
         .return_once(move || stream_mock2);
 
     start_bootstrap_server(
-        BootstrapTcpListener::new(addr).unwrap().1,
+        BootstrapTcpListener::new(&addr).unwrap().1,
         stream_mock1,
         mocked1,
         final_state_server,

@@ -14,6 +14,7 @@ use massa_protocol_exports::ProtocolController;
 use massa_storage::Storage;
 use tokio::sync::oneshot;
 use tonic::codec::CompressionEncoding;
+use tonic_health::server::HealthReporter;
 use tonic_web::GrpcWebLayer;
 use tower_http::cors::{Any, CorsLayer};
 use tracing::log::{info, warn};
@@ -78,6 +79,18 @@ impl MassaGrpc {
             .http2_adaptive_window(config.http2_adaptive_window)
             .max_frame_size(config.max_frame_size);
 
+        let health_service_opt = if config.enable_health {
+            let (mut health_reporter, health_service) = tonic_health::server::health_reporter();
+            health_reporter
+                .set_serving::<MassaServiceServer<MassaGrpc>>()
+                .await;
+            tokio::spawn(massa_service_status(health_reporter.clone()));
+            info!("gRPC health service enabled");
+            Some(health_service)
+        } else {
+            None
+        };
+
         if config.accept_http1 {
             if config.enable_cors {
                 let cors = CorsLayer::new()
@@ -91,6 +104,7 @@ impl MassaGrpc {
                     .accept_http1(true)
                     .layer(cors)
                     .layer(GrpcWebLayer::new())
+                    .add_optional_service(health_service_opt)
                     .add_service(svc);
 
                 if config.enable_reflection {
@@ -156,4 +170,12 @@ impl StopHandle {
             info!("gRPC API stop signal sent successfully");
         }
     }
+}
+
+/// Massa service health check implementation
+async fn massa_service_status(mut reporter: HealthReporter) {
+    //TODO add a complete health check based on Massa modules health
+    reporter
+        .set_serving::<MassaServiceServer<MassaGrpc>>()
+        .await;
 }

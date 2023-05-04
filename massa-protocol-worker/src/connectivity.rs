@@ -229,7 +229,7 @@ pub(crate) fn start_connectivity_thread(
                                     continue;
                                 }
                                 {
-                                    if !addr.ip().is_global() || !network_controller.get_active_connections().check_addr_accepted(addr) {
+                                    if !addr.ip().to_canonical().is_global() || !network_controller.get_active_connections().check_addr_accepted(addr) {
                                         continue;
                                     }
                                 }

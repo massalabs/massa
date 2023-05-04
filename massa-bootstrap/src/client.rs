@@ -1,6 +1,12 @@
 use humantime::format_duration;
 use massa_db::DBBatch;
-use std::{collections::HashSet, net::SocketAddr, sync::Arc, time::Duration};
+use std::{
+    collections::HashSet,
+    io,
+    net::{SocketAddr, TcpStream},
+    sync::Arc,
+    time::Duration,
+};
 
 use massa_final_state::FinalState;
 use massa_logging::massa_trace;
@@ -18,12 +24,43 @@ use tracing::{debug, info, warn};
 use crate::{
     client_binder::BootstrapClientBinder,
     error::BootstrapError,
-    establisher::BSConnector,
     messages::{BootstrapClientMessage, BootstrapServerMessage},
     settings::IpType,
     BootstrapConfig, GlobalBootstrapState,
 };
 
+/// Specifies a common interface that can be used by standard, or mockers
+#[cfg_attr(test, mockall::automock)]
+pub trait BSConnector {
+    /// The client attempts to connect to the given address.
+    /// If a duration is provided, the attempt will be timed out after the given duration.
+    fn connect_timeout(
+        &self,
+        addr: SocketAddr,
+        duration: Option<MassaTime>,
+    ) -> io::Result<TcpStream>;
+}
+
+/// Initiates a connection with given timeout in milliseconds
+#[derive(Debug)]
+pub struct DefaultConnector;
+
+impl BSConnector for DefaultConnector {
+    /// Tries to connect to address
+    ///
+    /// # Argument
+    /// * `addr`: `SocketAddr` we are trying to connect to.
+    fn connect_timeout(
+        &self,
+        addr: SocketAddr,
+        duration: Option<MassaTime>,
+    ) -> io::Result<TcpStream> {
+        let Some(duration) = duration else {
+            return TcpStream::connect(addr);
+        };
+        TcpStream::connect_timeout(&addr, duration.to_duration())
+    }
+}
 /// This function will send the starting point to receive a stream of the ledger and will receive and process each part until receive a `BootstrapServerMessage::FinalStateFinished` message from the server.
 /// `next_bootstrap_message` passed as parameter must be `BootstrapClientMessage::AskFinalStatePart` enum variant.
 /// `next_bootstrap_message` will be updated after receiving each part so that in case of connection lost we can restart from the last message we processed.

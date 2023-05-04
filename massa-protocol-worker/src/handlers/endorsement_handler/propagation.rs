@@ -121,16 +121,21 @@ impl PropagationThread {
                                             to_send.len(),
                                             peer_id
                                         );
-                                        if let Err(err) = self.active_connections.send_to_peer(
-                                            peer_id,
-                                            &self.endorsement_serializer,
-                                            EndorsementMessage::Endorsements(to_send).into(),
-                                            false,
+                                        for sub_list in to_send.chunks(
+                                            self.config.max_endorsements_per_message as usize,
                                         ) {
-                                            warn!(
-                                                "could not send endorsements batch to node {}: {}",
-                                                peer_id, err
-                                            );
+                                            if let Err(err) = self.active_connections.send_to_peer(
+                                                peer_id,
+                                                &self.endorsement_serializer,
+                                                EndorsementMessage::Endorsements(sub_list.to_vec())
+                                                    .into(),
+                                                false,
+                                            ) {
+                                                warn!(
+                                                    "could not send endorsements batch to node {}: {}",
+                                                    peer_id, err
+                                                );
+                                            }
                                         }
                                     }
                                 }

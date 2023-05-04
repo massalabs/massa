@@ -14,8 +14,8 @@ use massa_api::{ApiServer, ApiV2, Private, Public, RpcServer, StopHandle, API};
 use massa_api_exports::config::APIConfig;
 use massa_async_pool::AsyncPoolConfig;
 use massa_bootstrap::{
-    get_state, start_bootstrap_server, BootstrapConfig, BootstrapManager, BootstrapTcpListener,
-    DefaultConnector,
+    client::DefaultConnector, get_state, start_bootstrap_server, BootstrapConfig, BootstrapManager,
+    BootstrapTcpListener,
 };
 use massa_consensus_exports::events::ConsensusEvent;
 use massa_consensus_exports::{ConsensusChannels, ConsensusConfig, ConsensusManager};
@@ -653,7 +653,7 @@ async fn launch(
     let factory_manager = start_factory(factory_config, node_wallet.clone(), factory_channels);
 
     let bootstrap_manager = bootstrap_config.listen_addr.map(|addr| {
-        let (waker, listener) = BootstrapTcpListener::new(addr).unwrap_or_else(|_| {
+        let (waker, listener) = BootstrapTcpListener::new(&addr).unwrap_or_else(|_| {
             panic!(
                 "{}",
                 format!("Could not bind to address: {}", addr).as_str()
@@ -735,6 +735,7 @@ async fn launch(
             enabled: SETTINGS.grpc.enabled,
             accept_http1: SETTINGS.grpc.accept_http1,
             enable_cors: SETTINGS.grpc.enable_cors,
+            enable_health: SETTINGS.grpc.enable_health,
             enable_reflection: SETTINGS.grpc.enable_reflection,
             bind: SETTINGS.grpc.bind,
             accept_compressed: SETTINGS.grpc.accept_compressed.clone(),

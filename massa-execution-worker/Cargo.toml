@@ -41,7 +41,7 @@ massa_db = { path = "../massa-db", optional = true }
 tokio = { version = "1.23", features = ["sync"] }
 massa_pos_worker = { path = "../massa-pos-worker" }
 massa_ledger_worker = { path = "../massa-ledger-worker" }
-serial_test = "0.10"
+serial_test = "1.0.0"
 tempfile = "3.2"
 hex-literal = "0.3.4"
 # custom modules with testing enabled

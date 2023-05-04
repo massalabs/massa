@@ -314,12 +314,20 @@ impl RetrievalThread {
             all_blocks_info.len(),
             from_peer_id
         );
-        self.active_connections.send_to_peer(
-            &from_peer_id,
-            &self.block_message_serializer,
-            BlockMessage::ReplyForBlocks(all_blocks_info).into(),
-            true,
-        )
+        for sub_list in all_blocks_info.chunks(self.config.max_size_block_infos as usize) {
+            if let Err(err) = self.active_connections.send_to_peer(
+                &from_peer_id,
+                &self.block_message_serializer,
+                BlockMessage::ReplyForBlocks(sub_list.to_vec()).into(),
+                true,
+            ) {
+                warn!(
+                    "Error while sending reply for blocks to {}: {:?}",
+                    from_peer_id, err
+                );
+            }
+        }
+        Ok(())
     }
 
     fn on_block_info_received(
@@ -1237,17 +1245,19 @@ impl RetrievalThread {
         // send AskBlockEvents
         if !ask_block_list.is_empty() {
             for (peer_id, list) in ask_block_list.iter() {
-                debug!("Send ask for blocks of len {} to {}", list.len(), peer_id);
-                if let Err(err) = self.active_connections.send_to_peer(
-                    peer_id,
-                    &self.block_message_serializer,
-                    BlockMessage::AskForBlocks(list.clone()).into(),
-                    true,
-                ) {
-                    warn!(
-                        "Failed to send AskForBlocks to peer {} err: {}",
-                        peer_id, err
-                    );
+                for sub_list in list.chunks(self.config.max_size_block_infos as usize) {
+                    debug!("Send ask for blocks of len {} to {}", list.len(), peer_id);
+                    if let Err(err) = self.active_connections.send_to_peer(
+                        peer_id,
+                        &self.block_message_serializer,
+                        BlockMessage::AskForBlocks(sub_list.to_vec()).into(),
+                        true,
+                    ) {
+                        warn!(
+                            "Failed to send AskForBlocks to peer {} err: {}",
+                            peer_id, err
+                        );
+                    }
                 }
             }
         }
