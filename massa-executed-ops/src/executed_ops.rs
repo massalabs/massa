@@ -166,7 +166,7 @@ impl ExecutedOps {
             .serialize(op_id, &mut serialized_op_id)
             .expect(EXECUTED_OPS_ID_SER_ERROR);
 
-        db.0.get_cf(handle, &op_id_key!(serialized_op_id))
+        db.0.get_cf(handle, op_id_key!(serialized_op_id))
             .expect(CRUD_ERROR)
             .is_some()
     }

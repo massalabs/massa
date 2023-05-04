@@ -434,7 +434,7 @@ impl InitConnectionHandler for MassaHandshake {
             match &res {
                 Ok((peer_id, announcement)) => {
                     info!("Peer connected: {:?}", peer_id);
-                    
+
                     //TODO: Hacky organize better when multiple ip/listeners
                     if !announcement.listeners.is_empty() {
                         peer_db_write

@@ -132,7 +132,7 @@ impl ExecutedDenunciations {
             .serialize(de_idx, &mut serialized_de_idx)
             .expect(EXECUTED_DENUNCIATIONS_INDEX_SER_ERROR);
 
-        db.0.get_cf(handle, &denunciation_index_key!(serialized_de_idx))
+        db.0.get_cf(handle, denunciation_index_key!(serialized_de_idx))
             .expect(CRUD_ERROR)
             .is_some()
     }
