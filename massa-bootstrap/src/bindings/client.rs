@@ -186,16 +186,16 @@ impl BootstrapClientBinder {
     /// and makes error-type management cleaner
     fn decode_msg_leader(
         &self,
-        peek_buff: &[u8; SIGNATURE_SIZE_BYTES + MAX_BOOTSTRAP_MESSAGE_SIZE_BYTES],
+        leader_buff: &[u8; SIGNATURE_SIZE_BYTES + MAX_BOOTSTRAP_MESSAGE_SIZE_BYTES],
     ) -> Result<ServerMessageLeader, BootstrapError> {
-        let sig_array = peek_buff[0..SIGNATURE_SIZE_BYTES]
+        let sig_array = leader_buff[0..SIGNATURE_SIZE_BYTES]
             .try_into()
             .expect("logic error in array manipulations");
         let sig = Signature::from_bytes(&sig_array)?;
 
-        // construct the message len from the peek
+        // construct the message len from the leader-bufff
         let msg_len = u32::from_be_bytes_min(
-            &peek_buff[SIGNATURE_SIZE_BYTES..],
+            &leader_buff[SIGNATURE_SIZE_BYTES..],
             MAX_BOOTSTRAP_MESSAGE_SIZE,
         )?
         .0;

@@ -275,13 +275,13 @@ impl BootstrapServerBinder {
     /// and makes error-type management cleaner
     fn decode_message_leader(
         &self,
-        peek_buf: &[u8],
+        leader_buf: &[u8],
     ) -> Result<ClientMessageLeader, BootstrapError> {
-        // construct prev-hash from peek
+        // construct prev-hash
         let received_prev_hash = {
             if self.prev_message.is_some() {
                 Some(Hash::from_bytes(
-                    peek_buf[..HASH_SIZE_BYTES]
+                    leader_buf[..HASH_SIZE_BYTES]
                         .try_into()
                         .expect("bad slice logic"),
                 ))
@@ -290,9 +290,10 @@ impl BootstrapServerBinder {
             }
         };
 
-        // construct msg-len from peek
-        let msg_len =
-            { u32::from_be_bytes_min(&peek_buf[HASH_SIZE_BYTES..], MAX_BOOTSTRAP_MESSAGE_SIZE)?.0 };
+        // construct msg-len
+        let msg_len = {
+            u32::from_be_bytes_min(&leader_buf[HASH_SIZE_BYTES..], MAX_BOOTSTRAP_MESSAGE_SIZE)?.0
+        };
         Ok(ClientMessageLeader {
             received_prev_hash,
             msg_len,
