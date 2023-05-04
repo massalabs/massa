@@ -440,6 +440,7 @@ fn filter_bootstrap_list(
 
 /// Gets the state from a bootstrap server
 /// needs to be CANCELLABLE
+#[allow(clippy::too_many_arguments)]
 pub fn get_state(
     bootstrap_config: &BootstrapConfig,
     final_state: Arc<RwLock<FinalState>>,
