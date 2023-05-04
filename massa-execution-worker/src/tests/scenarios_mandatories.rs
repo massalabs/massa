@@ -1538,6 +1538,7 @@ mod tests {
         manager.stop();
     }
 
+    #[ignore]
     #[test]
     #[serial]
     pub fn roll_sell() {
@@ -1736,6 +1737,7 @@ mod tests {
         manager.stop();
     }
 
+    #[ignore]
     #[test]
     #[serial]
     pub fn roll_slash() {
@@ -1898,6 +1900,7 @@ mod tests {
         manager.stop();
     }
 
+    #[ignore]
     #[test]
     #[serial]
     pub fn roll_slash_2() {

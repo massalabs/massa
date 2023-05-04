@@ -71,7 +71,7 @@ pub enum BootstrapServerMessage {
         /// Last Start Period for network restart management
         last_start_period: Option<u64>,
         /// Last Slot before downtime for network restart management
-        last_slot_before_downtime: Option<Option<Slot>>
+        last_slot_before_downtime: Option<Option<Slot>>,
     },
     /// Bootstrap versioning store
     BootstrapMipStore {
@@ -132,7 +132,8 @@ pub struct BootstrapServerMessageSerializer {
     vec_u8_serializer: VecU8Serializer,
     slot_serializer: SlotSerializer,
     opt_last_start_period_serializer: OptionSerializer<u64, U64VarIntSerializer>,
-    opt_last_slot_before_downtime_serializer: OptionSerializer<Option<Slot>, OptionSerializer<Slot, SlotSerializer>>,
+    opt_last_slot_before_downtime_serializer:
+        OptionSerializer<Option<Slot>, OptionSerializer<Slot, SlotSerializer>>,
     store_serializer: MipStoreRawSerializer,
 }
 
@@ -157,7 +158,9 @@ impl BootstrapServerMessageSerializer {
             vec_u8_serializer: VecU8Serializer::new(),
             slot_serializer: SlotSerializer::new(),
             opt_last_start_period_serializer: OptionSerializer::new(U64VarIntSerializer::new()),
-            opt_last_slot_before_downtime_serializer: OptionSerializer::new(OptionSerializer::new(SlotSerializer::new())),
+            opt_last_slot_before_downtime_serializer: OptionSerializer::new(OptionSerializer::new(
+                SlotSerializer::new(),
+            )),
             store_serializer: MipStoreRawSerializer::new(),
         }
     }
@@ -207,7 +210,7 @@ impl Serializer<BootstrapServerMessage> for BootstrapServerMessageSerializer {
                 consensus_part,
                 consensus_outdated_ids,
                 last_start_period,
-                last_slot_before_downtime
+                last_slot_before_downtime,
             } => {
                 // message type
                 self.u32_serializer
@@ -286,7 +289,8 @@ pub struct BootstrapServerMessageDeserializer {
     length_bootstrap_error: U64VarIntDeserializer,
     slot_deserializer: SlotDeserializer,
     opt_last_start_period_deserializer: OptionDeserializer<u64, U64VarIntDeserializer>,
-    opt_last_slot_before_downtime_deserializer: OptionDeserializer<Option<Slot>, OptionDeserializer<Slot, SlotDeserializer>>,
+    opt_last_slot_before_downtime_deserializer:
+        OptionDeserializer<Option<Slot>, OptionDeserializer<Slot, SlotDeserializer>>,
     store_deserializer: MipStoreRawDeserializer,
 }
 
@@ -348,10 +352,12 @@ impl BootstrapServerMessageDeserializer {
             opt_last_start_period_deserializer: OptionDeserializer::new(
                 U64VarIntDeserializer::new(Included(u64::MIN), Included(u64::MAX)),
             ),
-            opt_last_slot_before_downtime_deserializer: OptionDeserializer::new(OptionDeserializer::new(SlotDeserializer::new(
-                (Included(0), Included(u64::MAX)),
-                (Included(0), Excluded(args.thread_count)),
-            ))),
+            opt_last_slot_before_downtime_deserializer: OptionDeserializer::new(
+                OptionDeserializer::new(SlotDeserializer::new(
+                    (Included(0), Included(u64::MAX)),
+                    (Included(0), Excluded(args.thread_count)),
+                )),
+            ),
             store_deserializer: MipStoreRawDeserializer::new(
                 args.mip_store_stats_block_considered,
                 args.mip_store_stats_counters_max,
@@ -486,9 +492,13 @@ impl Deserializer<BootstrapServerMessage> for BootstrapServerMessageDeserializer
                     context("Failed last_start_period deserialization", |input| {
                         self.opt_last_start_period_deserializer.deserialize(input)
                     }),
-                    context("Failed last_slot_before_downtime deserialization", |input| {
-                        self.opt_last_slot_before_downtime_deserializer.deserialize(input)
-                    }),
+                    context(
+                        "Failed last_slot_before_downtime deserialization",
+                        |input| {
+                            self.opt_last_slot_before_downtime_deserializer
+                                .deserialize(input)
+                        },
+                    ),
                 ))
                 .map(
                     |(
@@ -498,7 +508,7 @@ impl Deserializer<BootstrapServerMessage> for BootstrapServerMessageDeserializer
                         consensus_part,
                         consensus_outdated_ids,
                         last_start_period,
-                        last_slot_before_downtime
+                        last_slot_before_downtime,
                     )| {
                         BootstrapServerMessage::BootstrapPart {
                             slot,
@@ -507,7 +517,7 @@ impl Deserializer<BootstrapServerMessage> for BootstrapServerMessageDeserializer
                             consensus_part,
                             consensus_outdated_ids,
                             last_start_period,
-                            last_slot_before_downtime
+                            last_slot_before_downtime,
                         }
                     },
                 )

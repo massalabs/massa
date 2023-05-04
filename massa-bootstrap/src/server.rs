@@ -481,7 +481,7 @@ pub fn stream_bootstrap_information(
             } else {
                 None
             };
-            
+
             let (data, new_state_step) = final_state_read.get_state_part(last_state_step.clone());
             state_part = data;
 
@@ -580,7 +580,7 @@ pub fn stream_bootstrap_information(
                 consensus_part,
                 consensus_outdated_ids,
                 last_start_period,
-                last_slot_before_downtime
+                last_slot_before_downtime,
             },
         )?;
     }

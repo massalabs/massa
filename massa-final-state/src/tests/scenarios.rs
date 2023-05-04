@@ -175,7 +175,6 @@ fn test_final_state() {
         let changes = StateChanges::default();
 
         fs2.write().finalize(slot, changes);
-
         assert_eq!(hash, fs2.read().final_state_hash);
     }
 }

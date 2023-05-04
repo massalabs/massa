@@ -259,7 +259,10 @@ impl AsyncPool {
                 self.message_info_cache.insert(message_id, message.into());
             }
 
-            last_id = Some(serialized_message_id.to_vec());
+            last_id = Some(
+                serialized_message_id[ASYNC_POOL_PREFIX.len()..serialized_message_id.len() - 1]
+                    .to_vec(),
+            );
         }
     }
 

@@ -79,6 +79,7 @@ impl FinalState {
         reset_final_state: bool,
     ) -> Result<Self, FinalStateError> {
         let state_slot = db.read().get_slot(config.thread_count);
+
         match state_slot {
             Ok(slot) => {
                 info!(

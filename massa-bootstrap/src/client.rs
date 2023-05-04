@@ -453,7 +453,7 @@ pub async fn get_state(
                         ))
                     })?;
             }
-            
+
             // create the initial cycle of PoS cycle_history
             final_state_guard.pos_state.create_initial_cycle();
         }
