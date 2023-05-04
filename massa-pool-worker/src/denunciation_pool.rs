@@ -185,8 +185,15 @@ impl DenunciationPool {
         if let Some(denunciation) = denunciation_ {
             info!("Created a new denunciation : {:?}", denunciation);
         }
-
+        println!(
+            "AURELIEN CACHE DENUNCIATION BEFORE CLEAN: {}",
+            self.denunciations_cache.len()
+        );
         self.cleanup_caches();
+        println!(
+            "AURELIEN CACHE DENUNCIATION AFTER CLEAN: {}",
+            self.denunciations_cache.len()
+        );
     }
 
     /// cleanup internal cache, removing too old denunciation
