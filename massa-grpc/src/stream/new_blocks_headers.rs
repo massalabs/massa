@@ -12,7 +12,7 @@ use tonic::{Request, Streaming};
 use tracing::log::{error, warn};
 
 /// Type declaration for NewBlocksHeaders
-pub type NewBlocksHeadersStream = Pin<
+pub type NewBlocksHeadersStreamType = Pin<
     Box<
         dyn futures_core::Stream<Item = Result<grpc::NewBlocksHeadersResponse, tonic::Status>>
             + Send
@@ -24,7 +24,7 @@ pub type NewBlocksHeadersStream = Pin<
 pub(crate) async fn new_blocks_headers(
     grpc: &MassaGrpc,
     request: Request<Streaming<grpc::NewBlocksHeadersRequest>>,
-) -> Result<NewBlocksHeadersStream, GrpcError> {
+) -> Result<NewBlocksHeadersStreamType, GrpcError> {
     // Create a channel to handle communication with the client
     let (tx, rx) = tokio::sync::mpsc::channel(grpc.grpc_config.max_channel_size);
     // Get the inner stream from the request
@@ -91,5 +91,5 @@ pub(crate) async fn new_blocks_headers(
     });
 
     let out_stream = tokio_stream::wrappers::ReceiverStream::new(rx);
-    Ok(Box::pin(out_stream) as NewBlocksHeadersStream)
+    Ok(Box::pin(out_stream) as NewBlocksHeadersStreamType)
 }

@@ -11,16 +11,19 @@ use crate::secure_share::SecureShareContent;
 use crate::slot::Slot;
 
 /// Helper to generate endorsements ready for denunciation
-pub fn gen_endorsements_for_denunciation() -> (
+pub fn gen_endorsements_for_denunciation(
+    with_slot: Option<Slot>,
+    with_keypair: Option<KeyPair>,
+) -> (
     Slot,
     KeyPair,
     SecureShareEndorsement,
     SecureShareEndorsement,
     SecureShareEndorsement,
 ) {
-    let keypair = KeyPair::generate();
+    let keypair = with_keypair.unwrap_or(KeyPair::generate());
+    let slot = with_slot.unwrap_or(Slot::new(3, 7));
 
-    let slot = Slot::new(3, 7);
     let endorsement_1 = Endorsement {
         slot,
         index: 0,
@@ -58,10 +61,12 @@ pub fn gen_endorsements_for_denunciation() -> (
 
 /// Helper to generate block headers ready for denunciation
 pub fn gen_block_headers_for_denunciation(
+    with_slot: Option<Slot>,
+    with_keypair: Option<KeyPair>,
 ) -> (Slot, KeyPair, SecuredHeader, SecuredHeader, SecuredHeader) {
-    let keypair = KeyPair::generate();
+    let keypair = with_keypair.unwrap_or(KeyPair::generate());
+    let slot = with_slot.unwrap_or(Slot::new(2, 1));
 
-    let slot = Slot::new(2, 1);
     let parents_1: Vec<BlockId> = (0..THREAD_COUNT)
         .map(|i| BlockId(Hash::compute_from(&[i])))
         .collect();
@@ -86,6 +91,7 @@ pub fn gen_block_headers_for_denunciation(
         parents: parents_1,
         operation_merkle_root: Hash::compute_from("mno".as_bytes()),
         endorsements: vec![s_endorsement_1.clone()],
+        denunciations: vec![],
     };
 
     // create header
@@ -101,6 +107,7 @@ pub fn gen_block_headers_for_denunciation(
         parents: parents_2,
         operation_merkle_root: Hash::compute_from("mno".as_bytes()),
         endorsements: vec![s_endorsement_1.clone()],
+        denunciations: vec![],
     };
 
     // create header
@@ -116,6 +123,7 @@ pub fn gen_block_headers_for_denunciation(
         parents: parents_3,
         operation_merkle_root: Hash::compute_from("mno".as_bytes()),
         endorsements: vec![s_endorsement_1.clone()],
+        denunciations: vec![],
     };
 
     // create header

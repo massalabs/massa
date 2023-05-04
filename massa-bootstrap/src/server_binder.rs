@@ -1,14 +1,11 @@
 // Copyright (c) 2022 MASSA LABS <info@massa.net>
 
 use crate::error::BootstrapError;
-use crate::establisher::Duplex;
 use crate::messages::{
     BootstrapClientMessage, BootstrapClientMessageDeserializer, BootstrapServerMessage,
     BootstrapServerMessageSerializer,
 };
 use crate::settings::BootstrapSrvBindCfg;
-use async_speed_limit::clock::StandardClock;
-use async_speed_limit::{Limiter, Resource};
 use massa_hash::Hash;
 use massa_hash::HASH_SIZE_BYTES;
 use massa_models::serialization::{DeserializeMinBEInt, SerializeMinBEInt};
@@ -16,17 +13,17 @@ use massa_models::version::{Version, VersionDeserializer, VersionSerializer};
 use massa_serialization::{DeserializeError, Deserializer, Serializer};
 use massa_signature::KeyPair;
 use massa_time::MassaTime;
-use std::convert::TryInto;
-use std::net::SocketAddr;
-use std::thread;
-use std::time::Duration;
-use tokio::io::{AsyncReadExt, AsyncWriteExt};
-use tokio::runtime::Handle;
-use tokio::time::error::Elapsed;
+use std::{
+    convert::TryInto,
+    io::{ErrorKind, Read, Write},
+    net::{SocketAddr, TcpStream},
+    thread,
+    time::Duration,
+};
 use tracing::error;
 
 /// Bootstrap server binder
-pub struct BootstrapServerBinder<D: Duplex> {
+pub struct BootstrapServerBinder {
     max_bootstrap_message_size: u32,
     max_consensus_block_ids: u64,
     thread_count: u8,
@@ -34,14 +31,15 @@ pub struct BootstrapServerBinder<D: Duplex> {
     randomness_size_bytes: usize,
     size_field_len: usize,
     local_keypair: KeyPair,
-    duplex: Resource<D, StandardClock>,
+    // TODO: Reintroduce bandwidth limits
+    duplex: TcpStream,
     prev_message: Option<Hash>,
     version_serializer: VersionSerializer,
     version_deserializer: VersionDeserializer,
     write_error_timeout: MassaTime,
 }
 
-impl<D: Duplex + 'static> BootstrapServerBinder<D> {
+impl BootstrapServerBinder {
     /// Creates a new `WriteBinder`.
     ///
     /// # Argument
@@ -49,9 +47,10 @@ impl<D: Duplex + 'static> BootstrapServerBinder<D> {
     /// * `local_keypair`: local node user keypair
     /// * `limit`: limit max bytes per second (up and down)
     #[allow(clippy::too_many_arguments)]
-    pub fn new(duplex: D, local_keypair: KeyPair, cfg: BootstrapSrvBindCfg) -> Self {
+    pub fn new(duplex: TcpStream, local_keypair: KeyPair, cfg: BootstrapSrvBindCfg) -> Self {
         let BootstrapSrvBindCfg {
-            max_bytes_read_write: limit,
+            // TODO: Reintroduce bandwidth limits
+            max_bytes_read_write: _limit,
             max_bootstrap_message_size,
             thread_count,
             max_datastore_key_length,
@@ -65,7 +64,7 @@ impl<D: Duplex + 'static> BootstrapServerBinder<D> {
             max_consensus_block_ids: consensus_bootstrap_part_size,
             size_field_len,
             local_keypair,
-            duplex: <Limiter>::new(limit).limit(duplex),
+            duplex,
             prev_message: None,
             thread_count,
             max_datastore_key_length,
@@ -76,16 +75,20 @@ impl<D: Duplex + 'static> BootstrapServerBinder<D> {
         }
     }
     /// Performs a handshake. Should be called after connection
-    /// NOT cancel-safe
     /// MUST always be followed by a send of the `BootstrapMessage::BootstrapTime`
-    pub async fn handshake(&mut self, version: Version) -> Result<(), BootstrapError> {
+    pub fn handshake_timeout(
+        &mut self,
+        version: Version,
+        duration: Option<Duration>,
+    ) -> Result<(), BootstrapError> {
         // read version and random bytes, send signature
         let msg_hash = {
             let mut version_bytes = Vec::new();
             self.version_serializer
                 .serialize(&version, &mut version_bytes)?;
             let mut msg_bytes = vec![0u8; version_bytes.len() + self.randomness_size_bytes];
-            self.duplex.read_exact(&mut msg_bytes).await?;
+            self.duplex.set_read_timeout(duration)?;
+            self.duplex.read_exact(&mut msg_bytes)?;
             let (_, received_version) = self
                 .version_deserializer
                 .deserialize::<DeserializeError>(&msg_bytes[..version_bytes.len()])
@@ -102,12 +105,24 @@ impl<D: Duplex + 'static> BootstrapServerBinder<D> {
         Ok(())
     }
 
-    pub async fn send_msg(
+    pub fn send_msg(
         &mut self,
         timeout: Duration,
         msg: BootstrapServerMessage,
-    ) -> Result<Result<(), BootstrapError>, Elapsed> {
-        tokio::time::timeout(timeout, self.send(msg)).await
+    ) -> Result<(), BootstrapError> {
+        let to_str = msg.to_string();
+        self.send_timeout(msg, Some(timeout)).map_err(|e| match e {
+            BootstrapError::IoError(e)
+            // On some systems, a timed out send returns WouldBlock
+                if e.kind() == ErrorKind::TimedOut || e.kind() == ErrorKind::WouldBlock =>
+            {
+                BootstrapError::TimedOut(std::io::Error::new(
+                    std::io::ErrorKind::TimedOut,
+                    format!("BootstrapServerMessage::{} send timed out", to_str),
+                ))
+            }
+            _ => e,
+        })
     }
 
     /// 1. Spawns a thread
@@ -117,28 +132,22 @@ impl<D: Duplex + 'static> BootstrapServerBinder<D> {
     /// 5. runs the passed in closure (typically a custom logging msg)
     ///
     /// consumes the binding in the process
-    pub(crate) fn close_and_send_error<F>(
-        mut self,
-        server_outer_rt_hnd: Handle,
-        msg: String,
-        addr: SocketAddr,
-        close_fn: F,
-    ) where
+    pub(crate) fn close_and_send_error<F>(mut self, msg: String, addr: SocketAddr, close_fn: F)
+    where
         F: FnOnce() + Send + 'static,
     {
         thread::Builder::new()
             .name("bootstrap-error-send".to_string())
             .spawn(move || {
                 let msg_cloned = msg.clone();
-                let err_send =
-                    server_outer_rt_hnd.block_on(async move { self.send_error(msg_cloned).await });
+                let err_send = self.send_error_timeout(msg_cloned);
                 match err_send {
-                    Err(_) => error!(
+                    Err(BootstrapError::IoError(e)) if e.kind() == ErrorKind::TimedOut => error!(
                         "bootstrap server timed out sending error '{}' to addr {}",
                         msg, addr
                     ),
-                    Ok(Err(e)) => error!("{}", e),
-                    Ok(Ok(_)) => {}
+                    Err(e) => error!("{}", e),
+                    Ok(_) => {}
                 }
                 close_fn();
             })
@@ -146,19 +155,26 @@ impl<D: Duplex + 'static> BootstrapServerBinder<D> {
             // it's an error at the OS level.
             .unwrap();
     }
-    pub async fn send_error(
-        &mut self,
-        error: String,
-    ) -> Result<Result<(), BootstrapError>, Elapsed> {
-        tokio::time::timeout(
-            self.write_error_timeout.into(),
-            self.send(BootstrapServerMessage::BootstrapError { error }),
+    pub fn send_error_timeout(&mut self, error: String) -> Result<(), BootstrapError> {
+        self.send_timeout(
+            BootstrapServerMessage::BootstrapError { error },
+            Some(self.write_error_timeout.to_duration()),
         )
-        .await
+        .map_err(|e| match e {
+            BootstrapError::IoError(e) if e.kind() == ErrorKind::WouldBlock => {
+                BootstrapError::TimedOut(ErrorKind::TimedOut.into())
+            }
+            e => e,
+        })
     }
 
-    /// Writes the next message. NOT cancel-safe
-    pub async fn send(&mut self, msg: BootstrapServerMessage) -> Result<(), BootstrapError> {
+    // TODO: use a proper (de)serializer: https://github.com/massalabs/massa/pull/3745#discussion_r1169733161
+    /// Writes the next message.
+    pub fn send_timeout(
+        &mut self,
+        msg: BootstrapServerMessage,
+        duration: Option<Duration>,
+    ) -> Result<(), BootstrapError> {
         // serialize message
         let mut msg_bytes = Vec::new();
         BootstrapServerMessageSerializer::new().serialize(&msg, &mut msg_bytes)?;
@@ -182,16 +198,17 @@ impl<D: Duplex + 'static> BootstrapServerBinder<D> {
         };
 
         // send signature
-        self.duplex.write_all(&sig.to_bytes()).await?;
+        self.duplex.set_write_timeout(duration)?;
+        self.duplex.write_all(&sig.to_bytes())?;
 
         // send message length
         {
             let msg_len_bytes = msg_len.to_be_bytes_min(self.max_bootstrap_message_size)?;
-            self.duplex.write_all(&msg_len_bytes).await?;
+            self.duplex.write_all(&msg_len_bytes)?;
         }
 
         // send message
-        self.duplex.write_all(&msg_bytes).await?;
+        self.duplex.write_all(&msg_bytes)?;
 
         // save prev sig
         self.prev_message = Some(Hash::compute_from(&sig.to_bytes()));
@@ -199,30 +216,45 @@ impl<D: Duplex + 'static> BootstrapServerBinder<D> {
         Ok(())
     }
 
-    #[allow(dead_code)]
-    /// Read a message sent from the client (not signed). NOT cancel-safe
-    pub async fn next(&mut self) -> Result<BootstrapClientMessage, BootstrapError> {
-        // read prev hash
+    // TODO: use a proper (de)serializer: https://github.com/massalabs/massa/pull/3745#discussion_r1169733161
+    /// Read a message sent from the client (not signed).
+    pub fn next_timeout(
+        &mut self,
+        duration: Option<Duration>,
+    ) -> Result<BootstrapClientMessage, BootstrapError> {
+        self.duplex.set_read_timeout(duration)?;
+
+        let peek_len = HASH_SIZE_BYTES + self.size_field_len;
+        let mut peek_buf = vec![0; peek_len];
+        while self.duplex.peek(&mut peek_buf)? < peek_len {
+            // TODO: backoff spin of some sort
+        }
+        // construct prev-hash from peek
         let received_prev_hash = {
             if self.prev_message.is_some() {
-                let mut hash_bytes = [0u8; HASH_SIZE_BYTES];
-                self.duplex.read_exact(&mut hash_bytes).await?;
-                Some(Hash::from_bytes(&hash_bytes))
+                Some(Hash::from_bytes(
+                    peek_buf[..HASH_SIZE_BYTES]
+                        .try_into()
+                        .expect("bad slice logic"),
+                ))
             } else {
                 None
             }
         };
 
-        // read message length
+        // construct msg-len from peek
         let msg_len = {
-            let mut msg_len_bytes = vec![0u8; self.size_field_len];
-            self.duplex.read_exact(&mut msg_len_bytes[..]).await?;
-            u32::from_be_bytes_min(&msg_len_bytes, self.max_bootstrap_message_size)?.0
+            u32::from_be_bytes_min(
+                &peek_buf[HASH_SIZE_BYTES..],
+                self.max_bootstrap_message_size,
+            )?
+            .0
         };
 
-        // read message
-        let mut msg_bytes = vec![0u8; msg_len as usize];
-        self.duplex.read_exact(&mut msg_bytes).await?;
+        // read message, and discard the peek
+        let mut msg_bytes = vec![0u8; peek_len + (msg_len as usize)];
+        self.duplex.read_exact(&mut msg_bytes)?;
+        let msg_bytes = &msg_bytes[peek_len..];
 
         // check previous hash
         if received_prev_hash != self.prev_message {
@@ -237,11 +269,11 @@ impl<D: Duplex + 'static> BootstrapServerBinder<D> {
             let mut hashed_bytes =
                 Vec::with_capacity(HASH_SIZE_BYTES.saturating_add(msg_bytes.len()));
             hashed_bytes.extend(prev_hash.to_bytes());
-            hashed_bytes.extend(&msg_bytes);
+            hashed_bytes.extend(msg_bytes);
             self.prev_message = Some(Hash::compute_from(&hashed_bytes));
         } else {
             // no previous message: hash message only
-            self.prev_message = Some(Hash::compute_from(&msg_bytes));
+            self.prev_message = Some(Hash::compute_from(msg_bytes));
         }
 
         // deserialize message
@@ -250,7 +282,7 @@ impl<D: Duplex + 'static> BootstrapServerBinder<D> {
             self.max_datastore_key_length,
             self.max_consensus_block_ids,
         )
-        .deserialize::<DeserializeError>(&msg_bytes)
+        .deserialize::<DeserializeError>(msg_bytes)
         .map_err(|err| BootstrapError::GeneralError(format!("{}", err)))?;
 
         Ok(msg)

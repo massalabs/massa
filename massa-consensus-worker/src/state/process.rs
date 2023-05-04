@@ -601,14 +601,14 @@ impl ConsensusState {
                     "block_id": block_id
                 });
                 self.channels
-                    .protocol_command_sender
+                    .protocol_controller
                     .integrated_block(block_id, storage)?;
             }
 
             // Notify protocol of attack attempts.
             for hash in mem::take(&mut self.attack_attempts).into_iter() {
                 self.channels
-                    .protocol_command_sender
+                    .protocol_controller
                     .notify_block_attack(hash)?;
                 massa_trace!("consensus.consensus_worker.block_db_changed.attack", {
                     "hash": hash
@@ -681,7 +681,7 @@ impl ConsensusState {
         if !new_blocks.is_empty() || !remove_blocks.is_empty() {
             massa_trace!("consensus.consensus_worker.block_db_changed.send_wishlist_delta", { "new": new_wishlist, "remove": remove_blocks });
             self.channels
-                .protocol_command_sender
+                .protocol_controller
                 .send_wishlist_delta(new_blocks, remove_blocks)?;
             self.wishlist = new_wishlist;
         }
@@ -696,7 +696,7 @@ impl ConsensusState {
         if self.save_final_periods != latest_final_periods {
             // signal new last final periods to pool
             self.channels
-                .pool_command_sender
+                .pool_controller
                 .notify_final_cs_periods(&latest_final_periods);
             // update final periods
             self.save_final_periods = latest_final_periods;

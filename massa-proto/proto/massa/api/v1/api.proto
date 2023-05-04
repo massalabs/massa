@@ -6,6 +6,8 @@ package massa.api.v1;
 
 import "block.proto";
 import "common.proto";
+import "endorsement.proto";
+import "execution.proto";
 import "google/api/annotations.proto";
 import "google/rpc/status.proto";
 import "operation.proto";
@@ -22,9 +24,21 @@ option swift_prefix = "GRPC";
 
 // Massa gRPC service
 service MassaService {
+
+  // Get blocks by ids
+  rpc GetBlocks(GetBlocksRequest) returns (GetBlocksResponse) {
+    option (google.api.http) = { 
+      post: "/v1/get_blocks"
+      body: "*"
+    };
+  }
+
   // Get blocks by slots
   rpc GetBlocksBySlots(GetBlocksBySlotsRequest) returns (GetBlocksBySlotsResponse) {
-    option (google.api.http) = {get: "/v1/get_blocks_by_slots"};
+    option (google.api.http) = { 
+      post: "/v1/get_blocks_by_slots"
+      body: "*"
+    };
   }
 
   // Get datastore entries
@@ -35,9 +49,33 @@ service MassaService {
     };
   }
 
+  // Get largest stakers
+  rpc GetLargestStakers(GetLargestStakersRequest) returns (GetLargestStakersResponse) {
+      option (google.api.http) = { 
+        post: "/v1/get_largest_stakers"
+        body: "*"
+      };
+  }
+
   // Get next block best parents
   rpc GetNextBlockBestParents(GetNextBlockBestParentsRequest) returns (GetNextBlockBestParentsResponse) {
     option (google.api.http) = {get: "/v1/get_next_block_best_parents"};
+  }
+
+  // Get operations
+  rpc GetOperations(GetOperationsRequest) returns (GetOperationsResponse) {
+    option (google.api.http) = { 
+      post: "/v1/get_operations"
+      body: "*"
+    };
+  }
+
+  // Get smart contracts execution events
+  rpc GetScExecutionEvents(GetScExecutionEventsRequest) returns (GetScExecutionEventsResponse) {
+    option (google.api.http) = { 
+      post: "/v1/get_sc_execution_events"
+      body: "*"
+    };
   }
 
   // Get selector draws
@@ -70,11 +108,17 @@ service MassaService {
   // New received and produced blocks headers
   rpc NewBlocksHeaders(stream NewBlocksHeadersRequest) returns (stream NewBlocksHeadersResponse) {}
 
+  // New received and produced endorsements
+  rpc NewEndorsements(stream NewEndorsementsRequest) returns (stream NewEndorsementsResponse) {}
+
   // New received and produced blocks with operations
   rpc NewFilledBlocks(stream NewFilledBlocksRequest) returns (stream NewFilledBlocksResponse) {}
 
-  // New received and produced perations
+  // New received and produced operations
   rpc NewOperations(stream NewOperationsRequest) returns (stream NewOperationsResponse) {}
+
+  // New received and slot execution events
+  rpc NewSlotExecutionOutputs(stream NewSlotExecutionOutputsRequest) returns (stream NewSlotExecutionOutputsResponse) {}
 
   // Send blocks
   rpc SendBlocks(stream SendBlocksRequest) returns (stream SendBlocksResponse) {}
@@ -85,8 +129,44 @@ service MassaService {
   // Send operations
   rpc SendOperations(stream SendOperationsRequest) returns (stream SendOperationsResponse) {}
 
-  // Transactions throughput per second
+  // Transactions throughput
   rpc TransactionsThroughput(stream TransactionsThroughputRequest) returns (stream TransactionsThroughputResponse) {}
+}
+
+// GetBlocksRequest holds request for GetBlocks
+message GetBlocksRequest {
+  // Request id
+  string id = 1;
+  // Queries
+  repeated GetBlocksQuery queries = 2;
+}
+
+// GetBlocks Query
+message GetBlocksQuery {
+  // Filter
+  GetBlocksFilter filter = 1;
+}
+
+// GetBlocks Filter
+message GetBlocksFilter {
+  // Block id
+  string id = 1;
+}
+
+// GetBlocksResponse holds response from GetBlocks
+message GetBlocksResponse {
+  // Request id
+  string id = 1;
+  // Context
+  BlocksContext context = 2;
+  // Blocks wrappers
+  repeated BlockWrapper blocks = 3;
+}
+
+// Blocks context
+message BlocksContext {
+  // Slot
+  Slot slot = 1;
 }
 
 // GetBlocksBySlotsRequest holds request for GetBlocksBySlots
@@ -142,6 +222,56 @@ message DatastoreEntry {
   bytes candidate_value = 2;
 }
 
+// GetLargestStakersRequest holds request from GetLargestStakers
+message GetLargestStakersRequest {
+  // Request id
+  string id = 1;
+  // Query
+  LargestStakersQuery query = 2;
+}
+
+// LargestStakers Query
+message LargestStakersQuery {
+  // Starting offset for the list of stakers. Defaults to 1
+  fixed64 offset = 1;
+  // Limits the number of stakers to return. Defaults to 50
+  fixed64 limit = 2;
+  // Filter
+  LargestStakersFilter filter = 3;
+}
+
+// LargestStakers Filter
+message LargestStakersFilter {
+  // Minimum rolls (Optional)
+  optional fixed64 min_rolls = 1;
+  // Maximum rolls (Optional)
+  optional fixed64 max_rolls = 2;
+}
+
+// GetLargestStakersResponse holds response from GetLargestStakers
+message GetLargestStakersResponse {
+  // Request id
+  string id = 1;
+  // Context
+  LargestStakersContext context = 2;
+  // Largest stakers
+  repeated LargestStakerEntry stakers = 3;
+}
+
+// LargestStakers context
+message LargestStakersContext {
+  // Slot
+  Slot slot = 1;
+}
+
+// LargestStakerEntry
+message LargestStakerEntry {
+  // Address
+  string address = 1;
+  // Rolls
+  fixed64 rolls = 2;
+}
+
 // GetNextBlockBestParentsRequest holds request for GetNextBlockBestParents
 message GetNextBlockBestParentsRequest {
   // Request id
@@ -162,6 +292,88 @@ message BlockParent {
   string block_id = 1;
   // Period
   fixed64 period = 2;
+}
+
+// GetOperationsRequest holds request for GetOperations
+message GetOperationsRequest {
+  // Request id
+  string id = 1;
+  // Queries
+  repeated GetOperationsQuery queries = 2;
+}
+
+// GetOperations Query
+message GetOperationsQuery {
+  // Filter
+  GetOperationsFilter filter = 1;
+}
+
+// GetOperations Filter
+message GetOperationsFilter {
+  // Operation id
+  string id = 1;
+}
+
+// GetOperationsResponse holds response from GetOperations
+message GetOperationsResponse {
+  // Request id
+  string id = 1;
+  // Context
+  OperationsContext context = 2;
+  //Operations wrappers
+  repeated OperationWrapper operations = 3;
+}
+
+// Operations context
+message OperationsContext {
+  // Slot
+  Slot slot = 1;
+}
+
+// GetScExecutionEventsRequest holds request for GetScExecutionEvents
+message GetScExecutionEventsRequest {
+  // Request id
+  string id = 1;
+  // Query
+  GetScExecutionEventsQuery query = 2;
+}
+
+// GetScExecutionEvents Query
+message GetScExecutionEventsQuery {
+  // Filter
+  GetScExecutionEventsFilter filter = 1;
+}
+
+// GetScExecutionEvents Filter
+message GetScExecutionEventsFilter {
+  // Start slot
+  optional Slot start_slot = 1;
+  // End slot
+  optional Slot end_slot = 2;
+  // Caller address
+  optional string caller_address = 3;
+  // Emitter address
+  optional string emitter_address = 4;
+  // Original operation id
+  optional string original_operation_id = 5;
+  // Status
+  repeated ScExecutionEventStatus status = 6;
+}
+
+// GetScExecutionEventsResponse holds response from GetScExecutionEvents
+message GetScExecutionEventsResponse {
+  // Request id
+  string id = 1;
+  // Context
+  GetScExecutionEventsContext context = 2;
+  //ScExecutionEvents
+  repeated ScExecutionEvent events = 3;
+}
+
+// ScExecutionEvents context
+message GetScExecutionEventsContext {
+  // Slot
+  Slot slot = 1;
 }
 
 // GetSelectorDrawsRequest holds request from GetSelectorDraws
@@ -258,6 +470,20 @@ message NewBlocksHeadersResponse {
   SignedBlockHeader block_header = 2;
 }
 
+// NewEndorsementsRequest holds request for NewEndorsements
+message NewEndorsementsRequest {
+  // Request id
+  string id = 1;
+}
+
+// NewEndorsementsResponse holds response from NewEndorsements
+message NewEndorsementsResponse {
+  // Request id
+  string id = 1;
+  // Signed endorsement
+  SignedEndorsement endorsement = 2;
+}
+
 // NewFilledBlocksRequest holds request for NewFilledBlocks
 message NewFilledBlocksRequest {
   // Request id
@@ -308,6 +534,20 @@ message NewOperationsResponse {
   string id = 1;
   // Signed operation
   SignedOperation operation = 2;
+}
+
+// NewSlotExecutionOutputsRequest holds request for NewSlotExecutionOutputs
+message NewSlotExecutionOutputsRequest {
+  // Request id
+  string id = 1;
+}
+
+// NewSlotExecutionOutputsResponse holds response from NewSlotExecutionOutputs
+message NewSlotExecutionOutputsResponse {
+  // Request id
+  string id = 1;
+  // Slot execution output
+  SlotExecutionOutput output = 2;
 }
 
 // SendBlocksRequest holds parameters to SendBlocks
@@ -395,7 +635,7 @@ message OperationResult {
 message TransactionsThroughputRequest {
   // Request id
   string id = 1;
-  // Optional timer interval in sec. Defaults to 10s
+  // Timer interval in seconds (Optional). Defaults to 10s
   optional fixed64 interval = 2;
 }
 

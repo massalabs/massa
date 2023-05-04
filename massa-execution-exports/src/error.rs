@@ -29,6 +29,9 @@ pub enum ExecutionError {
     /// `RollSell` error: {0}
     RollSellError(String),
 
+    /// Slash roll or deferred credits  error: {0}
+    SlashError(String),
+
     /// `Transaction` error: {0}
     TransactionError(String),
 
@@ -46,6 +49,9 @@ pub enum ExecutionError {
 
     /// Include operation error: {0}
     IncludeOperationError(String),
+
+    /// Include denunciation error: {0}
+    IncludeDenunciationError(String),
 
     /// Error when initialize vesting addresses: {0}
     InitVestingError(String),

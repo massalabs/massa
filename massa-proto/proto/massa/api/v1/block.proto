@@ -80,3 +80,22 @@ message SignedBlockHeader {
   // A secure hash of the data. See also [massa_hash::Hash]
   string id = 5;
 }
+
+// Possible statuses for a block
+enum BlockStatus {
+  BLOCK_STATUS_UNSPECIFIED = 0;  // Defaut enum value
+  BLOCK_STATUS_IN_BLOCKCLIQUE = 1;  // The block is in the greatest clique (and not final)
+  BLOCK_STATUS_FINAL = 2;  // The block is final
+  BLOCK_STATUS_CANDIDATE = 3;  // The block is candidate (active any clique but not final)
+  BLOCK_STATUS_DISCARDED = 4;  // The block is discarded
+}
+
+// A wrapper around a block with its metadata
+message BlockWrapper {
+    // The unique ID of the block.
+    string id = 1;
+    // The block object itself
+    Block block = 2;
+    // The execution statuses of the block
+    repeated BlockStatus status = 3;
+}

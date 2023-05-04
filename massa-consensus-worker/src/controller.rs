@@ -19,7 +19,7 @@ use massa_models::{
 use massa_storage::Storage;
 use parking_lot::RwLock;
 use std::sync::{mpsc::SyncSender, Arc};
-use tracing::log::{debug, warn};
+use tracing::log::{debug, trace, warn};
 
 use crate::{commands::ConsensusCommand, state::ConsensusState};
 
@@ -246,9 +246,10 @@ impl ConsensusController for ConsensusControllerImpl {
                         .collect();
 
                 if let Err(err) = self.channels.block_sender.send(verifiable_block.clone()) {
-                    debug!(
-                        "error trying to broadcast block with id {} due to: {}",
-                        block_id, err
+                    trace!(
+                        "error, failed to broadcast block with id {} due to: {}",
+                        block_id,
+                        err
                     );
                 }
 
@@ -256,9 +257,10 @@ impl ConsensusController for ConsensusControllerImpl {
                     header: verifiable_block.content.header.clone(),
                     operations,
                 }) {
-                    debug!(
-                        "error trying to broadcast filled block with id {} due to: {}",
-                        block_id, err
+                    trace!(
+                        "error, failed to broadcast filled block with id {} due to: {}",
+                        block_id,
+                        err
                     );
                 }
             } else {
@@ -270,11 +272,10 @@ impl ConsensusController for ConsensusControllerImpl {
         }
 
         if let Some(verifiable_block) = block_storage.read_blocks().get(&block_id) {
-            if let Ok(de_p) = DenunciationPrecursor::try_from(&verifiable_block.content.header) {
-                if let Err(e) = self.channels.denunciation_factory_sender.send(de_p) {
-                    warn!("Cannot send block to denunciation factory: {}", e);
-                }
-            }
+            let de_p = DenunciationPrecursor::from(&verifiable_block.content.header);
+            self.channels
+                .pool_controller
+                .add_denunciation_precursor(de_p);
         }
 
         if let Err(err) = self
@@ -293,23 +294,18 @@ impl ConsensusController for ConsensusControllerImpl {
     fn register_block_header(&self, block_id: BlockId, header: SecureShare<BlockHeader, BlockId>) {
         if self.broadcast_enabled {
             if let Err(err) = self.channels.block_header_sender.send(header.clone()) {
-                debug!(
-                    "error trying to broadcast block header with block id {}: {}",
-                    block_id, err
+                trace!(
+                    "error, failed to broadcast block header with block id {}: {}",
+                    block_id,
+                    err
                 );
             }
         }
 
-        if let Ok(de_p) = DenunciationPrecursor::try_from(&header) {
-            if let Err(e) = self.channels.denunciation_factory_sender.send(de_p) {
-                warn!("Cannot send header to denunciation factory: {}", e);
-            }
-        } else {
-            warn!(
-                "Cannot create denunciation precursor from header: {}",
-                &header
-            );
-        }
+        let de_p = DenunciationPrecursor::from(&header);
+        self.channels
+            .pool_controller
+            .add_denunciation_precursor(de_p);
 
         if let Err(err) = self
             .command_sender

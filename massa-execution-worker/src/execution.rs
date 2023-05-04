@@ -15,13 +15,15 @@ use crate::stats::ExecutionStatsCounter;
 use crate::vesting_manager::VestingManager;
 use massa_async_pool::AsyncMessage;
 use massa_execution_exports::{
-    EventStore, ExecutionConfig, ExecutionError, ExecutionOutput, ExecutionStackElement,
-    ReadOnlyExecutionOutput, ReadOnlyExecutionRequest, ReadOnlyExecutionTarget,
+    EventStore, ExecutionChannels, ExecutionConfig, ExecutionError, ExecutionOutput,
+    ExecutionStackElement, ReadOnlyExecutionOutput, ReadOnlyExecutionRequest,
+    ReadOnlyExecutionTarget, SlotExecutionOutput,
 };
 use massa_final_state::FinalState;
 use massa_ledger_exports::{SetOrDelete, SetUpdateOrDelete};
 use massa_models::address::ExecutionAddressCycleInfo;
 use massa_models::bytecode::Bytecode;
+use massa_models::denunciation::{Denunciation, DenunciationIndex};
 use massa_models::execution::EventFilter;
 use massa_models::output_event::SCOutputEvent;
 use massa_models::prehash::PreHashSet;
@@ -42,7 +44,7 @@ use massa_versioning_worker::versioning::MipStore;
 use parking_lot::{Mutex, RwLock};
 use std::collections::{BTreeMap, BTreeSet, HashMap};
 use std::sync::Arc;
-use tracing::{debug, info, warn};
+use tracing::{debug, info, trace, warn};
 
 /// Used to acquire a lock on the execution context
 macro_rules! context_guard {
@@ -82,6 +84,10 @@ pub(crate) struct ExecutionState {
     vesting_manager: Arc<VestingManager>,
     // MipStore (Versioning)
     mip_store: MipStore,
+    // selector controller to get draws
+    selector: Box<dyn SelectorController>,
+    // channels used by the execution worker
+    channels: ExecutionChannels,
 }
 
 impl ExecutionState {
@@ -97,6 +103,8 @@ impl ExecutionState {
         config: ExecutionConfig,
         final_state: Arc<RwLock<FinalState>>,
         mip_store: MipStore,
+        selector: Box<dyn SelectorController>,
+        channels: ExecutionChannels,
     ) -> ExecutionState {
         // Get the slot at the output of which the final state is attached.
         // This should be among the latest final slots.
@@ -161,6 +169,8 @@ impl ExecutionState {
             config,
             vesting_manager,
             mip_store,
+            selector,
+            channels,
         }
     }
 
@@ -184,6 +194,9 @@ impl ExecutionState {
             self.stats_counter.register_final_blocks(1);
             self.stats_counter.register_final_executed_operations(
                 exec_out.state_changes.executed_ops_changes.len(),
+            );
+            self.stats_counter.register_final_executed_denunciations(
+                exec_out.state_changes.executed_denunciations_changes.len(),
             );
         }
 
@@ -251,6 +264,11 @@ impl ExecutionState {
                 "operation was executed previously".to_string(),
             ));
         }
+
+        // Set the creator coin spending allowance.
+        // Note that this needs to be initialized before any spending from the creator.
+        context.creator_coin_spending_allowance =
+            Some(operation.get_max_spending(self.config.roll_price));
 
         // debit the fee from the operation sender
         // fail execution if there are not enough coins
@@ -384,6 +402,139 @@ impl ExecutionState {
                         Slot::new(operation.content.expire_period, op_thread),
                     )
                 }
+            }
+        }
+
+        Ok(())
+    }
+
+    /// Execute a denunciation in the context of a block.
+    ///
+    /// # Arguments
+    /// * `denunciation`: denunciation to process
+    /// * `block_credits`: mutable reference towards the total block reward/fee credits
+    fn execute_denunciation(
+        &self,
+        denunciation: &Denunciation,
+        block_slot: &Slot,
+        block_credits: &mut Amount,
+    ) -> Result<(), ExecutionError> {
+        let addr_denounced = Address::from_public_key(denunciation.get_public_key());
+
+        // acquire write access to the context
+        let mut context = context_guard!(self);
+
+        let de_slot = denunciation.get_slot();
+
+        if de_slot.period <= self.config.last_start_period {
+            // denunciation created before last restart (can be 0 or >= 0 after a network restart) - ignored
+            // Note: as we use '<=', also ignore denunciation created for genesis block
+            return Err(ExecutionError::IncludeDenunciationError(format!(
+                "Denunciation target ({}) is before the last start period: {}",
+                de_slot, self.config.last_start_period
+            )));
+        }
+
+        // ignore denunciation if not valid
+        if !denunciation.is_valid() {
+            return Err(ExecutionError::IncludeDenunciationError(
+                "denunciation is not valid".to_string(),
+            ));
+        }
+
+        // ignore denunciation if too old or expired
+
+        if Denunciation::is_expired(
+            &de_slot.period,
+            &block_slot.period,
+            &self.config.denunciation_expire_periods,
+        ) {
+            // too old - cannot be denounced anymore
+            return Err(ExecutionError::IncludeDenunciationError(format!(
+                "Denunciation target ({}) is too old with respect to the block ({})",
+                de_slot, block_slot
+            )));
+        }
+
+        if de_slot > block_slot {
+            // too much in the future - ignored
+            // Note: de_slot == block_slot is OK,
+            //       for example if the block producer wants to denounce someone who multi-endorsed
+            //       for the block's slot
+            return Err(ExecutionError::IncludeDenunciationError(format!(
+                "Denunciation target ({}) is at a later slot than the block slot ({})",
+                de_slot, block_slot
+            )));
+        }
+
+        // ignore the denunciation if it was already executed
+        let de_idx = DenunciationIndex::from(denunciation);
+        if context.is_denunciation_executed(&de_idx) {
+            return Err(ExecutionError::IncludeDenunciationError(
+                "Denunciation was already executed".to_string(),
+            ));
+        }
+
+        // Check selector
+        // Note 1: Has to be done after slot limit and executed check
+        // Note 2: that this is done for a node to create a Block with 'fake' denunciation thus
+        //       include them in executed denunciation and prevent (by occupying the corresponding entry)
+        //       any further 'real' denunciation.
+
+        match &denunciation {
+            Denunciation::Endorsement(_de) => {
+                // Get selected address from selector and check
+                let selection = self
+                    .selector
+                    .get_selection(*de_slot)
+                    .expect("Could not get producer from selector");
+                let selected_addr = selection
+                    .endorsements
+                    .get(*denunciation.get_index().unwrap_or(&0) as usize)
+                    .expect("could not get selection for endorsement at index");
+
+                if *selected_addr != addr_denounced {
+                    return Err(ExecutionError::IncludeDenunciationError(
+                        "Attempt to execute a denunciation but address was not selected"
+                            .to_string(),
+                    ));
+                }
+            }
+            Denunciation::BlockHeader(_de) => {
+                let selected_addr = self
+                    .selector
+                    .get_producer(*de_slot)
+                    .expect("Cannot get producer from selector");
+
+                if selected_addr != addr_denounced {
+                    return Err(ExecutionError::IncludeDenunciationError(
+                        "Attempt to execute a denunciation but address was not selected"
+                            .to_string(),
+                    ));
+                }
+            }
+        }
+
+        context.insert_executed_denunciation(&de_idx);
+
+        let slashed = context.try_slash_rolls(
+            &addr_denounced,
+            self.config.roll_count_to_slash_on_denunciation,
+        );
+
+        match slashed {
+            Ok(slashed_amount) => {
+                // Add slashed amount / 2 to block reward
+                let amount = slashed_amount.checked_div_u64(2).ok_or_else(|| {
+                    ExecutionError::RuntimeError(format!(
+                        "Unable to divide slashed amount: {} by 2",
+                        slashed_amount
+                    ))
+                })?;
+                *block_credits = block_credits.saturating_add(amount);
+            }
+            Err(e) => {
+                warn!("Unable to slash rolls or deferred credits: {}", e);
             }
         }
 
@@ -689,10 +840,11 @@ impl ExecutionState {
             self.config.gas_costs.clone(),
         );
         match response {
-            Ok(Response { init_cost, .. }) | Err(VMError::ExecutionError { init_cost, .. }) => {
+            Ok(Response { init_gas_cost, .. })
+            | Err(VMError::ExecutionError { init_gas_cost, .. }) => {
                 self.module_cache
                     .write()
-                    .set_init_cost(&bytecode, init_cost);
+                    .set_init_cost(&bytecode, init_gas_cost);
             }
             _ => (),
         }
@@ -721,6 +873,7 @@ impl ExecutionState {
             context_snapshot = context.get_snapshot();
             context.max_gas = message.max_gas;
             context.creator_address = None;
+            context.creator_coin_spending_allowance = None;
             context.stack = vec![
                 ExecutionStackElement {
                     address: message.sender,
@@ -786,17 +939,17 @@ impl ExecutionState {
             self.config.gas_costs.clone(),
         );
         match response {
-            Ok(Response { init_cost, .. }) => {
+            Ok(Response { init_gas_cost, .. }) => {
                 self.module_cache
                     .write()
-                    .set_init_cost(&bytecode, init_cost);
+                    .set_init_cost(&bytecode, init_gas_cost);
                 Ok(())
             }
             Err(error) => {
-                if let VMError::ExecutionError { init_cost, .. } = error {
+                if let VMError::ExecutionError { init_gas_cost, .. } = error {
                     self.module_cache
                         .write()
-                        .set_init_cost(&bytecode, init_cost);
+                        .set_init_cost(&bytecode, init_gas_cost);
                 }
                 // execution failed: reset context to snapshot and reimburse sender
                 let err = ExecutionError::VMError {
@@ -926,6 +1079,20 @@ impl ExecutionState {
                 }
             }
 
+            // Try executing the denunciations of this block
+            for denunciation in &stored_block.content.header.content.denunciations {
+                if let Err(e) = self.execute_denunciation(
+                    denunciation,
+                    &stored_block.content.header.content.slot,
+                    &mut block_credits,
+                ) {
+                    debug!(
+                        "Failed processing denunciation: {:?}, in block: {}: {}",
+                        denunciation, block_id, e
+                    );
+                }
+            }
+
             // Get block creator address
             let block_creator_addr = stored_block.content_creator_address;
 
@@ -998,8 +1165,27 @@ impl ExecutionState {
             context_guard!(self).update_production_stats(&producer_addr, *slot, None);
         }
 
-        // Finish slot and return the execution output
-        context_guard!(self).settle_slot()
+        // Finish slot
+        let exec_out = context_guard!(self).settle_slot();
+
+        // Broadcast a slot execution output to active channel subscribers.
+        if self.config.broadcast_enabled {
+            let slot_exec_out = SlotExecutionOutput::ExecutedSlot(exec_out.clone());
+            if let Err(err) = self
+                .channels
+                .slot_execution_output_sender
+                .send(slot_exec_out)
+            {
+                trace!(
+                    "error, failed to broadcast execution output for slot {} due to: {}",
+                    exec_out.slot.clone(),
+                    err
+                );
+            }
+        }
+
+        // Return the execution output
+        exec_out
     }
 
     /// Execute a candidate slot
@@ -1099,12 +1285,28 @@ impl ExecutionState {
         let exec_out = self.execute_slot(slot, exec_target, selector);
 
         // apply execution output to final state
-        self.apply_final_execution_output(exec_out);
+        self.apply_final_execution_output(exec_out.clone());
 
         self.update_versioning_stats(exec_target, slot);
         debug!(
             "execute_final_slot: execution finished & result applied & versioning stats updated"
         );
+
+        // Broadcast a final slot execution output to active channel subscribers.
+        if self.config.broadcast_enabled {
+            let slot_exec_out = SlotExecutionOutput::FinalizedSlot(exec_out.slot);
+            if let Err(err) = self
+                .channels
+                .slot_execution_output_sender
+                .send(slot_exec_out)
+            {
+                trace!(
+                    "error, failed to broadcast final execution output for slot {} due to: {}",
+                    exec_out.slot,
+                    err
+                );
+            }
+        }
     }
 
     /// Runs a read-only execution request.
@@ -1207,11 +1409,11 @@ impl ExecutionState {
                     self.config.gas_costs.clone(),
                 );
                 match response {
-                    Ok(Response { init_cost, .. })
-                    | Err(VMError::ExecutionError { init_cost, .. }) => {
+                    Ok(Response { init_gas_cost, .. })
+                    | Err(VMError::ExecutionError { init_gas_cost, .. }) => {
                         self.module_cache
                             .write()
-                            .set_init_cost(&bytecode, init_cost);
+                            .set_init_cost(&bytecode, init_gas_cost);
                     }
                     _ => (),
                 }
@@ -1423,6 +1625,25 @@ impl ExecutionState {
         }
 
         ops
+    }
+
+    /// Check if a denunciation has been executed given a `DenunciationIndex`
+    pub fn is_denunciation_executed(&self, denunciation_index: &DenunciationIndex) -> bool {
+        // check active history
+        let history = self.active_history.read();
+
+        if matches!(
+            history.fetch_executed_denunciation(denunciation_index),
+            HistorySearchResult::Present(())
+        ) {
+            return true;
+        }
+
+        // check final state
+        let final_state = self.final_state.read();
+        final_state
+            .executed_denunciations
+            .contains(denunciation_index)
     }
 
     /// Gets the production stats for an address at all cycles

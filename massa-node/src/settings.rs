@@ -3,14 +3,11 @@
 //! Build here the default node settings from the configuration file toml
 use std::path::PathBuf;
 
-use enum_map::EnumMap;
 use massa_bootstrap::IpType;
 use massa_models::{config::build_massa_settings, node::NodeId};
 use massa_time::MassaTime;
 use serde::Deserialize;
 use std::net::{IpAddr, SocketAddr};
-
-use massa_network_exports::{settings::PeerTypeConnectionConfig, PeerType};
 
 lazy_static::lazy_static! {
     pub static ref SETTINGS: Settings = build_massa_settings("massa-node", "MASSA_NODE");
@@ -35,11 +32,12 @@ pub struct ExecutionSettings {
     pub lru_cache_size: u32,
     pub hd_cache_size: usize,
     pub snip_amount: usize,
+    /// slot execution outputs channel capacity
+    pub broadcast_slot_execution_output_channel_capacity: usize,
 }
 
 #[derive(Clone, Debug, Deserialize)]
 pub struct SelectionSettings {
-    pub max_draw_cache: usize,
     pub initial_rolls_path: PathBuf,
 }
 
@@ -48,33 +46,6 @@ pub struct LedgerSettings {
     pub initial_ledger_path: PathBuf,
     pub disk_ledger_path: PathBuf,
     pub final_history_length: usize,
-}
-
-#[derive(Debug, Deserialize, Clone)]
-pub struct NetworkSettings {
-    pub bind: SocketAddr,
-    pub routable_ip: Option<IpAddr>,
-    pub protocol_port: u16,
-    pub connect_timeout: MassaTime,
-    pub wakeup_interval: MassaTime,
-    pub initial_peers_file: PathBuf,
-    pub peers_file: PathBuf,
-    pub keypair_file: PathBuf,
-    pub peer_types_config: EnumMap<PeerType, PeerTypeConnectionConfig>,
-    pub max_in_connections_per_ip: usize,
-    pub max_idle_peers: usize,
-    pub max_banned_peers: usize,
-    pub peers_file_dump_interval: MassaTime,
-    pub message_timeout: MassaTime,
-    pub ask_peer_list_interval: MassaTime,
-    pub max_send_wait_node_event: MassaTime,
-    pub max_send_wait_network_event: MassaTime,
-    pub ban_timeout: MassaTime,
-    pub peer_list_send_timeout: MassaTime,
-    pub max_in_connection_overflow: usize,
-    pub max_operations_per_message: u32,
-    pub max_bytes_read: f64,
-    pub max_bytes_write: f64,
 }
 
 /// Bootstrap configuration.
@@ -118,8 +89,10 @@ pub struct PoolSettings {
     pub max_operation_future_validity_start_periods: u64,
     pub max_endorsement_count: u64,
     pub max_item_return_count: usize,
-    /// operations sender(channel) capacity
-    pub broadcast_operations_capacity: usize,
+    /// endorsements channel capacity
+    pub broadcast_endorsements_channel_capacity: usize,
+    /// operations channel capacity
+    pub broadcast_operations_channel_capacity: usize,
 }
 
 /// API and server configuration, read from a file configuration.
@@ -149,7 +122,6 @@ pub struct APISettings {
 pub struct Settings {
     pub logging: LoggingSettings,
     pub protocol: ProtocolSettings,
-    pub network: NetworkSettings,
     pub consensus: ConsensusSettings,
     pub api: APISettings,
     pub bootstrap: BootstrapSettings,
@@ -183,16 +155,16 @@ pub struct ConsensusSettings {
     pub block_db_prune_interval: MassaTime,
     /// max number of items returned while querying
     pub max_item_return_count: usize,
-    /// blocks headers sender(channel) capacity
-    pub broadcast_blocks_headers_capacity: usize,
-    /// blocks sender(channel) capacity
-    pub broadcast_blocks_capacity: usize,
-    /// filled blocks sender(channel) capacity
-    pub broadcast_filled_blocks_capacity: usize,
+    /// blocks headers channel capacity
+    pub broadcast_blocks_headers_channel_capacity: usize,
+    /// blocks channel capacity
+    pub broadcast_blocks_channel_capacity: usize,
+    /// filled blocks channel capacity
+    pub broadcast_filled_blocks_channel_capacity: usize,
 }
 
 /// Protocol Configuration, read from toml user configuration file
-#[derive(Debug, Deserialize, Clone, Copy)]
+#[derive(Debug, Deserialize, Clone)]
 pub struct ProtocolSettings {
     /// after `ask_block_timeout` milliseconds we try to ask a block to another node
     pub ask_block_timeout: MassaTime,
@@ -232,6 +204,24 @@ pub struct ProtocolSettings {
     pub max_operations_propagation_time: MassaTime,
     /// Time threshold after which operation are not propagated
     pub max_endorsements_propagation_time: MassaTime,
+    /// Path for initial peers
+    pub initial_peers_file: PathBuf,
+    /// Keypair
+    pub keypair_file: PathBuf,
+    /// Ip we are bind to listen to
+    pub bind: SocketAddr,
+    /// Ip seen by others. If none the bind ip is used
+    pub routable_ip: Option<IpAddr>,
+    /// Time threshold to have a connection to a node
+    pub connect_timeout: MassaTime,
+    /// Max number of connection in
+    pub max_incoming_connections: usize,
+    /// Max number of connection out
+    pub max_outgoing_connections: usize,
+    /// Number of tester threads
+    pub thread_tester_count: u8,
+    /// Number of bytes we can read/write by seconds in a connection (must be a 10 multiple)
+    pub read_write_limit_bytes_per_second: u64,
 }
 
 /// gRPC settings
@@ -244,6 +234,8 @@ pub struct GrpcSettings {
     pub accept_http1: bool,
     /// whether to enable CORS. Works only if `accept_http1` is true
     pub enable_cors: bool,
+    /// whether to enable gRPC health service
+    pub enable_health: bool,
     /// whether to enable gRPC reflection
     pub enable_reflection: bool,
     /// bind for the Massa gRPC API
@@ -282,6 +274,10 @@ pub struct GrpcSettings {
     pub max_frame_size: Option<u32>,
     /// when looking for next draw we want to look at max `draw_lookahead_period_count`
     pub draw_lookahead_period_count: u64,
+    /// max number of block ids that can be included in a single request
+    pub max_block_ids_per_request: u32,
+    /// max number of operation ids that can be included in a single request
+    pub max_operation_ids_per_request: u32,
 }
 
 #[cfg(test)]

@@ -109,6 +109,7 @@ jobs:
           - macOS-latest
           - windows-latest
     steps:
+      - uses: ilammy/setup-nasm@v1
       - uses: actions/checkout@v3
         with:
           submodules: "recursive"
@@ -204,7 +205,7 @@ jobs:
       - uses: actions-rs/cargo@v1
         with:
           command: doc
-          args: --no-deps --all-features --document-private-items
+          args: --no-deps --document-private-items
       - uses: JamesIves/github-pages-deploy-action@4.1.7
         with:
           branch: gh-pages

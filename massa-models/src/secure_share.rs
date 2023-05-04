@@ -56,39 +56,57 @@ pub trait SecureShareContent
 where
     Self: Sized + Display,
 {
+    /// Sign the SecureShare given the content
+    fn sign(&self, keypair: &KeyPair, content_hash: &Hash) -> Result<Signature, ModelsError> {
+        Ok(keypair.sign(&self.compute_signed_hash(&keypair.get_public_key(), content_hash))?)
+    }
+
+    /// verify signature
+    fn verify_signature(
+        &self,
+        public_key: &PublicKey,
+        content_hash: &Hash,
+        signature: &Signature,
+    ) -> Result<(), ModelsError> {
+        Ok(public_key.verify_signature(
+            &self.compute_signed_hash(public_key, content_hash),
+            signature,
+        )?)
+    }
+
     /// Using the provided key-pair, applies a cryptographic signature, and packages
     /// the data required to share and verify the data in a trust-free network of peers.
     fn new_verifiable<Ser: Serializer<Self>, ID: Id>(
-        content: Self,
+        self,
         content_serializer: Ser,
         keypair: &KeyPair,
     ) -> Result<SecureShare<Self, ID>, ModelsError> {
         let mut content_serialized = Vec::new();
-        content_serializer.serialize(&content, &mut content_serialized)?;
+        content_serializer.serialize(&self, &mut content_serialized)?;
         let public_key = keypair.get_public_key();
-        let hash = Self::compute_hash(&content, &content_serialized, &public_key);
+        let hash = Self::compute_hash(&self, &content_serialized, &public_key);
         let creator_address = Address::from_public_key(&public_key);
         Ok(SecureShare {
-            signature: keypair.sign(&hash)?,
+            signature: self.sign(keypair, &hash)?,
             content_creator_pub_key: public_key,
             content_creator_address: creator_address,
-            content,
+            content: self,
             serialized_data: content_serialized,
             id: ID::new(hash),
         })
     }
 
     /// Compute hash
-    #[allow(unused_variables)]
-    fn compute_hash(
-        content: &Self, // use only for Denounce able object
-        content_serialized: &[u8],
-        content_creator_pub_key: &PublicKey,
-    ) -> Hash {
+    fn compute_hash(&self, content_serialized: &[u8], content_creator_pub_key: &PublicKey) -> Hash {
         let mut hash_data = Vec::new();
         hash_data.extend(content_creator_pub_key.to_bytes());
         hash_data.extend(content_serialized);
         Hash::compute_from(&hash_data)
+    }
+
+    /// Compute hash used for signature
+    fn compute_signed_hash(&self, _public_key: &PublicKey, content_hash: &Hash) -> Hash {
+        *content_hash
     }
 
     /// Serialize the secured structure
@@ -181,11 +199,28 @@ where
     T: Display + SecureShareContent,
     ID: Id,
 {
+    /// Sign the SecureShare given the content
+    pub fn sign(
+        keypair: &KeyPair,
+        content_hash: &Hash,
+        _content: &T,
+    ) -> Result<Signature, ModelsError> {
+        Ok(keypair.sign(content_hash)?)
+    }
+
     /// check if self has been signed by public key
     pub fn verify_signature(&self) -> Result<(), ModelsError> {
-        Ok(self
-            .content_creator_pub_key
-            .verify_signature(self.id.get_hash(), &self.signature)?)
+        self.content.verify_signature(
+            &self.content_creator_pub_key,
+            self.id.get_hash(),
+            &self.signature,
+        )
+    }
+
+    /// Compute the signed hash
+    pub fn compute_signed_hash(&self) -> Hash {
+        self.content
+            .compute_signed_hash(&self.content_creator_pub_key, self.id.get_hash())
     }
 
     /// get full serialized size
@@ -199,7 +234,7 @@ where
 
 // NOTE FOR EXPLICATION: No content serializer because serialized data is already here.
 /// Serializer for `SecureShare` structure
-#[derive(Default)]
+#[derive(Default, Clone)]
 pub struct SecureShareSerializer;
 
 impl SecureShareSerializer {

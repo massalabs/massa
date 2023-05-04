@@ -2,9 +2,9 @@
 
 //! Pool controller implementation
 
-use massa_models::denunciation::Denunciation;
 use massa_models::{
-    block_id::BlockId, endorsement::EndorsementId, operation::OperationId, slot::Slot,
+    block_id::BlockId, denunciation::Denunciation, denunciation::DenunciationPrecursor,
+    endorsement::EndorsementId, operation::OperationId, slot::Slot,
 };
 use massa_pool_exports::{PoolConfig, PoolController, PoolManager};
 use massa_storage::Storage;
@@ -23,8 +23,8 @@ use crate::{
 pub enum Command {
     /// Add items to the pool
     AddItems(Storage),
-    /// Add denunciation to the pool
-    AddDenunciation(Denunciation),
+    /// Add denunciation precursor to the pool
+    AddDenunciationPrecursor(DenunciationPrecursor),
     /// Notify of new final consensus periods
     NotifyFinalCsPeriods(Vec<u64>),
     /// Stop the worker
@@ -71,6 +71,22 @@ impl PoolController for PoolControllerImpl {
 
     /// Asynchronously add endorsements to pool. Simply print a warning on failure.
     fn add_endorsements(&mut self, endorsements: Storage) {
+        // Send endorsements to the denunciation pool - so we got unfiltered endorsements
+        // from protocol & endorsement factory
+        match self
+            .denunciations_input_sender
+            .try_send(Command::AddItems(endorsements.clone()))
+        {
+            Err(TrySendError::Disconnected(_)) => {
+                warn!("Could not add endorsements to pool: worker is unreachable.");
+            }
+            Err(TrySendError::Full(_)) => {
+                warn!("Could not add endorsements to pool: worker channel is full.");
+            }
+            Ok(_) => {}
+        }
+
+        // Now send endorsements to endorsement pool - storage is cleaned up
         match self
             .endorsements_input_sender
             .try_send(Command::AddItems(endorsements))
@@ -80,6 +96,22 @@ impl PoolController for PoolControllerImpl {
             }
             Err(TrySendError::Full(_)) => {
                 warn!("Could not add endorsements to pool: worker channel is full.");
+            }
+            Ok(_) => {}
+        }
+    }
+
+    /// Add denunciation precursor to pool
+    fn add_denunciation_precursor(&self, denunciation_precursor: DenunciationPrecursor) {
+        match self
+            .denunciations_input_sender
+            .try_send(Command::AddDenunciationPrecursor(denunciation_precursor))
+        {
+            Err(TrySendError::Disconnected(_)) => {
+                warn!("Could not add denunciation precursor to pool: worker is unreachable.");
+            }
+            Err(TrySendError::Full(_)) => {
+                warn!("Could not add denunciation precursor to pool: worker channel is full.");
             }
             Ok(_) => {}
         }
@@ -155,10 +187,11 @@ impl PoolController for PoolControllerImpl {
             .get_block_endorsements(target_slot, target_block)
     }
 
-    /// Returns a boxed clone of self.
-    /// Allows cloning `Box<dyn PoolController>`,
-    fn clone_box(&self) -> Box<dyn PoolController> {
-        Box::new(self.clone())
+    /// get denunciationsq for a block
+    fn get_block_denunciations(&self, target_slot: &Slot) -> Vec<Denunciation> {
+        self.denunciation_pool
+            .read()
+            .get_block_denunciations(target_slot)
     }
 
     /// Get the number of endorsements in the pool
@@ -183,25 +216,22 @@ impl PoolController for PoolControllerImpl {
         operations.iter().map(|id| lck.contains(id)).collect()
     }
 
-    /// Add denunciation to pool
-    fn add_denunciation(&mut self, denunciation: Denunciation) {
-        match self
-            .denunciations_input_sender
-            .try_send(Command::AddDenunciation(denunciation))
-        {
-            Err(TrySendError::Disconnected(_)) => {
-                warn!("Could not add denunciations to pool: worker is unreachable.");
-            }
-            Err(TrySendError::Full(_)) => {
-                warn!("Could not add denunciations to pool: worker channel is full.");
-            }
-            Ok(_) => {}
-        }
+    /// Check if the pool contains a denunciation. Returns a boolean
+    #[cfg(feature = "testing")]
+    fn contains_denunciation(&self, denunciation: &Denunciation) -> bool {
+        let lock = self.denunciation_pool.read();
+        lock.contains(denunciation)
     }
 
     /// Get the number of denunciations in the pool
     fn get_denunciation_count(&self) -> usize {
         self.denunciation_pool.read().len()
+    }
+
+    /// Returns a boxed clone of self.
+    /// Allows cloning `Box<dyn PoolController>`,
+    fn clone_box(&self) -> Box<dyn PoolController> {
+        Box::new(self.clone())
     }
 
     /// Get final consensus periods

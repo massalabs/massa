@@ -8,10 +8,14 @@ use massa_async_pool::{
 use massa_consensus_exports::bootstrapable_graph::{
     BootstrapableGraph, BootstrapableGraphDeserializer, BootstrapableGraphSerializer,
 };
-use massa_executed_ops::{ExecutedOpsDeserializer, ExecutedOpsSerializer};
+use massa_executed_ops::{
+    ExecutedDenunciationsDeserializer, ExecutedDenunciationsSerializer, ExecutedOpsDeserializer,
+    ExecutedOpsSerializer,
+};
 use massa_final_state::{StateChanges, StateChangesDeserializer, StateChangesSerializer};
 use massa_ledger_exports::{Key as LedgerKey, KeyDeserializer, KeySerializer};
 use massa_models::block_id::{BlockId, BlockIdDeserializer, BlockIdSerializer};
+use massa_models::denunciation::DenunciationIndex;
 use massa_models::operation::OperationId;
 use massa_models::prehash::PreHashSet;
 use massa_models::serialization::{
@@ -22,10 +26,12 @@ use massa_models::streaming_step::{
     StreamingStep, StreamingStepDeserializer, StreamingStepSerializer,
 };
 use massa_models::version::{Version, VersionDeserializer, VersionSerializer};
-use massa_network_exports::{BootstrapPeers, BootstrapPeersDeserializer, BootstrapPeersSerializer};
 use massa_pos_exports::{
     CycleInfo, CycleInfoDeserializer, CycleInfoSerializer, DeferredCredits,
     DeferredCreditsDeserializer, DeferredCreditsSerializer,
+};
+use massa_protocol_exports::{
+    BootstrapPeers, BootstrapPeersDeserializer, BootstrapPeersSerializer,
 };
 use massa_serialization::{
     BoolDeserializer, BoolSerializer, Deserializer, OptionDeserializer, OptionSerializer,
@@ -44,7 +50,7 @@ use nom::{
     IResult,
 };
 use num_enum::{IntoPrimitive, TryFromPrimitive};
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, HashSet};
 use std::convert::TryInto;
 use std::ops::Bound::{Excluded, Included};
 
@@ -78,6 +84,8 @@ pub enum BootstrapServerMessage {
         pos_credits_part: DeferredCredits,
         /// Part of the executed operations
         exec_ops_part: BTreeMap<Slot, PreHashSet<OperationId>>,
+        /// Part of the executed operations
+        exec_de_part: BTreeMap<Slot, HashSet<DenunciationIndex>>,
         /// Ledger change for addresses inferior to `address` of the client message until the actual slot.
         final_state_changes: Vec<(Slot, StateChanges)>,
         /// Part of the consensus graph
@@ -101,6 +109,24 @@ pub enum BootstrapServerMessage {
         /// Error message
         error: String,
     },
+}
+
+impl ToString for BootstrapServerMessage {
+    fn to_string(&self) -> String {
+        match self {
+            BootstrapServerMessage::BootstrapTime { .. } => "BootstrapTime".to_string(),
+            BootstrapServerMessage::BootstrapPeers { .. } => "BootstrapPeers".to_string(),
+            BootstrapServerMessage::BootstrapPart { .. } => "BootstrapPart".to_string(),
+            BootstrapServerMessage::BootstrapFinished => "BootstrapFinished".to_string(),
+            BootstrapServerMessage::SlotTooOld => "SlotTooOld".to_string(),
+            BootstrapServerMessage::BootstrapError { error } => {
+                format!("BootstrapError {{ error: {} }}", error)
+            }
+            BootstrapServerMessage::BootstrapMipStore { store } => {
+                format!("BootstrapMipStore {{ store: {:?} }}", store)
+            }
+        }
+    }
 }
 
 #[derive(IntoPrimitive, Debug, Eq, PartialEq, TryFromPrimitive)]
@@ -131,6 +157,7 @@ pub struct BootstrapServerMessageSerializer {
     opt_pos_cycle_serializer: OptionSerializer<CycleInfo, CycleInfoSerializer>,
     pos_credits_serializer: DeferredCreditsSerializer,
     exec_ops_serializer: ExecutedOpsSerializer,
+    exec_de_serializer: ExecutedDenunciationsSerializer,
     opt_last_start_period_serializer: OptionSerializer<u64, U64VarIntSerializer>,
     store_serializer: MipStoreRawSerializer,
 }
@@ -159,6 +186,7 @@ impl BootstrapServerMessageSerializer {
             opt_pos_cycle_serializer: OptionSerializer::new(CycleInfoSerializer::new()),
             pos_credits_serializer: DeferredCreditsSerializer::new(),
             exec_ops_serializer: ExecutedOpsSerializer::new(),
+            exec_de_serializer: ExecutedDenunciationsSerializer::new(),
             opt_last_start_period_serializer: OptionSerializer::new(U64VarIntSerializer::new()),
             store_serializer: MipStoreRawSerializer::new(),
         }
@@ -209,6 +237,7 @@ impl Serializer<BootstrapServerMessage> for BootstrapServerMessageSerializer {
                 pos_cycle_part,
                 pos_credits_part,
                 exec_ops_part,
+                exec_de_part,
                 final_state_changes,
                 consensus_part,
                 consensus_outdated_ids,
@@ -232,6 +261,8 @@ impl Serializer<BootstrapServerMessage> for BootstrapServerMessageSerializer {
                     .serialize(pos_credits_part, buffer)?;
                 // executed operations
                 self.exec_ops_serializer.serialize(exec_ops_part, buffer)?;
+                // processed denunciations
+                self.exec_de_serializer.serialize(exec_de_part, buffer)?;
                 // changes length
                 self.u64_serializer
                     .serialize(&(final_state_changes.len() as u64), buffer)?;
@@ -297,6 +328,7 @@ pub struct BootstrapServerMessageDeserializer {
     opt_pos_cycle_deserializer: OptionDeserializer<CycleInfo, CycleInfoDeserializer>,
     pos_credits_deserializer: DeferredCreditsDeserializer,
     exec_ops_deserializer: ExecutedOpsDeserializer,
+    executed_de_deserializer: ExecutedDenunciationsDeserializer,
     opt_last_start_period_deserializer: OptionDeserializer<u64, U64VarIntDeserializer>,
     store_deserializer: MipStoreRawDeserializer,
 }
@@ -312,7 +344,10 @@ impl BootstrapServerMessageDeserializer {
                 Included(MassaTime::from_millis(u64::MAX)),
             )),
             version_deserializer: VersionDeserializer::new(),
-            peers_deserializer: BootstrapPeersDeserializer::new(args.max_advertise_length),
+            peers_deserializer: BootstrapPeersDeserializer::new(
+                args.max_advertise_length,
+                args.max_listeners_per_peer,
+            ),
             state_changes_deserializer: StateChangesDeserializer::new(
                 args.thread_count,
                 args.max_async_pool_changes,
@@ -325,6 +360,8 @@ impl BootstrapServerMessageDeserializer {
                 args.max_production_stats_length,
                 args.max_credits_length,
                 args.max_ops_changes_length,
+                args.endorsement_count,
+                args.max_denunciation_changes_length,
             ),
             length_state_changes: U64VarIntDeserializer::new(
                 Included(0),
@@ -371,6 +408,12 @@ impl BootstrapServerMessageDeserializer {
                 args.max_executed_ops_length,
                 args.max_operations_per_block as u64,
             ),
+            executed_de_deserializer: ExecutedDenunciationsDeserializer::new(
+                args.thread_count,
+                args.endorsement_count,
+                args.max_denunciation_changes_length,
+                args.max_denunciations_per_block_header as u64,
+            ),
             opt_last_start_period_deserializer: OptionDeserializer::new(
                 U64VarIntDeserializer::new(Included(u64::MIN), Included(u64::MAX)),
             ),
@@ -395,6 +438,7 @@ impl Deserializer<BootstrapServerMessage> for BootstrapServerMessageDeserializer
     /// let message_serializer = BootstrapServerMessageSerializer::new();
     /// let args = BootstrapServerMessageDeserializerArgs {
     ///     thread_count: 32, endorsement_count: 16,
+    ///     max_listeners_per_peer: 1000,
     ///     max_advertise_length: 1000, max_bootstrap_blocks_length: 1000,
     ///     max_operations_per_block: 1000, max_bootstrap_final_state_parts_size: 1000,
     ///     max_async_pool_changes: 1000, max_async_pool_length: 1000, max_async_message_data: 1000,
@@ -403,8 +447,8 @@ impl Deserializer<BootstrapServerMessage> for BootstrapServerMessageDeserializer
     ///     max_datastore_entry_count: 1000, max_bootstrap_error_length: 1000, max_changes_slot_count: 1000,
     ///     max_rolls_length: 1000, max_production_stats_length: 1000, max_credits_length: 1000,
     ///     max_executed_ops_length: 1000, max_ops_changes_length: 1000,
-    ///     mip_store_stats_block_considered: 100, mip_store_stats_counters_max: 10
-    /// };
+    ///     mip_store_stats_block_considered: 100, mip_store_stats_counters_max: 10,
+    ///     max_denunciations_per_block_header: 128, max_denunciation_changes_length: 1000,};
     /// let message_deserializer = BootstrapServerMessageDeserializer::new(args);
     /// let bootstrap_server_message = BootstrapServerMessage::BootstrapTime {
     ///    server_time: MassaTime::from(0),
@@ -489,6 +533,9 @@ impl Deserializer<BootstrapServerMessage> for BootstrapServerMessageDeserializer
                     context("Failed exec_ops_part deserialization", |input| {
                         self.exec_ops_deserializer.deserialize(input)
                     }),
+                    context("Failed exec_de_part deserialization", |input| {
+                        self.executed_de_deserializer.deserialize(input)
+                    }),
                     context(
                         "Failed final_state_changes deserialization",
                         length_count(
@@ -519,6 +566,7 @@ impl Deserializer<BootstrapServerMessage> for BootstrapServerMessageDeserializer
                         pos_cycle_part,
                         pos_credits_part,
                         exec_ops_part,
+                        exec_de_part,
                         final_state_changes,
                         consensus_part,
                         consensus_outdated_ids,
@@ -531,6 +579,7 @@ impl Deserializer<BootstrapServerMessage> for BootstrapServerMessageDeserializer
                             pos_cycle_part,
                             pos_credits_part,
                             exec_ops_part,
+                            exec_de_part,
                             final_state_changes,
                             consensus_part,
                             consensus_outdated_ids,
@@ -579,6 +628,8 @@ pub enum BootstrapClientMessage {
         last_credits_step: StreamingStep<Slot>,
         /// Last received executed operation associated slot
         last_ops_step: StreamingStep<Slot>,
+        /// Last received executed denunciations associated slot
+        last_de_step: StreamingStep<Slot>,
         /// Last received consensus block slot
         last_consensus_step: StreamingStep<PreHashSet<BlockId>>,
         /// Should be true only for the first part, false later
@@ -675,6 +726,7 @@ impl Serializer<BootstrapClientMessage> for BootstrapClientMessageSerializer {
                 last_cycle_step,
                 last_credits_step,
                 last_ops_step,
+                last_de_step,
                 last_consensus_step,
                 send_last_start_period,
             } => {
@@ -691,6 +743,7 @@ impl Serializer<BootstrapClientMessage> for BootstrapClientMessageSerializer {
                     self.slot_step_serializer
                         .serialize(last_credits_step, buffer)?;
                     self.slot_step_serializer.serialize(last_ops_step, buffer)?;
+                    self.slot_step_serializer.serialize(last_de_step, buffer)?;
                     self.block_ids_step_serializer
                         .serialize(last_consensus_step, buffer)?;
                     self.bool_serializer
@@ -836,6 +889,7 @@ impl Deserializer<BootstrapClientMessage> for BootstrapClientMessageDeserializer
                                 last_cycle_step: StreamingStep::Started,
                                 last_credits_step: StreamingStep::Started,
                                 last_ops_step: StreamingStep::Started,
+                                last_de_step: StreamingStep::Started,
                                 last_consensus_step: StreamingStep::Started,
                                 send_last_start_period: true,
                             },
@@ -860,6 +914,9 @@ impl Deserializer<BootstrapClientMessage> for BootstrapClientMessageDeserializer
                             context("Failed last_ops_step deserialization", |input| {
                                 self.slot_step_deserializer.deserialize(input)
                             }),
+                            context("Failed last_de_step deserialization", |input| {
+                                self.slot_step_deserializer.deserialize(input)
+                            }),
                             context("Failed last_consensus_step deserialization", |input| {
                                 self.block_ids_step_deserializer.deserialize(input)
                             }),
@@ -875,6 +932,7 @@ impl Deserializer<BootstrapClientMessage> for BootstrapClientMessageDeserializer
                                 last_cycle_step,
                                 last_credits_step,
                                 last_ops_step,
+                                last_de_step,
                                 last_consensus_step,
                                 send_last_start_period,
                             )| {
@@ -885,6 +943,7 @@ impl Deserializer<BootstrapClientMessage> for BootstrapClientMessageDeserializer
                                     last_cycle_step,
                                     last_credits_step,
                                     last_ops_step,
+                                    last_de_step,
                                     last_consensus_step,
                                     send_last_start_period,
                                 }

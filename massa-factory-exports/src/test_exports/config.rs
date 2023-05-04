@@ -17,7 +17,6 @@ impl Default for FactoryConfig {
             last_start_period: 0,
             periods_per_cycle: PERIODS_PER_CYCLE,
             denunciation_expire_periods: DENUNCIATION_EXPIRE_PERIODS,
-            denunciation_items_max_cycle_delta: DENUNCIATION_ITEMS_MAX_CYCLE_DELTA,
         }
     }
 }

@@ -1,186 +1,97 @@
-use crate::start_protocol_controller;
-use futures::Future;
-use massa_consensus_exports::test_exports::{ConsensusEventReceiver, MockConsensusController};
+use std::time::Duration;
+
+use crossbeam::channel::Receiver;
 use massa_models::{
-    block::SecureShareBlock, block_id::BlockId, node::NodeId, operation::SecureShareOperation,
+    block::SecureShareBlock, block_id::BlockId, operation::SecureShareOperation,
     prehash::PreHashSet,
 };
-use massa_network_exports::BlockInfoReply;
-use massa_pool_exports::test_exports::{MockPoolController, PoolEventReceiver};
-use massa_protocol_exports::{
-    tests::mock_network_controller::MockNetworkController, ProtocolCommandSender, ProtocolConfig,
-    ProtocolManager, ProtocolReceivers, ProtocolSenders,
+use massa_protocol_exports::ProtocolController;
+use peernet::peer_id::PeerId;
+
+use crate::{
+    handlers::block_handler::{BlockInfoReply, BlockMessage},
+    messages::Message,
 };
-use massa_storage::Storage;
-use tokio::sync::mpsc;
 
-pub async fn protocol_test<F, V>(protocol_config: &ProtocolConfig, test: F)
-where
-    F: FnOnce(
-        MockNetworkController,
-        ProtocolCommandSender,
-        ProtocolManager,
-        ConsensusEventReceiver,
-        PoolEventReceiver,
-    ) -> V,
-    V: Future<
-        Output = (
-            MockNetworkController,
-            ProtocolCommandSender,
-            ProtocolManager,
-            ConsensusEventReceiver,
-            PoolEventReceiver,
-        ),
-    >,
-{
-    let (network_controller, network_command_sender, network_event_receiver) =
-        MockNetworkController::new();
+use super::mock_network::MockNetworkController;
 
-    let (pool_controller, pool_event_receiver) = MockPoolController::new_with_receiver();
-    let (consensus_controller, consensus_event_receiver) =
-        MockConsensusController::new_with_receiver();
-    // start protocol controller
-    let (protocol_command_sender, protocol_command_receiver) =
-        mpsc::channel(protocol_config.controller_channel_size);
-    let protocol_receivers = ProtocolReceivers {
-        network_event_receiver,
-        protocol_command_receiver,
-    };
-    let protocol_senders = ProtocolSenders {
-        network_command_sender,
-    };
-    // start protocol controller
-    let protocol_manager: ProtocolManager = start_protocol_controller(
-        *protocol_config,
-        protocol_receivers,
-        protocol_senders,
-        consensus_controller,
-        pool_controller,
-        Storage::create_root(),
-    )
-    .await
-    .expect("could not start protocol controller");
-
-    let protocol_command_sender = ProtocolCommandSender(protocol_command_sender);
-    let (
-        _network_controller,
-        _protocol_command_sender,
-        protocol_manager,
-        _consensus_event_receiver,
-        _pool_event_receiver,
-    ) = test(
-        network_controller,
-        protocol_command_sender,
-        protocol_manager,
-        consensus_event_receiver,
-        pool_event_receiver,
-    )
-    .await;
-
-    protocol_manager
-        .stop()
-        .await
-        .expect("Failed to shutdown protocol.");
+pub fn assert_hash_asked_to_node(node: &Receiver<Message>, block_id: &BlockId) {
+    let msg = node
+        .recv_timeout(Duration::from_millis(1500))
+        .expect("Node didn't receive the ask for block message");
+    match msg {
+        Message::Block(message) => {
+            if let BlockMessage::AskForBlocks(asked) = *message {
+                assert_eq!(asked.len(), 1);
+                assert_eq!(&asked[0].0, block_id);
+            } else {
+                panic!("Node didn't receive the ask for block message");
+            }
+        }
+        _ => panic!("Node didn't receive the ask for block message"),
+    }
 }
 
-pub async fn protocol_test_with_storage<F, V>(protocol_config: &ProtocolConfig, test: F)
-where
-    F: FnOnce(
-        MockNetworkController,
-        ProtocolCommandSender,
-        ProtocolManager,
-        ConsensusEventReceiver,
-        PoolEventReceiver,
-        Storage,
-    ) -> V,
-    V: Future<
-        Output = (
-            MockNetworkController,
-            ProtocolCommandSender,
-            ProtocolManager,
-            ConsensusEventReceiver,
-            PoolEventReceiver,
-        ),
-    >,
-{
-    let (network_controller, network_command_sender, network_event_receiver) =
-        MockNetworkController::new();
-    let (pool_controller, mock_pool_receiver) = MockPoolController::new_with_receiver();
-    let (consensus_controller, mock_consensus_receiver) =
-        MockConsensusController::new_with_receiver();
-    let storage = Storage::create_root();
-    // start protocol controller
-    let (protocol_command_sender, protocol_command_receiver) =
-        mpsc::channel(protocol_config.controller_channel_size);
+pub fn assert_block_info_sent_to_node(node: &Receiver<Message>, block_id: &BlockId) {
+    let msg = node
+        .recv_timeout(Duration::from_millis(1500))
+        .expect("Node didn't receive the infos block message");
+    match msg {
+        Message::Block(message) => {
+            if let BlockMessage::BlockHeader(header) = *message {
+                assert_eq!(&header.id, block_id);
+            } else {
+                panic!("Node didn't receive the block header message")
+            }
+        }
+        _ => panic!("Node didn't receive the block header message"),
+    }
 
-    let protocol_senders = ProtocolSenders {
-        network_command_sender: network_command_sender.clone(),
-    };
-
-    let protocol_receivers = ProtocolReceivers {
-        network_event_receiver,
-        protocol_command_receiver,
-    };
-
-    let protocol_manager = start_protocol_controller(
-        *protocol_config,
-        protocol_receivers,
-        protocol_senders,
-        consensus_controller,
-        pool_controller,
-        storage.clone(),
-    )
-    .await
-    .expect("could not start protocol controller");
-
-    let protocol_command_sender = ProtocolCommandSender(protocol_command_sender);
-    let (
-        _network_controller,
-        _protocol_command_sender,
-        protocol_manager,
-        _consensus_event_receiver,
-        _protocol_pool_event_receiver,
-    ) = test(
-        network_controller,
-        protocol_command_sender,
-        protocol_manager,
-        mock_consensus_receiver,
-        mock_pool_receiver,
-        storage,
-    )
-    .await;
-
-    protocol_manager
-        .stop()
-        .await
-        .expect("Failed to shutdown protocol.");
+    let msg = node
+        .recv_timeout(Duration::from_millis(3500))
+        .expect("Node didn't receive the infos block message");
+    match msg {
+        Message::Block(message) => {
+            if let BlockMessage::ReplyForBlocks(asked) = *message {
+                assert_eq!(asked.len(), 1);
+                assert_eq!(&asked[0].0, block_id);
+                match asked[0].1 {
+                    BlockInfoReply::Info(_) => {}
+                    _ => panic!("Node didn't receive the infos block message"),
+                }
+            } else {
+                panic!("Node didn't receive the infos block message")
+            }
+        }
+        _ => panic!("Node didn't receive the infos block message"),
+    }
 }
 
 /// send a block and assert it has been propagate (or not)
-pub async fn send_and_propagate_block(
+pub fn send_and_propagate_block(
     network_controller: &mut MockNetworkController,
     block: SecureShareBlock,
-    source_node_id: NodeId,
-    protocol_command_sender: &mut ProtocolCommandSender,
+    node_id: &PeerId,
+    protocol_controller: &Box<dyn ProtocolController>,
     operations: Vec<SecureShareOperation>,
 ) {
     network_controller
-        .send_header(source_node_id, block.content.header.clone())
-        .await;
+        .send_from_peer(
+            &node_id,
+            Message::Block(Box::new(BlockMessage::BlockHeader(
+                block.content.header.clone(),
+            ))),
+        )
+        .unwrap();
 
-    let mut protocol_sender = protocol_command_sender.clone();
-    tokio::task::spawn_blocking(move || {
-        protocol_sender
-            .send_wishlist_delta(
-                vec![(block.id, Some(block.content.header.clone()))]
-                    .into_iter()
-                    .collect(),
-                PreHashSet::<BlockId>::default(),
-            )
-            .unwrap();
-    })
-    .await
-    .unwrap();
+    protocol_controller
+        .send_wishlist_delta(
+            vec![(block.id, Some(block.content.header.clone()))]
+                .into_iter()
+                .collect(),
+            PreHashSet::<BlockId>::default(),
+        )
+        .unwrap();
 
     // Send block info to protocol.
     let info = vec![(
@@ -188,12 +99,18 @@ pub async fn send_and_propagate_block(
         BlockInfoReply::Info(block.content.operations.clone()),
     )];
     network_controller
-        .send_block_info(source_node_id, info)
-        .await;
+        .send_from_peer(
+            &node_id,
+            Message::Block(Box::new(BlockMessage::ReplyForBlocks(info))),
+        )
+        .unwrap();
 
     // Send full ops.
     let info = vec![(block.id, BlockInfoReply::Operations(operations))];
     network_controller
-        .send_block_info(source_node_id, info)
-        .await;
+        .send_from_peer(
+            &node_id,
+            Message::Block(Box::new(BlockMessage::ReplyForBlocks(info))),
+        )
+        .unwrap();
 }

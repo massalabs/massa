@@ -1,27 +1,18 @@
-// Copyright (c) 2022 MASSA LABS <info@massa.net>
-//! protocol component exports
-#![feature(async_closure)]
-#![feature(drain_filter)]
-#![feature(ip)]
-#![warn(missing_docs)]
-#![warn(unused_crate_dependencies)]
-mod channels;
+mod bootstrap_peers;
+mod controller_trait;
 mod error;
-mod protocol_controller;
 mod settings;
 
-pub use channels::{ProtocolReceivers, ProtocolSenders};
+pub use bootstrap_peers::{BootstrapPeers, BootstrapPeersDeserializer, BootstrapPeersSerializer};
+pub use controller_trait::{ProtocolController, ProtocolManager};
 pub use error::ProtocolError;
-pub use protocol_controller::{
-    BlocksResults, ProtocolCommand, ProtocolCommandSender, ProtocolManagementCommand,
-    ProtocolManager,
-};
+pub use peernet::peer::PeerConnectionType;
+pub use peernet::peer_id::PeerId;
+pub use peernet::transports::TransportType;
 pub use settings::ProtocolConfig;
 
-/// TODO: Add only if test. Removed the configuration test because don't work if running cargo test on an other sub-crate.
-pub mod tests;
-
-/// Tests utils
 #[cfg(feature = "testing")]
-/// Exports testing tools as mock, functions helpers and configurations
 pub mod test_exports;
+
+#[cfg(feature = "testing")]
+pub use controller_trait::MockProtocolController;

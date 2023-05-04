@@ -4,34 +4,34 @@ version = "0.1.0"
 authors = ["Massa Labs <info@massa.net>"]
 edition = "2021"
 
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
-
 [dependencies]
-serde_json = "1.0"
-tokio = { version = "1.23", features = ["full"] }
 tracing = "0.1"
-rayon = "1.5"
-# custom modules
+rand = "0.8"
+parking_lot = "0.12"
+crossbeam = "0.8"
+serde_json = "1.0"
+nom = "7.1"
+num_enum = "0.5"
+peernet = { git = "https://github.com/massalabs/PeerNet", rev = "959a7a651ff9c346b6fc5a123a5a44f0bd0cc8d5"}
+tempfile = { version = "3.3", optional = true } # use with testing feature
+rayon = "1.7.0"
+lru = "0.10.0"
+
+# modules Custom
 massa_hash = { path = "../massa-hash" }
-massa_logging = { path = "../massa-logging" }
 massa_models = { path = "../massa-models" }
-massa_consensus_exports = { path = "../massa-consensus-exports" }
-massa_network_exports = { path = "../massa-network-exports" }
-massa_pool_exports = { path = "../massa-pool-exports" }
+massa_logging = { path = "../massa-logging" }
 massa_protocol_exports = { path = "../massa-protocol-exports" }
-massa_serialization = { path = "../massa-serialization" }
+massa_consensus_exports = { path = "../massa-consensus-exports" }
+massa_pool_exports = { path = "../massa-pool-exports" }
 massa_storage = { path = "../massa-storage" }
-massa_time = { path = "../massa-time" }
+massa_serialization = { path = "../massa-serialization" }
 massa_signature = { path = "../massa-signature" }
+massa_time = { path = "../massa-time" }
 
 [dev-dependencies]
-lazy_static = "1.4"
-serial_test = "1.0"
-futures = "0.3"
-
-massa_signature = { path = "../massa-signature" }
-massa_pool_exports = { path = "../massa-pool-exports", features = ["testing"] }
+tempfile = "3.3"
+serial_test = "2.0.0"
 
 [features]
-
-testing = ["massa_consensus_exports/testing", "massa_network_exports/testing", "massa_pool_exports/testing", "massa_protocol_exports/testing"]
+testing = ["massa_protocol_exports/testing", "tempfile", "massa_pool_exports/testing", "massa_consensus_exports/testing"]

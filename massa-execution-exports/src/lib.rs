@@ -44,12 +44,15 @@
 
 #![warn(missing_docs)]
 #![warn(unused_crate_dependencies)]
+mod channels;
 mod controller_traits;
 mod error;
 mod event_store;
+mod mapping_grpc;
 mod settings;
 mod types;
 
+pub use channels::ExecutionChannels;
 pub use controller_traits::{ExecutionController, ExecutionManager};
 pub use error::ExecutionError;
 pub use event_store::EventStore;
@@ -58,6 +61,7 @@ pub use settings::{ExecutionConfig, StorageCostsConstants};
 pub use types::{
     ExecutionAddressInfo, ExecutionOutput, ExecutionStackElement, ReadOnlyCallRequest,
     ReadOnlyExecutionOutput, ReadOnlyExecutionRequest, ReadOnlyExecutionTarget,
+    SlotExecutionOutput,
 };
 
 #[cfg(any(feature = "testing", feature = "gas_calibration"))]
