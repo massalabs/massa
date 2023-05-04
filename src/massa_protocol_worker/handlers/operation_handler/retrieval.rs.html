@@ -522,69 +522,6 @@
 <a href="#522" id="522">522</a>
 <a href="#523" id="523">523</a>
 <a href="#524" id="524">524</a>
-<a href="#525" id="525">525</a>
-<a href="#526" id="526">526</a>
-<a href="#527" id="527">527</a>
-<a href="#528" id="528">528</a>
-<a href="#529" id="529">529</a>
-<a href="#530" id="530">530</a>
-<a href="#531" id="531">531</a>
-<a href="#532" id="532">532</a>
-<a href="#533" id="533">533</a>
-<a href="#534" id="534">534</a>
-<a href="#535" id="535">535</a>
-<a href="#536" id="536">536</a>
-<a href="#537" id="537">537</a>
-<a href="#538" id="538">538</a>
-<a href="#539" id="539">539</a>
-<a href="#540" id="540">540</a>
-<a href="#541" id="541">541</a>
-<a href="#542" id="542">542</a>
-<a href="#543" id="543">543</a>
-<a href="#544" id="544">544</a>
-<a href="#545" id="545">545</a>
-<a href="#546" id="546">546</a>
-<a href="#547" id="547">547</a>
-<a href="#548" id="548">548</a>
-<a href="#549" id="549">549</a>
-<a href="#550" id="550">550</a>
-<a href="#551" id="551">551</a>
-<a href="#552" id="552">552</a>
-<a href="#553" id="553">553</a>
-<a href="#554" id="554">554</a>
-<a href="#555" id="555">555</a>
-<a href="#556" id="556">556</a>
-<a href="#557" id="557">557</a>
-<a href="#558" id="558">558</a>
-<a href="#559" id="559">559</a>
-<a href="#560" id="560">560</a>
-<a href="#561" id="561">561</a>
-<a href="#562" id="562">562</a>
-<a href="#563" id="563">563</a>
-<a href="#564" id="564">564</a>
-<a href="#565" id="565">565</a>
-<a href="#566" id="566">566</a>
-<a href="#567" id="567">567</a>
-<a href="#568" id="568">568</a>
-<a href="#569" id="569">569</a>
-<a href="#570" id="570">570</a>
-<a href="#571" id="571">571</a>
-<a href="#572" id="572">572</a>
-<a href="#573" id="573">573</a>
-<a href="#574" id="574">574</a>
-<a href="#575" id="575">575</a>
-<a href="#576" id="576">576</a>
-<a href="#577" id="577">577</a>
-<a href="#578" id="578">578</a>
-<a href="#579" id="579">579</a>
-<a href="#580" id="580">580</a>
-<a href="#581" id="581">581</a>
-<a href="#582" id="582">582</a>
-<a href="#583" id="583">583</a>
-<a href="#584" id="584">584</a>
-<a href="#585" id="585">585</a>
-<a href="#586" id="586">586</a>
-<a href="#587" id="587">587</a>
 </pre><pre class="rust"><code><span class="kw">use </span>std::{
     collections::{HashMap, VecDeque},
     num::NonZeroUsize,
@@ -674,7 +611,6 @@
         <span class="kw">loop </span>{
             <span class="macro">select! </span>{
                 recv(<span class="self">self</span>.receiver) -&gt; msg =&gt; {
-                    <span class="macro">println!</span>(<span class="string">&quot;AURELIEN CACHE: retrieval operation thread channel network: {}&quot;</span>, <span class="kw-2">&amp;</span><span class="self">self</span>.receiver.len());
                     <span class="kw">match </span>msg {
                         <span class="prelude-val">Ok</span>((peer_id, message_id, message)) =&gt; {
                             operation_message_deserializer.set_message_id(message_id);
@@ -724,7 +660,6 @@
                     }
                 },
                 recv(<span class="self">self</span>.receiver_ext) -&gt; msg =&gt; {
-                    <span class="macro">println!</span>(<span class="string">&quot;AURELIEN CACHE: retrieval operation thread channel OperationHandlerRetrievalCommand: {}&quot;</span>, <span class="kw-2">&amp;</span><span class="self">self</span>.receiver_ext.len());
                     <span class="kw">match </span>msg {
                         <span class="prelude-val">Ok</span>(cmd) =&gt; <span class="kw">match </span>cmd {
                             OperationHandlerRetrievalCommand::Stop =&gt; {
@@ -751,14 +686,13 @@
     }
 
     <span class="kw">fn </span>clear_storage(<span class="kw-2">&amp;mut </span><span class="self">self</span>) {
-        <span class="self">self</span>.stored_operations.retain(|instant, operations| {
+        <span class="kw">for </span>(instant, operations) <span class="kw">in </span><span class="self">self</span>.stored_operations.iter() {
             <span class="kw">if </span>instant.elapsed() &gt; <span class="self">self</span>.config.asked_operations_pruning_period.to_duration() {
                 <span class="self">self</span>.storage.drop_operation_refs(operations);
-                <span class="bool-val">false
-            </span>} <span class="kw">else </span>{
-                <span class="bool-val">true
-            </span>}
-        });
+            } <span class="kw">else </span>{
+                <span class="kw">break</span>;
+            }
+        }
     }
 
     <span class="kw">fn </span>note_operations_from_peer(
@@ -1003,66 +937,6 @@
     }
 
     <span class="kw">fn </span>update_ask_operation(<span class="kw-2">&amp;mut </span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span>&lt;(), ProtocolError&gt; {
-        {
-            <span class="macro">println!</span>(
-                <span class="string">&quot;AURELIEN CACHE: retrieval operation thread asked_operations: {}&quot;</span>,
-                <span class="kw-2">&amp;</span><span class="self">self</span>.asked_operations.len()
-            );
-            <span class="comment">// for (key, value) in &amp;self.asked_operations {
-            //     println!(
-            //         &quot;AURELIEN CACHE: retrieval operation thread asked_operations: opid:{} {}&quot;,
-            //         key,
-            //         value.1.len()
-            //     );
-            // }
-            </span><span class="macro">println!</span>(
-                <span class="string">&quot;AURELIEN CACHE: retrieval operation thread op_batch_buffer: {}&quot;</span>,
-                <span class="kw-2">&amp;</span><span class="self">self</span>.op_batch_buffer.len()
-            );
-            <span class="macro">println!</span>(
-                <span class="string">&quot;AURELIEN CACHE: retrieval operation thread stored operations: {}&quot;</span>,
-                <span class="kw-2">&amp;</span><span class="self">self</span>.stored_operations.len()
-            );
-            <span class="comment">// for (key, value) in &amp;self.stored_operations {
-            //     println!(
-            //         &quot;AURELIEN CACHE: retrieval operation thread stored operations: instant:{:?} {}&quot;,
-            //         key,
-            //         value.len()
-            //     );
-            // }
-            </span><span class="kw">let </span>cache_read = <span class="self">self</span>.cache.read();
-            <span class="macro">println!</span>(
-                <span class="string">&quot;AURELIEN CACHE: retrieval operation thread checked_operations_prefix: {}&quot;</span>,
-                <span class="kw-2">&amp;</span>cache_read.checked_operations_prefix.len()
-            );
-            <span class="macro">println!</span>(
-                <span class="string">&quot;AURELIEN CACHE: retrieval operation thread ops_known_by_peer: {}&quot;</span>,
-                <span class="kw-2">&amp;</span>cache_read.ops_known_by_peer.len()
-            );
-            <span class="kw">for </span>(key, value) <span class="kw">in </span><span class="kw-2">&amp;</span>cache_read.ops_known_by_peer {
-                <span class="macro">println!</span>(
-                    <span class="string">&quot;AURELIEN CACHE: retrieval operation thread ops_known_by_peer: peerid:{} {}&quot;</span>,
-                    key,
-                    value.len()
-                );
-            }
-            <span class="macro">println!</span>(
-                <span class="string">&quot;AURELIEN CACHE: retrieval operation thread  checked_operations: {}&quot;</span>,
-                <span class="kw-2">&amp;</span>cache_read.checked_operations.len()
-            );
-            <span class="macro">println!</span>(
-                <span class="string">&quot;AURELIEN CACHE: retrieval operation thread storage blocks: {}&quot;</span>,
-                <span class="kw-2">&amp;</span><span class="self">self</span>.storage.get_block_refs().len()
-            );
-            <span class="macro">println!</span>(
-                <span class="string">&quot;AURELIEN CACHE: retrieval operation thread storage ops: {}&quot;</span>,
-                <span class="kw-2">&amp;</span><span class="self">self</span>.storage.get_op_refs().len()
-            );
-            <span class="macro">println!</span>(
-                <span class="string">&quot;AURELIEN CACHE: retrieval operation thread storage endorsements: {}&quot;</span>,
-                <span class="kw-2">&amp;</span><span class="self">self</span>.storage.get_endorsement_refs().len()
-            );
-        }
         <span class="kw">let </span>now = Instant::now();
         <span class="kw">while </span>!<span class="self">self</span>.op_batch_buffer.is_empty()
         <span class="comment">// This unwrap is ok because we checked that it&#39;s not empty just before.
