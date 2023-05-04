@@ -1313,6 +1313,7 @@
 <a href="#1313" id="1313">1313</a>
 <a href="#1314" id="1314">1314</a>
 <a href="#1315" id="1315">1315</a>
+<a href="#1316" id="1316">1316</a>
 </pre><pre class="rust"><code><span class="kw">use </span>std::{
     collections::{hash_map::Entry, HashMap, HashSet},
     num::NonZeroUsize,
@@ -2006,7 +2007,6 @@
                 known_ops.put(op_id.prefix(), ());
             }
         }
-
         <span class="kw">let </span>info = <span class="kw">if let </span><span class="prelude-val">Some</span>(info) = <span class="self">self</span>.block_wishlist.get_mut(<span class="kw-2">&amp;</span>block_id) {
             info
         } <span class="kw">else </span>{
@@ -2023,7 +2023,6 @@
             }
             <span class="kw">return </span><span class="prelude-val">Ok</span>(());
         };
-
         <span class="kw">let </span>header = <span class="kw">if let </span><span class="prelude-val">Some</span>(header) = <span class="kw-2">&amp;</span>info.header {
             header
         } <span class="kw">else </span>{
@@ -2037,7 +2036,6 @@
             }
             <span class="kw">return </span><span class="prelude-val">Ok</span>(());
         };
-
         <span class="kw">if </span>info.operation_ids.is_some() {
             <span class="macro">warn!</span>(
                 <span class="string">&quot;Peer {} sent us an operation list for block id {} but we already received it.&quot;</span>,
@@ -2052,7 +2050,6 @@
             }
             <span class="kw">return </span><span class="prelude-val">Ok</span>(());
         }
-
         <span class="kw">let </span><span class="kw-2">mut </span>total_hash: Vec&lt;u8&gt; =
             Vec::with_capacity(operation_ids.len().saturating_mul(HASH_SIZE_BYTES));
         operation_ids.iter().for_each(|op_id| {
@@ -2159,7 +2156,6 @@
             }
             <span class="kw">return </span><span class="prelude-val">Ok</span>(());
         }
-
         <span class="kw">match </span><span class="self">self</span>.block_wishlist.entry(block_id) {
             Entry::Occupied(<span class="kw-2">mut </span>entry) =&gt; {
                 <span class="kw">let </span>info = entry.get_mut();
@@ -2520,23 +2516,29 @@
 
         <span class="kw">for </span>(hash, criteria) <span class="kw">in </span>candidate_nodes.into_iter() {
             <span class="comment">// find the best node
-            </span><span class="kw">if let </span><span class="prelude-val">Some</span>((_knowledge, best_node, required_info)) = criteria
+            </span><span class="kw">if let </span><span class="prelude-val">Some</span>((_knowledge, best_node, required_info, <span class="kw">_</span>)) = criteria
                 .into_iter()
-                .filter(|(_knowledge, peer_id, <span class="kw">_</span>)| {
+                .filter_map(|(knowledge, peer_id, required_info)| {
                     <span class="comment">// filter out nodes with too many active block requests
-                    </span><span class="kw-2">*</span>active_block_req_count.get(peer_id).unwrap_or(<span class="kw-2">&amp;</span><span class="number">0</span>)
+                    </span><span class="kw">if </span><span class="kw-2">*</span>active_block_req_count.get(<span class="kw-2">&amp;</span>peer_id).unwrap_or(<span class="kw-2">&amp;</span><span class="number">0</span>)
                         &lt;= <span class="self">self</span>.config.max_simultaneous_ask_blocks_per_node
+                    {
+                        <span class="kw">if let </span><span class="prelude-val">Some</span>(peer_data) =
+                            <span class="self">self</span>.cache.read().blocks_known_by_peer.peek(<span class="kw-2">&amp;</span>peer_id)
+                        {
+                            <span class="prelude-val">Some</span>((knowledge, peer_id, required_info, peer_data.<span class="number">1</span>))
+                        } <span class="kw">else </span>{
+                            <span class="prelude-val">None
+                        </span>}
+                    } <span class="kw">else </span>{
+                        <span class="prelude-val">None
+                    </span>}
                 })
-                .min_by_key(|(knowledge, peer_id, <span class="kw">_</span>)| {
+                .min_by_key(|(knowledge, peer_id, <span class="kw">_</span>, instant)| {
                     (
                         <span class="kw-2">*</span>knowledge,                                         <span class="comment">// block knowledge
                         </span><span class="kw-2">*</span>active_block_req_count.get(peer_id).unwrap_or(<span class="kw-2">&amp;</span><span class="number">0</span>), <span class="comment">// active requests
-                        </span><span class="self">self</span>.cache
-                            .read()
-                            .blocks_known_by_peer
-                            .peek(peer_id)
-                            .unwrap()
-                            .<span class="number">1</span>, <span class="comment">// node age (will not panic, already checked)
+                        </span><span class="kw-2">*</span>instant,                                           <span class="comment">// node age
                         </span>peer_id.clone(),                                    <span class="comment">// node ID
                     </span>)
                 })
