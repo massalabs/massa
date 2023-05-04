@@ -1169,13 +1169,6 @@
 <a href="#1169" id="1169">1169</a>
 <a href="#1170" id="1170">1170</a>
 <a href="#1171" id="1171">1171</a>
-<a href="#1172" id="1172">1172</a>
-<a href="#1173" id="1173">1173</a>
-<a href="#1174" id="1174">1174</a>
-<a href="#1175" id="1175">1175</a>
-<a href="#1176" id="1176">1176</a>
-<a href="#1177" id="1177">1177</a>
-<a href="#1178" id="1178">1178</a>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="attr">#![doc = <span class="macro">include_str!</span>(<span class="string">&quot;../../README.md&quot;</span>)]
@@ -1191,14 +1184,14 @@
 <span class="kw">use </span>massa_api::{ApiServer, ApiV2, Private, Public, RpcServer, StopHandle, API};
 <span class="kw">use </span>massa_api_exports::config::APIConfig;
 <span class="kw">use </span>massa_async_pool::AsyncPoolConfig;
+<span class="kw">use </span>massa_bootstrap::BootstrapError;
 <span class="kw">use </span>massa_bootstrap::{
-    client::DefaultConnector, get_state, start_bootstrap_server, BootstrapConfig, BootstrapManager,
-    BootstrapTcpListener,
+    get_state, start_bootstrap_server, BootstrapConfig, BootstrapManager, BootstrapTcpListener,
+    DefaultConnector,
 };
 <span class="kw">use </span>massa_consensus_exports::events::ConsensusEvent;
 <span class="kw">use </span>massa_consensus_exports::{ConsensusChannels, ConsensusConfig, ConsensusManager};
 <span class="kw">use </span>massa_consensus_worker::start_consensus_worker;
-<span class="kw">use </span>massa_db::MassaDB;
 <span class="kw">use </span>massa_executed_ops::{ExecutedDenunciationsConfig, ExecutedOpsConfig};
 <span class="kw">use </span>massa_execution_exports::{
     ExecutionChannels, ExecutionConfig, ExecutionManager, GasCosts, StorageCostsConstants,
@@ -1259,7 +1252,7 @@
 <span class="kw">use </span>peernet::transports::TransportType;
 <span class="kw">use </span>std::collections::HashMap;
 <span class="kw">use </span>std::path::PathBuf;
-<span class="kw">use </span>std::sync::atomic::{AtomicUsize, Ordering};
+<span class="kw">use </span>std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
 <span class="kw">use </span>std::thread::sleep;
 <span class="kw">use </span>std::time::Duration;
 <span class="kw">use </span>std::{path::Path, process, sync::Arc};
@@ -1361,16 +1354,12 @@
         thread_count: THREAD_COUNT,
         bootstrap_part_size: ASYNC_POOL_BOOTSTRAP_PART_SIZE,
         max_async_message_data: MAX_ASYNC_MESSAGE_DATA,
-        max_key_length: MAX_DATASTORE_KEY_LENGTH <span class="kw">as </span>u32,
     };
     <span class="kw">let </span>pos_config = PoSConfig {
         periods_per_cycle: PERIODS_PER_CYCLE,
         thread_count: THREAD_COUNT,
         cycle_history_length: POS_SAVED_CYCLES,
         credits_bootstrap_part_size: DEFERRED_CREDITS_BOOTSTRAP_PART_SIZE,
-        max_rolls_length: MAX_ROLLS_COUNT_LENGTH,
-        max_production_stats_length: MAX_PRODUCTION_STATS_LENGTH,
-        max_credit_length: MAX_DEFERRED_CREDITS_LENGTH,
     };
     <span class="kw">let </span>executed_ops_config = ExecutedOpsConfig {
         thread_count: THREAD_COUNT,
@@ -1379,8 +1368,6 @@
     <span class="kw">let </span>executed_denunciations_config = ExecutedDenunciationsConfig {
         denunciation_expire_periods: DENUNCIATION_EXPIRE_PERIODS,
         bootstrap_part_size: EXECUTED_OPS_BOOTSTRAP_PART_SIZE,
-        thread_count: THREAD_COUNT,
-        endorsement_count: ENDORSEMENT_COUNT,
     };
     <span class="kw">let </span>final_state_config = FinalStateConfig {
         ledger_config: ledger_config.clone(),
@@ -1407,12 +1394,11 @@
             .expect(<span class="string">&quot;disk ledger delete failed&quot;</span>);
     }
 
-    <span class="kw">let </span>db = Arc::new(RwLock::new(MassaDB::new(
-        SETTINGS.ledger.disk_ledger_path.clone(),
-    )));
-
     <span class="comment">// Create final ledger
-    </span><span class="kw">let </span>ledger = FinalLedger::new(ledger_config.clone(), db.clone());
+    </span><span class="kw">let </span>ledger = FinalLedger::new(
+        ledger_config.clone(),
+        args.restart_from_snapshot_at_period.is_some() || <span class="macro">cfg!</span>(feature = <span class="string">&quot;create_snapshot&quot;</span>),
+    );
 
     <span class="comment">// launch selector worker
     </span><span class="kw">let </span>(selector_manager, selector_controller) = start_selector_worker(SelectorConfig {
@@ -1429,7 +1415,6 @@
     </span><span class="kw">let </span>final_state = Arc::new(parking_lot::RwLock::new(
         <span class="kw">match </span>args.restart_from_snapshot_at_period {
             <span class="prelude-val">Some</span>(last_start_period) =&gt; FinalState::new_derived_from_snapshot(
-                db.clone(),
                 final_state_config,
                 Box::new(ledger),
                 selector_controller.clone(),
@@ -1437,19 +1422,22 @@
             )
             .expect(<span class="string">&quot;could not init final state&quot;</span>),
             <span class="prelude-val">None </span>=&gt; FinalState::new(
-                db.clone(),
                 final_state_config,
                 Box::new(ledger),
                 selector_controller.clone(),
-                <span class="bool-val">true</span>,
             )
             .expect(<span class="string">&quot;could not init final state&quot;</span>),
         },
     ));
 
     <span class="comment">// interrupt signal listener
-    </span><span class="kw">let </span>stop_signal = signal::ctrl_c();
-    <span class="macro">tokio::pin!</span>(stop_signal);
+    </span><span class="kw">let </span>interupted = Arc::new(AtomicBool::new(<span class="bool-val">false</span>));
+    <span class="kw">let </span>handler_clone = Arc::clone(<span class="kw-2">&amp;</span>interupted);
+
+    ctrlc::set_handler(<span class="kw">move </span>|| {
+        handler_clone.store(<span class="bool-val">true</span>, Ordering::SeqCst);
+    })
+    .expect(<span class="string">&quot;Error setting Ctrl-C handler&quot;</span>);
 
     <span class="kw">let </span>bootstrap_config: BootstrapConfig = BootstrapConfig {
         bootstrap_list: SETTINGS.bootstrap.bootstrap_list.clone(),
@@ -1509,24 +1497,22 @@
         max_denunciation_changes_length: MAX_DENUNCIATION_CHANGES_LENGTH,
     };
 
-    <span class="comment">// bootstrap
-    </span><span class="kw">let </span>bootstrap_state = <span class="macro">tokio::select! </span>{
-        <span class="kw">_ </span>= <span class="kw-2">&amp;mut </span>stop_signal =&gt; {
-            <span class="macro">info!</span>(<span class="string">&quot;interrupt signal received in bootstrap loop&quot;</span>);
+    <span class="kw">let </span>bootstrap_state = <span class="kw">match </span>get_state(
+        <span class="kw-2">&amp;</span>bootstrap_config,
+        final_state.clone(),
+        DefaultConnector,
+        <span class="kw-2">*</span>VERSION,
+        <span class="kw-2">*</span>GENESIS_TIMESTAMP,
+        <span class="kw-2">*</span>END_TIMESTAMP,
+        args.restart_from_snapshot_at_period,
+        interupted,
+    ) {
+        <span class="prelude-val">Ok</span>(vals) =&gt; vals,
+        <span class="prelude-val">Err</span>(BootstrapError::Interupted(msg)) =&gt; {
+            <span class="macro">info!</span>(<span class="string">&quot;{}&quot;</span>, msg);
             process::exit(<span class="number">0</span>);
-        },
-        res = get_state(
-            <span class="kw-2">&amp;</span>bootstrap_config,
-            final_state.clone(),
-            DefaultConnector,
-            <span class="kw-2">*</span>VERSION,
-            <span class="kw-2">*</span>GENESIS_TIMESTAMP,
-            <span class="kw-2">*</span>END_TIMESTAMP,
-            args.restart_from_snapshot_at_period
-        ) =&gt; <span class="kw">match </span>res {
-            <span class="prelude-val">Ok</span>(vals) =&gt; vals,
-            <span class="prelude-val">Err</span>(err) =&gt; <span class="macro">panic!</span>(<span class="string">&quot;critical error detected in the bootstrap process: {}&quot;</span>, err)
         }
+        <span class="prelude-val">Err</span>(err) =&gt; <span class="macro">panic!</span>(<span class="string">&quot;critical error detected in the bootstrap process: {}&quot;</span>, err),
     };
 
     <span class="kw">if </span>args.restart_from_snapshot_at_period.is_none() {
