@@ -279,14 +279,30 @@
 <a href="#279" id="279">279</a>
 <a href="#280" id="280">280</a>
 <a href="#281" id="281">281</a>
-</pre><pre class="rust"><code><span class="doccomment">///! Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
+<a href="#282" id="282">282</a>
+<a href="#283" id="283">283</a>
+<a href="#284" id="284">284</a>
+<a href="#285" id="285">285</a>
+<a href="#286" id="286">286</a>
+<a href="#287" id="287">287</a>
+<a href="#288" id="288">288</a>
+<a href="#289" id="289">289</a>
+<a href="#290" id="290">290</a>
+<a href="#291" id="291">291</a>
+<a href="#292" id="292">292</a>
+<a href="#293" id="293">293</a>
+<a href="#294" id="294">294</a>
+<a href="#295" id="295">295</a>
+<a href="#296" id="296">296</a>
+<a href="#297" id="297">297</a>
+</pre><pre class="rust"><code><span class="kw">use </span>std::{
+    collections::{btree_map::Entry, BTreeMap},
+    ops::Bound::Included,
+};
 
-///! This file provides structures representing changes to the asynchronous message pool
-</span><span class="kw">use </span>std::ops::Bound::Included;
-
-<span class="kw">use crate</span>::{
-    message::{AsyncMessage, AsyncMessageId, AsyncMessageIdDeserializer, AsyncMessageIdSerializer},
-    AsyncMessageDeserializer, AsyncMessageSerializer,
+<span class="kw">use </span>massa_ledger_exports::{
+    Applicable, SetOrKeep, SetUpdateOrDelete, SetUpdateOrDeleteDeserializer,
+    SetUpdateOrDeleteSerializer,
 };
 <span class="kw">use </span>massa_serialization::{
     Deserializer, SerializeError, Serializer, U64VarIntDeserializer, U64VarIntSerializer,
@@ -299,35 +315,51 @@
 };
 <span class="kw">use </span>serde::{Deserialize, Serialize};
 
-<span class="doccomment">/// Enum representing a value U with identifier T being added or deleted
-</span><span class="attr">#[derive(Debug, Clone, PartialEq, Eq, Deserialize, Serialize)]
-</span><span class="kw">pub enum </span>Change&lt;T, U&gt; {
-    <span class="doccomment">/// an item with identifier T and value U is added
-    </span>Add(T, U),
+<span class="doccomment">///! Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
-    <span class="doccomment">/// an item with identifier T is ready to be executed
-    </span>Activate(T),
+///! This file provides structures representing changes to the asynchronous message pool
+</span><span class="kw">use crate</span>::{
+    message::{
+        AsyncMessage, AsyncMessageId, AsyncMessageIdDeserializer, AsyncMessageIdSerializer,
+        AsyncMessageUpdate, AsyncMessageUpdateDeserializer, AsyncMessageUpdateSerializer,
+    },
+    AsyncMessageDeserializer, AsyncMessageSerializer,
+};
 
-    <span class="doccomment">/// an item with identifier T is deleted
-    </span>Delete(T),
-}
-
-<span class="attr">#[repr(u32)]
-</span><span class="kw">enum </span>ChangeId {
-    Add = <span class="number">0</span>,
-    Activate = <span class="number">1</span>,
-    Delete = <span class="number">2</span>,
-}
-
-<span class="doccomment">/// represents a list of additions and deletions to the asynchronous message pool
+<span class="doccomment">/// Consolidated changes to the asynchronous message pool
 </span><span class="attr">#[derive(Default, Debug, Clone, PartialEq, Eq, Deserialize, Serialize)]
-</span><span class="kw">pub struct </span>AsyncPoolChanges(<span class="kw">pub </span>Vec&lt;Change&lt;AsyncMessageId, AsyncMessage&gt;&gt;);
+</span><span class="kw">pub struct </span>AsyncPoolChanges(
+    <span class="kw">pub </span>BTreeMap&lt;AsyncMessageId, SetUpdateOrDelete&lt;AsyncMessage, AsyncMessageUpdate&gt;&gt;,
+);
+
+<span class="kw">impl </span>Applicable&lt;AsyncPoolChanges&gt; <span class="kw">for </span>AsyncPoolChanges {
+    <span class="doccomment">/// extends the current `AsyncPoolChanges` with another one
+    </span><span class="kw">fn </span>apply(<span class="kw-2">&amp;mut </span><span class="self">self</span>, changes: AsyncPoolChanges) {
+        <span class="kw">for </span>(id, msg_change) <span class="kw">in </span>changes.<span class="number">0 </span>{
+            <span class="kw">match </span><span class="self">self</span>.<span class="number">0</span>.entry(id) {
+                Entry::Occupied(<span class="kw-2">mut </span>occ) =&gt; {
+                    <span class="comment">// apply incoming change if a change on this entry already exists
+                    </span>occ.get_mut().apply(msg_change);
+                }
+                Entry::Vacant(vac) =&gt; {
+                    <span class="comment">// otherwise insert the incoming change
+                    </span>vac.insert(msg_change);
+                }
+            }
+        }
+    }
+}
 
 <span class="doccomment">/// `AsyncPoolChanges` serializer
 </span><span class="kw">pub struct </span>AsyncPoolChangesSerializer {
     u64_serializer: U64VarIntSerializer,
     id_serializer: AsyncMessageIdSerializer,
-    message_serializer: AsyncMessageSerializer,
+    set_update_or_delete_message_serializer: SetUpdateOrDeleteSerializer&lt;
+        AsyncMessage,
+        AsyncMessageUpdate,
+        AsyncMessageSerializer,
+        AsyncMessageUpdateSerializer,
+    &gt;,
 }
 
 <span class="kw">impl </span>AsyncPoolChangesSerializer {
@@ -335,7 +367,10 @@
         <span class="self">Self </span>{
             u64_serializer: U64VarIntSerializer::new(),
             id_serializer: AsyncMessageIdSerializer::new(),
-            message_serializer: AsyncMessageSerializer::new(),
+            set_update_or_delete_message_serializer: SetUpdateOrDeleteSerializer::new(
+                AsyncMessageSerializer::new(<span class="bool-val">false</span>),
+                AsyncMessageUpdateSerializer::new(<span class="bool-val">false</span>),
+            ),
         }
     }
 }
@@ -353,7 +388,8 @@
     /// use massa_serialization::Serializer;
     /// use massa_models::{address::Address, amount::Amount, slot::Slot};
     /// use std::str::FromStr;
-    /// use massa_async_pool::{AsyncMessage, Change, AsyncPoolChanges, AsyncPoolChangesSerializer};
+    /// use massa_async_pool::{AsyncMessage, AsyncPoolChanges, AsyncPoolChangesSerializer};
+    /// use massa_ledger_exports::SetUpdateOrDelete;
     ///
     /// let message = AsyncMessage::new_with_hash(
     ///     Slot::new(1, 0),
@@ -367,9 +403,13 @@
     ///     Slot::new(2, 0),
     ///     Slot::new(3, 0),
     ///     vec![1, 2, 3, 4],
+    ///     None,
     ///     None
     /// );
-    /// let changes: AsyncPoolChanges = AsyncPoolChanges(vec![Change::Add(message.compute_id(), message)]);
+    /// let mut changes = AsyncPoolChanges::default();
+    ///    changes
+    ///    .0
+    ///    .insert(message.compute_id(), SetUpdateOrDelete::Set(message));
     /// let mut serialized = Vec::new();
     /// let serializer = AsyncPoolChangesSerializer::new();
     /// serializer.serialize(&amp;changes, &amp;mut serialized).unwrap();
@@ -385,22 +425,10 @@
             })<span class="question-mark">?</span>),
             buffer,
         )<span class="question-mark">?</span>;
-        <span class="kw">for </span>change <span class="kw">in </span><span class="kw-2">&amp;</span>value.<span class="number">0 </span>{
-            <span class="kw">match </span>change {
-                Change::Add(id, message) =&gt; {
-                    buffer.push(ChangeId::Add <span class="kw">as </span>u8);
-                    <span class="self">self</span>.id_serializer.serialize(id, buffer)<span class="question-mark">?</span>;
-                    <span class="self">self</span>.message_serializer.serialize(message, buffer)<span class="question-mark">?</span>;
-                }
-                Change::Activate(id) =&gt; {
-                    buffer.push(ChangeId::Activate <span class="kw">as </span>u8);
-                    <span class="self">self</span>.id_serializer.serialize(id, buffer)<span class="question-mark">?</span>;
-                }
-                Change::Delete(id) =&gt; {
-                    buffer.push(ChangeId::Delete <span class="kw">as </span>u8);
-                    <span class="self">self</span>.id_serializer.serialize(id, buffer)<span class="question-mark">?</span>;
-                }
-            }
+        <span class="kw">for </span>(id, change) <span class="kw">in </span><span class="kw-2">&amp;</span>value.<span class="number">0 </span>{
+            <span class="self">self</span>.id_serializer.serialize(id, buffer)<span class="question-mark">?</span>;
+            <span class="self">self</span>.set_update_or_delete_message_serializer
+                .serialize(change, buffer)<span class="question-mark">?</span>;
         }
         <span class="prelude-val">Ok</span>(())
     }
@@ -409,7 +437,12 @@
 <span class="kw">pub struct </span>AsyncPoolChangesDeserializer {
     async_pool_changes_length: U64VarIntDeserializer,
     id_deserializer: AsyncMessageIdDeserializer,
-    message_deserializer: AsyncMessageDeserializer,
+    set_update_or_delete_message_deserializer: SetUpdateOrDeleteDeserializer&lt;
+        AsyncMessage,
+        AsyncMessageUpdate,
+        AsyncMessageDeserializer,
+        AsyncMessageUpdateDeserializer,
+    &gt;,
 }
 
 <span class="kw">impl </span>AsyncPoolChangesDeserializer {
@@ -425,10 +458,19 @@
                 Included(max_async_pool_changes),
             ),
             id_deserializer: AsyncMessageIdDeserializer::new(thread_count),
-            message_deserializer: AsyncMessageDeserializer::new(
-                thread_count,
-                max_async_message_data,
-                max_key_length,
+            set_update_or_delete_message_deserializer: SetUpdateOrDeleteDeserializer::new(
+                AsyncMessageDeserializer::new(
+                    thread_count,
+                    max_async_message_data,
+                    max_key_length,
+                    <span class="bool-val">false</span>,
+                ),
+                AsyncMessageUpdateDeserializer::new(
+                    thread_count,
+                    max_async_message_data,
+                    max_key_length,
+                    <span class="bool-val">false</span>,
+                ),
             ),
         }
     }
@@ -441,7 +483,8 @@
     /// use massa_serialization::{Serializer, Deserializer, DeserializeError};
     /// use massa_models::{address::Address, amount::Amount, slot::Slot};
     /// use std::str::FromStr;
-    /// use massa_async_pool::{AsyncMessage, AsyncMessageTrigger, Change, AsyncPoolChanges, AsyncPoolChangesSerializer, AsyncPoolChangesDeserializer};
+    /// use massa_async_pool::{AsyncMessage, AsyncMessageTrigger, AsyncPoolChanges, AsyncPoolChangesSerializer, AsyncPoolChangesDeserializer};
+    /// use massa_ledger_exports::SetUpdateOrDelete;
     ///
     /// let message = AsyncMessage::new_with_hash(
     ///     Slot::new(1, 0),
@@ -458,9 +501,16 @@
     ///     Some(AsyncMessageTrigger {
     ///        address: Address::from_str(&quot;AU12dG5xP1RDEB5ocdHkymNVvvSJmUL9BgHwCksDowqmGWxfpm93x&quot;).unwrap(),
     ///        datastore_key: Some(vec![1, 2, 3, 4]),
-    ///     })
+    ///     }),
+    ///     None
     /// );
-    /// let changes: AsyncPoolChanges = AsyncPoolChanges(vec![Change::Add(message.compute_id(), message.clone()), Change::Delete(message.compute_id())]);
+    /// let mut changes = AsyncPoolChanges::default();
+    /// changes
+    ///    .0
+    ///    .insert(message.compute_id(), SetUpdateOrDelete::Set(message.clone()));
+    /// changes
+    ///    .0
+    ///    .insert(message.compute_id(), SetUpdateOrDelete::Delete);
     /// let mut serialized = Vec::new();
     /// let serializer = AsyncPoolChangesSerializer::new();
     /// let deserializer = AsyncPoolChangesDeserializer::new(32, 100000, 100000, 100000);
@@ -479,60 +529,28 @@
                 context(<span class="string">&quot;Failed length deserialization&quot;</span>, |input| {
                     <span class="self">self</span>.async_pool_changes_length.deserialize(input)
                 }),
-                |input: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>[u8]| <span class="kw">match </span>input.first() {
-                    <span class="prelude-val">Some</span>(<span class="number">0</span>) =&gt; context(
-                        <span class="string">&quot;Failed Change::Add deserialization&quot;</span>,
-                        tuple((
-                            context(<span class="string">&quot;Failed id deserialization&quot;</span>, |input| {
-                                <span class="self">self</span>.id_deserializer.deserialize(input)
-                            }),
-                            context(<span class="string">&quot;Failed message deserialization&quot;</span>, |input| {
-                                <span class="self">self</span>.message_deserializer.deserialize(input)
-                            }),
-                        )),
-                    )
-                    .map(|(id, message)| Change::Add(id, message))
-                    .parse(<span class="kw-2">&amp;</span>input[<span class="number">1</span>..]),
-                    <span class="prelude-val">Some</span>(<span class="number">1</span>) =&gt; context(
-                        <span class="string">&quot;Failed Change::Activate deserialization&quot;</span>,
+                |input: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>[u8]| {
+                    tuple((
                         context(<span class="string">&quot;Failed id deserialization&quot;</span>, |input| {
                             <span class="self">self</span>.id_deserializer.deserialize(input)
                         }),
-                    )
-                    .map(Change::Activate)
-                    .parse(<span class="kw-2">&amp;</span>input[<span class="number">1</span>..]),
-                    <span class="prelude-val">Some</span>(<span class="number">2</span>) =&gt; context(
-                        <span class="string">&quot;Failed Change::Delete deserialization&quot;</span>,
-                        context(<span class="string">&quot;Failed id deserialization&quot;</span>, |input| {
-                            <span class="self">self</span>.id_deserializer.deserialize(input)
-                        }),
-                    )
-                    .map(Change::Delete)
-                    .parse(<span class="kw-2">&amp;</span>input[<span class="number">1</span>..]),
-                    <span class="prelude-val">Some</span>(<span class="kw">_</span>) =&gt; <span class="prelude-val">Err</span>(nom::Err::Error(ParseError::from_error_kind(
-                        buffer,
-                        nom::error::ErrorKind::Digit,
-                    ))),
-                    <span class="prelude-val">None </span>=&gt; <span class="prelude-val">Err</span>(nom::Err::Error(ParseError::from_error_kind(
-                        buffer,
-                        nom::error::ErrorKind::LengthValue,
-                    ))),
+                        context(
+                            <span class="string">&quot;Failed set_update_or_delete_message deserialization&quot;</span>,
+                            |input| {
+                                <span class="self">self</span>.set_update_or_delete_message_deserializer
+                                    .deserialize(input)
+                            },
+                        ),
+                    ))(input)
                 },
             ),
         )
-        .map(AsyncPoolChanges)
+        .map(|vec| AsyncPoolChanges(vec.into_iter().map(|data| (data.<span class="number">0</span>, data.<span class="number">1</span>)).collect()))
         .parse(buffer)
     }
 }
 
 <span class="kw">impl </span>AsyncPoolChanges {
-    <span class="doccomment">/// Extends self with another another `AsyncPoolChanges`.
-    /// This simply appends the contents of other to self.
-    /// No add/delete compensations are done.
-    </span><span class="kw">pub fn </span>extend(<span class="kw-2">&amp;mut </span><span class="self">self</span>, other: AsyncPoolChanges) {
-        <span class="self">self</span>.<span class="number">0</span>.extend(other.<span class="number">0</span>);
-    }
-
     <span class="doccomment">/// Pushes a message addition to the list of changes.
     /// No add/delete compensations are done.
     ///
@@ -540,7 +558,9 @@
     /// * `msg_id`: ID of the message to push as added to the list of changes
     /// * `msg`: message to push as added to the list of changes
     </span><span class="kw">pub fn </span>push_add(<span class="kw-2">&amp;mut </span><span class="self">self</span>, msg_id: AsyncMessageId, msg: AsyncMessage) {
-        <span class="self">self</span>.<span class="number">0</span>.push(Change::Add(msg_id, msg));
+        <span class="kw">let </span><span class="kw-2">mut </span>change = AsyncPoolChanges::default();
+        change.<span class="number">0</span>.insert(msg_id, SetUpdateOrDelete::Set(msg));
+        <span class="self">self</span>.apply(change);
     }
 
     <span class="doccomment">/// Pushes a message deletion to the list of changes.
@@ -549,7 +569,9 @@
     /// Arguments:
     /// * `msg_id`: ID of the message to push as deleted to the list of changes
     </span><span class="kw">pub fn </span>push_delete(<span class="kw-2">&amp;mut </span><span class="self">self</span>, msg_id: AsyncMessageId) {
-        <span class="self">self</span>.<span class="number">0</span>.push(Change::Delete(msg_id));
+        <span class="kw">let </span><span class="kw-2">mut </span>change = AsyncPoolChanges::default();
+        change.<span class="number">0</span>.insert(msg_id, SetUpdateOrDelete::Delete);
+        <span class="self">self</span>.apply(change);
     }
 
     <span class="doccomment">/// Pushes a message activation to the list of changes.
@@ -557,7 +579,17 @@
     /// Arguments:
     /// * `msg_id`: ID of the message to push as ready to be executed to the list of changes
     </span><span class="kw">pub fn </span>push_activate(<span class="kw-2">&amp;mut </span><span class="self">self</span>, msg_id: AsyncMessageId) {
-        <span class="self">self</span>.<span class="number">0</span>.push(Change::Activate(msg_id));
+        <span class="kw">let </span><span class="kw-2">mut </span>change = AsyncPoolChanges::default();
+
+        <span class="kw">let </span>msg_update = AsyncMessageUpdate {
+            can_be_executed: SetOrKeep::Set(<span class="bool-val">true</span>),
+            ..Default::default()
+        };
+
+        change
+            .<span class="number">0
+            </span>.insert(msg_id, SetUpdateOrDelete::Update(msg_update));
+        <span class="self">self</span>.apply(change);
     }
 }
 </code></pre></div>
