@@ -1251,6 +1251,51 @@
 <a href="#1251" id="1251">1251</a>
 <a href="#1252" id="1252">1252</a>
 <a href="#1253" id="1253">1253</a>
+<a href="#1254" id="1254">1254</a>
+<a href="#1255" id="1255">1255</a>
+<a href="#1256" id="1256">1256</a>
+<a href="#1257" id="1257">1257</a>
+<a href="#1258" id="1258">1258</a>
+<a href="#1259" id="1259">1259</a>
+<a href="#1260" id="1260">1260</a>
+<a href="#1261" id="1261">1261</a>
+<a href="#1262" id="1262">1262</a>
+<a href="#1263" id="1263">1263</a>
+<a href="#1264" id="1264">1264</a>
+<a href="#1265" id="1265">1265</a>
+<a href="#1266" id="1266">1266</a>
+<a href="#1267" id="1267">1267</a>
+<a href="#1268" id="1268">1268</a>
+<a href="#1269" id="1269">1269</a>
+<a href="#1270" id="1270">1270</a>
+<a href="#1271" id="1271">1271</a>
+<a href="#1272" id="1272">1272</a>
+<a href="#1273" id="1273">1273</a>
+<a href="#1274" id="1274">1274</a>
+<a href="#1275" id="1275">1275</a>
+<a href="#1276" id="1276">1276</a>
+<a href="#1277" id="1277">1277</a>
+<a href="#1278" id="1278">1278</a>
+<a href="#1279" id="1279">1279</a>
+<a href="#1280" id="1280">1280</a>
+<a href="#1281" id="1281">1281</a>
+<a href="#1282" id="1282">1282</a>
+<a href="#1283" id="1283">1283</a>
+<a href="#1284" id="1284">1284</a>
+<a href="#1285" id="1285">1285</a>
+<a href="#1286" id="1286">1286</a>
+<a href="#1287" id="1287">1287</a>
+<a href="#1288" id="1288">1288</a>
+<a href="#1289" id="1289">1289</a>
+<a href="#1290" id="1290">1290</a>
+<a href="#1291" id="1291">1291</a>
+<a href="#1292" id="1292">1292</a>
+<a href="#1293" id="1293">1293</a>
+<a href="#1294" id="1294">1294</a>
+<a href="#1295" id="1295">1295</a>
+<a href="#1296" id="1296">1296</a>
+<a href="#1297" id="1297">1297</a>
+<a href="#1298" id="1298">1298</a>
 </pre><pre class="rust"><code><span class="kw">use </span>std::cmp::Ordering;
 <span class="kw">use </span>std::collections::{BTreeMap, BTreeSet, HashMap, VecDeque};
 <span class="kw">use </span>std::hash::{Hash, Hasher};
@@ -1721,11 +1766,11 @@
         lock.update_network_version_stats(slot_timestamp, network_versions);
     }
 
-    <span class="attr">#[allow(clippy::result_unit_err)]
+    <span class="attr">#[allow(clippy::result_large_err)]
     </span><span class="kw">pub fn </span>update_with(
         <span class="kw-2">&amp;mut </span><span class="self">self</span>,
         mip_store: <span class="kw-2">&amp;</span>MipStore,
-    ) -&gt; <span class="prelude-ty">Result</span>&lt;(Vec&lt;MipInfo&gt;, Vec&lt;MipInfo&gt;), ()&gt; {
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;(Vec&lt;MipInfo&gt;, Vec&lt;MipInfo&gt;), UpdateWithError&gt; {
         <span class="kw">let </span><span class="kw-2">mut </span>lock = <span class="self">self</span>.<span class="number">0</span>.write();
         <span class="kw">let </span>lock_other = mip_store.<span class="number">0</span>.read();
         lock.update_with(lock_other.deref())
@@ -1767,6 +1812,17 @@
     }
 }
 
+<span class="doccomment">/// Error returned by
+</span><span class="attr">#[derive(Error, Debug, PartialEq)]
+</span><span class="kw">pub enum </span>UpdateWithError {
+    <span class="attr">#[error(<span class="string">&quot;MipInfo {0:?} is not coherent with state: {1:?}&quot;</span>)]
+    </span>NonCoherent(MipInfo, MipState),
+    <span class="attr">#[error(<span class="string">&quot;For MipInfo {0:?}, trying to downgrade from state {1:?} to {2:?}&quot;</span>)]
+    </span>Downgrade(MipInfo, ComponentState, ComponentState),
+    <span class="attr">#[error(<span class="string">&quot;MipInfo {0:?} has overlapping data of MipInfo {1:?}&quot;</span>)]
+    </span>Overlapping(MipInfo, MipInfo),
+}
+
 <span class="doccomment">/// Store of all versioning info
 </span><span class="attr">#[derive(Debug, Clone, PartialEq)]
 </span><span class="kw">pub struct </span>MipStoreRaw {
@@ -1777,11 +1833,11 @@
 <span class="kw">impl </span>MipStoreRaw {
     <span class="doccomment">/// Update our store with another (usually after a bootstrap where we received another store)
     /// Return list of updated / added if update is successful
-    </span><span class="attr">#[allow(clippy::result_unit_err)]
+    </span><span class="attr">#[allow(clippy::result_large_err)]
     </span><span class="kw">pub fn </span>update_with(
         <span class="kw-2">&amp;mut </span><span class="self">self</span>,
         store_raw: <span class="kw-2">&amp;</span>MipStoreRaw,
-    ) -&gt; <span class="prelude-ty">Result</span>&lt;(Vec&lt;MipInfo&gt;, Vec&lt;MipInfo&gt;), ()&gt; {
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;(Vec&lt;MipInfo&gt;, Vec&lt;MipInfo&gt;), UpdateWithError&gt; {
         <span class="comment">// iter over items in given store:
         // -&gt; 2 cases:
         // * MipInfo is already in self store -&gt; add to &#39;to_update&#39; list
@@ -1804,12 +1860,15 @@
         <span class="kw">let </span><span class="kw-2">mut </span>names: BTreeSet&lt;String&gt; = <span class="self">self</span>.store.iter().map(|i| i.<span class="number">0</span>.name.clone()).collect();
         <span class="kw">let </span><span class="kw-2">mut </span>to_update: BTreeMap&lt;MipInfo, MipState&gt; = Default::default();
         <span class="kw">let </span><span class="kw-2">mut </span>to_add: BTreeMap&lt;MipInfo, MipState&gt; = Default::default();
-        <span class="kw">let </span><span class="kw-2">mut </span>should_merge = <span class="bool-val">true</span>;
+        <span class="kw">let </span><span class="kw-2">mut </span>should_merge: <span class="prelude-ty">Option</span>&lt;UpdateWithError&gt; = <span class="prelude-val">None</span>;
 
         <span class="kw">for </span>(v_info, v_state) <span class="kw">in </span>store_raw.store.iter() {
             <span class="kw">if </span>!v_state.is_coherent_with(v_info) {
                 <span class="comment">// As soon as we found one non coherent state we abort the merge
-                </span>should_merge = <span class="bool-val">false</span>;
+                </span>should_merge = <span class="prelude-val">Some</span>(UpdateWithError::NonCoherent(
+                    v_info.clone(),
+                    v_state.clone(),
+                ));
                 <span class="kw">break</span>;
             }
 
@@ -1819,7 +1878,8 @@
                 </span><span class="kw">let </span>v_state_id: u32 = ComponentStateTypeId::from(<span class="kw-2">&amp;</span>v_state.state).into();
                 <span class="kw">let </span>v_state_orig_id: u32 = ComponentStateTypeId::from(<span class="kw-2">&amp;</span>v_state_orig.state).into();
 
-                <span class="kw">if </span><span class="macro">matches!</span>(
+                <span class="comment">// Note: we do not check for state: active OR failed OR error as they cannot change
+                </span><span class="kw">if </span><span class="macro">matches!</span>(
                     v_state_orig.state,
                     ComponentState::Defined(<span class="kw">_</span>)
                         | ComponentState::Started(<span class="kw">_</span>)
@@ -1831,7 +1891,11 @@
                         to_update.insert(v_info.clone(), v_state.clone());
                     } <span class="kw">else </span>{
                         <span class="comment">// Trying to downgrade state&#39; (e.g. trying to go from &#39;active&#39; -&gt; &#39;defined&#39;)
-                        </span>should_merge = <span class="bool-val">false</span>;
+                        </span>should_merge = <span class="prelude-val">Some</span>(UpdateWithError::Downgrade(
+                            v_info.clone(),
+                            v_state_orig.state,
+                            v_state.state,
+                        ));
                         <span class="kw">break</span>;
                     }
                 }
@@ -1869,7 +1933,10 @@
                     } <span class="kw">else </span>{
                         <span class="comment">// Something is wrong (time range not ok? / version not incr? / names?
                         // or component version not incr?)
-                        </span>should_merge = <span class="bool-val">false</span>;
+                        </span>should_merge = <span class="prelude-val">Some</span>(UpdateWithError::Overlapping(
+                            v_info.clone(),
+                            last_v_info.clone(),
+                        ));
                         <span class="kw">break</span>;
                     }
                 } <span class="kw">else </span>{
@@ -1880,15 +1947,16 @@
             }
         }
 
-        <span class="kw">if </span>should_merge {
-            <span class="kw">let </span>added = to_add.keys().cloned().collect();
-            <span class="kw">let </span>updated = to_update.keys().cloned().collect();
+        <span class="kw">match </span>should_merge {
+            <span class="prelude-val">None </span>=&gt; {
+                <span class="kw">let </span>added = to_add.keys().cloned().collect();
+                <span class="kw">let </span>updated = to_update.keys().cloned().collect();
 
-            <span class="self">self</span>.store.append(<span class="kw-2">&amp;mut </span>to_update);
-            <span class="self">self</span>.store.append(<span class="kw-2">&amp;mut </span>to_add);
-            <span class="prelude-val">Ok</span>((updated, added))
-        } <span class="kw">else </span>{
-            <span class="prelude-val">Err</span>(())
+                <span class="self">self</span>.store.append(<span class="kw-2">&amp;mut </span>to_update);
+                <span class="self">self</span>.store.append(<span class="kw-2">&amp;mut </span>to_add);
+                <span class="prelude-val">Ok</span>((updated, added))
+            }
+            <span class="prelude-val">Some</span>(e) =&gt; <span class="prelude-val">Err</span>(e),
         }
     }
 
@@ -1997,6 +2065,7 @@
 </span><span class="attr">#[cfg(test)]
 </span><span class="kw">mod </span>test {
     <span class="kw">use super</span>::<span class="kw-2">*</span>;
+    <span class="kw">use </span>std::assert_matches::assert_matches;
 
     <span class="kw">use </span>std::str::FromStr;
 
@@ -2383,10 +2452,11 @@
             block_count_considered: <span class="number">10</span>,
             counters_max: <span class="number">5</span>,
         };
-        <span class="kw">let </span><span class="kw-2">mut </span>vs_raw_1 = MipStoreRaw {
-            store: BTreeMap::from([(vi_1.clone(), vs_1.clone()), (vi_2.clone(), vs_2.clone())]),
-            stats: MipStoreStats::new(mip_stats_cfg.clone()),
-        };
+        <span class="kw">let </span><span class="kw-2">mut </span>vs_raw_1 = MipStoreRaw::try_from((
+            [(vi_1.clone(), vs_1.clone()), (vi_2.clone(), vs_2.clone())],
+            mip_stats_cfg.clone(),
+        ))
+        .unwrap();
 
         <span class="kw">let </span>vs_2_2 = advance_state_until(ComponentState::active(), <span class="kw-2">&amp;</span>vi_2);
         <span class="macro">assert_eq!</span>(vs_2_2, ComponentState::active());
@@ -2397,7 +2467,11 @@
         ))
         .unwrap();
 
-        vs_raw_1.update_with(<span class="kw-2">&amp;</span>vs_raw_2).unwrap();
+        <span class="kw">let </span>(updated, added) = vs_raw_1.update_with(<span class="kw-2">&amp;</span>vs_raw_2).unwrap();
+
+        <span class="comment">// Check update_with result
+        </span><span class="macro">assert_eq!</span>(added, <span class="macro">vec!</span>[]);
+        <span class="macro">assert_eq!</span>(updated, <span class="macro">vec!</span>[vi_2.clone()]);
 
         <span class="comment">// Expect state 1 (for vi_1) no change, state 2 (for vi_2) updated to &quot;Active&quot;
         </span><span class="macro">assert_eq!</span>(vs_raw_1.store.get(<span class="kw-2">&amp;</span>vi_1).unwrap().state, vs_1.state);
@@ -2410,6 +2484,7 @@
         // 1- overlapping time range
         // 2- overlapping versioning component
 
+        // part 0 - defines data for the test
         </span><span class="kw">let </span>vi_1 = MipInfo {
             name: <span class="string">&quot;MIP-0002&quot;</span>.to_string(),
             version: <span class="number">2</span>,
@@ -2437,58 +2512,73 @@
             counters_max: <span class="number">5</span>,
         };
 
-        <span class="kw">let </span><span class="kw-2">mut </span>vs_raw_1 = MipStoreRaw::try_from((
-            [(vi_1.clone(), vs_1.clone()), (vi_2.clone(), vs_2.clone())],
-            mip_stats_cfg.clone(),
-        ))
-        .unwrap();
+        <span class="comment">// part 1
+        </span>{
+            <span class="kw">let </span><span class="kw-2">mut </span>vs_raw_1 = MipStoreRaw::try_from((
+                [(vi_1.clone(), vs_1.clone()), (vi_2.clone(), vs_2.clone())],
+                mip_stats_cfg.clone(),
+            ))
+            .unwrap();
 
-        <span class="kw">let </span><span class="kw-2">mut </span>vi_2_2 = vi_2.clone();
-        <span class="comment">// Make versioning info invalid (because start == vi_1.timeout)
-        </span>vi_2_2.start = vi_1.timeout;
-        <span class="kw">let </span>vs_2_2 = advance_state_until(ComponentState::defined(), <span class="kw-2">&amp;</span>vi_2_2);
-        <span class="kw">let </span>vs_raw_2 = MipStoreRaw {
-            store: BTreeMap::from([
-                (vi_1.clone(), vs_1.clone()),
-                (vi_2_2.clone(), vs_2_2.clone()),
-            ]),
-            stats: MipStoreStats::new(mip_stats_cfg.clone()),
-        };
+            <span class="kw">let </span><span class="kw-2">mut </span>vi_2_2 = vi_2.clone();
+            <span class="comment">// Make mip info invalid (because start == vi_1.timeout)
+            </span>vi_2_2.start = vi_1.timeout;
+            <span class="kw">let </span>vs_2_2 = advance_state_until(ComponentState::defined(), <span class="kw-2">&amp;</span>vi_2_2);
+            <span class="kw">let </span>vs_raw_2 = MipStoreRaw {
+                store: BTreeMap::from([
+                    (vi_1.clone(), vs_1.clone()),
+                    (vi_2_2.clone(), vs_2_2.clone()),
+                ]),
+                stats: MipStoreStats::new(mip_stats_cfg.clone()),
+            };
 
-        <span class="comment">// This fails because try_from use update_with
-        </span><span class="kw">let </span>_vs_raw_2_ = MipStoreRaw::try_from((
-            [
-                (vi_1.clone(), vs_1.clone()),
-                (vi_2_2.clone(), vs_2_2.clone()),
-            ],
-            mip_stats_cfg.clone(),
-        ));
-        <span class="macro">assert_eq!</span>(_vs_raw_2_.is_err(), <span class="bool-val">true</span>);
+            <span class="macro">assert_matches!</span>(
+                vs_raw_1.update_with(<span class="kw-2">&amp;</span>vs_raw_2),
+                <span class="prelude-val">Err</span>(UpdateWithError::Overlapping(..))
+            );
+            <span class="macro">assert_eq!</span>(vs_raw_1.store.get(<span class="kw-2">&amp;</span>vi_1).unwrap().state, vs_1.state);
+            <span class="macro">assert_eq!</span>(vs_raw_1.store.get(<span class="kw-2">&amp;</span>vi_2).unwrap().state, vs_2.state);
 
-        <span class="macro">assert_eq!</span>(vs_raw_1.update_with(<span class="kw-2">&amp;</span>vs_raw_2), <span class="prelude-val">Err</span>(()));
-        <span class="macro">assert_eq!</span>(vs_raw_1.store.get(<span class="kw-2">&amp;</span>vi_1).unwrap().state, vs_1.state);
-        <span class="macro">assert_eq!</span>(vs_raw_1.store.get(<span class="kw-2">&amp;</span>vi_2).unwrap().state, vs_2.state);
+            <span class="comment">// Check that try_from fails too (because it uses update_with internally)
+            </span>{
+                <span class="kw">let </span>_vs_raw_2_ = MipStoreRaw::try_from((
+                    [
+                        (vi_1.clone(), vs_1.clone()),
+                        (vi_2_2.clone(), vs_2_2.clone()),
+                    ],
+                    mip_stats_cfg.clone(),
+                ));
+                <span class="macro">assert_eq!</span>(_vs_raw_2_.is_err(), <span class="bool-val">true</span>);
+            }
+        }
 
-        <span class="comment">// 2- overlapping component version
-        </span><span class="kw">let </span><span class="kw-2">mut </span>vs_raw_1 = MipStoreRaw::try_from((
-            [(vi_1.clone(), vs_1.clone()), (vi_2.clone(), vs_2.clone())],
-            mip_stats_cfg.clone(),
-        ))
-        .unwrap();
+        <span class="comment">// part 2
+        </span>{
+            <span class="kw">let </span><span class="kw-2">mut </span>vs_raw_1 = MipStoreRaw::try_from((
+                [(vi_1.clone(), vs_1.clone()), (vi_2.clone(), vs_2.clone())],
+                mip_stats_cfg.clone(),
+            ))
+            .unwrap();
 
-        <span class="kw">let </span><span class="kw-2">mut </span>vi_2_2 = vi_2.clone();
-        vi_2_2.components = vi_1.components.clone();
+            <span class="kw">let </span><span class="kw-2">mut </span>vi_2_2 = vi_2.clone();
+            <span class="comment">// Make mip info invalid (because we have vi.1.components == vi_2_2.components ~ overlapping versions)
+            </span>vi_2_2.components = vi_1.components.clone();
 
-        <span class="kw">let </span>vs_2_2 = advance_state_until(ComponentState::defined(), <span class="kw-2">&amp;</span>vi_2_2);
-        <span class="kw">let </span>vs_raw_2 = MipStoreRaw {
-            store: BTreeMap::from([
-                (vi_1.clone(), vs_1.clone()),
-                (vi_2_2.clone(), vs_2_2.clone()),
-            ]),
-            stats: MipStoreStats::new(mip_stats_cfg.clone()),
-        };
+            <span class="kw">let </span>vs_2_2 = advance_state_until(ComponentState::defined(), <span class="kw-2">&amp;</span>vi_2_2);
+            <span class="kw">let </span>vs_raw_2 = MipStoreRaw {
+                store: BTreeMap::from([
+                    (vi_1.clone(), vs_1.clone()),
+                    (vi_2_2.clone(), vs_2_2.clone()),
+                ]),
+                stats: MipStoreStats::new(mip_stats_cfg.clone()),
+            };
 
-        <span class="macro">assert_eq!</span>(vs_raw_1.update_with(<span class="kw-2">&amp;</span>vs_raw_2), <span class="prelude-val">Err</span>(()));
+            <span class="macro">assert_matches!</span>(
+                vs_raw_1.update_with(<span class="kw-2">&amp;</span>vs_raw_2),
+                <span class="prelude-val">Err</span>(UpdateWithError::Downgrade(..))
+            );
+            <span class="macro">assert!</span>(vs_raw_1.update_with(<span class="kw-2">&amp;</span>vs_raw_2).is_err());
+        }
     }
 
     <span class="attr">#[test]
