@@ -581,6 +581,10 @@
 <a href="#581" id="581">581</a>
 <a href="#582" id="582">582</a>
 <a href="#583" id="583">583</a>
+<a href="#584" id="584">584</a>
+<a href="#585" id="585">585</a>
+<a href="#586" id="586">586</a>
+<a href="#587" id="587">587</a>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="kw">use </span><span class="kw">crate</span>::active_history::ActiveHistory;
@@ -749,11 +753,15 @@
 
         <span class="kw">match </span><span class="self">self</span>.added_changes.roll_changes.get_mut(addr) {
             <span class="prelude-val">None </span>=&gt; {
-                <span class="comment">// Address does not exist anymore, slash nothing
-                </span><span class="prelude-val">Ok</span>(<span class="number">0</span>)
+                <span class="comment">// Rolls are in history or final state
+                </span><span class="self">self</span>.added_changes
+                    .roll_changes
+                    .insert(<span class="kw-2">*</span>addr, owned_count.saturating_sub(roll_to_slash));
+                <span class="prelude-val">Ok</span>(roll_to_slash)
             }
             <span class="prelude-val">Some</span>(current_rolls) =&gt; {
-                <span class="kw-2">*</span>current_rolls = current_rolls.saturating_sub(roll_to_slash);
+                <span class="comment">// Rolls are in added_changes
+                </span><span class="kw-2">*</span>current_rolls = current_rolls.saturating_sub(roll_to_slash);
                 <span class="prelude-val">Ok</span>(roll_to_slash)
             }
         }

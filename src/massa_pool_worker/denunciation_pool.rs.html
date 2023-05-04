@@ -273,7 +273,7 @@
 
 </span><span class="kw">use </span>massa_execution_exports::ExecutionController;
 <span class="kw">use </span>std::collections::{btree_map::Entry, BTreeMap};
-<span class="kw">use </span>tracing::{debug, info, warn};
+<span class="kw">use </span>tracing::{debug, info};
 
 <span class="kw">use </span>massa_models::denunciation::DenunciationIndex;
 <span class="kw">use </span>massa_models::slot::Slot;
@@ -387,16 +387,16 @@
                     <span class="prelude-val">Ok</span>(selection) =&gt; {
                         <span class="kw">if let </span><span class="prelude-val">Some</span>(address) = selection.endorsements.get(de_p.index <span class="kw">as </span>usize) {
                             <span class="kw">if </span><span class="kw-2">*</span>address != Address::from_public_key(<span class="kw-2">&amp;</span>de_p.public_key) {
-                                <span class="macro">warn!</span>(<span class="string">&quot;Denunciation pool received a secure share endorsement but address was not selected&quot;</span>);
+                                <span class="macro">debug!</span>(<span class="string">&quot;Denunciation pool received a secure share endorsement but address was not selected&quot;</span>);
                                 <span class="kw">return</span>;
                             }
                         } <span class="kw">else </span>{
-                            <span class="macro">warn!</span>(<span class="string">&quot;Denunciation pool could not get selected address for endorsements at index&quot;</span>);
+                            <span class="macro">debug!</span>(<span class="string">&quot;Denunciation pool could not get selected address for endorsements at index&quot;</span>);
                             <span class="kw">return</span>;
                         }
                     }
                     <span class="prelude-val">Err</span>(e) =&gt; {
-                        <span class="macro">warn!</span>(<span class="string">&quot;Cannot get producer from selector: {}&quot;</span>, e);
+                        <span class="macro">debug!</span>(<span class="string">&quot;Cannot get producer from selector: {}&quot;</span>, e);
                         <span class="kw">return</span>;
                     }
                 }
@@ -408,12 +408,12 @@
                         <span class="kw">if </span>address
                             != Address::from_public_key(denunciation_precursor.get_public_key())
                         {
-                            <span class="macro">warn!</span>(<span class="string">&quot;Denunciation pool received a secured header but address was not selected&quot;</span>);
+                            <span class="macro">debug!</span>(<span class="string">&quot;Denunciation pool received a secured header but address was not selected&quot;</span>);
                             <span class="kw">return</span>;
                         }
                     }
                     <span class="prelude-val">Err</span>(e) =&gt; {
-                        <span class="macro">warn!</span>(<span class="string">&quot;Cannot get producer from selector: {}&quot;</span>, e);
+                        <span class="macro">debug!</span>(<span class="string">&quot;Cannot get producer from selector: {}&quot;</span>, e);
                         <span class="kw">return</span>;
                     }
                 }
