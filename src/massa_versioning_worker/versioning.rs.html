@@ -1725,7 +1725,7 @@
     </span><span class="kw">pub fn </span>update_with(
         <span class="kw-2">&amp;mut </span><span class="self">self</span>,
         mip_store: <span class="kw-2">&amp;</span>MipStore,
-    ) -&gt; <span class="prelude-ty">Result</span>&lt;(Vec&lt;MipInfo&gt;, Vec&lt;MipInfo&gt;), ()&gt; {
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;(Vec&lt;MipInfo&gt;, BTreeMap&lt;MipInfo, MipState&gt;), ()&gt; {
         <span class="kw">let </span><span class="kw-2">mut </span>lock = <span class="self">self</span>.<span class="number">0</span>.write();
         <span class="kw">let </span>lock_other = mip_store.<span class="number">0</span>.read();
         lock.update_with(lock_other.deref())
@@ -1781,7 +1781,7 @@
     </span><span class="kw">pub fn </span>update_with(
         <span class="kw-2">&amp;mut </span><span class="self">self</span>,
         store_raw: <span class="kw-2">&amp;</span>MipStoreRaw,
-    ) -&gt; <span class="prelude-ty">Result</span>&lt;(Vec&lt;MipInfo&gt;, Vec&lt;MipInfo&gt;), ()&gt; {
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;(Vec&lt;MipInfo&gt;, BTreeMap&lt;MipInfo, MipState&gt;), ()&gt; {
         <span class="comment">// iter over items in given store:
         // -&gt; 2 cases:
         // * MipInfo is already in self store -&gt; add to &#39;to_update&#39; list
@@ -1881,12 +1881,12 @@
         }
 
         <span class="kw">if </span>should_merge {
-            <span class="kw">let </span>added = to_add.keys().cloned().collect();
-            <span class="kw">let </span>updated = to_update.keys().cloned().collect();
+            <span class="comment">// let added = to_add.keys().cloned().collect();
+            </span><span class="kw">let </span>updated = to_update.keys().cloned().collect();
 
             <span class="self">self</span>.store.append(<span class="kw-2">&amp;mut </span>to_update);
             <span class="self">self</span>.store.append(<span class="kw-2">&amp;mut </span>to_add);
-            <span class="prelude-val">Ok</span>((updated, added))
+            <span class="prelude-val">Ok</span>((updated, to_add))
         } <span class="kw">else </span>{
             <span class="prelude-val">Err</span>(())
         }
