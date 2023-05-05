@@ -260,13 +260,13 @@ impl MassaTime {
     /// ) < std::time::Duration::from_millis(10))
     /// ```
     pub fn estimate_instant(self) -> Result<Instant, TimeError> {
-        let (cur_timestamp, cur_instant): (MassaTime, Instant) =
-            (MassaTime::now()?, Instant::now());
-        cur_instant
-            .checked_add(self.to_duration())
-            .ok_or(TimeError::TimeOverflowError)?
-            .checked_sub(cur_timestamp.to_duration())
-            .ok_or(TimeError::TimeOverflowError)
+        let (cur_timestamp, cur_instant) = (MassaTime::now()?, Instant::now());
+        if self >= cur_timestamp {
+            cur_instant.checked_add(self.saturating_sub(cur_timestamp).to_duration())
+        } else {
+            cur_instant.checked_sub(cur_timestamp.saturating_sub(self).to_duration())
+        }
+        .ok_or(TimeError::TimeOverflowError)
     }
 
     /// ```

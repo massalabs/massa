@@ -27,7 +27,7 @@ massa_execution_exports = { path = "../massa-execution-exports" }
 massa_models = { path = "../massa-models" }
 massa_storage = { path = "../massa-storage" }
 massa_hash = { path = "../massa-hash" }
-massa-sc-runtime = { git = "https://github.com/massalabs/massa-sc-runtime" }
+massa-sc-runtime = { git = "https://github.com/massalabs/massa-sc-runtime", branch = "main" }
 massa_module_cache = { path = "../massa-module-cache" }
 massa_signature = { path = "../massa-signature" }
 massa_time = { path = "../massa-time" }
@@ -37,9 +37,10 @@ massa_final_state = { path = "../massa-final-state" }
 massa_versioning_worker = { path = "../massa-versioning-worker" }
 
 [dev-dependencies]
+tokio = { version = "1.23", features = ["sync"] }
 massa_pos_worker = { path = "../massa-pos-worker" }
 massa_ledger_worker = { path = "../massa-ledger-worker" }
-serial_test = "0.10"
+serial_test = "1.0.0"
 tempfile = "3.2"
 hex-literal = "0.3.4"
 # custom modules with testing enabled

@@ -1,66 +1,26 @@
-[
-    {
-        "advertised": true,
-        "banned": false,
-        "peer_type": "Bootstrap",
-        "ip": "149.202.86.103",
-        "last_alive": null,
-        "last_failure": null
+{
+    "P12UbyLJDS7zimGWf3LTHe8hYY67RdLke1iDRZqJbQQLHQSKPW8j": {
+        "149.202.86.103:31244": "Tcp"
     },
-    {
-        "advertised": true,
-        "banned": false,
-        "peer_type": "Bootstrap",
-        "ip": "149.202.89.125",
-        "last_alive": null,
-        "last_failure": null
+    "P12vxrYTQzS5TRzxLfFNYxn6PyEsphKWkdqx2mVfEuvJ9sPF43uq": {
+        "149.202.89.125:31244": "Tcp"
     },
-    {
-        "advertised": true,
-        "banned": false,
-        "peer_type": "Bootstrap",
-        "ip": "158.69.120.215",
-        "last_alive": null,
-        "last_failure": null
+    "P12rPDBmpnpnbECeAKDjbmeR19dYjAUwyLzsa8wmYJnkXLCNF28E": {
+        "158.69.120.215:31244": "Tcp"
     },
-    {
-        "advertised": false,
-        "banned": false,
-        "peer_type": "Bootstrap",
-        "ip": "158.69.23.120",
-        "last_alive": null,
-        "last_failure": null
+    "P1XxexKa3XNzvmakNmPawqFrE9Z2NFhfq1AhvV1Qx4zXq5p1Bp9": {
+        "158.69.23.120:31244": "Tcp"
     },
-    {
-        "advertised": true,
-        "banned": false,
-        "peer_type": "Bootstrap",
-        "ip": "198.27.74.5",
-        "last_alive": null,
-        "last_failure": null
+    "P1qxuqNnx9kyAMYxUfsYiv2gQd5viiBX126SzzexEdbbWd2vQKu": {
+        "198.27.74.5:31244": "Tcp"
     },
-    {
-        "advertised": true,
-        "banned": false,
-        "peer_type": "Bootstrap",
-        "ip": "198.27.74.52",
-        "last_alive": null,
-        "last_failure": null
+    "P1hdgsVsd4zkNp8cF1rdqqG6JPRQasAmx12QgJaJHBHFU1fRHEH": {
+        "198.27.74.52:31244": "Tcp"
     },
-    {
-        "advertised": true,
-        "banned": false,
-        "peer_type": "Bootstrap",
-        "ip": "54.36.174.177",
-        "last_alive": null,
-        "last_failure": null
+    "P1gEdBVEbRFbBxBtrjcTDDK9JPbJFDay27uiJRE3vmbFAFDKNh7": {
+        "54.36.174.177:31244": "Tcp"
     },
-    {
-        "advertised": true,
-        "banned": false,
-        "peer_type": "Bootstrap",
-        "ip": "51.75.60.228",
-        "last_alive": null,
-        "last_failure": null
+    "P13Ykon8Zo73PTKMruLViMMtE2rEG646JQ4sCcee2DnopmVM3P5": {
+        "51.75.60.228:31244": "Tcp"
     }
-]
+}

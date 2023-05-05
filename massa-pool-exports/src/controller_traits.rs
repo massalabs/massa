@@ -1,8 +1,11 @@
 // Copyright (c) 2022 MASSA LABS <info@massa.net>
 
-use massa_models::denunciation::Denunciation;
 use massa_models::{
-    block_id::BlockId, endorsement::EndorsementId, operation::OperationId, slot::Slot,
+    block_id::BlockId,
+    denunciation::{Denunciation, DenunciationPrecursor},
+    endorsement::EndorsementId,
+    operation::OperationId,
+    slot::Slot,
 };
 use massa_storage::Storage;
 
@@ -13,6 +16,9 @@ pub trait PoolController: Send + Sync {
 
     /// Asynchronously add endorsements to pool. Simply print a warning on failure.
     fn add_endorsements(&mut self, endorsements: Storage);
+
+    /// Add denunciation precursor to pool
+    fn add_denunciation_precursor(&self, denunciation_precursor: DenunciationPrecursor);
 
     /// Asynchronously notify of new consensus final periods. Simply print a warning on failure.
     fn notify_final_cs_periods(&mut self, final_cs_periods: &[u64]);
@@ -27,6 +33,9 @@ pub trait PoolController: Send + Sync {
         slot: &Slot,
     ) -> (Vec<Option<EndorsementId>>, Storage);
 
+    /// Get denunciations for a block header.
+    fn get_block_denunciations(&self, target_slot: &Slot) -> Vec<Denunciation>;
+
     /// Get the number of endorsements in the pool
     fn get_endorsement_count(&self) -> usize;
 
@@ -39,8 +48,9 @@ pub trait PoolController: Send + Sync {
     /// Check if the pool contains a list of operations. Returns one boolean per item.
     fn contains_operations(&self, operations: &[OperationId]) -> Vec<bool>;
 
-    /// Add denunciations to pool. Simply print a warning on failure.
-    fn add_denunciation(&mut self, denunciation: Denunciation);
+    /// Check if the pool contains a denunciation. Returns a boolean
+    #[cfg(feature = "testing")]
+    fn contains_denunciation(&self, denunciation: &Denunciation) -> bool;
 
     /// Get the number of denunciations in the pool
     fn get_denunciation_count(&self) -> usize;

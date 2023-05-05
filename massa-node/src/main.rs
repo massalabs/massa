@@ -3,6 +3,7 @@
 #![doc = include_str!("../../README.md")]
 #![warn(missing_docs)]
 #![warn(unused_crate_dependencies)]
+#![feature(ip)]
 extern crate massa_logging;
 
 use crate::settings::SETTINGS;
@@ -13,14 +14,16 @@ use massa_api::{ApiServer, ApiV2, Private, Public, RpcServer, StopHandle, API};
 use massa_api_exports::config::APIConfig;
 use massa_async_pool::AsyncPoolConfig;
 use massa_bootstrap::{
-    get_state, start_bootstrap_server, BootstrapConfig, BootstrapManager, DefaultConnector,
-    DefaultListener,
+    client::DefaultConnector, get_state, start_bootstrap_server, BootstrapConfig, BootstrapManager,
+    BootstrapTcpListener,
 };
 use massa_consensus_exports::events::ConsensusEvent;
 use massa_consensus_exports::{ConsensusChannels, ConsensusConfig, ConsensusManager};
 use massa_consensus_worker::start_consensus_worker;
-use massa_executed_ops::ExecutedOpsConfig;
-use massa_execution_exports::{ExecutionConfig, ExecutionManager, GasCosts, StorageCostsConstants};
+use massa_executed_ops::{ExecutedDenunciationsConfig, ExecutedOpsConfig};
+use massa_execution_exports::{
+    ExecutionChannels, ExecutionConfig, ExecutionManager, GasCosts, StorageCostsConstants,
+};
 use massa_execution_worker::start_execution_worker;
 use massa_factory_exports::{FactoryChannels, FactoryConfig, FactoryManager};
 use massa_factory_worker::start_factory;
@@ -33,7 +36,8 @@ use massa_logging::massa_trace;
 use massa_models::address::Address;
 use massa_models::config::constants::{
     ASYNC_POOL_BOOTSTRAP_PART_SIZE, BLOCK_REWARD, BOOTSTRAP_RANDOMNESS_SIZE_BYTES, CHANNEL_SIZE,
-    DEFERRED_CREDITS_BOOTSTRAP_PART_SIZE, DELTA_F0, ENDORSEMENT_COUNT, END_TIMESTAMP,
+    CONSENSUS_BOOTSTRAP_PART_SIZE, DEFERRED_CREDITS_BOOTSTRAP_PART_SIZE, DELTA_F0,
+    DENUNCIATION_EXPIRE_PERIODS, ENDORSEMENT_COUNT, END_TIMESTAMP,
     EXECUTED_OPS_BOOTSTRAP_PART_SIZE, GENESIS_KEY, GENESIS_TIMESTAMP, INITIAL_DRAW_SEED,
     LEDGER_COST_PER_BYTE, LEDGER_ENTRY_BASE_SIZE, LEDGER_ENTRY_DATASTORE_BASE_SIZE,
     LEDGER_PART_SIZE_MESSAGE_BYTES, MAX_ADVERTISE_LENGTH, MAX_ASK_BLOCKS_PER_MESSAGE,
@@ -41,46 +45,46 @@ use massa_models::config::constants::{
     MAX_BOOTSTRAP_ASYNC_POOL_CHANGES, MAX_BOOTSTRAP_BLOCKS, MAX_BOOTSTRAP_ERROR_LENGTH,
     MAX_BOOTSTRAP_FINAL_STATE_PARTS_SIZE, MAX_BOOTSTRAP_MESSAGE_SIZE, MAX_BYTECODE_LENGTH,
     MAX_CONSENSUS_BLOCKS_IDS, MAX_DATASTORE_ENTRY_COUNT, MAX_DATASTORE_KEY_LENGTH,
-    MAX_DATASTORE_VALUE_LENGTH, MAX_DEFERRED_CREDITS_LENGTH, MAX_ENDORSEMENTS_PER_MESSAGE,
-    MAX_EXECUTED_OPS_CHANGES_LENGTH, MAX_EXECUTED_OPS_LENGTH, MAX_FUNCTION_NAME_LENGTH,
-    MAX_GAS_PER_BLOCK, MAX_LEDGER_CHANGES_COUNT, MAX_MESSAGE_SIZE, MAX_OPERATIONS_PER_BLOCK,
+    MAX_DATASTORE_VALUE_LENGTH, MAX_DEFERRED_CREDITS_LENGTH, MAX_DENUNCIATIONS_PER_BLOCK_HEADER,
+    MAX_DENUNCIATION_CHANGES_LENGTH, MAX_ENDORSEMENTS_PER_MESSAGE, MAX_EXECUTED_OPS_CHANGES_LENGTH,
+    MAX_EXECUTED_OPS_LENGTH, MAX_FUNCTION_NAME_LENGTH, MAX_GAS_PER_BLOCK, MAX_LEDGER_CHANGES_COUNT,
+    MAX_LISTENERS_PER_PEER, MAX_OPERATIONS_PER_BLOCK, MAX_OPERATIONS_PER_MESSAGE,
     MAX_OPERATION_DATASTORE_ENTRY_COUNT, MAX_OPERATION_DATASTORE_KEY_LENGTH,
-    MAX_OPERATION_DATASTORE_VALUE_LENGTH, MAX_PARAMETERS_SIZE, MAX_PRODUCTION_STATS_LENGTH,
-    MAX_ROLLS_COUNT_LENGTH, MIP_STORE_STATS_BLOCK_CONSIDERED, MIP_STORE_STATS_COUNTERS_MAX,
-    NETWORK_CONTROLLER_CHANNEL_SIZE, NETWORK_EVENT_CHANNEL_SIZE, NETWORK_NODE_COMMAND_CHANNEL_SIZE,
-    NETWORK_NODE_EVENT_CHANNEL_SIZE, OPERATION_VALIDITY_PERIODS, PERIODS_PER_CYCLE,
+    MAX_OPERATION_DATASTORE_VALUE_LENGTH, MAX_OPERATION_STORAGE_TIME, MAX_PARAMETERS_SIZE,
+    MAX_PEERS_IN_ANNOUNCEMENT_LIST, MAX_PRODUCTION_STATS_LENGTH, MAX_ROLLS_COUNT_LENGTH,
+    MAX_SIZE_CHANNEL_COMMANDS_CONNECTIVITY, MAX_SIZE_CHANNEL_COMMANDS_PEERS,
+    MAX_SIZE_CHANNEL_COMMANDS_PEER_TESTERS, MAX_SIZE_CHANNEL_COMMANDS_PROPAGATION_BLOCKS,
+    MAX_SIZE_CHANNEL_COMMANDS_PROPAGATION_ENDORSEMENTS,
+    MAX_SIZE_CHANNEL_COMMANDS_PROPAGATION_OPERATIONS, MAX_SIZE_CHANNEL_COMMANDS_RETRIEVAL_BLOCKS,
+    MAX_SIZE_CHANNEL_COMMANDS_RETRIEVAL_ENDORSEMENTS,
+    MAX_SIZE_CHANNEL_COMMANDS_RETRIEVAL_OPERATIONS, MAX_SIZE_CHANNEL_NETWORK_TO_BLOCK_HANDLER,
+    MAX_SIZE_CHANNEL_NETWORK_TO_ENDORSEMENT_HANDLER, MAX_SIZE_CHANNEL_NETWORK_TO_OPERATION_HANDLER,
+    MAX_SIZE_CHANNEL_NETWORK_TO_PEER_HANDLER, MIP_STORE_STATS_BLOCK_CONSIDERED,
+    MIP_STORE_STATS_COUNTERS_MAX, OPERATION_VALIDITY_PERIODS, PERIODS_PER_CYCLE,
     POOL_CONTROLLER_CHANNEL_SIZE, POS_MISS_RATE_DEACTIVATION_THRESHOLD, POS_SAVED_CYCLES,
-    PROTOCOL_CONTROLLER_CHANNEL_SIZE, PROTOCOL_EVENT_CHANNEL_SIZE, ROLL_PRICE, T0, THREAD_COUNT,
+    PROTOCOL_CONTROLLER_CHANNEL_SIZE, PROTOCOL_EVENT_CHANNEL_SIZE,
+    ROLL_COUNT_TO_SLASH_ON_DENUNCIATION, ROLL_PRICE, SELECTOR_DRAW_CACHE_SIZE, T0, THREAD_COUNT,
     VERSION,
 };
-use massa_models::config::{
-    CONSENSUS_BOOTSTRAP_PART_SIZE, DENUNCIATION_EXPIRE_PERIODS, DENUNCIATION_ITEMS_MAX_CYCLE_DELTA,
-    MAX_OPERATIONS_PER_MESSAGE,
-};
-use massa_models::denunciation::DenunciationPrecursor;
-use massa_network_exports::{Establisher, NetworkConfig, NetworkManager};
-use massa_network_worker::start_network_controller;
 use massa_pool_exports::{PoolChannels, PoolConfig, PoolManager};
 use massa_pool_worker::start_pool_controller;
 use massa_pos_exports::{PoSConfig, SelectorConfig, SelectorManager};
 use massa_pos_worker::start_selector_worker;
-use massa_protocol_exports::{
-    ProtocolCommand, ProtocolCommandSender, ProtocolConfig, ProtocolManager, ProtocolReceivers,
-    ProtocolSenders,
-};
-use massa_protocol_worker::start_protocol_controller;
+use massa_protocol_exports::{ProtocolConfig, ProtocolManager};
+use massa_protocol_worker::{create_protocol_controller, start_protocol_controller};
 use massa_storage::Storage;
 use massa_time::MassaTime;
 use massa_versioning_worker::versioning::{MipStatsConfig, MipStore};
 use massa_wallet::Wallet;
 use parking_lot::RwLock;
+use peernet::transports::TransportType;
+use std::collections::HashMap;
 use std::path::PathBuf;
 use std::sync::atomic::{AtomicUsize, Ordering};
 use std::thread::sleep;
 use std::time::Duration;
 use std::{path::Path, process, sync::Arc};
 use structopt::StructOpt;
-use tokio::net::TcpStream;
 use tokio::signal;
 use tokio::sync::{broadcast, mpsc};
 use tracing::{error, info, warn};
@@ -93,13 +97,12 @@ async fn launch(
     node_wallet: Arc<RwLock<Wallet>>,
 ) -> (
     Receiver<ConsensusEvent>,
-    Option<BootstrapManager<TcpStream>>,
+    Option<BootstrapManager>,
     Box<dyn ConsensusManager>,
     Box<dyn ExecutionManager>,
     Box<dyn SelectorManager>,
     Box<dyn PoolManager>,
-    ProtocolManager,
-    NetworkManager,
+    Box<dyn ProtocolManager>,
     Box<dyn FactoryManager>,
     mpsc::Receiver<()>,
     StopHandle,
@@ -131,37 +134,6 @@ async fn launch(
         }
     }
 
-    let now = MassaTime::now().expect("could not get now time");
-
-    use massa_models::config::constants::DOWNTIME_END_TIMESTAMP;
-    use massa_models::config::constants::DOWNTIME_START_TIMESTAMP;
-
-    // Simulate downtime
-    // last_start_period should be set to trigger after the DOWNTIME_END_TIMESTAMP
-    if now >= DOWNTIME_START_TIMESTAMP && now <= DOWNTIME_END_TIMESTAMP {
-        let (days, hours, mins, secs) = DOWNTIME_END_TIMESTAMP
-            .saturating_sub(now)
-            .days_hours_mins_secs()
-            .unwrap();
-
-        if let Ok(Some(end_period)) = massa_models::timeslots::get_latest_block_slot_at_timestamp(
-            THREAD_COUNT,
-            T0,
-            *GENESIS_TIMESTAMP,
-            DOWNTIME_END_TIMESTAMP,
-        ) {
-            panic!(
-                "We are in downtime! {} days, {} hours, {} minutes, {} seconds remaining to the end of the downtime. Downtime end period: {}",
-                days, hours, mins, secs, end_period.period
-            );
-        }
-
-        panic!(
-            "We are in downtime! {} days, {} hours, {} minutes, {} seconds remaining to the end of the downtime",
-            days, hours, mins, secs,
-        );
-    }
-
     // Storage shared by multiple components.
     let shared_storage: Storage = Storage::create_root();
 
@@ -190,16 +162,24 @@ async fn launch(
         thread_count: THREAD_COUNT,
         bootstrap_part_size: EXECUTED_OPS_BOOTSTRAP_PART_SIZE,
     };
+    let executed_denunciations_config = ExecutedDenunciationsConfig {
+        denunciation_expire_periods: DENUNCIATION_EXPIRE_PERIODS,
+        bootstrap_part_size: EXECUTED_OPS_BOOTSTRAP_PART_SIZE,
+    };
     let final_state_config = FinalStateConfig {
         ledger_config: ledger_config.clone(),
         async_pool_config,
         pos_config,
         executed_ops_config,
+        executed_denunciations_config,
         final_history_length: SETTINGS.ledger.final_history_length,
         thread_count: THREAD_COUNT,
         periods_per_cycle: PERIODS_PER_CYCLE,
         initial_seed_string: INITIAL_DRAW_SEED.into(),
         initial_rolls_path: SETTINGS.selector.initial_rolls_path.clone(),
+        endorsement_count: ENDORSEMENT_COUNT,
+        max_executed_denunciations_length: MAX_DENUNCIATION_CHANGES_LENGTH,
+        max_denunciations_per_block_header: MAX_DENUNCIATIONS_PER_BLOCK_HEADER,
     };
 
     // Remove current disk ledger if there is one and we don't want to restart from snapshot
@@ -219,7 +199,7 @@ async fn launch(
 
     // launch selector worker
     let (selector_manager, selector_controller) = start_selector_worker(SelectorConfig {
-        max_draw_cache: SETTINGS.selector.max_draw_cache,
+        max_draw_cache: SELECTOR_DRAW_CACHE_SIZE,
         channel_size: CHANNEL_SIZE,
         thread_count: THREAD_COUNT,
         endorsement_count: ENDORSEMENT_COUNT,
@@ -268,6 +248,7 @@ async fn launch(
         max_clock_delta: SETTINGS.bootstrap.max_clock_delta,
         cache_duration: SETTINGS.bootstrap.cache_duration,
         keep_ledger: args.keep_ledger,
+        max_listeners_per_peer: MAX_LISTENERS_PER_PEER as u32,
         max_simultaneous_bootstraps: SETTINGS.bootstrap.max_simultaneous_bootstraps,
         per_ip_min_interval: SETTINGS.bootstrap.per_ip_min_interval,
         ip_list_max_size: SETTINGS.bootstrap.ip_list_max_size,
@@ -304,6 +285,8 @@ async fn launch(
         max_consensus_block_ids: MAX_CONSENSUS_BLOCKS_IDS,
         mip_store_stats_block_considered: MIP_STORE_STATS_BLOCK_CONSIDERED,
         mip_store_stats_counters_max: MIP_STORE_STATS_COUNTERS_MAX,
+        max_denunciations_per_block_header: MAX_DENUNCIATIONS_PER_BLOCK_HEADER,
+        max_denunciation_changes_length: MAX_DENUNCIATION_CHANGES_LENGTH,
     };
 
     // bootstrap
@@ -315,7 +298,7 @@ async fn launch(
         res = get_state(
             &bootstrap_config,
             final_state.clone(),
-            DefaultConnector(bootstrap_config.connect_timeout),
+            DefaultConnector,
             *VERSION,
             *GENESIS_TIMESTAMP,
             *END_TIMESTAMP,
@@ -325,61 +308,6 @@ async fn launch(
             Err(err) => panic!("critical error detected in the bootstrap process: {}", err)
         }
     };
-
-    let network_config: NetworkConfig = NetworkConfig {
-        bind: SETTINGS.network.bind,
-        routable_ip: SETTINGS.network.routable_ip,
-        protocol_port: SETTINGS.network.protocol_port,
-        connect_timeout: SETTINGS.network.connect_timeout,
-        wakeup_interval: SETTINGS.network.wakeup_interval,
-        initial_peers_file: SETTINGS.network.initial_peers_file.clone(),
-        peers_file: SETTINGS.network.peers_file.clone(),
-        keypair_file: SETTINGS.network.keypair_file.clone(),
-        peer_types_config: SETTINGS.network.peer_types_config.clone(),
-        max_in_connections_per_ip: SETTINGS.network.max_in_connections_per_ip,
-        max_idle_peers: SETTINGS.network.max_idle_peers,
-        max_banned_peers: SETTINGS.network.max_banned_peers,
-        peers_file_dump_interval: SETTINGS.network.peers_file_dump_interval,
-        message_timeout: SETTINGS.network.message_timeout,
-        ask_peer_list_interval: SETTINGS.network.ask_peer_list_interval,
-        max_send_wait_node_event: SETTINGS.network.max_send_wait_node_event,
-        max_send_wait_network_event: SETTINGS.network.max_send_wait_network_event,
-        ban_timeout: SETTINGS.network.ban_timeout,
-        peer_list_send_timeout: SETTINGS.network.peer_list_send_timeout,
-        max_in_connection_overflow: SETTINGS.network.max_in_connection_overflow,
-        max_operations_per_message: SETTINGS.network.max_operations_per_message,
-        max_bytes_read: SETTINGS.network.max_bytes_read,
-        max_bytes_write: SETTINGS.network.max_bytes_write,
-        max_ask_blocks: MAX_ASK_BLOCKS_PER_MESSAGE,
-        max_operations_per_block: MAX_OPERATIONS_PER_BLOCK,
-        thread_count: THREAD_COUNT,
-        endorsement_count: ENDORSEMENT_COUNT,
-        max_peer_advertise_length: MAX_ADVERTISE_LENGTH,
-        max_endorsements_per_message: MAX_ENDORSEMENTS_PER_MESSAGE,
-        max_message_size: MAX_MESSAGE_SIZE,
-        max_datastore_value_length: MAX_DATASTORE_VALUE_LENGTH,
-        max_op_datastore_entry_count: MAX_OPERATION_DATASTORE_ENTRY_COUNT,
-        max_op_datastore_key_length: MAX_OPERATION_DATASTORE_KEY_LENGTH,
-        max_op_datastore_value_length: MAX_OPERATION_DATASTORE_VALUE_LENGTH,
-        max_function_name_length: MAX_FUNCTION_NAME_LENGTH,
-        max_parameters_size: MAX_PARAMETERS_SIZE,
-        controller_channel_size: NETWORK_CONTROLLER_CHANNEL_SIZE,
-        event_channel_size: NETWORK_EVENT_CHANNEL_SIZE,
-        node_command_channel_size: NETWORK_NODE_COMMAND_CHANNEL_SIZE,
-        node_event_channel_size: NETWORK_NODE_EVENT_CHANNEL_SIZE,
-        last_start_period: final_state.read().last_start_period,
-    };
-
-    // launch network controller
-    let (network_command_sender, network_event_receiver, network_manager, private_key, node_id) =
-        start_network_controller(
-            &network_config,
-            Establisher::new(),
-            bootstrap_state.peers,
-            *VERSION,
-        )
-        .await
-        .expect("could not start network controller");
 
     if args.restart_from_snapshot_at_period.is_none() {
         let last_start_period = final_state.read().last_start_period;
@@ -449,12 +377,27 @@ async fn launch(
         lru_cache_size: SETTINGS.execution.lru_cache_size,
         hd_cache_size: SETTINGS.execution.hd_cache_size,
         snip_amount: SETTINGS.execution.snip_amount,
+        roll_count_to_slash_on_denunciation: ROLL_COUNT_TO_SLASH_ON_DENUNCIATION,
+        denunciation_expire_periods: DENUNCIATION_EXPIRE_PERIODS,
+        broadcast_enabled: SETTINGS.api.enable_broadcast,
+        broadcast_slot_execution_output_channel_capacity: SETTINGS
+            .execution
+            .broadcast_slot_execution_output_channel_capacity,
     };
+
+    let execution_channels = ExecutionChannels {
+        slot_execution_output_sender: broadcast::channel(
+            execution_config.broadcast_slot_execution_output_channel_capacity,
+        )
+        .0,
+    };
+
     let (execution_manager, execution_controller) = start_execution_worker(
         execution_config,
         final_state.clone(),
         selector_controller.clone(),
         mip_store.clone(),
+        execution_channels.clone(),
     );
 
     // launch pool controller
@@ -470,85 +413,35 @@ async fn launch(
         max_endorsements_pool_size_per_thread: SETTINGS.pool.max_pool_size_per_thread,
         channels_size: POOL_CONTROLLER_CHANNEL_SIZE,
         broadcast_enabled: SETTINGS.api.enable_broadcast,
-        broadcast_operations_capacity: SETTINGS.pool.broadcast_operations_capacity,
+        broadcast_endorsements_channel_capacity: SETTINGS
+            .pool
+            .broadcast_endorsements_channel_capacity,
+        broadcast_operations_channel_capacity: SETTINGS.pool.broadcast_operations_channel_capacity,
         genesis_timestamp: *GENESIS_TIMESTAMP,
         t0: T0,
         periods_per_cycle: PERIODS_PER_CYCLE,
         denunciation_expire_periods: DENUNCIATION_EXPIRE_PERIODS,
+        max_denunciations_per_block_header: MAX_DENUNCIATIONS_PER_BLOCK_HEADER,
+        last_start_period: final_state.read().last_start_period,
     };
 
     let pool_channels = PoolChannels {
-        operation_sender: broadcast::channel(pool_config.broadcast_operations_capacity).0,
+        endorsement_sender: broadcast::channel(pool_config.broadcast_endorsements_channel_capacity)
+            .0,
+        operation_sender: broadcast::channel(pool_config.broadcast_operations_channel_capacity).0,
+        selector: selector_controller.clone(),
     };
-    let (denunciation_factory_tx, denunciation_factory_rx) =
-        crossbeam_channel::unbounded::<DenunciationPrecursor>();
 
     let (pool_manager, pool_controller) = start_pool_controller(
         pool_config,
         &shared_storage,
         execution_controller.clone(),
         pool_channels.clone(),
-        denunciation_factory_tx,
-    );
-
-    let (protocol_command_sender, protocol_command_receiver) =
-        mpsc::channel::<ProtocolCommand>(PROTOCOL_CONTROLLER_CHANNEL_SIZE);
-
-    let consensus_config = ConsensusConfig {
-        genesis_timestamp: *GENESIS_TIMESTAMP,
-        end_timestamp: *END_TIMESTAMP,
-        thread_count: THREAD_COUNT,
-        t0: T0,
-        genesis_key: GENESIS_KEY.clone(),
-        max_discarded_blocks: SETTINGS.consensus.max_discarded_blocks,
-        future_block_processing_max_periods: SETTINGS.consensus.future_block_processing_max_periods,
-        max_future_processing_blocks: SETTINGS.consensus.max_future_processing_blocks,
-        max_dependency_blocks: SETTINGS.consensus.max_dependency_blocks,
-        delta_f0: DELTA_F0,
-        operation_validity_periods: OPERATION_VALIDITY_PERIODS,
-        periods_per_cycle: PERIODS_PER_CYCLE,
-        stats_timespan: SETTINGS.consensus.stats_timespan,
-        max_send_wait: SETTINGS.consensus.max_send_wait,
-        force_keep_final_periods: SETTINGS.consensus.force_keep_final_periods,
-        endorsement_count: ENDORSEMENT_COUNT,
-        block_db_prune_interval: SETTINGS.consensus.block_db_prune_interval,
-        max_item_return_count: SETTINGS.consensus.max_item_return_count,
-        max_gas_per_block: MAX_GAS_PER_BLOCK,
-        channel_size: CHANNEL_SIZE,
-        bootstrap_part_size: CONSENSUS_BOOTSTRAP_PART_SIZE,
-        broadcast_enabled: SETTINGS.api.enable_broadcast,
-        broadcast_blocks_headers_capacity: SETTINGS.consensus.broadcast_blocks_headers_capacity,
-        broadcast_blocks_capacity: SETTINGS.consensus.broadcast_blocks_capacity,
-        broadcast_filled_blocks_capacity: SETTINGS.consensus.broadcast_filled_blocks_capacity,
-        last_start_period: final_state.read().last_start_period,
-    };
-
-    let (consensus_event_sender, consensus_event_receiver) =
-        crossbeam_channel::bounded(CHANNEL_SIZE);
-    let (denunciation_factory_sender, denunciation_factory_receiver) =
-        crossbeam_channel::bounded(CHANNEL_SIZE);
-    let consensus_channels = ConsensusChannels {
-        execution_controller: execution_controller.clone(),
-        selector_controller: selector_controller.clone(),
-        pool_command_sender: pool_controller.clone(),
-        controller_event_tx: consensus_event_sender,
-        protocol_command_sender: ProtocolCommandSender(protocol_command_sender.clone()),
-        block_header_sender: broadcast::channel(consensus_config.broadcast_blocks_headers_capacity)
-            .0,
-        block_sender: broadcast::channel(consensus_config.broadcast_blocks_capacity).0,
-        filled_block_sender: broadcast::channel(consensus_config.broadcast_filled_blocks_capacity)
-            .0,
-        denunciation_factory_sender,
-    };
-
-    let (consensus_controller, consensus_manager) = start_consensus_worker(
-        consensus_config,
-        consensus_channels.clone(),
-        bootstrap_state.graph,
-        shared_storage.clone(),
     );
 
     // launch protocol controller
+    let mut listeners = HashMap::default();
+    listeners.insert(SETTINGS.protocol.bind, TransportType::Tcp);
     let protocol_config = ProtocolConfig {
         thread_count: THREAD_COUNT,
         ask_block_timeout: SETTINGS.protocol.ask_block_timeout,
@@ -577,29 +470,125 @@ async fn launch(
         event_channel_size: PROTOCOL_EVENT_CHANNEL_SIZE,
         genesis_timestamp: *GENESIS_TIMESTAMP,
         t0: T0,
+        endorsement_count: ENDORSEMENT_COUNT,
         max_operations_propagation_time: SETTINGS.protocol.max_operations_propagation_time,
         max_endorsements_propagation_time: SETTINGS.protocol.max_endorsements_propagation_time,
         last_start_period: final_state.read().last_start_period,
+        max_endorsements_per_message: MAX_ENDORSEMENTS_PER_MESSAGE as u64,
+        max_denunciations_in_block_header: MAX_DENUNCIATIONS_PER_BLOCK_HEADER,
+        initial_peers: SETTINGS.protocol.initial_peers_file.clone(),
+        listeners,
+        keypair_file: SETTINGS.protocol.keypair_file.clone(),
+        max_in_connections: SETTINGS.protocol.max_incoming_connections,
+        max_out_connections: SETTINGS.protocol.max_outgoing_connections,
+        max_known_blocks_saved_size: SETTINGS.protocol.max_known_blocks_size,
+        asked_operations_buffer_capacity: SETTINGS.protocol.max_known_ops_size,
+        thread_tester_count: SETTINGS.protocol.thread_tester_count,
+        max_operation_storage_time: MAX_OPERATION_STORAGE_TIME,
+        max_size_channel_commands_propagation_blocks: MAX_SIZE_CHANNEL_COMMANDS_PROPAGATION_BLOCKS,
+        max_size_channel_commands_propagation_operations:
+            MAX_SIZE_CHANNEL_COMMANDS_PROPAGATION_OPERATIONS,
+        max_size_channel_commands_propagation_endorsements:
+            MAX_SIZE_CHANNEL_COMMANDS_PROPAGATION_ENDORSEMENTS,
+        max_size_channel_commands_retrieval_blocks: MAX_SIZE_CHANNEL_COMMANDS_RETRIEVAL_BLOCKS,
+        max_size_channel_commands_retrieval_operations:
+            MAX_SIZE_CHANNEL_COMMANDS_RETRIEVAL_OPERATIONS,
+        max_size_channel_commands_retrieval_endorsements:
+            MAX_SIZE_CHANNEL_COMMANDS_RETRIEVAL_ENDORSEMENTS,
+        max_size_channel_commands_connectivity: MAX_SIZE_CHANNEL_COMMANDS_CONNECTIVITY,
+        max_size_channel_commands_peers: MAX_SIZE_CHANNEL_COMMANDS_PEERS,
+        max_size_channel_commands_peer_testers: MAX_SIZE_CHANNEL_COMMANDS_PEER_TESTERS,
+        max_size_channel_network_to_block_handler: MAX_SIZE_CHANNEL_NETWORK_TO_BLOCK_HANDLER,
+        max_size_channel_network_to_operation_handler:
+            MAX_SIZE_CHANNEL_NETWORK_TO_OPERATION_HANDLER,
+        max_size_channel_network_to_endorsement_handler:
+            MAX_SIZE_CHANNEL_NETWORK_TO_ENDORSEMENT_HANDLER,
+        max_size_channel_network_to_peer_handler: MAX_SIZE_CHANNEL_NETWORK_TO_PEER_HANDLER,
+        max_size_value_datastore: MAX_DATASTORE_VALUE_LENGTH,
+        max_op_datastore_entry_count: MAX_OPERATION_DATASTORE_ENTRY_COUNT,
+        max_op_datastore_key_length: MAX_OPERATION_DATASTORE_KEY_LENGTH,
+        max_op_datastore_value_length: MAX_OPERATION_DATASTORE_VALUE_LENGTH,
+        max_size_function_name: MAX_FUNCTION_NAME_LENGTH,
+        max_size_call_sc_parameter: MAX_PARAMETERS_SIZE,
+        max_size_block_infos: MAX_ASK_BLOCKS_PER_MESSAGE as u64,
+        max_size_listeners_per_peer: MAX_LISTENERS_PER_PEER,
+        max_size_peers_announcement: MAX_PEERS_IN_ANNOUNCEMENT_LIST,
+        read_write_limit_bytes_per_second: SETTINGS.protocol.read_write_limit_bytes_per_second
+            as u128,
+        routable_ip: SETTINGS.protocol.routable_ip,
+        debug: false,
     };
 
-    let protocol_senders = ProtocolSenders {
-        network_command_sender: network_command_sender.clone(),
+    let (protocol_controller, protocol_channels) =
+        create_protocol_controller(protocol_config.clone());
+
+    let consensus_config = ConsensusConfig {
+        genesis_timestamp: *GENESIS_TIMESTAMP,
+        end_timestamp: *END_TIMESTAMP,
+        thread_count: THREAD_COUNT,
+        t0: T0,
+        genesis_key: GENESIS_KEY.clone(),
+        max_discarded_blocks: SETTINGS.consensus.max_discarded_blocks,
+        future_block_processing_max_periods: SETTINGS.consensus.future_block_processing_max_periods,
+        max_future_processing_blocks: SETTINGS.consensus.max_future_processing_blocks,
+        max_dependency_blocks: SETTINGS.consensus.max_dependency_blocks,
+        delta_f0: DELTA_F0,
+        operation_validity_periods: OPERATION_VALIDITY_PERIODS,
+        periods_per_cycle: PERIODS_PER_CYCLE,
+        stats_timespan: SETTINGS.consensus.stats_timespan,
+        max_send_wait: SETTINGS.consensus.max_send_wait,
+        force_keep_final_periods: SETTINGS.consensus.force_keep_final_periods,
+        endorsement_count: ENDORSEMENT_COUNT,
+        block_db_prune_interval: SETTINGS.consensus.block_db_prune_interval,
+        max_item_return_count: SETTINGS.consensus.max_item_return_count,
+        max_gas_per_block: MAX_GAS_PER_BLOCK,
+        channel_size: CHANNEL_SIZE,
+        bootstrap_part_size: CONSENSUS_BOOTSTRAP_PART_SIZE,
+        broadcast_enabled: SETTINGS.api.enable_broadcast,
+        broadcast_blocks_headers_channel_capacity: SETTINGS
+            .consensus
+            .broadcast_blocks_headers_channel_capacity,
+        broadcast_blocks_channel_capacity: SETTINGS.consensus.broadcast_blocks_channel_capacity,
+        broadcast_filled_blocks_channel_capacity: SETTINGS
+            .consensus
+            .broadcast_filled_blocks_channel_capacity,
+        last_start_period: final_state.read().last_start_period,
     };
 
-    let protocol_receivers = ProtocolReceivers {
-        network_event_receiver,
-        protocol_command_receiver,
+    let (consensus_event_sender, consensus_event_receiver) =
+        crossbeam_channel::bounded(CHANNEL_SIZE);
+    let consensus_channels = ConsensusChannels {
+        execution_controller: execution_controller.clone(),
+        selector_controller: selector_controller.clone(),
+        pool_controller: pool_controller.clone(),
+        controller_event_tx: consensus_event_sender,
+        protocol_controller: protocol_controller.clone(),
+        block_header_sender: broadcast::channel(
+            consensus_config.broadcast_blocks_headers_channel_capacity,
+        )
+        .0,
+        block_sender: broadcast::channel(consensus_config.broadcast_blocks_channel_capacity).0,
+        filled_block_sender: broadcast::channel(
+            consensus_config.broadcast_filled_blocks_channel_capacity,
+        )
+        .0,
     };
 
-    let protocol_manager = start_protocol_controller(
-        protocol_config,
-        protocol_receivers,
-        protocol_senders.clone(),
+    let (consensus_controller, consensus_manager) = start_consensus_worker(
+        consensus_config,
+        consensus_channels.clone(),
+        bootstrap_state.graph,
+        shared_storage.clone(),
+    );
+
+    let (protocol_manager, keypair, node_id) = start_protocol_controller(
+        protocol_config.clone(),
         consensus_controller.clone(),
+        bootstrap_state.peers,
         pool_controller.clone(),
         shared_storage.clone(),
+        protocol_channels,
     )
-    .await
     .expect("could not start protocol controller");
 
     // launch factory
@@ -614,39 +603,37 @@ async fn launch(
         last_start_period: final_state.read().last_start_period,
         periods_per_cycle: PERIODS_PER_CYCLE,
         denunciation_expire_periods: DENUNCIATION_EXPIRE_PERIODS,
-        denunciation_items_max_cycle_delta: DENUNCIATION_ITEMS_MAX_CYCLE_DELTA,
     };
     let factory_channels = FactoryChannels {
         selector: selector_controller.clone(),
         consensus: consensus_controller.clone(),
         pool: pool_controller.clone(),
-        protocol: ProtocolCommandSender(protocol_command_sender.clone()),
+        protocol: protocol_controller.clone(),
         storage: shared_storage.clone(),
     };
-    let factory_manager = start_factory(
-        factory_config,
-        node_wallet.clone(),
-        factory_channels,
-        denunciation_factory_receiver,
-        denunciation_factory_rx,
-    );
+    let factory_manager = start_factory(factory_config, node_wallet.clone(), factory_channels);
 
-    // launch bootstrap server
-    // TODO: use std::net::TcpStream
-    let bootstrap_manager = match bootstrap_config.listen_addr {
-        Some(addr) => start_bootstrap_server::<TcpStream>(
+    let bootstrap_manager = bootstrap_config.listen_addr.map(|addr| {
+        let (waker, listener) = BootstrapTcpListener::new(&addr).unwrap_or_else(|_| {
+            panic!(
+                "{}",
+                format!("Could not bind to address: {}", addr).as_str()
+            )
+        });
+        let mut manager = start_bootstrap_server(
+            listener,
             consensus_controller.clone(),
-            network_command_sender.clone(),
+            protocol_controller.clone(),
             final_state.clone(),
             bootstrap_config,
-            DefaultListener::new(&addr).unwrap(),
-            private_key,
+            keypair.clone(),
             *VERSION,
             mip_store.clone(),
         )
-        .unwrap(),
-        None => None,
-    };
+        .expect("Could not start bootstrap server");
+        manager.set_listener_stopper(waker);
+        manager
+    });
 
     let api_config: APIConfig = APIConfig {
         bind_private: SETTINGS.api.bind_private,
@@ -674,6 +661,7 @@ async fn launch(
         max_function_name_length: MAX_FUNCTION_NAME_LENGTH,
         max_parameter_size: MAX_PARAMETERS_SIZE,
         thread_count: THREAD_COUNT,
+        keypair,
         genesis_timestamp: *GENESIS_TIMESTAMP,
         t0: T0,
         periods_per_cycle: PERIODS_PER_CYCLE,
@@ -708,6 +696,7 @@ async fn launch(
             enabled: SETTINGS.grpc.enabled,
             accept_http1: SETTINGS.grpc.accept_http1,
             enable_cors: SETTINGS.grpc.enable_cors,
+            enable_health: SETTINGS.grpc.enable_health,
             enable_reflection: SETTINGS.grpc.enable_reflection,
             bind: SETTINGS.grpc.bind,
             accept_compressed: SETTINGS.grpc.accept_compressed.clone(),
@@ -744,18 +733,23 @@ async fn launch(
             max_operations_per_message: MAX_OPERATIONS_PER_MESSAGE,
             genesis_timestamp: *GENESIS_TIMESTAMP,
             t0: T0,
+            periods_per_cycle: PERIODS_PER_CYCLE,
             max_channel_size: SETTINGS.grpc.max_channel_size,
             draw_lookahead_period_count: SETTINGS.grpc.draw_lookahead_period_count,
             last_start_period: final_state.read().last_start_period,
+            max_denunciations_per_block_header: MAX_DENUNCIATIONS_PER_BLOCK_HEADER,
+            max_block_ids_per_request: SETTINGS.grpc.max_block_ids_per_request,
+            max_operation_ids_per_request: SETTINGS.grpc.max_operation_ids_per_request,
         };
 
         let grpc_api = MassaGrpc {
             consensus_controller: consensus_controller.clone(),
             consensus_channels: consensus_channels.clone(),
             execution_controller: execution_controller.clone(),
+            execution_channels,
             pool_channels,
             pool_command_sender: pool_controller.clone(),
-            protocol_command_sender: ProtocolCommandSender(protocol_command_sender.clone()),
+            protocol_command_sender: protocol_controller.clone(),
             selector_controller: selector_controller.clone(),
             storage: shared_storage.clone(),
             grpc_config: grpc_config.clone(),
@@ -786,7 +780,7 @@ async fn launch(
 
     // spawn private API
     let (api_private, api_private_stop_rx) = API::<Private>::new(
-        network_command_sender.clone(),
+        protocol_controller.clone(),
         execution_controller.clone(),
         api_config.clone(),
         node_wallet,
@@ -807,10 +801,9 @@ async fn launch(
         api_config.clone(),
         selector_controller.clone(),
         pool_controller.clone(),
-        ProtocolCommandSender(protocol_command_sender.clone()),
-        network_config,
+        protocol_controller.clone(),
+        protocol_config.clone(),
         *VERSION,
-        network_command_sender.clone(),
         node_id,
         shared_storage.clone(),
     );
@@ -860,7 +853,6 @@ async fn launch(
         selector_manager,
         pool_manager,
         protocol_manager,
-        network_manager,
         factory_manager,
         api_private_stop_rx,
         api_private_handle,
@@ -871,13 +863,12 @@ async fn launch(
 }
 
 struct Managers {
-    bootstrap_manager: Option<BootstrapManager<TcpStream>>,
+    bootstrap_manager: Option<BootstrapManager>,
     consensus_manager: Box<dyn ConsensusManager>,
     execution_manager: Box<dyn ExecutionManager>,
     selector_manager: Box<dyn SelectorManager>,
     pool_manager: Box<dyn PoolManager>,
-    protocol_manager: ProtocolManager,
-    network_manager: NetworkManager,
+    protocol_manager: Box<dyn ProtocolManager>,
     factory_manager: Box<dyn FactoryManager>,
 }
 
@@ -889,8 +880,7 @@ async fn stop(
         mut consensus_manager,
         mut selector_manager,
         mut pool_manager,
-        protocol_manager,
-        network_manager,
+        mut protocol_manager,
         mut factory_manager,
     }: Managers,
     api_private_handle: StopHandle,
@@ -902,7 +892,6 @@ async fn stop(
     if let Some(bootstrap_manager) = bootstrap_manager {
         bootstrap_manager
             .stop()
-            .await
             .expect("bootstrap server shutdown failed")
     }
 
@@ -929,10 +918,7 @@ async fn stop(
     factory_manager.stop();
 
     // stop protocol controller
-    let network_event_receiver = protocol_manager
-        .stop()
-        .await
-        .expect("protocol shutdown failed");
+    protocol_manager.stop();
 
     // stop consensus
     consensus_manager.stop();
@@ -949,12 +935,6 @@ async fn stop(
     // stop pool controller
     // TODO
     //let protocol_pool_event_receiver = pool_manager.stop().await.expect("pool shutdown failed");
-
-    // stop network controller
-    network_manager
-        .stop(network_event_receiver)
-        .await
-        .expect("network shutdown failed");
 
     // note that FinalLedger gets destroyed as soon as its Arc count goes to zero
 }
@@ -1068,7 +1048,6 @@ async fn run(args: Args) -> anyhow::Result<()> {
             selector_manager,
             pool_manager,
             protocol_manager,
-            network_manager,
             factory_manager,
             mut api_private_stop_rx,
             api_private_handle,
@@ -1137,7 +1116,6 @@ async fn run(args: Args) -> anyhow::Result<()> {
                 selector_manager,
                 pool_manager,
                 protocol_manager,
-                network_manager,
                 factory_manager,
             },
             api_private_handle,

@@ -41,7 +41,6 @@
 
 [network]
     bind = "[::]:31244"
-    protocol_port = 31244
     connect_timeout = 3000
     wakeup_interval = 5000
     peers_file = "../massa-node/storage/peers.json"

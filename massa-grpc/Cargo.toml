@@ -23,13 +23,12 @@ serde = { version = "1.0", features = ["derive"] }
 tokio = { version = "1.23", features = ["rt-multi-thread", "macros"] }
 tokio-stream = "0.1.12"
 itertools = "0.10"
-h2 = "0.3.15"
+h2 = "0.3.17"
 tracing = "0.1"
 # custom modules
 massa_consensus_exports = { path = "../massa-consensus-exports" }
 massa_hash = { path = "../massa-hash" }
 massa_models = { path = "../massa-models" }
-massa_network_exports = { path = "../massa-network-exports" }
 massa_pos_exports = { path = "../massa-pos-exports" }
 massa_pool_exports = { path = "../massa-pool-exports" }
 massa_protocol_exports = { path = "../massa-protocol-exports" }

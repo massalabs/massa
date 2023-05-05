@@ -6,33 +6,58 @@
 - [api.proto](#api-proto)
     - [BlockParent](#massa-api-v1-BlockParent)
     - [BlockResult](#massa-api-v1-BlockResult)
+    - [BlocksContext](#massa-api-v1-BlocksContext)
     - [DatastoreEntriesQuery](#massa-api-v1-DatastoreEntriesQuery)
     - [DatastoreEntry](#massa-api-v1-DatastoreEntry)
     - [DatastoreEntryFilter](#massa-api-v1-DatastoreEntryFilter)
     - [EndorsementResult](#massa-api-v1-EndorsementResult)
     - [GetBlocksBySlotsRequest](#massa-api-v1-GetBlocksBySlotsRequest)
     - [GetBlocksBySlotsResponse](#massa-api-v1-GetBlocksBySlotsResponse)
+    - [GetBlocksFilter](#massa-api-v1-GetBlocksFilter)
+    - [GetBlocksQuery](#massa-api-v1-GetBlocksQuery)
+    - [GetBlocksRequest](#massa-api-v1-GetBlocksRequest)
+    - [GetBlocksResponse](#massa-api-v1-GetBlocksResponse)
     - [GetDatastoreEntriesRequest](#massa-api-v1-GetDatastoreEntriesRequest)
     - [GetDatastoreEntriesResponse](#massa-api-v1-GetDatastoreEntriesResponse)
+    - [GetLargestStakersRequest](#massa-api-v1-GetLargestStakersRequest)
+    - [GetLargestStakersResponse](#massa-api-v1-GetLargestStakersResponse)
     - [GetNextBlockBestParentsRequest](#massa-api-v1-GetNextBlockBestParentsRequest)
     - [GetNextBlockBestParentsResponse](#massa-api-v1-GetNextBlockBestParentsResponse)
+    - [GetOperationsFilter](#massa-api-v1-GetOperationsFilter)
+    - [GetOperationsQuery](#massa-api-v1-GetOperationsQuery)
+    - [GetOperationsRequest](#massa-api-v1-GetOperationsRequest)
+    - [GetOperationsResponse](#massa-api-v1-GetOperationsResponse)
+    - [GetScExecutionEventsContext](#massa-api-v1-GetScExecutionEventsContext)
+    - [GetScExecutionEventsFilter](#massa-api-v1-GetScExecutionEventsFilter)
+    - [GetScExecutionEventsQuery](#massa-api-v1-GetScExecutionEventsQuery)
+    - [GetScExecutionEventsRequest](#massa-api-v1-GetScExecutionEventsRequest)
+    - [GetScExecutionEventsResponse](#massa-api-v1-GetScExecutionEventsResponse)
     - [GetSelectorDrawsRequest](#massa-api-v1-GetSelectorDrawsRequest)
     - [GetSelectorDrawsResponse](#massa-api-v1-GetSelectorDrawsResponse)
     - [GetTransactionsThroughputRequest](#massa-api-v1-GetTransactionsThroughputRequest)
     - [GetTransactionsThroughputResponse](#massa-api-v1-GetTransactionsThroughputResponse)
     - [GetVersionRequest](#massa-api-v1-GetVersionRequest)
     - [GetVersionResponse](#massa-api-v1-GetVersionResponse)
+    - [LargestStakerEntry](#massa-api-v1-LargestStakerEntry)
+    - [LargestStakersContext](#massa-api-v1-LargestStakersContext)
+    - [LargestStakersFilter](#massa-api-v1-LargestStakersFilter)
+    - [LargestStakersQuery](#massa-api-v1-LargestStakersQuery)
     - [NewBlocksHeadersRequest](#massa-api-v1-NewBlocksHeadersRequest)
     - [NewBlocksHeadersResponse](#massa-api-v1-NewBlocksHeadersResponse)
     - [NewBlocksRequest](#massa-api-v1-NewBlocksRequest)
     - [NewBlocksResponse](#massa-api-v1-NewBlocksResponse)
+    - [NewEndorsementsRequest](#massa-api-v1-NewEndorsementsRequest)
+    - [NewEndorsementsResponse](#massa-api-v1-NewEndorsementsResponse)
     - [NewFilledBlocksRequest](#massa-api-v1-NewFilledBlocksRequest)
     - [NewFilledBlocksResponse](#massa-api-v1-NewFilledBlocksResponse)
     - [NewOperationsFilter](#massa-api-v1-NewOperationsFilter)
     - [NewOperationsQuery](#massa-api-v1-NewOperationsQuery)
     - [NewOperationsRequest](#massa-api-v1-NewOperationsRequest)
     - [NewOperationsResponse](#massa-api-v1-NewOperationsResponse)
+    - [NewSlotExecutionOutputsRequest](#massa-api-v1-NewSlotExecutionOutputsRequest)
+    - [NewSlotExecutionOutputsResponse](#massa-api-v1-NewSlotExecutionOutputsResponse)
     - [OperationResult](#massa-api-v1-OperationResult)
+    - [OperationsContext](#massa-api-v1-OperationsContext)
     - [SelectorDraws](#massa-api-v1-SelectorDraws)
     - [SelectorDrawsFilter](#massa-api-v1-SelectorDrawsFilter)
     - [SelectorDrawsQuery](#massa-api-v1-SelectorDrawsQuery)
@@ -52,10 +77,13 @@
 - [block.proto](#block-proto)
     - [Block](#massa-api-v1-Block)
     - [BlockHeader](#massa-api-v1-BlockHeader)
+    - [BlockWrapper](#massa-api-v1-BlockWrapper)
     - [FilledBlock](#massa-api-v1-FilledBlock)
     - [FilledOperationTuple](#massa-api-v1-FilledOperationTuple)
     - [SignedBlock](#massa-api-v1-SignedBlock)
     - [SignedBlockHeader](#massa-api-v1-SignedBlockHeader)
+  
+    - [BlockStatus](#massa-api-v1-BlockStatus)
   
 - [common.proto](#common-proto)
     - [BytesMapFieldEntry](#massa-api-v1-BytesMapFieldEntry)
@@ -65,15 +93,28 @@
     - [Endorsement](#massa-api-v1-Endorsement)
     - [SignedEndorsement](#massa-api-v1-SignedEndorsement)
   
+- [execution.proto](#execution-proto)
+    - [ExecutionOutput](#massa-api-v1-ExecutionOutput)
+    - [FinalizedExecutionOutput](#massa-api-v1-FinalizedExecutionOutput)
+    - [ScExecutionEvent](#massa-api-v1-ScExecutionEvent)
+    - [ScExecutionEventContext](#massa-api-v1-ScExecutionEventContext)
+    - [SlotExecutionOutput](#massa-api-v1-SlotExecutionOutput)
+  
+    - [ScExecutionEventStatus](#massa-api-v1-ScExecutionEventStatus)
+    - [ScExecutionOutputStatus](#massa-api-v1-ScExecutionOutputStatus)
+  
 - [operation.proto](#operation-proto)
     - [CallSC](#massa-api-v1-CallSC)
     - [ExecuteSC](#massa-api-v1-ExecuteSC)
     - [Operation](#massa-api-v1-Operation)
     - [OperationType](#massa-api-v1-OperationType)
+    - [OperationWrapper](#massa-api-v1-OperationWrapper)
     - [RollBuy](#massa-api-v1-RollBuy)
     - [RollSell](#massa-api-v1-RollSell)
     - [SignedOperation](#massa-api-v1-SignedOperation)
     - [Transaction](#massa-api-v1-Transaction)
+  
+    - [OperationStatus](#massa-api-v1-OperationStatus)
   
 - [slot.proto](#slot-proto)
     - [IndexedSlot](#massa-api-v1-IndexedSlot)
@@ -115,6 +156,21 @@ Holds Block response
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | block_id | [string](#string) |  | Block id |
+
+
+
+
+
+
+<a name="massa-api-v1-BlocksContext"></a>
+
+### BlocksContext
+Blocks context
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| slot | [Slot](#massa-api-v1-Slot) |  | Slot |
 
 
 
@@ -215,6 +271,69 @@ GetBlocksBySlotsResponse holds response from GetBlocksBySlots
 
 
 
+<a name="massa-api-v1-GetBlocksFilter"></a>
+
+### GetBlocksFilter
+GetBlocks Filter
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| id | [string](#string) |  | Block id |
+
+
+
+
+
+
+<a name="massa-api-v1-GetBlocksQuery"></a>
+
+### GetBlocksQuery
+GetBlocks Query
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| filter | [GetBlocksFilter](#massa-api-v1-GetBlocksFilter) |  | Filter |
+
+
+
+
+
+
+<a name="massa-api-v1-GetBlocksRequest"></a>
+
+### GetBlocksRequest
+GetBlocksRequest holds request for GetBlocks
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| id | [string](#string) |  | Request id |
+| queries | [GetBlocksQuery](#massa-api-v1-GetBlocksQuery) | repeated | Queries |
+
+
+
+
+
+
+<a name="massa-api-v1-GetBlocksResponse"></a>
+
+### GetBlocksResponse
+GetBlocksResponse holds response from GetBlocks
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| id | [string](#string) |  | Request id |
+| context | [BlocksContext](#massa-api-v1-BlocksContext) |  | Context |
+| blocks | [BlockWrapper](#massa-api-v1-BlockWrapper) | repeated | Blocks wrappers |
+
+
+
+
+
+
 <a name="massa-api-v1-GetDatastoreEntriesRequest"></a>
 
 ### GetDatastoreEntriesRequest
@@ -247,6 +366,39 @@ GetDatastoreEntriesResponse holds response from GetDatastoreEntries
 
 
 
+<a name="massa-api-v1-GetLargestStakersRequest"></a>
+
+### GetLargestStakersRequest
+GetLargestStakersRequest holds request from GetLargestStakers
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| id | [string](#string) |  | Request id |
+| query | [LargestStakersQuery](#massa-api-v1-LargestStakersQuery) |  | Query |
+
+
+
+
+
+
+<a name="massa-api-v1-GetLargestStakersResponse"></a>
+
+### GetLargestStakersResponse
+GetLargestStakersResponse holds response from GetLargestStakers
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| id | [string](#string) |  | Request id |
+| context | [LargestStakersContext](#massa-api-v1-LargestStakersContext) |  | Context |
+| stakers | [LargestStakerEntry](#massa-api-v1-LargestStakerEntry) | repeated | Largest stakers |
+
+
+
+
+
+
 <a name="massa-api-v1-GetNextBlockBestParentsRequest"></a>
 
 ### GetNextBlockBestParentsRequest
@@ -272,6 +424,152 @@ GetNextBlockBestParentsResponse holds response from GetNextBlockBestParents
 | ----- | ---- | ----- | ----------- |
 | id | [string](#string) |  | Request id |
 | parents | [BlockParent](#massa-api-v1-BlockParent) | repeated | Best parents |
+
+
+
+
+
+
+<a name="massa-api-v1-GetOperationsFilter"></a>
+
+### GetOperationsFilter
+GetOperations Filter
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| id | [string](#string) |  | Operation id |
+
+
+
+
+
+
+<a name="massa-api-v1-GetOperationsQuery"></a>
+
+### GetOperationsQuery
+GetOperations Query
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| filter | [GetOperationsFilter](#massa-api-v1-GetOperationsFilter) |  | Filter |
+
+
+
+
+
+
+<a name="massa-api-v1-GetOperationsRequest"></a>
+
+### GetOperationsRequest
+GetOperationsRequest holds request for GetOperations
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| id | [string](#string) |  | Request id |
+| queries | [GetOperationsQuery](#massa-api-v1-GetOperationsQuery) | repeated | Queries |
+
+
+
+
+
+
+<a name="massa-api-v1-GetOperationsResponse"></a>
+
+### GetOperationsResponse
+GetOperationsResponse holds response from GetOperations
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| id | [string](#string) |  | Request id |
+| context | [OperationsContext](#massa-api-v1-OperationsContext) |  | Context |
+| operations | [OperationWrapper](#massa-api-v1-OperationWrapper) | repeated | Operations wrappers |
+
+
+
+
+
+
+<a name="massa-api-v1-GetScExecutionEventsContext"></a>
+
+### GetScExecutionEventsContext
+ScExecutionEvents context
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| slot | [Slot](#massa-api-v1-Slot) |  | Slot |
+
+
+
+
+
+
+<a name="massa-api-v1-GetScExecutionEventsFilter"></a>
+
+### GetScExecutionEventsFilter
+GetScExecutionEvents Filter
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| start_slot | [Slot](#massa-api-v1-Slot) | optional | Start slot |
+| end_slot | [Slot](#massa-api-v1-Slot) | optional | End slot |
+| caller_address | [string](#string) | optional | Caller address |
+| emitter_address | [string](#string) | optional | Emitter address |
+| original_operation_id | [string](#string) | optional | Original operation id |
+| status | [ScExecutionEventStatus](#massa-api-v1-ScExecutionEventStatus) | repeated | Status |
+
+
+
+
+
+
+<a name="massa-api-v1-GetScExecutionEventsQuery"></a>
+
+### GetScExecutionEventsQuery
+GetScExecutionEvents Query
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| filter | [GetScExecutionEventsFilter](#massa-api-v1-GetScExecutionEventsFilter) |  | Filter |
+
+
+
+
+
+
+<a name="massa-api-v1-GetScExecutionEventsRequest"></a>
+
+### GetScExecutionEventsRequest
+GetScExecutionEventsRequest holds request for GetScExecutionEvents
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| id | [string](#string) |  | Request id |
+| query | [GetScExecutionEventsQuery](#massa-api-v1-GetScExecutionEventsQuery) |  | Query |
+
+
+
+
+
+
+<a name="massa-api-v1-GetScExecutionEventsResponse"></a>
+
+### GetScExecutionEventsResponse
+GetScExecutionEventsResponse holds response from GetScExecutionEvents
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| id | [string](#string) |  | Request id |
+| context | [GetScExecutionEventsContext](#massa-api-v1-GetScExecutionEventsContext) |  | Context |
+| events | [ScExecutionEvent](#massa-api-v1-ScExecutionEvent) | repeated | ScExecutionEvents |
 
 
 
@@ -372,6 +670,70 @@ GetVersionResponse holds response from GetVersion
 
 
 
+<a name="massa-api-v1-LargestStakerEntry"></a>
+
+### LargestStakerEntry
+LargestStakerEntry
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| address | [string](#string) |  | Address |
+| rolls | [fixed64](#fixed64) |  | Rolls |
+
+
+
+
+
+
+<a name="massa-api-v1-LargestStakersContext"></a>
+
+### LargestStakersContext
+LargestStakers context
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| slot | [Slot](#massa-api-v1-Slot) |  | Slot |
+
+
+
+
+
+
+<a name="massa-api-v1-LargestStakersFilter"></a>
+
+### LargestStakersFilter
+LargestStakers Filter
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| min_rolls | [fixed64](#fixed64) | optional | Minimum rolls (Optional) |
+| max_rolls | [fixed64](#fixed64) | optional | Maximum rolls (Optional) |
+
+
+
+
+
+
+<a name="massa-api-v1-LargestStakersQuery"></a>
+
+### LargestStakersQuery
+LargestStakers Query
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| offset | [fixed64](#fixed64) |  | Starting offset for the list of stakers. Defaults to 1 |
+| limit | [fixed64](#fixed64) |  | Limits the number of stakers to return. Defaults to 50 |
+| filter | [LargestStakersFilter](#massa-api-v1-LargestStakersFilter) |  | Filter |
+
+
+
+
+
+
 <a name="massa-api-v1-NewBlocksHeadersRequest"></a>
 
 ### NewBlocksHeadersRequest
@@ -428,6 +790,37 @@ NewBlocksResponse holds response from NewBlocks
 | ----- | ---- | ----- | ----------- |
 | id | [string](#string) |  | Request id |
 | block | [SignedBlock](#massa-api-v1-SignedBlock) |  | Signed block |
+
+
+
+
+
+
+<a name="massa-api-v1-NewEndorsementsRequest"></a>
+
+### NewEndorsementsRequest
+NewEndorsementsRequest holds request for NewEndorsements
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| id | [string](#string) |  | Request id |
+
+
+
+
+
+
+<a name="massa-api-v1-NewEndorsementsResponse"></a>
+
+### NewEndorsementsResponse
+NewEndorsementsResponse holds response from NewEndorsements
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| id | [string](#string) |  | Request id |
+| endorsement | [SignedEndorsement](#massa-api-v1-SignedEndorsement) |  | Signed endorsement |
 
 
 
@@ -527,6 +920,37 @@ NewOperationsResponse holds response from NewOperations
 
 
 
+<a name="massa-api-v1-NewSlotExecutionOutputsRequest"></a>
+
+### NewSlotExecutionOutputsRequest
+NewSlotExecutionOutputsRequest holds request for NewSlotExecutionOutputs
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| id | [string](#string) |  | Request id |
+
+
+
+
+
+
+<a name="massa-api-v1-NewSlotExecutionOutputsResponse"></a>
+
+### NewSlotExecutionOutputsResponse
+NewSlotExecutionOutputsResponse holds response from NewSlotExecutionOutputs
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| id | [string](#string) |  | Request id |
+| output | [SlotExecutionOutput](#massa-api-v1-SlotExecutionOutput) |  | Slot execution output |
+
+
+
+
+
+
 <a name="massa-api-v1-OperationResult"></a>
 
 ### OperationResult
@@ -536,6 +960,21 @@ Holds Operation response
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | operations_ids | [string](#string) | repeated | Operations ids |
+
+
+
+
+
+
+<a name="massa-api-v1-OperationsContext"></a>
+
+### OperationsContext
+Operations context
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| slot | [Slot](#massa-api-v1-Slot) |  | Slot |
 
 
 
@@ -697,7 +1136,7 @@ TransactionsThroughputRequest holds request for TransactionsThroughput
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | id | [string](#string) |  | Request id |
-| interval | [fixed64](#fixed64) | optional | Optional timer interval in sec. Defaults to 10s |
+| interval | [fixed64](#fixed64) | optional | Timer interval in seconds (Optional). Defaults to 10s |
 
 
 
@@ -749,20 +1188,26 @@ Massa gRPC service
 
 | Method Name | Request Type | Response Type | Description |
 | ----------- | ------------ | ------------- | ------------|
+| GetBlocks | [GetBlocksRequest](#massa-api-v1-GetBlocksRequest) | [GetBlocksResponse](#massa-api-v1-GetBlocksResponse) | Get blocks by ids |
 | GetBlocksBySlots | [GetBlocksBySlotsRequest](#massa-api-v1-GetBlocksBySlotsRequest) | [GetBlocksBySlotsResponse](#massa-api-v1-GetBlocksBySlotsResponse) | Get blocks by slots |
 | GetDatastoreEntries | [GetDatastoreEntriesRequest](#massa-api-v1-GetDatastoreEntriesRequest) | [GetDatastoreEntriesResponse](#massa-api-v1-GetDatastoreEntriesResponse) | Get datastore entries |
+| GetLargestStakers | [GetLargestStakersRequest](#massa-api-v1-GetLargestStakersRequest) | [GetLargestStakersResponse](#massa-api-v1-GetLargestStakersResponse) | Get largest stakers |
 | GetNextBlockBestParents | [GetNextBlockBestParentsRequest](#massa-api-v1-GetNextBlockBestParentsRequest) | [GetNextBlockBestParentsResponse](#massa-api-v1-GetNextBlockBestParentsResponse) | Get next block best parents |
+| GetOperations | [GetOperationsRequest](#massa-api-v1-GetOperationsRequest) | [GetOperationsResponse](#massa-api-v1-GetOperationsResponse) | Get operations |
+| GetScExecutionEvents | [GetScExecutionEventsRequest](#massa-api-v1-GetScExecutionEventsRequest) | [GetScExecutionEventsResponse](#massa-api-v1-GetScExecutionEventsResponse) | Get smart contracts execution events |
 | GetSelectorDraws | [GetSelectorDrawsRequest](#massa-api-v1-GetSelectorDrawsRequest) | [GetSelectorDrawsResponse](#massa-api-v1-GetSelectorDrawsResponse) | Get selector draws |
 | GetTransactionsThroughput | [GetTransactionsThroughputRequest](#massa-api-v1-GetTransactionsThroughputRequest) | [GetTransactionsThroughputResponse](#massa-api-v1-GetTransactionsThroughputResponse) | Get transactions throughput |
 | GetVersion | [GetVersionRequest](#massa-api-v1-GetVersionRequest) | [GetVersionResponse](#massa-api-v1-GetVersionResponse) | Get node version |
 | NewBlocks | [NewBlocksRequest](#massa-api-v1-NewBlocksRequest) stream | [NewBlocksResponse](#massa-api-v1-NewBlocksResponse) stream | New received and produced blocks |
 | NewBlocksHeaders | [NewBlocksHeadersRequest](#massa-api-v1-NewBlocksHeadersRequest) stream | [NewBlocksHeadersResponse](#massa-api-v1-NewBlocksHeadersResponse) stream | New received and produced blocks headers |
+| NewEndorsements | [NewEndorsementsRequest](#massa-api-v1-NewEndorsementsRequest) stream | [NewEndorsementsResponse](#massa-api-v1-NewEndorsementsResponse) stream | New received and produced endorsements |
 | NewFilledBlocks | [NewFilledBlocksRequest](#massa-api-v1-NewFilledBlocksRequest) stream | [NewFilledBlocksResponse](#massa-api-v1-NewFilledBlocksResponse) stream | New received and produced blocks with operations |
-| NewOperations | [NewOperationsRequest](#massa-api-v1-NewOperationsRequest) stream | [NewOperationsResponse](#massa-api-v1-NewOperationsResponse) stream | New received and produced perations |
+| NewOperations | [NewOperationsRequest](#massa-api-v1-NewOperationsRequest) stream | [NewOperationsResponse](#massa-api-v1-NewOperationsResponse) stream | New received and produced operations |
+| NewSlotExecutionOutputs | [NewSlotExecutionOutputsRequest](#massa-api-v1-NewSlotExecutionOutputsRequest) stream | [NewSlotExecutionOutputsResponse](#massa-api-v1-NewSlotExecutionOutputsResponse) stream | New received and slot execution events |
 | SendBlocks | [SendBlocksRequest](#massa-api-v1-SendBlocksRequest) stream | [SendBlocksResponse](#massa-api-v1-SendBlocksResponse) stream | Send blocks |
 | SendEndorsements | [SendEndorsementsRequest](#massa-api-v1-SendEndorsementsRequest) stream | [SendEndorsementsResponse](#massa-api-v1-SendEndorsementsResponse) stream | Send endorsements |
 | SendOperations | [SendOperationsRequest](#massa-api-v1-SendOperationsRequest) stream | [SendOperationsResponse](#massa-api-v1-SendOperationsResponse) stream | Send operations |
-| TransactionsThroughput | [TransactionsThroughputRequest](#massa-api-v1-TransactionsThroughputRequest) stream | [TransactionsThroughputResponse](#massa-api-v1-TransactionsThroughputResponse) stream | Transactions throughput per second |
+| TransactionsThroughput | [TransactionsThroughputRequest](#massa-api-v1-TransactionsThroughputRequest) stream | [TransactionsThroughputResponse](#massa-api-v1-TransactionsThroughputResponse) stream | Transactions throughput |
 
  
 
@@ -803,6 +1248,23 @@ Block header
 | parents | [string](#string) | repeated | parents |
 | operation_merkle_root | [string](#string) |  | All operations hash |
 | endorsements | [SignedEndorsement](#massa-api-v1-SignedEndorsement) | repeated | Signed endorsements |
+
+
+
+
+
+
+<a name="massa-api-v1-BlockWrapper"></a>
+
+### BlockWrapper
+A wrapper around a block with its metadata
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| id | [string](#string) |  | The unique ID of the block. |
+| block | [Block](#massa-api-v1-Block) |  | The block object itself |
+| status | [BlockStatus](#massa-api-v1-BlockStatus) | repeated | The execution statuses of the block |
 
 
 
@@ -879,6 +1341,21 @@ Signed block header
 
 
  
+
+
+<a name="massa-api-v1-BlockStatus"></a>
+
+### BlockStatus
+Possible statuses for a block
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| BLOCK_STATUS_UNSPECIFIED | 0 | Defaut enum value |
+| BLOCK_STATUS_IN_BLOCKCLIQUE | 1 | The block is in the greatest clique (and not final) |
+| BLOCK_STATUS_FINAL | 2 | The block is final |
+| BLOCK_STATUS_CANDIDATE | 3 | The block is candidate (active any clique but not final) |
+| BLOCK_STATUS_DISCARDED | 4 | The block is discarded |
+
 
  
 
@@ -991,6 +1468,134 @@ Signed endorsement
 
 
 
+<a name="execution-proto"></a>
+<p align="right"><a href="#top">Top</a></p>
+
+## execution.proto
+
+
+
+<a name="massa-api-v1-ExecutionOutput"></a>
+
+### ExecutionOutput
+ExecutionOutput
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| slot | [Slot](#massa-api-v1-Slot) |  | Slot |
+| block_id | [string](#string) | optional | Block id at that slot (optional) |
+| events | [ScExecutionEvent](#massa-api-v1-ScExecutionEvent) | repeated | Events emitted by the execution step |
+
+
+
+
+
+
+<a name="massa-api-v1-FinalizedExecutionOutput"></a>
+
+### FinalizedExecutionOutput
+FinalizedExecutionOutput
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| slot | [Slot](#massa-api-v1-Slot) |  | Slot |
+
+
+
+
+
+
+<a name="massa-api-v1-ScExecutionEvent"></a>
+
+### ScExecutionEvent
+ScExecutionEvent
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| context | [ScExecutionEventContext](#massa-api-v1-ScExecutionEventContext) |  | Sc execution context |
+| data | [string](#string) |  | json data string |
+
+
+
+
+
+
+<a name="massa-api-v1-ScExecutionEventContext"></a>
+
+### ScExecutionEventContext
+ScExecutionEvent context
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| id | [string](#string) |  | base58 encoded slot(period &#43; thread) &#43; index_in_slot |
+| origin_slot | [Slot](#massa-api-v1-Slot) |  | When was it generated |
+| block_id | [string](#string) | optional | Block id if there was a block at that slot (optional) |
+| index_in_slot | [fixed64](#fixed64) |  | Index of the event in the slot |
+| call_stack | [string](#string) | repeated | Call stack addresses. most recent at the end |
+| origin_operation_id | [string](#string) | optional | Origin operation id (optional) |
+| status | [ScExecutionEventStatus](#massa-api-v1-ScExecutionEventStatus) | repeated | Status |
+
+
+
+
+
+
+<a name="massa-api-v1-SlotExecutionOutput"></a>
+
+### SlotExecutionOutput
+SlotExecutionOutput
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| execution_output | [ExecutionOutput](#massa-api-v1-ExecutionOutput) |  | Executed slot output |
+| final_execution_output | [FinalizedExecutionOutput](#massa-api-v1-FinalizedExecutionOutput) |  | Executed final slot |
+
+
+
+
+
+ 
+
+
+<a name="massa-api-v1-ScExecutionEventStatus"></a>
+
+### ScExecutionEventStatus
+ScExecutionEventStatus type enum
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| SC_EXECUTION_EVENT_STATUS_UNSPECIFIED | 0 | Defaut enum value |
+| SC_EXECUTION_EVENT_STATUS_FINAL | 1 | Final status |
+| SC_EXECUTION_EVENT_STATUS_READ_ONLY | 2 | Read only status |
+| SC_EXECUTION_EVENT_STATUS_FAILURE | 3 | Failure status |
+
+
+
+<a name="massa-api-v1-ScExecutionOutputStatus"></a>
+
+### ScExecutionOutputStatus
+ScExecutionOutputStatus type enum
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| SC_EXECUTION_OUTPUT_STATUS_UNSPECIFIED | 0 | Defaut enum value |
+| SC_EXECUTION_OUTPUT_STATUS_FINAL | 1 | Final status |
+| SC_EXECUTION_OUTPUT_STATUS_CANDIDATE | 2 | Read only status |
+
+
+ 
+
+ 
+
+ 
+
+
+
 <a name="operation-proto"></a>
 <p align="right"><a href="#top">Top</a></p>
 
@@ -1026,6 +1631,7 @@ Execute a smart contract
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | data | [bytes](#bytes) |  | Smart contract bytecode. |
+| max_coins | [fixed64](#fixed64) |  | The maximum of coins that could be spent by the operation sender |
 | max_gas | [fixed64](#fixed64) |  | The maximum amount of gas that the execution of the contract is allowed to cost |
 | datastore | [BytesMapFieldEntry](#massa-api-v1-BytesMapFieldEntry) | repeated | A key-value store associating a hash to arbitrary bytes |
 
@@ -1064,6 +1670,25 @@ Type specific operation content
 | roll_sell | [RollSell](#massa-api-v1-RollSell) |  | The sender sells `roll_count` rolls. Roll price is defined in configuration |
 | execut_sc | [ExecuteSC](#massa-api-v1-ExecuteSC) |  | Execute a smart contract |
 | call_sc | [CallSC](#massa-api-v1-CallSC) |  | Calls an exported function from a stored smart contract |
+
+
+
+
+
+
+<a name="massa-api-v1-OperationWrapper"></a>
+
+### OperationWrapper
+A wrapper around an operation with its metadata
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| id | [string](#string) |  | The unique ID of the operation. |
+| block_ids | [string](#string) | repeated | The IDs of the blocks in which the operation appears |
+| thread | [fixed32](#fixed32) |  | The thread in which the operation can be included |
+| operation | [SignedOperation](#massa-api-v1-SignedOperation) |  | The operation object itself |
+| status | [OperationStatus](#massa-api-v1-OperationStatus) | repeated | The execution statuses of the operation |
 
 
 
@@ -1135,6 +1760,22 @@ Transfer coins from sender to recipient
 
 
  
+
+
+<a name="massa-api-v1-OperationStatus"></a>
+
+### OperationStatus
+Possible statuses for an operation
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| OPERATION_STATUS_UNSPECIFIED | 0 | Defaut enum value |
+| OPERATION_STATUS_PENDING | 1 | The operation is still pending |
+| OPERATION_STATUS_FINAL | 2 | The operation is final |
+| OPERATION_STATUS_SUCCESS | 3 | The operation was executed successfully |
+| OPERATION_STATUS_FAILURE | 4 | The operation failed to execute |
+| OPERATION_STATUS_UNKNOWN | 5 | The status of the operation is unknown |
+
 
  
 

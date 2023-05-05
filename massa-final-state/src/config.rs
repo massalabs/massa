@@ -3,7 +3,7 @@
 //! This file defines a configuration structure containing all settings for final state management
 
 use massa_async_pool::AsyncPoolConfig;
-use massa_executed_ops::ExecutedOpsConfig;
+use massa_executed_ops::{ExecutedDenunciationsConfig, ExecutedOpsConfig};
 use massa_ledger_exports::LedgerConfig;
 use massa_pos_exports::PoSConfig;
 use std::path::PathBuf;
@@ -19,6 +19,8 @@ pub struct FinalStateConfig {
     pub pos_config: PoSConfig,
     /// executed operations configuration
     pub executed_ops_config: ExecutedOpsConfig,
+    /// executed denunciations configuration
+    pub executed_denunciations_config: ExecutedDenunciationsConfig,
     /// final changes history length
     pub final_history_length: usize,
     /// thread count
@@ -29,4 +31,11 @@ pub struct FinalStateConfig {
     pub initial_seed_string: String,
     /// initial rolls file path
     pub initial_rolls_path: PathBuf,
+    /// endorsement count
+    pub endorsement_count: u32,
+    /// max number of denunciation index in executed denunciations struct
+    pub max_executed_denunciations_length: u64,
+    /// max number of denunciations that can be included in a block header
+    /// or in executed denunciations struct
+    pub max_denunciations_per_block_header: u32,
 }

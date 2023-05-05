@@ -168,18 +168,13 @@ impl SecureShareEndorsement {
 pub type SecureShareEndorsement = SecureShare<Endorsement, EndorsementId>;
 
 impl SecureShareContent for Endorsement {
-    /// Compute hash for Endorsement in SecuredHeader - taking care of Denunciation verification
-    fn compute_hash(
-        content: &Self,
-        content_serialized: &[u8],
-        content_creator_pub_key: &PublicKey,
-    ) -> Hash {
-        let de_data = EndorsementDenunciationData::new(content.slot, content.index);
-        let mut hash_data = Vec::new();
-        hash_data.extend(content_creator_pub_key.to_bytes());
-        hash_data.extend(de_data.to_bytes());
-        hash_data.extend(Hash::compute_from(content_serialized).to_bytes());
-        Hash::compute_from(&hash_data)
+    /// Compute the signed hash
+    fn compute_signed_hash(&self, public_key: &PublicKey, content_hash: &Hash) -> Hash {
+        let mut signed_data: Vec<u8> = Vec::new();
+        signed_data.extend(public_key.to_bytes());
+        signed_data.extend(EndorsementDenunciationData::new(self.slot, self.index).to_bytes());
+        signed_data.extend(content_hash.to_bytes());
+        Hash::compute_from(&signed_data)
     }
 }
 
@@ -401,6 +396,7 @@ impl Deserializer<Endorsement> for EndorsementDeserializerLW {
 }
 
 /// A denunciation data for endorsement
+#[derive(Debug)]
 pub struct EndorsementDenunciationData {
     slot: Slot,
     index: u32,
@@ -424,6 +420,7 @@ impl EndorsementDenunciationData {
 #[cfg(test)]
 mod tests {
     use crate::secure_share::{SecureShareContent, SecureShareDeserializer, SecureShareSerializer};
+    use massa_signature::verify_signature_batch;
 
     use super::*;
     use massa_serialization::DeserializeError;
@@ -483,5 +480,60 @@ mod tests {
         .unwrap();
         // Test only endorsement index as with the lw ser. we only process this field
         assert_eq!(res_endorsement.content.index, endorsement.content.index);
+    }
+
+    #[test]
+    fn test_verify_sig_batch() {
+        // test verify_signature_batch as we override SecureShareEndorsements compute_hash
+
+        let sender_keypair = KeyPair::generate();
+        let content_1 = Endorsement {
+            slot: Slot::new(10, 1),
+            index: 0,
+            endorsed_block: BlockId(Hash::compute_from("blk1".as_bytes())),
+        };
+        let s_endorsement_1: SecureShareEndorsement =
+            Endorsement::new_verifiable(content_1, EndorsementSerializer::new(), &sender_keypair)
+                .unwrap();
+        let mut serialized = vec![];
+        SecureShareSerializer::new()
+            .serialize(&s_endorsement_1, &mut serialized)
+            .unwrap();
+        let (_, s_endorsement_1): (&[u8], SecureShare<Endorsement, EndorsementId>) =
+            SecureShareDeserializer::new(EndorsementDeserializer::new(32, 32))
+                .deserialize::<DeserializeError>(&serialized)
+                .unwrap();
+        let sender_keypair = KeyPair::generate();
+        let content_2 = Endorsement {
+            slot: Slot::new(2, 5),
+            index: 0,
+            endorsed_block: BlockId(Hash::compute_from("blk2".as_bytes())),
+        };
+        let s_endorsement_2: SecureShareEndorsement =
+            Endorsement::new_verifiable(content_2, EndorsementSerializerLW::new(), &sender_keypair)
+                .unwrap();
+
+        // Test with batch len == 1 (no // verif)
+        let batch_1 = [(
+            s_endorsement_1.compute_signed_hash(),
+            s_endorsement_1.signature,
+            s_endorsement_1.content_creator_pub_key,
+        )];
+        verify_signature_batch(&batch_1).unwrap();
+
+        // Test with batch len > 1 (// verif)
+        let batch_2 = [
+            (
+                s_endorsement_1.compute_signed_hash(),
+                s_endorsement_1.signature,
+                s_endorsement_1.content_creator_pub_key,
+            ),
+            (
+                s_endorsement_2.compute_signed_hash(),
+                s_endorsement_2.signature,
+                s_endorsement_2.content_creator_pub_key,
+            ),
+        ];
+        verify_signature_batch(&batch_2).unwrap();
     }
 }

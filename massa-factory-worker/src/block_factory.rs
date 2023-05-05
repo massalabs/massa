@@ -216,6 +216,7 @@ impl BlockFactoryWorker {
                 parents: parents.into_iter().map(|(id, _period)| id).collect(),
                 operation_merkle_root: global_operations_hash,
                 endorsements,
+                denunciations: self.channels.pool.get_block_denunciations(&slot),
             },
             BlockHeaderSerializer::new(), // TODO reuse self.block_header_serializer
             block_producer_keypair,

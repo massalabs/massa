@@ -76,4 +76,12 @@ pub struct ExecutionConfig {
     pub hd_cache_size: usize,
     /// Amount of entries removed when `hd_cache_size` is reached
     pub snip_amount: usize,
+    /// Number of roll to remove per denunciation
+    pub roll_count_to_slash_on_denunciation: u64,
+    /// Denunciation expire delta
+    pub denunciation_expire_periods: u64,
+    /// whether slot execution outputs broadcast is enabled
+    pub broadcast_enabled: bool,
+    /// slot execution outputs channel capacity
+    pub broadcast_slot_execution_output_channel_capacity: usize,
 }
