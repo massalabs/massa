@@ -661,6 +661,44 @@
 <a href="#661" id="661">661</a>
 <a href="#662" id="662">662</a>
 <a href="#663" id="663">663</a>
+<a href="#664" id="664">664</a>
+<a href="#665" id="665">665</a>
+<a href="#666" id="666">666</a>
+<a href="#667" id="667">667</a>
+<a href="#668" id="668">668</a>
+<a href="#669" id="669">669</a>
+<a href="#670" id="670">670</a>
+<a href="#671" id="671">671</a>
+<a href="#672" id="672">672</a>
+<a href="#673" id="673">673</a>
+<a href="#674" id="674">674</a>
+<a href="#675" id="675">675</a>
+<a href="#676" id="676">676</a>
+<a href="#677" id="677">677</a>
+<a href="#678" id="678">678</a>
+<a href="#679" id="679">679</a>
+<a href="#680" id="680">680</a>
+<a href="#681" id="681">681</a>
+<a href="#682" id="682">682</a>
+<a href="#683" id="683">683</a>
+<a href="#684" id="684">684</a>
+<a href="#685" id="685">685</a>
+<a href="#686" id="686">686</a>
+<a href="#687" id="687">687</a>
+<a href="#688" id="688">688</a>
+<a href="#689" id="689">689</a>
+<a href="#690" id="690">690</a>
+<a href="#691" id="691">691</a>
+<a href="#692" id="692">692</a>
+<a href="#693" id="693">693</a>
+<a href="#694" id="694">694</a>
+<a href="#695" id="695">695</a>
+<a href="#696" id="696">696</a>
+<a href="#697" id="697">697</a>
+<a href="#698" id="698">698</a>
+<a href="#699" id="699">699</a>
+<a href="#700" id="700">700</a>
+<a href="#701" id="701">701</a>
 </pre><pre class="rust"><code><span class="kw">use </span><span class="kw">crate</span>::block_id::BlockId;
 <span class="kw">use </span><span class="kw">crate</span>::denunciation::{Denunciation, DenunciationDeserializer, DenunciationSerializer};
 <span class="kw">use </span><span class="kw">crate</span>::endorsement::{
@@ -690,6 +728,10 @@
 <span class="doccomment">/// block header
 </span><span class="attr">#[derive(Debug, Clone, Serialize, Deserialize)]
 </span><span class="kw">pub struct </span>BlockHeader {
+    <span class="doccomment">/// current network version
+    </span><span class="kw">pub </span>current_version: u32,
+    <span class="doccomment">/// announced network version
+    </span><span class="kw">pub </span>announced_version: u32,
     <span class="doccomment">/// slot
     </span><span class="kw">pub </span>slot: Slot,
     <span class="doccomment">/// parents
@@ -827,11 +869,13 @@
     /// use massa_signature::KeyPair;
     /// use massa_serialization::Serializer;
     ///
-    /// let keypair = KeyPair::generate();
+    /// let keypair = KeyPair::generate(0).unwrap();
     /// let parents = (0..THREAD_COUNT)
     ///   .map(|i| BlockId(Hash::compute_from(&amp;[i])))
     ///   .collect();
     /// let header = BlockHeader {
+    ///   current_version: 0,
+    ///   announced_version: 0,
     ///   slot: Slot::new(1, 1),
     ///   parents,
     ///   operation_merkle_root: Hash::compute_from(&quot;mno&quot;.as_bytes()),
@@ -863,7 +907,15 @@
     /// BlockHeaderSerializer::new().serialize(&amp;header, &amp;mut buffer).unwrap();
     /// ```
     </span><span class="kw">fn </span>serialize(<span class="kw-2">&amp;</span><span class="self">self</span>, value: <span class="kw-2">&amp;</span>BlockHeader, buffer: <span class="kw-2">&amp;mut </span>Vec&lt;u8&gt;) -&gt; <span class="prelude-ty">Result</span>&lt;(), SerializeError&gt; {
-        <span class="self">self</span>.slot_serializer.serialize(<span class="kw-2">&amp;</span>value.slot, buffer)<span class="question-mark">?</span>;
+        <span class="comment">// network versions
+        </span><span class="self">self</span>.u32_serializer
+            .serialize(<span class="kw-2">&amp;</span>value.current_version, buffer)<span class="question-mark">?</span>;
+        <span class="self">self</span>.u32_serializer
+            .serialize(<span class="kw-2">&amp;</span>value.announced_version, buffer)<span class="question-mark">?</span>;
+
+        <span class="comment">// slot
+        </span><span class="self">self</span>.slot_serializer.serialize(<span class="kw-2">&amp;</span>value.slot, buffer)<span class="question-mark">?</span>;
+
         <span class="comment">// parents (note: there should be none if slot period=0)
         </span><span class="kw">if </span>value.parents.is_empty() {
             buffer.push(<span class="number">0</span>);
@@ -917,6 +969,7 @@
     last_start_period: <span class="prelude-ty">Option</span>&lt;u64&gt;,
     denunciation_len_deserializer: U32VarIntDeserializer,
     denunciation_deserializer: DenunciationDeserializer,
+    network_versions_deserializer: U32VarIntDeserializer,
 }
 
 <span class="kw">impl </span>BlockHeaderDeserializer {
@@ -943,6 +996,10 @@
                 Included(<span class="number">0</span>),
                 Included(max_denunciations_in_block_header),
             ),
+            network_versions_deserializer: U32VarIntDeserializer::new(
+                Included(<span class="number">0</span>),
+                Included(u32::MAX),
+            ),
             denunciation_deserializer: DenunciationDeserializer::new(
                 thread_count,
                 endorsement_count,
@@ -965,11 +1022,13 @@
     /// use massa_signature::KeyPair;
     /// use massa_serialization::{Serializer, Deserializer, DeserializeError};
     ///
-    /// let keypair = KeyPair::generate();
+    /// let keypair = KeyPair::generate(0).unwrap();
     /// let parents: Vec&lt;BlockId&gt; = (0..THREAD_COUNT)
     ///   .map(|i| BlockId(Hash::compute_from(&amp;[i])))
     ///   .collect();
     /// let header = BlockHeader {
+    ///   current_version: 0,
+    ///   announced_version: 0,
     ///   slot: Slot::new(1, 1),
     ///   parents: parents.clone(),
     ///   operation_merkle_root: Hash::compute_from(&quot;mno&quot;.as_bytes()),
@@ -1009,61 +1068,74 @@
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         buffer: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>[u8],
     ) -&gt; IResult&lt;<span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>[u8], BlockHeader, E&gt; {
-        <span class="kw">let </span>(rest, (slot, parents, operation_merkle_root)): (<span class="kw-2">&amp;</span>[u8], (Slot, Vec&lt;BlockId&gt;, Hash)) =
-            context(<span class="string">&quot;Failed BlockHeader deserialization&quot;</span>, |input| {
-                <span class="kw">let </span>(rest, (slot, parents)) = tuple((
-                    context(<span class="string">&quot;Failed slot deserialization&quot;</span>, |input| {
-                        <span class="self">self</span>.slot_deserializer.deserialize(input)
-                    }),
-                    context(
-                        <span class="string">&quot;Failed parents deserialization&quot;</span>,
-                        alt((
-                            preceded(tag(<span class="kw-2">&amp;</span>[<span class="number">0</span>]), |input| <span class="prelude-val">Ok</span>((input, Vec::new()))),
-                            preceded(
-                                tag(<span class="kw-2">&amp;</span>[<span class="number">1</span>]),
-                                count(
-                                    context(<span class="string">&quot;Failed block_id deserialization&quot;</span>, |input| {
-                                        <span class="self">self</span>.hash_deserializer
-                                            .deserialize(input)
-                                            .map(|(rest, hash)| (rest, BlockId(hash)))
-                                    }),
-                                    <span class="self">self</span>.thread_count <span class="kw">as </span>usize,
-                                ),
+        <span class="kw">let </span>(rest, (current_version, announced_version, slot, parents, operation_merkle_root)): (
+            <span class="kw-2">&amp;</span>[u8],
+            (u32, u32, Slot, Vec&lt;BlockId&gt;, Hash),
+        ) = context(<span class="string">&quot;Failed BlockHeader deserialization&quot;</span>, |input| {
+            <span class="kw">let </span>(rest, (current_version, announced_version, slot, parents)) = tuple((
+                context(<span class="string">&quot;Failed current_version deserialization&quot;</span>, |input| {
+                    <span class="self">self</span>.network_versions_deserializer.deserialize(input)
+                }),
+                context(<span class="string">&quot;Failed announced_version deserialization&quot;</span>, |input| {
+                    <span class="self">self</span>.network_versions_deserializer.deserialize(input)
+                }),
+                context(<span class="string">&quot;Failed slot deserialization&quot;</span>, |input| {
+                    <span class="self">self</span>.slot_deserializer.deserialize(input)
+                }),
+                context(
+                    <span class="string">&quot;Failed parents deserialization&quot;</span>,
+                    alt((
+                        preceded(tag(<span class="kw-2">&amp;</span>[<span class="number">0</span>]), |input| <span class="prelude-val">Ok</span>((input, Vec::new()))),
+                        preceded(
+                            tag(<span class="kw-2">&amp;</span>[<span class="number">1</span>]),
+                            count(
+                                context(<span class="string">&quot;Failed block_id deserialization&quot;</span>, |input| {
+                                    <span class="self">self</span>.hash_deserializer
+                                        .deserialize(input)
+                                        .map(|(rest, hash)| (rest, BlockId(hash)))
+                                }),
+                                <span class="self">self</span>.thread_count <span class="kw">as </span>usize,
                             ),
-                        )),
-                    ),
-                ))
-                .parse(input)<span class="question-mark">?</span>;
+                        ),
+                    )),
+                ),
+            ))
+            .parse(input)<span class="question-mark">?</span>;
 
-                <span class="comment">// validate the parent/slot invariants before moving on to other fields
-                </span><span class="kw">if let </span><span class="prelude-val">Some</span>(last_start_period) = <span class="self">self</span>.last_start_period {
-                    <span class="kw">if </span>slot.period == last_start_period &amp;&amp; !parents.is_empty() {
-                        <span class="kw">return </span><span class="prelude-val">Err</span>(nom::Err::Failure(ContextError::add_context(
-                            rest,
-                            <span class="string">&quot;Genesis block cannot contain parents&quot;</span>,
-                            ParseError::from_error_kind(rest, nom::error::ErrorKind::Fail),
-                        )));
-                    } <span class="kw">else if </span>slot.period != last_start_period
-                        &amp;&amp; parents.len() != <span class="self">self</span>.thread_count <span class="kw">as </span>usize
-                    {
-                        <span class="kw">return </span><span class="prelude-val">Err</span>(nom::Err::Failure(ContextError::add_context(
-                            rest,
-                            <span class="string">&quot;Non-genesis block must have same numbers of parents as threads count&quot;</span>,
-                            ParseError::from_error_kind(rest, nom::error::ErrorKind::Fail),
-                        )));
-                    }
+            <span class="comment">// validate the parent/slot invariants before moving on to other fields
+            </span><span class="kw">if let </span><span class="prelude-val">Some</span>(last_start_period) = <span class="self">self</span>.last_start_period {
+                <span class="kw">if </span>slot.period == last_start_period &amp;&amp; !parents.is_empty() {
+                    <span class="kw">return </span><span class="prelude-val">Err</span>(nom::Err::Failure(ContextError::add_context(
+                        rest,
+                        <span class="string">&quot;Genesis block cannot contain parents&quot;</span>,
+                        ParseError::from_error_kind(rest, nom::error::ErrorKind::Fail),
+                    )));
+                } <span class="kw">else if </span>slot.period != last_start_period
+                    &amp;&amp; parents.len() != <span class="self">self</span>.thread_count <span class="kw">as </span>usize
+                {
+                    <span class="kw">return </span><span class="prelude-val">Err</span>(nom::Err::Failure(ContextError::add_context(
+                        rest,
+                        <span class="string">&quot;Non-genesis block must have same numbers of parents as threads count&quot;</span>,
+                        ParseError::from_error_kind(rest, nom::error::ErrorKind::Fail),
+                    )));
                 }
+            }
 
-                <span class="kw">let </span>(rest, merkle) = context(<span class="string">&quot;Failed operation_merkle_root&quot;</span>, |input| {
-                    <span class="self">self</span>.hash_deserializer.deserialize(input)
-                })
-                .parse(rest)<span class="question-mark">?</span>;
-                <span class="prelude-val">Ok</span>((rest, (slot, parents, merkle)))
+            <span class="kw">let </span>(rest, merkle) = context(<span class="string">&quot;Failed operation_merkle_root&quot;</span>, |input| {
+                <span class="self">self</span>.hash_deserializer.deserialize(input)
             })
-            .parse(buffer)<span class="question-mark">?</span>;
+            .parse(rest)<span class="question-mark">?</span>;
+            <span class="prelude-val">Ok</span>((
+                rest,
+                (current_version, announced_version, slot, parents, merkle),
+            ))
+        })
+        .parse(buffer)<span class="question-mark">?</span>;
 
         <span class="kw">if </span>parents.is_empty() {
             <span class="kw">let </span>res = BlockHeader {
+                current_version,
+                announced_version,
                 slot,
                 parents,
                 operation_merkle_root,
@@ -1141,6 +1213,8 @@
         .parse(rest)<span class="question-mark">?</span>;
 
         <span class="kw">let </span>header = BlockHeader {
+            current_version,
+            announced_version,
             slot,
             parents,
             operation_merkle_root,
@@ -1240,7 +1314,7 @@
 
     <span class="attr">#[test]
     </span><span class="kw">fn </span>test_block_header_ser_der() {
-        <span class="kw">let </span>keypair = KeyPair::generate();
+        <span class="kw">let </span>keypair = KeyPair::generate(<span class="number">0</span>).unwrap();
 
         <span class="kw">let </span>slot = Slot::new(<span class="number">7</span>, <span class="number">1</span>);
         <span class="kw">let </span>parents_1: Vec&lt;BlockId&gt; = (<span class="number">0</span>..THREAD_COUNT)
@@ -1267,6 +1341,8 @@
         <span class="kw">let </span>de_b = Denunciation::try_from((<span class="kw-2">&amp;</span>s_endo_1, <span class="kw-2">&amp;</span>s_endo_2)).unwrap();
 
         <span class="kw">let </span>block_header_1 = BlockHeader {
+            current_version: <span class="number">0</span>,
+            announced_version: <span class="number">0</span>,
             slot,
             parents: parents_1,
             operation_merkle_root: Hash::compute_from(<span class="string">&quot;mno&quot;</span>.as_bytes()),

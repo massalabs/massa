@@ -313,6 +313,8 @@
 <a href="#313" id="313">313</a>
 <a href="#314" id="314">314</a>
 <a href="#315" id="315">315</a>
+<a href="#316" id="316">316</a>
+<a href="#317" id="317">317</a>
 </pre><pre class="rust"><code><span class="doccomment">//! DEFAULT VALUES USED TO INITIALIZE DIVERS CONFIGURATIONS STRUCTURES
 //!
 //!
@@ -330,7 +332,7 @@
 //! (`default_testing.rs`) But as for the current file you shouldn&#39;t modify it.
 </span><span class="kw">use </span>std::str::FromStr;
 
-<span class="kw">use crate</span>::{address::ADDRESS_SIZE_BYTES, amount::Amount, version::Version};
+<span class="kw">use crate</span>::{amount::Amount, version::Version};
 <span class="kw">use </span>massa_signature::KeyPair;
 <span class="kw">use </span>massa_time::MassaTime;
 <span class="kw">use </span>num::rational::Ratio;
@@ -413,6 +415,8 @@
 </span><span class="kw">pub const </span>BLOCK_REWARD: Amount = Amount::from_mantissa_scale(<span class="number">3</span>, <span class="number">1</span>);
 <span class="doccomment">/// Cost to store one byte in the ledger
 </span><span class="kw">pub const </span>LEDGER_COST_PER_BYTE: Amount = Amount::from_mantissa_scale(<span class="number">25</span>, <span class="number">5</span>);
+<span class="doccomment">/// Address size in bytes
+</span><span class="kw">pub const </span>ADDRESS_SIZE_BYTES: usize = <span class="number">32</span>;
 <span class="doccomment">/// Cost for a base entry (address + balance (5 bytes constant))
 </span><span class="kw">pub const </span>LEDGER_ENTRY_BASE_SIZE: usize = ADDRESS_SIZE_BYTES + <span class="number">8</span>;
 <span class="doccomment">/// Cost for a base entry datastore 10 bytes constant to avoid paying more for longer keys
