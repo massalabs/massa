@@ -472,7 +472,7 @@ impl MipStore {
     pub fn update_with(
         &mut self,
         mip_store: &MipStore,
-    ) -> Result<(Vec<MipInfo>, Vec<MipInfo>), ()> {
+    ) -> Result<(Vec<MipInfo>, BTreeMap<MipInfo, MipState>), ()> {
         let mut lock = self.0.write();
         let lock_other = mip_store.0.read();
         lock.update_with(lock_other.deref())
@@ -528,7 +528,7 @@ impl MipStoreRaw {
     pub fn update_with(
         &mut self,
         store_raw: &MipStoreRaw,
-    ) -> Result<(Vec<MipInfo>, Vec<MipInfo>), ()> {
+    ) -> Result<(Vec<MipInfo>, BTreeMap<MipInfo, MipState>), ()> {
         // iter over items in given store:
         // -> 2 cases:
         // * MipInfo is already in self store -> add to 'to_update' list
@@ -628,12 +628,12 @@ impl MipStoreRaw {
         }
 
         if should_merge {
-            let added = to_add.keys().cloned().collect();
+            // let added = to_add.keys().cloned().collect();
             let updated = to_update.keys().cloned().collect();
 
             self.store.append(&mut to_update);
             self.store.append(&mut to_add);
-            Ok((updated, added))
+            Ok((updated, to_add))
         } else {
             Err(())
         }
