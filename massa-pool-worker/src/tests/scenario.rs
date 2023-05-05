@@ -63,7 +63,7 @@ lazy_static::lazy_static! {
 /// Insert multiple operations in the pool. (10)
 ///
 /// Create a mock-execution-controller story:
-/// 1. unexpected_opse_among, returning storage
+/// 1. unexpected_opse_among, returning storage.get_op_refs()
 /// 2. get_final_and_candidate_balance, returning 1, 1
 /// 3. repeat #1 9 times
 ///
