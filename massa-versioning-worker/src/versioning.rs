@@ -468,11 +468,11 @@ impl MipStore {
         lock.update_network_version_stats(slot_timestamp, network_versions);
     }
 
-    #[allow(clippy::result_unit_err)]
+    #[allow(clippy::result_large_err)]
     pub fn update_with(
         &mut self,
         mip_store: &MipStore,
-    ) -> Result<(Vec<MipInfo>, Vec<MipInfo>), ()> {
+    ) -> Result<(Vec<MipInfo>, Vec<MipInfo>), UpdateWithError> {
         let mut lock = self.0.write();
         let lock_other = mip_store.0.read();
         lock.update_with(lock_other.deref())
@@ -514,6 +514,20 @@ impl MipStoreStats {
     }
 }
 
+/// Error returned by
+#[derive(Error, Debug, PartialEq)]
+pub enum UpdateWithError {
+    // State is not coherent with associated MipInfo, ex: State is active but MipInfo.start was not reach yet
+    #[error("MipInfo {0:?} is not coherent with state: {1:?}")]
+    NonCoherent(MipInfo, MipState),
+    // ex: State is already started but received state is only defined
+    #[error("For MipInfo {0:?}, trying to downgrade from state {1:?} to {2:?}")]
+    Downgrade(MipInfo, ComponentState, ComponentState),
+    // ex: MipInfo 2 start is before MipInfo 1 timeout (MipInfo timings should only be sequential)
+    #[error("MipInfo {0:?} has overlapping data of MipInfo {1:?}")]
+    Overlapping(MipInfo, MipInfo),
+}
+
 /// Store of all versioning info
 #[derive(Debug, Clone, PartialEq)]
 pub struct MipStoreRaw {
@@ -524,11 +538,11 @@ pub struct MipStoreRaw {
 impl MipStoreRaw {
     /// Update our store with another (usually after a bootstrap where we received another store)
     /// Return list of updated / added if update is successful
-    #[allow(clippy::result_unit_err)]
+    #[allow(clippy::result_large_err)]
     pub fn update_with(
         &mut self,
         store_raw: &MipStoreRaw,
-    ) -> Result<(Vec<MipInfo>, Vec<MipInfo>), ()> {
+    ) -> Result<(Vec<MipInfo>, Vec<MipInfo>), UpdateWithError> {
         // iter over items in given store:
         // -> 2 cases:
         // * MipInfo is already in self store -> add to 'to_update' list
@@ -551,12 +565,15 @@ impl MipStoreRaw {
         let mut names: BTreeSet<String> = self.store.iter().map(|i| i.0.name.clone()).collect();
         let mut to_update: BTreeMap<MipInfo, MipState> = Default::default();
         let mut to_add: BTreeMap<MipInfo, MipState> = Default::default();
-        let mut should_merge = true;
+        let mut has_error: Option<UpdateWithError> = None;
 
         for (v_info, v_state) in store_raw.store.iter() {
             if !v_state.is_coherent_with(v_info) {
                 // As soon as we found one non coherent state we abort the merge
-                should_merge = false;
+                has_error = Some(UpdateWithError::NonCoherent(
+                    v_info.clone(),
+                    v_state.clone(),
+                ));
                 break;
             }
 
@@ -566,6 +583,7 @@ impl MipStoreRaw {
                 let v_state_id: u32 = ComponentStateTypeId::from(&v_state.state).into();
                 let v_state_orig_id: u32 = ComponentStateTypeId::from(&v_state_orig.state).into();
 
+                // Note: we do not check for state: active OR failed OR error as they cannot change
                 if matches!(
                     v_state_orig.state,
                     ComponentState::Defined(_)
@@ -578,7 +596,11 @@ impl MipStoreRaw {
                         to_update.insert(v_info.clone(), v_state.clone());
                     } else {
                         // Trying to downgrade state' (e.g. trying to go from 'active' -> 'defined')
-                        should_merge = false;
+                        has_error = Some(UpdateWithError::Downgrade(
+                            v_info.clone(),
+                            v_state_orig.state,
+                            v_state.state,
+                        ));
                         break;
                     }
                 }
@@ -616,7 +638,10 @@ impl MipStoreRaw {
                     } else {
                         // Something is wrong (time range not ok? / version not incr? / names?
                         // or component version not incr?)
-                        should_merge = false;
+                        has_error = Some(UpdateWithError::Overlapping(
+                            v_info.clone(),
+                            last_v_info.clone(),
+                        ));
                         break;
                     }
                 } else {
@@ -627,15 +652,16 @@ impl MipStoreRaw {
             }
         }
 
-        if should_merge {
-            let added = to_add.keys().cloned().collect();
-            let updated = to_update.keys().cloned().collect();
+        match has_error {
+            None => {
+                let added = to_add.keys().cloned().collect();
+                let updated = to_update.keys().cloned().collect();
 
-            self.store.append(&mut to_update);
-            self.store.append(&mut to_add);
-            Ok((updated, added))
-        } else {
-            Err(())
+                self.store.append(&mut to_update);
+                self.store.append(&mut to_add);
+                Ok((updated, added))
+            }
+            Some(e) => Err(e),
         }
     }
 
@@ -744,6 +770,7 @@ impl<const N: usize> TryFrom<([(MipInfo, MipState); N], MipStatsConfig)> for Mip
 #[cfg(test)]
 mod test {
     use super::*;
+    use std::assert_matches::assert_matches;
 
     use std::str::FromStr;
 
@@ -1130,10 +1157,11 @@ mod test {
             block_count_considered: 10,
             counters_max: 5,
         };
-        let mut vs_raw_1 = MipStoreRaw {
-            store: BTreeMap::from([(vi_1.clone(), vs_1.clone()), (vi_2.clone(), vs_2.clone())]),
-            stats: MipStoreStats::new(mip_stats_cfg.clone()),
-        };
+        let mut vs_raw_1 = MipStoreRaw::try_from((
+            [(vi_1.clone(), vs_1.clone()), (vi_2.clone(), vs_2.clone())],
+            mip_stats_cfg.clone(),
+        ))
+        .unwrap();
 
         let vs_2_2 = advance_state_until(ComponentState::active(), &vi_2);
         assert_eq!(vs_2_2, ComponentState::active());
@@ -1144,7 +1172,11 @@ mod test {
         ))
         .unwrap();
 
-        vs_raw_1.update_with(&vs_raw_2).unwrap();
+        let (updated, added) = vs_raw_1.update_with(&vs_raw_2).unwrap();
+
+        // Check update_with result
+        assert_eq!(added, vec![]);
+        assert_eq!(updated, vec![vi_2.clone()]);
 
         // Expect state 1 (for vi_1) no change, state 2 (for vi_2) updated to "Active"
         assert_eq!(vs_raw_1.store.get(&vi_1).unwrap().state, vs_1.state);
@@ -1157,6 +1189,7 @@ mod test {
         // 1- overlapping time range
         // 2- overlapping versioning component
 
+        // part 0 - defines data for the test
         let vi_1 = MipInfo {
             name: "MIP-0002".to_string(),
             version: 2,
@@ -1184,58 +1217,73 @@ mod test {
             counters_max: 5,
         };
 
-        let mut vs_raw_1 = MipStoreRaw::try_from((
-            [(vi_1.clone(), vs_1.clone()), (vi_2.clone(), vs_2.clone())],
-            mip_stats_cfg.clone(),
-        ))
-        .unwrap();
+        // part 1
+        {
+            let mut vs_raw_1 = MipStoreRaw::try_from((
+                [(vi_1.clone(), vs_1.clone()), (vi_2.clone(), vs_2.clone())],
+                mip_stats_cfg.clone(),
+            ))
+            .unwrap();
 
-        let mut vi_2_2 = vi_2.clone();
-        // Make versioning info invalid (because start == vi_1.timeout)
-        vi_2_2.start = vi_1.timeout;
-        let vs_2_2 = advance_state_until(ComponentState::defined(), &vi_2_2);
-        let vs_raw_2 = MipStoreRaw {
-            store: BTreeMap::from([
-                (vi_1.clone(), vs_1.clone()),
-                (vi_2_2.clone(), vs_2_2.clone()),
-            ]),
-            stats: MipStoreStats::new(mip_stats_cfg.clone()),
-        };
+            let mut vi_2_2 = vi_2.clone();
+            // Make mip info invalid (because start == vi_1.timeout)
+            vi_2_2.start = vi_1.timeout;
+            let vs_2_2 = advance_state_until(ComponentState::defined(), &vi_2_2);
+            let vs_raw_2 = MipStoreRaw {
+                store: BTreeMap::from([
+                    (vi_1.clone(), vs_1.clone()),
+                    (vi_2_2.clone(), vs_2_2.clone()),
+                ]),
+                stats: MipStoreStats::new(mip_stats_cfg.clone()),
+            };
 
-        // This fails because try_from use update_with
-        let _vs_raw_2_ = MipStoreRaw::try_from((
-            [
-                (vi_1.clone(), vs_1.clone()),
-                (vi_2_2.clone(), vs_2_2.clone()),
-            ],
-            mip_stats_cfg.clone(),
-        ));
-        assert_eq!(_vs_raw_2_.is_err(), true);
+            assert_matches!(
+                vs_raw_1.update_with(&vs_raw_2),
+                Err(UpdateWithError::Overlapping(..))
+            );
+            assert_eq!(vs_raw_1.store.get(&vi_1).unwrap().state, vs_1.state);
+            assert_eq!(vs_raw_1.store.get(&vi_2).unwrap().state, vs_2.state);
 
-        assert_eq!(vs_raw_1.update_with(&vs_raw_2), Err(()));
-        assert_eq!(vs_raw_1.store.get(&vi_1).unwrap().state, vs_1.state);
-        assert_eq!(vs_raw_1.store.get(&vi_2).unwrap().state, vs_2.state);
+            // Check that try_from fails too (because it uses update_with internally)
+            {
+                let _vs_raw_2_ = MipStoreRaw::try_from((
+                    [
+                        (vi_1.clone(), vs_1.clone()),
+                        (vi_2_2.clone(), vs_2_2.clone()),
+                    ],
+                    mip_stats_cfg.clone(),
+                ));
+                assert_eq!(_vs_raw_2_.is_err(), true);
+            }
+        }
 
-        // 2- overlapping component version
-        let mut vs_raw_1 = MipStoreRaw::try_from((
-            [(vi_1.clone(), vs_1.clone()), (vi_2.clone(), vs_2.clone())],
-            mip_stats_cfg.clone(),
-        ))
-        .unwrap();
+        // part 2
+        {
+            let mut vs_raw_1 = MipStoreRaw::try_from((
+                [(vi_1.clone(), vs_1.clone()), (vi_2.clone(), vs_2.clone())],
+                mip_stats_cfg.clone(),
+            ))
+            .unwrap();
 
-        let mut vi_2_2 = vi_2.clone();
-        vi_2_2.components = vi_1.components.clone();
+            let mut vi_2_2 = vi_2.clone();
+            // Make mip info invalid (because we have vi.1.components == vi_2_2.components ~ overlapping versions)
+            vi_2_2.components = vi_1.components.clone();
 
-        let vs_2_2 = advance_state_until(ComponentState::defined(), &vi_2_2);
-        let vs_raw_2 = MipStoreRaw {
-            store: BTreeMap::from([
-                (vi_1.clone(), vs_1.clone()),
-                (vi_2_2.clone(), vs_2_2.clone()),
-            ]),
-            stats: MipStoreStats::new(mip_stats_cfg.clone()),
-        };
+            let vs_2_2 = advance_state_until(ComponentState::defined(), &vi_2_2);
+            let vs_raw_2 = MipStoreRaw {
+                store: BTreeMap::from([
+                    (vi_1.clone(), vs_1.clone()),
+                    (vi_2_2.clone(), vs_2_2.clone()),
+                ]),
+                stats: MipStoreStats::new(mip_stats_cfg.clone()),
+            };
 
-        assert_eq!(vs_raw_1.update_with(&vs_raw_2), Err(()));
+            assert_matches!(
+                vs_raw_1.update_with(&vs_raw_2),
+                Err(UpdateWithError::Downgrade(..))
+            );
+            assert!(vs_raw_1.update_with(&vs_raw_2).is_err());
+        }
     }
 
     #[test]
