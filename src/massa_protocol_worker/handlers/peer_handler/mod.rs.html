@@ -956,10 +956,10 @@
                     </span><span class="kw">if </span>!announcement.listeners.is_empty() {
                         peer_db_write
                             .index_by_newest
-                            .retain(|<span class="kw">_</span>, peer_id_stored| peer_id_stored != peer_id);
+                            .retain(|(<span class="kw">_</span>, peer_id_stored)| peer_id_stored != peer_id);
                         peer_db_write
                             .index_by_newest
-                            .insert(Reverse(announcement.timestamp), peer_id.clone());
+                            .insert((Reverse(announcement.timestamp), peer_id.clone()));
                     }
                     peer_db_write
                         .peers
@@ -1016,7 +1016,7 @@
             serializer.serialize_id(<span class="kw-2">&amp;</span>msg, <span class="kw-2">&amp;mut </span>buf).unwrap();
             serializer.serialize(<span class="kw-2">&amp;</span>msg, <span class="kw-2">&amp;mut </span>buf).unwrap();
             endpoint.send(buf.as_slice()).unwrap();
-            std::thread::sleep(Duration::from_millis(<span class="number">200</span>));
+            std::thread::sleep(Duration::from_millis(<span class="number">500</span>));
             endpoint.shutdown();
         });
         <span class="prelude-val">Ok</span>(())
