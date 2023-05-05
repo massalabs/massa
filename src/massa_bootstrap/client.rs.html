@@ -600,6 +600,8 @@
 <a href="#600" id="600">600</a>
 <a href="#601" id="601">601</a>
 <a href="#602" id="602">602</a>
+<a href="#603" id="603">603</a>
+<a href="#604" id="604">604</a>
 </pre><pre class="rust"><code><span class="kw">use </span>humantime::format_duration;
 <span class="kw">use </span>std::{
     collections::HashSet,
@@ -1038,7 +1040,9 @@
 }
 
 <span class="doccomment">/// Gets the state from a bootstrap server
-/// needs to be CANCELLABLE
+/// Uses the cond-var pattern to handle sig-int cancellation.
+/// Make sure that the passed in `interrupted` shares its Arc
+/// with a sig-int handler setup.
 </span><span class="attr">#[allow(clippy::too_many_arguments)]
 </span><span class="kw">pub fn </span>get_state(
     bootstrap_config: <span class="kw-2">&amp;</span>BootstrapConfig,
