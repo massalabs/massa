@@ -501,9 +501,18 @@ impl InitConnectionHandler for MassaHandshake {
             let mut buf = PeerId::from_public_key(keypair.get_public_key()).to_bytes();
             buf.push(1);
             let msg = PeerManagementMessage::ListPeers(peers_to_send).into();
-            serializer.serialize_id(&msg, &mut buf).unwrap();
-            serializer.serialize(&msg, &mut buf).unwrap();
-            endpoint.send(buf.as_slice()).unwrap();
+            if let Err(err) = serializer.serialize_id(&msg, &mut buf) {
+                warn!("Failed to serialize id message: {}", err);
+                return;
+            }
+            if let Err(err) = serializer.serialize(&msg, &mut buf) {
+                warn!("Failed to serialize message: {}", err);
+                return;
+            }
+            if let Err(err) = endpoint.send(buf.as_slice()) {
+                warn!("Failed to send message: {}", err);
+                return;
+            }
             std::thread::sleep(Duration::from_millis(500));
             endpoint.shutdown();
         });
