@@ -15,9 +15,11 @@ massa_pool_exports = { path = "../massa-pool-exports" }
 massa_execution_exports = { path = "../massa-execution-exports" }
 massa_time = { path = "../massa-time" }
 massa_pos_exports = { path = "../massa-pos-exports" }
+lazy_static = "1.4.0"
 
 [dev-dependencies]
 tokio = { version = "1.23", features = ["sync"] }
+mockall = "0.11.4"
 massa_signature = { path = "../massa-signature" }
 massa_hash = { path = "../massa-hash" }
 massa_pool_exports = { path = "../massa-pool-exports", features = [ "testing" ] }
@@ -26,8 +28,4 @@ crossbeam-channel = { version = "0.5" }
 
 # for more information on what are the following features used for, see the cargo.toml at workspace level
 [features]
-testing = [
-    "massa_pool_exports/testing",
-    "massa_execution_exports/testing",
-    "massa_pos_exports/testing",
-]
+testing = ["massa_pool_exports/testing", "massa_execution_exports/testing", "massa_pos_exports/testing"]

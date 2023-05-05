@@ -12,7 +12,11 @@
 //! Same as the previous test with a low limit of size to check if
 //! configurations are taken into account.
 
+use mockall::Sequence;
+use std::borrow::BorrowMut;
 use std::sync::mpsc::Receiver;
+use std::sync::Mutex;
+use std::sync::RwLock;
 use std::thread;
 use std::time::Duration;
 
@@ -40,6 +44,9 @@ use massa_signature::KeyPair;
 use massa_storage::Storage;
 use tokio::sync::broadcast;
 
+lazy_static::lazy_static! {
+    static ref STORAGE: RwLock<Storage> = RwLock::new(Storage::create_root());
+}
 /// # Test simple get operation
 /// Just try to get some operations stored in pool
 ///
@@ -61,14 +68,26 @@ use tokio::sync::broadcast;
 #[test]
 fn test_simple_get_operations() {
     let config = PoolConfig::default();
-    let mut storage: Storage = Storage::create_root();
     let endorsement_sender = broadcast::channel(2000).0;
     let operation_sender = broadcast::channel(5000).0;
     let mut execution_controller = Box::new(MockExecutionController::new());
+
+    // Setup the execution story.
     execution_controller.expect_clone_box().returning(|| {
         let mut res = Box::new(MockExecutionController::new());
+        let mut seq = Sequence::new();
         res.expect_unexecuted_ops_among()
-            .returning(|_, _| todo!("hardcode return value for unexecuted_ops_among"));
+            .times(1)
+            .return_once(|_, _| STORAGE.read().unwrap().get_op_refs().clone())
+            .in_sequence(&mut seq);
+        res.expect_get_final_and_candidate_balance()
+            .times(1)
+            .return_once(|_| vec![(Some(Amount::from_raw(1)), Some(Amount::from_raw(1)))])
+            .in_sequence(&mut seq);
+        res.expect_unexecuted_ops_among()
+            .times(9)
+            .returning(|_, _| STORAGE.read().unwrap().get_op_refs().clone())
+            .in_sequence(&mut seq);
         res
     });
     let mut selector_controller = Box::new(MockSelectorController::new());
@@ -79,7 +98,7 @@ fn test_simple_get_operations() {
 
     let (mut pool_manager, mut pool_controller) = start_pool_controller(
         config,
-        &storage,
+        &STORAGE.read().unwrap(),
         execution_controller,
         PoolChannels {
             endorsement_sender,
@@ -95,58 +114,15 @@ fn test_simple_get_operations() {
     let creator_thread = creator_address.get_thread(config.thread_count);
 
     // setup storage
-    storage.store_operations(create_some_operations(10, &op_gen));
-    let unexecuted_ops = storage.get_op_refs().clone();
-    pool_controller.add_operations(storage);
+    STORAGE
+        .write()
+        .unwrap()
+        .store_operations(create_some_operations(10, &op_gen));
+
+    pool_controller.add_operations(STORAGE.read().unwrap().clone());
 
     // Allow some time for the pool to add the operations
     std::thread::sleep(Duration::from_millis(100));
-
-    // // Start mock execution thread.
-    // // Provides the data for `pool_controller.get_block_operations`
-    // {
-    //     let creator_address = creator_address;
-    //     let balance_vec = vec![(Some(Amount::from_raw(1)), Some(Amount::from_raw(1)))];
-    //     let receive = |er: &Receiver<test_exports::MockExecutionControllerMessage>| {
-    //         er.recv_timeout(Duration::from_millis(100))
-    //     };
-    //     std::thread::spawn(move || {
-    //         match receive(&execution_receiver) {
-    //             Ok(test_exports::MockExecutionControllerMessage::UnexecutedOpsAmong {
-    //                 response_tx,
-    //                 ..
-    //             }) => response_tx.send(unexecuted_ops.clone()).unwrap(),
-    //             Ok(op) => panic!("Expected `ControllerMsg::UnexecutedOpsAmong`, got {:?}", op),
-    //             Err(_) => panic!("execution never called"),
-    //         }
-    //         match receive(&execution_receiver) {
-    //             Ok(test_exports::MockExecutionControllerMessage::GetFinalAndCandidateBalance {
-    //                 addresses,
-    //                 response_tx,
-    //                 ..
-    //             }) => {
-    //                 assert_eq!(addresses.len(), 1);
-    //                 assert_eq!(addresses[0], creator_address);
-    //                 response_tx.send(balance_vec).unwrap();
-    //             }
-    //             Ok(op) => panic!(
-    //                 "Expected `ControllerMsg::GetFinalAndCandidateBalance`, got {:?}",
-    //                 op
-    //             ),
-    //             Err(_) => panic!("execution never called"),
-    //         }
-
-    //         (1..10).for_each(|_| {
-    //             if let Ok(test_exports::MockExecutionControllerMessage::UnexecutedOpsAmong {
-    //                 response_tx,
-    //                 ..
-    //             }) = receive(&execution_receiver)
-    //             {
-    //                 response_tx.send(unexecuted_ops.clone()).unwrap();
-    //             }
-    //         })
-    //     });
-    // };
 
     // This is what we are testing....
     let block_operations_storage = pool_controller

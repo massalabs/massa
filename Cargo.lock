@@ -2884,6 +2884,7 @@ name = "massa_pool_worker"
 version = "0.1.0"
 dependencies = [
  "crossbeam-channel",
+ "lazy_static",
  "massa_execution_exports",
  "massa_hash 0.1.0",
  "massa_models",
@@ -2892,6 +2893,7 @@ dependencies = [
  "massa_signature 0.1.0",
  "massa_storage",
  "massa_time",
+ "mockall",
  "num",
  "parking_lot",
  "tokio",
