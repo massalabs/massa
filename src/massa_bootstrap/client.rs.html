@@ -562,12 +562,26 @@
 <a href="#562" id="562">562</a>
 <a href="#563" id="563">563</a>
 <a href="#564" id="564">564</a>
+<a href="#565" id="565">565</a>
+<a href="#566" id="566">566</a>
+<a href="#567" id="567">567</a>
+<a href="#568" id="568">568</a>
+<a href="#569" id="569">569</a>
+<a href="#570" id="570">570</a>
+<a href="#571" id="571">571</a>
+<a href="#572" id="572">572</a>
+<a href="#573" id="573">573</a>
+<a href="#574" id="574">574</a>
+<a href="#575" id="575">575</a>
 </pre><pre class="rust"><code><span class="kw">use </span>humantime::format_duration;
 <span class="kw">use </span>std::{
     collections::HashSet,
     io,
     net::{SocketAddr, TcpStream},
-    sync::Arc,
+    sync::{
+        atomic::{AtomicBool, Ordering},
+        Arc,
+    },
     time::Duration,
 };
 
@@ -1001,7 +1015,8 @@
 
 <span class="doccomment">/// Gets the state from a bootstrap server
 /// needs to be CANCELLABLE
-</span><span class="kw">pub async fn </span>get_state(
+</span><span class="attr">#[allow(clippy::too_many_arguments)]
+</span><span class="kw">pub fn </span>get_state(
     bootstrap_config: <span class="kw-2">&amp;</span>BootstrapConfig,
     final_state: Arc&lt;RwLock&lt;FinalState&gt;&gt;,
     <span class="kw-2">mut </span>connector: <span class="kw">impl </span>BSConnector,
@@ -1009,6 +1024,7 @@
     genesis_timestamp: MassaTime,
     end_timestamp: <span class="prelude-ty">Option</span>&lt;MassaTime&gt;,
     restart_from_snapshot_at_period: <span class="prelude-ty">Option</span>&lt;u64&gt;,
+    interupted: Arc&lt;AtomicBool&gt;,
 ) -&gt; <span class="prelude-ty">Result</span>&lt;GlobalBootstrapState, BootstrapError&gt; {
     <span class="macro">massa_trace!</span>(<span class="string">&quot;bootstrap.lib.get_state&quot;</span>, {});
 
@@ -1063,6 +1079,12 @@
     <span class="kw">let </span><span class="kw-2">mut </span>global_bootstrap_state = GlobalBootstrapState::new(final_state);
 
     <span class="kw">loop </span>{
+        <span class="comment">// check for interuption
+        </span><span class="kw">if </span>interupted.load(Ordering::Relaxed) {
+            <span class="kw">return </span><span class="prelude-val">Err</span>(BootstrapError::Interupted(
+                <span class="string">&quot;Sig INT received while getting state&quot;</span>.to_string(),
+            ));
+        }
         <span class="kw">for </span>(addr, node_id) <span class="kw">in </span>filtered_bootstrap_list.iter() {
             <span class="kw">if let </span><span class="prelude-val">Some</span>(end) = end_timestamp {
                 <span class="kw">if </span>MassaTime::now().expect(<span class="string">&quot;could not get now time&quot;</span>) &gt; end {
