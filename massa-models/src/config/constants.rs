@@ -20,11 +20,6 @@ use massa_signature::KeyPair;
 use massa_time::MassaTime;
 use num::rational::Ratio;
 
-/// Start of the downtime simulation
-pub const DOWNTIME_START_TIMESTAMP: MassaTime = MassaTime::from_millis(1681372800000); // 13/04/2023 10AM CET
-/// End of the downtime simulation
-pub const DOWNTIME_END_TIMESTAMP: MassaTime = MassaTime::from_millis(1681390800000); // 13/04/2023 16AM CET
-
 /// Limit on the number of peers we advertise to others.
 pub const MAX_ADVERTISE_LENGTH: u32 = 10000;
 /// Maximum message length in bytes
@@ -56,14 +51,14 @@ lazy_static::lazy_static! {
             )
         )
     } else {
-        1680872400000.into()  // Friday, April 7, 2023 01:00:00 PM UTC
+        1683291600000.into()  // Friday, May 5, 2023 01:00:00 PM UTC
     };
 
     /// TESTNET: time when the blockclique is ended.
     pub static ref END_TIMESTAMP: Option<MassaTime> = if cfg!(feature = "sandbox") {
         None
     } else {
-        Some(1682877600000.into())  // Sunday, April 30, 2023 06:00:00 PM UTC
+        Some(1685556000000.into())  // Sunday, April 30, 2023 06:00:00 PM UTC
     };
     /// `KeyPair` to sign genesis blocks.
     pub static ref GENESIS_KEY: KeyPair = KeyPair::from_str("S1UxdCJv5ckDK8z87E5Jq5fEfSVLi2cTHgtpfZy7iURs3KpPns8")
@@ -75,7 +70,7 @@ lazy_static::lazy_static! {
         if cfg!(feature = "sandbox") {
             "SAND.22.0"
         } else {
-            "TEST.22.0"
+            "TEST.23.0"
         }
         .parse()
         .unwrap()
@@ -131,10 +126,17 @@ pub const MAX_ASYNC_MESSAGE_DATA: u64 = 1_000_000;
 pub const OPERATION_VALIDITY_PERIODS: u64 = 10;
 /// cycle duration in periods
 pub const PERIODS_PER_CYCLE: u64 = 128;
-/// PoS saved cycles: number of cycles saved in `PoSFinalState`
+/// Number of cycles saved in `PoSFinalState`
 ///
-/// 4 for PoS itself and 1 for bootstrap safety
-pub const POS_SAVED_CYCLES: usize = 5;
+/// 6 for PoS itself so we can check denuncations on selections at C-2 after a bootstrap
+/// See https://github.com/massalabs/massa/pull/3871
+/// 1 for pruned cycle safety during bootstrap
+pub const POS_SAVED_CYCLES: usize = 7;
+/// Number of cycle draws saved in the selector cache
+///
+/// 5 to have a C-2 to C+2 range (6 cycles post-bootstrap give 5 cycle draws)
+/// 1 for margin
+pub const SELECTOR_DRAW_CACHE_SIZE: usize = 6;
 /// Maximum size batch of data in a part of the ledger
 pub const LEDGER_PART_SIZE_MESSAGE_BYTES: u64 = 1_000_000;
 /// Maximum async messages in a batch of the bootstrap of the async pool
@@ -249,6 +251,41 @@ pub const NETWORK_NODE_COMMAND_CHANNEL_SIZE: usize = 10_000;
 pub const NETWORK_NODE_EVENT_CHANNEL_SIZE: usize = 10_000;
 
 //
+// Constants used in protocol
+//
+/// Maximum of time we keep the operations in the storage of the propagation thread
+pub const MAX_OPERATION_STORAGE_TIME: MassaTime = MassaTime::from_millis(60000);
+/// Maximum size of channel used for commands in retrieval thread of operations
+pub const MAX_SIZE_CHANNEL_COMMANDS_RETRIEVAL_OPERATIONS: usize = 10000;
+/// Maximum size of channel used for commands in propagation thread of operations
+pub const MAX_SIZE_CHANNEL_COMMANDS_PROPAGATION_OPERATIONS: usize = 10000;
+/// Maximum size of channel used for commands in retrieval thread of block
+pub const MAX_SIZE_CHANNEL_COMMANDS_RETRIEVAL_BLOCKS: usize = 10000;
+/// Maximum size of channel used for commands in propagation thread of block
+pub const MAX_SIZE_CHANNEL_COMMANDS_PROPAGATION_BLOCKS: usize = 10000;
+/// Maximum size of channel used for commands in retrieval thread of endorsements
+pub const MAX_SIZE_CHANNEL_COMMANDS_RETRIEVAL_ENDORSEMENTS: usize = 10000;
+/// Maximum size of channel used for commands in propagation thread of endorsements
+pub const MAX_SIZE_CHANNEL_COMMANDS_PROPAGATION_ENDORSEMENTS: usize = 10000;
+/// Maximum size of channel used for commands in connectivity thread
+pub const MAX_SIZE_CHANNEL_COMMANDS_CONNECTIVITY: usize = 10000;
+/// Maximum size of channel used for commands in peers management thread
+pub const MAX_SIZE_CHANNEL_COMMANDS_PEERS: usize = 10000;
+/// Maximum size of channel used for commands in peer testers thread
+pub const MAX_SIZE_CHANNEL_COMMANDS_PEER_TESTERS: usize = 10000;
+/// Maximum size of channel used to send network events to the operation handler
+pub const MAX_SIZE_CHANNEL_NETWORK_TO_OPERATION_HANDLER: usize = 10000;
+/// Maximum size of channel used to send network events to the block handler
+pub const MAX_SIZE_CHANNEL_NETWORK_TO_BLOCK_HANDLER: usize = 10000;
+/// Maximum size of channel used to send network events to the endorsement handler
+pub const MAX_SIZE_CHANNEL_NETWORK_TO_ENDORSEMENT_HANDLER: usize = 10000;
+/// Maximum size of channel used to send network events to the peer handler
+pub const MAX_SIZE_CHANNEL_NETWORK_TO_PEER_HANDLER: usize = 10000;
+/// Maximum number of peer in a announcement list of peer
+pub const MAX_PEERS_IN_ANNOUNCEMENT_LIST: u64 = 100;
+/// Maximum number of listeners for a peer
+pub const MAX_LISTENERS_PER_PEER: u64 = 100;
+//
 // Constants used in versioning
 //
 /// Threshold to accept a new versioning
@@ -262,13 +299,14 @@ pub const MIP_STORE_STATS_COUNTERS_MAX: usize = 10;
 // Constants for denunciation factory
 //
 
-/// denunciation expiration delta (in cycle count)
+/// denunciation expiration delta
 pub const DENUNCIATION_EXPIRE_PERIODS: u64 = PERIODS_PER_CYCLE;
-/// Cycle delta to accept items in denunciation factory
-/// TODO / FIXME: unused?
-pub const DENUNCIATION_ITEMS_MAX_CYCLE_DELTA: u64 = 1;
 /// Max number of denunciations that can be included in a block header
 pub const MAX_DENUNCIATIONS_PER_BLOCK_HEADER: u32 = 128;
+/// Number of roll to remove per denunciation
+pub const ROLL_COUNT_TO_SLASH_ON_DENUNCIATION: u64 = 1;
+/// Maximum size of executed denunciations
+pub const MAX_DENUNCIATION_CHANGES_LENGTH: u64 = 1_000;
 
 // Some checks at compile time that should not be ignored!
 #[allow(clippy::assertions_on_constants)]

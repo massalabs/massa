@@ -8,12 +8,13 @@
 //! and does not write anything persistent to the consensus state.
 
 use crate::speculative_async_pool::SpeculativeAsyncPool;
+use crate::speculative_executed_denunciations::SpeculativeExecutedDenunciations;
 use crate::speculative_executed_ops::SpeculativeExecutedOps;
 use crate::speculative_ledger::SpeculativeLedger;
 use crate::vesting_manager::VestingManager;
 use crate::{active_history::ActiveHistory, speculative_roll_state::SpeculativeRollState};
 use massa_async_pool::{AsyncMessage, AsyncMessageId};
-use massa_executed_ops::ExecutedOpsChanges;
+use massa_executed_ops::{ExecutedDenunciationsChanges, ExecutedOpsChanges};
 use massa_execution_exports::{
     EventStore, ExecutionConfig, ExecutionError, ExecutionOutput, ExecutionStackElement,
 };
@@ -22,6 +23,7 @@ use massa_hash::Hash;
 use massa_ledger_exports::LedgerChanges;
 use massa_models::address::ExecutionAddressCycleInfo;
 use massa_models::bytecode::Bytecode;
+use massa_models::denunciation::DenunciationIndex;
 use massa_models::{
     address::Address,
     amount::Amount,
@@ -40,7 +42,7 @@ use rand::SeedableRng;
 use rand_xoshiro::Xoshiro256PlusPlus;
 use std::collections::{BTreeMap, BTreeSet};
 use std::sync::Arc;
-use tracing::debug;
+use tracing::{debug, warn};
 
 /// A snapshot taken from an `ExecutionContext` and that represents its current state.
 /// The `ExecutionContext` state can then be restored later from this snapshot.
@@ -53,6 +55,9 @@ pub struct ExecutionContextSnapshot {
 
     /// speculative list of operations executed
     pub executed_ops: ExecutedOpsChanges,
+
+    /// speculative list of executed denunciations
+    pub executed_denunciations: ExecutedDenunciationsChanges,
 
     /// speculative roll state changes caused so far in the context
     pub pos_changes: PoSChanges,
@@ -106,8 +111,14 @@ pub struct ExecutionContext {
     /// speculative list of executed operations
     speculative_executed_ops: SpeculativeExecutedOps,
 
+    /// speculative list of executed denunciations
+    speculative_executed_denunciations: SpeculativeExecutedDenunciations,
+
     /// max gas for this execution
     pub max_gas: u64,
+
+    /// coin spending allowance for the operation creator
+    pub creator_coin_spending_allowance: Option<Amount>,
 
     /// slot at which the execution happens
     pub slot: Slot,
@@ -188,8 +199,16 @@ impl ExecutionContext {
                 final_state.clone(),
                 active_history.clone(),
             ),
-            speculative_executed_ops: SpeculativeExecutedOps::new(final_state, active_history),
+            speculative_executed_ops: SpeculativeExecutedOps::new(
+                final_state.clone(),
+                active_history.clone(),
+            ),
+            speculative_executed_denunciations: SpeculativeExecutedDenunciations::new(
+                final_state,
+                active_history,
+            ),
             max_gas: Default::default(),
+            creator_coin_spending_allowance: Default::default(),
             slot: Slot::new(0, 0),
             created_addr_index: Default::default(),
             created_event_index: Default::default(),
@@ -216,6 +235,7 @@ impl ExecutionContext {
             async_pool_changes: self.speculative_async_pool.get_snapshot(),
             pos_changes: self.speculative_roll_state.get_snapshot(),
             executed_ops: self.speculative_executed_ops.get_snapshot(),
+            executed_denunciations: self.speculative_executed_denunciations.get_snapshot(),
             created_addr_index: self.created_addr_index,
             created_event_index: self.created_event_index,
             stack: self.stack.clone(),
@@ -241,6 +261,8 @@ impl ExecutionContext {
             .reset_to_snapshot(snapshot.pos_changes);
         self.speculative_executed_ops
             .reset_to_snapshot(snapshot.executed_ops);
+        self.speculative_executed_denunciations
+            .reset_to_snapshot(snapshot.executed_denunciations);
         self.created_addr_index = snapshot.created_addr_index;
         self.created_event_index = snapshot.created_event_index;
         self.stack = snapshot.stack;
@@ -644,9 +666,29 @@ impl ExecutionContext {
                 .check_vesting_transfer_coins(self, from_addr, amount)?;
         }
 
+        // check remaining sender allowance
+        let sender_allowance = {
+            if let (Some(op_creator_allowance), Some(op_creator_addr)) = (&mut self.creator_coin_spending_allowance, self.creator_address) && from_addr == Some(op_creator_addr) {
+                if amount > *op_creator_allowance {
+                    return Err(ExecutionError::RuntimeError(format!("failed transfer of {} coins from spending address {} due to limited allowance", amount, op_creator_addr)));
+                }
+                Some(op_creator_allowance)
+            } else {
+                None
+            }
+        };
+
         // do the transfer
-        self.speculative_ledger
-            .transfer_coins(from_addr, to_addr, amount)
+        let result = self
+            .speculative_ledger
+            .transfer_coins(from_addr, to_addr, amount);
+
+        // update allowance
+        if let Some(allowance) = sender_allowance && result.is_ok() {
+            *allowance = allowance.saturating_sub(amount);
+        }
+
+        result
     }
 
     /// Add a new asynchronous message to speculative pool
@@ -699,6 +741,69 @@ impl ExecutionContext {
             self.config.thread_count,
             self.config.roll_price,
         )
+    }
+
+    /// Try to slash `roll_count` rolls from the denounced address. If not enough rolls,
+    /// slash the available amount and return the result
+    ///
+    /// # Arguments
+    /// * `denounced_addr`: address to sell the rolls from
+    /// * `roll_count`: number of rolls to slash
+    pub fn try_slash_rolls(
+        &mut self,
+        denounced_addr: &Address,
+        roll_count: u64,
+    ) -> Result<Amount, ExecutionError> {
+        // try to slash as many roll as available
+        let slashed_rolls = self
+            .speculative_roll_state
+            .try_slash_rolls(denounced_addr, roll_count);
+
+        // convert slashed rolls to coins (as deferred credits => coins)
+        let mut slashed_coins = self
+            .config
+            .roll_price
+            .checked_mul_u64(slashed_rolls.unwrap_or_default())
+            .ok_or_else(|| {
+                ExecutionError::RuntimeError(format!(
+                    "Cannot multiply roll price by {}",
+                    roll_count
+                ))
+            })?;
+
+        // what remains to slash (then will try to slash as many deferred credits as avail/what remains to be slashed)
+        let amount_remaining_to_slash = self
+            .config
+            .roll_price
+            .checked_mul_u64(roll_count)
+            .ok_or_else(|| {
+                ExecutionError::RuntimeError(format!(
+                    "Cannot multiply roll price by {}",
+                    roll_count
+                ))
+            })?
+            .saturating_sub(slashed_coins);
+
+        if amount_remaining_to_slash > Amount::zero() {
+            // There is still an amount to slash for this denunciation so we need to slash
+            // in deferred credits
+            let slashed_coins_in_deferred_credits = self
+                .speculative_roll_state
+                .try_slash_deferred_credits(&self.slot, denounced_addr, &amount_remaining_to_slash);
+
+            slashed_coins = slashed_coins.saturating_add(slashed_coins_in_deferred_credits);
+            let amount_remaining_to_slash_2 =
+                slashed_coins.saturating_sub(slashed_coins_in_deferred_credits);
+            if amount_remaining_to_slash_2 > Amount::zero() {
+                // Use saturating_mul_u64 to avoid an error (for just a warn!(..))
+                warn!("Slashed {} coins (by selling rolls) and {} coins from deferred credits of address: {} but cumulative amount is lower than expected: {} coins",
+                    slashed_coins, slashed_coins_in_deferred_credits, denounced_addr,
+                    self.config.roll_price.saturating_mul_u64(roll_count)
+                );
+            }
+        }
+
+        Ok(slashed_coins)
     }
 
     /// Update production statistics of an address.
@@ -791,6 +896,7 @@ impl ExecutionContext {
             async_pool_changes: self.speculative_async_pool.take(),
             pos_changes: self.speculative_roll_state.take(),
             executed_ops_changes: self.speculative_executed_ops.take(),
+            executed_denunciations_changes: self.speculative_executed_denunciations.take(),
         };
         ExecutionOutput {
             slot,
@@ -872,6 +978,12 @@ impl ExecutionContext {
         self.speculative_executed_ops.is_op_executed(op_id)
     }
 
+    /// Check if a denunciation was previously executed (to prevent reuse)
+    pub fn is_denunciation_executed(&self, de_idx: &DenunciationIndex) -> bool {
+        self.speculative_executed_denunciations
+            .is_denunciation_executed(de_idx)
+    }
+
     /// Insert an executed operation.
     /// Does not check for reuse, please use `is_op_executed` before.
     ///
@@ -887,6 +999,13 @@ impl ExecutionContext {
     ) {
         self.speculative_executed_ops
             .insert_executed_op(op_id, op_exec_status, op_valid_until_slot)
+    }
+
+    /// Insert a executed denunciation.
+    ///
+    pub fn insert_executed_denunciation(&mut self, denunciation_idx: &DenunciationIndex) {
+        self.speculative_executed_denunciations
+            .insert_executed_denunciation(denunciation_idx.clone());
     }
 
     /// gets the cycle information for an address

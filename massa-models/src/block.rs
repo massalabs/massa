@@ -67,18 +67,18 @@ pub type SecureShareBlock = SecureShare<Block, BlockId>;
 
 impl SecureShareContent for Block {
     fn new_verifiable<SC: Serializer<Self>, U: Id>(
-        content: Self,
+        self,
         content_serializer: SC,
         _keypair: &KeyPair,
     ) -> Result<SecureShare<Self, U>, ModelsError> {
         let mut content_serialized = Vec::new();
-        content_serializer.serialize(&content, &mut content_serialized)?;
+        content_serializer.serialize(&self, &mut content_serialized)?;
         Ok(SecureShare {
-            signature: content.header.signature,
-            content_creator_pub_key: content.header.content_creator_pub_key,
-            content_creator_address: content.header.content_creator_address,
-            id: U::new(*content.header.id.get_hash()),
-            content,
+            signature: self.header.signature,
+            content_creator_pub_key: self.header.content_creator_pub_key,
+            content_creator_address: self.header.content_creator_address,
+            id: U::new(*self.header.id.get_hash()),
+            content: self,
             serialized_data: content_serialized,
         })
     }
@@ -543,7 +543,11 @@ mod test {
             ed.verify_signature().unwrap();
         }
 
-        res_block.content.header.assert_invariants().unwrap();
+        res_block
+            .content
+            .header
+            .assert_invariants(THREAD_COUNT, ENDORSEMENT_COUNT)
+            .unwrap();
     }
 
     #[test]
@@ -595,7 +599,11 @@ mod test {
                 .deserialize::<DeserializeError>(&ser_block)
                 .unwrap();
 
-        res_block.content.header.assert_invariants().unwrap();
+        res_block
+            .content
+            .header
+            .assert_invariants(THREAD_COUNT, ENDORSEMENT_COUNT)
+            .unwrap();
 
         // check equality
 
@@ -925,7 +933,10 @@ mod test {
                 .deserialize::<DeserializeError>(&ser_block)
                 .unwrap();
 
-        res.content.header.assert_invariants().unwrap();
+        res.content
+            .header
+            .assert_invariants(THREAD_COUNT, ENDORSEMENT_COUNT)
+            .unwrap();
     }
     #[test]
     #[serial]

@@ -124,11 +124,11 @@ impl OperationPool {
                 let op = ops
                     .get(&op_id)
                     .expect("attempting to add operation to pool, but it is absent from storage");
-                // Broadcast operation to active sender(channel) subscribers.
+                // Broadcast operation to active channel subscribers.
                 if self.config.broadcast_enabled {
                     if let Err(err) = self.channels.operation_sender.send(op.clone()) {
                         trace!(
-                            "error trying to broadcast operation with id {} due to: {}",
+                            "error, failed to broadcast operation with id {} due to: {}",
                             op.id.clone(),
                             err
                         );

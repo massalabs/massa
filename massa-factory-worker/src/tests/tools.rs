@@ -1,7 +1,6 @@
 use crossbeam_channel::Receiver;
-use crossbeam_channel::Sender;
 use massa_consensus_exports::test_exports::{
-    ConsensusEventReceiver, MockConsensusController, MockConsensusControllerMessage,
+    ConsensusControllerImpl, ConsensusEventReceiver, MockConsensusControllerMessage,
 };
 use massa_models::config::MIP_STORE_STATS_BLOCK_CONSIDERED;
 use massa_models::config::MIP_STORE_STATS_COUNTERS_MAX;
@@ -13,7 +12,6 @@ use std::{sync::Arc, thread::sleep, time::Duration};
 use massa_factory_exports::{
     test_exports::create_empty_block, FactoryChannels, FactoryConfig, FactoryManager,
 };
-use massa_models::denunciation::{Denunciation, DenunciationPrecursor};
 use massa_models::{
     address::Address, block_id::BlockId, config::ENDORSEMENT_COUNT,
     endorsement::SecureShareEndorsement, operation::SecureShareOperation, prehash::PreHashMap,
@@ -24,9 +22,9 @@ use massa_pool_exports::test_exports::{
 };
 use massa_pos_exports::{
     test_exports::{MockSelectorController, MockSelectorControllerMessage},
-    PosResult, Selection,
+    Selection,
 };
-use massa_protocol_exports::test_exports::MockProtocolController;
+use massa_protocol_exports::MockProtocolController;
 use massa_signature::KeyPair;
 use massa_storage::Storage;
 use massa_time::MassaTime;
@@ -48,8 +46,6 @@ pub struct TestFactory {
     genesis_blocks: Vec<(BlockId, u64)>,
     pub(crate) storage: Storage,
     keypair: KeyPair,
-    pub(crate) denunciation_factory_sender: Sender<DenunciationPrecursor>,
-    pub(crate) denunciation_factory_tx: Sender<DenunciationPrecursor>,
 }
 
 impl TestFactory {
@@ -62,15 +58,11 @@ impl TestFactory {
     pub fn new(default_keypair: &KeyPair) -> TestFactory {
         let (selector_controller, selector_receiver) = MockSelectorController::new_with_receiver();
         let (consensus_controller, consensus_event_receiver) =
-            MockConsensusController::new_with_receiver();
+            ConsensusControllerImpl::new_with_receiver();
         let (pool_controller, pool_receiver) = MockPoolController::new_with_receiver();
-        let (denunciation_factory_tx, denunciation_factory_rx) =
-            crossbeam_channel::unbounded::<DenunciationPrecursor>();
-        let (denunciation_factory_sender, denunciation_factory_receiver) =
-            crossbeam_channel::bounded(massa_models::config::CHANNEL_SIZE);
         let mut storage = Storage::create_root();
         let mut factory_config = FactoryConfig::default();
-        let (_protocol_controller, protocol_command_sender) = MockProtocolController::new();
+        let protocol_controller = MockProtocolController::new();
         let producer_keypair = default_keypair;
         let producer_address = Address::from_public_key(&producer_keypair.get_public_key());
         let mut accounts = PreHashMap::default();
@@ -104,11 +96,9 @@ impl TestFactory {
                 selector: selector_controller.clone(),
                 consensus: consensus_controller,
                 pool: pool_controller.clone(),
-                protocol: protocol_command_sender,
+                protocol: Box::new(protocol_controller),
                 storage: storage.clone_without_refs(),
             },
-            denunciation_factory_receiver,
-            denunciation_factory_rx,
             mip_store,
         );
 
@@ -121,8 +111,6 @@ impl TestFactory {
             genesis_blocks,
             storage,
             keypair: default_keypair.clone(),
-            denunciation_factory_sender,
-            denunciation_factory_tx,
         }
     }
 
@@ -252,83 +240,6 @@ impl TestFactory {
         } else {
             panic!()
         }
-    }
-
-    /// Main loop, handling response for selector & pool - used in denunciation factory unit tests
-    /// Arguments:
-    /// - `address`: Address returned to 'GetProducer' & 'GetSelection' (from selector)
-    pub fn denunciation_factory_loop(&mut self, address: Address) -> Vec<Denunciation> {
-        let mut from_pool: Vec<Denunciation> = Default::default();
-
-        let mut sel = crossbeam_channel::Select::new();
-        let recv_selector_ = match self.selector_receiver.as_ref() {
-            None => unreachable!(),
-            Some(selector_receiver) => selector_receiver,
-        };
-        let recv_selector = sel.recv(&recv_selector_);
-        let recv_pool = sel.recv(&self.pool_receiver.0);
-
-        loop {
-            let oper = sel.select_timeout(Duration::from_millis(500));
-            match oper {
-                Err(_) => panic!("select timeout - should not happen"),
-                Ok(oper) => match oper.index() {
-                    i if i == recv_selector => {
-                        match oper.recv(&recv_selector_) {
-                            Ok(MockSelectorControllerMessage::GetProducer {
-                                slot: _slot,
-                                response_tx,
-                            }) => {
-                                // println!("Received GetProducer for slot: {}", slot);
-                                response_tx.send(PosResult::Ok(address)).unwrap();
-                            }
-                            Ok(MockSelectorControllerMessage::GetSelection {
-                                slot: _slot,
-                                response_tx,
-                            }) => {
-                                // println!("Received GetProducer for selection for slot: {}", slot);
-                                response_tx
-                                    .send(PosResult::Ok(Selection {
-                                        endorsements: vec![address; ENDORSEMENT_COUNT as usize],
-                                        producer: address,
-                                    }))
-                                    .unwrap();
-                            }
-                            Err(e) => {
-                                println!("Received error: {}", e);
-                                break;
-                            }
-                            Ok(msg) => {
-                                println!(
-                                    "Received an unexpected MockSelectorControllerMessage: {:?}",
-                                    msg
-                                );
-                                break;
-                            }
-                        }
-                    }
-                    i if i == recv_pool => match oper.recv(&self.pool_receiver.0) {
-                        Ok(MockPoolControllerMessage::AddDenunciation { denunciation }) => {
-                            from_pool.push(denunciation);
-                            break;
-                        }
-                        Err(e) => {
-                            println!("Received error from pool: {}", e);
-                        }
-                        Ok(msg) => {
-                            println!(
-                                "Received an unexpected MockPoolControllerMessage: {:?}",
-                                msg
-                            );
-                            break;
-                        }
-                    },
-                    _ => unreachable!(),
-                },
-            }
-        }
-
-        from_pool
     }
 }
 

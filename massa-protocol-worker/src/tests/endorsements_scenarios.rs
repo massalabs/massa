@@ -40,7 +40,7 @@ fn test_protocol_sends_valid_endorsements_it_receives_to_pool() {
               consensus_event_receiver,
               mut pool_event_receiver| {
             //1. Create 1 nodes
-            let node_a_keypair = KeyPair::generate();
+            let node_a_keypair = KeyPair::generate(0).unwrap();
             let (node_a_peer_id, _node_a) = network_controller.create_fake_connection(
                 PeerId::from_bytes(node_a_keypair.get_public_key().to_bytes()).unwrap(),
             );
@@ -103,7 +103,7 @@ fn test_protocol_does_not_send_invalid_endorsements_it_receives_to_pool() {
               consensus_event_receiver,
               mut pool_event_receiver| {
             //1. Create 1 nodes
-            let node_a_keypair = KeyPair::generate();
+            let node_a_keypair = KeyPair::generate(0).unwrap();
             let (node_a_peer_id, _node_a) = network_controller.create_fake_connection(
                 PeerId::from_bytes(node_a_keypair.get_public_key().to_bytes()).unwrap(),
             );
@@ -161,8 +161,8 @@ fn test_protocol_propagates_endorsements_to_active_nodes() {
               consensus_event_receiver,
               mut pool_event_receiver| {
             //1. Create 2 nodes
-            let node_a_keypair = KeyPair::generate();
-            let node_b_keypair = KeyPair::generate();
+            let node_a_keypair = KeyPair::generate(0).unwrap();
+            let node_b_keypair = KeyPair::generate(0).unwrap();
             let (node_a_peer_id, node_a) = network_controller.create_fake_connection(
                 PeerId::from_bytes(node_a_keypair.get_public_key().to_bytes()).unwrap(),
             );
@@ -236,8 +236,8 @@ fn test_protocol_propagates_endorsements_only_to_nodes_that_dont_know_about_it_b
               mut pool_event_receiver,
               mut storage| {
             //1. Create 2 nodes
-            let node_a_keypair = KeyPair::generate();
-            let node_b_keypair = KeyPair::generate();
+            let node_a_keypair = KeyPair::generate(0).unwrap();
+            let node_b_keypair = KeyPair::generate(0).unwrap();
             let (node_a_peer_id, node_a) = network_controller.create_fake_connection(
                 PeerId::from_bytes(node_a_keypair.get_public_key().to_bytes()).unwrap(),
             );

@@ -54,6 +54,7 @@ mod tests {
                     deferred_credits: credits,
                 },
                 executed_ops_changes: Default::default(),
+                executed_denunciations_changes: Default::default(),
             },
             events: Default::default(),
         };

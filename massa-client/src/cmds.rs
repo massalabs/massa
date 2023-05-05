@@ -264,7 +264,7 @@ pub enum Command {
 
     #[strum(
         ascii_case_insensitive,
-        props(args = "SenderAddress PathToBytecode MaxGas Fee"),
+        props(args = "SenderAddress PathToBytecode MaxGas MaxCoins Fee"),
         message = "create and send an operation containing byte code"
     )]
     execute_smart_contract,
@@ -978,18 +978,19 @@ impl Command {
             Command::execute_smart_contract => {
                 let wallet = wallet_opt.as_mut().unwrap();
 
-                if parameters.len() != 4 {
+                if parameters.len() != 5 {
                     bail!("wrong number of parameters");
                 }
                 let addr = parameters[0].parse::<Address>()?;
                 let path = parameters[1].parse::<PathBuf>()?;
                 let max_gas = parameters[2].parse::<u64>()?;
-                let fee = parameters[3].parse::<Amount>()?;
+                let max_coins = parameters[3].parse::<Amount>()?;
+                let fee = parameters[4].parse::<Amount>()?;
                 if !json {
                     if let Ok(addresses_info) = client.public.get_addresses(vec![addr]).await {
                         match addresses_info.get(0) {
                             Some(info) => {
-                                if info.candidate_balance < fee {
+                                if info.candidate_balance < fee.saturating_add(max_coins) {
                                     client_warning!("this operation may be rejected due to insufficient balance");
                                 }
                             }
@@ -1017,6 +1018,7 @@ impl Command {
                     OperationType::ExecuteSC {
                         data,
                         max_gas,
+                        max_coins,
                         datastore,
                     },
                     fee,

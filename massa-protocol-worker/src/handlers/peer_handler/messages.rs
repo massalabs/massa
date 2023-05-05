@@ -297,7 +297,7 @@ mod tests {
 
     #[test]
     fn test_peer_connected() {
-        let keypair = KeyPair::generate();
+        let keypair = KeyPair::generate(0).unwrap();
         let mut listeners = HashMap::new();
         listeners.insert("127.0.0.1:33036".parse().unwrap(), TransportType::Tcp);
         listeners.insert("127.0.0.1:33035".parse().unwrap(), TransportType::Quic);
@@ -339,10 +339,10 @@ mod tests {
 
     #[test]
     fn test_list_peers() {
-        let keypair1 = KeyPair::generate();
+        let keypair1 = KeyPair::generate(0).unwrap();
         let mut listeners = HashMap::new();
         listeners.insert("127.0.0.1:33036".parse().unwrap(), TransportType::Tcp);
-        let keypair2 = KeyPair::generate();
+        let keypair2 = KeyPair::generate(0).unwrap();
         let message = PeerManagementMessage::ListPeers(vec![
             (
                 PeerId::from_public_key(keypair1.get_public_key()),

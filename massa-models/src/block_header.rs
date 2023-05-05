@@ -1,5 +1,4 @@
 use crate::block_id::BlockId;
-use crate::config::THREAD_COUNT;
 use crate::denunciation::{Denunciation, DenunciationDeserializer, DenunciationSerializer};
 use crate::endorsement::{
     Endorsement, EndorsementDeserializerLW, EndorsementId, EndorsementSerializer,
@@ -47,7 +46,11 @@ pub struct BlockHeader {
 // TODO: gh-issue #3398
 #[cfg(any(test, feature = "testing"))]
 impl BlockHeader {
-    fn assert_invariants(&self) -> Result<(), Box<dyn std::error::Error>> {
+    fn assert_invariants(
+        &self,
+        thread_count: u8,
+        endorsement_count: u32,
+    ) -> Result<(), Box<dyn std::error::Error>> {
         if self.slot.period == 0 {
             if !self.parents.is_empty() {
                 return Err("Invariant broken: genesis block with parent(s)".into());
@@ -56,12 +59,12 @@ impl BlockHeader {
                 return Err("Invariant broken: genesis block with endorsement(s)".into());
             }
         } else {
-            if self.parents.len() != crate::config::THREAD_COUNT as usize {
+            if self.parents.len() != thread_count as usize {
                 return Err(
                     "Invariant broken: non-genesis block with incorrect number of parents".into(),
                 );
             }
-            if self.endorsements.len() > crate::config::ENDORSEMENT_COUNT as usize {
+            if self.endorsements.len() > endorsement_count as usize {
                 return Err("Invariant broken: endorsement count too high".into());
             }
 
@@ -96,19 +99,13 @@ impl BlockHeader {
 pub type SecuredHeader = SecureShare<BlockHeader, BlockId>;
 
 impl SecureShareContent for BlockHeader {
-    /// Compute hash for Block header in SecuredHeader - taking care of Denunciation verification
-    fn compute_hash(
-        content: &Self,
-        content_serialized: &[u8],
-        content_creator_pub_key: &PublicKey,
-    ) -> Hash {
-        let de_data = BlockHeaderDenunciationData::new(content.slot);
-
-        let mut hash_data = Vec::new();
-        hash_data.extend(content_creator_pub_key.to_bytes());
-        hash_data.extend(de_data.to_bytes());
-        hash_data.extend(Hash::compute_from(content_serialized).to_bytes());
-        Hash::compute_from(&hash_data)
+    /// compute the signed hash
+    fn compute_signed_hash(&self, public_key: &PublicKey, content_hash: &Hash) -> Hash {
+        let mut signed_data: Vec<u8> = Vec::new();
+        signed_data.extend(public_key.to_bytes());
+        signed_data.extend(BlockHeaderDenunciationData::new(self.slot).to_bytes());
+        signed_data.extend(content_hash.to_bytes());
+        Hash::compute_from(&signed_data)
     }
 }
 
@@ -120,8 +117,13 @@ impl SecuredHeader {
     // TODO: gh-issue #3398
     #[allow(dead_code)]
     #[cfg(any(test, feature = "testing"))]
-    pub(crate) fn assert_invariants(&self) -> Result<(), Box<dyn std::error::Error>> {
-        self.content.assert_invariants()?;
+    pub(crate) fn assert_invariants(
+        &self,
+        thread_count: u8,
+        endorsement_count: u32,
+    ) -> Result<(), Box<dyn std::error::Error>> {
+        self.content
+            .assert_invariants(thread_count, endorsement_count)?;
         self.verify_signature()
             .map_err(|er| format!("{}", er).into())
     }
@@ -407,14 +409,12 @@ impl Deserializer<BlockHeader> for BlockHeaderDeserializer {
                         "Genesis block cannot contain parents",
                         ParseError::from_error_kind(rest, nom::error::ErrorKind::Fail),
                     )));
-                } else if slot.period != last_start_period && parents.len() != THREAD_COUNT as usize
+                } else if slot.period != last_start_period
+                    && parents.len() != self.thread_count as usize
                 {
                     return Err(nom::Err::Failure(ContextError::add_context(
                         rest,
-                        const_format::formatcp!(
-                            "Non-genesis block must have {} parents",
-                            THREAD_COUNT
-                        ),
+                        "Non-genesis block must have same numbers of parents as threads count",
                         ParseError::from_error_kind(rest, nom::error::ErrorKind::Fail),
                     )));
                 }
@@ -444,7 +444,9 @@ impl Deserializer<BlockHeader> for BlockHeaderDeserializer {
 
             // TODO: gh-issue #3398
             #[cfg(any(test, feature = "testing"))]
-            res.assert_invariants().unwrap();
+            res.assert_invariants(self.thread_count, self.endorsement_count)
+                .unwrap();
+
             return Ok((
                 &rest[2..], // Because there is 0 endorsements & 0 denunciations, we have a remaining [0, 0] in rest and we don't need it
                 res,
@@ -521,7 +523,9 @@ impl Deserializer<BlockHeader> for BlockHeaderDeserializer {
 
         // TODO: gh-issue #3398
         #[cfg(any(test, feature = "testing"))]
-        header.assert_invariants().unwrap();
+        header
+            .assert_invariants(self.thread_count, self.endorsement_count)
+            .unwrap();
 
         Ok((rest, header))
     }
@@ -589,12 +593,12 @@ mod test {
     use super::*;
     use massa_serialization::DeserializeError;
 
-    use crate::config::{ENDORSEMENT_COUNT, MAX_DENUNCIATIONS_PER_BLOCK_HEADER};
+    use crate::config::{ENDORSEMENT_COUNT, MAX_DENUNCIATIONS_PER_BLOCK_HEADER, THREAD_COUNT};
 
     use crate::test_exports::{
         gen_block_headers_for_denunciation, gen_endorsements_for_denunciation,
     };
-    use massa_signature::KeyPair;
+    use massa_signature::{verify_signature_batch, KeyPair};
 
     // Only for testing purpose
     impl PartialEq for BlockHeader {
@@ -628,10 +632,10 @@ mod test {
             Endorsement::new_verifiable(endorsement_1, EndorsementSerializer::new(), &keypair)
                 .unwrap();
 
-        let (slot_a, _, s_header_1, s_header_2, _) = gen_block_headers_for_denunciation();
+        let (slot_a, _, s_header_1, s_header_2, _) = gen_block_headers_for_denunciation(None, None);
         assert!(slot_a < slot);
         let de_a = Denunciation::try_from((&s_header_1, &s_header_2)).unwrap();
-        let (slot_b, _, s_endo_1, s_endo_2, _) = gen_endorsements_for_denunciation();
+        let (slot_b, _, s_endo_1, s_endo_2, _) = gen_endorsements_for_denunciation(None, None);
         assert!(slot_b < slot);
         let de_b = Denunciation::try_from((&s_endo_1, &s_endo_2)).unwrap();
 
@@ -659,5 +663,39 @@ mod test {
 
         assert_eq!(rem.is_empty(), true);
         assert_eq!(block_header_1, block_header_der);
+    }
+
+    #[test]
+    fn test_verify_sig_batch() {
+        let (_slot, _keypair, secured_header_1, secured_header_2, secured_header_3) =
+            gen_block_headers_for_denunciation(None, None);
+
+        // Test with batch len == 1 (no // verif)
+        let batch_1 = [(
+            secured_header_1.compute_signed_hash(),
+            secured_header_1.signature,
+            secured_header_1.content_creator_pub_key,
+        )];
+        verify_signature_batch(&batch_1).unwrap();
+
+        // Test with batch len > 1 (// verif)
+        let batch_2 = [
+            (
+                secured_header_1.compute_signed_hash(),
+                secured_header_1.signature,
+                secured_header_1.content_creator_pub_key,
+            ),
+            (
+                secured_header_2.compute_signed_hash(),
+                secured_header_2.signature,
+                secured_header_2.content_creator_pub_key,
+            ),
+            (
+                secured_header_3.compute_signed_hash(),
+                secured_header_3.signature,
+                secured_header_3.content_creator_pub_key,
+            ),
+        ];
+        verify_signature_batch(&batch_2).unwrap();
     }
 }

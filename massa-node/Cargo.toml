@@ -9,7 +9,6 @@ edition = "2021"
 [dependencies]
 crossbeam-channel = "0.5.6"
 anyhow = "1.0"
-enum-map = { version = "2.4", features = ["serde"] }
 lazy_static = "1.4"
 parking_lot = { version = "0.12", features = ["deadlock_detection"] }
 serde = { version = "1.0", features = ["derive"] }
@@ -19,6 +18,7 @@ tracing = { version = "0.1", features = [
     "max_level_debug",
     "release_max_level_debug",
 ] }
+peernet = { git = "https://github.com/massalabs/PeerNet", rev = "9300cb35b09347f3848c9a232f9aaf3f3f100ece" }
 tracing-subscriber = "0.3"
 paw = "1.0"
 structopt = { version = "0.3", features = ["paw"] }
@@ -38,8 +38,6 @@ massa_final_state = { path = "../massa-final-state" }
 massa_ledger_exports = { path = "../massa-ledger-exports" }
 massa_ledger_worker = { path = "../massa-ledger-worker" }
 massa_models = { path = "../massa-models" }
-massa_network_exports = { path = "../massa-network-exports" }
-massa_network_worker = { path = "../massa-network-worker" }
 massa_pool_exports = { path = "../massa-pool-exports" }
 massa_pool_worker = { path = "../massa-pool-worker" }
 massa_protocol_exports = { path = "../massa-protocol-exports" }
@@ -65,6 +63,5 @@ sandbox = [
     "massa_execution_worker/sandbox",
     "massa_final_state/sandbox",
     "massa_models/sandbox",
-    "massa_protocol_exports/sandbox"
 ]
 create_snapshot = ["massa_final_state/create_snapshot"]

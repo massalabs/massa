@@ -3,6 +3,7 @@
 
 use crate::{MassaRpcServer, Public, RpcServer, StopHandle, Value, API};
 use async_trait::async_trait;
+use itertools::{izip, Itertools};
 use jsonrpsee::core::{Error as JsonRpseeError, RpcResult};
 use massa_api_exports::{
     address::AddressInfo,
@@ -23,21 +24,9 @@ use massa_consensus_exports::ConsensusController;
 use massa_execution_exports::{
     ExecutionController, ExecutionStackElement, ReadOnlyExecutionRequest, ReadOnlyExecutionTarget,
 };
+use massa_models::datastore::DatastoreDeserializer;
 use massa_models::operation::OperationDeserializer;
 use massa_models::secure_share::SecureShareDeserializer;
-use massa_models::{
-    block::{Block, BlockGraphStatus},
-    endorsement::SecureShareEndorsement,
-    error::ModelsError,
-    operation::SecureShareOperation,
-    timeslots,
-};
-use massa_pos_exports::SelectorController;
-use massa_protocol_exports::ProtocolCommandSender;
-use massa_serialization::{DeserializeError, Deserializer};
-
-use itertools::{izip, Itertools};
-use massa_models::datastore::DatastoreDeserializer;
 use massa_models::{
     address::Address,
     block_id::BlockId,
@@ -54,8 +43,18 @@ use massa_models::{
     timeslots::{get_latest_block_slot_at_timestamp, time_range_to_slot_range},
     version::Version,
 };
-use massa_network_exports::{NetworkCommandSender, NetworkConfig};
+use massa_models::{
+    block::{Block, BlockGraphStatus},
+    endorsement::SecureShareEndorsement,
+    error::ModelsError,
+    operation::SecureShareOperation,
+    timeslots,
+};
 use massa_pool_exports::PoolController;
+use massa_pos_exports::SelectorController;
+use massa_protocol_exports::{PeerConnectionType, ProtocolConfig, ProtocolController};
+use massa_serialization::{DeserializeError, Deserializer};
+use massa_signature::{PublicKey, PUBLIC_KEY_DESER_SIZE};
 use massa_storage::Storage;
 use massa_time::MassaTime;
 use massa_versioning::{
@@ -72,10 +71,9 @@ impl API<Public> {
         api_settings: APIConfig,
         selector_controller: Box<dyn SelectorController>,
         pool_command_sender: Box<dyn PoolController>,
-        protocol_command_sender: ProtocolCommandSender,
-        network_settings: NetworkConfig,
+        protocol_controller: Box<dyn ProtocolController>,
+        protocol_config: ProtocolConfig,
         version: Version,
-        network_command_sender: NetworkCommandSender,
         node_id: NodeId,
         storage: Storage,
         mip_store: MipStore,
@@ -84,13 +82,12 @@ impl API<Public> {
             consensus_controller,
             api_settings,
             pool_command_sender,
-            network_settings,
             version,
-            network_command_sender,
-            protocol_command_sender,
+            protocol_controller,
             node_id,
             execution_controller,
             selector_controller,
+            protocol_config,
             storage,
             keypair_factory: KeyPairFactory { mip_store },
         })
@@ -328,10 +325,10 @@ impl MassaRpcServer for API<Public> {
     async fn get_status(&self) -> RpcResult<NodeStatus> {
         let execution_controller = self.0.execution_controller.clone();
         let consensus_controller = self.0.consensus_controller.clone();
-        let network_command_sender = self.0.network_command_sender.clone();
-        let network_config = self.0.network_settings.clone();
         let version = self.0.version;
         let api_settings = self.0.api_settings.clone();
+        let protocol_controller = self.0.protocol_controller.clone();
+        let protocol_config = self.0.protocol_config.clone();
         let pool_command_sender = self.0.pool_command_sender.clone();
         let node_id = self.0.node_id;
         let config = CompactConfig::default();
@@ -358,19 +355,9 @@ impl MassaRpcServer for API<Public> {
             Err(e) => return Err(ApiError::ConsensusError(e).into()),
         };
 
-        let (network_stats_result, peers_result) = tokio::join!(
-            network_command_sender.get_network_stats(),
-            network_command_sender.get_peers()
-        );
-
-        let network_stats = match network_stats_result {
-            Ok(network_stats) => network_stats,
-            Err(e) => return Err(ApiError::NetworkError(e).into()),
-        };
-
-        let peers = match peers_result {
-            Ok(peers) => peers,
-            Err(e) => return Err(ApiError::NetworkError(e).into()),
+        let (network_stats, peers) = match protocol_controller.get_stats() {
+            Ok((stats, peers)) => (stats, peers),
+            Err(e) => return Err(ApiError::ProtocolError(e).into()),
         };
 
         let pool_stats = (
@@ -388,12 +375,22 @@ impl MassaRpcServer for API<Public> {
         };
 
         let connected_nodes = peers
-            .peers
             .iter()
-            .flat_map(|(ip, peer)| {
-                peer.active_nodes
-                    .iter()
-                    .map(move |(id, is_outgoing)| (*id, (*ip, *is_outgoing)))
+            .map(|(id, peer)| {
+                let is_outgoing = match peer.1 {
+                    PeerConnectionType::IN => false,
+                    PeerConnectionType::OUT => true,
+                };
+                //TODO: Use the peerid correctly
+                (
+                    NodeId::new(
+                        PublicKey::from_bytes(
+                            id.to_bytes()[..PUBLIC_KEY_DESER_SIZE].try_into().unwrap(),
+                        )
+                        .unwrap(),
+                    ),
+                    (peer.0.ip(), is_outgoing),
+                )
             })
             .collect::<BTreeMap<_, _>>();
 
@@ -430,7 +427,7 @@ impl MassaRpcServer for API<Public> {
 
         Ok(NodeStatus {
             node_id,
-            node_ip: network_config.routable_ip,
+            node_ip: protocol_config.routable_ip,
             version,
             current_time: now,
             current_cycle_time,
@@ -930,7 +927,7 @@ impl MassaRpcServer for API<Public> {
 
     async fn send_operations(&self, ops: Vec<OperationInput>) -> RpcResult<Vec<OperationId>> {
         let mut cmd_sender = self.0.pool_command_sender.clone();
-        let mut protocol_sender = self.0.protocol_command_sender.clone();
+        let protocol_sender = self.0.protocol_controller.clone();
         let api_cfg = self.0.api_settings.clone();
         let mut to_send = self.0.storage.clone_without_refs();
 

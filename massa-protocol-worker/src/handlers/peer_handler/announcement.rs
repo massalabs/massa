@@ -221,7 +221,8 @@ mod tests {
         let mut listeners = HashMap::new();
         listeners.insert("127.0.0.1:8081".parse().unwrap(), TransportType::Tcp);
         listeners.insert("127.0.0.1:8082".parse().unwrap(), TransportType::Quic);
-        let announcement = Announcement::new(listeners, None, &KeyPair::generate()).unwrap();
+        let announcement =
+            Announcement::new(listeners, None, &KeyPair::generate(0).unwrap()).unwrap();
         let announcement_serializer = AnnouncementSerializer::new();
         let announcement_deserializer =
             AnnouncementDeserializer::new(AnnouncementDeserializerArgs { max_listeners: 100 });

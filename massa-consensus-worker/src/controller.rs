@@ -247,7 +247,7 @@ impl ConsensusController for ConsensusControllerImpl {
 
                 if let Err(err) = self.channels.block_sender.send(verifiable_block.clone()) {
                     trace!(
-                        "error trying to broadcast block with id {} due to: {}",
+                        "error, failed to broadcast block with id {} due to: {}",
                         block_id,
                         err
                     );
@@ -258,7 +258,7 @@ impl ConsensusController for ConsensusControllerImpl {
                     operations,
                 }) {
                     trace!(
-                        "error trying to broadcast filled block with id {} due to: {}",
+                        "error, failed to broadcast filled block with id {} due to: {}",
                         block_id,
                         err
                     );
@@ -272,11 +272,10 @@ impl ConsensusController for ConsensusControllerImpl {
         }
 
         if let Some(verifiable_block) = block_storage.read_blocks().get(&block_id) {
-            if let Ok(de_p) = DenunciationPrecursor::try_from(&verifiable_block.content.header) {
-                if let Err(e) = self.channels.denunciation_factory_sender.send(de_p) {
-                    warn!("Cannot send block to denunciation factory: {}", e);
-                }
-            }
+            let de_p = DenunciationPrecursor::from(&verifiable_block.content.header);
+            self.channels
+                .pool_controller
+                .add_denunciation_precursor(de_p);
         }
 
         if let Err(err) = self
@@ -296,23 +295,17 @@ impl ConsensusController for ConsensusControllerImpl {
         if self.broadcast_enabled {
             if let Err(err) = self.channels.block_header_sender.send(header.clone()) {
                 trace!(
-                    "error trying to broadcast block header with block id {}: {}",
+                    "error, failed to broadcast block header with block id {}: {}",
                     block_id,
                     err
                 );
             }
         }
 
-        if let Ok(de_p) = DenunciationPrecursor::try_from(&header) {
-            if let Err(e) = self.channels.denunciation_factory_sender.send(de_p) {
-                warn!("Cannot send header to denunciation factory: {}", e);
-            }
-        } else {
-            warn!(
-                "Cannot create denunciation precursor from header: {}",
-                &header
-            );
-        }
+        let de_p = DenunciationPrecursor::from(&header);
+        self.channels
+            .pool_controller
+            .add_denunciation_precursor(de_p);
 
         if let Err(err) = self
             .command_sender

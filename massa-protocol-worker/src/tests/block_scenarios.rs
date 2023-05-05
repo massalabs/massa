@@ -38,8 +38,8 @@ fn test_full_ask_block_workflow() {
               mut consensus_event_receiver,
               pool_event_receiver| {
             //1. Create 2 nodes
-            let node_a_keypair = KeyPair::generate();
-            let node_b_keypair = KeyPair::generate();
+            let node_a_keypair = KeyPair::generate(0).unwrap();
+            let node_b_keypair = KeyPair::generate(0).unwrap();
             let (node_a_peer_id, node_a) = network_controller.create_fake_connection(
                 PeerId::from_bytes(node_a_keypair.get_public_key().to_bytes()).unwrap(),
             );
@@ -211,8 +211,8 @@ fn test_empty_block() {
               mut consensus_event_receiver,
               pool_event_receiver| {
             //1. Create 2 nodes
-            let node_a_keypair = KeyPair::generate();
-            let node_b_keypair = KeyPair::generate();
+            let node_a_keypair = KeyPair::generate(0).unwrap();
+            let node_b_keypair = KeyPair::generate(0).unwrap();
             let (node_a_peer_id, node_a) = network_controller.create_fake_connection(
                 PeerId::from_bytes(node_a_keypair.get_public_key().to_bytes()).unwrap(),
             );
@@ -324,8 +324,8 @@ fn test_dont_want_it_anymore() {
               consensus_event_receiver,
               pool_event_receiver| {
             //1. Create 2 nodes
-            let node_a_keypair = KeyPair::generate();
-            let node_b_keypair = KeyPair::generate();
+            let node_a_keypair = KeyPair::generate(0).unwrap();
+            let node_b_keypair = KeyPair::generate(0).unwrap();
             let (node_a_peer_id, node_a) = network_controller.create_fake_connection(
                 PeerId::from_bytes(node_a_keypair.get_public_key().to_bytes()).unwrap(),
             );
@@ -425,9 +425,9 @@ fn test_no_one_has_it() {
               consensus_event_receiver,
               pool_event_receiver| {
             //1. Create 3 nodes
-            let node_a_keypair = KeyPair::generate();
-            let node_b_keypair = KeyPair::generate();
-            let node_c_keypair = KeyPair::generate();
+            let node_a_keypair = KeyPair::generate(0).unwrap();
+            let node_b_keypair = KeyPair::generate(0).unwrap();
+            let node_c_keypair = KeyPair::generate(0).unwrap();
             let (node_a_peer_id, node_a) = network_controller.create_fake_connection(
                 PeerId::from_bytes(node_a_keypair.get_public_key().to_bytes()).unwrap(),
             );
@@ -504,9 +504,9 @@ fn test_multiple_blocks_without_a_priori() {
               consensus_event_receiver,
               pool_event_receiver| {
             //1. Create 3 nodes
-            let node_a_keypair = KeyPair::generate();
-            let node_b_keypair = KeyPair::generate();
-            let node_c_keypair = KeyPair::generate();
+            let node_a_keypair = KeyPair::generate(0).unwrap();
+            let node_b_keypair = KeyPair::generate(0).unwrap();
+            let node_c_keypair = KeyPair::generate(0).unwrap();
             let (node_a_peer_id, _node_a) = network_controller.create_fake_connection(
                 PeerId::from_bytes(node_a_keypair.get_public_key().to_bytes()).unwrap(),
             );
@@ -599,9 +599,9 @@ fn test_protocol_sends_blocks_when_asked_for() {
               pool_event_receiver,
               mut storage| {
             //1. Create 3 nodes
-            let node_a_keypair = KeyPair::generate();
-            let node_b_keypair = KeyPair::generate();
-            let node_c_keypair = KeyPair::generate();
+            let node_a_keypair = KeyPair::generate(0).unwrap();
+            let node_b_keypair = KeyPair::generate(0).unwrap();
+            let node_c_keypair = KeyPair::generate(0).unwrap();
             let (node_a_peer_id, node_a) = network_controller.create_fake_connection(
                 PeerId::from_bytes(node_a_keypair.get_public_key().to_bytes()).unwrap(),
             );
@@ -686,9 +686,9 @@ fn test_protocol_propagates_block_to_node_who_asked_for_operations_and_only_head
               pool_event_receiver,
               mut storage| {
             //1. Create 3 nodes
-            let node_a_keypair = KeyPair::generate();
-            let node_b_keypair = KeyPair::generate();
-            let node_c_keypair = KeyPair::generate();
+            let node_a_keypair = KeyPair::generate(0).unwrap();
+            let node_b_keypair = KeyPair::generate(0).unwrap();
+            let node_c_keypair = KeyPair::generate(0).unwrap();
             let (node_a_peer_id, node_a) = network_controller.create_fake_connection(
                 PeerId::from_bytes(node_a_keypair.get_public_key().to_bytes()).unwrap(),
             );

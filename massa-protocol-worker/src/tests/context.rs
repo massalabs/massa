@@ -53,7 +53,7 @@ pub fn start_protocol_controller_with_mock_network(
         serde_json::from_slice::<KeyPair>(keypair_bs58_check_encoded.as_bytes())?
     } else {
         // node file does not exist: generate the key and save it
-        let keypair = KeyPair::generate();
+        let keypair = KeyPair::generate(0).unwrap();
         if let Err(e) = std::fs::write(&config.keypair_file, serde_json::to_string(&keypair)?) {
             warn!("could not generate node key file: {}", e);
         }

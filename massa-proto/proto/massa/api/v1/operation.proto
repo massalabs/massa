@@ -63,10 +63,12 @@ message RollSell {
 message ExecuteSC {
   // Smart contract bytecode.
   bytes data = 1;
+  // The maximum of coins that could be spent by the operation sender
+  fixed64 max_coins = 2;
   // The maximum amount of gas that the execution of the contract is allowed to cost
-  fixed64 max_gas = 2;
+  fixed64 max_gas = 3;
   // A key-value store associating a hash to arbitrary bytes
-  repeated BytesMapFieldEntry datastore = 3;
+  repeated BytesMapFieldEntry datastore = 4;
 }
 
 // Calls an exported function from a stored smart contract
@@ -95,4 +97,28 @@ message SignedOperation {
   string content_creator_address = 4;
   // A secure hash of the data. See also [massa_hash::Hash]
   string id = 5;
+}
+
+// Possible statuses for an operation
+enum OperationStatus {
+  OPERATION_STATUS_UNSPECIFIED = 0;  // Defaut enum value
+  OPERATION_STATUS_PENDING = 1;  // The operation is still pending
+  OPERATION_STATUS_FINAL = 2;  // The operation is final
+  OPERATION_STATUS_SUCCESS = 3;  // The operation was executed successfully
+  OPERATION_STATUS_FAILURE = 4;  // The operation failed to execute
+  OPERATION_STATUS_UNKNOWN = 5;  // The status of the operation is unknown
+}
+
+// A wrapper around an operation with its metadata
+message OperationWrapper {
+    // The unique ID of the operation.
+    string id = 1;
+    // The IDs of the blocks in which the operation appears
+    repeated string block_ids = 3;
+    // The thread in which the operation can be included
+    fixed32 thread = 5;
+    // The operation object itself
+    SignedOperation operation = 6;
+    // The execution statuses of the operation
+    repeated OperationStatus status = 7;
 }

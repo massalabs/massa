@@ -6,18 +6,20 @@ mod tests {
         create_block, get_initials_vesting, get_random_address_full, get_sample_state,
     };
     use massa_execution_exports::{
-        ExecutionConfig, ExecutionController, ExecutionError, ReadOnlyExecutionRequest,
-        ReadOnlyExecutionTarget,
+        ExecutionChannels, ExecutionConfig, ExecutionController, ExecutionError,
+        ReadOnlyExecutionRequest, ReadOnlyExecutionTarget,
     };
     use massa_models::config::{
         LEDGER_ENTRY_BASE_SIZE, LEDGER_ENTRY_DATASTORE_BASE_SIZE, MIP_STORE_STATS_BLOCK_CONSIDERED,
         MIP_STORE_STATS_COUNTERS_MAX,
     };
     use massa_models::prehash::PreHashMap;
+    use massa_models::test_exports::gen_endorsements_for_denunciation;
     use massa_models::{address::Address, amount::Amount, slot::Slot};
     use massa_models::{
         block_id::BlockId,
         datastore::Datastore,
+        denunciation::Denunciation,
         execution::EventFilter,
         operation::{Operation, OperationSerializer, OperationType, SecureShareOperation},
         secure_share::SecureShareContent,
@@ -31,6 +33,7 @@ mod tests {
     use std::{
         cmp::Reverse, collections::BTreeMap, collections::HashMap, str::FromStr, time::Duration,
     };
+    use tokio::sync::broadcast;
 
     const TEST_SK_1: &str = "S18r2i8oJJyhF7Kprx98zwxAc3W4szf7RKuVMX6JydZz8zSxHeC";
     const TEST_SK_2: &str = "S1FpYC4ugG9ivZZbLVrTwWtF9diSRiAwwrVX5Gx1ANSRLfouUjq";
@@ -51,12 +54,19 @@ mod tests {
         };
         let mip_store = MipStore::try_from(([], mip_stats_config)).unwrap();
 
+        let slot_execution_output_sender = broadcast::channel(5000).0;
+
+        let channels = ExecutionChannels {
+            slot_execution_output_sender,
+        };
+
         let (sample_state, _keep_file, _keep_dir) = get_sample_state(0).unwrap();
         let (mut manager, _controller) = start_execution_worker(
             config,
             sample_state.clone(),
             sample_state.read().pos_state.selector.clone(),
             mip_store,
+            channels,
         );
         manager.stop();
     }
@@ -76,12 +86,19 @@ mod tests {
         };
         let mip_store = MipStore::try_from(([], mip_stats_config)).unwrap();
 
+        let slot_execution_output_sender = broadcast::channel(5000).0;
+
+        let channels = ExecutionChannels {
+            slot_execution_output_sender,
+        };
+
         let (sample_state, _keep_file, _keep_dir) = get_sample_state(0).unwrap();
         let (mut manager, controller) = start_execution_worker(
             config,
             sample_state.clone(),
             sample_state.read().pos_state.selector.clone(),
             mip_store,
+            channels,
         );
         controller.update_blockclique_status(
             Default::default(),
@@ -112,12 +129,20 @@ mod tests {
         let (sample_state, _keep_file, _keep_dir) = get_sample_state(0).unwrap();
         // init the storage
         let storage = Storage::create_root();
+
+        let slot_execution_output_sender = broadcast::channel(5000).0;
+
+        let channels = ExecutionChannels {
+            slot_execution_output_sender,
+        };
+
         // start the execution worker
         let (mut manager, controller) = start_execution_worker(
             exec_cfg.clone(),
             sample_state.clone(),
             sample_state.read().pos_state.selector.clone(),
             mip_store,
+            channels,
         );
         // initialize the execution system with genesis blocks
         init_execution_worker(&exec_cfg, &storage, controller.clone());
@@ -163,7 +188,7 @@ mod tests {
         let mut block_storage: PreHashMap<BlockId, Storage> = PreHashMap::default();
         for thread in 0..config.thread_count {
             let slot = Slot::new(0, thread);
-            let final_block = create_block(genesis_keypair.clone(), vec![], slot).unwrap();
+            let final_block = create_block(genesis_keypair.clone(), vec![], vec![], slot).unwrap();
             finalized_blocks.insert(slot, final_block.id);
             let mut final_block_storage = storage.clone_without_refs();
             final_block_storage.store_block(final_block.clone());
@@ -205,12 +230,20 @@ mod tests {
         let (sample_state, _keep_file, _keep_dir) = get_sample_state(0).unwrap();
         // init the storage
         let mut storage = Storage::create_root();
+
+        let slot_execution_output_sender = broadcast::channel(5000).0;
+
+        let channels = ExecutionChannels {
+            slot_execution_output_sender,
+        };
+
         // start the execution worker
         let (mut manager, controller) = start_execution_worker(
             exec_cfg.clone(),
             sample_state.clone(),
             sample_state.read().pos_state.selector.clone(),
             mip_store,
+            channels,
         );
         // initialize the execution system with genesis blocks
         init_execution_worker(&exec_cfg, &storage, controller.clone());
@@ -230,6 +263,7 @@ mod tests {
         let block = create_block(
             KeyPair::generate(0).unwrap(),
             vec![operation],
+            vec![],
             Slot::new(1, 0),
         )
         .unwrap();
@@ -299,6 +333,7 @@ mod tests {
         let block = create_block(
             KeyPair::generate(0).unwrap(),
             vec![operation],
+            vec![],
             Slot::new(2, 0),
         )
         .unwrap();
@@ -355,12 +390,20 @@ mod tests {
         let (sample_state, _keep_file, _keep_dir) = get_sample_state(0).unwrap();
         // init the storage
         let mut storage = Storage::create_root();
+
+        let slot_execution_output_sender = broadcast::channel(5000).0;
+
+        let channels = ExecutionChannels {
+            slot_execution_output_sender,
+        };
+
         // start the execution worker
         let (mut manager, controller) = start_execution_worker(
             exec_cfg.clone(),
             sample_state.clone(),
             sample_state.read().pos_state.selector.clone(),
             mip_store,
+            channels,
         );
         // initialize the execution system with genesis blocks
         init_execution_worker(&exec_cfg, &storage, controller.clone());
@@ -380,6 +423,7 @@ mod tests {
         let block = create_block(
             KeyPair::generate(0).unwrap(),
             vec![operation],
+            vec![],
             Slot::new(1, 0),
         )
         .unwrap();
@@ -427,6 +471,7 @@ mod tests {
         let block = create_block(
             KeyPair::generate(0).unwrap(),
             vec![operation],
+            vec![],
             Slot::new(2, 0),
         )
         .unwrap();
@@ -497,6 +542,12 @@ mod tests {
         };
         let mip_store = MipStore::try_from(([], mip_stats_config)).unwrap();
 
+        let slot_execution_output_sender = broadcast::channel(5000).0;
+
+        let channels = ExecutionChannels {
+            slot_execution_output_sender,
+        };
+
         // init the storage
         let mut storage = Storage::create_root();
         // start the execution worker
@@ -505,6 +556,7 @@ mod tests {
             sample_state.clone(),
             sample_state.read().pos_state.selector.clone(),
             mip_store,
+            channels,
         );
         // initialize the execution system with genesis blocks
         init_execution_worker(&exec_cfg, &storage, controller.clone());
@@ -523,6 +575,7 @@ mod tests {
         let block = create_block(
             KeyPair::generate(0).unwrap(),
             vec![operation],
+            vec![],
             Slot::new(1, 0),
         )
         .unwrap();
@@ -600,12 +653,20 @@ mod tests {
 
         // init the storage
         let mut storage = Storage::create_root();
+
+        let slot_execution_output_sender = broadcast::channel(5000).0;
+
+        let channels = ExecutionChannels {
+            slot_execution_output_sender,
+        };
+
         // start the execution worker
         let (mut manager, controller) = start_execution_worker(
             exec_cfg.clone(),
             sample_state.clone(),
             sample_state.read().pos_state.selector.clone(),
             mip_store,
+            channels,
         );
         // initialize the execution system with genesis blocks
         init_execution_worker(&exec_cfg, &storage, controller.clone());
@@ -625,6 +686,7 @@ mod tests {
         let block = create_block(
             KeyPair::generate(0).unwrap(),
             vec![operation],
+            vec![],
             Slot::new(1, 0),
         )
         .unwrap();
@@ -701,12 +763,20 @@ mod tests {
 
         // init the storage
         let mut storage = Storage::create_root();
+
+        let slot_execution_output_sender = broadcast::channel(5000).0;
+
+        let channels = ExecutionChannels {
+            slot_execution_output_sender,
+        };
+
         // start the execution worker
         let (mut manager, controller) = start_execution_worker(
             exec_cfg.clone(),
             sample_state.clone(),
             sample_state.read().pos_state.selector.clone(),
             mip_store,
+            channels,
         );
         // initialize the execution system with genesis blocks
         init_execution_worker(&exec_cfg, &storage, controller.clone());
@@ -729,6 +799,7 @@ mod tests {
         let block = create_block(
             KeyPair::generate(0).unwrap(),
             vec![local_exec_op.clone(), local_call_op.clone()],
+            vec![],
             Slot::new(1, 0),
         )
         .unwrap();
@@ -815,12 +886,20 @@ mod tests {
 
         // init the storage
         let mut storage = Storage::create_root();
+
+        let slot_execution_output_sender = broadcast::channel(5000).0;
+
+        let channels = ExecutionChannels {
+            slot_execution_output_sender,
+        };
+
         // start the execution worker
         let (mut manager, controller) = start_execution_worker(
             exec_cfg.clone(),
             sample_state.clone(),
             sample_state.read().pos_state.selector.clone(),
             mip_store,
+            channels,
         );
         // initialize the execution system with genesis blocks
         init_execution_worker(&exec_cfg, &storage, controller.clone());
@@ -836,7 +915,13 @@ mod tests {
         // create the block contaning the operation
         let op = create_execute_sc_operation(&keypair, op_bytecode, datastore.clone()).unwrap();
         storage.store_operations(vec![op.clone()]);
-        let block = create_block(KeyPair::generate(0).unwrap(), vec![op], Slot::new(1, 0)).unwrap();
+        let block = create_block(
+            KeyPair::generate(0).unwrap(),
+            vec![op],
+            vec![],
+            Slot::new(1, 0),
+        )
+        .unwrap();
         // store the block in storage
         storage.store_block(block.clone());
 
@@ -914,12 +999,20 @@ mod tests {
         let mut blockclique_blocks: HashMap<Slot, BlockId> = HashMap::new();
         // init the storage
         let mut storage = Storage::create_root();
+
+        let slot_execution_output_sender = broadcast::channel(5000).0;
+
+        let channels = ExecutionChannels {
+            slot_execution_output_sender,
+        };
+
         // start the execution worker
         let (mut manager, controller) = start_execution_worker(
             exec_cfg.clone(),
             sample_state.clone(),
             sample_state.read().pos_state.selector.clone(),
             mip_store,
+            channels,
         );
         // initialize the execution system with genesis blocks
         init_execution_worker(&exec_cfg, &storage, controller.clone());
@@ -943,7 +1036,7 @@ mod tests {
         // create the block containing the smart contract execution operation
         let operation = create_execute_sc_operation(&keypair, bytecode, datastore).unwrap();
         storage.store_operations(vec![operation.clone()]);
-        let block = create_block(keypair, vec![operation], Slot::new(1, 0)).unwrap();
+        let block = create_block(keypair, vec![operation], vec![], Slot::new(1, 0)).unwrap();
         // store the block in storage
         storage.store_block(block.clone());
 
@@ -980,7 +1073,7 @@ mod tests {
         // create the block containing the smart contract execution operation
         let operation = create_execute_sc_operation(&keypair, bytecode, datastore).unwrap();
         storage.store_operations(vec![operation.clone()]);
-        let block = create_block(keypair, vec![operation], Slot::new(1, 1)).unwrap();
+        let block = create_block(keypair, vec![operation], vec![], Slot::new(1, 1)).unwrap();
         // store the block in storage
         storage.store_block(block.clone());
 
@@ -1011,7 +1104,7 @@ mod tests {
 
         let operation = create_execute_sc_operation(&keypair, bytecode, datastore).unwrap();
         storage.store_operations(vec![operation.clone()]);
-        let block = create_block(keypair, vec![operation], Slot::new(1, 2)).unwrap();
+        let block = create_block(keypair, vec![operation], vec![], Slot::new(1, 2)).unwrap();
         // store the block in storage
         storage.store_block(block.clone());
 
@@ -1058,12 +1151,20 @@ mod tests {
 
         // init the storage
         let mut storage = Storage::create_root();
+
+        let slot_execution_output_sender = broadcast::channel(5000).0;
+
+        let channels = ExecutionChannels {
+            slot_execution_output_sender,
+        };
+
         // start the execution worker
         let (mut manager, controller) = start_execution_worker(
             exec_cfg.clone(),
             sample_state.clone(),
             sample_state.read().pos_state.selector.clone(),
             mip_store,
+            channels,
         );
         // initialize the execution system with genesis blocks
         init_execution_worker(&exec_cfg, &storage, controller.clone());
@@ -1091,10 +1192,10 @@ mod tests {
         let block = create_block(
             KeyPair::generate(0).unwrap(),
             vec![operation],
+            vec![],
             Slot::new(1, 0),
         )
         .unwrap();
-
         // store the block in storage
         storage.store_block(block.clone());
         // set our block as a final block so the transaction is processed
@@ -1153,12 +1254,20 @@ mod tests {
 
         // init the storage
         let mut storage = Storage::create_root();
+
+        let slot_execution_output_sender = broadcast::channel(5000).0;
+
+        let channels = ExecutionChannels {
+            slot_execution_output_sender,
+        };
+
         // start the execution worker
         let (mut manager, controller) = start_execution_worker(
             exec_cfg.clone(),
             sample_state.clone(),
             sample_state.read().pos_state.selector.clone(),
             mip_store,
+            channels,
         );
         // initialize the execution system with genesis blocks
         init_execution_worker(&exec_cfg, &storage, controller.clone());
@@ -1185,6 +1294,7 @@ mod tests {
         let block = create_block(
             KeyPair::generate(0).unwrap(),
             vec![operation],
+            vec![],
             Slot::new(1, 0),
         )
         .unwrap();
@@ -1257,12 +1367,20 @@ mod tests {
 
         // init the storage
         let mut storage = Storage::create_root();
+
+        let slot_execution_output_sender = broadcast::channel(5000).0;
+
+        let channels = ExecutionChannels {
+            slot_execution_output_sender,
+        };
+
         // start the execution worker
         let (mut manager, controller) = start_execution_worker(
             exec_cfg.clone(),
             sample_state.clone(),
             sample_state.read().pos_state.selector.clone(),
             mip_store,
+            channels,
         );
         // initialize the execution system with genesis blocks
         init_execution_worker(&exec_cfg, &storage, controller.clone());
@@ -1286,6 +1404,7 @@ mod tests {
         let block = create_block(
             KeyPair::generate(0).unwrap(),
             vec![operation],
+            vec![],
             Slot::new(1, 0),
         )
         .unwrap();
@@ -1344,12 +1463,20 @@ mod tests {
 
         // init the storage
         let mut storage = Storage::create_root();
+
+        let slot_execution_output_sender = broadcast::channel(5000).0;
+
+        let channels = ExecutionChannels {
+            slot_execution_output_sender,
+        };
+
         // start the execution worker
         let (mut manager, controller) = start_execution_worker(
             exec_cfg.clone(),
             sample_state.clone(),
             sample_state.read().pos_state.selector.clone(),
             mip_store,
+            channels,
         );
         // initialize the execution system with genesis blocks
         init_execution_worker(&exec_cfg, &storage, controller.clone());
@@ -1372,6 +1499,7 @@ mod tests {
         let block = create_block(
             KeyPair::generate(0).unwrap(),
             vec![operation],
+            vec![],
             Slot::new(1, 0),
         )
         .unwrap();
@@ -1433,12 +1561,20 @@ mod tests {
 
         // init the storage
         let mut storage = Storage::create_root();
+
+        let slot_execution_output_sender = broadcast::channel(5000).0;
+
+        let channels = ExecutionChannels {
+            slot_execution_output_sender,
+        };
+
         // start the execution worker
         let (mut manager, controller) = start_execution_worker(
             exec_cfg.clone(),
             sample_state.clone(),
             sample_state.read().pos_state.selector.clone(),
             mip_store,
+            channels,
         );
         // initialize the execution system with genesis blocks
         init_execution_worker(&exec_cfg, &storage, controller.clone());
@@ -1492,6 +1628,7 @@ mod tests {
         let block = create_block(
             KeyPair::generate(0).unwrap(),
             vec![operation1, operation2],
+            vec![],
             Slot::new(3, 0),
         )
         .unwrap();
@@ -1583,6 +1720,350 @@ mod tests {
 
     #[test]
     #[serial]
+    pub fn roll_slash() {
+        let vesting = get_initials_vesting(false);
+        // Try to sell 97 rolls (operation 1) then process a Denunciation (with config set to slash
+        // 3 rolls)
+        // Check for resulting roll & deferred credits & balance
+
+        // setup the period duration
+        let mut exec_cfg = ExecutionConfig {
+            t0: 100.into(),
+            periods_per_cycle: 2,
+            thread_count: 2,
+            cursor_delay: 0.into(),
+            initial_vesting_path: vesting.path().to_path_buf(),
+            last_start_period: 2,
+            roll_count_to_slash_on_denunciation: 3, // Set to 3 to check if config is taken into account
+            ..Default::default()
+        };
+        // turn off roll selling on missed block opportunities
+        // otherwise balance will be credited with those sold roll (and we need to check the balance for
+        // if the deferred credits are reimbursed
+        exec_cfg.max_miss_ratio = Ratio::new(1, 1);
+
+        // get a sample final state
+        let (sample_state, _keep_file, _keep_dir) =
+            get_sample_state(exec_cfg.last_start_period).unwrap();
+
+        // init the MIP store
+        let mip_stats_config = MipStatsConfig {
+            block_count_considered: MIP_STORE_STATS_BLOCK_CONSIDERED,
+            counters_max: MIP_STORE_STATS_COUNTERS_MAX,
+        };
+        let mip_store = MipStore::try_from(([], mip_stats_config)).unwrap();
+
+        // init the storage
+        let mut storage = Storage::create_root();
+
+        let slot_execution_output_sender = broadcast::channel(5000).0;
+
+        let channels = ExecutionChannels {
+            slot_execution_output_sender,
+        };
+
+        // start the execution worker
+        let (mut manager, controller) = start_execution_worker(
+            exec_cfg.clone(),
+            sample_state.clone(),
+            sample_state.read().pos_state.selector.clone(),
+            mip_store,
+            channels,
+        );
+        // initialize the execution system with genesis blocks
+        init_execution_worker(&exec_cfg, &storage, controller.clone());
+
+        // generate the keypair and its corresponding address
+        let keypair =
+            KeyPair::from_str("S1JJeHiZv1C1zZN5GLFcbz6EXYiccmUPLkYuDFA3kayjxP39kFQ").unwrap();
+        let address = Address::from_public_key(&keypair.get_public_key());
+
+        // get initial balance
+        let balance_initial = sample_state.read().ledger.get_balance(&address).unwrap();
+
+        // get initial roll count
+        let roll_count_initial = sample_state.read().pos_state.get_rolls_for(&address);
+        let roll_to_sell = roll_count_initial
+            .checked_sub(exec_cfg.roll_count_to_slash_on_denunciation)
+            .unwrap();
+
+        // create operation 1
+        let operation1 = Operation::new_verifiable(
+            Operation {
+                fee: Amount::zero(),
+                expire_period: 8,
+                op: OperationType::RollSell {
+                    roll_count: roll_to_sell,
+                },
+            },
+            OperationSerializer::new(),
+            &keypair,
+        )
+        .unwrap();
+
+        // create a denunciation
+        let (_slot, _keypair, s_endorsement_1, s_endorsement_2, _) =
+            gen_endorsements_for_denunciation(Some(Slot::new(3, 0)), Some(keypair.clone()));
+        let denunciation = Denunciation::try_from((&s_endorsement_1, &s_endorsement_2)).unwrap();
+
+        // create a denunciation (that will be ignored as it has been created at the last start period)
+        let (_slot, _keypair, s_endorsement_1, s_endorsement_2, _) =
+            gen_endorsements_for_denunciation(
+                Some(Slot::new(exec_cfg.last_start_period, 4)),
+                Some(keypair),
+            );
+        let denunciation_2 = Denunciation::try_from((&s_endorsement_1, &s_endorsement_2)).unwrap();
+
+        // create the block containing the roll buy operation
+        storage.store_operations(vec![operation1.clone()]);
+        let block = create_block(
+            KeyPair::generate(0).unwrap(),
+            vec![operation1],
+            vec![denunciation.clone(), denunciation, denunciation_2],
+            Slot::new(3, 0),
+        )
+        .unwrap();
+        // store the block in storage
+        storage.store_block(block.clone());
+        // set the block as final so the sell and credits are processed
+        let mut finalized_blocks: HashMap<Slot, BlockId> = Default::default();
+        finalized_blocks.insert(block.content.header.content.slot, block.id);
+        let mut block_storage: PreHashMap<BlockId, Storage> = Default::default();
+        block_storage.insert(block.id, storage.clone());
+        controller.update_blockclique_status(
+            finalized_blocks,
+            Default::default(),
+            block_storage.clone(),
+        );
+        std::thread::sleep(Duration::from_millis(1000));
+
+        // check roll count deferred credits and candidate balance of the seller address
+        let sample_read = sample_state.read();
+        let mut credits = PreHashMap::default();
+        let roll_sold = roll_to_sell;
+        credits.insert(
+            address,
+            exec_cfg.roll_price.checked_mul_u64(roll_sold).unwrap(),
+        );
+
+        assert_eq!(sample_read.pos_state.get_rolls_for(&address), 0);
+
+        // Check the remaining deferred credits
+        let slot_limit = Slot::new(10, 0);
+        let deferred_credits = sample_read
+            .pos_state
+            .get_deferred_credits_range(..=slot_limit)
+            .credits;
+
+        let (_slot, deferred_credit_amounts) = deferred_credits.last_key_value().unwrap();
+
+        assert_eq!(
+            *deferred_credit_amounts.get(&address).unwrap(),
+            exec_cfg.roll_price.checked_mul_u64(roll_to_sell).unwrap()
+        );
+
+        // Now check balance
+        let balances = controller.get_final_and_candidate_balance(&[address]);
+        let candidate_balance = balances.get(0).unwrap().1.unwrap();
+
+        assert_eq!(
+            candidate_balance,
+            exec_cfg
+                .roll_price
+                .checked_mul_u64(roll_to_sell)
+                .unwrap()
+                .checked_add(balance_initial)
+                .unwrap()
+        );
+
+        // stop the execution controller
+        manager.stop();
+    }
+
+    #[test]
+    #[serial]
+    pub fn roll_slash_2() {
+        let vesting = get_initials_vesting(false);
+        // Try to sell all rolls (operation 1) then process a Denunciation (with config set to slash
+        // 4 rolls)
+        // Check for resulting roll & deferred credits & balance
+
+        // setup the period duration
+        let mut exec_cfg = ExecutionConfig {
+            t0: 100.into(),
+            periods_per_cycle: 2,
+            thread_count: 2,
+            cursor_delay: 0.into(),
+            initial_vesting_path: vesting.path().to_path_buf(),
+            last_start_period: 2,
+            roll_count_to_slash_on_denunciation: 4, // Set to 4 to check if config is taken into account
+            ..Default::default()
+        };
+        // turn off roll selling on missed block opportunities
+        // otherwise balance will be credited with those sold roll (and we need to check the balance for
+        // if the deferred credits are reimbursed
+        exec_cfg.max_miss_ratio = Ratio::new(1, 1);
+
+        // get a sample final state
+        let (sample_state, _keep_file, _keep_dir) =
+            get_sample_state(exec_cfg.last_start_period).unwrap();
+
+        // init the MIP store
+        let mip_stats_config = MipStatsConfig {
+            block_count_considered: MIP_STORE_STATS_BLOCK_CONSIDERED,
+            counters_max: MIP_STORE_STATS_COUNTERS_MAX,
+        };
+        let mip_store = MipStore::try_from(([], mip_stats_config)).unwrap();
+
+        // init the storage
+        let mut storage = Storage::create_root();
+
+        let slot_execution_output_sender = broadcast::channel(5000).0;
+
+        let channels = ExecutionChannels {
+            slot_execution_output_sender,
+        };
+
+        // start the execution worker
+        let (mut manager, controller) = start_execution_worker(
+            exec_cfg.clone(),
+            sample_state.clone(),
+            sample_state.read().pos_state.selector.clone(),
+            mip_store,
+            channels,
+        );
+        // initialize the execution system with genesis blocks
+        init_execution_worker(&exec_cfg, &storage, controller.clone());
+
+        // generate the keypair and its corresponding address
+        let keypair =
+            KeyPair::from_str("S1JJeHiZv1C1zZN5GLFcbz6EXYiccmUPLkYuDFA3kayjxP39kFQ").unwrap();
+        let address = Address::from_public_key(&keypair.get_public_key());
+
+        // get initial balance
+        let balance_initial = sample_state.read().ledger.get_balance(&address).unwrap();
+
+        // get initial roll count
+        let roll_count_initial = sample_state.read().pos_state.get_rolls_for(&address);
+        // sell all rolls so we can check if slash will occur on deferred credits
+        let roll_to_sell_1 = 1;
+        let roll_to_sell_2 = roll_count_initial - 1;
+        let roll_to_sell = roll_to_sell_1 + roll_to_sell_2;
+
+        //
+        let amount_def = exec_cfg
+            .roll_price
+            .checked_mul_u64(exec_cfg.roll_count_to_slash_on_denunciation)
+            .unwrap();
+
+        // create operation 1
+        let operation1 = Operation::new_verifiable(
+            Operation {
+                fee: Amount::zero(),
+                expire_period: 8,
+                op: OperationType::RollSell {
+                    roll_count: roll_to_sell_1,
+                },
+            },
+            OperationSerializer::new(),
+            &keypair,
+        )
+        .unwrap();
+
+        // create operation 2
+        let operation2 = Operation::new_verifiable(
+            Operation {
+                fee: Amount::zero(),
+                expire_period: 8,
+                op: OperationType::RollSell {
+                    roll_count: roll_to_sell_2,
+                },
+            },
+            OperationSerializer::new(),
+            &keypair,
+        )
+        .unwrap();
+
+        // create a denunciation
+        let (_slot, _keypair, s_endorsement_1, s_endorsement_2, _) =
+            gen_endorsements_for_denunciation(Some(Slot::new(3, 0)), Some(keypair));
+        let denunciation = Denunciation::try_from((&s_endorsement_1, &s_endorsement_2)).unwrap();
+
+        // create the block containing the roll buy operation
+        storage.store_operations(vec![operation1.clone(), operation2.clone()]);
+        let block = create_block(
+            KeyPair::generate(0).unwrap(),
+            vec![operation1, operation2],
+            vec![denunciation.clone(), denunciation],
+            Slot::new(3, 0),
+        )
+        .unwrap();
+        // store the block in storage
+        storage.store_block(block.clone());
+        // set the block as final so the sell and credits are processed
+        let mut finalized_blocks: HashMap<Slot, BlockId> = Default::default();
+        finalized_blocks.insert(block.content.header.content.slot, block.id);
+        let mut block_storage: PreHashMap<BlockId, Storage> = Default::default();
+        block_storage.insert(block.id, storage.clone());
+        controller.update_blockclique_status(
+            finalized_blocks,
+            Default::default(),
+            block_storage.clone(),
+        );
+        std::thread::sleep(Duration::from_millis(1000));
+
+        // check roll count & deferred credits & candidate balance
+        let sample_read = sample_state.read();
+        let mut credits = PreHashMap::default();
+        let roll_sold = roll_to_sell;
+        credits.insert(
+            address,
+            exec_cfg.roll_price.checked_mul_u64(roll_sold).unwrap(),
+        );
+
+        assert_eq!(sample_read.pos_state.get_rolls_for(&address), 0);
+
+        // Check the remaining deferred credits
+        let slot_limit = Slot::new(10, 0);
+        let deferred_credits = sample_read
+            .pos_state
+            .get_deferred_credits_range(..=slot_limit)
+            .credits;
+
+        let (_slot, deferred_credit_amounts) = deferred_credits.last_key_value().unwrap();
+
+        assert_eq!(
+            *deferred_credit_amounts.get(&address).unwrap(),
+            exec_cfg
+                .roll_price
+                .checked_mul_u64(roll_to_sell)
+                .unwrap()
+                .checked_sub(amount_def)
+                .unwrap()
+        );
+
+        // Now check balance
+        let balances = controller.get_final_and_candidate_balance(&[address]);
+        let candidate_balance = balances.get(0).unwrap().1.unwrap();
+
+        assert_eq!(
+            candidate_balance,
+            exec_cfg
+                .roll_price
+                .checked_mul_u64(roll_to_sell)
+                .unwrap()
+                .checked_sub(amount_def)
+                .unwrap()
+                .checked_add(balance_initial)
+                .unwrap()
+        );
+
+        // stop the execution controller
+        manager.stop();
+    }
+
+    #[test]
+    #[serial]
     fn sc_execution_error() {
         let vesting = get_initials_vesting(false);
         // setup the period duration and the maximum gas for asynchronous messages execution
@@ -1605,12 +2086,20 @@ mod tests {
 
         // init the storage
         let mut storage = Storage::create_root();
+
+        let slot_execution_output_sender = broadcast::channel(5000).0;
+
+        let channels = ExecutionChannels {
+            slot_execution_output_sender,
+        };
+
         // start the execution worker
         let (mut manager, controller) = start_execution_worker(
             exec_cfg.clone(),
             sample_state.clone(),
             sample_state.read().pos_state.selector.clone(),
             mip_store,
+            channels,
         );
         // initialize the execution system with genesis blocks
         init_execution_worker(&exec_cfg, &storage, controller.clone());
@@ -1626,6 +2115,7 @@ mod tests {
         let block = create_block(
             KeyPair::generate(0).unwrap(),
             vec![operation],
+            vec![],
             Slot::new(1, 0),
         )
         .unwrap();
@@ -1684,12 +2174,20 @@ mod tests {
 
         // init the storage
         let mut storage = Storage::create_root();
+
+        let slot_execution_output_sender = broadcast::channel(5000).0;
+
+        let channels = ExecutionChannels {
+            slot_execution_output_sender,
+        };
+
         // start the execution worker
         let (mut manager, controller) = start_execution_worker(
             exec_cfg.clone(),
             sample_state.clone(),
             sample_state.read().pos_state.selector.clone(),
             mip_store,
+            channels,
         );
         // initialize the execution system with genesis blocks
         init_execution_worker(&exec_cfg, &storage, controller.clone());
@@ -1706,6 +2204,7 @@ mod tests {
         let block = create_block(
             KeyPair::generate(0).unwrap(),
             vec![operation],
+            vec![],
             Slot::new(1, 0),
         )
         .unwrap();
@@ -1760,12 +2259,20 @@ mod tests {
 
         // init the storage
         let mut storage = Storage::create_root();
+
+        let slot_execution_output_sender = broadcast::channel(5000).0;
+
+        let channels = ExecutionChannels {
+            slot_execution_output_sender,
+        };
+
         // start the execution worker
         let (_manager, controller) = start_execution_worker(
             exec_cfg.clone(),
             sample_state.clone(),
             sample_state.read().pos_state.selector.clone(),
             mip_store,
+            channels,
         );
         // initialize the execution system with genesis blocks
         init_execution_worker(&exec_cfg, &storage, controller.clone());
@@ -1784,6 +2291,7 @@ mod tests {
         let block = create_block(
             KeyPair::generate(0).unwrap(),
             vec![operation],
+            vec![],
             Slot::new(1, 0),
         )
         .unwrap();
@@ -1836,12 +2344,20 @@ mod tests {
 
         // init the storage
         let mut storage = Storage::create_root();
+
+        let slot_execution_output_sender = broadcast::channel(5000).0;
+
+        let channels = ExecutionChannels {
+            slot_execution_output_sender,
+        };
+
         // start the execution worker
         let (mut manager, controller) = start_execution_worker(
             exec_cfg.clone(),
             sample_state.clone(),
             sample_state.read().pos_state.selector.clone(),
             mip_store,
+            channels,
         );
         // initialize the execution system with genesis blocks
         init_execution_worker(&exec_cfg, &storage, controller.clone());
@@ -1860,6 +2376,7 @@ mod tests {
         let block = create_block(
             KeyPair::generate(0).unwrap(),
             vec![operation],
+            vec![],
             Slot::new(1, 0),
         )
         .unwrap();
@@ -1970,11 +2487,19 @@ mod tests {
             counters_max: MIP_STORE_STATS_COUNTERS_MAX,
         };
         let mip_store = MipStore::try_from(([], mip_stats_config)).unwrap();
+
+        let slot_execution_output_sender = broadcast::channel(5000).0;
+
+        let channels = ExecutionChannels {
+            slot_execution_output_sender,
+        };
+
         let (mut manager, controller) = start_execution_worker(
             exec_cfg.clone(),
             sample_state.clone(),
             sample_state.read().pos_state.selector.clone(),
             mip_store,
+            channels,
         );
         // initialize the execution system with genesis blocks
         init_execution_worker(&exec_cfg, &storage, controller.clone());
@@ -1990,8 +2515,13 @@ mod tests {
             let operation =
                 create_execute_sc_operation(&keypair, event_test_data, BTreeMap::default())
                     .unwrap();
-            let blockclique_block =
-                create_block(keypair, vec![operation.clone()], blockclique_block_slot).unwrap();
+            let blockclique_block = create_block(
+                keypair,
+                vec![operation.clone()],
+                vec![],
+                blockclique_block_slot,
+            )
+            .unwrap();
             blockclique_blocks.insert(blockclique_block_slot, blockclique_block.id);
             let mut blockclique_block_storage = storage.clone_without_refs();
             blockclique_block_storage.store_block(blockclique_block.clone());
@@ -2017,8 +2547,13 @@ mod tests {
             let operation =
                 create_execute_sc_operation(&keypair, event_test_data, BTreeMap::default())
                     .unwrap();
-            let blockclique_block =
-                create_block(keypair, vec![operation.clone()], blockclique_block_slot).unwrap();
+            let blockclique_block = create_block(
+                keypair,
+                vec![operation.clone()],
+                vec![],
+                blockclique_block_slot,
+            )
+            .unwrap();
             blockclique_blocks.insert(blockclique_block_slot, blockclique_block.id);
             let mut blockclique_block_storage = storage.clone_without_refs();
             blockclique_block_storage.store_block(blockclique_block.clone());
@@ -2061,12 +2596,20 @@ mod tests {
             counters_max: MIP_STORE_STATS_COUNTERS_MAX,
         };
         let mip_store = MipStore::try_from(([], mip_stats_config)).unwrap();
+
+        let slot_execution_output_sender = broadcast::channel(5000).0;
+
+        let channels = ExecutionChannels {
+            slot_execution_output_sender,
+        };
+
         // start the execution worker
         let (mut manager, controller) = start_execution_worker(
             exec_cfg.clone(),
             sample_state.clone(),
             sample_state.read().pos_state.selector.clone(),
             mip_store,
+            channels,
         );
         // initialize the execution system with genesis blocks
         init_execution_worker(&exec_cfg, &storage, controller.clone());
@@ -2083,6 +2626,7 @@ mod tests {
                 fee: Amount::from_mantissa_scale(10, 0),
                 expire_period: 10,
                 op: OperationType::ExecuteSC {
+                    max_coins: Amount::from_mantissa_scale(0, 0),
                     data: bytecode.to_vec(),
                     max_gas: 0,
                     datastore: BTreeMap::default(),
@@ -2096,6 +2640,7 @@ mod tests {
         let block = create_block(
             KeyPair::generate(0).unwrap(),
             vec![operation],
+            vec![],
             Slot::new(1, 0),
         )
         .unwrap();
@@ -2129,6 +2674,7 @@ mod tests {
         let op = OperationType::ExecuteSC {
             data: data.to_vec(),
             max_gas: 100_000_000,
+            max_coins: Amount::from_str("5000000").unwrap(),
             datastore,
         };
         let op = Operation::new_verifiable(
@@ -2196,12 +2742,20 @@ mod tests {
         let mip_store = MipStore::try_from(([], mip_stats_config)).unwrap();
         // init the storage
         let mut storage = Storage::create_root();
+
+        let slot_execution_output_sender = broadcast::channel(5000).0;
+
+        let channels = ExecutionChannels {
+            slot_execution_output_sender,
+        };
+
         // start the execution worker
         let (mut manager, controller) = start_execution_worker(
             exec_cfg.clone(),
             sample_state.clone(),
             sample_state.read().pos_state.selector.clone(),
             mip_store,
+            channels,
         );
         // initialize the execution system with genesis blocks
         init_execution_worker(&exec_cfg, &storage, controller.clone());
@@ -2217,6 +2771,7 @@ mod tests {
         let block = create_block(
             KeyPair::generate(0).unwrap(),
             vec![operation],
+            vec![],
             Slot::new(1, 0),
         )
         .unwrap();
@@ -2281,12 +2836,20 @@ mod tests {
         let mip_store = MipStore::try_from(([], mip_stats_config)).unwrap();
         // init the storage
         let mut storage = Storage::create_root();
+
+        let slot_execution_output_sender = broadcast::channel(5000).0;
+
+        let channels = ExecutionChannels {
+            slot_execution_output_sender,
+        };
+
         // start the execution worker
         let (mut manager, controller) = start_execution_worker(
             exec_cfg.clone(),
             sample_state.clone(),
             sample_state.read().pos_state.selector.clone(),
             mip_store,
+            channels,
         );
         // initialize the execution system with genesis blocks
         init_execution_worker(&exec_cfg, &storage, controller.clone());
@@ -2306,6 +2869,7 @@ mod tests {
         let block = create_block(
             KeyPair::generate(0).unwrap(),
             vec![operation],
+            vec![],
             Slot::new(1, 0),
         )
         .unwrap();

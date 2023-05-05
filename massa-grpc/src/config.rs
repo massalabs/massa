@@ -14,6 +14,8 @@ pub struct GrpcConfig {
     pub accept_http1: bool,
     /// whether to enable CORS. Works only if `accept_http1` is true
     pub enable_cors: bool,
+    /// whether to enable gRPC health service
+    pub enable_health: bool,
     /// whether to enable gRPC reflection
     pub enable_reflection: bool,
     /// bind for the Massa gRPC API
@@ -74,12 +76,18 @@ pub struct GrpcConfig {
     pub genesis_timestamp: MassaTime,
     /// t0
     pub t0: MassaTime,
+    /// periods per cycle
+    pub periods_per_cycle: u64,
     /// limits the maximum size of streaming channel
     pub max_channel_size: usize,
     /// when looking for next draw we want to look at max `draw_lookahead_period_count`
     pub draw_lookahead_period_count: u64,
     /// last_start_period of the network, used to deserialize blocks
     pub last_start_period: u64,
-    /// Max denunciations in block header
+    /// max denunciations in block header
     pub max_denunciations_per_block_header: u32,
+    /// max number of block ids that can be included in a single request
+    pub max_block_ids_per_request: u32,
+    /// max number of operation ids that can be included in a single request
+    pub max_operation_ids_per_request: u32,
 }

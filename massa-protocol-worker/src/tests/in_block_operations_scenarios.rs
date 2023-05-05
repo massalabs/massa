@@ -42,8 +42,8 @@ fn test_protocol_does_propagate_operations_received_in_blocks() {
               mut consensus_event_receiver,
               pool_event_receiver| {
             //1. Create 2 nodes
-            let node_a_keypair = KeyPair::generate();
-            let node_b_keypair = KeyPair::generate();
+            let node_a_keypair = KeyPair::generate(0).unwrap();
+            let node_b_keypair = KeyPair::generate(0).unwrap();
             let (node_a_peer_id, _node_a) = network_controller.create_fake_connection(
                 PeerId::from_bytes(node_a_keypair.get_public_key().to_bytes()).unwrap(),
             );
@@ -143,8 +143,8 @@ fn test_protocol_sends_blocks_with_operations_to_consensus() {
               mut consensus_event_receiver,
               pool_event_receiver| {
             //1. Create 2 nodes
-            let node_a_keypair = KeyPair::generate();
-            let node_b_keypair = KeyPair::generate();
+            let node_a_keypair = KeyPair::generate(0).unwrap();
+            let node_b_keypair = KeyPair::generate(0).unwrap();
             let (node_a_peer_id, _node_a) = network_controller.create_fake_connection(
                 PeerId::from_bytes(node_a_keypair.get_public_key().to_bytes()).unwrap(),
             );

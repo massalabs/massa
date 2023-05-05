@@ -41,14 +41,15 @@ fn test_protocol_bans_node_sending_block_header_with_invalid_signature() {
               mut consensus_event_receiver,
               pool_event_receiver| {
             //1. Create 1 node
-            let node_a_keypair = KeyPair::generate();
+            let node_a_keypair = KeyPair::generate(0).unwrap();
             let (node_a_peer_id, _node_a) = network_controller.create_fake_connection(
                 PeerId::from_bytes(node_a_keypair.get_public_key().to_bytes()).unwrap(),
             );
 
             //2. Create a block with bad public key.
             let mut block = tools::create_block(&node_a_keypair);
-            block.content.header.content_creator_pub_key = KeyPair::generate().get_public_key();
+            block.content.header.content_creator_pub_key =
+                KeyPair::generate(0).unwrap().get_public_key();
             //end setup
 
             //3. Send header to protocol.
@@ -109,14 +110,14 @@ fn test_protocol_bans_node_sending_operation_with_invalid_signature() {
               consensus_event_receiver,
               mut pool_event_receiver| {
             //1. Create 1 node
-            let node_a_keypair = KeyPair::generate();
+            let node_a_keypair = KeyPair::generate(0).unwrap();
             let (node_a_peer_id, _node_a) = network_controller.create_fake_connection(
                 PeerId::from_bytes(node_a_keypair.get_public_key().to_bytes()).unwrap(),
             );
 
             //2. Create a operation with bad public key.
             let mut operation = tools::create_operation_with_expire_period(&node_a_keypair, 1);
-            operation.content_creator_pub_key = KeyPair::generate().get_public_key();
+            operation.content_creator_pub_key = KeyPair::generate(0).unwrap().get_public_key();
             //end setup
 
             //3. Send operation to protocol.
@@ -175,7 +176,7 @@ fn test_protocol_bans_node_sending_header_with_invalid_signature() {
               consensus_event_receiver,
               pool_event_receiver| {
             //1. Create 1 node
-            let node_a_keypair = KeyPair::generate();
+            let node_a_keypair = KeyPair::generate(0).unwrap();
             let (node_a_peer_id, node_a) = network_controller.create_fake_connection(
                 PeerId::from_bytes(node_a_keypair.get_public_key().to_bytes()).unwrap(),
             );
@@ -233,7 +234,7 @@ fn test_protocol_bans_node_sending_header_with_invalid_signature() {
             );
 
             //8. Create a new node
-            let node_b_keypair = KeyPair::generate();
+            let node_b_keypair = KeyPair::generate(0).unwrap();
             let (_node_b_peer_id, _node_b) = network_controller.create_fake_connection(
                 PeerId::from_bytes(node_b_keypair.get_public_key().to_bytes()).unwrap(),
             );
@@ -286,7 +287,7 @@ fn test_protocol_does_not_asks_for_block_from_banned_node_who_propagated_header(
               mut consensus_event_receiver,
               pool_event_receiver| {
             //1. Create 1 node
-            let node_a_keypair = KeyPair::generate();
+            let node_a_keypair = KeyPair::generate(0).unwrap();
             let (node_a_peer_id, node_a) = network_controller.create_fake_connection(
                 PeerId::from_bytes(node_a_keypair.get_public_key().to_bytes()).unwrap(),
             );
@@ -327,9 +328,10 @@ fn test_protocol_does_not_asks_for_block_from_banned_node_who_propagated_header(
             let expected_hash = block.id;
             //6. Get node A banned
             // New keypair to avoid getting same block id
-            let keypair = KeyPair::generate();
+            let keypair = KeyPair::generate(0).unwrap();
             let mut block = tools::create_block(&keypair);
-            block.content.header.content_creator_pub_key = KeyPair::generate().get_public_key();
+            block.content.header.content_creator_pub_key =
+                KeyPair::generate(0).unwrap().get_public_key();
             network_controller
                 .send_from_peer(
                     &node_a_peer_id,
@@ -390,8 +392,8 @@ fn test_protocol_bans_all_nodes_propagating_an_attack_attempt() {
               mut consensus_event_receiver,
               pool_event_receiver| {
             //1. Create 2 node
-            let node_a_keypair = KeyPair::generate();
-            let node_b_keypair = KeyPair::generate();
+            let node_a_keypair = KeyPair::generate(0).unwrap();
+            let node_b_keypair = KeyPair::generate(0).unwrap();
             let (node_a_peer_id, _node_a) = network_controller.create_fake_connection(
                 PeerId::from_bytes(node_a_keypair.get_public_key().to_bytes()).unwrap(),
             );
@@ -445,7 +447,7 @@ fn test_protocol_bans_all_nodes_propagating_an_attack_attempt() {
                 None => {}
             }
             //6. Connect a new node that don't known about the attack.
-            let node_c_keypair = KeyPair::generate();
+            let node_c_keypair = KeyPair::generate(0).unwrap();
             let (_node_c_peer_id, _node_c) = network_controller.create_fake_connection(
                 PeerId::from_bytes(node_c_keypair.get_public_key().to_bytes()).unwrap(),
             );

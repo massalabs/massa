@@ -7,7 +7,7 @@ use massa_serialization::{
     Deserializer, SerializeError, Serializer, U16VarIntDeserializer, U16VarIntSerializer,
     U32VarIntDeserializer, U32VarIntSerializer,
 };
-use massa_signature::PUBLIC_KEY_SIZE_BYTES;
+use massa_signature::PUBLIC_KEY_DESER_SIZE;
 use nom::{
     bytes::complete::take,
     error::{context, ContextError, ParseError},
@@ -55,12 +55,12 @@ impl Serializer<BootstrapPeers> for BootstrapPeersSerializer {
     /// use std::collections::HashMap;
     /// use std::str::FromStr;
     ///
-    /// let keypair1 = KeyPair::generate();
+    /// let keypair1 = KeyPair::generate(0).unwrap();
     /// let mut peers = vec![];
     /// let mut listeners1 = HashMap::default();
     /// listeners1.insert("127.0.0.1:8080".parse().unwrap(), TransportType::Tcp);
     /// peers.push((PeerId::from_public_key(keypair1.get_public_key()), listeners1));
-    /// let mut keypair2 = KeyPair::generate();
+    /// let mut keypair2 = KeyPair::generate(0).unwrap();
     /// let mut listeners2 = HashMap::default();
     /// listeners2.insert("[::1]:8080".parse().unwrap(), TransportType::Tcp);
     /// peers.push((PeerId::from_public_key(keypair1.get_public_key()), listeners2));
@@ -130,12 +130,12 @@ impl Deserializer<BootstrapPeers> for BootstrapPeersDeserializer {
     /// use std::collections::HashMap;
     /// use std::str::FromStr;
     ///
-    /// let keypair1 = KeyPair::generate();
+    /// let keypair1 = KeyPair::generate(0).unwrap();
     /// let mut peers = vec![];
     /// let mut listeners1 = HashMap::default();
     /// listeners1.insert("127.0.0.1:8080".parse().unwrap(), TransportType::Tcp);
     /// peers.push((PeerId::from_public_key(keypair1.get_public_key()), listeners1));
-    /// let mut keypair2 = KeyPair::generate();
+    /// let mut keypair2 = KeyPair::generate(0).unwrap();
     /// let mut listeners2 = HashMap::default();
     /// listeners2.insert("[::1]:8080".parse().unwrap(), TransportType::Tcp);
     /// peers.push((PeerId::from_public_key(keypair1.get_public_key()), listeners2));
@@ -163,7 +163,7 @@ impl Deserializer<BootstrapPeers> for BootstrapPeersDeserializer {
                         Ok((
                             rest,
                             PeerId::from_bytes(
-                                peer_id[..PUBLIC_KEY_SIZE_BYTES].try_into().map_err(|_| {
+                                peer_id[..PUBLIC_KEY_DESER_SIZE].try_into().map_err(|_| {
                                     nom::Err::Error(ParseError::from_error_kind(
                                         input,
                                         nom::error::ErrorKind::Count,

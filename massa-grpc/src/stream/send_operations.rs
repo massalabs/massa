@@ -14,7 +14,7 @@ use tonic::codegen::futures_core;
 use tracing::log::{error, warn};
 
 /// Type declaration for SendOperations
-pub type SendOperationsStream = Pin<
+pub type SendOperationsStreamType = Pin<
     Box<
         dyn futures_core::Stream<Item = Result<grpc::SendOperationsResponse, tonic::Status>>
             + Send
@@ -28,9 +28,9 @@ pub type SendOperationsStream = Pin<
 pub(crate) async fn send_operations(
     grpc: &MassaGrpc,
     request: tonic::Request<tonic::Streaming<grpc::SendOperationsRequest>>,
-) -> Result<SendOperationsStream, GrpcError> {
+) -> Result<SendOperationsStreamType, GrpcError> {
     let mut pool_command_sender = grpc.pool_command_sender.clone();
-    let mut protocol_command_sender = grpc.protocol_command_sender.clone();
+    let protocol_command_sender = grpc.protocol_command_sender.clone();
     let config = grpc.grpc_config.clone();
     let storage = grpc.storage.clone_without_refs();
 
@@ -190,7 +190,7 @@ pub(crate) async fn send_operations(
     });
 
     let out_stream = tokio_stream::wrappers::ReceiverStream::new(rx);
-    Ok(Box::pin(out_stream) as SendOperationsStream)
+    Ok(Box::pin(out_stream) as SendOperationsStreamType)
 }
 
 /// This function reports an error to the sender by sending a gRPC response message to the client

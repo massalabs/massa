@@ -77,6 +77,8 @@ pub struct BootstrapConfig {
     pub endorsement_count: u32,
     /// max advertise length
     pub max_advertise_length: u32,
+    /// max listeners per peer
+    pub max_listeners_per_peer: u32,
     /// max bootstrap blocks length
     pub max_bootstrap_blocks_length: u32,
     /// max operations per block
@@ -129,6 +131,8 @@ pub struct BootstrapConfig {
     pub mip_store_stats_counters_max: usize,
     /// max denunciations in block header
     pub max_denunciations_per_block_header: u32,
+    /// max executed denunciations changes
+    pub max_denunciation_changes_length: u64,
 }
 
 /// Bootstrap server binding
@@ -153,6 +157,7 @@ pub struct BootstrapClientConfig {
     pub max_bytes_read_write: f64,
     pub max_bootstrap_message_size: u32,
     pub endorsement_count: u32,
+    pub max_listeners_per_peer: u32,
     pub max_advertise_length: u32,
     pub max_bootstrap_blocks_length: u32,
     pub max_operations_per_block: u32,
@@ -176,6 +181,7 @@ pub struct BootstrapClientConfig {
     pub mip_store_stats_block_considered: usize,
     pub mip_store_stats_counters_max: usize,
     pub max_denunciations_per_block_header: u32,
+    pub max_denunciation_changes_length: u64,
 }
 
 /// Bootstrap Message der args
@@ -186,6 +192,7 @@ pub struct BootstrapServerMessageDeserializerArgs {
     pub thread_count: u8,
     pub endorsement_count: u32,
     pub max_advertise_length: u32,
+    pub max_listeners_per_peer: u32,
     pub max_bootstrap_blocks_length: u32,
     pub max_operations_per_block: u32,
     pub max_bootstrap_final_state_parts_size: u64,
@@ -206,6 +213,7 @@ pub struct BootstrapServerMessageDeserializerArgs {
     pub mip_store_stats_block_considered: usize,
     pub mip_store_stats_counters_max: usize,
     pub max_denunciations_per_block_header: u32,
+    pub max_denunciation_changes_length: u64,
 }
 
 // TODO: add a proc macro for this case

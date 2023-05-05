@@ -5,33 +5,36 @@ use crate::error::GrpcError;
 use futures_util::FutureExt;
 use hyper::Method;
 use massa_consensus_exports::{ConsensusChannels, ConsensusController};
-use massa_execution_exports::ExecutionController;
+use massa_execution_exports::{ExecutionChannels, ExecutionController};
 use massa_pool_exports::{PoolChannels, PoolController};
 use massa_pos_exports::SelectorController;
 use massa_proto::massa::api::v1::massa_service_server::MassaServiceServer;
 use massa_proto::massa::api::v1::FILE_DESCRIPTOR_SET;
-use massa_protocol_exports::ProtocolCommandSender;
+use massa_protocol_exports::ProtocolController;
 use massa_storage::Storage;
 use tokio::sync::oneshot;
 use tonic::codec::CompressionEncoding;
+use tonic_health::server::HealthReporter;
 use tonic_web::GrpcWebLayer;
 use tower_http::cors::{Any, CorsLayer};
 use tracing::log::{info, warn};
 
 /// gRPC API content
 pub struct MassaGrpc {
-    /// link(channels) to the consensus component
+    /// link to the consensus component
     pub consensus_controller: Box<dyn ConsensusController>,
     /// link(channels) to the consensus component
     pub consensus_channels: ConsensusChannels,
     /// link to the execution component
     pub execution_controller: Box<dyn ExecutionController>,
+    /// link(channels) to the execution component
+    pub execution_channels: ExecutionChannels,
     /// link(channels) to the pool component
     pub pool_channels: PoolChannels,
     /// link to the pool component
     pub pool_command_sender: Box<dyn PoolController>,
-    /// link(channels) to the protocol component
-    pub protocol_command_sender: ProtocolCommandSender,
+    /// link to the protocol component
+    pub protocol_command_sender: Box<dyn ProtocolController>,
     /// link to the selector component
     pub selector_controller: Box<dyn SelectorController>,
     /// link to the storage component
@@ -76,6 +79,18 @@ impl MassaGrpc {
             .http2_adaptive_window(config.http2_adaptive_window)
             .max_frame_size(config.max_frame_size);
 
+        let health_service_opt = if config.enable_health {
+            let (mut health_reporter, health_service) = tonic_health::server::health_reporter();
+            health_reporter
+                .set_serving::<MassaServiceServer<MassaGrpc>>()
+                .await;
+            tokio::spawn(massa_service_status(health_reporter.clone()));
+            info!("gRPC health service enabled");
+            Some(health_service)
+        } else {
+            None
+        };
+
         if config.accept_http1 {
             if config.enable_cors {
                 let cors = CorsLayer::new()
@@ -89,6 +104,7 @@ impl MassaGrpc {
                     .accept_http1(true)
                     .layer(cors)
                     .layer(GrpcWebLayer::new())
+                    .add_optional_service(health_service_opt)
                     .add_service(svc);
 
                 if config.enable_reflection {
@@ -154,4 +170,12 @@ impl StopHandle {
             info!("gRPC API stop signal sent successfully");
         }
     }
+}
+
+/// Massa service health check implementation
+async fn massa_service_status(mut reporter: HealthReporter) {
+    //TODO add a complete health check based on Massa modules health
+    reporter
+        .set_serving::<MassaServiceServer<MassaGrpc>>()
+        .await;
 }

@@ -18,7 +18,6 @@ config = "0.13"
 bs58 = { version = "0.4", features = ["check"] }
 bitvec = { version = "1.0", features = ["serde"] }
 nom = "7.1"
-const_format = "0.2.30"
 
 # custom modules
 massa_hash = { path = "../massa-hash" }
