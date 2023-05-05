@@ -517,10 +517,13 @@ impl MipStoreStats {
 /// Error returned by
 #[derive(Error, Debug, PartialEq)]
 pub enum UpdateWithError {
+    // State is not coherent with associated MipInfo, ex: State is active but MipInfo.start was not reach yet
     #[error("MipInfo {0:?} is not coherent with state: {1:?}")]
     NonCoherent(MipInfo, MipState),
+    // ex: State is already started but received state is only defined
     #[error("For MipInfo {0:?}, trying to downgrade from state {1:?} to {2:?}")]
     Downgrade(MipInfo, ComponentState, ComponentState),
+    // ex: MipInfo 2 start is before MipInfo 1 timeout (MipInfo timings should only be sequential)
     #[error("MipInfo {0:?} has overlapping data of MipInfo {1:?}")]
     Overlapping(MipInfo, MipInfo),
 }
@@ -562,12 +565,12 @@ impl MipStoreRaw {
         let mut names: BTreeSet<String> = self.store.iter().map(|i| i.0.name.clone()).collect();
         let mut to_update: BTreeMap<MipInfo, MipState> = Default::default();
         let mut to_add: BTreeMap<MipInfo, MipState> = Default::default();
-        let mut should_merge: Option<UpdateWithError> = None;
+        let mut has_error: Option<UpdateWithError> = None;
 
         for (v_info, v_state) in store_raw.store.iter() {
             if !v_state.is_coherent_with(v_info) {
                 // As soon as we found one non coherent state we abort the merge
-                should_merge = Some(UpdateWithError::NonCoherent(
+                has_error = Some(UpdateWithError::NonCoherent(
                     v_info.clone(),
                     v_state.clone(),
                 ));
@@ -593,7 +596,7 @@ impl MipStoreRaw {
                         to_update.insert(v_info.clone(), v_state.clone());
                     } else {
                         // Trying to downgrade state' (e.g. trying to go from 'active' -> 'defined')
-                        should_merge = Some(UpdateWithError::Downgrade(
+                        has_error = Some(UpdateWithError::Downgrade(
                             v_info.clone(),
                             v_state_orig.state,
                             v_state.state,
@@ -635,7 +638,7 @@ impl MipStoreRaw {
                     } else {
                         // Something is wrong (time range not ok? / version not incr? / names?
                         // or component version not incr?)
-                        should_merge = Some(UpdateWithError::Overlapping(
+                        has_error = Some(UpdateWithError::Overlapping(
                             v_info.clone(),
                             last_v_info.clone(),
                         ));
@@ -649,7 +652,7 @@ impl MipStoreRaw {
             }
         }
 
-        match should_merge {
+        match has_error {
             None => {
                 let added = to_add.keys().cloned().collect();
                 let updated = to_update.keys().cloned().collect();
