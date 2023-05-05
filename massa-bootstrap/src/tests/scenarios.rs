@@ -57,7 +57,7 @@ use mockall::Sequence;
 use parking_lot::RwLock;
 use std::collections::HashMap;
 use std::net::{SocketAddr, TcpStream};
-use std::sync::atomic::AtomicBool;
+use std::sync::{Condvar, Mutex};
 use std::{path::PathBuf, str::FromStr, sync::Arc, time::Duration};
 use tempfile::TempDir;
 
@@ -411,7 +411,7 @@ fn test_bootstrap_server() {
         MassaTime::now().unwrap().saturating_sub(1000.into()),
         None,
         None,
-        Arc::new(AtomicBool::new(false)),
+        Arc::new((Mutex::new(false), Condvar::new())),
     )
     .unwrap();
 

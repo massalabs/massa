@@ -81,7 +81,8 @@ use parking_lot::RwLock;
 use peernet::transports::TransportType;
 use std::collections::HashMap;
 use std::path::PathBuf;
-use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
+use std::sync::atomic::{AtomicUsize, Ordering};
+use std::sync::{Condvar, Mutex};
 use std::thread::sleep;
 use std::time::Duration;
 use std::{path::Path, process, sync::Arc};
@@ -229,11 +230,12 @@ async fn launch(
     ));
 
     // interrupt signal listener
-    let interupted = Arc::new(AtomicBool::new(false));
+    let interupted = Arc::new((Mutex::new(false), Condvar::new()));
     let handler_clone = Arc::clone(&interupted);
 
     ctrlc::set_handler(move || {
-        handler_clone.store(true, Ordering::SeqCst);
+        *handler_clone.0.lock().unwrap() = true;
+        handler_clone.1.notify_all();
     })
     .expect("Error setting Ctrl-C handler");
 
