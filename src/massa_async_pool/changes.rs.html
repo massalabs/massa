@@ -296,11 +296,9 @@
 <a href="#296" id="296">296</a>
 <a href="#297" id="297">297</a>
 <a href="#298" id="298">298</a>
-<a href="#299" id="299">299</a>
 </pre><pre class="rust"><code><span class="doccomment">///! Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 ///! This file provides structures representing changes to the asynchronous message pool
-
 </span><span class="kw">use </span>std::{
     collections::{btree_map::Entry, BTreeMap},
     ops::Bound::Included,
@@ -316,7 +314,7 @@
 
 <span class="kw">use </span>massa_ledger_exports::{
     Applicable, SetOrKeep, SetUpdateOrDelete, SetUpdateOrDeleteDeserializer,
-    SetUpdateOrDeleteSerializer
+    SetUpdateOrDeleteSerializer,
 };
 
 <span class="kw">use </span>massa_serialization::{
