@@ -36,8 +36,6 @@ impl KeyPair {
 
 impl Clone for KeyPair {
     fn clone(&self) -> Self {
-        //CallVersions!(self, fmt(f));
-        //TODO: https://stackoverflow.com/questions/75171139/use-macro-in-match-branch
         match self {
             KeyPair::KeyPairV0(keypair) => KeyPair::KeyPairV0(keypair.clone()),
             KeyPair::KeyPairV1(keypair) => KeyPair::KeyPairV1(keypair.clone()),
