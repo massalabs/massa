@@ -542,7 +542,7 @@ pub fn get_state(
 
             info!("Bootstrap from server {} failed. Your node will try to bootstrap from another server in {}.", addr, format_duration(bootstrap_config.retry_delay.to_duration()).to_string());
 
-            // Before, we would use std::thread::sleep(...), and that was fine
+            // Before, we would use a simple sleep(...), and that was fine
             // in a cancellable async context: the runtime could
             // catch the interupt signal, and just cancel this thread:
             //
