@@ -56,45 +56,65 @@ use massa_signature::KeyPair;
 #[test]
 fn test_simple_get_operations() {
     let config = PoolConfig::default();
-    pool_test(
+    let storage: Storage = Storage::create_root();
+    let endorsement_sender = broadcast::channel(2000).0;
+    let operation_sender = broadcast::channel(5000).0;
+    let (execution_controller, execution_receiver) =
+        test_exports::MockExecutionController::new_with_receiver();
+    let (selector_controller, selector_receiver) = MockSelectorController::new_with_receiver();
+    let (pool_manager, pool_controller) = start_pool_controller(
         config,
-        |mut pool_manager,
-         mut pool_controller,
-         execution_receiver,
-         _selector_receiver,
-         mut storage| {
-            //setup meta-data
-            let keypair = KeyPair::generate();
-            let op_gen = OpGenerator::default().creator(keypair.clone()).expirery(1);
-            let creator_address = Address::from_public_key(&keypair.get_public_key());
-            let creator_thread = creator_address.get_thread(config.thread_count);
-
-            // setup storage
-            storage.store_operations(create_some_operations(10, &op_gen));
-            let unexecuted_ops = storage.get_op_refs().clone();
-            pool_controller.add_operations(storage);
-            // Allow some time for the pool to add the operations
-            std::thread::sleep(Duration::from_millis(100));
-
-            // Start mock execution thread.
-            // Provides the data for `pool_controller.get_block_operations`
-            launch_basic_get_block_operation_execution_mock(
-                10,
-                unexecuted_ops,
-                execution_receiver,
-                creator_address,
-                vec![(Some(Amount::from_raw(1)), Some(Amount::from_raw(1)))],
-            );
-
-            // This is what we are testing....
-            let block_operations_storage = pool_controller
-                .get_block_operations(&Slot::new(1, creator_thread))
-                .1;
-
-            pool_manager.stop();
-
-            assert_eq!(block_operations_storage.get_op_refs().len(), 10);
+        &storage,
+        execution_controller,
+        PoolChannels {
+            endorsement_sender,
+            operation_sender,
+            selector: selector_controller,
         },
+    );
+
+    (|mut pool_manager,
+      mut pool_controller,
+      execution_receiver,
+      _selector_receiver,
+      mut storage| {
+        //setup meta-data
+        let keypair = KeyPair::generate();
+        let op_gen = OpGenerator::default().creator(keypair.clone()).expirery(1);
+        let creator_address = Address::from_public_key(&keypair.get_public_key());
+        let creator_thread = creator_address.get_thread(config.thread_count);
+
+        // setup storage
+        storage.store_operations(create_some_operations(10, &op_gen));
+        let unexecuted_ops = storage.get_op_refs().clone();
+        pool_controller.add_operations(storage);
+        // Allow some time for the pool to add the operations
+        std::thread::sleep(Duration::from_millis(100));
+
+        // Start mock execution thread.
+        // Provides the data for `pool_controller.get_block_operations`
+        launch_basic_get_block_operation_execution_mock(
+            10,
+            unexecuted_ops,
+            execution_receiver,
+            creator_address,
+            vec![(Some(Amount::from_raw(1)), Some(Amount::from_raw(1)))],
+        );
+
+        // This is what we are testing....
+        let block_operations_storage = pool_controller
+            .get_block_operations(&Slot::new(1, creator_thread))
+            .1;
+
+        pool_manager.stop();
+
+        assert_eq!(block_operations_storage.get_op_refs().len(), 10);
+    })(
+        pool_manager,
+        pool_controller,
+        execution_receiver,
+        selector_receiver,
+        storage,
     );
 }
 
