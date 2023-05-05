@@ -33,8 +33,8 @@ use massa_models::test_exports::{
 };
 use massa_pool_exports::PoolChannels;
 use massa_pool_exports::PoolConfig;
-use massa_pos_exports::test_exports::MockSelectorController;
 use massa_pos_exports::test_exports::MockSelectorControllerMessage;
+use massa_pos_exports::MockSelectorController;
 use massa_pos_exports::{PosResult, Selection};
 use massa_signature::KeyPair;
 use massa_storage::Storage;
@@ -71,7 +71,11 @@ fn test_simple_get_operations() {
             .returning(|_, _| todo!("hardcode return value for unexecuted_ops_among"));
         res
     });
-    let (selector_controller, selector_receiver) = MockSelectorController::new_with_receiver();
+    let mut selector_controller = Box::new(MockSelectorController::new());
+    selector_controller.expect_clone_box().returning(|| {
+        let mut res = Box::new(MockSelectorController::new());
+        res
+    });
 
     let (mut pool_manager, mut pool_controller) = start_pool_controller(
         config,
