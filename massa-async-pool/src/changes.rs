@@ -1,7 +1,6 @@
 ///! Copyright (c) 2022 MASSA LABS <info@massa.net>
 
 ///! This file provides structures representing changes to the asynchronous message pool
-
 use std::{
     collections::{btree_map::Entry, BTreeMap},
     ops::Bound::Included,
@@ -17,7 +16,7 @@ use crate::{
 
 use massa_ledger_exports::{
     Applicable, SetOrKeep, SetUpdateOrDelete, SetUpdateOrDeleteDeserializer,
-    SetUpdateOrDeleteSerializer
+    SetUpdateOrDeleteSerializer,
 };
 
 use massa_serialization::{
