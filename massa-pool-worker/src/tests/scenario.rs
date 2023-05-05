@@ -43,6 +43,17 @@ use massa_storage::Storage;
 use tokio::sync::broadcast;
 
 lazy_static::lazy_static! {
+    /// Lazy static is needed here, as the mock-system needs either copy, or static lifetimes.
+    /// The code below will error as such, and efforts such as using clone-hacks, do not help.
+    ///
+    /// A solution that doesn't need to use a static would be welcomed
+    /// ```rust no_run
+    /// let storage = Storage::create_root();
+    /// let mut res = Box::new(MockExecutionController::new());
+    /// res.expect_unexecuted_ops_among()
+    ///     .times(1)
+    ///     .return_once(|_, _| storage.get_op_refs().clone())
+    /// ```
     static ref STORAGE: RwLock<Storage> = RwLock::new(Storage::create_root());
 }
 /// # Test simple get operation
