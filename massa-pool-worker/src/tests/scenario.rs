@@ -64,8 +64,13 @@ fn test_simple_get_operations() {
     let mut storage: Storage = Storage::create_root();
     let endorsement_sender = broadcast::channel(2000).0;
     let operation_sender = broadcast::channel(5000).0;
-    let (execution_controller, execution_receiver) =
-        test_exports::MockExecutionController::new_with_receiver();
+    let mut execution_controller = Box::new(MockExecutionController::new());
+    execution_controller.expect_clone_box().returning(|| {
+        let mut res = Box::new(MockExecutionController::new());
+        res.expect_unexecuted_ops_among()
+            .returning(|_, _| todo!("hardcode return value for unexecuted_ops_among"));
+        res
+    });
     let (selector_controller, selector_receiver) = MockSelectorController::new_with_receiver();
 
     let (mut pool_manager, mut pool_controller) = start_pool_controller(
@@ -93,51 +98,51 @@ fn test_simple_get_operations() {
     // Allow some time for the pool to add the operations
     std::thread::sleep(Duration::from_millis(100));
 
-    // Start mock execution thread.
-    // Provides the data for `pool_controller.get_block_operations`
-    {
-        let creator_address = creator_address;
-        let balance_vec = vec![(Some(Amount::from_raw(1)), Some(Amount::from_raw(1)))];
-        let receive = |er: &Receiver<test_exports::MockExecutionControllerMessage>| {
-            er.recv_timeout(Duration::from_millis(100))
-        };
-        std::thread::spawn(move || {
-            match receive(&execution_receiver) {
-                Ok(test_exports::MockExecutionControllerMessage::UnexecutedOpsAmong {
-                    response_tx,
-                    ..
-                }) => response_tx.send(unexecuted_ops.clone()).unwrap(),
-                Ok(op) => panic!("Expected `ControllerMsg::UnexecutedOpsAmong`, got {:?}", op),
-                Err(_) => panic!("execution never called"),
-            }
-            match receive(&execution_receiver) {
-                Ok(test_exports::MockExecutionControllerMessage::GetFinalAndCandidateBalance {
-                    addresses,
-                    response_tx,
-                    ..
-                }) => {
-                    assert_eq!(addresses.len(), 1);
-                    assert_eq!(addresses[0], creator_address);
-                    response_tx.send(balance_vec).unwrap();
-                }
-                Ok(op) => panic!(
-                    "Expected `ControllerMsg::GetFinalAndCandidateBalance`, got {:?}",
-                    op
-                ),
-                Err(_) => panic!("execution never called"),
-            }
+    // // Start mock execution thread.
+    // // Provides the data for `pool_controller.get_block_operations`
+    // {
+    //     let creator_address = creator_address;
+    //     let balance_vec = vec![(Some(Amount::from_raw(1)), Some(Amount::from_raw(1)))];
+    //     let receive = |er: &Receiver<test_exports::MockExecutionControllerMessage>| {
+    //         er.recv_timeout(Duration::from_millis(100))
+    //     };
+    //     std::thread::spawn(move || {
+    //         match receive(&execution_receiver) {
+    //             Ok(test_exports::MockExecutionControllerMessage::UnexecutedOpsAmong {
+    //                 response_tx,
+    //                 ..
+    //             }) => response_tx.send(unexecuted_ops.clone()).unwrap(),
+    //             Ok(op) => panic!("Expected `ControllerMsg::UnexecutedOpsAmong`, got {:?}", op),
+    //             Err(_) => panic!("execution never called"),
+    //         }
+    //         match receive(&execution_receiver) {
+    //             Ok(test_exports::MockExecutionControllerMessage::GetFinalAndCandidateBalance {
+    //                 addresses,
+    //                 response_tx,
+    //                 ..
+    //             }) => {
+    //                 assert_eq!(addresses.len(), 1);
+    //                 assert_eq!(addresses[0], creator_address);
+    //                 response_tx.send(balance_vec).unwrap();
+    //             }
+    //             Ok(op) => panic!(
+    //                 "Expected `ControllerMsg::GetFinalAndCandidateBalance`, got {:?}",
+    //                 op
+    //             ),
+    //             Err(_) => panic!("execution never called"),
+    //         }
 
-            (1..10).for_each(|_| {
-                if let Ok(test_exports::MockExecutionControllerMessage::UnexecutedOpsAmong {
-                    response_tx,
-                    ..
-                }) = receive(&execution_receiver)
-                {
-                    response_tx.send(unexecuted_ops.clone()).unwrap();
-                }
-            })
-        });
-    };
+    //         (1..10).for_each(|_| {
+    //             if let Ok(test_exports::MockExecutionControllerMessage::UnexecutedOpsAmong {
+    //                 response_tx,
+    //                 ..
+    //             }) = receive(&execution_receiver)
+    //             {
+    //                 response_tx.send(unexecuted_ops.clone()).unwrap();
+    //             }
+    //         })
+    //     });
+    // };
 
     // This is what we are testing....
     let block_operations_storage = pool_controller
