@@ -131,20 +131,19 @@ impl RetrievalThread {
                                     continue;
                                 }
                             };
-
-                            debug!("Received block message: {:?} from {}", message, peer_id);
-
                             if !rest.is_empty() {
                                 println!("Error: message not fully consumed");
                                 return;
                             }
                             match message {
                                 BlockMessage::AskForBlocks(block_infos) => {
+                                    debug!("Received block message: AskForBlocks from {}", peer_id);
                                     if let Err(err) = self.on_asked_for_blocks_received(peer_id.clone(), block_infos) {
                                         warn!("Error in on_asked_for_blocks_received: {:?}", err);
                                     }
                                 }
                                 BlockMessage::ReplyForBlocks(block_infos) => {
+                                    debug!("Received block message: ReplyForBlocks from {}", peer_id);
                                     for (block_id, block_info) in block_infos.into_iter() {
                                         if let Err(err) = self.on_block_info_received(peer_id.clone(), block_id, block_info) {
                                             warn!("Error in on_block_info_received: {:?}", err);
@@ -155,6 +154,7 @@ impl RetrievalThread {
                                     }
                                 }
                                 BlockMessage::BlockHeader(header) => {
+                                    debug!("Received block message: BlockHeader from {}", peer_id);
                                     massa_trace!(BLOCK_HEADER, { "peer_id": peer_id, "header": header});
                                     if let Ok(Some((block_id, is_new))) =
                                         self.note_header_from_peer(&header, &peer_id)
@@ -191,6 +191,7 @@ impl RetrievalThread {
                         Ok(command) => {
                             match command {
                                 BlockHandlerRetrievalCommand::WishlistDelta { new, remove } => {
+                                    debug!("Received block message: command WishlistDelta");
                                     massa_trace!("protocol.protocol_worker.process_command.wishlist_delta.begin", { "new": new, "remove": remove });
                                     for (block_id, header) in new.into_iter() {
                                         self.block_wishlist.insert(
@@ -214,6 +215,7 @@ impl RetrievalThread {
                                     );
                                 },
                                 BlockHandlerRetrievalCommand::Stop => {
+                                    debug!("Received block message: command Stop");
                                     info!("Stop block retrieval thread from command receiver");
                                     return;
                                 }
@@ -689,7 +691,6 @@ impl RetrievalThread {
                 known_ops.put(op_id.prefix(), ());
             }
         }
-
         let info = if let Some(info) = self.block_wishlist.get_mut(&block_id) {
             info
         } else {
@@ -706,7 +707,6 @@ impl RetrievalThread {
             }
             return Ok(());
         };
-
         let header = if let Some(header) = &info.header {
             header
         } else {
@@ -720,7 +720,6 @@ impl RetrievalThread {
             }
             return Ok(());
         };
-
         if info.operation_ids.is_some() {
             warn!(
                 "Peer {} sent us an operation list for block id {} but we already received it.",
@@ -735,7 +734,6 @@ impl RetrievalThread {
             }
             return Ok(());
         }
-
         let mut total_hash: Vec<u8> =
             Vec::with_capacity(operation_ids.len().saturating_mul(HASH_SIZE_BYTES));
         operation_ids.iter().for_each(|op_id| {
@@ -842,7 +840,6 @@ impl RetrievalThread {
             }
             return Ok(());
         }
-
         match self.block_wishlist.entry(block_id) {
             Entry::Occupied(mut entry) => {
                 let info = entry.get_mut();
@@ -1036,28 +1033,28 @@ impl RetrievalThread {
             Default::default();
 
         // list blocks to re-ask and from whom
-        for (hash, block_info) in self.block_wishlist.iter() {
-            let required_info = if block_info.header.is_none() {
-                AskForBlocksInfo::Header
-            } else if block_info.operation_ids.is_none() {
-                AskForBlocksInfo::Info
-            } else {
-                let already_stored_operations = block_info.storage.get_op_refs();
-                // Unwrap safety: Check if `operation_ids` is none just above
-                AskForBlocksInfo::Operations(
-                    block_info
-                        .operation_ids
-                        .as_ref()
-                        .unwrap()
-                        .iter()
-                        .filter(|id| !already_stored_operations.contains(id))
-                        .copied()
-                        .collect(),
-                )
-            };
-            let mut needs_ask = true;
-            {
-                let mut cache_write = self.cache.write();
+        {
+            let mut cache_write = self.cache.write();
+            for (hash, block_info) in self.block_wishlist.iter() {
+                let required_info = if block_info.header.is_none() {
+                    AskForBlocksInfo::Header
+                } else if block_info.operation_ids.is_none() {
+                    AskForBlocksInfo::Info
+                } else {
+                    let already_stored_operations = block_info.storage.get_op_refs();
+                    // Unwrap safety: Check if `operation_ids` is none just above
+                    AskForBlocksInfo::Operations(
+                        block_info
+                            .operation_ids
+                            .as_ref()
+                            .unwrap()
+                            .iter()
+                            .filter(|id| !already_stored_operations.contains(id))
+                            .copied()
+                            .collect(),
+                    )
+                };
+                let mut needs_ask = true;
                 // Clean old peers that aren't active anymore
                 let peers_connected: HashSet<PeerId> =
                     self.active_connections.get_peer_ids_connected();
@@ -1200,45 +1197,50 @@ impl RetrievalThread {
                 )
             })
             .collect();
+        {
+            let cache_read = self.cache.read();
+            for (hash, criteria) in candidate_nodes.into_iter() {
+                // find the best node
+                if let Some((_knowledge, best_node, required_info, _)) = criteria
+                    .into_iter()
+                    .filter_map(|(knowledge, peer_id, required_info)| {
+                        // filter out nodes with too many active block requests
+                        if *active_block_req_count.get(&peer_id).unwrap_or(&0)
+                            <= self.config.max_simultaneous_ask_blocks_per_node
+                        {
+                            cache_read
+                                .blocks_known_by_peer
+                                .peek(&peer_id)
+                                .map(|peer_data| (knowledge, peer_id, required_info, peer_data.1))
+                        } else {
+                            None
+                        }
+                    })
+                    .min_by_key(|(knowledge, peer_id, _, instant)| {
+                        (
+                            *knowledge,                                         // block knowledge
+                            *active_block_req_count.get(peer_id).unwrap_or(&0), // active requests
+                            *instant,                                           // node age
+                            peer_id.clone(),                                    // node ID
+                        )
+                    })
+                {
+                    let asked_blocks = self.asked_blocks.get_mut(&best_node).unwrap(); // will not panic, already checked
+                    asked_blocks.insert(hash, now);
+                    if let Some(cnt) = active_block_req_count.get_mut(&best_node) {
+                        *cnt += 1; // increase the number of actively asked blocks
+                    }
 
-        for (hash, criteria) in candidate_nodes.into_iter() {
-            // find the best node
-            if let Some((_knowledge, best_node, required_info)) = criteria
-                .into_iter()
-                .filter(|(_knowledge, peer_id, _)| {
-                    // filter out nodes with too many active block requests
-                    *active_block_req_count.get(peer_id).unwrap_or(&0)
-                        <= self.config.max_simultaneous_ask_blocks_per_node
-                })
-                .min_by_key(|(knowledge, peer_id, _)| {
-                    (
-                        *knowledge,                                         // block knowledge
-                        *active_block_req_count.get(peer_id).unwrap_or(&0), // active requests
-                        self.cache
-                            .read()
-                            .blocks_known_by_peer
-                            .peek(peer_id)
-                            .unwrap()
-                            .1, // node age (will not panic, already checked)
-                        peer_id.clone(),                                    // node ID
-                    )
-                })
-            {
-                let asked_blocks = self.asked_blocks.get_mut(&best_node).unwrap(); // will not panic, already checked
-                asked_blocks.insert(hash, now);
-                if let Some(cnt) = active_block_req_count.get_mut(&best_node) {
-                    *cnt += 1; // increase the number of actively asked blocks
+                    ask_block_list
+                        .entry(best_node.clone())
+                        .or_insert_with(Vec::new)
+                        .push((hash, required_info.clone()));
+
+                    let timeout_at = now
+                        .checked_add(self.config.ask_block_timeout.into())
+                        .ok_or(TimeError::TimeOverflowError)?;
+                    next_tick = std::cmp::min(next_tick, timeout_at);
                 }
-
-                ask_block_list
-                    .entry(best_node.clone())
-                    .or_insert_with(Vec::new)
-                    .push((hash, required_info.clone()));
-
-                let timeout_at = now
-                    .checked_add(self.config.ask_block_timeout.into())
-                    .ok_or(TimeError::TimeOverflowError)?;
-                next_tick = std::cmp::min(next_tick, timeout_at);
             }
         }
 

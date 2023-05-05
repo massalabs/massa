@@ -5,13 +5,14 @@ use std::{
     time::{Duration, SystemTime, UNIX_EPOCH},
 };
 
+use crate::messages::MessagesHandler;
 use crossbeam::channel::Sender;
 use massa_protocol_exports::ProtocolConfig;
 use massa_serialization::{DeserializeError, Deserializer};
 use peernet::{
     config::PeerNetConfiguration,
     error::{PeerNetError, PeerNetResult},
-    messages::MessagesHandler,
+    messages::MessagesHandler as PeerNetMessagesHandler,
     network_manager::PeerNetManager,
     peer::InitConnectionHandler,
     peer_id::PeerId,
@@ -47,30 +48,13 @@ impl TesterHandshake {
     }
 }
 
-#[derive(Clone)]
-pub struct TesterMessagesHandler;
-
-impl MessagesHandler for TesterMessagesHandler {
-    fn deserialize_id<'a>(
-        &self,
-        data: &'a [u8],
-        _peer_id: &PeerId,
-    ) -> PeerNetResult<(&'a [u8], u64)> {
-        Ok((data, 0))
-    }
-
-    fn handle(&self, _id: u64, _data: &[u8], _peer_id: &PeerId) -> PeerNetResult<()> {
-        Ok(())
-    }
-}
-
 impl InitConnectionHandler for TesterHandshake {
-    fn perform_handshake<TesterMessagesHandler>(
+    fn perform_handshake<MassaMessagesHandler: PeerNetMessagesHandler>(
         &mut self,
         _: &KeyPair,
         endpoint: &mut Endpoint,
         _: &HashMap<SocketAddr, TransportType>,
-        _: TesterMessagesHandler,
+        messages_handler: MassaMessagesHandler,
     ) -> PeerNetResult<PeerId> {
         let data = endpoint.receive()?;
         if data.is_empty() {
@@ -129,10 +113,10 @@ impl InitConnectionHandler for TesterHandshake {
                         if !announcement.listeners.is_empty() {
                             peer_db_write
                                 .index_by_newest
-                                .retain(|_, peer_id_stored| peer_id_stored != &peer_id);
+                                .retain(|(_, peer_id_stored)| peer_id_stored != &peer_id);
                             peer_db_write
                                 .index_by_newest
-                                .insert(Reverse(announcement.timestamp), peer_id.clone());
+                                .insert((Reverse(announcement.timestamp), peer_id.clone()));
                         }
                         peer_db_write
                             .peers
@@ -150,13 +134,17 @@ impl InitConnectionHandler for TesterHandshake {
                     }
                     Ok(peer_id.clone())
                 }
-                _ => {
-                    {
-                        //TODO: Add the peerdb but for now impossible as we don't have announcement and we need one to place in peerdb
-                    }
-                    Err(PeerNetError::HandshakeError
-                        .error("Massa handshake", Some("Invalid id".to_string())))
+                1 => {
+                    let (received, id) = messages_handler.deserialize_id(&data[33..], &peer_id)?;
+                    messages_handler.handle(id, received, &peer_id)?;
+                    Err(PeerNetError::HandshakeError.error(
+                            "Massa Handshake",
+                            Some("Tester Handshake failed received a message that our connection has been refused".to_string()),
+                        ))
+                    //TODO: Add the peerdb but for now impossible as we don't have announcement and we need one to place in peerdb
                 }
+                _ => Err(PeerNetError::HandshakeError
+                    .error("Massa handshake", Some("Invalid id".to_string()))),
             }
         };
 
@@ -192,6 +180,7 @@ impl Tester {
         config: &ProtocolConfig,
         active_connections: Box<dyn ActiveConnectionsTrait>,
         peer_db: SharedPeerDB,
+        messages_handler: MessagesHandler,
     ) -> (
         Sender<(PeerId, HashMap<SocketAddr, TransportType>)>,
         Vec<Tester>,
@@ -208,6 +197,7 @@ impl Tester {
                 active_connections.clone(),
                 config.clone(),
                 test_receiver.clone(),
+                messages_handler.clone(),
             ));
         }
 
@@ -220,6 +210,7 @@ impl Tester {
         active_connections: Box<dyn ActiveConnectionsTrait>,
         protocol_config: ProtocolConfig,
         receiver: crossbeam::channel::Receiver<(PeerId, HashMap<SocketAddr, TransportType>)>,
+        messages_handler: MessagesHandler,
     ) -> Self {
         tracing::log::debug!("running new tester");
 
@@ -230,7 +221,7 @@ impl Tester {
             let active_connections = active_connections.clone();
             let mut config = PeerNetConfiguration::default(
                 TesterHandshake::new(peer_db, protocol_config.clone()),
-                TesterMessagesHandler {},
+                messages_handler,
             );
             config.max_out_connections = 1;
 
@@ -270,7 +261,7 @@ impl Tester {
                                         info!("testing peer {} listener addr: {}", &listener.0, &addr);
                                         let _res =  network_manager.try_connect(
                                             *addr,
-                                            Duration::from_millis(500),
+                                            Duration::from_millis(1000),
                                             &OutConnectionConfig::Tcp(Box::new(TcpOutConnectionConfig::new(protocol_config.read_write_limit_bytes_per_second / 10, Duration::from_millis(100)))),
                                         );
                                     }
@@ -316,7 +307,7 @@ impl Tester {
                             info!("testing peer {} listener addr: {}", peer_id, &listener.0);
                             let _res =  network_manager.try_connect(
                                 *listener.0,
-                                Duration::from_millis(200),
+                                Duration::from_millis(1000),
                                 &OutConnectionConfig::Tcp(Box::new(TcpOutConnectionConfig::new(protocol_config.read_write_limit_bytes_per_second / 10, Duration::from_millis(100)))),
                             );
                         });

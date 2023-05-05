@@ -1,12 +1,25 @@
+///! Copyright (c) 2022 MASSA LABS <info@massa.net>
+
+///! This file provides structures representing changes to the asynchronous message pool
+
 use std::{
     collections::{btree_map::Entry, BTreeMap},
     ops::Bound::Included,
 };
 
+use crate::{
+    message::{
+        AsyncMessage, AsyncMessageId, AsyncMessageIdDeserializer, AsyncMessageIdSerializer,
+        AsyncMessageUpdate, AsyncMessageUpdateDeserializer, AsyncMessageUpdateSerializer,
+    },
+    AsyncMessageDeserializer, AsyncMessageSerializer,
+};
+
 use massa_ledger_exports::{
     Applicable, SetOrKeep, SetUpdateOrDelete, SetUpdateOrDeleteDeserializer,
-    SetUpdateOrDeleteSerializer,
+    SetUpdateOrDeleteSerializer
 };
+
 use massa_serialization::{
     Deserializer, SerializeError, Serializer, U64VarIntDeserializer, U64VarIntSerializer,
 };
@@ -17,17 +30,6 @@ use nom::{
     IResult, Parser,
 };
 use serde::{Deserialize, Serialize};
-
-///! Copyright (c) 2022 MASSA LABS <info@massa.net>
-
-///! This file provides structures representing changes to the asynchronous message pool
-use crate::{
-    message::{
-        AsyncMessage, AsyncMessageId, AsyncMessageIdDeserializer, AsyncMessageIdSerializer,
-        AsyncMessageUpdate, AsyncMessageUpdateDeserializer, AsyncMessageUpdateSerializer,
-    },
-    AsyncMessageDeserializer, AsyncMessageSerializer,
-};
 
 /// Consolidated changes to the asynchronous message pool
 #[derive(Default, Debug, Clone, PartialEq, Eq, Deserialize, Serialize)]

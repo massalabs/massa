@@ -2,7 +2,7 @@
 
 use massa_execution_exports::ExecutionController;
 use std::collections::{btree_map::Entry, BTreeMap};
-use tracing::{debug, info, warn};
+use tracing::{debug, info};
 
 use massa_models::denunciation::DenunciationIndex;
 use massa_models::slot::Slot;
@@ -116,16 +116,16 @@ impl DenunciationPool {
                     Ok(selection) => {
                         if let Some(address) = selection.endorsements.get(de_p.index as usize) {
                             if *address != Address::from_public_key(&de_p.public_key) {
-                                warn!("Denunciation pool received a secure share endorsement but address was not selected");
+                                debug!("Denunciation pool received a secure share endorsement but address was not selected");
                                 return;
                             }
                         } else {
-                            warn!("Denunciation pool could not get selected address for endorsements at index");
+                            debug!("Denunciation pool could not get selected address for endorsements at index");
                             return;
                         }
                     }
                     Err(e) => {
-                        warn!("Cannot get producer from selector: {}", e);
+                        debug!("Cannot get producer from selector: {}", e);
                         return;
                     }
                 }
@@ -137,12 +137,12 @@ impl DenunciationPool {
                         if address
                             != Address::from_public_key(denunciation_precursor.get_public_key())
                         {
-                            warn!("Denunciation pool received a secured header but address was not selected");
+                            debug!("Denunciation pool received a secured header but address was not selected");
                             return;
                         }
                     }
                     Err(e) => {
-                        warn!("Cannot get producer from selector: {}", e);
+                        debug!("Cannot get producer from selector: {}", e);
                         return;
                     }
                 }
@@ -185,7 +185,6 @@ impl DenunciationPool {
         if let Some(denunciation) = denunciation_ {
             info!("Created a new denunciation : {:?}", denunciation);
         }
-
         self.cleanup_caches();
     }
 

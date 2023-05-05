@@ -4,12 +4,9 @@ use parking_lot::RwLock;
 use peernet::{peer_id::PeerId, transports::TransportType};
 use rand::seq::SliceRandom;
 use std::cmp::Reverse;
+use std::collections::BTreeSet;
 use std::time::{SystemTime, UNIX_EPOCH};
-use std::{
-    collections::{BTreeMap, HashMap},
-    net::SocketAddr,
-    sync::Arc,
-};
+use std::{collections::HashMap, net::SocketAddr, sync::Arc};
 use tracing::log::info;
 
 use super::announcement::Announcement;
@@ -22,7 +19,7 @@ pub type InitialPeers = HashMap<PeerId, HashMap<SocketAddr, TransportType>>;
 pub struct PeerDB {
     pub peers: HashMap<PeerId, PeerInfo>,
     /// last is the oldest value (only routable peers)
-    pub index_by_newest: BTreeMap<Reverse<u128>, PeerId>,
+    pub index_by_newest: BTreeSet<(Reverse<u128>, PeerId)>,
 }
 
 pub type SharedPeerDB = Arc<RwLock<PeerDB>>;
@@ -96,7 +93,7 @@ impl PeerDB {
 
     /// Retrieve the peer with the oldest test date.
     pub fn get_oldest_peer(&self) -> Option<(PeerId, PeerInfo)> {
-        self.index_by_newest.last_key_value().map(|data| {
+        self.index_by_newest.last().map(|data| {
             let peer_id = data.1.clone();
             let peer_info = self
                 .peers

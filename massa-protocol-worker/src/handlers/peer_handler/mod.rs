@@ -60,19 +60,25 @@ pub struct PeerManagementHandler {
 }
 
 impl PeerManagementHandler {
+    #[allow(clippy::too_many_arguments)]
     pub fn new(
         initial_peers: InitialPeers,
         peer_id: PeerId,
         peer_db: SharedPeerDB,
         (sender_msg, receiver_msg): (Sender<PeerMessageTuple>, Receiver<PeerMessageTuple>),
         (sender_cmd, receiver_cmd): (Sender<PeerManagementCmd>, Receiver<PeerManagementCmd>),
+        messages_handler: MessagesHandler,
         mut active_connections: Box<dyn ActiveConnectionsTrait>,
         config: &ProtocolConfig,
     ) -> Self {
         let message_serializer = PeerManagementMessageSerializer::new();
 
-        let (test_sender, testers) =
-            Tester::run(config, active_connections.clone(), peer_db.clone());
+        let (test_sender, testers) = Tester::run(
+            config,
+            active_connections.clone(),
+            peer_db.clone(),
+            messages_handler,
+        );
 
         let thread_join = std::thread::Builder::new()
         .name("protocol-peer-handler".to_string())
@@ -150,8 +156,6 @@ impl PeerManagementHandler {
                                     return;
                                 }
                             };
-                            debug!("Received peer message: {:?} from {}", message, peer_id);
-
                             // check if peer is banned
                             if let Some(peer) = peer_db.read().peers.get(&peer_id) {
                                 if peer.state == PeerState::Banned {
@@ -174,11 +178,13 @@ impl PeerManagementHandler {
                             }
                             match message {
                                 PeerManagementMessage::NewPeerConnected((peer_id, listeners)) => {
+                                    debug!("Received peer message: NewPeerConnected from {}", peer_id);
                                     if let Err(e) = test_sender.send((peer_id, listeners)) {
                                         error!("error when sending msg to peer tester : {}", e);
                                     }
                                 }
                                 PeerManagementMessage::ListPeers(peers) => {
+                                    debug!("Received peer message: List peers from {}", peer_id);
                                     for (peer_id, listeners) in peers.into_iter() {
                                         if let Err(e) = test_sender.send((peer_id, listeners)) {
                                             error!("error when sending msg to peer tester : {}", e);
@@ -421,7 +427,7 @@ impl InitConnectionHandler for MassaHandshake {
                     self.message_handlers.handle(id, received, &peer_id)?;
                     Err(PeerNetError::HandshakeError.error(
                         "Massa Handshake",
-                        Some("Handshake failed received a message that are connection has been refused".to_string()),
+                        Some("Handshake failed received a message that our connection has been refused".to_string()),
                     ))
                 }
                 _ => Err(PeerNetError::HandshakeError
@@ -439,10 +445,10 @@ impl InitConnectionHandler for MassaHandshake {
                     if !announcement.listeners.is_empty() {
                         peer_db_write
                             .index_by_newest
-                            .retain(|_, peer_id_stored| peer_id_stored != peer_id);
+                            .retain(|(_, peer_id_stored)| peer_id_stored != peer_id);
                         peer_db_write
                             .index_by_newest
-                            .insert(Reverse(announcement.timestamp), peer_id.clone());
+                            .insert((Reverse(announcement.timestamp), peer_id.clone()));
                     }
                     peer_db_write
                         .peers
@@ -499,7 +505,7 @@ impl InitConnectionHandler for MassaHandshake {
             serializer.serialize_id(&msg, &mut buf).unwrap();
             serializer.serialize(&msg, &mut buf).unwrap();
             endpoint.send(buf.as_slice()).unwrap();
-            std::thread::sleep(Duration::from_millis(200));
+            std::thread::sleep(Duration::from_millis(500));
             endpoint.shutdown();
         });
         Ok(())
