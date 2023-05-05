@@ -1,4 +1,5 @@
 #![feature(variant_count)]
+#![feature(assert_matches)]
 // Copyright (c) 2022 MASSA LABS <info@massa.net>
 
 //! # General description
