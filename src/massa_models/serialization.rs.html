@@ -764,8 +764,6 @@
 <a href="#764" id="764">764</a>
 <a href="#765" id="765">765</a>
 <a href="#766" id="766">766</a>
-<a href="#767" id="767">767</a>
-<a href="#768" id="768">768</a>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="kw">use </span><span class="kw">crate</span>::error::ModelsError;
@@ -1353,8 +1351,7 @@
     }
 }
 
-<span class="attr">#[derive(Clone)]
-</span><span class="doccomment">/// `BitVec&lt;u8&gt;` Serializer
+<span class="doccomment">/// `BitVec&lt;u8&gt;` Serializer
 </span><span class="kw">pub struct </span>BitVecSerializer {
     u32_serializer: U32VarIntSerializer,
 }
@@ -1388,8 +1385,7 @@
     }
 }
 
-<span class="attr">#[derive(Clone)]
-</span><span class="doccomment">/// `BitVec&lt;u8&gt;` Deserializer
+<span class="doccomment">/// `BitVec&lt;u8&gt;` Deserializer
 </span><span class="kw">pub struct </span>BitVecDeserializer {
     u32_deserializer: U32VarIntDeserializer,
 }
