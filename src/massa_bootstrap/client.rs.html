@@ -562,52 +562,12 @@
 <a href="#562" id="562">562</a>
 <a href="#563" id="563">563</a>
 <a href="#564" id="564">564</a>
-<a href="#565" id="565">565</a>
-<a href="#566" id="566">566</a>
-<a href="#567" id="567">567</a>
-<a href="#568" id="568">568</a>
-<a href="#569" id="569">569</a>
-<a href="#570" id="570">570</a>
-<a href="#571" id="571">571</a>
-<a href="#572" id="572">572</a>
-<a href="#573" id="573">573</a>
-<a href="#574" id="574">574</a>
-<a href="#575" id="575">575</a>
-<a href="#576" id="576">576</a>
-<a href="#577" id="577">577</a>
-<a href="#578" id="578">578</a>
-<a href="#579" id="579">579</a>
-<a href="#580" id="580">580</a>
-<a href="#581" id="581">581</a>
-<a href="#582" id="582">582</a>
-<a href="#583" id="583">583</a>
-<a href="#584" id="584">584</a>
-<a href="#585" id="585">585</a>
-<a href="#586" id="586">586</a>
-<a href="#587" id="587">587</a>
-<a href="#588" id="588">588</a>
-<a href="#589" id="589">589</a>
-<a href="#590" id="590">590</a>
-<a href="#591" id="591">591</a>
-<a href="#592" id="592">592</a>
-<a href="#593" id="593">593</a>
-<a href="#594" id="594">594</a>
-<a href="#595" id="595">595</a>
-<a href="#596" id="596">596</a>
-<a href="#597" id="597">597</a>
-<a href="#598" id="598">598</a>
-<a href="#599" id="599">599</a>
-<a href="#600" id="600">600</a>
-<a href="#601" id="601">601</a>
-<a href="#602" id="602">602</a>
-<a href="#603" id="603">603</a>
-<a href="#604" id="604">604</a>
 </pre><pre class="rust"><code><span class="kw">use </span>humantime::format_duration;
 <span class="kw">use </span>std::{
     collections::HashSet,
     io,
     net::{SocketAddr, TcpStream},
-    sync::{Arc, Condvar, Mutex},
+    sync::Arc,
     time::Duration,
 };
 
@@ -625,7 +585,7 @@
 <span class="kw">use </span>tracing::{debug, info, warn};
 
 <span class="kw">use crate</span>::{
-    bindings::BootstrapClientBinder,
+    client_binder::BootstrapClientBinder,
     error::BootstrapError,
     messages::{BootstrapClientMessage, BootstrapServerMessage},
     settings::IpType,
@@ -1040,11 +1000,8 @@
 }
 
 <span class="doccomment">/// Gets the state from a bootstrap server
-/// Uses the cond-var pattern to handle sig-int cancellation.
-/// Make sure that the passed in `interrupted` shares its Arc
-/// with a sig-int handler setup.
-</span><span class="attr">#[allow(clippy::too_many_arguments)]
-</span><span class="kw">pub fn </span>get_state(
+/// needs to be CANCELLABLE
+</span><span class="kw">pub async fn </span>get_state(
     bootstrap_config: <span class="kw-2">&amp;</span>BootstrapConfig,
     final_state: Arc&lt;RwLock&lt;FinalState&gt;&gt;,
     <span class="kw-2">mut </span>connector: <span class="kw">impl </span>BSConnector,
@@ -1052,7 +1009,6 @@
     genesis_timestamp: MassaTime,
     end_timestamp: <span class="prelude-ty">Option</span>&lt;MassaTime&gt;,
     restart_from_snapshot_at_period: <span class="prelude-ty">Option</span>&lt;u64&gt;,
-    interupted: Arc&lt;(Mutex&lt;bool&gt;, Condvar)&gt;,
 ) -&gt; <span class="prelude-ty">Result</span>&lt;GlobalBootstrapState, BootstrapError&gt; {
     <span class="macro">massa_trace!</span>(<span class="string">&quot;bootstrap.lib.get_state&quot;</span>, {});
 
@@ -1107,12 +1063,6 @@
     <span class="kw">let </span><span class="kw-2">mut </span>global_bootstrap_state = GlobalBootstrapState::new(final_state);
 
     <span class="kw">loop </span>{
-        <span class="comment">// check for interuption
-        </span><span class="kw">if </span><span class="kw-2">*</span>interupted.<span class="number">0</span>.lock().expect(<span class="string">&quot;double-lock on interupt-mutex&quot;</span>) {
-            <span class="kw">return </span><span class="prelude-val">Err</span>(BootstrapError::Interupted(
-                <span class="string">&quot;Sig INT received while getting state&quot;</span>.to_string(),
-            ));
-        }
         <span class="kw">for </span>(addr, node_id) <span class="kw">in </span>filtered_bootstrap_list.iter() {
             <span class="kw">if let </span><span class="prelude-val">Some</span>(end) = end_timestamp {
                 <span class="kw">if </span>MassaTime::now().expect(<span class="string">&quot;could not get now time&quot;</span>) &gt; end {
@@ -1147,37 +1097,7 @@
             };
 
             <span class="macro">info!</span>(<span class="string">&quot;Bootstrap from server {} failed. Your node will try to bootstrap from another server in {}.&quot;</span>, addr, format_duration(bootstrap_config.retry_delay.to_duration()).to_string());
-
-            <span class="comment">// Before, we would use a simple sleep(...), and that was fine
-            // in a cancellable async context: the runtime could
-            // catch the interupt signal, and just cancel this thread:
-            //
-            // let state = tokio::select!{
-            //    /* detect interupt */ =&gt; /* return, cancelling the async get_state */
-            //    get_state(...) =&gt; well, we got the state, and it didn&#39;t have to worry about interupts
-            // };
-            //
-            // Without an external system to preempt this context, we use a condvar to manage the sleep.
-            //
-            // Condvar::wait is basically std::thread::sleep(/* until some magic happens */)
-            // Condvar::wait_timeout(..., duration) is much the same, but for a max-len of `duration`
-            //
-            // The _magic_ happens when, somewhere else, a clone of the Arc&lt;(Mutex&lt;bool&gt;, Condvar)&gt;\
-            // calls Condvar::notify_[one | all], which prompts this thread to wake up. Assuming that
-            // the mutex-wrapped variable has been set appropriately before the notify, this thread
-            </span><span class="kw">let </span>int_sig = interupted
-                .<span class="number">0
-                </span>.lock()
-                .expect(<span class="string">&quot;double-lock() on interupted signal mutex&quot;</span>);
-            <span class="kw">let </span>wake = interupted
-                .<span class="number">1
-                </span>.wait_timeout(int_sig, bootstrap_config.retry_delay.to_duration())
-                .expect(<span class="string">&quot;interupt signal mutex poisoned&quot;</span>);
-            <span class="kw">if </span><span class="kw-2">*</span>wake.<span class="number">0 </span>{
-                <span class="kw">return </span><span class="prelude-val">Err</span>(BootstrapError::Interupted(
-                    <span class="string">&quot;Sig INT during bootstray retry-wait&quot;</span>.to_string(),
-                ));
-            }
+            std::thread::sleep(bootstrap_config.retry_delay.into());
         }
     }
 }

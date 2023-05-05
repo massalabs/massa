@@ -1134,16 +1134,6 @@
 <a href="#1134" id="1134">1134</a>
 <a href="#1135" id="1135">1135</a>
 <a href="#1136" id="1136">1136</a>
-<a href="#1137" id="1137">1137</a>
-<a href="#1138" id="1138">1138</a>
-<a href="#1139" id="1139">1139</a>
-<a href="#1140" id="1140">1140</a>
-<a href="#1141" id="1141">1141</a>
-<a href="#1142" id="1142">1142</a>
-<a href="#1143" id="1143">1143</a>
-<a href="#1144" id="1144">1144</a>
-<a href="#1145" id="1145">1145</a>
-<a href="#1146" id="1146">1146</a>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="attr">#![doc = <span class="macro">include_str!</span>(<span class="string">&quot;../../README.md&quot;</span>)]
@@ -1159,10 +1149,9 @@
 <span class="kw">use </span>massa_api::{ApiServer, ApiV2, Private, Public, RpcServer, StopHandle, API};
 <span class="kw">use </span>massa_api_exports::config::APIConfig;
 <span class="kw">use </span>massa_async_pool::AsyncPoolConfig;
-<span class="kw">use </span>massa_bootstrap::BootstrapError;
 <span class="kw">use </span>massa_bootstrap::{
-    get_state, start_bootstrap_server, BootstrapConfig, BootstrapManager, BootstrapTcpListener,
-    DefaultConnector,
+    client::DefaultConnector, get_state, start_bootstrap_server, BootstrapConfig, BootstrapManager,
+    BootstrapTcpListener,
 };
 <span class="kw">use </span>massa_consensus_exports::events::ConsensusEvent;
 <span class="kw">use </span>massa_consensus_exports::{ConsensusChannels, ConsensusConfig, ConsensusManager};
@@ -1228,7 +1217,6 @@
 <span class="kw">use </span>std::collections::HashMap;
 <span class="kw">use </span>std::path::PathBuf;
 <span class="kw">use </span>std::sync::atomic::{AtomicUsize, Ordering};
-<span class="kw">use </span>std::sync::{Condvar, Mutex};
 <span class="kw">use </span>std::thread::sleep;
 <span class="kw">use </span>std::time::Duration;
 <span class="kw">use </span>std::{path::Path, process, sync::Arc};
@@ -1376,18 +1364,8 @@
     ));
 
     <span class="comment">// interrupt signal listener
-    </span><span class="kw">let </span>interupted = Arc::new((Mutex::new(<span class="bool-val">false</span>), Condvar::new()));
-    <span class="kw">let </span>handler_clone = Arc::clone(<span class="kw-2">&amp;</span>interupted);
-
-    <span class="comment">// currently used by the bootstrap client to break out of the to preempt the retry wait
-    </span>ctrlc::set_handler(<span class="kw">move </span>|| {
-        <span class="kw-2">*</span>handler_clone
-            .<span class="number">0
-            </span>.lock()
-            .expect(<span class="string">&quot;double-lock on interupt bool in ctrl-c handler&quot;</span>) = <span class="bool-val">true</span>;
-        handler_clone.<span class="number">1</span>.notify_all();
-    })
-    .expect(<span class="string">&quot;Error setting Ctrl-C handler&quot;</span>);
+    </span><span class="kw">let </span>stop_signal = signal::ctrl_c();
+    <span class="macro">tokio::pin!</span>(stop_signal);
 
     <span class="kw">let </span>bootstrap_config: BootstrapConfig = BootstrapConfig {
         bootstrap_list: SETTINGS.bootstrap.bootstrap_list.clone(),
@@ -1447,22 +1425,24 @@
         max_denunciation_changes_length: MAX_DENUNCIATION_CHANGES_LENGTH,
     };
 
-    <span class="kw">let </span>bootstrap_state = <span class="kw">match </span>get_state(
-        <span class="kw-2">&amp;</span>bootstrap_config,
-        final_state.clone(),
-        DefaultConnector,
-        <span class="kw-2">*</span>VERSION,
-        <span class="kw-2">*</span>GENESIS_TIMESTAMP,
-        <span class="kw-2">*</span>END_TIMESTAMP,
-        args.restart_from_snapshot_at_period,
-        interupted,
-    ) {
-        <span class="prelude-val">Ok</span>(vals) =&gt; vals,
-        <span class="prelude-val">Err</span>(BootstrapError::Interupted(msg)) =&gt; {
-            <span class="macro">info!</span>(<span class="string">&quot;{}&quot;</span>, msg);
+    <span class="comment">// bootstrap
+    </span><span class="kw">let </span>bootstrap_state = <span class="macro">tokio::select! </span>{
+        <span class="kw">_ </span>= <span class="kw-2">&amp;mut </span>stop_signal =&gt; {
+            <span class="macro">info!</span>(<span class="string">&quot;interrupt signal received in bootstrap loop&quot;</span>);
             process::exit(<span class="number">0</span>);
+        },
+        res = get_state(
+            <span class="kw-2">&amp;</span>bootstrap_config,
+            final_state.clone(),
+            DefaultConnector,
+            <span class="kw-2">*</span>VERSION,
+            <span class="kw-2">*</span>GENESIS_TIMESTAMP,
+            <span class="kw-2">*</span>END_TIMESTAMP,
+            args.restart_from_snapshot_at_period
+        ) =&gt; <span class="kw">match </span>res {
+            <span class="prelude-val">Ok</span>(vals) =&gt; vals,
+            <span class="prelude-val">Err</span>(err) =&gt; <span class="macro">panic!</span>(<span class="string">&quot;critical error detected in the bootstrap process: {}&quot;</span>, err)
         }
-        <span class="prelude-val">Err</span>(err) =&gt; <span class="macro">panic!</span>(<span class="string">&quot;critical error detected in the bootstrap process: {}&quot;</span>, err),
     };
 
     <span class="kw">if </span>args.restart_from_snapshot_at_period.is_none() {
