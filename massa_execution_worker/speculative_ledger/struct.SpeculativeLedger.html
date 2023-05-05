@@ -37,21 +37,21 @@ Slots should be consecutive, newest at the back.</p>
 and resets their local value to nothing.</p>
 </div></details><details class="toggle method-toggle" open><summary><section id="method.get_snapshot" class="method"><a class="srclink rightside" href="../../src/massa_execution_worker/speculative_ledger.rs.html#93-95">source</a><h4 class="code-header">pub fn <a href="#method.get_snapshot" class="fn">get_snapshot</a>(&amp;self) -&gt; LedgerChanges</h4></section></summary><div class="docblock"><p>Takes a snapshot (clone) of the changes caused to the <code>SpeculativeLedger</code> since its creation</p>
 </div></details><details class="toggle method-toggle" open><summary><section id="method.reset_to_snapshot" class="method"><a class="srclink rightside" href="../../src/massa_execution_worker/speculative_ledger.rs.html#98-100">source</a><h4 class="code-header">pub fn <a href="#method.reset_to_snapshot" class="fn">reset_to_snapshot</a>(&amp;mut self, snapshot: LedgerChanges)</h4></section></summary><div class="docblock"><p>Resets the <code>SpeculativeLedger</code> to a snapshot (see <code>get_snapshot</code> method)</p>
-</div></details><details class="toggle method-toggle" open><summary><section id="method.get_balance" class="method"><a class="srclink rightside" href="../../src/massa_execution_worker/speculative_ledger.rs.html#109-118">source</a><h4 class="code-header">pub fn <a href="#method.get_balance" class="fn">get_balance</a>(&amp;self, addr: &amp;Address) -&gt; <a class="enum" href="https://doc.rust-lang.org/nightly/core/option/enum.Option.html" title="enum core::option::Option">Option</a>&lt;Amount&gt;</h4></section></summary><div class="docblock"><p>Gets the effective balance of an address</p>
+</div></details><details class="toggle method-toggle" open><summary><section id="method.get_balance" class="method"><a class="srclink rightside" href="../../src/massa_execution_worker/speculative_ledger.rs.html#109-118">source</a><h4 class="code-header">pub fn <a href="#method.get_balance" class="fn">get_balance</a>(&amp;self, addr: &amp;<a class="enum" href="../../massa_models/address/enum.Address.html" title="enum massa_models::address::Address">Address</a>) -&gt; <a class="enum" href="https://doc.rust-lang.org/nightly/core/option/enum.Option.html" title="enum core::option::Option">Option</a>&lt;<a class="struct" href="../../massa_models/amount/struct.Amount.html" title="struct massa_models::amount::Amount">Amount</a>&gt;</h4></section></summary><div class="docblock"><p>Gets the effective balance of an address</p>
 <h5 id="arguments-1"><a href="#arguments-1">Arguments:</a></h5>
 <p><code>addr</code>: the address to query</p>
 <h5 id="returns"><a href="#returns">Returns</a></h5>
 <p>Some(Amount) if the address was found, otherwise None</p>
-</div></details><details class="toggle method-toggle" open><summary><section id="method.get_bytecode" class="method"><a class="srclink rightside" href="../../src/massa_execution_worker/speculative_ledger.rs.html#127-136">source</a><h4 class="code-header">pub fn <a href="#method.get_bytecode" class="fn">get_bytecode</a>(&amp;self, addr: &amp;Address) -&gt; <a class="enum" href="https://doc.rust-lang.org/nightly/core/option/enum.Option.html" title="enum core::option::Option">Option</a>&lt;Bytecode&gt;</h4></section></summary><div class="docblock"><p>Gets the effective bytecode of an address</p>
+</div></details><details class="toggle method-toggle" open><summary><section id="method.get_bytecode" class="method"><a class="srclink rightside" href="../../src/massa_execution_worker/speculative_ledger.rs.html#127-136">source</a><h4 class="code-header">pub fn <a href="#method.get_bytecode" class="fn">get_bytecode</a>(&amp;self, addr: &amp;<a class="enum" href="../../massa_models/address/enum.Address.html" title="enum massa_models::address::Address">Address</a>) -&gt; <a class="enum" href="https://doc.rust-lang.org/nightly/core/option/enum.Option.html" title="enum core::option::Option">Option</a>&lt;<a class="struct" href="../../massa_models/bytecode/struct.Bytecode.html" title="struct massa_models::bytecode::Bytecode">Bytecode</a>&gt;</h4></section></summary><div class="docblock"><p>Gets the effective bytecode of an address</p>
 <h5 id="arguments-2"><a href="#arguments-2">Arguments:</a></h5>
 <p><code>addr</code>: the address to query</p>
 <h5 id="returns-1"><a href="#returns-1">Returns</a></h5>
 <p><code>Some(Bytecode)</code> if the address was found, otherwise None</p>
 </div></details><details class="toggle method-toggle" open><summary><section id="method.transfer_coins" class="method"><a class="srclink rightside" href="../../src/massa_execution_worker/speculative_ledger.rs.html#146-234">source</a><h4 class="code-header">pub fn <a href="#method.transfer_coins" class="fn">transfer_coins</a>(
     &amp;mut self,
-    from_addr: <a class="enum" href="https://doc.rust-lang.org/nightly/core/option/enum.Option.html" title="enum core::option::Option">Option</a>&lt;Address&gt;,
-    to_addr: <a class="enum" href="https://doc.rust-lang.org/nightly/core/option/enum.Option.html" title="enum core::option::Option">Option</a>&lt;Address&gt;,
-    amount: Amount
+    from_addr: <a class="enum" href="https://doc.rust-lang.org/nightly/core/option/enum.Option.html" title="enum core::option::Option">Option</a>&lt;<a class="enum" href="../../massa_models/address/enum.Address.html" title="enum massa_models::address::Address">Address</a>&gt;,
+    to_addr: <a class="enum" href="https://doc.rust-lang.org/nightly/core/option/enum.Option.html" title="enum core::option::Option">Option</a>&lt;<a class="enum" href="../../massa_models/address/enum.Address.html" title="enum massa_models::address::Address">Address</a>&gt;,
+    amount: <a class="struct" href="../../massa_models/amount/struct.Amount.html" title="struct massa_models::amount::Amount">Amount</a>
 ) -&gt; <a class="enum" href="https://doc.rust-lang.org/nightly/core/result/enum.Result.html" title="enum core::result::Result">Result</a>&lt;<a class="primitive" href="https://doc.rust-lang.org/nightly/std/primitive.unit.html">()</a>, ExecutionError&gt;</h4></section></summary><div class="docblock"><p>Transfers coins from one address to another.
 No changes are retained in case of failure.
 The spending address, if defined, must exist.</p>
@@ -61,16 +61,16 @@ The spending address, if defined, must exist.</p>
 <li><code>to_addr</code>: optional crediting address (use None for pure coin destruction)</li>
 <li><code>amount</code>: amount of coins to transfer</li>
 </ul>
-</div></details><details class="toggle method-toggle" open><summary><section id="method.entry_exists" class="method"><a class="srclink rightside" href="../../src/massa_execution_worker/speculative_ledger.rs.html#243-252">source</a><h4 class="code-header">pub fn <a href="#method.entry_exists" class="fn">entry_exists</a>(&amp;self, addr: &amp;Address) -&gt; <a class="primitive" href="https://doc.rust-lang.org/nightly/std/primitive.bool.html">bool</a></h4></section></summary><div class="docblock"><p>Checks if an address exists in the speculative ledger</p>
+</div></details><details class="toggle method-toggle" open><summary><section id="method.entry_exists" class="method"><a class="srclink rightside" href="../../src/massa_execution_worker/speculative_ledger.rs.html#243-252">source</a><h4 class="code-header">pub fn <a href="#method.entry_exists" class="fn">entry_exists</a>(&amp;self, addr: &amp;<a class="enum" href="../../massa_models/address/enum.Address.html" title="enum massa_models::address::Address">Address</a>) -&gt; <a class="primitive" href="https://doc.rust-lang.org/nightly/std/primitive.bool.html">bool</a></h4></section></summary><div class="docblock"><p>Checks if an address exists in the speculative ledger</p>
 <h5 id="arguments-3"><a href="#arguments-3">Arguments:</a></h5>
 <p><code>addr</code>: the address to query</p>
 <h5 id="returns-2"><a href="#returns-2">Returns</a></h5>
 <p>true if the address was found, otherwise false</p>
 </div></details><details class="toggle method-toggle" open><summary><section id="method.create_new_sc_address" class="method"><a class="srclink rightside" href="../../src/massa_execution_worker/speculative_ledger.rs.html#260-316">source</a><h4 class="code-header">pub fn <a href="#method.create_new_sc_address" class="fn">create_new_sc_address</a>(
     &amp;mut self,
-    creator_address: Address,
-    addr: Address,
-    bytecode: Bytecode
+    creator_address: <a class="enum" href="../../massa_models/address/enum.Address.html" title="enum massa_models::address::Address">Address</a>,
+    addr: <a class="enum" href="../../massa_models/address/enum.Address.html" title="enum massa_models::address::Address">Address</a>,
+    bytecode: <a class="struct" href="../../massa_models/bytecode/struct.Bytecode.html" title="struct massa_models::bytecode::Bytecode">Bytecode</a>
 ) -&gt; <a class="enum" href="https://doc.rust-lang.org/nightly/core/result/enum.Result.html" title="enum core::result::Result">Result</a>&lt;<a class="primitive" href="https://doc.rust-lang.org/nightly/std/primitive.unit.html">()</a>, ExecutionError&gt;</h4></section></summary><div class="docblock"><p>Creates a new smart contract address with initial bytecode.</p>
 <h5 id="arguments-4"><a href="#arguments-4">Arguments</a></h5>
 <ul>
@@ -80,9 +80,9 @@ The spending address, if defined, must exist.</p>
 </ul>
 </div></details><details class="toggle method-toggle" open><summary><section id="method.set_bytecode" class="method"><a class="srclink rightside" href="../../src/massa_execution_worker/speculative_ledger.rs.html#325-379">source</a><h4 class="code-header">pub fn <a href="#method.set_bytecode" class="fn">set_bytecode</a>(
     &amp;mut self,
-    caller_addr: &amp;Address,
-    addr: &amp;Address,
-    bytecode: Bytecode
+    caller_addr: &amp;<a class="enum" href="../../massa_models/address/enum.Address.html" title="enum massa_models::address::Address">Address</a>,
+    addr: &amp;<a class="enum" href="../../massa_models/address/enum.Address.html" title="enum massa_models::address::Address">Address</a>,
+    bytecode: <a class="struct" href="../../massa_models/bytecode/struct.Bytecode.html" title="struct massa_models::bytecode::Bytecode">Bytecode</a>
 ) -&gt; <a class="enum" href="https://doc.rust-lang.org/nightly/core/result/enum.Result.html" title="enum core::result::Result">Result</a>&lt;<a class="primitive" href="https://doc.rust-lang.org/nightly/std/primitive.unit.html">()</a>, ExecutionError&gt;</h4></section></summary><div class="docblock"><p>Sets the bytecode associated to an address in the ledger.
 Fails if the address doesn’t exist.</p>
 <h5 id="arguments-5"><a href="#arguments-5">Arguments</a></h5>
@@ -91,14 +91,14 @@ Fails if the address doesn’t exist.</p>
 <li><code>addr</code>: target address</li>
 <li><code>bytecode</code>: bytecode to set for that address</li>
 </ul>
-</div></details><details class="toggle method-toggle" open><summary><section id="method.get_keys" class="method"><a class="srclink rightside" href="../../src/massa_execution_worker/speculative_ledger.rs.html#388-428">source</a><h4 class="code-header">pub fn <a href="#method.get_keys" class="fn">get_keys</a>(&amp;self, addr: &amp;Address) -&gt; <a class="enum" href="https://doc.rust-lang.org/nightly/core/option/enum.Option.html" title="enum core::option::Option">Option</a>&lt;<a class="struct" href="https://doc.rust-lang.org/nightly/alloc/collections/btree/set/struct.BTreeSet.html" title="struct alloc::collections::btree::set::BTreeSet">BTreeSet</a>&lt;<a class="struct" href="https://doc.rust-lang.org/nightly/alloc/vec/struct.Vec.html" title="struct alloc::vec::Vec">Vec</a>&lt;<a class="primitive" href="https://doc.rust-lang.org/nightly/std/primitive.u8.html">u8</a>&gt;&gt;&gt;</h4></section></summary><div class="docblock"><p>Gets a copy of a datastore keys for a given address</p>
+</div></details><details class="toggle method-toggle" open><summary><section id="method.get_keys" class="method"><a class="srclink rightside" href="../../src/massa_execution_worker/speculative_ledger.rs.html#388-428">source</a><h4 class="code-header">pub fn <a href="#method.get_keys" class="fn">get_keys</a>(&amp;self, addr: &amp;<a class="enum" href="../../massa_models/address/enum.Address.html" title="enum massa_models::address::Address">Address</a>) -&gt; <a class="enum" href="https://doc.rust-lang.org/nightly/core/option/enum.Option.html" title="enum core::option::Option">Option</a>&lt;<a class="struct" href="https://doc.rust-lang.org/nightly/alloc/collections/btree/set/struct.BTreeSet.html" title="struct alloc::collections::btree::set::BTreeSet">BTreeSet</a>&lt;<a class="struct" href="https://doc.rust-lang.org/nightly/alloc/vec/struct.Vec.html" title="struct alloc::vec::Vec">Vec</a>&lt;<a class="primitive" href="https://doc.rust-lang.org/nightly/std/primitive.u8.html">u8</a>&gt;&gt;&gt;</h4></section></summary><div class="docblock"><p>Gets a copy of a datastore keys for a given address</p>
 <h5 id="arguments-6"><a href="#arguments-6">Arguments</a></h5>
 <ul>
 <li><code>addr</code>: address to query</li>
 </ul>
 <h5 id="returns-3"><a href="#returns-3">Returns</a></h5>
 <p><code>Some(Vec&lt;Vec&lt;u8&gt;&gt;)</code> for found keys, <code>None</code> if the address does not exist.</p>
-</div></details><details class="toggle method-toggle" open><summary><section id="method.get_data_entry" class="method"><a class="srclink rightside" href="../../src/massa_execution_worker/speculative_ledger.rs.html#438-453">source</a><h4 class="code-header">pub fn <a href="#method.get_data_entry" class="fn">get_data_entry</a>(&amp;self, addr: &amp;Address, key: &amp;[<a class="primitive" href="https://doc.rust-lang.org/nightly/std/primitive.u8.html">u8</a>]) -&gt; <a class="enum" href="https://doc.rust-lang.org/nightly/core/option/enum.Option.html" title="enum core::option::Option">Option</a>&lt;<a class="struct" href="https://doc.rust-lang.org/nightly/alloc/vec/struct.Vec.html" title="struct alloc::vec::Vec">Vec</a>&lt;<a class="primitive" href="https://doc.rust-lang.org/nightly/std/primitive.u8.html">u8</a>&gt;&gt;</h4></section></summary><div class="docblock"><p>Gets a copy of a datastore value for a given address and datastore key</p>
+</div></details><details class="toggle method-toggle" open><summary><section id="method.get_data_entry" class="method"><a class="srclink rightside" href="../../src/massa_execution_worker/speculative_ledger.rs.html#438-453">source</a><h4 class="code-header">pub fn <a href="#method.get_data_entry" class="fn">get_data_entry</a>(&amp;self, addr: &amp;<a class="enum" href="../../massa_models/address/enum.Address.html" title="enum massa_models::address::Address">Address</a>, key: &amp;[<a class="primitive" href="https://doc.rust-lang.org/nightly/std/primitive.u8.html">u8</a>]) -&gt; <a class="enum" href="https://doc.rust-lang.org/nightly/core/option/enum.Option.html" title="enum core::option::Option">Option</a>&lt;<a class="struct" href="https://doc.rust-lang.org/nightly/alloc/vec/struct.Vec.html" title="struct alloc::vec::Vec">Vec</a>&lt;<a class="primitive" href="https://doc.rust-lang.org/nightly/std/primitive.u8.html">u8</a>&gt;&gt;</h4></section></summary><div class="docblock"><p>Gets a copy of a datastore value for a given address and datastore key</p>
 <h5 id="arguments-7"><a href="#arguments-7">Arguments</a></h5>
 <ul>
 <li><code>addr</code>: address to query</li>
@@ -106,7 +106,7 @@ Fails if the address doesn’t exist.</p>
 </ul>
 <h5 id="returns-4"><a href="#returns-4">Returns</a></h5>
 <p><code>Some(Vec&lt;u8&gt;)</code> if the value was found, <code>None</code> if the address does not exist or if the key is not in its datastore.</p>
-</div></details><details class="toggle method-toggle" open><summary><section id="method.has_data_entry" class="method"><a class="srclink rightside" href="../../src/massa_execution_worker/speculative_ledger.rs.html#463-481">source</a><h4 class="code-header">pub fn <a href="#method.has_data_entry" class="fn">has_data_entry</a>(&amp;self, addr: &amp;Address, key: &amp;[<a class="primitive" href="https://doc.rust-lang.org/nightly/std/primitive.u8.html">u8</a>]) -&gt; <a class="primitive" href="https://doc.rust-lang.org/nightly/std/primitive.bool.html">bool</a></h4></section></summary><div class="docblock"><p>Checks if a data entry exists for a given address</p>
+</div></details><details class="toggle method-toggle" open><summary><section id="method.has_data_entry" class="method"><a class="srclink rightside" href="../../src/massa_execution_worker/speculative_ledger.rs.html#463-481">source</a><h4 class="code-header">pub fn <a href="#method.has_data_entry" class="fn">has_data_entry</a>(&amp;self, addr: &amp;<a class="enum" href="../../massa_models/address/enum.Address.html" title="enum massa_models::address::Address">Address</a>, key: &amp;[<a class="primitive" href="https://doc.rust-lang.org/nightly/std/primitive.u8.html">u8</a>]) -&gt; <a class="primitive" href="https://doc.rust-lang.org/nightly/std/primitive.bool.html">bool</a></h4></section></summary><div class="docblock"><p>Checks if a data entry exists for a given address</p>
 <h5 id="arguments-8"><a href="#arguments-8">Arguments</a></h5>
 <ul>
 <li><code>addr</code>: address to query</li>
@@ -117,10 +117,10 @@ Fails if the address doesn’t exist.</p>
 </div></details><section id="method.get_storage_cost_datastore_value" class="method"><a class="srclink rightside" href="../../src/massa_execution_worker/speculative_ledger.rs.html#483-494">source</a><h4 class="code-header">fn <a href="#method.get_storage_cost_datastore_value" class="fn">get_storage_cost_datastore_value</a>(
     &amp;self,
     value: &amp;<a class="struct" href="https://doc.rust-lang.org/nightly/alloc/vec/struct.Vec.html" title="struct alloc::vec::Vec">Vec</a>&lt;<a class="primitive" href="https://doc.rust-lang.org/nightly/std/primitive.u8.html">u8</a>&gt;
-) -&gt; <a class="enum" href="https://doc.rust-lang.org/nightly/core/result/enum.Result.html" title="enum core::result::Result">Result</a>&lt;Amount, ExecutionError&gt;</h4></section><details class="toggle method-toggle" open><summary><section id="method.set_data_entry" class="method"><a class="srclink rightside" href="../../src/massa_execution_worker/speculative_ledger.rs.html#505-576">source</a><h4 class="code-header">pub fn <a href="#method.set_data_entry" class="fn">set_data_entry</a>(
+) -&gt; <a class="enum" href="https://doc.rust-lang.org/nightly/core/result/enum.Result.html" title="enum core::result::Result">Result</a>&lt;<a class="struct" href="../../massa_models/amount/struct.Amount.html" title="struct massa_models::amount::Amount">Amount</a>, ExecutionError&gt;</h4></section><details class="toggle method-toggle" open><summary><section id="method.set_data_entry" class="method"><a class="srclink rightside" href="../../src/massa_execution_worker/speculative_ledger.rs.html#505-576">source</a><h4 class="code-header">pub fn <a href="#method.set_data_entry" class="fn">set_data_entry</a>(
     &amp;mut self,
-    caller_addr: &amp;Address,
-    addr: &amp;Address,
+    caller_addr: &amp;<a class="enum" href="../../massa_models/address/enum.Address.html" title="enum massa_models::address::Address">Address</a>,
+    addr: &amp;<a class="enum" href="../../massa_models/address/enum.Address.html" title="enum massa_models::address::Address">Address</a>,
     key: <a class="struct" href="https://doc.rust-lang.org/nightly/alloc/vec/struct.Vec.html" title="struct alloc::vec::Vec">Vec</a>&lt;<a class="primitive" href="https://doc.rust-lang.org/nightly/std/primitive.u8.html">u8</a>&gt;,
     value: <a class="struct" href="https://doc.rust-lang.org/nightly/alloc/vec/struct.Vec.html" title="struct alloc::vec::Vec">Vec</a>&lt;<a class="primitive" href="https://doc.rust-lang.org/nightly/std/primitive.u8.html">u8</a>&gt;
 ) -&gt; <a class="enum" href="https://doc.rust-lang.org/nightly/core/result/enum.Result.html" title="enum core::result::Result">Result</a>&lt;<a class="primitive" href="https://doc.rust-lang.org/nightly/std/primitive.unit.html">()</a>, ExecutionError&gt;</h4></section></summary><div class="docblock"><p>Sets a data set entry for a given address in the ledger.
@@ -135,8 +135,8 @@ If the datastore entry does not exist, it is created.</p>
 </ul>
 </div></details><details class="toggle method-toggle" open><summary><section id="method.delete_data_entry" class="method"><a class="srclink rightside" href="../../src/massa_execution_worker/speculative_ledger.rs.html#585-618">source</a><h4 class="code-header">pub fn <a href="#method.delete_data_entry" class="fn">delete_data_entry</a>(
     &amp;mut self,
-    caller_addr: &amp;Address,
-    addr: &amp;Address,
+    caller_addr: &amp;<a class="enum" href="../../massa_models/address/enum.Address.html" title="enum massa_models::address::Address">Address</a>,
+    addr: &amp;<a class="enum" href="../../massa_models/address/enum.Address.html" title="enum massa_models::address::Address">Address</a>,
     key: &amp;[<a class="primitive" href="https://doc.rust-lang.org/nightly/std/primitive.u8.html">u8</a>]
 ) -&gt; <a class="enum" href="https://doc.rust-lang.org/nightly/core/result/enum.Result.html" title="enum core::result::Result">Result</a>&lt;<a class="primitive" href="https://doc.rust-lang.org/nightly/std/primitive.unit.html">()</a>, ExecutionError&gt;</h4></section></summary><div class="docblock"><p>Deletes a datastore entry for a given address.
 Fails if the entry or address does not exist.</p>

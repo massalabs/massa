@@ -251,8 +251,6 @@
 <a href="#251" id="251">251</a>
 <a href="#252" id="252">252</a>
 <a href="#253" id="253">253</a>
-<a href="#254" id="254">254</a>
-<a href="#255" id="255">255</a>
 </pre><pre class="rust"><code><span class="kw">use </span>crossbeam::{
     channel::{Receiver, Sender},
     select,
@@ -272,7 +270,7 @@
 <span class="kw">use </span>std::net::SocketAddr;
 <span class="kw">use </span>std::{num::NonZeroUsize, sync::Arc};
 <span class="kw">use </span>std::{thread::JoinHandle, time::Duration};
-<span class="kw">use </span>tracing::warn;
+<span class="kw">use </span>tracing::{info, warn};
 
 <span class="kw">use crate</span>::{handlers::peer_handler::models::SharedPeerDB, worker::ProtocolChannels};
 <span class="kw">use crate</span>::{handlers::peer_handler::PeerManagementHandler, messages::MessagesHandler};
@@ -490,9 +488,7 @@
                                         <span class="kw">continue</span>;
                                     }
                                 }
-                                <span class="kw">if </span>config.debug {
-                                    <span class="macro">println!</span>(<span class="string">&quot;Trying to connect to peer {:?}&quot;</span>, addr);
-                                }
+                                <span class="macro">info!</span>(<span class="string">&quot;Trying to connect to addr {} of peer {}&quot;</span>, addr, peer_id);
                                 <span class="comment">// We only manage TCP for now
                                 </span><span class="kw">if let </span><span class="prelude-val">Err</span>(err) = network_controller.try_connect(<span class="kw-2">*</span>addr, Duration::from_millis(<span class="number">200</span>), <span class="kw-2">&amp;</span>OutConnectionConfig::Tcp(Box::new(TcpOutConnectionConfig::new(config.read_write_limit_bytes_per_second / <span class="number">10</span>, Duration::from_millis(<span class="number">100</span>))))) {
                                     <span class="macro">warn!</span>(<span class="string">&quot;Failed to connect to peer {:?}: {:?}&quot;</span>, addr, err);
