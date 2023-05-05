@@ -490,40 +490,33 @@ impl std::hash::Hash for PublicKey {
 
 impl PartialOrd for PublicKey {
     fn partial_cmp(&self, other: &PublicKey) -> Option<Ordering> {
-        match (self, other) {
-            (PublicKey::PublicKeyV0(pubkey), PublicKey::PublicKeyV0(other_pubkey)) => {
-                pubkey.0.as_bytes().partial_cmp(other_pubkey.0.as_bytes())
-            }
-            (PublicKey::PublicKeyV0(pubkey), PublicKey::PublicKeyV1(other_pubkey)) => {
-                pubkey.0.as_bytes().partial_cmp(&other_pubkey.0.as_bytes())
-            }
-            (PublicKey::PublicKeyV1(pubkey), PublicKey::PublicKeyV0(other_pubkey)) => {
-                pubkey.0.as_bytes().partial_cmp(other_pubkey.0.as_bytes())
-            }
-            (PublicKey::PublicKeyV1(pubkey), PublicKey::PublicKeyV1(other_pubkey)) => {
-                pubkey.0.as_bytes().partial_cmp(&other_pubkey.0.as_bytes())
-            }
-        }
+        self.to_bytes().partial_cmp(&other.to_bytes())
     }
 }
 
 impl Ord for PublicKey {
     fn cmp(&self, other: &PublicKey) -> Ordering {
-        match (self, other) {
-            (PublicKey::PublicKeyV0(pubkey), PublicKey::PublicKeyV0(other_pubkey)) => {
-                pubkey.0.as_bytes().cmp(other_pubkey.0.as_bytes())
-            }
-            (PublicKey::PublicKeyV0(pubkey), PublicKey::PublicKeyV1(other_pubkey)) => {
-                pubkey.0.as_bytes().cmp(&other_pubkey.0.as_bytes())
-            }
-            (PublicKey::PublicKeyV1(pubkey), PublicKey::PublicKeyV0(other_pubkey)) => {
-                pubkey.0.as_bytes().cmp(other_pubkey.0.as_bytes())
-            }
-            (PublicKey::PublicKeyV1(pubkey), PublicKey::PublicKeyV1(other_pubkey)) => {
-                pubkey.0.as_bytes().cmp(&other_pubkey.0.as_bytes())
-            }
-        }
+        self.to_bytes().cmp(&other.to_bytes())
     }
+}
+
+#[test]
+fn pubkey_ordering() {
+    use std::collections::BTreeSet;
+
+    let v0 = vec![
+        PublicKey::from_str("P1wiuz54kR2kmvumCELcgxv1YVStCnPK8QQ6os2FNbGYwp188im").unwrap(),
+        PublicKey::from_str("P12hzfgN14TCvAM3QgWvpPdHTKLUdqh2NzWqxkr2LAEG5hJmExr1").unwrap(),
+    ];
+    let v1 = vec![
+        PublicKey::from_str("P33GgHz13gmyTPfd1ntSWEr8WyQE6CoYj76EqwesX9VaRQDSc2d").unwrap(),
+        PublicKey::from_str("P4PSBj9N2trF4Dp3hvQ4CUojAH5HkRMkEFH9BXHAswRvwXsTaGN").unwrap(),
+    ];
+
+    let mut map = BTreeSet::new();
+    map.extend(v1);
+    map.extend(v0.clone());
+    assert_eq!(map.first(), v0.first())
 }
 
 impl std::fmt::Display for PublicKey {
