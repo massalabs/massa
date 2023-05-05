@@ -112,10 +112,10 @@ impl InitConnectionHandler for TesterHandshake {
                         if !announcement.listeners.is_empty() {
                             peer_db_write
                                 .index_by_newest
-                                .retain(|_, peer_id_stored| peer_id_stored != &peer_id);
+                                .retain(|(_, peer_id_stored)| peer_id_stored != &peer_id);
                             peer_db_write
                                 .index_by_newest
-                                .insert(Reverse(announcement.timestamp), peer_id.clone());
+                                .insert((Reverse(announcement.timestamp), peer_id.clone()));
                         }
                         peer_db_write
                             .peers
@@ -260,7 +260,7 @@ impl Tester {
                                         info!("testing peer {} listener addr: {}", &listener.0, &addr);
                                         let _res =  network_manager.try_connect(
                                             *addr,
-                                            Duration::from_millis(500),
+                                            Duration::from_millis(1000),
                                             &OutConnectionConfig::Tcp(Box::new(TcpOutConnectionConfig::new(protocol_config.read_write_limit_bytes_per_second / 10, Duration::from_millis(100)))),
                                         );
                                     }
@@ -306,7 +306,7 @@ impl Tester {
                             info!("testing peer {} listener addr: {}", peer_id, &listener.0);
                             let _res =  network_manager.try_connect(
                                 *listener.0,
-                                Duration::from_millis(200),
+                                Duration::from_millis(1000),
                                 &OutConnectionConfig::Tcp(Box::new(TcpOutConnectionConfig::new(protocol_config.read_write_limit_bytes_per_second / 10, Duration::from_millis(100)))),
                             );
                         });

@@ -20,11 +20,6 @@ use massa_signature::KeyPair;
 use massa_time::MassaTime;
 use num::rational::Ratio;
 
-/// Start of the downtime simulation
-pub const DOWNTIME_START_TIMESTAMP: MassaTime = MassaTime::from_millis(1681372800000); // 13/04/2023 10AM CET
-/// End of the downtime simulation
-pub const DOWNTIME_END_TIMESTAMP: MassaTime = MassaTime::from_millis(1681390800000); // 13/04/2023 16AM CET
-
 /// Limit on the number of peers we advertise to others.
 pub const MAX_ADVERTISE_LENGTH: u32 = 10000;
 /// Maximum message length in bytes
@@ -56,14 +51,14 @@ lazy_static::lazy_static! {
             )
         )
     } else {
-        1680872400000.into()  // Friday, April 7, 2023 01:00:00 PM UTC
+        1683291600000.into()  // Friday, May 5, 2023 01:00:00 PM UTC
     };
 
     /// TESTNET: time when the blockclique is ended.
     pub static ref END_TIMESTAMP: Option<MassaTime> = if cfg!(feature = "sandbox") {
         None
     } else {
-        Some(1682877600000.into())  // Sunday, April 30, 2023 06:00:00 PM UTC
+        Some(1685556000000.into())  // Sunday, April 30, 2023 06:00:00 PM UTC
     };
     /// `KeyPair` to sign genesis blocks.
     pub static ref GENESIS_KEY: KeyPair = KeyPair::from_str("S1UxdCJv5ckDK8z87E5Jq5fEfSVLi2cTHgtpfZy7iURs3KpPns8")

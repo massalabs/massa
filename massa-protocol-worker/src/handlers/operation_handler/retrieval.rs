@@ -162,13 +162,14 @@ impl RetrievalThread {
     }
 
     fn clear_storage(&mut self) {
-        for (instant, operations) in self.stored_operations.iter() {
+        self.stored_operations.retain(|instant, operations| {
             if instant.elapsed() > self.config.asked_operations_pruning_period.to_duration() {
                 self.storage.drop_operation_refs(operations);
+                false
             } else {
-                break;
+                true
             }
-        }
+        });
     }
 
     fn note_operations_from_peer(

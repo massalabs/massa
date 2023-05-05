@@ -185,7 +185,6 @@ impl DenunciationPool {
         if let Some(denunciation) = denunciation_ {
             info!("Created a new denunciation : {:?}", denunciation);
         }
-
         self.cleanup_caches();
     }
 
