@@ -1128,13 +1128,13 @@ dependencies = [
 
 [[package]]
 name = "displaydoc"
-version = "0.2.3"
+version = "0.2.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "3bf95dc3f046b9da4f2d51833c0d3547d8564ef6910f5c1ed130306a75b92886"
+checksum = "487585f4d0c6655fe74905e2504d8ad6908e4db67f744eb140876906c2f3175d"
 dependencies = [
  "proc-macro2 1.0.56",
  "quote 1.0.26",
- "syn 1.0.109",
+ "syn 2.0.15",
 ]
 
 [[package]]
@@ -2217,9 +2217,9 @@ checksum = "0717cef1bc8b636c6e1c1bbdefc09e6322da8a9321966e8928ef80d20f7f770f"
 
 [[package]]
 name = "linux-raw-sys"
-version = "0.3.6"
+version = "0.3.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b64f40e5e03e0d54f03845c8197d0291253cdbedfb1cb46b13c2c117554a9f4c"
+checksum = "ece97ea872ece730aed82664c424eb4c8291e1ff2480247ccf7409044bc6479f"
 
 [[package]]
 name = "lock_api"
@@ -2386,7 +2386,7 @@ dependencies = [
  "displaydoc",
  "function_name",
  "loupe",
- "massa_hash 0.1.0 (git+https://github.com/massalabs/massa.git)",
+ "massa_hash 0.1.0 (git+https://github.com/massalabs/massa)",
  "more-asserts 0.3.1",
  "num_enum",
  "parking_lot",
@@ -2775,12 +2775,12 @@ dependencies = [
 [[package]]
 name = "massa_hash"
 version = "0.1.0"
-source = "git+https://github.com/massalabs/massa.git#d969f7dcf76e8b0a282b542674c722fd0c55f6b5"
+source = "git+https://github.com/massalabs/massa#426a6ef7119a92249fed5f3b60e60cfa82ca2d08"
 dependencies = [
  "blake3",
  "bs58",
  "displaydoc",
- "massa_serialization 0.1.0 (git+https://github.com/massalabs/massa.git)",
+ "massa_serialization 0.1.0 (git+https://github.com/massalabs/massa)",
  "nom",
  "serde",
  "thiserror",
@@ -3037,7 +3037,7 @@ dependencies = [
 [[package]]
 name = "massa_serialization"
 version = "0.1.0"
-source = "git+https://github.com/massalabs/massa.git#d969f7dcf76e8b0a282b542674c722fd0c55f6b5"
+source = "git+https://github.com/massalabs/massa#426a6ef7119a92249fed5f3b60e60cfa82ca2d08"
 dependencies = [
  "displaydoc",
  "nom",
@@ -3065,13 +3065,13 @@ dependencies = [
 [[package]]
 name = "massa_signature"
 version = "0.1.0"
-source = "git+https://github.com/massalabs/massa.git#d969f7dcf76e8b0a282b542674c722fd0c55f6b5"
+source = "git+https://github.com/massalabs/massa#426a6ef7119a92249fed5f3b60e60cfa82ca2d08"
 dependencies = [
  "bs58",
  "displaydoc",
  "ed25519-dalek",
- "massa_hash 0.1.0 (git+https://github.com/massalabs/massa.git)",
- "massa_serialization 0.1.0 (git+https://github.com/massalabs/massa.git)",
+ "massa_hash 0.1.0 (git+https://github.com/massalabs/massa)",
+ "massa_serialization 0.1.0 (git+https://github.com/massalabs/massa)",
  "nom",
  "rand 0.7.3",
  "serde",
@@ -3627,13 +3627,13 @@ checksum = "19b17cddbe7ec3f8bc800887bab5e717348c95ea2ca0b1bf0837fb964dc67099"
 [[package]]
 name = "peernet"
 version = "0.1.0"
-source = "git+https://github.com/massalabs/PeerNet#959a7a651ff9c346b6fc5a123a5a44f0bd0cc8d5"
+source = "git+https://github.com/massalabs/PeerNet?rev=9300cb35b09347f3848c9a232f9aaf3f3f100ece#9300cb35b09347f3848c9a232f9aaf3f3f100ece"
 dependencies = [
  "crossbeam",
  "enum_delegate",
- "massa_hash 0.1.0 (git+https://github.com/massalabs/massa.git)",
- "massa_serialization 0.1.0 (git+https://github.com/massalabs/massa.git)",
- "massa_signature 0.1.0 (git+https://github.com/massalabs/massa.git)",
+ "massa_hash 0.1.0 (git+https://github.com/massalabs/massa)",
+ "massa_serialization 0.1.0 (git+https://github.com/massalabs/massa)",
+ "massa_signature 0.1.0 (git+https://github.com/massalabs/massa)",
  "mio",
  "parking_lot",
  "quiche",
@@ -4320,9 +4320,9 @@ checksum = "08d43f7aa6b08d49f382cde6a7982047c3426db949b1424bc4b7ec9ae12c6ce2"
 
 [[package]]
 name = "rustix"
-version = "0.37.18"
+version = "0.37.19"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8bbfc1d1c7c40c01715f47d71444744a81669ca84e8b63e25a55e169b1f86433"
+checksum = "acf8729d8542766f1b2cf77eb034d52f40d375bb8b615d0b147089946e16613d"
 dependencies = [
  "bitflags",
  "errno",

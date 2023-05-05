@@ -15,8 +15,8 @@ use massa_api_exports::config::APIConfig;
 use massa_async_pool::AsyncPoolConfig;
 use massa_bootstrap::BootstrapError;
 use massa_bootstrap::{
-    client::DefaultConnector, get_state, start_bootstrap_server, BootstrapConfig, BootstrapManager,
-    BootstrapTcpListener,
+    get_state, start_bootstrap_server, BootstrapConfig, BootstrapManager, BootstrapTcpListener,
+    DefaultConnector,
 };
 use massa_consensus_exports::events::ConsensusEvent;
 use massa_consensus_exports::{ConsensusChannels, ConsensusConfig, ConsensusManager};
@@ -133,37 +133,6 @@ async fn launch(
         if now > end {
             panic!("This episode has come to an end, please get the latest testnet node version to continue");
         }
-    }
-
-    let now = MassaTime::now().expect("could not get now time");
-
-    use massa_models::config::constants::DOWNTIME_END_TIMESTAMP;
-    use massa_models::config::constants::DOWNTIME_START_TIMESTAMP;
-
-    // Simulate downtime
-    // last_start_period should be set to trigger after the DOWNTIME_END_TIMESTAMP
-    if now >= DOWNTIME_START_TIMESTAMP && now <= DOWNTIME_END_TIMESTAMP {
-        let (days, hours, mins, secs) = DOWNTIME_END_TIMESTAMP
-            .saturating_sub(now)
-            .days_hours_mins_secs()
-            .unwrap();
-
-        if let Ok(Some(end_period)) = massa_models::timeslots::get_latest_block_slot_at_timestamp(
-            THREAD_COUNT,
-            T0,
-            *GENESIS_TIMESTAMP,
-            DOWNTIME_END_TIMESTAMP,
-        ) {
-            panic!(
-                "We are in downtime! {} days, {} hours, {} minutes, {} seconds remaining to the end of the downtime. Downtime end period: {}",
-                days, hours, mins, secs, end_period.period
-            );
-        }
-
-        panic!(
-            "We are in downtime! {} days, {} hours, {} minutes, {} seconds remaining to the end of the downtime",
-            days, hours, mins, secs,
-        );
     }
 
     // Storage shared by multiple components.
