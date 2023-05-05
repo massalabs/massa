@@ -426,8 +426,8 @@ impl PoSFinalState {
                     PreHashMap::default(),
                 ));
                 while self.cycle_history_cache.len() > self.config.cycle_history_length {
-                    if let Some((cycle, _)) = self.cycle_history_cache.pop_front() {
-                        self.delete_cycle_info(cycle);
+                    if let Some((old_cycle, _)) = self.cycle_history_cache.pop_front() {
+                        self.delete_cycle_info(old_cycle);
                     }
                 }
             } else {
@@ -441,7 +441,7 @@ impl PoSFinalState {
             ));
         }
 
-        let complete =
+        let complete: bool =
             slot.is_last_of_cycle(self.config.periods_per_cycle, self.config.thread_count);
         self.put_cycle_history_complete(cycle, complete, batch);
 
@@ -458,7 +458,20 @@ impl PoSFinalState {
 
         // extend production stats
         for (addr, stats) in changes.production_stats {
-            self.put_cycle_history_address_entry(cycle, &addr, None, Some(&stats), batch);
+            if let Some(prev_production_stats) = self.get_production_stats_for_address(cycle, addr)
+            {
+                let mut new_production_stats = prev_production_stats;
+                new_production_stats.extend(&stats);
+                self.put_cycle_history_address_entry(
+                    cycle,
+                    &addr,
+                    None,
+                    Some(&new_production_stats),
+                    batch,
+                );
+            } else {
+                self.put_cycle_history_address_entry(cycle, &addr, None, Some(&stats), batch);
+            }
         }
 
         // if the cycle just completed, check that it has the right number of seed bits
@@ -470,15 +483,12 @@ impl PoSFinalState {
             );
         }
 
-        // extent deferred_credits with changes.deferred_credits
+        // extend deferred_credits with changes.deferred_credits and remove zeros
         for (slot, credits) in changes.deferred_credits.credits.iter() {
             for (address, amount) in credits.iter() {
                 self.put_deferred_credits_entry(slot, address, amount, batch);
             }
         }
-
-        // remove zero-valued credits
-        self.remove_deferred_credits_zeros(batch);
 
         // feed the cycle if it is complete
         // notify the PoSDrawer about the newly ready draw data
@@ -877,43 +887,22 @@ impl PoSFinalState {
             .serialize(address, &mut serialized_key)
             .expect(DEFERRED_CREDITS_SER_ERROR);
 
-        let mut serialized_amount = Vec::new();
-        self.deferred_credits_serializer
-            .credits_ser
-            .amount_ser
-            .serialize(amount, &mut serialized_amount)
-            .expect(DEFERRED_CREDITS_SER_ERROR);
+        if amount.is_zero() {
+            db.delete_key(handle, batch, deferred_credits_key!(serialized_key));
+        } else {
+            let mut serialized_amount = Vec::new();
+            self.deferred_credits_serializer
+                .credits_ser
+                .amount_ser
+                .serialize(amount, &mut serialized_amount)
+                .expect(DEFERRED_CREDITS_SER_ERROR);
 
-        db.put_or_update_entry_value(
-            handle,
-            batch,
-            deferred_credits_key!(serialized_key),
-            &serialized_amount,
-        );
-    }
-
-    /// Internal function to remove the zeros from the deferred_credits
-    fn remove_deferred_credits_zeros(&self, batch: &mut DBBatch) {
-        let db = self.db.read();
-        let handle = db.0.cf_handle(STATE_CF).expect(CF_ERROR);
-
-        for (serialized_key, serialized_value) in
-            db.0.prefix_iterator_cf(handle, DEFERRED_CREDITS_PREFIX)
-                .flatten()
-        {
-            if !serialized_key.starts_with(DEFERRED_CREDITS_PREFIX.as_bytes()) {
-                break;
-            }
-            let (_, amount) = self
-                .deferred_credits_deserializer
-                .credit_deserializer
-                .amount_deserializer
-                .deserialize::<DeserializeError>(&serialized_value)
-                .expect(DEFERRED_CREDITS_DESER_ERROR);
-
-            if amount.is_zero() {
-                db.delete_key(handle, batch, serialized_key.to_vec());
-            }
+            db.put_or_update_entry_value(
+                handle,
+                batch,
+                deferred_credits_key!(serialized_key),
+                &serialized_amount,
+            );
         }
     }
 }
@@ -979,6 +968,15 @@ impl PoSFinalState {
         &self,
         cycle: u64,
     ) -> Option<PreHashMap<Address, ProductionStats>> {
+        self.get_cycle_index(cycle)
+            .map(|idx| self.get_all_production_stats_private(self.cycle_history_cache[idx].0))
+    }
+
+    /// Retrieves the productions statistics for all addresses on a given cycle
+    pub fn get_all_production_stats_private(
+        &self,
+        cycle: u64,
+    ) -> PreHashMap<Address, ProductionStats> {
         let db = self.db.read();
         let handle = db.0.cf_handle(STATE_CF).expect(CF_ERROR);
 
@@ -1031,10 +1029,7 @@ impl PoSFinalState {
             production_stats.insert(address, cur_production_stat);
         }
 
-        match production_stats.is_empty() {
-            true => None,
-            false => Some(production_stats),
-        }
+        production_stats
     }
 
     fn get_cycle_history_rng_seed(&self, cycle: u64) -> BitVec<u8> {

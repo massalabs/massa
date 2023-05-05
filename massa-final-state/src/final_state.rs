@@ -493,7 +493,7 @@ impl FinalState {
             &mut db_batch,
         );
 
-        self.db.read().set_slot(slot, &mut db_batch);
+        self.db.read().set_slot(self.slot, &mut db_batch);
 
         self.db.read().write_batch(db_batch);
 
