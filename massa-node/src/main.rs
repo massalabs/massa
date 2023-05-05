@@ -233,8 +233,12 @@ async fn launch(
     let interupted = Arc::new((Mutex::new(false), Condvar::new()));
     let handler_clone = Arc::clone(&interupted);
 
+    // currently used by the bootstrap client to break out of the to preempt the retry wait
     ctrlc::set_handler(move || {
-        *handler_clone.0.lock().unwrap() = true;
+        *handler_clone
+            .0
+            .lock()
+            .expect("double-lock on interupt bool in ctrl-c handler") = true;
         handler_clone.1.notify_all();
     })
     .expect("Error setting Ctrl-C handler");

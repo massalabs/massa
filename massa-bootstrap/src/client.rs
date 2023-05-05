@@ -436,7 +436,9 @@ fn filter_bootstrap_list(
 }
 
 /// Gets the state from a bootstrap server
-/// needs to be CANCELLABLE
+/// Uses the cond-var pattern to handle sig-int cancellation.
+/// Make sure that the passed in `interrupted` shares its Arc
+/// with a sig-int handler setup.
 #[allow(clippy::too_many_arguments)]
 pub fn get_state(
     bootstrap_config: &BootstrapConfig,
