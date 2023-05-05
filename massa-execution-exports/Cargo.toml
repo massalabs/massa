@@ -14,6 +14,7 @@ parking_lot = { version = "0.12", features = ["deadlock_detection"], optional = 
 tempfile = { version = "3.3", optional = true }
 tokio = { version = "1.23", features = ["sync"] }
 mockall = { version = "0.11.4",  optional = true}
+
 # custom modules
 massa_proto = { path = "../massa-proto" }
 massa_hash = { path = "../massa-hash" }
@@ -24,6 +25,7 @@ massa_final_state = { path = "../massa-final-state" }
 massa_ledger_exports = { path = "../massa-ledger-exports", optional = true }
 massa_module_cache = { path = "../massa-module-cache" }
 massa-sc-runtime = { git = "https://github.com/massalabs/massa-sc-runtime", branch="testnet_23" }
+
 [dev-dependencies]
 mockall = "0.11.4"
 

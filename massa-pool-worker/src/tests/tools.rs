@@ -3,7 +3,6 @@
 use crate::{operation_pool::OperationPool, start_pool_controller};
 use crossbeam_channel as _;
 use massa_execution_exports::test_exports;
-use massa_execution_exports::MockExecutionController;
 use massa_hash::Hash;
 use massa_models::{
     address::Address,

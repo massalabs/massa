@@ -21,7 +21,6 @@ use crate::tests::tools::OpGenerator;
 
 use super::tools::{create_some_operations, operation_pool_test, pool_test};
 use massa_execution_exports::test_exports;
-use massa_execution_exports::MockExecutionController;
 use massa_models::{amount::Amount, operation::OperationId, slot::Slot};
 use massa_pool_exports::PoolConfig;
 use std::time::Duration;

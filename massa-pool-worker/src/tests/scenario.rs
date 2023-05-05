@@ -13,9 +13,7 @@
 //! configurations are taken into account.
 
 use mockall::Sequence;
-use std::borrow::BorrowMut;
 use std::sync::mpsc::Receiver;
-use std::sync::Mutex;
 use std::sync::RwLock;
 use std::thread;
 use std::time::Duration;
@@ -53,26 +51,17 @@ lazy_static::lazy_static! {
 /// ## Initialization
 /// Insert multiple operations in the pool. (10)
 ///
-/// Start mocked execution controller thread. (expected 2 calls of `unexecuted_ops_among`
-/// that return the full storage)
-/// The execution thread will response that no operations had been executed.
-///
-/// ## Expected results
-/// The execution controller is expected to be asked 2 times for the first interaction:
-/// - to check the already executed operations
-/// - to check the final and candidate balances of the creator address
-/// And one time for the 9 next to check the executed operations.
+/// Create a mock-execution-controller story:
+/// 1. unexpected_opse_among, returning storage
+/// 2. get_final_and_candidate_balance, returning 1, 1
+/// 3. repeat #1 9 times
 ///
 /// The block operation storage built for all threads is expected to have the
 /// same length than those added previously.
 #[test]
 fn test_simple_get_operations() {
-    let config = PoolConfig::default();
-    let endorsement_sender = broadcast::channel(2000).0;
-    let operation_sender = broadcast::channel(5000).0;
-    let mut execution_controller = Box::new(MockExecutionController::new());
-
     // Setup the execution story.
+    let mut execution_controller = Box::new(MockExecutionController::new());
     execution_controller.expect_clone_box().returning(|| {
         let mut res = Box::new(MockExecutionController::new());
         let mut seq = Sequence::new();
@@ -90,40 +79,42 @@ fn test_simple_get_operations() {
             .in_sequence(&mut seq);
         res
     });
-    let mut selector_controller = Box::new(MockSelectorController::new());
-    selector_controller.expect_clone_box().returning(|| {
-        let mut res = Box::new(MockSelectorController::new());
-        res
-    });
 
+    // Provide the selector boilderplate
+    let mut selector_controller = Box::new(MockSelectorController::new());
+    selector_controller
+        .expect_clone_box()
+        .returning(|| Box::new(MockSelectorController::new()));
+
+    // Setup the pool controller
+    let config = PoolConfig::default();
     let (mut pool_manager, mut pool_controller) = start_pool_controller(
         config,
         &STORAGE.read().unwrap(),
         execution_controller,
         PoolChannels {
-            endorsement_sender,
-            operation_sender,
+            endorsement_sender: broadcast::channel(2000).0,
+            operation_sender: broadcast::channel(5000).0,
             selector: selector_controller,
         },
     );
 
-    //setup meta-data
+    // setup storage
     let keypair = KeyPair::generate();
     let op_gen = OpGenerator::default().creator(keypair.clone()).expirery(1);
-    let creator_address = Address::from_public_key(&keypair.get_public_key());
-    let creator_thread = creator_address.get_thread(config.thread_count);
-
-    // setup storage
     STORAGE
         .write()
         .unwrap()
         .store_operations(create_some_operations(10, &op_gen));
-
     pool_controller.add_operations(STORAGE.read().unwrap().clone());
 
     // Allow some time for the pool to add the operations
     std::thread::sleep(Duration::from_millis(100));
 
+    let creator_thread = {
+        let creator_address = Address::from_public_key(&keypair.get_public_key());
+        creator_address.get_thread(config.thread_count)
+    };
     // This is what we are testing....
     let block_operations_storage = pool_controller
         .get_block_operations(&Slot::new(1, creator_thread))
