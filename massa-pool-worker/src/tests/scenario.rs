@@ -16,6 +16,7 @@ use std::sync::mpsc::Receiver;
 use std::thread;
 use std::time::Duration;
 
+use crate::start_pool_controller;
 use crate::tests::tools::create_some_operations;
 use crate::tests::tools::pool_test;
 use crate::tests::tools::OpGenerator;
@@ -30,10 +31,14 @@ use massa_models::slot::Slot;
 use massa_models::test_exports::{
     gen_block_headers_for_denunciation, gen_endorsements_for_denunciation,
 };
+use massa_pool_exports::PoolChannels;
 use massa_pool_exports::PoolConfig;
+use massa_pos_exports::test_exports::MockSelectorController;
 use massa_pos_exports::test_exports::MockSelectorControllerMessage;
 use massa_pos_exports::{PosResult, Selection};
 use massa_signature::KeyPair;
+use massa_storage::Storage;
+use tokio::sync::broadcast;
 
 /// # Test simple get operation
 /// Just try to get some operations stored in pool
@@ -56,13 +61,14 @@ use massa_signature::KeyPair;
 #[test]
 fn test_simple_get_operations() {
     let config = PoolConfig::default();
-    let storage: Storage = Storage::create_root();
+    let mut storage: Storage = Storage::create_root();
     let endorsement_sender = broadcast::channel(2000).0;
     let operation_sender = broadcast::channel(5000).0;
     let (execution_controller, execution_receiver) =
         test_exports::MockExecutionController::new_with_receiver();
     let (selector_controller, selector_receiver) = MockSelectorController::new_with_receiver();
-    let (pool_manager, pool_controller) = start_pool_controller(
+
+    let (mut pool_manager, mut pool_controller) = start_pool_controller(
         config,
         &storage,
         execution_controller,
@@ -73,49 +79,74 @@ fn test_simple_get_operations() {
         },
     );
 
-    (|mut pool_manager,
-      mut pool_controller,
-      execution_receiver,
-      _selector_receiver,
-      mut storage| {
-        //setup meta-data
-        let keypair = KeyPair::generate();
-        let op_gen = OpGenerator::default().creator(keypair.clone()).expirery(1);
-        let creator_address = Address::from_public_key(&keypair.get_public_key());
-        let creator_thread = creator_address.get_thread(config.thread_count);
+    //setup meta-data
+    let keypair = KeyPair::generate();
+    let op_gen = OpGenerator::default().creator(keypair.clone()).expirery(1);
+    let creator_address = Address::from_public_key(&keypair.get_public_key());
+    let creator_thread = creator_address.get_thread(config.thread_count);
 
-        // setup storage
-        storage.store_operations(create_some_operations(10, &op_gen));
-        let unexecuted_ops = storage.get_op_refs().clone();
-        pool_controller.add_operations(storage);
-        // Allow some time for the pool to add the operations
-        std::thread::sleep(Duration::from_millis(100));
+    // setup storage
+    storage.store_operations(create_some_operations(10, &op_gen));
+    let unexecuted_ops = storage.get_op_refs().clone();
+    pool_controller.add_operations(storage);
 
-        // Start mock execution thread.
-        // Provides the data for `pool_controller.get_block_operations`
-        launch_basic_get_block_operation_execution_mock(
-            10,
-            unexecuted_ops,
-            execution_receiver,
-            creator_address,
-            vec![(Some(Amount::from_raw(1)), Some(Amount::from_raw(1)))],
-        );
+    // Allow some time for the pool to add the operations
+    std::thread::sleep(Duration::from_millis(100));
 
-        // This is what we are testing....
-        let block_operations_storage = pool_controller
-            .get_block_operations(&Slot::new(1, creator_thread))
-            .1;
+    // Start mock execution thread.
+    // Provides the data for `pool_controller.get_block_operations`
+    {
+        let creator_address = creator_address;
+        let balance_vec = vec![(Some(Amount::from_raw(1)), Some(Amount::from_raw(1)))];
+        let receive = |er: &Receiver<test_exports::MockExecutionControllerMessage>| {
+            er.recv_timeout(Duration::from_millis(100))
+        };
+        std::thread::spawn(move || {
+            match receive(&execution_receiver) {
+                Ok(test_exports::MockExecutionControllerMessage::UnexecutedOpsAmong {
+                    response_tx,
+                    ..
+                }) => response_tx.send(unexecuted_ops.clone()).unwrap(),
+                Ok(op) => panic!("Expected `ControllerMsg::UnexecutedOpsAmong`, got {:?}", op),
+                Err(_) => panic!("execution never called"),
+            }
+            match receive(&execution_receiver) {
+                Ok(test_exports::MockExecutionControllerMessage::GetFinalAndCandidateBalance {
+                    addresses,
+                    response_tx,
+                    ..
+                }) => {
+                    assert_eq!(addresses.len(), 1);
+                    assert_eq!(addresses[0], creator_address);
+                    response_tx.send(balance_vec).unwrap();
+                }
+                Ok(op) => panic!(
+                    "Expected `ControllerMsg::GetFinalAndCandidateBalance`, got {:?}",
+                    op
+                ),
+                Err(_) => panic!("execution never called"),
+            }
 
-        pool_manager.stop();
+            (1..10).for_each(|_| {
+                if let Ok(test_exports::MockExecutionControllerMessage::UnexecutedOpsAmong {
+                    response_tx,
+                    ..
+                }) = receive(&execution_receiver)
+                {
+                    response_tx.send(unexecuted_ops.clone()).unwrap();
+                }
+            })
+        });
+    };
 
-        assert_eq!(block_operations_storage.get_op_refs().len(), 10);
-    })(
-        pool_manager,
-        pool_controller,
-        execution_receiver,
-        selector_receiver,
-        storage,
-    );
+    // This is what we are testing....
+    let block_operations_storage = pool_controller
+        .get_block_operations(&Slot::new(1, creator_thread))
+        .1;
+
+    pool_manager.stop();
+
+    assert_eq!(block_operations_storage.get_op_refs().len(), 10);
 }
 
 /// Launch a default mock for execution controller on call `get_block_operation` API.
