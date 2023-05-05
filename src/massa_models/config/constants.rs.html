@@ -313,6 +313,11 @@
 <a href="#313" id="313">313</a>
 <a href="#314" id="314">314</a>
 <a href="#315" id="315">315</a>
+<a href="#316" id="316">316</a>
+<a href="#317" id="317">317</a>
+<a href="#318" id="318">318</a>
+<a href="#319" id="319">319</a>
+<a href="#320" id="320">320</a>
 </pre><pre class="rust"><code><span class="doccomment">//! DEFAULT VALUES USED TO INITIALIZE DIVERS CONFIGURATIONS STRUCTURES
 //!
 //!
@@ -335,7 +340,12 @@
 <span class="kw">use </span>massa_time::MassaTime;
 <span class="kw">use </span>num::rational::Ratio;
 
-<span class="doccomment">/// Limit on the number of peers we advertise to others.
+<span class="doccomment">/// Start of the downtime simulation
+</span><span class="kw">pub const </span>DOWNTIME_START_TIMESTAMP: MassaTime = MassaTime::from_millis(<span class="number">1681372800000</span>); <span class="comment">// 13/04/2023 10AM CET
+</span><span class="doccomment">/// End of the downtime simulation
+</span><span class="kw">pub const </span>DOWNTIME_END_TIMESTAMP: MassaTime = MassaTime::from_millis(<span class="number">1681390800000</span>); <span class="comment">// 13/04/2023 16AM CET
+
+</span><span class="doccomment">/// Limit on the number of peers we advertise to others.
 </span><span class="kw">pub const </span>MAX_ADVERTISE_LENGTH: u32 = <span class="number">10000</span>;
 <span class="doccomment">/// Maximum message length in bytes
 </span><span class="kw">pub const </span>MAX_MESSAGE_SIZE: u32 = <span class="number">1048576000</span>;
@@ -366,7 +376,7 @@
             )
         )
     } <span class="kw">else </span>{
-        <span class="number">1683205200000</span>.into()  <span class="comment">// Thursday, May 4, 2023 01:00:00 PM UTC
+        <span class="number">1683291600000</span>.into()  <span class="comment">// Friday, May 5, 2023 01:00:00 PM UTC
     </span>};
 
     <span class="doccomment">/// TESTNET: time when the blockclique is ended.
