@@ -522,7 +522,6 @@
 <a href="#522" id="522">522</a>
 <a href="#523" id="523">523</a>
 <a href="#524" id="524">524</a>
-<a href="#525" id="525">525</a>
 </pre><pre class="rust"><code><span class="kw">use </span>std::{
     collections::{HashMap, VecDeque},
     num::NonZeroUsize,
@@ -687,14 +686,13 @@
     }
 
     <span class="kw">fn </span>clear_storage(<span class="kw-2">&amp;mut </span><span class="self">self</span>) {
-        <span class="self">self</span>.stored_operations.retain(|instant, operations| {
+        <span class="kw">for </span>(instant, operations) <span class="kw">in </span><span class="self">self</span>.stored_operations.iter() {
             <span class="kw">if </span>instant.elapsed() &gt; <span class="self">self</span>.config.asked_operations_pruning_period.to_duration() {
                 <span class="self">self</span>.storage.drop_operation_refs(operations);
-                <span class="bool-val">false
-            </span>} <span class="kw">else </span>{
-                <span class="bool-val">true
-            </span>}
-        });
+            } <span class="kw">else </span>{
+                <span class="kw">break</span>;
+            }
+        }
     }
 
     <span class="kw">fn </span>note_operations_from_peer(
