@@ -502,7 +502,7 @@ pub fn get_state(
 
     loop {
         // check for interuption
-        if *interupted.0.lock().unwrap() {
+        if *interupted.0.lock().expect("double-lock on interupt-mutex") {
             return Err(BootstrapError::Interupted(
                 "Sig INT received while getting state".to_string(),
             ));
@@ -559,11 +559,14 @@ pub fn get_state(
             // The _magic_ happens when, somewhere else, a clone of the Arc<(Mutex<bool>, Condvar)>\
             // calls Condvar::notify_[one | all], which prompts this thread to wake up. Assuming that
             // the mutex-wrapped variable has been set appropriately before the notify, this thread
-            let int_sig = interupted.0.lock().unwrap();
+            let int_sig = interupted
+                .0
+                .lock()
+                .expect("double-lock() on interupted signal mutex");
             let wake = interupted
                 .1
                 .wait_timeout(int_sig, bootstrap_config.retry_delay.to_duration())
-                .unwrap();
+                .expect("interupt signal mutex poisoned");
             if *wake.0 {
                 return Err(BootstrapError::Interupted(
                     "Sig INT during bootstray retry-wait".to_string(),
