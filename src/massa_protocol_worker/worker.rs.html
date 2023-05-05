@@ -221,7 +221,6 @@
 <a href="#221" id="221">221</a>
 <a href="#222" id="222">222</a>
 <a href="#223" id="223">223</a>
-<a href="#224" id="224">224</a>
 </pre><pre class="rust"><code><span class="kw">use </span>crossbeam::channel::{bounded, Receiver, Sender};
 <span class="kw">use </span>massa_consensus_exports::ConsensusController;
 <span class="kw">use </span>massa_models::node::NodeId;
@@ -403,8 +402,7 @@
         serde_json::from_slice::&lt;KeyPair&gt;(keypair_bs58_check_encoded.as_bytes())<span class="question-mark">?
     </span>} <span class="kw">else </span>{
         <span class="comment">// node file does not exist: generate the key and save it
-        // MERGE TODO
-        </span><span class="kw">let </span>keypair = KeyPair::generate(<span class="number">0</span>).unwrap();
+        </span><span class="kw">let </span>keypair = KeyPair::generate();
         <span class="kw">if let </span><span class="prelude-val">Err</span>(e) = std::fs::write(<span class="kw-2">&amp;</span>config.keypair_file, serde_json::to_string(<span class="kw-2">&amp;</span>keypair)<span class="question-mark">?</span>) {
             <span class="macro">warn!</span>(<span class="string">&quot;could not generate node key file: {}&quot;</span>, e);
         }

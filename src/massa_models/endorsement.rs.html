@@ -969,7 +969,7 @@
     <span class="attr">#[test]
     #[serial]
     </span><span class="kw">fn </span>test_endorsement_serialization() {
-        <span class="kw">let </span>sender_keypair = KeyPair::generate(<span class="number">0</span>).unwrap();
+        <span class="kw">let </span>sender_keypair = KeyPair::generate();
         <span class="kw">let </span>content = Endorsement {
             slot: Slot::new(<span class="number">10</span>, <span class="number">1</span>),
             index: <span class="number">0</span>,
@@ -994,7 +994,7 @@
     <span class="attr">#[test]
     #[serial]
     </span><span class="kw">fn </span>test_endorsement_lightweight_serialization() {
-        <span class="kw">let </span>sender_keypair = KeyPair::generate(<span class="number">0</span>).unwrap();
+        <span class="kw">let </span>sender_keypair = KeyPair::generate();
         <span class="kw">let </span>content = Endorsement {
             slot: Slot::new(<span class="number">10</span>, <span class="number">1</span>),
             index: <span class="number">0</span>,
@@ -1025,7 +1025,7 @@
     </span><span class="kw">fn </span>test_verify_sig_batch() {
         <span class="comment">// test verify_signature_batch as we override SecureShareEndorsements compute_hash
 
-        </span><span class="kw">let </span>sender_keypair = KeyPair::generate(<span class="number">0</span>).unwrap();
+        </span><span class="kw">let </span>sender_keypair = KeyPair::generate();
         <span class="kw">let </span>content_1 = Endorsement {
             slot: Slot::new(<span class="number">10</span>, <span class="number">1</span>),
             index: <span class="number">0</span>,
@@ -1042,7 +1042,7 @@
             SecureShareDeserializer::new(EndorsementDeserializer::new(<span class="number">32</span>, <span class="number">32</span>))
                 .deserialize::&lt;DeserializeError&gt;(<span class="kw-2">&amp;</span>serialized)
                 .unwrap();
-        <span class="kw">let </span>sender_keypair = KeyPair::generate(<span class="number">0</span>).unwrap();
+        <span class="kw">let </span>sender_keypair = KeyPair::generate();
         <span class="kw">let </span>content_2 = Endorsement {
             slot: Slot::new(<span class="number">2</span>, <span class="number">5</span>),
             index: <span class="number">0</span>,
