@@ -20,7 +20,8 @@
 use crate::tests::tools::OpGenerator;
 
 use super::tools::{create_some_operations, operation_pool_test, pool_test};
-use massa_execution_exports::test_exports::MockExecutionControllerMessage;
+use massa_execution_exports::test_exports;
+use massa_execution_exports::MockExecutionController;
 use massa_models::{amount::Amount, operation::OperationId, slot::Slot};
 use massa_pool_exports::PoolConfig;
 use std::time::Duration;
@@ -107,7 +108,7 @@ fn test_pool() {
             std::thread::spawn(move || loop {
                 match execution_receiver.recv_timeout(Duration::from_millis(2000)) {
                     // forward on the operations
-                    Ok(MockExecutionControllerMessage::UnexecutedOpsAmong {
+                    Ok(test_exports::MockExecutionControllerMessage::UnexecutedOpsAmong {
                         ops,
                         response_tx,
                         ..
@@ -115,10 +116,12 @@ fn test_pool() {
                         response_tx.send(ops).unwrap();
                     }
                     // we want the operations to be paid for...
-                    Ok(MockExecutionControllerMessage::GetFinalAndCandidateBalance {
-                        response_tx,
-                        ..
-                    }) => response_tx
+                    Ok(
+                        test_exports::MockExecutionControllerMessage::GetFinalAndCandidateBalance {
+                            response_tx,
+                            ..
+                        },
+                    ) => response_tx
                         .send(vec![(
                             Some(Amount::from_raw(60 * 1_000_000_000)),
                             Some(Amount::from_raw(60 * 1_000_000_000)),

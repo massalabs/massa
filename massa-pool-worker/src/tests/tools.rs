@@ -2,9 +2,8 @@
 
 use crate::{operation_pool::OperationPool, start_pool_controller};
 use crossbeam_channel as _;
-use massa_execution_exports::test_exports::{
-    MockExecutionController, MockExecutionControllerMessage,
-};
+use massa_execution_exports::test_exports;
+use massa_execution_exports::MockExecutionController;
 use massa_hash::Hash;
 use massa_models::{
     address::Address,
@@ -90,7 +89,7 @@ where
     F: FnOnce(
         Box<dyn PoolManager>,
         Box<dyn PoolController>,
-        Receiver<MockExecutionControllerMessage>,
+        Receiver<test_exports::MockExecutionControllerMessage>,
         crossbeam_channel::Receiver<MockSelectorControllerMessage>,
         Storage,
     ),
@@ -98,7 +97,8 @@ where
     let storage: Storage = Storage::create_root();
     let endorsement_sender = broadcast::channel(2000).0;
     let operation_sender = broadcast::channel(5000).0;
-    let (execution_controller, execution_receiver) = MockExecutionController::new_with_receiver();
+    let (execution_controller, execution_receiver) =
+        test_exports::MockExecutionController::new_with_receiver();
     let (selector_controller, selector_receiver) = MockSelectorController::new_with_receiver();
     let (pool_manager, pool_controller) = start_pool_controller(
         cfg,
@@ -126,7 +126,7 @@ where
 {
     let endorsement_sender = broadcast::channel(2000).0;
     let operation_sender = broadcast::channel(5000).0;
-    let (execution_controller, _) = MockExecutionController::new_with_receiver();
+    let (execution_controller, _) = test_exports::MockExecutionController::new_with_receiver();
     let (selector_controller, _selector_receiver) = MockSelectorController::new_with_receiver();
     let storage = Storage::create_root();
     test(

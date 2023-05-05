@@ -19,9 +19,8 @@ use std::time::Duration;
 use crate::tests::tools::create_some_operations;
 use crate::tests::tools::pool_test;
 use crate::tests::tools::OpGenerator;
-use massa_execution_exports::test_exports::{
-    MockExecutionControllerMessage as ControllerMsg, MockExecutionControllerMessage,
-};
+use massa_execution_exports::test_exports;
+use massa_execution_exports::MockExecutionController;
 use massa_models::address::Address;
 use massa_models::amount::Amount;
 use massa_models::denunciation::{Denunciation, DenunciationIndex, DenunciationPrecursor};
@@ -103,21 +102,24 @@ fn test_simple_get_operations() {
 pub fn launch_basic_get_block_operation_execution_mock(
     operations_len: usize,
     unexecuted_ops: PreHashSet<OperationId>,
-    recvr: Receiver<ControllerMsg>,
+    recvr: Receiver<test_exports::MockExecutionControllerMessage>,
     creator_address: Address,
     balance_vec: Vec<(Option<Amount>, Option<Amount>)>,
 ) {
-    let receive = |er: &Receiver<ControllerMsg>| er.recv_timeout(Duration::from_millis(100));
+    let receive = |er: &Receiver<test_exports::MockExecutionControllerMessage>| {
+        er.recv_timeout(Duration::from_millis(100))
+    };
     std::thread::spawn(move || {
         match receive(&recvr) {
-            Ok(ControllerMsg::UnexecutedOpsAmong { response_tx, .. }) => {
-                response_tx.send(unexecuted_ops.clone()).unwrap()
-            }
+            Ok(test_exports::MockExecutionControllerMessage::UnexecutedOpsAmong {
+                response_tx,
+                ..
+            }) => response_tx.send(unexecuted_ops.clone()).unwrap(),
             Ok(op) => panic!("Expected `ControllerMsg::UnexecutedOpsAmong`, got {:?}", op),
             Err(_) => panic!("execution never called"),
         }
         match receive(&recvr) {
-            Ok(ControllerMsg::GetFinalAndCandidateBalance {
+            Ok(test_exports::MockExecutionControllerMessage::GetFinalAndCandidateBalance {
                 addresses,
                 response_tx,
                 ..
@@ -134,7 +136,11 @@ pub fn launch_basic_get_block_operation_execution_mock(
         }
 
         (1..operations_len).for_each(|_| {
-            if let Ok(ControllerMsg::UnexecutedOpsAmong { response_tx, .. }) = receive(&recvr) {
+            if let Ok(test_exports::MockExecutionControllerMessage::UnexecutedOpsAmong {
+                response_tx,
+                ..
+            }) = receive(&recvr)
+            {
                 response_tx.send(unexecuted_ops.clone()).unwrap();
             }
         })
@@ -397,7 +403,7 @@ fn test_denunciation_pool_get() {
             let target_slot_1 = Slot::new(4, 0);
             let thread_1 = thread::spawn(move || loop {
                 match execution_receiver.recv_timeout(Duration::from_millis(100)) {
-                    Ok(MockExecutionControllerMessage::IsDenunciationExecuted {
+                    Ok(test_exports::MockExecutionControllerMessage::IsDenunciationExecuted {
                         de_idx,
                         response_tx,
                     }) => {
