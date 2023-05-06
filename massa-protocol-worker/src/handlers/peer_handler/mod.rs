@@ -78,6 +78,12 @@ impl PeerManagementHandler {
             active_connections.clone(),
             peer_db.clone(),
             messages_handler,
+            config
+                .peers_categories
+                .values()
+                .map(|info| info.target_out_connections)
+                .sum::<usize>()
+                + config.default_category_info.target_out_connections,
         );
 
         let thread_join = std::thread::Builder::new()

@@ -522,6 +522,8 @@ async fn launch(
             .routable_ip
             .or(SETTINGS.network.routable_ip),
         debug: false,
+        peers_categories: SETTINGS.protocol.peers_categories.clone(),
+        default_category_info: SETTINGS.protocol.default_category_info,
     };
 
     let (protocol_controller, protocol_channels) =

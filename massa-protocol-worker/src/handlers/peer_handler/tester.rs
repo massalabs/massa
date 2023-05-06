@@ -47,6 +47,7 @@ impl TesterHandshake {
 impl InitConnectionHandler for TesterHandshake {
     fn perform_handshake<MassaMessagesHandler: PeerNetMessagesHandler>(
         &mut self,
+        //TODO: Test if our node id is sent
         _: &KeyPair,
         endpoint: &mut Endpoint,
         _: &HashMap<SocketAddr, TransportType>,
@@ -176,6 +177,7 @@ impl Tester {
         active_connections: Box<dyn ActiveConnectionsTrait>,
         peer_db: SharedPeerDB,
         messages_handler: MessagesHandler,
+        total_target_out_connections: usize,
     ) -> (
         Sender<(PeerId, HashMap<SocketAddr, TransportType>)>,
         Vec<Tester>,
@@ -193,6 +195,7 @@ impl Tester {
                 config.clone(),
                 test_receiver.clone(),
                 messages_handler.clone(),
+                total_target_out_connections,
             ));
         }
 
@@ -206,6 +209,7 @@ impl Tester {
         protocol_config: ProtocolConfig,
         receiver: crossbeam::channel::Receiver<(PeerId, HashMap<SocketAddr, TransportType>)>,
         messages_handler: MessagesHandler,
+        total_target_out_connections: usize,
     ) -> Self {
         tracing::log::debug!("running new tester");
 
@@ -214,11 +218,10 @@ impl Tester {
         .spawn(move || {
             let db = peer_db.clone();
             let active_connections = active_connections.clone();
-            let mut config = PeerNetConfiguration::default(
+            let config = PeerNetConfiguration::default(
                 TesterHandshake::new(peer_db, protocol_config.clone()),
                 messages_handler,
             );
-            config.max_out_connections = 100;
 
             let mut network_manager = PeerNetManager::new(config);
             loop {
@@ -229,7 +232,8 @@ impl Tester {
                                 if listener.1.is_empty() {
                                     continue;
                                 }
-                                let slots_out_connections = active_connections.get_max_out_connections() - active_connections.get_nb_out_connections();
+                                //Test 
+                                let slots_out_connections = total_target_out_connections.saturating_sub(active_connections.get_nb_out_connections());
                                 let cooldown_by_address = if slots_out_connections == 0 {
                                     Duration::from_secs(30)
                                 } else {
@@ -249,9 +253,10 @@ impl Tester {
                                         } else {
                                             db.tested_addresses.insert(*addr, now);
                                         }
-                                        // Don't launch test if peer is already connected to us as a normal connection.
+                                        // TODO:  Don't launch test if peer is already connected to us as a normal connection.
                                         // Maybe we need to have a way to still update his last announce timestamp because he is a great peer
-                                        if active_connections.check_addr_accepted(addr)  {
+                                        let ip_canonical = addr.ip().to_canonical();
+                                        if ip_canonical.is_global() && !active_connections.get_peers_connected().iter().any(|(_, (addr, _, _))| addr.ip().to_canonical() == ip_canonical) {
                                             //Don't test our local addresses
                                             for (local_addr, _transport) in protocol_config.listeners.iter() {
                                                 if addr == local_addr {
@@ -260,7 +265,7 @@ impl Tester {
                                             }
                                             //Don't test our proper ip
                                             if let Some(ip) = protocol_config.routable_ip {
-                                                if ip.to_canonical() == addr.ip().to_canonical() {
+                                                if ip.to_canonical() == ip_canonical {
                                                     continue;
                                                 }
                                             }
@@ -281,7 +286,7 @@ impl Tester {
                         // If no message in 2 seconds they will test a peer that hasn't been tested for long time
 
                         // we find the last peer that has been tested
-                        let slots_out_connections = active_connections.get_max_out_connections() - active_connections.get_nb_out_connections();
+                        let slots_out_connections = total_target_out_connections - active_connections.get_nb_out_connections();
                         let cooldown_by_address = if slots_out_connections == 0 {
                             Duration::from_secs(30)
                         } else {
@@ -291,8 +296,14 @@ impl Tester {
                             continue;
                         };
 
+                        {
+                            let mut db = db.write();
+                            db.tested_addresses.insert(listener, MassaTime::now().unwrap());
+                        }
+
                         // we try to connect to all peer listener (For now we have only one listener)
-                        if !listener.ip().to_canonical().is_global() || !active_connections.check_addr_accepted(&listener) {
+                        let ip_canonical = listener.ip().to_canonical();
+                        if !ip_canonical.is_global() || active_connections.get_peers_connected().iter().any(|(_, (addr, _, _))| addr.ip().to_canonical() == ip_canonical) {
                             continue;
                         }
                         //Don't test our local addresses
@@ -303,15 +314,11 @@ impl Tester {
                         }
                         //Don't test our proper ip
                         if let Some(ip) = protocol_config.routable_ip {
-                            if ip.to_canonical() == listener.ip().to_canonical() {
+                            if ip.to_canonical() == ip_canonical {
                                 continue;
                             }
                         }
                         info!("testing listener addr: {}", &listener);
-                        {
-                            let mut db = db.write();
-                            db.tested_addresses.insert(listener, MassaTime::now().unwrap());
-                        }
                         let _res =  network_manager.try_connect(
                             listener,
                             Duration::from_millis(1000),

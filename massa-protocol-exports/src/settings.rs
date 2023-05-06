@@ -10,6 +10,13 @@ use massa_time::MassaTime;
 use peernet::transports::TransportType;
 use serde::Deserialize;
 
+#[derive(Debug, Deserialize, Clone, Copy)]
+pub struct PeerCategoryInfo {
+    pub target_out_connections: usize,
+    pub max_in_connections: usize,
+    pub max_in_connections_per_ip: usize,
+}
+
 /// Dynamic protocol configuration mix in static settings and constants configurations.
 #[derive(Debug, Deserialize, Clone)]
 pub struct ProtocolConfig {
@@ -141,4 +148,8 @@ pub struct ProtocolConfig {
     pub routable_ip: Option<IpAddr>,
     /// debug prints
     pub debug: bool,
+    /// Peers categories infos
+    pub peers_categories: HashMap<String, PeerCategoryInfo>,
+    /// Default category infos
+    pub default_category_info: PeerCategoryInfo,
 }

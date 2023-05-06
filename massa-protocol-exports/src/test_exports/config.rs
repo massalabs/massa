@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 
-use crate::ProtocolConfig;
+use crate::{settings::PeerCategoryInfo, ProtocolConfig};
 use massa_models::config::ENDORSEMENT_COUNT;
 use massa_time::MassaTime;
 use tempfile::NamedTempFile;
@@ -77,6 +77,12 @@ impl Default for ProtocolConfig {
             read_write_limit_bytes_per_second: 1024 * 1000,
             routable_ip: None,
             debug: true,
+            peers_categories: HashMap::default(),
+            default_category_info: PeerCategoryInfo {
+                max_in_connections: 0,
+                target_out_connections: 0,
+                max_in_connections_per_ip: 0,
+            },
         }
     }
 }

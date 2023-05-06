@@ -202,6 +202,11 @@
     max_endorsements_propagation_time = 48000
     # number of thread tester
     thread_tester_count = 5
+    # Peer default category limits
+    default_category_info = { target_out_connections = 10, max_in_connections_per_ip = 2, max_in_connections = 15}
+    # Peer categories limits
+    [protocol.peers_categories]
+    Bootstrap = { target_out_connections = 1, max_in_connections_per_ip = 1, max_in_connections = 10}
 
 [network]
 

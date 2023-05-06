@@ -1,10 +1,11 @@
 // Copyright (c) 2022 MASSA LABS <info@massa.net>
 
 //! Build here the default node settings from the configuration file toml
-use std::path::PathBuf;
+use std::{collections::HashMap, path::PathBuf};
 
 use massa_bootstrap::IpType;
 use massa_models::{config::build_massa_settings, node::NodeId};
+use massa_protocol_exports::PeerCategoryInfo;
 use massa_time::MassaTime;
 use serde::Deserialize;
 use std::net::{IpAddr, SocketAddr};
@@ -230,6 +231,10 @@ pub struct ProtocolSettings {
     pub thread_tester_count: u8,
     /// Number of bytes we can read/write by seconds in a connection (must be a 10 multiple)
     pub read_write_limit_bytes_per_second: u64,
+    /// Peers limits per category
+    pub peers_categories: HashMap<String, PeerCategoryInfo>,
+    /// Limits for default category
+    pub default_category_info: PeerCategoryInfo,
 }
 
 /// gRPC settings
