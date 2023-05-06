@@ -315,22 +315,13 @@
 <a href="#315" id="315">315</a>
 <a href="#316" id="316">316</a>
 <a href="#317" id="317">317</a>
-<a href="#318" id="318">318</a>
-<a href="#319" id="319">319</a>
-<a href="#320" id="320">320</a>
-<a href="#321" id="321">321</a>
-<a href="#322" id="322">322</a>
-</pre><pre class="rust"><code><span class="kw">use </span>std::{
-    collections::HashMap,
-    net::SocketAddr,
-    thread::JoinHandle,
-    time::{Duration, SystemTime, UNIX_EPOCH},
-};
+</pre><pre class="rust"><code><span class="kw">use </span>std::{collections::HashMap, net::SocketAddr, thread::JoinHandle, time::Duration};
 
 <span class="kw">use </span><span class="kw">crate</span>::messages::MessagesHandler;
 <span class="kw">use </span>crossbeam::channel::Sender;
 <span class="kw">use </span>massa_protocol_exports::ProtocolConfig;
 <span class="kw">use </span>massa_serialization::{DeserializeError, Deserializer};
+<span class="kw">use </span>massa_time::MassaTime;
 <span class="kw">use </span>peernet::{
     config::PeerNetConfiguration,
     error::{PeerNetError, PeerNetResult},
@@ -459,9 +450,9 @@
                     <span class="kw">let </span>(received, id) = messages_handler.deserialize_id(<span class="kw-2">&amp;</span>data[<span class="number">33</span>..], <span class="kw-2">&amp;</span>peer_id)<span class="question-mark">?</span>;
                     messages_handler.handle(id, received, <span class="kw-2">&amp;</span>peer_id)<span class="question-mark">?</span>;
                     <span class="prelude-val">Err</span>(PeerNetError::HandshakeError.error(
-                            <span class="string">&quot;Massa Handshake&quot;</span>,
-                            <span class="prelude-val">Some</span>(<span class="string">&quot;Tester Handshake failed received a message that our connection has been refused&quot;</span>.to_string()),
-                        ))
+                        <span class="string">&quot;Massa Handshake&quot;</span>,
+                        <span class="prelude-val">Some</span>(<span class="string">&quot;Tester Handshake failed received a message that our connection has been refused&quot;</span>.to_string()),
+                    ))
                     <span class="comment">//TODO: Add the peerdb but for now impossible as we don&#39;t have announcement and we need one to place in peerdb
                 </span>}
                 <span class="kw">_ </span>=&gt; <span class="prelude-val">Err</span>(PeerNetError::HandshakeError
@@ -552,41 +543,47 @@
                     recv(receiver) -&gt; res =&gt; {
                         <span class="kw">match </span>res {
                             <span class="prelude-val">Ok</span>(listener) =&gt; {
-                                <span class="kw">if let </span><span class="prelude-val">Some</span>(peer_info) = db.read().peers.get(<span class="kw-2">&amp;</span>listener.<span class="number">0</span>) {
-                                    <span class="kw">let </span>timestamp = SystemTime::now()
-                                    .duration_since(UNIX_EPOCH)
-                                    .expect(<span class="string">&quot;Time went backward&quot;</span>)
-                                    .as_millis();
-                                    <span class="kw">let </span>elapsed_secs = (timestamp.saturating_sub(peer_info.last_announce.timestamp)) / <span class="number">1000</span>;
-                                    <span class="kw">if </span>elapsed_secs &lt; <span class="number">60 </span>{
-                                        <span class="kw">continue</span>;
-                                    }
+                                <span class="kw">if </span>listener.<span class="number">1</span>.is_empty() {
+                                    <span class="kw">continue</span>;
                                 }
-                                <span class="comment">// receive new listener to test
-                                </span>listener.<span class="number">1</span>.iter().for_each(|(addr, _transport)| {
-                                    <span class="comment">// Don&#39;t launch test if peer is already connected to us as a normal connection.
-                                    // Maybe we need to have a way to still update his last announce timestamp because he is a great peer
-                                    </span><span class="kw">if </span>active_connections.check_addr_accepted(addr)  {
-                                        <span class="comment">//Don&#39;t test our local addresses
-                                        </span><span class="kw">for </span>(local_addr, _transport) <span class="kw">in </span>protocol_config.listeners.iter() {
-                                            <span class="kw">if </span>addr == local_addr {
+                                {
+                                    <span class="kw">let </span>now = MassaTime::now().unwrap();
+                                    <span class="kw">let </span><span class="kw-2">mut </span>db = db.write();
+                                    <span class="comment">// receive new listener to test
+                                    </span><span class="kw">for </span>(addr, <span class="kw">_</span>) <span class="kw">in </span>listener.<span class="number">1</span>.iter() {
+                                        <span class="comment">//TODO: Change it to manage multiple listeners SAFETY: Check above
+                                        </span><span class="kw">if let </span><span class="prelude-val">Some</span>(last_tested_time) = db.tested_addresses.get(addr) {
+                                            <span class="kw">let </span>last_tested_time = last_tested_time.estimate_instant().expect(<span class="string">&quot;Time went backward&quot;</span>);
+                                            <span class="kw">if </span>last_tested_time.elapsed() &lt; Duration::from_secs(<span class="number">60</span>) {
                                                 <span class="kw">return</span>;
                                             }
+                                        } <span class="kw">else </span>{
+                                            db.tested_addresses.insert(<span class="kw-2">*</span>addr, now);
                                         }
-                                        <span class="comment">//Don&#39;t test our proper ip
-                                        </span><span class="kw">if let </span><span class="prelude-val">Some</span>(ip) = protocol_config.routable_ip {
-                                            <span class="kw">if </span>ip.to_canonical() == addr.ip().to_canonical() {
-                                                <span class="kw">return</span>;
+                                        <span class="comment">// Don&#39;t launch test if peer is already connected to us as a normal connection.
+                                        // Maybe we need to have a way to still update his last announce timestamp because he is a great peer
+                                        </span><span class="kw">if </span>active_connections.check_addr_accepted(addr)  {
+                                            <span class="comment">//Don&#39;t test our local addresses
+                                            </span><span class="kw">for </span>(local_addr, _transport) <span class="kw">in </span>protocol_config.listeners.iter() {
+                                                <span class="kw">if </span>addr == local_addr {
+                                                    <span class="kw">return</span>;
+                                                }
                                             }
+                                            <span class="comment">//Don&#39;t test our proper ip
+                                            </span><span class="kw">if let </span><span class="prelude-val">Some</span>(ip) = protocol_config.routable_ip {
+                                                <span class="kw">if </span>ip.to_canonical() == addr.ip().to_canonical() {
+                                                    <span class="kw">return</span>;
+                                                }
+                                            }
+                                            <span class="macro">info!</span>(<span class="string">&quot;testing peer {} listener addr: {}&quot;</span>, <span class="kw-2">&amp;</span>listener.<span class="number">0</span>, <span class="kw-2">&amp;</span>addr);
+                                            <span class="kw">let </span>_res =  network_manager.try_connect(
+                                                <span class="kw-2">*</span>addr,
+                                                Duration::from_millis(<span class="number">1000</span>),
+                                                <span class="kw-2">&amp;</span>OutConnectionConfig::Tcp(Box::new(TcpOutConnectionConfig::new(protocol_config.read_write_limit_bytes_per_second / <span class="number">10</span>, Duration::from_millis(<span class="number">100</span>)))),
+                                            );
                                         }
-                                        <span class="macro">info!</span>(<span class="string">&quot;testing peer {} listener addr: {}&quot;</span>, <span class="kw-2">&amp;</span>listener.<span class="number">0</span>, <span class="kw-2">&amp;</span>addr);
-                                        <span class="kw">let </span>_res =  network_manager.try_connect(
-                                            <span class="kw-2">*</span>addr,
-                                            Duration::from_millis(<span class="number">1000</span>),
-                                            <span class="kw-2">&amp;</span>OutConnectionConfig::Tcp(Box::new(TcpOutConnectionConfig::new(protocol_config.read_write_limit_bytes_per_second / <span class="number">10</span>, Duration::from_millis(<span class="number">100</span>)))),
-                                        );
-                                    }
-                                });
+                                    };
+                                }
                             },
                             <span class="prelude-val">Err</span>(_e) =&gt; <span class="kw">break</span>,
                         }
@@ -595,43 +592,36 @@
                         <span class="comment">// If no message in 2 seconds they will test a peer that hasn&#39;t been tested for long time
 
                         // we find the last peer that has been tested
-                        </span><span class="kw">let </span><span class="prelude-val">Some</span>((peer_id, peer_info)) = db.read().get_oldest_peer() <span class="kw">else </span>{
+                        </span><span class="kw">let </span><span class="prelude-val">Some</span>(listener) = db.read().get_oldest_peer() <span class="kw">else </span>{
                             <span class="kw">continue</span>;
                         };
 
-                        <span class="kw">let </span>timestamp = SystemTime::now()
-                        .duration_since(UNIX_EPOCH)
-                        .expect(<span class="string">&quot;Time went backward&quot;</span>)
-                        .as_millis();
-                        <span class="kw">let </span>elapsed_secs = (timestamp.saturating_sub(peer_info.last_announce.timestamp)) / <span class="number">1000</span>;
-                        <span class="kw">if </span>elapsed_secs &lt; <span class="number">60 </span>{
-                            <span class="kw">continue</span>;
-                        }
-
                         <span class="comment">// we try to connect to all peer listener (For now we have only one listener)
-                        </span>peer_info.last_announce.listeners.iter().for_each(|listener| {
-                            <span class="kw">if </span>!listener.<span class="number">0</span>.ip().to_canonical().is_global() || !active_connections.check_addr_accepted(listener.<span class="number">0</span>) {
+                        </span><span class="kw">if </span>!listener.ip().to_canonical().is_global() || !active_connections.check_addr_accepted(<span class="kw-2">&amp;</span>listener) {
+                            <span class="kw">return</span>;
+                        }
+                        <span class="comment">//Don&#39;t test our local addresses
+                        </span><span class="kw">for </span>(local_addr, _transport) <span class="kw">in </span>protocol_config.listeners.iter() {
+                            <span class="kw">if </span>listener == <span class="kw-2">*</span>local_addr {
                                 <span class="kw">return</span>;
                             }
-                            <span class="comment">//Don&#39;t test our local addresses
-                            </span><span class="kw">for </span>(local_addr, _transport) <span class="kw">in </span>protocol_config.listeners.iter() {
-                                <span class="kw">if </span>listener.<span class="number">0 </span>== local_addr {
-                                    <span class="kw">return</span>;
-                                }
+                        }
+                        <span class="comment">//Don&#39;t test our proper ip
+                        </span><span class="kw">if let </span><span class="prelude-val">Some</span>(ip) = protocol_config.routable_ip {
+                            <span class="kw">if </span>ip.to_canonical() == listener.ip().to_canonical() {
+                                <span class="kw">return</span>;
                             }
-                            <span class="comment">//Don&#39;t test our proper ip
-                            </span><span class="kw">if let </span><span class="prelude-val">Some</span>(ip) = protocol_config.routable_ip {
-                                <span class="kw">if </span>ip.to_canonical() == listener.<span class="number">0</span>.ip().to_canonical() {
-                                    <span class="kw">return</span>;
-                                }
-                            }
-                            <span class="macro">info!</span>(<span class="string">&quot;testing peer {} listener addr: {}&quot;</span>, peer_id, <span class="kw-2">&amp;</span>listener.<span class="number">0</span>);
-                            <span class="kw">let </span>_res =  network_manager.try_connect(
-                                <span class="kw-2">*</span>listener.<span class="number">0</span>,
-                                Duration::from_millis(<span class="number">1000</span>),
-                                <span class="kw-2">&amp;</span>OutConnectionConfig::Tcp(Box::new(TcpOutConnectionConfig::new(protocol_config.read_write_limit_bytes_per_second / <span class="number">10</span>, Duration::from_millis(<span class="number">100</span>)))),
-                            );
-                        });
+                        }
+                        <span class="macro">info!</span>(<span class="string">&quot;testing listener addr: {}&quot;</span>, <span class="kw-2">&amp;</span>listener);
+                        {
+                            <span class="kw">let </span><span class="kw-2">mut </span>db = db.write();
+                            db.tested_addresses.insert(listener, MassaTime::now().unwrap());
+                        }
+                        <span class="kw">let </span>_res =  network_manager.try_connect(
+                            listener,
+                            Duration::from_millis(<span class="number">1000</span>),
+                            <span class="kw-2">&amp;</span>OutConnectionConfig::Tcp(Box::new(TcpOutConnectionConfig::new(protocol_config.read_write_limit_bytes_per_second / <span class="number">10</span>, Duration::from_millis(<span class="number">100</span>)))),
+                        );
                     }
                 }
             }

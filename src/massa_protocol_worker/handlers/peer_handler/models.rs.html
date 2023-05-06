@@ -161,14 +161,23 @@
 <a href="#161" id="161">161</a>
 <a href="#162" id="162">162</a>
 <a href="#163" id="163">163</a>
+<a href="#164" id="164">164</a>
+<a href="#165" id="165">165</a>
+<a href="#166" id="166">166</a>
+<a href="#167" id="167">167</a>
+<a href="#168" id="168">168</a>
+<a href="#169" id="169">169</a>
+<a href="#170" id="170">170</a>
+<a href="#171" id="171">171</a>
 </pre><pre class="rust"><code><span class="kw">use </span>crossbeam::channel::Sender;
 <span class="kw">use </span>massa_protocol_exports::{BootstrapPeers, ProtocolError};
+<span class="kw">use </span>massa_time::MassaTime;
 <span class="kw">use </span>parking_lot::RwLock;
 <span class="kw">use </span>peernet::{peer_id::PeerId, transports::TransportType};
 <span class="kw">use </span>rand::seq::SliceRandom;
 <span class="kw">use </span>std::cmp::Reverse;
 <span class="kw">use </span>std::collections::BTreeSet;
-<span class="kw">use </span>std::time::{SystemTime, UNIX_EPOCH};
+<span class="kw">use </span>std::time::{Duration, SystemTime, UNIX_EPOCH};
 <span class="kw">use </span>std::{collections::HashMap, net::SocketAddr, sync::Arc};
 <span class="kw">use </span>tracing::log::info;
 
@@ -181,8 +190,10 @@
 <span class="attr">#[derive(Default)]
 </span><span class="kw">pub struct </span>PeerDB {
     <span class="kw">pub </span>peers: HashMap&lt;PeerId, PeerInfo&gt;,
-    <span class="doccomment">/// last is the oldest value (only routable peers)
+    <span class="doccomment">/// peers tested successfully last is the oldest value (only routable peers) //TODO: need to be pruned
     </span><span class="kw">pub </span>index_by_newest: BTreeSet&lt;(Reverse&lt;u128&gt;, PeerId)&gt;,
+    <span class="doccomment">/// Tested addresses used to avoid testing the same address too often. //TODO: Need to be pruned
+    </span><span class="kw">pub </span>tested_addresses: HashMap&lt;SocketAddr, MassaTime&gt;,
 }
 
 <span class="kw">pub type </span>SharedPeerDB = Arc&lt;RwLock&lt;PeerDB&gt;&gt;;
@@ -255,16 +266,21 @@
     }
 
     <span class="doccomment">/// Retrieve the peer with the oldest test date.
-    </span><span class="kw">pub fn </span>get_oldest_peer(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span>&lt;(PeerId, PeerInfo)&gt; {
-        <span class="self">self</span>.index_by_newest.last().map(|data| {
-            <span class="kw">let </span>peer_id = data.<span class="number">1</span>.clone();
-            <span class="kw">let </span>peer_info = <span class="self">self
-                </span>.peers
-                .get(<span class="kw-2">&amp;</span>peer_id)
-                .unwrap_or_else(|| <span class="macro">panic!</span>(<span class="string">&quot;Peer {:?} not found&quot;</span>, peer_id))
-                .clone();
-            (peer_id, peer_info)
-        })
+    </span><span class="kw">pub fn </span>get_oldest_peer(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span>&lt;SocketAddr&gt; {
+        <span class="kw">match </span><span class="self">self
+            </span>.tested_addresses
+            .iter()
+            .min_by_key(|(<span class="kw">_</span>, timestamp)| <span class="kw-2">*</span>(<span class="kw-2">*</span>timestamp))
+        {
+            <span class="prelude-val">Some</span>((addr, timestamp)) =&gt; {
+                <span class="kw">if </span>timestamp.estimate_instant().ok()<span class="question-mark">?</span>.elapsed() &gt; Duration::from_secs(<span class="number">60</span>) {
+                    <span class="prelude-val">Some</span>(<span class="kw-2">*</span>addr)
+                } <span class="kw">else </span>{
+                    <span class="prelude-val">None
+                </span>}
+            }
+            <span class="prelude-val">None </span>=&gt; <span class="prelude-val">None</span>,
+        }
     }
 
     <span class="doccomment">/// Select max 100 peers to send to another peer
