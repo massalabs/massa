@@ -520,6 +520,12 @@
 <a href="#520" id="520">520</a>
 <a href="#521" id="521">521</a>
 <a href="#522" id="522">522</a>
+<a href="#523" id="523">523</a>
+<a href="#524" id="524">524</a>
+<a href="#525" id="525">525</a>
+<a href="#526" id="526">526</a>
+<a href="#527" id="527">527</a>
+<a href="#528" id="528">528</a>
 </pre><pre class="rust"><code><span class="kw">use </span>std::cmp::Reverse;
 <span class="kw">use </span>std::{collections::HashMap, net::SocketAddr, thread::JoinHandle, time::Duration};
 
@@ -600,6 +606,12 @@
             active_connections.clone(),
             peer_db.clone(),
             messages_handler,
+            config
+                .peers_categories
+                .values()
+                .map(|info| info.target_out_connections)
+                .sum::&lt;usize&gt;()
+                + config.default_category_info.target_out_connections,
         );
 
         <span class="kw">let </span>thread_join = std::thread::Builder::new()

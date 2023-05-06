@@ -251,6 +251,14 @@
 <a href="#251" id="251">251</a>
 <a href="#252" id="252">252</a>
 <a href="#253" id="253">253</a>
+<a href="#254" id="254">254</a>
+<a href="#255" id="255">255</a>
+<a href="#256" id="256">256</a>
+<a href="#257" id="257">257</a>
+<a href="#258" id="258">258</a>
+<a href="#259" id="259">259</a>
+<a href="#260" id="260">260</a>
+<a href="#261" id="261">261</a>
 </pre><pre class="rust"><code><span class="kw">use </span>crossbeam::{
     channel::{Receiver, Sender},
     select,
@@ -258,21 +266,21 @@
 <span class="kw">use </span>massa_consensus_exports::ConsensusController;
 <span class="kw">use </span>massa_models::stats::NetworkStats;
 <span class="kw">use </span>massa_pool_exports::PoolController;
-<span class="kw">use </span>massa_protocol_exports::{BootstrapPeers, ProtocolConfig, ProtocolError};
+<span class="kw">use </span>massa_protocol_exports::{PeerCategoryInfo, ProtocolConfig, ProtocolError};
 <span class="kw">use </span>massa_storage::Storage;
 <span class="kw">use </span>parking_lot::RwLock;
-<span class="kw">use </span>peernet::{
-    peer::PeerConnectionType,
-    transports::{OutConnectionConfig, TransportType},
-};
+<span class="kw">use </span>peernet::{peer::PeerConnectionType, transports::OutConnectionConfig};
 <span class="kw">use </span>peernet::{peer_id::PeerId, transports::TcpOutConnectionConfig};
-<span class="kw">use </span>std::collections::HashMap;
 <span class="kw">use </span>std::net::SocketAddr;
+<span class="kw">use </span>std::{collections::HashMap, net::IpAddr};
 <span class="kw">use </span>std::{num::NonZeroUsize, sync::Arc};
 <span class="kw">use </span>std::{thread::JoinHandle, time::Duration};
 <span class="kw">use </span>tracing::{info, warn};
 
-<span class="kw">use crate</span>::{handlers::peer_handler::models::SharedPeerDB, worker::ProtocolChannels};
+<span class="kw">use crate</span>::{
+    handlers::peer_handler::models::{InitialPeers, PeerState, SharedPeerDB},
+    worker::ProtocolChannels,
+};
 <span class="kw">use crate</span>::{handlers::peer_handler::PeerManagementHandler, messages::MessagesHandler};
 <span class="kw">use crate</span>::{
     handlers::{
@@ -297,7 +305,6 @@
 
 <span class="attr">#[allow(clippy::too_many_arguments)]
 </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>start_connectivity_thread(
-    config: ProtocolConfig,
     peer_id: PeerId,
     <span class="kw-2">mut </span>network_controller: Box&lt;<span class="kw">dyn </span>NetworkController&gt;,
     consensus_controller: Box&lt;<span class="kw">dyn </span>ConsensusController&gt;,
@@ -306,20 +313,15 @@
     channel_endorsements: (Sender&lt;PeerMessageTuple&gt;, Receiver&lt;PeerMessageTuple&gt;),
     channel_operations: (Sender&lt;PeerMessageTuple&gt;, Receiver&lt;PeerMessageTuple&gt;),
     channel_peers: (Sender&lt;PeerMessageTuple&gt;, Receiver&lt;PeerMessageTuple&gt;),
-    bootstrap_peers: <span class="prelude-ty">Option</span>&lt;BootstrapPeers&gt;,
+    initial_peers: InitialPeers,
     peer_db: SharedPeerDB,
     storage: Storage,
     protocol_channels: ProtocolChannels,
     messages_handler: MessagesHandler,
+    peer_categories: HashMap&lt;String, (Vec&lt;IpAddr&gt;, PeerCategoryInfo)&gt;,
+    default_category: PeerCategoryInfo,
+    config: ProtocolConfig,
 ) -&gt; <span class="prelude-ty">Result</span>&lt;(Sender&lt;ConnectivityCommand&gt;, JoinHandle&lt;()&gt;), ProtocolError&gt; {
-    <span class="kw">let </span>initial_peers = <span class="kw">if let </span><span class="prelude-val">Some</span>(bootstrap_peers) = bootstrap_peers {
-        bootstrap_peers.<span class="number">0</span>.into_iter().collect()
-    } <span class="kw">else </span>{
-        serde_json::from_str::&lt;HashMap&lt;PeerId, HashMap&lt;SocketAddr, TransportType&gt;&gt;&gt;(
-            <span class="kw-2">&amp;</span>std::fs::read_to_string(<span class="kw-2">&amp;</span>config.initial_peers)<span class="question-mark">?</span>,
-        )<span class="question-mark">?
-    </span>};
-
     <span class="kw">let </span>handle = std::thread::Builder::new()
     .name(<span class="string">&quot;protocol-connectivity&quot;</span>.to_string())
     .spawn({
@@ -445,7 +447,9 @@
                                         banned_peer_count,
                                         known_peer_count,
                                     };
-                                    <span class="kw">let </span>peers: HashMap&lt;PeerId, (SocketAddr, PeerConnectionType)&gt; = network_controller.get_active_connections().get_peers_connected();
+                                    <span class="kw">let </span>peers: HashMap&lt;PeerId, (SocketAddr, PeerConnectionType)&gt; = network_controller.get_active_connections().get_peers_connected().into_iter().map(|(peer_id, peer)| {
+                                        (peer_id, (peer.<span class="number">0</span>, peer.<span class="number">1</span>))
+                                    }).collect();
                                     responder.send((stats, peers)).unwrap_or_else(|<span class="kw">_</span>| <span class="macro">warn!</span>(<span class="string">&quot;Failed to send stats to responder&quot;</span>));
                                 }
                                 <span class="prelude-val">Err</span>(<span class="kw">_</span>) =&gt; {
@@ -455,45 +459,57 @@
                             }
                         }
                     default(Duration::from_millis(<span class="number">1000</span>)) =&gt; {
-                        <span class="kw">if </span>config.debug {
-                            <span class="macro">println!</span>(<span class="string">&quot;nb peers connected: {}&quot;</span>, network_controller.get_active_connections().get_peer_ids_connected().len());
-                        }
-                        <span class="comment">// Check if we need to connect to peers
-                        </span><span class="kw">let </span>nb_connection_to_try = {
-                            <span class="kw">let </span>nb_connection_to_try = network_controller.get_active_connections().get_max_out_connections().saturating_sub(network_controller.get_active_connections().get_nb_out_connections());
-                            <span class="kw">if </span>nb_connection_to_try == <span class="number">0 </span>{
-                                <span class="kw">continue</span>;
-                            }
-                            nb_connection_to_try
-                        };
-                        <span class="kw">if </span>config.debug {
-                            <span class="macro">println!</span>(<span class="string">&quot;Trying to connect to {} peers&quot;</span>, nb_connection_to_try);
-                        }
-                        <span class="comment">// Get the best peers
-                        </span>{
-                            <span class="kw">let </span>peer_db_read = peer_management_handler.peer_db.read();
-                            <span class="kw">let </span>best_peers = peer_db_read.get_best_peers(nb_connection_to_try);
-                            <span class="kw">for </span>peer_id <span class="kw">in </span>best_peers {
-                                <span class="kw">let </span><span class="prelude-val">Some</span>(peer_info) = peer_db_read.peers.get(<span class="kw-2">&amp;</span>peer_id) <span class="kw">else </span>{
-                                    <span class="macro">warn!</span>(<span class="string">&quot;Peer {} not found in peer_db&quot;</span>, peer_id);
-                                    <span class="kw">continue</span>;
-                                };
-                                <span class="comment">//TODO: Adapt for multiple listeners
-                                </span><span class="kw">let </span>(addr, <span class="kw">_</span>) = peer_info.last_announce.listeners.iter().next().unwrap();
-                                <span class="kw">if </span>peer_info.last_announce.listeners.is_empty() {
-                                    <span class="kw">continue</span>;
-                                }
-                                {
-                                    <span class="kw">if </span>!addr.ip().to_canonical().is_global() || !network_controller.get_active_connections().check_addr_accepted(addr) {
+                        {
+                            <span class="kw">let </span>peer_db_read = peer_db.read();
+                            <span class="lifetime">&#39;iter_peers</span>: <span class="kw">for </span>(<span class="kw">_</span>, peer_id) <span class="kw">in </span><span class="kw-2">&amp;</span>peer_db_read.index_by_newest {
+                                <span class="kw">if let </span><span class="prelude-val">Some</span>(peer_info) = peer_db_read.peers.get(peer_id).and_then(|peer| {
+                                    <span class="kw">if </span>peer.state == PeerState::Trusted {
+                                        <span class="prelude-val">Some</span>(peer.clone())
+                                    } <span class="kw">else </span>{
+                                        <span class="prelude-val">None
+                                    </span>}
+                                }) {
+                                    <span class="comment">//TODO: Adapt for multiple listeners
+                                    </span><span class="kw">if </span>peer_info.last_announce.listeners.is_empty() {
                                         <span class="kw">continue</span>;
                                     }
+                                    <span class="kw">let </span>(addr, <span class="kw">_</span>) = peer_info.last_announce.listeners.iter().next().unwrap();
+                                    <span class="kw">let </span>canonical_ip = addr.ip().to_canonical();
+                                    <span class="kw">if </span>!canonical_ip.is_global()  {
+                                        <span class="kw">continue</span>;
+                                    }
+                                    <span class="comment">// Check if the peer is in a category and we didn&#39;t reached out target yet
+                                    </span><span class="kw">let </span><span class="kw-2">mut </span>category_found = <span class="bool-val">false</span>;
+                                    <span class="kw">for </span>(name, (ips, infos)) <span class="kw">in </span><span class="kw-2">&amp;</span>peer_categories {
+                                        <span class="kw">if </span>ips.contains(<span class="kw-2">&amp;</span>canonical_ip) {
+                                            <span class="kw">if </span>infos.target_out_connections &lt; network_controller.get_active_connections().get_peers_connected().iter().filter(|(<span class="kw">_</span>, (<span class="kw">_</span>, connection_type, category))| {
+                                                <span class="kw">if </span>connection_type == <span class="kw-2">&amp;</span>PeerConnectionType::OUT &amp;&amp; <span class="kw">let </span><span class="prelude-val">Some</span>(category) = category {
+                                                    category == name
+                                                } <span class="kw">else </span>{
+                                                    <span class="bool-val">false
+                                                </span>}
+                                            }).count() {
+                                                category_found = <span class="bool-val">true</span>;
+                                                <span class="kw">break</span>;
+                                            } <span class="kw">else </span>{
+                                                <span class="kw">continue </span><span class="lifetime">&#39;iter_peers</span>;
+                                            }
+                                        }
+                                    }
+
+                                    
+                                    <span class="kw">if </span>!category_found &amp;&amp; default_category.target_out_connections &gt;= network_controller.get_active_connections().get_peers_connected().iter().filter(|(<span class="kw">_</span>, (<span class="kw">_</span>, connection_type, category))| {
+                                        connection_type == <span class="kw-2">&amp;</span>PeerConnectionType::OUT &amp;&amp; category.is_none()
+                                    }).count() {
+                                        <span class="kw">continue</span>;
+                                    }
+                                    <span class="macro">info!</span>(<span class="string">&quot;Trying to connect to addr {} of peer {}&quot;</span>, addr, peer_id);
+                                    <span class="comment">// We only manage TCP for now
+                                    </span><span class="kw">if let </span><span class="prelude-val">Err</span>(err) = network_controller.try_connect(<span class="kw-2">*</span>addr, Duration::from_millis(<span class="number">1000</span>), <span class="kw-2">&amp;</span>OutConnectionConfig::Tcp(Box::new(TcpOutConnectionConfig::new(config.read_write_limit_bytes_per_second / <span class="number">10</span>, Duration::from_millis(<span class="number">100</span>))))) {
+                                        <span class="macro">warn!</span>(<span class="string">&quot;Failed to connect to peer {:?}: {:?}&quot;</span>, addr, err);
+                                    }
                                 }
-                                <span class="macro">info!</span>(<span class="string">&quot;Trying to connect to addr {} of peer {}&quot;</span>, addr, peer_id);
-                                <span class="comment">// We only manage TCP for now
-                                </span><span class="kw">if let </span><span class="prelude-val">Err</span>(err) = network_controller.try_connect(<span class="kw-2">*</span>addr, Duration::from_millis(<span class="number">1000</span>), <span class="kw-2">&amp;</span>OutConnectionConfig::Tcp(Box::new(TcpOutConnectionConfig::new(config.read_write_limit_bytes_per_second / <span class="number">10</span>, Duration::from_millis(<span class="number">100</span>))))) {
-                                    <span class="macro">warn!</span>(<span class="string">&quot;Failed to connect to peer {:?}: {:?}&quot;</span>, addr, err);
-                                }
-                            };
+                            }
                         }
                     }
                 }

@@ -293,13 +293,19 @@
 <a href="#293" id="293">293</a>
 <a href="#294" id="294">294</a>
 <a href="#295" id="295">295</a>
+<a href="#296" id="296">296</a>
+<a href="#297" id="297">297</a>
+<a href="#298" id="298">298</a>
+<a href="#299" id="299">299</a>
+<a href="#300" id="300">300</a>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="doccomment">//! Build here the default node settings from the configuration file toml
-</span><span class="kw">use </span>std::path::PathBuf;
+</span><span class="kw">use </span>std::{collections::HashMap, path::PathBuf};
 
 <span class="kw">use </span>massa_bootstrap::IpType;
 <span class="kw">use </span>massa_models::{config::build_massa_settings, node::NodeId};
+<span class="kw">use </span>massa_protocol_exports::PeerCategoryInfo;
 <span class="kw">use </span>massa_time::MassaTime;
 <span class="kw">use </span>serde::Deserialize;
 <span class="kw">use </span>std::net::{IpAddr, SocketAddr};
@@ -525,6 +531,10 @@
     </span><span class="kw">pub </span>thread_tester_count: u8,
     <span class="doccomment">/// Number of bytes we can read/write by seconds in a connection (must be a 10 multiple)
     </span><span class="kw">pub </span>read_write_limit_bytes_per_second: u64,
+    <span class="doccomment">/// Peers limits per category
+    </span><span class="kw">pub </span>peers_categories: HashMap&lt;String, PeerCategoryInfo&gt;,
+    <span class="doccomment">/// Limits for default category
+    </span><span class="kw">pub </span>default_category_info: PeerCategoryInfo,
 }
 
 <span class="doccomment">/// gRPC settings

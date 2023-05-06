@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"struct":["BootstrapPeers","BootstrapPeersDeserializer","BootstrapPeersSerializer"]};
+window.SIDEBAR_ITEMS = {"struct":["BootstrapPeers","BootstrapPeersDeserializer","BootstrapPeersSerializer","PeerData"]};

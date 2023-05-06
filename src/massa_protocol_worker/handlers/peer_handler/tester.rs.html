@@ -327,6 +327,13 @@
 <a href="#327" id="327">327</a>
 <a href="#328" id="328">328</a>
 <a href="#329" id="329">329</a>
+<a href="#330" id="330">330</a>
+<a href="#331" id="331">331</a>
+<a href="#332" id="332">332</a>
+<a href="#333" id="333">333</a>
+<a href="#334" id="334">334</a>
+<a href="#335" id="335">335</a>
+<a href="#336" id="336">336</a>
 </pre><pre class="rust"><code><span class="kw">use </span>std::{collections::HashMap, net::SocketAddr, thread::JoinHandle, time::Duration};
 
 <span class="kw">use </span><span class="kw">crate</span>::messages::MessagesHandler;
@@ -376,7 +383,8 @@
 <span class="kw">impl </span>InitConnectionHandler <span class="kw">for </span>TesterHandshake {
     <span class="kw">fn </span>perform_handshake&lt;MassaMessagesHandler: PeerNetMessagesHandler&gt;(
         <span class="kw-2">&amp;mut </span><span class="self">self</span>,
-        <span class="kw">_</span>: <span class="kw-2">&amp;</span>KeyPair,
+        <span class="comment">//TODO: Test if our node id is sent
+        </span><span class="kw">_</span>: <span class="kw-2">&amp;</span>KeyPair,
         endpoint: <span class="kw-2">&amp;mut </span>Endpoint,
         <span class="kw">_</span>: <span class="kw-2">&amp;</span>HashMap&lt;SocketAddr, TransportType&gt;,
         messages_handler: MassaMessagesHandler,
@@ -505,6 +513,7 @@
         active_connections: Box&lt;<span class="kw">dyn </span>ActiveConnectionsTrait&gt;,
         peer_db: SharedPeerDB,
         messages_handler: MessagesHandler,
+        total_target_out_connections: usize,
     ) -&gt; (
         Sender&lt;(PeerId, HashMap&lt;SocketAddr, TransportType&gt;)&gt;,
         Vec&lt;Tester&gt;,
@@ -522,6 +531,7 @@
                 config.clone(),
                 test_receiver.clone(),
                 messages_handler.clone(),
+                total_target_out_connections,
             ));
         }
 
@@ -535,6 +545,7 @@
         protocol_config: ProtocolConfig,
         receiver: crossbeam::channel::Receiver&lt;(PeerId, HashMap&lt;SocketAddr, TransportType&gt;)&gt;,
         messages_handler: MessagesHandler,
+        total_target_out_connections: usize,
     ) -&gt; <span class="self">Self </span>{
         <span class="macro">tracing::log::debug!</span>(<span class="string">&quot;running new tester&quot;</span>);
 
@@ -543,11 +554,10 @@
         .spawn(<span class="kw">move </span>|| {
             <span class="kw">let </span>db = peer_db.clone();
             <span class="kw">let </span>active_connections = active_connections.clone();
-            <span class="kw">let </span><span class="kw-2">mut </span>config = PeerNetConfiguration::default(
+            <span class="kw">let </span>config = PeerNetConfiguration::default(
                 TesterHandshake::new(peer_db, protocol_config.clone()),
                 messages_handler,
             );
-            config.max_out_connections = <span class="number">100</span>;
 
             <span class="kw">let </span><span class="kw-2">mut </span>network_manager = PeerNetManager::new(config);
             <span class="kw">loop </span>{
@@ -558,7 +568,8 @@
                                 <span class="kw">if </span>listener.<span class="number">1</span>.is_empty() {
                                     <span class="kw">continue</span>;
                                 }
-                                <span class="kw">let </span>slots_out_connections = active_connections.get_max_out_connections() - active_connections.get_nb_out_connections();
+                                <span class="comment">//Test 
+                                </span><span class="kw">let </span>slots_out_connections = total_target_out_connections.saturating_sub(active_connections.get_nb_out_connections());
                                 <span class="kw">let </span>cooldown_by_address = <span class="kw">if </span>slots_out_connections == <span class="number">0 </span>{
                                     Duration::from_secs(<span class="number">30</span>)
                                 } <span class="kw">else </span>{
@@ -578,9 +589,10 @@
                                         } <span class="kw">else </span>{
                                             db.tested_addresses.insert(<span class="kw-2">*</span>addr, now);
                                         }
-                                        <span class="comment">// Don&#39;t launch test if peer is already connected to us as a normal connection.
+                                        <span class="comment">// TODO:  Don&#39;t launch test if peer is already connected to us as a normal connection.
                                         // Maybe we need to have a way to still update his last announce timestamp because he is a great peer
-                                        </span><span class="kw">if </span>active_connections.check_addr_accepted(addr)  {
+                                        </span><span class="kw">let </span>ip_canonical = addr.ip().to_canonical();
+                                        <span class="kw">if </span>ip_canonical.is_global() &amp;&amp; !active_connections.get_peers_connected().iter().any(|(<span class="kw">_</span>, (addr, <span class="kw">_</span>, <span class="kw">_</span>))| addr.ip().to_canonical() == ip_canonical) {
                                             <span class="comment">//Don&#39;t test our local addresses
                                             </span><span class="kw">for </span>(local_addr, _transport) <span class="kw">in </span>protocol_config.listeners.iter() {
                                                 <span class="kw">if </span>addr == local_addr {
@@ -589,7 +601,7 @@
                                             }
                                             <span class="comment">//Don&#39;t test our proper ip
                                             </span><span class="kw">if let </span><span class="prelude-val">Some</span>(ip) = protocol_config.routable_ip {
-                                                <span class="kw">if </span>ip.to_canonical() == addr.ip().to_canonical() {
+                                                <span class="kw">if </span>ip.to_canonical() == ip_canonical {
                                                     <span class="kw">continue</span>;
                                                 }
                                             }
@@ -610,7 +622,7 @@
                         <span class="comment">// If no message in 2 seconds they will test a peer that hasn&#39;t been tested for long time
 
                         // we find the last peer that has been tested
-                        </span><span class="kw">let </span>slots_out_connections = active_connections.get_max_out_connections() - active_connections.get_nb_out_connections();
+                        </span><span class="kw">let </span>slots_out_connections = total_target_out_connections - active_connections.get_nb_out_connections();
                         <span class="kw">let </span>cooldown_by_address = <span class="kw">if </span>slots_out_connections == <span class="number">0 </span>{
                             Duration::from_secs(<span class="number">30</span>)
                         } <span class="kw">else </span>{
@@ -620,8 +632,14 @@
                             <span class="kw">continue</span>;
                         };
 
+                        {
+                            <span class="kw">let </span><span class="kw-2">mut </span>db = db.write();
+                            db.tested_addresses.insert(listener, MassaTime::now().unwrap());
+                        }
+
                         <span class="comment">// we try to connect to all peer listener (For now we have only one listener)
-                        </span><span class="kw">if </span>!listener.ip().to_canonical().is_global() || !active_connections.check_addr_accepted(<span class="kw-2">&amp;</span>listener) {
+                        </span><span class="kw">let </span>ip_canonical = listener.ip().to_canonical();
+                        <span class="kw">if </span>!ip_canonical.is_global() || active_connections.get_peers_connected().iter().any(|(<span class="kw">_</span>, (addr, <span class="kw">_</span>, <span class="kw">_</span>))| addr.ip().to_canonical() == ip_canonical) {
                             <span class="kw">continue</span>;
                         }
                         <span class="comment">//Don&#39;t test our local addresses
@@ -632,15 +650,11 @@
                         }
                         <span class="comment">//Don&#39;t test our proper ip
                         </span><span class="kw">if let </span><span class="prelude-val">Some</span>(ip) = protocol_config.routable_ip {
-                            <span class="kw">if </span>ip.to_canonical() == listener.ip().to_canonical() {
+                            <span class="kw">if </span>ip.to_canonical() == ip_canonical {
                                 <span class="kw">continue</span>;
                             }
                         }
                         <span class="macro">info!</span>(<span class="string">&quot;testing listener addr: {}&quot;</span>, <span class="kw-2">&amp;</span>listener);
-                        {
-                            <span class="kw">let </span><span class="kw-2">mut </span>db = db.write();
-                            db.tested_addresses.insert(listener, MassaTime::now().unwrap());
-                        }
                         <span class="kw">let </span>_res =  network_manager.try_connect(
                             listener,
                             Duration::from_millis(<span class="number">1000</span>),
