@@ -266,14 +266,14 @@
     }
 
     <span class="doccomment">/// Retrieve the peer with the oldest test date.
-    </span><span class="kw">pub fn </span>get_oldest_peer(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span>&lt;SocketAddr&gt; {
+    </span><span class="kw">pub fn </span>get_oldest_peer(<span class="kw-2">&amp;</span><span class="self">self</span>, cooldown: Duration) -&gt; <span class="prelude-ty">Option</span>&lt;SocketAddr&gt; {
         <span class="kw">match </span><span class="self">self
             </span>.tested_addresses
             .iter()
             .min_by_key(|(<span class="kw">_</span>, timestamp)| <span class="kw-2">*</span>(<span class="kw-2">*</span>timestamp))
         {
             <span class="prelude-val">Some</span>((addr, timestamp)) =&gt; {
-                <span class="kw">if </span>timestamp.estimate_instant().ok()<span class="question-mark">?</span>.elapsed() &gt; Duration::from_secs(<span class="number">60</span>) {
+                <span class="kw">if </span>timestamp.estimate_instant().ok()<span class="question-mark">?</span>.elapsed() &gt; cooldown {
                     <span class="prelude-val">Some</span>(<span class="kw-2">*</span>addr)
                 } <span class="kw">else </span>{
                     <span class="prelude-val">None

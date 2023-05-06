@@ -519,6 +519,7 @@
 <a href="#519" id="519">519</a>
 <a href="#520" id="520">520</a>
 <a href="#521" id="521">521</a>
+<a href="#522" id="522">522</a>
 </pre><pre class="rust"><code><span class="kw">use </span>std::cmp::Reverse;
 <span class="kw">use </span>std::{collections::HashMap, net::SocketAddr, thread::JoinHandle, time::Duration};
 
@@ -1030,11 +1031,12 @@
                 <span class="macro">warn!</span>(<span class="string">&quot;Failed to serialize message: {}&quot;</span>, err);
                 <span class="kw">return</span>;
             }
-            <span class="kw">if let </span><span class="prelude-val">Err</span>(err) = endpoint.send(buf.as_slice()) {
+            <span class="comment">//TODO: Make it non blockable
+            </span><span class="kw">if let </span><span class="prelude-val">Err</span>(err) = endpoint.send(buf.as_slice()) {
                 <span class="macro">warn!</span>(<span class="string">&quot;Failed to send message: {}&quot;</span>, err);
                 <span class="kw">return</span>;
             }
-            std::thread::sleep(Duration::from_millis(<span class="number">500</span>));
+            std::thread::sleep(Duration::from_millis(<span class="number">200</span>));
             endpoint.shutdown();
         });
         <span class="prelude-val">Ok</span>(())

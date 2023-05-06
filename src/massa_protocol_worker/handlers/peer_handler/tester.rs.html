@@ -315,6 +315,18 @@
 <a href="#315" id="315">315</a>
 <a href="#316" id="316">316</a>
 <a href="#317" id="317">317</a>
+<a href="#318" id="318">318</a>
+<a href="#319" id="319">319</a>
+<a href="#320" id="320">320</a>
+<a href="#321" id="321">321</a>
+<a href="#322" id="322">322</a>
+<a href="#323" id="323">323</a>
+<a href="#324" id="324">324</a>
+<a href="#325" id="325">325</a>
+<a href="#326" id="326">326</a>
+<a href="#327" id="327">327</a>
+<a href="#328" id="328">328</a>
+<a href="#329" id="329">329</a>
 </pre><pre class="rust"><code><span class="kw">use </span>std::{collections::HashMap, net::SocketAddr, thread::JoinHandle, time::Duration};
 
 <span class="kw">use </span><span class="kw">crate</span>::messages::MessagesHandler;
@@ -535,7 +547,7 @@
                 TesterHandshake::new(peer_db, protocol_config.clone()),
                 messages_handler,
             );
-            config.max_out_connections = <span class="number">1</span>;
+            config.max_out_connections = <span class="number">100</span>;
 
             <span class="kw">let </span><span class="kw-2">mut </span>network_manager = PeerNetManager::new(config);
             <span class="kw">loop </span>{
@@ -546,6 +558,12 @@
                                 <span class="kw">if </span>listener.<span class="number">1</span>.is_empty() {
                                     <span class="kw">continue</span>;
                                 }
+                                <span class="kw">let </span>slots_out_connections = active_connections.get_max_out_connections() - active_connections.get_nb_out_connections();
+                                <span class="kw">let </span>cooldown_by_address = <span class="kw">if </span>slots_out_connections == <span class="number">0 </span>{
+                                    Duration::from_secs(<span class="number">30</span>)
+                                } <span class="kw">else </span>{
+                                    Duration::from_secs(<span class="number">60 </span>* <span class="number">60 </span>* <span class="number">2</span>)
+                                };
                                 {
                                     <span class="kw">let </span>now = MassaTime::now().unwrap();
                                     <span class="kw">let </span><span class="kw-2">mut </span>db = db.write();
@@ -554,7 +572,7 @@
                                         <span class="comment">//TODO: Change it to manage multiple listeners SAFETY: Check above
                                         </span><span class="kw">if let </span><span class="prelude-val">Some</span>(last_tested_time) = db.tested_addresses.get(addr) {
                                             <span class="kw">let </span>last_tested_time = last_tested_time.estimate_instant().expect(<span class="string">&quot;Time went backward&quot;</span>);
-                                            <span class="kw">if </span>last_tested_time.elapsed() &lt; Duration::from_secs(<span class="number">60</span>) {
+                                            <span class="kw">if </span>last_tested_time.elapsed() &lt; cooldown_by_address {
                                                 <span class="kw">continue</span>;
                                             }
                                         } <span class="kw">else </span>{
@@ -592,7 +610,13 @@
                         <span class="comment">// If no message in 2 seconds they will test a peer that hasn&#39;t been tested for long time
 
                         // we find the last peer that has been tested
-                        </span><span class="kw">let </span><span class="prelude-val">Some</span>(listener) = db.read().get_oldest_peer() <span class="kw">else </span>{
+                        </span><span class="kw">let </span>slots_out_connections = active_connections.get_max_out_connections() - active_connections.get_nb_out_connections();
+                        <span class="kw">let </span>cooldown_by_address = <span class="kw">if </span>slots_out_connections == <span class="number">0 </span>{
+                            Duration::from_secs(<span class="number">30</span>)
+                        } <span class="kw">else </span>{
+                            Duration::from_secs(<span class="number">60 </span>* <span class="number">60 </span>* <span class="number">2</span>)
+                        };
+                        <span class="kw">let </span><span class="prelude-val">Some</span>(listener) = db.read().get_oldest_peer(cooldown_by_address) <span class="kw">else </span>{
                             <span class="kw">continue</span>;
                         };
 
