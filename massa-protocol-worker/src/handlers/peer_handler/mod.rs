@@ -509,11 +509,12 @@ impl InitConnectionHandler for MassaHandshake {
                 warn!("Failed to serialize message: {}", err);
                 return;
             }
+            //TODO: Make it non blockable
             if let Err(err) = endpoint.send(buf.as_slice()) {
                 warn!("Failed to send message: {}", err);
                 return;
             }
-            std::thread::sleep(Duration::from_millis(500));
+            std::thread::sleep(Duration::from_millis(200));
             endpoint.shutdown();
         });
         Ok(())
