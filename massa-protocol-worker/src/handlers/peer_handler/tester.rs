@@ -238,7 +238,7 @@ impl Tester {
                                         if let Some(last_tested_time) = db.tested_addresses.get(addr) {
                                             let last_tested_time = last_tested_time.estimate_instant().expect("Time went backward");
                                             if last_tested_time.elapsed() < Duration::from_secs(60) {
-                                                return;
+                                                continue;
                                             }
                                         } else {
                                             db.tested_addresses.insert(*addr, now);
@@ -249,13 +249,13 @@ impl Tester {
                                             //Don't test our local addresses
                                             for (local_addr, _transport) in protocol_config.listeners.iter() {
                                                 if addr == local_addr {
-                                                    return;
+                                                    continue;
                                                 }
                                             }
                                             //Don't test our proper ip
                                             if let Some(ip) = protocol_config.routable_ip {
                                                 if ip.to_canonical() == addr.ip().to_canonical() {
-                                                    return;
+                                                    continue;
                                                 }
                                             }
                                             info!("testing peer {} listener addr: {}", &listener.0, &addr);
@@ -281,18 +281,18 @@ impl Tester {
 
                         // we try to connect to all peer listener (For now we have only one listener)
                         if !listener.ip().to_canonical().is_global() || !active_connections.check_addr_accepted(&listener) {
-                            return;
+                            continue;
                         }
                         //Don't test our local addresses
                         for (local_addr, _transport) in protocol_config.listeners.iter() {
                             if listener == *local_addr {
-                                return;
+                                continue;
                             }
                         }
                         //Don't test our proper ip
                         if let Some(ip) = protocol_config.routable_ip {
                             if ip.to_canonical() == listener.ip().to_canonical() {
-                                return;
+                                continue;
                             }
                         }
                         info!("testing listener addr: {}", &listener);
