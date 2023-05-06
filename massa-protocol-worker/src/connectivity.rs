@@ -237,7 +237,7 @@ pub(crate) fn start_connectivity_thread(
                                 }
                                 info!("Trying to connect to addr {} of peer {}", addr, peer_id);
                                 // We only manage TCP for now
-                                if let Err(err) = network_controller.try_connect(*addr, Duration::from_millis(200), &OutConnectionConfig::Tcp(Box::new(TcpOutConnectionConfig::new(config.read_write_limit_bytes_per_second / 10, Duration::from_millis(100))))) {
+                                if let Err(err) = network_controller.try_connect(*addr, Duration::from_millis(500), &OutConnectionConfig::Tcp(Box::new(TcpOutConnectionConfig::new(config.read_write_limit_bytes_per_second / 10, Duration::from_millis(100))))) {
                                     warn!("Failed to connect to peer {:?}: {:?}", addr, err);
                                 }
                             };

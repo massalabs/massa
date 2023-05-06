@@ -189,6 +189,8 @@ async fn launch(
     } else if SETTINGS.ledger.disk_ledger_path.exists() {
         std::fs::remove_dir_all(SETTINGS.ledger.disk_ledger_path.clone())
             .expect("disk ledger delete failed");
+        std::fs::remove_dir_all(SETTINGS.execution.hd_cache_path.clone())
+            .expect("disk hd cache delete failed");
     }
 
     // Create final ledger

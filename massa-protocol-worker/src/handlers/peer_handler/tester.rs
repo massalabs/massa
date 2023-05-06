@@ -1,14 +1,10 @@
-use std::{
-    collections::HashMap,
-    net::SocketAddr,
-    thread::JoinHandle,
-    time::{Duration, SystemTime, UNIX_EPOCH},
-};
+use std::{collections::HashMap, net::SocketAddr, thread::JoinHandle, time::Duration};
 
 use crate::messages::MessagesHandler;
 use crossbeam::channel::Sender;
 use massa_protocol_exports::ProtocolConfig;
 use massa_serialization::{DeserializeError, Deserializer};
+use massa_time::MassaTime;
 use peernet::{
     config::PeerNetConfiguration,
     error::{PeerNetError, PeerNetResult},
@@ -137,9 +133,9 @@ impl InitConnectionHandler for TesterHandshake {
                     let (received, id) = messages_handler.deserialize_id(&data[33..], &peer_id)?;
                     messages_handler.handle(id, received, &peer_id)?;
                     Err(PeerNetError::HandshakeError.error(
-                            "Massa Handshake",
-                            Some("Tester Handshake failed received a message that our connection has been refused".to_string()),
-                        ))
+                        "Massa Handshake",
+                        Some("Tester Handshake failed received a message that our connection has been refused".to_string()),
+                    ))
                     //TODO: Add the peerdb but for now impossible as we don't have announcement and we need one to place in peerdb
                 }
                 _ => Err(PeerNetError::HandshakeError
@@ -230,41 +226,47 @@ impl Tester {
                     recv(receiver) -> res => {
                         match res {
                             Ok(listener) => {
-                                if let Some(peer_info) = db.read().peers.get(&listener.0) {
-                                    let timestamp = SystemTime::now()
-                                    .duration_since(UNIX_EPOCH)
-                                    .expect("Time went backward")
-                                    .as_millis();
-                                    let elapsed_secs = (timestamp.saturating_sub(peer_info.last_announce.timestamp)) / 1000;
-                                    if elapsed_secs < 60 {
-                                        continue;
-                                    }
+                                if listener.1.is_empty() {
+                                    continue;
                                 }
-                                // receive new listener to test
-                                listener.1.iter().for_each(|(addr, _transport)| {
-                                    // Don't launch test if peer is already connected to us as a normal connection.
-                                    // Maybe we need to have a way to still update his last announce timestamp because he is a great peer
-                                    if active_connections.check_addr_accepted(addr)  {
-                                        //Don't test our local addresses
-                                        for (local_addr, _transport) in protocol_config.listeners.iter() {
-                                            if addr == local_addr {
+                                {
+                                    let now = MassaTime::now().unwrap();
+                                    let mut db = db.write();
+                                    // receive new listener to test
+                                    for (addr, _) in listener.1.iter() {
+                                        //TODO: Change it to manage multiple listeners SAFETY: Check above
+                                        if let Some(last_tested_time) = db.tested_addresses.get(addr) {
+                                            let last_tested_time = last_tested_time.estimate_instant().expect("Time went backward");
+                                            if last_tested_time.elapsed() < Duration::from_secs(60) {
                                                 return;
                                             }
+                                        } else {
+                                            db.tested_addresses.insert(*addr, now);
                                         }
-                                        //Don't test our proper ip
-                                        if let Some(ip) = protocol_config.routable_ip {
-                                            if ip.to_canonical() == addr.ip().to_canonical() {
-                                                return;
+                                        // Don't launch test if peer is already connected to us as a normal connection.
+                                        // Maybe we need to have a way to still update his last announce timestamp because he is a great peer
+                                        if active_connections.check_addr_accepted(addr)  {
+                                            //Don't test our local addresses
+                                            for (local_addr, _transport) in protocol_config.listeners.iter() {
+                                                if addr == local_addr {
+                                                    return;
+                                                }
                                             }
+                                            //Don't test our proper ip
+                                            if let Some(ip) = protocol_config.routable_ip {
+                                                if ip.to_canonical() == addr.ip().to_canonical() {
+                                                    return;
+                                                }
+                                            }
+                                            info!("testing peer {} listener addr: {}", &listener.0, &addr);
+                                            let _res =  network_manager.try_connect(
+                                                *addr,
+                                                Duration::from_millis(1000),
+                                                &OutConnectionConfig::Tcp(Box::new(TcpOutConnectionConfig::new(protocol_config.read_write_limit_bytes_per_second / 10, Duration::from_millis(100)))),
+                                            );
                                         }
-                                        info!("testing peer {} listener addr: {}", &listener.0, &addr);
-                                        let _res =  network_manager.try_connect(
-                                            *addr,
-                                            Duration::from_millis(1000),
-                                            &OutConnectionConfig::Tcp(Box::new(TcpOutConnectionConfig::new(protocol_config.read_write_limit_bytes_per_second / 10, Duration::from_millis(100)))),
-                                        );
-                                    }
-                                });
+                                    };
+                                }
                             },
                             Err(_e) => break,
                         }
@@ -273,43 +275,36 @@ impl Tester {
                         // If no message in 2 seconds they will test a peer that hasn't been tested for long time
 
                         // we find the last peer that has been tested
-                        let Some((peer_id, peer_info)) = db.read().get_oldest_peer() else {
+                        let Some(listener) = db.read().get_oldest_peer() else {
                             continue;
                         };
 
-                        let timestamp = SystemTime::now()
-                        .duration_since(UNIX_EPOCH)
-                        .expect("Time went backward")
-                        .as_millis();
-                        let elapsed_secs = (timestamp.saturating_sub(peer_info.last_announce.timestamp)) / 1000;
-                        if elapsed_secs < 60 {
-                            continue;
-                        }
-
                         // we try to connect to all peer listener (For now we have only one listener)
-                        peer_info.last_announce.listeners.iter().for_each(|listener| {
-                            if !listener.0.ip().to_canonical().is_global() || !active_connections.check_addr_accepted(listener.0) {
+                        if !listener.ip().to_canonical().is_global() || !active_connections.check_addr_accepted(&listener) {
+                            return;
+                        }
+                        //Don't test our local addresses
+                        for (local_addr, _transport) in protocol_config.listeners.iter() {
+                            if listener == *local_addr {
                                 return;
                             }
-                            //Don't test our local addresses
-                            for (local_addr, _transport) in protocol_config.listeners.iter() {
-                                if listener.0 == local_addr {
-                                    return;
-                                }
+                        }
+                        //Don't test our proper ip
+                        if let Some(ip) = protocol_config.routable_ip {
+                            if ip.to_canonical() == listener.ip().to_canonical() {
+                                return;
                             }
-                            //Don't test our proper ip
-                            if let Some(ip) = protocol_config.routable_ip {
-                                if ip.to_canonical() == listener.0.ip().to_canonical() {
-                                    return;
-                                }
-                            }
-                            info!("testing peer {} listener addr: {}", peer_id, &listener.0);
-                            let _res =  network_manager.try_connect(
-                                *listener.0,
-                                Duration::from_millis(1000),
-                                &OutConnectionConfig::Tcp(Box::new(TcpOutConnectionConfig::new(protocol_config.read_write_limit_bytes_per_second / 10, Duration::from_millis(100)))),
-                            );
-                        });
+                        }
+                        info!("testing listener addr: {}", &listener);
+                        {
+                            let mut db = db.write();
+                            db.tested_addresses.insert(listener, MassaTime::now().unwrap());
+                        }
+                        let _res =  network_manager.try_connect(
+                            listener,
+                            Duration::from_millis(1000),
+                            &OutConnectionConfig::Tcp(Box::new(TcpOutConnectionConfig::new(protocol_config.read_write_limit_bytes_per_second / 10, Duration::from_millis(100)))),
+                        );
                     }
                 }
             }
