@@ -555,7 +555,7 @@
                                         </span><span class="kw">if let </span><span class="prelude-val">Some</span>(last_tested_time) = db.tested_addresses.get(addr) {
                                             <span class="kw">let </span>last_tested_time = last_tested_time.estimate_instant().expect(<span class="string">&quot;Time went backward&quot;</span>);
                                             <span class="kw">if </span>last_tested_time.elapsed() &lt; Duration::from_secs(<span class="number">60</span>) {
-                                                <span class="kw">return</span>;
+                                                <span class="kw">continue</span>;
                                             }
                                         } <span class="kw">else </span>{
                                             db.tested_addresses.insert(<span class="kw-2">*</span>addr, now);
@@ -566,13 +566,13 @@
                                             <span class="comment">//Don&#39;t test our local addresses
                                             </span><span class="kw">for </span>(local_addr, _transport) <span class="kw">in </span>protocol_config.listeners.iter() {
                                                 <span class="kw">if </span>addr == local_addr {
-                                                    <span class="kw">return</span>;
+                                                    <span class="kw">continue</span>;
                                                 }
                                             }
                                             <span class="comment">//Don&#39;t test our proper ip
                                             </span><span class="kw">if let </span><span class="prelude-val">Some</span>(ip) = protocol_config.routable_ip {
                                                 <span class="kw">if </span>ip.to_canonical() == addr.ip().to_canonical() {
-                                                    <span class="kw">return</span>;
+                                                    <span class="kw">continue</span>;
                                                 }
                                             }
                                             <span class="macro">info!</span>(<span class="string">&quot;testing peer {} listener addr: {}&quot;</span>, <span class="kw-2">&amp;</span>listener.<span class="number">0</span>, <span class="kw-2">&amp;</span>addr);
@@ -598,18 +598,18 @@
 
                         <span class="comment">// we try to connect to all peer listener (For now we have only one listener)
                         </span><span class="kw">if </span>!listener.ip().to_canonical().is_global() || !active_connections.check_addr_accepted(<span class="kw-2">&amp;</span>listener) {
-                            <span class="kw">return</span>;
+                            <span class="kw">continue</span>;
                         }
                         <span class="comment">//Don&#39;t test our local addresses
                         </span><span class="kw">for </span>(local_addr, _transport) <span class="kw">in </span>protocol_config.listeners.iter() {
                             <span class="kw">if </span>listener == <span class="kw-2">*</span>local_addr {
-                                <span class="kw">return</span>;
+                                <span class="kw">continue</span>;
                             }
                         }
                         <span class="comment">//Don&#39;t test our proper ip
                         </span><span class="kw">if let </span><span class="prelude-val">Some</span>(ip) = protocol_config.routable_ip {
                             <span class="kw">if </span>ip.to_canonical() == listener.ip().to_canonical() {
-                                <span class="kw">return</span>;
+                                <span class="kw">continue</span>;
                             }
                         }
                         <span class="macro">info!</span>(<span class="string">&quot;testing listener addr: {}&quot;</span>, <span class="kw-2">&amp;</span>listener);
