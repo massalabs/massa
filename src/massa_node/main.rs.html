@@ -1136,6 +1136,9 @@
 <a href="#1136" id="1136">1136</a>
 <a href="#1137" id="1137">1137</a>
 <a href="#1138" id="1138">1138</a>
+<a href="#1139" id="1139">1139</a>
+<a href="#1140" id="1140">1140</a>
+<a href="#1141" id="1141">1141</a>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="attr">#![doc = <span class="macro">include_str!</span>(<span class="string">&quot;../../README.md&quot;</span>)]
@@ -1655,7 +1658,10 @@
         max_size_peers_announcement: MAX_PEERS_IN_ANNOUNCEMENT_LIST,
         read_write_limit_bytes_per_second: SETTINGS.protocol.read_write_limit_bytes_per_second
             <span class="kw">as </span>u128,
-        routable_ip: SETTINGS.protocol.routable_ip,
+        routable_ip: SETTINGS
+            .protocol
+            .routable_ip
+            .or(SETTINGS.network.routable_ip),
         debug: <span class="bool-val">false</span>,
     };
 
