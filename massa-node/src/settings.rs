@@ -124,6 +124,7 @@ pub struct Settings {
     pub protocol: ProtocolSettings,
     pub consensus: ConsensusSettings,
     pub api: APISettings,
+    pub network: NetworkSettings,
     pub bootstrap: BootstrapSettings,
     pub pool: PoolSettings,
     pub execution: ExecutionSettings,
@@ -161,6 +162,13 @@ pub struct ConsensusSettings {
     pub broadcast_blocks_channel_capacity: usize,
     /// filled blocks channel capacity
     pub broadcast_filled_blocks_channel_capacity: usize,
+}
+
+// TODO: Remove one date. Kept for retro compatibility.
+#[derive(Debug, Deserialize, Clone)]
+pub struct NetworkSettings {
+    /// Ip seen by others. If none the bind ip is used
+    pub routable_ip: Option<IpAddr>,
 }
 
 /// Protocol Configuration, read from toml user configuration file

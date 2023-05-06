@@ -203,6 +203,8 @@
     # number of thread tester
     thread_tester_count = 5
 
+[network]
+
 [bootstrap]
     # list of bootstrap (ip, node id)
     bootstrap_list = [
