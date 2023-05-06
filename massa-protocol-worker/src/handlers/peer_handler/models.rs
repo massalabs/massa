@@ -95,14 +95,14 @@ impl PeerDB {
     }
 
     /// Retrieve the peer with the oldest test date.
-    pub fn get_oldest_peer(&self) -> Option<SocketAddr> {
+    pub fn get_oldest_peer(&self, cooldown: Duration) -> Option<SocketAddr> {
         match self
             .tested_addresses
             .iter()
             .min_by_key(|(_, timestamp)| *(*timestamp))
         {
             Some((addr, timestamp)) => {
-                if timestamp.estimate_instant().ok()?.elapsed() > Duration::from_secs(60) {
+                if timestamp.estimate_instant().ok()?.elapsed() > cooldown {
                     Some(*addr)
                 } else {
                     None

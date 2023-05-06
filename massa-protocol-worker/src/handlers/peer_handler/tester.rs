@@ -218,7 +218,7 @@ impl Tester {
                 TesterHandshake::new(peer_db, protocol_config.clone()),
                 messages_handler,
             );
-            config.max_out_connections = 1;
+            config.max_out_connections = 100;
 
             let mut network_manager = PeerNetManager::new(config);
             loop {
@@ -229,6 +229,12 @@ impl Tester {
                                 if listener.1.is_empty() {
                                     continue;
                                 }
+                                let slots_out_connections = active_connections.get_max_out_connections() - active_connections.get_nb_out_connections();
+                                let cooldown_by_address = if slots_out_connections == 0 {
+                                    Duration::from_secs(30)
+                                } else {
+                                    Duration::from_secs(60 * 60 * 2)
+                                };
                                 {
                                     let now = MassaTime::now().unwrap();
                                     let mut db = db.write();
@@ -237,7 +243,7 @@ impl Tester {
                                         //TODO: Change it to manage multiple listeners SAFETY: Check above
                                         if let Some(last_tested_time) = db.tested_addresses.get(addr) {
                                             let last_tested_time = last_tested_time.estimate_instant().expect("Time went backward");
-                                            if last_tested_time.elapsed() < Duration::from_secs(60) {
+                                            if last_tested_time.elapsed() < cooldown_by_address {
                                                 continue;
                                             }
                                         } else {
@@ -275,7 +281,13 @@ impl Tester {
                         // If no message in 2 seconds they will test a peer that hasn't been tested for long time
 
                         // we find the last peer that has been tested
-                        let Some(listener) = db.read().get_oldest_peer() else {
+                        let slots_out_connections = active_connections.get_max_out_connections() - active_connections.get_nb_out_connections();
+                        let cooldown_by_address = if slots_out_connections == 0 {
+                            Duration::from_secs(30)
+                        } else {
+                            Duration::from_secs(60 * 60 * 2)
+                        };
+                        let Some(listener) = db.read().get_oldest_peer(cooldown_by_address) else {
                             continue;
                         };
 
