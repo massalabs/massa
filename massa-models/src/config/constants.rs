@@ -51,7 +51,7 @@ lazy_static::lazy_static! {
             )
         )
     } else {
-        1683495900000.into()  // Sunday, May 7, 2023 09:45:00 PM UTC
+        1683498600000.into()  // Sunday, May 7, 2023 10:30:00 PM UTC
     };
 
     /// TESTNET: time when the blockclique is ended.

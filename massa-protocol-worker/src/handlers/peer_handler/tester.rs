@@ -155,7 +155,7 @@ impl InitConnectionHandler for TesterHandshake {
                     Ok(peer_id.clone())
                 }
                 1 => {
-                    let (received, id) = messages_handler.deserialize_id(&data[33..], &peer_id)?;
+                    let (received, id) = messages_handler.deserialize_id(&data[1..], &peer_id)?;
                     messages_handler.handle(id, received, &peer_id)?;
                     Err(PeerNetError::HandshakeError.error(
                         "Massa Handshake",
