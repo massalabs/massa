@@ -457,7 +457,7 @@
                                 }
                             }
                         }
-                    default(Duration::from_millis(<span class="number">1000</span>)) =&gt; {
+                    default(Duration::from_millis(<span class="number">5000</span>)) =&gt; {
                         {
                             <span class="kw">let </span>peer_db_read = peer_db.read();
                             <span class="lifetime">&#39;iter_peers</span>: <span class="kw">for </span>(<span class="kw">_</span>, peer_id) <span class="kw">in </span><span class="kw-2">&amp;</span>peer_db_read.index_by_newest {

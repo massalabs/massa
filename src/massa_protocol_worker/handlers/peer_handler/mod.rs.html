@@ -525,6 +525,9 @@
 <a href="#525" id="525">525</a>
 <a href="#526" id="526">526</a>
 <a href="#527" id="527">527</a>
+<a href="#528" id="528">528</a>
+<a href="#529" id="529">529</a>
+<a href="#530" id="530">530</a>
 </pre><pre class="rust"><code><span class="kw">use </span>std::cmp::Reverse;
 <span class="kw">use </span>std::{collections::HashMap, net::SocketAddr, thread::JoinHandle, time::Duration};
 
@@ -951,17 +954,14 @@
 
                     <span class="comment">// check their signature
                     </span>peer_id.verify_signature(<span class="kw-2">&amp;</span>self_random_hash, <span class="kw-2">&amp;</span>other_signature)<span class="question-mark">?</span>;
-                    <span class="prelude-val">Ok</span>((peer_id.clone(), announcement))
+                    <span class="prelude-val">Ok</span>((peer_id.clone(), <span class="prelude-val">Some</span>(announcement)))
                 }
                 <span class="number">1 </span>=&gt; {
                     <span class="kw">let </span>(received, id) = <span class="self">self
                         </span>.message_handlers
                         .deserialize_id(<span class="kw-2">&amp;</span>received[offset..], <span class="kw-2">&amp;</span>peer_id)<span class="question-mark">?</span>;
                     <span class="self">self</span>.message_handlers.handle(id, received, <span class="kw-2">&amp;</span>peer_id)<span class="question-mark">?</span>;
-                    <span class="prelude-val">Err</span>(PeerNetError::HandshakeError.error(
-                        <span class="string">&quot;Massa Handshake&quot;</span>,
-                        <span class="prelude-val">Some</span>(<span class="string">&quot;Handshake failed received a message that our connection has been refused&quot;</span>.to_string()),
-                    ))
+                    <span class="prelude-val">Ok</span>((peer_id.clone(), <span class="prelude-val">None</span>))
                 }
                 <span class="kw">_ </span>=&gt; <span class="prelude-val">Err</span>(PeerNetError::HandshakeError
                     .error(<span class="string">&quot;Massa Handshake&quot;</span>, <span class="prelude-val">Some</span>(<span class="string">&quot;Invalid message id&quot;</span>.to_string()))),
@@ -971,7 +971,7 @@
             <span class="kw">let </span><span class="kw-2">mut </span>peer_db_write = <span class="self">self</span>.peer_db.write();
             <span class="comment">// if handshake failed, we set the peer state to HandshakeFailed
             </span><span class="kw">match </span><span class="kw-2">&amp;</span>res {
-                <span class="prelude-val">Ok</span>((peer_id, announcement)) =&gt; {
+                <span class="prelude-val">Ok</span>((peer_id, <span class="prelude-val">Some</span>(announcement))) =&gt; {
                     <span class="macro">info!</span>(<span class="string">&quot;Peer connected: {:?}&quot;</span>, peer_id);
                     <span class="comment">//TODO: Hacky organize better when multiple ip/listeners
                     </span><span class="kw">if </span>!announcement.listeners.is_empty() {
@@ -993,6 +993,12 @@
                             last_announce: announcement.clone(),
                             state: PeerState::Trusted,
                         });
+                }
+                <span class="prelude-val">Ok</span>((_peer_id, <span class="prelude-val">None</span>)) =&gt; {
+                    <span class="kw">return </span><span class="prelude-val">Err</span>(PeerNetError::HandshakeError.error(
+                        <span class="string">&quot;Massa Handshake&quot;</span>,
+                        <span class="prelude-val">Some</span>(<span class="string">&quot;Distant peer don&#39;t have slot for us.&quot;</span>.to_string()),
+                    ))
                 }
                 <span class="prelude-val">Err</span>(<span class="kw">_</span>) =&gt; {
                     peer_db_write.peers.entry(peer_id).and_modify(|info| {
@@ -1026,7 +1032,7 @@
     ) -&gt; PeerNetResult&lt;()&gt; {
         <span class="comment">//TODO: Fix this clone
         </span><span class="kw">let </span>keypair = keypair.clone();
-        <span class="kw">let </span><span class="kw-2">mut </span>endpoint = endpoint.clone();
+        <span class="kw">let </span><span class="kw-2">mut </span>endpoint = endpoint.try_clone()<span class="question-mark">?</span>;
         <span class="kw">let </span>db = <span class="self">self</span>.peer_db.clone();
         <span class="kw">let </span>serializer = <span class="self">self</span>.peer_mngt_msg_serializer.clone();
         std::thread::spawn(<span class="kw">move </span>|| {
