@@ -21,7 +21,8 @@
     "P1XxexKa3XNzvmakNmPawqFrE9Z2NFhfq1AhvV1Qx4zXq5p1Bp9": {
         "listeners": {
             "158.69.23.120:31244": "Tcp"
-        }
+        },
+        "category": "Bootstrap"
     },
     "P1qxuqNnx9kyAMYxUfsYiv2gQd5viiBX126SzzexEdbbWd2vQKu": {
         "listeners": {
