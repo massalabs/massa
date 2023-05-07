@@ -549,7 +549,7 @@
                     <span class="prelude-val">Ok</span>(peer_id.clone())
                 }
                 <span class="number">1 </span>=&gt; {
-                    <span class="kw">let </span>(received, id) = messages_handler.deserialize_id(<span class="kw-2">&amp;</span>data[<span class="number">33</span>..], <span class="kw-2">&amp;</span>peer_id)<span class="question-mark">?</span>;
+                    <span class="kw">let </span>(received, id) = messages_handler.deserialize_id(<span class="kw-2">&amp;</span>data[<span class="number">1</span>..], <span class="kw-2">&amp;</span>peer_id)<span class="question-mark">?</span>;
                     messages_handler.handle(id, received, <span class="kw-2">&amp;</span>peer_id)<span class="question-mark">?</span>;
                     <span class="prelude-val">Err</span>(PeerNetError::HandshakeError.error(
                         <span class="string">&quot;Massa Handshake&quot;</span>,
