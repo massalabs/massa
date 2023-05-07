@@ -97,7 +97,7 @@ impl InitConnectionHandler for TesterHandshake {
                         Some(format!("Failed to deserialize version: {}", err)),
                     )
                 })?;
-            if self.our_version.is_compatible(&version) {
+            if !self.our_version.is_compatible(&version) {
                 return Err(PeerNetError::HandshakeError.error(
                     "Massa Handshake",
                     Some(format!("Received version incompatible: {}", version)),
