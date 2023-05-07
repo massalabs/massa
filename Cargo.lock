@@ -3606,7 +3606,7 @@ checksum = "19b17cddbe7ec3f8bc800887bab5e717348c95ea2ca0b1bf0837fb964dc67099"
 [[package]]
 name = "peernet"
 version = "0.1.0"
-source = "git+https://github.com/massalabs/PeerNet?branch=peer_categories#3babaab409238b63d0feeb837f7aa5c4373f5c74"
+source = "git+https://github.com/massalabs/PeerNet?branch=peer_categories#c396b6ffe622cdc74c23245258f701546ebe9343"
 dependencies = [
  "crossbeam",
  "enum_delegate",

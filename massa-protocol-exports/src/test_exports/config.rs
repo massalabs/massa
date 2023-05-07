@@ -81,6 +81,7 @@ impl Default for ProtocolConfig {
                 target_out_connections: 10,
                 max_in_connections_per_ip: 0,
             },
+            version: "TEST.22.0".parse().unwrap(),
         }
     }
 }

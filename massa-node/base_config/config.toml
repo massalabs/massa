@@ -155,10 +155,6 @@
     keypair_file = "config/node_privkey.key"
     # path to the initial peers file
     initial_peers_file = "base_config/initial_peers.json"
-    # maximum of incoming connections
-    max_incoming_connections = 15
-    # maximum of outgoing connections
-    max_outgoing_connections = 10
     # Limit of read/write number of bytes per second with a peer (Should be a 10 multiple)
     read_write_limit_bytes_per_second = 2_000_000_000
     # timeout after which without answer a hanshake is ended

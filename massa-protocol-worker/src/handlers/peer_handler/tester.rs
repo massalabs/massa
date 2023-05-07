@@ -7,6 +7,7 @@ use std::{
 
 use crate::messages::MessagesHandler;
 use crossbeam::channel::Sender;
+use massa_models::version::{Version, VersionDeserializer};
 use massa_protocol_exports::{PeerConnectionType, ProtocolConfig};
 use massa_serialization::{DeserializeError, Deserializer};
 use massa_time::MassaTime;
@@ -33,7 +34,9 @@ use crate::wrap_network::ActiveConnectionsTrait;
 #[derive(Clone)]
 pub struct TesterHandshake {
     peer_db: SharedPeerDB,
+    our_version: Version,
     announcement_deserializer: AnnouncementDeserializer,
+    version_deserializer: VersionDeserializer,
 }
 
 impl TesterHandshake {
@@ -45,6 +48,8 @@ impl TesterHandshake {
                     max_listeners: config.max_size_listeners_per_peer,
                 },
             ),
+            our_version: config.version,
+            version_deserializer: VersionDeserializer::new(),
         }
     }
 }
@@ -73,18 +78,32 @@ impl InitConnectionHandler for TesterHandshake {
         })?)?;
         let res = {
             {
-                // check if peer is banned else set state to InHandshake
+                // check if peer is banned
                 let mut peer_db_write = self.peer_db.write();
                 if let Some(info) = peer_db_write.peers.get_mut(&peer_id) {
                     if info.state == super::PeerState::Banned {
                         return Err(PeerNetError::HandshakeError
                             .error("Tester Handshake", Some(String::from("Peer is banned"))));
-                    } else {
-                        info.state = super::PeerState::InHandshake;
                     }
                 }
             }
-            let id = data.get(32).ok_or(
+
+            let (data, version) = self
+                .version_deserializer
+                .deserialize::<DeserializeError>(&data[32..])
+                .map_err(|err| {
+                    PeerNetError::HandshakeError.error(
+                        "Tester Handshake",
+                        Some(format!("Failed to deserialize version: {}", err)),
+                    )
+                })?;
+            if self.our_version.is_compatible(&version) {
+                return Err(PeerNetError::HandshakeError.error(
+                    "Massa Handshake",
+                    Some(format!("Received version incompatible: {}", version)),
+                ));
+            }
+            let id = data.first().ok_or(
                 PeerNetError::HandshakeError
                     .error("Massa Handshake", Some("Failed to get id".to_string())),
             )?;
@@ -92,7 +111,7 @@ impl InitConnectionHandler for TesterHandshake {
                 0 => {
                     let (_, announcement) = self
                         .announcement_deserializer
-                        .deserialize::<DeserializeError>(&data[33..])
+                        .deserialize::<DeserializeError>(&data[1..])
                         .map_err(|err| {
                             PeerNetError::HandshakeError.error(
                                 "Tester Handshake",

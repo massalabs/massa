@@ -64,6 +64,7 @@ impl serde::Serialize for Version {
 }
 
 /// Serializer for `Version`
+#[derive(Clone)]
 pub struct VersionSerializer {
     u32_serializer: U32VarIntSerializer,
 }
@@ -108,6 +109,7 @@ impl Serializer<Version> for VersionSerializer {
 }
 
 /// Serializer for `Version`
+#[derive(Clone)]
 pub struct VersionDeserializer {
     u32_deserializer: U32VarIntDeserializer,
 }

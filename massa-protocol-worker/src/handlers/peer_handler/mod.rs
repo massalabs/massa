@@ -7,6 +7,7 @@ use crossbeam::{
     channel::{Receiver, Sender},
     select,
 };
+use massa_models::version::{VersionDeserializer, VersionSerializer};
 use massa_protocol_exports::{BootstrapPeers, ProtocolConfig};
 use massa_serialization::{DeserializeError, Deserializer, Serializer};
 use rand::{rngs::StdRng, RngCore, SeedableRng};
@@ -244,6 +245,8 @@ impl PeerManagementHandler {
 pub struct MassaHandshake {
     pub announcement_serializer: AnnouncementSerializer,
     pub announcement_deserializer: AnnouncementDeserializer,
+    pub version_serializer: VersionSerializer,
+    pub version_deserializer: VersionDeserializer,
     pub config: ProtocolConfig,
     pub peer_db: SharedPeerDB,
     peer_mngt_msg_serializer: crate::messages::MessagesSerializer,
@@ -264,6 +267,8 @@ impl MassaHandshake {
                     max_listeners: config.max_size_listeners_per_peer,
                 },
             ),
+            version_serializer: VersionSerializer::new(),
+            version_deserializer: VersionDeserializer::new(),
             config,
             peer_mngt_msg_serializer: crate::messages::MessagesSerializer::new()
                 .with_peer_management_message_serializer(PeerManagementMessageSerializer::new()),
@@ -281,7 +286,14 @@ impl InitConnectionHandler for MassaHandshake {
         messages_handler: MassaMessagesHandler,
     ) -> PeerNetResult<PeerId> {
         let mut bytes = PeerId::from_public_key(keypair.get_public_key()).to_bytes();
-        //TODO: Add version in announce
+        self.version_serializer
+            .serialize(&self.config.version, &mut bytes)
+            .map_err(|err| {
+                PeerNetError::HandshakeError.error(
+                    "Massa Handshake",
+                    Some(format!("Failed to serialize version: {}", err)),
+                )
+            })?;
         bytes.push(0);
         let listeners_announcement =
             Announcement::new(listeners.clone(), self.config.routable_ip, keypair).unwrap();
@@ -309,14 +321,7 @@ impl InitConnectionHandler for MassaHandshake {
                     Some("Failed to deserialize PeerId".to_string()),
                 )
             })?)?;
-        {
-            let peer_db_read = self.peer_db.read();
-            if let Some(info) = peer_db_read.peers.get(&peer_id) {
-                if info.state == PeerState::Banned {
-                    debug!("Banned peer tried to connect: {:?}", peer_id);
-                }
-            }
-        }
+        offset += 32;
         {
             let peer_db_read = self.peer_db.read();
             if let Some(info) = peer_db_read.peers.get(&peer_id) {
@@ -337,7 +342,22 @@ impl InitConnectionHandler for MassaHandshake {
                     });
             }
 
-            offset += 32;
+            let (received, version) = self
+                .version_deserializer
+                .deserialize::<DeserializeError>(&received[offset..])
+                .map_err(|err| {
+                    PeerNetError::HandshakeError.error(
+                        "Massa Handshake",
+                        Some(format!("Failed to deserialize version: {}", err)),
+                    )
+                })?;
+            if !self.config.version.is_compatible(&version) {
+                return Err(PeerNetError::HandshakeError.error(
+                    "Massa Handshake",
+                    Some(format!("Received version incompatible: {}", version)),
+                ));
+            }
+            offset = 0;
             let id = received.get(offset).ok_or(
                 PeerNetError::HandshakeError
                     .error("Massa Handshake", Some("Failed to get id".to_string())),
@@ -351,7 +371,7 @@ impl InitConnectionHandler for MassaHandshake {
                         .map_err(|err| {
                             PeerNetError::HandshakeError.error(
                                 "Massa Handshake",
-                                Some(format!("Failed to serialize announcement: {}", err)),
+                                Some(format!("Failed to deserialize announcement: {}", err)),
                             )
                         })?;
                     if peer_id
@@ -504,9 +524,26 @@ impl InitConnectionHandler for MassaHandshake {
         let mut endpoint = endpoint.try_clone()?;
         let db = self.peer_db.clone();
         let serializer = self.peer_mngt_msg_serializer.clone();
+        let version_serializer = self.version_serializer.clone();
+        let version = self.config.version;
         std::thread::spawn(move || {
             let peers_to_send = db.read().get_rand_peers_to_send(100);
             let mut buf = PeerId::from_public_key(keypair.get_public_key()).to_bytes();
+            if let Err(err) = version_serializer
+                .serialize(&version, &mut buf)
+                .map_err(|err| {
+                    PeerNetError::HandshakeError.error(
+                        "Massa Handshake",
+                        Some(format!(
+                            "Failed serialize version, Err: {:?}",
+                            err.to_string()
+                        )),
+                    )
+                })
+            {
+                warn!("{}", err.to_string());
+                return;
+            }
             buf.push(1);
             let msg = PeerManagementMessage::ListPeers(peers_to_send).into();
             if let Err(err) = serializer.serialize_id(&msg, &mut buf) {

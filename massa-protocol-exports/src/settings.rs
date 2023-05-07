@@ -6,6 +6,7 @@ use std::{
     path::PathBuf,
 };
 
+use massa_models::version::Version;
 use massa_time::MassaTime;
 use peernet::transports::TransportType;
 use serde::Deserialize;
@@ -148,4 +149,6 @@ pub struct ProtocolConfig {
     pub peers_categories: HashMap<String, PeerCategoryInfo>,
     /// Default category infos
     pub default_category_info: PeerCategoryInfo,
+    /// Version
+    pub version: Version,
 }

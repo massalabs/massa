@@ -526,6 +526,7 @@ async fn launch(
         debug: false,
         peers_categories: SETTINGS.protocol.peers_categories.clone(),
         default_category_info: SETTINGS.protocol.default_category_info,
+        version: *VERSION,
     };
 
     let (protocol_controller, protocol_channels) =
