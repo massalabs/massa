@@ -262,6 +262,7 @@
 <a href="#262" id="262">262</a>
 <a href="#263" id="263">263</a>
 <a href="#264" id="264">264</a>
+<a href="#265" id="265">265</a>
 </pre><pre class="rust"><code><span class="kw">use </span>crossbeam::{
     channel::{Receiver, Sender},
     select,
@@ -514,6 +515,7 @@
                                     </span><span class="kw">if let </span><span class="prelude-val">Err</span>(err) = network_controller.try_connect(<span class="kw-2">*</span>addr, Duration::from_millis(<span class="number">1000</span>), <span class="kw-2">&amp;</span>OutConnectionConfig::Tcp(Box::new(TcpOutConnectionConfig::new(config.read_write_limit_bytes_per_second / <span class="number">10</span>, Duration::from_millis(<span class="number">100</span>))))) {
                                         <span class="macro">warn!</span>(<span class="string">&quot;Failed to connect to peer {:?}: {:?}&quot;</span>, addr, err);
                                     }
+                                    <span class="kw">break</span>;
                                 }
                             }
                         }
