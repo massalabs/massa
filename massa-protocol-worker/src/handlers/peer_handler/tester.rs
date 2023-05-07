@@ -1,8 +1,13 @@
-use std::{collections::HashMap, net::SocketAddr, thread::JoinHandle, time::Duration};
+use std::{
+    collections::HashMap,
+    net::{IpAddr, SocketAddr},
+    thread::JoinHandle,
+    time::Duration,
+};
 
 use crate::messages::MessagesHandler;
 use crossbeam::channel::Sender;
-use massa_protocol_exports::ProtocolConfig;
+use massa_protocol_exports::{PeerConnectionType, ProtocolConfig};
 use massa_serialization::{DeserializeError, Deserializer};
 use massa_time::MassaTime;
 use peernet::{
@@ -177,7 +182,8 @@ impl Tester {
         active_connections: Box<dyn ActiveConnectionsTrait>,
         peer_db: SharedPeerDB,
         messages_handler: MessagesHandler,
-        total_target_out_connections: usize,
+        target_out_connections: HashMap<String, (Vec<IpAddr>, usize)>,
+        default_target_out_connections: usize,
     ) -> (
         Sender<(PeerId, HashMap<SocketAddr, TransportType>)>,
         Vec<Tester>,
@@ -195,7 +201,8 @@ impl Tester {
                 config.clone(),
                 test_receiver.clone(),
                 messages_handler.clone(),
-                total_target_out_connections,
+                target_out_connections.clone(),
+                default_target_out_connections,
             ));
         }
 
@@ -209,7 +216,8 @@ impl Tester {
         protocol_config: ProtocolConfig,
         receiver: crossbeam::channel::Receiver<(PeerId, HashMap<SocketAddr, TransportType>)>,
         messages_handler: MessagesHandler,
-        total_target_out_connections: usize,
+        target_out_connections: HashMap<String, (Vec<IpAddr>, usize)>,
+        default_target_out_connections: usize,
     ) -> Self {
         tracing::log::debug!("running new tester");
 
@@ -233,21 +241,60 @@ impl Tester {
                                     continue;
                                 }
                                 //Test 
-                                let slots_out_connections = total_target_out_connections.saturating_sub(active_connections.get_nb_out_connections());
-                                let cooldown_by_address = if slots_out_connections == 0 {
-                                    Duration::from_secs(30)
-                                } else {
-                                    Duration::from_secs(60 * 60 * 2)
-                                };
+                                let peers_connected = active_connections.get_peers_connected();
+                                let slots_out_connections: HashMap<String, (Vec<IpAddr>, usize)> = target_out_connections
+                                    .iter()
+                                    .map(|(key, value)| {
+                                        let mut value = value.clone();
+                                        value.1 = value.1.saturating_sub(peers_connected.iter().filter(|(_, (_, ty, category))| {
+                                            if ty == &PeerConnectionType::IN {
+                                                return false;
+                                            }
+                                            if let Some(category) = category {
+                                                category == key
+                                            } else {
+                                                false
+                                            }
+                                        }).count());
+                                        (key.clone(), value)
+                                    })
+                                    .collect();
+                                let slot_default_category = default_target_out_connections.saturating_sub(peers_connected.iter().filter(|(_, (_, ty, category))| {
+                                    if ty == &PeerConnectionType::IN {
+                                        return false;
+                                    }
+                                    if category.is_some() {
+                                        return false;
+                                    }
+                                    true
+                                }).count());
                                 {
                                     let now = MassaTime::now().unwrap();
                                     let mut db = db.write();
                                     // receive new listener to test
                                     for (addr, _) in listener.1.iter() {
+                                        //Find category of that address
+                                        let ip_canonical = addr.ip().to_canonical();
+                                        let cooldown = 'cooldown: {
+                                            for category in &slots_out_connections {
+                                                if category.1.0.contains(&ip_canonical) {
+                                                    if category.1.1 == 0 {
+                                                        break 'cooldown Duration::from_secs(60 * 60 * 2);
+                                                    } else {
+                                                        break 'cooldown Duration::from_secs(30);
+                                                    }
+                                                }
+                                            }
+                                            if slot_default_category == 0 {
+                                                Duration::from_secs(60 * 60 * 2)
+                                            } else {
+                                                Duration::from_secs(30)
+                                            }
+                                        };
                                         //TODO: Change it to manage multiple listeners SAFETY: Check above
                                         if let Some(last_tested_time) = db.tested_addresses.get(addr) {
                                             let last_tested_time = last_tested_time.estimate_instant().expect("Time went backward");
-                                            if last_tested_time.elapsed() < cooldown_by_address {
+                                            if last_tested_time.elapsed() < cooldown {
                                                 continue;
                                             }
                                         } else {
@@ -255,7 +302,6 @@ impl Tester {
                                         }
                                         // TODO:  Don't launch test if peer is already connected to us as a normal connection.
                                         // Maybe we need to have a way to still update his last announce timestamp because he is a great peer
-                                        let ip_canonical = addr.ip().to_canonical();
                                         if ip_canonical.is_global() && !active_connections.get_peers_connected().iter().any(|(_, (addr, _, _))| addr.ip().to_canonical() == ip_canonical) {
                                             //Don't test our local addresses
                                             for (local_addr, _transport) in protocol_config.listeners.iter() {
@@ -285,14 +331,7 @@ impl Tester {
                     default(Duration::from_secs(2)) => {
                         // If no message in 2 seconds they will test a peer that hasn't been tested for long time
 
-                        // we find the last peer that has been tested
-                        let slots_out_connections = total_target_out_connections - active_connections.get_nb_out_connections();
-                        let cooldown_by_address = if slots_out_connections == 0 {
-                            Duration::from_secs(30)
-                        } else {
-                            Duration::from_secs(60 * 60 * 2)
-                        };
-                        let Some(listener) = db.read().get_oldest_peer(cooldown_by_address) else {
+                        let Some(listener) = db.read().get_oldest_peer(Duration::from_secs(60 * 60 * 2)) else {
                             continue;
                         };
 

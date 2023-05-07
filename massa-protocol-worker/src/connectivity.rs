@@ -107,6 +107,8 @@ pub(crate) fn start_connectivity_thread(
                 protocol_channels.peer_management_handler,
                 messages_handler,
                 network_controller.get_active_connections(),
+                peer_categories.iter().map(|(key, value)|(key.clone(), (value.0.clone(), value.1.target_out_connections))).collect(),
+                config.default_category_info.target_out_connections,
                 &config,
             );
 

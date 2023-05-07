@@ -1,4 +1,5 @@
 use std::cmp::Reverse;
+use std::net::IpAddr;
 use std::{collections::HashMap, net::SocketAddr, thread::JoinHandle, time::Duration};
 
 use crossbeam::channel::tick;
@@ -69,6 +70,8 @@ impl PeerManagementHandler {
         (sender_cmd, receiver_cmd): (Sender<PeerManagementCmd>, Receiver<PeerManagementCmd>),
         messages_handler: MessagesHandler,
         mut active_connections: Box<dyn ActiveConnectionsTrait>,
+        target_out_connections: HashMap<String, (Vec<IpAddr>, usize)>,
+        default_target_out_connections: usize,
         config: &ProtocolConfig,
     ) -> Self {
         let message_serializer = PeerManagementMessageSerializer::new();
@@ -78,12 +81,8 @@ impl PeerManagementHandler {
             active_connections.clone(),
             peer_db.clone(),
             messages_handler,
-            config
-                .peers_categories
-                .values()
-                .map(|info| info.target_out_connections)
-                .sum::<usize>()
-                + config.default_category_info.target_out_connections,
+            target_out_connections,
+            default_target_out_connections,
         );
 
         let thread_join = std::thread::Builder::new()
