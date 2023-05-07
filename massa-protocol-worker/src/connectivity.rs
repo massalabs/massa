@@ -250,6 +250,7 @@ pub(crate) fn start_connectivity_thread(
                                     if let Err(err) = network_controller.try_connect(*addr, Duration::from_millis(1000), &OutConnectionConfig::Tcp(Box::new(TcpOutConnectionConfig::new(config.read_write_limit_bytes_per_second / 10, Duration::from_millis(100))))) {
                                         warn!("Failed to connect to peer {:?}: {:?}", addr, err);
                                     }
+                                    break;
                                 }
                             }
                         }
