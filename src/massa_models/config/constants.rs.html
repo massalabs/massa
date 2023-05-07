@@ -366,14 +366,14 @@
             )
         )
     } <span class="kw">else </span>{
-        <span class="number">1683291600000</span>.into()  <span class="comment">// Friday, May 5, 2023 01:00:00 PM UTC
+        <span class="number">1683495900000</span>.into()  <span class="comment">// Sunday, May 7, 2023 09:45:00 PM UTC
     </span>};
 
     <span class="doccomment">/// TESTNET: time when the blockclique is ended.
     </span><span class="kw">pub static </span><span class="kw-2">ref </span>END_TIMESTAMP: <span class="prelude-ty">Option</span>&lt;MassaTime&gt; = <span class="kw">if </span><span class="macro">cfg!</span>(feature = <span class="string">&quot;sandbox&quot;</span>) {
         <span class="prelude-val">None
     </span>} <span class="kw">else </span>{
-        <span class="prelude-val">Some</span>(<span class="number">1685556000000</span>.into())  <span class="comment">// Sunday, April 30, 2023 06:00:00 PM UTC
+        <span class="prelude-val">Some</span>(<span class="number">1685556000000</span>.into())  <span class="comment">// Sunday, May 30, 2023 06:00:00 PM UTC
     </span>};
     <span class="doccomment">/// `KeyPair` to sign genesis blocks.
     </span><span class="kw">pub static </span><span class="kw-2">ref </span>GENESIS_KEY: KeyPair = KeyPair::from_str(<span class="string">&quot;S1UxdCJv5ckDK8z87E5Jq5fEfSVLi2cTHgtpfZy7iURs3KpPns8&quot;</span>)
@@ -383,9 +383,9 @@
     <span class="doccomment">/// node version
     </span><span class="kw">pub static </span><span class="kw-2">ref </span>VERSION: Version = {
         <span class="kw">if </span><span class="macro">cfg!</span>(feature = <span class="string">&quot;sandbox&quot;</span>) {
-            <span class="string">&quot;SAND.22.0&quot;
+            <span class="string">&quot;SAND.22.1&quot;
         </span>} <span class="kw">else </span>{
-            <span class="string">&quot;TEST.22.0&quot;
+            <span class="string">&quot;TEST.22.1&quot;
         </span>}
         .parse()
         .unwrap()
