@@ -258,7 +258,6 @@
 <a href="#258" id="258">258</a>
 <a href="#259" id="259">259</a>
 <a href="#260" id="260">260</a>
-<a href="#261" id="261">261</a>
 </pre><pre class="rust"><code><span class="kw">use </span>crossbeam::{
     channel::{Receiver, Sender},
     select,
@@ -469,11 +468,11 @@
                                         <span class="prelude-val">None
                                     </span>}
                                 }) {
-                                    <span class="comment">//TODO: Adapt for multiple listeners
-                                    </span><span class="kw">if </span>peer_info.last_announce.listeners.is_empty() {
+                                    <span class="kw">if </span>peer_info.last_announce.listeners.is_empty() {
                                         <span class="kw">continue</span>;
                                     }
-                                    <span class="kw">let </span>(addr, <span class="kw">_</span>) = peer_info.last_announce.listeners.iter().next().unwrap();
+                                    <span class="comment">//TODO: Adapt for multiple listeners
+                                    </span><span class="kw">let </span>(addr, <span class="kw">_</span>) = peer_info.last_announce.listeners.iter().next().unwrap();
                                     <span class="kw">let </span>canonical_ip = addr.ip().to_canonical();
                                     <span class="kw">if </span>!canonical_ip.is_global()  {
                                         <span class="kw">continue</span>;
@@ -482,7 +481,7 @@
                                     </span><span class="kw">let </span><span class="kw-2">mut </span>category_found = <span class="bool-val">false</span>;
                                     <span class="kw">for </span>(name, (ips, infos)) <span class="kw">in </span><span class="kw-2">&amp;</span>peer_categories {
                                         <span class="kw">if </span>ips.contains(<span class="kw-2">&amp;</span>canonical_ip) {
-                                            <span class="kw">if </span>infos.target_out_connections &lt; network_controller.get_active_connections().get_peers_connected().iter().filter(|(<span class="kw">_</span>, (<span class="kw">_</span>, connection_type, category))| {
+                                            <span class="kw">if </span>infos.target_out_connections &gt; network_controller.get_active_connections().get_peers_connected().iter().filter(|(<span class="kw">_</span>, (<span class="kw">_</span>, connection_type, category))| {
                                                 <span class="kw">if </span>connection_type == <span class="kw-2">&amp;</span>PeerConnectionType::OUT &amp;&amp; <span class="kw">let </span><span class="prelude-val">Some</span>(category) = category {
                                                     category == name
                                                 } <span class="kw">else </span>{
@@ -497,10 +496,9 @@
                                         }
                                     }
 
-                                    
-                                    <span class="kw">if </span>!category_found &amp;&amp; default_category.target_out_connections &gt;= network_controller.get_active_connections().get_peers_connected().iter().filter(|(<span class="kw">_</span>, (<span class="kw">_</span>, connection_type, category))| {
+                                    <span class="kw">if </span>!category_found &amp;&amp; network_controller.get_active_connections().get_peers_connected().iter().filter(|(<span class="kw">_</span>, (<span class="kw">_</span>, connection_type, category))| {
                                         connection_type == <span class="kw-2">&amp;</span>PeerConnectionType::OUT &amp;&amp; category.is_none()
-                                    }).count() {
+                                    }).count() &gt;= default_category.target_out_connections {
                                         <span class="kw">continue</span>;
                                     }
                                     <span class="macro">info!</span>(<span class="string">&quot;Trying to connect to addr {} of peer {}&quot;</span>, addr, peer_id);

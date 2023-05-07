@@ -1141,6 +1141,10 @@
 <a href="#1141" id="1141">1141</a>
 <a href="#1142" id="1142">1142</a>
 <a href="#1143" id="1143">1143</a>
+<a href="#1144" id="1144">1144</a>
+<a href="#1145" id="1145">1145</a>
+<a href="#1146" id="1146">1146</a>
+<a href="#1147" id="1147">1147</a>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="attr">#![doc = <span class="macro">include_str!</span>(<span class="string">&quot;../../README.md&quot;</span>)]
@@ -1329,11 +1333,15 @@
     // NOTE: this is temporary, since we cannot currently handle bootstrap from remaining ledger
     </span><span class="kw">if </span>args.keep_ledger || args.restart_from_snapshot_at_period.is_some() {
         <span class="macro">info!</span>(<span class="string">&quot;Loading old ledger for next episode&quot;</span>);
-    } <span class="kw">else if </span>SETTINGS.ledger.disk_ledger_path.exists() {
-        std::fs::remove_dir_all(SETTINGS.ledger.disk_ledger_path.clone())
-            .expect(<span class="string">&quot;disk ledger delete failed&quot;</span>);
-        std::fs::remove_dir_all(SETTINGS.execution.hd_cache_path.clone())
-            .expect(<span class="string">&quot;disk hd cache delete failed&quot;</span>);
+    } <span class="kw">else </span>{
+        <span class="kw">if </span>SETTINGS.ledger.disk_ledger_path.exists() {
+            std::fs::remove_dir_all(SETTINGS.ledger.disk_ledger_path.clone())
+                .expect(<span class="string">&quot;disk ledger delete failed&quot;</span>);
+        }
+        <span class="kw">if </span>SETTINGS.execution.hd_cache_path.exists() {
+            std::fs::remove_dir_all(SETTINGS.execution.hd_cache_path.clone())
+                .expect(<span class="string">&quot;disk hd cache delete failed&quot;</span>);
+        }
     }
 
     <span class="comment">// Create final ledger
