@@ -310,7 +310,6 @@ impl Tester {
                                                 Duration::from_secs(30)
                                             }
                                         };
-                                        println!("AURELIEN: Cooldown for addr {} is {:?}", ip_canonical, cooldown);
                                         //TODO: Change it to manage multiple listeners SAFETY: Check above
                                         if let Some(last_tested_time) = db.tested_addresses.get(addr) {
                                             let last_tested_time = last_tested_time.estimate_instant().expect("Time went backward");
