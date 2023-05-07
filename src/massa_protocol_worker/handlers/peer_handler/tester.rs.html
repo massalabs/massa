@@ -373,6 +373,25 @@
 <a href="#373" id="373">373</a>
 <a href="#374" id="374">374</a>
 <a href="#375" id="375">375</a>
+<a href="#376" id="376">376</a>
+<a href="#377" id="377">377</a>
+<a href="#378" id="378">378</a>
+<a href="#379" id="379">379</a>
+<a href="#380" id="380">380</a>
+<a href="#381" id="381">381</a>
+<a href="#382" id="382">382</a>
+<a href="#383" id="383">383</a>
+<a href="#384" id="384">384</a>
+<a href="#385" id="385">385</a>
+<a href="#386" id="386">386</a>
+<a href="#387" id="387">387</a>
+<a href="#388" id="388">388</a>
+<a href="#389" id="389">389</a>
+<a href="#390" id="390">390</a>
+<a href="#391" id="391">391</a>
+<a href="#392" id="392">392</a>
+<a href="#393" id="393">393</a>
+<a href="#394" id="394">394</a>
 </pre><pre class="rust"><code><span class="kw">use </span>std::{
     collections::HashMap,
     net::{IpAddr, SocketAddr},
@@ -382,6 +401,7 @@
 
 <span class="kw">use </span><span class="kw">crate</span>::messages::MessagesHandler;
 <span class="kw">use </span>crossbeam::channel::Sender;
+<span class="kw">use </span>massa_models::version::{Version, VersionDeserializer};
 <span class="kw">use </span>massa_protocol_exports::{PeerConnectionType, ProtocolConfig};
 <span class="kw">use </span>massa_serialization::{DeserializeError, Deserializer};
 <span class="kw">use </span>massa_time::MassaTime;
@@ -408,7 +428,9 @@
 <span class="attr">#[derive(Clone)]
 </span><span class="kw">pub struct </span>TesterHandshake {
     peer_db: SharedPeerDB,
+    our_version: Version,
     announcement_deserializer: AnnouncementDeserializer,
+    version_deserializer: VersionDeserializer,
 }
 
 <span class="kw">impl </span>TesterHandshake {
@@ -420,6 +442,8 @@
                     max_listeners: config.max_size_listeners_per_peer,
                 },
             ),
+            our_version: config.version,
+            version_deserializer: VersionDeserializer::new(),
         }
     }
 }
@@ -448,18 +472,32 @@
         })<span class="question-mark">?</span>)<span class="question-mark">?</span>;
         <span class="kw">let </span>res = {
             {
-                <span class="comment">// check if peer is banned else set state to InHandshake
+                <span class="comment">// check if peer is banned
                 </span><span class="kw">let </span><span class="kw-2">mut </span>peer_db_write = <span class="self">self</span>.peer_db.write();
                 <span class="kw">if let </span><span class="prelude-val">Some</span>(info) = peer_db_write.peers.get_mut(<span class="kw-2">&amp;</span>peer_id) {
                     <span class="kw">if </span>info.state == <span class="kw">super</span>::PeerState::Banned {
                         <span class="kw">return </span><span class="prelude-val">Err</span>(PeerNetError::HandshakeError
                             .error(<span class="string">&quot;Tester Handshake&quot;</span>, <span class="prelude-val">Some</span>(String::from(<span class="string">&quot;Peer is banned&quot;</span>))));
-                    } <span class="kw">else </span>{
-                        info.state = <span class="kw">super</span>::PeerState::InHandshake;
                     }
                 }
             }
-            <span class="kw">let </span>id = data.get(<span class="number">32</span>).ok_or(
+
+            <span class="kw">let </span>(data, version) = <span class="self">self
+                </span>.version_deserializer
+                .deserialize::&lt;DeserializeError&gt;(<span class="kw-2">&amp;</span>data[<span class="number">32</span>..])
+                .map_err(|err| {
+                    PeerNetError::HandshakeError.error(
+                        <span class="string">&quot;Tester Handshake&quot;</span>,
+                        <span class="prelude-val">Some</span>(<span class="macro">format!</span>(<span class="string">&quot;Failed to deserialize version: {}&quot;</span>, err)),
+                    )
+                })<span class="question-mark">?</span>;
+            <span class="kw">if </span><span class="self">self</span>.our_version.is_compatible(<span class="kw-2">&amp;</span>version) {
+                <span class="kw">return </span><span class="prelude-val">Err</span>(PeerNetError::HandshakeError.error(
+                    <span class="string">&quot;Massa Handshake&quot;</span>,
+                    <span class="prelude-val">Some</span>(<span class="macro">format!</span>(<span class="string">&quot;Received version incompatible: {}&quot;</span>, version)),
+                ));
+            }
+            <span class="kw">let </span>id = data.first().ok_or(
                 PeerNetError::HandshakeError
                     .error(<span class="string">&quot;Massa Handshake&quot;</span>, <span class="prelude-val">Some</span>(<span class="string">&quot;Failed to get id&quot;</span>.to_string())),
             )<span class="question-mark">?</span>;
@@ -467,7 +505,7 @@
                 <span class="number">0 </span>=&gt; {
                     <span class="kw">let </span>(<span class="kw">_</span>, announcement) = <span class="self">self
                         </span>.announcement_deserializer
-                        .deserialize::&lt;DeserializeError&gt;(<span class="kw-2">&amp;</span>data[<span class="number">33</span>..])
+                        .deserialize::&lt;DeserializeError&gt;(<span class="kw-2">&amp;</span>data[<span class="number">1</span>..])
                         .map_err(|err| {
                             PeerNetError::HandshakeError.error(
                                 <span class="string">&quot;Tester Handshake&quot;</span>,

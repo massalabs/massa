@@ -1143,6 +1143,7 @@
 <a href="#1143" id="1143">1143</a>
 <a href="#1144" id="1144">1144</a>
 <a href="#1145" id="1145">1145</a>
+<a href="#1146" id="1146">1146</a>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="attr">#![doc = <span class="macro">include_str!</span>(<span class="string">&quot;../../README.md&quot;</span>)]
@@ -1671,6 +1672,7 @@
         debug: <span class="bool-val">false</span>,
         peers_categories: SETTINGS.protocol.peers_categories.clone(),
         default_category_info: SETTINGS.protocol.default_category_info,
+        version: <span class="kw-2">*</span>VERSION,
     };
 
     <span class="kw">let </span>(protocol_controller, protocol_channels) =

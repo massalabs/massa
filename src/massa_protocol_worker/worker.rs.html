@@ -305,6 +305,8 @@
 <a href="#305" id="305">305</a>
 <a href="#306" id="306">306</a>
 <a href="#307" id="307">307</a>
+<a href="#308" id="308">308</a>
+<a href="#309" id="309">309</a>
 </pre><pre class="rust"><code><span class="kw">use </span>crossbeam::channel::{bounded, Receiver, Sender};
 <span class="kw">use </span>massa_consensus_exports::ConsensusController;
 <span class="kw">use </span>massa_models::node::NodeId;
@@ -539,7 +541,8 @@
                         })
                         .collect(),
                     PeerNetCategoryInfo {
-                        max_in_connections: infos.max_in_connections,
+                        max_in_connections_post_handshake: infos.max_in_connections,
+                        max_in_connections_pre_handshake: infos.max_in_connections,
                         max_in_connections_per_ip: infos.max_in_connections_per_ip,
                     },
                 ),
@@ -548,7 +551,8 @@
         .collect();
     peernet_config.peers_categories = peernet_categories;
     peernet_config.default_category_info = PeerNetCategoryInfo {
-        max_in_connections: config.default_category_info.max_in_connections,
+        max_in_connections_pre_handshake: <span class="number">100</span>,
+        max_in_connections_post_handshake: config.default_category_info.max_in_connections,
         max_in_connections_per_ip: config.default_category_info.max_in_connections_per_ip,
     };
 
