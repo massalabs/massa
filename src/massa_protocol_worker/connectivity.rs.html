@@ -260,6 +260,8 @@
 <a href="#260" id="260">260</a>
 <a href="#261" id="261">261</a>
 <a href="#262" id="262">262</a>
+<a href="#263" id="263">263</a>
+<a href="#264" id="264">264</a>
 </pre><pre class="rust"><code><span class="kw">use </span>crossbeam::{
     channel::{Receiver, Sender},
     select,
@@ -369,6 +371,8 @@
                 protocol_channels.peer_management_handler,
                 messages_handler,
                 network_controller.get_active_connections(),
+                peer_categories.iter().map(|(key, value)|(key.clone(), (value.<span class="number">0</span>.clone(), value.<span class="number">1</span>.target_out_connections))).collect(),
+                config.default_category_info.target_out_connections,
                 <span class="kw-2">&amp;</span>config,
             );
 
