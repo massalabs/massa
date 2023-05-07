@@ -208,20 +208,21 @@ pub(crate) fn start_connectivity_thread(
                                         None
                                     }
                                 }) {
-                                    //TODO: Adapt for multiple listeners
                                     if peer_info.last_announce.listeners.is_empty() {
                                         continue;
                                     }
+                                    //TODO: Adapt for multiple listeners
                                     let (addr, _) = peer_info.last_announce.listeners.iter().next().unwrap();
                                     let canonical_ip = addr.ip().to_canonical();
                                     if !canonical_ip.is_global()  {
                                         continue;
                                     }
+                                    println!("Trying to connect to peer {}", peer_id);
                                     // Check if the peer is in a category and we didn't reached out target yet
                                     let mut category_found = false;
                                     for (name, (ips, infos)) in &peer_categories {
                                         if ips.contains(&canonical_ip) {
-                                            if infos.target_out_connections < network_controller.get_active_connections().get_peers_connected().iter().filter(|(_, (_, connection_type, category))| {
+                                            if infos.target_out_connections > network_controller.get_active_connections().get_peers_connected().iter().filter(|(_, (_, connection_type, category))| {
                                                 if connection_type == &PeerConnectionType::OUT && let Some(category) = category {
                                                     category == name
                                                 } else {
@@ -236,10 +237,9 @@ pub(crate) fn start_connectivity_thread(
                                         }
                                     }
 
-                                    
-                                    if !category_found && default_category.target_out_connections >= network_controller.get_active_connections().get_peers_connected().iter().filter(|(_, (_, connection_type, category))| {
+                                    if !category_found && network_controller.get_active_connections().get_peers_connected().iter().filter(|(_, (_, connection_type, category))| {
                                         connection_type == &PeerConnectionType::OUT && category.is_none()
-                                    }).count() {
+                                    }).count() >= default_category.target_out_connections {
                                         continue;
                                     }
                                     info!("Trying to connect to addr {} of peer {}", addr, peer_id);

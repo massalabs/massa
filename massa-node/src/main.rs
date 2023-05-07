@@ -186,11 +186,15 @@ async fn launch(
     // NOTE: this is temporary, since we cannot currently handle bootstrap from remaining ledger
     if args.keep_ledger || args.restart_from_snapshot_at_period.is_some() {
         info!("Loading old ledger for next episode");
-    } else if SETTINGS.ledger.disk_ledger_path.exists() {
-        std::fs::remove_dir_all(SETTINGS.ledger.disk_ledger_path.clone())
-            .expect("disk ledger delete failed");
-        std::fs::remove_dir_all(SETTINGS.execution.hd_cache_path.clone())
-            .expect("disk hd cache delete failed");
+    } else {
+        if SETTINGS.ledger.disk_ledger_path.exists() {
+            std::fs::remove_dir_all(SETTINGS.ledger.disk_ledger_path.clone())
+                .expect("disk ledger delete failed");
+        }
+        if SETTINGS.execution.hd_cache_path.exists() {
+            std::fs::remove_dir_all(SETTINGS.execution.hd_cache_path.clone())
+                .expect("disk hd cache delete failed");
+        }
     }
 
     // Create final ledger
