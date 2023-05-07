@@ -217,7 +217,6 @@ pub(crate) fn start_connectivity_thread(
                                     if !canonical_ip.is_global()  {
                                         continue;
                                     }
-                                    println!("Trying to connect to peer {}", peer_id);
                                     // Check if the peer is in a category and we didn't reached out target yet
                                     let mut category_found = false;
                                     for (name, (ips, infos)) in &peer_categories {
