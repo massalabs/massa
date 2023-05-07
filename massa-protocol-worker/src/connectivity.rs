@@ -206,7 +206,7 @@ pub(crate) fn start_connectivity_thread(
                         {
                             let peer_db_read = peer_db.read();
                             'iter_peers: for (_, peer_id) in &peer_db_read.index_by_newest {
-                                if peers_connected.contains_key(&peer_id) {
+                                if peers_connected.contains_key(peer_id) {
                                     continue;
                                 }
                                 if let Some(peer_info) = peer_db_read.peers.get(peer_id).and_then(|peer| {
