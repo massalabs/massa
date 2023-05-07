@@ -525,7 +525,6 @@
 <a href="#525" id="525">525</a>
 <a href="#526" id="526">526</a>
 <a href="#527" id="527">527</a>
-<a href="#528" id="528">528</a>
 </pre><pre class="rust"><code><span class="kw">use </span>std::cmp::Reverse;
 <span class="kw">use </span>std::{collections::HashMap, net::SocketAddr, thread::JoinHandle, time::Duration};
 
@@ -1048,7 +1047,6 @@
                 <span class="macro">warn!</span>(<span class="string">&quot;Failed to send message: {}&quot;</span>, err);
                 <span class="kw">return</span>;
             }
-            std::thread::sleep(Duration::from_millis(<span class="number">200</span>));
             endpoint.shutdown();
         });
         <span class="prelude-val">Ok</span>(())
