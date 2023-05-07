@@ -8,8 +8,6 @@ use tempfile::NamedTempFile;
 impl Default for ProtocolConfig {
     fn default() -> Self {
         ProtocolConfig {
-            max_in_connections: 10,
-            max_out_connections: 10,
             keypair_file: NamedTempFile::new()
                 .expect("cannot create temp file")
                 .path()
@@ -79,8 +77,8 @@ impl Default for ProtocolConfig {
             debug: true,
             peers_categories: HashMap::default(),
             default_category_info: PeerCategoryInfo {
-                max_in_connections: 0,
-                target_out_connections: 0,
+                max_in_connections: 10,
+                target_out_connections: 10,
                 max_in_connections_per_ip: 0,
             },
         }

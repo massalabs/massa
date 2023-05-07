@@ -223,10 +223,6 @@ pub struct ProtocolSettings {
     pub routable_ip: Option<IpAddr>,
     /// Time threshold to have a connection to a node
     pub connect_timeout: MassaTime,
-    /// Max number of connection in
-    pub max_incoming_connections: usize,
-    /// Max number of connection out
-    pub max_outgoing_connections: usize,
     /// Number of tester threads
     pub thread_tester_count: u8,
     /// Number of bytes we can read/write by seconds in a connection (must be a 10 multiple)

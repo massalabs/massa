@@ -26,10 +26,6 @@ pub struct ProtocolConfig {
     pub listeners: HashMap<SocketAddr, TransportType>,
     /// initial peers path
     pub initial_peers: PathBuf,
-    /// max number of in connections
-    pub max_in_connections: usize,
-    /// max number of out connections
-    pub max_out_connections: usize,
     /// after `ask_block_timeout` milliseconds we try to ask a block to another node
     pub ask_block_timeout: MassaTime,
     /// Max known blocks we keep in block_handler

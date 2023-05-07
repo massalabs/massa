@@ -82,18 +82,20 @@ pub(crate) fn start_connectivity_thread(
             std::thread::sleep(Duration::from_millis(100));
 
             // Create cache outside of the op handler because it could be used by other handlers
+            let total_in_slots = config.peers_categories.values().map(|v| v.max_in_connections).sum::<usize>() + config.default_category_info.max_in_connections;
+            let total_out_slots = config.peers_categories.values().map(| v| v.target_out_connections).sum::<usize>() + config.default_category_info.target_out_connections;
             let operation_cache = Arc::new(RwLock::new(OperationCache::new(
                 NonZeroUsize::new(config.max_known_ops_size).unwrap(),
-                NonZeroUsize::new(config.max_in_connections + config.max_out_connections).unwrap(),
+                NonZeroUsize::new(total_in_slots + total_out_slots).unwrap(),
             )));
             let endorsement_cache = Arc::new(RwLock::new(EndorsementCache::new(
                 NonZeroUsize::new(config.max_known_endorsements_size).unwrap(),
-                NonZeroUsize::new(config.max_in_connections + config.max_out_connections).unwrap(),
+                NonZeroUsize::new(total_in_slots + total_out_slots).unwrap(),
             )));
 
             let block_cache = Arc::new(RwLock::new(BlockCache::new(
                 NonZeroUsize::new(config.max_known_blocks_size).unwrap(),
-                NonZeroUsize::new(config.max_in_connections + config.max_out_connections).unwrap(),
+                NonZeroUsize::new(total_in_slots + total_out_slots).unwrap(),
             )));
 
             // Start handlers

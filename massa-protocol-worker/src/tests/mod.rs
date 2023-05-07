@@ -2,15 +2,12 @@ use std::{collections::HashMap, fs::read_to_string, time::Duration};
 
 use massa_consensus_exports::test_exports::ConsensusControllerImpl;
 use massa_pool_exports::test_exports::MockPoolController;
-use massa_protocol_exports::ProtocolConfig;
+use massa_protocol_exports::{PeerCategoryInfo, PeerData, ProtocolConfig};
 use massa_storage::Storage;
 use peernet::{peer_id::PeerId, transports::TransportType, types::KeyPair};
 use tempfile::NamedTempFile;
 
-use crate::{
-    create_protocol_controller, handlers::peer_handler::models::InitialPeers,
-    start_protocol_controller,
-};
+use crate::{create_protocol_controller, start_protocol_controller};
 
 mod ban_nodes_scenarios;
 mod block_scenarios;
@@ -67,25 +64,53 @@ fn basic() {
 
     // Setup initial peers
     let initial_peers_file = NamedTempFile::new().expect("cannot create temp file");
-    let mut initial_peers1: InitialPeers = InitialPeers::default();
+    let mut initial_peers1: HashMap<PeerId, PeerData> = HashMap::new();
     let mut peers_1 = HashMap::new();
     peers_1.insert("127.0.0.1:8082".parse().unwrap(), TransportType::Tcp);
-    initial_peers1.insert(PeerId::from_public_key(keypair2.get_public_key()), peers_1);
+    initial_peers1.insert(
+        PeerId::from_public_key(keypair2.get_public_key()),
+        PeerData {
+            listeners: peers_1,
+            category: "Bootstrap".to_string(),
+        },
+    );
     serde_json::to_writer_pretty(initial_peers_file.as_file(), &initial_peers1)
         .expect("unable to write ledger file");
     let initial_peers_file_2 = NamedTempFile::new().expect("cannot create temp file");
-    let mut initial_peers2: InitialPeers = InitialPeers::default();
+    let mut initial_peers2: HashMap<PeerId, PeerData> = HashMap::new();
     let mut peers_2 = HashMap::new();
     peers_2.insert("127.0.0.1:8081".parse().unwrap(), TransportType::Tcp);
-    initial_peers2.insert(PeerId::from_public_key(keypair1.get_public_key()), peers_2);
+    initial_peers2.insert(
+        PeerId::from_public_key(keypair1.get_public_key()),
+        PeerData {
+            listeners: peers_2,
+            category: "Bootstrap".to_string(),
+        },
+    );
     serde_json::to_writer_pretty(initial_peers_file_2.as_file(), &initial_peers2)
         .expect("unable to write ledger file");
     config1.initial_peers = initial_peers_file.path().to_path_buf();
-    config1.max_in_connections = 5;
-    config1.max_out_connections = 1;
+    let mut categories = HashMap::default();
+    categories.insert(
+        "Bootstrap".to_string(),
+        PeerCategoryInfo {
+            max_in_connections: 1,
+            target_out_connections: 1,
+            max_in_connections_per_ip: 1,
+        },
+    );
+    config1.peers_categories = categories;
     config2.initial_peers = initial_peers_file_2.path().to_path_buf();
-    config2.max_in_connections = 5;
-    config2.max_out_connections = 0;
+    let mut categories2 = HashMap::default();
+    categories2.insert(
+        "Bootstrap".to_string(),
+        PeerCategoryInfo {
+            max_in_connections: 5,
+            target_out_connections: 1,
+            max_in_connections_per_ip: 1,
+        },
+    );
+    config2.peers_categories = categories2;
     config2.debug = false;
 
     // Setup the storages
@@ -152,7 +177,7 @@ fn stop_with_controller_still_exists() {
     config2
         .listeners
         .insert("127.0.0.1:8082".parse().unwrap(), TransportType::Tcp);
-    config2.keypair_file = "./src/tests/test_keypair1.json".to_string().into();
+    config2.keypair_file = "./src/tests/test_keypair2.json".to_string().into();
     let keypair_bs58_check_encoded = read_to_string(&config2.keypair_file)
         .map_err(|err| {
             std::io::Error::new(err.kind(), format!("could not load node key file: {}", err))
@@ -163,25 +188,53 @@ fn stop_with_controller_still_exists() {
 
     // Setup initial peers
     let initial_peers_file = NamedTempFile::new().expect("cannot create temp file");
-    let mut initial_peers1: InitialPeers = InitialPeers::default();
+    let mut initial_peers1: HashMap<PeerId, PeerData> = HashMap::new();
     let mut peers_1 = HashMap::new();
-    peers_1.insert("127.0.0.1:8081".parse().unwrap(), TransportType::Tcp);
-    initial_peers1.insert(PeerId::from_public_key(keypair2.get_public_key()), peers_1);
+    peers_1.insert("127.0.0.1:8082".parse().unwrap(), TransportType::Tcp);
+    initial_peers1.insert(
+        PeerId::from_public_key(keypair2.get_public_key()),
+        PeerData {
+            listeners: peers_1,
+            category: "Bootstrap".to_string(),
+        },
+    );
     serde_json::to_writer_pretty(initial_peers_file.as_file(), &initial_peers1)
         .expect("unable to write ledger file");
     let initial_peers_file_2 = NamedTempFile::new().expect("cannot create temp file");
-    let mut initial_peers2: InitialPeers = InitialPeers::default();
+    let mut initial_peers2: HashMap<PeerId, PeerData> = HashMap::new();
     let mut peers_2 = HashMap::new();
-    peers_2.insert("127.0.0.1:8082".parse().unwrap(), TransportType::Tcp);
-    initial_peers2.insert(PeerId::from_public_key(keypair1.get_public_key()), peers_2);
+    peers_2.insert("127.0.0.1:8081".parse().unwrap(), TransportType::Tcp);
+    initial_peers2.insert(
+        PeerId::from_public_key(keypair1.get_public_key()),
+        PeerData {
+            listeners: peers_2,
+            category: "Bootstrap".to_string(),
+        },
+    );
     serde_json::to_writer_pretty(initial_peers_file_2.as_file(), &initial_peers2)
         .expect("unable to write ledger file");
     config1.initial_peers = initial_peers_file.path().to_path_buf();
-    config1.max_in_connections = 5;
-    config1.max_out_connections = 1;
+    let mut categories = HashMap::default();
+    categories.insert(
+        "Bootstrap".to_string(),
+        PeerCategoryInfo {
+            max_in_connections: 1,
+            target_out_connections: 1,
+            max_in_connections_per_ip: 1,
+        },
+    );
+    config1.peers_categories = categories;
     config2.initial_peers = initial_peers_file_2.path().to_path_buf();
-    config2.max_in_connections = 5;
-    config2.max_out_connections = 0;
+    let mut categories2 = HashMap::default();
+    categories2.insert(
+        "Bootstrap".to_string(),
+        PeerCategoryInfo {
+            max_in_connections: 5,
+            target_out_connections: 1,
+            max_in_connections_per_ip: 1,
+        },
+    );
+    config2.peers_categories = categories2;
     config2.debug = false;
 
     // Setup the storages

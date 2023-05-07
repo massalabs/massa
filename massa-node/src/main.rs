@@ -485,8 +485,6 @@ async fn launch(
         initial_peers: SETTINGS.protocol.initial_peers_file.clone(),
         listeners,
         keypair_file: SETTINGS.protocol.keypair_file.clone(),
-        max_in_connections: SETTINGS.protocol.max_incoming_connections,
-        max_out_connections: SETTINGS.protocol.max_outgoing_connections,
         max_known_blocks_saved_size: SETTINGS.protocol.max_known_blocks_size,
         asked_operations_buffer_capacity: SETTINGS.protocol.max_known_ops_size,
         thread_tester_count: SETTINGS.protocol.thread_tester_count,
