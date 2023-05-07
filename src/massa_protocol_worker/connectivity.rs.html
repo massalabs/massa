@@ -263,6 +263,10 @@
 <a href="#263" id="263">263</a>
 <a href="#264" id="264">264</a>
 <a href="#265" id="265">265</a>
+<a href="#266" id="266">266</a>
+<a href="#267" id="267">267</a>
+<a href="#268" id="268">268</a>
+<a href="#269" id="269">269</a>
 </pre><pre class="rust"><code><span class="kw">use </span>crossbeam::{
     channel::{Receiver, Sender},
     select,
@@ -467,9 +471,13 @@
                             }
                         }
                     default(Duration::from_millis(<span class="number">5000</span>)) =&gt; {
+                        <span class="kw">let </span>peers_connected = network_controller.get_active_connections().get_peers_connected();
                         {
                             <span class="kw">let </span>peer_db_read = peer_db.read();
                             <span class="lifetime">&#39;iter_peers</span>: <span class="kw">for </span>(<span class="kw">_</span>, peer_id) <span class="kw">in </span><span class="kw-2">&amp;</span>peer_db_read.index_by_newest {
+                                <span class="kw">if </span>peers_connected.contains_key(<span class="kw-2">&amp;</span>peer_id) {
+                                    <span class="kw">continue</span>;
+                                }
                                 <span class="kw">if let </span><span class="prelude-val">Some</span>(peer_info) = peer_db_read.peers.get(peer_id).and_then(|peer| {
                                     <span class="kw">if </span>peer.state == PeerState::Trusted {
                                         <span class="prelude-val">Some</span>(peer.clone())
@@ -490,7 +498,7 @@
                                     </span><span class="kw">let </span><span class="kw-2">mut </span>category_found = <span class="bool-val">false</span>;
                                     <span class="kw">for </span>(name, (ips, infos)) <span class="kw">in </span><span class="kw-2">&amp;</span>peer_categories {
                                         <span class="kw">if </span>ips.contains(<span class="kw-2">&amp;</span>canonical_ip) {
-                                            <span class="kw">if </span>infos.target_out_connections &gt; network_controller.get_active_connections().get_peers_connected().iter().filter(|(<span class="kw">_</span>, (<span class="kw">_</span>, connection_type, category))| {
+                                            <span class="kw">if </span>infos.target_out_connections &gt; peers_connected.iter().filter(|(<span class="kw">_</span>, (<span class="kw">_</span>, connection_type, category))| {
                                                 <span class="kw">if </span>connection_type == <span class="kw-2">&amp;</span>PeerConnectionType::OUT &amp;&amp; <span class="kw">let </span><span class="prelude-val">Some</span>(category) = category {
                                                     category == name
                                                 } <span class="kw">else </span>{
@@ -505,7 +513,7 @@
                                         }
                                     }
 
-                                    <span class="kw">if </span>!category_found &amp;&amp; network_controller.get_active_connections().get_peers_connected().iter().filter(|(<span class="kw">_</span>, (<span class="kw">_</span>, connection_type, category))| {
+                                    <span class="kw">if </span>!category_found &amp;&amp; peers_connected.iter().filter(|(<span class="kw">_</span>, (<span class="kw">_</span>, connection_type, category))| {
                                         connection_type == <span class="kw-2">&amp;</span>PeerConnectionType::OUT &amp;&amp; category.is_none()
                                     }).count() &gt;= default_category.target_out_connections {
                                         <span class="kw">continue</span>;
