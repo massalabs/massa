@@ -258,6 +258,8 @@
 <a href="#258" id="258">258</a>
 <a href="#259" id="259">259</a>
 <a href="#260" id="260">260</a>
+<a href="#261" id="261">261</a>
+<a href="#262" id="262">262</a>
 </pre><pre class="rust"><code><span class="kw">use </span>crossbeam::{
     channel::{Receiver, Sender},
     select,
@@ -342,18 +344,20 @@
             </span>std::thread::sleep(Duration::from_millis(<span class="number">100</span>));
 
             <span class="comment">// Create cache outside of the op handler because it could be used by other handlers
-            </span><span class="kw">let </span>operation_cache = Arc::new(RwLock::new(OperationCache::new(
+            </span><span class="kw">let </span>total_in_slots = config.peers_categories.values().map(|v| v.max_in_connections).sum::&lt;usize&gt;() + config.default_category_info.max_in_connections;
+            <span class="kw">let </span>total_out_slots = config.peers_categories.values().map(| v| v.target_out_connections).sum::&lt;usize&gt;() + config.default_category_info.target_out_connections;
+            <span class="kw">let </span>operation_cache = Arc::new(RwLock::new(OperationCache::new(
                 NonZeroUsize::new(config.max_known_ops_size).unwrap(),
-                NonZeroUsize::new(config.max_in_connections + config.max_out_connections).unwrap(),
+                NonZeroUsize::new(total_in_slots + total_out_slots).unwrap(),
             )));
             <span class="kw">let </span>endorsement_cache = Arc::new(RwLock::new(EndorsementCache::new(
                 NonZeroUsize::new(config.max_known_endorsements_size).unwrap(),
-                NonZeroUsize::new(config.max_in_connections + config.max_out_connections).unwrap(),
+                NonZeroUsize::new(total_in_slots + total_out_slots).unwrap(),
             )));
 
             <span class="kw">let </span>block_cache = Arc::new(RwLock::new(BlockCache::new(
                 NonZeroUsize::new(config.max_known_blocks_size).unwrap(),
-                NonZeroUsize::new(config.max_in_connections + config.max_out_connections).unwrap(),
+                NonZeroUsize::new(total_in_slots + total_out_slots).unwrap(),
             )));
 
             <span class="comment">// Start handlers

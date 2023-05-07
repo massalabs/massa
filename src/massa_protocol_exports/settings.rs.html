@@ -149,10 +149,6 @@
 <a href="#149" id="149">149</a>
 <a href="#150" id="150">150</a>
 <a href="#151" id="151">151</a>
-<a href="#152" id="152">152</a>
-<a href="#153" id="153">153</a>
-<a href="#154" id="154">154</a>
-<a href="#155" id="155">155</a>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="kw">use </span>std::{
@@ -181,10 +177,6 @@
     </span><span class="kw">pub </span>listeners: HashMap&lt;SocketAddr, TransportType&gt;,
     <span class="doccomment">/// initial peers path
     </span><span class="kw">pub </span>initial_peers: PathBuf,
-    <span class="doccomment">/// max number of in connections
-    </span><span class="kw">pub </span>max_in_connections: usize,
-    <span class="doccomment">/// max number of out connections
-    </span><span class="kw">pub </span>max_out_connections: usize,
     <span class="doccomment">/// after `ask_block_timeout` milliseconds we try to ask a block to another node
     </span><span class="kw">pub </span>ask_block_timeout: MassaTime,
     <span class="doccomment">/// Max known blocks we keep in block_handler
