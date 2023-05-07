@@ -520,7 +520,6 @@ impl InitConnectionHandler for MassaHandshake {
                 warn!("Failed to send message: {}", err);
                 return;
             }
-            std::thread::sleep(Duration::from_millis(200));
             endpoint.shutdown();
         });
         Ok(())
