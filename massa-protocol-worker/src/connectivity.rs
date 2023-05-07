@@ -202,9 +202,13 @@ pub(crate) fn start_connectivity_thread(
                             }
                         }
                     default(Duration::from_millis(5000)) => {
+                        let peers_connected = network_controller.get_active_connections().get_peers_connected();
                         {
                             let peer_db_read = peer_db.read();
                             'iter_peers: for (_, peer_id) in &peer_db_read.index_by_newest {
+                                if peers_connected.contains_key(&peer_id) {
+                                    continue;
+                                }
                                 if let Some(peer_info) = peer_db_read.peers.get(peer_id).and_then(|peer| {
                                     if peer.state == PeerState::Trusted {
                                         Some(peer.clone())
@@ -225,7 +229,7 @@ pub(crate) fn start_connectivity_thread(
                                     let mut category_found = false;
                                     for (name, (ips, infos)) in &peer_categories {
                                         if ips.contains(&canonical_ip) {
-                                            if infos.target_out_connections > network_controller.get_active_connections().get_peers_connected().iter().filter(|(_, (_, connection_type, category))| {
+                                            if infos.target_out_connections > peers_connected.iter().filter(|(_, (_, connection_type, category))| {
                                                 if connection_type == &PeerConnectionType::OUT && let Some(category) = category {
                                                     category == name
                                                 } else {
@@ -240,7 +244,7 @@ pub(crate) fn start_connectivity_thread(
                                         }
                                     }
 
-                                    if !category_found && network_controller.get_active_connections().get_peers_connected().iter().filter(|(_, (_, connection_type, category))| {
+                                    if !category_found && peers_connected.iter().filter(|(_, (_, connection_type, category))| {
                                         connection_type == &PeerConnectionType::OUT && category.is_none()
                                     }).count() >= default_category.target_out_connections {
                                         continue;
