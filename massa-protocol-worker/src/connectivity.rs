@@ -197,7 +197,7 @@ pub(crate) fn start_connectivity_thread(
                                 }
                             }
                         }
-                    default(Duration::from_millis(1000)) => {
+                    default(Duration::from_millis(5000)) => {
                         {
                             let peer_db_read = peer_db.read();
                             'iter_peers: for (_, peer_id) in &peer_db_read.index_by_newest {

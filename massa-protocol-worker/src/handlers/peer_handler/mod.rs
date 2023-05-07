@@ -424,17 +424,14 @@ impl InitConnectionHandler for MassaHandshake {
 
                     // check their signature
                     peer_id.verify_signature(&self_random_hash, &other_signature)?;
-                    Ok((peer_id.clone(), announcement))
+                    Ok((peer_id.clone(), Some(announcement)))
                 }
                 1 => {
                     let (received, id) = self
                         .message_handlers
                         .deserialize_id(&received[offset..], &peer_id)?;
                     self.message_handlers.handle(id, received, &peer_id)?;
-                    Err(PeerNetError::HandshakeError.error(
-                        "Massa Handshake",
-                        Some("Handshake failed received a message that our connection has been refused".to_string()),
-                    ))
+                    Ok((peer_id.clone(), None))
                 }
                 _ => Err(PeerNetError::HandshakeError
                     .error("Massa Handshake", Some("Invalid message id".to_string()))),
@@ -444,7 +441,7 @@ impl InitConnectionHandler for MassaHandshake {
             let mut peer_db_write = self.peer_db.write();
             // if handshake failed, we set the peer state to HandshakeFailed
             match &res {
-                Ok((peer_id, announcement)) => {
+                Ok((peer_id, Some(announcement))) => {
                     info!("Peer connected: {:?}", peer_id);
                     //TODO: Hacky organize better when multiple ip/listeners
                     if !announcement.listeners.is_empty() {
@@ -466,6 +463,12 @@ impl InitConnectionHandler for MassaHandshake {
                             last_announce: announcement.clone(),
                             state: PeerState::Trusted,
                         });
+                }
+                Ok((_peer_id, None)) => {
+                    return Err(PeerNetError::HandshakeError.error(
+                        "Massa Handshake",
+                        Some("Distant peer don't have slot for us.".to_string()),
+                    ))
                 }
                 Err(_) => {
                     peer_db_write.peers.entry(peer_id).and_modify(|info| {
@@ -499,7 +502,7 @@ impl InitConnectionHandler for MassaHandshake {
     ) -> PeerNetResult<()> {
         //TODO: Fix this clone
         let keypair = keypair.clone();
-        let mut endpoint = endpoint.clone();
+        let mut endpoint = endpoint.try_clone()?;
         let db = self.peer_db.clone();
         let serializer = self.peer_mngt_msg_serializer.clone();
         std::thread::spawn(move || {
