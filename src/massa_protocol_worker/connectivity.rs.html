@@ -475,7 +475,7 @@
                         {
                             <span class="kw">let </span>peer_db_read = peer_db.read();
                             <span class="lifetime">&#39;iter_peers</span>: <span class="kw">for </span>(<span class="kw">_</span>, peer_id) <span class="kw">in </span><span class="kw-2">&amp;</span>peer_db_read.index_by_newest {
-                                <span class="kw">if </span>peers_connected.contains_key(<span class="kw-2">&amp;</span>peer_id) {
+                                <span class="kw">if </span>peers_connected.contains_key(peer_id) {
                                     <span class="kw">continue</span>;
                                 }
                                 <span class="kw">if let </span><span class="prelude-val">Some</span>(peer_info) = peer_db_read.peers.get(peer_id).and_then(|peer| {
