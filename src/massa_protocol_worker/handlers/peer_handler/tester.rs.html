@@ -392,6 +392,7 @@
 <a href="#392" id="392">392</a>
 <a href="#393" id="393">393</a>
 <a href="#394" id="394">394</a>
+<a href="#395" id="395">395</a>
 </pre><pre class="rust"><code><span class="kw">use </span>std::{
     collections::HashMap,
     net::{IpAddr, SocketAddr},
@@ -704,6 +705,7 @@
                                                 Duration::from_secs(<span class="number">30</span>)
                                             }
                                         };
+                                        <span class="macro">println!</span>(<span class="string">&quot;AURELIEN: Cooldown for addr {} is {:?}&quot;</span>, ip_canonical, cooldown);
                                         <span class="comment">//TODO: Change it to manage multiple listeners SAFETY: Check above
                                         </span><span class="kw">if let </span><span class="prelude-val">Some</span>(last_tested_time) = db.tested_addresses.get(addr) {
                                             <span class="kw">let </span>last_tested_time = last_tested_time.estimate_instant().expect(<span class="string">&quot;Time went backward&quot;</span>);
