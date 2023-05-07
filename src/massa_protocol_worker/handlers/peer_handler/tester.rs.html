@@ -492,7 +492,7 @@
                         <span class="prelude-val">Some</span>(<span class="macro">format!</span>(<span class="string">&quot;Failed to deserialize version: {}&quot;</span>, err)),
                     )
                 })<span class="question-mark">?</span>;
-            <span class="kw">if </span><span class="self">self</span>.our_version.is_compatible(<span class="kw-2">&amp;</span>version) {
+            <span class="kw">if </span>!<span class="self">self</span>.our_version.is_compatible(<span class="kw-2">&amp;</span>version) {
                 <span class="kw">return </span><span class="prelude-val">Err</span>(PeerNetError::HandshakeError.error(
                     <span class="string">&quot;Massa Handshake&quot;</span>,
                     <span class="prelude-val">Some</span>(<span class="macro">format!</span>(<span class="string">&quot;Received version incompatible: {}&quot;</span>, version)),
