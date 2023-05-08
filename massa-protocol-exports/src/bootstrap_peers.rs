@@ -19,6 +19,13 @@ use peernet::peer_id::PeerId;
 use peernet::transports::TransportType;
 use serde::{Deserialize, Serialize};
 
+/// Peer info provided in bootstrap
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct PeerData {
+    pub listeners: HashMap<SocketAddr, TransportType>,
+    pub category: String,
+}
+
 /// Peers that are transmitted during bootstrap
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct BootstrapPeers(pub Vec<(PeerId, HashMap<SocketAddr, TransportType>)>);
