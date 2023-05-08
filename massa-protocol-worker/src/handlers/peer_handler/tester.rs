@@ -316,9 +316,8 @@ impl Tester {
                                             if last_tested_time.elapsed() < cooldown {
                                                 continue;
                                             }
-                                        } else {
-                                            db.tested_addresses.insert(*addr, now);
                                         }
+                                        db.tested_addresses.insert(*addr, now);
                                         // TODO:  Don't launch test if peer is already connected to us as a normal connection.
                                         // Maybe we need to have a way to still update his last announce timestamp because he is a great peer
                                         if ip_canonical.is_global() && !active_connections.get_peers_connected().iter().any(|(_, (addr, _, _))| addr.ip().to_canonical() == ip_canonical) {
