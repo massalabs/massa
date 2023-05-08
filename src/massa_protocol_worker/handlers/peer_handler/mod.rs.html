@@ -564,6 +564,7 @@
 <a href="#564" id="564">564</a>
 <a href="#565" id="565">565</a>
 <a href="#566" id="566">566</a>
+<a href="#567" id="567">567</a>
 </pre><pre class="rust"><code><span class="kw">use </span>std::cmp::Reverse;
 <span class="kw">use </span>std::net::IpAddr;
 <span class="kw">use </span>std::{collections::HashMap, net::SocketAddr, thread::JoinHandle, time::Duration};
@@ -576,6 +577,7 @@
 <span class="kw">use </span>massa_models::version::{VersionDeserializer, VersionSerializer};
 <span class="kw">use </span>massa_protocol_exports::{BootstrapPeers, ProtocolConfig};
 <span class="kw">use </span>massa_serialization::{DeserializeError, Deserializer, Serializer};
+<span class="kw">use </span>peernet::types::PUBLIC_KEY_SIZE_BYTES;
 <span class="kw">use </span>rand::{rngs::StdRng, RngCore, SeedableRng};
 
 <span class="kw">use </span>peernet::messages::MessagesSerializer;
@@ -887,7 +889,7 @@
                     <span class="prelude-val">Some</span>(<span class="string">&quot;Failed to deserialize PeerId&quot;</span>.to_string()),
                 )
             })<span class="question-mark">?</span>)<span class="question-mark">?</span>;
-        offset += <span class="number">32</span>;
+        offset += PUBLIC_KEY_SIZE_BYTES;
         {
             <span class="kw">let </span>peer_db_read = <span class="self">self</span>.peer_db.read();
             <span class="kw">if let </span><span class="prelude-val">Some</span>(info) = peer_db_read.peers.get(<span class="kw-2">&amp;</span>peer_id) {

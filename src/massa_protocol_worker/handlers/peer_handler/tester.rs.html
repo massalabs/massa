@@ -391,6 +391,7 @@
 <a href="#391" id="391">391</a>
 <a href="#392" id="392">392</a>
 <a href="#393" id="393">393</a>
+<a href="#394" id="394">394</a>
 </pre><pre class="rust"><code><span class="kw">use </span>std::{
     collections::HashMap,
     net::{IpAddr, SocketAddr},
@@ -644,6 +645,7 @@
             );
 
             <span class="kw">let </span><span class="kw-2">mut </span>network_manager = PeerNetManager::new(config);
+            <span class="kw">let </span>protocol_config = protocol_config.clone();
             <span class="kw">loop </span>{
                 <span class="macro">crossbeam::select! </span>{
                     recv(receiver) -&gt; res =&gt; {
@@ -729,7 +731,7 @@
                                             <span class="macro">info!</span>(<span class="string">&quot;testing peer {} listener addr: {}&quot;</span>, <span class="kw-2">&amp;</span>listener.<span class="number">0</span>, <span class="kw-2">&amp;</span>addr);
                                             <span class="kw">let </span>_res =  network_manager.try_connect(
                                                 <span class="kw-2">*</span>addr,
-                                                Duration::from_millis(<span class="number">1000</span>),
+                                                protocol_config.timeout_connection.to_duration(),
                                                 <span class="kw-2">&amp;</span>OutConnectionConfig::Tcp(Box::new(TcpOutConnectionConfig::new(protocol_config.read_write_limit_bytes_per_second / <span class="number">10</span>, Duration::from_millis(<span class="number">100</span>)))),
                                             );
                                         }
@@ -771,7 +773,7 @@
                         <span class="macro">info!</span>(<span class="string">&quot;testing listener addr: {}&quot;</span>, <span class="kw-2">&amp;</span>listener);
                         <span class="kw">let </span>_res =  network_manager.try_connect(
                             listener,
-                            Duration::from_millis(<span class="number">1000</span>),
+                            protocol_config.timeout_connection.to_duration(),
                             <span class="kw-2">&amp;</span>OutConnectionConfig::Tcp(Box::new(TcpOutConnectionConfig::new(protocol_config.read_write_limit_bytes_per_second / <span class="number">10</span>, Duration::from_millis(<span class="number">100</span>)))),
                         );
                     }

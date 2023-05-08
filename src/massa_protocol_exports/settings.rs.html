@@ -152,6 +152,11 @@
 <a href="#152" id="152">152</a>
 <a href="#153" id="153">153</a>
 <a href="#154" id="154">154</a>
+<a href="#155" id="155">155</a>
+<a href="#156" id="156">156</a>
+<a href="#157" id="157">157</a>
+<a href="#158" id="158">158</a>
+<a href="#159" id="159">159</a>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="kw">use </span>std::{
@@ -168,7 +173,8 @@
 <span class="attr">#[derive(Debug, Deserialize, Clone, Copy)]
 </span><span class="kw">pub struct </span>PeerCategoryInfo {
     <span class="kw">pub </span>target_out_connections: usize,
-    <span class="kw">pub </span>max_in_connections: usize,
+    <span class="kw">pub </span>max_in_connections_pre_handshake: usize,
+    <span class="kw">pub </span>max_in_connections_post_handshake: usize,
     <span class="kw">pub </span>max_in_connections_per_ip: usize,
 }
 
@@ -293,6 +299,10 @@
     </span><span class="kw">pub </span>max_size_listeners_per_peer: u64,
     <span class="doccomment">/// Last start period
     </span><span class="kw">pub </span>last_start_period: u64,
+    <span class="doccomment">/// try connection timer
+    </span><span class="kw">pub </span>try_connection_timer: MassaTime,
+    <span class="doccomment">/// Timeout connection
+    </span><span class="kw">pub </span>timeout_connection: MassaTime,
     <span class="doccomment">/// Number of bytes per second that can be read/write in a connection (should be a 10 multiplier)
     </span><span class="kw">pub </span>read_write_limit_bytes_per_second: u128,
     <span class="doccomment">/// Optional routable ip
