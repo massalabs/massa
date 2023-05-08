@@ -565,6 +565,10 @@
 <a href="#565" id="565">565</a>
 <a href="#566" id="566">566</a>
 <a href="#567" id="567">567</a>
+<a href="#568" id="568">568</a>
+<a href="#569" id="569">569</a>
+<a href="#570" id="570">570</a>
+<a href="#571" id="571">571</a>
 </pre><pre class="rust"><code><span class="kw">use </span>std::cmp::Reverse;
 <span class="kw">use </span>std::net::IpAddr;
 <span class="kw">use </span>std::{collections::HashMap, net::SocketAddr, thread::JoinHandle, time::Duration};
@@ -1052,10 +1056,14 @@
                         });
                 }
                 <span class="prelude-val">Ok</span>((_peer_id, <span class="prelude-val">None</span>)) =&gt; {
+                    peer_db_write.peers.entry(peer_id).and_modify(|info| {
+                        <span class="comment">//TODO: Add the peerdb but for now impossible as we don&#39;t have announcement and we need one to place in peerdb
+                        </span>info.state = PeerState::HandshakeFailed;
+                    });
                     <span class="kw">return </span><span class="prelude-val">Err</span>(PeerNetError::HandshakeError.error(
                         <span class="string">&quot;Massa Handshake&quot;</span>,
                         <span class="prelude-val">Some</span>(<span class="string">&quot;Distant peer don&#39;t have slot for us.&quot;</span>.to_string()),
-                    ))
+                    ));
                 }
                 <span class="prelude-val">Err</span>(<span class="kw">_</span>) =&gt; {
                     peer_db_write.peers.entry(peer_id).and_modify(|info| {
