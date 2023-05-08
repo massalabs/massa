@@ -485,10 +485,14 @@ impl InitConnectionHandler for MassaHandshake {
                         });
                 }
                 Ok((_peer_id, None)) => {
+                    peer_db_write.peers.entry(peer_id).and_modify(|info| {
+                        //TODO: Add the peerdb but for now impossible as we don't have announcement and we need one to place in peerdb
+                        info.state = PeerState::HandshakeFailed;
+                    });
                     return Err(PeerNetError::HandshakeError.error(
                         "Massa Handshake",
                         Some("Distant peer don't have slot for us.".to_string()),
-                    ))
+                    ));
                 }
                 Err(_) => {
                     peer_db_write.peers.entry(peer_id).and_modify(|info| {
