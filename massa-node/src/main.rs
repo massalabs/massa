@@ -519,6 +519,8 @@ async fn launch(
         max_size_peers_announcement: MAX_PEERS_IN_ANNOUNCEMENT_LIST,
         read_write_limit_bytes_per_second: SETTINGS.protocol.read_write_limit_bytes_per_second
             as u128,
+        try_connection_timer: SETTINGS.protocol.try_connection_timer,
+        timeout_connection: SETTINGS.protocol.timeout_connection,
         routable_ip: SETTINGS
             .protocol
             .routable_ip

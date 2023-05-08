@@ -192,6 +192,10 @@
     operation_announcement_interval = 300
     # max number of operation per message, same as network param but can be smaller
     max_operations_per_message = 1024
+    # Number of millis seconds between each try out connections
+    try_connection_timer = 5000
+    # Number of millis seconds that create a timeout for out connections
+    timeout_connection = 1000
     # time threshold after which operation are not propagated
     max_operations_propagation_time = 32000
     # time threshold after which endorsement are not propagated
@@ -199,10 +203,10 @@
     # number of thread tester
     thread_tester_count = 5
     # Peer default category limits
-    default_category_info = { target_out_connections = 10, max_in_connections_per_ip = 2, max_in_connections = 15}
+    default_category_info = { target_out_connections = 10, max_in_connections_per_ip = 2, max_in_connections_pre_handshake = 100, max_in_connections_post_handshake = 15}
     # Peer categories limits
     [protocol.peers_categories]
-    Bootstrap = { target_out_connections = 1, max_in_connections_per_ip = 1, max_in_connections = 1}
+    Bootstrap = { target_out_connections = 1, max_in_connections_per_ip = 1, max_in_connections_pre_handshake = 8, max_in_connections_post_handshake = 1}
 
 [network]
 

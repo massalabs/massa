@@ -10,6 +10,7 @@ use crossbeam::{
 use massa_models::version::{VersionDeserializer, VersionSerializer};
 use massa_protocol_exports::{BootstrapPeers, ProtocolConfig};
 use massa_serialization::{DeserializeError, Deserializer, Serializer};
+use peernet::types::PUBLIC_KEY_SIZE_BYTES;
 use rand::{rngs::StdRng, RngCore, SeedableRng};
 
 use peernet::messages::MessagesSerializer;
@@ -321,7 +322,7 @@ impl InitConnectionHandler for MassaHandshake {
                     Some("Failed to deserialize PeerId".to_string()),
                 )
             })?)?;
-        offset += 32;
+        offset += PUBLIC_KEY_SIZE_BYTES;
         {
             let peer_db_read = self.peer_db.read();
             if let Some(info) = peer_db_read.peers.get(&peer_id) {

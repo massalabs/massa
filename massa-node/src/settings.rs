@@ -227,6 +227,10 @@ pub struct ProtocolSettings {
     pub thread_tester_count: u8,
     /// Number of bytes we can read/write by seconds in a connection (must be a 10 multiple)
     pub read_write_limit_bytes_per_second: u64,
+    /// try connection timer
+    pub try_connection_timer: MassaTime,
+    /// Timeout connection
+    pub timeout_connection: MassaTime,
     /// Peers limits per category
     pub peers_categories: HashMap<String, PeerCategoryInfo>,
     /// Limits for default category

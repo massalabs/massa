@@ -82,7 +82,7 @@ pub(crate) fn start_connectivity_thread(
             std::thread::sleep(Duration::from_millis(100));
 
             // Create cache outside of the op handler because it could be used by other handlers
-            let total_in_slots = config.peers_categories.values().map(|v| v.max_in_connections).sum::<usize>() + config.default_category_info.max_in_connections;
+            let total_in_slots = config.peers_categories.values().map(|v| v.max_in_connections_post_handshake).sum::<usize>() + config.default_category_info.max_in_connections_post_handshake;
             let total_out_slots = config.peers_categories.values().map(| v| v.target_out_connections).sum::<usize>() + config.default_category_info.target_out_connections;
             let operation_cache = Arc::new(RwLock::new(OperationCache::new(
                 NonZeroUsize::new(config.max_known_ops_size).unwrap(),
@@ -201,7 +201,7 @@ pub(crate) fn start_connectivity_thread(
                                 }
                             }
                         }
-                    default(Duration::from_millis(5000)) => {
+                    default(config.try_connection_timer.to_duration()) => {
                         let peers_connected = network_controller.get_active_connections().get_peers_connected();
                         {
                             let peer_db_read = peer_db.read();
@@ -251,7 +251,7 @@ pub(crate) fn start_connectivity_thread(
                                     }
                                     info!("Trying to connect to addr {} of peer {}", addr, peer_id);
                                     // We only manage TCP for now
-                                    if let Err(err) = network_controller.try_connect(*addr, Duration::from_millis(1000), &OutConnectionConfig::Tcp(Box::new(TcpOutConnectionConfig::new(config.read_write_limit_bytes_per_second / 10, Duration::from_millis(100))))) {
+                                    if let Err(err) = network_controller.try_connect(*addr, config.timeout_connection.to_duration(), &OutConnectionConfig::Tcp(Box::new(TcpOutConnectionConfig::new(config.read_write_limit_bytes_per_second / 10, Duration::from_millis(100))))) {
                                         warn!("Failed to connect to peer {:?}: {:?}", addr, err);
                                     }
                                     break;

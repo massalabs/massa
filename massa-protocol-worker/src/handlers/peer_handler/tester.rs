@@ -251,6 +251,7 @@ impl Tester {
             );
 
             let mut network_manager = PeerNetManager::new(config);
+            let protocol_config = protocol_config.clone();
             loop {
                 crossbeam::select! {
                     recv(receiver) -> res => {
@@ -336,7 +337,7 @@ impl Tester {
                                             info!("testing peer {} listener addr: {}", &listener.0, &addr);
                                             let _res =  network_manager.try_connect(
                                                 *addr,
-                                                Duration::from_millis(1000),
+                                                protocol_config.timeout_connection.to_duration(),
                                                 &OutConnectionConfig::Tcp(Box::new(TcpOutConnectionConfig::new(protocol_config.read_write_limit_bytes_per_second / 10, Duration::from_millis(100)))),
                                             );
                                         }
@@ -378,7 +379,7 @@ impl Tester {
                         info!("testing listener addr: {}", &listener);
                         let _res =  network_manager.try_connect(
                             listener,
-                            Duration::from_millis(1000),
+                            protocol_config.timeout_connection.to_duration(),
                             &OutConnectionConfig::Tcp(Box::new(TcpOutConnectionConfig::new(protocol_config.read_write_limit_bytes_per_second / 10, Duration::from_millis(100)))),
                         );
                     }

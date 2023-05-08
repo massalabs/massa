@@ -14,7 +14,8 @@ use serde::Deserialize;
 #[derive(Debug, Deserialize, Clone, Copy)]
 pub struct PeerCategoryInfo {
     pub target_out_connections: usize,
-    pub max_in_connections: usize,
+    pub max_in_connections_pre_handshake: usize,
+    pub max_in_connections_post_handshake: usize,
     pub max_in_connections_per_ip: usize,
 }
 
@@ -139,6 +140,10 @@ pub struct ProtocolConfig {
     pub max_size_listeners_per_peer: u64,
     /// Last start period
     pub last_start_period: u64,
+    /// try connection timer
+    pub try_connection_timer: MassaTime,
+    /// Timeout connection
+    pub timeout_connection: MassaTime,
     /// Number of bytes per second that can be read/write in a connection (should be a 10 multiplier)
     pub read_write_limit_bytes_per_second: u128,
     /// Optional routable ip
