@@ -57,7 +57,6 @@ impl TesterHandshake {
 impl InitConnectionHandler for TesterHandshake {
     fn perform_handshake<MassaMessagesHandler: PeerNetMessagesHandler>(
         &mut self,
-        //TODO: Test if our node id is sent
         _: &KeyPair,
         endpoint: &mut Endpoint,
         _: &HashMap<SocketAddr, TransportType>,
