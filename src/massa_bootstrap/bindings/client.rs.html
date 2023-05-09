@@ -202,7 +202,6 @@
 <a href="#202" id="202">202</a>
 <a href="#203" id="203">203</a>
 <a href="#204" id="204">204</a>
-<a href="#205" id="205">205</a>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="kw">use </span><span class="kw">crate</span>::bindings::BindingReadExact;
@@ -213,10 +212,11 @@
 };
 <span class="kw">use </span><span class="kw">crate</span>::settings::BootstrapClientConfig;
 <span class="kw">use </span>massa_hash::Hash;
+<span class="kw">use </span>massa_models::config::SIGNATURE_DESER_SIZE;
 <span class="kw">use </span>massa_models::serialization::{DeserializeMinBEInt, SerializeMinBEInt};
 <span class="kw">use </span>massa_models::version::{Version, VersionSerializer};
 <span class="kw">use </span>massa_serialization::{DeserializeError, Deserializer, Serializer};
-<span class="kw">use </span>massa_signature::{PublicKey, Signature, SIGNATURE_SIZE_BYTES};
+<span class="kw">use </span>massa_signature::{PublicKey, Signature};
 <span class="kw">use </span>rand::{rngs::StdRng, RngCore, SeedableRng};
 <span class="kw">use </span>std::time::Instant;
 <span class="kw">use </span>std::{io::Write, net::TcpStream, time::Duration};
@@ -281,21 +281,19 @@
         <span class="kw">let </span>deadline = duration.map(|d| Instant::now() + d);
 
         <span class="comment">// read the known-len component of the message
-        </span><span class="kw">let </span>known_len = SIGNATURE_SIZE_BYTES + <span class="self">self</span>.size_field_len;
+        </span><span class="kw">let </span>known_len = SIGNATURE_DESER_SIZE + <span class="self">self</span>.size_field_len;
         <span class="kw">let </span><span class="kw-2">mut </span>known_len_buff = <span class="macro">vec!</span>[<span class="number">0u8</span>; known_len];
         <span class="comment">// TODO: handle a partial read
         </span><span class="self">self</span>.read_exact_timeout(<span class="kw-2">&amp;mut </span>known_len_buff, deadline)
             .map_err(|(err, _consumed)| err)<span class="question-mark">?</span>;
 
         <span class="comment">// construct the signature
-        </span><span class="kw">let </span>sig_array = known_len_buff.as_slice()[<span class="number">0</span>..SIGNATURE_SIZE_BYTES]
-            .try_into()
-            .expect(<span class="string">&quot;logic error in array manipulations&quot;</span>);
-        <span class="kw">let </span>sig = Signature::from_bytes(<span class="kw-2">&amp;</span>sig_array)<span class="question-mark">?</span>;
+        </span><span class="kw">let </span>sig_array = <span class="kw-2">&amp;</span>known_len_buff.as_slice()[<span class="number">0</span>..SIGNATURE_DESER_SIZE];
+        <span class="kw">let </span>sig = Signature::from_bytes(sig_array)<span class="question-mark">?</span>;
 
         <span class="comment">// construct the message len from the peek
         </span><span class="kw">let </span>msg_len = u32::from_be_bytes_min(
-            <span class="kw-2">&amp;</span>known_len_buff[SIGNATURE_SIZE_BYTES..],
+            <span class="kw-2">&amp;</span>known_len_buff[SIGNATURE_DESER_SIZE..],
             <span class="self">self</span>.cfg.max_bootstrap_message_size,
         )<span class="question-mark">?
         </span>.<span class="number">0</span>;

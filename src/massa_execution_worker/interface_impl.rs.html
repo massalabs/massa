@@ -813,6 +813,19 @@
 <a href="#813" id="813">813</a>
 <a href="#814" id="814">814</a>
 <a href="#815" id="815">815</a>
+<a href="#816" id="816">816</a>
+<a href="#817" id="817">817</a>
+<a href="#818" id="818">818</a>
+<a href="#819" id="819">819</a>
+<a href="#820" id="820">820</a>
+<a href="#821" id="821">821</a>
+<a href="#822" id="822">822</a>
+<a href="#823" id="823">823</a>
+<a href="#824" id="824">824</a>
+<a href="#825" id="825">825</a>
+<a href="#826" id="826">826</a>
+<a href="#827" id="827">827</a>
+<a href="#828" id="828">828</a>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="doccomment">//! Implementation of the interface between massa-execution-worker and massa-sc-runtime.
@@ -884,7 +897,11 @@
         operation_datastore: <span class="prelude-ty">Option</span>&lt;Datastore&gt;,
     ) -&gt; InterfaceImpl {
         <span class="kw">use </span>massa_ledger_exports::{LedgerEntry, SetUpdateOrDelete};
+        <span class="kw">use </span>massa_models::config::{
+            MIP_STORE_STATS_BLOCK_CONSIDERED, MIP_STORE_STATS_COUNTERS_MAX,
+        };
         <span class="kw">use </span>massa_module_cache::{config::ModuleCacheConfig, controller::ModuleCache};
+        <span class="kw">use </span>massa_versioning::versioning::{MipStatsConfig, MipStore};
         <span class="kw">use </span>parking_lot::RwLock;
 
         <span class="kw">let </span>vesting_file = <span class="kw">super</span>::tests::get_initials_vesting(<span class="bool-val">false</span>);
@@ -910,12 +927,21 @@
             .unwrap(),
         );
 
+        <span class="comment">// create an empty default store
+        </span><span class="kw">let </span>mip_stats_config = MipStatsConfig {
+            block_count_considered: MIP_STORE_STATS_BLOCK_CONSIDERED,
+            counters_max: MIP_STORE_STATS_COUNTERS_MAX,
+        };
+        <span class="kw">let </span>mip_store =
+            MipStore::try_from(([], mip_stats_config)).expect(<span class="string">&quot;Cannot create an empty MIP store&quot;</span>);
+
         <span class="kw">let </span><span class="kw-2">mut </span>execution_context = ExecutionContext::new(
             config.clone(),
             final_state,
             Default::default(),
             module_cache,
             vesting_manager,
+            mip_store,
         );
         execution_context.stack = <span class="macro">vec!</span>[ExecutionStackElement {
             address: sender_addr,

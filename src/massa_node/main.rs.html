@@ -1134,6 +1134,13 @@
 <a href="#1134" id="1134">1134</a>
 <a href="#1135" id="1135">1135</a>
 <a href="#1136" id="1136">1136</a>
+<a href="#1137" id="1137">1137</a>
+<a href="#1138" id="1138">1138</a>
+<a href="#1139" id="1139">1139</a>
+<a href="#1140" id="1140">1140</a>
+<a href="#1141" id="1141">1141</a>
+<a href="#1142" id="1142">1142</a>
+<a href="#1143" id="1143">1143</a>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="attr">#![doc = <span class="macro">include_str!</span>(<span class="string">&quot;../../README.md&quot;</span>)]
@@ -1210,7 +1217,7 @@
 <span class="kw">use </span>massa_protocol_worker::{create_protocol_controller, start_protocol_controller};
 <span class="kw">use </span>massa_storage::Storage;
 <span class="kw">use </span>massa_time::MassaTime;
-<span class="kw">use </span>massa_versioning_worker::versioning::{MipStatsConfig, MipStore};
+<span class="kw">use </span>massa_versioning::versioning::{MipStatsConfig, MipStore};
 <span class="kw">use </span>massa_wallet::Wallet;
 <span class="kw">use </span>parking_lot::RwLock;
 <span class="kw">use </span>peernet::transports::TransportType;
@@ -1724,6 +1731,7 @@
         pool_controller.clone(),
         shared_storage.clone(),
         protocol_channels,
+        mip_store.clone(),
     )
     .expect(<span class="string">&quot;could not start protocol controller&quot;</span>);
 
@@ -1747,7 +1755,12 @@
         protocol: protocol_controller.clone(),
         storage: shared_storage.clone(),
     };
-    <span class="kw">let </span>factory_manager = start_factory(factory_config, node_wallet.clone(), factory_channels);
+    <span class="kw">let </span>factory_manager = start_factory(
+        factory_config,
+        node_wallet.clone(),
+        factory_channels,
+        mip_store.clone(),
+    );
 
     <span class="kw">let </span>bootstrap_manager = bootstrap_config.listen_addr.map(|addr| {
         <span class="kw">let </span>(waker, listener) = BootstrapTcpListener::new(<span class="kw-2">&amp;</span>addr).unwrap_or_else(|<span class="kw">_</span>| {
@@ -1942,6 +1955,7 @@
         <span class="kw-2">*</span>VERSION,
         node_id,
         shared_storage.clone(),
+        mip_store.clone(),
     );
     <span class="kw">let </span>api_public_handle = api_public
         .serve(<span class="kw-2">&amp;</span>SETTINGS.api.bind_public, <span class="kw-2">&amp;</span>api_config)

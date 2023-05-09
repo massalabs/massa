@@ -220,17 +220,12 @@
 <a href="#220" id="220">220</a>
 <a href="#221" id="221">221</a>
 <a href="#222" id="222">222</a>
-<a href="#223" id="223">223</a>
-</pre><pre class="rust"><code><span class="kw">use </span>std::collections::HashMap;
-<span class="kw">use </span>std::net::SocketAddr;
-<span class="kw">use </span>std::ops::Bound::Included;
-
+</pre><pre class="rust"><code><span class="kw">use </span>massa_models::config::PUBLIC_KEY_DESER_SIZE;
 <span class="kw">use </span>massa_models::serialization::{IpAddrDeserializer, IpAddrSerializer};
 <span class="kw">use </span>massa_serialization::{
     Deserializer, SerializeError, Serializer, U16VarIntDeserializer, U16VarIntSerializer,
     U32VarIntDeserializer, U32VarIntSerializer,
 };
-<span class="kw">use </span>massa_signature::PUBLIC_KEY_SIZE_BYTES;
 <span class="kw">use </span>nom::{
     bytes::complete::take,
     error::{context, ContextError, ParseError},
@@ -241,6 +236,9 @@
 <span class="kw">use </span>peernet::peer_id::PeerId;
 <span class="kw">use </span>peernet::transports::TransportType;
 <span class="kw">use </span>serde::{Deserialize, Serialize};
+<span class="kw">use </span>std::collections::HashMap;
+<span class="kw">use </span>std::net::SocketAddr;
+<span class="kw">use </span>std::ops::Bound::Included;
 
 <span class="doccomment">/// Peers that are transmitted during bootstrap
 </span><span class="attr">#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -278,12 +276,12 @@
     /// use std::collections::HashMap;
     /// use std::str::FromStr;
     ///
-    /// let keypair1 = KeyPair::generate();
+    /// let keypair1 = KeyPair::generate(0).unwrap();
     /// let mut peers = vec![];
     /// let mut listeners1 = HashMap::default();
     /// listeners1.insert(&quot;127.0.0.1:8080&quot;.parse().unwrap(), TransportType::Tcp);
     /// peers.push((PeerId::from_public_key(keypair1.get_public_key()), listeners1));
-    /// let mut keypair2 = KeyPair::generate();
+    /// let mut keypair2 = KeyPair::generate(0).unwrap();
     /// let mut listeners2 = HashMap::default();
     /// listeners2.insert(&quot;[::1]:8080&quot;.parse().unwrap(), TransportType::Tcp);
     /// peers.push((PeerId::from_public_key(keypair1.get_public_key()), listeners2));
@@ -353,12 +351,12 @@
     /// use std::collections::HashMap;
     /// use std::str::FromStr;
     ///
-    /// let keypair1 = KeyPair::generate();
+    /// let keypair1 = KeyPair::generate(0).unwrap();
     /// let mut peers = vec![];
     /// let mut listeners1 = HashMap::default();
     /// listeners1.insert(&quot;127.0.0.1:8080&quot;.parse().unwrap(), TransportType::Tcp);
     /// peers.push((PeerId::from_public_key(keypair1.get_public_key()), listeners1));
-    /// let mut keypair2 = KeyPair::generate();
+    /// let mut keypair2 = KeyPair::generate(0).unwrap();
     /// let mut listeners2 = HashMap::default();
     /// listeners2.insert(&quot;[::1]:8080&quot;.parse().unwrap(), TransportType::Tcp);
     /// peers.push((PeerId::from_public_key(keypair1.get_public_key()), listeners2));
@@ -386,7 +384,7 @@
                         <span class="prelude-val">Ok</span>((
                             rest,
                             PeerId::from_bytes(
-                                peer_id[..PUBLIC_KEY_SIZE_BYTES].try_into().map_err(|<span class="kw">_</span>| {
+                                peer_id[..PUBLIC_KEY_DESER_SIZE].try_into().map_err(|<span class="kw">_</span>| {
                                     nom::Err::Error(ParseError::from_error_kind(
                                         input,
                                         nom::error::ErrorKind::Count,

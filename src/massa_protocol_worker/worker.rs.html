@@ -221,6 +221,15 @@
 <a href="#221" id="221">221</a>
 <a href="#222" id="222">222</a>
 <a href="#223" id="223">223</a>
+<a href="#224" id="224">224</a>
+<a href="#225" id="225">225</a>
+<a href="#226" id="226">226</a>
+<a href="#227" id="227">227</a>
+<a href="#228" id="228">228</a>
+<a href="#229" id="229">229</a>
+<a href="#230" id="230">230</a>
+<a href="#231" id="231">231</a>
+<a href="#232" id="232">232</a>
 </pre><pre class="rust"><code><span class="kw">use </span>crossbeam::channel::{bounded, Receiver, Sender};
 <span class="kw">use </span>massa_consensus_exports::ConsensusController;
 <span class="kw">use </span>massa_models::node::NodeId;
@@ -231,6 +240,9 @@
 <span class="kw">use </span>massa_serialization::U64VarIntDeserializer;
 <span class="kw">use </span>massa_signature::KeyPair;
 <span class="kw">use </span>massa_storage::Storage;
+<span class="kw">use </span>massa_versioning::{
+    keypair_factory::KeyPairFactory, versioning::MipStore, versioning_factory::VersioningFactory,
+};
 <span class="kw">use </span>parking_lot::RwLock;
 <span class="kw">use </span>peernet::{
     config::PeerNetConfiguration, network_manager::PeerNetManager, types::KeyPair <span class="kw">as </span>PeerNetKeyPair,
@@ -367,6 +379,7 @@
     pool_controller: Box&lt;<span class="kw">dyn </span>PoolController&gt;,
     storage: Storage,
     protocol_channels: ProtocolChannels,
+    mip_store: MipStore,
 ) -&gt; <span class="prelude-ty">Result</span>&lt;(Box&lt;<span class="kw">dyn </span>ProtocolManager&gt;, KeyPair, NodeId), ProtocolError&gt; {
     <span class="macro">debug!</span>(<span class="string">&quot;starting protocol controller&quot;</span>);
     <span class="kw">let </span>peer_db = Arc::new(RwLock::new(PeerDB::default()));
@@ -402,7 +415,11 @@
         serde_json::from_slice::&lt;KeyPair&gt;(keypair_bs58_check_encoded.as_bytes())<span class="question-mark">?
     </span>} <span class="kw">else </span>{
         <span class="comment">// node file does not exist: generate the key and save it
-        </span><span class="kw">let </span>keypair = KeyPair::generate();
+        // MERGE TODO
+        </span><span class="kw">let </span>keypair_factory = KeyPairFactory {
+            mip_store: mip_store.clone(),
+        };
+        <span class="kw">let </span>keypair = keypair_factory.create(<span class="kw-2">&amp;</span>(), <span class="prelude-val">None</span>)<span class="question-mark">?</span>;
         <span class="kw">if let </span><span class="prelude-val">Err</span>(e) = std::fs::write(<span class="kw-2">&amp;</span>config.keypair_file, serde_json::to_string(<span class="kw-2">&amp;</span>keypair)<span class="question-mark">?</span>) {
             <span class="macro">warn!</span>(<span class="string">&quot;could not generate node key file: {}&quot;</span>, e);
         }
@@ -411,7 +428,7 @@
 
     <span class="kw">let </span>peernet_keypair = PeerNetKeyPair::from_str(<span class="kw-2">&amp;</span>keypair.to_string()).unwrap();
     peernet_config.self_keypair = peernet_keypair.clone();
-    <span class="comment">//TODO: Add the rest of the config
+    <span class="comment">// TODO: Add the rest of the config
     </span>peernet_config.max_in_connections = config.max_in_connections;
     peernet_config.max_out_connections = config.max_out_connections;
 
@@ -434,6 +451,7 @@
         storage,
         protocol_channels,
         message_handlers,
+        mip_store,
     )<span class="question-mark">?</span>;
 
     <span class="kw">let </span>manager = ProtocolManagerImpl::new(connectivity_thread_handle);
