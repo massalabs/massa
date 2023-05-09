@@ -570,7 +570,6 @@ impl MipStoreRaw {
         let mut has_error: Option<UpdateWithError> = None;
 
         for (v_info, v_state) in store_raw.store.iter() {
-
             if !v_state.is_coherent_with(v_info) {
                 // As soon as we found one non coherent state we abort the merge
                 has_error = Some(UpdateWithError::NonCoherent(
@@ -766,7 +765,7 @@ impl<const N: usize> TryFrom<([(MipInfo, MipState); N], MipStatsConfig)> for Mip
             Ok((_updated, mut added)) => {
                 store.store.append(&mut added);
                 Ok(store)
-            },
+            }
             Err(_) => Err(()),
         }
     }
@@ -1309,7 +1308,6 @@ mod test {
 
     #[test]
     fn test_update_with_unknown() {
-
         // Test update_with with unknown MipComponent
 
         // data
@@ -1318,11 +1316,7 @@ mod test {
             counters_max: MIP_STORE_STATS_COUNTERS_MAX,
         };
 
-        let mut mip_store_raw_1 = MipStoreRaw::try_from((
-            [],
-            mip_stats_config.clone(),
-        ))
-            .unwrap();
+        let mut mip_store_raw_1 = MipStoreRaw::try_from(([], mip_stats_config.clone())).unwrap();
 
         let mi_1 = MipInfo {
             name: "MIP-0002".to_string(),
@@ -1335,9 +1329,7 @@ mod test {
         let ms_1 = advance_state_until(ComponentState::defined(), &mi_1);
         assert_eq!(ms_1, ComponentState::defined());
         let mip_store_raw_2 = MipStoreRaw {
-            store: BTreeMap::from([
-                (mi_1.clone(), ms_1.clone()),
-            ]),
+            store: BTreeMap::from([(mi_1.clone(), ms_1.clone())]),
             stats: MipStoreStats::new(mip_stats_config.clone()),
         };
 
