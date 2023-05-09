@@ -20,19 +20,12 @@ use serde::{
 };
 use std::str::FromStr;
 use std::{borrow::Cow, cmp::Ordering, hash::Hasher, ops::Bound::Included};
-
 use transition::Versioned;
 
 #[allow(missing_docs)]
-/// A versioned KeyPair used for signature and decryption
+/// versioned KeyPair used for signature and decryption
 #[transition::versioned(versions("0", "1"))]
 pub struct KeyPair(ed25519_dalek::Keypair);
-
-#[transition::impl_version(versions("0", "1"), structures("KeyPair"))]
-impl KeyPair {
-    /// Size of a keypair
-    pub const SECRET_KEY_BYTES_SIZE: usize = ed25519_dalek::SECRET_KEY_LENGTH;
-}
 
 impl Clone for KeyPair {
     fn clone(&self) -> Self {
@@ -42,8 +35,6 @@ impl Clone for KeyPair {
         }
     }
 }
-
-const SECRET_PREFIX: char = 'S';
 
 impl std::fmt::Display for KeyPair {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
@@ -59,6 +50,8 @@ impl std::fmt::Debug for KeyPair {
         write!(f, "{}", self)
     }
 }
+
+const SECRET_PREFIX: char = 'S';
 
 impl FromStr for KeyPair {
     type Err = MassaSignatureError;
@@ -92,13 +85,6 @@ impl FromStr for KeyPair {
                 s
             ))),
         }
-    }
-}
-
-#[transition::impl_version(versions("0", "1"), structures("KeyPair"))]
-impl KeyPair {
-    pub fn get_version(&self) -> u64 {
-        Self::VERSION
     }
 }
 
@@ -149,6 +135,14 @@ impl KeyPair {
         match self {
             KeyPair::KeyPairV0(keypair) => keypair.sign(hash).map(Signature::SignatureV0),
             KeyPair::KeyPairV1(keypair) => keypair.sign(hash).map(Signature::SignatureV1),
+        }
+    }
+
+    /// Return the total length after serialization
+    pub fn get_ser_len(&self) -> usize {
+        match self {
+            KeyPair::KeyPairV0(keypair) => keypair.get_ser_len(),
+            KeyPair::KeyPairV1(keypair) => keypair.get_ser_len(),
         }
     }
 
@@ -235,6 +229,40 @@ impl std::fmt::Display for KeyPair {
     }
 }
 
+#[transition::impl_version(versions("0", "1"), structures("KeyPair"))]
+impl KeyPair {
+    pub const SECRET_KEY_BYTES_SIZE: usize = ed25519_dalek::SECRET_KEY_LENGTH;
+
+    /// Return the current version keypair
+    pub fn get_version(&self) -> u64 {
+        Self::VERSION
+    }
+
+    /// Return the total length after serialization
+    pub fn get_ser_len(&self) -> usize {
+        Self::VERSION_VARINT_SIZE_BYTES + Self::SECRET_KEY_BYTES_SIZE
+    }
+
+    /// Return the bytes representing the keypair (should be a reference in the future)
+    ///
+    /// # Example
+    /// ```
+    /// # use massa_signature::KeyPair;
+    /// let keypair = KeyPair::generate(0).unwrap();
+    /// let bytes = keypair.to_bytes();
+    /// ```
+    pub fn to_bytes(&self) -> Vec<u8> {
+        let version_serializer = U64VarIntSerializer::new();
+        let mut bytes: Vec<u8> =
+            Vec::with_capacity(Self::VERSION_VARINT_SIZE_BYTES + Self::SECRET_KEY_BYTES_SIZE);
+        version_serializer
+            .serialize(&Self::VERSION, &mut bytes)
+            .unwrap();
+        bytes.extend_from_slice(&self.0.secret.to_bytes());
+        bytes
+    }
+}
+
 #[transition::impl_version(versions("0", "1"), structures("KeyPair", "Signature", "PublicKey"))]
 impl KeyPair {
     /// Returns the Signature produced by signing
@@ -303,27 +331,6 @@ impl KeyPair {
             public: ed25519_dalek::PublicKey::from(&secret),
             secret,
         }))
-    }
-}
-
-#[transition::impl_version(versions("0", "1"), structures("KeyPair"))]
-impl KeyPair {
-    /// Return the bytes representing the keypair (should be a reference in the future)
-    ///
-    /// # Example
-    /// ```
-    /// # use massa_signature::KeyPair;
-    /// let keypair = KeyPair::generate(0).unwrap();
-    /// let bytes = keypair.to_bytes();
-    /// ```
-    pub fn to_bytes(&self) -> Vec<u8> {
-        let version_serializer = U64VarIntSerializer::new();
-        let mut bytes: Vec<u8> = Vec::new();
-        version_serializer
-            .serialize(&Self::VERSION, &mut bytes)
-            .expect("Failed to serialize KeyPair version");
-        bytes.extend_from_slice(&self.0.secret.to_bytes());
-        bytes
     }
 }
 
@@ -470,14 +477,6 @@ impl<'de> ::serde::Deserialize<'de> for KeyPair {
 #[derive(Clone, Copy, PartialEq, Eq)]
 pub struct PublicKey(ed25519_dalek::PublicKey);
 
-const PUBLIC_PREFIX: char = 'P';
-
-#[transition::impl_version(versions("0", "1"), structures("PublicKey"))]
-impl PublicKey {
-    /// Size of a public key
-    pub const PUBLIC_KEY_SIZE_BYTES: usize = ed25519_dalek::PUBLIC_KEY_LENGTH;
-}
-
 #[allow(clippy::derived_hash_with_manual_eq)]
 impl std::hash::Hash for PublicKey {
     fn hash<H: Hasher>(&self, state: &mut H) {
@@ -533,6 +532,8 @@ impl std::fmt::Debug for PublicKey {
         write!(f, "{}", self)
     }
 }
+
+const PUBLIC_PREFIX: char = 'P';
 
 impl FromStr for PublicKey {
     type Err = MassaSignatureError;
@@ -603,6 +604,14 @@ impl PublicKey {
         match self {
             PublicKey::PublicKeyV0(pubkey) => pubkey.to_bytes(),
             PublicKey::PublicKeyV1(pubkey) => pubkey.to_bytes(),
+        }
+    }
+
+    /// Return the total length after serialization
+    pub fn get_ser_len(&self) -> usize {
+        match self {
+            PublicKey::PublicKeyV0(pubkey) => pubkey.get_ser_len(),
+            PublicKey::PublicKeyV1(pubkey) => pubkey.get_ser_len(),
         }
     }
 
@@ -680,6 +689,14 @@ impl std::fmt::Debug for PublicKey {
 
 #[transition::impl_version(versions("0", "1"), structures("PublicKey", "Signature"))]
 impl PublicKey {
+    /// Size of a public key
+    pub const PUBLIC_KEY_SIZE_BYTES: usize = ed25519_dalek::PUBLIC_KEY_LENGTH;
+
+    /// Return the total length after serialization
+    pub fn get_ser_len(&self) -> usize {
+        Self::VERSION_VARINT_SIZE_BYTES + Self::PUBLIC_KEY_SIZE_BYTES
+    }
+
     /// Checks if the `Signature` associated with data bytes
     /// was produced with the `KeyPair` associated to given `PublicKey`
     pub fn verify_signature(
@@ -947,6 +964,14 @@ impl Signature {
             .and_then(|signature| Signature::from_bytes(signature.as_slice()))
     }
 
+    /// Return the total length after serialization
+    pub fn get_ser_len(&self) -> usize {
+        match self {
+            Signature::SignatureV0(signature) => signature.get_ser_len(),
+            Signature::SignatureV1(signature) => signature.get_ser_len(),
+        }
+    }
+
     /// Serialize a Signature into bytes.
     ///
     /// # Example
@@ -1027,6 +1052,11 @@ impl Signature {
         bs58::encode(self.to_bytes()).with_check().into_string()
     }
 
+    /// Return the total length after serialization
+    pub fn get_ser_len(&self) -> usize {
+        Self::VERSION_VARINT_SIZE_BYTES + Self::SIGNATURE_SIZE_BYTES
+    }
+
     /// Serialize a Signature into bytes.
     ///
     /// # Example
@@ -1042,7 +1072,8 @@ impl Signature {
     /// ```
     pub fn to_bytes(self) -> Vec<u8> {
         let version_serializer = U64VarIntSerializer::new();
-        let mut bytes: Vec<u8> = Vec::new();
+        let mut bytes: Vec<u8> =
+            Vec::with_capacity(Self::VERSION_VARINT_SIZE_BYTES + Self::SIGNATURE_SIZE_BYTES);
         version_serializer
             .serialize(&Self::VERSION, &mut bytes)
             .unwrap();

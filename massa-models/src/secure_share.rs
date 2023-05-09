@@ -5,7 +5,6 @@ use massa_hash::Hash;
 use massa_serialization::{Deserializer, SerializeError, Serializer};
 use massa_signature::{
     KeyPair, PublicKey, PublicKeyDeserializer, Signature, SignatureDeserializer,
-    PUBLIC_KEY_DESER_SIZE, SIGNATURE_DESER_SIZE,
 };
 use nom::{
     error::{context, ContextError, ParseError},
@@ -227,8 +226,8 @@ where
     pub fn serialized_size(&self) -> usize {
         self.serialized_data
             .len()
-            .saturating_add(SIGNATURE_DESER_SIZE)
-            .saturating_add(PUBLIC_KEY_DESER_SIZE)
+            .saturating_add(self.signature.get_ser_len())
+            .saturating_add(self.content_creator_pub_key.get_ser_len())
     }
 }
 
