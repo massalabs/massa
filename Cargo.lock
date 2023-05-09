@@ -2454,25 +2454,17 @@ dependencies = [
 name = "massa_async_pool"
 version = "0.1.0"
 dependencies = [
- "displaydoc",
- "futures",
- "lazy_static",
  "massa_hash 0.1.0",
  "massa_ledger_exports",
- "massa_logging",
  "massa_models",
  "massa_serialization 0.1.0",
  "massa_signature 0.1.0",
- "massa_time",
  "nom",
  "num",
  "pretty_assertions",
  "rand 0.8.5",
  "serde",
- "serde_json",
  "serial_test 1.0.0",
- "thiserror",
- "tracing",
 ]
 
 [[package]]
@@ -2525,10 +2517,6 @@ dependencies = [
  "massa_serialization 0.1.0",
  "pbkdf2",
  "rand 0.8.5",
- "rand_core 0.6.4",
- "serde",
- "serde_json",
- "serde_qs",
  "thiserror",
 ]
 
@@ -2538,7 +2526,6 @@ version = "0.1.0"
 dependencies = [
  "crossbeam-channel",
  "displaydoc",
- "jsonrpsee",
  "massa_execution_exports",
  "massa_hash 0.1.0",
  "massa_models",
@@ -2561,7 +2548,6 @@ dependencies = [
 name = "massa_consensus_worker"
 version = "0.1.0"
 dependencies = [
- "displaydoc",
  "massa_consensus_exports",
  "massa_hash 0.1.0",
  "massa_logging",
@@ -2571,7 +2557,6 @@ dependencies = [
  "massa_time",
  "num",
  "parking_lot",
- "serde",
  "serde_json",
  "tracing",
 ]
@@ -2646,33 +2631,23 @@ dependencies = [
 name = "massa_factory_exports"
 version = "0.1.0"
 dependencies = [
- "anyhow",
  "displaydoc",
  "massa_consensus_exports",
- "massa_execution_exports",
  "massa_hash 0.1.0",
- "massa_ledger_exports",
  "massa_models",
  "massa_pool_exports",
  "massa_pos_exports",
  "massa_protocol_exports",
- "massa_serialization 0.1.0",
  "massa_signature 0.1.0",
  "massa_storage",
  "massa_time",
- "nom",
- "num",
- "serde",
- "serde_json",
  "thiserror",
- "tracing",
 ]
 
 [[package]]
 name = "massa_factory_worker"
 version = "0.1.0"
 dependencies = [
- "anyhow",
  "crossbeam-channel",
  "massa_consensus_exports",
  "massa_factory_exports",
@@ -2681,14 +2656,11 @@ dependencies = [
  "massa_pool_exports",
  "massa_pos_exports",
  "massa_protocol_exports",
- "massa_serialization 0.1.0",
  "massa_signature 0.1.0",
  "massa_storage",
  "massa_time",
  "massa_wallet",
  "parking_lot",
- "serde",
- "serde_json",
  "serial_test 1.0.0",
  "tracing",
 ]
@@ -2901,23 +2873,19 @@ dependencies = [
 name = "massa_pos_exports"
 version = "0.1.0"
 dependencies = [
- "anyhow",
  "bitvec",
  "crossbeam-channel",
  "displaydoc",
  "massa_hash 0.1.0",
- "massa_ledger_exports",
  "massa_models",
  "massa_serialization 0.1.0",
  "massa_signature 0.1.0",
- "massa_time",
  "nom",
  "num",
  "parking_lot",
  "serde",
  "serde_json",
  "thiserror",
- "tokio",
  "tracing",
 ]
 
@@ -2925,19 +2893,13 @@ dependencies = [
 name = "massa_pos_worker"
 version = "0.1.0"
 dependencies = [
- "bitvec",
- "massa_final_state",
  "massa_hash 0.1.0",
  "massa_models",
  "massa_pos_exports",
- "massa_signature 0.1.0",
- "massa_time",
  "parking_lot",
  "rand 0.8.5",
  "rand_distr",
  "rand_xoshiro",
- "serde",
- "serde_json",
  "tracing",
 ]
 
@@ -3073,12 +3035,9 @@ name = "massa_storage"
 version = "0.1.0"
 dependencies = [
  "massa_factory_exports",
- "massa_logging",
  "massa_models",
  "massa_signature 0.1.0",
  "parking_lot",
- "serde_json",
- "tracing",
 ]
 
 [[package]]
