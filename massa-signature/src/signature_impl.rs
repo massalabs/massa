@@ -1081,36 +1081,6 @@ impl Signature {
         bytes
     }
 
-    /// Deserialize a `Signature` using `bs58` encoding with checksum.
-    ///
-    /// # Example
-    ///  ```
-    /// # use massa_signature::{KeyPair, Signature};
-    /// # use massa_hash::Hash;
-    /// # use serde::{Deserialize, Serialize};
-    /// let keypair = KeyPair::generate(0).unwrap();
-    /// let data = Hash::compute_from("Hello World!".as_bytes());
-    /// let signature = keypair.sign(&data).unwrap();
-    ///
-    /// let serialized: String = signature.to_bs58_check();
-    /// let deserialized: Signature = Signature::from_bs58_check(&serialized).unwrap();
-    /// ```
-    pub fn from_bs58_check(data: &str) -> Result<Signature, MassaSignatureError> {
-        bs58::decode(data)
-            .with_check(None)
-            .into_vec()
-            .map_err(|err| {
-                MassaSignatureError::ParsingError(format!(
-                    "signature bs58_check parsing error: {}",
-                    err
-                ))
-            })
-            .and_then(|signature_bytes: Vec<u8>| Signature::from_bytes(&signature_bytes))
-    }
-}
-
-#[transition::impl_version(versions("0", "1"), structures("Signature"))]
-impl Signature {
     /// Deserialize a Signature from bytes.
     ///
     /// # Example
@@ -1136,6 +1106,33 @@ impl Signature {
             .map_err(|err| {
                 MassaSignatureError::ParsingError(format!("signature bytes parsing error: {}", err))
             })
+    }
+
+    /// Deserialize a `Signature` using `bs58` encoding with checksum.
+    ///
+    /// # Example
+    ///  ```
+    /// # use massa_signature::{KeyPair, Signature};
+    /// # use massa_hash::Hash;
+    /// # use serde::{Deserialize, Serialize};
+    /// let keypair = KeyPair::generate(0).unwrap();
+    /// let data = Hash::compute_from("Hello World!".as_bytes());
+    /// let signature = keypair.sign(&data).unwrap();
+    ///
+    /// let serialized: String = signature.to_bs58_check();
+    /// let deserialized: Signature = Signature::from_bs58_check(&serialized).unwrap();
+    /// ```
+    pub fn from_bs58_check(data: &str) -> Result<Signature, MassaSignatureError> {
+        bs58::decode(data)
+            .with_check(None)
+            .into_vec()
+            .map_err(|err| {
+                MassaSignatureError::ParsingError(format!(
+                    "signature bs58_check parsing error: {}",
+                    err
+                ))
+            })
+            .and_then(|signature_bytes: Vec<u8>| Signature::from_bytes(&signature_bytes))
     }
 }
 
