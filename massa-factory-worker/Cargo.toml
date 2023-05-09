@@ -22,7 +22,6 @@ massa_pos_exports = { path = "../massa-pos-exports" }
 massa_pool_exports = { path = "../massa-pool-exports" }
 
 [dev-dependencies]
-serial_test = "1.0"
 massa_protocol_exports = { path = "../massa-protocol-exports", features=["testing"] }
 massa_consensus_exports = { path = "../massa-consensus-exports", features = ["testing"] }
 massa_factory_exports = { path = "../massa-factory-exports", features=["testing"]  }

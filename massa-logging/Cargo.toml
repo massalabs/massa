@@ -9,7 +9,3 @@ edition = "2021"
 [dependencies]
 serde_json = "1.0"
 tracing = "0.1"
-
-[dev-dependencies]
-pretty_assertions = "1.2"
-serial_test = "1.0"
