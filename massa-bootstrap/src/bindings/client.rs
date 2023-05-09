@@ -8,10 +8,11 @@ use crate::messages::{
 };
 use crate::settings::BootstrapClientConfig;
 use massa_hash::Hash;
+use massa_models::config::SIGNATURE_DESER_SIZE;
 use massa_models::serialization::{DeserializeMinBEInt, SerializeMinBEInt};
 use massa_models::version::{Version, VersionSerializer};
 use massa_serialization::{DeserializeError, Deserializer, Serializer};
-use massa_signature::{PublicKey, Signature, SIGNATURE_DESER_SIZE};
+use massa_signature::{PublicKey, Signature};
 use rand::{rngs::StdRng, RngCore, SeedableRng};
 use std::time::Instant;
 use std::{io::Write, net::TcpStream, time::Duration};

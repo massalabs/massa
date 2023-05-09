@@ -19,19 +19,15 @@ use massa_api_exports::{
 };
 use massa_execution_exports::ExecutionController;
 use massa_hash::Hash;
-use massa_models::clique::Clique;
-use massa_models::composite::PubkeySig;
-use massa_models::node::NodeId;
-use massa_models::output_event::SCOutputEvent;
-use massa_models::prehash::PreHashSet;
 use massa_models::{
-    address::Address, block::Block, block_id::BlockId, endorsement::EndorsementId,
-    execution::EventFilter, operation::OperationId, slot::Slot,
+    address::Address, block::Block, block_id::BlockId, clique::Clique, composite::PubkeySig,
+    config::PUBLIC_KEY_DESER_SIZE, endorsement::EndorsementId, execution::EventFilter,
+    node::NodeId, operation::OperationId, output_event::SCOutputEvent, prehash::PreHashSet,
+    slot::Slot,
 };
 use massa_protocol_exports::{PeerId, ProtocolController};
-use massa_signature::{KeyPair, PUBLIC_KEY_DESER_SIZE};
+use massa_signature::KeyPair;
 use massa_wallet::Wallet;
-
 use parking_lot::RwLock;
 use std::collections::BTreeSet;
 use std::fs::{remove_file, OpenOptions};

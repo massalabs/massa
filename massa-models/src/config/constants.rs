@@ -20,6 +20,11 @@ use massa_signature::KeyPair;
 use massa_time::MassaTime;
 use num::rational::Ratio;
 
+/// IMPORTANNT TODO: should be removed after the bootstrap messages refacto
+pub const SIGNATURE_DESER_SIZE: usize = 64 + 1;
+/// IMPORTANNT TODO: should be removed after the bootstrap messages refacto
+pub const PUBLIC_KEY_DESER_SIZE: usize = 32 + 1;
+
 /// Limit on the number of peers we advertise to others.
 pub const MAX_ADVERTISE_LENGTH: u32 = 10000;
 /// Maximum message length in bytes

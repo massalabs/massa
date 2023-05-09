@@ -1,13 +1,9 @@
-use std::collections::HashMap;
-use std::net::SocketAddr;
-use std::ops::Bound::Included;
-
+use massa_models::config::PUBLIC_KEY_DESER_SIZE;
 use massa_models::serialization::{IpAddrDeserializer, IpAddrSerializer};
 use massa_serialization::{
     Deserializer, SerializeError, Serializer, U16VarIntDeserializer, U16VarIntSerializer,
     U32VarIntDeserializer, U32VarIntSerializer,
 };
-use massa_signature::PUBLIC_KEY_DESER_SIZE;
 use nom::{
     bytes::complete::take,
     error::{context, ContextError, ParseError},
@@ -18,6 +14,9 @@ use nom::{
 use peernet::peer_id::PeerId;
 use peernet::transports::TransportType;
 use serde::{Deserialize, Serialize};
+use std::collections::HashMap;
+use std::net::SocketAddr;
+use std::ops::Bound::Included;
 
 /// Peers that are transmitted during bootstrap
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]

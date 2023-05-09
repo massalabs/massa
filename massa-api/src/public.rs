@@ -24,37 +24,36 @@ use massa_consensus_exports::ConsensusController;
 use massa_execution_exports::{
     ExecutionController, ExecutionStackElement, ReadOnlyExecutionRequest, ReadOnlyExecutionTarget,
 };
-use massa_models::datastore::DatastoreDeserializer;
-use massa_models::operation::OperationDeserializer;
-use massa_models::secure_share::SecureShareDeserializer;
 use massa_models::{
     address::Address,
+    block::{Block, BlockGraphStatus},
     block_id::BlockId,
     clique::Clique,
     composite::PubkeySig,
     config::CompactConfig,
+    config::PUBLIC_KEY_DESER_SIZE,
+    datastore::DatastoreDeserializer,
     endorsement::EndorsementId,
-    execution::EventFilter,
-    node::NodeId,
-    operation::OperationId,
-    output_event::SCOutputEvent,
-    prehash::{PreHashMap, PreHashSet},
-    slot::Slot,
-    timeslots::{get_latest_block_slot_at_timestamp, time_range_to_slot_range},
-    version::Version,
-};
-use massa_models::{
-    block::{Block, BlockGraphStatus},
     endorsement::SecureShareEndorsement,
     error::ModelsError,
+    execution::EventFilter,
+    node::NodeId,
+    operation::OperationDeserializer,
+    operation::OperationId,
     operation::SecureShareOperation,
+    output_event::SCOutputEvent,
+    prehash::{PreHashMap, PreHashSet},
+    secure_share::SecureShareDeserializer,
+    slot::Slot,
     timeslots,
+    timeslots::{get_latest_block_slot_at_timestamp, time_range_to_slot_range},
+    version::Version,
 };
 use massa_pool_exports::PoolController;
 use massa_pos_exports::SelectorController;
 use massa_protocol_exports::{PeerConnectionType, ProtocolConfig, ProtocolController};
 use massa_serialization::{DeserializeError, Deserializer};
-use massa_signature::{PublicKey, PUBLIC_KEY_DESER_SIZE};
+use massa_signature::PublicKey;
 use massa_storage::Storage;
 use massa_time::MassaTime;
 use massa_versioning::{

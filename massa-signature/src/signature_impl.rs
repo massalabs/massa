@@ -309,7 +309,9 @@ impl KeyPair {
         KeyPair(ed25519_dalek::Keypair::generate(&mut rng))
     }
 
-    /// Convert a byte array of size `SECRET_KEY_BYTES_SIZE` to a `KeyPair`
+    /// Convert a byte array of size `SECRET_KEY_BYTES_SIZE` to a `KeyPair`.
+    ///
+    /// IMPORTANT: providing more bytes than needed does not result in an error.
     ///
     /// # Example
     /// ```
@@ -319,14 +321,15 @@ impl KeyPair {
     /// let keypair2 = KeyPair::from_bytes(&bytes).unwrap();
     /// ```
     pub fn from_bytes(data: &[u8]) -> Result<Self, MassaSignatureError> {
-        if data.len() != Self::SECRET_KEY_BYTES_SIZE {
+        if data.len() < Self::SECRET_KEY_BYTES_SIZE {
             return Err(MassaSignatureError::ParsingError(
                 "keypair byte array is of invalid size".to_string(),
             ));
         }
-        let secret = ed25519_dalek::SecretKey::from_bytes(&data).map_err(|err| {
-            MassaSignatureError::ParsingError(format!("keypair bytes parsing error: {}", err))
-        })?;
+        let secret = ed25519_dalek::SecretKey::from_bytes(&data[..Self::SECRET_KEY_BYTES_SIZE])
+            .map_err(|err| {
+                MassaSignatureError::ParsingError(format!("keypair bytes parsing error: {}", err))
+            })?;
         Ok(KeyPair(ed25519_dalek::Keypair {
             public: ed25519_dalek::PublicKey::from(&secret),
             secret,
@@ -730,6 +733,8 @@ impl PublicKey {
 
     /// Deserialize a `PublicKey` from bytes.
     ///
+    /// IMPORTANT: providing more bytes than needed does not result in an error.
+    ///
     /// # Example
     ///  ```
     /// # use massa_signature::{PublicKey, KeyPair};
@@ -740,12 +745,12 @@ impl PublicKey {
     /// let deserialized: PublicKey = PublicKey::from_bytes(&serialized).unwrap();
     /// ```
     pub fn from_bytes(data: &[u8]) -> Result<PublicKey, MassaSignatureError> {
-        if data.len() != Self::PUBLIC_KEY_SIZE_BYTES {
+        if data.len() < Self::PUBLIC_KEY_SIZE_BYTES {
             return Err(MassaSignatureError::ParsingError(
                 "public key byte array is of invalid size".to_string(),
             ));
         }
-        ed25519_dalek::PublicKey::from_bytes(data)
+        ed25519_dalek::PublicKey::from_bytes(&data[..Self::PUBLIC_KEY_SIZE_BYTES])
             .map(|d| Self(d))
             .map_err(|err| MassaSignatureError::ParsingError(err.to_string()))
     }
@@ -761,9 +766,6 @@ impl PublicKeyDeserializer {
         Self
     }
 }
-
-/// TODO: handle this constant in a more maintainable way
-pub const PUBLIC_KEY_DESER_SIZE: usize = 32 + 1;
 
 impl Deserializer<PublicKey> for PublicKeyDeserializer {
     /// ```
@@ -782,20 +784,14 @@ impl Deserializer<PublicKey> for PublicKeyDeserializer {
         &self,
         buffer: &'a [u8],
     ) -> IResult<&'a [u8], PublicKey, E> {
-        if buffer.len() < PUBLIC_KEY_DESER_SIZE {
-            return Err(nom::Err::Error(ParseError::from_error_kind(
-                buffer,
-                nom::error::ErrorKind::LengthValue,
-            )));
-        }
-        let key = PublicKey::from_bytes(&buffer[..PUBLIC_KEY_DESER_SIZE]).map_err(|_| {
+        let public_key = PublicKey::from_bytes(buffer).map_err(|_| {
             nom::Err::Error(ParseError::from_error_kind(
                 buffer,
                 nom::error::ErrorKind::Fail,
             ))
         })?;
         // Safe because the signature deserialization succeeded
-        Ok((&buffer[PUBLIC_KEY_DESER_SIZE..], key))
+        Ok((&buffer[public_key.get_ser_len()..], public_key))
     }
 }
 
@@ -1083,6 +1079,8 @@ impl Signature {
 
     /// Deserialize a Signature from bytes.
     ///
+    /// IMPORTANT: providing more bytes than needed does not result in an error.
+    ///
     /// # Example
     ///  ```
     /// # use massa_signature::{KeyPair, Signature};
@@ -1096,12 +1094,12 @@ impl Signature {
     /// let deserialized: Signature = Signature::from_bytes(&serialized).unwrap();
     /// ```
     pub fn from_bytes(data: &[u8]) -> Result<Signature, MassaSignatureError> {
-        if data.len() != Self::SIGNATURE_SIZE_BYTES {
+        if data.len() < Self::SIGNATURE_SIZE_BYTES {
             return Err(MassaSignatureError::ParsingError(
                 "signature byte array is of invalid size".to_string(),
             ));
         }
-        ed25519_dalek::Signature::from_bytes(&data[..])
+        ed25519_dalek::Signature::from_bytes(&data[..Self::SIGNATURE_SIZE_BYTES])
             .map(|s| Self(s))
             .map_err(|err| {
                 MassaSignatureError::ParsingError(format!("signature bytes parsing error: {}", err))
@@ -1249,8 +1247,6 @@ impl SignatureDeserializer {
         Self
     }
 }
-/// TODO: handle this constant in a more maintainable way
-pub const SIGNATURE_DESER_SIZE: usize = 64 + 1;
 
 impl Deserializer<Signature> for SignatureDeserializer {
     /// ```
@@ -1270,20 +1266,14 @@ impl Deserializer<Signature> for SignatureDeserializer {
         &self,
         buffer: &'a [u8],
     ) -> IResult<&'a [u8], Signature, E> {
-        if buffer.len() < SIGNATURE_DESER_SIZE {
-            return Err(nom::Err::Error(ParseError::from_error_kind(
-                buffer,
-                nom::error::ErrorKind::LengthValue,
-            )));
-        }
-        let signature = Signature::from_bytes(&buffer[..SIGNATURE_DESER_SIZE]).map_err(|_| {
+        let signature = Signature::from_bytes(buffer).map_err(|_| {
             nom::Err::Error(ParseError::from_error_kind(
                 buffer,
                 nom::error::ErrorKind::Fail,
             ))
         })?;
         // Safe because the signature deserialization succeeded
-        Ok((&buffer[SIGNATURE_DESER_SIZE..], signature))
+        Ok((&buffer[signature.get_ser_len()..], signature))
     }
 }
 
@@ -1291,7 +1281,7 @@ impl Deserializer<Signature> for SignatureDeserializer {
 pub fn verify_signature_batch(
     batch: &[(Hash, Signature, PublicKey)],
 ) -> Result<(), MassaSignatureError> {
-    //nothing to verify
+    // nothing to verify
     if batch.is_empty() {
         return Ok(());
     }
