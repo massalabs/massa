@@ -231,7 +231,7 @@ impl MassaTime {
     /// let res: Duration = time.to_duration();
     /// assert_eq!(res, duration);
     /// ```
-    pub fn to_duration(&self) -> Duration {
+    pub(crate) fn to_duration(&self) -> Duration {
         Duration::from_millis(self.0)
     }
 
@@ -259,7 +259,7 @@ impl MassaTime {
     ///     cur_instant.saturating_duration_since(massa_time_instant)
     /// ) < std::time::Duration::from_millis(10))
     /// ```
-    pub fn estimate_instant(self) -> Result<Instant, TimeError> {
+    pub(crate) fn estimate_instant(self) -> Result<Instant, TimeError> {
         let (cur_timestamp, cur_instant) = (MassaTime::now()?, Instant::now());
         if self >= cur_timestamp {
             cur_instant.checked_add(self.saturating_sub(cur_timestamp).to_duration())
@@ -354,7 +354,7 @@ impl MassaTime {
     /// assert_eq!(res,MassaTime::from(42*7))
     /// ```
     #[must_use]
-    pub const fn saturating_mul(self, n: u64) -> MassaTime {
+    pub(crate) const fn saturating_mul(self, n: u64) -> MassaTime {
         MassaTime(self.0.saturating_mul(n))
     }
 
@@ -391,7 +391,7 @@ impl MassaTime {
     /// let res : MassaTime = time_1.checked_rem_u64(7).unwrap();
     /// assert_eq!(res,MassaTime::from(42%7))
     /// ```
-    pub fn checked_rem_u64(self, n: u64) -> Result<Self, TimeError> {
+    pub(crate) fn checked_rem_u64(self, n: u64) -> Result<Self, TimeError> {
         self.0
             .checked_rem(n)
             .ok_or_else(|| TimeError::CheckedOperationError("remainder error".to_string()))
@@ -407,7 +407,7 @@ impl MassaTime {
     /// assert_eq!(time1.abs_diff(time2), MassaTime::from(42));
     /// assert_eq!(time2.abs_diff(time1), MassaTime::from(42));
     /// ```
-    pub fn abs_diff(&self, t: MassaTime) -> MassaTime {
+    pub(crate) fn abs_diff(&self, t: MassaTime) -> MassaTime {
         MassaTime(self.0.abs_diff(t.0))
     }
 
@@ -430,7 +430,7 @@ impl MassaTime {
     /// assert_eq!(mins, 3);
     /// assert_eq!(secs, 6);
     /// ```
-    pub fn days_hours_mins_secs(&self) -> Result<(i64, i64, i64, i64), TimeError> {
+    pub(crate) fn days_hours_mins_secs(&self) -> Result<(i64, i64, i64, i64), TimeError> {
         let time: time::Duration = time::Duration::try_from(self.to_duration())
             .map_err(|_| TimeError::TimeOverflowError)?;
         let days = time.whole_days();
@@ -446,7 +446,7 @@ impl MassaTime {
     }
 
     /// Get max MassaTime value
-    pub fn max() -> MassaTime {
+    pub(crate) fn max() -> MassaTime {
         MassaTime::from_millis(u64::MAX)
     }
 }

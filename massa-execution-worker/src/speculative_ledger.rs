@@ -43,7 +43,7 @@ pub(crate) struct SpeculativeLedger {
         feature = "benchmarking",
         feature = "testing"
     ))]
-    pub added_changes: LedgerChanges,
+    pub(crate)  added_changes: LedgerChanges,
 
     /// max datastore key length
     max_datastore_key_length: u8,
@@ -64,7 +64,7 @@ impl SpeculativeLedger {
     /// # Arguments
     /// * `final_state`: thread-safe shared access to the final state (for reading only)
     /// * `active_history`: thread-safe shared access the speculative execution history
-    pub fn new(
+    pub(crate)  fn new(
         final_state: Arc<RwLock<FinalState>>,
         active_history: Arc<RwLock<ActiveHistory>>,
         max_datastore_key_length: u8,
@@ -85,17 +85,17 @@ impl SpeculativeLedger {
 
     /// Returns the changes caused to the `SpeculativeLedger` since its creation,
     /// and resets their local value to nothing.
-    pub fn take(&mut self) -> LedgerChanges {
+    pub(crate)  fn take(&mut self) -> LedgerChanges {
         std::mem::take(&mut self.added_changes)
     }
 
     /// Takes a snapshot (clone) of the changes caused to the `SpeculativeLedger` since its creation
-    pub fn get_snapshot(&self) -> LedgerChanges {
+    pub(crate)  fn get_snapshot(&self) -> LedgerChanges {
         self.added_changes.clone()
     }
 
     /// Resets the `SpeculativeLedger` to a snapshot (see `get_snapshot` method)
-    pub fn reset_to_snapshot(&mut self, snapshot: LedgerChanges) {
+    pub(crate)  fn reset_to_snapshot(&mut self, snapshot: LedgerChanges) {
         self.added_changes = snapshot;
     }
 
@@ -106,7 +106,7 @@ impl SpeculativeLedger {
     ///
     /// # Returns
     /// Some(Amount) if the address was found, otherwise None
-    pub fn get_balance(&self, addr: &Address) -> Option<Amount> {
+    pub(crate)  fn get_balance(&self, addr: &Address) -> Option<Amount> {
         // try to read from added changes > history > final_state
         self.added_changes.get_balance_or_else(addr, || {
             match self.active_history.read().fetch_balance(addr) {
@@ -124,7 +124,7 @@ impl SpeculativeLedger {
     ///
     /// # Returns
     /// `Some(Bytecode)` if the address was found, otherwise None
-    pub fn get_bytecode(&self, addr: &Address) -> Option<Bytecode> {
+    pub(crate)  fn get_bytecode(&self, addr: &Address) -> Option<Bytecode> {
         // try to read from added changes > history > final_state
         self.added_changes.get_bytecode_or_else(addr, || {
             match self.active_history.read().fetch_bytecode(addr) {
@@ -143,7 +143,7 @@ impl SpeculativeLedger {
     /// * `from_addr`: optional spending address (use None for pure coin creation)
     /// * `to_addr`: optional crediting address (use None for pure coin destruction)
     /// * `amount`: amount of coins to transfer
-    pub fn transfer_coins(
+    pub(crate)  fn transfer_coins(
         &mut self,
         from_addr: Option<Address>,
         to_addr: Option<Address>,
@@ -240,7 +240,7 @@ impl SpeculativeLedger {
     ///
     /// # Returns
     /// true if the address was found, otherwise false
-    pub fn entry_exists(&self, addr: &Address) -> bool {
+    pub(crate)  fn entry_exists(&self, addr: &Address) -> bool {
         // try to read from added changes > history > final_state
         self.added_changes.entry_exists_or_else(addr, || {
             match self.active_history.read().fetch_balance(addr) {
@@ -257,7 +257,7 @@ impl SpeculativeLedger {
     /// * `creator_address`: address that asked for this creation. Will pay the storage costs.
     /// * `addr`: address to create
     /// * `bytecode`: bytecode to set in the new ledger entry
-    pub fn create_new_sc_address(
+    pub(crate)  fn create_new_sc_address(
         &mut self,
         creator_address: Address,
         addr: Address,
@@ -322,7 +322,7 @@ impl SpeculativeLedger {
     /// * `caller_addr`: address of the caller. Will pay the storage costs.
     /// * `addr`: target address
     /// * `bytecode`: bytecode to set for that address
-    pub fn set_bytecode(
+    pub(crate)  fn set_bytecode(
         &mut self,
         caller_addr: &Address,
         addr: &Address,
@@ -385,7 +385,7 @@ impl SpeculativeLedger {
     ///
     /// # Returns
     /// `Some(Vec<Vec<u8>>)` for found keys, `None` if the address does not exist.
-    pub fn get_keys(&self, addr: &Address) -> Option<BTreeSet<Vec<u8>>> {
+    pub(crate)  fn get_keys(&self, addr: &Address) -> Option<BTreeSet<Vec<u8>>> {
         let mut keys: Option<BTreeSet<Vec<u8>>> =
             self.final_state.read().ledger.get_datastore_keys(addr);
 
@@ -435,7 +435,7 @@ impl SpeculativeLedger {
     ///
     /// # Returns
     /// `Some(Vec<u8>)` if the value was found, `None` if the address does not exist or if the key is not in its datastore.
-    pub fn get_data_entry(&self, addr: &Address, key: &[u8]) -> Option<Vec<u8>> {
+    pub(crate)  fn get_data_entry(&self, addr: &Address, key: &[u8]) -> Option<Vec<u8>> {
         // try to read from added changes > history > final_state
         self.added_changes.get_data_entry_or_else(addr, key, || {
             match self
@@ -460,7 +460,7 @@ impl SpeculativeLedger {
     ///
     /// # Returns
     /// true if the key exists in the address datastore, false otherwise
-    pub fn has_data_entry(&self, addr: &Address, key: &[u8]) -> bool {
+    pub(crate)  fn has_data_entry(&self, addr: &Address, key: &[u8]) -> bool {
         // try to read from added changes > history > final_state
         self.added_changes.has_data_entry_or_else(addr, key, || {
             match self
@@ -502,7 +502,7 @@ impl SpeculativeLedger {
     /// * `addr`: target address
     /// * `key`: datastore key
     /// * `data`: value to associate to the datastore key
-    pub fn set_data_entry(
+    pub(crate)  fn set_data_entry(
         &mut self,
         caller_addr: &Address,
         addr: &Address,
@@ -582,7 +582,7 @@ impl SpeculativeLedger {
     /// * `caller_addr`: address of the caller. Will pay the storage costs.
     /// * `addr`: address
     /// * `key`: key of the entry to delete in the address' datastore
-    pub fn delete_data_entry(
+    pub(crate)  fn delete_data_entry(
         &mut self,
         caller_addr: &Address,
         addr: &Address,

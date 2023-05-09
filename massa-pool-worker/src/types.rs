@@ -7,39 +7,39 @@ use num::rational::Ratio;
 use std::cmp::Reverse;
 use std::ops::RangeInclusive;
 
-pub type OperationCursorInner = (Reverse<Ratio<u64>>, OperationId);
+pub(crate)  type OperationCursorInner = (Reverse<Ratio<u64>>, OperationId);
 /// A cursor for pool operations, sorted by increasing quality
 #[derive(PartialEq, Eq, PartialOrd, Ord, Copy, Clone, Debug)]
-pub struct PoolOperationCursor(OperationCursorInner);
+pub(crate)  struct PoolOperationCursor(OperationCursorInner);
 
 impl PoolOperationCursor {
     /// Create a new pool operation cursor based on inner data
-    pub fn new(inner: OperationCursorInner) -> Self {
+    pub(crate)  fn new(inner: OperationCursorInner) -> Self {
         Self(inner)
     }
 
     /// Get the ID of the operation
-    pub fn get_id(&self) -> OperationId {
+    pub(crate)  fn get_id(&self) -> OperationId {
         self.0 .1
     }
 }
 
 #[derive(Debug, Clone)]
-pub struct OperationInfo {
-    pub id: OperationId,
-    pub cursor: PoolOperationCursor,
-    pub size: usize,
-    pub max_gas: u64,
-    pub creator_address: Address,
-    pub thread: u8,
-    pub fee: Amount,
+pub(crate)  struct OperationInfo {
+    pub(crate)  id: OperationId,
+    pub(crate)  cursor: PoolOperationCursor,
+    pub(crate)  size: usize,
+    pub(crate)  max_gas: u64,
+    pub(crate)  creator_address: Address,
+    pub(crate)  thread: u8,
+    pub(crate)  fee: Amount,
     /// max amount that the op might spend from the sender's balance
-    pub max_spending: Amount,
-    pub validity_period_range: RangeInclusive<u64>,
+    pub(crate)  max_spending: Amount,
+    pub(crate)  validity_period_range: RangeInclusive<u64>,
 }
 
 impl OperationInfo {
-    pub fn from_op(
+    pub(crate)  fn from_op(
         op: &SecureShareOperation,
         operation_validity_periods: u64,
         roll_price: Amount,

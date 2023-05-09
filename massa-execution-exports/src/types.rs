@@ -15,25 +15,25 @@ use std::collections::{BTreeMap, BTreeSet};
 #[derive(Clone, Debug)]
 pub struct ExecutionAddressInfo {
     /// candidate balance of the address
-    pub candidate_balance: Amount,
+    pub(crate) candidate_balance: Amount,
     /// final balance of the address
-    pub final_balance: Amount,
+    pub(crate) final_balance: Amount,
 
     /// final number of rolls the address has
-    pub final_roll_count: u64,
+    pub(crate) final_roll_count: u64,
     /// final datastore keys of the address
-    pub final_datastore_keys: BTreeSet<Vec<u8>>,
+    pub(crate) final_datastore_keys: BTreeSet<Vec<u8>>,
 
     /// candidate number of rolls the address has
-    pub candidate_roll_count: u64,
+    pub(crate) candidate_roll_count: u64,
     /// candidate datastore keys of the address
-    pub candidate_datastore_keys: BTreeSet<Vec<u8>>,
+    pub(crate) candidate_datastore_keys: BTreeSet<Vec<u8>>,
 
     /// future deferred credits
-    pub future_deferred_credits: BTreeMap<Slot, Amount>,
+    pub(crate) future_deferred_credits: BTreeMap<Slot, Amount>,
 
     /// cycle information
-    pub cycle_infos: Vec<ExecutionAddressCycleInfo>,
+    pub(crate) cycle_infos: Vec<ExecutionAddressCycleInfo>,
 }
 
 /// structure describing the output of the execution of a slot
@@ -63,26 +63,26 @@ pub struct ExecutionOutput {
 #[derive(Debug, Clone)]
 pub struct ReadOnlyExecutionOutput {
     /// Output of a single execution
-    pub out: ExecutionOutput,
+    pub(crate) out: ExecutionOutput,
     /// Gas cost for this execution
-    pub gas_cost: u64,
+    pub(crate) gas_cost: u64,
     /// Returned value from the module call
-    pub call_result: Vec<u8>,
+    pub(crate) call_result: Vec<u8>,
 }
 
 /// structure describing different types of read-only execution request
 #[derive(Debug, Clone)]
 pub struct ReadOnlyExecutionRequest {
     /// Maximum gas to spend in the execution.
-    pub max_gas: u64,
+    pub(crate) max_gas: u64,
     /// Call stack to simulate, older caller first
-    pub call_stack: Vec<ExecutionStackElement>,
+    pub(crate) call_stack: Vec<ExecutionStackElement>,
     /// Target of the request
-    pub target: ReadOnlyExecutionTarget,
+    pub(crate) target: ReadOnlyExecutionTarget,
     /// execution start state
     ///
     /// Whether to start execution from final or active state
-    pub is_final: bool,
+    pub(crate) is_final: bool,
 }
 
 /// structure describing different possible targets of a read-only execution request
@@ -104,21 +104,21 @@ pub enum ReadOnlyExecutionTarget {
 
 /// structure describing a read-only call
 #[derive(Debug, Clone)]
-pub struct ReadOnlyCallRequest {
+pub(crate) struct ReadOnlyCallRequest {
     /// Maximum gas to spend in the execution.
-    pub max_gas: u64,
+    pub(crate) max_gas: u64,
     /// Call stack to simulate, older caller first. Target should be last.
-    pub call_stack: Vec<ExecutionStackElement>,
+    pub(crate) call_stack: Vec<ExecutionStackElement>,
     /// Target address
-    pub target_addr: Address,
+    pub(crate) target_addr: Address,
     /// Target function
-    pub target_func: String,
+    pub(crate) target_func: String,
     /// Parameter to pass to the target function
-    pub parameter: String,
+    pub(crate) parameter: String,
     /// execution start state
     ///
     /// Whether to start execution from final or active state
-    pub is_final: bool,
+    pub(crate) is_final: bool,
 }
 
 /// Structure describing an element of the execution stack.
@@ -143,5 +143,5 @@ pub struct ExecutionStackElement {
     /// the performance hit of linear search remains minimal because `owned_addresses` will always contain very few elements.
     pub owned_addresses: Vec<Address>,
     /// Datastore (key value store) for `ExecuteSC` Operation
-    pub operation_datastore: Option<Datastore>,
+    pub(crate) operation_datastore: Option<Datastore>,
 }

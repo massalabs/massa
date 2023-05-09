@@ -19,7 +19,7 @@ use massa_wallet::Wallet;
 ///
 /// # Return value
 /// Returns a factory manager allowing to stop the workers cleanly.
-pub fn start_factory(
+pub(crate)  fn start_factory(
     cfg: FactoryConfig,
     wallet: Arc<RwLock<Wallet>>,
     channels: FactoryChannels,

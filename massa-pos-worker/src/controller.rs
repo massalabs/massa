@@ -19,7 +19,7 @@ use tracing::{info, warn};
 
 #[derive(Clone)]
 /// implementation of the selector controller
-pub struct SelectorControllerImpl {
+pub(crate) struct SelectorControllerImpl {
     /// todo: use a configuration structure
     pub(crate) periods_per_cycle: u64,
     /// thread count
@@ -181,7 +181,7 @@ impl SelectorController for SelectorControllerImpl {
 
 /// Implementation of the Selector manager
 /// Allows stopping the selector worker
-pub struct SelectorManagerImpl {
+pub(crate) struct SelectorManagerImpl {
     /// handle used to join the worker thread
     pub(crate) thread_handle: Option<std::thread::JoinHandle<PosResult<()>>>,
     /// Input data mpsc (used to stop the selector thread)

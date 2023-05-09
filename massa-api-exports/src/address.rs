@@ -11,43 +11,43 @@ use crate::slot::SlotAmount;
 
 /// All you ever dream to know about an address
 #[derive(Debug, Deserialize, Serialize)]
-pub struct AddressInfo {
+pub(crate)  struct AddressInfo {
     /// the address
-    pub address: Address,
+    pub(crate)  address: Address,
     /// the thread the address belongs to
-    pub thread: u8,
+    pub(crate)  thread: u8,
 
     /// final balance
-    pub final_balance: Amount,
+    pub(crate)  final_balance: Amount,
     /// final roll count
-    pub final_roll_count: u64,
+    pub(crate)  final_roll_count: u64,
     /// final datastore keys
-    pub final_datastore_keys: Vec<Vec<u8>>,
+    pub(crate)  final_datastore_keys: Vec<Vec<u8>>,
 
     /// candidate balance
-    pub candidate_balance: Amount,
+    pub(crate)  candidate_balance: Amount,
     /// candidate roll count
-    pub candidate_roll_count: u64,
+    pub(crate)  candidate_roll_count: u64,
     /// candidate datastore keys
-    pub candidate_datastore_keys: Vec<Vec<u8>>,
+    pub(crate)  candidate_datastore_keys: Vec<Vec<u8>>,
 
     /// deferred credits
-    pub deferred_credits: Vec<SlotAmount>,
+    pub(crate)  deferred_credits: Vec<SlotAmount>,
 
     /// next block draws
-    pub next_block_draws: Vec<Slot>,
+    pub(crate)  next_block_draws: Vec<Slot>,
     /// next endorsement draws
-    pub next_endorsement_draws: Vec<IndexedSlot>,
+    pub(crate)  next_endorsement_draws: Vec<IndexedSlot>,
 
     /// created blocks
-    pub created_blocks: Vec<BlockId>,
+    pub(crate)  created_blocks: Vec<BlockId>,
     /// created operations
-    pub created_operations: Vec<OperationId>,
+    pub(crate)  created_operations: Vec<OperationId>,
     /// created endorsements
-    pub created_endorsements: Vec<EndorsementId>,
+    pub(crate)  created_endorsements: Vec<EndorsementId>,
 
     /// cycle information
-    pub cycle_infos: Vec<ExecutionAddressCycleInfo>,
+    pub(crate)  cycle_infos: Vec<ExecutionAddressCycleInfo>,
 }
 
 impl std::fmt::Display for AddressInfo {
@@ -103,7 +103,7 @@ impl std::fmt::Display for AddressInfo {
 
 impl AddressInfo {
     /// Only essential info about an address
-    pub fn compact(&self) -> CompactAddressInfo {
+    pub(crate)  fn compact(&self) -> CompactAddressInfo {
         CompactAddressInfo {
             address: self.address,
             thread: self.thread,
@@ -122,21 +122,21 @@ impl AddressInfo {
 
 /// Less information about an address
 #[derive(Debug, Serialize, Deserialize)]
-pub struct CompactAddressInfo {
+pub(crate)  struct CompactAddressInfo {
     /// the address
-    pub address: Address,
+    pub(crate)  address: Address,
     /// the thread it is
-    pub thread: u8,
+    pub(crate)  thread: u8,
     /// candidate rolls
-    pub candidate_rolls: u64,
+    pub(crate)  candidate_rolls: u64,
     /// final rolls
-    pub final_rolls: u64,
+    pub(crate)  final_rolls: u64,
     /// active rolls
-    pub active_rolls: u64,
+    pub(crate)  active_rolls: u64,
     /// final balance
-    pub final_balance: Amount,
+    pub(crate)  final_balance: Amount,
     /// candidate balance
-    pub candidate_balance: Amount,
+    pub(crate)  candidate_balance: Amount,
 }
 
 impl std::fmt::Display for CompactAddressInfo {

@@ -4,7 +4,7 @@ use massa_models::config::VERSIONING_THRESHOLD_TRANSITION_ACCEPTED;
 use massa_time::MassaTime;
 
 // TODO: rename versioning_info
-pub fn advance_state_until(at_state: ComponentState, versioning_info: &MipInfo) -> MipState {
+pub(crate)  fn advance_state_until(at_state: ComponentState, versioning_info: &MipInfo) -> MipState {
     // A helper function to advance a state
     // Assume enough time between versioning info start & timeout
     // TODO: allow to give a threshold as arg?

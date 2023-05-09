@@ -7,7 +7,7 @@ mod endorsement_factory;
 mod manager;
 mod run;
 
-pub use run::start_factory;
+pub(crate)  use run::start_factory;
 
 #[cfg(test)]
 mod tests;

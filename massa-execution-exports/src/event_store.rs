@@ -18,12 +18,12 @@ impl EventStore {
     }
 
     /// Take the event store
-    pub fn take(&mut self) -> VecDeque<SCOutputEvent> {
+    pub(crate) fn take(&mut self) -> VecDeque<SCOutputEvent> {
         std::mem::take(&mut self.0)
     }
 
     /// Clear the event store
-    pub fn clear(&mut self) {
+    pub(crate) fn clear(&mut self) {
         self.0.clear()
     }
 
@@ -53,7 +53,10 @@ impl EventStore {
     /// * original caller address
     /// * operation id
     /// * is final
-    pub fn get_filtered_sc_output_events(&self, filter: &EventFilter) -> VecDeque<SCOutputEvent> {
+    pub(crate) fn get_filtered_sc_output_events(
+        &self,
+        filter: &EventFilter,
+    ) -> VecDeque<SCOutputEvent> {
         self.0
             .iter()
             .filter(|x| {

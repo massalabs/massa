@@ -34,4 +34,4 @@ mod manager;
 mod state;
 mod worker;
 
-pub use worker::start_consensus_worker;
+pub(crate)  use worker::start_consensus_worker;

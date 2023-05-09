@@ -15,7 +15,7 @@ use crate::{
 
 use super::mock_network::MockNetworkController;
 
-pub fn assert_hash_asked_to_node(node: &Receiver<Message>, block_id: &BlockId) {
+pub(crate)  fn assert_hash_asked_to_node(node: &Receiver<Message>, block_id: &BlockId) {
     let msg = node
         .recv_timeout(Duration::from_millis(1500))
         .expect("Node didn't receive the ask for block message");
@@ -32,7 +32,7 @@ pub fn assert_hash_asked_to_node(node: &Receiver<Message>, block_id: &BlockId) {
     }
 }
 
-pub fn assert_block_info_sent_to_node(node: &Receiver<Message>, block_id: &BlockId) {
+pub(crate)  fn assert_block_info_sent_to_node(node: &Receiver<Message>, block_id: &BlockId) {
     let msg = node
         .recv_timeout(Duration::from_millis(1500))
         .expect("Node didn't receive the infos block message");
@@ -68,7 +68,7 @@ pub fn assert_block_info_sent_to_node(node: &Receiver<Message>, block_id: &Block
 }
 
 /// send a block and assert it has been propagate (or not)
-pub fn send_and_propagate_block(
+pub(crate)  fn send_and_propagate_block(
     network_controller: &mut MockNetworkController,
     block: SecureShareBlock,
     node_id: &PeerId,

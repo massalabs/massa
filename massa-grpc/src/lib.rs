@@ -21,17 +21,17 @@ use tonic_reflection as _;
 use tonic_web as _;
 
 /// business code for non stream methods
-pub mod api;
+pub(crate)  mod api;
 /// gRPC configuration
-pub mod config;
+pub(crate)  mod config;
 /// models error
-pub mod error;
+pub(crate)  mod error;
 /// gRPC API implementation
-pub mod handler;
+pub(crate)  mod handler;
 /// gRPC service initialization and serve
-pub mod server;
+pub(crate)  mod server;
 /// business code for stream methods
-pub mod stream;
+pub(crate)  mod stream;
 
 #[cfg(test)]
 mod tests;

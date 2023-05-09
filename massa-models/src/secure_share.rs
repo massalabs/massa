@@ -31,12 +31,12 @@ where
     pub content: T,
     #[serde(skip)]
     /// Content in sharable, deserializable form. Is used in the secure verification protocols.
-    pub serialized_data: Vec<u8>,
+    pub(crate) serialized_data: Vec<u8>,
 
     /// A cryptographically generated value using `serialized_data` and a public key.
-    pub signature: Signature,
+    pub(crate) signature: Signature,
     /// The public-key component used in the generation of the signature
-    pub content_creator_pub_key: PublicKey,
+    pub(crate) content_creator_pub_key: PublicKey,
     /// Derived from the same public key used to generate the signature
     pub content_creator_address: Address,
     /// A secure hash of the data. See also [massa_hash::Hash]
@@ -200,7 +200,7 @@ where
     ID: Id,
 {
     /// Sign the SecureShare given the content
-    pub fn sign(
+    pub(crate) fn sign(
         keypair: &KeyPair,
         content_hash: &Hash,
         _content: &T,
@@ -209,7 +209,7 @@ where
     }
 
     /// check if self has been signed by public key
-    pub fn verify_signature(&self) -> Result<(), ModelsError> {
+    pub(crate) fn verify_signature(&self) -> Result<(), ModelsError> {
         self.content.verify_signature(
             &self.content_creator_pub_key,
             self.id.get_hash(),
@@ -218,7 +218,7 @@ where
     }
 
     /// Compute the signed hash
-    pub fn compute_signed_hash(&self) -> Hash {
+    pub(crate) fn compute_signed_hash(&self) -> Hash {
         self.content
             .compute_signed_hash(&self.content_creator_pub_key, self.id.get_hash())
     }
@@ -251,7 +251,7 @@ impl SecureShareSerializer {
     /// * `content_serializer`: Custom serializer to be used instead of the data in `serialized_data`
     /// * `value`: SecureShare structure to be serialized
     /// * `buffer`: buffer of serialized data to be extend
-    pub fn serialize_with<Ser, T, ID>(
+    pub(crate) fn serialize_with<Ser, T, ID>(
         &self,
         content_serializer: &Ser,
         value: &SecureShare<T, ID>,
@@ -334,7 +334,7 @@ where
     ///
     /// # Returns:
     /// A rest (data left over from deserialization), an instance of `T`, and the data enabling signature verification
-    pub fn deserialize_with<
+    pub(crate) fn deserialize_with<
         'a,
         E: ParseError<&'a [u8]> + ContextError<&'a [u8]>,
         ID: Id,

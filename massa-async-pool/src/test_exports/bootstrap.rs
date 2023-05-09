@@ -10,7 +10,7 @@ use rand::Rng;
 /// This file defines tools to test the asynchronous pool bootstrap
 
 /// Creates a `AsyncPool` from pre-set values
-pub fn create_async_pool(
+pub(crate)  fn create_async_pool(
     config: AsyncPoolConfig,
     messages: BTreeMap<AsyncMessageId, AsyncMessage>,
 ) -> AsyncPool {
@@ -24,7 +24,7 @@ fn get_random_address() -> Address {
     Address::from_public_key(&keypair.get_public_key())
 }
 
-pub fn get_random_message(fee: Option<Amount>) -> AsyncMessage {
+pub(crate)  fn get_random_message(fee: Option<Amount>) -> AsyncMessage {
     let mut rng = rand::thread_rng();
     AsyncMessage::new_with_hash(
         Slot::new(rng.gen_range(0..100_000), rng.gen_range(0..THREAD_COUNT)),
@@ -43,7 +43,7 @@ pub fn get_random_message(fee: Option<Amount>) -> AsyncMessage {
 }
 
 /// Asserts that two instances of `AsyncMessage` are the same
-pub fn assert_eq_async_message(v1: &AsyncMessage, v2: &AsyncMessage) {
+pub(crate)  fn assert_eq_async_message(v1: &AsyncMessage, v2: &AsyncMessage) {
     assert_eq!(v1.emission_slot, v2.emission_slot, "emission_slot mismatch");
     assert_eq!(
         v1.emission_index, v2.emission_index,
@@ -64,7 +64,7 @@ pub fn assert_eq_async_message(v1: &AsyncMessage, v2: &AsyncMessage) {
 }
 
 /// asserts that two `AsyncPool` are equal
-pub fn assert_eq_async_pool_bootstrap_state(v1: &AsyncPool, v2: &AsyncPool) {
+pub(crate)  fn assert_eq_async_pool_bootstrap_state(v1: &AsyncPool, v2: &AsyncPool) {
     assert_eq!(
         v1.messages.len(),
         v2.messages.len(),

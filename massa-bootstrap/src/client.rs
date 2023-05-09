@@ -30,7 +30,7 @@ use crate::{
 
 /// Specifies a common interface that can be used by standard, or mockers
 #[cfg_attr(test, mockall::automock)]
-pub trait BSConnector {
+pub(crate)  trait BSConnector {
     /// The client attempts to connect to the given address.
     /// If a duration is provided, the attempt will be timed out after the given duration.
     fn connect_timeout(
@@ -42,7 +42,7 @@ pub trait BSConnector {
 
 /// Initiates a connection with given timeout in milliseconds
 #[derive(Debug)]
-pub struct DefaultConnector;
+pub(crate)  struct DefaultConnector;
 
 impl BSConnector for DefaultConnector {
     /// Tries to connect to address
@@ -437,7 +437,7 @@ fn filter_bootstrap_list(
 
 /// Gets the state from a bootstrap server
 /// needs to be CANCELLABLE
-pub async fn get_state(
+pub(crate)  async fn get_state(
     bootstrap_config: &BootstrapConfig,
     final_state: Arc<RwLock<FinalState>>,
     mut connector: impl BSConnector,

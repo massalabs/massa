@@ -26,7 +26,7 @@ pub struct StateChanges {
     /// ledger changes
     pub ledger_changes: LedgerChanges,
     /// asynchronous pool changes
-    pub async_pool_changes: AsyncPoolChanges,
+    pub(crate) async_pool_changes: AsyncPoolChanges,
     /// roll state changes
     pub pos_changes: PoSChanges,
     /// executed operations changes
@@ -36,7 +36,7 @@ pub struct StateChanges {
 }
 
 /// Basic `StateChanges` serializer.
-pub struct StateChangesSerializer {
+pub(crate) struct StateChangesSerializer {
     ledger_changes_serializer: LedgerChangesSerializer,
     async_pool_changes_serializer: AsyncPoolChangesSerializer,
     pos_changes_serializer: PoSChangesSerializer,
@@ -52,7 +52,7 @@ impl Default for StateChangesSerializer {
 
 impl StateChangesSerializer {
     /// Creates a `StateChangesSerializer`
-    pub fn new() -> Self {
+    pub(crate) fn new() -> Self {
         Self {
             ledger_changes_serializer: LedgerChangesSerializer::new(),
             async_pool_changes_serializer: AsyncPoolChangesSerializer::new(),
@@ -124,7 +124,7 @@ impl Serializer<StateChanges> for StateChangesSerializer {
 }
 
 /// Basic `StateChanges` deserializer
-pub struct StateChangesDeserializer {
+pub(crate) struct StateChangesDeserializer {
     ledger_changes_deserializer: LedgerChangesDeserializer,
     async_pool_changes_deserializer: AsyncPoolChangesDeserializer,
     pos_changes_deserializer: PoSChangesDeserializer,
@@ -135,7 +135,7 @@ pub struct StateChangesDeserializer {
 impl StateChangesDeserializer {
     /// Creates a `StateChangesDeserializer`
     #[allow(clippy::too_many_arguments)]
-    pub fn new(
+    pub(crate) fn new(
         thread_count: u8,
         max_async_pool_changes: u64,
         max_async_message_data: u64,
@@ -276,7 +276,7 @@ impl Deserializer<StateChanges> for StateChangesDeserializer {
 
 impl StateChanges {
     /// extends the current `StateChanges` with another one
-    pub fn apply(&mut self, changes: StateChanges) {
+    pub(crate) fn apply(&mut self, changes: StateChanges) {
         use massa_ledger_exports::Applicable;
         self.ledger_changes.apply(changes.ledger_changes);
         self.async_pool_changes.extend(changes.async_pool_changes);

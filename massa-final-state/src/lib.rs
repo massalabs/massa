@@ -44,13 +44,15 @@ mod error;
 mod final_state;
 mod state_changes;
 
-pub use config::FinalStateConfig;
-pub use error::FinalStateError;
+pub(crate) use config::FinalStateConfig;
+pub(crate) use error::FinalStateError;
 pub use final_state::FinalState;
-pub use state_changes::{StateChanges, StateChangesDeserializer, StateChangesSerializer};
+pub use state_changes::StateChanges;
+pub(crate) use state_changes::StateChangesDeserializer;
+pub(crate) use state_changes::StateChangesSerializer;
 
 #[cfg(test)]
 mod tests;
 
 #[cfg(any(test, feature = "testing"))]
-pub mod test_exports;
+pub(crate) mod test_exports;

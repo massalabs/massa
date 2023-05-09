@@ -12,7 +12,7 @@ const NEW_CONNECTION: Token = Token(0);
 const STOP_LISTENER: Token = Token(10);
 
 /// TODO: this should be crate-private. currently needed for models testing
-pub struct BootstrapTcpListener {
+pub(crate)  struct BootstrapTcpListener {
     poll: Poll,
     events: Events,
     server: TcpListener,
@@ -21,9 +21,9 @@ pub struct BootstrapTcpListener {
     _mio_server: MioTcpListener,
 }
 
-pub struct BootstrapListenerStopHandle(Waker);
+pub(crate)  struct BootstrapListenerStopHandle(Waker);
 
-pub enum PollEvent {
+pub(crate)  enum PollEvent {
     NewConnection((TcpStream, SocketAddr)),
     Stop,
 }
@@ -31,7 +31,7 @@ impl BootstrapTcpListener {
     /// Setup a mio-listener that functions as a `select!` on a connection, or a waker
     ///
     /// * `addr` - the address to listen on
-    pub fn new(addr: &SocketAddr) -> Result<(BootstrapListenerStopHandle, Self), BootstrapError> {
+    pub(crate)  fn new(addr: &SocketAddr) -> Result<(BootstrapListenerStopHandle, Self), BootstrapError> {
         let domain = if addr.is_ipv4() {
             socket2::Domain::IPV4
         } else {
@@ -95,7 +95,7 @@ impl BSEventPoller for BootstrapTcpListener {
 
 impl BootstrapListenerStopHandle {
     /// Stop the bootstrap listener.
-    pub fn stop(&self) -> Result<(), BootstrapError> {
+    pub(crate)  fn stop(&self) -> Result<(), BootstrapError> {
         self.0.wake().map_err(BootstrapError::from)
     }
 }

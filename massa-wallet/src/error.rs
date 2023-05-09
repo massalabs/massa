@@ -7,7 +7,7 @@ use thiserror::Error;
 /// wallet error
 #[non_exhaustive]
 #[derive(Display, Error, Debug)]
-pub enum WalletError {
+pub(crate)  enum WalletError {
     /// IO error: {0}
     IOError(#[from] std::io::Error),
     /// JSON error: {0}

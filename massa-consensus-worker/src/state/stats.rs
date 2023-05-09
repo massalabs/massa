@@ -12,7 +12,7 @@ use massa_consensus_exports::events::ConsensusEvent;
 
 impl ConsensusState {
     /// Calculate and return stats about consensus
-    pub fn get_stats(&self) -> Result<ConsensusStats, ConsensusError> {
+    pub(crate)  fn get_stats(&self) -> Result<ConsensusStats, ConsensusError> {
         let timespan_end = max(self.launch_time, MassaTime::now()?);
         let timespan_start = max(
             timespan_end.saturating_sub(self.config.stats_timespan),
@@ -39,7 +39,7 @@ impl ConsensusState {
     }
 
     /// Must be called each tick to update stats. Will detect if a desynchronization happened
-    pub fn stats_tick(&mut self) -> Result<(), ConsensusError> {
+    pub(crate)  fn stats_tick(&mut self) -> Result<(), ConsensusError> {
         #[cfg(not(feature = "sandbox"))]
         {
             self.check_desync()?;
@@ -82,7 +82,7 @@ impl ConsensusState {
     }
 
     /// Remove old stats from consensus storage
-    pub fn prune_stats(&mut self) -> Result<(), ConsensusError> {
+    pub(crate)  fn prune_stats(&mut self) -> Result<(), ConsensusError> {
         let start_time = MassaTime::now()?.saturating_sub(self.stats_history_timespan);
         while let Some((t, _, _)) = self.final_block_stats.front() {
             if t < &start_time {

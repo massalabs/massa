@@ -25,7 +25,7 @@ use std::ops::Bound::Included;
 /// The ledger size can be very high: it can exceed 1 terabyte.
 /// To allow for storage on disk, the ledger uses trees and has `O(log(N))` access, insertion and deletion complexity.
 #[derive(Debug)]
-pub struct FinalLedger {
+pub(crate)  struct FinalLedger {
     /// ledger configuration
     pub(crate) config: LedgerConfig,
     /// ledger tree, sorted by address
@@ -34,7 +34,7 @@ pub struct FinalLedger {
 
 impl FinalLedger {
     /// Initializes a new `FinalLedger` by reading its initial state from file.
-    pub fn new(config: LedgerConfig, with_final_state: bool) -> Self {
+    pub(crate)  fn new(config: LedgerConfig, with_final_state: bool) -> Self {
         // create and initialize the disk ledger
         let sorted_ledger = LedgerDB::new(
             config.disk_ledger_path.clone(),

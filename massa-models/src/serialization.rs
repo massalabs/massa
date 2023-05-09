@@ -22,7 +22,7 @@ use std::ops::Bound;
 use Bound::Included;
 
 /// Serialize min big endian integer
-pub trait SerializeMinBEInt {
+pub(crate) trait SerializeMinBEInt {
     /// serializes with the minimal amount of big endian bytes
     fn to_be_bytes_min(self, max_value: Self) -> Result<Vec<u8>, ModelsError>;
 }
@@ -48,7 +48,7 @@ impl SerializeMinBEInt for u64 {
 }
 
 /// Deserialize min big endian
-pub trait DeserializeMinBEInt: Sized {
+pub(crate) trait DeserializeMinBEInt: Sized {
     /// min big endian integer base size
     const MIN_BE_INT_BASE_SIZE: usize;
 
@@ -111,7 +111,7 @@ impl DeserializeMinBEInt for u64 {
 }
 
 /// array from slice
-pub fn array_from_slice<const ARRAY_SIZE: usize>(
+pub(crate) fn array_from_slice<const ARRAY_SIZE: usize>(
     buffer: &[u8],
 ) -> Result<[u8; ARRAY_SIZE], ModelsError> {
     if buffer.len() < ARRAY_SIZE {
@@ -125,7 +125,7 @@ pub fn array_from_slice<const ARRAY_SIZE: usize>(
 }
 
 /// `u8` from slice
-pub fn u8_from_slice(buffer: &[u8]) -> Result<u8, ModelsError> {
+pub(crate) fn u8_from_slice(buffer: &[u8]) -> Result<u8, ModelsError> {
     if buffer.is_empty() {
         return Err(ModelsError::BufferError(
             "could not read u8 from empty buffer".into(),
@@ -314,7 +314,7 @@ impl Deserializer<Vec<u8>> for VecU8Deserializer {
 
 /// Basic `Vec<_>` serializer
 #[derive(Clone)]
-pub struct VecSerializer<T, ST>
+pub(crate) struct VecSerializer<T, ST>
 where
     ST: Serializer<T>,
 {
@@ -328,7 +328,7 @@ where
     ST: Serializer<T>,
 {
     /// Creates a new `VecSerializer`
-    pub fn new(data_serializer: ST) -> Self {
+    pub(crate) fn new(data_serializer: ST) -> Self {
         Self {
             len_serializer: U64VarIntSerializer::new(),
             data_serializer,
@@ -353,7 +353,7 @@ where
 
 /// Basic `Vec<_>` deserializer
 #[derive(Clone)]
-pub struct VecDeserializer<T, ST>
+pub(crate) struct VecDeserializer<T, ST>
 where
     ST: Deserializer<T> + Clone,
 {
@@ -367,7 +367,7 @@ where
     ST: Deserializer<T> + Clone,
 {
     /// Creates a new `VecDeserializer`
-    pub const fn new(
+    pub(crate) const fn new(
         data_deserializer: ST,
         min_length: Bound<u64>,
         max_length: Bound<u64>,
@@ -402,7 +402,7 @@ where
 
 /// Basic `PreHashSet<_>` serializer
 #[derive(Clone)]
-pub struct PreHashSetSerializer<T, ST>
+pub(crate) struct PreHashSetSerializer<T, ST>
 where
     ST: Serializer<T>,
 {
@@ -416,7 +416,7 @@ where
     ST: Serializer<T>,
 {
     /// Creates a new `PreHashSetSerializer`
-    pub fn new(data_serializer: ST) -> Self {
+    pub(crate) fn new(data_serializer: ST) -> Self {
         Self {
             len_serializer: U64VarIntSerializer::new(),
             data_serializer,
@@ -442,7 +442,7 @@ where
 
 /// Basic `PreHashSet<_>` deserializer
 #[derive(Clone)]
-pub struct PreHashSetDeserializer<T, ST>
+pub(crate) struct PreHashSetDeserializer<T, ST>
 where
     ST: Deserializer<T> + Clone,
 {
@@ -456,7 +456,7 @@ where
     ST: Deserializer<T> + Clone,
 {
     /// Creates a new `PreHashSetDeserializer`
-    pub const fn new(
+    pub(crate) const fn new(
         data_deserializer: ST,
         min_length: Bound<u64>,
         max_length: Bound<u64>,
@@ -492,7 +492,7 @@ where
 }
 
 /// Serializer for `String` with generic serializer for the size of the string
-pub struct StringSerializer<SL, L>
+pub(crate) struct StringSerializer<SL, L>
 where
     SL: Serializer<L>,
     L: TryFrom<usize>,
@@ -510,7 +510,7 @@ where
     ///
     /// # Arguments:
     /// - `length_serializer`: Serializer for the length of the string (should be one of `UXXVarIntSerializer`)
-    pub fn new(length_serializer: SL) -> Self {
+    pub(crate) fn new(length_serializer: SL) -> Self {
         Self {
             length_serializer,
             marker_l: std::marker::PhantomData,
@@ -536,7 +536,7 @@ where
 }
 
 /// Deserializer for `String` with generic deserializer for the size of the string
-pub struct StringDeserializer<DL, L>
+pub(crate) struct StringDeserializer<DL, L>
 where
     DL: Deserializer<L>,
     L: TryFrom<usize> + ToUsize,
@@ -554,7 +554,7 @@ where
     ///
     /// # Arguments:
     /// - `length_deserializer`: Serializer for the length of the string (should be one of `UXXVarIntSerializer`)
-    pub const fn new(length_deserializer: DL) -> Self {
+    pub(crate) const fn new(length_deserializer: DL) -> Self {
         Self {
             length_deserializer,
             marker_l: std::marker::PhantomData,

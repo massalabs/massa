@@ -19,7 +19,7 @@ use massa_signature::KeyPair;
 /// Creates a block for use in protocol,
 /// without paying attention to consensus related things
 /// like slot, parents, and merkle root.
-pub fn create_block(keypair: &KeyPair) -> SecureShareBlock {
+pub(crate)  fn create_block(keypair: &KeyPair) -> SecureShareBlock {
     let header = BlockHeader::new_verifiable(
         BlockHeader {
             slot: Slot::new(1, 0),
@@ -52,7 +52,7 @@ pub fn create_block(keypair: &KeyPair) -> SecureShareBlock {
 /// * `keypair`: key that sign the block
 /// * `slot`
 /// * `operations`
-pub fn create_block_with_operations(
+pub(crate)  fn create_block_with_operations(
     keypair: &KeyPair,
     slot: Slot,
     operations: Vec<SecureShareOperation>,
@@ -95,7 +95,7 @@ pub fn create_block_with_operations(
 /// * `keypair`: key that sign the block
 /// * `slot`
 /// * `endorsements`
-pub fn create_block_with_endorsements(
+pub(crate)  fn create_block_with_endorsements(
     keypair: &KeyPair,
     slot: Slot,
     endorsements: Vec<SecureShareEndorsement>,
@@ -129,7 +129,7 @@ pub fn create_block_with_endorsements(
 
 /// Creates an endorsement for use in protocol tests,
 /// without paying attention to consensus related things.
-pub fn create_endorsement() -> SecureShareEndorsement {
+pub(crate)  fn create_endorsement() -> SecureShareEndorsement {
     let keypair = KeyPair::generate();
 
     let content = Endorsement {
@@ -141,7 +141,7 @@ pub fn create_endorsement() -> SecureShareEndorsement {
 }
 
 /// Create an operation, from a specific sender, and with a specific expire period.
-pub fn create_operation_with_expire_period(
+pub(crate)  fn create_operation_with_expire_period(
     keypair: &KeyPair,
     expire_period: u64,
 ) -> SecureShareOperation {

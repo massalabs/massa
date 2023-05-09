@@ -20,7 +20,7 @@ use super::{
     BlockMessageSerializer,
 };
 
-pub struct PropagationThread {
+pub(crate)  struct PropagationThread {
     receiver: Receiver<BlockHandlerPropagationCommand>,
     config: ProtocolConfig,
     cache: SharedBlockCache,
@@ -166,7 +166,7 @@ impl PropagationThread {
     }
 }
 
-pub fn start_propagation_thread(
+pub(crate)  fn start_propagation_thread(
     active_connections: Box<dyn ActiveConnectionsTrait>,
     receiver: Receiver<BlockHandlerPropagationCommand>,
     peer_cmd_sender: Sender<PeerManagementCmd>,

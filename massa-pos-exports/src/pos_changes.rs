@@ -1,6 +1,8 @@
 use crate::{
-    DeferredCredits, DeferredCreditsDeserializer, DeferredCreditsSerializer, ProductionStats,
-    ProductionStatsDeserializer, ProductionStatsSerializer, RollsDeserializer,
+    cycle_info::{
+        ProductionStats, ProductionStatsDeserializer, ProductionStatsSerializer, RollsDeserializer,
+    },
+    DeferredCredits, DeferredCreditsDeserializer, DeferredCreditsSerializer,
 };
 use bitvec::prelude::*;
 use massa_models::{
@@ -46,7 +48,7 @@ impl Default for PoSChanges {
 
 impl PoSChanges {
     /// Check if changes are empty
-    pub fn is_empty(&self) -> bool {
+    pub(crate) fn is_empty(&self) -> bool {
         self.seed_bits.is_empty()
             && self.roll_changes.is_empty()
             && self.production_stats.is_empty()

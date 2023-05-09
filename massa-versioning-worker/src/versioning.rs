@@ -10,7 +10,7 @@ use parking_lot::RwLock;
 use thiserror::Error;
 use tracing::warn;
 
-use massa_models::{amount::Amount, config::VERSIONING_THRESHOLD_TRANSITION_ACCEPTED};
+use massa_models::{amount::Amount, config::constants::VERSIONING_THRESHOLD_TRANSITION_ACCEPTED};
 use massa_time::MassaTime;
 
 // TODO: add more items here
@@ -18,7 +18,7 @@ use massa_time::MassaTime;
 #[allow(missing_docs)]
 #[derive(Clone, Debug, PartialEq, Eq, Hash, TryFromPrimitive, IntoPrimitive)]
 #[repr(u32)]
-pub enum MipComponent {
+pub(crate) enum MipComponent {
     Address,
     Block,
     VM,
@@ -26,19 +26,19 @@ pub enum MipComponent {
 
 /// MIP info (name & versions & time range for a MIP)
 #[derive(Clone, Debug)]
-pub struct MipInfo {
+pub(crate) struct MipInfo {
     /// MIP name or descriptive name
-    pub name: String,
+    pub(crate) name: String,
     /// Network (or global) version (to be included in block header)
-    pub version: u32,
+    pub(crate) version: u32,
     /// Components concerned by this versioning (e.g. a new Block version), and the associated component_version
-    pub components: HashMap<MipComponent, u32>,
+    pub(crate) components: HashMap<MipComponent, u32>,
     /// a timestamp at which the version gains its meaning (e.g. announced in block header)
-    pub start: MassaTime,
+    pub(crate) start: MassaTime,
     /// a timestamp at the which the deployment is considered failed
-    pub timeout: MassaTime,
+    pub(crate) timeout: MassaTime,
     /// Once deployment has been locked, wait for this duration before deployment is considered active
-    pub activation_delay: MassaTime,
+    pub(crate) activation_delay: MassaTime,
 }
 
 // Need Ord / PartialOrd so it is properly sorted in BTreeMap
@@ -105,7 +105,7 @@ impl Default for ComponentState {
 #[allow(missing_docs)]
 #[derive(IntoPrimitive, Debug, Clone, Eq, PartialEq, TryFromPrimitive, PartialOrd, Ord)]
 #[repr(u32)]
-pub enum ComponentStateTypeId {
+pub(crate) enum ComponentStateTypeId {
     Error = 0,
     Defined = 1,
     Started = 2,
@@ -131,15 +131,15 @@ impl From<&ComponentState> for ComponentStateTypeId {
 #[derive(Clone, Debug)]
 pub struct Advance {
     /// from VersioningInfo.start
-    pub start_timestamp: MassaTime,
+    pub(crate) start_timestamp: MassaTime,
     /// from VersioningInfo.timeout
-    pub timeout: MassaTime,
+    pub(crate) timeout: MassaTime,
     /// % of past blocks with this version
-    pub threshold: Amount,
+    pub(crate) threshold: Amount,
     /// Current time (timestamp)
-    pub now: MassaTime,
+    pub(crate) now: MassaTime,
     /// TODO
-    pub activation_delay: MassaTime,
+    pub(crate) activation_delay: MassaTime,
 }
 
 // Need Ord / PartialOrd so it is properly sorted in BTreeMap
@@ -179,7 +179,7 @@ transitions!(ComponentState,
 
 impl Defined {
     /// Update state from state Defined
-    pub fn on_advance(self, input: Advance) -> ComponentState {
+    pub(crate) fn on_advance(self, input: Advance) -> ComponentState {
         match input.now {
             n if n >= input.timeout => ComponentState::failed(),
             n if n >= input.start_timestamp => ComponentState::started(Amount::zero()),
@@ -190,7 +190,7 @@ impl Defined {
 
 impl Started {
     /// Update state from state Started
-    pub fn on_advance(self, input: Advance) -> ComponentState {
+    pub(crate) fn on_advance(self, input: Advance) -> ComponentState {
         if input.now > input.timeout {
             return ComponentState::failed();
         }
@@ -205,7 +205,7 @@ impl Started {
 
 impl LockedIn {
     /// Update state from state LockedIn ...
-    pub fn on_advance(self, input: Advance) -> ComponentState {
+    pub(crate) fn on_advance(self, input: Advance) -> ComponentState {
         if input.now > self.at.saturating_add(input.activation_delay) {
             ComponentState::active()
         } else {
@@ -216,28 +216,28 @@ impl LockedIn {
 
 impl Active {
     /// Update state (will always stay in state Active)
-    pub fn on_advance(self, _input: Advance) -> Active {
+    pub(crate) fn on_advance(self, _input: Advance) -> Active {
         Active {}
     }
 }
 
 impl Failed {
     /// Update state (will always stay in state Failed)
-    pub fn on_advance(self, _input: Advance) -> Failed {
+    pub(crate) fn on_advance(self, _input: Advance) -> Failed {
         Failed {}
     }
 }
 
 /// Wrapper of ComponentState (in order to keep state history)
 #[derive(Debug, Clone, PartialEq)]
-pub struct MipState {
+pub(crate) struct MipState {
     pub(crate) state: ComponentState,
     pub(crate) history: BTreeMap<Advance, ComponentStateTypeId>,
 }
 
 impl MipState {
     /// Create
-    pub fn new(defined: MassaTime) -> Self {
+    pub(crate) fn new(defined: MassaTime) -> Self {
         let state: ComponentState = Default::default(); // Default is Defined
         let state_id = ComponentStateTypeId::from(&state);
         // Build a 'dummy' advance msg for state Defined, this is to avoid using an
@@ -256,7 +256,7 @@ impl MipState {
 
     /// Advance the state
     /// Can be called as multiple times as it will only store what changes the state in history
-    pub fn on_advance(&mut self, input: &Advance) {
+    pub(crate) fn on_advance(&mut self, input: &Advance) {
         let now = input.now;
         // Check that input.now is after last item in history
         // We don't want to go backward
@@ -290,7 +290,7 @@ impl MipState {
     ///   if state can be at this position (e.g. can it be at state "Started" according to given time range)
     ///   if history is coherent with current state
     /// Return false for state == ComponentState::Error
-    pub fn is_coherent_with(&self, versioning_info: &MipInfo) -> bool {
+    pub(crate) fn is_coherent_with(&self, versioning_info: &MipInfo) -> bool {
         // TODO: rename versioning_info -> mip_info
 
         // Always return false for state Error or if history is empty
@@ -327,7 +327,7 @@ impl MipState {
 
     /// Query state at given timestamp
     /// TODO: add doc for start & timeout parameter? why do we need them?
-    pub fn state_at(
+    pub(crate) fn state_at(
         &self,
         ts: MassaTime,
         start: MassaTime,
@@ -408,7 +408,7 @@ impl MipState {
 /// Error returned by MipStateHistory::state_at
 #[allow(missing_docs)]
 #[derive(Error, Debug, PartialEq)]
-pub enum StateAtError {
+pub(crate) enum StateAtError {
     #[error("Initial state ({0:?}) only defined after timestamp: {1}")]
     BeforeInitialState(ComponentStateTypeId, MassaTime),
     #[error("Empty history, should never happen")]
@@ -425,7 +425,7 @@ pub struct MipStore(pub Arc<RwLock<MipStoreRaw>>);
 
 impl MipStore {
     /// Retrieve the current network version to set in block header
-    pub fn get_network_version_current(&self) -> u32 {
+    pub(crate) fn get_network_version_current(&self) -> u32 {
         let lock = self.0.read();
         let store = lock.deref();
         // Current version == last active
@@ -439,7 +439,7 @@ impl MipStore {
 
     /// Retrieve the network version number to announce in block header
     /// return 0 is there is nothing to announce
-    pub fn get_network_version_to_announce(&self) -> u32 {
+    pub(crate) fn get_network_version_to_announce(&self) -> u32 {
         let lock = self.0.read();
         let store = lock.deref();
         // Announce the latest versioning info in Started / LockedIn state
@@ -459,7 +459,7 @@ impl MipStore {
             .unwrap_or(0)
     }
 
-    pub fn update_network_version_stats(
+    pub(crate) fn update_network_version_stats(
         &mut self,
         slot_timestamp: MassaTime,
         network_versions: Option<(u32, u32)>,
@@ -469,7 +469,7 @@ impl MipStore {
     }
 
     #[allow(clippy::result_large_err)]
-    pub fn update_with(
+    pub(crate) fn update_with(
         &mut self,
         mip_store: &MipStore,
     ) -> Result<(Vec<MipInfo>, Vec<MipInfo>), UpdateWithError> {
@@ -491,9 +491,9 @@ impl<const N: usize> TryFrom<([(MipInfo, MipState); N], MipStatsConfig)> for Mip
 
 /// Statistics in MipStoreRaw
 #[derive(Debug, Clone, PartialEq)]
-pub struct MipStatsConfig {
-    pub block_count_considered: usize,
-    pub counters_max: usize,
+pub(crate) struct MipStatsConfig {
+    pub(crate) block_count_considered: usize,
+    pub(crate) counters_max: usize,
 }
 
 /// In order for a MIP to be accepted, we compute stats about other node 'network' version announcement
@@ -516,7 +516,7 @@ impl MipStoreStats {
 
 /// Error returned by
 #[derive(Error, Debug, PartialEq)]
-pub enum UpdateWithError {
+pub(crate) enum UpdateWithError {
     // State is not coherent with associated MipInfo, ex: State is active but MipInfo.start was not reach yet
     #[error("MipInfo {0:?} is not coherent with state: {1:?}")]
     NonCoherent(MipInfo, MipState),
@@ -539,7 +539,7 @@ impl MipStoreRaw {
     /// Update our store with another (usually after a bootstrap where we received another store)
     /// Return list of updated / added if update is successful
     #[allow(clippy::result_large_err)]
-    pub fn update_with(
+    pub(crate) fn update_with(
         &mut self,
         store_raw: &MipStoreRaw,
     ) -> Result<(Vec<MipInfo>, Vec<MipInfo>), UpdateWithError> {

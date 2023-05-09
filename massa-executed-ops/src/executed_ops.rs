@@ -3,7 +3,7 @@
 //! This file defines a structure to list and prune previously executed operations.
 //! Used to detect operation reuse.
 
-use crate::{ops_changes::ExecutedOpsChanges, ExecutedOpsConfig};
+use crate::{config::ExecutedOpsConfig, ops_changes::ExecutedOpsChanges};
 use massa_hash::{Hash, HASH_SIZE_BYTES};
 use massa_models::{
     operation::{OperationId, OperationIdDeserializer},
@@ -36,11 +36,11 @@ pub struct ExecutedOps {
     /// Executed operations btreemap with slot as index for better pruning complexity
     pub sorted_ops: BTreeMap<Slot, PreHashSet<OperationId>>,
     /// Executed operations only for better insertion complexity
-    pub ops: PreHashSet<OperationId>,
+    pub(crate) ops: PreHashSet<OperationId>,
     /// Accumulated hash of the executed operations
     pub hash: Hash,
     /// execution status of operations (true: success, false: fail)
-    pub op_exec_status: HashMap<OperationId, bool>,
+    pub(crate) op_exec_status: HashMap<OperationId, bool>,
 }
 
 impl ExecutedOps {
@@ -57,7 +57,7 @@ impl ExecutedOps {
 
     /// Creates a new `ExecutedOps` and computes the hash
     /// Useful when restarting from a snapshot
-    pub fn new_with_hash(
+    pub(crate) fn new_with_hash(
         config: ExecutedOpsConfig,
         sorted_ops: BTreeMap<Slot, PreHashSet<OperationId>>,
     ) -> Self {
@@ -91,12 +91,12 @@ impl ExecutedOps {
     }
 
     /// Returns the number of executed operations
-    pub fn len(&self) -> usize {
+    pub(crate) fn len(&self) -> usize {
         self.ops.len()
     }
 
     /// Check executed ops emptiness
-    pub fn is_empty(&self) -> bool {
+    pub(crate) fn is_empty(&self) -> bool {
         self.ops.is_empty()
     }
 
@@ -134,7 +134,7 @@ impl ExecutedOps {
     }
 
     /// Check if an operation was executed
-    pub fn contains(&self, op_id: &OperationId) -> bool {
+    pub(crate) fn contains(&self, op_id: &OperationId) -> bool {
         self.ops.contains(op_id)
     }
 
@@ -157,7 +157,7 @@ impl ExecutedOps {
     ///
     /// # Returns
     /// A tuple containing the data and the next executed ops streaming step
-    pub fn get_executed_ops_part(
+    pub(crate) fn get_executed_ops_part(
         &self,
         cursor: StreamingStep<Slot>,
     ) -> (BTreeMap<Slot, PreHashSet<OperationId>>, StreamingStep<Slot>) {
@@ -189,7 +189,7 @@ impl ExecutedOps {
     ///
     /// # Returns
     /// The next executed ops streaming step
-    pub fn set_executed_ops_part(
+    pub(crate) fn set_executed_ops_part(
         &mut self,
         part: BTreeMap<Slot, PreHashSet<OperationId>>,
     ) -> StreamingStep<Slot> {

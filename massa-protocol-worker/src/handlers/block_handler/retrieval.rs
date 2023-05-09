@@ -80,7 +80,7 @@ impl BlockInfo {
     }
 }
 
-pub struct RetrievalThread {
+pub(crate)  struct RetrievalThread {
     active_connections: Box<dyn ActiveConnectionsTrait>,
     consensus_controller: Box<dyn ConsensusController>,
     pool_controller: Box<dyn PoolController>,
@@ -1270,7 +1270,7 @@ impl RetrievalThread {
 }
 
 #[allow(clippy::too_many_arguments)]
-pub fn start_retrieval_thread(
+pub(crate)  fn start_retrieval_thread(
     active_connections: Box<dyn ActiveConnectionsTrait>,
     consensus_controller: Box<dyn ConsensusController>,
     pool_controller: Box<dyn PoolController>,

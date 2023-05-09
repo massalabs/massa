@@ -25,12 +25,12 @@ use std::ops::Bound::{Excluded, Included};
 #[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct Clique {
     /// the block ids of the blocks in that clique
-    pub block_ids: PreHashSet<BlockId>,
+    pub(crate) block_ids: PreHashSet<BlockId>,
     /// Fitness used to compute finality
     /// Depends on descendants and endorsement count
-    pub fitness: u64,
+    pub(crate) fitness: u64,
     /// True if it is the clique of higher fitness
-    pub is_blockclique: bool,
+    pub(crate) is_blockclique: bool,
 }
 
 impl Default for Clique {
@@ -45,14 +45,14 @@ impl Default for Clique {
 
 /// Basic serializer for `Clique`
 #[derive(Default)]
-pub struct CliqueSerializer {
+pub(crate) struct CliqueSerializer {
     block_ids_length_serializer: U32VarIntSerializer,
     fitness_serializer: U64VarIntSerializer,
 }
 
 impl CliqueSerializer {
     /// Creates a `CliqueSerializer`
-    pub fn new() -> Self {
+    pub(crate) fn new() -> Self {
         Self {
             block_ids_length_serializer: U32VarIntSerializer::new(),
             fitness_serializer: U64VarIntSerializer::new(),
@@ -93,7 +93,7 @@ impl Serializer<Clique> for CliqueSerializer {
 }
 
 /// Basic deserializer for `Clique`
-pub struct CliqueDeserializer {
+pub(crate) struct CliqueDeserializer {
     block_ids_length_deserializer: U32VarIntDeserializer,
     block_id_deserializer: HashDeserializer,
     fitness_deserializer: U64VarIntDeserializer,
@@ -101,7 +101,7 @@ pub struct CliqueDeserializer {
 
 impl CliqueDeserializer {
     /// Creates a `CliqueDeserializer`
-    pub fn new(max_bootstrap_blocks: u32) -> Self {
+    pub(crate) fn new(max_bootstrap_blocks: u32) -> Self {
         Self {
             block_ids_length_deserializer: U32VarIntDeserializer::new(
                 Included(0),

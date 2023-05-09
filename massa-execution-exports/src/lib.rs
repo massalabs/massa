@@ -53,16 +53,21 @@ mod settings;
 mod types;
 
 pub use channels::ExecutionChannels;
-pub use controller_traits::{ExecutionController, ExecutionManager};
+pub use controller_traits::ExecutionController;
+pub use controller_traits::ExecutionManager;
 pub use error::ExecutionError;
 pub use event_store::EventStore;
-pub use massa_sc_runtime::GasCosts;
-pub use settings::{ExecutionConfig, StorageCostsConstants};
-pub use types::{
-    ExecutionAddressInfo, ExecutionOutput, ExecutionStackElement, ReadOnlyCallRequest,
-    ReadOnlyExecutionOutput, ReadOnlyExecutionRequest, ReadOnlyExecutionTarget,
-    SlotExecutionOutput,
-};
+pub(crate) use massa_sc_runtime::GasCosts;
+pub use settings::ExecutionConfig;
+pub use settings::StorageCostsConstants;
+pub use types::ExecutionAddressInfo;
+pub use types::ExecutionOutput;
+pub use types::ExecutionStackElement;
+pub(crate) use types::ReadOnlyCallRequest;
+pub use types::ReadOnlyExecutionOutput;
+pub use types::ReadOnlyExecutionRequest;
+pub use types::ReadOnlyExecutionTarget;
+pub use types::SlotExecutionOutput;
 
 #[cfg(any(feature = "testing", feature = "gas_calibration"))]
-pub mod test_exports;
+pub(crate) mod test_exports;

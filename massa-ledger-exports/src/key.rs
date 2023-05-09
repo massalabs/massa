@@ -9,10 +9,10 @@ use nom::error::{ContextError, ParseError};
 use num_enum::{IntoPrimitive, TryFromPrimitive};
 use std::ops::Bound::Included;
 
-pub const BALANCE_IDENT: u8 = 0u8;
-pub const BYTECODE_IDENT: u8 = 1u8;
-pub const DATASTORE_IDENT: u8 = 2u8;
-pub const KEY_VERSION: u64 = 0;
+pub(crate) const BALANCE_IDENT: u8 = 0u8;
+pub(crate) const BYTECODE_IDENT: u8 = 1u8;
+pub(crate) const DATASTORE_IDENT: u8 = 2u8;
+pub(crate) const KEY_VERSION: u64 = 0;
 
 #[derive(PartialEq, Eq, Clone, IntoPrimitive, TryFromPrimitive, Debug)]
 #[repr(u8)]
@@ -30,7 +30,7 @@ pub enum KeyType {
 }
 
 #[derive(Default, Clone)]
-pub struct KeyTypeSerializer {
+pub(crate) struct KeyTypeSerializer {
     vec_u8_serializer: VecU8Serializer,
     // Whether is deserialized with VecU8Deserializer or not.
     // If true, we use the VecU8Serializer to serialize the key which will add the length at the beginning.
@@ -44,7 +44,7 @@ pub struct KeyTypeSerializer {
 impl KeyTypeSerializer {
     /// Creates a new KeyTypeSerializer.
     /// `with_datastore_key_length` if true, the datastore key is serialized with its length.
-    pub fn new(with_datastore_key_length: bool) -> Self {
+    pub(crate) fn new(with_datastore_key_length: bool) -> Self {
         Self {
             vec_u8_serializer: VecU8Serializer::new(),
             with_datastore_key_length,
@@ -71,7 +71,7 @@ impl Serializer<KeyType> for KeyTypeSerializer {
 }
 
 #[derive(Clone)]
-pub struct KeyTypeDeserializer {
+pub(crate) struct KeyTypeDeserializer {
     vec_u8_deserializer: VecU8Deserializer,
     // Same as in KeyTypeSerializer but for deserialization.
     with_datastore_key_length: bool,
@@ -81,7 +81,7 @@ impl KeyTypeDeserializer {
     /// Creates a new KeyTypeDeserializer.
     /// `max_datastore_key_length` is the maximum length of a datastore key.
     /// `with_datastore_key_length` if true, the datastore key is deserialized with its length.
-    pub fn new(max_datastore_key_length: u8, with_datastore_key_length: bool) -> Self {
+    pub(crate) fn new(max_datastore_key_length: u8, with_datastore_key_length: bool) -> Self {
         Self {
             vec_u8_deserializer: VecU8Deserializer::new(
                 Included(u64::MIN),

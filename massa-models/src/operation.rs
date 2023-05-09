@@ -35,10 +35,10 @@ use std::fmt::Formatter;
 use std::{ops::Bound::Included, ops::RangeInclusive, str::FromStr};
 
 /// Size in bytes of the serialized operation ID
-pub const OPERATION_ID_SIZE_BYTES: usize = massa_hash::HASH_SIZE_BYTES;
+pub(crate) const OPERATION_ID_SIZE_BYTES: usize = massa_hash::HASH_SIZE_BYTES;
 
 /// Size in bytes of the serialized operation ID prefix
-pub const OPERATION_ID_PREFIX_SIZE_BYTES: usize = 17;
+pub(crate) const OPERATION_ID_PREFIX_SIZE_BYTES: usize = 17;
 
 /// operation id
 #[derive(
@@ -159,17 +159,17 @@ impl OperationId {
     }
 
     /// op id into bytes
-    pub fn into_bytes(self) -> [u8; OPERATION_ID_SIZE_BYTES] {
+    pub(crate) fn into_bytes(self) -> [u8; OPERATION_ID_SIZE_BYTES] {
         self.0.into_bytes()
     }
 
     /// op id from bytes
-    pub fn from_bytes(data: &[u8; OPERATION_ID_SIZE_BYTES]) -> OperationId {
+    pub(crate) fn from_bytes(data: &[u8; OPERATION_ID_SIZE_BYTES]) -> OperationId {
         OperationId(Hash::from_bytes(data))
     }
 
     /// convert the [`OperationId`] into a [`OperationPrefixId`]
-    pub fn into_prefix(self) -> OperationPrefixId {
+    pub(crate) fn into_prefix(self) -> OperationPrefixId {
         OperationPrefixId(
             self.0.into_bytes()[..OPERATION_ID_PREFIX_SIZE_BYTES]
                 .try_into()
@@ -324,7 +324,7 @@ impl Serializer<Operation> for OperationSerializer {
 }
 
 /// Serializer for `Operation`
-pub struct OperationDeserializer {
+pub(crate) struct OperationDeserializer {
     expire_period_deserializer: U64VarIntDeserializer,
     amount_deserializer: AmountDeserializer,
     op_type_deserializer: OperationTypeDeserializer,
@@ -332,7 +332,7 @@ pub struct OperationDeserializer {
 
 impl OperationDeserializer {
     /// Creates a `OperationDeserializer`
-    pub fn new(
+    pub(crate) fn new(
         max_datastore_value_length: u64,
         max_function_name_length: u16,
         max_parameters_size: u32,
@@ -518,7 +518,7 @@ impl std::fmt::Display for OperationType {
 }
 
 /// Serializer for `OperationType`
-pub struct OperationTypeSerializer {
+pub(crate) struct OperationTypeSerializer {
     u32_serializer: U32VarIntSerializer,
     u64_serializer: U64VarIntSerializer,
     vec_u8_serializer: VecU8Serializer,
@@ -530,7 +530,7 @@ pub struct OperationTypeSerializer {
 
 impl OperationTypeSerializer {
     /// Creates a new `OperationTypeSerializer`
-    pub fn new() -> Self {
+    pub(crate) fn new() -> Self {
         Self {
             u32_serializer: U32VarIntSerializer::new(),
             u64_serializer: U64VarIntSerializer::new(),
@@ -625,7 +625,7 @@ impl Serializer<OperationType> for OperationTypeSerializer {
 }
 
 /// Deserializer for `OperationType`
-pub struct OperationTypeDeserializer {
+pub(crate) struct OperationTypeDeserializer {
     id_deserializer: U32VarIntDeserializer,
     rolls_number_deserializer: U64VarIntDeserializer,
     max_gas_deserializer: U64VarIntDeserializer,
@@ -639,7 +639,7 @@ pub struct OperationTypeDeserializer {
 
 impl OperationTypeDeserializer {
     /// Creates a new `OperationTypeDeserializer`
-    pub fn new(
+    pub(crate) fn new(
         max_datastore_value_length: u64,
         max_function_name_length: u16,
         max_parameters_size: u32,
@@ -836,7 +836,7 @@ impl SecureShareOperation {
     }
 
     /// get the addresses that are involved in this operation from a ledger point of view
-    pub fn get_ledger_involved_addresses(&self) -> PreHashSet<Address> {
+    pub(crate) fn get_ledger_involved_addresses(&self) -> PreHashSet<Address> {
         let mut res = PreHashSet::<Address>::default();
         let emitter_address = Address::from_public_key(&self.content_creator_pub_key);
         res.insert(emitter_address);
@@ -872,7 +872,7 @@ impl SecureShareOperation {
     }
 
     /// get the addresses that are involved in this operation from a rolls point of view
-    pub fn get_roll_involved_addresses(&self) -> Result<PreHashSet<Address>, ModelsError> {
+    pub(crate) fn get_roll_involved_addresses(&self) -> Result<PreHashSet<Address>, ModelsError> {
         let mut res = PreHashSet::<Address>::default();
         match self.content.op {
             OperationType::Transaction { .. } => {}
@@ -890,16 +890,16 @@ impl SecureShareOperation {
 }
 
 /// Set of operation id's prefix
-pub type OperationPrefixIds = PreHashSet<OperationPrefixId>;
+pub(crate) type OperationPrefixIds = PreHashSet<OperationPrefixId>;
 
 /// Serializer for `Vec<OperationId>`
-pub struct OperationIdsSerializer {
+pub(crate) struct OperationIdsSerializer {
     u32_serializer: U32VarIntSerializer,
 }
 
 impl OperationIdsSerializer {
     /// Creates a new `OperationIdsSerializer`
-    pub fn new() -> Self {
+    pub(crate) fn new() -> Self {
         Self {
             u32_serializer: U32VarIntSerializer::new(),
         }
@@ -944,14 +944,14 @@ impl Serializer<Vec<OperationId>> for OperationIdsSerializer {
 }
 
 /// Deserializer for `Vec<OperationId>`
-pub struct OperationIdsDeserializer {
+pub(crate) struct OperationIdsDeserializer {
     length_deserializer: U32VarIntDeserializer,
     hash_deserializer: HashDeserializer,
 }
 
 impl OperationIdsDeserializer {
     /// Creates a new `OperationIdsDeserializer`
-    pub fn new(max_operations_per_message: u32) -> Self {
+    pub(crate) fn new(max_operations_per_message: u32) -> Self {
         Self {
             length_deserializer: U32VarIntDeserializer::new(
                 Included(0),
@@ -1000,11 +1000,11 @@ impl Deserializer<Vec<OperationId>> for OperationIdsDeserializer {
 
 /// Deserializer for [`OperationPrefixId`]
 #[derive(Default)]
-pub struct OperationPrefixIdDeserializer;
+pub(crate) struct OperationPrefixIdDeserializer;
 
 impl OperationPrefixIdDeserializer {
     /// Creates a deserializer for [`OperationPrefixId`]
-    pub const fn new() -> Self {
+    pub(crate) const fn new() -> Self {
         Self
     }
 }
@@ -1053,14 +1053,14 @@ impl Deserializer<OperationPrefixId> for OperationPrefixIdDeserializer {
 }
 
 /// Deserializer for `OperationPrefixIds`
-pub struct OperationPrefixIdsDeserializer {
+pub(crate) struct OperationPrefixIdsDeserializer {
     length_deserializer: U32VarIntDeserializer,
     pref_deserializer: OperationPrefixIdDeserializer,
 }
 
 impl OperationPrefixIdsDeserializer {
     /// Creates a new `OperationIdsDeserializer`
-    pub const fn new(max_operations_per_message: u32) -> Self {
+    pub(crate) const fn new(max_operations_per_message: u32) -> Self {
         Self {
             length_deserializer: U32VarIntDeserializer::new(
                 Included(0),
@@ -1108,13 +1108,13 @@ impl Deserializer<OperationPrefixIds> for OperationPrefixIdsDeserializer {
 
 /// Serializer for `OperationPrefixIds`
 #[derive(Clone)]
-pub struct OperationPrefixIdsSerializer {
+pub(crate) struct OperationPrefixIdsSerializer {
     u32_serializer: U32VarIntSerializer,
 }
 
 impl OperationPrefixIdsSerializer {
     /// Creates a new `OperationIdsSerializer`
-    pub const fn new() -> Self {
+    pub(crate) const fn new() -> Self {
         Self {
             u32_serializer: U32VarIntSerializer::new(),
         }
@@ -1148,14 +1148,14 @@ impl Serializer<OperationPrefixIds> for OperationPrefixIdsSerializer {
 
 /// Serializer for `Operations`
 #[derive(Clone)]
-pub struct OperationsSerializer {
+pub(crate) struct OperationsSerializer {
     u32_serializer: U32VarIntSerializer,
     signed_op_serializer: SecureShareSerializer,
 }
 
 impl OperationsSerializer {
     /// Creates a new `OperationsSerializer`
-    pub const fn new() -> Self {
+    pub(crate) const fn new() -> Self {
         Self {
             u32_serializer: U32VarIntSerializer::new(),
             signed_op_serializer: SecureShareSerializer::new(),
@@ -1209,14 +1209,14 @@ impl Serializer<Vec<SecureShareOperation>> for OperationsSerializer {
 }
 
 /// Deserializer for `Operations`
-pub struct OperationsDeserializer {
+pub(crate) struct OperationsDeserializer {
     length_deserializer: U32VarIntDeserializer,
     signed_op_deserializer: SecureShareDeserializer<Operation, OperationDeserializer>,
 }
 
 impl OperationsDeserializer {
     /// Creates a new `OperationsDeserializer`
-    pub fn new(
+    pub(crate) fn new(
         max_operations_per_message: u32,
         max_datastore_value_length: u64,
         max_function_name_length: u16,

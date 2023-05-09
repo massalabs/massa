@@ -136,7 +136,7 @@ impl SelectorThread {
 /// A pair `(selector_manager, selector_controller)` where:
 /// * `selector_manager`: allows to stop the worker
 /// * `selector_controller`: allows sending requests and notifications to the worker
-pub fn start_selector_worker(
+pub(crate) fn start_selector_worker(
     selector_config: SelectorConfig,
 ) -> PosResult<(Box<dyn SelectorManager>, Box<dyn SelectorController>)> {
     let (input_sender, input_receiver) = sync_channel(selector_config.channel_size);

@@ -94,18 +94,26 @@ mod config;
 mod message;
 mod pool;
 
-pub use changes::{
-    AsyncPoolChanges, AsyncPoolChangesDeserializer, AsyncPoolChangesSerializer, Change,
-};
+pub use changes::AsyncPoolChanges;
+pub use changes::AsyncPoolChangesDeserializer;
+pub use changes::AsyncPoolChangesSerializer;
+pub use changes::Change;
 pub use config::AsyncPoolConfig;
-pub use message::{
-    AsyncMessage, AsyncMessageDeserializer, AsyncMessageId, AsyncMessageIdDeserializer,
-    AsyncMessageIdSerializer, AsyncMessageSerializer, AsyncMessageTrigger,
-};
-pub use pool::{AsyncPool, AsyncPoolDeserializer, AsyncPoolSerializer};
+
+pub use message::AsyncMessage;
+pub(crate) use message::AsyncMessageDeserializer;
+pub use message::AsyncMessageId;
+pub(crate) use message::AsyncMessageIdDeserializer;
+pub(crate) use message::AsyncMessageIdSerializer;
+pub(crate) use message::AsyncMessageSerializer;
+pub use message::AsyncMessageTrigger;
+
+pub use pool::AsyncPool;
+pub use pool::AsyncPoolDeserializer;
+pub use pool::AsyncPoolSerializer;
 
 #[cfg(test)]
 mod tests;
 
 #[cfg(feature = "testing")]
-pub mod test_exports;
+pub(crate) mod test_exports;

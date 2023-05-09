@@ -47,21 +47,21 @@ use self::{
 /// that all the endpoints we received are active.
 mod announcement;
 mod messages;
-pub mod models;
+pub(crate)  mod models;
 mod tester;
 
 pub(crate) use messages::{PeerManagementMessage, PeerManagementMessageSerializer};
 
-pub struct PeerManagementHandler {
-    pub peer_db: SharedPeerDB,
-    pub thread_join: Option<JoinHandle<()>>,
-    pub sender: PeerManagementChannel,
+pub(crate)  struct PeerManagementHandler {
+    pub(crate)  peer_db: SharedPeerDB,
+    pub(crate)  thread_join: Option<JoinHandle<()>>,
+    pub(crate)  sender: PeerManagementChannel,
     testers: Vec<Tester>,
 }
 
 impl PeerManagementHandler {
     #[allow(clippy::too_many_arguments)]
-    pub fn new(
+    pub(crate)  fn new(
         initial_peers: InitialPeers,
         peer_id: PeerId,
         peer_db: SharedPeerDB,
@@ -220,7 +220,7 @@ impl PeerManagementHandler {
         }
     }
 
-    pub fn stop(&mut self) {
+    pub(crate)  fn stop(&mut self) {
         self.sender
             .command_sender
             .send(PeerManagementCmd::Stop)
@@ -236,17 +236,17 @@ impl PeerManagementHandler {
 }
 
 #[derive(Clone)]
-pub struct MassaHandshake {
-    pub announcement_serializer: AnnouncementSerializer,
-    pub announcement_deserializer: AnnouncementDeserializer,
-    pub config: ProtocolConfig,
-    pub peer_db: SharedPeerDB,
+pub(crate)  struct MassaHandshake {
+    pub(crate)  announcement_serializer: AnnouncementSerializer,
+    pub(crate)  announcement_deserializer: AnnouncementDeserializer,
+    pub(crate)  config: ProtocolConfig,
+    pub(crate)  peer_db: SharedPeerDB,
     peer_mngt_msg_serializer: crate::messages::MessagesSerializer,
     message_handlers: MessagesHandler,
 }
 
 impl MassaHandshake {
-    pub fn new(
+    pub(crate)  fn new(
         peer_db: SharedPeerDB,
         config: ProtocolConfig,
         message_handlers: MessagesHandler,

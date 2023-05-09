@@ -21,7 +21,7 @@ pub struct Slot {
 }
 
 /// size of the slot key representation
-pub const SLOT_KEY_SIZE: usize = 9;
+pub(crate) const SLOT_KEY_SIZE: usize = 9;
 
 /// Basic serializer for `Slot`
 #[derive(Clone)]
@@ -191,7 +191,7 @@ impl Slot {
     }
 
     /// returns the minimal slot
-    pub const fn min() -> Slot {
+    pub(crate) const fn min() -> Slot {
         Slot {
             period: 0,
             thread: 0,
@@ -199,7 +199,7 @@ impl Slot {
     }
 
     /// returns the maximal slot
-    pub const fn max(thread_count: u8) -> Slot {
+    pub(crate) const fn max(thread_count: u8) -> Slot {
         Slot {
             period: u64::MAX,
             thread: thread_count.saturating_sub(1),
@@ -207,7 +207,7 @@ impl Slot {
     }
 
     /// first bit of the slot, for seed purpose
-    pub fn get_first_bit(&self) -> bool {
+    pub(crate) fn get_first_bit(&self) -> bool {
         Hash::compute_from(&self.to_bytes_key()).to_bytes()[0] >> 7 == 1
     }
 
@@ -254,7 +254,7 @@ impl Slot {
     /// let res = Slot::from_bytes_key(&key);
     /// assert_eq!(slot, res);
     /// ```
-    pub fn from_bytes_key(buffer: &[u8; SLOT_KEY_SIZE]) -> Self {
+    pub(crate) fn from_bytes_key(buffer: &[u8; SLOT_KEY_SIZE]) -> Self {
         Slot {
             period: u64::from_be_bytes(buffer[..8].try_into().unwrap()), // cannot fail
             thread: buffer[8],
@@ -299,7 +299,7 @@ impl Slot {
     /// let slot = Slot::new(10,0);
     /// assert_eq!(slot.get_prev_slot(5).unwrap(), Slot::new(9, 4));
     /// ```
-    pub fn get_prev_slot(&self, thread_count: u8) -> Result<Slot, ModelsError> {
+    pub(crate) fn get_prev_slot(&self, thread_count: u8) -> Result<Slot, ModelsError> {
         match self.thread.checked_sub(1u8) {
             Some(t) => Ok(Slot::new(self.period, t)),
             None => Ok(Slot::new(

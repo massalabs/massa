@@ -42,7 +42,7 @@ use strum_macros::{Display, EnumIter, EnumString};
 /// prompting of the user.
 #[allow(non_camel_case_types)]
 #[derive(Debug, PartialEq, Eq, EnumIter, EnumMessage, EnumString, EnumProperty, Display)]
-pub enum Command {
+pub(crate)  enum Command {
     #[strum(
         ascii_case_insensitive,
         props(pwd_not_needed = "true"),
@@ -313,7 +313,7 @@ pub enum Command {
 
 #[derive(Debug, Display, EnumString, EnumIter)]
 #[strum(serialize_all = "snake_case")]
-pub enum ListOperation {
+pub(crate)  enum ListOperation {
     #[strum(
         ascii_case_insensitive,
         message = "add",
@@ -340,11 +340,11 @@ pub enum ListOperation {
 #[derive(Debug, Serialize)]
 pub(crate) struct ExtendedWalletEntry {
     /// the keypair
-    pub keypair: KeyPair,
+    pub(crate)  keypair: KeyPair,
     /// address and balance information
-    pub address_info: CompactAddressInfo,
+    pub(crate)  address_info: CompactAddressInfo,
     /// whether to display the public/secret keys or just the address info
-    pub show_keys: bool,
+    pub(crate)  show_keys: bool,
 }
 
 impl Display for ExtendedWalletEntry {
@@ -362,7 +362,7 @@ impl Display for ExtendedWalletEntry {
 /// Aggregation of the local, with some useful information as the balance, etc
 /// to be printed by the client.
 #[derive(Debug, Serialize)]
-pub struct ExtendedWallet(pub(crate) PreHashMap<Address, ExtendedWalletEntry>);
+pub(crate)  struct ExtendedWallet(pub(crate) PreHashMap<Address, ExtendedWalletEntry>);
 
 impl ExtendedWallet {
     /// Reorganize everything into an extended wallet
@@ -1397,7 +1397,7 @@ async fn send_operation(
 
 /// TODO: ugly utilities functions
 /// takes a slice of string and makes it into a `Vec<T>`
-pub fn parse_vec<T: std::str::FromStr>(args: &[String]) -> anyhow::Result<Vec<T>, anyhow::Error>
+pub(crate)  fn parse_vec<T: std::str::FromStr>(args: &[String]) -> anyhow::Result<Vec<T>, anyhow::Error>
 where
     T::Err: Display,
 {
@@ -1415,7 +1415,7 @@ async fn get_file_as_byte_vec(filename: &std::path::Path) -> Result<Vec<u8>> {
 }
 
 // chains get_key_value with its parsing
-pub fn parse_key_value<T: std::str::FromStr>(
+pub(crate)  fn parse_key_value<T: std::str::FromStr>(
     p: &HashMap<&str, &str>,
     key: &str,
 ) -> anyhow::Result<Option<T>, anyhow::Error>
@@ -1434,7 +1434,7 @@ where
 }
 
 /// Display the help of all commands
-pub fn help() {
+pub(crate)  fn help() {
     println!("HELP of Massa client (list of available commands):");
     Command::iter().map(|c| c.help()).collect()
 }

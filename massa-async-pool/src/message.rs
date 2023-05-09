@@ -30,13 +30,13 @@ use std::ops::Bound::{Excluded, Included};
 pub type AsyncMessageId = (std::cmp::Reverse<Ratio<u64>>, Slot, u64);
 
 #[derive(Clone)]
-pub struct AsyncMessageIdSerializer {
+pub(crate) struct AsyncMessageIdSerializer {
     slot_serializer: SlotSerializer,
     u64_serializer: U64VarIntSerializer,
 }
 
 impl AsyncMessageIdSerializer {
-    pub fn new() -> Self {
+    pub(crate) fn new() -> Self {
         Self {
             slot_serializer: SlotSerializer::new(),
             u64_serializer: U64VarIntSerializer::new(),
@@ -92,13 +92,13 @@ impl Serializer<AsyncMessageId> for AsyncMessageIdSerializer {
 }
 
 #[derive(Clone)]
-pub struct AsyncMessageIdDeserializer {
+pub(crate) struct AsyncMessageIdDeserializer {
     slot_deserializer: SlotDeserializer,
     u64_deserializer: U64VarIntDeserializer,
 }
 
 impl AsyncMessageIdDeserializer {
-    pub fn new(thread_count: u8) -> Self {
+    pub(crate) fn new(thread_count: u8) -> Self {
         Self {
             slot_deserializer: SlotDeserializer::new(
                 (Included(u64::MIN), Included(u64::MAX)),
@@ -171,10 +171,10 @@ impl Deserializer<AsyncMessageId> for AsyncMessageIdDeserializer {
 #[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
 pub struct AsyncMessageTrigger {
     /// Filter on the address
-    pub address: Address,
+    pub(crate) address: Address,
 
     /// Filter on the datastore key
-    pub datastore_key: Option<Vec<u8>>,
+    pub(crate) datastore_key: Option<Vec<u8>>,
 }
 
 /// Serializer for a trigger for an asynchronous message
@@ -184,7 +184,7 @@ struct AsyncMessageTriggerSerializer {
 }
 
 impl AsyncMessageTriggerSerializer {
-    pub fn new() -> Self {
+    pub(crate) fn new() -> Self {
         Self {
             address_serializer: AddressSerializer::new(),
             key_serializer: OptionSerializer::new(VecU8Serializer::new()),
@@ -212,7 +212,7 @@ struct AsyncMessageTriggerDeserializer {
 }
 
 impl AsyncMessageTriggerDeserializer {
-    pub fn new(max_key_length: u32) -> Self {
+    pub(crate) fn new(max_key_length: u32) -> Self {
         Self {
             address_deserializer: AddressDeserializer::new(),
             key_serializer: OptionDeserializer::new(VecU8Deserializer::new(
@@ -251,11 +251,11 @@ impl Deserializer<AsyncMessageTrigger> for AsyncMessageTriggerDeserializer {
 #[derive(Debug, PartialEq, Eq, Clone, Serialize, Deserialize)]
 pub struct AsyncMessage {
     /// Slot at which the message was emitted
-    pub emission_slot: Slot,
+    pub(crate) emission_slot: Slot,
 
     /// Index of the emitted message within the `emission_slot`.
     /// This is used for disambiguate the emission of multiple messages at the same slot.
-    pub emission_index: u64,
+    pub(crate) emission_index: u64,
 
     /// The address that sent the message
     pub sender: Address,
@@ -270,7 +270,7 @@ pub struct AsyncMessage {
     pub max_gas: u64,
 
     /// Fee paid by the sender when the message is processed.
-    pub fee: Amount,
+    pub(crate) fee: Amount,
 
     /// Coins sent from the sender to the target address of the message.
     /// Those coins are spent by the sender address when the message is sent,
@@ -279,29 +279,29 @@ pub struct AsyncMessage {
     pub coins: Amount,
 
     /// Slot at which the message starts being valid (bound included in the validity range)
-    pub validity_start: Slot,
+    pub(crate) validity_start: Slot,
 
     /// Slot at which the message stops being valid (bound not included in the validity range)
-    pub validity_end: Slot,
+    pub(crate) validity_end: Slot,
 
     /// Raw payload data of the message
-    pub data: Vec<u8>,
+    pub(crate) data: Vec<u8>,
 
     /// Trigger that define whenever a message can be executed
-    pub trigger: Option<AsyncMessageTrigger>,
+    pub(crate) trigger: Option<AsyncMessageTrigger>,
 
     /// Boolean that determine if the message can be executed. For messages without filter this boolean is always true.
     /// For messages with filter, this boolean is true if the filter has been matched between `validity_start` and current slot.
-    pub can_be_executed: bool,
+    pub(crate) can_be_executed: bool,
 
     /// Hash of the message
-    pub hash: Hash,
+    pub(crate) hash: Hash,
 }
 
 impl AsyncMessage {
     #[allow(clippy::too_many_arguments)]
     /// Take an `AsyncMessage` and return it with its hash computed
-    pub fn new_with_hash(
+    pub(crate) fn new_with_hash(
         emission_slot: Slot,
         emission_index: u64,
         sender: Address,
@@ -342,7 +342,7 @@ impl AsyncMessage {
     }
 
     /// Compute the ID of the message for use when choosing which operations to keep in priority (highest score) on pool overflow.
-    pub fn compute_id(&self) -> AsyncMessageId {
+    pub(crate) fn compute_id(&self) -> AsyncMessageId {
         let denom = if self.max_gas > 0 { self.max_gas } else { 1 };
         (
             std::cmp::Reverse(Ratio::new(self.fee.to_raw(), denom)),
@@ -352,7 +352,7 @@ impl AsyncMessage {
     }
 
     /// Recompute the hash of the message. Must be used each time we modify one field
-    pub fn compute_hash(&mut self) {
+    pub(crate) fn compute_hash(&mut self) {
         let async_message_ser = AsyncMessageSerializer::new();
         let mut buffer = Vec::new();
         async_message_ser.serialize(self, &mut buffer).expect(
@@ -362,7 +362,7 @@ impl AsyncMessage {
     }
 }
 
-pub struct AsyncMessageSerializer {
+pub(crate) struct AsyncMessageSerializer {
     slot_serializer: SlotSerializer,
     amount_serializer: AmountSerializer,
     u64_serializer: U64VarIntSerializer,
@@ -372,7 +372,7 @@ pub struct AsyncMessageSerializer {
 }
 
 impl AsyncMessageSerializer {
-    pub fn new() -> Self {
+    pub(crate) fn new() -> Self {
         Self {
             slot_serializer: SlotSerializer::new(),
             amount_serializer: AmountSerializer::new(),
@@ -452,7 +452,7 @@ impl Serializer<AsyncMessage> for AsyncMessageSerializer {
     }
 }
 
-pub struct AsyncMessageDeserializer {
+pub(crate) struct AsyncMessageDeserializer {
     slot_deserializer: SlotDeserializer,
     amount_deserializer: AmountDeserializer,
     emission_index_deserializer: U64VarIntDeserializer,
@@ -463,7 +463,7 @@ pub struct AsyncMessageDeserializer {
 }
 
 impl AsyncMessageDeserializer {
-    pub fn new(thread_count: u8, max_async_message_data: u64, max_key_length: u32) -> Self {
+    pub(crate) fn new(thread_count: u8, max_async_message_data: u64, max_key_length: u32) -> Self {
         Self {
             slot_deserializer: SlotDeserializer::new(
                 (Included(0), Included(u64::MAX)),

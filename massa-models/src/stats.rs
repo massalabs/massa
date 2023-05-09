@@ -9,15 +9,15 @@ use std::fmt::Formatter;
 #[derive(Serialize, Deserialize, Debug)]
 pub struct ExecutionStats {
     /// time window start
-    pub time_window_start: MassaTime,
+    pub(crate) time_window_start: MassaTime,
     /// time window end
-    pub time_window_end: MassaTime,
+    pub(crate) time_window_end: MassaTime,
     /// number of final blocks in the time window
-    pub final_block_count: usize,
+    pub(crate) final_block_count: usize,
     /// number of final executed operations in the time window
-    pub final_executed_operations_count: usize,
+    pub(crate) final_executed_operations_count: usize,
     /// active execution cursor slot
-    pub active_cursor: Slot,
+    pub(crate) active_cursor: Slot,
 }
 
 impl std::fmt::Display for ExecutionStats {
@@ -52,15 +52,15 @@ impl std::fmt::Display for ExecutionStats {
 #[derive(Serialize, Deserialize, Debug)]
 pub struct NetworkStats {
     /// in connections count
-    pub in_connection_count: u64,
+    pub(crate) in_connection_count: u64,
     /// out connections count
-    pub out_connection_count: u64,
+    pub(crate) out_connection_count: u64,
     /// total known peers count
-    pub known_peer_count: u64,
+    pub(crate) known_peer_count: u64,
     /// banned node count
-    pub banned_peer_count: u64,
+    pub(crate) banned_peer_count: u64,
     /// active node count
-    pub active_node_count: u64,
+    pub(crate) active_node_count: u64,
 }
 
 impl std::fmt::Display for NetworkStats {
@@ -79,15 +79,15 @@ impl std::fmt::Display for NetworkStats {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ConsensusStats {
     /// start of the time span for stats
-    pub start_timespan: MassaTime,
+    pub(crate) start_timespan: MassaTime,
     /// end of the time span for stats
-    pub end_timespan: MassaTime,
+    pub(crate) end_timespan: MassaTime,
     /// number of final blocks
-    pub final_block_count: u64,
+    pub(crate) final_block_count: u64,
     /// number of stale blocks in memory
-    pub stale_block_count: u64,
+    pub(crate) stale_block_count: u64,
     ///  number of actives cliques
-    pub clique_count: u64,
+    pub(crate) clique_count: u64,
 }
 
 impl std::fmt::Display for ConsensusStats {
@@ -112,11 +112,11 @@ impl std::fmt::Display for ConsensusStats {
 
 /// stats produced by pool module
 #[derive(Serialize, Deserialize, Debug)]
-pub struct PoolStats {
+pub(crate) struct PoolStats {
     /// number of operations in the pool
-    pub operation_count: u64,
+    pub(crate) operation_count: u64,
     /// number of endorsement in the pool
-    pub endorsement_count: u64,
+    pub(crate) endorsement_count: u64,
 }
 
 impl std::fmt::Display for PoolStats {

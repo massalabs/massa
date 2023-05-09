@@ -26,15 +26,15 @@ use tracing::info;
 /// structure used to communicate with execution thread
 pub(crate) struct ExecutionInputData {
     /// set stop to true to stop the thread
-    pub stop: bool,
+    pub(crate)  stop: bool,
     /// list of newly finalized blocks
-    pub finalized_blocks: HashMap<Slot, BlockId>,
+    pub(crate)  finalized_blocks: HashMap<Slot, BlockId>,
     /// new blockclique (if there is a new one)
-    pub new_blockclique: Option<HashMap<Slot, BlockId>>,
+    pub(crate)  new_blockclique: Option<HashMap<Slot, BlockId>>,
     /// storage instances for previously unprocessed blocks
-    pub block_storage: PreHashMap<BlockId, Storage>,
+    pub(crate)  block_storage: PreHashMap<BlockId, Storage>,
     /// queue for read-only execution requests and response MPSCs to send back their outputs
-    pub readonly_requests: RequestQueue<ReadOnlyExecutionRequest, ReadOnlyExecutionOutput>,
+    pub(crate)  readonly_requests: RequestQueue<ReadOnlyExecutionRequest, ReadOnlyExecutionOutput>,
 }
 
 impl Display for ExecutionInputData {
@@ -58,7 +58,7 @@ impl Display for ExecutionInputData {
 
 impl ExecutionInputData {
     /// Creates a new empty `ExecutionInputData`
-    pub fn new(config: ExecutionConfig) -> Self {
+    pub(crate)  fn new(config: ExecutionConfig) -> Self {
         ExecutionInputData {
             stop: Default::default(),
             finalized_blocks: Default::default(),
@@ -70,7 +70,7 @@ impl ExecutionInputData {
 
     /// Takes the current input data into a clone that is returned,
     /// and resets self.
-    pub fn take(&mut self) -> Self {
+    pub(crate)  fn take(&mut self) -> Self {
         let max_final_events = self.readonly_requests.capacity();
         ExecutionInputData {
             stop: std::mem::take(&mut self.stop),
@@ -87,7 +87,7 @@ impl ExecutionInputData {
 
 #[derive(Clone)]
 /// implementation of the execution controller
-pub struct ExecutionControllerImpl {
+pub(crate)  struct ExecutionControllerImpl {
     /// input data to process in the VM loop
     /// with a wake-up condition variable that needs to be triggered when the data changes
     pub(crate) input_data: Arc<(Condvar, Mutex<ExecutionInputData>)>,
@@ -279,7 +279,7 @@ impl ExecutionController for ExecutionControllerImpl {
 
 /// Execution manager
 /// Allows stopping the execution worker
-pub struct ExecutionManagerImpl {
+pub(crate)  struct ExecutionManagerImpl {
     /// input data to process in the VM loop
     /// with a wake-up condition variable that needs to be triggered when the data changes
     pub(crate) input_data: Arc<(Condvar, Mutex<ExecutionInputData>)>,

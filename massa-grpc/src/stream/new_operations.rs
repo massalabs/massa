@@ -11,7 +11,7 @@ use tonic::{Request, Streaming};
 use tracing::log::error;
 
 /// Type declaration for NewOperations
-pub type NewOperationsStreamType = Pin<
+pub(crate)  type NewOperationsStreamType = Pin<
     Box<
         dyn futures_core::Stream<Item = Result<grpc::NewOperationsResponse, tonic::Status>>
             + Send

@@ -11,7 +11,7 @@ use crate::secure_share::SecureShareContent;
 use crate::slot::Slot;
 
 /// Helper to generate endorsements ready for denunciation
-pub fn gen_endorsements_for_denunciation(
+pub(crate)  fn gen_endorsements_for_denunciation(
     with_slot: Option<Slot>,
     with_keypair: Option<KeyPair>,
 ) -> (
@@ -60,7 +60,7 @@ pub fn gen_endorsements_for_denunciation(
 }
 
 /// Helper to generate block headers ready for denunciation
-pub fn gen_block_headers_for_denunciation(
+pub(crate)  fn gen_block_headers_for_denunciation(
     with_slot: Option<Slot>,
     with_keypair: Option<KeyPair>,
 ) -> (Slot, KeyPair, SecuredHeader, SecuredHeader, SecuredHeader) {

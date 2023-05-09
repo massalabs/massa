@@ -5,15 +5,15 @@ use massa_models::{block_header::SecuredHeader, block_id::BlockId};
 use parking_lot::RwLock;
 use peernet::peer_id::PeerId;
 
-pub struct BlockCache {
-    pub checked_headers: LruCache<BlockId, SecuredHeader>,
+pub(crate)  struct BlockCache {
+    pub(crate)  checked_headers: LruCache<BlockId, SecuredHeader>,
     #[allow(clippy::type_complexity)]
-    pub blocks_known_by_peer: LruCache<PeerId, (LruCache<BlockId, (bool, Instant)>, Instant)>,
-    pub max_known_blocks_by_peer: NonZeroUsize,
+    pub(crate)  blocks_known_by_peer: LruCache<PeerId, (LruCache<BlockId, (bool, Instant)>, Instant)>,
+    pub(crate)  max_known_blocks_by_peer: NonZeroUsize,
 }
 
 impl BlockCache {
-    pub fn insert_blocks_known(
+    pub(crate)  fn insert_blocks_known(
         &mut self,
         from_peer_id: &PeerId,
         block_ids: &[BlockId],
@@ -32,7 +32,7 @@ impl BlockCache {
 }
 
 impl BlockCache {
-    pub fn new(max_known_blocks: NonZeroUsize, max_known_blocks_by_peer: NonZeroUsize) -> Self {
+    pub(crate)  fn new(max_known_blocks: NonZeroUsize, max_known_blocks_by_peer: NonZeroUsize) -> Self {
         Self {
             checked_headers: LruCache::new(max_known_blocks),
             blocks_known_by_peer: LruCache::new(max_known_blocks_by_peer),
@@ -41,4 +41,4 @@ impl BlockCache {
     }
 }
 
-pub type SharedBlockCache = Arc<RwLock<BlockCache>>;
+pub(crate)  type SharedBlockCache = Arc<RwLock<BlockCache>>;

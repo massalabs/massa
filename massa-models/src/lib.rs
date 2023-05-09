@@ -41,11 +41,11 @@ pub mod error;
 /// execution related structures
 pub mod execution;
 /// ledger related structures
-pub mod ledger;
+pub(crate) mod ledger;
 /// mapping grpc
-pub mod mapping_grpc;
+pub(crate) mod mapping_grpc;
 /// node related structure
-pub mod node;
+pub(crate) mod node;
 /// operations
 pub mod operation;
 /// smart contract output events
@@ -53,7 +53,7 @@ pub mod output_event;
 /// pre-hashed trait, for hash less hashmap/set
 pub mod prehash;
 /// rolls
-pub mod rolls;
+pub(crate) mod rolls;
 /// trait for [massa_signature::Signature] secured data-structs
 pub mod secure_share;
 /// serialization
@@ -67,8 +67,8 @@ pub mod streaming_step;
 /// management of the relation between time and slots
 pub mod timeslots;
 /// versions
-pub mod version;
+pub(crate) mod version;
 
 /// Test utils
 #[cfg(feature = "testing")]
-pub mod test_exports;
+pub(crate) mod test_exports;

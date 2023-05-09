@@ -30,15 +30,15 @@ pub struct PoolConfig {
     /// whether operations broadcast is enabled
     pub broadcast_enabled: bool,
     /// endorsements channel capacity
-    pub broadcast_endorsements_channel_capacity: usize,
+    pub(crate) broadcast_endorsements_channel_capacity: usize,
     /// operations channel capacity
-    pub broadcast_operations_channel_capacity: usize,
+    pub(crate) broadcast_operations_channel_capacity: usize,
     /// genesis timestamp
     pub genesis_timestamp: MassaTime,
     /// period duration
     pub t0: MassaTime,
     /// cycle duration in periods
-    pub periods_per_cycle: u64,
+    pub(crate) periods_per_cycle: u64,
     /// denunciation expiration (in periods)
     pub denunciation_expire_periods: u64,
     /// max number of denunciations that can be included in a block header

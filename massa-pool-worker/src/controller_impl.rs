@@ -20,7 +20,7 @@ use crate::{
 
 /// A generic command to send commands to a pool
 #[allow(clippy::large_enum_variant)]
-pub enum Command {
+pub(crate)  enum Command {
     /// Add items to the pool
     AddItems(Storage),
     /// Add denunciation precursor to the pool
@@ -33,7 +33,7 @@ pub enum Command {
 
 /// Pool controller
 #[derive(Clone)]
-pub struct PoolControllerImpl {
+pub(crate)  struct PoolControllerImpl {
     /// Config
     pub(crate) _config: PoolConfig,
     /// Shared reference to the operation pool
@@ -49,7 +49,7 @@ pub struct PoolControllerImpl {
     /// Denunciation write worker command sender
     pub(crate) denunciations_input_sender: SyncSender<Command>,
     /// Last final periods from Consensus
-    pub last_cs_final_periods: Vec<u64>,
+    pub(crate)  last_cs_final_periods: Vec<u64>,
 }
 
 impl PoolController for PoolControllerImpl {
@@ -243,7 +243,7 @@ impl PoolController for PoolControllerImpl {
 /// Implementation of the pool manager.
 ///
 /// Contains the operations and endorsements thread handles.
-pub struct PoolManagerImpl {
+pub(crate)  struct PoolManagerImpl {
     /// Handle used to join the operation thread
     pub(crate) operations_thread_handle: Option<std::thread::JoinHandle<()>>,
     /// Handle used to join the endorsement thread

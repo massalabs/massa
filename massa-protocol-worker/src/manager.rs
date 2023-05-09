@@ -7,12 +7,12 @@ use tracing::info;
 use crate::connectivity::ConnectivityCommand;
 
 /// protocol manager used to stop the protocol
-pub struct ProtocolManagerImpl {
+pub(crate)  struct ProtocolManagerImpl {
     connectivity_thread: Option<(Sender<ConnectivityCommand>, JoinHandle<()>)>,
 }
 
 impl ProtocolManagerImpl {
-    pub fn new(connectivity_thread: (Sender<ConnectivityCommand>, JoinHandle<()>)) -> Self {
+    pub(crate)  fn new(connectivity_thread: (Sender<ConnectivityCommand>, JoinHandle<()>)) -> Self {
         Self {
             connectivity_thread: Some(connectivity_thread),
         }

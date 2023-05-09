@@ -13,7 +13,9 @@ use nom::{
     IResult, Parser,
 };
 
-use crate::{ExecutedDenunciationsChanges, ExecutedDenunciationsConfig};
+use crate::{
+    config::ExecutedDenunciationsConfig, denunciations_changes::ExecutedDenunciationsChanges,
+};
 
 use massa_hash::{Hash, HASH_SIZE_BYTES};
 use massa_models::denunciation::Denunciation;
@@ -36,7 +38,7 @@ pub struct ExecutedDenunciations {
     /// for better pruning complexity
     pub sorted_denunciations: BTreeMap<Slot, HashSet<DenunciationIndex>>,
     /// for better insertion complexity
-    pub denunciations: HashSet<DenunciationIndex>,
+    pub(crate) denunciations: HashSet<DenunciationIndex>,
     /// Accumulated hash of the executed denunciations
     pub hash: Hash,
 }
@@ -62,17 +64,17 @@ impl ExecutedDenunciations {
     }
 
     /// Returns the number of executed operations
-    pub fn len(&self) -> usize {
+    pub(crate) fn len(&self) -> usize {
         self.denunciations.len()
     }
 
     /// Check executed ops emptiness
-    pub fn is_empty(&self) -> bool {
+    pub(crate) fn is_empty(&self) -> bool {
         self.denunciations.is_empty()
     }
 
     /// Check if a denunciation (e.g. a denunciation index) was executed
-    pub fn contains(&self, de_idx: &DenunciationIndex) -> bool {
+    pub(crate) fn contains(&self, de_idx: &DenunciationIndex) -> bool {
         self.denunciations.contains(de_idx)
     }
 
@@ -133,7 +135,7 @@ impl ExecutedDenunciations {
     ///
     /// # Returns
     /// A tuple containing the data and the next executed de streaming step
-    pub fn get_executed_de_part(
+    pub(crate) fn get_executed_de_part(
         &self,
         cursor: StreamingStep<Slot>,
     ) -> (
@@ -168,7 +170,7 @@ impl ExecutedDenunciations {
     ///
     /// # Returns
     /// The next executed de streaming step
-    pub fn set_executed_de_part(
+    pub(crate) fn set_executed_de_part(
         &mut self,
         part: BTreeMap<Slot, HashSet<DenunciationIndex>>,
     ) -> StreamingStep<Slot> {

@@ -41,10 +41,10 @@
 mod ledger;
 mod ledger_db;
 
-pub use ledger::FinalLedger;
+pub(crate)  use ledger::FinalLedger;
 
 #[cfg(test)]
 mod tests;
 
 #[cfg(feature = "testing")]
-pub mod test_exports;
+pub(crate)  mod test_exports;

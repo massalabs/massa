@@ -59,12 +59,12 @@ impl DeferredCreditsHashTracker {
     }
 
     /// Get resulting hash from the tracker
-    pub fn get_hash(&self) -> &Hash {
+    pub(crate) fn get_hash(&self) -> &Hash {
         &self.hash
     }
 
     /// Apply adding an element (must not be an overwrite) or deleting an element (must exist)
-    pub fn toggle_entry(&mut self, slot: &Slot, address: &Address, amount: &Amount) {
+    pub(crate) fn toggle_entry(&mut self, slot: &Slot, address: &Address, amount: &Amount) {
         self.hash ^= self.compute_hash(slot, address, amount);
     }
 
@@ -81,7 +81,7 @@ impl DeferredCreditsHashTracker {
 
 impl DeferredCredits {
     /// Check if the credits list is empty
-    pub fn is_empty(&self) -> bool {
+    pub(crate) fn is_empty(&self) -> bool {
         self.credits.is_empty()
     }
 
@@ -107,7 +107,7 @@ impl DeferredCredits {
     }
 
     /// Apply a function to each element
-    pub fn for_each<F>(&mut self, mut f: F)
+    pub(crate) fn for_each<F>(&mut self, mut f: F)
     where
         F: FnMut(&Slot, &Address, &mut Amount),
     {
@@ -132,14 +132,14 @@ impl DeferredCredits {
     }
 
     /// Disable the hash tracker, loses hash
-    pub fn disable_hash_tracker(&mut self) {
+    pub(crate) fn disable_hash_tracker(&mut self) {
         self.hash_tracker = None;
     }
 
     /// Get all deferred credits within a slot range.
     /// If `with_hash == true` then the resulting DeferredCredits contains the hash of the included data.
     /// Note that computing the hash is heavy and should be done only at finalization.
-    pub fn get_slot_range<R>(&self, range: R, with_hash: bool) -> DeferredCredits
+    pub(crate) fn get_slot_range<R>(&self, range: R, with_hash: bool) -> DeferredCredits
     where
         R: RangeBounds<Slot>,
     {
@@ -167,7 +167,7 @@ impl DeferredCredits {
     }
 
     /// Remove credits set to zero, use only on finality
-    pub fn remove_zeros(&mut self) {
+    pub(crate) fn remove_zeros(&mut self) {
         let mut empty_slots = Vec::new();
 
         // We need to destructure self to be able to mutate both credits and the hash_tracker during iteration
@@ -200,7 +200,11 @@ impl DeferredCredits {
     }
 
     /// Gets the deferred credits for a given address that will be credited at a given slot
-    pub fn get_address_credits_for_slot(&self, addr: &Address, slot: &Slot) -> Option<Amount> {
+    pub(crate) fn get_address_credits_for_slot(
+        &self,
+        addr: &Address,
+        slot: &Slot,
+    ) -> Option<Amount> {
         self.credits
             .get(slot)
             .and_then(|slot_credits| slot_credits.get(addr))
@@ -208,7 +212,12 @@ impl DeferredCredits {
     }
 
     /// Insert an element
-    pub fn insert(&mut self, slot: Slot, address: Address, amount: Amount) -> Option<Amount> {
+    pub(crate) fn insert(
+        &mut self,
+        slot: Slot,
+        address: Address,
+        amount: Amount,
+    ) -> Option<Amount> {
         let prev = self
             .credits
             .entry(slot)
@@ -335,7 +344,7 @@ impl Deserializer<DeferredCredits> for DeferredCreditsDeserializer {
 }
 
 /// Serializer for `Credits`
-pub struct CreditsSerializer {
+pub(crate) struct CreditsSerializer {
     u64_ser: U64VarIntSerializer,
     address_ser: AddressSerializer,
     amount_ser: AmountSerializer,
@@ -349,7 +358,7 @@ impl Default for CreditsSerializer {
 
 impl CreditsSerializer {
     /// Creates a new `Credits` serializer
-    pub fn new() -> Self {
+    pub(crate) fn new() -> Self {
         Self {
             u64_ser: U64VarIntSerializer::new(),
             address_ser: AddressSerializer::new(),

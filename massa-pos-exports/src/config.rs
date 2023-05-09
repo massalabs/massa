@@ -4,11 +4,11 @@
 #[derive(Debug, Clone)]
 pub struct PoSConfig {
     /// periods per cycle
-    pub periods_per_cycle: u64,
+    pub(crate) periods_per_cycle: u64,
     /// thread count
-    pub thread_count: u8,
+    pub(crate) thread_count: u8,
     /// number of saved cycle
     pub cycle_history_length: usize,
     /// maximum size of a deferred credits bootstrap part
-    pub credits_bootstrap_part_size: u64,
+    pub(crate) credits_bootstrap_part_size: u64,
 }

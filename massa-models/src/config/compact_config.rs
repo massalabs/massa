@@ -1,4 +1,10 @@
-use super::*;
+use super::{
+    constants::{
+        BLOCK_REWARD, DELTA_F0, END_TIMESTAMP, GENESIS_TIMESTAMP, MAX_BLOCK_SIZE,
+        OPERATION_VALIDITY_PERIODS, PERIODS_PER_CYCLE, ROLL_PRICE, T0, THREAD_COUNT,
+    },
+    *,
+};
 use crate::amount::Amount;
 use massa_time::MassaTime;
 use serde::{Deserialize, Serialize};
@@ -6,27 +12,27 @@ use std::fmt::Display;
 
 /// Compact representation of key values of consensus algorithm used in API
 #[derive(Debug, Deserialize, Serialize, Clone, Copy)]
-pub struct CompactConfig {
+pub(crate) struct CompactConfig {
     /// Time in milliseconds when the blockclique started.
-    pub genesis_timestamp: MassaTime,
+    pub(crate) genesis_timestamp: MassaTime,
     /// TESTNET: time when the blockclique is ended.
-    pub end_timestamp: Option<MassaTime>,
+    pub(crate) end_timestamp: Option<MassaTime>,
     /// Number of threads
-    pub thread_count: u8,
+    pub(crate) thread_count: u8,
     /// Time between the periods in the same thread.
-    pub t0: MassaTime,
+    pub(crate) t0: MassaTime,
     /// Threshold for fitness.
-    pub delta_f0: u64,
+    pub(crate) delta_f0: u64,
     /// Maximum operation validity period count
-    pub operation_validity_periods: u64,
+    pub(crate) operation_validity_periods: u64,
     /// cycle duration in periods
-    pub periods_per_cycle: u64,
+    pub(crate) periods_per_cycle: u64,
     /// Reward amount for a block creation
-    pub block_reward: Amount,
+    pub(crate) block_reward: Amount,
     /// Price of a roll on the network
-    pub roll_price: Amount,
+    pub(crate) roll_price: Amount,
     /// Max total size of a block
-    pub max_block_size: u32,
+    pub(crate) max_block_size: u32,
 }
 
 impl Default for CompactConfig {

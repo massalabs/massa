@@ -1,3 +1,3 @@
 //! Exports testing utilities
 
-pub mod config;
+pub(crate)  mod config;

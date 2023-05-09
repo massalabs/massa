@@ -28,14 +28,14 @@ use std::net::TcpStream;
 use std::str::FromStr;
 
 lazy_static::lazy_static! {
-    pub static ref BOOTSTRAP_CONFIG_KEYPAIR: (BootstrapConfig, KeyPair) = {
+    pub(crate)  static ref BOOTSTRAP_CONFIG_KEYPAIR: (BootstrapConfig, KeyPair) = {
         let keypair = KeyPair::generate();
         (get_bootstrap_config(NodeId::new(keypair.get_public_key())), keypair)
     };
 }
 
 impl BootstrapClientBinder {
-    pub fn test_default(client_duplex: TcpStream, remote_pubkey: PublicKey) -> Self {
+    pub(crate)  fn test_default(client_duplex: TcpStream, remote_pubkey: PublicKey) -> Self {
         let cfg = BootstrapClientConfig {
             max_bytes_read_write: f64::INFINITY,
             max_bootstrap_message_size: MAX_BOOTSTRAP_MESSAGE_SIZE,

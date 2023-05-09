@@ -13,7 +13,7 @@ use crate::{error::ModelsError, slot::Slot};
 /// * `a`: starting slot (included)
 /// * `b`: ending slot (excluded)
 /// * `thread_count`: number of threads
-pub fn slot_count_in_range(a: Slot, b: Slot, thread_count: u8) -> Result<u64, ModelsError> {
+pub(crate) fn slot_count_in_range(a: Slot, b: Slot, thread_count: u8) -> Result<u64, ModelsError> {
     b.period
         .checked_sub(a.period)
         .ok_or(ModelsError::TimeOverflowError)?
@@ -84,7 +84,7 @@ pub fn get_latest_block_slot_at_timestamp(
 /// * `thread_count`: number of threads.
 /// * `t0`: time in milliseconds between two periods in the same thread.
 /// * `genesis_timestamp`: when the blockclique first started, in milliseconds.
-pub fn get_current_latest_block_slot(
+pub(crate) fn get_current_latest_block_slot(
     thread_count: u8,
     t0: MassaTime,
     genesis_timestamp: MassaTime,
@@ -103,7 +103,7 @@ pub fn get_current_latest_block_slot(
 /// # Returns
 /// `(Option<Slot>, Option<Slot>)` pair of options representing the start (included) and end (excluded) slots
 /// or `ConsensusError` on error
-pub fn time_range_to_slot_range(
+pub(crate) fn time_range_to_slot_range(
     thread_count: u8,
     t0: MassaTime,
     genesis_timestamp: MassaTime,

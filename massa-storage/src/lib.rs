@@ -98,7 +98,7 @@ impl Storage {
     /// - In the main for the node
     /// - At the top of the test in tests
     /// All others instances of Storage must be cloned from this one using `clone()` or `clone_without_refs()`.
-    pub fn create_root() -> Storage {
+    pub(crate) fn create_root() -> Storage {
         Storage {
             blocks: Default::default(),
             operations: Default::default(),
@@ -214,13 +214,13 @@ impl Storage {
     }
 
     /// get the block reference ownership
-    pub fn get_block_refs(&self) -> &PreHashSet<BlockId> {
+    pub(crate) fn get_block_refs(&self) -> &PreHashSet<BlockId> {
         &self.local_used_blocks
     }
 
     /// Claim block references.
     /// Returns the set of block refs that were found and claimed.
-    pub fn claim_block_refs(&mut self, ids: &PreHashSet<BlockId>) -> PreHashSet<BlockId> {
+    pub(crate) fn claim_block_refs(&mut self, ids: &PreHashSet<BlockId>) -> PreHashSet<BlockId> {
         let mut claimed = PreHashSet::with_capacity(ids.len());
 
         if ids.is_empty() {
@@ -239,7 +239,7 @@ impl Storage {
     }
 
     /// Drop block references
-    pub fn drop_block_refs(&mut self, ids: &PreHashSet<BlockId>) {
+    pub(crate) fn drop_block_refs(&mut self, ids: &PreHashSet<BlockId>) {
         if ids.is_empty() {
             return;
         }
@@ -364,7 +364,7 @@ impl Storage {
 
     /// Store operations
     /// Claims a local reference to the added operation
-    pub fn store_operations(&mut self, operations: Vec<SecureShareOperation>) {
+    pub(crate) fn store_operations(&mut self, operations: Vec<SecureShareOperation>) {
         if operations.is_empty() {
             return;
         }

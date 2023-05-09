@@ -10,7 +10,7 @@ use crate::{
 };
 
 /// `LruMap` specialization for `PreHashed` keys
-pub type PreHashLruMap<K, V> = LruMap<K, V, ByLength, BuildHashMapper<K>>;
+pub(crate) type PreHashLruMap<K, V> = LruMap<K, V, ByLength, BuildHashMapper<K>>;
 
 /// Cache controller of compiled runtime modules
 pub struct ModuleCache {
@@ -79,14 +79,14 @@ impl ModuleCache {
     }
 
     /// Set the initialization cost of a cached module
-    pub fn set_init_cost(&mut self, bytecode: &[u8], init_cost: u64) {
+    pub(crate) fn set_init_cost(&mut self, bytecode: &[u8], init_cost: u64) {
         let hash = Hash::compute_from(bytecode);
         self.lru_cache.set_init_cost(hash, init_cost);
         self.hd_cache.set_init_cost(hash, init_cost);
     }
 
     /// Set a cached module as invalid
-    pub fn set_invalid(&mut self, bytecode: &[u8]) {
+    pub(crate) fn set_invalid(&mut self, bytecode: &[u8]) {
         let hash = Hash::compute_from(bytecode);
         self.lru_cache.set_invalid(hash);
         self.hd_cache.set_invalid(hash);
@@ -115,7 +115,7 @@ impl ModuleCache {
     }
 
     /// Load a cached module for execution and check its validity for execution
-    pub fn load_module(
+    pub(crate) fn load_module(
         &mut self,
         bytecode: &[u8],
         execution_gas: u64,

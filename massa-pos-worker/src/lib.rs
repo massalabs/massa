@@ -36,7 +36,7 @@ pub(crate) struct DrawCache(pub VecDeque<CycleDraws>);
 
 impl DrawCache {
     /// get the index of a cycle in the cache
-    pub fn get_cycle_index(&self, cycle: u64) -> Option<usize> {
+    pub(crate) fn get_cycle_index(&self, cycle: u64) -> Option<usize> {
         let first_cycle = match self.0.front() {
             Some(c) => c.cycle,
             None => return None, // history empty
@@ -55,7 +55,7 @@ impl DrawCache {
     }
 
     /// get a reference to the draws of a given cycle
-    pub fn get(&self, cycle: u64) -> Option<&CycleDraws> {
+    pub(crate) fn get(&self, cycle: u64) -> Option<&CycleDraws> {
         self.get_cycle_index(cycle).and_then(|idx| self.0.get(idx))
     }
 }
@@ -64,16 +64,16 @@ impl DrawCache {
 #[derive(Debug)]
 pub(crate) struct CycleDraws {
     /// cycle number
-    pub cycle: u64,
+    pub(crate) cycle: u64,
     /// cache of draws
-    pub draws: HashMap<Slot, Selection>,
+    pub(crate) draws: HashMap<Slot, Selection>,
 }
 
 /// Structure of the shared pointer to the computed draws, or error if the draw system failed.
 pub(crate) type DrawCachePtr = Arc<(RwLockCondvar, RwLock<PosResult<DrawCache>>)>;
 
 /// Start thread selector
-pub use worker::start_selector_worker;
+pub(crate) use worker::start_selector_worker;
 
 // an RwLock condvar
 #[derive(Default)]

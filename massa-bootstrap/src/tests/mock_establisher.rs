@@ -9,7 +9,7 @@ use std::sync::Arc;
 
 use crate::establisher::{BSConnector, BSListener};
 
-pub fn new() -> (MockEstablisher, MockEstablisherInterface) {
+pub(crate)  fn new() -> (MockEstablisher, MockEstablisherInterface) {
     let (connection_listener_tx, connection_listener_rx) =
         bounded::<(SocketAddr, Sender<TcpStream>)>(CHANNEL_SIZE);
 
@@ -29,7 +29,7 @@ pub fn new() -> (MockEstablisher, MockEstablisherInterface) {
 }
 
 #[derive(Debug)]
-pub struct MockListener {
+pub(crate)  struct MockListener {
     connection_listener_rx: crossbeam::channel::Receiver<(SocketAddr, Sender<TcpStream>)>, // (controller, mock)
 }
 
@@ -60,7 +60,7 @@ impl BSListener for MockListener {
 }
 
 #[derive(Debug)]
-pub struct MockConnector {
+pub(crate)  struct MockConnector {
     connection_connector_tx: Sender<(TcpStream, SocketAddr, Arc<AtomicBool>)>,
 }
 
@@ -97,7 +97,7 @@ impl BSConnector for MockConnector {
 }
 
 #[derive(Debug)]
-pub struct MockEstablisher {
+pub(crate)  struct MockEstablisher {
     connection_listener_rx: Option<crossbeam::channel::Receiver<(SocketAddr, Sender<TcpStream>)>>,
     connection_connector_tx: Sender<(TcpStream, SocketAddr, Arc<AtomicBool>)>,
 }
@@ -121,13 +121,13 @@ impl MockEstablisher {
     }
 }
 
-pub struct MockEstablisherInterface {
+pub(crate)  struct MockEstablisherInterface {
     connection_listener_tx: Option<crossbeam::channel::Sender<(SocketAddr, Sender<TcpStream>)>>,
     connection_connector_rx: Receiver<(TcpStream, SocketAddr, Arc<AtomicBool>)>,
 }
 
 impl MockEstablisherInterface {
-    pub async fn connect_to_controller(&self, addr: &SocketAddr) -> io::Result<TcpStream> {
+    pub(crate)  async fn connect_to_controller(&self, addr: &SocketAddr) -> io::Result<TcpStream> {
         let sender = self.connection_listener_tx.as_ref().ok_or_else(|| {
             io::Error::new(
                 io::ErrorKind::Other,
@@ -151,7 +151,7 @@ impl MockEstablisherInterface {
         Ok(duplex_mock)
     }
 
-    pub fn wait_connection_attempt_from_controller(
+    pub(crate)  fn wait_connection_attempt_from_controller(
         &mut self,
     ) -> io::Result<(TcpStream, SocketAddr, Arc<AtomicBool>)> {
         self.connection_connector_rx.recv().map_err(|_| {

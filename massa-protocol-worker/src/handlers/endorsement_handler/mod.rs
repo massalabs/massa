@@ -13,9 +13,9 @@ use self::{
     retrieval::start_retrieval_thread,
 };
 
-pub mod cache;
-pub mod commands_propagation;
-pub mod commands_retrieval;
+pub(crate)  mod cache;
+pub(crate)  mod commands_propagation;
+pub(crate)  mod commands_retrieval;
 mod messages;
 mod propagation;
 mod retrieval;
@@ -24,16 +24,16 @@ pub(crate) use messages::{EndorsementMessage, EndorsementMessageSerializer};
 
 use super::peer_handler::models::{PeerManagementCmd, PeerMessageTuple};
 
-pub struct EndorsementHandler {
-    pub endorsement_retrieval_thread:
+pub(crate)  struct EndorsementHandler {
+    pub(crate)  endorsement_retrieval_thread:
         Option<(Sender<EndorsementHandlerRetrievalCommand>, JoinHandle<()>)>,
-    pub endorsement_propagation_thread:
+    pub(crate)  endorsement_propagation_thread:
         Option<(Sender<EndorsementHandlerPropagationCommand>, JoinHandle<()>)>,
 }
 
 impl EndorsementHandler {
     #[allow(clippy::too_many_arguments)]
-    pub fn new(
+    pub(crate)  fn new(
         pool_controller: Box<dyn PoolController>,
         cache: SharedEndorsementCache,
         storage: Storage,
@@ -68,7 +68,7 @@ impl EndorsementHandler {
         }
     }
 
-    pub fn stop(&mut self) {
+    pub(crate)  fn stop(&mut self) {
         if let Some((tx, thread)) = self.endorsement_retrieval_thread.take() {
             let _ = tx.send(EndorsementHandlerRetrievalCommand::Stop);
             thread.join().unwrap();

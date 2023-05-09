@@ -11,7 +11,7 @@ use massa_async_pool::{AsyncMessage, AsyncMessageTrigger};
 use massa_execution_exports::ExecutionConfig;
 use massa_execution_exports::ExecutionStackElement;
 use massa_models::bytecode::Bytecode;
-use massa_models::config::MAX_DATASTORE_KEY_LENGTH;
+use massa_models::config::constants::MAX_DATASTORE_KEY_LENGTH;
 use massa_models::{
     address::Address, amount::Amount, slot::Slot, timeslots::get_block_slot_timestamp,
 };
@@ -41,7 +41,7 @@ macro_rules! context_guard {
 
 /// an implementation of the Interface trait (see massa-sc-runtime crate)
 #[derive(Clone)]
-pub struct InterfaceImpl {
+pub(crate) struct InterfaceImpl {
     /// execution configuration
     config: ExecutionConfig,
     /// thread-safe shared access to the execution context (see context.rs)
@@ -54,7 +54,10 @@ impl InterfaceImpl {
     /// # Arguments
     /// * `config`: execution configuration
     /// * `context`: thread-safe shared access to the current execution context (see context.rs)
-    pub fn new(config: ExecutionConfig, context: Arc<Mutex<ExecutionContext>>) -> InterfaceImpl {
+    pub(crate) fn new(
+        config: ExecutionConfig,
+        context: Arc<Mutex<ExecutionContext>>,
+    ) -> InterfaceImpl {
         InterfaceImpl { config, context }
     }
 
@@ -64,7 +67,7 @@ impl InterfaceImpl {
         feature = "testing"
     ))]
     /// Used to create an default interface to run SC in a test environment
-    pub fn new_default(
+    pub(crate) fn new_default(
         sender_addr: Address,
         operation_datastore: Option<Datastore>,
     ) -> InterfaceImpl {

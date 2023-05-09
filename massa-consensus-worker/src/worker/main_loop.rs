@@ -112,7 +112,7 @@ impl ConsensusWorker {
 
     /// Runs in loop forever. This loop must stop every slot to perform operations on stats and graph
     /// but can be stopped anytime by a command received.
-    pub fn run(&mut self) {
+    pub(crate)  fn run(&mut self) {
         let mut last_prune = Instant::now();
         loop {
             match self.wait_slot_or_command(self.next_instant) {

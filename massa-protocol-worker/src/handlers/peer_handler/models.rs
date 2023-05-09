@@ -13,48 +13,48 @@ use super::announcement::Announcement;
 
 const THREE_DAYS_MS: u128 = 3 * 24 * 60 * 60 * 1_000_000;
 
-pub type InitialPeers = HashMap<PeerId, HashMap<SocketAddr, TransportType>>;
+pub(crate)  type InitialPeers = HashMap<PeerId, HashMap<SocketAddr, TransportType>>;
 
 #[derive(Default)]
-pub struct PeerDB {
-    pub peers: HashMap<PeerId, PeerInfo>,
+pub(crate)  struct PeerDB {
+    pub(crate)  peers: HashMap<PeerId, PeerInfo>,
     /// last is the oldest value (only routable peers)
-    pub index_by_newest: BTreeSet<(Reverse<u128>, PeerId)>,
+    pub(crate)  index_by_newest: BTreeSet<(Reverse<u128>, PeerId)>,
 }
 
-pub type SharedPeerDB = Arc<RwLock<PeerDB>>;
+pub(crate)  type SharedPeerDB = Arc<RwLock<PeerDB>>;
 
-pub type PeerMessageTuple = (PeerId, u64, Vec<u8>);
+pub(crate)  type PeerMessageTuple = (PeerId, u64, Vec<u8>);
 
 #[derive(Clone, Debug)]
-pub struct PeerInfo {
-    pub last_announce: Announcement,
-    pub state: PeerState,
+pub(crate)  struct PeerInfo {
+    pub(crate)  last_announce: Announcement,
+    pub(crate)  state: PeerState,
 }
 
 #[warn(dead_code)]
 #[derive(Eq, PartialEq, Clone, Debug)]
-pub enum PeerState {
+pub(crate)  enum PeerState {
     Banned,
     InHandshake,
     HandshakeFailed,
     Trusted,
 }
 
-pub enum PeerManagementCmd {
+pub(crate)  enum PeerManagementCmd {
     Ban(Vec<PeerId>),
     Unban(Vec<PeerId>),
     GetBootstrapPeers { responder: Sender<BootstrapPeers> },
     Stop,
 }
 
-pub struct PeerManagementChannel {
-    pub msg_sender: Sender<PeerMessageTuple>,
-    pub command_sender: Sender<PeerManagementCmd>,
+pub(crate)  struct PeerManagementChannel {
+    pub(crate)  msg_sender: Sender<PeerMessageTuple>,
+    pub(crate)  command_sender: Sender<PeerManagementCmd>,
 }
 
 impl PeerDB {
-    pub fn ban_peer(&mut self, peer_id: &PeerId) {
+    pub(crate)  fn ban_peer(&mut self, peer_id: &PeerId) {
         println!("peers: {:?}", self.peers);
         if let Some(peer) = self.peers.get_mut(peer_id) {
             peer.state = PeerState::Banned;
@@ -64,7 +64,7 @@ impl PeerDB {
         };
     }
 
-    pub fn unban_peer(&mut self, peer_id: &PeerId) {
+    pub(crate)  fn unban_peer(&mut self, peer_id: &PeerId) {
         if self.peers.contains_key(peer_id) {
             self.peers.remove(peer_id);
             info!("Unbanned peer: {:?}", peer_id);
@@ -75,7 +75,7 @@ impl PeerDB {
 
     /// get best peers for a given number of peers
     /// returns a vector of peer ids
-    pub fn get_best_peers(&self, nb_peers: usize) -> Vec<PeerId> {
+    pub(crate)  fn get_best_peers(&self, nb_peers: usize) -> Vec<PeerId> {
         self.index_by_newest
             .iter()
             .filter_map(|(_, peer_id)| {
@@ -92,7 +92,7 @@ impl PeerDB {
     }
 
     /// Retrieve the peer with the oldest test date.
-    pub fn get_oldest_peer(&self) -> Option<(PeerId, PeerInfo)> {
+    pub(crate)  fn get_oldest_peer(&self) -> Option<(PeerId, PeerInfo)> {
         self.index_by_newest.last().map(|data| {
             let peer_id = data.1.clone();
             let peer_info = self
@@ -106,7 +106,7 @@ impl PeerDB {
 
     /// Select max 100 peers to send to another peer
     /// The selected peers should has been online within the last 3 days
-    pub fn get_rand_peers_to_send(
+    pub(crate)  fn get_rand_peers_to_send(
         &self,
         nb_peers: usize,
     ) -> Vec<(PeerId, HashMap<SocketAddr, TransportType>)> {
@@ -149,7 +149,7 @@ impl PeerDB {
         result
     }
 
-    pub fn get_banned_peer_count(&self) -> u64 {
+    pub(crate)  fn get_banned_peer_count(&self) -> u64 {
         self.peers
             .values()
             .filter(|peer| peer.state == PeerState::Banned)

@@ -13,7 +13,7 @@ mod tonic {
     use std::{path::PathBuf, process::Command};
 
     /// This function is responsible for building the Massa protobuf API and generating documentation
-    pub fn build() -> Result<(), Box<dyn std::error::Error>> {
+    pub(crate)  fn build() -> Result<(), Box<dyn std::error::Error>> {
         // Find all protobuf files in the 'proto/massa/' directory
         let protos = find_protos("proto/massa/")?;
 
@@ -26,7 +26,7 @@ mod tonic {
                 ".google.api.HttpRule",
                 "#[cfg(not(doctest))]\n\
              #[allow(dead_code)]\n\
-             pub struct HttpRuleComment{}\n\
+             pub(crate)  struct HttpRuleComment{}\n\
              /// HACK: see docs in [`HttpRuleComment`] ignored in doctest pass",
             )
             .file_descriptor_set_path("src/api.bin")

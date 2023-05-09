@@ -30,7 +30,7 @@ impl SpeculativeExecutedDenunciations {
     /// # Arguments
     /// * `final_state`: thread-safe shared access the the final state
     /// * `active_history`: thread-safe shared access the speculative execution history
-    pub fn new(
+    pub(crate)  fn new(
         final_state: Arc<RwLock<FinalState>>,
         active_history: Arc<RwLock<ActiveHistory>>,
     ) -> Self {
@@ -43,22 +43,22 @@ impl SpeculativeExecutedDenunciations {
 
     /// Returns the set of operation IDs caused to the `SpeculativeExecutedDenunciations` since
     /// its creation, and resets their local value to nothing
-    pub fn take(&mut self) -> ExecutedDenunciationsChanges {
+    pub(crate)  fn take(&mut self) -> ExecutedDenunciationsChanges {
         std::mem::take(&mut self.executed_denunciations)
     }
 
     /// Takes a snapshot (clone) of the changes since its creation
-    pub fn get_snapshot(&self) -> ExecutedDenunciationsChanges {
+    pub(crate)  fn get_snapshot(&self) -> ExecutedDenunciationsChanges {
         self.executed_denunciations.clone()
     }
 
     /// Resets the `SpeculativeRollState` to a snapshot (see `get_snapshot` method)
-    pub fn reset_to_snapshot(&mut self, snapshot: ExecutedDenunciationsChanges) {
+    pub(crate)  fn reset_to_snapshot(&mut self, snapshot: ExecutedDenunciationsChanges) {
         self.executed_denunciations = snapshot;
     }
 
     /// Checks if a denunciation was executed previously
-    pub fn is_denunciation_executed(&self, de_idx: &DenunciationIndex) -> bool {
+    pub(crate)  fn is_denunciation_executed(&self, de_idx: &DenunciationIndex) -> bool {
         // check in the current changes
         if self.executed_denunciations.contains(de_idx) {
             return true;
@@ -87,7 +87,7 @@ impl SpeculativeExecutedDenunciations {
     }
 
     /// Insert an executed denunciation.
-    pub fn insert_executed_denunciation(&mut self, de_idx: DenunciationIndex) {
+    pub(crate)  fn insert_executed_denunciation(&mut self, de_idx: DenunciationIndex) {
         self.executed_denunciations.insert(de_idx);
     }
 }

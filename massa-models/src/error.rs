@@ -4,7 +4,7 @@ use displaydoc::Display;
 use massa_serialization::SerializeError;
 use thiserror::Error;
 /// models error
-pub type ModelsResult<T, E = ModelsError> = core::result::Result<T, E>;
+pub(crate) type ModelsResult<T, E = ModelsError> = core::result::Result<T, E>;
 
 /// models error
 #[non_exhaustive]

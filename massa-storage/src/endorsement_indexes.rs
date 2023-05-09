@@ -58,7 +58,7 @@ impl EndorsementIndexes {
     }
 
     /// Checks whether an endorsement exists in global storage.
-    pub fn contains(&self, id: &EndorsementId) -> bool {
+    pub(crate) fn contains(&self, id: &EndorsementId) -> bool {
         self.endorsements.contains_key(id)
     }
 
@@ -68,7 +68,7 @@ impl EndorsementIndexes {
     ///
     /// Returns:
     /// - optional reference to a set of endorsements created by that address
-    pub fn get_endorsements_created_by(
+    pub(crate) fn get_endorsements_created_by(
         &self,
         address: &Address,
     ) -> Option<&PreHashSet<EndorsementId>> {

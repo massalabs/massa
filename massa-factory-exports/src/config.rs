@@ -6,34 +6,34 @@ use massa_time::MassaTime;
 
 /// Structure defining the settings of the factory
 #[derive(Debug, Clone)]
-pub struct FactoryConfig {
+pub(crate)  struct FactoryConfig {
     /// number of threads
-    pub thread_count: u8,
+    pub(crate)  thread_count: u8,
 
     /// genesis timestamp
-    pub genesis_timestamp: MassaTime,
+    pub(crate)  genesis_timestamp: MassaTime,
 
     /// period duration
-    pub t0: MassaTime,
+    pub(crate)  t0: MassaTime,
 
     /// initial delay before starting production, to avoid double-production on node restart
-    pub initial_delay: MassaTime,
+    pub(crate)  initial_delay: MassaTime,
 
     /// maximal block size in bytes
-    pub max_block_size: u64,
+    pub(crate)  max_block_size: u64,
 
     /// maximal block gas
-    pub max_block_gas: u64,
+    pub(crate)  max_block_gas: u64,
 
     /// maximum number of operation ids in block
-    pub max_operations_per_block: u32,
+    pub(crate)  max_operations_per_block: u32,
 
     /// last start period, to deduce genesis blocks
-    pub last_start_period: u64,
+    pub(crate)  last_start_period: u64,
 
     /// cycle duration in periods
-    pub periods_per_cycle: u64,
+    pub(crate)  periods_per_cycle: u64,
 
     /// denunciation expiration as periods
-    pub denunciation_expire_periods: u64,
+    pub(crate)  denunciation_expire_periods: u64,
 }

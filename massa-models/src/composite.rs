@@ -8,7 +8,7 @@ use std::fmt::Display;
 
 /// Status in which an operation can be (derived from the block status)
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub enum OperationSearchResultBlockStatus {
+pub(crate) enum OperationSearchResultBlockStatus {
     /// the block hasn't been processed by consensus yet
     Incoming,
     /// the block waits for it's slot for further processing
@@ -23,7 +23,7 @@ pub enum OperationSearchResultBlockStatus {
 
 /// Status in which an operation can be
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub enum OperationSearchResultStatus {
+pub(crate) enum OperationSearchResultStatus {
     /// in pool
     Pending,
     /// in a block, the block being in `[OperationSearchResultBlockStatus]`
@@ -34,20 +34,20 @@ pub enum OperationSearchResultStatus {
 
 /// operation info
 #[derive(Clone, Debug, Serialize, Deserialize)]
-pub struct OperationSearchResult {
+pub(crate) struct OperationSearchResult {
     /// the operation
-    pub op: SecureShareOperation,
+    pub(crate) op: SecureShareOperation,
     /// true if in pool
-    pub in_pool: bool,
+    pub(crate) in_pool: bool,
     /// maps block id to index on the operation in the block and if it's final
-    pub in_blocks: PreHashMap<BlockId, (usize, bool)>,
+    pub(crate) in_blocks: PreHashMap<BlockId, (usize, bool)>,
     /// operation status
-    pub status: OperationSearchResultStatus,
+    pub(crate) status: OperationSearchResultStatus,
 }
 
 impl OperationSearchResult {
     /// combine two operation search result
-    pub fn extend(&mut self, other: &OperationSearchResult) {
+    pub(crate) fn extend(&mut self, other: &OperationSearchResult) {
         self.in_pool = self.in_pool || other.in_pool;
         self.in_blocks.extend(other.in_blocks.iter());
     }
@@ -55,14 +55,14 @@ impl OperationSearchResult {
 
 /// all the production stats for every known staker
 #[derive(Clone, Debug, Serialize, Deserialize)]
-pub struct StakersCycleProductionStats {
+pub(crate) struct StakersCycleProductionStats {
     /// cycle number
-    pub cycle: u64,
+    pub(crate) cycle: u64,
     /// if that cycle is final
-    pub is_final: bool,
+    pub(crate) is_final: bool,
     /// map address to produced valid block count and not valid but expected block count
     /// really a re arranged `[crate::address::AddressCycleProductionStats]`
-    pub ok_nok_counts: PreHashMap<Address, (u64, u64)>,
+    pub(crate) ok_nok_counts: PreHashMap<Address, (u64, u64)>,
 }
 
 /// just a public key and a signature it has produced

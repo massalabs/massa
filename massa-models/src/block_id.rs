@@ -104,28 +104,28 @@ impl BlockId {
     }
 
     /// block id into bytes
-    pub fn into_bytes(self) -> [u8; BLOCK_ID_SIZE_BYTES] {
+    pub(crate) fn into_bytes(self) -> [u8; BLOCK_ID_SIZE_BYTES] {
         self.0.into_bytes()
     }
 
     /// block id from bytes
-    pub fn from_bytes(data: &[u8; BLOCK_ID_SIZE_BYTES]) -> BlockId {
+    pub(crate) fn from_bytes(data: &[u8; BLOCK_ID_SIZE_BYTES]) -> BlockId {
         BlockId(Hash::from_bytes(data))
     }
 
     /// first bit of the hashed block id
-    pub fn get_first_bit(&self) -> bool {
+    pub(crate) fn get_first_bit(&self) -> bool {
         self.to_bytes()[0] >> 7 == 1
     }
 }
 
 /// Serializer for `BlockId`
 #[derive(Default, Clone)]
-pub struct BlockIdSerializer;
+pub(crate) struct BlockIdSerializer;
 
 impl BlockIdSerializer {
     /// Creates a new serializer for `BlockId`
-    pub fn new() -> Self {
+    pub(crate) fn new() -> Self {
         Self
     }
 }
@@ -139,13 +139,13 @@ impl Serializer<BlockId> for BlockIdSerializer {
 
 /// Deserializer for `BlockId`
 #[derive(Default, Clone)]
-pub struct BlockIdDeserializer {
+pub(crate) struct BlockIdDeserializer {
     hash_deserializer: HashDeserializer,
 }
 
 impl BlockIdDeserializer {
     /// Creates a new deserializer for `BlockId`
-    pub fn new() -> Self {
+    pub(crate) fn new() -> Self {
         Self {
             hash_deserializer: HashDeserializer::new(),
         }

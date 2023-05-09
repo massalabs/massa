@@ -30,13 +30,13 @@ pub struct BlockHeader {
     /// slot
     pub slot: Slot,
     /// parents
-    pub parents: Vec<BlockId>,
+    pub(crate) parents: Vec<BlockId>,
     /// all operations hash
-    pub operation_merkle_root: Hash,
+    pub(crate) operation_merkle_root: Hash,
     /// endorsements
     pub endorsements: Vec<SecureShareEndorsement>,
     /// denunciations
-    pub denunciations: Vec<Denunciation>,
+    pub(crate) denunciations: Vec<Denunciation>,
 }
 
 // TODO: gh-issue #3398
@@ -110,7 +110,7 @@ impl SecureShareContent for BlockHeader {
 
 impl SecuredHeader {
     /// gets the header fitness
-    pub fn get_fitness(&self) -> u64 {
+    pub(crate) fn get_fitness(&self) -> u64 {
         (self.content.endorsements.len() as u64) + 1
     }
     // TODO: gh-issue #3398
@@ -129,7 +129,7 @@ impl SecuredHeader {
 }
 
 /// Serializer for `BlockHeader`
-pub struct BlockHeaderSerializer {
+pub(crate) struct BlockHeaderSerializer {
     slot_serializer: SlotSerializer,
     endorsement_serializer: SecureShareSerializer,
     endorsement_content_serializer: EndorsementSerializerLW,
@@ -139,7 +139,7 @@ pub struct BlockHeaderSerializer {
 
 impl BlockHeaderSerializer {
     /// Creates a new `BlockHeaderSerializer`
-    pub fn new() -> Self {
+    pub(crate) fn new() -> Self {
         Self {
             slot_serializer: SlotSerializer::new(),
             endorsement_serializer: SecureShareSerializer::new(),
@@ -247,7 +247,7 @@ impl Serializer<BlockHeader> for BlockHeaderSerializer {
 }
 
 /// Deserializer for `BlockHeader`
-pub struct BlockHeaderDeserializer {
+pub(crate) struct BlockHeaderDeserializer {
     slot_deserializer: SlotDeserializer,
     endorsement_serializer: EndorsementSerializer,
     endorsement_len_deserializer: U32VarIntDeserializer,
@@ -262,7 +262,7 @@ pub struct BlockHeaderDeserializer {
 impl BlockHeaderDeserializer {
     /// Creates a new `BlockHeaderDeserializer`
     /// If last_start_period is Some(lsp), then the deserializer will check for valid (non)-genesis blocks
-    pub const fn new(
+    pub(crate) const fn new(
         thread_count: u8,
         endorsement_count: u32,
         max_denunciations_in_block_header: u32,
@@ -537,18 +537,18 @@ impl std::fmt::Display for BlockHeader {
 
 /// A denunciation data for block header
 #[derive(Debug)]
-pub struct BlockHeaderDenunciationData {
+pub(crate) struct BlockHeaderDenunciationData {
     slot: Slot,
 }
 
 impl BlockHeaderDenunciationData {
     /// Create a new DenunciationData for block hedader
-    pub fn new(slot: Slot) -> Self {
+    pub(crate) fn new(slot: Slot) -> Self {
         Self { slot }
     }
 
     /// Get byte array
-    pub fn to_bytes(&self) -> Vec<u8> {
+    pub(crate) fn to_bytes(&self) -> Vec<u8> {
         let mut buf = Vec::new();
         buf.extend(self.slot.to_bytes_key());
         buf

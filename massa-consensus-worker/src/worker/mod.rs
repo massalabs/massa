@@ -20,7 +20,7 @@ use crate::manager::ConsensusManagerImpl;
 use crate::state::ConsensusState;
 
 /// The consensus worker structure that contains all information and tools for the consensus worker thread.
-pub struct ConsensusWorker {
+pub(crate)  struct ConsensusWorker {
     /// Channel to receive command from the controller
     command_receiver: mpsc::Receiver<ConsensusCommand>,
     /// Configuration of the consensus
@@ -49,7 +49,7 @@ mod main_loop;
 /// # Returns:
 /// * The consensus controller to communicate with the consensus worker thread
 /// * The consensus manager to manage the consensus worker thread
-pub fn start_consensus_worker(
+pub(crate)  fn start_consensus_worker(
     config: ConsensusConfig,
     channels: ConsensusChannels,
     init_graph: Option<BootstrapableGraph>,

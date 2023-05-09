@@ -12,19 +12,19 @@ use std::ops::Bound::Included;
 #[derive(
     Clone, Copy, Eq, Hash, Ord, PartialEq, PartialOrd, SerializeDisplay, DeserializeFromStr,
 )]
-pub struct NodeId(PublicKey);
+pub(crate)  struct NodeId(PublicKey);
 
 const NODEID_PREFIX: char = 'N';
 const NODEID_VERSION: u64 = 0;
 
 impl NodeId {
     /// Create a new `NodeId` from a public key.
-    pub fn new(public_key: PublicKey) -> Self {
+    pub(crate)  fn new(public_key: PublicKey) -> Self {
         Self(public_key)
     }
 
     /// Get the public key of the `NodeId`.
-    pub fn get_public_key(&self) -> PublicKey {
+    pub(crate)  fn get_public_key(&self) -> PublicKey {
         self.0
     }
 }

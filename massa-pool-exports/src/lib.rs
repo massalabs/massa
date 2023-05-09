@@ -11,9 +11,10 @@ mod controller_traits;
 
 pub use channels::PoolChannels;
 pub use config::PoolConfig;
-pub use controller_traits::{PoolController, PoolManager};
+pub use controller_traits::PoolController;
+pub use controller_traits::PoolManager;
 
 /// Test utils
 #[cfg(feature = "testing")]
 /// Exports related to tests as Mocks and configurations
-pub mod test_exports;
+pub(crate) mod test_exports;

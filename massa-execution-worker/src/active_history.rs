@@ -15,7 +15,7 @@ use std::collections::{HashMap, VecDeque};
 pub(crate) struct ActiveHistory(pub VecDeque<ExecutionOutput>);
 
 /// Result of a lazy, active history search
-pub enum HistorySearchResult<T> {
+pub(crate)  enum HistorySearchResult<T> {
     Present(T),
     Absent,
     NoInfo,
@@ -23,7 +23,7 @@ pub enum HistorySearchResult<T> {
 
 /// Result of the search for a slot index in history
 #[derive(Debug)]
-pub enum SlotIndexPosition {
+pub(crate)  enum SlotIndexPosition {
     /// out of bounds in the past
     Past,
     /// out of bounds in the future
@@ -36,7 +36,7 @@ pub enum SlotIndexPosition {
 
 impl ActiveHistory {
     /// Remove `slot` and the slots after it from history
-    pub fn truncate_from(&mut self, slot: &Slot, thread_count: u8) {
+    pub(crate)  fn truncate_from(&mut self, slot: &Slot, thread_count: u8) {
         match self.get_slot_index(slot, thread_count) {
             SlotIndexPosition::Past => self.0.clear(),
             SlotIndexPosition::Found(index) => self.0.truncate(index),
@@ -47,7 +47,7 @@ impl ActiveHistory {
     /// Lazily query (from end to beginning) the active list of executed ops to check if an op was executed.
     ///
     /// Returns a `HistorySearchResult`.
-    pub fn fetch_executed_op(&self, op_id: &OperationId) -> HistorySearchResult<()> {
+    pub(crate)  fn fetch_executed_op(&self, op_id: &OperationId) -> HistorySearchResult<()> {
         for history_element in self.0.iter().rev() {
             if history_element
                 .state_changes
@@ -63,7 +63,7 @@ impl ActiveHistory {
     /// Lazily query (from end to beginning) the active list of executed denunciations.
     ///
     /// Returns a `HistorySearchResult`.
-    pub fn fetch_executed_denunciation(
+    pub(crate)  fn fetch_executed_denunciation(
         &self,
         de_idx: &DenunciationIndex,
     ) -> HistorySearchResult<()> {
@@ -82,7 +82,7 @@ impl ActiveHistory {
     /// Lazily query (from end to beginning) the active balance of an address after a given index.
     ///
     /// Returns a `HistorySearchResult`.
-    pub fn fetch_balance(&self, addr: &Address) -> HistorySearchResult<Amount> {
+    pub(crate)  fn fetch_balance(&self, addr: &Address) -> HistorySearchResult<Amount> {
         for output in self.0.iter().rev() {
             match output.state_changes.ledger_changes.0.get(addr) {
                 Some(SetUpdateOrDelete::Set(v)) => return HistorySearchResult::Present(v.balance),
@@ -100,7 +100,7 @@ impl ActiveHistory {
     /// Lazily query (from end to beginning) the active bytecode of an address after a given index.
     ///
     /// Returns a `HistorySearchResult`.
-    pub fn fetch_bytecode(&self, addr: &Address) -> HistorySearchResult<Bytecode> {
+    pub(crate)  fn fetch_bytecode(&self, addr: &Address) -> HistorySearchResult<Bytecode> {
         for output in self.0.iter().rev() {
             match output.state_changes.ledger_changes.0.get(addr) {
                 Some(SetUpdateOrDelete::Set(v)) => {
@@ -120,7 +120,7 @@ impl ActiveHistory {
     /// Lazily query (from end to beginning) the active datastore entry of an address after a given index.
     ///
     /// Returns a `HistorySearchResult`.
-    pub fn fetch_active_history_data_entry(
+    pub(crate)  fn fetch_active_history_data_entry(
         &self,
         addr: &Address,
         key: &[u8],
@@ -153,7 +153,7 @@ impl ActiveHistory {
     ///
     /// # Arguments
     /// * `addr`: address to fetch the rolls from
-    pub fn fetch_roll_count(&self, addr: &Address) -> Option<u64> {
+    pub(crate)  fn fetch_roll_count(&self, addr: &Address) -> Option<u64> {
         self.0.iter().rev().find_map(|output| {
             output
                 .state_changes
@@ -165,7 +165,7 @@ impl ActiveHistory {
     }
 
     /// Gets all the deferred credits that will be credited until a given slot (included)
-    pub fn get_all_deferred_credits_until(&self, slot: &Slot) -> DeferredCredits {
+    pub(crate)  fn get_all_deferred_credits_until(&self, slot: &Slot) -> DeferredCredits {
         self.0
             .iter()
             .fold(DeferredCredits::new_without_hash(), |mut acc, e| {
@@ -199,7 +199,7 @@ impl ActiveHistory {
     }
 
     /// Gets the index of a slot in history
-    pub fn get_slot_index(&self, slot: &Slot, thread_count: u8) -> SlotIndexPosition {
+    pub(crate)  fn get_slot_index(&self, slot: &Slot, thread_count: u8) -> SlotIndexPosition {
         let first_slot = match self.0.front() {
             Some(itm) => &itm.slot,
             None => return SlotIndexPosition::NoHistory,
@@ -231,7 +231,7 @@ impl ActiveHistory {
     /// * a range of indices
     /// * a boolean indicating that the cycle overflows before the beginning of history
     /// * a boolean indicating that the cycle overflows after the end of history
-    pub fn find_cycle_indices(
+    pub(crate)  fn find_cycle_indices(
         &self,
         cycle: u64,
         periods_per_cycle: u64,
@@ -286,7 +286,7 @@ impl ActiveHistory {
     /// A hashmap with
     /// * the operation id as the key
     /// * and a bool as the value: true: execution succeeded, false: execution failed
-    pub fn get_op_exec_status(&self) -> HashMap<OperationId, bool> {
+    pub(crate)  fn get_op_exec_status(&self) -> HashMap<OperationId, bool> {
         self.0
             .iter()
             .flat_map(|exec_output| exec_output.state_changes.executed_ops_changes.clone())

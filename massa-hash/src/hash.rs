@@ -141,8 +141,8 @@ impl Hash {
     /// * no weird characters (eg. +) only alphanumeric
     /// * ambiguous letters combined (eg. O vs 0, or l vs 1)
     /// * contains a checksum at the end to detect typing errors
-    ///    
-    pub fn to_bs58_check(&self) -> String {
+    ///
+    pub(crate) fn to_bs58_check(&self) -> String {
         bs58::encode(self.to_bytes()).with_check().into_string()
     }
 

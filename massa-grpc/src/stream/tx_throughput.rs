@@ -17,7 +17,7 @@ use tracing::log::error;
 const DEFAULT_THROUGHPUT_INTERVAL: u64 = 10;
 
 /// Type declaration for TransactionsThroughput
-pub type TransactionsThroughputStreamType = Pin<
+pub(crate)  type TransactionsThroughputStreamType = Pin<
     Box<
         dyn futures_core::Stream<Item = Result<grpc::TransactionsThroughputResponse, tonic::Status>>
             + Send

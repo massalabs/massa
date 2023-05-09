@@ -49,7 +49,7 @@ macro_rules! client_warning {
     };
 }
 
-pub enum Style {
+pub(crate)  enum Style {
     /// Any information that identifies an element
     Id,
     /// If a process is ongoing, not final, will change in the future
@@ -101,7 +101,7 @@ impl Style {
     }
 }
 
-pub trait Output: Serialize {
+pub(crate)  trait Output: Serialize {
     fn pretty_print(&self);
 }
 

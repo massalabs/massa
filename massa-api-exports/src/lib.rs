@@ -12,31 +12,31 @@ use massa_time::MassaTime;
 use serde::{Deserialize, Serialize};
 
 /// address related structures
-pub mod address;
+pub(crate)  mod address;
 /// block-related structures
-pub mod block;
+pub(crate)  mod block;
 /// node configuration
-pub mod config;
+pub(crate)  mod config;
 /// datastore serialization / deserialization
-pub mod datastore;
+pub(crate)  mod datastore;
 /// endorsements
-pub mod endorsement;
+pub(crate)  mod endorsement;
 /// models error
-pub mod error;
+pub(crate)  mod error;
 /// execution
-pub mod execution;
+pub(crate)  mod execution;
 /// ledger structures
-pub mod ledger;
+pub(crate)  mod ledger;
 /// node related structure
-pub mod node;
+pub(crate)  mod node;
 /// operations
-pub mod operation;
+pub(crate)  mod operation;
 /// page
-pub mod page;
+pub(crate)  mod page;
 /// rolls
-pub mod rolls;
+pub(crate)  mod rolls;
 /// slots
-pub mod slot;
+pub(crate)  mod slot;
 
 /// Dumb utils function to display nicely boolean value
 fn display_if_true(value: bool, text: &str) -> String {
@@ -69,17 +69,17 @@ fn display_option_bool(
 
 /// Just a wrapper with a optional beginning and end
 #[derive(Debug, Deserialize, Clone, Copy, Serialize)]
-pub struct TimeInterval {
+pub(crate)  struct TimeInterval {
     /// optional start slot
-    pub start: Option<MassaTime>,
+    pub(crate)  start: Option<MassaTime>,
     /// optional end slot
-    pub end: Option<MassaTime>,
+    pub(crate)  end: Option<MassaTime>,
 }
 
 /// SCRUD operations
 #[derive(strum::Display)]
 #[strum(serialize_all = "snake_case")]
-pub enum ScrudOperation {
+pub(crate)  enum ScrudOperation {
     /// search operation
     Search,
     /// create operation
@@ -95,7 +95,7 @@ pub enum ScrudOperation {
 /// Bootstrap lists types
 #[derive(strum::Display)]
 #[strum(serialize_all = "snake_case")]
-pub enum ListType {
+pub(crate)  enum ListType {
     /// contains banned entry
     Blacklist,
     /// contains allowed entry
@@ -104,7 +104,7 @@ pub enum ListType {
 
 /// Wrap request params into struct for ApiV2 method
 #[derive(Deserialize, Serialize)]
-pub struct ApiRequest {
+pub(crate)  struct ApiRequest {
     /// pagination
-    pub page_request: Option<PageRequest>,
+    pub(crate)  page_request: Option<PageRequest>,
 }

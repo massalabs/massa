@@ -61,7 +61,7 @@ use std::{path::PathBuf, str::FromStr, sync::Arc, time::Duration};
 use tempfile::TempDir;
 
 lazy_static::lazy_static! {
-    pub static ref BOOTSTRAP_CONFIG_KEYPAIR: (BootstrapConfig, KeyPair) = {
+    pub(crate)  static ref BOOTSTRAP_CONFIG_KEYPAIR: (BootstrapConfig, KeyPair) = {
         let keypair = KeyPair::generate();
         (get_bootstrap_config(NodeId::new(keypair.get_public_key())), keypair)
     };

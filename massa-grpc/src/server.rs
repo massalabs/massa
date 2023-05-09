@@ -20,34 +20,34 @@ use tower_http::cors::{Any, CorsLayer};
 use tracing::log::{info, warn};
 
 /// gRPC API content
-pub struct MassaGrpc {
+pub(crate)  struct MassaGrpc {
     /// link to the consensus component
-    pub consensus_controller: Box<dyn ConsensusController>,
+    pub(crate)  consensus_controller: Box<dyn ConsensusController>,
     /// link(channels) to the consensus component
-    pub consensus_channels: ConsensusChannels,
+    pub(crate)  consensus_channels: ConsensusChannels,
     /// link to the execution component
-    pub execution_controller: Box<dyn ExecutionController>,
+    pub(crate)  execution_controller: Box<dyn ExecutionController>,
     /// link(channels) to the execution component
-    pub execution_channels: ExecutionChannels,
+    pub(crate)  execution_channels: ExecutionChannels,
     /// link(channels) to the pool component
-    pub pool_channels: PoolChannels,
+    pub(crate)  pool_channels: PoolChannels,
     /// link to the pool component
-    pub pool_command_sender: Box<dyn PoolController>,
+    pub(crate)  pool_command_sender: Box<dyn PoolController>,
     /// link to the protocol component
-    pub protocol_command_sender: Box<dyn ProtocolController>,
+    pub(crate)  protocol_command_sender: Box<dyn ProtocolController>,
     /// link to the selector component
-    pub selector_controller: Box<dyn SelectorController>,
+    pub(crate)  selector_controller: Box<dyn SelectorController>,
     /// link to the storage component
-    pub storage: Storage,
+    pub(crate)  storage: Storage,
     /// gRPC configuration
-    pub grpc_config: GrpcConfig,
+    pub(crate)  grpc_config: GrpcConfig,
     /// node version
-    pub version: massa_models::version::Version,
+    pub(crate)  version: massa_models::version::Version,
 }
 
 impl MassaGrpc {
     /// Start the gRPC API
-    pub async fn serve(self, config: &GrpcConfig) -> Result<StopHandle, GrpcError> {
+    pub(crate)  async fn serve(self, config: &GrpcConfig) -> Result<StopHandle, GrpcError> {
         let mut svc = MassaServiceServer::new(self)
             .max_decoding_message_size(config.max_decoding_message_size)
             .max_encoding_message_size(config.max_encoding_message_size);
@@ -157,13 +157,13 @@ impl MassaGrpc {
 }
 
 /// Used to be able to stop the gRPC API
-pub struct StopHandle {
+pub(crate)  struct StopHandle {
     stop_cmd_sender: oneshot::Sender<()>,
 }
 
 impl StopHandle {
     /// stop the gRPC API gracefully
-    pub fn stop(self) {
+    pub(crate)  fn stop(self) {
         if let Err(e) = self.stop_cmd_sender.send(()) {
             warn!("gRPC API thread panicked: {:?}", e);
         } else {

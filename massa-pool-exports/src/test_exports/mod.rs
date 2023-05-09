@@ -3,6 +3,6 @@
 mod config;
 mod mock;
 
-pub use config::*;
+pub(crate)  use config::*;
 #[cfg(feature = "testing")]
-pub use mock::*;
+pub(crate)  use mock::*;

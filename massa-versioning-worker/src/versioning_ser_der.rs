@@ -16,7 +16,9 @@ use crate::versioning::{
 };
 
 use massa_models::amount::{Amount, AmountDeserializer, AmountSerializer};
-use massa_models::config::{MIP_STORE_STATS_BLOCK_CONSIDERED, MIP_STORE_STATS_COUNTERS_MAX};
+use massa_models::config::{
+    constants::MIP_STORE_STATS_BLOCK_CONSIDERED, constants::MIP_STORE_STATS_COUNTERS_MAX,
+};
 use massa_serialization::{
     Deserializer, SerializeError, Serializer, U32VarIntDeserializer, U32VarIntSerializer,
     U64VarIntDeserializer, U64VarIntSerializer,
@@ -34,14 +36,14 @@ const MIP_STORE_MAX_ENTRIES: u32 = 4096;
 const MIP_STORE_MAX_SIZE: usize = 2097152;
 
 /// Serializer for `MipInfo`
-pub struct MipInfoSerializer {
+pub(crate) struct MipInfoSerializer {
     u32_serializer: U32VarIntSerializer,
     time_serializer: MassaTimeSerializer, // start / timeout
 }
 
 impl MipInfoSerializer {
     /// Creates a new `Serializer`
-    pub fn new() -> Self {
+    pub(crate) fn new() -> Self {
         MipInfoSerializer {
             u32_serializer: U32VarIntSerializer::new(),
             time_serializer: MassaTimeSerializer::new(),
@@ -113,7 +115,7 @@ impl Serializer<MipInfo> for MipInfoSerializer {
 }
 
 /// Deserializer for `MipInfo`
-pub struct MipInfoDeserializer {
+pub(crate) struct MipInfoDeserializer {
     u32_deserializer: U32VarIntDeserializer,
     len_deserializer: U32VarIntDeserializer,
     time_deserializer: MassaTimeDeserializer,
@@ -121,7 +123,7 @@ pub struct MipInfoDeserializer {
 
 impl MipInfoDeserializer {
     /// Creates a new `MipInfoDeserializer`
-    pub fn new() -> Self {
+    pub(crate) fn new() -> Self {
         Self {
             u32_deserializer: U32VarIntDeserializer::new(Included(0), Excluded(u32::MAX)),
             len_deserializer: U32VarIntDeserializer::new(
@@ -222,7 +224,7 @@ impl Deserializer<MipInfo> for MipInfoDeserializer {
 // ComponentState
 
 /// Serializer for `ComponentState`
-pub struct ComponentStateSerializer {
+pub(crate) struct ComponentStateSerializer {
     u32_serializer: U32VarIntSerializer,
     amount_serializer: AmountSerializer,
     time_serializer: MassaTimeSerializer,
@@ -230,7 +232,7 @@ pub struct ComponentStateSerializer {
 
 impl ComponentStateSerializer {
     /// Creates a new `Serializer`
-    pub fn new() -> Self {
+    pub(crate) fn new() -> Self {
         Self {
             u32_serializer: U32VarIntSerializer::new(),
             amount_serializer: AmountSerializer::new(),
@@ -272,7 +274,7 @@ impl Serializer<ComponentState> for ComponentStateSerializer {
 }
 
 /// A Deserializer for ComponentState`
-pub struct ComponentStateDeserializer {
+pub(crate) struct ComponentStateDeserializer {
     state_deserializer: U32VarIntDeserializer,
     amount_deserializer: AmountDeserializer,
     time_deserializer: MassaTimeDeserializer,
@@ -280,7 +282,7 @@ pub struct ComponentStateDeserializer {
 
 impl ComponentStateDeserializer {
     /// Creates a new ``
-    pub fn new() -> Self {
+    pub(crate) fn new() -> Self {
         Self {
             state_deserializer: U32VarIntDeserializer::new(
                 Included(0),
@@ -350,14 +352,14 @@ impl Deserializer<ComponentState> for ComponentStateDeserializer {
 // Advance
 
 /// Serializer for `Advance`
-pub struct AdvanceSerializer {
+pub(crate) struct AdvanceSerializer {
     amount_serializer: AmountSerializer,
     time_serializer: MassaTimeSerializer,
 }
 
 impl AdvanceSerializer {
     /// Creates a new `Serializer`
-    pub fn new() -> Self {
+    pub(crate) fn new() -> Self {
         Self {
             amount_serializer: AmountSerializer::new(),
             time_serializer: MassaTimeSerializer::new(),
@@ -390,14 +392,14 @@ impl Serializer<Advance> for AdvanceSerializer {
 }
 
 /// A Deserializer for `Advance`
-pub struct AdvanceDeserializer {
+pub(crate) struct AdvanceDeserializer {
     amount_deserializer: AmountDeserializer,
     time_deserializer: MassaTimeDeserializer,
 }
 
 impl AdvanceDeserializer {
     /// Creates a new `AdvanceDeserializer`
-    pub fn new() -> Self {
+    pub(crate) fn new() -> Self {
         Self {
             amount_deserializer: AmountDeserializer::new(
                 Included(Amount::MIN),
@@ -460,7 +462,7 @@ impl Deserializer<Advance> for AdvanceDeserializer {
 // MipState
 
 /// Serializer for `MipState`
-pub struct MipStateSerializer {
+pub(crate) struct MipStateSerializer {
     state_serializer: ComponentStateSerializer,
     advance_serializer: AdvanceSerializer,
     u32_serializer: U32VarIntSerializer,
@@ -468,7 +470,7 @@ pub struct MipStateSerializer {
 
 impl MipStateSerializer {
     /// Creates a new `MipStateSerializer`
-    pub fn new() -> Self {
+    pub(crate) fn new() -> Self {
         Self {
             state_serializer: Default::default(),
             advance_serializer: Default::default(),
@@ -504,7 +506,7 @@ impl Serializer<MipState> for MipStateSerializer {
 }
 
 /// A Deserializer for `MipState`
-pub struct MipStateDeserializer {
+pub(crate) struct MipStateDeserializer {
     state_deserializer: ComponentStateDeserializer,
     advance_deserializer: AdvanceDeserializer,
     state_id_deserializer: U32VarIntDeserializer,
@@ -513,7 +515,7 @@ pub struct MipStateDeserializer {
 
 impl MipStateDeserializer {
     /// Creates a new `MipStateDeserializer`
-    pub fn new() -> Self {
+    pub(crate) fn new() -> Self {
         Self {
             state_deserializer: ComponentStateDeserializer::new(),
             advance_deserializer: AdvanceDeserializer::new(),
@@ -594,14 +596,14 @@ impl Deserializer<MipState> for MipStateDeserializer {
 // MipStoreStats
 
 /// Serializer for `VersioningStoreRaw`
-pub struct MipStoreStatsSerializer {
+pub(crate) struct MipStoreStatsSerializer {
     u32_serializer: U32VarIntSerializer,
     u64_serializer: U64VarIntSerializer,
 }
 
 impl MipStoreStatsSerializer {
     /// Creates a new `Serializer`
-    pub fn new() -> Self {
+    pub(crate) fn new() -> Self {
         Self {
             u32_serializer: U32VarIntSerializer::new(),
             u64_serializer: U64VarIntSerializer::new(),
@@ -677,7 +679,7 @@ impl Serializer<MipStoreStats> for MipStoreStatsSerializer {
 }
 
 /// A Deserializer for `MipStoreStats
-pub struct MipStoreStatsDeserializer {
+pub(crate) struct MipStoreStatsDeserializer {
     config: MipStatsConfig,
     u32_deserializer: U32VarIntDeserializer,
     u64_deserializer: U64VarIntDeserializer,
@@ -685,7 +687,7 @@ pub struct MipStoreStatsDeserializer {
 
 impl MipStoreStatsDeserializer {
     /// Creates a new ``
-    pub fn new(block_count_considered: usize, counters_max: usize) -> Self {
+    pub(crate) fn new(block_count_considered: usize, counters_max: usize) -> Self {
         Self {
             config: MipStatsConfig {
                 block_count_considered,
@@ -797,7 +799,7 @@ impl Deserializer<MipStoreStats> for MipStoreStatsDeserializer {
 // MipStoreRaw
 
 /// Serializer for `VersioningStoreRaw`
-pub struct MipStoreRawSerializer {
+pub(crate) struct MipStoreRawSerializer {
     u32_serializer: U32VarIntSerializer,
     info_serializer: MipInfoSerializer,
     state_serializer: MipStateSerializer,
@@ -806,7 +808,7 @@ pub struct MipStoreRawSerializer {
 
 impl MipStoreRawSerializer {
     /// Creates a new `Serializer`
-    pub fn new() -> Self {
+    pub(crate) fn new() -> Self {
         Self {
             u32_serializer: U32VarIntSerializer::new(),
             info_serializer: MipInfoSerializer::new(),
@@ -845,7 +847,7 @@ impl Serializer<MipStoreRaw> for MipStoreRawSerializer {
 }
 
 /// A Deserializer for `VersioningStoreRaw
-pub struct MipStoreRawDeserializer {
+pub(crate) struct MipStoreRawDeserializer {
     u32_deserializer: U32VarIntDeserializer,
     info_deserializer: MipInfoDeserializer,
     state_deserializer: MipStateDeserializer,
@@ -854,7 +856,7 @@ pub struct MipStoreRawDeserializer {
 
 impl MipStoreRawDeserializer {
     /// Creates a new ``
-    pub fn new(block_count_considered: usize, counters_max: usize) -> Self {
+    pub(crate) fn new(block_count_considered: usize, counters_max: usize) -> Self {
         Self {
             u32_deserializer: U32VarIntDeserializer::new(
                 Included(0),

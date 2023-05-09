@@ -1,4 +1,9 @@
-use crate::{CycleInfo, PoSChanges, PosError, PosResult, ProductionStats, SelectorController};
+use crate::{
+    cycle_info::{CycleInfo, ProductionStats},
+    error::{PosError, PosResult},
+    pos_changes::PoSChanges,
+    SelectorController,
+};
 use crate::{DeferredCredits, PoSConfig};
 use bitvec::vec::BitVec;
 use massa_hash::Hash;
@@ -25,11 +30,11 @@ pub struct PoSFinalState {
     /// coins to be credited at the end of the slot
     pub deferred_credits: DeferredCredits,
     /// selector controller
-    pub selector: Box<dyn SelectorController>,
+    pub(crate) selector: Box<dyn SelectorController>,
     /// initial rolls, used for negative cycle look back
-    pub initial_rolls: BTreeMap<Address, u64>,
+    pub(crate) initial_rolls: BTreeMap<Address, u64>,
     /// initial seeds, used for negative cycle look back (cycles -2, -1 in that order)
-    pub initial_seeds: Vec<Hash>,
+    pub(crate) initial_seeds: Vec<Hash>,
     /// initial ledger hash, used for seed computation
     pub initial_ledger_hash: Hash,
 }
@@ -67,7 +72,7 @@ impl PoSFinalState {
     }
 
     /// create a `PoSFinalState` from an existing snapshot
-    pub fn from_snapshot(
+    pub(crate) fn from_snapshot(
         config: PoSConfig,
         cycle_history: VecDeque<CycleInfo>,
         deferred_credits: DeferredCredits,
@@ -386,7 +391,7 @@ impl PoSFinalState {
     }
 
     /// Retrieves the amount of rolls a given address has at the latest cycle
-    pub fn get_rolls_for(&self, addr: &Address) -> u64 {
+    pub(crate) fn get_rolls_for(&self, addr: &Address) -> u64 {
         self.cycle_history
             .back()
             .and_then(|info| info.roll_counts.get(addr).cloned())
@@ -394,7 +399,7 @@ impl PoSFinalState {
     }
 
     /// Retrieves the amount of rolls a given address has at a given cycle
-    pub fn get_address_active_rolls(&self, addr: &Address, cycle: u64) -> Option<u64> {
+    pub(crate) fn get_address_active_rolls(&self, addr: &Address, cycle: u64) -> Option<u64> {
         match cycle.checked_sub(3) {
             Some(lookback_cycle) => {
                 let lookback_index = match self.get_cycle_index(lookback_cycle) {
@@ -412,7 +417,7 @@ impl PoSFinalState {
     }
 
     /// Retrieves every deferred credit in a slot range
-    pub fn get_deferred_credits_range<R>(&self, range: R) -> DeferredCredits
+    pub(crate) fn get_deferred_credits_range<R>(&self, range: R) -> DeferredCredits
     where
         R: RangeBounds<Slot>,
     {
@@ -420,7 +425,7 @@ impl PoSFinalState {
     }
 
     /// Retrieves the productions statistics for all addresses on a given cycle
-    pub fn get_all_production_stats(
+    pub(crate) fn get_all_production_stats(
         &self,
         cycle: u64,
     ) -> Option<&PreHashMap<Address, ProductionStats>> {
@@ -429,7 +434,7 @@ impl PoSFinalState {
     }
 
     /// Gets the index of a cycle in history
-    pub fn get_cycle_index(&self, cycle: u64) -> Option<usize> {
+    pub(crate) fn get_cycle_index(&self, cycle: u64) -> Option<usize> {
         let first_cycle = match self.cycle_history.front() {
             Some(c) => c.cycle,
             None => return None, // history empty
@@ -454,7 +459,7 @@ impl PoSFinalState {
     ///
     /// # Returns
     /// The PoS cycle and the updated cursor
-    pub fn get_cycle_history_part(
+    pub(crate) fn get_cycle_history_part(
         &self,
         cursor: StreamingStep<u64>,
     ) -> Result<(Option<CycleInfo>, StreamingStep<u64>), ModelsError> {
@@ -491,7 +496,7 @@ impl PoSFinalState {
     ///
     /// # Returns
     /// The PoS `deferred_credits` part and the updated cursor
-    pub fn get_deferred_credits_part(
+    pub(crate) fn get_deferred_credits_part(
         &self,
         cursor: StreamingStep<Slot>,
     ) -> (DeferredCredits, StreamingStep<Slot>) {
@@ -521,7 +526,7 @@ impl PoSFinalState {
     ///
     /// # Arguments
     /// `part`: a `CycleInfo` received from `get_pos_state_part` and used to update PoS final state
-    pub fn set_cycle_history_part(&mut self, part: Option<CycleInfo>) -> StreamingStep<u64> {
+    pub(crate) fn set_cycle_history_part(&mut self, part: Option<CycleInfo>) -> StreamingStep<u64> {
         if let Some(cycle_info) = part {
             let opt_next_cycle = self
                 .cycle_history
@@ -545,7 +550,10 @@ impl PoSFinalState {
     ///
     /// # Arguments
     /// `part`: `DeferredCredits` from `get_pos_state_part` and used to update PoS final state
-    pub fn set_deferred_credits_part(&mut self, part: DeferredCredits) -> StreamingStep<Slot> {
+    pub(crate) fn set_deferred_credits_part(
+        &mut self,
+        part: DeferredCredits,
+    ) -> StreamingStep<Slot> {
         self.deferred_credits.extend(part);
         if let Some(slot) = self
             .deferred_credits

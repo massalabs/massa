@@ -34,7 +34,7 @@ use super::{
     messages::{EndorsementMessageDeserializer, EndorsementMessageDeserializerArgs},
 };
 
-pub struct RetrievalThread {
+pub(crate)  struct RetrievalThread {
     receiver: Receiver<PeerMessageTuple>,
     receiver_ext: Receiver<EndorsementHandlerRetrievalCommand>,
     cache: SharedEndorsementCache,
@@ -244,7 +244,7 @@ impl RetrievalThread {
 }
 
 #[allow(clippy::too_many_arguments)]
-pub fn start_retrieval_thread(
+pub(crate)  fn start_retrieval_thread(
     receiver: Receiver<PeerMessageTuple>,
     receiver_ext: Receiver<EndorsementHandlerRetrievalCommand>,
     internal_sender: Sender<EndorsementHandlerPropagationCommand>,

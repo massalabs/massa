@@ -27,19 +27,19 @@ use super::ConsensusState;
 /// All informations necessary to add a block to the graph
 pub(crate) struct BlockInfos {
     /// The block creator
-    pub creator: PublicKey,
+    pub(crate)  creator: PublicKey,
     /// The slot of the block
-    pub slot: Slot,
+    pub(crate)  slot: Slot,
     /// The list of the parents of the block (block_id, period) (one block per thread)
-    pub parents_hash_period: Vec<(BlockId, u64)>,
+    pub(crate)  parents_hash_period: Vec<(BlockId, u64)>,
     /// The list of the blocks that are incompatible with this block
-    pub incompatibilities: PreHashSet<BlockId>,
+    pub(crate)  incompatibilities: PreHashSet<BlockId>,
     /// Number of incompatibilities this block inherit from his parents
-    pub inherited_incompatibilities_count: usize,
+    pub(crate)  inherited_incompatibilities_count: usize,
     /// THe storage can the block himself and his operations and endorsements
-    pub storage: Storage,
+    pub(crate)  storage: Storage,
     /// The fitness of the block
-    pub fitness: u64,
+    pub(crate)  fitness: u64,
 }
 
 impl ConsensusState {
@@ -51,7 +51,7 @@ impl ConsensusState {
     ///
     /// # Returns:
     /// Success or error if an error happened during the processing of items
-    pub fn rec_process(
+    pub(crate)  fn rec_process(
         &mut self,
         mut to_ack: BTreeSet<(Slot, BlockId)>,
         current_slot: Option<Slot>,
@@ -74,7 +74,7 @@ impl ConsensusState {
     ///
     /// # Returns:
     /// A list of items to re-ack and process or an error if the process of an item failed
-    pub fn process(
+    pub(crate)  fn process(
         &mut self,
         block_id: BlockId,
         current_slot: Option<Slot>,
@@ -260,7 +260,7 @@ impl ConsensusState {
         Ok(reprocess)
     }
 
-    pub fn promote_dep_tree(&mut self, hash: BlockId) -> Result<(), ConsensusError> {
+    pub(crate)  fn promote_dep_tree(&mut self, hash: BlockId) -> Result<(), ConsensusError> {
         let mut to_explore = vec![hash];
         let mut to_promote: PreHashMap<BlockId, (Slot, u64)> = PreHashMap::default();
         while let Some(h) = to_explore.pop() {
@@ -487,7 +487,7 @@ impl ConsensusState {
     }
 
     /// Note an attack attempt if the discard reason indicates one.
-    pub fn maybe_note_attack_attempt(&mut self, reason: &DiscardReason, hash: &BlockId) {
+    pub(crate)  fn maybe_note_attack_attempt(&mut self, reason: &DiscardReason, hash: &BlockId) {
         massa_trace!("consensus.block_graph.maybe_note_attack_attempt", {"hash": hash, "reason": reason});
         // If invalid, note the attack attempt.
         if let DiscardReason::Invalid(reason) = reason {
@@ -591,7 +591,7 @@ impl ConsensusState {
     /// 9. notify protocol of block wish list
     /// 10. note new latest final periods (prune graph if changed)
     /// 11. add stale blocks to stats
-    pub fn block_db_changed(&mut self) -> Result<(), ConsensusError> {
+    pub(crate)  fn block_db_changed(&mut self) -> Result<(), ConsensusError> {
         let final_block_slots = {
             massa_trace!("consensus.consensus_worker.block_db_changed", {});
 

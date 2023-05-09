@@ -63,7 +63,7 @@ use std::net::{IpAddr, SocketAddr};
 
 impl API<Public> {
     /// generate a new public API
-    pub fn new(
+    pub(crate)  fn new(
         consensus_controller: Box<dyn ConsensusController>,
         execution_controller: Box<dyn ExecutionController>,
         api_settings: APIConfig,

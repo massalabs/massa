@@ -5,7 +5,7 @@
 
 use std::collections::BTreeMap;
 
-use crate::PosResult;
+use crate::error::PosResult;
 use massa_hash::Hash;
 use massa_models::{
     address::Address,

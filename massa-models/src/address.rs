@@ -17,7 +17,7 @@ use std::ops::Bound::Included;
 use std::str::FromStr;
 
 /// Size of a serialized address, in bytes
-pub const ADDRESS_SIZE_BYTES: usize = massa_hash::HASH_SIZE_BYTES + 1;
+pub(crate) const ADDRESS_SIZE_BYTES: usize = massa_hash::HASH_SIZE_BYTES + 1;
 
 /// Top level address representation that can differentiate between User and SC address
 #[derive(Clone, Copy, Eq, Hash, Ord, PartialEq, PartialOrd)]
@@ -230,7 +230,7 @@ impl Address {
     }
 
     /// Inner implementation for serializer. Mostly made available for the benefit of macros.
-    pub fn prefixed_bytes(&self) -> Vec<u8> {
+    pub(crate) fn prefixed_bytes(&self) -> Vec<u8> {
         let mut buff = vec![];
         let pref_ser = U64VarIntSerializer::new();
         let val = match self {
@@ -246,7 +246,7 @@ impl Address {
 
     #[cfg(any(test, feature = "testing"))]
     /// Convenience wrapper around the address serializer. Useful for hard-coding an address when testing
-    pub fn from_prefixed_bytes(data: &[u8]) -> Result<Address, ModelsError> {
+    pub(crate) fn from_prefixed_bytes(data: &[u8]) -> Result<Address, ModelsError> {
         let deser = AddressDeserializer::new();
         let (_, res) = deser.deserialize::<DeserializeError>(data).map_err(|_| {
             match std::str::from_utf8(data) {
@@ -384,15 +384,15 @@ fn sc_parser<'a, E: ParseError<&'a [u8]> + ContextError<&'a [u8]>>(
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct ExecutionAddressCycleInfo {
     /// cycle number
-    pub cycle: u64,
+    pub(crate) cycle: u64,
     /// true if that cycle is final
-    pub is_final: bool,
+    pub(crate) is_final: bool,
     /// `ok_count` blocks were created by this address during that cycle
-    pub ok_count: u64,
+    pub(crate) ok_count: u64,
     /// `ok_count` blocks were missed by this address during that cycle
-    pub nok_count: u64,
+    pub(crate) nok_count: u64,
     /// number of active rolls the address had at that cycle (if still available)
-    pub active_rolls: Option<u64>,
+    pub(crate) active_rolls: Option<u64>,
 }
 
 #[cfg(test)]

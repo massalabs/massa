@@ -26,7 +26,7 @@ use std::{
 use tracing::error;
 
 /// Bootstrap server binder
-pub struct BootstrapServerBinder {
+pub(crate)  struct BootstrapServerBinder {
     max_bootstrap_message_size: u32,
     max_consensus_block_ids: u64,
     thread_count: u8,
@@ -50,7 +50,7 @@ impl BootstrapServerBinder {
     /// * `local_keypair`: local node user keypair
     /// * `limit`: limit max bytes per second (up and down)
     #[allow(clippy::too_many_arguments)]
-    pub fn new(duplex: TcpStream, local_keypair: KeyPair, cfg: BootstrapSrvBindCfg) -> Self {
+    pub(crate)  fn new(duplex: TcpStream, local_keypair: KeyPair, cfg: BootstrapSrvBindCfg) -> Self {
         let BootstrapSrvBindCfg {
             // TODO: Reintroduce bandwidth limits
             max_bytes_read_write: _limit,
@@ -79,7 +79,7 @@ impl BootstrapServerBinder {
     }
     /// Performs a handshake. Should be called after connection
     /// MUST always be followed by a send of the `BootstrapMessage::BootstrapTime`
-    pub fn handshake_timeout(
+    pub(crate)  fn handshake_timeout(
         &mut self,
         version: Version,
         duration: Option<Duration>,
@@ -108,7 +108,7 @@ impl BootstrapServerBinder {
         Ok(())
     }
 
-    pub fn send_msg(
+    pub(crate)  fn send_msg(
         &mut self,
         timeout: Duration,
         msg: BootstrapServerMessage,
@@ -158,7 +158,7 @@ impl BootstrapServerBinder {
             // it's an error at the OS level.
             .unwrap();
     }
-    pub fn send_error_timeout(&mut self, error: String) -> Result<(), BootstrapError> {
+    pub(crate)  fn send_error_timeout(&mut self, error: String) -> Result<(), BootstrapError> {
         self.send_timeout(
             BootstrapServerMessage::BootstrapError { error },
             Some(self.write_error_timeout.to_duration()),
@@ -173,7 +173,7 @@ impl BootstrapServerBinder {
 
     // TODO: use a proper (de)serializer: https://github.com/massalabs/massa/pull/3745#discussion_r1169733161
     /// Writes the next message.
-    pub fn send_timeout(
+    pub(crate)  fn send_timeout(
         &mut self,
         msg: BootstrapServerMessage,
         duration: Option<Duration>,
@@ -218,7 +218,7 @@ impl BootstrapServerBinder {
 
     // TODO: use a proper (de)serializer: https://github.com/massalabs/massa/pull/3745#discussion_r1169733161
     /// Read a message sent from the client (not signed).
-    pub fn next_timeout(
+    pub(crate)  fn next_timeout(
         &mut self,
         duration: Option<Duration>,
     ) -> Result<BootstrapClientMessage, BootstrapError> {

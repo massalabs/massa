@@ -36,7 +36,7 @@ pub struct LedgerEntryUpdate {
 }
 
 /// Serializer for `datastore` field of `LedgerEntryUpdate`
-pub struct DatastoreUpdateSerializer {
+pub(crate) struct DatastoreUpdateSerializer {
     u64_serializer: U64VarIntSerializer,
     vec_u8_serializer: VecU8Serializer,
     value_serializer: SetOrDeleteSerializer<Vec<u8>, VecU8Serializer>,
@@ -44,7 +44,7 @@ pub struct DatastoreUpdateSerializer {
 
 impl DatastoreUpdateSerializer {
     /// Creates a new `DatastoreUpdateSerializer`
-    pub fn new() -> Self {
+    pub(crate) fn new() -> Self {
         Self {
             u64_serializer: U64VarIntSerializer::new(),
             vec_u8_serializer: VecU8Serializer::new(),
@@ -94,7 +94,7 @@ impl Serializer<BTreeMap<Vec<u8>, SetOrDelete<Vec<u8>>>> for DatastoreUpdateSeri
 }
 
 /// Serializer for `datastore` field of `LedgerEntryUpdate`
-pub struct DatastoreUpdateDeserializer {
+pub(crate) struct DatastoreUpdateDeserializer {
     length_deserializer: U64VarIntDeserializer,
     key_deserializer: VecU8Deserializer,
     value_deserializer: SetOrDeleteDeserializer<Vec<u8>, VecU8Deserializer>,
@@ -102,7 +102,7 @@ pub struct DatastoreUpdateDeserializer {
 
 impl DatastoreUpdateDeserializer {
     /// Creates a new `DatastoreUpdateDeserializer`
-    pub fn new(
+    pub(crate) fn new(
         max_datastore_key_length: u8,
         max_datastore_value_length: u64,
         max_datastore_entry_count: u64,
@@ -170,7 +170,7 @@ impl Deserializer<BTreeMap<Vec<u8>, SetOrDelete<Vec<u8>>>> for DatastoreUpdateDe
 }
 
 /// Serializer for `LedgerEntryUpdate`
-pub struct LedgerEntryUpdateSerializer {
+pub(crate) struct LedgerEntryUpdateSerializer {
     balance_serializer: SetOrKeepSerializer<Amount, AmountSerializer>,
     bytecode_serializer: SetOrKeepSerializer<Bytecode, BytecodeSerializer>,
     datastore_serializer: DatastoreUpdateSerializer,
@@ -178,7 +178,7 @@ pub struct LedgerEntryUpdateSerializer {
 
 impl LedgerEntryUpdateSerializer {
     /// Creates a new `LedgerEntryUpdateSerializer`
-    pub fn new() -> Self {
+    pub(crate) fn new() -> Self {
         Self {
             balance_serializer: SetOrKeepSerializer::new(AmountSerializer::new()),
             bytecode_serializer: SetOrKeepSerializer::new(BytecodeSerializer::new()),
@@ -231,7 +231,7 @@ impl Serializer<LedgerEntryUpdate> for LedgerEntryUpdateSerializer {
 }
 
 /// Deserializer for `LedgerEntryUpdate`
-pub struct LedgerEntryUpdateDeserializer {
+pub(crate) struct LedgerEntryUpdateDeserializer {
     amount_deserializer: SetOrKeepDeserializer<Amount, AmountDeserializer>,
     bytecode_deserializer: SetOrKeepDeserializer<Bytecode, BytecodeDeserializer>,
     datastore_deserializer: DatastoreUpdateDeserializer,
@@ -239,7 +239,7 @@ pub struct LedgerEntryUpdateDeserializer {
 
 impl LedgerEntryUpdateDeserializer {
     /// Creates a new `LedgerEntryUpdateDeserializer`
-    pub fn new(
+    pub(crate) fn new(
         max_datastore_key_length: u8,
         max_datastore_value_length: u64,
         max_datastore_entry_count: u64,
@@ -519,7 +519,7 @@ impl Applicable<LedgerChanges> for LedgerChanges {
 
 impl LedgerChanges {
     /// Get an item from the `LedgerChanges`
-    pub fn get(
+    pub(crate) fn get(
         &self,
         addr: &Address,
     ) -> Option<&SetUpdateOrDelete<LedgerEntry, LedgerEntryUpdate>> {
@@ -552,7 +552,7 @@ impl LedgerChanges {
 
     /// Create a new, empty address.
     /// Overwrites the address if it is already there.
-    pub fn create_address(&mut self, address: &Address) {
+    pub(crate) fn create_address(&mut self, address: &Address) {
         self.0
             .insert(*address, SetUpdateOrDelete::Set(LedgerEntry::default()));
     }
@@ -572,7 +572,7 @@ impl LedgerChanges {
     /// * Some(v) if a value is present, where v is a copy of the value
     /// * None if the value is absent
     /// * f() if the value is unknown
-    pub fn get_balance_or_else<F: FnOnce() -> Option<Amount>>(
+    pub(crate) fn get_balance_or_else<F: FnOnce() -> Option<Amount>>(
         &self,
         addr: &Address,
         f: F,
@@ -617,7 +617,7 @@ impl LedgerChanges {
     /// * Some(v) if a value is present, where v is a copy of the value
     /// * None if the value is absent
     /// * f() if the value is unknown
-    pub fn get_bytecode_or_else<F: FnOnce() -> Option<Bytecode>>(
+    pub(crate) fn get_bytecode_or_else<F: FnOnce() -> Option<Bytecode>>(
         &self,
         addr: &Address,
         f: F,
@@ -663,7 +663,7 @@ impl LedgerChanges {
     /// * true if the entry exists
     /// * false if the value is absent
     /// * f() if the value's existence is unknown
-    pub fn entry_exists_or_else<F: FnOnce() -> bool>(&self, addr: &Address, f: F) -> bool {
+    pub(crate) fn entry_exists_or_else<F: FnOnce() -> bool>(&self, addr: &Address, f: F) -> bool {
         // Get the changes for the provided address
         match self.0.get(addr) {
             // The entry is being replaced by a new one: it exists
@@ -689,7 +689,7 @@ impl LedgerChanges {
     /// # Arguments
     /// * `addr`: target address
     /// * `balance`: balance to set for the provided address
-    pub fn set_balance(&mut self, addr: Address, balance: Amount) {
+    pub(crate) fn set_balance(&mut self, addr: Address, balance: Amount) {
         // Get the changes for the entry associated to the provided address
         match self.0.entry(addr) {
             // That entry is being changed
@@ -736,7 +736,7 @@ impl LedgerChanges {
     /// # Parameters
     /// * `addr`: target address
     /// * `bytecode`: executable bytecode to assign to that address
-    pub fn set_bytecode(&mut self, addr: Address, bytecode: Bytecode) {
+    pub(crate) fn set_bytecode(&mut self, addr: Address, bytecode: Bytecode) {
         // Get the current changes being applied to the entry associated to that address
         match self.0.entry(addr) {
             // There are changes currently being applied to the entry
@@ -793,7 +793,7 @@ impl LedgerChanges {
     /// * Some(v) if the value was found, where v is a copy of the value
     /// * None if the value is absent
     /// * f() if the value is unknown
-    pub fn get_data_entry_or_else<F: FnOnce() -> Option<Vec<u8>>>(
+    pub(crate) fn get_data_entry_or_else<F: FnOnce() -> Option<Vec<u8>>>(
         &self,
         addr: &Address,
         key: &[u8],
@@ -878,7 +878,7 @@ impl LedgerChanges {
     /// * true if the ledger entry exists and the key is present in its datastore
     /// * false if the ledger entry is absent, or if the key is not in its datastore
     /// * f() if the existence of the ledger entry or datastore entry is unknown
-    pub fn has_data_entry_or_else<F: FnOnce() -> bool>(
+    pub(crate) fn has_data_entry_or_else<F: FnOnce() -> bool>(
         &self,
         addr: &Address,
         key: &[u8],
@@ -925,7 +925,7 @@ impl LedgerChanges {
     /// * `addr`: target address
     /// * `key`: datastore key
     /// * `data`: datastore value to set
-    pub fn set_data_entry(&mut self, addr: Address, key: Vec<u8>, data: Vec<u8>) {
+    pub(crate) fn set_data_entry(&mut self, addr: Address, key: Vec<u8>, data: Vec<u8>) {
         // Get the changes being applied to the ledger entry associated to that address
         match self.0.entry(addr) {
             // There are changes currently being applied to the ledger entry
@@ -973,7 +973,7 @@ impl LedgerChanges {
     /// # Arguments
     /// * `addr`: target address
     /// * `key`: datastore key
-    pub fn delete_data_entry(&mut self, addr: Address, key: Vec<u8>) {
+    pub(crate) fn delete_data_entry(&mut self, addr: Address, key: Vec<u8>) {
         // Get the changes being applied to the ledger entry associated to that address
         match self.0.entry(addr) {
             // There are changes currently being applied to the ledger entry

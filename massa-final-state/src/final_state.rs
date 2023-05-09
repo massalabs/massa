@@ -46,25 +46,25 @@ pub struct FinalState {
     /// slot at the output of which the state is attached
     pub slot: Slot,
     /// final ledger associating addresses to their balance, executable bytecode and data
-    pub ledger: Box<dyn LedgerController>,
+    pub(crate) ledger: Box<dyn LedgerController>,
     /// asynchronous pool containing messages sorted by priority and their data
-    pub async_pool: AsyncPool,
+    pub(crate) async_pool: AsyncPool,
     /// proof of stake state containing cycle history and deferred credits
-    pub pos_state: PoSFinalState,
+    pub(crate) pos_state: PoSFinalState,
     /// executed operations
-    pub executed_ops: ExecutedOps,
+    pub(crate) executed_ops: ExecutedOps,
     /// executed denunciations
-    pub executed_denunciations: ExecutedDenunciations,
+    pub(crate) executed_denunciations: ExecutedDenunciations,
     /// history of recent final state changes, useful for streaming bootstrap
     /// `front = oldest`, `back = newest`
-    pub changes_history: VecDeque<(Slot, StateChanges)>,
+    pub(crate) changes_history: VecDeque<(Slot, StateChanges)>,
     /// hash of the final state, it is computed on finality
-    pub final_state_hash: Hash,
+    pub(crate) final_state_hash: Hash,
     /// last_start_period
     /// * If start all new network: set to 0
     /// * If from snapshot: retrieve from args
     /// * If from bootstrap: set during bootstrap
-    pub last_start_period: u64,
+    pub(crate) last_start_period: u64,
 }
 
 const FINAL_STATE_HASH_INITIAL_BYTES: &[u8; 32] = &[0; HASH_SIZE_BYTES];
@@ -76,7 +76,7 @@ impl FinalState {
     /// * `config`: the configuration of the final state to use for initialization
     /// * `ledger`: the instance of the ledger on disk. Used to apply changes to the ledger.
     /// * `selector`: the pos selector. Used to send draw inputs when a new cycle is completed.
-    pub fn new(
+    pub(crate) fn new(
         config: FinalStateConfig,
         ledger: Box<dyn LedgerController>,
         selector: Box<dyn SelectorController>,
@@ -127,7 +127,7 @@ impl FinalState {
     /// * `ledger`: the instance of the ledger on disk. Used to apply changes to the ledger.
     /// * `selector`: the pos selector. Used to send draw inputs when a new cycle is completed.
     /// * `last_start_period`: at what period we should attach the final_state
-    pub fn new_derived_from_snapshot(
+    pub(crate) fn new_derived_from_snapshot(
         config: FinalStateConfig,
         ledger: Box<dyn LedgerController>,
         selector: Box<dyn SelectorController>,
@@ -176,7 +176,7 @@ impl FinalState {
     }
 
     /// Used after bootstrap, to set the initial ledger hash (used in initial draws)
-    pub fn init_ledger_hash(&mut self, last_start_period: u64) {
+    pub(crate) fn init_ledger_hash(&mut self, last_start_period: u64) {
         let slot = Slot::new(
             last_start_period,
             self.config.thread_count.saturating_sub(1),
@@ -378,7 +378,7 @@ impl FinalState {
     /// Reset the final state to the initial state.
     ///
     /// USED ONLY FOR BOOTSTRAP
-    pub fn reset(&mut self) {
+    pub(crate) fn reset(&mut self) {
         self.slot = Slot::new(0, self.config.thread_count.saturating_sub(1));
         self.ledger.reset();
         self.async_pool.reset();
@@ -394,7 +394,7 @@ impl FinalState {
     ///
     /// Used when finalizing a slot.
     /// Slot information is only used for logging.
-    pub fn compute_state_hash_at_slot(&mut self, slot: Slot) {
+    pub(crate) fn compute_state_hash_at_slot(&mut self, slot: Slot) {
         // 1. init hash concatenation with the ledger hash
         let ledger_hash = self.ledger.get_ledger_hash();
         let mut hash_concat: Vec<u8> = ledger_hash.to_bytes().to_vec();
@@ -429,7 +429,7 @@ impl FinalState {
     }
 
     /// Performs the initial draws.
-    pub fn compute_initial_draws(&mut self) -> Result<(), FinalStateError> {
+    pub(crate) fn compute_initial_draws(&mut self) -> Result<(), FinalStateError> {
         self.pos_state
             .compute_initial_draws()
             .map_err(|err| FinalStateError::PosError(err.to_string()))
@@ -542,7 +542,7 @@ impl FinalState {
     ///
     /// Produces an error when the `slot` is too old for `self.changes_history`
     #[allow(clippy::too_many_arguments)]
-    pub fn get_state_changes_part(
+    pub(crate) fn get_state_changes_part(
         &self,
         slot: Slot,
         ledger_step: StreamingStep<LedgerKey>,
@@ -680,7 +680,7 @@ impl FinalState {
 }
 
 /// Serializer for `FinalStateRaw`
-pub struct FinalStateRawSerializer {
+pub(crate) struct FinalStateRawSerializer {
     async_pool_serializer: AsyncPoolSerializer,
     cycle_history_serializer: CycleHistorySerializer,
     deferred_credits_serializer: DeferredCreditsSerializer,
@@ -711,7 +711,7 @@ impl From<FinalState> for FinalStateRaw {
 
 impl FinalStateRawSerializer {
     /// Initialize a `FinalStateRaweSerializer`
-    pub fn new() -> Self {
+    pub(crate) fn new() -> Self {
         Self {
             async_pool_serializer: AsyncPoolSerializer::new(),
             cycle_history_serializer: CycleHistorySerializer::new(),
@@ -752,7 +752,7 @@ impl Serializer<FinalStateRaw> for FinalStateRawSerializer {
     }
 }
 
-pub struct FinalStateRaw {
+pub(crate) struct FinalStateRaw {
     async_pool_messages: BTreeMap<AsyncMessageId, AsyncMessage>,
     cycle_history: VecDeque<CycleInfo>,
     deferred_credits: DeferredCredits,
@@ -764,7 +764,7 @@ pub struct FinalStateRaw {
 }
 
 /// Deserializer for `FinalStateRaw`
-pub struct FinalStateRawDeserializer {
+pub(crate) struct FinalStateRawDeserializer {
     async_deser: AsyncPoolDeserializer,
     cycle_history_deser: CycleHistoryDeserializer,
     deferred_credits_deser: DeferredCreditsDeserializer,
@@ -778,7 +778,7 @@ impl FinalStateRawDeserializer {
     #[allow(clippy::too_many_arguments)]
     #[allow(dead_code)]
     /// Initialize a `FinalStateRawDeserializer`
-    pub fn new(
+    pub(crate) fn new(
         config: FinalStateConfig,
         max_async_pool_length: u64,
         max_datastore_key_length: u8,

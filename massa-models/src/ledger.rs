@@ -26,20 +26,20 @@ use std::ops::Bound::Included;
 
 /// a consensus ledger entry
 #[derive(Debug, Default, Deserialize, Clone, Copy, Serialize)]
-pub struct LedgerData {
+pub(crate)  struct LedgerData {
     /// the balance in coins
-    pub balance: Amount,
+    pub(crate)  balance: Amount,
 }
 
 /// Basic serializer for `LedgerData`
 #[derive(Default)]
-pub struct LedgerDataSerializer {
+pub(crate)  struct LedgerDataSerializer {
     amount_serializer: AmountSerializer,
 }
 
 impl LedgerDataSerializer {
     /// Creates a `LedgerDataSerializer`
-    pub fn new() -> Self {
+    pub(crate)  fn new() -> Self {
         Self {
             amount_serializer: AmountSerializer::new(),
         }
@@ -67,13 +67,13 @@ impl Serializer<LedgerData> for LedgerDataSerializer {
 }
 
 /// Basic deserializer for `LedgerData`
-pub struct LedgerDataDeserializer {
+pub(crate)  struct LedgerDataDeserializer {
     amount_deserializer: AmountDeserializer,
 }
 
 impl LedgerDataDeserializer {
     /// Creates a `LedgerDataDeserializer`
-    pub fn new() -> Self {
+    pub(crate)  fn new() -> Self {
         Self {
             amount_deserializer: AmountDeserializer::new(
                 Included(Amount::MIN),
@@ -120,7 +120,7 @@ impl Deserializer<LedgerData> for LedgerDataDeserializer {
 
 impl LedgerData {
     /// new `LedgerData` from an initial balance
-    pub fn new(starting_balance: Amount) -> LedgerData {
+    pub(crate)  fn new(starting_balance: Amount) -> LedgerData {
         LedgerData {
             balance: starting_balance,
         }
@@ -128,7 +128,7 @@ impl LedgerData {
 
     /// apply a `LedgerChange` for an entry
     /// Can fail in overflow or underflow occur
-    pub fn apply_change(&mut self, change: &LedgerChange) -> Result<()> {
+    pub(crate)  fn apply_change(&mut self, change: &LedgerChange) -> Result<()> {
         if change.balance_increment {
             self.balance = self
                 .balance
@@ -152,18 +152,18 @@ impl LedgerData {
     }
 
     /// returns true if the balance is zero
-    pub fn is_nil(&self) -> bool {
+    pub(crate)  fn is_nil(&self) -> bool {
         self.balance == Amount::default()
     }
 }
 
 /// A balance change that can be applied to an address
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct LedgerChange {
+pub(crate)  struct LedgerChange {
     /// Amount to add or subtract
-    pub balance_delta: Amount,
+    pub(crate)  balance_delta: Amount,
     /// whether to increment or decrements balance of delta
-    pub balance_increment: bool,
+    pub(crate)  balance_increment: bool,
 }
 
 impl Default for LedgerChange {
@@ -177,13 +177,13 @@ impl Default for LedgerChange {
 
 /// Basic serializer for `LedgerChange`
 #[derive(Default)]
-pub struct LedgerChangeSerializer {
+pub(crate)  struct LedgerChangeSerializer {
     amount_serializer: AmountSerializer,
 }
 
 impl LedgerChangeSerializer {
     /// Creates a `LedgerChangeSerializer`
-    pub fn new() -> Self {
+    pub(crate)  fn new() -> Self {
         Self {
             amount_serializer: AmountSerializer::new(),
         }
@@ -213,13 +213,13 @@ impl Serializer<LedgerChange> for LedgerChangeSerializer {
 }
 
 /// Basic deserializer for `LedgerChange`
-pub struct LedgerChangeDeserializer {
+pub(crate)  struct LedgerChangeDeserializer {
     amount_deserializer: AmountDeserializer,
 }
 
 impl LedgerChangeDeserializer {
     /// Creates a `LedgerChangeDeserializer`
-    pub fn new() -> Self {
+    pub(crate)  fn new() -> Self {
         Self {
             amount_deserializer: AmountDeserializer::new(
                 Included(Amount::MIN),
@@ -279,7 +279,7 @@ impl Deserializer<LedgerChange> for LedgerChangeDeserializer {
 
 impl LedgerChange {
     /// Applies another ledger change on top of self
-    pub fn chain(&mut self, change: &LedgerChange) -> Result<(), ModelsError> {
+    pub(crate)  fn chain(&mut self, change: &LedgerChange) -> Result<(), ModelsError> {
         if self.balance_increment == change.balance_increment {
             self.balance_delta = self
                 .balance_delta
@@ -310,17 +310,17 @@ impl LedgerChange {
     }
 
     /// true if the change is 0
-    pub fn is_nil(&self) -> bool {
+    pub(crate)  fn is_nil(&self) -> bool {
         self.balance_delta == Amount::default()
     }
 }
 
 /// Map an address to a `LedgerChange`
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
-pub struct LedgerChanges(pub PreHashMap<Address, LedgerChange>);
+pub(crate)  struct LedgerChanges(pub PreHashMap<Address, LedgerChange>);
 
 /// Basic serializer for `LedgerChanges`
-pub struct LedgerChangesSerializer {
+pub(crate)  struct LedgerChangesSerializer {
     length_serializer: U64VarIntSerializer,
     address_serializer: AddressSerializer,
     ledger_change_serializer: LedgerChangeSerializer,
@@ -328,7 +328,7 @@ pub struct LedgerChangesSerializer {
 
 impl LedgerChangesSerializer {
     /// Creates a `LedgerChangesSerializer`
-    pub fn new() -> Self {
+    pub(crate)  fn new() -> Self {
         Self {
             length_serializer: U64VarIntSerializer::new(),
             address_serializer: AddressSerializer::new(),
@@ -356,7 +356,7 @@ impl Serializer<LedgerChanges> for LedgerChangesSerializer {
 }
 
 /// Basic deserializer for `LedgerChanges`
-pub struct LedgerChangesDeserializer {
+pub(crate)  struct LedgerChangesDeserializer {
     length_deserializer: U64VarIntDeserializer,
     address_deserializer: AddressDeserializer,
     ledger_change_deserializer: LedgerChangeDeserializer,
@@ -364,7 +364,7 @@ pub struct LedgerChangesDeserializer {
 
 impl LedgerChangesDeserializer {
     /// Creates a `LedgerChangesDeserializer`
-    pub fn new(max_ledger_changes_count: u64) -> Self {
+    pub(crate)  fn new(max_ledger_changes_count: u64) -> Self {
         Self {
             length_deserializer: U64VarIntDeserializer::new(
                 Included(0),
@@ -436,12 +436,12 @@ impl Deserializer<LedgerChanges> for LedgerChangesDeserializer {
 
 impl LedgerChanges {
     /// addresses that are impacted by these ledger changes
-    pub fn get_involved_addresses(&self) -> PreHashSet<Address> {
+    pub(crate)  fn get_involved_addresses(&self) -> PreHashSet<Address> {
         self.0.keys().copied().collect()
     }
 
     /// applies a `LedgerChange`
-    pub fn apply(&mut self, addr: &Address, change: &LedgerChange) -> Result<()> {
+    pub(crate)  fn apply(&mut self, addr: &Address, change: &LedgerChange) -> Result<()> {
         match self.0.entry(*addr) {
             hash_map::Entry::Occupied(mut occ) => {
                 occ.get_mut().chain(change)?;
@@ -461,7 +461,7 @@ impl LedgerChanges {
     }
 
     /// chain with another `LedgerChange`
-    pub fn chain(&mut self, other: &LedgerChanges) -> Result<()> {
+    pub(crate)  fn chain(&mut self, other: &LedgerChanges) -> Result<()> {
         for (addr, change) in other.0.iter() {
             self.apply(addr, change)?;
         }
@@ -470,7 +470,7 @@ impl LedgerChanges {
 
     /// merge another ledger changes into self, overwriting existing data
     /// addresses that are in not other are removed from self
-    pub fn sync_from(&mut self, addrs: &PreHashSet<Address>, mut other: LedgerChanges) {
+    pub(crate)  fn sync_from(&mut self, addrs: &PreHashSet<Address>, mut other: LedgerChanges) {
         for addr in addrs.iter() {
             if let Some(new_val) = other.0.remove(addr) {
                 self.0.insert(*addr, new_val);
@@ -482,7 +482,7 @@ impl LedgerChanges {
 
     /// clone subset
     #[must_use]
-    pub fn clone_subset(&self, addrs: &PreHashSet<Address>) -> Self {
+    pub(crate)  fn clone_subset(&self, addrs: &PreHashSet<Address>) -> Self {
         LedgerChanges(
             self.0
                 .iter()

@@ -12,7 +12,7 @@ use std::ops::Bound;
 use std::str::FromStr;
 
 /// decimal factor for the internal representation
-pub const AMOUNT_DECIMAL_FACTOR: u64 = 1_000_000_000;
+pub(crate) const AMOUNT_DECIMAL_FACTOR: u64 = 1_000_000_000;
 
 /// A structure representing a decimal Amount of coins with safe operations
 /// this allows ensuring that there is never an uncontrolled overflow or precision loss
@@ -70,7 +70,7 @@ impl Amount {
     /// Warning: do not use this unless you know what you are doing
     /// because the raw value does not take the `AMOUNT_DECIMAL_FACTOR` into account
     /// In most cases, you should be using `Amount::from_str("11.23")`
-    pub const fn from_raw(raw: u64) -> Self {
+    pub(crate) const fn from_raw(raw: u64) -> Self {
         Self(raw)
     }
 
@@ -100,7 +100,7 @@ impl Amount {
     /// let res : Amount = amount_1.checked_sub(amount_2).unwrap();
     /// assert_eq!(res, Amount::from_str("35").unwrap())
     /// ```
-    pub fn checked_sub(self, amount: Amount) -> Option<Self> {
+    pub(crate) fn checked_sub(self, amount: Amount) -> Option<Self> {
         self.0.checked_sub(amount.0).map(Amount)
     }
 
@@ -113,7 +113,7 @@ impl Amount {
     /// let res : Amount = amount_1.checked_add(amount_2).unwrap();
     /// assert_eq!(res, Amount::from_str("49").unwrap())
     /// ```
-    pub fn checked_add(self, amount: Amount) -> Option<Self> {
+    pub(crate) fn checked_add(self, amount: Amount) -> Option<Self> {
         self.0.checked_add(amount.0).map(Amount)
     }
 
@@ -125,7 +125,7 @@ impl Amount {
     /// let res : Amount = amount_1.checked_mul_u64(7).unwrap();
     /// assert_eq!(res, Amount::from_str("294").unwrap())
     /// ```
-    pub fn checked_mul_u64(self, factor: u64) -> Option<Self> {
+    pub  checked_mul_u64(self, factor: u64) -> Option<Self> {
         self.0.checked_mul(factor).map(Amount)
     }
 

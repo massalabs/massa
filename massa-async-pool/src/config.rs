@@ -6,11 +6,11 @@
 #[derive(Debug, Clone)]
 pub struct AsyncPoolConfig {
     /// max number of messages in the pool
-    pub max_length: u64,
+    pub(crate) max_length: u64,
     /// part size (for bootstrap limits)
-    pub bootstrap_part_size: u64,
+    pub(crate) bootstrap_part_size: u64,
     /// max async message data (for bootstrap limits)
     pub max_async_message_data: u64,
     /// thread count
-    pub thread_count: u8,
+    pub(crate) thread_count: u8,
 }

@@ -33,7 +33,7 @@ impl SpeculativeRollState {
     ///
     /// # Arguments
     /// * `active_history`: thread-safe shared access the speculative execution history
-    pub fn new(
+    pub(crate)  fn new(
         final_state: Arc<RwLock<FinalState>>,
         active_history: Arc<RwLock<ActiveHistory>>,
     ) -> Self {
@@ -46,17 +46,17 @@ impl SpeculativeRollState {
 
     /// Returns the changes caused to the `SpeculativeRollState` since its creation,
     /// and resets their local value to nothing.
-    pub fn take(&mut self) -> PoSChanges {
+    pub(crate)  fn take(&mut self) -> PoSChanges {
         std::mem::take(&mut self.added_changes)
     }
 
     /// Takes a snapshot (clone) of the changes caused to the `SpeculativeRollState` since its creation
-    pub fn get_snapshot(&self) -> PoSChanges {
+    pub(crate)  fn get_snapshot(&self) -> PoSChanges {
         self.added_changes.clone()
     }
 
     /// Resets the `SpeculativeRollState` to a snapshot (see `get_snapshot` method)
-    pub fn reset_to_snapshot(&mut self, snapshot: PoSChanges) {
+    pub(crate)  fn reset_to_snapshot(&mut self, snapshot: PoSChanges) {
         self.added_changes = snapshot;
     }
 
@@ -80,7 +80,7 @@ impl SpeculativeRollState {
     /// # Arguments
     /// * `buyer_addr`: address that will receive the rolls
     /// * `roll_count`: number of rolls it will receive
-    pub fn add_rolls(&mut self, buyer_addr: &Address, roll_count: u64) {
+    pub(crate)  fn add_rolls(&mut self, buyer_addr: &Address, roll_count: u64) {
         let count = self
             .added_changes
             .roll_changes
@@ -99,7 +99,7 @@ impl SpeculativeRollState {
     /// # Arguments
     /// * `seller_addr`: address to sell the rolls from
     /// * `roll_count`: number of rolls to sell
-    pub fn try_sell_rolls(
+    pub(crate)  fn try_sell_rolls(
         &mut self,
         seller_addr: &Address,
         slot: Slot,
@@ -155,7 +155,7 @@ impl SpeculativeRollState {
     /// # Arguments
     /// * `addr`: address to slash the rolls from
     /// * `roll_count`: number of rolls to slash
-    pub fn try_slash_rolls(
+    pub(crate)  fn try_slash_rolls(
         &mut self,
         addr: &Address,
         roll_count: u64,
@@ -186,7 +186,7 @@ impl SpeculativeRollState {
     /// # Arguments
     /// * `addr`: address to slash the deferred credits from
     /// * `amount`: number of deferred credits to slash
-    pub fn try_slash_deferred_credits(
+    pub(crate)  fn try_slash_deferred_credits(
         &mut self,
         slot: &Slot,
         addr: &Address,
@@ -214,7 +214,7 @@ impl SpeculativeRollState {
     /// * `creator`: the supposed creator
     /// * `slot`: current slot
     /// * `block_id`: id of the block (if some)
-    pub fn update_production_stats(
+    pub(crate)  fn update_production_stats(
         &mut self,
         creator: &Address,
         slot: Slot,
@@ -242,7 +242,7 @@ impl SpeculativeRollState {
     ///
     /// # Arguments:
     /// `slot`: the final slot of the cycle to compute
-    pub fn settle_production_stats(
+    pub(crate)  fn settle_production_stats(
         &mut self,
         slot: &Slot,
         periods_per_cycle: u64,
@@ -289,7 +289,7 @@ impl SpeculativeRollState {
     }
 
     /// Get deferred credits of an address starting from a given slot
-    pub fn get_address_deferred_credits(
+    pub(crate)  fn get_address_deferred_credits(
         &self,
         address: &Address,
         min_slot: Slot,
@@ -379,7 +379,7 @@ impl SpeculativeRollState {
     }
 
     /// Get the production statistics for a given address at a given cycle.
-    pub fn get_address_cycle_infos(
+    pub(crate)  fn get_address_cycle_infos(
         &self,
         address: &Address,
         periods_per_cycle: u64,
@@ -479,7 +479,7 @@ impl SpeculativeRollState {
 
     /// Get the production statistics for a given cycle.
     /// Returns a 2nd boolean result indicating whether the cycle was fetched fully and successfully, or just partially.
-    pub fn get_production_stats_at_cycle(
+    pub(crate)  fn get_production_stats_at_cycle(
         &self,
         cycle: u64,
         periods_per_cycle: u64,
@@ -547,7 +547,7 @@ impl SpeculativeRollState {
     ///
     /// # Arguments
     /// * `slot`: associated slot of the deferred credits to be executed
-    pub fn take_unexecuted_deferred_credits(&mut self, slot: &Slot) -> DeferredCredits {
+    pub(crate)  fn take_unexecuted_deferred_credits(&mut self, slot: &Slot) -> DeferredCredits {
         // NOTE: Deferred credits are overridden. Zeros will be deleted at finality.
 
         // get final deferred credits

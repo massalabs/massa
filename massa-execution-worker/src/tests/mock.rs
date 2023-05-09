@@ -101,12 +101,12 @@ fn get_initials() -> (NamedTempFile, HashMap<Address, LedgerEntry>) {
 /// Same as `get_random_address()` and return `keypair` associated
 /// to the address.
 #[allow(dead_code)] // to avoid warnings on gas_calibration feature
-pub fn get_random_address_full() -> (Address, KeyPair) {
+pub(crate)  fn get_random_address_full() -> (Address, KeyPair) {
     let keypair = KeyPair::generate();
     (Address::from_public_key(&keypair.get_public_key()), keypair)
 }
 
-pub fn get_sample_state(
+pub(crate)  fn get_sample_state(
     last_start_period: u64,
 ) -> Result<(Arc<RwLock<FinalState>>, NamedTempFile, TempDir), LedgerError> {
     let (rolls_file, ledger) = get_initials();
@@ -153,7 +153,7 @@ pub fn get_sample_state(
 ///
 /// Return a result that should be unwrapped in the root `#[test]` routine.
 #[allow(dead_code)] // to avoid warnings on gas_calibration feature
-pub fn create_block(
+pub(crate)  fn create_block(
     creator_keypair: KeyPair,
     operations: Vec<SecureShareOperation>,
     denunciations: Vec<Denunciation>,
@@ -189,7 +189,7 @@ pub fn create_block(
 
 /// get the mocked file for initial vesting
 #[allow(dead_code)]
-pub fn get_initials_vesting(with_value: bool) -> NamedTempFile {
+pub(crate)  fn get_initials_vesting(with_value: bool) -> NamedTempFile {
     let file = NamedTempFile::new().unwrap();
     let mut map: PreHashMap<Address, Vec<TempFileVestingRange>> = PreHashMap::default();
 

@@ -32,7 +32,7 @@ pub enum SetUpdateOrDelete<T: Default + Applicable<V>, V: Applicable<V> + Clone>
     Delete,
 }
 
-pub struct SetUpdateOrDeleteDeserializer<
+pub(crate) struct SetUpdateOrDeleteDeserializer<
     T: Default + Applicable<V>,
     V: Applicable<V> + Clone,
     DT: Deserializer<T>,
@@ -51,7 +51,7 @@ impl<
         DV: Deserializer<V>,
     > SetUpdateOrDeleteDeserializer<T, V, DT, DV>
 {
-    pub fn new(inner_deserializer_set: DT, inner_deserializer_update: DV) -> Self {
+    pub(crate) fn new(inner_deserializer_set: DT, inner_deserializer_update: DV) -> Self {
         Self {
             inner_deserializer_set,
             inner_deserializer_update,
@@ -90,7 +90,7 @@ impl<
     }
 }
 
-pub struct SetUpdateOrDeleteSerializer<
+pub(crate) struct SetUpdateOrDeleteSerializer<
     T: Default + Applicable<V>,
     V: Applicable<V> + Clone,
     ST: Serializer<T>,
@@ -109,7 +109,7 @@ impl<
         SV: Serializer<V>,
     > SetUpdateOrDeleteSerializer<T, V, ST, SV>
 {
-    pub fn new(inner_serializer_set: ST, inner_serializer_update: SV) -> Self {
+    pub(crate) fn new(inner_serializer_set: ST, inner_serializer_update: SV) -> Self {
         Self {
             inner_serializer_set,
             inner_serializer_update,
@@ -194,13 +194,13 @@ pub enum SetOrDelete<T: Clone> {
     Delete,
 }
 
-pub struct SetOrDeleteDeserializer<T: Clone, DT: Deserializer<T>> {
+pub(crate) struct SetOrDeleteDeserializer<T: Clone, DT: Deserializer<T>> {
     inner_deserializer: DT,
     phantom_t: std::marker::PhantomData<T>,
 }
 
 impl<T: Clone, DT: Deserializer<T>> SetOrDeleteDeserializer<T, DT> {
-    pub fn new(inner_deserializer: DT) -> Self {
+    pub(crate) fn new(inner_deserializer: DT) -> Self {
         Self {
             inner_deserializer,
             phantom_t: std::marker::PhantomData,
@@ -229,13 +229,13 @@ impl<T: Clone, DT: Deserializer<T>> Deserializer<SetOrDelete<T>>
     }
 }
 
-pub struct SetOrDeleteSerializer<T: Clone, ST: Serializer<T>> {
+pub(crate) struct SetOrDeleteSerializer<T: Clone, ST: Serializer<T>> {
     inner_serializer: ST,
     phantom_t: std::marker::PhantomData<T>,
 }
 
 impl<T: Clone, ST: Serializer<T>> SetOrDeleteSerializer<T, ST> {
-    pub fn new(inner_serializer: ST) -> Self {
+    pub(crate) fn new(inner_serializer: ST) -> Self {
         Self {
             inner_serializer,
             phantom_t: std::marker::PhantomData,
@@ -280,13 +280,13 @@ pub enum SetOrKeep<T: Clone> {
     Keep,
 }
 
-pub struct SetOrKeepDeserializer<T: Clone, DT: Deserializer<T>> {
+pub(crate) struct SetOrKeepDeserializer<T: Clone, DT: Deserializer<T>> {
     inner_deserializer: DT,
     phantom_t: std::marker::PhantomData<T>,
 }
 
 impl<T: Clone, DT: Deserializer<T>> SetOrKeepDeserializer<T, DT> {
-    pub fn new(inner_deserializer: DT) -> Self {
+    pub(crate) fn new(inner_deserializer: DT) -> Self {
         Self {
             inner_deserializer,
             phantom_t: std::marker::PhantomData,
@@ -313,13 +313,13 @@ impl<T: Clone, DT: Deserializer<T>> Deserializer<SetOrKeep<T>> for SetOrKeepDese
     }
 }
 
-pub struct SetOrKeepSerializer<T: Clone, ST: Serializer<T>> {
+pub(crate) struct SetOrKeepSerializer<T: Clone, ST: Serializer<T>> {
     inner_serializer: ST,
     phantom_t: std::marker::PhantomData<T>,
 }
 
 impl<T: Clone, ST: Serializer<T>> SetOrKeepSerializer<T, ST> {
-    pub fn new(inner_serializer: ST) -> Self {
+    pub(crate) fn new(inner_serializer: ST) -> Self {
         Self {
             inner_serializer,
             phantom_t: std::marker::PhantomData,
@@ -355,7 +355,7 @@ impl<T: Clone> Applicable<SetOrKeep<T>> for SetOrKeep<T> {
 
 impl<T: Clone> SetOrKeep<T> {
     /// applies the current `SetOrKeep` to a target mutable value
-    pub fn apply_to(self, val: &mut T) {
+    pub(crate) fn apply_to(self, val: &mut T) {
         if let SetOrKeep::Set(v) = self {
             // only change the value if self is setting a new one
             *val = v;

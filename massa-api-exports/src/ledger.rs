@@ -7,13 +7,13 @@ use serde::{Deserialize, Serialize};
 
 /// Current balance ledger info
 #[derive(Debug, Deserialize, Serialize, Clone, Copy)]
-pub struct LedgerInfo {
+pub(crate)  struct LedgerInfo {
     /// final data
-    pub final_ledger_info: LedgerData,
+    pub(crate)  final_ledger_info: LedgerData,
     /// latest data
-    pub candidate_ledger_info: LedgerData,
+    pub(crate)  candidate_ledger_info: LedgerData,
     /// locked balance, for example balance due to a roll sell
-    pub locked_balance: Amount,
+    pub(crate)  locked_balance: Amount,
 }
 
 impl std::fmt::Display for LedgerInfo {

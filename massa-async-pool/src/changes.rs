@@ -258,7 +258,7 @@ impl AsyncPoolChanges {
     /// Arguments:
     /// * `msg_id`: ID of the message to push as added to the list of changes
     /// * `msg`: message to push as added to the list of changes
-    pub fn push_add(&mut self, msg_id: AsyncMessageId, msg: AsyncMessage) {
+    pub(crate) fn push_add(&mut self, msg_id: AsyncMessageId, msg: AsyncMessage) {
         self.0.push(Change::Add(msg_id, msg));
     }
 
@@ -267,7 +267,7 @@ impl AsyncPoolChanges {
     ///
     /// Arguments:
     /// * `msg_id`: ID of the message to push as deleted to the list of changes
-    pub fn push_delete(&mut self, msg_id: AsyncMessageId) {
+    pub(crate) fn push_delete(&mut self, msg_id: AsyncMessageId) {
         self.0.push(Change::Delete(msg_id));
     }
 
@@ -275,7 +275,7 @@ impl AsyncPoolChanges {
     ///
     /// Arguments:
     /// * `msg_id`: ID of the message to push as ready to be executed to the list of changes
-    pub fn push_activate(&mut self, msg_id: AsyncMessageId) {
+    pub(crate) fn push_activate(&mut self, msg_id: AsyncMessageId) {
         self.0.push(Change::Activate(msg_id));
     }
 }

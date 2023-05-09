@@ -42,42 +42,42 @@ use tracing::{debug, warn};
 
 /// A snapshot taken from an `ExecutionContext` and that represents its current state.
 /// The `ExecutionContext` state can then be restored later from this snapshot.
-pub struct ExecutionContextSnapshot {
+pub(crate)  struct ExecutionContextSnapshot {
     /// speculative ledger changes caused so far in the context
-    pub ledger_changes: LedgerChanges,
+    pub(crate)  ledger_changes: LedgerChanges,
 
     /// speculative asynchronous pool messages emitted so far in the context
-    pub async_pool_changes: Vec<(AsyncMessageId, AsyncMessage)>,
+    pub(crate)  async_pool_changes: Vec<(AsyncMessageId, AsyncMessage)>,
 
     /// speculative list of operations executed
-    pub executed_ops: ExecutedOpsChanges,
+    pub(crate)  executed_ops: ExecutedOpsChanges,
 
     /// speculative list of executed denunciations
-    pub executed_denunciations: ExecutedDenunciationsChanges,
+    pub(crate)  executed_denunciations: ExecutedDenunciationsChanges,
 
     /// speculative roll state changes caused so far in the context
-    pub pos_changes: PoSChanges,
+    pub(crate)  pos_changes: PoSChanges,
 
     /// counter of newly created addresses so far at this slot during this execution
-    pub created_addr_index: u64,
+    pub(crate)  created_addr_index: u64,
 
     /// counter of newly created events so far during this execution
-    pub created_event_index: u64,
+    pub(crate)  created_event_index: u64,
 
     /// address call stack, most recent is at the back
-    pub stack: Vec<ExecutionStackElement>,
+    pub(crate)  stack: Vec<ExecutionStackElement>,
 
     /// generated events during this execution, with multiple indexes
-    pub events: EventStore,
+    pub(crate)  events: EventStore,
 
     /// Unsafe random state
-    pub unsafe_rng: Xoshiro256PlusPlus,
+    pub(crate)  unsafe_rng: Xoshiro256PlusPlus,
 }
 
 /// An execution context that needs to be initialized before executing bytecode,
 /// passed to the VM to interact with during bytecode execution (through ABIs),
 /// and read after execution to gather results.
-pub struct ExecutionContext {
+pub(crate)  struct ExecutionContext {
     /// configuration
     config: ExecutionConfig,
 
@@ -111,49 +111,49 @@ pub struct ExecutionContext {
     speculative_executed_denunciations: SpeculativeExecutedDenunciations,
 
     /// max gas for this execution
-    pub max_gas: u64,
+    pub(crate)  max_gas: u64,
 
     /// coin spending allowance for the operation creator
-    pub creator_coin_spending_allowance: Option<Amount>,
+    pub(crate)  creator_coin_spending_allowance: Option<Amount>,
 
     /// slot at which the execution happens
-    pub slot: Slot,
+    pub(crate)  slot: Slot,
 
     /// counter of newly created addresses so far during this execution
-    pub created_addr_index: u64,
+    pub(crate)  created_addr_index: u64,
 
     /// counter of newly created events so far during this execution
-    pub created_event_index: u64,
+    pub(crate)  created_event_index: u64,
 
     /// counter of newly created messages so far during this execution
-    pub created_message_index: u64,
+    pub(crate)  created_message_index: u64,
 
     /// block ID, if one is present at the execution slot
-    pub opt_block_id: Option<BlockId>,
+    pub(crate)  opt_block_id: Option<BlockId>,
 
     /// address call stack, most recent is at the back
-    pub stack: Vec<ExecutionStackElement>,
+    pub(crate)  stack: Vec<ExecutionStackElement>,
 
     /// True if it's a read-only context
-    pub read_only: bool,
+    pub(crate)  read_only: bool,
 
     /// generated events during this execution, with multiple indexes
-    pub events: EventStore,
+    pub(crate)  events: EventStore,
 
     /// Unsafe random state (can be predicted and manipulated)
-    pub unsafe_rng: Xoshiro256PlusPlus,
+    pub(crate)  unsafe_rng: Xoshiro256PlusPlus,
 
     /// Creator address. The bytecode of this address can't be modified
-    pub creator_address: Option<Address>,
+    pub(crate)  creator_address: Option<Address>,
 
     /// operation id that originally caused this execution (if any)
-    pub origin_operation_id: Option<OperationId>,
+    pub(crate)  origin_operation_id: Option<OperationId>,
 
     // cache of compiled runtime modules
-    pub module_cache: Arc<RwLock<ModuleCache>>,
+    pub(crate)  module_cache: Arc<RwLock<ModuleCache>>,
 
     // Vesting Manager
-    pub vesting_manager: Arc<VestingManager>,
+    pub(crate)  vesting_manager: Arc<VestingManager>,
 }
 
 impl ExecutionContext {
@@ -242,7 +242,7 @@ impl ExecutionContext {
     /// # Arguments
     /// * `snapshot`: a saved snapshot to be restored
     /// * `error`: an execution error to emit as an event conserved after snapshot reset.
-    pub fn reset_to_snapshot(&mut self, snapshot: ExecutionContextSnapshot, error: ExecutionError) {
+    pub(crate)  fn reset_to_snapshot(&mut self, snapshot: ExecutionContextSnapshot, error: ExecutionError) {
         // Reset context to snapshot.
         self.speculative_ledger
             .reset_to_snapshot(snapshot.ledger_changes);
@@ -396,7 +396,7 @@ impl ExecutionContext {
     }
 
     /// Gets the address at the top of the call stack, if any
-    pub fn get_current_address(&self) -> Result<Address, ExecutionError> {
+    pub(crate)  fn get_current_address(&self) -> Result<Address, ExecutionError> {
         match self.stack.last() {
             Some(addr) => Ok(addr.address),
             _ => Err(ExecutionError::RuntimeError(
@@ -407,7 +407,7 @@ impl ExecutionContext {
 
     /// Gets the current list of owned addresses (top of the stack)
     /// Ordering is conserved for determinism
-    pub fn get_current_owned_addresses(&self) -> Result<Vec<Address>, ExecutionError> {
+    pub(crate)  fn get_current_owned_addresses(&self) -> Result<Vec<Address>, ExecutionError> {
         match self.stack.last() {
             Some(v) => Ok(v.owned_addresses.clone()),
             None => Err(ExecutionError::RuntimeError(
@@ -417,7 +417,7 @@ impl ExecutionContext {
     }
 
     /// Gets the current call coins
-    pub fn get_current_call_coins(&self) -> Result<Amount, ExecutionError> {
+    pub(crate)  fn get_current_call_coins(&self) -> Result<Amount, ExecutionError> {
         match self.stack.last() {
             Some(v) => Ok(v.coins),
             None => Err(ExecutionError::RuntimeError(
@@ -427,19 +427,19 @@ impl ExecutionContext {
     }
 
     /// Gets the addresses from the call stack (last = top of the stack)
-    pub fn get_call_stack(&self) -> Vec<Address> {
+    pub(crate)  fn get_call_stack(&self) -> Vec<Address> {
         self.stack.iter().map(|v| v.address).collect()
     }
 
     /// Checks whether the context currently grants write access to a given address
-    pub fn has_write_rights_on(&self, addr: &Address) -> bool {
+    pub(crate)  fn has_write_rights_on(&self, addr: &Address) -> bool {
         self.stack
             .last()
             .map_or(false, |v| v.owned_addresses.contains(addr))
     }
 
     /// Creates a new smart contract address with initial bytecode, and returns this address
-    pub fn create_new_sc_address(&mut self, bytecode: Bytecode) -> Result<Address, ExecutionError> {
+    pub(crate)  fn create_new_sc_address(&mut self, bytecode: Bytecode) -> Result<Address, ExecutionError> {
         // TODO: collision problem:
         //  prefix addresses to know if they are SCs or normal,
         //  otherwise people can already create new accounts by sending coins to the right hash
@@ -493,32 +493,32 @@ impl ExecutionContext {
     }
 
     /// gets the bytecode of an address if it exists in the speculative ledger, or returns None
-    pub fn get_bytecode(&self, address: &Address) -> Option<Bytecode> {
+    pub(crate)  fn get_bytecode(&self, address: &Address) -> Option<Bytecode> {
         self.speculative_ledger.get_bytecode(address)
     }
 
     /// gets the datastore keys of an address if it exists in the speculative ledger, or returns None
-    pub fn get_keys(&self, address: &Address) -> Option<BTreeSet<Vec<u8>>> {
+    pub(crate)  fn get_keys(&self, address: &Address) -> Option<BTreeSet<Vec<u8>>> {
         self.speculative_ledger.get_keys(address)
     }
 
     /// gets the data from a datastore entry of an address if it exists in the speculative ledger, or returns None
-    pub fn get_data_entry(&self, address: &Address, key: &[u8]) -> Option<Vec<u8>> {
+    pub(crate)  fn get_data_entry(&self, address: &Address, key: &[u8]) -> Option<Vec<u8>> {
         self.speculative_ledger.get_data_entry(address, key)
     }
 
     /// checks if a datastore entry exists in the speculative ledger
-    pub fn has_data_entry(&self, address: &Address, key: &[u8]) -> bool {
+    pub(crate)  fn has_data_entry(&self, address: &Address, key: &[u8]) -> bool {
         self.speculative_ledger.has_data_entry(address, key)
     }
 
     /// gets the effective balance of an address
-    pub fn get_balance(&self, address: &Address) -> Option<Amount> {
+    pub(crate)  fn get_balance(&self, address: &Address) -> Option<Amount> {
         self.speculative_ledger.get_balance(address)
     }
 
     /// Get deferred credits of an address starting from a given slot
-    pub fn get_address_deferred_credits(
+    pub(crate)  fn get_address_deferred_credits(
         &self,
         address: &Address,
         min_slot: Slot,
@@ -535,7 +535,7 @@ impl ExecutionContext {
     /// * address: the address of the ledger entry
     /// * key: the datastore key
     /// * data: the data to insert
-    pub fn set_data_entry(
+    pub(crate)  fn set_data_entry(
         &mut self,
         address: &Address,
         key: Vec<u8>,
@@ -562,7 +562,7 @@ impl ExecutionContext {
     /// * address: the address of the ledger entry
     /// * key: the datastore key
     /// * data: the data to append
-    pub fn append_data_entry(
+    pub(crate)  fn append_data_entry(
         &mut self,
         address: &Address,
         key: Vec<u8>,
@@ -601,7 +601,7 @@ impl ExecutionContext {
     /// # Arguments
     /// * address: the address of the ledger entry
     /// * key: the datastore key
-    pub fn delete_data_entry(
+    pub(crate)  fn delete_data_entry(
         &mut self,
         address: &Address,
         key: &[u8],
@@ -629,7 +629,7 @@ impl ExecutionContext {
     /// * `amount`: amount of coins to transfer
     /// * `check_rights`: check that the sender has the right to spend the coins according to the call stack
     /// * `current_slot`: necessary for check vesting (use None if from_addr = None)
-    pub fn transfer_coins(
+    pub(crate)  fn transfer_coins(
         &mut self,
         from_addr: Option<Address>,
         to_addr: Option<Address>,
@@ -679,7 +679,7 @@ impl ExecutionContext {
     ///
     /// # Arguments
     /// * `msg`: asynchronous message to add
-    pub fn push_new_message(&mut self, msg: AsyncMessage) {
+    pub(crate)  fn push_new_message(&mut self, msg: AsyncMessage) {
         self.speculative_async_pool.push_new_message(msg);
     }
 
@@ -687,7 +687,7 @@ impl ExecutionContext {
     ///
     /// # Arguments
     /// * `msg`: the asynchronous message to cancel
-    pub fn cancel_async_message(&mut self, msg: &AsyncMessage) {
+    pub(crate)  fn cancel_async_message(&mut self, msg: &AsyncMessage) {
         if let Err(e) = self.transfer_coins(None, Some(msg.sender), msg.coins, false) {
             debug!(
                 "async message cancel: reimbursement of {} failed: {}",
@@ -702,7 +702,7 @@ impl ExecutionContext {
     /// # Arguments
     /// * `buyer_addr`: address that will receive the rolls
     /// * `roll_count`: number of rolls it will receive
-    pub fn add_rolls(&mut self, buyer_addr: &Address, roll_count: u64) {
+    pub(crate)  fn add_rolls(&mut self, buyer_addr: &Address, roll_count: u64) {
         self.speculative_roll_state
             .add_rolls(buyer_addr, roll_count);
     }
@@ -712,7 +712,7 @@ impl ExecutionContext {
     /// # Arguments
     /// * `seller_addr`: address to sell the rolls from
     /// * `roll_count`: number of rolls to sell
-    pub fn try_sell_rolls(
+    pub(crate)  fn try_sell_rolls(
         &mut self,
         seller_addr: &Address,
         roll_count: u64,
@@ -733,7 +733,7 @@ impl ExecutionContext {
     /// # Arguments
     /// * `denounced_addr`: address to sell the rolls from
     /// * `roll_count`: number of rolls to slash
-    pub fn try_slash_rolls(
+    pub(crate)  fn try_slash_rolls(
         &mut self,
         denounced_addr: &Address,
         roll_count: u64,
@@ -796,7 +796,7 @@ impl ExecutionContext {
     /// * `creator`: the supposed creator
     /// * `slot`: current slot
     /// * `block_id`: id of the block (if some)
-    pub fn update_production_stats(
+    pub(crate)  fn update_production_stats(
         &mut self,
         creator: &Address,
         slot: Slot,
@@ -810,7 +810,7 @@ impl ExecutionContext {
     ///
     /// # Arguments
     /// * `slot`: associated slot of the deferred credits to be executed
-    pub fn execute_deferred_credits(&mut self, slot: &Slot) {
+    pub(crate)  fn execute_deferred_credits(&mut self, slot: &Slot) {
         for (_slot, map) in self
             .speculative_roll_state
             .take_unexecuted_deferred_credits(slot)
@@ -834,7 +834,7 @@ impl ExecutionContext {
     ///
     /// This is used to get the output of an execution before discarding the context.
     /// Note that we are not taking self by value to consume it because the context is shared.
-    pub fn settle_slot(&mut self) -> ExecutionOutput {
+    pub(crate)  fn settle_slot(&mut self) -> ExecutionOutput {
         let slot = self.slot;
 
         // execute the deferred credits coming from roll sells
@@ -896,7 +896,7 @@ impl ExecutionContext {
     /// # Arguments
     /// * address: the address of the ledger entry
     /// * data: the bytecode to set
-    pub fn set_bytecode(
+    pub(crate)  fn set_bytecode(
         &mut self,
         address: &Address,
         bytecode: Bytecode,
@@ -927,7 +927,7 @@ impl ExecutionContext {
     ///
     /// # Arguments:
     /// data: the string data that is the payload of the event
-    pub fn event_create(&self, data: String, is_error: bool) -> SCOutputEvent {
+    pub(crate)  fn event_create(&self, data: String, is_error: bool) -> SCOutputEvent {
         // Gather contextual information from the execution context
         let context = EventExecutionContext {
             slot: self.slot,
@@ -946,7 +946,7 @@ impl ExecutionContext {
 
     /// Emits a previously created event.
     /// Overrides the event's index with the current event counter value, and increments the event counter.
-    pub fn event_emit(&mut self, mut event: SCOutputEvent) {
+    pub(crate)  fn event_emit(&mut self, mut event: SCOutputEvent) {
         // Set the event index
         event.context.index_in_slot = self.created_event_index;
 
@@ -958,12 +958,12 @@ impl ExecutionContext {
     }
 
     /// Check if an operation was previously executed (to prevent reuse)
-    pub fn is_op_executed(&self, op_id: &OperationId) -> bool {
+    pub(crate)  fn is_op_executed(&self, op_id: &OperationId) -> bool {
         self.speculative_executed_ops.is_op_executed(op_id)
     }
 
     /// Check if a denunciation was previously executed (to prevent reuse)
-    pub fn is_denunciation_executed(&self, de_idx: &DenunciationIndex) -> bool {
+    pub(crate)  fn is_denunciation_executed(&self, de_idx: &DenunciationIndex) -> bool {
         self.speculative_executed_denunciations
             .is_denunciation_executed(de_idx)
     }
@@ -975,7 +975,7 @@ impl ExecutionContext {
     /// * `op_id`: operation ID
     /// * `op_exec_status` : the status of the execution of the operation (true: success, false: failed).
     /// * `op_valid_until_slot`: slot until which the operation remains valid (included)
-    pub fn insert_executed_op(
+    pub(crate)  fn insert_executed_op(
         &mut self,
         op_id: OperationId,
         op_exec_status: bool,
@@ -987,13 +987,13 @@ impl ExecutionContext {
 
     /// Insert a executed denunciation.
     ///
-    pub fn insert_executed_denunciation(&mut self, denunciation_idx: &DenunciationIndex) {
+    pub(crate)  fn insert_executed_denunciation(&mut self, denunciation_idx: &DenunciationIndex) {
         self.speculative_executed_denunciations
             .insert_executed_denunciation(denunciation_idx.clone());
     }
 
     /// gets the cycle information for an address
-    pub fn get_address_cycle_infos(
+    pub(crate)  fn get_address_cycle_infos(
         &self,
         address: &Address,
         periods_per_cycle: u64,
@@ -1003,7 +1003,7 @@ impl ExecutionContext {
     }
 
     /// Get future deferred credits of an address
-    pub fn get_address_future_deferred_credits(
+    pub(crate)  fn get_address_future_deferred_credits(
         &self,
         address: &Address,
         thread_count: u8,

@@ -20,14 +20,14 @@ use massa_time::MassaTime;
 use crate::PoolController;
 
 /// Test tool to mock pool controller responses
-pub struct PoolEventReceiver(pub Receiver<MockPoolControllerMessage>);
+pub(crate)  struct PoolEventReceiver(pub Receiver<MockPoolControllerMessage>);
 
 /// List of possible messages you can receive from the mock
 /// Each variant corresponds to a unique method in `PoolController`,
 /// Some variants wait for a response on their `response_tx` field, if present.
 /// See the documentation of `PoolController` for details on parameters and return values.
 #[derive(Debug)]
-pub enum MockPoolControllerMessage {
+pub(crate)  enum MockPoolControllerMessage {
     /// Add endorsements to the pool
     AddEndorsements {
         /// Storage that contains all endorsements
@@ -115,7 +115,7 @@ pub enum MockPoolControllerMessage {
 /// in order to simulate returning this value at the end of the call.
 #[derive(Clone)]
 // pub struct MockPoolController(Arc<Mutex<mpsc::Sender<MockPoolControllerMessage>>>);
-pub struct MockPoolController {
+pub(crate)  struct MockPoolController {
     q: Arc<Mutex<Sender<MockPoolControllerMessage>>>,
     last_final_cs_periods: Vec<u64>,
 }
@@ -123,7 +123,7 @@ pub struct MockPoolController {
 impl MockPoolController {
     /// Create a new pair (mock execution controller, mpsc receiver for emitted messages)
     /// Note that unbounded mpsc channels are used
-    pub fn new_with_receiver() -> (Box<dyn PoolController>, PoolEventReceiver) {
+    pub(crate)  fn new_with_receiver() -> (Box<dyn PoolController>, PoolEventReceiver) {
         let (tx, rx) = crossbeam_channel::unbounded();
         (
             Box::new(MockPoolController {
@@ -137,7 +137,7 @@ impl MockPoolController {
 
 impl PoolEventReceiver {
     /// wait command
-    pub fn wait_command<F, T>(&mut self, timeout: MassaTime, filter_map: F) -> Option<T>
+    pub(crate)  fn wait_command<F, T>(&mut self, timeout: MassaTime, filter_map: F) -> Option<T>
     where
         F: Fn(MockPoolControllerMessage) -> Option<T>,
     {

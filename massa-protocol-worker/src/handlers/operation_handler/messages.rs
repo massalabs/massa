@@ -10,7 +10,7 @@ use nom::{
 use num_enum::{IntoPrimitive, TryFromPrimitive};
 
 #[derive(Debug)]
-pub enum OperationMessage {
+pub(crate)  enum OperationMessage {
     /// Batch of operation ids
     OperationsAnnouncement(OperationPrefixIds),
     /// Someone ask for operations.
@@ -20,7 +20,7 @@ pub enum OperationMessage {
 }
 
 impl OperationMessage {
-    pub fn get_id(&self) -> MessageTypeId {
+    pub(crate)  fn get_id(&self) -> MessageTypeId {
         match self {
             OperationMessage::OperationsAnnouncement(_) => MessageTypeId::OperationsAnnouncement,
             OperationMessage::AskForOperations(_) => MessageTypeId::AskForOperations,
@@ -28,7 +28,7 @@ impl OperationMessage {
         }
     }
 
-    pub fn max_id() -> u64 {
+    pub(crate)  fn max_id() -> u64 {
         <MessageTypeId as Into<u64>>::into(MessageTypeId::Operations) + 1
     }
 }
@@ -36,20 +36,20 @@ impl OperationMessage {
 // DO NOT FORGET TO UPDATE MAX ID IF YOU UPDATE THERE
 #[derive(IntoPrimitive, Debug, Eq, PartialEq, TryFromPrimitive)]
 #[repr(u64)]
-pub enum MessageTypeId {
+pub(crate)  enum MessageTypeId {
     OperationsAnnouncement = 0,
     AskForOperations = 1,
     Operations = 2,
 }
 
 #[derive(Default, Clone)]
-pub struct OperationMessageSerializer {
+pub(crate)  struct OperationMessageSerializer {
     operation_prefix_ids_serializer: OperationPrefixIdsSerializer,
     operations_serializer: OperationsSerializer,
 }
 
 impl OperationMessageSerializer {
-    pub fn new() -> Self {
+    pub(crate)  fn new() -> Self {
         Self {
             operation_prefix_ids_serializer: OperationPrefixIdsSerializer::new(),
             operations_serializer: OperationsSerializer::new(),
@@ -80,35 +80,35 @@ impl Serializer<OperationMessage> for OperationMessageSerializer {
     }
 }
 
-pub struct OperationMessageDeserializer {
+pub(crate)  struct OperationMessageDeserializer {
     operation_prefix_ids_deserializer: OperationPrefixIdsDeserializer,
     operations_deserializer: OperationsDeserializer,
     message_id: u64,
 }
 
 /// Limits used in the deserialization of `OperationMessage`
-pub struct OperationMessageDeserializerArgs {
+pub(crate)  struct OperationMessageDeserializerArgs {
     /// Maximum number of prefix ids that can be asked to propagate or sent
-    pub max_operations_prefix_ids: u32,
+    pub(crate)  max_operations_prefix_ids: u32,
     /// Maximum of full operations sent in one message
-    pub max_operations: u32,
+    pub(crate)  max_operations: u32,
     //TODO: All of this arguments should be in a `OperationDeserializer` struct that would be used here
     /// Maximum size of a user datastore value
-    pub max_datastore_value_length: u64,
+    pub(crate)  max_datastore_value_length: u64,
     /// Maximum size of a function name
-    pub max_function_name_length: u16,
+    pub(crate)  max_function_name_length: u16,
     /// Maximum size of parameters
-    pub max_parameters_size: u32,
+    pub(crate)  max_parameters_size: u32,
     /// Maximum number of entries in the op datastore
-    pub max_op_datastore_entry_count: u64,
+    pub(crate)  max_op_datastore_entry_count: u64,
     /// Maximum size of a op datastore key
-    pub max_op_datastore_key_length: u8,
+    pub(crate)  max_op_datastore_key_length: u8,
     /// Maximum size of a op datastore value
-    pub max_op_datastore_value_length: u64,
+    pub(crate)  max_op_datastore_value_length: u64,
 }
 
 impl OperationMessageDeserializer {
-    pub fn new(args: OperationMessageDeserializerArgs) -> Self {
+    pub(crate)  fn new(args: OperationMessageDeserializerArgs) -> Self {
         Self {
             operation_prefix_ids_deserializer: OperationPrefixIdsDeserializer::new(
                 args.max_operations_prefix_ids,
@@ -126,7 +126,7 @@ impl OperationMessageDeserializer {
         }
     }
 
-    pub fn set_message_id(&mut self, id: u64) {
+    pub(crate)  fn set_message_id(&mut self, id: u64) {
         self.message_id = id;
     }
 }

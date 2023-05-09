@@ -61,11 +61,10 @@
 //
 
 pub mod constants;
-pub use constants::*;
 
 mod compact_config;
-pub use compact_config::CompactConfig;
+pub(crate) use compact_config::CompactConfig;
 
 // Export tool to read user setting file
 mod massa_settings;
-pub use massa_settings::build_massa_settings;
+pub(crate) use massa_settings::build_massa_settings;

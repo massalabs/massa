@@ -8,7 +8,7 @@ use serde::{Deserialize, Serialize};
 use std::ops::Bound::Included;
 
 /// Current version of the bytecode
-pub const BYTECODE_VERSION: u64 = 0;
+pub(crate) const BYTECODE_VERSION: u64 = 0;
 
 /// Structure representing executable bytecode
 #[derive(Default, Debug, Clone, Serialize, Deserialize, Eq, PartialEq)]

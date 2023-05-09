@@ -8,5 +8,5 @@ pub use settings::HASH_SIZE_BYTES;
 
 mod error;
 mod hash;
-pub use hash::*;
+pub use hash::{Hash, HashDeserializer, HashSerializer};
 mod settings;

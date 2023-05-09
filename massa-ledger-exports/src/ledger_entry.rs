@@ -28,7 +28,7 @@ pub struct LedgerEntry {
 }
 
 /// Serializer for `LedgerEntry`
-pub struct LedgerEntrySerializer {
+pub(crate) struct LedgerEntrySerializer {
     amount_serializer: AmountSerializer,
     bytecode_serializer: BytecodeSerializer,
     datastore_serializer: DatastoreSerializer,
@@ -36,7 +36,7 @@ pub struct LedgerEntrySerializer {
 
 impl LedgerEntrySerializer {
     /// Creates a new `LedgerEntrySerializer`
-    pub fn new() -> Self {
+    pub(crate) fn new() -> Self {
         Self {
             amount_serializer: AmountSerializer::new(),
             bytecode_serializer: BytecodeSerializer::new(),
@@ -85,7 +85,7 @@ impl Serializer<LedgerEntry> for LedgerEntrySerializer {
 }
 
 /// Deserializer for `LedgerEntry`
-pub struct LedgerEntryDeserializer {
+pub(crate) struct LedgerEntryDeserializer {
     amount_deserializer: AmountDeserializer,
     bytecode_deserializer: BytecodeDeserializer,
     datastore_deserializer: DatastoreDeserializer,
@@ -93,7 +93,7 @@ pub struct LedgerEntryDeserializer {
 
 impl LedgerEntryDeserializer {
     /// Creates a new `LedgerEntryDeserializer`
-    pub fn new(
+    pub(crate) fn new(
         max_datastore_entry_count: u64,
         max_datastore_key_length: u8,
         max_datastore_value_length: u64,

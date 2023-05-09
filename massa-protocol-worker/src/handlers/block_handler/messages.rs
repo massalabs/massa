@@ -20,7 +20,7 @@ use std::ops::Bound::Included;
 
 /// Ask for the info about a block.
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
-pub enum AskForBlocksInfo {
+pub(crate)  enum AskForBlocksInfo {
     /// Ask header
     Header,
     /// The info about the block is required(list of operations ids).
@@ -32,7 +32,7 @@ pub enum AskForBlocksInfo {
 
 #[derive(Debug, Clone)]
 #[allow(clippy::large_enum_variant)]
-pub enum BlockInfoReply {
+pub(crate)  enum BlockInfoReply {
     /// Header
     Header(SecuredHeader),
     /// The info about the block is required(list of operations ids).
@@ -46,7 +46,7 @@ pub enum BlockInfoReply {
 #[derive(Debug)]
 //TODO: Fix this clippy warning
 #[allow(clippy::large_enum_variant)]
-pub enum BlockMessage {
+pub(crate)  enum BlockMessage {
     /// Block header
     BlockHeader(SecuredHeader),
     /// Message asking the peer for info on a list of blocks.
@@ -56,7 +56,7 @@ pub enum BlockMessage {
 }
 
 impl BlockMessage {
-    pub fn get_id(&self) -> MessageTypeId {
+    pub(crate)  fn get_id(&self) -> MessageTypeId {
         match self {
             BlockMessage::BlockHeader(_) => MessageTypeId::BlockHeader,
             BlockMessage::AskForBlocks(_) => MessageTypeId::AskForBlocks,
@@ -64,7 +64,7 @@ impl BlockMessage {
         }
     }
 
-    pub fn max_id() -> u64 {
+    pub(crate)  fn max_id() -> u64 {
         <MessageTypeId as Into<u64>>::into(MessageTypeId::ReplyForBlocks) + 1
     }
 }
@@ -72,7 +72,7 @@ impl BlockMessage {
 // DO NOT FORGET TO UPDATE MAX ID IF YOU UPDATE THERE
 #[derive(IntoPrimitive, Debug, Eq, PartialEq, TryFromPrimitive)]
 #[repr(u64)]
-pub enum MessageTypeId {
+pub(crate)  enum MessageTypeId {
     BlockHeader,
     AskForBlocks,
     ReplyForBlocks,
@@ -80,7 +80,7 @@ pub enum MessageTypeId {
 
 #[derive(IntoPrimitive, Debug, Eq, PartialEq, TryFromPrimitive)]
 #[repr(u64)]
-pub enum BlockInfoType {
+pub(crate)  enum BlockInfoType {
     Header = 0,
     Info = 1,
     Operations = 2,
@@ -88,7 +88,7 @@ pub enum BlockInfoType {
 }
 
 #[derive(Default, Clone)]
-pub struct BlockMessageSerializer {
+pub(crate)  struct BlockMessageSerializer {
     id_serializer: U64VarIntSerializer,
     secure_share_serializer: SecureShareSerializer,
     length_serializer: U64VarIntSerializer,
@@ -97,7 +97,7 @@ pub struct BlockMessageSerializer {
 }
 
 impl BlockMessageSerializer {
-    pub fn new() -> Self {
+    pub(crate)  fn new() -> Self {
         Self {
             id_serializer: U64VarIntSerializer::new(),
             secure_share_serializer: SecureShareSerializer::new(),
@@ -188,7 +188,7 @@ impl Serializer<BlockMessage> for BlockMessageSerializer {
     }
 }
 
-pub struct BlockMessageDeserializer {
+pub(crate)  struct BlockMessageDeserializer {
     message_id: u64,
     id_deserializer: U64VarIntDeserializer,
     block_header_deserializer: SecureShareDeserializer<BlockHeader, BlockHeaderDeserializer>,
@@ -198,23 +198,23 @@ pub struct BlockMessageDeserializer {
     operations_deserializer: OperationsDeserializer,
 }
 
-pub struct BlockMessageDeserializerArgs {
-    pub thread_count: u8,
-    pub endorsement_count: u32,
-    pub block_infos_length_max: u64,
-    pub max_operations_per_block: u32,
-    pub max_datastore_value_length: u64,
-    pub max_function_name_length: u16,
-    pub max_parameters_size: u32,
-    pub max_op_datastore_entry_count: u64,
-    pub max_op_datastore_key_length: u8,
-    pub max_op_datastore_value_length: u64,
-    pub max_denunciations_in_block_header: u32,
-    pub last_start_period: Option<u64>,
+pub(crate)  struct BlockMessageDeserializerArgs {
+    pub(crate)  thread_count: u8,
+    pub(crate)  endorsement_count: u32,
+    pub(crate)  block_infos_length_max: u64,
+    pub(crate)  max_operations_per_block: u32,
+    pub(crate)  max_datastore_value_length: u64,
+    pub(crate)  max_function_name_length: u16,
+    pub(crate)  max_parameters_size: u32,
+    pub(crate)  max_op_datastore_entry_count: u64,
+    pub(crate)  max_op_datastore_key_length: u8,
+    pub(crate)  max_op_datastore_value_length: u64,
+    pub(crate)  max_denunciations_in_block_header: u32,
+    pub(crate)  last_start_period: Option<u64>,
 }
 
 impl BlockMessageDeserializer {
-    pub fn new(args: BlockMessageDeserializerArgs) -> Self {
+    pub(crate)  fn new(args: BlockMessageDeserializerArgs) -> Self {
         Self {
             message_id: 0,
             id_deserializer: U64VarIntDeserializer::new(Included(0), Included(u64::MAX)),
@@ -244,7 +244,7 @@ impl BlockMessageDeserializer {
         }
     }
 
-    pub fn set_message_id(&mut self, message_id: u64) {
+    pub(crate)  fn set_message_id(&mut self, message_id: u64) {
         self.message_id = message_id;
     }
 }

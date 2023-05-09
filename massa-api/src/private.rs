@@ -43,7 +43,7 @@ use tokio::sync::mpsc;
 
 impl API<Private> {
     /// generate a new private API
-    pub fn new(
+    pub(crate)  fn new(
         protocol_controller: Box<dyn ProtocolController>,
         execution_controller: Box<dyn ExecutionController>,
         api_settings: APIConfig,

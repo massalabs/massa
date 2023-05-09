@@ -23,7 +23,7 @@ use std::ops::Bound::{Excluded, Included};
 use std::{fmt::Display, str::FromStr};
 
 /// Endorsement ID size in bytes
-pub const ENDORSEMENT_ID_SIZE_BYTES: usize = massa_hash::HASH_SIZE_BYTES;
+pub(crate) const ENDORSEMENT_ID_SIZE_BYTES: usize = massa_hash::HASH_SIZE_BYTES;
 
 /// endorsement id
 #[derive(
@@ -107,17 +107,17 @@ impl FromStr for EndorsementId {
 
 impl EndorsementId {
     /// endorsement id to bytes
-    pub fn to_bytes(&self) -> &[u8; ENDORSEMENT_ID_SIZE_BYTES] {
+    pub(crate) fn to_bytes(&self) -> &[u8; ENDORSEMENT_ID_SIZE_BYTES] {
         self.0.to_bytes()
     }
 
     /// endorsement id into bytes
-    pub fn into_bytes(self) -> [u8; ENDORSEMENT_ID_SIZE_BYTES] {
+    pub(crate) fn into_bytes(self) -> [u8; ENDORSEMENT_ID_SIZE_BYTES] {
         self.0.into_bytes()
     }
 
     /// endorsement id from bytes
-    pub fn from_bytes(data: &[u8; ENDORSEMENT_ID_SIZE_BYTES]) -> EndorsementId {
+    pub(crate) fn from_bytes(data: &[u8; ENDORSEMENT_ID_SIZE_BYTES]) -> EndorsementId {
         EndorsementId(Hash::from_bytes(data))
     }
 }
@@ -143,14 +143,14 @@ pub struct Endorsement {
     pub index: u32,
     /// Hash of endorsed block.
     /// This is the parent in thread `self.slot.thread` of the block in which the endorsement is included
-    pub endorsed_block: BlockId,
+    pub(crate) endorsed_block: BlockId,
 }
 
 #[cfg(any(test, feature = "testing"))]
 impl SecureShareEndorsement {
     // TODO: gh-issue #3398
     /// Used under testing conditions to validate an instance of Self
-    pub fn check_invariants(&self) -> Result<(), Box<dyn std::error::Error>> {
+    pub(crate) fn check_invariants(&self) -> Result<(), Box<dyn std::error::Error>> {
         if let Err(e) = self.verify_signature() {
             return Err(e.into());
         }
@@ -180,14 +180,14 @@ impl SecureShareContent for Endorsement {
 
 /// Serializer for `Endorsement`
 #[derive(Clone)]
-pub struct EndorsementSerializer {
+pub(crate) struct EndorsementSerializer {
     slot_serializer: SlotSerializer,
     u32_serializer: U32VarIntSerializer,
 }
 
 impl EndorsementSerializer {
     /// Creates a new `EndorsementSerializer`
-    pub const fn new() -> Self {
+    pub(crate) const fn new() -> Self {
         EndorsementSerializer {
             slot_serializer: SlotSerializer::new(),
             u32_serializer: U32VarIntSerializer::new(),
@@ -225,7 +225,7 @@ impl Serializer<Endorsement> for EndorsementSerializer {
 }
 
 /// Deserializer for `Endorsement`
-pub struct EndorsementDeserializer {
+pub(crate) struct EndorsementDeserializer {
     slot_deserializer: SlotDeserializer,
     index_deserializer: U32VarIntDeserializer,
     hash_deserializer: HashDeserializer,
@@ -233,7 +233,7 @@ pub struct EndorsementDeserializer {
 
 impl EndorsementDeserializer {
     /// Creates a new `EndorsementDeserializer`
-    pub const fn new(thread_count: u8, endorsement_count: u32) -> Self {
+    pub(crate) const fn new(thread_count: u8, endorsement_count: u32) -> Self {
         EndorsementDeserializer {
             slot_deserializer: SlotDeserializer::new(
                 (Included(0), Included(u64::MAX)),
@@ -297,14 +297,14 @@ impl Deserializer<Endorsement> for EndorsementDeserializer {
 
 /// Lightweight Serializer for `Endorsement`
 /// When included in a `BlockHeader`, we want to serialize only the index (optimization)
-pub struct EndorsementSerializerLW {
+pub(crate) struct EndorsementSerializerLW {
     // slot_serializer: SlotSerializer,
     u32_serializer: U32VarIntSerializer,
 }
 
 impl EndorsementSerializerLW {
     /// Creates a new `EndorsementSerializerLW`
-    pub fn new() -> Self {
+    pub(crate) fn new() -> Self {
         EndorsementSerializerLW {
             u32_serializer: U32VarIntSerializer::new(),
         }
@@ -339,7 +339,7 @@ impl Serializer<Endorsement> for EndorsementSerializerLW {
 }
 
 /// Lightweight Deserializer for `Endorsement`
-pub struct EndorsementDeserializerLW {
+pub(crate) struct EndorsementDeserializerLW {
     index_deserializer: U32VarIntDeserializer,
     slot: Slot,
     endorsed_block: BlockId,
@@ -347,7 +347,7 @@ pub struct EndorsementDeserializerLW {
 
 impl EndorsementDeserializerLW {
     /// Creates a new `EndorsementDeserializerLW`
-    pub const fn new(endorsement_count: u32, slot: Slot, endorsed_block: BlockId) -> Self {
+    pub(crate) const fn new(endorsement_count: u32, slot: Slot, endorsed_block: BlockId) -> Self {
         EndorsementDeserializerLW {
             index_deserializer: U32VarIntDeserializer::new(
                 Included(0),
@@ -397,19 +397,19 @@ impl Deserializer<Endorsement> for EndorsementDeserializerLW {
 
 /// A denunciation data for endorsement
 #[derive(Debug)]
-pub struct EndorsementDenunciationData {
+pub(crate) struct EndorsementDenunciationData {
     slot: Slot,
     index: u32,
 }
 
 impl EndorsementDenunciationData {
     /// Create a new denunciation data for endorsement
-    pub fn new(slot: Slot, index: u32) -> Self {
+    pub(crate) fn new(slot: Slot, index: u32) -> Self {
         Self { slot, index }
     }
 
     /// Get byte array
-    pub fn to_bytes(&self) -> Vec<u8> {
+    pub(crate) fn to_bytes(&self) -> Vec<u8> {
         let mut buf = Vec::new();
         buf.extend(self.slot.to_bytes_key());
         buf.extend(self.index.to_le_bytes());

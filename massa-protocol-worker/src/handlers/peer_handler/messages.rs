@@ -14,7 +14,7 @@ use peernet::{peer_id::PeerId, transports::TransportType, types::PUBLIC_KEY_SIZE
 #[derive(Debug, Clone)]
 //TODO: Fix this clippy warning
 #[allow(clippy::large_enum_variant)]
-pub enum PeerManagementMessage {
+pub(crate)  enum PeerManagementMessage {
     // Receive the ip addresses sent by a peer when connecting.
     NewPeerConnected((PeerId, HashMap<SocketAddr, TransportType>)),
     // Receive the ip addresses sent by a peer that is already connected.
@@ -22,14 +22,14 @@ pub enum PeerManagementMessage {
 }
 
 impl PeerManagementMessage {
-    pub fn get_id(&self) -> MessageTypeId {
+    pub(crate)  fn get_id(&self) -> MessageTypeId {
         match self {
             PeerManagementMessage::NewPeerConnected(_) => MessageTypeId::NewPeerConnected,
             PeerManagementMessage::ListPeers(_) => MessageTypeId::ListPeers,
         }
     }
 
-    pub fn max_id() -> u64 {
+    pub(crate)  fn max_id() -> u64 {
         <MessageTypeId as Into<u64>>::into(MessageTypeId::ListPeers) + 1
     }
 }
@@ -37,19 +37,19 @@ impl PeerManagementMessage {
 // DO NOT FORGET TO UPDATE MAX ID IF YOU UPDATE THERE
 #[derive(IntoPrimitive, Debug, Eq, PartialEq, TryFromPrimitive)]
 #[repr(u64)]
-pub enum MessageTypeId {
+pub(crate)  enum MessageTypeId {
     NewPeerConnected = 0,
     ListPeers = 1,
 }
 
 #[derive(Default, Clone)]
-pub struct PeerManagementMessageSerializer {
+pub(crate)  struct PeerManagementMessageSerializer {
     length_serializer: U64VarIntSerializer,
     ip_addr_serializer: IpAddrSerializer,
 }
 
 impl PeerManagementMessageSerializer {
-    pub fn new() -> Self {
+    pub(crate)  fn new() -> Self {
         Self {
             length_serializer: U64VarIntSerializer::new(),
             ip_addr_serializer: IpAddrSerializer::new(),
@@ -95,7 +95,7 @@ impl Serializer<PeerManagementMessage> for PeerManagementMessageSerializer {
     }
 }
 
-pub struct PeerManagementMessageDeserializer {
+pub(crate)  struct PeerManagementMessageDeserializer {
     message_id: u64,
     listeners_length_deserializer: U64VarIntDeserializer,
     peers_length_deserializer: U64VarIntDeserializer,
@@ -103,15 +103,15 @@ pub struct PeerManagementMessageDeserializer {
 }
 
 /// Limits used in the deserialization of `OperationMessage`
-pub struct PeerManagementMessageDeserializerArgs {
+pub(crate)  struct PeerManagementMessageDeserializerArgs {
     /// Maximum number of listeners per peer
-    pub max_listeners_per_peer: u64,
+    pub(crate)  max_listeners_per_peer: u64,
     /// Maximum number of peers per announcement
-    pub max_peers_per_announcement: u64,
+    pub(crate)  max_peers_per_announcement: u64,
 }
 
 impl PeerManagementMessageDeserializer {
-    pub fn new(limits: PeerManagementMessageDeserializerArgs) -> Self {
+    pub(crate)  fn new(limits: PeerManagementMessageDeserializerArgs) -> Self {
         Self {
             message_id: 0,
             listeners_length_deserializer: U64VarIntDeserializer::new(
@@ -126,7 +126,7 @@ impl PeerManagementMessageDeserializer {
         }
     }
 
-    pub fn set_message(&mut self, message_id: u64) {
+    pub(crate)  fn set_message(&mut self, message_id: u64) {
         self.message_id = message_id;
     }
 }

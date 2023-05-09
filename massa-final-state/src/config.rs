@@ -10,32 +10,32 @@ use std::path::PathBuf;
 
 /// Ledger configuration
 #[derive(Debug, Clone)]
-pub struct FinalStateConfig {
+pub(crate) struct FinalStateConfig {
     /// ledger configuration
-    pub ledger_config: LedgerConfig,
+    pub(crate) ledger_config: LedgerConfig,
     /// asynchronous pool configuration
-    pub async_pool_config: AsyncPoolConfig,
+    pub(crate) async_pool_config: AsyncPoolConfig,
     /// proof-of-stake configuration
-    pub pos_config: PoSConfig,
+    pub(crate) pos_config: PoSConfig,
     /// executed operations configuration
-    pub executed_ops_config: ExecutedOpsConfig,
+    pub(crate) executed_ops_config: ExecutedOpsConfig,
     /// executed denunciations configuration
-    pub executed_denunciations_config: ExecutedDenunciationsConfig,
+    pub(crate) executed_denunciations_config: ExecutedDenunciationsConfig,
     /// final changes history length
-    pub final_history_length: usize,
+    pub(crate) final_history_length: usize,
     /// thread count
-    pub thread_count: u8,
+    pub(crate) thread_count: u8,
     /// periods per cycle
-    pub periods_per_cycle: u64,
+    pub(crate) periods_per_cycle: u64,
     /// initial PoS seed string
-    pub initial_seed_string: String,
+    pub(crate) initial_seed_string: String,
     /// initial rolls file path
-    pub initial_rolls_path: PathBuf,
+    pub(crate) initial_rolls_path: PathBuf,
     /// endorsement count
-    pub endorsement_count: u32,
+    pub(crate) endorsement_count: u32,
     /// max number of denunciation index in executed denunciations struct
-    pub max_executed_denunciations_length: u64,
+    pub(crate) max_executed_denunciations_length: u64,
     /// max number of denunciations that can be included in a block header
     /// or in executed denunciations struct
-    pub max_denunciations_per_block_header: u32,
+    pub(crate) max_denunciations_per_block_header: u32,
 }

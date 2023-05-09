@@ -18,7 +18,7 @@ const INSTANCE_LEN: usize = 4;
 
 /// Application version, checked during handshakes
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub struct Version {
+pub(crate)  struct Version {
     /// ASCII uppercase alpha
     instance: [char; INSTANCE_LEN],
     major: u32,
@@ -64,13 +64,13 @@ impl serde::Serialize for Version {
 }
 
 /// Serializer for `Version`
-pub struct VersionSerializer {
+pub(crate)  struct VersionSerializer {
     u32_serializer: U32VarIntSerializer,
 }
 
 impl VersionSerializer {
     /// Creates a `VersionSerializer`
-    pub const fn new() -> Self {
+    pub(crate)  const fn new() -> Self {
         Self {
             u32_serializer: U32VarIntSerializer::new(),
         }
@@ -108,13 +108,13 @@ impl Serializer<Version> for VersionSerializer {
 }
 
 /// Serializer for `Version`
-pub struct VersionDeserializer {
+pub(crate)  struct VersionDeserializer {
     u32_deserializer: U32VarIntDeserializer,
 }
 
 impl VersionDeserializer {
     /// Creates a `VersionSerializer`
-    pub const fn new() -> Self {
+    pub(crate)  const fn new() -> Self {
         Self {
             u32_deserializer: U32VarIntDeserializer::new(Included(0), Included(u32::MAX)),
         }
@@ -188,7 +188,7 @@ impl Deserializer<Version> for VersionDeserializer {
 
 impl Version {
     /// true if instance and major are the same
-    pub fn is_compatible(&self, other: &Version) -> bool {
+    pub(crate)  fn is_compatible(&self, other: &Version) -> bool {
         self.instance == other.instance && self.major == other.major
     }
 }

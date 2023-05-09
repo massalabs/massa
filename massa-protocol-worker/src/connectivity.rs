@@ -31,7 +31,7 @@ use crate::{
     wrap_network::NetworkController,
 };
 
-pub enum ConnectivityCommand {
+pub(crate)  enum ConnectivityCommand {
     Stop,
     GetStats {
         #[allow(clippy::type_complexity)]

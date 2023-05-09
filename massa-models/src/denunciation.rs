@@ -130,17 +130,17 @@ pub enum Denunciation {
 #[allow(dead_code)]
 impl Denunciation {
     /// Check if it is a Denunciation of several endorsements
-    pub fn is_for_endorsement(&self) -> bool {
+    pub(crate) fn is_for_endorsement(&self) -> bool {
         matches!(self, Denunciation::Endorsement(_))
     }
 
     /// Check if it is a Denunciation of several block headers
-    pub fn is_for_block_header(&self) -> bool {
+    pub(crate) fn is_for_block_header(&self) -> bool {
         matches!(self, Denunciation::BlockHeader(_))
     }
 
     /// Check if it is a Denunciation for this endorsement
-    pub fn is_also_for_endorsement(
+    pub(crate) fn is_also_for_endorsement(
         &self,
         s_endorsement: &SecureShareEndorsement,
     ) -> Result<bool, DenunciationError> {
@@ -170,7 +170,7 @@ impl Denunciation {
     }
 
     /// Check if it is a Denunciation for this block header
-    pub fn is_also_for_block_header(
+    pub(crate) fn is_also_for_block_header(
         &self,
         s_block_header: &SecuredHeader,
     ) -> Result<bool, DenunciationError> {
@@ -393,7 +393,7 @@ impl TryFrom<(&SecuredHeader, &SecuredHeader)> for Denunciation {
 #[allow(missing_docs)]
 #[derive(IntoPrimitive, Debug, TryFromPrimitive)]
 #[repr(u32)]
-pub enum DenunciationTypeId {
+pub(crate) enum DenunciationTypeId {
     Endorsement = 0,
     BlockHeader = 1,
 }
@@ -586,7 +586,7 @@ struct BlockHeaderDenunciationDeserializer {
 
 impl BlockHeaderDenunciationDeserializer {
     /// Creates a new `BlockHeaderDenunciationDeserializer`
-    pub const fn new(thread_count: u8) -> Self {
+    pub(crate) const fn new(thread_count: u8) -> Self {
         Self {
             slot_deserializer: SlotDeserializer::new(
                 (Included(0), Included(u64::MAX)),
@@ -644,7 +644,7 @@ impl Deserializer<BlockHeaderDenunciation> for BlockHeaderDenunciationDeserializ
 }
 
 /// Serializer for `Denunciation`
-pub struct DenunciationSerializer {
+pub(crate) struct DenunciationSerializer {
     endo_de_serializer: EndorsementDenunciationSerializer,
     blkh_de_serializer: BlockHeaderDenunciationSerializer,
     type_id_serializer: U32VarIntSerializer,
@@ -652,7 +652,7 @@ pub struct DenunciationSerializer {
 
 impl DenunciationSerializer {
     /// Creates a new `BlockHeaderDenunciationSerializer`
-    pub const fn new() -> Self {
+    pub(crate) const fn new() -> Self {
         Self {
             endo_de_serializer: EndorsementDenunciationSerializer::new(),
             blkh_de_serializer: BlockHeaderDenunciationSerializer::new(),
@@ -688,7 +688,7 @@ const DENUNCIATION_TYPE_ID_VARIANT_COUNT: u32 =
     std::mem::variant_count::<DenunciationTypeId>() as u32;
 
 /// Deserializer for `Denunciation`
-pub struct DenunciationDeserializer {
+pub(crate) struct DenunciationDeserializer {
     endo_de_deserializer: EndorsementDenunciationDeserializer,
     blkh_de_deserializer: BlockHeaderDenunciationDeserializer,
     type_id_deserializer: U32VarIntDeserializer,
@@ -696,7 +696,7 @@ pub struct DenunciationDeserializer {
 
 impl DenunciationDeserializer {
     /// Creates a new `DenunciationDeserializer`
-    pub const fn new(thread_count: u8, endorsement_count: u32) -> Self {
+    pub(crate) const fn new(thread_count: u8, endorsement_count: u32) -> Self {
         Self {
             endo_de_deserializer: EndorsementDenunciationDeserializer::new(
                 thread_count,
@@ -772,7 +772,7 @@ impl DenunciationIndex {
     }
 
     /// Get field: index (return None for a block header denunciation index)
-    pub fn get_index(&self) -> Option<&u32> {
+    pub(crate) fn get_index(&self) -> Option<&u32> {
         match self {
             DenunciationIndex::BlockHeader { .. } => None,
             DenunciationIndex::Endorsement { slot: _, index } => Some(index),
@@ -1001,7 +1001,7 @@ pub struct EndorsementDenunciationPrecursor {
 #[derive(Debug, Clone, PartialEq)]
 pub struct BlockHeaderDenunciationPrecursor {
     /// secured header public key
-    pub public_key: PublicKey,
+    pub(crate) public_key: PublicKey,
     /// block header slot
     pub slot: Slot,
     /// secured header partial hash
@@ -1174,7 +1174,7 @@ impl TryFrom<(&DenunciationPrecursor, &DenunciationPrecursor)> for Denunciation 
 #[cfg(any(test, feature = "testing"))]
 impl Denunciation {
     /// Used under testing conditions to validate an instance of Self
-    pub fn check_invariants(&self) -> Result<(), Box<dyn std::error::Error>> {
+    pub(crate) fn check_invariants(&self) -> Result<(), Box<dyn std::error::Error>> {
         if !self.is_valid() {
             return Err(format!("Denunciation is invalid: {:?}", self).into());
         }

@@ -49,21 +49,21 @@ use std::net::{IpAddr, SocketAddr};
 use std::str::FromStr;
 
 mod config;
-pub use config::ClientConfig;
-pub use config::HttpConfig;
-pub use config::WsConfig;
+pub(crate)  use config::ClientConfig;
+pub(crate)  use config::HttpConfig;
+pub(crate)  use config::WsConfig;
 
 /// Client
-pub struct Client {
+pub(crate)  struct Client {
     /// public component
-    pub public: RpcClient,
+    pub(crate)  public: RpcClient,
     /// private component
-    pub private: RpcClient,
+    pub(crate)  private: RpcClient,
 }
 
 impl Client {
     /// creates a new client
-    pub async fn new(
+    pub(crate)  async fn new(
         ip: IpAddr,
         public_port: u16,
         private_port: u16,
@@ -81,26 +81,26 @@ impl Client {
 }
 
 /// Rpc client
-pub struct RpcClient {
+pub(crate)  struct RpcClient {
     http_client: HttpClient<HttpBackend>,
 }
 
 impl RpcClient {
     /// Default constructor
-    pub async fn from_url(url: &str, http_config: &HttpConfig) -> RpcClient {
+    pub(crate)  async fn from_url(url: &str, http_config: &HttpConfig) -> RpcClient {
         RpcClient {
             http_client: http_client_from_url(url, http_config),
         }
     }
 
     /// Gracefully stop the node.
-    pub async fn stop_node(&self) -> RpcResult<()> {
+    pub(crate)  async fn stop_node(&self) -> RpcResult<()> {
         self.http_client.request("stop_node", rpc_params![]).await
     }
 
     /// Sign message with node's key.
     /// Returns the public key that signed the message and the signature.
-    pub async fn node_sign_message(&self, message: Vec<u8>) -> RpcResult<PubkeySig> {
+    pub(crate)  async fn node_sign_message(&self, message: Vec<u8>) -> RpcResult<PubkeySig> {
         self.http_client
             .request("node_sign_message", rpc_params![message])
             .await
@@ -108,7 +108,7 @@ impl RpcClient {
 
     /// Add a vector of new secret keys for the node to use to stake.
     /// No confirmation to expect.
-    pub async fn add_staking_secret_keys(&self, secret_keys: Vec<String>) -> RpcResult<()> {
+    pub(crate)  async fn add_staking_secret_keys(&self, secret_keys: Vec<String>) -> RpcResult<()> {
         self.http_client
             .request("add_staking_secret_keys", rpc_params![secret_keys])
             .await
@@ -116,14 +116,14 @@ impl RpcClient {
 
     /// Remove a vector of addresses used to stake.
     /// No confirmation to expect.
-    pub async fn remove_staking_addresses(&self, addresses: Vec<Address>) -> RpcResult<()> {
+    pub(crate)  async fn remove_staking_addresses(&self, addresses: Vec<Address>) -> RpcResult<()> {
         self.http_client
             .request("remove_staking_addresses", rpc_params![addresses])
             .await
     }
 
     /// Return hash-set of staking addresses.
-    pub async fn get_staking_addresses(&self) -> RpcResult<PreHashSet<Address>> {
+    pub(crate)  async fn get_staking_addresses(&self) -> RpcResult<PreHashSet<Address>> {
         self.http_client
             .request("get_staking_addresses", rpc_params![])
             .await
@@ -131,7 +131,7 @@ impl RpcClient {
 
     /// Bans given ip address(es)
     /// No confirmation to expect.
-    pub async fn node_ban_by_ip(&self, ips: Vec<IpAddr>) -> RpcResult<()> {
+    pub(crate)  async fn node_ban_by_ip(&self, ips: Vec<IpAddr>) -> RpcResult<()> {
         self.http_client
             .request("node_ban_by_ip", rpc_params![ips])
             .await
@@ -139,7 +139,7 @@ impl RpcClient {
 
     /// Bans given node id(s)
     /// No confirmation to expect.
-    pub async fn node_ban_by_id(&self, ids: Vec<NodeId>) -> RpcResult<()> {
+    pub(crate)  async fn node_ban_by_id(&self, ids: Vec<NodeId>) -> RpcResult<()> {
         self.http_client
             .request("node_ban_by_id", rpc_params![ids])
             .await
@@ -147,7 +147,7 @@ impl RpcClient {
 
     /// Unban given ip address(es)
     /// No confirmation to expect.
-    pub async fn node_unban_by_ip(&self, ips: Vec<IpAddr>) -> RpcResult<()> {
+    pub(crate)  async fn node_unban_by_ip(&self, ips: Vec<IpAddr>) -> RpcResult<()> {
         self.http_client
             .request("node_unban_by_ip", rpc_params![ips])
             .await
@@ -155,35 +155,35 @@ impl RpcClient {
 
     /// Unban given node id(s)
     /// No confirmation to expect.
-    pub async fn node_unban_by_id(&self, ids: Vec<NodeId>) -> RpcResult<()> {
+    pub(crate)  async fn node_unban_by_id(&self, ids: Vec<NodeId>) -> RpcResult<()> {
         self.http_client
             .request("node_unban_by_id", rpc_params![ids])
             .await
     }
 
     /// Returns node peers whitelist IP address(es).
-    pub async fn node_peers_whitelist(&self) -> RpcResult<Vec<IpAddr>> {
+    pub(crate)  async fn node_peers_whitelist(&self) -> RpcResult<Vec<IpAddr>> {
         self.http_client
             .request("node_peers_whitelist", rpc_params![])
             .await
     }
 
     /// Add IP address(es) to node peers whitelist.
-    pub async fn node_add_to_peers_whitelist(&self, ips: Vec<IpAddr>) -> RpcResult<()> {
+    pub(crate)  async fn node_add_to_peers_whitelist(&self, ips: Vec<IpAddr>) -> RpcResult<()> {
         self.http_client
             .request("node_add_to_peers_whitelist", rpc_params![ips])
             .await
     }
 
     /// Remove IP address(es) to node peers whitelist.
-    pub async fn node_remove_from_peers_whitelist(&self, ips: Vec<IpAddr>) -> RpcResult<()> {
+    pub(crate)  async fn node_remove_from_peers_whitelist(&self, ips: Vec<IpAddr>) -> RpcResult<()> {
         self.http_client
             .request("node_remove_from_peers_whitelist", rpc_params![ips])
             .await
     }
 
     /// Returns node bootstrap whitelist IP address(es).
-    pub async fn node_bootstrap_whitelist(&self) -> RpcResult<Vec<IpAddr>> {
+    pub(crate)  async fn node_bootstrap_whitelist(&self) -> RpcResult<Vec<IpAddr>> {
         self.http_client
             .request("node_bootstrap_whitelist", rpc_params![])
             .await
@@ -191,42 +191,42 @@ impl RpcClient {
 
     /// Allow everyone to bootstrap from the node.
     /// remove bootstrap whitelist configuration file.
-    pub async fn node_bootstrap_whitelist_allow_all(&self) -> RpcResult<()> {
+    pub(crate)  async fn node_bootstrap_whitelist_allow_all(&self) -> RpcResult<()> {
         self.http_client
             .request("node_bootstrap_whitelist_allow_all", rpc_params![])
             .await
     }
 
     /// Add IP address(es) to node bootstrap whitelist.
-    pub async fn node_add_to_bootstrap_whitelist(&self, ips: Vec<IpAddr>) -> RpcResult<()> {
+    pub(crate)  async fn node_add_to_bootstrap_whitelist(&self, ips: Vec<IpAddr>) -> RpcResult<()> {
         self.http_client
             .request("node_add_to_bootstrap_whitelist", rpc_params![ips])
             .await
     }
 
     /// Remove IP address(es) to bootstrap whitelist.
-    pub async fn node_remove_from_bootstrap_whitelist(&self, ips: Vec<IpAddr>) -> RpcResult<()> {
+    pub(crate)  async fn node_remove_from_bootstrap_whitelist(&self, ips: Vec<IpAddr>) -> RpcResult<()> {
         self.http_client
             .request("node_remove_from_bootstrap_whitelist", rpc_params![ips])
             .await
     }
 
     /// Returns node bootstrap blacklist IP address(es).
-    pub async fn node_bootstrap_blacklist(&self) -> RpcResult<Vec<IpAddr>> {
+    pub(crate)  async fn node_bootstrap_blacklist(&self) -> RpcResult<Vec<IpAddr>> {
         self.http_client
             .request("node_bootstrap_blacklist", rpc_params![])
             .await
     }
 
     /// Add IP address(es) to node bootstrap blacklist.
-    pub async fn node_add_to_bootstrap_blacklist(&self, ips: Vec<IpAddr>) -> RpcResult<()> {
+    pub(crate)  async fn node_add_to_bootstrap_blacklist(&self, ips: Vec<IpAddr>) -> RpcResult<()> {
         self.http_client
             .request("node_add_to_bootstrap_blacklist", rpc_params![ips])
             .await
     }
 
     /// Remove IP address(es) to bootstrap blacklist.
-    pub async fn node_remove_from_bootstrap_blacklist(&self, ips: Vec<IpAddr>) -> RpcResult<()> {
+    pub(crate)  async fn node_remove_from_bootstrap_blacklist(&self, ips: Vec<IpAddr>) -> RpcResult<()> {
         self.http_client
             .request("node_remove_from_bootstrap_blacklist", rpc_params![ips])
             .await
@@ -239,7 +239,7 @@ impl RpcClient {
     // Explorer (aggregated stats)
 
     /// summary of the current state: time, last final blocks (hash, thread, slot, timestamp), clique count, connected nodes count
-    pub async fn get_status(&self) -> RpcResult<NodeStatus> {
+    pub(crate)  async fn get_status(&self) -> RpcResult<NodeStatus> {
         self.http_client.request("get_status", rpc_params![]).await
     }
 
@@ -255,7 +255,7 @@ impl RpcClient {
     }
 
     /// Returns operation(s) information associated to a given list of operation(s) ID(s).
-    pub async fn get_operations(
+    pub(crate)  async fn get_operations(
         &self,
         operation_ids: Vec<OperationId>,
     ) -> RpcResult<Vec<OperationInfo>> {
@@ -265,7 +265,7 @@ impl RpcClient {
     }
 
     /// Returns endorsement(s) information associated to a given list of endorsement(s) ID(s)
-    pub async fn get_endorsements(
+    pub(crate)  async fn get_endorsements(
         &self,
         endorsement_ids: Vec<EndorsementId>,
     ) -> RpcResult<Vec<EndorsementInfo>> {
@@ -275,14 +275,14 @@ impl RpcClient {
     }
 
     /// Returns block(s) information associated to a given list of block(s) ID(s)
-    pub async fn get_blocks(&self, block_ids: Vec<BlockId>) -> RpcResult<Vec<BlockInfo>> {
+    pub(crate)  async fn get_blocks(&self, block_ids: Vec<BlockId>) -> RpcResult<Vec<BlockInfo>> {
         self.http_client
             .request("get_blocks", rpc_params![block_ids])
             .await
     }
 
     /// Get events emitted by smart contracts with various filters
-    pub async fn get_filtered_sc_output_event(
+    pub(crate)  async fn get_filtered_sc_output_event(
         &self,
         filter: EventFilter,
     ) -> RpcResult<Vec<SCOutputEvent>> {
@@ -303,14 +303,14 @@ impl RpcClient {
     }
 
     /// Get info by addresses
-    pub async fn get_addresses(&self, addresses: Vec<Address>) -> RpcResult<Vec<AddressInfo>> {
+    pub(crate)  async fn get_addresses(&self, addresses: Vec<Address>) -> RpcResult<Vec<AddressInfo>> {
         self.http_client
             .request("get_addresses", rpc_params![addresses])
             .await
     }
 
     /// Get datastore entries
-    pub async fn get_datastore_entries(
+    pub(crate)  async fn get_datastore_entries(
         &self,
         input: Vec<DatastoreEntryInput>,
     ) -> RpcResult<Vec<DatastoreEntryOutput>> {
@@ -322,7 +322,7 @@ impl RpcClient {
     // User (interaction with the node)
 
     /// Adds operations to pool. Returns operations that were ok and sent to pool.
-    pub async fn send_operations(
+    pub(crate)  async fn send_operations(
         &self,
         operations: Vec<OperationInput>,
     ) -> RpcResult<Vec<OperationId>> {
@@ -332,7 +332,7 @@ impl RpcClient {
     }
 
     /// execute read only bytecode
-    pub async fn execute_read_only_bytecode(
+    pub(crate)  async fn execute_read_only_bytecode(
         &self,
         read_only_execution: ReadOnlyBytecodeExecution,
     ) -> RpcResult<ExecuteReadOnlyResponse> {
@@ -349,7 +349,7 @@ impl RpcClient {
     }
 
     /// execute read only SC call
-    pub async fn execute_read_only_call(
+    pub(crate)  async fn execute_read_only_call(
         &self,
         read_only_execution: ReadOnlyCall,
     ) -> RpcResult<ExecuteReadOnlyResponse> {
@@ -367,14 +367,14 @@ impl RpcClient {
 }
 
 /// Client V2
-pub struct ClientV2 {
+pub(crate)  struct ClientV2 {
     /// API V2 component
-    pub api: RpcClientV2,
+    pub(crate)  api: RpcClientV2,
 }
 
 impl ClientV2 {
     /// creates a new client
-    pub async fn new(
+    pub(crate)  async fn new(
         ip: IpAddr,
         api_port: u16,
         http_config: &HttpConfig,
@@ -388,14 +388,14 @@ impl ClientV2 {
 }
 
 /// Rpc V2 client
-pub struct RpcClientV2 {
+pub(crate)  struct RpcClientV2 {
     http_client: Option<HttpClient<HttpBackend>>,
     ws_client: Option<WsClient>,
 }
 
 impl RpcClientV2 {
     /// Default constructor
-    pub async fn from_url(
+    pub(crate)  async fn from_url(
         socket_addr: SocketAddr,
         http_config: &HttpConfig,
         ws_config: &WsConfig,
@@ -435,7 +435,7 @@ impl RpcClientV2 {
     // Experimental APIs. They might disappear, and they will change //
 
     /// Get the active stakers and their active roll counts for the current cycle sorted by largest roll counts.
-    pub async fn get_largest_stakers(
+    pub(crate)  async fn get_largest_stakers(
         &self,
         request: Option<ApiRequest>,
     ) -> RpcResult<PagedVecV2<(BlockId, u64)>> {
@@ -451,7 +451,7 @@ impl RpcClientV2 {
     }
 
     /// Get the ids of best parents for the next block to be produced along with their period
-    pub async fn get_next_block_best_parents(&self) -> RpcResult<Vec<(BlockId, u64)>> {
+    pub(crate)  async fn get_next_block_best_parents(&self) -> RpcResult<Vec<(BlockId, u64)>> {
         if let Some(client) = self.http_client.as_ref() {
             client
                 .request("get_next_block_best_parents", rpc_params![])
@@ -464,7 +464,7 @@ impl RpcClientV2 {
     }
 
     /// Get Massa node version
-    pub async fn get_version(&self) -> RpcResult<Version> {
+    pub(crate)  async fn get_version(&self) -> RpcResult<Version> {
         if let Some(client) = self.http_client.as_ref() {
             client.request("get_version", rpc_params![]).await
         } else {
@@ -475,7 +475,7 @@ impl RpcClientV2 {
     }
 
     /// New produced blocks
-    pub async fn subscribe_new_blocks(
+    pub(crate)  async fn subscribe_new_blocks(
         &self,
     ) -> Result<Subscription<BlockInfo>, jsonrpsee::core::Error> {
         if let Some(client) = self.ws_client.as_ref() {
@@ -497,7 +497,7 @@ impl RpcClientV2 {
     }
 
     /// New produced blocks headers
-    pub async fn subscribe_new_blocks_headers(
+    pub(crate)  async fn subscribe_new_blocks_headers(
         &self,
     ) -> Result<Subscription<SecureShare<BlockHeader, BlockId>>, jsonrpsee::core::Error> {
         if let Some(client) = self.ws_client.as_ref() {
@@ -519,7 +519,7 @@ impl RpcClientV2 {
     }
 
     /// New produced blocks with operations content.
-    pub async fn subscribe_new_filled_blocks(
+    pub(crate)  async fn subscribe_new_filled_blocks(
         &self,
     ) -> Result<Subscription<FilledBlock>, jsonrpsee::core::Error> {
         if let Some(client) = self.ws_client.as_ref() {
@@ -541,7 +541,7 @@ impl RpcClientV2 {
     }
 
     /// New produced operations.
-    pub async fn subscribe_new_operations(
+    pub(crate)  async fn subscribe_new_operations(
         &self,
     ) -> Result<Subscription<Operation>, jsonrpsee::core::Error> {
         if let Some(client) = self.ws_client.as_ref() {

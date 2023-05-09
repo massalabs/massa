@@ -27,7 +27,7 @@ use tokio_stream::wrappers::BroadcastStream;
 
 impl API<ApiV2> {
     /// generate a new massa API
-    pub fn new(
+    pub(crate)  fn new(
         consensus_controller: Box<dyn ConsensusController>,
         consensus_channels: ConsensusChannels,
         execution_controller: Box<dyn ExecutionController>,

@@ -1,22 +1,22 @@
 // Copyright (c) 2023 MASSA LABS <info@massa.net>
 
 /// stream new blocks
-pub mod new_blocks;
+pub(crate)  mod new_blocks;
 /// stream new blocks with operations content
-pub mod new_blocks_headers;
+pub(crate)  mod new_blocks_headers;
 /// stream new endorsements
-pub mod new_endorsements;
+pub(crate)  mod new_endorsements;
 /// stream new blocks headers
-pub mod new_filled_blocks;
+pub(crate)  mod new_filled_blocks;
 /// subscribe new operations
-pub mod new_operations;
+pub(crate)  mod new_operations;
 /// subscribe new slot execution outputs
-pub mod new_slot_execution_outputs;
+pub(crate)  mod new_slot_execution_outputs;
 /// send_blocks streaming
-pub mod send_blocks;
+pub(crate)  mod send_blocks;
 /// send endorsements
-pub mod send_endorsements;
+pub(crate)  mod send_endorsements;
 /// send operations
-pub mod send_operations;
+pub(crate)  mod send_operations;
 /// subscribe tx througput
-pub mod tx_throughput;
+pub(crate)  mod tx_throughput;

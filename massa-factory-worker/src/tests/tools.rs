@@ -33,7 +33,7 @@ use massa_wallet::test_exports::create_test_wallet;
 /// You can use the method `new` to build all the mocks and make the connections
 /// Then you can use the method `get_next_created_block` that will manage the answers from the mock to the factory depending on the parameters you gave.
 #[allow(dead_code)]
-pub struct TestFactory {
+pub(crate)  struct TestFactory {
     consensus_event_receiver: Option<ConsensusEventReceiver>,
     pub(crate) pool_receiver: PoolEventReceiver,
     pub(crate) selector_receiver: Option<Receiver<MockSelectorControllerMessage>>,
@@ -51,7 +51,7 @@ impl TestFactory {
     ///
     /// Returns
     /// - `TestFactory`: the structure that will be used to manage the tests
-    pub fn new(default_keypair: &KeyPair) -> TestFactory {
+    pub(crate)  fn new(default_keypair: &KeyPair) -> TestFactory {
         let (selector_controller, selector_receiver) = MockSelectorController::new_with_receiver();
         let (consensus_controller, consensus_event_receiver) =
             ConsensusControllerImpl::new_with_receiver();
@@ -106,7 +106,7 @@ impl TestFactory {
     /// Arguments:
     /// - `operations`: Optional list of operations to include in the block
     /// - `endorsements`: Optional list of endorsements to include in the block
-    pub fn get_next_created_block(
+    pub(crate)  fn get_next_created_block(
         &mut self,
         operations: Option<Vec<SecureShareOperation>>,
         endorsements: Option<Vec<SecureShareEndorsement>>,

@@ -10,7 +10,7 @@ use massa_models::{block_id::BlockId, clique::Clique, prehash::PreHashSet, slot:
 use super::ConsensusState;
 
 impl ConsensusState {
-    pub fn insert_parents_descendants(
+    pub(crate)  fn insert_parents_descendants(
         &mut self,
         add_block_id: BlockId,
         add_block_slot: Slot,
@@ -45,7 +45,7 @@ impl ConsensusState {
         }
     }
 
-    pub fn compute_fitness_find_blockclique(
+    pub(crate)  fn compute_fitness_find_blockclique(
         &mut self,
         add_block_id: &BlockId,
     ) -> Result<usize, ConsensusError> {
@@ -76,7 +76,7 @@ impl ConsensusState {
         Ok(blockclique_i)
     }
 
-    pub fn list_stale_blocks(&self, fitness_threshold: u64) -> PreHashSet<BlockId> {
+    pub(crate)  fn list_stale_blocks(&self, fitness_threshold: u64) -> PreHashSet<BlockId> {
         // iterate from largest to smallest to minimize reallocations
         let mut indices: Vec<usize> = (0..self.max_cliques.len()).collect();
         indices.sort_unstable_by_key(|&i| std::cmp::Reverse(self.max_cliques[i].block_ids.len()));
@@ -92,7 +92,7 @@ impl ConsensusState {
         &low_set - &high_set
     }
 
-    pub fn remove_block(
+    pub(crate)  fn remove_block(
         &mut self,
         add_block_id: &BlockId,
         block_id: &BlockId,
@@ -172,7 +172,7 @@ impl ConsensusState {
         }
     }
 
-    pub fn list_final_blocks(&self) -> Result<PreHashSet<BlockId>, ConsensusError> {
+    pub(crate)  fn list_final_blocks(&self) -> Result<PreHashSet<BlockId>, ConsensusError> {
         // short-circuiting intersection of cliques from smallest to largest
         let mut indices: Vec<usize> = (0..self.max_cliques.len()).collect();
         indices.sort_unstable_by_key(|&i| self.max_cliques[i].block_ids.len());
@@ -242,7 +242,7 @@ impl ConsensusState {
     }
 
     /// Computes max cliques of compatible blocks
-    pub fn compute_max_cliques(&self) -> Vec<PreHashSet<BlockId>> {
+    pub(crate)  fn compute_max_cliques(&self) -> Vec<PreHashSet<BlockId>> {
         let mut max_cliques: Vec<PreHashSet<BlockId>> = Vec::new();
 
         // algorithm adapted from IK_GPX as summarized in:
@@ -294,7 +294,7 @@ impl ConsensusState {
     }
 
     /// get the clique of higher fitness
-    pub fn get_blockclique(&self) -> PreHashSet<BlockId> {
+    pub(crate)  fn get_blockclique(&self) -> PreHashSet<BlockId> {
         self.max_cliques
             .iter()
             .find(|c| c.is_blockclique)
@@ -303,7 +303,7 @@ impl ConsensusState {
             .clone()
     }
 
-    pub fn mark_final_blocks(
+    pub(crate)  fn mark_final_blocks(
         &mut self,
         add_block_id: &BlockId,
         final_blocks: PreHashSet<BlockId>,

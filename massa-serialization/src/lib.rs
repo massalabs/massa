@@ -105,8 +105,7 @@ impl<'a> Debug for DeserializeError<'a> {
 ///
 /// impl Deserializer<u64> for U64VarIntDeserializer {
 ///     fn deserialize<'a, E: ParseError<&'a [u8]> + ContextError<&'a [u8]>>(&self, buffer: &'a [u8]) -> IResult<&'a [u8], u64, E> {
-///         context(concat!("Failed u64 deserialization"), |input: &'a [u8]| {
-///             let (rest, value) = varint_nom::u64(input).map_err(|_| nom::Err::Error(ParseError::from_error_kind(input, nom::error::ErrorKind::Fail)))?;
+///         context(concat!("Failed u64 deserialization"), |input: &'a [pub             let (rest, value) = varint_nom::u64(input).map_err(|_| nom::Err::Error(ParseError::from_error_kind(input, nom::error::ErrorKind::Fail)))?;
 ///             if !self.range.contains(&value) {
 ///                 return Err(nom::Err::Error(ParseError::from_error_kind(input, nom::error::ErrorKind::Fail)));
 ///             }
@@ -119,7 +118,7 @@ pub trait Deserializer<T> {
     /// Deserialize a value `T` from a buffer of `u8`.
     ///
     /// ## Parameters
-    /// * buffer: the buffer that contains the whole serialized data.
+    /// * buffer: tpubthat contains the whole serialized data.
     ///
     /// ## Returns
     /// A nom result with the rest of the serialized data and the decoded value.
@@ -186,14 +185,14 @@ macro_rules! gen_varint {
             #[doc = $d]
             #[doc = " in a varint form."]
             #[derive(Clone)]
-            pub struct $s;
+            pub  struct $s;
 
             impl $s {
                 #[doc = "Create a basic serializer for "]
                 #[doc = $d]
                 #[doc = " in a varint form."]
                 #[allow(dead_code)]
-                pub const fn new() -> Self {
+                pub  const fn new() -> Self {
                     Self
                 }
             }
@@ -215,7 +214,7 @@ macro_rules! gen_varint {
             #[doc = $d]
             #[doc = " in a varint form."]
             #[derive(Clone)]
-            pub struct $ds {
+            pub  struct $ds {
                 range: (Bound<$type>, Bound<$type>)
             }
 

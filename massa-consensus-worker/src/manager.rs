@@ -4,8 +4,8 @@ use tracing::log::info;
 
 use crate::commands::ConsensusCommand;
 
-pub struct ConsensusManagerImpl {
-    pub consensus_thread: Option<(SyncSender<ConsensusCommand>, JoinHandle<()>)>,
+pub(crate)  struct ConsensusManagerImpl {
+    pub(crate)  consensus_thread: Option<(SyncSender<ConsensusCommand>, JoinHandle<()>)>,
 }
 
 impl ConsensusManager for ConsensusManagerImpl {

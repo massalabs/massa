@@ -32,7 +32,7 @@ use std::path::Path;
 /// 2. in path specified in `MASSA_CONFIG_PATH` environment variable (`base_config/config.toml` by default)
 /// 3. in path specified in `MASSA_CONFIG_OVERRIDE_PATH` environment variable (`config/config.toml` by default)
 #[inline]
-pub fn build_massa_settings<T: Deserialize<'static>>(app_name: &str, env_prefix: &str) -> T {
+pub(crate)  fn build_massa_settings<T: Deserialize<'static>>(app_name: &str, env_prefix: &str) -> T {
     let mut builder = config::Config::builder();
     let config_path = std::env::var("MASSA_CONFIG_PATH")
         .unwrap_or_else(|_| "base_config/config.toml".to_string());

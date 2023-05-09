@@ -67,7 +67,7 @@ use std::{
 };
 
 // Use loop-back address. use port 0 to auto-assign a port
-pub const BASE_BOOTSTRAP_IP: IpAddr = IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1));
+pub(crate)  const BASE_BOOTSTRAP_IP: IpAddr = IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1));
 
 /// generates a small random number of bytes
 fn get_some_random_bytes() -> Vec<u8> {
@@ -96,7 +96,7 @@ fn get_random_ledger_entry() -> LedgerEntry {
     }
 }
 
-pub fn get_random_ledger_changes(r_limit: u64) -> LedgerChanges {
+pub(crate)  fn get_random_ledger_changes(r_limit: u64) -> LedgerChanges {
     let mut changes = LedgerChanges::default();
     for _ in 0..r_limit {
         changes.0.insert(
@@ -180,7 +180,7 @@ fn get_random_pos_state(r_limit: u64, pos: PoSFinalState) -> PoSFinalState {
 }
 
 /// generates random PoS changes
-pub fn get_random_pos_changes(r_limit: u64) -> PoSChanges {
+pub(crate)  fn get_random_pos_changes(r_limit: u64) -> PoSChanges {
     let deferred_credits = get_random_deferred_credits(r_limit);
     let (roll_counts, production_stats, seed_bits) = get_random_pos_cycles_info(r_limit, false);
     PoSChanges {
@@ -191,7 +191,7 @@ pub fn get_random_pos_changes(r_limit: u64) -> PoSChanges {
     }
 }
 
-pub fn get_random_async_pool_changes(r_limit: u64) -> AsyncPoolChanges {
+pub(crate)  fn get_random_async_pool_changes(r_limit: u64) -> AsyncPoolChanges {
     let mut changes = AsyncPoolChanges::default();
     for _ in 0..(r_limit / 2) {
         let message = get_random_message(Some(Amount::from_str("10").unwrap()));
@@ -204,7 +204,7 @@ pub fn get_random_async_pool_changes(r_limit: u64) -> AsyncPoolChanges {
     changes
 }
 
-pub fn get_random_executed_ops(
+pub(crate)  fn get_random_executed_ops(
     _r_limit: u64,
     slot: Slot,
     config: ExecutedOpsConfig,
@@ -214,7 +214,7 @@ pub fn get_random_executed_ops(
     executed_ops
 }
 
-pub fn get_random_executed_ops_changes(r_limit: u64) -> PreHashMap<OperationId, (bool, Slot)> {
+pub(crate)  fn get_random_executed_ops_changes(r_limit: u64) -> PreHashMap<OperationId, (bool, Slot)> {
     let mut ops_changes = PreHashMap::default();
     for i in 0..r_limit {
         ops_changes.insert(
@@ -231,7 +231,7 @@ pub fn get_random_executed_ops_changes(r_limit: u64) -> PreHashMap<OperationId, 
     ops_changes
 }
 
-pub fn get_random_executed_de(
+pub(crate)  fn get_random_executed_de(
     _r_limit: u64,
     slot: Slot,
     config: ExecutedDenunciationsConfig,
@@ -241,7 +241,7 @@ pub fn get_random_executed_de(
     executed_de
 }
 
-pub fn get_random_executed_de_changes(r_limit: u64) -> ExecutedDenunciationsChanges {
+pub(crate)  fn get_random_executed_de_changes(r_limit: u64) -> ExecutedDenunciationsChanges {
     let mut de_changes = HashSet::default();
 
     for i in 0..r_limit {
@@ -261,7 +261,7 @@ pub fn get_random_executed_de_changes(r_limit: u64) -> ExecutedDenunciationsChan
 }
 
 /// generates a random bootstrap state for the final state
-pub fn get_random_final_state_bootstrap(
+pub(crate)  fn get_random_final_state_bootstrap(
     pos: PoSFinalState,
     config: FinalStateConfig,
 ) -> FinalState {
@@ -303,16 +303,16 @@ pub fn get_random_final_state_bootstrap(
     )
 }
 
-pub fn get_dummy_block_id(s: &str) -> BlockId {
+pub(crate)  fn get_dummy_block_id(s: &str) -> BlockId {
     BlockId(Hash::compute_from(s.as_bytes()))
 }
 
-pub fn get_random_address() -> Address {
+pub(crate)  fn get_random_address() -> Address {
     let priv_key = KeyPair::generate();
     Address::from_public_key(&priv_key.get_public_key())
 }
 
-pub fn get_bootstrap_config(bootstrap_public_key: NodeId) -> BootstrapConfig {
+pub(crate)  fn get_bootstrap_config(bootstrap_public_key: NodeId) -> BootstrapConfig {
     BootstrapConfig {
         listen_addr: Some("0.0.0.0:31244".parse().unwrap()),
         bootstrap_protocol: IpType::Both,
@@ -380,7 +380,7 @@ pub fn get_bootstrap_config(bootstrap_public_key: NodeId) -> BootstrapConfig {
 }
 
 /// asserts that two `BootstrapableGraph` are equal
-pub fn assert_eq_bootstrap_graph(v1: &BootstrapableGraph, v2: &BootstrapableGraph) {
+pub(crate)  fn assert_eq_bootstrap_graph(v1: &BootstrapableGraph, v2: &BootstrapableGraph) {
     assert_eq!(
         v1.final_blocks.len(),
         v2.final_blocks.len(),
@@ -396,7 +396,7 @@ pub fn assert_eq_bootstrap_graph(v1: &BootstrapableGraph, v2: &BootstrapableGrap
     assert_eq!(data1, data2, "BootstrapableGraph mismatch")
 }
 
-pub fn get_boot_state() -> BootstrapableGraph {
+pub(crate)  fn get_boot_state() -> BootstrapableGraph {
     let keypair = KeyPair::generate();
 
     let block = Block::new_verifiable(
@@ -478,7 +478,7 @@ pub fn get_boot_state() -> BootstrapableGraph {
     boot_graph
 }
 
-pub fn get_peers(keypair: &KeyPair) -> BootstrapPeers {
+pub(crate)  fn get_peers(keypair: &KeyPair) -> BootstrapPeers {
     let mut listeners1 = HashMap::default();
     listeners1.insert("82.245.123.77:8080".parse().unwrap(), TransportType::Tcp);
 
@@ -499,7 +499,7 @@ pub fn get_peers(keypair: &KeyPair) -> BootstrapPeers {
 /// The bootstrap server function `get_state` has to be async due to main.rs `tokio::select!` usage to
 /// cancel on `ctrl-c`
 /// If get state can be cancelled with ctrl-c without an async context, this can be removed
-pub fn make_runtime() -> tokio::runtime::Runtime {
+pub(crate)  fn make_runtime() -> tokio::runtime::Runtime {
     tokio::runtime::Builder::new_multi_thread()
         .enable_all()
         .thread_name("network-provided-runtime")

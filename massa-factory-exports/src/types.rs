@@ -7,19 +7,19 @@ use massa_storage::Storage;
 
 /// History of block production from latest to oldest
 /// todo: redesign type (maybe add slots, draws...)
-pub type ProductionHistory = Vec<Block>;
+pub(crate)  type ProductionHistory = Vec<Block>;
 
 /// List of channels the factory will send commands to
 #[derive(Clone)]
-pub struct FactoryChannels {
+pub(crate)  struct FactoryChannels {
     /// selector controller to get draws
-    pub selector: Box<dyn SelectorController>,
+    pub(crate)  selector: Box<dyn SelectorController>,
     /// consensus controller
-    pub consensus: Box<dyn ConsensusController>,
+    pub(crate)  consensus: Box<dyn ConsensusController>,
     /// pool controller
-    pub pool: Box<dyn PoolController>,
+    pub(crate)  pool: Box<dyn PoolController>,
     /// protocol controller
-    pub protocol: Box<dyn ProtocolController>,
+    pub(crate)  protocol: Box<dyn ProtocolController>,
     /// storage instance
-    pub storage: Storage,
+    pub(crate)  storage: Storage,
 }

@@ -1,6 +1,6 @@
 /// Events that are emitted by consensus.
 #[derive(Debug, Clone)]
-pub enum ConsensusEvent {
+pub(crate)  enum ConsensusEvent {
     /// probable desynchronization detected, need re-synchronization
     NeedSync,
     /// Network is ended should be send after `end_timestamp`
