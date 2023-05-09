@@ -484,15 +484,6 @@
 <a href="#484" id="484">484</a>
 <a href="#485" id="485">485</a>
 <a href="#486" id="486">486</a>
-<a href="#487" id="487">487</a>
-<a href="#488" id="488">488</a>
-<a href="#489" id="489">489</a>
-<a href="#490" id="490">490</a>
-<a href="#491" id="491">491</a>
-<a href="#492" id="492">492</a>
-<a href="#493" id="493">493</a>
-<a href="#494" id="494">494</a>
-<a href="#495" id="495">495</a>
 </pre><pre class="rust"><code><span class="doccomment">//! Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="kw">use crate</span>::{MassaRpcServer, Private, RpcServer, StopHandle, Value, API};
@@ -516,9 +507,8 @@
 <span class="kw">use </span>massa_hash::Hash;
 <span class="kw">use </span>massa_models::{
     address::Address, block::Block, block_id::BlockId, clique::Clique, composite::PubkeySig,
-    config::PUBLIC_KEY_DESER_SIZE, endorsement::EndorsementId, execution::EventFilter,
-    node::NodeId, operation::OperationId, output_event::SCOutputEvent, prehash::PreHashSet,
-    slot::Slot,
+    endorsement::EndorsementId, execution::EventFilter, node::NodeId, operation::OperationId,
+    output_event::SCOutputEvent, prehash::PreHashSet, slot::Slot,
 };
 <span class="kw">use </span>massa_protocol_exports::{PeerId, ProtocolController};
 <span class="kw">use </span>massa_signature::KeyPair;
@@ -656,12 +646,8 @@
         </span><span class="kw">let </span>peer_ids = ids
             .into_iter()
             .map(|id| {
-                PeerId::from_bytes(
-                    id.get_public_key().to_bytes()[..PUBLIC_KEY_DESER_SIZE]
-                        .try_into()
-                        .unwrap(),
-                )
-                .unwrap()
+                <span class="comment">// IMPORTANT TODO: this will fail before a peernet update
+                </span>PeerId::from_bytes(<span class="kw-2">&amp;</span>id.get_public_key().to_bytes().try_into().unwrap()).unwrap()
             })
             .collect();
         protocol_controller
@@ -675,12 +661,8 @@
         </span><span class="kw">let </span>peer_ids = ids
             .into_iter()
             .map(|id| {
-                PeerId::from_bytes(
-                    id.get_public_key().to_bytes()[..PUBLIC_KEY_DESER_SIZE]
-                        .try_into()
-                        .unwrap(),
-                )
-                .unwrap()
+                <span class="comment">// IMPORTANT TODO: this will fail before a peernet update
+                </span>PeerId::from_bytes(<span class="kw-2">&amp;</span>id.get_public_key().to_bytes().try_into().unwrap()).unwrap()
             })
             .collect();
         protocol_controller

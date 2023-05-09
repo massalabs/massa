@@ -1062,12 +1062,6 @@
 <a href="#1062" id="1062">1062</a>
 <a href="#1063" id="1063">1063</a>
 <a href="#1064" id="1064">1064</a>
-<a href="#1065" id="1065">1065</a>
-<a href="#1066" id="1066">1066</a>
-<a href="#1067" id="1067">1067</a>
-<a href="#1068" id="1068">1068</a>
-<a href="#1069" id="1069">1069</a>
-<a href="#1070" id="1070">1070</a>
 </pre><pre class="rust"><code><span class="doccomment">//! Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 </span><span class="attr">#![allow(clippy::too_many_arguments)]
 
@@ -1101,7 +1095,6 @@
     clique::Clique,
     composite::PubkeySig,
     config::CompactConfig,
-    config::PUBLIC_KEY_DESER_SIZE,
     datastore::DatastoreDeserializer,
     endorsement::EndorsementId,
     endorsement::SecureShareEndorsement,
@@ -1452,12 +1445,7 @@
                 };
                 <span class="comment">//TODO: Use the peerid correctly
                 </span>(
-                    NodeId::new(
-                        PublicKey::from_bytes(
-                            id.to_bytes()[..PUBLIC_KEY_DESER_SIZE].try_into().unwrap(),
-                        )
-                        .unwrap(),
-                    ),
+                    NodeId::new(PublicKey::from_bytes(<span class="kw-2">&amp;</span>id.to_bytes()).unwrap()),
                     (peer.<span class="number">0</span>.ip(), is_outgoing),
                 )
             })

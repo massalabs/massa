@@ -220,8 +220,7 @@
 <a href="#220" id="220">220</a>
 <a href="#221" id="221">221</a>
 <a href="#222" id="222">222</a>
-</pre><pre class="rust"><code><span class="kw">use </span>massa_models::config::PUBLIC_KEY_DESER_SIZE;
-<span class="kw">use </span>massa_models::serialization::{IpAddrDeserializer, IpAddrSerializer};
+</pre><pre class="rust"><code><span class="kw">use </span>massa_models::serialization::{IpAddrDeserializer, IpAddrSerializer};
 <span class="kw">use </span>massa_serialization::{
     Deserializer, SerializeError, Serializer, U16VarIntDeserializer, U16VarIntSerializer,
     U32VarIntDeserializer, U32VarIntSerializer,
@@ -384,7 +383,8 @@
                         <span class="prelude-val">Ok</span>((
                             rest,
                             PeerId::from_bytes(
-                                peer_id[..PUBLIC_KEY_DESER_SIZE].try_into().map_err(|<span class="kw">_</span>| {
+                                <span class="comment">// IMPORTANT TODO: this will fail before a peernet update
+                                </span>peer_id.try_into().map_err(|<span class="kw">_</span>| {
                                     nom::Err::Error(ParseError::from_error_kind(
                                         input,
                                         nom::error::ErrorKind::Count,
