@@ -15,12 +15,12 @@
 <span class="kw">use </span>std::collections::HashMap;
 <span class="kw">use </span>std::str::FromStr;
 
-<span class="kw">let </span>keypair1 = KeyPair::generate();
+<span class="kw">let </span>keypair1 = KeyPair::generate(<span class="number">0</span>).unwrap();
 <span class="kw">let </span><span class="kw-2">mut </span>peers = <span class="macro">vec!</span>[];
 <span class="kw">let </span><span class="kw-2">mut </span>listeners1 = HashMap::default();
 listeners1.insert(<span class="string">&quot;127.0.0.1:8080&quot;</span>.parse().unwrap(), TransportType::Tcp);
 peers.push((PeerId::from_public_key(keypair1.get_public_key()), listeners1));
-<span class="kw">let </span><span class="kw-2">mut </span>keypair2 = KeyPair::generate();
+<span class="kw">let </span><span class="kw-2">mut </span>keypair2 = KeyPair::generate(<span class="number">0</span>).unwrap();
 <span class="kw">let </span><span class="kw-2">mut </span>listeners2 = HashMap::default();
 listeners2.insert(<span class="string">&quot;[::1]:8080&quot;</span>.parse().unwrap(), TransportType::Tcp);
 peers.push((PeerId::from_public_key(keypair1.get_public_key()), listeners2));

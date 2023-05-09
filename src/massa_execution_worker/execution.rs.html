@@ -1702,6 +1702,12 @@
 <a href="#1702" id="1702">1702</a>
 <a href="#1703" id="1703">1703</a>
 <a href="#1704" id="1704">1704</a>
+<a href="#1705" id="1705">1705</a>
+<a href="#1706" id="1706">1706</a>
+<a href="#1707" id="1707">1707</a>
+<a href="#1708" id="1708">1708</a>
+<a href="#1709" id="1709">1709</a>
+<a href="#1710" id="1710">1710</a>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="doccomment">//! This module deals with executing final and active slots, as well as read-only requests.
@@ -1744,7 +1750,7 @@
 <span class="kw">use </span>massa_pos_exports::SelectorController;
 <span class="kw">use </span>massa_sc_runtime::{Interface, Response, VMError};
 <span class="kw">use </span>massa_storage::Storage;
-<span class="kw">use </span>massa_versioning_worker::versioning::MipStore;
+<span class="kw">use </span>massa_versioning::versioning::MipStore;
 <span class="kw">use </span>parking_lot::{Mutex, RwLock};
 <span class="kw">use </span>std::collections::{BTreeMap, BTreeSet, HashMap};
 <span class="kw">use </span>std::sync::Arc;
@@ -1848,6 +1854,7 @@
             active_history.clone(),
             module_cache.clone(),
             vesting_manager.clone(),
+            mip_store.clone(),
         )));
 
         <span class="comment">// Instantiate the interface providing ABI access to the VM, share the execution context with it
@@ -2693,6 +2700,7 @@
             <span class="self">self</span>.active_history.clone(),
             <span class="self">self</span>.module_cache.clone(),
             <span class="self">self</span>.vesting_manager.clone(),
+            <span class="self">self</span>.mip_store.clone(),
         );
 
         <span class="comment">// Get asynchronous messages to execute
@@ -3059,6 +3067,7 @@
             <span class="self">self</span>.active_history.clone(),
             <span class="self">self</span>.module_cache.clone(),
             <span class="self">self</span>.vesting_manager.clone(),
+            <span class="self">self</span>.mip_store.clone(),
         );
 
         <span class="comment">// run the interpreter according to the target type
@@ -3382,7 +3391,7 @@
     ) {
         <span class="comment">// update versioning statistics
         </span><span class="kw">if let </span><span class="prelude-val">Some</span>((block_id, storage)) = exec_target {
-            <span class="kw">if let </span><span class="prelude-val">Some</span>(_block) = storage.read_blocks().get(block_id) {
+            <span class="kw">if let </span><span class="prelude-val">Some</span>(block) = storage.read_blocks().get(block_id) {
                 <span class="kw">let </span>slot_ts_ = get_block_slot_timestamp(
                     <span class="self">self</span>.config.thread_count,
                     <span class="self">self</span>.config.t0,
@@ -3390,10 +3399,13 @@
                     <span class="kw-2">*</span>slot,
                 );
 
+                <span class="kw">let </span>current_version = block.content.header.content.current_version;
+                <span class="kw">let </span>announced_version = block.content.header.content.announced_version;
                 <span class="kw">if let </span><span class="prelude-val">Ok</span>(slot_ts) = slot_ts_ {
-                    <span class="comment">// TODO - Next PR: use block header network versions - default to 0 for now
-                    </span><span class="self">self</span>.mip_store
-                        .update_network_version_stats(slot_ts, <span class="prelude-val">Some</span>((<span class="number">0</span>, <span class="number">0</span>)));
+                    <span class="self">self</span>.mip_store.update_network_version_stats(
+                        slot_ts,
+                        <span class="prelude-val">Some</span>((current_version, announced_version)),
+                    );
                 } <span class="kw">else </span>{
                     <span class="macro">warn!</span>(<span class="string">&quot;Unable to get slot timestamp for slot: {} in order to update mip_store stats&quot;</span>, slot);
                 }

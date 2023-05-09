@@ -43,7 +43,7 @@ that can be use for the id and signature computing.</p>
    index: <span class="number">0</span>,
    endorsed_block: BlockId(Hash::compute_from(<span class="string">&quot;blk&quot;</span>.as_bytes())),
 };
-<span class="kw">let </span>keypair = KeyPair::generate();
+<span class="kw">let </span>keypair = KeyPair::generate(<span class="number">0</span>).unwrap();
 <span class="kw">let </span>secured: SecureShare&lt;Endorsement, BlockId&gt; = Endorsement::new_verifiable(
    content,
    EndorsementSerializer::new(),
