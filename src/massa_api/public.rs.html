@@ -1053,28 +1053,11 @@
 <a href="#1053" id="1053">1053</a>
 <a href="#1054" id="1054">1054</a>
 <a href="#1055" id="1055">1055</a>
-<a href="#1056" id="1056">1056</a>
-<a href="#1057" id="1057">1057</a>
-<a href="#1058" id="1058">1058</a>
-<a href="#1059" id="1059">1059</a>
-<a href="#1060" id="1060">1060</a>
-<a href="#1061" id="1061">1061</a>
-<a href="#1062" id="1062">1062</a>
-<a href="#1063" id="1063">1063</a>
-<a href="#1064" id="1064">1064</a>
-<a href="#1065" id="1065">1065</a>
-<a href="#1066" id="1066">1066</a>
-<a href="#1067" id="1067">1067</a>
-<a href="#1068" id="1068">1068</a>
-<a href="#1069" id="1069">1069</a>
-<a href="#1070" id="1070">1070</a>
-<a href="#1071" id="1071">1071</a>
 </pre><pre class="rust"><code><span class="doccomment">//! Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 </span><span class="attr">#![allow(clippy::too_many_arguments)]
 
 </span><span class="kw">use crate</span>::{MassaRpcServer, Public, RpcServer, StopHandle, Value, API};
 <span class="kw">use </span>async_trait::async_trait;
-<span class="kw">use </span>itertools::{izip, Itertools};
 <span class="kw">use </span>jsonrpsee::core::{Error <span class="kw">as </span>JsonRpseeError, RpcResult};
 <span class="kw">use </span>massa_api_exports::{
     address::AddressInfo,
@@ -1095,9 +1078,21 @@
 <span class="kw">use </span>massa_execution_exports::{
     ExecutionController, ExecutionStackElement, ReadOnlyExecutionRequest, ReadOnlyExecutionTarget,
 };
-<span class="kw">use </span>massa_models::datastore::DatastoreDeserializer;
 <span class="kw">use </span>massa_models::operation::OperationDeserializer;
 <span class="kw">use </span>massa_models::secure_share::SecureShareDeserializer;
+<span class="kw">use </span>massa_models::{
+    block::{Block, BlockGraphStatus},
+    endorsement::SecureShareEndorsement,
+    error::ModelsError,
+    operation::SecureShareOperation,
+    timeslots,
+};
+<span class="kw">use </span>massa_pos_exports::SelectorController;
+<span class="kw">use </span>massa_protocol_exports::{PeerConnectionType, ProtocolConfig, ProtocolController};
+<span class="kw">use </span>massa_serialization::{DeserializeError, Deserializer};
+
+<span class="kw">use </span>itertools::{izip, Itertools};
+<span class="kw">use </span>massa_models::datastore::DatastoreDeserializer;
 <span class="kw">use </span>massa_models::{
     address::Address,
     block_id::BlockId,
@@ -1114,23 +1109,10 @@
     timeslots::{get_latest_block_slot_at_timestamp, time_range_to_slot_range},
     version::Version,
 };
-<span class="kw">use </span>massa_models::{
-    block::{Block, BlockGraphStatus},
-    endorsement::SecureShareEndorsement,
-    error::ModelsError,
-    operation::SecureShareOperation,
-    timeslots,
-};
 <span class="kw">use </span>massa_pool_exports::PoolController;
-<span class="kw">use </span>massa_pos_exports::SelectorController;
-<span class="kw">use </span>massa_protocol_exports::{PeerConnectionType, ProtocolConfig, ProtocolController};
-<span class="kw">use </span>massa_serialization::{DeserializeError, Deserializer};
-<span class="kw">use </span>massa_signature::{PublicKey, PUBLIC_KEY_DESER_SIZE};
+<span class="kw">use </span>massa_signature::{KeyPair, PublicKey, PUBLIC_KEY_SIZE_BYTES};
 <span class="kw">use </span>massa_storage::Storage;
 <span class="kw">use </span>massa_time::MassaTime;
-<span class="kw">use </span>massa_versioning::{
-    keypair_factory::KeyPairFactory, versioning::MipStore, versioning_factory::VersioningFactory,
-};
 <span class="kw">use </span>std::collections::BTreeMap;
 <span class="kw">use </span>std::net::{IpAddr, SocketAddr};
 
@@ -1147,7 +1129,6 @@
         version: Version,
         node_id: NodeId,
         storage: Storage,
-        mip_store: MipStore,
     ) -&gt; <span class="self">Self </span>{
         API(Public {
             consensus_controller,
@@ -1160,7 +1141,6 @@
             selector_controller,
             protocol_config,
             storage,
-            keypair_factory: KeyPairFactory { mip_store },
         })
     }
 }
@@ -1208,16 +1188,10 @@
             is_final,
         } <span class="kw">in </span>reqs
         {
-            <span class="kw">let </span>address = <span class="kw">if let </span><span class="prelude-val">Some</span>(addr) = address {
-                addr
-            } <span class="kw">else </span>{
-                <span class="kw">let </span>keypair = <span class="self">self
-                    </span>.<span class="number">0
-                    </span>.keypair_factory
-                    .create(<span class="kw-2">&amp;</span>(), <span class="prelude-val">None</span>)
-                    .map_err(|err| ApiError::from(err))<span class="question-mark">?</span>;
-                Address::from_public_key(<span class="kw-2">&amp;</span>keypair.get_public_key())
-            };
+            <span class="kw">let </span>address = address.unwrap_or_else(|| {
+                <span class="comment">// if no addr provided, use a random one
+                </span>Address::from_public_key(<span class="kw-2">&amp;</span>KeyPair::generate().get_public_key())
+            });
 
             <span class="kw">let </span>op_datastore = <span class="kw">match </span>operation_datastore {
                 <span class="prelude-val">Some</span>(v) =&gt; {
@@ -1302,16 +1276,10 @@
             is_final,
         } <span class="kw">in </span>reqs
         {
-            <span class="kw">let </span>caller_address = <span class="kw">if let </span><span class="prelude-val">Some</span>(addr) = caller_address {
-                addr
-            } <span class="kw">else </span>{
-                <span class="kw">let </span>keypair = <span class="self">self
-                    </span>.<span class="number">0
-                    </span>.keypair_factory
-                    .create(<span class="kw-2">&amp;</span>(), <span class="prelude-val">None</span>)
-                    .map_err(|err| ApiError::from(err))<span class="question-mark">?</span>;
-                Address::from_public_key(<span class="kw-2">&amp;</span>keypair.get_public_key())
-            };
+            <span class="kw">let </span>caller_address = caller_address.unwrap_or_else(|| {
+                <span class="comment">// if no addr provided, use a random one
+                </span>Address::from_public_key(<span class="kw-2">&amp;</span>KeyPair::generate().get_public_key())
+            });
 
             <span class="comment">// TODO:
             // * set a maximum gas value for read-only executions to prevent attacks
@@ -1456,7 +1424,7 @@
                 </span>(
                     NodeId::new(
                         PublicKey::from_bytes(
-                            id.to_bytes()[..PUBLIC_KEY_DESER_SIZE].try_into().unwrap(),
+                            id.to_bytes()[..PUBLIC_KEY_SIZE_BYTES].try_into().unwrap(),
                         )
                         .unwrap(),
                     ),

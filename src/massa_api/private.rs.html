@@ -528,7 +528,7 @@
     execution::EventFilter, operation::OperationId, slot::Slot,
 };
 <span class="kw">use </span>massa_protocol_exports::{PeerId, ProtocolController};
-<span class="kw">use </span>massa_signature::{KeyPair, PUBLIC_KEY_DESER_SIZE};
+<span class="kw">use </span>massa_signature::{KeyPair, PUBLIC_KEY_SIZE_BYTES};
 <span class="kw">use </span>massa_wallet::Wallet;
 
 <span class="kw">use </span>parking_lot::RwLock;
@@ -665,7 +665,7 @@
             .into_iter()
             .map(|id| {
                 PeerId::from_bytes(
-                    id.get_public_key().to_bytes()[..PUBLIC_KEY_DESER_SIZE]
+                    id.get_public_key().to_bytes()[..PUBLIC_KEY_SIZE_BYTES]
                         .try_into()
                         .unwrap(),
                 )
@@ -684,7 +684,7 @@
             .into_iter()
             .map(|id| {
                 PeerId::from_bytes(
-                    id.get_public_key().to_bytes()[..PUBLIC_KEY_DESER_SIZE]
+                    id.get_public_key().to_bytes()[..PUBLIC_KEY_SIZE_BYTES]
                         .try_into()
                         .unwrap(),
                 )
