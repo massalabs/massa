@@ -5,7 +5,7 @@ use std::ops::Deref;
 use std::sync::Arc;
 
 use machine::{machine, transitions};
-use num_enum::{IntoPrimitive, TryFromPrimitive};
+use num_enum::{IntoPrimitive, TryFromPrimitive, FromPrimitive};
 use parking_lot::RwLock;
 use thiserror::Error;
 use tracing::warn;
@@ -13,15 +13,17 @@ use tracing::warn;
 use massa_models::{amount::Amount, config::VERSIONING_THRESHOLD_TRANSITION_ACCEPTED};
 use massa_time::MassaTime;
 
-// TODO: add more items here
 /// Versioning component enum
 #[allow(missing_docs)]
-#[derive(Clone, Debug, PartialEq, Eq, Hash, TryFromPrimitive, IntoPrimitive)]
+#[derive(Clone, Debug, PartialEq, Eq, Hash, FromPrimitive, IntoPrimitive)]
 #[repr(u32)]
 pub enum MipComponent {
     Address,
     Block,
     VM,
+    #[doc(hidden)]
+    #[num_enum(default)]
+    __Nonexhaustive,
 }
 
 /// MIP info (name & versions & time range for a MIP)
@@ -472,7 +474,7 @@ impl MipStore {
     pub fn update_with(
         &mut self,
         mip_store: &MipStore,
-    ) -> Result<(Vec<MipInfo>, Vec<MipInfo>), UpdateWithError> {
+    ) -> Result<(Vec<MipInfo>, BTreeMap<MipInfo, MipState>), UpdateWithError> {
         let mut lock = self.0.write();
         let lock_other = mip_store.0.read();
         lock.update_with(lock_other.deref())
@@ -542,7 +544,7 @@ impl MipStoreRaw {
     pub fn update_with(
         &mut self,
         store_raw: &MipStoreRaw,
-    ) -> Result<(Vec<MipInfo>, Vec<MipInfo>), UpdateWithError> {
+    ) -> Result<(Vec<MipInfo>, BTreeMap<MipInfo, MipState>), UpdateWithError> {
         // iter over items in given store:
         // -> 2 cases:
         // * MipInfo is already in self store -> add to 'to_update' list
@@ -654,12 +656,11 @@ impl MipStoreRaw {
 
         match has_error {
             None => {
-                let added = to_add.keys().cloned().collect();
                 let updated = to_update.keys().cloned().collect();
 
                 self.store.append(&mut to_update);
                 self.store.append(&mut to_add);
-                Ok((updated, added))
+                Ok((updated, to_add))
             }
             Some(e) => Err(e),
         }
@@ -1175,7 +1176,7 @@ mod test {
         let (updated, added) = vs_raw_1.update_with(&vs_raw_2).unwrap();
 
         // Check update_with result
-        assert_eq!(added, vec![]);
+        assert!(added.is_empty());
         assert_eq!(updated, vec![vi_2.clone()]);
 
         // Expect state 1 (for vi_1) no change, state 2 (for vi_2) updated to "Active"
