@@ -142,21 +142,6 @@
 <a href="#142" id="142">142</a>
 <a href="#143" id="143">143</a>
 <a href="#144" id="144">144</a>
-<a href="#145" id="145">145</a>
-<a href="#146" id="146">146</a>
-<a href="#147" id="147">147</a>
-<a href="#148" id="148">148</a>
-<a href="#149" id="149">149</a>
-<a href="#150" id="150">150</a>
-<a href="#151" id="151">151</a>
-<a href="#152" id="152">152</a>
-<a href="#153" id="153">153</a>
-<a href="#154" id="154">154</a>
-<a href="#155" id="155">155</a>
-<a href="#156" id="156">156</a>
-<a href="#157" id="157">157</a>
-<a href="#158" id="158">158</a>
-<a href="#159" id="159">159</a>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="kw">use </span>std::{
@@ -165,18 +150,9 @@
     path::PathBuf,
 };
 
-<span class="kw">use </span>massa_models::version::Version;
 <span class="kw">use </span>massa_time::MassaTime;
 <span class="kw">use </span>peernet::transports::TransportType;
 <span class="kw">use </span>serde::Deserialize;
-
-<span class="attr">#[derive(Debug, Deserialize, Clone, Copy)]
-</span><span class="kw">pub struct </span>PeerCategoryInfo {
-    <span class="kw">pub </span>target_out_connections: usize,
-    <span class="kw">pub </span>max_in_connections_pre_handshake: usize,
-    <span class="kw">pub </span>max_in_connections_post_handshake: usize,
-    <span class="kw">pub </span>max_in_connections_per_ip: usize,
-}
 
 <span class="doccomment">/// Dynamic protocol configuration mix in static settings and constants configurations.
 </span><span class="attr">#[derive(Debug, Deserialize, Clone)]
@@ -187,6 +163,10 @@
     </span><span class="kw">pub </span>listeners: HashMap&lt;SocketAddr, TransportType&gt;,
     <span class="doccomment">/// initial peers path
     </span><span class="kw">pub </span>initial_peers: PathBuf,
+    <span class="doccomment">/// max number of in connections
+    </span><span class="kw">pub </span>max_in_connections: usize,
+    <span class="doccomment">/// max number of out connections
+    </span><span class="kw">pub </span>max_out_connections: usize,
     <span class="doccomment">/// after `ask_block_timeout` milliseconds we try to ask a block to another node
     </span><span class="kw">pub </span>ask_block_timeout: MassaTime,
     <span class="doccomment">/// Max known blocks we keep in block_handler
@@ -299,22 +279,12 @@
     </span><span class="kw">pub </span>max_size_listeners_per_peer: u64,
     <span class="doccomment">/// Last start period
     </span><span class="kw">pub </span>last_start_period: u64,
-    <span class="doccomment">/// try connection timer
-    </span><span class="kw">pub </span>try_connection_timer: MassaTime,
-    <span class="doccomment">/// Timeout connection
-    </span><span class="kw">pub </span>timeout_connection: MassaTime,
     <span class="doccomment">/// Number of bytes per second that can be read/write in a connection (should be a 10 multiplier)
     </span><span class="kw">pub </span>read_write_limit_bytes_per_second: u128,
     <span class="doccomment">/// Optional routable ip
     </span><span class="kw">pub </span>routable_ip: <span class="prelude-ty">Option</span>&lt;IpAddr&gt;,
     <span class="doccomment">/// debug prints
     </span><span class="kw">pub </span>debug: bool,
-    <span class="doccomment">/// Peers categories infos
-    </span><span class="kw">pub </span>peers_categories: HashMap&lt;String, PeerCategoryInfo&gt;,
-    <span class="doccomment">/// Default category infos
-    </span><span class="kw">pub </span>default_category_info: PeerCategoryInfo,
-    <span class="doccomment">/// Version
-    </span><span class="kw">pub </span>version: Version,
 }
 </code></pre></div>
 </section></main><div id="rustdoc-vars" data-root-path="../../" data-static-root-path="../../static.files/" data-current-crate="massa_protocol_exports" data-themes="" data-resource-suffix="" data-rustdoc-version="1.69.0-nightly (d962ea578 2023-02-26)" data-search-js="search-14421e1532aead08.js" data-settings-js="settings-f0c5c39777a9a2f6.js" data-settings-css="settings-0bcba95ff279c1db.css" ></div></body></html>

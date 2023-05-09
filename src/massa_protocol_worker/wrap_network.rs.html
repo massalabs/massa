@@ -169,6 +169,11 @@
 <a href="#169" id="169">169</a>
 <a href="#170" id="170">170</a>
 <a href="#171" id="171">171</a>
+<a href="#172" id="172">172</a>
+<a href="#173" id="173">173</a>
+<a href="#174" id="174">174</a>
+<a href="#175" id="175">175</a>
+<a href="#176" id="176">176</a>
 </pre><pre class="rust"><code><span class="kw">use </span>std::{
     collections::{HashMap, HashSet},
     net::SocketAddr,
@@ -197,9 +202,9 @@
     ) -&gt; <span class="prelude-ty">Result</span>&lt;(), ProtocolError&gt;;
     <span class="kw">fn </span>clone_box(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; Box&lt;<span class="kw">dyn </span>ActiveConnectionsTrait&gt;;
     <span class="kw">fn </span>get_peer_ids_connected(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; HashSet&lt;PeerId&gt;;
-    <span class="kw">fn </span>get_peers_connected(
-        <span class="kw-2">&amp;</span><span class="self">self</span>,
-    ) -&gt; HashMap&lt;PeerId, (SocketAddr, PeerConnectionType, <span class="prelude-ty">Option</span>&lt;String&gt;)&gt;;
+    <span class="kw">fn </span>get_peers_connected(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; HashMap&lt;PeerId, (SocketAddr, PeerConnectionType)&gt;;
+    <span class="kw">fn </span>check_addr_accepted(<span class="kw-2">&amp;</span><span class="self">self</span>, addr: <span class="kw-2">&amp;</span>SocketAddr) -&gt; bool;
+    <span class="kw">fn </span>get_max_out_connections(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; usize;
     <span class="kw">fn </span>get_nb_out_connections(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; usize;
     <span class="kw">fn </span>get_nb_in_connections(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; usize;
     <span class="kw">fn </span>shutdown_connection(<span class="kw-2">&amp;mut </span><span class="self">self</span>, peer_id: <span class="kw-2">&amp;</span>PeerId);
@@ -239,9 +244,7 @@
         <span class="self">self</span>.read().connections.keys().cloned().collect()
     }
 
-    <span class="kw">fn </span>get_peers_connected(
-        <span class="kw-2">&amp;</span><span class="self">self</span>,
-    ) -&gt; HashMap&lt;PeerId, (SocketAddr, PeerConnectionType, <span class="prelude-ty">Option</span>&lt;String&gt;)&gt; {
+    <span class="kw">fn </span>get_peers_connected(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; HashMap&lt;PeerId, (SocketAddr, PeerConnectionType)&gt; {
         <span class="self">self</span>.read()
             .connections
             .iter()
@@ -251,11 +254,18 @@
                     (
                         <span class="kw-2">*</span>connection.endpoint.get_target_addr(),
                         connection.connection_type,
-                        connection.category_name.clone(),
                     ),
                 )
             })
             .collect()
+    }
+
+    <span class="kw">fn </span>check_addr_accepted(<span class="kw-2">&amp;</span><span class="self">self</span>, addr: <span class="kw-2">&amp;</span>SocketAddr) -&gt; bool {
+        <span class="self">self</span>.read().check_addr_accepted(addr)
+    }
+
+    <span class="kw">fn </span>get_max_out_connections(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; usize {
+        <span class="self">self</span>.read().max_out_connections
     }
 
     <span class="kw">fn </span>get_nb_out_connections(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; usize {

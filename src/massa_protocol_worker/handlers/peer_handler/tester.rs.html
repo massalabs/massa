@@ -320,90 +320,17 @@
 <a href="#320" id="320">320</a>
 <a href="#321" id="321">321</a>
 <a href="#322" id="322">322</a>
-<a href="#323" id="323">323</a>
-<a href="#324" id="324">324</a>
-<a href="#325" id="325">325</a>
-<a href="#326" id="326">326</a>
-<a href="#327" id="327">327</a>
-<a href="#328" id="328">328</a>
-<a href="#329" id="329">329</a>
-<a href="#330" id="330">330</a>
-<a href="#331" id="331">331</a>
-<a href="#332" id="332">332</a>
-<a href="#333" id="333">333</a>
-<a href="#334" id="334">334</a>
-<a href="#335" id="335">335</a>
-<a href="#336" id="336">336</a>
-<a href="#337" id="337">337</a>
-<a href="#338" id="338">338</a>
-<a href="#339" id="339">339</a>
-<a href="#340" id="340">340</a>
-<a href="#341" id="341">341</a>
-<a href="#342" id="342">342</a>
-<a href="#343" id="343">343</a>
-<a href="#344" id="344">344</a>
-<a href="#345" id="345">345</a>
-<a href="#346" id="346">346</a>
-<a href="#347" id="347">347</a>
-<a href="#348" id="348">348</a>
-<a href="#349" id="349">349</a>
-<a href="#350" id="350">350</a>
-<a href="#351" id="351">351</a>
-<a href="#352" id="352">352</a>
-<a href="#353" id="353">353</a>
-<a href="#354" id="354">354</a>
-<a href="#355" id="355">355</a>
-<a href="#356" id="356">356</a>
-<a href="#357" id="357">357</a>
-<a href="#358" id="358">358</a>
-<a href="#359" id="359">359</a>
-<a href="#360" id="360">360</a>
-<a href="#361" id="361">361</a>
-<a href="#362" id="362">362</a>
-<a href="#363" id="363">363</a>
-<a href="#364" id="364">364</a>
-<a href="#365" id="365">365</a>
-<a href="#366" id="366">366</a>
-<a href="#367" id="367">367</a>
-<a href="#368" id="368">368</a>
-<a href="#369" id="369">369</a>
-<a href="#370" id="370">370</a>
-<a href="#371" id="371">371</a>
-<a href="#372" id="372">372</a>
-<a href="#373" id="373">373</a>
-<a href="#374" id="374">374</a>
-<a href="#375" id="375">375</a>
-<a href="#376" id="376">376</a>
-<a href="#377" id="377">377</a>
-<a href="#378" id="378">378</a>
-<a href="#379" id="379">379</a>
-<a href="#380" id="380">380</a>
-<a href="#381" id="381">381</a>
-<a href="#382" id="382">382</a>
-<a href="#383" id="383">383</a>
-<a href="#384" id="384">384</a>
-<a href="#385" id="385">385</a>
-<a href="#386" id="386">386</a>
-<a href="#387" id="387">387</a>
-<a href="#388" id="388">388</a>
-<a href="#389" id="389">389</a>
-<a href="#390" id="390">390</a>
-<a href="#391" id="391">391</a>
-<a href="#392" id="392">392</a>
-<a href="#393" id="393">393</a>
 </pre><pre class="rust"><code><span class="kw">use </span>std::{
     collections::HashMap,
-    net::{IpAddr, SocketAddr},
+    net::SocketAddr,
     thread::JoinHandle,
-    time::Duration,
+    time::{Duration, SystemTime, UNIX_EPOCH},
 };
 
 <span class="kw">use </span><span class="kw">crate</span>::messages::MessagesHandler;
 <span class="kw">use </span>crossbeam::channel::Sender;
-<span class="kw">use </span>massa_models::version::{Version, VersionDeserializer};
-<span class="kw">use </span>massa_protocol_exports::{PeerConnectionType, ProtocolConfig};
+<span class="kw">use </span>massa_protocol_exports::ProtocolConfig;
 <span class="kw">use </span>massa_serialization::{DeserializeError, Deserializer};
-<span class="kw">use </span>massa_time::MassaTime;
 <span class="kw">use </span>peernet::{
     config::PeerNetConfiguration,
     error::{PeerNetError, PeerNetResult},
@@ -427,9 +354,7 @@
 <span class="attr">#[derive(Clone)]
 </span><span class="kw">pub struct </span>TesterHandshake {
     peer_db: SharedPeerDB,
-    our_version: Version,
     announcement_deserializer: AnnouncementDeserializer,
-    version_deserializer: VersionDeserializer,
 }
 
 <span class="kw">impl </span>TesterHandshake {
@@ -441,8 +366,6 @@
                     max_listeners: config.max_size_listeners_per_peer,
                 },
             ),
-            our_version: config.version,
-            version_deserializer: VersionDeserializer::new(),
         }
     }
 }
@@ -470,32 +393,18 @@
         })<span class="question-mark">?</span>)<span class="question-mark">?</span>;
         <span class="kw">let </span>res = {
             {
-                <span class="comment">// check if peer is banned
+                <span class="comment">// check if peer is banned else set state to InHandshake
                 </span><span class="kw">let </span><span class="kw-2">mut </span>peer_db_write = <span class="self">self</span>.peer_db.write();
                 <span class="kw">if let </span><span class="prelude-val">Some</span>(info) = peer_db_write.peers.get_mut(<span class="kw-2">&amp;</span>peer_id) {
                     <span class="kw">if </span>info.state == <span class="kw">super</span>::PeerState::Banned {
                         <span class="kw">return </span><span class="prelude-val">Err</span>(PeerNetError::HandshakeError
                             .error(<span class="string">&quot;Tester Handshake&quot;</span>, <span class="prelude-val">Some</span>(String::from(<span class="string">&quot;Peer is banned&quot;</span>))));
+                    } <span class="kw">else </span>{
+                        info.state = <span class="kw">super</span>::PeerState::InHandshake;
                     }
                 }
             }
-
-            <span class="kw">let </span>(data, version) = <span class="self">self
-                </span>.version_deserializer
-                .deserialize::&lt;DeserializeError&gt;(<span class="kw-2">&amp;</span>data[<span class="number">32</span>..])
-                .map_err(|err| {
-                    PeerNetError::HandshakeError.error(
-                        <span class="string">&quot;Tester Handshake&quot;</span>,
-                        <span class="prelude-val">Some</span>(<span class="macro">format!</span>(<span class="string">&quot;Failed to deserialize version: {}&quot;</span>, err)),
-                    )
-                })<span class="question-mark">?</span>;
-            <span class="kw">if </span>!<span class="self">self</span>.our_version.is_compatible(<span class="kw-2">&amp;</span>version) {
-                <span class="kw">return </span><span class="prelude-val">Err</span>(PeerNetError::HandshakeError.error(
-                    <span class="string">&quot;Massa Handshake&quot;</span>,
-                    <span class="prelude-val">Some</span>(<span class="macro">format!</span>(<span class="string">&quot;Received version incompatible: {}&quot;</span>, version)),
-                ));
-            }
-            <span class="kw">let </span>id = data.first().ok_or(
+            <span class="kw">let </span>id = data.get(<span class="number">32</span>).ok_or(
                 PeerNetError::HandshakeError
                     .error(<span class="string">&quot;Massa Handshake&quot;</span>, <span class="prelude-val">Some</span>(<span class="string">&quot;Failed to get id&quot;</span>.to_string())),
             )<span class="question-mark">?</span>;
@@ -503,7 +412,7 @@
                 <span class="number">0 </span>=&gt; {
                     <span class="kw">let </span>(<span class="kw">_</span>, announcement) = <span class="self">self
                         </span>.announcement_deserializer
-                        .deserialize::&lt;DeserializeError&gt;(<span class="kw-2">&amp;</span>data[<span class="number">1</span>..])
+                        .deserialize::&lt;DeserializeError&gt;(<span class="kw-2">&amp;</span>data[<span class="number">33</span>..])
                         .map_err(|err| {
                             PeerNetError::HandshakeError.error(
                                 <span class="string">&quot;Tester Handshake&quot;</span>,
@@ -547,12 +456,12 @@
                     <span class="prelude-val">Ok</span>(peer_id.clone())
                 }
                 <span class="number">1 </span>=&gt; {
-                    <span class="kw">let </span>(received, id) = messages_handler.deserialize_id(<span class="kw-2">&amp;</span>data[<span class="number">1</span>..], <span class="kw-2">&amp;</span>peer_id)<span class="question-mark">?</span>;
+                    <span class="kw">let </span>(received, id) = messages_handler.deserialize_id(<span class="kw-2">&amp;</span>data[<span class="number">33</span>..], <span class="kw-2">&amp;</span>peer_id)<span class="question-mark">?</span>;
                     messages_handler.handle(id, received, <span class="kw-2">&amp;</span>peer_id)<span class="question-mark">?</span>;
                     <span class="prelude-val">Err</span>(PeerNetError::HandshakeError.error(
-                        <span class="string">&quot;Massa Handshake&quot;</span>,
-                        <span class="prelude-val">Some</span>(<span class="string">&quot;Tester Handshake failed received a message that our connection has been refused&quot;</span>.to_string()),
-                    ))
+                            <span class="string">&quot;Massa Handshake&quot;</span>,
+                            <span class="prelude-val">Some</span>(<span class="string">&quot;Tester Handshake failed received a message that our connection has been refused&quot;</span>.to_string()),
+                        ))
                     <span class="comment">//TODO: Add the peerdb but for now impossible as we don&#39;t have announcement and we need one to place in peerdb
                 </span>}
                 <span class="kw">_ </span>=&gt; <span class="prelude-val">Err</span>(PeerNetError::HandshakeError
@@ -593,8 +502,6 @@
         active_connections: Box&lt;<span class="kw">dyn </span>ActiveConnectionsTrait&gt;,
         peer_db: SharedPeerDB,
         messages_handler: MessagesHandler,
-        target_out_connections: HashMap&lt;String, (Vec&lt;IpAddr&gt;, usize)&gt;,
-        default_target_out_connections: usize,
     ) -&gt; (
         Sender&lt;(PeerId, HashMap&lt;SocketAddr, TransportType&gt;)&gt;,
         Vec&lt;Tester&gt;,
@@ -612,8 +519,6 @@
                 config.clone(),
                 test_receiver.clone(),
                 messages_handler.clone(),
-                target_out_connections.clone(),
-                default_target_out_connections,
             ));
         }
 
@@ -627,8 +532,6 @@
         protocol_config: ProtocolConfig,
         receiver: crossbeam::channel::Receiver&lt;(PeerId, HashMap&lt;SocketAddr, TransportType&gt;)&gt;,
         messages_handler: MessagesHandler,
-        target_out_connections: HashMap&lt;String, (Vec&lt;IpAddr&gt;, usize)&gt;,
-        default_target_out_connections: usize,
     ) -&gt; <span class="self">Self </span>{
         <span class="macro">tracing::log::debug!</span>(<span class="string">&quot;running new tester&quot;</span>);
 
@@ -637,104 +540,53 @@
         .spawn(<span class="kw">move </span>|| {
             <span class="kw">let </span>db = peer_db.clone();
             <span class="kw">let </span>active_connections = active_connections.clone();
-            <span class="kw">let </span>config = PeerNetConfiguration::default(
+            <span class="kw">let </span><span class="kw-2">mut </span>config = PeerNetConfiguration::default(
                 TesterHandshake::new(peer_db, protocol_config.clone()),
                 messages_handler,
             );
+            config.max_out_connections = <span class="number">1</span>;
 
             <span class="kw">let </span><span class="kw-2">mut </span>network_manager = PeerNetManager::new(config);
-            <span class="kw">let </span>protocol_config = protocol_config.clone();
             <span class="kw">loop </span>{
                 <span class="macro">crossbeam::select! </span>{
                     recv(receiver) -&gt; res =&gt; {
                         <span class="kw">match </span>res {
                             <span class="prelude-val">Ok</span>(listener) =&gt; {
-                                <span class="kw">if </span>listener.<span class="number">1</span>.is_empty() {
-                                    <span class="kw">continue</span>;
+                                <span class="kw">if let </span><span class="prelude-val">Some</span>(peer_info) = db.read().peers.get(<span class="kw-2">&amp;</span>listener.<span class="number">0</span>) {
+                                    <span class="kw">let </span>timestamp = SystemTime::now()
+                                    .duration_since(UNIX_EPOCH)
+                                    .expect(<span class="string">&quot;Time went backward&quot;</span>)
+                                    .as_millis();
+                                    <span class="kw">let </span>elapsed_secs = (timestamp.saturating_sub(peer_info.last_announce.timestamp)) / <span class="number">1000</span>;
+                                    <span class="kw">if </span>elapsed_secs &lt; <span class="number">60 </span>{
+                                        <span class="kw">continue</span>;
+                                    }
                                 }
-                                <span class="comment">//Test 
-                                </span><span class="kw">let </span>peers_connected = active_connections.get_peers_connected();
-                                <span class="kw">let </span>slots_out_connections: HashMap&lt;String, (Vec&lt;IpAddr&gt;, usize)&gt; = target_out_connections
-                                    .iter()
-                                    .map(|(key, value)| {
-                                        <span class="kw">let </span><span class="kw-2">mut </span>value = value.clone();
-                                        value.<span class="number">1 </span>= value.<span class="number">1</span>.saturating_sub(peers_connected.iter().filter(|(<span class="kw">_</span>, (<span class="kw">_</span>, ty, category))| {
-                                            <span class="kw">if </span>ty == <span class="kw-2">&amp;</span>PeerConnectionType::IN {
-                                                <span class="kw">return </span><span class="bool-val">false</span>;
-                                            }
-                                            <span class="kw">if let </span><span class="prelude-val">Some</span>(category) = category {
-                                                category == key
-                                            } <span class="kw">else </span>{
-                                                <span class="bool-val">false
-                                            </span>}
-                                        }).count());
-                                        (key.clone(), value)
-                                    })
-                                    .collect();
-                                <span class="kw">let </span>slot_default_category = default_target_out_connections.saturating_sub(peers_connected.iter().filter(|(<span class="kw">_</span>, (<span class="kw">_</span>, ty, category))| {
-                                    <span class="kw">if </span>ty == <span class="kw-2">&amp;</span>PeerConnectionType::IN {
-                                        <span class="kw">return </span><span class="bool-val">false</span>;
-                                    }
-                                    <span class="kw">if </span>category.is_some() {
-                                        <span class="kw">return </span><span class="bool-val">false</span>;
-                                    }
-                                    <span class="bool-val">true
-                                </span>}).count());
-                                {
-                                    <span class="kw">let </span>now = MassaTime::now().unwrap();
-                                    <span class="kw">let </span><span class="kw-2">mut </span>db = db.write();
-                                    <span class="comment">// receive new listener to test
-                                    </span><span class="kw">for </span>(addr, <span class="kw">_</span>) <span class="kw">in </span>listener.<span class="number">1</span>.iter() {
-                                        <span class="comment">//Find category of that address
-                                        </span><span class="kw">let </span>ip_canonical = addr.ip().to_canonical();
-                                        <span class="kw">let </span>cooldown = <span class="lifetime">&#39;cooldown</span>: {
-                                            <span class="kw">for </span>category <span class="kw">in </span><span class="kw-2">&amp;</span>slots_out_connections {
-                                                <span class="kw">if </span>category.<span class="number">1.0</span>.contains(<span class="kw-2">&amp;</span>ip_canonical) {
-                                                    <span class="kw">if </span>category.<span class="number">1.1 </span>== <span class="number">0 </span>{
-                                                        <span class="kw">break </span><span class="lifetime">&#39;cooldown </span>Duration::from_secs(<span class="number">60 </span>* <span class="number">60 </span>* <span class="number">2</span>);
-                                                    } <span class="kw">else </span>{
-                                                        <span class="kw">break </span><span class="lifetime">&#39;cooldown </span>Duration::from_secs(<span class="number">30</span>);
-                                                    }
-                                                }
-                                            }
-                                            <span class="kw">if </span>slot_default_category == <span class="number">0 </span>{
-                                                Duration::from_secs(<span class="number">60 </span>* <span class="number">60 </span>* <span class="number">2</span>)
-                                            } <span class="kw">else </span>{
-                                                Duration::from_secs(<span class="number">30</span>)
-                                            }
-                                        };
-                                        <span class="comment">//TODO: Change it to manage multiple listeners SAFETY: Check above
-                                        </span><span class="kw">if let </span><span class="prelude-val">Some</span>(last_tested_time) = db.tested_addresses.get(addr) {
-                                            <span class="kw">let </span>last_tested_time = last_tested_time.estimate_instant().expect(<span class="string">&quot;Time went backward&quot;</span>);
-                                            <span class="kw">if </span>last_tested_time.elapsed() &lt; cooldown {
-                                                <span class="kw">continue</span>;
+                                <span class="comment">// receive new listener to test
+                                </span>listener.<span class="number">1</span>.iter().for_each(|(addr, _transport)| {
+                                    <span class="comment">// Don&#39;t launch test if peer is already connected to us as a normal connection.
+                                    // Maybe we need to have a way to still update his last announce timestamp because he is a great peer
+                                    </span><span class="kw">if </span>active_connections.check_addr_accepted(addr)  {
+                                        <span class="comment">//Don&#39;t test our local addresses
+                                        </span><span class="kw">for </span>(local_addr, _transport) <span class="kw">in </span>protocol_config.listeners.iter() {
+                                            <span class="kw">if </span>addr == local_addr {
+                                                <span class="kw">return</span>;
                                             }
                                         }
-                                        db.tested_addresses.insert(<span class="kw-2">*</span>addr, now);
-                                        <span class="comment">// TODO:  Don&#39;t launch test if peer is already connected to us as a normal connection.
-                                        // Maybe we need to have a way to still update his last announce timestamp because he is a great peer
-                                        </span><span class="kw">if </span>ip_canonical.is_global() &amp;&amp; !active_connections.get_peers_connected().iter().any(|(<span class="kw">_</span>, (addr, <span class="kw">_</span>, <span class="kw">_</span>))| addr.ip().to_canonical() == ip_canonical) {
-                                            <span class="comment">//Don&#39;t test our local addresses
-                                            </span><span class="kw">for </span>(local_addr, _transport) <span class="kw">in </span>protocol_config.listeners.iter() {
-                                                <span class="kw">if </span>addr == local_addr {
-                                                    <span class="kw">continue</span>;
-                                                }
+                                        <span class="comment">//Don&#39;t test our proper ip
+                                        </span><span class="kw">if let </span><span class="prelude-val">Some</span>(ip) = protocol_config.routable_ip {
+                                            <span class="kw">if </span>ip.to_canonical() == addr.ip().to_canonical() {
+                                                <span class="kw">return</span>;
                                             }
-                                            <span class="comment">//Don&#39;t test our proper ip
-                                            </span><span class="kw">if let </span><span class="prelude-val">Some</span>(ip) = protocol_config.routable_ip {
-                                                <span class="kw">if </span>ip.to_canonical() == ip_canonical {
-                                                    <span class="kw">continue</span>;
-                                                }
-                                            }
-                                            <span class="macro">info!</span>(<span class="string">&quot;testing peer {} listener addr: {}&quot;</span>, <span class="kw-2">&amp;</span>listener.<span class="number">0</span>, <span class="kw-2">&amp;</span>addr);
-                                            <span class="kw">let </span>_res =  network_manager.try_connect(
-                                                <span class="kw-2">*</span>addr,
-                                                protocol_config.timeout_connection.to_duration(),
-                                                <span class="kw-2">&amp;</span>OutConnectionConfig::Tcp(Box::new(TcpOutConnectionConfig::new(protocol_config.read_write_limit_bytes_per_second / <span class="number">10</span>, Duration::from_millis(<span class="number">100</span>)))),
-                                            );
                                         }
-                                    };
-                                }
+                                        <span class="macro">info!</span>(<span class="string">&quot;testing peer {} listener addr: {}&quot;</span>, <span class="kw-2">&amp;</span>listener.<span class="number">0</span>, <span class="kw-2">&amp;</span>addr);
+                                        <span class="kw">let </span>_res =  network_manager.try_connect(
+                                            <span class="kw-2">*</span>addr,
+                                            Duration::from_millis(<span class="number">1000</span>),
+                                            <span class="kw-2">&amp;</span>OutConnectionConfig::Tcp(Box::new(TcpOutConnectionConfig::new(protocol_config.read_write_limit_bytes_per_second / <span class="number">10</span>, Duration::from_millis(<span class="number">100</span>)))),
+                                        );
+                                    }
+                                });
                             },
                             <span class="prelude-val">Err</span>(_e) =&gt; <span class="kw">break</span>,
                         }
@@ -742,38 +594,44 @@
                     default(Duration::from_secs(<span class="number">2</span>)) =&gt; {
                         <span class="comment">// If no message in 2 seconds they will test a peer that hasn&#39;t been tested for long time
 
-                        </span><span class="kw">let </span><span class="prelude-val">Some</span>(listener) = db.read().get_oldest_peer(Duration::from_secs(<span class="number">60 </span>* <span class="number">60 </span>* <span class="number">2</span>)) <span class="kw">else </span>{
+                        // we find the last peer that has been tested
+                        </span><span class="kw">let </span><span class="prelude-val">Some</span>((peer_id, peer_info)) = db.read().get_oldest_peer() <span class="kw">else </span>{
                             <span class="kw">continue</span>;
                         };
 
-                        {
-                            <span class="kw">let </span><span class="kw-2">mut </span>db = db.write();
-                            db.tested_addresses.insert(listener, MassaTime::now().unwrap());
+                        <span class="kw">let </span>timestamp = SystemTime::now()
+                        .duration_since(UNIX_EPOCH)
+                        .expect(<span class="string">&quot;Time went backward&quot;</span>)
+                        .as_millis();
+                        <span class="kw">let </span>elapsed_secs = (timestamp.saturating_sub(peer_info.last_announce.timestamp)) / <span class="number">1000</span>;
+                        <span class="kw">if </span>elapsed_secs &lt; <span class="number">60 </span>{
+                            <span class="kw">continue</span>;
                         }
 
                         <span class="comment">// we try to connect to all peer listener (For now we have only one listener)
-                        </span><span class="kw">let </span>ip_canonical = listener.ip().to_canonical();
-                        <span class="kw">if </span>!ip_canonical.is_global() || active_connections.get_peers_connected().iter().any(|(<span class="kw">_</span>, (addr, <span class="kw">_</span>, <span class="kw">_</span>))| addr.ip().to_canonical() == ip_canonical) {
-                            <span class="kw">continue</span>;
-                        }
-                        <span class="comment">//Don&#39;t test our local addresses
-                        </span><span class="kw">for </span>(local_addr, _transport) <span class="kw">in </span>protocol_config.listeners.iter() {
-                            <span class="kw">if </span>listener == <span class="kw-2">*</span>local_addr {
-                                <span class="kw">continue</span>;
+                        </span>peer_info.last_announce.listeners.iter().for_each(|listener| {
+                            <span class="kw">if </span>!listener.<span class="number">0</span>.ip().to_canonical().is_global() || !active_connections.check_addr_accepted(listener.<span class="number">0</span>) {
+                                <span class="kw">return</span>;
                             }
-                        }
-                        <span class="comment">//Don&#39;t test our proper ip
-                        </span><span class="kw">if let </span><span class="prelude-val">Some</span>(ip) = protocol_config.routable_ip {
-                            <span class="kw">if </span>ip.to_canonical() == ip_canonical {
-                                <span class="kw">continue</span>;
+                            <span class="comment">//Don&#39;t test our local addresses
+                            </span><span class="kw">for </span>(local_addr, _transport) <span class="kw">in </span>protocol_config.listeners.iter() {
+                                <span class="kw">if </span>listener.<span class="number">0 </span>== local_addr {
+                                    <span class="kw">return</span>;
+                                }
                             }
-                        }
-                        <span class="macro">info!</span>(<span class="string">&quot;testing listener addr: {}&quot;</span>, <span class="kw-2">&amp;</span>listener);
-                        <span class="kw">let </span>_res =  network_manager.try_connect(
-                            listener,
-                            protocol_config.timeout_connection.to_duration(),
-                            <span class="kw-2">&amp;</span>OutConnectionConfig::Tcp(Box::new(TcpOutConnectionConfig::new(protocol_config.read_write_limit_bytes_per_second / <span class="number">10</span>, Duration::from_millis(<span class="number">100</span>)))),
-                        );
+                            <span class="comment">//Don&#39;t test our proper ip
+                            </span><span class="kw">if let </span><span class="prelude-val">Some</span>(ip) = protocol_config.routable_ip {
+                                <span class="kw">if </span>ip.to_canonical() == listener.<span class="number">0</span>.ip().to_canonical() {
+                                    <span class="kw">return</span>;
+                                }
+                            }
+                            <span class="macro">info!</span>(<span class="string">&quot;testing peer {} listener addr: {}&quot;</span>, peer_id, <span class="kw-2">&amp;</span>listener.<span class="number">0</span>);
+                            <span class="kw">let </span>_res =  network_manager.try_connect(
+                                <span class="kw-2">*</span>listener.<span class="number">0</span>,
+                                Duration::from_millis(<span class="number">1000</span>),
+                                <span class="kw-2">&amp;</span>OutConnectionConfig::Tcp(Box::new(TcpOutConnectionConfig::new(protocol_config.read_write_limit_bytes_per_second / <span class="number">10</span>, Duration::from_millis(<span class="number">100</span>)))),
+                            );
+                        });
                     }
                 }
             }
