@@ -339,7 +339,6 @@ async fn launch(
     let mut mip_store =
         MipStore::try_from(([], mip_stats_config)).expect("Cannot create an empty MIP store");
     if let Some(bootstrap_mip_store) = bootstrap_state.mip_store {
-
         let (updated, added) = mip_store
             .update_with(&bootstrap_mip_store)
             .expect("Cannot update MIP store with bootstrap mip store");

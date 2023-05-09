@@ -914,8 +914,8 @@ impl Deserializer<MipStoreRaw> for MipStoreRawDeserializer {
 
 #[cfg(test)]
 mod test {
-    use std::assert_matches::assert_matches;
     use super::*;
+    use std::assert_matches::assert_matches;
 
     use std::collections::HashMap;
     use std::mem::{size_of, size_of_val};
@@ -931,7 +931,6 @@ mod test {
 
     #[test]
     fn test_mip_component_non_exhaustive() {
-
         let last_variant__ = std::mem::variant_count::<MipComponent>() - 2; // -1 for Nonexhaustive, -1 for index start at 0
         let last_variant_ = u32::try_from(last_variant__).unwrap();
         let last_variant = MipComponent::from(last_variant_);
