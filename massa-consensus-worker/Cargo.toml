@@ -23,3 +23,7 @@ massa_logging = { path = "../massa-logging" }
 [features]
 
 sandbox = []
+
+
+[package.metadata.cargo-machete]
+ignored = ["serde_json"]
