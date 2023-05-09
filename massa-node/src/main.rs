@@ -581,7 +581,6 @@ async fn launch(
         shared_storage.clone(),
     );
 
-    // MERGE TODO
     let (protocol_manager, keypair, node_id) = start_protocol_controller(
         protocol_config.clone(),
         consensus_controller.clone(),
@@ -589,6 +588,7 @@ async fn launch(
         pool_controller.clone(),
         shared_storage.clone(),
         protocol_channels,
+        mip_store.clone(),
     )
     .expect("could not start protocol controller");
 

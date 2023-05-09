@@ -20,6 +20,7 @@ massa_time = { path = "../massa-time" }
 massa_storage = { path = "../massa-storage" }
 massa_serialization = { path = "../massa-serialization" }
 massa_signature = { path = "../massa-signature"}
+massa_versioning = { path = "../massa-versioning" }
 massa_hash = { path = "../massa-hash", optional = true }
 
 [dev-dependencies]

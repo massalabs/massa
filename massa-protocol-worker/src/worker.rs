@@ -8,6 +8,9 @@ use massa_protocol_exports::{
 use massa_serialization::U64VarIntDeserializer;
 use massa_signature::KeyPair;
 use massa_storage::Storage;
+use massa_versioning::{
+    keypair_factory::KeyPairFactory, versioning::MipStore, versioning_factory::VersioningFactory,
+};
 use parking_lot::RwLock;
 use peernet::{
     config::PeerNetConfiguration, network_manager::PeerNetManager, types::KeyPair as PeerNetKeyPair,
@@ -144,6 +147,7 @@ pub fn start_protocol_controller(
     pool_controller: Box<dyn PoolController>,
     storage: Storage,
     protocol_channels: ProtocolChannels,
+    mip_store: MipStore,
 ) -> Result<(Box<dyn ProtocolManager>, KeyPair, NodeId), ProtocolError> {
     debug!("starting protocol controller");
     let peer_db = Arc::new(RwLock::new(PeerDB::default()));
@@ -180,7 +184,10 @@ pub fn start_protocol_controller(
     } else {
         // node file does not exist: generate the key and save it
         // MERGE TODO
-        let keypair = KeyPair::generate(0).unwrap();
+        let keypair_factory = KeyPairFactory {
+            mip_store: mip_store.clone(),
+        };
+        let keypair = keypair_factory.create(&(), None)?;
         if let Err(e) = std::fs::write(&config.keypair_file, serde_json::to_string(&keypair)?) {
             warn!("could not generate node key file: {}", e);
         }
@@ -189,7 +196,7 @@ pub fn start_protocol_controller(
 
     let peernet_keypair = PeerNetKeyPair::from_str(&keypair.to_string()).unwrap();
     peernet_config.self_keypair = peernet_keypair.clone();
-    //TODO: Add the rest of the config
+    // TODO: Add the rest of the config
     peernet_config.max_in_connections = config.max_in_connections;
     peernet_config.max_out_connections = config.max_out_connections;
 
@@ -212,6 +219,7 @@ pub fn start_protocol_controller(
         storage,
         protocol_channels,
         message_handlers,
+        mip_store,
     )?;
 
     let manager = ProtocolManagerImpl::new(connectivity_thread_handle);

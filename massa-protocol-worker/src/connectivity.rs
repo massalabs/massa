@@ -7,6 +7,7 @@ use massa_models::stats::NetworkStats;
 use massa_pool_exports::PoolController;
 use massa_protocol_exports::{BootstrapPeers, ProtocolConfig, ProtocolError};
 use massa_storage::Storage;
+use massa_versioning::versioning::MipStore;
 use parking_lot::RwLock;
 use peernet::{
     peer::PeerConnectionType,
@@ -58,6 +59,7 @@ pub(crate) fn start_connectivity_thread(
     storage: Storage,
     protocol_channels: ProtocolChannels,
     messages_handler: MessagesHandler,
+    mip_store: MipStore,
 ) -> Result<(Sender<ConnectivityCommand>, JoinHandle<()>), ProtocolError> {
     let initial_peers = if let Some(bootstrap_peers) = bootstrap_peers {
         bootstrap_peers.0.into_iter().collect()
@@ -156,6 +158,7 @@ pub(crate) fn start_connectivity_thread(
                 operation_cache,
                 block_cache,
                 storage.clone_without_refs(),
+                mip_store,
             );
 
             //Try to connect to peers

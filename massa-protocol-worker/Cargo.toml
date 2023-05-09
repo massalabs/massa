@@ -28,6 +28,7 @@ massa_storage = { path = "../massa-storage" }
 massa_serialization = { path = "../massa-serialization" }
 massa_signature = { path = "../massa-signature" }
 massa_time = { path = "../massa-time" }
+massa_versioning = { path = "../massa-versioning" }
 
 [dev-dependencies]
 tempfile = "3.3"
