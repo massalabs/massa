@@ -2340,7 +2340,6 @@ dependencies = [
  "paw",
  "peernet",
  "serde",
- "serde_json",
  "structopt",
  "tokio",
  "tracing",
@@ -2539,7 +2538,6 @@ dependencies = [
  "massa_time",
  "num",
  "parking_lot",
- "serde_json",
  "tracing",
 ]
 

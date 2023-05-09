@@ -12,7 +12,6 @@ anyhow = "1.0"
 lazy_static = "1.4"
 parking_lot = { version = "0.12", features = ["deadlock_detection"] }
 serde = { version = "1.0", features = ["derive"] }
-serde_json = "1.0"
 tokio = { version = "1.23", features = ["full"] }
 tracing = { version = "0.1", features = [
     "max_level_debug",
@@ -65,6 +64,3 @@ sandbox = [
     "massa_models/sandbox",
 ]
 create_snapshot = ["massa_final_state/create_snapshot"]
-
-[package.metadata.cargo-machete]
-ignored = ["serde_json"]
