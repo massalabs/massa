@@ -285,6 +285,14 @@
 <a href="#285" id="285">285</a>
 <a href="#286" id="286">286</a>
 <a href="#287" id="287">287</a>
+<a href="#288" id="288">288</a>
+<a href="#289" id="289">289</a>
+<a href="#290" id="290">290</a>
+<a href="#291" id="291">291</a>
+<a href="#292" id="292">292</a>
+<a href="#293" id="293">293</a>
+<a href="#294" id="294">294</a>
+<a href="#295" id="295">295</a>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="doccomment">//! Build here the default node settings from the configuration file toml
@@ -525,6 +533,8 @@
     </span><span class="kw">pub </span>enable_health: bool,
     <span class="doccomment">/// whether to enable gRPC reflection
     </span><span class="kw">pub </span>enable_reflection: bool,
+    <span class="doccomment">/// whether to enable mTLS
+    </span><span class="kw">pub </span>enable_mtls: bool,
     <span class="doccomment">/// bind for the Massa gRPC API
     </span><span class="kw">pub </span>bind: SocketAddr,
     <span class="doccomment">/// which compression encodings does the server accept for requests
@@ -565,6 +575,12 @@
     </span><span class="kw">pub </span>max_block_ids_per_request: u32,
     <span class="doccomment">/// max number of operation ids that can be included in a single request
     </span><span class="kw">pub </span>max_operation_ids_per_request: u32,
+    <span class="doccomment">/// server certificate path
+    </span><span class="kw">pub </span>server_certificate_path: PathBuf,
+    <span class="doccomment">/// server private key path
+    </span><span class="kw">pub </span>server_private_key_path: PathBuf,
+    <span class="doccomment">/// client certificate authority root path
+    </span><span class="kw">pub </span>client_certificate_authority_root_path: PathBuf,
 }
 
 <span class="attr">#[cfg(test)]

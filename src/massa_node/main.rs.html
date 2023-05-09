@@ -1217,7 +1217,7 @@
 <span class="kw">use </span>massa_protocol_worker::{create_protocol_controller, start_protocol_controller};
 <span class="kw">use </span>massa_storage::Storage;
 <span class="kw">use </span>massa_time::MassaTime;
-<span class="kw">use </span>massa_versioning::versioning::{MipStatsConfig, MipStore};
+<span class="kw">use </span>massa_versioning_worker::versioning::{MipStatsConfig, MipStore};
 <span class="kw">use </span>massa_wallet::Wallet;
 <span class="kw">use </span>parking_lot::RwLock;
 <span class="kw">use </span>peernet::transports::TransportType;
@@ -1731,7 +1731,6 @@
         pool_controller.clone(),
         shared_storage.clone(),
         protocol_channels,
-        mip_store.clone(),
     )
     .expect(<span class="string">&quot;could not start protocol controller&quot;</span>);
 
@@ -1755,12 +1754,7 @@
         protocol: protocol_controller.clone(),
         storage: shared_storage.clone(),
     };
-    <span class="kw">let </span>factory_manager = start_factory(
-        factory_config,
-        node_wallet.clone(),
-        factory_channels,
-        mip_store.clone(),
-    );
+    <span class="kw">let </span>factory_manager = start_factory(factory_config, node_wallet.clone(), factory_channels);
 
     <span class="kw">let </span>bootstrap_manager = bootstrap_config.listen_addr.map(|addr| {
         <span class="kw">let </span>(waker, listener) = BootstrapTcpListener::new(<span class="kw-2">&amp;</span>addr).unwrap_or_else(|<span class="kw">_</span>| {
@@ -1847,6 +1841,7 @@
             enable_cors: SETTINGS.grpc.enable_cors,
             enable_health: SETTINGS.grpc.enable_health,
             enable_reflection: SETTINGS.grpc.enable_reflection,
+            enable_mtls: SETTINGS.grpc.enable_mtls,
             bind: SETTINGS.grpc.bind,
             accept_compressed: SETTINGS.grpc.accept_compressed.clone(),
             send_compressed: SETTINGS.grpc.send_compressed.clone(),
@@ -1889,6 +1884,12 @@
             max_denunciations_per_block_header: MAX_DENUNCIATIONS_PER_BLOCK_HEADER,
             max_block_ids_per_request: SETTINGS.grpc.max_block_ids_per_request,
             max_operation_ids_per_request: SETTINGS.grpc.max_operation_ids_per_request,
+            server_certificate_path: SETTINGS.grpc.server_certificate_path.clone(),
+            server_private_key_path: SETTINGS.grpc.server_private_key_path.clone(),
+            client_certificate_authority_root_path: SETTINGS
+                .grpc
+                .client_certificate_authority_root_path
+                .clone(),
         };
 
         <span class="kw">let </span>grpc_api = MassaGrpc {
@@ -1955,7 +1956,6 @@
         <span class="kw-2">*</span>VERSION,
         node_id,
         shared_storage.clone(),
-        mip_store.clone(),
     );
     <span class="kw">let </span>api_public_handle = api_public
         .serve(<span class="kw-2">&amp;</span>SETTINGS.api.bind_public, <span class="kw-2">&amp;</span>api_config)

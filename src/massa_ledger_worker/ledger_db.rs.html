@@ -1789,7 +1789,7 @@
     <span class="doccomment">/// Functional test of `LedgerDB`
     </span><span class="attr">#[test]
     </span><span class="kw">fn </span>test_ledger_db() {
-        <span class="kw">let </span>addr = Address::from_public_key(<span class="kw-2">&amp;</span>KeyPair::generate(<span class="number">0</span>).unwrap().get_public_key());
+        <span class="kw">let </span>addr = Address::from_public_key(<span class="kw-2">&amp;</span>KeyPair::generate().get_public_key());
         <span class="kw">let </span>(db, data) = init_test_ledger(addr);
 
         <span class="kw">let </span>ledger_hash = db.get_ledger_hash();
@@ -1829,7 +1829,7 @@
 
     <span class="attr">#[test]
     </span><span class="kw">fn </span>test_ledger_parts() {
-        <span class="kw">let </span>pub_a = KeyPair::generate(<span class="number">0</span>).unwrap().get_public_key();
+        <span class="kw">let </span>pub_a = KeyPair::generate().get_public_key();
         <span class="kw">let </span>a = Address::from_public_key(<span class="kw-2">&amp;</span>pub_a);
         <span class="kw">let </span>(db, <span class="kw">_</span>) = init_test_ledger(a);
         <span class="kw">let </span>res = db.get_ledger_part(StreamingStep::Started).unwrap();
