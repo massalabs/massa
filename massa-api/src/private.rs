@@ -21,9 +21,8 @@ use massa_execution_exports::ExecutionController;
 use massa_hash::Hash;
 use massa_models::{
     address::Address, block::Block, block_id::BlockId, clique::Clique, composite::PubkeySig,
-    config::PUBLIC_KEY_DESER_SIZE, endorsement::EndorsementId, execution::EventFilter,
-    node::NodeId, operation::OperationId, output_event::SCOutputEvent, prehash::PreHashSet,
-    slot::Slot,
+    endorsement::EndorsementId, execution::EventFilter, node::NodeId, operation::OperationId,
+    output_event::SCOutputEvent, prehash::PreHashSet, slot::Slot,
 };
 use massa_protocol_exports::{PeerId, ProtocolController};
 use massa_signature::KeyPair;
@@ -161,12 +160,8 @@ impl MassaRpcServer for API<Private> {
         let peer_ids = ids
             .into_iter()
             .map(|id| {
-                PeerId::from_bytes(
-                    id.get_public_key().to_bytes()[..PUBLIC_KEY_DESER_SIZE]
-                        .try_into()
-                        .unwrap(),
-                )
-                .unwrap()
+                // IMPORTANT TODO: this will fail before a peernet update
+                PeerId::from_bytes(&id.get_public_key().to_bytes().try_into().unwrap()).unwrap()
             })
             .collect();
         protocol_controller
@@ -180,12 +175,8 @@ impl MassaRpcServer for API<Private> {
         let peer_ids = ids
             .into_iter()
             .map(|id| {
-                PeerId::from_bytes(
-                    id.get_public_key().to_bytes()[..PUBLIC_KEY_DESER_SIZE]
-                        .try_into()
-                        .unwrap(),
-                )
-                .unwrap()
+                // IMPORTANT TODO: this will fail before a peernet update
+                PeerId::from_bytes(&id.get_public_key().to_bytes().try_into().unwrap()).unwrap()
             })
             .collect();
         protocol_controller

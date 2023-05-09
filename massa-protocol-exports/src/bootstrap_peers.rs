@@ -1,4 +1,3 @@
-use massa_models::config::PUBLIC_KEY_DESER_SIZE;
 use massa_models::serialization::{IpAddrDeserializer, IpAddrSerializer};
 use massa_serialization::{
     Deserializer, SerializeError, Serializer, U16VarIntDeserializer, U16VarIntSerializer,
@@ -162,7 +161,8 @@ impl Deserializer<BootstrapPeers> for BootstrapPeersDeserializer {
                         Ok((
                             rest,
                             PeerId::from_bytes(
-                                peer_id[..PUBLIC_KEY_DESER_SIZE].try_into().map_err(|_| {
+                                // IMPORTANT TODO: this will fail before a peernet update
+                                peer_id.try_into().map_err(|_| {
                                     nom::Err::Error(ParseError::from_error_kind(
                                         input,
                                         nom::error::ErrorKind::Count,

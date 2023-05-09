@@ -31,7 +31,6 @@ use massa_models::{
     clique::Clique,
     composite::PubkeySig,
     config::CompactConfig,
-    config::PUBLIC_KEY_DESER_SIZE,
     datastore::DatastoreDeserializer,
     endorsement::EndorsementId,
     endorsement::SecureShareEndorsement,
@@ -382,12 +381,7 @@ impl MassaRpcServer for API<Public> {
                 };
                 //TODO: Use the peerid correctly
                 (
-                    NodeId::new(
-                        PublicKey::from_bytes(
-                            id.to_bytes()[..PUBLIC_KEY_DESER_SIZE].try_into().unwrap(),
-                        )
-                        .unwrap(),
-                    ),
+                    NodeId::new(PublicKey::from_bytes(&id.to_bytes()).unwrap()),
                     (peer.0.ip(), is_outgoing),
                 )
             })
