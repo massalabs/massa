@@ -271,14 +271,6 @@
 <a href="#271" id="271">271</a>
 <a href="#272" id="272">272</a>
 <a href="#273" id="273">273</a>
-<a href="#274" id="274">274</a>
-<a href="#275" id="275">275</a>
-<a href="#276" id="276">276</a>
-<a href="#277" id="277">277</a>
-<a href="#278" id="278">278</a>
-<a href="#279" id="279">279</a>
-<a href="#280" id="280">280</a>
-<a href="#281" id="281">281</a>
 </pre><pre class="rust"><code><span class="doccomment">//! Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="kw">use </span>massa_factory_exports::{FactoryChannels, FactoryConfig};
@@ -294,7 +286,6 @@
     timeslots::{get_block_slot_timestamp, get_closest_slot_to_timestamp},
 };
 <span class="kw">use </span>massa_time::MassaTime;
-<span class="kw">use </span>massa_versioning::versioning::MipStore;
 <span class="kw">use </span>massa_wallet::Wallet;
 <span class="kw">use </span>parking_lot::RwLock;
 <span class="kw">use </span>std::{
@@ -310,7 +301,6 @@
     wallet: Arc&lt;RwLock&lt;Wallet&gt;&gt;,
     channels: FactoryChannels,
     factory_receiver: mpsc::Receiver&lt;()&gt;,
-    mip_store: MipStore,
 }
 
 <span class="kw">impl </span>BlockFactoryWorker {
@@ -321,7 +311,6 @@
         wallet: Arc&lt;RwLock&lt;Wallet&gt;&gt;,
         channels: FactoryChannels,
         factory_receiver: mpsc::Receiver&lt;()&gt;,
-        mip_store: MipStore,
     ) -&gt; thread::JoinHandle&lt;()&gt; {
         thread::Builder::new()
             .name(<span class="string">&quot;block-factory&quot;</span>.into())
@@ -331,7 +320,6 @@
                     wallet,
                     channels,
                     factory_receiver,
-                    mip_store,
                 };
                 this.run();
             })
@@ -495,12 +483,8 @@
         );
 
         <span class="comment">// create header
-        </span><span class="kw">let </span>current_version = <span class="self">self</span>.mip_store.get_network_version_current();
-        <span class="kw">let </span>announced_version = <span class="self">self</span>.mip_store.get_network_version_to_announce();
-        <span class="kw">let </span>header: SecuredHeader = BlockHeader::new_verifiable::&lt;BlockHeaderSerializer, BlockId&gt;(
+        </span><span class="kw">let </span>header: SecuredHeader = BlockHeader::new_verifiable::&lt;BlockHeaderSerializer, BlockId&gt;(
             BlockHeader {
-                current_version,
-                announced_version,
                 slot,
                 parents: parents.into_iter().map(|(id, _period)| id).collect(),
                 operation_merkle_root: global_operations_hash,

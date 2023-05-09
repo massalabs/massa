@@ -27,7 +27,7 @@
 <span class="kw">use </span>massa_serialization::{Deserializer, Serializer, DeserializeError};
 <span class="kw">use </span>std::str::FromStr;
 
-<span class="kw">let </span>keypair = KeyPair::generate(<span class="number">0</span>).unwrap();
+<span class="kw">let </span>keypair = KeyPair::generate();
 <span class="kw">let </span>op = OperationType::ExecuteSC {
    data: <span class="macro">vec!</span>[<span class="number">0x01</span>, <span class="number">0x02</span>, <span class="number">0x03</span>],
    max_gas: <span class="number">100</span>,
