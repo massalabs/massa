@@ -1832,7 +1832,7 @@
     /// use massa_serialization::Serializer;
     /// use std::str::FromStr;
     ///
-    /// let keypair = KeyPair::generate();
+    /// let keypair = KeyPair::generate(0).unwrap();
     /// let op = OperationType::Transaction {
     ///    recipient_address: Address::from_public_key(&amp;keypair.get_public_key()),
     ///    amount: Amount::from_str(&quot;300&quot;).unwrap(),
@@ -1897,7 +1897,7 @@
     /// use massa_serialization::{Serializer, Deserializer, DeserializeError};
     /// use std::str::FromStr;
     ///
-    /// let keypair = KeyPair::generate();
+    /// let keypair = KeyPair::generate(0).unwrap();
     /// let op = OperationType::Transaction {
     ///    recipient_address: Address::from_public_key(&amp;keypair.get_public_key()),
     ///    amount: Amount::from_str(&quot;300&quot;).unwrap(),
@@ -2089,7 +2089,7 @@
     /// use massa_serialization::{Deserializer, Serializer, DeserializeError};
     /// use std::str::FromStr;
     ///
-    /// let keypair = KeyPair::generate();
+    /// let keypair = KeyPair::generate(0).unwrap();
     /// let op = OperationType::ExecuteSC {
     ///    data: vec![0x01, 0x02, 0x03],
     ///    max_gas: 100,
@@ -2217,7 +2217,7 @@
     /// use massa_serialization::{Deserializer, Serializer, DeserializeError};
     /// use std::str::FromStr;
     ///
-    /// let keypair = KeyPair::generate();
+    /// let keypair = KeyPair::generate(0).unwrap();
     /// let op = OperationType::ExecuteSC {
     ///    data: vec![0x01, 0x02, 0x03],
     ///    max_gas: 100,
@@ -2708,7 +2708,7 @@
     /// use massa_serialization::Serializer;
     /// use std::str::FromStr;
     ///
-    /// let keypair = KeyPair::generate();
+    /// let keypair = KeyPair::generate(0).unwrap();
     /// let op = OperationType::Transaction {
     ///    recipient_address: Address::from_public_key(&amp;keypair.get_public_key()),
     ///    amount: Amount::from_str(&quot;300&quot;).unwrap(),
@@ -2781,7 +2781,7 @@
     /// use massa_serialization::{Serializer, Deserializer, DeserializeError};
     /// use std::str::FromStr;
     ///
-    /// let keypair = KeyPair::generate();
+    /// let keypair = KeyPair::generate(0).unwrap();
     /// let op = OperationType::Transaction {
     ///    recipient_address: Address::from_public_key(&amp;keypair.get_public_key()),
     ///    amount: Amount::from_str(&quot;300&quot;).unwrap(),
@@ -2839,8 +2839,8 @@
     <span class="attr">#[test]
     #[serial]
     </span><span class="kw">fn </span>test_transaction() {
-        <span class="kw">let </span>sender_keypair = KeyPair::generate();
-        <span class="kw">let </span>recv_keypair = KeyPair::generate();
+        <span class="kw">let </span>sender_keypair = KeyPair::generate(<span class="number">0</span>).unwrap();
+        <span class="kw">let </span>recv_keypair = KeyPair::generate(<span class="number">0</span>).unwrap();
 
         <span class="kw">let </span>op = OperationType::Transaction {
             recipient_address: Address::from_public_key(<span class="kw-2">&amp;</span>recv_keypair.get_public_key()),
@@ -2912,7 +2912,7 @@
     <span class="attr">#[test]
     #[serial]
     </span><span class="kw">fn </span>test_executesc() {
-        <span class="kw">let </span>sender_keypair = KeyPair::generate();
+        <span class="kw">let </span>sender_keypair = KeyPair::generate(<span class="number">0</span>).unwrap();
 
         <span class="kw">let </span>op = OperationType::ExecuteSC {
             max_gas: <span class="number">123</span>,
@@ -2987,9 +2987,9 @@
     <span class="attr">#[test]
     #[serial]
     </span><span class="kw">fn </span>test_callsc() {
-        <span class="kw">let </span>sender_keypair = KeyPair::generate();
+        <span class="kw">let </span>sender_keypair = KeyPair::generate(<span class="number">0</span>).unwrap();
 
-        <span class="kw">let </span>target_keypair = KeyPair::generate();
+        <span class="kw">let </span>target_keypair = KeyPair::generate(<span class="number">0</span>).unwrap();
         <span class="kw">let </span>target_addr = Address::from_public_key(<span class="kw-2">&amp;</span>target_keypair.get_public_key());
 
         <span class="kw">let </span>op = OperationType::CallSC {

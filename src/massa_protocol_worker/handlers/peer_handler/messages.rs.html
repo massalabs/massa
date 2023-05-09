@@ -684,7 +684,7 @@
 
     <span class="attr">#[test]
     </span><span class="kw">fn </span>test_peer_connected() {
-        <span class="kw">let </span>keypair = KeyPair::generate();
+        <span class="kw">let </span>keypair = KeyPair::generate(<span class="number">0</span>).unwrap();
         <span class="kw">let </span><span class="kw-2">mut </span>listeners = HashMap::new();
         listeners.insert(<span class="string">&quot;127.0.0.1:33036&quot;</span>.parse().unwrap(), TransportType::Tcp);
         listeners.insert(<span class="string">&quot;127.0.0.1:33035&quot;</span>.parse().unwrap(), TransportType::Quic);
@@ -726,10 +726,10 @@
 
     <span class="attr">#[test]
     </span><span class="kw">fn </span>test_list_peers() {
-        <span class="kw">let </span>keypair1 = KeyPair::generate();
+        <span class="kw">let </span>keypair1 = KeyPair::generate(<span class="number">0</span>).unwrap();
         <span class="kw">let </span><span class="kw-2">mut </span>listeners = HashMap::new();
         listeners.insert(<span class="string">&quot;127.0.0.1:33036&quot;</span>.parse().unwrap(), TransportType::Tcp);
-        <span class="kw">let </span>keypair2 = KeyPair::generate();
+        <span class="kw">let </span>keypair2 = KeyPair::generate(<span class="number">0</span>).unwrap();
         <span class="kw">let </span>message = PeerManagementMessage::ListPeers(<span class="macro">vec!</span>[
             (
                 PeerId::from_public_key(keypair1.get_public_key()),

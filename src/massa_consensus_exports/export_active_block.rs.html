@@ -276,6 +276,8 @@
 <a href="#276" id="276">276</a>
 <a href="#277" id="277">277</a>
 <a href="#278" id="278">278</a>
+<a href="#279" id="279">279</a>
+<a href="#280" id="280">280</a>
 </pre><pre class="rust"><code><span class="kw">use </span><span class="kw">crate</span>::error::ConsensusError;
 <span class="kw">use </span>massa_hash::HashDeserializer;
 <span class="kw">use </span>massa_models::{
@@ -444,7 +446,7 @@
     /// use massa_signature::KeyPair;
     /// use massa_serialization::{Serializer, Deserializer, DeserializeError};
     ///
-    /// let keypair = KeyPair::generate();
+    /// let keypair = KeyPair::generate(0).unwrap();
     /// let parents = (0..THREAD_COUNT)
     ///     .map(|i| BlockId(Hash::compute_from(&amp;[i])))
     ///     .collect();
@@ -452,6 +454,8 @@
     /// // create block header
     /// let orig_header = BlockHeader::new_verifiable(
     ///     BlockHeader {
+    ///         current_version: 0,
+    ///         announced_version: 0,
     ///         slot: Slot::new(1, 1),
     ///         parents,
     ///         operation_merkle_root: Hash::compute_from(&quot;mno&quot;.as_bytes()),

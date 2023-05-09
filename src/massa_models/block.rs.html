@@ -1197,6 +1197,32 @@
 <a href="#1197" id="1197">1197</a>
 <a href="#1198" id="1198">1198</a>
 <a href="#1199" id="1199">1199</a>
+<a href="#1200" id="1200">1200</a>
+<a href="#1201" id="1201">1201</a>
+<a href="#1202" id="1202">1202</a>
+<a href="#1203" id="1203">1203</a>
+<a href="#1204" id="1204">1204</a>
+<a href="#1205" id="1205">1205</a>
+<a href="#1206" id="1206">1206</a>
+<a href="#1207" id="1207">1207</a>
+<a href="#1208" id="1208">1208</a>
+<a href="#1209" id="1209">1209</a>
+<a href="#1210" id="1210">1210</a>
+<a href="#1211" id="1211">1211</a>
+<a href="#1212" id="1212">1212</a>
+<a href="#1213" id="1213">1213</a>
+<a href="#1214" id="1214">1214</a>
+<a href="#1215" id="1215">1215</a>
+<a href="#1216" id="1216">1216</a>
+<a href="#1217" id="1217">1217</a>
+<a href="#1218" id="1218">1218</a>
+<a href="#1219" id="1219">1219</a>
+<a href="#1220" id="1220">1220</a>
+<a href="#1221" id="1221">1221</a>
+<a href="#1222" id="1222">1222</a>
+<a href="#1223" id="1223">1223</a>
+<a href="#1224" id="1224">1224</a>
+<a href="#1225" id="1225">1225</a>
 </pre><pre class="rust"><code><span class="doccomment">//! Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="comment">// use crate::config::THREAD_COUNT;
@@ -1349,7 +1375,7 @@
     /// use massa_hash::Hash;
     /// use massa_signature::KeyPair;
     /// use massa_serialization::{Serializer, Deserializer, DeserializeError};
-    /// let keypair = KeyPair::generate();
+    /// let keypair = KeyPair::generate(0).unwrap();
     /// let parents = (0..THREAD_COUNT)
     ///     .map(|i| BlockId(Hash::compute_from(&amp;[i])))
     ///     .collect();
@@ -1357,6 +1383,8 @@
     /// // create block header
     /// let orig_header = BlockHeader::new_verifiable(
     ///     BlockHeader {
+    ///         current_version: 0,
+    ///         announced_version: 0,
     ///         slot: Slot::new(1, 1),
     ///         parents,
     ///         operation_merkle_root: Hash::compute_from(&quot;mno&quot;.as_bytes()),
@@ -1450,7 +1478,7 @@
     /// use massa_hash::Hash;
     /// use massa_signature::KeyPair;
     /// use massa_serialization::{Serializer, Deserializer, DeserializeError};
-    /// let keypair = KeyPair::generate();
+    /// let keypair = KeyPair::generate(0).unwrap();
     /// let parents: Vec&lt;BlockId&gt; = (0..THREAD_COUNT)
     ///     .map(|i| BlockId(Hash::compute_from(&amp;[i])))
     ///     .collect();
@@ -1458,6 +1486,8 @@
     /// // create block header
     /// let orig_header = BlockHeader::new_verifiable(
     ///     BlockHeader {
+    ///         current_version: 0,
+    ///         announced_version: 0,
     ///         slot: Slot::new(1, 1),
     ///         parents: parents.clone(),
     ///         operation_merkle_root: Hash::compute_from(&quot;mno&quot;.as_bytes()),
@@ -1670,6 +1700,8 @@
         <span class="comment">// create block header
         </span><span class="kw">let </span>orig_header = BlockHeader::new_verifiable(
             BlockHeader {
+                current_version: <span class="number">0</span>,
+                announced_version: <span class="number">0</span>,
                 slot: Slot::new(<span class="number">1</span>, <span class="number">0</span>),
                 parents,
                 operation_merkle_root: Hash::compute_from(<span class="string">&quot;mno&quot;</span>.as_bytes()),
@@ -1746,12 +1778,14 @@
     <span class="attr">#[test]
     #[serial]
     </span><span class="kw">fn </span>test_genesis_block_serialization() {
-        <span class="kw">let </span>keypair = KeyPair::generate();
+        <span class="kw">let </span>keypair = KeyPair::generate(<span class="number">0</span>).unwrap();
         <span class="kw">let </span>parents: Vec&lt;BlockId&gt; = <span class="macro">vec!</span>[];
 
         <span class="comment">// create block header
         </span><span class="kw">let </span>orig_header = BlockHeader::new_verifiable(
             BlockHeader {
+                current_version: <span class="number">0</span>,
+                announced_version: <span class="number">0</span>,
                 slot: Slot::new(<span class="number">0</span>, <span class="number">1</span>),
                 parents,
                 operation_merkle_root: Hash::compute_from(<span class="string">&quot;mno&quot;</span>.as_bytes()),
@@ -1825,7 +1859,7 @@
     <span class="attr">#[test]
     #[serial]
     </span><span class="kw">fn </span>test_invalid_genesis_block_serialization_with_endorsements() {
-        <span class="kw">let </span>keypair = KeyPair::generate();
+        <span class="kw">let </span>keypair = KeyPair::generate(<span class="number">0</span>).unwrap();
         <span class="kw">let </span>parents: Vec&lt;BlockId&gt; = <span class="macro">vec!</span>[];
 
         <span class="comment">// Genesis block do not have any parents and thus cannot embed endorsements
@@ -1838,6 +1872,8 @@
         <span class="comment">// create block header
         </span><span class="kw">let </span>orig_header = BlockHeader::new_verifiable(
             BlockHeader {
+                current_version: <span class="number">0</span>,
+                announced_version: <span class="number">0</span>,
                 slot: Slot::new(<span class="number">0</span>, <span class="number">1</span>),
                 parents,
                 operation_merkle_root: Hash::compute_from(<span class="string">&quot;mno&quot;</span>.as_bytes()),
@@ -1890,7 +1926,7 @@
     <span class="attr">#[test]
     #[serial]
     </span><span class="kw">fn </span>test_invalid_genesis_block_serialization_with_parents() {
-        <span class="kw">let </span>keypair = KeyPair::generate();
+        <span class="kw">let </span>keypair = KeyPair::generate(<span class="number">0</span>).unwrap();
         <span class="kw">let </span>parents = (<span class="number">0</span>..THREAD_COUNT)
             .map(|i| BlockId(Hash::compute_from(<span class="kw-2">&amp;</span>[i])))
             .collect();
@@ -1898,6 +1934,8 @@
         <span class="comment">// create block header
         </span><span class="kw">let </span>orig_header = BlockHeader::new_verifiable(
             BlockHeader {
+                current_version: <span class="number">0</span>,
+                announced_version: <span class="number">0</span>,
                 slot: Slot::new(<span class="number">0</span>, <span class="number">1</span>),
                 parents,
                 operation_merkle_root: Hash::compute_from(<span class="string">&quot;mno&quot;</span>.as_bytes()),
@@ -1942,12 +1980,14 @@
     <span class="attr">#[test]
     #[serial]
     </span><span class="kw">fn </span>test_invalid_block_serialization_no_parents() {
-        <span class="kw">let </span>keypair = KeyPair::generate();
+        <span class="kw">let </span>keypair = KeyPair::generate(<span class="number">0</span>).unwrap();
         <span class="comment">// Non genesis block must have THREAD_COUNT parents
 
         // create block header
         </span><span class="kw">let </span>orig_header = BlockHeader::new_verifiable(
             BlockHeader {
+                current_version: <span class="number">0</span>,
+                announced_version: <span class="number">0</span>,
                 slot: Slot::new(<span class="number">1</span>, <span class="number">1</span>),
                 parents: <span class="macro">vec!</span>[],
                 operation_merkle_root: Hash::compute_from(<span class="string">&quot;mno&quot;</span>.as_bytes()),
@@ -1992,7 +2032,7 @@
     <span class="attr">#[test]
     #[serial]
     </span><span class="kw">fn </span>test_invalid_block_serialization_obo_high_parent_count() {
-        <span class="kw">let </span>keypair = KeyPair::generate();
+        <span class="kw">let </span>keypair = KeyPair::generate(<span class="number">0</span>).unwrap();
         <span class="comment">// Non genesis block must have THREAD_COUNT parents
         </span><span class="kw">let </span>parents = (<span class="number">0</span>..=THREAD_COUNT)
             .map(|i| BlockId(Hash::compute_from(<span class="kw-2">&amp;</span>[i])))
@@ -2001,6 +2041,8 @@
         <span class="comment">// create block header
         </span><span class="kw">let </span>orig_header = BlockHeader::new_verifiable(
             BlockHeader {
+                current_version: <span class="number">0</span>,
+                announced_version: <span class="number">0</span>,
                 slot: Slot::new(<span class="number">1</span>, <span class="number">1</span>),
                 parents,
                 operation_merkle_root: Hash::compute_from(<span class="string">&quot;mno&quot;</span>.as_bytes()),
@@ -2076,6 +2118,8 @@
         <span class="comment">// create block header
         </span><span class="kw">let </span>orig_header = BlockHeader::new_verifiable(
             BlockHeader {
+                current_version: <span class="number">0</span>,
+                announced_version: <span class="number">0</span>,
                 slot: Slot::new(<span class="number">1</span>, <span class="number">0</span>),
                 parents,
                 operation_merkle_root: Hash::compute_from(<span class="string">&quot;mno&quot;</span>.as_bytes()),
@@ -2122,7 +2166,7 @@
     <span class="attr">#[test]
     #[serial]
     </span><span class="kw">fn </span>test_invalid_block_serialization_obo_low_parent_count() {
-        <span class="kw">let </span>keypair = KeyPair::generate();
+        <span class="kw">let </span>keypair = KeyPair::generate(<span class="number">0</span>).unwrap();
         <span class="comment">// Non genesis block must have THREAD_COUNT parents
         </span><span class="kw">let </span>parents = (<span class="number">1</span>..THREAD_COUNT)
             .map(|i| BlockId(Hash::compute_from(<span class="kw-2">&amp;</span>[i])))
@@ -2131,6 +2175,8 @@
         <span class="comment">// create block header
         </span><span class="kw">let </span>orig_header = BlockHeader::new_verifiable(
             BlockHeader {
+                current_version: <span class="number">0</span>,
+                announced_version: <span class="number">0</span>,
                 slot: Slot::new(<span class="number">1</span>, <span class="number">1</span>),
                 parents,
                 operation_merkle_root: Hash::compute_from(<span class="string">&quot;mno&quot;</span>.as_bytes()),
@@ -2175,7 +2221,7 @@
     <span class="attr">#[test]
     #[serial]
     </span><span class="kw">fn </span>test_invalid_block_serialization_obo_high_endo_count() {
-        <span class="kw">let </span>keypair = KeyPair::generate();
+        <span class="kw">let </span>keypair = KeyPair::generate(<span class="number">0</span>).unwrap();
         <span class="comment">// Non genesis block must have THREAD_COUNT parents
         </span><span class="kw">let </span>parents = (<span class="number">0</span>..THREAD_COUNT)
             .map(|i| BlockId(Hash::compute_from(<span class="kw-2">&amp;</span>[i])))
@@ -2198,6 +2244,8 @@
         <span class="comment">// create block header
         </span><span class="kw">let </span>orig_header = BlockHeader::new_verifiable(
             BlockHeader {
+                current_version: <span class="number">0</span>,
+                announced_version: <span class="number">0</span>,
                 slot: Slot::new(<span class="number">1</span>, <span class="number">1</span>),
                 parents,
                 operation_merkle_root: Hash::compute_from(<span class="string">&quot;mno&quot;</span>.as_bytes()),
@@ -2270,6 +2318,8 @@
         <span class="comment">// create block header
         </span><span class="kw">let </span>orig_header = BlockHeader::new_verifiable(
             BlockHeader {
+                current_version: <span class="number">0</span>,
+                announced_version: <span class="number">0</span>,
                 slot: Slot::new(<span class="number">1</span>, <span class="number">0</span>),
                 parents,
                 operation_merkle_root: Hash::compute_from(<span class="string">&quot;mno&quot;</span>.as_bytes()),
@@ -2354,6 +2404,8 @@
         <span class="comment">// create block header
         </span><span class="kw">let </span>orig_header = BlockHeader::new_verifiable(
             BlockHeader {
+                current_version: <span class="number">0</span>,
+                announced_version: <span class="number">0</span>,
                 slot: Slot::new(<span class="number">1</span>, <span class="number">0</span>),
                 parents,
                 operation_merkle_root: Hash::compute_from(<span class="string">&quot;mno&quot;</span>.as_bytes()),
