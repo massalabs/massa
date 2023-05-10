@@ -392,7 +392,8 @@ impl Default for AsyncMessageSerializer {
 
 impl Serializer<AsyncMessage> for AsyncMessageSerializer {
     /// ## Example
-    /// ```
+    /// ```rust,ignore
+    /// // TODO: reinstate this doc-test. was ignored when AsyncMessageSerializer was made private
     /// use massa_async_pool::{AsyncMessage, AsyncMessageSerializer, AsyncMessageTrigger};
     /// use massa_models::{address::Address, amount::Amount, slot::Slot};
     /// use massa_serialization::Serializer;
@@ -492,7 +493,8 @@ impl AsyncMessageDeserializer {
 
 impl Deserializer<AsyncMessage> for AsyncMessageDeserializer {
     /// ## Example
-    /// ```
+    /// ```rust,ignore
+    /// // TODO: reinstate this doc-test. was ignored when AsyncMessage(De)Serializer was made private
     /// use massa_async_pool::{AsyncMessage, AsyncMessageSerializer, AsyncMessageDeserializer, AsyncMessageTrigger};
     /// use massa_models::{address::Address, amount::Amount, slot::Slot};
     /// use massa_serialization::{Serializer, Deserializer, DeserializeError};
