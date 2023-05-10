@@ -1153,6 +1153,9 @@
 <a href="#1153" id="1153">1153</a>
 <a href="#1154" id="1154">1154</a>
 <a href="#1155" id="1155">1155</a>
+<a href="#1156" id="1156">1156</a>
+<a href="#1157" id="1157">1157</a>
+<a href="#1158" id="1158">1158</a>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="attr">#![doc = <span class="macro">include_str!</span>(<span class="string">&quot;../../README.md&quot;</span>)]
@@ -1168,6 +1171,7 @@
 <span class="kw">use </span>massa_api::{ApiServer, ApiV2, Private, Public, RpcServer, StopHandle, API};
 <span class="kw">use </span>massa_api_exports::config::APIConfig;
 <span class="kw">use </span>massa_async_pool::AsyncPoolConfig;
+<span class="kw">use </span>massa_bootstrap::BootstrapError;
 <span class="kw">use </span>massa_bootstrap::{
     get_state, start_bootstrap_server, BootstrapConfig, BootstrapManager, BootstrapTcpListener,
     DefaultConnector,
@@ -1236,6 +1240,7 @@
 <span class="kw">use </span>std::collections::HashMap;
 <span class="kw">use </span>std::path::PathBuf;
 <span class="kw">use </span>std::sync::atomic::{AtomicUsize, Ordering};
+<span class="kw">use </span>std::sync::{Condvar, Mutex};
 <span class="kw">use </span>std::thread::sleep;
 <span class="kw">use </span>std::time::Duration;
 <span class="kw">use </span>std::{path::Path, process, sync::Arc};
@@ -1389,8 +1394,18 @@
     ));
 
     <span class="comment">// interrupt signal listener
-    </span><span class="kw">let </span>stop_signal = signal::ctrl_c();
-    <span class="macro">tokio::pin!</span>(stop_signal);
+    </span><span class="kw">let </span>interupted = Arc::new((Mutex::new(<span class="bool-val">false</span>), Condvar::new()));
+    <span class="kw">let </span>handler_clone = Arc::clone(<span class="kw-2">&amp;</span>interupted);
+
+    <span class="comment">// currently used by the bootstrap client to break out of the to preempt the retry wait
+    </span>ctrlc::set_handler(<span class="kw">move </span>|| {
+        <span class="kw-2">*</span>handler_clone
+            .<span class="number">0
+            </span>.lock()
+            .expect(<span class="string">&quot;double-lock on interupt bool in ctrl-c handler&quot;</span>) = <span class="bool-val">true</span>;
+        handler_clone.<span class="number">1</span>.notify_all();
+    })
+    .expect(<span class="string">&quot;Error setting Ctrl-C handler&quot;</span>);
 
     <span class="kw">let </span>bootstrap_config: BootstrapConfig = BootstrapConfig {
         bootstrap_list: SETTINGS.bootstrap.bootstrap_list.clone(),
@@ -1450,24 +1465,22 @@
         max_denunciation_changes_length: MAX_DENUNCIATION_CHANGES_LENGTH,
     };
 
-    <span class="comment">// bootstrap
-    </span><span class="kw">let </span>bootstrap_state = <span class="macro">tokio::select! </span>{
-        <span class="kw">_ </span>= <span class="kw-2">&amp;mut </span>stop_signal =&gt; {
-            <span class="macro">info!</span>(<span class="string">&quot;interrupt signal received in bootstrap loop&quot;</span>);
+    <span class="kw">let </span>bootstrap_state = <span class="kw">match </span>get_state(
+        <span class="kw-2">&amp;</span>bootstrap_config,
+        final_state.clone(),
+        DefaultConnector,
+        <span class="kw-2">*</span>VERSION,
+        <span class="kw-2">*</span>GENESIS_TIMESTAMP,
+        <span class="kw-2">*</span>END_TIMESTAMP,
+        args.restart_from_snapshot_at_period,
+        interupted,
+    ) {
+        <span class="prelude-val">Ok</span>(vals) =&gt; vals,
+        <span class="prelude-val">Err</span>(BootstrapError::Interupted(msg)) =&gt; {
+            <span class="macro">info!</span>(<span class="string">&quot;{}&quot;</span>, msg);
             process::exit(<span class="number">0</span>);
-        },
-        res = get_state(
-            <span class="kw-2">&amp;</span>bootstrap_config,
-            final_state.clone(),
-            DefaultConnector,
-            <span class="kw-2">*</span>VERSION,
-            <span class="kw-2">*</span>GENESIS_TIMESTAMP,
-            <span class="kw-2">*</span>END_TIMESTAMP,
-            args.restart_from_snapshot_at_period
-        ) =&gt; <span class="kw">match </span>res {
-            <span class="prelude-val">Ok</span>(vals) =&gt; vals,
-            <span class="prelude-val">Err</span>(err) =&gt; <span class="macro">panic!</span>(<span class="string">&quot;critical error detected in the bootstrap process: {}&quot;</span>, err)
         }
+        <span class="prelude-val">Err</span>(err) =&gt; <span class="macro">panic!</span>(<span class="string">&quot;critical error detected in the bootstrap process: {}&quot;</span>, err),
     };
 
     <span class="kw">if </span>args.restart_from_snapshot_at_period.is_none() {
@@ -1865,7 +1878,6 @@
             enable_cors: SETTINGS.grpc.enable_cors,
             enable_health: SETTINGS.grpc.enable_health,
             enable_reflection: SETTINGS.grpc.enable_reflection,
-            enable_mtls: SETTINGS.grpc.enable_mtls,
             bind: SETTINGS.grpc.bind,
             accept_compressed: SETTINGS.grpc.accept_compressed.clone(),
             send_compressed: SETTINGS.grpc.send_compressed.clone(),
@@ -1908,12 +1920,6 @@
             max_denunciations_per_block_header: MAX_DENUNCIATIONS_PER_BLOCK_HEADER,
             max_block_ids_per_request: SETTINGS.grpc.max_block_ids_per_request,
             max_operation_ids_per_request: SETTINGS.grpc.max_operation_ids_per_request,
-            server_certificate_path: SETTINGS.grpc.server_certificate_path.clone(),
-            server_private_key_path: SETTINGS.grpc.server_private_key_path.clone(),
-            client_certificate_authority_root_path: SETTINGS
-                .grpc
-                .client_certificate_authority_root_path
-                .clone(),
         };
 
         <span class="kw">let </span>grpc_api = MassaGrpc {
