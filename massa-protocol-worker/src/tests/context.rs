@@ -1,4 +1,4 @@
-use std::{fs::read_to_string, sync::Arc};
+use std::{collections::HashMap, fs::read_to_string, sync::Arc};
 
 use crate::{
     connectivity::start_connectivity_thread, create_protocol_controller,
@@ -16,7 +16,7 @@ use massa_pool_exports::{
     PoolController,
 };
 use massa_protocol_exports::{
-    PeerId, ProtocolConfig, ProtocolController, ProtocolError, ProtocolManager,
+    PeerCategoryInfo, PeerId, ProtocolConfig, ProtocolController, ProtocolError, ProtocolManager,
 };
 use massa_serialization::U64VarIntDeserializer;
 use massa_storage::Storage;
@@ -84,7 +84,6 @@ pub(crate)  fn start_protocol_controller_with_mock_network(
     let network_controller = Box::new(MockNetworkController::new(message_handlers.clone()));
 
     let connectivity_thread_handle = start_connectivity_thread(
-        config,
         PeerId::from_public_key(keypair.get_public_key()),
         network_controller.clone(),
         consensus_controller,
@@ -93,11 +92,19 @@ pub(crate)  fn start_protocol_controller_with_mock_network(
         (sender_endorsements, receiver_endorsements),
         (sender_operations, receiver_operations),
         (sender_peers, receiver_peers),
-        None,
+        HashMap::default(),
         peer_db,
         storage,
         channels,
         message_handlers,
+        HashMap::default(),
+        PeerCategoryInfo {
+            max_in_connections_pre_handshake: 10,
+            max_in_connections_post_handshake: 10,
+            target_out_connections: 10,
+            max_in_connections_per_ip: 10,
+        },
+        config,
     )?;
 
     let manager = ProtocolManagerImpl::new(connectivity_thread_handle);

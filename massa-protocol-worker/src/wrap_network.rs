@@ -26,9 +26,9 @@ pub(crate)  trait ActiveConnectionsTrait: Send + Sync {
     ) -> Result<(), ProtocolError>;
     fn clone_box(&self) -> Box<dyn ActiveConnectionsTrait>;
     fn get_peer_ids_connected(&self) -> HashSet<PeerId>;
-    fn get_peers_connected(&self) -> HashMap<PeerId, (SocketAddr, PeerConnectionType)>;
-    fn check_addr_accepted(&self, addr: &SocketAddr) -> bool;
-    fn get_max_out_connections(&self) -> usize;
+    fn get_peers_connected(
+        &self,
+    ) -> HashMap<PeerId, (SocketAddr, PeerConnectionType, Option<String>)>;
     fn get_nb_out_connections(&self) -> usize;
     fn get_nb_in_connections(&self) -> usize;
     fn shutdown_connection(&mut self, peer_id: &PeerId);
@@ -68,7 +68,9 @@ impl ActiveConnectionsTrait for SharedActiveConnections {
         self.read().connections.keys().cloned().collect()
     }
 
-    fn get_peers_connected(&self) -> HashMap<PeerId, (SocketAddr, PeerConnectionType)> {
+    fn get_peers_connected(
+        &self,
+    ) -> HashMap<PeerId, (SocketAddr, PeerConnectionType, Option<String>)> {
         self.read()
             .connections
             .iter()
@@ -78,18 +80,11 @@ impl ActiveConnectionsTrait for SharedActiveConnections {
                     (
                         *connection.endpoint.get_target_addr(),
                         connection.connection_type,
+                        connection.category_name.clone(),
                     ),
                 )
             })
             .collect()
-    }
-
-    fn check_addr_accepted(&self, addr: &SocketAddr) -> bool {
-        self.read().check_addr_accepted(addr)
-    }
-
-    fn get_max_out_connections(&self) -> usize {
-        self.read().max_out_connections
     }
 
     fn get_nb_out_connections(&self) -> usize {

@@ -8,7 +8,7 @@ use crate::versioning::{ComponentState, ComponentStateTypeId, MipComponent, MipS
 /// Factory error
 #[allow(missing_docs)]
 #[derive(Error, Debug)]
-pub(crate)  enum FactoryError {
+pub(crate) enum FactoryError {
     #[error("Unknown version, cannot build obj with version: {0}")]
     UnknownVersion(u32),
     #[error("Version: {0} is in versioning store but not yet implemented")]
@@ -21,7 +21,7 @@ pub(crate)  enum FactoryError {
 
 #[derive(Clone, Debug)]
 /// Strategy to use when creating a new object from a factory
-pub(crate)  enum FactoryStrategy {
+pub(crate) enum FactoryStrategy {
     /// use get_latest_version (see Factory trait)
     Latest,
     /// Require to create an object with this specific version
@@ -39,7 +39,7 @@ impl From<u32> for FactoryStrategy {
 // Factory traits
 
 /// Trait for Factory that create objects based on versioning store
-pub(crate)  trait VersioningFactory {
+pub(crate) trait VersioningFactory {
     /// Factory will create only one object of a given type,
     /// so a FactoryAddress (impl VersioningFactory), will have type Output = Address
     type Output;
@@ -278,7 +278,7 @@ mod test {
             timeout: MassaTime::from(15),
             activation_delay: MassaTime::from(2),
         };
-        let vs_1 = MipState::new(MassaTime::from(10));
+        let vs_1 = MipState::test_exp_new(MassaTime::from(10));
 
         let vi_2 = MipInfo {
             name: "MIP-0003".to_string(),
@@ -288,7 +288,7 @@ mod test {
             timeout: MassaTime::from(28),
             activation_delay: MassaTime::from(2),
         };
-        let vs_2 = MipState::new(MassaTime::from(18));
+        let vs_2 = MipState::test_exp_new(MassaTime::from(18));
 
         let mip_stats_cfg = MipStatsConfig {
             block_count_considered: 10,
@@ -378,7 +378,7 @@ mod test {
             timeout: MassaTime::from(28),
             activation_delay: MassaTime::from(2),
         };
-        let vs_2 = MipState::new(MassaTime::from(18));
+        let vs_2 = MipState::test_exp_new(MassaTime::from(18));
 
         let mip_stats_cfg = MipStatsConfig {
             block_count_considered: 10,

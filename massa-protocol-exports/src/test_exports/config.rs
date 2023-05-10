@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 
-use crate::ProtocolConfig;
+use crate::{settings::PeerCategoryInfo, ProtocolConfig};
 use massa_models::config::constants::ENDORSEMENT_COUNT;
 use massa_time::MassaTime;
 use tempfile::NamedTempFile;
@@ -8,8 +8,6 @@ use tempfile::NamedTempFile;
 impl Default for ProtocolConfig {
     fn default() -> Self {
         ProtocolConfig {
-            max_in_connections: 10,
-            max_out_connections: 10,
             keypair_file: NamedTempFile::new()
                 .expect("cannot create temp file")
                 .path()
@@ -75,8 +73,18 @@ impl Default for ProtocolConfig {
             max_size_peers_announcement: 100,
             last_start_period: 0,
             read_write_limit_bytes_per_second: 1024 * 1000,
+            timeout_connection: MassaTime::from_millis(1000),
+            try_connection_timer: MassaTime::from_millis(5000),
             routable_ip: None,
             debug: true,
+            peers_categories: HashMap::default(),
+            default_category_info: PeerCategoryInfo {
+                max_in_connections_pre_handshake: 10,
+                max_in_connections_post_handshake: 10,
+                target_out_connections: 10,
+                max_in_connections_per_ip: 0,
+            },
+            version: "TEST.22.1".parse().unwrap(),
         }
     }
 }

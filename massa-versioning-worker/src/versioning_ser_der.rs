@@ -1018,7 +1018,7 @@ mod test {
 
     #[test]
     fn test_mip_state_ser_der() {
-        let state_1 = MipState::new(MassaTime::from(100));
+        let state_1 = MipState::test_exp_new(MassaTime::from(100));
 
         let mut buf = Vec::new();
         let state_ser = MipStateSerializer::new();

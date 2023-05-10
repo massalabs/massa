@@ -80,7 +80,7 @@ fn mock_bootstrap_manager(addr: SocketAddr, bootstrap_config: BootstrapConfig) -
         counters_max: MIP_STORE_STATS_COUNTERS_MAX,
     };
     let mi_1 = MipInfo::default();
-    let state_1 = MipState::new(MassaTime::from(3));
+    let state_1 = MipState::test_exp_new(MassaTime::from(3));
     let mip_store = MipStore::try_from(([(mi_1, state_1)], mip_stats_cfg.clone())).unwrap();
 
     // start bootstrap manager
@@ -197,7 +197,7 @@ fn test_bootstrap_server() {
         counters_max: MIP_STORE_STATS_COUNTERS_MAX,
     };
     let mi_1 = MipInfo::default();
-    let state_1 = MipState::new(MassaTime::from(3));
+    let state_1 = MipState::test_exp_new(MassaTime::from(3));
     let mip_store = MipStore::try_from(([(mi_1, state_1)], mip_stats_cfg.clone())).unwrap();
 
     // setup final state local config

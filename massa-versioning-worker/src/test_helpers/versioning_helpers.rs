@@ -16,7 +16,7 @@ pub(crate) fn advance_state_until(at_state: ComponentState, versioning_info: &Mi
         todo!()
     }
 
-    let mut state = MipState::new(start.saturating_sub(MassaTime::from(1)));
+    let mut state = MipState::test_exp_new(start.saturating_sub(MassaTime::from(1)));
 
     if matches!(at_state, ComponentState::Defined(_)) {
         return state;

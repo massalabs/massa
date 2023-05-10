@@ -39,16 +39,8 @@ impl MockActiveConnections {
 type SharedMockActiveConnections = Arc<RwLock<MockActiveConnections>>;
 
 impl ActiveConnectionsTrait for SharedMockActiveConnections {
-    fn check_addr_accepted(&self, _addr: &std::net::SocketAddr) -> bool {
-        true
-    }
-
     fn clone_box(&self) -> Box<dyn ActiveConnectionsTrait> {
         Box::new(self.clone())
-    }
-
-    fn get_max_out_connections(&self) -> usize {
-        10
     }
 
     fn get_nb_out_connections(&self) -> usize {
@@ -61,7 +53,9 @@ impl ActiveConnectionsTrait for SharedMockActiveConnections {
         0
     }
 
-    fn get_peers_connected(&self) -> HashMap<PeerId, (std::net::SocketAddr, PeerConnectionType)> {
+    fn get_peers_connected(
+        &self,
+    ) -> HashMap<PeerId, (std::net::SocketAddr, PeerConnectionType, Option<String>)> {
         self.read()
             .connections
             .iter()
@@ -71,6 +65,7 @@ impl ActiveConnectionsTrait for SharedMockActiveConnections {
                     (
                         std::net::SocketAddr::from(([127, 0, 0, 1], 0)),
                         PeerConnectionType::OUT,
+                        None,
                     ),
                 )
             })
