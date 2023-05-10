@@ -293,13 +293,19 @@
 <a href="#293" id="293">293</a>
 <a href="#294" id="294">294</a>
 <a href="#295" id="295">295</a>
+<a href="#296" id="296">296</a>
+<a href="#297" id="297">297</a>
+<a href="#298" id="298">298</a>
+<a href="#299" id="299">299</a>
+<a href="#300" id="300">300</a>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="doccomment">//! Build here the default node settings from the configuration file toml
-</span><span class="kw">use </span>std::path::PathBuf;
+</span><span class="kw">use </span>std::{collections::HashMap, path::PathBuf};
 
 <span class="kw">use </span>massa_bootstrap::IpType;
 <span class="kw">use </span>massa_models::{config::build_massa_settings, node::NodeId};
+<span class="kw">use </span>massa_protocol_exports::PeerCategoryInfo;
 <span class="kw">use </span>massa_time::MassaTime;
 <span class="kw">use </span>serde::Deserialize;
 <span class="kw">use </span>std::net::{IpAddr, SocketAddr};
@@ -419,6 +425,7 @@
     <span class="kw">pub </span>protocol: ProtocolSettings,
     <span class="kw">pub </span>consensus: ConsensusSettings,
     <span class="kw">pub </span>api: APISettings,
+    <span class="kw">pub </span>network: NetworkSettings,
     <span class="kw">pub </span>bootstrap: BootstrapSettings,
     <span class="kw">pub </span>pool: PoolSettings,
     <span class="kw">pub </span>execution: ExecutionSettings,
@@ -456,6 +463,13 @@
     </span><span class="kw">pub </span>broadcast_blocks_channel_capacity: usize,
     <span class="doccomment">/// filled blocks channel capacity
     </span><span class="kw">pub </span>broadcast_filled_blocks_channel_capacity: usize,
+}
+
+<span class="comment">// TODO: Remove one date. Kept for retro compatibility.
+</span><span class="attr">#[derive(Debug, Deserialize, Clone)]
+</span><span class="kw">pub struct </span>NetworkSettings {
+    <span class="doccomment">/// Ip seen by others. If none the bind ip is used
+    </span><span class="kw">pub </span>routable_ip: <span class="prelude-ty">Option</span>&lt;IpAddr&gt;,
 }
 
 <span class="doccomment">/// Protocol Configuration, read from toml user configuration file
@@ -509,14 +523,18 @@
     </span><span class="kw">pub </span>routable_ip: <span class="prelude-ty">Option</span>&lt;IpAddr&gt;,
     <span class="doccomment">/// Time threshold to have a connection to a node
     </span><span class="kw">pub </span>connect_timeout: MassaTime,
-    <span class="doccomment">/// Max number of connection in
-    </span><span class="kw">pub </span>max_incoming_connections: usize,
-    <span class="doccomment">/// Max number of connection out
-    </span><span class="kw">pub </span>max_outgoing_connections: usize,
     <span class="doccomment">/// Number of tester threads
     </span><span class="kw">pub </span>thread_tester_count: u8,
     <span class="doccomment">/// Number of bytes we can read/write by seconds in a connection (must be a 10 multiple)
     </span><span class="kw">pub </span>read_write_limit_bytes_per_second: u64,
+    <span class="doccomment">/// try connection timer
+    </span><span class="kw">pub </span>try_connection_timer: MassaTime,
+    <span class="doccomment">/// Timeout connection
+    </span><span class="kw">pub </span>timeout_connection: MassaTime,
+    <span class="doccomment">/// Peers limits per category
+    </span><span class="kw">pub </span>peers_categories: HashMap&lt;String, PeerCategoryInfo&gt;,
+    <span class="doccomment">/// Limits for default category
+    </span><span class="kw">pub </span>default_category_info: PeerCategoryInfo,
 }
 
 <span class="doccomment">/// gRPC settings
@@ -533,8 +551,6 @@
     </span><span class="kw">pub </span>enable_health: bool,
     <span class="doccomment">/// whether to enable gRPC reflection
     </span><span class="kw">pub </span>enable_reflection: bool,
-    <span class="doccomment">/// whether to enable mTLS
-    </span><span class="kw">pub </span>enable_mtls: bool,
     <span class="doccomment">/// bind for the Massa gRPC API
     </span><span class="kw">pub </span>bind: SocketAddr,
     <span class="doccomment">/// which compression encodings does the server accept for requests
@@ -575,12 +591,6 @@
     </span><span class="kw">pub </span>max_block_ids_per_request: u32,
     <span class="doccomment">/// max number of operation ids that can be included in a single request
     </span><span class="kw">pub </span>max_operation_ids_per_request: u32,
-    <span class="doccomment">/// server certificate path
-    </span><span class="kw">pub </span>server_certificate_path: PathBuf,
-    <span class="doccomment">/// server private key path
-    </span><span class="kw">pub </span>server_private_key_path: PathBuf,
-    <span class="doccomment">/// client certificate authority root path
-    </span><span class="kw">pub </span>client_certificate_authority_root_path: PathBuf,
 }
 
 <span class="attr">#[cfg(test)]

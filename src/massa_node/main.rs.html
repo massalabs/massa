@@ -1141,6 +1141,11 @@
 <a href="#1141" id="1141">1141</a>
 <a href="#1142" id="1142">1142</a>
 <a href="#1143" id="1143">1143</a>
+<a href="#1144" id="1144">1144</a>
+<a href="#1145" id="1145">1145</a>
+<a href="#1146" id="1146">1146</a>
+<a href="#1147" id="1147">1147</a>
+<a href="#1148" id="1148">1148</a>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="attr">#![doc = <span class="macro">include_str!</span>(<span class="string">&quot;../../README.md&quot;</span>)]
@@ -1329,9 +1334,15 @@
     // NOTE: this is temporary, since we cannot currently handle bootstrap from remaining ledger
     </span><span class="kw">if </span>args.keep_ledger || args.restart_from_snapshot_at_period.is_some() {
         <span class="macro">info!</span>(<span class="string">&quot;Loading old ledger for next episode&quot;</span>);
-    } <span class="kw">else if </span>SETTINGS.ledger.disk_ledger_path.exists() {
-        std::fs::remove_dir_all(SETTINGS.ledger.disk_ledger_path.clone())
-            .expect(<span class="string">&quot;disk ledger delete failed&quot;</span>);
+    } <span class="kw">else </span>{
+        <span class="kw">if </span>SETTINGS.ledger.disk_ledger_path.exists() {
+            std::fs::remove_dir_all(SETTINGS.ledger.disk_ledger_path.clone())
+                .expect(<span class="string">&quot;disk ledger delete failed&quot;</span>);
+        }
+        <span class="kw">if </span>SETTINGS.execution.hd_cache_path.exists() {
+            std::fs::remove_dir_all(SETTINGS.execution.hd_cache_path.clone())
+                .expect(<span class="string">&quot;disk hd cache delete failed&quot;</span>);
+        }
     }
 
     <span class="comment">// Create final ledger
@@ -1622,8 +1633,6 @@
         initial_peers: SETTINGS.protocol.initial_peers_file.clone(),
         listeners,
         keypair_file: SETTINGS.protocol.keypair_file.clone(),
-        max_in_connections: SETTINGS.protocol.max_incoming_connections,
-        max_out_connections: SETTINGS.protocol.max_outgoing_connections,
         max_known_blocks_saved_size: SETTINGS.protocol.max_known_blocks_size,
         asked_operations_buffer_capacity: SETTINGS.protocol.max_known_ops_size,
         thread_tester_count: SETTINGS.protocol.thread_tester_count,
@@ -1658,8 +1667,16 @@
         max_size_peers_announcement: MAX_PEERS_IN_ANNOUNCEMENT_LIST,
         read_write_limit_bytes_per_second: SETTINGS.protocol.read_write_limit_bytes_per_second
             <span class="kw">as </span>u128,
-        routable_ip: SETTINGS.protocol.routable_ip,
+        try_connection_timer: SETTINGS.protocol.try_connection_timer,
+        timeout_connection: SETTINGS.protocol.timeout_connection,
+        routable_ip: SETTINGS
+            .protocol
+            .routable_ip
+            .or(SETTINGS.network.routable_ip),
         debug: <span class="bool-val">false</span>,
+        peers_categories: SETTINGS.protocol.peers_categories.clone(),
+        default_category_info: SETTINGS.protocol.default_category_info,
+        version: <span class="kw-2">*</span>VERSION,
     };
 
     <span class="kw">let </span>(protocol_controller, protocol_channels) =
@@ -1841,7 +1858,6 @@
             enable_cors: SETTINGS.grpc.enable_cors,
             enable_health: SETTINGS.grpc.enable_health,
             enable_reflection: SETTINGS.grpc.enable_reflection,
-            enable_mtls: SETTINGS.grpc.enable_mtls,
             bind: SETTINGS.grpc.bind,
             accept_compressed: SETTINGS.grpc.accept_compressed.clone(),
             send_compressed: SETTINGS.grpc.send_compressed.clone(),
@@ -1884,12 +1900,6 @@
             max_denunciations_per_block_header: MAX_DENUNCIATIONS_PER_BLOCK_HEADER,
             max_block_ids_per_request: SETTINGS.grpc.max_block_ids_per_request,
             max_operation_ids_per_request: SETTINGS.grpc.max_operation_ids_per_request,
-            server_certificate_path: SETTINGS.grpc.server_certificate_path.clone(),
-            server_private_key_path: SETTINGS.grpc.server_private_key_path.clone(),
-            client_certificate_authority_root_path: SETTINGS
-                .grpc
-                .client_certificate_authority_root_path
-                .clone(),
         };
 
         <span class="kw">let </span>grpc_api = MassaGrpc {

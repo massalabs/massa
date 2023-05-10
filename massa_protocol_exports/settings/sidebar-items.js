@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"struct":["ProtocolConfig"]};
+window.SIDEBAR_ITEMS = {"struct":["PeerCategoryInfo","ProtocolConfig"]};
