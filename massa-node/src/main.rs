@@ -356,6 +356,7 @@ async fn launch(
                                 "A new MIP has been received: {}, version: {}",
                                 mip_info.name, mip_info.version
                             );
+                            // Safe to unwrap here (only panic if not LockedIn)
                             let activation_at = mip_state.activation_at(&mip_info).unwrap();
                             let dt = Utc
                                 .timestamp_opt(activation_at.to_duration().as_secs() as i64, 0)
