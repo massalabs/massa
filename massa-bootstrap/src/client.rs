@@ -569,7 +569,7 @@ pub fn get_state(
                 .expect("interupt signal mutex poisoned");
             if *wake.0 {
                 return Err(BootstrapError::Interupted(
-                    "Sig INT during bootstray retry-wait".to_string(),
+                    "Sig INT during bootstrap retry-wait".to_string(),
                 ));
             }
         }
