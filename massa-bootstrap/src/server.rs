@@ -499,12 +499,12 @@ pub(crate) fn stream_bootstrap_information(
 
             let (cycle_data, new_cycle_step) = final_state_read
                 .pos_state
-                .test_exp_get_cycle_history_part(last_cycle_step)?;
+                .get_cycle_history_part(last_cycle_step)?;
             pos_cycle_part = cycle_data;
 
             let (credits_data, new_credits_step) = final_state_read
                 .pos_state
-                .test_exp_get_deferred_credits_part(last_credits_step);
+                .get_deferred_credits_part(last_credits_step);
             pos_credits_part = credits_data;
 
             let (ops_data, new_ops_step) = final_state_read

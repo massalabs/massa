@@ -110,7 +110,11 @@ pub struct ExportActiveBlockSerializer {
 impl ExportActiveBlockSerializer {
     /// Create a new `ExportActiveBlockSerializer`
     #[cfg(any(test, feature = "testing"))]
-    pub fn new() -> Self {
+    pub fn test_exp_new() -> Self {
+        Self::new()
+    }
+
+    pub(crate) fn new() -> Self {
         ExportActiveBlockSerializer {
             sec_share_serializer: SecureShareSerializer::new(),
             period_serializer: U64VarIntSerializer::new(),
