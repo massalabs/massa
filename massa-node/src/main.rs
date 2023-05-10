@@ -710,6 +710,7 @@ async fn launch(
             enable_cors: SETTINGS.grpc.enable_cors,
             enable_health: SETTINGS.grpc.enable_health,
             enable_reflection: SETTINGS.grpc.enable_reflection,
+            enable_mtls: SETTINGS.grpc.enable_mtls,
             bind: SETTINGS.grpc.bind,
             accept_compressed: SETTINGS.grpc.accept_compressed.clone(),
             send_compressed: SETTINGS.grpc.send_compressed.clone(),
@@ -752,6 +753,12 @@ async fn launch(
             max_denunciations_per_block_header: MAX_DENUNCIATIONS_PER_BLOCK_HEADER,
             max_block_ids_per_request: SETTINGS.grpc.max_block_ids_per_request,
             max_operation_ids_per_request: SETTINGS.grpc.max_operation_ids_per_request,
+            server_certificate_path: SETTINGS.grpc.server_certificate_path.clone(),
+            server_private_key_path: SETTINGS.grpc.server_private_key_path.clone(),
+            client_certificate_authority_root_path: SETTINGS
+                .grpc
+                .client_certificate_authority_root_path
+                .clone(),
         };
 
         let grpc_api = MassaGrpc {
