@@ -754,7 +754,7 @@ impl LedgerDB {
             let (rest, address) = address_deserializer
                 .deserialize::<DeserializeError>(&key[..])
                 .unwrap();
-            if rest.first() == Some(&BALANCE_IDENT) {
+            if rest.first() == Some(&massa_ledger_exports::BALANCE_IDENT) {
                 let (_, amount) = self
                     .amount_deserializer
                     .deserialize::<DeserializeError>(entry)

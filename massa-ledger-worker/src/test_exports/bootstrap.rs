@@ -9,7 +9,7 @@ use crate::{ledger_db::LedgerDB, FinalLedger};
 
 /// This file defines tools to test the ledger bootstrap
 
-pub(crate)  fn create_final_ledger(
+pub(crate) fn create_final_ledger(
     config: LedgerConfig,
     initial_ledger: HashMap<Address, LedgerEntry>,
 ) -> FinalLedger {
@@ -29,7 +29,7 @@ pub(crate)  fn create_final_ledger(
 }
 
 /// asserts that two ledger entries are the same
-pub(crate)  fn assert_eq_ledger_entry(v1: &LedgerEntry, v2: &LedgerEntry) {
+pub(crate) fn assert_eq_ledger_entry(v1: &LedgerEntry, v2: &LedgerEntry) {
     assert_eq!(v1.balance, v2.balance, "balance mismatch");
     assert_eq!(v1.bytecode, v2.bytecode, "bytecode mismatch");
     assert_eq!(
@@ -45,7 +45,7 @@ pub(crate)  fn assert_eq_ledger_entry(v1: &LedgerEntry, v2: &LedgerEntry) {
 }
 
 /// asserts that two `FinalLedgerBootstrapState` are equal
-pub(crate)  fn assert_eq_ledger(v1: &dyn LedgerController, v2: &dyn LedgerController) {
+pub fn assert_eq_ledger(v1: &dyn LedgerController, v2: &dyn LedgerController) {
     let ledger1: HashMap<Address, LedgerEntry> = v1
         .get_every_address()
         .iter()

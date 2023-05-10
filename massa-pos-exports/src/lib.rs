@@ -40,4 +40,4 @@ pub use pos_final_state::PoSFinalState;
 pub use settings::SelectorConfig;
 
 #[cfg(feature = "testing")]
-pub(crate) mod test_exports;
+pub mod test_exports;

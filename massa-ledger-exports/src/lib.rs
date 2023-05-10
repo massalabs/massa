@@ -20,7 +20,8 @@ pub use key::Key;
 pub use key::KeyDeserializer;
 pub use key::KeySerializer;
 pub use key::KeyType;
-pub(crate) use key::{BALANCE_IDENT, BYTECODE_IDENT, DATASTORE_IDENT};
+pub(crate) use key::{BYTECODE_IDENT, DATASTORE_IDENT};
+
 pub use ledger_changes::LedgerChanges;
 
 pub(crate) use ledger_changes::DatastoreUpdateDeserializer;
@@ -40,3 +41,5 @@ pub use types::SetUpdateOrDelete;
 
 #[cfg(feature = "testing")]
 pub(crate) mod test_exports;
+#[cfg(feature = "testing")]
+pub use key::BALANCE_IDENT;

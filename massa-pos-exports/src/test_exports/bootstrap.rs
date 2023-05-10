@@ -2,7 +2,7 @@ use std::collections::{HashMap, VecDeque};
 
 use massa_models::{
     address::Address,
-    config::{CHANNEL_SIZE, ENDORSEMENT_COUNT, PERIODS_PER_CYCLE, THREAD_COUNT},
+    config::constants::{CHANNEL_SIZE, ENDORSEMENT_COUNT, PERIODS_PER_CYCLE, THREAD_COUNT},
     slot::Slot,
 };
 use massa_signature::KeyPair;
@@ -23,7 +23,7 @@ impl Default for SelectorConfig {
 }
 
 /// Compare two PoS States
-pub(crate)  fn assert_eq_pos_state(s1: &PoSFinalState, s2: &PoSFinalState) {
+pub fn assert_eq_pos_state(s1: &PoSFinalState, s2: &PoSFinalState) {
     assert_eq!(
         s1.cycle_history.len(),
         s2.cycle_history.len(),
@@ -53,7 +53,7 @@ pub(crate)  fn assert_eq_pos_state(s1: &PoSFinalState, s2: &PoSFinalState) {
 }
 
 /// Compare two PoS Selections
-pub(crate)  fn assert_eq_pos_selection(
+pub(crate) fn assert_eq_pos_selection(
     s1: &VecDeque<(u64, HashMap<Slot, Selection>)>,
     s2: &VecDeque<(u64, HashMap<Slot, Selection>)>,
 ) {

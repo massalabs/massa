@@ -47,4 +47,4 @@ pub use ledger::FinalLedger;
 mod tests;
 
 #[cfg(feature = "testing")]
-pub(crate) mod test_exports;
+pub mod test_exports;

@@ -44,6 +44,10 @@ pub struct ExecutedOps {
 }
 
 impl ExecutedOps {
+    // #[cfg(feature = "testing")]
+    pub fn get_ops(&self) -> &PreHashSet<OperationId> {
+        &self.ops
+    }
     /// Creates a new `ExecutedOps`
     pub fn new(config: ExecutedOpsConfig) -> Self {
         Self {

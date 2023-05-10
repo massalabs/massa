@@ -4,6 +4,6 @@
 mod bootstrap;
 mod mock;
 
-pub(crate)  use bootstrap::*;
+pub use bootstrap::assert_eq_pos_state;
 #[cfg(feature = "testing")]
-pub(crate)  use mock::*;
+pub(crate) use mock::*;

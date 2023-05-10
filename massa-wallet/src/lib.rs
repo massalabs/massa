@@ -5,8 +5,6 @@
 #![warn(unused_crate_dependencies)]
 #![feature(map_try_insert)]
 
-pub use error::WalletError;
-
 use massa_cipher::{decrypt, encrypt};
 use massa_hash::Hash;
 use massa_models::address::Address;
@@ -17,8 +15,11 @@ use massa_models::secure_share::SecureShareContent;
 use massa_signature::{KeyPair, PublicKey};
 use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
-
 mod error;
+pub use error::WalletError;
+
+#[cfg(any(test, feature = "testing"))]
+pub(crate) mod test_exports;
 
 /// Contains the keypairs created in the wallet.
 #[derive(Clone, Debug, Deserialize, Serialize)]
@@ -161,7 +162,3 @@ impl std::fmt::Display for Wallet {
         Ok(())
     }
 }
-
-/// Test utils
-#[cfg(feature = "testing")]
-pub(crate) mod test_exports;

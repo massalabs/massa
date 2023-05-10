@@ -12,12 +12,12 @@ use massa_executed_ops::{
 use massa_hash::{Hash, HASH_SIZE_BYTES};
 use massa_ledger_exports::LedgerConfig;
 use massa_ledger_worker::FinalLedger;
-use massa_models::config::{
+use massa_models::config::constants::{
     DENUNCIATION_EXPIRE_PERIODS, ENDORSEMENT_COUNT, MAX_DENUNCIATIONS_PER_BLOCK_HEADER,
     MAX_DENUNCIATION_CHANGES_LENGTH,
 };
 use massa_models::{
-    config::{
+    config::constants::{
         DEFERRED_CREDITS_BOOTSTRAP_PART_SIZE, EXECUTED_OPS_BOOTSTRAP_PART_SIZE, PERIODS_PER_CYCLE,
         POS_SAVED_CYCLES, THREAD_COUNT,
     },
@@ -27,7 +27,7 @@ use massa_pos_exports::{PoSConfig, PoSFinalState};
 
 impl FinalState {
     /// Create a final stat
-    pub(crate)  fn create_final_state(pos_state: PoSFinalState, config: FinalStateConfig) -> Self {
+    pub(crate) fn create_final_state(pos_state: PoSFinalState, config: FinalStateConfig) -> Self {
         FinalState {
             slot: Slot::new(0, 0),
             ledger: Box::new(FinalLedger::new(config.ledger_config.clone(), false)),

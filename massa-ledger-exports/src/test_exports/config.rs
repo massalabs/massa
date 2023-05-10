@@ -2,7 +2,7 @@
 /// This file defines testing tools related to the configuration
 use massa_models::{
     address::Address,
-    config::{
+    config::constants::{
         LEDGER_PART_SIZE_MESSAGE_BYTES, MAX_DATASTORE_KEY_LENGTH, MAX_DATASTORE_VALUE_LENGTH,
         THREAD_COUNT,
     },
@@ -31,7 +31,7 @@ impl Default for LedgerConfig {
 
 impl LedgerConfig {
     /// get ledger and ledger configuration
-    pub(crate)  fn sample(ledger: &HashMap<Address, LedgerEntry>) -> (Self, NamedTempFile, TempDir) {
+    pub fn sample(ledger: &HashMap<Address, LedgerEntry>) -> (Self, NamedTempFile, TempDir) {
         let initial_ledger = NamedTempFile::new().expect("cannot create temp file");
         let disk_ledger = TempDir::new().expect("cannot create temp directory");
         serde_json::to_writer_pretty(initial_ledger.as_file(), &ledger)

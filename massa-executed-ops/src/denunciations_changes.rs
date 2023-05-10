@@ -109,7 +109,9 @@ impl Deserializer<ExecutedDenunciationsChanges> for ExecutedDenunciationsChanges
 mod tests {
     use super::*;
 
-    use massa_models::config::{ENDORSEMENT_COUNT, MAX_DENUNCIATION_CHANGES_LENGTH, THREAD_COUNT};
+    use massa_models::config::constants::{
+        ENDORSEMENT_COUNT, MAX_DENUNCIATION_CHANGES_LENGTH, THREAD_COUNT,
+    };
     use massa_models::denunciation::Denunciation;
     use massa_models::test_exports::{
         gen_block_headers_for_denunciation, gen_endorsements_for_denunciation,

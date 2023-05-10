@@ -115,5 +115,5 @@ pub use pool::AsyncPoolSerializer;
 #[cfg(test)]
 mod tests;
 
-#[cfg(feature = "testing")]
-pub(crate) mod test_exports;
+#[cfg(any(test, feature = "testing"))]
+pub mod test_exports;

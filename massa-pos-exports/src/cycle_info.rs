@@ -113,6 +113,17 @@ pub struct CycleInfo {
 }
 
 impl CycleInfo {
+    /// public re-export of private field to make available for testing
+    #[cfg(feature = "testing")]
+    pub fn roll_counts_hash(&self) -> Hash {
+        self.roll_counts_hash
+    }
+
+    /// public re-export of private field to make available for testing
+    #[cfg(feature = "testing")]
+    pub fn production_stats_hash(&self) -> Hash {
+        self.production_stats_hash
+    }
     /// Create a new `CycleInfo` and compute its hash
     pub(crate) fn new_with_hash(
         cycle: u64,

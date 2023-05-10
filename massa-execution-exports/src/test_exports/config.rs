@@ -3,7 +3,14 @@
 //! This file defines testing tools related to the configuration
 
 use crate::{ExecutionConfig, StorageCostsConstants};
-use massa_models::config::*;
+use massa_models::config::constants::{
+    BLOCK_REWARD, DENUNCIATION_EXPIRE_PERIODS, ENDORSEMENT_COUNT, LEDGER_COST_PER_BYTE,
+    LEDGER_ENTRY_BASE_SIZE, LEDGER_ENTRY_DATASTORE_BASE_SIZE, MAX_ASYNC_GAS, MAX_BYTECODE_LENGTH,
+    MAX_DATASTORE_KEY_LENGTH, MAX_DATASTORE_VALUE_LENGTH, MAX_GAS_PER_BLOCK,
+    OPERATION_VALIDITY_PERIODS, PERIODS_PER_CYCLE, POS_MISS_RATE_DEACTIVATION_THRESHOLD,
+    ROLL_PRICE, THREAD_COUNT,
+};
+
 use massa_sc_runtime::GasCosts;
 use massa_time::MassaTime;
 use std::path::PathBuf;

@@ -9,7 +9,7 @@ mod tests {
         ExecutionChannels, ExecutionConfig, ExecutionController, ExecutionError,
         ReadOnlyExecutionRequest, ReadOnlyExecutionTarget,
     };
-    use massa_models::config::{
+    use massa_models::config::constants::{
         LEDGER_ENTRY_BASE_SIZE, LEDGER_ENTRY_DATASTORE_BASE_SIZE, MIP_STORE_STATS_BLOCK_CONSIDERED,
         MIP_STORE_STATS_COUNTERS_MAX,
     };
@@ -1133,7 +1133,7 @@ mod tests {
 
     #[test]
     #[serial]
-    pub(crate)  fn send_and_receive_transaction() {
+    pub(crate) fn send_and_receive_transaction() {
         let vesting = get_initials_vesting(false);
         // setup the period duration
         let exec_cfg = ExecutionConfig {
@@ -1442,7 +1442,7 @@ mod tests {
 
     #[test]
     #[serial]
-    pub(crate)  fn roll_buy() {
+    pub(crate) fn roll_buy() {
         let vesting = get_initials_vesting(false);
         // setup the period duration
         let exec_cfg = ExecutionConfig {
@@ -1530,7 +1530,7 @@ mod tests {
 
     #[test]
     #[serial]
-    pub(crate)  fn roll_sell() {
+    pub(crate) fn roll_sell() {
         let vesting = get_initials_vesting(false);
         // Try to sell 10 rolls (operation 1) then 1 rolls (operation 2)
         // Check for resulting roll count + resulting deferred credits
@@ -1722,7 +1722,7 @@ mod tests {
 
     #[test]
     #[serial]
-    pub(crate)  fn roll_slash() {
+    pub(crate) fn roll_slash() {
         let vesting = get_initials_vesting(false);
         // Try to sell 97 rolls (operation 1) then process a Denunciation (with config set to slash
         // 3 rolls)
@@ -1884,7 +1884,7 @@ mod tests {
 
     #[test]
     #[serial]
-    pub(crate)  fn roll_slash_2() {
+    pub(crate) fn roll_slash_2() {
         let vesting = get_initials_vesting(false);
         // Try to sell all rolls (operation 1) then process a Denunciation (with config set to slash
         // 4 rolls)
@@ -2585,7 +2585,7 @@ mod tests {
 
     #[test]
     #[serial]
-    pub(crate)  fn not_enough_compilation_gas() {
+    pub(crate) fn not_enough_compilation_gas() {
         let vesting = get_initials_vesting(false);
         // config
         let exec_cfg = ExecutionConfig {

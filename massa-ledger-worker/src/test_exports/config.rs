@@ -4,7 +4,7 @@
 use tempfile::TempDir;
 
 use crate::{ledger_db::LedgerDB, FinalLedger};
-use massa_models::config::{
+use massa_models::config::constants::{
     LEDGER_PART_SIZE_MESSAGE_BYTES, MAX_DATASTORE_KEY_LENGTH, THREAD_COUNT,
 };
 

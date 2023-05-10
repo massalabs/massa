@@ -4,7 +4,7 @@ mod test {
     use crate::vesting_manager::{VestingInfo, VestingManager};
     use massa_models::address::Address;
     use massa_models::amount::Amount;
-    use massa_models::config::{
+    use massa_models::config::constants::{
         GENESIS_TIMESTAMP, PERIODS_PER_CYCLE, ROLL_PRICE, T0, THREAD_COUNT,
     };
     use massa_time::MassaTime;

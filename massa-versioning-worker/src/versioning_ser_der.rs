@@ -16,8 +16,8 @@ use crate::versioning::{
 };
 
 use massa_models::amount::{Amount, AmountDeserializer, AmountSerializer};
-use massa_models::config::{
-    constants::MIP_STORE_STATS_BLOCK_CONSIDERED, constants::MIP_STORE_STATS_COUNTERS_MAX,
+use massa_models::config::constants::{
+    MIP_STORE_STATS_BLOCK_CONSIDERED, MIP_STORE_STATS_COUNTERS_MAX,
 };
 use massa_serialization::{
     Deserializer, SerializeError, Serializer, U32VarIntDeserializer, U32VarIntSerializer,
