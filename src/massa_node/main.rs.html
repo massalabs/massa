@@ -1213,6 +1213,7 @@
 <a href="#1213" id="1213">1213</a>
 <a href="#1214" id="1214">1214</a>
 <a href="#1215" id="1215">1215</a>
+<a href="#1216" id="1216">1216</a>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="attr">#![doc = <span class="macro">include_str!</span>(<span class="string">&quot;../../README.md&quot;</span>)]
@@ -1577,7 +1578,8 @@
                                 <span class="string">&quot;A new MIP has been received: {}, version: {}&quot;</span>,
                                 mip_info.name, mip_info.version
                             );
-                            <span class="kw">let </span>activation_at = mip_state.activation_at(<span class="kw-2">&amp;</span>mip_info).unwrap();
+                            <span class="comment">// Safe to unwrap here (only panic if not LockedIn)
+                            </span><span class="kw">let </span>activation_at = mip_state.activation_at(<span class="kw-2">&amp;</span>mip_info).unwrap();
                             <span class="kw">let </span>dt = Utc
                                 .timestamp_opt(activation_at.to_duration().as_secs() <span class="kw">as </span>i64, <span class="number">0</span>)
                                 .unwrap();
