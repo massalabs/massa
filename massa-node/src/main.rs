@@ -188,9 +188,15 @@ async fn launch(
     // NOTE: this is temporary, since we cannot currently handle bootstrap from remaining ledger
     if args.keep_ledger || args.restart_from_snapshot_at_period.is_some() {
         info!("Loading old ledger for next episode");
-    } else if SETTINGS.ledger.disk_ledger_path.exists() {
-        std::fs::remove_dir_all(SETTINGS.ledger.disk_ledger_path.clone())
-            .expect("disk ledger delete failed");
+    } else {
+        if SETTINGS.ledger.disk_ledger_path.exists() {
+            std::fs::remove_dir_all(SETTINGS.ledger.disk_ledger_path.clone())
+                .expect("disk ledger delete failed");
+        }
+        if SETTINGS.execution.hd_cache_path.exists() {
+            std::fs::remove_dir_all(SETTINGS.execution.hd_cache_path.clone())
+                .expect("disk hd cache delete failed");
+        }
     }
 
     // Create final ledger
@@ -489,8 +495,6 @@ async fn launch(
         initial_peers: SETTINGS.protocol.initial_peers_file.clone(),
         listeners,
         keypair_file: SETTINGS.protocol.keypair_file.clone(),
-        max_in_connections: SETTINGS.protocol.max_incoming_connections,
-        max_out_connections: SETTINGS.protocol.max_outgoing_connections,
         max_known_blocks_saved_size: SETTINGS.protocol.max_known_blocks_size,
         asked_operations_buffer_capacity: SETTINGS.protocol.max_known_ops_size,
         thread_tester_count: SETTINGS.protocol.thread_tester_count,
@@ -525,8 +529,16 @@ async fn launch(
         max_size_peers_announcement: MAX_PEERS_IN_ANNOUNCEMENT_LIST,
         read_write_limit_bytes_per_second: SETTINGS.protocol.read_write_limit_bytes_per_second
             as u128,
-        routable_ip: SETTINGS.protocol.routable_ip,
+        try_connection_timer: SETTINGS.protocol.try_connection_timer,
+        timeout_connection: SETTINGS.protocol.timeout_connection,
+        routable_ip: SETTINGS
+            .protocol
+            .routable_ip
+            .or(SETTINGS.network.routable_ip),
         debug: false,
+        peers_categories: SETTINGS.protocol.peers_categories.clone(),
+        default_category_info: SETTINGS.protocol.default_category_info,
+        version: *VERSION,
     };
 
     let (protocol_controller, protocol_channels) =
