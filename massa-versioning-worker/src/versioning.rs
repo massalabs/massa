@@ -26,7 +26,7 @@ pub(crate) enum MipComponent {
 
 /// MIP info (name & versions & time range for a MIP)
 #[derive(Clone, Debug)]
-pub(crate) struct MipInfo {
+pub struct MipInfo {
     /// MIP name or descriptive name
     pub(crate) name: String,
     /// Network (or global) version (to be included in block header)
@@ -230,7 +230,7 @@ impl Failed {
 
 /// Wrapper of ComponentState (in order to keep state history)
 #[derive(Debug, Clone, PartialEq)]
-pub(crate) struct MipState {
+pub struct MipState {
     pub(crate) state: ComponentState,
     pub(crate) history: BTreeMap<Advance, ComponentStateTypeId>,
 }
@@ -459,7 +459,7 @@ impl MipStore {
             .unwrap_or(0)
     }
 
-    pub(crate) fn update_network_version_stats(
+    pub fn update_network_version_stats(
         &mut self,
         slot_timestamp: MassaTime,
         network_versions: Option<(u32, u32)>,
@@ -469,7 +469,7 @@ impl MipStore {
     }
 
     #[allow(clippy::result_large_err)]
-    pub(crate) fn update_with(
+    pub fn update_with(
         &mut self,
         mip_store: &MipStore,
     ) -> Result<(Vec<MipInfo>, Vec<MipInfo>), UpdateWithError> {
@@ -491,9 +491,9 @@ impl<const N: usize> TryFrom<([(MipInfo, MipState); N], MipStatsConfig)> for Mip
 
 /// Statistics in MipStoreRaw
 #[derive(Debug, Clone, PartialEq)]
-pub(crate) struct MipStatsConfig {
-    pub(crate) block_count_considered: usize,
-    pub(crate) counters_max: usize,
+pub struct MipStatsConfig {
+    pub block_count_considered: usize,
+    pub counters_max: usize,
 }
 
 /// In order for a MIP to be accepted, we compute stats about other node 'network' version announcement
@@ -516,7 +516,7 @@ impl MipStoreStats {
 
 /// Error returned by
 #[derive(Error, Debug, PartialEq)]
-pub(crate) enum UpdateWithError {
+pub enum UpdateWithError {
     // State is not coherent with associated MipInfo, ex: State is active but MipInfo.start was not reach yet
     #[error("MipInfo {0:?} is not coherent with state: {1:?}")]
     NonCoherent(MipInfo, MipState),

@@ -53,65 +53,65 @@ mod private;
 mod public;
 
 /// Public API component
-pub(crate)  struct Public {
+pub struct Public {
     /// link to the consensus component
-    pub(crate)  consensus_controller: Box<dyn ConsensusController>,
+    pub(crate) consensus_controller: Box<dyn ConsensusController>,
     /// link to the execution component
-    pub(crate)  execution_controller: Box<dyn ExecutionController>,
+    pub(crate) execution_controller: Box<dyn ExecutionController>,
     /// link to the selector component
-    pub(crate)  selector_controller: Box<dyn SelectorController>,
+    pub(crate) selector_controller: Box<dyn SelectorController>,
     /// link to the pool component
-    pub(crate)  pool_command_sender: Box<dyn PoolController>,
+    pub(crate) pool_command_sender: Box<dyn PoolController>,
     /// link to the protocol component
-    pub(crate)  protocol_controller: Box<dyn ProtocolController>,
+    pub(crate) protocol_controller: Box<dyn ProtocolController>,
     /// Massa storage
-    pub(crate)  storage: Storage,
+    pub(crate) storage: Storage,
     /// API settings
-    pub(crate)  api_settings: APIConfig,
+    pub(crate) api_settings: APIConfig,
     /// Protocol config
-    pub(crate)  protocol_config: ProtocolConfig,
+    pub(crate) protocol_config: ProtocolConfig,
     /// node version (TODO remove, can be retrieved via an endpoint)
-    pub(crate)  version: Version,
+    pub(crate) version: Version,
     /// our node id
-    pub(crate)  node_id: NodeId,
+    pub(crate) node_id: NodeId,
 }
 
 /// Private API content
-pub(crate)  struct Private {
+pub struct Private {
     /// link to the protocol component
-    pub(crate)  protocol_controller: Box<dyn ProtocolController>,
+    pub(crate) protocol_controller: Box<dyn ProtocolController>,
     /// link to the execution component
-    pub(crate)  execution_controller: Box<dyn ExecutionController>,
+    pub(crate) execution_controller: Box<dyn ExecutionController>,
     /// API settings
-    pub(crate)  api_settings: APIConfig,
+    pub(crate) api_settings: APIConfig,
     /// stop channel
-    pub(crate)  stop_node_channel: mpsc::Sender<()>,
+    pub(crate) stop_node_channel: mpsc::Sender<()>,
     /// User wallet
-    pub(crate)  node_wallet: Arc<RwLock<Wallet>>,
+    pub(crate) node_wallet: Arc<RwLock<Wallet>>,
 }
 
 /// API v2 content
-pub(crate)  struct ApiV2 {
+pub struct ApiV2 {
     /// link to the consensus component
-    pub(crate)  consensus_controller: Box<dyn ConsensusController>,
+    pub(crate) consensus_controller: Box<dyn ConsensusController>,
     /// link(channels) to the consensus component
-    pub(crate)  consensus_channels: ConsensusChannels,
+    pub(crate) consensus_channels: ConsensusChannels,
     /// link to the execution component
-    pub(crate)  execution_controller: Box<dyn ExecutionController>,
+    pub(crate) execution_controller: Box<dyn ExecutionController>,
     /// link(channels) to the pool component
-    pub(crate)  pool_channels: PoolChannels,
+    pub(crate) pool_channels: PoolChannels,
     /// API settings
-    pub(crate)  api_settings: APIConfig,
+    pub(crate) api_settings: APIConfig,
     /// node version
-    pub(crate)  version: Version,
+    pub(crate) version: Version,
 }
 
 /// The API wrapper
-pub(crate)  struct API<T>(T);
+pub struct API<T>(T);
 
 /// Used to manage the API
 #[async_trait::async_trait]
-pub(crate)  trait RpcServer: MassaRpcServer {
+pub trait RpcServer: MassaRpcServer {
     /// Start the API
     async fn serve(
         self,
@@ -122,7 +122,7 @@ pub(crate)  trait RpcServer: MassaRpcServer {
 
 /// Used to manage the API
 #[async_trait::async_trait]
-pub(crate)  trait ApiServer: MassaApiServer {
+pub trait ApiServer: MassaApiServer {
     /// Start the API
     async fn serve(
         self,
@@ -186,13 +186,13 @@ async fn serve<T>(
 }
 
 /// Used to be able to stop the API
-pub(crate)  struct StopHandle {
+pub struct StopHandle {
     server_handler: ServerHandle,
 }
 
 impl StopHandle {
     /// stop the API gracefully
-    pub(crate)  async fn stop(self) {
+    pub async fn stop(self) {
         match self.server_handler.stop() {
             Ok(_) => {
                 info!("API stop signal sent successfully");
@@ -205,7 +205,7 @@ impl StopHandle {
 
 /// Exposed API methods
 #[rpc(server)]
-pub(crate)  trait MassaRpc {
+pub(crate) trait MassaRpc {
     /// Gracefully stop the node.
     #[method(name = "stop_node")]
     async fn stop_node(&self) -> RpcResult<()>;

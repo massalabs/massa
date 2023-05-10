@@ -110,7 +110,7 @@ impl KeyPair {
     ///
     /// let serialized: String = signature.to_bs58_check();
     /// ```
-    pub(crate) fn generate() -> Self {
+    pub fn generate() -> Self {
         let mut rng = OsRng::default();
         KeyPair(ed25519_dalek::Keypair::generate(&mut rng))
     }
@@ -670,7 +670,7 @@ impl Signature {
     /// let serialized: String = signature.to_bs58_check();
     /// let deserialized: Signature = Signature::from_bs58_check(&serialized).unwrap();
     /// ```
-    pub(crate) fn from_bs58_check(data: &str) -> Result<Signature, MassaSignatureError> {
+    pub fn from_bs58_check(data: &str) -> Result<Signature, MassaSignatureError> {
         bs58::decode(data)
             .with_check(None)
             .into_vec()
@@ -704,9 +704,7 @@ impl Signature {
     /// let serialized = signature.to_bytes();
     /// let deserialized: Signature = Signature::from_bytes(&serialized).unwrap();
     /// ```
-    pub(crate) fn from_bytes(
-        data: &[u8; SIGNATURE_SIZE_BYTES],
-    ) -> Result<Signature, MassaSignatureError> {
+    pub fn from_bytes(data: &[u8; SIGNATURE_SIZE_BYTES]) -> Result<Signature, MassaSignatureError> {
         ed25519_dalek::Signature::from_bytes(&data[..])
             .map(Self)
             .map_err(|err| {

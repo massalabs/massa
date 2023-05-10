@@ -24,7 +24,7 @@ use serde::{Deserialize, Serialize};
 pub struct BootstrapPeers(pub Vec<(PeerId, HashMap<SocketAddr, TransportType>)>);
 
 /// Serializer for `BootstrapPeers`
-pub(crate) struct BootstrapPeersSerializer {
+pub struct BootstrapPeersSerializer {
     u32_serializer: U32VarIntSerializer,
     ip_addr_serializer: IpAddrSerializer,
     port_serializer: U16VarIntSerializer,
@@ -32,7 +32,7 @@ pub(crate) struct BootstrapPeersSerializer {
 
 impl BootstrapPeersSerializer {
     /// Creates a new `BootstrapPeersSerializer`
-    pub(crate) fn new() -> Self {
+    pub fn new() -> Self {
         Self {
             u32_serializer: U32VarIntSerializer::new(),
             ip_addr_serializer: IpAddrSerializer::new(),
@@ -96,7 +96,7 @@ impl Serializer<BootstrapPeers> for BootstrapPeersSerializer {
 }
 
 /// Deserializer for `BootstrapPeers`
-pub(crate) struct BootstrapPeersDeserializer {
+pub struct BootstrapPeersDeserializer {
     length_deserializer: U32VarIntDeserializer,
     length_listeners_deserializer: U32VarIntDeserializer,
     ip_addr_deserializer: IpAddrDeserializer,
@@ -109,7 +109,7 @@ impl BootstrapPeersDeserializer {
     /// Arguments:
     ///
     /// * `max_peers`: maximum peers that can be serialized
-    pub(crate) fn new(max_peers: u32, max_listeners_per_peer: u32) -> Self {
+    pub fn new(max_peers: u32, max_listeners_per_peer: u32) -> Self {
         Self {
             length_deserializer: U32VarIntDeserializer::new(Included(0), Included(max_peers)),
             length_listeners_deserializer: U32VarIntDeserializer::new(

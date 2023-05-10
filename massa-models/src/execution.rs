@@ -36,11 +36,11 @@ pub struct EventFilter {
 #[derive(Clone, Copy, Deserialize, Serialize, Debug)]
 pub struct TempFileVestingRange {
     /// start timestamp
-    pub(crate) timestamp: MassaTime,
+    pub timestamp: MassaTime,
 
     /// minimal balance
-    pub(crate) min_balance: Option<Amount>,
+    pub min_balance: Option<Amount>,
 
     /// max rolls
-    pub(crate) max_rolls: Option<u64>,
+    pub max_rolls: Option<u64>,
 }

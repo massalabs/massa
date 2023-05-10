@@ -519,7 +519,7 @@ impl Applicable<LedgerChanges> for LedgerChanges {
 
 impl LedgerChanges {
     /// Get an item from the `LedgerChanges`
-    pub(crate) fn get(
+    pub fn get(
         &self,
         addr: &Address,
     ) -> Option<&SetUpdateOrDelete<LedgerEntry, LedgerEntryUpdate>> {
@@ -552,7 +552,7 @@ impl LedgerChanges {
 
     /// Create a new, empty address.
     /// Overwrites the address if it is already there.
-    pub(crate) fn create_address(&mut self, address: &Address) {
+    pub fn create_address(&mut self, address: &Address) {
         self.0
             .insert(*address, SetUpdateOrDelete::Set(LedgerEntry::default()));
     }
@@ -572,7 +572,7 @@ impl LedgerChanges {
     /// * Some(v) if a value is present, where v is a copy of the value
     /// * None if the value is absent
     /// * f() if the value is unknown
-    pub(crate) fn get_balance_or_else<F: FnOnce() -> Option<Amount>>(
+    pub fn get_balance_or_else<F: FnOnce() -> Option<Amount>>(
         &self,
         addr: &Address,
         f: F,
@@ -617,7 +617,7 @@ impl LedgerChanges {
     /// * Some(v) if a value is present, where v is a copy of the value
     /// * None if the value is absent
     /// * f() if the value is unknown
-    pub(crate) fn get_bytecode_or_else<F: FnOnce() -> Option<Bytecode>>(
+    pub fn get_bytecode_or_else<F: FnOnce() -> Option<Bytecode>>(
         &self,
         addr: &Address,
         f: F,
@@ -663,7 +663,7 @@ impl LedgerChanges {
     /// * true if the entry exists
     /// * false if the value is absent
     /// * f() if the value's existence is unknown
-    pub(crate) fn entry_exists_or_else<F: FnOnce() -> bool>(&self, addr: &Address, f: F) -> bool {
+    pub fn entry_exists_or_else<F: FnOnce() -> bool>(&self, addr: &Address, f: F) -> bool {
         // Get the changes for the provided address
         match self.0.get(addr) {
             // The entry is being replaced by a new one: it exists
@@ -689,7 +689,7 @@ impl LedgerChanges {
     /// # Arguments
     /// * `addr`: target address
     /// * `balance`: balance to set for the provided address
-    pub(crate) fn set_balance(&mut self, addr: Address, balance: Amount) {
+    pub fn set_balance(&mut self, addr: Address, balance: Amount) {
         // Get the changes for the entry associated to the provided address
         match self.0.entry(addr) {
             // That entry is being changed
@@ -736,7 +736,7 @@ impl LedgerChanges {
     /// # Parameters
     /// * `addr`: target address
     /// * `bytecode`: executable bytecode to assign to that address
-    pub(crate) fn set_bytecode(&mut self, addr: Address, bytecode: Bytecode) {
+    pub fn set_bytecode(&mut self, addr: Address, bytecode: Bytecode) {
         // Get the current changes being applied to the entry associated to that address
         match self.0.entry(addr) {
             // There are changes currently being applied to the entry
@@ -793,7 +793,7 @@ impl LedgerChanges {
     /// * Some(v) if the value was found, where v is a copy of the value
     /// * None if the value is absent
     /// * f() if the value is unknown
-    pub(crate) fn get_data_entry_or_else<F: FnOnce() -> Option<Vec<u8>>>(
+    pub fn get_data_entry_or_else<F: FnOnce() -> Option<Vec<u8>>>(
         &self,
         addr: &Address,
         key: &[u8],
@@ -878,7 +878,7 @@ impl LedgerChanges {
     /// * true if the ledger entry exists and the key is present in its datastore
     /// * false if the ledger entry is absent, or if the key is not in its datastore
     /// * f() if the existence of the ledger entry or datastore entry is unknown
-    pub(crate) fn has_data_entry_or_else<F: FnOnce() -> bool>(
+    pub fn has_data_entry_or_else<F: FnOnce() -> bool>(
         &self,
         addr: &Address,
         key: &[u8],
@@ -925,7 +925,7 @@ impl LedgerChanges {
     /// * `addr`: target address
     /// * `key`: datastore key
     /// * `data`: datastore value to set
-    pub(crate) fn set_data_entry(&mut self, addr: Address, key: Vec<u8>, data: Vec<u8>) {
+    pub fn set_data_entry(&mut self, addr: Address, key: Vec<u8>, data: Vec<u8>) {
         // Get the changes being applied to the ledger entry associated to that address
         match self.0.entry(addr) {
             // There are changes currently being applied to the ledger entry
@@ -973,7 +973,7 @@ impl LedgerChanges {
     /// # Arguments
     /// * `addr`: target address
     /// * `key`: datastore key
-    pub(crate) fn delete_data_entry(&mut self, addr: Address, key: Vec<u8>) {
+    pub fn delete_data_entry(&mut self, addr: Address, key: Vec<u8>) {
         // Get the changes being applied to the ledger entry associated to that address
         match self.0.entry(addr) {
             // There are changes currently being applied to the ledger entry

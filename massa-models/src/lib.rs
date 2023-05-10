@@ -41,11 +41,11 @@ pub mod error;
 /// execution related structures
 pub mod execution;
 /// ledger related structures
-pub(crate) mod ledger;
+pub mod ledger;
 /// mapping grpc
 pub(crate) mod mapping_grpc;
 /// node related structure
-pub(crate) mod node;
+pub mod node;
 /// operations
 pub mod operation;
 /// smart contract output events
@@ -67,7 +67,7 @@ pub mod streaming_step;
 /// management of the relation between time and slots
 pub mod timeslots;
 /// versions
-pub(crate) mod version;
+pub mod version;
 
 /// Test utils
 #[cfg(feature = "testing")]

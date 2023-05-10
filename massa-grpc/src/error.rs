@@ -16,7 +16,7 @@ use tracing::log::error;
 /// Errors of the gRPC component.
 #[non_exhaustive]
 #[derive(Display, thiserror::Error, Debug)]
-pub(crate)  enum GrpcError {
+pub enum GrpcError {
     /// `massa_hash` error: {0}
     MassaHashError(#[from] MassaHashError),
     /// consensus error: {0}
@@ -58,7 +58,7 @@ impl From<GrpcError> for tonic::Status {
 }
 
 /// returns the first IO error found
-pub(crate)  fn match_for_io_error(err_status: &tonic::Status) -> Option<&std::io::Error> {
+pub(crate) fn match_for_io_error(err_status: &tonic::Status) -> Option<&std::io::Error> {
     let mut err: &(dyn Error + 'static) = err_status;
 
     loop {

@@ -26,7 +26,7 @@ pub struct StateChanges {
     /// ledger changes
     pub ledger_changes: LedgerChanges,
     /// asynchronous pool changes
-    pub(crate) async_pool_changes: AsyncPoolChanges,
+    pub async_pool_changes: AsyncPoolChanges,
     /// roll state changes
     pub pos_changes: PoSChanges,
     /// executed operations changes
@@ -36,7 +36,7 @@ pub struct StateChanges {
 }
 
 /// Basic `StateChanges` serializer.
-pub(crate) struct StateChangesSerializer {
+pub struct StateChangesSerializer {
     ledger_changes_serializer: LedgerChangesSerializer,
     async_pool_changes_serializer: AsyncPoolChangesSerializer,
     pos_changes_serializer: PoSChangesSerializer,
@@ -52,7 +52,7 @@ impl Default for StateChangesSerializer {
 
 impl StateChangesSerializer {
     /// Creates a `StateChangesSerializer`
-    pub(crate) fn new() -> Self {
+    pub fn new() -> Self {
         Self {
             ledger_changes_serializer: LedgerChangesSerializer::new(),
             async_pool_changes_serializer: AsyncPoolChangesSerializer::new(),
@@ -124,7 +124,7 @@ impl Serializer<StateChanges> for StateChangesSerializer {
 }
 
 /// Basic `StateChanges` deserializer
-pub(crate) struct StateChangesDeserializer {
+pub struct StateChangesDeserializer {
     ledger_changes_deserializer: LedgerChangesDeserializer,
     async_pool_changes_deserializer: AsyncPoolChangesDeserializer,
     pos_changes_deserializer: PoSChangesDeserializer,
@@ -135,7 +135,7 @@ pub(crate) struct StateChangesDeserializer {
 impl StateChangesDeserializer {
     /// Creates a `StateChangesDeserializer`
     #[allow(clippy::too_many_arguments)]
-    pub(crate) fn new(
+    pub fn new(
         thread_count: u8,
         max_async_pool_changes: u64,
         max_async_message_data: u64,

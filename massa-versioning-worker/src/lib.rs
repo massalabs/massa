@@ -48,7 +48,7 @@
 
 pub mod versioning;
 pub(crate) mod versioning_factory;
-pub(crate) mod versioning_ser_der;
+pub mod versioning_ser_der;
 
 /// Test utils
 #[cfg(any(test, feature = "testing"))]

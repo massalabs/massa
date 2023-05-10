@@ -22,7 +22,7 @@ use std::ops::Bound;
 use Bound::Included;
 
 /// Serialize min big endian integer
-pub(crate) trait SerializeMinBEInt {
+pub trait SerializeMinBEInt {
     /// serializes with the minimal amount of big endian bytes
     fn to_be_bytes_min(self, max_value: Self) -> Result<Vec<u8>, ModelsError>;
 }
@@ -48,7 +48,7 @@ impl SerializeMinBEInt for u64 {
 }
 
 /// Deserialize min big endian
-pub(crate) trait DeserializeMinBEInt: Sized {
+pub trait DeserializeMinBEInt: Sized {
     /// min big endian integer base size
     const MIN_BE_INT_BASE_SIZE: usize;
 
@@ -402,7 +402,7 @@ where
 
 /// Basic `PreHashSet<_>` serializer
 #[derive(Clone)]
-pub(crate) struct PreHashSetSerializer<T, ST>
+pub struct PreHashSetSerializer<T, ST>
 where
     ST: Serializer<T>,
 {
@@ -416,7 +416,7 @@ where
     ST: Serializer<T>,
 {
     /// Creates a new `PreHashSetSerializer`
-    pub(crate) fn new(data_serializer: ST) -> Self {
+    pub fn new(data_serializer: ST) -> Self {
         Self {
             len_serializer: U64VarIntSerializer::new(),
             data_serializer,
@@ -442,7 +442,7 @@ where
 
 /// Basic `PreHashSet<_>` deserializer
 #[derive(Clone)]
-pub(crate) struct PreHashSetDeserializer<T, ST>
+pub struct PreHashSetDeserializer<T, ST>
 where
     ST: Deserializer<T> + Clone,
 {
@@ -456,7 +456,7 @@ where
     ST: Deserializer<T> + Clone,
 {
     /// Creates a new `PreHashSetDeserializer`
-    pub(crate) const fn new(
+    pub const fn new(
         data_deserializer: ST,
         min_length: Bound<u64>,
         max_length: Bound<u64>,

@@ -11,7 +11,7 @@ mod sig_verifier;
 mod worker;
 mod wrap_network;
 
-pub(crate)  use worker::{create_protocol_controller, start_protocol_controller};
+pub use worker::{create_protocol_controller, start_protocol_controller};
 
 #[cfg(test)]
 mod tests;

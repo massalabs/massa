@@ -92,7 +92,7 @@ impl Clone for Box<dyn ProtocolController> {
 }
 
 /// Protocol manager used to stop the protocol
-pub(crate) trait ProtocolManager {
+pub trait ProtocolManager {
     /// Stop the protocol
     /// Note that we do not take self by value to consume it
     /// because it is not allowed to move out of Box<dyn ProtocolManager>

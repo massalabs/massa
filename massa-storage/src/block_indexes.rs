@@ -129,7 +129,7 @@ impl BlockIndexes {
     ///
     /// Returns:
     /// - a reference to the block ids created by the address
-    pub(crate) fn get_blocks_created_by(&self, address: &Address) -> Option<&PreHashSet<BlockId>> {
+    pub fn get_blocks_created_by(&self, address: &Address) -> Option<&PreHashSet<BlockId>> {
         self.index_by_creator.get(address)
     }
 
@@ -139,7 +139,7 @@ impl BlockIndexes {
     ///
     /// Returns:
     /// - the block ids of the blocks at the slot if any, None otherwise
-    pub(crate) fn get_blocks_by_slot(&self, slot: &Slot) -> Option<&PreHashSet<BlockId>> {
+    pub fn get_blocks_by_slot(&self, slot: &Slot) -> Option<&PreHashSet<BlockId>> {
         self.index_by_slot.get(slot)
     }
 
@@ -149,7 +149,7 @@ impl BlockIndexes {
     ///
     /// Returns:
     /// - the block ids containing the operation if any, None otherwise
-    pub(crate) fn get_blocks_by_operation(&self, id: &OperationId) -> Option<&PreHashSet<BlockId>> {
+    pub fn get_blocks_by_operation(&self, id: &OperationId) -> Option<&PreHashSet<BlockId>> {
         self.index_by_op.get(id)
     }
 
@@ -159,10 +159,7 @@ impl BlockIndexes {
     ///
     /// Returns:
     /// - the block ids containing the endorsement if any, None otherwise
-    pub(crate) fn get_blocks_by_endorsement(
-        &self,
-        id: &EndorsementId,
-    ) -> Option<&PreHashSet<BlockId>> {
+    pub fn get_blocks_by_endorsement(&self, id: &EndorsementId) -> Option<&PreHashSet<BlockId>> {
         self.index_by_endorsement.get(id)
     }
 }

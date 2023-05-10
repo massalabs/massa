@@ -11,11 +11,12 @@ mod controller_traits;
 mod error;
 mod types;
 
-pub(crate)  use config::FactoryConfig;
-pub(crate)  use controller_traits::FactoryManager;
-pub(crate)  use error::*;
-pub(crate)  use types::*;
+pub use config::FactoryConfig;
+pub use controller_traits::FactoryManager;
+pub use types::FactoryChannels;
+// pub(crate)  use error::*;
+// pub(crate)  use types::*;
 
 /// Tests utils
 #[cfg(feature = "testing")]
-pub(crate)  mod test_exports;
+pub(crate) mod test_exports;

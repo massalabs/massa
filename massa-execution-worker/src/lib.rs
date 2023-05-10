@@ -99,14 +99,14 @@ mod stats;
 mod vesting_manager;
 mod worker;
 
-pub(crate)  use worker::start_execution_worker;
+pub use worker::start_execution_worker;
 
 #[cfg(any(
     feature = "gas_calibration",
     feature = "benchmarking",
     feature = "testing"
 ))]
-pub(crate)  use interface_impl::InterfaceImpl;
+pub(crate) use interface_impl::InterfaceImpl;
 
 #[cfg(any(feature = "benchmarking"))]
 use criterion as _;

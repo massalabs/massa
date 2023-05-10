@@ -50,7 +50,7 @@ const LEDGER_FINAL_STATE_HASH_KEY: &[u8; 3] = b"fsh";
 const LEDGER_HASH_INITIAL_BYTES: &[u8; 32] = &[0; HASH_SIZE_BYTES];
 
 /// Ledger sub entry enum
-pub(crate)  enum LedgerSubEntry {
+pub(crate) enum LedgerSubEntry {
     /// Balance
     Balance,
     /// Bytecode
@@ -72,7 +72,7 @@ impl LedgerSubEntry {
 /// Disk ledger DB module
 ///
 /// Contains a `RocksDB` DB instance
-pub(crate) struct LedgerDB {
+pub struct LedgerDB {
     db: DB,
     thread_count: u8,
     key_serializer: KeySerializer,
@@ -96,7 +96,7 @@ impl Debug for LedgerDB {
 }
 
 /// Batch containing write operations to perform on disk and cache for the ledger hash computing
-pub(crate)  struct LedgerBatch {
+pub(crate) struct LedgerBatch {
     // Rocksdb write batch
     write_batch: WriteBatch,
     // Ledger hash state in the current batch
@@ -106,7 +106,7 @@ pub(crate)  struct LedgerBatch {
 }
 
 impl LedgerBatch {
-    pub(crate)  fn new(ledger_hash: Hash) -> Self {
+    pub(crate) fn new(ledger_hash: Hash) -> Self {
         Self {
             write_batch: WriteBatch::default(),
             ledger_hash,
@@ -120,7 +120,7 @@ impl LedgerDB {
     ///
     /// # Arguments
     /// * path: path to the desired disk ledger db directory
-    pub(crate)  fn new(
+    pub(crate) fn new(
         path: PathBuf,
         thread_count: u8,
         max_datastore_key_length: u8,
@@ -181,7 +181,7 @@ impl LedgerDB {
         }
     }
 
-    pub(crate)  fn set_initial_slot(&mut self, slot: Slot) {
+    pub(crate) fn set_initial_slot(&mut self, slot: Slot) {
         let ledger_hash = self.get_ledger_hash();
         let mut batch = LedgerBatch::new(ledger_hash);
         self.set_slot(slot, &mut batch);
@@ -191,7 +191,7 @@ impl LedgerDB {
     /// Loads the initial disk ledger
     ///
     /// # Arguments
-    pub(crate)  fn load_initial_ledger(&mut self, initial_ledger: HashMap<Address, LedgerEntry>) {
+    pub(crate) fn load_initial_ledger(&mut self, initial_ledger: HashMap<Address, LedgerEntry>) {
         // initial ledger_hash value to avoid matching an option in every XOR operation
         // because of a one time case being an empty ledger
         let ledger_hash = Hash::from_bytes(LEDGER_HASH_INITIAL_BYTES);
@@ -212,7 +212,7 @@ impl LedgerDB {
     /// * changes: ledger changes to be applied
     /// * slot: new slot associated to the final ledger
     /// * final_state_data: the serialized final state data to include, in case we use the feature `create_snapshot`
-    pub(crate)  fn apply_changes(
+    pub(crate) fn apply_changes(
         &mut self,
         changes: LedgerChanges,
         slot: Slot,
@@ -256,7 +256,7 @@ impl LedgerDB {
     }
 
     /// Get the current disk ledger hash
-    pub(crate)  fn get_ledger_hash(&self) -> Hash {
+    pub(crate) fn get_ledger_hash(&self) -> Hash {
         let handle = self.db.cf_handle(METADATA_CF).expect(CF_ERROR);
         if let Some(ledger_hash_bytes) = self
             .db
@@ -281,7 +281,7 @@ impl LedgerDB {
     ///
     /// # Returns
     /// An Option of the sub-entry value as bytes
-    pub(crate)  fn get_sub_entry(&self, addr: &Address, ty: LedgerSubEntry) -> Option<Vec<u8>> {
+    pub(crate) fn get_sub_entry(&self, addr: &Address, ty: LedgerSubEntry) -> Option<Vec<u8>> {
         let handle = self.db.cf_handle(LEDGER_CF).expect(CF_ERROR);
         let key = ty.derive_key(addr);
         let mut serialized_key = Vec::new();
@@ -295,7 +295,7 @@ impl LedgerDB {
     ///
     /// # Returns
     /// A `BTreeSet` of the datastore keys
-    pub(crate)  fn get_datastore_keys(&self, addr: &Address) -> Option<BTreeSet<Vec<u8>>> {
+    pub(crate) fn get_datastore_keys(&self, addr: &Address) -> Option<BTreeSet<Vec<u8>>> {
         let handle = self.db.cf_handle(LEDGER_CF).expect(CF_ERROR);
 
         let mut opt = ReadOptions::default();
@@ -338,7 +338,7 @@ impl LedgerDB {
     /// A tuple containing:
     /// * The ledger part as bytes
     /// * The last taken key (this is an optimization to easily keep a reference to the last key)
-    pub(crate)  fn get_ledger_part(
+    pub(crate) fn get_ledger_part(
         &self,
         cursor: StreamingStep<Key>,
     ) -> Result<(Vec<u8>, StreamingStep<Key>), ModelsError> {
@@ -393,7 +393,10 @@ impl LedgerDB {
     ///
     /// # Returns
     /// The last key of the inserted entry (this is an optimization to easily keep a reference to the last key)
-    pub(crate)  fn set_ledger_part<'a>(&self, data: &'a [u8]) -> Result<StreamingStep<Key>, ModelsError> {
+    pub(crate) fn set_ledger_part<'a>(
+        &self,
+        data: &'a [u8],
+    ) -> Result<StreamingStep<Key>, ModelsError> {
         let handle = self.db.cf_handle(LEDGER_CF).expect(CF_ERROR);
         let vec_u8_deserializer =
             VecU8Deserializer::new(Bound::Included(0), Bound::Excluded(u64::MAX));
@@ -429,7 +432,7 @@ impl LedgerDB {
         }
     }
 
-    pub(crate)  fn reset(&mut self) {
+    pub(crate) fn reset(&mut self) {
         self.db
             .drop_cf(LEDGER_CF)
             .expect("Error dropping ledger cf");
@@ -446,7 +449,7 @@ impl LedgerDB {
             .expect("Error creating metadata cf");
     }
 
-    pub(crate)  fn set_final_state_hash(&mut self, data: &[u8]) {
+    pub(crate) fn set_final_state_hash(&mut self, data: &[u8]) {
         let handle = self.db.cf_handle(FINAL_STATE_CF).expect(CF_ERROR);
         let mut batch = WriteBatch::default();
 
@@ -454,7 +457,7 @@ impl LedgerDB {
         self.db.write(batch).expect(CRUD_ERROR);
     }
 
-    pub(crate)  fn get_final_state(&self) -> Result<Vec<u8>, ModelsError> {
+    pub(crate) fn get_final_state(&self) -> Result<Vec<u8>, ModelsError> {
         let handle = self.db.cf_handle(FINAL_STATE_CF).expect(CF_ERROR);
         let opt = ReadOptions::default();
 
@@ -505,7 +508,7 @@ impl LedgerDB {
         batch.ledger_hash ^= Hash::compute_from(&slot_bytes);
     }
 
-    pub(crate)  fn get_slot(&self) -> Result<Slot, ModelsError> {
+    pub(crate) fn get_slot(&self) -> Result<Slot, ModelsError> {
         let handle = self.db.cf_handle(METADATA_CF).expect(CF_ERROR);
 
         let Ok(Some(slot_bytes)) = self.db.get_pinned_cf(handle, SLOT_KEY) else {
@@ -733,7 +736,7 @@ impl LedgerDB {
     /// # Returns
     /// A `BTreeMap` with the address as key and the balance as value
     #[cfg(any(feature = "testing"))]
-    pub(crate)  fn get_every_address(
+    pub(crate) fn get_every_address(
         &self,
     ) -> std::collections::BTreeMap<Address, massa_models::amount::Amount> {
         use massa_models::address::AddressDeserializer;
@@ -769,7 +772,7 @@ impl LedgerDB {
     /// # Returns
     /// A `BTreeMap` with the entry hash as key and the data bytes as value
     #[cfg(any(test, feature = "testing"))]
-    pub(crate)  fn get_entire_datastore(
+    pub(crate) fn get_entire_datastore(
         &self,
         addr: &Address,
     ) -> std::collections::BTreeMap<Vec<u8>, Vec<u8>> {

@@ -25,12 +25,12 @@ use std::ops::Bound::{Excluded, Included};
 #[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct Clique {
     /// the block ids of the blocks in that clique
-    pub(crate) block_ids: PreHashSet<BlockId>,
+    pub block_ids: PreHashSet<BlockId>,
     /// Fitness used to compute finality
     /// Depends on descendants and endorsement count
-    pub(crate) fitness: u64,
+    pub fitness: u64,
     /// True if it is the clique of higher fitness
-    pub(crate) is_blockclique: bool,
+    pub is_blockclique: bool,
 }
 
 impl Default for Clique {

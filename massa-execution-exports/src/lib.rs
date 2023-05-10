@@ -57,7 +57,7 @@ pub use controller_traits::ExecutionController;
 pub use controller_traits::ExecutionManager;
 pub use error::ExecutionError;
 pub use event_store::EventStore;
-pub(crate) use massa_sc_runtime::GasCosts;
+pub use massa_sc_runtime::GasCosts;
 pub use settings::ExecutionConfig;
 pub use settings::StorageCostsConstants;
 pub use types::ExecutionAddressInfo;

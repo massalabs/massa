@@ -107,7 +107,7 @@ impl DeferredCredits {
     }
 
     /// Apply a function to each element
-    pub(crate) fn for_each<F>(&mut self, mut f: F)
+    pub fn for_each<F>(&mut self, mut f: F)
     where
         F: FnMut(&Slot, &Address, &mut Amount),
     {
@@ -139,7 +139,7 @@ impl DeferredCredits {
     /// Get all deferred credits within a slot range.
     /// If `with_hash == true` then the resulting DeferredCredits contains the hash of the included data.
     /// Note that computing the hash is heavy and should be done only at finalization.
-    pub(crate) fn get_slot_range<R>(&self, range: R, with_hash: bool) -> DeferredCredits
+    pub fn get_slot_range<R>(&self, range: R, with_hash: bool) -> DeferredCredits
     where
         R: RangeBounds<Slot>,
     {
@@ -167,7 +167,7 @@ impl DeferredCredits {
     }
 
     /// Remove credits set to zero, use only on finality
-    pub(crate) fn remove_zeros(&mut self) {
+    pub fn remove_zeros(&mut self) {
         let mut empty_slots = Vec::new();
 
         // We need to destructure self to be able to mutate both credits and the hash_tracker during iteration
@@ -200,11 +200,7 @@ impl DeferredCredits {
     }
 
     /// Gets the deferred credits for a given address that will be credited at a given slot
-    pub(crate) fn get_address_credits_for_slot(
-        &self,
-        addr: &Address,
-        slot: &Slot,
-    ) -> Option<Amount> {
+    pub fn get_address_credits_for_slot(&self, addr: &Address, slot: &Slot) -> Option<Amount> {
         self.credits
             .get(slot)
             .and_then(|slot_credits| slot_credits.get(addr))
@@ -212,12 +208,7 @@ impl DeferredCredits {
     }
 
     /// Insert an element
-    pub(crate) fn insert(
-        &mut self,
-        slot: Slot,
-        address: Address,
-        amount: Amount,
-    ) -> Option<Amount> {
+    pub fn insert(&mut self, slot: Slot, address: Address, amount: Amount) -> Option<Amount> {
         let prev = self
             .credits
             .entry(slot)

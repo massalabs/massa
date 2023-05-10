@@ -5,14 +5,14 @@ use serde::{Deserialize, Serialize, Serializer};
 
 /// Represents a Vec that can be split across Pages
 /// Cf. <https://docs.rs/paginate/latest/paginate/>
-pub(crate)  struct PagedVec<T> {
+pub struct PagedVec<T> {
     res: Vec<T>,
     _total_count: usize,
 }
 
 impl<T: Serialize> PagedVec<T> {
     /// Creates a new Paged Vec with optional limits of item per page and offset
-    pub(crate)  fn new(elements: Vec<T>, page_request: Option<PageRequest>) -> Self {
+    pub fn new(elements: Vec<T>, page_request: Option<PageRequest>) -> Self {
         let total_count = elements.len();
 
         let (limit, offset) = match page_request {
@@ -44,16 +44,16 @@ impl<T: Serialize> Serialize for PagedVec<T> {
 
 /// Represents the request inputs for a PagedVec
 #[derive(Deserialize, Serialize)]
-pub(crate)  struct PageRequest {
+pub struct PageRequest {
     /// The limit of elements in a page
-    pub(crate)  limit: usize,
+    pub limit: usize,
     /// The page offset
-    pub(crate)  offset: usize,
+    pub offset: usize,
 }
 
 /// Represents the request inputs for a PagedVecV2
 #[derive(Deserialize, Serialize)]
-pub(crate)  struct PagedVecV2<T> {
+pub struct PagedVecV2<T> {
     content: Vec<T>,
     total_count: usize,
 }

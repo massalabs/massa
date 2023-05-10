@@ -47,7 +47,7 @@ impl ExecutionThread {
     /// * `config`: execution configuration
     /// * `input_data`: a copy of the input data interface to get incoming requests from
     /// * `execution_state`: an thread-safe shared access to the execution state, which can be bootstrapped or newly created
-    pub(crate)  fn new(
+    pub(crate) fn new(
         config: ExecutionConfig,
         input_data: Arc<(Condvar, Mutex<ExecutionInputData>)>,
         execution_state: Arc<RwLock<ExecutionState>>,
@@ -165,7 +165,7 @@ impl ExecutionThread {
     }
 
     /// Main loop of the execution worker
-    pub(crate)  fn main_loop(&mut self) {
+    pub(crate) fn main_loop(&mut self) {
         // This loop restarts every time an execution happens for easier tracking.
         // It also prioritizes executions in the following order:
         // 1 - final executions
@@ -242,7 +242,7 @@ impl ExecutionThread {
 /// A pair `(execution_manager, execution_controller)` where:
 /// * `execution_manager`: allows to stop the worker
 /// * `execution_controller`: allows sending requests and notifications to the worker
-pub(crate)  fn start_execution_worker(
+pub fn start_execution_worker(
     config: ExecutionConfig,
     final_state: Arc<RwLock<FinalState>>,
     selector: Box<dyn SelectorController>,

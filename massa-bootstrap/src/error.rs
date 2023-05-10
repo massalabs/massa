@@ -15,7 +15,7 @@ use thiserror::Error;
 
 #[non_exhaustive]
 #[derive(Display, Error, Debug)]
-pub(crate)  enum BootstrapError {
+pub enum BootstrapError {
     /// all io errors except for Timedout, and would-block (unix error when timed out)
     IoError(std::io::Error),
     /// We want to handle Timedout and WouldBlock

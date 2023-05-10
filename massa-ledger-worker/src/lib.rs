@@ -28,7 +28,7 @@
 //! can be modified, combined or applied to the final ledger.
 //!
 //! ## `bootstrap.rs`
-//! Provides serializable structures and tools for bootstrapping the final ledger.  
+//! Provides serializable structures and tools for bootstrapping the final ledger.
 //!
 //! ## Test exports
 //!
@@ -41,10 +41,10 @@
 mod ledger;
 mod ledger_db;
 
-pub(crate)  use ledger::FinalLedger;
+pub use ledger::FinalLedger;
 
 #[cfg(test)]
 mod tests;
 
 #[cfg(feature = "testing")]
-pub(crate)  mod test_exports;
+pub(crate) mod test_exports;

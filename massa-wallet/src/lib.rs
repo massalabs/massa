@@ -5,7 +5,7 @@
 #![warn(unused_crate_dependencies)]
 #![feature(map_try_insert)]
 
-pub(crate)  use error::WalletError;
+pub use error::WalletError;
 
 use massa_cipher::{decrypt, encrypt};
 use massa_hash::Hash;
@@ -22,18 +22,18 @@ mod error;
 
 /// Contains the keypairs created in the wallet.
 #[derive(Clone, Debug, Deserialize, Serialize)]
-pub(crate)  struct Wallet {
+pub struct Wallet {
     /// Keypairs and addresses
-    pub(crate)  keys: PreHashMap<Address, KeyPair>,
+    pub keys: PreHashMap<Address, KeyPair>,
     /// Path to the file containing the keypairs (encrypted)
-    pub(crate)  wallet_path: PathBuf,
+    pub(crate) wallet_path: PathBuf,
     /// Password
-    pub(crate)  password: String,
+    pub(crate) password: String,
 }
 
 impl Wallet {
     /// Generates a new wallet initialized with the provided file content
-    pub(crate)  fn new(path: PathBuf, password: String) -> Result<Wallet, WalletError> {
+    pub fn new(path: PathBuf, password: String) -> Result<Wallet, WalletError> {
         if path.is_file() {
             let content = &std::fs::read(&path)?[..];
             let (_version, decrypted_content) = decrypt(&password, content)?;
@@ -58,7 +58,7 @@ impl Wallet {
     /// Sign arbitrary message with the associated keypair
     /// returns none if the address isn't in the wallet or if an error occurred during the signature
     /// else returns the public key that signed the message and the signature
-    pub(crate)  fn sign_message(&self, address: &Address, msg: Vec<u8>) -> Option<PubkeySig> {
+    pub fn sign_message(&self, address: &Address, msg: Vec<u8>) -> Option<PubkeySig> {
         if let Some(key) = self.keys.get(address) {
             if let Ok(signature) = key.sign(&Hash::compute_from(&msg)) {
                 Some(PubkeySig {
@@ -75,7 +75,7 @@ impl Wallet {
 
     /// Adds a list of keypairs to the wallet, returns their addresses.
     /// The wallet file is updated.
-    pub(crate)  fn add_keypairs(&mut self, keys: Vec<KeyPair>) -> Result<Vec<Address>, WalletError> {
+    pub fn add_keypairs(&mut self, keys: Vec<KeyPair>) -> Result<Vec<Address>, WalletError> {
         let mut changed = false;
         let mut addrs = Vec::with_capacity(keys.len());
         for key in keys {
@@ -93,7 +93,7 @@ impl Wallet {
 
     /// Removes wallet entries given a list of addresses. Missing entries are ignored.
     /// The wallet file is updated.
-    pub(crate)  fn remove_addresses(&mut self, addresses: &Vec<Address>) -> Result<(), WalletError> {
+    pub fn remove_addresses(&mut self, addresses: &Vec<Address>) -> Result<(), WalletError> {
         let mut changed = false;
         for address in addresses {
             if self.keys.remove(address).is_some() {
@@ -107,19 +107,19 @@ impl Wallet {
     }
 
     /// Finds the keypair associated with given address
-    pub(crate)  fn find_associated_keypair(&self, address: &Address) -> Option<&KeyPair> {
+    pub fn find_associated_keypair(&self, address: &Address) -> Option<&KeyPair> {
         self.keys.get(address)
     }
 
     /// Finds the public key associated with given address
-    pub(crate)  fn find_associated_public_key(&self, address: &Address) -> Option<PublicKey> {
+    pub(crate) fn find_associated_public_key(&self, address: &Address) -> Option<PublicKey> {
         self.keys
             .get(address)
             .map(|keypair| keypair.get_public_key())
     }
 
     /// Get all addresses in the wallet
-    pub(crate)  fn get_wallet_address_list(&self) -> PreHashSet<Address> {
+    pub fn get_wallet_address_list(&self) -> PreHashSet<Address> {
         self.keys.keys().copied().collect()
     }
 
@@ -133,12 +133,12 @@ impl Wallet {
     }
 
     /// Export keys and addresses
-    pub(crate)  fn get_full_wallet(&self) -> &PreHashMap<Address, KeyPair> {
+    pub fn get_full_wallet(&self) -> &PreHashMap<Address, KeyPair> {
         &self.keys
     }
 
     /// Signs an operation with the keypair corresponding to the given address
-    pub(crate)  fn create_operation(
+    pub fn create_operation(
         &self,
         content: Operation,
         address: Address,
@@ -164,4 +164,4 @@ impl std::fmt::Display for Wallet {
 
 /// Test utils
 #[cfg(feature = "testing")]
-pub(crate)  mod test_exports;
+pub(crate) mod test_exports;

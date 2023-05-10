@@ -31,12 +31,12 @@ where
     pub content: T,
     #[serde(skip)]
     /// Content in sharable, deserializable form. Is used in the secure verification protocols.
-    pub(crate) serialized_data: Vec<u8>,
+    pub serialized_data: Vec<u8>,
 
     /// A cryptographically generated value using `serialized_data` and a public key.
-    pub(crate) signature: Signature,
+    pub signature: Signature,
     /// The public-key component used in the generation of the signature
-    pub(crate) content_creator_pub_key: PublicKey,
+    pub content_creator_pub_key: PublicKey,
     /// Derived from the same public key used to generate the signature
     pub content_creator_address: Address,
     /// A secure hash of the data. See also [massa_hash::Hash]
@@ -209,7 +209,7 @@ where
     }
 
     /// check if self has been signed by public key
-    pub(crate) fn verify_signature(&self) -> Result<(), ModelsError> {
+    pub fn verify_signature(&self) -> Result<(), ModelsError> {
         self.content.verify_signature(
             &self.content_creator_pub_key,
             self.id.get_hash(),
@@ -218,7 +218,7 @@ where
     }
 
     /// Compute the signed hash
-    pub(crate) fn compute_signed_hash(&self) -> Hash {
+    pub fn compute_signed_hash(&self) -> Hash {
         self.content
             .compute_signed_hash(&self.content_creator_pub_key, self.id.get_hash())
     }

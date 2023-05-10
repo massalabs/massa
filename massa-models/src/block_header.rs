@@ -30,13 +30,13 @@ pub struct BlockHeader {
     /// slot
     pub slot: Slot,
     /// parents
-    pub(crate) parents: Vec<BlockId>,
+    pub parents: Vec<BlockId>,
     /// all operations hash
-    pub(crate) operation_merkle_root: Hash,
+    pub operation_merkle_root: Hash,
     /// endorsements
     pub endorsements: Vec<SecureShareEndorsement>,
     /// denunciations
-    pub(crate) denunciations: Vec<Denunciation>,
+    pub denunciations: Vec<Denunciation>,
 }
 
 // TODO: gh-issue #3398
@@ -110,7 +110,7 @@ impl SecureShareContent for BlockHeader {
 
 impl SecuredHeader {
     /// gets the header fitness
-    pub(crate) fn get_fitness(&self) -> u64 {
+    pub fn get_fitness(&self) -> u64 {
         (self.content.endorsements.len() as u64) + 1
     }
     // TODO: gh-issue #3398
@@ -129,7 +129,7 @@ impl SecuredHeader {
 }
 
 /// Serializer for `BlockHeader`
-pub(crate) struct BlockHeaderSerializer {
+pub struct BlockHeaderSerializer {
     slot_serializer: SlotSerializer,
     endorsement_serializer: SecureShareSerializer,
     endorsement_content_serializer: EndorsementSerializerLW,
@@ -139,7 +139,7 @@ pub(crate) struct BlockHeaderSerializer {
 
 impl BlockHeaderSerializer {
     /// Creates a new `BlockHeaderSerializer`
-    pub(crate) fn new() -> Self {
+    pub fn new() -> Self {
         Self {
             slot_serializer: SlotSerializer::new(),
             endorsement_serializer: SecureShareSerializer::new(),
@@ -247,7 +247,7 @@ impl Serializer<BlockHeader> for BlockHeaderSerializer {
 }
 
 /// Deserializer for `BlockHeader`
-pub(crate) struct BlockHeaderDeserializer {
+pub struct BlockHeaderDeserializer {
     slot_deserializer: SlotDeserializer,
     endorsement_serializer: EndorsementSerializer,
     endorsement_len_deserializer: U32VarIntDeserializer,
@@ -262,7 +262,7 @@ pub(crate) struct BlockHeaderDeserializer {
 impl BlockHeaderDeserializer {
     /// Creates a new `BlockHeaderDeserializer`
     /// If last_start_period is Some(lsp), then the deserializer will check for valid (non)-genesis blocks
-    pub(crate) const fn new(
+    pub const fn new(
         thread_count: u8,
         endorsement_count: u32,
         max_denunciations_in_block_header: u32,

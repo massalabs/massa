@@ -26,18 +26,18 @@ use std::ops::Bound::Included;
 /// Exportable version of `ActiveBlock`
 /// Fields that can be easily recomputed were left out
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub(crate)  struct ExportActiveBlock {
+pub struct ExportActiveBlock {
     /// The block.
-    pub(crate)  block: SecureShareBlock,
+    pub block: SecureShareBlock,
     /// one `(block id, period)` per thread ( if not genesis )
-    pub(crate)  parents: Vec<(BlockId, u64)>,
+    pub(crate) parents: Vec<(BlockId, u64)>,
     /// for example has its fitness reached the given threshold
-    pub(crate)  is_final: bool,
+    pub(crate) is_final: bool,
 }
 
 impl ExportActiveBlock {
     /// conversion from active block to export active block
-    pub(crate)  fn from_active_block(a_block: &ActiveBlock, storage: &Storage) -> Self {
+    pub fn from_active_block(a_block: &ActiveBlock, storage: &Storage) -> Self {
         // get block
         let block = storage
             .read_blocks()
@@ -54,7 +54,7 @@ impl ExportActiveBlock {
     }
 
     /// consuming conversion from `ExportActiveBlock` to `ActiveBlock`
-    pub(crate)  fn to_active_block(
+    pub fn to_active_block(
         self,
         ref_storage: &Storage,
         thread_count: u8,
@@ -89,14 +89,14 @@ impl ExportActiveBlock {
 
 /// Basic serializer of `ExportActiveBlock`
 #[derive(Default)]
-pub(crate)  struct ExportActiveBlockSerializer {
+pub(crate) struct ExportActiveBlockSerializer {
     sec_share_serializer: SecureShareSerializer,
     period_serializer: U64VarIntSerializer,
 }
 
 impl ExportActiveBlockSerializer {
     /// Create a new `ExportActiveBlockSerializer`
-    pub(crate)  fn new() -> Self {
+    pub(crate) fn new() -> Self {
         ExportActiveBlockSerializer {
             sec_share_serializer: SecureShareSerializer::new(),
             period_serializer: U64VarIntSerializer::new(),
@@ -129,7 +129,7 @@ impl Serializer<ExportActiveBlock> for ExportActiveBlockSerializer {
 }
 
 /// Basic deserializer of `ExportActiveBlock`
-pub(crate)  struct ExportActiveBlockDeserializer {
+pub(crate) struct ExportActiveBlockDeserializer {
     sec_share_block_deserializer: SecureShareDeserializer<Block, BlockDeserializer>,
     hash_deserializer: HashDeserializer,
     period_deserializer: U64VarIntDeserializer,
@@ -140,7 +140,7 @@ impl ExportActiveBlockDeserializer {
     /// Create a new `ExportActiveBlockDeserializer`
     // TODO: check if we can remove this?
     #[allow(clippy::too_many_arguments)]
-    pub(crate)  fn new(block_der_args: BlockDeserializerArgs) -> Self {
+    pub(crate) fn new(block_der_args: BlockDeserializerArgs) -> Self {
         let thread_count = block_der_args.thread_count;
         ExportActiveBlockDeserializer {
             sec_share_block_deserializer: SecureShareDeserializer::new(BlockDeserializer::new(

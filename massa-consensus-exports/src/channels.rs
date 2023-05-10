@@ -11,21 +11,21 @@ use crate::events::ConsensusEvent;
 
 /// Contains links to other modules of the node to be able to interact with them.
 #[derive(Clone)]
-pub(crate)  struct ConsensusChannels {
+pub struct ConsensusChannels {
     /// Interface to interact with Execution module
-    pub(crate)  execution_controller: Box<dyn ExecutionController>,
+    pub execution_controller: Box<dyn ExecutionController>,
     /// Interface to interact with PoS module
-    pub(crate)  selector_controller: Box<dyn SelectorController>,
+    pub selector_controller: Box<dyn SelectorController>,
     /// Interface to interact with Pool module
-    pub(crate)  pool_controller: Box<dyn PoolController>,
+    pub pool_controller: Box<dyn PoolController>,
     /// Interface to interact with Protocol module
-    pub(crate)  protocol_controller: Box<dyn ProtocolController>,
+    pub protocol_controller: Box<dyn ProtocolController>,
     /// Channel used by the consensus to send events to the node globally
-    pub(crate)  controller_event_tx: crossbeam_channel::Sender<ConsensusEvent>,
+    pub controller_event_tx: crossbeam_channel::Sender<ConsensusEvent>,
     /// Channel used for Websocket broadcast (if enabled) of new blocks being integrated in the graph
-    pub(crate)  block_sender: tokio::sync::broadcast::Sender<SecureShareBlock>,
+    pub block_sender: tokio::sync::broadcast::Sender<SecureShareBlock>,
     /// Channel used for Websocket broadcast (if enabled) of new block headers being integrated in the graph
-    pub(crate)  block_header_sender: tokio::sync::broadcast::Sender<SecureShare<BlockHeader, BlockId>>,
+    pub block_header_sender: tokio::sync::broadcast::Sender<SecureShare<BlockHeader, BlockId>>,
     /// Channel use by Websocket (if they are enable) to broadcast a new block integrated
-    pub(crate)  filled_block_sender: tokio::sync::broadcast::Sender<FilledBlock>,
+    pub filled_block_sender: tokio::sync::broadcast::Sender<FilledBlock>,
 }

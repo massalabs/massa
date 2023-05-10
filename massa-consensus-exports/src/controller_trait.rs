@@ -9,7 +9,7 @@ use massa_models::{
 use massa_storage::Storage;
 
 /// Interface that communicates with the graph worker thread
-pub(crate)  trait ConsensusController: Send + Sync {
+pub trait ConsensusController: Send + Sync {
     /// Get an export of a part of the graph
     ///
     /// # Arguments
@@ -131,7 +131,7 @@ impl Clone for Box<dyn ConsensusController> {
 }
 
 /// Consensus manager used to stop the consensus thread
-pub(crate)  trait ConsensusManager {
+pub trait ConsensusManager {
     /// Stop the consensus thread
     /// Note that we do not take self by value to consume it
     /// because it is not allowed to move out of `Box<dyn ConsensusManager>`

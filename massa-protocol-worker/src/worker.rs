@@ -41,38 +41,38 @@ use crate::{
     wrap_network::NetworkControllerImpl,
 };
 
-pub(crate)  struct ProtocolChannels {
-    pub(crate)  operation_handler_retrieval: (
+pub struct ProtocolChannels {
+    pub(crate) operation_handler_retrieval: (
         Sender<OperationHandlerRetrievalCommand>,
         Receiver<OperationHandlerRetrievalCommand>,
     ),
-    pub(crate)  operation_handler_propagation: (
+    pub(crate) operation_handler_propagation: (
         Sender<OperationHandlerPropagationCommand>,
         Receiver<OperationHandlerPropagationCommand>,
     ),
-    pub(crate)  endorsement_handler_retrieval: (
+    pub(crate) endorsement_handler_retrieval: (
         Sender<EndorsementHandlerRetrievalCommand>,
         Receiver<EndorsementHandlerRetrievalCommand>,
     ),
-    pub(crate)  endorsement_handler_propagation: (
+    pub(crate) endorsement_handler_propagation: (
         Sender<EndorsementHandlerPropagationCommand>,
         Receiver<EndorsementHandlerPropagationCommand>,
     ),
-    pub(crate)  block_handler_retrieval: (
+    pub(crate) block_handler_retrieval: (
         Sender<BlockHandlerRetrievalCommand>,
         Receiver<BlockHandlerRetrievalCommand>,
     ),
-    pub(crate)  block_handler_propagation: (
+    pub(crate) block_handler_propagation: (
         Sender<BlockHandlerPropagationCommand>,
         Receiver<BlockHandlerPropagationCommand>,
     ),
-    pub(crate)  connectivity_thread: (Sender<ConnectivityCommand>, Receiver<ConnectivityCommand>),
-    pub(crate)  peer_management_handler: (Sender<PeerManagementCmd>, Receiver<PeerManagementCmd>),
+    pub(crate) connectivity_thread: (Sender<ConnectivityCommand>, Receiver<ConnectivityCommand>),
+    pub(crate) peer_management_handler: (Sender<PeerManagementCmd>, Receiver<PeerManagementCmd>),
 }
 
 /// This function exists because consensus need the protocol controller and we need consensus controller.
 /// Someone has to be created first.
-pub(crate)  fn create_protocol_controller(
+pub fn create_protocol_controller(
     config: ProtocolConfig,
 ) -> (Box<dyn ProtocolController>, ProtocolChannels) {
     let (sender_operations_retrieval_ext, receiver_operations_retrieval_ext) =
@@ -137,7 +137,7 @@ pub(crate)  fn create_protocol_controller(
 /// * `consensus_controller`: interact with consensus module
 /// * `bootstrap_peers`: list of peers to connect to retrieved from the bootstrap
 /// * `storage`: Shared storage to fetch data that are fetch across all modules
-pub(crate)  fn start_protocol_controller(
+pub fn start_protocol_controller(
     config: ProtocolConfig,
     consensus_controller: Box<dyn ConsensusController>,
     bootstrap_peers: Option<BootstrapPeers>,

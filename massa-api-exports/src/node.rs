@@ -10,37 +10,37 @@ use std::net::IpAddr;
 
 /// node status
 #[derive(Debug, Deserialize, Serialize)]
-pub(crate)  struct NodeStatus {
+pub struct NodeStatus {
     /// our node id
-    pub(crate)  node_id: NodeId,
+    pub node_id: NodeId,
     /// optional node ip
-    pub(crate)  node_ip: Option<IpAddr>,
+    pub node_ip: Option<IpAddr>,
     /// node version
-    pub(crate)  version: Version,
+    pub version: Version,
     /// now
-    pub(crate)  current_time: MassaTime,
+    pub current_time: MassaTime,
     /// current cycle
-    pub(crate)  current_cycle: u64,
+    pub current_cycle: u64,
     /// current cycle starting timestamp
-    pub(crate)  current_cycle_time: MassaTime,
+    pub current_cycle_time: MassaTime,
     /// next cycle starting timestamp
-    pub(crate)  next_cycle_time: MassaTime,
+    pub next_cycle_time: MassaTime,
     /// connected nodes (node id, ip address, true if the connection is outgoing, false if incoming)
-    pub(crate)  connected_nodes: BTreeMap<NodeId, (IpAddr, bool)>,
+    pub connected_nodes: BTreeMap<NodeId, (IpAddr, bool)>,
     /// latest slot, none if now is before genesis timestamp
-    pub(crate)  last_slot: Option<Slot>,
+    pub last_slot: Option<Slot>,
     /// next slot
-    pub(crate)  next_slot: Slot,
+    pub next_slot: Slot,
     /// consensus stats
-    pub(crate)  consensus_stats: ConsensusStats,
+    pub consensus_stats: ConsensusStats,
     /// pool stats (operation count and endorsement count)
-    pub(crate)  pool_stats: (usize, usize),
+    pub pool_stats: (usize, usize),
     /// network stats
-    pub(crate)  network_stats: NetworkStats,
+    pub network_stats: NetworkStats,
     /// execution stats
-    pub(crate)  execution_stats: ExecutionStats,
+    pub execution_stats: ExecutionStats,
     /// compact configuration
-    pub(crate)  config: CompactConfig,
+    pub config: CompactConfig,
 }
 
 impl std::fmt::Display for NodeStatus {

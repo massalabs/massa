@@ -79,10 +79,7 @@ impl OperationIndexes {
     ///
     /// Returns:
     /// - optional reference to a set of operations created by that address
-    pub(crate) fn get_operations_created_by(
-        &self,
-        address: &Address,
-    ) -> Option<&PreHashSet<OperationId>> {
+    pub fn get_operations_created_by(&self, address: &Address) -> Option<&PreHashSet<OperationId>> {
         self.index_by_creator.get(address)
     }
 
@@ -92,7 +89,7 @@ impl OperationIndexes {
     ///
     /// Returns:
     /// - optional reference to a set of operations that match that prefix
-    pub(crate) fn get_operations_by_prefix(
+    pub fn get_operations_by_prefix(
         &self,
         prefix: &OperationPrefixId,
     ) -> Option<&PreHashSet<OperationId>> {

@@ -92,15 +92,15 @@ impl CycleInfoHashComputer {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct CycleInfo {
     /// cycle number
-    pub(crate) cycle: u64,
+    pub cycle: u64,
     /// whether the cycle is complete (all slots final)
-    pub(crate) complete: bool,
+    pub complete: bool,
     /// number of rolls each staking address has
-    pub(crate) roll_counts: BTreeMap<Address, u64>,
+    pub roll_counts: BTreeMap<Address, u64>,
     /// random seed bits of all slots in the cycle so far
     pub(crate) rng_seed: BitVec<u8>,
     /// Per-address production statistics
-    pub(crate) production_stats: PreHashMap<Address, ProductionStats>,
+    pub production_stats: PreHashMap<Address, ProductionStats>,
     /// Hash of the roll counts
     pub(crate) roll_counts_hash: Hash,
     /// Hash of the production statistics
@@ -328,7 +328,7 @@ fn test_cycle_info_hash_computation() {
 }
 
 /// Serializer for `CycleInfo`
-pub(crate) struct CycleInfoSerializer {
+pub struct CycleInfoSerializer {
     u64_ser: U64VarIntSerializer,
     bitvec_ser: BitVecSerializer,
     production_stats_ser: ProductionStatsSerializer,
@@ -344,7 +344,7 @@ impl Default for CycleInfoSerializer {
 
 impl CycleInfoSerializer {
     /// Creates a new `CycleInfo` serializer
-    pub(crate) fn new() -> Self {
+    pub fn new() -> Self {
         Self {
             u64_ser: U64VarIntSerializer::new(),
             bitvec_ser: BitVecSerializer::new(),
@@ -387,7 +387,7 @@ impl Serializer<CycleInfo> for CycleInfoSerializer {
 }
 
 /// Deserializer for `CycleInfo`
-pub(crate) struct CycleInfoDeserializer {
+pub struct CycleInfoDeserializer {
     u64_deser: U64VarIntDeserializer,
     rolls_deser: RollsDeserializer,
     bitvec_deser: BitVecDeserializer,
@@ -397,10 +397,7 @@ pub(crate) struct CycleInfoDeserializer {
 
 impl CycleInfoDeserializer {
     /// Creates a new `CycleInfo` deserializer
-    pub(crate) fn new(
-        max_rolls_length: u64,
-        max_production_stats_length: u64,
-    ) -> CycleInfoDeserializer {
+    pub fn new(max_rolls_length: u64, max_production_stats_length: u64) -> CycleInfoDeserializer {
         CycleInfoDeserializer {
             u64_deser: U64VarIntDeserializer::new(Included(u64::MIN), Included(u64::MAX)),
             rolls_deser: RollsDeserializer::new(max_rolls_length),
@@ -463,14 +460,14 @@ impl Deserializer<CycleInfo> for CycleInfoDeserializer {
 #[derive(Default, Debug, Copy, Clone, PartialEq, Eq, Deserialize, Serialize)]
 pub struct ProductionStats {
     /// Number of successfully created blocks
-    pub(crate) block_success_count: u64,
+    pub block_success_count: u64,
     /// Number of blocks missed
-    pub(crate) block_failure_count: u64,
+    pub block_failure_count: u64,
 }
 
 impl ProductionStats {
     /// Check if the production stats are above the required percentage
-    pub(crate) fn is_satisfying(&self, max_miss_ratio: &Ratio<u64>) -> bool {
+    pub fn is_satisfying(&self, max_miss_ratio: &Ratio<u64>) -> bool {
         let opportunities_count = self.block_success_count + self.block_failure_count;
         if opportunities_count == 0 {
             return true;
@@ -479,7 +476,7 @@ impl ProductionStats {
     }
 
     /// Increment a production stat structure with another
-    pub(crate) fn extend(&mut self, stats: &ProductionStats) {
+    pub fn extend(&mut self, stats: &ProductionStats) {
         self.block_success_count = self
             .block_success_count
             .saturating_add(stats.block_success_count);

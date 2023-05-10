@@ -15,7 +15,7 @@ use massa_wallet::WalletError;
 /// Errors of the api component.
 #[non_exhaustive]
 #[derive(Display, thiserror::Error, Debug)]
-pub(crate)  enum ApiError {
+pub enum ApiError {
     /// Send channel error: {0}
     SendChannelError(String),
     /// Receive channel error: {0}

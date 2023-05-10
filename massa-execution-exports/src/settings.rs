@@ -12,18 +12,18 @@ use std::path::PathBuf;
 #[derive(Debug, Clone, Copy)]
 pub struct StorageCostsConstants {
     /// Cost per byte in ledger
-    pub(crate) ledger_cost_per_byte: Amount,
+    pub ledger_cost_per_byte: Amount,
     /// Ledger entry base cost
-    pub(crate) ledger_entry_base_cost: Amount,
+    pub ledger_entry_base_cost: Amount,
     /// Ledger entry datastore base cost
-    pub(crate) ledger_entry_datastore_base_cost: Amount,
+    pub ledger_entry_datastore_base_cost: Amount,
 }
 
 /// Execution module configuration
 #[derive(Debug, Clone)]
 pub struct ExecutionConfig {
     /// read-only execution request queue length
-    pub(crate) readonly_queue_length: usize,
+    pub readonly_queue_length: usize,
     /// maximum number of SC output events kept in cache
     pub max_final_events: usize,
     /// maximum available gas for asynchronous messages execution
@@ -35,17 +35,17 @@ pub struct ExecutionConfig {
     /// price of a roll inside the network
     pub roll_price: Amount,
     /// extra lag to add on the execution cursor to improve performance
-    pub(crate) cursor_delay: MassaTime,
+    pub cursor_delay: MassaTime,
     /// genesis timestamp
     pub genesis_timestamp: MassaTime,
     /// period duration
     pub t0: MassaTime,
     /// block creation reward
-    pub(crate) block_reward: Amount,
+    pub block_reward: Amount,
     /// operation validity period
     pub operation_validity_period: u64,
     /// endorsement count
-    pub(crate) endorsement_count: u64,
+    pub endorsement_count: u64,
     /// periods per cycle
     pub periods_per_cycle: u64,
     /// duration of the statistics time window
@@ -61,7 +61,7 @@ pub struct ExecutionConfig {
     /// Storage cost constants
     pub storage_costs_constants: StorageCostsConstants,
     /// Max gas for read only executions
-    pub(crate) max_read_only_gas: u64,
+    pub max_read_only_gas: u64,
     /// Gas costs
     pub gas_costs: GasCosts,
     /// Path to the initial vesting file
@@ -81,7 +81,7 @@ pub struct ExecutionConfig {
     /// Denunciation expire delta
     pub denunciation_expire_periods: u64,
     /// whether slot execution outputs broadcast is enabled
-    pub(crate) broadcast_enabled: bool,
+    pub broadcast_enabled: bool,
     /// slot execution outputs channel capacity
-    pub(crate) broadcast_slot_execution_output_channel_capacity: usize,
+    pub broadcast_slot_execution_output_channel_capacity: usize,
 }

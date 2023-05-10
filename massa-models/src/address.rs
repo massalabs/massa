@@ -384,15 +384,15 @@ fn sc_parser<'a, E: ParseError<&'a [u8]> + ContextError<&'a [u8]>>(
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct ExecutionAddressCycleInfo {
     /// cycle number
-    pub(crate) cycle: u64,
+    pub cycle: u64,
     /// true if that cycle is final
-    pub(crate) is_final: bool,
+    pub is_final: bool,
     /// `ok_count` blocks were created by this address during that cycle
-    pub(crate) ok_count: u64,
+    pub ok_count: u64,
     /// `ok_count` blocks were missed by this address during that cycle
-    pub(crate) nok_count: u64,
+    pub nok_count: u64,
     /// number of active rolls the address had at that cycle (if still available)
-    pub(crate) active_rolls: Option<u64>,
+    pub active_rolls: Option<u64>,
 }
 
 #[cfg(test)]

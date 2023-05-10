@@ -79,7 +79,7 @@ impl ModuleCache {
     }
 
     /// Set the initialization cost of a cached module
-    pub(crate) fn set_init_cost(&mut self, bytecode: &[u8], init_cost: u64) {
+    pub fn set_init_cost(&mut self, bytecode: &[u8], init_cost: u64) {
         let hash = Hash::compute_from(bytecode);
         self.lru_cache.set_init_cost(hash, init_cost);
         self.hd_cache.set_init_cost(hash, init_cost);
@@ -115,7 +115,7 @@ impl ModuleCache {
     }
 
     /// Load a cached module for execution and check its validity for execution
-    pub(crate) fn load_module(
+    pub fn load_module(
         &mut self,
         bytecode: &[u8],
         execution_gas: u64,

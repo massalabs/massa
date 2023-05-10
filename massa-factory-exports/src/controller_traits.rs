@@ -4,7 +4,7 @@
 //! with the factory worker.
 
 /// Factory manager used to stop the factory thread
-pub(crate)  trait FactoryManager {
+pub trait FactoryManager {
     /// Stop the factory thread
     /// Note that we do not take self by value to consume it
     /// because it is not allowed to move out of `Box<dyn FactoryManager>`

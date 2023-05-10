@@ -12,33 +12,33 @@ use crate::{display_if_true, display_option_bool};
 
 /// operation input
 #[derive(Serialize, Deserialize, Debug)]
-pub(crate)  struct OperationInput {
+pub struct OperationInput {
     /// The public key of the creator of the TX
-    pub(crate)  creator_public_key: PublicKey,
+    pub creator_public_key: PublicKey,
     /// The signature of the operation
-    pub(crate)  signature: Signature,
+    pub signature: Signature,
     /// The serialized version of the content `base58` encoded
-    pub(crate)  serialized_content: Vec<u8>,
+    pub serialized_content: Vec<u8>,
 }
 
 /// Operation and contextual info about it
 #[derive(Debug, Deserialize, Serialize)]
-pub(crate)  struct OperationInfo {
+pub struct OperationInfo {
     /// id
-    pub(crate)  id: OperationId,
+    pub id: OperationId,
     /// true if operation is still in pool
-    pub(crate)  in_pool: bool,
+    pub in_pool: bool,
     /// the operation appears in `in_blocks`
     /// if it appears in multiple blocks, these blocks are in different cliques
-    pub(crate)  in_blocks: Vec<BlockId>,
+    pub in_blocks: Vec<BlockId>,
     /// true if the operation is final (for example in a final block)
-    pub(crate)  is_operation_final: Option<bool>,
+    pub is_operation_final: Option<bool>,
     /// Thread in which the operation can be included
-    pub(crate)  thread: u8,
+    pub thread: u8,
     /// the operation itself
-    pub(crate)  operation: SecureShareOperation,
+    pub operation: SecureShareOperation,
     /// true if the operation execution succeeded, false if failed, None means unknown
-    pub(crate)  op_exec_status: Option<bool>,
+    pub op_exec_status: Option<bool>,
 }
 
 impl std::fmt::Display for OperationInfo {

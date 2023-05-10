@@ -73,7 +73,7 @@ pub(crate) struct CycleDraws {
 pub(crate) type DrawCachePtr = Arc<(RwLockCondvar, RwLock<PosResult<DrawCache>>)>;
 
 /// Start thread selector
-pub(crate) use worker::start_selector_worker;
+pub use worker::start_selector_worker;
 
 // an RwLock condvar
 #[derive(Default)]

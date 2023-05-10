@@ -12,21 +12,21 @@ use std::ops::Bound::Included;
 
 /// Bootstrap graph
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub(crate)  struct BootstrapableGraph {
+pub struct BootstrapableGraph {
     /// list of final blocks
-    pub(crate)  final_blocks: Vec<ExportActiveBlock>,
+    pub final_blocks: Vec<ExportActiveBlock>,
 }
 
 /// Basic serializer for `BootstrapableGraph`
 #[derive(Default)]
-pub(crate)  struct BootstrapableGraphSerializer {
+pub struct BootstrapableGraphSerializer {
     block_count_serializer: U32VarIntSerializer,
     export_active_block_serializer: ExportActiveBlockSerializer,
 }
 
 impl BootstrapableGraphSerializer {
     /// Creates a `BootstrapableGraphSerializer`
-    pub(crate)  fn new() -> Self {
+    pub fn new() -> Self {
         Self {
             block_count_serializer: U32VarIntSerializer::new(),
             export_active_block_serializer: ExportActiveBlockSerializer::new(),
@@ -73,7 +73,7 @@ impl Serializer<BootstrapableGraph> for BootstrapableGraphSerializer {
 }
 
 /// Basic deserializer for `BootstrapableGraph`
-pub(crate)  struct BootstrapableGraphDeserializer {
+pub struct BootstrapableGraphDeserializer {
     block_count_deserializer: U32VarIntDeserializer,
     export_active_block_deserializer: ExportActiveBlockDeserializer,
 }
@@ -81,7 +81,7 @@ pub(crate)  struct BootstrapableGraphDeserializer {
 impl BootstrapableGraphDeserializer {
     /// Creates a `BootstrapableGraphDeserializer`
     #[allow(clippy::too_many_arguments)]
-    pub(crate)  fn new(block_der_args: BlockDeserializerArgs, max_bootstrap_blocks: u32) -> Self {
+    pub fn new(block_der_args: BlockDeserializerArgs, max_bootstrap_blocks: u32) -> Self {
         Self {
             block_count_deserializer: U32VarIntDeserializer::new(
                 Included(0),

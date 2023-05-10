@@ -6,9 +6,9 @@ use serde::{Deserialize, Serialize};
 
 /// slot / amount pair
 #[derive(Debug, Deserialize, Serialize)]
-pub(crate)  struct SlotAmount {
+pub struct SlotAmount {
     /// slot
-    pub(crate)  slot: Slot,
+    pub slot: Slot,
     /// amount
-    pub(crate)  amount: Amount,
+    pub amount: Amount,
 }

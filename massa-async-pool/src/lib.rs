@@ -103,8 +103,8 @@ pub use config::AsyncPoolConfig;
 pub use message::AsyncMessage;
 pub(crate) use message::AsyncMessageDeserializer;
 pub use message::AsyncMessageId;
-pub(crate) use message::AsyncMessageIdDeserializer;
-pub(crate) use message::AsyncMessageIdSerializer;
+pub use message::AsyncMessageIdDeserializer;
+pub use message::AsyncMessageIdSerializer;
 pub(crate) use message::AsyncMessageSerializer;
 pub use message::AsyncMessageTrigger;
 

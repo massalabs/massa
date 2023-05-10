@@ -125,7 +125,7 @@ impl AsyncPool {
     /// * excess messages after inserting all remaining `new_messages`, in priority order (from highest to lowest priority)
     /// The list of message that their trigger has been triggered.
     #[allow(clippy::type_complexity)]
-    pub(crate) fn settle_slot(
+    pub fn settle_slot(
         &mut self,
         slot: &Slot,
         new_messages: &mut Vec<(AsyncMessageId, AsyncMessage)>,
@@ -175,7 +175,7 @@ impl AsyncPool {
     ///
     /// # returns
     /// A vector of messages, sorted from the most priority to the least priority
-    pub(crate) fn take_batch_to_execute(
+    pub fn take_batch_to_execute(
         &mut self,
         slot: Slot,
         mut available_gas: u64,
@@ -207,7 +207,7 @@ impl AsyncPool {
     ///
     /// # Returns
     /// The async pool part and the updated cursor
-    pub(crate) fn get_pool_part(
+    pub fn get_pool_part(
         &self,
         cursor: StreamingStep<AsyncMessageId>,
     ) -> (
@@ -244,7 +244,7 @@ impl AsyncPool {
     ///
     /// # Returns
     /// The updated cursor after the current insert
-    pub(crate) fn set_pool_part(
+    pub fn set_pool_part(
         &mut self,
         part: BTreeMap<AsyncMessageId, AsyncMessage>,
     ) -> StreamingStep<AsyncMessageId> {

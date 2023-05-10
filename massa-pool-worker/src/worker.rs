@@ -174,7 +174,7 @@ impl DenunciationPoolThread {
 
 /// Start pool manager and controller
 #[allow(clippy::type_complexity)]
-pub(crate)  fn start_pool_controller(
+pub fn start_pool_controller(
     config: PoolConfig,
     storage: &Storage,
     execution_controller: Box<dyn ExecutionController>,

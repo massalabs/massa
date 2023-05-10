@@ -64,14 +64,14 @@ use crate::{
 
 /// Specifies a common interface that can be used by standard, or mockers
 #[cfg_attr(test, mockall::automock)]
-pub(crate)  trait BSEventPoller {
+pub trait BSEventPoller {
     fn poll(&mut self) -> Result<PollEvent, BootstrapError>;
 }
 /// Abstraction layer over data produced by the listener, and transported
 /// over to the worker via a channel
 
 /// handle on the bootstrap server
-pub(crate)  struct BootstrapManager {
+pub struct BootstrapManager {
     update_handle: thread::JoinHandle<Result<(), BootstrapError>>,
     // need to preserve the listener handle up to here to prevent it being destroyed
     #[allow(clippy::type_complexity)]
@@ -83,7 +83,7 @@ pub(crate)  struct BootstrapManager {
 impl BootstrapManager {
     /// create a new bootstrap manager, but no means of stopping the listener
     /// use [`set_listen_stop_handle`] to set the handle
-    pub(crate) fn new(
+    pub fn new(
         update_handle: thread::JoinHandle<Result<(), BootstrapError>>,
         main_handle: thread::JoinHandle<Result<(), BootstrapError>>,
         update_stopper_tx: crossbeam::channel::Sender<()>,
@@ -96,12 +96,12 @@ impl BootstrapManager {
         }
     }
     /// Sets an event-emmiter. `Self::stop`] will use this stopper to signal the listener that created this stopper.
-    pub(crate)  fn set_listener_stopper(&mut self, listener_stopper: BootstrapListenerStopHandle) {
+    pub fn set_listener_stopper(&mut self, listener_stopper: BootstrapListenerStopHandle) {
         self.listener_stopper = Some(listener_stopper);
     }
 
     /// stop the bootstrap server
-    pub(crate)  fn stop(self) -> Result<(), BootstrapError> {
+    pub fn stop(self) -> Result<(), BootstrapError> {
         massa_trace!("bootstrap.lib.stop", {});
         // `as_ref` is critical here, as the stopper has to be alive until the poll in the event
         // loop acts on the stop-signal
@@ -130,7 +130,7 @@ impl BootstrapManager {
 
 /// See module level documentation for details
 #[allow(clippy::too_many_arguments)]
-pub(crate)  fn start_bootstrap_server<L: BSEventPoller + Send + 'static>(
+pub fn start_bootstrap_server<L: BSEventPoller + Send + 'static>(
     ev_poller: L,
     consensus_controller: Box<dyn ConsensusController>,
     protocol_controller: Box<dyn ProtocolController>,
@@ -443,7 +443,7 @@ fn run_bootstrap_session(
 }
 
 #[allow(clippy::too_many_arguments)]
-pub(crate)  fn stream_bootstrap_information(
+pub(crate) fn stream_bootstrap_information(
     server: &mut BootstrapServerBinder,
     final_state: Arc<RwLock<FinalState>>,
     consensus_controller: Box<dyn ConsensusController>,

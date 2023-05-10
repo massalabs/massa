@@ -68,7 +68,7 @@ impl EndorsementIndexes {
     ///
     /// Returns:
     /// - optional reference to a set of endorsements created by that address
-    pub(crate) fn get_endorsements_created_by(
+    pub fn get_endorsements_created_by(
         &self,
         address: &Address,
     ) -> Option<&PreHashSet<EndorsementId>> {

@@ -8,26 +8,26 @@ use crate::display_if_true;
 
 /// refactor to delete
 #[derive(Debug, Deserialize, Serialize)]
-pub(crate)  struct BlockInfo {
+pub struct BlockInfo {
     /// block id
-    pub(crate)  id: BlockId,
+    pub id: BlockId,
     /// optional block info content
-    pub(crate)  content: Option<BlockInfoContent>,
+    pub content: Option<BlockInfoContent>,
 }
 
 /// Block content
 #[derive(Debug, Deserialize, Serialize)]
-pub(crate)  struct BlockInfoContent {
+pub struct BlockInfoContent {
     /// true if final
-    pub(crate)  is_final: bool,
+    pub is_final: bool,
     /// true if in the greatest clique (and not final)
-    pub(crate)  is_in_blockclique: bool,
+    pub is_in_blockclique: bool,
     /// true if candidate (active any clique but not final)
-    pub(crate)  is_candidate: bool,
+    pub is_candidate: bool,
     /// true if discarded
-    pub(crate)  is_discarded: bool,
+    pub is_discarded: bool,
     /// block
-    pub(crate)  block: Block,
+    pub block: Block,
 }
 
 impl std::fmt::Display for BlockInfo {
@@ -52,21 +52,21 @@ impl std::fmt::Display for BlockInfo {
 
 /// A block resume (without the block itself)
 #[derive(Debug, Deserialize, Serialize)]
-pub(crate)  struct BlockSummary {
+pub struct BlockSummary {
     /// id
-    pub(crate)  id: BlockId,
+    pub id: BlockId,
     /// true if in a final block
-    pub(crate)  is_final: bool,
+    pub is_final: bool,
     /// true if incompatible with a final block
-    pub(crate)  is_stale: bool,
+    pub is_stale: bool,
     /// true if in the greatest block clique
-    pub(crate)  is_in_blockclique: bool,
+    pub is_in_blockclique: bool,
     /// the slot the block is in
-    pub(crate)  slot: Slot,
+    pub slot: Slot,
     /// the block creator
-    pub(crate)  creator: Address,
+    pub creator: Address,
     /// the block parents
-    pub(crate)  parents: Vec<BlockId>,
+    pub parents: Vec<BlockId>,
 }
 
 impl std::fmt::Display for BlockSummary {

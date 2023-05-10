@@ -10,18 +10,18 @@ use crate::display_if_true;
 
 /// All you wanna know about an endorsement
 #[derive(Debug, Deserialize, Serialize, Clone)]
-pub(crate)  struct EndorsementInfo {
+pub struct EndorsementInfo {
     /// id
-    pub(crate)  id: EndorsementId,
+    pub id: EndorsementId,
     /// true if endorsement is still in pool
-    pub(crate)  in_pool: bool,
+    pub in_pool: bool,
     /// the endorsement appears in `in_blocks`
     /// if it appears in multiple blocks, these blocks are in different cliques
-    pub(crate)  in_blocks: Vec<BlockId>,
+    pub in_blocks: Vec<BlockId>,
     /// true if the endorsement is final (for example in a final block)
-    pub(crate)  is_final: bool,
+    pub is_final: bool,
     /// the endorsement itself
-    pub(crate)  endorsement: SecureShareEndorsement,
+    pub endorsement: SecureShareEndorsement,
 }
 
 impl std::fmt::Display for EndorsementInfo {

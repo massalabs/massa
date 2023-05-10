@@ -29,7 +29,7 @@ impl<T> StreamingStep<T> {
 }
 
 /// `StreamingStep` serializer
-pub(crate) struct StreamingStepSerializer<T, ST>
+pub struct StreamingStepSerializer<T, ST>
 where
     ST: Serializer<T>,
 {
@@ -44,7 +44,7 @@ where
     ST: Serializer<T> + Clone,
 {
     /// Creates a new `StreamingStep` serializer
-    pub(crate) fn new(data_serializer: ST) -> Self {
+    pub fn new(data_serializer: ST) -> Self {
         Self {
             u64_serializer: U64VarIntSerializer::new(),
             option_serializer: OptionSerializer::new(data_serializer.clone()),
@@ -79,7 +79,7 @@ where
 }
 
 /// `StreamingStep` deserializer
-pub(crate) struct StreamingStepDeserializer<T, ST>
+pub struct StreamingStepDeserializer<T, ST>
 where
     ST: Deserializer<T>,
     T: Clone,
@@ -96,7 +96,7 @@ where
     T: Clone,
 {
     /// Creates a new `StreamingStep` deserializer
-    pub(crate) fn new(data_deser: ST) -> Self {
+    pub fn new(data_deser: ST) -> Self {
         Self {
             u64_deser: U64VarIntDeserializer::new(Included(u64::MIN), Included(u64::MAX)),
             opt_deser: OptionDeserializer::new(data_deser.clone()),

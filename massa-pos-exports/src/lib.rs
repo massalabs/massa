@@ -24,7 +24,8 @@ pub use controller_traits::SelectorManager;
 pub use error::{PosError, PosResult};
 
 pub use cycle_info::{
-    CycleHistoryDeserializer, CycleHistorySerializer, CycleInfo, ProductionStats,
+    CycleHistoryDeserializer, CycleHistorySerializer, CycleInfo, CycleInfoDeserializer,
+    CycleInfoSerializer, ProductionStats,
 };
 pub use deferred_credits::{
     DeferredCredits, DeferredCreditsDeserializer, DeferredCreditsSerializer,

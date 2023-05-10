@@ -57,7 +57,7 @@ use std::ops::Bound::{Excluded, Included};
 /// Messages used during bootstrap by server
 #[derive(Debug, Clone)]
 #[allow(clippy::large_enum_variant)]
-pub(crate)  enum BootstrapServerMessage {
+pub enum BootstrapServerMessage {
     /// Sync clocks
     BootstrapTime {
         /// The current time on the bootstrap server.
@@ -142,7 +142,7 @@ enum MessageServerTypeId {
 }
 
 /// Serializer for `BootstrapServerMessage`
-pub(crate)  struct BootstrapServerMessageSerializer {
+pub(crate) struct BootstrapServerMessageSerializer {
     u32_serializer: U32VarIntSerializer,
     u64_serializer: U64VarIntSerializer,
     time_serializer: MassaTimeSerializer,
@@ -170,7 +170,7 @@ impl Default for BootstrapServerMessageSerializer {
 
 impl BootstrapServerMessageSerializer {
     /// Creates a new `BootstrapServerMessageSerializer`
-    pub(crate)  fn new() -> Self {
+    pub(crate) fn new() -> Self {
         Self {
             u32_serializer: U32VarIntSerializer::new(),
             u64_serializer: U64VarIntSerializer::new(),
@@ -312,7 +312,7 @@ impl Serializer<BootstrapServerMessage> for BootstrapServerMessageSerializer {
 }
 
 /// Deserializer for `BootstrapServerMessage`
-pub(crate)  struct BootstrapServerMessageDeserializer {
+pub(crate) struct BootstrapServerMessageDeserializer {
     message_id_deserializer: U32VarIntDeserializer,
     time_deserializer: MassaTimeDeserializer,
     version_deserializer: VersionDeserializer,
@@ -336,7 +336,7 @@ pub(crate)  struct BootstrapServerMessageDeserializer {
 impl BootstrapServerMessageDeserializer {
     /// Creates a new `BootstrapServerMessageDeserializer`
     #[allow(clippy::too_many_arguments)]
-    pub(crate)  fn new(args: BootstrapServerMessageDeserializerArgs) -> Self {
+    pub(crate) fn new(args: BootstrapServerMessageDeserializerArgs) -> Self {
         Self {
             message_id_deserializer: U32VarIntDeserializer::new(Included(0), Included(u32::MAX)),
             time_deserializer: MassaTimeDeserializer::new((
@@ -611,7 +611,7 @@ impl Deserializer<BootstrapServerMessage> for BootstrapServerMessageDeserializer
 /// Messages used during bootstrap by client
 #[derive(Debug, Clone)]
 #[allow(clippy::large_enum_variant)]
-pub(crate)  enum BootstrapClientMessage {
+pub enum BootstrapClientMessage {
     /// Ask for bootstrap peers
     AskBootstrapPeers,
     /// Ask for a final state and consensus part
@@ -657,7 +657,7 @@ enum MessageClientTypeId {
 }
 
 /// Serializer for `BootstrapClientMessage`
-pub(crate)  struct BootstrapClientMessageSerializer {
+pub(crate) struct BootstrapClientMessageSerializer {
     u32_serializer: U32VarIntSerializer,
     slot_serializer: SlotSerializer,
     ledger_step_serializer: StreamingStepSerializer<LedgerKey, KeySerializer>,
@@ -673,7 +673,7 @@ pub(crate)  struct BootstrapClientMessageSerializer {
 
 impl BootstrapClientMessageSerializer {
     /// Creates a new `BootstrapClientMessageSerializer`
-    pub(crate)  fn new() -> Self {
+    pub(crate) fn new() -> Self {
         Self {
             u32_serializer: U32VarIntSerializer::new(),
             slot_serializer: SlotSerializer::new(),
@@ -777,7 +777,7 @@ impl Serializer<BootstrapClientMessage> for BootstrapClientMessageSerializer {
 }
 
 /// Deserializer for `BootstrapClientMessage`
-pub(crate)  struct BootstrapClientMessageDeserializer {
+pub(crate) struct BootstrapClientMessageDeserializer {
     id_deserializer: U32VarIntDeserializer,
     length_error_deserializer: U32VarIntDeserializer,
     slot_deserializer: SlotDeserializer,
@@ -794,7 +794,7 @@ pub(crate)  struct BootstrapClientMessageDeserializer {
 
 impl BootstrapClientMessageDeserializer {
     /// Creates a new `BootstrapClientMessageDeserializer`
-    pub(crate)  fn new(
+    pub(crate) fn new(
         thread_count: u8,
         max_datastore_key_length: u8,
         max_consensus_block_ids: u64,

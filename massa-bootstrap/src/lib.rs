@@ -25,37 +25,38 @@ mod bindings;
 mod client;
 mod error;
 mod listener;
-pub(crate)  use listener::BootstrapTcpListener;
+pub use listener::BootstrapTcpListener;
 mod messages;
 mod server;
 mod settings;
 mod tools;
-pub(crate)  use client::{get_state, DefaultConnector};
+pub use client::{get_state, DefaultConnector};
 use massa_versioning_worker::versioning::MipStore;
-pub(crate)  use messages::{
+pub(crate) use messages::{
     BootstrapClientMessage, BootstrapClientMessageDeserializer, BootstrapClientMessageSerializer,
     BootstrapServerMessage, BootstrapServerMessageDeserializer, BootstrapServerMessageSerializer,
 };
-pub(crate)  use server::{start_bootstrap_server, BootstrapManager};
-pub(crate)  use settings::IpType;
-pub(crate)  use settings::{BootstrapConfig, BootstrapServerMessageDeserializerArgs};
+pub use server::{start_bootstrap_server, BootstrapManager};
+pub use settings::BootstrapConfig;
+pub(crate) use settings::BootstrapServerMessageDeserializerArgs;
+pub use settings::IpType;
 
 #[cfg(test)]
 pub(crate) mod tests;
 
 /// a collection of the bootstrap state snapshots of all relevant modules
-pub(crate)  struct GlobalBootstrapState {
+pub struct GlobalBootstrapState {
     /// state of the final state
-    pub(crate)  final_state: Arc<RwLock<FinalState>>,
+    pub(crate) final_state: Arc<RwLock<FinalState>>,
 
     /// state of the consensus graph
-    pub(crate)  graph: Option<BootstrapableGraph>,
+    pub graph: Option<BootstrapableGraph>,
 
     /// list of network peers
-    pub(crate)  peers: Option<BootstrapPeers>,
+    pub peers: Option<BootstrapPeers>,
 
     /// versioning info state
-    pub(crate)  mip_store: Option<MipStore>,
+    pub mip_store: Option<MipStore>,
 }
 
 impl GlobalBootstrapState {

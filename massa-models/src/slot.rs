@@ -191,7 +191,7 @@ impl Slot {
     }
 
     /// returns the minimal slot
-    pub(crate) const fn min() -> Slot {
+    pub const fn min() -> Slot {
         Slot {
             period: 0,
             thread: 0,
@@ -207,7 +207,7 @@ impl Slot {
     }
 
     /// first bit of the slot, for seed purpose
-    pub(crate) fn get_first_bit(&self) -> bool {
+    pub fn get_first_bit(&self) -> bool {
         Hash::compute_from(&self.to_bytes_key()).to_bytes()[0] >> 7 == 1
     }
 
@@ -299,7 +299,7 @@ impl Slot {
     /// let slot = Slot::new(10,0);
     /// assert_eq!(slot.get_prev_slot(5).unwrap(), Slot::new(9, 4));
     /// ```
-    pub(crate) fn get_prev_slot(&self, thread_count: u8) -> Result<Slot, ModelsError> {
+    pub fn get_prev_slot(&self, thread_count: u8) -> Result<Slot, ModelsError> {
         match self.thread.checked_sub(1u8) {
             Some(t) => Ok(Slot::new(self.period, t)),
             None => Ok(Slot::new(

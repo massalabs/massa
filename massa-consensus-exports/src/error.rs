@@ -10,7 +10,7 @@ use thiserror::Error;
 /// Consensus error
 #[non_exhaustive]
 #[derive(Display, Error, Debug)]
-pub(crate)  enum ConsensusError {
+pub enum ConsensusError {
     /// execution error: {0}
     ExecutionError(#[from] ExecutionError),
     /// models error: {0}
@@ -46,7 +46,7 @@ pub(crate)  enum ConsensusError {
 /// Internal error
 #[non_exhaustive]
 #[derive(Display, Error, Debug)]
-pub(crate)  enum InternalError {
+pub(crate) enum InternalError {
     /// transaction error {0}
     TransactionError(String),
 }
@@ -54,7 +54,7 @@ pub(crate)  enum InternalError {
 /// Ledger error
 #[non_exhaustive]
 #[derive(Display, Error, Debug)]
-pub(crate)  enum LedgerError {
+pub enum LedgerError {
     /// amount overflow
     AmountOverflowError,
     /// ledger inconsistency error {0}

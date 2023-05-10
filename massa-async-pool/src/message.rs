@@ -30,13 +30,13 @@ use std::ops::Bound::{Excluded, Included};
 pub type AsyncMessageId = (std::cmp::Reverse<Ratio<u64>>, Slot, u64);
 
 #[derive(Clone)]
-pub(crate) struct AsyncMessageIdSerializer {
+pub struct AsyncMessageIdSerializer {
     slot_serializer: SlotSerializer,
     u64_serializer: U64VarIntSerializer,
 }
 
 impl AsyncMessageIdSerializer {
-    pub(crate) fn new() -> Self {
+    pub fn new() -> Self {
         Self {
             slot_serializer: SlotSerializer::new(),
             u64_serializer: U64VarIntSerializer::new(),
@@ -92,13 +92,13 @@ impl Serializer<AsyncMessageId> for AsyncMessageIdSerializer {
 }
 
 #[derive(Clone)]
-pub(crate) struct AsyncMessageIdDeserializer {
+pub struct AsyncMessageIdDeserializer {
     slot_deserializer: SlotDeserializer,
     u64_deserializer: U64VarIntDeserializer,
 }
 
 impl AsyncMessageIdDeserializer {
-    pub(crate) fn new(thread_count: u8) -> Self {
+    pub fn new(thread_count: u8) -> Self {
         Self {
             slot_deserializer: SlotDeserializer::new(
                 (Included(u64::MIN), Included(u64::MAX)),
@@ -171,10 +171,10 @@ impl Deserializer<AsyncMessageId> for AsyncMessageIdDeserializer {
 #[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
 pub struct AsyncMessageTrigger {
     /// Filter on the address
-    pub(crate) address: Address,
+    pub address: Address,
 
     /// Filter on the datastore key
-    pub(crate) datastore_key: Option<Vec<u8>>,
+    pub datastore_key: Option<Vec<u8>>,
 }
 
 /// Serializer for a trigger for an asynchronous message
@@ -285,7 +285,7 @@ pub struct AsyncMessage {
     pub(crate) validity_end: Slot,
 
     /// Raw payload data of the message
-    pub(crate) data: Vec<u8>,
+    pub data: Vec<u8>,
 
     /// Trigger that define whenever a message can be executed
     pub(crate) trigger: Option<AsyncMessageTrigger>,
@@ -301,7 +301,7 @@ pub struct AsyncMessage {
 impl AsyncMessage {
     #[allow(clippy::too_many_arguments)]
     /// Take an `AsyncMessage` and return it with its hash computed
-    pub(crate) fn new_with_hash(
+    pub fn new_with_hash(
         emission_slot: Slot,
         emission_index: u64,
         sender: Address,
@@ -342,7 +342,7 @@ impl AsyncMessage {
     }
 
     /// Compute the ID of the message for use when choosing which operations to keep in priority (highest score) on pool overflow.
-    pub(crate) fn compute_id(&self) -> AsyncMessageId {
+    pub fn compute_id(&self) -> AsyncMessageId {
         let denom = if self.max_gas > 0 { self.max_gas } else { 1 };
         (
             std::cmp::Reverse(Ratio::new(self.fee.to_raw(), denom)),

@@ -40,7 +40,7 @@ pub struct ExecutedOps {
     /// Accumulated hash of the executed operations
     pub hash: Hash,
     /// execution status of operations (true: success, false: fail)
-    pub(crate) op_exec_status: HashMap<OperationId, bool>,
+    pub op_exec_status: HashMap<OperationId, bool>,
 }
 
 impl ExecutedOps {
@@ -134,7 +134,7 @@ impl ExecutedOps {
     }
 
     /// Check if an operation was executed
-    pub(crate) fn contains(&self, op_id: &OperationId) -> bool {
+    pub fn contains(&self, op_id: &OperationId) -> bool {
         self.ops.contains(op_id)
     }
 
@@ -157,7 +157,7 @@ impl ExecutedOps {
     ///
     /// # Returns
     /// A tuple containing the data and the next executed ops streaming step
-    pub(crate) fn get_executed_ops_part(
+    pub fn get_executed_ops_part(
         &self,
         cursor: StreamingStep<Slot>,
     ) -> (BTreeMap<Slot, PreHashSet<OperationId>>, StreamingStep<Slot>) {
@@ -189,7 +189,7 @@ impl ExecutedOps {
     ///
     /// # Returns
     /// The next executed ops streaming step
-    pub(crate) fn set_executed_ops_part(
+    pub fn set_executed_ops_part(
         &mut self,
         part: BTreeMap<Slot, PreHashSet<OperationId>>,
     ) -> StreamingStep<Slot> {

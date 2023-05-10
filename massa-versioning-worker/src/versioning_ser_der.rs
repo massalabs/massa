@@ -799,7 +799,7 @@ impl Deserializer<MipStoreStats> for MipStoreStatsDeserializer {
 // MipStoreRaw
 
 /// Serializer for `VersioningStoreRaw`
-pub(crate) struct MipStoreRawSerializer {
+pub struct MipStoreRawSerializer {
     u32_serializer: U32VarIntSerializer,
     info_serializer: MipInfoSerializer,
     state_serializer: MipStateSerializer,
@@ -808,7 +808,7 @@ pub(crate) struct MipStoreRawSerializer {
 
 impl MipStoreRawSerializer {
     /// Creates a new `Serializer`
-    pub(crate) fn new() -> Self {
+    pub fn new() -> Self {
         Self {
             u32_serializer: U32VarIntSerializer::new(),
             info_serializer: MipInfoSerializer::new(),
@@ -847,7 +847,7 @@ impl Serializer<MipStoreRaw> for MipStoreRawSerializer {
 }
 
 /// A Deserializer for `VersioningStoreRaw
-pub(crate) struct MipStoreRawDeserializer {
+pub struct MipStoreRawDeserializer {
     u32_deserializer: U32VarIntDeserializer,
     info_deserializer: MipInfoDeserializer,
     state_deserializer: MipStateDeserializer,
@@ -856,7 +856,7 @@ pub(crate) struct MipStoreRawDeserializer {
 
 impl MipStoreRawDeserializer {
     /// Creates a new ``
-    pub(crate) fn new(block_count_considered: usize, counters_max: usize) -> Self {
+    pub fn new(block_count_considered: usize, counters_max: usize) -> Self {
         Self {
             u32_deserializer: U32VarIntDeserializer::new(
                 Included(0),

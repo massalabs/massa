@@ -114,18 +114,18 @@ impl BlockId {
     }
 
     /// first bit of the hashed block id
-    pub(crate) fn get_first_bit(&self) -> bool {
+    pub fn get_first_bit(&self) -> bool {
         self.to_bytes()[0] >> 7 == 1
     }
 }
 
 /// Serializer for `BlockId`
 #[derive(Default, Clone)]
-pub(crate) struct BlockIdSerializer;
+pub struct BlockIdSerializer;
 
 impl BlockIdSerializer {
     /// Creates a new serializer for `BlockId`
-    pub(crate) fn new() -> Self {
+    pub fn new() -> Self {
         Self
     }
 }
@@ -139,13 +139,13 @@ impl Serializer<BlockId> for BlockIdSerializer {
 
 /// Deserializer for `BlockId`
 #[derive(Default, Clone)]
-pub(crate) struct BlockIdDeserializer {
+pub struct BlockIdDeserializer {
     hash_deserializer: HashDeserializer,
 }
 
 impl BlockIdDeserializer {
     /// Creates a new deserializer for `BlockId`
-    pub(crate) fn new() -> Self {
+    pub fn new() -> Self {
         Self {
             hash_deserializer: HashDeserializer::new(),
         }

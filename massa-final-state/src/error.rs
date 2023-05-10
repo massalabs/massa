@@ -8,7 +8,7 @@ use thiserror::Error;
 /// Final state error
 #[non_exhaustive]
 #[derive(Display, Error, Debug)]
-pub(crate)  enum FinalStateError {
+pub enum FinalStateError {
     /// invalid slot: {0}
     InvalidSlot(String),
     /// ledger error: {0}

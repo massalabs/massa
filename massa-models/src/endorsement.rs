@@ -143,7 +143,7 @@ pub struct Endorsement {
     pub index: u32,
     /// Hash of endorsed block.
     /// This is the parent in thread `self.slot.thread` of the block in which the endorsement is included
-    pub(crate) endorsed_block: BlockId,
+    pub endorsed_block: BlockId,
 }
 
 #[cfg(any(test, feature = "testing"))]
@@ -154,9 +154,9 @@ impl SecureShareEndorsement {
         if let Err(e) = self.verify_signature() {
             return Err(e.into());
         }
-        if self.content.slot.thread >= crate::config::THREAD_COUNT {
+        if self.content.slot.thread >= crate::config::constants::THREAD_COUNT {
             Err("Endorsement slot on non-existant thread".into())
-        } else if self.content.index >= crate::config::ENDORSEMENT_COUNT {
+        } else if self.content.index >= crate::config::constants::ENDORSEMENT_COUNT {
             Err("Endorsement index out of range".into())
         } else {
             Ok(())
@@ -180,14 +180,14 @@ impl SecureShareContent for Endorsement {
 
 /// Serializer for `Endorsement`
 #[derive(Clone)]
-pub(crate) struct EndorsementSerializer {
+pub struct EndorsementSerializer {
     slot_serializer: SlotSerializer,
     u32_serializer: U32VarIntSerializer,
 }
 
 impl EndorsementSerializer {
     /// Creates a new `EndorsementSerializer`
-    pub(crate) const fn new() -> Self {
+    pub const fn new() -> Self {
         EndorsementSerializer {
             slot_serializer: SlotSerializer::new(),
             u32_serializer: U32VarIntSerializer::new(),
@@ -225,7 +225,7 @@ impl Serializer<Endorsement> for EndorsementSerializer {
 }
 
 /// Deserializer for `Endorsement`
-pub(crate) struct EndorsementDeserializer {
+pub struct EndorsementDeserializer {
     slot_deserializer: SlotDeserializer,
     index_deserializer: U32VarIntDeserializer,
     hash_deserializer: HashDeserializer,
@@ -233,7 +233,7 @@ pub(crate) struct EndorsementDeserializer {
 
 impl EndorsementDeserializer {
     /// Creates a new `EndorsementDeserializer`
-    pub(crate) const fn new(thread_count: u8, endorsement_count: u32) -> Self {
+    pub const fn new(thread_count: u8, endorsement_count: u32) -> Self {
         EndorsementDeserializer {
             slot_deserializer: SlotDeserializer::new(
                 (Included(0), Included(u64::MAX)),

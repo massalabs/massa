@@ -57,9 +57,9 @@ pub struct Block {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct FilledBlock {
     /// signed header
-    pub(crate) header: SecuredHeader,
+    pub header: SecuredHeader,
     /// operations
-    pub(crate) operations: Vec<(OperationId, Option<SecureShareOperation>)>,
+    pub operations: Vec<(OperationId, Option<SecureShareOperation>)>,
 }
 
 /// Block with assosciated meta-data and interfaces allowing trust of data in untrusted network
@@ -120,14 +120,14 @@ impl SecureShareContent for Block {
     }
 }
 /// Serializer for `Block`
-pub(crate) struct BlockSerializer {
+pub struct BlockSerializer {
     header_serializer: SecureShareSerializer,
     op_ids_serializer: OperationIdsSerializer,
 }
 
 impl BlockSerializer {
     /// Creates a new `BlockSerializer`
-    pub(crate) fn new() -> Self {
+    pub fn new() -> Self {
         BlockSerializer {
             header_serializer: SecureShareSerializer::new(),
             op_ids_serializer: OperationIdsSerializer::new(),
@@ -212,13 +212,13 @@ pub struct BlockDeserializerArgs {
     /// Number of threads in Massa
     pub thread_count: u8,
     /// Maximum of operations in a block
-    pub(crate) max_operations_per_block: u32,
+    pub max_operations_per_block: u32,
     /// Number of endorsements in a block
-    pub(crate) endorsement_count: u32,
+    pub endorsement_count: u32,
     /// Max denunciations in a block
-    pub(crate) max_denunciations_per_block_header: u32,
+    pub max_denunciations_per_block_header: u32,
     /// If Some(lsp), this will through if trying to deserialize a block with a period before the genesis blocks
-    pub(crate) last_start_period: Option<u64>,
+    pub last_start_period: Option<u64>,
 }
 
 /// Deserializer for `Block`

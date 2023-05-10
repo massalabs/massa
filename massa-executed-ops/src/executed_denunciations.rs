@@ -74,7 +74,7 @@ impl ExecutedDenunciations {
     }
 
     /// Check if a denunciation (e.g. a denunciation index) was executed
-    pub(crate) fn contains(&self, de_idx: &DenunciationIndex) -> bool {
+    pub fn contains(&self, de_idx: &DenunciationIndex) -> bool {
         self.denunciations.contains(de_idx)
     }
 
@@ -135,7 +135,7 @@ impl ExecutedDenunciations {
     ///
     /// # Returns
     /// A tuple containing the data and the next executed de streaming step
-    pub(crate) fn get_executed_de_part(
+    pub fn get_executed_de_part(
         &self,
         cursor: StreamingStep<Slot>,
     ) -> (
@@ -170,7 +170,7 @@ impl ExecutedDenunciations {
     ///
     /// # Returns
     /// The next executed de streaming step
-    pub(crate) fn set_executed_de_part(
+    pub fn set_executed_de_part(
         &mut self,
         part: BTreeMap<Slot, HashSet<DenunciationIndex>>,
     ) -> StreamingStep<Slot> {

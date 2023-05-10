@@ -5,20 +5,20 @@ use serde::{Deserialize, Serialize};
 
 /// Datastore entry query input structure
 #[derive(Debug, Deserialize, Clone, Serialize)]
-pub(crate)  struct DatastoreEntryInput {
+pub struct DatastoreEntryInput {
     /// associated address of the entry
-    pub(crate)  address: Address,
+    pub address: Address,
     /// datastore key
-    pub(crate)  key: Vec<u8>,
+    pub key: Vec<u8>,
 }
 
 /// Datastore entry query output structure
 #[derive(Debug, Deserialize, Clone, Serialize)]
-pub(crate)  struct DatastoreEntryOutput {
+pub struct DatastoreEntryOutput {
     /// final datastore entry value
-    pub(crate)  final_value: Option<Vec<u8>>,
+    pub final_value: Option<Vec<u8>>,
     /// candidate datastore entry value
-    pub(crate)  candidate_value: Option<Vec<u8>>,
+    pub candidate_value: Option<Vec<u8>>,
 }
 
 impl std::fmt::Display for DatastoreEntryOutput {
