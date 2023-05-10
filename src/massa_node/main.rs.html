@@ -1155,7 +1155,6 @@
 <a href="#1155" id="1155">1155</a>
 <a href="#1156" id="1156">1156</a>
 <a href="#1157" id="1157">1157</a>
-<a href="#1158" id="1158">1158</a>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="attr">#![doc = <span class="macro">include_str!</span>(<span class="string">&quot;../../README.md&quot;</span>)]
@@ -1173,8 +1172,8 @@
 <span class="kw">use </span>massa_async_pool::AsyncPoolConfig;
 <span class="kw">use </span>massa_bootstrap::BootstrapError;
 <span class="kw">use </span>massa_bootstrap::{
-    get_state, start_bootstrap_server, BootstrapConfig, BootstrapManager, BootstrapTcpListener,
-    DefaultConnector,
+    client::DefaultConnector, get_state, start_bootstrap_server, BootstrapConfig, BootstrapManager,
+    BootstrapTcpListener,
 };
 <span class="kw">use </span>massa_consensus_exports::events::ConsensusEvent;
 <span class="kw">use </span>massa_consensus_exports::{ConsensusChannels, ConsensusConfig, ConsensusManager};
@@ -1406,7 +1405,6 @@
         handler_clone.<span class="number">1</span>.notify_all();
     })
     .expect(<span class="string">&quot;Error setting Ctrl-C handler&quot;</span>);
-
     <span class="kw">let </span>bootstrap_config: BootstrapConfig = BootstrapConfig {
         bootstrap_list: SETTINGS.bootstrap.bootstrap_list.clone(),
         bootstrap_protocol: SETTINGS.bootstrap.bootstrap_protocol,
