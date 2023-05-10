@@ -1299,6 +1299,47 @@
 <a href="#1299" id="1299">1299</a>
 <a href="#1300" id="1300">1300</a>
 <a href="#1301" id="1301">1301</a>
+<a href="#1302" id="1302">1302</a>
+<a href="#1303" id="1303">1303</a>
+<a href="#1304" id="1304">1304</a>
+<a href="#1305" id="1305">1305</a>
+<a href="#1306" id="1306">1306</a>
+<a href="#1307" id="1307">1307</a>
+<a href="#1308" id="1308">1308</a>
+<a href="#1309" id="1309">1309</a>
+<a href="#1310" id="1310">1310</a>
+<a href="#1311" id="1311">1311</a>
+<a href="#1312" id="1312">1312</a>
+<a href="#1313" id="1313">1313</a>
+<a href="#1314" id="1314">1314</a>
+<a href="#1315" id="1315">1315</a>
+<a href="#1316" id="1316">1316</a>
+<a href="#1317" id="1317">1317</a>
+<a href="#1318" id="1318">1318</a>
+<a href="#1319" id="1319">1319</a>
+<a href="#1320" id="1320">1320</a>
+<a href="#1321" id="1321">1321</a>
+<a href="#1322" id="1322">1322</a>
+<a href="#1323" id="1323">1323</a>
+<a href="#1324" id="1324">1324</a>
+<a href="#1325" id="1325">1325</a>
+<a href="#1326" id="1326">1326</a>
+<a href="#1327" id="1327">1327</a>
+<a href="#1328" id="1328">1328</a>
+<a href="#1329" id="1329">1329</a>
+<a href="#1330" id="1330">1330</a>
+<a href="#1331" id="1331">1331</a>
+<a href="#1332" id="1332">1332</a>
+<a href="#1333" id="1333">1333</a>
+<a href="#1334" id="1334">1334</a>
+<a href="#1335" id="1335">1335</a>
+<a href="#1336" id="1336">1336</a>
+<a href="#1337" id="1337">1337</a>
+<a href="#1338" id="1338">1338</a>
+<a href="#1339" id="1339">1339</a>
+<a href="#1340" id="1340">1340</a>
+<a href="#1341" id="1341">1341</a>
+<a href="#1342" id="1342">1342</a>
 </pre><pre class="rust"><code><span class="kw">use </span>std::cmp::Ordering;
 <span class="kw">use </span>std::collections::{BTreeMap, BTreeSet, HashMap, VecDeque};
 <span class="kw">use </span>std::hash::{Hash, Hasher};
@@ -1306,7 +1347,7 @@
 <span class="kw">use </span>std::sync::Arc;
 
 <span class="kw">use </span>machine::{machine, transitions};
-<span class="kw">use </span>num_enum::{IntoPrimitive, TryFromPrimitive};
+<span class="kw">use </span>num_enum::{FromPrimitive, IntoPrimitive, TryFromPrimitive};
 <span class="kw">use </span>parking_lot::RwLock;
 <span class="kw">use </span>thiserror::Error;
 <span class="kw">use </span>tracing::warn;
@@ -1314,15 +1355,17 @@
 <span class="kw">use </span>massa_models::{amount::Amount, config::VERSIONING_THRESHOLD_TRANSITION_ACCEPTED};
 <span class="kw">use </span>massa_time::MassaTime;
 
-<span class="comment">// TODO: add more items here
-</span><span class="doccomment">/// Versioning component enum
+<span class="doccomment">/// Versioning component enum
 </span><span class="attr">#[allow(missing_docs)]
-#[derive(Clone, Debug, PartialEq, Eq, Hash, TryFromPrimitive, IntoPrimitive)]
+#[derive(Clone, Debug, PartialEq, Eq, Hash, FromPrimitive, IntoPrimitive)]
 #[repr(u32)]
 </span><span class="kw">pub enum </span>MipComponent {
     Address,
     Block,
     VM,
+    <span class="attr">#[doc(hidden)]
+    #[num_enum(default)]
+    </span>__Nonexhaustive,
 }
 
 <span class="doccomment">/// MIP info (name &amp; versions &amp; time range for a MIP)
@@ -1773,7 +1816,7 @@
     </span><span class="kw">pub fn </span>update_with(
         <span class="kw-2">&amp;mut </span><span class="self">self</span>,
         mip_store: <span class="kw-2">&amp;</span>MipStore,
-    ) -&gt; <span class="prelude-ty">Result</span>&lt;(Vec&lt;MipInfo&gt;, Vec&lt;MipInfo&gt;), UpdateWithError&gt; {
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;(Vec&lt;MipInfo&gt;, BTreeMap&lt;MipInfo, MipState&gt;), UpdateWithError&gt; {
         <span class="kw">let </span><span class="kw-2">mut </span>lock = <span class="self">self</span>.<span class="number">0</span>.write();
         <span class="kw">let </span>lock_other = mip_store.<span class="number">0</span>.read();
         lock.update_with(lock_other.deref())
@@ -1838,12 +1881,12 @@
 
 <span class="kw">impl </span>MipStoreRaw {
     <span class="doccomment">/// Update our store with another (usually after a bootstrap where we received another store)
-    /// Return list of updated / added if update is successful
+    /// Return list of updated / added if successful, UpdateWithError otherwise
     </span><span class="attr">#[allow(clippy::result_large_err)]
     </span><span class="kw">pub fn </span>update_with(
         <span class="kw-2">&amp;mut </span><span class="self">self</span>,
         store_raw: <span class="kw-2">&amp;</span>MipStoreRaw,
-    ) -&gt; <span class="prelude-ty">Result</span>&lt;(Vec&lt;MipInfo&gt;, Vec&lt;MipInfo&gt;), UpdateWithError&gt; {
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;(Vec&lt;MipInfo&gt;, BTreeMap&lt;MipInfo, MipState&gt;), UpdateWithError&gt; {
         <span class="comment">// iter over items in given store:
         // -&gt; 2 cases:
         // * MipInfo is already in self store -&gt; add to &#39;to_update&#39; list
@@ -1955,12 +1998,13 @@
 
         <span class="kw">match </span>has_error {
             <span class="prelude-val">None </span>=&gt; {
-                <span class="kw">let </span>added = to_add.keys().cloned().collect();
-                <span class="kw">let </span>updated = to_update.keys().cloned().collect();
+                <span class="kw">let </span>updated: Vec&lt;MipInfo&gt; = to_update.keys().cloned().collect();
 
-                <span class="self">self</span>.store.append(<span class="kw-2">&amp;mut </span>to_update);
-                <span class="self">self</span>.store.append(<span class="kw-2">&amp;mut </span>to_add);
-                <span class="prelude-val">Ok</span>((updated, added))
+                <span class="comment">// Note: we only update the store with to_update collection
+                //       having something in the to_add collection means that we need to update
+                //       the Massa node software
+                </span><span class="self">self</span>.store.append(<span class="kw-2">&amp;mut </span>to_update);
+                <span class="prelude-val">Ok</span>((updated, to_add))
             }
             <span class="prelude-val">Some</span>(e) =&gt; <span class="prelude-val">Err</span>(e),
         }
@@ -2060,7 +2104,10 @@
 
         <span class="comment">// Use update_with ensuring that we have no overlapping time range, unique names &amp; ...
         </span><span class="kw">match </span>store.update_with(<span class="kw-2">&amp;</span>other_store) {
-            <span class="prelude-val">Ok</span>(<span class="kw">_</span>) =&gt; <span class="prelude-val">Ok</span>(store),
+            <span class="prelude-val">Ok</span>((_updated, <span class="kw-2">mut </span>added)) =&gt; {
+                store.store.append(<span class="kw-2">&amp;mut </span>added);
+                <span class="prelude-val">Ok</span>(store)
+            }
             <span class="prelude-val">Err</span>(<span class="kw">_</span>) =&gt; <span class="prelude-val">Err</span>(()),
         }
     }
@@ -2473,10 +2520,11 @@
         ))
         .unwrap();
 
+        <span class="macro">println!</span>(<span class="string">&quot;update with:&quot;</span>);
         <span class="kw">let </span>(updated, added) = vs_raw_1.update_with(<span class="kw-2">&amp;</span>vs_raw_2).unwrap();
 
         <span class="comment">// Check update_with result
-        </span><span class="macro">assert_eq!</span>(added, <span class="macro">vec!</span>[]);
+        </span><span class="macro">assert!</span>(added.is_empty());
         <span class="macro">assert_eq!</span>(updated, <span class="macro">vec!</span>[vi_2.clone()]);
 
         <span class="comment">// Expect state 1 (for vi_1) no change, state 2 (for vi_2) updated to &quot;Active&quot;
@@ -2598,6 +2646,40 @@
 
         <span class="kw">let </span>mip_store = MipStore::try_from(([], mip_stats_config));
         <span class="macro">assert_eq!</span>(mip_store.is_ok(), <span class="bool-val">true</span>);
+    }
+
+    <span class="attr">#[test]
+    </span><span class="kw">fn </span>test_update_with_unknown() {
+        <span class="comment">// Test update_with with unknown MipComponent
+
+        // data
+        </span><span class="kw">let </span>mip_stats_config = MipStatsConfig {
+            block_count_considered: MIP_STORE_STATS_BLOCK_CONSIDERED,
+            counters_max: MIP_STORE_STATS_COUNTERS_MAX,
+        };
+
+        <span class="kw">let </span><span class="kw-2">mut </span>mip_store_raw_1 = MipStoreRaw::try_from(([], mip_stats_config.clone())).unwrap();
+
+        <span class="kw">let </span>mi_1 = MipInfo {
+            name: <span class="string">&quot;MIP-0002&quot;</span>.to_string(),
+            version: <span class="number">2</span>,
+            components: HashMap::from([(MipComponent::__Nonexhaustive, <span class="number">1</span>)]),
+            start: MassaTime::from(<span class="number">0</span>),
+            timeout: MassaTime::from(<span class="number">5</span>),
+            activation_delay: MassaTime::from(<span class="number">2</span>),
+        };
+        <span class="kw">let </span>ms_1 = advance_state_until(ComponentState::defined(), <span class="kw-2">&amp;</span>mi_1);
+        <span class="macro">assert_eq!</span>(ms_1, ComponentState::defined());
+        <span class="kw">let </span>mip_store_raw_2 = MipStoreRaw {
+            store: BTreeMap::from([(mi_1.clone(), ms_1.clone())]),
+            stats: MipStoreStats::new(mip_stats_config.clone()),
+        };
+
+        <span class="kw">let </span>(updated, added) = mip_store_raw_1.update_with(<span class="kw-2">&amp;</span>mip_store_raw_2).unwrap();
+
+        <span class="macro">assert_eq!</span>(updated.len(), <span class="number">0</span>);
+        <span class="macro">assert_eq!</span>(added.len(), <span class="number">1</span>);
+        <span class="macro">assert_eq!</span>(added.get(<span class="kw-2">&amp;</span>mi_1).unwrap().state, ComponentState::defined());
     }
 }
 </code></pre></div>
