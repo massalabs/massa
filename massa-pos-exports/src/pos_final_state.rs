@@ -452,6 +452,15 @@ impl PoSFinalState {
         Some(index)
     }
 
+    /// Provides a public export for test-context
+    #[cfg(any(test, feature = "testing"))]
+    pub fn test_exp_get_cycle_history_part(
+        &self,
+        cursor: StreamingStep<u64>,
+    ) -> Result<(Option<CycleInfo>, StreamingStep<u64>), ModelsError> {
+        self.get_cycle_history_part(cursor)
+    }
+
     /// Gets a cycle of the Proof of Stake `cycle_history`. Used only in the bootstrap process.
     ///
     /// # Arguments:
@@ -459,7 +468,7 @@ impl PoSFinalState {
     ///
     /// # Returns
     /// The PoS cycle and the updated cursor
-    pub fn get_cycle_history_part(
+    pub(crate) fn get_cycle_history_part(
         &self,
         cursor: StreamingStep<u64>,
     ) -> Result<(Option<CycleInfo>, StreamingStep<u64>), ModelsError> {
@@ -489,14 +498,22 @@ impl PoSFinalState {
         ))
     }
 
-    /// Gets a part of the Proof of Stake `deferred_credits`. Used only in the bootstrap process.
+    /// Provides a public export for test-context
+    #[cfg(any(test, feature = "testing"))]
+    pub fn test_exp_get_deferred_credits_part(
+        &self,
+        cursor: StreamingStep<Slot>,
+    ) -> (DeferredCredits, StreamingStep<Slot>) {
+        self.get_deferred_credits_part(cursor)
+    }
+    ///Gets a part of the Proof of Stake `deferred_credits`. Used only in the bootstrap process.
     ///
     /// # Arguments:
     /// `cursor`: indicates the bootstrap state after the previous payload
     ///
     /// # Returns
     /// The PoS `deferred_credits` part and the updated cursor
-    pub fn get_deferred_credits_part(
+    pub(crate) fn get_deferred_credits_part(
         &self,
         cursor: StreamingStep<Slot>,
     ) -> (DeferredCredits, StreamingStep<Slot>) {
@@ -562,5 +579,10 @@ impl PoSFinalState {
         } else {
             StreamingStep::Finished(None)
         }
+    }
+
+    #[cfg(feature = "testing")]
+    pub fn selector(&self) -> &Box<dyn SelectorController> {
+        &self.selector
     }
 }

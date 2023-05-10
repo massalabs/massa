@@ -9,7 +9,7 @@ use crate::{ledger_db::LedgerDB, FinalLedger};
 
 /// This file defines tools to test the ledger bootstrap
 
-pub(crate) fn create_final_ledger(
+pub fn create_final_ledger(
     config: LedgerConfig,
     initial_ledger: HashMap<Address, LedgerEntry>,
 ) -> FinalLedger {

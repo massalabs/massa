@@ -1293,7 +1293,7 @@ impl Deserializer<Vec<SecureShareOperation>> for OperationsDeserializer {
 
 #[cfg(test)]
 mod tests {
-    use crate::config::{
+    use crate::config::constants::{
         MAX_DATASTORE_VALUE_LENGTH, MAX_FUNCTION_NAME_LENGTH, MAX_OPERATION_DATASTORE_ENTRY_COUNT,
         MAX_OPERATION_DATASTORE_KEY_LENGTH, MAX_OPERATION_DATASTORE_VALUE_LENGTH,
         MAX_PARAMETERS_SIZE,

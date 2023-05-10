@@ -1192,7 +1192,7 @@ mod tests {
     use massa_signature::KeyPair;
 
     use crate::block_id::BlockId;
-    use crate::config::{ENDORSEMENT_COUNT, THREAD_COUNT};
+    use crate::config::constants::{ENDORSEMENT_COUNT, THREAD_COUNT};
     use crate::endorsement::{Endorsement, EndorsementSerializer, SecureShareEndorsement};
     use crate::secure_share::{Id, SecureShareContent};
     use crate::test_exports::{

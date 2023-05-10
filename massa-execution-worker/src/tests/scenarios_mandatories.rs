@@ -60,7 +60,7 @@ mod tests {
         let (mut manager, _controller) = start_execution_worker(
             config,
             sample_state.clone(),
-            sample_state.read().pos_state.selector.clone(),
+            sample_state.read().pos_state.selector().clone(),
             mip_store,
             channels,
         );
@@ -92,7 +92,7 @@ mod tests {
         let (mut manager, controller) = start_execution_worker(
             config,
             sample_state.clone(),
-            sample_state.read().pos_state.selector.clone(),
+            sample_state.read().pos_state.selector().clone(),
             mip_store,
             channels,
         );
@@ -136,7 +136,7 @@ mod tests {
         let (mut manager, controller) = start_execution_worker(
             exec_cfg.clone(),
             sample_state.clone(),
-            sample_state.read().pos_state.selector.clone(),
+            sample_state.read().pos_state.selector().clone(),
             mip_store,
             channels,
         );
@@ -237,7 +237,7 @@ mod tests {
         let (mut manager, controller) = start_execution_worker(
             exec_cfg.clone(),
             sample_state.clone(),
-            sample_state.read().pos_state.selector.clone(),
+            sample_state.read().pos_state.selector().clone(),
             mip_store,
             channels,
         );
@@ -398,7 +398,7 @@ mod tests {
         let (mut manager, controller) = start_execution_worker(
             exec_cfg.clone(),
             sample_state.clone(),
-            sample_state.read().pos_state.selector.clone(),
+            sample_state.read().pos_state.selector().clone(),
             mip_store,
             channels,
         );
@@ -552,7 +552,7 @@ mod tests {
         let (mut manager, controller) = start_execution_worker(
             exec_cfg.clone(),
             sample_state.clone(),
-            sample_state.read().pos_state.selector.clone(),
+            sample_state.read().pos_state.selector().clone(),
             mip_store,
             channels,
         );
@@ -663,7 +663,7 @@ mod tests {
         let (mut manager, controller) = start_execution_worker(
             exec_cfg.clone(),
             sample_state.clone(),
-            sample_state.read().pos_state.selector.clone(),
+            sample_state.read().pos_state.selector().clone(),
             mip_store,
             channels,
         );
@@ -774,7 +774,7 @@ mod tests {
         let (mut manager, controller) = start_execution_worker(
             exec_cfg.clone(),
             sample_state.clone(),
-            sample_state.read().pos_state.selector.clone(),
+            sample_state.read().pos_state.selector().clone(),
             mip_store,
             channels,
         );
@@ -898,7 +898,7 @@ mod tests {
         let (mut manager, controller) = start_execution_worker(
             exec_cfg.clone(),
             sample_state.clone(),
-            sample_state.read().pos_state.selector.clone(),
+            sample_state.read().pos_state.selector().clone(),
             mip_store,
             channels,
         );
@@ -1006,7 +1006,7 @@ mod tests {
         let (mut manager, controller) = start_execution_worker(
             exec_cfg.clone(),
             sample_state.clone(),
-            sample_state.read().pos_state.selector.clone(),
+            sample_state.read().pos_state.selector().clone(),
             mip_store,
             channels,
         );
@@ -1165,7 +1165,7 @@ mod tests {
         let (mut manager, controller) = start_execution_worker(
             exec_cfg.clone(),
             sample_state.clone(),
-            sample_state.read().pos_state.selector.clone(),
+            sample_state.read().pos_state.selector().clone(),
             mip_store,
             channels,
         );
@@ -1267,7 +1267,7 @@ mod tests {
         let (mut manager, controller) = start_execution_worker(
             exec_cfg.clone(),
             sample_state.clone(),
-            sample_state.read().pos_state.selector.clone(),
+            sample_state.read().pos_state.selector().clone(),
             mip_store,
             channels,
         );
@@ -1377,7 +1377,7 @@ mod tests {
         let (mut manager, controller) = start_execution_worker(
             exec_cfg.clone(),
             sample_state.clone(),
-            sample_state.read().pos_state.selector.clone(),
+            sample_state.read().pos_state.selector().clone(),
             mip_store,
             channels,
         );
@@ -1474,7 +1474,7 @@ mod tests {
         let (mut manager, controller) = start_execution_worker(
             exec_cfg.clone(),
             sample_state.clone(),
-            sample_state.read().pos_state.selector.clone(),
+            sample_state.read().pos_state.selector().clone(),
             mip_store,
             channels,
         );
@@ -1573,7 +1573,7 @@ mod tests {
         let (mut manager, controller) = start_execution_worker(
             exec_cfg.clone(),
             sample_state.clone(),
-            sample_state.read().pos_state.selector.clone(),
+            sample_state.read().pos_state.selector().clone(),
             mip_store,
             channels,
         );
@@ -1768,7 +1768,7 @@ mod tests {
         let (mut manager, controller) = start_execution_worker(
             exec_cfg.clone(),
             sample_state.clone(),
-            sample_state.read().pos_state.selector.clone(),
+            sample_state.read().pos_state.selector().clone(),
             mip_store,
             channels,
         );
@@ -1930,7 +1930,7 @@ mod tests {
         let (mut manager, controller) = start_execution_worker(
             exec_cfg.clone(),
             sample_state.clone(),
-            sample_state.read().pos_state.selector.clone(),
+            sample_state.read().pos_state.selector().clone(),
             mip_store,
             channels,
         );
@@ -2099,7 +2099,7 @@ mod tests {
         let (mut manager, controller) = start_execution_worker(
             exec_cfg.clone(),
             sample_state.clone(),
-            sample_state.read().pos_state.selector.clone(),
+            sample_state.read().pos_state.selector().clone(),
             mip_store,
             channels,
         );
@@ -2188,7 +2188,7 @@ mod tests {
         let (mut manager, controller) = start_execution_worker(
             exec_cfg.clone(),
             sample_state.clone(),
-            sample_state.read().pos_state.selector.clone(),
+            sample_state.read().pos_state.selector().clone(),
             mip_store,
             channels,
         );
@@ -2274,7 +2274,7 @@ mod tests {
         let (_manager, controller) = start_execution_worker(
             exec_cfg.clone(),
             sample_state.clone(),
-            sample_state.read().pos_state.selector.clone(),
+            sample_state.read().pos_state.selector().clone(),
             mip_store,
             channels,
         );
@@ -2360,7 +2360,7 @@ mod tests {
         let (mut manager, controller) = start_execution_worker(
             exec_cfg.clone(),
             sample_state.clone(),
-            sample_state.read().pos_state.selector.clone(),
+            sample_state.read().pos_state.selector().clone(),
             mip_store,
             channels,
         );
@@ -2503,7 +2503,7 @@ mod tests {
         let (mut manager, controller) = start_execution_worker(
             exec_cfg.clone(),
             sample_state.clone(),
-            sample_state.read().pos_state.selector.clone(),
+            sample_state.read().pos_state.selector().clone(),
             mip_store,
             channels,
         );
@@ -2615,7 +2615,7 @@ mod tests {
         let (mut manager, controller) = start_execution_worker(
             exec_cfg.clone(),
             sample_state.clone(),
-            sample_state.read().pos_state.selector.clone(),
+            sample_state.read().pos_state.selector().clone(),
             mip_store,
             channels,
         );
@@ -2762,7 +2762,7 @@ mod tests {
         let (mut manager, controller) = start_execution_worker(
             exec_cfg.clone(),
             sample_state.clone(),
-            sample_state.read().pos_state.selector.clone(),
+            sample_state.read().pos_state.selector().clone(),
             mip_store,
             channels,
         );
@@ -2857,7 +2857,7 @@ mod tests {
         let (mut manager, controller) = start_execution_worker(
             exec_cfg.clone(),
             sample_state.clone(),
-            sample_state.read().pos_state.selector.clone(),
+            sample_state.read().pos_state.selector().clone(),
             mip_store,
             channels,
         );

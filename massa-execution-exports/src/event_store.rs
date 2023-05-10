@@ -18,7 +18,8 @@ impl EventStore {
     }
 
     /// Take the event store
-    pub(crate) fn take(&mut self) -> VecDeque<SCOutputEvent> {
+    #[cfg(feature = "testing")]
+    pub fn take(&mut self) -> VecDeque<SCOutputEvent> {
         std::mem::take(&mut self.0)
     }
 

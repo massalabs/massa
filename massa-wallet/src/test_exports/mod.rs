@@ -1,3 +1,3 @@
 mod tools;
 
-pub(crate)  use tools::*;
+pub use tools::create_test_wallet;

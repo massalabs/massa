@@ -53,7 +53,7 @@ pub fn assert_eq_pos_state(s1: &PoSFinalState, s2: &PoSFinalState) {
 }
 
 /// Compare two PoS Selections
-pub(crate) fn assert_eq_pos_selection(
+pub fn assert_eq_pos_selection(
     s1: &VecDeque<(u64, HashMap<Slot, Selection>)>,
     s2: &VecDeque<(u64, HashMap<Slot, Selection>)>,
 ) {

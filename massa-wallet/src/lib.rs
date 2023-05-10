@@ -19,7 +19,7 @@ mod error;
 pub use error::WalletError;
 
 #[cfg(any(test, feature = "testing"))]
-pub(crate) mod test_exports;
+pub mod test_exports;
 
 /// Contains the keypairs created in the wallet.
 #[derive(Clone, Debug, Deserialize, Serialize)]

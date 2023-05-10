@@ -9,11 +9,12 @@ pub use controller_trait::ProtocolManager;
 pub use error::ProtocolError;
 pub use peernet::peer::PeerConnectionType;
 pub use peernet::peer_id::PeerId;
-pub(crate) use peernet::transports::TransportType;
 pub use settings::ProtocolConfig;
 
 #[cfg(feature = "testing")]
-pub(crate) mod test_exports;
+pub mod test_exports;
 
 #[cfg(feature = "testing")]
-pub(crate) use controller_trait::MockProtocolController;
+pub use controller_trait::MockProtocolController;
+#[cfg(feature = "testing")]
+pub use peernet::transports::TransportType;

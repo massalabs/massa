@@ -246,7 +246,7 @@ impl Address {
 
     #[cfg(any(test, feature = "testing"))]
     /// Convenience wrapper around the address serializer. Useful for hard-coding an address when testing
-    pub(crate) fn from_prefixed_bytes(data: &[u8]) -> Result<Address, ModelsError> {
+    pub fn from_prefixed_bytes(data: &[u8]) -> Result<Address, ModelsError> {
         let deser = AddressDeserializer::new();
         let (_, res) = deser.deserialize::<DeserializeError>(data).map_err(|_| {
             match std::str::from_utf8(data) {

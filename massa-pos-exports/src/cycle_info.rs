@@ -124,6 +124,18 @@ impl CycleInfo {
     pub fn production_stats_hash(&self) -> Hash {
         self.production_stats_hash
     }
+    /// public re-export of private method for testing purposes
+    #[cfg(feature = "testing")]
+    pub fn test_exp_new_with_hash(
+        cycle: u64,
+        complete: bool,
+        roll_counts: BTreeMap<Address, u64>,
+        rng_seed: BitVec<u8>,
+        production_stats: PreHashMap<Address, ProductionStats>,
+    ) -> Self {
+        Self::new_with_hash(cycle, complete, roll_counts, rng_seed, production_stats)
+    }
+
     /// Create a new `CycleInfo` and compute its hash
     pub(crate) fn new_with_hash(
         cycle: u64,
@@ -241,6 +253,16 @@ impl CycleInfo {
 
         // return the completion status
         self.complete
+    }
+
+    #[cfg(feature = "testing")]
+    pub fn final_state_hash_snapshot(&self) -> Option<Hash> {
+        self.final_state_hash_snapshot
+    }
+
+    #[cfg(feature = "testing")]
+    pub fn final_state_hash_snapshot_mut(&mut self) -> &mut Option<Hash> {
+        &mut self.final_state_hash_snapshot
     }
 }
 

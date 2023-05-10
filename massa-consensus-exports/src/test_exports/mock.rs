@@ -19,14 +19,14 @@ use crate::{
 };
 
 /// Test tool to mock graph controller responses
-pub(crate)  struct ConsensusEventReceiver(pub Receiver<MockConsensusControllerMessage>);
+pub struct ConsensusEventReceiver(pub Receiver<MockConsensusControllerMessage>);
 
 /// List of possible messages you can receive from the mock
 /// Each variant corresponds to a unique method in `ConsensusController`,
 /// Some variants wait for a response on their `response_tx` field, if present.
 /// See the documentation of `ConsensusController` for details on parameters and return values.
 #[derive(Clone, Debug)]
-pub(crate)  enum MockConsensusControllerMessage {
+pub enum MockConsensusControllerMessage {
     GetBlockStatuses {
         block_ids: Vec<BlockId>,
         response_tx: mpsc::Sender<Vec<BlockGraphStatus>>,
@@ -88,11 +88,11 @@ pub(crate)  enum MockConsensusControllerMessage {
 /// For messages with a `response_tx` field, the mock will await a response through their `response_tx` channel
 /// in order to simulate returning this value at the end of the call.
 #[derive(Clone)]
-pub(crate)  struct ConsensusControllerImpl(Arc<Mutex<mpsc::Sender<MockConsensusControllerMessage>>>);
+pub struct ConsensusControllerImpl(Arc<Mutex<mpsc::Sender<MockConsensusControllerMessage>>>);
 
 #[cfg(any(test, feature = "testing"))]
 mockall::mock! {
-    pub(crate)  ConsensusControllerImpl {}
+    pub  ConsensusControllerImpl {}
     impl Clone for ConsensusControllerImpl {
         fn clone(&self) -> Self;
     }
@@ -141,7 +141,7 @@ mockall::mock! {
 impl ConsensusControllerImpl {
     /// Create a new pair (mock graph controller, mpsc receiver for emitted messages)
     /// Note that unbounded mpsc channels are used
-    pub(crate)  fn new_with_receiver() -> (Box<dyn ConsensusController>, ConsensusEventReceiver) {
+    pub fn new_with_receiver() -> (Box<dyn ConsensusController>, ConsensusEventReceiver) {
         let (tx, rx) = mpsc::channel();
         (
             Box::new(ConsensusControllerImpl(Arc::new(Mutex::new(tx)))),
@@ -152,7 +152,7 @@ impl ConsensusControllerImpl {
 
 impl ConsensusEventReceiver {
     /// wait command
-    pub(crate)  fn wait_command<F, T>(&mut self, timeout: MassaTime, filter_map: F) -> Option<T>
+    pub fn wait_command<F, T>(&mut self, timeout: MassaTime, filter_map: F) -> Option<T>
     where
         F: Fn(MockConsensusControllerMessage) -> Option<T>,
     {

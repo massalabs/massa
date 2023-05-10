@@ -27,20 +27,15 @@ use massa_final_state::{
 };
 use massa_hash::{Hash, HASH_SIZE_BYTES};
 use massa_ledger_exports::LedgerConfig;
-use massa_models::config::{
+use massa_models::config::constants::{
     DENUNCIATION_EXPIRE_PERIODS, ENDORSEMENT_COUNT, EXECUTED_OPS_BOOTSTRAP_PART_SIZE,
-    MAX_DENUNCIATIONS_PER_BLOCK_HEADER, MIP_STORE_STATS_BLOCK_CONSIDERED,
-    MIP_STORE_STATS_COUNTERS_MAX,
+    MAX_ASYNC_MESSAGE_DATA, MAX_ASYNC_POOL_LENGTH, MAX_DATASTORE_KEY_LENGTH,
+    MAX_DATASTORE_VALUE_LENGTH, MAX_DENUNCIATIONS_PER_BLOCK_HEADER,
+    MIP_STORE_STATS_BLOCK_CONSIDERED, MIP_STORE_STATS_COUNTERS_MAX, POS_SAVED_CYCLES,
 };
+use massa_models::prehash::PreHashSet;
 use massa_models::{
-    address::Address, config::MAX_DATASTORE_VALUE_LENGTH, node::NodeId, slot::Slot,
-    streaming_step::StreamingStep, version::Version,
-};
-use massa_models::{
-    config::{
-        MAX_ASYNC_MESSAGE_DATA, MAX_ASYNC_POOL_LENGTH, MAX_DATASTORE_KEY_LENGTH, POS_SAVED_CYCLES,
-    },
-    prehash::PreHashSet,
+    address::Address, node::NodeId, slot::Slot, streaming_step::StreamingStep, version::Version,
 };
 
 use massa_pos_exports::{
@@ -50,9 +45,7 @@ use massa_pos_worker::start_selector_worker;
 use massa_protocol_exports::MockProtocolController;
 use massa_signature::KeyPair;
 use massa_time::MassaTime;
-use massa_versioning_worker::versioning::{
-    MipComponent, MipInfo, MipState, MipStatsConfig, MipStore,
-};
+use massa_versioning_worker::versioning::{MipInfo, MipState, MipStatsConfig, MipStore};
 use mockall::Sequence;
 use parking_lot::RwLock;
 use std::collections::HashMap;
@@ -86,14 +79,7 @@ fn mock_bootstrap_manager(addr: SocketAddr, bootstrap_config: BootstrapConfig) -
         block_count_considered: MIP_STORE_STATS_BLOCK_CONSIDERED,
         counters_max: MIP_STORE_STATS_COUNTERS_MAX,
     };
-    let mi_1 = MipInfo {
-        name: "MIP-0002".to_string(),
-        version: 2,
-        components: HashMap::from([(MipComponent::Address, 1)]),
-        start: MassaTime::from(5),
-        timeout: MassaTime::from(10),
-        activation_delay: MassaTime::from(4),
-    };
+    let mi_1 = MipInfo::default();
     let state_1 = MipState::new(MassaTime::from(3));
     let mip_store = MipStore::try_from(([(mi_1, state_1)], mip_stats_cfg.clone())).unwrap();
 
@@ -210,14 +196,7 @@ fn test_bootstrap_server() {
         block_count_considered: MIP_STORE_STATS_BLOCK_CONSIDERED,
         counters_max: MIP_STORE_STATS_COUNTERS_MAX,
     };
-    let mi_1 = MipInfo {
-        name: "MIP-0002".to_string(),
-        version: 2,
-        components: HashMap::from([(MipComponent::Address, 1)]),
-        start: MassaTime::from(5),
-        timeout: MassaTime::from(10),
-        activation_delay: MassaTime::from(4),
-    };
+    let mi_1 = MipInfo::default();
     let state_1 = MipState::new(MassaTime::from(3));
     let mip_store = MipStore::try_from(([(mi_1, state_1)], mip_stats_cfg.clone())).unwrap();
 
@@ -393,7 +372,7 @@ fn test_bootstrap_server() {
                     executed_denunciations_changes: get_random_executed_de_changes(10),
                 };
                 final_write
-                    .changes_history
+                    .changes_history()
                     .push_back((next, changes.clone()));
                 let mut list_changes_write = list_changes_clone.write();
                 list_changes_write.push((next, changes));

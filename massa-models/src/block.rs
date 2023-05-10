@@ -413,10 +413,12 @@ pub enum BlockGraphStatus {
 #[cfg(test)]
 mod test {
     use super::*;
-    use crate::config::MAX_DENUNCIATIONS_PER_BLOCK_HEADER;
     use crate::{
         block_header::BlockHeaderSerializer,
-        config::{ENDORSEMENT_COUNT, MAX_OPERATIONS_PER_BLOCK, THREAD_COUNT},
+        config::constants::{
+            ENDORSEMENT_COUNT, MAX_DENUNCIATIONS_PER_BLOCK_HEADER, MAX_OPERATIONS_PER_BLOCK,
+            THREAD_COUNT,
+        },
         endorsement::Endorsement,
         endorsement::EndorsementSerializer,
         slot::Slot,

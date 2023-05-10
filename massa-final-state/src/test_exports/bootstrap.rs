@@ -14,7 +14,7 @@ use massa_pos_exports::PoSFinalState;
 use crate::{FinalState, FinalStateConfig, StateChanges};
 
 /// Create a `FinalState` from pre-set values
-pub(crate) fn create_final_state(
+pub fn create_final_state(
     config: FinalStateConfig,
     slot: Slot,
     ledger: Box<dyn LedgerController>,
@@ -39,7 +39,7 @@ pub(crate) fn create_final_state(
 }
 
 /// asserts that two `FinalState` are equal
-pub(crate) fn assert_eq_final_state(v1: &FinalState, v2: &FinalState) {
+pub fn assert_eq_final_state(v1: &FinalState, v2: &FinalState) {
     // compare slot
     assert_eq!(v1.slot, v2.slot, "final slot mismatch");
 
@@ -67,7 +67,7 @@ pub(crate) fn assert_eq_final_state(v1: &FinalState, v2: &FinalState) {
 }
 
 /// asserts that two `FinalState` hashes are equal
-pub(crate) fn assert_eq_final_state_hash(v1: &FinalState, v2: &FinalState) {
+pub fn assert_eq_final_state_hash(v1: &FinalState, v2: &FinalState) {
     assert_eq!(
         v1.ledger.get_ledger_hash(),
         v2.ledger.get_ledger_hash(),

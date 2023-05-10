@@ -20,4 +20,4 @@ pub use settings::ConsensusConfig;
 /// Test utils
 #[cfg(feature = "testing")]
 /// Exports related to tests as Mocks and configurations
-pub(crate) mod test_exports;
+pub mod test_exports;

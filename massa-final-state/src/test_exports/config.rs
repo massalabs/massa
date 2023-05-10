@@ -27,7 +27,8 @@ use massa_pos_exports::{PoSConfig, PoSFinalState};
 
 impl FinalState {
     /// Create a final stat
-    pub(crate) fn create_final_state(pos_state: PoSFinalState, config: FinalStateConfig) -> Self {
+    #[cfg(feature = "testing")]
+    pub fn create_final_state(pos_state: PoSFinalState, config: FinalStateConfig) -> Self {
         FinalState {
             slot: Slot::new(0, 0),
             ledger: Box::new(FinalLedger::new(config.ledger_config.clone(), false)),

@@ -6,7 +6,7 @@ use crate::{
     tests::tools::get_bootstrap_config,
     BootstrapPeers,
 };
-use massa_models::config::{
+use massa_models::config::constants::{
     BOOTSTRAP_RANDOMNESS_SIZE_BYTES, CONSENSUS_BOOTSTRAP_PART_SIZE, ENDORSEMENT_COUNT,
     MAX_ADVERTISE_LENGTH, MAX_ASYNC_MESSAGE_DATA, MAX_ASYNC_POOL_LENGTH,
     MAX_BOOTSTRAP_ASYNC_POOL_CHANGES, MAX_BOOTSTRAP_BLOCKS, MAX_BOOTSTRAP_ERROR_LENGTH,
@@ -35,7 +35,7 @@ lazy_static::lazy_static! {
 }
 
 impl BootstrapClientBinder {
-    pub(crate)  fn test_default(client_duplex: TcpStream, remote_pubkey: PublicKey) -> Self {
+    pub(crate) fn test_default(client_duplex: TcpStream, remote_pubkey: PublicKey) -> Self {
         let cfg = BootstrapClientConfig {
             max_bytes_read_write: f64::INFINITY,
             max_bootstrap_message_size: MAX_BOOTSTRAP_MESSAGE_SIZE,

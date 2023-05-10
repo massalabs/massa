@@ -167,16 +167,16 @@ fn get_random_deferred_credits(r_limit: u64) -> DeferredCredits {
 fn get_random_pos_state(r_limit: u64, pos: PoSFinalState) -> PoSFinalState {
     let mut cycle_history = VecDeque::new();
     let (roll_counts, production_stats, rng_seed) = get_random_pos_cycles_info(r_limit, true);
-    let mut cycle = CycleInfo::new_with_hash(0, false, roll_counts, rng_seed, production_stats);
-    cycle.final_state_hash_snapshot = Some(Hash::from_bytes(&[0; 32]));
+    let mut cycle =
+        CycleInfo::test_exp_new_with_hash(0, false, roll_counts, rng_seed, production_stats);
+    *cycle.final_state_hash_snapshot_mut() = Some(Hash::from_bytes(&[0; 32]));
     cycle_history.push_back(cycle);
     let mut deferred_credits = DeferredCredits::new_with_hash();
     deferred_credits.extend(get_random_deferred_credits(r_limit));
-    PoSFinalState {
-        cycle_history,
-        deferred_credits,
-        ..pos
-    }
+    let mut res = pos;
+    res.cycle_history = cycle_history;
+    res.deferred_credits = deferred_credits;
+    res
 }
 
 /// generates random PoS changes
@@ -446,11 +446,11 @@ pub(crate) fn get_boot_state() -> BootstrapableGraph {
     .unwrap();
 
     // TODO: We currently lost information. Need to use shared storage
-    let block1 = ExportActiveBlock {
+    let block1 = ExportActiveBlock::new(
         block,
-        parents: vec![(get_dummy_block_id("b1"), 4777); THREAD_COUNT as usize],
-        is_final: true,
-    };
+        vec![(get_dummy_block_id("b1"), 4777); THREAD_COUNT as usize],
+        true,
+    );
 
     let boot_graph = BootstrapableGraph {
         final_blocks: vec![block1],

@@ -70,4 +70,4 @@ pub use types::ReadOnlyExecutionTarget;
 pub use types::SlotExecutionOutput;
 
 #[cfg(any(feature = "testing", feature = "gas_calibration"))]
-pub(crate) mod test_exports;
+pub mod test_exports;

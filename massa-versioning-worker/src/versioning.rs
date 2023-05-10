@@ -41,6 +41,20 @@ pub struct MipInfo {
     pub(crate) activation_delay: MassaTime,
 }
 
+#[cfg(any(test, feature = "testing"))]
+impl Default for MipInfo {
+    fn default() -> Self {
+        Self {
+            name: "MIP-0002".to_string(),
+            version: 2,
+            components: HashMap::from([(MipComponent::Address, 1)]),
+            start: MassaTime::from(5),
+            timeout: MassaTime::from(10),
+            activation_delay: MassaTime::from(4),
+        }
+    }
+}
+
 // Need Ord / PartialOrd so it is properly sorted in BTreeMap
 
 impl Ord for MipInfo {
@@ -237,7 +251,8 @@ pub struct MipState {
 
 impl MipState {
     /// Create
-    pub(crate) fn new(defined: MassaTime) -> Self {
+    #[cfg(any(test, feature = "testing"))]
+    pub fn new(defined: MassaTime) -> Self {
         let state: ComponentState = Default::default(); // Default is Defined
         let state_id = ComponentStateTypeId::from(&state);
         // Build a 'dummy' advance msg for state Defined, this is to avoid using an
@@ -778,7 +793,9 @@ mod test {
 
     use crate::test_helpers::versioning_helpers::advance_state_until;
 
-    use massa_models::config::{MIP_STORE_STATS_BLOCK_CONSIDERED, MIP_STORE_STATS_COUNTERS_MAX};
+    use massa_models::config::constants::{
+        MIP_STORE_STATS_BLOCK_CONSIDERED, MIP_STORE_STATS_COUNTERS_MAX,
+    };
 
     // Only for unit tests
     impl PartialEq<ComponentState> for MipState {

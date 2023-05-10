@@ -3,7 +3,7 @@ use massa_time::MassaTime;
 use crate::timeslots::{get_block_slot_timestamp, get_closest_slot_to_timestamp};
 
 /// Gets the instant of the next slot.
-pub(crate)  fn get_next_slot_instant(
+pub fn get_next_slot_instant(
     genesis_timestamp: MassaTime,
     thread_count: u8,
     t0: MassaTime,

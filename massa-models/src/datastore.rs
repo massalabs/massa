@@ -146,7 +146,7 @@ impl Deserializer<Datastore> for DatastoreDeserializer {
 #[cfg(test)]
 mod tests {
 
-    use crate::config::{
+    use crate::config::constants::{
         MAX_OPERATION_DATASTORE_ENTRY_COUNT, MAX_OPERATION_DATASTORE_KEY_LENGTH,
         MAX_OPERATION_DATASTORE_VALUE_LENGTH,
     };

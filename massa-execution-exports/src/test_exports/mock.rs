@@ -37,7 +37,7 @@ use std::{
 /// Some variants wait for a response on their `response_tx` field, if present.
 /// See the documentation of `ExecutionController` for details on parameters and return values.
 #[derive(Debug, Clone)]
-pub(crate)  enum MockExecutionControllerMessage {
+pub enum MockExecutionControllerMessage {
     /// update blockclique status
     UpdateBlockcliqueStatus {
         /// newly finalized blocks
@@ -98,12 +98,12 @@ pub(crate)  enum MockExecutionControllerMessage {
 /// For messages with a `response_tx` field, the mock will await a response through their `response_tx` channel
 /// in order to simulate returning this value at the end of the call.
 #[derive(Clone)]
-pub(crate)  struct MockExecutionController(Arc<Mutex<mpsc::Sender<MockExecutionControllerMessage>>>);
+pub struct MockExecutionController(Arc<Mutex<mpsc::Sender<MockExecutionControllerMessage>>>);
 
 impl MockExecutionController {
     /// Create a new pair (mock execution controller, mpsc receiver for emitted messages)
     /// Note that unbounded mpsc channels are used
-    pub(crate)  fn new_with_receiver() -> (
+    pub fn new_with_receiver() -> (
         Box<dyn ExecutionController>,
         Receiver<MockExecutionControllerMessage>,
     ) {

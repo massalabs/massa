@@ -19,4 +19,4 @@ pub use types::FactoryChannels;
 
 /// Tests utils
 #[cfg(feature = "testing")]
-pub(crate) mod test_exports;
+pub mod test_exports;

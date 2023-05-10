@@ -55,4 +55,4 @@ pub use state_changes::StateChangesSerializer;
 mod tests;
 
 #[cfg(any(test, feature = "testing"))]
-pub(crate) mod test_exports;
+pub mod test_exports;

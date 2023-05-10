@@ -677,6 +677,11 @@ impl FinalState {
         }
         Ok(res_changes)
     }
+
+    #[cfg(feature = "testing")]
+    pub fn changes_history(&mut self) -> &mut VecDeque<(Slot, StateChanges)> {
+        &mut self.changes_history
+    }
 }
 
 /// Serializer for `FinalStateRaw`

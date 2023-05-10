@@ -36,6 +36,15 @@ pub struct ExportActiveBlock {
 }
 
 impl ExportActiveBlock {
+    #[cfg(any(test, feature = "testing"))]
+    pub fn new(block: SecureShareBlock, parents: Vec<(BlockId, u64)>, is_final: bool) -> Self {
+        Self {
+            block,
+            parents,
+            is_final,
+        }
+    }
+
     /// conversion from active block to export active block
     pub fn from_active_block(a_block: &ActiveBlock, storage: &Storage) -> Self {
         // get block
@@ -85,18 +94,23 @@ impl ExportActiveBlock {
 
         Ok((active_block, storage))
     }
+
+    pub fn set_parents(&mut self, parents: Vec<(BlockId, u64)>) {
+        self.parents = parents;
+    }
 }
 
 /// Basic serializer of `ExportActiveBlock`
 #[derive(Default)]
-pub(crate) struct ExportActiveBlockSerializer {
+pub struct ExportActiveBlockSerializer {
     sec_share_serializer: SecureShareSerializer,
     period_serializer: U64VarIntSerializer,
 }
 
 impl ExportActiveBlockSerializer {
     /// Create a new `ExportActiveBlockSerializer`
-    pub(crate) fn new() -> Self {
+    #[cfg(any(test, feature = "testing"))]
+    pub fn new() -> Self {
         ExportActiveBlockSerializer {
             sec_share_serializer: SecureShareSerializer::new(),
             period_serializer: U64VarIntSerializer::new(),

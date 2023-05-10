@@ -17,7 +17,7 @@ use crate::{PosResult, Selection, SelectorController};
 
 /// All events that can be sent by the selector to your callbacks.
 #[derive(Debug)]
-pub(crate)  enum MockSelectorControllerMessage {
+pub enum MockSelectorControllerMessage {
     /// Feed a new cycle info to the selector
     FeedCycle {
         /// cycle
@@ -71,12 +71,12 @@ pub(crate)  enum MockSelectorControllerMessage {
 /// This mock will be called by the others modules and you will receive events in the receiver.
 /// You can choose to manage them how you want.
 #[derive(Clone)]
-pub(crate)  struct MockSelectorController(Arc<Mutex<Sender<MockSelectorControllerMessage>>>);
+pub struct MockSelectorController(Arc<Mutex<Sender<MockSelectorControllerMessage>>>);
 
 impl MockSelectorController {
     /// Create a new pair (mock execution controller, mpsc receiver for emitted messages)
     /// Note that unbounded mpsc channels are used
-    pub(crate)  fn new_with_receiver() -> (
+    pub fn new_with_receiver() -> (
         Box<dyn SelectorController>,
         Receiver<MockSelectorControllerMessage>,
     ) {
