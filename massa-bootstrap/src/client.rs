@@ -3,7 +3,7 @@ use std::{
     collections::HashSet,
     io,
     net::{SocketAddr, TcpStream},
-    sync::Arc,
+    sync::{Arc, Condvar, Mutex},
     time::Duration,
 };
 
@@ -435,9 +435,10 @@ fn filter_bootstrap_list(
     filtered_bootstrap_list
 }
 
-/// Gets the state from a bootstrap server
-/// needs to be CANCELLABLE
-pub async fn get_state(
+/// Uses the cond-var pattern to handle sig-int cancellation.
+/// Make sure that the passed in `interrupted` shares its Arc
+/// with a sig-int handler setup.
+pub fn get_state(
     bootstrap_config: &BootstrapConfig,
     final_state: Arc<RwLock<FinalState>>,
     mut connector: impl BSConnector,
@@ -445,6 +446,7 @@ pub async fn get_state(
     genesis_timestamp: MassaTime,
     end_timestamp: Option<MassaTime>,
     restart_from_snapshot_at_period: Option<u64>,
+    interupted: Arc<(Mutex<bool>, Condvar)>,
 ) -> Result<GlobalBootstrapState, BootstrapError> {
     massa_trace!("bootstrap.lib.get_state", {});
 
@@ -499,6 +501,12 @@ pub async fn get_state(
     let mut global_bootstrap_state = GlobalBootstrapState::new(final_state);
 
     loop {
+        // check for interuption
+        if *interupted.0.lock().expect("double-lock on interupt-mutex") {
+            return Err(BootstrapError::Interupted(
+                "Sig INT received while getting state".to_string(),
+            ));
+        }
         for (addr, node_id) in filtered_bootstrap_list.iter() {
             if let Some(end) = end_timestamp {
                 if MassaTime::now().expect("could not get now time") > end {
@@ -533,7 +541,37 @@ pub async fn get_state(
             };
 
             info!("Bootstrap from server {} failed. Your node will try to bootstrap from another server in {}.", addr, format_duration(bootstrap_config.retry_delay.to_duration()).to_string());
-            std::thread::sleep(bootstrap_config.retry_delay.into());
+
+            // Before, we would use a simple sleep(...), and that was fine
+            // in a cancellable async context: the runtime could
+            // catch the interupt signal, and just cancel this thread:
+            //
+            // let state = tokio::select!{
+            //    /* detect interupt */ => /* return, cancelling the async get_state */
+            //    get_state(...) => well, we got the state, and it didn't have to worry about interupts
+            // };
+            //
+            // Without an external system to preempt this context, we use a condvar to manage the sleep.
+            //
+            // Condvar::wait is basically std::thread::sleep(/* until some magic happens */)
+            // Condvar::wait_timeout(..., duration) is much the same, but for a max-len of `duration`
+            //
+            // The _magic_ happens when, somewhere else, a clone of the Arc<(Mutex<bool>, Condvar)>\
+            // calls Condvar::notify_[one | all], which prompts this thread to wake up. Assuming that
+            // the mutex-wrapped variable has been set appropriately before the notify, this thread
+            let int_sig = interupted
+                .0
+                .lock()
+                .expect("double-lock() on interupted signal mutex");
+            let wake = interupted
+                .1
+                .wait_timeout(int_sig, bootstrap_config.retry_delay.to_duration())
+                .expect("interupt signal mutex poisoned");
+            if *wake.0 {
+                return Err(BootstrapError::Interupted(
+                    "Sig INT during bootstray retry-wait".to_string(),
+                ));
+            }
         }
     }
 }
