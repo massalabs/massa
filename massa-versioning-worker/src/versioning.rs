@@ -405,6 +405,16 @@ impl MipState {
             }
         }
     }
+
+    /// Return the time when state will go from LockedIn to Active, None if not already LockedIn
+    pub fn activation_at(&self, mip_info: &MipInfo) -> Option<MassaTime> {
+        match self.state {
+            ComponentState::LockedIn(LockedIn { at }) => {
+                Some(at.saturating_add(mip_info.activation_delay))
+            }
+            _ => None,
+        }
+    }
 }
 
 /// Error returned by MipStateHistory::state_at

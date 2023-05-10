@@ -8,6 +8,7 @@ extern crate massa_logging;
 
 use crate::settings::SETTINGS;
 
+use chrono::{TimeZone, Utc};
 use crossbeam_channel::{Receiver, TryRecvError};
 use dialoguer::Password;
 use massa_api::{ApiServer, ApiV2, Private, Public, RpcServer, StopHandle, API};
@@ -355,9 +356,11 @@ async fn launch(
                                 "A new MIP has been received: {}, version: {}",
                                 mip_info.name, mip_info.version
                             );
-                            warn!(
-                                "Please update your Massa node AS SOON AS POSSIBLE to support it"
-                            );
+                            let activation_at = mip_state.activation_at(&mip_info).unwrap();
+                            let dt = Utc
+                                .timestamp_opt(activation_at.to_duration().as_secs() as i64, 0)
+                                .unwrap();
+                            warn!("Please update your Massa node before: {}", dt.to_rfc2822());
                         } else if st_id == ComponentStateTypeId::Active {
                             // A new MipInfo @ state active - we are not compatible anymore
                             warn!(
@@ -365,6 +368,24 @@ async fn launch(
                                 mip_info.name, mip_info.version
                             );
                             panic!("Please update your Massa node to support it");
+                        } else if st_id == ComponentStateTypeId::Defined {
+                            // a new MipInfo @ state defined or started (or failed / error)
+                            // warn the user to update its node
+                            warn!(
+                                "A new MIP has been received: {}, version: {}",
+                                mip_info.name, mip_info.version
+                            );
+                            debug!("MIP state: {:?}", mip_state);
+                            let dt_start = Utc
+                                .timestamp_opt(mip_info.start.to_duration().as_secs() as i64, 0)
+                                .unwrap();
+                            let dt_timeout = Utc
+                                .timestamp_opt(mip_info.timeout.to_duration().as_secs() as i64, 0)
+                                .unwrap();
+                            warn!("Please update your node between: {} and {} if you want to support this update", 
+                                dt_start.to_rfc2822(),
+                                dt_timeout.to_rfc2822()
+                            );
                         } else {
                             // a new MipInfo @ state defined or started (or failed / error)
                             // warn the user to update its node
