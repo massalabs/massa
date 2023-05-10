@@ -1579,7 +1579,7 @@
                                 mip_info.name, mip_info.version
                             );
                             <span class="comment">// Safe to unwrap here (only panic if not LockedIn)
-                            </span><span class="kw">let </span>activation_at = mip_state.activation_at(<span class="kw-2">&amp;</span>mip_info).unwrap();
+                            </span><span class="kw">let </span>activation_at = mip_state.activation_at(mip_info).unwrap();
                             <span class="kw">let </span>dt = Utc
                                 .timestamp_opt(activation_at.to_duration().as_secs() <span class="kw">as </span>i64, <span class="number">0</span>)
                                 .unwrap();
