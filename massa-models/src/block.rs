@@ -144,7 +144,7 @@ impl Default for BlockSerializer {
 impl Serializer<Block> for BlockSerializer {
     /// ## Example:
     /// ```rust
-    /// use massa_models::{block::{Block, BlockSerializer}, config::THREAD_COUNT, slot::Slot, endorsement::{Endorsement, EndorsementSerializer}, secure_share::SecureShareContent, prehash::PreHashSet};
+    /// use massa_models::{block::{Block, BlockSerializer}, config::constants::THREAD_COUNT, slot::Slot, endorsement::{Endorsement, EndorsementSerializer}, secure_share::SecureShareContent, prehash::PreHashSet};
     /// use massa_models::block_header::{BlockHeader, BlockHeaderSerializer};
     /// use massa_models::block_id::{BlockId};
     /// use massa_hash::Hash;
@@ -245,7 +245,7 @@ impl BlockDeserializer {
 impl Deserializer<Block> for BlockDeserializer {
     /// ## Example:
     /// ```rust
-    /// use massa_models::{block::{Block, BlockSerializer, BlockDeserializer, BlockDeserializerArgs}, config::THREAD_COUNT, slot::Slot, endorsement::{Endorsement, EndorsementSerializer}, secure_share::SecureShareContent, prehash::PreHashSet};
+    /// use massa_models::{block::{Block, BlockSerializer, BlockDeserializer, BlockDeserializerArgs}, config::constants::THREAD_COUNT, slot::Slot, endorsement::{Endorsement, EndorsementSerializer}, secure_share::SecureShareContent, prehash::PreHashSet};
     /// use massa_models::block_id::BlockId;
     /// use massa_models::block_header::{BlockHeader, BlockHeaderSerializer};
     /// use massa_hash::Hash;

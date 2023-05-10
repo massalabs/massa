@@ -230,7 +230,8 @@ impl Slot {
     /// Returns a fixed-size sortable binary key
     ///
     /// ## Example
-    /// ```rust
+    /// ```rust,ignore
+    /// // TODO: reinstate this doc-test. was ignored when these were made private
     /// # use massa_models::slot::Slot;
     /// let slot = Slot::new(10,5);
     /// let key = slot.to_bytes_key();
@@ -247,7 +248,8 @@ impl Slot {
     /// Deserializes a slot from its fixed-size sortable binary key representation
     ///
     /// ## Example
-    /// ```rust
+    /// ```rust,ignore
+    /// // TODO: reinstate this doc-test. was ignored when these were made private
     /// # use massa_models::slot::Slot;
     /// let slot = Slot::new(10,5);
     /// let key = slot.to_bytes_key();

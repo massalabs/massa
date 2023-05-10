@@ -162,7 +162,7 @@ impl Serializer<BlockHeader> for BlockHeaderSerializer {
     /// use massa_models::{block_id::BlockId, block_header::BlockHeader, block_header::BlockHeaderSerializer};
     /// use massa_models::endorsement::{Endorsement, EndorsementSerializer};
     /// use massa_models::secure_share::SecureShareContent;
-    /// use massa_models::{config::THREAD_COUNT, slot::Slot};
+    /// use massa_models::{config::constants::THREAD_COUNT, slot::Slot};
     /// use massa_hash::Hash;
     /// use massa_signature::KeyPair;
     /// use massa_serialization::Serializer;
@@ -299,7 +299,7 @@ impl Deserializer<BlockHeader> for BlockHeaderDeserializer {
     /// ```rust
     /// use massa_models::block_header::{BlockHeader, BlockHeaderDeserializer, BlockHeaderSerializer};
     /// use massa_models::block_id::{BlockId};
-    /// use massa_models::{config::THREAD_COUNT, slot::Slot, secure_share::SecureShareContent};
+    /// use massa_models::{config::constants::THREAD_COUNT, slot::Slot, secure_share::SecureShareContent};
     /// use massa_models::endorsement::{Endorsement, EndorsementSerializer};
     /// use massa_hash::Hash;
     /// use massa_signature::KeyPair;

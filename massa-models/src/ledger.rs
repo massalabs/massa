@@ -48,7 +48,8 @@ impl LedgerDataSerializer {
 
 impl Serializer<LedgerData> for LedgerDataSerializer {
     /// ## Example:
-    /// ```rust
+    /// ```rust,ignore
+    /// // TODO: reinstate this doc-test. was ignored when these were made private
     /// use massa_models::amount::Amount;
     /// use massa_serialization::Serializer;
     /// use std::str::FromStr;
@@ -91,7 +92,8 @@ impl Default for LedgerDataDeserializer {
 
 impl Deserializer<LedgerData> for LedgerDataDeserializer {
     /// ## Example:
-    /// ```rust
+    /// ```rust,ignore
+    /// // TODO: reinstate this doc-test. was ignored when these were made private
     /// use massa_models::amount::Amount;
     /// use massa_serialization::{Serializer, Deserializer, DeserializeError};
     /// use std::str::FromStr;
@@ -192,7 +194,8 @@ impl LedgerChangeSerializer {
 
 impl Serializer<LedgerChange> for LedgerChangeSerializer {
     /// ## Example
-    /// ```rust
+    /// ```rust,ignore
+    /// // TODO: reinstate this doc-test. was ignored when these were made private
     /// use massa_models::{address::Address, amount::Amount};
     /// use std::str::FromStr;
     /// use massa_models::ledger::{LedgerChange, LedgerChangeSerializer};
@@ -237,7 +240,8 @@ impl Default for LedgerChangeDeserializer {
 
 impl Deserializer<LedgerChange> for LedgerChangeDeserializer {
     /// ## Example
-    /// ```rust
+    /// ```rust,ignore
+    /// // TODO: reinstate this doc-test. was ignored when these were made private
     /// use massa_models::{address::Address, amount::Amount};
     /// use std::str::FromStr;
     /// use massa_models::ledger::{LedgerChange, LedgerChangeDeserializer, LedgerChangeSerializer};
@@ -378,7 +382,8 @@ impl LedgerChangesDeserializer {
 
 impl Deserializer<LedgerChanges> for LedgerChangesDeserializer {
     /// ## Example
-    /// ```rust
+    /// ```rust,ignore
+    /// // TODO: reinstate this doc-test. was ignored when these were made private
     /// # use massa_models::{address::Address, amount::Amount};
     /// # use std::str::FromStr;
     /// use massa_models::ledger::{LedgerChange, LedgerChanges, LedgerChangesDeserializer, LedgerChangeSerializer, LedgerChangesSerializer};

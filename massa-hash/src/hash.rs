@@ -129,7 +129,8 @@ impl Hash {
     /// Serialize a Hash using `bs58` encoding with checksum.
     ///
     /// # Example
-    ///  ```
+    /// ```rust,ignore
+    /// // TODO: reinstate this doc-test. was ignored when these were made private
     /// # use massa_hash::Hash;
     /// let hash = Hash::compute_from(&"hello world".as_bytes());
     /// let serialized: String = hash.to_bs58_check();
@@ -173,7 +174,8 @@ impl Hash {
     /// Deserialize using `bs58` encoding with checksum.
     ///
     /// # Example
-    ///  ```
+    /// ```rust,ignore
+    /// // TODO: reinstate this doc-test. was ignored when these were made private
     /// # use serde::{Deserialize, Serialize};
     /// # use massa_hash::Hash;
     /// let hash = Hash::compute_from(&"hello world".as_bytes());

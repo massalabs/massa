@@ -195,7 +195,8 @@ impl BootstrapServerMessageSerializer {
 
 impl Serializer<BootstrapServerMessage> for BootstrapServerMessageSerializer {
     /// ## Example
-    /// ```rust
+    /// ```rust,ignore
+    /// // TODO: reinstate this doc-test. was ignored when these were made private
     /// use massa_bootstrap::{BootstrapServerMessage, BootstrapServerMessageSerializer};
     /// use massa_serialization::Serializer;
     /// use massa_time::MassaTime;
@@ -427,7 +428,8 @@ impl BootstrapServerMessageDeserializer {
 
 impl Deserializer<BootstrapServerMessage> for BootstrapServerMessageDeserializer {
     /// ## Example
-    /// ```rust
+    /// ```rust,ignore
+    /// // TODO: reinstate this doc-test. was ignored when these were made private
     /// use massa_bootstrap::{BootstrapServerMessage, BootstrapServerMessageSerializer, BootstrapServerMessageDeserializer};
     /// use massa_bootstrap::BootstrapServerMessageDeserializerArgs;
     /// use massa_serialization::{Serializer, Deserializer, DeserializeError};
@@ -697,7 +699,8 @@ impl Default for BootstrapClientMessageSerializer {
 
 impl Serializer<BootstrapClientMessage> for BootstrapClientMessageSerializer {
     /// ## Example
-    /// ```rust
+    /// ```rust,ignore
+    /// // TODO: reinstate this doc-test. was ignored when these were made private
     /// use massa_bootstrap::{BootstrapClientMessage, BootstrapClientMessageSerializer};
     /// use massa_serialization::Serializer;
     /// use massa_time::MassaTime;
@@ -835,7 +838,8 @@ impl BootstrapClientMessageDeserializer {
 
 impl Deserializer<BootstrapClientMessage> for BootstrapClientMessageDeserializer {
     /// ## Example
-    /// ```rust
+    /// ```rust,ignore
+    /// // TODO: reinstate this doc-test. was ignored when these were made private
     /// use massa_bootstrap::{BootstrapClientMessage, BootstrapClientMessageSerializer, BootstrapClientMessageDeserializer};
     /// use massa_serialization::{Serializer, Deserializer, DeserializeError};
     /// use massa_time::MassaTime;

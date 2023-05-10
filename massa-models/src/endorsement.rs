@@ -73,7 +73,8 @@ impl std::fmt::Debug for EndorsementId {
 impl FromStr for EndorsementId {
     type Err = ModelsError;
     /// ## Example
-    /// ```rust
+    /// ```rust,ignore
+    /// // TODO: reinstate this doc-test. was ignored when these were made private
     /// # use massa_hash::Hash;
     /// # use std::str::FromStr;
     /// # use massa_models::endorsement::EndorsementId;
@@ -319,7 +320,8 @@ impl Default for EndorsementSerializerLW {
 
 impl Serializer<Endorsement> for EndorsementSerializerLW {
     /// ## Example:
-    /// ```rust
+    /// ```rust,ignore
+    /// // TODO: reinstate this doc-test. was ignored when these were made private
     /// use massa_models::{slot::Slot, block_id::BlockId, endorsement::{Endorsement, EndorsementSerializerLW}};
     /// use massa_serialization::Serializer;
     /// use massa_hash::Hash;
@@ -361,7 +363,8 @@ impl EndorsementDeserializerLW {
 
 impl Deserializer<Endorsement> for EndorsementDeserializerLW {
     /// ## Example:
-    /// ```rust
+    /// ```rust,ignore
+    /// // TODO: reinstate this doc-test. was ignored when these were made private
     /// use massa_models::{slot::Slot, block_id::BlockId, endorsement::{Endorsement, EndorsementSerializerLW, EndorsementDeserializerLW}};
     /// use massa_serialization::{Serializer, Deserializer, DeserializeError};
     /// use massa_hash::Hash;

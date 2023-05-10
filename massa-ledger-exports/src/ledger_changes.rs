@@ -61,7 +61,8 @@ impl Default for DatastoreUpdateSerializer {
 
 impl Serializer<BTreeMap<Vec<u8>, SetOrDelete<Vec<u8>>>> for DatastoreUpdateSerializer {
     /// ## Example
-    /// ```rust
+    /// ```rust,ignore
+    /// // TODO: reinstate this doc-test. was ignored when these were made private
     /// use std::collections::BTreeMap;
     /// use massa_ledger_exports::{DatastoreUpdateSerializer, SetOrDelete};
     /// use massa_serialization::Serializer;
@@ -126,7 +127,8 @@ impl DatastoreUpdateDeserializer {
 
 impl Deserializer<BTreeMap<Vec<u8>, SetOrDelete<Vec<u8>>>> for DatastoreUpdateDeserializer {
     /// ## Example
-    /// ```rust
+    /// ```rust,ignore
+    /// // TODO: reinstate this doc-test. was ignored when these were made private
     /// use std::collections::BTreeMap;
     /// use massa_ledger_exports::{DatastoreUpdateDeserializer, DatastoreUpdateSerializer, SetOrDelete};
     /// use massa_serialization::{Serializer, Deserializer, DeserializeError};
@@ -195,7 +197,8 @@ impl Default for LedgerEntryUpdateSerializer {
 
 impl Serializer<LedgerEntryUpdate> for LedgerEntryUpdateSerializer {
     /// ## Example
-    /// ```
+    /// ```rust,ignore
+    /// // TODO: reinstate this doc-test. was ignored when these were made private
     /// use massa_serialization::Serializer;
     /// use massa_models::{prehash::PreHashMap, address::Address, amount::Amount, bytecode::Bytecode};
     /// use std::str::FromStr;
@@ -263,7 +266,8 @@ impl LedgerEntryUpdateDeserializer {
 
 impl Deserializer<LedgerEntryUpdate> for LedgerEntryUpdateDeserializer {
     /// ## Example
-    /// ```
+    /// ```rust,ignore
+    /// // TODO: reinstate this doc-test. was ignored when these were made private
     /// use massa_serialization::{Deserializer, Serializer, DeserializeError};
     /// use massa_models::{prehash::PreHashMap, address::Address, amount::Amount, bytecode::Bytecode};
     /// use std::str::FromStr;

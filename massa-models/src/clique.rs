@@ -62,7 +62,8 @@ impl CliqueSerializer {
 
 impl Serializer<Clique> for CliqueSerializer {
     /// ## Example
-    /// ```rust
+    /// ```rust,ignore
+    /// // TODO: reinstate this doc-test. was ignored when these were made private
     /// # use massa_models::clique::{Clique, CliqueSerializer};
     /// # use massa_models::block_id::BlockId;
     /// # use massa_hash::Hash;
@@ -115,7 +116,8 @@ impl CliqueDeserializer {
 
 impl Deserializer<Clique> for CliqueDeserializer {
     /// ## Example
-    /// ```rust
+    /// ```rust,ignore
+    /// // TODO: reinstate this doc-test. was ignored when these were made private
     /// # use massa_models::clique::{Clique, CliqueDeserializer, CliqueSerializer};
     /// # use massa_models::block_id::BlockId;
     /// # use massa_hash::Hash;

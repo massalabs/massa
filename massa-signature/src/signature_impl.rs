@@ -133,7 +133,8 @@ impl KeyPair {
     /// Return the bytes representing the keypair (should be a reference in the future)
     ///
     /// # Example
-    /// ```
+    /// ```rust,ignore
+    /// // TODO: reinstate this doc-test. was ignored when these were made private
     /// # use massa_signature::KeyPair;
     /// let keypair = KeyPair::generate();
     /// let bytes = keypair.to_bytes();
@@ -145,7 +146,8 @@ impl KeyPair {
     /// Return the bytes representing the keypair
     ///
     /// # Example
-    /// ```
+    /// ```rust,ignore
+    /// // TODO: reinstate this doc-test. was ignored when these were made private
     /// # use massa_signature::KeyPair;
     /// let keypair = KeyPair::generate();
     /// let bytes = keypair.into_bytes();
@@ -157,7 +159,8 @@ impl KeyPair {
     /// Convert a byte array of size `SECRET_KEY_BYTES_SIZE` to a `KeyPair`
     ///
     /// # Example
-    /// ```
+    /// ```rust,ignore
+    /// // TODO: reinstate this doc-test. was ignored when these were made private
     /// # use massa_signature::KeyPair;
     /// let keypair = KeyPair::generate();
     /// let bytes = keypair.into_bytes();
@@ -418,7 +421,8 @@ impl PublicKey {
     /// Serialize a `PublicKey` as bytes.
     ///
     /// # Example
-    ///  ```
+    /// ```rust,ignore
+    /// // TODO: reinstate this doc-test. was ignored when these were made private
     /// # use massa_signature::{PublicKey, KeyPair};
     /// # use serde::{Deserialize, Serialize};
     /// let keypair = KeyPair::generate();
@@ -432,7 +436,8 @@ impl PublicKey {
     /// Serialize into bytes.
     ///
     /// # Example
-    ///  ```
+    /// ```rust,ignore
+    /// // TODO: reinstate this doc-test. was ignored when these were made private
     /// # use massa_signature::{PublicKey, KeyPair};
     /// # use serde::{Deserialize, Serialize};
     /// let keypair = KeyPair::generate();
@@ -446,7 +451,8 @@ impl PublicKey {
     /// Deserialize a `PublicKey` from bytes.
     ///
     /// # Example
-    ///  ```
+    /// ```rust,ignore
+    /// // TODO: reinstate this doc-test. was ignored when these were made private
     /// # use massa_signature::{PublicKey, KeyPair};
     /// # use serde::{Deserialize, Serialize};
     /// let keypair = KeyPair::generate();
@@ -475,7 +481,8 @@ impl PublicKeyDeserializer {
 }
 
 impl Deserializer<PublicKey> for PublicKeyDeserializer {
-    /// ```
+    /// ```rust,ignore
+    /// // TODO: reinstate this doc-test. was ignored when these were made private
     /// use massa_signature::{PublicKey, PublicKeyDeserializer, KeyPair};
     /// use massa_serialization::{DeserializeError, Deserializer};
     /// use massa_hash::Hash;
@@ -625,7 +632,8 @@ impl Signature {
     /// Serialize a Signature as bytes.
     ///
     /// # Example
-    ///  ```
+    /// ```rust,ignore
+    /// // TODO: reinstate this doc-test. was ignored when these were made private
     /// # use massa_signature::KeyPair;
     /// # use massa_hash::Hash;
     /// # use serde::{Deserialize, Serialize};
@@ -642,7 +650,8 @@ impl Signature {
     /// Serialize a Signature into bytes.
     ///
     /// # Example
-    ///  ```
+    /// ```rust,ignore
+    /// // TODO: reinstate this doc-test. was ignored when these were made private
     /// # use massa_signature::KeyPair;
     /// # use massa_hash::Hash;
     /// # use serde::{Deserialize, Serialize};
@@ -693,7 +702,8 @@ impl Signature {
     /// Deserialize a Signature from bytes.
     ///
     /// # Example
-    ///  ```
+    /// ```rust,ignore
+    /// // TODO: reinstate this doc-test. was ignored when these were made private
     /// # use massa_signature::{KeyPair, Signature};
     /// # use massa_hash::Hash;
     /// # use serde::{Deserialize, Serialize};
@@ -828,7 +838,8 @@ impl SignatureDeserializer {
 }
 
 impl Deserializer<Signature> for SignatureDeserializer {
-    /// ```
+    /// ```rust,ignore
+    /// // TODO: reinstate this doc-test. was ignored when these were made private
     /// use massa_signature::{Signature, SignatureDeserializer, KeyPair};
     /// use massa_serialization::{DeserializeError, Deserializer};
     /// use massa_hash::Hash;

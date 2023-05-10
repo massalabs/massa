@@ -20,7 +20,7 @@ use crate::{
 
 /// A generic command to send commands to a pool
 #[allow(clippy::large_enum_variant)]
-pub(crate)  enum Command {
+pub(crate) enum Command {
     /// Add items to the pool
     AddItems(Storage),
     /// Add denunciation precursor to the pool
@@ -33,7 +33,7 @@ pub(crate)  enum Command {
 
 /// Pool controller
 #[derive(Clone)]
-pub(crate)  struct PoolControllerImpl {
+pub(crate) struct PoolControllerImpl {
     /// Config
     pub(crate) _config: PoolConfig,
     /// Shared reference to the operation pool
@@ -49,7 +49,7 @@ pub(crate)  struct PoolControllerImpl {
     /// Denunciation write worker command sender
     pub(crate) denunciations_input_sender: SyncSender<Command>,
     /// Last final periods from Consensus
-    pub(crate)  last_cs_final_periods: Vec<u64>,
+    pub(crate) last_cs_final_periods: Vec<u64>,
 }
 
 impl PoolController for PoolControllerImpl {
@@ -217,10 +217,15 @@ impl PoolController for PoolControllerImpl {
     }
 
     /// Check if the pool contains a denunciation. Returns a boolean
-    #[cfg(feature = "testing")]
+    #[cfg(any(test, feature = "testing"))]
     fn contains_denunciation(&self, denunciation: &Denunciation) -> bool {
         let lock = self.denunciation_pool.read();
         lock.contains(denunciation)
+    }
+    /// Check if the pool contains a denunciation. Returns a boolean
+    #[cfg(not(any(test, feature = "testing")))]
+    fn contains_denunciation(&self, _denunciation: &Denunciation) -> bool {
+        unimplemented!("this was found to only be used in tests, but is needed to keep the compiler happy when doc-testing")
     }
 
     /// Get the number of denunciations in the pool
@@ -243,7 +248,7 @@ impl PoolController for PoolControllerImpl {
 /// Implementation of the pool manager.
 ///
 /// Contains the operations and endorsements thread handles.
-pub(crate)  struct PoolManagerImpl {
+pub(crate) struct PoolManagerImpl {
     /// Handle used to join the operation thread
     pub(crate) operations_thread_handle: Option<std::thread::JoinHandle<()>>,
     /// Handle used to join the endorsement thread

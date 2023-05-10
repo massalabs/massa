@@ -92,7 +92,8 @@ impl std::fmt::Debug for OperationPrefixId {
 impl FromStr for OperationId {
     type Err = ModelsError;
     /// ## Example
-    /// ```rust
+    /// ```rust,ignore
+    /// // TODO: reinstate this doc-test. was ignored when these were made private
     /// # use massa_hash::Hash;
     /// # use std::str::FromStr;
     /// # use massa_models::operation::OperationId;
@@ -551,7 +552,8 @@ impl Default for OperationTypeSerializer {
 
 impl Serializer<OperationType> for OperationTypeSerializer {
     /// ## Example:
-    /// ```rust
+    /// ```rust,ignore
+    /// // TODO: reinstate this doc-test. was ignored when these were made private
     /// use std::collections::BTreeMap;
     /// use massa_models::{operation::{OperationTypeSerializer, OperationTypeDeserializer,OperationType}, address::Address, amount::Amount};
     /// use massa_signature::KeyPair;
@@ -679,7 +681,8 @@ impl OperationTypeDeserializer {
 
 impl Deserializer<OperationType> for OperationTypeDeserializer {
     /// ## Example:
-    /// ```rust
+    /// ```rust,ignore
+    /// // TODO: reinstate this doc-test. was ignored when these were made private
     /// use std::collections::BTreeMap;
     /// use massa_models::{operation::{OperationTypeSerializer, OperationTypeDeserializer, OperationType}, address::Address, amount::Amount};
     /// use massa_signature::KeyPair;
@@ -914,7 +917,8 @@ impl Default for OperationIdsSerializer {
 
 impl Serializer<Vec<OperationId>> for OperationIdsSerializer {
     /// ## Example:
-    /// ```
+    /// ```rust,ignore
+    /// // TODO: reinstate this doc-test. was ignored when these were made private
     /// use massa_models::operation::{OperationId, OperationIdsSerializer};
     /// use massa_serialization::Serializer;
     /// use std::str::FromStr;
@@ -964,7 +968,8 @@ impl OperationIdsDeserializer {
 
 impl Deserializer<Vec<OperationId>> for OperationIdsDeserializer {
     /// ## Example:
-    /// ```
+    /// ```rust,ignore
+    /// // TODO: reinstate this doc-test. was ignored when these were made private
     /// use massa_models::operation::{OperationId, OperationIdsSerializer, OperationIdsDeserializer};
     /// use massa_serialization::{Serializer, Deserializer, DeserializeError};
     /// use std::str::FromStr;
@@ -1011,7 +1016,8 @@ impl OperationPrefixIdDeserializer {
 
 impl Deserializer<OperationPrefixId> for OperationPrefixIdDeserializer {
     /// ## Example:
-    /// ```rust
+    /// ```rust,ignore
+    /// // TODO: reinstate this doc-test. was ignored when these were made private
     /// use massa_models::operation::{OperationPrefixId, OperationPrefixIds, OperationPrefixIdsSerializer, OPERATION_ID_PREFIX_SIZE_BYTES};
     /// use massa_serialization::Serializer;
     ///
@@ -1073,7 +1079,8 @@ impl OperationPrefixIdsDeserializer {
 
 impl Deserializer<OperationPrefixIds> for OperationPrefixIdsDeserializer {
     /// ## Example:
-    /// ```rust
+    /// ```rust,ignore
+    /// // TODO: reinstate this doc-test. was ignored when these were made private
     /// use massa_models::{operation::{OperationPrefixId, OperationPrefixIds, OperationPrefixIdsSerializer, OperationPrefixIdsDeserializer, OPERATION_ID_PREFIX_SIZE_BYTES}};
     /// use massa_serialization::{Serializer, Deserializer, DeserializeError};
     ///

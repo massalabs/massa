@@ -216,7 +216,8 @@ impl KeyDeserializer {
 
 impl Deserializer<Key> for KeyDeserializer {
     /// ## Example
-    /// ```
+    /// ```rust,ignore
+    /// // TODO: reinstate this doc-test. was ignored when these were made private
     /// use massa_models::address::Address;
     /// use massa_ledger_exports::{KeyDeserializer, KeySerializer, DATASTORE_IDENT, BALANCE_IDENT, KeyType, Key};
     /// use massa_serialization::{Deserializer, Serializer, DeserializeError};

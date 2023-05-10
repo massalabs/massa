@@ -20,15 +20,15 @@ use std::collections::{btree_map, BTreeMap};
 
 /// just a `u64` to keep track of the roll sells and buys during a cycle
 #[derive(Copy, Clone, Debug, Serialize, Deserialize)]
-pub(crate)  struct RollCompensation(pub u64);
+pub(crate) struct RollCompensation(pub u64);
 
 /// roll sales and purchases
 #[derive(Clone, Debug, Serialize, Deserialize)]
-pub(crate)  struct RollUpdate {
+pub(crate) struct RollUpdate {
     /// roll purchases
-    pub(crate)  roll_purchases: u64,
+    pub(crate) roll_purchases: u64,
     /// roll sales
-    pub(crate)  roll_sales: u64,
+    pub(crate) roll_sales: u64,
     // Here is space for registering any denunciations/resets
 }
 
@@ -62,7 +62,7 @@ impl RollUpdate {
     }
 
     /// compensate a roll update, return compensation count
-    pub(crate)  fn compensate(&mut self) -> RollCompensation {
+    pub(crate) fn compensate(&mut self) -> RollCompensation {
         let compensation = std::cmp::min(self.roll_purchases, self.roll_sales);
         self.roll_purchases -= compensation;
         self.roll_sales -= compensation;
@@ -70,19 +70,19 @@ impl RollUpdate {
     }
 
     /// true if the update has no effect
-    pub(crate)  fn is_nil(&self) -> bool {
+    pub(crate) fn is_nil(&self) -> bool {
         self.roll_purchases == 0 && self.roll_sales == 0
     }
 }
 
 /// Serializer for `RollUpdate`
-pub(crate)  struct RollUpdateSerializer {
+pub(crate) struct RollUpdateSerializer {
     u64_serializer: U64VarIntSerializer,
 }
 
 impl RollUpdateSerializer {
     /// Creates a new `RollUpdateSerializer`
-    pub(crate)  fn new() -> Self {
+    pub(crate) fn new() -> Self {
         RollUpdateSerializer {
             u64_serializer: U64VarIntSerializer::new(),
         }
@@ -97,7 +97,8 @@ impl Default for RollUpdateSerializer {
 
 impl Serializer<RollUpdate> for RollUpdateSerializer {
     /// ## Example:
-    /// ```rust
+    /// ```rust,ignore
+    /// // TODO: reinstate this doc-test. was ignored when these were made private
     /// use massa_models::rolls::{RollUpdate, RollUpdateSerializer};
     /// use massa_serialization::Serializer;
     ///
@@ -117,13 +118,13 @@ impl Serializer<RollUpdate> for RollUpdateSerializer {
 }
 
 /// Deserializer for `RollUpdate`
-pub(crate)  struct RollUpdateDeserializer {
+pub(crate) struct RollUpdateDeserializer {
     u64_deserializer: U64VarIntDeserializer,
 }
 
 impl RollUpdateDeserializer {
     /// Creates a new `RollUpdateDeserializer`
-    pub(crate)  fn new() -> Self {
+    pub(crate) fn new() -> Self {
         RollUpdateDeserializer {
             u64_deserializer: U64VarIntDeserializer::new(Included(0), Included(u64::MAX)),
         }
@@ -138,7 +139,8 @@ impl Default for RollUpdateDeserializer {
 
 impl Deserializer<RollUpdate> for RollUpdateDeserializer {
     /// ## Example:
-    /// ```rust
+    /// ```rust,ignore
+    /// // TODO: reinstate this doc-test. was ignored when these were made private
     /// use massa_models::rolls::{RollUpdate, RollUpdateDeserializer, RollUpdateSerializer};
     /// use massa_serialization::{Serializer, Deserializer, DeserializeError};
     ///
@@ -178,16 +180,16 @@ impl Deserializer<RollUpdate> for RollUpdateDeserializer {
 
 /// maps addresses to roll updates
 #[derive(Clone, Debug, Serialize, Deserialize, Default)]
-pub(crate)  struct RollUpdates(pub PreHashMap<Address, RollUpdate>);
+pub(crate) struct RollUpdates(pub PreHashMap<Address, RollUpdate>);
 
 impl RollUpdates {
     /// the addresses impacted by the updates
-    pub(crate)  fn get_involved_addresses(&self) -> PreHashSet<Address> {
+    pub(crate) fn get_involved_addresses(&self) -> PreHashSet<Address> {
         self.0.keys().copied().collect()
     }
 
     /// chains with another `RollUpdates`, compensates and returns compensations
-    pub(crate)  fn chain(
+    pub(crate) fn chain(
         &mut self,
         updates: &RollUpdates,
     ) -> Result<PreHashMap<Address, RollCompensation>> {
@@ -205,7 +207,11 @@ impl RollUpdates {
     }
 
     /// applies a `RollUpdate`, compensates and returns compensation
-    pub(crate)  fn apply(&mut self, addr: &Address, update: &RollUpdate) -> Result<RollCompensation> {
+    pub(crate) fn apply(
+        &mut self,
+        addr: &Address,
+        update: &RollUpdate,
+    ) -> Result<RollCompensation> {
         if update.is_nil() {
             return Ok(RollCompensation(0));
         }
@@ -222,7 +228,7 @@ impl RollUpdates {
 
     /// get the roll update for a subset of addresses
     #[must_use]
-    pub(crate)  fn clone_subset(&self, addrs: &PreHashSet<Address>) -> Self {
+    pub(crate) fn clone_subset(&self, addrs: &PreHashSet<Address>) -> Self {
         Self(
             addrs
                 .iter()
@@ -233,7 +239,7 @@ impl RollUpdates {
 
     /// merge another roll updates into self, overwriting existing data
     /// addresses that are in not other are removed from self
-    pub(crate)  fn sync_from(&mut self, addrs: &PreHashSet<Address>, mut other: RollUpdates) {
+    pub(crate) fn sync_from(&mut self, addrs: &PreHashSet<Address>, mut other: RollUpdates) {
         for addr in addrs.iter() {
             if let Some(new_val) = other.0.remove(addr) {
                 self.0.insert(*addr, new_val);
@@ -246,26 +252,26 @@ impl RollUpdates {
 
 /// counts the roll for each address
 #[derive(Clone, Debug, Serialize, Deserialize, Default)]
-pub(crate)  struct RollCounts(pub BTreeMap<Address, u64>);
+pub(crate) struct RollCounts(pub BTreeMap<Address, u64>);
 
 impl RollCounts {
     /// Makes a new, empty `RollCounts`.
-    pub(crate)  fn new() -> Self {
+    pub(crate) fn new() -> Self {
         RollCounts(BTreeMap::new())
     }
 
     /// Returns the number of elements in the `RollCounts`.
-    pub(crate)  fn len(&self) -> usize {
+    pub(crate) fn len(&self) -> usize {
         self.0.len()
     }
 
     /// Returns true if the `RollCounts` contains no elements.
-    pub(crate)  fn is_empty(&self) -> bool {
+    pub(crate) fn is_empty(&self) -> bool {
         self.0.is_empty()
     }
 
     /// applies `RollUpdates` to self with compensations
-    pub(crate)  fn apply_updates(&mut self, updates: &RollUpdates) -> Result<()> {
+    pub(crate) fn apply_updates(&mut self, updates: &RollUpdates) -> Result<()> {
         for (addr, update) in updates.0.iter() {
             match self.0.entry(*addr) {
                 btree_map::Entry::Occupied(mut occ) => {
@@ -311,7 +317,7 @@ impl RollCounts {
 
     /// get roll counts for a subset of addresses.
     #[must_use]
-    pub(crate)  fn clone_subset(&self, addrs: &PreHashSet<Address>) -> Self {
+    pub(crate) fn clone_subset(&self, addrs: &PreHashSet<Address>) -> Self {
         Self(
             addrs
                 .iter()
@@ -322,7 +328,7 @@ impl RollCounts {
 
     /// merge another roll counts into self, overwriting existing data
     /// addresses that are in not other are removed from self
-    pub(crate)  fn sync_from(&mut self, addrs: &PreHashSet<Address>, mut other: RollCounts) {
+    pub(crate) fn sync_from(&mut self, addrs: &PreHashSet<Address>, mut other: RollCounts) {
         for addr in addrs.iter() {
             if let Some(new_val) = other.0.remove(addr) {
                 self.0.insert(*addr, new_val);

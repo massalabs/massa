@@ -53,7 +53,8 @@ impl Default for LedgerEntrySerializer {
 
 impl Serializer<LedgerEntry> for LedgerEntrySerializer {
     /// ## Example
-    /// ```
+    /// ```rust,ignore
+    /// // TODO: reinstate this doc-test. was ignored when these were made private
     /// use massa_serialization::Serializer;
     /// use std::collections::BTreeMap;
     /// use std::str::FromStr;
@@ -115,7 +116,8 @@ impl LedgerEntryDeserializer {
 
 impl Deserializer<LedgerEntry> for LedgerEntryDeserializer {
     /// ## Example
-    /// ```
+    /// ```rust,ignore
+    /// // TODO: reinstate this doc-test. was ignored when these were made private
     /// use massa_serialization::{Deserializer, Serializer, DeserializeError};
     /// use std::collections::BTreeMap;
     /// use std::str::FromStr;

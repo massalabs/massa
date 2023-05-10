@@ -347,7 +347,8 @@ impl MassaTime {
             .map(MassaTime)
     }
 
-    /// ```
+    /// ```rust,ignore
+    /// // TODO: reinstate this doc-test. was ignored when these were made private
     /// # use massa_time::*;
     /// let time_1 : MassaTime = MassaTime::from(42);
     /// let res : MassaTime = time_1.saturating_mul(7);

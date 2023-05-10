@@ -252,7 +252,11 @@ pub struct MipState {
 impl MipState {
     /// Create
     #[cfg(any(test, feature = "testing"))]
-    pub fn new(defined: MassaTime) -> Self {
+    pub fn test_exp_new(defined: MassaTime) -> Self {
+        Self::new(defined)
+    }
+
+    fn new(defined: MassaTime) -> Self {
         let state: ComponentState = Default::default(); // Default is Defined
         let state_id = ComponentStateTypeId::from(&state);
         // Build a 'dummy' advance msg for state Defined, this is to avoid using an

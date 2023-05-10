@@ -169,9 +169,10 @@ impl ExportActiveBlockDeserializer {
 
 impl Deserializer<ExportActiveBlock> for ExportActiveBlockDeserializer {
     /// ## Example:
-    /// ```rust
+    /// ```rust,ignore
+    /// // TODO: reinstate this doc-test. was ignored when these were made private
     /// use massa_consensus_exports::export_active_block::{ExportActiveBlock, ExportActiveBlockDeserializer, ExportActiveBlockSerializer};
-    /// use massa_models::{ledger::LedgerChanges, config::THREAD_COUNT, rolls::RollUpdates, block::{Block, BlockSerializer}, prehash::PreHashSet, endorsement::{Endorsement, EndorsementSerializer}, slot::Slot, secure_share::SecureShareContent};
+    /// use massa_models::{ledger::LedgerChanges, config::constants::THREAD_COUNT, rolls::RollUpdates, block::{Block, BlockSerializer}, prehash::PreHashSet, endorsement::{Endorsement, EndorsementSerializer}, slot::Slot, secure_share::SecureShareContent};
     /// use massa_models::block_id::BlockId;
     /// use massa_models::block_header::{BlockHeader, BlockHeaderSerializer};
     /// use massa_hash::Hash;

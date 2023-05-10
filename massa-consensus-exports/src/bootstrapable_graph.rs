@@ -40,7 +40,7 @@ impl Serializer<BootstrapableGraph> for BootstrapableGraphSerializer {
     /// use massa_consensus_exports::bootstrapable_graph::{BootstrapableGraph, BootstrapableGraphSerializer};
     /// use massa_serialization::Serializer;
     /// use massa_hash::Hash;
-    /// use massa_models::{prehash::PreHashMap, block_id::BlockId, config::THREAD_COUNT};
+    /// use massa_models::{prehash::PreHashMap, block_id::BlockId, config::constants::THREAD_COUNT};
     /// let mut bootstrapable_graph = BootstrapableGraph {
     ///   final_blocks: Vec::new(),
     /// };
@@ -98,7 +98,7 @@ impl Deserializer<BootstrapableGraph> for BootstrapableGraphDeserializer {
     /// use massa_consensus_exports::bootstrapable_graph::{BootstrapableGraph, BootstrapableGraphDeserializer, BootstrapableGraphSerializer};
     /// use massa_serialization::{Deserializer, Serializer, DeserializeError};
     /// use massa_hash::Hash;
-    /// use massa_models::{prehash::PreHashMap, block_id::BlockId, config::THREAD_COUNT};
+    /// use massa_models::{prehash::PreHashMap, block_id::BlockId, config::constants::THREAD_COUNT};
     /// use massa_models::block::BlockDeserializerArgs;
     /// let mut bootstrapable_graph = BootstrapableGraph {
     ///   final_blocks: Vec::new(),
