@@ -15,12 +15,12 @@ pub const STATE_HASH_ERROR: &str = "critical: saved async pool hash is corrupted
 pub const STATE_HASH_INITIAL_BYTES: &[u8; 32] = &[0; HASH_SIZE_BYTES];
 
 // Prefixes
-pub const ASYNC_POOL_PREFIX: &str = "async_pool/";
-pub const CYCLE_HISTORY_PREFIX: &str = "cycle_history/";
-pub const DEFERRED_CREDITS_PREFIX: &str = "deferred_credits/";
-pub const EXECUTED_DENUNCIATIONS_PREFIX: &str = "executed_denunciations/";
-pub const EXECUTED_OPS_PREFIX: &str = "executed_ops/";
-pub const LEDGER_PREFIX: &str = "ledger/";
+pub const CYCLE_HISTORY_PREFIX: &str = "0_cycle_history/";
+pub const DEFERRED_CREDITS_PREFIX: &str = "1_deferred_credits/";
+pub const ASYNC_POOL_PREFIX: &str = "2_async_pool/";
+pub const EXECUTED_OPS_PREFIX: &str = "3_executed_ops/";
+pub const EXECUTED_DENUNCIATIONS_PREFIX: &str = "4_executed_denunciations/";
+pub const LEDGER_PREFIX: &str = "5_ledger/";
 
 // Async Pool
 pub const ASYNC_POOL_HASH_ERROR: &str = "critical: saved async pool hash is corrupted";

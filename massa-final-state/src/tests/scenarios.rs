@@ -5,7 +5,7 @@ use crate::{
     FinalState, FinalStateConfig, StateChanges,
 };
 use massa_async_pool::{AsyncMessage, AsyncPoolChanges, AsyncPoolConfig};
-use massa_db::MassaDB;
+use massa_db::{DBBatch, MassaDB};
 use massa_executed_ops::{ExecutedDenunciationsConfig, ExecutedOpsConfig};
 use massa_ledger_exports::{
     LedgerChanges, LedgerConfig, LedgerEntryUpdate, SetOrKeep, SetUpdateOrDelete,
@@ -120,7 +120,11 @@ fn test_final_state() {
     {
         let fs = create_final_state(&temp_dir);
 
-        fs.write().pos_state.create_initial_cycle();
+        let mut batch = DBBatch::new(fs.read().db.read().get_db_hash());
+
+        fs.write().pos_state.create_initial_cycle(&mut batch);
+
+        fs.read().db.read().write_batch(batch);
 
         let slot = Slot::new(1, 0);
         let mut state_changes = StateChanges::default();
@@ -169,7 +173,11 @@ fn test_final_state() {
     {
         let fs2 = create_final_state(&temp_dir);
 
-        fs2.write().pos_state.create_initial_cycle();
+        let mut batch = DBBatch::new(fs2.read().db.read().get_db_hash());
+
+        fs2.write().pos_state.create_initial_cycle(&mut batch);
+
+        fs2.read().db.read().write_batch(batch);
 
         let slot = Slot::new(1, 0);
         let changes = StateChanges::default();

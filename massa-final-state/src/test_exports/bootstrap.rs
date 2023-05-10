@@ -5,7 +5,7 @@
 use std::{collections::VecDeque, sync::Arc};
 
 use massa_async_pool::AsyncPool;
-use massa_db::MassaDB;
+use massa_db::{MassaDB, METADATA_CF, STATE_CF};
 use massa_executed_ops::{ExecutedDenunciations, ExecutedOps};
 use massa_hash::{Hash, HASH_SIZE_BYTES};
 use massa_ledger_exports::LedgerController;
@@ -48,17 +48,82 @@ pub fn assert_eq_final_state(v1: &FinalState, v2: &FinalState) {
     // TODO: Better compare equality of structures in rocks_db (e.g. add a cfg testing enabled function to dump the db to memory)
     // compare slot
     assert_eq!(v1.slot, v2.slot, "final slot mismatch");
-
-    // compare final state
-    massa_ledger_worker::test_exports::assert_eq_ledger(&*v1.ledger, &*v2.ledger);
-    massa_async_pool::test_exports::assert_eq_async_pool_bootstrap_state(
-        &v1.async_pool,
-        &v2.async_pool,
-    );
-    massa_pos_exports::test_exports::assert_eq_pos_state(&v1.pos_state, &v2.pos_state);
     assert_eq!(
-        v1.executed_ops.sorted_ops, v2.executed_ops.sorted_ops,
-        "executed_ops.sorted_ops mismatch"
+        v1.last_start_period, v2.last_start_period,
+        "last_start_period mismatch"
+    );
+    assert_eq!(
+        v1.last_slot_before_downtime, v2.last_slot_before_downtime,
+        "last_slot_before_downtime mismatch"
+    );
+
+    let db1 = v1.db.read();
+    let db2 = v2.db.read();
+
+    let handle_state_db1 = db1.0.cf_handle(STATE_CF).unwrap();
+    let handle_state_db2 = db2.0.cf_handle(STATE_CF).unwrap();
+    let iter_state_db1 = db1
+        .0
+        .iterator_cf(handle_state_db1, rocksdb::IteratorMode::Start)
+        .flatten();
+    let iter_state_db2 = db2
+        .0
+        .iterator_cf(handle_state_db2, rocksdb::IteratorMode::Start)
+        .flatten();
+
+    let handle_metadata_db1 = db1.0.cf_handle(METADATA_CF).unwrap();
+    let handle_metadata_db2 = db2.0.cf_handle(METADATA_CF).unwrap();
+    let iter_metadata_db1 = db1
+        .0
+        .iterator_cf(handle_metadata_db1, rocksdb::IteratorMode::Start)
+        .flatten();
+    let iter_metadata_db2 = db2
+        .0
+        .iterator_cf(handle_metadata_db2, rocksdb::IteratorMode::Start)
+        .flatten();
+
+    let count_1 = iter_state_db1.count();
+    let count_2 = iter_state_db2.count();
+
+    assert_eq!(count_1, count_2, "state count mismatch");
+
+    let iter_state_db1 = db1
+        .0
+        .iterator_cf(handle_state_db1, rocksdb::IteratorMode::Start)
+        .flatten();
+    let iter_state_db2 = db2
+        .0
+        .iterator_cf(handle_state_db2, rocksdb::IteratorMode::Start)
+        .flatten();
+
+    let mut count = 0;
+    for ((key1, value1), (key2, value2)) in iter_state_db1.zip(iter_state_db2) {
+        count += 1;
+        assert_eq!(key1, key2, "{}", format!("state key mismatch {}", count));
+        assert_eq!(
+            value1,
+            value2,
+            "{}",
+            format!("state value mismatch {}", count)
+        );
+    }
+
+    for ((key1, value1), (key2, value2)) in iter_metadata_db1.zip(iter_metadata_db2) {
+        assert_eq!(key1, key2, "metadata key mismatch");
+        assert_eq!(value1, value2, "metadata value mismatch");
+    }
+
+    assert_eq!(
+        v1.pos_state.cycle_history_cache, v2.pos_state.cycle_history_cache,
+        "pos_state.cycle_history_cache mismatch"
+    );
+    assert_eq!(
+        v1.pos_state.rng_seed_cache, v2.pos_state.rng_seed_cache,
+        "pos_state.rng_seed_cache mismatch"
+    );
+    assert_eq!(
+        v1.async_pool.message_info_cache, v2.async_pool.message_info_cache,
+        "async_pool.message_info_cache mismatch"
     );
 }
 

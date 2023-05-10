@@ -430,7 +430,7 @@ impl LedgerDB {
         let address_deserializer = AddressDeserializer::new();
         for (key, entry) in ledger.iter().flatten() {
             let (rest, address) = address_deserializer
-                .deserialize::<DeserializeError>(&key[..])
+                .deserialize::<DeserializeError>(&key[LEDGER_PREFIX.len()..])
                 .unwrap();
             if rest.first() == Some(&BALANCE_IDENT) {
                 let (_, amount) = self

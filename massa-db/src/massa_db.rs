@@ -17,6 +17,39 @@ use std::{collections::BTreeMap, ops::Bound, path::PathBuf};
 
 #[derive(Debug)]
 pub struct MassaDB(pub DB);
+/*
+#[derive(Debug)]
+pub struct MassaDB {
+    db: DB,
+    change_history: BTreeMap<MassaTime, BTreeMap<Vec<u8>, Vec<u8>>>,
+}
+
+id / timestamp / slot .. (qui impl Ord)
+historique de changements
+
+chargement depuis fichier
+
+stream de données en entrée > (provient du bootstrap) et il les écrits tel quel dans la db
+
+// For bootstrap servers
+impl MassaDB {
+    ///
+    /// Returns
+    /// (continue_main_stream, changes_for_previous_keys_from_last_timestamp, new_timestamp)
+    pub fn get_batch_to_stream(
+        &self,
+        last_key_timestamp: Option<(Vec<u8>, MassaTime)>,
+    ) -> (
+        BTreeMap<Vec<u8>, Vec<u8>>,
+        BTreeMap<Vec<u8>, Vec<u8>>,
+        MassaTime,
+    ) {
+        match last_key_timestamp {
+            Some(last_key, last_timestamp) => {}
+            None => {}
+        }
+    }
+}*/
 
 impl MassaDB {
     /// Returns a new `MassaDB` instance
@@ -114,23 +147,25 @@ impl MassaDB {
     pub fn compute_hash_from_scratch(&self) -> Hash {
         let db = &self.0;
 
-        let handle = db.cf_handle(STATE_CF).expect(CF_ERROR);
+        let handle_state = db.cf_handle(STATE_CF).expect(CF_ERROR);
+        let handle_metadata = db.cf_handle(METADATA_CF).expect(CF_ERROR);
 
         let mut hash = Hash::from_bytes(STATE_HASH_INITIAL_BYTES);
 
         for (serialized_key, serialized_value) in
-            db.iterator_cf(handle, IteratorMode::Start).flatten()
+            db.iterator_cf(handle_state, IteratorMode::Start).flatten()
         {
             hash ^= Hash::compute_from(&[serialized_key, serialized_value].concat());
         }
 
-        if let Ok(Some(serialized_value)) = db.get_cf(handle, SLOT_KEY) {
+        if let Ok(Some(serialized_value)) = db.get_cf(handle_metadata, SLOT_KEY) {
             hash ^= Hash::compute_from(&[SLOT_KEY.to_vec(), serialized_value].concat());
         }
 
         hash
     }
 
+    /// Utility function to delete all keys in a prefix
     pub fn delete_prefix(&self, prefix: &str) {
         let db = &self.0;
 
@@ -143,7 +178,9 @@ impl MassaDB {
 
             self.delete_key(handle, &mut batch, serialized_key.to_vec());
         }
+        self.write_batch(batch);
     }
+
     /// Set the disk slot metadata
     ///
     /// # Arguments

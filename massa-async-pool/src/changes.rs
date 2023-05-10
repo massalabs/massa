@@ -1,6 +1,6 @@
-///! Copyright (c) 2022 MASSA LABS <info@massa.net>
+//! Copyright (c) 2022 MASSA LABS <info@massa.net>
 
-///! This file provides structures representing changes to the asynchronous message pool
+//! This file provides structures representing changes to the asynchronous message pool
 use std::{
     collections::{btree_map::Entry, BTreeMap},
     ops::Bound::Included,

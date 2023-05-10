@@ -134,6 +134,8 @@ pub struct PoSFinalState {
     pub db: Arc<RwLock<MassaDB>>,
     /// contiguous cycle history, back = newest
     pub cycle_history_cache: VecDeque<(u64, bool)>,
+    /// rng_seed cache to get rng_seed for the current cycle
+    pub rng_seed_cache: Option<(u64, BitVec<u8>)>,
     /// selector controller
     pub selector: Box<dyn SelectorController>,
     /// initial rolls, used for negative cycle look back
@@ -182,6 +184,7 @@ impl PoSFinalState {
             config,
             db,
             cycle_history_cache: Default::default(),
+            rng_seed_cache: None,
             selector,
             initial_rolls,
             initial_seeds,
@@ -200,16 +203,18 @@ impl PoSFinalState {
     /// Reset the state of the PoS final state
     ///
     /// USED ONLY FOR BOOTSTRAP
-    pub fn reset(&self) {
+    pub fn reset(&mut self) {
         let db = self.db.read();
         db.delete_prefix(CYCLE_HISTORY_PREFIX);
         db.delete_prefix(DEFERRED_CREDITS_PREFIX);
+        self.cycle_history_cache = Default::default();
+        self.rng_seed_cache = None;
     }
 
     /// Create the initial cycle based off the initial rolls.
     ///
     /// This should be called only if bootstrap did not happen.
-    pub fn create_initial_cycle(&mut self) {
+    pub fn create_initial_cycle(&mut self, batch: &mut DBBatch) {
         let mut rng_seed = BitVec::with_capacity(
             self.config
                 .periods_per_cycle
@@ -219,26 +224,26 @@ impl PoSFinalState {
         );
         rng_seed.extend(vec![false; self.config.thread_count as usize]);
 
-        self.put_new_cycle_info(&CycleInfo::new_with_hash(
-            0,
-            false,
-            self.initial_rolls.clone(),
-            rng_seed,
-            PreHashMap::default(),
-        ));
+        self.put_new_cycle_info(
+            &CycleInfo::new_with_hash(
+                0,
+                false,
+                self.initial_rolls.clone(),
+                rng_seed,
+                PreHashMap::default(),
+            ),
+            batch,
+        );
     }
 
     /// Put a new CycleInfo to RocksDB, and update the cycle_history cache
-    pub fn put_new_cycle_info(&mut self, cycle_info: &CycleInfo) {
-        let db = self.db.read();
-
-        let mut batch = DBBatch::new(db.get_db_hash());
-        self.put_cycle_history_complete(cycle_info.cycle, cycle_info.complete, &mut batch);
-        self.put_cycle_history_rng_seed(cycle_info.cycle, cycle_info.rng_seed.clone(), &mut batch);
+    pub fn put_new_cycle_info(&mut self, cycle_info: &CycleInfo, batch: &mut DBBatch) {
+        self.put_cycle_history_complete(cycle_info.cycle, cycle_info.complete, batch);
+        self.put_cycle_history_rng_seed(cycle_info.cycle, cycle_info.rng_seed.clone(), batch);
         self.put_cycle_history_final_state_hash_snapshot(
             cycle_info.cycle,
             cycle_info.final_state_hash_snapshot,
-            &mut batch,
+            batch,
         );
 
         for (address, roll) in cycle_info.roll_counts.iter() {
@@ -247,7 +252,7 @@ impl PoSFinalState {
                 address,
                 Some(roll),
                 None,
-                &mut batch,
+                batch,
             );
         }
         for (address, prod_stats) in cycle_info.production_stats.iter() {
@@ -256,21 +261,18 @@ impl PoSFinalState {
                 address,
                 None,
                 Some(prod_stats),
-                &mut batch,
+                batch,
             );
         }
-
-        db.write_batch(batch);
 
         self.cycle_history_cache
             .push_back((cycle_info.cycle, cycle_info.complete));
     }
 
     /// Deletes a given cycle from RocksDB
-    pub fn delete_cycle_info(&mut self, cycle: u64) {
+    pub fn delete_cycle_info(&mut self, cycle: u64, batch: &mut DBBatch) {
         let db = self.db.read();
         let handle = db.0.cf_handle(STATE_CF).expect(CF_ERROR);
-        let mut batch = DBBatch::new(db.get_db_hash());
 
         let prefix = self.cycle_history_cycle_prefix(cycle);
 
@@ -278,10 +280,8 @@ impl PoSFinalState {
             if !serialized_key.starts_with(prefix.as_bytes()) {
                 break;
             }
-            db.delete_key(handle, &mut batch, serialized_key.to_vec());
+            db.delete_key(handle, batch, serialized_key.to_vec());
         }
-
-        db.write_batch(batch);
     }
 
     /// Create the a cycle based off of another cycle_info. Used for downtime interpolation,
@@ -292,6 +292,7 @@ impl PoSFinalState {
         last_cycle_info: &CycleInfo,
         first_slot: Slot,
         last_slot: Slot,
+        batch: &mut DBBatch,
     ) -> Result<(), PosError> {
         let mut rng_seed = if first_slot.is_first_of_cycle(self.config.periods_per_cycle) {
             BitVec::with_capacity(
@@ -317,13 +318,16 @@ impl PoSFinalState {
         let complete =
             last_slot.is_last_of_cycle(self.config.periods_per_cycle, self.config.thread_count);
 
-        self.put_new_cycle_info(&CycleInfo::new_with_hash(
-            cycle,
-            complete,
-            last_cycle_info.roll_counts.clone(),
-            rng_seed,
-            last_cycle_info.production_stats.clone(),
-        ));
+        self.put_new_cycle_info(
+            &CycleInfo::new_with_hash(
+                cycle,
+                complete,
+                last_cycle_info.roll_counts.clone(),
+                rng_seed,
+                last_cycle_info.production_stats.clone(),
+            ),
+            batch,
+        );
 
         Ok(())
     }
@@ -407,6 +411,11 @@ impl PoSFinalState {
         // compute the current cycle from the given slot
         let cycle = slot.get_cycle(self.config.periods_per_cycle);
 
+        // If the cycle_history_cache is empty, try and update it from the database
+        if self.cycle_history_cache.is_empty() {
+            self.cycle_history_cache = self.get_cycle_history_cycles().into();
+        }
+
         // if cycle C is absent from self.cycle_history:
         // push a new empty CycleInfo at the back of self.cycle_history and set its cycle = C
         // pop_front from cycle_history until front() represents cycle C-4 or later
@@ -418,16 +427,19 @@ impl PoSFinalState {
                 // the previous cycle is complete, push a new incomplete/empty one to extend
 
                 let roll_counts = self.get_all_roll_counts(info.0);
-                self.put_new_cycle_info(&CycleInfo::new_with_hash(
-                    cycle,
-                    false,
-                    roll_counts,
-                    BitVec::with_capacity(slots_per_cycle),
-                    PreHashMap::default(),
-                ));
+                self.put_new_cycle_info(
+                    &CycleInfo::new_with_hash(
+                        cycle,
+                        false,
+                        roll_counts,
+                        BitVec::with_capacity(slots_per_cycle),
+                        PreHashMap::default(),
+                    ),
+                    batch,
+                );
                 while self.cycle_history_cache.len() > self.config.cycle_history_length {
                     if let Some((old_cycle, _)) = self.cycle_history_cache.pop_front() {
-                        self.delete_cycle_info(old_cycle);
+                        self.delete_cycle_info(old_cycle, batch);
                     }
                 }
             } else {
@@ -732,7 +744,7 @@ impl PoSFinalState {
         Some(index)
     }
 
-    fn put_cycle_history_complete(&self, cycle: u64, value: bool, batch: &mut DBBatch) {
+    fn put_cycle_history_complete(&mut self, cycle: u64, value: bool, batch: &mut DBBatch) {
         let db = self.db.read();
         let handle = db.0.cf_handle(STATE_CF).expect(CF_ERROR);
 
@@ -741,6 +753,10 @@ impl PoSFinalState {
         let serialized_value = if value { &[1] } else { &[0] };
 
         db.put_or_update_entry_value(handle, batch, complete_key!(prefix), serialized_value);
+
+        if let Some(index) = self.get_cycle_index(cycle) {
+            self.cycle_history_cache[index].1 = value;
+        }
     }
 
     fn is_cycle_complete(&self, cycle: u64) -> bool {
@@ -782,7 +798,7 @@ impl PoSFinalState {
         );
     }
 
-    fn put_cycle_history_rng_seed(&self, cycle: u64, value: BitVec<u8>, batch: &mut DBBatch) {
+    fn put_cycle_history_rng_seed(&mut self, cycle: u64, value: BitVec<u8>, batch: &mut DBBatch) {
         let db = self.db.read();
         let handle = db.0.cf_handle(STATE_CF).expect(CF_ERROR);
 
@@ -794,6 +810,8 @@ impl PoSFinalState {
             .bitvec_ser
             .serialize(&value, &mut serialized_value)
             .expect(CYCLE_HISTORY_SER_ERROR);
+
+        self.rng_seed_cache = Some((cycle, value.clone()));
 
         db.put_or_update_entry_value(handle, batch, rng_seed_key!(prefix), &serialized_value);
     }
@@ -1036,6 +1054,10 @@ impl PoSFinalState {
         let db = self.db.read();
         let handle = db.0.cf_handle(STATE_CF).expect(CF_ERROR);
 
+        if let Some((cached_cycle, rng_seed)) = &self.rng_seed_cache && *cached_cycle == cycle {
+            return rng_seed.clone();
+        }
+
         let serialized_rng_seed =
             db.0.get_cf(
                 handle,
@@ -1091,7 +1113,13 @@ impl PoSFinalState {
                 )
                 .next()
             }
-            None => db.0.iterator_cf(handle, IteratorMode::Start).next(),
+            None => {
+                db.0.iterator_cf(
+                    handle,
+                    IteratorMode::From(CYCLE_HISTORY_PREFIX.as_bytes(), Direction::Forward),
+                )
+                .next()
+            }
         } {
             if !serialized_key.starts_with(CYCLE_HISTORY_PREFIX.as_bytes()) {
                 break;
@@ -1222,7 +1250,7 @@ impl PoSFinalState {
             let (rest, slot) = self
                 .deferred_credits_deserializer
                 .slot_deserializer
-                .deserialize::<DeserializeError>(&serialized_key)
+                .deserialize::<DeserializeError>(&serialized_key[DEFERRED_CREDITS_PREFIX.len()..])
                 .expect(DEFERRED_CREDITS_DESER_ERROR);
             let (_, address) = self
                 .deferred_credits_deserializer

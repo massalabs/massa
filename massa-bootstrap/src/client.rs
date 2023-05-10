@@ -123,6 +123,15 @@ fn stream_final_state_and_consensus(
                                 &mut batch,
                             );
                         }
+                        if !changes.executed_denunciations_changes.is_empty() {
+                            write_final_state
+                                .executed_denunciations
+                                .apply_changes_to_batch(
+                                    changes.executed_denunciations_changes.clone(),
+                                    *changes_slot,
+                                    &mut batch,
+                                );
+                        }
                         write_final_state.db.read().write_batch(batch);
                     }
                     write_final_state.slot = slot;
@@ -455,7 +464,9 @@ pub async fn get_state(
             }
 
             // create the initial cycle of PoS cycle_history
-            final_state_guard.pos_state.create_initial_cycle();
+            let mut batch = DBBatch::new(final_state_guard.db.read().get_db_hash());
+            final_state_guard.pos_state.create_initial_cycle(&mut batch);
+            final_state_guard.db.read().write_batch(batch);
         }
         return Ok(GlobalBootstrapState::new(final_state));
     }

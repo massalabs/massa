@@ -118,7 +118,7 @@ fn mock_bootstrap_manager(addr: SocketAddr, bootstrap_config: BootstrapConfig) -
             initial_ledger_path: "".into(),
             disk_ledger_path: temp_dir.path().to_path_buf(),
             max_key_length: MAX_DATASTORE_KEY_LENGTH,
-            max_ledger_part_size: 100_000,
+            max_ledger_part_size: 5,
             max_datastore_value_length: MAX_DATASTORE_VALUE_LENGTH,
         },
         async_pool_config: AsyncPoolConfig {
@@ -247,7 +247,7 @@ fn test_bootstrap_server() {
             initial_ledger_path: "".into(),
             disk_ledger_path: temp_dir_server.path().to_path_buf(),
             max_key_length: MAX_DATASTORE_KEY_LENGTH,
-            max_ledger_part_size: 100_000,
+            max_ledger_part_size: 100,
             max_datastore_value_length: MAX_DATASTORE_VALUE_LENGTH,
         },
         async_pool_config: AsyncPoolConfig {
@@ -355,7 +355,7 @@ fn test_bootstrap_server() {
     let sent_graph_clone = sent_graph.clone();
     stream_mock3
         .expect_get_bootstrap_part()
-        .times(10)
+        .times(1)
         .in_sequence(&mut seq)
         .returning(move |_, slot| {
             if StreamingStep::Ongoing(Slot::new(1, 1)) == slot {
@@ -442,6 +442,12 @@ fn test_bootstrap_server() {
         ))
         .unwrap();
 
+    {
+        let last_start_period = final_state_client.read().last_start_period;
+        let mut final_state_client_write = final_state_client.write();
+        final_state_client_write.init_ledger_hash(last_start_period);
+    }
+
     // apply the changes to the server state before matching with the client
     {
         let mut final_state_server_write = final_state_server.write();
@@ -462,6 +468,13 @@ fn test_bootstrap_server() {
             final_state_server_write
                 .executed_ops
                 .apply_changes_to_batch(change.executed_ops_changes.clone(), *slot, &mut batch);
+            final_state_server_write
+                .executed_denunciations
+                .apply_changes_to_batch(
+                    change.executed_denunciations_changes.clone(),
+                    *slot,
+                    &mut batch,
+                );
 
             final_state_server_write.db.read().write_batch(batch);
         }
@@ -469,6 +482,26 @@ fn test_bootstrap_server() {
 
     // Make sure the modifier thread has done its job
     mod_thread.join().unwrap();
+
+    let slot_client = final_state_client.read().db.read().get_slot(thread_count);
+    let slot_server = final_state_server.read().db.read().get_slot(thread_count);
+
+    println!("slot client: {:?}", slot_client);
+    println!("slot server: {:?}", slot_server);
+
+    let hash_client = final_state_client
+        .read()
+        .db
+        .read()
+        .compute_hash_from_scratch();
+    let hash_server = final_state_server
+        .read()
+        .db
+        .read()
+        .compute_hash_from_scratch();
+
+    println!("hash client: {:?}", hash_client);
+    println!("hash server: {:?}", hash_server);
 
     // check final states
     assert_eq_final_state(&final_state_server.read(), &final_state_client.read());

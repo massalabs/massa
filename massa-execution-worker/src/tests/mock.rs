@@ -1,4 +1,4 @@
-use massa_db::MassaDB;
+use massa_db::{DBBatch, MassaDB};
 use massa_execution_exports::ExecutionError;
 use massa_final_state::{FinalState, FinalStateConfig};
 use massa_hash::Hash;
@@ -148,7 +148,9 @@ pub fn get_sample_state(
         FinalState::new(db.clone(), cfg, Box::new(ledger), selector_controller, true).unwrap()
     };
     final_state.compute_initial_draws().unwrap();
-    final_state.pos_state.create_initial_cycle();
+    let mut batch = DBBatch::new(final_state.db.read().get_db_hash());
+    final_state.pos_state.create_initial_cycle(&mut batch);
+    final_state.db.read().write_batch(batch);
     Ok((Arc::new(RwLock::new(final_state)), tempfile, tempdir))
 }
 

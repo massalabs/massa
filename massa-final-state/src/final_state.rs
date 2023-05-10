@@ -171,7 +171,9 @@ impl FinalState {
 
         // FIRST, we recover the last known final_state
         let mut final_state = FinalState::new(db, config, ledger, selector, false)?;
-        final_state.pos_state.create_initial_cycle();
+        let mut batch = DBBatch::new(final_state.db.read().get_db_hash());
+        final_state.pos_state.create_initial_cycle(&mut batch);
+        final_state.db.read().write_batch(batch);
 
         final_state.slot = final_state
             .db
@@ -283,7 +285,15 @@ impl FinalState {
                 )))?;
 
         let latest_snapshot_cycle_info = self.pos_state.get_cycle_info(latest_snapshot_cycle.0);
-        self.pos_state.delete_cycle_info(latest_snapshot_cycle.0);
+
+        let mut batch = DBBatch::new(self.db.read().get_db_hash());
+
+        self.pos_state
+            .delete_cycle_info(latest_snapshot_cycle.0, &mut batch);
+
+        self.pos_state.db.read().write_batch(batch);
+
+        let mut batch = DBBatch::new(self.db.read().get_db_hash());
 
         self.pos_state
             .create_new_cycle_from_last(
@@ -292,8 +302,11 @@ impl FinalState {
                     .get_next_slot(self.config.thread_count)
                     .expect("Cannot get next slot"),
                 end_slot,
+                &mut batch,
             )
             .map_err(|err| FinalStateError::PosError(format!("{}", err)))?;
+
+        self.pos_state.db.read().write_batch(batch);
 
         Ok(())
     }
@@ -315,7 +328,13 @@ impl FinalState {
                 )))?;
 
         let latest_snapshot_cycle_info = self.pos_state.get_cycle_info(latest_snapshot_cycle.0);
-        self.pos_state.delete_cycle_info(latest_snapshot_cycle.0);
+
+        let mut batch = DBBatch::new(self.db.read().get_db_hash());
+
+        self.pos_state
+            .delete_cycle_info(latest_snapshot_cycle.0, &mut batch);
+
+        self.pos_state.db.read().write_batch(batch);
 
         // Firstly, complete the first cycle
         let last_slot = Slot::new_last_of_cycle(
@@ -330,6 +349,8 @@ impl FinalState {
             ))
         })?;
 
+        let mut batch = DBBatch::new(self.db.read().get_db_hash());
+
         self.pos_state
             .create_new_cycle_from_last(
                 &latest_snapshot_cycle_info,
@@ -337,8 +358,11 @@ impl FinalState {
                     .get_next_slot(self.config.thread_count)
                     .expect("Cannot get next slot"),
                 last_slot,
+                &mut batch,
             )
             .map_err(|err| FinalStateError::PosError(format!("{}", err)))?;
+
+        self.pos_state.db.read().write_batch(batch);
 
         // Feed final_state_hash to the completed cycle
         self.feed_cycle_hash_and_selector_for_interpolation(current_slot_cycle)?;
@@ -368,9 +392,18 @@ impl FinalState {
                 ))
             })?;
 
+            let mut batch = DBBatch::new(self.pos_state.db.read().get_db_hash());
+
             self.pos_state
-                .create_new_cycle_from_last(&latest_snapshot_cycle_info, first_slot, last_slot)
+                .create_new_cycle_from_last(
+                    &latest_snapshot_cycle_info,
+                    first_slot,
+                    last_slot,
+                    &mut batch,
+                )
                 .map_err(|err| FinalStateError::PosError(format!("{}", err)))?;
+
+            self.pos_state.db.read().write_batch(batch);
 
             // Feed final_state_hash to the completed cycle
             self.feed_cycle_hash_and_selector_for_interpolation(cycle)?;
@@ -385,8 +418,15 @@ impl FinalState {
                 ))
             })?;
 
+        let mut batch = DBBatch::new(self.pos_state.db.read().get_db_hash());
+
         self.pos_state
-            .create_new_cycle_from_last(&latest_snapshot_cycle_info, first_slot, end_slot)
+            .create_new_cycle_from_last(
+                &latest_snapshot_cycle_info,
+                first_slot,
+                end_slot,
+                &mut batch,
+            )
             .map_err(|err| FinalStateError::PosError(format!("{}", err)))?;
 
         // If the end_slot_cycle is completed
@@ -399,9 +439,11 @@ impl FinalState {
         while self.pos_state.cycle_history_cache.len() > self.pos_state.config.cycle_history_length
         {
             if let Some((cycle, _)) = self.pos_state.cycle_history_cache.pop_front() {
-                self.pos_state.delete_cycle_info(cycle);
+                self.pos_state.delete_cycle_info(cycle, &mut batch);
             }
         }
+
+        self.db.read().write_batch(batch);
 
         Ok(())
     }
@@ -566,17 +608,21 @@ impl FinalState {
                 db.0.iterator_cf(handle, IteratorMode::Start),
                 StreamingStep::Started,
             ),
-            StreamingStep::Ongoing(last_key) => (
-                db.0.iterator_cf(handle, IteratorMode::From(&last_key, Direction::Forward)),
-                StreamingStep::Finished(None),
-            ),
+            StreamingStep::Ongoing(last_key) => {
+                let mut iter =
+                    db.0.iterator_cf(handle, IteratorMode::From(&last_key, Direction::Forward));
+                iter.next();
+                (iter, StreamingStep::Finished(None))
+            }
             StreamingStep::Finished(_) => return (state_part, cursor),
         };
 
         for (serialized_key, serialized_value) in db_iterator.flatten() {
-            while state_part.len() < self.config.ledger_config.max_ledger_part_size as usize {
+            if state_part.len() < self.config.ledger_config.max_ledger_part_size as usize {
                 state_part.insert(serialized_key.to_vec(), serialized_value.to_vec());
                 new_cursor = StreamingStep::Ongoing(serialized_key.to_vec());
+            } else {
+                break;
             }
         }
         (state_part, new_cursor)
@@ -656,6 +702,9 @@ impl FinalState {
             let mut slot_changes = StateChanges::default();
 
             match state_step.clone() {
+                StreamingStep::Finished(_) => {
+                    slot_changes = changes.clone();
+                }
                 StreamingStep::Ongoing(serialized_key) => {
                     if serialized_key.starts_with(LEDGER_PREFIX.as_bytes()) {
                         let (_, key) =
@@ -707,7 +756,7 @@ impl FinalState {
                         slot_changes.async_pool_changes = changes.async_pool_changes.clone();
                     }
 
-                    if serialized_key.starts_with(DEFERRED_CREDITS_PREFIX.as_bytes()) {
+                    if serialized_key.as_slice() >= DEFERRED_CREDITS_PREFIX.as_bytes() {
                         let (_, cursor_slot) = SlotDeserializer::new(
                             (Included(u64::MIN), Included(u64::MAX)),
                             (Included(0), Excluded(self.config.thread_count)),
@@ -753,9 +802,6 @@ impl FinalState {
                         slot_changes.executed_denunciations_changes =
                             changes.executed_denunciations_changes.clone();
                     }
-                }
-                StreamingStep::Finished(_) => {
-                    slot_changes = changes.clone();
                 }
                 _ => (),
             }

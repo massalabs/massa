@@ -117,7 +117,6 @@ pub fn get_random_ledger_changes(r_limit: u64) -> LedgerChanges {
 /// generates random PoS cycles info
 fn get_random_pos_cycles_info(
     r_limit: u64,
-    opt_seed: bool,
 ) -> (
     BTreeMap<Address, u64>,
     PreHashMap<Address, ProductionStats>,
@@ -139,9 +138,9 @@ fn get_random_pos_cycles_info(
         );
     }
     // note: extra seed is used in the changes test to compensate for the update loop skipping the first change
-    if opt_seed {
+    /*if opt_seed {
         rng_seed.push(rng.gen_range(0..2) == 1);
-    }
+    }*/
     rng_seed.push(rng.gen_range(0..2) == 1);
     (roll_counts, production_stats, rng_seed)
 }
@@ -168,20 +167,25 @@ fn get_random_deferred_credits(r_limit: u64) -> DeferredCredits {
 
 /// generates a random PoS final state
 fn get_random_pos_state(r_limit: u64, mut pos: PoSFinalState) -> PoSFinalState {
-    let (roll_counts, production_stats, rng_seed) = get_random_pos_cycles_info(r_limit, true);
+    let (roll_counts, production_stats, _rng_seed) = get_random_pos_cycles_info(r_limit);
     let mut deferred_credits = DeferredCredits::new_with_hash();
     deferred_credits.extend(get_random_deferred_credits(r_limit));
 
-    let mut batch = DBBatch::new(pos.db.read().get_db_hash());
-
+    // Do not add seed_bits to changes, as we create the initial cycle just after
     let changes = PoSChanges {
-        seed_bits: rng_seed,
+        seed_bits: Default::default(),
         roll_changes: roll_counts.into_iter().collect(),
         production_stats,
         deferred_credits,
     };
 
-    pos.create_initial_cycle();
+    let mut batch = DBBatch::new(pos.db.read().get_db_hash());
+
+    pos.create_initial_cycle(&mut batch);
+
+    pos.db.read().write_batch(batch);
+
+    let mut batch = DBBatch::new(pos.db.read().get_db_hash());
 
     pos.apply_changes_to_batch(changes, Slot::new(0, 0), false, &mut batch)
         .expect("Critical: Error while applying changes to pos_state");
@@ -194,7 +198,7 @@ fn get_random_pos_state(r_limit: u64, mut pos: PoSFinalState) -> PoSFinalState {
 /// generates random PoS changes
 pub fn get_random_pos_changes(r_limit: u64) -> PoSChanges {
     let deferred_credits = get_random_deferred_credits(r_limit);
-    let (roll_counts, production_stats, seed_bits) = get_random_pos_cycles_info(r_limit, false);
+    let (roll_counts, production_stats, seed_bits) = get_random_pos_cycles_info(r_limit);
     PoSChanges {
         seed_bits,
         roll_changes: roll_counts.into_iter().collect(),
