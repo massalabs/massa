@@ -96,6 +96,11 @@
     - [SignedEndorsement](#massa-api-v1-SignedEndorsement)
   
 - [execution.proto](#execution-proto)
+    - [AsynPoolChange](#massa-api-v1-AsynPoolChange)
+    - [AsyncMessage](#massa-api-v1-AsyncMessage)
+    - [AsyncMessageTrigger](#massa-api-v1-AsyncMessageTrigger)
+    - [AsyncPoolChangeEntry](#massa-api-v1-AsyncPoolChangeEntry)
+    - [AsyncPoolChangeValue](#massa-api-v1-AsyncPoolChangeValue)
     - [ExecutedOpsChangeEntry](#massa-api-v1-ExecutedOpsChangeEntry)
     - [ExecutedOpsChangeValue](#massa-api-v1-ExecutedOpsChangeValue)
     - [ExecutedOpsChanges](#massa-api-v1-ExecutedOpsChanges)
@@ -106,6 +111,7 @@
     - [SlotExecutionOutput](#massa-api-v1-SlotExecutionOutput)
     - [StateChanges](#massa-api-v1-StateChanges)
   
+    - [AsyncPoolChangeType](#massa-api-v1-AsyncPoolChangeType)
     - [ExecutionOutputStatus](#massa-api-v1-ExecutionOutputStatus)
     - [OperationExecutionStatus](#massa-api-v1-OperationExecutionStatus)
     - [ScExecutionEventStatus](#massa-api-v1-ScExecutionEventStatus)
@@ -1513,6 +1519,97 @@ Signed endorsement
 
 
 
+<a name="massa-api-v1-AsynPoolChange"></a>
+
+### AsynPoolChange
+AsynPoolChange
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| async_pool_change | [AsyncPoolChangeEntry](#massa-api-v1-AsyncPoolChangeEntry) |  | Asynchronous pool changes |
+
+
+
+
+
+
+<a name="massa-api-v1-AsyncMessage"></a>
+
+### AsyncMessage
+Asynchronous smart contract message
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| emission_slot | [Slot](#massa-api-v1-Slot) |  | Slot at which the message was emitted |
+| emission_index | [fixed64](#fixed64) |  | Index of the emitted message within the `emission_slot`. This is used for disambiguate the emission of multiple messages at the same slot. |
+| sender | [string](#string) |  | The address that sent the message |
+| destination | [string](#string) |  | The address towards which the message is being sent |
+| handler | [string](#string) |  | the handler function name within the destination address&#39; bytecode |
+| max_gas | [fixed64](#fixed64) |  | Maximum gas to use when processing the message |
+| fee | [fixed64](#fixed64) |  | Fee paid by the sender when the message is processed. |
+| coins | [fixed64](#fixed64) |  | Coins sent from the sender to the target address of the message. Those coins are spent by the sender address when the message is sent, and credited to the destination address when receiving the message. In case of failure or discard, those coins are reimbursed to the sender. |
+| validity_start | [Slot](#massa-api-v1-Slot) |  | Slot at which the message starts being valid (bound included in the validity range) |
+| validity_end | [Slot](#massa-api-v1-Slot) |  | Slot at which the message stops being valid (bound not included in the validity range) |
+| data | [bytes](#bytes) |  | Raw payload data of the message |
+| trigger | [AsyncMessageTrigger](#massa-api-v1-AsyncMessageTrigger) |  | Trigger that define whenever a message can be executed (optional) |
+| can_be_executed | [bool](#bool) |  | Boolean that determine if the message can be executed. For messages without filter this boolean is always true. For messages with filter, this boolean is true if the filter has been matched between `validity_start` and current slot. |
+| hash | [string](#string) |  | Hash of the message |
+
+
+
+
+
+
+<a name="massa-api-v1-AsyncMessageTrigger"></a>
+
+### AsyncMessageTrigger
+Structure defining a trigger for an asynchronous message
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| address | [string](#string) |  | Filter on the address |
+| datastore_key | [bytes](#bytes) |  | Filter on the datastore key (optional) |
+
+
+
+
+
+
+<a name="massa-api-v1-AsyncPoolChangeEntry"></a>
+
+### AsyncPoolChangeEntry
+AsyncPoolChangeEntry
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| async_message_id | [string](#string) |  | Async message id |
+| value | [AsyncPoolChangeValue](#massa-api-v1-AsyncPoolChangeValue) |  | AsyncPool message |
+
+
+
+
+
+
+<a name="massa-api-v1-AsyncPoolChangeValue"></a>
+
+### AsyncPoolChangeValue
+AsyncPoolChangeValue
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| type | [AsyncPoolChangeType](#massa-api-v1-AsyncPoolChangeType) |  | The type of the change |
+| async_message | [AsyncMessage](#massa-api-v1-AsyncMessage) |  | AsyncPool message |
+
+
+
+
+
+
 <a name="massa-api-v1-ExecutedOpsChangeEntry"></a>
 
 ### ExecutedOpsChangeEntry
@@ -1654,6 +1751,7 @@ StateChanges
 
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
+| async_pool_changes | [AsynPoolChange](#massa-api-v1-AsynPoolChange) | repeated | Asynchronous pool changes |
 | executed_ops_changes | [ExecutedOpsChanges](#massa-api-v1-ExecutedOpsChanges) |  | Executed operations changes |
 
 
@@ -1661,6 +1759,20 @@ StateChanges
 
 
  
+
+
+<a name="massa-api-v1-AsyncPoolChangeType"></a>
+
+### AsyncPoolChangeType
+AsyncPoolChangeType type enum
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| ASYNC_POOL_CHANGE_TYPE_UNSPECIFIED | 0 | Defaut enum value |
+| ASYNC_POOL_CHANGE_TYPE_ADD | 1 | Add type |
+| ASYNC_POOL_CHANGE_TYPE_ACTIVATE | 2 | Activate only type |
+| ASYNC_POOL_CHANGE_TYPE_DELETE | 3 | Delete only type |
+
 
 
 <a name="massa-api-v1-ExecutionOutputStatus"></a>

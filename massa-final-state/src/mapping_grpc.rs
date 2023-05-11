@@ -25,6 +25,8 @@ impl From<StateChanges> for grpc::StateChanges {
                     })
                     .collect(),
             }),
+            //TODO To be implemented
+            async_pool_changes: Vec::new(),
         }
     }
 }

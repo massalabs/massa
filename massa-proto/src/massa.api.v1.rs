@@ -491,8 +491,11 @@ pub struct ScExecutionEventContext {
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct StateChanges {
+    /// Asynchronous pool changes
+    #[prost(message, repeated, tag = "2")]
+    pub async_pool_changes: ::prost::alloc::vec::Vec<AsynPoolChange>,
     /// Executed operations changes
-    #[prost(message, optional, tag = "1")]
+    #[prost(message, optional, tag = "5")]
     pub executed_ops_changes: ::core::option::Option<ExecutedOpsChanges>,
 }
 /// ExecutedOpsChanges
@@ -524,6 +527,99 @@ pub struct ExecutedOpsChangeValue {
     /// Slot until which the operation remains valid (included)
     #[prost(message, optional, tag = "2")]
     pub slot: ::core::option::Option<Slot>,
+}
+/// AsynPoolChange
+#[allow(clippy::derive_partial_eq_without_eq)]
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct AsynPoolChange {
+    /// Asynchronous pool changes
+    #[prost(message, optional, tag = "2")]
+    pub async_pool_change: ::core::option::Option<AsyncPoolChangeEntry>,
+}
+/// AsyncPoolChangeEntry
+#[allow(clippy::derive_partial_eq_without_eq)]
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct AsyncPoolChangeEntry {
+    /// Async message id
+    #[prost(string, tag = "1")]
+    pub async_message_id: ::prost::alloc::string::String,
+    /// AsyncPool message
+    #[prost(message, optional, tag = "2")]
+    pub value: ::core::option::Option<AsyncPoolChangeValue>,
+}
+/// AsyncPoolChangeValue
+#[allow(clippy::derive_partial_eq_without_eq)]
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct AsyncPoolChangeValue {
+    /// The type of the change
+    #[prost(enumeration = "AsyncPoolChangeType", tag = "1")]
+    pub r#type: i32,
+    /// AsyncPool message
+    #[prost(message, optional, tag = "2")]
+    pub async_message: ::core::option::Option<AsyncMessage>,
+}
+/// Asynchronous smart contract message
+#[allow(clippy::derive_partial_eq_without_eq)]
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct AsyncMessage {
+    /// Slot at which the message was emitted
+    #[prost(message, optional, tag = "1")]
+    pub emission_slot: ::core::option::Option<Slot>,
+    /// Index of the emitted message within the `emission_slot`.
+    /// This is used for disambiguate the emission of multiple messages at the same slot.
+    #[prost(fixed64, tag = "2")]
+    pub emission_index: u64,
+    /// The address that sent the message
+    #[prost(string, tag = "3")]
+    pub sender: ::prost::alloc::string::String,
+    /// The address towards which the message is being sent
+    #[prost(string, tag = "4")]
+    pub destination: ::prost::alloc::string::String,
+    /// the handler function name within the destination address' bytecode
+    #[prost(string, tag = "5")]
+    pub handler: ::prost::alloc::string::String,
+    /// Maximum gas to use when processing the message
+    #[prost(fixed64, tag = "6")]
+    pub max_gas: u64,
+    /// Fee paid by the sender when the message is processed.
+    #[prost(fixed64, tag = "7")]
+    pub fee: u64,
+    /// Coins sent from the sender to the target address of the message.
+    /// Those coins are spent by the sender address when the message is sent,
+    /// and credited to the destination address when receiving the message.
+    /// In case of failure or discard, those coins are reimbursed to the sender.
+    #[prost(fixed64, tag = "8")]
+    pub coins: u64,
+    /// Slot at which the message starts being valid (bound included in the validity range)
+    #[prost(message, optional, tag = "9")]
+    pub validity_start: ::core::option::Option<Slot>,
+    /// Slot at which the message stops being valid (bound not included in the validity range)
+    #[prost(message, optional, tag = "10")]
+    pub validity_end: ::core::option::Option<Slot>,
+    /// Raw payload data of the message
+    #[prost(bytes = "vec", tag = "11")]
+    pub data: ::prost::alloc::vec::Vec<u8>,
+    /// Trigger that define whenever a message can be executed (optional)
+    #[prost(message, optional, tag = "12")]
+    pub trigger: ::core::option::Option<AsyncMessageTrigger>,
+    /// Boolean that determine if the message can be executed. For messages without filter this boolean is always true.
+    /// For messages with filter, this boolean is true if the filter has been matched between `validity_start` and current slot.
+    #[prost(bool, tag = "13")]
+    pub can_be_executed: bool,
+    /// Hash of the message
+    #[prost(string, tag = "14")]
+    pub hash: ::prost::alloc::string::String,
+}
+/// Structure defining a trigger for an asynchronous message
+#[allow(clippy::derive_partial_eq_without_eq)]
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct AsyncMessageTrigger {
+    /// Filter on the address
+    #[prost(string, tag = "1")]
+    pub address: ::prost::alloc::string::String,
+    /// Filter on the datastore key (optional)
+    #[prost(bytes = "vec", tag = "2")]
+    pub datastore_key: ::prost::alloc::vec::Vec<u8>,
 }
 /// ScExecutionEventStatus type enum
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, ::prost::Enumeration)]
@@ -628,6 +724,43 @@ impl OperationExecutionStatus {
             "OPERATION_EXECUTION_STATUS_UNSPECIFIED" => Some(Self::Unspecified),
             "OPERATION_EXECUTION_STATUS_SUCCESS" => Some(Self::Success),
             "OPERATION_EXECUTION_STATUS_FAILED" => Some(Self::Failed),
+            _ => None,
+        }
+    }
+}
+/// AsyncPoolChangeType type enum
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, ::prost::Enumeration)]
+#[repr(i32)]
+pub enum AsyncPoolChangeType {
+    /// Defaut enum value
+    Unspecified = 0,
+    /// Add type
+    Add = 1,
+    /// Activate only type
+    Activate = 2,
+    /// Delete only type
+    Delete = 3,
+}
+impl AsyncPoolChangeType {
+    /// String value of the enum field names used in the ProtoBuf definition.
+    ///
+    /// The values are not transformed in any way and thus are considered stable
+    /// (if the ProtoBuf definition does not change) and safe for programmatic use.
+    pub fn as_str_name(&self) -> &'static str {
+        match self {
+            AsyncPoolChangeType::Unspecified => "ASYNC_POOL_CHANGE_TYPE_UNSPECIFIED",
+            AsyncPoolChangeType::Add => "ASYNC_POOL_CHANGE_TYPE_ADD",
+            AsyncPoolChangeType::Activate => "ASYNC_POOL_CHANGE_TYPE_ACTIVATE",
+            AsyncPoolChangeType::Delete => "ASYNC_POOL_CHANGE_TYPE_DELETE",
+        }
+    }
+    /// Creates an enum from field names used in the ProtoBuf definition.
+    pub fn from_str_name(value: &str) -> ::core::option::Option<Self> {
+        match value {
+            "ASYNC_POOL_CHANGE_TYPE_UNSPECIFIED" => Some(Self::Unspecified),
+            "ASYNC_POOL_CHANGE_TYPE_ADD" => Some(Self::Add),
+            "ASYNC_POOL_CHANGE_TYPE_ACTIVATE" => Some(Self::Activate),
+            "ASYNC_POOL_CHANGE_TYPE_DELETE" => Some(Self::Delete),
             _ => None,
         }
     }

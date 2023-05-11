@@ -547,6 +547,26 @@
             <ul>
               
                 <li>
+                  <a href="#massa.api.v1.AsynPoolChange"><span class="badge">M</span>AsynPoolChange</a>
+                </li>
+              
+                <li>
+                  <a href="#massa.api.v1.AsyncMessage"><span class="badge">M</span>AsyncMessage</a>
+                </li>
+              
+                <li>
+                  <a href="#massa.api.v1.AsyncMessageTrigger"><span class="badge">M</span>AsyncMessageTrigger</a>
+                </li>
+              
+                <li>
+                  <a href="#massa.api.v1.AsyncPoolChangeEntry"><span class="badge">M</span>AsyncPoolChangeEntry</a>
+                </li>
+              
+                <li>
+                  <a href="#massa.api.v1.AsyncPoolChangeValue"><span class="badge">M</span>AsyncPoolChangeValue</a>
+                </li>
+              
+                <li>
                   <a href="#massa.api.v1.ExecutedOpsChangeEntry"><span class="badge">M</span>ExecutedOpsChangeEntry</a>
                 </li>
               
@@ -582,6 +602,10 @@
                   <a href="#massa.api.v1.StateChanges"><span class="badge">M</span>StateChanges</a>
                 </li>
               
+              
+                <li>
+                  <a href="#massa.api.v1.AsyncPoolChangeType"><span class="badge">E</span>AsyncPoolChangeType</a>
+                </li>
               
                 <li>
                   <a href="#massa.api.v1.ExecutionOutputStatus"><span class="badge">E</span>ExecutionOutputStatus</a>
@@ -3536,6 +3560,243 @@ This is the parent in thread `self.slot.thread` of the block in which the endors
       <p></p>
 
       
+        <h3 id="massa.api.v1.AsynPoolChange">AsynPoolChange</h3>
+        <p>AsynPoolChange</p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>async_pool_change</td>
+                  <td><a href="#massa.api.v1.AsyncPoolChangeEntry">AsyncPoolChangeEntry</a></td>
+                  <td></td>
+                  <td><p>Asynchronous pool changes </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
+        <h3 id="massa.api.v1.AsyncMessage">AsyncMessage</h3>
+        <p>Asynchronous smart contract message</p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>emission_slot</td>
+                  <td><a href="#massa.api.v1.Slot">Slot</a></td>
+                  <td></td>
+                  <td><p>Slot at which the message was emitted </p></td>
+                </tr>
+              
+                <tr>
+                  <td>emission_index</td>
+                  <td><a href="#fixed64">fixed64</a></td>
+                  <td></td>
+                  <td><p>Index of the emitted message within the `emission_slot`.
+This is used for disambiguate the emission of multiple messages at the same slot. </p></td>
+                </tr>
+              
+                <tr>
+                  <td>sender</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p>The address that sent the message </p></td>
+                </tr>
+              
+                <tr>
+                  <td>destination</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p>The address towards which the message is being sent </p></td>
+                </tr>
+              
+                <tr>
+                  <td>handler</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p>the handler function name within the destination address&#39; bytecode </p></td>
+                </tr>
+              
+                <tr>
+                  <td>max_gas</td>
+                  <td><a href="#fixed64">fixed64</a></td>
+                  <td></td>
+                  <td><p>Maximum gas to use when processing the message </p></td>
+                </tr>
+              
+                <tr>
+                  <td>fee</td>
+                  <td><a href="#fixed64">fixed64</a></td>
+                  <td></td>
+                  <td><p>Fee paid by the sender when the message is processed. </p></td>
+                </tr>
+              
+                <tr>
+                  <td>coins</td>
+                  <td><a href="#fixed64">fixed64</a></td>
+                  <td></td>
+                  <td><p>Coins sent from the sender to the target address of the message.
+Those coins are spent by the sender address when the message is sent,
+and credited to the destination address when receiving the message.
+In case of failure or discard, those coins are reimbursed to the sender. </p></td>
+                </tr>
+              
+                <tr>
+                  <td>validity_start</td>
+                  <td><a href="#massa.api.v1.Slot">Slot</a></td>
+                  <td></td>
+                  <td><p>Slot at which the message starts being valid (bound included in the validity range) </p></td>
+                </tr>
+              
+                <tr>
+                  <td>validity_end</td>
+                  <td><a href="#massa.api.v1.Slot">Slot</a></td>
+                  <td></td>
+                  <td><p>Slot at which the message stops being valid (bound not included in the validity range) </p></td>
+                </tr>
+              
+                <tr>
+                  <td>data</td>
+                  <td><a href="#bytes">bytes</a></td>
+                  <td></td>
+                  <td><p>Raw payload data of the message </p></td>
+                </tr>
+              
+                <tr>
+                  <td>trigger</td>
+                  <td><a href="#massa.api.v1.AsyncMessageTrigger">AsyncMessageTrigger</a></td>
+                  <td></td>
+                  <td><p>Trigger that define whenever a message can be executed (optional) </p></td>
+                </tr>
+              
+                <tr>
+                  <td>can_be_executed</td>
+                  <td><a href="#bool">bool</a></td>
+                  <td></td>
+                  <td><p>Boolean that determine if the message can be executed. For messages without filter this boolean is always true.
+For messages with filter, this boolean is true if the filter has been matched between `validity_start` and current slot. </p></td>
+                </tr>
+              
+                <tr>
+                  <td>hash</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p>Hash of the message </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
+        <h3 id="massa.api.v1.AsyncMessageTrigger">AsyncMessageTrigger</h3>
+        <p>Structure defining a trigger for an asynchronous message</p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>address</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p>Filter on the address </p></td>
+                </tr>
+              
+                <tr>
+                  <td>datastore_key</td>
+                  <td><a href="#bytes">bytes</a></td>
+                  <td></td>
+                  <td><p>Filter on the datastore key (optional) </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
+        <h3 id="massa.api.v1.AsyncPoolChangeEntry">AsyncPoolChangeEntry</h3>
+        <p>AsyncPoolChangeEntry</p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>async_message_id</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p>Async message id </p></td>
+                </tr>
+              
+                <tr>
+                  <td>value</td>
+                  <td><a href="#massa.api.v1.AsyncPoolChangeValue">AsyncPoolChangeValue</a></td>
+                  <td></td>
+                  <td><p>AsyncPool message </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
+        <h3 id="massa.api.v1.AsyncPoolChangeValue">AsyncPoolChangeValue</h3>
+        <p>AsyncPoolChangeValue</p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>type</td>
+                  <td><a href="#massa.api.v1.AsyncPoolChangeType">AsyncPoolChangeType</a></td>
+                  <td></td>
+                  <td><p>The type of the change </p></td>
+                </tr>
+              
+                <tr>
+                  <td>async_message</td>
+                  <td><a href="#massa.api.v1.AsyncMessage">AsyncMessage</a></td>
+                  <td></td>
+                  <td><p>AsyncPool message </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
         <h3 id="massa.api.v1.ExecutedOpsChangeEntry">ExecutedOpsChangeEntry</h3>
         <p>ExecutedOpsChangeEntry</p>
 
@@ -3830,6 +4091,13 @@ This is the parent in thread `self.slot.thread` of the block in which the endors
             <tbody>
               
                 <tr>
+                  <td>async_pool_changes</td>
+                  <td><a href="#massa.api.v1.AsynPoolChange">AsynPoolChange</a></td>
+                  <td>repeated</td>
+                  <td><p>Asynchronous pool changes </p></td>
+                </tr>
+              
+                <tr>
                   <td>executed_ops_changes</td>
                   <td><a href="#massa.api.v1.ExecutedOpsChanges">ExecutedOpsChanges</a></td>
                   <td></td>
@@ -3844,6 +4112,41 @@ This is the parent in thread `self.slot.thread` of the block in which the endors
         
       
 
+      
+        <h3 id="massa.api.v1.AsyncPoolChangeType">AsyncPoolChangeType</h3>
+        <p>AsyncPoolChangeType type enum</p>
+        <table class="enum-table">
+          <thead>
+            <tr><td>Name</td><td>Number</td><td>Description</td></tr>
+          </thead>
+          <tbody>
+            
+              <tr>
+                <td>ASYNC_POOL_CHANGE_TYPE_UNSPECIFIED</td>
+                <td>0</td>
+                <td><p>Defaut enum value</p></td>
+              </tr>
+            
+              <tr>
+                <td>ASYNC_POOL_CHANGE_TYPE_ADD</td>
+                <td>1</td>
+                <td><p>Add type</p></td>
+              </tr>
+            
+              <tr>
+                <td>ASYNC_POOL_CHANGE_TYPE_ACTIVATE</td>
+                <td>2</td>
+                <td><p>Activate only type</p></td>
+              </tr>
+            
+              <tr>
+                <td>ASYNC_POOL_CHANGE_TYPE_DELETE</td>
+                <td>3</td>
+                <td><p>Delete only type</p></td>
+              </tr>
+            
+          </tbody>
+        </table>
       
         <h3 id="massa.api.v1.ExecutionOutputStatus">ExecutionOutputStatus</h3>
         <p>ExecutionOutputStatus type enum</p>

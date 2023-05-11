@@ -84,8 +84,10 @@ enum ExecutionOutputStatus {
 
 // StateChanges
 message StateChanges {
+  // Asynchronous pool changes
+  repeated AsynPoolChange async_pool_changes = 2;
   // Executed operations changes
-  ExecutedOpsChanges executed_ops_changes = 1;
+  ExecutedOpsChanges executed_ops_changes = 5;
 }
 
 // ExecutedOpsChanges
@@ -115,4 +117,92 @@ enum OperationExecutionStatus {
   OPERATION_EXECUTION_STATUS_UNSPECIFIED = 0; // Defaut enum value
   OPERATION_EXECUTION_STATUS_SUCCESS = 1; // Success status
   OPERATION_EXECUTION_STATUS_FAILED = 2; // Failed only status
+}
+
+// AsynPoolChange
+message AsynPoolChange {
+  // Asynchronous pool changes
+  AsyncPoolChangeEntry async_pool_change = 2;
+}
+
+// AsyncPoolChangeEntry
+message AsyncPoolChangeEntry {
+  // Async message id
+  string async_message_id = 1;
+  // AsyncPool message
+  AsyncPoolChangeValue value = 2;
+}
+
+// AsyncPoolChangeValue
+message AsyncPoolChangeValue {
+  // The type of the change
+  AsyncPoolChangeType type = 1;
+  // AsyncPool message
+  AsyncMessage async_message = 2;
+}
+
+// AsyncPoolChangeType type enum
+enum AsyncPoolChangeType {
+  ASYNC_POOL_CHANGE_TYPE_UNSPECIFIED = 0; // Defaut enum value
+  ASYNC_POOL_CHANGE_TYPE_ADD = 1; // Add type
+  ASYNC_POOL_CHANGE_TYPE_ACTIVATE = 2; // Activate only type
+  ASYNC_POOL_CHANGE_TYPE_DELETE = 3; // Delete only type
+}
+
+// Asynchronous smart contract message
+message AsyncMessage {
+  // Slot at which the message was emitted
+  Slot emission_slot = 1;
+
+  // Index of the emitted message within the `emission_slot`.
+  // This is used for disambiguate the emission of multiple messages at the same slot.
+  fixed64 emission_index = 2;
+
+  // The address that sent the message
+  string sender = 3;
+
+  // The address towards which the message is being sent
+  string destination = 4;
+
+  // the handler function name within the destination address' bytecode
+  string handler = 5;
+
+  // Maximum gas to use when processing the message
+  fixed64 max_gas = 6;
+
+  // Fee paid by the sender when the message is processed.
+  fixed64 fee = 7;
+
+  // Coins sent from the sender to the target address of the message.
+  // Those coins are spent by the sender address when the message is sent,
+  // and credited to the destination address when receiving the message.
+  // In case of failure or discard, those coins are reimbursed to the sender.
+  fixed64 coins = 8;
+
+  // Slot at which the message starts being valid (bound included in the validity range)
+  Slot validity_start = 9;
+
+  // Slot at which the message stops being valid (bound not included in the validity range)
+  Slot validity_end = 10;
+
+  // Raw payload data of the message
+  bytes data = 11;
+
+  // Trigger that define whenever a message can be executed (optional)
+  AsyncMessageTrigger trigger = 12;
+
+  // Boolean that determine if the message can be executed. For messages without filter this boolean is always true.
+  // For messages with filter, this boolean is true if the filter has been matched between `validity_start` and current slot.
+  bool can_be_executed = 13;
+
+  // Hash of the message
+  string hash = 14;
+}
+
+// Structure defining a trigger for an asynchronous message
+message AsyncMessageTrigger {
+    // Filter on the address
+    string address = 1;
+    // Filter on the datastore key (optional)
+    bytes datastore_key = 2;
 }
