@@ -1257,9 +1257,26 @@ impl ExecutionState {
                 // speculative execution front result matches what we want to compute
 
                 // apply the cached output and return
-                self.apply_final_execution_output(exec_out);
+                self.apply_final_execution_output(exec_out.clone());
 
                 debug!("execute_final_slot: found in cache, applied cache");
+
+                // Broadcast a final slot execution output to active channel subscribers.
+                if self.config.broadcast_enabled {
+                    let slot_exec_out = SlotExecutionOutput::FinalizedSlot(exec_out.slot);
+                    if let Err(err) = self
+                        .channels
+                        .slot_execution_output_sender
+                        .send(slot_exec_out)
+                    {
+                        trace!(
+                    "error, failed to broadcast final execution output(cached) for slot {} due to: {}",
+                    exec_out.slot,
+                    err
+                );
+                    }
+                }
+
                 return;
             } else {
                 // speculative cache mismatch
