@@ -2984,7 +2984,7 @@
 
                 <span class="comment">// Broadcast a final slot execution output to active channel subscribers.
                 </span><span class="kw">if </span><span class="self">self</span>.config.broadcast_enabled {
-                    <span class="kw">let </span>slot_exec_out = SlotExecutionOutput::FinalizedSlot(exec_out.slot);
+                    <span class="kw">let </span>slot_exec_out = SlotExecutionOutput::FinalizedSlot(exec_out.clone());
                     <span class="kw">if let </span><span class="prelude-val">Err</span>(err) = <span class="self">self
                         </span>.channels
                         .slot_execution_output_sender
@@ -3032,7 +3032,7 @@
 
         <span class="comment">// Broadcast a final slot execution output to active channel subscribers.
         </span><span class="kw">if </span><span class="self">self</span>.config.broadcast_enabled {
-            <span class="kw">let </span>slot_exec_out = SlotExecutionOutput::FinalizedSlot(exec_out.slot);
+            <span class="kw">let </span>slot_exec_out = SlotExecutionOutput::FinalizedSlot(exec_out.clone());
             <span class="kw">if let </span><span class="prelude-val">Err</span>(err) = <span class="self">self
                 </span>.channels
                 .slot_execution_output_sender

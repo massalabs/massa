@@ -220,18 +220,18 @@
     <span class="prelude-val">Ok</span>(Box::pin(out_stream) <span class="kw">as </span>NewOperationsStreamType)
 }
 
-<span class="doccomment">/// Return if the type of operation should be send to client
-</span><span class="kw">fn </span>should_send(filter_opt: <span class="kw-2">&amp;</span><span class="prelude-ty">Option</span>&lt;grpc::NewOperationsFilter&gt;, ope_type: grpc::OpType) -&gt; bool {
-    <span class="kw">if let </span><span class="prelude-val">Some</span>(filter) = filter_opt {
-        <span class="kw">let </span>filtered_ope_ids = <span class="kw-2">&amp;</span>filter.types;
-        <span class="kw">if </span>filtered_ope_ids.is_empty() {
-            <span class="kw">return </span><span class="bool-val">true</span>;
+<span class="kw">fn </span>should_send(filter_opt: <span class="kw-2">&amp;</span><span class="prelude-ty">Option</span>&lt;grpc::NewOperationsFilter&gt;, ope_type: grpc::OpType) -&gt; bool {
+    <span class="kw">match </span>filter_opt {
+        <span class="prelude-val">Some</span>(filter) =&gt; {
+            <span class="kw">let </span>filtered_ope_ids = <span class="kw-2">&amp;</span>filter.types;
+            <span class="kw">if </span>filtered_ope_ids.is_empty() {
+                <span class="bool-val">true
+            </span>} <span class="kw">else </span>{
+                <span class="kw">let </span>id: i32 = ope_type <span class="kw">as </span>i32;
+                filtered_ope_ids.contains(<span class="kw-2">&amp;</span>id)
+            }
         }
-        <span class="kw">let </span>id: i32 = ope_type <span class="kw">as </span>i32;
-        filtered_ope_ids.contains(<span class="kw-2">&amp;</span>id)
-    } <span class="kw">else </span>{
-        <span class="comment">// if user has no filter = All operations type is send
-        </span><span class="bool-val">true
+        <span class="prelude-val">None </span>=&gt; <span class="bool-val">true</span>, <span class="comment">// if user has no filter = All operations type is send
     </span>}
 }
 </code></pre></div>
