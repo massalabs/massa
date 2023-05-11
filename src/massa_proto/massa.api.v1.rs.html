@@ -3301,6 +3301,82 @@
 <a href="#3301" id="3301">3301</a>
 <a href="#3302" id="3302">3302</a>
 <a href="#3303" id="3303">3303</a>
+<a href="#3304" id="3304">3304</a>
+<a href="#3305" id="3305">3305</a>
+<a href="#3306" id="3306">3306</a>
+<a href="#3307" id="3307">3307</a>
+<a href="#3308" id="3308">3308</a>
+<a href="#3309" id="3309">3309</a>
+<a href="#3310" id="3310">3310</a>
+<a href="#3311" id="3311">3311</a>
+<a href="#3312" id="3312">3312</a>
+<a href="#3313" id="3313">3313</a>
+<a href="#3314" id="3314">3314</a>
+<a href="#3315" id="3315">3315</a>
+<a href="#3316" id="3316">3316</a>
+<a href="#3317" id="3317">3317</a>
+<a href="#3318" id="3318">3318</a>
+<a href="#3319" id="3319">3319</a>
+<a href="#3320" id="3320">3320</a>
+<a href="#3321" id="3321">3321</a>
+<a href="#3322" id="3322">3322</a>
+<a href="#3323" id="3323">3323</a>
+<a href="#3324" id="3324">3324</a>
+<a href="#3325" id="3325">3325</a>
+<a href="#3326" id="3326">3326</a>
+<a href="#3327" id="3327">3327</a>
+<a href="#3328" id="3328">3328</a>
+<a href="#3329" id="3329">3329</a>
+<a href="#3330" id="3330">3330</a>
+<a href="#3331" id="3331">3331</a>
+<a href="#3332" id="3332">3332</a>
+<a href="#3333" id="3333">3333</a>
+<a href="#3334" id="3334">3334</a>
+<a href="#3335" id="3335">3335</a>
+<a href="#3336" id="3336">3336</a>
+<a href="#3337" id="3337">3337</a>
+<a href="#3338" id="3338">3338</a>
+<a href="#3339" id="3339">3339</a>
+<a href="#3340" id="3340">3340</a>
+<a href="#3341" id="3341">3341</a>
+<a href="#3342" id="3342">3342</a>
+<a href="#3343" id="3343">3343</a>
+<a href="#3344" id="3344">3344</a>
+<a href="#3345" id="3345">3345</a>
+<a href="#3346" id="3346">3346</a>
+<a href="#3347" id="3347">3347</a>
+<a href="#3348" id="3348">3348</a>
+<a href="#3349" id="3349">3349</a>
+<a href="#3350" id="3350">3350</a>
+<a href="#3351" id="3351">3351</a>
+<a href="#3352" id="3352">3352</a>
+<a href="#3353" id="3353">3353</a>
+<a href="#3354" id="3354">3354</a>
+<a href="#3355" id="3355">3355</a>
+<a href="#3356" id="3356">3356</a>
+<a href="#3357" id="3357">3357</a>
+<a href="#3358" id="3358">3358</a>
+<a href="#3359" id="3359">3359</a>
+<a href="#3360" id="3360">3360</a>
+<a href="#3361" id="3361">3361</a>
+<a href="#3362" id="3362">3362</a>
+<a href="#3363" id="3363">3363</a>
+<a href="#3364" id="3364">3364</a>
+<a href="#3365" id="3365">3365</a>
+<a href="#3366" id="3366">3366</a>
+<a href="#3367" id="3367">3367</a>
+<a href="#3368" id="3368">3368</a>
+<a href="#3369" id="3369">3369</a>
+<a href="#3370" id="3370">3370</a>
+<a href="#3371" id="3371">3371</a>
+<a href="#3372" id="3372">3372</a>
+<a href="#3373" id="3373">3373</a>
+<a href="#3374" id="3374">3374</a>
+<a href="#3375" id="3375">3375</a>
+<a href="#3376" id="3376">3376</a>
+<a href="#3377" id="3377">3377</a>
+<a href="#3378" id="3378">3378</a>
+<a href="#3379" id="3379">3379</a>
 </pre><pre class="rust"><code><span class="doccomment">/// When an address is drawn to create an endorsement it is selected for a specific index
 </span><span class="attr">#[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
@@ -3749,6 +3825,9 @@
     <span class="doccomment">/// Events emitted by the execution step
     </span><span class="attr">#[prost(message, repeated, tag = <span class="string">&quot;3&quot;</span>)]
     </span><span class="kw">pub </span>events: ::prost::alloc::vec::Vec&lt;ScExecutionEvent&gt;,
+    <span class="doccomment">/// State changes caused by the execution step
+    </span><span class="attr">#[prost(message, optional, tag = <span class="string">&quot;4&quot;</span>)]
+    </span><span class="kw">pub </span>state_changes: ::core::option::Option&lt;StateChanges&gt;,
 }
 <span class="doccomment">/// ScExecutionEvent
 </span><span class="attr">#[allow(clippy::derive_partial_eq_without_eq)]
@@ -3786,6 +3865,44 @@
     <span class="doccomment">/// Status
     </span><span class="attr">#[prost(enumeration = <span class="string">&quot;ScExecutionEventStatus&quot;</span>, repeated, tag = <span class="string">&quot;7&quot;</span>)]
     </span><span class="kw">pub </span>status: ::prost::alloc::vec::Vec&lt;i32&gt;,
+}
+<span class="doccomment">/// StateChanges
+</span><span class="attr">#[allow(clippy::derive_partial_eq_without_eq)]
+#[derive(Clone, PartialEq, ::prost::Message)]
+</span><span class="kw">pub struct </span>StateChanges {
+    <span class="doccomment">/// Executed operations changes
+    </span><span class="attr">#[prost(message, optional, tag = <span class="string">&quot;1&quot;</span>)]
+    </span><span class="kw">pub </span>executed_ops_changes: ::core::option::Option&lt;ExecutedOpsChanges&gt;,
+}
+<span class="doccomment">/// ExecutedOpsChanges
+</span><span class="attr">#[allow(clippy::derive_partial_eq_without_eq)]
+#[derive(Clone, PartialEq, ::prost::Message)]
+</span><span class="kw">pub struct </span>ExecutedOpsChanges {
+    <span class="doccomment">/// Executed operations
+    </span><span class="attr">#[prost(message, repeated, tag = <span class="string">&quot;1&quot;</span>)]
+    </span><span class="kw">pub </span>executed_ops: ::prost::alloc::vec::Vec&lt;ExecutedOpsChangeEntry&gt;,
+}
+<span class="doccomment">/// ExecutedOpsChangeEntry
+</span><span class="attr">#[allow(clippy::derive_partial_eq_without_eq)]
+#[derive(Clone, PartialEq, ::prost::Message)]
+</span><span class="kw">pub struct </span>ExecutedOpsChangeEntry {
+    <span class="doccomment">/// OperationId
+    </span><span class="attr">#[prost(string, tag = <span class="string">&quot;1&quot;</span>)]
+    </span><span class="kw">pub </span>operation_id: ::prost::alloc::string::String,
+    <span class="doccomment">/// ExecutedOpsChangeValue
+    </span><span class="attr">#[prost(message, optional, tag = <span class="string">&quot;2&quot;</span>)]
+    </span><span class="kw">pub </span>value: ::core::option::Option&lt;ExecutedOpsChangeValue&gt;,
+}
+<span class="doccomment">/// ExecutedOpsChangeValue
+</span><span class="attr">#[allow(clippy::derive_partial_eq_without_eq)]
+#[derive(Clone, PartialEq, ::prost::Message)]
+</span><span class="kw">pub struct </span>ExecutedOpsChangeValue {
+    <span class="doccomment">/// The status of the execution of the operation
+    </span><span class="attr">#[prost(enumeration = <span class="string">&quot;OperationExecutionStatus&quot;</span>, repeated, tag = <span class="string">&quot;1&quot;</span>)]
+    </span><span class="kw">pub </span>status: ::prost::alloc::vec::Vec&lt;i32&gt;,
+    <span class="doccomment">/// Slot until which the operation remains valid (included)
+    </span><span class="attr">#[prost(message, optional, tag = <span class="string">&quot;2&quot;</span>)]
+    </span><span class="kw">pub </span>slot: ::core::option::Option&lt;Slot&gt;,
 }
 <span class="doccomment">/// ScExecutionEventStatus type enum
 </span><span class="attr">#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, ::prost::Enumeration)]
@@ -3855,6 +3972,41 @@
             <span class="string">&quot;EXECUTION_OUTPUT_STATUS_UNSPECIFIED&quot; </span>=&gt; <span class="prelude-val">Some</span>(<span class="self">Self</span>::Unspecified),
             <span class="string">&quot;EXECUTION_OUTPUT_STATUS_CANDIDATE&quot; </span>=&gt; <span class="prelude-val">Some</span>(<span class="self">Self</span>::Candidate),
             <span class="string">&quot;EXECUTION_OUTPUT_STATUS_FINAL&quot; </span>=&gt; <span class="prelude-val">Some</span>(<span class="self">Self</span>::Final),
+            <span class="kw">_ </span>=&gt; <span class="prelude-val">None</span>,
+        }
+    }
+}
+<span class="doccomment">/// OperationExecutionStatus type enum
+</span><span class="attr">#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, ::prost::Enumeration)]
+#[repr(i32)]
+</span><span class="kw">pub enum </span>OperationExecutionStatus {
+    <span class="doccomment">/// Defaut enum value
+    </span>Unspecified = <span class="number">0</span>,
+    <span class="doccomment">/// Success status
+    </span>Success = <span class="number">1</span>,
+    <span class="doccomment">/// Failed only status
+    </span>Failed = <span class="number">2</span>,
+}
+<span class="kw">impl </span>OperationExecutionStatus {
+    <span class="doccomment">/// String value of the enum field names used in the ProtoBuf definition.
+    ///
+    /// The values are not transformed in any way and thus are considered stable
+    /// (if the ProtoBuf definition does not change) and safe for programmatic use.
+    </span><span class="kw">pub fn </span>as_str_name(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span><span class="lifetime">&#39;static </span>str {
+        <span class="kw">match </span><span class="self">self </span>{
+            OperationExecutionStatus::Unspecified =&gt; {
+                <span class="string">&quot;OPERATION_EXECUTION_STATUS_UNSPECIFIED&quot;
+            </span>}
+            OperationExecutionStatus::Success =&gt; <span class="string">&quot;OPERATION_EXECUTION_STATUS_SUCCESS&quot;</span>,
+            OperationExecutionStatus::Failed =&gt; <span class="string">&quot;OPERATION_EXECUTION_STATUS_FAILED&quot;</span>,
+        }
+    }
+    <span class="doccomment">/// Creates an enum from field names used in the ProtoBuf definition.
+    </span><span class="kw">pub fn </span>from_str_name(value: <span class="kw-2">&amp;</span>str) -&gt; ::core::option::Option&lt;<span class="self">Self</span>&gt; {
+        <span class="kw">match </span>value {
+            <span class="string">&quot;OPERATION_EXECUTION_STATUS_UNSPECIFIED&quot; </span>=&gt; <span class="prelude-val">Some</span>(<span class="self">Self</span>::Unspecified),
+            <span class="string">&quot;OPERATION_EXECUTION_STATUS_SUCCESS&quot; </span>=&gt; <span class="prelude-val">Some</span>(<span class="self">Self</span>::Success),
+            <span class="string">&quot;OPERATION_EXECUTION_STATUS_FAILED&quot; </span>=&gt; <span class="prelude-val">Some</span>(<span class="self">Self</span>::Failed),
             <span class="kw">_ </span>=&gt; <span class="prelude-val">None</span>,
         }
     }
