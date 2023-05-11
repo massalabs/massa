@@ -446,6 +446,9 @@ pub struct ExecutionOutput {
     /// Events emitted by the execution step
     #[prost(message, repeated, tag = "3")]
     pub events: ::prost::alloc::vec::Vec<ScExecutionEvent>,
+    /// State changes caused by the execution step
+    #[prost(message, optional, tag = "4")]
+    pub state_changes: ::core::option::Option<StateChanges>,
 }
 /// ScExecutionEvent
 #[allow(clippy::derive_partial_eq_without_eq)]
@@ -483,6 +486,44 @@ pub struct ScExecutionEventContext {
     /// Status
     #[prost(enumeration = "ScExecutionEventStatus", repeated, tag = "7")]
     pub status: ::prost::alloc::vec::Vec<i32>,
+}
+/// StateChanges
+#[allow(clippy::derive_partial_eq_without_eq)]
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct StateChanges {
+    /// Executed operations changes
+    #[prost(message, optional, tag = "1")]
+    pub executed_ops_changes: ::core::option::Option<ExecutedOpsChanges>,
+}
+/// ExecutedOpsChanges
+#[allow(clippy::derive_partial_eq_without_eq)]
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct ExecutedOpsChanges {
+    /// Executed operations
+    #[prost(message, repeated, tag = "1")]
+    pub executed_ops: ::prost::alloc::vec::Vec<ExecutedOpsChangeEntry>,
+}
+/// ExecutedOpsChangeEntry
+#[allow(clippy::derive_partial_eq_without_eq)]
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct ExecutedOpsChangeEntry {
+    /// OperationId
+    #[prost(string, tag = "1")]
+    pub operation_id: ::prost::alloc::string::String,
+    /// ExecutedOpsChangeValue
+    #[prost(message, optional, tag = "2")]
+    pub value: ::core::option::Option<ExecutedOpsChangeValue>,
+}
+/// ExecutedOpsChangeValue
+#[allow(clippy::derive_partial_eq_without_eq)]
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct ExecutedOpsChangeValue {
+    /// The status of the execution of the operation
+    #[prost(enumeration = "OperationExecutionStatus", repeated, tag = "1")]
+    pub status: ::prost::alloc::vec::Vec<i32>,
+    /// Slot until which the operation remains valid (included)
+    #[prost(message, optional, tag = "2")]
+    pub slot: ::core::option::Option<Slot>,
 }
 /// ScExecutionEventStatus type enum
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, ::prost::Enumeration)]
@@ -552,6 +593,41 @@ impl ExecutionOutputStatus {
             "EXECUTION_OUTPUT_STATUS_UNSPECIFIED" => Some(Self::Unspecified),
             "EXECUTION_OUTPUT_STATUS_CANDIDATE" => Some(Self::Candidate),
             "EXECUTION_OUTPUT_STATUS_FINAL" => Some(Self::Final),
+            _ => None,
+        }
+    }
+}
+/// OperationExecutionStatus type enum
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, ::prost::Enumeration)]
+#[repr(i32)]
+pub enum OperationExecutionStatus {
+    /// Defaut enum value
+    Unspecified = 0,
+    /// Success status
+    Success = 1,
+    /// Failed only status
+    Failed = 2,
+}
+impl OperationExecutionStatus {
+    /// String value of the enum field names used in the ProtoBuf definition.
+    ///
+    /// The values are not transformed in any way and thus are considered stable
+    /// (if the ProtoBuf definition does not change) and safe for programmatic use.
+    pub fn as_str_name(&self) -> &'static str {
+        match self {
+            OperationExecutionStatus::Unspecified => {
+                "OPERATION_EXECUTION_STATUS_UNSPECIFIED"
+            }
+            OperationExecutionStatus::Success => "OPERATION_EXECUTION_STATUS_SUCCESS",
+            OperationExecutionStatus::Failed => "OPERATION_EXECUTION_STATUS_FAILED",
+        }
+    }
+    /// Creates an enum from field names used in the ProtoBuf definition.
+    pub fn from_str_name(value: &str) -> ::core::option::Option<Self> {
+        match value {
+            "OPERATION_EXECUTION_STATUS_UNSPECIFIED" => Some(Self::Unspecified),
+            "OPERATION_EXECUTION_STATUS_SUCCESS" => Some(Self::Success),
+            "OPERATION_EXECUTION_STATUS_FAILED" => Some(Self::Failed),
             _ => None,
         }
     }

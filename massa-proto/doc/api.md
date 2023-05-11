@@ -96,13 +96,18 @@
     - [SignedEndorsement](#massa-api-v1-SignedEndorsement)
   
 - [execution.proto](#execution-proto)
+    - [ExecutedOpsChangeEntry](#massa-api-v1-ExecutedOpsChangeEntry)
+    - [ExecutedOpsChangeValue](#massa-api-v1-ExecutedOpsChangeValue)
+    - [ExecutedOpsChanges](#massa-api-v1-ExecutedOpsChanges)
     - [ExecutionOutput](#massa-api-v1-ExecutionOutput)
     - [FinalizedExecutionOutput](#massa-api-v1-FinalizedExecutionOutput)
     - [ScExecutionEvent](#massa-api-v1-ScExecutionEvent)
     - [ScExecutionEventContext](#massa-api-v1-ScExecutionEventContext)
     - [SlotExecutionOutput](#massa-api-v1-SlotExecutionOutput)
+    - [StateChanges](#massa-api-v1-StateChanges)
   
     - [ExecutionOutputStatus](#massa-api-v1-ExecutionOutputStatus)
+    - [OperationExecutionStatus](#massa-api-v1-OperationExecutionStatus)
     - [ScExecutionEventStatus](#massa-api-v1-ScExecutionEventStatus)
   
 - [operation.proto](#operation-proto)
@@ -1508,6 +1513,53 @@ Signed endorsement
 
 
 
+<a name="massa-api-v1-ExecutedOpsChangeEntry"></a>
+
+### ExecutedOpsChangeEntry
+ExecutedOpsChangeEntry
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| operation_id | [string](#string) |  | OperationId |
+| value | [ExecutedOpsChangeValue](#massa-api-v1-ExecutedOpsChangeValue) |  | ExecutedOpsChangeValue |
+
+
+
+
+
+
+<a name="massa-api-v1-ExecutedOpsChangeValue"></a>
+
+### ExecutedOpsChangeValue
+ExecutedOpsChangeValue
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| status | [OperationExecutionStatus](#massa-api-v1-OperationExecutionStatus) | repeated | The status of the execution of the operation |
+| slot | [Slot](#massa-api-v1-Slot) |  | Slot until which the operation remains valid (included) |
+
+
+
+
+
+
+<a name="massa-api-v1-ExecutedOpsChanges"></a>
+
+### ExecutedOpsChanges
+ExecutedOpsChanges
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| executed_ops | [ExecutedOpsChangeEntry](#massa-api-v1-ExecutedOpsChangeEntry) | repeated | Executed operations |
+
+
+
+
+
+
 <a name="massa-api-v1-ExecutionOutput"></a>
 
 ### ExecutionOutput
@@ -1519,6 +1571,7 @@ ExecutionOutput
 | slot | [Slot](#massa-api-v1-Slot) |  | Slot |
 | block_id | [string](#string) | optional | Block id at that slot (optional) |
 | events | [ScExecutionEvent](#massa-api-v1-ScExecutionEvent) | repeated | Events emitted by the execution step |
+| state_changes | [StateChanges](#massa-api-v1-StateChanges) |  | State changes caused by the execution step |
 
 
 
@@ -1592,6 +1645,21 @@ SlotExecutionOutput
 
 
 
+
+<a name="massa-api-v1-StateChanges"></a>
+
+### StateChanges
+StateChanges
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| executed_ops_changes | [ExecutedOpsChanges](#massa-api-v1-ExecutedOpsChanges) |  | Executed operations changes |
+
+
+
+
+
  
 
 
@@ -1605,6 +1673,19 @@ ExecutionOutputStatus type enum
 | EXECUTION_OUTPUT_STATUS_UNSPECIFIED | 0 | Defaut enum value |
 | EXECUTION_OUTPUT_STATUS_CANDIDATE | 1 | Candidate status |
 | EXECUTION_OUTPUT_STATUS_FINAL | 2 | Final status |
+
+
+
+<a name="massa-api-v1-OperationExecutionStatus"></a>
+
+### OperationExecutionStatus
+OperationExecutionStatus type enum
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| OPERATION_EXECUTION_STATUS_UNSPECIFIED | 0 | Defaut enum value |
+| OPERATION_EXECUTION_STATUS_SUCCESS | 1 | Success status |
+| OPERATION_EXECUTION_STATUS_FAILED | 2 | Failed only status |
 
 
 

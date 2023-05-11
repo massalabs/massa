@@ -37,6 +37,8 @@ message ExecutionOutput {
   optional string block_id = 2;
   // Events emitted by the execution step
   repeated ScExecutionEvent events = 3;
+  // State changes caused by the execution step
+  StateChanges state_changes = 4;
 }
 
 // ScExecutionEvent
@@ -79,4 +81,38 @@ enum ExecutionOutputStatus {
   EXECUTION_OUTPUT_STATUS_CANDIDATE = 1; // Candidate status
   EXECUTION_OUTPUT_STATUS_FINAL = 2; // Final status
 }
- 
+
+// StateChanges
+message StateChanges {
+  // Executed operations changes
+  ExecutedOpsChanges executed_ops_changes = 1;
+}
+
+// ExecutedOpsChanges
+message ExecutedOpsChanges {
+  // Executed operations
+  repeated ExecutedOpsChangeEntry executed_ops = 1;
+}
+
+// ExecutedOpsChangeEntry
+message ExecutedOpsChangeEntry {
+  // OperationId
+  string operation_id = 1;
+  // ExecutedOpsChangeValue
+  ExecutedOpsChangeValue value = 2;
+}
+
+// ExecutedOpsChangeValue
+message ExecutedOpsChangeValue {
+  // The status of the execution of the operation
+  repeated OperationExecutionStatus status = 1;
+  // Slot until which the operation remains valid (included)
+  Slot slot = 2;
+}
+
+// OperationExecutionStatus type enum
+enum OperationExecutionStatus {
+  OPERATION_EXECUTION_STATUS_UNSPECIFIED = 0; // Defaut enum value
+  OPERATION_EXECUTION_STATUS_SUCCESS = 1; // Success status
+  OPERATION_EXECUTION_STATUS_FAILED = 2; // Failed only status
+}

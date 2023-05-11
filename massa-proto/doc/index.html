@@ -547,6 +547,18 @@
             <ul>
               
                 <li>
+                  <a href="#massa.api.v1.ExecutedOpsChangeEntry"><span class="badge">M</span>ExecutedOpsChangeEntry</a>
+                </li>
+              
+                <li>
+                  <a href="#massa.api.v1.ExecutedOpsChangeValue"><span class="badge">M</span>ExecutedOpsChangeValue</a>
+                </li>
+              
+                <li>
+                  <a href="#massa.api.v1.ExecutedOpsChanges"><span class="badge">M</span>ExecutedOpsChanges</a>
+                </li>
+              
+                <li>
                   <a href="#massa.api.v1.ExecutionOutput"><span class="badge">M</span>ExecutionOutput</a>
                 </li>
               
@@ -566,9 +578,17 @@
                   <a href="#massa.api.v1.SlotExecutionOutput"><span class="badge">M</span>SlotExecutionOutput</a>
                 </li>
               
+                <li>
+                  <a href="#massa.api.v1.StateChanges"><span class="badge">M</span>StateChanges</a>
+                </li>
+              
               
                 <li>
                   <a href="#massa.api.v1.ExecutionOutputStatus"><span class="badge">E</span>ExecutionOutputStatus</a>
+                </li>
+              
+                <li>
+                  <a href="#massa.api.v1.OperationExecutionStatus"><span class="badge">E</span>OperationExecutionStatus</a>
                 </li>
               
                 <li>
@@ -3516,6 +3536,92 @@ This is the parent in thread `self.slot.thread` of the block in which the endors
       <p></p>
 
       
+        <h3 id="massa.api.v1.ExecutedOpsChangeEntry">ExecutedOpsChangeEntry</h3>
+        <p>ExecutedOpsChangeEntry</p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>operation_id</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p>OperationId </p></td>
+                </tr>
+              
+                <tr>
+                  <td>value</td>
+                  <td><a href="#massa.api.v1.ExecutedOpsChangeValue">ExecutedOpsChangeValue</a></td>
+                  <td></td>
+                  <td><p>ExecutedOpsChangeValue </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
+        <h3 id="massa.api.v1.ExecutedOpsChangeValue">ExecutedOpsChangeValue</h3>
+        <p>ExecutedOpsChangeValue</p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>status</td>
+                  <td><a href="#massa.api.v1.OperationExecutionStatus">OperationExecutionStatus</a></td>
+                  <td>repeated</td>
+                  <td><p>The status of the execution of the operation </p></td>
+                </tr>
+              
+                <tr>
+                  <td>slot</td>
+                  <td><a href="#massa.api.v1.Slot">Slot</a></td>
+                  <td></td>
+                  <td><p>Slot until which the operation remains valid (included) </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
+        <h3 id="massa.api.v1.ExecutedOpsChanges">ExecutedOpsChanges</h3>
+        <p>ExecutedOpsChanges</p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>executed_ops</td>
+                  <td><a href="#massa.api.v1.ExecutedOpsChangeEntry">ExecutedOpsChangeEntry</a></td>
+                  <td>repeated</td>
+                  <td><p>Executed operations </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
         <h3 id="massa.api.v1.ExecutionOutput">ExecutionOutput</h3>
         <p>ExecutionOutput</p>
 
@@ -3545,6 +3651,13 @@ This is the parent in thread `self.slot.thread` of the block in which the endors
                   <td><a href="#massa.api.v1.ScExecutionEvent">ScExecutionEvent</a></td>
                   <td>repeated</td>
                   <td><p>Events emitted by the execution step </p></td>
+                </tr>
+              
+                <tr>
+                  <td>state_changes</td>
+                  <td><a href="#massa.api.v1.StateChanges">StateChanges</a></td>
+                  <td></td>
+                  <td><p>State changes caused by the execution step </p></td>
                 </tr>
               
             </tbody>
@@ -3706,6 +3819,30 @@ This is the parent in thread `self.slot.thread` of the block in which the endors
 
         
       
+        <h3 id="massa.api.v1.StateChanges">StateChanges</h3>
+        <p>StateChanges</p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>executed_ops_changes</td>
+                  <td><a href="#massa.api.v1.ExecutedOpsChanges">ExecutedOpsChanges</a></td>
+                  <td></td>
+                  <td><p>Executed operations changes </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
 
       
         <h3 id="massa.api.v1.ExecutionOutputStatus">ExecutionOutputStatus</h3>
@@ -3732,6 +3869,35 @@ This is the parent in thread `self.slot.thread` of the block in which the endors
                 <td>EXECUTION_OUTPUT_STATUS_FINAL</td>
                 <td>2</td>
                 <td><p>Final status</p></td>
+              </tr>
+            
+          </tbody>
+        </table>
+      
+        <h3 id="massa.api.v1.OperationExecutionStatus">OperationExecutionStatus</h3>
+        <p>OperationExecutionStatus type enum</p>
+        <table class="enum-table">
+          <thead>
+            <tr><td>Name</td><td>Number</td><td>Description</td></tr>
+          </thead>
+          <tbody>
+            
+              <tr>
+                <td>OPERATION_EXECUTION_STATUS_UNSPECIFIED</td>
+                <td>0</td>
+                <td><p>Defaut enum value</p></td>
+              </tr>
+            
+              <tr>
+                <td>OPERATION_EXECUTION_STATUS_SUCCESS</td>
+                <td>1</td>
+                <td><p>Success status</p></td>
+              </tr>
+            
+              <tr>
+                <td>OPERATION_EXECUTION_STATUS_FAILED</td>
+                <td>2</td>
+                <td><p>Failed only status</p></td>
               </tr>
             
           </tbody>
