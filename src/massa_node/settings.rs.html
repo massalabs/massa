@@ -306,6 +306,8 @@
 <a href="#306" id="306">306</a>
 <a href="#307" id="307">307</a>
 <a href="#308" id="308">308</a>
+<a href="#309" id="309">309</a>
+<a href="#310" id="310">310</a>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="doccomment">//! Build here the default node settings from the configuration file toml
@@ -539,6 +541,8 @@
     </span><span class="kw">pub </span>try_connection_timer: MassaTime,
     <span class="doccomment">/// Timeout connection
     </span><span class="kw">pub </span>timeout_connection: MassaTime,
+    <span class="doccomment">/// Nb in connections
+    </span><span class="kw">pub </span>max_in_connections: usize,
     <span class="doccomment">/// Peers limits per category
     </span><span class="kw">pub </span>peers_categories: HashMap&lt;String, PeerCategoryInfo&gt;,
     <span class="doccomment">/// Limits for default category

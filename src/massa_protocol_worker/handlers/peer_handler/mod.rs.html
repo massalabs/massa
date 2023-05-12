@@ -757,14 +757,14 @@
                             <span class="kw">match </span>message {
                                 PeerManagementMessage::NewPeerConnected((peer_id, listeners)) =&gt; {
                                     <span class="macro">debug!</span>(<span class="string">&quot;Received peer message: NewPeerConnected from {}&quot;</span>, peer_id);
-                                    <span class="kw">if let </span><span class="prelude-val">Err</span>(e) = test_sender.send((peer_id, listeners)) {
+                                    <span class="kw">if let </span><span class="prelude-val">Err</span>(e) = test_sender.try_send((peer_id, listeners)) {
                                         <span class="macro">error!</span>(<span class="string">&quot;error when sending msg to peer tester : {}&quot;</span>, e);
                                     }
                                 }
                                 PeerManagementMessage::ListPeers(peers) =&gt; {
                                     <span class="macro">debug!</span>(<span class="string">&quot;Received peer message: List peers from {}&quot;</span>, peer_id);
                                     <span class="kw">for </span>(peer_id, listeners) <span class="kw">in </span>peers.into_iter() {
-                                        <span class="kw">if let </span><span class="prelude-val">Err</span>(e) = test_sender.send((peer_id, listeners)) {
+                                        <span class="kw">if let </span><span class="prelude-val">Err</span>(e) = test_sender.try_send((peer_id, listeners)) {
                                             <span class="macro">error!</span>(<span class="string">&quot;error when sending msg to peer tester : {}&quot;</span>, e);
                                         }
                                     }

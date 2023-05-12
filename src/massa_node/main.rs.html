@@ -1153,6 +1153,7 @@
 <a href="#1153" id="1153">1153</a>
 <a href="#1154" id="1154">1154</a>
 <a href="#1155" id="1155">1155</a>
+<a href="#1156" id="1156">1156</a>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="attr">#![doc = <span class="macro">include_str!</span>(<span class="string">&quot;../../README.md&quot;</span>)]
@@ -1675,6 +1676,7 @@
         read_write_limit_bytes_per_second: SETTINGS.protocol.read_write_limit_bytes_per_second
             <span class="kw">as </span>u128,
         try_connection_timer: SETTINGS.protocol.try_connection_timer,
+        max_in_connections: SETTINGS.protocol.max_in_connections,
         timeout_connection: SETTINGS.protocol.timeout_connection,
         routable_ip: SETTINGS
             .protocol
