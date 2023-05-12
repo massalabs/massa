@@ -8,6 +8,7 @@ edition = "2021"
 displaydoc = "0.2"
 serde = { version = "1.0", features = ["derive"] }
 nom = "7.1"
+bs58 = { version = "0.4", features = ["check"] }
 thiserror = "1.0"
 tracing = "0.1"
 # custom modules

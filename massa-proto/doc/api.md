@@ -1571,7 +1571,7 @@ Structure defining a trigger for an asynchronous message
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | address | [string](#string) |  | Filter on the address |
-| datastore_key | [bytes](#bytes) |  | Filter on the datastore key (optional) |
+| datastore_key | [bytes](#bytes) | optional | Filter on the datastore key (optional) |
 
 
 

@@ -204,5 +204,5 @@ message AsyncMessageTrigger {
     // Filter on the address
     string address = 1;
     // Filter on the datastore key (optional)
-    bytes datastore_key = 2;
+    optional bytes datastore_key = 2;
 }

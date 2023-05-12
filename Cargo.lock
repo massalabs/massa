@@ -2473,6 +2473,7 @@ dependencies = [
  "massa_ledger_exports",
  "massa_logging",
  "massa_models",
+ "massa_proto",
  "massa_serialization 0.1.0",
  "massa_signature 0.1.0",
  "massa_time",
@@ -2708,6 +2709,7 @@ dependencies = [
 name = "massa_final_state"
 version = "0.1.0"
 dependencies = [
+ "bs58",
  "displaydoc",
  "massa_async_pool",
  "massa_executed_ops",

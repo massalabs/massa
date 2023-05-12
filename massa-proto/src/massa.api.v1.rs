@@ -618,8 +618,8 @@ pub struct AsyncMessageTrigger {
     #[prost(string, tag = "1")]
     pub address: ::prost::alloc::string::String,
     /// Filter on the datastore key (optional)
-    #[prost(bytes = "vec", tag = "2")]
-    pub datastore_key: ::prost::alloc::vec::Vec<u8>,
+    #[prost(bytes = "vec", optional, tag = "2")]
+    pub datastore_key: ::core::option::Option<::prost::alloc::vec::Vec<u8>>,
 }
 /// ScExecutionEventStatus type enum
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, ::prost::Enumeration)]
