@@ -186,14 +186,14 @@ impl PeerManagementHandler {
                             match message {
                                 PeerManagementMessage::NewPeerConnected((peer_id, listeners)) => {
                                     debug!("Received peer message: NewPeerConnected from {}", peer_id);
-                                    if let Err(e) = test_sender.send((peer_id, listeners)) {
+                                    if let Err(e) = test_sender.try_send((peer_id, listeners)) {
                                         error!("error when sending msg to peer tester : {}", e);
                                     }
                                 }
                                 PeerManagementMessage::ListPeers(peers) => {
                                     debug!("Received peer message: List peers from {}", peer_id);
                                     for (peer_id, listeners) in peers.into_iter() {
-                                        if let Err(e) = test_sender.send((peer_id, listeners)) {
+                                        if let Err(e) = test_sender.try_send((peer_id, listeners)) {
                                             error!("error when sending msg to peer tester : {}", e);
                                         }
                                     }
