@@ -595,7 +595,7 @@ impl Deserializer<Address> for AddressDeserializer {
                 Ok((rest, Address::User(addr)))
             }
             SC_PREFIX => {
-                let (rest, addr) = self.deserialize(&buffer[1..])?;
+                let (rest, addr) = self.deserialize(rest)?;
                 Ok((rest, Address::SC(addr)))
             }
             _ => Err(nom::Err::Error(E::from_error_kind(buffer, ErrorKind::Eof))),
@@ -623,7 +623,7 @@ impl Deserializer<UserAddress> for AddressDeserializer {
                 Ok((rest, UserAddressVariant!["0"](addr)))
             }
             <UserAddress!["1"]>::VERSION => {
-                let (rest, addr) = self.deserialize(&buffer[1..])?;
+                let (rest, addr) = self.deserialize(rest)?;
                 Ok((rest, UserAddressVariant!["1"](addr)))
             }
             _ => Err(nom::Err::Error(E::from_error_kind(buffer, ErrorKind::Eof))),
@@ -705,7 +705,6 @@ pub struct ExecutionAddressCycleInfo {
 #[cfg(test)]
 mod test {
     use super::*;
-    use serde_json;
 
     #[test]
     fn test_address() {
@@ -721,38 +720,16 @@ mod test {
         println!("sc_addr_0: {}", sc_addr_0);
         println!("sc_addr_1: {}", sc_addr_1);
 
-        let str = "AU12M3AQqs7JH7mSe1UZyEA5NQ7nGQHXaqqxe1TGEpkimcRhsQ4eF";
-        let addr = Address::from_str(str);
-        println!("str: {}", str);
-        assert!(addr.is_ok());
-        println!("addr: {}", addr.clone().ok().unwrap());
+        // let v1 = "AU12M3AQqs7JH7mSe1UZyEA5NQ7nGQHXaqqxe1TGEpkimcRhsQ4eF";
+        let v2 = "AU4cJWyjpBetGwaRqFDXyrHiQuGB3QKrwjzGiGSzQPGeAARB9AY4";
+        let addr = Address::from_str(v2).unwrap();
 
         let mut buffer: Vec<u8> = vec![];
+        let _ = AddressSerializer::new().serialize(&addr, &mut buffer);
+        let (_rest, addr2): (&[u8], Address) = AddressDeserializer::new()
+            .deserialize::<massa_serialization::DeserializeError>(&buffer)
+            .unwrap();
 
-        let addr_to_ser = addr.clone().ok().unwrap();
-
-        let _ = AddressSerializer::new().serialize(&addr_to_ser, &mut buffer);
-
-        println!("buffer: {:?}", &buffer);
-
-        let addr2: Result<(&[u8], Address), _> =
-            AddressDeserializer::new()
-                .deserialize::<massa_serialization::DeserializeError>(&buffer);
-
-        assert!(addr2.is_ok());
-        println!("addr2: {}", addr2.ok().unwrap().1);
-
-        let j = serde_json::to_string(&addr.clone().ok().unwrap());
-
-        assert!(j.is_ok());
-
-        println!("j: {}", j.ok().unwrap());
+        assert_eq!(addr, addr2);
     }
 }
-
-// TODO: wanted tests
-//
-// * Addr ser + deser
-// * Addr version in all callers
-// * Addr version switch
-// * Which places should handle multiple versions at once (all of them?)
