@@ -495,14 +495,3 @@ pub fn get_peers(keypair: &KeyPair) -> BootstrapPeers {
         ),
     ])
 }
-
-/// The bootstrap server function `get_state` has to be async due to main.rs `tokio::select!` usage to
-/// cancel on `ctrl-c`
-/// If get state can be cancelled with ctrl-c without an async context, this can be removed
-pub fn make_runtime() -> tokio::runtime::Runtime {
-    tokio::runtime::Builder::new_multi_thread()
-        .enable_all()
-        .thread_name("network-provided-runtime")
-        .build()
-        .expect("failed to create runtime")
-}
