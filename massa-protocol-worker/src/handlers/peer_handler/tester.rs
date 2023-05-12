@@ -500,7 +500,7 @@ impl Tester {
                                                 announcement_deser.clone(),
                                                 VersionDeserializer::new(),
                                                 *addr,
-                                                protocol_config.version.clone(),
+                                                protocol_config.version,
                                             );
 
                                             // let _res =  network_manager.try_connect(
