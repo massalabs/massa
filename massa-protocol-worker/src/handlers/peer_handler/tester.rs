@@ -395,7 +395,7 @@ impl Tester {
         let handle = std::thread::Builder::new()
         .name("protocol-peer-handler-tester".to_string())
         .spawn(move || {
-            let db = peer_db.clone();
+            let db = peer_db;
             let active_connections = active_connections.clone();
 
             let announcement_deser = AnnouncementDeserializer::new(
