@@ -1146,13 +1146,6 @@
 <a href="#1146" id="1146">1146</a>
 <a href="#1147" id="1147">1147</a>
 <a href="#1148" id="1148">1148</a>
-<a href="#1149" id="1149">1149</a>
-<a href="#1150" id="1150">1150</a>
-<a href="#1151" id="1151">1151</a>
-<a href="#1152" id="1152">1152</a>
-<a href="#1153" id="1153">1153</a>
-<a href="#1154" id="1154">1154</a>
-<a href="#1155" id="1155">1155</a>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="attr">#![doc = <span class="macro">include_str!</span>(<span class="string">&quot;../../README.md&quot;</span>)]
@@ -1865,7 +1858,6 @@
             enable_cors: SETTINGS.grpc.enable_cors,
             enable_health: SETTINGS.grpc.enable_health,
             enable_reflection: SETTINGS.grpc.enable_reflection,
-            enable_mtls: SETTINGS.grpc.enable_mtls,
             bind: SETTINGS.grpc.bind,
             accept_compressed: SETTINGS.grpc.accept_compressed.clone(),
             send_compressed: SETTINGS.grpc.send_compressed.clone(),
@@ -1908,12 +1900,6 @@
             max_denunciations_per_block_header: MAX_DENUNCIATIONS_PER_BLOCK_HEADER,
             max_block_ids_per_request: SETTINGS.grpc.max_block_ids_per_request,
             max_operation_ids_per_request: SETTINGS.grpc.max_operation_ids_per_request,
-            server_certificate_path: SETTINGS.grpc.server_certificate_path.clone(),
-            server_private_key_path: SETTINGS.grpc.server_private_key_path.clone(),
-            client_certificate_authority_root_path: SETTINGS
-                .grpc
-                .client_certificate_authority_root_path
-                .clone(),
         };
 
         <span class="kw">let </span>grpc_api = MassaGrpc {
