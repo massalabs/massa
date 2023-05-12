@@ -855,8 +855,8 @@
             <span class="kw">let </span>res = {
                 {
                     <span class="comment">// check if peer is banned
-                    </span><span class="kw">let </span><span class="kw-2">mut </span>peer_db_write = peer_db.write();
-                    <span class="kw">if let </span><span class="prelude-val">Some</span>(info) = peer_db_write.peers.get_mut(<span class="kw-2">&amp;</span>peer_id) {
+                    </span><span class="kw">let </span>peer_db_read = peer_db.read();
+                    <span class="kw">if let </span><span class="prelude-val">Some</span>(info) = peer_db_read.peers.get(<span class="kw-2">&amp;</span>peer_id) {
                         <span class="kw">if </span>info.state == <span class="kw">super</span>::PeerState::Banned {
                             <span class="kw">return </span><span class="prelude-val">Err</span>(PeerNetError::HandshakeError
                                 .error(<span class="string">&quot;Tester Handshake&quot;</span>, <span class="prelude-val">Some</span>(String::from(<span class="string">&quot;Peer is banned&quot;</span>))));
