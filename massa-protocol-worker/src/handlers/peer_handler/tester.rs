@@ -446,7 +446,6 @@ impl Tester {
                                 {
                                     let now = MassaTime::now().unwrap();
                                     let db = db.clone();
-                                    let mut db_write = db.write();
                                     // receive new listener to test
                                     for (addr, _) in listener.1.iter() {
                                         //Find category of that address
@@ -468,14 +467,16 @@ impl Tester {
                                             }
                                         };
                                         //TODO: Change it to manage multiple listeners SAFETY: Check above
-                                        if let Some(last_tested_time) = db_write.tested_addresses.get(addr) {
-                                            let last_tested_time = last_tested_time.estimate_instant().expect("Time went backward");
-                                            if last_tested_time.elapsed() < cooldown {
-                                                continue;
+                                        {
+                                            let mut db_write = db.write();
+                                            if let Some(last_tested_time) = db_write.tested_addresses.get(addr) {
+                                                let last_tested_time = last_tested_time.estimate_instant().expect("Time went backward");
+                                                if last_tested_time.elapsed() < cooldown {
+                                                    continue;
+                                                }
                                             }
+                                            db_write.tested_addresses.insert(*addr, now);
                                         }
-                                        db_write.tested_addresses.insert(*addr, now);
-                                        // drop(db_write);
                                         // TODO:  Don't launch test if peer is already connected to us as a normal connection.
                                         // Maybe we need to have a way to still update his last announce timestamp because he is a great peer
                                         if ip_canonical.is_global() && !active_connections.get_peers_connected().iter().any(|(_, (addr, _, _))| addr.ip().to_canonical() == ip_canonical) {
