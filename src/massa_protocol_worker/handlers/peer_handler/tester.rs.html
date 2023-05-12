@@ -573,6 +573,9 @@
 <a href="#573" id="573">573</a>
 <a href="#574" id="574">574</a>
 <a href="#575" id="575">575</a>
+<a href="#576" id="576">576</a>
+<a href="#577" id="577">577</a>
+<a href="#578" id="578">578</a>
 </pre><pre class="rust"><code><span class="kw">use </span>std::{
     collections::HashMap,
     io::Read,
@@ -582,7 +585,7 @@
 };
 
 <span class="kw">use </span><span class="kw">crate</span>::messages::MessagesHandler;
-<span class="kw">use </span>crossbeam::channel::Sender;
+<span class="kw">use </span>crossbeam::channel::{Receiver, Sender};
 <span class="kw">use </span>massa_models::version::{Version, VersionDeserializer};
 <span class="kw">use </span>massa_protocol_exports::{PeerConnectionType, ProtocolConfig};
 <span class="kw">use </span>massa_serialization::{DeserializeError, Deserializer};
@@ -778,7 +781,10 @@
         target_out_connections: HashMap&lt;String, (Vec&lt;IpAddr&gt;, usize)&gt;,
         default_target_out_connections: usize,
     ) -&gt; (
-        Sender&lt;(PeerId, HashMap&lt;SocketAddr, TransportType&gt;)&gt;,
+        (
+            Sender&lt;(PeerId, HashMap&lt;SocketAddr, TransportType&gt;)&gt;,
+            Receiver&lt;(PeerId, HashMap&lt;SocketAddr, TransportType&gt;)&gt;,
+        ),
         Vec&lt;Tester&gt;,
     ) {
         <span class="kw">let </span><span class="kw-2">mut </span>testers = Vec::new();
@@ -799,7 +805,7 @@
             ));
         }
 
-        (test_sender, testers)
+        ((test_sender, test_receiver), testers)
     }
 
     <span class="kw">pub fn </span>tcp_handshake(
@@ -849,8 +855,8 @@
             <span class="kw">let </span>res = {
                 {
                     <span class="comment">// check if peer is banned
-                    </span><span class="kw">let </span><span class="kw-2">mut </span>peer_db_write = peer_db.write();
-                    <span class="kw">if let </span><span class="prelude-val">Some</span>(info) = peer_db_write.peers.get_mut(<span class="kw-2">&amp;</span>peer_id) {
+                    </span><span class="kw">let </span>peer_db_read = peer_db.read();
+                    <span class="kw">if let </span><span class="prelude-val">Some</span>(info) = peer_db_read.peers.get(<span class="kw-2">&amp;</span>peer_id) {
                         <span class="kw">if </span>info.state == <span class="kw">super</span>::PeerState::Banned {
                             <span class="kw">return </span><span class="prelude-val">Err</span>(PeerNetError::HandshakeError
                                 .error(<span class="string">&quot;Tester Handshake&quot;</span>, <span class="prelude-val">Some</span>(String::from(<span class="string">&quot;Peer is banned&quot;</span>))));
@@ -990,7 +996,7 @@
                                 <span class="kw">if </span>listener.<span class="number">1</span>.is_empty() {
                                     <span class="kw">continue</span>;
                                 }
-                                <span class="comment">//Test 
+                                <span class="comment">//Test
                                 </span><span class="kw">let </span>peers_connected = active_connections.get_peers_connected();
                                 <span class="kw">let </span>slots_out_connections: HashMap&lt;String, (Vec&lt;IpAddr&gt;, usize)&gt; = target_out_connections
                                     .iter()
