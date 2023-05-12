@@ -277,8 +277,8 @@ impl Tester {
             let res = {
                 {
                     // check if peer is banned
-                    let mut peer_db_write = peer_db.write();
-                    if let Some(info) = peer_db_write.peers.get_mut(&peer_id) {
+                    let peer_db_read = peer_db.read();
+                    if let Some(info) = peer_db_read.peers.get(&peer_id) {
                         if info.state == super::PeerState::Banned {
                             return Err(PeerNetError::HandshakeError
                                 .error("Tester Handshake", Some(String::from("Peer is banned"))));
