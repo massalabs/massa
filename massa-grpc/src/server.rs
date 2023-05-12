@@ -13,7 +13,10 @@ use massa_proto::massa::api::v1::FILE_DESCRIPTOR_SET;
 use massa_protocol_exports::ProtocolController;
 use massa_storage::Storage;
 use tokio::sync::oneshot;
-use tonic::codec::CompressionEncoding;
+use tonic::{
+    codec::CompressionEncoding,
+    transport::{Certificate, Identity, ServerTlsConfig},
+};
 use tonic_health::server::HealthReporter;
 use tonic_web::GrpcWebLayer;
 use tower_http::cors::{Any, CorsLayer};
@@ -78,6 +81,29 @@ impl MassaGrpc {
             .http2_keepalive_timeout(config.http2_keepalive_timeout)
             .http2_adaptive_window(config.http2_adaptive_window)
             .max_frame_size(config.max_frame_size);
+
+        if config.enable_mtls {
+            let cert = std::fs::read_to_string(config.server_certificate_path.clone())
+                .expect("error, failed to read server certificat");
+            let key = std::fs::read_to_string(config.server_private_key_path.clone())
+                .expect("error, failed to read server private key");
+            let server_identity = Identity::from_pem(cert, key);
+
+            let client_ca_cert =
+                std::fs::read_to_string(config.client_certificate_authority_root_path.clone())
+                    .expect("error, failed to read client certificate authority root");
+            let client_ca_cert = Certificate::from_pem(client_ca_cert);
+
+            let tls = ServerTlsConfig::new()
+                .identity(server_identity)
+                .client_ca_root(client_ca_cert);
+
+            server_builder = server_builder
+                .tls_config(tls)
+                .expect("error, failed to setup mTLS");
+
+            info!("gRPC mTLS enabled");
+        }
 
         let health_service_opt = if config.enable_health {
             let (mut health_reporter, health_service) = tonic_health::server::health_reporter();
