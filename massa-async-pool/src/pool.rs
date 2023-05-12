@@ -225,26 +225,26 @@ impl AsyncPool {
         self.message_info_cache.clear();
 
         let db = self.db.read();
-        let handle = db.0.cf_handle(STATE_CF).expect(CF_ERROR);
+        let handle = db.db.cf_handle(STATE_CF).expect(CF_ERROR);
 
         // Iterates over the whole database
         let mut last_id: Option<Vec<u8>> = None;
 
         while let Some(Ok((serialized_message_id, _))) = match last_id {
-            Some(id) => {
-                db.0.iterator_cf(
+            Some(id) => db
+                .db
+                .iterator_cf(
                     handle,
                     IteratorMode::From(&can_be_executed_key!(id), Direction::Forward),
                 )
-                .nth(1)
-            }
-            None => {
-                db.0.iterator_cf(
+                .nth(1),
+            None => db
+                .db
+                .iterator_cf(
                     handle,
                     IteratorMode::From(ASYNC_POOL_PREFIX.as_bytes(), Direction::Forward),
                 )
-                .next()
-            }
+                .next(),
         } {
             if !serialized_message_id.starts_with(ASYNC_POOL_PREFIX.as_bytes()) {
                 break;
@@ -312,7 +312,7 @@ impl AsyncPool {
 
     pub fn fetch_message(&self, message_id: &AsyncMessageId) -> Option<AsyncMessage> {
         let db = self.db.read();
-        let handle = db.0.cf_handle(STATE_CF).expect(CF_ERROR);
+        let handle = db.db.cf_handle(STATE_CF).expect(CF_ERROR);
 
         let mut serialized_message_id = Vec::new();
         self.message_id_serializer
@@ -320,9 +320,10 @@ impl AsyncPool {
             .expect(MESSAGE_ID_SER_ERROR);
 
         let mut serialized_message: Vec<u8> = Vec::new();
-        for (serialized_key, serialized_value) in
-            db.0.prefix_iterator_cf(handle, &message_id_prefix!(serialized_message_id))
-                .flatten()
+        for (serialized_key, serialized_value) in db
+            .db
+            .prefix_iterator_cf(handle, &message_id_prefix!(serialized_message_id))
+            .flatten()
         {
             if !serialized_key.starts_with(&message_id_prefix!(serialized_message_id)) {
                 break;
@@ -464,7 +465,7 @@ impl AsyncPool {
     /// * `batch`: the given operation batch to update
     fn put_entry(&self, message_id: &AsyncMessageId, message: AsyncMessage, batch: &mut DBBatch) {
         let db = self.db.read();
-        let handle = db.0.cf_handle(STATE_CF).expect(CF_ERROR);
+        let handle = db.db.cf_handle(STATE_CF).expect(CF_ERROR);
 
         let mut serialized_message_id = Vec::new();
         self.message_id_serializer
@@ -654,7 +655,7 @@ impl AsyncPool {
     ) {
         let db = self.db.read();
 
-        let handle = db.0.cf_handle(STATE_CF).expect(CF_ERROR);
+        let handle = db.db.cf_handle(STATE_CF).expect(CF_ERROR);
         let mut serialized_message_id = Vec::new();
         self.message_id_serializer
             .serialize(message_id, &mut serialized_message_id)
@@ -862,7 +863,7 @@ impl AsyncPool {
     /// * batch: the given operation batch to update
     fn delete_entry(&self, message_id: &AsyncMessageId, batch: &mut DBBatch) {
         let db = self.db.read();
-        let handle = db.0.cf_handle(STATE_CF).expect(CF_ERROR);
+        let handle = db.db.cf_handle(STATE_CF).expect(CF_ERROR);
         let mut serialized_message_id = Vec::new();
         self.message_id_serializer
             .serialize(message_id, &mut serialized_message_id)

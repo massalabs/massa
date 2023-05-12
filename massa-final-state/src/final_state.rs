@@ -598,19 +598,20 @@ impl FinalState {
         cursor: StreamingStep<Vec<u8>>,
     ) -> (BTreeMap<Vec<u8>, Vec<u8>>, StreamingStep<Vec<u8>>) {
         let db = self.db.read();
-        let handle = db.0.cf_handle(STATE_CF).expect(CF_ERROR);
+        let handle = db.db.cf_handle(STATE_CF).expect(CF_ERROR);
 
         let mut state_part = BTreeMap::new();
 
         // Creates an iterator from the next element after the last if defined, otherwise initialize it at the first key.
         let (db_iterator, mut new_cursor) = match cursor {
             StreamingStep::Started => (
-                db.0.iterator_cf(handle, IteratorMode::Start),
+                db.db.iterator_cf(handle, IteratorMode::Start),
                 StreamingStep::Started,
             ),
             StreamingStep::Ongoing(last_key) => {
-                let mut iter =
-                    db.0.iterator_cf(handle, IteratorMode::From(&last_key, Direction::Forward));
+                let mut iter = db
+                    .db
+                    .iterator_cf(handle, IteratorMode::From(&last_key, Direction::Forward));
                 iter.next();
                 (iter, StreamingStep::Finished(None))
             }
@@ -639,7 +640,7 @@ impl FinalState {
     pub fn set_state_part(&self, part: BTreeMap<Vec<u8>, Vec<u8>>) -> StreamingStep<Vec<u8>> {
         let db = self.db.read();
         let mut batch = DBBatch::new(db.get_db_hash());
-        let handle = db.0.cf_handle(STATE_CF).expect(CF_ERROR);
+        let handle = db.db.cf_handle(STATE_CF).expect(CF_ERROR);
 
         let cursor = if let Some(key) = part.last_key_value().map(|kv| kv.0.clone()) {
             StreamingStep::Ongoing(key)

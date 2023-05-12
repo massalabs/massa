@@ -2587,10 +2587,12 @@ dependencies = [
 name = "massa_db"
 version = "0.1.0"
 dependencies = [
+ "displaydoc",
  "massa_hash 0.1.0",
  "massa_models",
  "massa_serialization 0.1.0",
  "rocksdb",
+ "thiserror",
 ]
 
 [[package]]

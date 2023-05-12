@@ -5,7 +5,7 @@ use crate::{
     FinalState, FinalStateConfig, StateChanges,
 };
 use massa_async_pool::{AsyncMessage, AsyncPoolChanges, AsyncPoolConfig};
-use massa_db::{DBBatch, MassaDB};
+use massa_db::{DBBatch, MassaDB, MassaDBConfig};
 use massa_executed_ops::{ExecutedDenunciationsConfig, ExecutedOpsConfig};
 use massa_ledger_exports::{
     LedgerChanges, LedgerConfig, LedgerEntryUpdate, SetOrKeep, SetUpdateOrDelete,
@@ -30,7 +30,11 @@ use std::{path::PathBuf, str::FromStr, sync::Arc};
 use tempfile::TempDir;
 
 fn create_final_state(temp_dir: &TempDir) -> Arc<RwLock<FinalState>> {
-    let db = Arc::new(RwLock::new(MassaDB::new(temp_dir.path().to_path_buf())));
+    let db_config = MassaDBConfig {
+        path: temp_dir.path().to_path_buf(),
+        max_history_length: 10,
+    };
+    let db = Arc::new(RwLock::new(MassaDB::new(db_config)));
 
     let rolls_path = PathBuf::from_str("../massa-node/base_config/initial_rolls.json").unwrap();
 

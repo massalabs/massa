@@ -1,4 +1,4 @@
-use massa_db::{DBBatch, MassaDB};
+use massa_db::{DBBatch, MassaDB, MassaDBConfig};
 use massa_execution_exports::ExecutionError;
 use massa_final_state::{FinalState, FinalStateConfig};
 use massa_hash::Hash;
@@ -112,7 +112,11 @@ pub fn get_sample_state(
 ) -> Result<(Arc<RwLock<FinalState>>, NamedTempFile, TempDir), LedgerError> {
     let (rolls_file, ledger) = get_initials();
     let (ledger_config, tempfile, tempdir) = LedgerConfig::sample(&ledger);
-    let db = Arc::new(RwLock::new(MassaDB::new(tempdir.path().to_path_buf())));
+    let db_config = MassaDBConfig {
+        path: tempdir.path().to_path_buf(),
+        max_history_length: 10,
+    };
+    let db = Arc::new(RwLock::new(MassaDB::new(db_config)));
 
     let mut ledger = FinalLedger::new(ledger_config.clone(), db.clone());
     ledger.load_initial_ledger().unwrap();

@@ -77,7 +77,7 @@ impl ExecutedOps {
         self.op_exec_status.clear();
 
         let db = self.db.read();
-        let handle = db.0.cf_handle(STATE_CF).expect(CF_ERROR);
+        let handle = db.db.cf_handle(STATE_CF).expect(CF_ERROR);
 
         let bool_deserializer = BoolDeserializer::new();
         let slot_deserializer = SlotDeserializer::new(
@@ -85,9 +85,10 @@ impl ExecutedOps {
             (Included(0), Excluded(self.config.thread_count)),
         );
 
-        for (serialized_op_id, serialized_value) in
-            db.0.prefix_iterator_cf(handle, EXECUTED_OPS_PREFIX)
-                .flatten()
+        for (serialized_op_id, serialized_value) in db
+            .db
+            .prefix_iterator_cf(handle, EXECUTED_OPS_PREFIX)
+            .flatten()
         {
             if !serialized_op_id.starts_with(EXECUTED_OPS_PREFIX.as_bytes()) {
                 break;
@@ -162,14 +163,15 @@ impl ExecutedOps {
     /// Check if an operation was executed
     pub fn contains(&self, op_id: &OperationId) -> bool {
         let db = self.db.read();
-        let handle = db.0.cf_handle(STATE_CF).expect(CF_ERROR);
+        let handle = db.db.cf_handle(STATE_CF).expect(CF_ERROR);
 
         let mut serialized_op_id = Vec::new();
         self.operation_id_serializer
             .serialize(op_id, &mut serialized_op_id)
             .expect(EXECUTED_OPS_ID_SER_ERROR);
 
-        db.0.get_cf(handle, op_id_key!(serialized_op_id))
+        db.db
+            .get_cf(handle, op_id_key!(serialized_op_id))
             .expect(CRUD_ERROR)
             .is_some()
     }
@@ -194,7 +196,7 @@ impl ExecutedOps {
     /// * `batch`: the given operation batch to update
     fn put_entry(&self, op_id: &OperationId, value: &(bool, Slot), batch: &mut DBBatch) {
         let db = self.db.read();
-        let handle = db.0.cf_handle(STATE_CF).expect(CF_ERROR);
+        let handle = db.db.cf_handle(STATE_CF).expect(CF_ERROR);
 
         let mut serialized_op_id = Vec::new();
         self.operation_id_serializer
@@ -223,7 +225,7 @@ impl ExecutedOps {
     /// * batch: the given operation batch to update
     fn delete_entry(&self, op_id: &OperationId, batch: &mut DBBatch) {
         let db = self.db.read();
-        let handle = db.0.cf_handle(STATE_CF).expect(CF_ERROR);
+        let handle = db.db.cf_handle(STATE_CF).expect(CF_ERROR);
 
         let mut serialized_op_id = Vec::new();
         self.operation_id_serializer
@@ -236,7 +238,7 @@ impl ExecutedOps {
 
 #[test]
 fn test_executed_ops_xor_computing() {
-    use massa_db::{MassaDB, STATE_HASH_INITIAL_BYTES};
+    use massa_db::{MassaDB, MassaDBConfig, STATE_HASH_INITIAL_BYTES};
     use massa_hash::Hash;
     use massa_models::prehash::PreHashMap;
     use massa_models::secure_share::Id;
@@ -249,8 +251,16 @@ fn test_executed_ops_xor_computing() {
     };
     let tempdir_a = TempDir::new().expect("cannot create temp directory");
     let tempdir_c = TempDir::new().expect("cannot create temp directory");
-    let db_a = Arc::new(RwLock::new(MassaDB::new(tempdir_a.path().to_path_buf())));
-    let db_c = Arc::new(RwLock::new(MassaDB::new(tempdir_c.path().to_path_buf())));
+    let db_a_config = MassaDBConfig {
+        path: tempdir_a.path().to_path_buf(),
+        max_history_length: 10,
+    };
+    let db_c_config = MassaDBConfig {
+        path: tempdir_c.path().to_path_buf(),
+        max_history_length: 10,
+    };
+    let db_a = Arc::new(RwLock::new(MassaDB::new(db_a_config)));
+    let db_c = Arc::new(RwLock::new(MassaDB::new(db_c_config)));
     // initialize the executed ops and executed ops changes
     let mut a = ExecutedOps::new(config.clone(), db_a.clone());
     let mut c = ExecutedOps::new(config, db_c.clone());

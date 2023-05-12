@@ -272,11 +272,11 @@ impl PoSFinalState {
     /// Deletes a given cycle from RocksDB
     pub fn delete_cycle_info(&mut self, cycle: u64, batch: &mut DBBatch) {
         let db = self.db.read();
-        let handle = db.0.cf_handle(STATE_CF).expect(CF_ERROR);
+        let handle = db.db.cf_handle(STATE_CF).expect(CF_ERROR);
 
         let prefix = self.cycle_history_cycle_prefix(cycle);
 
-        for (serialized_key, _) in db.0.prefix_iterator_cf(handle, &prefix).flatten() {
+        for (serialized_key, _) in db.db.prefix_iterator_cf(handle, &prefix).flatten() {
             if !serialized_key.starts_with(prefix.as_bytes()) {
                 break;
             }
@@ -600,12 +600,12 @@ impl PoSFinalState {
             .and_then(|info| {
                 let cycle = info.0;
                 let db = self.db.read();
-                let handle = db.0.cf_handle(STATE_CF).expect(CF_ERROR);
+                let handle = db.db.cf_handle(STATE_CF).expect(CF_ERROR);
 
                 let key = roll_count_key!(self.cycle_history_cycle_prefix(cycle), addr);
 
                 if let Some(serialized_value) =
-                    db.0.get_cf(handle, key).expect(CYCLE_HISTORY_DESER_ERROR)
+                    db.db.get_cf(handle, key).expect(CYCLE_HISTORY_DESER_ERROR)
                 {
                     let (_, amount) = self
                         .cycle_info_deserializer
@@ -628,12 +628,12 @@ impl PoSFinalState {
         match cycle.checked_sub(3) {
             Some(lookback_cycle) => {
                 let db = self.db.read();
-                let handle = db.0.cf_handle(STATE_CF).expect(CF_ERROR);
+                let handle = db.db.cf_handle(STATE_CF).expect(CF_ERROR);
 
                 let key = roll_count_key!(self.cycle_history_cycle_prefix(lookback_cycle), addr);
 
                 if let Some(serialized_value) =
-                    db.0.get_cf(handle, key).expect(CYCLE_HISTORY_DESER_ERROR)
+                    db.db.get_cf(handle, key).expect(CYCLE_HISTORY_DESER_ERROR)
                 {
                     let (_, amount) = self
                         .cycle_info_deserializer
@@ -658,7 +658,7 @@ impl PoSFinalState {
         R: RangeBounds<Slot>,
     {
         let db = self.db.read();
-        let handle = db.0.cf_handle(STATE_CF).expect(CF_ERROR);
+        let handle = db.db.cf_handle(STATE_CF).expect(CF_ERROR);
 
         let mut deferred_credits = DeferredCredits::new_without_hash();
 
@@ -686,8 +686,9 @@ impl PoSFinalState {
             _ => {}
         };
 
-        for (serialized_key, serialized_value) in
-            db.0.iterator_cf(
+        for (serialized_key, serialized_value) in db
+            .db
+            .iterator_cf(
                 handle,
                 IteratorMode::From(&start_key_buffer, Direction::Forward),
             )
@@ -746,7 +747,7 @@ impl PoSFinalState {
 
     fn put_cycle_history_complete(&mut self, cycle: u64, value: bool, batch: &mut DBBatch) {
         let db = self.db.read();
-        let handle = db.0.cf_handle(STATE_CF).expect(CF_ERROR);
+        let handle = db.db.cf_handle(STATE_CF).expect(CF_ERROR);
 
         let prefix = self.cycle_history_cycle_prefix(cycle);
 
@@ -761,11 +762,11 @@ impl PoSFinalState {
 
     fn is_cycle_complete(&self, cycle: u64) -> bool {
         let db = self.db.read();
-        let handle = db.0.cf_handle(STATE_CF).expect(CF_ERROR);
+        let handle = db.db.cf_handle(STATE_CF).expect(CF_ERROR);
 
         let prefix = self.cycle_history_cycle_prefix(cycle);
 
-        if let Ok(Some(complete_value)) = db.0.get_cf(handle, complete_key!(prefix)) {
+        if let Ok(Some(complete_value)) = db.db.get_cf(handle, complete_key!(prefix)) {
             complete_value.len() == 1 && complete_value[0] == 1
         } else {
             false
@@ -779,7 +780,7 @@ impl PoSFinalState {
         batch: &mut DBBatch,
     ) {
         let db = self.db.read();
-        let handle = db.0.cf_handle(STATE_CF).expect(CF_ERROR);
+        let handle = db.db.cf_handle(STATE_CF).expect(CF_ERROR);
 
         let prefix = self.cycle_history_cycle_prefix(cycle);
 
@@ -800,7 +801,7 @@ impl PoSFinalState {
 
     fn put_cycle_history_rng_seed(&mut self, cycle: u64, value: BitVec<u8>, batch: &mut DBBatch) {
         let db = self.db.read();
-        let handle = db.0.cf_handle(STATE_CF).expect(CF_ERROR);
+        let handle = db.db.cf_handle(STATE_CF).expect(CF_ERROR);
 
         let prefix = self.cycle_history_cycle_prefix(cycle);
 
@@ -826,7 +827,7 @@ impl PoSFinalState {
         batch: &mut DBBatch,
     ) {
         let db = self.db.read();
-        let handle = db.0.cf_handle(STATE_CF).expect(CF_ERROR);
+        let handle = db.db.cf_handle(STATE_CF).expect(CF_ERROR);
 
         let prefix = self.cycle_history_cycle_prefix(cycle);
 
@@ -892,7 +893,7 @@ impl PoSFinalState {
         batch: &mut DBBatch,
     ) {
         let db = self.db.read();
-        let handle = db.0.cf_handle(STATE_CF).expect(CF_ERROR);
+        let handle = db.db.cf_handle(STATE_CF).expect(CF_ERROR);
 
         let mut serialized_key = Vec::new();
         self.deferred_credits_serializer
@@ -941,12 +942,13 @@ impl PoSFinalState {
     /// Get all the roll counts for a given cycle
     pub fn get_all_roll_counts(&self, cycle: u64) -> BTreeMap<Address, u64> {
         let db = self.db.read();
-        let handle = db.0.cf_handle(STATE_CF).expect(CF_ERROR);
+        let handle = db.db.cf_handle(STATE_CF).expect(CF_ERROR);
 
         let mut roll_counts: BTreeMap<Address, u64> = BTreeMap::new();
 
         let prefix = roll_count_prefix!(self.cycle_history_cycle_prefix(cycle));
-        for (serialized_key, serialized_value) in db.0.prefix_iterator_cf(handle, &prefix).flatten()
+        for (serialized_key, serialized_value) in
+            db.db.prefix_iterator_cf(handle, &prefix).flatten()
         {
             if !serialized_key.starts_with(prefix.as_bytes()) {
                 break;
@@ -996,14 +998,15 @@ impl PoSFinalState {
         cycle: u64,
     ) -> PreHashMap<Address, ProductionStats> {
         let db = self.db.read();
-        let handle = db.0.cf_handle(STATE_CF).expect(CF_ERROR);
+        let handle = db.db.cf_handle(STATE_CF).expect(CF_ERROR);
 
         let mut production_stats: PreHashMap<Address, ProductionStats> = PreHashMap::default();
         let mut cur_production_stat = ProductionStats::default();
         let mut cur_address = None;
 
         let prefix = prod_stats_prefix!(self.cycle_history_cycle_prefix(cycle));
-        for (serialized_key, serialized_value) in db.0.prefix_iterator_cf(handle, &prefix).flatten()
+        for (serialized_key, serialized_value) in
+            db.db.prefix_iterator_cf(handle, &prefix).flatten()
         {
             if !serialized_key.starts_with(prefix.as_bytes()) {
                 break;
@@ -1052,14 +1055,15 @@ impl PoSFinalState {
 
     fn get_cycle_history_rng_seed(&self, cycle: u64) -> BitVec<u8> {
         let db = self.db.read();
-        let handle = db.0.cf_handle(STATE_CF).expect(CF_ERROR);
+        let handle = db.db.cf_handle(STATE_CF).expect(CF_ERROR);
 
         if let Some((cached_cycle, rng_seed)) = &self.rng_seed_cache && *cached_cycle == cycle {
             return rng_seed.clone();
         }
 
-        let serialized_rng_seed =
-            db.0.get_cf(
+        let serialized_rng_seed = db
+            .db
+            .get_cf(
                 handle,
                 rng_seed_key!(self.cycle_history_cycle_prefix(cycle)),
             )
@@ -1078,10 +1082,11 @@ impl PoSFinalState {
 
     fn get_cycle_history_final_state_hash_snapshot(&self, cycle: u64) -> Option<Hash> {
         let db = self.db.read();
-        let handle = db.0.cf_handle(STATE_CF).expect(CF_ERROR);
+        let handle = db.db.cf_handle(STATE_CF).expect(CF_ERROR);
 
-        let serialized_state_hash =
-            db.0.get_cf(
+        let serialized_state_hash = db
+            .db
+            .get_cf(
                 handle,
                 final_state_hash_snapshot_key!(self.cycle_history_cycle_prefix(cycle)),
             )
@@ -1098,28 +1103,28 @@ impl PoSFinalState {
 
     fn get_cycle_history_cycles(&self) -> Vec<(u64, bool)> {
         let db = self.db.read();
-        let handle = db.0.cf_handle(STATE_CF).expect(CF_ERROR);
+        let handle = db.db.cf_handle(STATE_CF).expect(CF_ERROR);
 
         let mut found_cycles: Vec<(u64, bool)> = Vec::new();
 
         while let Some(Ok((serialized_key, _))) = match found_cycles.last() {
-            Some((prev_cycle, _)) => {
-                db.0.iterator_cf(
+            Some((prev_cycle, _)) => db
+                .db
+                .iterator_cf(
                     handle,
                     IteratorMode::From(
                         &self.cycle_history_cycle_prefix(prev_cycle.saturating_add(1)),
                         Direction::Forward,
                     ),
                 )
-                .next()
-            }
-            None => {
-                db.0.iterator_cf(
+                .next(),
+            None => db
+                .db
+                .iterator_cf(
                     handle,
                     IteratorMode::From(CYCLE_HISTORY_PREFIX.as_bytes(), Direction::Forward),
                 )
-                .next()
-            }
+                .next(),
         } {
             if !serialized_key.starts_with(CYCLE_HISTORY_PREFIX.as_bytes()) {
                 break;
@@ -1158,7 +1163,7 @@ impl PoSFinalState {
     /// Gets the deferred credits for a given address that will be credited at a given slot
     pub fn get_address_credits_for_slot(&self, addr: &Address, slot: &Slot) -> Option<Amount> {
         let db = self.db.read();
-        let handle = db.0.cf_handle(STATE_CF).expect(CF_ERROR);
+        let handle = db.db.cf_handle(STATE_CF).expect(CF_ERROR);
 
         let mut serialized_key = Vec::new();
         self.deferred_credits_serializer
@@ -1171,7 +1176,7 @@ impl PoSFinalState {
             .serialize(addr, &mut serialized_key)
             .expect(DEFERRED_CREDITS_SER_ERROR);
 
-        match db.0.get_cf(handle, deferred_credits_key!(serialized_key)) {
+        match db.db.get_cf(handle, deferred_credits_key!(serialized_key)) {
             Ok(Some(serialized_amount)) => {
                 let (_, amount) = self
                     .deferred_credits_deserializer
@@ -1192,7 +1197,7 @@ impl PoSFinalState {
         address: Address,
     ) -> Option<ProductionStats> {
         let db = self.db.read();
-        let handle = db.0.cf_handle(STATE_CF).expect(CF_ERROR);
+        let handle = db.db.cf_handle(STATE_CF).expect(CF_ERROR);
 
         let prefix = self.cycle_history_cycle_prefix(cycle);
 
@@ -1201,7 +1206,7 @@ impl PoSFinalState {
             (handle, prod_stats_success_key!(prefix, address)),
         ];
 
-        let results = db.0.multi_get_cf(query);
+        let results = db.db.multi_get_cf(query);
 
         match (results.get(0), results.get(1)) {
             (Some(Ok(Some(serialized_fail))), Some(Ok(Some(serialized_success)))) => {
@@ -1236,13 +1241,14 @@ impl PoSFinalState {
     /// Queries all the deferred credits in the database
     pub fn get_deferred_credits(&self) -> DeferredCredits {
         let db = self.db.read();
-        let handle = db.0.cf_handle(STATE_CF).expect(CF_ERROR);
+        let handle = db.db.cf_handle(STATE_CF).expect(CF_ERROR);
 
         let mut deferred_credits = DeferredCredits::new_with_hash();
 
-        for (serialized_key, serialized_value) in
-            db.0.prefix_iterator_cf(handle, DEFERRED_CREDITS_PREFIX)
-                .flatten()
+        for (serialized_key, serialized_value) in db
+            .db
+            .prefix_iterator_cf(handle, DEFERRED_CREDITS_PREFIX)
+            .flatten()
         {
             if !serialized_key.starts_with(DEFERRED_CREDITS_PREFIX.as_bytes()) {
                 break;

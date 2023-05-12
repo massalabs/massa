@@ -60,25 +60,25 @@ pub fn assert_eq_final_state(v1: &FinalState, v2: &FinalState) {
     let db1 = v1.db.read();
     let db2 = v2.db.read();
 
-    let handle_state_db1 = db1.0.cf_handle(STATE_CF).unwrap();
-    let handle_state_db2 = db2.0.cf_handle(STATE_CF).unwrap();
+    let handle_state_db1 = db1.db.cf_handle(STATE_CF).unwrap();
+    let handle_state_db2 = db2.db.cf_handle(STATE_CF).unwrap();
     let iter_state_db1 = db1
-        .0
+        .db
         .iterator_cf(handle_state_db1, rocksdb::IteratorMode::Start)
         .flatten();
     let iter_state_db2 = db2
-        .0
+        .db
         .iterator_cf(handle_state_db2, rocksdb::IteratorMode::Start)
         .flatten();
 
-    let handle_metadata_db1 = db1.0.cf_handle(METADATA_CF).unwrap();
-    let handle_metadata_db2 = db2.0.cf_handle(METADATA_CF).unwrap();
+    let handle_metadata_db1 = db1.db.cf_handle(METADATA_CF).unwrap();
+    let handle_metadata_db2 = db2.db.cf_handle(METADATA_CF).unwrap();
     let iter_metadata_db1 = db1
-        .0
+        .db
         .iterator_cf(handle_metadata_db1, rocksdb::IteratorMode::Start)
         .flatten();
     let iter_metadata_db2 = db2
-        .0
+        .db
         .iterator_cf(handle_metadata_db2, rocksdb::IteratorMode::Start)
         .flatten();
 
@@ -88,11 +88,11 @@ pub fn assert_eq_final_state(v1: &FinalState, v2: &FinalState) {
     assert_eq!(count_1, count_2, "state count mismatch");
 
     let iter_state_db1 = db1
-        .0
+        .db
         .iterator_cf(handle_state_db1, rocksdb::IteratorMode::Start)
         .flatten();
     let iter_state_db2 = db2
-        .0
+        .db
         .iterator_cf(handle_state_db2, rocksdb::IteratorMode::Start)
         .flatten();
 

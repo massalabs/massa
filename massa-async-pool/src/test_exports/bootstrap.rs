@@ -74,11 +74,11 @@ pub fn assert_eq_async_pool_bootstrap_state(v1: &AsyncPool, v2: &AsyncPool) {
     );
     let db1 = v1.db.read();
     let db2 = v2.db.read();
-    let handle1 = db1.0.cf_handle(STATE_CF).unwrap();
-    let handle2 = db2.0.cf_handle(STATE_CF).unwrap();
+    let handle1 = db1.db.cf_handle(STATE_CF).unwrap();
+    let handle2 = db2.db.cf_handle(STATE_CF).unwrap();
     assert_eq!(
-        db1.0.iterator_cf(handle1, IteratorMode::Start).count(),
-        db2.0.iterator_cf(handle2, IteratorMode::Start).count(),
+        db1.db.iterator_cf(handle1, IteratorMode::Start).count(),
+        db2.db.iterator_cf(handle2, IteratorMode::Start).count(),
         "message values count mismatch"
     );
 
@@ -90,9 +90,9 @@ pub fn assert_eq_async_pool_bootstrap_state(v1: &AsyncPool, v2: &AsyncPool) {
     const TOTAL_FIELDS_COUNT: u8 = 13;
 
     for (val1, val2) in db1
-        .0
+        .db
         .iterator_cf(handle1, IteratorMode::Start)
-        .zip(db2.0.iterator_cf(handle2, IteratorMode::Start))
+        .zip(db2.db.iterator_cf(handle2, IteratorMode::Start))
     {
         let val1 = val1.unwrap();
         let val2 = val2.unwrap();

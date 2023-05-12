@@ -20,7 +20,7 @@ use massa_bootstrap::{
 use massa_consensus_exports::events::ConsensusEvent;
 use massa_consensus_exports::{ConsensusChannels, ConsensusConfig, ConsensusManager};
 use massa_consensus_worker::start_consensus_worker;
-use massa_db::MassaDB;
+use massa_db::{MassaDB, MassaDBConfig};
 use massa_executed_ops::{ExecutedDenunciationsConfig, ExecutedOpsConfig};
 use massa_execution_exports::{
     ExecutionChannels, ExecutionConfig, ExecutionManager, GasCosts, StorageCostsConstants,
@@ -204,9 +204,11 @@ async fn launch(
         }
     }
 
-    let db = Arc::new(RwLock::new(MassaDB::new(
-        SETTINGS.ledger.disk_ledger_path.clone(),
-    )));
+    let db_config = MassaDBConfig {
+        path: SETTINGS.ledger.disk_ledger_path.clone(),
+        max_history_length: SETTINGS.ledger.final_history_length,
+    };
+    let db = Arc::new(RwLock::new(MassaDB::new(db_config)));
 
     // Create final ledger
     let ledger = FinalLedger::new(ledger_config.clone(), db.clone());

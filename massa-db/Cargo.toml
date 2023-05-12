@@ -7,6 +7,8 @@ edition = "2021"
 
 [dependencies]
 rocksdb = "0.20"
+displaydoc = "0.2"
+thiserror = "1.0"
 
 # Custom modules
 massa_hash = { path = "../massa-hash" }

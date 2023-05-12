@@ -73,11 +73,12 @@ impl ExecutedDenunciations {
         self.sorted_denunciations.clear();
 
         let db = self.db.read();
-        let handle = db.0.cf_handle(STATE_CF).expect(CF_ERROR);
+        let handle = db.db.cf_handle(STATE_CF).expect(CF_ERROR);
 
-        for (serialized_de_idx, _) in
-            db.0.prefix_iterator_cf(handle, EXECUTED_DENUNCIATIONS_PREFIX)
-                .flatten()
+        for (serialized_de_idx, _) in db
+            .db
+            .prefix_iterator_cf(handle, EXECUTED_DENUNCIATIONS_PREFIX)
+            .flatten()
         {
             if !serialized_de_idx.starts_with(EXECUTED_DENUNCIATIONS_PREFIX.as_bytes()) {
                 break;
@@ -127,14 +128,15 @@ impl ExecutedDenunciations {
     /// Check if a denunciation (e.g. a denunciation index) was executed
     pub fn contains(&self, de_idx: &DenunciationIndex) -> bool {
         let db = self.db.read();
-        let handle = db.0.cf_handle(STATE_CF).expect(CF_ERROR);
+        let handle = db.db.cf_handle(STATE_CF).expect(CF_ERROR);
 
         let mut serialized_de_idx = Vec::new();
         self.denunciation_index_serializer
             .serialize(de_idx, &mut serialized_de_idx)
             .expect(EXECUTED_DENUNCIATIONS_INDEX_SER_ERROR);
 
-        db.0.get_cf(handle, denunciation_index_key!(serialized_de_idx))
+        db.db
+            .get_cf(handle, denunciation_index_key!(serialized_de_idx))
             .expect(CRUD_ERROR)
             .is_some()
     }
@@ -190,7 +192,7 @@ impl ExecutedDenunciations {
     /// * `batch`: the given operation batch to update
     fn put_entry(&self, de_idx: &DenunciationIndex, batch: &mut DBBatch) {
         let db = self.db.read();
-        let handle = db.0.cf_handle(STATE_CF).expect(CF_ERROR);
+        let handle = db.db.cf_handle(STATE_CF).expect(CF_ERROR);
 
         let mut serialized_de_idx = Vec::new();
         self.denunciation_index_serializer
@@ -211,7 +213,7 @@ impl ExecutedDenunciations {
     /// * batch: the given operation batch to update
     fn delete_entry(&self, de_idx: &DenunciationIndex, batch: &mut DBBatch) {
         let db = self.db.read();
-        let handle = db.0.cf_handle(STATE_CF).expect(CF_ERROR);
+        let handle = db.db.cf_handle(STATE_CF).expect(CF_ERROR);
 
         let mut serialized_de_idx = Vec::new();
         self.denunciation_index_serializer
