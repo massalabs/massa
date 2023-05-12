@@ -186,6 +186,7 @@ impl PeerManagementHandler {
                             match message {
                                 PeerManagementMessage::NewPeerConnected((peer_id, listeners)) => {
                                     debug!("Received peer message: NewPeerConnected from {}", peer_id);
+                                                //NON BLOQUANT
                                     if let Err(e) = test_sender.send((peer_id, listeners)) {
                                         error!("error when sending msg to peer tester : {}", e);
                                     }
@@ -193,6 +194,7 @@ impl PeerManagementHandler {
                                 PeerManagementMessage::ListPeers(peers) => {
                                     debug!("Received peer message: List peers from {}", peer_id);
                                     for (peer_id, listeners) in peers.into_iter() {
+                                                    //NON BLOQUANT
                                         if let Err(e) = test_sender.send((peer_id, listeners)) {
                                             error!("error when sending msg to peer tester : {}", e);
                                         }

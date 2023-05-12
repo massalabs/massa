@@ -270,6 +270,7 @@ impl RetrievalThread {
             self.stored_operations
                 .insert(Instant::now(), to_announce.clone());
             self.storage.extend(ops_to_propagate);
+                        //NON BLOQUANT
             self.internal_sender
                 .send(OperationHandlerPropagationCommand::AnnounceOperations(
                     to_announce,

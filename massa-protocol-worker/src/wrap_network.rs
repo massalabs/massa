@@ -49,6 +49,7 @@ impl ActiveConnectionsTrait for SharedActiveConnections {
         high_priority: bool,
     ) -> Result<(), ProtocolError> {
         if let Some(connection) = self.read().connections.get(peer_id) {
+                        //NON BLOQUANT
             connection
                 .send_channels
                 .send(message_serializer, message, high_priority)

@@ -76,6 +76,7 @@ impl ProtocolController for ProtocolControllerImpl {
         self.sender_block_handler
             .as_ref()
             .unwrap()
+            //NON BLOQUANT
             .send(BlockHandlerPropagationCommand::IntegratedBlock { block_id, storage })
             .map_err(|_| ProtocolError::ChannelError("integrated_block command send error".into()))
     }
@@ -85,6 +86,7 @@ impl ProtocolController for ProtocolControllerImpl {
         self.sender_block_handler
             .as_ref()
             .unwrap()
+            //NON BLOQUANT
             .send(BlockHandlerPropagationCommand::AttackBlockDetected(
                 block_id,
             ))
@@ -117,6 +119,7 @@ impl ProtocolController for ProtocolControllerImpl {
         self.sender_operation_handler
             .as_ref()
             .unwrap()
+            //NON BLOQUANT
             .send(OperationHandlerPropagationCommand::AnnounceOperations(
                 operations,
             ))
@@ -130,6 +133,7 @@ impl ProtocolController for ProtocolControllerImpl {
         self.sender_endorsement_handler
             .as_ref()
             .unwrap()
+            //NON BLOQUANT
             .send(EndorsementHandlerPropagationCommand::PropagateEndorsements(
                 endorsements,
             ))
@@ -151,6 +155,7 @@ impl ProtocolController for ProtocolControllerImpl {
         self.sender_connectivity_thread
             .as_ref()
             .unwrap()
+            //NON BLOQUANT
             .send(ConnectivityCommand::GetStats { responder: sender })
             .map_err(|_| ProtocolError::ChannelError("get_stats command send error".into()))?;
         receiver
@@ -162,9 +167,11 @@ impl ProtocolController for ProtocolControllerImpl {
         self.sender_peer_management_thread
             .as_ref()
             .unwrap()
+            //NON BLOQUANT
             .send(PeerManagementCmd::Ban(peer_ids))
             .map_err(|_| ProtocolError::ChannelError("ban_peers command send error".into()))
     }
+            //NON BLOQUANT
 
     fn unban_peers(&self, peer_ids: Vec<PeerId>) -> Result<(), ProtocolError> {
         self.sender_peer_management_thread
@@ -173,6 +180,7 @@ impl ProtocolController for ProtocolControllerImpl {
             .send(PeerManagementCmd::Unban(peer_ids))
             .map_err(|_| ProtocolError::ChannelError("unban_peers command send error".into()))
     }
+            //NON BLOQUANT
 
     fn get_bootstrap_peers(&self) -> Result<BootstrapPeers, ProtocolError> {
         let (sender, receiver) = crossbeam::channel::bounded(1);

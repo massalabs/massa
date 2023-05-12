@@ -120,6 +120,7 @@ impl RetrievalThread {
         loop {
             select! {
                 recv(self.receiver_network) -> msg => {
+                    // Cache
                     match msg {
                         Ok((peer_id, message_id, message)) => {
                             block_message_deserializer.set_message_id(message_id);
@@ -1010,6 +1011,7 @@ impl RetrievalThread {
                 cache_write.insert_checked_operation(op_id);
             }
         }
+         //NON BLOQUANT
         self.sender_propagation_ops
             .send(OperationHandlerPropagationCommand::AnnounceOperations(
                 new_operations.keys().copied().collect(),

@@ -220,6 +220,7 @@ impl RetrievalThread {
                     .collect()
             };
             endorsements_to_propagate.drop_endorsement_refs(&endorsements_to_not_propagate);
+                        //NON BLOQUANT
             if let Err(err) = self.internal_sender.send(
                 EndorsementHandlerPropagationCommand::PropagateEndorsements(
                     endorsements_to_propagate,

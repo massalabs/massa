@@ -158,6 +158,7 @@ impl PropagationThread {
     }
 
     /// send a ban peer command to the peer handler
+                //NON BLOQUANT
     fn ban_node(&mut self, peer_id: &PeerId) -> Result<(), ProtocolError> {
         massa_trace!("ban node from retrieval thread", { "peer_id": peer_id.to_string() });
         self.peer_cmd_sender

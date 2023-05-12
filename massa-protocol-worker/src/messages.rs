@@ -245,6 +245,7 @@ impl PeerNetMessagesHandler for MessagesHandler {
         let endorsement_max_id = EndorsementMessage::max_id();
         let operation_max_id = OperationMessage::max_id();
         let peer_management_max_id = PeerManagementMessage::max_id();
+                    //NON BLOQUANT
         if id < block_max_id {
             self.sender_blocks
                 .send((peer_id.clone(), id, data.to_vec()))
