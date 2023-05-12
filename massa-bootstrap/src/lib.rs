@@ -23,6 +23,7 @@ use std::sync::Arc;
 pub mod client;
 mod client_binder;
 mod error;
+pub use error::BootstrapError;
 mod listener;
 pub use listener::BootstrapTcpListener;
 mod messages;

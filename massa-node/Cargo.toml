@@ -51,17 +51,12 @@ massa_factory_exports = { path = "../massa-factory-exports" }
 massa_factory_worker = { path = "../massa-factory-worker" }
 massa_grpc = { path = "../massa-grpc" }
 massa_versioning_worker = { path = "../massa-versioning-worker" }
+ctrlc = "3.2.5"
 
 # for more information on what are the following features used for, see the cargo.toml at workspace level
 [features]
 beta = []
 deadlock_detection = []
 bootstrap_server = []
-sandbox = [
-    "massa_bootstrap/sandbox",
-    "massa_consensus_worker/sandbox",
-    "massa_execution_worker/sandbox",
-    "massa_final_state/sandbox",
-    "massa_models/sandbox",
-]
+sandbox = ["massa_bootstrap/sandbox", "massa_consensus_worker/sandbox", "massa_execution_worker/sandbox", "massa_final_state/sandbox", "massa_models/sandbox"]
 create_snapshot = ["massa_final_state/create_snapshot"]
