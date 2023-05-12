@@ -142,6 +142,8 @@ pub struct ProtocolConfig {
     pub last_start_period: u64,
     /// try connection timer
     pub try_connection_timer: MassaTime,
+    /// Max in connections
+    pub max_in_connections: usize,
     /// Timeout connection
     pub timeout_connection: MassaTime,
     /// Number of bytes per second that can be read/write in a connection (should be a 10 multiplier)

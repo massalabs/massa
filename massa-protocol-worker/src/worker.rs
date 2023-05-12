@@ -250,6 +250,7 @@ pub fn start_protocol_controller(
             .max_in_connections_post_handshake,
         max_in_connections_per_ip: config.default_category_info.max_in_connections_per_ip,
     };
+    peernet_config.max_in_connections = config.max_in_connections;
 
     let network_controller = Box::new(NetworkControllerImpl::new(PeerNetManager::new(
         peernet_config,

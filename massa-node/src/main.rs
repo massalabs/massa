@@ -520,6 +520,7 @@ async fn launch(
         read_write_limit_bytes_per_second: SETTINGS.protocol.read_write_limit_bytes_per_second
             as u128,
         try_connection_timer: SETTINGS.protocol.try_connection_timer,
+        max_in_connections: SETTINGS.protocol.max_in_connections,
         timeout_connection: SETTINGS.protocol.timeout_connection,
         routable_ip: SETTINGS
             .protocol

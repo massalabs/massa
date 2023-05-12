@@ -76,6 +76,7 @@ impl Default for ProtocolConfig {
             timeout_connection: MassaTime::from_millis(1000),
             try_connection_timer: MassaTime::from_millis(5000),
             routable_ip: None,
+            max_in_connections: 10,
             debug: true,
             peers_categories: HashMap::default(),
             default_category_info: PeerCategoryInfo {

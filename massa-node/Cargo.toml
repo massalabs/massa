@@ -18,7 +18,7 @@ tracing = { version = "0.1", features = [
     "max_level_debug",
     "release_max_level_debug",
 ] }
-peernet = { git = "https://github.com/massalabs/PeerNet", rev = "cf4cb09deda8cdd9b8893cc9595ac3b255aa74c9" }
+peernet = { git = "https://github.com/massalabs/PeerNet", rev = "2338a3256655ece10ec5d11398c0bdb6b93b764c" }
 tracing-subscriber = "0.3"
 paw = "1.0"
 structopt = { version = "0.3", features = ["paw"] }

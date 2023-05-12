@@ -231,6 +231,8 @@ pub struct ProtocolSettings {
     pub try_connection_timer: MassaTime,
     /// Timeout connection
     pub timeout_connection: MassaTime,
+    /// Nb in connections
+    pub max_in_connections: usize,
     /// Peers limits per category
     pub peers_categories: HashMap<String, PeerCategoryInfo>,
     /// Limits for default category
