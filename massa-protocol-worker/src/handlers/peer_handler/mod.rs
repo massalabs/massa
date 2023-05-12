@@ -78,7 +78,7 @@ impl PeerManagementHandler {
     ) -> Self {
         let message_serializer = PeerManagementMessageSerializer::new();
 
-        let (test_sender, testers) = Tester::run(
+        let ((test_sender, test_receiver), testers) = Tester::run(
             config,
             active_connections.clone(),
             peer_db.clone(),
@@ -149,6 +149,9 @@ impl PeerManagementHandler {
                                 }
                              },
                              Ok(PeerManagementCmd::Stop) => {
+                                while let Ok(_msg) = test_receiver.try_recv() {
+                                    // nothing to do just clean the channel
+                                }
                                 return;
                              },
                             Err(e) => {
@@ -187,14 +190,14 @@ impl PeerManagementHandler {
                                 PeerManagementMessage::NewPeerConnected((peer_id, listeners)) => {
                                     debug!("Received peer message: NewPeerConnected from {}", peer_id);
                                     if let Err(e) = test_sender.try_send((peer_id, listeners)) {
-                                        error!("error when sending msg to peer tester : {}", e);
+                                        debug!("error when sending msg to peer tester : {}", e);
                                     }
                                 }
                                 PeerManagementMessage::ListPeers(peers) => {
                                     debug!("Received peer message: List peers from {}", peer_id);
                                     for (peer_id, listeners) in peers.into_iter() {
                                         if let Err(e) = test_sender.try_send((peer_id, listeners)) {
-                                            error!("error when sending msg to peer tester : {}", e);
+                                            debug!("error when sending msg to peer tester : {}", e);
                                         }
                                     }
                                 }

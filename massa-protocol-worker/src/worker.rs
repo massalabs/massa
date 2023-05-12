@@ -196,7 +196,16 @@ pub fn start_protocol_controller(
     )?;
 
     let initial_peers = if let Some(bootstrap_peers) = bootstrap_peers {
-        bootstrap_peers.0.into_iter().collect()
+        //TODO: Remove when we will be able to test the bootstrap peer even if someone else found them full
+        bootstrap_peers
+            .0
+            .into_iter()
+            .chain(
+                initial_peers_infos
+                    .iter()
+                    .map(|(peer_id, data)| (peer_id.clone(), data.listeners.clone())),
+            )
+            .collect()
     } else {
         initial_peers_infos
             .iter()

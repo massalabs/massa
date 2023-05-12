@@ -208,7 +208,7 @@
     # time threshold after which endorsement are not propagated
     max_endorsements_propagation_time = 48000
     # number of thread tester
-    thread_tester_count = 5
+    thread_tester_count = 25
     # Nb max in connections that we accept
     max_in_connections = 100
     # Peer default category limits
