@@ -7,7 +7,7 @@ use std::{
 };
 
 use crate::messages::MessagesHandler;
-use crossbeam::channel::Sender;
+use crossbeam::channel::{Receiver, Sender};
 use massa_models::version::{Version, VersionDeserializer};
 use massa_protocol_exports::{PeerConnectionType, ProtocolConfig};
 use massa_serialization::{DeserializeError, Deserializer};
@@ -203,7 +203,10 @@ impl Tester {
         target_out_connections: HashMap<String, (Vec<IpAddr>, usize)>,
         default_target_out_connections: usize,
     ) -> (
-        Sender<(PeerId, HashMap<SocketAddr, TransportType>)>,
+        (
+            Sender<(PeerId, HashMap<SocketAddr, TransportType>)>,
+            Receiver<(PeerId, HashMap<SocketAddr, TransportType>)>,
+        ),
         Vec<Tester>,
     ) {
         let mut testers = Vec::new();
@@ -224,7 +227,7 @@ impl Tester {
             ));
         }
 
-        (test_sender, testers)
+        ((test_sender, test_receiver), testers)
     }
 
     pub fn tcp_handshake(
@@ -415,7 +418,7 @@ impl Tester {
                                 if listener.1.is_empty() {
                                     continue;
                                 }
-                                //Test 
+                                //Test
                                 let peers_connected = active_connections.get_peers_connected();
                                 let slots_out_connections: HashMap<String, (Vec<IpAddr>, usize)> = target_out_connections
                                     .iter()

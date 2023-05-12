@@ -78,7 +78,7 @@ impl PeerManagementHandler {
     ) -> Self {
         let message_serializer = PeerManagementMessageSerializer::new();
 
-        let (test_sender, testers) = Tester::run(
+        let ((test_sender, test_receiver), testers) = Tester::run(
             config,
             active_connections.clone(),
             peer_db.clone(),
@@ -149,6 +149,9 @@ impl PeerManagementHandler {
                                 }
                              },
                              Ok(PeerManagementCmd::Stop) => {
+                                while let Ok(_msg) = test_receiver.try_recv() {
+                                    // nothing to do just clean the channel
+                                }
                                 return;
                              },
                             Err(e) => {
