@@ -12,7 +12,7 @@ documentation = "https://docs.massa.net/"
 [dependencies]
 displaydoc = "0.2"
 thiserror = "1.0"
-tonic = { version = "0.9.1", features = ["gzip"] }
+tonic = { version = "0.9.1", features = ["gzip", "tls"] }
 tonic-web = "0.9.1"
 tonic-reflection = "0.9.1"
 tonic-health = "0.9.1"
