@@ -772,6 +772,7 @@ impl MipStoreRaw {
 
     /// Check if store is coherent with given last network shutdown
     /// On a network shutdown, the MIP infos will be edited but we still need to check if this is coherent
+    #[allow(dead_code)]
     fn is_coherent_with_shutdown_period(
         &self,
         shutdown_start: Slot,
@@ -814,6 +815,7 @@ impl MipStoreRaw {
         Ok(is_coherent)
     }
 
+    #[allow(dead_code)]
     fn update_for_network_shutdown(
         &mut self,
         shutdown_start: Slot,
