@@ -1,5 +1,6 @@
 use std::{
     collections::HashMap,
+    io::Read,
     net::{IpAddr, SocketAddr},
     thread::JoinHandle,
     time::Duration,
@@ -15,10 +16,9 @@ use peernet::{
     config::PeerNetConfiguration,
     error::{PeerNetError, PeerNetResult},
     messages::MessagesHandler as PeerNetMessagesHandler,
-    network_manager::PeerNetManager,
     peer::InitConnectionHandler,
     peer_id::PeerId,
-    transports::{endpoint::Endpoint, OutConnectionConfig, TcpOutConnectionConfig, TransportType},
+    transports::{endpoint::Endpoint, TransportType},
     types::KeyPair,
 };
 use std::cmp::Reverse;
@@ -106,6 +106,7 @@ impl InitConnectionHandler for TesterHandshake {
                 PeerNetError::HandshakeError
                     .error("Massa Handshake", Some("Failed to get id".to_string())),
             )?;
+            dbg!(id);
             match id {
                 0 => {
                     let (_, announcement) = self
@@ -227,6 +228,161 @@ impl Tester {
         (test_sender, testers)
     }
 
+    pub fn tcp_handshake(
+        messages_handler: MessagesHandler,
+        peer_db: SharedPeerDB,
+        announcement_deserializer: AnnouncementDeserializer,
+        version_deserializer: VersionDeserializer,
+        addr: SocketAddr,
+        our_version: Version,
+    ) -> PeerNetResult<PeerId> {
+        let result = {
+            let mut socket =
+                std::net::TcpStream::connect_timeout(&addr, Duration::from_millis(1000))
+                    .map_err(|e| PeerNetError::PeerConnectionError.new("connect", e, None))?;
+
+            std::thread::sleep(Duration::from_millis(500));
+
+            // data.receive() from Endpoint
+            let mut len_bytes = vec![0u8; 4];
+            socket
+                .read_exact(&mut len_bytes)
+                .map_err(|err| PeerNetError::PeerConnectionError.new("recv len", err, None))?;
+
+            let res_size = u32::from_be_bytes(len_bytes.try_into().map_err(|err| {
+                PeerNetError::PeerConnectionError.error("recv len", Some(format!("{:?}", err)))
+            })?);
+            if res_size > 1048576000 {
+                return Err(PeerNetError::InvalidMessage
+                    .error("len too long", Some(format!("{:?}", res_size))));
+            }
+            let mut data = vec![0u8; res_size as usize];
+            socket
+                .read_exact(&mut data)
+                .map_err(|err| PeerNetError::PeerConnectionError.new("recv data", err, None))?;
+
+            // handshake
+            if data.is_empty() {
+                return Err(PeerNetError::HandshakeError.error(
+                    "Tester Handshake",
+                    Some(String::from("Peer didn't accepted us")),
+                ));
+            }
+            let peer_id = PeerId::from_bytes(&data[..32].try_into().map_err(|_| {
+                PeerNetError::HandshakeError.error(
+                    "Massa Handshake",
+                    Some("Failed to deserialize PeerId".to_string()),
+                )
+            })?)?;
+            let res = {
+                {
+                    // check if peer is banned
+                    let mut peer_db_write = peer_db.write();
+                    if let Some(info) = peer_db_write.peers.get_mut(&peer_id) {
+                        if info.state == super::PeerState::Banned {
+                            return Err(PeerNetError::HandshakeError
+                                .error("Tester Handshake", Some(String::from("Peer is banned"))));
+                        }
+                    }
+                }
+
+                let (data, version) = version_deserializer
+                    .deserialize::<DeserializeError>(&data[32..])
+                    .map_err(|err| {
+                        PeerNetError::HandshakeError.error(
+                            "Tester Handshake",
+                            Some(format!("Failed to deserialize version: {}", err)),
+                        )
+                    })?;
+                if !our_version.is_compatible(&version) {
+                    return Err(PeerNetError::HandshakeError.error(
+                        "Massa Handshake",
+                        Some(format!("Received version incompatible: {}", version)),
+                    ));
+                }
+                let id = data.first().ok_or(
+                    PeerNetError::HandshakeError
+                        .error("Massa Handshake", Some("Failed to get id".to_string())),
+                )?;
+                match id {
+                    0 => {
+                        let (_, announcement) = announcement_deserializer
+                            .deserialize::<DeserializeError>(&data[1..])
+                            .map_err(|err| {
+                                PeerNetError::HandshakeError.error(
+                                    "Tester Handshake",
+                                    Some(format!("Failed to deserialize announcement: {}", err)),
+                                )
+                            })?;
+
+                        if peer_id
+                            .verify_signature(&announcement.hash, &announcement.signature)
+                            .is_err()
+                        {
+                            return Err(PeerNetError::HandshakeError.error(
+                                "Tester Handshake",
+                                Some(String::from("Invalid signature")),
+                            ));
+                        }
+                        //TODO: Check ip we are connected match one of the announced ips
+                        {
+                            let mut peer_db_write = peer_db.write();
+                            //TODO: Hacky change it when better management ip/listeners
+                            if !announcement.listeners.is_empty() {
+                                peer_db_write
+                                    .index_by_newest
+                                    .retain(|(_, peer_id_stored)| peer_id_stored != &peer_id);
+                                peer_db_write
+                                    .index_by_newest
+                                    .insert((Reverse(announcement.timestamp), peer_id.clone()));
+                            }
+                            peer_db_write
+                                .peers
+                                .entry(peer_id.clone())
+                                .and_modify(|info| {
+                                    if info.last_announce.timestamp < announcement.timestamp {
+                                        info.last_announce = announcement.clone();
+                                    }
+                                    info.state = super::PeerState::Trusted;
+                                })
+                                .or_insert(PeerInfo {
+                                    last_announce: announcement,
+                                    state: super::PeerState::Trusted,
+                                });
+                        }
+                        Ok(peer_id.clone())
+                    }
+                    1 => {
+                        let (received, id) =
+                            messages_handler.deserialize_id(&data[1..], &peer_id)?;
+                        messages_handler.handle(id, received, &peer_id)?;
+                        Err(PeerNetError::HandshakeError.error(
+                                "Massa Handshake",
+                                Some("Tester Handshake failed received a message that our connection has been refused".to_string()),
+                            ))
+                        //TODO: Add the peerdb but for now impossible as we don't have announcement and we need one to place in peerdb
+                    }
+                    _ => Err(PeerNetError::HandshakeError
+                        .error("Massa handshake", Some("Invalid id".to_string()))),
+                }
+            };
+
+            // if handshake failed, we set the peer state to HandshakeFailed
+            if res.is_err() {
+                let mut peer_db_write = peer_db.write();
+                peer_db_write.peers.entry(peer_id).and_modify(|info| {
+                    info.state = super::PeerState::HandshakeFailed;
+                });
+            }
+            if let Err(e) = socket.shutdown(std::net::Shutdown::Both) {
+                tracing::log::error!("Failed to shutdown socket: {}", e);
+            }
+            res
+        };
+
+        result
+    }
+
     /// Create a new tester (spawn a thread)
     pub fn new(
         peer_db: SharedPeerDB,
@@ -244,12 +400,19 @@ impl Tester {
         .spawn(move || {
             let db = peer_db.clone();
             let active_connections = active_connections.clone();
-            let config = PeerNetConfiguration::default(
+            let _config = PeerNetConfiguration::default(
                 TesterHandshake::new(peer_db, protocol_config.clone()),
-                messages_handler,
+                messages_handler.clone(),
             );
 
-            let mut network_manager = PeerNetManager::new(config);
+            let announcement_deser = AnnouncementDeserializer::new(
+                AnnouncementDeserializerArgs {
+                    max_listeners: protocol_config.max_size_listeners_per_peer,
+                },
+            );
+
+
+            //let mut network_manager = PeerNetManager::new(config);
             let protocol_config = protocol_config.clone();
             loop {
                 crossbeam::select! {
@@ -289,7 +452,8 @@ impl Tester {
                                 }).count());
                                 {
                                     let now = MassaTime::now().unwrap();
-                                    let mut db = db.write();
+                                    let db = db.clone();
+                                    let mut db_write = db.write();
                                     // receive new listener to test
                                     for (addr, _) in listener.1.iter() {
                                         //Find category of that address
@@ -311,13 +475,14 @@ impl Tester {
                                             }
                                         };
                                         //TODO: Change it to manage multiple listeners SAFETY: Check above
-                                        if let Some(last_tested_time) = db.tested_addresses.get(addr) {
+                                        if let Some(last_tested_time) = db_write.tested_addresses.get(addr) {
                                             let last_tested_time = last_tested_time.estimate_instant().expect("Time went backward");
                                             if last_tested_time.elapsed() < cooldown {
                                                 continue;
                                             }
                                         }
-                                        db.tested_addresses.insert(*addr, now);
+                                        db_write.tested_addresses.insert(*addr, now);
+                                        // drop(db_write);
                                         // TODO:  Don't launch test if peer is already connected to us as a normal connection.
                                         // Maybe we need to have a way to still update his last announce timestamp because he is a great peer
                                         if ip_canonical.is_global() && !active_connections.get_peers_connected().iter().any(|(_, (addr, _, _))| addr.ip().to_canonical() == ip_canonical) {
@@ -334,11 +499,24 @@ impl Tester {
                                                 }
                                             }
                                             info!("testing peer {} listener addr: {}", &listener.0, &addr);
-                                            let _res =  network_manager.try_connect(
+
+
+                                            let res = Tester::tcp_handshake(
+                                                messages_handler.clone(),
+                                                db.clone(),
+                                                announcement_deser.clone(),
+                                                VersionDeserializer::new(),
                                                 *addr,
-                                                protocol_config.timeout_connection.to_duration(),
-                                                &OutConnectionConfig::Tcp(Box::new(TcpOutConnectionConfig::new(protocol_config.read_write_limit_bytes_per_second / 10, Duration::from_millis(100)))),
+                                                protocol_config.version.clone(),
                                             );
+
+                                            // let _res =  network_manager.try_connect(
+                                            //     *addr,
+                                            //     protocol_config.timeout_connection.to_duration(),
+                                            //     &OutConnectionConfig::Tcp(Box::new(TcpOutConnectionConfig::new(protocol_config.read_write_limit_bytes_per_second / 10, Duration::from_millis(100)))),
+                                            // );
+
+                                            tracing::log::debug!("{:?}", res);
                                         }
                                     };
                                 }
@@ -376,11 +554,21 @@ impl Tester {
                             }
                         }
                         info!("testing listener addr: {}", &listener);
-                        let _res =  network_manager.try_connect(
+
+                        let res = Tester::tcp_handshake(
+                            messages_handler.clone(),
+                            db.clone(),
+                            announcement_deser.clone(),
+                            VersionDeserializer::new(),
                             listener,
-                            protocol_config.timeout_connection.to_duration(),
-                            &OutConnectionConfig::Tcp(Box::new(TcpOutConnectionConfig::new(protocol_config.read_write_limit_bytes_per_second / 10, Duration::from_millis(100)))),
+                            protocol_config.version.clone(),
                         );
+                        // let res =  network_manager.try_connect(
+                        //     listener,
+                        //     protocol_config.timeout_connection.to_duration(),
+                        //     &OutConnectionConfig::Tcp(Box::new(TcpOutConnectionConfig::new(protocol_config.read_write_limit_bytes_per_second / 10, Duration::from_millis(100)))),
+                        // );
+                        tracing::log::debug!("{:?}", res);
                     }
                 }
             }
