@@ -569,9 +569,6 @@
 <a href="#569" id="569">569</a>
 <a href="#570" id="570">570</a>
 <a href="#571" id="571">571</a>
-<a href="#572" id="572">572</a>
-<a href="#573" id="573">573</a>
-<a href="#574" id="574">574</a>
 </pre><pre class="rust"><code><span class="kw">use </span>std::cmp::Reverse;
 <span class="kw">use </span>std::net::IpAddr;
 <span class="kw">use </span>std::{collections::HashMap, net::SocketAddr, thread::JoinHandle, time::Duration};
@@ -652,7 +649,7 @@
     ) -&gt; <span class="self">Self </span>{
         <span class="kw">let </span>message_serializer = PeerManagementMessageSerializer::new();
 
-        <span class="kw">let </span>((test_sender, test_receiver), testers) = Tester::run(
+        <span class="kw">let </span>(test_sender, testers) = Tester::run(
             config,
             active_connections.clone(),
             peer_db.clone(),
@@ -723,9 +720,6 @@
                                 }
                              },
                              <span class="prelude-val">Ok</span>(PeerManagementCmd::Stop) =&gt; {
-                                <span class="kw">while let </span><span class="prelude-val">Ok</span>(_msg) = test_receiver.try_recv() {
-                                    <span class="comment">// nothing to do just clean the channel
-                                </span>}
                                 <span class="kw">return</span>;
                              },
                             <span class="prelude-val">Err</span>(e) =&gt; {
@@ -764,14 +758,14 @@
                                 PeerManagementMessage::NewPeerConnected((peer_id, listeners)) =&gt; {
                                     <span class="macro">debug!</span>(<span class="string">&quot;Received peer message: NewPeerConnected from {}&quot;</span>, peer_id);
                                     <span class="kw">if let </span><span class="prelude-val">Err</span>(e) = test_sender.try_send((peer_id, listeners)) {
-                                        <span class="macro">debug!</span>(<span class="string">&quot;error when sending msg to peer tester : {}&quot;</span>, e);
+                                        <span class="macro">error!</span>(<span class="string">&quot;error when sending msg to peer tester : {}&quot;</span>, e);
                                     }
                                 }
                                 PeerManagementMessage::ListPeers(peers) =&gt; {
                                     <span class="macro">debug!</span>(<span class="string">&quot;Received peer message: List peers from {}&quot;</span>, peer_id);
                                     <span class="kw">for </span>(peer_id, listeners) <span class="kw">in </span>peers.into_iter() {
                                         <span class="kw">if let </span><span class="prelude-val">Err</span>(e) = test_sender.try_send((peer_id, listeners)) {
-                                            <span class="macro">debug!</span>(<span class="string">&quot;error when sending msg to peer tester : {}&quot;</span>, e);
+                                            <span class="macro">error!</span>(<span class="string">&quot;error when sending msg to peer tester : {}&quot;</span>, e);
                                         }
                                     }
                                 }
