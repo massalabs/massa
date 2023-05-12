@@ -13,7 +13,6 @@ use massa_protocol_exports::{PeerConnectionType, ProtocolConfig};
 use massa_serialization::{DeserializeError, Deserializer};
 use massa_time::MassaTime;
 use peernet::{
-    config::PeerNetConfiguration,
     error::{PeerNetError, PeerNetResult},
     messages::MessagesHandler as PeerNetMessagesHandler,
     peer::InitConnectionHandler,
@@ -40,6 +39,7 @@ pub struct TesterHandshake {
 }
 
 impl TesterHandshake {
+    #[allow(dead_code)]
     pub fn new(peer_db: SharedPeerDB, config: ProtocolConfig) -> Self {
         Self {
             peer_db,
@@ -106,7 +106,6 @@ impl InitConnectionHandler for TesterHandshake {
                 PeerNetError::HandshakeError
                     .error("Massa Handshake", Some("Failed to get id".to_string())),
             )?;
-            dbg!(id);
             match id {
                 0 => {
                     let (_, announcement) = self
@@ -238,10 +237,8 @@ impl Tester {
     ) -> PeerNetResult<PeerId> {
         let result = {
             let mut socket =
-                std::net::TcpStream::connect_timeout(&addr, Duration::from_millis(1000))
+                std::net::TcpStream::connect_timeout(&addr, Duration::from_millis(500))
                     .map_err(|e| PeerNetError::PeerConnectionError.new("connect", e, None))?;
-
-            std::thread::sleep(Duration::from_millis(500));
 
             // data.receive() from Endpoint
             let mut len_bytes = vec![0u8; 4];
@@ -400,10 +397,6 @@ impl Tester {
         .spawn(move || {
             let db = peer_db.clone();
             let active_connections = active_connections.clone();
-            let _config = PeerNetConfiguration::default(
-                TesterHandshake::new(peer_db, protocol_config.clone()),
-                messages_handler.clone(),
-            );
 
             let announcement_deser = AnnouncementDeserializer::new(
                 AnnouncementDeserializerArgs {
@@ -561,7 +554,7 @@ impl Tester {
                             announcement_deser.clone(),
                             VersionDeserializer::new(),
                             listener,
-                            protocol_config.version.clone(),
+                            protocol_config.version,
                         );
                         // let res =  network_manager.try_connect(
                         //     listener,
