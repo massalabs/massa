@@ -1,3 +1,3 @@
 (function() {var implementors = {
-"massa_protocol_worker":[["impl <a class=\"trait\" href=\"massa_protocol_exports/controller_trait/trait.ProtocolController.html\" title=\"trait massa_protocol_exports::controller_trait::ProtocolController\">ProtocolController</a> for <a class=\"struct\" href=\"massa_protocol_worker/controller/struct.ProtocolControllerImpl.html\" title=\"struct massa_protocol_worker::controller::ProtocolControllerImpl\">ProtocolControllerImpl</a>"]]
+"massa_protocol_worker":[["impl ProtocolController for <a class=\"struct\" href=\"massa_protocol_worker/controller/struct.ProtocolControllerImpl.html\" title=\"struct massa_protocol_worker::controller::ProtocolControllerImpl\">ProtocolControllerImpl</a>"]]
 };if (window.register_implementors) {window.register_implementors(implementors);} else {window.pending_implementors = implementors;}})()

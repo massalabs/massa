@@ -572,6 +572,7 @@
 <a href="#572" id="572">572</a>
 <a href="#573" id="573">573</a>
 <a href="#574" id="574">574</a>
+<a href="#575" id="575">575</a>
 </pre><pre class="rust"><code><span class="kw">use </span>std::{
     collections::HashMap,
     io::Read,
@@ -1020,7 +1021,6 @@
                                 {
                                     <span class="kw">let </span>now = MassaTime::now().unwrap();
                                     <span class="kw">let </span>db = db.clone();
-                                    <span class="kw">let </span><span class="kw-2">mut </span>db_write = db.write();
                                     <span class="comment">// receive new listener to test
                                     </span><span class="kw">for </span>(addr, <span class="kw">_</span>) <span class="kw">in </span>listener.<span class="number">1</span>.iter() {
                                         <span class="comment">//Find category of that address
@@ -1042,15 +1042,17 @@
                                             }
                                         };
                                         <span class="comment">//TODO: Change it to manage multiple listeners SAFETY: Check above
-                                        </span><span class="kw">if let </span><span class="prelude-val">Some</span>(last_tested_time) = db_write.tested_addresses.get(addr) {
-                                            <span class="kw">let </span>last_tested_time = last_tested_time.estimate_instant().expect(<span class="string">&quot;Time went backward&quot;</span>);
-                                            <span class="kw">if </span>last_tested_time.elapsed() &lt; cooldown {
-                                                <span class="kw">continue</span>;
+                                        </span>{
+                                            <span class="kw">let </span><span class="kw-2">mut </span>db_write = db.write();
+                                            <span class="kw">if let </span><span class="prelude-val">Some</span>(last_tested_time) = db_write.tested_addresses.get(addr) {
+                                                <span class="kw">let </span>last_tested_time = last_tested_time.estimate_instant().expect(<span class="string">&quot;Time went backward&quot;</span>);
+                                                <span class="kw">if </span>last_tested_time.elapsed() &lt; cooldown {
+                                                    <span class="kw">continue</span>;
+                                                }
                                             }
+                                            db_write.tested_addresses.insert(<span class="kw-2">*</span>addr, now);
                                         }
-                                        db_write.tested_addresses.insert(<span class="kw-2">*</span>addr, now);
-                                        <span class="comment">// drop(db_write);
-                                        // TODO:  Don&#39;t launch test if peer is already connected to us as a normal connection.
+                                        <span class="comment">// TODO:  Don&#39;t launch test if peer is already connected to us as a normal connection.
                                         // Maybe we need to have a way to still update his last announce timestamp because he is a great peer
                                         </span><span class="kw">if </span>ip_canonical.is_global() &amp;&amp; !active_connections.get_peers_connected().iter().any(|(<span class="kw">_</span>, (addr, <span class="kw">_</span>, <span class="kw">_</span>))| addr.ip().to_canonical() == ip_canonical) {
                                             <span class="comment">//Don&#39;t test our local addresses
