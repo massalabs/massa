@@ -19,10 +19,7 @@ use massa_models::config::{
     MAX_PRODUCTION_STATS_LENGTH, MAX_ROLLS_COUNT_LENGTH,
 };
 use massa_models::{
-    config::{
-        DEFERRED_CREDITS_BOOTSTRAP_PART_SIZE, EXECUTED_OPS_BOOTSTRAP_PART_SIZE, PERIODS_PER_CYCLE,
-        POS_SAVED_CYCLES, THREAD_COUNT,
-    },
+    config::{PERIODS_PER_CYCLE, POS_SAVED_CYCLES, THREAD_COUNT},
     slot::Slot,
 };
 use massa_pos_exports::{PoSConfig, PoSFinalState};
@@ -63,11 +60,9 @@ impl Default for FinalStateConfig {
             async_pool_config: AsyncPoolConfig::default(),
             executed_ops_config: ExecutedOpsConfig {
                 thread_count: THREAD_COUNT,
-                bootstrap_part_size: EXECUTED_OPS_BOOTSTRAP_PART_SIZE,
             },
             executed_denunciations_config: ExecutedDenunciationsConfig {
                 denunciation_expire_periods: DENUNCIATION_EXPIRE_PERIODS,
-                bootstrap_part_size: EXECUTED_OPS_BOOTSTRAP_PART_SIZE,
                 thread_count: THREAD_COUNT,
                 endorsement_count: ENDORSEMENT_COUNT,
             },
@@ -75,7 +70,6 @@ impl Default for FinalStateConfig {
                 periods_per_cycle: PERIODS_PER_CYCLE,
                 thread_count: THREAD_COUNT,
                 cycle_history_length: POS_SAVED_CYCLES,
-                credits_bootstrap_part_size: DEFERRED_CREDITS_BOOTSTRAP_PART_SIZE,
                 max_rolls_length: MAX_ROLLS_COUNT_LENGTH,
                 max_production_stats_length: MAX_PRODUCTION_STATS_LENGTH,
                 max_credit_length: MAX_DEFERRED_CREDITS_LENGTH,

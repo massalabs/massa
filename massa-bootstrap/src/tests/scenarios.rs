@@ -29,9 +29,9 @@ use massa_final_state::{
 use massa_hash::{Hash, HASH_SIZE_BYTES};
 use massa_ledger_exports::LedgerConfig;
 use massa_models::config::{
-    DENUNCIATION_EXPIRE_PERIODS, ENDORSEMENT_COUNT, EXECUTED_OPS_BOOTSTRAP_PART_SIZE,
-    MAX_DEFERRED_CREDITS_LENGTH, MAX_DENUNCIATIONS_PER_BLOCK_HEADER, MAX_PRODUCTION_STATS_LENGTH,
-    MAX_ROLLS_COUNT_LENGTH, MIP_STORE_STATS_BLOCK_CONSIDERED, MIP_STORE_STATS_COUNTERS_MAX,
+    DENUNCIATION_EXPIRE_PERIODS, ENDORSEMENT_COUNT, MAX_DEFERRED_CREDITS_LENGTH,
+    MAX_DENUNCIATIONS_PER_BLOCK_HEADER, MAX_PRODUCTION_STATS_LENGTH, MAX_ROLLS_COUNT_LENGTH,
+    MIP_STORE_STATS_BLOCK_CONSIDERED, MIP_STORE_STATS_COUNTERS_MAX,
 };
 use massa_models::{
     address::Address, config::MAX_DATASTORE_VALUE_LENGTH, node::NodeId, slot::Slot,
@@ -56,7 +56,7 @@ use massa_versioning_worker::versioning::{
 };
 use mockall::Sequence;
 use parking_lot::RwLock;
-use std::collections::HashMap;
+use std::collections::{HashMap, BTreeMap};
 use std::net::{SocketAddr, TcpStream};
 use std::{path::PathBuf, str::FromStr, sync::Arc, time::Duration};
 use tempfile::TempDir;
@@ -122,29 +122,23 @@ fn mock_bootstrap_manager(addr: SocketAddr, bootstrap_config: BootstrapConfig) -
             initial_ledger_path: "".into(),
             disk_ledger_path: temp_dir.path().to_path_buf(),
             max_key_length: MAX_DATASTORE_KEY_LENGTH,
-            max_ledger_part_size: 5,
             max_datastore_value_length: MAX_DATASTORE_VALUE_LENGTH,
         },
         async_pool_config: AsyncPoolConfig {
             thread_count,
             max_length: MAX_ASYNC_POOL_LENGTH,
             max_async_message_data: MAX_ASYNC_MESSAGE_DATA,
-            bootstrap_part_size: 100,
             max_key_length: MAX_DATASTORE_KEY_LENGTH as u32,
         },
         pos_config: PoSConfig {
             periods_per_cycle,
             thread_count,
             cycle_history_length: POS_SAVED_CYCLES,
-            credits_bootstrap_part_size: 100,
             max_rolls_length: MAX_ROLLS_COUNT_LENGTH,
             max_production_stats_length: MAX_PRODUCTION_STATS_LENGTH,
             max_credit_length: MAX_DEFERRED_CREDITS_LENGTH,
         },
-        executed_ops_config: ExecutedOpsConfig {
-            thread_count,
-            bootstrap_part_size: 10,
-        },
+        executed_ops_config: ExecutedOpsConfig { thread_count },
         final_history_length: 100,
         initial_seed_string: "".into(),
         initial_rolls_path: "".into(),
@@ -152,7 +146,6 @@ fn mock_bootstrap_manager(addr: SocketAddr, bootstrap_config: BootstrapConfig) -
         periods_per_cycle,
         executed_denunciations_config: ExecutedDenunciationsConfig {
             denunciation_expire_periods: DENUNCIATION_EXPIRE_PERIODS,
-            bootstrap_part_size: EXECUTED_OPS_BOOTSTRAP_PART_SIZE,
             thread_count,
             endorsement_count: ENDORSEMENT_COUNT,
         },
@@ -240,13 +233,13 @@ fn test_bootstrap_server() {
     let temp_dir_server = TempDir::new().unwrap();
     let db_server_config = MassaDBConfig {
         path: temp_dir_server.path().to_path_buf(),
-        max_history_length: 10,
+        max_history_length: 100,
     };
     let db_server = Arc::new(RwLock::new(MassaDB::new(db_server_config)));
     let temp_dir_client = TempDir::new().unwrap();
     let db_client_config = MassaDBConfig {
         path: temp_dir_client.path().to_path_buf(),
-        max_history_length: 10,
+        max_history_length: 100,
     };
     let db_client = Arc::new(RwLock::new(MassaDB::new(db_client_config)));
     let final_state_local_config = FinalStateConfig {
@@ -255,32 +248,25 @@ fn test_bootstrap_server() {
             initial_ledger_path: "".into(),
             disk_ledger_path: temp_dir_server.path().to_path_buf(),
             max_key_length: MAX_DATASTORE_KEY_LENGTH,
-            max_ledger_part_size: 100,
             max_datastore_value_length: MAX_DATASTORE_VALUE_LENGTH,
         },
         async_pool_config: AsyncPoolConfig {
             thread_count,
             max_length: MAX_ASYNC_POOL_LENGTH,
             max_async_message_data: MAX_ASYNC_MESSAGE_DATA,
-            bootstrap_part_size: 100,
             max_key_length: MAX_DATASTORE_KEY_LENGTH as u32,
         },
         pos_config: PoSConfig {
             periods_per_cycle,
             thread_count,
             cycle_history_length: POS_SAVED_CYCLES,
-            credits_bootstrap_part_size: 100,
             max_rolls_length: MAX_ROLLS_COUNT_LENGTH,
             max_production_stats_length: MAX_PRODUCTION_STATS_LENGTH,
             max_credit_length: MAX_DEFERRED_CREDITS_LENGTH,
         },
-        executed_ops_config: ExecutedOpsConfig {
-            thread_count,
-            bootstrap_part_size: 10,
-        },
+        executed_ops_config: ExecutedOpsConfig { thread_count },
         executed_denunciations_config: ExecutedDenunciationsConfig {
             denunciation_expire_periods: DENUNCIATION_EXPIRE_PERIODS,
-            bootstrap_part_size: 10,
             thread_count,
             endorsement_count: ENDORSEMENT_COUNT,
         },
@@ -323,6 +309,13 @@ fn test_bootstrap_server() {
         final_state_local_config.clone(),
         db_server.clone(),
     )));
+
+    let mut cur_slot: Slot = Slot::new(0,0);
+    for _i in 0..11 {
+        final_state_server.write().db.write().write_changes(BTreeMap::new(), cur_slot, false).unwrap();
+        cur_slot = cur_slot.get_next_slot(thread_count).unwrap();
+    }
+
     let final_state_client = Arc::new(RwLock::new(FinalState::create_final_state(
         PoSFinalState::new(
             final_state_local_config.pos_config.clone(),

@@ -36,12 +36,10 @@ use massa_ledger_worker::FinalLedger;
 use massa_logging::massa_trace;
 use massa_models::address::Address;
 use massa_models::config::constants::{
-    ASYNC_POOL_BOOTSTRAP_PART_SIZE, BLOCK_REWARD, BOOTSTRAP_RANDOMNESS_SIZE_BYTES, CHANNEL_SIZE,
-    CONSENSUS_BOOTSTRAP_PART_SIZE, DEFERRED_CREDITS_BOOTSTRAP_PART_SIZE, DELTA_F0,
-    DENUNCIATION_EXPIRE_PERIODS, ENDORSEMENT_COUNT, END_TIMESTAMP,
-    EXECUTED_OPS_BOOTSTRAP_PART_SIZE, GENESIS_KEY, GENESIS_TIMESTAMP, INITIAL_DRAW_SEED,
-    LEDGER_COST_PER_BYTE, LEDGER_ENTRY_BASE_SIZE, LEDGER_ENTRY_DATASTORE_BASE_SIZE,
-    LEDGER_PART_SIZE_MESSAGE_BYTES, MAX_ADVERTISE_LENGTH, MAX_ASK_BLOCKS_PER_MESSAGE,
+    BLOCK_REWARD, BOOTSTRAP_RANDOMNESS_SIZE_BYTES, CHANNEL_SIZE, CONSENSUS_BOOTSTRAP_PART_SIZE,
+    DELTA_F0, DENUNCIATION_EXPIRE_PERIODS, ENDORSEMENT_COUNT, END_TIMESTAMP, GENESIS_KEY,
+    GENESIS_TIMESTAMP, INITIAL_DRAW_SEED, LEDGER_COST_PER_BYTE, LEDGER_ENTRY_BASE_SIZE,
+    LEDGER_ENTRY_DATASTORE_BASE_SIZE, MAX_ADVERTISE_LENGTH, MAX_ASK_BLOCKS_PER_MESSAGE,
     MAX_ASYNC_GAS, MAX_ASYNC_MESSAGE_DATA, MAX_ASYNC_POOL_LENGTH, MAX_BLOCK_SIZE,
     MAX_BOOTSTRAP_ASYNC_POOL_CHANGES, MAX_BOOTSTRAP_BLOCKS, MAX_BOOTSTRAP_ERROR_LENGTH,
     MAX_BOOTSTRAP_FINAL_STATE_PARTS_SIZE, MAX_BOOTSTRAP_MESSAGE_SIZE, MAX_BYTECODE_LENGTH,
@@ -144,13 +142,11 @@ async fn launch(
         initial_ledger_path: SETTINGS.ledger.initial_ledger_path.clone(),
         disk_ledger_path: SETTINGS.ledger.disk_ledger_path.clone(),
         max_key_length: MAX_DATASTORE_KEY_LENGTH,
-        max_ledger_part_size: LEDGER_PART_SIZE_MESSAGE_BYTES,
         max_datastore_value_length: MAX_DATASTORE_VALUE_LENGTH,
     };
     let async_pool_config = AsyncPoolConfig {
         max_length: MAX_ASYNC_POOL_LENGTH,
         thread_count: THREAD_COUNT,
-        bootstrap_part_size: ASYNC_POOL_BOOTSTRAP_PART_SIZE,
         max_async_message_data: MAX_ASYNC_MESSAGE_DATA,
         max_key_length: MAX_DATASTORE_KEY_LENGTH as u32,
     };
@@ -158,18 +154,15 @@ async fn launch(
         periods_per_cycle: PERIODS_PER_CYCLE,
         thread_count: THREAD_COUNT,
         cycle_history_length: POS_SAVED_CYCLES,
-        credits_bootstrap_part_size: DEFERRED_CREDITS_BOOTSTRAP_PART_SIZE,
         max_rolls_length: MAX_ROLLS_COUNT_LENGTH,
         max_production_stats_length: MAX_PRODUCTION_STATS_LENGTH,
         max_credit_length: MAX_DEFERRED_CREDITS_LENGTH,
     };
     let executed_ops_config = ExecutedOpsConfig {
         thread_count: THREAD_COUNT,
-        bootstrap_part_size: EXECUTED_OPS_BOOTSTRAP_PART_SIZE,
     };
     let executed_denunciations_config = ExecutedDenunciationsConfig {
         denunciation_expire_periods: DENUNCIATION_EXPIRE_PERIODS,
-        bootstrap_part_size: EXECUTED_OPS_BOOTSTRAP_PART_SIZE,
         thread_count: THREAD_COUNT,
         endorsement_count: ENDORSEMENT_COUNT,
     };

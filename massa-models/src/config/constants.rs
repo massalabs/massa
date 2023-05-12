@@ -137,14 +137,6 @@ pub const POS_SAVED_CYCLES: usize = 7;
 /// 5 to have a C-2 to C+2 range (6 cycles post-bootstrap give 5 cycle draws)
 /// 1 for margin
 pub const SELECTOR_DRAW_CACHE_SIZE: usize = 6;
-/// Maximum size batch of data in a part of the ledger
-pub const LEDGER_PART_SIZE_MESSAGE_BYTES: u64 = 1_000_000;
-/// Maximum async messages in a batch of the bootstrap of the async pool
-pub const ASYNC_POOL_BOOTSTRAP_PART_SIZE: u64 = 100;
-/// Maximum proof-of-stake deferred credits in a bootstrap batch
-pub const DEFERRED_CREDITS_BOOTSTRAP_PART_SIZE: u64 = 100;
-/// Maximum executed ops per slot in a bootstrap batch
-pub const EXECUTED_OPS_BOOTSTRAP_PART_SIZE: u64 = 10;
 /// Maximum number of consensus blocks in a bootstrap batch
 pub const CONSENSUS_BOOTSTRAP_PART_SIZE: u64 = 50;
 /// Maximum number of consensus block ids when sending a bootstrap cursor from the client

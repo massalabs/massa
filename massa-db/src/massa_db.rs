@@ -6,6 +6,7 @@ use massa_hash::Hash;
 use massa_models::{
     error::ModelsError,
     slot::{Slot, SlotDeserializer, SlotSerializer},
+    streaming_step::StreamingStep,
 };
 use massa_serialization::{DeserializeError, Deserializer, Serializer};
 
@@ -17,7 +18,7 @@ use std::{
     collections::BTreeMap,
     format,
     ops::Bound::{self, Excluded, Included},
-    path::PathBuf,
+    path::PathBuf, println,
 };
 
 type Key = Vec<u8>;
@@ -30,21 +31,21 @@ pub struct MassaDBConfig {
     pub max_history_length: usize,
 }
 
-#[derive(Debug)]
-pub struct StreamBatch<ChangeID: PartialOrd + Ord + PartialEq + Eq + Clone> {
-    updates_on_previous_elements: BTreeMap<Key, Option<Value>>,
-    new_elements: BTreeMap<Key, Value>,
-    change_id: ChangeID,
+#[derive(Debug, Clone)]
+pub struct StreamBatch<ChangeID: PartialOrd + Ord + PartialEq + Eq + Clone + std::fmt::Debug> {
+    pub updates_on_previous_elements: BTreeMap<Key, Option<Value>>,
+    pub new_elements: BTreeMap<Key, Value>,
+    pub change_id: ChangeID,
 }
 
 /*#[derive(Debug)]
-struct ChangeHistoryElement<ChangeID: PartialOrd + Ord + PartialEq + Eq + Clone> {
+struct ChangeHistoryElement<ChangeID: PartialOrd + Ord + PartialEq + Eq + Clone + std::fmt::Debug> {
     change_id: ChangeID,
     changes: BTreeMap<Key, Option<Value>>, // None means that the entry was deleted
 }*/
 
 #[derive(Debug)]
-pub struct RawMassaDB<ChangeID: PartialOrd + Ord + PartialEq + Eq + Clone> {
+pub struct RawMassaDB<ChangeID: PartialOrd + Ord + PartialEq + Eq + Clone + std::fmt::Debug> {
     pub db: DB,
     config: MassaDBConfig,
     change_history: BTreeMap<ChangeID, BTreeMap<Key, Option<Value>>>,
@@ -54,7 +55,7 @@ pub struct RawMassaDB<ChangeID: PartialOrd + Ord + PartialEq + Eq + Clone> {
 
 impl<ChangeID> RawMassaDB<ChangeID>
 where
-    ChangeID: PartialOrd + Ord + PartialEq + Eq + Clone,
+    ChangeID: PartialOrd + Ord + PartialEq + Eq + Clone + std::fmt::Debug,
 {
     /// Used for bootstrap servers (get a new batch to stream to the client)
     ///
@@ -68,6 +69,7 @@ where
         {
             match last_change_id.cmp(&self.cur_change_id) {
                 std::cmp::Ordering::Greater => {
+                    println!("We are asked for change: {:?}, but we only have changes up to: {:?}", &last_change_id, &self.cur_change_id);
                     return Err(MassaDBError::TimeError(String::from(
                         "we don't have this change yet on this node (it's in the future for us)",
                     )));
@@ -76,6 +78,8 @@ where
                     (BTreeMap::new(), Some(max_key)) // no new updates
                 }
                 std::cmp::Ordering::Less => {
+                    // We should send all the new updates since last_change_id
+
                     let cursor = self
                         .change_history
                         .lower_bound(Bound::Excluded(&last_change_id));
@@ -88,6 +92,7 @@ where
 
                     match cursor.key() {
                         Some(cursor_change_id) => {
+                            // We have to send all the updates since cursor_change_id
                             let mut updates: BTreeMap<Vec<u8>, Option<Vec<u8>>> = BTreeMap::new();
                             let iter = self
                                 .change_history
@@ -104,7 +109,7 @@ where
                             }
                             (updates, Some(max_key))
                         }
-                        None => (BTreeMap::new(), Some(max_key)),
+                        None => (BTreeMap::new(), Some(max_key)), // no new updates
                     }
                 }
             }
@@ -152,7 +157,7 @@ where
         change_id: ChangeID,
         reset_history: bool,
     ) -> Result<(), MassaDBError> {
-        if change_id <= self.cur_change_id {
+        if change_id < self.cur_change_id {
             return Err(MassaDBError::InvalidChangeID(String::from(
                 "change_id should monotonically increase after every write",
             )));
@@ -192,8 +197,13 @@ where
     pub fn write_batch_bootstrap_client(
         &mut self,
         stream_changes: StreamBatch<ChangeID>,
-    ) -> Result<(), MassaDBError> {
+    ) -> Result<StreamingStep<Key>, MassaDBError> {
         let mut changes = BTreeMap::new();
+
+        let new_cursor = match stream_changes.new_elements.last_key_value() {
+            Some((k, _)) => StreamingStep::Ongoing(k.clone()),
+            None => StreamingStep::Finished(None),
+        };
 
         changes.extend(stream_changes.updates_on_previous_elements);
         changes.extend(
@@ -203,7 +213,9 @@ where
                 .map(|(k, v)| (k.clone(), Some(v.clone()))),
         );
 
-        self.write_changes(changes, stream_changes.change_id, true)
+        self.write_changes(changes, stream_changes.change_id, true)?;
+
+        Ok(new_cursor)
     }
 }
 

@@ -2733,7 +2733,6 @@ dependencies = [
  "massa_pos_exports",
  "massa_pos_worker",
  "massa_serialization 0.1.0",
- "massa_signature 0.1.0",
  "nom",
  "parking_lot",
  "rocksdb",

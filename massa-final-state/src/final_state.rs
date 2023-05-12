@@ -6,24 +6,16 @@
 //! and need to be bootstrapped by nodes joining the network.
 
 use crate::{config::FinalStateConfig, error::FinalStateError, state_changes::StateChanges};
-use core::ops::Bound::{Excluded, Included};
-use massa_async_pool::{AsyncMessageIdDeserializer, AsyncPool, AsyncPoolChanges};
-use massa_db::{
-    DBBatch, MassaDB, ASYNC_POOL_PREFIX, CF_ERROR, CYCLE_HISTORY_PREFIX, DEFERRED_CREDITS_PREFIX,
-    EXECUTED_DENUNCIATIONS_PREFIX, EXECUTED_OPS_PREFIX, KEY_DESER_ERROR, LEDGER_PREFIX,
-    MESSAGE_ID_DESER_ERROR, SLOT_DESER_ERROR, STATE_CF,
-};
-use massa_executed_ops::{ExecutedDenunciations, ExecutedOps};
+use massa_async_pool::AsyncPool;
+use massa_db::{DBBatch, MassaDB};
+use massa_executed_ops::ExecutedDenunciations;
+use massa_executed_ops::ExecutedOps;
 use massa_hash::{Hash, HASH_SIZE_BYTES};
-use massa_ledger_exports::{KeyDeserializer, LedgerChanges, LedgerController};
+use massa_ledger_exports::LedgerController;
 use massa_models::config::PERIODS_BETWEEN_BACKUPS;
-use massa_models::slot::SlotDeserializer;
-use massa_models::{slot::Slot, streaming_step::StreamingStep};
-use massa_pos_exports::{DeferredCredits, PoSFinalState, SelectorController};
-use massa_serialization::{DeserializeError, Deserializer};
+use massa_models::slot::Slot;
+use massa_pos_exports::{PoSFinalState, SelectorController};
 use parking_lot::RwLock;
-use rocksdb::{Direction, IteratorMode};
-use std::collections::BTreeMap;
 use std::{collections::VecDeque, sync::Arc};
 use tracing::{debug, info};
 
@@ -584,6 +576,7 @@ impl FinalState {
             .feed_cycle_state_hash(cycle, self.final_state_hash);
     }
 
+    /*
     #[allow(clippy::type_complexity)]
     /// Get a part of the state.
     /// Used for bootstrap.
@@ -619,7 +612,7 @@ impl FinalState {
         };
 
         for (serialized_key, serialized_value) in db_iterator.flatten() {
-            if state_part.len() < self.config.ledger_config.max_ledger_part_size as usize {
+            if state_part.len() < self.config. as usize {
                 state_part.insert(serialized_key.to_vec(), serialized_value.to_vec());
                 new_cursor = StreamingStep::Ongoing(serialized_key.to_vec());
             } else {
@@ -627,11 +620,9 @@ impl FinalState {
             }
         }
         (state_part, new_cursor)
-    }
+    }*/
 
-    /// Set a part of the async pool.
-    /// Used for bootstrap.
-    ///
+    /*///
     /// # Arguments
     /// * part: the async pool part provided by `get_pool_part`
     ///
@@ -811,9 +802,10 @@ impl FinalState {
             res_changes.push((*slot, slot_changes));
         }
         Ok(res_changes)
-    }
+    }*/
 }
 
+/*
 #[cfg(test)]
 mod tests {
 
@@ -876,3 +868,4 @@ mod tests {
         // assert_eq!(part.ledger_changes.0.len(), 1);
     }
 }
+*/

@@ -245,10 +245,7 @@ fn test_executed_ops_xor_computing() {
     use tempfile::TempDir;
 
     // initialize the executed ops config
-    let config = ExecutedOpsConfig {
-        thread_count: 2,
-        bootstrap_part_size: 10,
-    };
+    let config = ExecutedOpsConfig { thread_count: 2 };
     let tempdir_a = TempDir::new().expect("cannot create temp directory");
     let tempdir_c = TempDir::new().expect("cannot create temp directory");
     let db_a_config = MassaDBConfig {

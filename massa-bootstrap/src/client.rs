@@ -5,7 +5,7 @@ use std::{
     io,
     net::{SocketAddr, TcpStream},
     sync::Arc,
-    time::Duration,
+    time::Duration, println,
 };
 
 use massa_final_state::FinalState;
@@ -81,12 +81,12 @@ fn stream_final_state_and_consensus(
                 BootstrapServerMessage::BootstrapPart {
                     slot,
                     state_part,
-                    final_state_changes,
                     consensus_part,
                     consensus_outdated_ids,
                     last_start_period,
                     last_slot_before_downtime,
                 } => {
+
                     // Set final state
                     let mut write_final_state = global_bootstrap_state.final_state.write();
 
@@ -98,42 +98,20 @@ fn stream_final_state_and_consensus(
                         write_final_state.last_slot_before_downtime = last_slot_before_downtime;
                     }
 
-                    let last_state_step = write_final_state.set_state_part(state_part);
+                    let last_state_step = write_final_state
+                        .db
+                        .write()
+                        .write_batch_bootstrap_client(state_part)
+                        .map_err(|e| {
+                            println!("CLIENT: Cannot write received stream batch to disk: {}", e);
+                            BootstrapError::GeneralError(format!(
+                                "Cannot write received stream batch to disk: {}",
+                                e
+                            ))
+                        })?;
 
-                    for (changes_slot, changes) in final_state_changes.iter() {
-                        let mut batch = DBBatch::new(write_final_state.db.read().get_db_hash());
-                        write_final_state
-                            .ledger
-                            .apply_changes_to_batch(changes.ledger_changes.clone(), &mut batch);
-                        write_final_state
-                            .async_pool
-                            .apply_changes_to_batch(&changes.async_pool_changes, &mut batch);
-                        if !changes.pos_changes.is_empty() {
-                            write_final_state.pos_state.apply_changes_to_batch(
-                                changes.pos_changes.clone(),
-                                *changes_slot,
-                                false,
-                                &mut batch,
-                            )?;
-                        }
-                        if !changes.executed_ops_changes.is_empty() {
-                            write_final_state.executed_ops.apply_changes_to_batch(
-                                changes.executed_ops_changes.clone(),
-                                *changes_slot,
-                                &mut batch,
-                            );
-                        }
-                        if !changes.executed_denunciations_changes.is_empty() {
-                            write_final_state
-                                .executed_denunciations
-                                .apply_changes_to_batch(
-                                    changes.executed_denunciations_changes.clone(),
-                                    *changes_slot,
-                                    &mut batch,
-                                );
-                        }
-                        write_final_state.db.read().write_batch(batch);
-                    }
+                    println!("CLIENT last_state_step : {:?}", last_state_step);
+
                     write_final_state.slot = slot;
 
                     // Set consensus blocks
@@ -172,10 +150,10 @@ fn stream_final_state_and_consensus(
                         "client final state bootstrap cursors: {:?}",
                         next_bootstrap_message
                     );
-                    debug!(
+                    /*debug!(
                         "client final state slot changes length: {}",
                         final_state_changes.len()
-                    );
+                    );*/
                 }
                 BootstrapServerMessage::BootstrapFinished => {
                     info!("State bootstrap complete");
@@ -195,7 +173,7 @@ fn stream_final_state_and_consensus(
                     write_final_state.reset();
                     return Err(BootstrapError::GeneralError(String::from("Slot too old")));
                 }
-                // At this point, we have succesfully received the next message from the server, and it's an error-message String
+                // At this point, we have successfully received the next message from the server, and it's an error-message String
                 BootstrapServerMessage::BootstrapError { error } => {
                     return Err(BootstrapError::GeneralError(error))
                 }

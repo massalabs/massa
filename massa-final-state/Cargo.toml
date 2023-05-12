@@ -11,7 +11,6 @@ nom = "7.1"
 thiserror = "1.0"
 tracing = "0.1"
 parking_lot = { version = "0.12", features = ["deadlock_detection"] }
-rocksdb = "0.20"
 
 # custom modules
 massa_ledger_exports = { path = "../massa-ledger-exports" }
@@ -23,6 +22,7 @@ massa_serialization = { path = "../massa-serialization" }
 massa_pos_exports = { path = "../massa-pos-exports" }
 massa_hash = { path = "../massa-hash" }
 massa_db = { path = "../massa-db" }
+rocksdb = { version = "0.20", optional = true }
 
 [dev-dependencies]
 massa_async_pool = { path = "../massa-async-pool", features = ["testing"] }
@@ -31,7 +31,6 @@ massa_ledger_worker = { path = "../massa-ledger-worker", features = [
 ] }
 massa_pos_worker = { path = "../massa-pos-worker", features = ["testing"] }
 massa_pos_exports = { path = "../massa-pos-exports", features = ["testing"] }
-massa_signature = { path = "../massa-signature" }
 tempfile = "3.3"
 
 # for more information on what are the following features used for, see the cargo.toml at workspace level
@@ -40,6 +39,7 @@ testing = [
     "massa_ledger_worker/testing",
     "massa_async_pool/testing",
     "massa_pos_exports/testing",
+    "rocksdb"
 ]
 sandbox = ["massa_async_pool/sandbox"]
 create_snapshot = []

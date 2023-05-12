@@ -29,7 +29,7 @@ mod white_black_list;
 use crossbeam::channel::tick;
 use humantime::format_duration;
 use massa_consensus_exports::{bootstrapable_graph::BootstrapableGraph, ConsensusController};
-use massa_final_state::{FinalState, FinalStateError};
+use massa_final_state::FinalState;
 use massa_logging::massa_trace;
 use massa_models::{
     block_id::BlockId, prehash::PreHashSet, slot::Slot, streaming_step::StreamingStep,
@@ -47,7 +47,7 @@ use std::{
     net::{IpAddr, SocketAddr},
     sync::Arc,
     thread,
-    time::{Duration, Instant},
+    time::{Duration, Instant}, println,
 };
 use tracing::{debug, error, info, warn};
 use white_black_list::*;
@@ -461,11 +461,10 @@ pub fn stream_bootstrap_information(
 
         let current_slot;
         let state_part;
-        let final_state_changes;
         let last_start_period;
         let last_slot_before_downtime;
 
-        let mut slot_too_old = false;
+        let slot_too_old = false;
 
         // Scope of the final state read
         {
@@ -482,28 +481,34 @@ pub fn stream_bootstrap_information(
                 None
             };
 
-            let (data, new_state_step) = final_state_read.get_state_part(last_state_step.clone());
-            state_part = data;
+            let last_obtained = match &last_state_step {
+                StreamingStep::Started => None,
+                StreamingStep::Ongoing(last_key) => Some((last_key.clone(), last_slot.unwrap())),
+                StreamingStep::Finished(_) => None,
+            };
 
-            if let Some(slot) = last_slot && slot != final_state_read.slot {
-                if slot > final_state_read.slot {
-                    return Err(BootstrapError::GeneralError(
-                        "Bootstrap cursor set to future slot".to_string(),
-                    ));
+            state_part = final_state_read
+                .db
+                .read()
+                .get_batch_to_stream(last_obtained)
+                .map_err(|e| {
+                    println!("SERVER - Error get_batch_to_stream: {}", e);
+                    BootstrapError::GeneralError(format!("Error get_batch_to_stream: {}", e))
+                })?;
+
+            let new_state_step = match (&last_state_step, state_part.new_elements.last_key_value())
+            {
+                (_, Some((key, _))) => StreamingStep::Ongoing(key.clone()),
+                (StreamingStep::Ongoing(last_key), None) => {
+                    StreamingStep::Ongoing(last_key.clone())
                 }
-                final_state_changes = match final_state_read.get_state_changes_part(
-                    slot,
-                    new_state_step.clone()
-                ) {
-                    Ok(data) => data,
-                    Err(err) if matches!(err, FinalStateError::InvalidSlot(_)) => {
-                        slot_too_old = true;
-                        Vec::default()
-                    }
-                    Err(err) => return Err(BootstrapError::FinalStateError(err)),
-                };
-            } else {
-                final_state_changes = Vec::new();
+                (_, None) => StreamingStep::Finished(None),
+            };
+
+            if let Some(slot) = last_slot && slot != final_state_read.slot && slot > final_state_read.slot {
+                return Err(BootstrapError::GeneralError(
+                    "Bootstrap cursor set to future slot".to_string(),
+                ));
             }
 
             // Update cursors for next turn
@@ -518,14 +523,14 @@ pub fn stream_bootstrap_information(
         }
 
         // Setup final state global cursor
-        let final_state_global_step = if last_state_step.finished() {
+        let final_state_global_step = if state_part.new_elements.is_empty() {
             StreamingStep::Finished(Some(current_slot))
         } else {
             StreamingStep::Ongoing(current_slot)
         };
 
         // Setup final state changes cursor
-        let final_state_changes_step = if final_state_changes.is_empty() {
+        let final_state_changes_step = if final_state_global_step.finished() && state_part.updates_on_previous_elements.is_empty() {
             StreamingStep::Finished(Some(current_slot))
         } else {
             StreamingStep::Ongoing(current_slot)
@@ -576,7 +581,6 @@ pub fn stream_bootstrap_information(
             BootstrapServerMessage::BootstrapPart {
                 slot: current_slot,
                 state_part,
-                final_state_changes,
                 consensus_part,
                 consensus_outdated_ids,
                 last_start_period,
