@@ -68,6 +68,7 @@
 <a href="#68" id="68">68</a>
 <a href="#69" id="69">69</a>
 <a href="#70" id="70">70</a>
+<a href="#71" id="71">71</a>
 </pre><pre class="rust"><code><span class="doccomment">//! Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 //! Bootstrap crate
 //!
@@ -93,6 +94,7 @@
 </span><span class="kw">pub mod </span>client;
 <span class="kw">mod </span>client_binder;
 <span class="kw">mod </span>error;
+<span class="kw">pub use </span>error::BootstrapError;
 <span class="kw">mod </span>listener;
 <span class="kw">pub use </span>listener::BootstrapTcpListener;
 <span class="kw">mod </span>messages;
