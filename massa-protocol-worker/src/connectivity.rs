@@ -204,17 +204,17 @@ pub(crate) fn start_connectivity_thread(
                     default(config.try_connection_timer.to_duration()) => {
                         let peers_connected = network_controller.get_active_connections().get_peers_connected();
                         let mut slots_per_category: Vec<(String, usize)> = peer_categories.iter().map(|(category, category_infos)| {
-                            (category.clone(), category_infos.1.target_out_connections - peers_connected.iter().filter(|(_, peer)| {
+                            (category.clone(), category_infos.1.target_out_connections.saturating_sub(peers_connected.iter().filter(|(_, peer)| {
                                 if peer.1 == PeerConnectionType::OUT && let Some(peer_category) = &peer.2 {
                                     category == peer_category
                                 } else {
                                     false
                                 }
-                            }).count())
+                            }).count()))
                         }).collect();
-                        let mut slot_default_category = config.default_category_info.target_out_connections - peers_connected.iter().filter(|(_, peer)| {
+                        let mut slot_default_category = config.default_category_info.target_out_connections.saturating_sub(peers_connected.iter().filter(|(_, peer)| {
                             peer.1 == PeerConnectionType::OUT && peer.2.is_none()
-                        }).count();
+                        }).count());
                         let mut addresses_to_connect: Vec<SocketAddr> = Vec::new();
                         {
                             let peer_db_read = peer_db.read();
