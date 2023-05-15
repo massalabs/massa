@@ -8,6 +8,7 @@ extern crate massa_logging;
 
 use crate::settings::SETTINGS;
 
+use chrono::{TimeZone, Utc};
 use crossbeam_channel::{Receiver, TryRecvError};
 use dialoguer::Password;
 use massa_api::{ApiServer, ApiV2, Private, Public, RpcServer, StopHandle, API};
@@ -74,7 +75,7 @@ use massa_protocol_exports::{ProtocolConfig, ProtocolManager};
 use massa_protocol_worker::{create_protocol_controller, start_protocol_controller};
 use massa_storage::Storage;
 use massa_time::MassaTime;
-use massa_versioning_worker::versioning::{MipStatsConfig, MipStore};
+use massa_versioning_worker::versioning::{ComponentStateTypeId, MipStatsConfig, MipStore};
 use massa_wallet::Wallet;
 use parking_lot::RwLock;
 use peernet::transports::TransportType;
@@ -87,7 +88,7 @@ use std::{path::Path, process, sync::Arc};
 use structopt::StructOpt;
 use tokio::signal;
 use tokio::sync::{broadcast, mpsc};
-use tracing::{error, info, warn};
+use tracing::{debug, error, info, warn};
 use tracing_subscriber::filter::{filter_fn, LevelFilter};
 
 mod settings;
@@ -132,37 +133,6 @@ async fn launch(
         if now > end {
             panic!("This episode has come to an end, please get the latest testnet node version to continue");
         }
-    }
-
-    let now = MassaTime::now().expect("could not get now time");
-
-    use massa_models::config::constants::DOWNTIME_END_TIMESTAMP;
-    use massa_models::config::constants::DOWNTIME_START_TIMESTAMP;
-
-    // Simulate downtime
-    // last_start_period should be set to trigger after the DOWNTIME_END_TIMESTAMP
-    if now >= DOWNTIME_START_TIMESTAMP && now <= DOWNTIME_END_TIMESTAMP {
-        let (days, hours, mins, secs) = DOWNTIME_END_TIMESTAMP
-            .saturating_sub(now)
-            .days_hours_mins_secs()
-            .unwrap();
-
-        if let Ok(Some(end_period)) = massa_models::timeslots::get_latest_block_slot_at_timestamp(
-            THREAD_COUNT,
-            T0,
-            *GENESIS_TIMESTAMP,
-            DOWNTIME_END_TIMESTAMP,
-        ) {
-            panic!(
-                "We are in downtime! {} days, {} hours, {} minutes, {} seconds remaining to the end of the downtime. Downtime end period: {}",
-                days, hours, mins, secs, end_period.period
-            );
-        }
-
-        panic!(
-            "We are in downtime! {} days, {} hours, {} minutes, {} seconds remaining to the end of the downtime",
-            days, hours, mins, secs,
-        );
     }
 
     // Storage shared by multiple components.
@@ -217,9 +187,15 @@ async fn launch(
     // NOTE: this is temporary, since we cannot currently handle bootstrap from remaining ledger
     if args.keep_ledger || args.restart_from_snapshot_at_period.is_some() {
         info!("Loading old ledger for next episode");
-    } else if SETTINGS.ledger.disk_ledger_path.exists() {
-        std::fs::remove_dir_all(SETTINGS.ledger.disk_ledger_path.clone())
-            .expect("disk ledger delete failed");
+    } else {
+        if SETTINGS.ledger.disk_ledger_path.exists() {
+            std::fs::remove_dir_all(SETTINGS.ledger.disk_ledger_path.clone())
+                .expect("disk ledger delete failed");
+        }
+        if SETTINGS.execution.hd_cache_path.exists() {
+            std::fs::remove_dir_all(SETTINGS.execution.hd_cache_path.clone())
+                .expect("disk hd cache delete failed");
+        }
     }
 
     // Create final ledger
@@ -370,9 +346,76 @@ async fn launch(
     let mut mip_store =
         MipStore::try_from(([], mip_stats_config)).expect("Cannot create an empty MIP store");
     if let Some(bootstrap_mip_store) = bootstrap_state.mip_store {
-        mip_store
+        // TODO: in some cases, should bootstrap again
+        let (updated, added) = mip_store
             .update_with(&bootstrap_mip_store)
             .expect("Cannot update MIP store with bootstrap mip store");
+
+        if !added.is_empty() {
+            for (mip_info, mip_state) in added.iter() {
+                let now = MassaTime::now().expect("Cannot get current time");
+                match mip_state.state_at(now, mip_info.start, mip_info.timeout) {
+                    Ok(st_id) => {
+                        if st_id == ComponentStateTypeId::LockedIn {
+                            // A new MipInfo @ state locked_in - we need to urge the user to update
+                            warn!(
+                                "A new MIP has been received: {}, version: {}",
+                                mip_info.name, mip_info.version
+                            );
+                            // Safe to unwrap here (only panic if not LockedIn)
+                            let activation_at = mip_state.activation_at(mip_info).unwrap();
+                            let dt = Utc
+                                .timestamp_opt(activation_at.to_duration().as_secs() as i64, 0)
+                                .unwrap();
+                            warn!("Please update your Massa node before: {}", dt.to_rfc2822());
+                        } else if st_id == ComponentStateTypeId::Active {
+                            // A new MipInfo @ state active - we are not compatible anymore
+                            warn!(
+                                "A new MIP has been received {:?}, version: {:?}",
+                                mip_info.name, mip_info.version
+                            );
+                            panic!("Please update your Massa node to support it");
+                        } else if st_id == ComponentStateTypeId::Defined {
+                            // a new MipInfo @ state defined or started (or failed / error)
+                            // warn the user to update its node
+                            warn!(
+                                "A new MIP has been received: {}, version: {}",
+                                mip_info.name, mip_info.version
+                            );
+                            debug!("MIP state: {:?}", mip_state);
+                            let dt_start = Utc
+                                .timestamp_opt(mip_info.start.to_duration().as_secs() as i64, 0)
+                                .unwrap();
+                            let dt_timeout = Utc
+                                .timestamp_opt(mip_info.timeout.to_duration().as_secs() as i64, 0)
+                                .unwrap();
+                            warn!("Please update your node between: {} and {} if you want to support this update", 
+                                dt_start.to_rfc2822(),
+                                dt_timeout.to_rfc2822()
+                            );
+                        } else {
+                            // a new MipInfo @ state defined or started (or failed / error)
+                            // warn the user to update its node
+                            warn!(
+                                "A new MIP has been received: {}, version: {}",
+                                mip_info.name, mip_info.version
+                            );
+                            debug!("MIP state: {:?}", mip_state);
+                            warn!("Please update your Massa node to support it");
+                        }
+                    }
+                    Err(e) => {
+                        // Should never happen
+                        panic!(
+                            "Unable to get state at {} of mip info: {:?}, error: {}",
+                            now, mip_info, e
+                        )
+                    }
+                }
+            }
+        }
+
+        debug!("MIP store got {} MIP updated from bootstrap", updated.len());
     }
 
     // launch execution module
@@ -510,8 +553,6 @@ async fn launch(
         initial_peers: SETTINGS.protocol.initial_peers_file.clone(),
         listeners,
         keypair_file: SETTINGS.protocol.keypair_file.clone(),
-        max_in_connections: SETTINGS.protocol.max_incoming_connections,
-        max_out_connections: SETTINGS.protocol.max_outgoing_connections,
         max_known_blocks_saved_size: SETTINGS.protocol.max_known_blocks_size,
         asked_operations_buffer_capacity: SETTINGS.protocol.max_known_ops_size,
         thread_tester_count: SETTINGS.protocol.thread_tester_count,
@@ -546,8 +587,16 @@ async fn launch(
         max_size_peers_announcement: MAX_PEERS_IN_ANNOUNCEMENT_LIST,
         read_write_limit_bytes_per_second: SETTINGS.protocol.read_write_limit_bytes_per_second
             as u128,
-        routable_ip: SETTINGS.protocol.routable_ip,
+        try_connection_timer: SETTINGS.protocol.try_connection_timer,
+        timeout_connection: SETTINGS.protocol.timeout_connection,
+        routable_ip: SETTINGS
+            .protocol
+            .routable_ip
+            .or(SETTINGS.network.routable_ip),
         debug: false,
+        peers_categories: SETTINGS.protocol.peers_categories.clone(),
+        default_category_info: SETTINGS.protocol.default_category_info,
+        version: *VERSION,
     };
 
     let (protocol_controller, protocol_channels) =

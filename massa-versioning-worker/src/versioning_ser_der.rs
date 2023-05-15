@@ -915,6 +915,7 @@ impl Deserializer<MipStoreRaw> for MipStoreRawDeserializer {
 #[cfg(test)]
 mod test {
     use super::*;
+    use std::assert_matches::assert_matches;
 
     use std::collections::HashMap;
     use std::mem::{size_of, size_of_val};
@@ -927,6 +928,35 @@ mod test {
 
     use massa_serialization::DeserializeError;
     use massa_time::MassaTime;
+
+    #[test]
+    fn test_mip_component_non_exhaustive() {
+        let last_variant__ = std::mem::variant_count::<MipComponent>() - 2; // -1 for Nonexhaustive, -1 for index start at 0
+        let last_variant_ = u32::try_from(last_variant__).unwrap();
+        let last_variant = MipComponent::from(last_variant_);
+
+        match last_variant {
+            MipComponent::__Nonexhaustive => {
+                panic!("Should be a known enum value")
+            }
+            _ => {
+                // all good
+                println!("last variant of MipComponent is: {:?}", last_variant);
+            }
+        }
+
+        {
+            let variant__ = std::mem::variant_count::<MipComponent>() - 1;
+            let variant_ = u32::try_from(variant__).unwrap();
+            assert_matches!(MipComponent::from(variant_), MipComponent::__Nonexhaustive);
+        }
+
+        {
+            let variant__ = std::mem::variant_count::<MipComponent>();
+            let variant_ = u32::try_from(variant__).unwrap();
+            assert_matches!(MipComponent::from(variant_), MipComponent::__Nonexhaustive);
+        }
+    }
 
     #[test]
     fn test_mip_info_ser_der() {

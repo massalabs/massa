@@ -42,6 +42,9 @@ pub struct BlockHeader {
 // TODO: gh-issue #3398
 #[cfg(any(test, feature = "testing"))]
 impl BlockHeader {
+    /// This is an intentional duplication of invariant checks. In production code,
+    /// these checks are dispersed throughout the deserialization process. This test-only function
+    /// allows all the checks to be in one place.
     fn assert_invariants(
         &self,
         thread_count: u8,

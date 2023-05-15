@@ -13,9 +13,7 @@ nom = "7.1"
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
 thiserror = "1.0"
-tokio = { version = "1.23", features = ["full"] }
 tracing = "0.1"
-anyhow = "1.0"
 num = { version = "0.4", features = ["serde"] }
 parking_lot = { version = "0.12", features = ["deadlock_detection"] }
 crossbeam-channel = { version = "0.5", optional = true }
@@ -24,8 +22,6 @@ mockall = { version = "0.11.4", optional = true }
 # custom modules
 massa_hash = { path = "../massa-hash" }
 massa_models = { path = "../massa-models" }
-massa_time = { path = "../massa-time" }
-massa_ledger_exports = { path = "../massa-ledger-exports" }
 massa_serialization = { path = "../massa-serialization" }
 massa_signature = { path = "../massa-signature" }
 

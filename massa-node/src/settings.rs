@@ -1,10 +1,11 @@
 // Copyright (c) 2022 MASSA LABS <info@massa.net>
 
 //! Build here the default node settings from the configuration file toml
-use std::path::PathBuf;
+use std::{collections::HashMap, path::PathBuf};
 
 use massa_bootstrap::IpType;
 use massa_models::{config::build_massa_settings, node::NodeId};
+use massa_protocol_exports::PeerCategoryInfo;
 use massa_time::MassaTime;
 use serde::Deserialize;
 use std::net::{IpAddr, SocketAddr};
@@ -124,6 +125,7 @@ pub struct Settings {
     pub protocol: ProtocolSettings,
     pub consensus: ConsensusSettings,
     pub api: APISettings,
+    pub network: NetworkSettings,
     pub bootstrap: BootstrapSettings,
     pub pool: PoolSettings,
     pub execution: ExecutionSettings,
@@ -161,6 +163,13 @@ pub struct ConsensusSettings {
     pub broadcast_blocks_channel_capacity: usize,
     /// filled blocks channel capacity
     pub broadcast_filled_blocks_channel_capacity: usize,
+}
+
+// TODO: Remove one date. Kept for retro compatibility.
+#[derive(Debug, Deserialize, Clone)]
+pub struct NetworkSettings {
+    /// Ip seen by others. If none the bind ip is used
+    pub routable_ip: Option<IpAddr>,
 }
 
 /// Protocol Configuration, read from toml user configuration file
@@ -214,14 +223,18 @@ pub struct ProtocolSettings {
     pub routable_ip: Option<IpAddr>,
     /// Time threshold to have a connection to a node
     pub connect_timeout: MassaTime,
-    /// Max number of connection in
-    pub max_incoming_connections: usize,
-    /// Max number of connection out
-    pub max_outgoing_connections: usize,
     /// Number of tester threads
     pub thread_tester_count: u8,
     /// Number of bytes we can read/write by seconds in a connection (must be a 10 multiple)
     pub read_write_limit_bytes_per_second: u64,
+    /// try connection timer
+    pub try_connection_timer: MassaTime,
+    /// Timeout connection
+    pub timeout_connection: MassaTime,
+    /// Peers limits per category
+    pub peers_categories: HashMap<String, PeerCategoryInfo>,
+    /// Limits for default category
+    pub default_category_info: PeerCategoryInfo,
 }
 
 /// gRPC settings

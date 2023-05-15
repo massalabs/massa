@@ -1,5 +1,12 @@
+//! Copyright (c) 2022 MASSA LABS <info@massa.net>
+
+//! This file provides structures representing changes to the asynchronous message pool
 use std::ops::Bound::Included;
 
+use crate::{
+    message::{AsyncMessage, AsyncMessageId, AsyncMessageIdDeserializer, AsyncMessageIdSerializer},
+    AsyncMessageDeserializer, AsyncMessageSerializer,
+};
 use massa_serialization::{
     Deserializer, SerializeError, Serializer, U64VarIntDeserializer, U64VarIntSerializer,
 };
@@ -10,14 +17,6 @@ use nom::{
     IResult, Parser,
 };
 use serde::{Deserialize, Serialize};
-
-///! Copyright (c) 2022 MASSA LABS <info@massa.net>
-
-///! This file provides structures representing changes to the asynchronous message pool
-use crate::{
-    message::{AsyncMessage, AsyncMessageId, AsyncMessageIdDeserializer, AsyncMessageIdSerializer},
-    AsyncMessageDeserializer, AsyncMessageSerializer,
-};
 
 /// Enum representing a value U with identifier T being added or deleted
 #[derive(Debug, Clone, PartialEq, Eq, Deserialize, Serialize)]
