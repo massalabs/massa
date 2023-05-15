@@ -313,6 +313,12 @@
 <a href="#313" id="313">313</a>
 <a href="#314" id="314">314</a>
 <a href="#315" id="315">315</a>
+<a href="#316" id="316">316</a>
+<a href="#317" id="317">317</a>
+<a href="#318" id="318">318</a>
+<a href="#319" id="319">319</a>
+<a href="#320" id="320">320</a>
+<a href="#321" id="321">321</a>
 </pre><pre class="rust"><code><span class="doccomment">//! DEFAULT VALUES USED TO INITIALIZE DIVERS CONFIGURATIONS STRUCTURES
 //!
 //!
@@ -330,7 +336,10 @@
 //! (`default_testing.rs`) But as for the current file you shouldn&#39;t modify it.
 </span><span class="kw">use </span>std::str::FromStr;
 
-<span class="kw">use crate</span>::{address::ADDRESS_SIZE_BYTES, amount::Amount, version::Version};
+<span class="kw">use crate</span>::{
+    address::ADDRESS_SIZE_BYTES, amount::Amount, serialization::u32_be_bytes_min_length,
+    version::Version,
+};
 <span class="kw">use </span>massa_signature::KeyPair;
 <span class="kw">use </span>massa_time::MassaTime;
 <span class="kw">use </span>num::rational::Ratio;
@@ -385,7 +394,7 @@
         <span class="kw">if </span><span class="macro">cfg!</span>(feature = <span class="string">&quot;sandbox&quot;</span>) {
             <span class="string">&quot;SAND.22.1&quot;
         </span>} <span class="kw">else </span>{
-            <span class="string">&quot;TEST.23.0&quot;
+            <span class="string">&quot;TEST.22.2&quot;
         </span>}
         .parse()
         .unwrap()
@@ -505,6 +514,9 @@
 
 </span><span class="doccomment">/// Max message size for bootstrap
 </span><span class="kw">pub const </span>MAX_BOOTSTRAP_MESSAGE_SIZE: u32 = <span class="number">1048576000</span>;
+<span class="doccomment">/// The number of bytes needed to encode [`MAX_BOOTSTRAP_MESSAGE_SIZE`]
+</span><span class="kw">pub const </span>MAX_BOOTSTRAP_MESSAGE_SIZE_BYTES: usize =
+    u32_be_bytes_min_length(MAX_BOOTSTRAP_MESSAGE_SIZE);
 <span class="doccomment">/// Max number of blocks we provide/ take into account while bootstrapping
 </span><span class="kw">pub const </span>MAX_BOOTSTRAP_BLOCKS: u32 = <span class="number">1000000</span>;
 <span class="doccomment">/// max bootstrapped cliques

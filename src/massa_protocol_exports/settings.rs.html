@@ -157,6 +157,8 @@
 <a href="#157" id="157">157</a>
 <a href="#158" id="158">158</a>
 <a href="#159" id="159">159</a>
+<a href="#160" id="160">160</a>
+<a href="#161" id="161">161</a>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="kw">use </span>std::{
@@ -301,6 +303,8 @@
     </span><span class="kw">pub </span>last_start_period: u64,
     <span class="doccomment">/// try connection timer
     </span><span class="kw">pub </span>try_connection_timer: MassaTime,
+    <span class="doccomment">/// Max in connections
+    </span><span class="kw">pub </span>max_in_connections: usize,
     <span class="doccomment">/// Timeout connection
     </span><span class="kw">pub </span>timeout_connection: MassaTime,
     <span class="doccomment">/// Number of bytes per second that can be read/write in a connection (should be a 10 multiplier)
