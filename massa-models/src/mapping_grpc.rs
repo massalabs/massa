@@ -280,11 +280,20 @@ impl From<EventExecutionContext> for grpc::ScExecutionEventContext {
                 .map(|a| a.to_string())
                 .collect(),
             origin_operation_id: value.origin_operation_id.map(|id| id.to_string()),
-            status: vec![
-                value.is_error.into(),
-                value.read_only.into(),
-                value.is_final.into(),
-            ],
+            status: {
+                let mut status = Vec::new();
+                if value.read_only {
+                    status.push(grpc::ScExecutionEventStatus::ReadOnly as i32);
+                }
+                if value.is_error {
+                    status.push(grpc::ScExecutionEventStatus::Failure as i32);
+                }
+                if value.is_final {
+                    status.push(grpc::ScExecutionEventStatus::Final as i32);
+                }
+
+                status
+            },
         }
     }
 }
