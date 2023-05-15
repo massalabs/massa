@@ -235,42 +235,45 @@ fn test_block_header_denunciation_creation() {
     let denunciation_orig = Denunciation::try_from((&secured_header_1, &secured_header_2)).unwrap();
 
     let config = PoolConfig::default();
-    pool_test(
+    let mut selector_controller = Box::new(MockSelectorController::new());
+    selector_controller
+        .expect_clone_box()
+        .times(2)
+        .returning(move || Box::new(MockSelectorController::new()));
+    selector_controller.expect_clone_box().return_once(move || {
+        let mut res = MockSelectorController::new();
+        res.expect_get_producer()
+            .times(2)
+            .returning(move |_| PosResult::Ok(address));
+        Box::new(res)
+    });
+
+    let mut execution_controller = Box::new(MockExecutionController::new());
+    execution_controller
+        .expect_clone_box()
+        .returning(move || Box::new(MockExecutionController::new()));
+    let storage = Storage::create_root();
+    let (mut pool_manager, pool_controller) = start_pool_controller(
         config,
-        |mut pool_manager, pool_controller, _execution_receiver, selector_receiver, _storage| {
-            pool_controller.add_denunciation_precursor(de_p_1);
-            pool_controller.add_denunciation_precursor(de_p_2);
-            // Allow some time for the pool to add the operations
-            loop {
-                match selector_receiver.recv_timeout(Duration::from_millis(100)) {
-                    Ok(MockSelectorControllerMessage::GetProducer {
-                        slot: _slot,
-                        response_tx,
-                    }) => {
-                        response_tx.send(PosResult::Ok(address)).unwrap();
-                    }
-                    Ok(msg) => {
-                        panic!(
-                            "Received an unexpected message from mock selector: {:?}",
-                            msg
-                        );
-                    }
-                    Err(_e) => {
-                        // timeout
-                        break;
-                    }
-                }
-            }
-
-            assert_eq!(pool_controller.get_denunciation_count(), 1);
-            assert_eq!(
-                pool_controller.contains_denunciation(&denunciation_orig),
-                true
-            );
-
-            pool_manager.stop();
+        &storage,
+        execution_controller,
+        PoolChannels {
+            endorsement_sender: broadcast::channel(2000).0,
+            operation_sender: broadcast::channel(5000).0,
+            selector: selector_controller,
         },
     );
+    pool_controller.add_denunciation_precursor(de_p_1);
+    pool_controller.add_denunciation_precursor(de_p_2);
+    std::thread::sleep(Duration::from_millis(100));
+
+    assert_eq!(pool_controller.get_denunciation_count(), 1);
+    assert_eq!(
+        pool_controller.contains_denunciation(&denunciation_orig),
+        true
+    );
+
+    pool_manager.stop();
 }
 
 #[test]
