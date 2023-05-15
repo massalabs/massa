@@ -54,14 +54,14 @@ lazy_static::lazy_static! {
             )
         )
     } else {
-        1683291600000.into()  // Friday, May 5, 2023 01:00:00 PM UTC
+        1683498600000.into()  // Sunday, May 7, 2023 10:30:00 PM UTC
     };
 
     /// TESTNET: time when the blockclique is ended.
     pub static ref END_TIMESTAMP: Option<MassaTime> = if cfg!(feature = "sandbox") {
         None
     } else {
-        Some(1685556000000.into())  // Sunday, April 30, 2023 06:00:00 PM UTC
+        Some(1685556000000.into())  // Sunday, May 30, 2023 06:00:00 PM UTC
     };
     /// `KeyPair` to sign genesis blocks.
     pub static ref GENESIS_KEY: KeyPair = KeyPair::from_str("S1UxdCJv5ckDK8z87E5Jq5fEfSVLi2cTHgtpfZy7iURs3KpPns8")
@@ -71,7 +71,7 @@ lazy_static::lazy_static! {
     /// node version
     pub static ref VERSION: Version = {
         if cfg!(feature = "sandbox") {
-            "SAND.22.0"
+            "SAND.22.1"
         } else {
             "TEST.23.0"
         }

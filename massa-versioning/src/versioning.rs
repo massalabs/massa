@@ -5,7 +5,7 @@ use std::ops::Deref;
 use std::sync::Arc;
 
 use machine::{machine, transitions};
-use num_enum::{IntoPrimitive, TryFromPrimitive};
+use num_enum::{FromPrimitive, IntoPrimitive, TryFromPrimitive};
 use parking_lot::RwLock;
 use thiserror::Error;
 use tracing::warn;
@@ -13,10 +13,9 @@ use tracing::warn;
 use massa_models::{amount::Amount, config::VERSIONING_THRESHOLD_TRANSITION_ACCEPTED};
 use massa_time::MassaTime;
 
-// TODO: add more items here
 /// Versioning component enum
 #[allow(missing_docs)]
-#[derive(Clone, Debug, PartialEq, Eq, Hash, TryFromPrimitive, IntoPrimitive)]
+#[derive(Clone, Debug, PartialEq, Eq, Hash, FromPrimitive, IntoPrimitive)]
 #[repr(u32)]
 pub enum MipComponent {
     // Address and KeyPair versions are directly related
@@ -24,6 +23,9 @@ pub enum MipComponent {
     KeyPair,
     Block,
     VM,
+    #[doc(hidden)]
+    #[num_enum(default)]
+    __Nonexhaustive,
 }
 
 /// MIP info (name & versions & time range for a MIP)
@@ -406,6 +408,16 @@ impl MipState {
             }
         }
     }
+
+    /// Return the time when state will go from LockedIn to Active, None if not already LockedIn
+    pub fn activation_at(&self, mip_info: &MipInfo) -> Option<MassaTime> {
+        match self.state {
+            ComponentState::LockedIn(LockedIn { at }) => {
+                Some(at.saturating_add(mip_info.activation_delay))
+            }
+            _ => None,
+        }
+    }
 }
 
 /// Error returned by MipStateHistory::state_at
@@ -490,7 +502,7 @@ impl MipStore {
     pub fn update_with(
         &mut self,
         mip_store: &MipStore,
-    ) -> Result<(Vec<MipInfo>, Vec<MipInfo>), UpdateWithError> {
+    ) -> Result<(Vec<MipInfo>, BTreeMap<MipInfo, MipState>), UpdateWithError> {
         let mut lock = self.0.write();
         let lock_other = mip_store.0.read();
         lock.update_with(lock_other.deref())
@@ -555,12 +567,12 @@ pub struct MipStoreRaw {
 
 impl MipStoreRaw {
     /// Update our store with another (usually after a bootstrap where we received another store)
-    /// Return list of updated / added if update is successful
+    /// Return list of updated / added if successful, UpdateWithError otherwise
     #[allow(clippy::result_large_err)]
     pub fn update_with(
         &mut self,
         store_raw: &MipStoreRaw,
-    ) -> Result<(Vec<MipInfo>, Vec<MipInfo>), UpdateWithError> {
+    ) -> Result<(Vec<MipInfo>, BTreeMap<MipInfo, MipState>), UpdateWithError> {
         // iter over items in given store:
         // -> 2 cases:
         // * MipInfo is already in self store -> add to 'to_update' list
@@ -672,12 +684,13 @@ impl MipStoreRaw {
 
         match has_error {
             None => {
-                let added = to_add.keys().cloned().collect();
-                let updated = to_update.keys().cloned().collect();
+                let updated: Vec<MipInfo> = to_update.keys().cloned().collect();
 
+                // Note: we only update the store with to_update collection
+                //       having something in the to_add collection means that we need to update
+                //       the Massa node software
                 self.store.append(&mut to_update);
-                self.store.append(&mut to_add);
-                Ok((updated, added))
+                Ok((updated, to_add))
             }
             Some(e) => Err(e),
         }
@@ -777,7 +790,10 @@ impl<const N: usize> TryFrom<([(MipInfo, MipState); N], MipStatsConfig)> for Mip
 
         // Use update_with ensuring that we have no overlapping time range, unique names & ...
         match store.update_with(&other_store) {
-            Ok(_) => Ok(store),
+            Ok((_updated, mut added)) => {
+                store.store.append(&mut added);
+                Ok(store)
+            }
             Err(_) => Err(()),
         }
     }
@@ -1191,10 +1207,11 @@ mod test {
         ))
         .unwrap();
 
+        println!("update with:");
         let (updated, added) = vs_raw_1.update_with(&vs_raw_2).unwrap();
 
         // Check update_with result
-        assert_eq!(added, vec![]);
+        assert!(added.is_empty());
         assert_eq!(updated, vec![vi_2.clone()]);
 
         // Expect state 1 (for vi_1) no change, state 2 (for vi_2) updated to "Active"
@@ -1317,5 +1334,39 @@ mod test {
 
         let mip_store = MipStore::try_from(([], mip_stats_config));
         assert_eq!(mip_store.is_ok(), true);
+    }
+
+    #[test]
+    fn test_update_with_unknown() {
+        // Test update_with with unknown MipComponent
+
+        // data
+        let mip_stats_config = MipStatsConfig {
+            block_count_considered: MIP_STORE_STATS_BLOCK_CONSIDERED,
+            counters_max: MIP_STORE_STATS_COUNTERS_MAX,
+        };
+
+        let mut mip_store_raw_1 = MipStoreRaw::try_from(([], mip_stats_config.clone())).unwrap();
+
+        let mi_1 = MipInfo {
+            name: "MIP-0002".to_string(),
+            version: 2,
+            components: HashMap::from([(MipComponent::__Nonexhaustive, 1)]),
+            start: MassaTime::from(0),
+            timeout: MassaTime::from(5),
+            activation_delay: MassaTime::from(2),
+        };
+        let ms_1 = advance_state_until(ComponentState::defined(), &mi_1);
+        assert_eq!(ms_1, ComponentState::defined());
+        let mip_store_raw_2 = MipStoreRaw {
+            store: BTreeMap::from([(mi_1.clone(), ms_1.clone())]),
+            stats: MipStoreStats::new(mip_stats_config.clone()),
+        };
+
+        let (updated, added) = mip_store_raw_1.update_with(&mip_store_raw_2).unwrap();
+
+        assert_eq!(updated.len(), 0);
+        assert_eq!(added.len(), 1);
+        assert_eq!(added.get(&mi_1).unwrap().state, ComponentState::defined());
     }
 }

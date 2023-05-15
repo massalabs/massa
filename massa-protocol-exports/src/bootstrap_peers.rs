@@ -17,6 +17,13 @@ use std::collections::HashMap;
 use std::net::SocketAddr;
 use std::ops::Bound::Included;
 
+/// Peer info provided in bootstrap
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct PeerData {
+    pub listeners: HashMap<SocketAddr, TransportType>,
+    pub category: String,
+}
+
 /// Peers that are transmitted during bootstrap
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct BootstrapPeers(pub Vec<(PeerId, HashMap<SocketAddr, TransportType>)>);
