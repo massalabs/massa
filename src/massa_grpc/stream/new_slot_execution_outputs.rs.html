@@ -101,11 +101,45 @@
 <a href="#101" id="101">101</a>
 <a href="#102" id="102">102</a>
 <a href="#103" id="103">103</a>
+<a href="#104" id="104">104</a>
+<a href="#105" id="105">105</a>
+<a href="#106" id="106">106</a>
+<a href="#107" id="107">107</a>
+<a href="#108" id="108">108</a>
+<a href="#109" id="109">109</a>
+<a href="#110" id="110">110</a>
+<a href="#111" id="111">111</a>
+<a href="#112" id="112">112</a>
+<a href="#113" id="113">113</a>
+<a href="#114" id="114">114</a>
+<a href="#115" id="115">115</a>
+<a href="#116" id="116">116</a>
+<a href="#117" id="117">117</a>
+<a href="#118" id="118">118</a>
+<a href="#119" id="119">119</a>
+<a href="#120" id="120">120</a>
+<a href="#121" id="121">121</a>
+<a href="#122" id="122">122</a>
+<a href="#123" id="123">123</a>
+<a href="#124" id="124">124</a>
+<a href="#125" id="125">125</a>
+<a href="#126" id="126">126</a>
+<a href="#127" id="127">127</a>
+<a href="#128" id="128">128</a>
+<a href="#129" id="129">129</a>
+<a href="#130" id="130">130</a>
+<a href="#131" id="131">131</a>
+<a href="#132" id="132">132</a>
+<a href="#133" id="133">133</a>
+<a href="#134" id="134">134</a>
+<a href="#135" id="135">135</a>
+<a href="#136" id="136">136</a>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2023 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="kw">use </span><span class="kw">crate</span>::error::{match_for_io_error, GrpcError};
 <span class="kw">use </span><span class="kw">crate</span>::server::MassaGrpc;
 <span class="kw">use </span>futures_util::StreamExt;
+<span class="kw">use </span>massa_execution_exports::SlotExecutionOutput;
 <span class="kw">use </span>massa_proto::massa::api::v1 <span class="kw">as </span>grpc;
 <span class="kw">use </span>std::io::ErrorKind;
 <span class="kw">use </span>std::pin::Pin;
@@ -141,60 +175,72 @@
 
     tokio::spawn(<span class="kw">async move </span>{
         <span class="comment">// Initialize the request_id string
-        </span><span class="kw">let </span><span class="kw-2">mut </span>request_id = String::new();
-        <span class="kw">loop </span>{
-            <span class="macro">select! </span>{
-                <span class="comment">// Receive a new slot execution output from the subscriber
-                </span>event = subscriber.recv() =&gt; {
-                    <span class="kw">match </span>event {
-                        <span class="prelude-val">Ok</span>(massa_slot_execution_output) =&gt; {
-                            <span class="comment">// Send the new slot execution output through the channel
-                            </span><span class="kw">if let </span><span class="prelude-val">Err</span>(e) = tx.send(<span class="prelude-val">Ok</span>(grpc::NewSlotExecutionOutputsResponse {
-                                    id: request_id.clone(),
-                                    output: <span class="prelude-val">Some</span>(massa_slot_execution_output.into())
-                            })).<span class="kw">await </span>{
-                                <span class="macro">error!</span>(<span class="string">&quot;failed to send new slot execution output : {}&quot;</span>, e);
-                                <span class="kw">break</span>;
-                            }
-                        },
+        </span><span class="kw">if let </span><span class="prelude-val">Some</span>(<span class="prelude-val">Ok</span>(request)) = in_stream.next().<span class="kw">await </span>{
+            <span class="kw">let </span><span class="kw-2">mut </span>request_id = request.id;
+            <span class="kw">let </span><span class="kw-2">mut </span>filter = request.query.and_then(|q| q.filter);
+            <span class="kw">loop </span>{
+                <span class="macro">select! </span>{
+                    <span class="comment">// Receive a new slot execution output from the subscriber
+                    </span>event = subscriber.recv() =&gt; {
+                        <span class="kw">match </span>event {
+                            <span class="prelude-val">Ok</span>(massa_slot_execution_output) =&gt; {
+                                <span class="comment">// Check if the slot execution output should be sent
+                                </span><span class="kw">if </span>!should_send(<span class="kw-2">&amp;</span>filter, <span class="kw-2">&amp;</span>massa_slot_execution_output) {
+                                  <span class="kw">continue</span>;
+                                }
+                                <span class="comment">// Send the new slot execution output through the channel
+                                </span><span class="kw">if let </span><span class="prelude-val">Err</span>(e) = tx.send(<span class="prelude-val">Ok</span>(grpc::NewSlotExecutionOutputsResponse {
+                                        id: request_id.clone(),
+                                        output: <span class="prelude-val">Some</span>(massa_slot_execution_output.into())
+                                })).<span class="kw">await </span>{
+                                    <span class="macro">error!</span>(<span class="string">&quot;failed to send new slot execution output : {}&quot;</span>, e);
+                                    <span class="kw">break</span>;
+                                }
+                            },
 
-                        <span class="prelude-val">Err</span>(e) =&gt; {<span class="macro">error!</span>(<span class="string">&quot;error on receive new slot execution output : {}&quot;</span>, e)}
-                    }
-                },
-                <span class="comment">// Receive a new message from the in_stream
-                </span>res = in_stream.next() =&gt; {
-                    <span class="kw">match </span>res {
-                        <span class="prelude-val">Some</span>(res) =&gt; {
-                            <span class="kw">match </span>res {
-                                <span class="comment">// Get the request_id from the received data
-                                </span><span class="prelude-val">Ok</span>(data) =&gt; {
-                                    request_id = data.id
-                                },
-                                <span class="comment">// Handle any errors that may occur during receiving the data
-                                </span><span class="prelude-val">Err</span>(err) =&gt; {
-                                    <span class="comment">// Check if the error matches any IO errors
-                                    </span><span class="kw">if let </span><span class="prelude-val">Some</span>(io_err) = match_for_io_error(<span class="kw-2">&amp;</span>err) {
-                                        <span class="kw">if </span>io_err.kind() == ErrorKind::BrokenPipe {
-                                            <span class="macro">warn!</span>(<span class="string">&quot;client disconnected, broken pipe: {}&quot;</span>, io_err);
+                            <span class="prelude-val">Err</span>(e) =&gt; <span class="macro">error!</span>(<span class="string">&quot;error on receive new slot execution output : {}&quot;</span>, e)
+                        }
+                    },
+                    <span class="comment">// Receive a new message from the in_stream
+                    </span>res = in_stream.next() =&gt; {
+                        <span class="kw">match </span>res {
+                            <span class="prelude-val">Some</span>(res) =&gt; {
+                                <span class="kw">match </span>res {
+                                    <span class="comment">// Get the request_id from the received data
+                                    </span><span class="prelude-val">Ok</span>(data) =&gt; {
+                                        <span class="comment">// Update current filter &amp;&amp; request id
+                                        </span>filter = data.query
+                                            .and_then(|q| q.filter);
+                                        request_id = data.id
+                                    },
+                                    <span class="comment">// Handle any errors that may occur during receiving the data
+                                    </span><span class="prelude-val">Err</span>(err) =&gt; {
+                                        <span class="comment">// Check if the error matches any IO errors
+                                        </span><span class="kw">if let </span><span class="prelude-val">Some</span>(io_err) = match_for_io_error(<span class="kw-2">&amp;</span>err) {
+                                            <span class="kw">if </span>io_err.kind() == ErrorKind::BrokenPipe {
+                                                <span class="macro">warn!</span>(<span class="string">&quot;client disconnected, broken pipe: {}&quot;</span>, io_err);
+                                                <span class="kw">break</span>;
+                                            }
+                                        }
+                                        <span class="macro">error!</span>(<span class="string">&quot;{}&quot;</span>, err);
+                                        <span class="comment">// Send the error response back to the client
+                                        </span><span class="kw">if let </span><span class="prelude-val">Err</span>(e) = tx.send(<span class="prelude-val">Err</span>(err)).<span class="kw">await </span>{
+                                            <span class="macro">error!</span>(<span class="string">&quot;failed to send back new_slot_execution_outputs error response: {}&quot;</span>, e);
                                             <span class="kw">break</span>;
                                         }
                                     }
-                                    <span class="macro">error!</span>(<span class="string">&quot;{}&quot;</span>, err);
-                                    <span class="comment">// Send the error response back to the client
-                                    </span><span class="kw">if let </span><span class="prelude-val">Err</span>(e) = tx.send(<span class="prelude-val">Err</span>(err)).<span class="kw">await </span>{
-                                        <span class="macro">error!</span>(<span class="string">&quot;failed to send back new_slot_execution_outputs error response: {}&quot;</span>, e);
-                                        <span class="kw">break</span>;
-                                    }
                                 }
-                            }
-                        },
-                        <span class="prelude-val">None </span>=&gt; {
-                            <span class="comment">// The client has disconnected
-                            </span><span class="kw">break</span>;
-                        },
+                            },
+                            <span class="prelude-val">None </span>=&gt; {
+                                <span class="comment">// The client has disconnected
+                                </span><span class="kw">break</span>;
+                            },
+                        }
                     }
                 }
             }
+        } <span class="kw">else </span>{
+            <span class="macro">error!</span>(<span class="string">&quot;empty request&quot;</span>);
         }
     });
 
@@ -203,6 +249,26 @@
 
     <span class="comment">// Return the new stream of slot execution output
     </span><span class="prelude-val">Ok</span>(Box::pin(out_stream) <span class="kw">as </span>NewSlotExecutionOutputsStreamType)
+}
+
+<span class="doccomment">/// Return if the execution outputs should be send to client
+</span><span class="kw">fn </span>should_send(
+    filter_opt: <span class="kw-2">&amp;</span><span class="prelude-ty">Option</span>&lt;grpc::NewSlotExecutionOutputsFilter&gt;,
+    exec_out_status: <span class="kw-2">&amp;</span>SlotExecutionOutput,
+) -&gt; bool {
+    <span class="kw">match </span>filter_opt {
+        <span class="prelude-val">Some</span>(filter) =&gt; <span class="kw">match </span>exec_out_status {
+            SlotExecutionOutput::ExecutedSlot(<span class="kw">_</span>) =&gt; {
+                <span class="kw">let </span>id = grpc::ExecutionOutputStatus::Candidate <span class="kw">as </span>i32;
+                filter.status.contains(<span class="kw-2">&amp;</span>id)
+            }
+            SlotExecutionOutput::FinalizedSlot(<span class="kw">_</span>) =&gt; {
+                <span class="kw">let </span>id = grpc::ExecutionOutputStatus::Final <span class="kw">as </span>i32;
+                filter.status.contains(<span class="kw-2">&amp;</span>id)
+            }
+        },
+        <span class="prelude-val">None </span>=&gt; <span class="bool-val">true</span>, <span class="comment">// if user has no filter = All execution outputs status are sent
+    </span>}
 }
 </code></pre></div>
 </section></main><div id="rustdoc-vars" data-root-path="../../../" data-static-root-path="../../../static.files/" data-current-crate="massa_grpc" data-themes="" data-resource-suffix="" data-rustdoc-version="1.69.0-nightly (d962ea578 2023-02-26)" data-search-js="search-14421e1532aead08.js" data-settings-js="settings-f0c5c39777a9a2f6.js" data-settings-css="settings-0bcba95ff279c1db.css" ></div></body></html>
