@@ -409,6 +409,7 @@ fn run_bootstrap_session(
         deadline,
         mip_store,
     );
+    println!("AURELIEN: mange bootstrap done with res: {:?}", res);
 
     // This drop allows the server to accept new connections before having to complete the error notifications
     // account for this session being finished, as well as the root-instance
@@ -676,6 +677,7 @@ fn manage_bootstrap(
             "insufficient time to check for error from client".to_string(),
         ));
     };
+    println!("AURELIEN: After receive handshake");
     match server.next_timeout(Some(read_error_timeout)) {
         Err(BootstrapError::TimedOut(_)) => {}
         Err(e) => return Err(e),
@@ -684,6 +686,7 @@ fn manage_bootstrap(
         }
         Ok(msg) => return Err(BootstrapError::UnexpectedClientMessage(Box::new(msg))),
     };
+    println!("AURELIEN: After error handshake");
 
     // Sync clocks
     let send_time_timeout =
@@ -691,6 +694,7 @@ fn manage_bootstrap(
     let Some(next_step_timeout) = send_time_timeout else {
         return Err(BootstrapError::Interupted("insufficient time left to send server time".to_string()));
     };
+    println!("AURELIEN: Before send clock");
     server.send_msg(
         next_step_timeout,
         BootstrapServerMessage::BootstrapTime {
@@ -698,13 +702,18 @@ fn manage_bootstrap(
             version,
         },
     )?;
+    println!("AURELIEN: After send clock");
 
     loop {
         let Some(read_timeout) = step_timeout_duration(&deadline, &bootstrap_config.read_timeout.to_duration()) else {
             return Err(BootstrapError::Interupted("insufficient time left to process next message".to_string()));
         };
+        println!("AURELIEN: Read timeout {:?}", read_timeout);
         match server.next_timeout(Some(read_timeout)) {
-            Err(BootstrapError::TimedOut(_)) => break Ok(()),
+            Err(BootstrapError::TimedOut(_)) => {
+                println!("AURELIEN: TimedOut");
+                break Ok(())
+            },
             Err(e) => break Err(e),
             Ok(msg) => match msg {
                 BootstrapClientMessage::AskBootstrapPeers => {

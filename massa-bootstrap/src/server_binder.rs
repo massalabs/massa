@@ -226,7 +226,11 @@ impl BootstrapServerBinder {
 
         let peek_len = HASH_SIZE_BYTES + self.size_field_len;
         let mut peek_buf = vec![0; peek_len];
-        while self.duplex.peek(&mut peek_buf)? < peek_len {
+        let mut len = self.duplex.peek(&mut peek_buf)?;
+        println!("AURELIEN peek len: {}", len);
+        while len < peek_len {
+            len = self.duplex.peek(&mut peek_buf)?;
+            println!("AURELIEN peek len: {}", len);
             // TODO: backoff spin of some sort
         }
         // construct prev-hash from peek
