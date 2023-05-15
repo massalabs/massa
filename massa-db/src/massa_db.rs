@@ -1,8 +1,9 @@
 use crate::{
     MassaDBError, CF_ERROR, CHANGE_ID_DESER_ERROR, CHANGE_ID_KEY, CRUD_ERROR, METADATA_CF,
-    OPEN_ERROR, STATE_CF, STATE_HASH_ERROR, STATE_HASH_INITIAL_BYTES, STATE_HASH_KEY,
+    MONOTREE_CF, MONOTREE_ERROR, OPEN_ERROR, STATE_CF, STATE_HASH_ERROR, STATE_HASH_INITIAL_BYTES,
+    STATE_HASH_KEY,
 };
-use massa_hash::{Hash, HashSerializer};
+use massa_hash::Hash;
 use massa_models::{
     error::ModelsError,
     slot::{Slot, SlotDeserializer, SlotSerializer},
@@ -10,6 +11,8 @@ use massa_models::{
 };
 use massa_serialization::{DeserializeError, Deserializer, Serializer};
 
+use monotree::{Database, Monotree};
+use parking_lot::Mutex;
 use rocksdb::{
     checkpoint::Checkpoint, ColumnFamily, ColumnFamilyDescriptor, Direction, IteratorMode, Options,
     WriteBatch, DB,
@@ -20,6 +23,7 @@ use std::{
     ops::Bound::{self, Excluded, Included},
     path::PathBuf,
     println,
+    sync::Arc,
 };
 
 type Key = Vec<u8>;
@@ -59,6 +63,83 @@ pub struct RawMassaDB<
     pub cur_change_id: ChangeID,
     change_id_serializer: ChangeIDSerializer,
     change_id_deserializer: ChangeIDDeserializer,
+    monotree: Monotree<MassaDBForMonotree<ChangeID, ChangeIDSerializer, ChangeIDDeserializer>>,
+    current_batch: Arc<Mutex<WriteBatch>>,
+}
+
+struct MassaDBForMonotree<
+    ChangeID: PartialOrd + Ord + PartialEq + Eq + Clone + std::fmt::Debug,
+    ChangeIDSerializer: Serializer<ChangeID>,
+    ChangeIDDeserializer: Deserializer<ChangeID>,
+>(Option<Arc<RawMassaDB<ChangeID, ChangeIDSerializer, ChangeIDDeserializer>>>);
+
+impl<ChangeID, ChangeIDSerializer, ChangeIDDeserializer> MassaDBForMonotree<ChangeID, ChangeIDSerializer, ChangeIDDeserializer>
+where
+    ChangeID: PartialOrd + Ord + PartialEq + Eq + Clone + std::fmt::Debug,
+    ChangeIDSerializer: Serializer<ChangeID>,
+    ChangeIDDeserializer: Deserializer<ChangeID>,
+{
+    pub fn init(&mut self, db: Arc<RawMassaDB<ChangeID, ChangeIDSerializer, ChangeIDDeserializer>>) {
+        self.0 = Some(db);
+    }
+}
+
+
+impl<ChangeID, ChangeIDSerializer, ChangeIDDeserializer> Database
+    for MassaDBForMonotree<ChangeID, ChangeIDSerializer, ChangeIDDeserializer>
+where
+    ChangeID: PartialOrd + Ord + PartialEq + Eq + Clone + std::fmt::Debug,
+    ChangeIDSerializer: Serializer<ChangeID>,
+    ChangeIDDeserializer: Deserializer<ChangeID>,
+{
+    fn new(_dbpath: &str) -> Self {
+        MassaDBForMonotree(None)
+    }
+
+    fn get(&mut self, key: &[u8]) -> monotree::Result<Option<Vec<u8>>> {
+        match self.0 {
+            Some(ref mut db) => {
+                let handle_monotree = db.db.cf_handle(MONOTREE_CF).expect(CF_ERROR);
+                let value = db.db.get_cf(handle_monotree, key).expect(CRUD_ERROR);
+                Ok(value)
+            }
+            None => Err(monotree::Errors::new("Database not initialized")),
+        }
+    }
+
+    fn put(&mut self, key: &[u8], value: Vec<u8>) -> monotree::Result<()> {
+        match self.0 {
+            Some(ref mut db) => {
+                let handle_monotree = db.db.cf_handle(MONOTREE_CF).expect(CF_ERROR);
+                db.current_batch.lock().put_cf(handle_monotree, key, value);
+                Ok(())
+            }
+            None => Err(monotree::Errors::new("Database not initialized")),
+        }
+    }
+
+    fn delete(&mut self, key: &[u8]) -> monotree::Result<()> {
+        match self.0 {
+            Some(ref mut db) => {
+                let handle_monotree = db.db.cf_handle(MONOTREE_CF).expect(CF_ERROR);
+                db.current_batch.lock().delete_cf(handle_monotree, key);
+                Ok(())
+            }
+            None => Err(monotree::Errors::new("Database not initialized")),
+        }
+    }
+
+    fn init_batch(&mut self) -> monotree::Result<()> {
+        Err(monotree::Errors::new(
+            "We don't support batch operations directly in monotree, should never be called",
+        ))
+    }
+
+    fn finish_batch(&mut self) -> monotree::Result<()> {
+        Err(monotree::Errors::new(
+            "We don't support batch operations directly in monotree, should never be called",
+        ))
+    }
 }
 
 impl<ChangeID, ChangeIDSerializer, ChangeIDDeserializer> std::fmt::Debug
@@ -85,6 +166,11 @@ where
     ChangeIDSerializer: Serializer<ChangeID>,
     ChangeIDDeserializer: Deserializer<ChangeID>,
 {
+    /// Let's us initialize monotree with a ref to self
+    pub fn init_monotree(&mut self) {
+        todo!();
+    }
+
     /// Used for bootstrap servers (get a new batch to stream to the client)
     ///
     /// Returns a StreamBatch<ChangeID>
@@ -186,7 +272,7 @@ where
         &mut self,
         changes: BTreeMap<Key, Option<Value>>,
         change_id: Option<ChangeID>,
-        tracked_hash: Option<Hash>,
+        _tracked_hash: Option<Hash>,
         reset_history: bool,
     ) -> Result<(), MassaDBError> {
         if let Some(change_id) = change_id.clone() {
@@ -204,40 +290,67 @@ where
         }
 
         let handle_state = self.db.cf_handle(STATE_CF).expect(CF_ERROR);
-        //let handle_monotree = self.db.cf_handle(STATE_CF).expect(CF_ERROR);
-        let mut batch: rocksdb::WriteBatchWithTransaction<false> = WriteBatch::default();
+        let handle_metadata = self.db.cf_handle(METADATA_CF).expect(CF_ERROR);
+
+        let hash = self.get_db_hash();
+        let mut root = Some(hash.into_bytes());
+
+        *self.current_batch.lock() = WriteBatch::default();
 
         for (key, value) in changes.iter() {
             if let Some(value) = value {
-                batch.put_cf(handle_state, key, value);
-                //self.monotree.put(key, value);
+                self.current_batch.lock().put_cf(handle_state, key, value);
+                let key_hash = Hash::compute_from(key);
+                let value_hash = Hash::compute_from(value);
+                root = self
+                    .monotree
+                    .insert(root.as_ref(), key_hash.to_bytes(), value_hash.to_bytes())
+                    .expect(MONOTREE_ERROR);
             } else {
-                batch.delete_cf(handle_state, key);
-                //self.monotree.delete_cf(handle, key, value);
+                self.current_batch.lock().delete_cf(handle_state, key);
+                let key_hash = Hash::compute_from(key);
+                root = self
+                    .monotree
+                    .remove(root.as_ref(), key_hash.to_bytes())
+                    .expect(MONOTREE_ERROR);
             }
         }
 
         if let Some(change_id) = change_id {
-            self.set_change_id(change_id, &mut batch);
-            //self.monotree.put(key, value);
+            let mut change_id_bytes = Vec::new();
+            self.change_id_serializer
+                .serialize(&change_id, &mut change_id_bytes)
+                .unwrap();
+
+            self.current_batch
+                .lock()
+                .put_cf(handle_metadata, CHANGE_ID_KEY, &change_id_bytes);
+
+            let key_hash = Hash::compute_from(CHANGE_ID_KEY);
+            let value_hash = Hash::compute_from(&change_id_bytes);
+
+            root = self
+                .monotree
+                .insert(root.as_ref(), key_hash.to_bytes(), value_hash.to_bytes())
+                .expect(MONOTREE_ERROR);
         }
 
-        //self.hash_tracker.write_batch(&changes);
-
-        if let Some(tracked_hash) = tracked_hash {
-            let metadata_handle = self.db.cf_handle(METADATA_CF).expect(CF_ERROR);
-            let mut serialized_tracked_hash = Vec::new();
-            HashSerializer::new()
-                .serialize(&tracked_hash, &mut serialized_tracked_hash)
-                .map_err(|e| {
-                    MassaDBError::HashError(format!("Can't serialize tracked hash: {}", e))
-                })?;
-            batch.put_cf(metadata_handle, STATE_HASH_KEY, serialized_tracked_hash);
+        if let Some(root) = root {
+            self.current_batch
+                .lock()
+                .put_cf(handle_metadata, STATE_HASH_KEY, root);
         }
 
-        self.db
-            .write(batch)
-            .map_err(|e| MassaDBError::RocksDBError(format!("Can't write batch to disk: {}", e)))?; // note that None values have to be deleted
+        let batch;
+        {
+            let mut current_batch_guard = self.current_batch.lock();
+            batch = WriteBatch::from_data(current_batch_guard.data());
+            current_batch_guard.clear();
+
+            self.db.write(batch).map_err(|e| {
+                MassaDBError::RocksDBError(format!("Can't write batch to disk: {}", e))
+            })?; // note that None values have to be deleted
+        }
 
         self.change_history
             .entry(self.cur_change_id.clone())
@@ -253,17 +366,6 @@ where
         }
 
         Ok(())
-    }
-
-    fn set_change_id(&self, change_id: ChangeID, batch: &mut WriteBatch) {
-        let db = &self.db;
-        let handle = db.cf_handle(METADATA_CF).expect(CF_ERROR);
-        let mut change_id_bytes = Vec::new();
-        self.change_id_serializer
-            .serialize(&change_id, &mut change_id_bytes)
-            .unwrap();
-
-        batch.put_cf(handle, CHANGE_ID_KEY, &change_id_bytes);
     }
 
     pub fn get_change_id(&self) -> Result<ChangeID, ModelsError> {
@@ -344,6 +446,13 @@ impl RawMassaDB<Slot, SlotSerializer, SlotDeserializer> {
             (Included(0), Excluded(config.thread_count)),
         );
 
+        let monotree = Monotree::new(
+            config
+                .path
+                .to_str()
+                .expect("Critical error: path is not valid UTF-8"),
+        );
+
         Self {
             db,
             config,
@@ -354,6 +463,8 @@ impl RawMassaDB<Slot, SlotSerializer, SlotDeserializer> {
             },
             change_id_serializer: SlotSerializer::new(),
             change_id_deserializer,
+            current_batch: Arc::new(Mutex::new(WriteBatch::default())),
+            monotree,
         }
     }
 

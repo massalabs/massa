@@ -1,8 +1,10 @@
 use massa_hash::HASH_SIZE_BYTES;
 
 // Commons
+pub const MONOTREE_CF: &str = "monotree";
 pub const METADATA_CF: &str = "metadata";
 pub const STATE_CF: &str = "state";
+
 pub const STATE_HASH_KEY: &[u8; 1] = b"h";
 pub const CHANGE_ID_KEY: &[u8; 1] = b"c";
 pub const CHANGE_ID_DESER_ERROR: &str = "critical: change_id deserialization failed";
@@ -10,8 +12,9 @@ pub const CHANGE_ID_DESER_ERROR: &str = "critical: change_id deserialization fai
 // Errors
 pub const CF_ERROR: &str = "critical: rocksdb column family operation failed";
 pub const OPEN_ERROR: &str = "critical: rocksdb open operation failed";
+pub const MONOTREE_ERROR: &str = "critical: monotree insert / remove open operation failed";
 pub const CRUD_ERROR: &str = "critical: rocksdb crud operation failed";
-pub const STATE_HASH_ERROR: &str = "critical: saved async pool hash is corrupted";
+pub const STATE_HASH_ERROR: &str = "critical: saved state hash is corrupted";
 pub const STATE_HASH_INITIAL_BYTES: &[u8; 32] = &[0; HASH_SIZE_BYTES];
 
 // Prefixes
