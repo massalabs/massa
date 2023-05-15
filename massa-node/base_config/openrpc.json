@@ -2,7 +2,7 @@
     "openrpc": "1.2.4",
     "info": {
         "title": "Massa OpenRPC Specification",
-        "version": "TEST.23.0",
+        "version": "TEST.22.2",
         "description": "Massa OpenRPC Specification document. Find more information on https://docs.massa.net/en/latest/technical-doc/api.html",
         "termsOfService": "https://open-rpc.org",
         "contact": {

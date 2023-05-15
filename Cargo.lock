@@ -927,6 +927,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "ctrlc"
+version = "3.2.5"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "bbcf33c2a618cbe41ee43ae6e9f2e48368cd9f9db2896f10167d8d762679f639"
+dependencies = [
+ "nix 0.26.2",
+ "windows-sys 0.45.0",
+]
+
+[[package]]
 name = "curve25519-dalek"
 version = "3.2.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1118,13 +1128,13 @@ dependencies = [
 
 [[package]]
 name = "displaydoc"
-version = "0.2.3"
+version = "0.2.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "3bf95dc3f046b9da4f2d51833c0d3547d8564ef6910f5c1ed130306a75b92886"
+checksum = "487585f4d0c6655fe74905e2504d8ad6908e4db67f744eb140876906c2f3175d"
 dependencies = [
  "proc-macro2 1.0.56",
  "quote 1.0.26",
- "syn 1.0.109",
+ "syn 2.0.15",
 ]
 
 [[package]]
@@ -1834,10 +1844,10 @@ dependencies = [
  "http",
  "hyper",
  "log",
- "rustls",
+ "rustls 0.20.8",
  "rustls-native-certs",
  "tokio",
- "tokio-rustls",
+ "tokio-rustls 0.23.4",
  "webpki-roots",
 ]
 
@@ -1998,7 +2008,7 @@ dependencies = [
  "soketto",
  "thiserror",
  "tokio",
- "tokio-rustls",
+ "tokio-rustls 0.23.4",
  "tokio-util",
  "tracing",
  "webpki-roots",
@@ -2207,9 +2217,9 @@ checksum = "0717cef1bc8b636c6e1c1bbdefc09e6322da8a9321966e8928ef80d20f7f770f"
 
 [[package]]
 name = "linux-raw-sys"
-version = "0.3.6"
+version = "0.3.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b64f40e5e03e0d54f03845c8197d0291253cdbedfb1cb46b13c2c117554a9f4c"
+checksum = "ece97ea872ece730aed82664c424eb4c8291e1ff2480247ccf7409044bc6479f"
 
 [[package]]
 name = "lock_api"
@@ -2323,6 +2333,7 @@ version = "0.1.0"
 dependencies = [
  "anyhow",
  "crossbeam-channel",
+ "ctrlc",
  "dialoguer",
  "lazy_static",
  "massa_api",
@@ -2366,7 +2377,7 @@ dependencies = [
 [[package]]
 name = "massa-sc-runtime"
 version = "0.10.0"
-source = "git+https://github.com/massalabs/massa-sc-runtime?branch=testnet_23#f8b1657e821a0265a6029424ff2bedac74909a48"
+source = "git+https://github.com/massalabs/massa-sc-runtime?branch=main#bab919aa4a9cf1da0cf8aaf845a28dcdfc9d3631"
 dependencies = [
  "anyhow",
  "as-ffi-bindings",
@@ -2374,8 +2385,9 @@ dependencies = [
  "chrono",
  "displaydoc",
  "function_name",
+ "glob",
  "loupe",
- "massa_hash 0.1.0 (git+https://github.com/massalabs/massa.git)",
+ "massa_hash 0.1.0 (git+https://github.com/massalabs/massa)",
  "more-asserts 0.3.1",
  "num_enum",
  "parking_lot",
@@ -2512,7 +2524,6 @@ dependencies = [
  "substruct",
  "tempfile",
  "thiserror",
- "tokio",
  "tracing",
 ]
 
@@ -2765,12 +2776,12 @@ dependencies = [
 [[package]]
 name = "massa_hash"
 version = "0.1.0"
-source = "git+https://github.com/massalabs/massa.git#d969f7dcf76e8b0a282b542674c722fd0c55f6b5"
+source = "git+https://github.com/massalabs/massa#761c3458f2dd39f2db2baeaeb338ddcdc74922ab"
 dependencies = [
  "blake3",
  "bs58",
  "displaydoc",
- "massa_serialization 0.1.0 (git+https://github.com/massalabs/massa.git)",
+ "massa_serialization 0.1.0 (git+https://github.com/massalabs/massa)",
  "nom",
  "serde",
  "thiserror",
@@ -3027,7 +3038,7 @@ dependencies = [
 [[package]]
 name = "massa_serialization"
 version = "0.1.0"
-source = "git+https://github.com/massalabs/massa.git#d969f7dcf76e8b0a282b542674c722fd0c55f6b5"
+source = "git+https://github.com/massalabs/massa#761c3458f2dd39f2db2baeaeb338ddcdc74922ab"
 dependencies = [
  "displaydoc",
  "nom",
@@ -3055,13 +3066,13 @@ dependencies = [
 [[package]]
 name = "massa_signature"
 version = "0.1.0"
-source = "git+https://github.com/massalabs/massa.git#d969f7dcf76e8b0a282b542674c722fd0c55f6b5"
+source = "git+https://github.com/massalabs/massa#761c3458f2dd39f2db2baeaeb338ddcdc74922ab"
 dependencies = [
  "bs58",
  "displaydoc",
  "ed25519-dalek",
- "massa_hash 0.1.0 (git+https://github.com/massalabs/massa.git)",
- "massa_serialization 0.1.0 (git+https://github.com/massalabs/massa.git)",
+ "massa_hash 0.1.0 (git+https://github.com/massalabs/massa)",
+ "massa_serialization 0.1.0 (git+https://github.com/massalabs/massa)",
  "nom",
  "rand 0.7.3",
  "serde",
@@ -3287,6 +3298,18 @@ dependencies = [
  "bitflags",
  "cfg-if",
  "libc",
+]
+
+[[package]]
+name = "nix"
+version = "0.26.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "bfdda3d196821d6af13126e40375cdf7da646a96114af134d5f417a9a1dc8e1a"
+dependencies = [
+ "bitflags",
+ "cfg-if",
+ "libc",
+ "static_assertions",
 ]
 
 [[package]]
@@ -3605,13 +3628,13 @@ checksum = "19b17cddbe7ec3f8bc800887bab5e717348c95ea2ca0b1bf0837fb964dc67099"
 [[package]]
 name = "peernet"
 version = "0.1.0"
-source = "git+https://github.com/massalabs/PeerNet#959a7a651ff9c346b6fc5a123a5a44f0bd0cc8d5"
+source = "git+https://github.com/massalabs/PeerNet?rev=1bb1f452bf63b78a89eb9542fb019b88d894c664#1bb1f452bf63b78a89eb9542fb019b88d894c664"
 dependencies = [
  "crossbeam",
  "enum_delegate",
- "massa_hash 0.1.0 (git+https://github.com/massalabs/massa.git)",
- "massa_serialization 0.1.0 (git+https://github.com/massalabs/massa.git)",
- "massa_signature 0.1.0 (git+https://github.com/massalabs/massa.git)",
+ "massa_hash 0.1.0 (git+https://github.com/massalabs/massa)",
+ "massa_serialization 0.1.0 (git+https://github.com/massalabs/massa)",
+ "massa_signature 0.1.0 (git+https://github.com/massalabs/massa)",
  "mio",
  "parking_lot",
  "quiche",
@@ -4298,9 +4321,9 @@ checksum = "08d43f7aa6b08d49f382cde6a7982047c3426db949b1424bc4b7ec9ae12c6ce2"
 
 [[package]]
 name = "rustix"
-version = "0.37.18"
+version = "0.37.19"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8bbfc1d1c7c40c01715f47d71444744a81669ca84e8b63e25a55e169b1f86433"
+checksum = "acf8729d8542766f1b2cf77eb034d52f40d375bb8b615d0b147089946e16613d"
 dependencies = [
  "bitflags",
  "errno",
@@ -4320,6 +4343,18 @@ dependencies = [
  "ring",
  "sct",
  "webpki",
+]
+
+[[package]]
+name = "rustls"
+version = "0.21.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "c911ba11bc8433e811ce56fde130ccf32f5127cab0e0194e9c68c5a5b671791e"
+dependencies = [
+ "log",
+ "ring",
+ "rustls-webpki",
+ "sct",
 ]
 
 [[package]]
@@ -4344,6 +4379,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "rustls-webpki"
+version = "0.100.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "d6207cd5ed3d8dca7816f8f3725513a34609c0c765bf652b8c3cb4cfd87db46b"
+dependencies = [
+ "ring",
+ "untrusted",
+]
+
+[[package]]
 name = "rustversion"
 version = "1.0.12"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -4363,7 +4408,7 @@ dependencies = [
  "libc",
  "log",
  "memchr",
- "nix",
+ "nix 0.25.1",
  "radix_trie",
  "scopeguard",
  "unicode-segmentation",
@@ -4745,6 +4790,12 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "a8f112729512f8e442d81f95a8a7ddf2b7c6b8a1a6f509a95864142b30cab2d3"
 
 [[package]]
+name = "static_assertions"
+version = "1.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "a2eb9349b6444b326872e140eb1cf5e7c522154d69e7a0ffb0fb81c06b37543f"
+
+[[package]]
 name = "str-buf"
 version = "1.0.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -5059,9 +5110,19 @@ version = "0.23.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "c43ee83903113e03984cb9e5cebe6c04a5116269e900e3ddba8f068a62adda59"
 dependencies = [
- "rustls",
+ "rustls 0.20.8",
  "tokio",
  "webpki",
+]
+
+[[package]]
+name = "tokio-rustls"
+version = "0.24.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "e0d409377ff5b1e3ca6437aa86c1eb7d40c134bfec254e44c830defa92669db5"
+dependencies = [
+ "rustls 0.21.1",
+ "tokio",
 ]
 
 [[package]]
@@ -5123,6 +5184,7 @@ version = "0.9.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "3082666a3a6433f7f511c7192923fa1fe07c69332d3c6a2e6bb040b569199d5a"
 dependencies = [
+ "async-stream",
  "async-trait",
  "axum",
  "base64 0.21.0",
@@ -5138,7 +5200,9 @@ dependencies = [
  "percent-encoding",
  "pin-project",
  "prost",
+ "rustls-pemfile",
  "tokio",
+ "tokio-rustls 0.24.0",
  "tokio-stream",
  "tower",
  "tower-layer",

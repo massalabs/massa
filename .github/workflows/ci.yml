@@ -19,7 +19,7 @@ env:
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
-    
+
 jobs:
   # Quick tests on each commit/PR
   sanity:
@@ -37,7 +37,7 @@ jobs:
       - uses: Swatinem/rust-cache@v2
         with:
           shared-key: "sanity"
-          save-if: ${{ github.ref_name == 'testnet_23' }}
+          save-if: ${{ github.ref == 'refs/heads/main' }}
       - uses: actions-rs/cargo@v1
         with:
           command: fmt
@@ -59,7 +59,7 @@ jobs:
       - uses: Swatinem/rust-cache@v2
         with:
           shared-key: "check"
-          save-if: ${{ github.ref_name == 'testnet_23' }}
+          save-if: ${{ github.ref == 'refs/heads/main' }}
       - uses: arduino/setup-protoc@v1
         with:
           version: '3.x'
@@ -86,7 +86,7 @@ jobs:
       - uses: Swatinem/rust-cache@v2
         with:
           shared-key: "clippy"
-          save-if: ${{ github.ref_name == 'testnet_23' }}
+          save-if: ${{ github.ref == 'refs/heads/main' }}
       - uses: arduino/setup-protoc@v1
         with:
           version: '3.x'
@@ -107,7 +107,7 @@ jobs:
         os:
           - ubuntu-latest
           - macOS-latest
-          - windows-latest
+#          - windows-latest
     steps:
       - uses: ilammy/setup-nasm@v1
       - uses: actions/checkout@v3
@@ -121,7 +121,7 @@ jobs:
       - uses: Swatinem/rust-cache@v2
         with:
           shared-key: "massa"
-          save-if: ${{ github.ref_name == 'testnet_23' }}
+          save-if: ${{ github.ref == 'refs/heads/main' }}
       - uses: arduino/setup-protoc@v1
         with:
           version: '3.x'
@@ -197,7 +197,7 @@ jobs:
       - uses: Swatinem/rust-cache@v2
         with:
           shared-key: "doc"
-          save-if: ${{ github.ref_name == 'testnet_23' }}
+          save-if: ${{ github.ref == 'refs/heads/main' }}
       - uses: arduino/setup-protoc@v1
         with:
           version: '3.x'
