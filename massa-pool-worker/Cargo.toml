@@ -19,7 +19,6 @@ massa_pos_exports = { path = "../massa-pos-exports" }
 [dev-dependencies]
 tokio = { version = "1.23", features = ["sync"] }
 mockall = "0.11.4"
-lazy_static = "1.4.0"
 massa_signature = { path = "../massa-signature" }
 massa_hash = { path = "../massa-hash" }
 massa_pool_exports = { path = "../massa-pool-exports", features = [ "testing" ] }

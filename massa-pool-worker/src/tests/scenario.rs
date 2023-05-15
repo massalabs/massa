@@ -13,8 +13,7 @@
 //! configurations are taken into account.
 
 use mockall::Sequence;
-use std::sync::mpsc::Receiver;
-use std::sync::RwLock;
+use std::rc::Rc;
 use std::thread;
 use std::time::Duration;
 
@@ -42,20 +41,6 @@ use massa_signature::KeyPair;
 use massa_storage::Storage;
 use tokio::sync::broadcast;
 
-lazy_static::lazy_static! {
-    /// Lazy static is needed here, as the mock-system needs either copy, or static lifetimes.
-    /// The code below will error as such, and efforts such as using clone-hacks, do not help.
-    ///
-    /// A solution that doesn't need to use a static would be welcomed
-    /// ```rust no_run
-    /// let storage = Storage::create_root();
-    /// let mut res = Box::new(MockExecutionController::new());
-    /// res.expect_unexecuted_ops_among()
-    ///     .times(1)
-    ///     .return_once(|_, _| storage.get_op_refs().clone())
-    /// ```
-    static ref STORAGE: RwLock<Storage> = RwLock::new(Storage::create_root());
-}
 /// # Test simple get operation
 /// Just try to get some operations stored in pool
 ///
@@ -71,9 +56,18 @@ lazy_static::lazy_static! {
 /// same length than those added previously.
 #[test]
 fn test_simple_get_operations() {
+    let mut storage = Storage::create_root();
+
     // Setup the execution story.
     let keypair = KeyPair::generate();
     let addr = Address::from_public_key(&keypair.get_public_key()).clone();
+
+    // setup operations
+    let op_gen = OpGenerator::default().creator(keypair.clone()).expirery(1);
+    let ops = create_some_operations(10, &op_gen)
+        .iter()
+        .map(|op| op.id)
+        .collect();
 
     let mut execution_controller = Box::new(MockExecutionController::new());
     execution_controller.expect_clone_box().returning(move || {
@@ -81,6 +75,7 @@ fn test_simple_get_operations() {
             10,
             addr,
             vec![(Some(Amount::from_raw(1)), Some(Amount::from_raw(1)))],
+            &ops,
         ))
     });
 
@@ -94,7 +89,7 @@ fn test_simple_get_operations() {
     let config = PoolConfig::default();
     let (mut pool_manager, mut pool_controller) = start_pool_controller(
         config,
-        &STORAGE.read().unwrap(),
+        &storage,
         execution_controller,
         PoolChannels {
             endorsement_sender: broadcast::channel(2000).0,
@@ -105,11 +100,8 @@ fn test_simple_get_operations() {
 
     // setup storage
     let op_gen = OpGenerator::default().creator(keypair.clone()).expirery(1);
-    STORAGE
-        .write()
-        .unwrap()
-        .store_operations(create_some_operations(10, &op_gen));
-    pool_controller.add_operations(STORAGE.read().unwrap().clone());
+    storage.store_operations(create_some_operations(10, &op_gen));
+    pool_controller.add_operations(storage);
 
     // Allow some time for the pool to add the operations
     std::thread::sleep(Duration::from_millis(100));
@@ -133,12 +125,15 @@ pub fn create_basic_get_block_operation_execution_mock(
     operations_len: usize,
     creator_address: Address,
     balance_vec: Vec<(Option<Amount>, Option<Amount>)>,
+    ops: &PreHashSet<OperationId>,
 ) -> MockExecutionController {
     let mut res = MockExecutionController::new();
     let mut seq = Sequence::new();
+    let ops1 = ops.clone();
+    let ops2 = Rc::new(ops.clone());
     res.expect_unexecuted_ops_among()
         .times(1)
-        .return_once(|_, _| STORAGE.read().unwrap().get_op_refs().clone())
+        .return_once(|_, _| ops1)
         .in_sequence(&mut seq);
     res.expect_get_final_and_candidate_balance()
         .times(1)
@@ -147,57 +142,9 @@ pub fn create_basic_get_block_operation_execution_mock(
         .in_sequence(&mut seq);
     res.expect_unexecuted_ops_among()
         .times(operations_len - 1)
-        .returning(|_, _| STORAGE.read().unwrap().get_op_refs().clone())
+        .returning_st(move |_, _| (&*ops2).clone())
         .in_sequence(&mut seq);
     res
-}
-/// Launch a default mock for execution controller on call `get_block_operation` API.
-pub fn launch_basic_get_block_operation_execution_mock(
-    operations_len: usize,
-    unexecuted_ops: PreHashSet<OperationId>,
-    recvr: Receiver<test_exports::MockExecutionControllerMessage>,
-    creator_address: Address,
-    balance_vec: Vec<(Option<Amount>, Option<Amount>)>,
-) {
-    let receive = |er: &Receiver<test_exports::MockExecutionControllerMessage>| {
-        er.recv_timeout(Duration::from_millis(100))
-    };
-    std::thread::spawn(move || {
-        match receive(&recvr) {
-            Ok(test_exports::MockExecutionControllerMessage::UnexecutedOpsAmong {
-                response_tx,
-                ..
-            }) => response_tx.send(unexecuted_ops.clone()).unwrap(),
-            Ok(op) => panic!("Expected `ControllerMsg::UnexecutedOpsAmong`, got {:?}", op),
-            Err(_) => panic!("execution never called"),
-        }
-        match receive(&recvr) {
-            Ok(test_exports::MockExecutionControllerMessage::GetFinalAndCandidateBalance {
-                addresses,
-                response_tx,
-                ..
-            }) => {
-                assert_eq!(addresses.len(), 1);
-                assert_eq!(addresses[0], creator_address);
-                response_tx.send(balance_vec).unwrap();
-            }
-            Ok(op) => panic!(
-                "Expected `ControllerMsg::GetFinalAndCandidateBalance`, got {:?}",
-                op
-            ),
-            Err(_) => panic!("execution never called"),
-        }
-
-        (1..operations_len).for_each(|_| {
-            if let Ok(test_exports::MockExecutionControllerMessage::UnexecutedOpsAmong {
-                response_tx,
-                ..
-            }) = receive(&recvr)
-            {
-                response_tx.send(unexecuted_ops.clone()).unwrap();
-            }
-        })
-    });
 }
 
 /// # Test get block operation with overflow
@@ -219,52 +166,60 @@ fn test_get_operations_overflow() {
     // setup metadata
     static OP_LEN: usize = 10;
     static MAX_OP_LEN: usize = 5;
-    let mut max_block_size = 0;
     let keypair = KeyPair::generate();
     let creator_address = Address::from_public_key(&keypair.get_public_key());
     let op_gen = OpGenerator::default().expirery(1).creator(keypair);
     let operations = create_some_operations(OP_LEN, &op_gen);
-    operations
+    let max_block_size = operations
         .iter()
         .take(MAX_OP_LEN)
-        .for_each(|op| max_block_size += op.serialized_size() as u32);
+        .fold(0, |acc, op| acc + op.serialized_size() as u32);
     let config = PoolConfig {
         max_block_size,
         ..Default::default()
     };
     let creator_thread = creator_address.get_thread(config.thread_count);
-    pool_test(
+
+    let mut storage = Storage::create_root();
+    let mut execution_controller = Box::new(MockExecutionController::new());
+    execution_controller.expect_clone_box().returning(move || {
+        Box::new(create_basic_get_block_operation_execution_mock(
+            MAX_OP_LEN,
+            creator_address,
+            vec![(Some(Amount::from_raw(1)), Some(Amount::from_raw(1)))],
+            &operations.iter().take(MAX_OP_LEN).map(|op| op.id).collect(),
+        ))
+    });
+
+    // Provide the selector boilderplate
+    let mut selector_controller = Box::new(MockSelectorController::new());
+    selector_controller
+        .expect_clone_box()
+        .returning(|| Box::new(MockSelectorController::new()));
+
+    let (mut pool_manager, mut pool_controller) = start_pool_controller(
         config,
-        |mut pool_manager,
-         mut pool_controller,
-         execution_receiver,
-         _selector_receiver,
-         mut storage| {
-            // setup storage
-            storage.store_operations(operations);
-            let unexecuted_ops = storage.get_op_refs().clone();
-            pool_controller.add_operations(storage);
-            // Allow some time for the pool to add the operations
-            std::thread::sleep(Duration::from_millis(100));
-
-            // start mock execution thread
-            launch_basic_get_block_operation_execution_mock(
-                OP_LEN,
-                unexecuted_ops,
-                execution_receiver,
-                creator_address,
-                vec![(Some(Amount::from_raw(1)), Some(Amount::from_raw(1)))],
-            );
-
-            let block_operations_storage = pool_controller
-                .get_block_operations(&Slot::new(1, creator_thread))
-                .1;
-
-            pool_manager.stop();
-
-            assert_eq!(block_operations_storage.get_op_refs().len(), MAX_OP_LEN);
+        &storage,
+        execution_controller,
+        PoolChannels {
+            endorsement_sender: broadcast::channel(2000).0,
+            operation_sender: broadcast::channel(5000).0,
+            selector: selector_controller,
         },
     );
+
+    storage.store_operations(create_some_operations(10, &op_gen));
+    pool_controller.add_operations(storage);
+    // Allow some time for the pool to add the operations
+    std::thread::sleep(Duration::from_millis(100));
+
+    // This is what we are testing....
+    let block_operations_storage = pool_controller
+        .get_block_operations(&Slot::new(1, creator_thread))
+        .1;
+    pool_manager.stop();
+
+    assert_eq!(block_operations_storage.get_op_refs().len(), MAX_OP_LEN);
 }
 
 #[test]
