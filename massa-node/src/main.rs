@@ -75,7 +75,7 @@ use massa_protocol_exports::{ProtocolConfig, ProtocolManager};
 use massa_protocol_worker::{create_protocol_controller, start_protocol_controller};
 use massa_storage::Storage;
 use massa_time::MassaTime;
-use massa_versioning_worker::versioning::{ComponentStateTypeId, MipStatsConfig, MipStore};
+use massa_versioning_worker::versioning::ComponentStateTypeId;
 use massa_wallet::Wallet;
 use parking_lot::RwLock;
 use peernet::transports::TransportType;
@@ -181,6 +181,8 @@ async fn launch(
         endorsement_count: ENDORSEMENT_COUNT,
         max_executed_denunciations_length: MAX_DENUNCIATION_CHANGES_LENGTH,
         max_denunciations_per_block_header: MAX_DENUNCIATIONS_PER_BLOCK_HEADER,
+        mip_store_stats_block_considered: MIP_STORE_STATS_BLOCK_CONSIDERED,
+        mip_store_stats_counters_max: MIP_STORE_STATS_COUNTERS_MAX,
     };
 
     // Remove current disk ledger if there is one and we don't want to restart from snapshot
@@ -339,15 +341,22 @@ async fn launch(
     };
 
     // Creates an empty default store
+    /*
     let mip_stats_config = MipStatsConfig {
         block_count_considered: MIP_STORE_STATS_BLOCK_CONSIDERED,
         counters_max: MIP_STORE_STATS_COUNTERS_MAX,
     };
+    */
+
+    /*
     let mut mip_store =
         MipStore::try_from(([], mip_stats_config)).expect("Cannot create an empty MIP store");
+    */
     if let Some(bootstrap_mip_store) = bootstrap_state.mip_store {
         // TODO: in some cases, should bootstrap again
-        let (updated, added) = mip_store
+        let (updated, added) = final_state
+            .write()
+            .mip_store
             .update_with(&bootstrap_mip_store)
             .expect("Cannot update MIP store with bootstrap mip store");
 
@@ -470,7 +479,7 @@ async fn launch(
         execution_config,
         final_state.clone(),
         selector_controller.clone(),
-        mip_store.clone(),
+        final_state.read().mip_store.clone(), // FIXME: already in final_state
         execution_channels.clone(),
     );
 
@@ -708,7 +717,7 @@ async fn launch(
             bootstrap_config,
             keypair.clone(),
             *VERSION,
-            mip_store.clone(),
+            final_state.read().mip_store.clone(), // FIXME: already in final state
         )
         .expect("Could not start bootstrap server");
         manager.set_listener_stopper(waker);

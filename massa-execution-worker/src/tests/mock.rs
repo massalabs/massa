@@ -127,8 +127,9 @@ pub fn get_sample_state(
         max_executed_denunciations_length: 1000,
         initial_seed_string: "".to_string(),
         periods_per_cycle: 10,
-
         max_denunciations_per_block_header: 0,
+        mip_store_stats_block_considered: 10,
+        mip_store_stats_counters_max: 100,
     };
     let (_, selector_controller) = start_selector_worker(SelectorConfig::default())
         .expect("could not start selector controller");

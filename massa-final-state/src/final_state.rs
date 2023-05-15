@@ -34,6 +34,8 @@ use massa_pos_exports::{
     DeferredCreditsDeserializer, DeferredCreditsSerializer, PoSFinalState, SelectorController,
 };
 use massa_serialization::{Deserializer, SerializeError, Serializer};
+use massa_versioning_worker::versioning::{MipInfo, MipState, MipStatsConfig, MipStore};
+use massa_versioning_worker::versioning_ser_der::{MipStoreRawDeserializer, MipStoreRawSerializer};
 use nom::{error::context, sequence::tuple, IResult, Parser};
 use std::collections::{BTreeMap, HashSet, VecDeque};
 use std::ops::Bound::{Excluded, Included};
@@ -55,6 +57,8 @@ pub struct FinalState {
     pub executed_ops: ExecutedOps,
     /// executed denunciations
     pub executed_denunciations: ExecutedDenunciations,
+    /// MIP store
+    pub mip_store: MipStore,
     /// history of recent final state changes, useful for streaming bootstrap
     /// `front = oldest`, `back = newest`
     pub changes_history: VecDeque<(Slot, StateChanges)>,
@@ -104,6 +108,16 @@ impl FinalState {
         let executed_denunciations =
             ExecutedDenunciations::new(config.executed_denunciations_config.clone());
 
+        // create an empty MIP store
+        let mip_stats_config = MipStatsConfig {
+            block_count_considered: config.mip_store_stats_block_considered,
+            counters_max: config.mip_store_stats_counters_max,
+        };
+
+        // TODO: no expect
+        let mip_store =
+            MipStore::try_from(([], mip_stats_config)).expect("Cannot create an empty MIP store");
+
         // create the final state
         Ok(FinalState {
             slot,
@@ -113,6 +127,7 @@ impl FinalState {
             config,
             executed_ops,
             executed_denunciations,
+            mip_store,
             changes_history: Default::default(), // no changes in history
             final_state_hash: Hash::from_bytes(FINAL_STATE_HASH_INITIAL_BYTES),
             last_start_period: 0,
@@ -385,6 +400,7 @@ impl FinalState {
         self.pos_state.reset();
         self.executed_ops.reset();
         self.executed_denunciations.reset();
+        // TODO: What does it mean for MIP Store to reset?
         self.changes_history.clear();
         // reset the final state hash
         self.final_state_hash = Hash::from_bytes(FINAL_STATE_HASH_INITIAL_BYTES);
@@ -419,6 +435,9 @@ impl FinalState {
         hash_concat.extend(self.executed_ops.hash.to_bytes());
         // 6. executed denunciations hash
         hash_concat.extend(self.executed_denunciations.hash.to_bytes());
+        // 7. MIP store hash
+        // TODO: no unwrap()
+        hash_concat.extend(self.mip_store.compute_hash().unwrap().to_bytes());
         // 7. compute and save final state hash
         self.final_state_hash = Hash::compute_from(&hash_concat);
 
@@ -687,6 +706,7 @@ pub struct FinalStateRawSerializer {
     executed_ops_serializer: ExecutedOpsSerializer,
     executed_denunciations_serializer: ExecutedDenunciationsSerializer,
     slot_serializer: SlotSerializer,
+    mip_store_serializer: MipStoreRawSerializer,
 }
 
 impl Default for FinalStateRawSerializer {
@@ -705,6 +725,7 @@ impl From<FinalState> for FinalStateRaw {
             sorted_denunciations: value.executed_denunciations.sorted_denunciations,
             latest_consistent_slot: value.slot,
             final_state_hash_from_snapshot: value.final_state_hash,
+            mip_store: value.mip_store.0.read().store.clone(),
         }
     }
 }
@@ -719,6 +740,7 @@ impl FinalStateRawSerializer {
             executed_ops_serializer: ExecutedOpsSerializer::new(),
             executed_denunciations_serializer: ExecutedDenunciationsSerializer::new(),
             slot_serializer: SlotSerializer::new(),
+            mip_store_serializer: MipStoreRawSerializer::new(),
         }
     }
 }
@@ -746,6 +768,10 @@ impl Serializer<FinalStateRaw> for FinalStateRawSerializer {
         self.slot_serializer
             .serialize(&value.latest_consistent_slot, buffer)?;
 
+        // Serialize mip store
+        self.mip_store_serializer
+            .serialize(&value.mip_store, buffer)?;
+
         // /!\ The final_state_hash has to be serialized separately!
 
         Ok(())
@@ -761,6 +787,7 @@ pub struct FinalStateRaw {
     latest_consistent_slot: Slot,
     #[allow(dead_code)]
     final_state_hash_from_snapshot: Hash,
+    mip_store: BTreeMap<MipInfo, MipState>,
 }
 
 /// Deserializer for `FinalStateRaw`
@@ -772,6 +799,7 @@ pub struct FinalStateRawDeserializer {
     executed_denunciations_deser: ExecutedDenunciationsDeserializer,
     slot_deser: SlotDeserializer,
     hash_deser: HashDeserializer,
+    mip_store_deser: MipStoreRawDeserializer,
 }
 
 impl FinalStateRawDeserializer {
@@ -821,6 +849,10 @@ impl FinalStateRawDeserializer {
                 (Included(0), Excluded(config.thread_count)),
             ),
             hash_deser: HashDeserializer::new(),
+            mip_store_deser: MipStoreRawDeserializer::new(
+                config.mip_store_stats_block_considered,
+                config.mip_store_stats_counters_max,
+            ),
         }
     }
 }
@@ -850,6 +882,9 @@ impl Deserializer<FinalStateRaw> for FinalStateRawDeserializer {
                 context("Failed slot deserialization", |input| {
                     self.slot_deser.deserialize(input)
                 }),
+                context("Failed MIP store deserialization", |input| {
+                    self.mip_store_deser.deserialize(input)
+                }),
                 context("Failed hash deserialization", |input| {
                     self.hash_deser.deserialize(input)
                 }),
@@ -862,6 +897,7 @@ impl Deserializer<FinalStateRaw> for FinalStateRawDeserializer {
                     sorted_ops,
                     sorted_denunciations,
                     latest_consistent_slot,
+                    mip_store,
                     final_state_hash_from_snapshot,
                 )| FinalStateRaw {
                     async_pool_messages,
@@ -871,6 +907,7 @@ impl Deserializer<FinalStateRaw> for FinalStateRawDeserializer {
                     sorted_denunciations,
                     latest_consistent_slot,
                     final_state_hash_from_snapshot,
+                    mip_store,
                 },
             )
             .parse(buffer)

@@ -2659,6 +2659,7 @@ dependencies = [
  "massa_pos_exports",
  "massa_serialization 0.1.0",
  "massa_signature 0.1.0",
+ "massa_versioning_worker",
  "nom",
  "serde",
  "thiserror",
@@ -3036,6 +3037,7 @@ version = "0.1.0"
 dependencies = [
  "chrono",
  "machine",
+ "massa_hash 0.1.0",
  "massa_models",
  "massa_serialization 0.1.0",
  "massa_time",

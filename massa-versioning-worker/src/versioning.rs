@@ -1,6 +1,5 @@
 use std::cmp::Ordering;
 use std::collections::{BTreeMap, BTreeSet, HashMap, VecDeque};
-use std::hash::{Hash, Hasher};
 use std::ops::Deref;
 use std::sync::Arc;
 
@@ -10,15 +9,18 @@ use parking_lot::RwLock;
 use thiserror::Error;
 use tracing::warn;
 
+use crate::versioning_ser_der::{MipInfoSerializer, MipStateSerializer};
+use massa_hash::Hash;
 use massa_models::error::ModelsError;
 use massa_models::slot::Slot;
 use massa_models::timeslots::get_block_slot_timestamp;
 use massa_models::{amount::Amount, config::VERSIONING_THRESHOLD_TRANSITION_ACCEPTED};
+use massa_serialization::{SerializeError, Serializer};
 use massa_time::MassaTime;
 
 /// Versioning component enum
 #[allow(missing_docs)]
-#[derive(Clone, Debug, PartialEq, Eq, Hash, FromPrimitive, IntoPrimitive)]
+#[derive(Clone, Debug, PartialEq, Eq, Ord, PartialOrd, Hash, FromPrimitive, IntoPrimitive)]
 #[repr(u32)]
 pub enum MipComponent {
     Address,
@@ -30,14 +32,14 @@ pub enum MipComponent {
 }
 
 /// MIP info (name & versions & time range for a MIP)
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Hash)]
 pub struct MipInfo {
     /// MIP name or descriptive name
     pub name: String,
     /// Network (or global) version (to be included in block header)
     pub version: u32,
     /// Components concerned by this versioning (e.g. a new Block version), and the associated component_version
-    pub components: HashMap<MipComponent, u32>,
+    pub components: BTreeMap<MipComponent, u32>,
     /// a timestamp at which the version gains its meaning (e.g. announced in block header)
     pub start: MassaTime,
     /// a timestamp at the which the deployment is considered failed
@@ -72,17 +74,6 @@ impl PartialEq for MipInfo {
 }
 
 impl Eq for MipInfo {}
-
-// Need to impl this manually otherwise clippy is angry :-P
-impl Hash for MipInfo {
-    fn hash<H: Hasher>(&self, state: &mut H) {
-        self.name.hash(state);
-        self.version.hash(state);
-        self.components.iter().for_each(|c| c.hash(state));
-        self.start.hash(state);
-        self.timeout.hash(state);
-    }
-}
 
 machine!(
     /// State machine for a Versioning component that tracks the deployment state
@@ -502,6 +493,11 @@ impl MipStore {
         let lock_other = mip_store.0.read();
         lock.update_with(lock_other.deref())
     }
+
+    pub fn compute_hash(&self) -> Result<Hash, SerializeError> {
+        let guard = self.0.read();
+        guard.compute_hash()
+    }
 }
 
 impl<const N: usize> TryFrom<([(MipInfo, MipState); N], MipStatsConfig)> for MipStore {
@@ -562,7 +558,7 @@ pub enum UpdateWithError {
 /// Store of all versioning info
 #[derive(Debug, Clone, PartialEq)]
 pub struct MipStoreRaw {
-    pub(crate) store: BTreeMap<MipInfo, MipState>,
+    pub store: BTreeMap<MipInfo, MipState>,
     pub(crate) stats: MipStoreStats,
 }
 
@@ -901,6 +897,31 @@ impl MipStoreRaw {
         self.stats = new_stats;
         Ok(())
     }
+
+    fn compute_hash(&self) -> Result<Hash, SerializeError> {
+        let mut hash_concat: Vec<u8> = Vec::new();
+        for (mip_info, mip_state) in &self.store {
+            match mip_state.state {
+                ComponentState::Active(_) | ComponentState::Failed(_) | ComponentState::Error => {
+                    let mut buf = Vec::new();
+                    let mip_info_ser = MipInfoSerializer::new();
+                    mip_info_ser.serialize(mip_info, &mut buf)?;
+                    hash_concat.extend(Hash::compute_from(&buf).to_bytes());
+
+                    buf.clear();
+                    let mip_state_ser = MipStateSerializer::new();
+                    mip_state_ser.serialize(mip_state, &mut buf)?;
+                    hash_concat.extend(Hash::compute_from(&buf).to_bytes());
+                }
+                _ => {
+                    // nothing to do here
+                }
+            }
+        }
+
+        // compute final hash
+        Ok(Hash::compute_from(&hash_concat))
+    }
 }
 
 impl<const N: usize> TryFrom<([(MipInfo, MipState); N], MipStatsConfig)> for MipStoreRaw {
@@ -989,7 +1010,7 @@ mod test {
             MipInfo {
                 name: "MIP-0002".to_string(),
                 version: 2,
-                components: HashMap::from([(MipComponent::Address, 1)]),
+                components: BTreeMap::from([(MipComponent::Address, 1)]),
                 start: MassaTime::from(start.timestamp() as u64),
                 timeout: MassaTime::from(timeout.timestamp() as u64),
                 activation_delay: MassaTime::from(20),
@@ -1239,7 +1260,7 @@ mod test {
         let vi_1 = MipInfo {
             name: "MIP-0002".to_string(),
             version: 2,
-            components: HashMap::from([(MipComponent::Address, 1)]),
+            components: BTreeMap::from([(MipComponent::Address, 1)]),
             start: MassaTime::from(2),
             timeout: MassaTime::from(5),
             activation_delay: MassaTime::from(2),
@@ -1248,7 +1269,7 @@ mod test {
         let vi_2 = MipInfo {
             name: "MIP-0002".to_string(),
             version: 2,
-            components: HashMap::from([(MipComponent::Address, 1)]),
+            components: BTreeMap::from([(MipComponent::Address, 1)]),
             start: MassaTime::from(7),
             timeout: MassaTime::from(10),
             activation_delay: MassaTime::from(2),
@@ -1304,7 +1325,7 @@ mod test {
         let vi_1 = MipInfo {
             name: "MIP-0002".to_string(),
             version: 2,
-            components: HashMap::from([(MipComponent::Address, 1)]),
+            components: BTreeMap::from([(MipComponent::Address, 1)]),
             start: MassaTime::from(2),
             timeout: MassaTime::from(5),
             activation_delay: MassaTime::from(2),
@@ -1316,7 +1337,7 @@ mod test {
         let vi_2 = MipInfo {
             name: "MIP-0003".to_string(),
             version: 3,
-            components: HashMap::from([(MipComponent::Address, 2)]),
+            components: BTreeMap::from([(MipComponent::Address, 2)]),
             start: MassaTime::from(17),
             timeout: MassaTime::from(27),
             activation_delay: MassaTime::from(2),
@@ -1342,7 +1363,6 @@ mod test {
         ))
         .unwrap();
 
-        println!("update with:");
         let (updated, added) = vs_raw_1.update_with(&vs_raw_2).unwrap();
 
         // Check update_with result
@@ -1364,7 +1384,7 @@ mod test {
         let vi_1 = MipInfo {
             name: "MIP-0002".to_string(),
             version: 2,
-            components: HashMap::from([(MipComponent::Address, 1)]),
+            components: BTreeMap::from([(MipComponent::Address, 1)]),
             start: MassaTime::from(0),
             timeout: MassaTime::from(5),
             activation_delay: MassaTime::from(2),
@@ -1375,7 +1395,7 @@ mod test {
         let vi_2 = MipInfo {
             name: "MIP-0003".to_string(),
             version: 3,
-            components: HashMap::from([(MipComponent::Address, 2)]),
+            components: BTreeMap::from([(MipComponent::Address, 2)]),
             start: MassaTime::from(17),
             timeout: MassaTime::from(27),
             activation_delay: MassaTime::from(2),
@@ -1485,7 +1505,7 @@ mod test {
         let mi_1 = MipInfo {
             name: "MIP-0002".to_string(),
             version: 2,
-            components: HashMap::from([(MipComponent::__Nonexhaustive, 1)]),
+            components: BTreeMap::from([(MipComponent::__Nonexhaustive, 1)]),
             start: MassaTime::from(0),
             timeout: MassaTime::from(5),
             activation_delay: MassaTime::from(2),
@@ -1570,7 +1590,7 @@ mod test {
         let mut mi_1 = MipInfo {
             name: "MIP-0002".to_string(),
             version: 2,
-            components: HashMap::from([(MipComponent::Address, 1)]),
+            components: BTreeMap::from([(MipComponent::Address, 1)]),
             start: MassaTime::from(2),
             timeout: MassaTime::from(5),
             activation_delay: MassaTime::from(100),
@@ -1578,7 +1598,7 @@ mod test {
         let mut mi_2 = MipInfo {
             name: "MIP-0003".to_string(),
             version: 3,
-            components: HashMap::from([(MipComponent::Address, 2)]),
+            components: BTreeMap::from([(MipComponent::Address, 2)]),
             start: MassaTime::from(7),
             timeout: MassaTime::from(11),
             activation_delay: MassaTime::from(100),
@@ -1710,5 +1730,50 @@ mod test {
                 ComponentStateTypeId::Started
             );
         }
+    }
+
+    #[test]
+    fn test_mip_store_hash() {
+        // Test MipStoreRaw::compute_hash
+
+        let mip_stats_cfg = MipStatsConfig {
+            block_count_considered: 10,
+            counters_max: 5,
+        };
+        let mi_1 = MipInfo {
+            name: "MIP-0002".to_string(),
+            version: 2,
+            components: BTreeMap::from([(MipComponent::Address, 1)]),
+            start: MassaTime::from(2),
+            timeout: MassaTime::from(5),
+            activation_delay: MassaTime::from(100),
+        };
+        let mi_2 = MipInfo {
+            name: "MIP-0003".to_string(),
+            version: 3,
+            components: BTreeMap::from([(MipComponent::Address, 2)]),
+            start: MassaTime::from(7),
+            timeout: MassaTime::from(11),
+            activation_delay: MassaTime::from(100),
+        };
+
+        let ms_1 = advance_state_until(ComponentState::active(), &mi_1);
+        let ms_2 = advance_state_until(ComponentState::defined(), &mi_2);
+
+        let store_1 =
+            MipStoreRaw::try_from(([(mi_1.clone(), ms_1.clone())], mip_stats_cfg.clone())).unwrap();
+
+        let store_2 = MipStoreRaw::try_from((
+            [(mi_1.clone(), ms_1), (mi_2.clone(), ms_2)],
+            mip_stats_cfg.clone(),
+        ))
+        .unwrap();
+
+        // store_2 hash should be the same as store_1 hash - as for now, a node using store_1 would
+        // be compatible (in term of versioning) with a node using store_2
+        assert_eq!(
+            store_1.compute_hash().unwrap(),
+            store_2.compute_hash().unwrap()
+        );
     }
 }

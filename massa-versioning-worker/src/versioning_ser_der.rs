@@ -844,6 +844,31 @@ impl Serializer<MipStoreRaw> for MipStoreRawSerializer {
     }
 }
 
+impl Serializer<BTreeMap<MipInfo, MipState>> for MipStoreRawSerializer {
+    fn serialize(
+        &self,
+        value: &BTreeMap<MipInfo, MipState>,
+        buffer: &mut Vec<u8>,
+    ) -> Result<(), SerializeError> {
+        let entry_count_ = value.len();
+        let entry_count = u32::try_from(entry_count_).map_err(|e| {
+            SerializeError::GeneralError(format!("Could not convert to u32: {}", e))
+        })?;
+        if entry_count > MIP_STORE_MAX_ENTRIES {
+            return Err(SerializeError::GeneralError(format!(
+                "Too many entries in VersioningStoreRaw, max: {}",
+                MIP_STORE_MAX_ENTRIES
+            )));
+        }
+        self.u32_serializer.serialize(&entry_count, buffer)?;
+        for (key, value) in value.iter() {
+            self.info_serializer.serialize(key, buffer)?;
+            self.state_serializer.serialize(value, buffer)?;
+        }
+        Ok(())
+    }
+}
+
 /// A Deserializer for `VersioningStoreRaw
 pub struct MipStoreRawDeserializer {
     u32_deserializer: U32VarIntDeserializer,
@@ -869,14 +894,6 @@ impl MipStoreRawDeserializer {
         }
     }
 }
-
-/*
-impl Default for MipStoreRawDeserializer {
-    fn default() -> Self {
-        Self::new()
-    }
-}
-*/
 
 impl Deserializer<MipStoreRaw> for MipStoreRawDeserializer {
     fn deserialize<'a, E: ParseError<&'a [u8]> + ContextError<&'a [u8]>>(
@@ -910,6 +927,30 @@ impl Deserializer<MipStoreRaw> for MipStoreRawDeserializer {
     }
 }
 
+impl Deserializer<BTreeMap<MipInfo, MipState>> for MipStoreRawDeserializer {
+    fn deserialize<'a, E: ParseError<&'a [u8]> + ContextError<&'a [u8]>>(
+        &self,
+        buffer: &'a [u8],
+    ) -> IResult<&'a [u8], BTreeMap<MipInfo, MipState>, E> {
+        context(
+            "Failed MipStoreRaw der",
+            length_count(
+                context("Failed entry count der", |input| {
+                    let (rem, count) = self.u32_deserializer.deserialize(input)?;
+                    IResult::Ok((rem, count))
+                }),
+                context("Failed items der", |input| {
+                    let (rem, vi) = self.info_deserializer.deserialize(input)?;
+                    let (rem2, vs) = self.state_deserializer.deserialize(rem)?;
+                    IResult::Ok((rem2, (vi, vs)))
+                }),
+            ),
+        )
+        .map(|items| items.into_iter().collect())
+        .parse(buffer)
+    }
+}
+
 // End MipStoreRaw
 
 #[cfg(test)]
@@ -917,7 +958,6 @@ mod test {
     use super::*;
     use std::assert_matches::assert_matches;
 
-    use std::collections::HashMap;
     use std::mem::{size_of, size_of_val};
     use std::str::FromStr;
 
@@ -963,7 +1003,7 @@ mod test {
         let vi_1 = MipInfo {
             name: "MIP-0002".to_string(),
             version: 2,
-            components: HashMap::from([(MipComponent::Address, 1)]),
+            components: BTreeMap::from([(MipComponent::Address, 1)]),
             start: MassaTime::from(2),
             timeout: MassaTime::from(5),
             activation_delay: MassaTime::from(2),
@@ -1063,7 +1103,7 @@ mod test {
         let mi_1 = MipInfo {
             name: "MIP-0002".to_string(),
             version: 2,
-            components: HashMap::from([(MipComponent::Address, 1)]),
+            components: BTreeMap::from([(MipComponent::Address, 1)]),
             start: MassaTime::from(2),
             timeout: MassaTime::from(5),
             activation_delay: MassaTime::from(2),
@@ -1116,7 +1156,7 @@ mod test {
         let mi_2 = MipInfo {
             name: "MIP-0002".to_string(),
             version: 2,
-            components: HashMap::from([(MipComponent::Address, 1)]),
+            components: BTreeMap::from([(MipComponent::Address, 1)]),
             start: MassaTime::from(2),
             timeout: MassaTime::from(5),
             activation_delay: MassaTime::from(2),
@@ -1125,7 +1165,7 @@ mod test {
         let mi_3 = MipInfo {
             name: "MIP-0003".to_string(),
             version: 3,
-            components: HashMap::from([(MipComponent::Block, 1)]),
+            components: BTreeMap::from([(MipComponent::Block, 1)]),
             start: MassaTime::from(12),
             timeout: MassaTime::from(17),
             activation_delay: MassaTime::from(2),
@@ -1156,7 +1196,7 @@ mod test {
         let mut mi_base = MipInfo {
             name: "A".repeat(254),
             version: 0,
-            components: HashMap::from([(MipComponent::Address, 0)]),
+            components: BTreeMap::from([(MipComponent::Address, 0)]),
             start: MassaTime::from(0),
             timeout: MassaTime::from(2),
             activation_delay: MassaTime::from(2),

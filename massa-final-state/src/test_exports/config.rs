@@ -14,7 +14,8 @@ use massa_ledger_exports::LedgerConfig;
 use massa_ledger_worker::FinalLedger;
 use massa_models::config::{
     DENUNCIATION_EXPIRE_PERIODS, ENDORSEMENT_COUNT, MAX_DENUNCIATIONS_PER_BLOCK_HEADER,
-    MAX_DENUNCIATION_CHANGES_LENGTH,
+    MAX_DENUNCIATION_CHANGES_LENGTH, MIP_STORE_STATS_BLOCK_CONSIDERED,
+    MIP_STORE_STATS_COUNTERS_MAX,
 };
 use massa_models::{
     config::{
@@ -24,10 +25,15 @@ use massa_models::{
     slot::Slot,
 };
 use massa_pos_exports::{PoSConfig, PoSFinalState};
+use massa_versioning_worker::versioning::{MipStatsConfig, MipStore};
 
 impl FinalState {
     /// Create a final stat
     pub fn create_final_state(pos_state: PoSFinalState, config: FinalStateConfig) -> Self {
+        let mip_stats_config = MipStatsConfig {
+            block_count_considered: config.mip_store_stats_block_considered,
+            counters_max: config.mip_store_stats_counters_max,
+        };
         FinalState {
             slot: Slot::new(0, 0),
             ledger: Box::new(FinalLedger::new(config.ledger_config.clone(), false)),
@@ -37,6 +43,8 @@ impl FinalState {
             executed_denunciations: ExecutedDenunciations::new(
                 config.executed_denunciations_config.clone(),
             ),
+            mip_store: MipStore::try_from(([], mip_stats_config))
+                .expect("Cannot create an empty MIP store"),
             changes_history: Default::default(),
             config,
             final_state_hash: Hash::from_bytes(&[0; HASH_SIZE_BYTES]),
@@ -73,6 +81,8 @@ impl Default for FinalStateConfig {
             max_executed_denunciations_length: MAX_DENUNCIATION_CHANGES_LENGTH,
             initial_seed_string: "".to_string(),
             max_denunciations_per_block_header: MAX_DENUNCIATIONS_PER_BLOCK_HEADER,
+            mip_store_stats_block_considered: MIP_STORE_STATS_BLOCK_CONSIDERED,
+            mip_store_stats_counters_max: MIP_STORE_STATS_COUNTERS_MAX,
         }
     }
 }

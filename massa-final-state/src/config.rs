@@ -38,4 +38,8 @@ pub struct FinalStateConfig {
     /// max number of denunciations that can be included in a block header
     /// or in executed denunciations struct
     pub max_denunciations_per_block_header: u32,
+    ///
+    pub mip_store_stats_block_considered: usize,
+    ///
+    pub mip_store_stats_counters_max: usize,
 }

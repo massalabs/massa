@@ -55,7 +55,7 @@ use massa_versioning_worker::versioning::{
 };
 use mockall::Sequence;
 use parking_lot::RwLock;
-use std::collections::HashMap;
+use std::collections::BTreeMap;
 use std::net::{SocketAddr, TcpStream};
 use std::{path::PathBuf, str::FromStr, sync::Arc, time::Duration};
 use tempfile::TempDir;
@@ -89,7 +89,7 @@ fn mock_bootstrap_manager(addr: SocketAddr, bootstrap_config: BootstrapConfig) -
     let mi_1 = MipInfo {
         name: "MIP-0002".to_string(),
         version: 2,
-        components: HashMap::from([(MipComponent::Address, 1)]),
+        components: BTreeMap::from([(MipComponent::Address, 1)]),
         start: MassaTime::from(5),
         timeout: MassaTime::from(10),
         activation_delay: MassaTime::from(4),
@@ -147,6 +147,8 @@ fn mock_bootstrap_manager(addr: SocketAddr, bootstrap_config: BootstrapConfig) -
         endorsement_count: ENDORSEMENT_COUNT,
         max_executed_denunciations_length: 1000,
         max_denunciations_per_block_header: MAX_DENUNCIATIONS_PER_BLOCK_HEADER,
+        mip_store_stats_block_considered: MIP_STORE_STATS_BLOCK_CONSIDERED,
+        mip_store_stats_counters_max: MIP_STORE_STATS_COUNTERS_MAX,
     };
 
     let final_state_server = Arc::new(RwLock::new(get_random_final_state_bootstrap(
@@ -213,7 +215,7 @@ fn test_bootstrap_server() {
     let mi_1 = MipInfo {
         name: "MIP-0002".to_string(),
         version: 2,
-        components: HashMap::from([(MipComponent::Address, 1)]),
+        components: BTreeMap::from([(MipComponent::Address, 1)]),
         start: MassaTime::from(5),
         timeout: MassaTime::from(10),
         activation_delay: MassaTime::from(4),
@@ -260,6 +262,8 @@ fn test_bootstrap_server() {
         thread_count,
         periods_per_cycle,
         max_denunciations_per_block_header: MAX_DENUNCIATIONS_PER_BLOCK_HEADER,
+        mip_store_stats_block_considered: MIP_STORE_STATS_BLOCK_CONSIDERED,
+        mip_store_stats_counters_max: MIP_STORE_STATS_COUNTERS_MAX,
     };
 
     // setup selector local config

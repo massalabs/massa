@@ -57,6 +57,7 @@ use massa_protocol_exports::{BootstrapPeers, PeerId, TransportType};
 use massa_serialization::{DeserializeError, Deserializer, Serializer};
 use massa_signature::KeyPair;
 use massa_time::MassaTime;
+use massa_versioning_worker::versioning::{MipStatsConfig, MipStore};
 use rand::Rng;
 use std::collections::{HashMap, HashSet, VecDeque};
 use std::str::FromStr;
@@ -291,6 +292,13 @@ pub fn get_random_final_state_bootstrap(
     let mut async_pool = create_async_pool(config.async_pool_config.clone(), BTreeMap::new());
     async_pool.apply_changes_unchecked(&messages);
 
+    let mip_stats_config = MipStatsConfig {
+        block_count_considered: config.mip_store_stats_block_considered,
+        counters_max: config.mip_store_stats_counters_max,
+    };
+    let mip_store =
+        MipStore::try_from(([], mip_stats_config)).expect("Cannot create an empty MIP store");
+
     create_final_state(
         config.clone(),
         slot,
@@ -300,6 +308,7 @@ pub fn get_random_final_state_bootstrap(
         get_random_pos_state(r_limit, pos),
         get_random_executed_ops(r_limit, slot, config.executed_ops_config),
         get_random_executed_de(r_limit, slot, config.executed_denunciations_config),
+        mip_store,
     )
 }
 

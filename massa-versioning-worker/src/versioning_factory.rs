@@ -151,7 +151,7 @@ pub trait VersioningFactory {
 mod test {
     use super::*;
 
-    use std::collections::{BTreeMap, HashMap};
+    use std::collections::BTreeMap;
 
     use crate::test_helpers::versioning_helpers::advance_state_until;
     use crate::versioning::{MipInfo, MipState, MipStatsConfig};
@@ -273,7 +273,7 @@ mod test {
         let vi_1 = MipInfo {
             name: "MIP-0002".to_string(),
             version: 1,
-            components: HashMap::from([(MipComponent::Address, 1)]),
+            components: BTreeMap::from([(MipComponent::Address, 1)]),
             start: MassaTime::from(12),
             timeout: MassaTime::from(15),
             activation_delay: MassaTime::from(2),
@@ -283,7 +283,7 @@ mod test {
         let vi_2 = MipInfo {
             name: "MIP-0003".to_string(),
             version: 2,
-            components: HashMap::from([(MipComponent::Address, 2)]),
+            components: BTreeMap::from([(MipComponent::Address, 2)]),
             start: MassaTime::from(25),
             timeout: MassaTime::from(28),
             activation_delay: MassaTime::from(2),
@@ -363,7 +363,7 @@ mod test {
         let vi_1 = MipInfo {
             name: "MIP-0002".to_string(),
             version: 1,
-            components: HashMap::from([(MipComponent::Address, 1)]),
+            components: BTreeMap::from([(MipComponent::Address, 1)]),
             start: MassaTime::from(12),
             timeout: MassaTime::from(15),
             activation_delay: MassaTime::from(2),
@@ -373,7 +373,7 @@ mod test {
         let vi_2 = MipInfo {
             name: "MIP-0003".to_string(),
             version: 2,
-            components: HashMap::from([(MipComponent::Address, 2)]),
+            components: BTreeMap::from([(MipComponent::Address, 2)]),
             start: MassaTime::from(25),
             timeout: MassaTime::from(28),
             activation_delay: MassaTime::from(2),
