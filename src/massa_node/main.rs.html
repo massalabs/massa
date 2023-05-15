@@ -1162,6 +1162,80 @@
 <a href="#1162" id="1162">1162</a>
 <a href="#1163" id="1163">1163</a>
 <a href="#1164" id="1164">1164</a>
+<a href="#1165" id="1165">1165</a>
+<a href="#1166" id="1166">1166</a>
+<a href="#1167" id="1167">1167</a>
+<a href="#1168" id="1168">1168</a>
+<a href="#1169" id="1169">1169</a>
+<a href="#1170" id="1170">1170</a>
+<a href="#1171" id="1171">1171</a>
+<a href="#1172" id="1172">1172</a>
+<a href="#1173" id="1173">1173</a>
+<a href="#1174" id="1174">1174</a>
+<a href="#1175" id="1175">1175</a>
+<a href="#1176" id="1176">1176</a>
+<a href="#1177" id="1177">1177</a>
+<a href="#1178" id="1178">1178</a>
+<a href="#1179" id="1179">1179</a>
+<a href="#1180" id="1180">1180</a>
+<a href="#1181" id="1181">1181</a>
+<a href="#1182" id="1182">1182</a>
+<a href="#1183" id="1183">1183</a>
+<a href="#1184" id="1184">1184</a>
+<a href="#1185" id="1185">1185</a>
+<a href="#1186" id="1186">1186</a>
+<a href="#1187" id="1187">1187</a>
+<a href="#1188" id="1188">1188</a>
+<a href="#1189" id="1189">1189</a>
+<a href="#1190" id="1190">1190</a>
+<a href="#1191" id="1191">1191</a>
+<a href="#1192" id="1192">1192</a>
+<a href="#1193" id="1193">1193</a>
+<a href="#1194" id="1194">1194</a>
+<a href="#1195" id="1195">1195</a>
+<a href="#1196" id="1196">1196</a>
+<a href="#1197" id="1197">1197</a>
+<a href="#1198" id="1198">1198</a>
+<a href="#1199" id="1199">1199</a>
+<a href="#1200" id="1200">1200</a>
+<a href="#1201" id="1201">1201</a>
+<a href="#1202" id="1202">1202</a>
+<a href="#1203" id="1203">1203</a>
+<a href="#1204" id="1204">1204</a>
+<a href="#1205" id="1205">1205</a>
+<a href="#1206" id="1206">1206</a>
+<a href="#1207" id="1207">1207</a>
+<a href="#1208" id="1208">1208</a>
+<a href="#1209" id="1209">1209</a>
+<a href="#1210" id="1210">1210</a>
+<a href="#1211" id="1211">1211</a>
+<a href="#1212" id="1212">1212</a>
+<a href="#1213" id="1213">1213</a>
+<a href="#1214" id="1214">1214</a>
+<a href="#1215" id="1215">1215</a>
+<a href="#1216" id="1216">1216</a>
+<a href="#1217" id="1217">1217</a>
+<a href="#1218" id="1218">1218</a>
+<a href="#1219" id="1219">1219</a>
+<a href="#1220" id="1220">1220</a>
+<a href="#1221" id="1221">1221</a>
+<a href="#1222" id="1222">1222</a>
+<a href="#1223" id="1223">1223</a>
+<a href="#1224" id="1224">1224</a>
+<a href="#1225" id="1225">1225</a>
+<a href="#1226" id="1226">1226</a>
+<a href="#1227" id="1227">1227</a>
+<a href="#1228" id="1228">1228</a>
+<a href="#1229" id="1229">1229</a>
+<a href="#1230" id="1230">1230</a>
+<a href="#1231" id="1231">1231</a>
+<a href="#1232" id="1232">1232</a>
+<a href="#1233" id="1233">1233</a>
+<a href="#1234" id="1234">1234</a>
+<a href="#1235" id="1235">1235</a>
+<a href="#1236" id="1236">1236</a>
+<a href="#1237" id="1237">1237</a>
+<a href="#1238" id="1238">1238</a>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="attr">#![doc = <span class="macro">include_str!</span>(<span class="string">&quot;../../README.md&quot;</span>)]
@@ -1172,12 +1246,12 @@
 
 <span class="kw">use </span><span class="kw">crate</span>::settings::SETTINGS;
 
+<span class="kw">use </span>chrono::{TimeZone, Utc};
 <span class="kw">use </span>crossbeam_channel::{Receiver, TryRecvError};
 <span class="kw">use </span>dialoguer::Password;
 <span class="kw">use </span>massa_api::{ApiServer, ApiV2, Private, Public, RpcServer, StopHandle, API};
 <span class="kw">use </span>massa_api_exports::config::APIConfig;
 <span class="kw">use </span>massa_async_pool::AsyncPoolConfig;
-<span class="kw">use </span>massa_bootstrap::BootstrapError;
 <span class="kw">use </span>massa_bootstrap::{
     get_state, start_bootstrap_server, BootstrapConfig, BootstrapManager, BootstrapTcpListener,
     DefaultConnector,
@@ -1208,9 +1282,9 @@
     LEDGER_PART_SIZE_MESSAGE_BYTES, MAX_ADVERTISE_LENGTH, MAX_ASK_BLOCKS_PER_MESSAGE,
     MAX_ASYNC_GAS, MAX_ASYNC_MESSAGE_DATA, MAX_ASYNC_POOL_LENGTH, MAX_BLOCK_SIZE,
     MAX_BOOTSTRAP_ASYNC_POOL_CHANGES, MAX_BOOTSTRAP_BLOCKS, MAX_BOOTSTRAP_ERROR_LENGTH,
-    MAX_BOOTSTRAP_FINAL_STATE_PARTS_SIZE, MAX_BYTECODE_LENGTH, MAX_CONSENSUS_BLOCKS_IDS,
-    MAX_DATASTORE_ENTRY_COUNT, MAX_DATASTORE_KEY_LENGTH, MAX_DATASTORE_VALUE_LENGTH,
-    MAX_DEFERRED_CREDITS_LENGTH, MAX_DENUNCIATIONS_PER_BLOCK_HEADER,
+    MAX_BOOTSTRAP_FINAL_STATE_PARTS_SIZE, MAX_BOOTSTRAP_MESSAGE_SIZE, MAX_BYTECODE_LENGTH,
+    MAX_CONSENSUS_BLOCKS_IDS, MAX_DATASTORE_ENTRY_COUNT, MAX_DATASTORE_KEY_LENGTH,
+    MAX_DATASTORE_VALUE_LENGTH, MAX_DEFERRED_CREDITS_LENGTH, MAX_DENUNCIATIONS_PER_BLOCK_HEADER,
     MAX_DENUNCIATION_CHANGES_LENGTH, MAX_ENDORSEMENTS_PER_MESSAGE, MAX_EXECUTED_OPS_CHANGES_LENGTH,
     MAX_EXECUTED_OPS_LENGTH, MAX_FUNCTION_NAME_LENGTH, MAX_GAS_PER_BLOCK, MAX_LEDGER_CHANGES_COUNT,
     MAX_LISTENERS_PER_PEER, MAX_OPERATIONS_PER_BLOCK, MAX_OPERATIONS_PER_MESSAGE,
@@ -1239,21 +1313,22 @@
 <span class="kw">use </span>massa_protocol_worker::{create_protocol_controller, start_protocol_controller};
 <span class="kw">use </span>massa_storage::Storage;
 <span class="kw">use </span>massa_time::MassaTime;
-<span class="kw">use </span>massa_versioning_worker::versioning::{MipStatsConfig, MipStore};
+<span class="kw">use </span>massa_versioning::versioning::{
+    ComponentStateTypeId, MipComponent, MipInfo, MipState, MipStatsConfig, MipStore,
+};
 <span class="kw">use </span>massa_wallet::Wallet;
 <span class="kw">use </span>parking_lot::RwLock;
 <span class="kw">use </span>peernet::transports::TransportType;
 <span class="kw">use </span>std::collections::HashMap;
 <span class="kw">use </span>std::path::PathBuf;
 <span class="kw">use </span>std::sync::atomic::{AtomicUsize, Ordering};
-<span class="kw">use </span>std::sync::{Condvar, Mutex};
 <span class="kw">use </span>std::thread::sleep;
 <span class="kw">use </span>std::time::Duration;
 <span class="kw">use </span>std::{path::Path, process, sync::Arc};
 <span class="kw">use </span>structopt::StructOpt;
 <span class="kw">use </span>tokio::signal;
 <span class="kw">use </span>tokio::sync::{broadcast, mpsc};
-<span class="kw">use </span>tracing::{error, info, warn};
+<span class="kw">use </span>tracing::{debug, error, info, warn};
 <span class="kw">use </span>tracing_subscriber::filter::{filter_fn, LevelFilter};
 
 <span class="kw">mod </span>settings;
@@ -1400,18 +1475,9 @@
     ));
 
     <span class="comment">// interrupt signal listener
-    </span><span class="kw">let </span>interupted = Arc::new((Mutex::new(<span class="bool-val">false</span>), Condvar::new()));
-    <span class="kw">let </span>handler_clone = Arc::clone(<span class="kw-2">&amp;</span>interupted);
+    </span><span class="kw">let </span>stop_signal = signal::ctrl_c();
+    <span class="macro">tokio::pin!</span>(stop_signal);
 
-    <span class="comment">// currently used by the bootstrap client to break out of the to preempt the retry wait
-    </span>ctrlc::set_handler(<span class="kw">move </span>|| {
-        <span class="kw-2">*</span>handler_clone
-            .<span class="number">0
-            </span>.lock()
-            .expect(<span class="string">&quot;double-lock on interupt bool in ctrl-c handler&quot;</span>) = <span class="bool-val">true</span>;
-        handler_clone.<span class="number">1</span>.notify_all();
-    })
-    .expect(<span class="string">&quot;Error setting Ctrl-C handler&quot;</span>);
     <span class="kw">let </span>bootstrap_config: BootstrapConfig = BootstrapConfig {
         bootstrap_list: SETTINGS.bootstrap.bootstrap_list.clone(),
         bootstrap_protocol: SETTINGS.bootstrap.bootstrap_protocol,
@@ -1434,6 +1500,7 @@
         per_ip_min_interval: SETTINGS.bootstrap.per_ip_min_interval,
         ip_list_max_size: SETTINGS.bootstrap.ip_list_max_size,
         max_bytes_read_write: SETTINGS.bootstrap.max_bytes_read_write,
+        max_bootstrap_message_size: MAX_BOOTSTRAP_MESSAGE_SIZE,
         max_datastore_key_length: MAX_DATASTORE_KEY_LENGTH,
         randomness_size_bytes: BOOTSTRAP_RANDOMNESS_SIZE_BYTES,
         thread_count: THREAD_COUNT,
@@ -1469,22 +1536,24 @@
         max_denunciation_changes_length: MAX_DENUNCIATION_CHANGES_LENGTH,
     };
 
-    <span class="kw">let </span>bootstrap_state = <span class="kw">match </span>get_state(
-        <span class="kw-2">&amp;</span>bootstrap_config,
-        final_state.clone(),
-        DefaultConnector,
-        <span class="kw-2">*</span>VERSION,
-        <span class="kw-2">*</span>GENESIS_TIMESTAMP,
-        <span class="kw-2">*</span>END_TIMESTAMP,
-        args.restart_from_snapshot_at_period,
-        interupted,
-    ) {
-        <span class="prelude-val">Ok</span>(vals) =&gt; vals,
-        <span class="prelude-val">Err</span>(BootstrapError::Interupted(msg)) =&gt; {
-            <span class="macro">info!</span>(<span class="string">&quot;{}&quot;</span>, msg);
+    <span class="comment">// bootstrap
+    </span><span class="kw">let </span>bootstrap_state = <span class="macro">tokio::select! </span>{
+        <span class="kw">_ </span>= <span class="kw-2">&amp;mut </span>stop_signal =&gt; {
+            <span class="macro">info!</span>(<span class="string">&quot;interrupt signal received in bootstrap loop&quot;</span>);
             process::exit(<span class="number">0</span>);
+        },
+        res = get_state(
+            <span class="kw-2">&amp;</span>bootstrap_config,
+            final_state.clone(),
+            DefaultConnector,
+            <span class="kw-2">*</span>VERSION,
+            <span class="kw-2">*</span>GENESIS_TIMESTAMP,
+            <span class="kw-2">*</span>END_TIMESTAMP,
+            args.restart_from_snapshot_at_period
+        ) =&gt; <span class="kw">match </span>res {
+            <span class="prelude-val">Ok</span>(vals) =&gt; vals,
+            <span class="prelude-val">Err</span>(err) =&gt; <span class="macro">panic!</span>(<span class="string">&quot;critical error detected in the bootstrap process: {}&quot;</span>, err)
         }
-        <span class="prelude-val">Err</span>(err) =&gt; <span class="macro">panic!</span>(<span class="string">&quot;critical error detected in the bootstrap process: {}&quot;</span>, err),
     };
 
     <span class="kw">if </span>args.restart_from_snapshot_at_period.is_none() {
@@ -1514,12 +1583,92 @@
         block_count_considered: MIP_STORE_STATS_BLOCK_CONSIDERED,
         counters_max: MIP_STORE_STATS_COUNTERS_MAX,
     };
-    <span class="kw">let </span><span class="kw-2">mut </span>mip_store =
-        MipStore::try_from(([], mip_stats_config)).expect(<span class="string">&quot;Cannot create an empty MIP store&quot;</span>);
+    <span class="kw">let </span><span class="kw-2">mut </span>mip_store = MipStore::try_from((
+        [(
+            MipInfo {
+                name: <span class="string">&quot;MIP-0001&quot;</span>.to_string(),
+                version: <span class="number">1</span>,
+                components: HashMap::from([(MipComponent::Address, <span class="number">1</span>), (MipComponent::KeyPair, <span class="number">1</span>)]),
+                start: MassaTime::from(<span class="number">0</span>),
+                timeout: MassaTime::from(<span class="number">0</span>),
+                activation_delay: MassaTime::from(<span class="number">0</span>),
+            },
+            MipState::new(MassaTime::from(<span class="number">0</span>)),
+        )],
+        mip_stats_config,
+    ))
+    .expect(<span class="string">&quot;mip store creation failed&quot;</span>);
     <span class="kw">if let </span><span class="prelude-val">Some</span>(bootstrap_mip_store) = bootstrap_state.mip_store {
-        mip_store
+        <span class="comment">// TODO: in some cases, should bootstrap again
+        </span><span class="kw">let </span>(updated, added) = mip_store
             .update_with(<span class="kw-2">&amp;</span>bootstrap_mip_store)
             .expect(<span class="string">&quot;Cannot update MIP store with bootstrap mip store&quot;</span>);
+
+        <span class="kw">if </span>!added.is_empty() {
+            <span class="kw">for </span>(mip_info, mip_state) <span class="kw">in </span>added.iter() {
+                <span class="kw">let </span>now = MassaTime::now().expect(<span class="string">&quot;Cannot get current time&quot;</span>);
+                <span class="kw">match </span>mip_state.state_at(now, mip_info.start, mip_info.timeout) {
+                    <span class="prelude-val">Ok</span>(st_id) =&gt; {
+                        <span class="kw">if </span>st_id == ComponentStateTypeId::LockedIn {
+                            <span class="comment">// A new MipInfo @ state locked_in - we need to urge the user to update
+                            </span><span class="macro">warn!</span>(
+                                <span class="string">&quot;A new MIP has been received: {}, version: {}&quot;</span>,
+                                mip_info.name, mip_info.version
+                            );
+                            <span class="comment">// Safe to unwrap here (only panic if not LockedIn)
+                            </span><span class="kw">let </span>activation_at = mip_state.activation_at(mip_info).unwrap();
+                            <span class="kw">let </span>dt = Utc
+                                .timestamp_opt(activation_at.to_duration().as_secs() <span class="kw">as </span>i64, <span class="number">0</span>)
+                                .unwrap();
+                            <span class="macro">warn!</span>(<span class="string">&quot;Please update your Massa node before: {}&quot;</span>, dt.to_rfc2822());
+                        } <span class="kw">else if </span>st_id == ComponentStateTypeId::Active {
+                            <span class="comment">// A new MipInfo @ state active - we are not compatible anymore
+                            </span><span class="macro">warn!</span>(
+                                <span class="string">&quot;A new MIP has been received {:?}, version: {:?}&quot;</span>,
+                                mip_info.name, mip_info.version
+                            );
+                            <span class="macro">panic!</span>(<span class="string">&quot;Please update your Massa node to support it&quot;</span>);
+                        } <span class="kw">else if </span>st_id == ComponentStateTypeId::Defined {
+                            <span class="comment">// a new MipInfo @ state defined or started (or failed / error)
+                            // warn the user to update its node
+                            </span><span class="macro">warn!</span>(
+                                <span class="string">&quot;A new MIP has been received: {}, version: {}&quot;</span>,
+                                mip_info.name, mip_info.version
+                            );
+                            <span class="macro">debug!</span>(<span class="string">&quot;MIP state: {:?}&quot;</span>, mip_state);
+                            <span class="kw">let </span>dt_start = Utc
+                                .timestamp_opt(mip_info.start.to_duration().as_secs() <span class="kw">as </span>i64, <span class="number">0</span>)
+                                .unwrap();
+                            <span class="kw">let </span>dt_timeout = Utc
+                                .timestamp_opt(mip_info.timeout.to_duration().as_secs() <span class="kw">as </span>i64, <span class="number">0</span>)
+                                .unwrap();
+                            <span class="macro">warn!</span>(<span class="string">&quot;Please update your node between: {} and {} if you want to support this update&quot;</span>, 
+                                dt_start.to_rfc2822(),
+                                dt_timeout.to_rfc2822()
+                            );
+                        } <span class="kw">else </span>{
+                            <span class="comment">// a new MipInfo @ state defined or started (or failed / error)
+                            // warn the user to update its node
+                            </span><span class="macro">warn!</span>(
+                                <span class="string">&quot;A new MIP has been received: {}, version: {}&quot;</span>,
+                                mip_info.name, mip_info.version
+                            );
+                            <span class="macro">debug!</span>(<span class="string">&quot;MIP state: {:?}&quot;</span>, mip_state);
+                            <span class="macro">warn!</span>(<span class="string">&quot;Please update your Massa node to support it&quot;</span>);
+                        }
+                    }
+                    <span class="prelude-val">Err</span>(e) =&gt; {
+                        <span class="comment">// Should never happen
+                        </span><span class="macro">panic!</span>(
+                            <span class="string">&quot;Unable to get state at {} of mip info: {:?}, error: {}&quot;</span>,
+                            now, mip_info, e
+                        )
+                    }
+                }
+            }
+        }
+
+        <span class="macro">debug!</span>(<span class="string">&quot;MIP store got {} MIP updated from bootstrap&quot;</span>, updated.len());
     }
 
     <span class="comment">// launch execution module
@@ -1692,7 +1841,6 @@
         read_write_limit_bytes_per_second: SETTINGS.protocol.read_write_limit_bytes_per_second
             <span class="kw">as </span>u128,
         try_connection_timer: SETTINGS.protocol.try_connection_timer,
-        max_in_connections: SETTINGS.protocol.max_in_connections,
         timeout_connection: SETTINGS.protocol.timeout_connection,
         routable_ip: SETTINGS
             .protocol
@@ -1773,6 +1921,7 @@
         pool_controller.clone(),
         shared_storage.clone(),
         protocol_channels,
+        mip_store.clone(),
     )
     .expect(<span class="string">&quot;could not start protocol controller&quot;</span>);
 
@@ -1796,7 +1945,12 @@
         protocol: protocol_controller.clone(),
         storage: shared_storage.clone(),
     };
-    <span class="kw">let </span>factory_manager = start_factory(factory_config, node_wallet.clone(), factory_channels);
+    <span class="kw">let </span>factory_manager = start_factory(
+        factory_config,
+        node_wallet.clone(),
+        factory_channels,
+        mip_store.clone(),
+    );
 
     <span class="kw">let </span>bootstrap_manager = bootstrap_config.listen_addr.map(|addr| {
         <span class="kw">let </span>(waker, listener) = BootstrapTcpListener::new(<span class="kw-2">&amp;</span>addr).unwrap_or_else(|<span class="kw">_</span>| {
@@ -1883,7 +2037,6 @@
             enable_cors: SETTINGS.grpc.enable_cors,
             enable_health: SETTINGS.grpc.enable_health,
             enable_reflection: SETTINGS.grpc.enable_reflection,
-            enable_mtls: SETTINGS.grpc.enable_mtls,
             bind: SETTINGS.grpc.bind,
             accept_compressed: SETTINGS.grpc.accept_compressed.clone(),
             send_compressed: SETTINGS.grpc.send_compressed.clone(),
@@ -1926,12 +2079,6 @@
             max_denunciations_per_block_header: MAX_DENUNCIATIONS_PER_BLOCK_HEADER,
             max_block_ids_per_request: SETTINGS.grpc.max_block_ids_per_request,
             max_operation_ids_per_request: SETTINGS.grpc.max_operation_ids_per_request,
-            server_certificate_path: SETTINGS.grpc.server_certificate_path.clone(),
-            server_private_key_path: SETTINGS.grpc.server_private_key_path.clone(),
-            client_certificate_authority_root_path: SETTINGS
-                .grpc
-                .client_certificate_authority_root_path
-                .clone(),
         };
 
         <span class="kw">let </span>grpc_api = MassaGrpc {
@@ -1998,6 +2145,7 @@
         <span class="kw-2">*</span>VERSION,
         node_id,
         shared_storage.clone(),
+        mip_store.clone(),
     );
     <span class="kw">let </span>api_public_handle = api_public
         .serve(<span class="kw-2">&amp;</span>SETTINGS.api.bind_public, <span class="kw-2">&amp;</span>api_config)

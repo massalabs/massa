@@ -134,6 +134,7 @@
 </span><span class="kw">use </span>massa_consensus_exports::bootstrapable_graph::BootstrapableGraph;
 <span class="kw">use </span>massa_final_state::FinalState;
 <span class="kw">use </span>massa_protocol_exports::BootstrapPeers;
+<span class="kw">use </span>massa_versioning::versioning::MipStore;
 <span class="kw">use </span>parking_lot::RwLock;
 <span class="kw">use </span>std::io::{<span class="self">self</span>, ErrorKind};
 <span class="kw">use </span>std::sync::Arc;
@@ -142,15 +143,14 @@
 <span class="kw">mod </span>bindings;
 <span class="kw">mod </span>client;
 <span class="kw">mod </span>error;
-<span class="kw">pub use </span>error::BootstrapError;
 <span class="kw">mod </span>listener;
-<span class="kw">pub use </span>listener::BootstrapTcpListener;
 <span class="kw">mod </span>messages;
 <span class="kw">mod </span>server;
 <span class="kw">mod </span>settings;
 <span class="kw">mod </span>tools;
+
 <span class="kw">pub use </span>client::{get_state, DefaultConnector};
-<span class="kw">use </span>massa_versioning_worker::versioning::MipStore;
+<span class="kw">pub use </span>listener::BootstrapTcpListener;
 <span class="kw">pub use </span>messages::{
     BootstrapClientMessage, BootstrapClientMessageDeserializer, BootstrapClientMessageSerializer,
     BootstrapServerMessage, BootstrapServerMessageDeserializer, BootstrapServerMessageSerializer,

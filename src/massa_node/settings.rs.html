@@ -298,16 +298,6 @@
 <a href="#298" id="298">298</a>
 <a href="#299" id="299">299</a>
 <a href="#300" id="300">300</a>
-<a href="#301" id="301">301</a>
-<a href="#302" id="302">302</a>
-<a href="#303" id="303">303</a>
-<a href="#304" id="304">304</a>
-<a href="#305" id="305">305</a>
-<a href="#306" id="306">306</a>
-<a href="#307" id="307">307</a>
-<a href="#308" id="308">308</a>
-<a href="#309" id="309">309</a>
-<a href="#310" id="310">310</a>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="doccomment">//! Build here the default node settings from the configuration file toml
@@ -541,8 +531,6 @@
     </span><span class="kw">pub </span>try_connection_timer: MassaTime,
     <span class="doccomment">/// Timeout connection
     </span><span class="kw">pub </span>timeout_connection: MassaTime,
-    <span class="doccomment">/// Nb in connections
-    </span><span class="kw">pub </span>max_in_connections: usize,
     <span class="doccomment">/// Peers limits per category
     </span><span class="kw">pub </span>peers_categories: HashMap&lt;String, PeerCategoryInfo&gt;,
     <span class="doccomment">/// Limits for default category
@@ -563,8 +551,6 @@
     </span><span class="kw">pub </span>enable_health: bool,
     <span class="doccomment">/// whether to enable gRPC reflection
     </span><span class="kw">pub </span>enable_reflection: bool,
-    <span class="doccomment">/// whether to enable mTLS
-    </span><span class="kw">pub </span>enable_mtls: bool,
     <span class="doccomment">/// bind for the Massa gRPC API
     </span><span class="kw">pub </span>bind: SocketAddr,
     <span class="doccomment">/// which compression encodings does the server accept for requests
@@ -605,12 +591,6 @@
     </span><span class="kw">pub </span>max_block_ids_per_request: u32,
     <span class="doccomment">/// max number of operation ids that can be included in a single request
     </span><span class="kw">pub </span>max_operation_ids_per_request: u32,
-    <span class="doccomment">/// server certificate path
-    </span><span class="kw">pub </span>server_certificate_path: PathBuf,
-    <span class="doccomment">/// server private key path
-    </span><span class="kw">pub </span>server_private_key_path: PathBuf,
-    <span class="doccomment">/// client certificate authority root path
-    </span><span class="kw">pub </span>client_certificate_authority_root_path: PathBuf,
 }
 
 <span class="attr">#[cfg(test)]
