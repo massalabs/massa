@@ -1,7 +1,7 @@
 var sourcesIndex = JSON.parse('{\
 "massa_api":["",[],["api.rs","api_trait.rs","lib.rs","private.rs","public.rs"]],\
 "massa_api_exports":["",[],["address.rs","block.rs","config.rs","datastore.rs","endorsement.rs","error.rs","execution.rs","ledger.rs","lib.rs","node.rs","operation.rs","page.rs","rolls.rs","slot.rs"]],\
-"massa_async_pool":["",[],["changes.rs","config.rs","lib.rs","mapping_grpc.rs","message.rs","pool.rs"]],\
+"massa_async_pool":["",[],["changes.rs","config.rs","lib.rs","message.rs","pool.rs"]],\
 "massa_bootstrap":["",[["bindings",[],["client.rs","server.rs"]],["server",[],["white_black_list.rs"]]],["bindings.rs","client.rs","error.rs","lib.rs","listener.rs","messages.rs","server.rs","settings.rs","tools.rs"]],\
 "massa_cipher":["",[],["constants.rs","decrypt.rs","encrypt.rs","error.rs","lib.rs"]],\
 "massa_client":["",[],["cmds.rs","display.rs","main.rs","repl.rs","settings.rs"]],\
@@ -12,7 +12,7 @@ var sourcesIndex = JSON.parse('{\
 "massa_execution_worker":["",[],["active_history.rs","context.rs","controller.rs","execution.rs","interface_impl.rs","lib.rs","request_queue.rs","slot_sequencer.rs","speculative_async_pool.rs","speculative_executed_denunciations.rs","speculative_executed_ops.rs","speculative_ledger.rs","speculative_roll_state.rs","stats.rs","vesting_manager.rs","worker.rs"]],\
 "massa_factory_exports":["",[],["config.rs","controller_traits.rs","error.rs","lib.rs","types.rs"]],\
 "massa_factory_worker":["",[],["block_factory.rs","endorsement_factory.rs","lib.rs","manager.rs","run.rs"]],\
-"massa_final_state":["",[],["config.rs","error.rs","final_state.rs","lib.rs","mapping_grpc.rs","state_changes.rs"]],\
+"massa_final_state":["",[],["config.rs","error.rs","final_state.rs","lib.rs","state_changes.rs"]],\
 "massa_grpc":["",[["stream",[],["mod.rs","new_blocks.rs","new_blocks_headers.rs","new_endorsements.rs","new_filled_blocks.rs","new_operations.rs","new_slot_execution_outputs.rs","send_blocks.rs","send_endorsements.rs","send_operations.rs","tx_throughput.rs"]]],["api.rs","config.rs","error.rs","handler.rs","lib.rs","server.rs"]],\
 "massa_hash":["",[],["error.rs","hash.rs","lib.rs","settings.rs"]],\
 "massa_ledger_exports":["",[],["config.rs","controller.rs","error.rs","key.rs","ledger_changes.rs","ledger_entry.rs","lib.rs","types.rs"]],\
