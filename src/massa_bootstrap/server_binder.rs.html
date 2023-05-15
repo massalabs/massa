@@ -288,6 +288,10 @@
 <a href="#288" id="288">288</a>
 <a href="#289" id="289">289</a>
 <a href="#290" id="290">290</a>
+<a href="#291" id="291">291</a>
+<a href="#292" id="292">292</a>
+<a href="#293" id="293">293</a>
+<a href="#294" id="294">294</a>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="kw">use </span><span class="kw">crate</span>::error::BootstrapError;
@@ -516,7 +520,11 @@
 
         <span class="kw">let </span>peek_len = HASH_SIZE_BYTES + <span class="self">self</span>.size_field_len;
         <span class="kw">let </span><span class="kw-2">mut </span>peek_buf = <span class="macro">vec!</span>[<span class="number">0</span>; peek_len];
-        <span class="kw">while </span><span class="self">self</span>.duplex.peek(<span class="kw-2">&amp;mut </span>peek_buf)<span class="question-mark">? </span>&lt; peek_len {
+        <span class="kw">let </span><span class="kw-2">mut </span>len = <span class="self">self</span>.duplex.peek(<span class="kw-2">&amp;mut </span>peek_buf)<span class="question-mark">?</span>;
+        <span class="macro">println!</span>(<span class="string">&quot;AURELIEN peek len: {}&quot;</span>, len);
+        <span class="kw">while </span>len &lt; peek_len {
+            len = <span class="self">self</span>.duplex.peek(<span class="kw-2">&amp;mut </span>peek_buf)<span class="question-mark">?</span>;
+            <span class="macro">println!</span>(<span class="string">&quot;AURELIEN peek len: {}&quot;</span>, len);
             <span class="comment">// TODO: backoff spin of some sort
         </span>}
         <span class="comment">// construct prev-hash from peek

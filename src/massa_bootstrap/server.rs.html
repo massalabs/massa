@@ -766,6 +766,15 @@
 <a href="#766" id="766">766</a>
 <a href="#767" id="767">767</a>
 <a href="#768" id="768">768</a>
+<a href="#769" id="769">769</a>
+<a href="#770" id="770">770</a>
+<a href="#771" id="771">771</a>
+<a href="#772" id="772">772</a>
+<a href="#773" id="773">773</a>
+<a href="#774" id="774">774</a>
+<a href="#775" id="775">775</a>
+<a href="#776" id="776">776</a>
+<a href="#777" id="777">777</a>
 </pre><pre class="rust"><code><span class="doccomment">//! start the bootstrapping system using [`start_bootstrap_server`]
 //! Once your node will be ready, you may want other to bootstrap from you.
 //!
@@ -1177,6 +1186,7 @@
         deadline,
         mip_store,
     );
+    <span class="macro">println!</span>(<span class="string">&quot;AURELIEN: mange bootstrap done with res: {:?}&quot;</span>, res);
 
     <span class="comment">// This drop allows the server to accept new connections before having to complete the error notifications
     // account for this session being finished, as well as the root-instance
@@ -1444,6 +1454,7 @@
             <span class="string">&quot;insufficient time to check for error from client&quot;</span>.to_string(),
         ));
     };
+    <span class="macro">println!</span>(<span class="string">&quot;AURELIEN: After receive handshake&quot;</span>);
     <span class="kw">match </span>server.next_timeout(<span class="prelude-val">Some</span>(read_error_timeout)) {
         <span class="prelude-val">Err</span>(BootstrapError::TimedOut(<span class="kw">_</span>)) =&gt; {}
         <span class="prelude-val">Err</span>(e) =&gt; <span class="kw">return </span><span class="prelude-val">Err</span>(e),
@@ -1452,6 +1463,7 @@
         }
         <span class="prelude-val">Ok</span>(msg) =&gt; <span class="kw">return </span><span class="prelude-val">Err</span>(BootstrapError::UnexpectedClientMessage(Box::new(msg))),
     };
+    <span class="macro">println!</span>(<span class="string">&quot;AURELIEN: After error handshake&quot;</span>);
 
     <span class="comment">// Sync clocks
     </span><span class="kw">let </span>send_time_timeout =
@@ -1459,6 +1471,7 @@
     <span class="kw">let </span><span class="prelude-val">Some</span>(next_step_timeout) = send_time_timeout <span class="kw">else </span>{
         <span class="kw">return </span><span class="prelude-val">Err</span>(BootstrapError::Interupted(<span class="string">&quot;insufficient time left to send server time&quot;</span>.to_string()));
     };
+    <span class="macro">println!</span>(<span class="string">&quot;AURELIEN: Before send clock&quot;</span>);
     server.send_msg(
         next_step_timeout,
         BootstrapServerMessage::BootstrapTime {
@@ -1466,13 +1479,18 @@
             version,
         },
     )<span class="question-mark">?</span>;
+    <span class="macro">println!</span>(<span class="string">&quot;AURELIEN: After send clock&quot;</span>);
 
     <span class="kw">loop </span>{
         <span class="kw">let </span><span class="prelude-val">Some</span>(read_timeout) = step_timeout_duration(<span class="kw-2">&amp;</span>deadline, <span class="kw-2">&amp;</span>bootstrap_config.read_timeout.to_duration()) <span class="kw">else </span>{
             <span class="kw">return </span><span class="prelude-val">Err</span>(BootstrapError::Interupted(<span class="string">&quot;insufficient time left to process next message&quot;</span>.to_string()));
         };
+        <span class="macro">println!</span>(<span class="string">&quot;AURELIEN: Read timeout {:?}&quot;</span>, read_timeout);
         <span class="kw">match </span>server.next_timeout(<span class="prelude-val">Some</span>(read_timeout)) {
-            <span class="prelude-val">Err</span>(BootstrapError::TimedOut(<span class="kw">_</span>)) =&gt; <span class="kw">break </span><span class="prelude-val">Ok</span>(()),
+            <span class="prelude-val">Err</span>(BootstrapError::TimedOut(<span class="kw">_</span>)) =&gt; {
+                <span class="macro">println!</span>(<span class="string">&quot;AURELIEN: TimedOut&quot;</span>);
+                <span class="kw">break </span><span class="prelude-val">Ok</span>(())
+            },
             <span class="prelude-val">Err</span>(e) =&gt; <span class="kw">break </span><span class="prelude-val">Err</span>(e),
             <span class="prelude-val">Ok</span>(msg) =&gt; <span class="kw">match </span>msg {
                 BootstrapClientMessage::AskBootstrapPeers =&gt; {
