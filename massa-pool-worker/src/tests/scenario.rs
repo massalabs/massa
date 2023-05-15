@@ -72,23 +72,16 @@ lazy_static::lazy_static! {
 #[test]
 fn test_simple_get_operations() {
     // Setup the execution story.
+    let keypair = KeyPair::generate();
+    let addr = Address::from_public_key(&keypair.get_public_key()).clone();
+
     let mut execution_controller = Box::new(MockExecutionController::new());
-    execution_controller.expect_clone_box().returning(|| {
-        let mut res = Box::new(MockExecutionController::new());
-        let mut seq = Sequence::new();
-        res.expect_unexecuted_ops_among()
-            .times(1)
-            .return_once(|_, _| STORAGE.read().unwrap().get_op_refs().clone())
-            .in_sequence(&mut seq);
-        res.expect_get_final_and_candidate_balance()
-            .times(1)
-            .return_once(|_| vec![(Some(Amount::from_raw(1)), Some(Amount::from_raw(1)))])
-            .in_sequence(&mut seq);
-        res.expect_unexecuted_ops_among()
-            .times(9)
-            .returning(|_, _| STORAGE.read().unwrap().get_op_refs().clone())
-            .in_sequence(&mut seq);
-        res
+    execution_controller.expect_clone_box().returning(move || {
+        Box::new(create_basic_get_block_operation_execution_mock(
+            10,
+            addr,
+            vec![(Some(Amount::from_raw(1)), Some(Amount::from_raw(1)))],
+        ))
     });
 
     // Provide the selector boilderplate
@@ -111,7 +104,6 @@ fn test_simple_get_operations() {
     );
 
     // setup storage
-    let keypair = KeyPair::generate();
     let op_gen = OpGenerator::default().creator(keypair.clone()).expirery(1);
     STORAGE
         .write()
@@ -136,6 +128,29 @@ fn test_simple_get_operations() {
     assert_eq!(block_operations_storage.get_op_refs().len(), 10);
 }
 
+/// Create default mock-story for execution controller on call `get_block_operation` API.
+pub fn create_basic_get_block_operation_execution_mock(
+    operations_len: usize,
+    creator_address: Address,
+    balance_vec: Vec<(Option<Amount>, Option<Amount>)>,
+) -> MockExecutionController {
+    let mut res = MockExecutionController::new();
+    let mut seq = Sequence::new();
+    res.expect_unexecuted_ops_among()
+        .times(1)
+        .return_once(|_, _| STORAGE.read().unwrap().get_op_refs().clone())
+        .in_sequence(&mut seq);
+    res.expect_get_final_and_candidate_balance()
+        .times(1)
+        .return_once(|_| balance_vec)
+        .withf(move |addrs| addrs.len() == 1 && addrs[0] == creator_address)
+        .in_sequence(&mut seq);
+    res.expect_unexecuted_ops_among()
+        .times(operations_len - 1)
+        .returning(|_, _| STORAGE.read().unwrap().get_op_refs().clone())
+        .in_sequence(&mut seq);
+    res
+}
 /// Launch a default mock for execution controller on call `get_block_operation` API.
 pub fn launch_basic_get_block_operation_execution_mock(
     operations_len: usize,
