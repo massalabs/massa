@@ -3295,12 +3295,6 @@
 <a href="#3295" id="3295">3295</a>
 <a href="#3296" id="3296">3296</a>
 <a href="#3297" id="3297">3297</a>
-<a href="#3298" id="3298">3298</a>
-<a href="#3299" id="3299">3299</a>
-<a href="#3300" id="3300">3300</a>
-<a href="#3301" id="3301">3301</a>
-<a href="#3302" id="3302">3302</a>
-<a href="#3303" id="3303">3303</a>
 </pre><pre class="rust"><code><span class="doccomment">/// When an address is drawn to create an endorsement it is selected for a specific index
 </span><span class="attr">#[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
@@ -3721,12 +3715,23 @@
 </span><span class="attr">#[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
 </span><span class="kw">pub struct </span>SlotExecutionOutput {
-    <span class="doccomment">/// Status
-    </span><span class="attr">#[prost(enumeration = <span class="string">&quot;ExecutionOutputStatus&quot;</span>, repeated, tag = <span class="string">&quot;1&quot;</span>)]
-    </span><span class="kw">pub </span>status: ::prost::alloc::vec::Vec&lt;i32&gt;,
-    <span class="doccomment">/// Executed slot output
-    </span><span class="attr">#[prost(message, optional, tag = <span class="string">&quot;2&quot;</span>)]
-    </span><span class="kw">pub </span>execution_output: ::core::option::Option&lt;ExecutionOutput&gt;,
+    <span class="doccomment">/// ExecutionOutput or FinalizedExecutionOutput
+    </span><span class="attr">#[prost(oneof = <span class="string">&quot;slot_execution_output::Message&quot;</span>, tags = <span class="string">&quot;1, 2&quot;</span>)]
+    </span><span class="kw">pub </span>message: ::core::option::Option&lt;slot_execution_output::Message&gt;,
+}
+<span class="doccomment">/// Nested message and enum types in `SlotExecutionOutput`.
+</span><span class="kw">pub mod </span>slot_execution_output {
+    <span class="doccomment">/// ExecutionOutput or FinalizedExecutionOutput
+    </span><span class="attr">#[allow(clippy::derive_partial_eq_without_eq)]
+    #[derive(Clone, PartialEq, ::prost::Oneof)]
+    </span><span class="kw">pub enum </span>Message {
+        <span class="doccomment">/// Executed slot output
+        </span><span class="attr">#[prost(message, tag = <span class="string">&quot;1&quot;</span>)]
+        </span>ExecutionOutput(<span class="kw">super</span>::ExecutionOutput),
+        <span class="doccomment">/// Executed final slot
+        </span><span class="attr">#[prost(message, tag = <span class="string">&quot;2&quot;</span>)]
+        </span>FinalExecutionOutput(<span class="kw">super</span>::FinalizedExecutionOutput),
+    }
 }
 <span class="doccomment">/// FinalizedExecutionOutput
 </span><span class="attr">#[allow(clippy::derive_partial_eq_without_eq)]
@@ -3826,35 +3831,37 @@
         }
     }
 }
-<span class="doccomment">/// ExecutionOutputStatus type enum
+<span class="doccomment">/// ScExecutionOutputStatus type enum
 </span><span class="attr">#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, ::prost::Enumeration)]
 #[repr(i32)]
-</span><span class="kw">pub enum </span>ExecutionOutputStatus {
+</span><span class="kw">pub enum </span>ScExecutionOutputStatus {
     <span class="doccomment">/// Defaut enum value
     </span>Unspecified = <span class="number">0</span>,
-    <span class="doccomment">/// Candidate status
-    </span>Candidate = <span class="number">1</span>,
     <span class="doccomment">/// Final status
-    </span>Final = <span class="number">2</span>,
+    </span>Final = <span class="number">1</span>,
+    <span class="doccomment">/// Read only status
+    </span>Candidate = <span class="number">2</span>,
 }
-<span class="kw">impl </span>ExecutionOutputStatus {
+<span class="kw">impl </span>ScExecutionOutputStatus {
     <span class="doccomment">/// String value of the enum field names used in the ProtoBuf definition.
     ///
     /// The values are not transformed in any way and thus are considered stable
     /// (if the ProtoBuf definition does not change) and safe for programmatic use.
     </span><span class="kw">pub fn </span>as_str_name(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span><span class="lifetime">&#39;static </span>str {
         <span class="kw">match </span><span class="self">self </span>{
-            ExecutionOutputStatus::Unspecified =&gt; <span class="string">&quot;EXECUTION_OUTPUT_STATUS_UNSPECIFIED&quot;</span>,
-            ExecutionOutputStatus::Candidate =&gt; <span class="string">&quot;EXECUTION_OUTPUT_STATUS_CANDIDATE&quot;</span>,
-            ExecutionOutputStatus::Final =&gt; <span class="string">&quot;EXECUTION_OUTPUT_STATUS_FINAL&quot;</span>,
+            ScExecutionOutputStatus::Unspecified =&gt; {
+                <span class="string">&quot;SC_EXECUTION_OUTPUT_STATUS_UNSPECIFIED&quot;
+            </span>}
+            ScExecutionOutputStatus::Final =&gt; <span class="string">&quot;SC_EXECUTION_OUTPUT_STATUS_FINAL&quot;</span>,
+            ScExecutionOutputStatus::Candidate =&gt; <span class="string">&quot;SC_EXECUTION_OUTPUT_STATUS_CANDIDATE&quot;</span>,
         }
     }
     <span class="doccomment">/// Creates an enum from field names used in the ProtoBuf definition.
     </span><span class="kw">pub fn </span>from_str_name(value: <span class="kw-2">&amp;</span>str) -&gt; ::core::option::Option&lt;<span class="self">Self</span>&gt; {
         <span class="kw">match </span>value {
-            <span class="string">&quot;EXECUTION_OUTPUT_STATUS_UNSPECIFIED&quot; </span>=&gt; <span class="prelude-val">Some</span>(<span class="self">Self</span>::Unspecified),
-            <span class="string">&quot;EXECUTION_OUTPUT_STATUS_CANDIDATE&quot; </span>=&gt; <span class="prelude-val">Some</span>(<span class="self">Self</span>::Candidate),
-            <span class="string">&quot;EXECUTION_OUTPUT_STATUS_FINAL&quot; </span>=&gt; <span class="prelude-val">Some</span>(<span class="self">Self</span>::Final),
+            <span class="string">&quot;SC_EXECUTION_OUTPUT_STATUS_UNSPECIFIED&quot; </span>=&gt; <span class="prelude-val">Some</span>(<span class="self">Self</span>::Unspecified),
+            <span class="string">&quot;SC_EXECUTION_OUTPUT_STATUS_FINAL&quot; </span>=&gt; <span class="prelude-val">Some</span>(<span class="self">Self</span>::Final),
+            <span class="string">&quot;SC_EXECUTION_OUTPUT_STATUS_CANDIDATE&quot; </span>=&gt; <span class="prelude-val">Some</span>(<span class="self">Self</span>::Candidate),
             <span class="kw">_ </span>=&gt; <span class="prelude-val">None</span>,
         }
     }
@@ -4404,25 +4411,6 @@
     <span class="doccomment">/// Request id
     </span><span class="attr">#[prost(string, tag = <span class="string">&quot;1&quot;</span>)]
     </span><span class="kw">pub </span>id: ::prost::alloc::string::String,
-    <span class="doccomment">/// Query
-    </span><span class="attr">#[prost(message, optional, tag = <span class="string">&quot;2&quot;</span>)]
-    </span><span class="kw">pub </span>query: ::core::option::Option&lt;NewSlotExecutionOutputsQuery&gt;,
-}
-<span class="doccomment">/// NewSlotExecutionOutputs Query
-</span><span class="attr">#[allow(clippy::derive_partial_eq_without_eq)]
-#[derive(Clone, PartialEq, ::prost::Message)]
-</span><span class="kw">pub struct </span>NewSlotExecutionOutputsQuery {
-    <span class="doccomment">/// Filter
-    </span><span class="attr">#[prost(message, optional, tag = <span class="string">&quot;1&quot;</span>)]
-    </span><span class="kw">pub </span>filter: ::core::option::Option&lt;NewSlotExecutionOutputsFilter&gt;,
-}
-<span class="doccomment">/// NewSlotExecutionOutputs Filter
-</span><span class="attr">#[allow(clippy::derive_partial_eq_without_eq)]
-#[derive(Clone, PartialEq, ::prost::Message)]
-</span><span class="kw">pub struct </span>NewSlotExecutionOutputsFilter {
-    <span class="doccomment">/// Execution output status enum
-    </span><span class="attr">#[prost(enumeration = <span class="string">&quot;ExecutionOutputStatus&quot;</span>, repeated, tag = <span class="string">&quot;1&quot;</span>)]
-    </span><span class="kw">pub </span>status: ::prost::alloc::vec::Vec&lt;i32&gt;,
 }
 <span class="doccomment">/// NewSlotExecutionOutputsResponse holds response from NewSlotExecutionOutputs
 </span><span class="attr">#[allow(clippy::derive_partial_eq_without_eq)]

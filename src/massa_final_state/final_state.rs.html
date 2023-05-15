@@ -941,6 +941,43 @@
 <a href="#941" id="941">941</a>
 <a href="#942" id="942">942</a>
 <a href="#943" id="943">943</a>
+<a href="#944" id="944">944</a>
+<a href="#945" id="945">945</a>
+<a href="#946" id="946">946</a>
+<a href="#947" id="947">947</a>
+<a href="#948" id="948">948</a>
+<a href="#949" id="949">949</a>
+<a href="#950" id="950">950</a>
+<a href="#951" id="951">951</a>
+<a href="#952" id="952">952</a>
+<a href="#953" id="953">953</a>
+<a href="#954" id="954">954</a>
+<a href="#955" id="955">955</a>
+<a href="#956" id="956">956</a>
+<a href="#957" id="957">957</a>
+<a href="#958" id="958">958</a>
+<a href="#959" id="959">959</a>
+<a href="#960" id="960">960</a>
+<a href="#961" id="961">961</a>
+<a href="#962" id="962">962</a>
+<a href="#963" id="963">963</a>
+<a href="#964" id="964">964</a>
+<a href="#965" id="965">965</a>
+<a href="#966" id="966">966</a>
+<a href="#967" id="967">967</a>
+<a href="#968" id="968">968</a>
+<a href="#969" id="969">969</a>
+<a href="#970" id="970">970</a>
+<a href="#971" id="971">971</a>
+<a href="#972" id="972">972</a>
+<a href="#973" id="973">973</a>
+<a href="#974" id="974">974</a>
+<a href="#975" id="975">975</a>
+<a href="#976" id="976">976</a>
+<a href="#977" id="977">977</a>
+<a href="#978" id="978">978</a>
+<a href="#979" id="979">979</a>
+<a href="#980" id="980">980</a>
 </pre><pre class="rust"><code><span class="doccomment">//! Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 //! This file defines the final state of the node, which includes
@@ -977,6 +1014,8 @@
     DeferredCreditsDeserializer, DeferredCreditsSerializer, PoSFinalState, SelectorController,
 };
 <span class="kw">use </span>massa_serialization::{Deserializer, SerializeError, Serializer};
+<span class="kw">use </span>massa_versioning_worker::versioning::{MipInfo, MipState, MipStatsConfig, MipStore};
+<span class="kw">use </span>massa_versioning_worker::versioning_ser_der::{MipStoreRawDeserializer, MipStoreRawSerializer};
 <span class="kw">use </span>nom::{error::context, sequence::tuple, IResult, Parser};
 <span class="kw">use </span>std::collections::{BTreeMap, HashSet, VecDeque};
 <span class="kw">use </span>std::ops::Bound::{Excluded, Included};
@@ -998,6 +1037,8 @@
     </span><span class="kw">pub </span>executed_ops: ExecutedOps,
     <span class="doccomment">/// executed denunciations
     </span><span class="kw">pub </span>executed_denunciations: ExecutedDenunciations,
+    <span class="doccomment">/// MIP store
+    </span><span class="kw">pub </span>mip_store: MipStore,
     <span class="doccomment">/// history of recent final state changes, useful for streaming bootstrap
     /// `front = oldest`, `back = newest`
     </span><span class="kw">pub </span>changes_history: VecDeque&lt;(Slot, StateChanges)&gt;,
@@ -1047,6 +1088,16 @@
         </span><span class="kw">let </span>executed_denunciations =
             ExecutedDenunciations::new(config.executed_denunciations_config.clone());
 
+        <span class="comment">// create an empty MIP store
+        </span><span class="kw">let </span>mip_stats_config = MipStatsConfig {
+            block_count_considered: config.mip_store_stats_block_considered,
+            counters_max: config.mip_store_stats_counters_max,
+        };
+
+        <span class="comment">// TODO: no expect
+        </span><span class="kw">let </span>mip_store =
+            MipStore::try_from(([], mip_stats_config)).expect(<span class="string">&quot;Cannot create an empty MIP store&quot;</span>);
+
         <span class="comment">// create the final state
         </span><span class="prelude-val">Ok</span>(FinalState {
             slot,
@@ -1056,6 +1107,7 @@
             config,
             executed_ops,
             executed_denunciations,
+            mip_store,
             changes_history: Default::default(), <span class="comment">// no changes in history
             </span>final_state_hash: Hash::from_bytes(FINAL_STATE_HASH_INITIAL_BYTES),
             last_start_period: <span class="number">0</span>,
@@ -1328,7 +1380,8 @@
         <span class="self">self</span>.pos_state.reset();
         <span class="self">self</span>.executed_ops.reset();
         <span class="self">self</span>.executed_denunciations.reset();
-        <span class="self">self</span>.changes_history.clear();
+        <span class="comment">// TODO: What does it mean for MIP Store to reset?
+        </span><span class="self">self</span>.changes_history.clear();
         <span class="comment">// reset the final state hash
         </span><span class="self">self</span>.final_state_hash = Hash::from_bytes(FINAL_STATE_HASH_INITIAL_BYTES);
     }
@@ -1362,6 +1415,9 @@
         </span>hash_concat.extend(<span class="self">self</span>.executed_ops.hash.to_bytes());
         <span class="comment">// 6. executed denunciations hash
         </span>hash_concat.extend(<span class="self">self</span>.executed_denunciations.hash.to_bytes());
+        <span class="comment">// 7. MIP store hash
+        // TODO: no unwrap()
+        </span>hash_concat.extend(<span class="self">self</span>.mip_store.compute_hash().unwrap().to_bytes());
         <span class="comment">// 7. compute and save final state hash
         </span><span class="self">self</span>.final_state_hash = Hash::compute_from(<span class="kw-2">&amp;</span>hash_concat);
 
@@ -1630,6 +1686,7 @@
     executed_ops_serializer: ExecutedOpsSerializer,
     executed_denunciations_serializer: ExecutedDenunciationsSerializer,
     slot_serializer: SlotSerializer,
+    mip_store_serializer: MipStoreRawSerializer,
 }
 
 <span class="kw">impl </span>Default <span class="kw">for </span>FinalStateRawSerializer {
@@ -1648,6 +1705,7 @@
             sorted_denunciations: value.executed_denunciations.sorted_denunciations,
             latest_consistent_slot: value.slot,
             final_state_hash_from_snapshot: value.final_state_hash,
+            mip_store: value.mip_store.<span class="number">0</span>.read().store.clone(),
         }
     }
 }
@@ -1662,6 +1720,7 @@
             executed_ops_serializer: ExecutedOpsSerializer::new(),
             executed_denunciations_serializer: ExecutedDenunciationsSerializer::new(),
             slot_serializer: SlotSerializer::new(),
+            mip_store_serializer: MipStoreRawSerializer::new(),
         }
     }
 }
@@ -1689,6 +1748,10 @@
         </span><span class="self">self</span>.slot_serializer
             .serialize(<span class="kw-2">&amp;</span>value.latest_consistent_slot, buffer)<span class="question-mark">?</span>;
 
+        <span class="comment">// Serialize mip store
+        </span><span class="self">self</span>.mip_store_serializer
+            .serialize(<span class="kw-2">&amp;</span>value.mip_store, buffer)<span class="question-mark">?</span>;
+
         <span class="comment">// /!\ The final_state_hash has to be serialized separately!
 
         </span><span class="prelude-val">Ok</span>(())
@@ -1704,6 +1767,7 @@
     latest_consistent_slot: Slot,
     <span class="attr">#[allow(dead_code)]
     </span>final_state_hash_from_snapshot: Hash,
+    mip_store: BTreeMap&lt;MipInfo, MipState&gt;,
 }
 
 <span class="doccomment">/// Deserializer for `FinalStateRaw`
@@ -1715,6 +1779,7 @@
     executed_denunciations_deser: ExecutedDenunciationsDeserializer,
     slot_deser: SlotDeserializer,
     hash_deser: HashDeserializer,
+    mip_store_deser: MipStoreRawDeserializer,
 }
 
 <span class="kw">impl </span>FinalStateRawDeserializer {
@@ -1764,6 +1829,10 @@
                 (Included(<span class="number">0</span>), Excluded(config.thread_count)),
             ),
             hash_deser: HashDeserializer::new(),
+            mip_store_deser: MipStoreRawDeserializer::new(
+                config.mip_store_stats_block_considered,
+                config.mip_store_stats_counters_max,
+            ),
         }
     }
 }
@@ -1793,6 +1862,9 @@
                 context(<span class="string">&quot;Failed slot deserialization&quot;</span>, |input| {
                     <span class="self">self</span>.slot_deser.deserialize(input)
                 }),
+                context(<span class="string">&quot;Failed MIP store deserialization&quot;</span>, |input| {
+                    <span class="self">self</span>.mip_store_deser.deserialize(input)
+                }),
                 context(<span class="string">&quot;Failed hash deserialization&quot;</span>, |input| {
                     <span class="self">self</span>.hash_deser.deserialize(input)
                 }),
@@ -1805,6 +1877,7 @@
                     sorted_ops,
                     sorted_denunciations,
                     latest_consistent_slot,
+                    mip_store,
                     final_state_hash_from_snapshot,
                 )| FinalStateRaw {
                     async_pool_messages,
@@ -1814,6 +1887,7 @@
                     sorted_denunciations,
                     latest_consistent_slot,
                     final_state_hash_from_snapshot,
+                    mip_store,
                 },
             )
             .parse(buffer)

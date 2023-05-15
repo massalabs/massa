@@ -1188,6 +1188,76 @@
 <a href="#1188" id="1188">1188</a>
 <a href="#1189" id="1189">1189</a>
 <a href="#1190" id="1190">1190</a>
+<a href="#1191" id="1191">1191</a>
+<a href="#1192" id="1192">1192</a>
+<a href="#1193" id="1193">1193</a>
+<a href="#1194" id="1194">1194</a>
+<a href="#1195" id="1195">1195</a>
+<a href="#1196" id="1196">1196</a>
+<a href="#1197" id="1197">1197</a>
+<a href="#1198" id="1198">1198</a>
+<a href="#1199" id="1199">1199</a>
+<a href="#1200" id="1200">1200</a>
+<a href="#1201" id="1201">1201</a>
+<a href="#1202" id="1202">1202</a>
+<a href="#1203" id="1203">1203</a>
+<a href="#1204" id="1204">1204</a>
+<a href="#1205" id="1205">1205</a>
+<a href="#1206" id="1206">1206</a>
+<a href="#1207" id="1207">1207</a>
+<a href="#1208" id="1208">1208</a>
+<a href="#1209" id="1209">1209</a>
+<a href="#1210" id="1210">1210</a>
+<a href="#1211" id="1211">1211</a>
+<a href="#1212" id="1212">1212</a>
+<a href="#1213" id="1213">1213</a>
+<a href="#1214" id="1214">1214</a>
+<a href="#1215" id="1215">1215</a>
+<a href="#1216" id="1216">1216</a>
+<a href="#1217" id="1217">1217</a>
+<a href="#1218" id="1218">1218</a>
+<a href="#1219" id="1219">1219</a>
+<a href="#1220" id="1220">1220</a>
+<a href="#1221" id="1221">1221</a>
+<a href="#1222" id="1222">1222</a>
+<a href="#1223" id="1223">1223</a>
+<a href="#1224" id="1224">1224</a>
+<a href="#1225" id="1225">1225</a>
+<a href="#1226" id="1226">1226</a>
+<a href="#1227" id="1227">1227</a>
+<a href="#1228" id="1228">1228</a>
+<a href="#1229" id="1229">1229</a>
+<a href="#1230" id="1230">1230</a>
+<a href="#1231" id="1231">1231</a>
+<a href="#1232" id="1232">1232</a>
+<a href="#1233" id="1233">1233</a>
+<a href="#1234" id="1234">1234</a>
+<a href="#1235" id="1235">1235</a>
+<a href="#1236" id="1236">1236</a>
+<a href="#1237" id="1237">1237</a>
+<a href="#1238" id="1238">1238</a>
+<a href="#1239" id="1239">1239</a>
+<a href="#1240" id="1240">1240</a>
+<a href="#1241" id="1241">1241</a>
+<a href="#1242" id="1242">1242</a>
+<a href="#1243" id="1243">1243</a>
+<a href="#1244" id="1244">1244</a>
+<a href="#1245" id="1245">1245</a>
+<a href="#1246" id="1246">1246</a>
+<a href="#1247" id="1247">1247</a>
+<a href="#1248" id="1248">1248</a>
+<a href="#1249" id="1249">1249</a>
+<a href="#1250" id="1250">1250</a>
+<a href="#1251" id="1251">1251</a>
+<a href="#1252" id="1252">1252</a>
+<a href="#1253" id="1253">1253</a>
+<a href="#1254" id="1254">1254</a>
+<a href="#1255" id="1255">1255</a>
+<a href="#1256" id="1256">1256</a>
+<a href="#1257" id="1257">1257</a>
+<a href="#1258" id="1258">1258</a>
+<a href="#1259" id="1259">1259</a>
+<a href="#1260" id="1260">1260</a>
 </pre><pre class="rust"><code><span class="kw">use </span>std::collections::BTreeMap;
 <span class="kw">use </span>std::mem;
 <span class="kw">use </span>std::ops::Bound::{Excluded, Included};
@@ -2034,6 +2104,31 @@ impl Default for MipStoreStatsDeserializer {
     }
 }
 
+<span class="kw">impl </span>Serializer&lt;BTreeMap&lt;MipInfo, MipState&gt;&gt; <span class="kw">for </span>MipStoreRawSerializer {
+    <span class="kw">fn </span>serialize(
+        <span class="kw-2">&amp;</span><span class="self">self</span>,
+        value: <span class="kw-2">&amp;</span>BTreeMap&lt;MipInfo, MipState&gt;,
+        buffer: <span class="kw-2">&amp;mut </span>Vec&lt;u8&gt;,
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;(), SerializeError&gt; {
+        <span class="kw">let </span>entry_count_ = value.len();
+        <span class="kw">let </span>entry_count = u32::try_from(entry_count_).map_err(|e| {
+            SerializeError::GeneralError(<span class="macro">format!</span>(<span class="string">&quot;Could not convert to u32: {}&quot;</span>, e))
+        })<span class="question-mark">?</span>;
+        <span class="kw">if </span>entry_count &gt; MIP_STORE_MAX_ENTRIES {
+            <span class="kw">return </span><span class="prelude-val">Err</span>(SerializeError::GeneralError(<span class="macro">format!</span>(
+                <span class="string">&quot;Too many entries in VersioningStoreRaw, max: {}&quot;</span>,
+                MIP_STORE_MAX_ENTRIES
+            )));
+        }
+        <span class="self">self</span>.u32_serializer.serialize(<span class="kw-2">&amp;</span>entry_count, buffer)<span class="question-mark">?</span>;
+        <span class="kw">for </span>(key, value) <span class="kw">in </span>value.iter() {
+            <span class="self">self</span>.info_serializer.serialize(key, buffer)<span class="question-mark">?</span>;
+            <span class="self">self</span>.state_serializer.serialize(value, buffer)<span class="question-mark">?</span>;
+        }
+        <span class="prelude-val">Ok</span>(())
+    }
+}
+
 <span class="doccomment">/// A Deserializer for `VersioningStoreRaw
 </span><span class="kw">pub struct </span>MipStoreRawDeserializer {
     u32_deserializer: U32VarIntDeserializer,
@@ -2060,15 +2155,7 @@ impl Default for MipStoreStatsDeserializer {
     }
 }
 
-<span class="comment">/*
-impl Default for MipStoreRawDeserializer {
-    fn default() -&gt; Self {
-        Self::new()
-    }
-}
-*/
-
-</span><span class="kw">impl </span>Deserializer&lt;MipStoreRaw&gt; <span class="kw">for </span>MipStoreRawDeserializer {
+<span class="kw">impl </span>Deserializer&lt;MipStoreRaw&gt; <span class="kw">for </span>MipStoreRawDeserializer {
     <span class="kw">fn </span>deserialize&lt;<span class="lifetime">&#39;a</span>, E: ParseError&lt;<span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>[u8]&gt; + ContextError&lt;<span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>[u8]&gt;&gt;(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         buffer: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>[u8],
@@ -2100,13 +2187,37 @@ impl Default for MipStoreRawDeserializer {
     }
 }
 
+<span class="kw">impl </span>Deserializer&lt;BTreeMap&lt;MipInfo, MipState&gt;&gt; <span class="kw">for </span>MipStoreRawDeserializer {
+    <span class="kw">fn </span>deserialize&lt;<span class="lifetime">&#39;a</span>, E: ParseError&lt;<span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>[u8]&gt; + ContextError&lt;<span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>[u8]&gt;&gt;(
+        <span class="kw-2">&amp;</span><span class="self">self</span>,
+        buffer: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>[u8],
+    ) -&gt; IResult&lt;<span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>[u8], BTreeMap&lt;MipInfo, MipState&gt;, E&gt; {
+        context(
+            <span class="string">&quot;Failed MipStoreRaw der&quot;</span>,
+            length_count(
+                context(<span class="string">&quot;Failed entry count der&quot;</span>, |input| {
+                    <span class="kw">let </span>(rem, count) = <span class="self">self</span>.u32_deserializer.deserialize(input)<span class="question-mark">?</span>;
+                    IResult::Ok((rem, count))
+                }),
+                context(<span class="string">&quot;Failed items der&quot;</span>, |input| {
+                    <span class="kw">let </span>(rem, vi) = <span class="self">self</span>.info_deserializer.deserialize(input)<span class="question-mark">?</span>;
+                    <span class="kw">let </span>(rem2, vs) = <span class="self">self</span>.state_deserializer.deserialize(rem)<span class="question-mark">?</span>;
+                    IResult::Ok((rem2, (vi, vs)))
+                }),
+            ),
+        )
+        .map(|items| items.into_iter().collect())
+        .parse(buffer)
+    }
+}
+
 <span class="comment">// End MipStoreRaw
 
 </span><span class="attr">#[cfg(test)]
 </span><span class="kw">mod </span>test {
     <span class="kw">use super</span>::<span class="kw-2">*</span>;
+    <span class="kw">use </span>std::assert_matches::assert_matches;
 
-    <span class="kw">use </span>std::collections::HashMap;
     <span class="kw">use </span>std::mem::{size_of, size_of_val};
     <span class="kw">use </span>std::str::FromStr;
 
@@ -2119,11 +2230,40 @@ impl Default for MipStoreRawDeserializer {
     <span class="kw">use </span>massa_time::MassaTime;
 
     <span class="attr">#[test]
+    </span><span class="kw">fn </span>test_mip_component_non_exhaustive() {
+        <span class="kw">let </span>last_variant__ = std::mem::variant_count::&lt;MipComponent&gt;() - <span class="number">2</span>; <span class="comment">// -1 for Nonexhaustive, -1 for index start at 0
+        </span><span class="kw">let </span>last_variant_ = u32::try_from(last_variant__).unwrap();
+        <span class="kw">let </span>last_variant = MipComponent::from(last_variant_);
+
+        <span class="kw">match </span>last_variant {
+            MipComponent::__Nonexhaustive =&gt; {
+                <span class="macro">panic!</span>(<span class="string">&quot;Should be a known enum value&quot;</span>)
+            }
+            <span class="kw">_ </span>=&gt; {
+                <span class="comment">// all good
+                </span><span class="macro">println!</span>(<span class="string">&quot;last variant of MipComponent is: {:?}&quot;</span>, last_variant);
+            }
+        }
+
+        {
+            <span class="kw">let </span>variant__ = std::mem::variant_count::&lt;MipComponent&gt;() - <span class="number">1</span>;
+            <span class="kw">let </span>variant_ = u32::try_from(variant__).unwrap();
+            <span class="macro">assert_matches!</span>(MipComponent::from(variant_), MipComponent::__Nonexhaustive);
+        }
+
+        {
+            <span class="kw">let </span>variant__ = std::mem::variant_count::&lt;MipComponent&gt;();
+            <span class="kw">let </span>variant_ = u32::try_from(variant__).unwrap();
+            <span class="macro">assert_matches!</span>(MipComponent::from(variant_), MipComponent::__Nonexhaustive);
+        }
+    }
+
+    <span class="attr">#[test]
     </span><span class="kw">fn </span>test_mip_info_ser_der() {
         <span class="kw">let </span>vi_1 = MipInfo {
             name: <span class="string">&quot;MIP-0002&quot;</span>.to_string(),
             version: <span class="number">2</span>,
-            components: HashMap::from([(MipComponent::Address, <span class="number">1</span>)]),
+            components: BTreeMap::from([(MipComponent::Address, <span class="number">1</span>)]),
             start: MassaTime::from(<span class="number">2</span>),
             timeout: MassaTime::from(<span class="number">5</span>),
             activation_delay: MassaTime::from(<span class="number">2</span>),
@@ -2223,7 +2363,7 @@ impl Default for MipStoreRawDeserializer {
         <span class="kw">let </span>mi_1 = MipInfo {
             name: <span class="string">&quot;MIP-0002&quot;</span>.to_string(),
             version: <span class="number">2</span>,
-            components: HashMap::from([(MipComponent::Address, <span class="number">1</span>)]),
+            components: BTreeMap::from([(MipComponent::Address, <span class="number">1</span>)]),
             start: MassaTime::from(<span class="number">2</span>),
             timeout: MassaTime::from(<span class="number">5</span>),
             activation_delay: MassaTime::from(<span class="number">2</span>),
@@ -2276,7 +2416,7 @@ impl Default for MipStoreRawDeserializer {
         <span class="kw">let </span>mi_2 = MipInfo {
             name: <span class="string">&quot;MIP-0002&quot;</span>.to_string(),
             version: <span class="number">2</span>,
-            components: HashMap::from([(MipComponent::Address, <span class="number">1</span>)]),
+            components: BTreeMap::from([(MipComponent::Address, <span class="number">1</span>)]),
             start: MassaTime::from(<span class="number">2</span>),
             timeout: MassaTime::from(<span class="number">5</span>),
             activation_delay: MassaTime::from(<span class="number">2</span>),
@@ -2285,7 +2425,7 @@ impl Default for MipStoreRawDeserializer {
         <span class="kw">let </span>mi_3 = MipInfo {
             name: <span class="string">&quot;MIP-0003&quot;</span>.to_string(),
             version: <span class="number">3</span>,
-            components: HashMap::from([(MipComponent::Block, <span class="number">1</span>)]),
+            components: BTreeMap::from([(MipComponent::Block, <span class="number">1</span>)]),
             start: MassaTime::from(<span class="number">12</span>),
             timeout: MassaTime::from(<span class="number">17</span>),
             activation_delay: MassaTime::from(<span class="number">2</span>),
@@ -2316,7 +2456,7 @@ impl Default for MipStoreRawDeserializer {
         <span class="kw">let </span><span class="kw-2">mut </span>mi_base = MipInfo {
             name: <span class="string">&quot;A&quot;</span>.repeat(<span class="number">254</span>),
             version: <span class="number">0</span>,
-            components: HashMap::from([(MipComponent::Address, <span class="number">0</span>)]),
+            components: BTreeMap::from([(MipComponent::Address, <span class="number">0</span>)]),
             start: MassaTime::from(<span class="number">0</span>),
             timeout: MassaTime::from(<span class="number">2</span>),
             activation_delay: MassaTime::from(<span class="number">2</span>),
