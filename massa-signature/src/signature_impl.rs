@@ -130,6 +130,11 @@ impl KeyPair {
         Ok(Signature(self.0.sign(hash.to_bytes())))
     }
 
+    /// Returns the Signature produced by signing data bytes with a KeyPair.
+    pub fn sign_from_bytes(&self, bytes: &[u8]) -> Result<Signature, MassaSignatureError> {
+        Ok(Signature(self.0.sign(bytes)))
+    }
+
     /// Return the bytes representing the keypair (should be a reference in the future)
     ///
     /// # Example
