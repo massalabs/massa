@@ -80,6 +80,7 @@
 <a href="#80" id="80">80</a>
 <a href="#81" id="81">81</a>
 <a href="#82" id="82">82</a>
+<a href="#83" id="83">83</a>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="kw">use </span>std::io::ErrorKind;
@@ -97,10 +98,11 @@
 
 <span class="attr">#[non_exhaustive]
 #[derive(Display, Error, Debug)]
+</span><span class="doccomment">/// Encapsulates the verious failure contexts for the bootstrap process, both client and server side
 </span><span class="kw">pub enum </span>BootstrapError {
-    <span class="doccomment">/// all io errors except for Timedout, and would-block (unix error when timed out)
+    <span class="doccomment">/// Bootstrap IO error: {0}
     </span>IoError(std::io::Error),
-    <span class="doccomment">/// We want to handle Timedout and WouldBlock
+    <span class="doccomment">/// Bootstrap process timeout: {0}
     </span>TimedOut(std::io::Error),
     <span class="doccomment">/// general bootstrap error: {0}
     </span>GeneralError(String),

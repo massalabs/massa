@@ -33,9 +33,6 @@
 <a href="#33" id="33">33</a>
 <a href="#34" id="34">34</a>
 <a href="#35" id="35">35</a>
-<a href="#36" id="36">36</a>
-<a href="#37" id="37">37</a>
-<a href="#38" id="38">38</a>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2023 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="kw">use crate</span>::{ExecutionOutput, SlotExecutionOutput};
@@ -45,16 +42,12 @@
     <span class="kw">fn </span>from(value: SlotExecutionOutput) -&gt; <span class="self">Self </span>{
         <span class="kw">match </span>value {
             SlotExecutionOutput::ExecutedSlot(execution_output) =&gt; grpc::SlotExecutionOutput {
-                message: <span class="prelude-val">Some</span>(grpc::slot_execution_output::Message::ExecutionOutput(
-                    execution_output.into(),
-                )),
+                status: <span class="macro">vec!</span>[grpc::ExecutionOutputStatus::Candidate <span class="kw">as </span>i32],
+                execution_output: <span class="prelude-val">Some</span>(execution_output.into()),
             },
-            SlotExecutionOutput::FinalizedSlot(finalized_slot) =&gt; grpc::SlotExecutionOutput {
-                message: <span class="prelude-val">Some</span>(grpc::slot_execution_output::Message::FinalExecutionOutput(
-                    grpc::FinalizedExecutionOutput {
-                        slot: <span class="prelude-val">Some</span>(finalized_slot.into()),
-                    },
-                )),
+            SlotExecutionOutput::FinalizedSlot(execution_output) =&gt; grpc::SlotExecutionOutput {
+                status: <span class="macro">vec!</span>[grpc::ExecutionOutputStatus::Final <span class="kw">as </span>i32],
+                execution_output: <span class="prelude-val">Some</span>(execution_output.into()),
             },
         }
     }
@@ -71,6 +64,7 @@
                 </span>.into_iter()
                 .map(|event| event.into())
                 .collect(),
+            state_changes: <span class="prelude-val">Some</span>(value.state_changes.into()),
         }
     }
 }

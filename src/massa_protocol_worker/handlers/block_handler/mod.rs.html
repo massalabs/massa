@@ -100,9 +100,6 @@
 <a href="#100" id="100">100</a>
 <a href="#101" id="101">101</a>
 <a href="#102" id="102">102</a>
-<a href="#103" id="103">103</a>
-<a href="#104" id="104">104</a>
-<a href="#105" id="105">105</a>
 </pre><pre class="rust"><code><span class="kw">use </span>std::thread::JoinHandle;
 
 <span class="kw">use </span>crossbeam::channel::{Receiver, Sender};
@@ -110,7 +107,6 @@
 <span class="kw">use </span>massa_pool_exports::PoolController;
 <span class="kw">use </span>massa_protocol_exports::ProtocolConfig;
 <span class="kw">use </span>massa_storage::Storage;
-<span class="kw">use </span>massa_versioning::versioning::MipStore;
 
 <span class="kw">use </span><span class="kw">crate</span>::wrap_network::ActiveConnectionsTrait;
 
@@ -165,7 +161,6 @@
         operation_cache: SharedOperationCache,
         cache: SharedBlockCache,
         storage: Storage,
-        mip_store: MipStore,
     ) -&gt; <span class="self">Self </span>{
         <span class="kw">let </span>block_retrieval_thread = start_retrieval_thread(
             active_connections.clone(),
@@ -181,7 +176,6 @@
             operation_cache,
             cache.clone(),
             storage.clone_without_refs(),
-            mip_store,
         );
         <span class="kw">let </span>block_propagation_thread = start_propagation_thread(
             active_connections,
