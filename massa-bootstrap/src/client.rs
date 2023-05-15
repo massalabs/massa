@@ -4,13 +4,14 @@ use std::{
     collections::HashSet,
     io,
     net::{SocketAddr, TcpStream},
+    println,
     sync::Arc,
-    time::Duration, println,
+    time::Duration,
 };
 
 use massa_final_state::FinalState;
 use massa_logging::massa_trace;
-use massa_models::{node::NodeId, streaming_step::StreamingStep, version::Version};
+use massa_models::{node::NodeId, slot::Slot, streaming_step::StreamingStep, version::Version};
 use massa_signature::PublicKey;
 use massa_time::MassaTime;
 use massa_versioning_worker::versioning::{MipStore, MipStoreRaw};
@@ -86,7 +87,6 @@ fn stream_final_state_and_consensus(
                     last_start_period,
                     last_slot_before_downtime,
                 } => {
-
                     // Set final state
                     let mut write_final_state = global_bootstrap_state.final_state.write();
 
@@ -97,6 +97,13 @@ fn stream_final_state_and_consensus(
                     if let Some(last_slot_before_downtime) = last_slot_before_downtime {
                         write_final_state.last_slot_before_downtime = last_slot_before_downtime;
                     }
+
+                    println!(
+                        "CLIENT - state_part for id: {:?}, len new: {}, len updates: {}",
+                        state_part.change_id,
+                        state_part.new_elements.len(),
+                        state_part.updates_on_previous_elements.len()
+                    );
 
                     let last_state_step = write_final_state
                         .db
@@ -444,7 +451,13 @@ pub async fn get_state(
             // create the initial cycle of PoS cycle_history
             let mut batch = DBBatch::new(final_state_guard.db.read().get_db_hash());
             final_state_guard.pos_state.create_initial_cycle(&mut batch);
-            final_state_guard.db.read().write_batch(batch);
+
+            let slot = Slot::new(
+                final_state_guard.last_start_period,
+                bootstrap_config.thread_count,
+            );
+
+            final_state_guard.db.write().write_batch(batch, Some(slot));
         }
         return Ok(GlobalBootstrapState::new(final_state));
     }

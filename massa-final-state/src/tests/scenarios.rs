@@ -30,15 +30,17 @@ use std::{path::PathBuf, str::FromStr, sync::Arc};
 use tempfile::TempDir;
 
 fn create_final_state(temp_dir: &TempDir) -> Arc<RwLock<FinalState>> {
+    let thread_count = 2;
+
     let db_config = MassaDBConfig {
         path: temp_dir.path().to_path_buf(),
         max_history_length: 10,
+        thread_count,
     };
     let db = Arc::new(RwLock::new(MassaDB::new(db_config)));
 
     let rolls_path = PathBuf::from_str("../massa-node/base_config/initial_rolls.json").unwrap();
 
-    let thread_count = 2;
     let periods_per_cycle = 2;
 
     let final_state_local_config = FinalStateConfig {
@@ -121,7 +123,9 @@ fn test_final_state() {
 
         fs.write().pos_state.create_initial_cycle(&mut batch);
 
-        fs.read().db.read().write_batch(batch);
+        let slot = fs.read().slot;
+
+        fs.write().db.write().write_batch(batch, Some(slot));
 
         let slot = Slot::new(1, 0);
         let mut state_changes = StateChanges::default();
@@ -174,7 +178,9 @@ fn test_final_state() {
 
         fs2.write().pos_state.create_initial_cycle(&mut batch);
 
-        fs2.read().db.read().write_batch(batch);
+        let slot = fs2.read().slot;
+
+        fs2.write().db.write().write_batch(batch, Some(slot));
 
         let slot = Slot::new(1, 0);
         let changes = StateChanges::default();

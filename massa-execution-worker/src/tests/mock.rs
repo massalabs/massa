@@ -115,6 +115,7 @@ pub fn get_sample_state(
     let db_config = MassaDBConfig {
         path: tempdir.path().to_path_buf(),
         max_history_length: 10,
+        thread_count: THREAD_COUNT,
     };
     let db = Arc::new(RwLock::new(MassaDB::new(db_config)));
 
@@ -134,7 +135,6 @@ pub fn get_sample_state(
         max_executed_denunciations_length: 1000,
         initial_seed_string: "".to_string(),
         periods_per_cycle: 10,
-
         max_denunciations_per_block_header: 0,
     };
     let (_, selector_controller) = start_selector_worker(SelectorConfig::default())
@@ -154,7 +154,7 @@ pub fn get_sample_state(
     final_state.compute_initial_draws().unwrap();
     let mut batch = DBBatch::new(final_state.db.read().get_db_hash());
     final_state.pos_state.create_initial_cycle(&mut batch);
-    final_state.db.read().write_batch(batch);
+    final_state.db.write().write_batch(batch, None);
     Ok((Arc::new(RwLock::new(final_state)), tempfile, tempdir))
 }
 

@@ -15,4 +15,6 @@ pub enum MassaDBError {
     TimeError(String),
     /// rocks db error: {0}
     RocksDBError(String),
+    /// hash error: {0}
+    HashError(String),
 }

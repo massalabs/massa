@@ -42,7 +42,6 @@ impl FinalState {
                 config.executed_denunciations_config.clone(),
                 db.clone(),
             ),
-            changes_history: Default::default(),
             config,
             final_state_hash: Hash::from_bytes(&[0; HASH_SIZE_BYTES]),
             last_start_period: 0,

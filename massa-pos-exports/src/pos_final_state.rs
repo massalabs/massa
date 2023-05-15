@@ -200,13 +200,24 @@ impl PoSFinalState {
         Ok(pos_state)
     }
 
+    /// After bootstrap or load from disk, recompute the caches
+    pub fn recompute_pos_state_caches(&mut self) {
+        self.cycle_history_cache = self.get_cycle_history_cycles().into();
+
+        if let Some((cycle, _)) = self.cycle_history_cache.back() {
+            self.rng_seed_cache = Some((*cycle, self.get_cycle_history_rng_seed(*cycle)));
+        } else {
+            self.rng_seed_cache = None;
+        }
+    }
+
     /// Reset the state of the PoS final state
     ///
     /// USED ONLY FOR BOOTSTRAP
     pub fn reset(&mut self) {
-        let db = self.db.read();
-        db.delete_prefix(CYCLE_HISTORY_PREFIX);
-        db.delete_prefix(DEFERRED_CREDITS_PREFIX);
+        let mut db = self.db.write();
+        db.delete_prefix(CYCLE_HISTORY_PREFIX, None);
+        db.delete_prefix(DEFERRED_CREDITS_PREFIX, None);
         self.cycle_history_cache = Default::default();
         self.rng_seed_cache = None;
     }
@@ -413,7 +424,7 @@ impl PoSFinalState {
 
         // If the cycle_history_cache is empty, try and update it from the database
         if self.cycle_history_cache.is_empty() {
-            self.cycle_history_cache = self.get_cycle_history_cycles().into();
+            self.recompute_pos_state_caches();
         }
 
         // if cycle C is absent from self.cycle_history:
@@ -578,7 +589,7 @@ impl PoSFinalState {
     /// Feeds the selector targeting a given draw cycle
     pub fn feed_cycle_state_hash(&self, cycle: u64, final_state_hash: Hash) {
         if self.get_cycle_index(cycle).is_some() {
-            let db = self.db.read();
+            let mut db = self.db.write();
 
             let mut batch = DBBatch::new(db.get_db_hash());
             self.put_cycle_history_final_state_hash_snapshot(
@@ -587,7 +598,7 @@ impl PoSFinalState {
                 &mut batch,
             );
 
-            db.write_batch(batch);
+            db.write_batch(batch, None);
         } else {
             panic!("cycle {} should be contained here", cycle);
         }

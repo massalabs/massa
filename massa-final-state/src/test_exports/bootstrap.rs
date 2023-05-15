@@ -2,7 +2,7 @@
 
 //! This file defines tools to test the final state bootstrap
 
-use std::{collections::VecDeque, sync::Arc};
+use std::sync::Arc;
 
 use massa_async_pool::AsyncPool;
 use massa_db::{MassaDB, METADATA_CF, STATE_CF};
@@ -13,7 +13,7 @@ use massa_models::slot::Slot;
 use massa_pos_exports::PoSFinalState;
 use parking_lot::RwLock;
 
-use crate::{FinalState, FinalStateConfig, StateChanges};
+use crate::{FinalState, FinalStateConfig};
 
 /// Create a `FinalState` from pre-set values
 pub fn create_final_state(
@@ -21,7 +21,6 @@ pub fn create_final_state(
     slot: Slot,
     ledger: Box<dyn LedgerController>,
     async_pool: AsyncPool,
-    changes_history: VecDeque<(Slot, StateChanges)>,
     pos_state: PoSFinalState,
     executed_ops: ExecutedOps,
     executed_denunciations: ExecutedDenunciations,
@@ -32,7 +31,6 @@ pub fn create_final_state(
         slot,
         ledger,
         async_pool,
-        changes_history,
         pos_state,
         executed_ops,
         executed_denunciations,
@@ -104,7 +102,7 @@ pub fn assert_eq_final_state(v1: &FinalState, v2: &FinalState) {
             value1,
             value2,
             "{}",
-            format!("state value mismatch {}", count)
+            format!("state value n°{} mismatch for key {:?} ", count, key1)
         );
     }
 
@@ -121,6 +119,13 @@ pub fn assert_eq_final_state(v1: &FinalState, v2: &FinalState) {
         v1.pos_state.rng_seed_cache, v2.pos_state.rng_seed_cache,
         "pos_state.rng_seed_cache mismatch"
     );
+
+    assert_eq!(
+        v1.async_pool.message_info_cache.len(),
+        v2.async_pool.message_info_cache.len(),
+        "async_pool.message_info_cache len mismatch"
+    );
+
     assert_eq!(
         v1.async_pool.message_info_cache, v2.async_pool.message_info_cache,
         "async_pool.message_info_cache mismatch"

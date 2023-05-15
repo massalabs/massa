@@ -86,17 +86,16 @@ impl LedgerDB {
     ///
     /// # Arguments
     pub fn load_initial_ledger(&mut self, initial_ledger: HashMap<Address, LedgerEntry>) {
-        let db = self.db.read();
-        let mut batch = DBBatch::new(db.get_db_hash());
+        let mut batch = DBBatch::new(self.db.read().get_db_hash());
 
         for (address, entry) in initial_ledger {
             self.put_entry(&address, entry, &mut batch);
         }
-        db.set_slot(
-            Slot::new(0, self.thread_count.saturating_sub(1)),
-            &mut batch,
+
+        self.db.write().write_batch(
+            batch,
+            Some(Slot::new(0, self.thread_count.saturating_sub(1))),
         );
-        db.write_batch(batch);
     }
 
     /// Allows applying `LedgerChanges` to the disk ledger
@@ -187,8 +186,8 @@ impl LedgerDB {
     }
 
     pub fn reset(&self) {
-        let db = self.db.read();
-        db.delete_prefix(LEDGER_PREFIX);
+        let mut db = self.db.write();
+        db.delete_prefix(LEDGER_PREFIX, None);
     }
 }
 
@@ -547,6 +546,7 @@ mod tests {
         let db_config = MassaDBConfig {
             path: temp_dir.path().to_path_buf(),
             max_history_length: 10,
+            thread_count: 32,
         };
 
         let db = Arc::new(RwLock::new(MassaDB::new(db_config)));
@@ -556,7 +556,7 @@ mod tests {
 
         ledger_db.put_entry(&addr, entry, &mut batch);
         ledger_db.update_entry(&addr, entry_update, &mut batch);
-        ledger_db.db.read().write_batch(batch);
+        ledger_db.db.write().write_batch(batch, None);
 
         // return db and initial data
         (ledger_db, data)
@@ -597,7 +597,7 @@ mod tests {
         let mut batch = DBBatch::new(ledger_db.db.read().get_db_hash());
         ledger_db.delete_entry(&addr, &mut batch);
 
-        ledger_db.db.read().write_batch(batch);
+        ledger_db.db.write().write_batch(batch, None);
 
         // check deleted address and ledger hash
         assert_eq!(

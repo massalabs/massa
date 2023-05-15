@@ -16,7 +16,7 @@ use massa_models::config::PERIODS_BETWEEN_BACKUPS;
 use massa_models::slot::Slot;
 use massa_pos_exports::{PoSFinalState, SelectorController};
 use parking_lot::RwLock;
-use std::{collections::VecDeque, sync::Arc};
+use std::sync::Arc;
 use tracing::{debug, info};
 
 /// Represents a final state `(ledger, async pool, executed_ops, executed_de and the state of the PoS)`
@@ -35,9 +35,6 @@ pub struct FinalState {
     pub executed_ops: ExecutedOps,
     /// executed denunciations
     pub executed_denunciations: ExecutedDenunciations,
-    /// history of recent final state changes, useful for streaming bootstrap
-    /// `front = oldest`, `back = newest`
-    pub changes_history: VecDeque<(Slot, StateChanges)>,
     /// hash of the final state, it is computed on finality
     pub final_state_hash: Hash,
     /// last_start_period
@@ -70,7 +67,7 @@ impl FinalState {
         selector: Box<dyn SelectorController>,
         reset_final_state: bool,
     ) -> Result<Self, FinalStateError> {
-        let state_slot = db.read().get_slot(config.thread_count);
+        let state_slot = db.read().get_change_id();
 
         match state_slot {
             Ok(slot) => {
@@ -120,7 +117,6 @@ impl FinalState {
             config,
             executed_ops,
             executed_denunciations,
-            changes_history: Default::default(), // no changes in history
             final_state_hash: Hash::from_bytes(FINAL_STATE_HASH_INITIAL_BYTES),
             last_start_period: 0,
             last_slot_before_downtime: None,
@@ -163,17 +159,17 @@ impl FinalState {
 
         // FIRST, we recover the last known final_state
         let mut final_state = FinalState::new(db, config, ledger, selector, false)?;
+
+        final_state.slot = final_state.db.read().get_change_id().map_err(|_| {
+            FinalStateError::InvalidSlot(String::from("Could not recover Slot in Ledger"))
+        })?;
+
         let mut batch = DBBatch::new(final_state.db.read().get_db_hash());
         final_state.pos_state.create_initial_cycle(&mut batch);
-        final_state.db.read().write_batch(batch);
-
-        final_state.slot = final_state
+        final_state
             .db
-            .read()
-            .get_slot(final_state.config.thread_count)
-            .map_err(|_| {
-                FinalStateError::InvalidSlot(String::from("Could not recover Slot in Ledger"))
-            })?;
+            .write()
+            .write_batch(batch, Some(final_state.slot));
 
         final_state.last_slot_before_downtime = Some(final_state.slot);
 
@@ -191,7 +187,7 @@ impl FinalState {
         // Then, interpolate the downtime, to attach at end_slot;
         final_state.last_start_period = last_start_period;
 
-        final_state.init_ledger_hash(last_start_period);
+        final_state.init_ledger_hash();
 
         // We compute the draws here because we need to feed_cycles when interpolating
         final_state.compute_initial_draws()?;
@@ -202,14 +198,7 @@ impl FinalState {
     }
 
     /// Used after bootstrap, to set the initial ledger hash (used in initial draws)
-    pub fn init_ledger_hash(&mut self, last_start_period: u64) {
-        let slot = Slot::new(
-            last_start_period,
-            self.config.thread_count.saturating_sub(1),
-        );
-        let mut batch = DBBatch::new(self.db.read().get_db_hash());
-        self.db.read().set_slot(slot, &mut batch);
-        self.db.read().write_batch(batch);
+    pub fn init_ledger_hash(&mut self) {
         self.pos_state.initial_ledger_hash = self.db.read().get_db_hash();
 
         info!(
@@ -283,7 +272,7 @@ impl FinalState {
         self.pos_state
             .delete_cycle_info(latest_snapshot_cycle.0, &mut batch);
 
-        self.pos_state.db.read().write_batch(batch);
+        self.pos_state.db.write().write_batch(batch, None);
 
         let mut batch = DBBatch::new(self.db.read().get_db_hash());
 
@@ -298,7 +287,7 @@ impl FinalState {
             )
             .map_err(|err| FinalStateError::PosError(format!("{}", err)))?;
 
-        self.pos_state.db.read().write_batch(batch);
+        self.pos_state.db.write().write_batch(batch, None);
 
         Ok(())
     }
@@ -326,7 +315,7 @@ impl FinalState {
         self.pos_state
             .delete_cycle_info(latest_snapshot_cycle.0, &mut batch);
 
-        self.pos_state.db.read().write_batch(batch);
+        self.pos_state.db.write().write_batch(batch, None);
 
         // Firstly, complete the first cycle
         let last_slot = Slot::new_last_of_cycle(
@@ -354,7 +343,7 @@ impl FinalState {
             )
             .map_err(|err| FinalStateError::PosError(format!("{}", err)))?;
 
-        self.pos_state.db.read().write_batch(batch);
+        self.pos_state.db.write().write_batch(batch, None);
 
         // Feed final_state_hash to the completed cycle
         self.feed_cycle_hash_and_selector_for_interpolation(current_slot_cycle)?;
@@ -395,7 +384,7 @@ impl FinalState {
                 )
                 .map_err(|err| FinalStateError::PosError(format!("{}", err)))?;
 
-            self.pos_state.db.read().write_batch(batch);
+            self.pos_state.db.write().write_batch(batch, None);
 
             // Feed final_state_hash to the completed cycle
             self.feed_cycle_hash_and_selector_for_interpolation(cycle)?;
@@ -435,7 +424,7 @@ impl FinalState {
             }
         }
 
-        self.db.read().write_batch(batch);
+        self.db.write().write_batch(batch, None);
 
         Ok(())
     }
@@ -468,7 +457,6 @@ impl FinalState {
         self.pos_state.reset();
         self.executed_ops.reset();
         self.executed_denunciations.reset();
-        self.changes_history.clear();
         // reset the final state hash
         self.final_state_hash = Hash::from_bytes(FINAL_STATE_HASH_INITIAL_BYTES);
     }
@@ -527,17 +515,7 @@ impl FinalState {
             &mut db_batch,
         );
 
-        self.db.read().set_slot(self.slot, &mut db_batch);
-
-        self.db.read().write_batch(db_batch);
-
-        // push history element and limit history size
-        if self.config.final_history_length > 0 {
-            while self.changes_history.len() >= self.config.final_history_length {
-                self.changes_history.pop_front();
-            }
-            self.changes_history.push_back((slot, changes));
-        }
+        self.db.write().write_batch(db_batch, Some(self.slot));
 
         // compute the final state hash
         info!(
@@ -548,7 +526,7 @@ impl FinalState {
 
         // Backup DB if needed
         if self.slot.period % PERIODS_BETWEEN_BACKUPS == 0 && self.slot.period != 0 {
-            let state_slot = self.db.read().get_slot(self.config.thread_count);
+            let state_slot = self.db.read().get_change_id();
             match state_slot {
                 Ok(slot) => {
                     info!(
@@ -574,6 +552,14 @@ impl FinalState {
         let cycle = slot.get_cycle(self.config.periods_per_cycle);
         self.pos_state
             .feed_cycle_state_hash(cycle, self.final_state_hash);
+    }
+
+    /// After bootstrap or load from disk, recompute all the caches.
+    pub fn recompute_caches(&mut self) {
+        self.async_pool.recompute_message_info_cache();
+        self.executed_ops.recompute_sorted_ops_and_op_exec_status();
+        self.executed_denunciations.recompute_sorted_denunciations();
+        self.pos_state.recompute_pos_state_caches();
     }
 
     /*

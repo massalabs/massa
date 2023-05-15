@@ -45,9 +45,10 @@ use parking_lot::RwLock;
 use std::{
     collections::HashMap,
     net::{IpAddr, SocketAddr},
+    println,
     sync::Arc,
     thread,
-    time::{Duration, Instant}, println,
+    time::{Duration, Instant},
 };
 use tracing::{debug, error, info, warn};
 use white_black_list::*;
@@ -496,6 +497,13 @@ pub fn stream_bootstrap_information(
                     BootstrapError::GeneralError(format!("Error get_batch_to_stream: {}", e))
                 })?;
 
+            println!(
+                "SERVER - state_part for id: {:?}, len new: {}, len updates: {}",
+                state_part.change_id,
+                state_part.new_elements.len(),
+                state_part.updates_on_previous_elements.len()
+            );
+
             let new_state_step = match (&last_state_step, state_part.new_elements.last_key_value())
             {
                 (_, Some((key, _))) => StreamingStep::Ongoing(key.clone()),
@@ -530,7 +538,9 @@ pub fn stream_bootstrap_information(
         };
 
         // Setup final state changes cursor
-        let final_state_changes_step = if final_state_global_step.finished() && state_part.updates_on_previous_elements.is_empty() {
+        let final_state_changes_step = if final_state_global_step.finished()
+            && state_part.updates_on_previous_elements.is_empty()
+        {
             StreamingStep::Finished(Some(current_slot))
         } else {
             StreamingStep::Ongoing(current_slot)

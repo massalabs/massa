@@ -72,7 +72,7 @@ impl ExecutedOps {
         executed_ops
     }
 
-    fn recompute_sorted_ops_and_op_exec_status(&mut self) {
+    pub fn recompute_sorted_ops_and_op_exec_status(&mut self) {
         self.sorted_ops.clear();
         self.op_exec_status.clear();
 
@@ -125,8 +125,8 @@ impl ExecutedOps {
     /// USED FOR BOOTSTRAP ONLY
     pub fn reset(&mut self) {
         {
-            let db = self.db.read();
-            db.delete_prefix(EXECUTED_OPS_PREFIX);
+            let mut db = self.db.write();
+            db.delete_prefix(EXECUTED_OPS_PREFIX, None);
         }
 
         self.recompute_sorted_ops_and_op_exec_status();
@@ -245,16 +245,19 @@ fn test_executed_ops_xor_computing() {
     use tempfile::TempDir;
 
     // initialize the executed ops config
-    let config = ExecutedOpsConfig { thread_count: 2 };
+    let thread_count = 2;
+    let config = ExecutedOpsConfig { thread_count };
     let tempdir_a = TempDir::new().expect("cannot create temp directory");
     let tempdir_c = TempDir::new().expect("cannot create temp directory");
     let db_a_config = MassaDBConfig {
         path: tempdir_a.path().to_path_buf(),
         max_history_length: 10,
+        thread_count,
     };
     let db_c_config = MassaDBConfig {
         path: tempdir_c.path().to_path_buf(),
         max_history_length: 10,
+        thread_count,
     };
     let db_a = Arc::new(RwLock::new(MassaDB::new(db_a_config)));
     let db_c = Arc::new(RwLock::new(MassaDB::new(db_c_config)));
@@ -296,12 +299,12 @@ fn test_executed_ops_xor_computing() {
     let mut batch_a = DBBatch::new(db_a.read().get_db_hash());
     let mut batch_c = DBBatch::new(db_c.read().get_db_hash());
     a.apply_changes_to_batch(change_a, apply_slot, &mut batch_a);
-    db_a.read().write_batch(batch_a);
+    db_a.write().write_batch(batch_a, None);
     let mut batch_a = DBBatch::new(db_a.read().get_db_hash());
     a.apply_changes_to_batch(change_b, apply_slot, &mut batch_a);
     c.apply_changes_to_batch(change_c, apply_slot, &mut batch_c);
-    db_a.read().write_batch(batch_a);
-    db_c.read().write_batch(batch_c);
+    db_a.write().write_batch(batch_a, None);
+    db_c.write().write_batch(batch_c, None);
 
     // check that a.hash ^ $(change_b) = c.hash
     assert_eq!(
@@ -318,7 +321,7 @@ fn test_executed_ops_xor_computing() {
     let mut batch_a = DBBatch::new(db_a.read().get_db_hash());
     a.apply_changes_to_batch(PreHashMap::default(), prune_slot, &mut batch_a);
     a.prune_to_batch(prune_slot, &mut batch_a);
-    db_a.read().write_batch(batch_a);
+    db_a.write().write_batch(batch_a, None);
 
     // at this point the hash should have been XORed with itself
     assert_eq!(

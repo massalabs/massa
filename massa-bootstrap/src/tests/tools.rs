@@ -60,7 +60,7 @@ use massa_signature::KeyPair;
 use massa_time::MassaTime;
 use parking_lot::RwLock;
 use rand::Rng;
-use std::collections::{HashMap, HashSet, VecDeque};
+use std::collections::{HashMap, HashSet};
 use std::str::FromStr;
 use std::sync::Arc;
 use std::{
@@ -183,14 +183,14 @@ fn get_random_pos_state(r_limit: u64, mut pos: PoSFinalState) -> PoSFinalState {
 
     pos.create_initial_cycle(&mut batch);
 
-    pos.db.read().write_batch(batch);
+    pos.db.write().write_batch(batch, None);
 
     let mut batch = DBBatch::new(pos.db.read().get_db_hash());
 
     pos.apply_changes_to_batch(changes, Slot::new(0, 0), false, &mut batch)
         .expect("Critical: Error while applying changes to pos_state");
 
-    pos.db.read().write_batch(batch);
+    pos.db.write().write_batch(batch, None);
 
     pos
 }
@@ -234,7 +234,7 @@ pub fn get_random_executed_ops(
     let mut executed_ops = ExecutedOps::new(config.clone(), db.clone());
     let mut batch = DBBatch::new(executed_ops.db.read().get_db_hash());
     executed_ops.apply_changes_to_batch(get_random_executed_ops_changes(10), slot, &mut batch);
-    db.read().write_batch(batch);
+    db.write().write_batch(batch, None);
     executed_ops
 }
 
@@ -265,7 +265,7 @@ pub fn get_random_executed_de(
     let mut batch = DBBatch::new(executed_de.db.read().get_db_hash());
     executed_de.apply_changes_to_batch(get_random_executed_de_changes(10), slot, &mut batch);
 
-    executed_de.db.read().write_batch(batch);
+    executed_de.db.write().write_batch(batch, None);
 
     executed_de
 }
@@ -319,14 +319,14 @@ pub fn get_random_final_state_bootstrap(
     );
 
     let slot = Slot::new(0, 0);
-
     let final_ledger = create_final_ledger(db.clone(), config.ledger_config.clone(), sorted_ledger);
+
     let mut async_pool = AsyncPool::new(config.async_pool_config.clone(), db.clone());
     let mut batch = DBBatch::new(async_pool.db.read().get_db_hash());
 
     async_pool.apply_changes_to_batch(&messages, &mut batch);
 
-    async_pool.db.read().write_batch(batch);
+    async_pool.db.write().write_batch(batch, None);
 
     let executed_ops = get_random_executed_ops(
         r_limit,
@@ -342,13 +342,14 @@ pub fn get_random_final_state_bootstrap(
         db.clone(),
     );
 
+    let pos_state = get_random_pos_state(r_limit, pos);
+
     create_final_state(
         config,
         slot,
         Box::new(final_ledger),
         async_pool,
-        VecDeque::new(),
-        get_random_pos_state(r_limit, pos),
+        pos_state,
         executed_ops,
         executed_denunciations,
         db,
@@ -457,13 +458,13 @@ pub fn get_boot_state() -> BootstrapableGraph {
                 BlockHeader {
                     // associated slot
                     // all header endorsements are supposed to point towards this one
-                    slot: Slot::new(1, 0),
+                    slot: Slot::new(6, 1),
                     parents: vec![get_dummy_block_id("p1"); THREAD_COUNT as usize],
                     operation_merkle_root: Hash::compute_from("op_hash".as_bytes()),
                     endorsements: vec![
                         Endorsement::new_verifiable(
                             Endorsement {
-                                slot: Slot::new(1, 0),
+                                slot: Slot::new(6, 1),
                                 index: 1,
                                 endorsed_block: get_dummy_block_id("p1"),
                             },
@@ -473,7 +474,7 @@ pub fn get_boot_state() -> BootstrapableGraph {
                         .unwrap(),
                         Endorsement::new_verifiable(
                             Endorsement {
-                                slot: Slot::new(1, 0),
+                                slot: Slot::new(6, 1),
                                 index: 3,
                                 endorsed_block: get_dummy_block_id("p1"),
                             },

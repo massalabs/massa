@@ -1,8 +1,8 @@
 use crate::{
-    MassaDBError, CF_ERROR, CRUD_ERROR, METADATA_CF, OPEN_ERROR, SLOT_DESER_ERROR, SLOT_KEY,
-    STATE_CF, STATE_HASH_ERROR, STATE_HASH_INITIAL_BYTES, STATE_HASH_KEY,
+    MassaDBError, CF_ERROR, CHANGE_ID_DESER_ERROR, CHANGE_ID_KEY, CRUD_ERROR, METADATA_CF,
+    OPEN_ERROR, STATE_CF, STATE_HASH_ERROR, STATE_HASH_INITIAL_BYTES, STATE_HASH_KEY,
 };
-use massa_hash::Hash;
+use massa_hash::{Hash, HashSerializer};
 use massa_models::{
     error::ModelsError,
     slot::{Slot, SlotDeserializer, SlotSerializer},
@@ -18,17 +18,19 @@ use std::{
     collections::BTreeMap,
     format,
     ops::Bound::{self, Excluded, Included},
-    path::PathBuf, println,
+    path::PathBuf,
+    println,
 };
 
 type Key = Vec<u8>;
 type Value = Vec<u8>;
-pub type MassaDB = RawMassaDB<Slot>;
+pub type MassaDB = RawMassaDB<Slot, SlotSerializer, SlotDeserializer>;
 
 #[derive(Debug, Clone)]
 pub struct MassaDBConfig {
     pub path: PathBuf,
     pub max_history_length: usize,
+    pub thread_count: u8,
 }
 
 #[derive(Debug, Clone)]
@@ -44,18 +46,44 @@ struct ChangeHistoryElement<ChangeID: PartialOrd + Ord + PartialEq + Eq + Clone 
     changes: BTreeMap<Key, Option<Value>>, // None means that the entry was deleted
 }*/
 
-#[derive(Debug)]
-pub struct RawMassaDB<ChangeID: PartialOrd + Ord + PartialEq + Eq + Clone + std::fmt::Debug> {
+#[derive()]
+pub struct RawMassaDB<
+    ChangeID: PartialOrd + Ord + PartialEq + Eq + Clone + std::fmt::Debug,
+    ChangeIDSerializer: Serializer<ChangeID>,
+    ChangeIDDeserializer: Deserializer<ChangeID>,
+> {
     pub db: DB,
     config: MassaDBConfig,
-    change_history: BTreeMap<ChangeID, BTreeMap<Key, Option<Value>>>,
+    pub change_history: BTreeMap<ChangeID, BTreeMap<Key, Option<Value>>>,
     // Here we keep it in memory, but maybe this should be only on disk?
-    cur_change_id: ChangeID,
+    pub cur_change_id: ChangeID,
+    change_id_serializer: ChangeIDSerializer,
+    change_id_deserializer: ChangeIDDeserializer,
 }
 
-impl<ChangeID> RawMassaDB<ChangeID>
+impl<ChangeID, ChangeIDSerializer, ChangeIDDeserializer> std::fmt::Debug
+    for RawMassaDB<ChangeID, ChangeIDSerializer, ChangeIDDeserializer>
 where
     ChangeID: PartialOrd + Ord + PartialEq + Eq + Clone + std::fmt::Debug,
+    ChangeIDSerializer: Serializer<ChangeID>,
+    ChangeIDDeserializer: Deserializer<ChangeID>,
+{
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("RawMassaDB")
+            .field("db", &self.db)
+            .field("config", &self.config)
+            .field("change_history", &self.change_history)
+            .field("cur_change_id", &self.cur_change_id)
+            .finish()
+    }
+}
+
+impl<ChangeID, ChangeIDSerializer, ChangeIDDeserializer>
+    RawMassaDB<ChangeID, ChangeIDSerializer, ChangeIDDeserializer>
+where
+    ChangeID: PartialOrd + Ord + PartialEq + Eq + Clone + std::fmt::Debug,
+    ChangeIDSerializer: Serializer<ChangeID>,
+    ChangeIDDeserializer: Deserializer<ChangeID>,
 {
     /// Used for bootstrap servers (get a new batch to stream to the client)
     ///
@@ -69,7 +97,10 @@ where
         {
             match last_change_id.cmp(&self.cur_change_id) {
                 std::cmp::Ordering::Greater => {
-                    println!("We are asked for change: {:?}, but we only have changes up to: {:?}", &last_change_id, &self.cur_change_id);
+                    println!(
+                        "We are asked for change: {:?}, but we only have changes up to: {:?}",
+                        &last_change_id, &self.cur_change_id
+                    );
                     return Err(MassaDBError::TimeError(String::from(
                         "we don't have this change yet on this node (it's in the future for us)",
                     )));
@@ -154,34 +185,64 @@ where
     pub fn write_changes(
         &mut self,
         changes: BTreeMap<Key, Option<Value>>,
-        change_id: ChangeID,
+        change_id: Option<ChangeID>,
+        tracked_hash: Option<Hash>,
         reset_history: bool,
     ) -> Result<(), MassaDBError> {
-        if change_id < self.cur_change_id {
-            return Err(MassaDBError::InvalidChangeID(String::from(
-                "change_id should monotonically increase after every write",
-            )));
+        if let Some(change_id) = change_id.clone() {
+            if change_id < self.cur_change_id {
+                println!(
+                    "/!\\ TRIED TO APPLY change_id {:?} < cur_change_id {:?} /!\\",
+                    change_id, self.cur_change_id
+                );
+                // TODO: Uncomment and solve issue
+                /*return Err(MassaDBError::InvalidChangeID(String::from(
+                    "change_id should monotonically increase after every write",
+                )));*/
+            }
+            self.cur_change_id = change_id; // TODO also write the change_id to the db
         }
 
-        let handle = self.db.cf_handle(STATE_CF).expect(CF_ERROR);
-        let mut batch = WriteBatch::default();
+        let handle_state = self.db.cf_handle(STATE_CF).expect(CF_ERROR);
+        //let handle_monotree = self.db.cf_handle(STATE_CF).expect(CF_ERROR);
+        let mut batch: rocksdb::WriteBatchWithTransaction<false> = WriteBatch::default();
 
         for (key, value) in changes.iter() {
             if let Some(value) = value {
-                batch.put_cf(handle, key, value);
+                batch.put_cf(handle_state, key, value);
+                //self.monotree.put(key, value);
             } else {
-                batch.delete_cf(handle, key);
+                batch.delete_cf(handle_state, key);
+                //self.monotree.delete_cf(handle, key, value);
             }
+        }
+
+        if let Some(change_id) = change_id {
+            self.set_change_id(change_id, &mut batch);
+            //self.monotree.put(key, value);
+        }
+
+        //self.hash_tracker.write_batch(&changes);
+
+        if let Some(tracked_hash) = tracked_hash {
+            let metadata_handle = self.db.cf_handle(METADATA_CF).expect(CF_ERROR);
+            let mut serialized_tracked_hash = Vec::new();
+            HashSerializer::new()
+                .serialize(&tracked_hash, &mut serialized_tracked_hash)
+                .map_err(|e| {
+                    MassaDBError::HashError(format!("Can't serialize tracked hash: {}", e))
+                })?;
+            batch.put_cf(metadata_handle, STATE_HASH_KEY, serialized_tracked_hash);
         }
 
         self.db
             .write(batch)
             .map_err(|e| MassaDBError::RocksDBError(format!("Can't write batch to disk: {}", e)))?; // note that None values have to be deleted
 
-        //self.hash_tracker.write_batch(&changes);
-
-        self.cur_change_id = change_id.clone(); // TODO also write the change_id to the db
-        self.change_history.insert(change_id, changes);
+        self.change_history
+            .entry(self.cur_change_id.clone())
+            .and_modify(|map| map.extend(changes.clone().into_iter()))
+            .or_insert(changes);
 
         if reset_history {
             self.change_history.clear();
@@ -192,6 +253,33 @@ where
         }
 
         Ok(())
+    }
+
+    fn set_change_id(&self, change_id: ChangeID, batch: &mut WriteBatch) {
+        let db = &self.db;
+        let handle = db.cf_handle(METADATA_CF).expect(CF_ERROR);
+        let mut change_id_bytes = Vec::new();
+        self.change_id_serializer
+            .serialize(&change_id, &mut change_id_bytes)
+            .unwrap();
+
+        batch.put_cf(handle, CHANGE_ID_KEY, &change_id_bytes);
+    }
+
+    pub fn get_change_id(&self) -> Result<ChangeID, ModelsError> {
+        let db = &self.db;
+        let handle = db.cf_handle(METADATA_CF).expect(CF_ERROR);
+
+        let Ok(Some(change_id_bytes)) = db.get_pinned_cf(handle, CHANGE_ID_KEY) else {
+            return Err(ModelsError::BufferError(String::from("Could not recover change_id in database")));
+        };
+
+        let (_rest, change_id) = self
+            .change_id_deserializer
+            .deserialize::<DeserializeError>(&change_id_bytes)
+            .expect(CHANGE_ID_DESER_ERROR);
+
+        Ok(change_id)
     }
 
     pub fn write_batch_bootstrap_client(
@@ -213,13 +301,28 @@ where
                 .map(|(k, v)| (k.clone(), Some(v.clone()))),
         );
 
-        self.write_changes(changes, stream_changes.change_id, true)?;
+        self.write_changes(changes, Some(stream_changes.change_id), None, true)?;
 
         Ok(new_cursor)
     }
+
+    /// Get the current state hash
+    pub fn get_db_hash(&self) -> Hash {
+        let db = &self.db;
+        let handle = db.cf_handle(METADATA_CF).expect(CF_ERROR);
+        if let Some(state_hash_bytes) = db
+            .get_cf(handle, STATE_HASH_KEY)
+            .expect(CRUD_ERROR)
+            .as_deref()
+        {
+            Hash::from_bytes(state_hash_bytes.try_into().expect(STATE_HASH_ERROR))
+        } else {
+            Hash::from_bytes(STATE_HASH_INITIAL_BYTES)
+        }
+    }
 }
 
-impl RawMassaDB<Slot> {
+impl RawMassaDB<Slot, SlotSerializer, SlotDeserializer> {
     /// Returns a new `MassaDB` instance
     pub fn new(config: MassaDBConfig) -> Self {
         let mut db_opts = Options::default();
@@ -236,6 +339,11 @@ impl RawMassaDB<Slot> {
         )
         .expect(OPEN_ERROR);
 
+        let change_id_deserializer = SlotDeserializer::new(
+            (Included(u64::MIN), Included(u64::MAX)),
+            (Included(0), Excluded(config.thread_count)),
+        );
+
         Self {
             db,
             config,
@@ -244,6 +352,8 @@ impl RawMassaDB<Slot> {
                 period: 0,
                 thread: 0,
             },
+            change_id_serializer: SlotSerializer::new(),
+            change_id_deserializer,
         }
     }
 
@@ -262,13 +372,16 @@ impl RawMassaDB<Slot> {
     }
 
     /// Writes the batch to the DB
-    pub fn write_batch(&self, mut batch: DBBatch) {
-        let db = &self.db;
+    pub fn write_batch(&mut self, batch: DBBatch, change_id: Option<Slot>) {
+        self.write_changes(batch.changes, change_id, Some(batch.state_hash), false)
+            .expect(CRUD_ERROR);
+
+        /*let db = &self.db;
         let handle = db.cf_handle(METADATA_CF).expect(CF_ERROR);
         batch
             .write_batch
             .put_cf(handle, STATE_HASH_KEY, batch.state_hash.to_bytes());
-        db.write(batch.write_batch).expect(CRUD_ERROR);
+        db.write(batch.write_batch).expect(CRUD_ERROR);*/
     }
 
     /// Utility function to put / update a key & value and perform the hash XORs
@@ -289,7 +402,10 @@ impl RawMassaDB<Slot> {
         let hash = Hash::compute_from(&[&key, value].concat());
         batch.state_hash ^= hash;
         batch.aeh_list.insert(key.clone(), hash);
-        batch.write_batch.put_cf(handle, key, value);
+
+        //batch.write_batch.put_cf(handle, key, value);
+
+        batch.changes.insert(key, Some(value.to_vec()));
     }
 
     /// Utility function to delete a key & value and perform the hash XORs
@@ -300,23 +416,10 @@ impl RawMassaDB<Slot> {
         } else if let Some(prev_bytes) = db.get_pinned_cf(handle, &key).expect(CRUD_ERROR) {
             batch.state_hash ^= Hash::compute_from(&[&key, &prev_bytes[..]].concat());
         }
-        batch.write_batch.delete_cf(handle, key);
-    }
 
-    /// Get the current state hash
-    pub fn get_db_hash(&self) -> Hash {
-        let db = &self.db;
+        //batch.write_batch.delete_cf(handle, key);
 
-        let handle = db.cf_handle(METADATA_CF).expect(CF_ERROR);
-        if let Some(state_hash_bytes) = db
-            .get_cf(handle, STATE_HASH_KEY)
-            .expect(CRUD_ERROR)
-            .as_deref()
-        {
-            Hash::from_bytes(state_hash_bytes.try_into().expect(STATE_HASH_ERROR))
-        } else {
-            Hash::from_bytes(STATE_HASH_INITIAL_BYTES)
-        }
+        batch.changes.insert(key, None);
     }
 
     /// Get the current state hash
@@ -334,15 +437,15 @@ impl RawMassaDB<Slot> {
             hash ^= Hash::compute_from(&[serialized_key, serialized_value].concat());
         }
 
-        if let Ok(Some(serialized_value)) = db.get_cf(handle_metadata, SLOT_KEY) {
-            hash ^= Hash::compute_from(&[SLOT_KEY.to_vec(), serialized_value].concat());
+        if let Ok(Some(serialized_value)) = db.get_cf(handle_metadata, CHANGE_ID_KEY) {
+            hash ^= Hash::compute_from(&[CHANGE_ID_KEY.to_vec(), serialized_value].concat());
         }
 
         hash
     }
 
     /// Utility function to delete all keys in a prefix
-    pub fn delete_prefix(&self, prefix: &str) {
+    pub fn delete_prefix(&mut self, prefix: &str, change_id: Option<Slot>) {
         let db = &self.db;
 
         let handle = db.cf_handle(STATE_CF).expect(CF_ERROR);
@@ -354,43 +457,7 @@ impl RawMassaDB<Slot> {
 
             self.delete_key(handle, &mut batch, serialized_key.to_vec());
         }
-        self.write_batch(batch);
-    }
-
-    /// Set the disk slot metadata
-    ///
-    /// # Arguments
-    /// * slot: associated slot of the current ledger
-    /// * batch: the given operation batch to update
-    pub fn set_slot(&self, slot: Slot, batch: &mut DBBatch) {
-        let db = &self.db;
-        let handle = db.cf_handle(METADATA_CF).expect(CF_ERROR);
-        let mut slot_bytes = Vec::new();
-        // Slot serialization never fails
-        let slot_serializer = SlotSerializer::new();
-        slot_serializer.serialize(&slot, &mut slot_bytes).unwrap();
-
-        self.put_or_update_entry_value(handle, batch, SLOT_KEY.to_vec(), &slot_bytes);
-    }
-
-    pub fn get_slot(&self, thread_count: u8) -> Result<Slot, ModelsError> {
-        let db = &self.db;
-        let handle = db.cf_handle(METADATA_CF).expect(CF_ERROR);
-
-        let Ok(Some(slot_bytes)) = db.get_pinned_cf(handle, SLOT_KEY) else {
-            return Err(ModelsError::BufferError(String::from("Could not recover ledger_slot")));
-        };
-
-        let slot_deserializer = SlotDeserializer::new(
-            (Included(u64::MIN), Included(u64::MAX)),
-            (Included(0_u8), Excluded(thread_count)),
-        );
-
-        let (_rest, slot) = slot_deserializer
-            .deserialize::<DeserializeError>(&slot_bytes)
-            .expect(SLOT_DESER_ERROR);
-
-        Ok(slot)
+        self.write_batch(batch, change_id);
     }
 
     /// TODO:
@@ -402,8 +469,7 @@ impl RawMassaDB<Slot> {
 
 /// Batch containing write operations to perform on disk and cache for hash computing
 pub struct DBBatch {
-    // Rocksdb write batch
-    pub write_batch: WriteBatch,
+    pub changes: BTreeMap<Key, Option<Value>>,
     // State hash in the current batch
     pub state_hash: Hash,
     // Added entry hashes in the current batch
@@ -413,9 +479,47 @@ pub struct DBBatch {
 impl DBBatch {
     pub fn new(state_hash: Hash) -> Self {
         Self {
-            write_batch: WriteBatch::default(),
+            changes: BTreeMap::new(),
             state_hash,
             aeh_list: BTreeMap::new(),
         }
     }
 }
+
+/*
+impl MonotreeDatabase for MassaDB {
+    put() -> ajoute au current_batch_for_monotree {
+        handle = get_handle(MONOTREE_CF)
+    }
+    get() -> en prio get dans le current_batch_for_monotree puis dans la db {
+        handle = get_handle(MONOTREE_CF)
+    }
+    delete() -> ajoute le delete au current_batch_for_monotree {
+        handle = get_handle(MONOTREE_CF)
+    }
+}
+
+MassaDB {
+    monotree: Monotree<Blake3, Self>
+    batch: WriteBatch
+}
+
+impl MassaDB {
+    write_change() {
+
+        for all changes:
+        {
+            if change is a put {
+                self.batch.put_cf()
+                monotree.put(change.key, change.value)
+            }
+            if change is a delete {
+                self.batch.delete_cf()
+                monotree.delete(change.key)
+            }
+        }
+
+        db.write(self.batch);
+
+    }
+}*/

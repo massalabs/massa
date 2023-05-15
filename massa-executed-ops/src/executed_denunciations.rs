@@ -69,7 +69,7 @@ impl ExecutedDenunciations {
         executed_denunciations
     }
 
-    fn recompute_sorted_denunciations(&mut self) {
+    pub fn recompute_sorted_denunciations(&mut self) {
         self.sorted_denunciations.clear();
 
         let db = self.db.read();
@@ -108,8 +108,8 @@ impl ExecutedDenunciations {
     /// USED FOR BOOTSTRAP ONLY
     pub fn reset(&mut self) {
         {
-            let db = self.db.read();
-            db.delete_prefix(EXECUTED_DENUNCIATIONS_PREFIX);
+            let mut db = self.db.write();
+            db.delete_prefix(EXECUTED_DENUNCIATIONS_PREFIX, None);
         }
 
         self.recompute_sorted_denunciations();

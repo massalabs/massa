@@ -1614,7 +1614,7 @@ mod tests {
             &mut batch,
         );
 
-        sample_state.read().db.read().write_batch(batch);
+        sample_state.write().db.write().write_batch(batch, None);
 
         // create operation 1
         let operation1 = Operation::new_verifiable(

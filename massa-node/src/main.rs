@@ -200,6 +200,7 @@ async fn launch(
     let db_config = MassaDBConfig {
         path: SETTINGS.ledger.disk_ledger_path.clone(),
         max_history_length: SETTINGS.ledger.final_history_length,
+        thread_count: THREAD_COUNT,
     };
     let db = Arc::new(RwLock::new(MassaDB::new(db_config)));
 
@@ -321,9 +322,10 @@ async fn launch(
         }
     };
 
+    final_state.write().recompute_caches();
+
     if args.restart_from_snapshot_at_period.is_none() {
-        let last_start_period = final_state.read().last_start_period;
-        final_state.write().init_ledger_hash(last_start_period);
+        final_state.write().init_ledger_hash();
 
         // give the controller to final state in order for it to feed the cycles
         final_state
