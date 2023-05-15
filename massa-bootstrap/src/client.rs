@@ -21,7 +21,7 @@ use rand::{
 use tracing::{debug, info, warn};
 
 use crate::{
-    client_binder::BootstrapClientBinder,
+    bindings::BootstrapClientBinder,
     error::BootstrapError,
     messages::{BootstrapClientMessage, BootstrapServerMessage},
     settings::IpType,

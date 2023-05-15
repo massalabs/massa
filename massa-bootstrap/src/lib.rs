@@ -17,21 +17,21 @@ use massa_consensus_exports::bootstrapable_graph::BootstrapableGraph;
 use massa_final_state::FinalState;
 use massa_protocol_exports::BootstrapPeers;
 use parking_lot::RwLock;
+use std::io::{self, ErrorKind};
 use std::sync::Arc;
+use std::time::{Duration, Instant};
 
-/// Bootstrap implementations on the client side
-pub mod client;
-mod client_binder;
+mod bindings;
+mod client;
 mod error;
 pub use error::BootstrapError;
 mod listener;
 pub use listener::BootstrapTcpListener;
 mod messages;
 mod server;
-mod server_binder;
 mod settings;
 mod tools;
-pub use client::get_state;
+pub use client::{get_state, DefaultConnector};
 use massa_versioning_worker::versioning::MipStore;
 pub use messages::{
     BootstrapClientMessage, BootstrapClientMessageDeserializer, BootstrapClientMessageSerializer,
@@ -68,4 +68,51 @@ impl GlobalBootstrapState {
             mip_store: None,
         }
     }
+}
+
+trait BindingReadExact: io::Read {
+    /// similar to std::io::Read::read_exact, but with a timeout that is function-global instead of per-individual-read
+    fn read_exact_timeout(
+        &mut self,
+        buf: &mut [u8],
+        deadline: Option<Instant>,
+    ) -> Result<(), (std::io::Error, usize)> {
+        let mut count = 0;
+        self.set_read_timeout(None).map_err(|err| (err, count))?;
+        while count < buf.len() {
+            // update the timeout
+            if let Some(deadline) = deadline {
+                let dur = deadline.saturating_duration_since(Instant::now());
+                if dur.is_zero() {
+                    return Err((
+                        std::io::Error::new(ErrorKind::TimedOut, "deadline has elapsed"),
+                        count,
+                    ));
+                }
+                self.set_read_timeout(Some(dur))
+                    .map_err(|err| (err, count))?;
+            }
+
+            // do the read
+            match self.read(&mut buf[count..]) {
+                Ok(0) => break,
+                Ok(n) => {
+                    count += n;
+                }
+                Err(ref e) if e.kind() == std::io::ErrorKind::Interrupted => {}
+                Err(e) => return Err((e, count)),
+            }
+        }
+        if count != buf.len() {
+            Err((
+                std::io::Error::new(ErrorKind::UnexpectedEof, "failed to fill whole buffer"),
+                count,
+            ))
+        } else {
+            Ok(())
+        }
+    }
+
+    /// Internal helper
+    fn set_read_timeout(&mut self, deadline: Option<Duration>) -> Result<(), std::io::Error>;
 }

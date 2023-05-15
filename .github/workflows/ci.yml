@@ -19,7 +19,7 @@ env:
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
-    
+
 jobs:
   # Quick tests on each commit/PR
   sanity:
