@@ -1712,73 +1712,9 @@
 <a href="#1712" id="1712">1712</a>
 <a href="#1713" id="1713">1713</a>
 <a href="#1714" id="1714">1714</a>
-<a href="#1715" id="1715">1715</a>
-<a href="#1716" id="1716">1716</a>
-<a href="#1717" id="1717">1717</a>
-<a href="#1718" id="1718">1718</a>
-<a href="#1719" id="1719">1719</a>
-<a href="#1720" id="1720">1720</a>
-<a href="#1721" id="1721">1721</a>
-<a href="#1722" id="1722">1722</a>
-<a href="#1723" id="1723">1723</a>
-<a href="#1724" id="1724">1724</a>
-<a href="#1725" id="1725">1725</a>
-<a href="#1726" id="1726">1726</a>
-<a href="#1727" id="1727">1727</a>
-<a href="#1728" id="1728">1728</a>
-<a href="#1729" id="1729">1729</a>
-<a href="#1730" id="1730">1730</a>
-<a href="#1731" id="1731">1731</a>
-<a href="#1732" id="1732">1732</a>
-<a href="#1733" id="1733">1733</a>
-<a href="#1734" id="1734">1734</a>
-<a href="#1735" id="1735">1735</a>
-<a href="#1736" id="1736">1736</a>
-<a href="#1737" id="1737">1737</a>
-<a href="#1738" id="1738">1738</a>
-<a href="#1739" id="1739">1739</a>
-<a href="#1740" id="1740">1740</a>
-<a href="#1741" id="1741">1741</a>
-<a href="#1742" id="1742">1742</a>
-<a href="#1743" id="1743">1743</a>
-<a href="#1744" id="1744">1744</a>
-<a href="#1745" id="1745">1745</a>
-<a href="#1746" id="1746">1746</a>
-<a href="#1747" id="1747">1747</a>
-<a href="#1748" id="1748">1748</a>
-<a href="#1749" id="1749">1749</a>
-<a href="#1750" id="1750">1750</a>
-<a href="#1751" id="1751">1751</a>
-<a href="#1752" id="1752">1752</a>
-<a href="#1753" id="1753">1753</a>
-<a href="#1754" id="1754">1754</a>
-<a href="#1755" id="1755">1755</a>
-<a href="#1756" id="1756">1756</a>
-<a href="#1757" id="1757">1757</a>
-<a href="#1758" id="1758">1758</a>
-<a href="#1759" id="1759">1759</a>
-<a href="#1760" id="1760">1760</a>
-<a href="#1761" id="1761">1761</a>
-<a href="#1762" id="1762">1762</a>
-<a href="#1763" id="1763">1763</a>
-<a href="#1764" id="1764">1764</a>
-<a href="#1765" id="1765">1765</a>
-<a href="#1766" id="1766">1766</a>
-<a href="#1767" id="1767">1767</a>
-<a href="#1768" id="1768">1768</a>
-<a href="#1769" id="1769">1769</a>
-<a href="#1770" id="1770">1770</a>
-<a href="#1771" id="1771">1771</a>
-<a href="#1772" id="1772">1772</a>
-<a href="#1773" id="1773">1773</a>
-<a href="#1774" id="1774">1774</a>
-<a href="#1775" id="1775">1775</a>
-<a href="#1776" id="1776">1776</a>
-<a href="#1777" id="1777">1777</a>
-<a href="#1778" id="1778">1778</a>
-<a href="#1779" id="1779">1779</a>
 </pre><pre class="rust"><code><span class="kw">use </span>std::cmp::Ordering;
 <span class="kw">use </span>std::collections::{BTreeMap, BTreeSet, HashMap, VecDeque};
+<span class="kw">use </span>std::hash::{Hash, Hasher};
 <span class="kw">use </span>std::ops::Deref;
 <span class="kw">use </span>std::sync::Arc;
 
@@ -1788,18 +1724,15 @@
 <span class="kw">use </span>thiserror::Error;
 <span class="kw">use </span>tracing::warn;
 
-<span class="kw">use </span><span class="kw">crate</span>::versioning_ser_der::{MipInfoSerializer, MipStateSerializer};
-<span class="kw">use </span>massa_hash::Hash;
 <span class="kw">use </span>massa_models::error::ModelsError;
 <span class="kw">use </span>massa_models::slot::Slot;
 <span class="kw">use </span>massa_models::timeslots::get_block_slot_timestamp;
 <span class="kw">use </span>massa_models::{amount::Amount, config::VERSIONING_THRESHOLD_TRANSITION_ACCEPTED};
-<span class="kw">use </span>massa_serialization::{SerializeError, Serializer};
 <span class="kw">use </span>massa_time::MassaTime;
 
 <span class="doccomment">/// Versioning component enum
 </span><span class="attr">#[allow(missing_docs)]
-#[derive(Clone, Debug, PartialEq, Eq, Ord, PartialOrd, Hash, FromPrimitive, IntoPrimitive)]
+#[derive(Clone, Debug, PartialEq, Eq, Hash, FromPrimitive, IntoPrimitive)]
 #[repr(u32)]
 </span><span class="kw">pub enum </span>MipComponent {
     Address,
@@ -1811,14 +1744,14 @@
 }
 
 <span class="doccomment">/// MIP info (name &amp; versions &amp; time range for a MIP)
-</span><span class="attr">#[derive(Clone, Debug, Hash)]
+</span><span class="attr">#[derive(Clone, Debug)]
 </span><span class="kw">pub struct </span>MipInfo {
     <span class="doccomment">/// MIP name or descriptive name
     </span><span class="kw">pub </span>name: String,
     <span class="doccomment">/// Network (or global) version (to be included in block header)
     </span><span class="kw">pub </span>version: u32,
     <span class="doccomment">/// Components concerned by this versioning (e.g. a new Block version), and the associated component_version
-    </span><span class="kw">pub </span>components: BTreeMap&lt;MipComponent, u32&gt;,
+    </span><span class="kw">pub </span>components: HashMap&lt;MipComponent, u32&gt;,
     <span class="doccomment">/// a timestamp at which the version gains its meaning (e.g. announced in block header)
     </span><span class="kw">pub </span>start: MassaTime,
     <span class="doccomment">/// a timestamp at the which the deployment is considered failed
@@ -1853,6 +1786,17 @@
 }
 
 <span class="kw">impl </span>Eq <span class="kw">for </span>MipInfo {}
+
+<span class="comment">// Need to impl this manually otherwise clippy is angry :-P
+</span><span class="kw">impl </span>Hash <span class="kw">for </span>MipInfo {
+    <span class="kw">fn </span>hash&lt;H: Hasher&gt;(<span class="kw-2">&amp;</span><span class="self">self</span>, state: <span class="kw-2">&amp;mut </span>H) {
+        <span class="self">self</span>.name.hash(state);
+        <span class="self">self</span>.version.hash(state);
+        <span class="self">self</span>.components.iter().for_each(|c| c.hash(state));
+        <span class="self">self</span>.start.hash(state);
+        <span class="self">self</span>.timeout.hash(state);
+    }
+}
 
 <span class="macro">machine!</span>(
     <span class="doccomment">/// State machine for a Versioning component that tracks the deployment state
@@ -2272,11 +2216,6 @@
         <span class="kw">let </span>lock_other = mip_store.<span class="number">0</span>.read();
         lock.update_with(lock_other.deref())
     }
-
-    <span class="kw">pub fn </span>compute_hash(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span>&lt;Hash, SerializeError&gt; {
-        <span class="kw">let </span>guard = <span class="self">self</span>.<span class="number">0</span>.read();
-        guard.compute_hash()
-    }
 }
 
 <span class="kw">impl</span>&lt;<span class="kw">const </span>N: usize&gt; TryFrom&lt;([(MipInfo, MipState); N], MipStatsConfig)&gt; <span class="kw">for </span>MipStore {
@@ -2337,7 +2276,7 @@
 <span class="doccomment">/// Store of all versioning info
 </span><span class="attr">#[derive(Debug, Clone, PartialEq)]
 </span><span class="kw">pub struct </span>MipStoreRaw {
-    <span class="kw">pub </span>store: BTreeMap&lt;MipInfo, MipState&gt;,
+    <span class="kw">pub</span>(<span class="kw">crate</span>) store: BTreeMap&lt;MipInfo, MipState&gt;,
     <span class="kw">pub</span>(<span class="kw">crate</span>) stats: MipStoreStats,
 }
 
@@ -2676,31 +2615,6 @@
         <span class="self">self</span>.stats = new_stats;
         <span class="prelude-val">Ok</span>(())
     }
-
-    <span class="kw">fn </span>compute_hash(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span>&lt;Hash, SerializeError&gt; {
-        <span class="kw">let </span><span class="kw-2">mut </span>hash_concat: Vec&lt;u8&gt; = Vec::new();
-        <span class="kw">for </span>(mip_info, mip_state) <span class="kw">in </span><span class="kw-2">&amp;</span><span class="self">self</span>.store {
-            <span class="kw">match </span>mip_state.state {
-                ComponentState::Active(<span class="kw">_</span>) | ComponentState::Failed(<span class="kw">_</span>) | ComponentState::Error =&gt; {
-                    <span class="kw">let </span><span class="kw-2">mut </span>buf = Vec::new();
-                    <span class="kw">let </span>mip_info_ser = MipInfoSerializer::new();
-                    mip_info_ser.serialize(mip_info, <span class="kw-2">&amp;mut </span>buf)<span class="question-mark">?</span>;
-                    hash_concat.extend(Hash::compute_from(<span class="kw-2">&amp;</span>buf).to_bytes());
-
-                    buf.clear();
-                    <span class="kw">let </span>mip_state_ser = MipStateSerializer::new();
-                    mip_state_ser.serialize(mip_state, <span class="kw-2">&amp;mut </span>buf)<span class="question-mark">?</span>;
-                    hash_concat.extend(Hash::compute_from(<span class="kw-2">&amp;</span>buf).to_bytes());
-                }
-                <span class="kw">_ </span>=&gt; {
-                    <span class="comment">// nothing to do here
-                </span>}
-            }
-        }
-
-        <span class="comment">// compute final hash
-        </span><span class="prelude-val">Ok</span>(Hash::compute_from(<span class="kw-2">&amp;</span>hash_concat))
-    }
 }
 
 <span class="kw">impl</span>&lt;<span class="kw">const </span>N: usize&gt; TryFrom&lt;([(MipInfo, MipState); N], MipStatsConfig)&gt; <span class="kw">for </span>MipStoreRaw {
@@ -2789,7 +2703,7 @@
             MipInfo {
                 name: <span class="string">&quot;MIP-0002&quot;</span>.to_string(),
                 version: <span class="number">2</span>,
-                components: BTreeMap::from([(MipComponent::Address, <span class="number">1</span>)]),
+                components: HashMap::from([(MipComponent::Address, <span class="number">1</span>)]),
                 start: MassaTime::from(start.timestamp() <span class="kw">as </span>u64),
                 timeout: MassaTime::from(timeout.timestamp() <span class="kw">as </span>u64),
                 activation_delay: MassaTime::from(<span class="number">20</span>),
@@ -3039,7 +2953,7 @@
         </span><span class="kw">let </span>vi_1 = MipInfo {
             name: <span class="string">&quot;MIP-0002&quot;</span>.to_string(),
             version: <span class="number">2</span>,
-            components: BTreeMap::from([(MipComponent::Address, <span class="number">1</span>)]),
+            components: HashMap::from([(MipComponent::Address, <span class="number">1</span>)]),
             start: MassaTime::from(<span class="number">2</span>),
             timeout: MassaTime::from(<span class="number">5</span>),
             activation_delay: MassaTime::from(<span class="number">2</span>),
@@ -3048,7 +2962,7 @@
         </span><span class="kw">let </span>vi_2 = MipInfo {
             name: <span class="string">&quot;MIP-0002&quot;</span>.to_string(),
             version: <span class="number">2</span>,
-            components: BTreeMap::from([(MipComponent::Address, <span class="number">1</span>)]),
+            components: HashMap::from([(MipComponent::Address, <span class="number">1</span>)]),
             start: MassaTime::from(<span class="number">7</span>),
             timeout: MassaTime::from(<span class="number">10</span>),
             activation_delay: MassaTime::from(<span class="number">2</span>),
@@ -3104,7 +3018,7 @@
         <span class="kw">let </span>vi_1 = MipInfo {
             name: <span class="string">&quot;MIP-0002&quot;</span>.to_string(),
             version: <span class="number">2</span>,
-            components: BTreeMap::from([(MipComponent::Address, <span class="number">1</span>)]),
+            components: HashMap::from([(MipComponent::Address, <span class="number">1</span>)]),
             start: MassaTime::from(<span class="number">2</span>),
             timeout: MassaTime::from(<span class="number">5</span>),
             activation_delay: MassaTime::from(<span class="number">2</span>),
@@ -3116,7 +3030,7 @@
         <span class="kw">let </span>vi_2 = MipInfo {
             name: <span class="string">&quot;MIP-0003&quot;</span>.to_string(),
             version: <span class="number">3</span>,
-            components: BTreeMap::from([(MipComponent::Address, <span class="number">2</span>)]),
+            components: HashMap::from([(MipComponent::Address, <span class="number">2</span>)]),
             start: MassaTime::from(<span class="number">17</span>),
             timeout: MassaTime::from(<span class="number">27</span>),
             activation_delay: MassaTime::from(<span class="number">2</span>),
@@ -3142,6 +3056,7 @@
         ))
         .unwrap();
 
+        <span class="macro">println!</span>(<span class="string">&quot;update with:&quot;</span>);
         <span class="kw">let </span>(updated, added) = vs_raw_1.update_with(<span class="kw-2">&amp;</span>vs_raw_2).unwrap();
 
         <span class="comment">// Check update_with result
@@ -3163,7 +3078,7 @@
         </span><span class="kw">let </span>vi_1 = MipInfo {
             name: <span class="string">&quot;MIP-0002&quot;</span>.to_string(),
             version: <span class="number">2</span>,
-            components: BTreeMap::from([(MipComponent::Address, <span class="number">1</span>)]),
+            components: HashMap::from([(MipComponent::Address, <span class="number">1</span>)]),
             start: MassaTime::from(<span class="number">0</span>),
             timeout: MassaTime::from(<span class="number">5</span>),
             activation_delay: MassaTime::from(<span class="number">2</span>),
@@ -3174,7 +3089,7 @@
         <span class="kw">let </span>vi_2 = MipInfo {
             name: <span class="string">&quot;MIP-0003&quot;</span>.to_string(),
             version: <span class="number">3</span>,
-            components: BTreeMap::from([(MipComponent::Address, <span class="number">2</span>)]),
+            components: HashMap::from([(MipComponent::Address, <span class="number">2</span>)]),
             start: MassaTime::from(<span class="number">17</span>),
             timeout: MassaTime::from(<span class="number">27</span>),
             activation_delay: MassaTime::from(<span class="number">2</span>),
@@ -3284,7 +3199,7 @@
         <span class="kw">let </span>mi_1 = MipInfo {
             name: <span class="string">&quot;MIP-0002&quot;</span>.to_string(),
             version: <span class="number">2</span>,
-            components: BTreeMap::from([(MipComponent::__Nonexhaustive, <span class="number">1</span>)]),
+            components: HashMap::from([(MipComponent::__Nonexhaustive, <span class="number">1</span>)]),
             start: MassaTime::from(<span class="number">0</span>),
             timeout: MassaTime::from(<span class="number">5</span>),
             activation_delay: MassaTime::from(<span class="number">2</span>),
@@ -3369,7 +3284,7 @@
         <span class="kw">let </span><span class="kw-2">mut </span>mi_1 = MipInfo {
             name: <span class="string">&quot;MIP-0002&quot;</span>.to_string(),
             version: <span class="number">2</span>,
-            components: BTreeMap::from([(MipComponent::Address, <span class="number">1</span>)]),
+            components: HashMap::from([(MipComponent::Address, <span class="number">1</span>)]),
             start: MassaTime::from(<span class="number">2</span>),
             timeout: MassaTime::from(<span class="number">5</span>),
             activation_delay: MassaTime::from(<span class="number">100</span>),
@@ -3377,7 +3292,7 @@
         <span class="kw">let </span><span class="kw-2">mut </span>mi_2 = MipInfo {
             name: <span class="string">&quot;MIP-0003&quot;</span>.to_string(),
             version: <span class="number">3</span>,
-            components: BTreeMap::from([(MipComponent::Address, <span class="number">2</span>)]),
+            components: HashMap::from([(MipComponent::Address, <span class="number">2</span>)]),
             start: MassaTime::from(<span class="number">7</span>),
             timeout: MassaTime::from(<span class="number">11</span>),
             activation_delay: MassaTime::from(<span class="number">100</span>),
@@ -3509,51 +3424,6 @@
                 ComponentStateTypeId::Started
             );
         }
-    }
-
-    <span class="attr">#[test]
-    </span><span class="kw">fn </span>test_mip_store_hash() {
-        <span class="comment">// Test MipStoreRaw::compute_hash
-
-        </span><span class="kw">let </span>mip_stats_cfg = MipStatsConfig {
-            block_count_considered: <span class="number">10</span>,
-            counters_max: <span class="number">5</span>,
-        };
-        <span class="kw">let </span>mi_1 = MipInfo {
-            name: <span class="string">&quot;MIP-0002&quot;</span>.to_string(),
-            version: <span class="number">2</span>,
-            components: BTreeMap::from([(MipComponent::Address, <span class="number">1</span>)]),
-            start: MassaTime::from(<span class="number">2</span>),
-            timeout: MassaTime::from(<span class="number">5</span>),
-            activation_delay: MassaTime::from(<span class="number">100</span>),
-        };
-        <span class="kw">let </span>mi_2 = MipInfo {
-            name: <span class="string">&quot;MIP-0003&quot;</span>.to_string(),
-            version: <span class="number">3</span>,
-            components: BTreeMap::from([(MipComponent::Address, <span class="number">2</span>)]),
-            start: MassaTime::from(<span class="number">7</span>),
-            timeout: MassaTime::from(<span class="number">11</span>),
-            activation_delay: MassaTime::from(<span class="number">100</span>),
-        };
-
-        <span class="kw">let </span>ms_1 = advance_state_until(ComponentState::active(), <span class="kw-2">&amp;</span>mi_1);
-        <span class="kw">let </span>ms_2 = advance_state_until(ComponentState::defined(), <span class="kw-2">&amp;</span>mi_2);
-
-        <span class="kw">let </span>store_1 =
-            MipStoreRaw::try_from(([(mi_1.clone(), ms_1.clone())], mip_stats_cfg.clone())).unwrap();
-
-        <span class="kw">let </span>store_2 = MipStoreRaw::try_from((
-            [(mi_1.clone(), ms_1), (mi_2.clone(), ms_2)],
-            mip_stats_cfg.clone(),
-        ))
-        .unwrap();
-
-        <span class="comment">// store_2 hash should be the same as store_1 hash - as for now, a node using store_1 would
-        // be compatible (in term of versioning) with a node using store_2
-        </span><span class="macro">assert_eq!</span>(
-            store_1.compute_hash().unwrap(),
-            store_2.compute_hash().unwrap()
-        );
     }
 }
 </code></pre></div>

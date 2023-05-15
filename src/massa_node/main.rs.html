@@ -1214,15 +1214,6 @@
 <a href="#1214" id="1214">1214</a>
 <a href="#1215" id="1215">1215</a>
 <a href="#1216" id="1216">1216</a>
-<a href="#1217" id="1217">1217</a>
-<a href="#1218" id="1218">1218</a>
-<a href="#1219" id="1219">1219</a>
-<a href="#1220" id="1220">1220</a>
-<a href="#1221" id="1221">1221</a>
-<a href="#1222" id="1222">1222</a>
-<a href="#1223" id="1223">1223</a>
-<a href="#1224" id="1224">1224</a>
-<a href="#1225" id="1225">1225</a>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="attr">#![doc = <span class="macro">include_str!</span>(<span class="string">&quot;../../README.md&quot;</span>)]
@@ -1300,7 +1291,7 @@
 <span class="kw">use </span>massa_protocol_worker::{create_protocol_controller, start_protocol_controller};
 <span class="kw">use </span>massa_storage::Storage;
 <span class="kw">use </span>massa_time::MassaTime;
-<span class="kw">use </span>massa_versioning_worker::versioning::ComponentStateTypeId;
+<span class="kw">use </span>massa_versioning_worker::versioning::{ComponentStateTypeId, MipStatsConfig, MipStore};
 <span class="kw">use </span>massa_wallet::Wallet;
 <span class="kw">use </span>parking_lot::RwLock;
 <span class="kw">use </span>peernet::transports::TransportType;
@@ -1406,8 +1397,6 @@
         endorsement_count: ENDORSEMENT_COUNT,
         max_executed_denunciations_length: MAX_DENUNCIATION_CHANGES_LENGTH,
         max_denunciations_per_block_header: MAX_DENUNCIATIONS_PER_BLOCK_HEADER,
-        mip_store_stats_block_considered: MIP_STORE_STATS_BLOCK_CONSIDERED,
-        mip_store_stats_counters_max: MIP_STORE_STATS_COUNTERS_MAX,
     };
 
     <span class="comment">// Remove current disk ledger if there is one and we don&#39;t want to restart from snapshot
@@ -1566,22 +1555,15 @@
     };
 
     <span class="comment">// Creates an empty default store
-    /*
-    let mip_stats_config = MipStatsConfig {
+    </span><span class="kw">let </span>mip_stats_config = MipStatsConfig {
         block_count_considered: MIP_STORE_STATS_BLOCK_CONSIDERED,
         counters_max: MIP_STORE_STATS_COUNTERS_MAX,
     };
-    */
-
-    /*
-    let mut mip_store =
-        MipStore::try_from(([], mip_stats_config)).expect(&quot;Cannot create an empty MIP store&quot;);
-    */
-    </span><span class="kw">if let </span><span class="prelude-val">Some</span>(bootstrap_mip_store) = bootstrap_state.mip_store {
+    <span class="kw">let </span><span class="kw-2">mut </span>mip_store =
+        MipStore::try_from(([], mip_stats_config)).expect(<span class="string">&quot;Cannot create an empty MIP store&quot;</span>);
+    <span class="kw">if let </span><span class="prelude-val">Some</span>(bootstrap_mip_store) = bootstrap_state.mip_store {
         <span class="comment">// TODO: in some cases, should bootstrap again
-        </span><span class="kw">let </span>(updated, added) = final_state
-            .write()
-            .mip_store
+        </span><span class="kw">let </span>(updated, added) = mip_store
             .update_with(<span class="kw-2">&amp;</span>bootstrap_mip_store)
             .expect(<span class="string">&quot;Cannot update MIP store with bootstrap mip store&quot;</span>);
 
@@ -1704,8 +1686,8 @@
         execution_config,
         final_state.clone(),
         selector_controller.clone(),
-        final_state.read().mip_store.clone(), <span class="comment">// FIXME: already in final_state
-        </span>execution_channels.clone(),
+        mip_store.clone(),
+        execution_channels.clone(),
     );
 
     <span class="comment">// launch pool controller
@@ -1942,8 +1924,8 @@
             bootstrap_config,
             keypair.clone(),
             <span class="kw-2">*</span>VERSION,
-            final_state.read().mip_store.clone(), <span class="comment">// FIXME: already in final state
-        </span>)
+            mip_store.clone(),
+        )
         .expect(<span class="string">&quot;Could not start bootstrap server&quot;</span>);
         manager.set_listener_stopper(waker);
         manager
