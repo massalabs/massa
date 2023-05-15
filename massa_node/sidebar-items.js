@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"fn":["launch","load_wallet","main","run","stop"],"mod":["settings"],"opaque":[""],"static":["ATOMIC_ID","CALLSITE","META"],"struct":["Args","Managers"]};
+window.SIDEBAR_ITEMS = {"constant":["BRANCHES"],"fn":["launch","load_wallet","main","run","stop"],"mod":["settings"],"opaque":[""],"static":["ATOMIC_ID","CALLSITE","META"],"struct":["Args","Managers"]};

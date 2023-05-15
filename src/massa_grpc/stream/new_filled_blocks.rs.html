@@ -145,7 +145,7 @@
                                 <span class="kw">break</span>;
                             }
                         },
-                        <span class="prelude-val">Err</span>(e) =&gt; <span class="macro">error!</span>(<span class="string">&quot;error on receive new block : {}&quot;</span>, e)
+                        <span class="prelude-val">Err</span>(e) =&gt; {<span class="macro">error!</span>(<span class="string">&quot;error on receive new block : {}&quot;</span>, e)}
                     }
                 },
             <span class="comment">// Receive a new message from the in_stream

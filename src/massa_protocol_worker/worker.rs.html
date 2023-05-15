@@ -311,16 +311,6 @@
 <a href="#311" id="311">311</a>
 <a href="#312" id="312">312</a>
 <a href="#313" id="313">313</a>
-<a href="#314" id="314">314</a>
-<a href="#315" id="315">315</a>
-<a href="#316" id="316">316</a>
-<a href="#317" id="317">317</a>
-<a href="#318" id="318">318</a>
-<a href="#319" id="319">319</a>
-<a href="#320" id="320">320</a>
-<a href="#321" id="321">321</a>
-<a href="#322" id="322">322</a>
-<a href="#323" id="323">323</a>
 </pre><pre class="rust"><code><span class="kw">use </span>crossbeam::channel::{bounded, Receiver, Sender};
 <span class="kw">use </span>massa_consensus_exports::ConsensusController;
 <span class="kw">use </span>massa_models::node::NodeId;
@@ -519,16 +509,7 @@
     )<span class="question-mark">?</span>;
 
     <span class="kw">let </span>initial_peers = <span class="kw">if let </span><span class="prelude-val">Some</span>(bootstrap_peers) = bootstrap_peers {
-        <span class="comment">//TODO: Remove when we will be able to test the bootstrap peer even if someone else found them full
-        </span>bootstrap_peers
-            .<span class="number">0
-            </span>.into_iter()
-            .chain(
-                initial_peers_infos
-                    .iter()
-                    .map(|(peer_id, data)| (peer_id.clone(), data.listeners.clone())),
-            )
-            .collect()
+        bootstrap_peers.<span class="number">0</span>.into_iter().collect()
     } <span class="kw">else </span>{
         initial_peers_infos
             .iter()
@@ -582,7 +563,6 @@
             .max_in_connections_post_handshake,
         max_in_connections_per_ip: config.default_category_info.max_in_connections_per_ip,
     };
-    peernet_config.max_in_connections = config.max_in_connections;
 
     <span class="kw">let </span>network_controller = Box::new(NetworkControllerImpl::new(PeerNetManager::new(
         peernet_config,
