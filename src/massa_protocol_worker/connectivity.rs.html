@@ -488,17 +488,17 @@
                     default(config.try_connection_timer.to_duration()) =&gt; {
                         <span class="kw">let </span>peers_connected = network_controller.get_active_connections().get_peers_connected();
                         <span class="kw">let </span><span class="kw-2">mut </span>slots_per_category: Vec&lt;(String, usize)&gt; = peer_categories.iter().map(|(category, category_infos)| {
-                            (category.clone(), category_infos.<span class="number">1</span>.target_out_connections - peers_connected.iter().filter(|(<span class="kw">_</span>, peer)| {
+                            (category.clone(), category_infos.<span class="number">1</span>.target_out_connections.saturating_sub(peers_connected.iter().filter(|(<span class="kw">_</span>, peer)| {
                                 <span class="kw">if </span>peer.<span class="number">1 </span>== PeerConnectionType::OUT &amp;&amp; <span class="kw">let </span><span class="prelude-val">Some</span>(peer_category) = <span class="kw-2">&amp;</span>peer.<span class="number">2 </span>{
                                     category == peer_category
                                 } <span class="kw">else </span>{
                                     <span class="bool-val">false
                                 </span>}
-                            }).count())
+                            }).count()))
                         }).collect();
-                        <span class="kw">let </span><span class="kw-2">mut </span>slot_default_category = config.default_category_info.target_out_connections - peers_connected.iter().filter(|(<span class="kw">_</span>, peer)| {
+                        <span class="kw">let </span><span class="kw-2">mut </span>slot_default_category = config.default_category_info.target_out_connections.saturating_sub(peers_connected.iter().filter(|(<span class="kw">_</span>, peer)| {
                             peer.<span class="number">1 </span>== PeerConnectionType::OUT &amp;&amp; peer.<span class="number">2</span>.is_none()
-                        }).count();
+                        }).count());
                         <span class="kw">let </span><span class="kw-2">mut </span>addresses_to_connect: Vec&lt;SocketAddr&gt; = Vec::new();
                         {
                             <span class="kw">let </span>peer_db_read = peer_db.read();
