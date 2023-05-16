@@ -24,6 +24,7 @@ pub struct DefaultNode {
     pub ip: IpAddr,
     pub private_port: u16,
     pub public_port: u16,
+    pub grpc_port: u16,
 }
 
 /// Client settings

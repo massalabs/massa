@@ -439,7 +439,7 @@ impl Command {
     ///     it means that we don't want to print anything we just want the json output
     pub(crate) async fn run(
         &self,
-        client: &Client,
+        client: &mut Client,
         wallet_opt: &mut Option<Wallet>,
         parameters: &[String],
         json: bool,
