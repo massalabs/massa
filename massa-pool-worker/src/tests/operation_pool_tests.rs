@@ -24,6 +24,7 @@ use massa_execution_exports::MockExecutionController;
 use massa_models::{amount::Amount, operation::OperationId, slot::Slot};
 use massa_pool_exports::PoolConfig;
 use massa_pos_exports::MockSelectorController;
+use mockall::Sequence;
 use std::time::Duration;
 
 #[test]
@@ -63,20 +64,25 @@ fn test_pool() {
         let mut res = Box::new(MockExecutionController::new());
         res.expect_clone_box().return_once(|| {
             let mut story = MockExecutionController::new();
-            story
-                .expect_unexecuted_ops_among()
-                .times(198)
-                .returning(|ops, _| ops.clone());
-            story
-                .expect_get_final_and_candidate_balance()
-                .times(198)
-                .returning(|_| {
-                    vec![(
-                        // Operations need to be paid for
-                        Some(Amount::from_raw(60 * 1_000_000_000)),
-                        Some(Amount::from_raw(60 * 1_000_000_000)),
-                    )]
-                });
+            let mut seq = Sequence::new();
+            for _ in 0..198 {
+                story
+                    .expect_unexecuted_ops_among()
+                    .times(1)
+                    .returning(|ops, _| ops.clone())
+                    .in_sequence(&mut seq);
+                story
+                    .expect_get_final_and_candidate_balance()
+                    .times(1)
+                    .returning(|_| {
+                        vec![(
+                            // Operations need to be paid for
+                            Some(Amount::from_raw(60 * 1_000_000_000)),
+                            Some(Amount::from_raw(60 * 1_000_000_000)),
+                        )]
+                    })
+                    .in_sequence(&mut seq);
+            }
             Box::new(story)
         });
         res
