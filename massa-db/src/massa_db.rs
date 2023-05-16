@@ -64,6 +64,7 @@ pub struct RawMassaDB<
     pub cur_change_id: ChangeID,
     change_id_serializer: ChangeIDSerializer,
     change_id_deserializer: ChangeIDDeserializer,
+    #[allow(dead_code)]
     monotree: Monotree<MassaDBForMonotree<ChangeID, ChangeIDSerializer, ChangeIDDeserializer>>,
     current_batch: Arc<Mutex<WriteBatch>>,
 }
@@ -81,6 +82,7 @@ where
     ChangeIDSerializer: Serializer<ChangeID>,
     ChangeIDDeserializer: Deserializer<ChangeID>,
 {
+    #[allow(dead_code)]
     pub fn init(
         &mut self,
         db: Arc<RawMassaDB<ChangeID, ChangeIDSerializer, ChangeIDDeserializer>>,

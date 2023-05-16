@@ -2616,7 +2616,6 @@ dependencies = [
  "substruct",
  "tempfile",
  "thiserror",
- "tokio",
  "tracing",
 ]
 

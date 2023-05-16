@@ -589,7 +589,6 @@ impl PoSFinalState {
     /// Feeds the selector targeting a given draw cycle
     pub fn feed_cycle_state_hash(&self, cycle: u64, final_state_hash: Hash) {
         if self.get_cycle_index(cycle).is_some() {
-
             let mut batch = DBBatch::new();
             self.put_cycle_history_final_state_hash_snapshot(
                 cycle,
