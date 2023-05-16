@@ -14,14 +14,11 @@
 
 use mockall::Sequence;
 use std::rc::Rc;
-use std::thread;
 use std::time::Duration;
 
 use crate::start_pool_controller;
 use crate::tests::tools::create_some_operations;
-use crate::tests::tools::pool_test;
 use crate::tests::tools::OpGenerator;
-use massa_execution_exports::test_exports;
 use massa_execution_exports::MockExecutionController;
 use massa_models::address::Address;
 use massa_models::amount::Amount;
@@ -34,7 +31,6 @@ use massa_models::test_exports::{
 };
 use massa_pool_exports::PoolChannels;
 use massa_pool_exports::PoolConfig;
-use massa_pos_exports::test_exports::MockSelectorControllerMessage;
 use massa_pos_exports::MockSelectorController;
 use massa_pos_exports::{PosResult, Selection};
 use massa_signature::KeyPair;
@@ -235,18 +231,12 @@ fn test_block_header_denunciation_creation() {
     let denunciation_orig = Denunciation::try_from((&secured_header_1, &secured_header_2)).unwrap();
 
     let config = PoolConfig::default();
-    let mut selector_controller = Box::new(MockSelectorController::new());
-    selector_controller
-        .expect_clone_box()
+    // let mut selector_controller = Box::new(MockSelectorController::new());
+    let mut res = MockSelectorController::new();
+    res.expect_get_producer()
         .times(2)
-        .returning(move || Box::new(MockSelectorController::new()));
-    selector_controller.expect_clone_box().return_once(move || {
-        let mut res = MockSelectorController::new();
-        res.expect_get_producer()
-            .times(2)
-            .returning(move |_| PosResult::Ok(address));
-        Box::new(res)
-    });
+        .returning(move |_| PosResult::Ok(address));
+    let selector_controller = pool_test_mock_selector_controller(res);
 
     let mut execution_controller = Box::new(MockExecutionController::new());
     execution_controller
@@ -291,36 +281,26 @@ fn test_endorsement_denunciation_creation() {
     let config = PoolConfig::default();
     {
         let storage: Storage = Storage::create_root();
-        let endorsement_sender = broadcast::channel(2000).0;
-        let operation_sender = broadcast::channel(5000).0;
         let mut execution_controller = Box::new(MockExecutionController::new());
         execution_controller
             .expect_clone_box()
             .returning(move || Box::new(MockExecutionController::new()));
 
-        let mut selector_controller = Box::new(MockSelectorController::new());
-
-        selector_controller
-            .expect_clone_box()
-            .times(2)
-            .returning(move || Box::new(MockSelectorController::new()));
-        selector_controller.expect_clone_box().return_once(move || {
-            let mut res = MockSelectorController::new();
-            res.expect_get_selection().times(2).returning(move |_| {
-                PosResult::Ok(Selection {
-                    endorsements: vec![address; usize::from(config.thread_count)],
-                    producer: address,
-                })
-            });
-            Box::new(res)
+        let mut res = MockSelectorController::new();
+        res.expect_get_selection().times(2).returning(move |_| {
+            PosResult::Ok(Selection {
+                endorsements: vec![address; usize::from(config.thread_count)],
+                producer: address,
+            })
         });
+        let selector_controller = pool_test_mock_selector_controller(res);
         let (mut pool_manager, pool_controller) = start_pool_controller(
             config,
             &storage,
             execution_controller,
             PoolChannels {
-                endorsement_sender,
-                operation_sender,
+                endorsement_sender: broadcast::channel(2000).0,
+                operation_sender: broadcast::channel(5000).0,
                 selector: selector_controller,
             },
         );
@@ -364,47 +344,55 @@ fn test_denunciation_pool_get() {
     let de_idx_2 = DenunciationIndex::from(&denunciation_orig_2);
 
     let config = PoolConfig::default();
-    pool_test(
-        config,
-        |mut pool_manager, pool_controller, execution_receiver, selector_receiver, _storage| {
+    {
+        let storage: Storage = Storage::create_root();
+        let endorsement_sender = broadcast::channel(2000).0;
+        let operation_sender = broadcast::channel(5000).0;
+
+        let mut execution_controller = {
+            let res = Box::new(MockExecutionController::new());
+            res.expect_clone_box()
+                .return_once(move || Box::new(MockExecutionController::new()));
+
+            res.expect_is_denunciation_executed()
+                .times(2)
+                .returning(move |de_idx| de_idx != &de_idx_2);
+            res
+        };
+
+        let selector_controller = {
+            let mut res = MockSelectorController::new();
+            res.expect_get_producer()
+                .times(2)
+                .returning(move |_| PosResult::Ok(address_2));
+            res.expect_get_selection().times(2).returning(move |_| {
+                PosResult::Ok(Selection {
+                    endorsements: vec![address_1; usize::from(config.thread_count)],
+                    producer: address_1,
+                })
+            });
+            pool_test_mock_selector_controller(res)
+        };
+
+        let (mut pool_manager, pool_controller) = start_pool_controller(
+            config,
+            &storage,
+            execution_controller,
+            PoolChannels {
+                endorsement_sender,
+                operation_sender,
+                selector: selector_controller,
+            },
+        );
+
+        {
             // ~ random order (but need to keep the precursor order otherwise Denunciation::PartialEq will fail)
             pool_controller.add_denunciation_precursor(de_p_3);
             pool_controller.add_denunciation_precursor(de_p_1);
             pool_controller.add_denunciation_precursor(de_p_4);
             pool_controller.add_denunciation_precursor(de_p_2);
 
-            // Allow some time for the pool to add the operations
-            loop {
-                match selector_receiver.recv_timeout(Duration::from_millis(100)) {
-                    Ok(MockSelectorControllerMessage::GetProducer {
-                        slot: _slot,
-                        response_tx,
-                    }) => {
-                        response_tx.send(PosResult::Ok(address_2)).unwrap();
-                    }
-                    Ok(MockSelectorControllerMessage::GetSelection {
-                        slot: _slot,
-                        response_tx,
-                    }) => {
-                        let selection = Selection {
-                            endorsements: vec![address_1; usize::from(config.thread_count)],
-                            producer: address_1,
-                        };
-
-                        response_tx.send(PosResult::Ok(selection)).unwrap();
-                    }
-                    Ok(msg) => {
-                        panic!(
-                            "Received an unexpected message from mock selector: {:?}",
-                            msg
-                        );
-                    }
-                    Err(_) => {
-                        // timeout, exit the loop
-                        break;
-                    }
-                }
-            }
+            std::thread::sleep(Duration::from_millis(200));
 
             assert_eq!(pool_controller.get_denunciation_count(), 2);
             assert_eq!(
@@ -416,42 +404,29 @@ fn test_denunciation_pool_get() {
                 true
             );
 
-            // Now ask for denunciations
-            // Note that we need 2 threads as the get_block_denunciations call will wait for
-            // the mock execution controller to return
-
             let target_slot_1 = Slot::new(4, 0);
-            let thread_1 = thread::spawn(move || loop {
-                match execution_receiver.recv_timeout(Duration::from_millis(100)) {
-                    Ok(test_exports::MockExecutionControllerMessage::IsDenunciationExecuted {
-                        de_idx,
-                        response_tx,
-                    }) => {
-                        // Note: this should prevent denunciation_orig_1 to be included
-                        if de_idx == de_idx_2 {
-                            response_tx.send(false).unwrap();
-                        } else {
-                            response_tx.send(true).unwrap();
-                        }
-                    }
-                    Ok(msg) => {
-                        panic!(
-                            "Received an unexpected message from mock execution: {:?}",
-                            msg
-                        );
-                    }
-                    Err(_) => break,
-                }
-            });
-            let thread_2 =
-                thread::spawn(move || pool_controller.get_block_denunciations(&target_slot_1));
 
-            thread_1.join().unwrap();
-            let denunciations = thread_2.join().unwrap();
+            let denunciations = pool_controller.get_block_denunciations(&target_slot_1);
 
             assert_eq!(denunciations, vec![denunciation_orig_2]);
 
             pool_manager.stop();
-        },
-    )
+        }
+    }
+}
+
+// The _actual_ story of the mock involves some clones that we don't want to worry about.
+// This helper method means that tests need only concern themselves with the actual story.
+fn pool_test_mock_selector_controller(
+    story: MockSelectorController,
+) -> Box<MockSelectorController> {
+    let mut selector_controller = Box::new(MockSelectorController::new());
+    selector_controller
+        .expect_clone_box()
+        .times(2)
+        .returning(move || Box::new(MockSelectorController::new()));
+    selector_controller
+        .expect_clone_box()
+        .return_once(move || Box::new(story));
+    selector_controller
 }
