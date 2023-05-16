@@ -86,30 +86,32 @@ pub struct PoolTestBoilerPlate {
     pub pool_controller: Box<dyn PoolController>,
     pub storage: Storage,
 }
-/// Creates module mocks, providing the environment needed to run the provided closure
-pub fn pool_test(
-    cfg: PoolConfig,
-    execution_story: Box<MockExecutionController>,
-    selector_story: Box<AutoMockSelectorController>,
-) -> PoolTestBoilerPlate {
-    let storage: Storage = Storage::create_root();
-    let endorsement_sender = broadcast::channel(2000).0;
-    let operation_sender = broadcast::channel(5000).0;
-    let (pool_manager, pool_controller) = start_pool_controller(
-        cfg,
-        &storage,
-        execution_story,
-        PoolChannels {
-            endorsement_sender,
-            operation_sender,
-            selector: selector_story,
-        },
-    );
+impl PoolTestBoilerPlate {
+    /// Sets up a pool-system that can bu run, using the mocks-stories provided
+    pub fn pool_test(
+        cfg: PoolConfig,
+        execution_story: Box<MockExecutionController>,
+        selector_story: Box<AutoMockSelectorController>,
+    ) -> Self {
+        let storage: Storage = Storage::create_root();
+        let endorsement_sender = broadcast::channel(2000).0;
+        let operation_sender = broadcast::channel(5000).0;
+        let (pool_manager, pool_controller) = start_pool_controller(
+            cfg,
+            &storage,
+            execution_story,
+            PoolChannels {
+                endorsement_sender,
+                operation_sender,
+                selector: selector_story,
+            },
+        );
 
-    PoolTestBoilerPlate {
-        pool_manager,
-        pool_controller,
-        storage,
+        Self {
+            pool_manager,
+            pool_controller,
+            storage,
+        }
     }
 }
 

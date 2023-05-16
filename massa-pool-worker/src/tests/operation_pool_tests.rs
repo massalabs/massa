@@ -94,7 +94,7 @@ fn test_pool() {
         mut pool_manager,
         mut pool_controller,
         storage: storage_base,
-    } = super::tools::pool_test(pool_config, execution_controller, selector_controller);
+    } = PoolTestBoilerPlate::pool_test(pool_config, execution_controller, selector_controller);
 
     // generate (id, transactions, range of validity) by threads
     let mut thread_tx_lists = vec![Vec::new(); pool_config.thread_count as usize];

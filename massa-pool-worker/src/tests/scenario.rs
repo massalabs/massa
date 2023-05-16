@@ -33,7 +33,6 @@ use massa_pos_exports::MockSelectorController;
 use massa_pos_exports::{PosResult, Selection};
 use massa_signature::KeyPair;
 
-use super::tools::pool_test;
 use super::tools::PoolTestBoilerPlate;
 
 /// # Test simple get operation
@@ -43,7 +42,7 @@ use super::tools::PoolTestBoilerPlate;
 /// Insert multiple operations in the pool. (10)
 ///
 /// Create a mock-execution-controller story:
-/// 1. unexpected_opse_among, returning storage.get_op_refs()
+/// 1. unexpected_opse_among, returning the op-ids of what gets inserted into the pool
 /// 2. get_final_and_candidate_balance, returning 1, 1
 /// 3. repeat #1 9 times
 ///
@@ -57,10 +56,8 @@ fn test_simple_get_operations() {
 
     // setup operations
     let op_gen = OpGenerator::default().creator(keypair.clone()).expirery(1);
-    let ops = create_some_operations(10, &op_gen)
-        .iter()
-        .map(|op| op.id)
-        .collect();
+    let ops = create_some_operations(10, &op_gen);
+    let mock_owned_ops = ops.iter().map(|op| op.id).collect();
 
     let mut execution_controller = Box::new(MockExecutionController::new());
     execution_controller.expect_clone_box().returning(move || {
@@ -68,7 +65,7 @@ fn test_simple_get_operations() {
             10,
             addr,
             vec![(Some(Amount::from_raw(1)), Some(Amount::from_raw(1)))],
-            &ops,
+            &mock_owned_ops,
         ))
     });
 
@@ -85,11 +82,10 @@ fn test_simple_get_operations() {
         mut pool_manager,
         mut pool_controller,
         mut storage,
-    } = pool_test(config, execution_controller, selector_controller);
+    } = PoolTestBoilerPlate::pool_test(config, execution_controller, selector_controller);
 
     // setup storage
-    let op_gen = OpGenerator::default().creator(keypair.clone()).expirery(1);
-    storage.store_operations(create_some_operations(10, &op_gen));
+    storage.store_operations(ops);
     pool_controller.add_operations(storage);
 
     // Allow some time for the pool to add the operations
@@ -189,7 +185,7 @@ fn test_get_operations_overflow() {
         mut pool_manager,
         mut pool_controller,
         mut storage,
-    } = pool_test(config, execution_controller, selector_controller);
+    } = PoolTestBoilerPlate::pool_test(config, execution_controller, selector_controller);
 
     storage.store_operations(create_some_operations(10, &op_gen));
     pool_controller.add_operations(storage);
@@ -233,7 +229,7 @@ fn test_block_header_denunciation_creation() {
         mut pool_manager,
         pool_controller,
         storage: _storage,
-    } = pool_test(config, execution_controller, selector_controller);
+    } = PoolTestBoilerPlate::pool_test(config, execution_controller, selector_controller);
 
     pool_controller.add_denunciation_precursor(de_p_1);
     pool_controller.add_denunciation_precursor(de_p_2);
@@ -279,7 +275,7 @@ fn test_endorsement_denunciation_creation() {
             mut pool_manager,
             pool_controller,
             storage: _storage,
-        } = pool_test(config, execution_controller, selector_controller);
+        } = PoolTestBoilerPlate::pool_test(config, execution_controller, selector_controller);
 
         {
             pool_controller.add_denunciation_precursor(de_p_1);
@@ -349,7 +345,7 @@ fn test_denunciation_pool_get() {
         mut pool_manager,
         pool_controller,
         storage: _storage,
-    } = pool_test(config, execution_controller, selector_controller);
+    } = PoolTestBoilerPlate::pool_test(config, execution_controller, selector_controller);
 
     // And so begins the test
     {
