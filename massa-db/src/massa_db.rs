@@ -22,7 +22,6 @@ use std::{
     format,
     ops::Bound::{self, Excluded, Included},
     path::PathBuf,
-    println,
     sync::Arc,
 };
 
@@ -189,10 +188,6 @@ where
         {
             match last_change_id.cmp(&self.cur_change_id) {
                 std::cmp::Ordering::Greater => {
-                    println!(
-                        "We are asked for change: {:?}, but we only have changes up to: {:?}",
-                        &last_change_id, &self.cur_change_id
-                    );
                     return Err(MassaDBError::TimeError(String::from(
                         "we don't have this change yet on this node (it's in the future for us)",
                     )));
@@ -282,10 +277,6 @@ where
     ) -> Result<(), MassaDBError> {
         if let Some(change_id) = change_id.clone() {
             if change_id < self.cur_change_id {
-                println!(
-                    "/!\\ TRIED TO APPLY change_id {:?} < cur_change_id {:?} /!\\",
-                    change_id, self.cur_change_id
-                );
                 return Err(MassaDBError::InvalidChangeID(String::from(
                     "change_id should monotonically increase after every write",
                 )));
@@ -491,13 +482,6 @@ impl RawMassaDB<Slot, SlotSerializer, SlotDeserializer> {
     pub fn write_batch(&mut self, batch: DBBatch, change_id: Option<Slot>) {
         self.write_changes(batch, change_id, false)
             .expect(CRUD_ERROR);
-
-        /*let db = &self.db;
-        let handle = db.cf_handle(METADATA_CF).expect(CF_ERROR);
-        batch
-            .write_batch
-            .put_cf(handle, STATE_HASH_KEY, batch.state_hash.to_bytes());
-        db.write(batch.write_batch).expect(CRUD_ERROR);*/
     }
 
     /// Utility function to put / update a key & value and perform the hash XORs

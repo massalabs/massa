@@ -45,7 +45,6 @@ use parking_lot::RwLock;
 use std::{
     collections::HashMap,
     net::{IpAddr, SocketAddr},
-    println,
     sync::Arc,
     thread,
     time::{Duration, Instant},
@@ -493,16 +492,8 @@ pub fn stream_bootstrap_information(
                 .read()
                 .get_batch_to_stream(last_obtained)
                 .map_err(|e| {
-                    println!("SERVER - Error get_batch_to_stream: {}", e);
                     BootstrapError::GeneralError(format!("Error get_batch_to_stream: {}", e))
                 })?;
-
-            println!(
-                "SERVER - state_part for id: {:?}, len new: {}, len updates: {}",
-                state_part.change_id,
-                state_part.new_elements.len(),
-                state_part.updates_on_previous_elements.len()
-            );
 
             let new_state_step = match (&last_state_step, state_part.new_elements.last_key_value())
             {

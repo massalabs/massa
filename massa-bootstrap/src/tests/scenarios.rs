@@ -52,9 +52,8 @@ use massa_versioning_worker::versioning::{
 };
 use mockall::Sequence;
 use parking_lot::RwLock;
-use std::collections::{BTreeMap, HashMap};
+use std::collections::HashMap;
 use std::net::{SocketAddr, TcpStream};
-use std::println;
 use std::sync::{Condvar, Mutex};
 use std::{path::PathBuf, str::FromStr, sync::Arc, time::Duration};
 use tempfile::TempDir;
@@ -199,7 +198,6 @@ fn test_bootstrap_whitelist() {
     conn.unwrap();
 }
 
-//#[ignore]
 #[test]
 fn test_bootstrap_server() {
     let thread_count = 2;
@@ -313,15 +311,60 @@ fn test_bootstrap_server() {
         db_server.clone(),
     )));
 
-    let mut cur_slot: Slot = Slot::new(0, thread_count - 1);
-    for _i in 0..11 {
-        final_state_server
-            .write()
-            .db
-            .write()
-            .write_changes(BTreeMap::new(), Some(cur_slot), false)
+    let mut current_slot: Slot = Slot::new(0, thread_count - 1);
+
+    for _ in 0..10 {
+        std::thread::sleep(Duration::from_millis(500));
+
+        let mut final_write = final_state_server.write();
+
+        let changes = StateChanges {
+            pos_changes: get_random_pos_changes(10),
+            ledger_changes: get_random_ledger_changes(10),
+            async_pool_changes: get_random_async_pool_changes(10, thread_count),
+            executed_ops_changes: get_random_executed_ops_changes(10),
+            executed_denunciations_changes: get_random_executed_de_changes(10),
+        };
+
+        let next = current_slot.get_next_slot(thread_count).unwrap();
+
+        final_write.slot = next;
+
+        let mut batch = DBBatch::new();
+
+        final_write
+            .pos_state
+            .apply_changes_to_batch(changes.pos_changes.clone(), next, false, &mut batch)
             .unwrap();
-        cur_slot = cur_slot.get_next_slot(thread_count).unwrap();
+        final_write
+            .ledger
+            .apply_changes_to_batch(changes.ledger_changes.clone(), &mut batch);
+        final_write
+            .async_pool
+            .apply_changes_to_batch(&changes.async_pool_changes, &mut batch);
+        final_write.executed_ops.apply_changes_to_batch(
+            changes.executed_ops_changes.clone(),
+            next,
+            &mut batch,
+        );
+        final_write.executed_denunciations.apply_changes_to_batch(
+            changes.executed_denunciations_changes.clone(),
+            next,
+            &mut batch,
+        );
+
+        final_write.db.write().write_batch(batch, Some(next));
+
+        let cycle = final_write
+            .slot
+            .get_cycle(final_state_local_config.periods_per_cycle.clone());
+        final_write
+            .pos_state
+            .feed_cycle_state_hash(cycle, final_write.final_state_hash);
+
+        final_write.db.write().cur_change_id = next;
+
+        current_slot = next;
     }
 
     let final_state_client = Arc::new(RwLock::new(FinalState::create_final_state(
@@ -334,7 +377,7 @@ fn test_bootstrap_server() {
             db_client.clone(),
         )
         .unwrap(),
-        final_state_local_config,
+        final_state_local_config.clone(),
         db_client.clone(),
     )));
 
@@ -426,7 +469,6 @@ fn test_bootstrap_server() {
 
                 final_write.slot = next;
 
-                println!("ADDING CHANGES for slot {:?}", next);
                 let changes = StateChanges {
                     pos_changes: get_random_pos_changes(10),
                     ledger_changes: get_random_ledger_changes(10),
@@ -437,11 +479,10 @@ fn test_bootstrap_server() {
 
                 let mut batch = DBBatch::new();
 
-                // TODO: UNCOMMENT AND DEAL WITH ERROR
-                /*final_write
-                .pos_state
-                .apply_changes_to_batch(changes.pos_changes.clone(), next, false, &mut batch)
-                .unwrap();*/
+                final_write
+                    .pos_state
+                    .apply_changes_to_batch(changes.pos_changes.clone(), next, false, &mut batch)
+                    .unwrap();
                 final_write
                     .ledger
                     .apply_changes_to_batch(changes.ledger_changes.clone(), &mut batch);
@@ -460,6 +501,13 @@ fn test_bootstrap_server() {
                 );
 
                 final_write.db.write().write_batch(batch, Some(next));
+
+                let cycle = final_write
+                    .slot
+                    .get_cycle(final_state_local_config.periods_per_cycle.clone());
+                final_write
+                    .pos_state
+                    .feed_cycle_state_hash(cycle, final_write.final_state_hash);
 
                 final_write.db.write().cur_change_id = next;
 
@@ -492,26 +540,6 @@ fn test_bootstrap_server() {
         final_state_client_write.recompute_caches();
         final_state_client_write.init_ledger_hash();
     }
-
-    let slot_client = final_state_client.read().db.read().get_change_id();
-    let slot_server = final_state_server.read().db.read().get_change_id();
-
-    println!("slot client: {:?}", slot_client);
-    println!("slot server: {:?}", slot_server);
-
-    let hash_client = final_state_client
-        .read()
-        .db
-        .read()
-        .compute_hash_from_scratch();
-    let hash_server = final_state_server
-        .read()
-        .db
-        .read()
-        .compute_hash_from_scratch();
-
-    println!("hash client: {:?}", hash_client);
-    println!("hash server: {:?}", hash_server);
 
     // check final states
     assert_eq_final_state(&final_state_server.read(), &final_state_client.read());

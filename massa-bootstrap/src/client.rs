@@ -4,7 +4,6 @@ use std::{
     collections::HashSet,
     io,
     net::{SocketAddr, TcpStream},
-    println,
     sync::{Arc, Condvar, Mutex},
     time::Duration,
 };
@@ -98,26 +97,16 @@ fn stream_final_state_and_consensus(
                         write_final_state.last_slot_before_downtime = last_slot_before_downtime;
                     }
 
-                    println!(
-                        "CLIENT - state_part for id: {:?}, len new: {}, len updates: {}",
-                        state_part.change_id,
-                        state_part.new_elements.len(),
-                        state_part.updates_on_previous_elements.len()
-                    );
-
                     let last_state_step = write_final_state
                         .db
                         .write()
                         .write_batch_bootstrap_client(state_part)
                         .map_err(|e| {
-                            println!("CLIENT: Cannot write received stream batch to disk: {}", e);
                             BootstrapError::GeneralError(format!(
                                 "Cannot write received stream batch to disk: {}",
                                 e
                             ))
                         })?;
-
-                    println!("CLIENT last_state_step : {:?}", last_state_step);
 
                     write_final_state.slot = slot;
 
