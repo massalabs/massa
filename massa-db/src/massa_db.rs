@@ -1,6 +1,6 @@
 use crate::{
     MassaDBError, CF_ERROR, CHANGE_ID_DESER_ERROR, CHANGE_ID_KEY, CRUD_ERROR, METADATA_CF,
-    MONOTREE_CF, /*MONOTREE_ERROR,*/ OPEN_ERROR, STATE_CF, STATE_HASH_ERROR,
+    MONOTREE_CF, MONOTREE_ERROR, OPEN_ERROR, STATE_CF, STATE_HASH_ERROR,
     STATE_HASH_INITIAL_BYTES, STATE_HASH_KEY,
 };
 use massa_hash::Hash;
@@ -12,17 +12,17 @@ use massa_models::{
 use massa_serialization::{DeserializeError, Deserializer, Serializer};
 
 use monotree::{Database, Monotree};
-use parking_lot::Mutex;
+use parking_lot::{Mutex, RwLock};
 use rocksdb::{
     checkpoint::Checkpoint, ColumnFamilyDescriptor, Direction, IteratorMode, Options, WriteBatch,
     DB,
 };
 use std::{
-    collections::BTreeMap,
+    collections::{BTreeMap, HashMap},
     format,
     ops::Bound::{self, Excluded, Included},
     path::PathBuf,
-    sync::Arc,
+    sync::Arc, println, 
 };
 
 type Key = Vec<u8>;
@@ -56,82 +56,80 @@ pub struct RawMassaDB<
     ChangeIDSerializer: Serializer<ChangeID>,
     ChangeIDDeserializer: Deserializer<ChangeID>,
 > {
-    pub db: DB,
+    pub db: Arc<DB>,
     config: MassaDBConfig,
     pub change_history: BTreeMap<ChangeID, BTreeMap<Key, Option<Value>>>,
     // Here we keep it in memory, but maybe this should be only on disk?
     pub cur_change_id: ChangeID,
     change_id_serializer: ChangeIDSerializer,
     change_id_deserializer: ChangeIDDeserializer,
-    #[allow(dead_code)]
-    monotree: Monotree<MassaDBForMonotree<ChangeID, ChangeIDSerializer, ChangeIDDeserializer>>,
+    monotree: Monotree<MassaDBForMonotree>,
     current_batch: Arc<Mutex<WriteBatch>>,
+    current_hashmap: Arc<RwLock<HashMap<[u8; 32], Vec<u8>>>>,
 }
 
-struct MassaDBForMonotree<
-    ChangeID: PartialOrd + Ord + PartialEq + Eq + Clone + std::fmt::Debug,
-    ChangeIDSerializer: Serializer<ChangeID>,
-    ChangeIDDeserializer: Deserializer<ChangeID>,
->(Option<Arc<RawMassaDB<ChangeID, ChangeIDSerializer, ChangeIDDeserializer>>>);
+struct RawMassaDBForMonotree {
+    pub db: Arc<DB>,
+    pub current_batch: Arc<Mutex<WriteBatch>>,
+    pub current_hashmap: Arc<RwLock<HashMap<[u8; 32], Vec<u8>>>>,
+}
 
-impl<ChangeID, ChangeIDSerializer, ChangeIDDeserializer>
-    MassaDBForMonotree<ChangeID, ChangeIDSerializer, ChangeIDDeserializer>
-where
-    ChangeID: PartialOrd + Ord + PartialEq + Eq + Clone + std::fmt::Debug,
-    ChangeIDSerializer: Serializer<ChangeID>,
-    ChangeIDDeserializer: Deserializer<ChangeID>,
-{
-    #[allow(dead_code)]
-    pub fn init(
-        &mut self,
-        db: Arc<RawMassaDB<ChangeID, ChangeIDSerializer, ChangeIDDeserializer>>,
-    ) {
-        self.0 = Some(db);
+struct MassaDBForMonotree(Option<RawMassaDBForMonotree>);
+
+impl MassaDBForMonotree {
+    pub fn init(&mut self, raw_db: RawMassaDBForMonotree) {
+        self.0 = Some(raw_db);
     }
 }
 
-impl<ChangeID, ChangeIDSerializer, ChangeIDDeserializer> Database
-    for MassaDBForMonotree<ChangeID, ChangeIDSerializer, ChangeIDDeserializer>
-where
-    ChangeID: PartialOrd + Ord + PartialEq + Eq + Clone + std::fmt::Debug,
-    ChangeIDSerializer: Serializer<ChangeID>,
-    ChangeIDDeserializer: Deserializer<ChangeID>,
-{
+impl Database for MassaDBForMonotree {
     fn new(_dbpath: &str) -> Self {
         MassaDBForMonotree(None)
     }
 
     fn get(&mut self, key: &[u8]) -> monotree::Result<Option<Vec<u8>>> {
-        match self.0 {
-            Some(ref mut db) => {
-                let handle_monotree = db.db.cf_handle(MONOTREE_CF).expect(CF_ERROR);
-                let value = db.db.get_cf(handle_monotree, key).expect(CRUD_ERROR);
-                Ok(value)
-            }
-            None => Err(monotree::Errors::new("Database not initialized")),
+
+        let Some(raw_db) = self.0.as_ref() else {
+            return Err(monotree::Errors::new("Database not initialized"));
+        };
+
+        if let Some(value) = raw_db.current_hashmap.read().get(key) {
+            return Ok(Some(value.clone()));
         }
+        let handle_monotree = raw_db.db.cf_handle(MONOTREE_CF).expect(CF_ERROR);
+        let value = raw_db.db.get_cf(handle_monotree, key).expect(CRUD_ERROR);
+
+        Ok(value)
     }
 
     fn put(&mut self, key: &[u8], value: Vec<u8>) -> monotree::Result<()> {
-        match self.0 {
-            Some(ref mut db) => {
-                let handle_monotree = db.db.cf_handle(MONOTREE_CF).expect(CF_ERROR);
-                db.current_batch.lock().put_cf(handle_monotree, key, value);
-                Ok(())
-            }
-            None => Err(monotree::Errors::new("Database not initialized")),
-        }
+
+        let Some(raw_db) = self.0.as_mut() else {
+            return Err(monotree::Errors::new("Database not initialized"));
+        };
+
+        let handle_monotree = raw_db.db.cf_handle(MONOTREE_CF).expect(CF_ERROR);
+        raw_db.current_batch.lock().put_cf(handle_monotree, key, value.clone());
+
+        let mut fixed_sized_key = [0_u8; 32];
+        fixed_sized_key.copy_from_slice(key);
+        
+        raw_db.current_hashmap.write().insert(fixed_sized_key, value);
+
+        Ok(())
     }
 
     fn delete(&mut self, key: &[u8]) -> monotree::Result<()> {
-        match self.0 {
-            Some(ref mut db) => {
-                let handle_monotree = db.db.cf_handle(MONOTREE_CF).expect(CF_ERROR);
-                db.current_batch.lock().delete_cf(handle_monotree, key);
-                Ok(())
-            }
-            None => Err(monotree::Errors::new("Database not initialized")),
-        }
+
+        let Some(raw_db) = self.0.as_mut() else {
+            return Err(monotree::Errors::new("Database not initialized"));
+        };
+
+        let handle_monotree = raw_db.db.cf_handle(MONOTREE_CF).expect(CF_ERROR);
+        raw_db.current_batch.lock().delete_cf(handle_monotree, key);
+        raw_db.current_hashmap.write().remove(key);
+
+        Ok(())
     }
 
     fn init_batch(&mut self) -> monotree::Result<()> {
@@ -173,7 +171,16 @@ where
 {
     /// Let's us initialize monotree with a ref to self
     pub fn init_monotree(&mut self) {
-        todo!();
+
+        let raw_db = RawMassaDBForMonotree {
+            db: self.db.clone(),
+            current_batch: self.current_batch.clone(),
+            current_hashmap: self.current_hashmap.clone(),
+        };
+
+        self.monotree
+            .db
+            .init(raw_db);
     }
 
     /// Used for bootstrap servers (get a new batch to stream to the client)
@@ -288,31 +295,37 @@ where
         let handle_state = self.db.cf_handle(STATE_CF).expect(CF_ERROR);
         let handle_metadata = self.db.cf_handle(METADATA_CF).expect(CF_ERROR);
 
-        /*let hash = self.get_db_hash();
-        let mut root = Some(hash.into_bytes());*/
+        let mut root = self.get_db_hash_monotree().map(|h| h.into_bytes());
 
         *self.current_batch.lock() = WriteBatch::default();
 
         for (key, value) in changes.iter() {
             if let Some(value) = value {
+
                 self.current_batch.lock().put_cf(handle_state, key, value);
-                /*let key_hash = Hash::compute_from(key);
+                let key_hash = Hash::compute_from(key);
                 let value_hash = Hash::compute_from(value);
+
+                println!("Insert key: {:?} value: {:?}", key_hash, value_hash);
+
                 root = self
                     .monotree
                     .insert(root.as_ref(), key_hash.to_bytes(), value_hash.to_bytes())
-                    .expect(MONOTREE_ERROR);*/
+                    .expect(MONOTREE_ERROR);
             } else {
                 self.current_batch.lock().delete_cf(handle_state, key);
-                /*let key_hash = Hash::compute_from(key);
+                let key_hash = Hash::compute_from(key);
+
+                println!("Remove key: {:?}", key_hash);
+                
                 root = self
                     .monotree
                     .remove(root.as_ref(), key_hash.to_bytes())
-                    .expect(MONOTREE_ERROR);*/
+                    .expect(MONOTREE_ERROR);
             }
         }
 
-        if let Some(change_id) = change_id {
+        /*if let Some(change_id) = change_id {
             let mut change_id_bytes = Vec::new();
             self.change_id_serializer
                 .serialize(&change_id, &mut change_id_bytes)
@@ -322,20 +335,23 @@ where
                 .lock()
                 .put_cf(handle_metadata, CHANGE_ID_KEY, &change_id_bytes);
 
-            /*let key_hash = Hash::compute_from(CHANGE_ID_KEY);
+            let key_hash = Hash::compute_from(CHANGE_ID_KEY);
             let value_hash = Hash::compute_from(&change_id_bytes);
 
             root = self
                 .monotree
                 .insert(root.as_ref(), key_hash.to_bytes(), value_hash.to_bytes())
-                .expect(MONOTREE_ERROR);*/
-        }
+                .expect(MONOTREE_ERROR);
+        }*/
 
-        /*if let Some(root) = root {
+        if let Some(root) = root {
+
+            println!("root: {:?}", root);
+
             self.current_batch
                 .lock()
                 .put_cf(handle_metadata, STATE_HASH_KEY, root);
-        }*/
+        }
 
         let batch;
         {
@@ -345,7 +361,7 @@ where
 
             self.db.write(batch).map_err(|e| {
                 MassaDBError::RocksDBError(format!("Can't write batch to disk: {}", e))
-            })?; // note that None values have to be deleted
+            })?;
         }
 
         self.change_history
@@ -404,6 +420,21 @@ where
         Ok(new_cursor)
     }
 
+    /// Get the current state hash, return None if not set (needed for monotree)
+    pub fn get_db_hash_monotree(&self) -> Option<Hash> {
+        let db = &self.db;
+        let handle = db.cf_handle(METADATA_CF).expect(CF_ERROR);
+        if let Some(state_hash_bytes) = db
+            .get_cf(handle, STATE_HASH_KEY)
+            .expect(CRUD_ERROR)
+            .as_deref()
+        {
+            Some(Hash::from_bytes(state_hash_bytes.try_into().expect(STATE_HASH_ERROR)))
+        } else {
+            None
+        }
+    }
+
     /// Get the current state hash
     pub fn get_db_hash(&self) -> Hash {
         let db = &self.db;
@@ -433,6 +464,7 @@ impl RawMassaDB<Slot, SlotSerializer, SlotDeserializer> {
             vec![
                 ColumnFamilyDescriptor::new(STATE_CF, Options::default()),
                 ColumnFamilyDescriptor::new(METADATA_CF, Options::default()),
+                ColumnFamilyDescriptor::new(MONOTREE_CF, Options::default()),
             ],
         )
         .expect(OPEN_ERROR);
@@ -449,8 +481,8 @@ impl RawMassaDB<Slot, SlotSerializer, SlotDeserializer> {
                 .expect("Critical error: path is not valid UTF-8"),
         );
 
-        Self {
-            db,
+        let mut massa_db = Self {
+            db: Arc::new(db),
             config,
             change_history: BTreeMap::new(),
             cur_change_id: Slot {
@@ -460,8 +492,12 @@ impl RawMassaDB<Slot, SlotSerializer, SlotDeserializer> {
             change_id_serializer: SlotSerializer::new(),
             change_id_deserializer,
             current_batch: Arc::new(Mutex::new(WriteBatch::default())),
+            current_hashmap: Arc::new(RwLock::new(HashMap::new())),
             monotree,
-        }
+        };
+
+        massa_db.init_monotree();
+        massa_db
     }
 
     /// Creates a new hard copy of the DB, for the given slot
@@ -492,28 +528,6 @@ impl RawMassaDB<Slot, SlotSerializer, SlotDeserializer> {
     /// Utility function to delete a key & value and perform the hash XORs
     pub fn delete_key(&self, batch: &mut DBBatch, key: Vec<u8>) {
         batch.insert(key, None);
-    }
-
-    /// Get the current state hash
-    pub fn compute_hash_from_scratch(&self) -> Hash {
-        let db = &self.db;
-
-        let handle_state = db.cf_handle(STATE_CF).expect(CF_ERROR);
-        let handle_metadata = db.cf_handle(METADATA_CF).expect(CF_ERROR);
-
-        let mut hash = Hash::from_bytes(STATE_HASH_INITIAL_BYTES);
-
-        for (serialized_key, serialized_value) in
-            db.iterator_cf(handle_state, IteratorMode::Start).flatten()
-        {
-            hash ^= Hash::compute_from(&[serialized_key, serialized_value].concat());
-        }
-
-        if let Ok(Some(serialized_value)) = db.get_cf(handle_metadata, CHANGE_ID_KEY) {
-            hash ^= Hash::compute_from(&[CHANGE_ID_KEY.to_vec(), serialized_value].concat());
-        }
-
-        hash
     }
 
     /// Utility function to delete all keys in a prefix
