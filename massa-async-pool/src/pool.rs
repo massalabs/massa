@@ -465,7 +465,6 @@ impl AsyncPool {
     /// * `batch`: the given operation batch to update
     fn put_entry(&self, message_id: &AsyncMessageId, message: AsyncMessage, batch: &mut DBBatch) {
         let db = self.db.read();
-        let handle = db.db.cf_handle(STATE_CF).expect(CF_ERROR);
 
         let mut serialized_message_id = Vec::new();
         self.message_id_serializer
@@ -479,7 +478,6 @@ impl AsyncPool {
             .serialize(&message.emission_slot, &mut serialized_emission_slot)
             .expect(MESSAGE_SER_ERROR);
         db.put_or_update_entry_value(
-            handle,
             batch,
             emission_slot_key!(serialized_message_id),
             &serialized_emission_slot,
@@ -492,7 +490,6 @@ impl AsyncPool {
             .serialize(&message.emission_index, &mut serialized_emission_index)
             .expect(MESSAGE_SER_ERROR);
         db.put_or_update_entry_value(
-            handle,
             batch,
             emission_index_key!(serialized_message_id),
             &serialized_emission_index,
@@ -505,7 +502,6 @@ impl AsyncPool {
             .serialize(&message.sender, &mut serialized_sender)
             .expect(MESSAGE_SER_ERROR);
         db.put_or_update_entry_value(
-            handle,
             batch,
             sender_key!(serialized_message_id),
             &serialized_sender,
@@ -518,7 +514,6 @@ impl AsyncPool {
             .serialize(&message.destination, &mut serialized_destination)
             .expect(MESSAGE_SER_ERROR);
         db.put_or_update_entry_value(
-            handle,
             batch,
             destination_key!(serialized_message_id),
             &serialized_destination,
@@ -531,7 +526,6 @@ impl AsyncPool {
         serialized_handler.extend([handler_name_len]);
         serialized_handler.extend(handler_bytes);
         db.put_or_update_entry_value(
-            handle,
             batch,
             handler_key!(serialized_message_id),
             &serialized_handler,
@@ -544,7 +538,6 @@ impl AsyncPool {
             .serialize(&message.max_gas, &mut serialized_max_gas)
             .expect(MESSAGE_SER_ERROR);
         db.put_or_update_entry_value(
-            handle,
             batch,
             max_gas_key!(serialized_message_id),
             &serialized_max_gas,
@@ -556,12 +549,7 @@ impl AsyncPool {
             .amount_serializer
             .serialize(&message.fee, &mut serialized_fee)
             .expect(MESSAGE_SER_ERROR);
-        db.put_or_update_entry_value(
-            handle,
-            batch,
-            fee_key!(serialized_message_id),
-            &serialized_fee,
-        );
+        db.put_or_update_entry_value(batch, fee_key!(serialized_message_id), &serialized_fee);
 
         // Coins
         let mut serialized_coins = Vec::new();
@@ -569,12 +557,7 @@ impl AsyncPool {
             .amount_serializer
             .serialize(&message.coins, &mut serialized_coins)
             .expect(MESSAGE_SER_ERROR);
-        db.put_or_update_entry_value(
-            handle,
-            batch,
-            coins_key!(serialized_message_id),
-            &serialized_coins,
-        );
+        db.put_or_update_entry_value(batch, coins_key!(serialized_message_id), &serialized_coins);
 
         // Validity start
         let mut serialized_validity_start = Vec::new();
@@ -583,7 +566,6 @@ impl AsyncPool {
             .serialize(&message.validity_start, &mut serialized_validity_start)
             .expect(MESSAGE_SER_ERROR);
         db.put_or_update_entry_value(
-            handle,
             batch,
             validity_start_key!(serialized_message_id),
             &serialized_validity_start,
@@ -596,7 +578,6 @@ impl AsyncPool {
             .serialize(&message.validity_end, &mut serialized_validity_end)
             .expect(MESSAGE_SER_ERROR);
         db.put_or_update_entry_value(
-            handle,
             batch,
             validity_end_key!(serialized_message_id),
             &serialized_validity_end,
@@ -608,12 +589,7 @@ impl AsyncPool {
             .vec_u8_serializer
             .serialize(&message.data, &mut serialized_data)
             .expect(MESSAGE_SER_ERROR);
-        db.put_or_update_entry_value(
-            handle,
-            batch,
-            data_key!(serialized_message_id),
-            &serialized_data,
-        );
+        db.put_or_update_entry_value(batch, data_key!(serialized_message_id), &serialized_data);
 
         // Trigger
         let mut serialized_trigger = Vec::new();
@@ -622,7 +598,6 @@ impl AsyncPool {
             .serialize(&message.trigger, &mut serialized_trigger)
             .expect(MESSAGE_SER_ERROR);
         db.put_or_update_entry_value(
-            handle,
             batch,
             trigger_key!(serialized_message_id),
             &serialized_trigger,
@@ -635,7 +610,6 @@ impl AsyncPool {
             .serialize(&message.can_be_executed, &mut serialized_can_be_executed)
             .expect(MESSAGE_SER_ERROR);
         db.put_or_update_entry_value(
-            handle,
             batch,
             can_be_executed_key!(serialized_message_id),
             &serialized_can_be_executed,
@@ -655,7 +629,6 @@ impl AsyncPool {
     ) {
         let db = self.db.read();
 
-        let handle = db.db.cf_handle(STATE_CF).expect(CF_ERROR);
         let mut serialized_message_id = Vec::new();
         self.message_id_serializer
             .serialize(message_id, &mut serialized_message_id)
@@ -669,7 +642,6 @@ impl AsyncPool {
                 .serialize(&emission_slot, &mut serialized_emission_slot)
                 .expect(MESSAGE_SER_ERROR);
             db.put_or_update_entry_value(
-                handle,
                 batch,
                 emission_slot_key!(serialized_message_id),
                 &serialized_emission_slot,
@@ -684,7 +656,6 @@ impl AsyncPool {
                 .serialize(&emission_index, &mut serialized_emission_index)
                 .expect(MESSAGE_SER_ERROR);
             db.put_or_update_entry_value(
-                handle,
                 batch,
                 emission_index_key!(serialized_message_id),
                 &serialized_emission_index,
@@ -699,7 +670,6 @@ impl AsyncPool {
                 .serialize(&sender, &mut serialized_sender)
                 .expect(MESSAGE_SER_ERROR);
             db.put_or_update_entry_value(
-                handle,
                 batch,
                 sender_key!(serialized_message_id),
                 &serialized_sender,
@@ -714,7 +684,6 @@ impl AsyncPool {
                 .serialize(&destination, &mut serialized_destination)
                 .expect(MESSAGE_SER_ERROR);
             db.put_or_update_entry_value(
-                handle,
                 batch,
                 destination_key!(serialized_message_id),
                 &serialized_destination,
@@ -729,7 +698,6 @@ impl AsyncPool {
             serialized_handler.extend([handler_name_len]);
             serialized_handler.extend(handler_bytes);
             db.put_or_update_entry_value(
-                handle,
                 batch,
                 handler_key!(serialized_message_id),
                 &serialized_handler,
@@ -744,7 +712,6 @@ impl AsyncPool {
                 .serialize(&max_gas, &mut serialized_max_gas)
                 .expect(MESSAGE_SER_ERROR);
             db.put_or_update_entry_value(
-                handle,
                 batch,
                 max_gas_key!(serialized_message_id),
                 &serialized_max_gas,
@@ -758,12 +725,7 @@ impl AsyncPool {
                 .amount_serializer
                 .serialize(&fee, &mut serialized_fee)
                 .expect(MESSAGE_SER_ERROR);
-            db.put_or_update_entry_value(
-                handle,
-                batch,
-                fee_key!(serialized_message_id),
-                &serialized_fee,
-            );
+            db.put_or_update_entry_value(batch, fee_key!(serialized_message_id), &serialized_fee);
         }
 
         // Coins
@@ -774,7 +736,6 @@ impl AsyncPool {
                 .serialize(&coins, &mut serialized_coins)
                 .expect(MESSAGE_SER_ERROR);
             db.put_or_update_entry_value(
-                handle,
                 batch,
                 coins_key!(serialized_message_id),
                 &serialized_coins,
@@ -789,7 +750,6 @@ impl AsyncPool {
                 .serialize(&validity_start, &mut serialized_validity_start)
                 .expect(MESSAGE_SER_ERROR);
             db.put_or_update_entry_value(
-                handle,
                 batch,
                 validity_start_key!(serialized_message_id),
                 &serialized_validity_start,
@@ -804,7 +764,6 @@ impl AsyncPool {
                 .serialize(&validity_end, &mut serialized_validity_end)
                 .expect(MESSAGE_SER_ERROR);
             db.put_or_update_entry_value(
-                handle,
                 batch,
                 validity_end_key!(serialized_message_id),
                 &serialized_validity_end,
@@ -818,12 +777,7 @@ impl AsyncPool {
                 .vec_u8_serializer
                 .serialize(&data, &mut serialized_data)
                 .expect(MESSAGE_SER_ERROR);
-            db.put_or_update_entry_value(
-                handle,
-                batch,
-                data_key!(serialized_message_id),
-                &serialized_data,
-            );
+            db.put_or_update_entry_value(batch, data_key!(serialized_message_id), &serialized_data);
         }
 
         // Trigger
@@ -834,7 +788,6 @@ impl AsyncPool {
                 .serialize(&trigger, &mut serialized_trigger)
                 .expect(MESSAGE_SER_ERROR);
             db.put_or_update_entry_value(
-                handle,
                 batch,
                 trigger_key!(serialized_message_id),
                 &serialized_trigger,
@@ -849,7 +802,6 @@ impl AsyncPool {
                 .serialize(&can_be_executed, &mut serialized_can_be_executed)
                 .expect(MESSAGE_SER_ERROR);
             db.put_or_update_entry_value(
-                handle,
                 batch,
                 can_be_executed_key!(serialized_message_id),
                 &serialized_can_be_executed,
@@ -863,24 +815,23 @@ impl AsyncPool {
     /// * batch: the given operation batch to update
     fn delete_entry(&self, message_id: &AsyncMessageId, batch: &mut DBBatch) {
         let db = self.db.read();
-        let handle = db.db.cf_handle(STATE_CF).expect(CF_ERROR);
         let mut serialized_message_id = Vec::new();
         self.message_id_serializer
             .serialize(message_id, &mut serialized_message_id)
             .expect(MESSAGE_ID_SER_ERROR);
 
-        db.delete_key(handle, batch, emission_slot_key!(serialized_message_id));
-        db.delete_key(handle, batch, emission_index_key!(serialized_message_id));
-        db.delete_key(handle, batch, sender_key!(serialized_message_id));
-        db.delete_key(handle, batch, destination_key!(serialized_message_id));
-        db.delete_key(handle, batch, handler_key!(serialized_message_id));
-        db.delete_key(handle, batch, max_gas_key!(serialized_message_id));
-        db.delete_key(handle, batch, fee_key!(serialized_message_id));
-        db.delete_key(handle, batch, coins_key!(serialized_message_id));
-        db.delete_key(handle, batch, validity_start_key!(serialized_message_id));
-        db.delete_key(handle, batch, validity_end_key!(serialized_message_id));
-        db.delete_key(handle, batch, data_key!(serialized_message_id));
-        db.delete_key(handle, batch, trigger_key!(serialized_message_id));
-        db.delete_key(handle, batch, can_be_executed_key!(serialized_message_id));
+        db.delete_key(batch, emission_slot_key!(serialized_message_id));
+        db.delete_key(batch, emission_index_key!(serialized_message_id));
+        db.delete_key(batch, sender_key!(serialized_message_id));
+        db.delete_key(batch, destination_key!(serialized_message_id));
+        db.delete_key(batch, handler_key!(serialized_message_id));
+        db.delete_key(batch, max_gas_key!(serialized_message_id));
+        db.delete_key(batch, fee_key!(serialized_message_id));
+        db.delete_key(batch, coins_key!(serialized_message_id));
+        db.delete_key(batch, validity_start_key!(serialized_message_id));
+        db.delete_key(batch, validity_end_key!(serialized_message_id));
+        db.delete_key(batch, data_key!(serialized_message_id));
+        db.delete_key(batch, trigger_key!(serialized_message_id));
+        db.delete_key(batch, can_be_executed_key!(serialized_message_id));
     }
 }

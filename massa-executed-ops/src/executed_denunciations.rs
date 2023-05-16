@@ -192,19 +192,13 @@ impl ExecutedDenunciations {
     /// * `batch`: the given operation batch to update
     fn put_entry(&self, de_idx: &DenunciationIndex, batch: &mut DBBatch) {
         let db = self.db.read();
-        let handle = db.db.cf_handle(STATE_CF).expect(CF_ERROR);
 
         let mut serialized_de_idx = Vec::new();
         self.denunciation_index_serializer
             .serialize(de_idx, &mut serialized_de_idx)
             .expect(EXECUTED_DENUNCIATIONS_INDEX_SER_ERROR);
 
-        db.put_or_update_entry_value(
-            handle,
-            batch,
-            denunciation_index_key!(serialized_de_idx),
-            b"",
-        );
+        db.put_or_update_entry_value(batch, denunciation_index_key!(serialized_de_idx), b"");
     }
 
     /// Remove a denunciation_index from the DB
@@ -213,14 +207,13 @@ impl ExecutedDenunciations {
     /// * batch: the given operation batch to update
     fn delete_entry(&self, de_idx: &DenunciationIndex, batch: &mut DBBatch) {
         let db = self.db.read();
-        let handle = db.db.cf_handle(STATE_CF).expect(CF_ERROR);
 
         let mut serialized_de_idx = Vec::new();
         self.denunciation_index_serializer
             .serialize(de_idx, &mut serialized_de_idx)
             .expect(EXECUTED_DENUNCIATIONS_INDEX_SER_ERROR);
 
-        db.delete_key(handle, batch, denunciation_index_key!(serialized_de_idx));
+        db.delete_key(batch, denunciation_index_key!(serialized_de_idx));
     }
 }
 

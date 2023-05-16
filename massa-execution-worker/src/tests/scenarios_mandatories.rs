@@ -1604,7 +1604,7 @@ mod tests {
 
         let initial_deferred_credits = Amount::from_str("100").unwrap();
 
-        let mut batch = DBBatch::new(sample_state.read().db.read().get_db_hash());
+        let mut batch = DBBatch::new();
 
         // set initial_deferred_credits that will be reimbursed at first block
         sample_state.write().pos_state.put_deferred_credits_entry(

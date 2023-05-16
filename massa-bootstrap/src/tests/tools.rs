@@ -179,13 +179,13 @@ fn get_random_pos_state(r_limit: u64, mut pos: PoSFinalState) -> PoSFinalState {
         deferred_credits,
     };
 
-    let mut batch = DBBatch::new(pos.db.read().get_db_hash());
+    let mut batch = DBBatch::new();
 
     pos.create_initial_cycle(&mut batch);
 
     pos.db.write().write_batch(batch, None);
 
-    let mut batch = DBBatch::new(pos.db.read().get_db_hash());
+    let mut batch = DBBatch::new();
 
     pos.apply_changes_to_batch(changes, Slot::new(0, 0), false, &mut batch)
         .expect("Critical: Error while applying changes to pos_state");
@@ -232,7 +232,7 @@ pub fn get_random_executed_ops(
     db: Arc<RwLock<MassaDB>>,
 ) -> ExecutedOps {
     let mut executed_ops = ExecutedOps::new(config.clone(), db.clone());
-    let mut batch = DBBatch::new(executed_ops.db.read().get_db_hash());
+    let mut batch = DBBatch::new();
     executed_ops.apply_changes_to_batch(get_random_executed_ops_changes(10), slot, &mut batch);
     db.write().write_batch(batch, None);
     executed_ops
@@ -262,7 +262,7 @@ pub fn get_random_executed_de(
     db: Arc<RwLock<MassaDB>>,
 ) -> ExecutedDenunciations {
     let mut executed_de = ExecutedDenunciations::new(config, db);
-    let mut batch = DBBatch::new(executed_de.db.read().get_db_hash());
+    let mut batch = DBBatch::new();
     executed_de.apply_changes_to_batch(get_random_executed_de_changes(10), slot, &mut batch);
 
     executed_de.db.write().write_batch(batch, None);
@@ -322,7 +322,7 @@ pub fn get_random_final_state_bootstrap(
     let final_ledger = create_final_ledger(db.clone(), config.ledger_config.clone(), sorted_ledger);
 
     let mut async_pool = AsyncPool::new(config.async_pool_config.clone(), db.clone());
-    let mut batch = DBBatch::new(async_pool.db.read().get_db_hash());
+    let mut batch = DBBatch::new();
 
     async_pool.apply_changes_to_batch(&messages, &mut batch);
 

@@ -11,7 +11,7 @@ use massa_models::{
 };
 use massa_serialization::{DeserializeError, Deserializer, Serializer};
 use parking_lot::RwLock;
-use rocksdb::{ColumnFamily, Direction, IteratorMode, ReadOptions};
+use rocksdb::{Direction, IteratorMode, ReadOptions};
 use std::collections::{BTreeSet, HashMap};
 use std::{fmt::Debug, sync::Arc};
 
@@ -86,7 +86,7 @@ impl LedgerDB {
     ///
     /// # Arguments
     pub fn load_initial_ledger(&mut self, initial_ledger: HashMap<Address, LedgerEntry>) {
-        let mut batch = DBBatch::new(self.db.read().get_db_hash());
+        let mut batch = DBBatch::new();
 
         for (address, entry) in initial_ledger {
             self.put_entry(&address, entry, &mut batch);
@@ -194,7 +194,7 @@ impl LedgerDB {
 // Private helpers
 impl LedgerDB {
     /// Internal function to put a key & value and perform the ledger hash XORs
-    fn put_entry_value(&self, handle: &ColumnFamily, batch: &mut DBBatch, key: &Key, value: &[u8]) {
+    fn put_entry_value(&self, batch: &mut DBBatch, key: &Key, value: &[u8]) {
         let mut serialized_key = Vec::new();
         self.key_serializer_db
             .serialize(key, &mut serialized_key)
@@ -202,16 +202,7 @@ impl LedgerDB {
 
         self.db
             .read()
-            .put_or_update_entry_value(handle, batch, serialized_key, value);
-
-        /*let mut len_bytes = Vec::new();
-        self.len_serializer
-            .serialize(&(serialized_key.len() as u64), &mut len_bytes)
-            .expect(KEY_LEN_SER_ERROR);
-        let hash = Hash::compute_from(&[&len_bytes, &serialized_key, value].concat());
-        *batch.ledger_hash.as_mut().expect(WRONG_BATCH_TYPE_ERROR) ^= hash;
-        batch.aeh_list.insert(serialized_key.clone(), hash);
-        batch.write_batch.put_cf(handle, serialized_key, value);*/
+            .put_or_update_entry_value(batch, serialized_key, value);
     }
 
     /// Add every sub-entry individually for a given entry.
@@ -221,8 +212,6 @@ impl LedgerDB {
     /// * `ledger_entry`: complete entry to be added
     /// * `batch`: the given operation batch to update
     fn put_entry(&self, addr: &Address, ledger_entry: LedgerEntry, batch: &mut DBBatch) {
-        let db = self.db.read();
-        let handle = db.db.cf_handle(STATE_CF).expect(CF_ERROR);
         // Amount serialization never fails
         let mut bytes_balance = Vec::new();
         self.amount_serializer
@@ -235,40 +224,19 @@ impl LedgerDB {
             .unwrap();
 
         // balance
-        self.put_entry_value(
-            handle,
-            batch,
-            &Key::new(addr, KeyType::BALANCE),
-            &bytes_balance,
-        );
+        self.put_entry_value(batch, &Key::new(addr, KeyType::BALANCE), &bytes_balance);
 
         // bytecode
-        self.put_entry_value(
-            handle,
-            batch,
-            &Key::new(addr, KeyType::BYTECODE),
-            &bytes_bytecode,
-        );
+        self.put_entry_value(batch, &Key::new(addr, KeyType::BYTECODE), &bytes_bytecode);
 
         // datastore
         for (hash, entry) in ledger_entry.datastore {
-            self.put_entry_value(
-                handle,
-                batch,
-                &Key::new(addr, KeyType::DATASTORE(hash)),
-                &entry,
-            );
+            self.put_entry_value(batch, &Key::new(addr, KeyType::DATASTORE(hash)), &entry);
         }
     }
 
     /// Internal function to update a key & value and perform the ledger hash XORs
-    fn update_key_value(
-        &self,
-        handle: &ColumnFamily,
-        batch: &mut DBBatch,
-        key: &Key,
-        value: &[u8],
-    ) {
+    fn update_key_value(&self, batch: &mut DBBatch, key: &Key, value: &[u8]) {
         let mut serialized_key = Vec::new();
         self.key_serializer_db
             .serialize(key, &mut serialized_key)
@@ -276,7 +244,7 @@ impl LedgerDB {
 
         self.db
             .read()
-            .put_or_update_entry_value(handle, batch, serialized_key, value);
+            .put_or_update_entry_value(batch, serialized_key, value);
 
         /*let mut len_bytes = Vec::new();
         self.len_serializer
@@ -302,9 +270,6 @@ impl LedgerDB {
     /// * `entry_update`: a descriptor of the entry updates to be applied
     /// * `batch`: the given operation batch to update
     fn update_entry(&self, addr: &Address, entry_update: LedgerEntryUpdate, batch: &mut DBBatch) {
-        let db = self.db.read();
-        let handle = db.db.cf_handle(STATE_CF).expect(CF_ERROR);
-
         // balance
         if let SetOrKeep::Set(balance) = entry_update.balance {
             let mut bytes = Vec::new();
@@ -314,7 +279,7 @@ impl LedgerDB {
                 .unwrap();
 
             let balance_key = Key::new(addr, KeyType::BALANCE);
-            self.update_key_value(handle, batch, &balance_key, &bytes);
+            self.update_key_value(batch, &balance_key, &bytes);
         }
 
         // bytecode
@@ -325,43 +290,27 @@ impl LedgerDB {
                 .unwrap();
 
             let bytecode_key = Key::new(addr, KeyType::BYTECODE);
-            self.update_key_value(handle, batch, &bytecode_key, &bytes);
+            self.update_key_value(batch, &bytecode_key, &bytes);
         }
 
         // datastore
         for (hash, update) in entry_update.datastore {
             let datastore_key = Key::new(addr, KeyType::DATASTORE(hash));
             match update {
-                SetOrDelete::Set(entry) => {
-                    self.update_key_value(handle, batch, &datastore_key, &entry)
-                }
-                SetOrDelete::Delete => self.delete_key(handle, batch, &datastore_key),
+                SetOrDelete::Set(entry) => self.update_key_value(batch, &datastore_key, &entry),
+                SetOrDelete::Delete => self.delete_key(batch, &datastore_key),
             }
         }
     }
 
     /// Internal function to delete a key and perform the ledger hash XOR
-    fn delete_key(&self, handle: &ColumnFamily, batch: &mut DBBatch, key: &Key) {
+    fn delete_key(&self, batch: &mut DBBatch, key: &Key) {
         let mut serialized_key = Vec::new();
         self.key_serializer_db
             .serialize(key, &mut serialized_key)
             .expect(KEY_SER_ERROR);
 
-        self.db.read().delete_key(handle, batch, serialized_key);
-
-        /*if let Some(added_hash) = batch.aeh_list.get(&serialized_key) {
-            *batch.ledger_hash.as_mut().expect(WRONG_BATCH_TYPE_ERROR) ^= *added_hash;
-        } else if let Some(prev_bytes) =
-            db.db.get_pinned_cf(handle, &serialized_key).expect(CRUD_ERROR)
-        {
-            let mut len_bytes = Vec::new();
-            self.len_serializer
-                .serialize(&(serialized_key.len() as u64), &mut len_bytes)
-                .expect(KEY_LEN_SER_ERROR);
-            *batch.ledger_hash.as_mut().expect(WRONG_BATCH_TYPE_ERROR) ^=
-                Hash::compute_from(&[&len_bytes, &serialized_key, &prev_bytes[..]].concat());
-        }
-        batch.write_batch.delete_cf(handle, serialized_key);*/
+        self.db.read().delete_key(batch, serialized_key);
     }
 
     /// Delete every sub-entry associated to the given address.
@@ -373,10 +322,10 @@ impl LedgerDB {
         let handle = db.db.cf_handle(STATE_CF).expect(CF_ERROR);
 
         // balance
-        self.delete_key(handle, batch, &Key::new(addr, KeyType::BALANCE));
+        self.delete_key(batch, &Key::new(addr, KeyType::BALANCE));
 
         // bytecode
-        self.delete_key(handle, batch, &Key::new(addr, KeyType::BYTECODE));
+        self.delete_key(batch, &Key::new(addr, KeyType::BYTECODE));
 
         // datastore
         let mut opt = ReadOptions::default();
@@ -395,7 +344,7 @@ impl LedgerDB {
                 .key_deserializer_db
                 .deserialize::<DeserializeError>(&key)
                 .expect(KEY_DESER_ERROR);
-            self.delete_key(handle, batch, &deserialized_key);
+            self.delete_key(batch, &deserialized_key);
         }
     }
 }
@@ -552,7 +501,7 @@ mod tests {
         let db = Arc::new(RwLock::new(MassaDB::new(db_config)));
 
         let ledger_db = LedgerDB::new(db.clone(), 32, 255);
-        let mut batch = DBBatch::new(ledger_db.db.read().get_db_hash());
+        let mut batch = DBBatch::new();
 
         ledger_db.put_entry(&addr, entry, &mut batch);
         ledger_db.update_entry(&addr, entry_update, &mut batch);
@@ -594,7 +543,7 @@ mod tests {
 
         // delete entry
 
-        let mut batch = DBBatch::new(ledger_db.db.read().get_db_hash());
+        let mut batch = DBBatch::new();
         ledger_db.delete_entry(&addr, &mut batch);
 
         ledger_db.db.write().write_batch(batch, None);

@@ -318,7 +318,7 @@ fn test_bootstrap_server() {
             .write()
             .db
             .write()
-            .write_changes(BTreeMap::new(), Some(cur_slot), None, false)
+            .write_changes(BTreeMap::new(), Some(cur_slot), false)
             .unwrap();
         cur_slot = cur_slot.get_next_slot(thread_count).unwrap();
     }
@@ -434,7 +434,7 @@ fn test_bootstrap_server() {
                     executed_denunciations_changes: get_random_executed_de_changes(10),
                 };
 
-                let mut batch = DBBatch::new(final_write.db.read().get_db_hash());
+                let mut batch = DBBatch::new();
 
                 // TODO: UNCOMMENT AND DEAL WITH ERROR
                 /*final_write

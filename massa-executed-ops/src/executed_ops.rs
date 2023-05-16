@@ -196,7 +196,6 @@ impl ExecutedOps {
     /// * `batch`: the given operation batch to update
     fn put_entry(&self, op_id: &OperationId, value: &(bool, Slot), batch: &mut DBBatch) {
         let db = self.db.read();
-        let handle = db.db.cf_handle(STATE_CF).expect(CF_ERROR);
 
         let mut serialized_op_id = Vec::new();
         self.operation_id_serializer
@@ -211,12 +210,7 @@ impl ExecutedOps {
             .serialize(&value.1, &mut serialized_op_value)
             .expect(EXECUTED_OPS_ID_SER_ERROR);
 
-        db.put_or_update_entry_value(
-            handle,
-            batch,
-            op_id_key!(serialized_op_id),
-            &serialized_op_value,
-        );
+        db.put_or_update_entry_value(batch, op_id_key!(serialized_op_id), &serialized_op_value);
     }
 
     /// Remove a denunciation_index from the DB
@@ -225,14 +219,13 @@ impl ExecutedOps {
     /// * batch: the given operation batch to update
     fn delete_entry(&self, op_id: &OperationId, batch: &mut DBBatch) {
         let db = self.db.read();
-        let handle = db.db.cf_handle(STATE_CF).expect(CF_ERROR);
 
         let mut serialized_op_id = Vec::new();
         self.operation_id_serializer
             .serialize(op_id, &mut serialized_op_id)
             .expect(EXECUTED_OPS_ID_SER_ERROR);
 
-        db.delete_key(handle, batch, op_id_key!(serialized_op_id));
+        db.delete_key(batch, op_id_key!(serialized_op_id));
     }
 }
 
@@ -296,11 +289,11 @@ fn test_executed_ops_xor_computing() {
         thread: 0,
     };
 
-    let mut batch_a = DBBatch::new(db_a.read().get_db_hash());
-    let mut batch_c = DBBatch::new(db_c.read().get_db_hash());
+    let mut batch_a = DBBatch::new();
+    let mut batch_c = DBBatch::new();
     a.apply_changes_to_batch(change_a, apply_slot, &mut batch_a);
     db_a.write().write_batch(batch_a, None);
-    let mut batch_a = DBBatch::new(db_a.read().get_db_hash());
+    let mut batch_a = DBBatch::new();
     a.apply_changes_to_batch(change_b, apply_slot, &mut batch_a);
     c.apply_changes_to_batch(change_c, apply_slot, &mut batch_c);
     db_a.write().write_batch(batch_a, None);
@@ -318,7 +311,7 @@ fn test_executed_ops_xor_computing() {
         period: 20,
         thread: 0,
     };
-    let mut batch_a = DBBatch::new(db_a.read().get_db_hash());
+    let mut batch_a = DBBatch::new();
     a.apply_changes_to_batch(PreHashMap::default(), prune_slot, &mut batch_a);
     a.prune_to_batch(prune_slot, &mut batch_a);
     db_a.write().write_batch(batch_a, None);

@@ -164,7 +164,7 @@ impl FinalState {
             FinalStateError::InvalidSlot(String::from("Could not recover Slot in Ledger"))
         })?;
 
-        let mut batch = DBBatch::new(final_state.db.read().get_db_hash());
+        let mut batch = DBBatch::new();
         final_state.pos_state.create_initial_cycle(&mut batch);
         final_state
             .db
@@ -267,14 +267,14 @@ impl FinalState {
 
         let latest_snapshot_cycle_info = self.pos_state.get_cycle_info(latest_snapshot_cycle.0);
 
-        let mut batch = DBBatch::new(self.db.read().get_db_hash());
+        let mut batch = DBBatch::new();
 
         self.pos_state
             .delete_cycle_info(latest_snapshot_cycle.0, &mut batch);
 
         self.pos_state.db.write().write_batch(batch, None);
 
-        let mut batch = DBBatch::new(self.db.read().get_db_hash());
+        let mut batch = DBBatch::new();
 
         self.pos_state
             .create_new_cycle_from_last(
@@ -310,7 +310,7 @@ impl FinalState {
 
         let latest_snapshot_cycle_info = self.pos_state.get_cycle_info(latest_snapshot_cycle.0);
 
-        let mut batch = DBBatch::new(self.db.read().get_db_hash());
+        let mut batch = DBBatch::new();
 
         self.pos_state
             .delete_cycle_info(latest_snapshot_cycle.0, &mut batch);
@@ -330,7 +330,7 @@ impl FinalState {
             ))
         })?;
 
-        let mut batch = DBBatch::new(self.db.read().get_db_hash());
+        let mut batch = DBBatch::new();
 
         self.pos_state
             .create_new_cycle_from_last(
@@ -373,7 +373,7 @@ impl FinalState {
                 ))
             })?;
 
-            let mut batch = DBBatch::new(self.pos_state.db.read().get_db_hash());
+            let mut batch = DBBatch::new();
 
             self.pos_state
                 .create_new_cycle_from_last(
@@ -399,7 +399,7 @@ impl FinalState {
                 ))
             })?;
 
-        let mut batch = DBBatch::new(self.pos_state.db.read().get_db_hash());
+        let mut batch = DBBatch::new();
 
         self.pos_state
             .create_new_cycle_from_last(
@@ -452,6 +452,7 @@ impl FinalState {
     /// USED ONLY FOR BOOTSTRAP
     pub fn reset(&mut self) {
         self.slot = Slot::new(0, self.config.thread_count.saturating_sub(1));
+        self.db.write().cur_change_id = self.slot;
         self.ledger.reset();
         self.async_pool.reset();
         self.pos_state.reset();
@@ -485,8 +486,7 @@ impl FinalState {
         // update current slot
         self.slot = slot;
 
-        let db = self.db.read();
-        let mut db_batch = DBBatch::new(db.get_db_hash());
+        let mut db_batch = DBBatch::new();
 
         // apply the state changes to the batch
 
@@ -561,297 +561,4 @@ impl FinalState {
         self.executed_denunciations.recompute_sorted_denunciations();
         self.pos_state.recompute_pos_state_caches();
     }
-
-    /*
-    #[allow(clippy::type_complexity)]
-    /// Get a part of the state.
-    /// Used for bootstrap.
-    ///
-    /// # Arguments
-    /// * cursor: current bootstrap state
-    ///
-    /// # Returns
-    /// The state part and the updated cursor
-    pub fn get_state_part(
-        &self,
-        cursor: StreamingStep<Vec<u8>>,
-    ) -> (BTreeMap<Vec<u8>, Vec<u8>>, StreamingStep<Vec<u8>>) {
-        let db = self.db.read();
-        let handle = db.db.cf_handle(STATE_CF).expect(CF_ERROR);
-
-        let mut state_part = BTreeMap::new();
-
-        // Creates an iterator from the next element after the last if defined, otherwise initialize it at the first key.
-        let (db_iterator, mut new_cursor) = match cursor {
-            StreamingStep::Started => (
-                db.db.iterator_cf(handle, IteratorMode::Start),
-                StreamingStep::Started,
-            ),
-            StreamingStep::Ongoing(last_key) => {
-                let mut iter = db
-                    .db
-                    .iterator_cf(handle, IteratorMode::From(&last_key, Direction::Forward));
-                iter.next();
-                (iter, StreamingStep::Finished(None))
-            }
-            StreamingStep::Finished(_) => return (state_part, cursor),
-        };
-
-        for (serialized_key, serialized_value) in db_iterator.flatten() {
-            if state_part.len() < self.config. as usize {
-                state_part.insert(serialized_key.to_vec(), serialized_value.to_vec());
-                new_cursor = StreamingStep::Ongoing(serialized_key.to_vec());
-            } else {
-                break;
-            }
-        }
-        (state_part, new_cursor)
-    }*/
-
-    /*///
-    /// # Arguments
-    /// * part: the async pool part provided by `get_pool_part`
-    ///
-    /// # Returns
-    /// The updated cursor after the current insert
-    pub fn set_state_part(&self, part: BTreeMap<Vec<u8>, Vec<u8>>) -> StreamingStep<Vec<u8>> {
-        let db = self.db.read();
-        let mut batch = DBBatch::new(db.get_db_hash());
-        let handle = db.db.cf_handle(STATE_CF).expect(CF_ERROR);
-
-        let cursor = if let Some(key) = part.last_key_value().map(|kv| kv.0.clone()) {
-            StreamingStep::Ongoing(key)
-        } else {
-            StreamingStep::Finished(None)
-        };
-
-        for (serialized_key, serialized_value) in part {
-            db.put_or_update_entry_value(handle, &mut batch, serialized_key, &serialized_value);
-        }
-
-        db.write_batch(batch);
-
-        cursor
-    }
-
-    /// Used for bootstrap.
-    ///
-    /// Retrieves every:
-    /// * ledger change that is after `slot` and before or equal to `ledger_step` key
-    /// * ledger change if main bootstrap process is finished
-    /// * async pool change that is after `slot` and before or equal to `pool_step` message id
-    /// * async pool change if main bootstrap process is finished
-    /// * proof-of-stake deferred credits change if main bootstrap process is finished
-    /// * proof-of-stake deferred credits change that is after `slot` and before or equal to `credits_step` slot
-    /// * proof-of-stake cycle history change if main bootstrap process is finished
-    /// * executed ops change if main bootstrap process is finished
-    ///
-    /// Produces an error when the `slot` is too old for `self.changes_history`
-    #[allow(clippy::too_many_arguments)]
-    pub fn get_state_changes_part(
-        &self,
-        slot: Slot,
-        state_step: StreamingStep<Vec<u8>>,
-    ) -> Result<Vec<(Slot, StateChanges)>, FinalStateError> {
-        let position_slot = if let Some((first_slot, _)) = self.changes_history.front() {
-            // Safe because we checked that there is changes just above.
-            let index = slot
-                .slots_since(first_slot, self.config.thread_count)
-                .map_err(|_| {
-                    FinalStateError::InvalidSlot(
-                        "get_state_changes_part given slot is overflowing history".to_string(),
-                    )
-                })?
-                .saturating_add(1);
-
-            // Check if the `slot` index isn't in the future
-            if self.changes_history.len() as u64 <= index {
-                return Err(FinalStateError::InvalidSlot(
-                    "slot index is overflowing history".to_string(),
-                ));
-            }
-            index
-        } else {
-            return Ok(Vec::new());
-        };
-
-        let mut res_changes: Vec<(Slot, StateChanges)> = Vec::new();
-        for (slot, changes) in self.changes_history.range((position_slot as usize)..) {
-            let mut slot_changes = StateChanges::default();
-
-            match state_step.clone() {
-                StreamingStep::Finished(_) => {
-                    slot_changes = changes.clone();
-                }
-                StreamingStep::Ongoing(serialized_key) => {
-                    if serialized_key.starts_with(LEDGER_PREFIX.as_bytes()) {
-                        let (_, key) =
-                            KeyDeserializer::new(self.config.ledger_config.max_key_length, true)
-                                .deserialize::<DeserializeError>(&serialized_key)
-                                .expect(KEY_DESER_ERROR);
-
-                        let ledger_changes: LedgerChanges = LedgerChanges(
-                            changes
-                                .ledger_changes
-                                .0
-                                .iter()
-                                .filter_map(|(address, change)| {
-                                    if *address <= key.address {
-                                        Some((*address, change.clone()))
-                                    } else {
-                                        None
-                                    }
-                                })
-                                .collect(),
-                        );
-                        slot_changes.ledger_changes = ledger_changes;
-                    } else if serialized_key.as_slice() >= LEDGER_PREFIX.as_bytes() {
-                        slot_changes.ledger_changes = changes.ledger_changes.clone();
-                    }
-
-                    if serialized_key.starts_with(ASYNC_POOL_PREFIX.as_bytes()) {
-                        let (_, last_id) =
-                            AsyncMessageIdDeserializer::new(self.config.thread_count)
-                                .deserialize::<DeserializeError>(
-                                    &serialized_key[ASYNC_POOL_PREFIX.len()..],
-                                )
-                                .expect(MESSAGE_ID_DESER_ERROR);
-
-                        let async_pool_changes: AsyncPoolChanges = AsyncPoolChanges(
-                            changes
-                                .async_pool_changes
-                                .0
-                                .clone()
-                                .into_iter()
-                                .filter_map(|change| match change {
-                                    (id, _) if id <= last_id => Some(change.clone()),
-                                    _ => None,
-                                })
-                                .collect(),
-                        );
-                        slot_changes.async_pool_changes = async_pool_changes;
-                    } else if serialized_key.as_slice() >= ASYNC_POOL_PREFIX.as_bytes() {
-                        slot_changes.async_pool_changes = changes.async_pool_changes.clone();
-                    }
-
-                    if serialized_key.as_slice() >= DEFERRED_CREDITS_PREFIX.as_bytes() {
-                        let (_, cursor_slot) = SlotDeserializer::new(
-                            (Included(u64::MIN), Included(u64::MAX)),
-                            (Included(0), Excluded(self.config.thread_count)),
-                        )
-                        .deserialize::<DeserializeError>(
-                            &serialized_key[DEFERRED_CREDITS_PREFIX.len()..],
-                        )
-                        .expect(SLOT_DESER_ERROR);
-
-                        let mut deferred_credits = DeferredCredits::new_with_hash();
-                        deferred_credits.credits = changes
-                            .pos_changes
-                            .deferred_credits
-                            .credits
-                            .iter()
-                            .filter_map(|(credits_slot, credits)| {
-                                if *credits_slot <= cursor_slot {
-                                    Some((*credits_slot, credits.clone()))
-                                } else {
-                                    None
-                                }
-                            })
-                            .collect();
-
-                        slot_changes.pos_changes.deferred_credits = deferred_credits;
-                    } else if serialized_key.as_slice() >= DEFERRED_CREDITS_PREFIX.as_bytes() {
-                        slot_changes.pos_changes.deferred_credits =
-                            changes.pos_changes.deferred_credits.clone();
-                    }
-
-                    if serialized_key.as_slice() >= CYCLE_HISTORY_PREFIX.as_bytes() {
-                        slot_changes.pos_changes.seed_bits = changes.pos_changes.seed_bits.clone();
-                        slot_changes.pos_changes.roll_changes =
-                            changes.pos_changes.roll_changes.clone();
-                        slot_changes.pos_changes.production_stats =
-                            changes.pos_changes.production_stats.clone();
-                    }
-                    if serialized_key.as_slice() >= EXECUTED_OPS_PREFIX.as_bytes() {
-                        slot_changes.executed_ops_changes = changes.executed_ops_changes.clone();
-                    }
-
-                    if serialized_key.as_slice() >= EXECUTED_DENUNCIATIONS_PREFIX.as_bytes() {
-                        slot_changes.executed_denunciations_changes =
-                            changes.executed_denunciations_changes.clone();
-                    }
-                }
-                _ => (),
-            }
-
-            // Push the slot changes
-            res_changes.push((*slot, slot_changes));
-        }
-        Ok(res_changes)
-    }*/
 }
-
-/*
-#[cfg(test)]
-mod tests {
-
-    use std::collections::VecDeque;
-
-    use crate::StateChanges;
-    use massa_async_pool::test_exports::get_random_message;
-    use massa_ledger_exports::SetUpdateOrDelete;
-    use massa_models::{address::Address, config::THREAD_COUNT, slot::Slot};
-    use massa_signature::KeyPair;
-
-    fn get_random_address() -> Address {
-        let keypair = KeyPair::generate();
-        Address::from_public_key(&keypair.get_public_key())
-    }
-
-    #[test]
-    fn get_state_changes_part() {
-        let message = get_random_message(None, THREAD_COUNT);
-        // Building the state changes
-        let mut history_state_changes: VecDeque<(Slot, StateChanges)> = VecDeque::new();
-        let (low_address, high_address) = {
-            let address1 = get_random_address();
-            let address2 = get_random_address();
-            if address1 < address2 {
-                (address1, address2)
-            } else {
-                (address2, address1)
-            }
-        };
-        let mut state_changes = StateChanges::default();
-        state_changes
-            .ledger_changes
-            .0
-            .insert(low_address, SetUpdateOrDelete::Delete);
-        state_changes
-            .async_pool_changes
-            .0
-            .insert(message.compute_id(), SetUpdateOrDelete::Set(message));
-        history_state_changes.push_front((Slot::new(3, 0), state_changes));
-        let mut state_changes = StateChanges::default();
-        state_changes
-            .ledger_changes
-            .0
-            .insert(high_address, SetUpdateOrDelete::Delete);
-        history_state_changes.push_front((Slot::new(2, 0), state_changes.clone()));
-        history_state_changes.push_front((Slot::new(1, 0), state_changes));
-        // TODO: re-enable this test after refactoring is over
-        // let mut final_state: FinalState = Default::default();
-        // final_state.changes_history = history_state_changes;
-        // // Test slot filter
-        // let part = final_state
-        //     .get_state_changes_part(Slot::new(2, 0), low_address, message.compute_id(), None)
-        //     .unwrap();
-        // assert_eq!(part.ledger_changes.0.len(), 1);
-        // // Test address filter
-        // let part = final_state
-        //     .get_state_changes_part(Slot::new(2, 0), high_address, message.compute_id(), None)
-        //     .unwrap();
-        // assert_eq!(part.ledger_changes.0.len(), 1);
-    }
-}
-*/

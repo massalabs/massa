@@ -449,7 +449,7 @@ pub async fn get_state(
             }
 
             // create the initial cycle of PoS cycle_history
-            let mut batch = DBBatch::new(final_state_guard.db.read().get_db_hash());
+            let mut batch = DBBatch::new();
             final_state_guard.pos_state.create_initial_cycle(&mut batch);
 
             let slot = Slot::new(

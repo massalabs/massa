@@ -291,7 +291,7 @@ impl PoSFinalState {
             if !serialized_key.starts_with(prefix.as_bytes()) {
                 break;
             }
-            db.delete_key(handle, batch, serialized_key.to_vec());
+            db.delete_key(batch, serialized_key.to_vec());
         }
     }
 
@@ -591,7 +591,7 @@ impl PoSFinalState {
         if self.get_cycle_index(cycle).is_some() {
             let mut db = self.db.write();
 
-            let mut batch = DBBatch::new(db.get_db_hash());
+            let mut batch = DBBatch::new();
             self.put_cycle_history_final_state_hash_snapshot(
                 cycle,
                 Some(final_state_hash),
@@ -758,13 +758,12 @@ impl PoSFinalState {
 
     fn put_cycle_history_complete(&mut self, cycle: u64, value: bool, batch: &mut DBBatch) {
         let db = self.db.read();
-        let handle = db.db.cf_handle(STATE_CF).expect(CF_ERROR);
 
         let prefix = self.cycle_history_cycle_prefix(cycle);
 
         let serialized_value = if value { &[1] } else { &[0] };
 
-        db.put_or_update_entry_value(handle, batch, complete_key!(prefix), serialized_value);
+        db.put_or_update_entry_value(batch, complete_key!(prefix), serialized_value);
 
         if let Some(index) = self.get_cycle_index(cycle) {
             self.cycle_history_cache[index].1 = value;
@@ -791,7 +790,6 @@ impl PoSFinalState {
         batch: &mut DBBatch,
     ) {
         let db = self.db.read();
-        let handle = db.db.cf_handle(STATE_CF).expect(CF_ERROR);
 
         let prefix = self.cycle_history_cycle_prefix(cycle);
 
@@ -803,7 +801,6 @@ impl PoSFinalState {
             .expect(CYCLE_HISTORY_SER_ERROR);
 
         db.put_or_update_entry_value(
-            handle,
             batch,
             final_state_hash_snapshot_key!(prefix),
             &serialized_value,
@@ -812,7 +809,6 @@ impl PoSFinalState {
 
     fn put_cycle_history_rng_seed(&mut self, cycle: u64, value: BitVec<u8>, batch: &mut DBBatch) {
         let db = self.db.read();
-        let handle = db.db.cf_handle(STATE_CF).expect(CF_ERROR);
 
         let prefix = self.cycle_history_cycle_prefix(cycle);
 
@@ -825,7 +821,7 @@ impl PoSFinalState {
 
         self.rng_seed_cache = Some((cycle, value.clone()));
 
-        db.put_or_update_entry_value(handle, batch, rng_seed_key!(prefix), &serialized_value);
+        db.put_or_update_entry_value(batch, rng_seed_key!(prefix), &serialized_value);
     }
 
     /// Internal function to put an entry and perform the hash XORs
@@ -838,7 +834,6 @@ impl PoSFinalState {
         batch: &mut DBBatch,
     ) {
         let db = self.db.read();
-        let handle = db.db.cf_handle(STATE_CF).expect(CF_ERROR);
 
         let prefix = self.cycle_history_cycle_prefix(cycle);
 
@@ -851,7 +846,6 @@ impl PoSFinalState {
                 .serialize(roll_count, &mut serialized_roll_count)
                 .expect(CYCLE_HISTORY_SER_ERROR);
             db.put_or_update_entry_value(
-                handle,
                 batch,
                 roll_count_key!(prefix, address),
                 &serialized_roll_count,
@@ -870,7 +864,6 @@ impl PoSFinalState {
                 )
                 .expect(CYCLE_HISTORY_SER_ERROR);
             db.put_or_update_entry_value(
-                handle,
                 batch,
                 prod_stats_fail_key!(prefix, address),
                 &serialized_prod_stats_fail,
@@ -887,7 +880,6 @@ impl PoSFinalState {
                 )
                 .expect(CYCLE_HISTORY_SER_ERROR);
             db.put_or_update_entry_value(
-                handle,
                 batch,
                 prod_stats_success_key!(prefix, address),
                 &serialized_prod_stats_success,
@@ -904,7 +896,6 @@ impl PoSFinalState {
         batch: &mut DBBatch,
     ) {
         let db = self.db.read();
-        let handle = db.db.cf_handle(STATE_CF).expect(CF_ERROR);
 
         let mut serialized_key = Vec::new();
         self.deferred_credits_serializer
@@ -918,7 +909,7 @@ impl PoSFinalState {
             .expect(DEFERRED_CREDITS_SER_ERROR);
 
         if amount.is_zero() {
-            db.delete_key(handle, batch, deferred_credits_key!(serialized_key));
+            db.delete_key(batch, deferred_credits_key!(serialized_key));
         } else {
             let mut serialized_amount = Vec::new();
             self.deferred_credits_serializer
@@ -928,7 +919,6 @@ impl PoSFinalState {
                 .expect(DEFERRED_CREDITS_SER_ERROR);
 
             db.put_or_update_entry_value(
-                handle,
                 batch,
                 deferred_credits_key!(serialized_key),
                 &serialized_amount,

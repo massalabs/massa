@@ -119,7 +119,7 @@ fn test_final_state() {
     {
         let fs = create_final_state(&temp_dir);
 
-        let mut batch = DBBatch::new(fs.read().db.read().get_db_hash());
+        let mut batch = DBBatch::new();
 
         fs.write().pos_state.create_initial_cycle(&mut batch);
 
@@ -174,7 +174,7 @@ fn test_final_state() {
     {
         let fs2 = create_final_state(&temp_dir);
 
-        let mut batch = DBBatch::new(fs2.read().db.read().get_db_hash());
+        let mut batch = DBBatch::new();
 
         fs2.write().pos_state.create_initial_cycle(&mut batch);
 
