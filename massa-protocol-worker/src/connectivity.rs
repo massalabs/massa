@@ -59,7 +59,7 @@ pub(crate) fn start_connectivity_thread(
     protocol_channels: ProtocolChannels,
     messages_handler: MessagesHandler,
     peer_categories: HashMap<String, (Vec<IpAddr>, PeerCategoryInfo)>,
-    default_category: PeerCategoryInfo,
+    _default_category: PeerCategoryInfo,
     config: ProtocolConfig,
     mip_store: MipStore,
 ) -> Result<(Sender<ConnectivityCommand>, JoinHandle<()>), ProtocolError> {
@@ -206,9 +206,22 @@ pub(crate) fn start_connectivity_thread(
                         }
                     default(config.try_connection_timer.to_duration()) => {
                         let peers_connected = network_controller.get_active_connections().get_peers_connected();
+                        let mut slots_per_category: Vec<(String, usize)> = peer_categories.iter().map(|(category, category_infos)| {
+                            (category.clone(), category_infos.1.target_out_connections.saturating_sub(peers_connected.iter().filter(|(_, peer)| {
+                                if peer.1 == PeerConnectionType::OUT && let Some(peer_category) = &peer.2 {
+                                    category == peer_category
+                                } else {
+                                    false
+                                }
+                            }).count()))
+                        }).collect();
+                        let mut slot_default_category = config.default_category_info.target_out_connections.saturating_sub(peers_connected.iter().filter(|(_, peer)| {
+                            peer.1 == PeerConnectionType::OUT && peer.2.is_none()
+                        }).count());
+                        let mut addresses_to_connect: Vec<SocketAddr> = Vec::new();
                         {
                             let peer_db_read = peer_db.read();
-                            'iter_peers: for (_, peer_id) in &peer_db_read.index_by_newest {
+                            for (_, peer_id) in &peer_db_read.index_by_newest {
                                 if peers_connected.contains_key(peer_id) {
                                     continue;
                                 }
@@ -229,36 +242,38 @@ pub(crate) fn start_connectivity_thread(
                                         continue;
                                     }
                                     // Check if the peer is in a category and we didn't reached out target yet
-                                    let mut category_found = false;
-                                    for (name, (ips, infos)) in &peer_categories {
+                                    let mut category_found = None;
+                                    for (name, (ips, _)) in &peer_categories {
                                         if ips.contains(&canonical_ip) {
-                                            if infos.target_out_connections > peers_connected.iter().filter(|(_, (_, connection_type, category))| {
-                                                if connection_type == &PeerConnectionType::OUT && let Some(category) = category {
-                                                    category == name
-                                                } else {
-                                                    false
-                                                }
-                                            }).count() {
-                                                category_found = true;
-                                                break;
-                                            } else {
-                                                continue 'iter_peers;
-                                            }
+                                            category_found = Some(name);
                                         }
                                     }
 
-                                    if !category_found && peers_connected.iter().filter(|(_, (_, connection_type, category))| {
-                                        connection_type == &PeerConnectionType::OUT && category.is_none()
-                                    }).count() >= default_category.target_out_connections {
-                                        continue;
+                                    if let Some(category) = category_found {
+                                        for (name, category_infos) in &mut slots_per_category {
+                                            if name == category && category_infos > &mut 0 {
+                                                addresses_to_connect.push(*addr);
+                                                *category_infos -= 1;
+                                            }
+                                        }
+                                    } else if slot_default_category > 0 {
+                                        addresses_to_connect.push(*addr);
+                                        slot_default_category -= 1;
                                     }
-                                    info!("Trying to connect to addr {} of peer {}", addr, peer_id);
-                                    // We only manage TCP for now
-                                    if let Err(err) = network_controller.try_connect(*addr, config.timeout_connection.to_duration(), &OutConnectionConfig::Tcp(Box::new(TcpOutConnectionConfig::new(config.read_write_limit_bytes_per_second / 10, Duration::from_millis(100))))) {
-                                        warn!("Failed to connect to peer {:?}: {:?}", addr, err);
+
+
+                                    // IF all slots are filled, stop
+                                    if slot_default_category == 0 && slots_per_category.iter().all(|(_, slots)| *slots == 0) {
+                                        break;
                                     }
-                                    break;
                                 }
+                            }
+                        }
+                        for addr in addresses_to_connect {
+                            info!("Trying to connect to addr {}", addr);
+                            // We only manage TCP for now
+                            if let Err(err) = network_controller.try_connect(addr, config.timeout_connection.to_duration(), &OutConnectionConfig::Tcp(Box::new(TcpOutConnectionConfig::new(config.read_write_limit_bytes_per_second / 10, Duration::from_millis(100))))) {
+                                warn!("Failed to connect to peer {:?}: {:?}", addr, err);
                             }
                         }
                     }

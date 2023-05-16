@@ -54,6 +54,8 @@
     - [NewOperationsQuery](#massa-api-v1-NewOperationsQuery)
     - [NewOperationsRequest](#massa-api-v1-NewOperationsRequest)
     - [NewOperationsResponse](#massa-api-v1-NewOperationsResponse)
+    - [NewSlotExecutionOutputsFilter](#massa-api-v1-NewSlotExecutionOutputsFilter)
+    - [NewSlotExecutionOutputsQuery](#massa-api-v1-NewSlotExecutionOutputsQuery)
     - [NewSlotExecutionOutputsRequest](#massa-api-v1-NewSlotExecutionOutputsRequest)
     - [NewSlotExecutionOutputsResponse](#massa-api-v1-NewSlotExecutionOutputsResponse)
     - [OperationResult](#massa-api-v1-OperationResult)
@@ -100,8 +102,8 @@
     - [ScExecutionEventContext](#massa-api-v1-ScExecutionEventContext)
     - [SlotExecutionOutput](#massa-api-v1-SlotExecutionOutput)
   
+    - [ExecutionOutputStatus](#massa-api-v1-ExecutionOutputStatus)
     - [ScExecutionEventStatus](#massa-api-v1-ScExecutionEventStatus)
-    - [ScExecutionOutputStatus](#massa-api-v1-ScExecutionOutputStatus)
   
 - [operation.proto](#operation-proto)
     - [CallSC](#massa-api-v1-CallSC)
@@ -920,6 +922,36 @@ NewOperationsResponse holds response from NewOperations
 
 
 
+<a name="massa-api-v1-NewSlotExecutionOutputsFilter"></a>
+
+### NewSlotExecutionOutputsFilter
+NewSlotExecutionOutputs Filter
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| status | [ExecutionOutputStatus](#massa-api-v1-ExecutionOutputStatus) | repeated | Execution output status enum |
+
+
+
+
+
+
+<a name="massa-api-v1-NewSlotExecutionOutputsQuery"></a>
+
+### NewSlotExecutionOutputsQuery
+NewSlotExecutionOutputs Query
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| filter | [NewSlotExecutionOutputsFilter](#massa-api-v1-NewSlotExecutionOutputsFilter) |  | Filter |
+
+
+
+
+
+
 <a name="massa-api-v1-NewSlotExecutionOutputsRequest"></a>
 
 ### NewSlotExecutionOutputsRequest
@@ -929,6 +961,7 @@ NewSlotExecutionOutputsRequest holds request for NewSlotExecutionOutputs
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | id | [string](#string) |  | Request id |
+| query | [NewSlotExecutionOutputsQuery](#massa-api-v1-NewSlotExecutionOutputsQuery) |  | Query |
 
 
 
@@ -1552,14 +1585,27 @@ SlotExecutionOutput
 
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
+| status | [ExecutionOutputStatus](#massa-api-v1-ExecutionOutputStatus) | repeated | Status |
 | execution_output | [ExecutionOutput](#massa-api-v1-ExecutionOutput) |  | Executed slot output |
-| final_execution_output | [FinalizedExecutionOutput](#massa-api-v1-FinalizedExecutionOutput) |  | Executed final slot |
 
 
 
 
 
  
+
+
+<a name="massa-api-v1-ExecutionOutputStatus"></a>
+
+### ExecutionOutputStatus
+ExecutionOutputStatus type enum
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| EXECUTION_OUTPUT_STATUS_UNSPECIFIED | 0 | Defaut enum value |
+| EXECUTION_OUTPUT_STATUS_CANDIDATE | 1 | Candidate status |
+| EXECUTION_OUTPUT_STATUS_FINAL | 2 | Final status |
+
 
 
 <a name="massa-api-v1-ScExecutionEventStatus"></a>
@@ -1573,19 +1619,6 @@ ScExecutionEventStatus type enum
 | SC_EXECUTION_EVENT_STATUS_FINAL | 1 | Final status |
 | SC_EXECUTION_EVENT_STATUS_READ_ONLY | 2 | Read only status |
 | SC_EXECUTION_EVENT_STATUS_FAILURE | 3 | Failure status |
-
-
-
-<a name="massa-api-v1-ScExecutionOutputStatus"></a>
-
-### ScExecutionOutputStatus
-ScExecutionOutputStatus type enum
-
-| Name | Number | Description |
-| ---- | ------ | ----------- |
-| SC_EXECUTION_OUTPUT_STATUS_UNSPECIFIED | 0 | Defaut enum value |
-| SC_EXECUTION_OUTPUT_STATUS_FINAL | 1 | Final status |
-| SC_EXECUTION_OUTPUT_STATUS_CANDIDATE | 2 | Read only status |
 
 
  

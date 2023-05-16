@@ -25,6 +25,7 @@ use std::time::{Duration, Instant};
 mod bindings;
 mod client;
 mod error;
+pub use error::BootstrapError;
 mod listener;
 mod messages;
 mod server;
