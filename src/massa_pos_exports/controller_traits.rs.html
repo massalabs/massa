@@ -93,7 +93,6 @@
 <a href="#93" id="93">93</a>
 <a href="#94" id="94">94</a>
 <a href="#95" id="95">95</a>
-<a href="#96" id="96">96</a>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="doccomment">//! This module exports generic traits representing interfaces for interacting
@@ -120,8 +119,7 @@
     </span><span class="kw">pub </span>producer: Address,
 }
 
-<span class="attr">#[cfg_attr(any(test, feature = <span class="string">&quot;testing&quot;</span>), mockall::automock)]
-</span><span class="doccomment">/// interface that communicates with the selector worker thread
+<span class="doccomment">/// interface that communicates with the selector worker thread
 </span><span class="kw">pub trait </span>SelectorController: Send + Sync {
     <span class="doccomment">/// Waits for draws to reach at least a given cycle number.
     /// Returns the latest cycle number reached (can be higher than `cycle`).
