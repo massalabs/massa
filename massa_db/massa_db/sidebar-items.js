@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"struct":["MassaDBConfig","MassaDBForMonotree","RawMassaDB","StreamBatch"],"type":["DBBatch","Key","MassaDB","Value"]};
