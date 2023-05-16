@@ -51,6 +51,7 @@ use massa_protocol_exports::MockProtocolController;
 use massa_signature::KeyPair;
 use massa_time::MassaTime;
 use massa_versioning::versioning::{MipComponent, MipInfo, MipState, MipStatsConfig, MipStore};
+use mockall::Sequence;
 use parking_lot::RwLock;
 use std::collections::HashMap;
 use std::net::{SocketAddr, TcpStream};

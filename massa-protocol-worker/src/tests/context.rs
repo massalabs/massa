@@ -19,9 +19,9 @@ use massa_protocol_exports::{
     PeerCategoryInfo, PeerId, ProtocolConfig, ProtocolController, ProtocolError, ProtocolManager,
 };
 use massa_serialization::U64VarIntDeserializer;
+use massa_signature::KeyPair;
 use massa_storage::Storage;
 use parking_lot::RwLock;
-use peernet::types::KeyPair;
 use std::ops::Bound::Included;
 use tracing::{debug, log::warn};
 

@@ -2,9 +2,10 @@ use std::{collections::HashMap, fs::read_to_string, time::Duration};
 
 use massa_consensus_exports::test_exports::ConsensusControllerImpl;
 use massa_pool_exports::test_exports::MockPoolController;
-use massa_protocol_exports::{PeerCategoryInfo, PeerData, ProtocolConfig};
+use massa_protocol_exports::{PeerCategoryInfo, PeerData, PeerId, ProtocolConfig};
+use massa_signature::KeyPair;
 use massa_storage::Storage;
-use peernet::{peer_id::PeerId, transports::TransportType, types::KeyPair};
+use peernet::transports::TransportType;
 use tempfile::NamedTempFile;
 
 use crate::{create_protocol_controller, start_protocol_controller};

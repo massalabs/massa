@@ -4,14 +4,13 @@ use std::{
 };
 
 use crossbeam::channel::{Receiver, Sender};
-use massa_protocol_exports::ProtocolError;
+use massa_protocol_exports::{PeerId, ProtocolError};
 use parking_lot::RwLock;
 use peernet::{
     messages::{
         MessagesHandler as PeerNetMessagesHandler, MessagesSerializer as PeerNetMessagesSerializer,
     },
     peer::PeerConnectionType,
-    peer_id::PeerId,
 };
 
 use crate::{
