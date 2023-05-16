@@ -186,8 +186,7 @@ impl LedgerDB {
     }
 
     pub fn reset(&self) {
-        let mut db = self.db.write();
-        db.delete_prefix(LEDGER_PREFIX, None);
+        self.db.write().delete_prefix(LEDGER_PREFIX, None);
     }
 }
 

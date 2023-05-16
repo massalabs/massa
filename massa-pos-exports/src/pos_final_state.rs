@@ -589,7 +589,6 @@ impl PoSFinalState {
     /// Feeds the selector targeting a given draw cycle
     pub fn feed_cycle_state_hash(&self, cycle: u64, final_state_hash: Hash) {
         if self.get_cycle_index(cycle).is_some() {
-            let mut db = self.db.write();
 
             let mut batch = DBBatch::new();
             self.put_cycle_history_final_state_hash_snapshot(
@@ -598,7 +597,7 @@ impl PoSFinalState {
                 &mut batch,
             );
 
-            db.write_batch(batch, None);
+            self.db.write().write_batch(batch, None);
         } else {
             panic!("cycle {} should be contained here", cycle);
         }
