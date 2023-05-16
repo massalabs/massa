@@ -2285,6 +2285,7 @@ dependencies = [
  "lazy_static",
  "massa_api_exports",
  "massa_models",
+ "massa_proto",
  "massa_sdk",
  "massa_signature 0.1.0",
  "massa_time",
@@ -2686,6 +2687,7 @@ dependencies = [
  "massa_serialization 0.1.0",
  "massa_storage",
  "massa_time",
+ "massa_versioning_worker",
  "massa_wallet",
  "serde",
  "thiserror",
@@ -2884,9 +2886,12 @@ dependencies = [
 name = "massa_proto"
 version = "0.1.0"
 dependencies = [
+ "glob",
  "prost",
+ "prost-build",
  "prost-types",
  "tonic",
+ "tonic-build",
 ]
 
 [[package]]
@@ -2947,7 +2952,9 @@ dependencies = [
  "jsonrpsee-ws-client",
  "massa_api_exports",
  "massa_models",
+ "massa_proto",
  "massa_time",
+ "tonic",
 ]
 
 [[package]]
@@ -5056,6 +5063,19 @@ dependencies = [
  "tower-layer",
  "tower-service",
  "tracing",
+]
+
+[[package]]
+name = "tonic-build"
+version = "0.9.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "a6fdaae4c2c638bb70fe42803a26fbd6fc6ac8c72f5c59f67ecc2a2dcabf4b07"
+dependencies = [
+ "prettyplease",
+ "proc-macro2 1.0.56",
+ "prost-build",
+ "quote 1.0.26",
+ "syn 1.0.109",
 ]
 
 [[package]]

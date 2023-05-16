@@ -75,7 +75,9 @@ use massa_protocol_exports::{ProtocolConfig, ProtocolManager};
 use massa_protocol_worker::{create_protocol_controller, start_protocol_controller};
 use massa_storage::Storage;
 use massa_time::MassaTime;
-use massa_versioning_worker::versioning::{ComponentStateTypeId, MipStatsConfig, MipStore};
+use massa_versioning_worker::versioning::{
+    ComponentStateTypeId, MipComponent, MipInfo, MipState, MipStatsConfig, MipStore,
+};
 use massa_wallet::Wallet;
 use parking_lot::RwLock;
 use peernet::transports::TransportType;
@@ -343,8 +345,24 @@ async fn launch(
         block_count_considered: MIP_STORE_STATS_BLOCK_CONSIDERED,
         counters_max: MIP_STORE_STATS_COUNTERS_MAX,
     };
-    let mut mip_store =
-        MipStore::try_from(([], mip_stats_config)).expect("Cannot create an empty MIP store");
+    // let mut mip_store =
+    //     MipStore::try_from(([], mip_stats_config)).expect("Cannot create an empty MIP store");
+    let mut mip_store = MipStore::try_from((
+        [(
+            MipInfo {
+                name: "MIP-0001".to_string(),
+                version: 1,
+                components: HashMap::from([(MipComponent::Address, 1)]),
+                start: MassaTime::from(0),
+                timeout: MassaTime::from(0),
+                activation_delay: MassaTime::from(0),
+            },
+            MipState::new(MassaTime::from(0)),
+        )],
+        mip_stats_config,
+    ))
+    .expect("mip store creation failed");
+
     if let Some(bootstrap_mip_store) = bootstrap_state.mip_store {
         // TODO: in some cases, should bootstrap again
         let (updated, added) = mip_store
@@ -834,6 +852,7 @@ async fn launch(
             storage: shared_storage.clone(),
             grpc_config: grpc_config.clone(),
             version: *VERSION,
+            mip_store,
         };
 
         // HACK maybe should remove timeout later

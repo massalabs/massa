@@ -86,6 +86,55 @@ pub struct SecureShare {
     #[prost(string, tag = "5")]
     pub id: ::prost::alloc::string::String,
 }
+/// TODO
+#[allow(clippy::derive_partial_eq_without_eq)]
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct VersioningStatusEntry {
+    ///
+    #[prost(string, tag = "1")]
+    pub mip_info: ::prost::alloc::string::String,
+    ///
+    #[prost(enumeration = "ComponentStateId", tag = "2")]
+    pub state: i32,
+}
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, ::prost::Enumeration)]
+#[repr(i32)]
+pub enum ComponentStateId {
+    Error = 0,
+    Defined = 1,
+    Started = 2,
+    LockedIn = 3,
+    Active = 4,
+    Failed = 5,
+}
+impl ComponentStateId {
+    /// String value of the enum field names used in the ProtoBuf definition.
+    ///
+    /// The values are not transformed in any way and thus are considered stable
+    /// (if the ProtoBuf definition does not change) and safe for programmatic use.
+    pub fn as_str_name(&self) -> &'static str {
+        match self {
+            ComponentStateId::Error => "Error",
+            ComponentStateId::Defined => "Defined",
+            ComponentStateId::Started => "Started",
+            ComponentStateId::LockedIn => "LockedIn",
+            ComponentStateId::Active => "Active",
+            ComponentStateId::Failed => "Failed",
+        }
+    }
+    /// Creates an enum from field names used in the ProtoBuf definition.
+    pub fn from_str_name(value: &str) -> ::core::option::Option<Self> {
+        match value {
+            "Error" => Some(Self::Error),
+            "Defined" => Some(Self::Defined),
+            "Started" => Some(Self::Started),
+            "LockedIn" => Some(Self::LockedIn),
+            "Active" => Some(Self::Active),
+            "Failed" => Some(Self::Failed),
+            _ => None,
+        }
+    }
+}
 /// The operation as sent in the network
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
@@ -993,6 +1042,24 @@ pub struct GetVersionResponse {
     #[prost(string, tag = "2")]
     pub version: ::prost::alloc::string::String,
 }
+#[allow(clippy::derive_partial_eq_without_eq)]
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct GetVersioningStatusRequest {
+    /// Request id
+    #[prost(string, tag = "1")]
+    pub id: ::prost::alloc::string::String,
+}
+/// GetVersioningStatusResponse holds response from GetVersioningStatus
+#[allow(clippy::derive_partial_eq_without_eq)]
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct GetVersioningStatusResponse {
+    /// Request id
+    #[prost(string, tag = "1")]
+    pub id: ::prost::alloc::string::String,
+    /// TODO
+    #[prost(message, repeated, tag = "2")]
+    pub status: ::prost::alloc::vec::Vec<VersioningStatusEntry>,
+}
 /// NewBlocksRequest holds request for NewBlocks
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
@@ -1691,6 +1758,34 @@ pub mod massa_service_client {
                 .insert(GrpcMethod::new("massa.api.v1.MassaService", "GetVersion"));
             self.inner.unary(req, path, codec).await
         }
+        /// Get node versioning status
+        pub async fn get_versioning_status(
+            &mut self,
+            request: impl tonic::IntoRequest<super::GetVersioningStatusRequest>,
+        ) -> std::result::Result<
+            tonic::Response<super::GetVersioningStatusResponse>,
+            tonic::Status,
+        > {
+            self.inner
+                .ready()
+                .await
+                .map_err(|e| {
+                    tonic::Status::new(
+                        tonic::Code::Unknown,
+                        format!("Service was not ready: {}", e.into()),
+                    )
+                })?;
+            let codec = tonic::codec::ProstCodec::default();
+            let path = http::uri::PathAndQuery::from_static(
+                "/massa.api.v1.MassaService/GetVersioningStatus",
+            );
+            let mut req = request.into_request();
+            req.extensions_mut()
+                .insert(
+                    GrpcMethod::new("massa.api.v1.MassaService", "GetVersioningStatus"),
+                );
+            self.inner.unary(req, path, codec).await
+        }
         /// New received and produced blocks
         pub async fn new_blocks(
             &mut self,
@@ -2072,6 +2167,14 @@ pub mod massa_service_server {
             request: tonic::Request<super::GetVersionRequest>,
         ) -> std::result::Result<
             tonic::Response<super::GetVersionResponse>,
+            tonic::Status,
+        >;
+        /// Get node versioning status
+        async fn get_versioning_status(
+            &self,
+            request: tonic::Request<super::GetVersioningStatusRequest>,
+        ) -> std::result::Result<
+            tonic::Response<super::GetVersioningStatusResponse>,
             tonic::Status,
         >;
         /// Server streaming response type for the NewBlocks method.
@@ -2751,6 +2854,52 @@ pub mod massa_service_server {
                     let fut = async move {
                         let inner = inner.0;
                         let method = GetVersionSvc(inner);
+                        let codec = tonic::codec::ProstCodec::default();
+                        let mut grpc = tonic::server::Grpc::new(codec)
+                            .apply_compression_config(
+                                accept_compression_encodings,
+                                send_compression_encodings,
+                            )
+                            .apply_max_message_size_config(
+                                max_decoding_message_size,
+                                max_encoding_message_size,
+                            );
+                        let res = grpc.unary(method, req).await;
+                        Ok(res)
+                    };
+                    Box::pin(fut)
+                }
+                "/massa.api.v1.MassaService/GetVersioningStatus" => {
+                    #[allow(non_camel_case_types)]
+                    struct GetVersioningStatusSvc<T: MassaService>(pub Arc<T>);
+                    impl<
+                        T: MassaService,
+                    > tonic::server::UnaryService<super::GetVersioningStatusRequest>
+                    for GetVersioningStatusSvc<T> {
+                        type Response = super::GetVersioningStatusResponse;
+                        type Future = BoxFuture<
+                            tonic::Response<Self::Response>,
+                            tonic::Status,
+                        >;
+                        fn call(
+                            &mut self,
+                            request: tonic::Request<super::GetVersioningStatusRequest>,
+                        ) -> Self::Future {
+                            let inner = Arc::clone(&self.0);
+                            let fut = async move {
+                                (*inner).get_versioning_status(request).await
+                            };
+                            Box::pin(fut)
+                        }
+                    }
+                    let accept_compression_encodings = self.accept_compression_encodings;
+                    let send_compression_encodings = self.send_compression_encodings;
+                    let max_decoding_message_size = self.max_decoding_message_size;
+                    let max_encoding_message_size = self.max_encoding_message_size;
+                    let inner = self.inner.clone();
+                    let fut = async move {
+                        let inner = inner.0;
+                        let method = GetVersioningStatusSvc(inner);
                         let codec = tonic::codec::ProstCodec::default();
                         let mut grpc = tonic::server::Grpc::new(codec)
                             .apply_compression_config(

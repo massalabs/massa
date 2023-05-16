@@ -12,6 +12,7 @@ use massa_proto::massa::api::v1::massa_service_server::MassaServiceServer;
 use massa_proto::massa::api::v1::FILE_DESCRIPTOR_SET;
 use massa_protocol_exports::ProtocolController;
 use massa_storage::Storage;
+use massa_versioning_worker::versioning::MipStore;
 use tokio::sync::oneshot;
 use tonic::codec::CompressionEncoding;
 use tonic_health::server::HealthReporter;
@@ -43,6 +44,8 @@ pub struct MassaGrpc {
     pub grpc_config: GrpcConfig,
     /// node version
     pub version: massa_models::version::Version,
+    /// MIP store
+    pub mip_store: MipStore,
 }
 
 impl MassaGrpc {

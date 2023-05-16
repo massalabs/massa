@@ -96,6 +96,11 @@ service MassaService {
     option (google.api.http) = {get: "/v1/version"};
   }
 
+  // Get node versioning status
+  rpc GetVersioningStatus(GetVersioningStatusRequest) returns (GetVersioningStatusResponse) {
+    option (google.api.http) = {get: "/v1/versioning_status"};
+  }
+
   // ███████╗████████╗██████╗ ███████╗ █████╗ ███╗   ███╗
   // ██╔════╝╚══██╔══╝██╔══██╗██╔════╝██╔══██╗████╗ ████║
   // ███████╗   ██║   ██████╔╝█████╗  ███████║██╔████╔██║
@@ -440,6 +445,19 @@ message GetVersionResponse {
   string id = 1;
   // Version
   string version = 2;
+}
+
+message GetVersioningStatusRequest {
+  // Request id
+  string id = 1;
+}
+
+// GetVersioningStatusResponse holds response from GetVersioningStatus
+message GetVersioningStatusResponse {
+  // Request id
+  string id = 1;
+  // TODO
+  repeated VersioningStatusEntry status = 2;
 }
 
 // NewBlocksRequest holds request for NewBlocks

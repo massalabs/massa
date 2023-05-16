@@ -34,3 +34,22 @@ message SecureShare {
   // A secure hash of the data. See also [massa_hash::Hash]
   string id = 5;
 }
+
+// TODO
+message VersioningStatusEntry {
+  //
+  string mip_info = 1;
+  //
+  ComponentStateId state = 2;
+}
+
+enum ComponentStateId {
+  Error = 0;
+  Defined = 1;
+  Started = 2;
+  LockedIn = 3;
+  Active = 4;
+  Failed = 5;
+}
+
+

@@ -8,6 +8,8 @@ jsonrpsee = { git = "https://github.com/paritytech/jsonrpsee.git", rev = "118acc
 jsonrpsee-http-client = { git = "https://github.com/paritytech/jsonrpsee.git", rev = "118acc3", features = ["webpki-tls"] }
 jsonrpsee-ws-client = { git = "https://github.com/paritytech/jsonrpsee.git", rev = "118acc3", features = ["webpki-tls"] }
 http = "0.2.8"
+tonic = { version = "0.9.1", features = ["gzip"] }
 massa_api_exports = { path = "../massa-api-exports" }
 massa_models = { path = "../massa-models" }
 massa_time = { path = "../massa-time" }
+massa_proto = { path = "../massa-proto" }

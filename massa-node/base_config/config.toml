@@ -40,9 +40,9 @@
 
 [grpc]
     # whether to enable gRPC
-    enabled = false
+    enabled = true
     # whether to add HTTP 1 layer
-    accept_http1 = false
+    accept_http1 = true
     # whether to enable CORS. works only if `accept_http1` is true
     enable_cors = false
     # whether to enable gRPC health service
@@ -50,7 +50,7 @@
     # whether to enable gRPC reflection(introspection)
     enable_reflection = true
     # bind for the Massa gRPC API
-    bind = "0.0.0.0:33037"
+    bind = "127.0.0.1:33037"
     # which compression encodings does the server accept for requests
     accept_compressed = "Gzip"
     # which compression encodings might the server use for responses

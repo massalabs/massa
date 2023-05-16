@@ -22,6 +22,7 @@ use massa_models::{
     operation::{Operation, OperationId, OperationType},
     slot::Slot,
 };
+use massa_proto::massa::api::v1::{ComponentStateId, GetVersioningStatusRequest};
 use massa_sdk::Client;
 use massa_signature::KeyPair;
 use massa_time::MassaTime;
@@ -439,7 +440,7 @@ impl Command {
     ///     it means that we don't want to print anything we just want the json output
     pub(crate) async fn run(
         &self,
-        client: &Client,
+        client: &mut Client,
         wallet_opt: &mut Option<Wallet>,
         parameters: &[String],
         json: bool,
@@ -769,7 +770,35 @@ impl Command {
             Command::wallet_generate_secret_key => {
                 let wallet = wallet_opt.as_mut().unwrap();
 
+                let req = GetVersioningStatusRequest { id: "".to_string() };
+                let versioning_status = match client.grpc.get_versioning_status(req).await {
+                    Ok(resp_) => {
+                        let resp = resp_.into_inner();
+                        resp.status
+                    }
+                    Err(e) => {
+                        // FIXME: Should we default to the last known version - has client some local storage?
+                        rpc_error!(e)
+                    }
+                };
+
+                let address_version = versioning_status
+                    .into_iter()
+                    .rev()
+                    .find_map(|entry| {
+                        let state = ComponentStateId::from_i32(entry.state)
+                            .unwrap_or(ComponentStateId::Error);
+                        match ComponentStateId::from(state) {
+                            // TODO: version
+                            ComponentStateId::Active => Some(1),
+                            _ => None,
+                        }
+                    })
+                    .unwrap_or(0);
+                println!("Should generate address with version: {}", address_version);
+
                 let key = KeyPair::generate();
+
                 let ad = wallet.add_keypairs(vec![key])?[0];
                 if json {
                     Ok(Box::new(ad.to_string()))

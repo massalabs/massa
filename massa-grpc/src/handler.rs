@@ -5,7 +5,7 @@ use massa_proto::massa::api::v1 as grpc;
 use crate::api::{
     get_blocks, get_blocks_by_slots, get_datastore_entries, get_largest_stakers,
     get_next_block_best_parents, get_operations, get_sc_execution_events, get_selector_draws,
-    get_transactions_throughput, get_version,
+    get_transactions_throughput, get_version, get_versioning_status,
 };
 use crate::server::MassaGrpc;
 use crate::stream::{
@@ -107,6 +107,15 @@ impl grpc::massa_service_server::MassaService for MassaGrpc {
         request: tonic::Request<grpc::GetVersionRequest>,
     ) -> Result<tonic::Response<grpc::GetVersionResponse>, tonic::Status> {
         Ok(tonic::Response::new(get_version(self, request)?))
+    }
+
+    /// TODO
+    async fn get_versioning_status(
+        &self,
+        request: tonic::Request<grpc::GetVersioningStatusRequest>,
+    ) -> Result<tonic::Response<grpc::GetVersioningStatusResponse>, tonic::Status> {
+        println!("[{}][{}] get_versioning_status call", file!(), line!());
+        Ok(tonic::Response::new(get_versioning_status(self, request)?))
     }
 
     // ███████╗████████╗██████╗ ███████╗ █████╗ ███╗   ███╗

@@ -12,6 +12,7 @@ use massa_models::prehash::PreHashSet;
 use massa_models::slot::Slot;
 use massa_models::timeslots::{self, get_latest_block_slot_at_timestamp};
 use massa_proto::massa::api::v1 as grpc;
+use massa_proto::massa::api::v1::VersioningStatusEntry;
 use massa_time::MassaTime;
 use std::str::FromStr;
 use tracing::log::warn;
@@ -646,5 +647,36 @@ pub(crate) fn get_version(
     Ok(grpc::GetVersionResponse {
         id: request.into_inner().id,
         version: grpc.version.to_string(),
+    })
+}
+
+// Get node version
+pub(crate) fn get_versioning_status(
+    grpc: &MassaGrpc,
+    request: tonic::Request<grpc::GetVersioningStatusRequest>,
+) -> Result<grpc::GetVersioningStatusResponse, GrpcError> {
+    println!("[{}][{}] get_versioning_status", file!(), line!());
+
+    let mip_store_status_ = grpc.mip_store.get_status();
+    let mip_store_status: Vec<VersioningStatusEntry> = mip_store_status_
+        .iter()
+        .map(|(mip_info, state_id)| {
+            VersioningStatusEntry {
+                mip_info: mip_info.name.clone(),
+                state: u32::from(state_id.clone()) as i32, // FIXME?
+            }
+        })
+        .collect();
+
+    println!(
+        "[{}][{}] mip_store_status: {:?}",
+        file!(),
+        line!(),
+        mip_store_status
+    );
+
+    Ok(grpc::GetVersioningStatusResponse {
+        id: request.into_inner().id,
+        status: mip_store_status,
     })
 }

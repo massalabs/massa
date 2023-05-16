@@ -40,6 +40,7 @@ use massa_models::{
     prehash::{PreHashMap, PreHashSet},
     version::Version,
 };
+use massa_proto::massa::api::v1::massa_service_client::MassaServiceClient;
 
 use jsonrpsee_http_client as _;
 use jsonrpsee_ws_client as _;
@@ -59,6 +60,8 @@ pub struct Client {
     pub public: RpcClient,
     /// private component
     pub private: RpcClient,
+    /// grpc client
+    pub grpc: MassaServiceClient<tonic::transport::Channel>,
 }
 
 impl Client {
@@ -67,15 +70,28 @@ impl Client {
         ip: IpAddr,
         public_port: u16,
         private_port: u16,
+        grpc_port: u16,
         http_config: &HttpConfig,
-    ) -> Client {
+    ) -> Self {
         let public_socket_addr = SocketAddr::new(ip, public_port);
         let private_socket_addr = SocketAddr::new(ip, private_port);
         let public_url = format!("http://{}", public_socket_addr);
         let private_url = format!("http://{}", private_socket_addr);
-        Client {
+
+        let grpc_socket_addr = SocketAddr::new(ip, grpc_port);
+        let grpc_url = format!("grpc://{}", grpc_socket_addr);
+
+        // TODO: no unwrap
+        // start grpc client and connect to the server
+        let channel = tonic::transport::Channel::from_shared(grpc_url)
+            .unwrap()
+            .connect()
+            .await
+            .unwrap();
+        Self {
             public: RpcClient::from_url(&public_url, http_config).await,
             private: RpcClient::from_url(&private_url, http_config).await,
+            grpc: MassaServiceClient::new(channel),
         }
     }
 }
