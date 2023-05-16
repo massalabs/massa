@@ -349,8 +349,8 @@ fn test_denunciation_pool_get() {
         let endorsement_sender = broadcast::channel(2000).0;
         let operation_sender = broadcast::channel(5000).0;
 
-        let mut execution_controller = {
-            let res = Box::new(MockExecutionController::new());
+        let execution_controller = {
+            let mut res = Box::new(MockExecutionController::new());
             res.expect_clone_box()
                 .return_once(move || Box::new(MockExecutionController::new()));
 
@@ -417,7 +417,7 @@ fn test_denunciation_pool_get() {
 
 // The _actual_ story of the mock involves some clones that we don't want to worry about.
 // This helper method means that tests need only concern themselves with the actual story.
-fn pool_test_mock_selector_controller(
+pub fn pool_test_mock_selector_controller(
     story: MockSelectorController,
 ) -> Box<MockSelectorController> {
     let mut selector_controller = Box::new(MockSelectorController::new());
