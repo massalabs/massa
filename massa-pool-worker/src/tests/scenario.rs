@@ -234,6 +234,7 @@ fn test_block_header_denunciation_creation() {
         pool_controller,
         storage: _storage,
     } = pool_test(config, execution_controller, selector_controller);
+
     pool_controller.add_denunciation_precursor(de_p_1);
     pool_controller.add_denunciation_precursor(de_p_2);
     std::thread::sleep(Duration::from_millis(100));
@@ -319,65 +320,64 @@ fn test_denunciation_pool_get() {
     let de_idx_2 = DenunciationIndex::from(&denunciation_orig_2);
 
     let config = PoolConfig::default();
+    let execution_controller = {
+        let mut res = Box::new(MockExecutionController::new());
+        res.expect_clone_box()
+            .return_once(move || Box::new(MockExecutionController::new()));
+
+        res.expect_is_denunciation_executed()
+            .times(2)
+            .returning(move |de_idx| de_idx != &de_idx_2);
+        res
+    };
+
+    let selector_controller = {
+        let mut res = MockSelectorController::new();
+        res.expect_get_producer()
+            .times(2)
+            .returning(move |_| PosResult::Ok(address_2));
+        res.expect_get_selection().times(2).returning(move |_| {
+            PosResult::Ok(Selection {
+                endorsements: vec![address_1; usize::from(config.thread_count)],
+                producer: address_1,
+            })
+        });
+        pool_test_mock_selector_controller(res)
+    };
+
+    let PoolTestBoilerPlate {
+        mut pool_manager,
+        pool_controller,
+        storage: _storage,
+    } = pool_test(config, execution_controller, selector_controller);
+
+    // And so begins the test
     {
-        let execution_controller = {
-            let mut res = Box::new(MockExecutionController::new());
-            res.expect_clone_box()
-                .return_once(move || Box::new(MockExecutionController::new()));
+        // ~ random order (but need to keep the precursor order otherwise Denunciation::PartialEq will fail)
+        pool_controller.add_denunciation_precursor(de_p_3);
+        pool_controller.add_denunciation_precursor(de_p_1);
+        pool_controller.add_denunciation_precursor(de_p_4);
+        pool_controller.add_denunciation_precursor(de_p_2);
 
-            res.expect_is_denunciation_executed()
-                .times(2)
-                .returning(move |de_idx| de_idx != &de_idx_2);
-            res
-        };
+        std::thread::sleep(Duration::from_millis(200));
 
-        let selector_controller = {
-            let mut res = MockSelectorController::new();
-            res.expect_get_producer()
-                .times(2)
-                .returning(move |_| PosResult::Ok(address_2));
-            res.expect_get_selection().times(2).returning(move |_| {
-                PosResult::Ok(Selection {
-                    endorsements: vec![address_1; usize::from(config.thread_count)],
-                    producer: address_1,
-                })
-            });
-            pool_test_mock_selector_controller(res)
-        };
+        assert_eq!(pool_controller.get_denunciation_count(), 2);
+        assert_eq!(
+            pool_controller.contains_denunciation(&denunciation_orig_1),
+            true
+        );
+        assert_eq!(
+            pool_controller.contains_denunciation(&denunciation_orig_2),
+            true
+        );
 
-        let PoolTestBoilerPlate {
-            mut pool_manager,
-            pool_controller,
-            storage: _storage,
-        } = pool_test(config, execution_controller, selector_controller);
+        let target_slot_1 = Slot::new(4, 0);
 
-        {
-            // ~ random order (but need to keep the precursor order otherwise Denunciation::PartialEq will fail)
-            pool_controller.add_denunciation_precursor(de_p_3);
-            pool_controller.add_denunciation_precursor(de_p_1);
-            pool_controller.add_denunciation_precursor(de_p_4);
-            pool_controller.add_denunciation_precursor(de_p_2);
+        let denunciations = pool_controller.get_block_denunciations(&target_slot_1);
 
-            std::thread::sleep(Duration::from_millis(200));
+        assert_eq!(denunciations, vec![denunciation_orig_2]);
 
-            assert_eq!(pool_controller.get_denunciation_count(), 2);
-            assert_eq!(
-                pool_controller.contains_denunciation(&denunciation_orig_1),
-                true
-            );
-            assert_eq!(
-                pool_controller.contains_denunciation(&denunciation_orig_2),
-                true
-            );
-
-            let target_slot_1 = Slot::new(4, 0);
-
-            let denunciations = pool_controller.get_block_denunciations(&target_slot_1);
-
-            assert_eq!(denunciations, vec![denunciation_orig_2]);
-
-            pool_manager.stop();
-        }
+        pool_manager.stop();
     }
 }
 
