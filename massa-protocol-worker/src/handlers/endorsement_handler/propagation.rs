@@ -7,7 +7,7 @@ use massa_models::{
     prehash::{PreHashMap, PreHashSet},
 };
 use massa_protocol_exports::ProtocolConfig;
-use peernet::peer_id::PeerId;
+use massa_protocol_exports::peer_id::PeerId;
 use tracing::{debug, info, log::warn};
 
 use crate::{messages::MessagesSerializer, wrap_network::ActiveConnectionsTrait};

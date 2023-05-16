@@ -11,7 +11,7 @@ use massa_models::stats::NetworkStats;
 use massa_models::{block_header::SecuredHeader, block_id::BlockId};
 use massa_storage::Storage;
 use peernet::peer::PeerConnectionType;
-use peernet::peer_id::PeerId;
+use crate::PeerId;
 
 #[cfg_attr(any(test, feature = "testing"), mockall::automock)]
 pub trait ProtocolController: Send + Sync {

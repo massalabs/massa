@@ -6,7 +6,7 @@ use massa_models::{
     prehash::PreHashSet,
 };
 use massa_protocol_exports::ProtocolController;
-use peernet::peer_id::PeerId;
+use massa_protocol_exports::peer_id::PeerId;
 
 use crate::{
     handlers::block_handler::{BlockInfoReply, BlockMessage},

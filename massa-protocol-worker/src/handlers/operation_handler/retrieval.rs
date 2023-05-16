@@ -23,7 +23,7 @@ use massa_protocol_exports::{ProtocolConfig, ProtocolError};
 use massa_serialization::{DeserializeError, Deserializer};
 use massa_storage::Storage;
 use massa_time::{MassaTime, TimeError};
-use peernet::peer_id::PeerId;
+use massa_protocol_exports::peer_id::PeerId;
 
 use crate::{
     handlers::peer_handler::models::{PeerManagementCmd, PeerMessageTuple},

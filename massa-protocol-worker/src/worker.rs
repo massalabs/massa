@@ -46,7 +46,7 @@ use crate::{
     },
     manager::ProtocolManagerImpl,
     messages::MessagesHandler,
-    wrap_network::NetworkControllerImpl,
+    wrap_network::NetworkControllerImpl, context::Context,
 };
 
 pub struct ProtocolChannels {
@@ -174,11 +174,6 @@ pub fn start_protocol_controller(
         id_deserializer: U64VarIntDeserializer::new(Included(0), Included(u64::MAX)),
     };
 
-    let mut peernet_config = PeerNetConfiguration::default(
-        MassaHandshake::new(peer_db.clone(), config.clone(), message_handlers.clone()),
-        message_handlers.clone(),
-    );
-
     // try to read node keypair from file, otherwise generate it & write to file. Then derive nodeId
     let keypair = if std::path::Path::is_file(&config.keypair_file) {
         // file exists: try to load it
@@ -198,6 +193,14 @@ pub fn start_protocol_controller(
         }
         keypair
     };
+
+    let mut peernet_config = PeerNetConfiguration::default(
+        MassaHandshake::new(peer_db.clone(), config.clone(), message_handlers.clone()),
+        message_handlers.clone(),
+        Context {
+            our_keypair: keypair.clone(),
+        }
+    );
 
     let initial_peers_infos = serde_json::from_str::<HashMap<PeerId, PeerData>>(
         &std::fs::read_to_string(&config.initial_peers)?,
@@ -221,8 +224,6 @@ pub fn start_protocol_controller(
             .collect()
     };
 
-    let peernet_keypair = PeerNetKeyPair::from_str(&keypair.to_string()).unwrap();
-    peernet_config.self_keypair = peernet_keypair.clone();
     let peernet_categories = config
         .peers_categories
         .iter()

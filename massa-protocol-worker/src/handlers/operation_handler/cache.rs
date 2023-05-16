@@ -3,7 +3,7 @@ use std::{num::NonZeroUsize, sync::Arc};
 use lru::LruCache;
 use massa_models::operation::{OperationId, OperationPrefixId};
 use parking_lot::RwLock;
-use peernet::peer_id::PeerId;
+use massa_protocol_exports::peer_id::PeerId;
 
 pub struct OperationCache {
     pub checked_operations: LruCache<OperationId, ()>,

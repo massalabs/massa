@@ -17,7 +17,7 @@ use massa_models::{
 use massa_protocol_exports::{test_exports::tools, ProtocolConfig};
 use massa_signature::KeyPair;
 use massa_time::MassaTime;
-use peernet::peer_id::PeerId;
+use massa_protocol_exports::peer_id::PeerId;
 use serial_test::serial;
 
 use super::{context::protocol_test, tools::send_and_propagate_block};

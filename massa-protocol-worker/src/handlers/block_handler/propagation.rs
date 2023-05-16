@@ -6,7 +6,7 @@ use massa_logging::massa_trace;
 use massa_models::{block_id::BlockId, prehash::PreHashSet};
 use massa_protocol_exports::{ProtocolConfig, ProtocolError};
 use massa_storage::Storage;
-use peernet::peer_id::PeerId;
+use massa_protocol_exports::peer_id::PeerId;
 use tracing::{debug, info, warn};
 
 use crate::{

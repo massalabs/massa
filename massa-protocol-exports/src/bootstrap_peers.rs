@@ -10,7 +10,7 @@ use nom::{
     sequence::tuple,
     IResult, Parser,
 };
-use peernet::peer_id::PeerId;
+use crate::PeerId;
 use peernet::transports::TransportType;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
