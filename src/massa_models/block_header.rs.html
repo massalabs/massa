@@ -661,6 +661,9 @@
 <a href="#661" id="661">661</a>
 <a href="#662" id="662">662</a>
 <a href="#663" id="663">663</a>
+<a href="#664" id="664">664</a>
+<a href="#665" id="665">665</a>
+<a href="#666" id="666">666</a>
 </pre><pre class="rust"><code><span class="kw">use </span><span class="kw">crate</span>::block_id::BlockId;
 <span class="kw">use </span><span class="kw">crate</span>::denunciation::{Denunciation, DenunciationDeserializer, DenunciationSerializer};
 <span class="kw">use </span><span class="kw">crate</span>::endorsement::{
@@ -705,7 +708,10 @@
 <span class="comment">// TODO: gh-issue #3398
 </span><span class="attr">#[cfg(any(test, feature = <span class="string">&quot;testing&quot;</span>))]
 </span><span class="kw">impl </span>BlockHeader {
-    <span class="kw">fn </span>assert_invariants(
+    <span class="doccomment">/// This is an intentional duplication of invariant checks. In production code,
+    /// these checks are dispersed throughout the deserialization process. This test-only function
+    /// allows all the checks to be in one place.
+    </span><span class="kw">fn </span>assert_invariants(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         thread_count: u8,
         endorsement_count: u32,
