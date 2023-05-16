@@ -17,16 +17,14 @@
 //! latest period given his own thread. All operation which doesn't fit these
 //! requirements are "irrelevant"
 //!
-use crate::{start_pool_controller, tests::tools::OpGenerator};
+use crate::tests::tools::OpGenerator;
 
-use super::tools::{create_some_operations, operation_pool_test, pool_test, PoolTestBoilerPlate};
+use super::tools::{create_some_operations, operation_pool_test, PoolTestBoilerPlate};
 use massa_execution_exports::MockExecutionController;
 use massa_models::{amount::Amount, operation::OperationId, slot::Slot};
-use massa_pool_exports::{PoolChannels, PoolConfig};
+use massa_pool_exports::PoolConfig;
 use massa_pos_exports::MockSelectorController;
-use massa_storage::Storage;
 use std::time::Duration;
-use tokio::sync::broadcast;
 
 #[test]
 fn test_add_operation() {

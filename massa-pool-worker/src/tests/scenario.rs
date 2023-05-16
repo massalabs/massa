@@ -16,7 +16,6 @@ use mockall::Sequence;
 use std::rc::Rc;
 use std::time::Duration;
 
-use crate::start_pool_controller;
 use crate::tests::tools::create_some_operations;
 use crate::tests::tools::OpGenerator;
 use massa_execution_exports::MockExecutionController;
@@ -29,13 +28,10 @@ use massa_models::slot::Slot;
 use massa_models::test_exports::{
     gen_block_headers_for_denunciation, gen_endorsements_for_denunciation,
 };
-use massa_pool_exports::PoolChannels;
 use massa_pool_exports::PoolConfig;
 use massa_pos_exports::MockSelectorController;
 use massa_pos_exports::{PosResult, Selection};
 use massa_signature::KeyPair;
-use massa_storage::Storage;
-use tokio::sync::broadcast;
 
 use super::tools::pool_test;
 use super::tools::PoolTestBoilerPlate;
@@ -235,8 +231,8 @@ fn test_block_header_denunciation_creation() {
         .returning(move || Box::new(MockExecutionController::new()));
     let PoolTestBoilerPlate {
         mut pool_manager,
-        mut pool_controller,
-        storage,
+        pool_controller,
+        storage: _storage,
     } = pool_test(config, execution_controller, selector_controller);
     pool_controller.add_denunciation_precursor(de_p_1);
     pool_controller.add_denunciation_precursor(de_p_2);
@@ -280,8 +276,8 @@ fn test_endorsement_denunciation_creation() {
         let selector_controller = pool_test_mock_selector_controller(res);
         let PoolTestBoilerPlate {
             mut pool_manager,
-            mut pool_controller,
-            storage,
+            pool_controller,
+            storage: _storage,
         } = pool_test(config, execution_controller, selector_controller);
 
         {
@@ -351,8 +347,8 @@ fn test_denunciation_pool_get() {
 
         let PoolTestBoilerPlate {
             mut pool_manager,
-            mut pool_controller,
-            storage,
+            pool_controller,
+            storage: _storage,
         } = pool_test(config, execution_controller, selector_controller);
 
         {

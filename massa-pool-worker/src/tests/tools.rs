@@ -2,7 +2,6 @@
 
 use crate::{operation_pool::OperationPool, start_pool_controller};
 use crossbeam_channel as _;
-use massa_execution_exports::test_exports;
 use massa_execution_exports::MockExecutionController;
 use massa_hash::Hash;
 use massa_models::{
@@ -15,11 +14,9 @@ use massa_models::{
     slot::Slot,
 };
 use massa_pool_exports::{PoolChannels, PoolConfig, PoolController, PoolManager};
-use massa_pos_exports::test_exports::{MockSelectorController, MockSelectorControllerMessage};
 use massa_pos_exports::MockSelectorController as AutoMockSelectorController;
 use massa_signature::KeyPair;
 use massa_storage::Storage;
-use std::sync::mpsc::Receiver;
 use tokio::sync::broadcast;
 
 #[derive(Default)]
