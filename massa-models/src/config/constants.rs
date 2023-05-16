@@ -15,7 +15,10 @@
 //! (`default_testing.rs`) But as for the current file you shouldn't modify it.
 use std::str::FromStr;
 
-use crate::{address::ADDRESS_SIZE_BYTES, amount::Amount, version::Version};
+use crate::{
+    address::ADDRESS_SIZE_BYTES, amount::Amount, serialization::u32_be_bytes_min_length,
+    version::Version,
+};
 use massa_signature::KeyPair;
 use massa_time::MassaTime;
 use num::rational::Ratio;
@@ -184,6 +187,9 @@ pub const MAX_RNG_SEED_LENGTH: u32 = PERIODS_PER_CYCLE.saturating_mul(THREAD_COU
 
 /// Max message size for bootstrap
 pub const MAX_BOOTSTRAP_MESSAGE_SIZE: u32 = 1048576000;
+/// The number of bytes needed to encode [`MAX_BOOTSTRAP_MESSAGE_SIZE`]
+pub const MAX_BOOTSTRAP_MESSAGE_SIZE_BYTES: usize =
+    u32_be_bytes_min_length(MAX_BOOTSTRAP_MESSAGE_SIZE);
 /// Max number of blocks we provide/ take into account while bootstrapping
 pub const MAX_BOOTSTRAP_BLOCKS: u32 = 1000000;
 /// max bootstrapped cliques

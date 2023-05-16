@@ -5,15 +5,9 @@ authors = ["Massa Labs <info@massa.net>"]
 edition = "2021"
 
 [dependencies]
-displaydoc = "0.2"
-futures = "0.3"
-lazy_static = "1.4.0"
 nom = "7.1"
 num = "0.4"
 serde = { version = "1.0", features = ["derive"] }
-serde_json = "1.0"
-thiserror = "1.0"
-tracing = "0.1"
 rand = "0.8"
 rocksdb = "0.20"
 parking_lot = { version = "0.12", features = ["deadlock_detection"] }
@@ -21,16 +15,12 @@ parking_lot = { version = "0.12", features = ["deadlock_detection"] }
 # custom modules
 massa_hash = { path = "../massa-hash" }
 massa_ledger_exports = { path = "../massa-ledger-exports" }
-massa_logging = { path = "../massa-logging" }
 massa_models = { path = "../massa-models" }
 massa_serialization = { path = "../massa-serialization" }
 massa_signature = { path = "../massa-signature" }
-massa_time = { path = "../massa-time" }
 massa_db = { path = "../massa-db" }
 
 [dev-dependencies]
-pretty_assertions = "1.2"
-serial_test = "1.0"
 tempfile = "3.3"
 massa_ledger_worker = { path = "../massa-ledger-worker" }
 

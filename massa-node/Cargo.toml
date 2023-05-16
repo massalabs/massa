@@ -12,17 +12,18 @@ anyhow = "1.0"
 lazy_static = "1.4"
 parking_lot = { version = "0.12", features = ["deadlock_detection"] }
 serde = { version = "1.0", features = ["derive"] }
-serde_json = "1.0"
 tokio = { version = "1.23", features = ["full"] }
 tracing = { version = "0.1", features = [
     "max_level_debug",
     "release_max_level_debug",
 ] }
-peernet = { git = "https://github.com/massalabs/PeerNet", rev = "cf4cb09deda8cdd9b8893cc9595ac3b255aa74c9" }
+peernet = { git = "https://github.com/massalabs/PeerNet", rev = "1bb1f452bf63b78a89eb9542fb019b88d894c664" }
 tracing-subscriber = "0.3"
 paw = "1.0"
 structopt = { version = "0.3", features = ["paw"] }
 dialoguer = "0.10"
+chrono = "0.4"
+ctrlc = "3.2.5"
 # custom modules
 massa_api_exports = { path = "../massa-api-exports" }
 massa_api = { path = "../massa-api" }
@@ -58,11 +59,5 @@ massa_db = { path = "../massa-db" }
 beta = []
 deadlock_detection = []
 bootstrap_server = []
-sandbox = [
-    "massa_bootstrap/sandbox",
-    "massa_consensus_worker/sandbox",
-    "massa_execution_worker/sandbox",
-    "massa_final_state/sandbox",
-    "massa_models/sandbox",
-]
+sandbox = ["massa_bootstrap/sandbox", "massa_consensus_worker/sandbox", "massa_execution_worker/sandbox", "massa_final_state/sandbox", "massa_models/sandbox"]
 create_snapshot = ["massa_final_state/create_snapshot"]

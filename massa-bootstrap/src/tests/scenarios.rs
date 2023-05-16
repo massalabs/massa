@@ -6,7 +6,7 @@ use super::tools::{
 use crate::listener::PollEvent;
 use crate::tests::tools::{
     get_random_async_pool_changes, get_random_executed_de_changes, get_random_executed_ops_changes,
-    get_random_pos_changes, make_runtime,
+    get_random_pos_changes,
 };
 use crate::{
     client::MockBSConnector, get_state, server::MockBSEventPoller, start_bootstrap_server,
@@ -55,6 +55,7 @@ use parking_lot::RwLock;
 use std::collections::{BTreeMap, HashMap};
 use std::net::{SocketAddr, TcpStream};
 use std::println;
+use std::sync::{Condvar, Mutex};
 use std::{path::PathBuf, str::FromStr, sync::Arc, time::Duration};
 use tempfile::TempDir;
 
@@ -471,17 +472,17 @@ fn test_bootstrap_server() {
         .unwrap();
 
     // launch the get_state process
-    let bootstrap_res = make_runtime()
-        .block_on(get_state(
-            bootstrap_config,
-            final_state_client_clone,
-            mock_remote_connector,
-            Version::from_str("TEST.1.10").unwrap(),
-            MassaTime::now().unwrap().saturating_sub(1000.into()),
-            None,
-            None,
-        ))
-        .unwrap();
+    let bootstrap_res = get_state(
+        bootstrap_config,
+        final_state_client_clone,
+        mock_remote_connector,
+        Version::from_str("TEST.1.10").unwrap(),
+        MassaTime::now().unwrap().saturating_sub(1000.into()),
+        None,
+        None,
+        Arc::new((Mutex::new(false), Condvar::new())),
+    )
+    .unwrap();
 
     // Make sure the modifier thread has done its job
     mod_thread.join().unwrap();

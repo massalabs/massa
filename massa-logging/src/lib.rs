@@ -2,10 +2,14 @@
 //! Log utilities
 
 #![warn(missing_docs)]
+
+pub use serde_json;
+pub use tracing;
+
 #[macro_export]
 /// tracing with some context
 macro_rules! massa_trace {
     ($evt:expr, $params:tt) => {
-        tracing::trace!("massa:{}:{}", $evt, serde_json::json!($params));
+        $crate::tracing::trace!("massa:{}:{}", $evt, $crate::serde_json::json!($params));
     };
 }

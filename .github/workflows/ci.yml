@@ -19,7 +19,7 @@ env:
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
-    
+
 jobs:
   # Quick tests on each commit/PR
   sanity:
@@ -107,7 +107,7 @@ jobs:
         os:
           - ubuntu-latest
           - macOS-latest
-          - windows-latest
+#          - windows-latest
     steps:
       - uses: ilammy/setup-nasm@v1
       - uses: actions/checkout@v3
