@@ -84,41 +84,36 @@ pub(crate) fn create_some_operations(n: usize, op_gen: &OpGenerator) -> Vec<Secu
     (0..n).map(|_| op_gen.generate()).collect()
 }
 
+pub struct PoolTestBoilerPlate {
+    pub pool_manager: Box<dyn PoolManager>,
+    pub pool_controller: Box<dyn PoolController>,
+    pub storage: Storage,
+}
 /// Creates module mocks, providing the environment needed to run the provided closure
-pub fn pool_test<F>(cfg: PoolConfig, test: F)
-where
-    F: FnOnce(
-        Box<dyn PoolManager>,
-        Box<dyn PoolController>,
-        Receiver<test_exports::MockExecutionControllerMessage>,
-        crossbeam_channel::Receiver<MockSelectorControllerMessage>,
-        Storage,
-    ),
-{
+pub fn pool_test(
+    cfg: PoolConfig,
+    execution_story: Box<MockExecutionController>,
+    selector_story: Box<AutoMockSelectorController>,
+) -> PoolTestBoilerPlate {
     let storage: Storage = Storage::create_root();
     let endorsement_sender = broadcast::channel(2000).0;
     let operation_sender = broadcast::channel(5000).0;
-    let (execution_controller, execution_receiver) =
-        test_exports::MockExecutionController::new_with_receiver();
-    let (selector_controller, selector_receiver) = MockSelectorController::new_with_receiver();
     let (pool_manager, pool_controller) = start_pool_controller(
         cfg,
         &storage,
-        execution_controller,
+        execution_story,
         PoolChannels {
             endorsement_sender,
             operation_sender,
-            selector: selector_controller,
+            selector: selector_story,
         },
     );
 
-    test(
+    PoolTestBoilerPlate {
         pool_manager,
         pool_controller,
-        execution_receiver,
-        selector_receiver,
         storage,
-    )
+    }
 }
 
 pub fn operation_pool_test<F>(cfg: PoolConfig, test: F)

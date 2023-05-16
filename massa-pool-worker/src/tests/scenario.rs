@@ -37,6 +37,9 @@ use massa_signature::KeyPair;
 use massa_storage::Storage;
 use tokio::sync::broadcast;
 
+use super::tools::pool_test;
+use super::tools::PoolTestBoilerPlate;
+
 /// # Test simple get operation
 /// Just try to get some operations stored in pool
 ///
@@ -52,8 +55,6 @@ use tokio::sync::broadcast;
 /// same length than those added previously.
 #[test]
 fn test_simple_get_operations() {
-    let mut storage = Storage::create_root();
-
     // Setup the execution story.
     let keypair = KeyPair::generate();
     let addr = Address::from_public_key(&keypair.get_public_key()).clone();
@@ -83,16 +84,12 @@ fn test_simple_get_operations() {
 
     // Setup the pool controller
     let config = PoolConfig::default();
-    let (mut pool_manager, mut pool_controller) = start_pool_controller(
-        config,
-        &storage,
-        execution_controller,
-        PoolChannels {
-            endorsement_sender: broadcast::channel(2000).0,
-            operation_sender: broadcast::channel(5000).0,
-            selector: selector_controller,
-        },
-    );
+
+    let PoolTestBoilerPlate {
+        mut pool_manager,
+        mut pool_controller,
+        mut storage,
+    } = pool_test(config, execution_controller, selector_controller);
 
     // setup storage
     let op_gen = OpGenerator::default().creator(keypair.clone()).expirery(1);
@@ -176,7 +173,6 @@ fn test_get_operations_overflow() {
     };
     let creator_thread = creator_address.get_thread(config.thread_count);
 
-    let mut storage = Storage::create_root();
     let mut execution_controller = Box::new(MockExecutionController::new());
     execution_controller.expect_clone_box().returning(move || {
         Box::new(create_basic_get_block_operation_execution_mock(
@@ -193,16 +189,11 @@ fn test_get_operations_overflow() {
         .expect_clone_box()
         .returning(|| Box::new(MockSelectorController::new()));
 
-    let (mut pool_manager, mut pool_controller) = start_pool_controller(
-        config,
-        &storage,
-        execution_controller,
-        PoolChannels {
-            endorsement_sender: broadcast::channel(2000).0,
-            operation_sender: broadcast::channel(5000).0,
-            selector: selector_controller,
-        },
-    );
+    let PoolTestBoilerPlate {
+        mut pool_manager,
+        mut pool_controller,
+        mut storage,
+    } = pool_test(config, execution_controller, selector_controller);
 
     storage.store_operations(create_some_operations(10, &op_gen));
     pool_controller.add_operations(storage);
@@ -242,17 +233,11 @@ fn test_block_header_denunciation_creation() {
     execution_controller
         .expect_clone_box()
         .returning(move || Box::new(MockExecutionController::new()));
-    let storage = Storage::create_root();
-    let (mut pool_manager, pool_controller) = start_pool_controller(
-        config,
-        &storage,
-        execution_controller,
-        PoolChannels {
-            endorsement_sender: broadcast::channel(2000).0,
-            operation_sender: broadcast::channel(5000).0,
-            selector: selector_controller,
-        },
-    );
+    let PoolTestBoilerPlate {
+        mut pool_manager,
+        mut pool_controller,
+        storage,
+    } = pool_test(config, execution_controller, selector_controller);
     pool_controller.add_denunciation_precursor(de_p_1);
     pool_controller.add_denunciation_precursor(de_p_2);
     std::thread::sleep(Duration::from_millis(100));
@@ -280,7 +265,6 @@ fn test_endorsement_denunciation_creation() {
 
     let config = PoolConfig::default();
     {
-        let storage: Storage = Storage::create_root();
         let mut execution_controller = Box::new(MockExecutionController::new());
         execution_controller
             .expect_clone_box()
@@ -294,16 +278,11 @@ fn test_endorsement_denunciation_creation() {
             })
         });
         let selector_controller = pool_test_mock_selector_controller(res);
-        let (mut pool_manager, pool_controller) = start_pool_controller(
-            config,
-            &storage,
-            execution_controller,
-            PoolChannels {
-                endorsement_sender: broadcast::channel(2000).0,
-                operation_sender: broadcast::channel(5000).0,
-                selector: selector_controller,
-            },
-        );
+        let PoolTestBoilerPlate {
+            mut pool_manager,
+            mut pool_controller,
+            storage,
+        } = pool_test(config, execution_controller, selector_controller);
 
         {
             pool_controller.add_denunciation_precursor(de_p_1);
@@ -345,10 +324,6 @@ fn test_denunciation_pool_get() {
 
     let config = PoolConfig::default();
     {
-        let storage: Storage = Storage::create_root();
-        let endorsement_sender = broadcast::channel(2000).0;
-        let operation_sender = broadcast::channel(5000).0;
-
         let execution_controller = {
             let mut res = Box::new(MockExecutionController::new());
             res.expect_clone_box()
@@ -374,16 +349,11 @@ fn test_denunciation_pool_get() {
             pool_test_mock_selector_controller(res)
         };
 
-        let (mut pool_manager, pool_controller) = start_pool_controller(
-            config,
-            &storage,
-            execution_controller,
-            PoolChannels {
-                endorsement_sender,
-                operation_sender,
-                selector: selector_controller,
-            },
-        );
+        let PoolTestBoilerPlate {
+            mut pool_manager,
+            mut pool_controller,
+            storage,
+        } = pool_test(config, execution_controller, selector_controller);
 
         {
             // ~ random order (but need to keep the precursor order otherwise Denunciation::PartialEq will fail)

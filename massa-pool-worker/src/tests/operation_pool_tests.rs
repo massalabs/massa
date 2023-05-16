@@ -19,7 +19,7 @@
 //!
 use crate::{start_pool_controller, tests::tools::OpGenerator};
 
-use super::tools::{create_some_operations, operation_pool_test, pool_test};
+use super::tools::{create_some_operations, operation_pool_test, pool_test, PoolTestBoilerPlate};
 use massa_execution_exports::MockExecutionController;
 use massa_models::{amount::Amount, operation::OperationId, slot::Slot};
 use massa_pool_exports::{PoolChannels, PoolConfig};
@@ -62,9 +62,6 @@ fn test_add_irrelevant_operation() {
 fn test_pool() {
     let pool_config = PoolConfig::default();
     {
-        let storage_base: Storage = Storage::create_root();
-        let endorsement_sender = broadcast::channel(2000).0;
-        let operation_sender = broadcast::channel(5000).0;
         let mut execution_controller = Box::new(MockExecutionController::new());
         execution_controller.expect_clone_box().return_once(|| {
             let mut res = MockExecutionController::new();
@@ -88,16 +85,12 @@ fn test_pool() {
             .expect_clone_box()
             .times(3)
             .returning(|| Box::new(MockSelectorController::new()));
-        let (mut pool_manager, mut pool_controller) = start_pool_controller(
-            pool_config,
-            &storage_base,
-            execution_controller,
-            PoolChannels {
-                endorsement_sender,
-                operation_sender,
-                selector: selector_controller,
-            },
-        );
+
+        let PoolTestBoilerPlate {
+            mut pool_manager,
+            mut pool_controller,
+            storage: storage_base,
+        } = super::tools::pool_test(pool_config, execution_controller, selector_controller);
 
         {
             // generate (id, transactions, range of validity) by threads
