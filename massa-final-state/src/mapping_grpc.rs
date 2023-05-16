@@ -2,6 +2,7 @@
 
 use crate::StateChanges;
 use massa_async_pool::{AsyncMessage, AsyncMessageId, Change};
+use massa_ledger_exports::SetUpdateOrDelete;
 use massa_proto::massa::api::v1 as grpc;
 
 impl From<StateChanges> for grpc::StateChanges {
@@ -32,36 +33,57 @@ impl From<StateChanges> for grpc::StateChanges {
                 .into_iter()
                 .map(
                     |change: Change<AsyncMessageId, AsyncMessage>| match change {
-                        Change::Add(async_msg_id, async_msg) => grpc::AsynPoolChange {
-                            async_pool_change: Some(grpc::AsyncPoolChangeEntry {
-                                async_message_id: async_msg_id_to_string(async_msg_id),
-                                value: Some(grpc::AsyncPoolChangeValue {
-                                    r#type: grpc::AsyncPoolChangeType::Add as i32,
-                                    async_message: Some(async_msg.into()),
-                                }),
+                        Change::Add(async_msg_id, async_msg) => grpc::AsyncPoolChangeEntry {
+                            async_message_id: async_msg_id_to_string(async_msg_id),
+                            value: Some(grpc::AsyncPoolChangeValue {
+                                r#type: grpc::AsyncPoolChangeType::Add as i32,
+                                async_message: Some(async_msg.into()),
                             }),
                         },
-                        Change::Activate(async_msg_id) => grpc::AsynPoolChange {
-                            async_pool_change: Some(grpc::AsyncPoolChangeEntry {
-                                async_message_id: async_msg_id_to_string(async_msg_id),
-                                value: Some(grpc::AsyncPoolChangeValue {
-                                    r#type: grpc::AsyncPoolChangeType::Activate as i32,
-                                    async_message: None,
-                                }),
+                        Change::Activate(async_msg_id) => grpc::AsyncPoolChangeEntry {
+                            async_message_id: async_msg_id_to_string(async_msg_id),
+                            value: Some(grpc::AsyncPoolChangeValue {
+                                r#type: grpc::AsyncPoolChangeType::Activate as i32,
+                                async_message: None,
                             }),
                         },
-                        Change::Delete(async_msg_id) => grpc::AsynPoolChange {
-                            async_pool_change: Some(grpc::AsyncPoolChangeEntry {
-                                async_message_id: async_msg_id_to_string(async_msg_id),
-                                value: Some(grpc::AsyncPoolChangeValue {
-                                    r#type: grpc::AsyncPoolChangeType::Delete as i32,
-                                    async_message: None,
-                                }),
+                        Change::Delete(async_msg_id) => grpc::AsyncPoolChangeEntry {
+                            async_message_id: async_msg_id_to_string(async_msg_id),
+                            value: Some(grpc::AsyncPoolChangeValue {
+                                r#type: grpc::AsyncPoolChangeType::Delete as i32,
+                                async_message: None,
                             }),
                         },
                     },
                 )
                 .collect(),
+            ledger_changes: Some(grpc::LedgerChanges {
+                entries: value
+                    .ledger_changes
+                    .0
+                    .into_iter()
+                    .map(|(key, value)| grpc::LedgerChangeEntry {
+                        address: key.to_string(),
+                        value: Some(match value {
+                            SetUpdateOrDelete::Set(value) => grpc::LedgerChangeValue {
+                                r#type: grpc::LedgerChangeType::Set as i32,
+                                created_entry: Some(value.into()),
+                                updated_entry: None,
+                            },
+                            SetUpdateOrDelete::Update(value) => grpc::LedgerChangeValue {
+                                r#type: grpc::LedgerChangeType::Update as i32,
+                                created_entry: None,
+                                updated_entry: Some(value.into()),
+                            },
+                            SetUpdateOrDelete::Delete => grpc::LedgerChangeValue {
+                                r#type: grpc::LedgerChangeType::Delete as i32,
+                                created_entry: None,
+                                updated_entry: None,
+                            },
+                        }),
+                    })
+                    .collect(),
+            }),
         }
     }
 }

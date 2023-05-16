@@ -512,7 +512,7 @@ message NewOperationsFilter {
 
 // Operation type enum
 enum OpType {
-  OP_TYPE_UNSPECIFIED = 0; // Defaut enum value
+  OP_TYPE_UNSPECIFIED = 0; // Default enum value
   OP_TYPE_TRANSACTION = 1; // Transaction
   OP_TYPE_ROLL_BUY = 2; // Roll buy
   OP_TYPE_ROLL_SELL = 3; // Roll sell

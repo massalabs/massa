@@ -2797,6 +2797,7 @@ dependencies = [
  "displaydoc",
  "massa_hash 0.1.0",
  "massa_models",
+ "massa_proto",
  "massa_serialization 0.1.0",
  "massa_signature 0.1.0",
  "nom",

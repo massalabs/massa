@@ -70,7 +70,7 @@ message ScExecutionEventContext {
 
 // ScExecutionEventStatus type enum
 enum ScExecutionEventStatus {
-  SC_EXECUTION_EVENT_STATUS_UNSPECIFIED = 0; // Defaut enum value
+  SC_EXECUTION_EVENT_STATUS_UNSPECIFIED = 0; // Default enum value
   SC_EXECUTION_EVENT_STATUS_FINAL = 1; // Final status
   SC_EXECUTION_EVENT_STATUS_READ_ONLY = 2; // Read only status
   SC_EXECUTION_EVENT_STATUS_FAILURE = 3; // Failure status
@@ -78,15 +78,17 @@ enum ScExecutionEventStatus {
 
 // ExecutionOutputStatus type enum
 enum ExecutionOutputStatus {
-  EXECUTION_OUTPUT_STATUS_UNSPECIFIED = 0; // Defaut enum value
+  EXECUTION_OUTPUT_STATUS_UNSPECIFIED = 0; // Default enum value
   EXECUTION_OUTPUT_STATUS_CANDIDATE = 1; // Candidate status
   EXECUTION_OUTPUT_STATUS_FINAL = 2; // Final status
 }
 
 // StateChanges
 message StateChanges {
+  // Ledger changes
+  LedgerChanges ledger_changes = 1;
   // Asynchronous pool changes
-  repeated AsynPoolChange async_pool_changes = 2;
+  repeated AsyncPoolChangeEntry async_pool_changes = 2;
   // Executed operations changes
   ExecutedOpsChanges executed_ops_changes = 5;
 }
@@ -115,18 +117,12 @@ message ExecutedOpsChangeValue {
 
 // OperationExecutionStatus type enum
 enum OperationExecutionStatus {
-  OPERATION_EXECUTION_STATUS_UNSPECIFIED = 0; // Defaut enum value
+  OPERATION_EXECUTION_STATUS_UNSPECIFIED = 0; // Default enum value
   OPERATION_EXECUTION_STATUS_SUCCESS = 1; // Success status
   OPERATION_EXECUTION_STATUS_FAILED = 2; // Failed only status
 }
 
-// AsynPoolChange
-message AsynPoolChange {
-  // Asynchronous pool changes
-  AsyncPoolChangeEntry async_pool_change = 2;
-}
-
-// AsyncPoolChangeEntry
+// AsyncPoolChange Entry
 message AsyncPoolChangeEntry {
   // Async message id
   string async_message_id = 1;
@@ -144,7 +140,7 @@ message AsyncPoolChangeValue {
 
 // AsyncPoolChangeType type enum
 enum AsyncPoolChangeType {
-  ASYNC_POOL_CHANGE_TYPE_UNSPECIFIED = 0; // Defaut enum value
+  ASYNC_POOL_CHANGE_TYPE_UNSPECIFIED = 0; // Default enum value
   ASYNC_POOL_CHANGE_TYPE_ADD = 1; // Add type
   ASYNC_POOL_CHANGE_TYPE_ACTIVATE = 2; // Activate only type
   ASYNC_POOL_CHANGE_TYPE_DELETE = 3; // Delete only type
@@ -208,10 +204,10 @@ message AsyncMessageTrigger {
     optional bytes datastore_key = 2;
 }
 
-// LedgerChange
-message LedgerChange {
-  // Asynchronous pool changes
-  LedgerChangeEntry ledger_change = 2;
+// Ledger change
+message LedgerChanges {
+  // Ledger change entry
+  repeated LedgerChangeEntry entries = 2;
 }
 
 // LedgerChangeEntry
@@ -226,16 +222,18 @@ message LedgerChangeEntry {
 message LedgerChangeValue {
   // The type of the change
   LedgerChangeType type = 1;
-  // Ledger entry
-  LedgerEntry ledger_entry = 2;
+  // Created ledger entry
+  LedgerEntry created_entry = 2;
+  // Update ledger entry 
+  LedgerEntryUpdate updated_entry = 3;
 }
 
 // LedgerChangeType type enum
 enum LedgerChangeType {
-  LEDGER_CHANGE_TYPE_UNSPECIFIED = 0; // Defaut enum value
-  LEDGER_CHANGE_TYPE_SET = 1; // Add type
-  LEDGER_CHANGE_TYPE_UPDATE = 2; // Activate only type
-  LEDGER_CHANGE_TYPE_DELETE = 3; // Delete only type
+  LEDGER_CHANGE_TYPE_UNSPECIFIED = 0; // Default enum value
+  LEDGER_CHANGE_TYPE_SET = 1; // Set type
+  LEDGER_CHANGE_TYPE_UPDATE = 2; // Update type
+  LEDGER_CHANGE_TYPE_DELETE = 3; // Delete type
 }
 
 // An entry associated to an address in the `FinalLedger`
@@ -262,36 +260,36 @@ message LedgerEntryUpdate {
 message SetOrKeepBalance {
   // The type of the change
   SetOrKeepType type = 1;
-  // The balance of that entry
-  fixed64 balance = 2;
+  // The balance of that entry (optional)
+  optional fixed64 balance = 2;
 }
 
 // Set or Keep Bytecode
 message SetOrKeepBytecode {
   // The type of the change
   SetOrKeepType type = 1;
-  // Executable bytecode
-  bytes bytecode = 2;
+  // Executable bytecode (optional)
+  optional bytes bytecode = 2;
 }
 
 // Set or Delete DatastoreEntry
 message SetOrDeleteDatastoreEntry {
   // The type of the change
   SetOrDeleteType type = 1;
-  // The balance of that entry
-  DatastoreEntry datastore_entry = 2;
+  // The balance of that entry (optioal)
+  optional DatastoreEntry datastore_entry = 2;
 }
 
 // SetOrKeepType type enum
 enum SetOrKeepType {
-  SET_OR_KEEP_TYPE_UNSPECIFIED = 0; // Defaut enum value
+  SET_OR_KEEP_TYPE_UNSPECIFIED = 0; // Default enum value
   SET_OR_KEEP_TYPE_SET = 1; // Sets a new absolute value
-  SET_OR_KEEP_TYPE_KEEP = 2; // Deletes the existing value
+  SET_OR_KEEP_TYPE_KEEP = 2; // Keeps the existing value
 }
 
 // SetOrDeleteType type enum
 enum SetOrDeleteType {
-  SET_OR_DELETE_TYPE_UNSPECIFIED = 0; // Defaut enum value
+  SET_OR_DELETE_TYPE_UNSPECIFIED = 0; // Default enum value
   SET_OR_DELETE_TYPE_SET = 1; // Sets a new absolute value
-  SET_OR_DELETE_TYPE_DELETE = 2; // Keeps the existing value
+  SET_OR_DELETE_TYPE_DELETE = 2; // Deletes the existing value
 }

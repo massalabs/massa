@@ -195,10 +195,6 @@
                 </li>
               
                 <li>
-                  <a href="#massa.api.v1.DatastoreEntry"><span class="badge">M</span>DatastoreEntry</a>
-                </li>
-              
-                <li>
                   <a href="#massa.api.v1.DatastoreEntryFilter"><span class="badge">M</span>DatastoreEntryFilter</a>
                 </li>
               
@@ -513,6 +509,10 @@
                 </li>
               
                 <li>
+                  <a href="#massa.api.v1.DatastoreEntry"><span class="badge">M</span>DatastoreEntry</a>
+                </li>
+              
+                <li>
                   <a href="#massa.api.v1.SecureShare"><span class="badge">M</span>SecureShare</a>
                 </li>
               
@@ -545,10 +545,6 @@
           <li>
             <a href="#execution.proto">execution.proto</a>
             <ul>
-              
-                <li>
-                  <a href="#massa.api.v1.AsynPoolChange"><span class="badge">M</span>AsynPoolChange</a>
-                </li>
               
                 <li>
                   <a href="#massa.api.v1.AsyncMessage"><span class="badge">M</span>AsyncMessage</a>
@@ -587,11 +583,43 @@
                 </li>
               
                 <li>
+                  <a href="#massa.api.v1.LedgerChangeEntry"><span class="badge">M</span>LedgerChangeEntry</a>
+                </li>
+              
+                <li>
+                  <a href="#massa.api.v1.LedgerChangeValue"><span class="badge">M</span>LedgerChangeValue</a>
+                </li>
+              
+                <li>
+                  <a href="#massa.api.v1.LedgerChanges"><span class="badge">M</span>LedgerChanges</a>
+                </li>
+              
+                <li>
+                  <a href="#massa.api.v1.LedgerEntry"><span class="badge">M</span>LedgerEntry</a>
+                </li>
+              
+                <li>
+                  <a href="#massa.api.v1.LedgerEntryUpdate"><span class="badge">M</span>LedgerEntryUpdate</a>
+                </li>
+              
+                <li>
                   <a href="#massa.api.v1.ScExecutionEvent"><span class="badge">M</span>ScExecutionEvent</a>
                 </li>
               
                 <li>
                   <a href="#massa.api.v1.ScExecutionEventContext"><span class="badge">M</span>ScExecutionEventContext</a>
+                </li>
+              
+                <li>
+                  <a href="#massa.api.v1.SetOrDeleteDatastoreEntry"><span class="badge">M</span>SetOrDeleteDatastoreEntry</a>
+                </li>
+              
+                <li>
+                  <a href="#massa.api.v1.SetOrKeepBalance"><span class="badge">M</span>SetOrKeepBalance</a>
+                </li>
+              
+                <li>
+                  <a href="#massa.api.v1.SetOrKeepBytecode"><span class="badge">M</span>SetOrKeepBytecode</a>
                 </li>
               
                 <li>
@@ -612,11 +640,23 @@
                 </li>
               
                 <li>
+                  <a href="#massa.api.v1.LedgerChangeType"><span class="badge">E</span>LedgerChangeType</a>
+                </li>
+              
+                <li>
                   <a href="#massa.api.v1.OperationExecutionStatus"><span class="badge">E</span>OperationExecutionStatus</a>
                 </li>
               
                 <li>
                   <a href="#massa.api.v1.ScExecutionEventStatus"><span class="badge">E</span>ScExecutionEventStatus</a>
+                </li>
+              
+                <li>
+                  <a href="#massa.api.v1.SetOrDeleteType"><span class="badge">E</span>SetOrDeleteType</a>
+                </li>
+              
+                <li>
+                  <a href="#massa.api.v1.SetOrKeepType"><span class="badge">E</span>SetOrKeepType</a>
                 </li>
               
               
@@ -800,37 +840,6 @@
                   <td><a href="#massa.api.v1.DatastoreEntryFilter">DatastoreEntryFilter</a></td>
                   <td></td>
                   <td><p>Filter </p></td>
-                </tr>
-              
-            </tbody>
-          </table>
-
-          
-
-        
-      
-        <h3 id="massa.api.v1.DatastoreEntry">DatastoreEntry</h3>
-        <p>DatastoreEntry</p>
-
-        
-          <table class="field-table">
-            <thead>
-              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
-            </thead>
-            <tbody>
-              
-                <tr>
-                  <td>final_value</td>
-                  <td><a href="#bytes">bytes</a></td>
-                  <td></td>
-                  <td><p>final datastore entry value </p></td>
-                </tr>
-              
-                <tr>
-                  <td>candidate_value</td>
-                  <td><a href="#bytes">bytes</a></td>
-                  <td></td>
-                  <td><p>candidate_value datastore entry value </p></td>
                 </tr>
               
             </tbody>
@@ -2705,7 +2714,7 @@
               <tr>
                 <td>OP_TYPE_UNSPECIFIED</td>
                 <td>0</td>
-                <td><p>Defaut enum value</p></td>
+                <td><p>Default enum value</p></td>
               </tr>
             
               <tr>
@@ -3316,7 +3325,7 @@
               <tr>
                 <td>BLOCK_STATUS_UNSPECIFIED</td>
                 <td>0</td>
-                <td><p>Defaut enum value</p></td>
+                <td><p>Default enum value</p></td>
               </tr>
             
               <tr>
@@ -3380,6 +3389,37 @@
                   <td><a href="#bytes">bytes</a></td>
                   <td></td>
                   <td><p>bytes key </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
+        <h3 id="massa.api.v1.DatastoreEntry">DatastoreEntry</h3>
+        <p>DatastoreEntry</p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>final_value</td>
+                  <td><a href="#bytes">bytes</a></td>
+                  <td></td>
+                  <td><p>final datastore entry value </p></td>
+                </tr>
+              
+                <tr>
+                  <td>candidate_value</td>
+                  <td><a href="#bytes">bytes</a></td>
+                  <td></td>
+                  <td><p>candidate_value datastore entry value </p></td>
                 </tr>
               
             </tbody>
@@ -3560,30 +3600,6 @@ This is the parent in thread `self.slot.thread` of the block in which the endors
       <p></p>
 
       
-        <h3 id="massa.api.v1.AsynPoolChange">AsynPoolChange</h3>
-        <p>AsynPoolChange</p>
-
-        
-          <table class="field-table">
-            <thead>
-              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
-            </thead>
-            <tbody>
-              
-                <tr>
-                  <td>async_pool_change</td>
-                  <td><a href="#massa.api.v1.AsyncPoolChangeEntry">AsyncPoolChangeEntry</a></td>
-                  <td></td>
-                  <td><p>Asynchronous pool changes </p></td>
-                </tr>
-              
-            </tbody>
-          </table>
-
-          
-
-        
-      
         <h3 id="massa.api.v1.AsyncMessage">AsyncMessage</h3>
         <p>Asynchronous smart contract message</p>
 
@@ -3736,7 +3752,7 @@ For messages with filter, this boolean is true if the filter has been matched be
         
       
         <h3 id="massa.api.v1.AsyncPoolChangeEntry">AsyncPoolChangeEntry</h3>
-        <p>AsyncPoolChangeEntry</p>
+        <p>AsyncPoolChange Entry</p>
 
         
           <table class="field-table">
@@ -3952,6 +3968,175 @@ For messages with filter, this boolean is true if the filter has been matched be
 
         
       
+        <h3 id="massa.api.v1.LedgerChangeEntry">LedgerChangeEntry</h3>
+        <p>LedgerChangeEntry</p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>address</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p>Address </p></td>
+                </tr>
+              
+                <tr>
+                  <td>value</td>
+                  <td><a href="#massa.api.v1.LedgerChangeValue">LedgerChangeValue</a></td>
+                  <td></td>
+                  <td><p>Ledger message </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
+        <h3 id="massa.api.v1.LedgerChangeValue">LedgerChangeValue</h3>
+        <p>LedgerChangeValue</p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>type</td>
+                  <td><a href="#massa.api.v1.LedgerChangeType">LedgerChangeType</a></td>
+                  <td></td>
+                  <td><p>The type of the change </p></td>
+                </tr>
+              
+                <tr>
+                  <td>created_entry</td>
+                  <td><a href="#massa.api.v1.LedgerEntry">LedgerEntry</a></td>
+                  <td></td>
+                  <td><p>Created ledger entry </p></td>
+                </tr>
+              
+                <tr>
+                  <td>updated_entry</td>
+                  <td><a href="#massa.api.v1.LedgerEntryUpdate">LedgerEntryUpdate</a></td>
+                  <td></td>
+                  <td><p>Update ledger entry </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
+        <h3 id="massa.api.v1.LedgerChanges">LedgerChanges</h3>
+        <p>Ledger change</p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>entries</td>
+                  <td><a href="#massa.api.v1.LedgerChangeEntry">LedgerChangeEntry</a></td>
+                  <td>repeated</td>
+                  <td><p>Ledger change entry </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
+        <h3 id="massa.api.v1.LedgerEntry">LedgerEntry</h3>
+        <p>An entry associated to an address in the `FinalLedger`</p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>balance</td>
+                  <td><a href="#fixed64">fixed64</a></td>
+                  <td></td>
+                  <td><p>The balance of that entry </p></td>
+                </tr>
+              
+                <tr>
+                  <td>bytecode</td>
+                  <td><a href="#bytes">bytes</a></td>
+                  <td></td>
+                  <td><p>Executable bytecode </p></td>
+                </tr>
+              
+                <tr>
+                  <td>entries</td>
+                  <td><a href="#massa.api.v1.DatastoreEntry">DatastoreEntry</a></td>
+                  <td>repeated</td>
+                  <td><p>A key-value store associating a hash to arbitrary bytes </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
+        <h3 id="massa.api.v1.LedgerEntryUpdate">LedgerEntryUpdate</h3>
+        <p>Represents an update to one or more fields of a `LedgerEntry`</p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>balance</td>
+                  <td><a href="#massa.api.v1.SetOrKeepBalance">SetOrKeepBalance</a></td>
+                  <td></td>
+                  <td><p>change the balance </p></td>
+                </tr>
+              
+                <tr>
+                  <td>bytecode</td>
+                  <td><a href="#massa.api.v1.SetOrKeepBytecode">SetOrKeepBytecode</a></td>
+                  <td></td>
+                  <td><p>change the executable bytecode </p></td>
+                </tr>
+              
+                <tr>
+                  <td>datastore</td>
+                  <td><a href="#massa.api.v1.SetOrDeleteDatastoreEntry">SetOrDeleteDatastoreEntry</a></td>
+                  <td>repeated</td>
+                  <td><p>change datastore entries </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
         <h3 id="massa.api.v1.ScExecutionEvent">ScExecutionEvent</h3>
         <p>ScExecutionEvent</p>
 
@@ -4049,6 +4234,99 @@ For messages with filter, this boolean is true if the filter has been matched be
 
         
       
+        <h3 id="massa.api.v1.SetOrDeleteDatastoreEntry">SetOrDeleteDatastoreEntry</h3>
+        <p>Set or Delete DatastoreEntry</p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>type</td>
+                  <td><a href="#massa.api.v1.SetOrDeleteType">SetOrDeleteType</a></td>
+                  <td></td>
+                  <td><p>The type of the change </p></td>
+                </tr>
+              
+                <tr>
+                  <td>datastore_entry</td>
+                  <td><a href="#massa.api.v1.DatastoreEntry">DatastoreEntry</a></td>
+                  <td>optional</td>
+                  <td><p>The balance of that entry (optioal) </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
+        <h3 id="massa.api.v1.SetOrKeepBalance">SetOrKeepBalance</h3>
+        <p>Set or Keep Balance</p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>type</td>
+                  <td><a href="#massa.api.v1.SetOrKeepType">SetOrKeepType</a></td>
+                  <td></td>
+                  <td><p>The type of the change </p></td>
+                </tr>
+              
+                <tr>
+                  <td>balance</td>
+                  <td><a href="#fixed64">fixed64</a></td>
+                  <td>optional</td>
+                  <td><p>The balance of that entry (optional) </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
+        <h3 id="massa.api.v1.SetOrKeepBytecode">SetOrKeepBytecode</h3>
+        <p>Set or Keep Bytecode</p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>type</td>
+                  <td><a href="#massa.api.v1.SetOrKeepType">SetOrKeepType</a></td>
+                  <td></td>
+                  <td><p>The type of the change </p></td>
+                </tr>
+              
+                <tr>
+                  <td>bytecode</td>
+                  <td><a href="#bytes">bytes</a></td>
+                  <td>optional</td>
+                  <td><p>Executable bytecode (optional) </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
         <h3 id="massa.api.v1.SlotExecutionOutput">SlotExecutionOutput</h3>
         <p>SlotExecutionOutput</p>
 
@@ -4091,8 +4369,15 @@ For messages with filter, this boolean is true if the filter has been matched be
             <tbody>
               
                 <tr>
+                  <td>ledger_changes</td>
+                  <td><a href="#massa.api.v1.LedgerChanges">LedgerChanges</a></td>
+                  <td></td>
+                  <td><p>Ledger changes </p></td>
+                </tr>
+              
+                <tr>
                   <td>async_pool_changes</td>
-                  <td><a href="#massa.api.v1.AsynPoolChange">AsynPoolChange</a></td>
+                  <td><a href="#massa.api.v1.AsyncPoolChangeEntry">AsyncPoolChangeEntry</a></td>
                   <td>repeated</td>
                   <td><p>Asynchronous pool changes </p></td>
                 </tr>
@@ -4124,7 +4409,7 @@ For messages with filter, this boolean is true if the filter has been matched be
               <tr>
                 <td>ASYNC_POOL_CHANGE_TYPE_UNSPECIFIED</td>
                 <td>0</td>
-                <td><p>Defaut enum value</p></td>
+                <td><p>Default enum value</p></td>
               </tr>
             
               <tr>
@@ -4159,7 +4444,7 @@ For messages with filter, this boolean is true if the filter has been matched be
               <tr>
                 <td>EXECUTION_OUTPUT_STATUS_UNSPECIFIED</td>
                 <td>0</td>
-                <td><p>Defaut enum value</p></td>
+                <td><p>Default enum value</p></td>
               </tr>
             
               <tr>
@@ -4177,6 +4462,41 @@ For messages with filter, this boolean is true if the filter has been matched be
           </tbody>
         </table>
       
+        <h3 id="massa.api.v1.LedgerChangeType">LedgerChangeType</h3>
+        <p>LedgerChangeType type enum</p>
+        <table class="enum-table">
+          <thead>
+            <tr><td>Name</td><td>Number</td><td>Description</td></tr>
+          </thead>
+          <tbody>
+            
+              <tr>
+                <td>LEDGER_CHANGE_TYPE_UNSPECIFIED</td>
+                <td>0</td>
+                <td><p>Default enum value</p></td>
+              </tr>
+            
+              <tr>
+                <td>LEDGER_CHANGE_TYPE_SET</td>
+                <td>1</td>
+                <td><p>Set type</p></td>
+              </tr>
+            
+              <tr>
+                <td>LEDGER_CHANGE_TYPE_UPDATE</td>
+                <td>2</td>
+                <td><p>Update type</p></td>
+              </tr>
+            
+              <tr>
+                <td>LEDGER_CHANGE_TYPE_DELETE</td>
+                <td>3</td>
+                <td><p>Delete type</p></td>
+              </tr>
+            
+          </tbody>
+        </table>
+      
         <h3 id="massa.api.v1.OperationExecutionStatus">OperationExecutionStatus</h3>
         <p>OperationExecutionStatus type enum</p>
         <table class="enum-table">
@@ -4188,7 +4508,7 @@ For messages with filter, this boolean is true if the filter has been matched be
               <tr>
                 <td>OPERATION_EXECUTION_STATUS_UNSPECIFIED</td>
                 <td>0</td>
-                <td><p>Defaut enum value</p></td>
+                <td><p>Default enum value</p></td>
               </tr>
             
               <tr>
@@ -4217,7 +4537,7 @@ For messages with filter, this boolean is true if the filter has been matched be
               <tr>
                 <td>SC_EXECUTION_EVENT_STATUS_UNSPECIFIED</td>
                 <td>0</td>
-                <td><p>Defaut enum value</p></td>
+                <td><p>Default enum value</p></td>
               </tr>
             
               <tr>
@@ -4236,6 +4556,64 @@ For messages with filter, this boolean is true if the filter has been matched be
                 <td>SC_EXECUTION_EVENT_STATUS_FAILURE</td>
                 <td>3</td>
                 <td><p>Failure status</p></td>
+              </tr>
+            
+          </tbody>
+        </table>
+      
+        <h3 id="massa.api.v1.SetOrDeleteType">SetOrDeleteType</h3>
+        <p>SetOrDeleteType type enum</p>
+        <table class="enum-table">
+          <thead>
+            <tr><td>Name</td><td>Number</td><td>Description</td></tr>
+          </thead>
+          <tbody>
+            
+              <tr>
+                <td>SET_OR_DELETE_TYPE_UNSPECIFIED</td>
+                <td>0</td>
+                <td><p>Default enum value</p></td>
+              </tr>
+            
+              <tr>
+                <td>SET_OR_DELETE_TYPE_SET</td>
+                <td>1</td>
+                <td><p>Sets a new absolute value</p></td>
+              </tr>
+            
+              <tr>
+                <td>SET_OR_DELETE_TYPE_DELETE</td>
+                <td>2</td>
+                <td><p>Deletes the existing value</p></td>
+              </tr>
+            
+          </tbody>
+        </table>
+      
+        <h3 id="massa.api.v1.SetOrKeepType">SetOrKeepType</h3>
+        <p>SetOrKeepType type enum</p>
+        <table class="enum-table">
+          <thead>
+            <tr><td>Name</td><td>Number</td><td>Description</td></tr>
+          </thead>
+          <tbody>
+            
+              <tr>
+                <td>SET_OR_KEEP_TYPE_UNSPECIFIED</td>
+                <td>0</td>
+                <td><p>Default enum value</p></td>
+              </tr>
+            
+              <tr>
+                <td>SET_OR_KEEP_TYPE_SET</td>
+                <td>1</td>
+                <td><p>Sets a new absolute value</p></td>
+              </tr>
+            
+              <tr>
+                <td>SET_OR_KEEP_TYPE_KEEP</td>
+                <td>2</td>
+                <td><p>Keeps the existing value</p></td>
               </tr>
             
           </tbody>
@@ -4636,7 +5014,7 @@ For messages with filter, this boolean is true if the filter has been matched be
               <tr>
                 <td>OPERATION_STATUS_UNSPECIFIED</td>
                 <td>0</td>
-                <td><p>Defaut enum value</p></td>
+                <td><p>Default enum value</p></td>
               </tr>
             
               <tr>

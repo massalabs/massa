@@ -8,7 +8,6 @@
     - [BlockResult](#massa-api-v1-BlockResult)
     - [BlocksContext](#massa-api-v1-BlocksContext)
     - [DatastoreEntriesQuery](#massa-api-v1-DatastoreEntriesQuery)
-    - [DatastoreEntry](#massa-api-v1-DatastoreEntry)
     - [DatastoreEntryFilter](#massa-api-v1-DatastoreEntryFilter)
     - [EndorsementResult](#massa-api-v1-EndorsementResult)
     - [GetBlocksBySlotsRequest](#massa-api-v1-GetBlocksBySlotsRequest)
@@ -89,6 +88,7 @@
   
 - [common.proto](#common-proto)
     - [BytesMapFieldEntry](#massa-api-v1-BytesMapFieldEntry)
+    - [DatastoreEntry](#massa-api-v1-DatastoreEntry)
     - [SecureShare](#massa-api-v1-SecureShare)
   
 - [endorsement.proto](#endorsement-proto)
@@ -96,7 +96,6 @@
     - [SignedEndorsement](#massa-api-v1-SignedEndorsement)
   
 - [execution.proto](#execution-proto)
-    - [AsynPoolChange](#massa-api-v1-AsynPoolChange)
     - [AsyncMessage](#massa-api-v1-AsyncMessage)
     - [AsyncMessageTrigger](#massa-api-v1-AsyncMessageTrigger)
     - [AsyncPoolChangeEntry](#massa-api-v1-AsyncPoolChangeEntry)
@@ -106,15 +105,26 @@
     - [ExecutedOpsChanges](#massa-api-v1-ExecutedOpsChanges)
     - [ExecutionOutput](#massa-api-v1-ExecutionOutput)
     - [FinalizedExecutionOutput](#massa-api-v1-FinalizedExecutionOutput)
+    - [LedgerChangeEntry](#massa-api-v1-LedgerChangeEntry)
+    - [LedgerChangeValue](#massa-api-v1-LedgerChangeValue)
+    - [LedgerChanges](#massa-api-v1-LedgerChanges)
+    - [LedgerEntry](#massa-api-v1-LedgerEntry)
+    - [LedgerEntryUpdate](#massa-api-v1-LedgerEntryUpdate)
     - [ScExecutionEvent](#massa-api-v1-ScExecutionEvent)
     - [ScExecutionEventContext](#massa-api-v1-ScExecutionEventContext)
+    - [SetOrDeleteDatastoreEntry](#massa-api-v1-SetOrDeleteDatastoreEntry)
+    - [SetOrKeepBalance](#massa-api-v1-SetOrKeepBalance)
+    - [SetOrKeepBytecode](#massa-api-v1-SetOrKeepBytecode)
     - [SlotExecutionOutput](#massa-api-v1-SlotExecutionOutput)
     - [StateChanges](#massa-api-v1-StateChanges)
   
     - [AsyncPoolChangeType](#massa-api-v1-AsyncPoolChangeType)
     - [ExecutionOutputStatus](#massa-api-v1-ExecutionOutputStatus)
+    - [LedgerChangeType](#massa-api-v1-LedgerChangeType)
     - [OperationExecutionStatus](#massa-api-v1-OperationExecutionStatus)
     - [ScExecutionEventStatus](#massa-api-v1-ScExecutionEventStatus)
+    - [SetOrDeleteType](#massa-api-v1-SetOrDeleteType)
+    - [SetOrKeepType](#massa-api-v1-SetOrKeepType)
   
 - [operation.proto](#operation-proto)
     - [CallSC](#massa-api-v1-CallSC)
@@ -199,22 +209,6 @@ DatastoreEntries Query
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | filter | [DatastoreEntryFilter](#massa-api-v1-DatastoreEntryFilter) |  | Filter |
-
-
-
-
-
-
-<a name="massa-api-v1-DatastoreEntry"></a>
-
-### DatastoreEntry
-DatastoreEntry
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| final_value | [bytes](#bytes) |  | final datastore entry value |
-| candidate_value | [bytes](#bytes) |  | candidate_value datastore entry value |
 
 
 
@@ -1212,7 +1206,7 @@ Operation type enum
 
 | Name | Number | Description |
 | ---- | ------ | ----------- |
-| OP_TYPE_UNSPECIFIED | 0 | Defaut enum value |
+| OP_TYPE_UNSPECIFIED | 0 | Default enum value |
 | OP_TYPE_TRANSACTION | 1 | Transaction |
 | OP_TYPE_ROLL_BUY | 2 | Roll buy |
 | OP_TYPE_ROLL_SELL | 3 | Roll sell |
@@ -1394,7 +1388,7 @@ Possible statuses for a block
 
 | Name | Number | Description |
 | ---- | ------ | ----------- |
-| BLOCK_STATUS_UNSPECIFIED | 0 | Defaut enum value |
+| BLOCK_STATUS_UNSPECIFIED | 0 | Default enum value |
 | BLOCK_STATUS_IN_BLOCKCLIQUE | 1 | The block is in the greatest clique (and not final) |
 | BLOCK_STATUS_FINAL | 2 | The block is final |
 | BLOCK_STATUS_CANDIDATE | 3 | The block is candidate (active any clique but not final) |
@@ -1426,6 +1420,22 @@ BytesMapFieldEntry
 | ----- | ---- | ----- | ----------- |
 | key | [bytes](#bytes) |  | bytes key |
 | value | [bytes](#bytes) |  | bytes key |
+
+
+
+
+
+
+<a name="massa-api-v1-DatastoreEntry"></a>
+
+### DatastoreEntry
+DatastoreEntry
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| final_value | [bytes](#bytes) |  | final datastore entry value |
+| candidate_value | [bytes](#bytes) |  | candidate_value datastore entry value |
 
 
 
@@ -1519,21 +1529,6 @@ Signed endorsement
 
 
 
-<a name="massa-api-v1-AsynPoolChange"></a>
-
-### AsynPoolChange
-AsynPoolChange
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| async_pool_change | [AsyncPoolChangeEntry](#massa-api-v1-AsyncPoolChangeEntry) |  | Asynchronous pool changes |
-
-
-
-
-
-
 <a name="massa-api-v1-AsyncMessage"></a>
 
 ### AsyncMessage
@@ -1581,7 +1576,7 @@ Structure defining a trigger for an asynchronous message
 <a name="massa-api-v1-AsyncPoolChangeEntry"></a>
 
 ### AsyncPoolChangeEntry
-AsyncPoolChangeEntry
+AsyncPoolChange Entry
 
 
 | Field | Type | Label | Description |
@@ -1690,6 +1685,88 @@ FinalizedExecutionOutput
 
 
 
+<a name="massa-api-v1-LedgerChangeEntry"></a>
+
+### LedgerChangeEntry
+LedgerChangeEntry
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| address | [string](#string) |  | Address |
+| value | [LedgerChangeValue](#massa-api-v1-LedgerChangeValue) |  | Ledger message |
+
+
+
+
+
+
+<a name="massa-api-v1-LedgerChangeValue"></a>
+
+### LedgerChangeValue
+LedgerChangeValue
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| type | [LedgerChangeType](#massa-api-v1-LedgerChangeType) |  | The type of the change |
+| created_entry | [LedgerEntry](#massa-api-v1-LedgerEntry) |  | Created ledger entry |
+| updated_entry | [LedgerEntryUpdate](#massa-api-v1-LedgerEntryUpdate) |  | Update ledger entry |
+
+
+
+
+
+
+<a name="massa-api-v1-LedgerChanges"></a>
+
+### LedgerChanges
+Ledger change
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| entries | [LedgerChangeEntry](#massa-api-v1-LedgerChangeEntry) | repeated | Ledger change entry |
+
+
+
+
+
+
+<a name="massa-api-v1-LedgerEntry"></a>
+
+### LedgerEntry
+An entry associated to an address in the `FinalLedger`
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| balance | [fixed64](#fixed64) |  | The balance of that entry |
+| bytecode | [bytes](#bytes) |  | Executable bytecode |
+| entries | [DatastoreEntry](#massa-api-v1-DatastoreEntry) | repeated | A key-value store associating a hash to arbitrary bytes |
+
+
+
+
+
+
+<a name="massa-api-v1-LedgerEntryUpdate"></a>
+
+### LedgerEntryUpdate
+Represents an update to one or more fields of a `LedgerEntry`
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| balance | [SetOrKeepBalance](#massa-api-v1-SetOrKeepBalance) |  | change the balance |
+| bytecode | [SetOrKeepBytecode](#massa-api-v1-SetOrKeepBytecode) |  | change the executable bytecode |
+| datastore | [SetOrDeleteDatastoreEntry](#massa-api-v1-SetOrDeleteDatastoreEntry) | repeated | change datastore entries |
+
+
+
+
+
+
 <a name="massa-api-v1-ScExecutionEvent"></a>
 
 ### ScExecutionEvent
@@ -1727,6 +1804,54 @@ ScExecutionEvent context
 
 
 
+<a name="massa-api-v1-SetOrDeleteDatastoreEntry"></a>
+
+### SetOrDeleteDatastoreEntry
+Set or Delete DatastoreEntry
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| type | [SetOrDeleteType](#massa-api-v1-SetOrDeleteType) |  | The type of the change |
+| datastore_entry | [DatastoreEntry](#massa-api-v1-DatastoreEntry) | optional | The balance of that entry (optioal) |
+
+
+
+
+
+
+<a name="massa-api-v1-SetOrKeepBalance"></a>
+
+### SetOrKeepBalance
+Set or Keep Balance
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| type | [SetOrKeepType](#massa-api-v1-SetOrKeepType) |  | The type of the change |
+| balance | [fixed64](#fixed64) | optional | The balance of that entry (optional) |
+
+
+
+
+
+
+<a name="massa-api-v1-SetOrKeepBytecode"></a>
+
+### SetOrKeepBytecode
+Set or Keep Bytecode
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| type | [SetOrKeepType](#massa-api-v1-SetOrKeepType) |  | The type of the change |
+| bytecode | [bytes](#bytes) | optional | Executable bytecode (optional) |
+
+
+
+
+
+
 <a name="massa-api-v1-SlotExecutionOutput"></a>
 
 ### SlotExecutionOutput
@@ -1751,7 +1876,8 @@ StateChanges
 
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
-| async_pool_changes | [AsynPoolChange](#massa-api-v1-AsynPoolChange) | repeated | Asynchronous pool changes |
+| ledger_changes | [LedgerChanges](#massa-api-v1-LedgerChanges) |  | Ledger changes |
+| async_pool_changes | [AsyncPoolChangeEntry](#massa-api-v1-AsyncPoolChangeEntry) | repeated | Asynchronous pool changes |
 | executed_ops_changes | [ExecutedOpsChanges](#massa-api-v1-ExecutedOpsChanges) |  | Executed operations changes |
 
 
@@ -1768,7 +1894,7 @@ AsyncPoolChangeType type enum
 
 | Name | Number | Description |
 | ---- | ------ | ----------- |
-| ASYNC_POOL_CHANGE_TYPE_UNSPECIFIED | 0 | Defaut enum value |
+| ASYNC_POOL_CHANGE_TYPE_UNSPECIFIED | 0 | Default enum value |
 | ASYNC_POOL_CHANGE_TYPE_ADD | 1 | Add type |
 | ASYNC_POOL_CHANGE_TYPE_ACTIVATE | 2 | Activate only type |
 | ASYNC_POOL_CHANGE_TYPE_DELETE | 3 | Delete only type |
@@ -1782,9 +1908,23 @@ ExecutionOutputStatus type enum
 
 | Name | Number | Description |
 | ---- | ------ | ----------- |
-| EXECUTION_OUTPUT_STATUS_UNSPECIFIED | 0 | Defaut enum value |
+| EXECUTION_OUTPUT_STATUS_UNSPECIFIED | 0 | Default enum value |
 | EXECUTION_OUTPUT_STATUS_CANDIDATE | 1 | Candidate status |
 | EXECUTION_OUTPUT_STATUS_FINAL | 2 | Final status |
+
+
+
+<a name="massa-api-v1-LedgerChangeType"></a>
+
+### LedgerChangeType
+LedgerChangeType type enum
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| LEDGER_CHANGE_TYPE_UNSPECIFIED | 0 | Default enum value |
+| LEDGER_CHANGE_TYPE_SET | 1 | Set type |
+| LEDGER_CHANGE_TYPE_UPDATE | 2 | Update type |
+| LEDGER_CHANGE_TYPE_DELETE | 3 | Delete type |
 
 
 
@@ -1795,7 +1935,7 @@ OperationExecutionStatus type enum
 
 | Name | Number | Description |
 | ---- | ------ | ----------- |
-| OPERATION_EXECUTION_STATUS_UNSPECIFIED | 0 | Defaut enum value |
+| OPERATION_EXECUTION_STATUS_UNSPECIFIED | 0 | Default enum value |
 | OPERATION_EXECUTION_STATUS_SUCCESS | 1 | Success status |
 | OPERATION_EXECUTION_STATUS_FAILED | 2 | Failed only status |
 
@@ -1808,10 +1948,36 @@ ScExecutionEventStatus type enum
 
 | Name | Number | Description |
 | ---- | ------ | ----------- |
-| SC_EXECUTION_EVENT_STATUS_UNSPECIFIED | 0 | Defaut enum value |
+| SC_EXECUTION_EVENT_STATUS_UNSPECIFIED | 0 | Default enum value |
 | SC_EXECUTION_EVENT_STATUS_FINAL | 1 | Final status |
 | SC_EXECUTION_EVENT_STATUS_READ_ONLY | 2 | Read only status |
 | SC_EXECUTION_EVENT_STATUS_FAILURE | 3 | Failure status |
+
+
+
+<a name="massa-api-v1-SetOrDeleteType"></a>
+
+### SetOrDeleteType
+SetOrDeleteType type enum
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| SET_OR_DELETE_TYPE_UNSPECIFIED | 0 | Default enum value |
+| SET_OR_DELETE_TYPE_SET | 1 | Sets a new absolute value |
+| SET_OR_DELETE_TYPE_DELETE | 2 | Deletes the existing value |
+
+
+
+<a name="massa-api-v1-SetOrKeepType"></a>
+
+### SetOrKeepType
+SetOrKeepType type enum
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| SET_OR_KEEP_TYPE_UNSPECIFIED | 0 | Default enum value |
+| SET_OR_KEEP_TYPE_SET | 1 | Sets a new absolute value |
+| SET_OR_KEEP_TYPE_KEEP | 2 | Keeps the existing value |
 
 
  
@@ -1995,7 +2161,7 @@ Possible statuses for an operation
 
 | Name | Number | Description |
 | ---- | ------ | ----------- |
-| OPERATION_STATUS_UNSPECIFIED | 0 | Defaut enum value |
+| OPERATION_STATUS_UNSPECIFIED | 0 | Default enum value |
 | OPERATION_STATUS_PENDING | 1 | The operation is still pending |
 | OPERATION_STATUS_FINAL | 2 | The operation is final |
 | OPERATION_STATUS_SUCCESS | 3 | The operation was executed successfully |

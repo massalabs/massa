@@ -55,6 +55,17 @@ pub struct SignedEndorsement {
     #[prost(string, tag = "5")]
     pub id: ::prost::alloc::string::String,
 }
+/// DatastoreEntry
+#[allow(clippy::derive_partial_eq_without_eq)]
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct DatastoreEntry {
+    /// final datastore entry value
+    #[prost(bytes = "vec", tag = "1")]
+    pub final_value: ::prost::alloc::vec::Vec<u8>,
+    /// candidate_value datastore entry value
+    #[prost(bytes = "vec", tag = "2")]
+    pub candidate_value: ::prost::alloc::vec::Vec<u8>,
+}
 /// BytesMapFieldEntry
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
@@ -228,7 +239,7 @@ pub struct OperationWrapper {
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, ::prost::Enumeration)]
 #[repr(i32)]
 pub enum OperationStatus {
-    /// Defaut enum value
+    /// Default enum value
     Unspecified = 0,
     /// The operation is still pending
     Pending = 1,
@@ -377,7 +388,7 @@ pub struct BlockWrapper {
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, ::prost::Enumeration)]
 #[repr(i32)]
 pub enum BlockStatus {
-    /// Defaut enum value
+    /// Default enum value
     Unspecified = 0,
     /// The block is in the greatest clique (and not final)
     InBlockclique = 1,
@@ -491,9 +502,12 @@ pub struct ScExecutionEventContext {
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct StateChanges {
+    /// Ledger changes
+    #[prost(message, optional, tag = "1")]
+    pub ledger_changes: ::core::option::Option<LedgerChanges>,
     /// Asynchronous pool changes
     #[prost(message, repeated, tag = "2")]
-    pub async_pool_changes: ::prost::alloc::vec::Vec<AsynPoolChange>,
+    pub async_pool_changes: ::prost::alloc::vec::Vec<AsyncPoolChangeEntry>,
     /// Executed operations changes
     #[prost(message, optional, tag = "5")]
     pub executed_ops_changes: ::core::option::Option<ExecutedOpsChanges>,
@@ -528,15 +542,7 @@ pub struct ExecutedOpsChangeValue {
     #[prost(message, optional, tag = "2")]
     pub slot: ::core::option::Option<Slot>,
 }
-/// AsynPoolChange
-#[allow(clippy::derive_partial_eq_without_eq)]
-#[derive(Clone, PartialEq, ::prost::Message)]
-pub struct AsynPoolChange {
-    /// Asynchronous pool changes
-    #[prost(message, optional, tag = "2")]
-    pub async_pool_change: ::core::option::Option<AsyncPoolChangeEntry>,
-}
-/// AsyncPoolChangeEntry
+/// AsyncPoolChange Entry
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct AsyncPoolChangeEntry {
@@ -621,11 +627,105 @@ pub struct AsyncMessageTrigger {
     #[prost(bytes = "vec", optional, tag = "2")]
     pub datastore_key: ::core::option::Option<::prost::alloc::vec::Vec<u8>>,
 }
+/// Ledger change
+#[allow(clippy::derive_partial_eq_without_eq)]
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct LedgerChanges {
+    /// Ledger change entry
+    #[prost(message, repeated, tag = "2")]
+    pub entries: ::prost::alloc::vec::Vec<LedgerChangeEntry>,
+}
+/// LedgerChangeEntry
+#[allow(clippy::derive_partial_eq_without_eq)]
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct LedgerChangeEntry {
+    /// Address
+    #[prost(string, tag = "1")]
+    pub address: ::prost::alloc::string::String,
+    /// Ledger message
+    #[prost(message, optional, tag = "2")]
+    pub value: ::core::option::Option<LedgerChangeValue>,
+}
+/// LedgerChangeValue
+#[allow(clippy::derive_partial_eq_without_eq)]
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct LedgerChangeValue {
+    /// The type of the change
+    #[prost(enumeration = "LedgerChangeType", tag = "1")]
+    pub r#type: i32,
+    /// Created ledger entry
+    #[prost(message, optional, tag = "2")]
+    pub created_entry: ::core::option::Option<LedgerEntry>,
+    /// Update ledger entry
+    #[prost(message, optional, tag = "3")]
+    pub updated_entry: ::core::option::Option<LedgerEntryUpdate>,
+}
+/// An entry associated to an address in the `FinalLedger`
+#[allow(clippy::derive_partial_eq_without_eq)]
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct LedgerEntry {
+    /// The balance of that entry
+    #[prost(fixed64, tag = "1")]
+    pub balance: u64,
+    /// Executable bytecode
+    #[prost(bytes = "vec", tag = "2")]
+    pub bytecode: ::prost::alloc::vec::Vec<u8>,
+    /// A key-value store associating a hash to arbitrary bytes
+    #[prost(message, repeated, tag = "3")]
+    pub entries: ::prost::alloc::vec::Vec<DatastoreEntry>,
+}
+/// Represents an update to one or more fields of a `LedgerEntry`
+#[allow(clippy::derive_partial_eq_without_eq)]
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct LedgerEntryUpdate {
+    /// change the balance
+    #[prost(message, optional, tag = "1")]
+    pub balance: ::core::option::Option<SetOrKeepBalance>,
+    /// change the executable bytecode
+    #[prost(message, optional, tag = "2")]
+    pub bytecode: ::core::option::Option<SetOrKeepBytecode>,
+    /// / change datastore entries
+    #[prost(message, repeated, tag = "3")]
+    pub datastore: ::prost::alloc::vec::Vec<SetOrDeleteDatastoreEntry>,
+}
+/// Set or Keep Balance
+#[allow(clippy::derive_partial_eq_without_eq)]
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct SetOrKeepBalance {
+    /// The type of the change
+    #[prost(enumeration = "SetOrKeepType", tag = "1")]
+    pub r#type: i32,
+    /// The balance of that entry (optional)
+    #[prost(fixed64, optional, tag = "2")]
+    pub balance: ::core::option::Option<u64>,
+}
+/// Set or Keep Bytecode
+#[allow(clippy::derive_partial_eq_without_eq)]
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct SetOrKeepBytecode {
+    /// The type of the change
+    #[prost(enumeration = "SetOrKeepType", tag = "1")]
+    pub r#type: i32,
+    /// Executable bytecode (optional)
+    #[prost(bytes = "vec", optional, tag = "2")]
+    pub bytecode: ::core::option::Option<::prost::alloc::vec::Vec<u8>>,
+}
+/// Set or Delete DatastoreEntry
+#[allow(clippy::derive_partial_eq_without_eq)]
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct SetOrDeleteDatastoreEntry {
+    /// The type of the change
+    #[prost(enumeration = "SetOrDeleteType", tag = "1")]
+    pub r#type: i32,
+    /// The balance of that entry (optioal)
+    #[prost(message, optional, tag = "2")]
+    pub datastore_entry: ::core::option::Option<DatastoreEntry>,
+}
 /// ScExecutionEventStatus type enum
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, ::prost::Enumeration)]
 #[repr(i32)]
 pub enum ScExecutionEventStatus {
-    /// Defaut enum value
+    /// Default enum value
     Unspecified = 0,
     /// Final status
     Final = 1,
@@ -664,7 +764,7 @@ impl ScExecutionEventStatus {
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, ::prost::Enumeration)]
 #[repr(i32)]
 pub enum ExecutionOutputStatus {
-    /// Defaut enum value
+    /// Default enum value
     Unspecified = 0,
     /// Candidate status
     Candidate = 1,
@@ -697,7 +797,7 @@ impl ExecutionOutputStatus {
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, ::prost::Enumeration)]
 #[repr(i32)]
 pub enum OperationExecutionStatus {
-    /// Defaut enum value
+    /// Default enum value
     Unspecified = 0,
     /// Success status
     Success = 1,
@@ -732,7 +832,7 @@ impl OperationExecutionStatus {
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, ::prost::Enumeration)]
 #[repr(i32)]
 pub enum AsyncPoolChangeType {
-    /// Defaut enum value
+    /// Default enum value
     Unspecified = 0,
     /// Add type
     Add = 1,
@@ -761,6 +861,109 @@ impl AsyncPoolChangeType {
             "ASYNC_POOL_CHANGE_TYPE_ADD" => Some(Self::Add),
             "ASYNC_POOL_CHANGE_TYPE_ACTIVATE" => Some(Self::Activate),
             "ASYNC_POOL_CHANGE_TYPE_DELETE" => Some(Self::Delete),
+            _ => None,
+        }
+    }
+}
+/// LedgerChangeType type enum
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, ::prost::Enumeration)]
+#[repr(i32)]
+pub enum LedgerChangeType {
+    /// Default enum value
+    Unspecified = 0,
+    /// Set type
+    Set = 1,
+    /// Update type
+    Update = 2,
+    /// Delete type
+    Delete = 3,
+}
+impl LedgerChangeType {
+    /// String value of the enum field names used in the ProtoBuf definition.
+    ///
+    /// The values are not transformed in any way and thus are considered stable
+    /// (if the ProtoBuf definition does not change) and safe for programmatic use.
+    pub fn as_str_name(&self) -> &'static str {
+        match self {
+            LedgerChangeType::Unspecified => "LEDGER_CHANGE_TYPE_UNSPECIFIED",
+            LedgerChangeType::Set => "LEDGER_CHANGE_TYPE_SET",
+            LedgerChangeType::Update => "LEDGER_CHANGE_TYPE_UPDATE",
+            LedgerChangeType::Delete => "LEDGER_CHANGE_TYPE_DELETE",
+        }
+    }
+    /// Creates an enum from field names used in the ProtoBuf definition.
+    pub fn from_str_name(value: &str) -> ::core::option::Option<Self> {
+        match value {
+            "LEDGER_CHANGE_TYPE_UNSPECIFIED" => Some(Self::Unspecified),
+            "LEDGER_CHANGE_TYPE_SET" => Some(Self::Set),
+            "LEDGER_CHANGE_TYPE_UPDATE" => Some(Self::Update),
+            "LEDGER_CHANGE_TYPE_DELETE" => Some(Self::Delete),
+            _ => None,
+        }
+    }
+}
+/// SetOrKeepType type enum
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, ::prost::Enumeration)]
+#[repr(i32)]
+pub enum SetOrKeepType {
+    /// Default enum value
+    Unspecified = 0,
+    /// Sets a new absolute value
+    Set = 1,
+    /// Keeps the existing value
+    Keep = 2,
+}
+impl SetOrKeepType {
+    /// String value of the enum field names used in the ProtoBuf definition.
+    ///
+    /// The values are not transformed in any way and thus are considered stable
+    /// (if the ProtoBuf definition does not change) and safe for programmatic use.
+    pub fn as_str_name(&self) -> &'static str {
+        match self {
+            SetOrKeepType::Unspecified => "SET_OR_KEEP_TYPE_UNSPECIFIED",
+            SetOrKeepType::Set => "SET_OR_KEEP_TYPE_SET",
+            SetOrKeepType::Keep => "SET_OR_KEEP_TYPE_KEEP",
+        }
+    }
+    /// Creates an enum from field names used in the ProtoBuf definition.
+    pub fn from_str_name(value: &str) -> ::core::option::Option<Self> {
+        match value {
+            "SET_OR_KEEP_TYPE_UNSPECIFIED" => Some(Self::Unspecified),
+            "SET_OR_KEEP_TYPE_SET" => Some(Self::Set),
+            "SET_OR_KEEP_TYPE_KEEP" => Some(Self::Keep),
+            _ => None,
+        }
+    }
+}
+/// SetOrDeleteType type enum
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, ::prost::Enumeration)]
+#[repr(i32)]
+pub enum SetOrDeleteType {
+    /// Default enum value
+    Unspecified = 0,
+    /// Sets a new absolute value
+    Set = 1,
+    /// Deletes the existing value
+    Delete = 2,
+}
+impl SetOrDeleteType {
+    /// String value of the enum field names used in the ProtoBuf definition.
+    ///
+    /// The values are not transformed in any way and thus are considered stable
+    /// (if the ProtoBuf definition does not change) and safe for programmatic use.
+    pub fn as_str_name(&self) -> &'static str {
+        match self {
+            SetOrDeleteType::Unspecified => "SET_OR_DELETE_TYPE_UNSPECIFIED",
+            SetOrDeleteType::Set => "SET_OR_DELETE_TYPE_SET",
+            SetOrDeleteType::Delete => "SET_OR_DELETE_TYPE_DELETE",
+        }
+    }
+    /// Creates an enum from field names used in the ProtoBuf definition.
+    pub fn from_str_name(value: &str) -> ::core::option::Option<Self> {
+        match value {
+            "SET_OR_DELETE_TYPE_UNSPECIFIED" => Some(Self::Unspecified),
+            "SET_OR_DELETE_TYPE_SET" => Some(Self::Set),
+            "SET_OR_DELETE_TYPE_DELETE" => Some(Self::Delete),
             _ => None,
         }
     }
@@ -875,17 +1078,6 @@ pub struct GetDatastoreEntriesResponse {
     /// Datastore entries
     #[prost(message, repeated, tag = "2")]
     pub entries: ::prost::alloc::vec::Vec<DatastoreEntry>,
-}
-/// DatastoreEntry
-#[allow(clippy::derive_partial_eq_without_eq)]
-#[derive(Clone, PartialEq, ::prost::Message)]
-pub struct DatastoreEntry {
-    /// final datastore entry value
-    #[prost(bytes = "vec", tag = "1")]
-    pub final_value: ::prost::alloc::vec::Vec<u8>,
-    /// candidate_value datastore entry value
-    #[prost(bytes = "vec", tag = "2")]
-    pub candidate_value: ::prost::alloc::vec::Vec<u8>,
 }
 /// GetLargestStakersRequest holds request from GetLargestStakers
 #[allow(clippy::derive_partial_eq_without_eq)]
@@ -1499,7 +1691,7 @@ pub struct TransactionsThroughputResponse {
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, ::prost::Enumeration)]
 #[repr(i32)]
 pub enum OpType {
-    /// Defaut enum value
+    /// Default enum value
     Unspecified = 0,
     /// Transaction
     Transaction = 1,
