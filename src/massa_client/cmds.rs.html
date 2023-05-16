@@ -1879,7 +1879,7 @@
     ///     it means that we don&#39;t want to print anything we just want the json output
     </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">async fn </span>run(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
-        client: <span class="kw-2">&amp;</span>Client,
+        client: <span class="kw-2">&amp;mut </span>Client,
         wallet_opt: <span class="kw-2">&amp;mut </span><span class="prelude-ty">Option</span>&lt;Wallet&gt;,
         parameters: <span class="kw-2">&amp;</span>[String],
         json: bool,

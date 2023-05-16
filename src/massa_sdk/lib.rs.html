@@ -631,6 +631,30 @@
 <a href="#631" id="631">631</a>
 <a href="#632" id="632">632</a>
 <a href="#633" id="633">633</a>
+<a href="#634" id="634">634</a>
+<a href="#635" id="635">635</a>
+<a href="#636" id="636">636</a>
+<a href="#637" id="637">637</a>
+<a href="#638" id="638">638</a>
+<a href="#639" id="639">639</a>
+<a href="#640" id="640">640</a>
+<a href="#641" id="641">641</a>
+<a href="#642" id="642">642</a>
+<a href="#643" id="643">643</a>
+<a href="#644" id="644">644</a>
+<a href="#645" id="645">645</a>
+<a href="#646" id="646">646</a>
+<a href="#647" id="647">647</a>
+<a href="#648" id="648">648</a>
+<a href="#649" id="649">649</a>
+<a href="#650" id="650">650</a>
+<a href="#651" id="651">651</a>
+<a href="#652" id="652">652</a>
+<a href="#653" id="653">653</a>
+<a href="#654" id="654">654</a>
+<a href="#655" id="655">655</a>
+<a href="#656" id="656">656</a>
+<a href="#657" id="657">657</a>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 </span><span class="doccomment">//! Utilities for a massa client
 
@@ -673,11 +697,13 @@
     prehash::{PreHashMap, PreHashSet},
     version::Version,
 };
-
-<span class="kw">use </span>jsonrpsee_http_client <span class="kw">as _</span>;
-<span class="kw">use </span>jsonrpsee_ws_client <span class="kw">as _</span>;
+<span class="kw">use </span>massa_proto::massa::api::v1::massa_service_client::MassaServiceClient;
 
 <span class="kw">use </span>jsonrpsee::{core::Error <span class="kw">as </span>JsonRpseeError, core::RpcResult, http_client::HttpClientBuilder};
+<span class="kw">use </span>jsonrpsee_http_client <span class="kw">as _</span>;
+<span class="kw">use </span>jsonrpsee_ws_client <span class="kw">as _</span>;
+<span class="kw">use </span>thiserror::Error;
+
 <span class="kw">use </span>std::net::{IpAddr, SocketAddr};
 <span class="kw">use </span>std::str::FromStr;
 
@@ -686,12 +712,25 @@
 <span class="kw">pub use </span>config::HttpConfig;
 <span class="kw">pub use </span>config::WsConfig;
 
+<span class="doccomment">/// Error when creating a new client
+</span><span class="attr">#[derive(Error, Debug)]
+</span><span class="kw">pub enum </span>ClientError {
+    <span class="doccomment">/// Url error
+    </span><span class="attr">#[error(<span class="string">&quot;Invalid grpc url: {0}&quot;</span>)]
+    </span>Url(<span class="attr">#[from] </span>http::uri::InvalidUri),
+    <span class="doccomment">/// Connection error
+    </span><span class="attr">#[error(<span class="string">&quot;Cannot connect to grpc server: {0}&quot;</span>)]
+    </span>Connect(<span class="attr">#[from] </span>tonic::transport::Error),
+}
+
 <span class="doccomment">/// Client
 </span><span class="kw">pub struct </span>Client {
     <span class="doccomment">/// public component
     </span><span class="kw">pub </span>public: RpcClient,
     <span class="doccomment">/// private component
     </span><span class="kw">pub </span>private: RpcClient,
+    <span class="doccomment">/// grpc client
+    </span><span class="kw">pub </span>grpc: MassaServiceClient&lt;tonic::transport::Channel&gt;,
 }
 
 <span class="kw">impl </span>Client {
@@ -700,16 +739,25 @@
         ip: IpAddr,
         public_port: u16,
         private_port: u16,
+        grpc_port: u16,
         http_config: <span class="kw-2">&amp;</span>HttpConfig,
-    ) -&gt; Client {
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;Client, ClientError&gt; {
         <span class="kw">let </span>public_socket_addr = SocketAddr::new(ip, public_port);
         <span class="kw">let </span>private_socket_addr = SocketAddr::new(ip, private_port);
+        <span class="kw">let </span>grpc_socket_addr = SocketAddr::new(ip, grpc_port);
         <span class="kw">let </span>public_url = <span class="macro">format!</span>(<span class="string">&quot;http://{}&quot;</span>, public_socket_addr);
         <span class="kw">let </span>private_url = <span class="macro">format!</span>(<span class="string">&quot;http://{}&quot;</span>, private_socket_addr);
-        Client {
+        <span class="kw">let </span>grpc_url = <span class="macro">format!</span>(<span class="string">&quot;grpc://{}&quot;</span>, grpc_socket_addr);
+
+        <span class="comment">// start grpc client and connect to the server
+        </span><span class="kw">let </span>channel = tonic::transport::Channel::from_shared(grpc_url)<span class="question-mark">?
+            </span>.connect()
+            .<span class="kw">await</span><span class="question-mark">?</span>;
+        <span class="prelude-val">Ok</span>(Client {
             public: RpcClient::from_url(<span class="kw-2">&amp;</span>public_url, http_config).<span class="kw">await</span>,
             private: RpcClient::from_url(<span class="kw-2">&amp;</span>private_url, http_config).<span class="kw">await</span>,
-        }
+            grpc: MassaServiceClient::new(channel),
+        })
     }
 }
 

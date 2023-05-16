@@ -32,7 +32,6 @@
 <a href="#32" id="32">32</a>
 <a href="#33" id="33">33</a>
 <a href="#34" id="34">34</a>
-<a href="#35" id="35">35</a>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2023 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="kw">use crate</span>::{ExecutionOutput, SlotExecutionOutput};
@@ -64,7 +63,6 @@
                 </span>.into_iter()
                 .map(|event| event.into())
                 .collect(),
-            state_changes: <span class="prelude-val">Some</span>(value.state_changes.into()),
         }
     }
 }
