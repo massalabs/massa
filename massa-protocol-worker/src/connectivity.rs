@@ -5,12 +5,12 @@ use crossbeam::{
 use massa_consensus_exports::ConsensusController;
 use massa_models::stats::NetworkStats;
 use massa_pool_exports::PoolController;
-use massa_protocol_exports::{PeerCategoryInfo, ProtocolConfig, ProtocolError};
+use massa_protocol_exports::{PeerCategoryInfo, PeerId, ProtocolConfig, ProtocolError};
 use massa_storage::Storage;
 use massa_versioning::versioning::MipStore;
 use parking_lot::RwLock;
+use peernet::transports::TcpOutConnectionConfig;
 use peernet::{peer::PeerConnectionType, transports::OutConnectionConfig};
-use peernet::{peer_id::PeerId, transports::TcpOutConnectionConfig};
 use std::net::SocketAddr;
 use std::{collections::HashMap, net::IpAddr};
 use std::{num::NonZeroUsize, sync::Arc};

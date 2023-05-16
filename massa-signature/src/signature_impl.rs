@@ -756,12 +756,12 @@ impl PublicKey {
     }
 }
 
-/// Serializer for `Signature`
-#[derive(Default)]
+/// Deserializer for `PublicKey`
+#[derive(Default, Clone)]
 pub struct PublicKeyDeserializer;
 
 impl PublicKeyDeserializer {
-    /// Creates a `SignatureDeserializer`
+    /// Creates a `PublicKeyDeserializer`
     pub const fn new() -> Self {
         Self
     }

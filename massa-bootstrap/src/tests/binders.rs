@@ -94,14 +94,10 @@ fn test_binders() {
         bootstrap_config.bootstrap_list[0].1.get_public_key(),
     );
 
-    let peer_id1 =
-        PeerId::from_bytes(KeyPair::generate(0).unwrap().get_public_key().to_bytes()).unwrap();
-    let peer_id2 =
-        PeerId::from_bytes(KeyPair::generate(0).unwrap().get_public_key().to_bytes()).unwrap();
-    let peer_id3 =
-        PeerId::from_bytes(KeyPair::generate(0).unwrap().get_public_key().to_bytes()).unwrap();
-    let peer_id4 =
-        PeerId::from_bytes(KeyPair::generate(0).unwrap().get_public_key().to_bytes()).unwrap();
+    let peer_id1 = PeerId::from_public_key(KeyPair::generate(0).unwrap().get_public_key());
+    let peer_id2 = PeerId::from_public_key(KeyPair::generate(0).unwrap().get_public_key());
+    let peer_id3 = PeerId::from_public_key(KeyPair::generate(0).unwrap().get_public_key());
+    let peer_id4 = PeerId::from_public_key(KeyPair::generate(0).unwrap().get_public_key());
 
     let server_thread = std::thread::Builder::new()
         .name("test_binders::server_thread".to_string())
@@ -248,14 +244,10 @@ fn test_binders_double_send_server_works() {
         bootstrap_config.bootstrap_list[0].1.get_public_key(),
     );
 
-    let peer_id1 =
-        PeerId::from_bytes(KeyPair::generate(0).unwrap().get_public_key().to_bytes()).unwrap();
-    let peer_id2 =
-        PeerId::from_bytes(KeyPair::generate(0).unwrap().get_public_key().to_bytes()).unwrap();
-    let peer_id3 =
-        PeerId::from_bytes(KeyPair::generate(0).unwrap().get_public_key().to_bytes()).unwrap();
-    let peer_id4 =
-        PeerId::from_bytes(KeyPair::generate(0).unwrap().get_public_key().to_bytes()).unwrap();
+    let peer_id1 = PeerId::from_public_key(KeyPair::generate(0).unwrap().get_public_key());
+    let peer_id2 = PeerId::from_public_key(KeyPair::generate(0).unwrap().get_public_key());
+    let peer_id3 = PeerId::from_public_key(KeyPair::generate(0).unwrap().get_public_key());
+    let peer_id4 = PeerId::from_public_key(KeyPair::generate(0).unwrap().get_public_key());
 
     let server_thread = std::thread::Builder::new()
         .name("test_buinders_double_send_server_works::server_thread".to_string())
@@ -383,8 +375,7 @@ fn test_binders_try_double_send_client_works() {
         bootstrap_config.bootstrap_list[0].1.get_public_key(),
     );
 
-    let peer_id1 =
-        PeerId::from_bytes(KeyPair::generate(0).unwrap().get_public_key().to_bytes()).unwrap();
+    let peer_id1 = PeerId::from_public_key(KeyPair::generate(0).unwrap().get_public_key());
 
     let server_thread = std::thread::Builder::new()
         .name("test_buinders_double_send_client_works::server_thread".to_string())

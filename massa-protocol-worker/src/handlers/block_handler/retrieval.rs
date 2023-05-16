@@ -36,12 +36,12 @@ use massa_models::{
     timeslots::get_block_slot_timestamp,
 };
 use massa_pool_exports::PoolController;
+use massa_protocol_exports::PeerId;
 use massa_protocol_exports::{ProtocolConfig, ProtocolError};
 use massa_serialization::{DeserializeError, Deserializer, Serializer};
 use massa_storage::Storage;
 use massa_time::TimeError;
 use massa_versioning::versioning::MipStore;
-use massa_protocol_exports::peer_id::PeerId;
 use tracing::{debug, info, warn};
 
 use super::{

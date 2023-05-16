@@ -5,10 +5,10 @@ use std::time::Duration;
 use massa_consensus_exports::test_exports::MockConsensusControllerMessage;
 use massa_models::{block_id::BlockId, prehash::PreHashSet, slot::Slot};
 use massa_pool_exports::test_exports::MockPoolControllerMessage;
+use massa_protocol_exports::PeerId;
 use massa_protocol_exports::{test_exports::tools, ProtocolConfig};
 use massa_signature::KeyPair;
 use massa_time::MassaTime;
-use massa_protocol_exports::peer_id::PeerId;
 use serial_test::serial;
 
 use crate::{
@@ -45,9 +45,8 @@ fn test_protocol_sends_valid_operations_it_receives_to_pool() {
               mut pool_event_receiver| {
             //1. Create 1 node
             let node_a_keypair = KeyPair::generate(0).unwrap();
-            let (node_a_peer_id, _node_a) = network_controller.create_fake_connection(
-                PeerId::from_bytes(node_a_keypair.get_public_key().to_bytes()).unwrap(),
-            );
+            let (node_a_peer_id, _node_a) = network_controller
+                .create_fake_connection(PeerId::from_public_key(node_a_keypair.get_public_key()));
             //2. Creates 2 ops
             let operation_1 = tools::create_operation_with_expire_period(&node_a_keypair, 1);
             let operation_2 = tools::create_operation_with_expire_period(&node_a_keypair, 1);
@@ -114,9 +113,8 @@ fn test_protocol_does_not_send_invalid_operations_it_receives_to_pool() {
               mut pool_event_receiver| {
             //1. Create 1 node
             let node_a_keypair = KeyPair::generate(0).unwrap();
-            let (node_a_peer_id, _node_a) = network_controller.create_fake_connection(
-                PeerId::from_bytes(node_a_keypair.get_public_key().to_bytes()).unwrap(),
-            );
+            let (node_a_peer_id, _node_a) = network_controller
+                .create_fake_connection(PeerId::from_public_key(node_a_keypair.get_public_key()));
             //2. Creates 1 op
             let mut operation_1 = tools::create_operation_with_expire_period(&node_a_keypair, 1);
 
@@ -170,13 +168,11 @@ fn test_protocol_propagates_operations_to_active_nodes() {
               mut storage| {
             //1. Create 2 node
             let node_a_keypair = KeyPair::generate(0).unwrap();
-            let (node_a_peer_id, node_a) = network_controller.create_fake_connection(
-                PeerId::from_bytes(node_a_keypair.get_public_key().to_bytes()).unwrap(),
-            );
+            let (node_a_peer_id, node_a) = network_controller
+                .create_fake_connection(PeerId::from_public_key(node_a_keypair.get_public_key()));
             let node_b_keypair = KeyPair::generate(0).unwrap();
-            let (_node_b_peer_id, node_b) = network_controller.create_fake_connection(
-                PeerId::from_bytes(node_b_keypair.get_public_key().to_bytes()).unwrap(),
-            );
+            let (_node_b_peer_id, node_b) = network_controller
+                .create_fake_connection(PeerId::from_public_key(node_b_keypair.get_public_key()));
             //2. Creates 1 ops
             let operation = tools::create_operation_with_expire_period(&node_a_keypair, 1);
 
@@ -250,13 +246,11 @@ fn test_protocol_propagates_operations_received_over_the_network_only_to_nodes_t
               mut pool_event_receiver| {
             //1. Create 2 node
             let node_a_keypair = KeyPair::generate(0).unwrap();
-            let (node_a_peer_id, node_a) = network_controller.create_fake_connection(
-                PeerId::from_bytes(node_a_keypair.get_public_key().to_bytes()).unwrap(),
-            );
+            let (node_a_peer_id, node_a) = network_controller
+                .create_fake_connection(PeerId::from_public_key(node_a_keypair.get_public_key()));
             let node_b_keypair = KeyPair::generate(0).unwrap();
-            let (_node_b_peer_id, node_b) = network_controller.create_fake_connection(
-                PeerId::from_bytes(node_b_keypair.get_public_key().to_bytes()).unwrap(),
-            );
+            let (_node_b_peer_id, node_b) = network_controller
+                .create_fake_connection(PeerId::from_public_key(node_b_keypair.get_public_key()));
             //2. Creates 1 ops
             let operation = tools::create_operation_with_expire_period(&node_a_keypair, 1);
 
@@ -326,13 +320,11 @@ fn test_protocol_batches_propagation_of_operations_received_over_the_network_and
               mut storage| {
             //1. Create 2 node
             let node_a_keypair = KeyPair::generate(0).unwrap();
-            let (node_a_peer_id, node_a) = network_controller.create_fake_connection(
-                PeerId::from_bytes(node_a_keypair.get_public_key().to_bytes()).unwrap(),
-            );
+            let (node_a_peer_id, node_a) = network_controller
+                .create_fake_connection(PeerId::from_public_key(node_a_keypair.get_public_key()));
             let node_b_keypair = KeyPair::generate(0).unwrap();
-            let (_node_b_peer_id, node_b) = network_controller.create_fake_connection(
-                PeerId::from_bytes(node_b_keypair.get_public_key().to_bytes()).unwrap(),
-            );
+            let (_node_b_peer_id, node_b) = network_controller
+                .create_fake_connection(PeerId::from_public_key(node_b_keypair.get_public_key()));
             //2. Creates 1 ops
             let operation = tools::create_operation_with_expire_period(&node_a_keypair, 1);
 
@@ -421,13 +413,11 @@ fn test_protocol_propagates_operations_only_to_nodes_that_dont_know_about_it_ind
               mut storage| {
             //1. Create 2 node
             let node_a_keypair = KeyPair::generate(0).unwrap();
-            let (node_a_peer_id, node_a) = network_controller.create_fake_connection(
-                PeerId::from_bytes(node_a_keypair.get_public_key().to_bytes()).unwrap(),
-            );
+            let (node_a_peer_id, node_a) = network_controller
+                .create_fake_connection(PeerId::from_public_key(node_a_keypair.get_public_key()));
             let node_b_keypair = KeyPair::generate(0).unwrap();
-            let (_node_b_peer_id, node_b) = network_controller.create_fake_connection(
-                PeerId::from_bytes(node_b_keypair.get_public_key().to_bytes()).unwrap(),
-            );
+            let (_node_b_peer_id, node_b) = network_controller
+                .create_fake_connection(PeerId::from_public_key(node_b_keypair.get_public_key()));
             //2. Creates 1 ops
             let operation = tools::create_operation_with_expire_period(&node_a_keypair, 1);
 
@@ -551,15 +541,12 @@ fn test_protocol_propagates_operations_only_to_nodes_that_dont_know_about_it_ind
             let node_a_keypair = KeyPair::generate(0).unwrap();
             let node_b_keypair = KeyPair::generate(0).unwrap();
             let node_c_keypair = KeyPair::generate(0).unwrap();
-            let (node_a_peer_id, node_a) = network_controller.create_fake_connection(
-                PeerId::from_bytes(node_a_keypair.get_public_key().to_bytes()).unwrap(),
-            );
-            let (node_b_peer_id, node_b) = network_controller.create_fake_connection(
-                PeerId::from_bytes(node_b_keypair.get_public_key().to_bytes()).unwrap(),
-            );
-            let (node_c_peer_id, node_c) = network_controller.create_fake_connection(
-                PeerId::from_bytes(node_c_keypair.get_public_key().to_bytes()).unwrap(),
-            );
+            let (node_a_peer_id, node_a) = network_controller
+                .create_fake_connection(PeerId::from_public_key(node_a_keypair.get_public_key()));
+            let (node_b_peer_id, node_b) = network_controller
+                .create_fake_connection(PeerId::from_public_key(node_b_keypair.get_public_key()));
+            let (node_c_peer_id, node_c) = network_controller
+                .create_fake_connection(PeerId::from_public_key(node_c_keypair.get_public_key()));
             //2. Creates 2 ops
             let operation_1 = tools::create_operation_with_expire_period(&node_a_keypair, 1);
             let operation_2 = tools::create_operation_with_expire_period(&node_a_keypair, 1);
@@ -687,9 +674,8 @@ fn test_protocol_ask_operations_on_batch_received() {
               pool_event_receiver| {
             //1. Create 1 node
             let node_a_keypair = KeyPair::generate(0).unwrap();
-            let (node_a_peer_id, node_a) = network_controller.create_fake_connection(
-                PeerId::from_bytes(node_a_keypair.get_public_key().to_bytes()).unwrap(),
-            );
+            let (node_a_peer_id, node_a) = network_controller
+                .create_fake_connection(PeerId::from_public_key(node_a_keypair.get_public_key()));
             //2. Creates 1 op
             let operation = tools::create_operation_with_expire_period(&node_a_keypair, 1);
 
@@ -747,13 +733,11 @@ fn test_protocol_re_ask_operations_to_another_node_on_batch_received_after_delay
               pool_event_receiver| {
             //1. Create 2 node
             let node_a_keypair = KeyPair::generate(0).unwrap();
-            let (node_a_peer_id, node_a) = network_controller.create_fake_connection(
-                PeerId::from_bytes(node_a_keypair.get_public_key().to_bytes()).unwrap(),
-            );
+            let (node_a_peer_id, node_a) = network_controller
+                .create_fake_connection(PeerId::from_public_key(node_a_keypair.get_public_key()));
             let node_b_keypair = KeyPair::generate(0).unwrap();
-            let (node_b_peer_id, node_b) = network_controller.create_fake_connection(
-                PeerId::from_bytes(node_b_keypair.get_public_key().to_bytes()).unwrap(),
-            );
+            let (node_b_peer_id, node_b) = network_controller
+                .create_fake_connection(PeerId::from_public_key(node_b_keypair.get_public_key()));
             //2. Creates 1 op
             let operation = tools::create_operation_with_expire_period(&node_a_keypair, 1);
 
@@ -833,13 +817,11 @@ fn test_protocol_does_not_re_ask_operations_to_another_node_if_received() {
               pool_event_receiver| {
             //1. Create 2 node
             let node_a_keypair = KeyPair::generate(0).unwrap();
-            let (node_a_peer_id, node_a) = network_controller.create_fake_connection(
-                PeerId::from_bytes(node_a_keypair.get_public_key().to_bytes()).unwrap(),
-            );
+            let (node_a_peer_id, node_a) = network_controller
+                .create_fake_connection(PeerId::from_public_key(node_a_keypair.get_public_key()));
             let node_b_keypair = KeyPair::generate(0).unwrap();
-            let (node_b_peer_id, node_b) = network_controller.create_fake_connection(
-                PeerId::from_bytes(node_b_keypair.get_public_key().to_bytes()).unwrap(),
-            );
+            let (node_b_peer_id, node_b) = network_controller
+                .create_fake_connection(PeerId::from_public_key(node_b_keypair.get_public_key()));
             //2. Creates 1 op
             let operation = tools::create_operation_with_expire_period(&node_a_keypair, 1);
 
@@ -920,13 +902,11 @@ fn test_protocol_on_ask_operations() {
               pool_event_receiver| {
             //1. Create 2 node
             let node_a_keypair = KeyPair::generate(0).unwrap();
-            let (node_a_peer_id, _node_a) = network_controller.create_fake_connection(
-                PeerId::from_bytes(node_a_keypair.get_public_key().to_bytes()).unwrap(),
-            );
+            let (node_a_peer_id, _node_a) = network_controller
+                .create_fake_connection(PeerId::from_public_key(node_a_keypair.get_public_key()));
             let node_b_keypair = KeyPair::generate(0).unwrap();
-            let (node_b_peer_id, node_b) = network_controller.create_fake_connection(
-                PeerId::from_bytes(node_b_keypair.get_public_key().to_bytes()).unwrap(),
-            );
+            let (node_b_peer_id, node_b) = network_controller
+                .create_fake_connection(PeerId::from_public_key(node_b_keypair.get_public_key()));
             //2. Creates 1 op
             let operation = tools::create_operation_with_expire_period(&node_a_keypair, 1);
 

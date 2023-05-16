@@ -159,10 +159,7 @@ impl MassaRpcServer for API<Private> {
         //TODO: Change when unify node id and peer id
         let peer_ids = ids
             .into_iter()
-            .map(|id| {
-                // IMPORTANT TODO: this will fail before a peernet update
-                PeerId::from_bytes(&id.get_public_key().to_bytes().try_into().unwrap()).unwrap()
-            })
+            .map(|id| PeerId::from_public_key(id.get_public_key()))
             .collect();
         protocol_controller
             .ban_peers(peer_ids)
@@ -174,10 +171,7 @@ impl MassaRpcServer for API<Private> {
         //TODO: Change when unify node id and peer id
         let peer_ids = ids
             .into_iter()
-            .map(|id| {
-                // IMPORTANT TODO: this will fail before a peernet update
-                PeerId::from_bytes(&id.get_public_key().to_bytes().try_into().unwrap()).unwrap()
-            })
+            .map(|id| PeerId::from_public_key(id.get_public_key()))
             .collect();
         protocol_controller
             .unban_peers(peer_ids)

@@ -8,7 +8,9 @@ use crate::messages::{
 };
 use crate::settings::BootstrapClientConfig;
 use massa_hash::Hash;
-use massa_models::config::{MAX_BOOTSTRAP_MESSAGE_SIZE, SIGNATURE_DESER_SIZE, MAX_BOOTSTRAP_MESSAGE_SIZE_BYTES};
+use massa_models::config::{
+    MAX_BOOTSTRAP_MESSAGE_SIZE, MAX_BOOTSTRAP_MESSAGE_SIZE_BYTES, SIGNATURE_DESER_SIZE,
+};
 use massa_models::serialization::{DeserializeMinBEInt, SerializeMinBEInt};
 use massa_models::version::{Version, VersionSerializer};
 use massa_serialization::{DeserializeError, Deserializer, Serializer};

@@ -1,4 +1,5 @@
 use crossbeam::channel::Sender;
+use massa_protocol_exports::PeerId;
 use massa_serialization::{
     DeserializeError, Deserializer, Serializer, U64VarIntDeserializer, U64VarIntSerializer,
 };
@@ -7,7 +8,6 @@ use peernet::{
     messages::{
         MessagesHandler as PeerNetMessagesHandler, MessagesSerializer as PeerNetMessagesSerializer,
     },
-    peer_id::PeerId,
 };
 
 use crate::handlers::{
@@ -218,7 +218,7 @@ pub struct MessagesHandler {
     pub id_deserializer: U64VarIntDeserializer,
 }
 
-impl PeerNetMessagesHandler for MessagesHandler {
+impl PeerNetMessagesHandler<PeerId> for MessagesHandler {
     fn deserialize_id<'a>(
         &self,
         data: &'a [u8],

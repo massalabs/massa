@@ -6,12 +6,12 @@ use std::net::SocketAddr;
 use crate::error::ProtocolError;
 use crate::BootstrapPeers;
 
+use crate::PeerId;
 use massa_models::prehash::{PreHashMap, PreHashSet};
 use massa_models::stats::NetworkStats;
 use massa_models::{block_header::SecuredHeader, block_id::BlockId};
 use massa_storage::Storage;
 use peernet::peer::PeerConnectionType;
-use crate::PeerId;
 
 #[cfg_attr(any(test, feature = "testing"), mockall::automock)]
 pub trait ProtocolController: Send + Sync {

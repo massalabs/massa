@@ -16,15 +16,13 @@ use parking_lot::RwLock;
 use peernet::{
     config::{PeerNetCategoryInfo, PeerNetConfiguration},
     network_manager::PeerNetManager,
-    types::KeyPair as PeerNetKeyPair,
 };
-use std::{
-    collections::HashMap, fs::read_to_string, ops::Bound::Included, str::FromStr, sync::Arc,
-};
+use std::{collections::HashMap, fs::read_to_string, ops::Bound::Included, sync::Arc};
 use tracing::{debug, log::warn};
 
 use crate::{
     connectivity::{start_connectivity_thread, ConnectivityCommand},
+    context::Context,
     controller::ProtocolControllerImpl,
     handlers::{
         block_handler::{
@@ -46,7 +44,7 @@ use crate::{
     },
     manager::ProtocolManagerImpl,
     messages::MessagesHandler,
-    wrap_network::NetworkControllerImpl, context::Context,
+    wrap_network::NetworkControllerImpl,
 };
 
 pub struct ProtocolChannels {
@@ -199,7 +197,7 @@ pub fn start_protocol_controller(
         message_handlers.clone(),
         Context {
             our_keypair: keypair.clone(),
-        }
+        },
     );
 
     let initial_peers_infos = serde_json::from_str::<HashMap<PeerId, PeerData>>(
@@ -275,7 +273,7 @@ pub fn start_protocol_controller(
     )));
 
     let connectivity_thread_handle = start_connectivity_thread(
-        PeerId::from_public_key(peernet_keypair.get_public_key()),
+        PeerId::from_public_key(keypair.get_public_key()),
         network_controller,
         consensus_controller,
         pool_controller,

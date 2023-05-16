@@ -4,10 +4,10 @@ use std::time::Duration;
 
 use massa_consensus_exports::test_exports::MockConsensusControllerMessage;
 use massa_models::{block_id::BlockId, prehash::PreHashSet, slot::Slot};
+use massa_protocol_exports::PeerId;
 use massa_protocol_exports::{test_exports::tools, ProtocolConfig};
 use massa_signature::KeyPair;
 use massa_time::MassaTime;
-use massa_protocol_exports::peer_id::PeerId;
 use serial_test::serial;
 
 use crate::{
@@ -40,12 +40,10 @@ fn test_noting_block_does_not_panic_with_one_max_node_known_blocks_size() {
             //1. Create 2 nodes
             let node_a_keypair = KeyPair::generate(0).unwrap();
             let node_b_keypair = KeyPair::generate(0).unwrap();
-            let (node_a_peer_id, node_a) = network_controller.create_fake_connection(
-                PeerId::from_bytes(node_a_keypair.get_public_key().to_bytes()).unwrap(),
-            );
-            let (node_b_peer_id, node_b) = network_controller.create_fake_connection(
-                PeerId::from_bytes(node_b_keypair.get_public_key().to_bytes()).unwrap(),
-            );
+            let (node_a_peer_id, node_a) = network_controller
+                .create_fake_connection(PeerId::from_public_key(node_a_keypair.get_public_key()));
+            let (node_b_peer_id, node_b) = network_controller
+                .create_fake_connection(PeerId::from_public_key(node_b_keypair.get_public_key()));
 
             //2. Create a block coming from node a.
             let op_1 = tools::create_operation_with_expire_period(&node_a_keypair, 5);

@@ -14,10 +14,10 @@ use massa_models::{
     secure_share::{Id, SecureShare, SecureShareContent},
     slot::Slot,
 };
+use massa_protocol_exports::PeerId;
 use massa_protocol_exports::{test_exports::tools, ProtocolConfig};
 use massa_signature::KeyPair;
 use massa_time::MassaTime;
-use massa_protocol_exports::peer_id::PeerId;
 use serial_test::serial;
 
 use super::{context::protocol_test, tools::send_and_propagate_block};
@@ -44,12 +44,10 @@ fn test_protocol_does_propagate_operations_received_in_blocks() {
             //1. Create 2 nodes
             let node_a_keypair = KeyPair::generate(0).unwrap();
             let node_b_keypair = KeyPair::generate(0).unwrap();
-            let (node_a_peer_id, _node_a) = network_controller.create_fake_connection(
-                PeerId::from_bytes(node_a_keypair.get_public_key().to_bytes()).unwrap(),
-            );
-            let (_node_b_peer_id, node_b) = network_controller.create_fake_connection(
-                PeerId::from_bytes(node_b_keypair.get_public_key().to_bytes()).unwrap(),
-            );
+            let (node_a_peer_id, _node_a) = network_controller
+                .create_fake_connection(PeerId::from_public_key(node_a_keypair.get_public_key()));
+            let (_node_b_peer_id, node_b) = network_controller
+                .create_fake_connection(PeerId::from_public_key(node_b_keypair.get_public_key()));
 
             //2. Create a block coming from node a.
             let op_1 = tools::create_operation_with_expire_period(&node_a_keypair, 5);
@@ -145,12 +143,10 @@ fn test_protocol_sends_blocks_with_operations_to_consensus() {
             //1. Create 2 nodes
             let node_a_keypair = KeyPair::generate(0).unwrap();
             let node_b_keypair = KeyPair::generate(0).unwrap();
-            let (node_a_peer_id, _node_a) = network_controller.create_fake_connection(
-                PeerId::from_bytes(node_a_keypair.get_public_key().to_bytes()).unwrap(),
-            );
-            let (_node_b_peer_id, _node_b) = network_controller.create_fake_connection(
-                PeerId::from_bytes(node_b_keypair.get_public_key().to_bytes()).unwrap(),
-            );
+            let (node_a_peer_id, _node_a) = network_controller
+                .create_fake_connection(PeerId::from_public_key(node_a_keypair.get_public_key()));
+            let (_node_b_peer_id, _node_b) = network_controller
+                .create_fake_connection(PeerId::from_public_key(node_b_keypair.get_public_key()));
 
             //2. Create a block coming from node a.
             let op_1 = tools::create_operation_with_expire_period(&node_a_keypair, 5);

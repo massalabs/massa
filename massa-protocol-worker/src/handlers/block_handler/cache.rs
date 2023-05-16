@@ -2,8 +2,8 @@ use std::{num::NonZeroUsize, sync::Arc, time::Instant};
 
 use lru::LruCache;
 use massa_models::{block_header::SecuredHeader, block_id::BlockId};
+use massa_protocol_exports::PeerId;
 use parking_lot::RwLock;
-use massa_protocol_exports::peer_id::PeerId;
 
 pub struct BlockCache {
     pub checked_headers: LruCache<BlockId, SecuredHeader>,

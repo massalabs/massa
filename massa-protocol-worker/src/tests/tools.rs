@@ -5,8 +5,7 @@ use massa_models::{
     block::SecureShareBlock, block_id::BlockId, operation::SecureShareOperation,
     prehash::PreHashSet,
 };
-use massa_protocol_exports::ProtocolController;
-use massa_protocol_exports::peer_id::PeerId;
+use massa_protocol_exports::{PeerId, ProtocolController};
 
 use crate::{
     handlers::block_handler::{BlockInfoReply, BlockMessage},

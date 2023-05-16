@@ -488,11 +488,11 @@ pub fn get_peers(keypair: &KeyPair) -> BootstrapPeers {
     listeners2.insert("82.220.123.78:8080".parse().unwrap(), TransportType::Tcp);
     BootstrapPeers(vec![
         (
-            PeerId::from_bytes(keypair.get_public_key().to_bytes()).unwrap(),
+            PeerId::from_public_key(keypair.get_public_key()),
             listeners1,
         ),
         (
-            PeerId::from_bytes(keypair.get_public_key().to_bytes()).unwrap(),
+            PeerId::from_public_key(keypair.get_public_key()),
             listeners2,
         ),
     ])

@@ -3,15 +3,15 @@ use std::{
     net::SocketAddr,
 };
 
-use massa_protocol_exports::ProtocolError;
+use massa_protocol_exports::{PeerId, ProtocolError};
 use peernet::{
     network_manager::{PeerNetManager, SharedActiveConnections},
     peer::PeerConnectionType,
-    peer_id::PeerId,
     transports::{OutConnectionConfig, TransportType},
 };
 
 use crate::{
+    context::Context,
     handlers::peer_handler::MassaHandshake,
     messages::{Message, MessagesHandler, MessagesSerializer},
 };
@@ -40,7 +40,7 @@ impl Clone for Box<dyn ActiveConnectionsTrait> {
     }
 }
 
-impl ActiveConnectionsTrait for SharedActiveConnections {
+impl ActiveConnectionsTrait for SharedActiveConnections<PeerId> {
     fn send_to_peer(
         &self,
         peer_id: &PeerId,
@@ -123,11 +123,13 @@ pub trait NetworkController: Send + Sync {
 }
 
 pub struct NetworkControllerImpl {
-    peernet_manager: PeerNetManager<MassaHandshake, MessagesHandler>,
+    peernet_manager: PeerNetManager<PeerId, Context, MassaHandshake, MessagesHandler>,
 }
 
 impl NetworkControllerImpl {
-    pub fn new(peernet_manager: PeerNetManager<MassaHandshake, MessagesHandler>) -> Self {
+    pub fn new(
+        peernet_manager: PeerNetManager<PeerId, Context, MassaHandshake, MessagesHandler>,
+    ) -> Self {
         Self { peernet_manager }
     }
 }

@@ -52,7 +52,6 @@ use massa_pool_exports::PoolController;
 use massa_pos_exports::SelectorController;
 use massa_protocol_exports::{PeerConnectionType, ProtocolConfig, ProtocolController};
 use massa_serialization::{DeserializeError, Deserializer};
-use massa_signature::PublicKey;
 use massa_storage::Storage;
 use massa_time::MassaTime;
 use massa_versioning::{
@@ -379,11 +378,7 @@ impl MassaRpcServer for API<Public> {
                     PeerConnectionType::IN => false,
                     PeerConnectionType::OUT => true,
                 };
-                //TODO: Use the peerid correctly
-                (
-                    NodeId::new(PublicKey::from_bytes(&id.to_bytes()).unwrap()),
-                    (peer.0.ip(), is_outgoing),
-                )
+                (NodeId::new(id.get_public_key()), (peer.0.ip(), is_outgoing))
             })
             .collect::<BTreeMap<_, _>>();
 
