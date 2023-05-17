@@ -201,6 +201,14 @@
 <a href="#201" id="201">201</a>
 <a href="#202" id="202">202</a>
 <a href="#203" id="203">203</a>
+<a href="#204" id="204">204</a>
+<a href="#205" id="205">205</a>
+<a href="#206" id="206">206</a>
+<a href="#207" id="207">207</a>
+<a href="#208" id="208">208</a>
+<a href="#209" id="209">209</a>
+<a href="#210" id="210">210</a>
+<a href="#211" id="211">211</a>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2023 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="kw">use </span><span class="kw">crate</span>::config::GrpcConfig;
@@ -312,16 +320,6 @@
             <span class="macro">info!</span>(<span class="string">&quot;gRPC mTLS enabled&quot;</span>);
         }
 
-        <span class="kw">let </span>reflection_service_opt = <span class="kw">if </span>config.enable_reflection {
-            <span class="kw">let </span>reflection_service = tonic_reflection::server::Builder::configure()
-                .register_encoded_file_descriptor_set(FILE_DESCRIPTOR_SET)
-                .build()<span class="question-mark">?</span>;
-
-            <span class="prelude-val">Some</span>(reflection_service)
-        } <span class="kw">else </span>{
-            <span class="prelude-val">None
-        </span>};
-
         <span class="kw">let </span>health_service_opt = <span class="kw">if </span>config.enable_health {
             <span class="kw">let </span>(<span class="kw-2">mut </span>health_reporter, health_service) = tonic_health::server::health_reporter();
             health_reporter
@@ -343,34 +341,52 @@
                     </span>.allow_origin(Any)
                     .allow_headers([hyper::header::CONTENT_TYPE]);
 
-                <span class="kw">let </span>router_with_http1 = server_builder
+                <span class="kw">let </span><span class="kw-2">mut </span>router_with_http1 = server_builder
                     .accept_http1(<span class="bool-val">true</span>)
                     .layer(cors)
                     .layer(GrpcWebLayer::new())
-                    .add_optional_service(reflection_service_opt)
                     .add_optional_service(health_service_opt)
                     .add_service(svc);
+
+                <span class="kw">if </span>config.enable_reflection {
+                    <span class="kw">let </span>reflection_service = tonic_reflection::server::Builder::configure()
+                        .register_encoded_file_descriptor_set(FILE_DESCRIPTOR_SET)
+                        .build()<span class="question-mark">?</span>;
+
+                    router_with_http1 = router_with_http1.add_service(reflection_service);
+                }
 
                 tokio::spawn(
                     router_with_http1.serve_with_shutdown(config.bind, shutdown_recv.map(drop)),
                 );
             } <span class="kw">else </span>{
-                <span class="kw">let </span>router_with_http1 = server_builder
+                <span class="kw">let </span><span class="kw-2">mut </span>router_with_http1 = server_builder
                     .accept_http1(<span class="bool-val">true</span>)
                     .layer(GrpcWebLayer::new())
-                    .add_optional_service(reflection_service_opt)
-                    .add_optional_service(health_service_opt)
                     .add_service(svc);
+
+                <span class="kw">if </span>config.enable_reflection {
+                    <span class="kw">let </span>reflection_service = tonic_reflection::server::Builder::configure()
+                        .register_encoded_file_descriptor_set(FILE_DESCRIPTOR_SET)
+                        .build()<span class="question-mark">?</span>;
+
+                    router_with_http1 = router_with_http1.add_service(reflection_service);
+                }
 
                 tokio::spawn(
                     router_with_http1.serve_with_shutdown(config.bind, shutdown_recv.map(drop)),
                 );
             }
         } <span class="kw">else </span>{
-            <span class="kw">let </span>router = server_builder
-                .add_optional_service(reflection_service_opt)
-                .add_optional_service(health_service_opt)
-                .add_service(svc);
+            <span class="kw">let </span><span class="kw-2">mut </span>router = server_builder.add_service(svc);
+
+            <span class="kw">if </span>config.enable_reflection {
+                <span class="kw">let </span>reflection_service = tonic_reflection::server::Builder::configure()
+                    .register_encoded_file_descriptor_set(FILE_DESCRIPTOR_SET)
+                    .build()<span class="question-mark">?</span>;
+
+                router = router.add_service(reflection_service);
+            }
 
             tokio::spawn(router.serve_with_shutdown(config.bind, shutdown_recv.map(drop)));
         }
