@@ -24,24 +24,25 @@ message MipStatusEntry {
 // Same as MipInfo struct in versioning package
 message MipInfo {
   string name = 1;
-  uint32 version = 2;
-  uint64 start = 3;
-  uint64 timeout = 4;
-  uint64 activation_delay = 5;
+  fixed32 version = 2;
+  fixed64 start = 3;
+  fixed64 timeout = 4;
+  fixed64 activation_delay = 5;
   repeated MipComponentEntry components = 6;
 }
 
 message MipComponentEntry {
-  uint32 kind = 1;
-  uint32 version = 2;
+  fixed32 kind = 1;
+  fixed32 version = 2;
 }
 
 // Same as ComponentStateId enum in versioning package
 enum ComponentStateId {
-  Error = 0;
-  Defined = 1;
-  Started = 2;
-  LockedIn = 3;
-  Active = 4;
-  Failed = 5;
+  COMPONENT_STATE_ID_UNSPECIFIED = 0;
+  COMPONENT_STATE_ID_ERROR = 1;
+  COMPONENT_STATE_ID_DEFINED = 2;
+  COMPONENT_STATE_ID_STARTED = 3;
+  COMPONENT_STATE_ID_LOCKEDIN = 4;
+  COMPONENT_STATE_ID_ACTIVE = 5;
+  COMPONENT_STATE_ID_FAILED = 6;
 }

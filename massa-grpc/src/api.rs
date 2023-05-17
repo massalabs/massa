@@ -347,12 +347,11 @@ pub(crate) fn get_mip_status(
     let mip_store_status_ = grpc.mip_store.get_mip_status();
     let mip_store_status: Result<Vec<grpc::MipStatusEntry>, GrpcError> = mip_store_status_
         .iter()
-        .map(|(mip_info, state_id)| {
+        .map(|(mip_info, state_id_)| {
+            let state_id = grpc::ComponentStateId::from(state_id_);
             Ok(grpc::MipStatusEntry {
                 mip_info: Some(grpc::MipInfo::from(mip_info)),
-                state: i32::try_from(u32::from(state_id.clone())).map_err(|_e| {
-                    GrpcError::InvalidArgument("Cannot convert state_id".to_string())
-                })?,
+                state: i32::from(state_id),
             })
         })
         .collect();

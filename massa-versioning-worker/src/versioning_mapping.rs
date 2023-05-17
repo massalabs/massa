@@ -1,6 +1,19 @@
 // Copyright (c) 2023 MASSA LABS <info@massa.net>
-use crate::versioning::MipInfo;
+use crate::versioning::{ComponentStateTypeId, MipInfo};
 use massa_proto::massa::api::v1 as grpc;
+
+impl From<&ComponentStateTypeId> for grpc::ComponentStateId {
+    fn from(value: &ComponentStateTypeId) -> Self {
+        match value {
+            ComponentStateTypeId::Error => grpc::ComponentStateId::Error,
+            ComponentStateTypeId::Defined => grpc::ComponentStateId::Defined,
+            ComponentStateTypeId::Started => grpc::ComponentStateId::Started,
+            ComponentStateTypeId::LockedIn => grpc::ComponentStateId::Lockedin,
+            ComponentStateTypeId::Active => grpc::ComponentStateId::Active,
+            ComponentStateTypeId::Failed => grpc::ComponentStateId::Failed,
+        }
+    }
+}
 
 impl From<&MipInfo> for grpc::MipInfo {
     fn from(value: &MipInfo) -> Self {

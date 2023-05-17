@@ -573,13 +573,13 @@ pub struct MipStatusEntry {
 pub struct MipInfo {
     #[prost(string, tag = "1")]
     pub name: ::prost::alloc::string::String,
-    #[prost(uint32, tag = "2")]
+    #[prost(fixed32, tag = "2")]
     pub version: u32,
-    #[prost(uint64, tag = "3")]
+    #[prost(fixed64, tag = "3")]
     pub start: u64,
-    #[prost(uint64, tag = "4")]
+    #[prost(fixed64, tag = "4")]
     pub timeout: u64,
-    #[prost(uint64, tag = "5")]
+    #[prost(fixed64, tag = "5")]
     pub activation_delay: u64,
     #[prost(message, repeated, tag = "6")]
     pub components: ::prost::alloc::vec::Vec<MipComponentEntry>,
@@ -587,21 +587,22 @@ pub struct MipInfo {
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct MipComponentEntry {
-    #[prost(uint32, tag = "1")]
+    #[prost(fixed32, tag = "1")]
     pub kind: u32,
-    #[prost(uint32, tag = "2")]
+    #[prost(fixed32, tag = "2")]
     pub version: u32,
 }
 /// Same as ComponentStateId enum in versioning package
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, ::prost::Enumeration)]
 #[repr(i32)]
 pub enum ComponentStateId {
-    Error = 0,
-    Defined = 1,
-    Started = 2,
-    LockedIn = 3,
-    Active = 4,
-    Failed = 5,
+    Unspecified = 0,
+    Error = 1,
+    Defined = 2,
+    Started = 3,
+    Lockedin = 4,
+    Active = 5,
+    Failed = 6,
 }
 impl ComponentStateId {
     /// String value of the enum field names used in the ProtoBuf definition.
@@ -610,23 +611,25 @@ impl ComponentStateId {
     /// (if the ProtoBuf definition does not change) and safe for programmatic use.
     pub fn as_str_name(&self) -> &'static str {
         match self {
-            ComponentStateId::Error => "Error",
-            ComponentStateId::Defined => "Defined",
-            ComponentStateId::Started => "Started",
-            ComponentStateId::LockedIn => "LockedIn",
-            ComponentStateId::Active => "Active",
-            ComponentStateId::Failed => "Failed",
+            ComponentStateId::Unspecified => "COMPONENT_STATE_ID_UNSPECIFIED",
+            ComponentStateId::Error => "COMPONENT_STATE_ID_ERROR",
+            ComponentStateId::Defined => "COMPONENT_STATE_ID_DEFINED",
+            ComponentStateId::Started => "COMPONENT_STATE_ID_STARTED",
+            ComponentStateId::Lockedin => "COMPONENT_STATE_ID_LOCKEDIN",
+            ComponentStateId::Active => "COMPONENT_STATE_ID_ACTIVE",
+            ComponentStateId::Failed => "COMPONENT_STATE_ID_FAILED",
         }
     }
     /// Creates an enum from field names used in the ProtoBuf definition.
     pub fn from_str_name(value: &str) -> ::core::option::Option<Self> {
         match value {
-            "Error" => Some(Self::Error),
-            "Defined" => Some(Self::Defined),
-            "Started" => Some(Self::Started),
-            "LockedIn" => Some(Self::LockedIn),
-            "Active" => Some(Self::Active),
-            "Failed" => Some(Self::Failed),
+            "COMPONENT_STATE_ID_UNSPECIFIED" => Some(Self::Unspecified),
+            "COMPONENT_STATE_ID_ERROR" => Some(Self::Error),
+            "COMPONENT_STATE_ID_DEFINED" => Some(Self::Defined),
+            "COMPONENT_STATE_ID_STARTED" => Some(Self::Started),
+            "COMPONENT_STATE_ID_LOCKEDIN" => Some(Self::Lockedin),
+            "COMPONENT_STATE_ID_ACTIVE" => Some(Self::Active),
+            "COMPONENT_STATE_ID_FAILED" => Some(Self::Failed),
             _ => None,
         }
     }
