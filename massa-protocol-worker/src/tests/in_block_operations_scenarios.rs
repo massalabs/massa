@@ -199,6 +199,8 @@ fn test_protocol_sends_blocks_with_operations_to_consensus() {
 
                     let header = BlockHeader::new_verifiable(
                         BlockHeader {
+                            announced_version: 0,
+                            current_version: 0,
                             slot: Slot::new(1, op_thread),
                             parents: vec![
                                 BlockId(Hash::compute_from("Genesis 0".as_bytes())),

@@ -10,6 +10,7 @@ use massa_consensus_exports::{
     test_exports::{ConsensusControllerImpl, ConsensusEventReceiver},
     ConsensusController,
 };
+use massa_models::config::{MIP_STORE_STATS_BLOCK_CONSIDERED, MIP_STORE_STATS_COUNTERS_MAX};
 //use crate::handlers::block_handler::BlockInfoReply;
 use massa_pool_exports::{
     test_exports::{MockPoolController, PoolEventReceiver},
@@ -21,6 +22,7 @@ use massa_protocol_exports::{
 use massa_serialization::U64VarIntDeserializer;
 use massa_signature::KeyPair;
 use massa_storage::Storage;
+use massa_versioning::versioning::{MipStatsConfig, MipStore};
 use parking_lot::RwLock;
 use std::ops::Bound::Included;
 use tracing::{debug, log::warn};
@@ -83,6 +85,12 @@ pub fn start_protocol_controller_with_mock_network(
 
     let network_controller = Box::new(MockNetworkController::new(message_handlers.clone()));
 
+    let mip_stats_config = MipStatsConfig {
+        block_count_considered: MIP_STORE_STATS_BLOCK_CONSIDERED,
+        counters_max: MIP_STORE_STATS_COUNTERS_MAX,
+    };
+    let mip_store = MipStore::try_from(([], mip_stats_config)).unwrap();
+
     let connectivity_thread_handle = start_connectivity_thread(
         PeerId::from_public_key(keypair.get_public_key()),
         network_controller.clone(),
@@ -105,6 +113,7 @@ pub fn start_protocol_controller_with_mock_network(
             max_in_connections_per_ip: 10,
         },
         config,
+        mip_store,
     )?;
 
     let manager = ProtocolManagerImpl::new(connectivity_thread_handle);

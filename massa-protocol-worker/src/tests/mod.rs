@@ -1,10 +1,12 @@
 use std::{collections::HashMap, fs::read_to_string, time::Duration};
 
 use massa_consensus_exports::test_exports::ConsensusControllerImpl;
+use massa_models::config::{MIP_STORE_STATS_BLOCK_CONSIDERED, MIP_STORE_STATS_COUNTERS_MAX};
 use massa_pool_exports::test_exports::MockPoolController;
 use massa_protocol_exports::{PeerCategoryInfo, PeerData, PeerId, ProtocolConfig};
 use massa_signature::KeyPair;
 use massa_storage::Storage;
+use massa_versioning::versioning::{MipStatsConfig, MipStore};
 use peernet::transports::TransportType;
 use tempfile::NamedTempFile;
 
@@ -122,6 +124,14 @@ fn basic() {
 
     let (mut sender_manager1, channels1) = create_protocol_controller(config1.clone());
     let (mut sender_manager2, channels2) = create_protocol_controller(config2.clone());
+
+    // Setup the MIP store
+    let mip_stats_config = MipStatsConfig {
+        block_count_considered: MIP_STORE_STATS_BLOCK_CONSIDERED,
+        counters_max: MIP_STORE_STATS_COUNTERS_MAX,
+    };
+    let mip_store = MipStore::try_from(([], mip_stats_config)).unwrap();
+
     // Setup the protocols
     let (mut manager1, _, _) = start_protocol_controller(
         config1,
@@ -130,6 +140,7 @@ fn basic() {
         pool_controller1,
         storage1,
         channels1,
+        mip_store.clone(),
     )
     .expect("Failed to start protocol 1");
     let (mut manager2, _, _) = start_protocol_controller(
@@ -139,6 +150,7 @@ fn basic() {
         pool_controller2,
         storage2,
         channels2,
+        mip_store,
     )
     .expect("Failed to start protocol 2");
 
@@ -246,6 +258,13 @@ fn stop_with_controller_still_exists() {
     let storage1 = Storage::create_root();
     let storage2 = Storage::create_root();
 
+    // Setup the MIP store
+    let mip_stats_config = MipStatsConfig {
+        block_count_considered: MIP_STORE_STATS_BLOCK_CONSIDERED,
+        counters_max: MIP_STORE_STATS_COUNTERS_MAX,
+    };
+    let mip_store = MipStore::try_from(([], mip_stats_config)).unwrap();
+
     // Setup the protocols
     let (mut sender_manager1, channels1) = create_protocol_controller(config1.clone());
     let (mut sender_manager2, channels2) = create_protocol_controller(config2.clone());
@@ -256,6 +275,7 @@ fn stop_with_controller_still_exists() {
         pool_controller1,
         storage1,
         channels1,
+        mip_store.clone(),
     )
     .expect("Failed to start protocol 1");
     let (mut manager2, _, _) = start_protocol_controller(
@@ -265,6 +285,7 @@ fn stop_with_controller_still_exists() {
         pool_controller2,
         storage2,
         channels2,
+        mip_store,
     )
     .expect("Failed to start protocol 2");
 
