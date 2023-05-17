@@ -2,7 +2,7 @@ use std::collections::{HashMap, VecDeque};
 
 use massa_models::{
     address::Address,
-    config::{CHANNEL_SIZE, ENDORSEMENT_COUNT, PERIODS_PER_CYCLE, THREAD_COUNT},
+    config::constants::{CHANNEL_SIZE, ENDORSEMENT_COUNT, PERIODS_PER_CYCLE, THREAD_COUNT},
     slot::Slot,
 };
 use massa_signature::KeyPair;
