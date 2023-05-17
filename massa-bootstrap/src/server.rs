@@ -99,8 +99,6 @@ impl BootstrapManager {
     /// stop the bootstrap server
     pub fn stop(self) -> Result<(), BootstrapError> {
         massa_trace!("bootstrap.lib.stop", {});
-        // `as_ref` is critical here, as the stopper has to be alive until the poll in the event
-        // loop acts on the stop-signal
         // TODO: Refactor the waker so that its existance is tied to the life of the event-loop
         if self.listener_stopper.stop().is_err() {
             warn!("bootstrap server already dropped");
@@ -108,10 +106,6 @@ impl BootstrapManager {
         if self.update_stopper_tx.send(()).is_err() {
             warn!("bootstrap ip-list-updater already dropped");
         }
-        // TODO?: handle join errors.
-
-        // when the runtime is dropped at the end of this stop, the listener is auto-aborted
-
         self.update_handle
             .join()
             .expect("in BootstrapManager::stop() joining on updater thread")?;

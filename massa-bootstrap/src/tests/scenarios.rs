@@ -501,9 +501,14 @@ fn conn_establishment_mocks() -> (MockBSEventPoller, MockBSConnector) {
         .unwrap();
 
     // Mock the connection setups
-    // TODO: Why is it twice, and not just once?
     let mut seq = Sequence::new();
     let mut mock_bs_listener = MockBSEventPoller::new();
+    let mut mock_remote_connector = MockBSConnector::new();
+    mock_remote_connector
+        .expect_connect_timeout()
+        .times(1)
+        .returning(move |_, _| Ok(std::net::TcpStream::connect("127.0.0.1:8069").unwrap()))
+        .in_sequence(&mut seq);
     mock_bs_listener
         .expect_poll()
         .times(1)
@@ -517,12 +522,5 @@ fn conn_establishment_mocks() -> (MockBSEventPoller, MockBSConnector) {
         .returning(move || Ok(PollEvent::Stop))
         .in_sequence(&mut seq);
 
-    let mut seq = Sequence::new();
-    let mut mock_remote_connector = MockBSConnector::new();
-    mock_remote_connector
-        .expect_connect_timeout()
-        .times(1)
-        .returning(move |_, _| Ok(std::net::TcpStream::connect("127.0.0.1:8069").unwrap()))
-        .in_sequence(&mut seq);
     (mock_bs_listener, mock_remote_connector)
 }
