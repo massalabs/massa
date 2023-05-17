@@ -53,6 +53,8 @@ mod settings;
 mod types;
 
 pub use channels::ExecutionChannels;
+#[cfg(any(test, feature = "testing"))]
+pub use controller_traits::MockExecutionController;
 pub use controller_traits::{ExecutionController, ExecutionManager};
 pub use error::ExecutionError;
 pub use event_store::EventStore;

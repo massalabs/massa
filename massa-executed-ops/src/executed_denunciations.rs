@@ -139,6 +139,18 @@ impl ExecutedDenunciations {
             .get_cf(handle, denunciation_index_key!(serialized_de_idx))
             .expect(CRUD_ERROR)
             .is_some()
+      }
+  
+    /// Internal function used to insert the values of an operation id iter and update the object hash
+    fn extend_and_compute_hash<'a, I>(&mut self, values: I)
+    where
+        I: Iterator<Item = &'a DenunciationIndex>,
+    {
+        for de_idx in values {
+            if self.denunciations.insert(*de_idx) {
+                self.hash ^= de_idx.get_hash();
+            }
+        }
     }
 
     /// Apply speculative operations changes to the final executed denunciations state
@@ -153,11 +165,11 @@ impl ExecutedDenunciations {
             self.sorted_denunciations
                 .entry(*de_idx.get_slot())
                 .and_modify(|ids| {
-                    ids.insert(de_idx.clone());
+                    ids.insert(de_idx);
                 })
                 .or_insert_with(|| {
                     let mut new = HashSet::default();
-                    new.insert(de_idx.clone());
+                    new.insert(de_idx);
                     new
                 });
         }

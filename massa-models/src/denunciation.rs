@@ -745,7 +745,7 @@ impl Deserializer<Denunciation> for DenunciationDeserializer {
 
 // Denunciation Index
 
-#[derive(Debug, Clone, Hash, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Copy, Clone, Hash, PartialEq, Eq, Serialize, Deserialize)]
 /// Index for Denunciations in collections (e.g. like a HashMap...)
 pub enum DenunciationIndex {
     /// Variant for Block header denunciation index
