@@ -1469,11 +1469,10 @@
 <a href="#1469" id="1469">1469</a>
 <a href="#1470" id="1470">1470</a>
 <a href="#1471" id="1471">1471</a>
-<a href="#1472" id="1472">1472</a>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="kw">use </span><span class="kw">crate</span>::display::Output;
-<span class="kw">use crate</span>::{client_warning, rpc_error};
+<span class="kw">use crate</span>::{client_warning, grpc_error, rpc_error};
 <span class="kw">use </span>anyhow::{anyhow, bail, <span class="prelude-ty">Result</span>};
 <span class="kw">use </span>console::style;
 <span class="kw">use </span>massa_api_exports::{
@@ -2252,9 +2251,8 @@
                         resp.status
                     }
                     <span class="prelude-val">Err</span>(e) =&gt; {
-                        <span class="comment">// FIXME: Should we default to the last known version - has client some local storage?
-                        // FIXME: defines grpc_error?
-                        </span><span class="macro">rpc_error!</span>(e)
+                        <span class="comment">// FIXME: Should we default to the last known version - default to 0?
+                        </span><span class="macro">grpc_error!</span>(e)
                     }
                 };
 
