@@ -2960,7 +2960,10 @@ dependencies = [
  "jsonrpsee-ws-client",
  "massa_api_exports",
  "massa_models",
+ "massa_proto",
  "massa_time",
+ "thiserror",
+ "tonic",
 ]
 
 [[package]]

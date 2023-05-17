@@ -40,11 +40,13 @@ use massa_models::{
     prehash::{PreHashMap, PreHashSet},
     version::Version,
 };
-
-use jsonrpsee_http_client as _;
-use jsonrpsee_ws_client as _;
+use massa_proto::massa::api::v1::massa_service_client::MassaServiceClient;
 
 use jsonrpsee::{core::Error as JsonRpseeError, core::RpcResult, http_client::HttpClientBuilder};
+use jsonrpsee_http_client as _;
+use jsonrpsee_ws_client as _;
+use thiserror::Error;
+
 use std::net::{IpAddr, SocketAddr};
 use std::str::FromStr;
 
@@ -53,12 +55,25 @@ pub use config::ClientConfig;
 pub use config::HttpConfig;
 pub(crate) use config::WsConfig;
 
+/// Error when creating a new client
+#[derive(Error, Debug)]
+pub enum ClientError {
+    /// Url error
+    #[error("Invalid grpc url: {0}")]
+    Url(#[from] http::uri::InvalidUri),
+    /// Connection error
+    #[error("Cannot connect to grpc server: {0}")]
+    Connect(#[from] tonic::transport::Error),
+}
+
 /// Client
 pub struct Client {
     /// public component
     pub public: RpcClient,
     /// private component
     pub private: RpcClient,
+    /// grpc client
+    pub grpc: MassaServiceClient<tonic::transport::Channel>,
 }
 
 impl Client {
@@ -67,16 +82,25 @@ impl Client {
         ip: IpAddr,
         public_port: u16,
         private_port: u16,
+        grpc_port: u16,
         http_config: &HttpConfig,
-    ) -> Client {
+    ) -> Result<Client, ClientError> {
         let public_socket_addr = SocketAddr::new(ip, public_port);
         let private_socket_addr = SocketAddr::new(ip, private_port);
+        let grpc_socket_addr = SocketAddr::new(ip, grpc_port);
         let public_url = format!("http://{}", public_socket_addr);
         let private_url = format!("http://{}", private_socket_addr);
-        Client {
+        let grpc_url = format!("grpc://{}", grpc_socket_addr);
+
+        // start grpc client and connect to the server
+        let channel = tonic::transport::Channel::from_shared(grpc_url)?
+            .connect()
+            .await?;
+        Ok(Client {
             public: RpcClient::from_url(&public_url, http_config).await,
             private: RpcClient::from_url(&private_url, http_config).await,
-        }
+            grpc: MassaServiceClient::new(channel),
+        })
     }
 }
 

@@ -33,6 +33,9 @@ struct Args {
     /// Port to listen on (Massa private API).
     #[structopt(long)]
     private_port: Option<u16>,
+    /// Port to listen on (Massa GRPC API).
+    #[structopt(long)]
+    grpc_port: Option<u16>,
     /// Address to listen on
     #[structopt(long)]
     ip: Option<IpAddr>,
@@ -126,6 +129,10 @@ async fn run(args: Args) -> Result<()> {
         Some(private_port) => private_port,
         None => settings.default_node.private_port,
     };
+    let grpc_port = match args.grpc_port {
+        Some(grpc_port) => grpc_port,
+        None => settings.default_node.grpc_port,
+    };
 
     // Setup panic handlers,
     // and when a panic occurs,
@@ -137,10 +144,12 @@ async fn run(args: Args) -> Result<()> {
         std::process::exit(1);
     }));
 
-    let client = Client::new(address, public_port, private_port, &http_config).await;
+    // Note: grpc handler requires a mut handler
+    let mut client =
+        Client::new(address, public_port, private_port, grpc_port, &http_config).await?;
     if atty::is(Stream::Stdout) && args.command == Command::help && !args.json {
         // Interactive mode
-        repl::run(&client, &args.wallet, args.password).await?;
+        repl::run(&mut client, &args.wallet, args.password).await?;
     } else {
         // Non-Interactive mode
 
@@ -161,7 +170,7 @@ async fn run(args: Args) -> Result<()> {
 
         match args
             .command
-            .run(&client, &mut wallet_opt, &args.parameters, args.json)
+            .run(&mut client, &mut wallet_opt, &args.parameters, args.json)
             .await
         {
             Ok(output) => {

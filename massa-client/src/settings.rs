@@ -20,10 +20,11 @@ pub(crate) struct Settings {
 }
 
 #[derive(Debug, Deserialize, Clone)]
-pub(crate) struct DefaultNode {
+pub struct DefaultNode {
     pub(crate) ip: IpAddr,
     pub(crate) private_port: u16,
     pub(crate) public_port: u16,
+    pub(crate) grpc_port: u16,
 }
 
 /// Client settings
