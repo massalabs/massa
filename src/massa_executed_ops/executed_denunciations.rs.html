@@ -393,7 +393,7 @@
         </span>I: Iterator&lt;Item = <span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>DenunciationIndex&gt;,
     {
         <span class="kw">for </span>de_idx <span class="kw">in </span>values {
-            <span class="kw">if </span><span class="self">self</span>.denunciations.insert((<span class="kw-2">*</span>de_idx).clone()) {
+            <span class="kw">if </span><span class="self">self</span>.denunciations.insert(<span class="kw-2">*</span>de_idx) {
                 <span class="self">self</span>.hash ^= de_idx.get_hash();
             }
         }
@@ -406,11 +406,11 @@
             <span class="self">self</span>.sorted_denunciations
                 .entry(<span class="kw-2">*</span>de_idx.get_slot())
                 .and_modify(|ids| {
-                    ids.insert(de_idx.clone());
+                    ids.insert(de_idx);
                 })
                 .or_insert_with(|| {
                     <span class="kw">let </span><span class="kw-2">mut </span>new = HashSet::default();
-                    new.insert(de_idx.clone());
+                    new.insert(de_idx);
                     new
                 });
         }
