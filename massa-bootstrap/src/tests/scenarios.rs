@@ -414,6 +414,7 @@ fn test_bootstrap_server() {
         Arc::new((Mutex::new(false), Condvar::new())),
     )
     .unwrap();
+
     // apply the changes to the server state before matching with the client
     {
         let mut final_state_server_write = final_state_server.write();
