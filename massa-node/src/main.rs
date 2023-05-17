@@ -850,6 +850,7 @@ async fn launch(
             storage: shared_storage.clone(),
             grpc_config: grpc_config.clone(),
             version: *VERSION,
+            mip_store,
         };
 
         // HACK maybe should remove timeout later
