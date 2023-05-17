@@ -100,6 +100,9 @@
     - [AsyncMessageTrigger](#massa-api-v1-AsyncMessageTrigger)
     - [AsyncPoolChangeEntry](#massa-api-v1-AsyncPoolChangeEntry)
     - [AsyncPoolChangeValue](#massa-api-v1-AsyncPoolChangeValue)
+    - [DenunciationBlockHeader](#massa-api-v1-DenunciationBlockHeader)
+    - [DenunciationEndorsement](#massa-api-v1-DenunciationEndorsement)
+    - [DenunciationIndex](#massa-api-v1-DenunciationIndex)
     - [ExecutedOpsChangeEntry](#massa-api-v1-ExecutedOpsChangeEntry)
     - [ExecutedOpsChangeValue](#massa-api-v1-ExecutedOpsChangeValue)
     - [ExecutionOutput](#massa-api-v1-ExecutionOutput)
@@ -1546,7 +1549,7 @@ Asynchronous smart contract message
 | validity_start | [Slot](#massa-api-v1-Slot) |  | Slot at which the message starts being valid (bound included in the validity range) |
 | validity_end | [Slot](#massa-api-v1-Slot) |  | Slot at which the message stops being valid (bound not included in the validity range) |
 | data | [bytes](#bytes) |  | Raw payload data of the message |
-| trigger | [AsyncMessageTrigger](#massa-api-v1-AsyncMessageTrigger) |  | Trigger that define whenever a message can be executed (optional) |
+| trigger | [AsyncMessageTrigger](#massa-api-v1-AsyncMessageTrigger) |  | Trigger that define whenever a message can be executed |
 | can_be_executed | [bool](#bool) |  | Boolean that determine if the message can be executed. For messages without filter this boolean is always true. For messages with filter, this boolean is true if the filter has been matched between `validity_start` and current slot. |
 | hash | [string](#string) |  | Hash of the message |
 
@@ -1597,6 +1600,53 @@ AsyncPoolChangeValue
 | ----- | ---- | ----- | ----------- |
 | type | [AsyncPoolChangeType](#massa-api-v1-AsyncPoolChangeType) |  | The type of the change |
 | async_message | [AsyncMessage](#massa-api-v1-AsyncMessage) |  | AsyncPool message |
+
+
+
+
+
+
+<a name="massa-api-v1-DenunciationBlockHeader"></a>
+
+### DenunciationBlockHeader
+Variant for Block header denunciation index
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| slot | [Slot](#massa-api-v1-Slot) |  | Denounciation slot |
+
+
+
+
+
+
+<a name="massa-api-v1-DenunciationEndorsement"></a>
+
+### DenunciationEndorsement
+Variant for Endorsement denunciation index
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| slot | [Slot](#massa-api-v1-Slot) |  | Denounciation slot |
+| index | [fixed32](#fixed32) |  | Denounciation index |
+
+
+
+
+
+
+<a name="massa-api-v1-DenunciationIndex"></a>
+
+### DenunciationIndex
+Index for Denunciations in collections (e.g. like a HashMap...)
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| block_header | [DenunciationBlockHeader](#massa-api-v1-DenunciationBlockHeader) |  | Denunciation block header |
+| endorsement | [DenunciationEndorsement](#massa-api-v1-DenunciationEndorsement) |  | Denunciation endorsement |
 
 
 
@@ -1726,9 +1776,9 @@ Represents an update to one or more fields of a `LedgerEntry`
 
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
-| balance | [SetOrKeepBalance](#massa-api-v1-SetOrKeepBalance) |  | change the balance |
-| bytecode | [SetOrKeepBytecode](#massa-api-v1-SetOrKeepBytecode) |  | change the executable bytecode |
-| datastore | [SetOrDeleteDatastoreEntry](#massa-api-v1-SetOrDeleteDatastoreEntry) | repeated | change datastore entries |
+| balance | [SetOrKeepBalance](#massa-api-v1-SetOrKeepBalance) |  | Change the balance |
+| bytecode | [SetOrKeepBytecode](#massa-api-v1-SetOrKeepBytecode) |  | Change the executable bytecode |
+| datastore | [SetOrDeleteDatastoreEntry](#massa-api-v1-SetOrDeleteDatastoreEntry) | repeated | Change datastore entries |
 
 
 
@@ -1847,6 +1897,7 @@ StateChanges
 | ledger_changes | [LedgerChangeEntry](#massa-api-v1-LedgerChangeEntry) | repeated | Ledger changes |
 | async_pool_changes | [AsyncPoolChangeEntry](#massa-api-v1-AsyncPoolChangeEntry) | repeated | Asynchronous pool changes |
 | executed_ops_changes | [ExecutedOpsChangeEntry](#massa-api-v1-ExecutedOpsChangeEntry) | repeated | Executed operations changes |
+| executed_denunciations_changes | [DenunciationIndex](#massa-api-v1-DenunciationIndex) | repeated | Executed denunciations changes |
 
 
 

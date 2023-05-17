@@ -500,6 +500,9 @@ pub struct StateChanges {
     /// Executed operations changes
     #[prost(message, repeated, tag = "4")]
     pub executed_ops_changes: ::prost::alloc::vec::Vec<ExecutedOpsChangeEntry>,
+    /// Executed denunciations changes
+    #[prost(message, repeated, tag = "5")]
+    pub executed_denunciations_changes: ::prost::alloc::vec::Vec<DenunciationIndex>,
 }
 /// ExecutedOpsChangeEntry
 #[allow(clippy::derive_partial_eq_without_eq)]
@@ -586,7 +589,7 @@ pub struct AsyncMessage {
     /// Raw payload data of the message
     #[prost(bytes = "vec", tag = "11")]
     pub data: ::prost::alloc::vec::Vec<u8>,
-    /// Trigger that define whenever a message can be executed (optional)
+    /// Trigger that define whenever a message can be executed
     #[prost(message, optional, tag = "12")]
     pub trigger: ::core::option::Option<AsyncMessageTrigger>,
     /// Boolean that determine if the message can be executed. For messages without filter this boolean is always true.
@@ -662,13 +665,13 @@ pub struct LedgerEntry {
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct LedgerEntryUpdate {
-    /// change the balance
+    /// Change the balance
     #[prost(message, optional, tag = "1")]
     pub balance: ::core::option::Option<SetOrKeepBalance>,
-    /// change the executable bytecode
+    /// Change the executable bytecode
     #[prost(message, optional, tag = "2")]
     pub bytecode: ::core::option::Option<SetOrKeepBytecode>,
-    /// / change datastore entries
+    /// / Change datastore entries
     #[prost(message, repeated, tag = "3")]
     pub datastore: ::prost::alloc::vec::Vec<SetOrDeleteDatastoreEntry>,
 }
@@ -704,6 +707,47 @@ pub struct SetOrDeleteDatastoreEntry {
     /// The balance of that entry (optioal)
     #[prost(message, optional, tag = "2")]
     pub datastore_entry: ::core::option::Option<BytesMapFieldEntry>,
+}
+/// Index for Denunciations in collections (e.g. like a HashMap...)
+#[allow(clippy::derive_partial_eq_without_eq)]
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct DenunciationIndex {
+    /// DenunciationBlockHeader or DenunciationEndorsement
+    #[prost(oneof = "denunciation_index::Entry", tags = "1, 2")]
+    pub entry: ::core::option::Option<denunciation_index::Entry>,
+}
+/// Nested message and enum types in `DenunciationIndex`.
+pub mod denunciation_index {
+    /// DenunciationBlockHeader or DenunciationEndorsement
+    #[allow(clippy::derive_partial_eq_without_eq)]
+    #[derive(Clone, PartialEq, ::prost::Oneof)]
+    pub enum Entry {
+        /// Denunciation block header
+        #[prost(message, tag = "1")]
+        BlockHeader(super::DenunciationBlockHeader),
+        /// Denunciation endorsement
+        #[prost(message, tag = "2")]
+        Endorsement(super::DenunciationEndorsement),
+    }
+}
+/// Variant for Block header denunciation index
+#[allow(clippy::derive_partial_eq_without_eq)]
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct DenunciationBlockHeader {
+    /// Denounciation slot
+    #[prost(message, optional, tag = "1")]
+    pub slot: ::core::option::Option<Slot>,
+}
+/// Variant for Endorsement denunciation index
+#[allow(clippy::derive_partial_eq_without_eq)]
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct DenunciationEndorsement {
+    /// Denounciation slot
+    #[prost(message, optional, tag = "1")]
+    pub slot: ::core::option::Option<Slot>,
+    /// Denounciation index
+    #[prost(fixed32, tag = "2")]
+    pub index: u32,
 }
 /// ScExecutionEventStatus type enum
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, ::prost::Enumeration)]

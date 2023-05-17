@@ -5,6 +5,7 @@ use std::str::FromStr;
 use crate::address::Address;
 use crate::block::{Block, FilledBlock, SecureShareBlock};
 use crate::block_header::{BlockHeader, SecuredHeader};
+use crate::denunciation::DenunciationIndex;
 use crate::endorsement::{Endorsement, SecureShareEndorsement};
 use crate::execution::EventFilter;
 use crate::operation::{Operation, OperationId, OperationType, SecureShareOperation};
@@ -294,6 +295,26 @@ impl From<EventExecutionContext> for grpc::ScExecutionEventContext {
 
                 status
             },
+        }
+    }
+}
+
+impl From<DenunciationIndex> for grpc::DenunciationIndex {
+    fn from(value: DenunciationIndex) -> Self {
+        grpc::DenunciationIndex {
+            entry: Some(match value {
+                DenunciationIndex::BlockHeader { slot } => {
+                    grpc::denunciation_index::Entry::BlockHeader(grpc::DenunciationBlockHeader {
+                        slot: Some(slot.into()),
+                    })
+                }
+                DenunciationIndex::Endorsement { slot, index } => {
+                    grpc::denunciation_index::Entry::Endorsement(grpc::DenunciationEndorsement {
+                        slot: Some(slot.into()),
+                        index,
+                    })
+                }
+            }),
         }
     }
 }

@@ -91,6 +91,8 @@ message StateChanges {
   repeated AsyncPoolChangeEntry async_pool_changes = 2;
   // Executed operations changes
   repeated ExecutedOpsChangeEntry executed_ops_changes = 4;
+  // Executed denunciations changes
+  repeated DenunciationIndex executed_denunciations_changes = 5;
 }
 
 // ExecutedOpsChangeEntry
@@ -270,4 +272,29 @@ enum SetOrDeleteType {
   SET_OR_DELETE_TYPE_UNSPECIFIED = 0; // Default enum value
   SET_OR_DELETE_TYPE_SET = 1; // Sets a new absolute value
   SET_OR_DELETE_TYPE_DELETE = 2; // Deletes the existing value
+}
+
+// Index for Denunciations in collections (e.g. like a HashMap...)
+message DenunciationIndex {
+  // DenunciationBlockHeader or DenunciationEndorsement
+  oneof entry {
+    // Denunciation block header
+    DenunciationBlockHeader block_header = 1;
+    // Denunciation endorsement
+    DenunciationEndorsement endorsement = 2;
+  }
+}
+
+// Variant for Block header denunciation index
+message DenunciationBlockHeader {
+    // Denounciation slot
+    Slot slot = 1;
+}
+
+// Variant for Endorsement denunciation index
+message DenunciationEndorsement {
+    // Denounciation slot
+    Slot slot = 1;
+    // Denounciation index
+    fixed32 index = 2;
 }

@@ -81,6 +81,11 @@ impl From<StateChanges> for grpc::StateChanges {
                     }),
                 })
                 .collect(),
+            executed_denunciations_changes: value
+                .executed_denunciations_changes
+                .into_iter()
+                .map(|de_idx| de_idx.into())
+                .collect(),
         }
     }
 }

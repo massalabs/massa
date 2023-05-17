@@ -563,6 +563,18 @@
                 </li>
               
                 <li>
+                  <a href="#massa.api.v1.DenunciationBlockHeader"><span class="badge">M</span>DenunciationBlockHeader</a>
+                </li>
+              
+                <li>
+                  <a href="#massa.api.v1.DenunciationEndorsement"><span class="badge">M</span>DenunciationEndorsement</a>
+                </li>
+              
+                <li>
+                  <a href="#massa.api.v1.DenunciationIndex"><span class="badge">M</span>DenunciationIndex</a>
+                </li>
+              
+                <li>
                   <a href="#massa.api.v1.ExecutedOpsChangeEntry"><span class="badge">M</span>ExecutedOpsChangeEntry</a>
                 </li>
               
@@ -3687,7 +3699,7 @@ In case of failure or discard, those coins are reimbursed to the sender. </p></t
                   <td>trigger</td>
                   <td><a href="#massa.api.v1.AsyncMessageTrigger">AsyncMessageTrigger</a></td>
                   <td></td>
-                  <td><p>Trigger that define whenever a message can be executed (optional) </p></td>
+                  <td><p>Trigger that define whenever a message can be executed </p></td>
                 </tr>
               
                 <tr>
@@ -3796,6 +3808,92 @@ For messages with filter, this boolean is true if the filter has been matched be
                   <td><a href="#massa.api.v1.AsyncMessage">AsyncMessage</a></td>
                   <td></td>
                   <td><p>AsyncPool message </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
+        <h3 id="massa.api.v1.DenunciationBlockHeader">DenunciationBlockHeader</h3>
+        <p>Variant for Block header denunciation index</p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>slot</td>
+                  <td><a href="#massa.api.v1.Slot">Slot</a></td>
+                  <td></td>
+                  <td><p>Denounciation slot </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
+        <h3 id="massa.api.v1.DenunciationEndorsement">DenunciationEndorsement</h3>
+        <p>Variant for Endorsement denunciation index</p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>slot</td>
+                  <td><a href="#massa.api.v1.Slot">Slot</a></td>
+                  <td></td>
+                  <td><p>Denounciation slot </p></td>
+                </tr>
+              
+                <tr>
+                  <td>index</td>
+                  <td><a href="#fixed32">fixed32</a></td>
+                  <td></td>
+                  <td><p>Denounciation index </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
+        <h3 id="massa.api.v1.DenunciationIndex">DenunciationIndex</h3>
+        <p>Index for Denunciations in collections (e.g. like a HashMap...)</p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>block_header</td>
+                  <td><a href="#massa.api.v1.DenunciationBlockHeader">DenunciationBlockHeader</a></td>
+                  <td></td>
+                  <td><p>Denunciation block header </p></td>
+                </tr>
+              
+                <tr>
+                  <td>endorsement</td>
+                  <td><a href="#massa.api.v1.DenunciationEndorsement">DenunciationEndorsement</a></td>
+                  <td></td>
+                  <td><p>Denunciation endorsement </p></td>
                 </tr>
               
             </tbody>
@@ -4057,21 +4155,21 @@ For messages with filter, this boolean is true if the filter has been matched be
                   <td>balance</td>
                   <td><a href="#massa.api.v1.SetOrKeepBalance">SetOrKeepBalance</a></td>
                   <td></td>
-                  <td><p>change the balance </p></td>
+                  <td><p>Change the balance </p></td>
                 </tr>
               
                 <tr>
                   <td>bytecode</td>
                   <td><a href="#massa.api.v1.SetOrKeepBytecode">SetOrKeepBytecode</a></td>
                   <td></td>
-                  <td><p>change the executable bytecode </p></td>
+                  <td><p>Change the executable bytecode </p></td>
                 </tr>
               
                 <tr>
                   <td>datastore</td>
                   <td><a href="#massa.api.v1.SetOrDeleteDatastoreEntry">SetOrDeleteDatastoreEntry</a></td>
                   <td>repeated</td>
-                  <td><p>change datastore entries </p></td>
+                  <td><p>Change datastore entries </p></td>
                 </tr>
               
             </tbody>
@@ -4331,6 +4429,13 @@ For messages with filter, this boolean is true if the filter has been matched be
                   <td><a href="#massa.api.v1.ExecutedOpsChangeEntry">ExecutedOpsChangeEntry</a></td>
                   <td>repeated</td>
                   <td><p>Executed operations changes </p></td>
+                </tr>
+              
+                <tr>
+                  <td>executed_denunciations_changes</td>
+                  <td><a href="#massa.api.v1.DenunciationIndex">DenunciationIndex</a></td>
+                  <td>repeated</td>
+                  <td><p>Executed denunciations changes </p></td>
                 </tr>
               
             </tbody>
