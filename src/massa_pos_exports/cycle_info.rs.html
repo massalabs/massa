@@ -722,13 +722,30 @@
 <a href="#722" id="722">722</a>
 <a href="#723" id="723">723</a>
 <a href="#724" id="724">724</a>
+<a href="#725" id="725">725</a>
+<a href="#726" id="726">726</a>
+<a href="#727" id="727">727</a>
+<a href="#728" id="728">728</a>
+<a href="#729" id="729">729</a>
+<a href="#730" id="730">730</a>
+<a href="#731" id="731">731</a>
+<a href="#732" id="732">732</a>
+<a href="#733" id="733">733</a>
+<a href="#734" id="734">734</a>
+<a href="#735" id="735">735</a>
+<a href="#736" id="736">736</a>
+<a href="#737" id="737">737</a>
+<a href="#738" id="738">738</a>
+<a href="#739" id="739">739</a>
+<a href="#740" id="740">740</a>
+<a href="#741" id="741">741</a>
+<a href="#742" id="742">742</a>
 </pre><pre class="rust"><code><span class="kw">use </span>bitvec::vec::BitVec;
 <span class="kw">use </span>massa_hash::{Hash, HashDeserializer, HashSerializer, HASH_SIZE_BYTES};
 <span class="kw">use </span>massa_models::{
     address::{Address, AddressDeserializer, AddressSerializer},
     prehash::PreHashMap,
     serialization::{BitVecDeserializer, BitVecSerializer},
-    slot::Slot,
 };
 <span class="kw">use </span>massa_serialization::{
     Deserializer, OptionDeserializer, OptionSerializer, SerializeError, Serializer,
@@ -748,7 +765,11 @@
 <span class="kw">use </span>std::collections::{BTreeMap, VecDeque};
 <span class="kw">use </span>std::ops::Bound::Included;
 
-<span class="kw">use </span><span class="kw">crate</span>::PoSChanges;
+<span class="attr">#[cfg(test)]
+</span><span class="kw">use </span>massa_models::slot::Slot;
+
+<span class="attr">#[cfg(test)]
+</span><span class="kw">use </span><span class="kw">crate</span>::PoSChanges;
 
 <span class="kw">const </span>CYCLE_INFO_HASH_INITIAL_BYTES: <span class="kw-2">&amp;</span>[u8; <span class="number">32</span>] = <span class="kw-2">&amp;</span>[<span class="number">0</span>; HASH_SIZE_BYTES];
 
@@ -880,7 +901,8 @@
         }
     }
 
-    <span class="doccomment">/// Apply every part of a `PoSChanges` to a cycle info, except for `deferred_credits`
+    <span class="attr">#[cfg(test)]
+    </span><span class="doccomment">/// Apply every part of a `PoSChanges` to a cycle info, except for `deferred_credits`
     </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>apply_changes(
         <span class="kw-2">&amp;mut </span><span class="self">self</span>,
         changes: PoSChanges,
@@ -1051,13 +1073,15 @@
     </span>);
 }
 
-<span class="doccomment">/// Serializer for `CycleInfo`
+<span class="attr">#[derive(Clone)]
+#[allow(missing_docs)]
+</span><span class="doccomment">/// Serializer for `CycleInfo`
 </span><span class="kw">pub struct </span>CycleInfoSerializer {
-    u64_ser: U64VarIntSerializer,
-    bitvec_ser: BitVecSerializer,
-    production_stats_ser: ProductionStatsSerializer,
-    address_ser: AddressSerializer,
-    opt_hash_ser: OptionSerializer&lt;Hash, HashSerializer&gt;,
+    <span class="kw">pub </span>u64_ser: U64VarIntSerializer,
+    <span class="kw">pub </span>bitvec_ser: BitVecSerializer,
+    <span class="kw">pub </span>production_stats_ser: ProductionStatsSerializer,
+    <span class="kw">pub </span>address_ser: AddressSerializer,
+    <span class="kw">pub </span>opt_hash_ser: OptionSerializer&lt;Hash, HashSerializer&gt;,
 }
 
 <span class="kw">impl </span>Default <span class="kw">for </span>CycleInfoSerializer {
@@ -1110,13 +1134,15 @@
     }
 }
 
-<span class="doccomment">/// Deserializer for `CycleInfo`
+<span class="attr">#[derive(Clone)]
+#[allow(missing_docs)]
+</span><span class="doccomment">/// Deserializer for `CycleInfo`
 </span><span class="kw">pub struct </span>CycleInfoDeserializer {
-    u64_deser: U64VarIntDeserializer,
-    rolls_deser: RollsDeserializer,
-    bitvec_deser: BitVecDeserializer,
-    production_stats_deser: ProductionStatsDeserializer,
-    opt_hash_deser: OptionDeserializer&lt;Hash, HashDeserializer&gt;,
+    <span class="kw">pub </span>u64_deser: U64VarIntDeserializer,
+    <span class="kw">pub </span>rolls_deser: RollsDeserializer,
+    <span class="kw">pub </span>bitvec_deser: BitVecDeserializer,
+    <span class="kw">pub </span>production_stats_deser: ProductionStatsDeserializer,
+    <span class="kw">pub </span>opt_hash_deser: OptionDeserializer&lt;Hash, HashDeserializer&gt;,
 }
 
 <span class="kw">impl </span>CycleInfoDeserializer {
@@ -1210,9 +1236,11 @@
     }
 }
 
-<span class="doccomment">/// Serializer for `ProductionStats`
+<span class="attr">#[derive(Clone)]
+#[allow(missing_docs)]
+</span><span class="doccomment">/// Serializer for `ProductionStats`
 </span><span class="kw">pub struct </span>ProductionStatsSerializer {
-    u64_ser: U64VarIntSerializer,
+    <span class="kw">pub </span>u64_ser: U64VarIntSerializer,
     address_ser: AddressSerializer,
 }
 
@@ -1255,11 +1283,13 @@
     }
 }
 
-<span class="doccomment">/// Deserializer for `ProductionStats`
+<span class="attr">#[derive(Clone)]
+#[allow(missing_docs)]
+</span><span class="doccomment">/// Deserializer for `ProductionStats`
 </span><span class="kw">pub struct </span>ProductionStatsDeserializer {
     length_deserializer: U64VarIntDeserializer,
-    address_deserializer: AddressDeserializer,
-    u64_deserializer: U64VarIntDeserializer,
+    <span class="kw">pub </span>address_deserializer: AddressDeserializer,
+    <span class="kw">pub </span>u64_deserializer: U64VarIntDeserializer,
 }
 
 <span class="kw">impl </span>ProductionStatsDeserializer {
@@ -1318,11 +1348,13 @@
     }
 }
 
-<span class="doccomment">/// Deserializer for rolls
+<span class="attr">#[derive(Clone)]
+#[allow(missing_docs)]
+</span><span class="doccomment">/// Deserializer for rolls
 </span><span class="kw">pub struct </span>RollsDeserializer {
     length_deserializer: U64VarIntDeserializer,
-    address_deserializer: AddressDeserializer,
-    u64_deserializer: U64VarIntDeserializer,
+    <span class="kw">pub </span>address_deserializer: AddressDeserializer,
+    <span class="kw">pub </span>u64_deserializer: U64VarIntDeserializer,
 }
 
 <span class="kw">impl </span>RollsDeserializer {
@@ -1364,10 +1396,12 @@
     }
 }
 
-<span class="doccomment">/// Serializer for cycle history
+<span class="attr">#[derive(Clone)]
+#[allow(missing_docs)]
+</span><span class="doccomment">/// Serializer for cycle history
 </span><span class="kw">pub struct </span>CycleHistorySerializer {
-    u64_serializer: U64VarIntSerializer,
-    cycle_info_serializer: CycleInfoSerializer,
+    <span class="kw">pub </span>u64_serializer: U64VarIntSerializer,
+    <span class="kw">pub </span>cycle_info_serializer: CycleInfoSerializer,
 }
 
 <span class="kw">impl </span>CycleHistorySerializer {
@@ -1401,10 +1435,12 @@
     }
 }
 
-<span class="doccomment">/// Deserializer for cycle history, useful when restarting from a snapshot
+<span class="attr">#[derive(Clone)]
+#[allow(missing_docs)]
+</span><span class="doccomment">/// Deserializer for cycle history, useful when restarting from a snapshot
 </span><span class="kw">pub struct </span>CycleHistoryDeserializer {
-    u64_deserializer: U64VarIntDeserializer,
-    cycle_info_deserializer: CycleInfoDeserializer,
+    <span class="kw">pub </span>u64_deserializer: U64VarIntDeserializer,
+    <span class="kw">pub </span>cycle_info_deserializer: CycleInfoDeserializer,
 }
 
 <span class="kw">impl </span>CycleHistoryDeserializer {
