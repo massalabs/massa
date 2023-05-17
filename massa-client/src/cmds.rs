@@ -793,7 +793,7 @@ impl Command {
                     .find_map(|entry| {
                         let state = grpc::ComponentStateId::from_i32(entry.state)
                             .unwrap_or(grpc::ComponentStateId::Error);
-                        match grpc::ComponentStateId::from(state) {
+                        match state {
                             grpc::ComponentStateId::Active => Some(entry.state),
                             _ => None,
                         }
