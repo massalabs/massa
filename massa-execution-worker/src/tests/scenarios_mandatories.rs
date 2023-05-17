@@ -1775,7 +1775,7 @@ mod tests {
 
         // generate the keypair and its corresponding address
         let keypair =
-            KeyPair::from_str("S1JJeHiZv1C1zZN5GLFcbz6EXYiccmUPLkYuDFA3kayjxP39kFQ").unwrap();
+            KeyPair::from_str(TEST_SK_1).unwrap();
         let address = Address::from_public_key(&keypair.get_public_key());
 
         // get initial balance
@@ -1937,7 +1937,7 @@ mod tests {
 
         // generate the keypair and its corresponding address
         let keypair =
-            KeyPair::from_str("S1JJeHiZv1C1zZN5GLFcbz6EXYiccmUPLkYuDFA3kayjxP39kFQ").unwrap();
+            KeyPair::from_str(TEST_SK_1).unwrap();
         let address = Address::from_public_key(&keypair.get_public_key());
 
         // get initial balance
