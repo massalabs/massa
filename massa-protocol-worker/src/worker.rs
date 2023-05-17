@@ -3,16 +3,21 @@ use massa_consensus_exports::ConsensusController;
 use massa_models::node::NodeId;
 use massa_pool_exports::PoolController;
 use massa_protocol_exports::{
-    BootstrapPeers, PeerId, ProtocolConfig, ProtocolController, ProtocolError, ProtocolManager,
+    BootstrapPeers, PeerData, PeerId, ProtocolConfig, ProtocolController, ProtocolError,
+    ProtocolManager,
 };
 use massa_serialization::U64VarIntDeserializer;
 use massa_signature::KeyPair;
 use massa_storage::Storage;
 use parking_lot::RwLock;
 use peernet::{
-    config::PeerNetConfiguration, network_manager::PeerNetManager, types::KeyPair as PeerNetKeyPair,
+    config::{PeerNetCategoryInfo, PeerNetConfiguration},
+    network_manager::PeerNetManager,
+    types::KeyPair as PeerNetKeyPair,
 };
-use std::{fs::read_to_string, ops::Bound::Included, str::FromStr, sync::Arc};
+use std::{
+    collections::HashMap, fs::read_to_string, ops::Bound::Included, str::FromStr, sync::Arc,
+};
 use tracing::{debug, log::warn};
 
 use crate::{
@@ -186,18 +191,81 @@ pub fn start_protocol_controller(
         keypair
     };
 
+    let initial_peers_infos = serde_json::from_str::<HashMap<PeerId, PeerData>>(
+        &std::fs::read_to_string(&config.initial_peers)?,
+    )?;
+
+    let initial_peers = if let Some(bootstrap_peers) = bootstrap_peers {
+        //TODO: Remove when we will be able to test the bootstrap peer even if someone else found them full
+        bootstrap_peers
+            .0
+            .into_iter()
+            .chain(
+                initial_peers_infos
+                    .iter()
+                    .map(|(peer_id, data)| (peer_id.clone(), data.listeners.clone())),
+            )
+            .collect()
+    } else {
+        initial_peers_infos
+            .iter()
+            .map(|(peer_id, data)| (peer_id.clone(), data.listeners.clone()))
+            .collect()
+    };
+
     let peernet_keypair = PeerNetKeyPair::from_str(&keypair.to_string()).unwrap();
     peernet_config.self_keypair = peernet_keypair.clone();
-    //TODO: Add the rest of the config
+    let peernet_categories = config
+        .peers_categories
+        .iter()
+        .map(|(category_name, infos)| {
+            (
+                category_name.clone(),
+                (
+                    initial_peers_infos
+                        .iter()
+                        .filter_map(|info| {
+                            if info.1.category == *category_name {
+                                //TODO: Adapt for multiple listeners
+                                Some(
+                                    info.1
+                                        .listeners
+                                        .iter()
+                                        .next()
+                                        .map(|addr| addr.0.ip().to_canonical())
+                                        .unwrap(),
+                                )
+                            } else {
+                                None
+                            }
+                        })
+                        .collect(),
+                    PeerNetCategoryInfo {
+                        max_in_connections_post_handshake: infos.max_in_connections_post_handshake,
+                        max_in_connections_pre_handshake: infos.max_in_connections_pre_handshake,
+                        max_in_connections_per_ip: infos.max_in_connections_per_ip,
+                    },
+                ),
+            )
+        })
+        .collect();
+    peernet_config.peers_categories = peernet_categories;
+    peernet_config.default_category_info = PeerNetCategoryInfo {
+        max_in_connections_pre_handshake: config
+            .default_category_info
+            .max_in_connections_pre_handshake,
+        max_in_connections_post_handshake: config
+            .default_category_info
+            .max_in_connections_post_handshake,
+        max_in_connections_per_ip: config.default_category_info.max_in_connections_per_ip,
+    };
     peernet_config.max_in_connections = config.max_in_connections;
-    peernet_config.max_out_connections = config.max_out_connections;
 
     let network_controller = Box::new(NetworkControllerImpl::new(PeerNetManager::new(
         peernet_config,
     )));
 
     let connectivity_thread_handle = start_connectivity_thread(
-        config,
         PeerId::from_public_key(peernet_keypair.get_public_key()),
         network_controller,
         consensus_controller,
@@ -206,11 +274,43 @@ pub fn start_protocol_controller(
         (sender_endorsements, receiver_endorsements),
         (sender_operations, receiver_operations),
         (sender_peers, receiver_peers),
-        bootstrap_peers,
+        initial_peers,
         peer_db,
         storage,
         protocol_channels,
         message_handlers,
+        config
+            .peers_categories
+            .iter()
+            .map(|(category_name, infos)| {
+                (
+                    category_name.clone(),
+                    (
+                        initial_peers_infos
+                            .iter()
+                            .filter_map(|info| {
+                                if info.1.category == *category_name {
+                                    //TODO: Adapt for multiple listeners
+                                    Some(
+                                        info.1
+                                            .listeners
+                                            .iter()
+                                            .next()
+                                            .map(|addr| addr.0.ip().to_canonical())
+                                            .unwrap(),
+                                    )
+                                } else {
+                                    None
+                                }
+                            })
+                            .collect(),
+                        *infos,
+                    ),
+                )
+            })
+            .collect(),
+        config.default_category_info,
+        config,
     )?;
 
     let manager = ProtocolManagerImpl::new(connectivity_thread_handle);

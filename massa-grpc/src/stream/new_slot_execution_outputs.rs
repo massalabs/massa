@@ -3,6 +3,7 @@
 use crate::error::{match_for_io_error, GrpcError};
 use crate::server::MassaGrpc;
 use futures_util::StreamExt;
+use massa_execution_exports::SlotExecutionOutput;
 use massa_proto::massa::api::v1 as grpc;
 use std::io::ErrorKind;
 use std::pin::Pin;
@@ -38,60 +39,72 @@ pub(crate) async fn new_slot_execution_outputs(
 
     tokio::spawn(async move {
         // Initialize the request_id string
-        let mut request_id = String::new();
-        loop {
-            select! {
-                // Receive a new slot execution output from the subscriber
-                event = subscriber.recv() => {
-                    match event {
-                        Ok(massa_slot_execution_output) => {
-                            // Send the new slot execution output through the channel
-                            if let Err(e) = tx.send(Ok(grpc::NewSlotExecutionOutputsResponse {
-                                    id: request_id.clone(),
-                                    output: Some(massa_slot_execution_output.into())
-                            })).await {
-                                error!("failed to send new slot execution output : {}", e);
-                                break;
-                            }
-                        },
+        if let Some(Ok(request)) = in_stream.next().await {
+            let mut request_id = request.id;
+            let mut filter = request.query.and_then(|q| q.filter);
+            loop {
+                select! {
+                    // Receive a new slot execution output from the subscriber
+                    event = subscriber.recv() => {
+                        match event {
+                            Ok(massa_slot_execution_output) => {
+                                // Check if the slot execution output should be sent
+                                if !should_send(&filter, &massa_slot_execution_output) {
+                                  continue;
+                                }
+                                // Send the new slot execution output through the channel
+                                if let Err(e) = tx.send(Ok(grpc::NewSlotExecutionOutputsResponse {
+                                        id: request_id.clone(),
+                                        output: Some(massa_slot_execution_output.into())
+                                })).await {
+                                    error!("failed to send new slot execution output : {}", e);
+                                    break;
+                                }
+                            },
 
-                        Err(e) => {error!("error on receive new slot execution output : {}", e)}
-                    }
-                },
-                // Receive a new message from the in_stream
-                res = in_stream.next() => {
-                    match res {
-                        Some(res) => {
-                            match res {
-                                // Get the request_id from the received data
-                                Ok(data) => {
-                                    request_id = data.id
-                                },
-                                // Handle any errors that may occur during receiving the data
-                                Err(err) => {
-                                    // Check if the error matches any IO errors
-                                    if let Some(io_err) = match_for_io_error(&err) {
-                                        if io_err.kind() == ErrorKind::BrokenPipe {
-                                            warn!("client disconnected, broken pipe: {}", io_err);
+                            Err(e) => error!("error on receive new slot execution output : {}", e)
+                        }
+                    },
+                    // Receive a new message from the in_stream
+                    res = in_stream.next() => {
+                        match res {
+                            Some(res) => {
+                                match res {
+                                    // Get the request_id from the received data
+                                    Ok(data) => {
+                                        // Update current filter && request id
+                                        filter = data.query
+                                            .and_then(|q| q.filter);
+                                        request_id = data.id
+                                    },
+                                    // Handle any errors that may occur during receiving the data
+                                    Err(err) => {
+                                        // Check if the error matches any IO errors
+                                        if let Some(io_err) = match_for_io_error(&err) {
+                                            if io_err.kind() == ErrorKind::BrokenPipe {
+                                                warn!("client disconnected, broken pipe: {}", io_err);
+                                                break;
+                                            }
+                                        }
+                                        error!("{}", err);
+                                        // Send the error response back to the client
+                                        if let Err(e) = tx.send(Err(err)).await {
+                                            error!("failed to send back new_slot_execution_outputs error response: {}", e);
                                             break;
                                         }
                                     }
-                                    error!("{}", err);
-                                    // Send the error response back to the client
-                                    if let Err(e) = tx.send(Err(err)).await {
-                                        error!("failed to send back new_slot_execution_outputs error response: {}", e);
-                                        break;
-                                    }
                                 }
-                            }
-                        },
-                        None => {
-                            // The client has disconnected
-                            break;
-                        },
+                            },
+                            None => {
+                                // The client has disconnected
+                                break;
+                            },
+                        }
                     }
                 }
             }
+        } else {
+            error!("empty request");
         }
     });
 
@@ -100,4 +113,24 @@ pub(crate) async fn new_slot_execution_outputs(
 
     // Return the new stream of slot execution output
     Ok(Box::pin(out_stream) as NewSlotExecutionOutputsStreamType)
+}
+
+/// Return if the execution outputs should be send to client
+fn should_send(
+    filter_opt: &Option<grpc::NewSlotExecutionOutputsFilter>,
+    exec_out_status: &SlotExecutionOutput,
+) -> bool {
+    match filter_opt {
+        Some(filter) => match exec_out_status {
+            SlotExecutionOutput::ExecutedSlot(_) => {
+                let id = grpc::ExecutionOutputStatus::Candidate as i32;
+                filter.status.contains(&id)
+            }
+            SlotExecutionOutput::FinalizedSlot(_) => {
+                let id = grpc::ExecutionOutputStatus::Final as i32;
+                filter.status.contains(&id)
+            }
+        },
+        None => true, // if user has no filter = All execution outputs status are sent
+    }
 }

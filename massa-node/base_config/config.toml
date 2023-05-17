@@ -49,6 +49,8 @@
     enable_health = true
     # whether to enable gRPC reflection(introspection)
     enable_reflection = true
+    # whether to enable mTLS
+    enable_mtls = false
     # bind for the Massa gRPC API
     bind = "0.0.0.0:33037"
     # which compression encodings does the server accept for requests
@@ -77,7 +79,12 @@
     max_block_ids_per_request = 50
     # max number of operation ids that can be included in a single request
     max_operation_ids_per_request = 250
-
+    # server certificate path
+    server_certificate_path = "config/tls/server.pem"
+    # server private key path
+    server_private_key_path = "config/tls/server.key"
+    # client certificate authority root path
+    client_certificate_authority_root_path = "config/tls/client_ca.pem"
 [execution]
     # max number of generated events kept in RAM
     max_final_events = 10000
@@ -155,10 +162,6 @@
     keypair_file = "config/node_privkey.key"
     # path to the initial peers file
     initial_peers_file = "base_config/initial_peers.json"
-    # maximum of incoming connections
-    max_incoming_connections = 15
-    # maximum of outgoing connections
-    max_outgoing_connections = 10
     # Limit of read/write number of bytes per second with a peer (Should be a 10 multiple)
     read_write_limit_bytes_per_second = 2_000_000_000
     # timeout after which without answer a hanshake is ended
@@ -196,12 +199,25 @@
     operation_announcement_interval = 300
     # max number of operation per message, same as network param but can be smaller
     max_operations_per_message = 1024
+    # Number of millis seconds between each try out connections
+    try_connection_timer = 5000
+    # Number of millis seconds that create a timeout for out connections
+    timeout_connection = 1000
     # time threshold after which operation are not propagated
     max_operations_propagation_time = 32000
     # time threshold after which endorsement are not propagated
     max_endorsements_propagation_time = 48000
     # number of thread tester
-    thread_tester_count = 5
+    thread_tester_count = 25
+    # Nb max in connections that we accept
+    max_in_connections = 100
+    # Peer default category limits
+    default_category_info = { target_out_connections = 10, max_in_connections_per_ip = 2, max_in_connections_pre_handshake = 70, max_in_connections_post_handshake = 15}
+    # Peer categories limits
+    [protocol.peers_categories]
+    Bootstrap = { target_out_connections = 1, max_in_connections_per_ip = 1, max_in_connections_pre_handshake = 8, max_in_connections_post_handshake = 1}
+
+[network]
 
 [bootstrap]
     # list of bootstrap (ip, node id)

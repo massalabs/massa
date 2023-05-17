@@ -17,9 +17,9 @@ use thiserror::Error;
 #[derive(Display, Error, Debug)]
 /// Encapsulates the verious failure contexts for the bootstrap process, both client and server side
 pub enum BootstrapError {
-    /// all io errors except for Timedout, and would-block (unix error when timed out)
+    /// Bootstrap IO error: {0}
     IoError(std::io::Error),
-    /// We want to handle Timedout and WouldBlock
+    /// Bootstrap process timeout: {0}
     TimedOut(std::io::Error),
     /// general bootstrap error: {0}
     GeneralError(String),

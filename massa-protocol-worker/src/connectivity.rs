@@ -5,21 +5,21 @@ use crossbeam::{
 use massa_consensus_exports::ConsensusController;
 use massa_models::stats::NetworkStats;
 use massa_pool_exports::PoolController;
-use massa_protocol_exports::{BootstrapPeers, ProtocolConfig, ProtocolError};
+use massa_protocol_exports::{PeerCategoryInfo, ProtocolConfig, ProtocolError};
 use massa_storage::Storage;
 use parking_lot::RwLock;
-use peernet::{
-    peer::PeerConnectionType,
-    transports::{OutConnectionConfig, TransportType},
-};
+use peernet::{peer::PeerConnectionType, transports::OutConnectionConfig};
 use peernet::{peer_id::PeerId, transports::TcpOutConnectionConfig};
-use std::collections::HashMap;
 use std::net::SocketAddr;
+use std::{collections::HashMap, net::IpAddr};
 use std::{num::NonZeroUsize, sync::Arc};
 use std::{thread::JoinHandle, time::Duration};
 use tracing::{info, warn};
 
-use crate::{handlers::peer_handler::models::SharedPeerDB, worker::ProtocolChannels};
+use crate::{
+    handlers::peer_handler::models::{InitialPeers, PeerState, SharedPeerDB},
+    worker::ProtocolChannels,
+};
 use crate::{handlers::peer_handler::PeerManagementHandler, messages::MessagesHandler};
 use crate::{
     handlers::{
@@ -44,7 +44,6 @@ pub enum ConnectivityCommand {
 
 #[allow(clippy::too_many_arguments)]
 pub(crate) fn start_connectivity_thread(
-    config: ProtocolConfig,
     peer_id: PeerId,
     mut network_controller: Box<dyn NetworkController>,
     consensus_controller: Box<dyn ConsensusController>,
@@ -53,20 +52,15 @@ pub(crate) fn start_connectivity_thread(
     channel_endorsements: (Sender<PeerMessageTuple>, Receiver<PeerMessageTuple>),
     channel_operations: (Sender<PeerMessageTuple>, Receiver<PeerMessageTuple>),
     channel_peers: (Sender<PeerMessageTuple>, Receiver<PeerMessageTuple>),
-    bootstrap_peers: Option<BootstrapPeers>,
+    initial_peers: InitialPeers,
     peer_db: SharedPeerDB,
     storage: Storage,
     protocol_channels: ProtocolChannels,
     messages_handler: MessagesHandler,
+    peer_categories: HashMap<String, (Vec<IpAddr>, PeerCategoryInfo)>,
+    _default_category: PeerCategoryInfo,
+    config: ProtocolConfig,
 ) -> Result<(Sender<ConnectivityCommand>, JoinHandle<()>), ProtocolError> {
-    let initial_peers = if let Some(bootstrap_peers) = bootstrap_peers {
-        bootstrap_peers.0.into_iter().collect()
-    } else {
-        serde_json::from_str::<HashMap<PeerId, HashMap<SocketAddr, TransportType>>>(
-            &std::fs::read_to_string(&config.initial_peers)?,
-        )?
-    };
-
     let handle = std::thread::Builder::new()
     .name("protocol-connectivity".to_string())
     .spawn({
@@ -88,18 +82,20 @@ pub(crate) fn start_connectivity_thread(
             std::thread::sleep(Duration::from_millis(100));
 
             // Create cache outside of the op handler because it could be used by other handlers
+            let total_in_slots = config.peers_categories.values().map(|v| v.max_in_connections_post_handshake).sum::<usize>() + config.default_category_info.max_in_connections_post_handshake;
+            let total_out_slots = config.peers_categories.values().map(| v| v.target_out_connections).sum::<usize>() + config.default_category_info.target_out_connections;
             let operation_cache = Arc::new(RwLock::new(OperationCache::new(
                 NonZeroUsize::new(config.max_known_ops_size).unwrap(),
-                NonZeroUsize::new(config.max_in_connections + config.max_out_connections).unwrap(),
+                NonZeroUsize::new(total_in_slots + total_out_slots).unwrap(),
             )));
             let endorsement_cache = Arc::new(RwLock::new(EndorsementCache::new(
                 NonZeroUsize::new(config.max_known_endorsements_size).unwrap(),
-                NonZeroUsize::new(config.max_in_connections + config.max_out_connections).unwrap(),
+                NonZeroUsize::new(total_in_slots + total_out_slots).unwrap(),
             )));
 
             let block_cache = Arc::new(RwLock::new(BlockCache::new(
                 NonZeroUsize::new(config.max_known_blocks_size).unwrap(),
-                NonZeroUsize::new(config.max_in_connections + config.max_out_connections).unwrap(),
+                NonZeroUsize::new(total_in_slots + total_out_slots).unwrap(),
             )));
 
             // Start handlers
@@ -111,6 +107,8 @@ pub(crate) fn start_connectivity_thread(
                 protocol_channels.peer_management_handler,
                 messages_handler,
                 network_controller.get_active_connections(),
+                peer_categories.iter().map(|(key, value)|(key.clone(), (value.0.clone(), value.1.target_out_connections))).collect(),
+                config.default_category_info.target_out_connections,
                 &config,
             );
 
@@ -192,7 +190,9 @@ pub(crate) fn start_connectivity_thread(
                                         banned_peer_count,
                                         known_peer_count,
                                     };
-                                    let peers: HashMap<PeerId, (SocketAddr, PeerConnectionType)> = network_controller.get_active_connections().get_peers_connected();
+                                    let peers: HashMap<PeerId, (SocketAddr, PeerConnectionType)> = network_controller.get_active_connections().get_peers_connected().into_iter().map(|(peer_id, peer)| {
+                                        (peer_id, (peer.0, peer.1))
+                                    }).collect();
                                     responder.send((stats, peers)).unwrap_or_else(|_| warn!("Failed to send stats to responder"));
                                 }
                                 Err(_) => {
@@ -201,46 +201,77 @@ pub(crate) fn start_connectivity_thread(
                                 }
                             }
                         }
-                    default(Duration::from_millis(1000)) => {
-                        if config.debug {
-                            println!("nb peers connected: {}", network_controller.get_active_connections().get_peer_ids_connected().len());
-                        }
-                        // Check if we need to connect to peers
-                        let nb_connection_to_try = {
-                            let nb_connection_to_try = network_controller.get_active_connections().get_max_out_connections().saturating_sub(network_controller.get_active_connections().get_nb_out_connections());
-                            if nb_connection_to_try == 0 {
-                                continue;
-                            }
-                            nb_connection_to_try
-                        };
-                        if config.debug {
-                            println!("Trying to connect to {} peers", nb_connection_to_try);
-                        }
-                        // Get the best peers
+                    default(config.try_connection_timer.to_duration()) => {
+                        let peers_connected = network_controller.get_active_connections().get_peers_connected();
+                        let mut slots_per_category: Vec<(String, usize)> = peer_categories.iter().map(|(category, category_infos)| {
+                            (category.clone(), category_infos.1.target_out_connections.saturating_sub(peers_connected.iter().filter(|(_, peer)| {
+                                if peer.1 == PeerConnectionType::OUT && let Some(peer_category) = &peer.2 {
+                                    category == peer_category
+                                } else {
+                                    false
+                                }
+                            }).count()))
+                        }).collect();
+                        let mut slot_default_category = config.default_category_info.target_out_connections.saturating_sub(peers_connected.iter().filter(|(_, peer)| {
+                            peer.1 == PeerConnectionType::OUT && peer.2.is_none()
+                        }).count());
+                        let mut addresses_to_connect: Vec<SocketAddr> = Vec::new();
                         {
-                            let peer_db_read = peer_management_handler.peer_db.read();
-                            let best_peers = peer_db_read.get_best_peers(nb_connection_to_try);
-                            for peer_id in best_peers {
-                                let Some(peer_info) = peer_db_read.peers.get(&peer_id) else {
-                                    warn!("Peer {} not found in peer_db", peer_id);
-                                    continue;
-                                };
-                                //TODO: Adapt for multiple listeners
-                                let (addr, _) = peer_info.last_announce.listeners.iter().next().unwrap();
-                                if peer_info.last_announce.listeners.is_empty() {
+                            let peer_db_read = peer_db.read();
+                            for (_, peer_id) in &peer_db_read.index_by_newest {
+                                if peers_connected.contains_key(peer_id) {
                                     continue;
                                 }
-                                {
-                                    if !addr.ip().to_canonical().is_global() || !network_controller.get_active_connections().check_addr_accepted(addr) {
+                                if let Some(peer_info) = peer_db_read.peers.get(peer_id).and_then(|peer| {
+                                    if peer.state == PeerState::Trusted {
+                                        Some(peer.clone())
+                                    } else {
+                                        None
+                                    }
+                                }) {
+                                    if peer_info.last_announce.listeners.is_empty() {
                                         continue;
                                     }
+                                    //TODO: Adapt for multiple listeners
+                                    let (addr, _) = peer_info.last_announce.listeners.iter().next().unwrap();
+                                    let canonical_ip = addr.ip().to_canonical();
+                                    if !canonical_ip.is_global()  {
+                                        continue;
+                                    }
+                                    // Check if the peer is in a category and we didn't reached out target yet
+                                    let mut category_found = None;
+                                    for (name, (ips, _)) in &peer_categories {
+                                        if ips.contains(&canonical_ip) {
+                                            category_found = Some(name);
+                                        }
+                                    }
+
+                                    if let Some(category) = category_found {
+                                        for (name, category_infos) in &mut slots_per_category {
+                                            if name == category && category_infos > &mut 0 {
+                                                addresses_to_connect.push(*addr);
+                                                *category_infos -= 1;
+                                            }
+                                        }
+                                    } else if slot_default_category > 0 {
+                                        addresses_to_connect.push(*addr);
+                                        slot_default_category -= 1;
+                                    }
+
+
+                                    // IF all slots are filled, stop
+                                    if slot_default_category == 0 && slots_per_category.iter().all(|(_, slots)| *slots == 0) {
+                                        break;
+                                    }
                                 }
-                                info!("Trying to connect to addr {} of peer {}", addr, peer_id);
-                                // We only manage TCP for now
-                                if let Err(err) = network_controller.try_connect(*addr, Duration::from_millis(200), &OutConnectionConfig::Tcp(Box::new(TcpOutConnectionConfig::new(config.read_write_limit_bytes_per_second / 10, Duration::from_millis(100))))) {
-                                    warn!("Failed to connect to peer {:?}: {:?}", addr, err);
-                                }
-                            };
+                            }
+                        }
+                        for addr in addresses_to_connect {
+                            info!("Trying to connect to addr {}", addr);
+                            // We only manage TCP for now
+                            if let Err(err) = network_controller.try_connect(addr, config.timeout_connection.to_duration(), &OutConnectionConfig::Tcp(Box::new(TcpOutConnectionConfig::new(config.read_write_limit_bytes_per_second / 10, Duration::from_millis(100))))) {
+                                warn!("Failed to connect to peer {:?}: {:?}", addr, err);
+                            }
                         }
                     }
                 }

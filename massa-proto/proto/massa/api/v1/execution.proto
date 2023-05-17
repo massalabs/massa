@@ -17,13 +17,10 @@ option swift_prefix = "GRPC";
 
 // SlotExecutionOutput
 message SlotExecutionOutput {
-    // ExecutionOutput or FinalizedExecutionOutput
-    oneof message {
-      // Executed slot output
-      ExecutionOutput execution_output = 1;
-      // Executed final slot
-      FinalizedExecutionOutput final_execution_output = 2;
-    }
+    // Status
+    repeated ExecutionOutputStatus status = 1;
+    // Executed slot output
+    ExecutionOutput execution_output = 2;
 }
 
 // FinalizedExecutionOutput
@@ -76,9 +73,10 @@ enum ScExecutionEventStatus {
   SC_EXECUTION_EVENT_STATUS_FAILURE = 3; // Failure status
 }
 
-// ScExecutionOutputStatus type enum
-enum ScExecutionOutputStatus {
-  SC_EXECUTION_OUTPUT_STATUS_UNSPECIFIED = 0; // Defaut enum value
-  SC_EXECUTION_OUTPUT_STATUS_FINAL = 1; // Final status
-  SC_EXECUTION_OUTPUT_STATUS_CANDIDATE = 2; // Read only status
+// ExecutionOutputStatus type enum
+enum ExecutionOutputStatus {
+  EXECUTION_OUTPUT_STATUS_UNSPECIFIED = 0; // Defaut enum value
+  EXECUTION_OUTPUT_STATUS_CANDIDATE = 1; // Candidate status
+  EXECUTION_OUTPUT_STATUS_FINAL = 2; // Final status
 }
+ 

@@ -15,7 +15,10 @@
 //! (`default_testing.rs`) But as for the current file you shouldn't modify it.
 use std::str::FromStr;
 
-use crate::{address::ADDRESS_SIZE_BYTES, amount::Amount, version::Version};
+use crate::{
+    address::ADDRESS_SIZE_BYTES, amount::Amount, serialization::u32_be_bytes_min_length,
+    version::Version,
+};
 use massa_signature::KeyPair;
 use massa_time::MassaTime;
 use num::rational::Ratio;
@@ -51,14 +54,14 @@ lazy_static::lazy_static! {
             )
         )
     } else {
-        1683291600000.into()  // Friday, May 5, 2023 01:00:00 PM UTC
+        1683498600000.into()  // Sunday, May 7, 2023 10:30:00 PM UTC
     };
 
     /// TESTNET: time when the blockclique is ended.
     pub static ref END_TIMESTAMP: Option<MassaTime> = if cfg!(feature = "sandbox") {
         None
     } else {
-        Some(1685556000000.into())  // Sunday, April 30, 2023 06:00:00 PM UTC
+        Some(1685556000000.into())  // Sunday, May 30, 2023 06:00:00 PM UTC
     };
     /// `KeyPair` to sign genesis blocks.
     pub static ref GENESIS_KEY: KeyPair = KeyPair::from_str("S1UxdCJv5ckDK8z87E5Jq5fEfSVLi2cTHgtpfZy7iURs3KpPns8")
@@ -68,7 +71,7 @@ lazy_static::lazy_static! {
     /// node version
     pub static ref VERSION: Version = {
         if cfg!(feature = "sandbox") {
-            "SAND.22.0"
+            "SAND.22.1"
         } else {
             "TEST.23.0"
         }
@@ -190,6 +193,9 @@ pub const MAX_RNG_SEED_LENGTH: u32 = PERIODS_PER_CYCLE.saturating_mul(THREAD_COU
 
 /// Max message size for bootstrap
 pub const MAX_BOOTSTRAP_MESSAGE_SIZE: u32 = 1048576000;
+/// The number of bytes needed to encode [`MAX_BOOTSTRAP_MESSAGE_SIZE`]
+pub const MAX_BOOTSTRAP_MESSAGE_SIZE_BYTES: usize =
+    u32_be_bytes_min_length(MAX_BOOTSTRAP_MESSAGE_SIZE);
 /// Max number of blocks we provide/ take into account while bootstrapping
 pub const MAX_BOOTSTRAP_BLOCKS: u32 = 1000000;
 /// max bootstrapped cliques

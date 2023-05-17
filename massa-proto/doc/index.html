@@ -379,6 +379,14 @@
                 </li>
               
                 <li>
+                  <a href="#massa.api.v1.NewSlotExecutionOutputsFilter"><span class="badge">M</span>NewSlotExecutionOutputsFilter</a>
+                </li>
+              
+                <li>
+                  <a href="#massa.api.v1.NewSlotExecutionOutputsQuery"><span class="badge">M</span>NewSlotExecutionOutputsQuery</a>
+                </li>
+              
+                <li>
                   <a href="#massa.api.v1.NewSlotExecutionOutputsRequest"><span class="badge">M</span>NewSlotExecutionOutputsRequest</a>
                 </li>
               
@@ -560,11 +568,11 @@
               
               
                 <li>
-                  <a href="#massa.api.v1.ScExecutionEventStatus"><span class="badge">E</span>ScExecutionEventStatus</a>
+                  <a href="#massa.api.v1.ExecutionOutputStatus"><span class="badge">E</span>ExecutionOutputStatus</a>
                 </li>
               
                 <li>
-                  <a href="#massa.api.v1.ScExecutionOutputStatus"><span class="badge">E</span>ScExecutionOutputStatus</a>
+                  <a href="#massa.api.v1.ScExecutionEventStatus"><span class="badge">E</span>ScExecutionEventStatus</a>
                 </li>
               
               
@@ -2127,6 +2135,54 @@
 
         
       
+        <h3 id="massa.api.v1.NewSlotExecutionOutputsFilter">NewSlotExecutionOutputsFilter</h3>
+        <p>NewSlotExecutionOutputs Filter</p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>status</td>
+                  <td><a href="#massa.api.v1.ExecutionOutputStatus">ExecutionOutputStatus</a></td>
+                  <td>repeated</td>
+                  <td><p>Execution output status enum </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
+        <h3 id="massa.api.v1.NewSlotExecutionOutputsQuery">NewSlotExecutionOutputsQuery</h3>
+        <p>NewSlotExecutionOutputs Query</p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>filter</td>
+                  <td><a href="#massa.api.v1.NewSlotExecutionOutputsFilter">NewSlotExecutionOutputsFilter</a></td>
+                  <td></td>
+                  <td><p>Filter </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
         <h3 id="massa.api.v1.NewSlotExecutionOutputsRequest">NewSlotExecutionOutputsRequest</h3>
         <p>NewSlotExecutionOutputsRequest holds request for NewSlotExecutionOutputs</p>
 
@@ -2142,6 +2198,13 @@
                   <td><a href="#string">string</a></td>
                   <td></td>
                   <td><p>Request id </p></td>
+                </tr>
+              
+                <tr>
+                  <td>query</td>
+                  <td><a href="#massa.api.v1.NewSlotExecutionOutputsQuery">NewSlotExecutionOutputsQuery</a></td>
+                  <td></td>
+                  <td><p>Query </p></td>
                 </tr>
               
             </tbody>
@@ -3623,17 +3686,17 @@ This is the parent in thread `self.slot.thread` of the block in which the endors
             <tbody>
               
                 <tr>
+                  <td>status</td>
+                  <td><a href="#massa.api.v1.ExecutionOutputStatus">ExecutionOutputStatus</a></td>
+                  <td>repeated</td>
+                  <td><p>Status </p></td>
+                </tr>
+              
+                <tr>
                   <td>execution_output</td>
                   <td><a href="#massa.api.v1.ExecutionOutput">ExecutionOutput</a></td>
                   <td></td>
                   <td><p>Executed slot output </p></td>
-                </tr>
-              
-                <tr>
-                  <td>final_execution_output</td>
-                  <td><a href="#massa.api.v1.FinalizedExecutionOutput">FinalizedExecutionOutput</a></td>
-                  <td></td>
-                  <td><p>Executed final slot </p></td>
                 </tr>
               
             </tbody>
@@ -3644,6 +3707,35 @@ This is the parent in thread `self.slot.thread` of the block in which the endors
         
       
 
+      
+        <h3 id="massa.api.v1.ExecutionOutputStatus">ExecutionOutputStatus</h3>
+        <p>ExecutionOutputStatus type enum</p>
+        <table class="enum-table">
+          <thead>
+            <tr><td>Name</td><td>Number</td><td>Description</td></tr>
+          </thead>
+          <tbody>
+            
+              <tr>
+                <td>EXECUTION_OUTPUT_STATUS_UNSPECIFIED</td>
+                <td>0</td>
+                <td><p>Defaut enum value</p></td>
+              </tr>
+            
+              <tr>
+                <td>EXECUTION_OUTPUT_STATUS_CANDIDATE</td>
+                <td>1</td>
+                <td><p>Candidate status</p></td>
+              </tr>
+            
+              <tr>
+                <td>EXECUTION_OUTPUT_STATUS_FINAL</td>
+                <td>2</td>
+                <td><p>Final status</p></td>
+              </tr>
+            
+          </tbody>
+        </table>
       
         <h3 id="massa.api.v1.ScExecutionEventStatus">ScExecutionEventStatus</h3>
         <p>ScExecutionEventStatus type enum</p>
@@ -3675,35 +3767,6 @@ This is the parent in thread `self.slot.thread` of the block in which the endors
                 <td>SC_EXECUTION_EVENT_STATUS_FAILURE</td>
                 <td>3</td>
                 <td><p>Failure status</p></td>
-              </tr>
-            
-          </tbody>
-        </table>
-      
-        <h3 id="massa.api.v1.ScExecutionOutputStatus">ScExecutionOutputStatus</h3>
-        <p>ScExecutionOutputStatus type enum</p>
-        <table class="enum-table">
-          <thead>
-            <tr><td>Name</td><td>Number</td><td>Description</td></tr>
-          </thead>
-          <tbody>
-            
-              <tr>
-                <td>SC_EXECUTION_OUTPUT_STATUS_UNSPECIFIED</td>
-                <td>0</td>
-                <td><p>Defaut enum value</p></td>
-              </tr>
-            
-              <tr>
-                <td>SC_EXECUTION_OUTPUT_STATUS_FINAL</td>
-                <td>1</td>
-                <td><p>Final status</p></td>
-              </tr>
-            
-              <tr>
-                <td>SC_EXECUTION_OUTPUT_STATUS_CANDIDATE</td>
-                <td>2</td>
-                <td><p>Read only status</p></td>
               </tr>
             
           </tbody>

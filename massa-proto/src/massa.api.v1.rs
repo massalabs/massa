@@ -418,23 +418,12 @@ impl BlockStatus {
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct SlotExecutionOutput {
-    /// ExecutionOutput or FinalizedExecutionOutput
-    #[prost(oneof = "slot_execution_output::Message", tags = "1, 2")]
-    pub message: ::core::option::Option<slot_execution_output::Message>,
-}
-/// Nested message and enum types in `SlotExecutionOutput`.
-pub mod slot_execution_output {
-    /// ExecutionOutput or FinalizedExecutionOutput
-    #[allow(clippy::derive_partial_eq_without_eq)]
-    #[derive(Clone, PartialEq, ::prost::Oneof)]
-    pub enum Message {
-        /// Executed slot output
-        #[prost(message, tag = "1")]
-        ExecutionOutput(super::ExecutionOutput),
-        /// Executed final slot
-        #[prost(message, tag = "2")]
-        FinalExecutionOutput(super::FinalizedExecutionOutput),
-    }
+    /// Status
+    #[prost(enumeration = "ExecutionOutputStatus", repeated, tag = "1")]
+    pub status: ::prost::alloc::vec::Vec<i32>,
+    /// Executed slot output
+    #[prost(message, optional, tag = "2")]
+    pub execution_output: ::core::option::Option<ExecutionOutput>,
 }
 /// FinalizedExecutionOutput
 #[allow(clippy::derive_partial_eq_without_eq)]
@@ -534,37 +523,35 @@ impl ScExecutionEventStatus {
         }
     }
 }
-/// ScExecutionOutputStatus type enum
+/// ExecutionOutputStatus type enum
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, ::prost::Enumeration)]
 #[repr(i32)]
-pub enum ScExecutionOutputStatus {
+pub enum ExecutionOutputStatus {
     /// Defaut enum value
     Unspecified = 0,
+    /// Candidate status
+    Candidate = 1,
     /// Final status
-    Final = 1,
-    /// Read only status
-    Candidate = 2,
+    Final = 2,
 }
-impl ScExecutionOutputStatus {
+impl ExecutionOutputStatus {
     /// String value of the enum field names used in the ProtoBuf definition.
     ///
     /// The values are not transformed in any way and thus are considered stable
     /// (if the ProtoBuf definition does not change) and safe for programmatic use.
     pub fn as_str_name(&self) -> &'static str {
         match self {
-            ScExecutionOutputStatus::Unspecified => {
-                "SC_EXECUTION_OUTPUT_STATUS_UNSPECIFIED"
-            }
-            ScExecutionOutputStatus::Final => "SC_EXECUTION_OUTPUT_STATUS_FINAL",
-            ScExecutionOutputStatus::Candidate => "SC_EXECUTION_OUTPUT_STATUS_CANDIDATE",
+            ExecutionOutputStatus::Unspecified => "EXECUTION_OUTPUT_STATUS_UNSPECIFIED",
+            ExecutionOutputStatus::Candidate => "EXECUTION_OUTPUT_STATUS_CANDIDATE",
+            ExecutionOutputStatus::Final => "EXECUTION_OUTPUT_STATUS_FINAL",
         }
     }
     /// Creates an enum from field names used in the ProtoBuf definition.
     pub fn from_str_name(value: &str) -> ::core::option::Option<Self> {
         match value {
-            "SC_EXECUTION_OUTPUT_STATUS_UNSPECIFIED" => Some(Self::Unspecified),
-            "SC_EXECUTION_OUTPUT_STATUS_FINAL" => Some(Self::Final),
-            "SC_EXECUTION_OUTPUT_STATUS_CANDIDATE" => Some(Self::Candidate),
+            "EXECUTION_OUTPUT_STATUS_UNSPECIFIED" => Some(Self::Unspecified),
+            "EXECUTION_OUTPUT_STATUS_CANDIDATE" => Some(Self::Candidate),
+            "EXECUTION_OUTPUT_STATUS_FINAL" => Some(Self::Final),
             _ => None,
         }
     }
@@ -1114,6 +1101,25 @@ pub struct NewSlotExecutionOutputsRequest {
     /// Request id
     #[prost(string, tag = "1")]
     pub id: ::prost::alloc::string::String,
+    /// Query
+    #[prost(message, optional, tag = "2")]
+    pub query: ::core::option::Option<NewSlotExecutionOutputsQuery>,
+}
+/// NewSlotExecutionOutputs Query
+#[allow(clippy::derive_partial_eq_without_eq)]
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct NewSlotExecutionOutputsQuery {
+    /// Filter
+    #[prost(message, optional, tag = "1")]
+    pub filter: ::core::option::Option<NewSlotExecutionOutputsFilter>,
+}
+/// NewSlotExecutionOutputs Filter
+#[allow(clippy::derive_partial_eq_without_eq)]
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct NewSlotExecutionOutputsFilter {
+    /// Execution output status enum
+    #[prost(enumeration = "ExecutionOutputStatus", repeated, tag = "1")]
+    pub status: ::prost::alloc::vec::Vec<i32>,
 }
 /// NewSlotExecutionOutputsResponse holds response from NewSlotExecutionOutputs
 #[allow(clippy::derive_partial_eq_without_eq)]

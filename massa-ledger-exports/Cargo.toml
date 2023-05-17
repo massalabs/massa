@@ -18,8 +18,6 @@ massa_models = { path = "../massa-models" }
 massa_serialization = { path = "../massa-serialization" }
 num_enum = "0.5.10"
 
-[dev-dependencies]
-massa_signature = { path = "../massa-signature" }
 
 
 # for more information on what are the following features used for, see the cargo.toml at workspace level
