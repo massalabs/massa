@@ -22,10 +22,12 @@ use massa_models::{
     operation::{Operation, OperationId, OperationType},
     slot::Slot,
 };
+use massa_proto::massa::api::v1 as grpc;
 use massa_sdk::Client;
 use massa_signature::KeyPair;
 use massa_time::MassaTime;
 use massa_wallet::Wallet;
+
 use serde::Serialize;
 use std::collections::{BTreeMap, HashMap, HashSet};
 use std::fmt::Write as _;
@@ -768,6 +770,36 @@ impl Command {
 
             Command::wallet_generate_secret_key => {
                 let wallet = wallet_opt.as_mut().unwrap();
+
+                // In order to generate a KeyPair we need to get the MIP statuses and use the latest
+                // active version
+                let req = grpc::GetMipStatusRequest { id: "".to_string() };
+                let versioning_status = match client.grpc.get_mip_status(req).await {
+                    Ok(resp_) => {
+                        let resp = resp_.into_inner();
+                        resp.status
+                    }
+                    Err(e) => {
+                        // FIXME: Should we default to the last known version - has client some local storage?
+                        // FIXME: defines grpc_error?
+                        rpc_error!(e)
+                    }
+                };
+
+                // Note: unused for now as AddressFactory is not yet merged
+                let _address_version = versioning_status
+                    .into_iter()
+                    .rev()
+                    .find_map(|entry| {
+                        let state = grpc::ComponentStateId::from_i32(entry.state)
+                            .unwrap_or(grpc::ComponentStateId::Error);
+                        match grpc::ComponentStateId::from(state) {
+                            grpc::ComponentStateId::Active => Some(entry.state),
+                            _ => None,
+                        }
+                    })
+                    .unwrap_or(0);
+                println!("Should create address with version: {}", _address_version);
 
                 let key = KeyPair::generate();
                 let ad = wallet.add_keypairs(vec![key])?[0];

@@ -12,6 +12,7 @@ use massa_models::prehash::PreHashSet;
 use massa_models::slot::Slot;
 use massa_models::timeslots::{self, get_latest_block_slot_at_timestamp};
 use massa_proto::massa::api::v1 as grpc;
+use massa_proto::massa::api::v1::MipComponentEntry;
 use massa_time::MassaTime;
 use std::str::FromStr;
 use tracing::log::warn;
@@ -336,6 +337,47 @@ pub(crate) fn get_largest_stakers(
         id,
         context,
         stakers,
+    })
+}
+
+// Get node version
+pub(crate) fn get_mip_status(
+    grpc: &MassaGrpc,
+    request: tonic::Request<grpc::GetMipStatusRequest>,
+) -> Result<grpc::GetMipStatusResponse, GrpcError> {
+    let mip_store_status_ = grpc.mip_store.get_mip_status();
+    let mip_store_status: Result<Vec<grpc::MipStatusEntry>, GrpcError> = mip_store_status_
+        .iter()
+        .map(|(mip_info, state_id)| {
+            // TODO: impl conversion from grpc::MipXX to versioning::MipXX ?
+            let components = mip_info
+                .components
+                .iter()
+                .map(|(mip_component, version)| MipComponentEntry {
+                    kind: u32::from(mip_component.clone()),
+                    version: *version,
+                })
+                .collect();
+
+            Ok(grpc::MipStatusEntry {
+                mip_info: Some(grpc::MipInfo {
+                    name: mip_info.name.clone(),
+                    version: mip_info.version,
+                    start: mip_info.start.to_millis(),
+                    timeout: mip_info.start.to_millis(),
+                    activation_delay: mip_info.activation_delay.to_millis(),
+                    components,
+                }),
+                state: i32::try_from(u32::from(state_id.clone())).map_err(|_e| {
+                    GrpcError::InvalidArgument("Cannot convert state_id".to_string())
+                })?,
+            })
+        })
+        .collect();
+
+    Ok(grpc::GetMipStatusResponse {
+        id: request.into_inner().id,
+        status: mip_store_status?,
     })
 }
 

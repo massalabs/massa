@@ -556,6 +556,81 @@ impl ExecutionOutputStatus {
         }
     }
 }
+/// Entry for GetMipStatusResponse
+#[allow(clippy::derive_partial_eq_without_eq)]
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct MipStatusEntry {
+    /// Mip info
+    #[prost(message, optional, tag = "1")]
+    pub mip_info: ::core::option::Option<MipInfo>,
+    /// state id
+    #[prost(enumeration = "ComponentStateId", tag = "2")]
+    pub state: i32,
+}
+/// Same as MipInfo struct in versioning package
+#[allow(clippy::derive_partial_eq_without_eq)]
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct MipInfo {
+    #[prost(string, tag = "1")]
+    pub name: ::prost::alloc::string::String,
+    #[prost(uint32, tag = "2")]
+    pub version: u32,
+    #[prost(uint64, tag = "3")]
+    pub start: u64,
+    #[prost(uint64, tag = "4")]
+    pub timeout: u64,
+    #[prost(uint64, tag = "5")]
+    pub activation_delay: u64,
+    #[prost(message, repeated, tag = "6")]
+    pub components: ::prost::alloc::vec::Vec<MipComponentEntry>,
+}
+#[allow(clippy::derive_partial_eq_without_eq)]
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct MipComponentEntry {
+    #[prost(uint32, tag = "1")]
+    pub kind: u32,
+    #[prost(uint32, tag = "2")]
+    pub version: u32,
+}
+/// Same as ComponentStateId enum in versioning package
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, ::prost::Enumeration)]
+#[repr(i32)]
+pub enum ComponentStateId {
+    Error = 0,
+    Defined = 1,
+    Started = 2,
+    LockedIn = 3,
+    Active = 4,
+    Failed = 5,
+}
+impl ComponentStateId {
+    /// String value of the enum field names used in the ProtoBuf definition.
+    ///
+    /// The values are not transformed in any way and thus are considered stable
+    /// (if the ProtoBuf definition does not change) and safe for programmatic use.
+    pub fn as_str_name(&self) -> &'static str {
+        match self {
+            ComponentStateId::Error => "Error",
+            ComponentStateId::Defined => "Defined",
+            ComponentStateId::Started => "Started",
+            ComponentStateId::LockedIn => "LockedIn",
+            ComponentStateId::Active => "Active",
+            ComponentStateId::Failed => "Failed",
+        }
+    }
+    /// Creates an enum from field names used in the ProtoBuf definition.
+    pub fn from_str_name(value: &str) -> ::core::option::Option<Self> {
+        match value {
+            "Error" => Some(Self::Error),
+            "Defined" => Some(Self::Defined),
+            "Started" => Some(Self::Started),
+            "LockedIn" => Some(Self::LockedIn),
+            "Active" => Some(Self::Active),
+            "Failed" => Some(Self::Failed),
+            _ => None,
+        }
+    }
+}
 /// GetBlocksRequest holds request for GetBlocks
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
@@ -941,6 +1016,24 @@ pub struct SelectorDraws {
     /// Next endorsements draws
     #[prost(message, repeated, tag = "3")]
     pub next_endorsement_draws: ::prost::alloc::vec::Vec<IndexedSlot>,
+}
+#[allow(clippy::derive_partial_eq_without_eq)]
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct GetMipStatusRequest {
+    /// Request id
+    #[prost(string, tag = "1")]
+    pub id: ::prost::alloc::string::String,
+}
+/// GetMipStatusResponse holds response from GetMipStatus
+#[allow(clippy::derive_partial_eq_without_eq)]
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct GetMipStatusResponse {
+    /// Request id
+    #[prost(string, tag = "1")]
+    pub id: ::prost::alloc::string::String,
+    /// MipInfo - status id entry
+    #[prost(message, repeated, tag = "2")]
+    pub status: ::prost::alloc::vec::Vec<MipStatusEntry>,
 }
 /// GetTransactionsThroughputRequest holds request for GetTransactionsThroughput
 #[allow(clippy::derive_partial_eq_without_eq)]
@@ -1697,6 +1790,32 @@ pub mod massa_service_client {
                 .insert(GrpcMethod::new("massa.api.v1.MassaService", "GetVersion"));
             self.inner.unary(req, path, codec).await
         }
+        /// Get
+        pub async fn get_mip_status(
+            &mut self,
+            request: impl tonic::IntoRequest<super::GetMipStatusRequest>,
+        ) -> std::result::Result<
+            tonic::Response<super::GetMipStatusResponse>,
+            tonic::Status,
+        > {
+            self.inner
+                .ready()
+                .await
+                .map_err(|e| {
+                    tonic::Status::new(
+                        tonic::Code::Unknown,
+                        format!("Service was not ready: {}", e.into()),
+                    )
+                })?;
+            let codec = tonic::codec::ProstCodec::default();
+            let path = http::uri::PathAndQuery::from_static(
+                "/massa.api.v1.MassaService/GetMipStatus",
+            );
+            let mut req = request.into_request();
+            req.extensions_mut()
+                .insert(GrpcMethod::new("massa.api.v1.MassaService", "GetMipStatus"));
+            self.inner.unary(req, path, codec).await
+        }
         /// New received and produced blocks
         pub async fn new_blocks(
             &mut self,
@@ -2078,6 +2197,14 @@ pub mod massa_service_server {
             request: tonic::Request<super::GetVersionRequest>,
         ) -> std::result::Result<
             tonic::Response<super::GetVersionResponse>,
+            tonic::Status,
+        >;
+        /// Get
+        async fn get_mip_status(
+            &self,
+            request: tonic::Request<super::GetMipStatusRequest>,
+        ) -> std::result::Result<
+            tonic::Response<super::GetMipStatusResponse>,
             tonic::Status,
         >;
         /// Server streaming response type for the NewBlocks method.
@@ -2757,6 +2884,52 @@ pub mod massa_service_server {
                     let fut = async move {
                         let inner = inner.0;
                         let method = GetVersionSvc(inner);
+                        let codec = tonic::codec::ProstCodec::default();
+                        let mut grpc = tonic::server::Grpc::new(codec)
+                            .apply_compression_config(
+                                accept_compression_encodings,
+                                send_compression_encodings,
+                            )
+                            .apply_max_message_size_config(
+                                max_decoding_message_size,
+                                max_encoding_message_size,
+                            );
+                        let res = grpc.unary(method, req).await;
+                        Ok(res)
+                    };
+                    Box::pin(fut)
+                }
+                "/massa.api.v1.MassaService/GetMipStatus" => {
+                    #[allow(non_camel_case_types)]
+                    struct GetMipStatusSvc<T: MassaService>(pub Arc<T>);
+                    impl<
+                        T: MassaService,
+                    > tonic::server::UnaryService<super::GetMipStatusRequest>
+                    for GetMipStatusSvc<T> {
+                        type Response = super::GetMipStatusResponse;
+                        type Future = BoxFuture<
+                            tonic::Response<Self::Response>,
+                            tonic::Status,
+                        >;
+                        fn call(
+                            &mut self,
+                            request: tonic::Request<super::GetMipStatusRequest>,
+                        ) -> Self::Future {
+                            let inner = Arc::clone(&self.0);
+                            let fut = async move {
+                                (*inner).get_mip_status(request).await
+                            };
+                            Box::pin(fut)
+                        }
+                    }
+                    let accept_compression_encodings = self.accept_compression_encodings;
+                    let send_compression_encodings = self.send_compression_encodings;
+                    let max_decoding_message_size = self.max_decoding_message_size;
+                    let max_encoding_message_size = self.max_encoding_message_size;
+                    let inner = self.inner.clone();
+                    let fut = async move {
+                        let inner = inner.0;
+                        let method = GetMipStatusSvc(inner);
                         let codec = tonic::codec::ProstCodec::default();
                         let mut grpc = tonic::server::Grpc::new(codec)
                             .apply_compression_config(
