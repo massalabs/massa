@@ -32,7 +32,7 @@ use super::{
 use crate::wrap_network::ActiveConnectionsTrait;
 
 #[derive(Clone)]
-pub(crate)  struct TesterHandshake {
+pub(crate) struct TesterHandshake {
     peer_db: SharedPeerDB,
     our_version: Version,
     announcement_deserializer: AnnouncementDeserializer,
@@ -40,7 +40,7 @@ pub(crate)  struct TesterHandshake {
 }
 
 impl TesterHandshake {
-    pub(crate)  fn new(peer_db: SharedPeerDB, config: ProtocolConfig) -> Self {
+    pub(crate) fn new(peer_db: SharedPeerDB, config: ProtocolConfig) -> Self {
         Self {
             peer_db,
             announcement_deserializer: AnnouncementDeserializer::new(
@@ -189,13 +189,13 @@ impl InitConnectionHandler for TesterHandshake {
     }
 }
 
-pub(crate)  struct Tester {
-    pub(crate)  handler: Option<JoinHandle<()>>,
+pub(crate) struct Tester {
+    pub(crate) handler: Option<JoinHandle<()>>,
 }
 
 #[allow(clippy::type_complexity)]
 impl Tester {
-    pub(crate)  fn run(
+    pub(crate) fn run(
         config: &ProtocolConfig,
         active_connections: Box<dyn ActiveConnectionsTrait>,
         peer_db: SharedPeerDB,
@@ -228,7 +228,7 @@ impl Tester {
     }
 
     /// Create a new tester (spawn a thread)
-    pub(crate)  fn new(
+    pub(crate) fn new(
         peer_db: SharedPeerDB,
         active_connections: Box<dyn ActiveConnectionsTrait>,
         protocol_config: ProtocolConfig,

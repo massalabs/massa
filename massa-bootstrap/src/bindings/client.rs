@@ -17,7 +17,7 @@ use std::time::Instant;
 use std::{io::Write, net::TcpStream, time::Duration};
 
 /// Bootstrap client binder
-pub(crate)  struct BootstrapClientBinder {
+pub(crate) struct BootstrapClientBinder {
     // max_bootstrap_message_size: u32,
     size_field_len: usize,
     remote_pubkey: PublicKey,
@@ -34,7 +34,11 @@ impl BootstrapClientBinder {
     /// * duplex: duplex stream.
     /// * limit: limit max bytes per second (up and down)
     #[allow(clippy::too_many_arguments)]
-    pub(crate)  fn new(duplex: TcpStream, remote_pubkey: PublicKey, cfg: BootstrapClientConfig) -> Self {
+    pub(crate) fn new(
+        duplex: TcpStream,
+        remote_pubkey: PublicKey,
+        cfg: BootstrapClientConfig,
+    ) -> Self {
         let size_field_len = u32::be_bytes_min_length(cfg.max_bootstrap_message_size);
         BootstrapClientBinder {
             size_field_len,
@@ -48,7 +52,7 @@ impl BootstrapClientBinder {
 
     /// Performs a handshake. Should be called after connection
     /// NOT cancel-safe
-    pub(crate)  fn handshake(&mut self, version: Version) -> Result<(), BootstrapError> {
+    pub(crate) fn handshake(&mut self, version: Version) -> Result<(), BootstrapError> {
         // send version and randomn bytes
         let msg_hash = {
             let mut version_ser = Vec::new();
@@ -69,7 +73,7 @@ impl BootstrapClientBinder {
 
     // TODO: use a proper (de)serializer: https://github.com/massalabs/massa/pull/3745#discussion_r1169733161
     /// Reads the next message.
-    pub(crate)  fn next_timeout(
+    pub(crate) fn next_timeout(
         &mut self,
         duration: Option<Duration>,
     ) -> Result<BootstrapServerMessage, BootstrapError> {
@@ -147,7 +151,7 @@ impl BootstrapClientBinder {
 
     // TODO: use a proper (de)serializer: https://github.com/massalabs/massa/pull/3745#discussion_r1169733161
     /// Send a message to the bootstrap server
-    pub(crate)  fn send_timeout(
+    pub(crate) fn send_timeout(
         &mut self,
         msg: &BootstrapClientMessage,
         duration: Option<Duration>,

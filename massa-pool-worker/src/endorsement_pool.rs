@@ -11,7 +11,7 @@ use massa_storage::Storage;
 use std::collections::{BTreeMap, HashMap};
 use tracing::trace;
 
-pub(crate)  struct EndorsementPool {
+pub(crate) struct EndorsementPool {
     /// configuration
     config: PoolConfig,
 
@@ -33,7 +33,7 @@ pub(crate)  struct EndorsementPool {
 }
 
 impl EndorsementPool {
-    pub(crate)  fn init(config: PoolConfig, storage: &Storage, channels: PoolChannels) -> Self {
+    pub(crate) fn init(config: PoolConfig, storage: &Storage, channels: PoolChannels) -> Self {
         EndorsementPool {
             last_cs_final_periods: vec![0u64; config.thread_count as usize],
             endorsements_indexed: Default::default(),
@@ -45,12 +45,12 @@ impl EndorsementPool {
     }
 
     /// Get the number of stored elements
-    pub(crate)  fn len(&self) -> usize {
+    pub(crate) fn len(&self) -> usize {
         self.storage.get_endorsement_refs().len()
     }
 
     /// Checks whether an element is stored in the pool.
-    pub(crate)  fn contains(&self, id: &EndorsementId) -> bool {
+    pub(crate) fn contains(&self, id: &EndorsementId) -> bool {
         self.storage.get_endorsement_refs().contains(id)
     }
 
@@ -162,7 +162,7 @@ impl EndorsementPool {
     }
 
     /// get endorsements for block creation
-    pub(crate)  fn get_block_endorsements(
+    pub(crate) fn get_block_endorsements(
         &self,
         slot: &Slot, // slot of the block that will contain the endorsement
         target_block: &BlockId,

@@ -16,7 +16,7 @@ use massa_time::MassaTime;
 
 /// Information about a slot in the execution sequence
 #[derive(Debug, Clone)]
-pub(crate)  struct SlotInfo {
+pub(crate) struct SlotInfo {
     /// Slot
     slot: Slot,
     /// Whether the slot is CSS-final
@@ -29,7 +29,7 @@ pub(crate)  struct SlotInfo {
 
 impl SlotInfo {
     /// Get the block ID (if any) at that slot
-    pub(crate)  fn get_block_id(&self) -> Option<&BlockId> {
+    pub(crate) fn get_block_id(&self) -> Option<&BlockId> {
         self.content.as_ref().map(|(b_id, _)| b_id)
     }
 }
@@ -42,7 +42,7 @@ impl SlotInfo {
 /// `SlotSequencer::run_task_with` allows running the next slot in the queue, if any.
 /// Note that SCE-final slots are executed in priority over candidate slots.
 /// `SlotSequencer::get_next_slot_deadline` allows getting the time at which the next slot will happen (this is useful to sequence slots as they happen even if there is no block there).
-pub(crate)  struct SlotSequencer {
+pub(crate) struct SlotSequencer {
     /// Config
     config: ExecutionConfig,
 
@@ -69,7 +69,7 @@ impl SlotSequencer {
     ///
     /// # Arguments
     /// * `final_cursor`: latest executed SCE-final slot. This is useful on bootstrap in particular in order to avoid re-executing previously executed slots.
-    pub(crate)  fn new(config: ExecutionConfig, final_cursor: Slot) -> Self {
+    pub(crate) fn new(config: ExecutionConfig, final_cursor: Slot) -> Self {
         SlotSequencer {
             sequence: Default::default(),
             latest_css_final_slots: (0..config.thread_count)
@@ -209,7 +209,7 @@ impl SlotSequencer {
     /// * `new_css_final_blocks`: new CSS-finalized blocks
     /// * `new_blockclique`: new blockclique (if changed since the last call to this method, otherwise None)
     /// * `new_blocks_storage`: storage instances for blocks that have not been seen previously by the sequencer
-    pub(crate)  fn update(
+    pub(crate) fn update(
         &mut self,
         mut new_css_final_blocks: HashMap<Slot, BlockId>,
         mut new_blockclique: Option<HashMap<Slot, BlockId>>,
@@ -553,7 +553,7 @@ impl SlotSequencer {
     }
 
     /// Returns true if there is a queued slot that needs to be executed now.
-    pub(crate)  fn is_task_available(&self) -> bool {
+    pub(crate) fn is_task_available(&self) -> bool {
         // The sequence is empty => nothing to do.
         if self.sequence.is_empty() {
             return false;
@@ -644,7 +644,7 @@ impl SlotSequencer {
     /// # Returns
     /// An option that is `None` if there was no task to be executed,
     /// or `Some(T)` where `T` is the value returned by the `callback` function otherwise.
-    pub(crate)  fn run_task_with<F, T>(&mut self, callback: F) -> Option<T>
+    pub(crate) fn run_task_with<F, T>(&mut self, callback: F) -> Option<T>
     where
         F: Fn(bool, &Slot, Option<&(BlockId, Storage)>) -> T,
     {
@@ -723,7 +723,7 @@ impl SlotSequencer {
 
     /// Gets the instant of the slot just after the latest slot in the sequence.
     /// Note that `config.cursor_delay` is taken into account.
-    pub(crate)  fn get_next_slot_deadline(&self) -> MassaTime {
+    pub(crate) fn get_next_slot_deadline(&self) -> MassaTime {
         // The slot sequence is empty.
         // This means that we are still waiting for `Self::update` to be called for the first time.
         // To avoid CPU-intensive loops upstream, just register a wake-up after a single slot delay (t0/T).

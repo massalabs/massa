@@ -17,7 +17,7 @@ use tonic::Request;
 use tracing::log::{error, warn};
 
 /// Type declaration for SendBlockStream
-pub(crate)  type SendBlocksStreamType = Pin<
+pub(crate) type SendBlocksStreamType = Pin<
     Box<
         dyn futures_core::Stream<Item = Result<grpc::SendBlocksResponse, tonic::Status>>
             + Send

@@ -14,7 +14,7 @@ use tonic::codegen::futures_core;
 use tracing::log::{error, warn};
 
 /// Type declaration for SendEndorsements
-pub(crate)  type SendEndorsementsStreamType = Pin<
+pub(crate) type SendEndorsementsStreamType = Pin<
     Box<
         dyn futures_core::Stream<Item = Result<grpc::SendEndorsementsResponse, tonic::Status>>
             + Send

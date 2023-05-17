@@ -152,7 +152,7 @@ impl PropagationThread {
     }
 }
 
-pub(crate)  fn start_propagation_thread(
+pub(crate) fn start_propagation_thread(
     internal_receiver: Receiver<OperationHandlerPropagationCommand>,
     active_connections: Box<dyn ActiveConnectionsTrait>,
     config: ProtocolConfig,

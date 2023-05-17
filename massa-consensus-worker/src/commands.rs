@@ -4,7 +4,7 @@ use massa_models::{
 use massa_storage::Storage;
 
 #[allow(clippy::large_enum_variant)]
-pub(crate)  enum ConsensusCommand {
+pub(crate) enum ConsensusCommand {
     RegisterBlock(BlockId, Slot, Storage, bool),
     RegisterBlockHeader(BlockId, SecureShare<BlockHeader, BlockId>),
     MarkInvalidBlock(BlockId, SecureShare<BlockHeader, BlockId>),

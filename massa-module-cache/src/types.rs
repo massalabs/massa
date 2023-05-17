@@ -11,14 +11,14 @@ use std::ops::Bound::Included;
 
 /// Main type
 #[derive(Clone)]
-pub(crate)  enum ModuleInfo {
+pub(crate) enum ModuleInfo {
     Invalid,
     Module(RuntimeModule),
     ModuleAndDelta((RuntimeModule, u64)),
 }
 
 /// Metadata type
-pub(crate)  enum ModuleMetadata {
+pub(crate) enum ModuleMetadata {
     Invalid,
     NotExecuted,
     Delta(u64),
@@ -34,12 +34,12 @@ enum ModuleMetadataId {
 }
 
 /// Metadata serializer
-pub(crate)  struct ModuleMetadataSerializer {
+pub(crate) struct ModuleMetadataSerializer {
     u64_ser: U64VarIntSerializer,
 }
 
 impl ModuleMetadataSerializer {
-    pub(crate)  fn new() -> Self {
+    pub(crate) fn new() -> Self {
         Self {
             u64_ser: U64VarIntSerializer::new(),
         }
@@ -76,13 +76,13 @@ impl Serializer<ModuleMetadata> for ModuleMetadataSerializer {
 }
 
 /// Metadata deserializer
-pub(crate)  struct ModuleMetadataDeserializer {
+pub(crate) struct ModuleMetadataDeserializer {
     id_deser: U64VarIntDeserializer,
     delta_deser: U64VarIntDeserializer,
 }
 
 impl ModuleMetadataDeserializer {
-    pub(crate)  fn new() -> Self {
+    pub(crate) fn new() -> Self {
         Self {
             id_deser: U64VarIntDeserializer::new(
                 Included(u64::from(ModuleMetadataId::Invalid)),

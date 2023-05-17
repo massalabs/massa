@@ -12,7 +12,7 @@ use tonic::{Request, Streaming};
 use tracing::log::{error, warn};
 
 /// Type declaration for NewSlotExecutionOutputs
-pub(crate)  type NewSlotExecutionOutputsStreamType = Pin<
+pub(crate) type NewSlotExecutionOutputsStreamType = Pin<
     Box<
         dyn futures_core::Stream<
                 Item = Result<grpc::NewSlotExecutionOutputsResponse, tonic::Status>,

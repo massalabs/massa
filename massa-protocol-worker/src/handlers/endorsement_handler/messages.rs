@@ -12,19 +12,19 @@ use num_enum::{IntoPrimitive, TryFromPrimitive};
 use std::ops::Bound::Included;
 
 #[derive(Debug)]
-pub(crate)  enum EndorsementMessage {
+pub(crate) enum EndorsementMessage {
     /// Endorsements
     Endorsements(Vec<SecureShareEndorsement>),
 }
 
 impl EndorsementMessage {
-    pub(crate)  fn get_id(&self) -> MessageTypeId {
+    pub(crate) fn get_id(&self) -> MessageTypeId {
         match self {
             EndorsementMessage::Endorsements(_) => MessageTypeId::Endorsements,
         }
     }
 
-    pub(crate)  fn max_id() -> u64 {
+    pub(crate) fn max_id() -> u64 {
         <MessageTypeId as Into<u64>>::into(MessageTypeId::Endorsements) + 1
     }
 }
@@ -32,18 +32,18 @@ impl EndorsementMessage {
 // DO NOT FORGET TO UPDATE MAX ID IF YOU UPDATE THERE
 #[derive(IntoPrimitive, Debug, Eq, PartialEq, TryFromPrimitive)]
 #[repr(u64)]
-pub(crate)  enum MessageTypeId {
+pub(crate) enum MessageTypeId {
     Endorsements,
 }
 
 #[derive(Default, Clone)]
-pub(crate)  struct EndorsementMessageSerializer {
+pub(crate) struct EndorsementMessageSerializer {
     length_endorsements_serializer: U64VarIntSerializer,
     secure_share_serializer: SecureShareSerializer,
 }
 
 impl EndorsementMessageSerializer {
-    pub(crate)  fn new() -> Self {
+    pub(crate) fn new() -> Self {
         Self {
             length_endorsements_serializer: U64VarIntSerializer::new(),
             secure_share_serializer: SecureShareSerializer::new(),
@@ -71,20 +71,20 @@ impl Serializer<EndorsementMessage> for EndorsementMessageSerializer {
     }
 }
 
-pub(crate)  struct EndorsementMessageDeserializerArgs {
-    pub(crate)  thread_count: u8,
-    pub(crate)  max_length_endorsements: u64,
-    pub(crate)  endorsement_count: u32,
+pub(crate) struct EndorsementMessageDeserializerArgs {
+    pub(crate) thread_count: u8,
+    pub(crate) max_length_endorsements: u64,
+    pub(crate) endorsement_count: u32,
 }
 
-pub(crate)  struct EndorsementMessageDeserializer {
+pub(crate) struct EndorsementMessageDeserializer {
     message_id: u64,
     length_endorsements_deserializer: U64VarIntDeserializer,
     secure_share_deserializer: SecureShareDeserializer<Endorsement, EndorsementDeserializer>,
 }
 
 impl EndorsementMessageDeserializer {
-    pub(crate)  fn new(args: EndorsementMessageDeserializerArgs) -> Self {
+    pub(crate) fn new(args: EndorsementMessageDeserializerArgs) -> Self {
         Self {
             message_id: 0,
             length_endorsements_deserializer: U64VarIntDeserializer::new(
@@ -98,7 +98,7 @@ impl EndorsementMessageDeserializer {
         }
     }
 
-    pub(crate)  fn set_message_id(&mut self, message_id: u64) {
+    pub(crate) fn set_message_id(&mut self, message_id: u64) {
         self.message_id = message_id;
     }
 }

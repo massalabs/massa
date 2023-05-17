@@ -10,7 +10,7 @@ use tracing::{info, warn};
 
 /// Implementation of the factory manager
 /// Allows stopping the factory worker
-pub(crate)  struct FactoryManagerImpl {
+pub(crate) struct FactoryManagerImpl {
     /// block worker message sender and join handle
     pub(crate) block_worker: Option<(mpsc::Sender<()>, JoinHandle<()>)>,
 

@@ -23,24 +23,24 @@ use massa_serialization::{
 };
 
 #[derive(Clone, Debug, PartialEq, Eq)]
-pub(crate)  struct Announcement {
+pub(crate) struct Announcement {
     /// Listeners
-    pub(crate)  listeners: HashMap<SocketAddr, TransportType>,
+    pub(crate) listeners: HashMap<SocketAddr, TransportType>,
     /// Timestamp
-    pub(crate)  timestamp: u128,
+    pub(crate) timestamp: u128,
     /// Hash
-    pub(crate)  hash: Hash,
+    pub(crate) hash: Hash,
     /// serialized version
     serialized: Vec<u8>,
     /// Signature
-    pub(crate)  signature: Signature,
+    pub(crate) signature: Signature,
 }
 
 #[derive(Clone)]
-pub(crate)  struct AnnouncementSerializer;
+pub(crate) struct AnnouncementSerializer;
 
 impl AnnouncementSerializer {
-    pub(crate)  fn new() -> Self {
+    pub(crate) fn new() -> Self {
         Self
     }
 }
@@ -54,17 +54,17 @@ impl Serializer<Announcement> for AnnouncementSerializer {
 }
 
 #[derive(Clone)]
-pub(crate)  struct AnnouncementDeserializer {
+pub(crate) struct AnnouncementDeserializer {
     length_listeners_deserializer: U64VarIntDeserializer,
     ip_addr_deserializer: IpAddrDeserializer,
 }
 
-pub(crate)  struct AnnouncementDeserializerArgs {
-    pub(crate)  max_listeners: u64,
+pub(crate) struct AnnouncementDeserializerArgs {
+    pub(crate) max_listeners: u64,
 }
 
 impl AnnouncementDeserializer {
-    pub(crate)  fn new(args: AnnouncementDeserializerArgs) -> Self {
+    pub(crate) fn new(args: AnnouncementDeserializerArgs) -> Self {
         Self {
             length_listeners_deserializer: U64VarIntDeserializer::new(
                 Included(0),
@@ -153,7 +153,7 @@ impl Deserializer<Announcement> for AnnouncementDeserializer {
 }
 
 impl Announcement {
-    pub(crate)  fn new(
+    pub(crate) fn new(
         mut listeners: HashMap<SocketAddr, TransportType>,
         routable_ip: Option<IpAddr>,
         keypair: &KeyPair,

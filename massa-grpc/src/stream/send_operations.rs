@@ -14,7 +14,7 @@ use tonic::codegen::futures_core;
 use tracing::log::{error, warn};
 
 /// Type declaration for SendOperations
-pub(crate)  type SendOperationsStreamType = Pin<
+pub(crate) type SendOperationsStreamType = Pin<
     Box<
         dyn futures_core::Stream<Item = Result<grpc::SendOperationsResponse, tonic::Status>>
             + Send

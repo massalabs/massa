@@ -30,7 +30,7 @@ impl SpeculativeAsyncPool {
     /// Creates a new `SpeculativeAsyncPool`
     ///
     /// # Arguments
-    pub(crate)  fn new(
+    pub(crate) fn new(
         final_state: Arc<RwLock<FinalState>>,
         active_history: Arc<RwLock<ActiveHistory>>,
     ) -> Self {
@@ -50,22 +50,22 @@ impl SpeculativeAsyncPool {
     /// Returns the changes caused to the `SpeculativeAsyncPool` since its creation,
     /// and resets their local value to nothing.
     /// This must be called after `settle_emitted_messages()`
-    pub(crate)  fn take(&mut self) -> AsyncPoolChanges {
+    pub(crate) fn take(&mut self) -> AsyncPoolChanges {
         std::mem::take(&mut self.settled_changes)
     }
 
     /// Takes a snapshot (clone) of the emitted messages
-    pub(crate)  fn get_snapshot(&self) -> Vec<(AsyncMessageId, AsyncMessage)> {
+    pub(crate) fn get_snapshot(&self) -> Vec<(AsyncMessageId, AsyncMessage)> {
         self.emitted.clone()
     }
 
     /// Resets the `SpeculativeAsyncPool` emitted messages to a snapshot (see `get_snapshot` method)
-    pub(crate)  fn reset_to_snapshot(&mut self, snapshot: Vec<(AsyncMessageId, AsyncMessage)>) {
+    pub(crate) fn reset_to_snapshot(&mut self, snapshot: Vec<(AsyncMessageId, AsyncMessage)>) {
         self.emitted = snapshot;
     }
 
     /// Add a new message to the list of changes of this `SpeculativeAsyncPool`
-    pub(crate)  fn push_new_message(&mut self, msg: AsyncMessage) {
+    pub(crate) fn push_new_message(&mut self, msg: AsyncMessage) {
         self.emitted.push((msg.compute_id(), msg));
     }
 
@@ -78,7 +78,7 @@ impl SpeculativeAsyncPool {
     ///
     /// # Returns
     /// A vector of `AsyncMessage` to execute
-    pub(crate)  fn take_batch_to_execute(
+    pub(crate) fn take_batch_to_execute(
         &mut self,
         slot: Slot,
         max_gas: u64,
@@ -103,7 +103,7 @@ impl SpeculativeAsyncPool {
     ///
     /// # Returns
     /// the list of deleted `(message_id, message)`, used for reimbursement
-    pub(crate)  fn settle_slot(
+    pub(crate) fn settle_slot(
         &mut self,
         slot: &Slot,
         ledger_changes: &LedgerChanges,

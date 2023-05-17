@@ -4,7 +4,7 @@ use massa_models::{
     prehash::{PreHashMap, PreHashSet},
 };
 
-pub(crate)  enum BlockHandlerRetrievalCommand {
+pub(crate) enum BlockHandlerRetrievalCommand {
     Stop,
     /// Wish list delta
     WishlistDelta {

@@ -44,16 +44,16 @@ use super::{
 /// Structure containing a Batch of `operation_ids` we would like to ask
 /// to a `peer_id` now or later. Mainly used in protocol and translated into
 /// simple combination of a `peer_id` and `operations_prefix_ids`
-pub(crate)  struct OperationBatchItem {
+pub(crate) struct OperationBatchItem {
     /// last updated at instant
-    pub(crate)  instant: Instant,
+    pub(crate) instant: Instant,
     /// node id
-    pub(crate)  peer_id: PeerId,
+    pub(crate) peer_id: PeerId,
     /// operation prefix ids
-    pub(crate)  operations_prefix_ids: OperationPrefixIds,
+    pub(crate) operations_prefix_ids: OperationPrefixIds,
 }
 
-pub(crate)  struct RetrievalThread {
+pub(crate) struct RetrievalThread {
     receiver: Receiver<PeerMessageTuple>,
     pool_controller: Box<dyn PoolController>,
     cache: SharedOperationCache,
@@ -486,7 +486,7 @@ impl RetrievalThread {
 }
 
 #[allow(clippy::too_many_arguments)]
-pub(crate)  fn start_retrieval_thread(
+pub(crate) fn start_retrieval_thread(
     receiver: Receiver<(PeerId, u64, Vec<u8>)>,
     pool_controller: Box<dyn PoolController>,
     storage: Storage,

@@ -14,7 +14,7 @@ use tracing::warn;
 
 /// Possible output of a header check
 #[derive(Debug)]
-pub(crate)  enum HeaderCheckOutcome {
+pub(crate) enum HeaderCheckOutcome {
     /// it's ok and here are some useful values
     Proceed {
         /// one (parent block id, parent's period) per thread
@@ -36,7 +36,7 @@ pub(crate)  enum HeaderCheckOutcome {
 
 /// Possible outcomes of endorsements check
 #[derive(Debug)]
-pub(crate)  enum EndorsementsCheckOutcome {
+pub(crate) enum EndorsementsCheckOutcome {
     /// Everything is ok
     Proceed,
     /// There is something wrong with that endorsement
@@ -303,7 +303,7 @@ impl ConsensusState {
     /// - Check grandpa incompatibility test.
     /// - Check if the block is incompatible with a parent.
     /// - Check if the block is incompatible with a final block.
-    pub(crate)  fn check_header(
+    pub(crate) fn check_header(
         &self,
         block_id: &BlockId,
         header: &SecuredHeader,
@@ -612,7 +612,7 @@ impl ConsensusState {
     /// check endorsements:
     /// * endorser was selected for that (slot, index)
     /// * endorsed slot is `parent_in_own_thread` slot
-    pub(crate)  fn check_endorsements(
+    pub(crate) fn check_endorsements(
         &self,
         header: &SecuredHeader,
     ) -> Result<EndorsementsCheckOutcome, ConsensusError> {

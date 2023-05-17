@@ -59,7 +59,7 @@ impl HDCache {
     /// * path: where to store the db
     /// * max_entry_count: maximum number of entries we want to keep in the db
     /// * amount_to_remove: how many entries are removed when `entry_count` reaches `max_entry_count`
-    pub(crate)  fn new(path: PathBuf, max_entry_count: usize, snip_amount: usize) -> Self {
+    pub(crate) fn new(path: PathBuf, max_entry_count: usize, snip_amount: usize) -> Self {
         let db = DB::open_default(path).expect(OPEN_ERROR);
         let entry_count = db.iterator(IteratorMode::Start).count();
 
@@ -74,7 +74,7 @@ impl HDCache {
     }
 
     /// Insert a new module in the cache
-    pub(crate)  fn insert(&mut self, hash: Hash, module_info: ModuleInfo) {
+    pub(crate) fn insert(&mut self, hash: Hash, module_info: ModuleInfo) {
         if self.entry_count >= self.max_entry_count {
             self.snip();
         }
@@ -116,7 +116,7 @@ impl HDCache {
     /// # Arguments
     /// * `hash`: hash associated to the module for which we want to set the cost
     /// * `init_cost`: the new cost associated to the module
-    pub(crate)  fn set_init_cost(&self, hash: Hash, init_cost: u64) {
+    pub(crate) fn set_init_cost(&self, hash: Hash, init_cost: u64) {
         let mut ser_metadata = Vec::new();
         self.meta_ser
             .serialize(&ModuleMetadata::Delta(init_cost), &mut ser_metadata)
@@ -127,7 +127,7 @@ impl HDCache {
     }
 
     /// Sets a given module as invalid
-    pub(crate)  fn set_invalid(&self, hash: Hash) {
+    pub(crate) fn set_invalid(&self, hash: Hash) {
         let mut ser_metadata = Vec::new();
         self.meta_ser
             .serialize(&ModuleMetadata::Invalid, &mut ser_metadata)
@@ -138,7 +138,7 @@ impl HDCache {
     }
 
     /// Retrieve a module
-    pub(crate)  fn get(&self, hash: Hash, limit: u64, gas_costs: GasCosts) -> Option<ModuleInfo> {
+    pub(crate) fn get(&self, hash: Hash, limit: u64, gas_costs: GasCosts) -> Option<ModuleInfo> {
         let mut iterator = self
             .db
             .iterator(IteratorMode::From(&module_key!(hash), Direction::Forward));

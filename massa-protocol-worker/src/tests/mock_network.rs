@@ -24,12 +24,12 @@ use crate::{
     wrap_network::{ActiveConnectionsTrait, NetworkController},
 };
 
-pub(crate)  struct MockActiveConnections {
-    pub(crate)  connections: HashMap<PeerId, Sender<Message>>,
+pub(crate) struct MockActiveConnections {
+    pub(crate) connections: HashMap<PeerId, Sender<Message>>,
 }
 
 impl MockActiveConnections {
-    pub(crate)  fn new() -> Self {
+    pub(crate) fn new() -> Self {
         Self {
             connections: HashMap::new(),
         }
@@ -92,7 +92,7 @@ impl ActiveConnectionsTrait for SharedMockActiveConnections {
     }
 }
 
-pub(crate)  struct MockNetworkController {
+pub(crate) struct MockNetworkController {
     connections: SharedMockActiveConnections,
     messages_handler: MessagesHandler,
     message_serializer: MessagesSerializer,
@@ -113,7 +113,7 @@ impl Clone for MockNetworkController {
 }
 
 impl MockNetworkController {
-    pub(crate)  fn new(messages_handler: MessagesHandler) -> Self {
+    pub(crate) fn new(messages_handler: MessagesHandler) -> Self {
         Self {
             connections: Arc::new(RwLock::new(MockActiveConnections::new())),
             messages_handler,
@@ -127,7 +127,10 @@ impl MockNetworkController {
 }
 
 impl MockNetworkController {
-    pub(crate)  fn create_fake_connection(&mut self, peer_id: PeerId) -> (PeerId, Receiver<Message>) {
+    pub(crate) fn create_fake_connection(
+        &mut self,
+        peer_id: PeerId,
+    ) -> (PeerId, Receiver<Message>) {
         let (sender, receiver) = crossbeam::channel::unbounded();
         self.connections
             .write()
@@ -136,12 +139,12 @@ impl MockNetworkController {
         (peer_id, receiver)
     }
 
-    pub(crate)  fn remove_fake_connection(&mut self, peer_id: &PeerId) {
+    pub(crate) fn remove_fake_connection(&mut self, peer_id: &PeerId) {
         self.connections.write().connections.remove(peer_id);
     }
 
     /// Simulate a peer that send a message to us
-    pub(crate)  fn send_from_peer(
+    pub(crate) fn send_from_peer(
         &mut self,
         peer_id: &PeerId,
         message: Message,
@@ -175,7 +178,7 @@ impl MockNetworkController {
         Ok(())
     }
 
-    pub(crate)  fn get_connections(&self) -> SharedMockActiveConnections {
+    pub(crate) fn get_connections(&self) -> SharedMockActiveConnections {
         self.connections.clone()
     }
 }

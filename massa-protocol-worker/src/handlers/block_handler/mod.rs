@@ -14,9 +14,9 @@ use self::{
     retrieval::start_retrieval_thread,
 };
 
-pub(crate)  mod cache;
-pub(crate)  mod commands_propagation;
-pub(crate)  mod commands_retrieval;
+pub(crate) mod cache;
+pub(crate) mod commands_propagation;
+pub(crate) mod commands_retrieval;
 mod messages;
 mod propagation;
 mod retrieval;
@@ -24,7 +24,7 @@ mod retrieval;
 pub(crate) use messages::{BlockMessage, BlockMessageSerializer};
 
 #[cfg(feature = "testing")]
-pub(crate)  use messages::{
+pub(crate) use messages::{
     AskForBlocksInfo, BlockInfoReply, BlockMessageDeserializer, BlockMessageDeserializerArgs,
 };
 
@@ -36,14 +36,16 @@ use super::{
     peer_handler::models::{PeerManagementCmd, PeerMessageTuple},
 };
 
-pub(crate)  struct BlockHandler {
-    pub(crate)  block_retrieval_thread: Option<(Sender<BlockHandlerRetrievalCommand>, JoinHandle<()>)>,
-    pub(crate)  block_propagation_thread: Option<(Sender<BlockHandlerPropagationCommand>, JoinHandle<()>)>,
+pub(crate) struct BlockHandler {
+    pub(crate) block_retrieval_thread:
+        Option<(Sender<BlockHandlerRetrievalCommand>, JoinHandle<()>)>,
+    pub(crate) block_propagation_thread:
+        Option<(Sender<BlockHandlerPropagationCommand>, JoinHandle<()>)>,
 }
 
 impl BlockHandler {
     #[allow(clippy::too_many_arguments)]
-    pub(crate)  fn new(
+    pub(crate) fn new(
         active_connections: Box<dyn ActiveConnectionsTrait>,
         consensus_controller: Box<dyn ConsensusController>,
         pool_controller: Box<dyn PoolController>,
@@ -89,7 +91,7 @@ impl BlockHandler {
         }
     }
 
-    pub(crate)  fn stop(&mut self) {
+    pub(crate) fn stop(&mut self) {
         if let Some((tx, thread)) = self.block_retrieval_thread.take() {
             let _ = tx.send(BlockHandlerRetrievalCommand::Stop);
             thread.join().unwrap();

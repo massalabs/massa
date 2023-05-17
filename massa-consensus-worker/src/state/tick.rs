@@ -14,7 +14,7 @@ impl ConsensusState {
     ///
     /// # Returns:
     /// Error if the process of a block returned an error.
-    pub(crate)  fn slot_tick(&mut self, current_slot: Slot) -> Result<(), ConsensusError> {
+    pub(crate) fn slot_tick(&mut self, current_slot: Slot) -> Result<(), ConsensusError> {
         massa_trace!("consensus.consensus_worker.slot_tick", {
             "slot": current_slot
         });

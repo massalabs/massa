@@ -11,41 +11,41 @@ lazy_static::lazy_static! {
 }
 
 #[derive(Debug, Deserialize, Clone)]
-pub(crate)  struct Settings {
-    pub(crate)  default_node: DefaultNode,
-    pub(crate)  history: usize,
-    pub(crate)  history_file_path: PathBuf,
-    pub(crate)  timeout: MassaTime,
-    pub(crate)  client: ClientSettings,
+pub(crate) struct Settings {
+    pub(crate) default_node: DefaultNode,
+    pub(crate) history: usize,
+    pub(crate) history_file_path: PathBuf,
+    pub(crate) timeout: MassaTime,
+    pub(crate) client: ClientSettings,
 }
 
 #[derive(Debug, Deserialize, Clone)]
-pub(crate)  struct DefaultNode {
-    pub(crate)  ip: IpAddr,
-    pub(crate)  private_port: u16,
-    pub(crate)  public_port: u16,
+pub(crate) struct DefaultNode {
+    pub(crate) ip: IpAddr,
+    pub(crate) private_port: u16,
+    pub(crate) public_port: u16,
 }
 
 /// Client settings
 /// the client settings.
 #[derive(Debug, Deserialize, Clone)]
-pub(crate)  struct ClientSettings {
-    pub(crate)  max_request_body_size: u32,
-    pub(crate)  request_timeout: MassaTime,
-    pub(crate)  max_concurrent_requests: usize,
-    pub(crate)  certificate_store: String,
-    pub(crate)  id_kind: String,
-    pub(crate)  max_log_length: u32,
-    pub(crate)  headers: Vec<(String, String)>,
-    pub(crate)  http: HttpSettings,
+pub(crate) struct ClientSettings {
+    pub(crate) max_request_body_size: u32,
+    pub(crate) request_timeout: MassaTime,
+    pub(crate) max_concurrent_requests: usize,
+    pub(crate) certificate_store: String,
+    pub(crate) id_kind: String,
+    pub(crate) max_log_length: u32,
+    pub(crate) headers: Vec<(String, String)>,
+    pub(crate) http: HttpSettings,
 }
 
 ///TODO add WebSocket to CLI
 /// Http client settings.
 /// the Http client settings
 #[derive(Debug, Deserialize, Clone)]
-pub(crate)  struct HttpSettings {
-    pub(crate)  enabled: bool,
+pub(crate) struct HttpSettings {
+    pub(crate) enabled: bool,
 }
 
 #[cfg(test)]

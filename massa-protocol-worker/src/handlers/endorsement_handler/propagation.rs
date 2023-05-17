@@ -156,7 +156,7 @@ impl PropagationThread {
     }
 }
 
-pub(crate)  fn start_propagation_thread(
+pub(crate) fn start_propagation_thread(
     receiver: Receiver<EndorsementHandlerPropagationCommand>,
     cache: SharedEndorsementCache,
     config: ProtocolConfig,

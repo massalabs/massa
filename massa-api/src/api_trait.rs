@@ -10,7 +10,7 @@ use massa_models::version::Version;
 
 /// Exposed API methods
 #[rpc(server)]
-pub(crate)  trait MassaApi {
+pub(crate) trait MassaApi {
     /// Get the active stakers and their active roll counts for the current cycle sorted by largest roll counts.
     #[method(name = "get_largest_stakers")]
     async fn get_largest_stakers(

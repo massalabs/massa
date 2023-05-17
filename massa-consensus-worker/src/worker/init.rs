@@ -35,7 +35,7 @@ use super::ConsensusWorker;
 ///
 /// # Returns
 /// A genesis block
-pub(crate)  fn create_genesis_block(
+pub(crate) fn create_genesis_block(
     cfg: &ConsensusConfig,
     thread_number: u8,
 ) -> Result<SecureShareBlock, ConsensusError> {
@@ -75,7 +75,7 @@ impl ConsensusWorker {
     ///
     /// # Returns:
     /// A `ConsensusWorker`, to interact with it use the `ConsensusController`
-    pub(crate)  fn new(
+    pub(crate) fn new(
         config: ConsensusConfig,
         command_receiver: mpsc::Receiver<ConsensusCommand>,
         shared_state: Arc<RwLock<ConsensusState>>,

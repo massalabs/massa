@@ -16,11 +16,11 @@ use massa_pos_exports::SelectorController;
 use massa_storage::Storage;
 use massa_time::MassaTime;
 
-pub(crate)  struct DenunciationPool {
+pub(crate) struct DenunciationPool {
     /// pool configuration
     config: PoolConfig,
     /// selector controller to get draws
-    pub(crate)  selector: Box<dyn SelectorController>,
+    pub(crate) selector: Box<dyn SelectorController>,
     /// execution controller
     execution_controller: Box<dyn ExecutionController>,
     /// last consensus final periods, per thread
@@ -30,7 +30,7 @@ pub(crate)  struct DenunciationPool {
 }
 
 impl DenunciationPool {
-    pub(crate)  fn init(
+    pub(crate) fn init(
         config: PoolConfig,
         selector: Box<dyn SelectorController>,
         execution_controller: Box<dyn ExecutionController>,
@@ -45,7 +45,7 @@ impl DenunciationPool {
     }
 
     /// Get the number of stored elements
-    pub(crate)  fn len(&self) -> usize {
+    pub(crate) fn len(&self) -> usize {
         self.denunciations_cache
             .iter()
             .filter(|(_, de_st)| matches!(*de_st, DenunciationStatus::DenunciationEmitted(..)))
@@ -54,7 +54,7 @@ impl DenunciationPool {
 
     /// Checks whether an element is stored in the pool - only used in unit tests for now
     #[cfg(feature = "testing")]
-    pub(crate)  fn contains(&self, denunciation: &Denunciation) -> bool {
+    pub(crate) fn contains(&self, denunciation: &Denunciation) -> bool {
         self.denunciations_cache
             .iter()
             .find(|(_, de_st)| match *de_st {
@@ -66,7 +66,10 @@ impl DenunciationPool {
 
     /// Add a denunciation precursor to the pool - can lead to a Denunciation creation
     /// Note that the Denunciation is stored in the denunciation pool internal cache
-    pub(crate)  fn add_denunciation_precursor(&mut self, denunciation_precursor: DenunciationPrecursor) {
+    pub(crate) fn add_denunciation_precursor(
+        &mut self,
+        denunciation_precursor: DenunciationPrecursor,
+    ) {
         let slot = denunciation_precursor.get_slot();
 
         // Do some checkups before adding the denunciation precursor
@@ -202,7 +205,7 @@ impl DenunciationPool {
     }
 
     /// get denunciations for block creation
-    pub(crate)  fn get_block_denunciations(&self, target_slot: &Slot) -> Vec<Denunciation> {
+    pub(crate) fn get_block_denunciations(&self, target_slot: &Slot) -> Vec<Denunciation> {
         let mut res = Vec::with_capacity(self.config.max_denunciations_per_block_header as usize);
         for (de_idx, de_status) in &self.denunciations_cache {
             if let DenunciationStatus::DenunciationEmitted(de) = de_status {

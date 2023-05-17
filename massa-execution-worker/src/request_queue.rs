@@ -21,7 +21,7 @@ impl<T, R> RequestWithResponseSender<T, R> {
     /// # Arguments
     /// * `request`: the underlying request of type T
     /// * `response_tx`: an `std::mpsc::Sender` to later send the execution output R (or an error)
-    pub(crate)  fn new(request: T, response_tx: Sender<Result<R, ExecutionError>>) -> Self {
+    pub(crate) fn new(request: T, response_tx: Sender<Result<R, ExecutionError>>) -> Self {
         RequestWithResponseSender {
             request,
             response_tx,
@@ -32,7 +32,7 @@ impl<T, R> RequestWithResponseSender<T, R> {
     ///
     /// # Arguments
     /// * err: the error to send through the response channel
-    pub(crate)  fn cancel(self, err: ExecutionError) {
+    pub(crate) fn cancel(self, err: ExecutionError) {
         // Send a message to the request's sender to signal the cancellation.
         // Ignore errors because they just mean that the emitter of the request
         // has dropped the receiver and does not need the response anymore.
@@ -40,7 +40,7 @@ impl<T, R> RequestWithResponseSender<T, R> {
     }
 
     /// Destructure self into a (request, response sender) pair
-    pub(crate)  fn into_request_sender_pair(self) -> (T, Sender<Result<R, ExecutionError>>) {
+    pub(crate) fn into_request_sender_pair(self) -> (T, Sender<Result<R, ExecutionError>>) {
         (self.request, self.response_tx)
     }
 }
@@ -63,7 +63,7 @@ impl<T, R> RequestQueue<T, R> {
     ///
     /// # Arguments
     /// * `max_items`: the maximal number of items in the queue. When full, extra new elements are cancelled and dropped.
-    pub(crate)  fn new(max_items: usize) -> Self {
+    pub(crate) fn new(max_items: usize) -> Self {
         RequestQueue {
             max_items,
             queue: VecDeque::with_capacity(max_items),
@@ -71,14 +71,14 @@ impl<T, R> RequestQueue<T, R> {
     }
 
     /// Returns the max number of items the queue can contain
-    pub(crate)  fn capacity(&self) -> usize {
+    pub(crate) fn capacity(&self) -> usize {
         self.max_items
     }
 
     /// Extends Self with the contents of another `RequestQueue`.
     /// The contents of the incoming queue are appended last.
     /// Excess items with respect to `self.max_items` are canceled and dropped.
-    pub(crate)  fn extend(&mut self, mut other: RequestQueue<T, R>) {
+    pub(crate) fn extend(&mut self, mut other: RequestQueue<T, R>) {
         // compute the number of available item slots
         let free_slots = self.max_items.saturating_sub(self.queue.len());
 
@@ -105,7 +105,7 @@ impl<T, R> RequestQueue<T, R> {
     ///
     /// # Arguments
     /// * err: the error to send through the response channel of cancelled items
-    pub(crate)  fn cancel(&mut self, err: ExecutionError) {
+    pub(crate) fn cancel(&mut self, err: ExecutionError) {
         for req in self.queue.drain(..) {
             req.cancel(err.clone());
         }
@@ -115,7 +115,7 @@ impl<T, R> RequestQueue<T, R> {
     ///
     /// # Returns
     /// The oldest element of the queue, or None if the queue is empty
-    pub(crate)  fn pop(&mut self) -> Option<RequestWithResponseSender<T, R>> {
+    pub(crate) fn pop(&mut self) -> Option<RequestWithResponseSender<T, R>> {
         self.queue.pop_front()
     }
 
@@ -125,7 +125,7 @@ impl<T, R> RequestQueue<T, R> {
     ///
     /// # Returns
     /// The oldest element of the queue, or None if the queue is empty
-    pub(crate)  fn push(&mut self, req: RequestWithResponseSender<T, R>) {
+    pub(crate) fn push(&mut self, req: RequestWithResponseSender<T, R>) {
         // If the queue is already full, cancel the incoming request and return.
         if self.queue.len() >= self.max_items {
             req.cancel(ExecutionError::ChannelError(
@@ -150,7 +150,7 @@ impl<T, R> RequestQueue<T, R> {
     ///
     /// # Returns
     /// true if the queue is full, false otherwise
-    pub(crate)  fn is_full(&self) -> bool {
+    pub(crate) fn is_full(&self) -> bool {
         self.queue.len() >= self.max_items
     }
 
@@ -158,7 +158,7 @@ impl<T, R> RequestQueue<T, R> {
     ///
     /// # Returns
     /// true if the queue is empty, false otherwise
-    pub(crate)  fn is_empty(&self) -> bool {
+    pub(crate) fn is_empty(&self) -> bool {
         self.queue.is_empty()
     }
 }

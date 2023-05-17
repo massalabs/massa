@@ -1,4 +1,4 @@
 #[derive(Clone)]
-pub(crate)  enum OperationHandlerRetrievalCommand {
+pub(crate) enum OperationHandlerRetrievalCommand {
     Stop,
 }

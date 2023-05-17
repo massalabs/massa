@@ -31,7 +31,7 @@ use crate::{commands::ConsensusCommand, state::ConsensusState};
 ///
 /// Note that sending commands and reading the state is done from different, mutually-asynchronous tasks and they can have data that are not sync yet.
 #[derive(Clone)]
-pub(crate)  struct ConsensusControllerImpl {
+pub(crate) struct ConsensusControllerImpl {
     command_sender: SyncSender<ConsensusCommand>,
     channels: ConsensusChannels,
     shared_state: Arc<RwLock<ConsensusState>>,
@@ -40,7 +40,7 @@ pub(crate)  struct ConsensusControllerImpl {
 }
 
 impl ConsensusControllerImpl {
-    pub(crate)  fn new(
+    pub(crate) fn new(
         command_sender: SyncSender<ConsensusCommand>,
         channels: ConsensusChannels,
         shared_state: Arc<RwLock<ConsensusState>>,

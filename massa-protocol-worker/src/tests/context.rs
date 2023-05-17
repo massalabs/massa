@@ -31,7 +31,7 @@ use tracing::{debug, log::warn};
 /// * `config`: protocol settings
 /// * `consensus_controller`: interact with consensus module
 /// * `storage`: Shared storage to fetch data that are fetch across all modules
-pub(crate)  fn start_protocol_controller_with_mock_network(
+pub(crate) fn start_protocol_controller_with_mock_network(
     config: ProtocolConfig,
     consensus_controller: Box<dyn ConsensusController>,
     pool_controller: Box<dyn PoolController>,
@@ -112,7 +112,7 @@ pub(crate)  fn start_protocol_controller_with_mock_network(
     Ok((network_controller, controller, Box::new(manager)))
 }
 
-pub(crate)  fn protocol_test<F>(protocol_config: &ProtocolConfig, test: F)
+pub(crate) fn protocol_test<F>(protocol_config: &ProtocolConfig, test: F)
 where
     F: FnOnce(
         Box<MockNetworkController>,
@@ -158,7 +158,7 @@ where
     protocol_manager.stop()
 }
 
-pub(crate)  fn protocol_test_with_storage<F>(protocol_config: &ProtocolConfig, test: F)
+pub(crate) fn protocol_test_with_storage<F>(protocol_config: &ProtocolConfig, test: F)
 where
     F: FnOnce(
         Box<MockNetworkController>,

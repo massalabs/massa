@@ -1,3 +1,3 @@
-pub(crate)  enum EndorsementHandlerRetrievalCommand {
+pub(crate) enum EndorsementHandlerRetrievalCommand {
     Stop,
 }

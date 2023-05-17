@@ -85,7 +85,7 @@ pub(crate) fn create_some_operations(n: usize, op_gen: &OpGenerator) -> Vec<Secu
 }
 
 /// Creates module mocks, providing the environment needed to run the provided closure
-pub(crate)  fn pool_test<F>(cfg: PoolConfig, test: F)
+pub(crate) fn pool_test<F>(cfg: PoolConfig, test: F)
 where
     F: FnOnce(
         Box<dyn PoolManager>,
@@ -120,7 +120,7 @@ where
     )
 }
 
-pub(crate)  fn operation_pool_test<F>(cfg: PoolConfig, test: F)
+pub(crate) fn operation_pool_test<F>(cfg: PoolConfig, test: F)
 where
     F: FnOnce(OperationPool, Storage),
 {
@@ -145,7 +145,7 @@ where
 }
 
 /// Creates an endorsement for use in pool tests.
-pub(crate)  fn _create_endorsement(slot: Slot) -> SecureShareEndorsement {
+pub(crate) fn _create_endorsement(slot: Slot) -> SecureShareEndorsement {
     let sender_keypair = KeyPair::generate();
 
     let content = Endorsement {

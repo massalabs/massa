@@ -11,12 +11,12 @@ use std::path::PathBuf;
 use crate::context::ExecutionContext;
 
 #[derive(Debug, Eq, Default, Clone, PartialEq)]
-pub(crate)  struct VestingInfo {
+pub(crate) struct VestingInfo {
     pub(crate) min_balance: Option<Amount>,
     pub(crate) max_rolls: Option<u64>,
 }
 
-pub(crate)  struct VestingManager {
+pub(crate) struct VestingManager {
     pub(crate) vesting_registry: PreHashMap<Address, Vec<(MassaTime, VestingInfo)>>,
     thread_count: u8,
     t0: MassaTime,
@@ -26,7 +26,7 @@ pub(crate)  struct VestingManager {
 }
 
 impl VestingManager {
-    pub(crate)  fn new(
+    pub(crate) fn new(
         thread_count: u8,
         t0: MassaTime,
         genesis_timestamp: MassaTime,
@@ -52,7 +52,7 @@ impl VestingManager {
     /// * `buyer_addr` buyer address
     /// * `slot` current slot
     /// * `roll_count` roll count to buy
-    pub(crate)  fn check_vesting_rolls_buy(
+    pub(crate) fn check_vesting_rolls_buy(
         &self,
         rolls: (u64, u64),
         buyer_addr: &Address,
@@ -79,7 +79,7 @@ impl VestingManager {
     ///
     /// * `addr` sender address
     /// * `amount` amount of coins to transfer
-    pub(crate)  fn check_vesting_transfer_coins(
+    pub(crate) fn check_vesting_transfer_coins(
         &self,
         context: &ExecutionContext,
         addr: &Address,

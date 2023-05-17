@@ -23,7 +23,7 @@ mod repl;
 mod settings;
 
 #[cfg(test)]
-pub(crate)  mod tests;
+pub(crate) mod tests;
 
 #[derive(StructOpt)]
 struct Args {

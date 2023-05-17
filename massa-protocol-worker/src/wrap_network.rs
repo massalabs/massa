@@ -16,7 +16,7 @@ use crate::{
     messages::{Message, MessagesHandler, MessagesSerializer},
 };
 
-pub(crate)  trait ActiveConnectionsTrait: Send + Sync {
+pub(crate) trait ActiveConnectionsTrait: Send + Sync {
     fn send_to_peer(
         &self,
         peer_id: &PeerId,
@@ -102,7 +102,7 @@ impl ActiveConnectionsTrait for SharedActiveConnections {
     }
 }
 
-pub(crate)  trait NetworkController: Send + Sync {
+pub(crate) trait NetworkController: Send + Sync {
     fn get_active_connections(&self) -> Box<dyn ActiveConnectionsTrait>;
     fn start_listener(
         &mut self,
@@ -122,12 +122,12 @@ pub(crate)  trait NetworkController: Send + Sync {
     ) -> Result<(), ProtocolError>;
 }
 
-pub(crate)  struct NetworkControllerImpl {
+pub(crate) struct NetworkControllerImpl {
     peernet_manager: PeerNetManager<MassaHandshake, MessagesHandler>,
 }
 
 impl NetworkControllerImpl {
-    pub(crate)  fn new(peernet_manager: PeerNetManager<MassaHandshake, MessagesHandler>) -> Self {
+    pub(crate) fn new(peernet_manager: PeerNetManager<MassaHandshake, MessagesHandler>) -> Self {
         Self { peernet_manager }
     }
 }

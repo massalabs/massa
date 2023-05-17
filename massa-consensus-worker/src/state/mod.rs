@@ -32,72 +32,75 @@ mod tick;
 mod verifications;
 
 #[derive(Clone)]
-pub(crate)  struct ConsensusState {
+pub(crate) struct ConsensusState {
     /// Configuration
-    pub(crate)  config: ConsensusConfig,
+    pub(crate) config: ConsensusConfig,
     /// Channels to communicate with other modules
-    pub(crate)  channels: ConsensusChannels,
+    pub(crate) channels: ConsensusChannels,
     /// Storage
-    pub(crate)  storage: Storage,
+    pub(crate) storage: Storage,
     /// Block ids of genesis blocks
-    pub(crate)  genesis_hashes: Vec<BlockId>,
+    pub(crate) genesis_hashes: Vec<BlockId>,
     /// Incompatibility graph: maps a block id to the block ids it is incompatible with
     /// One entry per Active Block
-    pub(crate)  gi_head: PreHashMap<BlockId, PreHashSet<BlockId>>,
+    pub(crate) gi_head: PreHashMap<BlockId, PreHashSet<BlockId>>,
     /// All the cliques
-    pub(crate)  max_cliques: Vec<Clique>,
+    pub(crate) max_cliques: Vec<Clique>,
     /// ids of active blocks
-    pub(crate)  active_index: PreHashSet<BlockId>,
+    pub(crate) active_index: PreHashSet<BlockId>,
     /// Save of latest periods
-    pub(crate)  save_final_periods: Vec<u64>,
+    pub(crate) save_final_periods: Vec<u64>,
     /// One (block id, period) per thread
-    pub(crate)  latest_final_blocks_periods: Vec<(BlockId, u64)>,
+    pub(crate) latest_final_blocks_periods: Vec<(BlockId, u64)>,
     /// One `(block id, period)` per thread TODO not sure I understand the difference with `latest_final_blocks_periods`
-    pub(crate)  best_parents: Vec<(BlockId, u64)>,
+    pub(crate) best_parents: Vec<(BlockId, u64)>,
     /// Every block we know about
-    pub(crate)  block_statuses: PreHashMap<BlockId, BlockStatus>,
+    pub(crate) block_statuses: PreHashMap<BlockId, BlockStatus>,
     /// Ids of incoming blocks/headers
-    pub(crate)  incoming_index: PreHashSet<BlockId>,
+    pub(crate) incoming_index: PreHashSet<BlockId>,
     /// Used to limit the number of waiting and discarded blocks
-    pub(crate)  sequence_counter: u64,
+    pub(crate) sequence_counter: u64,
     /// ids of waiting for slot blocks/headers
-    pub(crate)  waiting_for_slot_index: PreHashSet<BlockId>,
+    pub(crate) waiting_for_slot_index: PreHashSet<BlockId>,
     /// ids of waiting for dependencies blocks/headers
-    pub(crate)  waiting_for_dependencies_index: PreHashSet<BlockId>,
+    pub(crate) waiting_for_dependencies_index: PreHashSet<BlockId>,
     /// ids of discarded blocks
-    pub(crate)  discarded_index: PreHashSet<BlockId>,
+    pub(crate) discarded_index: PreHashSet<BlockId>,
     /// Blocks that need to be propagated
-    pub(crate)  to_propagate: PreHashMap<BlockId, Storage>,
+    pub(crate) to_propagate: PreHashMap<BlockId, Storage>,
     /// List of block ids we think are attack attempts
-    pub(crate)  attack_attempts: Vec<BlockId>,
+    pub(crate) attack_attempts: Vec<BlockId>,
     /// Newly final blocks
-    pub(crate)  new_final_blocks: PreHashSet<BlockId>,
+    pub(crate) new_final_blocks: PreHashSet<BlockId>,
     /// Newly stale block mapped to creator and slot
-    pub(crate)  new_stale_blocks: PreHashMap<BlockId, (Address, Slot)>,
+    pub(crate) new_stale_blocks: PreHashMap<BlockId, (Address, Slot)>,
     /// time at which the node was launched (used for desynchronization detection)
-    pub(crate)  launch_time: MassaTime,
+    pub(crate) launch_time: MassaTime,
     /// Final block stats `(time, creator, is_from_protocol)`
-    pub(crate)  final_block_stats: VecDeque<(MassaTime, Address, bool)>,
+    pub(crate) final_block_stats: VecDeque<(MassaTime, Address, bool)>,
     /// Blocks that come from protocol used for stats and ids are removed when inserted in `final_block_stats`
-    pub(crate)  protocol_blocks: VecDeque<(MassaTime, BlockId)>,
+    pub(crate) protocol_blocks: VecDeque<(MassaTime, BlockId)>,
     /// Stale block timestamp
-    pub(crate)  stale_block_stats: VecDeque<MassaTime>,
+    pub(crate) stale_block_stats: VecDeque<MassaTime>,
     /// the time span considered for stats
-    pub(crate)  stats_history_timespan: MassaTime,
+    pub(crate) stats_history_timespan: MassaTime,
     /// the time span considered for desynchronization detection
-    pub(crate)  stats_desync_detection_timespan: MassaTime,
+    pub(crate) stats_desync_detection_timespan: MassaTime,
     /// blocks we want
-    pub(crate)  wishlist: PreHashMap<BlockId, Option<SecuredHeader>>,
+    pub(crate) wishlist: PreHashMap<BlockId, Option<SecuredHeader>>,
     /// previous blockclique notified to Execution
-    pub(crate)  prev_blockclique: PreHashMap<BlockId, Slot>,
+    pub(crate) prev_blockclique: PreHashMap<BlockId, Slot>,
     /// Blocks indexed by slot (used for multi-stake limiting). Blocks
     /// should be saved in this map when we receive the header or the full block directly.
-    pub(crate)  nonfinal_active_blocks_per_slot: HashMap<Slot, PreHashSet<BlockId>>,
+    pub(crate) nonfinal_active_blocks_per_slot: HashMap<Slot, PreHashSet<BlockId>>,
 }
 
 impl ConsensusState {
     /// Get a full active block
-    pub(crate)  fn get_full_active_block(&self, block_id: &BlockId) -> Option<(&ActiveBlock, &Storage)> {
+    pub(crate) fn get_full_active_block(
+        &self,
+        block_id: &BlockId,
+    ) -> Option<(&ActiveBlock, &Storage)> {
         match self.block_statuses.get(block_id) {
             Some(BlockStatus::Active { a_block, storage }) => Some((a_block.as_ref(), storage)),
             _ => None,
@@ -107,7 +110,7 @@ impl ConsensusState {
     /// Get a full active block
     ///
     /// Returns an error if it was not found
-    pub(crate)  fn try_get_full_active_block(
+    pub(crate) fn try_get_full_active_block(
         &self,
         block_id: &BlockId,
     ) -> Result<(&ActiveBlock, &Storage), ConsensusError> {
@@ -116,12 +119,12 @@ impl ConsensusState {
         })
     }
 
-    pub(crate)  fn get_clique_count(&self) -> usize {
+    pub(crate) fn get_clique_count(&self) -> usize {
         self.max_cliques.len()
     }
 
     /// get the blockclique (or final) block ID at a given slot, if any
-    pub(crate)  fn get_blockclique_block_at_slot(&self, slot: &Slot) -> Option<BlockId> {
+    pub(crate) fn get_blockclique_block_at_slot(&self, slot: &Slot) -> Option<BlockId> {
         // List all blocks at this slot.
         // The list should be small: make a copy of it to avoid holding the storage lock.
         let blocks_at_slot = {
@@ -158,7 +161,7 @@ impl ConsensusState {
     }
 
     /// get the latest blockclique (or final) block ID at a given slot, if any
-    pub(crate)  fn get_latest_blockclique_block_at_slot(&self, slot: &Slot) -> BlockId {
+    pub(crate) fn get_latest_blockclique_block_at_slot(&self, slot: &Slot) -> BlockId {
         let (mut best_block_id, mut best_block_period) = self
             .latest_final_blocks_periods
             .get(slot.thread as usize)
@@ -191,7 +194,7 @@ impl ConsensusState {
         best_block_id
     }
 
-    pub(crate)  fn get_block_status(&self, block_id: &BlockId) -> BlockGraphStatus {
+    pub(crate) fn get_block_status(&self, block_id: &BlockId) -> BlockGraphStatus {
         match self.block_statuses.get(block_id) {
             None => BlockGraphStatus::NotFound,
             Some(BlockStatus::Active { a_block, .. }) => {
@@ -320,7 +323,7 @@ impl ConsensusState {
     ///      fill holes by adding to kept_blocks all the active block IDs whose slot is after the earliest kept_blocks of their thread (included) (but before end_slot (included) if it is Some)
     ///
     /// return kept_blocks
-    pub(crate)  fn list_required_active_blocks(
+    pub(crate) fn list_required_active_blocks(
         &self,
         end_slot: Option<Slot>,
     ) -> Result<PreHashSet<BlockId>, ConsensusError> {
@@ -372,7 +375,7 @@ impl ConsensusState {
         Ok(kept_blocks)
     }
 
-    pub(crate)  fn extract_block_graph_part(
+    pub(crate) fn extract_block_graph_part(
         &self,
         slot_start: Option<Slot>,
         slot_end: Option<Slot>,
@@ -452,7 +455,7 @@ impl ConsensusState {
     /// This is used when initializing Execution from Consensus.
     /// Since the Execution bootstrap snapshot is older than the Consensus snapshot,
     /// we might need to signal older final blocks for Execution to catch up.
-    pub(crate)  fn get_all_final_blocks(&self) -> HashMap<BlockId, (Slot, Storage)> {
+    pub(crate) fn get_all_final_blocks(&self) -> HashMap<BlockId, (Slot, Storage)> {
         self.active_index
             .iter()
             .map(|b_id| {
@@ -468,7 +471,7 @@ impl ConsensusState {
     }
 
     /// get the current block wish list, including the operations hash.
-    pub(crate)  fn get_block_wishlist(
+    pub(crate) fn get_block_wishlist(
         &self,
     ) -> Result<PreHashMap<BlockId, Option<SecuredHeader>>, ConsensusError> {
         let mut wishlist = PreHashMap::<BlockId, Option<SecuredHeader>>::default();
@@ -502,7 +505,7 @@ impl ConsensusState {
     ///
     /// # Argument
     /// * hash : hash of the given block
-    pub(crate)  fn get_active_block_and_descendants(
+    pub(crate) fn get_active_block_and_descendants(
         &self,
         block_id: &BlockId,
     ) -> Result<PreHashSet<BlockId>, ConsensusError> {

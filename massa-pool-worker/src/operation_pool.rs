@@ -15,7 +15,7 @@ use tracing::{debug, trace};
 
 use crate::types::{OperationInfo, PoolOperationCursor};
 
-pub(crate)  struct OperationPool {
+pub(crate) struct OperationPool {
     /// configuration
     config: PoolConfig,
 
@@ -42,7 +42,7 @@ pub(crate)  struct OperationPool {
 }
 
 impl OperationPool {
-    pub(crate)  fn init(
+    pub(crate) fn init(
         config: PoolConfig,
         storage: &Storage,
         execution_controller: Box<dyn ExecutionController>,
@@ -61,12 +61,12 @@ impl OperationPool {
     }
 
     /// Get the number of stored elements
-    pub(crate)  fn len(&self) -> usize {
+    pub(crate) fn len(&self) -> usize {
         self.operations.len()
     }
 
     /// Checks whether an element is stored in the pool.
-    pub(crate)  fn contains(&self, id: &OperationId) -> bool {
+    pub(crate) fn contains(&self, id: &OperationId) -> bool {
         self.operations.contains_key(id)
     }
 
@@ -197,7 +197,7 @@ impl OperationPool {
     /// Searches the available operations, and selects the sub-set of operations that:
     /// - fit inside the block
     /// - is the most profitable for block producer
-    pub(crate)  fn get_block_operations(&self, slot: &Slot) -> (Vec<OperationId>, Storage) {
+    pub(crate) fn get_block_operations(&self, slot: &Slot) -> (Vec<OperationId>, Storage) {
         // init list of selected operation IDs
         let mut op_ids = Vec::new();
 

@@ -13,7 +13,7 @@ mod tonic {
     use std::{path::PathBuf, process::Command};
 
     /// This function is responsible for building the Massa protobuf API and generating documentation
-    pub(crate)  fn build() -> Result<(), Box<dyn std::error::Error>> {
+    pub(crate) fn build() -> Result<(), Box<dyn std::error::Error>> {
         // Find all protobuf files in the 'proto/massa/' directory
         let protos = find_protos("proto/massa/")?;
 

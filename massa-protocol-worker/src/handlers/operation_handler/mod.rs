@@ -13,9 +13,9 @@ use self::{
     retrieval::start_retrieval_thread,
 };
 
-pub(crate)  mod cache;
-pub(crate)  mod commands_propagation;
-pub(crate)  mod commands_retrieval;
+pub(crate) mod cache;
+pub(crate) mod commands_propagation;
+pub(crate) mod commands_retrieval;
 mod messages;
 mod propagation;
 mod retrieval;
@@ -24,16 +24,16 @@ pub(crate) use messages::{OperationMessage, OperationMessageSerializer};
 
 use super::peer_handler::models::{PeerManagementCmd, PeerMessageTuple};
 
-pub(crate)  struct OperationHandler {
-    pub(crate)  operation_retrieval_thread:
+pub(crate) struct OperationHandler {
+    pub(crate) operation_retrieval_thread:
         Option<(Sender<OperationHandlerRetrievalCommand>, JoinHandle<()>)>,
-    pub(crate)  operation_propagation_thread:
+    pub(crate) operation_propagation_thread:
         Option<(Sender<OperationHandlerPropagationCommand>, JoinHandle<()>)>,
 }
 
 impl OperationHandler {
     #[allow(clippy::too_many_arguments)]
-    pub(crate)  fn new(
+    pub(crate) fn new(
         pool_controller: Box<dyn PoolController>,
         storage: Storage,
         config: ProtocolConfig,
@@ -66,7 +66,7 @@ impl OperationHandler {
         }
     }
 
-    pub(crate)  fn stop(&mut self) {
+    pub(crate) fn stop(&mut self) {
         if let Some((tx, thread)) = self.operation_retrieval_thread.take() {
             let _ = tx.send(OperationHandlerRetrievalCommand::Stop);
             thread.join().unwrap();

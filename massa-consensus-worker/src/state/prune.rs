@@ -340,7 +340,7 @@ impl ConsensusState {
     }
 
     /// Clear all the caches and blocks waiting to be processed to avoid too much memory usage.
-    pub(crate)  fn prune(&mut self) -> Result<(), ConsensusError> {
+    pub(crate) fn prune(&mut self) -> Result<(), ConsensusError> {
         let before = self.max_cliques.len();
         // Step 1: discard final blocks that are not useful to the graph anymore and return them
         self.prune_active()?;

@@ -20,7 +20,7 @@ use crate::handlers::{
 };
 
 #[derive(Debug)]
-pub(crate)  enum Message {
+pub(crate) enum Message {
     Block(Box<BlockMessage>),
     Endorsement(EndorsementMessage),
     Operation(OperationMessage),
@@ -72,7 +72,7 @@ impl Message {
 }
 
 #[derive(Clone)]
-pub(crate)  struct MessagesSerializer {
+pub(crate) struct MessagesSerializer {
     id_serializer: U64VarIntSerializer,
     block_message_serializer: Option<BlockMessageSerializer>,
     operation_message_serializer: Option<OperationMessageSerializer>,
@@ -87,7 +87,7 @@ impl Default for MessagesSerializer {
 }
 
 impl MessagesSerializer {
-    pub(crate)  fn new() -> Self {
+    pub(crate) fn new() -> Self {
         Self {
             id_serializer: U64VarIntSerializer::new(),
             block_message_serializer: None,
@@ -97,7 +97,7 @@ impl MessagesSerializer {
         }
     }
 
-    pub(crate)  fn with_block_message_serializer(
+    pub(crate) fn with_block_message_serializer(
         mut self,
         block_message_serializer: BlockMessageSerializer,
     ) -> Self {
@@ -105,7 +105,7 @@ impl MessagesSerializer {
         self
     }
 
-    pub(crate)  fn with_operation_message_serializer(
+    pub(crate) fn with_operation_message_serializer(
         mut self,
         operation_message_serializer: OperationMessageSerializer,
     ) -> Self {
@@ -113,7 +113,7 @@ impl MessagesSerializer {
         self
     }
 
-    pub(crate)  fn with_endorsement_message_serializer(
+    pub(crate) fn with_endorsement_message_serializer(
         mut self,
         endorsement_message_serializer: EndorsementMessageSerializer,
     ) -> Self {
@@ -121,7 +121,7 @@ impl MessagesSerializer {
         self
     }
 
-    pub(crate)  fn with_peer_management_message_serializer(
+    pub(crate) fn with_peer_management_message_serializer(
         mut self,
         peer_management_message_serializer: PeerManagementMessageSerializer,
     ) -> Self {
@@ -210,12 +210,12 @@ impl PeerNetMessagesSerializer<Message> for MessagesSerializer {
 }
 
 #[derive(Clone)]
-pub(crate)  struct MessagesHandler {
-    pub(crate)  sender_blocks: Sender<PeerMessageTuple>,
-    pub(crate)  sender_endorsements: Sender<PeerMessageTuple>,
-    pub(crate)  sender_operations: Sender<PeerMessageTuple>,
-    pub(crate)  sender_peers: Sender<PeerMessageTuple>,
-    pub(crate)  id_deserializer: U64VarIntDeserializer,
+pub(crate) struct MessagesHandler {
+    pub(crate) sender_blocks: Sender<PeerMessageTuple>,
+    pub(crate) sender_endorsements: Sender<PeerMessageTuple>,
+    pub(crate) sender_operations: Sender<PeerMessageTuple>,
+    pub(crate) sender_peers: Sender<PeerMessageTuple>,
+    pub(crate) id_deserializer: U64VarIntDeserializer,
 }
 
 impl PeerNetMessagesHandler for MessagesHandler {

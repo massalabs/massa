@@ -12,7 +12,7 @@ use tonic::{Request, Streaming};
 use tracing::log::{error, warn};
 
 /// Type declaration for NewFilledBlocks
-pub(crate)  type NewFilledBlocksStreamType = Pin<
+pub(crate) type NewFilledBlocksStreamType = Pin<
     Box<
         dyn futures_core::Stream<Item = Result<grpc::NewFilledBlocksResponse, tonic::Status>>
             + Send

@@ -22,7 +22,7 @@ impl ConsensusState {
     ///
     /// # Returns:
     /// Success or error if the header is invalid or too old
-    pub(crate)  fn register_block_header(
+    pub(crate) fn register_block_header(
         &mut self,
         block_id: BlockId,
         header: SecuredHeader,
@@ -79,7 +79,7 @@ impl ConsensusState {
     ///
     /// # Returns:
     ///  Success or error if the block is invalid or too old
-    pub(crate)  fn register_block(
+    pub(crate) fn register_block(
         &mut self,
         block_id: BlockId,
         slot: Slot,
@@ -161,7 +161,7 @@ impl ConsensusState {
     /// # Arguments:
     /// * `block_id`: Block id of the block to mark as invalid
     /// * `header`: Header of the block to mark as invalid
-    pub(crate)  fn mark_invalid_block(&mut self, block_id: &BlockId, header: SecuredHeader) {
+    pub(crate) fn mark_invalid_block(&mut self, block_id: &BlockId, header: SecuredHeader) {
         let reason = DiscardReason::Invalid("invalid".to_string());
         self.maybe_note_attack_attempt(&reason, block_id);
         massa_trace!("consensus.block_graph.process.invalid_block", {"block_id": block_id, "reason": reason});

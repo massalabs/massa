@@ -28,7 +28,7 @@ impl SpeculativeExecutedOps {
     /// # Arguments
     /// * `final_state`: thread-safe shared access the the final state
     /// * `active_history`: thread-safe shared access the speculative execution history
-    pub(crate)  fn new(
+    pub(crate) fn new(
         final_state: Arc<RwLock<FinalState>>,
         active_history: Arc<RwLock<ActiveHistory>>,
     ) -> Self {
@@ -41,22 +41,22 @@ impl SpeculativeExecutedOps {
 
     /// Returns the set of operation IDs caused to the `SpeculativeExecutedOps` since its creation,
     /// and resets their local value to nothing
-    pub(crate)  fn take(&mut self) -> ExecutedOpsChanges {
+    pub(crate) fn take(&mut self) -> ExecutedOpsChanges {
         std::mem::take(&mut self.executed_ops)
     }
 
     /// Takes a snapshot (clone) of the changes caused to the `SpeculativeExecutedOps` since its creation
-    pub(crate)  fn get_snapshot(&self) -> ExecutedOpsChanges {
+    pub(crate) fn get_snapshot(&self) -> ExecutedOpsChanges {
         self.executed_ops.clone()
     }
 
     /// Resets the `SpeculativeRollState` to a snapshot (see `get_snapshot` method)
-    pub(crate)  fn reset_to_snapshot(&mut self, snapshot: ExecutedOpsChanges) {
+    pub(crate) fn reset_to_snapshot(&mut self, snapshot: ExecutedOpsChanges) {
         self.executed_ops = snapshot;
     }
 
     /// Checks if an operation was executed previously
-    pub(crate)  fn is_op_executed(&self, op_id: &OperationId) -> bool {
+    pub(crate) fn is_op_executed(&self, op_id: &OperationId) -> bool {
         // check in the curent changes
         if self.executed_ops.contains_key(op_id) {
             return true;
@@ -84,7 +84,7 @@ impl SpeculativeExecutedOps {
     /// * `op_id`: operation ID
     /// * `op_exec_status` : the status of the execution of the operation.
     /// * `op_valid_until_slot`: slot until which the operation remains valid (included)
-    pub(crate)  fn insert_executed_op(
+    pub(crate) fn insert_executed_op(
         &mut self,
         op_id: OperationId,
         op_exec_status: bool,

@@ -25,22 +25,22 @@ use crate::{
 };
 
 #[derive(Clone)]
-pub(crate)  struct ProtocolControllerImpl {
+pub(crate) struct ProtocolControllerImpl {
     // Use Option here in order to be able to drop the Sender without dropping the controller
     // using `option.take()`.
     // This is needed as to be able to stop the controller, the Sender has to be dropped,
     // if not, the handler will deadlock on `recv`
     // As this is never None, we allow ourselves to use `unwrap` to acceed to the senders
-    pub(crate)  sender_block_retrieval_handler: Option<Sender<BlockHandlerRetrievalCommand>>,
-    pub(crate)  sender_block_handler: Option<Sender<BlockHandlerPropagationCommand>>,
-    pub(crate)  sender_operation_handler: Option<Sender<OperationHandlerPropagationCommand>>,
-    pub(crate)  sender_endorsement_handler: Option<Sender<EndorsementHandlerPropagationCommand>>,
-    pub(crate)  sender_connectivity_thread: Option<Sender<ConnectivityCommand>>,
-    pub(crate)  sender_peer_management_thread: Option<Sender<PeerManagementCmd>>,
+    pub(crate) sender_block_retrieval_handler: Option<Sender<BlockHandlerRetrievalCommand>>,
+    pub(crate) sender_block_handler: Option<Sender<BlockHandlerPropagationCommand>>,
+    pub(crate) sender_operation_handler: Option<Sender<OperationHandlerPropagationCommand>>,
+    pub(crate) sender_endorsement_handler: Option<Sender<EndorsementHandlerPropagationCommand>>,
+    pub(crate) sender_connectivity_thread: Option<Sender<ConnectivityCommand>>,
+    pub(crate) sender_peer_management_thread: Option<Sender<PeerManagementCmd>>,
 }
 
 impl ProtocolControllerImpl {
-    pub(crate)  fn new(
+    pub(crate) fn new(
         sender_block_retrieval_handler: Sender<BlockHandlerRetrievalCommand>,
         sender_block_handler: Sender<BlockHandlerPropagationCommand>,
         sender_operation_handler: Sender<OperationHandlerPropagationCommand>,

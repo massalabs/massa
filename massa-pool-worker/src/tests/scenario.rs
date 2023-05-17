@@ -100,7 +100,7 @@ fn test_simple_get_operations() {
 }
 
 /// Launch a default mock for execution controller on call `get_block_operation` API.
-pub(crate)  fn launch_basic_get_block_operation_execution_mock(
+pub(crate) fn launch_basic_get_block_operation_execution_mock(
     operations_len: usize,
     unexecuted_ops: PreHashSet<OperationId>,
     recvr: Receiver<ControllerMsg>,
