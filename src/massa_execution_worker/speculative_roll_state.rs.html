@@ -585,6 +585,11 @@
 <a href="#585" id="585">585</a>
 <a href="#586" id="586">586</a>
 <a href="#587" id="587">587</a>
+<a href="#588" id="588">588</a>
+<a href="#589" id="589">589</a>
+<a href="#590" id="590">590</a>
+<a href="#591" id="591">591</a>
+<a href="#592" id="592">592</a>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="kw">use </span><span class="kw">crate</span>::active_history::ActiveHistory;
@@ -918,12 +923,11 @@
             <span class="kw">let </span>final_state = <span class="self">self</span>.final_state.read();
             <span class="kw">for </span>(slot, addr_amount) <span class="kw">in </span>final_state
                 .pos_state
-                .deferred_credits
+                .get_deferred_credits_range(min_slot..)
                 .credits
-                .range(min_slot..)
             {
                 <span class="kw">if let </span><span class="prelude-val">Some</span>(amount) = addr_amount.get(address) {
-                    <span class="kw">let _ </span>= res.try_insert(<span class="kw-2">*</span>slot, <span class="kw-2">*</span>amount);
+                    <span class="kw">let _ </span>= res.try_insert(slot, <span class="kw-2">*</span>amount);
                 };
             }
         }
@@ -956,7 +960,6 @@
             </span>.final_state
             .read()
             .pos_state
-            .deferred_credits
             .get_address_credits_for_slot(addr, slot)
         {
             <span class="kw">return </span><span class="prelude-val">Some</span>(v);
@@ -978,20 +981,27 @@
         </span><span class="kw">let </span>final_state = <span class="self">self</span>.final_state.read();
 
         <span class="comment">// add finals
-        </span>final_state.pos_state.cycle_history.iter().for_each(|c| {
-            <span class="kw">let </span><span class="kw-2">mut </span>cur_item = ExecutionAddressCycleInfo {
-                cycle: c.cycle,
-                is_final: c.complete,
-                ok_count: <span class="number">0</span>,
-                nok_count: <span class="number">0</span>,
-                active_rolls: <span class="prelude-val">None</span>, <span class="comment">// will be filled afterwards
-            </span>};
-            <span class="kw">if let </span><span class="prelude-val">Some</span>(prod_stats) = c.production_stats.get(address) {
-                cur_item.ok_count = prod_stats.block_success_count;
-                cur_item.nok_count = prod_stats.block_failure_count;
-            }
-            res.push(cur_item);
-        });
+        </span>final_state
+            .pos_state
+            .cycle_history_cache
+            .iter()
+            .for_each(|c| {
+                <span class="kw">let </span><span class="kw-2">mut </span>cur_item = ExecutionAddressCycleInfo {
+                    cycle: c.<span class="number">0</span>,
+                    is_final: c.<span class="number">1</span>,
+                    ok_count: <span class="number">0</span>,
+                    nok_count: <span class="number">0</span>,
+                    active_rolls: <span class="prelude-val">None</span>, <span class="comment">// will be filled afterwards
+                </span>};
+                <span class="kw">if let </span><span class="prelude-val">Some</span>(prod_stats) = final_state
+                    .pos_state
+                    .get_production_stats_for_address(c.<span class="number">0</span>, <span class="kw-2">*</span>address)
+                {
+                    cur_item.ok_count = prod_stats.block_success_count;
+                    cur_item.nok_count = prod_stats.block_failure_count;
+                }
+                res.push(cur_item);
+            });
 
         <span class="comment">// add active history
         // note that a last cycle might overlap between final and active histories
@@ -1118,9 +1128,9 @@
             <span class="kw">if let </span><span class="prelude-val">Some</span>(final_stats) = final_state.pos_state.get_all_production_stats(cycle) {
                 <span class="kw">for </span>(addr, stats) <span class="kw">in </span>final_stats {
                     accumulated_stats
-                        .entry(<span class="kw-2">*</span>addr)
-                        .and_modify(|cur| cur.extend(stats))
-                        .or_insert_with(|| <span class="kw-2">*</span>stats);
+                        .entry(addr)
+                        .and_modify(|cur| cur.extend(<span class="kw-2">&amp;</span>stats))
+                        .or_insert_with(|| stats);
                 }
                 underflow = <span class="bool-val">false</span>;
             }

@@ -576,6 +576,7 @@
 <a href="#576" id="576">576</a>
 <a href="#577" id="577">577</a>
 <a href="#578" id="578">578</a>
+<a href="#579" id="579">579</a>
 </pre><pre class="rust"><code><span class="kw">use </span>std::{
     collections::HashMap,
     io::Read,
@@ -706,6 +707,7 @@
                     <span class="comment">//TODO: Check ip we are connected match one of the announced ips
                     </span>{
                         <span class="kw">let </span><span class="kw-2">mut </span>peer_db_write = <span class="self">self</span>.peer_db.write();
+
                         <span class="comment">//TODO: Hacky change it when better management ip/listeners
                         </span><span class="kw">if </span>!announcement.listeners.is_empty() {
                             peer_db_write
