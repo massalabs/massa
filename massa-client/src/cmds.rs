@@ -1,7 +1,7 @@
 // Copyright (c) 2022 MASSA LABS <info@massa.net>
 
 use crate::display::Output;
-use crate::{client_warning, rpc_error};
+use crate::{client_warning, grpc_error, rpc_error};
 use anyhow::{anyhow, bail, Result};
 use console::style;
 use massa_api_exports::{
@@ -780,9 +780,8 @@ impl Command {
                         resp.status
                     }
                     Err(e) => {
-                        // FIXME: Should we default to the last known version - has client some local storage?
-                        // FIXME: defines grpc_error?
-                        rpc_error!(e)
+                        // FIXME: Should we default to the last known version - default to 0?
+                        grpc_error!(e)
                     }
                 };
 

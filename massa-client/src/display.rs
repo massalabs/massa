@@ -42,6 +42,14 @@ macro_rules! rpc_error {
 }
 
 #[macro_export]
+/// bail a shinny RPC error
+macro_rules! grpc_error {
+    ($e:expr) => {
+        bail!("check if your node is running and grpc api enabled: {}", $e)
+    };
+}
+
+#[macro_export]
 /// print a yellow warning
 macro_rules! client_warning {
     ($e:expr) => {

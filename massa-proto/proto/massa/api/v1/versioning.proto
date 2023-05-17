@@ -4,7 +4,6 @@ syntax = "proto3";
 
 package massa.api.v1;
 
-/*
 option csharp_namespace = "Com.Massa.Api.V1";
 option go_package = "github.com/massalabs/massa/api/v1;v1";
 option java_multiple_files = true;
@@ -13,7 +12,6 @@ option objc_class_prefix = "GRPC";
 option php_namespace = "Com\\Massa\\Api\\V1";
 option ruby_package = "Com::Massa::Api::V1";
 option swift_prefix = "GRPC";
-*/
 
 // Entry for GetMipStatusResponse
 message MipStatusEntry {
@@ -37,16 +35,6 @@ message MipComponentEntry {
   uint32 kind = 1;
   uint32 version = 2;
 }
-
-/*
-// Same as MipComponent enum in versioning package
-// TODO / FIXME: what about __Nonexhaustive ?
-enum MipComponent {
-  Component_Address = 0;
-  Component_Block = 1; // Note: cannot use Block here otherwise protoc will be mad
-  Component_VM = 2;
-}
-*/
 
 // Same as ComponentStateId enum in versioning package
 enum ComponentStateId {

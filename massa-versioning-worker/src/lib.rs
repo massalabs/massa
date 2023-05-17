@@ -49,6 +49,7 @@
 pub mod versioning;
 pub mod versioning_factory;
 pub mod versioning_ser_der;
+pub mod versioning_bridge;
 
 /// Test utils
 #[cfg(any(test, feature = "testing"))]
