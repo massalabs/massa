@@ -46,9 +46,9 @@
 //!
 //! Unit tests in versioning_factory.rs shows a basic but realistic implementation of a AddressFactory (impl the Factory trait)
 
+pub mod grpc_mapping;
 pub mod versioning;
 pub mod versioning_factory;
-pub mod versioning_mapping;
 pub mod versioning_ser_der;
 
 /// Test utils
