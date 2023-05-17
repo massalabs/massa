@@ -2248,7 +2248,7 @@
                 <span class="kw">let </span>versioning_status = <span class="kw">match </span>client.grpc.get_mip_status(req).<span class="kw">await </span>{
                     <span class="prelude-val">Ok</span>(resp_) =&gt; {
                         <span class="kw">let </span>resp = resp_.into_inner();
-                        resp.status
+                        resp.entry
                     }
                     <span class="prelude-val">Err</span>(e) =&gt; {
                         <span class="comment">// FIXME: Should we default to the last known version - default to 0?
@@ -2261,10 +2261,10 @@
                     .into_iter()
                     .rev()
                     .find_map(|entry| {
-                        <span class="kw">let </span>state = grpc::ComponentStateId::from_i32(entry.state)
+                        <span class="kw">let </span>state = grpc::ComponentStateId::from_i32(entry.state_id)
                             .unwrap_or(grpc::ComponentStateId::Error);
                         <span class="kw">match </span>state {
-                            grpc::ComponentStateId::Active =&gt; <span class="prelude-val">Some</span>(entry.state),
+                            grpc::ComponentStateId::Active =&gt; <span class="prelude-val">Some</span>(entry.state_id),
                             <span class="kw">_ </span>=&gt; <span class="prelude-val">None</span>,
                         }
                     })

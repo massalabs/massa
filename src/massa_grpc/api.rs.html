@@ -1024,14 +1024,14 @@
             <span class="kw">let </span>state_id = grpc::ComponentStateId::from(state_id_);
             <span class="prelude-val">Ok</span>(grpc::MipStatusEntry {
                 mip_info: <span class="prelude-val">Some</span>(grpc::MipInfo::from(mip_info)),
-                state: i32::from(state_id),
+                state_id: i32::from(state_id),
             })
         })
         .collect();
 
     <span class="prelude-val">Ok</span>(grpc::GetMipStatusResponse {
         id: request.into_inner().id,
-        status: mip_store_status<span class="question-mark">?</span>,
+        entry: mip_store_status<span class="question-mark">?</span>,
     })
 }
 

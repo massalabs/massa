@@ -4044,7 +4044,7 @@
     </span><span class="kw">pub </span>mip_info: ::core::option::Option&lt;MipInfo&gt;,
     <span class="doccomment">/// state id
     </span><span class="attr">#[prost(enumeration = <span class="string">&quot;ComponentStateId&quot;</span>, tag = <span class="string">&quot;2&quot;</span>)]
-    </span><span class="kw">pub </span>state: i32,
+    </span><span class="kw">pub </span>state_id: i32,
 }
 <span class="doccomment">/// Same as MipInfo struct in versioning package
 </span><span class="attr">#[allow(clippy::derive_partial_eq_without_eq)]
@@ -4515,7 +4515,7 @@
     </span><span class="kw">pub </span>id: ::prost::alloc::string::String,
     <span class="doccomment">/// MipInfo - status id entry
     </span><span class="attr">#[prost(message, repeated, tag = <span class="string">&quot;2&quot;</span>)]
-    </span><span class="kw">pub </span>status: ::prost::alloc::vec::Vec&lt;MipStatusEntry&gt;,
+    </span><span class="kw">pub </span>entry: ::prost::alloc::vec::Vec&lt;MipStatusEntry&gt;,
 }
 <span class="doccomment">/// GetTransactionsThroughputRequest holds request for GetTransactionsThroughput
 </span><span class="attr">#[allow(clippy::derive_partial_eq_without_eq)]
