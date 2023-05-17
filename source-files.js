@@ -33,7 +33,7 @@ var sourcesIndex = JSON.parse('{\
 "massa_signature":["",[],["error.rs","lib.rs","signature_impl.rs"]],\
 "massa_storage":["",[],["block_indexes.rs","endorsement_indexes.rs","lib.rs","operation_indexes.rs"]],\
 "massa_time":["",[],["error.rs","lib.rs"]],\
-"massa_versioning_worker":["",[],["grpc_mapping.rs","lib.rs","versioning.rs","versioning_factory.rs","versioning_ser_der.rs"]],\
+"massa_versioning_worker":["",[],["lib.rs","versioning.rs","versioning_factory.rs","versioning_ser_der.rs"]],\
 "massa_wallet":["",[],["error.rs","lib.rs"]]\
 }');
 createSourceSidebar();
