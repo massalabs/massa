@@ -214,6 +214,14 @@ message GetDatastoreEntriesResponse {
   repeated DatastoreEntry entries = 2;
 }
 
+// DatastoreEntry
+message DatastoreEntry {
+  // final datastore entry value
+  bytes final_value = 1;
+  // candidate_value datastore entry value
+  bytes candidate_value = 2;
+}
+
 // GetLargestStakersRequest holds request from GetLargestStakers
 message GetLargestStakersRequest {
   // Request id

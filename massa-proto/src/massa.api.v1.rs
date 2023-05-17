@@ -55,17 +55,6 @@ pub struct SignedEndorsement {
     #[prost(string, tag = "5")]
     pub id: ::prost::alloc::string::String,
 }
-/// DatastoreEntry
-#[allow(clippy::derive_partial_eq_without_eq)]
-#[derive(Clone, PartialEq, ::prost::Message)]
-pub struct DatastoreEntry {
-    /// final datastore entry value
-    #[prost(bytes = "vec", tag = "1")]
-    pub final_value: ::prost::alloc::vec::Vec<u8>,
-    /// candidate_value datastore entry value
-    #[prost(bytes = "vec", tag = "2")]
-    pub candidate_value: ::prost::alloc::vec::Vec<u8>,
-}
 /// BytesMapFieldEntry
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
@@ -503,22 +492,14 @@ pub struct ScExecutionEventContext {
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct StateChanges {
     /// Ledger changes
-    #[prost(message, optional, tag = "1")]
-    pub ledger_changes: ::core::option::Option<LedgerChanges>,
+    #[prost(message, repeated, tag = "1")]
+    pub ledger_changes: ::prost::alloc::vec::Vec<LedgerChangeEntry>,
     /// Asynchronous pool changes
     #[prost(message, repeated, tag = "2")]
     pub async_pool_changes: ::prost::alloc::vec::Vec<AsyncPoolChangeEntry>,
     /// Executed operations changes
-    #[prost(message, optional, tag = "5")]
-    pub executed_ops_changes: ::core::option::Option<ExecutedOpsChanges>,
-}
-/// ExecutedOpsChanges
-#[allow(clippy::derive_partial_eq_without_eq)]
-#[derive(Clone, PartialEq, ::prost::Message)]
-pub struct ExecutedOpsChanges {
-    /// Executed operations
-    #[prost(message, repeated, tag = "1")]
-    pub executed_ops: ::prost::alloc::vec::Vec<ExecutedOpsChangeEntry>,
+    #[prost(message, repeated, tag = "4")]
+    pub executed_ops_changes: ::prost::alloc::vec::Vec<ExecutedOpsChangeEntry>,
 }
 /// ExecutedOpsChangeEntry
 #[allow(clippy::derive_partial_eq_without_eq)]
@@ -627,14 +608,6 @@ pub struct AsyncMessageTrigger {
     #[prost(bytes = "vec", optional, tag = "2")]
     pub datastore_key: ::core::option::Option<::prost::alloc::vec::Vec<u8>>,
 }
-/// Ledger change
-#[allow(clippy::derive_partial_eq_without_eq)]
-#[derive(Clone, PartialEq, ::prost::Message)]
-pub struct LedgerChanges {
-    /// Ledger change entry
-    #[prost(message, repeated, tag = "2")]
-    pub entries: ::prost::alloc::vec::Vec<LedgerChangeEntry>,
-}
 /// LedgerChangeEntry
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
@@ -653,12 +626,23 @@ pub struct LedgerChangeValue {
     /// The type of the change
     #[prost(enumeration = "LedgerChangeType", tag = "1")]
     pub r#type: i32,
-    /// Created ledger entry
-    #[prost(message, optional, tag = "2")]
-    pub created_entry: ::core::option::Option<LedgerEntry>,
-    /// Update ledger entry
-    #[prost(message, optional, tag = "3")]
-    pub updated_entry: ::core::option::Option<LedgerEntryUpdate>,
+    /// LedgerEntry or LedgerEntryUpdate
+    #[prost(oneof = "ledger_change_value::Entry", tags = "2, 3")]
+    pub entry: ::core::option::Option<ledger_change_value::Entry>,
+}
+/// Nested message and enum types in `LedgerChangeValue`.
+pub mod ledger_change_value {
+    /// LedgerEntry or LedgerEntryUpdate
+    #[allow(clippy::derive_partial_eq_without_eq)]
+    #[derive(Clone, PartialEq, ::prost::Oneof)]
+    pub enum Entry {
+        /// Created ledger entry
+        #[prost(message, tag = "2")]
+        CreatedEntry(super::LedgerEntry),
+        /// Update ledger entry
+        #[prost(message, tag = "3")]
+        UpdatedEntry(super::LedgerEntryUpdate),
+    }
 }
 /// An entry associated to an address in the `FinalLedger`
 #[allow(clippy::derive_partial_eq_without_eq)]
@@ -672,7 +656,7 @@ pub struct LedgerEntry {
     pub bytecode: ::prost::alloc::vec::Vec<u8>,
     /// A key-value store associating a hash to arbitrary bytes
     #[prost(message, repeated, tag = "3")]
-    pub entries: ::prost::alloc::vec::Vec<DatastoreEntry>,
+    pub entries: ::prost::alloc::vec::Vec<BytesMapFieldEntry>,
 }
 /// Represents an update to one or more fields of a `LedgerEntry`
 #[allow(clippy::derive_partial_eq_without_eq)]
@@ -719,7 +703,7 @@ pub struct SetOrDeleteDatastoreEntry {
     pub r#type: i32,
     /// The balance of that entry (optioal)
     #[prost(message, optional, tag = "2")]
-    pub datastore_entry: ::core::option::Option<DatastoreEntry>,
+    pub datastore_entry: ::core::option::Option<BytesMapFieldEntry>,
 }
 /// ScExecutionEventStatus type enum
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, ::prost::Enumeration)]
@@ -1078,6 +1062,17 @@ pub struct GetDatastoreEntriesResponse {
     /// Datastore entries
     #[prost(message, repeated, tag = "2")]
     pub entries: ::prost::alloc::vec::Vec<DatastoreEntry>,
+}
+/// DatastoreEntry
+#[allow(clippy::derive_partial_eq_without_eq)]
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct DatastoreEntry {
+    /// final datastore entry value
+    #[prost(bytes = "vec", tag = "1")]
+    pub final_value: ::prost::alloc::vec::Vec<u8>,
+    /// candidate_value datastore entry value
+    #[prost(bytes = "vec", tag = "2")]
+    pub candidate_value: ::prost::alloc::vec::Vec<u8>,
 }
 /// GetLargestStakersRequest holds request from GetLargestStakers
 #[allow(clippy::derive_partial_eq_without_eq)]

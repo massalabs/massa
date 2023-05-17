@@ -11,10 +11,7 @@ impl From<LedgerEntry> for grpc::LedgerEntry {
             entries: value
                 .datastore
                 .into_iter()
-                .map(|(k, v)| grpc::DatastoreEntry {
-                    final_value: k,
-                    candidate_value: v,
-                })
+                .map(|(key, value)| grpc::BytesMapFieldEntry { key, value })
                 .collect(),
         }
     }
@@ -49,9 +46,9 @@ impl From<LedgerEntryUpdate> for grpc::LedgerEntryUpdate {
                 .map(|entry| match entry.1 {
                     SetOrDelete::Set(value) => grpc::SetOrDeleteDatastoreEntry {
                         r#type: grpc::LedgerChangeType::Set as i32,
-                        datastore_entry: Some(grpc::DatastoreEntry {
-                            final_value: entry.0,
-                            candidate_value: value,
+                        datastore_entry: Some(grpc::BytesMapFieldEntry {
+                            key: entry.0,
+                            value,
                         }),
                     },
                     SetOrDelete::Delete => grpc::SetOrDeleteDatastoreEntry {

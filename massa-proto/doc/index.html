@@ -195,6 +195,10 @@
                 </li>
               
                 <li>
+                  <a href="#massa.api.v1.DatastoreEntry"><span class="badge">M</span>DatastoreEntry</a>
+                </li>
+              
+                <li>
                   <a href="#massa.api.v1.DatastoreEntryFilter"><span class="badge">M</span>DatastoreEntryFilter</a>
                 </li>
               
@@ -509,10 +513,6 @@
                 </li>
               
                 <li>
-                  <a href="#massa.api.v1.DatastoreEntry"><span class="badge">M</span>DatastoreEntry</a>
-                </li>
-              
-                <li>
                   <a href="#massa.api.v1.SecureShare"><span class="badge">M</span>SecureShare</a>
                 </li>
               
@@ -571,10 +571,6 @@
                 </li>
               
                 <li>
-                  <a href="#massa.api.v1.ExecutedOpsChanges"><span class="badge">M</span>ExecutedOpsChanges</a>
-                </li>
-              
-                <li>
                   <a href="#massa.api.v1.ExecutionOutput"><span class="badge">M</span>ExecutionOutput</a>
                 </li>
               
@@ -588,10 +584,6 @@
               
                 <li>
                   <a href="#massa.api.v1.LedgerChangeValue"><span class="badge">M</span>LedgerChangeValue</a>
-                </li>
-              
-                <li>
-                  <a href="#massa.api.v1.LedgerChanges"><span class="badge">M</span>LedgerChanges</a>
                 </li>
               
                 <li>
@@ -840,6 +832,37 @@
                   <td><a href="#massa.api.v1.DatastoreEntryFilter">DatastoreEntryFilter</a></td>
                   <td></td>
                   <td><p>Filter </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
+        <h3 id="massa.api.v1.DatastoreEntry">DatastoreEntry</h3>
+        <p>DatastoreEntry</p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>final_value</td>
+                  <td><a href="#bytes">bytes</a></td>
+                  <td></td>
+                  <td><p>final datastore entry value </p></td>
+                </tr>
+              
+                <tr>
+                  <td>candidate_value</td>
+                  <td><a href="#bytes">bytes</a></td>
+                  <td></td>
+                  <td><p>candidate_value datastore entry value </p></td>
                 </tr>
               
             </tbody>
@@ -3398,37 +3421,6 @@
 
         
       
-        <h3 id="massa.api.v1.DatastoreEntry">DatastoreEntry</h3>
-        <p>DatastoreEntry</p>
-
-        
-          <table class="field-table">
-            <thead>
-              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
-            </thead>
-            <tbody>
-              
-                <tr>
-                  <td>final_value</td>
-                  <td><a href="#bytes">bytes</a></td>
-                  <td></td>
-                  <td><p>final datastore entry value </p></td>
-                </tr>
-              
-                <tr>
-                  <td>candidate_value</td>
-                  <td><a href="#bytes">bytes</a></td>
-                  <td></td>
-                  <td><p>candidate_value datastore entry value </p></td>
-                </tr>
-              
-            </tbody>
-          </table>
-
-          
-
-        
-      
         <h3 id="massa.api.v1.SecureShare">SecureShare</h3>
         <p>Packages a type such that it can be securely sent and received in a trust-free network</p>
 
@@ -3875,30 +3867,6 @@ For messages with filter, this boolean is true if the filter has been matched be
 
         
       
-        <h3 id="massa.api.v1.ExecutedOpsChanges">ExecutedOpsChanges</h3>
-        <p>ExecutedOpsChanges</p>
-
-        
-          <table class="field-table">
-            <thead>
-              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
-            </thead>
-            <tbody>
-              
-                <tr>
-                  <td>executed_ops</td>
-                  <td><a href="#massa.api.v1.ExecutedOpsChangeEntry">ExecutedOpsChangeEntry</a></td>
-                  <td>repeated</td>
-                  <td><p>Executed operations </p></td>
-                </tr>
-              
-            </tbody>
-          </table>
-
-          
-
-        
-      
         <h3 id="massa.api.v1.ExecutionOutput">ExecutionOutput</h3>
         <p>ExecutionOutput</p>
 
@@ -4037,30 +4005,6 @@ For messages with filter, this boolean is true if the filter has been matched be
 
         
       
-        <h3 id="massa.api.v1.LedgerChanges">LedgerChanges</h3>
-        <p>Ledger change</p>
-
-        
-          <table class="field-table">
-            <thead>
-              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
-            </thead>
-            <tbody>
-              
-                <tr>
-                  <td>entries</td>
-                  <td><a href="#massa.api.v1.LedgerChangeEntry">LedgerChangeEntry</a></td>
-                  <td>repeated</td>
-                  <td><p>Ledger change entry </p></td>
-                </tr>
-              
-            </tbody>
-          </table>
-
-          
-
-        
-      
         <h3 id="massa.api.v1.LedgerEntry">LedgerEntry</h3>
         <p>An entry associated to an address in the `FinalLedger`</p>
 
@@ -4087,7 +4031,7 @@ For messages with filter, this boolean is true if the filter has been matched be
               
                 <tr>
                   <td>entries</td>
-                  <td><a href="#massa.api.v1.DatastoreEntry">DatastoreEntry</a></td>
+                  <td><a href="#massa.api.v1.BytesMapFieldEntry">BytesMapFieldEntry</a></td>
                   <td>repeated</td>
                   <td><p>A key-value store associating a hash to arbitrary bytes </p></td>
                 </tr>
@@ -4253,7 +4197,7 @@ For messages with filter, this boolean is true if the filter has been matched be
               
                 <tr>
                   <td>datastore_entry</td>
-                  <td><a href="#massa.api.v1.DatastoreEntry">DatastoreEntry</a></td>
+                  <td><a href="#massa.api.v1.BytesMapFieldEntry">BytesMapFieldEntry</a></td>
                   <td>optional</td>
                   <td><p>The balance of that entry (optioal) </p></td>
                 </tr>
@@ -4370,8 +4314,8 @@ For messages with filter, this boolean is true if the filter has been matched be
               
                 <tr>
                   <td>ledger_changes</td>
-                  <td><a href="#massa.api.v1.LedgerChanges">LedgerChanges</a></td>
-                  <td></td>
+                  <td><a href="#massa.api.v1.LedgerChangeEntry">LedgerChangeEntry</a></td>
+                  <td>repeated</td>
                   <td><p>Ledger changes </p></td>
                 </tr>
               
@@ -4384,8 +4328,8 @@ For messages with filter, this boolean is true if the filter has been matched be
               
                 <tr>
                   <td>executed_ops_changes</td>
-                  <td><a href="#massa.api.v1.ExecutedOpsChanges">ExecutedOpsChanges</a></td>
-                  <td></td>
+                  <td><a href="#massa.api.v1.ExecutedOpsChangeEntry">ExecutedOpsChangeEntry</a></td>
+                  <td>repeated</td>
                   <td><p>Executed operations changes </p></td>
                 </tr>
               

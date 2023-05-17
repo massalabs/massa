@@ -8,25 +8,23 @@ use massa_proto::massa::api::v1 as grpc;
 impl From<StateChanges> for grpc::StateChanges {
     fn from(value: StateChanges) -> Self {
         grpc::StateChanges {
-            executed_ops_changes: Some(grpc::ExecutedOpsChanges {
-                executed_ops: value
-                    .executed_ops_changes
-                    .into_iter()
-                    .map(|(op_id, (op_exec_status, op_valid_until_slot))| {
-                        grpc::ExecutedOpsChangeEntry {
-                            operation_id: op_id.to_string(),
-                            value: Some(grpc::ExecutedOpsChangeValue {
-                                status: if op_exec_status {
-                                    vec![grpc::OperationExecutionStatus::Success as i32]
-                                } else {
-                                    vec![grpc::OperationExecutionStatus::Failed as i32]
-                                },
-                                slot: Some(op_valid_until_slot.into()),
-                            }),
-                        }
-                    })
-                    .collect(),
-            }),
+            executed_ops_changes: value
+                .executed_ops_changes
+                .into_iter()
+                .map(|(op_id, (op_exec_status, op_valid_until_slot))| {
+                    grpc::ExecutedOpsChangeEntry {
+                        operation_id: op_id.to_string(),
+                        value: Some(grpc::ExecutedOpsChangeValue {
+                            status: if op_exec_status {
+                                vec![grpc::OperationExecutionStatus::Success as i32]
+                            } else {
+                                vec![grpc::OperationExecutionStatus::Failed as i32]
+                            },
+                            slot: Some(op_valid_until_slot.into()),
+                        }),
+                    }
+                })
+                .collect(),
             async_pool_changes: value
                 .async_pool_changes
                 .0
@@ -57,33 +55,32 @@ impl From<StateChanges> for grpc::StateChanges {
                     },
                 )
                 .collect(),
-            ledger_changes: Some(grpc::LedgerChanges {
-                entries: value
-                    .ledger_changes
-                    .0
-                    .into_iter()
-                    .map(|(key, value)| grpc::LedgerChangeEntry {
-                        address: key.to_string(),
-                        value: Some(match value {
-                            SetUpdateOrDelete::Set(value) => grpc::LedgerChangeValue {
-                                r#type: grpc::LedgerChangeType::Set as i32,
-                                created_entry: Some(value.into()),
-                                updated_entry: None,
-                            },
-                            SetUpdateOrDelete::Update(value) => grpc::LedgerChangeValue {
-                                r#type: grpc::LedgerChangeType::Update as i32,
-                                created_entry: None,
-                                updated_entry: Some(value.into()),
-                            },
-                            SetUpdateOrDelete::Delete => grpc::LedgerChangeValue {
-                                r#type: grpc::LedgerChangeType::Delete as i32,
-                                created_entry: None,
-                                updated_entry: None,
-                            },
-                        }),
-                    })
-                    .collect(),
-            }),
+            ledger_changes: value
+                .ledger_changes
+                .0
+                .into_iter()
+                .map(|(key, value)| grpc::LedgerChangeEntry {
+                    address: key.to_string(),
+                    value: Some(match value {
+                        SetUpdateOrDelete::Set(value) => grpc::LedgerChangeValue {
+                            r#type: grpc::LedgerChangeType::Set as i32,
+                            entry: Some(grpc::ledger_change_value::Entry::CreatedEntry(
+                                value.into(),
+                            )),
+                        },
+                        SetUpdateOrDelete::Update(value) => grpc::LedgerChangeValue {
+                            r#type: grpc::LedgerChangeType::Update as i32,
+                            entry: Some(grpc::ledger_change_value::Entry::UpdatedEntry(
+                                value.into(),
+                            )),
+                        },
+                        SetUpdateOrDelete::Delete => grpc::LedgerChangeValue {
+                            r#type: grpc::LedgerChangeType::Delete as i32,
+                            entry: None,
+                        },
+                    }),
+                })
+                .collect(),
         }
     }
 }

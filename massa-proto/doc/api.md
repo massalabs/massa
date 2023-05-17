@@ -8,6 +8,7 @@
     - [BlockResult](#massa-api-v1-BlockResult)
     - [BlocksContext](#massa-api-v1-BlocksContext)
     - [DatastoreEntriesQuery](#massa-api-v1-DatastoreEntriesQuery)
+    - [DatastoreEntry](#massa-api-v1-DatastoreEntry)
     - [DatastoreEntryFilter](#massa-api-v1-DatastoreEntryFilter)
     - [EndorsementResult](#massa-api-v1-EndorsementResult)
     - [GetBlocksBySlotsRequest](#massa-api-v1-GetBlocksBySlotsRequest)
@@ -88,7 +89,6 @@
   
 - [common.proto](#common-proto)
     - [BytesMapFieldEntry](#massa-api-v1-BytesMapFieldEntry)
-    - [DatastoreEntry](#massa-api-v1-DatastoreEntry)
     - [SecureShare](#massa-api-v1-SecureShare)
   
 - [endorsement.proto](#endorsement-proto)
@@ -102,12 +102,10 @@
     - [AsyncPoolChangeValue](#massa-api-v1-AsyncPoolChangeValue)
     - [ExecutedOpsChangeEntry](#massa-api-v1-ExecutedOpsChangeEntry)
     - [ExecutedOpsChangeValue](#massa-api-v1-ExecutedOpsChangeValue)
-    - [ExecutedOpsChanges](#massa-api-v1-ExecutedOpsChanges)
     - [ExecutionOutput](#massa-api-v1-ExecutionOutput)
     - [FinalizedExecutionOutput](#massa-api-v1-FinalizedExecutionOutput)
     - [LedgerChangeEntry](#massa-api-v1-LedgerChangeEntry)
     - [LedgerChangeValue](#massa-api-v1-LedgerChangeValue)
-    - [LedgerChanges](#massa-api-v1-LedgerChanges)
     - [LedgerEntry](#massa-api-v1-LedgerEntry)
     - [LedgerEntryUpdate](#massa-api-v1-LedgerEntryUpdate)
     - [ScExecutionEvent](#massa-api-v1-ScExecutionEvent)
@@ -209,6 +207,22 @@ DatastoreEntries Query
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | filter | [DatastoreEntryFilter](#massa-api-v1-DatastoreEntryFilter) |  | Filter |
+
+
+
+
+
+
+<a name="massa-api-v1-DatastoreEntry"></a>
+
+### DatastoreEntry
+DatastoreEntry
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| final_value | [bytes](#bytes) |  | final datastore entry value |
+| candidate_value | [bytes](#bytes) |  | candidate_value datastore entry value |
 
 
 
@@ -1426,22 +1440,6 @@ BytesMapFieldEntry
 
 
 
-<a name="massa-api-v1-DatastoreEntry"></a>
-
-### DatastoreEntry
-DatastoreEntry
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| final_value | [bytes](#bytes) |  | final datastore entry value |
-| candidate_value | [bytes](#bytes) |  | candidate_value datastore entry value |
-
-
-
-
-
-
 <a name="massa-api-v1-SecureShare"></a>
 
 ### SecureShare
@@ -1637,21 +1635,6 @@ ExecutedOpsChangeValue
 
 
 
-<a name="massa-api-v1-ExecutedOpsChanges"></a>
-
-### ExecutedOpsChanges
-ExecutedOpsChanges
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| executed_ops | [ExecutedOpsChangeEntry](#massa-api-v1-ExecutedOpsChangeEntry) | repeated | Executed operations |
-
-
-
-
-
-
 <a name="massa-api-v1-ExecutionOutput"></a>
 
 ### ExecutionOutput
@@ -1718,21 +1701,6 @@ LedgerChangeValue
 
 
 
-<a name="massa-api-v1-LedgerChanges"></a>
-
-### LedgerChanges
-Ledger change
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| entries | [LedgerChangeEntry](#massa-api-v1-LedgerChangeEntry) | repeated | Ledger change entry |
-
-
-
-
-
-
 <a name="massa-api-v1-LedgerEntry"></a>
 
 ### LedgerEntry
@@ -1743,7 +1711,7 @@ An entry associated to an address in the `FinalLedger`
 | ----- | ---- | ----- | ----------- |
 | balance | [fixed64](#fixed64) |  | The balance of that entry |
 | bytecode | [bytes](#bytes) |  | Executable bytecode |
-| entries | [DatastoreEntry](#massa-api-v1-DatastoreEntry) | repeated | A key-value store associating a hash to arbitrary bytes |
+| entries | [BytesMapFieldEntry](#massa-api-v1-BytesMapFieldEntry) | repeated | A key-value store associating a hash to arbitrary bytes |
 
 
 
@@ -1813,7 +1781,7 @@ Set or Delete DatastoreEntry
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | type | [SetOrDeleteType](#massa-api-v1-SetOrDeleteType) |  | The type of the change |
-| datastore_entry | [DatastoreEntry](#massa-api-v1-DatastoreEntry) | optional | The balance of that entry (optioal) |
+| datastore_entry | [BytesMapFieldEntry](#massa-api-v1-BytesMapFieldEntry) | optional | The balance of that entry (optioal) |
 
 
 
@@ -1876,9 +1844,9 @@ StateChanges
 
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
-| ledger_changes | [LedgerChanges](#massa-api-v1-LedgerChanges) |  | Ledger changes |
+| ledger_changes | [LedgerChangeEntry](#massa-api-v1-LedgerChangeEntry) | repeated | Ledger changes |
 | async_pool_changes | [AsyncPoolChangeEntry](#massa-api-v1-AsyncPoolChangeEntry) | repeated | Asynchronous pool changes |
-| executed_ops_changes | [ExecutedOpsChanges](#massa-api-v1-ExecutedOpsChanges) |  | Executed operations changes |
+| executed_ops_changes | [ExecutedOpsChangeEntry](#massa-api-v1-ExecutedOpsChangeEntry) | repeated | Executed operations changes |
 
 
 

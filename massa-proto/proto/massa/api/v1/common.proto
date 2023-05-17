@@ -13,14 +13,6 @@ option php_namespace = "Com\\Massa\\Api\\V1";
 option ruby_package = "Com::Massa::Api::V1";
 option swift_prefix = "GRPC";
 
-// DatastoreEntry
-message DatastoreEntry {
-  // final datastore entry value
-  bytes final_value = 1;
-  // candidate_value datastore entry value
-  bytes candidate_value = 2;
-}
-
 // BytesMapFieldEntry
 message BytesMapFieldEntry {
   // bytes key
