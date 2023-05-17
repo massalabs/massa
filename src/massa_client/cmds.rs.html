@@ -1438,10 +1438,41 @@
 <a href="#1438" id="1438">1438</a>
 <a href="#1439" id="1439">1439</a>
 <a href="#1440" id="1440">1440</a>
+<a href="#1441" id="1441">1441</a>
+<a href="#1442" id="1442">1442</a>
+<a href="#1443" id="1443">1443</a>
+<a href="#1444" id="1444">1444</a>
+<a href="#1445" id="1445">1445</a>
+<a href="#1446" id="1446">1446</a>
+<a href="#1447" id="1447">1447</a>
+<a href="#1448" id="1448">1448</a>
+<a href="#1449" id="1449">1449</a>
+<a href="#1450" id="1450">1450</a>
+<a href="#1451" id="1451">1451</a>
+<a href="#1452" id="1452">1452</a>
+<a href="#1453" id="1453">1453</a>
+<a href="#1454" id="1454">1454</a>
+<a href="#1455" id="1455">1455</a>
+<a href="#1456" id="1456">1456</a>
+<a href="#1457" id="1457">1457</a>
+<a href="#1458" id="1458">1458</a>
+<a href="#1459" id="1459">1459</a>
+<a href="#1460" id="1460">1460</a>
+<a href="#1461" id="1461">1461</a>
+<a href="#1462" id="1462">1462</a>
+<a href="#1463" id="1463">1463</a>
+<a href="#1464" id="1464">1464</a>
+<a href="#1465" id="1465">1465</a>
+<a href="#1466" id="1466">1466</a>
+<a href="#1467" id="1467">1467</a>
+<a href="#1468" id="1468">1468</a>
+<a href="#1469" id="1469">1469</a>
+<a href="#1470" id="1470">1470</a>
+<a href="#1471" id="1471">1471</a>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="kw">use </span><span class="kw">crate</span>::display::Output;
-<span class="kw">use crate</span>::{client_warning, rpc_error};
+<span class="kw">use crate</span>::{client_warning, grpc_error, rpc_error};
 <span class="kw">use </span>anyhow::{anyhow, bail, <span class="prelude-ty">Result</span>};
 <span class="kw">use </span>console::style;
 <span class="kw">use </span>massa_api_exports::{
@@ -1462,10 +1493,12 @@
     operation::{Operation, OperationId, OperationType},
     slot::Slot,
 };
+<span class="kw">use </span>massa_proto::massa::api::v1 <span class="kw">as </span>grpc;
 <span class="kw">use </span>massa_sdk::Client;
 <span class="kw">use </span>massa_signature::KeyPair;
 <span class="kw">use </span>massa_time::MassaTime;
 <span class="kw">use </span>massa_wallet::Wallet;
+
 <span class="kw">use </span>serde::Serialize;
 <span class="kw">use </span>std::collections::{BTreeMap, HashMap, HashSet};
 <span class="kw">use </span>std::fmt::Write <span class="kw">as _</span>;
@@ -2208,6 +2241,35 @@
 
             Command::wallet_generate_secret_key =&gt; {
                 <span class="kw">let </span>wallet = wallet_opt.as_mut().unwrap();
+
+                <span class="comment">// In order to generate a KeyPair we need to get the MIP statuses and use the latest
+                // active version
+                </span><span class="kw">let </span>req = grpc::GetMipStatusRequest { id: <span class="string">&quot;&quot;</span>.to_string() };
+                <span class="kw">let </span>versioning_status = <span class="kw">match </span>client.grpc.get_mip_status(req).<span class="kw">await </span>{
+                    <span class="prelude-val">Ok</span>(resp_) =&gt; {
+                        <span class="kw">let </span>resp = resp_.into_inner();
+                        resp.entry
+                    }
+                    <span class="prelude-val">Err</span>(e) =&gt; {
+                        <span class="comment">// FIXME: Should we default to the last known version - default to 0?
+                        </span><span class="macro">grpc_error!</span>(e)
+                    }
+                };
+
+                <span class="comment">// Note: unused for now as AddressFactory is not yet merged
+                </span><span class="kw">let </span>_address_version = versioning_status
+                    .into_iter()
+                    .rev()
+                    .find_map(|entry| {
+                        <span class="kw">let </span>state = grpc::ComponentStateId::from_i32(entry.state_id)
+                            .unwrap_or(grpc::ComponentStateId::Error);
+                        <span class="kw">match </span>state {
+                            grpc::ComponentStateId::Active =&gt; <span class="prelude-val">Some</span>(entry.state_id),
+                            <span class="kw">_ </span>=&gt; <span class="prelude-val">None</span>,
+                        }
+                    })
+                    .unwrap_or(<span class="number">0</span>);
+                <span class="macro">println!</span>(<span class="string">&quot;Should create address with version: {}&quot;</span>, _address_version);
 
                 <span class="kw">let </span>key = KeyPair::generate();
                 <span class="kw">let </span>ad = wallet.add_keypairs(<span class="macro">vec!</span>[key])<span class="question-mark">?</span>[<span class="number">0</span>];
