@@ -102,17 +102,17 @@ pub(crate) async fn new_operations(
     Ok(Box::pin(out_stream) as NewOperationsStreamType)
 }
 
-/// Return if the type of operation should be send to client
 fn should_send(filter_opt: &Option<grpc::NewOperationsFilter>, ope_type: grpc::OpType) -> bool {
-    if let Some(filter) = filter_opt {
-        let filtered_ope_ids = &filter.types;
-        if filtered_ope_ids.is_empty() {
-            return true;
+    match filter_opt {
+        Some(filter) => {
+            let filtered_ope_ids = &filter.types;
+            if filtered_ope_ids.is_empty() {
+                true
+            } else {
+                let id: i32 = ope_type as i32;
+                filtered_ope_ids.contains(&id)
+            }
         }
-        let id: i32 = ope_type as i32;
-        filtered_ope_ids.contains(&id)
-    } else {
-        // if user has no filter = All operations type is send
-        true
+        None => true, // if user has no filter = All operations type is send
     }
 }

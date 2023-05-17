@@ -63,8 +63,6 @@ pub struct BootstrapConfig {
     pub ip_list_max_size: usize,
     /// Read-Write limitation for a connection in bytes per seconds
     pub max_bytes_read_write: f64,
-    /// max bootstrap message size in bytes
-    pub max_bootstrap_message_size: u32,
     /// thread count
     pub thread_count: u8,
     /// period per cycle
@@ -141,7 +139,6 @@ pub struct BootstrapConfig {
 #[parent(type = "BootstrapConfig")]
 pub(crate) struct BootstrapSrvBindCfg {
     pub(crate) max_bytes_read_write: f64,
-    pub(crate) max_bootstrap_message_size: u32,
     pub(crate) thread_count: u8,
     pub(crate) max_datastore_key_length: u8,
     pub(crate) randomness_size_bytes: usize,
@@ -155,7 +152,6 @@ pub(crate) struct BootstrapSrvBindCfg {
 #[parent(type = "BootstrapConfig")]
 pub(crate) struct BootstrapClientConfig {
     pub(crate) max_bytes_read_write: f64,
-    pub(crate) max_bootstrap_message_size: u32,
     pub(crate) endorsement_count: u32,
     pub(crate) max_listeners_per_peer: u32,
     pub(crate) max_advertise_length: u32,

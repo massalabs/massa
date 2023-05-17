@@ -50,7 +50,7 @@ pub(crate) async fn new_blocks_headers(
                                 break;
                             }
                         },
-                        Err(e) => {error!("error on receive new block header : {}", e)}
+                        Err(e) => error!("error on receive new block header : {}", e)
                     }
                 },
             // Receive a new message from the in_stream

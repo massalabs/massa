@@ -50,7 +50,7 @@ pub(crate) async fn new_endorsements(
                                 break;
                             }
                         },
-                        Err(e) => {error!("error on receive new endorsement : {}", e)}
+                        Err(e) => error!("error on receive new endorsement : {}", e)
                     }
                 },
                 // Receive a new message from the in_stream

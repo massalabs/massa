@@ -8,6 +8,9 @@ use crate::messages::{
 };
 use crate::settings::BootstrapClientConfig;
 use massa_hash::Hash;
+use massa_models::config::constants::{
+    MAX_BOOTSTRAP_MESSAGE_SIZE, MAX_BOOTSTRAP_MESSAGE_SIZE_BYTES,
+};
 use massa_models::serialization::{DeserializeMinBEInt, SerializeMinBEInt};
 use massa_models::version::{Version, VersionSerializer};
 use massa_serialization::{DeserializeError, Deserializer, Serializer};
@@ -18,13 +21,18 @@ use std::{io::Write, net::TcpStream, time::Duration};
 
 /// Bootstrap client binder
 pub(crate) struct BootstrapClientBinder {
-    // max_bootstrap_message_size: u32,
-    size_field_len: usize,
     remote_pubkey: PublicKey,
     duplex: TcpStream,
     prev_message: Option<Hash>,
     version_serializer: VersionSerializer,
     cfg: BootstrapClientConfig,
+}
+
+const KNOWN_PREFIX_LEN: usize = SIGNATURE_SIZE_BYTES + MAX_BOOTSTRAP_MESSAGE_SIZE_BYTES;
+/// The known-length component of a message to be received.
+struct ServerMessageLeader {
+    sig: Signature,
+    msg_len: u32,
 }
 
 impl BootstrapClientBinder {
@@ -39,9 +47,7 @@ impl BootstrapClientBinder {
         remote_pubkey: PublicKey,
         cfg: BootstrapClientConfig,
     ) -> Self {
-        let size_field_len = u32::be_bytes_min_length(cfg.max_bootstrap_message_size);
         BootstrapClientBinder {
-            size_field_len,
             remote_pubkey,
             duplex,
             prev_message: None,
@@ -71,7 +77,6 @@ impl BootstrapClientBinder {
         Ok(())
     }
 
-    // TODO: use a proper (de)serializer: https://github.com/massalabs/massa/pull/3745#discussion_r1169733161
     /// Reads the next message.
     pub(crate) fn next_timeout(
         &mut self,
@@ -80,24 +85,12 @@ impl BootstrapClientBinder {
         let deadline = duration.map(|d| Instant::now() + d);
 
         // read the known-len component of the message
-        let known_len = SIGNATURE_SIZE_BYTES + self.size_field_len;
-        let mut known_len_buff = vec![0u8; known_len];
+        let mut known_len_buff = [0u8; KNOWN_PREFIX_LEN];
         // TODO: handle a partial read
         self.read_exact_timeout(&mut known_len_buff, deadline)
             .map_err(|(err, _consumed)| err)?;
 
-        // construct the signature
-        let sig_array = known_len_buff.as_slice()[0..SIGNATURE_SIZE_BYTES]
-            .try_into()
-            .expect("logic error in array manipulations");
-        let sig = Signature::from_bytes(&sig_array)?;
-
-        // construct the message len from the peek
-        let msg_len = u32::from_be_bytes_min(
-            &known_len_buff[SIGNATURE_SIZE_BYTES..],
-            self.cfg.max_bootstrap_message_size,
-        )?
-        .0;
+        let ServerMessageLeader { sig, msg_len } = self.decode_msg_leader(&known_len_buff)?;
 
         // Update this bindings "most recently received" message hash, retaining the replaced value
         let message_deserializer = BootstrapServerMessageDeserializer::new((&self.cfg).into());
@@ -184,7 +177,7 @@ impl BootstrapClientBinder {
 
         // Provide the message length
         self.duplex.set_write_timeout(duration)?;
-        let msg_len_bytes = msg_len.to_be_bytes_min(self.cfg.max_bootstrap_message_size)?;
+        let msg_len_bytes = msg_len.to_be_bytes_min(MAX_BOOTSTRAP_MESSAGE_SIZE)?;
         write_buf.extend(&msg_len_bytes);
 
         // Provide the message
@@ -193,6 +186,26 @@ impl BootstrapClientBinder {
         // And send it off
         self.duplex.write_all(&write_buf)?;
         Ok(())
+    }
+
+    /// We are using this instead of of our library deserializer as the process is relatively straight forward
+    /// and makes error-type management cleaner
+    fn decode_msg_leader(
+        &self,
+        leader_buff: &[u8; SIGNATURE_SIZE_BYTES + MAX_BOOTSTRAP_MESSAGE_SIZE_BYTES],
+    ) -> Result<ServerMessageLeader, BootstrapError> {
+        let sig_array = leader_buff[0..SIGNATURE_SIZE_BYTES]
+            .try_into()
+            .expect("logic error in array manipulations");
+        let sig = Signature::from_bytes(&sig_array)?;
+
+        // construct the message len from the leader-bufff
+        let msg_len = u32::from_be_bytes_min(
+            &leader_buff[SIGNATURE_SIZE_BYTES..],
+            MAX_BOOTSTRAP_MESSAGE_SIZE,
+        )?
+        .0;
+        Ok(ServerMessageLeader { sig, msg_len })
     }
 }
 

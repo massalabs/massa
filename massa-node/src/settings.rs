@@ -231,6 +231,8 @@ pub(crate) struct ProtocolSettings {
     pub(crate) try_connection_timer: MassaTime,
     /// Timeout connection
     pub(crate) timeout_connection: MassaTime,
+    /// Nb in connections
+    pub(crate) max_in_connections: usize,
     /// Peers limits per category
     pub(crate) peers_categories: HashMap<String, PeerCategoryInfo>,
     /// Limits for default category
@@ -251,6 +253,8 @@ pub(crate) struct GrpcSettings {
     pub(crate) enable_health: bool,
     /// whether to enable gRPC reflection
     pub(crate) enable_reflection: bool,
+    /// whether to enable mTLS
+    pub(crate) enable_mtls: bool,
     /// bind for the Massa gRPC API
     pub(crate) bind: SocketAddr,
     /// which compression encodings does the server accept for requests
@@ -291,6 +295,12 @@ pub(crate) struct GrpcSettings {
     pub(crate) max_block_ids_per_request: u32,
     /// max number of operation ids that can be included in a single request
     pub(crate) max_operation_ids_per_request: u32,
+    /// server certificate path
+    pub(crate) server_certificate_path: PathBuf,
+    /// server private key path
+    pub(crate) server_private_key_path: PathBuf,
+    /// client certificate authority root path
+    pub(crate) client_certificate_authority_root_path: PathBuf,
 }
 
 #[cfg(test)]

@@ -12,16 +12,13 @@
 //! Same as the previous test with a low limit of size to check if
 //! configurations are taken into account.
 
-use std::sync::mpsc::Receiver;
-use std::thread;
+use mockall::Sequence;
+use std::rc::Rc;
 use std::time::Duration;
 
 use crate::tests::tools::create_some_operations;
-use crate::tests::tools::pool_test;
 use crate::tests::tools::OpGenerator;
-use massa_execution_exports::test_exports::{
-    MockExecutionControllerMessage as ControllerMsg, MockExecutionControllerMessage,
-};
+use massa_execution_exports::MockExecutionController;
 use massa_models::address::Address;
 use massa_models::amount::Amount;
 use massa_models::denunciation::{Denunciation, DenunciationIndex, DenunciationPrecursor};
@@ -32,9 +29,11 @@ use massa_models::test_exports::{
     gen_block_headers_for_denunciation, gen_endorsements_for_denunciation,
 };
 use massa_pool_exports::PoolConfig;
-use massa_pos_exports::test_exports::MockSelectorControllerMessage;
+use massa_pos_exports::MockSelectorController;
 use massa_pos_exports::{PosResult, Selection};
 use massa_signature::KeyPair;
+
+use super::tools::PoolTestBoilerPlate;
 
 /// # Test simple get operation
 /// Just try to get some operations stored in pool
@@ -42,103 +41,95 @@ use massa_signature::KeyPair;
 /// ## Initialization
 /// Insert multiple operations in the pool. (10)
 ///
-/// Start mocked execution controller thread. (expected 2 calls of `unexecuted_ops_among`
-/// that return the full storage)
-/// The execution thread will response that no operations had been executed.
-///
-/// ## Expected results
-/// The execution controller is expected to be asked 2 times for the first interaction:
-/// - to check the already executed operations
-/// - to check the final and candidate balances of the creator address
-/// And one time for the 9 next to check the executed operations.
+/// Create a mock-execution-controller story:
+/// 1. unexpected_opse_among, returning the op-ids of what gets inserted into the pool
+/// 2. get_final_and_candidate_balance, returning 1, 1
+/// 3. repeat #1 9 times
 ///
 /// The block operation storage built for all threads is expected to have the
 /// same length than those added previously.
 #[test]
 fn test_simple_get_operations() {
+    // Setup the execution story.
+    let keypair = KeyPair::generate();
+    let addr = Address::from_public_key(&keypair.get_public_key()).clone();
+
+    // setup operations
+    let op_gen = OpGenerator::default().creator(keypair.clone()).expirery(1);
+    let ops = create_some_operations(10, &op_gen);
+    let mock_owned_ops = ops.iter().map(|op| op.id).collect();
+
+    let mut execution_controller = Box::new(MockExecutionController::new());
+    execution_controller.expect_clone_box().returning(move || {
+        Box::new(create_basic_get_block_operation_execution_mock(
+            10,
+            addr,
+            vec![(Some(Amount::from_raw(1)), Some(Amount::from_raw(1)))],
+            &mock_owned_ops,
+        ))
+    });
+
+    // Provide the selector boilderplate
+    let mut selector_controller = Box::new(MockSelectorController::new());
+    selector_controller
+        .expect_clone_box()
+        .returning(|| Box::new(MockSelectorController::new()));
+
+    // Setup the pool controller
     let config = PoolConfig::default();
-    pool_test(
-        config,
-        |mut pool_manager,
-         mut pool_controller,
-         execution_receiver,
-         _selector_receiver,
-         mut storage| {
-            //setup meta-data
-            let keypair = KeyPair::generate();
-            let op_gen = OpGenerator::default().creator(keypair.clone()).expirery(1);
-            let creator_address = Address::from_public_key(&keypair.get_public_key());
-            let creator_thread = creator_address.get_thread(config.thread_count);
 
-            // setup storage
-            storage.store_operations(create_some_operations(10, &op_gen));
-            let unexecuted_ops = storage.get_op_refs().clone();
-            pool_controller.add_operations(storage);
-            // Allow some time for the pool to add the operations
-            std::thread::sleep(Duration::from_millis(100));
+    let PoolTestBoilerPlate {
+        mut pool_manager,
+        mut pool_controller,
+        mut storage,
+    } = PoolTestBoilerPlate::pool_test(config, execution_controller, selector_controller);
 
-            // Start mock execution thread.
-            // Provides the data for `pool_controller.get_block_operations`
-            launch_basic_get_block_operation_execution_mock(
-                10,
-                unexecuted_ops,
-                execution_receiver,
-                creator_address,
-                vec![(Some(Amount::from_raw(1)), Some(Amount::from_raw(1)))],
-            );
+    // setup storage
+    storage.store_operations(ops);
+    pool_controller.add_operations(storage);
 
-            // This is what we are testing....
-            let block_operations_storage = pool_controller
-                .get_block_operations(&Slot::new(1, creator_thread))
-                .1;
+    // Allow some time for the pool to add the operations
+    std::thread::sleep(Duration::from_millis(100));
 
-            pool_manager.stop();
+    let creator_thread = {
+        let creator_address = Address::from_public_key(&keypair.get_public_key());
+        creator_address.get_thread(config.thread_count)
+    };
+    // This is what we are testing....
+    let block_operations_storage = pool_controller
+        .get_block_operations(&Slot::new(1, creator_thread))
+        .1;
 
-            assert_eq!(block_operations_storage.get_op_refs().len(), 10);
-        },
-    );
+    pool_manager.stop();
+
+    assert_eq!(block_operations_storage.get_op_refs().len(), 10);
 }
 
-/// Launch a default mock for execution controller on call `get_block_operation` API.
-pub(crate) fn launch_basic_get_block_operation_execution_mock(
+/// Create default mock-story for execution controller on call `get_block_operation` API.
+pub(crate) fn create_basic_get_block_operation_execution_mock(
     operations_len: usize,
-    unexecuted_ops: PreHashSet<OperationId>,
-    recvr: Receiver<ControllerMsg>,
     creator_address: Address,
     balance_vec: Vec<(Option<Amount>, Option<Amount>)>,
-) {
-    let receive = |er: &Receiver<ControllerMsg>| er.recv_timeout(Duration::from_millis(100));
-    std::thread::spawn(move || {
-        match receive(&recvr) {
-            Ok(ControllerMsg::UnexecutedOpsAmong { response_tx, .. }) => {
-                response_tx.send(unexecuted_ops.clone()).unwrap()
-            }
-            Ok(op) => panic!("Expected `ControllerMsg::UnexecutedOpsAmong`, got {:?}", op),
-            Err(_) => panic!("execution never called"),
-        }
-        match receive(&recvr) {
-            Ok(ControllerMsg::GetFinalAndCandidateBalance {
-                addresses,
-                response_tx,
-                ..
-            }) => {
-                assert_eq!(addresses.len(), 1);
-                assert_eq!(addresses[0], creator_address);
-                response_tx.send(balance_vec).unwrap();
-            }
-            Ok(op) => panic!(
-                "Expected `ControllerMsg::GetFinalAndCandidateBalance`, got {:?}",
-                op
-            ),
-            Err(_) => panic!("execution never called"),
-        }
-
-        (1..operations_len).for_each(|_| {
-            if let Ok(ControllerMsg::UnexecutedOpsAmong { response_tx, .. }) = receive(&recvr) {
-                response_tx.send(unexecuted_ops.clone()).unwrap();
-            }
-        })
-    });
+    ops: &PreHashSet<OperationId>,
+) -> MockExecutionController {
+    let mut res = MockExecutionController::new();
+    let mut seq = Sequence::new();
+    let ops1 = ops.clone();
+    let ops2 = Rc::new(ops.clone());
+    res.expect_unexecuted_ops_among()
+        .times(1)
+        .return_once(|_, _| ops1)
+        .in_sequence(&mut seq);
+    res.expect_get_final_and_candidate_balance()
+        .times(1)
+        .return_once(|_| balance_vec)
+        .withf(move |addrs| addrs.len() == 1 && addrs[0] == creator_address)
+        .in_sequence(&mut seq);
+    res.expect_unexecuted_ops_among()
+        .times(operations_len - 1)
+        .returning_st(move |_, _| (&*ops2).clone())
+        .in_sequence(&mut seq);
+    res
 }
 
 /// # Test get block operation with overflow
@@ -160,52 +151,54 @@ fn test_get_operations_overflow() {
     // setup metadata
     static OP_LEN: usize = 10;
     static MAX_OP_LEN: usize = 5;
-    let mut max_block_size = 0;
     let keypair = KeyPair::generate();
     let creator_address = Address::from_public_key(&keypair.get_public_key());
     let op_gen = OpGenerator::default().expirery(1).creator(keypair);
     let operations = create_some_operations(OP_LEN, &op_gen);
-    operations
+    let max_block_size = operations
         .iter()
         .take(MAX_OP_LEN)
-        .for_each(|op| max_block_size += op.serialized_size() as u32);
+        .fold(0, |acc, op| acc + op.serialized_size() as u32);
     let config = PoolConfig {
         max_block_size,
         ..Default::default()
     };
     let creator_thread = creator_address.get_thread(config.thread_count);
-    pool_test(
-        config,
-        |mut pool_manager,
-         mut pool_controller,
-         execution_receiver,
-         _selector_receiver,
-         mut storage| {
-            // setup storage
-            storage.store_operations(operations);
-            let unexecuted_ops = storage.get_op_refs().clone();
-            pool_controller.add_operations(storage);
-            // Allow some time for the pool to add the operations
-            std::thread::sleep(Duration::from_millis(100));
 
-            // start mock execution thread
-            launch_basic_get_block_operation_execution_mock(
-                OP_LEN,
-                unexecuted_ops,
-                execution_receiver,
-                creator_address,
-                vec![(Some(Amount::from_raw(1)), Some(Amount::from_raw(1)))],
-            );
+    let mut execution_controller = Box::new(MockExecutionController::new());
+    execution_controller.expect_clone_box().returning(move || {
+        Box::new(create_basic_get_block_operation_execution_mock(
+            MAX_OP_LEN,
+            creator_address,
+            vec![(Some(Amount::from_raw(1)), Some(Amount::from_raw(1)))],
+            &operations.iter().take(MAX_OP_LEN).map(|op| op.id).collect(),
+        ))
+    });
 
-            let block_operations_storage = pool_controller
-                .get_block_operations(&Slot::new(1, creator_thread))
-                .1;
+    // Provide the selector boilderplate
+    let mut selector_controller = Box::new(MockSelectorController::new());
+    selector_controller
+        .expect_clone_box()
+        .returning(|| Box::new(MockSelectorController::new()));
 
-            pool_manager.stop();
+    let PoolTestBoilerPlate {
+        mut pool_manager,
+        mut pool_controller,
+        mut storage,
+    } = PoolTestBoilerPlate::pool_test(config, execution_controller, selector_controller);
 
-            assert_eq!(block_operations_storage.get_op_refs().len(), MAX_OP_LEN);
-        },
-    );
+    storage.store_operations(create_some_operations(10, &op_gen));
+    pool_controller.add_operations(storage);
+    // Allow some time for the pool to add the operations
+    std::thread::sleep(Duration::from_millis(100));
+
+    // This is what we are testing....
+    let block_operations_storage = pool_controller
+        .get_block_operations(&Slot::new(1, creator_thread))
+        .1;
+    pool_manager.stop();
+
+    assert_eq!(block_operations_storage.get_op_refs().len(), MAX_OP_LEN);
 }
 
 #[test]
@@ -221,42 +214,34 @@ fn test_block_header_denunciation_creation() {
     let denunciation_orig = Denunciation::try_from((&secured_header_1, &secured_header_2)).unwrap();
 
     let config = PoolConfig::default();
-    pool_test(
-        config,
-        |mut pool_manager, pool_controller, _execution_receiver, selector_receiver, _storage| {
-            pool_controller.add_denunciation_precursor(de_p_1);
-            pool_controller.add_denunciation_precursor(de_p_2);
-            // Allow some time for the pool to add the operations
-            loop {
-                match selector_receiver.recv_timeout(Duration::from_millis(100)) {
-                    Ok(MockSelectorControllerMessage::GetProducer {
-                        slot: _slot,
-                        response_tx,
-                    }) => {
-                        response_tx.send(PosResult::Ok(address)).unwrap();
-                    }
-                    Ok(msg) => {
-                        panic!(
-                            "Received an unexpected message from mock selector: {:?}",
-                            msg
-                        );
-                    }
-                    Err(_e) => {
-                        // timeout
-                        break;
-                    }
-                }
-            }
+    // let mut selector_controller = Box::new(MockSelectorController::new());
+    let mut res = MockSelectorController::new();
+    res.expect_get_producer()
+        .times(2)
+        .returning(move |_| PosResult::Ok(address));
+    let selector_controller = pool_test_mock_selector_controller(res);
 
-            assert_eq!(pool_controller.get_denunciation_count(), 1);
-            assert_eq!(
-                pool_controller.contains_denunciation(&denunciation_orig),
-                true
-            );
+    let mut execution_controller = Box::new(MockExecutionController::new());
+    execution_controller
+        .expect_clone_box()
+        .returning(move || Box::new(MockExecutionController::new()));
+    let PoolTestBoilerPlate {
+        mut pool_manager,
+        pool_controller,
+        storage: _storage,
+    } = PoolTestBoilerPlate::pool_test(config, execution_controller, selector_controller);
 
-            pool_manager.stop();
-        },
+    pool_controller.add_denunciation_precursor(de_p_1);
+    pool_controller.add_denunciation_precursor(de_p_2);
+    std::thread::sleep(Duration::from_millis(100));
+
+    assert_eq!(pool_controller.get_denunciation_count(), 1);
+    assert_eq!(
+        pool_controller.contains_denunciation(&denunciation_orig),
+        true
     );
+
+    pool_manager.stop();
 }
 
 #[test]
@@ -272,37 +257,30 @@ fn test_endorsement_denunciation_creation() {
     let denunciation_orig = Denunciation::try_from((&s_endorsement_1, &s_endorsement_2)).unwrap();
 
     let config = PoolConfig::default();
-    pool_test(
-        config,
-        |mut pool_manager, pool_controller, _execution_receiver, selector_receiver, _storage| {
+    {
+        let mut execution_controller = Box::new(MockExecutionController::new());
+        execution_controller
+            .expect_clone_box()
+            .returning(move || Box::new(MockExecutionController::new()));
+
+        let mut res = MockSelectorController::new();
+        res.expect_get_selection().times(2).returning(move |_| {
+            PosResult::Ok(Selection {
+                endorsements: vec![address; usize::from(config.thread_count)],
+                producer: address,
+            })
+        });
+        let selector_controller = pool_test_mock_selector_controller(res);
+        let PoolTestBoilerPlate {
+            mut pool_manager,
+            pool_controller,
+            storage: _storage,
+        } = PoolTestBoilerPlate::pool_test(config, execution_controller, selector_controller);
+
+        {
             pool_controller.add_denunciation_precursor(de_p_1);
             pool_controller.add_denunciation_precursor(de_p_2);
-            // Allow some time for the pool to add the operations
-            loop {
-                match selector_receiver.recv_timeout(Duration::from_millis(100)) {
-                    Ok(MockSelectorControllerMessage::GetSelection {
-                        slot: _slot,
-                        response_tx,
-                    }) => {
-                        let selection = Selection {
-                            endorsements: vec![address; usize::from(config.thread_count)],
-                            producer: address,
-                        };
-
-                        response_tx.send(PosResult::Ok(selection)).unwrap();
-                    }
-                    Ok(msg) => {
-                        panic!(
-                            "Received an unexpected message from mock selector: {:?}",
-                            msg
-                        );
-                    }
-                    Err(_e) => {
-                        // timeout
-                        break;
-                    }
-                }
-            }
+            std::thread::sleep(Duration::from_millis(200));
 
             assert_eq!(pool_controller.get_denunciation_count(), 1);
             assert_eq!(
@@ -311,8 +289,8 @@ fn test_endorsement_denunciation_creation() {
             );
 
             pool_manager.stop();
-        },
-    );
+        }
+    };
 }
 
 #[test]
@@ -338,94 +316,79 @@ fn test_denunciation_pool_get() {
     let de_idx_2 = DenunciationIndex::from(&denunciation_orig_2);
 
     let config = PoolConfig::default();
-    pool_test(
-        config,
-        |mut pool_manager, pool_controller, execution_receiver, selector_receiver, _storage| {
-            // ~ random order (but need to keep the precursor order otherwise Denunciation::PartialEq will fail)
-            pool_controller.add_denunciation_precursor(de_p_3);
-            pool_controller.add_denunciation_precursor(de_p_1);
-            pool_controller.add_denunciation_precursor(de_p_4);
-            pool_controller.add_denunciation_precursor(de_p_2);
+    let execution_controller = {
+        let mut res = Box::new(MockExecutionController::new());
+        res.expect_clone_box()
+            .return_once(move || Box::new(MockExecutionController::new()));
 
-            // Allow some time for the pool to add the operations
-            loop {
-                match selector_receiver.recv_timeout(Duration::from_millis(100)) {
-                    Ok(MockSelectorControllerMessage::GetProducer {
-                        slot: _slot,
-                        response_tx,
-                    }) => {
-                        response_tx.send(PosResult::Ok(address_2)).unwrap();
-                    }
-                    Ok(MockSelectorControllerMessage::GetSelection {
-                        slot: _slot,
-                        response_tx,
-                    }) => {
-                        let selection = Selection {
-                            endorsements: vec![address_1; usize::from(config.thread_count)],
-                            producer: address_1,
-                        };
+        res.expect_is_denunciation_executed()
+            .times(2)
+            .returning(move |de_idx| de_idx != &de_idx_2);
+        res
+    };
 
-                        response_tx.send(PosResult::Ok(selection)).unwrap();
-                    }
-                    Ok(msg) => {
-                        panic!(
-                            "Received an unexpected message from mock selector: {:?}",
-                            msg
-                        );
-                    }
-                    Err(_) => {
-                        // timeout, exit the loop
-                        break;
-                    }
-                }
-            }
+    let selector_controller = {
+        let mut res = MockSelectorController::new();
+        res.expect_get_producer()
+            .times(2)
+            .returning(move |_| PosResult::Ok(address_2));
+        res.expect_get_selection().times(2).returning(move |_| {
+            PosResult::Ok(Selection {
+                endorsements: vec![address_1; usize::from(config.thread_count)],
+                producer: address_1,
+            })
+        });
+        pool_test_mock_selector_controller(res)
+    };
 
-            assert_eq!(pool_controller.get_denunciation_count(), 2);
-            assert_eq!(
-                pool_controller.contains_denunciation(&denunciation_orig_1),
-                true
-            );
-            assert_eq!(
-                pool_controller.contains_denunciation(&denunciation_orig_2),
-                true
-            );
+    let PoolTestBoilerPlate {
+        mut pool_manager,
+        pool_controller,
+        storage: _storage,
+    } = PoolTestBoilerPlate::pool_test(config, execution_controller, selector_controller);
 
-            // Now ask for denunciations
-            // Note that we need 2 threads as the get_block_denunciations call will wait for
-            // the mock execution controller to return
+    // And so begins the test
+    {
+        // ~ random order (but need to keep the precursor order otherwise Denunciation::PartialEq will fail)
+        pool_controller.add_denunciation_precursor(de_p_3);
+        pool_controller.add_denunciation_precursor(de_p_1);
+        pool_controller.add_denunciation_precursor(de_p_4);
+        pool_controller.add_denunciation_precursor(de_p_2);
 
-            let target_slot_1 = Slot::new(4, 0);
-            let thread_1 = thread::spawn(move || loop {
-                match execution_receiver.recv_timeout(Duration::from_millis(100)) {
-                    Ok(MockExecutionControllerMessage::IsDenunciationExecuted {
-                        de_idx,
-                        response_tx,
-                    }) => {
-                        // Note: this should prevent denunciation_orig_1 to be included
-                        if de_idx == de_idx_2 {
-                            response_tx.send(false).unwrap();
-                        } else {
-                            response_tx.send(true).unwrap();
-                        }
-                    }
-                    Ok(msg) => {
-                        panic!(
-                            "Received an unexpected message from mock execution: {:?}",
-                            msg
-                        );
-                    }
-                    Err(_) => break,
-                }
-            });
-            let thread_2 =
-                thread::spawn(move || pool_controller.get_block_denunciations(&target_slot_1));
+        std::thread::sleep(Duration::from_millis(200));
 
-            thread_1.join().unwrap();
-            let denunciations = thread_2.join().unwrap();
+        assert_eq!(pool_controller.get_denunciation_count(), 2);
+        assert_eq!(
+            pool_controller.contains_denunciation(&denunciation_orig_1),
+            true
+        );
+        assert_eq!(
+            pool_controller.contains_denunciation(&denunciation_orig_2),
+            true
+        );
 
-            assert_eq!(denunciations, vec![denunciation_orig_2]);
+        let target_slot_1 = Slot::new(4, 0);
 
-            pool_manager.stop();
-        },
-    )
+        let denunciations = pool_controller.get_block_denunciations(&target_slot_1);
+
+        assert_eq!(denunciations, vec![denunciation_orig_2]);
+
+        pool_manager.stop();
+    }
+}
+
+// The _actual_ story of the mock involves some clones that we don't want to worry about.
+// This helper method means that tests need only concern themselves with the actual story.
+pub fn pool_test_mock_selector_controller(
+    story: MockSelectorController,
+) -> Box<MockSelectorController> {
+    let mut selector_controller = Box::new(MockSelectorController::new());
+    selector_controller
+        .expect_clone_box()
+        .times(2)
+        .returning(move || Box::new(MockSelectorController::new()));
+    selector_controller
+        .expect_clone_box()
+        .return_once(move || Box::new(story));
+    selector_controller
 }

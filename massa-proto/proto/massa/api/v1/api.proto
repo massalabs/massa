@@ -540,6 +540,20 @@ message NewOperationsResponse {
 message NewSlotExecutionOutputsRequest {
   // Request id
   string id = 1;
+  // Query
+  NewSlotExecutionOutputsQuery query = 2;
+}
+
+// NewSlotExecutionOutputs Query
+message NewSlotExecutionOutputsQuery {
+  // Filter
+  NewSlotExecutionOutputsFilter filter = 1;
+}
+
+// NewSlotExecutionOutputs Filter
+message NewSlotExecutionOutputsFilter {
+  // Execution output status enum
+  repeated ExecutionOutputStatus status = 1;
 }
 
 // NewSlotExecutionOutputsResponse holds response from NewSlotExecutionOutputs

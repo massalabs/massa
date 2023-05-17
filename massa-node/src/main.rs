@@ -8,11 +8,13 @@ extern crate massa_logging;
 
 use crate::settings::SETTINGS;
 
+use chrono::{TimeZone, Utc};
 use crossbeam_channel::{Receiver, TryRecvError};
 use dialoguer::Password;
 use massa_api::{ApiServer, ApiV2, Private, Public, RpcServer, StopHandle, API};
 use massa_api_exports::config::APIConfig;
 use massa_async_pool::AsyncPoolConfig;
+use massa_bootstrap::BootstrapError;
 use massa_bootstrap::{
     get_state, start_bootstrap_server, BootstrapConfig, BootstrapManager, BootstrapTcpListener,
     DefaultConnector,
@@ -44,9 +46,9 @@ use massa_models::config::constants::{
     LEDGER_PART_SIZE_MESSAGE_BYTES, MAX_ADVERTISE_LENGTH, MAX_ASK_BLOCKS_PER_MESSAGE,
     MAX_ASYNC_GAS, MAX_ASYNC_MESSAGE_DATA, MAX_ASYNC_POOL_LENGTH, MAX_BLOCK_SIZE,
     MAX_BOOTSTRAP_ASYNC_POOL_CHANGES, MAX_BOOTSTRAP_BLOCKS, MAX_BOOTSTRAP_ERROR_LENGTH,
-    MAX_BOOTSTRAP_FINAL_STATE_PARTS_SIZE, MAX_BOOTSTRAP_MESSAGE_SIZE, MAX_BYTECODE_LENGTH,
-    MAX_CONSENSUS_BLOCKS_IDS, MAX_DATASTORE_ENTRY_COUNT, MAX_DATASTORE_KEY_LENGTH,
-    MAX_DATASTORE_VALUE_LENGTH, MAX_DEFERRED_CREDITS_LENGTH, MAX_DENUNCIATIONS_PER_BLOCK_HEADER,
+    MAX_BOOTSTRAP_FINAL_STATE_PARTS_SIZE, MAX_BYTECODE_LENGTH, MAX_CONSENSUS_BLOCKS_IDS,
+    MAX_DATASTORE_ENTRY_COUNT, MAX_DATASTORE_KEY_LENGTH, MAX_DATASTORE_VALUE_LENGTH,
+    MAX_DEFERRED_CREDITS_LENGTH, MAX_DENUNCIATIONS_PER_BLOCK_HEADER,
     MAX_DENUNCIATION_CHANGES_LENGTH, MAX_ENDORSEMENTS_PER_MESSAGE, MAX_EXECUTED_OPS_CHANGES_LENGTH,
     MAX_EXECUTED_OPS_LENGTH, MAX_FUNCTION_NAME_LENGTH, MAX_GAS_PER_BLOCK, MAX_LISTENERS_PER_PEER,
     MAX_OPERATIONS_PER_BLOCK, MAX_OPERATIONS_PER_MESSAGE, MAX_OPERATION_DATASTORE_ENTRY_COUNT,
@@ -75,20 +77,21 @@ use massa_protocol_exports::{ProtocolConfig, ProtocolManager};
 use massa_protocol_worker::{create_protocol_controller, start_protocol_controller};
 use massa_storage::Storage;
 use massa_time::MassaTime;
-use massa_versioning_worker::versioning::{MipStatsConfig, MipStore};
+use massa_versioning_worker::versioning::{ComponentStateTypeId, MipStatsConfig, MipStore};
 use massa_wallet::Wallet;
 use parking_lot::RwLock;
 use peernet::transports::TransportType;
 use std::collections::HashMap;
 use std::path::PathBuf;
 use std::sync::atomic::{AtomicUsize, Ordering};
+use std::sync::{Condvar, Mutex};
 use std::thread::sleep;
 use std::time::Duration;
 use std::{path::Path, process, sync::Arc};
 use structopt::StructOpt;
 use tokio::signal;
 use tokio::sync::{broadcast, mpsc};
-use tracing::{error, info, warn};
+use tracing::{debug, error, info, warn};
 use tracing_subscriber::filter::{filter_fn, LevelFilter};
 
 mod settings;
@@ -235,9 +238,18 @@ async fn launch(
     ));
 
     // interrupt signal listener
-    let stop_signal = signal::ctrl_c();
-    tokio::pin!(stop_signal);
+    let interupted = Arc::new((Mutex::new(false), Condvar::new()));
+    let handler_clone = Arc::clone(&interupted);
 
+    // currently used by the bootstrap client to preempt/break out of the retry wait
+    ctrlc::set_handler(move || {
+        *handler_clone
+            .0
+            .lock()
+            .expect("double-lock on interupt bool in ctrl-c handler") = true;
+        handler_clone.1.notify_all();
+    })
+    .expect("Error setting Ctrl-C handler");
     let bootstrap_config: BootstrapConfig = BootstrapConfig {
         bootstrap_list: SETTINGS.bootstrap.bootstrap_list.clone(),
         bootstrap_protocol: SETTINGS.bootstrap.bootstrap_protocol,
@@ -260,7 +272,6 @@ async fn launch(
         per_ip_min_interval: SETTINGS.bootstrap.per_ip_min_interval,
         ip_list_max_size: SETTINGS.bootstrap.ip_list_max_size,
         max_bytes_read_write: SETTINGS.bootstrap.max_bytes_read_write,
-        max_bootstrap_message_size: MAX_BOOTSTRAP_MESSAGE_SIZE,
         max_datastore_key_length: MAX_DATASTORE_KEY_LENGTH,
         randomness_size_bytes: BOOTSTRAP_RANDOMNESS_SIZE_BYTES,
         thread_count: THREAD_COUNT,
@@ -296,24 +307,22 @@ async fn launch(
         max_denunciation_changes_length: MAX_DENUNCIATION_CHANGES_LENGTH,
     };
 
-    // bootstrap
-    let bootstrap_state = tokio::select! {
-        _ = &mut stop_signal => {
-            info!("interrupt signal received in bootstrap loop");
+    let bootstrap_state = match get_state(
+        &bootstrap_config,
+        final_state.clone(),
+        DefaultConnector,
+        *VERSION,
+        *GENESIS_TIMESTAMP,
+        *END_TIMESTAMP,
+        args.restart_from_snapshot_at_period,
+        interupted,
+    ) {
+        Ok(vals) => vals,
+        Err(BootstrapError::Interupted(msg)) => {
+            info!("{}", msg);
             process::exit(0);
-        },
-        res = get_state(
-            &bootstrap_config,
-            final_state.clone(),
-            DefaultConnector,
-            *VERSION,
-            *GENESIS_TIMESTAMP,
-            *END_TIMESTAMP,
-            args.restart_from_snapshot_at_period
-        ) => match res {
-            Ok(vals) => vals,
-            Err(err) => panic!("critical error detected in the bootstrap process: {}", err)
         }
+        Err(err) => panic!("critical error detected in the bootstrap process: {}", err),
     };
 
     if args.restart_from_snapshot_at_period.is_none() {
@@ -346,9 +355,76 @@ async fn launch(
     let mut mip_store =
         MipStore::try_from(([], mip_stats_config)).expect("Cannot create an empty MIP store");
     if let Some(bootstrap_mip_store) = bootstrap_state.mip_store {
-        mip_store
+        // TODO: in some cases, should bootstrap again
+        let (updated, added) = mip_store
             .update_with(&bootstrap_mip_store)
             .expect("Cannot update MIP store with bootstrap mip store");
+
+        if !added.is_empty() {
+            for (mip_info, mip_state) in added.iter() {
+                let now = MassaTime::now().expect("Cannot get current time");
+                match mip_state.state_at(now, mip_info.start, mip_info.timeout) {
+                    Ok(st_id) => {
+                        if st_id == ComponentStateTypeId::LockedIn {
+                            // A new MipInfo @ state locked_in - we need to urge the user to update
+                            warn!(
+                                "A new MIP has been received: {}, version: {}",
+                                mip_info.name, mip_info.version
+                            );
+                            // Safe to unwrap here (only panic if not LockedIn)
+                            let activation_at = mip_state.activation_at(mip_info).unwrap();
+                            let dt = Utc
+                                .timestamp_opt(activation_at.to_duration().as_secs() as i64, 0)
+                                .unwrap();
+                            warn!("Please update your Massa node before: {}", dt.to_rfc2822());
+                        } else if st_id == ComponentStateTypeId::Active {
+                            // A new MipInfo @ state active - we are not compatible anymore
+                            warn!(
+                                "A new MIP has been received {:?}, version: {:?}",
+                                mip_info.name, mip_info.version
+                            );
+                            panic!("Please update your Massa node to support it");
+                        } else if st_id == ComponentStateTypeId::Defined {
+                            // a new MipInfo @ state defined or started (or failed / error)
+                            // warn the user to update its node
+                            warn!(
+                                "A new MIP has been received: {}, version: {}",
+                                mip_info.name, mip_info.version
+                            );
+                            debug!("MIP state: {:?}", mip_state);
+                            let dt_start = Utc
+                                .timestamp_opt(mip_info.start.to_duration().as_secs() as i64, 0)
+                                .unwrap();
+                            let dt_timeout = Utc
+                                .timestamp_opt(mip_info.timeout.to_duration().as_secs() as i64, 0)
+                                .unwrap();
+                            warn!("Please update your node between: {} and {} if you want to support this update",
+                                dt_start.to_rfc2822(),
+                                dt_timeout.to_rfc2822()
+                            );
+                        } else {
+                            // a new MipInfo @ state defined or started (or failed / error)
+                            // warn the user to update its node
+                            warn!(
+                                "A new MIP has been received: {}, version: {}",
+                                mip_info.name, mip_info.version
+                            );
+                            debug!("MIP state: {:?}", mip_state);
+                            warn!("Please update your Massa node to support it");
+                        }
+                    }
+                    Err(e) => {
+                        // Should never happen
+                        panic!(
+                            "Unable to get state at {} of mip info: {:?}, error: {}",
+                            now, mip_info, e
+                        )
+                    }
+                }
+            }
+        }
+
+        debug!("MIP store got {} MIP updated from bootstrap", updated.len());
     }
 
     // launch execution module
@@ -521,6 +597,7 @@ async fn launch(
         read_write_limit_bytes_per_second: SETTINGS.protocol.read_write_limit_bytes_per_second
             as u128,
         try_connection_timer: SETTINGS.protocol.try_connection_timer,
+        max_in_connections: SETTINGS.protocol.max_in_connections,
         timeout_connection: SETTINGS.protocol.timeout_connection,
         routable_ip: SETTINGS
             .protocol
@@ -711,6 +788,7 @@ async fn launch(
             enable_cors: SETTINGS.grpc.enable_cors,
             enable_health: SETTINGS.grpc.enable_health,
             enable_reflection: SETTINGS.grpc.enable_reflection,
+            enable_mtls: SETTINGS.grpc.enable_mtls,
             bind: SETTINGS.grpc.bind,
             accept_compressed: SETTINGS.grpc.accept_compressed.clone(),
             send_compressed: SETTINGS.grpc.send_compressed.clone(),
@@ -753,6 +831,12 @@ async fn launch(
             max_denunciations_per_block_header: MAX_DENUNCIATIONS_PER_BLOCK_HEADER,
             max_block_ids_per_request: SETTINGS.grpc.max_block_ids_per_request,
             max_operation_ids_per_request: SETTINGS.grpc.max_operation_ids_per_request,
+            server_certificate_path: SETTINGS.grpc.server_certificate_path.clone(),
+            server_private_key_path: SETTINGS.grpc.server_private_key_path.clone(),
+            client_certificate_authority_root_path: SETTINGS
+                .grpc
+                .client_certificate_authority_root_path
+                .clone(),
         };
 
         let grpc_api = MassaGrpc {

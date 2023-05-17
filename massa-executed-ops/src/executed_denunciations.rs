@@ -84,7 +84,7 @@ impl ExecutedDenunciations {
         I: Iterator<Item = &'a DenunciationIndex>,
     {
         for de_idx in values {
-            if self.denunciations.insert((*de_idx).clone()) {
+            if self.denunciations.insert(*de_idx) {
                 self.hash ^= de_idx.get_hash();
             }
         }
@@ -97,11 +97,11 @@ impl ExecutedDenunciations {
             self.sorted_denunciations
                 .entry(*de_idx.get_slot())
                 .and_modify(|ids| {
-                    ids.insert(de_idx.clone());
+                    ids.insert(de_idx);
                 })
                 .or_insert_with(|| {
                     let mut new = HashSet::default();
-                    new.insert(de_idx.clone());
+                    new.insert(de_idx);
                     new
                 });
         }

@@ -17,7 +17,10 @@ use massa_pool_exports::PoolChannels;
 use massa_pos_exports::test_exports::MockSelectorController;
 use massa_proto::massa::api::v1::massa_service_client::MassaServiceClient;
 use massa_protocol_exports::MockProtocolController;
-use std::net::{IpAddr, Ipv4Addr, SocketAddr};
+use std::{
+    net::{IpAddr, Ipv4Addr, SocketAddr},
+    path::PathBuf,
+};
 
 #[tokio::test]
 async fn test_start_grpc_server() {
@@ -49,6 +52,7 @@ async fn test_start_grpc_server() {
         enable_cors: true,
         enable_health: true,
         enable_reflection: true,
+        enable_mtls: false,
         bind: SocketAddr::new(IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1)), 8888),
         accept_compressed: None,
         send_compressed: None,
@@ -85,6 +89,9 @@ async fn test_start_grpc_server() {
         max_denunciations_per_block_header: MAX_DENUNCIATIONS_PER_BLOCK_HEADER,
         max_block_ids_per_request: 50,
         max_operation_ids_per_request: 250,
+        server_certificate_path: PathBuf::default(),
+        server_private_key_path: PathBuf::default(),
+        client_certificate_authority_root_path: PathBuf::default(),
     };
 
     let service = MassaGrpc {
