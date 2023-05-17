@@ -11,7 +11,7 @@ use crate::server::BSEventPoller;
 const NEW_CONNECTION: Token = Token(0);
 const STOP_LISTENER: Token = Token(10);
 
-/// TODO: this should be crate-private. currently needed for models testing
+/// Inject into `start_bootstrap_server` to provide the listen-dependency
 pub struct BootstrapTcpListener {
     poll: Poll,
     events: Events,

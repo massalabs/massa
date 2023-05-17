@@ -171,8 +171,10 @@ fn mock_bootstrap_manager(addr: SocketAddr, bootstrap_config: BootstrapConfig) -
         .expect_clone_box()
         .return_once(move || stream_mock2);
 
+    let (waker, listener) = BootstrapTcpListener::new(&addr).unwrap();
     start_bootstrap_server(
-        BootstrapTcpListener::new(&addr).unwrap().1,
+        listener,
+        waker,
         stream_mock1,
         mocked1,
         final_state_server,
@@ -361,8 +363,10 @@ fn test_bootstrap_server() {
     let bootstrap_manager_thread = std::thread::Builder::new()
         .name("bootstrap_thread".to_string())
         .spawn(move || {
+            let (waker, _) = BootstrapTcpListener::new(&"127.0.0.1:0".parse().unwrap()).unwrap();
             start_bootstrap_server(
                 mock_bs_listener,
+                waker,
                 stream_mock1,
                 Box::new(mocked1),
                 final_state_server_clone1,

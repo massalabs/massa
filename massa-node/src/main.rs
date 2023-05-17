@@ -709,8 +709,9 @@ async fn launch(
                 format!("Could not bind to address: {}", addr).as_str()
             )
         });
-        let mut manager = start_bootstrap_server(
+        start_bootstrap_server(
             listener,
+            waker,
             consensus_controller.clone(),
             protocol_controller.clone(),
             final_state.clone(),
@@ -719,9 +720,7 @@ async fn launch(
             *VERSION,
             mip_store.clone(),
         )
-        .expect("Could not start bootstrap server");
-        manager.set_listener_stopper(waker);
-        manager
+        .expect("Could not start bootstrap server")
     });
 
     let api_config: APIConfig = APIConfig {
