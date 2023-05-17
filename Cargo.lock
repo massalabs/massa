@@ -2871,7 +2871,7 @@ dependencies = [
 [[package]]
 name = "massa_hash"
 version = "0.1.0"
-source = "git+https://github.com/massalabs/massa.git#0ee92ee9d88dc3895fab0ecd24b1e3a64e1fafb3"
+source = "git+https://github.com/massalabs/massa.git#f08619a07b4d466776e9777daa865d9959756608"
 dependencies = [
  "blake3 1.3.3",
  "bs58",
@@ -3123,7 +3123,7 @@ dependencies = [
 [[package]]
 name = "massa_serialization"
 version = "0.1.0"
-source = "git+https://github.com/massalabs/massa.git#0ee92ee9d88dc3895fab0ecd24b1e3a64e1fafb3"
+source = "git+https://github.com/massalabs/massa.git#f08619a07b4d466776e9777daa865d9959756608"
 dependencies = [
  "displaydoc",
  "nom",
@@ -3151,7 +3151,7 @@ dependencies = [
 [[package]]
 name = "massa_signature"
 version = "0.1.0"
-source = "git+https://github.com/massalabs/massa.git#0ee92ee9d88dc3895fab0ecd24b1e3a64e1fafb3"
+source = "git+https://github.com/massalabs/massa.git#f08619a07b4d466776e9777daa865d9959756608"
 dependencies = [
  "bs58",
  "displaydoc",
@@ -3337,7 +3337,7 @@ dependencies = [
 [[package]]
 name = "monotree"
 version = "0.1.4"
-source = "git+https://github.com/massalabs/monotree?branch=master#125e4b295c0e10c88bf43f8a5bce0eabedd9e10a"
+source = "git+https://github.com/massalabs/monotree?branch=master#06f2c79e42fd84bb227e3333e6328d302554620c"
 dependencies = [
  "blake2-rfc",
  "blake3 0.2.3",

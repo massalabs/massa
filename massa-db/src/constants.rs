@@ -6,6 +6,7 @@ pub const METADATA_CF: &str = "metadata";
 pub const STATE_CF: &str = "state";
 
 pub const STATE_HASH_KEY: &[u8; 1] = b"h";
+pub const STATE_HASH_KEY_MONOTREE: &[u8; 4] = b"h_mt";
 pub const CHANGE_ID_KEY: &[u8; 1] = b"c";
 pub const CHANGE_ID_DESER_ERROR: &str = "critical: change_id deserialization failed";
 

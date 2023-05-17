@@ -20,7 +20,8 @@ use massa_consensus_exports::{
 use massa_db::{DBBatch, MassaDB, MassaDBConfig};
 use massa_executed_ops::{ExecutedDenunciationsConfig, ExecutedOpsConfig};
 use massa_final_state::{
-    test_exports::assert_eq_final_state, FinalState, FinalStateConfig, StateChanges,
+    test_exports::{assert_eq_final_state, assert_eq_final_state_hash},
+    FinalState, FinalStateConfig, StateChanges,
 };
 use massa_hash::{Hash, HASH_SIZE_BYTES};
 use massa_ledger_exports::LedgerConfig;
@@ -549,9 +550,7 @@ fn test_bootstrap_server() {
 
     // check final states
     assert_eq_final_state(&final_state_server.read(), &final_state_client.read());
-
-    // TODO: UNCOMMENT AND DEAL WITH ERROR
-    //assert_eq_final_state_hash(&final_state_server.read(), &final_state_client.read());
+    assert_eq_final_state_hash(&final_state_server.read(), &final_state_client.read());
 
     // compute initial draws
     final_state_server.write().compute_initial_draws().unwrap();

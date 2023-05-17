@@ -1,7 +1,7 @@
 use crate::{
     MassaDBError, CF_ERROR, CHANGE_ID_DESER_ERROR, CHANGE_ID_KEY, CRUD_ERROR, METADATA_CF,
     MONOTREE_CF, MONOTREE_ERROR, OPEN_ERROR, STATE_CF, STATE_HASH_ERROR, STATE_HASH_INITIAL_BYTES,
-    STATE_HASH_KEY,
+    STATE_HASH_KEY, STATE_HASH_KEY_MONOTREE,
 };
 use massa_hash::Hash;
 use massa_models::{
@@ -296,6 +296,7 @@ where
         let handle_metadata = self.db.cf_handle(METADATA_CF).expect(CF_ERROR);
 
         let mut root = self.get_db_hash_monotree().map(|h| h.into_bytes());
+        let mut state_hash = self.get_db_hash();
 
         *self.current_batch.lock() = WriteBatch::default();
 
@@ -311,6 +312,11 @@ where
                     .monotree
                     .insert(root.as_ref(), key_hash.to_bytes(), value_hash.to_bytes())
                     .expect(MONOTREE_ERROR);
+
+                if let Ok(Some(prev_value)) = self.db.get_cf(handle_state, key) {
+                    state_hash ^= Hash::compute_from(&[key.to_vec(), prev_value].concat());
+                }
+                state_hash ^= Hash::compute_from(&[key.to_vec(), value.to_vec()].concat());
             } else {
                 self.current_batch.lock().delete_cf(handle_state, key);
                 let key_hash = Hash::compute_from(key);
@@ -321,6 +327,10 @@ where
                     .monotree
                     .remove(root.as_ref(), key_hash.to_bytes())
                     .expect(MONOTREE_ERROR);
+
+                if let Ok(Some(prev_value)) = self.db.get_cf(handle_state, key) {
+                    state_hash ^= Hash::compute_from(&[key.to_vec(), prev_value].concat());
+                }
             }
         }
 
@@ -348,8 +358,12 @@ where
 
             self.current_batch
                 .lock()
-                .put_cf(handle_metadata, STATE_HASH_KEY, root);
+                .put_cf(handle_metadata, STATE_HASH_KEY_MONOTREE, root);
         }
+
+        self.current_batch
+            .lock()
+            .put_cf(handle_metadata, STATE_HASH_KEY, state_hash.to_bytes());
 
         let batch;
         {
@@ -423,7 +437,7 @@ where
         let db = &self.db;
         let handle = db.cf_handle(METADATA_CF).expect(CF_ERROR);
 
-        db.get_cf(handle, STATE_HASH_KEY)
+        db.get_cf(handle, STATE_HASH_KEY_MONOTREE)
             .expect(CRUD_ERROR)
             .as_deref()
             .map(|state_hash_bytes| {

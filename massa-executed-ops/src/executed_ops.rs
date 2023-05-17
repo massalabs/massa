@@ -214,7 +214,7 @@ impl ExecutedOps {
         db.put_or_update_entry_value(batch, op_id_key!(serialized_op_id), &serialized_op_value);
     }
 
-    /// Remove a denunciation_index from the DB
+    /// Remove a op_id from the DB
     ///
     /// # Arguments
     /// * batch: the given operation batch to update
@@ -350,7 +350,6 @@ fn test_executed_ops_xor_computing() {
         thread: 0,
     };
     let mut batch_a = DBBatch::new();
-    a.apply_changes_to_batch(PreHashMap::default(), prune_slot, &mut batch_a);
     a.prune_to_batch(prune_slot, &mut batch_a);
     db_a.write().write_batch(batch_a, None);
 
