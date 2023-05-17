@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 
 use crate::{settings::PeerCategoryInfo, ProtocolConfig};
-use massa_models::config::ENDORSEMENT_COUNT;
+use massa_models::config::constants::ENDORSEMENT_COUNT;
 use massa_time::MassaTime;
 use tempfile::NamedTempFile;
 

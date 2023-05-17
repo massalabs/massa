@@ -98,18 +98,18 @@ pub struct CycleInfo {
     /// number of rolls each staking address has
     pub roll_counts: BTreeMap<Address, u64>,
     /// random seed bits of all slots in the cycle so far
-    pub rng_seed: BitVec<u8>,
+    pub(crate) rng_seed: BitVec<u8>,
     /// Per-address production statistics
     pub production_stats: PreHashMap<Address, ProductionStats>,
     /// Hash of the roll counts
-    pub roll_counts_hash: Hash,
+    pub(crate) roll_counts_hash: Hash,
     /// Hash of the production statistics
-    pub production_stats_hash: Hash,
+    pub(crate) production_stats_hash: Hash,
     /// Hash of the cycle state
     pub cycle_global_hash: Hash,
     /// Snapshot of the final state hash
     /// Used for PoS selections
-    pub final_state_hash_snapshot: Option<Hash>,
+    pub(crate) final_state_hash_snapshot: Option<Hash>,
 }
 
 impl CycleInfo {
@@ -230,6 +230,15 @@ impl CycleInfo {
 
         // return the completion status
         self.complete
+    }
+
+    #[cfg(feature = "testing")]
+    pub fn production_stats_hash(&self) -> Hash {
+        self.production_stats_hash
+    }
+    #[cfg(feature = "testing")]
+    pub fn roll_counts_hash(&self) -> Hash {
+        self.roll_counts_hash
     }
 }
 

@@ -9,10 +9,13 @@ use std::sync::{
     Arc, Mutex,
 };
 
-use massa_models::config::THREAD_COUNT;
-use massa_models::denunciation::{Denunciation, DenunciationPrecursor};
 use massa_models::{
-    block_id::BlockId, endorsement::EndorsementId, operation::OperationId, slot::Slot,
+    block_id::BlockId,
+    config::constants::THREAD_COUNT,
+    denunciation::{Denunciation, DenunciationPrecursor},
+    endorsement::EndorsementId,
+    operation::OperationId,
+    slot::Slot,
 };
 use massa_storage::Storage;
 use massa_time::MassaTime;
