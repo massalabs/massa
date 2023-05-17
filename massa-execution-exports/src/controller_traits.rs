@@ -20,6 +20,7 @@ use massa_storage::Storage;
 use std::collections::BTreeMap;
 use std::collections::HashMap;
 
+#[cfg_attr(any(test, feature = "testing"), mockall::automock)]
 /// interface that communicates with the execution worker thread
 pub trait ExecutionController: Send + Sync {
     /// Updates blockclique status by signaling newly finalized blocks and the latest blockclique.

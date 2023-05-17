@@ -233,7 +233,7 @@ impl ExecutionController for MockExecutionController {
             self.0
                 .lock()
                 .send(MockExecutionControllerMessage::IsDenunciationExecuted {
-                    de_idx: denunciation_index.clone(),
+                    de_idx: *denunciation_index,
                     response_tx,
                 })
         {
