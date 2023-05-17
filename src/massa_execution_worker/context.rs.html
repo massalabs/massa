@@ -2007,7 +2007,7 @@
     ///
     </span><span class="kw">pub fn </span>insert_executed_denunciation(<span class="kw-2">&amp;mut </span><span class="self">self</span>, denunciation_idx: <span class="kw-2">&amp;</span>DenunciationIndex) {
         <span class="self">self</span>.speculative_executed_denunciations
-            .insert_executed_denunciation(denunciation_idx.clone());
+            .insert_executed_denunciation(<span class="kw-2">*</span>denunciation_idx);
     }
 
     <span class="doccomment">/// gets the cycle information for an address

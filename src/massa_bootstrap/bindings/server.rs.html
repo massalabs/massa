@@ -313,6 +313,9 @@
 <a href="#313" id="313">313</a>
 <a href="#314" id="314">314</a>
 <a href="#315" id="315">315</a>
+<a href="#316" id="316">316</a>
+<a href="#317" id="317">317</a>
+<a href="#318" id="318">318</a>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="kw">use </span><span class="kw">crate</span>::bindings::BindingReadExact;
@@ -466,7 +469,10 @@
                         <span class="string">&quot;bootstrap server timed out sending error &#39;{}&#39; to addr {}&quot;</span>,
                         msg, addr
                     ),
-                    <span class="prelude-val">Err</span>(e) =&gt; <span class="macro">error!</span>(<span class="string">&quot;{}&quot;</span>, e),
+                    <span class="prelude-val">Err</span>(e) =&gt; <span class="macro">error!</span>(
+                        <span class="string">&quot;bootstrap server encountered error &#39;{}&#39; sending error &#39;{}&#39; to addr &#39;{}&#39;&quot;</span>,
+                        e, msg, addr
+                    ),
                     <span class="prelude-val">Ok</span>(<span class="kw">_</span>) =&gt; {}
                 }
                 close_fn();
