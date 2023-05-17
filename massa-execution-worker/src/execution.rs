@@ -65,9 +65,9 @@ pub(crate) struct ExecutionState {
     // It has atomic R/W access.
     active_history: Arc<RwLock<ActiveHistory>>,
     // a cursor pointing to the highest executed slot
-    pub(crate)  active_cursor: Slot,
+    pub(crate) active_cursor: Slot,
     // a cursor pointing to the highest executed final slot
-    pub(crate)  final_cursor: Slot,
+    pub(crate) final_cursor: Slot,
     // store containing execution events that became final
     final_events: EventStore,
     // final state with atomic R/W access
@@ -99,7 +99,7 @@ impl ExecutionState {
     ///
     /// # returns
     /// A new `ExecutionState`
-    pub(crate)  fn new(
+    pub(crate) fn new(
         config: ExecutionConfig,
         final_state: Arc<RwLock<FinalState>>,
         mip_store: MipStore,
@@ -175,7 +175,7 @@ impl ExecutionState {
     }
 
     /// Get execution statistics
-    pub(crate)  fn get_stats(&self) -> ExecutionStats {
+    pub(crate) fn get_stats(&self) -> ExecutionStats {
         self.stats_counter.get_stats(self.active_cursor)
     }
 
@@ -184,7 +184,7 @@ impl ExecutionState {
     ///
     /// # Arguments
     /// * `exec_out`: execution output to apply
-    pub(crate)  fn apply_final_execution_output(&mut self, mut exec_out: ExecutionOutput) {
+    pub(crate) fn apply_final_execution_output(&mut self, mut exec_out: ExecutionOutput) {
         if self.final_cursor >= exec_out.slot {
             panic!("attempting to apply a final execution output at or before the current final_cursor");
         }
@@ -225,7 +225,7 @@ impl ExecutionState {
     ///
     /// # Arguments
     /// * `exec_out`: execution output to apply
-    pub(crate)  fn apply_active_execution_output(&mut self, exec_out: ExecutionOutput) {
+    pub(crate) fn apply_active_execution_output(&mut self, exec_out: ExecutionOutput) {
         if self.active_cursor >= exec_out.slot {
             panic!("attempting to apply an active execution output at or before the current active_cursor");
         }
@@ -306,7 +306,7 @@ impl ExecutionState {
     /// * `block_slot`: slot of the block in which the op is included
     /// * `remaining_block_gas`: mutable reference towards the remaining gas in the block
     /// * `block_credits`: mutable reference towards the total block reward/fee credits
-    pub(crate)  fn execute_operation(
+    pub(crate) fn execute_operation(
         &self,
         operation: &SecureShareOperation,
         block_slot: Slot,
@@ -547,7 +547,7 @@ impl ExecutionState {
     /// # Arguments
     /// * `operation`: the `WrappedOperation` to process, must be an `RollSell`
     /// * `sender_addr`: address of the sender
-    pub(crate)  fn execute_roll_sell_op(
+    pub(crate) fn execute_roll_sell_op(
         &self,
         operation: &OperationType,
         seller_addr: Address,
@@ -587,7 +587,7 @@ impl ExecutionState {
     /// * `operation`: the `WrappedOperation` to process, must be an `RollBuy`
     /// * `buyer_addr`: address of the buyer
     /// * `current_slot` : current slot
-    pub(crate)  fn execute_roll_buy_op(
+    pub(crate) fn execute_roll_buy_op(
         &self,
         operation: &OperationType,
         buyer_addr: Address,
@@ -651,7 +651,7 @@ impl ExecutionState {
     /// * `operation`: the `WrappedOperation` to process, must be a `Transaction`
     /// * `operation_id`: ID of the operation
     /// * `sender_addr`: address of the sender
-    pub(crate)  fn execute_transaction_op(
+    pub(crate) fn execute_transaction_op(
         &self,
         operation: &OperationType,
         sender_addr: Address,
@@ -696,7 +696,7 @@ impl ExecutionState {
     /// # Arguments
     /// * `operation`: the `WrappedOperation` to process, must be an `ExecuteSC`
     /// * `sender_addr`: address of the sender
-    pub(crate)  fn execute_executesc_op(
+    pub(crate) fn execute_executesc_op(
         &self,
         operation: &OperationType,
         sender_addr: Address,
@@ -762,7 +762,7 @@ impl ExecutionState {
     /// * `block_creator_addr`: address of the block creator
     /// * `operation_id`: ID of the operation
     /// * `sender_addr`: address of the sender
-    pub(crate)  fn execute_callsc_op(
+    pub(crate) fn execute_callsc_op(
         &self,
         operation: &OperationType,
         sender_addr: Address,
@@ -861,7 +861,7 @@ impl ExecutionState {
     /// # Arguments
     /// * message: message information
     /// * bytecode: executable target bytecode, or None if unavailable
-    pub(crate)  fn execute_async_message(
+    pub(crate) fn execute_async_message(
         &self,
         message: AsyncMessage,
         bytecode: Option<Bytecode>,
@@ -974,7 +974,7 @@ impl ExecutionState {
     ///
     /// # Returns
     /// An `ExecutionOutput` structure summarizing the output of the executed slot
-    pub(crate)  fn execute_slot(
+    pub(crate) fn execute_slot(
         &self,
         slot: &Slot,
         exec_target: Option<&(BlockId, Storage)>,
@@ -1189,7 +1189,7 @@ impl ExecutionState {
     }
 
     /// Execute a candidate slot
-    pub(crate)  fn execute_candidate_slot(
+    pub(crate) fn execute_candidate_slot(
         &mut self,
         slot: &Slot,
         exec_target: Option<&(BlockId, Storage)>,
@@ -1230,7 +1230,7 @@ impl ExecutionState {
     }
 
     /// Execute an SCE-final slot
-    pub(crate)  fn execute_final_slot(
+    pub(crate) fn execute_final_slot(
         &mut self,
         slot: &Slot,
         exec_target: Option<&(BlockId, Storage)>,
@@ -1434,7 +1434,7 @@ impl ExecutionState {
     }
 
     /// Gets a balance both at the latest final and candidate executed slots
-    pub(crate)  fn get_final_and_candidate_balance(
+    pub(crate) fn get_final_and_candidate_balance(
         &self,
         address: &Address,
     ) -> (Option<Amount>, Option<Amount>) {
@@ -1451,7 +1451,7 @@ impl ExecutionState {
     }
 
     /// Gets roll counts both at the latest final and active executed slots
-    pub(crate)  fn get_final_and_candidate_rolls(&self, address: &Address) -> (u64, u64) {
+    pub(crate) fn get_final_and_candidate_rolls(&self, address: &Address) -> (u64, u64) {
         let final_rolls = self.final_state.read().pos_state.get_rolls_for(address);
         let active_rolls = self
             .active_history
@@ -1462,7 +1462,7 @@ impl ExecutionState {
     }
 
     /// Gets a data entry both at the latest final and active executed slots
-    pub(crate)  fn get_final_and_active_data_entry(
+    pub(crate) fn get_final_and_active_data_entry(
         &self,
         address: &Address,
         key: &[u8],
@@ -1483,7 +1483,7 @@ impl ExecutionState {
     }
 
     /// Get every final and active datastore key of the given address
-    pub(crate)  fn get_final_and_candidate_datastore_keys(
+    pub(crate) fn get_final_and_candidate_datastore_keys(
         &self,
         addr: &Address,
     ) -> (BTreeSet<Vec<u8>>, BTreeSet<Vec<u8>>) {
@@ -1532,7 +1532,7 @@ impl ExecutionState {
     /// by the selector. That correspond to the `roll_counts` in `cycle - 3`.
     ///
     /// By default it returns an empty map.
-    pub(crate)  fn get_cycle_active_rolls(&self, cycle: u64) -> BTreeMap<Address, u64> {
+    pub(crate) fn get_cycle_active_rolls(&self, cycle: u64) -> BTreeMap<Address, u64> {
         let final_state = self.final_state.read();
 
         match cycle.checked_sub(3) {
@@ -1558,7 +1558,7 @@ impl ExecutionState {
     /// * original caller address
     /// * operation id
     /// * event state (final, candidate or both)
-    pub(crate)  fn get_filtered_sc_output_event(&self, filter: EventFilter) -> Vec<SCOutputEvent> {
+    pub(crate) fn get_filtered_sc_output_event(&self, filter: EventFilter) -> Vec<SCOutputEvent> {
         match filter.is_final {
             Some(true) => self
                 .final_events
@@ -1588,7 +1588,7 @@ impl ExecutionState {
     }
 
     /// List which operations inside the provided list were not executed
-    pub(crate)  fn unexecuted_ops_among(
+    pub(crate) fn unexecuted_ops_among(
         &self,
         ops: &PreHashSet<OperationId>,
         thread: u8,
@@ -1628,7 +1628,7 @@ impl ExecutionState {
     }
 
     /// Check if a denunciation has been executed given a `DenunciationIndex`
-    pub(crate)  fn is_denunciation_executed(&self, denunciation_index: &DenunciationIndex) -> bool {
+    pub(crate) fn is_denunciation_executed(&self, denunciation_index: &DenunciationIndex) -> bool {
         // check active history
         let history = self.active_history.read();
 
@@ -1647,12 +1647,18 @@ impl ExecutionState {
     }
 
     /// Gets the production stats for an address at all cycles
-    pub(crate)  fn get_address_cycle_infos(&self, address: &Address) -> Vec<ExecutionAddressCycleInfo> {
+    pub(crate) fn get_address_cycle_infos(
+        &self,
+        address: &Address,
+    ) -> Vec<ExecutionAddressCycleInfo> {
         context_guard!(self).get_address_cycle_infos(address, self.config.periods_per_cycle)
     }
 
     /// Get future deferred credits of an address
-    pub(crate)  fn get_address_future_deferred_credits(&self, address: &Address) -> BTreeMap<Slot, Amount> {
+    pub(crate) fn get_address_future_deferred_credits(
+        &self,
+        address: &Address,
+    ) -> BTreeMap<Slot, Amount> {
         context_guard!(self).get_address_future_deferred_credits(address, self.config.thread_count)
     }
 
@@ -1663,7 +1669,9 @@ impl ExecutionState {
     /// * A tuple of hashmaps with:
     /// * first the statuses for speculative executions
     /// * second the statuses for final executions
-    pub(crate)  fn get_op_exec_status(&self) -> (HashMap<OperationId, bool>, HashMap<OperationId, bool>) {
+    pub(crate) fn get_op_exec_status(
+        &self,
+    ) -> (HashMap<OperationId, bool>, HashMap<OperationId, bool>) {
         (
             self.active_history.read().get_op_exec_status(),
             self.final_state.read().executed_ops.op_exec_status.clone(),
@@ -1671,7 +1679,7 @@ impl ExecutionState {
     }
 
     /// Update MipStore with block header stats
-    pub(crate)  fn update_versioning_stats(
+    pub(crate) fn update_versioning_stats(
         &mut self,
         exec_target: Option<&(BlockId, Storage)>,
         slot: &Slot,
