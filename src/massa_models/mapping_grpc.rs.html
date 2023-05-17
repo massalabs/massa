@@ -288,6 +288,36 @@
 <a href="#288" id="288">288</a>
 <a href="#289" id="289">289</a>
 <a href="#290" id="290">290</a>
+<a href="#291" id="291">291</a>
+<a href="#292" id="292">292</a>
+<a href="#293" id="293">293</a>
+<a href="#294" id="294">294</a>
+<a href="#295" id="295">295</a>
+<a href="#296" id="296">296</a>
+<a href="#297" id="297">297</a>
+<a href="#298" id="298">298</a>
+<a href="#299" id="299">299</a>
+<a href="#300" id="300">300</a>
+<a href="#301" id="301">301</a>
+<a href="#302" id="302">302</a>
+<a href="#303" id="303">303</a>
+<a href="#304" id="304">304</a>
+<a href="#305" id="305">305</a>
+<a href="#306" id="306">306</a>
+<a href="#307" id="307">307</a>
+<a href="#308" id="308">308</a>
+<a href="#309" id="309">309</a>
+<a href="#310" id="310">310</a>
+<a href="#311" id="311">311</a>
+<a href="#312" id="312">312</a>
+<a href="#313" id="313">313</a>
+<a href="#314" id="314">314</a>
+<a href="#315" id="315">315</a>
+<a href="#316" id="316">316</a>
+<a href="#317" id="317">317</a>
+<a href="#318" id="318">318</a>
+<a href="#319" id="319">319</a>
+<a href="#320" id="320">320</a>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2023 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="kw">use </span>std::str::FromStr;
@@ -295,6 +325,7 @@
 <span class="kw">use </span><span class="kw">crate</span>::address::Address;
 <span class="kw">use </span><span class="kw">crate</span>::block::{Block, FilledBlock, SecureShareBlock};
 <span class="kw">use </span><span class="kw">crate</span>::block_header::{BlockHeader, SecuredHeader};
+<span class="kw">use </span><span class="kw">crate</span>::denunciation::DenunciationIndex;
 <span class="kw">use </span><span class="kw">crate</span>::endorsement::{Endorsement, SecureShareEndorsement};
 <span class="kw">use </span><span class="kw">crate</span>::execution::EventFilter;
 <span class="kw">use </span><span class="kw">crate</span>::operation::{Operation, OperationId, OperationType, SecureShareOperation};
@@ -570,11 +601,40 @@
                 .map(|a| a.to_string())
                 .collect(),
             origin_operation_id: value.origin_operation_id.map(|id| id.to_string()),
-            status: <span class="macro">vec!</span>[
-                value.is_error.into(),
-                value.read_only.into(),
-                value.is_final.into(),
-            ],
+            status: {
+                <span class="kw">let </span><span class="kw-2">mut </span>status = Vec::new();
+                <span class="kw">if </span>value.read_only {
+                    status.push(grpc::ScExecutionEventStatus::ReadOnly <span class="kw">as </span>i32);
+                }
+                <span class="kw">if </span>value.is_error {
+                    status.push(grpc::ScExecutionEventStatus::Failure <span class="kw">as </span>i32);
+                }
+                <span class="kw">if </span>value.is_final {
+                    status.push(grpc::ScExecutionEventStatus::Final <span class="kw">as </span>i32);
+                }
+
+                status
+            },
+        }
+    }
+}
+
+<span class="kw">impl </span>From&lt;DenunciationIndex&gt; <span class="kw">for </span>grpc::DenunciationIndex {
+    <span class="kw">fn </span>from(value: DenunciationIndex) -&gt; <span class="self">Self </span>{
+        grpc::DenunciationIndex {
+            entry: <span class="prelude-val">Some</span>(<span class="kw">match </span>value {
+                DenunciationIndex::BlockHeader { slot } =&gt; {
+                    grpc::denunciation_index::Entry::BlockHeader(grpc::DenunciationBlockHeader {
+                        slot: <span class="prelude-val">Some</span>(slot.into()),
+                    })
+                }
+                DenunciationIndex::Endorsement { slot, index } =&gt; {
+                    grpc::denunciation_index::Entry::Endorsement(grpc::DenunciationEndorsement {
+                        slot: <span class="prelude-val">Some</span>(slot.into()),
+                        index,
+                    })
+                }
+            }),
         }
     }
 }
