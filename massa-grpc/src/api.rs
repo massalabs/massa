@@ -351,14 +351,14 @@ pub(crate) fn get_mip_status(
             let state_id = grpc::ComponentStateId::from(state_id_);
             Ok(grpc::MipStatusEntry {
                 mip_info: Some(grpc::MipInfo::from(mip_info)),
-                state: i32::from(state_id),
+                state_id: i32::from(state_id),
             })
         })
         .collect();
 
     Ok(grpc::GetMipStatusResponse {
         id: request.into_inner().id,
-        status: mip_store_status?,
+        entry: mip_store_status?,
     })
 }
 

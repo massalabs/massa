@@ -430,7 +430,7 @@ message GetMipStatusResponse {
   // Request id
   string id = 1;
   // MipInfo - status id entry
-  repeated MipStatusEntry status = 2;
+  repeated MipStatusEntry entry = 2;
 }
 
 // GetTransactionsThroughputRequest holds request for GetTransactionsThroughput

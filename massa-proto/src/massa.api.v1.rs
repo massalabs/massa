@@ -565,7 +565,7 @@ pub struct MipStatusEntry {
     pub mip_info: ::core::option::Option<MipInfo>,
     /// state id
     #[prost(enumeration = "ComponentStateId", tag = "2")]
-    pub state: i32,
+    pub state_id: i32,
 }
 /// Same as MipInfo struct in versioning package
 #[allow(clippy::derive_partial_eq_without_eq)]
@@ -1036,7 +1036,7 @@ pub struct GetMipStatusResponse {
     pub id: ::prost::alloc::string::String,
     /// MipInfo - status id entry
     #[prost(message, repeated, tag = "2")]
-    pub status: ::prost::alloc::vec::Vec<MipStatusEntry>,
+    pub entry: ::prost::alloc::vec::Vec<MipStatusEntry>,
 }
 /// GetTransactionsThroughputRequest holds request for GetTransactionsThroughput
 #[allow(clippy::derive_partial_eq_without_eq)]

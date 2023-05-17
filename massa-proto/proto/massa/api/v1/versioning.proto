@@ -18,7 +18,7 @@ message MipStatusEntry {
   // Mip info
   MipInfo mip_info = 1;
   // state id
-  ComponentStateId state = 2;
+  ComponentStateId state_id = 2;
 }
 
 // Same as MipInfo struct in versioning package

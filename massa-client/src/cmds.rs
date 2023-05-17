@@ -777,7 +777,7 @@ impl Command {
                 let versioning_status = match client.grpc.get_mip_status(req).await {
                     Ok(resp_) => {
                         let resp = resp_.into_inner();
-                        resp.status
+                        resp.entry
                     }
                     Err(e) => {
                         // FIXME: Should we default to the last known version - default to 0?
@@ -790,10 +790,10 @@ impl Command {
                     .into_iter()
                     .rev()
                     .find_map(|entry| {
-                        let state = grpc::ComponentStateId::from_i32(entry.state)
+                        let state = grpc::ComponentStateId::from_i32(entry.state_id)
                             .unwrap_or(grpc::ComponentStateId::Error);
                         match state {
-                            grpc::ComponentStateId::Active => Some(entry.state),
+                            grpc::ComponentStateId::Active => Some(entry.state_id),
                             _ => None,
                         }
                     })
