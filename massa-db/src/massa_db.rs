@@ -295,8 +295,6 @@ where
             }
         }
 
-        self.current_batch.lock().put_cf(handle_metadata, STATE_HASH_KEY, self.lsmtree.root());
-
         if let Some(change_id) = change_id {
             let mut change_id_bytes = Vec::new();
             self.change_id_serializer
@@ -307,6 +305,8 @@ where
                 .lock()
                 .put_cf(handle_metadata, CHANGE_ID_KEY, &change_id_bytes);
         }
+
+        self.current_batch.lock().put_cf(handle_metadata, STATE_HASH_KEY, self.lsmtree.root());
 
         let batch;
         {
