@@ -1230,6 +1230,7 @@
 <a href="#1230" id="1230">1230</a>
 <a href="#1231" id="1231">1231</a>
 <a href="#1232" id="1232">1232</a>
+<a href="#1233" id="1233">1233</a>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="attr">#![doc = <span class="macro">include_str!</span>(<span class="string">&quot;../../README.md&quot;</span>)]
@@ -2082,6 +2083,7 @@
             storage: shared_storage.clone(),
             grpc_config: grpc_config.clone(),
             version: <span class="kw-2">*</span>VERSION,
+            mip_store,
         };
 
         <span class="comment">// HACK maybe should remove timeout later
