@@ -1,6 +1,8 @@
 use massa_hash::HASH_SIZE_BYTES;
 
 // Commons
+pub const LSMTREE_NODES_CF: &str = "lsmtree_nodes";
+pub const LSMTREE_VALUES_CF: &str = "lsmtree_values";
 pub const MONOTREE_CF: &str = "monotree";
 pub const METADATA_CF: &str = "metadata";
 pub const STATE_CF: &str = "state";

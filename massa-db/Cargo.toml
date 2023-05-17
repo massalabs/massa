@@ -12,7 +12,8 @@ displaydoc = "0.2"
 thiserror = "1.0"
 
 # Fork of monotree = "0.1.4"
-monotree = { git = "https://github.com/massalabs/monotree", branch = "master" }
+# monotree = { git = "https://github.com/massalabs/monotree", branch = "master" }
+lsmtree = "0.1.1"
 #monotree = { path = "../../monotree"}
 
 # Custom modules
