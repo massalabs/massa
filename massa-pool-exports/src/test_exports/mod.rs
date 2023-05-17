@@ -3,5 +3,6 @@
 mod config;
 mod mock;
 
-pub(crate) use config::*;
-pub use mock::{MockPoolController, MockPoolControllerMessage, PoolEventReceiver};
+pub use config::*;
+#[cfg(feature = "testing")]
+pub use mock::*;

@@ -13,9 +13,8 @@ mod types;
 
 pub use config::FactoryConfig;
 pub use controller_traits::FactoryManager;
-pub use types::FactoryChannels;
-// pub(crate)  use error::*;
-// pub(crate)  use types::*;
+pub use error::*;
+pub use types::*;
 
 /// Tests utils
 #[cfg(feature = "testing")]

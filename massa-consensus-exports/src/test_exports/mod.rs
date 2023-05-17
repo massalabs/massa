@@ -3,8 +3,5 @@
 mod config;
 mod mock;
 
-pub(crate) use config::*;
-pub use mock::{
-    ConsensusControllerImpl, ConsensusEventReceiver, MockConsensusControllerImpl,
-    MockConsensusControllerMessage,
-};
+pub use config::*;
+pub use mock::*;

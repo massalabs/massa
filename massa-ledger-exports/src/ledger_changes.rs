@@ -36,7 +36,7 @@ pub struct LedgerEntryUpdate {
 }
 
 /// Serializer for `datastore` field of `LedgerEntryUpdate`
-pub(crate) struct DatastoreUpdateSerializer {
+pub struct DatastoreUpdateSerializer {
     u64_serializer: U64VarIntSerializer,
     vec_u8_serializer: VecU8Serializer,
     value_serializer: SetOrDeleteSerializer<Vec<u8>, VecU8Serializer>,
@@ -44,7 +44,7 @@ pub(crate) struct DatastoreUpdateSerializer {
 
 impl DatastoreUpdateSerializer {
     /// Creates a new `DatastoreUpdateSerializer`
-    pub(crate) fn new() -> Self {
+    pub fn new() -> Self {
         Self {
             u64_serializer: U64VarIntSerializer::new(),
             vec_u8_serializer: VecU8Serializer::new(),
@@ -61,8 +61,7 @@ impl Default for DatastoreUpdateSerializer {
 
 impl Serializer<BTreeMap<Vec<u8>, SetOrDelete<Vec<u8>>>> for DatastoreUpdateSerializer {
     /// ## Example
-    /// ```rust,ignore
-    /// // TODO: reinstate this doc-test. was ignored when these were made private
+    /// ```rust
     /// use std::collections::BTreeMap;
     /// use massa_ledger_exports::{DatastoreUpdateSerializer, SetOrDelete};
     /// use massa_serialization::Serializer;
@@ -95,7 +94,7 @@ impl Serializer<BTreeMap<Vec<u8>, SetOrDelete<Vec<u8>>>> for DatastoreUpdateSeri
 }
 
 /// Serializer for `datastore` field of `LedgerEntryUpdate`
-pub(crate) struct DatastoreUpdateDeserializer {
+pub struct DatastoreUpdateDeserializer {
     length_deserializer: U64VarIntDeserializer,
     key_deserializer: VecU8Deserializer,
     value_deserializer: SetOrDeleteDeserializer<Vec<u8>, VecU8Deserializer>,
@@ -103,7 +102,7 @@ pub(crate) struct DatastoreUpdateDeserializer {
 
 impl DatastoreUpdateDeserializer {
     /// Creates a new `DatastoreUpdateDeserializer`
-    pub(crate) fn new(
+    pub fn new(
         max_datastore_key_length: u8,
         max_datastore_value_length: u64,
         max_datastore_entry_count: u64,
@@ -127,8 +126,7 @@ impl DatastoreUpdateDeserializer {
 
 impl Deserializer<BTreeMap<Vec<u8>, SetOrDelete<Vec<u8>>>> for DatastoreUpdateDeserializer {
     /// ## Example
-    /// ```rust,ignore
-    /// // TODO: reinstate this doc-test. was ignored when these were made private
+    /// ```rust
     /// use std::collections::BTreeMap;
     /// use massa_ledger_exports::{DatastoreUpdateDeserializer, DatastoreUpdateSerializer, SetOrDelete};
     /// use massa_serialization::{Serializer, Deserializer, DeserializeError};
@@ -172,7 +170,7 @@ impl Deserializer<BTreeMap<Vec<u8>, SetOrDelete<Vec<u8>>>> for DatastoreUpdateDe
 }
 
 /// Serializer for `LedgerEntryUpdate`
-pub(crate) struct LedgerEntryUpdateSerializer {
+pub struct LedgerEntryUpdateSerializer {
     balance_serializer: SetOrKeepSerializer<Amount, AmountSerializer>,
     bytecode_serializer: SetOrKeepSerializer<Bytecode, BytecodeSerializer>,
     datastore_serializer: DatastoreUpdateSerializer,
@@ -180,7 +178,7 @@ pub(crate) struct LedgerEntryUpdateSerializer {
 
 impl LedgerEntryUpdateSerializer {
     /// Creates a new `LedgerEntryUpdateSerializer`
-    pub(crate) fn new() -> Self {
+    pub fn new() -> Self {
         Self {
             balance_serializer: SetOrKeepSerializer::new(AmountSerializer::new()),
             bytecode_serializer: SetOrKeepSerializer::new(BytecodeSerializer::new()),
@@ -197,8 +195,7 @@ impl Default for LedgerEntryUpdateSerializer {
 
 impl Serializer<LedgerEntryUpdate> for LedgerEntryUpdateSerializer {
     /// ## Example
-    /// ```rust,ignore
-    /// // TODO: reinstate this doc-test. was ignored when these were made private
+    /// ```
     /// use massa_serialization::Serializer;
     /// use massa_models::{prehash::PreHashMap, address::Address, amount::Amount, bytecode::Bytecode};
     /// use std::str::FromStr;
@@ -234,7 +231,7 @@ impl Serializer<LedgerEntryUpdate> for LedgerEntryUpdateSerializer {
 }
 
 /// Deserializer for `LedgerEntryUpdate`
-pub(crate) struct LedgerEntryUpdateDeserializer {
+pub struct LedgerEntryUpdateDeserializer {
     amount_deserializer: SetOrKeepDeserializer<Amount, AmountDeserializer>,
     bytecode_deserializer: SetOrKeepDeserializer<Bytecode, BytecodeDeserializer>,
     datastore_deserializer: DatastoreUpdateDeserializer,
@@ -242,7 +239,7 @@ pub(crate) struct LedgerEntryUpdateDeserializer {
 
 impl LedgerEntryUpdateDeserializer {
     /// Creates a new `LedgerEntryUpdateDeserializer`
-    pub(crate) fn new(
+    pub fn new(
         max_datastore_key_length: u8,
         max_datastore_value_length: u64,
         max_datastore_entry_count: u64,
@@ -266,8 +263,7 @@ impl LedgerEntryUpdateDeserializer {
 
 impl Deserializer<LedgerEntryUpdate> for LedgerEntryUpdateDeserializer {
     /// ## Example
-    /// ```rust,ignore
-    /// // TODO: reinstate this doc-test. was ignored when these were made private
+    /// ```
     /// use massa_serialization::{Deserializer, Serializer, DeserializeError};
     /// use massa_models::{prehash::PreHashMap, address::Address, amount::Amount, bytecode::Bytecode};
     /// use std::str::FromStr;

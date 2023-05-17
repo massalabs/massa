@@ -5,10 +5,7 @@ use massa_time::MassaTime;
 
 impl Default for FactoryConfig {
     fn default() -> Self {
-        use massa_models::config::constants::{
-            DENUNCIATION_EXPIRE_PERIODS, MAX_BLOCK_SIZE, MAX_GAS_PER_BLOCK,
-            MAX_OPERATIONS_PER_BLOCK, PERIODS_PER_CYCLE, T0, THREAD_COUNT,
-        };
+        use massa_models::config::*;
         FactoryConfig {
             thread_count: THREAD_COUNT,
             genesis_timestamp: MassaTime::now().expect("failed to get current time"),

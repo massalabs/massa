@@ -4,13 +4,13 @@ use serde::{Deserialize, Serialize};
 
 /// Roll counts
 #[derive(Debug, Deserialize, Serialize, Clone, Copy)]
-pub(crate)  struct RollsInfo {
+pub struct RollsInfo {
     /// count taken into account for the current cycle
-    pub(crate)  active_rolls: u64,
+    pub active_rolls: u64,
     /// at final blocks
-    pub(crate)  final_rolls: u64,
+    pub final_rolls: u64,
     /// at latest blocks
-    pub(crate)  candidate_rolls: u64,
+    pub candidate_rolls: u64,
 }
 
 impl std::fmt::Display for RollsInfo {

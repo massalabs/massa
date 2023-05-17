@@ -5,7 +5,7 @@
 
 use std::collections::BTreeMap;
 
-use crate::error::PosResult;
+use crate::PosResult;
 use massa_hash::Hash;
 use massa_models::{
     address::Address,
@@ -24,6 +24,7 @@ pub struct Selection {
     pub producer: Address,
 }
 
+#[cfg_attr(any(test, feature = "testing"), mockall::automock)]
 /// interface that communicates with the selector worker thread
 pub trait SelectorController: Send + Sync {
     /// Waits for draws to reach at least a given cycle number.

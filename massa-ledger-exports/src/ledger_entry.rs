@@ -28,7 +28,7 @@ pub struct LedgerEntry {
 }
 
 /// Serializer for `LedgerEntry`
-pub(crate) struct LedgerEntrySerializer {
+pub struct LedgerEntrySerializer {
     amount_serializer: AmountSerializer,
     bytecode_serializer: BytecodeSerializer,
     datastore_serializer: DatastoreSerializer,
@@ -36,7 +36,7 @@ pub(crate) struct LedgerEntrySerializer {
 
 impl LedgerEntrySerializer {
     /// Creates a new `LedgerEntrySerializer`
-    pub(crate) fn new() -> Self {
+    pub fn new() -> Self {
         Self {
             amount_serializer: AmountSerializer::new(),
             bytecode_serializer: BytecodeSerializer::new(),
@@ -53,8 +53,7 @@ impl Default for LedgerEntrySerializer {
 
 impl Serializer<LedgerEntry> for LedgerEntrySerializer {
     /// ## Example
-    /// ```rust,ignore
-    /// // TODO: reinstate this doc-test. was ignored when these were made private
+    /// ```
     /// use massa_serialization::Serializer;
     /// use std::collections::BTreeMap;
     /// use std::str::FromStr;
@@ -86,7 +85,7 @@ impl Serializer<LedgerEntry> for LedgerEntrySerializer {
 }
 
 /// Deserializer for `LedgerEntry`
-pub(crate) struct LedgerEntryDeserializer {
+pub struct LedgerEntryDeserializer {
     amount_deserializer: AmountDeserializer,
     bytecode_deserializer: BytecodeDeserializer,
     datastore_deserializer: DatastoreDeserializer,
@@ -94,7 +93,7 @@ pub(crate) struct LedgerEntryDeserializer {
 
 impl LedgerEntryDeserializer {
     /// Creates a new `LedgerEntryDeserializer`
-    pub(crate) fn new(
+    pub fn new(
         max_datastore_entry_count: u64,
         max_datastore_key_length: u8,
         max_datastore_value_length: u64,
@@ -116,8 +115,7 @@ impl LedgerEntryDeserializer {
 
 impl Deserializer<LedgerEntry> for LedgerEntryDeserializer {
     /// ## Example
-    /// ```rust,ignore
-    /// // TODO: reinstate this doc-test. was ignored when these were made private
+    /// ```
     /// use massa_serialization::{Deserializer, Serializer, DeserializeError};
     /// use std::collections::BTreeMap;
     /// use std::str::FromStr;

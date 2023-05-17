@@ -24,7 +24,7 @@ use serde::{Deserialize, Serialize};
 use std::collections::{BTreeMap, VecDeque};
 use std::ops::Bound::Included;
 
-use crate::pos_changes::PoSChanges;
+use crate::PoSChanges;
 
 const CYCLE_INFO_HASH_INITIAL_BYTES: &[u8; 32] = &[0; HASH_SIZE_BYTES];
 
@@ -98,46 +98,23 @@ pub struct CycleInfo {
     /// number of rolls each staking address has
     pub roll_counts: BTreeMap<Address, u64>,
     /// random seed bits of all slots in the cycle so far
-    pub(crate) rng_seed: BitVec<u8>,
+    pub rng_seed: BitVec<u8>,
     /// Per-address production statistics
     pub production_stats: PreHashMap<Address, ProductionStats>,
     /// Hash of the roll counts
-    pub(crate) roll_counts_hash: Hash,
+    pub roll_counts_hash: Hash,
     /// Hash of the production statistics
-    pub(crate) production_stats_hash: Hash,
+    pub production_stats_hash: Hash,
     /// Hash of the cycle state
     pub cycle_global_hash: Hash,
     /// Snapshot of the final state hash
     /// Used for PoS selections
-    pub(crate) final_state_hash_snapshot: Option<Hash>,
+    pub final_state_hash_snapshot: Option<Hash>,
 }
 
 impl CycleInfo {
-    /// public re-export of private field to make available for testing
-    #[cfg(feature = "testing")]
-    pub fn roll_counts_hash(&self) -> Hash {
-        self.roll_counts_hash
-    }
-
-    /// public re-export of private field to make available for testing
-    #[cfg(feature = "testing")]
-    pub fn production_stats_hash(&self) -> Hash {
-        self.production_stats_hash
-    }
-    /// public re-export of private method for testing purposes
-    #[cfg(feature = "testing")]
-    pub fn test_exp_new_with_hash(
-        cycle: u64,
-        complete: bool,
-        roll_counts: BTreeMap<Address, u64>,
-        rng_seed: BitVec<u8>,
-        production_stats: PreHashMap<Address, ProductionStats>,
-    ) -> Self {
-        Self::new_with_hash(cycle, complete, roll_counts, rng_seed, production_stats)
-    }
-
     /// Create a new `CycleInfo` and compute its hash
-    pub(crate) fn new_with_hash(
+    pub fn new_with_hash(
         cycle: u64,
         complete: bool,
         roll_counts: BTreeMap<Address, u64>,
@@ -253,16 +230,6 @@ impl CycleInfo {
 
         // return the completion status
         self.complete
-    }
-
-    #[cfg(feature = "testing")]
-    pub fn final_state_hash_snapshot(&self) -> Option<Hash> {
-        self.final_state_hash_snapshot
-    }
-
-    #[cfg(feature = "testing")]
-    pub fn final_state_hash_snapshot_mut(&mut self) -> &mut Option<Hash> {
-        &mut self.final_state_hash_snapshot
     }
 }
 
@@ -520,7 +487,7 @@ impl ProductionStats {
 }
 
 /// Serializer for `ProductionStats`
-pub(crate) struct ProductionStatsSerializer {
+pub struct ProductionStatsSerializer {
     u64_ser: U64VarIntSerializer,
     address_ser: AddressSerializer,
 }
@@ -533,7 +500,7 @@ impl Default for ProductionStatsSerializer {
 
 impl ProductionStatsSerializer {
     /// Creates a new `ProductionStats` serializer
-    pub(crate) fn new() -> Self {
+    pub fn new() -> Self {
         Self {
             u64_ser: U64VarIntSerializer::new(),
             address_ser: AddressSerializer::new(),
@@ -565,7 +532,7 @@ impl Serializer<PreHashMap<Address, ProductionStats>> for ProductionStatsSeriali
 }
 
 /// Deserializer for `ProductionStats`
-pub(crate) struct ProductionStatsDeserializer {
+pub struct ProductionStatsDeserializer {
     length_deserializer: U64VarIntDeserializer,
     address_deserializer: AddressDeserializer,
     u64_deserializer: U64VarIntDeserializer,
@@ -573,7 +540,7 @@ pub(crate) struct ProductionStatsDeserializer {
 
 impl ProductionStatsDeserializer {
     /// Creates a new `ProductionStats` deserializer
-    pub(crate) fn new(max_production_stats_length: u64) -> ProductionStatsDeserializer {
+    pub fn new(max_production_stats_length: u64) -> ProductionStatsDeserializer {
         ProductionStatsDeserializer {
             length_deserializer: U64VarIntDeserializer::new(
                 Included(u64::MIN),
@@ -628,7 +595,7 @@ impl Deserializer<PreHashMap<Address, ProductionStats>> for ProductionStatsDeser
 }
 
 /// Deserializer for rolls
-pub(crate) struct RollsDeserializer {
+pub struct RollsDeserializer {
     length_deserializer: U64VarIntDeserializer,
     address_deserializer: AddressDeserializer,
     u64_deserializer: U64VarIntDeserializer,
@@ -636,7 +603,7 @@ pub(crate) struct RollsDeserializer {
 
 impl RollsDeserializer {
     /// Creates a new rolls deserializer
-    pub(crate) fn new(max_rolls_length: u64) -> RollsDeserializer {
+    pub fn new(max_rolls_length: u64) -> RollsDeserializer {
         RollsDeserializer {
             length_deserializer: U64VarIntDeserializer::new(
                 Included(u64::MIN),

@@ -4,6 +4,6 @@
 mod bootstrap;
 mod mock;
 
-pub use bootstrap::{assert_eq_pos_selection, assert_eq_pos_state};
+pub use bootstrap::*;
 #[cfg(feature = "testing")]
-pub use mock::{MockSelectorController, MockSelectorControllerMessage};
+pub use mock::*;

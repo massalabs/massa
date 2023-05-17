@@ -17,26 +17,14 @@ mod pos_final_state;
 mod settings;
 
 pub use config::PoSConfig;
-
-pub use controller_traits::Selection;
-pub use controller_traits::SelectorController;
-pub use controller_traits::SelectorManager;
-pub use error::{PosError, PosResult};
-
-pub use cycle_info::{
-    CycleHistoryDeserializer, CycleHistorySerializer, CycleInfo, CycleInfoDeserializer,
-    CycleInfoSerializer, ProductionStats,
-};
-pub use deferred_credits::{
-    DeferredCredits, DeferredCreditsDeserializer, DeferredCreditsSerializer,
-};
-pub use pos_changes::{PoSChanges, PoSChangesDeserializer, PoSChangesSerializer};
-// {ProductionStats,
-//  ProductionStatsDeserializer, ProductionStatsSerializer, RollsDeserializer}
-// pub(crate) use cycle_info::*;
-// pub(crate) use deferred_credits::*;
-// pub(crate) use pos_changes::*;
-pub use pos_final_state::PoSFinalState;
+#[cfg(any(test, feature = "testing"))]
+pub use controller_traits::MockSelectorController;
+pub use controller_traits::{Selection, SelectorController, SelectorManager};
+pub use cycle_info::*;
+pub use deferred_credits::*;
+pub use error::*;
+pub use pos_changes::*;
+pub use pos_final_state::*;
 pub use settings::SelectorConfig;
 
 #[cfg(feature = "testing")]

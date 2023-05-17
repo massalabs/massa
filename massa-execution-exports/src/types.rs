@@ -43,7 +43,7 @@ pub enum SlotExecutionOutput {
     ExecutedSlot(ExecutionOutput),
 
     /// Finalized slot output
-    FinalizedSlot(Slot),
+    FinalizedSlot(ExecutionOutput),
 }
 
 /// structure describing the output of a single execution
@@ -104,21 +104,21 @@ pub enum ReadOnlyExecutionTarget {
 
 /// structure describing a read-only call
 #[derive(Debug, Clone)]
-pub(crate) struct ReadOnlyCallRequest {
+pub struct ReadOnlyCallRequest {
     /// Maximum gas to spend in the execution.
-    pub(crate) max_gas: u64,
+    pub max_gas: u64,
     /// Call stack to simulate, older caller first. Target should be last.
-    pub(crate) call_stack: Vec<ExecutionStackElement>,
+    pub call_stack: Vec<ExecutionStackElement>,
     /// Target address
-    pub(crate) target_addr: Address,
+    pub target_addr: Address,
     /// Target function
-    pub(crate) target_func: String,
+    pub target_func: String,
     /// Parameter to pass to the target function
-    pub(crate) parameter: String,
+    pub parameter: String,
     /// execution start state
     ///
     /// Whether to start execution from final or active state
-    pub(crate) is_final: bool,
+    pub is_final: bool,
 }
 
 /// Structure describing an element of the execution stack.

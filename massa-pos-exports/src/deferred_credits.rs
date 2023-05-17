@@ -59,12 +59,12 @@ impl DeferredCreditsHashTracker {
     }
 
     /// Get resulting hash from the tracker
-    pub(crate) fn get_hash(&self) -> &Hash {
+    pub fn get_hash(&self) -> &Hash {
         &self.hash
     }
 
     /// Apply adding an element (must not be an overwrite) or deleting an element (must exist)
-    pub(crate) fn toggle_entry(&mut self, slot: &Slot, address: &Address, amount: &Amount) {
+    pub fn toggle_entry(&mut self, slot: &Slot, address: &Address, amount: &Amount) {
         self.hash ^= self.compute_hash(slot, address, amount);
     }
 
@@ -81,7 +81,7 @@ impl DeferredCreditsHashTracker {
 
 impl DeferredCredits {
     /// Check if the credits list is empty
-    pub(crate) fn is_empty(&self) -> bool {
+    pub fn is_empty(&self) -> bool {
         self.credits.is_empty()
     }
 
@@ -132,7 +132,7 @@ impl DeferredCredits {
     }
 
     /// Disable the hash tracker, loses hash
-    pub(crate) fn disable_hash_tracker(&mut self) {
+    pub fn disable_hash_tracker(&mut self) {
         self.hash_tracker = None;
     }
 
@@ -335,7 +335,7 @@ impl Deserializer<DeferredCredits> for DeferredCreditsDeserializer {
 }
 
 /// Serializer for `Credits`
-pub(crate) struct CreditsSerializer {
+pub struct CreditsSerializer {
     u64_ser: U64VarIntSerializer,
     address_ser: AddressSerializer,
     amount_ser: AmountSerializer,
@@ -349,7 +349,7 @@ impl Default for CreditsSerializer {
 
 impl CreditsSerializer {
     /// Creates a new `Credits` serializer
-    pub(crate) fn new() -> Self {
+    pub fn new() -> Self {
         Self {
             u64_ser: U64VarIntSerializer::new(),
             address_ser: AddressSerializer::new(),

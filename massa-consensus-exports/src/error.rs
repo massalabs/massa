@@ -46,7 +46,7 @@ pub enum ConsensusError {
 /// Internal error
 #[non_exhaustive]
 #[derive(Display, Error, Debug)]
-pub(crate) enum InternalError {
+pub enum InternalError {
     /// transaction error {0}
     TransactionError(String),
 }

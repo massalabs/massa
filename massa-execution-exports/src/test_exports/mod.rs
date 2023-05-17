@@ -15,5 +15,5 @@
 
 mod config;
 mod mock;
-pub(crate) use config::*;
-pub use mock::{MockExecutionController, MockExecutionControllerMessage};
+pub use config::*;
+pub use mock::*;

@@ -1,9 +1,4 @@
-use crate::{
-    cycle_info::{CycleInfo, ProductionStats},
-    error::{PosError, PosResult},
-    pos_changes::PoSChanges,
-    SelectorController,
-};
+use crate::{CycleInfo, PoSChanges, PosError, PosResult, ProductionStats, SelectorController};
 use crate::{DeferredCredits, PoSConfig};
 use bitvec::vec::BitVec;
 use massa_hash::Hash;
@@ -30,11 +25,11 @@ pub struct PoSFinalState {
     /// coins to be credited at the end of the slot
     pub deferred_credits: DeferredCredits,
     /// selector controller
-    pub(crate) selector: Box<dyn SelectorController>,
+    pub selector: Box<dyn SelectorController>,
     /// initial rolls, used for negative cycle look back
     pub initial_rolls: BTreeMap<Address, u64>,
     /// initial seeds, used for negative cycle look back (cycles -2, -1 in that order)
-    pub(crate) initial_seeds: Vec<Hash>,
+    pub initial_seeds: Vec<Hash>,
     /// initial ledger hash, used for seed computation
     pub initial_ledger_hash: Hash,
 }
@@ -72,7 +67,7 @@ impl PoSFinalState {
     }
 
     /// create a `PoSFinalState` from an existing snapshot
-    pub(crate) fn from_snapshot(
+    pub fn from_snapshot(
         config: PoSConfig,
         cycle_history: VecDeque<CycleInfo>,
         deferred_credits: DeferredCredits,
@@ -489,7 +484,7 @@ impl PoSFinalState {
         ))
     }
 
-    ///Gets a part of the Proof of Stake `deferred_credits`. Used only in the bootstrap process.
+    /// Gets a part of the Proof of Stake `deferred_credits`. Used only in the bootstrap process.
     ///
     /// # Arguments:
     /// `cursor`: indicates the bootstrap state after the previous payload
@@ -562,10 +557,5 @@ impl PoSFinalState {
         } else {
             StreamingStep::Finished(None)
         }
-    }
-
-    #[cfg(feature = "testing")]
-    pub fn selector(&self) -> &Box<dyn SelectorController> {
-        &self.selector
     }
 }

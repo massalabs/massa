@@ -2,7 +2,7 @@
 /// This file defines testing tools related to the configuration
 use massa_models::{
     address::Address,
-    config::constants::{
+    config::{
         LEDGER_PART_SIZE_MESSAGE_BYTES, MAX_DATASTORE_KEY_LENGTH, MAX_DATASTORE_VALUE_LENGTH,
         THREAD_COUNT,
     },

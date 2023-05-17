@@ -77,7 +77,7 @@ pub enum BlockStatus {
 
 /// Block status in the graph that can be exported.
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub(crate) enum ExportBlockStatus {
+pub enum ExportBlockStatus {
     /// received but not yet graph processed
     Incoming,
     /// waiting for its slot
@@ -109,7 +109,7 @@ pub struct ExportCompiledBlock {
 
 /// Status
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
-pub(crate) enum Status {
+pub enum Status {
     /// without enough fitness to be part of immutable history
     Active,
     /// with enough fitness to be part of immutable history

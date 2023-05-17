@@ -26,7 +26,7 @@ pub mod error;
 /// execution
 pub mod execution;
 /// ledger structures
-pub(crate) mod ledger;
+pub mod ledger;
 /// node related structure
 pub mod node;
 /// operations
@@ -34,7 +34,7 @@ pub mod operation;
 /// page
 pub mod page;
 /// rolls
-pub(crate) mod rolls;
+pub mod rolls;
 /// slots
 pub mod slot;
 

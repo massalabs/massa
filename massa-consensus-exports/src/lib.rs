@@ -13,8 +13,7 @@ pub mod events;
 pub mod export_active_block;
 
 pub use channels::ConsensusChannels;
-pub use controller_trait::ConsensusController;
-pub use controller_trait::ConsensusManager;
+pub use controller_trait::{ConsensusController, ConsensusManager};
 pub use settings::ConsensusConfig;
 
 /// Test utils

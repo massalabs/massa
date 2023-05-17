@@ -7,7 +7,7 @@ use massa_storage::Storage;
 
 /// History of block production from latest to oldest
 /// todo: redesign type (maybe add slots, draws...)
-pub(crate) type ProductionHistory = Vec<Block>;
+pub type ProductionHistory = Vec<Block>;
 
 /// List of channels the factory will send commands to
 #[derive(Clone)]

@@ -7,16 +7,12 @@ impl From<SlotExecutionOutput> for grpc::SlotExecutionOutput {
     fn from(value: SlotExecutionOutput) -> Self {
         match value {
             SlotExecutionOutput::ExecutedSlot(execution_output) => grpc::SlotExecutionOutput {
-                message: Some(grpc::slot_execution_output::Message::ExecutionOutput(
-                    execution_output.into(),
-                )),
+                status: vec![grpc::ExecutionOutputStatus::Candidate as i32],
+                execution_output: Some(execution_output.into()),
             },
-            SlotExecutionOutput::FinalizedSlot(finalized_slot) => grpc::SlotExecutionOutput {
-                message: Some(grpc::slot_execution_output::Message::FinalExecutionOutput(
-                    grpc::FinalizedExecutionOutput {
-                        slot: Some(finalized_slot.into()),
-                    },
-                )),
+            SlotExecutionOutput::FinalizedSlot(execution_output) => grpc::SlotExecutionOutput {
+                status: vec![grpc::ExecutionOutputStatus::Final as i32],
+                execution_output: Some(execution_output.into()),
             },
         }
     }

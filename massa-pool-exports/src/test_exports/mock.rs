@@ -9,7 +9,7 @@ use std::sync::{
     Arc, Mutex,
 };
 
-use massa_models::config::constants::THREAD_COUNT;
+use massa_models::config::THREAD_COUNT;
 use massa_models::denunciation::{Denunciation, DenunciationPrecursor};
 use massa_models::{
     block_id::BlockId, endorsement::EndorsementId, operation::OperationId, slot::Slot,

@@ -1,8 +1,6 @@
 use crate::{
-    cycle_info::{
-        ProductionStats, ProductionStatsDeserializer, ProductionStatsSerializer, RollsDeserializer,
-    },
-    DeferredCredits, DeferredCreditsDeserializer, DeferredCreditsSerializer,
+    DeferredCredits, DeferredCreditsDeserializer, DeferredCreditsSerializer, ProductionStats,
+    ProductionStatsDeserializer, ProductionStatsSerializer, RollsDeserializer,
 };
 use bitvec::prelude::*;
 use massa_models::{

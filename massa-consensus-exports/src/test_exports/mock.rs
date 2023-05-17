@@ -92,7 +92,7 @@ pub struct ConsensusControllerImpl(Arc<Mutex<mpsc::Sender<MockConsensusControlle
 
 #[cfg(any(test, feature = "testing"))]
 mockall::mock! {
-    pub  ConsensusControllerImpl {}
+    pub ConsensusControllerImpl {}
     impl Clone for ConsensusControllerImpl {
         fn clone(&self) -> Self;
     }
