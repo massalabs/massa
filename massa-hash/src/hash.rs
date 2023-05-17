@@ -375,6 +375,7 @@ impl FromStr for Hash {
     }
 }
 
+/// Wrapper around a Blake3 hasher, used for the Sparse Merkle Tree computation
 pub struct SmtHasher(blake3::Hasher);
 impl lsmtree::digest::OutputSizeUser for SmtHasher {
     type OutputSize = lsmtree::digest::typenum::U32;

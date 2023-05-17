@@ -1,7 +1,7 @@
 use crate::{
-    MassaDBError, CF_ERROR, CHANGE_ID_DESER_ERROR, CHANGE_ID_KEY, CRUD_ERROR, METADATA_CF, LSMTREE_NODES_CF, LSMTREE_VALUES_CF,
-    OPEN_ERROR, STATE_CF, STATE_HASH_ERROR, STATE_HASH_INITIAL_BYTES,
-    STATE_HASH_KEY, STATE_HASH_KEY_MONOTREE,
+    MassaDBError, CF_ERROR, CHANGE_ID_DESER_ERROR, CHANGE_ID_KEY, CRUD_ERROR, LSMTREE_ERROR,
+    LSMTREE_NODES_CF, LSMTREE_VALUES_CF, METADATA_CF, OPEN_ERROR, STATE_CF, STATE_HASH_ERROR,
+    STATE_HASH_INITIAL_BYTES, STATE_HASH_KEY,
 };
 use massa_hash::{Hash, SmtHasher};
 use massa_models::{
@@ -11,7 +11,7 @@ use massa_models::{
 };
 use massa_serialization::{DeserializeError, Deserializer, Serializer};
 
-use lsmtree::{SparseMerkleTree, KVStore, BadProof, bytes::Bytes};
+use lsmtree::{bytes::Bytes, BadProof, KVStore, SparseMerkleTree};
 use parking_lot::{Mutex, RwLock};
 use rocksdb::{
     checkpoint::Checkpoint, ColumnFamilyDescriptor, Direction, IteratorMode, Options, WriteBatch,
@@ -65,7 +65,6 @@ pub struct RawMassaDB<
     change_id_deserializer: ChangeIDDeserializer,
     lsmtree: SparseMerkleTree<MassaDbLsmtree>,
     current_batch: Arc<Mutex<WriteBatch>>,
-    current_hashmap: SharedSmtCache,
 }
 
 type SharedSmtCache = Arc<RwLock<HashMap<[u8; 32], Option<Bytes>>>>;
@@ -78,8 +77,18 @@ struct MassaDbLsmtree {
 }
 
 impl MassaDbLsmtree {
-    pub fn new(cf: &'static str, db: Arc<DB>, current_batch: Arc<Mutex<WriteBatch>>, current_hashmap: SharedSmtCache) -> MassaDbLsmtree {
-        MassaDbLsmtree { cf, db, current_batch, current_hashmap }
+    pub fn new(
+        cf: &'static str,
+        db: Arc<DB>,
+        current_batch: Arc<Mutex<WriteBatch>>,
+        current_hashmap: SharedSmtCache,
+    ) -> Self {
+        Self {
+            cf,
+            db,
+            current_batch,
+            current_hashmap,
+        }
     }
 }
 
@@ -93,20 +102,21 @@ impl KVStore for MassaDbLsmtree {
             return Ok(val.clone());
         }
         let handle_lsmtree = self.db.cf_handle(self.cf).expect(CF_ERROR);
-        let value = self.db.get_cf(handle_lsmtree, key).expect(CRUD_ERROR);
-        let value = value.map(|b| Bytes::from(b));
+        let value = self
+            .db
+            .get_cf(handle_lsmtree, key)
+            .expect(CRUD_ERROR)
+            .map(Bytes::from);
         self.current_hashmap.write().insert(key, value.clone());
         Ok(value)
     }
 
-    fn set(
-        &mut self,
-        key: Bytes,
-        value: Bytes,
-    ) -> Result<(), Self::Error> {
+    fn set(&mut self, key: Bytes, value: Bytes) -> Result<(), Self::Error> {
         let key: [u8; 32] = key.to_vec().try_into().unwrap();
         let handle_lsmtree = self.db.cf_handle(self.cf).expect(CF_ERROR);
-        self.current_batch.lock().put_cf(handle_lsmtree, key, value.clone());
+        self.current_batch
+            .lock()
+            .put_cf(handle_lsmtree, key, value.clone());
         let _ = self.db.get_cf(handle_lsmtree, key).expect(CRUD_ERROR);
         self.current_hashmap.write().insert(key, Some(value));
         Ok(())
@@ -118,7 +128,7 @@ impl KVStore for MassaDbLsmtree {
         let val = self.get(&key)?.unwrap();
         self.current_batch.lock().delete_cf(handle_lsmtree, key);
         self.current_hashmap.write().insert(key, None);
-        Ok(Bytes::from(val))
+        Ok(val)
     }
 
     fn contains(&self, key: &[u8]) -> Result<bool, Self::Error> {
@@ -263,7 +273,7 @@ where
         let handle_state = self.db.cf_handle(STATE_CF).expect(CF_ERROR);
         let handle_metadata = self.db.cf_handle(METADATA_CF).expect(CF_ERROR);
 
-        let mut state_hash = self.get_db_hash();
+        //let mut state_hash = self.get_db_hash();
 
         *self.current_batch.lock() = WriteBatch::default();
 
@@ -273,9 +283,12 @@ where
                 let key_hash = Hash::compute_from(key);
                 let value_hash = Hash::compute_from(value);
 
-                println!("Insert key: {:?} value: {:?}", key_hash, value_hash);
-
-                self.lsmtree.update(key_hash.to_bytes(), Bytes::from(value_hash.to_bytes().to_vec()));
+                self.lsmtree
+                    .update(
+                        key_hash.to_bytes(),
+                        Bytes::from(value_hash.to_bytes().to_vec()),
+                    )
+                    .expect(LSMTREE_ERROR);
 
                 // if let Ok(Some(prev_value)) = self.db.get_cf(handle_state, key) {
                 //     state_hash ^= Hash::compute_from(&[key.to_vec(), prev_value].concat());
@@ -287,7 +300,9 @@ where
 
                 println!("Remove key: {:?}", key_hash);
 
-                self.lsmtree.remove(key_hash.to_bytes());
+                self.lsmtree
+                    .remove(key_hash.to_bytes())
+                    .expect(LSMTREE_ERROR);
 
                 // if let Ok(Some(prev_value)) = self.db.get_cf(handle_state, key) {
                 //     state_hash ^= Hash::compute_from(&[key.to_vec(), prev_value].concat());
@@ -306,7 +321,9 @@ where
                 .put_cf(handle_metadata, CHANGE_ID_KEY, &change_id_bytes);
         }
 
-        self.current_batch.lock().put_cf(handle_metadata, STATE_HASH_KEY, self.lsmtree.root());
+        self.current_batch
+            .lock()
+            .put_cf(handle_metadata, STATE_HASH_KEY, self.lsmtree.root());
 
         let batch;
         {
@@ -414,17 +431,26 @@ impl RawMassaDB<Slot, SlotSerializer, SlotDeserializer> {
         let current_batch = Arc::new(Mutex::new(WriteBatch::default()));
         let current_hashmap = Arc::new(RwLock::new(HashMap::new()));
 
-
         let change_id_deserializer = SlotDeserializer::new(
             (Included(u64::MIN), Included(u64::MAX)),
             (Included(0), Excluded(config.thread_count)),
         );
 
-        let nodes_store = MassaDbLsmtree::new(LSMTREE_NODES_CF, db.clone(), current_batch.clone(), current_hashmap.clone());
-        let values_store = MassaDbLsmtree::new(LSMTREE_VALUES_CF, db.clone(), current_batch.clone(), current_hashmap.clone());
+        let nodes_store = MassaDbLsmtree::new(
+            LSMTREE_NODES_CF,
+            db.clone(),
+            current_batch.clone(),
+            current_hashmap.clone(),
+        );
+        let values_store = MassaDbLsmtree::new(
+            LSMTREE_VALUES_CF,
+            db.clone(),
+            current_batch.clone(),
+            current_hashmap,
+        );
         let lsmtree = SparseMerkleTree::new_with_stores(nodes_store, values_store);
 
-        let mut massa_db = Self {
+        Self {
             db,
             config,
             change_history: BTreeMap::new(),
@@ -436,10 +462,7 @@ impl RawMassaDB<Slot, SlotSerializer, SlotDeserializer> {
             change_id_deserializer,
             lsmtree,
             current_batch,
-            current_hashmap,
-        };
-
-        massa_db
+        }
     }
 
     /// Creates a new hard copy of the DB, for the given slot

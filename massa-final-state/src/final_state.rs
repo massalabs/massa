@@ -168,6 +168,15 @@ impl FinalState {
         final_state.slot = final_state.db.read().get_change_id().map_err(|_| {
             FinalStateError::InvalidSlot(String::from("Could not recover Slot in Ledger"))
         })?;
+        
+        if cfg!(feature = "testing") {
+            let mut batch = DBBatch::new();
+            final_state.pos_state.create_initial_cycle(&mut batch);
+            final_state
+                .db
+                .write()
+                .write_batch(batch, Some(final_state.slot));
+        }
 
         final_state.last_slot_before_downtime = Some(final_state.slot);
 

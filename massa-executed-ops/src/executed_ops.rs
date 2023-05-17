@@ -338,7 +338,10 @@ fn test_executed_ops_xor_computing() {
     db_c.write().write_batch(batch_c, None);
 
     // check that a.hash ^ $(change_b) = c.hash
-    assert_ne!(db_a.read().get_db_hash(), Hash::from_bytes(STATE_HASH_INITIAL_BYTES));
+    assert_ne!(
+        db_a.read().get_db_hash(),
+        Hash::from_bytes(STATE_HASH_INITIAL_BYTES)
+    );
     assert_eq!(
         db_a.read().get_db_hash(),
         db_c.read().get_db_hash(),
