@@ -1294,7 +1294,7 @@ impl ExecutionState {
 
         // Broadcast a final slot execution output to active channel subscribers.
         if self.config.broadcast_enabled {
-            let slot_exec_out = SlotExecutionOutput::FinalizedSlot(exec_out.slot);
+            let slot_exec_out = SlotExecutionOutput::FinalizedSlot(exec_out.clone());
             if let Err(err) = self
                 .channels
                 .slot_execution_output_sender

@@ -222,11 +222,6 @@ impl PoolController for PoolControllerImpl {
         let lock = self.denunciation_pool.read();
         lock.contains(denunciation)
     }
-    /// Check if the pool contains a denunciation. Returns a boolean
-    #[cfg(not(any(test, feature = "testing")))]
-    fn contains_denunciation(&self, _denunciation: &Denunciation) -> bool {
-        unimplemented!("this was found to only be used in tests, but is needed to keep the compiler happy when doc-testing")
-    }
 
     /// Get the number of denunciations in the pool
     fn get_denunciation_count(&self) -> usize {
