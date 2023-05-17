@@ -47,9 +47,9 @@
 //! Unit tests in versioning_factory.rs shows a basic but realistic implementation of a AddressFactory (impl the Factory trait)
 
 pub mod versioning;
+pub mod versioning_bridge;
 pub mod versioning_factory;
 pub mod versioning_ser_der;
-pub mod versioning_bridge;
 
 /// Test utils
 #[cfg(any(test, feature = "testing"))]
