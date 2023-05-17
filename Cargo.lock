@@ -3337,6 +3337,7 @@ dependencies = [
 [[package]]
 name = "monotree"
 version = "0.1.4"
+source = "git+https://github.com/massalabs/monotree?branch=master#125e4b295c0e10c88bf43f8a5bce0eabedd9e10a"
 dependencies = [
  "blake2-rfc",
  "blake3 0.2.3",
