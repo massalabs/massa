@@ -42,7 +42,7 @@ macro_rules! op_id_key {
 #[derive(Clone)]
 pub struct ExecutedOps {
     /// Executed operations configuration
-    config: ExecutedOpsConfig,
+    _config: ExecutedOpsConfig,
     /// RocksDB Instance
     pub db: Arc<RwLock<MassaDB>>,
     /// Executed operations btreemap with slot as index for better pruning complexity
@@ -51,21 +51,29 @@ pub struct ExecutedOps {
     pub op_exec_status: HashMap<OperationId, bool>,
     operation_id_deserializer: OperationIdDeserializer,
     operation_id_serializer: OperationIdSerializer,
+    bool_deserializer: BoolDeserializer,
     bool_serializer: BoolSerializer,
+    slot_deserializer: SlotDeserializer,
     slot_serializer: SlotSerializer,
 }
 
 impl ExecutedOps {
     /// Creates a new `ExecutedOps`
     pub fn new(config: ExecutedOpsConfig, db: Arc<RwLock<MassaDB>>) -> Self {
+        let slot_deserializer = SlotDeserializer::new(
+            (Included(u64::MIN), Included(u64::MAX)),
+            (Included(0), Excluded(config.thread_count)),
+        );
         let mut executed_ops = Self {
-            config,
+            _config: config,
             db,
             sorted_ops: BTreeMap::new(),
             op_exec_status: HashMap::new(),
             operation_id_deserializer: OperationIdDeserializer::new(),
             operation_id_serializer: OperationIdSerializer::new(),
+            bool_deserializer: BoolDeserializer::new(),
             bool_serializer: BoolSerializer::new(),
+            slot_deserializer,
             slot_serializer: SlotSerializer::new(),
         };
         executed_ops.recompute_sorted_ops_and_op_exec_status();
@@ -78,12 +86,6 @@ impl ExecutedOps {
 
         let db = self.db.read();
         let handle = db.db.cf_handle(STATE_CF).expect(CF_ERROR);
-
-        let bool_deserializer = BoolDeserializer::new();
-        let slot_deserializer = SlotDeserializer::new(
-            (Included(u64::MIN), Included(u64::MAX)),
-            (Included(0), Excluded(self.config.thread_count)),
-        );
 
         for (serialized_op_id, serialized_value) in db
             .db
@@ -99,10 +101,12 @@ impl ExecutedOps {
                 .deserialize::<DeserializeError>(&serialized_op_id[EXECUTED_OPS_PREFIX.len()..])
                 .expect(EXECUTED_OPS_ID_DESER_ERROR);
 
-            let (rest, op_exec_status) = bool_deserializer
+            let (rest, op_exec_status) = self
+                .bool_deserializer
                 .deserialize::<DeserializeError>(&serialized_value)
                 .expect(EXECUTED_OPS_ID_DESER_ERROR);
-            let (_, slot) = slot_deserializer
+            let (_, slot) = self
+                .slot_deserializer
                 .deserialize::<DeserializeError>(rest)
                 .expect(EXECUTED_OPS_ID_DESER_ERROR);
 
@@ -224,6 +228,32 @@ impl ExecutedOps {
 
         db.delete_key(batch, op_id_key!(serialized_op_id));
     }
+
+    /// Deserializes the key and value, useful after bootstrap
+    pub fn is_key_value_valid(&self, serialized_key: &[u8], serialized_value: &[u8]) -> bool {
+        if !serialized_key.starts_with(EXECUTED_OPS_PREFIX.as_bytes()) {
+            return false;
+        }
+
+        let Ok((rest, _id)) = self.operation_id_deserializer.deserialize::<DeserializeError>(&serialized_key[EXECUTED_OPS_PREFIX.len()..]) else {
+            return false;
+        };
+        if !rest.is_empty() {
+            return false;
+        }
+
+        let Ok((rest, _bool)) = self.bool_deserializer.deserialize::<DeserializeError>(serialized_value) else {
+            return false;
+        };
+        let Ok((rest, _slot)) = self.slot_deserializer.deserialize::<DeserializeError>(rest) else {
+            return false;
+        };
+        if !rest.is_empty() {
+            return false;
+        }
+
+        true
+    }
 }
 
 #[test]
@@ -286,14 +316,25 @@ fn test_executed_ops_xor_computing() {
         thread: 0,
     };
 
+    println!("START DB_A");
+    println!("");
+    println!("apply_changes_to_batch change_a");
     let mut batch_a = DBBatch::new();
-    let mut batch_c = DBBatch::new();
     a.apply_changes_to_batch(change_a, apply_slot, &mut batch_a);
     db_a.write().write_batch(batch_a, None);
-    let mut batch_a = DBBatch::new();
-    a.apply_changes_to_batch(change_b, apply_slot, &mut batch_a);
+
+    println!("");
+    println!("apply_changes_to_batch change_b");
+    let mut batch_b = DBBatch::new();
+    a.apply_changes_to_batch(change_b, apply_slot, &mut batch_b);
+    db_a.write().write_batch(batch_b, None);
+
+    println!("START DB_C");
+    println!("");
+    println!("apply_changes_to_batch change_c");
+
+    let mut batch_c = DBBatch::new();
     c.apply_changes_to_batch(change_c, apply_slot, &mut batch_c);
-    db_a.write().write_batch(batch_a, None);
     db_c.write().write_batch(batch_c, None);
 
     // check that a.hash ^ $(change_b) = c.hash

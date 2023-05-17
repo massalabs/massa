@@ -1,7 +1,7 @@
 use crate::{
     MassaDBError, CF_ERROR, CHANGE_ID_DESER_ERROR, CHANGE_ID_KEY, CRUD_ERROR, METADATA_CF,
-    MONOTREE_CF, MONOTREE_ERROR, OPEN_ERROR, STATE_CF, STATE_HASH_ERROR,
-    STATE_HASH_INITIAL_BYTES, STATE_HASH_KEY,
+    MONOTREE_CF, MONOTREE_ERROR, OPEN_ERROR, STATE_CF, STATE_HASH_ERROR, STATE_HASH_INITIAL_BYTES,
+    STATE_HASH_KEY,
 };
 use massa_hash::Hash;
 use massa_models::{
@@ -22,7 +22,7 @@ use std::{
     format,
     ops::Bound::{self, Excluded, Included},
     path::PathBuf,
-    sync::Arc, println, 
+    sync::Arc,
 };
 
 type Key = Vec<u8>;
@@ -88,7 +88,6 @@ impl Database for MassaDBForMonotree {
     }
 
     fn get(&mut self, key: &[u8]) -> monotree::Result<Option<Vec<u8>>> {
-
         let Some(raw_db) = self.0.as_ref() else {
             return Err(monotree::Errors::new("Database not initialized"));
         };
@@ -103,24 +102,28 @@ impl Database for MassaDBForMonotree {
     }
 
     fn put(&mut self, key: &[u8], value: Vec<u8>) -> monotree::Result<()> {
-
         let Some(raw_db) = self.0.as_mut() else {
             return Err(monotree::Errors::new("Database not initialized"));
         };
 
         let handle_monotree = raw_db.db.cf_handle(MONOTREE_CF).expect(CF_ERROR);
-        raw_db.current_batch.lock().put_cf(handle_monotree, key, value.clone());
+        raw_db
+            .current_batch
+            .lock()
+            .put_cf(handle_monotree, key, value.clone());
 
         let mut fixed_sized_key = [0_u8; 32];
         fixed_sized_key.copy_from_slice(key);
-        
-        raw_db.current_hashmap.write().insert(fixed_sized_key, value);
+
+        raw_db
+            .current_hashmap
+            .write()
+            .insert(fixed_sized_key, value);
 
         Ok(())
     }
 
     fn delete(&mut self, key: &[u8]) -> monotree::Result<()> {
-
         let Some(raw_db) = self.0.as_mut() else {
             return Err(monotree::Errors::new("Database not initialized"));
         };
@@ -171,16 +174,13 @@ where
 {
     /// Let's us initialize monotree with a ref to self
     pub fn init_monotree(&mut self) {
-
         let raw_db = RawMassaDBForMonotree {
             db: self.db.clone(),
             current_batch: self.current_batch.clone(),
             current_hashmap: self.current_hashmap.clone(),
         };
 
-        self.monotree
-            .db
-            .init(raw_db);
+        self.monotree.db.init(raw_db);
     }
 
     /// Used for bootstrap servers (get a new batch to stream to the client)
@@ -301,12 +301,11 @@ where
 
         for (key, value) in changes.iter() {
             if let Some(value) = value {
-
                 self.current_batch.lock().put_cf(handle_state, key, value);
                 let key_hash = Hash::compute_from(key);
                 let value_hash = Hash::compute_from(value);
 
-                println!("Insert key: {:?} value: {:?}", key_hash, value_hash);
+                //println!("Insert key: {:?} value: {:?}", key_hash, value_hash);
 
                 root = self
                     .monotree
@@ -316,8 +315,8 @@ where
                 self.current_batch.lock().delete_cf(handle_state, key);
                 let key_hash = Hash::compute_from(key);
 
-                println!("Remove key: {:?}", key_hash);
-                
+                //println!("Remove key: {:?}", key_hash);
+
                 root = self
                     .monotree
                     .remove(root.as_ref(), key_hash.to_bytes())
@@ -325,7 +324,7 @@ where
             }
         }
 
-        /*if let Some(change_id) = change_id {
+        if let Some(change_id) = change_id {
             let mut change_id_bytes = Vec::new();
             self.change_id_serializer
                 .serialize(&change_id, &mut change_id_bytes)
@@ -335,18 +334,17 @@ where
                 .lock()
                 .put_cf(handle_metadata, CHANGE_ID_KEY, &change_id_bytes);
 
-            let key_hash = Hash::compute_from(CHANGE_ID_KEY);
-            let value_hash = Hash::compute_from(&change_id_bytes);
+            let _key_hash = Hash::compute_from(CHANGE_ID_KEY);
+            let _value_hash = Hash::compute_from(&change_id_bytes);
 
-            root = self
-                .monotree
-                .insert(root.as_ref(), key_hash.to_bytes(), value_hash.to_bytes())
-                .expect(MONOTREE_ERROR);
-        }*/
+            /*root = self
+            .monotree
+            .insert(root.as_ref(), key_hash.to_bytes(), value_hash.to_bytes())
+            .expect(MONOTREE_ERROR);*/
+        }
 
         if let Some(root) = root {
-
-            println!("root: {:?}", root);
+            //println!("root: {:?}", root);
 
             self.current_batch
                 .lock()
@@ -424,15 +422,13 @@ where
     pub fn get_db_hash_monotree(&self) -> Option<Hash> {
         let db = &self.db;
         let handle = db.cf_handle(METADATA_CF).expect(CF_ERROR);
-        if let Some(state_hash_bytes) = db
-            .get_cf(handle, STATE_HASH_KEY)
+
+        db.get_cf(handle, STATE_HASH_KEY)
             .expect(CRUD_ERROR)
             .as_deref()
-        {
-            Some(Hash::from_bytes(state_hash_bytes.try_into().expect(STATE_HASH_ERROR)))
-        } else {
-            None
-        }
+            .map(|state_hash_bytes| {
+                Hash::from_bytes(state_hash_bytes.try_into().expect(STATE_HASH_ERROR))
+            })
     }
 
     /// Get the current state hash
@@ -544,11 +540,5 @@ impl RawMassaDB<Slot, SlotSerializer, SlotDeserializer> {
             self.delete_key(&mut batch, serialized_key.to_vec());
         }
         self.write_batch(batch, change_id);
-    }
-
-    /// TODO:
-    /// Deserialize the entire DB and check the data. Useful to check after bootstrap.
-    pub fn is_db_valid(&self) -> bool {
-        todo!();
     }
 }

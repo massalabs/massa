@@ -50,6 +50,9 @@ pub trait LedgerController: Send + Sync + Debug {
 
     fn apply_changes_to_batch(&mut self, changes: LedgerChanges, ledger_batch: &mut DBBatch);
 
+    /// Deserializes the key and value, useful after bootstrap
+    fn is_key_value_valid(&self, serialized_key: &[u8], serialized_value: &[u8]) -> bool;
+
     /// Get every address and their corresponding balance.
     ///
     /// IMPORTANT: This should only be used for debug and test purposes.

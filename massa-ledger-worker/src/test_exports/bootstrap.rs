@@ -16,7 +16,12 @@ pub fn create_final_ledger(
     initial_ledger: HashMap<Address, LedgerEntry>,
 ) -> FinalLedger {
     // Create final ledger
-    let mut ledger_db = LedgerDB::new(db, config.thread_count, config.max_key_length);
+    let mut ledger_db = LedgerDB::new(
+        db,
+        config.thread_count,
+        config.max_key_length,
+        config.max_datastore_value_length,
+    );
     ledger_db.load_initial_ledger(initial_ledger);
     FinalLedger {
         config,

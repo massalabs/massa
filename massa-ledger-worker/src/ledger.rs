@@ -36,7 +36,12 @@ impl FinalLedger {
     /// Initializes a new `FinalLedger` by reading its initial state from file.
     pub fn new(config: LedgerConfig, db: Arc<RwLock<MassaDB>>) -> Self {
         // create and initialize the disk ledger
-        let sorted_ledger = LedgerDB::new(db, config.thread_count, config.max_key_length);
+        let sorted_ledger = LedgerDB::new(
+            db,
+            config.thread_count,
+            config.max_key_length,
+            config.max_datastore_value_length,
+        );
 
         // generate the final ledger
         FinalLedger {
@@ -151,6 +156,12 @@ impl LedgerController for FinalLedger {
     fn apply_changes_to_batch(&mut self, changes: LedgerChanges, ledger_batch: &mut DBBatch) {
         self.sorted_ledger
             .apply_changes_to_batch(changes, ledger_batch);
+    }
+
+    /// Deserializes the key and value, useful after bootstrap
+    fn is_key_value_valid(&self, serialized_key: &[u8], serialized_value: &[u8]) -> bool {
+        self.sorted_ledger
+            .is_key_value_valid(serialized_key, serialized_value)
     }
 
     /// Get every address and their corresponding balance.

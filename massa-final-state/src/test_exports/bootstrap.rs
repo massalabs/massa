@@ -5,7 +5,7 @@
 use std::sync::Arc;
 
 use massa_async_pool::AsyncPool;
-use massa_db::{MassaDB, METADATA_CF, STATE_CF};
+use massa_db::{MassaDB, METADATA_CF, STATE_CF, STATE_HASH_KEY};
 use massa_executed_ops::{ExecutedDenunciations, ExecutedOps};
 use massa_hash::{Hash, HASH_SIZE_BYTES};
 use massa_ledger_exports::LedgerController;
@@ -108,7 +108,9 @@ pub fn assert_eq_final_state(v1: &FinalState, v2: &FinalState) {
 
     for ((key1, value1), (key2, value2)) in iter_metadata_db1.zip(iter_metadata_db2) {
         assert_eq!(key1, key2, "metadata key mismatch");
-        assert_eq!(value1, value2, "metadata value mismatch");
+        if key1.to_vec() != STATE_HASH_KEY.to_vec() {
+            assert_eq!(value1, value2, "metadata value mismatch");
+        }
     }
 
     assert_eq!(

@@ -350,6 +350,137 @@ impl AsyncPool {
 
         fetched_messages
     }
+
+    /// Deserializes the key and value, useful after bootstrap
+    pub fn is_key_value_valid(&self, serialized_key: &[u8], serialized_value: &[u8]) -> bool {
+        if !serialized_key.starts_with(ASYNC_POOL_PREFIX.as_bytes()) {
+            return false;
+        }
+
+        let Ok((rest, _id)) = self.message_id_deserializer.deserialize::<DeserializeError>(&serialized_key[ASYNC_POOL_PREFIX.len()..]) else {
+            return false;
+        };
+        if rest.len() != 1 {
+            return false;
+        }
+
+        match rest[0] {
+            EMISSION_SLOT_IDENT => {
+                let Ok((rest, _value)) = self.message_deserializer_db.slot_deserializer.deserialize::<DeserializeError>(serialized_value) else {
+                    return false;
+                };
+                if !rest.is_empty() {
+                    return false;
+                }
+            }
+            EMISSION_INDEX_IDENT => {
+                let Ok((rest, _value)) = self.message_deserializer_db.emission_index_deserializer.deserialize::<DeserializeError>(serialized_value) else {
+                    return false;
+                };
+                if !rest.is_empty() {
+                    return false;
+                }
+            }
+            SENDER_IDENT => {
+                let Ok((rest, _value)) = self.message_deserializer_db.address_deserializer.deserialize::<DeserializeError>(serialized_value) else {
+                    return false;
+                };
+                if !rest.is_empty() {
+                    return false;
+                }
+            }
+            DESTINATION_IDENT => {
+                let Ok((rest, _value)) = self.message_deserializer_db.address_deserializer.deserialize::<DeserializeError>(serialized_value) else {
+                    return false;
+                };
+                if !rest.is_empty() {
+                    return false;
+                }
+            }
+            HANDLER_IDENT => {
+                let Some(len) = serialized_value.first() else {
+                    return false;
+                };
+
+                if serialized_value.len() != *len as usize + 1 {
+                    return false;
+                }
+
+                let Ok(_value) = String::from_utf8(serialized_value[1..].to_vec()) else {
+                    return false;
+                };
+            }
+            MAX_GAS_IDENT => {
+                let Ok((rest, _value)) = self.message_deserializer_db.max_gas_deserializer.deserialize::<DeserializeError>(serialized_value) else {
+                    return false;
+                };
+                if !rest.is_empty() {
+                    return false;
+                }
+            }
+            FEE_IDENT => {
+                let Ok((rest, _value)) = self.message_deserializer_db.amount_deserializer.deserialize::<DeserializeError>(serialized_value) else {
+                    return false;
+                };
+                if !rest.is_empty() {
+                    return false;
+                }
+            }
+            COINS_IDENT => {
+                let Ok((rest, _value)) = self.message_deserializer_db.amount_deserializer.deserialize::<DeserializeError>(serialized_value) else {
+                    return false;
+                };
+                if !rest.is_empty() {
+                    return false;
+                }
+            }
+            VALIDITY_START_IDENT => {
+                let Ok((rest, _value)) = self.message_deserializer_db.slot_deserializer.deserialize::<DeserializeError>(serialized_value) else {
+                    return false;
+                };
+                if !rest.is_empty() {
+                    return false;
+                }
+            }
+            VALIDITY_END_IDENT => {
+                let Ok((rest, _value)) = self.message_deserializer_db.slot_deserializer.deserialize::<DeserializeError>(serialized_value) else {
+                    return false;
+                };
+                if !rest.is_empty() {
+                    return false;
+                }
+            }
+            DATA_IDENT => {
+                let Ok((rest, _value)) = self.message_deserializer_db.data_deserializer.deserialize::<DeserializeError>(serialized_value) else {
+                    return false;
+                };
+                if !rest.is_empty() {
+                    return false;
+                }
+            }
+            TRIGGER_IDENT => {
+                let Ok((rest, _value)) = self.message_deserializer_db.trigger_deserializer.deserialize::<DeserializeError>(serialized_value) else {
+                    return false;
+                };
+                if !rest.is_empty() {
+                    return false;
+                }
+            }
+            CAN_BE_EXECUTED_IDENT => {
+                let Ok((rest, _value)) = self.message_deserializer_db.bool_deserializer.deserialize::<DeserializeError>(serialized_value) else {
+                    return false;
+                };
+                if !rest.is_empty() {
+                    return false;
+                }
+            }
+            _ => {
+                return false;
+            }
+        }
+
+        true
+    }
 }
 /// Serializer for `AsyncPool`
 pub struct AsyncPoolSerializer {

@@ -6,6 +6,8 @@ use massa_db::{
     DBBatch, MassaDB, CF_ERROR, CRUD_ERROR, KEY_DESER_ERROR, KEY_SER_ERROR, LEDGER_PREFIX, STATE_CF,
 };
 use massa_ledger_exports::*;
+use massa_models::amount::AmountDeserializer;
+use massa_models::bytecode::BytecodeDeserializer;
 use massa_models::{
     address::Address, amount::AmountSerializer, bytecode::BytecodeSerializer, slot::Slot,
 };
@@ -15,9 +17,7 @@ use rocksdb::{Direction, IteratorMode, ReadOptions};
 use std::collections::{BTreeSet, HashMap};
 use std::{fmt::Debug, sync::Arc};
 
-#[cfg(feature = "testing")]
-use massa_models::amount::{Amount, AmountDeserializer};
-#[cfg(feature = "testing")]
+use massa_models::amount::Amount;
 use std::ops::Bound;
 
 /// Ledger sub entry enum
@@ -50,8 +50,9 @@ pub struct LedgerDB {
     key_deserializer_db: KeyDeserializer,
     amount_serializer: AmountSerializer,
     bytecode_serializer: BytecodeSerializer,
-    #[cfg(feature = "testing")]
     amount_deserializer: AmountDeserializer,
+    bytecode_deserializer: BytecodeDeserializer,
+    max_datastore_value_length: u64,
 }
 
 impl Debug for LedgerDB {
@@ -66,7 +67,12 @@ impl LedgerDB {
     ///
     /// # Arguments
     /// * path: path to the desired disk ledger db directory
-    pub fn new(db: Arc<RwLock<MassaDB>>, thread_count: u8, max_datastore_key_length: u8) -> Self {
+    pub fn new(
+        db: Arc<RwLock<MassaDB>>,
+        thread_count: u8,
+        max_datastore_key_length: u8,
+        max_datastore_value_length: u64,
+    ) -> Self {
         LedgerDB {
             db,
             thread_count,
@@ -74,11 +80,12 @@ impl LedgerDB {
             key_deserializer_db: KeyDeserializer::new(max_datastore_key_length, false),
             amount_serializer: AmountSerializer::new(),
             bytecode_serializer: BytecodeSerializer::new(),
-            #[cfg(feature = "testing")]
             amount_deserializer: AmountDeserializer::new(
                 Bound::Included(Amount::MIN),
                 Bound::Included(Amount::MAX),
             ),
+            bytecode_deserializer: BytecodeDeserializer::new(max_datastore_value_length),
+            max_datastore_value_length,
         }
     }
 
@@ -188,6 +195,46 @@ impl LedgerDB {
     pub fn reset(&self) {
         self.db.write().delete_prefix(LEDGER_PREFIX, None);
     }
+
+    /// Deserializes the key and value, useful after bootstrap
+    pub fn is_key_value_valid(&self, serialized_key: &[u8], serialized_value: &[u8]) -> bool {
+        if !serialized_key.starts_with(LEDGER_PREFIX.as_bytes()) {
+            return false;
+        }
+
+        let Ok((rest, key)) = self.key_deserializer_db.deserialize::<DeserializeError>(serialized_key) else {
+            return false;
+        };
+        if !rest.is_empty() {
+            return false;
+        }
+
+        match key.key_type {
+            KeyType::BALANCE => {
+                let Ok((rest, _amount)) = self.amount_deserializer.deserialize::<DeserializeError>(serialized_value) else {
+                    return false;
+                };
+                if !rest.is_empty() {
+                    return false;
+                }
+            }
+            KeyType::BYTECODE => {
+                let Ok((rest, _bytecode)) = self.bytecode_deserializer.deserialize::<DeserializeError>(serialized_value) else {
+                    return false;
+                };
+                if !rest.is_empty() {
+                    return false;
+                }
+            }
+            KeyType::DATASTORE(_) => {
+                if serialized_value.len() >= self.max_datastore_value_length as usize {
+                    return false;
+                }
+            }
+        }
+
+        true
+    }
 }
 
 // Private helpers
@@ -244,23 +291,6 @@ impl LedgerDB {
         self.db
             .read()
             .put_or_update_entry_value(batch, serialized_key, value);
-
-        /*let mut len_bytes = Vec::new();
-        self.len_serializer
-            .serialize(&(serialized_key.len() as u64), &mut len_bytes)
-            .expect(KEY_LEN_SER_ERROR);
-        if let Some(added_hash) = batch.aeh_list.get(&serialized_key) {
-            *batch.ledger_hash.as_mut().expect(WRONG_BATCH_TYPE_ERROR) ^= *added_hash;
-        } else if let Some(prev_bytes) =
-            db.db.get_pinned_cf(handle, &serialized_key).expect(CRUD_ERROR)
-        {
-            *batch.ledger_hash.as_mut().expect(WRONG_BATCH_TYPE_ERROR) ^=
-                Hash::compute_from(&[&len_bytes, &serialized_key, &prev_bytes[..]].concat());
-        }
-        let hash = Hash::compute_from(&[&len_bytes, &serialized_key, value].concat());
-        *batch.ledger_hash.as_mut().expect(WRONG_BATCH_TYPE_ERROR) ^= hash;
-        batch.aeh_list.insert(serialized_key.clone(), hash);
-        batch.write_batch.put_cf(handle, serialized_key, value);*/
     }
 
     /// Update the ledger entry of a given address.
@@ -499,7 +529,7 @@ mod tests {
 
         let db = Arc::new(RwLock::new(MassaDB::new(db_config)));
 
-        let ledger_db = LedgerDB::new(db.clone(), 32, 255);
+        let ledger_db = LedgerDB::new(db.clone(), 32, 255, 1000);
         let mut batch = DBBatch::new();
 
         ledger_db.put_entry(&addr, entry, &mut batch);
@@ -536,11 +566,10 @@ mod tests {
         );
         assert_eq!(data, ledger_db.get_entire_datastore(&addr));
 
-        // TODO: Uncomment and fix errors
-        /*assert_ne!(
+        assert_ne!(
             Hash::from_bytes(STATE_HASH_INITIAL_BYTES),
             ledger_db.db.read().get_db_hash()
-        );*/
+        );
 
         // delete entry
 

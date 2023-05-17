@@ -537,6 +537,12 @@ fn test_bootstrap_server() {
 
     {
         let mut final_state_client_write = final_state_client.write();
+
+        assert!(
+            final_state_client_write.is_db_valid(),
+            "Client's DB is not valid after bootstrap"
+        );
+
         final_state_client_write.recompute_caches();
         final_state_client_write.init_ledger_hash();
     }

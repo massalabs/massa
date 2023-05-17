@@ -22,7 +22,7 @@ massa_serialization = { path = "../massa-serialization" }
 massa_pos_exports = { path = "../massa-pos-exports" }
 massa_hash = { path = "../massa-hash" }
 massa_db = { path = "../massa-db" }
-rocksdb = { version = "0.20", optional = true }
+rocksdb = { version = "0.20" }
 
 [dev-dependencies]
 massa_async_pool = { path = "../massa-async-pool", features = ["testing"] }
@@ -39,7 +39,6 @@ testing = [
     "massa_ledger_worker/testing",
     "massa_async_pool/testing",
     "massa_pos_exports/testing",
-    "rocksdb"
 ]
 sandbox = ["massa_async_pool/sandbox"]
 create_snapshot = []

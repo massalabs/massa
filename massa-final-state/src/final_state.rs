@@ -8,6 +8,10 @@
 use crate::{config::FinalStateConfig, error::FinalStateError, state_changes::StateChanges};
 use massa_async_pool::AsyncPool;
 use massa_db::{DBBatch, MassaDB};
+use massa_db::{
+    ASYNC_POOL_PREFIX, CYCLE_HISTORY_PREFIX, DEFERRED_CREDITS_PREFIX,
+    EXECUTED_DENUNCIATIONS_PREFIX, EXECUTED_OPS_PREFIX, LEDGER_PREFIX, STATE_CF,
+};
 use massa_executed_ops::ExecutedDenunciations;
 use massa_executed_ops::ExecutedOps;
 use massa_hash::{Hash, HASH_SIZE_BYTES};
@@ -16,8 +20,9 @@ use massa_models::config::PERIODS_BETWEEN_BACKUPS;
 use massa_models::slot::Slot;
 use massa_pos_exports::{PoSFinalState, SelectorController};
 use parking_lot::RwLock;
+use rocksdb::IteratorMode;
 use std::sync::Arc;
-use tracing::{debug, info};
+use tracing::{debug, info, warn};
 
 /// Represents a final state `(ledger, async pool, executed_ops, executed_de and the state of the PoS)`
 pub struct FinalState {
@@ -560,5 +565,81 @@ impl FinalState {
         self.executed_ops.recompute_sorted_ops_and_op_exec_status();
         self.executed_denunciations.recompute_sorted_denunciations();
         self.pos_state.recompute_pos_state_caches();
+    }
+
+    /// Deserialize the entire DB and check the data. Useful to check after bootstrap.
+    pub fn is_db_valid(&self) -> bool {
+        let db = self.db.read();
+        let handle = db.db.cf_handle(STATE_CF).unwrap();
+
+        for (serialized_key, serialized_value) in
+            db.db.iterator_cf(handle, IteratorMode::Start).flatten()
+        {
+            if serialized_key.starts_with(CYCLE_HISTORY_PREFIX.as_bytes()) {
+                if !self
+                    .pos_state
+                    .is_cycle_history_key_value_valid(&serialized_key, &serialized_value)
+                {
+                    warn!(
+                        "False for CYCLE_HISTORY_KEY serialized_key: {:?}, serialized_value: {:?}",
+                        serialized_key, serialized_value
+                    );
+                    return false;
+                }
+            } else if serialized_key.starts_with(DEFERRED_CREDITS_PREFIX.as_bytes()) {
+                if !self
+                    .pos_state
+                    .is_deferred_credits_key_value_valid(&serialized_key, &serialized_value)
+                {
+                    warn!(
+                        "False for DEFERRED_CREDITS serialized_key: {:?}, serialized_value: {:?}",
+                        serialized_key, serialized_value
+                    );
+                    return false;
+                }
+            } else if serialized_key.starts_with(ASYNC_POOL_PREFIX.as_bytes()) {
+                if !self
+                    .async_pool
+                    .is_key_value_valid(&serialized_key, &serialized_value)
+                {
+                    warn!(
+                        "False for ASYNC_POOL serialized_key: {:?}, serialized_value: {:?}",
+                        serialized_key, serialized_value
+                    );
+                    return false;
+                }
+            } else if serialized_key.starts_with(EXECUTED_OPS_PREFIX.as_bytes()) {
+                if !self
+                    .executed_ops
+                    .is_key_value_valid(&serialized_key, &serialized_value)
+                {
+                    warn!(
+                        "False for EXECUTED_OPS serialized_key: {:?}, serialized_value: {:?}",
+                        serialized_key, serialized_value
+                    );
+                    return false;
+                }
+            } else if serialized_key.starts_with(EXECUTED_DENUNCIATIONS_PREFIX.as_bytes()) {
+                if !self
+                    .executed_denunciations
+                    .is_key_value_valid(&serialized_key, &serialized_value)
+                {
+                    warn!("False for EXECUTED_DENUNCIATIONS serialized_key: {:?}, serialized_value: {:?}", serialized_key, serialized_value);
+                    return false;
+                }
+            } else if serialized_key.starts_with(LEDGER_PREFIX.as_bytes())
+                && !self
+                    .ledger
+                    .is_key_value_valid(&serialized_key, &serialized_value)
+            {
+                warn!(
+                    "False for LEDGER serialized_key: {:?}, serialized_value: {:?}",
+                    serialized_key, serialized_value
+                );
+                return false;
+            }
+        }
+
+        true
     }
 }

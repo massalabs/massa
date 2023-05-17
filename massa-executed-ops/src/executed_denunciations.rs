@@ -215,6 +215,26 @@ impl ExecutedDenunciations {
 
         db.delete_key(batch, denunciation_index_key!(serialized_de_idx));
     }
+
+    /// Deserializes the key and value, useful after bootstrap
+    pub fn is_key_value_valid(&self, serialized_key: &[u8], serialized_value: &[u8]) -> bool {
+        if !serialized_key.starts_with(EXECUTED_DENUNCIATIONS_PREFIX.as_bytes()) {
+            return false;
+        }
+
+        let Ok((rest, _idx)) = self.denunciation_index_deserializer.deserialize::<DeserializeError>(&serialized_key[EXECUTED_DENUNCIATIONS_PREFIX.len()..]) else {
+            return false;
+        };
+        if !rest.is_empty() {
+            return false;
+        }
+
+        if !serialized_value.is_empty() {
+            return false;
+        }
+
+        true
+    }
 }
 
 /// `ExecutedDenunciations` Serializer

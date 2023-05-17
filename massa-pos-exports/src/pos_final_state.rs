@@ -1232,6 +1232,177 @@ impl PoSFinalState {
             _ => None,
         }
     }
+
+    /// Deserializes the key and value, useful after bootstrap
+    pub fn is_cycle_history_key_value_valid(
+        &self,
+        serialized_key: &[u8],
+        serialized_value: &[u8],
+    ) -> bool {
+        if !serialized_key.starts_with(CYCLE_HISTORY_PREFIX.as_bytes()) {
+            return false;
+        }
+
+        let Ok((rest, _cycle)) = self
+            .cycle_info_deserializer
+            .cycle_info_deserializer
+            .u64_deser
+            .deserialize::<DeserializeError>(&serialized_key[CYCLE_HISTORY_PREFIX.len()..]) else {
+            return false;
+        };
+
+        if rest.is_empty() {
+            return false;
+        }
+
+        match rest[0] {
+            COMPLETE_IDENT => {
+                if rest.len() != 1 {
+                    return false;
+                }
+                if serialized_value.len() != 1 {
+                    return false;
+                }
+                if serialized_value[0] > 1 {
+                    return false;
+                }
+            }
+            RNG_SEED_IDENT => {
+                if rest.len() != 1 {
+                    return false;
+                }
+                let Ok((rest, _rng_seed)) = self
+                    .cycle_info_deserializer
+                    .cycle_info_deserializer
+                    .bitvec_deser
+                    .deserialize::<DeserializeError>(serialized_value) else {
+                    return false;
+                };
+                if !rest.is_empty() {
+                    return false;
+                }
+            }
+            FINAL_STATE_HASH_SNAPSHOT_IDENT => {
+                if rest.len() != 1 {
+                    return false;
+                }
+                let Ok((rest, _final_state_hash)) = self
+                    .cycle_info_deserializer
+                    .cycle_info_deserializer
+                    .opt_hash_deser
+                    .deserialize::<DeserializeError>(serialized_value) else {
+                    return false;
+                };
+                if !rest.is_empty() {
+                    return false;
+                }
+            }
+            ROLL_COUNT_IDENT => {
+                let Ok((rest, _addr)) = self
+                    .cycle_info_deserializer
+                    .cycle_info_deserializer
+                    .rolls_deser
+                    .address_deserializer
+                    .deserialize::<DeserializeError>(&rest[1..]) else {
+                    return false;
+                };
+                if !rest.is_empty() {
+                    return false;
+                }
+                let Ok((rest, _addr)) = self
+                    .cycle_info_deserializer
+                    .cycle_info_deserializer
+                    .rolls_deser
+                    .u64_deserializer
+                    .deserialize::<DeserializeError>(serialized_value) else {
+                    return false;
+                };
+                if !rest.is_empty() {
+                    return false;
+                }
+            }
+            PROD_STATS_IDENT => {
+                let Ok((rest, _addr)) = self
+                    .cycle_info_deserializer
+                    .cycle_info_deserializer
+                    .rolls_deser
+                    .address_deserializer
+                    .deserialize::<DeserializeError>(&rest[1..]) else {
+                        return false;
+                    };
+                if rest.len() != 1 {
+                    return false;
+                }
+
+                match rest[0] {
+                    PROD_STATS_FAIL_IDENT => {
+                        let Ok((rest, _fail)) = self
+                            .cycle_info_deserializer
+                            .cycle_info_deserializer
+                            .production_stats_deser
+                            .u64_deserializer
+                            .deserialize::<DeserializeError>(serialized_value) else {
+                                return false;
+                            };
+                        if !rest.is_empty() {
+                            return false;
+                        }
+                    }
+                    PROD_STATS_SUCCESS_IDENT => {
+                        let Ok((rest, _success)) = self
+                        .cycle_info_deserializer
+                        .cycle_info_deserializer
+                        .production_stats_deser
+                        .u64_deserializer
+                        .deserialize::<DeserializeError>(serialized_value) else {
+                            return false;
+                        };
+                        if !rest.is_empty() {
+                            return false;
+                        }
+                    }
+                    _ => {
+                        return false;
+                    }
+                }
+            }
+            _ => {
+                return false;
+            }
+        }
+
+        true
+    }
+
+    /// Deserializes the key and value, useful after bootstrap
+    pub fn is_deferred_credits_key_value_valid(
+        &self,
+        serialized_key: &[u8],
+        serialized_value: &[u8],
+    ) -> bool {
+        if !serialized_key.starts_with(DEFERRED_CREDITS_PREFIX.as_bytes()) {
+            return false;
+        }
+
+        let Ok((rest, _slot)) = self.deferred_credits_deserializer.slot_deserializer.deserialize::<DeserializeError>(&serialized_key[DEFERRED_CREDITS_PREFIX.len()..]) else {
+            return false;
+        };
+        let Ok((rest, _addr)) = self.deferred_credits_deserializer.credit_deserializer.address_deserializer.deserialize::<DeserializeError>(rest) else {
+            return false;
+        };
+        if !rest.is_empty() {
+            return false;
+        }
+
+        let Ok((rest, _mount)) = self.deferred_credits_deserializer.credit_deserializer.amount_deserializer.deserialize::<DeserializeError>(serialized_value) else {
+            return false;
+        };
+        if !rest.is_empty() {
+            return false;
+        }
+
+        true
+    }
 }
 
 /// Helpers for testing
