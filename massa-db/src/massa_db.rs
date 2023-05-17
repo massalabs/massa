@@ -1,7 +1,7 @@
 use crate::{
-    MassaDBError, CF_ERROR, CHANGE_ID_DESER_ERROR, CHANGE_ID_KEY, CRUD_ERROR, LSMTREE_ERROR,
-    LSMTREE_NODES_CF, LSMTREE_VALUES_CF, METADATA_CF, OPEN_ERROR, STATE_CF, STATE_HASH_ERROR,
-    STATE_HASH_INITIAL_BYTES, STATE_HASH_KEY,
+    MassaDBError, CF_ERROR, CHANGE_ID_DESER_ERROR, CHANGE_ID_KEY, CHANGE_ID_SER_ERROR, CRUD_ERROR,
+    LSMTREE_ERROR, LSMTREE_NODES_CF, LSMTREE_VALUES_CF, METADATA_CF, OPEN_ERROR, STATE_CF,
+    STATE_HASH_ERROR, STATE_HASH_INITIAL_BYTES, STATE_HASH_KEY,
 };
 use massa_hash::{Hash, SmtHasher};
 use massa_models::{
@@ -43,12 +43,6 @@ pub struct StreamBatch<ChangeID: PartialOrd + Ord + PartialEq + Eq + Clone + std
     pub new_elements: BTreeMap<Key, Value>,
     pub change_id: ChangeID,
 }
-
-/*#[derive(Debug)]
-struct ChangeHistoryElement<ChangeID: PartialOrd + Ord + PartialEq + Eq + Clone + std::fmt::Debug> {
-    change_id: ChangeID,
-    changes: BTreeMap<Key, Option<Value>>, // None means that the entry was deleted
-}*/
 
 #[derive()]
 pub struct RawMassaDB<
@@ -97,7 +91,7 @@ impl KVStore for MassaDbLsmtree {
     type Error = BadProof;
 
     fn get(&self, key: &[u8]) -> Result<Option<Bytes>, Self::Error> {
-        let key: [u8; 32] = key.try_into().unwrap();
+        let key: [u8; 32] = key.try_into().expect(LSMTREE_ERROR);
         if let Some(val) = self.current_hashmap.read().get(&key) {
             return Ok(val.clone());
         }
@@ -112,27 +106,26 @@ impl KVStore for MassaDbLsmtree {
     }
 
     fn set(&mut self, key: Bytes, value: Bytes) -> Result<(), Self::Error> {
-        let key: [u8; 32] = key.to_vec().try_into().unwrap();
+        let key: [u8; 32] = key.to_vec().try_into().expect(LSMTREE_ERROR);
         let handle_lsmtree = self.db.cf_handle(self.cf).expect(CF_ERROR);
         self.current_batch
             .lock()
             .put_cf(handle_lsmtree, key, value.clone());
-        let _ = self.db.get_cf(handle_lsmtree, key).expect(CRUD_ERROR);
         self.current_hashmap.write().insert(key, Some(value));
         Ok(())
     }
 
     fn remove(&mut self, key: &[u8]) -> Result<Bytes, Self::Error> {
-        let key: [u8; 32] = key.to_vec().try_into().unwrap();
+        let key: [u8; 32] = key.to_vec().try_into().expect(LSMTREE_ERROR);
         let handle_lsmtree = self.db.cf_handle(self.cf).expect(CF_ERROR);
-        let val = self.get(&key)?.unwrap();
+        let val = self.get(&key)?.expect(LSMTREE_ERROR);
         self.current_batch.lock().delete_cf(handle_lsmtree, key);
         self.current_hashmap.write().insert(key, None);
         Ok(val)
     }
 
     fn contains(&self, key: &[u8]) -> Result<bool, Self::Error> {
-        let key: [u8; 32] = key.try_into().unwrap();
+        let key: [u8; 32] = key.try_into().expect(LSMTREE_ERROR);
         Ok(self.get(&key)?.is_some())
     }
 }
@@ -298,8 +291,6 @@ where
                 self.current_batch.lock().delete_cf(handle_state, key);
                 let key_hash = Hash::compute_from(key);
 
-                println!("Remove key: {:?}", key_hash);
-
                 self.lsmtree
                     .remove(key_hash.to_bytes())
                     .expect(LSMTREE_ERROR);
@@ -314,7 +305,7 @@ where
             let mut change_id_bytes = Vec::new();
             self.change_id_serializer
                 .serialize(&change_id, &mut change_id_bytes)
-                .unwrap();
+                .expect(CHANGE_ID_SER_ERROR);
 
             self.current_batch
                 .lock()

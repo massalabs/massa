@@ -9,6 +9,7 @@ pub const STATE_CF: &str = "state";
 pub const STATE_HASH_KEY: &[u8; 1] = b"h";
 pub const CHANGE_ID_KEY: &[u8; 1] = b"c";
 pub const CHANGE_ID_DESER_ERROR: &str = "critical: change_id deserialization failed";
+pub const CHANGE_ID_SER_ERROR: &str = "critical: change_id serialization failed";
 
 // Errors
 pub const CF_ERROR: &str = "critical: rocksdb column family operation failed";
