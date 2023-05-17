@@ -375,6 +375,59 @@ impl FromStr for Hash {
     }
 }
 
+pub struct SmtHasher(blake3::Hasher);
+impl lsmtree::digest::OutputSizeUser for SmtHasher {
+    type OutputSize = lsmtree::digest::typenum::U32;
+}
+
+impl lsmtree::digest::Digest for SmtHasher {
+    fn new() -> Self {
+        SmtHasher(blake3::Hasher::new())
+    }
+
+    fn new_with_prefix(_: impl AsRef<[u8]>) -> Self {
+        todo!()
+    }
+
+    fn update(&mut self, data: impl AsRef<[u8]>) {
+        self.0.update(data.as_ref());
+    }
+
+    fn chain_update(self, _: impl AsRef<[u8]>) -> Self {
+        todo!()
+    }
+
+    fn finalize(self) -> lsmtree::digest::Output<Self> {
+        generic_array::GenericArray::clone_from_slice(self.0.finalize().as_bytes())
+    }
+
+    fn finalize_into(self, _: &mut lsmtree::digest::Output<Self>) {
+        unreachable!()
+    }
+
+    fn finalize_reset(&mut self) -> lsmtree::digest::Output<Self> {
+        unreachable!()
+    }
+
+    fn finalize_into_reset(&mut self, _: &mut lsmtree::digest::Output<Self>) {
+        unreachable!()
+    }
+
+    fn reset(&mut self) {
+        unreachable!()
+    }
+
+    fn output_size() -> usize {
+        <Self as lsmtree::digest::OutputSizeUser>::output_size()
+    }
+
+    fn digest(data: impl AsRef<[u8]>) -> lsmtree::digest::Output<Self> {
+        let mut h = Self::new();
+        h.update(data);
+        h.finalize()
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use serial_test::serial;
