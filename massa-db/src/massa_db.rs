@@ -277,10 +277,10 @@ where
 
                 self.lsmtree.update(key_hash.to_bytes(), Bytes::from(value_hash.to_bytes().to_vec()));
 
-                if let Ok(Some(prev_value)) = self.db.get_cf(handle_state, key) {
-                    state_hash ^= Hash::compute_from(&[key.to_vec(), prev_value].concat());
-                }
-                state_hash ^= Hash::compute_from(&[key.to_vec(), value.to_vec()].concat());
+                // if let Ok(Some(prev_value)) = self.db.get_cf(handle_state, key) {
+                //     state_hash ^= Hash::compute_from(&[key.to_vec(), prev_value].concat());
+                // }
+                // state_hash ^= Hash::compute_from(&[key.to_vec(), value.to_vec()].concat());
             } else {
                 self.current_batch.lock().delete_cf(handle_state, key);
                 let key_hash = Hash::compute_from(key);
@@ -289,11 +289,13 @@ where
 
                 self.lsmtree.remove(key_hash.to_bytes());
 
-                if let Ok(Some(prev_value)) = self.db.get_cf(handle_state, key) {
-                    state_hash ^= Hash::compute_from(&[key.to_vec(), prev_value].concat());
-                }
+                // if let Ok(Some(prev_value)) = self.db.get_cf(handle_state, key) {
+                //     state_hash ^= Hash::compute_from(&[key.to_vec(), prev_value].concat());
+                // }
             }
         }
+
+        self.current_batch.lock().put_cf(handle_metadata, STATE_HASH_KEY, self.lsmtree.root());
 
         if let Some(change_id) = change_id {
             let mut change_id_bytes = Vec::new();
@@ -304,14 +306,6 @@ where
             self.current_batch
                 .lock()
                 .put_cf(handle_metadata, CHANGE_ID_KEY, &change_id_bytes);
-
-            let _key_hash = Hash::compute_from(CHANGE_ID_KEY);
-            let _value_hash = Hash::compute_from(&change_id_bytes);
-
-            /*root = self
-            .monotree
-            .insert(root.as_ref(), key_hash.to_bytes(), value_hash.to_bytes())
-            .expect(MONOTREE_ERROR);*/
         }
 
         let batch;
