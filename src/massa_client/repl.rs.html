@@ -277,7 +277,7 @@
 }
 
 <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">async fn </span>run(
-    client: <span class="kw-2">&amp;</span>Client,
+    client: <span class="kw-2">&amp;mut </span>Client,
     wallet_path: <span class="kw-2">&amp;</span>Path,
     args_password: <span class="prelude-ty">Option</span>&lt;String&gt;,
 ) -&gt; <span class="prelude-ty">Result</span>&lt;()&gt; {
