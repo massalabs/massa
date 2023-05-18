@@ -8,6 +8,7 @@ use crossbeam::{
     select,
 };
 use massa_hash::Hash;
+use massa_models::config::SIGNATURE_DESER_SIZE;
 use massa_models::version::{VersionDeserializer, VersionSerializer};
 use massa_protocol_exports::{
     BootstrapPeers, PeerId, PeerIdDeserializer, PeerIdSerializer, ProtocolConfig,
@@ -442,7 +443,7 @@ impl InitConnectionHandler<PeerId, Context, MessagesHandler> for MassaHandshake 
                             )
                         })?;
 
-                    let mut bytes = [0u8; 64];
+                    let mut bytes = [0u8; SIGNATURE_DESER_SIZE];
                     bytes.copy_from_slice(&self_signature.to_bytes());
 
                     endpoint.send::<PeerId>(&bytes)?;
