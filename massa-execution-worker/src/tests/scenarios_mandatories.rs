@@ -1774,8 +1774,7 @@ mod tests {
         init_execution_worker(&exec_cfg, &storage, controller.clone());
 
         // generate the keypair and its corresponding address
-        let keypair =
-            KeyPair::from_str(TEST_SK_1).unwrap();
+        let keypair = KeyPair::from_str(TEST_SK_1).unwrap();
         let address = Address::from_public_key(&keypair.get_public_key());
 
         // get initial balance
@@ -1936,8 +1935,7 @@ mod tests {
         init_execution_worker(&exec_cfg, &storage, controller.clone());
 
         // generate the keypair and its corresponding address
-        let keypair =
-            KeyPair::from_str(TEST_SK_1).unwrap();
+        let keypair = KeyPair::from_str(TEST_SK_1).unwrap();
         let address = Address::from_public_key(&keypair.get_public_key());
 
         // get initial balance
