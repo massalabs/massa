@@ -29,6 +29,7 @@ impl From<ExecutionOutput> for grpc::ExecutionOutput {
                 .into_iter()
                 .map(|event| event.into())
                 .collect(),
+            state_changes: Some(value.state_changes.into()),
         }
     }
 }

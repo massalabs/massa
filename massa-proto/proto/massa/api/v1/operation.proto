@@ -101,7 +101,7 @@ message SignedOperation {
 
 // Possible statuses for an operation
 enum OperationStatus {
-  OPERATION_STATUS_UNSPECIFIED = 0;  // Defaut enum value
+  OPERATION_STATUS_UNSPECIFIED = 0;  // Default enum value
   OPERATION_STATUS_PENDING = 1;  // The operation is still pending
   OPERATION_STATUS_FINAL = 2;  // The operation is final
   OPERATION_STATUS_SUCCESS = 3;  // The operation was executed successfully

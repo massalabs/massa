@@ -5,6 +5,7 @@ use std::str::FromStr;
 use crate::address::Address;
 use crate::block::{Block, FilledBlock, SecureShareBlock};
 use crate::block_header::{BlockHeader, SecuredHeader};
+use crate::denunciation::DenunciationIndex;
 use crate::endorsement::{Endorsement, SecureShareEndorsement};
 use crate::execution::EventFilter;
 use crate::operation::{Operation, OperationId, OperationType, SecureShareOperation};
@@ -280,11 +281,40 @@ impl From<EventExecutionContext> for grpc::ScExecutionEventContext {
                 .map(|a| a.to_string())
                 .collect(),
             origin_operation_id: value.origin_operation_id.map(|id| id.to_string()),
-            status: vec![
-                value.is_error.into(),
-                value.read_only.into(),
-                value.is_final.into(),
-            ],
+            status: {
+                let mut status = Vec::new();
+                if value.read_only {
+                    status.push(grpc::ScExecutionEventStatus::ReadOnly as i32);
+                }
+                if value.is_error {
+                    status.push(grpc::ScExecutionEventStatus::Failure as i32);
+                }
+                if value.is_final {
+                    status.push(grpc::ScExecutionEventStatus::Final as i32);
+                }
+
+                status
+            },
+        }
+    }
+}
+
+impl From<DenunciationIndex> for grpc::DenunciationIndex {
+    fn from(value: DenunciationIndex) -> Self {
+        grpc::DenunciationIndex {
+            entry: Some(match value {
+                DenunciationIndex::BlockHeader { slot } => {
+                    grpc::denunciation_index::Entry::BlockHeader(grpc::DenunciationBlockHeader {
+                        slot: Some(slot.into()),
+                    })
+                }
+                DenunciationIndex::Endorsement { slot, index } => {
+                    grpc::denunciation_index::Entry::Endorsement(grpc::DenunciationEndorsement {
+                        slot: Some(slot.into()),
+                        index,
+                    })
+                }
+            }),
         }
     }
 }

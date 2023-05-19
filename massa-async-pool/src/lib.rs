@@ -91,6 +91,7 @@
 
 mod changes;
 mod config;
+mod mapping_grpc;
 mod message;
 mod pool;
 

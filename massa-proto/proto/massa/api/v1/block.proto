@@ -83,7 +83,7 @@ message SignedBlockHeader {
 
 // Possible statuses for a block
 enum BlockStatus {
-  BLOCK_STATUS_UNSPECIFIED = 0;  // Defaut enum value
+  BLOCK_STATUS_UNSPECIFIED = 0;  // Default enum value
   BLOCK_STATUS_IN_BLOCKCLIQUE = 1;  // The block is in the greatest clique (and not final)
   BLOCK_STATUS_FINAL = 2;  // The block is final
   BLOCK_STATUS_CANDIDATE = 3;  // The block is candidate (active any clique but not final)
