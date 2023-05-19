@@ -188,15 +188,6 @@
 <a href="#188" id="188">188</a>
 <a href="#189" id="189">189</a>
 <a href="#190" id="190">190</a>
-<a href="#191" id="191">191</a>
-<a href="#192" id="192">192</a>
-<a href="#193" id="193">193</a>
-<a href="#194" id="194">194</a>
-<a href="#195" id="195">195</a>
-<a href="#196" id="196">196</a>
-<a href="#197" id="197">197</a>
-<a href="#198" id="198">198</a>
-<a href="#199" id="199">199</a>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 </span><span class="doccomment">//! Massa stateless CLI
 </span><span class="attr">#![warn(missing_docs)]
@@ -232,9 +223,6 @@
     <span class="doccomment">/// Port to listen on (Massa private API).
     </span><span class="attr">#[structopt(long)]
     </span>private_port: <span class="prelude-ty">Option</span>&lt;u16&gt;,
-    <span class="doccomment">/// Port to listen on (Massa GRPC API).
-    </span><span class="attr">#[structopt(long)]
-    </span>grpc_port: <span class="prelude-ty">Option</span>&lt;u16&gt;,
     <span class="doccomment">/// Address to listen on
     </span><span class="attr">#[structopt(long)]
     </span>ip: <span class="prelude-ty">Option</span>&lt;IpAddr&gt;,
@@ -328,10 +316,6 @@
         <span class="prelude-val">Some</span>(private_port) =&gt; private_port,
         <span class="prelude-val">None </span>=&gt; settings.default_node.private_port,
     };
-    <span class="kw">let </span>grpc_port = <span class="kw">match </span>args.grpc_port {
-        <span class="prelude-val">Some</span>(grpc_port) =&gt; grpc_port,
-        <span class="prelude-val">None </span>=&gt; settings.default_node.grpc_port,
-    };
 
     <span class="comment">// Setup panic handlers,
     // and when a panic occurs,
@@ -343,12 +327,10 @@
         std::process::exit(<span class="number">1</span>);
     }));
 
-    <span class="comment">// Note: grpc handler requires a mut handler
-    </span><span class="kw">let </span><span class="kw-2">mut </span>client =
-        Client::new(address, public_port, private_port, grpc_port, <span class="kw-2">&amp;</span>http_config).<span class="kw">await</span><span class="question-mark">?</span>;
+    <span class="kw">let </span>client = Client::new(address, public_port, private_port, <span class="kw-2">&amp;</span>http_config).<span class="kw">await</span>;
     <span class="kw">if </span>atty::is(Stream::Stdout) &amp;&amp; args.command == Command::help &amp;&amp; !args.json {
         <span class="comment">// Interactive mode
-        </span>repl::run(<span class="kw-2">&amp;mut </span>client, <span class="kw-2">&amp;</span>args.wallet, args.password).<span class="kw">await</span><span class="question-mark">?</span>;
+        </span>repl::run(<span class="kw-2">&amp;</span>client, <span class="kw-2">&amp;</span>args.wallet, args.password).<span class="kw">await</span><span class="question-mark">?</span>;
     } <span class="kw">else </span>{
         <span class="comment">// Non-Interactive mode
 
@@ -369,7 +351,7 @@
 
         <span class="kw">match </span>args
             .command
-            .run(<span class="kw-2">&amp;mut </span>client, <span class="kw-2">&amp;mut </span>wallet_opt, <span class="kw-2">&amp;</span>args.parameters, args.json)
+            .run(<span class="kw-2">&amp;</span>client, <span class="kw-2">&amp;mut </span>wallet_opt, <span class="kw-2">&amp;</span>args.parameters, args.json)
             .<span class="kw">await
         </span>{
             <span class="prelude-val">Ok</span>(output) =&gt; {

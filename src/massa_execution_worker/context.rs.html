@@ -1031,7 +1031,7 @@
 <span class="kw">use </span><span class="kw">crate</span>::speculative_ledger::SpeculativeLedger;
 <span class="kw">use </span><span class="kw">crate</span>::vesting_manager::VestingManager;
 <span class="kw">use crate</span>::{active_history::ActiveHistory, speculative_roll_state::SpeculativeRollState};
-<span class="kw">use </span>massa_async_pool::{AsyncMessage, AsyncPoolChanges};
+<span class="kw">use </span>massa_async_pool::{AsyncMessage, AsyncMessageId};
 <span class="kw">use </span>massa_executed_ops::{ExecutedDenunciationsChanges, ExecutedOpsChanges};
 <span class="kw">use </span>massa_execution_exports::{
     EventStore, ExecutionConfig, ExecutionError, ExecutionOutput, ExecutionStackElement,
@@ -1065,7 +1065,7 @@
     </span><span class="kw">pub </span>ledger_changes: LedgerChanges,
 
     <span class="doccomment">/// speculative asynchronous pool messages emitted so far in the context
-    </span><span class="kw">pub </span>async_pool_changes: AsyncPoolChanges,
+    </span><span class="kw">pub </span>async_pool_changes: Vec&lt;(AsyncMessageId, AsyncMessage)&gt;,
 
     <span class="doccomment">/// speculative list of operations executed
     </span><span class="kw">pub </span>executed_ops: ExecutedOpsChanges,
@@ -2007,7 +2007,7 @@
     ///
     </span><span class="kw">pub fn </span>insert_executed_denunciation(<span class="kw-2">&amp;mut </span><span class="self">self</span>, denunciation_idx: <span class="kw-2">&amp;</span>DenunciationIndex) {
         <span class="self">self</span>.speculative_executed_denunciations
-            .insert_executed_denunciation(<span class="kw-2">*</span>denunciation_idx);
+            .insert_executed_denunciation(denunciation_idx.clone());
     }
 
     <span class="doccomment">/// gets the cycle information for an address

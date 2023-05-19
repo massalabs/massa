@@ -386,118 +386,22 @@
 <a href="#386" id="386">386</a>
 <a href="#387" id="387">387</a>
 <a href="#388" id="388">388</a>
-<a href="#389" id="389">389</a>
-<a href="#390" id="390">390</a>
-<a href="#391" id="391">391</a>
-<a href="#392" id="392">392</a>
-<a href="#393" id="393">393</a>
-<a href="#394" id="394">394</a>
-<a href="#395" id="395">395</a>
-<a href="#396" id="396">396</a>
-<a href="#397" id="397">397</a>
-<a href="#398" id="398">398</a>
-<a href="#399" id="399">399</a>
-<a href="#400" id="400">400</a>
-<a href="#401" id="401">401</a>
-<a href="#402" id="402">402</a>
-<a href="#403" id="403">403</a>
-<a href="#404" id="404">404</a>
-<a href="#405" id="405">405</a>
-<a href="#406" id="406">406</a>
-<a href="#407" id="407">407</a>
-<a href="#408" id="408">408</a>
-<a href="#409" id="409">409</a>
-<a href="#410" id="410">410</a>
-<a href="#411" id="411">411</a>
-<a href="#412" id="412">412</a>
-<a href="#413" id="413">413</a>
-<a href="#414" id="414">414</a>
-<a href="#415" id="415">415</a>
-<a href="#416" id="416">416</a>
-<a href="#417" id="417">417</a>
-<a href="#418" id="418">418</a>
-<a href="#419" id="419">419</a>
-<a href="#420" id="420">420</a>
-<a href="#421" id="421">421</a>
-<a href="#422" id="422">422</a>
-<a href="#423" id="423">423</a>
-<a href="#424" id="424">424</a>
-<a href="#425" id="425">425</a>
-<a href="#426" id="426">426</a>
-<a href="#427" id="427">427</a>
-<a href="#428" id="428">428</a>
-<a href="#429" id="429">429</a>
-<a href="#430" id="430">430</a>
-<a href="#431" id="431">431</a>
-<a href="#432" id="432">432</a>
-<a href="#433" id="433">433</a>
-<a href="#434" id="434">434</a>
-<a href="#435" id="435">435</a>
-<a href="#436" id="436">436</a>
-<a href="#437" id="437">437</a>
-<a href="#438" id="438">438</a>
-<a href="#439" id="439">439</a>
-<a href="#440" id="440">440</a>
-<a href="#441" id="441">441</a>
-<a href="#442" id="442">442</a>
-<a href="#443" id="443">443</a>
-<a href="#444" id="444">444</a>
-<a href="#445" id="445">445</a>
-<a href="#446" id="446">446</a>
-<a href="#447" id="447">447</a>
-<a href="#448" id="448">448</a>
-<a href="#449" id="449">449</a>
-<a href="#450" id="450">450</a>
-<a href="#451" id="451">451</a>
-<a href="#452" id="452">452</a>
-<a href="#453" id="453">453</a>
-<a href="#454" id="454">454</a>
-<a href="#455" id="455">455</a>
-<a href="#456" id="456">456</a>
-<a href="#457" id="457">457</a>
-<a href="#458" id="458">458</a>
-<a href="#459" id="459">459</a>
-<a href="#460" id="460">460</a>
-<a href="#461" id="461">461</a>
-<a href="#462" id="462">462</a>
-<a href="#463" id="463">463</a>
-<a href="#464" id="464">464</a>
-<a href="#465" id="465">465</a>
-<a href="#466" id="466">466</a>
-<a href="#467" id="467">467</a>
-<a href="#468" id="468">468</a>
-<a href="#469" id="469">469</a>
-<a href="#470" id="470">470</a>
-<a href="#471" id="471">471</a>
-<a href="#472" id="472">472</a>
-<a href="#473" id="473">473</a>
-<a href="#474" id="474">474</a>
-<a href="#475" id="475">475</a>
-<a href="#476" id="476">476</a>
-<a href="#477" id="477">477</a>
-<a href="#478" id="478">478</a>
-<a href="#479" id="479">479</a>
-<a href="#480" id="480">480</a>
-<a href="#481" id="481">481</a>
-<a href="#482" id="482">482</a>
 </pre><pre class="rust"><code><span class="doccomment">//! Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 //! This file defines a structure to list and prune previously executed operations.
 //! Used to detect operation reuse.
 
 </span><span class="kw">use crate</span>::{ops_changes::ExecutedOpsChanges, ExecutedOpsConfig};
-<span class="kw">use </span>massa_db::{
-    DBBatch, MassaDB, CF_ERROR, CRUD_ERROR, EXECUTED_OPS_ID_DESER_ERROR, EXECUTED_OPS_ID_SER_ERROR,
-    EXECUTED_OPS_PREFIX, STATE_CF,
-};
+<span class="kw">use </span>massa_hash::{Hash, HASH_SIZE_BYTES};
 <span class="kw">use </span>massa_models::{
-    operation::{OperationId, OperationIdDeserializer, OperationIdSerializer},
+    operation::{OperationId, OperationIdDeserializer},
     prehash::PreHashSet,
+    secure_share::Id,
     slot::{Slot, SlotDeserializer, SlotSerializer},
+    streaming_step::StreamingStep,
 };
 <span class="kw">use </span>massa_serialization::{
-    BoolDeserializer, BoolSerializer, DeserializeError, Deserializer, SerializeError, Serializer,
-    U64VarIntDeserializer, U64VarIntSerializer,
+    Deserializer, SerializeError, Serializer, U64VarIntDeserializer, U64VarIntSerializer,
 };
 <span class="kw">use </span>nom::{
     error::{context, ContextError, ParseError},
@@ -505,104 +409,63 @@
     sequence::tuple,
     IResult, Parser,
 };
-<span class="kw">use </span>parking_lot::RwLock;
 <span class="kw">use </span>std::{
-    collections::{BTreeMap, HashMap, HashSet},
-    ops::Bound::{Excluded, Included},
-    sync::Arc,
+    collections::{BTreeMap, HashMap},
+    ops::Bound::{Excluded, Included, Unbounded},
 };
 
-<span class="doccomment">/// Op id key formatting macro
-</span><span class="attr">#[macro_export]
-</span><span class="macro">macro_rules! </span>op_id_key {
-    (<span class="macro-nonterminal">$id</span>:expr) =&gt; {
-        [<span class="kw-2">&amp;</span>EXECUTED_OPS_PREFIX.as_bytes(), <span class="kw-2">&amp;</span><span class="macro-nonterminal">$id</span>[..]].concat()
-    };
-}
+<span class="kw">const </span>EXECUTED_OPS_HASH_INITIAL_BYTES: <span class="kw-2">&amp;</span>[u8; <span class="number">32</span>] = <span class="kw-2">&amp;</span>[<span class="number">0</span>; HASH_SIZE_BYTES];
 
 <span class="doccomment">/// A structure to list and prune previously executed operations
-</span><span class="attr">#[derive(Clone)]
+</span><span class="attr">#[derive(Debug, Clone)]
 </span><span class="kw">pub struct </span>ExecutedOps {
     <span class="doccomment">/// Executed operations configuration
-    </span>_config: ExecutedOpsConfig,
-    <span class="doccomment">/// RocksDB Instance
-    </span><span class="kw">pub </span>db: Arc&lt;RwLock&lt;MassaDB&gt;&gt;,
+    </span>config: ExecutedOpsConfig,
     <span class="doccomment">/// Executed operations btreemap with slot as index for better pruning complexity
     </span><span class="kw">pub </span>sorted_ops: BTreeMap&lt;Slot, PreHashSet&lt;OperationId&gt;&gt;,
+    <span class="doccomment">/// Executed operations only for better insertion complexity
+    </span><span class="kw">pub </span>ops: PreHashSet&lt;OperationId&gt;,
+    <span class="doccomment">/// Accumulated hash of the executed operations
+    </span><span class="kw">pub </span>hash: Hash,
     <span class="doccomment">/// execution status of operations (true: success, false: fail)
     </span><span class="kw">pub </span>op_exec_status: HashMap&lt;OperationId, bool&gt;,
-    operation_id_deserializer: OperationIdDeserializer,
-    operation_id_serializer: OperationIdSerializer,
-    bool_deserializer: BoolDeserializer,
-    bool_serializer: BoolSerializer,
-    slot_deserializer: SlotDeserializer,
-    slot_serializer: SlotSerializer,
 }
 
 <span class="kw">impl </span>ExecutedOps {
     <span class="doccomment">/// Creates a new `ExecutedOps`
-    </span><span class="kw">pub fn </span>new(config: ExecutedOpsConfig, db: Arc&lt;RwLock&lt;MassaDB&gt;&gt;) -&gt; <span class="self">Self </span>{
-        <span class="kw">let </span>slot_deserializer = SlotDeserializer::new(
-            (Included(u64::MIN), Included(u64::MAX)),
-            (Included(<span class="number">0</span>), Excluded(config.thread_count)),
-        );
-        <span class="kw">let </span><span class="kw-2">mut </span>executed_ops = <span class="self">Self </span>{
-            _config: config,
-            db,
+    </span><span class="kw">pub fn </span>new(config: ExecutedOpsConfig) -&gt; <span class="self">Self </span>{
+        <span class="self">Self </span>{
+            config,
             sorted_ops: BTreeMap::new(),
+            ops: PreHashSet::default(),
+            hash: Hash::from_bytes(EXECUTED_OPS_HASH_INITIAL_BYTES),
             op_exec_status: HashMap::new(),
-            operation_id_deserializer: OperationIdDeserializer::new(),
-            operation_id_serializer: OperationIdSerializer::new(),
-            bool_deserializer: BoolDeserializer::new(),
-            bool_serializer: BoolSerializer::new(),
-            slot_deserializer,
-            slot_serializer: SlotSerializer::new(),
-        };
-        executed_ops.recompute_sorted_ops_and_op_exec_status();
-        executed_ops
+        }
     }
 
-    <span class="kw">pub fn </span>recompute_sorted_ops_and_op_exec_status(<span class="kw-2">&amp;mut </span><span class="self">self</span>) {
-        <span class="self">self</span>.sorted_ops.clear();
-        <span class="self">self</span>.op_exec_status.clear();
-
-        <span class="kw">let </span>db = <span class="self">self</span>.db.read();
-        <span class="kw">let </span>handle = db.db.cf_handle(STATE_CF).expect(CF_ERROR);
-
-        <span class="kw">for </span>(serialized_op_id, serialized_value) <span class="kw">in </span>db
-            .db
-            .prefix_iterator_cf(handle, EXECUTED_OPS_PREFIX)
-            .flatten()
-        {
-            <span class="kw">if </span>!serialized_op_id.starts_with(EXECUTED_OPS_PREFIX.as_bytes()) {
-                <span class="kw">break</span>;
+    <span class="doccomment">/// Creates a new `ExecutedOps` and computes the hash
+    /// Useful when restarting from a snapshot
+    </span><span class="kw">pub fn </span>new_with_hash(
+        config: ExecutedOpsConfig,
+        sorted_ops: BTreeMap&lt;Slot, PreHashSet&lt;OperationId&gt;&gt;,
+    ) -&gt; <span class="self">Self </span>{
+        <span class="kw">let </span><span class="kw-2">mut </span>hash = Hash::from_bytes(EXECUTED_OPS_HASH_INITIAL_BYTES);
+        <span class="kw">let </span><span class="kw-2">mut </span>ops = PreHashSet::default();
+        <span class="kw">for </span>(<span class="kw">_</span>, op_ids) <span class="kw">in </span>sorted_ops.clone() {
+            <span class="kw">for </span>op_id <span class="kw">in </span>op_ids {
+                <span class="kw">if </span>ops.insert(op_id) {
+                    <span class="comment">// This let&#39;s us compute the accumulated hash of all op_ids in the struct.
+                    // We XOR the hash to allow reversibility if we remove an op_id.
+                    </span>hash ^= <span class="kw-2">*</span>op_id.get_hash();
+                }
             }
-
-            <span class="kw">let </span>(<span class="kw">_</span>, op_id) = <span class="self">self
-                </span>.operation_id_deserializer
-                .deserialize::&lt;DeserializeError&gt;(<span class="kw-2">&amp;</span>serialized_op_id[EXECUTED_OPS_PREFIX.len()..])
-                .expect(EXECUTED_OPS_ID_DESER_ERROR);
-
-            <span class="kw">let </span>(rest, op_exec_status) = <span class="self">self
-                </span>.bool_deserializer
-                .deserialize::&lt;DeserializeError&gt;(<span class="kw-2">&amp;</span>serialized_value)
-                .expect(EXECUTED_OPS_ID_DESER_ERROR);
-            <span class="kw">let </span>(<span class="kw">_</span>, slot) = <span class="self">self
-                </span>.slot_deserializer
-                .deserialize::&lt;DeserializeError&gt;(rest)
-                .expect(EXECUTED_OPS_ID_DESER_ERROR);
-
-            <span class="self">self</span>.sorted_ops
-                .entry(slot)
-                .and_modify(|ids| {
-                    ids.insert(op_id);
-                })
-                .or_insert_with(|| {
-                    <span class="kw">let </span><span class="kw-2">mut </span>new = HashSet::default();
-                    new.insert(op_id);
-                    new
-                });
-            <span class="self">self</span>.op_exec_status.insert(op_id, op_exec_status);
+        }
+        <span class="self">Self </span>{
+            config,
+            sorted_ops,
+            ops,
+            hash,
+            op_exec_status: HashMap::new(),
         }
     }
 
@@ -610,22 +473,36 @@
     ///
     /// USED FOR BOOTSTRAP ONLY
     </span><span class="kw">pub fn </span>reset(<span class="kw-2">&amp;mut </span><span class="self">self</span>) {
-        <span class="self">self</span>.db.write().delete_prefix(EXECUTED_OPS_PREFIX, <span class="prelude-val">None</span>);
+        <span class="self">self</span>.sorted_ops.clear();
+        <span class="self">self</span>.ops.clear();
+        <span class="self">self</span>.hash = Hash::from_bytes(EXECUTED_OPS_HASH_INITIAL_BYTES);
+    }
 
-        <span class="self">self</span>.recompute_sorted_ops_and_op_exec_status();
+    <span class="doccomment">/// Returns the number of executed operations
+    </span><span class="kw">pub fn </span>len(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; usize {
+        <span class="self">self</span>.ops.len()
+    }
+
+    <span class="doccomment">/// Check executed ops emptiness
+    </span><span class="kw">pub fn </span>is_empty(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; bool {
+        <span class="self">self</span>.ops.is_empty()
+    }
+
+    <span class="doccomment">/// Internal function used to insert the values of an operation id iter and update the object hash
+    </span><span class="kw">fn </span>extend_and_compute_hash&lt;<span class="lifetime">&#39;a</span>, I&gt;(<span class="kw-2">&amp;mut </span><span class="self">self</span>, values: I)
+    <span class="kw">where
+        </span>I: Iterator&lt;Item = <span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>OperationId&gt;,
+    {
+        <span class="kw">for </span>op_id <span class="kw">in </span>values {
+            <span class="kw">if </span><span class="self">self</span>.ops.insert(<span class="kw-2">*</span>op_id) {
+                <span class="self">self</span>.hash ^= <span class="kw-2">*</span>op_id.get_hash();
+            }
+        }
     }
 
     <span class="doccomment">/// Apply speculative operations changes to the final executed operations state
-    </span><span class="kw">pub fn </span>apply_changes_to_batch(
-        <span class="kw-2">&amp;mut </span><span class="self">self</span>,
-        changes: ExecutedOpsChanges,
-        slot: Slot,
-        batch: <span class="kw-2">&amp;mut </span>DBBatch,
-    ) {
-        <span class="kw">for </span>(id, value) <span class="kw">in </span>changes.iter() {
-            <span class="self">self</span>.put_entry(id, value, batch);
-        }
-
+    </span><span class="kw">pub fn </span>apply_changes(<span class="kw-2">&amp;mut </span><span class="self">self</span>, changes: ExecutedOpsChanges, slot: Slot) {
+        <span class="self">self</span>.extend_and_compute_hash(changes.keys());
         <span class="kw">for </span>(op_id, (op_exec_success, slot)) <span class="kw">in </span>changes {
             <span class="self">self</span>.sorted_ops
                 .entry(slot)
@@ -637,135 +514,97 @@
                     new.insert(op_id);
                     new
                 });
+
             <span class="self">self</span>.op_exec_status.insert(op_id, op_exec_success);
         }
 
-        <span class="self">self</span>.prune_to_batch(slot, batch);
+        <span class="self">self</span>.prune(slot);
     }
 
     <span class="doccomment">/// Check if an operation was executed
     </span><span class="kw">pub fn </span>contains(<span class="kw-2">&amp;</span><span class="self">self</span>, op_id: <span class="kw-2">&amp;</span>OperationId) -&gt; bool {
-        <span class="kw">let </span>db = <span class="self">self</span>.db.read();
-        <span class="kw">let </span>handle = db.db.cf_handle(STATE_CF).expect(CF_ERROR);
-
-        <span class="kw">let </span><span class="kw-2">mut </span>serialized_op_id = Vec::new();
-        <span class="self">self</span>.operation_id_serializer
-            .serialize(op_id, <span class="kw-2">&amp;mut </span>serialized_op_id)
-            .expect(EXECUTED_OPS_ID_SER_ERROR);
-
-        db.db
-            .get_cf(handle, <span class="macro">op_id_key!</span>(serialized_op_id))
-            .expect(CRUD_ERROR)
-            .is_some()
+        <span class="self">self</span>.ops.contains(op_id)
     }
 
     <span class="doccomment">/// Prune all operations that expire strictly before `slot`
-    </span><span class="kw">fn </span>prune_to_batch(<span class="kw-2">&amp;mut </span><span class="self">self</span>, slot: Slot, batch: <span class="kw-2">&amp;mut </span>DBBatch) {
+    </span><span class="kw">fn </span>prune(<span class="kw-2">&amp;mut </span><span class="self">self</span>, slot: Slot) {
         <span class="kw">let </span>kept = <span class="self">self</span>.sorted_ops.split_off(<span class="kw-2">&amp;</span>slot);
         <span class="kw">let </span>removed = std::mem::take(<span class="kw-2">&amp;mut </span><span class="self">self</span>.sorted_ops);
         <span class="kw">for </span>(<span class="kw">_</span>, ids) <span class="kw">in </span>removed {
             <span class="kw">for </span>op_id <span class="kw">in </span>ids {
-                <span class="self">self</span>.delete_entry(<span class="kw-2">&amp;</span>op_id, batch);
+                <span class="self">self</span>.ops.remove(<span class="kw-2">&amp;</span>op_id);
+                <span class="self">self</span>.op_exec_status.remove(<span class="kw-2">&amp;</span>op_id);
+                <span class="self">self</span>.hash ^= <span class="kw-2">*</span>op_id.get_hash();
             }
         }
         <span class="self">self</span>.sorted_ops = kept;
     }
 
-    <span class="doccomment">/// Add a denunciation_index to the DB
+    <span class="doccomment">/// Get a part of the executed operations.
+    /// Used exclusively by the bootstrap server.
     ///
-    /// # Arguments
-    /// * `message_id`
-    /// * `message`
-    /// * `batch`: the given operation batch to update
-    </span><span class="kw">fn </span>put_entry(<span class="kw-2">&amp;</span><span class="self">self</span>, op_id: <span class="kw-2">&amp;</span>OperationId, value: <span class="kw-2">&amp;</span>(bool, Slot), batch: <span class="kw-2">&amp;mut </span>DBBatch) {
-        <span class="kw">let </span>db = <span class="self">self</span>.db.read();
-
-        <span class="kw">let </span><span class="kw-2">mut </span>serialized_op_id = Vec::new();
-        <span class="self">self</span>.operation_id_serializer
-            .serialize(op_id, <span class="kw-2">&amp;mut </span>serialized_op_id)
-            .expect(EXECUTED_OPS_ID_SER_ERROR);
-
-        <span class="kw">let </span><span class="kw-2">mut </span>serialized_op_value = Vec::new();
-        <span class="self">self</span>.bool_serializer
-            .serialize(<span class="kw-2">&amp;</span>value.<span class="number">0</span>, <span class="kw-2">&amp;mut </span>serialized_op_value)
-            .expect(EXECUTED_OPS_ID_SER_ERROR);
-        <span class="self">self</span>.slot_serializer
-            .serialize(<span class="kw-2">&amp;</span>value.<span class="number">1</span>, <span class="kw-2">&amp;mut </span>serialized_op_value)
-            .expect(EXECUTED_OPS_ID_SER_ERROR);
-
-        db.put_or_update_entry_value(batch, <span class="macro">op_id_key!</span>(serialized_op_id), <span class="kw-2">&amp;</span>serialized_op_value);
+    /// # Returns
+    /// A tuple containing the data and the next executed ops streaming step
+    </span><span class="kw">pub fn </span>get_executed_ops_part(
+        <span class="kw-2">&amp;</span><span class="self">self</span>,
+        cursor: StreamingStep&lt;Slot&gt;,
+    ) -&gt; (BTreeMap&lt;Slot, PreHashSet&lt;OperationId&gt;&gt;, StreamingStep&lt;Slot&gt;) {
+        <span class="kw">let </span><span class="kw-2">mut </span>ops_part = BTreeMap::new();
+        <span class="kw">let </span>left_bound = <span class="kw">match </span>cursor {
+            StreamingStep::Started =&gt; Unbounded,
+            StreamingStep::Ongoing(slot) =&gt; Excluded(slot),
+            StreamingStep::Finished(<span class="kw">_</span>) =&gt; <span class="kw">return </span>(ops_part, cursor),
+        };
+        <span class="kw">let </span><span class="kw-2">mut </span>ops_part_last_slot: <span class="prelude-ty">Option</span>&lt;Slot&gt; = <span class="prelude-val">None</span>;
+        <span class="kw">for </span>(slot, ids) <span class="kw">in </span><span class="self">self</span>.sorted_ops.range((left_bound, Unbounded)) {
+            <span class="kw">if </span>ops_part.len() &lt; <span class="self">self</span>.config.bootstrap_part_size <span class="kw">as </span>usize {
+                ops_part.insert(<span class="kw-2">*</span>slot, ids.clone());
+                ops_part_last_slot = <span class="prelude-val">Some</span>(<span class="kw-2">*</span>slot);
+            } <span class="kw">else </span>{
+                <span class="kw">break</span>;
+            }
+        }
+        <span class="kw">if let </span><span class="prelude-val">Some</span>(last_slot) = ops_part_last_slot {
+            (ops_part, StreamingStep::Ongoing(last_slot))
+        } <span class="kw">else </span>{
+            (ops_part, StreamingStep::Finished(<span class="prelude-val">None</span>))
+        }
     }
 
-    <span class="doccomment">/// Remove a op_id from the DB
+    <span class="doccomment">/// Set a part of the executed operations.
+    /// Used exclusively by the bootstrap client.
+    /// Takes the data returned from `get_executed_ops_part` as input.
     ///
-    /// # Arguments
-    /// * batch: the given operation batch to update
-    </span><span class="kw">fn </span>delete_entry(<span class="kw-2">&amp;</span><span class="self">self</span>, op_id: <span class="kw-2">&amp;</span>OperationId, batch: <span class="kw-2">&amp;mut </span>DBBatch) {
-        <span class="kw">let </span>db = <span class="self">self</span>.db.read();
-
-        <span class="kw">let </span><span class="kw-2">mut </span>serialized_op_id = Vec::new();
-        <span class="self">self</span>.operation_id_serializer
-            .serialize(op_id, <span class="kw-2">&amp;mut </span>serialized_op_id)
-            .expect(EXECUTED_OPS_ID_SER_ERROR);
-
-        db.delete_key(batch, <span class="macro">op_id_key!</span>(serialized_op_id));
+    /// # Returns
+    /// The next executed ops streaming step
+    </span><span class="kw">pub fn </span>set_executed_ops_part(
+        <span class="kw-2">&amp;mut </span><span class="self">self</span>,
+        part: BTreeMap&lt;Slot, PreHashSet&lt;OperationId&gt;&gt;,
+    ) -&gt; StreamingStep&lt;Slot&gt; {
+        <span class="self">self</span>.sorted_ops.extend(part.clone());
+        <span class="self">self</span>.extend_and_compute_hash(part.iter().flat_map(|(<span class="kw">_</span>, ids)| ids));
+        <span class="kw">if let </span><span class="prelude-val">Some</span>(slot) = <span class="self">self</span>.sorted_ops.last_key_value().map(|(slot, <span class="kw">_</span>)| slot) {
+            StreamingStep::Ongoing(<span class="kw-2">*</span>slot)
+        } <span class="kw">else </span>{
+            StreamingStep::Finished(<span class="prelude-val">None</span>)
+        }
     }
-
-    <span class="doccomment">/// Deserializes the key and value, useful after bootstrap
-    </span><span class="kw">pub fn </span>is_key_value_valid(<span class="kw-2">&amp;</span><span class="self">self</span>, serialized_key: <span class="kw-2">&amp;</span>[u8], serialized_value: <span class="kw-2">&amp;</span>[u8]) -&gt; bool {
-        <span class="kw">if </span>!serialized_key.starts_with(EXECUTED_OPS_PREFIX.as_bytes()) {
-            <span class="kw">return </span><span class="bool-val">false</span>;
-        }
-
-        <span class="kw">let </span><span class="prelude-val">Ok</span>((rest, _id)) = <span class="self">self</span>.operation_id_deserializer.deserialize::&lt;DeserializeError&gt;(<span class="kw-2">&amp;</span>serialized_key[EXECUTED_OPS_PREFIX.len()..]) <span class="kw">else </span>{
-            <span class="kw">return </span><span class="bool-val">false</span>;
-        };
-        <span class="kw">if </span>!rest.is_empty() {
-            <span class="kw">return </span><span class="bool-val">false</span>;
-        }
-
-        <span class="kw">let </span><span class="prelude-val">Ok</span>((rest, _bool)) = <span class="self">self</span>.bool_deserializer.deserialize::&lt;DeserializeError&gt;(serialized_value) <span class="kw">else </span>{
-            <span class="kw">return </span><span class="bool-val">false</span>;
-        };
-        <span class="kw">let </span><span class="prelude-val">Ok</span>((rest, _slot)) = <span class="self">self</span>.slot_deserializer.deserialize::&lt;DeserializeError&gt;(rest) <span class="kw">else </span>{
-            <span class="kw">return </span><span class="bool-val">false</span>;
-        };
-        <span class="kw">if </span>!rest.is_empty() {
-            <span class="kw">return </span><span class="bool-val">false</span>;
-        }
-
-        <span class="bool-val">true
-    </span>}
 }
 
 <span class="attr">#[test]
 </span><span class="kw">fn </span>test_executed_ops_xor_computing() {
-    <span class="kw">use </span>massa_db::{MassaDB, MassaDBConfig, STATE_HASH_INITIAL_BYTES};
-    <span class="kw">use </span>massa_hash::Hash;
     <span class="kw">use </span>massa_models::prehash::PreHashMap;
     <span class="kw">use </span>massa_models::secure_share::Id;
-    <span class="kw">use </span>tempfile::TempDir;
 
     <span class="comment">// initialize the executed ops config
-    </span><span class="kw">let </span>thread_count = <span class="number">2</span>;
-    <span class="kw">let </span>config = ExecutedOpsConfig { thread_count };
-    <span class="kw">let </span>tempdir_a = TempDir::new().expect(<span class="string">&quot;cannot create temp directory&quot;</span>);
-    <span class="kw">let </span>tempdir_c = TempDir::new().expect(<span class="string">&quot;cannot create temp directory&quot;</span>);
-    <span class="kw">let </span>db_a_config = MassaDBConfig {
-        path: tempdir_a.path().to_path_buf(),
-        max_history_length: <span class="number">10</span>,
-        thread_count,
+    </span><span class="kw">let </span>config = ExecutedOpsConfig {
+        thread_count: <span class="number">2</span>,
+        bootstrap_part_size: <span class="number">10</span>,
     };
-    <span class="kw">let </span>db_c_config = MassaDBConfig {
-        path: tempdir_c.path().to_path_buf(),
-        max_history_length: <span class="number">10</span>,
-        thread_count,
-    };
-    <span class="kw">let </span>db_a = Arc::new(RwLock::new(MassaDB::new(db_a_config)));
-    <span class="kw">let </span>db_c = Arc::new(RwLock::new(MassaDB::new(db_c_config)));
+
     <span class="comment">// initialize the executed ops and executed ops changes
-    </span><span class="kw">let </span><span class="kw-2">mut </span>a = ExecutedOps::new(config.clone(), db_a.clone());
-    <span class="kw">let </span><span class="kw-2">mut </span>c = ExecutedOps::new(config, db_c.clone());
+    </span><span class="kw">let </span><span class="kw-2">mut </span>a = ExecutedOps::new(config.clone());
+    <span class="kw">let </span><span class="kw-2">mut </span>c = ExecutedOps::new(config);
     <span class="kw">let </span><span class="kw-2">mut </span>change_a = PreHashMap::default();
     <span class="kw">let </span><span class="kw-2">mut </span>change_b = PreHashMap::default();
     <span class="kw">let </span><span class="kw-2">mut </span>change_c = PreHashMap::default();
@@ -797,52 +636,25 @@
         period: <span class="number">0</span>,
         thread: <span class="number">0</span>,
     };
-
-    <span class="macro">println!</span>(<span class="string">&quot;START DB_A&quot;</span>);
-    <span class="macro">println!</span>(<span class="string">&quot;&quot;</span>);
-    <span class="macro">println!</span>(<span class="string">&quot;apply_changes_to_batch change_a&quot;</span>);
-    <span class="kw">let </span><span class="kw-2">mut </span>batch_a = DBBatch::new();
-    a.apply_changes_to_batch(change_a, apply_slot, <span class="kw-2">&amp;mut </span>batch_a);
-    db_a.write().write_batch(batch_a, <span class="prelude-val">None</span>);
-
-    <span class="macro">println!</span>(<span class="string">&quot;&quot;</span>);
-    <span class="macro">println!</span>(<span class="string">&quot;apply_changes_to_batch change_b&quot;</span>);
-    <span class="kw">let </span><span class="kw-2">mut </span>batch_b = DBBatch::new();
-    a.apply_changes_to_batch(change_b, apply_slot, <span class="kw-2">&amp;mut </span>batch_b);
-    db_a.write().write_batch(batch_b, <span class="prelude-val">None</span>);
-
-    <span class="macro">println!</span>(<span class="string">&quot;START DB_C&quot;</span>);
-    <span class="macro">println!</span>(<span class="string">&quot;&quot;</span>);
-    <span class="macro">println!</span>(<span class="string">&quot;apply_changes_to_batch change_c&quot;</span>);
-
-    <span class="kw">let </span><span class="kw-2">mut </span>batch_c = DBBatch::new();
-    c.apply_changes_to_batch(change_c, apply_slot, <span class="kw-2">&amp;mut </span>batch_c);
-    db_c.write().write_batch(batch_c, <span class="prelude-val">None</span>);
+    a.apply_changes(change_a, apply_slot);
+    a.apply_changes(change_b, apply_slot);
+    c.apply_changes(change_c, apply_slot);
 
     <span class="comment">// check that a.hash ^ $(change_b) = c.hash
-    </span><span class="macro">assert_ne!</span>(
-        db_a.read().get_db_hash(),
-        Hash::from_bytes(STATE_HASH_INITIAL_BYTES)
-    );
-    <span class="macro">assert_eq!</span>(
-        db_a.read().get_db_hash(),
-        db_c.read().get_db_hash(),
-        <span class="string">&quot;&#39;a&#39; and &#39;c&#39; hashes are not equal&quot;
-    </span>);
+    </span><span class="macro">assert_eq!</span>(a.hash, c.hash, <span class="string">&quot;&#39;a&#39; and &#39;c&#39; hashes are not equal&quot;</span>);
 
     <span class="comment">// prune every element
     </span><span class="kw">let </span>prune_slot = Slot {
         period: <span class="number">20</span>,
         thread: <span class="number">0</span>,
     };
-    <span class="kw">let </span><span class="kw-2">mut </span>batch_a = DBBatch::new();
-    a.prune_to_batch(prune_slot, <span class="kw-2">&amp;mut </span>batch_a);
-    db_a.write().write_batch(batch_a, <span class="prelude-val">None</span>);
+    a.apply_changes(PreHashMap::default(), prune_slot);
+    a.prune(prune_slot);
 
     <span class="comment">// at this point the hash should have been XORed with itself
     </span><span class="macro">assert_eq!</span>(
-        db_a.read().get_db_hash(),
-        Hash::from_bytes(STATE_HASH_INITIAL_BYTES),
+        a.hash,
+        Hash::from_bytes(EXECUTED_OPS_HASH_INITIAL_BYTES),
         <span class="string">&quot;&#39;a&#39; was not reset to its initial value&quot;
     </span>);
 }
