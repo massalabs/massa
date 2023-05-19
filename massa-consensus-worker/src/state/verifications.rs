@@ -478,19 +478,19 @@ impl ConsensusState {
                 }
 
                 let parent_id = {
-                    self.storage
-                        .read_blocks()
-                        .get(&cur_b.block_id)
-                        .ok_or_else(|| {
-                            ConsensusError::MissingBlock(format!(
-                                "missing block in grandpa incomp test: {}",
-                                cur_b.block_id
-                            ))
-                        })?
-                        .content
-                        .header
-                        .content
-                        .parents[header.content.slot.thread as usize]
+                    if let BlockStatus::Active {
+                        a_block,
+                        storage: _,
+                    } = self.block_statuses.get(&cur_b.block_id).ok_or_else(|| {
+                        ConsensusError::MissingBlock(format!(
+                            "missing block in grandpa incomp test: {}",
+                            cur_b.block_id
+                        ))
+                    })? {
+                        a_block.parents[header.content.slot.thread as usize].0
+                    } else {
+                        return Err(ConsensusError::ContainerInconsistency(format!("inconsistency inside block statuses searching {} while checking grandpa incompatibility of block {}",cur_b.block_id,  block_id)));
+                    }
                 };
 
                 // check if the parent in tauB has a strictly lower period number than B's parent in tauB
