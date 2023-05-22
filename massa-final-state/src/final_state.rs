@@ -583,7 +583,7 @@ impl FinalState {
                     .is_cycle_history_key_value_valid(&serialized_key, &serialized_value)
                 {
                     warn!(
-                        "False for CYCLE_HISTORY_KEY serialized_key: {:?}, serialized_value: {:?}",
+                        "Wrong key/value for CYCLE_HISTORY_KEY PREFIX serialized_key: {:?}, serialized_value: {:?}",
                         serialized_key, serialized_value
                     );
                     return false;
@@ -594,7 +594,7 @@ impl FinalState {
                     .is_deferred_credits_key_value_valid(&serialized_key, &serialized_value)
                 {
                     warn!(
-                        "False for DEFERRED_CREDITS serialized_key: {:?}, serialized_value: {:?}",
+                        "Wrong key/value for DEFERRED_CREDITS PREFIX serialized_key: {:?}, serialized_value: {:?}",
                         serialized_key, serialized_value
                     );
                     return false;
@@ -605,7 +605,7 @@ impl FinalState {
                     .is_key_value_valid(&serialized_key, &serialized_value)
                 {
                     warn!(
-                        "False for ASYNC_POOL serialized_key: {:?}, serialized_value: {:?}",
+                        "Wrong key/value for ASYNC_POOL PREFIX serialized_key: {:?}, serialized_value: {:?}",
                         serialized_key, serialized_value
                     );
                     return false;
@@ -616,7 +616,7 @@ impl FinalState {
                     .is_key_value_valid(&serialized_key, &serialized_value)
                 {
                     warn!(
-                        "False for EXECUTED_OPS serialized_key: {:?}, serialized_value: {:?}",
+                        "Wrong key/value for EXECUTED_OPS PREFIX serialized_key: {:?}, serialized_value: {:?}",
                         serialized_key, serialized_value
                     );
                     return false;
@@ -626,7 +626,7 @@ impl FinalState {
                     .executed_denunciations
                     .is_key_value_valid(&serialized_key, &serialized_value)
                 {
-                    warn!("False for EXECUTED_DENUNCIATIONS serialized_key: {:?}, serialized_value: {:?}", serialized_key, serialized_value);
+                    warn!("Wrong key/value for EXECUTED_DENUNCIATIONS PREFIX serialized_key: {:?}, serialized_value: {:?}", serialized_key, serialized_value);
                     return false;
                 }
             } else if serialized_key.starts_with(LEDGER_PREFIX.as_bytes())
@@ -635,7 +635,13 @@ impl FinalState {
                     .is_key_value_valid(&serialized_key, &serialized_value)
             {
                 warn!(
-                    "False for LEDGER serialized_key: {:?}, serialized_value: {:?}",
+                    "Wrong key/value for LEDGER PREFIX serialized_key: {:?}, serialized_value: {:?}",
+                    serialized_key, serialized_value
+                );
+                return false;
+            } else {
+                warn!(
+                    "Key/value does not correspond to any prefix: serialized_key: {:?}, serialized_value: {:?}",
                     serialized_key, serialized_value
                 );
                 return false;

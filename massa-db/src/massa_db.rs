@@ -65,6 +65,7 @@ pub struct RawMassaDB<
     change_id_deserializer: ChangeIDDeserializer,
     lsmtree: SparseMerkleTree<MassaDbLsmtree>,
     current_batch: Arc<Mutex<WriteBatch>>,
+    current_hashmap: SharedSmtCache,
 }
 
 type SharedSmtCache = Arc<RwLock<HashMap<[u8; 32], Option<Bytes>>>>;
@@ -272,8 +273,6 @@ where
         let handle_state = self.db.cf_handle(STATE_CF).expect(CF_ERROR);
         let handle_metadata = self.db.cf_handle(METADATA_CF).expect(CF_ERROR);
 
-        //let mut state_hash = self.get_db_hash();
-
         *self.current_batch.lock() = WriteBatch::default();
 
         for (key, value) in changes.iter() {
@@ -288,11 +287,6 @@ where
                         Bytes::from(value_hash.to_bytes().to_vec()),
                     )
                     .expect(LSMTREE_ERROR);
-
-                // if let Ok(Some(prev_value)) = self.db.get_cf(handle_state, key) {
-                //     state_hash ^= Hash::compute_from(&[key.to_vec(), prev_value].concat());
-                // }
-                // state_hash ^= Hash::compute_from(&[key.to_vec(), value.to_vec()].concat());
             } else {
                 self.current_batch.lock().delete_cf(handle_state, key);
                 let key_hash = Hash::compute_from(key);
@@ -300,10 +294,6 @@ where
                 self.lsmtree
                     .remove(key_hash.to_bytes())
                     .expect(LSMTREE_ERROR);
-
-                // if let Ok(Some(prev_value)) = self.db.get_cf(handle_state, key) {
-                //     state_hash ^= Hash::compute_from(&[key.to_vec(), prev_value].concat());
-                // }
             }
         }
 
@@ -332,6 +322,8 @@ where
                 MassaDBError::RocksDBError(format!("Can't write batch to disk: {}", e))
             })?;
         }
+
+        self.current_hashmap.write().clear();
 
         self.change_history
             .entry(self.cur_change_id.clone())
@@ -443,7 +435,7 @@ impl RawMassaDB<Slot, SlotSerializer, SlotDeserializer> {
             LSMTREE_VALUES_CF,
             db.clone(),
             current_batch.clone(),
-            current_hashmap,
+            current_hashmap.clone(),
         );
         let lsmtree = SparseMerkleTree::new_with_stores(nodes_store, values_store);
 
@@ -459,6 +451,7 @@ impl RawMassaDB<Slot, SlotSerializer, SlotDeserializer> {
             change_id_deserializer,
             lsmtree,
             current_batch,
+            current_hashmap,
         }
     }
 

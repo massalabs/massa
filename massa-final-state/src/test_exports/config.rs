@@ -26,7 +26,7 @@ use massa_pos_exports::{PoSConfig, PoSFinalState};
 use parking_lot::RwLock;
 
 impl FinalState {
-    /// Create a final stat
+    /// Create a final state
     pub fn create_final_state(
         pos_state: PoSFinalState,
         config: FinalStateConfig,
