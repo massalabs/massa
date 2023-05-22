@@ -127,7 +127,7 @@ impl Tester {
                 }
 
                 let (data, version) = version_deserializer
-                    .deserialize::<DeserializeError>(&data)
+                    .deserialize::<DeserializeError>(data)
                     .map_err(|err| {
                         PeerNetError::HandshakeError.error(
                             "Tester Handshake",

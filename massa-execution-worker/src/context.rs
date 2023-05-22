@@ -367,6 +367,7 @@ impl ExecutionContext {
     ///
     /// # returns
     /// A `ExecutionContext` instance
+    #[allow(clippy::too_many_arguments)]
     pub(crate) fn active_slot(
         config: ExecutionConfig,
         slot: Slot,

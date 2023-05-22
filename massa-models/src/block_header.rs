@@ -366,6 +366,7 @@ impl Deserializer<BlockHeader> for BlockHeaderDeserializer {
     /// BlockHeaderSerializer::new().serialize(&deserialized_header, &mut buffer2).unwrap();
     /// assert_eq!(buffer, buffer2);
     /// ```
+    #[allow(clippy::type_complexity)]
     fn deserialize<'a, E: ParseError<&'a [u8]> + ContextError<&'a [u8]>>(
         &self,
         buffer: &'a [u8],

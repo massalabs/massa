@@ -18,7 +18,7 @@ impl PeerId {
     }
 
     pub fn get_public_key(&self) -> PublicKey {
-        self.public_key.clone()
+        self.public_key
     }
 
     pub fn verify_signature(

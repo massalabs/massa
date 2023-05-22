@@ -367,7 +367,7 @@ impl InitConnectionHandler<PeerId, Context, MessagesHandler> for MassaHandshake 
 
             let (received, version) = self
                 .version_deserializer
-                .deserialize::<DeserializeError>(&received)
+                .deserialize::<DeserializeError>(received)
                 .map_err(|err| {
                     PeerNetError::HandshakeError.error(
                         "Massa Handshake",
@@ -450,13 +450,7 @@ impl InitConnectionHandler<PeerId, Context, MessagesHandler> for MassaHandshake 
                     let received = endpoint.receive::<PeerId>()?;
 
                     let other_signature =
-                        Signature::from_bytes(received.as_slice().try_into().map_err(|_| {
-                            PeerNetError::HandshakeError.error(
-                                "Massa Handshake",
-                                Some("Failed to get random bytes".to_string()),
-                            )
-                        })?)
-                        .map_err(|_| {
+                        Signature::from_bytes(received.as_slice()).map_err(|_| {
                             PeerNetError::HandshakeError.error(
                                 "Massa Handshake",
                                 Some("Failed to sign 2 random bytes".to_string()),

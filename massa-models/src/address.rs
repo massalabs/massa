@@ -682,7 +682,7 @@ impl Deserializer<SCAddress> for AddressDeserializer {
         context("Failed SCAddress deserialization", |input| {
             self.hash_deserializer.deserialize(input)
         })
-        .map(|h| SCAddress(h))
+        .map(SCAddress)
         .parse(buffer)
     }
 }

@@ -141,7 +141,7 @@ impl MassaRpcServer for API<Public> {
                     .0
                     .keypair_factory
                     .create(&(), None)
-                    .map_err(|err| ApiError::from(err))?;
+                    .map_err(ApiError::from)?;
                 Address::from_public_key(&keypair.get_public_key())
             };
 
@@ -235,7 +235,7 @@ impl MassaRpcServer for API<Public> {
                     .0
                     .keypair_factory
                     .create(&(), None)
-                    .map_err(|err| ApiError::from(err))?;
+                    .map_err(ApiError::from)?;
                 Address::from_public_key(&keypair.get_public_key())
             };
 
