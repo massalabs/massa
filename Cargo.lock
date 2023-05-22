@@ -2453,8 +2453,10 @@ dependencies = [
  "massa_hash 0.1.0",
  "massa_ledger_exports",
  "massa_models",
+ "massa_proto",
  "massa_serialization 0.1.0",
  "massa_signature 0.1.0",
+ "massa_time",
  "nom",
  "num",
  "rand 0.8.5",
@@ -2661,6 +2663,7 @@ dependencies = [
 name = "massa_final_state"
 version = "0.1.0"
 dependencies = [
+ "bs58",
  "displaydoc",
  "massa_async_pool",
  "massa_executed_ops",
@@ -2669,6 +2672,7 @@ dependencies = [
  "massa_ledger_worker",
  "massa_models",
  "massa_pos_exports",
+ "massa_proto",
  "massa_serialization 0.1.0",
  "massa_signature 0.1.0",
  "nom",
@@ -2748,6 +2752,7 @@ dependencies = [
  "displaydoc",
  "massa_hash 0.1.0",
  "massa_models",
+ "massa_proto",
  "massa_serialization 0.1.0",
  "nom",
  "num_enum",
