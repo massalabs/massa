@@ -8,6 +8,7 @@ edition = "2021"
 displaydoc = "0.2"
 serde = { version = "1.0", features = ["derive"] }
 nom = "7.1"
+bs58 = { version = "0.4", features = ["check"] }
 thiserror = "1.0"
 tracing = "0.1"
 # custom modules
@@ -19,6 +20,7 @@ massa_async_pool = { path = "../massa-async-pool" }
 massa_serialization = { path = "../massa-serialization" }
 massa_pos_exports = { path = "../massa-pos-exports" }
 massa_hash = { path = "../massa-hash" }
+massa_proto = { path = "../massa-proto" }
 
 [dev-dependencies]
 massa_async_pool = { path = "../massa-async-pool", features = ["testing"] }

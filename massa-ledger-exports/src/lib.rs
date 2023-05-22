@@ -10,6 +10,7 @@ mod error;
 mod key;
 mod ledger_changes;
 mod ledger_entry;
+mod mapping_grpc;
 mod types;
 
 pub use config::LedgerConfig;
