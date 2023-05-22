@@ -645,6 +645,12 @@
 <a href="#645" id="645">645</a>
 <a href="#646" id="646">646</a>
 <a href="#647" id="647">647</a>
+<a href="#648" id="648">648</a>
+<a href="#649" id="649">649</a>
+<a href="#650" id="650">650</a>
+<a href="#651" id="651">651</a>
+<a href="#652" id="652">652</a>
+<a href="#653" id="653">653</a>
 </pre><pre class="rust"><code><span class="doccomment">//! Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 //! This file defines the final state of the node, which includes
@@ -1230,7 +1236,7 @@
                     .is_cycle_history_key_value_valid(<span class="kw-2">&amp;</span>serialized_key, <span class="kw-2">&amp;</span>serialized_value)
                 {
                     <span class="macro">warn!</span>(
-                        <span class="string">&quot;False for CYCLE_HISTORY_KEY serialized_key: {:?}, serialized_value: {:?}&quot;</span>,
+                        <span class="string">&quot;Wrong key/value for CYCLE_HISTORY_KEY PREFIX serialized_key: {:?}, serialized_value: {:?}&quot;</span>,
                         serialized_key, serialized_value
                     );
                     <span class="kw">return </span><span class="bool-val">false</span>;
@@ -1241,7 +1247,7 @@
                     .is_deferred_credits_key_value_valid(<span class="kw-2">&amp;</span>serialized_key, <span class="kw-2">&amp;</span>serialized_value)
                 {
                     <span class="macro">warn!</span>(
-                        <span class="string">&quot;False for DEFERRED_CREDITS serialized_key: {:?}, serialized_value: {:?}&quot;</span>,
+                        <span class="string">&quot;Wrong key/value for DEFERRED_CREDITS PREFIX serialized_key: {:?}, serialized_value: {:?}&quot;</span>,
                         serialized_key, serialized_value
                     );
                     <span class="kw">return </span><span class="bool-val">false</span>;
@@ -1252,7 +1258,7 @@
                     .is_key_value_valid(<span class="kw-2">&amp;</span>serialized_key, <span class="kw-2">&amp;</span>serialized_value)
                 {
                     <span class="macro">warn!</span>(
-                        <span class="string">&quot;False for ASYNC_POOL serialized_key: {:?}, serialized_value: {:?}&quot;</span>,
+                        <span class="string">&quot;Wrong key/value for ASYNC_POOL PREFIX serialized_key: {:?}, serialized_value: {:?}&quot;</span>,
                         serialized_key, serialized_value
                     );
                     <span class="kw">return </span><span class="bool-val">false</span>;
@@ -1263,7 +1269,7 @@
                     .is_key_value_valid(<span class="kw-2">&amp;</span>serialized_key, <span class="kw-2">&amp;</span>serialized_value)
                 {
                     <span class="macro">warn!</span>(
-                        <span class="string">&quot;False for EXECUTED_OPS serialized_key: {:?}, serialized_value: {:?}&quot;</span>,
+                        <span class="string">&quot;Wrong key/value for EXECUTED_OPS PREFIX serialized_key: {:?}, serialized_value: {:?}&quot;</span>,
                         serialized_key, serialized_value
                     );
                     <span class="kw">return </span><span class="bool-val">false</span>;
@@ -1273,7 +1279,7 @@
                     </span>.executed_denunciations
                     .is_key_value_valid(<span class="kw-2">&amp;</span>serialized_key, <span class="kw-2">&amp;</span>serialized_value)
                 {
-                    <span class="macro">warn!</span>(<span class="string">&quot;False for EXECUTED_DENUNCIATIONS serialized_key: {:?}, serialized_value: {:?}&quot;</span>, serialized_key, serialized_value);
+                    <span class="macro">warn!</span>(<span class="string">&quot;Wrong key/value for EXECUTED_DENUNCIATIONS PREFIX serialized_key: {:?}, serialized_value: {:?}&quot;</span>, serialized_key, serialized_value);
                     <span class="kw">return </span><span class="bool-val">false</span>;
                 }
             } <span class="kw">else if </span>serialized_key.starts_with(LEDGER_PREFIX.as_bytes())
@@ -1282,7 +1288,13 @@
                     .is_key_value_valid(<span class="kw-2">&amp;</span>serialized_key, <span class="kw-2">&amp;</span>serialized_value)
             {
                 <span class="macro">warn!</span>(
-                    <span class="string">&quot;False for LEDGER serialized_key: {:?}, serialized_value: {:?}&quot;</span>,
+                    <span class="string">&quot;Wrong key/value for LEDGER PREFIX serialized_key: {:?}, serialized_value: {:?}&quot;</span>,
+                    serialized_key, serialized_value
+                );
+                <span class="kw">return </span><span class="bool-val">false</span>;
+            } <span class="kw">else </span>{
+                <span class="macro">warn!</span>(
+                    <span class="string">&quot;Key/value does not correspond to any prefix: serialized_key: {:?}, serialized_value: {:?}&quot;</span>,
                     serialized_key, serialized_value
                 );
                 <span class="kw">return </span><span class="bool-val">false</span>;

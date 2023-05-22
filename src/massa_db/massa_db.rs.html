@@ -501,13 +501,6 @@
 <a href="#501" id="501">501</a>
 <a href="#502" id="502">502</a>
 <a href="#503" id="503">503</a>
-<a href="#504" id="504">504</a>
-<a href="#505" id="505">505</a>
-<a href="#506" id="506">506</a>
-<a href="#507" id="507">507</a>
-<a href="#508" id="508">508</a>
-<a href="#509" id="509">509</a>
-<a href="#510" id="510">510</a>
 </pre><pre class="rust"><code><span class="kw">use crate</span>::{
     MassaDBError, CF_ERROR, CHANGE_ID_DESER_ERROR, CHANGE_ID_KEY, CHANGE_ID_SER_ERROR, CRUD_ERROR,
     LSMTREE_ERROR, LSMTREE_NODES_CF, LSMTREE_VALUES_CF, METADATA_CF, OPEN_ERROR, STATE_CF,
@@ -575,6 +568,7 @@
     change_id_deserializer: ChangeIDDeserializer,
     lsmtree: SparseMerkleTree&lt;MassaDbLsmtree&gt;,
     current_batch: Arc&lt;Mutex&lt;WriteBatch&gt;&gt;,
+    current_hashmap: SharedSmtCache,
 }
 
 <span class="kw">type </span>SharedSmtCache = Arc&lt;RwLock&lt;HashMap&lt;[u8; <span class="number">32</span>], <span class="prelude-ty">Option</span>&lt;Bytes&gt;&gt;&gt;&gt;;
@@ -782,9 +776,7 @@
         <span class="kw">let </span>handle_state = <span class="self">self</span>.db.cf_handle(STATE_CF).expect(CF_ERROR);
         <span class="kw">let </span>handle_metadata = <span class="self">self</span>.db.cf_handle(METADATA_CF).expect(CF_ERROR);
 
-        <span class="comment">//let mut state_hash = self.get_db_hash();
-
-        </span><span class="kw-2">*</span><span class="self">self</span>.current_batch.lock() = WriteBatch::default();
+        <span class="kw-2">*</span><span class="self">self</span>.current_batch.lock() = WriteBatch::default();
 
         <span class="kw">for </span>(key, value) <span class="kw">in </span>changes.iter() {
             <span class="kw">if let </span><span class="prelude-val">Some</span>(value) = value {
@@ -798,23 +790,14 @@
                         Bytes::from(value_hash.to_bytes().to_vec()),
                     )
                     .expect(LSMTREE_ERROR);
-
-                <span class="comment">// if let Ok(Some(prev_value)) = self.db.get_cf(handle_state, key) {
-                //     state_hash ^= Hash::compute_from(&amp;[key.to_vec(), prev_value].concat());
-                // }
-                // state_hash ^= Hash::compute_from(&amp;[key.to_vec(), value.to_vec()].concat());
-            </span>} <span class="kw">else </span>{
+            } <span class="kw">else </span>{
                 <span class="self">self</span>.current_batch.lock().delete_cf(handle_state, key);
                 <span class="kw">let </span>key_hash = Hash::compute_from(key);
 
                 <span class="self">self</span>.lsmtree
                     .remove(key_hash.to_bytes())
                     .expect(LSMTREE_ERROR);
-
-                <span class="comment">// if let Ok(Some(prev_value)) = self.db.get_cf(handle_state, key) {
-                //     state_hash ^= Hash::compute_from(&amp;[key.to_vec(), prev_value].concat());
-                // }
-            </span>}
+            }
         }
 
         <span class="kw">if let </span><span class="prelude-val">Some</span>(change_id) = change_id {
@@ -842,6 +825,8 @@
                 MassaDBError::RocksDBError(<span class="macro">format!</span>(<span class="string">&quot;Can&#39;t write batch to disk: {}&quot;</span>, e))
             })<span class="question-mark">?</span>;
         }
+
+        <span class="self">self</span>.current_hashmap.write().clear();
 
         <span class="self">self</span>.change_history
             .entry(<span class="self">self</span>.cur_change_id.clone())
@@ -953,7 +938,7 @@
             LSMTREE_VALUES_CF,
             db.clone(),
             current_batch.clone(),
-            current_hashmap,
+            current_hashmap.clone(),
         );
         <span class="kw">let </span>lsmtree = SparseMerkleTree::new_with_stores(nodes_store, values_store);
 
@@ -969,6 +954,7 @@
             change_id_deserializer,
             lsmtree,
             current_batch,
+            current_hashmap,
         }
     }
 

@@ -78,6 +78,7 @@
 <a href="#78" id="78">78</a>
 <a href="#79" id="79">79</a>
 <a href="#80" id="80">80</a>
+<a href="#81" id="81">81</a>
 </pre><pre class="rust"><code><span class="kw">use </span>massa_hash::HASH_SIZE_BYTES;
 
 <span class="comment">// Commons
@@ -100,6 +101,7 @@
 <span class="kw">pub const </span>STATE_HASH_INITIAL_BYTES: <span class="kw-2">&amp;</span>[u8; <span class="number">32</span>] = <span class="kw-2">&amp;</span>[<span class="number">0</span>; HASH_SIZE_BYTES];
 
 <span class="comment">// Prefixes
+// TODO_PR: See if the indexes can be removed (I needed the cycle history to be the first streamed at some point)
 </span><span class="kw">pub const </span>CYCLE_HISTORY_PREFIX: <span class="kw-2">&amp;</span>str = <span class="string">&quot;0_cycle_history/&quot;</span>;
 <span class="kw">pub const </span>DEFERRED_CREDITS_PREFIX: <span class="kw-2">&amp;</span>str = <span class="string">&quot;1_deferred_credits/&quot;</span>;
 <span class="kw">pub const </span>ASYNC_POOL_PREFIX: <span class="kw-2">&amp;</span>str = <span class="string">&quot;2_async_pool/&quot;</span>;
