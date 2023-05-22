@@ -577,6 +577,24 @@ impl FinalState {
         for (serialized_key, serialized_value) in
             db.db.iterator_cf(handle, IteratorMode::Start).flatten()
         {
+            if !serialized_key.starts_with(CYCLE_HISTORY_PREFIX.as_bytes())
+                && !serialized_key.starts_with(DEFERRED_CREDITS_PREFIX.as_bytes())
+                && !serialized_key.starts_with(ASYNC_POOL_PREFIX.as_bytes())
+                && !serialized_key.starts_with(EXECUTED_OPS_PREFIX.as_bytes())
+                && !serialized_key.starts_with(EXECUTED_DENUNCIATIONS_PREFIX.as_bytes())
+                && !serialized_key.starts_with(LEDGER_PREFIX.as_bytes())
+            {
+                warn!(
+                    "Key/value does not correspond to any prefix: serialized_key: {:?}, serialized_value: {:?}",
+                    serialized_key, serialized_value
+                );
+                println!(
+                    "Key/value does not correspond to any prefix: serialized_key: {:?}, serialized_value: {:?}",
+                    serialized_key, serialized_value
+                );
+                return false;
+            }
+
             if serialized_key.starts_with(CYCLE_HISTORY_PREFIX.as_bytes()) {
                 if !self
                     .pos_state
@@ -636,12 +654,6 @@ impl FinalState {
             {
                 warn!(
                     "Wrong key/value for LEDGER PREFIX serialized_key: {:?}, serialized_value: {:?}",
-                    serialized_key, serialized_value
-                );
-                return false;
-            } else {
-                warn!(
-                    "Key/value does not correspond to any prefix: serialized_key: {:?}, serialized_value: {:?}",
                     serialized_key, serialized_value
                 );
                 return false;
