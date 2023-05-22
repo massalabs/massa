@@ -32,8 +32,8 @@
 
 <span class="kw">use </span>lru::LruCache;
 <span class="kw">use </span>massa_models::operation::{OperationId, OperationPrefixId};
-<span class="kw">use </span>massa_protocol_exports::PeerId;
 <span class="kw">use </span>parking_lot::RwLock;
+<span class="kw">use </span>peernet::peer_id::PeerId;
 
 <span class="kw">pub struct </span>OperationCache {
     <span class="kw">pub </span>checked_operations: LruCache&lt;OperationId, ()&gt;,

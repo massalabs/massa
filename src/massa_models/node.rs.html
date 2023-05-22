@@ -72,11 +72,32 @@
 <a href="#72" id="72">72</a>
 <a href="#73" id="73">73</a>
 <a href="#74" id="74">74</a>
+<a href="#75" id="75">75</a>
+<a href="#76" id="76">76</a>
+<a href="#77" id="77">77</a>
+<a href="#78" id="78">78</a>
+<a href="#79" id="79">79</a>
+<a href="#80" id="80">80</a>
+<a href="#81" id="81">81</a>
+<a href="#82" id="82">82</a>
+<a href="#83" id="83">83</a>
+<a href="#84" id="84">84</a>
+<a href="#85" id="85">85</a>
+<a href="#86" id="86">86</a>
+<a href="#87" id="87">87</a>
+<a href="#88" id="88">88</a>
+<a href="#89" id="89">89</a>
+<a href="#90" id="90">90</a>
+<a href="#91" id="91">91</a>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="kw">use </span><span class="kw">crate</span>::error::ModelsError;
+<span class="kw">use </span>massa_serialization::{
+    DeserializeError, Deserializer, Serializer, U64VarIntDeserializer, U64VarIntSerializer,
+};
 <span class="kw">use </span>massa_signature::PublicKey;
 <span class="kw">use </span>serde_with::{DeserializeFromStr, SerializeDisplay};
+<span class="kw">use </span>std::ops::Bound::Included;
 
 <span class="doccomment">/// `NodeId` wraps a public key to uniquely identify a node.
 </span><span class="attr">#[derive(
@@ -85,6 +106,7 @@
 </span><span class="kw">pub struct </span>NodeId(PublicKey);
 
 <span class="kw">const </span>NODEID_PREFIX: char = <span class="string">&#39;N&#39;</span>;
+<span class="kw">const </span>NODEID_VERSION: u64 = <span class="number">0</span>;
 
 <span class="kw">impl </span>NodeId {
     <span class="doccomment">/// Create a new `NodeId` from a public key.
@@ -100,11 +122,18 @@
 
 <span class="kw">impl </span>std::fmt::Display <span class="kw">for </span>NodeId {
     <span class="kw">fn </span>fmt(<span class="kw-2">&amp;</span><span class="self">self</span>, f: <span class="kw-2">&amp;mut </span>std::fmt::Formatter) -&gt; std::fmt::Result {
+        <span class="kw">let </span>u64_serializer = U64VarIntSerializer::new();
+        <span class="comment">// might want to allocate the vector with capacity in order to avoid re-allocation
+        </span><span class="kw">let </span><span class="kw-2">mut </span>bytes: Vec&lt;u8&gt; = Vec::new();
+        u64_serializer
+            .serialize(<span class="kw-2">&amp;</span>NODEID_VERSION, <span class="kw-2">&amp;mut </span>bytes)
+            .map_err(|<span class="kw">_</span>| std::fmt::Error)<span class="question-mark">?</span>;
+        bytes.extend(<span class="self">self</span>.<span class="number">0</span>.to_bytes());
         <span class="macro">write!</span>(
             f,
             <span class="string">&quot;{}{}&quot;</span>,
             NODEID_PREFIX,
-            bs58::encode(<span class="self">self</span>.<span class="number">0</span>.to_bytes()).with_check().into_string()
+            bs58::encode(bytes).with_check().into_string()
         )
     }
 }
@@ -124,11 +153,10 @@
     /// # use serde::{Deserialize, Serialize};
     /// # use std::str::FromStr;
     /// # use massa_models::node::NodeId;
-    /// # let keypair = KeyPair::generate(0).unwrap();
+    /// # let keypair = KeyPair::generate();
     /// # let node_id = NodeId::new(keypair.get_public_key());
     /// let ser = node_id.to_string();
     /// let res_node_id = NodeId::from_str(&amp;ser).unwrap();
-    /// let from_raw = NodeId::from_str(&quot;N12UbyLJDS7zimGWf3LTHe8hYY67RdLke1iDRZqJbQQLHQSKPW8j&quot;).unwrap();
     /// assert_eq!(node_id, res_node_id);
     /// ```
     </span><span class="kw">fn </span>from_str(s: <span class="kw-2">&amp;</span>str) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="self">Self</span>, <span class="self">Self</span>::Err&gt; {
@@ -140,7 +168,13 @@
                     .with_check(<span class="prelude-val">None</span>)
                     .into_vec()
                     .map_err(|<span class="kw">_</span>| ModelsError::NodeIdParseError)<span class="question-mark">?</span>;
-                <span class="prelude-val">Ok</span>(NodeId(PublicKey::from_bytes(<span class="kw-2">&amp;</span>decoded_bs58_check)<span class="question-mark">?</span>))
+                <span class="kw">let </span>u64_deserializer = U64VarIntDeserializer::new(Included(<span class="number">0</span>), Included(u64::MAX));
+                <span class="kw">let </span>(rest, _version) = u64_deserializer
+                    .deserialize::&lt;DeserializeError&gt;(<span class="kw-2">&amp;</span>decoded_bs58_check[..])
+                    .map_err(|<span class="kw">_</span>| ModelsError::NodeIdParseError)<span class="question-mark">?</span>;
+                <span class="prelude-val">Ok</span>(NodeId(PublicKey::from_bytes(
+                    rest.try_into().map_err(|<span class="kw">_</span>| ModelsError::NodeIdParseError)<span class="question-mark">?</span>,
+                )<span class="question-mark">?</span>))
             }
             <span class="kw">_ </span>=&gt; <span class="prelude-val">Err</span>(ModelsError::NodeIdParseError),
         }

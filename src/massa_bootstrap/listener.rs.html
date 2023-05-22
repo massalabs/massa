@@ -112,7 +112,7 @@
 <span class="kw">const </span>NEW_CONNECTION: Token = Token(<span class="number">0</span>);
 <span class="kw">const </span>STOP_LISTENER: Token = Token(<span class="number">10</span>);
 
-<span class="doccomment">/// TODO: this should be crate-private. currently needed for models testing
+<span class="doccomment">/// Inject into `start_bootstrap_server` to provide the listen-dependency
 </span><span class="kw">pub struct </span>BootstrapTcpListener {
     poll: Poll,
     events: Events,
