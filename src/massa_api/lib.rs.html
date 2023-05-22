@@ -378,9 +378,6 @@
 <a href="#378" id="378">378</a>
 <a href="#379" id="379">379</a>
 <a href="#380" id="380">380</a>
-<a href="#381" id="381">381</a>
-<a href="#382" id="382">382</a>
-<a href="#383" id="383">383</a>
 </pre><pre class="rust"><code><span class="doccomment">//! Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 //! Json RPC API for a massa-node
 </span><span class="attr">#![feature(async_closure)]
@@ -421,7 +418,6 @@
 <span class="kw">use </span>massa_pos_exports::SelectorController;
 <span class="kw">use </span>massa_protocol_exports::{ProtocolConfig, ProtocolController};
 <span class="kw">use </span>massa_storage::Storage;
-<span class="kw">use </span>massa_versioning::keypair_factory::KeyPairFactory;
 <span class="kw">use </span>massa_wallet::Wallet;
 <span class="kw">use </span>parking_lot::RwLock;
 <span class="kw">use </span>serde_json::Value;
@@ -458,8 +454,6 @@
     </span><span class="kw">pub </span>version: Version,
     <span class="doccomment">/// our node id
     </span><span class="kw">pub </span>node_id: NodeId,
-    <span class="doccomment">/// keypair factory
-    </span><span class="kw">pub </span>keypair_factory: KeyPairFactory,
 }
 
 <span class="doccomment">/// Private API content

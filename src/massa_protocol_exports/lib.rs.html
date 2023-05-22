@@ -18,11 +18,9 @@
 <a href="#18" id="18">18</a>
 <a href="#19" id="19">19</a>
 <a href="#20" id="20">20</a>
-<a href="#21" id="21">21</a>
 </pre><pre class="rust"><code><span class="kw">mod </span>bootstrap_peers;
 <span class="kw">mod </span>controller_trait;
 <span class="kw">mod </span>error;
-<span class="kw">mod </span>peer_id;
 <span class="kw">mod </span>settings;
 
 <span class="kw">pub use </span>bootstrap_peers::{
@@ -30,8 +28,8 @@
 };
 <span class="kw">pub use </span>controller_trait::{ProtocolController, ProtocolManager};
 <span class="kw">pub use </span>error::ProtocolError;
-<span class="kw">pub use </span>peer_id::{PeerId, PeerIdDeserializer, PeerIdSerializer};
 <span class="kw">pub use </span>peernet::peer::PeerConnectionType;
+<span class="kw">pub use </span>peernet::peer_id::PeerId;
 <span class="kw">pub use </span>peernet::transports::TransportType;
 <span class="kw">pub use </span>settings::{PeerCategoryInfo, ProtocolConfig};
 

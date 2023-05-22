@@ -2271,7 +2271,7 @@
                     .unwrap_or(<span class="number">0</span>);
                 <span class="macro">println!</span>(<span class="string">&quot;Should create address with version: {}&quot;</span>, _address_version);
 
-                <span class="kw">let </span>key = KeyPair::generate(<span class="number">0</span>).unwrap();
+                <span class="kw">let </span>key = KeyPair::generate();
                 <span class="kw">let </span>ad = wallet.add_keypairs(<span class="macro">vec!</span>[key])<span class="question-mark">?</span>[<span class="number">0</span>];
                 <span class="kw">if </span>json {
                     <span class="prelude-val">Ok</span>(Box::new(ad.to_string()))

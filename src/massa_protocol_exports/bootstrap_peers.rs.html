@@ -212,23 +212,42 @@
 <a href="#212" id="212">212</a>
 <a href="#213" id="213">213</a>
 <a href="#214" id="214">214</a>
-</pre><pre class="rust"><code><span class="kw">use crate</span>::{PeerId, PeerIdDeserializer, PeerIdSerializer};
+<a href="#215" id="215">215</a>
+<a href="#216" id="216">216</a>
+<a href="#217" id="217">217</a>
+<a href="#218" id="218">218</a>
+<a href="#219" id="219">219</a>
+<a href="#220" id="220">220</a>
+<a href="#221" id="221">221</a>
+<a href="#222" id="222">222</a>
+<a href="#223" id="223">223</a>
+<a href="#224" id="224">224</a>
+<a href="#225" id="225">225</a>
+<a href="#226" id="226">226</a>
+<a href="#227" id="227">227</a>
+<a href="#228" id="228">228</a>
+<a href="#229" id="229">229</a>
+<a href="#230" id="230">230</a>
+</pre><pre class="rust"><code><span class="kw">use </span>std::collections::HashMap;
+<span class="kw">use </span>std::net::SocketAddr;
+<span class="kw">use </span>std::ops::Bound::Included;
+
 <span class="kw">use </span>massa_models::serialization::{IpAddrDeserializer, IpAddrSerializer};
 <span class="kw">use </span>massa_serialization::{
     Deserializer, SerializeError, Serializer, U16VarIntDeserializer, U16VarIntSerializer,
     U32VarIntDeserializer, U32VarIntSerializer,
 };
+<span class="kw">use </span>massa_signature::PUBLIC_KEY_SIZE_BYTES;
 <span class="kw">use </span>nom::{
+    bytes::complete::take,
     error::{context, ContextError, ParseError},
     multi::length_count,
     sequence::tuple,
     IResult, Parser,
 };
+<span class="kw">use </span>peernet::peer_id::PeerId;
 <span class="kw">use </span>peernet::transports::TransportType;
 <span class="kw">use </span>serde::{Deserialize, Serialize};
-<span class="kw">use </span>std::collections::HashMap;
-<span class="kw">use </span>std::net::SocketAddr;
-<span class="kw">use </span>std::ops::Bound::Included;
 
 <span class="doccomment">/// Peer info provided in bootstrap
 </span><span class="attr">#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -246,7 +265,6 @@
     u32_serializer: U32VarIntSerializer,
     ip_addr_serializer: IpAddrSerializer,
     port_serializer: U16VarIntSerializer,
-    peer_id_serializer: PeerIdSerializer,
 }
 
 <span class="kw">impl </span>BootstrapPeersSerializer {
@@ -256,7 +274,6 @@
             u32_serializer: U32VarIntSerializer::new(),
             ip_addr_serializer: IpAddrSerializer::new(),
             port_serializer: U16VarIntSerializer::new(),
-            peer_id_serializer: PeerIdSerializer::new(),
         }
     }
 }
@@ -275,12 +292,12 @@
     /// use std::collections::HashMap;
     /// use std::str::FromStr;
     ///
-    /// let keypair1 = KeyPair::generate(0).unwrap();
+    /// let keypair1 = KeyPair::generate();
     /// let mut peers = vec![];
     /// let mut listeners1 = HashMap::default();
     /// listeners1.insert(&quot;127.0.0.1:8080&quot;.parse().unwrap(), TransportType::Tcp);
     /// peers.push((PeerId::from_public_key(keypair1.get_public_key()), listeners1));
-    /// let mut keypair2 = KeyPair::generate(0).unwrap();
+    /// let mut keypair2 = KeyPair::generate();
     /// let mut listeners2 = HashMap::default();
     /// listeners2.insert(&quot;[::1]:8080&quot;.parse().unwrap(), TransportType::Tcp);
     /// peers.push((PeerId::from_public_key(keypair1.get_public_key()), listeners2));
@@ -302,7 +319,7 @@
         })<span class="question-mark">?</span>;
         <span class="self">self</span>.u32_serializer.serialize(<span class="kw-2">&amp;</span>peers_count, buffer)<span class="question-mark">?</span>;
         <span class="kw">for </span>(peer_id, listeners) <span class="kw">in </span>value.<span class="number">0</span>.iter() {
-            <span class="self">self</span>.peer_id_serializer.serialize(peer_id, buffer)<span class="question-mark">?</span>;
+            buffer.extend_from_slice(<span class="kw-2">&amp;</span>peer_id.to_bytes());
             <span class="self">self</span>.u32_serializer
                 .serialize(<span class="kw-2">&amp;</span>(listeners.len() <span class="kw">as </span>u32), buffer)<span class="question-mark">?</span>;
             <span class="kw">for </span>(addr, transport_type) <span class="kw">in </span>listeners.iter() {
@@ -321,7 +338,6 @@
     length_listeners_deserializer: U32VarIntDeserializer,
     ip_addr_deserializer: IpAddrDeserializer,
     port_deserializer: U16VarIntDeserializer,
-    peer_id_deserializer: PeerIdDeserializer,
 }
 
 <span class="kw">impl </span>BootstrapPeersDeserializer {
@@ -339,7 +355,6 @@
             ),
             ip_addr_deserializer: IpAddrDeserializer::new(),
             port_deserializer: U16VarIntDeserializer::new(Included(<span class="number">0</span>), Included(u16::MAX)),
-            peer_id_deserializer: PeerIdDeserializer::new(),
         }
     }
 }
@@ -352,12 +367,12 @@
     /// use std::collections::HashMap;
     /// use std::str::FromStr;
     ///
-    /// let keypair1 = KeyPair::generate(0).unwrap();
+    /// let keypair1 = KeyPair::generate();
     /// let mut peers = vec![];
     /// let mut listeners1 = HashMap::default();
     /// listeners1.insert(&quot;127.0.0.1:8080&quot;.parse().unwrap(), TransportType::Tcp);
     /// peers.push((PeerId::from_public_key(keypair1.get_public_key()), listeners1));
-    /// let mut keypair2 = KeyPair::generate(0).unwrap();
+    /// let mut keypair2 = KeyPair::generate();
     /// let mut listeners2 = HashMap::default();
     /// listeners2.insert(&quot;[::1]:8080&quot;.parse().unwrap(), TransportType::Tcp);
     /// peers.push((PeerId::from_public_key(keypair1.get_public_key()), listeners2));
@@ -381,7 +396,24 @@
             context(<span class="string">&quot;Failed Peer deserialization&quot;</span>, |input| {
                 tuple((
                     context(<span class="string">&quot;Failed PeerId deserialization&quot;</span>, |input: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>[u8]| {
-                        <span class="self">self</span>.peer_id_deserializer.deserialize(input)
+                        <span class="kw">let </span>(rest, peer_id) = take(<span class="number">32usize</span>)(input)<span class="question-mark">?</span>;
+                        <span class="prelude-val">Ok</span>((
+                            rest,
+                            PeerId::from_bytes(
+                                peer_id[..PUBLIC_KEY_SIZE_BYTES].try_into().map_err(|<span class="kw">_</span>| {
+                                    nom::Err::Error(ParseError::from_error_kind(
+                                        input,
+                                        nom::error::ErrorKind::Count,
+                                    ))
+                                })<span class="question-mark">?</span>,
+                            )
+                            .map_err(|<span class="kw">_</span>| {
+                                nom::Err::Error(ParseError::from_error_kind(
+                                    input,
+                                    nom::error::ErrorKind::Count,
+                                ))
+                            })<span class="question-mark">?</span>,
+                        ))
                     }),
                     length_count(
                         context(<span class="string">&quot;Failed length deserialization&quot;</span>, |input| {
