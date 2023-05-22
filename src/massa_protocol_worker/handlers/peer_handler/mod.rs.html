@@ -594,8 +594,6 @@
 <a href="#594" id="594">594</a>
 <a href="#595" id="595">595</a>
 <a href="#596" id="596">596</a>
-<a href="#597" id="597">597</a>
-<a href="#598" id="598">598</a>
 </pre><pre class="rust"><code><span class="kw">use </span>std::cmp::Reverse;
 <span class="kw">use </span>std::net::IpAddr;
 <span class="kw">use </span>std::{collections::HashMap, net::SocketAddr, thread::JoinHandle, time::Duration};
@@ -1059,10 +1057,8 @@
                     </span>peer_id
                         .verify_signature(<span class="kw-2">&amp;</span>self_random_hash, <span class="kw-2">&amp;</span>other_signature)
                         .map_err(|err| {
-                            PeerNetError::HandshakeError.error(
-                                <span class="string">&quot;Massa Handshake&quot;</span>,
-                                <span class="prelude-val">Some</span>(<span class="macro">format!</span>(<span class="string">&quot;Signature error {}&quot;</span>, err.to_string())),
-                            )
+                            PeerNetError::HandshakeError
+                                .error(<span class="string">&quot;Massa Handshake&quot;</span>, <span class="prelude-val">Some</span>(<span class="macro">format!</span>(<span class="string">&quot;Signature error {}&quot;</span>, err)))
                         })<span class="question-mark">?</span>;
                     <span class="prelude-val">Ok</span>((peer_id.clone(), <span class="prelude-val">Some</span>(announcement)))
                 }
