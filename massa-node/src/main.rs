@@ -10,6 +10,7 @@ use crate::settings::SETTINGS;
 
 use chrono::{TimeZone, Utc};
 use crossbeam_channel::{Receiver, TryRecvError};
+use ctrlc as _;
 use dialoguer::Password;
 use massa_api::{ApiServer, ApiV2, Private, Public, RpcServer, StopHandle, API};
 use massa_api_exports::config::APIConfig;
@@ -1148,8 +1149,9 @@ async fn run(args: Args) -> anyhow::Result<()> {
 
     // interrupt signal listener
     let sig_int_toggled = Arc::new((Mutex::new(false), Condvar::new()));
-    let sig_int_toggled_clone = Arc::clone(&sig_int_toggled);
 
+    // TODO: re-enable and fix this (remove use ctrlc as _; when done)
+    // let sig_int_toggled_clone = Arc::clone(&sig_int_toggled);
     // currently used by the bootstrap client to break out of the to preempt the retry wait
     // ctrlc::set_handler(move || {
     //     *sig_int_toggled_clone

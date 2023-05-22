@@ -751,7 +751,7 @@ impl PublicKey {
             ));
         }
         ed25519_dalek::PublicKey::from_bytes(&data[..Self::PUBLIC_KEY_SIZE_BYTES])
-            .map(|d| Self(d))
+            .map(Self)
             .map_err(|err| MassaSignatureError::ParsingError(err.to_string()))
     }
 }
@@ -1100,7 +1100,7 @@ impl Signature {
             ));
         }
         ed25519_dalek::Signature::from_bytes(&data[..Self::SIGNATURE_SIZE_BYTES])
-            .map(|s| Self(s))
+            .map(Self)
             .map_err(|err| {
                 MassaSignatureError::ParsingError(format!("signature bytes parsing error: {}", err))
             })
