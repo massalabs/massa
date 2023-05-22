@@ -10,6 +10,9 @@ use parking_lot::RwLock;
 use thiserror::Error;
 use tracing::warn;
 
+use massa_models::error::ModelsError;
+use massa_models::slot::Slot;
+use massa_models::timeslots::get_block_slot_timestamp;
 use massa_models::{amount::Amount, config::VERSIONING_THRESHOLD_TRANSITION_ACCEPTED};
 use massa_time::MassaTime;
 
@@ -257,6 +260,16 @@ impl MipState {
 
         let history = BTreeMap::from([(advance, state_id)]);
         Self { state, history }
+    }
+
+    /// Create a new state from an existing state - resulting state will be at state "Defined"
+    pub fn reset_from(&self) -> Option<Self> {
+        match self.history.first_key_value() {
+            Some((advance, state_id)) if *state_id == ComponentStateTypeId::Defined => {
+                Some(MipState::new(advance.now))
+            }
+            _ => None,
+        }
     }
 
     /// Advance the state
@@ -507,6 +520,21 @@ impl MipStore {
         let lock_other = mip_store.0.read();
         lock.update_with(lock_other.deref())
     }
+
+    /// Retrieve a list of MIP info with their corresponding state (as id) - used for grpc API
+    pub fn get_mip_status(&self) -> BTreeMap<MipInfo, ComponentStateTypeId> {
+        let guard = self.0.read();
+        guard
+            .store
+            .iter()
+            .map(|(mip_info, mip_state)| {
+                (
+                    mip_info.clone(),
+                    ComponentStateTypeId::from(&mip_state.state),
+                )
+            })
+            .collect()
+    }
 }
 
 impl<const N: usize> TryFrom<([(MipInfo, MipState); N], MipStatsConfig)> for MipStore {
@@ -526,7 +554,7 @@ pub struct MipStatsConfig {
     pub counters_max: usize,
 }
 
-/// In order for a MIP to be accepted, we compute stats about other node 'network' version announcement
+/// In order for a MIP to be accepted, we compute statistics about other node 'network' version announcement
 #[derive(Debug, Clone, PartialEq)]
 pub(crate) struct MipStoreStats {
     pub(crate) config: MipStatsConfig,
@@ -541,6 +569,12 @@ impl MipStoreStats {
             latest_announcements: VecDeque::with_capacity(config.block_count_considered),
             network_version_counters: Default::default(),
         }
+    }
+
+    // reset stats - used in `update_for_network_shutdown` function
+    fn reset(&mut self) {
+        self.latest_announcements.clear();
+        self.network_version_counters.clear();
     }
 }
 
@@ -768,6 +802,138 @@ impl MipStoreRaw {
             state.on_advance(&advance_msg.clone());
         }
     }
+
+    /// Check if store is coherent with given last network shutdown
+    /// On a network shutdown, the MIP infos will be edited but we still need to check if this is coherent
+    #[allow(dead_code)]
+    fn is_coherent_with_shutdown_period(
+        &self,
+        shutdown_start: Slot,
+        shutdown_end: Slot,
+        thread_count: u8,
+        t0: MassaTime,
+        genesis_timestamp: MassaTime,
+    ) -> Result<bool, ModelsError> {
+        let mut is_coherent = true;
+
+        let shutdown_start_ts =
+            get_block_slot_timestamp(thread_count, t0, genesis_timestamp, shutdown_start)?;
+        let shutdown_end_ts =
+            get_block_slot_timestamp(thread_count, t0, genesis_timestamp, shutdown_end)?;
+        let shutdown_range = shutdown_start_ts..=shutdown_end_ts;
+
+        for (mip_info, mip_state) in &self.store {
+            match mip_state.state {
+                ComponentState::Defined(..) => {
+                    // all good if it does not start / timeout during shutdown period
+                    if shutdown_range.contains(&mip_info.start)
+                        || shutdown_range.contains(&mip_info.timeout)
+                    {
+                        is_coherent = false;
+                        break;
+                    }
+                }
+                ComponentState::Started(..) => {
+                    // assume this should have been reset
+                    is_coherent = false;
+                    break;
+                }
+                _ => {
+                    // active / failed, error, nothing to do
+                    // locked in, nothing to do (might go from 'locked in' to 'active' during shutdown)
+                }
+            }
+        }
+
+        Ok(is_coherent)
+    }
+
+    #[allow(dead_code)]
+    fn update_for_network_shutdown(
+        &mut self,
+        shutdown_start: Slot,
+        shutdown_end: Slot,
+        thread_count: u8,
+        t0: MassaTime,
+        genesis_timestamp: MassaTime,
+    ) -> Result<(), ModelsError> {
+        let shutdown_start_ts =
+            get_block_slot_timestamp(thread_count, t0, genesis_timestamp, shutdown_start)?;
+        let shutdown_end_ts =
+            get_block_slot_timestamp(thread_count, t0, genesis_timestamp, shutdown_end)?;
+        let shutdown_range = shutdown_start_ts..=shutdown_end_ts;
+
+        let mut new_store: BTreeMap<MipInfo, MipState> = Default::default();
+        let mut new_stats = self.stats.clone();
+        new_stats.reset();
+
+        let next_valid_start_ = shutdown_end.get_next_slot(thread_count)?;
+        let next_valid_start =
+            get_block_slot_timestamp(thread_count, t0, genesis_timestamp, next_valid_start_)?;
+
+        let mut offset: Option<MassaTime> = None;
+
+        for (mip_info, mip_state) in &self.store {
+            match mip_state.state {
+                ComponentState::Defined(..) => {
+                    // Defined: offset start & timeout
+
+                    let mut new_mip_info = mip_info.clone();
+
+                    if shutdown_range.contains(&new_mip_info.start) {
+                        let offset_ts = match offset {
+                            Some(offset_ts) => offset_ts,
+                            None => {
+                                let offset_ts = next_valid_start.saturating_sub(mip_info.start);
+                                offset = Some(offset_ts);
+                                offset_ts
+                            }
+                        };
+
+                        new_mip_info.start = new_mip_info.start.saturating_add(offset_ts);
+                        new_mip_info.timeout = new_mip_info
+                            .start
+                            .saturating_add(mip_info.timeout.saturating_sub(mip_info.start));
+                    }
+                    new_store.insert(new_mip_info, mip_state.clone());
+                }
+                ComponentState::Started(..) => {
+                    // Started -> Reset to Defined, offset start & timeout
+
+                    let mut new_mip_info = mip_info.clone();
+
+                    let offset_ts = match offset {
+                        Some(offset_ts) => offset_ts,
+                        None => {
+                            let offset_ts = next_valid_start.saturating_sub(mip_info.start);
+                            offset = Some(offset_ts);
+                            offset_ts
+                        }
+                    };
+
+                    new_mip_info.start = new_mip_info.start.saturating_add(offset_ts);
+                    new_mip_info.timeout = new_mip_info
+                        .start
+                        .saturating_add(mip_info.timeout.saturating_sub(mip_info.start));
+
+                    // Need to reset state to 'Defined'
+                    let new_mip_state = MipState::reset_from(mip_state)
+                        .ok_or(ModelsError::from("Unable to reset state"))?;
+                    // Note: statistics are already reset
+                    new_store.insert(new_mip_info, new_mip_state.clone());
+                }
+                _ => {
+                    // active / failed, error, nothing to do
+                    // locked in, nothing to do (might go from 'locked in' to 'active' during shutdown)
+                    new_store.insert(mip_info.clone(), mip_state.clone());
+                }
+            }
+        }
+
+        self.store = new_store;
+        self.stats = new_stats;
+        Ok(())
+    }
 }
 
 impl<const N: usize> TryFrom<([(MipInfo, MipState); N], MipStatsConfig)> for MipStoreRaw {
@@ -812,7 +978,10 @@ mod test {
 
     use crate::test_helpers::versioning_helpers::advance_state_until;
 
-    use massa_models::config::{MIP_STORE_STATS_BLOCK_CONSIDERED, MIP_STORE_STATS_COUNTERS_MAX};
+    use massa_models::config::{
+        MIP_STORE_STATS_BLOCK_CONSIDERED, MIP_STORE_STATS_COUNTERS_MAX, T0, THREAD_COUNT,
+    };
+    use massa_models::timeslots::get_closest_slot_to_timestamp;
 
     // Only for unit tests
     impl PartialEq<ComponentState> for MipState {
@@ -1368,5 +1537,213 @@ mod test {
         assert_eq!(updated.len(), 0);
         assert_eq!(added.len(), 1);
         assert_eq!(added.get(&mi_1).unwrap().state, ComponentState::defined());
+    }
+
+    #[test]
+    fn test_mip_store_network_restart() {
+        // Test if we can get a coherent MipStore after a network shutdown
+
+        let genesis_timestamp = MassaTime::from(0);
+
+        let shutdown_start = Slot::new(2, 0);
+        let shutdown_end = Slot::new(8, 0);
+
+        // helper to make the easy to read
+        let get_slot_ts =
+            |slot| get_block_slot_timestamp(THREAD_COUNT, T0, genesis_timestamp, slot).unwrap();
+        let is_coherent = |store: &MipStoreRaw, shutdown_start, shutdown_end| {
+            store
+                .is_coherent_with_shutdown_period(
+                    shutdown_start,
+                    shutdown_end,
+                    THREAD_COUNT,
+                    T0,
+                    genesis_timestamp,
+                )
+                .unwrap()
+        };
+        let update_store = |store: &mut MipStoreRaw, shutdown_start, shutdown_end| {
+            store
+                .update_for_network_shutdown(
+                    shutdown_start,
+                    shutdown_end,
+                    THREAD_COUNT,
+                    T0,
+                    genesis_timestamp,
+                )
+                .unwrap()
+        };
+        let _dump_store = |store: &MipStoreRaw| {
+            println!("Dump store:");
+            for (mip_info, mip_state) in store.store.iter() {
+                println!(
+                    "mip_info {} {} - start: {} - timeout: {}: state: {:?}",
+                    mip_info.name,
+                    mip_info.version,
+                    get_closest_slot_to_timestamp(
+                        THREAD_COUNT,
+                        T0,
+                        genesis_timestamp,
+                        mip_info.start
+                    ),
+                    get_closest_slot_to_timestamp(
+                        THREAD_COUNT,
+                        T0,
+                        genesis_timestamp,
+                        mip_info.timeout
+                    ),
+                    mip_state.state
+                );
+            }
+        };
+        // end helpers
+
+        let mip_stats_cfg = MipStatsConfig {
+            block_count_considered: 10,
+            counters_max: 5,
+        };
+        let mut mi_1 = MipInfo {
+            name: "MIP-0002".to_string(),
+            version: 2,
+            components: HashMap::from([(MipComponent::Address, 1)]),
+            start: MassaTime::from(2),
+            timeout: MassaTime::from(5),
+            activation_delay: MassaTime::from(100),
+        };
+        let mut mi_2 = MipInfo {
+            name: "MIP-0003".to_string(),
+            version: 3,
+            components: HashMap::from([(MipComponent::Address, 2)]),
+            start: MassaTime::from(7),
+            timeout: MassaTime::from(11),
+            activation_delay: MassaTime::from(100),
+        };
+
+        // MipInfo 1 @ state 'Defined' should start during shutdown
+        {
+            mi_1.start = get_slot_ts(Slot::new(3, 7));
+            mi_1.timeout = get_slot_ts(Slot::new(5, 7));
+            mi_2.start = get_slot_ts(Slot::new(7, 7));
+            mi_2.timeout = get_slot_ts(Slot::new(10, 7));
+
+            let ms_1 = advance_state_until(ComponentState::defined(), &mi_1);
+            let ms_2 = advance_state_until(ComponentState::defined(), &mi_2);
+            let mut store = MipStoreRaw::try_from((
+                [(mi_1.clone(), ms_1), (mi_2.clone(), ms_2)],
+                mip_stats_cfg.clone(),
+            ))
+            .unwrap();
+
+            assert_eq!(is_coherent(&store, shutdown_start, shutdown_end), false);
+            update_store(&mut store, shutdown_start, shutdown_end);
+            assert_eq!(is_coherent(&store, shutdown_start, shutdown_end), true);
+            // _dump_store(&store);
+        }
+
+        // MipInfo 1 @ state 'Defined' will start AFTER shutdown
+        {
+            mi_1.start = get_slot_ts(Slot::new(9, 7));
+            mi_1.timeout = get_slot_ts(Slot::new(11, 7));
+            mi_2.start = get_slot_ts(Slot::new(12, 7));
+            mi_2.timeout = get_slot_ts(Slot::new(19, 7));
+
+            let ms_1 = advance_state_until(ComponentState::defined(), &mi_1);
+            let ms_2 = advance_state_until(ComponentState::defined(), &mi_2);
+            let mut store = MipStoreRaw::try_from((
+                [(mi_1.clone(), ms_1), (mi_2.clone(), ms_2)],
+                mip_stats_cfg.clone(),
+            ))
+            .unwrap();
+            let store_orig = store.clone();
+
+            // Already ok even with a shutdown but let's check it
+            assert_eq!(is_coherent(&store, shutdown_start, shutdown_end), true);
+            // _dump_store(&store);
+            update_store(&mut store, shutdown_start, shutdown_end);
+            assert_eq!(is_coherent(&store, shutdown_start, shutdown_end), true);
+            // _dump_store(&store);
+
+            // Check that nothing has changed
+            assert_eq!(store_orig, store);
+        }
+
+        // MipInfo 1 @ state 'Started' before shutdown
+        {
+            mi_1.start = get_slot_ts(Slot::new(1, 7));
+            mi_1.timeout = get_slot_ts(Slot::new(5, 7));
+            mi_2.start = get_slot_ts(Slot::new(7, 7));
+            mi_2.timeout = get_slot_ts(Slot::new(10, 7));
+
+            let ms_1 = advance_state_until(ComponentState::started(Amount::zero()), &mi_1);
+            let ms_2 = advance_state_until(ComponentState::defined(), &mi_2);
+            let mut store = MipStoreRaw::try_from((
+                [(mi_1.clone(), ms_1), (mi_2.clone(), ms_2)],
+                mip_stats_cfg.clone(),
+            ))
+            .unwrap();
+
+            assert_eq!(is_coherent(&store, shutdown_start, shutdown_end), false);
+            update_store(&mut store, shutdown_start, shutdown_end);
+            assert_eq!(is_coherent(&store, shutdown_start, shutdown_end), true);
+            // _dump_store(&store);
+        }
+
+        // MipInfo 1 @ state 'LockedIn' with transition during shutdown
+        {
+            let shutdown_range = shutdown_start..=shutdown_end;
+
+            mi_1.start = get_slot_ts(Slot::new(1, 7));
+            mi_1.timeout = get_slot_ts(Slot::new(5, 7));
+
+            // Just before shutdown
+            let locked_in_at = Slot::new(1, 9);
+            assert!(locked_in_at < shutdown_start);
+            let activate_at = Slot::new(4, 0);
+            assert!(shutdown_range.contains(&activate_at));
+            mi_1.activation_delay =
+                get_slot_ts(activate_at).saturating_sub(get_slot_ts(locked_in_at));
+
+            // Note: 2 states will transition right after shutdown_end
+            //       mi_1, ms_1 -> 'LockedIn' -> 'Active'
+            //       mi_2 -> 'Defined' -> 'Started'
+            mi_2.start = get_slot_ts(Slot::new(7, 7));
+            mi_2.timeout = get_slot_ts(Slot::new(10, 7));
+
+            let ms_1 = advance_state_until(
+                ComponentState::locked_in(get_slot_ts(Slot::new(1, 9))),
+                &mi_1,
+            );
+            let ms_2 = advance_state_until(ComponentState::defined(), &mi_2);
+            let mut store = MipStoreRaw::try_from((
+                [(mi_1.clone(), ms_1), (mi_2.clone(), ms_2)],
+                mip_stats_cfg.clone(),
+            ))
+            .unwrap();
+
+            assert_eq!(is_coherent(&store, shutdown_start, shutdown_end), false);
+            // _dump_store(&store);
+            update_store(&mut store, shutdown_start, shutdown_end);
+            assert_eq!(is_coherent(&store, shutdown_start, shutdown_end), true);
+            // _dump_store(&store);
+
+            // Update stats - so should force 2 version transitions
+            store.update_network_version_stats(
+                get_slot_ts(shutdown_end.get_next_slot(THREAD_COUNT).unwrap()),
+                Some((1, 0)),
+            );
+
+            let (first_mi_info, first_mi_state) = store.store.first_key_value().unwrap();
+            assert_eq!(*first_mi_info.name, mi_1.name);
+            assert_eq!(
+                ComponentStateTypeId::from(&first_mi_state.state),
+                ComponentStateTypeId::Active
+            );
+            let (last_mi_info, last_mi_state) = store.store.last_key_value().unwrap();
+            assert_eq!(*last_mi_info.name, mi_2.name);
+            assert_eq!(
+                ComponentStateTypeId::from(&last_mi_state.state),
+                ComponentStateTypeId::Started
+            );
+        }
     }
 }

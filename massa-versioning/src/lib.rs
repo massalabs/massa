@@ -48,6 +48,7 @@
 
 pub mod address_factory;
 pub mod keypair_factory;
+pub mod grpc_mapping;
 pub mod versioning;
 pub mod versioning_factory;
 pub mod versioning_ser_der;

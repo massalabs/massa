@@ -1005,7 +1005,7 @@ impl ExecutionContext {
     ///
     pub fn insert_executed_denunciation(&mut self, denunciation_idx: &DenunciationIndex) {
         self.speculative_executed_denunciations
-            .insert_executed_denunciation(denunciation_idx.clone());
+            .insert_executed_denunciation(*denunciation_idx);
     }
 
     /// gets the cycle information for an address

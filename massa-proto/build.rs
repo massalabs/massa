@@ -39,7 +39,7 @@ mod tonic {
             .map_err(|e| format!("protobuf compilation error: {:?}", e))?;
 
         // Generate documentation for the protobuf API
-        generate_doc(&protos).map_err(|e| format!("protobuf documentation error: {:?}", e))?;
+        // generate_doc(&protos).map_err(|e| format!("protobuf documentation error: {:?}", e))?;
 
         // Return Ok if the build and documentation generation were successful
         Ok(())

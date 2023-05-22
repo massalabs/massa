@@ -12,6 +12,8 @@ use massa_proto::massa::api::v1::massa_service_server::MassaServiceServer;
 use massa_proto::massa::api::v1::FILE_DESCRIPTOR_SET;
 use massa_protocol_exports::ProtocolController;
 use massa_storage::Storage;
+use massa_versioning_worker::versioning::MipStore;
+
 use tokio::sync::oneshot;
 use tonic::{
     codec::CompressionEncoding,
@@ -46,6 +48,8 @@ pub struct MassaGrpc {
     pub grpc_config: GrpcConfig,
     /// node version
     pub version: massa_models::version::Version,
+    /// mip store
+    pub mip_store: MipStore,
 }
 
 impl MassaGrpc {
@@ -105,6 +109,16 @@ impl MassaGrpc {
             info!("gRPC mTLS enabled");
         }
 
+        let reflection_service_opt = if config.enable_reflection {
+            let reflection_service = tonic_reflection::server::Builder::configure()
+                .register_encoded_file_descriptor_set(FILE_DESCRIPTOR_SET)
+                .build()?;
+
+            Some(reflection_service)
+        } else {
+            None
+        };
+
         let health_service_opt = if config.enable_health {
             let (mut health_reporter, health_service) = tonic_health::server::health_reporter();
             health_reporter
@@ -126,52 +140,34 @@ impl MassaGrpc {
                     .allow_origin(Any)
                     .allow_headers([hyper::header::CONTENT_TYPE]);
 
-                let mut router_with_http1 = server_builder
+                let router_with_http1 = server_builder
                     .accept_http1(true)
                     .layer(cors)
                     .layer(GrpcWebLayer::new())
+                    .add_optional_service(reflection_service_opt)
                     .add_optional_service(health_service_opt)
                     .add_service(svc);
-
-                if config.enable_reflection {
-                    let reflection_service = tonic_reflection::server::Builder::configure()
-                        .register_encoded_file_descriptor_set(FILE_DESCRIPTOR_SET)
-                        .build()?;
-
-                    router_with_http1 = router_with_http1.add_service(reflection_service);
-                }
 
                 tokio::spawn(
                     router_with_http1.serve_with_shutdown(config.bind, shutdown_recv.map(drop)),
                 );
             } else {
-                let mut router_with_http1 = server_builder
+                let router_with_http1 = server_builder
                     .accept_http1(true)
                     .layer(GrpcWebLayer::new())
+                    .add_optional_service(reflection_service_opt)
+                    .add_optional_service(health_service_opt)
                     .add_service(svc);
-
-                if config.enable_reflection {
-                    let reflection_service = tonic_reflection::server::Builder::configure()
-                        .register_encoded_file_descriptor_set(FILE_DESCRIPTOR_SET)
-                        .build()?;
-
-                    router_with_http1 = router_with_http1.add_service(reflection_service);
-                }
 
                 tokio::spawn(
                     router_with_http1.serve_with_shutdown(config.bind, shutdown_recv.map(drop)),
                 );
             }
         } else {
-            let mut router = server_builder.add_service(svc);
-
-            if config.enable_reflection {
-                let reflection_service = tonic_reflection::server::Builder::configure()
-                    .register_encoded_file_descriptor_set(FILE_DESCRIPTOR_SET)
-                    .build()?;
-
-                router = router.add_service(reflection_service);
-            }
+            let router = server_builder
+                .add_optional_service(reflection_service_opt)
+                .add_optional_service(health_service_opt)
+                .add_service(svc);
 
             tokio::spawn(router.serve_with_shutdown(config.bind, shutdown_recv.map(drop)));
         }

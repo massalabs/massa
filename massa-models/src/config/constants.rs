@@ -15,8 +15,10 @@
 //! (`default_testing.rs`) But as for the current file you shouldn't modify it.
 use std::str::FromStr;
 
-use crate::{amount::Amount, serialization::u32_be_bytes_min_length, version::Version};
-
+use crate::{
+    address::ADDRESS_SIZE_BYTES, amount::Amount, serialization::u32_be_bytes_min_length,
+    version::Version,
+};
 use massa_signature::KeyPair;
 use massa_time::MassaTime;
 use num::rational::Ratio;

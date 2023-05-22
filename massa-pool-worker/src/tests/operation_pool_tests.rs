@@ -19,10 +19,12 @@
 //!
 use crate::tests::tools::OpGenerator;
 
-use super::tools::{create_some_operations, operation_pool_test, pool_test};
-use massa_execution_exports::test_exports::MockExecutionControllerMessage;
+use super::tools::{create_some_operations, operation_pool_test, PoolTestBoilerPlate};
+use massa_execution_exports::MockExecutionController;
 use massa_models::{amount::Amount, operation::OperationId, slot::Slot};
 use massa_pool_exports::PoolConfig;
+use massa_pos_exports::MockSelectorController;
+use mockall::Sequence;
 use std::time::Duration;
 
 #[test]
@@ -58,167 +60,178 @@ fn test_add_irrelevant_operation() {
 #[test]
 fn test_pool() {
     let pool_config = PoolConfig::default();
-    pool_test(
-        pool_config,
-        |mut pool_manager, mut pool, execution_receiver, _selector_receiver, storage_base| {
-            // generate (id, transactions, range of validity) by threads
-            let mut thread_tx_lists = vec![Vec::new(); pool_config.thread_count as usize];
-
-            let mut storage = storage_base.clone_without_refs();
-            for i in 0..18 {
-                let expire_period: u64 = 10 + i;
-                let op = OpGenerator::default()
-                    .expirery(expire_period)
-                    .fee(Amount::from_raw(40 + i))
-                    .generate(); //get_transaction(expire_period, fee);
-
-                storage.store_operations(vec![op.clone()]);
-
-                //TODO: compare
-                // assert_eq!(storage.get_op_refs(), &Set::<OperationId>::default());
-
-                // duplicate
-                // let mut storage = storage_base.clone_without_refs();
-                // storage.store_operations(vec![op.clone()]);
-                // pool.add_operations(storage);
-                //TODO: compare
-                //assert_eq!(storage.get_op_refs(), &ops.keys().copied().collect::<Set<OperationId>>());
-
-                let op_thread = op
-                    .content_creator_address
-                    .get_thread(pool_config.thread_count);
-
-                let start_period =
-                    expire_period.saturating_sub(pool_config.operation_validity_periods);
-
-                thread_tx_lists[op_thread as usize].push((op, start_period..=expire_period));
-            }
-
-            pool.add_operations(storage);
-            // Allow some time for the pool to add the operations
-            std::thread::sleep(Duration::from_millis(200));
-
-            // sort from bigger fee to smaller and truncate
-            for lst in thread_tx_lists.iter_mut() {
-                lst.reverse();
-                lst.truncate(pool_config.max_operation_pool_size_per_thread);
-            }
-
-            std::thread::spawn(move || loop {
-                match execution_receiver.recv_timeout(Duration::from_millis(2000)) {
-                    // forward on the operations
-                    Ok(MockExecutionControllerMessage::UnexecutedOpsAmong {
-                        ops,
-                        response_tx,
-                        ..
-                    }) => {
-                        response_tx.send(ops).unwrap();
-                    }
-                    // we want the operations to be paid for...
-                    Ok(MockExecutionControllerMessage::GetFinalAndCandidateBalance {
-                        response_tx,
-                        ..
-                    }) => response_tx
-                        .send(vec![(
+    let execution_controller = {
+        let mut res = Box::new(MockExecutionController::new());
+        res.expect_clone_box().return_once(|| {
+            let mut story = MockExecutionController::new();
+            let mut seq = Sequence::new();
+            for _ in 0..198 {
+                story
+                    .expect_unexecuted_ops_among()
+                    .times(1)
+                    .returning(|ops, _| ops.clone())
+                    .in_sequence(&mut seq);
+                story
+                    .expect_get_final_and_candidate_balance()
+                    .times(1)
+                    .returning(|_| {
+                        vec![(
+                            // Operations need to be paid for
                             Some(Amount::from_raw(60 * 1_000_000_000)),
                             Some(Amount::from_raw(60 * 1_000_000_000)),
-                        )])
-                        .unwrap(),
-                    _ => {}
-                }
-            });
-
-            // checks ops are the expected ones for thread 0 and 1 and various periods
-            for thread in 0u8..pool_config.thread_count {
-                for period in 0u64..70 {
-                    let target_slot = Slot::new(period, thread);
-                    let (ids, storage) = pool.get_block_operations(&target_slot);
-
-                    assert_eq!(
-                        ids.iter()
-                            .map(|id| (
-                                *id,
-                                storage
-                                    .read_operations()
-                                    .get(id)
-                                    .unwrap()
-                                    .serialized_data
-                                    .clone()
-                            ))
-                            .collect::<Vec<(OperationId, Vec<u8>)>>(),
-                        thread_tx_lists[target_slot.thread as usize]
-                            .iter()
-                            .filter(|(_, r)| r.contains(&target_slot.period))
-                            .map(|(op, _)| (op.id, op.serialized_data.clone()))
-                            .collect::<Vec<(OperationId, Vec<u8>)>>()
-                    );
-                }
+                        )]
+                    })
+                    .in_sequence(&mut seq);
             }
+            Box::new(story)
+        });
+        res
+    };
 
-            // op ending before or at period 45 won't appear in the block due to incompatible validity range
-            // we don't keep them as expected ops
-            let final_period = 45u64;
-            pool.notify_final_cs_periods(&vec![final_period; pool_config.thread_count as usize]);
-            // Wait for pool to manage the above command
-            std::thread::sleep(Duration::from_millis(200));
-            for lst in thread_tx_lists.iter_mut() {
-                lst.retain(|(op, _)| op.content.expire_period > final_period);
-            }
+    let selector_controller = {
+        let mut res = Box::new(MockSelectorController::new());
+        res.expect_clone_box()
+            .times(3)
+            .returning(|| Box::new(MockSelectorController::new()));
+        res
+    };
 
-            // checks ops are the expected ones for thread 0 and 1 and various periods
-            for thread in 0u8..pool_config.thread_count {
-                for period in 0u64..70 {
-                    let target_slot = Slot::new(period, thread);
-                    let max_count = 4;
-                    let (ids, storage) = pool.get_block_operations(&target_slot);
-                    assert_eq!(
-                        ids.iter()
-                            .map(|id| (
-                                *id,
-                                storage
-                                    .read_operations()
-                                    .get(id)
-                                    .unwrap()
-                                    .serialized_data
-                                    .clone()
-                            ))
-                            .collect::<Vec<(OperationId, Vec<u8>)>>(),
-                        thread_tx_lists[target_slot.thread as usize]
-                            .iter()
-                            .filter(|(_, r)| r.contains(&target_slot.period))
-                            .take(max_count)
-                            .map(|(op, _)| (op.id, op.serialized_data.clone()))
-                            .collect::<Vec<(OperationId, Vec<u8>)>>()
-                    );
-                }
-            }
+    let PoolTestBoilerPlate {
+        mut pool_manager,
+        mut pool_controller,
+        storage: storage_base,
+    } = PoolTestBoilerPlate::pool_test(pool_config, execution_controller, selector_controller);
 
-            // add transactions with a high fee but too much in the future: should be ignored
-            {
-                //TODO: update current slot
-                //pool.update_current_slot(Slot::new(10, 0));
-                let expire_period: u64 = 300;
-                let op = OpGenerator::default()
-                    .expirery(expire_period)
-                    .fee(Amount::from_raw(1000))
-                    .generate();
-                let mut storage = storage_base.clone_without_refs();
-                storage.store_operations(vec![op.clone()]);
-                pool.add_operations(storage);
-                // Allow some time for the pool to add the operations
-                std::thread::sleep(Duration::from_millis(100));
-                //TODO: compare
-                //assert_eq!(storage.get_op_refs(), &Set::<OperationId>::default());
-                let op_thread = op
-                    .content_creator_address
-                    .get_thread(pool_config.thread_count);
-                let (ids, _) = pool.get_block_operations(&Slot::new(
-                    expire_period - pool_config.operation_validity_periods - 1,
-                    op_thread,
-                ));
-                assert!(ids.is_empty());
-            }
-            pool_manager.stop();
-        },
-    );
+    // generate (id, transactions, range of validity) by threads
+    let mut thread_tx_lists = vec![Vec::new(); pool_config.thread_count as usize];
+
+    let mut storage = storage_base.clone_without_refs();
+    for i in 0..18 {
+        let expire_period: u64 = 10 + i;
+        let op = OpGenerator::default()
+            .expirery(expire_period)
+            .fee(Amount::from_raw(40 + i))
+            .generate(); //get_transaction(expire_period, fee);
+
+        storage.store_operations(vec![op.clone()]);
+
+        //TODO: compare
+        // assert_eq!(
+        //     storage.get_op_refs(),
+        //     &massa_models::prehash::PreHashSet::<OperationId>::default()
+        // );
+
+        // duplicate
+        // let mut storage = storage_base.clone_without_refs();
+        // storage.store_operations(vec![op.clone()]);
+        // pool.add_operations(storage);
+        //TODO: compare
+        //assert_eq!(storage.get_op_refs(), &ops.keys().copied().collect::<Set<OperationId>>());
+
+        let op_thread = op
+            .content_creator_address
+            .get_thread(pool_config.thread_count);
+
+        let start_period = expire_period.saturating_sub(pool_config.operation_validity_periods);
+
+        thread_tx_lists[op_thread as usize].push((op, start_period..=expire_period));
+    }
+
+    pool_controller.add_operations(storage);
+
+    // sort from bigger fee to smaller and truncate
+    for lst in thread_tx_lists.iter_mut() {
+        lst.reverse();
+        lst.truncate(pool_config.max_operation_pool_size_per_thread);
+    }
+
+    // checks ops are the expected ones for thread 0 and 1 and various periods
+    for thread in 0u8..pool_config.thread_count {
+        for period in 0u64..70 {
+            let target_slot = Slot::new(period, thread);
+            let (ids, storage) = pool_controller.get_block_operations(&target_slot);
+
+            assert_eq!(
+                ids.iter()
+                    .map(|id| (
+                        *id,
+                        storage
+                            .read_operations()
+                            .get(id)
+                            .unwrap()
+                            .serialized_data
+                            .clone()
+                    ))
+                    .collect::<Vec<(OperationId, Vec<u8>)>>(),
+                thread_tx_lists[target_slot.thread as usize]
+                    .iter()
+                    .filter(|(_, r)| r.contains(&target_slot.period))
+                    .map(|(op, _)| (op.id, op.serialized_data.clone()))
+                    .collect::<Vec<(OperationId, Vec<u8>)>>()
+            );
+        }
+    }
+
+    // op ending before or at period 45 won't appear in the block due to incompatible validity range
+    // we don't keep them as expected ops
+    let final_period = 45u64;
+    pool_controller.notify_final_cs_periods(&vec![final_period; pool_config.thread_count as usize]);
+
+    for lst in thread_tx_lists.iter_mut() {
+        lst.retain(|(op, _)| op.content.expire_period > final_period);
+    }
+
+    // checks ops are the expected ones for thread 0 and 1 and various periods
+    for thread in 0u8..pool_config.thread_count {
+        for period in 0u64..70 {
+            let target_slot = Slot::new(period, thread);
+            let max_count = 4;
+            let (ids, storage) = pool_controller.get_block_operations(&target_slot);
+            assert_eq!(
+                ids.iter()
+                    .map(|id| (
+                        *id,
+                        storage
+                            .read_operations()
+                            .get(id)
+                            .unwrap()
+                            .serialized_data
+                            .clone()
+                    ))
+                    .collect::<Vec<(OperationId, Vec<u8>)>>(),
+                thread_tx_lists[target_slot.thread as usize]
+                    .iter()
+                    .filter(|(_, r)| r.contains(&target_slot.period))
+                    .take(max_count)
+                    .map(|(op, _)| (op.id, op.serialized_data.clone()))
+                    .collect::<Vec<(OperationId, Vec<u8>)>>()
+            );
+        }
+    }
+
+    // add transactions with a high fee but too much in the future: should be ignored
+    {
+        //TODO: update current slot
+        //pool_controller.update_current_slot(Slot::new(10, 0));
+        let expire_period: u64 = 300;
+        let op = OpGenerator::default()
+            .expirery(expire_period)
+            .fee(Amount::from_raw(1000))
+            .generate();
+        let mut storage = storage_base.clone_without_refs();
+        storage.store_operations(vec![op.clone()]);
+        pool_controller.add_operations(storage);
+
+        //TODO: compare
+        //assert_eq!(storage.get_op_refs(), &Set::<OperationId>::default());
+        let op_thread = op
+            .content_creator_address
+            .get_thread(pool_config.thread_count);
+        let (ids, _) = pool_controller.get_block_operations(&Slot::new(
+            expire_period - pool_config.operation_validity_periods - 1,
+            op_thread,
+        ));
+        assert!(ids.is_empty());
+    }
+    pool_manager.stop();
 }

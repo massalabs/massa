@@ -15,6 +15,8 @@ massa_ledger_exports = { path = "../massa-ledger-exports" }
 massa_models = { path = "../massa-models" }
 massa_serialization = { path = "../massa-serialization" }
 massa_signature = { path = "../massa-signature" }
+massa_time = { path = "../massa-time" }
+massa_proto = { path = "../massa-proto" }
 
 
 # for more information on what are the following features used for, see the cargo.toml at workspace level

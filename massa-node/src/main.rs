@@ -242,7 +242,7 @@ async fn launch(
     let interupted = Arc::new((Mutex::new(false), Condvar::new()));
     let handler_clone = Arc::clone(&interupted);
 
-    // currently used by the bootstrap client to break out of the to preempt the retry wait
+    // currently used by the bootstrap client to preempt/break out of the retry wait
     ctrlc::set_handler(move || {
         *handler_clone
             .0
@@ -412,7 +412,7 @@ async fn launch(
                             let dt_timeout = Utc
                                 .timestamp_opt(mip_info.timeout.to_duration().as_secs() as i64, 0)
                                 .unwrap();
-                            warn!("Please update your node between: {} and {} if you want to support this update", 
+                            warn!("Please update your node between: {} and {} if you want to support this update",
                                 dt_start.to_rfc2822(),
                                 dt_timeout.to_rfc2822()
                             );
@@ -871,6 +871,7 @@ async fn launch(
             storage: shared_storage.clone(),
             grpc_config: grpc_config.clone(),
             version: *VERSION,
+            mip_store,
         };
 
         // HACK maybe should remove timeout later
