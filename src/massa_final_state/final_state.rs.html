@@ -1834,7 +1834,7 @@
     <span class="kw">use </span>massa_signature::KeyPair;
 
     <span class="kw">fn </span>get_random_address() -&gt; Address {
-        <span class="kw">let </span>keypair = KeyPair::generate();
+        <span class="kw">let </span>keypair = KeyPair::generate(<span class="number">0</span>).unwrap();
         Address::from_public_key(<span class="kw-2">&amp;</span>keypair.get_public_key())
     }
 

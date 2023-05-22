@@ -2786,7 +2786,7 @@
 
     <span class="attr">#[test]
     </span><span class="kw">fn </span>test_forge_invalid_denunciation() {
-        <span class="kw">let </span>keypair = KeyPair::generate();
+        <span class="kw">let </span>keypair = KeyPair::generate(<span class="number">0</span>).unwrap();
         <span class="kw">let </span>slot_1 = Slot::new(<span class="number">4</span>, <span class="number">2</span>);
         <span class="kw">let </span>slot_2 = Slot::new(<span class="number">3</span>, <span class="number">7</span>);
 

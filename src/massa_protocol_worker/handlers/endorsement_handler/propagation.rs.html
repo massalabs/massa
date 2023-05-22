@@ -186,8 +186,8 @@
     endorsement::{EndorsementId, SecureShareEndorsement},
     prehash::{PreHashMap, PreHashSet},
 };
+<span class="kw">use </span>massa_protocol_exports::PeerId;
 <span class="kw">use </span>massa_protocol_exports::ProtocolConfig;
-<span class="kw">use </span>peernet::peer_id::PeerId;
 <span class="kw">use </span>tracing::{debug, info, log::warn};
 
 <span class="kw">use crate</span>::{messages::MessagesSerializer, wrap_network::ActiveConnectionsTrait};
