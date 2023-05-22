@@ -1151,14 +1151,14 @@ async fn run(args: Args) -> anyhow::Result<()> {
     let sig_int_toggled_clone = Arc::clone(&sig_int_toggled);
 
     // currently used by the bootstrap client to break out of the to preempt the retry wait
-    ctrlc::set_handler(move || {
-        *sig_int_toggled_clone
-            .0
-            .lock()
-            .expect("double-lock on interupt bool in ctrl-c handler") = true;
-        sig_int_toggled_clone.1.notify_all();
-    })
-    .expect("Error setting Ctrl-C handler");
+    // ctrlc::set_handler(move || {
+    //     *sig_int_toggled_clone
+    //         .0
+    //         .lock()
+    //         .expect("double-lock on interupt bool in ctrl-c handler") = true;
+    //     sig_int_toggled_clone.1.notify_all();
+    // })
+    // .expect("Error setting Ctrl-C handler");
 
     loop {
         let (
