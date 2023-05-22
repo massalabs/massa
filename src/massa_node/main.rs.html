@@ -1255,6 +1255,8 @@
 <a href="#1255" id="1255">1255</a>
 <a href="#1256" id="1256">1256</a>
 <a href="#1257" id="1257">1257</a>
+<a href="#1258" id="1258">1258</a>
+<a href="#1259" id="1259">1259</a>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="attr">#![doc = <span class="macro">include_str!</span>(<span class="string">&quot;../../README.md&quot;</span>)]
@@ -1267,6 +1269,7 @@
 
 <span class="kw">use </span>chrono::{TimeZone, Utc};
 <span class="kw">use </span>crossbeam_channel::{Receiver, TryRecvError};
+<span class="kw">use </span>ctrlc <span class="kw">as _</span>;
 <span class="kw">use </span>dialoguer::Password;
 <span class="kw">use </span>massa_api::{ApiServer, ApiV2, Private, Public, RpcServer, StopHandle, API};
 <span class="kw">use </span>massa_api_exports::config::APIConfig;
@@ -2405,9 +2408,10 @@
 
     <span class="comment">// interrupt signal listener
     </span><span class="kw">let </span>sig_int_toggled = Arc::new((Mutex::new(<span class="bool-val">false</span>), Condvar::new()));
-    <span class="kw">let </span>sig_int_toggled_clone = Arc::clone(<span class="kw-2">&amp;</span>sig_int_toggled);
 
-    <span class="comment">// currently used by the bootstrap client to break out of the to preempt the retry wait
+    <span class="comment">// TODO: re-enable and fix this (remove use ctrlc as _; when done)
+    // let sig_int_toggled_clone = Arc::clone(&amp;sig_int_toggled);
+    // currently used by the bootstrap client to break out of the to preempt the retry wait
     // ctrlc::set_handler(move || {
     //     *sig_int_toggled_clone
     //         .0

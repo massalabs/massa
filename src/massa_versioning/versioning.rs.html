@@ -2405,7 +2405,7 @@
                 ) {
                     <span class="comment">// Only accept &#39;higher&#39; state
                     // (e.g. &#39;started&#39; if &#39;defined&#39;, &#39;locked in&#39; if &#39;started&#39;...)
-                    </span><span class="kw">if </span>v_state_id &gt; v_state_orig_id {
+                    </span><span class="kw">if </span>v_state_id &gt;= v_state_orig_id {
                         to_update.insert(v_info.clone(), v_state.clone());
                     } <span class="kw">else </span>{
                         <span class="comment">// Trying to downgrade state&#39; (e.g. trying to go from &#39;active&#39; -&gt; &#39;defined&#39;)

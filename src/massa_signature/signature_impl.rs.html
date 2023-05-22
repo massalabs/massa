@@ -2205,7 +2205,7 @@
             ));
         }
         ed25519_dalek::PublicKey::from_bytes(<span class="kw-2">&amp;</span>data[..<span class="self">Self</span>::PUBLIC_KEY_SIZE_BYTES])
-            .map(|d| <span class="self">Self</span>(d))
+            .map(<span class="self">Self</span>)
             .map_err(|err| MassaSignatureError::ParsingError(err.to_string()))
     }
 }
@@ -2554,7 +2554,7 @@
             ));
         }
         ed25519_dalek::Signature::from_bytes(<span class="kw-2">&amp;</span>data[..<span class="self">Self</span>::SIGNATURE_SIZE_BYTES])
-            .map(|s| <span class="self">Self</span>(s))
+            .map(<span class="self">Self</span>)
             .map_err(|err| {
                 MassaSignatureError::ParsingError(<span class="macro">format!</span>(<span class="string">&quot;signature bytes parsing error: {}&quot;</span>, err))
             })
