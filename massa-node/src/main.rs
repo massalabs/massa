@@ -100,6 +100,7 @@ mod settings;
 async fn launch(
     args: &Args,
     node_wallet: Arc<RwLock<Wallet>>,
+    sig_int_toggled: Arc<(Mutex<bool>, Condvar)>,
 ) -> (
     Receiver<ConsensusEvent>,
     Option<BootstrapManager>,
@@ -238,19 +239,6 @@ async fn launch(
         },
     ));
 
-    // interrupt signal listener
-    let interupted = Arc::new((Mutex::new(false), Condvar::new()));
-    let handler_clone = Arc::clone(&interupted);
-
-    // currently used by the bootstrap client to preempt/break out of the retry wait
-    ctrlc::set_handler(move || {
-        *handler_clone
-            .0
-            .lock()
-            .expect("double-lock on interupt bool in ctrl-c handler") = true;
-        handler_clone.1.notify_all();
-    })
-    .expect("Error setting Ctrl-C handler");
     let bootstrap_config: BootstrapConfig = BootstrapConfig {
         bootstrap_list: SETTINGS.bootstrap.bootstrap_list.clone(),
         bootstrap_protocol: SETTINGS.bootstrap.bootstrap_protocol,
@@ -316,7 +304,7 @@ async fn launch(
         *GENESIS_TIMESTAMP,
         *END_TIMESTAMP,
         args.restart_from_snapshot_at_period,
-        interupted,
+        sig_int_toggled,
     ) {
         Ok(vals) => vals,
         Err(BootstrapError::Interupted(msg)) => {
@@ -1158,6 +1146,20 @@ async fn run(args: Args) -> anyhow::Result<()> {
         &SETTINGS.factory.staking_wallet_path,
     )?;
 
+    // interrupt signal listener
+    let sig_int_toggled = Arc::new((Mutex::new(false), Condvar::new()));
+    let sig_int_toggled_clone = Arc::clone(&sig_int_toggled);
+
+    // currently used by the bootstrap client to break out of the to preempt the retry wait
+    ctrlc::set_handler(move || {
+        *sig_int_toggled_clone
+            .0
+            .lock()
+            .expect("double-lock on interupt bool in ctrl-c handler") = true;
+        sig_int_toggled_clone.1.notify_all();
+    })
+    .expect("Error setting Ctrl-C handler");
+
     loop {
         let (
             consensus_event_receiver,
@@ -1173,7 +1175,7 @@ async fn run(args: Args) -> anyhow::Result<()> {
             api_public_handle,
             api_handle,
             grpc_handle,
-        ) = launch(&cur_args, node_wallet.clone()).await;
+        ) = launch(&cur_args, node_wallet.clone(), Arc::clone(&sig_int_toggled)).await;
 
         // interrupt signal listener
         let (tx, rx) = crossbeam_channel::bounded(1);
