@@ -651,6 +651,18 @@
 <a href="#651" id="651">651</a>
 <a href="#652" id="652">652</a>
 <a href="#653" id="653">653</a>
+<a href="#654" id="654">654</a>
+<a href="#655" id="655">655</a>
+<a href="#656" id="656">656</a>
+<a href="#657" id="657">657</a>
+<a href="#658" id="658">658</a>
+<a href="#659" id="659">659</a>
+<a href="#660" id="660">660</a>
+<a href="#661" id="661">661</a>
+<a href="#662" id="662">662</a>
+<a href="#663" id="663">663</a>
+<a href="#664" id="664">664</a>
+<a href="#665" id="665">665</a>
 </pre><pre class="rust"><code><span class="doccomment">//! Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 //! This file defines the final state of the node, which includes
@@ -1230,6 +1242,24 @@
         <span class="kw">for </span>(serialized_key, serialized_value) <span class="kw">in
             </span>db.db.iterator_cf(handle, IteratorMode::Start).flatten()
         {
+            <span class="kw">if </span>!serialized_key.starts_with(CYCLE_HISTORY_PREFIX.as_bytes())
+                &amp;&amp; !serialized_key.starts_with(DEFERRED_CREDITS_PREFIX.as_bytes())
+                &amp;&amp; !serialized_key.starts_with(ASYNC_POOL_PREFIX.as_bytes())
+                &amp;&amp; !serialized_key.starts_with(EXECUTED_OPS_PREFIX.as_bytes())
+                &amp;&amp; !serialized_key.starts_with(EXECUTED_DENUNCIATIONS_PREFIX.as_bytes())
+                &amp;&amp; !serialized_key.starts_with(LEDGER_PREFIX.as_bytes())
+            {
+                <span class="macro">warn!</span>(
+                    <span class="string">&quot;Key/value does not correspond to any prefix: serialized_key: {:?}, serialized_value: {:?}&quot;</span>,
+                    serialized_key, serialized_value
+                );
+                <span class="macro">println!</span>(
+                    <span class="string">&quot;Key/value does not correspond to any prefix: serialized_key: {:?}, serialized_value: {:?}&quot;</span>,
+                    serialized_key, serialized_value
+                );
+                <span class="kw">return </span><span class="bool-val">false</span>;
+            }
+
             <span class="kw">if </span>serialized_key.starts_with(CYCLE_HISTORY_PREFIX.as_bytes()) {
                 <span class="kw">if </span>!<span class="self">self
                     </span>.pos_state
@@ -1289,12 +1319,6 @@
             {
                 <span class="macro">warn!</span>(
                     <span class="string">&quot;Wrong key/value for LEDGER PREFIX serialized_key: {:?}, serialized_value: {:?}&quot;</span>,
-                    serialized_key, serialized_value
-                );
-                <span class="kw">return </span><span class="bool-val">false</span>;
-            } <span class="kw">else </span>{
-                <span class="macro">warn!</span>(
-                    <span class="string">&quot;Key/value does not correspond to any prefix: serialized_key: {:?}, serialized_value: {:?}&quot;</span>,
                     serialized_key, serialized_value
                 );
                 <span class="kw">return </span><span class="bool-val">false</span>;
