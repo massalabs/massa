@@ -656,7 +656,7 @@ impl MipStoreRaw {
                 ) {
                     // Only accept 'higher' state
                     // (e.g. 'started' if 'defined', 'locked in' if 'started'...)
-                    if v_state_id > v_state_orig_id {
+                    if v_state_id >= v_state_orig_id {
                         to_update.insert(v_info.clone(), v_state.clone());
                     } else {
                         // Trying to downgrade state' (e.g. trying to go from 'active' -> 'defined')
