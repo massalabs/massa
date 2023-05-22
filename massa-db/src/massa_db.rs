@@ -44,6 +44,12 @@ pub struct StreamBatch<ChangeID: PartialOrd + Ord + PartialEq + Eq + Clone + std
     pub change_id: ChangeID,
 }
 
+impl<ChangeID: PartialOrd + Ord + PartialEq + Eq + Clone + std::fmt::Debug> StreamBatch<ChangeID> {
+    pub fn is_empty(&self) -> bool {
+        self.updates_on_previous_elements.is_empty() && self.new_elements.is_empty()
+    }
+}
+
 #[derive()]
 pub struct RawMassaDB<
     ChangeID: PartialOrd + Ord + PartialEq + Eq + Clone + std::fmt::Debug,

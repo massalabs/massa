@@ -456,13 +456,13 @@ pub fn get_boot_state() -> BootstrapableGraph {
                 BlockHeader {
                     // associated slot
                     // all header endorsements are supposed to point towards this one
-                    slot: Slot::new(6, 1),
+                    slot: Slot::new(1, 0),
                     parents: vec![get_dummy_block_id("p1"); THREAD_COUNT as usize],
                     operation_merkle_root: Hash::compute_from("op_hash".as_bytes()),
                     endorsements: vec![
                         Endorsement::new_verifiable(
                             Endorsement {
-                                slot: Slot::new(6, 1),
+                                slot: Slot::new(1, 0),
                                 index: 1,
                                 endorsed_block: get_dummy_block_id("p1"),
                             },
@@ -472,7 +472,7 @@ pub fn get_boot_state() -> BootstrapableGraph {
                         .unwrap(),
                         Endorsement::new_verifiable(
                             Endorsement {
-                                slot: Slot::new(6, 1),
+                                slot: Slot::new(1, 0),
                                 index: 3,
                                 endorsed_block: get_dummy_block_id("p1"),
                             },

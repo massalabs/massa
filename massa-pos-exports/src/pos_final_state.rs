@@ -1520,6 +1520,10 @@ fn test_pos_final_state_hash_computation() {
 
     pos_state.recompute_pos_state_caches();
 
+    let mut batch = DBBatch::new();
+    pos_state.create_initial_cycle(&mut batch);
+    db.write().write_batch(batch, Some(Slot::new(0, 0)));
+
     let addr = Address::from_prefixed_bytes(&[0; 33].as_slice()).unwrap();
 
     // add changes

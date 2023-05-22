@@ -484,7 +484,14 @@ pub fn stream_bootstrap_information(
             let last_obtained = match &last_state_step {
                 StreamingStep::Started => None,
                 StreamingStep::Ongoing(last_key) => Some((last_key.clone(), last_slot.unwrap())),
-                StreamingStep::Finished(_) => None,
+                StreamingStep::Finished(Some(last_key)) => {
+                    Some((last_key.clone(), last_slot.unwrap()))
+                }
+                StreamingStep::Finished(None) => {
+                    return Err(BootstrapError::GeneralError(String::from(
+                        "last_state_step is finished with no last_key!",
+                    )));
+                }
             };
 
             state_part = final_state_read
@@ -495,13 +502,30 @@ pub fn stream_bootstrap_information(
                     BootstrapError::GeneralError(format!("Error get_batch_to_stream: {}", e))
                 })?;
 
-            let new_state_step = match (&last_state_step, state_part.new_elements.last_key_value())
-            {
-                (_, Some((key, _))) => StreamingStep::Ongoing(key.clone()),
-                (StreamingStep::Ongoing(last_key), None) => {
-                    StreamingStep::Ongoing(last_key.clone())
+            let new_state_step = match (
+                &last_state_step,
+                state_part.is_empty(),
+                state_part.new_elements.last_key_value(),
+            ) {
+                // We finished streaming the state already, but we received new info while streaming consensus: we stay sync
+                (StreamingStep::Finished(Some(_last_key)), false, Some((key, _))) => {
+                    StreamingStep::Finished(Some(key.clone()))
                 }
-                (_, None) => StreamingStep::Finished(None),
+                // We finished streaming the state already, and we received nothing new
+                (StreamingStep::Finished(Some(last_key)), true, _) => {
+                    StreamingStep::Finished(Some(last_key.clone()))
+                }
+                // We receive our first empty state batch
+                (StreamingStep::Ongoing(last_key), true, _) => {
+                    StreamingStep::Finished(Some(last_key.clone()))
+                }
+                // We still need to stream the state
+                (_, false, Some((new_last_key, _))) => StreamingStep::Ongoing(new_last_key.clone()),
+                _ => {
+                    return Err(BootstrapError::GeneralError(String::from(
+                        "state step is inconsistent! ",
+                    )));
+                }
             };
 
             if let Some(slot) = last_slot && slot != final_state_read.slot && slot > final_state_read.slot {
@@ -522,16 +546,7 @@ pub fn stream_bootstrap_information(
         }
 
         // Setup final state global cursor
-        let final_state_global_step = if state_part.new_elements.is_empty() {
-            StreamingStep::Finished(Some(current_slot))
-        } else {
-            StreamingStep::Ongoing(current_slot)
-        };
-
-        // Setup final state changes cursor
-        let final_state_changes_step = if final_state_global_step.finished()
-            && state_part.updates_on_previous_elements.is_empty()
-        {
+        let final_state_global_step = if last_state_step.finished() {
             StreamingStep::Finished(Some(current_slot))
         } else {
             StreamingStep::Ongoing(current_slot)
@@ -544,7 +559,7 @@ pub fn stream_bootstrap_information(
         let mut consensus_outdated_ids: PreHashSet<BlockId> = PreHashSet::default();
         if final_state_global_step.finished() {
             let (part, outdated_ids, new_consensus_step) = consensus_controller
-                .get_bootstrap_part(last_consensus_step, final_state_changes_step)?;
+                .get_bootstrap_part(last_consensus_step, final_state_global_step)?;
             consensus_part = part;
             consensus_outdated_ids = outdated_ids;
             last_consensus_step = new_consensus_step;
@@ -565,10 +580,7 @@ pub fn stream_bootstrap_information(
 
         // If the consensus streaming is finished (also meaning that consensus slot == final state slot) exit
         // We don't bother with the bs-deadline, as this is the last step of the bootstrap process - defer to general write-timeout
-        if final_state_global_step.finished()
-            && final_state_changes_step.finished()
-            && last_consensus_step.finished()
-        {
+        if final_state_global_step.finished() && last_consensus_step.finished() {
             server.send_msg(write_timeout, BootstrapServerMessage::BootstrapFinished)?;
             break;
         }

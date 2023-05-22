@@ -5,8 +5,8 @@ use super::tools::{
 };
 use crate::listener::PollEvent;
 use crate::tests::tools::{
-    get_random_async_pool_changes, get_random_executed_de_changes, get_random_executed_ops_changes,
-    get_random_pos_changes,
+    assert_eq_bootstrap_graph, get_random_async_pool_changes, get_random_executed_de_changes,
+    get_random_executed_ops_changes, get_random_pos_changes,
 };
 use crate::{
     client::MockBSConnector, get_state, server::MockBSEventPoller, start_bootstrap_server,
@@ -408,25 +408,24 @@ fn test_bootstrap_server() {
     let sent_graph_clone = sent_graph.clone();
     stream_mock3
         .expect_get_bootstrap_part()
-        .times(1)
+        .times(2)
         .in_sequence(&mut seq)
-        .returning(move |_, slot| {
-            if StreamingStep::Ongoing(Slot::new(1, 1)) == slot {
-                Ok((
+        .returning(
+            move |last_consensus_step, _slot| match last_consensus_step {
+                StreamingStep::Started => Ok((
                     sent_graph_clone.clone(),
                     PreHashSet::default(),
-                    StreamingStep::Started,
-                ))
-            } else {
-                Ok((
+                    StreamingStep::Ongoing(PreHashSet::default()),
+                )),
+                _ => Ok((
                     BootstrapableGraph {
                         final_blocks: vec![],
                     },
                     PreHashSet::default(),
                     StreamingStep::Finished(None),
-                ))
-            }
-        });
+                )),
+            },
+        );
 
     stream_mock2
         .expect_clone_box()
@@ -568,8 +567,7 @@ fn test_bootstrap_server() {
     );
 
     // check graphs
-    // TODO: UNCOMMENT AND DEAL WITH ERROR
-    //assert_eq_bootstrap_graph(&sent_graph, &bootstrap_res.graph.unwrap());
+    assert_eq_bootstrap_graph(&sent_graph, &bootstrap_res.graph.unwrap());
 
     // check mip store
     let mip_raw_orig = mip_store.0.read().to_owned();
