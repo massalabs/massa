@@ -547,7 +547,7 @@
                 }
 
                 <span class="kw">let </span>(data, version) = version_deserializer
-                    .deserialize::&lt;DeserializeError&gt;(<span class="kw-2">&amp;</span>data)
+                    .deserialize::&lt;DeserializeError&gt;(data)
                     .map_err(|err| {
                         PeerNetError::HandshakeError.error(
                             <span class="string">&quot;Tester Handshake&quot;</span>,

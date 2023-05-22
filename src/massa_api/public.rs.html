@@ -1200,7 +1200,7 @@
                     </span>.<span class="number">0
                     </span>.keypair_factory
                     .create(<span class="kw-2">&amp;</span>(), <span class="prelude-val">None</span>)
-                    .map_err(|err| ApiError::from(err))<span class="question-mark">?</span>;
+                    .map_err(ApiError::from)<span class="question-mark">?</span>;
                 Address::from_public_key(<span class="kw-2">&amp;</span>keypair.get_public_key())
             };
 
@@ -1294,7 +1294,7 @@
                     </span>.<span class="number">0
                     </span>.keypair_factory
                     .create(<span class="kw-2">&amp;</span>(), <span class="prelude-val">None</span>)
-                    .map_err(|err| ApiError::from(err))<span class="question-mark">?</span>;
+                    .map_err(ApiError::from)<span class="question-mark">?</span>;
                 Address::from_public_key(<span class="kw-2">&amp;</span>keypair.get_public_key())
             };
 

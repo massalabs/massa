@@ -1417,7 +1417,7 @@
         context(<span class="string">&quot;Failed SCAddress deserialization&quot;</span>, |input| {
             <span class="self">self</span>.hash_deserializer.deserialize(input)
         })
-        .map(|h| SCAddress(h))
+        .map(SCAddress)
         .parse(buffer)
     }
 }
