@@ -702,13 +702,17 @@ async fn launch(
     };
     let factory_manager = start_factory(factory_config, node_wallet.clone(), factory_channels);
 
+    // If we have a boostrap listen address, start the bootstrap server
     let bootstrap_manager = bootstrap_config.listen_addr.map(|addr| {
+        // This pattern of creating the waker then providing to the server on creation is a take on dependency injection
+        // With this pattern, we can provide a mock-listener in testing conditions.
         let (waker, listener) = BootstrapTcpListener::new(&addr).unwrap_or_else(|_| {
             panic!(
                 "{}",
                 format!("Could not bind to address: {}", addr).as_str()
             )
         });
+
         start_bootstrap_server(
             listener,
             waker,

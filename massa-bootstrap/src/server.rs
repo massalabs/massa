@@ -1,24 +1,23 @@
 //! start the bootstrapping system using [`start_bootstrap_server`]
 //! Once your node will be ready, you may want other to bootstrap from you.
 //!
-//! # Listener
+//! # Listener/Event Poller
 //!
-//! Runs in the server-dedication tokio async runtime
-//! Accepts bootstrap connections in an async-loop
-//! Upon connection, pushes the accepted connection onto a channel for the worker loop to consume
+//! Blocks each iteration of the event loop until a new connection is made, or the stopper is invoked.
 //!
 //! # Updater
 //!
-//! Runs on a dedicated thread. Signal sent my manager stop method terminates the thread.
-//! Shares an `Arc<RwLock>>` guarded list of white and blacklists with the main worker.
+//! Runs on a dedicated thread.
+//! Signal sent by manager stop method is used to terminates the thread.
+//! Shares an `Arc<RwLock>>` guarded list of white and blacklists with the main event-loop.
 //! Periodically does a read-only check to see if list needs updating.
 //! Creates an updated list then swaps it out with write-locked list
 //! Assuming no errors in code, this is the only write occurance, and is only a pointer-swap
 //! under the hood, making write contention virtually non-existant.
 //!
-//! # Worker loop
+//! # Event Loop
 //!
-//! 1. Checks if the stopper has been invoked.
+//! 1. Blocks until the Listener/Event Poller emits an event, breaking if the event is a stop
 //! 2. Checks if the client is permited under the white/black list rules
 //! 3. Checks if there are not too many active sessions already
 //! 4. Checks if the client has attempted too recently
@@ -67,13 +66,10 @@ use crate::{
 pub trait BSEventPoller {
     fn poll(&mut self) -> Result<PollEvent, BootstrapError>;
 }
-/// Abstraction layer over data produced by the listener, and transported
-/// over to the worker via a channel
-
-/// handle on the bootstrap server
+/// Collection of components that make up the bootstrap server, and provides an interface
+/// to manage it.
 pub struct BootstrapManager {
     update_handle: thread::JoinHandle<Result<(), BootstrapError>>,
-    // need to preserve the listener handle up to here to prevent it being destroyed
     #[allow(clippy::type_complexity)]
     main_handle: thread::JoinHandle<Result<(), BootstrapError>>,
     listener_stopper: BootstrapListenerStopHandle,
@@ -81,8 +77,6 @@ pub struct BootstrapManager {
 }
 
 impl BootstrapManager {
-    /// create a new bootstrap manager, but no means of stopping the listener
-    /// use [`set_listen_stop_handle`] to set the handle
     pub(crate) fn new(
         update_handle: thread::JoinHandle<Result<(), BootstrapError>>,
         main_handle: thread::JoinHandle<Result<(), BootstrapError>>,
@@ -96,10 +90,10 @@ impl BootstrapManager {
             listener_stopper,
         }
     }
-    /// stop the bootstrap server
+    /// stops the bootstrap server using the waker providid by [`BootstrapTcpListener::new`]
     pub fn stop(self) -> Result<(), BootstrapError> {
         massa_trace!("bootstrap.lib.stop", {});
-        // TODO: Refactor the waker so that its existance is tied to the life of the event-loop
+        // TODO: Refactor the listener-waker so that its existance is tied to the life of the event-loop
         if self.listener_stopper.stop().is_err() {
             warn!("bootstrap server already dropped");
         }
@@ -368,9 +362,7 @@ impl<L: BSEventPoller> BootstrapServer<'_, L> {
 
 /// To be called from a `thread::spawn` invocation
 ///
-/// Runs the bootstrap management in a dedicated thread, handling the async by using
-/// a multi-thread-aware tokio runtime (the bs-main-loop runtime, to be exact). When this
-/// function blocks in the `block_on`, it should thread-block, and switch to another session
+/// Runs the bootstrap management in a dedicated thread.
 ///
 /// The arc_counter variable is used as a proxy to keep track the number of active bootstrap
 /// sessions.
