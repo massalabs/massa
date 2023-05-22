@@ -2456,6 +2456,7 @@ dependencies = [
  "massa_proto",
  "massa_serialization 0.1.0",
  "massa_signature 0.1.0",
+ "massa_time",
  "nom",
  "num",
  "rand 0.8.5",
