@@ -748,26 +748,45 @@
 <a href="#748" id="748">748</a>
 <a href="#749" id="749">749</a>
 <a href="#750" id="750">750</a>
+<a href="#751" id="751">751</a>
+<a href="#752" id="752">752</a>
+<a href="#753" id="753">753</a>
+<a href="#754" id="754">754</a>
+<a href="#755" id="755">755</a>
+<a href="#756" id="756">756</a>
+<a href="#757" id="757">757</a>
+<a href="#758" id="758">758</a>
+<a href="#759" id="759">759</a>
+<a href="#760" id="760">760</a>
+<a href="#761" id="761">761</a>
+<a href="#762" id="762">762</a>
+<a href="#763" id="763">763</a>
+<a href="#764" id="764">764</a>
+<a href="#765" id="765">765</a>
+<a href="#766" id="766">766</a>
+<a href="#767" id="767">767</a>
+<a href="#768" id="768">768</a>
 </pre><pre class="rust"><code><span class="doccomment">//! start the bootstrapping system using [`start_bootstrap_server`]
 //! Once your node will be ready, you may want other to bootstrap from you.
 //!
-//! # Listener/Event Poller
+//! # Listener
 //!
-//! Blocks each iteration of the event loop until a new connection is made, or the stopper is invoked.
+//! Runs in the server-dedication tokio async runtime
+//! Accepts bootstrap connections in an async-loop
+//! Upon connection, pushes the accepted connection onto a channel for the worker loop to consume
 //!
 //! # Updater
 //!
-//! Runs on a dedicated thread.
-//! Signal sent by manager stop method is used to terminates the thread.
-//! Shares an `Arc&lt;RwLock&gt;&gt;` guarded list of white and blacklists with the main event-loop.
+//! Runs on a dedicated thread. Signal sent my manager stop method terminates the thread.
+//! Shares an `Arc&lt;RwLock&gt;&gt;` guarded list of white and blacklists with the main worker.
 //! Periodically does a read-only check to see if list needs updating.
 //! Creates an updated list then swaps it out with write-locked list
 //! Assuming no errors in code, this is the only write occurance, and is only a pointer-swap
 //! under the hood, making write contention virtually non-existant.
 //!
-//! # Event Loop
+//! # Worker loop
 //!
-//! 1. Blocks until the Listener/Event Poller emits an event, breaking if the event is a stop
+//! 1. Checks if the stopper has been invoked.
 //! 2. Checks if the client is permited under the white/black list rules
 //! 3. Checks if there are not too many active sessions already
 //! 4. Checks if the client has attempted too recently
@@ -790,7 +809,7 @@
 <span class="kw">use </span>massa_protocol_exports::ProtocolController;
 <span class="kw">use </span>massa_signature::KeyPair;
 <span class="kw">use </span>massa_time::MassaTime;
-<span class="kw">use </span>massa_versioning_worker::versioning::MipStore;
+<span class="kw">use </span>massa_versioning::versioning::MipStore;
 
 <span class="kw">use </span>parking_lot::RwLock;
 <span class="kw">use </span>std::{
@@ -816,41 +835,58 @@
 </span><span class="kw">pub trait </span>BSEventPoller {
     <span class="kw">fn </span>poll(<span class="kw-2">&amp;mut </span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span>&lt;PollEvent, BootstrapError&gt;;
 }
-<span class="doccomment">/// Collection of components that make up the bootstrap server, and provides an interface
-/// to manage it.
+<span class="doccomment">/// Abstraction layer over data produced by the listener, and transported
+/// over to the worker via a channel
+
+/// handle on the bootstrap server
 </span><span class="kw">pub struct </span>BootstrapManager {
     update_handle: thread::JoinHandle&lt;<span class="prelude-ty">Result</span>&lt;(), BootstrapError&gt;&gt;,
-    <span class="attr">#[allow(clippy::type_complexity)]
+    <span class="comment">// need to preserve the listener handle up to here to prevent it being destroyed
+    </span><span class="attr">#[allow(clippy::type_complexity)]
     </span>main_handle: thread::JoinHandle&lt;<span class="prelude-ty">Result</span>&lt;(), BootstrapError&gt;&gt;,
-    listener_stopper: BootstrapListenerStopHandle,
+    listener_stopper: <span class="prelude-ty">Option</span>&lt;BootstrapListenerStopHandle&gt;,
     update_stopper_tx: crossbeam::channel::Sender&lt;()&gt;,
 }
 
 <span class="kw">impl </span>BootstrapManager {
-    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>new(
+    <span class="doccomment">/// create a new bootstrap manager, but no means of stopping the listener
+    /// use [`set_listen_stop_handle`] to set the handle
+    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>new(
         update_handle: thread::JoinHandle&lt;<span class="prelude-ty">Result</span>&lt;(), BootstrapError&gt;&gt;,
         main_handle: thread::JoinHandle&lt;<span class="prelude-ty">Result</span>&lt;(), BootstrapError&gt;&gt;,
         update_stopper_tx: crossbeam::channel::Sender&lt;()&gt;,
-        listener_stopper: BootstrapListenerStopHandle,
     ) -&gt; <span class="self">Self </span>{
         <span class="self">Self </span>{
             update_handle,
             main_handle,
             update_stopper_tx,
-            listener_stopper,
+            listener_stopper: <span class="prelude-val">None</span>,
         }
     }
-    <span class="doccomment">/// stops the bootstrap server using the waker providid by [`BootstrapTcpListener::new`]
+    <span class="doccomment">/// Sets an event-emmiter. `Self::stop`] will use this stopper to signal the listener that created this stopper.
+    </span><span class="kw">pub fn </span>set_listener_stopper(<span class="kw-2">&amp;mut </span><span class="self">self</span>, listener_stopper: BootstrapListenerStopHandle) {
+        <span class="self">self</span>.listener_stopper = <span class="prelude-val">Some</span>(listener_stopper);
+    }
+
+    <span class="doccomment">/// stop the bootstrap server
     </span><span class="kw">pub fn </span>stop(<span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span>&lt;(), BootstrapError&gt; {
         <span class="macro">massa_trace!</span>(<span class="string">&quot;bootstrap.lib.stop&quot;</span>, {});
-        <span class="comment">// TODO: Refactor the listener-waker so that its existance is tied to the life of the event-loop
-        </span><span class="kw">if </span><span class="self">self</span>.listener_stopper.stop().is_err() {
-            <span class="macro">warn!</span>(<span class="string">&quot;bootstrap server already dropped&quot;</span>);
+        <span class="comment">// `as_ref` is critical here, as the stopper has to be alive until the poll in the event
+        // loop acts on the stop-signal
+        // TODO: Refactor the waker so that its existance is tied to the life of the event-loop
+        </span><span class="kw">if let </span><span class="prelude-val">Some</span>(listen_stop_handle) = <span class="self">self</span>.listener_stopper.as_ref() {
+            <span class="kw">if </span>listen_stop_handle.stop().is_err() {
+                <span class="macro">warn!</span>(<span class="string">&quot;bootstrap server already dropped&quot;</span>);
+            }
         }
         <span class="kw">if </span><span class="self">self</span>.update_stopper_tx.send(()).is_err() {
             <span class="macro">warn!</span>(<span class="string">&quot;bootstrap ip-list-updater already dropped&quot;</span>);
         }
-        <span class="self">self</span>.update_handle
+        <span class="comment">// TODO?: handle join errors.
+
+        // when the runtime is dropped at the end of this stop, the listener is auto-aborted
+
+        </span><span class="self">self</span>.update_handle
             .join()
             .expect(<span class="string">&quot;in BootstrapManager::stop() joining on updater thread&quot;</span>)<span class="question-mark">?</span>;
 
@@ -864,7 +900,6 @@
 </span><span class="attr">#[allow(clippy::too_many_arguments)]
 </span><span class="kw">pub fn </span>start_bootstrap_server&lt;L: BSEventPoller + Send + <span class="lifetime">&#39;static</span>&gt;(
     ev_poller: L,
-    waker: BootstrapListenerStopHandle,
     consensus_controller: Box&lt;<span class="kw">dyn </span>ConsensusController&gt;,
     protocol_controller: Box&lt;<span class="kw">dyn </span>ProtocolController&gt;,
     final_state: Arc&lt;RwLock&lt;FinalState&gt;&gt;,
@@ -928,7 +963,6 @@
         update_handle,
         main_handle,
         update_stopper_tx,
-        waker,
     ))
 }
 
@@ -1112,7 +1146,9 @@
 
 <span class="doccomment">/// To be called from a `thread::spawn` invocation
 ///
-/// Runs the bootstrap management in a dedicated thread.
+/// Runs the bootstrap management in a dedicated thread, handling the async by using
+/// a multi-thread-aware tokio runtime (the bs-main-loop runtime, to be exact). When this
+/// function blocks in the `block_on`, it should thread-block, and switch to another session
 ///
 /// The arc_counter variable is used as a proxy to keep track the number of active bootstrap
 /// sessions.

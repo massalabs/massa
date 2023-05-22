@@ -268,6 +268,7 @@
 <a href="#268" id="268">268</a>
 <a href="#269" id="269">269</a>
 <a href="#270" id="270">270</a>
+<a href="#271" id="271">271</a>
 </pre><pre class="rust"><code><span class="doccomment">//! Copyright (c) 2023 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="kw">use </span>massa_execution_exports::ExecutionController;
@@ -385,8 +386,9 @@
                 <span class="kw">match </span>selected {
                     <span class="prelude-val">Ok</span>(selection) =&gt; {
                         <span class="kw">if let </span><span class="prelude-val">Some</span>(address) = selection.endorsements.get(de_p.index <span class="kw">as </span>usize) {
-                            <span class="kw">if </span><span class="kw-2">*</span>address != Address::from_public_key(<span class="kw-2">&amp;</span>de_p.public_key) {
-                                <span class="macro">debug!</span>(<span class="string">&quot;Denunciation pool received a secure share endorsement but address was not selected&quot;</span>);
+                            <span class="kw">let </span>a = Address::from_public_key(<span class="kw-2">&amp;</span>de_p.public_key);
+                            <span class="kw">if </span><span class="kw-2">*</span>address != a {
+                                <span class="macro">debug!</span>(<span class="string">&quot;Denunciation pool received a secure share endorsement but address was not selected: received {} but expected {} ({})&quot;</span>, address, a, de_p.public_key);
                                 <span class="kw">return</span>;
                             }
                         } <span class="kw">else </span>{

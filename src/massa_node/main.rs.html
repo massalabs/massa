@@ -1234,6 +1234,27 @@
 <a href="#1234" id="1234">1234</a>
 <a href="#1235" id="1235">1235</a>
 <a href="#1236" id="1236">1236</a>
+<a href="#1237" id="1237">1237</a>
+<a href="#1238" id="1238">1238</a>
+<a href="#1239" id="1239">1239</a>
+<a href="#1240" id="1240">1240</a>
+<a href="#1241" id="1241">1241</a>
+<a href="#1242" id="1242">1242</a>
+<a href="#1243" id="1243">1243</a>
+<a href="#1244" id="1244">1244</a>
+<a href="#1245" id="1245">1245</a>
+<a href="#1246" id="1246">1246</a>
+<a href="#1247" id="1247">1247</a>
+<a href="#1248" id="1248">1248</a>
+<a href="#1249" id="1249">1249</a>
+<a href="#1250" id="1250">1250</a>
+<a href="#1251" id="1251">1251</a>
+<a href="#1252" id="1252">1252</a>
+<a href="#1253" id="1253">1253</a>
+<a href="#1254" id="1254">1254</a>
+<a href="#1255" id="1255">1255</a>
+<a href="#1256" id="1256">1256</a>
+<a href="#1257" id="1257">1257</a>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="attr">#![doc = <span class="macro">include_str!</span>(<span class="string">&quot;../../README.md&quot;</span>)]
@@ -1312,7 +1333,9 @@
 <span class="kw">use </span>massa_protocol_worker::{create_protocol_controller, start_protocol_controller};
 <span class="kw">use </span>massa_storage::Storage;
 <span class="kw">use </span>massa_time::MassaTime;
-<span class="kw">use </span>massa_versioning_worker::versioning::{ComponentStateTypeId, MipStatsConfig, MipStore};
+<span class="kw">use </span>massa_versioning::versioning::{
+    ComponentStateTypeId, MipComponent, MipInfo, MipState, MipStatsConfig, MipStore,
+};
 <span class="kw">use </span>massa_wallet::Wallet;
 <span class="kw">use </span>parking_lot::RwLock;
 <span class="kw">use </span>peernet::transports::TransportType;
@@ -1334,6 +1357,7 @@
 <span class="kw">async fn </span>launch(
     args: <span class="kw-2">&amp;</span>Args,
     node_wallet: Arc&lt;RwLock&lt;Wallet&gt;&gt;,
+    sig_int_toggled: Arc&lt;(Mutex&lt;bool&gt;, Condvar)&gt;,
 ) -&gt; (
     Receiver&lt;ConsensusEvent&gt;,
     <span class="prelude-ty">Option</span>&lt;BootstrapManager&gt;,
@@ -1472,19 +1496,6 @@
         },
     ));
 
-    <span class="comment">// interrupt signal listener
-    </span><span class="kw">let </span>interupted = Arc::new((Mutex::new(<span class="bool-val">false</span>), Condvar::new()));
-    <span class="kw">let </span>handler_clone = Arc::clone(<span class="kw-2">&amp;</span>interupted);
-
-    <span class="comment">// currently used by the bootstrap client to preempt/break out of the retry wait
-    </span>ctrlc::set_handler(<span class="kw">move </span>|| {
-        <span class="kw-2">*</span>handler_clone
-            .<span class="number">0
-            </span>.lock()
-            .expect(<span class="string">&quot;double-lock on interupt bool in ctrl-c handler&quot;</span>) = <span class="bool-val">true</span>;
-        handler_clone.<span class="number">1</span>.notify_all();
-    })
-    .expect(<span class="string">&quot;Error setting Ctrl-C handler&quot;</span>);
     <span class="kw">let </span>bootstrap_config: BootstrapConfig = BootstrapConfig {
         bootstrap_list: SETTINGS.bootstrap.bootstrap_list.clone(),
         bootstrap_protocol: SETTINGS.bootstrap.bootstrap_protocol,
@@ -1550,7 +1561,7 @@
         <span class="kw-2">*</span>GENESIS_TIMESTAMP,
         <span class="kw-2">*</span>END_TIMESTAMP,
         args.restart_from_snapshot_at_period,
-        interupted,
+        sig_int_toggled,
     ) {
         <span class="prelude-val">Ok</span>(vals) =&gt; vals,
         <span class="prelude-val">Err</span>(BootstrapError::Interupted(msg)) =&gt; {
@@ -1587,8 +1598,21 @@
         block_count_considered: MIP_STORE_STATS_BLOCK_CONSIDERED,
         counters_max: MIP_STORE_STATS_COUNTERS_MAX,
     };
-    <span class="kw">let </span><span class="kw-2">mut </span>mip_store =
-        MipStore::try_from(([], mip_stats_config)).expect(<span class="string">&quot;Cannot create an empty MIP store&quot;</span>);
+    <span class="kw">let </span><span class="kw-2">mut </span>mip_store = MipStore::try_from((
+        [(
+            MipInfo {
+                name: <span class="string">&quot;MIP-0001&quot;</span>.to_string(),
+                version: <span class="number">1</span>,
+                components: HashMap::from([(MipComponent::Address, <span class="number">1</span>), (MipComponent::KeyPair, <span class="number">1</span>)]),
+                start: MassaTime::from(<span class="number">0</span>),
+                timeout: MassaTime::from(<span class="number">0</span>),
+                activation_delay: MassaTime::from(<span class="number">0</span>),
+            },
+            MipState::new(MassaTime::from(<span class="number">0</span>)),
+        )],
+        mip_stats_config,
+    ))
+    .expect(<span class="string">&quot;mip store creation failed&quot;</span>);
     <span class="kw">if let </span><span class="prelude-val">Some</span>(bootstrap_mip_store) = bootstrap_state.mip_store {
         <span class="comment">// TODO: in some cases, should bootstrap again
         </span><span class="kw">let </span>(updated, added) = mip_store
@@ -1913,6 +1937,7 @@
         pool_controller.clone(),
         shared_storage.clone(),
         protocol_channels,
+        mip_store.clone(),
     )
     .expect(<span class="string">&quot;could not start protocol controller&quot;</span>);
 
@@ -1936,22 +1961,22 @@
         protocol: protocol_controller.clone(),
         storage: shared_storage.clone(),
     };
-    <span class="kw">let </span>factory_manager = start_factory(factory_config, node_wallet.clone(), factory_channels);
+    <span class="kw">let </span>factory_manager = start_factory(
+        factory_config,
+        node_wallet.clone(),
+        factory_channels,
+        mip_store.clone(),
+    );
 
-    <span class="comment">// If we have a boostrap listen address, start the bootstrap server
-    </span><span class="kw">let </span>bootstrap_manager = bootstrap_config.listen_addr.map(|addr| {
-        <span class="comment">// This pattern of creating the waker then providing to the server on creation is a take on dependency injection
-        // With this pattern, we can provide a mock-listener in testing conditions.
-        </span><span class="kw">let </span>(waker, listener) = BootstrapTcpListener::new(<span class="kw-2">&amp;</span>addr).unwrap_or_else(|<span class="kw">_</span>| {
+    <span class="kw">let </span>bootstrap_manager = bootstrap_config.listen_addr.map(|addr| {
+        <span class="kw">let </span>(waker, listener) = BootstrapTcpListener::new(<span class="kw-2">&amp;</span>addr).unwrap_or_else(|<span class="kw">_</span>| {
             <span class="macro">panic!</span>(
                 <span class="string">&quot;{}&quot;</span>,
                 <span class="macro">format!</span>(<span class="string">&quot;Could not bind to address: {}&quot;</span>, addr).as_str()
             )
         });
-
-        start_bootstrap_server(
+        <span class="kw">let </span><span class="kw-2">mut </span>manager = start_bootstrap_server(
             listener,
-            waker,
             consensus_controller.clone(),
             protocol_controller.clone(),
             final_state.clone(),
@@ -1960,7 +1985,9 @@
             <span class="kw-2">*</span>VERSION,
             mip_store.clone(),
         )
-        .expect(<span class="string">&quot;Could not start bootstrap server&quot;</span>)
+        .expect(<span class="string">&quot;Could not start bootstrap server&quot;</span>);
+        manager.set_listener_stopper(waker);
+        manager
     });
 
     <span class="kw">let </span>api_config: APIConfig = APIConfig {
@@ -2089,7 +2116,7 @@
             storage: shared_storage.clone(),
             grpc_config: grpc_config.clone(),
             version: <span class="kw-2">*</span>VERSION,
-            mip_store,
+            mip_store: mip_store.clone(),
         };
 
         <span class="comment">// HACK maybe should remove timeout later
@@ -2142,6 +2169,7 @@
         <span class="kw-2">*</span>VERSION,
         node_id,
         shared_storage.clone(),
+        mip_store.clone(),
     );
     <span class="kw">let </span>api_public_handle = api_public
         .serve(<span class="kw-2">&amp;</span>SETTINGS.api.bind_public, <span class="kw-2">&amp;</span>api_config)
@@ -2375,7 +2403,21 @@
         <span class="kw-2">&amp;</span>SETTINGS.factory.staking_wallet_path,
     )<span class="question-mark">?</span>;
 
-    <span class="kw">loop </span>{
+    <span class="comment">// interrupt signal listener
+    </span><span class="kw">let </span>sig_int_toggled = Arc::new((Mutex::new(<span class="bool-val">false</span>), Condvar::new()));
+    <span class="kw">let </span>sig_int_toggled_clone = Arc::clone(<span class="kw-2">&amp;</span>sig_int_toggled);
+
+    <span class="comment">// currently used by the bootstrap client to break out of the to preempt the retry wait
+    // ctrlc::set_handler(move || {
+    //     *sig_int_toggled_clone
+    //         .0
+    //         .lock()
+    //         .expect(&quot;double-lock on interupt bool in ctrl-c handler&quot;) = true;
+    //     sig_int_toggled_clone.1.notify_all();
+    // })
+    // .expect(&quot;Error setting Ctrl-C handler&quot;);
+
+    </span><span class="kw">loop </span>{
         <span class="kw">let </span>(
             consensus_event_receiver,
             bootstrap_manager,
@@ -2390,7 +2432,7 @@
             api_public_handle,
             api_handle,
             grpc_handle,
-        ) = launch(<span class="kw-2">&amp;</span>cur_args, node_wallet.clone()).<span class="kw">await</span>;
+        ) = launch(<span class="kw-2">&amp;</span>cur_args, node_wallet.clone(), Arc::clone(<span class="kw-2">&amp;</span>sig_int_toggled)).<span class="kw">await</span>;
 
         <span class="comment">// interrupt signal listener
         </span><span class="kw">let </span>(tx, rx) = crossbeam_channel::bounded(<span class="number">1</span>);

@@ -107,12 +107,12 @@
 <span class="kw">use </span><span class="kw">crate</span>::error::ProtocolError;
 <span class="kw">use </span><span class="kw">crate</span>::BootstrapPeers;
 
+<span class="kw">use </span><span class="kw">crate</span>::PeerId;
 <span class="kw">use </span>massa_models::prehash::{PreHashMap, PreHashSet};
 <span class="kw">use </span>massa_models::stats::NetworkStats;
 <span class="kw">use </span>massa_models::{block_header::SecuredHeader, block_id::BlockId};
 <span class="kw">use </span>massa_storage::Storage;
 <span class="kw">use </span>peernet::peer::PeerConnectionType;
-<span class="kw">use </span>peernet::peer_id::PeerId;
 
 <span class="attr">#[cfg_attr(any(test, feature = <span class="string">&quot;testing&quot;</span>), mockall::automock)]
 </span><span class="kw">pub trait </span>ProtocolController: Send + Sync {
