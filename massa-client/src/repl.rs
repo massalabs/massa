@@ -77,7 +77,7 @@ struct MyHelper {
 }
 
 pub(crate) async fn run(
-    client: &Client,
+    client: &mut Client,
     wallet_path: &Path,
     args_password: Option<String>,
 ) -> Result<()> {

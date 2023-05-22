@@ -94,6 +94,7 @@
 mod config;
 mod error;
 mod final_state;
+mod mapping_grpc;
 mod state_changes;
 
 pub use config::FinalStateConfig;

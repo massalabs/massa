@@ -502,6 +502,21 @@ impl MipStore {
         let lock_other = mip_store.0.read();
         lock.update_with(lock_other.deref())
     }
+
+    /// Retrieve a list of MIP info with their corresponding state (as id) - used for grpc API
+    pub fn get_mip_status(&self) -> BTreeMap<MipInfo, ComponentStateTypeId> {
+        let guard = self.0.read();
+        guard
+            .store
+            .iter()
+            .map(|(mip_info, mip_state)| {
+                (
+                    mip_info.clone(),
+                    ComponentStateTypeId::from(&mip_state.state),
+                )
+            })
+            .collect()
+    }
 }
 
 impl<const N: usize> TryFrom<([(MipInfo, MipState); N], MipStatsConfig)> for MipStore {

@@ -8,9 +8,11 @@ edition = "2021"
 displaydoc = "0.2"
 serde = { version = "1.0", features = ["derive"] }
 nom = "7.1"
+bs58 = { version = "0.4", features = ["check"] }
 thiserror = "1.0"
 tracing = "0.1"
 parking_lot = { version = "0.12", features = ["deadlock_detection"] }
+rocksdb = { version = "0.20" }
 
 # custom modules
 massa_ledger_exports = { path = "../massa-ledger-exports" }
@@ -22,7 +24,7 @@ massa_serialization = { path = "../massa-serialization" }
 massa_pos_exports = { path = "../massa-pos-exports" }
 massa_hash = { path = "../massa-hash" }
 massa_db = { path = "../massa-db" }
-rocksdb = { version = "0.20" }
+massa_proto = { path = "../massa-proto" }
 
 [dev-dependencies]
 massa_async_pool = { path = "../massa-async-pool", features = ["testing"] }

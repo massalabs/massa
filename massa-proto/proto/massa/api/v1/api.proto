@@ -12,6 +12,7 @@ import "google/api/annotations.proto";
 import "google/rpc/status.proto";
 import "operation.proto";
 import "slot.proto";
+import "versioning.proto";
 
 option csharp_namespace = "Com.Massa.Api.V1";
 option go_package = "github.com/massalabs/massa/api/v1;v1";
@@ -94,6 +95,11 @@ service MassaService {
   // Get node version
   rpc GetVersion(GetVersionRequest) returns (GetVersionResponse) {
     option (google.api.http) = {get: "/v1/version"};
+  }
+
+  // Get
+  rpc GetMipStatus(GetMipStatusRequest) returns (GetMipStatusResponse) {
+    option (google.api.http) = {get: "/v1/mip_status"};
   }
 
   // ███████╗████████╗██████╗ ███████╗ █████╗ ███╗   ███╗
@@ -414,6 +420,19 @@ message SelectorDraws {
   repeated IndexedSlot next_endorsement_draws = 3;
 }
 
+message GetMipStatusRequest {
+  // Request id
+  string id = 1;
+}
+
+// GetMipStatusResponse holds response from GetMipStatus
+message GetMipStatusResponse {
+  // Request id
+  string id = 1;
+  // MipInfo - status id entry
+  repeated MipStatusEntry entry = 2;
+}
+
 // GetTransactionsThroughputRequest holds request for GetTransactionsThroughput
 message GetTransactionsThroughputRequest {
   // Request id
@@ -520,7 +539,7 @@ message NewOperationsFilter {
 
 // Operation type enum
 enum OpType {
-  OP_TYPE_UNSPECIFIED = 0; // Defaut enum value
+  OP_TYPE_UNSPECIFIED = 0; // Default enum value
   OP_TYPE_TRANSACTION = 1; // Transaction
   OP_TYPE_ROLL_BUY = 2; // Roll buy
   OP_TYPE_ROLL_SELL = 3; // Roll sell
