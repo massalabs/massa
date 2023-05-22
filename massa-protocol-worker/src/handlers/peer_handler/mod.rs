@@ -461,10 +461,8 @@ impl InitConnectionHandler<PeerId, Context, MessagesHandler> for MassaHandshake 
                     peer_id
                         .verify_signature(&self_random_hash, &other_signature)
                         .map_err(|err| {
-                            PeerNetError::HandshakeError.error(
-                                "Massa Handshake",
-                                Some(format!("Signature error {}", err.to_string())),
-                            )
+                            PeerNetError::HandshakeError
+                                .error("Massa Handshake", Some(format!("Signature error {}", err)))
                         })?;
                     Ok((peer_id.clone(), Some(announcement)))
                 }
