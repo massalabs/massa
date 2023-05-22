@@ -115,8 +115,9 @@ impl DenunciationPool {
                 match selected {
                     Ok(selection) => {
                         if let Some(address) = selection.endorsements.get(de_p.index as usize) {
-                            if *address != Address::from_public_key(&de_p.public_key) {
-                                debug!("Denunciation pool received a secure share endorsement but address was not selected");
+                            let a = Address::from_public_key(&de_p.public_key);
+                            if *address != a {
+                                debug!("Denunciation pool received a secure share endorsement but address was not selected: received {} but expected {} ({})", address, a, de_p.public_key);
                                 return;
                             }
                         } else {
