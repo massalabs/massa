@@ -8,7 +8,7 @@ edition = "2021"
 
 [dependencies]
 num = { version = "0.4", features = ["serde"] }
-tracing = "0.1"
+tracing = { version = "0.1", features = ["log"] }
 parking_lot = { version = "0.12", features = ["deadlock_detection"] }
 #custom modules
 massa_consensus_exports = { path = "../massa-consensus-exports" }
@@ -19,6 +19,9 @@ massa_time = { path = "../massa-time" }
 massa_hash = { path = "../massa-hash" }
 massa_logging = { path = "../massa-logging" }
 
-[features]
+[dev-dependencies]
+rand= "0.8"
+itertools = "0.10"
 
+[features]
 sandbox = []
