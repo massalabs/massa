@@ -221,6 +221,7 @@ impl AsyncPool {
         async_pool
     }
 
+    /// Recomputes the local message_info_cache after bootstrap or loading the state from disk
     pub fn recompute_message_info_cache(&mut self) {
         self.message_info_cache.clear();
 

@@ -69,6 +69,7 @@ impl ExecutedDenunciations {
         executed_denunciations
     }
 
+    /// Recomputes the local caches after bootstrap or loading the state from disk
     pub fn recompute_sorted_denunciations(&mut self) {
         self.sorted_denunciations.clear();
 
@@ -103,7 +104,7 @@ impl ExecutedDenunciations {
         }
     }
 
-    /// Reset the executed operations
+    /// Reset the executed denunciations
     ///
     /// USED FOR BOOTSTRAP ONLY
     pub fn reset(&mut self) {
@@ -114,16 +115,6 @@ impl ExecutedDenunciations {
 
         self.recompute_sorted_denunciations();
     }
-
-    /*/// Returns the number of executed operations
-    pub fn len(&self) -> usize {
-        self.denunciations.len()
-    }
-
-    /// Check executed ops emptiness
-    pub fn is_empty(&self) -> bool {
-        self.denunciations.is_empty()
-    }*/
 
     /// Check if a denunciation (e.g. a denunciation index) was executed
     pub fn contains(&self, de_idx: &DenunciationIndex) -> bool {
@@ -204,6 +195,7 @@ impl ExecutedDenunciations {
     /// Remove a denunciation_index from the DB
     ///
     /// # Arguments
+    /// * `de_idx`: the denunciation index to remove
     /// * batch: the given operation batch to update
     fn delete_entry(&self, de_idx: &DenunciationIndex, batch: &mut DBBatch) {
         let db = self.db.read();

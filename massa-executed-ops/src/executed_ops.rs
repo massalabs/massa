@@ -80,6 +80,7 @@ impl ExecutedOps {
         executed_ops
     }
 
+    /// Recomputes the local caches after bootstrap or loading the state from disk
     pub fn recompute_sorted_ops_and_op_exec_status(&mut self) {
         self.sorted_ops.clear();
         self.op_exec_status.clear();
@@ -189,11 +190,11 @@ impl ExecutedOps {
         self.sorted_ops = kept;
     }
 
-    /// Add a denunciation_index to the DB
+    /// Add an executed_op to the DB
     ///
     /// # Arguments
-    /// * `message_id`
-    /// * `message`
+    /// * `op_id`
+    /// * `value`: execution status and validity slot
     /// * `batch`: the given operation batch to update
     fn put_entry(&self, op_id: &OperationId, value: &(bool, Slot), batch: &mut DBBatch) {
         let db = self.db.read();
@@ -316,22 +317,13 @@ fn test_executed_ops_hash_computing() {
         thread: 0,
     };
 
-    println!("START DB_A");
-    println!("");
-    println!("apply_changes_to_batch change_a");
     let mut batch_a = DBBatch::new();
     a.apply_changes_to_batch(change_a, apply_slot, &mut batch_a);
     db_a.write().write_batch(batch_a, None);
 
-    println!("");
-    println!("apply_changes_to_batch change_b");
     let mut batch_b = DBBatch::new();
     a.apply_changes_to_batch(change_b, apply_slot, &mut batch_b);
     db_a.write().write_batch(batch_b, None);
-
-    println!("START DB_C");
-    println!("");
-    println!("apply_changes_to_batch change_c");
 
     let mut batch_c = DBBatch::new();
     c.apply_changes_to_batch(change_c, apply_slot, &mut batch_c);
