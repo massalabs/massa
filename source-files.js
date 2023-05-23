@@ -26,14 +26,14 @@ var sourcesIndex = JSON.parse('{\
 "massa_pos_exports":["",[],["config.rs","controller_traits.rs","cycle_info.rs","deferred_credits.rs","error.rs","lib.rs","pos_changes.rs","pos_final_state.rs","settings.rs"]],\
 "massa_pos_worker":["",[],["controller.rs","draw.rs","lib.rs","worker.rs"]],\
 "massa_proto":["",[],["google.api.rs","google.rpc.rs","lib.rs","massa.api.v1.rs"]],\
-"massa_protocol_exports":["",[],["bootstrap_peers.rs","controller_trait.rs","error.rs","lib.rs","settings.rs"]],\
-"massa_protocol_worker":["",[["handlers",[["block_handler",[],["cache.rs","commands_propagation.rs","commands_retrieval.rs","messages.rs","mod.rs","propagation.rs","retrieval.rs"]],["endorsement_handler",[],["cache.rs","commands_propagation.rs","commands_retrieval.rs","messages.rs","mod.rs","propagation.rs","retrieval.rs"]],["operation_handler",[],["cache.rs","commands_propagation.rs","commands_retrieval.rs","messages.rs","mod.rs","propagation.rs","retrieval.rs"]],["peer_handler",[],["announcement.rs","messages.rs","mod.rs","models.rs","tester.rs"]]],["mod.rs"]]],["connectivity.rs","controller.rs","lib.rs","manager.rs","messages.rs","sig_verifier.rs","worker.rs","wrap_network.rs"]],\
+"massa_protocol_exports":["",[],["bootstrap_peers.rs","controller_trait.rs","error.rs","lib.rs","peer_id.rs","settings.rs"]],\
+"massa_protocol_worker":["",[["handlers",[["block_handler",[],["cache.rs","commands_propagation.rs","commands_retrieval.rs","messages.rs","mod.rs","propagation.rs","retrieval.rs"]],["endorsement_handler",[],["cache.rs","commands_propagation.rs","commands_retrieval.rs","messages.rs","mod.rs","propagation.rs","retrieval.rs"]],["operation_handler",[],["cache.rs","commands_propagation.rs","commands_retrieval.rs","messages.rs","mod.rs","propagation.rs","retrieval.rs"]],["peer_handler",[],["announcement.rs","messages.rs","mod.rs","models.rs","tester.rs"]]],["mod.rs"]]],["connectivity.rs","context.rs","controller.rs","lib.rs","manager.rs","messages.rs","sig_verifier.rs","worker.rs","wrap_network.rs"]],\
 "massa_sdk":["",[],["config.rs","lib.rs"]],\
 "massa_serialization":["",[],["lib.rs"]],\
 "massa_signature":["",[],["error.rs","lib.rs","signature_impl.rs"]],\
 "massa_storage":["",[],["block_indexes.rs","endorsement_indexes.rs","lib.rs","operation_indexes.rs"]],\
 "massa_time":["",[],["error.rs","lib.rs"]],\
-"massa_versioning_worker":["",[],["grpc_mapping.rs","lib.rs","versioning.rs","versioning_factory.rs","versioning_ser_der.rs"]],\
+"massa_versioning":["",[],["address_factory.rs","grpc_mapping.rs","keypair_factory.rs","lib.rs","versioning.rs","versioning_factory.rs","versioning_ser_der.rs"]],\
 "massa_wallet":["",[],["error.rs","lib.rs"]]\
 }');
 createSourceSidebar();

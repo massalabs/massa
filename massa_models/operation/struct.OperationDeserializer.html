@@ -20,7 +20,7 @@
 <span class="kw">use </span>massa_serialization::{Serializer, Deserializer, DeserializeError};
 <span class="kw">use </span>std::str::FromStr;
 
-<span class="kw">let </span>keypair = KeyPair::generate();
+<span class="kw">let </span>keypair = KeyPair::generate(<span class="number">0</span>).unwrap();
 <span class="kw">let </span>op = OperationType::Transaction {
    recipient_address: Address::from_public_key(<span class="kw-2">&amp;</span>keypair.get_public_key()),
    amount: Amount::from_str(<span class="string">&quot;300&quot;</span>).unwrap(),
