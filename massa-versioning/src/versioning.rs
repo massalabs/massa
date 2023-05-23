@@ -8,7 +8,7 @@ use machine::{machine, transitions};
 use num_enum::{FromPrimitive, IntoPrimitive, TryFromPrimitive};
 use parking_lot::RwLock;
 use thiserror::Error;
-use tracing::warn;
+use tracing::{debug, warn};
 
 use massa_models::error::ModelsError;
 use massa_models::slot::Slot;
@@ -204,6 +204,7 @@ impl Started {
         }
 
         if input.threshold >= VERSIONING_THRESHOLD_TRANSITION_ACCEPTED {
+            debug!("(VERSIONING LOG) transition accepted, locking in");
             ComponentState::locked_in(input.now)
         } else {
             ComponentState::started(input.threshold)
@@ -735,6 +736,7 @@ impl MipStoreRaw {
         slot_timestamp: MassaTime,
         network_versions: Option<(u32, u32)>,
     ) {
+        debug!("(VERSIONING LOG) new input versions are (c, a) = {:?}", network_versions);
         if let Some((_current_network_version, announced_network_version)) = network_versions {
             let removed_version_ = match self.stats.latest_announcements.len() {
                 n if n > self.stats.config.block_count_considered => {
@@ -789,6 +791,8 @@ impl MipStoreRaw {
             let vote_ratio_ = 100.0 * network_version_count / block_count_considered;
 
             let vote_ratio = Amount::from_mantissa_scale(vote_ratio_.round() as u64, 0);
+
+            debug!("(VERSIONING LOG) vote_ration = {} (from version counter = {} and blocks considered = {})", vote_ratio, network_version_count, block_count_considered);
 
             let advance_msg = Advance {
                 start_timestamp: mi.start,
