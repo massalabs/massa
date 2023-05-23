@@ -23,6 +23,7 @@ use massa_storage::Storage;
 use massa_time::MassaTime;
 use tracing::debug;
 
+mod clique_computation;
 mod graph;
 mod process;
 mod process_commands;
