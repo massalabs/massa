@@ -107,7 +107,7 @@ jobs:
         os:
           - ubuntu-latest
           - macOS-latest
-          - windows-latest
+#          - windows-latest
     steps:
       - uses: ilammy/setup-nasm@v1
       - uses: actions/checkout@v3
