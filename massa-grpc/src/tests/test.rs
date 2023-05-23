@@ -18,7 +18,7 @@ use massa_pool_exports::PoolChannels;
 use massa_pos_exports::test_exports::MockSelectorController;
 use massa_proto::massa::api::v1::massa_service_client::MassaServiceClient;
 use massa_protocol_exports::MockProtocolController;
-use massa_versioning_worker::versioning::{MipStatsConfig, MipStore};
+use massa_versioning::versioning::{MipStatsConfig, MipStore};
 use std::{
     net::{IpAddr, Ipv4Addr, SocketAddr},
     path::PathBuf,

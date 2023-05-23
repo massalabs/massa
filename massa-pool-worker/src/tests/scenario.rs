@@ -51,7 +51,7 @@ use super::tools::PoolTestBoilerPlate;
 #[test]
 fn test_simple_get_operations() {
     // Setup the execution story.
-    let keypair = KeyPair::generate();
+    let keypair = KeyPair::generate(0).unwrap();
     let addr = Address::from_public_key(&keypair.get_public_key()).clone();
 
     // setup operations
@@ -151,7 +151,6 @@ fn test_get_operations_overflow() {
     // setup metadata
     static OP_LEN: usize = 10;
     static MAX_OP_LEN: usize = 5;
-    let mut max_block_size = 0;
     let keypair = KeyPair::generate(0).unwrap();
     let creator_address = Address::from_public_key(&keypair.get_public_key());
     let op_gen = OpGenerator::default().expirery(1).creator(keypair);
