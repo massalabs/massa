@@ -2465,7 +2465,6 @@ name = "massa_bootstrap"
 version = "0.1.0"
 dependencies = [
  "bitvec",
- "crossbeam",
  "displaydoc",
  "humantime",
  "lazy_static",

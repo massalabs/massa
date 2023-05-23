@@ -314,7 +314,7 @@ async fn launch(
         *GENESIS_TIMESTAMP,
         *END_TIMESTAMP,
         args.restart_from_snapshot_at_period,
-        interupted,
+        interupted.clone(),
     ) {
         Ok(vals) => vals,
         Err(BootstrapError::Interupted(msg)) => {
@@ -723,6 +723,7 @@ async fn launch(
             keypair.clone(),
             *VERSION,
             mip_store.clone(),
+            interupted,
         )
         .expect("Could not start bootstrap server")
     });

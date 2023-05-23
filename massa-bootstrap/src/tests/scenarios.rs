@@ -180,6 +180,7 @@ fn mock_bootstrap_manager(addr: SocketAddr, bootstrap_config: BootstrapConfig) -
         .times(1)
         .returning(move || _listener.poll());
     listener.expect_poll().return_once(|| Ok(PollEvent::Stop));
+    let sig_int = Arc::new((Mutex::new(false), Condvar::new()));
     start_bootstrap_server(
         listener,
         waker,
@@ -190,6 +191,7 @@ fn mock_bootstrap_manager(addr: SocketAddr, bootstrap_config: BootstrapConfig) -
         keypair.clone(),
         Version::from_str("TEST.1.10").unwrap(),
         mip_store,
+        sig_int,
     )
     .unwrap()
 }
@@ -385,6 +387,8 @@ fn test_bootstrap_server() {
     bootstrap_config_clone.bootstrap_whitelist_path =
         Path::new("./test_fixtures/local.json").to_path_buf();
 
+    let sig_int = Arc::new((Mutex::new(false), Condvar::new()));
+    let bs_sig_int = sig_int.clone();
     // Start the bootstrap server thread
     let bootstrap_manager_thread = std::thread::Builder::new()
         .name("bootstrap_thread".to_string())
@@ -400,6 +404,7 @@ fn test_bootstrap_server() {
                 keypair.clone(),
                 Version::from_str("TEST.1.10").unwrap(),
                 cloned_store,
+                bs_sig_int,
             )
             .unwrap()
         })

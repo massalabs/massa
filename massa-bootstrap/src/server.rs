@@ -25,7 +25,6 @@
 //!    This thread creates a new tokio runtime, and runs it with `block_on`
 mod white_black_list;
 
-use crossbeam::channel::tick;
 use humantime::format_duration;
 use massa_async_pool::AsyncMessageId;
 use massa_consensus_exports::{bootstrapable_graph::BootstrapableGraph, ConsensusController};
@@ -46,7 +45,7 @@ use parking_lot::RwLock;
 use std::{
     collections::HashMap,
     net::{IpAddr, SocketAddr},
-    sync::Arc,
+    sync::{Arc, Condvar, Mutex},
     thread,
     time::{Duration, Instant},
 };
@@ -73,20 +72,20 @@ pub struct BootstrapManager {
     #[allow(clippy::type_complexity)]
     main_handle: thread::JoinHandle<Result<(), BootstrapError>>,
     listener_stopper: BootstrapListenerStopHandle,
-    update_stopper_tx: crossbeam::channel::Sender<()>,
+    sig_int: Arc<(Mutex<bool>, Condvar)>,
 }
 
 impl BootstrapManager {
     pub(crate) fn new(
         update_handle: thread::JoinHandle<Result<(), BootstrapError>>,
         main_handle: thread::JoinHandle<Result<(), BootstrapError>>,
-        update_stopper_tx: crossbeam::channel::Sender<()>,
+        sig_int: Arc<(Mutex<bool>, Condvar)>,
         listener_stopper: BootstrapListenerStopHandle,
     ) -> Self {
         Self {
             update_handle,
             main_handle,
-            update_stopper_tx,
+            sig_int,
             listener_stopper,
         }
     }
@@ -97,9 +96,11 @@ impl BootstrapManager {
         if self.listener_stopper.stop().is_err() {
             warn!("bootstrap server already dropped");
         }
-        if self.update_stopper_tx.send(()).is_err() {
-            warn!("bootstrap ip-list-updater already dropped");
+        // dedicated scope to make doubly sure that the lock is released
+        {
+            *self.sig_int.0.lock().expect("double in-thread lock") = true;
         }
+        self.sig_int.1.notify_all();
         self.update_handle
             .join()
             .expect("in BootstrapManager::stop() joining on updater thread")?;
@@ -122,11 +123,9 @@ pub fn start_bootstrap_server(
     keypair: KeyPair,
     version: Version,
     mip_store: MipStore,
+    sig_int: Arc<(Mutex<bool>, Condvar)>,
 ) -> Result<BootstrapManager, BootstrapError> {
     massa_trace!("bootstrap.lib.start_bootstrap_server", {});
-
-    // TODO(low prio): See if a zero capacity channel model can work
-    let (update_stopper_tx, update_stopper_rx) = crossbeam::channel::bounded::<()>(1);
 
     let Ok(max_bootstraps) = config.max_simultaneous_bootstraps.try_into() else {
         return Err(BootstrapError::GeneralError("Fail to convert u32 to usize".to_string()));
@@ -138,13 +137,14 @@ pub fn start_bootstrap_server(
     )?;
 
     let updater_lists = white_black_list.clone();
+    let updater_sigint_handle = sig_int.clone();
     let update_handle = thread::Builder::new()
         .name("wb_list_updater".to_string())
         .spawn(move || {
             let res = BootstrapServer::run_updater(
                 updater_lists,
                 config.cache_duration.into(),
-                update_stopper_rx,
+                updater_sigint_handle,
             );
             match res {
                 Ok(_) => info!("ip white/blacklist updater exited cleanly"),
@@ -175,7 +175,7 @@ pub fn start_bootstrap_server(
     Ok(BootstrapManager::new(
         update_handle,
         main_handle,
-        update_stopper_tx,
+        sig_int,
         waker,
     ))
 }
@@ -197,20 +197,18 @@ impl BootstrapServer<'_> {
     fn run_updater(
         mut list: SharedWhiteBlackList<'_>,
         interval: Duration,
-        stopper: crossbeam::channel::Receiver<()>,
+        sigint: Arc<(Mutex<bool>, Condvar)>,
     ) -> Result<(), BootstrapError> {
-        let ticker = tick(interval);
-
         loop {
-            crossbeam::select! {
-                recv(stopper) -> res => {
-                    match res {
-                        Ok(()) => return Ok(()),
-                        Err(e) => return Err(BootstrapError::GeneralError(format!("update stopper error : {}", e))),
-                    }
-                },
-                recv(ticker) -> _ => {list.update()?;},
+            let sigint_triggered_guard = sigint.0.lock().expect("double in-thread lock");
+            let sigint_triggered_guard = sigint
+                .1
+                .wait_timeout(sigint_triggered_guard, interval)
+                .expect("poisoned lock");
+            if *sigint_triggered_guard.0 {
+                return Ok(());
             }
+            list.update()?;
         }
     }
 
