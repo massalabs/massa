@@ -71,8 +71,8 @@ mod tests {
     #[test]
     fn test_compute_max_cliques() {
         // Define the maximum size of the graph and the number of iterations
-        const MAX_SIZE: usize = 20;
-        const ITERATIONS: usize = 10;
+        const MAX_SIZE: usize = 10;
+        const ITERATIONS: usize = 1000;
 
         // Generate random test cases and run the algorithm
         let mut rng = rand::thread_rng();
