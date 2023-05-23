@@ -107,12 +107,11 @@
 <span class="kw">use </span>tracing::info;
 
 <span class="kw">use </span><span class="kw">crate</span>::error::BootstrapError;
-<span class="kw">use </span><span class="kw">crate</span>::server::BSEventPoller;
 
 <span class="kw">const </span>NEW_CONNECTION: Token = Token(<span class="number">0</span>);
 <span class="kw">const </span>STOP_LISTENER: Token = Token(<span class="number">10</span>);
 
-<span class="doccomment">/// TODO: this should be crate-private. currently needed for models testing
+<span class="doccomment">/// Inject into `start_bootstrap_server` to provide the listen-dependency
 </span><span class="kw">pub struct </span>BootstrapTcpListener {
     poll: Poll,
     events: Events,
@@ -128,11 +127,14 @@
     NewConnection((TcpStream, SocketAddr)),
     Stop,
 }
-<span class="kw">impl </span>BootstrapTcpListener {
+<span class="attr">#[cfg_attr(test, mockall::automock)]
+</span><span class="kw">impl </span>BootstrapTcpListener {
     <span class="doccomment">/// Setup a mio-listener that functions as a `select!` on a connection, or a waker
     ///
     /// * `addr` - the address to listen on
-    </span><span class="kw">pub fn </span>new(addr: <span class="kw-2">&amp;</span>SocketAddr) -&gt; <span class="prelude-ty">Result</span>&lt;(BootstrapListenerStopHandle, <span class="self">Self</span>), BootstrapError&gt; {
+    </span><span class="kw">pub fn </span>create(
+        addr: <span class="kw-2">&amp;</span>SocketAddr,
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;(BootstrapListenerStopHandle, <span class="self">Self</span>), BootstrapError&gt; {
         <span class="kw">let </span>domain = <span class="kw">if </span>addr.is_ipv4() {
             socket2::Domain::IPV4
         } <span class="kw">else </span>{
@@ -175,10 +177,8 @@
             },
         ))
     }
-}
 
-<span class="kw">impl </span>BSEventPoller <span class="kw">for </span>BootstrapTcpListener {
-    <span class="kw">fn </span>poll(<span class="kw-2">&amp;mut </span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span>&lt;PollEvent, BootstrapError&gt; {
+    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>poll(<span class="kw-2">&amp;mut </span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span>&lt;PollEvent, BootstrapError&gt; {
         <span class="self">self</span>.poll.poll(<span class="kw-2">&amp;mut </span><span class="self">self</span>.events, <span class="prelude-val">None</span>).unwrap();
 
         <span class="comment">// Confirm that we are not being signalled to shut down

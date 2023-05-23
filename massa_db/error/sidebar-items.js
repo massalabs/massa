@@ -1,1 +1,0 @@
-window.SIDEBAR_ITEMS = {"constant":["_DERIVE_Display_FOR_MassaDBError"],"enum":["MassaDBError"],"trait":["DisplayToDisplayDoc","PathToDisplayDoc"]};
