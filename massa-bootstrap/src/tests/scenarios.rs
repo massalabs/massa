@@ -3,6 +3,7 @@
 use super::tools::{
     get_boot_state, get_peers, get_random_final_state_bootstrap, get_random_ledger_changes,
 };
+use crate::bindings::BootstrapClientBinder;
 use crate::listener::PollEvent;
 use crate::tests::tools::{
     get_random_async_pool_changes, get_random_executed_de_changes, get_random_executed_ops_changes,
@@ -57,6 +58,7 @@ use mockall::Sequence;
 use parking_lot::RwLock;
 use std::collections::HashMap;
 use std::net::{SocketAddr, TcpStream};
+use std::path::Path;
 use std::sync::{Condvar, Mutex};
 use std::{path::PathBuf, str::FromStr, sync::Arc, time::Duration};
 use tempfile::TempDir;
@@ -196,10 +198,19 @@ fn mock_bootstrap_manager(addr: SocketAddr, bootstrap_config: BootstrapConfig) -
 fn test_bootstrap_whitelist() {
     let addr: SocketAddr = "127.0.0.1:8080".parse().unwrap();
     let (config, _keypair): &(BootstrapConfig, KeyPair) = &BOOTSTRAP_CONFIG_KEYPAIR;
+    let mut config = config.clone();
+    config.bootstrap_whitelist_path = Path::new("./test_fixtures/local.json").to_path_buf();
     let bs_manager = mock_bootstrap_manager(addr.clone(), config.clone());
 
-    let conn = TcpStream::connect(addr);
-    conn.unwrap();
+    let mut binding = BootstrapClientBinder::new(
+        TcpStream::connect(&addr).unwrap(),
+        _keypair.get_public_key(),
+        (&config.clone()).into(),
+    );
+    binding
+        .handshake(Version::from_str("TEST.1.10").unwrap())
+        .unwrap();
+
     let _ = bs_manager.stop().unwrap();
     std::thread::sleep(Duration::from_millis(20));
 }
@@ -371,6 +382,10 @@ fn test_bootstrap_server() {
 
     let cloned_store = mip_store.clone();
 
+    let mut bootstrap_config_clone = bootstrap_config.clone();
+    bootstrap_config_clone.bootstrap_whitelist_path =
+        Path::new("./test_fixtures/local.json").to_path_buf();
+
     // Start the bootstrap server thread
     let bootstrap_manager_thread = std::thread::Builder::new()
         .name("bootstrap_thread".to_string())
@@ -382,7 +397,7 @@ fn test_bootstrap_server() {
                 mock_stream,
                 mock_proto_ctrl,
                 final_state_server_clone1,
-                bootstrap_config.clone(),
+                bootstrap_config_clone.clone(),
                 keypair.clone(),
                 Version::from_str("TEST.1.10").unwrap(),
                 cloned_store,
@@ -420,7 +435,7 @@ fn test_bootstrap_server() {
 
     // launch the get_state process
     let bootstrap_res = get_state(
-        bootstrap_config,
+        &bootstrap_config,
         final_state_client_clone,
         mock_remote_connector,
         Version::from_str("TEST.1.10").unwrap(),

@@ -62,7 +62,7 @@ pub enum BootstrapError {
     /// IP {0} is blacklisted
     BlackListed(String),
     /// IP {0} is not in the whitelist
-    WhiteListed(String),
+    NotWhiteListed(String),
     /// The bootstrap process ended prematurely - e.g. too much time elapsed
     Interupted(String),
 }
