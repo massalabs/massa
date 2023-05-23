@@ -172,8 +172,6 @@ pub fn start_bootstrap_server(
             .event_loop(max_bootstraps)
         })
         .expect("in `start_bootstrap_server`, OS failed to spawn main-loop thread");
-    // Give the runtime to the bootstrap manager, otherwise it will be dropped, forcibly aborting the spawned tasks.
-    // TODO: make the tasks sync, so the runtime is redundant
     Ok(BootstrapManager::new(
         update_handle,
         main_handle,
@@ -380,7 +378,6 @@ fn run_bootstrap_session(
 ) {
     debug!("running bootstrap for peer {}", remote_addr);
     let deadline = Instant::now() + config.bootstrap_timeout.to_duration();
-    // TODO: reinstate prevention of bootstrap slot camping. Deadline cancellation is one option
     let res = manage_bootstrap(
         &config,
         &mut server,

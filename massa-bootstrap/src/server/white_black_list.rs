@@ -15,7 +15,6 @@ use tracing::log::warn;
 use crate::tools::normalize_ip;
 
 /// A wrapper around the white/black lists that allows efficient sharing between threads
-// TODO: don't clone the path-bufs...
 #[derive(Clone)]
 pub(crate) struct SharedWhiteBlackList<'a> {
     inner: Arc<RwLock<WhiteBlackListInner>>,

@@ -340,7 +340,6 @@ fn test_bootstrap_server() {
         res
     };
 
-    // TODO: work out a way to handle the clone shenanigans in a cleaner manner
     let sent_graph = get_boot_state();
     let mock_stream = {
         let mut mock_story = Box::new(MockConsensusControllerImpl::new());
