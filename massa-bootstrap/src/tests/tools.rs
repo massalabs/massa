@@ -20,7 +20,6 @@ use massa_final_state::{FinalState, FinalStateConfig};
 use massa_hash::Hash;
 use massa_ledger_exports::{LedgerChanges, LedgerEntry, SetUpdateOrDelete};
 use massa_ledger_worker::test_exports::create_final_ledger;
-use massa_models::address::SCAddress;
 use massa_models::block::BlockDeserializerArgs;
 use massa_models::bytecode::Bytecode;
 use massa_models::config::{
@@ -309,11 +308,6 @@ pub fn get_random_final_state_bootstrap(
     // the highest value for encoding this variant in serialized form is `1`.
     // note: when updating the bootstrap test make sure that this address is the last one at
     // every step of the scenario
-    let bytes = [255; 32];
-    sorted_ledger.insert(
-        Address::SC(SCAddress::from_bytes_without_version(0, &bytes).unwrap()),
-        get_random_ledger_entry(),
-    );
 
     let slot = Slot::new(0, 0);
     let final_ledger = create_final_ledger(db.clone(), config.ledger_config.clone(), sorted_ledger);

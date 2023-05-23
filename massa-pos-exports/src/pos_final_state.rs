@@ -74,7 +74,7 @@ macro_rules! roll_count_key {
         [
             &$cycle_prefix[..],
             &[ROLL_COUNT_IDENT],
-            &$addr.prefixed_bytes()[..],
+            &$addr.to_prefixed_bytes()[..],
         ]
         .concat()
     };
@@ -95,7 +95,7 @@ macro_rules! prod_stats_fail_key {
         [
             &$cycle_prefix[..],
             &[PROD_STATS_IDENT],
-            &$addr.prefixed_bytes()[..],
+            &$addr.to_prefixed_bytes()[..],
             &[PROD_STATS_FAIL_IDENT],
         ]
         .concat()
@@ -109,7 +109,7 @@ macro_rules! prod_stats_success_key {
         [
             &$cycle_prefix[..],
             &[PROD_STATS_IDENT],
-            &$addr.prefixed_bytes()[..],
+            &$addr.to_prefixed_bytes()[..],
             &[PROD_STATS_SUCCESS_IDENT],
         ]
         .concat()
@@ -1308,7 +1308,7 @@ impl PoSFinalState {
                 }
             }
             ROLL_COUNT_IDENT => {
-                let Ok((rest, _addr)) = self
+                let Ok((rest, _addr)): std::result::Result<(&[u8], Address), nom::Err<massa_serialization::DeserializeError<'_>>> = self
                     .cycle_info_deserializer
                     .cycle_info_deserializer
                     .rolls_deser
@@ -1332,7 +1332,7 @@ impl PoSFinalState {
                 }
             }
             PROD_STATS_IDENT => {
-                let Ok((rest, _addr)) = self
+                let Ok((rest, _addr)): std::result::Result<(&[u8], Address), nom::Err<massa_serialization::DeserializeError<'_>>> = self
                     .cycle_info_deserializer
                     .cycle_info_deserializer
                     .rolls_deser
@@ -1397,7 +1397,7 @@ impl PoSFinalState {
         let Ok((rest, _slot)) = self.deferred_credits_deserializer.slot_deserializer.deserialize::<DeserializeError>(&serialized_key[DEFERRED_CREDITS_PREFIX.len()..]) else {
             return false;
         };
-        let Ok((rest, _addr)) = self.deferred_credits_deserializer.credit_deserializer.address_deserializer.deserialize::<DeserializeError>(rest) else {
+        let Ok((rest, _addr)): std::result::Result<(&[u8], Address), nom::Err<massa_serialization::DeserializeError<'_>>> = self.deferred_credits_deserializer.credit_deserializer.address_deserializer.deserialize::<DeserializeError>(rest) else {
             return false;
         };
         if !rest.is_empty() {
@@ -1470,6 +1470,7 @@ fn test_pos_final_state_hash_computation() {
         MAX_DEFERRED_CREDITS_LENGTH, MAX_PRODUCTION_STATS_LENGTH, MAX_ROLLS_COUNT_LENGTH,
         POS_SAVED_CYCLES,
     };
+    use massa_signature::KeyPair;
     use tempfile::TempDir;
 
     let pos_config = PoSConfig {
@@ -1525,7 +1526,7 @@ fn test_pos_final_state_hash_computation() {
     pos_state.create_initial_cycle(&mut batch);
     db.write().write_batch(batch, Some(Slot::new(0, 0)));
 
-    let addr = Address::from_prefixed_bytes(&[0; 33].as_slice()).unwrap();
+    let addr = Address::from_public_key(&KeyPair::generate(0).unwrap().get_public_key());
 
     // add changes
     let mut roll_changes = PreHashMap::default();

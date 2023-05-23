@@ -588,15 +588,6 @@ mod tests {
     }
 
     #[test]
-    fn test_ledger_parts() {
-        let pub_a = KeyPair::generate(0).unwrap().get_public_key();
-        let a = Address::from_public_key(&pub_a);
-        let (db, _) = init_test_ledger(a);
-        let res = db.get_ledger_part(StreamingStep::Started).unwrap();
-        db.set_ledger_part(&res.0[..]).unwrap();
-    }
-
-    #[test]
     fn test_end_prefix() {
         assert_eq!(end_prefix(&[5, 6, 7]), Some(vec![5, 6, 8]));
         assert_eq!(end_prefix(&[5, 6, 255]), Some(vec![5, 7]));

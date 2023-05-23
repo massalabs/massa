@@ -552,7 +552,7 @@ impl Deserializer<AsyncMessage> for AsyncMessageDeserializer {
     ///     Slot::new(1, 0),
     ///     0,
     ///     Address::from_str("AU12dG5xP1RDEB5ocdHkymNVvvSJmUL9BgHwCksDowqmGWxfpm93x").unwrap(),
-    ///     Address::from_str("AU12htxRWiEm8jDJpJptr6cwEhWNcCSFWstN1MLSa96DDkVM9Y42G").unwrap(),
+    ///     Address::from_str("AS12htxRWiEm8jDJpJptr6cwEhWNcCSFWstN1MLSa96DDkVM9Y42G").unwrap(),
     ///     String::from("test"),
     ///     10000000,
     ///     Amount::from_str("1").unwrap(),

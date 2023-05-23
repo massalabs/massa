@@ -14,6 +14,7 @@ use massa_db::{
     MESSAGE_SER_ERROR, STATE_CF,
 };
 use massa_ledger_exports::{Applicable, SetOrKeep, SetUpdateOrDelete};
+use massa_models::address::Address;
 use massa_serialization::{
     DeserializeError, Deserializer, SerializeError, Serializer, U64VarIntDeserializer,
     U64VarIntSerializer,
@@ -383,7 +384,7 @@ impl AsyncPool {
                 }
             }
             SENDER_IDENT => {
-                let Ok((rest, _value)) = self.message_deserializer_db.address_deserializer.deserialize::<DeserializeError>(serialized_value) else {
+                let Ok((rest, _value)): std::result::Result<(&[u8], Address), nom::Err<massa_serialization::DeserializeError<'_>>> = self.message_deserializer_db.address_deserializer.deserialize::<DeserializeError>(serialized_value) else {
                     return false;
                 };
                 if !rest.is_empty() {
@@ -391,7 +392,7 @@ impl AsyncPool {
                 }
             }
             DESTINATION_IDENT => {
-                let Ok((rest, _value)) = self.message_deserializer_db.address_deserializer.deserialize::<DeserializeError>(serialized_value) else {
+                let Ok((rest, _value)): std::result::Result<(&[u8], Address), nom::Err<massa_serialization::DeserializeError<'_>>> = self.message_deserializer_db.address_deserializer.deserialize::<DeserializeError>(serialized_value) else {
                     return false;
                 };
                 if !rest.is_empty() {

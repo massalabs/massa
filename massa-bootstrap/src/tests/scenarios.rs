@@ -54,6 +54,7 @@ use parking_lot::RwLock;
 use std::collections::HashMap;
 use std::net::{SocketAddr, TcpStream};
 use std::sync::{Condvar, Mutex};
+use std::vec;
 use std::{path::PathBuf, str::FromStr, sync::Arc, time::Duration};
 use tempfile::TempDir;
 
@@ -199,7 +200,6 @@ fn test_bootstrap_whitelist() {
 
 // TEST TODO
 #[test]
-#[ignore]
 fn test_bootstrap_server() {
     let thread_count = 2;
     let periods_per_cycle = 2;
@@ -531,7 +531,7 @@ fn test_bootstrap_server() {
         Arc::new((Mutex::new(false), Condvar::new())),
     )
     .unwrap();
-  
+
     // Make sure the modifier thread has done its job
     mod_thread.join().unwrap();
 

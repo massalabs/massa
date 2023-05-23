@@ -14,14 +14,17 @@ mod tests {
         ReadOnlyExecutionRequest, ReadOnlyExecutionTarget,
     };
     use massa_hash::Hash;
-    use massa_models::address::UserAddress;
     use massa_models::config::{
         LEDGER_ENTRY_BASE_SIZE, LEDGER_ENTRY_DATASTORE_BASE_SIZE, MIP_STORE_STATS_BLOCK_CONSIDERED,
         MIP_STORE_STATS_COUNTERS_MAX,
     };
     use massa_models::prehash::PreHashMap;
     use massa_models::test_exports::gen_endorsements_for_denunciation;
-    use massa_models::{address::Address, amount::Amount, slot::Slot};
+    use massa_models::{
+        address::{Address, UserAddress, UserAddressV0},
+        amount::Amount,
+        slot::Slot,
+    };
     use massa_models::{
         block_id::BlockId,
         datastore::Datastore,
@@ -572,6 +575,7 @@ mod tests {
         init_execution_worker(&exec_cfg, &storage, controller.clone());
         // keypair associated to thread 0
         let keypair = KeyPair::from_str(TEST_SK_1).unwrap();
+
         // load bytecodes
         // you can check the source code of the following wasm file in massa-unit-tests-src
         let bytecode = include_bytes!("./wasm/send_message.wasm");
@@ -2940,7 +2944,10 @@ mod tests {
 
         let mut speculative_pool = SpeculativeAsyncPool::new(final_state, active_history);
 
-        let address = Address::User(UserAddress(Hash::compute_from(b"abc")));
+        let address = Address::User(UserAddress::UserAddressV0(UserAddressV0(
+            Hash::compute_from(b"abc"),
+        )));
+
         for i in 1..10 {
             let message = AsyncMessage::new_with_hash(
                 Slot::new(0, 0),

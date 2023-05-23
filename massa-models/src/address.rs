@@ -568,7 +568,7 @@ impl AddressDeserializer {
     /// Creates a new deserializer for `Address`
     pub const fn new() -> Self {
         Self {
-            type_deserializer: U64VarIntDeserializer::new(Included(0), Excluded(1)),
+            type_deserializer: U64VarIntDeserializer::new(Included(0), Included(1)),
             version_deserializer: U64VarIntDeserializer::new(Included(0), Excluded(u64::MAX)),
             hash_deserializer: HashDeserializer::new(),
         }
