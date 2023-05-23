@@ -2243,7 +2243,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "316f66136f917f8cb04eac057855ec87dd56eb2c8e6ecd219ca8cbff4d9f2e03"
 dependencies = [
  "bytes",
- "digest 0.10.6",
+ "digest 0.10.7",
 ]
 
 [[package]]
@@ -2763,7 +2763,7 @@ dependencies = [
 [[package]]
 name = "massa_hash"
 version = "0.1.0"
-source = "git+https://github.com/massalabs/massa#e0d4af3e906960c9c92bd7789e1b4611c8176e06"
+source = "git+https://github.com/massalabs/massa.git#e0d4af3e906960c9c92bd7789e1b4611c8176e06"
 dependencies = [
  "blake3",
  "bs58",
@@ -3023,7 +3023,7 @@ dependencies = [
 [[package]]
 name = "massa_serialization"
 version = "0.1.0"
-source = "git+https://github.com/massalabs/massa#e0d4af3e906960c9c92bd7789e1b4611c8176e06"
+source = "git+https://github.com/massalabs/massa.git#e0d4af3e906960c9c92bd7789e1b4611c8176e06"
 dependencies = [
  "displaydoc",
  "nom",
@@ -3051,7 +3051,7 @@ dependencies = [
 [[package]]
 name = "massa_signature"
 version = "0.1.0"
-source = "git+https://github.com/massalabs/massa#e0d4af3e906960c9c92bd7789e1b4611c8176e06"
+source = "git+https://github.com/massalabs/massa.git#e0d4af3e906960c9c92bd7789e1b4611c8176e06"
 dependencies = [
  "bs58",
  "displaydoc",

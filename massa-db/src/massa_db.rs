@@ -59,7 +59,9 @@ pub struct RawMassaDB<
     pub db: Arc<DB>,
     config: MassaDBConfig,
     pub change_history: BTreeMap<ChangeID, BTreeMap<Key, Option<Value>>>,
-    // Here we keep it in memory, but maybe this should be only on disk?
+    // TODO_PR: choose where to keep cur_change_id
+    // Here we keep it in memory and on disk, but maybe this should be only on disk to avoid desync?
+    // TODO_PR: if we keep both, then check for potential desync
     pub cur_change_id: ChangeID,
     change_id_serializer: ChangeIDSerializer,
     change_id_deserializer: ChangeIDDeserializer,
@@ -475,12 +477,12 @@ impl RawMassaDB<Slot, SlotSerializer, SlotDeserializer> {
             .expect(CRUD_ERROR);
     }
 
-    /// Utility function to put / update a key & value and perform the hash XORs
+    /// Utility function to put / update a key & value in the batch
     pub fn put_or_update_entry_value(&self, batch: &mut DBBatch, key: Vec<u8>, value: &[u8]) {
         batch.insert(key, Some(value.to_vec()));
     }
 
-    /// Utility function to delete a key & value and perform the hash XORs
+    /// Utility function to delete a key & value in the batch
     pub fn delete_key(&self, batch: &mut DBBatch, key: Vec<u8>) {
         batch.insert(key, None);
     }
@@ -499,5 +501,13 @@ impl RawMassaDB<Slot, SlotSerializer, SlotDeserializer> {
             self.delete_key(&mut batch, serialized_key.to_vec());
         }
         self.write_batch(batch, change_id);
+    }
+
+    /// Get the current state hash
+    /// self.db.write().reset(self.slot);
+    pub fn reset(&mut self, slot: Slot) {
+        self.cur_change_id = slot;
+        self.change_history.clear();
+        self.current_hashmap.write().clear();
     }
 }

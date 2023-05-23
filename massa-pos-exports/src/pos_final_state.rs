@@ -198,6 +198,7 @@ impl PoSFinalState {
             cycle_info_deserializer,
         };
 
+        // TODO_PR: Should we do this here or only after bootstrap?
         pos_state.recompute_pos_state_caches();
 
         Ok(pos_state)
@@ -1126,7 +1127,7 @@ impl PoSFinalState {
         db.put_or_update_entry_value(batch, rng_seed_key!(prefix), &serialized_value);
     }
 
-    /// Internal function to put an entry and perform the hash XORs
+    /// Internal function to put an entry for a given address in the cycle history
     fn put_cycle_history_address_entry(
         &self,
         cycle: u64,
@@ -1189,7 +1190,7 @@ impl PoSFinalState {
         }
     }
 
-    /// Internal function to put an entry and perform the hash XORs
+    /// Internal function to put an entry
     pub fn put_deferred_credits_entry(
         &self,
         slot: &Slot,

@@ -257,7 +257,7 @@ impl ExecutedOps {
 }
 
 #[test]
-fn test_executed_ops_xor_computing() {
+fn test_executed_ops_hash_computing() {
     use massa_db::{MassaDB, MassaDBConfig, STATE_HASH_INITIAL_BYTES};
     use massa_hash::Hash;
     use massa_models::prehash::PreHashMap;
@@ -357,7 +357,7 @@ fn test_executed_ops_xor_computing() {
     a.prune_to_batch(prune_slot, &mut batch_a);
     db_a.write().write_batch(batch_a, None);
 
-    // at this point the hash should have been XORed with itself
+    // at this point the hash should have been reset to its original value
     assert_eq!(
         db_a.read().get_db_hash(),
         Hash::from_bytes(STATE_HASH_INITIAL_BYTES),

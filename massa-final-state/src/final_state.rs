@@ -53,6 +53,7 @@ pub struct FinalState {
     /// * If from bootstrap: set during bootstrap
     pub last_slot_before_downtime: Option<Slot>,
     /// the rocksdb instance used to write every final_state struct on disk
+    /// TODO_PR: See if we can use an Arc without the RwLock here (with only locks on the needed fields of the MassaDB)
     pub db: Arc<RwLock<MassaDB>>,
 }
 
@@ -65,6 +66,7 @@ impl FinalState {
     /// * `config`: the configuration of the final state to use for initialization
     /// * `ledger`: the instance of the ledger on disk. Used to apply changes to the ledger.
     /// * `selector`: the pos selector. Used to send draw inputs when a new cycle is completed.
+    /// * `reset_final_state`: if true, we only keep the ledger, and we reset the other fields of the final state
     pub fn new(
         db: Arc<RwLock<MassaDB>>,
         config: FinalStateConfig,
@@ -169,6 +171,7 @@ impl FinalState {
             FinalStateError::InvalidSlot(String::from("Could not recover Slot in Ledger"))
         })?;
 
+        // This is needed for `test_bootstrap_server` to work
         if cfg!(feature = "testing") {
             let mut batch = DBBatch::new();
             final_state.pos_state.create_initial_cycle(&mut batch);
@@ -243,6 +246,7 @@ impl FinalState {
 
         self.slot = end_slot;
 
+        // TODO_PR: Replace the final_state_hash with calls to self.db.read().get_db_hash()!
         // Recompute the hash with the updated data and feed it to POS_state.
         info!(
             "final_state hash at slot {}: {}",
@@ -459,7 +463,7 @@ impl FinalState {
     /// USED ONLY FOR BOOTSTRAP
     pub fn reset(&mut self) {
         self.slot = Slot::new(0, self.config.thread_count.saturating_sub(1));
-        self.db.write().cur_change_id = self.slot;
+        self.db.write().reset(self.slot);
         self.ledger.reset();
         self.async_pool.reset();
         self.pos_state.reset();

@@ -74,6 +74,7 @@ impl std::fmt::Debug for Hash {
     }
 }
 
+/// TODO_PR: Update this documentation. We use LSM_Tree, a SMT, instead of hash XORs.
 /// The bitwise XOR is important to maintain the latest hash of the ~ 1TB ledger. Since the size is big,
 /// it is not feasible to hash the whole ledger every 0.5s (when the changes occur). Instead,
 /// all the rows of the ledger are hashed and XORed together to get a single hash. Whenever, any
@@ -82,13 +83,13 @@ impl std::fmt::Debug for Hash {
 /// giving the latest hash without going over the entire ~1TB ledger. This method is as secure as the traditional
 /// hash at the same time, it is much more efficient and convenient when the throughput needs are high and the requirement
 /// of integrity cannot be compromised.
-
 impl BitXorAssign for Hash {
     fn bitxor_assign(&mut self, rhs: Self) {
         *self = *self ^ rhs;
     }
 }
 
+/// TODO_PR: Update this documentation. We use LSM_Tree, a SMT, instead of hash XORs.
 /// The bitwise XOR is important to maintain the latest hash of the ~ 1TB ledger. Since the size is big,
 /// it is not feasible to hash the whole ledger every 0.5s (when the changes occur). Instead,
 /// all the rows of the ledger are hashed and XORed together to get a single hash. Whenever, any
@@ -97,7 +98,6 @@ impl BitXorAssign for Hash {
 /// giving the latest hash without going over the entire ~1TB ledger. This method is as secure as the traditional
 /// hash at the same time, it is much more efficient and convenient when the throughput needs are high and the requirement
 /// of integrity cannot be compromised.
-
 impl BitXor for Hash {
     type Output = Self;
 
