@@ -136,10 +136,6 @@ fn get_random_pos_cycles_info(
             },
         );
     }
-    // note: extra seed is used in the changes test to compensate for the update loop skipping the first change
-    /*if opt_seed {
-        rng_seed.push(rng.gen_range(0..2) == 1);
-    }*/
     rng_seed.push(rng.gen_range(0..2) == 1);
     (roll_counts, production_stats, rng_seed)
 }
@@ -324,7 +320,6 @@ pub fn get_random_final_state_bootstrap(
     let mut batch = DBBatch::new();
 
     async_pool.apply_changes_to_batch(&messages, &mut batch);
-
     async_pool.db.write().write_batch(batch, None);
 
     let executed_ops = get_random_executed_ops(

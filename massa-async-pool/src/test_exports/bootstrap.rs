@@ -3,7 +3,7 @@
 use crate::{
     AsyncMessage, AsyncMessageDeserializer, AsyncMessageId, AsyncMessageIdDeserializer, AsyncPool,
 };
-use massa_db::STATE_CF;
+use massa_db::{ASYNC_POOL_PREFIX, STATE_CF};
 use massa_models::{
     address::Address,
     amount::Amount,
@@ -13,7 +13,7 @@ use massa_models::{
 use massa_serialization::{DeserializeError, Deserializer};
 use massa_signature::KeyPair;
 use rand::Rng;
-use rocksdb::IteratorMode;
+use rocksdb::{Direction, IteratorMode};
 use std::str::FromStr;
 
 /// This file defines tools to test the asynchronous pool bootstrap
@@ -76,9 +76,27 @@ pub fn assert_eq_async_pool_bootstrap_state(v1: &AsyncPool, v2: &AsyncPool) {
     let db2 = v2.db.read();
     let handle1 = db1.db.cf_handle(STATE_CF).unwrap();
     let handle2 = db2.db.cf_handle(STATE_CF).unwrap();
+
+    let iter_1 = db1
+        .db
+        .iterator_cf(
+            handle1,
+            IteratorMode::From(ASYNC_POOL_PREFIX.as_bytes(), Direction::Forward),
+        )
+        .flatten()
+        .take_while(|(k, _v)| k.starts_with(ASYNC_POOL_PREFIX.as_bytes()));
+    let iter_2 = db2
+        .db
+        .iterator_cf(
+            handle2,
+            IteratorMode::From(ASYNC_POOL_PREFIX.as_bytes(), Direction::Forward),
+        )
+        .flatten()
+        .take_while(|(k, _v)| k.starts_with(ASYNC_POOL_PREFIX.as_bytes()));
+
     assert_eq!(
-        db1.db.iterator_cf(handle1, IteratorMode::Start).count(),
-        db2.db.iterator_cf(handle2, IteratorMode::Start).count(),
+        iter_1.count(),
+        iter_2.count(),
         "message values count mismatch"
     );
 
@@ -89,14 +107,24 @@ pub fn assert_eq_async_pool_bootstrap_state(v1: &AsyncPool, v2: &AsyncPool) {
     let mut current_count = 0u8;
     const TOTAL_FIELDS_COUNT: u8 = 13;
 
-    for (val1, val2) in db1
+    let iter_1 = db1
         .db
-        .iterator_cf(handle1, IteratorMode::Start)
-        .zip(db2.db.iterator_cf(handle2, IteratorMode::Start))
-    {
-        let val1 = val1.unwrap();
-        let val2 = val2.unwrap();
+        .iterator_cf(
+            handle1,
+            IteratorMode::From(ASYNC_POOL_PREFIX.as_bytes(), Direction::Forward),
+        )
+        .flatten()
+        .take_while(|(k, _v)| k.starts_with(ASYNC_POOL_PREFIX.as_bytes()));
+    let iter_2 = db2
+        .db
+        .iterator_cf(
+            handle2,
+            IteratorMode::From(ASYNC_POOL_PREFIX.as_bytes(), Direction::Forward),
+        )
+        .flatten()
+        .take_while(|(k, _v)| k.starts_with(ASYNC_POOL_PREFIX.as_bytes()));
 
+    for (val1, val2) in iter_1.zip(iter_2) {
         let (_, message_id_1) = message_id_deserializer
             .deserialize::<DeserializeError>(&val1.0)
             .unwrap();

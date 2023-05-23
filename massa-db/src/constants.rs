@@ -7,6 +7,7 @@ pub const METADATA_CF: &str = "metadata";
 pub const STATE_CF: &str = "state";
 
 pub const STATE_HASH_KEY: &[u8; 1] = b"h";
+pub const STATE_HASH_INITIAL_BYTES: &[u8; 32] = &[0; HASH_SIZE_BYTES];
 pub const CHANGE_ID_KEY: &[u8; 1] = b"c";
 pub const CHANGE_ID_DESER_ERROR: &str = "critical: change_id deserialization failed";
 pub const CHANGE_ID_SER_ERROR: &str = "critical: change_id serialization failed";
@@ -17,7 +18,6 @@ pub const OPEN_ERROR: &str = "critical: rocksdb open operation failed";
 pub const LSMTREE_ERROR: &str = "critical: lsmtree insert / remove open operation failed";
 pub const CRUD_ERROR: &str = "critical: rocksdb crud operation failed";
 pub const STATE_HASH_ERROR: &str = "critical: saved state hash is corrupted";
-pub const STATE_HASH_INITIAL_BYTES: &[u8; 32] = &[0; HASH_SIZE_BYTES];
 
 // Prefixes
 // TODO_PR: See if the indexes can be removed (I needed the cycle history to be the first streamed at some point)

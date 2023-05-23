@@ -146,10 +146,6 @@ fn stream_final_state_and_consensus(
                         "client final state bootstrap cursors: {:?}",
                         next_bootstrap_message
                     );
-                    /*debug!(
-                        "client final state slot changes length: {}",
-                        final_state_changes.len()
-                    );*/
                 }
                 BootstrapServerMessage::BootstrapFinished => {
                     info!("State bootstrap complete");
