@@ -7,7 +7,6 @@ var sourcesIndex = JSON.parse('{\
 "massa_client":["",[],["cmds.rs","display.rs","main.rs","repl.rs","settings.rs"]],\
 "massa_consensus_exports":["",[],["block_graph_export.rs","block_status.rs","bootstrapable_graph.rs","channels.rs","controller_trait.rs","error.rs","events.rs","export_active_block.rs","lib.rs","settings.rs"]],\
 "massa_consensus_worker":["",[["state",[],["clique_computation.rs","graph.rs","mod.rs","process.rs","process_commands.rs","prune.rs","stats.rs","tick.rs","verifications.rs"]],["worker",[],["init.rs","main_loop.rs","mod.rs"]]],["commands.rs","controller.rs","lib.rs","manager.rs"]],\
-"massa_db":["",[],["constants.rs","error.rs","lib.rs","massa_db.rs"]],\
 "massa_executed_ops":["",[],["config.rs","denunciations_changes.rs","executed_denunciations.rs","executed_ops.rs","lib.rs","ops_changes.rs"]],\
 "massa_execution_exports":["",[],["channels.rs","controller_traits.rs","error.rs","event_store.rs","lib.rs","mapping_grpc.rs","settings.rs","types.rs"]],\
 "massa_execution_worker":["",[],["active_history.rs","context.rs","controller.rs","execution.rs","interface_impl.rs","lib.rs","request_queue.rs","slot_sequencer.rs","speculative_async_pool.rs","speculative_executed_denunciations.rs","speculative_executed_ops.rs","speculative_ledger.rs","speculative_roll_state.rs","stats.rs","vesting_manager.rs","worker.rs"]],\
@@ -27,14 +26,14 @@ var sourcesIndex = JSON.parse('{\
 "massa_pos_exports":["",[],["config.rs","controller_traits.rs","cycle_info.rs","deferred_credits.rs","error.rs","lib.rs","pos_changes.rs","pos_final_state.rs","settings.rs"]],\
 "massa_pos_worker":["",[],["controller.rs","draw.rs","lib.rs","worker.rs"]],\
 "massa_proto":["",[],["google.api.rs","google.rpc.rs","lib.rs","massa.api.v1.rs"]],\
-"massa_protocol_exports":["",[],["bootstrap_peers.rs","controller_trait.rs","error.rs","lib.rs","settings.rs"]],\
-"massa_protocol_worker":["",[["handlers",[["block_handler",[],["cache.rs","commands_propagation.rs","commands_retrieval.rs","messages.rs","mod.rs","propagation.rs","retrieval.rs"]],["endorsement_handler",[],["cache.rs","commands_propagation.rs","commands_retrieval.rs","messages.rs","mod.rs","propagation.rs","retrieval.rs"]],["operation_handler",[],["cache.rs","commands_propagation.rs","commands_retrieval.rs","messages.rs","mod.rs","propagation.rs","retrieval.rs"]],["peer_handler",[],["announcement.rs","messages.rs","mod.rs","models.rs","tester.rs"]]],["mod.rs"]]],["connectivity.rs","controller.rs","lib.rs","manager.rs","messages.rs","sig_verifier.rs","worker.rs","wrap_network.rs"]],\
+"massa_protocol_exports":["",[],["bootstrap_peers.rs","controller_trait.rs","error.rs","lib.rs","peer_id.rs","settings.rs"]],\
+"massa_protocol_worker":["",[["handlers",[["block_handler",[],["cache.rs","commands_propagation.rs","commands_retrieval.rs","messages.rs","mod.rs","propagation.rs","retrieval.rs"]],["endorsement_handler",[],["cache.rs","commands_propagation.rs","commands_retrieval.rs","messages.rs","mod.rs","propagation.rs","retrieval.rs"]],["operation_handler",[],["cache.rs","commands_propagation.rs","commands_retrieval.rs","messages.rs","mod.rs","propagation.rs","retrieval.rs"]],["peer_handler",[],["announcement.rs","messages.rs","mod.rs","models.rs","tester.rs"]]],["mod.rs"]]],["connectivity.rs","context.rs","controller.rs","lib.rs","manager.rs","messages.rs","sig_verifier.rs","worker.rs","wrap_network.rs"]],\
 "massa_sdk":["",[],["config.rs","lib.rs"]],\
 "massa_serialization":["",[],["lib.rs"]],\
 "massa_signature":["",[],["error.rs","lib.rs","signature_impl.rs"]],\
 "massa_storage":["",[],["block_indexes.rs","endorsement_indexes.rs","lib.rs","operation_indexes.rs"]],\
 "massa_time":["",[],["error.rs","lib.rs"]],\
-"massa_versioning_worker":["",[],["grpc_mapping.rs","lib.rs","versioning.rs","versioning_factory.rs","versioning_ser_der.rs"]],\
+"massa_versioning":["",[],["address_factory.rs","grpc_mapping.rs","keypair_factory.rs","lib.rs","versioning.rs","versioning_factory.rs","versioning_ser_der.rs"]],\
 "massa_wallet":["",[],["error.rs","lib.rs"]]\
 }');
 createSourceSidebar();
