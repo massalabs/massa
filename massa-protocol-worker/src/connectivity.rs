@@ -12,8 +12,8 @@ use parking_lot::RwLock;
 use peernet::transports::TcpOutConnectionConfig;
 use peernet::{peer::PeerConnectionType, transports::OutConnectionConfig};
 use std::net::SocketAddr;
+use std::sync::Arc;
 use std::{collections::HashMap, net::IpAddr};
-use std::{num::NonZeroUsize, sync::Arc};
 use std::{thread::JoinHandle, time::Duration};
 use tracing::{info, warn};
 
@@ -87,17 +87,17 @@ pub(crate) fn start_connectivity_thread(
             let total_in_slots = config.peers_categories.values().map(|v| v.max_in_connections_post_handshake).sum::<usize>() + config.default_category_info.max_in_connections_post_handshake;
             let total_out_slots = config.peers_categories.values().map(| v| v.target_out_connections).sum::<usize>() + config.default_category_info.target_out_connections;
             let operation_cache = Arc::new(RwLock::new(OperationCache::new(
-                NonZeroUsize::new(config.max_known_ops_size).unwrap(),
-                NonZeroUsize::new(total_in_slots + total_out_slots).unwrap(),
+                config.max_known_blocks_size.try_into().unwrap(),
+                (total_in_slots + total_out_slots).try_into().unwrap(),
             )));
             let endorsement_cache = Arc::new(RwLock::new(EndorsementCache::new(
-                NonZeroUsize::new(config.max_known_endorsements_size).unwrap(),
-                NonZeroUsize::new(total_in_slots + total_out_slots).unwrap(),
+                config.max_known_endorsements_size.try_into().unwrap(),
+                (total_in_slots + total_out_slots).try_into().unwrap()
             )));
 
             let block_cache = Arc::new(RwLock::new(BlockCache::new(
-                NonZeroUsize::new(config.max_known_blocks_size).unwrap(),
-                NonZeroUsize::new(total_in_slots + total_out_slots).unwrap(),
+                config.max_known_blocks_size.try_into().unwrap(),
+                (total_in_slots + total_out_slots).try_into().unwrap(),
             )));
 
             // Start handlers

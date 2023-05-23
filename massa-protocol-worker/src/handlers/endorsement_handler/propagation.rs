@@ -1,13 +1,13 @@
-use std::{num::NonZeroUsize, thread::JoinHandle};
+use std::thread::JoinHandle;
 
 use crossbeam::channel::Receiver;
-use lru::LruCache;
 use massa_models::{
     endorsement::{EndorsementId, SecureShareEndorsement},
     prehash::{PreHashMap, PreHashSet},
 };
 use massa_protocol_exports::PeerId;
 use massa_protocol_exports::ProtocolConfig;
+use schnellru::{ByLength, LruMap};
 use tracing::{debug, info, log::warn};
 
 use crate::{messages::MessagesSerializer, wrap_network::ActiveConnectionsTrait};
@@ -57,22 +57,25 @@ impl PropagationThread {
                             {
                                 let mut cache_write = self.cache.write();
                                 for endorsement_id in endorsements_ids.iter().copied() {
-                                    cache_write.checked_endorsements.put(endorsement_id, ());
+                                    cache_write.checked_endorsements.insert(endorsement_id, ());
                                 }
                                 // Add peers that potentially don't exist in cache
                                 let peer_connected =
                                     self.active_connections.get_peer_ids_connected();
                                 for peer_id in &peer_connected {
-                                    if !cache_write.endorsements_known_by_peer.contains(peer_id) {
-                                        cache_write.endorsements_known_by_peer.put(
+                                    if cache_write
+                                        .endorsements_known_by_peer
+                                        .get(peer_id)
+                                        .is_none()
+                                    {
+                                        cache_write.endorsements_known_by_peer.insert(
                                             peer_id.clone(),
-                                            LruCache::new(
-                                                NonZeroUsize::new(
-                                                    self.config.max_node_known_endorsements_size,
-                                                )
+                                            LruMap::new(
+                                                ByLength::new(
+                                                    self.config.max_node_known_endorsements_size.try_into()
                                                 .expect(
                                                     "max_node_known_endorsements_size in config is > 0",
-                                                ),
+                                                )),
                                             ),
                                         );
                                     }
@@ -85,12 +88,23 @@ impl PropagationThread {
                                 // Clean shared cache if peers do not exist anymore
                                 for peer_id in peers {
                                     if !peer_connected.contains(&peer_id) {
-                                        cache_write.endorsements_known_by_peer.pop(&peer_id);
+                                        cache_write.endorsements_known_by_peer.remove(&peer_id);
                                     }
                                 }
-                                for (peer_id, endorsement_ids) in
-                                    cache_write.endorsements_known_by_peer.iter_mut()
-                                {
+                                let all_keys: Vec<PeerId> = cache_write
+                                    .endorsements_known_by_peer
+                                    .iter()
+                                    .map(|(k, _)| k)
+                                    .cloned()
+                                    .collect();
+                                for peer_id in all_keys.iter() {
+                                    // for (peer_id, endorsement_ids) in
+                                    //     cache_write.endorsements_known_by_peer.iter()
+                                    // {
+                                    let endorsement_ids = cache_write
+                                        .endorsements_known_by_peer
+                                        .peek_mut(peer_id)
+                                        .unwrap();
                                     let new_endorsements: PreHashMap<
                                         EndorsementId,
                                         SecureShareEndorsement,
@@ -100,7 +114,7 @@ impl PropagationThread {
                                             .get_endorsement_refs()
                                             .iter()
                                             .filter_map(|id| {
-                                                if endorsement_ids.contains(id) {
+                                                if endorsement_ids.peek(id).is_some() {
                                                     return None;
                                                 }
                                                 Some((
@@ -111,7 +125,7 @@ impl PropagationThread {
                                             .collect()
                                     };
                                     for endorsement_id in new_endorsements.keys().copied() {
-                                        endorsement_ids.put(endorsement_id, ());
+                                        endorsement_ids.insert(endorsement_id, ());
                                     }
                                     let to_send =
                                         new_endorsements.into_values().collect::<Vec<_>>();

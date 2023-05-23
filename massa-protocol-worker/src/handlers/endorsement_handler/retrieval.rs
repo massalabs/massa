@@ -1,10 +1,9 @@
-use std::{num::NonZeroUsize, thread::JoinHandle};
+use std::thread::JoinHandle;
 
 use crossbeam::{
     channel::{Receiver, Sender},
     select,
 };
-use lru::LruCache;
 use massa_logging::massa_trace;
 use massa_models::{
     endorsement::SecureShareEndorsement,
@@ -17,6 +16,7 @@ use massa_protocol_exports::{ProtocolConfig, ProtocolError};
 use massa_serialization::{DeserializeError, Deserializer};
 use massa_storage::Storage;
 use massa_time::MassaTime;
+use schnellru::{ByLength, LruMap};
 use tracing::{debug, info, warn};
 
 use crate::{
@@ -140,7 +140,11 @@ impl RetrievalThread {
             // check endorsement signature if not already checked
             {
                 let read_cache = self.cache.read();
-                if !read_cache.checked_endorsements.contains(&endorsement_id) {
+                if read_cache
+                    .checked_endorsements
+                    .peek(&endorsement_id)
+                    .is_none()
+                {
                     new_endorsements.insert(endorsement_id, endorsement);
                 }
             }
@@ -164,20 +168,23 @@ impl RetrievalThread {
             let mut cache_write = self.cache.write();
             // add to verified signature cache
             for endorsement_id in endorsement_ids.iter() {
-                cache_write.checked_endorsements.put(*endorsement_id, ());
+                cache_write.checked_endorsements.insert(*endorsement_id, ());
             }
             // add to known endorsements for source node.
-            let endorsements = cache_write.endorsements_known_by_peer.get_or_insert_mut(
-                from_peer_id.clone(),
-                || {
-                    LruCache::new(
-                        NonZeroUsize::new(self.config.max_node_known_endorsements_size)
+            let endorsements = cache_write
+                .endorsements_known_by_peer
+                .get_or_insert(from_peer_id.clone(), || {
+                    LruMap::new(ByLength::new(
+                        self.config
+                            .max_node_known_endorsements_size
+                            .try_into()
                             .expect("max_node_known_endorsements_size in config should be > 0"),
-                    )
-                },
-            );
+                    ))
+                })
+                .ok_or(())
+                .expect("endorsements_known_by_peer limit reached");
             for endorsement_id in endorsement_ids.iter() {
-                endorsements.put(*endorsement_id, ());
+                endorsements.insert(*endorsement_id, ());
             }
         }
 

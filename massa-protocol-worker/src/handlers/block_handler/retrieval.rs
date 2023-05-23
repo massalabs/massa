@@ -1,6 +1,5 @@
 use std::{
     collections::{hash_map::Entry, HashMap, HashSet},
-    num::NonZeroUsize,
     thread::JoinHandle,
     time::Instant,
 };
@@ -21,7 +20,6 @@ use crossbeam::{
     channel::{at, Receiver, Sender},
     select,
 };
-use lru::LruCache;
 use massa_consensus_exports::ConsensusController;
 use massa_hash::{Hash, HASH_SIZE_BYTES};
 use massa_logging::massa_trace;
@@ -42,6 +40,7 @@ use massa_serialization::{DeserializeError, Deserializer, Serializer};
 use massa_storage::Storage;
 use massa_time::TimeError;
 use massa_versioning::versioning::MipStore;
+use schnellru::{ByLength, LruMap};
 use tracing::{debug, info, warn};
 
 use super::{
@@ -309,7 +308,7 @@ impl RetrievalThread {
             let connected_peers = self.active_connections.get_peer_ids_connected();
             for peer_id in peers {
                 if !connected_peers.contains(&peer_id) {
-                    cache_write.blocks_known_by_peer.pop(&peer_id);
+                    cache_write.blocks_known_by_peer.remove(&peer_id);
                     self.asked_blocks.remove(&peer_id);
                 }
             }
@@ -503,14 +502,18 @@ impl RetrievalThread {
                     let mut endorsement_cache_write = self.endorsement_cache.write();
                     let endorsement_ids = endorsement_cache_write
                         .endorsements_known_by_peer
-                        .get_or_insert_mut(from_peer_id.clone(), || {
-                            LruCache::new(
-                                NonZeroUsize::new(self.config.max_node_known_blocks_size)
+                        .get_or_insert(from_peer_id.clone(), || {
+                            LruMap::new(ByLength::new(
+                                self.config
+                                    .max_node_known_blocks_size
+                                    .try_into()
                                     .expect("max_node_known_blocks_size in config must be > 0"),
-                            )
-                        });
+                            ))
+                        })
+                        .ok_or(())
+                        .expect("endorsements_known_by_peer limit reached");
                     for endorsement_id in block_header.content.endorsements.iter().map(|e| e.id) {
-                        endorsement_ids.put(endorsement_id, ());
+                        endorsement_ids.insert(endorsement_id, ());
                     }
                 }
                 return Ok(Some((block_id, false)));
@@ -557,7 +560,7 @@ impl RetrievalThread {
         }
         {
             let mut cache_write = self.cache.write();
-            cache_write.checked_headers.put(block_id, header.clone());
+            cache_write.checked_headers.insert(block_id, header.clone());
             cache_write.insert_blocks_known(from_peer_id, &[block_id], true, Instant::now());
             cache_write.insert_blocks_known(
                 from_peer_id,
@@ -569,14 +572,18 @@ impl RetrievalThread {
                 let mut endorsement_cache_write = self.endorsement_cache.write();
                 let endorsement_ids = endorsement_cache_write
                     .endorsements_known_by_peer
-                    .get_or_insert_mut(from_peer_id.clone(), || {
-                        LruCache::new(
-                            NonZeroUsize::new(self.config.max_node_known_blocks_size)
+                    .get_or_insert(from_peer_id.clone(), || {
+                        LruMap::new(ByLength::new(
+                            self.config
+                                .max_node_known_blocks_size
+                                .try_into()
                                 .expect("max_node_known_blocks_size in config must be > 0"),
-                        )
-                    });
+                        ))
+                    })
+                    .ok_or(())
+                    .expect("endorsements_known_by_peer limit reached");
                 for endorsement_id in header.content.endorsements.iter().map(|e| e.id) {
-                    endorsement_ids.put(endorsement_id, ());
+                    endorsement_ids.insert(endorsement_id, ());
                 }
             }
         }
@@ -626,7 +633,11 @@ impl RetrievalThread {
             // check endorsement signature if not already checked
             {
                 let read_cache = self.endorsement_cache.read();
-                if !read_cache.checked_endorsements.contains(&endorsement_id) {
+                if read_cache
+                    .checked_endorsements
+                    .peek(&endorsement_id)
+                    .is_none()
+                {
                     new_endorsements.insert(endorsement_id, endorsement);
                 }
             }
@@ -651,20 +662,23 @@ impl RetrievalThread {
             let mut cache_write = self.endorsement_cache.write();
             // add to verified signature cache
             for endorsement_id in endorsement_ids.iter() {
-                cache_write.checked_endorsements.put(*endorsement_id, ());
+                cache_write.checked_endorsements.insert(*endorsement_id, ());
             }
             // add to known endorsements for source node.
-            let endorsements = cache_write.endorsements_known_by_peer.get_or_insert_mut(
-                from_peer_id.clone(),
-                || {
-                    LruCache::new(
-                        NonZeroUsize::new(self.config.max_node_known_endorsements_size)
+            let endorsements = cache_write
+                .endorsements_known_by_peer
+                .get_or_insert(from_peer_id.clone(), || {
+                    LruMap::new(ByLength::new(
+                        self.config
+                            .max_node_known_endorsements_size
+                            .try_into()
                             .expect("max_node_known_endorsements_size in config should be > 0"),
-                    )
-                },
-            );
+                    ))
+                })
+                .ok_or(())
+                .expect("endorsements_known_by_peer limit reached");
             for endorsement_id in endorsement_ids.iter() {
-                endorsements.put(*endorsement_id, ());
+                endorsements.insert(*endorsement_id, ());
             }
         }
 
@@ -706,17 +720,20 @@ impl RetrievalThread {
         // add to known ops
         {
             let mut cache_write = self.operation_cache.write();
-            let known_ops =
-                cache_write
-                    .ops_known_by_peer
-                    .get_or_insert_mut(from_peer_id.clone(), || {
-                        LruCache::new(
-                            NonZeroUsize::new(self.config.max_node_known_ops_size)
-                                .expect("max_node_known_ops_size in config should be > 0"),
-                        )
-                    });
+            let known_ops = cache_write
+                .ops_known_by_peer
+                .get_or_insert(from_peer_id.clone(), || {
+                    LruMap::new(ByLength::new(
+                        self.config
+                            .max_node_known_ops_size
+                            .try_into()
+                            .expect("max_node_known_ops_size in config should be > 0"),
+                    ))
+                })
+                .ok_or(())
+                .expect("ops_known_by_peer limitation reached");
             for op_id in operation_ids_set.iter() {
-                known_ops.put(op_id.prefix(), ());
+                known_ops.insert(op_id.prefix(), ());
             }
         }
         let info = if let Some(info) = self.block_wishlist.get_mut(&block_id) {
@@ -1014,11 +1031,12 @@ impl RetrievalThread {
             };
 
             // Check operation signature only if not already checked.
-            if !self
+            if self
                 .operation_cache
                 .read()
                 .checked_operations
-                .contains(&operation_id)
+                .peek(&operation_id)
+                .is_none()
             {
                 // check signature if the operation wasn't in `checked_operation`
                 new_operations.insert(operation_id, operation);
@@ -1093,7 +1111,7 @@ impl RetrievalThread {
                     .collect();
                 for peer_id in peers_in_cache {
                     if !peers_connected.contains(&peer_id) {
-                        cache_write.blocks_known_by_peer.pop(&peer_id);
+                        cache_write.blocks_known_by_peer.remove(&peer_id);
                     }
                 }
                 let peers_in_asked_blocks: Vec<PeerId> =
@@ -1105,20 +1123,29 @@ impl RetrievalThread {
                 }
                 // Add new peers
                 for peer_id in peers_connected {
-                    if !cache_write.blocks_known_by_peer.contains(&peer_id) {
+                    if cache_write.blocks_known_by_peer.get(&peer_id).is_none() {
                         //TODO: Change to detect the connection before
-                        cache_write.blocks_known_by_peer.put(
+                        cache_write.blocks_known_by_peer.insert(
                             peer_id.clone(),
                             (
-                                LruCache::new(
-                                    NonZeroUsize::new(self.config.max_node_known_blocks_size)
+                                LruMap::new(ByLength::new(
+                                    self.config
+                                        .max_node_known_blocks_size
+                                        .try_into()
                                         .expect("max_node_known_blocks_size in config must be > 0"),
-                                ),
+                                )),
                                 Instant::now(),
                             ),
                         );
                     } else {
-                        cache_write.blocks_known_by_peer.promote(&peer_id);
+                        let data = cache_write
+                            .blocks_known_by_peer
+                            .remove(&peer_id)
+                            .ok_or(())
+                            .expect("promote peer_id not found");
+                        cache_write
+                            .blocks_known_by_peer
+                            .insert(peer_id.clone(), data);
                     }
 
                     if !self.asked_blocks.contains_key(&peer_id) {
@@ -1126,7 +1153,16 @@ impl RetrievalThread {
                             .insert(peer_id.clone(), PreHashMap::default());
                     }
                 }
-                for (peer_id, (blocks_known, _)) in cache_write.blocks_known_by_peer.iter_mut() {
+                let all_keys: Vec<PeerId> = cache_write
+                    .blocks_known_by_peer
+                    .iter()
+                    .map(|(k, _)| k)
+                    .cloned()
+                    .collect();
+                for peer_id in all_keys.iter() {
+                    // for (peer_id, (blocks_known, _)) in cache_write.blocks_known_by_peer.iter() {
+                    let (blocks_known, _) =
+                        cache_write.blocks_known_by_peer.peek_mut(peer_id).unwrap();
                     // map to remove the borrow on asked_blocks. Otherwise can't call insert_known_blocks
                     let ask_time_opt = self
                         .asked_blocks
@@ -1167,10 +1203,10 @@ impl RetrievalThread {
                             continue; // not a candidate
                         }
                         // timed out, supposed to have it
-                        (true, Some(timeout_at), Some((true, info_time))) => {
-                            if info_time < &timeout_at {
+                        (true, Some(mut timeout_at), Some((true, info_time))) => {
+                            if info_time < &mut timeout_at {
                                 // info less recent than timeout: mark as not having it
-                                blocks_known.put(*hash, (false, timeout_at));
+                                blocks_known.insert(*hash, (false, timeout_at));
                                 (2u8, ask_time_opt)
                             } else {
                                 // told us it has it after a timeout: good candidate again
@@ -1178,16 +1214,16 @@ impl RetrievalThread {
                             }
                         }
                         // timed out, supposed to not have it
-                        (true, Some(timeout_at), Some((false, info_time))) => {
-                            if info_time < &timeout_at {
+                        (true, Some(mut timeout_at), Some((false, info_time))) => {
+                            if info_time < &mut timeout_at {
                                 // info less recent than timeout: update info time
-                                blocks_known.put(*hash, (false, timeout_at));
+                                blocks_known.insert(*hash, (false, timeout_at));
                             }
                             (2u8, ask_time_opt)
                         }
                         // timed out but don't know if has it: mark as not having it
                         (true, Some(timeout_at), None) => {
-                            blocks_known.put(*hash, (false, timeout_at));
+                            blocks_known.insert(*hash, (false, timeout_at));
                             (2u8, ask_time_opt)
                         }
                     };
