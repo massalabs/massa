@@ -1245,18 +1245,6 @@
 <a href="#1245" id="1245">1245</a>
 <a href="#1246" id="1246">1246</a>
 <a href="#1247" id="1247">1247</a>
-<a href="#1248" id="1248">1248</a>
-<a href="#1249" id="1249">1249</a>
-<a href="#1250" id="1250">1250</a>
-<a href="#1251" id="1251">1251</a>
-<a href="#1252" id="1252">1252</a>
-<a href="#1253" id="1253">1253</a>
-<a href="#1254" id="1254">1254</a>
-<a href="#1255" id="1255">1255</a>
-<a href="#1256" id="1256">1256</a>
-<a href="#1257" id="1257">1257</a>
-<a href="#1258" id="1258">1258</a>
-<a href="#1259" id="1259">1259</a>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="attr">#![doc = <span class="macro">include_str!</span>(<span class="string">&quot;../../README.md&quot;</span>)]
@@ -1269,7 +1257,6 @@
 
 <span class="kw">use </span>chrono::{TimeZone, Utc};
 <span class="kw">use </span>crossbeam_channel::{Receiver, TryRecvError};
-<span class="kw">use </span>ctrlc <span class="kw">as _</span>;
 <span class="kw">use </span>dialoguer::Password;
 <span class="kw">use </span>massa_api::{ApiServer, ApiV2, Private, Public, RpcServer, StopHandle, API};
 <span class="kw">use </span>massa_api_exports::config::APIConfig;
@@ -1282,6 +1269,7 @@
 <span class="kw">use </span>massa_consensus_exports::events::ConsensusEvent;
 <span class="kw">use </span>massa_consensus_exports::{ConsensusChannels, ConsensusConfig, ConsensusManager};
 <span class="kw">use </span>massa_consensus_worker::start_consensus_worker;
+<span class="kw">use </span>massa_db::{MassaDB, MassaDBConfig};
 <span class="kw">use </span>massa_executed_ops::{ExecutedDenunciationsConfig, ExecutedOpsConfig};
 <span class="kw">use </span>massa_execution_exports::{
     ExecutionChannels, ExecutionConfig, ExecutionManager, GasCosts, StorageCostsConstants,
@@ -1297,12 +1285,10 @@
 <span class="kw">use </span>massa_logging::massa_trace;
 <span class="kw">use </span>massa_models::address::Address;
 <span class="kw">use </span>massa_models::config::constants::{
-    ASYNC_POOL_BOOTSTRAP_PART_SIZE, BLOCK_REWARD, BOOTSTRAP_RANDOMNESS_SIZE_BYTES, CHANNEL_SIZE,
-    CONSENSUS_BOOTSTRAP_PART_SIZE, DEFERRED_CREDITS_BOOTSTRAP_PART_SIZE, DELTA_F0,
-    DENUNCIATION_EXPIRE_PERIODS, ENDORSEMENT_COUNT, END_TIMESTAMP,
-    EXECUTED_OPS_BOOTSTRAP_PART_SIZE, GENESIS_KEY, GENESIS_TIMESTAMP, INITIAL_DRAW_SEED,
-    LEDGER_COST_PER_BYTE, LEDGER_ENTRY_BASE_SIZE, LEDGER_ENTRY_DATASTORE_BASE_SIZE,
-    LEDGER_PART_SIZE_MESSAGE_BYTES, MAX_ADVERTISE_LENGTH, MAX_ASK_BLOCKS_PER_MESSAGE,
+    BLOCK_REWARD, BOOTSTRAP_RANDOMNESS_SIZE_BYTES, CHANNEL_SIZE, CONSENSUS_BOOTSTRAP_PART_SIZE,
+    DELTA_F0, DENUNCIATION_EXPIRE_PERIODS, ENDORSEMENT_COUNT, END_TIMESTAMP, GENESIS_KEY,
+    GENESIS_TIMESTAMP, INITIAL_DRAW_SEED, LEDGER_COST_PER_BYTE, LEDGER_ENTRY_BASE_SIZE,
+    LEDGER_ENTRY_DATASTORE_BASE_SIZE, MAX_ADVERTISE_LENGTH, MAX_ASK_BLOCKS_PER_MESSAGE,
     MAX_ASYNC_GAS, MAX_ASYNC_MESSAGE_DATA, MAX_ASYNC_POOL_LENGTH, MAX_BLOCK_SIZE,
     MAX_BOOTSTRAP_ASYNC_POOL_CHANGES, MAX_BOOTSTRAP_BLOCKS, MAX_BOOTSTRAP_ERROR_LENGTH,
     MAX_BOOTSTRAP_FINAL_STATE_PARTS_SIZE, MAX_BYTECODE_LENGTH, MAX_CONSENSUS_BLOCKS_IDS,
@@ -1336,9 +1322,7 @@
 <span class="kw">use </span>massa_protocol_worker::{create_protocol_controller, start_protocol_controller};
 <span class="kw">use </span>massa_storage::Storage;
 <span class="kw">use </span>massa_time::MassaTime;
-<span class="kw">use </span>massa_versioning::versioning::{
-    ComponentStateTypeId, MipComponent, MipInfo, MipState, MipStatsConfig, MipStore,
-};
+<span class="kw">use </span>massa_versioning_worker::versioning::{ComponentStateTypeId, MipStatsConfig, MipStore};
 <span class="kw">use </span>massa_wallet::Wallet;
 <span class="kw">use </span>parking_lot::RwLock;
 <span class="kw">use </span>peernet::transports::TransportType;
@@ -1360,7 +1344,6 @@
 <span class="kw">async fn </span>launch(
     args: <span class="kw-2">&amp;</span>Args,
     node_wallet: Arc&lt;RwLock&lt;Wallet&gt;&gt;,
-    sig_int_toggled: Arc&lt;(Mutex&lt;bool&gt;, Condvar)&gt;,
 ) -&gt; (
     Receiver&lt;ConsensusEvent&gt;,
     <span class="prelude-ty">Option</span>&lt;BootstrapManager&gt;,
@@ -1409,28 +1392,29 @@
         initial_ledger_path: SETTINGS.ledger.initial_ledger_path.clone(),
         disk_ledger_path: SETTINGS.ledger.disk_ledger_path.clone(),
         max_key_length: MAX_DATASTORE_KEY_LENGTH,
-        max_ledger_part_size: LEDGER_PART_SIZE_MESSAGE_BYTES,
         max_datastore_value_length: MAX_DATASTORE_VALUE_LENGTH,
     };
     <span class="kw">let </span>async_pool_config = AsyncPoolConfig {
         max_length: MAX_ASYNC_POOL_LENGTH,
         thread_count: THREAD_COUNT,
-        bootstrap_part_size: ASYNC_POOL_BOOTSTRAP_PART_SIZE,
         max_async_message_data: MAX_ASYNC_MESSAGE_DATA,
+        max_key_length: MAX_DATASTORE_KEY_LENGTH <span class="kw">as </span>u32,
     };
     <span class="kw">let </span>pos_config = PoSConfig {
         periods_per_cycle: PERIODS_PER_CYCLE,
         thread_count: THREAD_COUNT,
         cycle_history_length: POS_SAVED_CYCLES,
-        credits_bootstrap_part_size: DEFERRED_CREDITS_BOOTSTRAP_PART_SIZE,
+        max_rolls_length: MAX_ROLLS_COUNT_LENGTH,
+        max_production_stats_length: MAX_PRODUCTION_STATS_LENGTH,
+        max_credit_length: MAX_DEFERRED_CREDITS_LENGTH,
     };
     <span class="kw">let </span>executed_ops_config = ExecutedOpsConfig {
         thread_count: THREAD_COUNT,
-        bootstrap_part_size: EXECUTED_OPS_BOOTSTRAP_PART_SIZE,
     };
     <span class="kw">let </span>executed_denunciations_config = ExecutedDenunciationsConfig {
         denunciation_expire_periods: DENUNCIATION_EXPIRE_PERIODS,
-        bootstrap_part_size: EXECUTED_OPS_BOOTSTRAP_PART_SIZE,
+        thread_count: THREAD_COUNT,
+        endorsement_count: ENDORSEMENT_COUNT,
     };
     <span class="kw">let </span>final_state_config = FinalStateConfig {
         ledger_config: ledger_config.clone(),
@@ -1463,11 +1447,15 @@
         }
     }
 
+    <span class="kw">let </span>db_config = MassaDBConfig {
+        path: SETTINGS.ledger.disk_ledger_path.clone(),
+        max_history_length: SETTINGS.ledger.final_history_length,
+        thread_count: THREAD_COUNT,
+    };
+    <span class="kw">let </span>db = Arc::new(RwLock::new(MassaDB::new(db_config)));
+
     <span class="comment">// Create final ledger
-    </span><span class="kw">let </span>ledger = FinalLedger::new(
-        ledger_config.clone(),
-        args.restart_from_snapshot_at_period.is_some() || <span class="macro">cfg!</span>(feature = <span class="string">&quot;create_snapshot&quot;</span>),
-    );
+    </span><span class="kw">let </span>ledger = FinalLedger::new(ledger_config.clone(), db.clone());
 
     <span class="comment">// launch selector worker
     </span><span class="kw">let </span>(selector_manager, selector_controller) = start_selector_worker(SelectorConfig {
@@ -1484,6 +1472,7 @@
     </span><span class="kw">let </span>final_state = Arc::new(parking_lot::RwLock::new(
         <span class="kw">match </span>args.restart_from_snapshot_at_period {
             <span class="prelude-val">Some</span>(last_start_period) =&gt; FinalState::new_derived_from_snapshot(
+                db.clone(),
                 final_state_config,
                 Box::new(ledger),
                 selector_controller.clone(),
@@ -1491,14 +1480,29 @@
             )
             .expect(<span class="string">&quot;could not init final state&quot;</span>),
             <span class="prelude-val">None </span>=&gt; FinalState::new(
+                db.clone(),
                 final_state_config,
                 Box::new(ledger),
                 selector_controller.clone(),
+                <span class="bool-val">true</span>,
             )
             .expect(<span class="string">&quot;could not init final state&quot;</span>),
         },
     ));
 
+    <span class="comment">// interrupt signal listener
+    </span><span class="kw">let </span>interupted = Arc::new((Mutex::new(<span class="bool-val">false</span>), Condvar::new()));
+    <span class="kw">let </span>handler_clone = Arc::clone(<span class="kw-2">&amp;</span>interupted);
+
+    <span class="comment">// currently used by the bootstrap client to preempt/break out of the retry wait
+    </span>ctrlc::set_handler(<span class="kw">move </span>|| {
+        <span class="kw-2">*</span>handler_clone
+            .<span class="number">0
+            </span>.lock()
+            .expect(<span class="string">&quot;double-lock on interupt bool in ctrl-c handler&quot;</span>) = <span class="bool-val">true</span>;
+        handler_clone.<span class="number">1</span>.notify_all();
+    })
+    .expect(<span class="string">&quot;Error setting Ctrl-C handler&quot;</span>);
     <span class="kw">let </span>bootstrap_config: BootstrapConfig = BootstrapConfig {
         bootstrap_list: SETTINGS.bootstrap.bootstrap_list.clone(),
         bootstrap_protocol: SETTINGS.bootstrap.bootstrap_protocol,
@@ -1564,7 +1568,7 @@
         <span class="kw-2">*</span>GENESIS_TIMESTAMP,
         <span class="kw-2">*</span>END_TIMESTAMP,
         args.restart_from_snapshot_at_period,
-        sig_int_toggled,
+        interupted,
     ) {
         <span class="prelude-val">Ok</span>(vals) =&gt; vals,
         <span class="prelude-val">Err</span>(BootstrapError::Interupted(msg)) =&gt; {
@@ -1574,9 +1578,16 @@
         <span class="prelude-val">Err</span>(err) =&gt; <span class="macro">panic!</span>(<span class="string">&quot;critical error detected in the bootstrap process: {}&quot;</span>, err),
     };
 
+    <span class="kw">if </span>!final_state.read().is_db_valid() {
+        <span class="comment">// TODO: Bootstrap again instead of panicking
+        </span><span class="macro">panic!</span>(<span class="string">&quot;critical: db is not valid after bootstrap&quot;</span>);
+    }
+
+    final_state.write().recompute_caches();
+
     <span class="kw">if </span>args.restart_from_snapshot_at_period.is_none() {
-        <span class="kw">let </span>last_start_period = final_state.read().last_start_period;
-        final_state.write().init_ledger_hash(last_start_period);
+        <span class="comment">// TODO_PR: see if this PR changes things for this call
+        </span>final_state.write().init_ledger_hash();
 
         <span class="comment">// give the controller to final state in order for it to feed the cycles
         </span>final_state
@@ -1601,21 +1612,8 @@
         block_count_considered: MIP_STORE_STATS_BLOCK_CONSIDERED,
         counters_max: MIP_STORE_STATS_COUNTERS_MAX,
     };
-    <span class="kw">let </span><span class="kw-2">mut </span>mip_store = MipStore::try_from((
-        [(
-            MipInfo {
-                name: <span class="string">&quot;MIP-0001&quot;</span>.to_string(),
-                version: <span class="number">1</span>,
-                components: HashMap::from([(MipComponent::Address, <span class="number">1</span>), (MipComponent::KeyPair, <span class="number">1</span>)]),
-                start: MassaTime::from(<span class="number">0</span>),
-                timeout: MassaTime::from(<span class="number">0</span>),
-                activation_delay: MassaTime::from(<span class="number">0</span>),
-            },
-            MipState::new(MassaTime::from(<span class="number">0</span>)),
-        )],
-        mip_stats_config,
-    ))
-    .expect(<span class="string">&quot;mip store creation failed&quot;</span>);
+    <span class="kw">let </span><span class="kw-2">mut </span>mip_store =
+        MipStore::try_from(([], mip_stats_config)).expect(<span class="string">&quot;Cannot create an empty MIP store&quot;</span>);
     <span class="kw">if let </span><span class="prelude-val">Some</span>(bootstrap_mip_store) = bootstrap_state.mip_store {
         <span class="comment">// TODO: in some cases, should bootstrap again
         </span><span class="kw">let </span>(updated, added) = mip_store
@@ -1940,7 +1938,6 @@
         pool_controller.clone(),
         shared_storage.clone(),
         protocol_channels,
-        mip_store.clone(),
     )
     .expect(<span class="string">&quot;could not start protocol controller&quot;</span>);
 
@@ -1964,12 +1961,7 @@
         protocol: protocol_controller.clone(),
         storage: shared_storage.clone(),
     };
-    <span class="kw">let </span>factory_manager = start_factory(
-        factory_config,
-        node_wallet.clone(),
-        factory_channels,
-        mip_store.clone(),
-    );
+    <span class="kw">let </span>factory_manager = start_factory(factory_config, node_wallet.clone(), factory_channels);
 
     <span class="kw">let </span>bootstrap_manager = bootstrap_config.listen_addr.map(|addr| {
         <span class="kw">let </span>(waker, listener) = BootstrapTcpListener::new(<span class="kw-2">&amp;</span>addr).unwrap_or_else(|<span class="kw">_</span>| {
@@ -2119,7 +2111,7 @@
             storage: shared_storage.clone(),
             grpc_config: grpc_config.clone(),
             version: <span class="kw-2">*</span>VERSION,
-            mip_store: mip_store.clone(),
+            mip_store,
         };
 
         <span class="comment">// HACK maybe should remove timeout later
@@ -2172,7 +2164,6 @@
         <span class="kw-2">*</span>VERSION,
         node_id,
         shared_storage.clone(),
-        mip_store.clone(),
     );
     <span class="kw">let </span>api_public_handle = api_public
         .serve(<span class="kw-2">&amp;</span>SETTINGS.api.bind_public, <span class="kw-2">&amp;</span>api_config)
@@ -2406,22 +2397,7 @@
         <span class="kw-2">&amp;</span>SETTINGS.factory.staking_wallet_path,
     )<span class="question-mark">?</span>;
 
-    <span class="comment">// interrupt signal listener
-    </span><span class="kw">let </span>sig_int_toggled = Arc::new((Mutex::new(<span class="bool-val">false</span>), Condvar::new()));
-
-    <span class="comment">// TODO: re-enable and fix this (remove use ctrlc as _; when done)
-    // let sig_int_toggled_clone = Arc::clone(&amp;sig_int_toggled);
-    // currently used by the bootstrap client to break out of the to preempt the retry wait
-    // ctrlc::set_handler(move || {
-    //     *sig_int_toggled_clone
-    //         .0
-    //         .lock()
-    //         .expect(&quot;double-lock on interupt bool in ctrl-c handler&quot;) = true;
-    //     sig_int_toggled_clone.1.notify_all();
-    // })
-    // .expect(&quot;Error setting Ctrl-C handler&quot;);
-
-    </span><span class="kw">loop </span>{
+    <span class="kw">loop </span>{
         <span class="kw">let </span>(
             consensus_event_receiver,
             bootstrap_manager,
@@ -2436,7 +2412,7 @@
             api_public_handle,
             api_handle,
             grpc_handle,
-        ) = launch(<span class="kw-2">&amp;</span>cur_args, node_wallet.clone(), Arc::clone(<span class="kw-2">&amp;</span>sig_int_toggled)).<span class="kw">await</span>;
+        ) = launch(<span class="kw-2">&amp;</span>cur_args, node_wallet.clone()).<span class="kw">await</span>;
 
         <span class="comment">// interrupt signal listener
         </span><span class="kw">let </span>(tx, rx) = crossbeam_channel::bounded(<span class="number">1</span>);

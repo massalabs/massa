@@ -1712,19 +1712,6 @@
 <a href="#1712" id="1712">1712</a>
 <a href="#1713" id="1713">1713</a>
 <a href="#1714" id="1714">1714</a>
-<a href="#1715" id="1715">1715</a>
-<a href="#1716" id="1716">1716</a>
-<a href="#1717" id="1717">1717</a>
-<a href="#1718" id="1718">1718</a>
-<a href="#1719" id="1719">1719</a>
-<a href="#1720" id="1720">1720</a>
-<a href="#1721" id="1721">1721</a>
-<a href="#1722" id="1722">1722</a>
-<a href="#1723" id="1723">1723</a>
-<a href="#1724" id="1724">1724</a>
-<a href="#1725" id="1725">1725</a>
-<a href="#1726" id="1726">1726</a>
-<a href="#1727" id="1727">1727</a>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="doccomment">//! This module deals with executing final and active slots, as well as read-only requests.
@@ -1767,7 +1754,7 @@
 <span class="kw">use </span>massa_pos_exports::SelectorController;
 <span class="kw">use </span>massa_sc_runtime::{Interface, Response, VMError};
 <span class="kw">use </span>massa_storage::Storage;
-<span class="kw">use </span>massa_versioning::versioning::MipStore;
+<span class="kw">use </span>massa_versioning_worker::versioning::MipStore;
 <span class="kw">use </span>parking_lot::{Mutex, RwLock};
 <span class="kw">use </span>std::collections::{BTreeMap, BTreeSet, HashMap};
 <span class="kw">use </span>std::sync::Arc;
@@ -1871,7 +1858,6 @@
             active_history.clone(),
             module_cache.clone(),
             vesting_manager.clone(),
-            mip_store.clone(),
         )));
 
         <span class="comment">// Instantiate the interface providing ABI access to the VM, share the execution context with it
@@ -2717,7 +2703,6 @@
             <span class="self">self</span>.active_history.clone(),
             <span class="self">self</span>.module_cache.clone(),
             <span class="self">self</span>.vesting_manager.clone(),
-            <span class="self">self</span>.mip_store.clone(),
         );
 
         <span class="comment">// Get asynchronous messages to execute
@@ -3101,7 +3086,6 @@
             <span class="self">self</span>.active_history.clone(),
             <span class="self">self</span>.module_cache.clone(),
             <span class="self">self</span>.vesting_manager.clone(),
-            <span class="self">self</span>.mip_store.clone(),
         );
 
         <span class="comment">// run the interpreter according to the target type
@@ -3284,15 +3268,8 @@
 
         <span class="kw">match </span>cycle.checked_sub(<span class="number">3</span>) {
             <span class="prelude-val">Some</span>(lookback_cycle) =&gt; {
-                <span class="kw">let </span>lookback_cycle_index =
-                    <span class="kw">match </span>final_state.pos_state.get_cycle_index(lookback_cycle) {
-                        <span class="prelude-val">Some</span>(v) =&gt; v,
-                        <span class="prelude-val">None </span>=&gt; Default::default(),
-                    };
                 <span class="comment">// get rolls
-                </span>final_state.pos_state.cycle_history[lookback_cycle_index]
-                    .roll_counts
-                    .clone()
+                </span>final_state.pos_state.get_all_roll_counts(lookback_cycle)
             }
             <span class="prelude-val">None </span>=&gt; final_state.pos_state.initial_rolls.clone(),
         }
@@ -3425,7 +3402,7 @@
     ) {
         <span class="comment">// update versioning statistics
         </span><span class="kw">if let </span><span class="prelude-val">Some</span>((block_id, storage)) = exec_target {
-            <span class="kw">if let </span><span class="prelude-val">Some</span>(block) = storage.read_blocks().get(block_id) {
+            <span class="kw">if let </span><span class="prelude-val">Some</span>(_block) = storage.read_blocks().get(block_id) {
                 <span class="kw">let </span>slot_ts_ = get_block_slot_timestamp(
                     <span class="self">self</span>.config.thread_count,
                     <span class="self">self</span>.config.t0,
@@ -3433,13 +3410,10 @@
                     <span class="kw-2">*</span>slot,
                 );
 
-                <span class="kw">let </span>current_version = block.content.header.content.current_version;
-                <span class="kw">let </span>announced_version = block.content.header.content.announced_version;
                 <span class="kw">if let </span><span class="prelude-val">Ok</span>(slot_ts) = slot_ts_ {
-                    <span class="self">self</span>.mip_store.update_network_version_stats(
-                        slot_ts,
-                        <span class="prelude-val">Some</span>((current_version, announced_version)),
-                    );
+                    <span class="comment">// TODO - Next PR: use block header network versions - default to 0 for now
+                    </span><span class="self">self</span>.mip_store
+                        .update_network_version_stats(slot_ts, <span class="prelude-val">Some</span>((<span class="number">0</span>, <span class="number">0</span>)));
                 } <span class="kw">else </span>{
                     <span class="macro">warn!</span>(<span class="string">&quot;Unable to get slot timestamp for slot: {} in order to update mip_store stats&quot;</span>, slot);
                 }

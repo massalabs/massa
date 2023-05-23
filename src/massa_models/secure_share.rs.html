@@ -398,6 +398,7 @@
 <a href="#398" id="398">398</a>
 <a href="#399" id="399">399</a>
 <a href="#400" id="400">400</a>
+<a href="#401" id="401">401</a>
 </pre><pre class="rust"><code><span class="kw">use </span>std::fmt::Display;
 
 <span class="kw">use crate</span>::{address::Address, error::ModelsError};
@@ -405,6 +406,7 @@
 <span class="kw">use </span>massa_serialization::{Deserializer, SerializeError, Serializer};
 <span class="kw">use </span>massa_signature::{
     KeyPair, PublicKey, PublicKeyDeserializer, Signature, SignatureDeserializer,
+    PUBLIC_KEY_SIZE_BYTES, SIGNATURE_SIZE_BYTES,
 };
 <span class="kw">use </span>nom::{
     error::{context, ContextError, ParseError},
@@ -515,8 +517,8 @@
         serialized_content: <span class="kw-2">&amp;</span>[u8],
         buffer: <span class="kw-2">&amp;mut </span>Vec&lt;u8&gt;,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;(), SerializeError&gt; {
-        buffer.extend(signature.to_bytes());
-        buffer.extend(creator_public_key.to_bytes());
+        buffer.extend(signature.into_bytes());
+        buffer.extend(creator_public_key.into_bytes());
         buffer.extend(serialized_content);
         <span class="prelude-val">Ok</span>(())
     }
@@ -626,8 +628,8 @@
     </span><span class="kw">pub fn </span>serialized_size(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; usize {
         <span class="self">self</span>.serialized_data
             .len()
-            .saturating_add(<span class="self">self</span>.signature.get_ser_len())
-            .saturating_add(<span class="self">self</span>.content_creator_pub_key.get_ser_len())
+            .saturating_add(SIGNATURE_SIZE_BYTES)
+            .saturating_add(PUBLIC_KEY_SIZE_BYTES)
     }
 }
 
@@ -772,7 +774,7 @@
     ///    index: 0,
     ///    endorsed_block: BlockId(Hash::compute_from(&quot;blk&quot;.as_bytes())),
     /// };
-    /// let keypair = KeyPair::generate(0).unwrap();
+    /// let keypair = KeyPair::generate();
     /// let secured: SecureShare&lt;Endorsement, BlockId&gt; = Endorsement::new_verifiable(
     ///    content,
     ///    EndorsementSerializer::new(),
