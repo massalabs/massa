@@ -152,7 +152,6 @@ impl CycleInfo {
             final_state_hash_snapshot: None,
         }
     }
-}
 
 #[derive(Clone)]
 #[allow(missing_docs)]

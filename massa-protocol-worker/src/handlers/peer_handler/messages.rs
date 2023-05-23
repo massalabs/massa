@@ -1,6 +1,7 @@
 use std::{collections::HashMap, net::SocketAddr, ops::Bound::Included};
 
 use massa_models::serialization::{IpAddrDeserializer, IpAddrSerializer};
+use massa_protocol_exports::{PeerId, PeerIdDeserializer, PeerIdSerializer};
 use massa_serialization::{Deserializer, Serializer, U64VarIntDeserializer, U64VarIntSerializer};
 use nom::{
     error::{context, ContextError, ParseError},
@@ -9,7 +10,7 @@ use nom::{
     IResult, Parser,
 };
 use num_enum::{IntoPrimitive, TryFromPrimitive};
-use peernet::{peer_id::PeerId, transports::TransportType, types::PUBLIC_KEY_SIZE_BYTES};
+use peernet::transports::TransportType;
 
 #[derive(Debug, Clone)]
 //TODO: Fix this clippy warning
@@ -46,6 +47,7 @@ pub enum MessageTypeId {
 pub struct PeerManagementMessageSerializer {
     length_serializer: U64VarIntSerializer,
     ip_addr_serializer: IpAddrSerializer,
+    peer_id_serializer: PeerIdSerializer,
 }
 
 impl PeerManagementMessageSerializer {
@@ -53,6 +55,7 @@ impl PeerManagementMessageSerializer {
         Self {
             length_serializer: U64VarIntSerializer::new(),
             ip_addr_serializer: IpAddrSerializer::new(),
+            peer_id_serializer: PeerIdSerializer::new(),
         }
     }
 }
@@ -65,7 +68,7 @@ impl Serializer<PeerManagementMessage> for PeerManagementMessageSerializer {
     ) -> Result<(), massa_serialization::SerializeError> {
         match value {
             PeerManagementMessage::NewPeerConnected((peer_id, listeners)) => {
-                buffer.extend_from_slice(&peer_id.to_bytes());
+                self.peer_id_serializer.serialize(peer_id, buffer)?;
                 self.length_serializer
                     .serialize(&(listeners.len() as u64), buffer)?;
                 for (socket_addr, transport_type) in listeners {
@@ -79,7 +82,7 @@ impl Serializer<PeerManagementMessage> for PeerManagementMessageSerializer {
                 self.length_serializer
                     .serialize(&(peers.len() as u64), buffer)?;
                 for (peer_id, listeners) in peers {
-                    buffer.extend_from_slice(&peer_id.to_bytes());
+                    self.peer_id_serializer.serialize(peer_id, buffer)?;
                     self.length_serializer
                         .serialize(&(listeners.len() as u64), buffer)?;
                     for (socket_addr, transport_type) in listeners {
@@ -100,6 +103,7 @@ pub struct PeerManagementMessageDeserializer {
     listeners_length_deserializer: U64VarIntDeserializer,
     peers_length_deserializer: U64VarIntDeserializer,
     ip_addr_deserializer: IpAddrDeserializer,
+    peer_id_deserializer: PeerIdDeserializer,
 }
 
 /// Limits used in the deserialization of `OperationMessage`
@@ -123,6 +127,7 @@ impl PeerManagementMessageDeserializer {
                 Included(limits.max_peers_per_announcement),
             ),
             ip_addr_deserializer: IpAddrDeserializer::new(),
+            peer_id_deserializer: PeerIdDeserializer::new(),
         }
     }
 
@@ -148,21 +153,7 @@ impl Deserializer<PeerManagementMessage> for PeerManagementMessageDeserializer {
                     "Failed NewPeerConnected deserialization",
                     tuple((
                         context("Failed PeerId deserialization", |buffer: &'a [u8]| {
-                            let peer_id = PeerId::from_bytes(
-                                buffer[..PUBLIC_KEY_SIZE_BYTES].try_into().map_err(|_| {
-                                    nom::Err::Error(ParseError::from_error_kind(
-                                        buffer,
-                                        nom::error::ErrorKind::LengthValue,
-                                    ))
-                                })?,
-                            )
-                            .map_err(|_| {
-                                nom::Err::Error(ParseError::from_error_kind(
-                                    buffer,
-                                    nom::error::ErrorKind::Eof,
-                                ))
-                            })?;
-                            Ok((&buffer[PUBLIC_KEY_SIZE_BYTES..], peer_id))
+                            self.peer_id_deserializer.deserialize(buffer)
                         }),
                         length_count(
                             context("Failed length listeners deserialization", |buffer| {
@@ -192,23 +183,7 @@ impl Deserializer<PeerManagementMessage> for PeerManagementMessageDeserializer {
                             "Failed peer deserialization",
                             tuple((
                                 context("Failed PeerId deserialization", |buffer: &'a [u8]| {
-                                    let peer_id = PeerId::from_bytes(
-                                        buffer[..PUBLIC_KEY_SIZE_BYTES].try_into().map_err(
-                                            |_| {
-                                                nom::Err::Error(ParseError::from_error_kind(
-                                                    buffer,
-                                                    nom::error::ErrorKind::Eof,
-                                                ))
-                                            },
-                                        )?,
-                                    )
-                                    .map_err(|_| {
-                                        nom::Err::Error(ParseError::from_error_kind(
-                                            buffer,
-                                            nom::error::ErrorKind::Eof,
-                                        ))
-                                    })?;
-                                    Ok((&buffer[PUBLIC_KEY_SIZE_BYTES..], peer_id))
+                                    self.peer_id_deserializer.deserialize(buffer)
                                 }),
                                 length_count(
                                     context("Failed length listeners deserialization", |buffer| {
@@ -287,17 +262,18 @@ fn listener_deserializer<'a, E: ParseError<&'a [u8]> + ContextError<&'a [u8]>>(
 mod tests {
     use std::collections::HashMap;
 
-    use massa_serialization::{DeserializeError, Deserializer, Serializer};
-    use peernet::{peer_id::PeerId, transports::TransportType, types::KeyPair};
-
     use super::{
         PeerManagementMessage, PeerManagementMessageDeserializer,
         PeerManagementMessageDeserializerArgs, PeerManagementMessageSerializer,
     };
+    use massa_protocol_exports::PeerId;
+    use massa_serialization::{DeserializeError, Deserializer, Serializer};
+    use massa_signature::KeyPair;
+    use peernet::transports::TransportType;
 
     #[test]
     fn test_peer_connected() {
-        let keypair = KeyPair::generate();
+        let keypair = KeyPair::generate(0).unwrap();
         let mut listeners = HashMap::new();
         listeners.insert("127.0.0.1:33036".parse().unwrap(), TransportType::Tcp);
         listeners.insert("127.0.0.1:33035".parse().unwrap(), TransportType::Quic);
@@ -339,10 +315,10 @@ mod tests {
 
     #[test]
     fn test_list_peers() {
-        let keypair1 = KeyPair::generate();
+        let keypair1 = KeyPair::generate(0).unwrap();
         let mut listeners = HashMap::new();
         listeners.insert("127.0.0.1:33036".parse().unwrap(), TransportType::Tcp);
-        let keypair2 = KeyPair::generate();
+        let keypair2 = KeyPair::generate(0).unwrap();
         let message = PeerManagementMessage::ListPeers(vec![
             (
                 PeerId::from_public_key(keypair1.get_public_key()),

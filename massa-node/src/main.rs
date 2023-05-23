@@ -10,6 +10,7 @@ use crate::settings::SETTINGS;
 
 use chrono::{TimeZone, Utc};
 use crossbeam_channel::{Receiver, TryRecvError};
+use ctrlc as _;
 use dialoguer::Password;
 use massa_api::{ApiServer, ApiV2, Private, Public, RpcServer, StopHandle, API};
 use massa_api_exports::config::APIConfig;
@@ -75,7 +76,9 @@ use massa_protocol_exports::{ProtocolConfig, ProtocolManager};
 use massa_protocol_worker::{create_protocol_controller, start_protocol_controller};
 use massa_storage::Storage;
 use massa_time::MassaTime;
-use massa_versioning_worker::versioning::{ComponentStateTypeId, MipStatsConfig, MipStore};
+use massa_versioning::versioning::{
+    ComponentStateTypeId, MipComponent, MipInfo, MipState, MipStatsConfig, MipStore,
+};
 use massa_wallet::Wallet;
 use parking_lot::RwLock;
 use peernet::transports::TransportType;
@@ -97,6 +100,7 @@ mod settings;
 async fn launch(
     args: &Args,
     node_wallet: Arc<RwLock<Wallet>>,
+    sig_int_toggled: Arc<(Mutex<bool>, Condvar)>,
 ) -> (
     Receiver<ConsensusEvent>,
     Option<BootstrapManager>,
@@ -243,19 +247,6 @@ async fn launch(
         },
     ));
 
-    // interrupt signal listener
-    let interupted = Arc::new((Mutex::new(false), Condvar::new()));
-    let handler_clone = Arc::clone(&interupted);
-
-    // currently used by the bootstrap client to preempt/break out of the retry wait
-    ctrlc::set_handler(move || {
-        *handler_clone
-            .0
-            .lock()
-            .expect("double-lock on interupt bool in ctrl-c handler") = true;
-        handler_clone.1.notify_all();
-    })
-    .expect("Error setting Ctrl-C handler");
     let bootstrap_config: BootstrapConfig = BootstrapConfig {
         bootstrap_list: SETTINGS.bootstrap.bootstrap_list.clone(),
         bootstrap_protocol: SETTINGS.bootstrap.bootstrap_protocol,
@@ -321,7 +312,7 @@ async fn launch(
         *GENESIS_TIMESTAMP,
         *END_TIMESTAMP,
         args.restart_from_snapshot_at_period,
-        interupted,
+        sig_int_toggled,
     ) {
         Ok(vals) => vals,
         Err(BootstrapError::Interupted(msg)) => {
@@ -365,8 +356,21 @@ async fn launch(
         block_count_considered: MIP_STORE_STATS_BLOCK_CONSIDERED,
         counters_max: MIP_STORE_STATS_COUNTERS_MAX,
     };
-    let mut mip_store =
-        MipStore::try_from(([], mip_stats_config)).expect("Cannot create an empty MIP store");
+    let mut mip_store = MipStore::try_from((
+        [(
+            MipInfo {
+                name: "MIP-0001".to_string(),
+                version: 1,
+                components: HashMap::from([(MipComponent::Address, 1), (MipComponent::KeyPair, 1)]),
+                start: MassaTime::from(0),
+                timeout: MassaTime::from(0),
+                activation_delay: MassaTime::from(0),
+            },
+            MipState::new(MassaTime::from(0)),
+        )],
+        mip_stats_config,
+    ))
+    .expect("mip store creation failed");
     if let Some(bootstrap_mip_store) = bootstrap_state.mip_store {
         // TODO: in some cases, should bootstrap again
         let (updated, added) = mip_store
@@ -691,6 +695,7 @@ async fn launch(
         pool_controller.clone(),
         shared_storage.clone(),
         protocol_channels,
+        mip_store.clone(),
     )
     .expect("could not start protocol controller");
 
@@ -714,7 +719,12 @@ async fn launch(
         protocol: protocol_controller.clone(),
         storage: shared_storage.clone(),
     };
-    let factory_manager = start_factory(factory_config, node_wallet.clone(), factory_channels);
+    let factory_manager = start_factory(
+        factory_config,
+        node_wallet.clone(),
+        factory_channels,
+        mip_store.clone(),
+    );
 
     let bootstrap_manager = bootstrap_config.listen_addr.map(|addr| {
         let (waker, listener) = BootstrapTcpListener::new(&addr).unwrap_or_else(|_| {
@@ -864,7 +874,7 @@ async fn launch(
             storage: shared_storage.clone(),
             grpc_config: grpc_config.clone(),
             version: *VERSION,
-            mip_store,
+            mip_store: mip_store.clone(),
         };
 
         // HACK maybe should remove timeout later
@@ -917,6 +927,7 @@ async fn launch(
         *VERSION,
         node_id,
         shared_storage.clone(),
+        mip_store.clone(),
     );
     let api_public_handle = api_public
         .serve(&SETTINGS.api.bind_public, &api_config)
@@ -1150,6 +1161,21 @@ async fn run(args: Args) -> anyhow::Result<()> {
         &SETTINGS.factory.staking_wallet_path,
     )?;
 
+    // interrupt signal listener
+    let sig_int_toggled = Arc::new((Mutex::new(false), Condvar::new()));
+
+    // TODO: re-enable and fix this (remove use ctrlc as _; when done)
+    // let sig_int_toggled_clone = Arc::clone(&sig_int_toggled);
+    // currently used by the bootstrap client to break out of the to preempt the retry wait
+    // ctrlc::set_handler(move || {
+    //     *sig_int_toggled_clone
+    //         .0
+    //         .lock()
+    //         .expect("double-lock on interupt bool in ctrl-c handler") = true;
+    //     sig_int_toggled_clone.1.notify_all();
+    // })
+    // .expect("Error setting Ctrl-C handler");
+
     loop {
         let (
             consensus_event_receiver,
@@ -1165,7 +1191,7 @@ async fn run(args: Args) -> anyhow::Result<()> {
             api_public_handle,
             api_handle,
             grpc_handle,
-        ) = launch(&cur_args, node_wallet.clone()).await;
+        ) = launch(&cur_args, node_wallet.clone(), Arc::clone(&sig_int_toggled)).await;
 
         // interrupt signal listener
         let (tx, rx) = crossbeam_channel::bounded(1);

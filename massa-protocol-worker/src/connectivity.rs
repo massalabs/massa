@@ -5,11 +5,12 @@ use crossbeam::{
 use massa_consensus_exports::ConsensusController;
 use massa_models::stats::NetworkStats;
 use massa_pool_exports::PoolController;
-use massa_protocol_exports::{PeerCategoryInfo, ProtocolConfig, ProtocolError};
+use massa_protocol_exports::{PeerCategoryInfo, PeerId, ProtocolConfig, ProtocolError};
 use massa_storage::Storage;
+use massa_versioning::versioning::MipStore;
 use parking_lot::RwLock;
+use peernet::transports::TcpOutConnectionConfig;
 use peernet::{peer::PeerConnectionType, transports::OutConnectionConfig};
-use peernet::{peer_id::PeerId, transports::TcpOutConnectionConfig};
 use std::net::SocketAddr;
 use std::{collections::HashMap, net::IpAddr};
 use std::{num::NonZeroUsize, sync::Arc};
@@ -60,6 +61,7 @@ pub(crate) fn start_connectivity_thread(
     peer_categories: HashMap<String, (Vec<IpAddr>, PeerCategoryInfo)>,
     _default_category: PeerCategoryInfo,
     config: ProtocolConfig,
+    mip_store: MipStore,
 ) -> Result<(Sender<ConnectivityCommand>, JoinHandle<()>), ProtocolError> {
     let handle = std::thread::Builder::new()
     .name("protocol-connectivity".to_string())
@@ -154,6 +156,7 @@ pub(crate) fn start_connectivity_thread(
                 operation_cache,
                 block_cache,
                 storage.clone_without_refs(),
+                mip_store,
             );
 
             //Try to connect to peers

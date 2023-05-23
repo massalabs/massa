@@ -4,8 +4,8 @@ use crossbeam::channel::{Receiver, RecvTimeoutError};
 use lru::LruCache;
 use massa_logging::massa_trace;
 use massa_models::operation::OperationId;
+use massa_protocol_exports::PeerId;
 use massa_protocol_exports::ProtocolConfig;
-use peernet::peer_id::PeerId;
 use tracing::{debug, info, log::warn};
 
 use crate::{

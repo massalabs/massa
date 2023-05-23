@@ -800,7 +800,7 @@ impl Command {
                     .unwrap_or(0);
                 println!("Should create address with version: {}", _address_version);
 
-                let key = KeyPair::generate();
+                let key = KeyPair::generate(0).unwrap();
                 let ad = wallet.add_keypairs(vec![key])?[0];
                 if json {
                     Ok(Box::new(ad.to_string()))

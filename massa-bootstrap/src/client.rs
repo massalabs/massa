@@ -13,7 +13,7 @@ use massa_logging::massa_trace;
 use massa_models::{node::NodeId, slot::Slot, streaming_step::StreamingStep, version::Version};
 use massa_signature::PublicKey;
 use massa_time::MassaTime;
-use massa_versioning_worker::versioning::{MipStore, MipStoreRaw};
+use massa_versioning::versioning::{MipStore, MipStoreRaw};
 use parking_lot::RwLock;
 use rand::{
     prelude::{SliceRandom, StdRng},

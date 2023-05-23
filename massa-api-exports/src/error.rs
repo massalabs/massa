@@ -10,6 +10,7 @@ use massa_hash::MassaHashError;
 use massa_models::error::ModelsError;
 use massa_protocol_exports::ProtocolError;
 use massa_time::TimeError;
+use massa_versioning::versioning_factory::FactoryError;
 use massa_wallet::WalletError;
 
 /// Errors of the api component.
@@ -48,6 +49,8 @@ pub enum ApiError {
     BadRequest(String),
     /// Internal server error: {0}
     InternalServerError(String),
+    /// Factory error: {0}
+    FactoryError(#[from] FactoryError),
 }
 
 impl From<ApiError> for JsonRpseeError {
@@ -70,6 +73,7 @@ impl From<ApiError> for JsonRpseeError {
             ApiError::MissingCommandSender(_) => -32017,
             ApiError::MissingConfig(_) => -32018,
             ApiError::WrongAPI => -32019,
+            ApiError::FactoryError(_) => -32020,
         };
 
         CallError::Custom(ErrorObject::owned(code, err.to_string(), None::<()>)).into()

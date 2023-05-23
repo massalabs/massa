@@ -38,7 +38,7 @@ massa_time = { path = "../massa-time" }
 massa_wallet = { path = "../massa-wallet" }
 massa_serialization = { path = "../massa-serialization" }
 massa_proto = { path = "../massa-proto" }
-massa_versioning_worker = { path = "../massa-versioning-worker" }
+massa_versioning = { path = "../massa-versioning" }
 
 [dev-dependencies]
 crossbeam = "0.8.2"

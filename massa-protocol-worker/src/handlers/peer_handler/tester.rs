@@ -9,16 +9,13 @@ use std::{
 use crate::messages::MessagesHandler;
 use crossbeam::channel::{Receiver, Sender};
 use massa_models::version::{Version, VersionDeserializer};
-use massa_protocol_exports::{PeerConnectionType, ProtocolConfig};
+use massa_protocol_exports::{PeerConnectionType, PeerId, PeerIdDeserializer, ProtocolConfig};
 use massa_serialization::{DeserializeError, Deserializer};
 use massa_time::MassaTime;
 use peernet::{
     error::{PeerNetError, PeerNetResult},
     messages::MessagesHandler as PeerNetMessagesHandler,
-    peer::InitConnectionHandler,
-    peer_id::PeerId,
-    transports::{endpoint::Endpoint, TransportType},
-    types::KeyPair,
+    transports::TransportType,
 };
 use std::cmp::Reverse;
 use tracing::info;
@@ -29,166 +26,6 @@ use super::{
     SharedPeerDB,
 };
 use crate::wrap_network::ActiveConnectionsTrait;
-
-#[derive(Clone)]
-pub struct TesterHandshake {
-    peer_db: SharedPeerDB,
-    our_version: Version,
-    announcement_deserializer: AnnouncementDeserializer,
-    version_deserializer: VersionDeserializer,
-}
-
-impl TesterHandshake {
-    #[allow(dead_code)]
-    pub fn new(peer_db: SharedPeerDB, config: ProtocolConfig) -> Self {
-        Self {
-            peer_db,
-            announcement_deserializer: AnnouncementDeserializer::new(
-                AnnouncementDeserializerArgs {
-                    max_listeners: config.max_size_listeners_per_peer,
-                },
-            ),
-            our_version: config.version,
-            version_deserializer: VersionDeserializer::new(),
-        }
-    }
-}
-
-impl InitConnectionHandler for TesterHandshake {
-    fn perform_handshake<MassaMessagesHandler: PeerNetMessagesHandler>(
-        &mut self,
-        _: &KeyPair,
-        endpoint: &mut Endpoint,
-        _: &HashMap<SocketAddr, TransportType>,
-        messages_handler: MassaMessagesHandler,
-    ) -> PeerNetResult<PeerId> {
-        let data = endpoint.receive()?;
-        if data.is_empty() {
-            return Err(PeerNetError::HandshakeError.error(
-                "Tester Handshake",
-                Some(String::from("Peer didn't accepted us")),
-            ));
-        }
-        let peer_id = PeerId::from_bytes(&data[..32].try_into().map_err(|_| {
-            PeerNetError::HandshakeError.error(
-                "Massa Handshake",
-                Some("Failed to deserialize PeerId".to_string()),
-            )
-        })?)?;
-        let res = {
-            {
-                // check if peer is banned
-                let mut peer_db_write = self.peer_db.write();
-                if let Some(info) = peer_db_write.peers.get_mut(&peer_id) {
-                    if info.state == super::PeerState::Banned {
-                        return Err(PeerNetError::HandshakeError
-                            .error("Tester Handshake", Some(String::from("Peer is banned"))));
-                    }
-                }
-            }
-
-            let (data, version) = self
-                .version_deserializer
-                .deserialize::<DeserializeError>(&data[32..])
-                .map_err(|err| {
-                    PeerNetError::HandshakeError.error(
-                        "Tester Handshake",
-                        Some(format!("Failed to deserialize version: {}", err)),
-                    )
-                })?;
-            if !self.our_version.is_compatible(&version) {
-                return Err(PeerNetError::HandshakeError.error(
-                    "Massa Handshake",
-                    Some(format!("Received version incompatible: {}", version)),
-                ));
-            }
-            let id = data.first().ok_or(
-                PeerNetError::HandshakeError
-                    .error("Massa Handshake", Some("Failed to get id".to_string())),
-            )?;
-            match id {
-                0 => {
-                    let (_, announcement) = self
-                        .announcement_deserializer
-                        .deserialize::<DeserializeError>(&data[1..])
-                        .map_err(|err| {
-                            PeerNetError::HandshakeError.error(
-                                "Tester Handshake",
-                                Some(format!("Failed to deserialize announcement: {}", err)),
-                            )
-                        })?;
-
-                    if peer_id
-                        .verify_signature(&announcement.hash, &announcement.signature)
-                        .is_err()
-                    {
-                        return Err(PeerNetError::HandshakeError
-                            .error("Tester Handshake", Some(String::from("Invalid signature"))));
-                    }
-                    //TODO: Check ip we are connected match one of the announced ips
-                    {
-                        let mut peer_db_write = self.peer_db.write();
-                        //TODO: Hacky change it when better management ip/listeners
-                        if !announcement.listeners.is_empty() {
-                            peer_db_write
-                                .index_by_newest
-                                .retain(|(_, peer_id_stored)| peer_id_stored != &peer_id);
-                            peer_db_write
-                                .index_by_newest
-                                .insert((Reverse(announcement.timestamp), peer_id.clone()));
-                        }
-                        peer_db_write
-                            .peers
-                            .entry(peer_id.clone())
-                            .and_modify(|info| {
-                                if info.last_announce.timestamp < announcement.timestamp {
-                                    info.last_announce = announcement.clone();
-                                }
-                                info.state = super::PeerState::Trusted;
-                            })
-                            .or_insert(PeerInfo {
-                                last_announce: announcement,
-                                state: super::PeerState::Trusted,
-                            });
-                    }
-                    Ok(peer_id.clone())
-                }
-                1 => {
-                    let (received, id) = messages_handler.deserialize_id(&data[1..], &peer_id)?;
-                    messages_handler.handle(id, received, &peer_id)?;
-                    Err(PeerNetError::HandshakeError.error(
-                        "Massa Handshake",
-                        Some("Tester Handshake failed received a message that our connection has been refused".to_string()),
-                    ))
-                    //TODO: Add the peerdb but for now impossible as we don't have announcement and we need one to place in peerdb
-                }
-                _ => Err(PeerNetError::HandshakeError
-                    .error("Massa handshake", Some("Invalid id".to_string()))),
-            }
-        };
-
-        // if handshake failed, we set the peer state to HandshakeFailed
-        if res.is_err() {
-            let mut peer_db_write = self.peer_db.write();
-            peer_db_write.peers.entry(peer_id).and_modify(|info| {
-                info.state = super::PeerState::HandshakeFailed;
-            });
-        }
-        endpoint.shutdown();
-        res
-    }
-
-    fn fallback_function(
-        &mut self,
-        _keypair: &KeyPair,
-        _endpoint: &mut Endpoint,
-        _listeners: &HashMap<SocketAddr, TransportType>,
-    ) -> PeerNetResult<()> {
-        std::thread::sleep(Duration::from_millis(10000));
-        Ok(())
-    }
-}
-
 pub struct Tester {
     pub handler: Option<JoinHandle<()>>,
 }
@@ -235,6 +72,7 @@ impl Tester {
         peer_db: SharedPeerDB,
         announcement_deserializer: AnnouncementDeserializer,
         version_deserializer: VersionDeserializer,
+        peer_id_deserializer: PeerIdDeserializer,
         addr: SocketAddr,
         our_version: Version,
     ) -> PeerNetResult<PeerId> {
@@ -268,12 +106,14 @@ impl Tester {
                     Some(String::from("Peer didn't accepted us")),
                 ));
             }
-            let peer_id = PeerId::from_bytes(&data[..32].try_into().map_err(|_| {
-                PeerNetError::HandshakeError.error(
-                    "Massa Handshake",
-                    Some("Failed to deserialize PeerId".to_string()),
-                )
-            })?)?;
+            let (data, peer_id) = peer_id_deserializer
+                .deserialize::<DeserializeError>(&data)
+                .map_err(|_| {
+                    PeerNetError::HandshakeError.error(
+                        "Massa Handshake",
+                        Some("Failed to deserialize PeerId".to_string()),
+                    )
+                })?;
             let res = {
                 {
                     // check if peer is banned
@@ -287,7 +127,7 @@ impl Tester {
                 }
 
                 let (data, version) = version_deserializer
-                    .deserialize::<DeserializeError>(&data[32..])
+                    .deserialize::<DeserializeError>(data)
                     .map_err(|err| {
                         PeerNetError::HandshakeError.error(
                             "Tester Handshake",
@@ -503,6 +343,7 @@ impl Tester {
                                                 db.clone(),
                                                 announcement_deser.clone(),
                                                 VersionDeserializer::new(),
+                                                PeerIdDeserializer::new(),
                                                 *addr,
                                                 protocol_config.version,
                                             );
@@ -557,6 +398,7 @@ impl Tester {
                             db.clone(),
                             announcement_deser.clone(),
                             VersionDeserializer::new(),
+                            PeerIdDeserializer::new(),
                             listener,
                             protocol_config.version,
                         );

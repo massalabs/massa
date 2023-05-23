@@ -25,6 +25,7 @@ massa_serialization = { path = "../massa-serialization" }
 massa_signature = { path = "../massa-signature" }
 massa_time = { path = "../massa-time" }
 massa_proto = { path = "../massa-proto" }
+transition = { git = "https://github.com/massalabs/transition.git" }
 
 [dev-dependencies]
 serial_test = "1.0"

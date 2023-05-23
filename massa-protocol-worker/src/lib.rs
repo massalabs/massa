@@ -3,6 +3,7 @@
 #![feature(ip)]
 
 mod connectivity;
+mod context;
 mod controller;
 mod handlers;
 mod manager;

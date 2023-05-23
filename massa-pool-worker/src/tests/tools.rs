@@ -57,8 +57,14 @@ impl OpGenerator {
     }
 
     pub(crate) fn generate(&self) -> SecureShareOperation {
-        let creator = self.creator.clone().unwrap_or_else(KeyPair::generate);
-        let receiver = self.receiver.clone().unwrap_or_else(KeyPair::generate);
+        let creator = self
+            .creator
+            .clone()
+            .unwrap_or_else(|| KeyPair::generate(0).unwrap());
+        let receiver = self
+            .receiver
+            .clone()
+            .unwrap_or_else(|| KeyPair::generate(0).unwrap());
         let fee = self.fee.unwrap_or_default();
         let amount = self.amount.unwrap_or_default();
         let expirery = self.expirery.unwrap_or_default();
@@ -141,7 +147,7 @@ where
 
 /// Creates an endorsement for use in pool tests.
 pub fn _create_endorsement(slot: Slot) -> SecureShareEndorsement {
-    let sender_keypair = KeyPair::generate();
+    let sender_keypair = KeyPair::generate(0).unwrap();
 
     let content = Endorsement {
         slot,

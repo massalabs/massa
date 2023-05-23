@@ -27,6 +27,10 @@ use std::fmt::Formatter;
 /// block header
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct BlockHeader {
+    /// current network version
+    pub current_version: u32,
+    /// announced network version
+    pub announced_version: u32,
     /// slot
     pub slot: Slot,
     /// parents
@@ -167,11 +171,13 @@ impl Serializer<BlockHeader> for BlockHeaderSerializer {
     /// use massa_signature::KeyPair;
     /// use massa_serialization::Serializer;
     ///
-    /// let keypair = KeyPair::generate();
+    /// let keypair = KeyPair::generate(0).unwrap();
     /// let parents = (0..THREAD_COUNT)
     ///   .map(|i| BlockId(Hash::compute_from(&[i])))
     ///   .collect();
     /// let header = BlockHeader {
+    ///   current_version: 0,
+    ///   announced_version: 0,
     ///   slot: Slot::new(1, 1),
     ///   parents,
     ///   operation_merkle_root: Hash::compute_from("mno".as_bytes()),
@@ -203,7 +209,15 @@ impl Serializer<BlockHeader> for BlockHeaderSerializer {
     /// BlockHeaderSerializer::new().serialize(&header, &mut buffer).unwrap();
     /// ```
     fn serialize(&self, value: &BlockHeader, buffer: &mut Vec<u8>) -> Result<(), SerializeError> {
+        // network versions
+        self.u32_serializer
+            .serialize(&value.current_version, buffer)?;
+        self.u32_serializer
+            .serialize(&value.announced_version, buffer)?;
+
+        // slot
         self.slot_serializer.serialize(&value.slot, buffer)?;
+
         // parents (note: there should be none if slot period=0)
         if value.parents.is_empty() {
             buffer.push(0);
@@ -257,6 +271,7 @@ pub struct BlockHeaderDeserializer {
     last_start_period: Option<u64>,
     denunciation_len_deserializer: U32VarIntDeserializer,
     denunciation_deserializer: DenunciationDeserializer,
+    network_versions_deserializer: U32VarIntDeserializer,
 }
 
 impl BlockHeaderDeserializer {
@@ -283,6 +298,10 @@ impl BlockHeaderDeserializer {
                 Included(0),
                 Included(max_denunciations_in_block_header),
             ),
+            network_versions_deserializer: U32VarIntDeserializer::new(
+                Included(0),
+                Included(u32::MAX),
+            ),
             denunciation_deserializer: DenunciationDeserializer::new(
                 thread_count,
                 endorsement_count,
@@ -305,11 +324,13 @@ impl Deserializer<BlockHeader> for BlockHeaderDeserializer {
     /// use massa_signature::KeyPair;
     /// use massa_serialization::{Serializer, Deserializer, DeserializeError};
     ///
-    /// let keypair = KeyPair::generate();
+    /// let keypair = KeyPair::generate(0).unwrap();
     /// let parents: Vec<BlockId> = (0..THREAD_COUNT)
     ///   .map(|i| BlockId(Hash::compute_from(&[i])))
     ///   .collect();
     /// let header = BlockHeader {
+    ///   current_version: 0,
+    ///   announced_version: 0,
     ///   slot: Slot::new(1, 1),
     ///   parents: parents.clone(),
     ///   operation_merkle_root: Hash::compute_from("mno".as_bytes()),
@@ -345,65 +366,79 @@ impl Deserializer<BlockHeader> for BlockHeaderDeserializer {
     /// BlockHeaderSerializer::new().serialize(&deserialized_header, &mut buffer2).unwrap();
     /// assert_eq!(buffer, buffer2);
     /// ```
+    #[allow(clippy::type_complexity)]
     fn deserialize<'a, E: ParseError<&'a [u8]> + ContextError<&'a [u8]>>(
         &self,
         buffer: &'a [u8],
     ) -> IResult<&'a [u8], BlockHeader, E> {
-        let (rest, (slot, parents, operation_merkle_root)): (&[u8], (Slot, Vec<BlockId>, Hash)) =
-            context("Failed BlockHeader deserialization", |input| {
-                let (rest, (slot, parents)) = tuple((
-                    context("Failed slot deserialization", |input| {
-                        self.slot_deserializer.deserialize(input)
-                    }),
-                    context(
-                        "Failed parents deserialization",
-                        alt((
-                            preceded(tag(&[0]), |input| Ok((input, Vec::new()))),
-                            preceded(
-                                tag(&[1]),
-                                count(
-                                    context("Failed block_id deserialization", |input| {
-                                        self.hash_deserializer
-                                            .deserialize(input)
-                                            .map(|(rest, hash)| (rest, BlockId(hash)))
-                                    }),
-                                    self.thread_count as usize,
-                                ),
+        let (rest, (current_version, announced_version, slot, parents, operation_merkle_root)): (
+            &[u8],
+            (u32, u32, Slot, Vec<BlockId>, Hash),
+        ) = context("Failed BlockHeader deserialization", |input| {
+            let (rest, (current_version, announced_version, slot, parents)) = tuple((
+                context("Failed current_version deserialization", |input| {
+                    self.network_versions_deserializer.deserialize(input)
+                }),
+                context("Failed announced_version deserialization", |input| {
+                    self.network_versions_deserializer.deserialize(input)
+                }),
+                context("Failed slot deserialization", |input| {
+                    self.slot_deserializer.deserialize(input)
+                }),
+                context(
+                    "Failed parents deserialization",
+                    alt((
+                        preceded(tag(&[0]), |input| Ok((input, Vec::new()))),
+                        preceded(
+                            tag(&[1]),
+                            count(
+                                context("Failed block_id deserialization", |input| {
+                                    self.hash_deserializer
+                                        .deserialize(input)
+                                        .map(|(rest, hash)| (rest, BlockId(hash)))
+                                }),
+                                self.thread_count as usize,
                             ),
-                        )),
-                    ),
-                ))
-                .parse(input)?;
+                        ),
+                    )),
+                ),
+            ))
+            .parse(input)?;
 
-                // validate the parent/slot invariants before moving on to other fields
-                if let Some(last_start_period) = self.last_start_period {
-                    if slot.period == last_start_period && !parents.is_empty() {
-                        return Err(nom::Err::Failure(ContextError::add_context(
-                            rest,
-                            "Genesis block cannot contain parents",
-                            ParseError::from_error_kind(rest, nom::error::ErrorKind::Fail),
-                        )));
-                    } else if slot.period != last_start_period
-                        && parents.len() != self.thread_count as usize
-                    {
-                        return Err(nom::Err::Failure(ContextError::add_context(
-                            rest,
-                            "Non-genesis block must have same numbers of parents as threads count",
-                            ParseError::from_error_kind(rest, nom::error::ErrorKind::Fail),
-                        )));
-                    }
+            // validate the parent/slot invariants before moving on to other fields
+            if let Some(last_start_period) = self.last_start_period {
+                if slot.period == last_start_period && !parents.is_empty() {
+                    return Err(nom::Err::Failure(ContextError::add_context(
+                        rest,
+                        "Genesis block cannot contain parents",
+                        ParseError::from_error_kind(rest, nom::error::ErrorKind::Fail),
+                    )));
+                } else if slot.period != last_start_period
+                    && parents.len() != self.thread_count as usize
+                {
+                    return Err(nom::Err::Failure(ContextError::add_context(
+                        rest,
+                        "Non-genesis block must have same numbers of parents as threads count",
+                        ParseError::from_error_kind(rest, nom::error::ErrorKind::Fail),
+                    )));
                 }
+            }
 
-                let (rest, merkle) = context("Failed operation_merkle_root", |input| {
-                    self.hash_deserializer.deserialize(input)
-                })
-                .parse(rest)?;
-                Ok((rest, (slot, parents, merkle)))
+            let (rest, merkle) = context("Failed operation_merkle_root", |input| {
+                self.hash_deserializer.deserialize(input)
             })
-            .parse(buffer)?;
+            .parse(rest)?;
+            Ok((
+                rest,
+                (current_version, announced_version, slot, parents, merkle),
+            ))
+        })
+        .parse(buffer)?;
 
         if parents.is_empty() {
             let res = BlockHeader {
+                current_version,
+                announced_version,
                 slot,
                 parents,
                 operation_merkle_root,
@@ -481,6 +516,8 @@ impl Deserializer<BlockHeader> for BlockHeaderDeserializer {
         .parse(rest)?;
 
         let header = BlockHeader {
+            current_version,
+            announced_version,
             slot,
             parents,
             operation_merkle_root,
@@ -580,7 +617,7 @@ mod test {
 
     #[test]
     fn test_block_header_ser_der() {
-        let keypair = KeyPair::generate();
+        let keypair = KeyPair::generate(0).unwrap();
 
         let slot = Slot::new(7, 1);
         let parents_1: Vec<BlockId> = (0..THREAD_COUNT)
@@ -607,6 +644,8 @@ mod test {
         let de_b = Denunciation::try_from((&s_endo_1, &s_endo_2)).unwrap();
 
         let block_header_1 = BlockHeader {
+            current_version: 0,
+            announced_version: 0,
             slot,
             parents: parents_1,
             operation_merkle_root: Hash::compute_from("mno".as_bytes()),

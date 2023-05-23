@@ -543,7 +543,7 @@ mod tests {
     /// Functional test of `LedgerDB`
     #[test]
     fn test_ledger_db() {
-        let addr = Address::from_public_key(&KeyPair::generate().get_public_key());
+        let addr = Address::from_public_key(&KeyPair::generate(0).unwrap().get_public_key());
         let (ledger_db, data) = init_test_ledger(addr);
 
         let amount_deserializer =
@@ -585,6 +585,15 @@ mod tests {
             .get_sub_entry(&addr, LedgerSubEntry::Balance)
             .is_none());
         assert!(ledger_db.get_entire_datastore(&addr).is_empty());
+    }
+
+    #[test]
+    fn test_ledger_parts() {
+        let pub_a = KeyPair::generate(0).unwrap().get_public_key();
+        let a = Address::from_public_key(&pub_a);
+        let (db, _) = init_test_ledger(a);
+        let res = db.get_ledger_part(StreamingStep::Started).unwrap();
+        db.set_ledger_part(&res.0[..]).unwrap();
     }
 
     #[test]

@@ -19,7 +19,7 @@ use std::str::FromStr;
 /// This file defines tools to test the asynchronous pool bootstrap
 
 fn get_random_address() -> Address {
-    let keypair = KeyPair::generate();
+    let keypair = KeyPair::generate(0).unwrap();
     Address::from_public_key(&keypair.get_public_key())
 }
 

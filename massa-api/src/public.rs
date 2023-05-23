@@ -3,6 +3,7 @@
 
 use crate::{MassaRpcServer, Public, RpcServer, StopHandle, Value, API};
 use async_trait::async_trait;
+use itertools::{izip, Itertools};
 use jsonrpsee::core::{Error as JsonRpseeError, RpcResult};
 use massa_api_exports::{
     address::AddressInfo,
@@ -23,41 +24,39 @@ use massa_consensus_exports::ConsensusController;
 use massa_execution_exports::{
     ExecutionController, ExecutionStackElement, ReadOnlyExecutionRequest, ReadOnlyExecutionTarget,
 };
-use massa_models::operation::OperationDeserializer;
-use massa_models::secure_share::SecureShareDeserializer;
-use massa_models::{
-    block::{Block, BlockGraphStatus},
-    endorsement::SecureShareEndorsement,
-    error::ModelsError,
-    operation::SecureShareOperation,
-    timeslots,
-};
-use massa_pos_exports::SelectorController;
-use massa_protocol_exports::{PeerConnectionType, ProtocolConfig, ProtocolController};
-use massa_serialization::{DeserializeError, Deserializer};
-
-use itertools::{izip, Itertools};
-use massa_models::datastore::DatastoreDeserializer;
 use massa_models::{
     address::Address,
+    block::{Block, BlockGraphStatus},
     block_id::BlockId,
     clique::Clique,
     composite::PubkeySig,
     config::CompactConfig,
+    datastore::DatastoreDeserializer,
     endorsement::EndorsementId,
+    endorsement::SecureShareEndorsement,
+    error::ModelsError,
     execution::EventFilter,
     node::NodeId,
+    operation::OperationDeserializer,
     operation::OperationId,
+    operation::SecureShareOperation,
     output_event::SCOutputEvent,
     prehash::{PreHashMap, PreHashSet},
+    secure_share::SecureShareDeserializer,
     slot::Slot,
+    timeslots,
     timeslots::{get_latest_block_slot_at_timestamp, time_range_to_slot_range},
     version::Version,
 };
 use massa_pool_exports::PoolController;
-use massa_signature::{KeyPair, PublicKey, PUBLIC_KEY_SIZE_BYTES};
+use massa_pos_exports::SelectorController;
+use massa_protocol_exports::{PeerConnectionType, ProtocolConfig, ProtocolController};
+use massa_serialization::{DeserializeError, Deserializer};
 use massa_storage::Storage;
 use massa_time::MassaTime;
+use massa_versioning::{
+    keypair_factory::KeyPairFactory, versioning::MipStore, versioning_factory::VersioningFactory,
+};
 use std::collections::BTreeMap;
 use std::net::{IpAddr, SocketAddr};
 
@@ -74,6 +73,7 @@ impl API<Public> {
         version: Version,
         node_id: NodeId,
         storage: Storage,
+        mip_store: MipStore,
     ) -> Self {
         API(Public {
             consensus_controller,
@@ -86,6 +86,7 @@ impl API<Public> {
             selector_controller,
             protocol_config,
             storage,
+            keypair_factory: KeyPairFactory { mip_store },
         })
     }
 }
@@ -133,10 +134,16 @@ impl MassaRpcServer for API<Public> {
             is_final,
         } in reqs
         {
-            let address = address.unwrap_or_else(|| {
-                // if no addr provided, use a random one
-                Address::from_public_key(&KeyPair::generate().get_public_key())
-            });
+            let address = if let Some(addr) = address {
+                addr
+            } else {
+                let keypair = self
+                    .0
+                    .keypair_factory
+                    .create(&(), None)
+                    .map_err(ApiError::from)?;
+                Address::from_public_key(&keypair.get_public_key())
+            };
 
             let op_datastore = match operation_datastore {
                 Some(v) => {
@@ -221,10 +228,16 @@ impl MassaRpcServer for API<Public> {
             is_final,
         } in reqs
         {
-            let caller_address = caller_address.unwrap_or_else(|| {
-                // if no addr provided, use a random one
-                Address::from_public_key(&KeyPair::generate().get_public_key())
-            });
+            let caller_address = if let Some(addr) = caller_address {
+                addr
+            } else {
+                let keypair = self
+                    .0
+                    .keypair_factory
+                    .create(&(), None)
+                    .map_err(ApiError::from)?;
+                Address::from_public_key(&keypair.get_public_key())
+            };
 
             // TODO:
             // * set a maximum gas value for read-only executions to prevent attacks
@@ -365,16 +378,7 @@ impl MassaRpcServer for API<Public> {
                     PeerConnectionType::IN => false,
                     PeerConnectionType::OUT => true,
                 };
-                //TODO: Use the peerid correctly
-                (
-                    NodeId::new(
-                        PublicKey::from_bytes(
-                            id.to_bytes()[..PUBLIC_KEY_SIZE_BYTES].try_into().unwrap(),
-                        )
-                        .unwrap(),
-                    ),
-                    (peer.0.ip(), is_outgoing),
-                )
+                (NodeId::new(id.get_public_key()), (peer.0.ip(), is_outgoing))
             })
             .collect::<BTreeMap<_, _>>();
 

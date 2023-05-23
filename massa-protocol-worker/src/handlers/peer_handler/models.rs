@@ -1,8 +1,8 @@
 use crossbeam::channel::Sender;
-use massa_protocol_exports::{BootstrapPeers, ProtocolError};
+use massa_protocol_exports::{BootstrapPeers, PeerId, ProtocolError};
 use massa_time::MassaTime;
 use parking_lot::RwLock;
-use peernet::{peer_id::PeerId, transports::TransportType};
+use peernet::transports::TransportType;
 use rand::seq::SliceRandom;
 use std::cmp::Reverse;
 use std::collections::BTreeSet;
