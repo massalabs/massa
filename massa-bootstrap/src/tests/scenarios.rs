@@ -196,10 +196,12 @@ fn mock_bootstrap_manager(addr: SocketAddr, bootstrap_config: BootstrapConfig) -
 fn test_bootstrap_whitelist() {
     let addr: SocketAddr = "127.0.0.1:8080".parse().unwrap();
     let (config, _keypair): &(BootstrapConfig, KeyPair) = &BOOTSTRAP_CONFIG_KEYPAIR;
-    let _bs_manager = mock_bootstrap_manager(addr.clone(), config.clone());
+    let bs_manager = mock_bootstrap_manager(addr.clone(), config.clone());
 
     let conn = TcpStream::connect(addr);
     conn.unwrap();
+    let _ = bs_manager.stop().unwrap();
+    std::thread::sleep(Duration::from_millis(20));
 }
 
 #[test]
