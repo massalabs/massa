@@ -212,10 +212,6 @@ fn test_bootstrap_server() {
     let rolls_path = PathBuf::from_str("../massa-node/base_config/initial_rolls.json").unwrap();
     let genesis_address = Address::from_public_key(&KeyPair::generate().get_public_key());
 
-    // let (consensus_controller, mut consensus_event_receiver) =
-    //     MockConsensusController::new_with_receiver();
-    // let (network_cmd_tx, mut network_cmd_rx) = mpsc::channel::<NetworkCommand>(5);
-
     // create a MIP store
     let mip_stats_cfg = MipStatsConfig {
         block_count_considered: MIP_STORE_STATS_BLOCK_CONSIDERED,
@@ -314,56 +310,64 @@ fn test_bootstrap_server() {
     )));
 
     // setup final state mocks.
-    // TODO: work out a way to handle the clone shenanigans in a cleaner manner
     let final_state_client_clone = final_state_client.clone();
     let final_state_server_clone1 = final_state_server.clone();
     let final_state_server_clone2 = final_state_server.clone();
 
     let (mock_bs_listener, mock_remote_connector) = conn_establishment_mocks();
     // Setup network command mock-story: hard-code the result of getting bootstrap peers
-    let mut mocked1 = MockProtocolController::new();
-    let mut mocked2 = Box::new(MockProtocolController::new());
-    mocked2
-        .expect_get_bootstrap_peers()
-        .times(1)
-        .returning(|| Ok(get_peers(&keypair.clone())));
-
-    mocked1.expect_clone_box().return_once(move || mocked2);
-
-    let mut stream_mock1 = Box::new(MockConsensusControllerImpl::new());
-    let mut stream_mock2 = Box::new(MockConsensusControllerImpl::new());
-    let mut stream_mock3 = Box::new(MockConsensusControllerImpl::new());
-    let mut seq = mockall::Sequence::new();
-
-    let sent_graph = get_boot_state();
-    let sent_graph_clone = sent_graph.clone();
-    stream_mock3
-        .expect_get_bootstrap_part()
-        .times(10)
-        .in_sequence(&mut seq)
-        .returning(move |_, slot| {
-            if StreamingStep::Ongoing(Slot::new(1, 1)) == slot {
-                Ok((
-                    sent_graph_clone.clone(),
-                    PreHashSet::default(),
-                    StreamingStep::Started,
-                ))
-            } else {
-                Ok((
-                    BootstrapableGraph {
-                        final_blocks: vec![],
-                    },
-                    PreHashSet::default(),
-                    StreamingStep::Finished(None),
-                ))
-            }
+    let mock_proto_ctrl = {
+        let mut res = Box::new(MockProtocolController::new());
+        res.expect_clone_box().return_once(move || {
+            let mut story = Box::new(MockProtocolController::new());
+            story
+                .expect_get_bootstrap_peers()
+                .times(1)
+                .returning(|| Ok(get_peers(&keypair.clone())));
+            story
         });
-    stream_mock2
-        .expect_clone_box()
-        .return_once(move || stream_mock3);
-    stream_mock1
-        .expect_clone_box()
-        .return_once(move || stream_mock2);
+        res
+    };
+
+    // TODO: work out a way to handle the clone shenanigans in a cleaner manner
+    let sent_graph = get_boot_state();
+    let mock_stream = {
+        let mut mock_story = Box::new(MockConsensusControllerImpl::new());
+        let sent_graph_clone = sent_graph.clone();
+        let mut seq = mockall::Sequence::new();
+        mock_story
+            .expect_get_bootstrap_part()
+            .times(10)
+            .in_sequence(&mut seq)
+            .returning(move |_, slot| {
+                if StreamingStep::Ongoing(Slot::new(1, 1)) == slot {
+                    Ok((
+                        sent_graph_clone.clone(),
+                        PreHashSet::default(),
+                        StreamingStep::Started,
+                    ))
+                } else {
+                    Ok((
+                        BootstrapableGraph {
+                            final_blocks: vec![],
+                        },
+                        PreHashSet::default(),
+                        StreamingStep::Finished(None),
+                    ))
+                }
+            });
+
+        let mut res = Box::new(MockConsensusControllerImpl::new());
+
+        res.expect_clone_box().return_once(move || {
+            let mut stream_mock2 = Box::new(MockConsensusControllerImpl::new());
+            stream_mock2
+                .expect_clone_box()
+                .return_once(move || mock_story);
+            stream_mock2
+        });
+        res
+    };
 
     let cloned_store = mip_store.clone();
 
@@ -375,8 +379,8 @@ fn test_bootstrap_server() {
             start_bootstrap_server(
                 mock_bs_listener,
                 waker,
-                stream_mock1,
-                Box::new(mocked1),
+                mock_stream,
+                mock_proto_ctrl,
                 final_state_server_clone1,
                 bootstrap_config.clone(),
                 keypair.clone(),
