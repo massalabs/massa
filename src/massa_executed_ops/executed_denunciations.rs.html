@@ -309,13 +309,57 @@
 <a href="#309" id="309">309</a>
 <a href="#310" id="310">310</a>
 <a href="#311" id="311">311</a>
+<a href="#312" id="312">312</a>
+<a href="#313" id="313">313</a>
+<a href="#314" id="314">314</a>
+<a href="#315" id="315">315</a>
+<a href="#316" id="316">316</a>
+<a href="#317" id="317">317</a>
+<a href="#318" id="318">318</a>
+<a href="#319" id="319">319</a>
+<a href="#320" id="320">320</a>
+<a href="#321" id="321">321</a>
+<a href="#322" id="322">322</a>
+<a href="#323" id="323">323</a>
+<a href="#324" id="324">324</a>
+<a href="#325" id="325">325</a>
+<a href="#326" id="326">326</a>
+<a href="#327" id="327">327</a>
+<a href="#328" id="328">328</a>
+<a href="#329" id="329">329</a>
+<a href="#330" id="330">330</a>
+<a href="#331" id="331">331</a>
+<a href="#332" id="332">332</a>
+<a href="#333" id="333">333</a>
+<a href="#334" id="334">334</a>
+<a href="#335" id="335">335</a>
+<a href="#336" id="336">336</a>
+<a href="#337" id="337">337</a>
+<a href="#338" id="338">338</a>
+<a href="#339" id="339">339</a>
+<a href="#340" id="340">340</a>
+<a href="#341" id="341">341</a>
+<a href="#342" id="342">342</a>
+<a href="#343" id="343">343</a>
+<a href="#344" id="344">344</a>
+<a href="#345" id="345">345</a>
+<a href="#346" id="346">346</a>
+<a href="#347" id="347">347</a>
+<a href="#348" id="348">348</a>
+<a href="#349" id="349">349</a>
+<a href="#350" id="350">350</a>
+<a href="#351" id="351">351</a>
+<a href="#352" id="352">352</a>
+<a href="#353" id="353">353</a>
+<a href="#354" id="354">354</a>
 </pre><pre class="rust"><code><span class="doccomment">//! Copyright (c) 2023 MASSA LABS &lt;info@massa.net&gt;
 
 //! This file defines a structure to list and prune previously executed denunciations.
 //! Used to detect denunciation reuse.
 
 </span><span class="kw">use </span>std::collections::{BTreeMap, HashSet};
-<span class="kw">use </span>std::ops::Bound::{Excluded, Included, Unbounded};
+<span class="kw">use </span>std::ops::Bound::{Excluded, Included};
+<span class="kw">use </span>std::sync::Arc;
 
 <span class="kw">use </span>nom::{
     error::{context, ContextError, ParseError},
@@ -323,86 +367,134 @@
     sequence::tuple,
     IResult, Parser,
 };
+<span class="kw">use </span>parking_lot::RwLock;
 
 <span class="kw">use crate</span>::{ExecutedDenunciationsChanges, ExecutedDenunciationsConfig};
-
-<span class="kw">use </span>massa_hash::{Hash, HASH_SIZE_BYTES};
+<span class="kw">use </span>massa_db::{
+    DBBatch, MassaDB, CF_ERROR, CRUD_ERROR, EXECUTED_DENUNCIATIONS_INDEX_DESER_ERROR,
+    EXECUTED_DENUNCIATIONS_INDEX_SER_ERROR, EXECUTED_DENUNCIATIONS_PREFIX, STATE_CF,
+};
 <span class="kw">use </span>massa_models::denunciation::Denunciation;
-<span class="kw">use </span>massa_models::streaming_step::StreamingStep;
 <span class="kw">use </span>massa_models::{
     denunciation::{DenunciationIndex, DenunciationIndexDeserializer, DenunciationIndexSerializer},
     slot::{Slot, SlotDeserializer, SlotSerializer},
 };
 <span class="kw">use </span>massa_serialization::{
-    Deserializer, SerializeError, Serializer, U64VarIntDeserializer, U64VarIntSerializer,
+    DeserializeError, Deserializer, SerializeError, Serializer, U64VarIntDeserializer,
+    U64VarIntSerializer,
 };
 
-<span class="kw">const </span>EXECUTED_DENUNCIATIONS_HASH_INITIAL_BYTES: <span class="kw-2">&amp;</span>[u8; <span class="number">32</span>] = <span class="kw-2">&amp;</span>[<span class="number">0</span>; HASH_SIZE_BYTES];
+<span class="doccomment">/// Denunciation index key formatting macro
+</span><span class="attr">#[macro_export]
+</span><span class="macro">macro_rules! </span>denunciation_index_key {
+    (<span class="macro-nonterminal">$id</span>:expr) =&gt; {
+        [<span class="kw-2">&amp;</span>EXECUTED_DENUNCIATIONS_PREFIX.as_bytes(), <span class="kw-2">&amp;</span><span class="macro-nonterminal">$id</span>[..]].concat()
+    };
+}
 
 <span class="doccomment">/// A structure to list and prune previously executed denunciations
-</span><span class="attr">#[derive(Debug, Clone)]
+</span><span class="attr">#[derive(Clone)]
 </span><span class="kw">pub struct </span>ExecutedDenunciations {
     <span class="doccomment">/// Executed denunciations configuration
     </span>config: ExecutedDenunciationsConfig,
+    <span class="doccomment">/// Access to the RocksDB database
+    </span><span class="kw">pub </span>db: Arc&lt;RwLock&lt;MassaDB&gt;&gt;,
     <span class="doccomment">/// for better pruning complexity
     </span><span class="kw">pub </span>sorted_denunciations: BTreeMap&lt;Slot, HashSet&lt;DenunciationIndex&gt;&gt;,
-    <span class="doccomment">/// for better insertion complexity
-    </span><span class="kw">pub </span>denunciations: HashSet&lt;DenunciationIndex&gt;,
-    <span class="doccomment">/// Accumulated hash of the executed denunciations
-    </span><span class="kw">pub </span>hash: Hash,
+    <span class="doccomment">/// for rocksdb serialization
+    </span>denunciation_index_serializer: DenunciationIndexSerializer,
+    <span class="doccomment">/// for rocksdb deserialization
+    </span>denunciation_index_deserializer: DenunciationIndexDeserializer,
 }
 
 <span class="kw">impl </span>ExecutedDenunciations {
     <span class="doccomment">/// Create a new `ExecutedDenunciations`
-    </span><span class="kw">pub fn </span>new(config: ExecutedDenunciationsConfig) -&gt; <span class="self">Self </span>{
-        <span class="self">Self </span>{
+    </span><span class="kw">pub fn </span>new(config: ExecutedDenunciationsConfig, db: Arc&lt;RwLock&lt;MassaDB&gt;&gt;) -&gt; <span class="self">Self </span>{
+        <span class="kw">let </span>denunciation_index_deserializer =
+            DenunciationIndexDeserializer::new(config.thread_count, config.endorsement_count);
+        <span class="kw">let </span><span class="kw-2">mut </span>executed_denunciations = <span class="self">Self </span>{
             config,
+            db,
             sorted_denunciations: Default::default(),
-            denunciations: Default::default(),
-            hash: Hash::from_bytes(EXECUTED_DENUNCIATIONS_HASH_INITIAL_BYTES),
+            denunciation_index_serializer: DenunciationIndexSerializer::new(),
+            denunciation_index_deserializer,
+        };
+        executed_denunciations.recompute_sorted_denunciations();
+        executed_denunciations
+    }
+
+    <span class="doccomment">/// Recomputes the local caches after bootstrap or loading the state from disk
+    </span><span class="kw">pub fn </span>recompute_sorted_denunciations(<span class="kw-2">&amp;mut </span><span class="self">self</span>) {
+        <span class="self">self</span>.sorted_denunciations.clear();
+
+        <span class="kw">let </span>db = <span class="self">self</span>.db.read();
+        <span class="kw">let </span>handle = db.db.cf_handle(STATE_CF).expect(CF_ERROR);
+
+        <span class="kw">for </span>(serialized_de_idx, <span class="kw">_</span>) <span class="kw">in </span>db
+            .db
+            .prefix_iterator_cf(handle, EXECUTED_DENUNCIATIONS_PREFIX)
+            .flatten()
+        {
+            <span class="kw">if </span>!serialized_de_idx.starts_with(EXECUTED_DENUNCIATIONS_PREFIX.as_bytes()) {
+                <span class="kw">break</span>;
+            }
+            <span class="kw">let </span>(<span class="kw">_</span>, de_idx) = <span class="self">self
+                </span>.denunciation_index_deserializer
+                .deserialize::&lt;DeserializeError&gt;(
+                    <span class="kw-2">&amp;</span>serialized_de_idx[EXECUTED_DENUNCIATIONS_PREFIX.len()..],
+                )
+                .expect(EXECUTED_DENUNCIATIONS_INDEX_DESER_ERROR);
+
+            <span class="self">self</span>.sorted_denunciations
+                .entry(<span class="kw-2">*</span>de_idx.get_slot())
+                .and_modify(|ids| {
+                    ids.insert(de_idx);
+                })
+                .or_insert_with(|| {
+                    <span class="kw">let </span><span class="kw-2">mut </span>new = HashSet::default();
+                    new.insert(de_idx);
+                    new
+                });
         }
     }
 
-    <span class="doccomment">/// Reset the executed operations
+    <span class="doccomment">/// Reset the executed denunciations
     ///
     /// USED FOR BOOTSTRAP ONLY
     </span><span class="kw">pub fn </span>reset(<span class="kw-2">&amp;mut </span><span class="self">self</span>) {
-        <span class="self">self</span>.sorted_denunciations.clear();
-        <span class="self">self</span>.denunciations.clear();
-        <span class="self">self</span>.hash = Hash::from_bytes(EXECUTED_DENUNCIATIONS_HASH_INITIAL_BYTES);
-    }
+        {
+            <span class="kw">let </span><span class="kw-2">mut </span>db = <span class="self">self</span>.db.write();
+            db.delete_prefix(EXECUTED_DENUNCIATIONS_PREFIX, <span class="prelude-val">None</span>);
+        }
 
-    <span class="doccomment">/// Returns the number of executed operations
-    </span><span class="kw">pub fn </span>len(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; usize {
-        <span class="self">self</span>.denunciations.len()
-    }
-
-    <span class="doccomment">/// Check executed ops emptiness
-    </span><span class="kw">pub fn </span>is_empty(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; bool {
-        <span class="self">self</span>.denunciations.is_empty()
+        <span class="self">self</span>.recompute_sorted_denunciations();
     }
 
     <span class="doccomment">/// Check if a denunciation (e.g. a denunciation index) was executed
     </span><span class="kw">pub fn </span>contains(<span class="kw-2">&amp;</span><span class="self">self</span>, de_idx: <span class="kw-2">&amp;</span>DenunciationIndex) -&gt; bool {
-        <span class="self">self</span>.denunciations.contains(de_idx)
-    }
+        <span class="kw">let </span>db = <span class="self">self</span>.db.read();
+        <span class="kw">let </span>handle = db.db.cf_handle(STATE_CF).expect(CF_ERROR);
 
-    <span class="doccomment">/// Internal function used to insert the values of an operation id iter and update the object hash
-    </span><span class="kw">fn </span>extend_and_compute_hash&lt;<span class="lifetime">&#39;a</span>, I&gt;(<span class="kw-2">&amp;mut </span><span class="self">self</span>, values: I)
-    <span class="kw">where
-        </span>I: Iterator&lt;Item = <span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>DenunciationIndex&gt;,
-    {
-        <span class="kw">for </span>de_idx <span class="kw">in </span>values {
-            <span class="kw">if </span><span class="self">self</span>.denunciations.insert(<span class="kw-2">*</span>de_idx) {
-                <span class="self">self</span>.hash ^= de_idx.get_hash();
-            }
-        }
+        <span class="kw">let </span><span class="kw-2">mut </span>serialized_de_idx = Vec::new();
+        <span class="self">self</span>.denunciation_index_serializer
+            .serialize(de_idx, <span class="kw-2">&amp;mut </span>serialized_de_idx)
+            .expect(EXECUTED_DENUNCIATIONS_INDEX_SER_ERROR);
+
+        db.db
+            .get_cf(handle, <span class="macro">denunciation_index_key!</span>(serialized_de_idx))
+            .expect(CRUD_ERROR)
+            .is_some()
     }
 
     <span class="doccomment">/// Apply speculative operations changes to the final executed denunciations state
-    </span><span class="kw">pub fn </span>apply_changes(<span class="kw-2">&amp;mut </span><span class="self">self</span>, changes: ExecutedDenunciationsChanges, slot: Slot) {
-        <span class="self">self</span>.extend_and_compute_hash(changes.iter());
+    </span><span class="kw">pub fn </span>apply_changes_to_batch(
+        <span class="kw-2">&amp;mut </span><span class="self">self</span>,
+        changes: ExecutedDenunciationsChanges,
+        slot: Slot,
+        batch: <span class="kw-2">&amp;mut </span>DBBatch,
+    ) {
         <span class="kw">for </span>de_idx <span class="kw">in </span>changes {
+            <span class="self">self</span>.put_entry(<span class="kw-2">&amp;</span>de_idx, batch);
             <span class="self">self</span>.sorted_denunciations
                 .entry(<span class="kw-2">*</span>de_idx.get_slot())
                 .and_modify(|ids| {
@@ -415,11 +507,11 @@
                 });
         }
 
-        <span class="self">self</span>.prune(slot);
+        <span class="self">self</span>.prune_to_batch(slot, batch);
     }
 
     <span class="doccomment">/// Prune all denunciations that have expired, assuming the given slot is final
-    </span><span class="kw">fn </span>prune(<span class="kw-2">&amp;mut </span><span class="self">self</span>, slot: Slot) {
+    </span><span class="kw">fn </span>prune_to_batch(<span class="kw-2">&amp;mut </span><span class="self">self</span>, slot: Slot, batch: <span class="kw-2">&amp;mut </span>DBBatch) {
         <span class="kw">let </span>drained: Vec&lt;(Slot, HashSet&lt;DenunciationIndex&gt;)&gt; = <span class="self">self
             </span>.sorted_denunciations
             .drain_filter(|de_idx_slot, <span class="kw">_</span>| {
@@ -433,68 +525,62 @@
 
         <span class="kw">for </span>(_slot, de_indexes) <span class="kw">in </span>drained {
             <span class="kw">for </span>de_idx <span class="kw">in </span>de_indexes {
-                <span class="self">self</span>.denunciations.remove(<span class="kw-2">&amp;</span>de_idx);
-                <span class="self">self</span>.hash ^= de_idx.get_hash();
+                <span class="self">self</span>.delete_entry(<span class="kw-2">&amp;</span>de_idx, batch)
             }
         }
     }
 
-    <span class="doccomment">/// Get a part of the executed denunciations.
-    /// Used exclusively by the bootstrap server.
+    <span class="doccomment">/// Add a denunciation_index to the DB
     ///
-    /// # Returns
-    /// A tuple containing the data and the next executed de streaming step
-    </span><span class="kw">pub fn </span>get_executed_de_part(
-        <span class="kw-2">&amp;</span><span class="self">self</span>,
-        cursor: StreamingStep&lt;Slot&gt;,
-    ) -&gt; (
-        BTreeMap&lt;Slot, HashSet&lt;DenunciationIndex&gt;&gt;,
-        StreamingStep&lt;Slot&gt;,
-    ) {
-        <span class="kw">let </span><span class="kw-2">mut </span>de_part = BTreeMap::new();
-        <span class="kw">let </span>left_bound = <span class="kw">match </span>cursor {
-            StreamingStep::Started =&gt; Unbounded,
-            StreamingStep::Ongoing(slot) =&gt; Excluded(slot),
-            StreamingStep::Finished(<span class="kw">_</span>) =&gt; <span class="kw">return </span>(de_part, cursor),
+    /// # Arguments
+    /// * `de_idx`
+    /// * `batch`: the given operation batch to update
+    </span><span class="kw">fn </span>put_entry(<span class="kw-2">&amp;</span><span class="self">self</span>, de_idx: <span class="kw-2">&amp;</span>DenunciationIndex, batch: <span class="kw-2">&amp;mut </span>DBBatch) {
+        <span class="kw">let </span>db = <span class="self">self</span>.db.read();
+
+        <span class="kw">let </span><span class="kw-2">mut </span>serialized_de_idx = Vec::new();
+        <span class="self">self</span>.denunciation_index_serializer
+            .serialize(de_idx, <span class="kw-2">&amp;mut </span>serialized_de_idx)
+            .expect(EXECUTED_DENUNCIATIONS_INDEX_SER_ERROR);
+
+        db.put_or_update_entry_value(batch, <span class="macro">denunciation_index_key!</span>(serialized_de_idx), <span class="string">b&quot;&quot;</span>);
+    }
+
+    <span class="doccomment">/// Remove a denunciation_index from the DB
+    ///
+    /// # Arguments
+    /// * `de_idx`: the denunciation index to remove
+    /// * batch: the given operation batch to update
+    </span><span class="kw">fn </span>delete_entry(<span class="kw-2">&amp;</span><span class="self">self</span>, de_idx: <span class="kw-2">&amp;</span>DenunciationIndex, batch: <span class="kw-2">&amp;mut </span>DBBatch) {
+        <span class="kw">let </span>db = <span class="self">self</span>.db.read();
+
+        <span class="kw">let </span><span class="kw-2">mut </span>serialized_de_idx = Vec::new();
+        <span class="self">self</span>.denunciation_index_serializer
+            .serialize(de_idx, <span class="kw-2">&amp;mut </span>serialized_de_idx)
+            .expect(EXECUTED_DENUNCIATIONS_INDEX_SER_ERROR);
+
+        db.delete_key(batch, <span class="macro">denunciation_index_key!</span>(serialized_de_idx));
+    }
+
+    <span class="doccomment">/// Deserializes the key and value, useful after bootstrap
+    </span><span class="kw">pub fn </span>is_key_value_valid(<span class="kw-2">&amp;</span><span class="self">self</span>, serialized_key: <span class="kw-2">&amp;</span>[u8], serialized_value: <span class="kw-2">&amp;</span>[u8]) -&gt; bool {
+        <span class="kw">if </span>!serialized_key.starts_with(EXECUTED_DENUNCIATIONS_PREFIX.as_bytes()) {
+            <span class="kw">return </span><span class="bool-val">false</span>;
+        }
+
+        <span class="kw">let </span><span class="prelude-val">Ok</span>((rest, _idx)) = <span class="self">self</span>.denunciation_index_deserializer.deserialize::&lt;DeserializeError&gt;(<span class="kw-2">&amp;</span>serialized_key[EXECUTED_DENUNCIATIONS_PREFIX.len()..]) <span class="kw">else </span>{
+            <span class="kw">return </span><span class="bool-val">false</span>;
         };
-        <span class="kw">let </span><span class="kw-2">mut </span>de_part_last_slot: <span class="prelude-ty">Option</span>&lt;Slot&gt; = <span class="prelude-val">None</span>;
-        <span class="kw">for </span>(slot, ids) <span class="kw">in </span><span class="self">self</span>.sorted_denunciations.range((left_bound, Unbounded)) {
-            <span class="kw">if </span>de_part.len() &lt; <span class="self">self</span>.config.bootstrap_part_size <span class="kw">as </span>usize {
-                de_part.insert(<span class="kw-2">*</span>slot, ids.clone());
-                de_part_last_slot = <span class="prelude-val">Some</span>(<span class="kw-2">*</span>slot);
-            } <span class="kw">else </span>{
-                <span class="kw">break</span>;
-            }
+        <span class="kw">if </span>!rest.is_empty() {
+            <span class="kw">return </span><span class="bool-val">false</span>;
         }
-        <span class="kw">if let </span><span class="prelude-val">Some</span>(last_slot) = de_part_last_slot {
-            (de_part, StreamingStep::Ongoing(last_slot))
-        } <span class="kw">else </span>{
-            (de_part, StreamingStep::Finished(<span class="prelude-val">None</span>))
-        }
-    }
 
-    <span class="doccomment">/// Set a part of the executed denunciations.
-    /// Used exclusively by the bootstrap client.
-    /// Takes the data returned from `get_executed_de_part` as input.
-    ///
-    /// # Returns
-    /// The next executed de streaming step
-    </span><span class="kw">pub fn </span>set_executed_de_part(
-        <span class="kw-2">&amp;mut </span><span class="self">self</span>,
-        part: BTreeMap&lt;Slot, HashSet&lt;DenunciationIndex&gt;&gt;,
-    ) -&gt; StreamingStep&lt;Slot&gt; {
-        <span class="self">self</span>.sorted_denunciations.extend(part.clone());
-        <span class="self">self</span>.extend_and_compute_hash(part.iter().flat_map(|(<span class="kw">_</span>, ids)| ids));
-        <span class="kw">if let </span><span class="prelude-val">Some</span>(slot) = <span class="self">self
-            </span>.sorted_denunciations
-            .last_key_value()
-            .map(|(slot, <span class="kw">_</span>)| slot)
-        {
-            StreamingStep::Ongoing(<span class="kw-2">*</span>slot)
-        } <span class="kw">else </span>{
-            StreamingStep::Finished(<span class="prelude-val">None</span>)
+        <span class="kw">if </span>!serialized_value.is_empty() {
+            <span class="kw">return </span><span class="bool-val">false</span>;
         }
-    }
+
+        <span class="bool-val">true
+    </span>}
 }
 
 <span class="doccomment">/// `ExecutedDenunciations` Serializer
