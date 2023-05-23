@@ -19,6 +19,7 @@ use massa_final_state::{FinalState, FinalStateConfig};
 use massa_hash::Hash;
 use massa_ledger_exports::{LedgerChanges, LedgerEntry, SetUpdateOrDelete};
 use massa_ledger_worker::test_exports::create_final_ledger;
+use massa_models::address::SCAddress;
 use massa_models::block::BlockDeserializerArgs;
 use massa_models::bytecode::Bytecode;
 use massa_models::config::{
@@ -278,10 +279,11 @@ pub fn get_random_final_state_bootstrap(
     // insert the last possible address to prevent the last cursor to move when testing the changes
     // The magic number at idx 0 is to account for address variant leader. At time of writing,
     // the highest value for encoding this variant in serialized form is `1`.
-    let mut bytes = [255; 33];
-    bytes[0] = 1;
+    // note: when updating the bootstrap test make sure that this address is the last one at
+    // every step of the scenario
+    let bytes = [255; 32];
     sorted_ledger.insert(
-        Address::from_prefixed_bytes(&bytes).unwrap(),
+        Address::SC(SCAddress::from_bytes_without_version(0, &bytes).unwrap()),
         get_random_ledger_entry(),
     );
 
@@ -307,7 +309,7 @@ pub fn get_dummy_block_id(s: &str) -> BlockId {
 }
 
 pub fn get_random_address() -> Address {
-    let priv_key = KeyPair::generate();
+    let priv_key = KeyPair::generate(0).unwrap();
     Address::from_public_key(&priv_key.get_public_key())
 }
 
@@ -395,12 +397,14 @@ pub fn assert_eq_bootstrap_graph(v1: &BootstrapableGraph, v2: &BootstrapableGrap
 }
 
 pub fn get_boot_state() -> BootstrapableGraph {
-    let keypair = KeyPair::generate();
+    let keypair = KeyPair::generate(0).unwrap();
 
     let block = Block::new_verifiable(
         Block {
             header: BlockHeader::new_verifiable(
                 BlockHeader {
+                    current_version: 0,
+                    announced_version: 0,
                     // associated slot
                     // all header endorsements are supposed to point towards this one
                     slot: Slot::new(1, 0),
@@ -484,11 +488,11 @@ pub fn get_peers(keypair: &KeyPair) -> BootstrapPeers {
     listeners2.insert("82.220.123.78:8080".parse().unwrap(), TransportType::Tcp);
     BootstrapPeers(vec![
         (
-            PeerId::from_bytes(keypair.get_public_key().to_bytes()).unwrap(),
+            PeerId::from_public_key(keypair.get_public_key()),
             listeners1,
         ),
         (
-            PeerId::from_bytes(keypair.get_public_key().to_bytes()).unwrap(),
+            PeerId::from_public_key(keypair.get_public_key()),
             listeners2,
         ),
     ])

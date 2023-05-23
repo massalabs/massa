@@ -33,13 +33,15 @@ use massa_models::{
     operation::{OperationId, SecureShareOperation},
     prehash::{CapacityAllocator, PreHashMap, PreHashSet},
     secure_share::{Id, SecureShare},
+    timeslots::get_block_slot_timestamp,
 };
 use massa_pool_exports::PoolController;
+use massa_protocol_exports::PeerId;
 use massa_protocol_exports::{ProtocolConfig, ProtocolError};
 use massa_serialization::{DeserializeError, Deserializer, Serializer};
 use massa_storage::Storage;
 use massa_time::TimeError;
-use peernet::peer_id::PeerId;
+use massa_versioning::versioning::MipStore;
 use tracing::{debug, info, warn};
 
 use super::{
@@ -98,6 +100,7 @@ pub struct RetrievalThread {
     cache: SharedBlockCache,
     config: ProtocolConfig,
     storage: Storage,
+    mip_store: MipStore,
 }
 
 impl RetrievalThread {
@@ -429,6 +432,29 @@ impl RetrievalThread {
         Ok(())
     }
 
+    /// Check if the incoming header network version is compatible with the current node
+    fn check_network_version_compatibility(
+        &self,
+        header: &SecuredHeader,
+    ) -> Result<(), ProtocolError> {
+        let slot = header.content.slot;
+        let ts = get_block_slot_timestamp(
+            self.config.thread_count,
+            self.config.t0,
+            self.config.genesis_timestamp,
+            slot,
+        )?;
+        let version = self.mip_store.get_network_version_active_at(ts);
+        if header.content.current_version != version {
+            Err(ProtocolError::IncompatibleNetworkVersion {
+                local: version,
+                received: header.content.current_version,
+            })
+        } else {
+            Ok(())
+        }
+    }
+
     /// Perform checks on a header,
     /// and if valid update the node's view of the world.
     ///
@@ -451,11 +477,13 @@ impl RetrievalThread {
         header: &SecuredHeader,
         from_peer_id: &PeerId,
     ) -> Result<Option<(BlockId, bool)>, ProtocolError> {
-        //TODO: Check if the error is used here ?
+        // TODO: Check if the error is used here ?
         // refuse genesis blocks
         if header.content.slot.period == 0 || header.content.parents.is_empty() {
             return Ok(None);
         }
+
+        self.check_network_version_compatibility(header)?;
 
         // compute ID
         let block_id = header.id;
@@ -1270,6 +1298,7 @@ impl RetrievalThread {
 }
 
 #[allow(clippy::too_many_arguments)]
+// bookmark
 pub fn start_retrieval_thread(
     active_connections: Box<dyn ActiveConnectionsTrait>,
     consensus_controller: Box<dyn ConsensusController>,
@@ -1284,6 +1313,7 @@ pub fn start_retrieval_thread(
     operation_cache: SharedOperationCache,
     cache: SharedBlockCache,
     storage: Storage,
+    mip_store: MipStore,
 ) -> JoinHandle<()> {
     let block_message_serializer =
         MessagesSerializer::new().with_block_message_serializer(BlockMessageSerializer::new());
@@ -1308,6 +1338,7 @@ pub fn start_retrieval_thread(
                 operation_cache,
                 config,
                 storage,
+                mip_store,
             };
             retrieval_thread.run();
         })

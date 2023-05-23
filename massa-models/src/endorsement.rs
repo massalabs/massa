@@ -430,7 +430,7 @@ mod tests {
     #[test]
     #[serial]
     fn test_endorsement_serialization() {
-        let sender_keypair = KeyPair::generate();
+        let sender_keypair = KeyPair::generate(0).unwrap();
         let content = Endorsement {
             slot: Slot::new(10, 1),
             index: 0,
@@ -455,7 +455,7 @@ mod tests {
     #[test]
     #[serial]
     fn test_endorsement_lightweight_serialization() {
-        let sender_keypair = KeyPair::generate();
+        let sender_keypair = KeyPair::generate(0).unwrap();
         let content = Endorsement {
             slot: Slot::new(10, 1),
             index: 0,
@@ -486,7 +486,7 @@ mod tests {
     fn test_verify_sig_batch() {
         // test verify_signature_batch as we override SecureShareEndorsements compute_hash
 
-        let sender_keypair = KeyPair::generate();
+        let sender_keypair = KeyPair::generate(0).unwrap();
         let content_1 = Endorsement {
             slot: Slot::new(10, 1),
             index: 0,
@@ -503,7 +503,7 @@ mod tests {
             SecureShareDeserializer::new(EndorsementDeserializer::new(32, 32))
                 .deserialize::<DeserializeError>(&serialized)
                 .unwrap();
-        let sender_keypair = KeyPair::generate();
+        let sender_keypair = KeyPair::generate(0).unwrap();
         let content_2 = Endorsement {
             slot: Slot::new(2, 5),
             index: 0,

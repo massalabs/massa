@@ -39,8 +39,8 @@ use massa_serialization::{
     U64VarIntSerializer,
 };
 use massa_time::{MassaTime, MassaTimeDeserializer, MassaTimeSerializer};
-use massa_versioning_worker::versioning::MipStoreRaw;
-use massa_versioning_worker::versioning_ser_der::{MipStoreRawDeserializer, MipStoreRawSerializer};
+use massa_versioning::versioning::MipStoreRaw;
+use massa_versioning::versioning_ser_der::{MipStoreRawDeserializer, MipStoreRawSerializer};
 use nom::error::context;
 use nom::multi::{length_count, length_data};
 use nom::sequence::tuple;

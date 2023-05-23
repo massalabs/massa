@@ -21,7 +21,9 @@ use massa_time::MassaTime;
 #[derive(Clone, Debug, PartialEq, Eq, Hash, FromPrimitive, IntoPrimitive)]
 #[repr(u32)]
 pub enum MipComponent {
+    // Address and KeyPair versions are directly related
     Address,
+    KeyPair,
     Block,
     VM,
     #[doc(hidden)]
@@ -92,10 +94,10 @@ machine!(
         Defined,
         /// Past start, can only go to LockedIn after the threshold is above a given value
         Started { pub(crate) threshold: Amount },
-        /// Wait for some time before going to active (to let user the time to upgrade)
+        /// Locked but wait for some time before going to active (to let users the time to upgrade)
         LockedIn { pub(crate) at: MassaTime },
         /// After LockedIn, deployment is considered successful (after activation delay)
-        Active,
+        Active { pub(crate) at: MassaTime },
         /// Past the timeout, if LockedIn is not reach
         Failed,
     }
@@ -135,16 +137,17 @@ impl From<&ComponentState> for ComponentStateTypeId {
 /// A message to update the `ComponentState`
 #[derive(Clone, Debug)]
 pub struct Advance {
-    /// from VersioningInfo.start
+    /// from MipInfo.start
     pub start_timestamp: MassaTime,
-    /// from VersioningInfo.timeout
+    /// from MipInfo.timeout
     pub timeout: MassaTime,
+    /// from MipInfo.activation_delay
+    pub activation_delay: MassaTime,
+
     /// % of past blocks with this version
     pub threshold: Amount,
     /// Current time (timestamp)
     pub now: MassaTime,
-    /// TODO
-    pub activation_delay: MassaTime,
 }
 
 // Need Ord / PartialOrd so it is properly sorted in BTreeMap
@@ -212,7 +215,7 @@ impl LockedIn {
     /// Update state from state LockedIn ...
     pub fn on_advance(self, input: Advance) -> ComponentState {
         if input.now > self.at.saturating_add(input.activation_delay) {
-            ComponentState::active()
+            ComponentState::active(input.now)
         } else {
             ComponentState::locked_in(self.at)
         }
@@ -222,7 +225,7 @@ impl LockedIn {
 impl Active {
     /// Update state (will always stay in state Active)
     pub fn on_advance(self, _input: Advance) -> Active {
-        Active {}
+        Active { at: self.at }
     }
 }
 
@@ -458,7 +461,22 @@ impl MipStore {
             .store
             .iter()
             .rev()
-            .find_map(|(k, v)| (v.state == ComponentState::active()).then_some(k.version))
+            .find_map(|(k, v)| (matches!(v.state, ComponentState::Active(_))).then_some(k.version))
+            .unwrap_or(0)
+    }
+
+    /// Retrieve the last active version at the given timestamp
+    pub fn get_network_version_active_at(&self, ts: MassaTime) -> u32 {
+        let lock = self.0.read();
+        let store = lock.deref();
+        store
+            .store
+            .iter()
+            .rev()
+            .find_map(|(k, v)| match v.state {
+                ComponentState::Active(Active { at }) if at <= ts => Some(k.version),
+                _ => None,
+            })
             .unwrap_or(0)
     }
 
@@ -638,7 +656,7 @@ impl MipStoreRaw {
                 ) {
                     // Only accept 'higher' state
                     // (e.g. 'started' if 'defined', 'locked in' if 'started'...)
-                    if v_state_id > v_state_orig_id {
+                    if v_state_id >= v_state_orig_id {
                         to_update.insert(v_info.clone(), v_state.clone());
                     } else {
                         // Trying to downgrade state' (e.g. trying to go from 'active' -> 'defined')
@@ -1072,19 +1090,19 @@ mod test {
 
         advance_msg.now = advance_msg.timeout.saturating_add(MassaTime::from(1));
         state = state.on_advance(advance_msg);
-        assert_eq!(state, ComponentState::active());
+        assert!(matches!(state, ComponentState::Active(_)));
     }
 
     #[test]
     fn test_state_advance_from_active() {
         // Test Versioning state transition (from state: Active)
-        let (_, _, mi) = get_a_version_info();
-        let mut state = ComponentState::active();
+        let (start, _, mi) = get_a_version_info();
+        let mut state = ComponentState::active(MassaTime::from(start.timestamp() as u64));
         let now = mi.start;
         let advance = Advance::from((&mi, &Amount::zero(), &now));
 
         state = state.on_advance(advance);
-        assert_eq!(state, ComponentState::active());
+        assert!(matches!(state, ComponentState::Active(_)));
     }
 
     #[test]
@@ -1198,7 +1216,7 @@ mod test {
     fn test_versioning_store_announce_current() {
         // Test VersioningInfo::get_version_to_announce() & ::get_version_current()
 
-        let (_start, timeout, mi) = get_a_version_info();
+        let (start, timeout, mi) = get_a_version_info();
 
         let mut mi_2 = mi.clone();
         mi_2.version += 1;
@@ -1209,7 +1227,7 @@ mod test {
 
         // Can only build such object in test - history is empty :-/
         let vs_1 = MipState {
-            state: ComponentState::active(),
+            state: ComponentState::active(MassaTime::from(start.timestamp() as u64)),
             history: Default::default(),
         };
         let vs_2 = MipState {
@@ -1325,8 +1343,9 @@ mod test {
             activation_delay: MassaTime::from(2),
         };
 
-        let vs_1 = advance_state_until(ComponentState::active(), &vi_1);
-        assert_eq!(vs_1, ComponentState::active());
+        let _time = MassaTime::now().unwrap();
+        let vs_1 = advance_state_until(ComponentState::active(_time), &vi_1);
+        assert!(matches!(vs_1.state, ComponentState::Active(_)));
 
         let vi_2 = MipInfo {
             name: "MIP-0003".to_string(),
@@ -1348,8 +1367,8 @@ mod test {
         ))
         .unwrap();
 
-        let vs_2_2 = advance_state_until(ComponentState::active(), &vi_2);
-        assert_eq!(vs_2_2, ComponentState::active());
+        let vs_2_2 = advance_state_until(ComponentState::active(_time), &vi_2);
+        assert!(matches!(vs_2_2.state, ComponentState::Active(_)));
 
         let vs_raw_2 = MipStoreRaw::try_from((
             [(vi_1.clone(), vs_1.clone()), (vi_2.clone(), vs_2_2.clone())],
@@ -1384,8 +1403,9 @@ mod test {
             timeout: MassaTime::from(5),
             activation_delay: MassaTime::from(2),
         };
-        let vs_1 = advance_state_until(ComponentState::active(), &vi_1);
-        assert_eq!(vs_1, ComponentState::active());
+        let _time = MassaTime::now().unwrap();
+        let vs_1 = advance_state_until(ComponentState::active(_time), &vi_1);
+        assert!(matches!(vs_1.state, ComponentState::Active(_)));
 
         let vi_2 = MipInfo {
             name: "MIP-0003".to_string(),
@@ -1452,7 +1472,6 @@ mod test {
             .unwrap();
 
             let mut vi_2_2 = vi_2.clone();
-            // Make mip info invalid (because we have vi.1.components == vi_2_2.components ~ overlapping versions)
             vi_2_2.components = vi_1.components.clone();
 
             let vs_2_2 = advance_state_until(ComponentState::defined(), &vi_2_2);
@@ -1464,11 +1483,10 @@ mod test {
                 stats: MipStoreStats::new(mip_stats_cfg.clone()),
             };
 
-            assert_matches!(
-                vs_raw_1.update_with(&vs_raw_2),
-                Err(UpdateWithError::Downgrade(..))
-            );
-            assert!(vs_raw_1.update_with(&vs_raw_2).is_err());
+            // Component states being equal should produce an Ok result
+            // We also have vi.1.components == vi_2_2.components ~ overlapping versions
+            // TODO: clarify how this is supposed to behave
+            assert_matches!(vs_raw_1.update_with(&vs_raw_2), Ok(_));
         }
     }
 

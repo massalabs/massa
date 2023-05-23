@@ -2,6 +2,7 @@
 
 use displaydoc::Display;
 use massa_models::error::ModelsError;
+use massa_versioning::versioning_factory::FactoryError;
 use std::net::IpAddr;
 use thiserror::Error;
 
@@ -41,6 +42,15 @@ pub enum ProtocolError {
     InvalidOperationError(String),
     /// Listener error: {0}
     ListenerError(String),
+    /// Incompatible newtork version: local current is {local} received is {received}
+    IncompatibleNetworkVersion {
+        /// local current version
+        local: u32,
+        /// received version from incoming header
+        received: u32,
+    },
+    /// Versioned factory error: {0}
+    FactoryError(#[from] FactoryError),
 }
 
 #[derive(Debug)]

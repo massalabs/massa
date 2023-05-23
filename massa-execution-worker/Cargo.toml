@@ -34,7 +34,7 @@ massa_time = { path = "../massa-time" }
 massa_ledger_exports = { path = "../massa-ledger-exports" }
 massa_pos_exports = { path = "../massa-pos-exports" }
 massa_final_state = { path = "../massa-final-state" }
-massa_versioning_worker = { path = "../massa-versioning-worker" }
+massa_versioning = { path = "../massa-versioning" }
 
 [dev-dependencies]
 tokio = { version = "1.23", features = ["sync"] }

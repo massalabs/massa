@@ -5,7 +5,6 @@ use massa_hash::Hash;
 use massa_serialization::{Deserializer, SerializeError, Serializer};
 use massa_signature::{
     KeyPair, PublicKey, PublicKeyDeserializer, Signature, SignatureDeserializer,
-    PUBLIC_KEY_SIZE_BYTES, SIGNATURE_SIZE_BYTES,
 };
 use nom::{
     error::{context, ContextError, ParseError},
@@ -116,8 +115,8 @@ where
         serialized_content: &[u8],
         buffer: &mut Vec<u8>,
     ) -> Result<(), SerializeError> {
-        buffer.extend(signature.into_bytes());
-        buffer.extend(creator_public_key.into_bytes());
+        buffer.extend(signature.to_bytes());
+        buffer.extend(creator_public_key.to_bytes());
         buffer.extend(serialized_content);
         Ok(())
     }
@@ -227,8 +226,8 @@ where
     pub fn serialized_size(&self) -> usize {
         self.serialized_data
             .len()
-            .saturating_add(SIGNATURE_SIZE_BYTES)
-            .saturating_add(PUBLIC_KEY_SIZE_BYTES)
+            .saturating_add(self.signature.get_ser_len())
+            .saturating_add(self.content_creator_pub_key.get_ser_len())
     }
 }
 
@@ -373,7 +372,7 @@ where
     ///    index: 0,
     ///    endorsed_block: BlockId(Hash::compute_from("blk".as_bytes())),
     /// };
-    /// let keypair = KeyPair::generate();
+    /// let keypair = KeyPair::generate(0).unwrap();
     /// let secured: SecureShare<Endorsement, BlockId> = Endorsement::new_verifiable(
     ///    content,
     ///    EndorsementSerializer::new(),

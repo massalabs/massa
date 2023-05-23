@@ -7,9 +7,9 @@ use massa_models::{
     prehash::{PreHashMap, PreHashSet},
     stats::NetworkStats,
 };
-use massa_protocol_exports::{BootstrapPeers, ProtocolController, ProtocolError};
+use massa_protocol_exports::{BootstrapPeers, PeerId, ProtocolController, ProtocolError};
 use massa_storage::Storage;
-use peernet::{peer::PeerConnectionType, peer_id::PeerId};
+use peernet::peer::PeerConnectionType;
 
 use crate::{
     connectivity::ConnectivityCommand,

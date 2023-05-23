@@ -7,10 +7,15 @@ use crossbeam::{
     channel::{Receiver, Sender},
     select,
 };
+use massa_hash::Hash;
+use massa_models::config::SIGNATURE_DESER_SIZE;
 use massa_models::version::{VersionDeserializer, VersionSerializer};
-use massa_protocol_exports::{BootstrapPeers, ProtocolConfig};
+use massa_protocol_exports::{
+    BootstrapPeers, PeerId, PeerIdDeserializer, PeerIdSerializer, ProtocolConfig,
+};
 use massa_serialization::{DeserializeError, Deserializer, Serializer};
-use peernet::types::PUBLIC_KEY_SIZE_BYTES;
+use massa_signature::Signature;
+use peernet::context::Context as _;
 use rand::{rngs::StdRng, RngCore, SeedableRng};
 
 use peernet::messages::MessagesSerializer;
@@ -18,13 +23,11 @@ use peernet::{
     error::{PeerNetError, PeerNetResult},
     messages::MessagesHandler as PeerNetMessagesHandler,
     peer::InitConnectionHandler,
-    peer_id::PeerId,
     transports::{endpoint::Endpoint, TransportType},
-    types::Hash,
-    types::{KeyPair, Signature},
 };
 use tracing::log::{debug, error, info, warn};
 
+use crate::context::Context;
 use crate::handlers::peer_handler::models::PeerState;
 use crate::messages::MessagesHandler;
 use crate::wrap_network::ActiveConnectionsTrait;
@@ -254,6 +257,8 @@ pub struct MassaHandshake {
     pub config: ProtocolConfig,
     pub peer_db: SharedPeerDB,
     peer_mngt_msg_serializer: crate::messages::MessagesSerializer,
+    peer_id_serializer: PeerIdSerializer,
+    peer_id_deserializer: PeerIdDeserializer,
     message_handlers: MessagesHandler,
 }
 
@@ -274,6 +279,8 @@ impl MassaHandshake {
             version_serializer: VersionSerializer::new(),
             version_deserializer: VersionDeserializer::new(),
             config,
+            peer_id_serializer: PeerIdSerializer::new(),
+            peer_id_deserializer: PeerIdDeserializer::new(),
             peer_mngt_msg_serializer: crate::messages::MessagesSerializer::new()
                 .with_peer_management_message_serializer(PeerManagementMessageSerializer::new()),
             message_handlers,
@@ -281,15 +288,23 @@ impl MassaHandshake {
     }
 }
 
-impl InitConnectionHandler for MassaHandshake {
-    fn perform_handshake<MassaMessagesHandler: PeerNetMessagesHandler>(
+impl InitConnectionHandler<PeerId, Context, MessagesHandler> for MassaHandshake {
+    fn perform_handshake(
         &mut self,
-        keypair: &KeyPair,
+        context: &Context,
         endpoint: &mut Endpoint,
         listeners: &HashMap<SocketAddr, TransportType>,
-        messages_handler: MassaMessagesHandler,
+        messages_handler: MessagesHandler,
     ) -> PeerNetResult<PeerId> {
-        let mut bytes = PeerId::from_public_key(keypair.get_public_key()).to_bytes();
+        let mut bytes = vec![];
+        self.peer_id_serializer
+            .serialize(&context.get_peer_id(), &mut bytes)
+            .map_err(|err| {
+                PeerNetError::HandshakeError.error(
+                    "Massa Handshake",
+                    Some(format!("Failed to serialize  peer_id: {}", err)),
+                )
+            })?;
         self.version_serializer
             .serialize(&self.config.version, &mut bytes)
             .map_err(|err| {
@@ -299,8 +314,12 @@ impl InitConnectionHandler for MassaHandshake {
                 )
             })?;
         bytes.push(0);
-        let listeners_announcement =
-            Announcement::new(listeners.clone(), self.config.routable_ip, keypair).unwrap();
+        let listeners_announcement = Announcement::new(
+            listeners.clone(),
+            self.config.routable_ip,
+            &context.our_keypair,
+        )
+        .unwrap();
         self.announcement_serializer
             .serialize(&listeners_announcement, &mut bytes)
             .map_err(|err| {
@@ -309,23 +328,23 @@ impl InitConnectionHandler for MassaHandshake {
                     Some(format!("Failed to serialize announcement: {}", err)),
                 )
             })?;
-        endpoint.send(&bytes)?;
-        let received = endpoint.receive()?;
+        endpoint.send::<PeerId>(&bytes)?;
+        let received = endpoint.receive::<PeerId>()?;
         if received.len() < 32 {
             return Err(PeerNetError::HandshakeError.error(
                 "Massa Handshake",
                 Some(format!("Received too short message len:{}", received.len())),
             ));
         }
-        let mut offset = 0;
-        let peer_id =
-            PeerId::from_bytes(&received[offset..offset + 32].try_into().map_err(|_| {
+        let (received, peer_id) = self
+            .peer_id_deserializer
+            .deserialize::<DeserializeError>(&received)
+            .map_err(|err| {
                 PeerNetError::HandshakeError.error(
                     "Massa Handshake",
-                    Some("Failed to deserialize PeerId".to_string()),
+                    Some(format!("Failed to deserialize peer id: {}", err)),
                 )
-            })?)?;
-        offset += PUBLIC_KEY_SIZE_BYTES;
+            })?;
         {
             let peer_db_read = self.peer_db.read();
             if let Some(info) = peer_db_read.peers.get(&peer_id) {
@@ -348,7 +367,7 @@ impl InitConnectionHandler for MassaHandshake {
 
             let (received, version) = self
                 .version_deserializer
-                .deserialize::<DeserializeError>(&received[offset..])
+                .deserialize::<DeserializeError>(received)
                 .map_err(|err| {
                     PeerNetError::HandshakeError.error(
                         "Massa Handshake",
@@ -361,17 +380,15 @@ impl InitConnectionHandler for MassaHandshake {
                     Some(format!("Received version incompatible: {}", version)),
                 ));
             }
-            offset = 0;
-            let id = received.get(offset).ok_or(
+            let id = received.first().ok_or(
                 PeerNetError::HandshakeError
                     .error("Massa Handshake", Some("Failed to get id".to_string())),
             )?;
-            offset += 1;
             match id {
                 0 => {
                     let (_, announcement) = self
                         .announcement_deserializer
-                        .deserialize::<DeserializeError>(&received[offset..])
+                        .deserialize::<DeserializeError>(&received[1..])
                         .map_err(|err| {
                             PeerNetError::HandshakeError.error(
                                 "Massa Handshake",
@@ -406,8 +423,8 @@ impl InitConnectionHandler for MassaHandshake {
                     let mut bytes = [0u8; 32];
                     bytes[..32].copy_from_slice(&self_random_bytes);
 
-                    endpoint.send(&bytes)?;
-                    let received = endpoint.receive()?;
+                    endpoint.send::<PeerId>(&bytes)?;
+                    let received = endpoint.receive::<PeerId>()?;
                     let other_random_bytes: &[u8; 32] =
                         received.as_slice().try_into().map_err(|_| {
                             PeerNetError::HandshakeError.error(
@@ -418,27 +435,22 @@ impl InitConnectionHandler for MassaHandshake {
 
                     // sign their random bytes
                     let other_random_hash = Hash::compute_from(other_random_bytes);
-                    let self_signature = keypair.sign(&other_random_hash).map_err(|_| {
-                        PeerNetError::HandshakeError.error(
-                            "Massa Handshake",
-                            Some("Failed to sign random bytes".to_string()),
-                        )
-                    })?;
-
-                    let mut bytes = [0u8; 64];
-                    bytes.copy_from_slice(&self_signature.to_bytes());
-
-                    endpoint.send(&bytes)?;
-                    let received = endpoint.receive()?;
-
-                    let other_signature =
-                        Signature::from_bytes(received.as_slice().try_into().map_err(|_| {
+                    let self_signature =
+                        context.our_keypair.sign(&other_random_hash).map_err(|_| {
                             PeerNetError::HandshakeError.error(
                                 "Massa Handshake",
-                                Some("Failed to get random bytes".to_string()),
+                                Some("Failed to sign random bytes".to_string()),
                             )
-                        })?)
-                        .map_err(|_| {
+                        })?;
+
+                    let mut bytes = [0u8; SIGNATURE_DESER_SIZE];
+                    bytes.copy_from_slice(&self_signature.to_bytes());
+
+                    endpoint.send::<PeerId>(&bytes)?;
+                    let received = endpoint.receive::<PeerId>()?;
+
+                    let other_signature =
+                        Signature::from_bytes(received.as_slice()).map_err(|_| {
                             PeerNetError::HandshakeError.error(
                                 "Massa Handshake",
                                 Some("Failed to sign 2 random bytes".to_string()),
@@ -446,13 +458,18 @@ impl InitConnectionHandler for MassaHandshake {
                         })?;
 
                     // check their signature
-                    peer_id.verify_signature(&self_random_hash, &other_signature)?;
+                    peer_id
+                        .verify_signature(&self_random_hash, &other_signature)
+                        .map_err(|err| {
+                            PeerNetError::HandshakeError
+                                .error("Massa Handshake", Some(format!("Signature error {}", err)))
+                        })?;
                     Ok((peer_id.clone(), Some(announcement)))
                 }
                 1 => {
                     let (received, id) = self
                         .message_handlers
-                        .deserialize_id(&received[offset..], &peer_id)?;
+                        .deserialize_id(&received[1..], &peer_id)?;
                     self.message_handlers.handle(id, received, &peer_id)?;
                     Ok((peer_id.clone(), None))
                 }
@@ -516,27 +533,32 @@ impl InitConnectionHandler for MassaHandshake {
 
         self.peer_mngt_msg_serializer.serialize_id(&msg, &mut buf)?;
         self.peer_mngt_msg_serializer.serialize(&msg, &mut buf)?;
-        endpoint.send(buf.as_slice())?;
+        endpoint.send::<PeerId>(buf.as_slice())?;
 
         res.map(|(id, _)| id)
     }
 
     fn fallback_function(
         &mut self,
-        keypair: &KeyPair,
+        context: &Context,
         endpoint: &mut Endpoint,
         _listeners: &HashMap<SocketAddr, TransportType>,
     ) -> PeerNetResult<()> {
         //TODO: Fix this clone
-        let keypair = keypair.clone();
+        let context = context.clone();
         let mut endpoint = endpoint.try_clone()?;
         let db = self.peer_db.clone();
         let serializer = self.peer_mngt_msg_serializer.clone();
         let version_serializer = self.version_serializer.clone();
+        let peer_id_serializer = self.peer_id_serializer.clone();
         let version = self.config.version;
         std::thread::spawn(move || {
             let peers_to_send = db.read().get_rand_peers_to_send(100);
-            let mut buf = PeerId::from_public_key(keypair.get_public_key()).to_bytes();
+            let mut buf = vec![];
+            if let Err(err) = peer_id_serializer.serialize(&context.get_peer_id(), &mut buf) {
+                warn!("{}", err.to_string());
+                return;
+            }
             if let Err(err) = version_serializer
                 .serialize(&version, &mut buf)
                 .map_err(|err| {
@@ -563,7 +585,7 @@ impl InitConnectionHandler for MassaHandshake {
                 return;
             }
             //TODO: Make it non blockable
-            if let Err(err) = endpoint.send(buf.as_slice()) {
+            if let Err(err) = endpoint.send::<PeerId>(buf.as_slice()) {
                 warn!("Failed to send message: {}", err);
                 return;
             }

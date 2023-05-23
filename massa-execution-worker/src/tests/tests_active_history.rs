@@ -7,7 +7,7 @@ mod tests {
 
     use massa_final_state::StateChanges;
     use massa_hash::Hash;
-    use massa_models::address::{Address, UserAddress};
+    use massa_models::address::{Address, UserAddress, UserAddressV0};
     use massa_models::amount::Amount;
     use massa_models::prehash::{CapacityAllocator, PreHashMap};
     use massa_pos_exports::{DeferredCredits, PoSChanges};
@@ -19,8 +19,12 @@ mod tests {
         let slot1 = Slot::new(2, 2);
         let slot2 = Slot::new(4, 11);
 
-        let addr1 = Address::User(UserAddress(Hash::compute_from("AU1".as_bytes())));
-        let addr2 = Address::User(UserAddress(Hash::compute_from("AU2".as_bytes())));
+        let addr1 = Address::User(UserAddress::UserAddressV0(UserAddressV0(
+            Hash::compute_from("AU1".as_bytes()),
+        )));
+        let addr2 = Address::User(UserAddress::UserAddressV0(UserAddressV0(
+            Hash::compute_from("AU2".as_bytes()),
+        )));
 
         let amount_a1_s1 = Amount::from_raw(500);
         let amount_a2_s1 = Amount::from_raw(2702);

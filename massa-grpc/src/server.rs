@@ -12,7 +12,7 @@ use massa_proto::massa::api::v1::massa_service_server::MassaServiceServer;
 use massa_proto::massa::api::v1::FILE_DESCRIPTOR_SET;
 use massa_protocol_exports::ProtocolController;
 use massa_storage::Storage;
-use massa_versioning_worker::versioning::MipStore;
+use massa_versioning::versioning::MipStore;
 
 use tokio::sync::oneshot;
 use tonic::{

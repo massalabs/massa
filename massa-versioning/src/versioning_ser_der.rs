@@ -11,8 +11,8 @@ use nom::{
 };
 
 use crate::versioning::{
-    Advance, ComponentState, ComponentStateTypeId, LockedIn, MipComponent, MipInfo, MipState,
-    MipStatsConfig, MipStoreRaw, MipStoreStats, Started,
+    Active, Advance, ComponentState, ComponentStateTypeId, LockedIn, MipComponent, MipInfo,
+    MipState, MipStatsConfig, MipStoreRaw, MipStoreStats, Started,
 };
 
 use massa_models::amount::{Amount, AmountDeserializer, AmountSerializer};
@@ -251,21 +251,19 @@ impl Serializer<ComponentState> for ComponentStateSerializer {
         value: &ComponentState,
         buffer: &mut Vec<u8>,
     ) -> Result<(), SerializeError> {
+        let state_id = u32::from(ComponentStateTypeId::from(value));
+        self.u32_serializer.serialize(&state_id, buffer)?;
         match value {
             ComponentState::Started(Started { threshold }) => {
-                let state_id = u32::from(ComponentStateTypeId::from(value));
-                self.u32_serializer.serialize(&state_id, buffer)?;
                 self.amount_serializer.serialize(threshold, buffer)?;
             }
             ComponentState::LockedIn(LockedIn { at }) => {
-                let state_id = u32::from(ComponentStateTypeId::from(value));
-                self.u32_serializer.serialize(&state_id, buffer)?;
                 self.time_serializer.serialize(at, buffer)?;
             }
-            _ => {
-                let state_id = u32::from(ComponentStateTypeId::from(value));
-                self.u32_serializer.serialize(&state_id, buffer)?;
+            ComponentState::Active(Active { at }) => {
+                self.time_serializer.serialize(at, buffer)?;
             }
+            _ => {}
         }
         Ok(())
     }
@@ -336,7 +334,13 @@ impl Deserializer<ComponentState> for ComponentStateDeserializer {
                 .parse(rem)?;
                 (rem2, ComponentState::locked_in(at))
             }
-            ComponentStateTypeId::Active => (rem, ComponentState::active()),
+            ComponentStateTypeId::Active => {
+                let (rem2, at) = context("Failed at value der", |input| {
+                    self.time_deserializer.deserialize(input)
+                })
+                .parse(rem)?;
+                (rem2, ComponentState::active(at))
+            }
             ComponentStateTypeId::Failed => (rem, ComponentState::failed()),
             _ => (rem, ComponentState::Error),
         };
@@ -556,6 +560,7 @@ impl Deserializer<MipState> for MipStateDeserializer {
                             self.advance_deserializer.deserialize(input)
                         }),
                         context("Failed state id deserialization", |input| {
+                            // TEST NOTE: deser fails here for last two tests
                             let (res, state_id_) = self.state_id_deserializer.deserialize(input)?;
 
                             let state_id =
@@ -1131,7 +1136,8 @@ mod test {
             activation_delay: MassaTime::from(2),
         };
 
-        let state_2 = advance_state_until(ComponentState::active(), &mi_2);
+        let _time = MassaTime::now().unwrap();
+        let state_2 = advance_state_until(ComponentState::active(_time), &mi_2);
         let state_3 = advance_state_until(
             ComponentState::started(Amount::from_str("42.4242").unwrap()),
             &mi_3,
@@ -1171,6 +1177,7 @@ mod test {
 
         let mut all_state_size = 0;
 
+        let _time = MassaTime::now().unwrap();
         let store_raw_: Vec<(MipInfo, MipState)> = (0..MIP_STORE_MAX_ENTRIES)
             .map(|_i| {
                 mi_base.version += 1;
@@ -1181,7 +1188,7 @@ mod test {
                 mi_base.start = mi_base.timeout.saturating_add(MassaTime::from(1));
                 mi_base.timeout = mi_base.start.saturating_add(MassaTime::from(2));
 
-                let state = advance_state_until(ComponentState::active(), &mi_base);
+                let state = advance_state_until(ComponentState::active(_time), &mi_base);
 
                 all_state_size += size_of_val(&state.state);
                 all_state_size += state.history.len() * (size_of::<Advance>() + size_of::<u32>());

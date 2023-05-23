@@ -2,8 +2,8 @@ use std::{num::NonZeroUsize, sync::Arc};
 
 use lru::LruCache;
 use massa_models::endorsement::EndorsementId;
+use massa_protocol_exports::PeerId;
 use parking_lot::RwLock;
-use peernet::peer_id::PeerId;
 
 pub struct EndorsementCache {
     pub checked_endorsements: LruCache<EndorsementId, ()>,
