@@ -105,7 +105,7 @@ pub struct RetrievalThread {
 
 impl RetrievalThread {
     fn run(&mut self) {
-        let mut block_message_deserializer =
+        let block_message_deserializer =
             BlockMessageDeserializer::new(BlockMessageDeserializerArgs {
                 thread_count: self.config.thread_count,
                 endorsement_count: self.config.endorsement_count,
@@ -124,8 +124,7 @@ impl RetrievalThread {
             select! {
                 recv(self.receiver_network) -> msg => {
                     match msg {
-                        Ok((peer_id, message_id, message)) => {
-                            block_message_deserializer.set_message_id(message_id);
+                        Ok((peer_id, message)) => {
                             let (rest, message) = match block_message_deserializer
                                 .deserialize::<DeserializeError>(&message) {
                                 Ok((rest, message)) => (rest, message),

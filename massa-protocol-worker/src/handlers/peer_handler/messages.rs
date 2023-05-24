@@ -2,7 +2,9 @@ use std::{collections::HashMap, net::SocketAddr, ops::Bound::Included};
 
 use massa_models::serialization::{IpAddrDeserializer, IpAddrSerializer};
 use massa_protocol_exports::{PeerId, PeerIdDeserializer, PeerIdSerializer};
-use massa_serialization::{Deserializer, Serializer, U64VarIntDeserializer, U64VarIntSerializer};
+use massa_serialization::{
+    Deserializer, SerializeError, Serializer, U64VarIntDeserializer, U64VarIntSerializer,
+};
 use nom::{
     error::{context, ContextError, ParseError},
     multi::length_count,
@@ -22,20 +24,6 @@ pub enum PeerManagementMessage {
     ListPeers(Vec<(PeerId, HashMap<SocketAddr, TransportType>)>),
 }
 
-impl PeerManagementMessage {
-    pub fn get_id(&self) -> MessageTypeId {
-        match self {
-            PeerManagementMessage::NewPeerConnected(_) => MessageTypeId::NewPeerConnected,
-            PeerManagementMessage::ListPeers(_) => MessageTypeId::ListPeers,
-        }
-    }
-
-    pub fn max_id() -> u64 {
-        <MessageTypeId as Into<u64>>::into(MessageTypeId::ListPeers) + 1
-    }
-}
-
-// DO NOT FORGET TO UPDATE MAX ID IF YOU UPDATE THERE
 #[derive(IntoPrimitive, Debug, Eq, PartialEq, TryFromPrimitive)]
 #[repr(u64)]
 pub enum MessageTypeId {
@@ -43,8 +31,18 @@ pub enum MessageTypeId {
     ListPeers = 1,
 }
 
+impl From<&PeerManagementMessage> for MessageTypeId {
+    fn from(message: &PeerManagementMessage) -> Self {
+        match message {
+            PeerManagementMessage::NewPeerConnected(_) => MessageTypeId::NewPeerConnected,
+            PeerManagementMessage::ListPeers(_) => MessageTypeId::ListPeers,
+        }
+    }
+}
+
 #[derive(Default, Clone)]
 pub struct PeerManagementMessageSerializer {
+    id_serializer: U64VarIntSerializer,
     length_serializer: U64VarIntSerializer,
     ip_addr_serializer: IpAddrSerializer,
     peer_id_serializer: PeerIdSerializer,
@@ -53,6 +51,7 @@ pub struct PeerManagementMessageSerializer {
 impl PeerManagementMessageSerializer {
     pub fn new() -> Self {
         Self {
+            id_serializer: U64VarIntSerializer::new(),
             length_serializer: U64VarIntSerializer::new(),
             ip_addr_serializer: IpAddrSerializer::new(),
             peer_id_serializer: PeerIdSerializer::new(),
@@ -66,6 +65,12 @@ impl Serializer<PeerManagementMessage> for PeerManagementMessageSerializer {
         value: &PeerManagementMessage,
         buffer: &mut Vec<u8>,
     ) -> Result<(), massa_serialization::SerializeError> {
+        self.id_serializer.serialize(
+            &MessageTypeId::from(value).try_into().map_err(|_| {
+                SerializeError::GeneralError(String::from("Failed to serialize id"))
+            })?,
+            buffer,
+        )?;
         match value {
             PeerManagementMessage::NewPeerConnected((peer_id, listeners)) => {
                 self.peer_id_serializer.serialize(peer_id, buffer)?;
@@ -99,7 +104,7 @@ impl Serializer<PeerManagementMessage> for PeerManagementMessageSerializer {
 }
 
 pub struct PeerManagementMessageDeserializer {
-    message_id: u64,
+    id_deserializer: U64VarIntDeserializer,
     listeners_length_deserializer: U64VarIntDeserializer,
     peers_length_deserializer: U64VarIntDeserializer,
     ip_addr_deserializer: IpAddrDeserializer,
@@ -117,7 +122,7 @@ pub struct PeerManagementMessageDeserializerArgs {
 impl PeerManagementMessageDeserializer {
     pub fn new(limits: PeerManagementMessageDeserializerArgs) -> Self {
         Self {
-            message_id: 0,
+            id_deserializer: U64VarIntDeserializer::new(Included(0), Included(u64::MAX)),
             listeners_length_deserializer: U64VarIntDeserializer::new(
                 Included(0),
                 Included(limits.max_listeners_per_peer),
@@ -130,10 +135,6 @@ impl PeerManagementMessageDeserializer {
             peer_id_deserializer: PeerIdDeserializer::new(),
         }
     }
-
-    pub fn set_message(&mut self, message_id: u64) {
-        self.message_id = message_id;
-    }
 }
 
 impl Deserializer<PeerManagementMessage> for PeerManagementMessageDeserializer {
@@ -142,7 +143,8 @@ impl Deserializer<PeerManagementMessage> for PeerManagementMessageDeserializer {
         buffer: &'a [u8],
     ) -> IResult<&'a [u8], PeerManagementMessage, E> {
         context("Failed PeerManagementMessage deserialization", |buffer| {
-            let id = MessageTypeId::try_from(self.message_id).map_err(|_| {
+            let (buffer, raw_id) = self.id_deserializer.deserialize(buffer)?;
+            let id = MessageTypeId::try_from(raw_id).map_err(|_| {
                 nom::Err::Error(ParseError::from_error_kind(
                     buffer,
                     nom::error::ErrorKind::Eof,
@@ -288,13 +290,11 @@ mod tests {
 
         serializer.serialize(&msg, &mut buffer).unwrap();
 
-        let mut deserializer =
+        let deserializer =
             PeerManagementMessageDeserializer::new(PeerManagementMessageDeserializerArgs {
                 max_listeners_per_peer: 1000,
                 max_peers_per_announcement: 1000,
             });
-        deserializer.set_message(0);
-
         let (rest, message) = deserializer
             .deserialize::<DeserializeError>(&buffer)
             .unwrap();
@@ -333,12 +333,11 @@ mod tests {
         let serializer = PeerManagementMessageSerializer::new();
         let mut buffer = vec![];
         serializer.serialize(&message, &mut buffer).unwrap();
-        let mut deserializer =
+        let deserializer =
             PeerManagementMessageDeserializer::new(PeerManagementMessageDeserializerArgs {
                 max_listeners_per_peer: 1000,
                 max_peers_per_announcement: 1000,
             });
-        deserializer.set_message(1);
         let (rest, message) = deserializer
             .deserialize::<DeserializeError>(&buffer)
             .unwrap();

@@ -9,8 +9,7 @@ use massa_protocol_exports::{PeerCategoryInfo, PeerId, ProtocolConfig, ProtocolE
 use massa_storage::Storage;
 use massa_versioning::versioning::MipStore;
 use parking_lot::RwLock;
-use peernet::transports::TcpOutConnectionConfig;
-use peernet::{peer::PeerConnectionType, transports::OutConnectionConfig};
+use peernet::peer::PeerConnectionType;
 use std::net::SocketAddr;
 use std::{collections::HashMap, net::IpAddr};
 use std::{num::NonZeroUsize, sync::Arc};
@@ -272,7 +271,7 @@ pub(crate) fn start_connectivity_thread(
                         for addr in addresses_to_connect {
                             info!("Trying to connect to addr {}", addr);
                             // We only manage TCP for now
-                            if let Err(err) = network_controller.try_connect(addr, config.timeout_connection.to_duration(), &OutConnectionConfig::Tcp(Box::new(TcpOutConnectionConfig::new(config.read_write_limit_bytes_per_second / 10, Duration::from_millis(100))))) {
+                            if let Err(err) = network_controller.try_connect(addr, config.timeout_connection.to_duration()) {
                                 warn!("Failed to connect to peer {:?}: {:?}", addr, err);
                             }
                         }

@@ -193,9 +193,7 @@ impl Tester {
                         Ok(peer_id.clone())
                     }
                     1 => {
-                        let (received, id) =
-                            messages_handler.deserialize_id(&data[1..], &peer_id)?;
-                        messages_handler.handle(id, received, &peer_id)?;
+                        messages_handler.handle(&data[1..], &peer_id)?;
                         Err(PeerNetError::HandshakeError.error(
                                 "Massa Handshake",
                                 Some("Tester Handshake failed received a message that our connection has been refused".to_string()),
