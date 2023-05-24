@@ -57,7 +57,7 @@ impl Serializer<BootstrapPeers> for BootstrapPeersSerializer {
     /// ```
     /// use massa_protocol_exports::{BootstrapPeers, PeerId, TransportType, BootstrapPeersSerializer};
     /// use massa_serialization::Serializer;
-    /// use peernet::types::KeyPair;
+    /// use massa_signature::KeyPair;
     /// use std::collections::HashMap;
     /// use std::str::FromStr;
     ///
@@ -134,7 +134,7 @@ impl Deserializer<BootstrapPeers> for BootstrapPeersDeserializer {
     /// ```
     /// use massa_protocol_exports::{BootstrapPeers, PeerId, TransportType, BootstrapPeersSerializer, BootstrapPeersDeserializer};
     /// use massa_serialization::{Serializer, Deserializer, DeserializeError};
-    /// use peernet::types::KeyPair;
+    /// use massa_signature::KeyPair;
     /// use std::collections::HashMap;
     /// use std::str::FromStr;
     ///
