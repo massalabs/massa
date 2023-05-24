@@ -501,7 +501,15 @@ impl RawMassaDB<Slot, SlotSerializer, SlotDeserializer> {
             current_batch.clone(),
             current_hashmap.clone(),
         );
-        let lsmtree = SparseMerkleTree::new_with_stores(nodes_store, values_store);
+
+        let handle_metadata = db.cf_handle(METADATA_CF).expect(CF_ERROR);
+        let lsmtree = match db
+            .get_cf(handle_metadata, STATE_HASH_KEY)
+            .expect(CRUD_ERROR)
+        {
+            Some(hash_bytes) => SparseMerkleTree::import(nodes_store, values_store, hash_bytes),
+            _ => SparseMerkleTree::new_with_stores(nodes_store, values_store),
+        };
 
         let massa_db = Self {
             db,
