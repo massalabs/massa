@@ -104,7 +104,7 @@ impl PeerDB {
         let now = SystemTime::now()
             .duration_since(UNIX_EPOCH)
             .expect("Time went backward")
-            .as_millis();
+            .as_nanos();
 
         let min_time = now - THREE_DAYS_MS;
 

@@ -189,7 +189,7 @@ impl Announcement {
         let timestamp = SystemTime::now()
             .duration_since(UNIX_EPOCH)
             .expect("Time went backward")
-            .as_millis();
+            .as_nanos();
         buf.extend(timestamp.to_be_bytes());
         let hash = Hash::compute_from(&buf);
         Ok(Self {
