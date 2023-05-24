@@ -235,17 +235,16 @@
 <a href="#235" id="235">235</a>
 <a href="#236" id="236">236</a>
 <a href="#237" id="237">237</a>
-<a href="#238" id="238">238</a>
 </pre><pre class="rust"><code><span class="kw">use </span>std::{
     collections::HashMap,
     net::{IpAddr, SocketAddr},
     ops::Bound::Included,
-    time::{SystemTime, UNIX_EPOCH},
 };
 
 <span class="kw">use </span>massa_hash::Hash;
 <span class="kw">use </span>massa_models::serialization::IpAddrDeserializer;
 <span class="kw">use </span>massa_signature::{KeyPair, Signature, SignatureDeserializer};
+<span class="kw">use </span>massa_time::MassaTime;
 <span class="kw">use </span>nom::{
     error::{context, ContextError, ParseError},
     multi::length_count,
@@ -267,7 +266,7 @@
     <span class="doccomment">/// Listeners
     </span><span class="kw">pub </span>listeners: HashMap&lt;SocketAddr, TransportType&gt;,
     <span class="doccomment">/// Timestamp
-    </span><span class="kw">pub </span>timestamp: u128,
+    </span><span class="kw">pub </span>timestamp: u64,
     <span class="doccomment">/// Hash
     </span><span class="kw">pub </span>hash: Hash,
     <span class="doccomment">/// serialized version
@@ -353,7 +352,7 @@
                     }),
                 ),
                 context(<span class="string">&quot;Failed timestamp deserialization&quot;</span>, |buffer: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>[u8]| {
-                    <span class="kw">let </span>timestamp = u128::from_be_bytes(buffer[..<span class="number">16</span>].try_into().map_err(|<span class="kw">_</span>| {
+                    <span class="kw">let </span>timestamp = u64::from_be_bytes(buffer[..<span class="number">16</span>].try_into().map_err(|<span class="kw">_</span>| {
                         nom::Err::Error(ParseError::from_error_kind(
                             buffer,
                             nom::error::ErrorKind::LengthValue,
@@ -424,10 +423,9 @@
             buf.extend_from_slice(<span class="kw-2">&amp;</span>port_bytes);
             buf.push(<span class="kw-2">*</span>listener.<span class="number">1 </span><span class="kw">as </span>u8);
         }
-        <span class="kw">let </span>timestamp = SystemTime::now()
-            .duration_since(UNIX_EPOCH)
-            .expect(<span class="string">&quot;Time went backward&quot;</span>)
-            .as_millis();
+        <span class="kw">let </span>timestamp = MassaTime::now()
+            .expect(<span class="string">&quot;Unable to get MassaTime::now&quot;</span>)
+            .to_millis();
         buf.extend(timestamp.to_be_bytes());
         <span class="kw">let </span>hash = Hash::compute_from(<span class="kw-2">&amp;</span>buf);
         <span class="prelude-val">Ok</span>(<span class="self">Self </span>{
