@@ -1053,11 +1053,16 @@
 <a href="#1053" id="1053">1053</a>
 <a href="#1054" id="1054">1054</a>
 <a href="#1055" id="1055">1055</a>
+<a href="#1056" id="1056">1056</a>
+<a href="#1057" id="1057">1057</a>
+<a href="#1058" id="1058">1058</a>
+<a href="#1059" id="1059">1059</a>
 </pre><pre class="rust"><code><span class="doccomment">//! Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 </span><span class="attr">#![allow(clippy::too_many_arguments)]
 
 </span><span class="kw">use crate</span>::{MassaRpcServer, Public, RpcServer, StopHandle, Value, API};
 <span class="kw">use </span>async_trait::async_trait;
+<span class="kw">use </span>itertools::{izip, Itertools};
 <span class="kw">use </span>jsonrpsee::core::{Error <span class="kw">as </span>JsonRpseeError, RpcResult};
 <span class="kw">use </span>massa_api_exports::{
     address::AddressInfo,
@@ -1078,41 +1083,39 @@
 <span class="kw">use </span>massa_execution_exports::{
     ExecutionController, ExecutionStackElement, ReadOnlyExecutionRequest, ReadOnlyExecutionTarget,
 };
-<span class="kw">use </span>massa_models::operation::OperationDeserializer;
-<span class="kw">use </span>massa_models::secure_share::SecureShareDeserializer;
-<span class="kw">use </span>massa_models::{
-    block::{Block, BlockGraphStatus},
-    endorsement::SecureShareEndorsement,
-    error::ModelsError,
-    operation::SecureShareOperation,
-    timeslots,
-};
-<span class="kw">use </span>massa_pos_exports::SelectorController;
-<span class="kw">use </span>massa_protocol_exports::{PeerConnectionType, ProtocolConfig, ProtocolController};
-<span class="kw">use </span>massa_serialization::{DeserializeError, Deserializer};
-
-<span class="kw">use </span>itertools::{izip, Itertools};
-<span class="kw">use </span>massa_models::datastore::DatastoreDeserializer;
 <span class="kw">use </span>massa_models::{
     address::Address,
+    block::{Block, BlockGraphStatus},
     block_id::BlockId,
     clique::Clique,
     composite::PubkeySig,
     config::CompactConfig,
+    datastore::DatastoreDeserializer,
     endorsement::EndorsementId,
+    endorsement::SecureShareEndorsement,
+    error::ModelsError,
     execution::EventFilter,
     node::NodeId,
+    operation::OperationDeserializer,
     operation::OperationId,
+    operation::SecureShareOperation,
     output_event::SCOutputEvent,
     prehash::{PreHashMap, PreHashSet},
+    secure_share::SecureShareDeserializer,
     slot::Slot,
+    timeslots,
     timeslots::{get_latest_block_slot_at_timestamp, time_range_to_slot_range},
     version::Version,
 };
 <span class="kw">use </span>massa_pool_exports::PoolController;
-<span class="kw">use </span>massa_signature::{KeyPair, PublicKey, PUBLIC_KEY_SIZE_BYTES};
+<span class="kw">use </span>massa_pos_exports::SelectorController;
+<span class="kw">use </span>massa_protocol_exports::{PeerConnectionType, ProtocolConfig, ProtocolController};
+<span class="kw">use </span>massa_serialization::{DeserializeError, Deserializer};
 <span class="kw">use </span>massa_storage::Storage;
 <span class="kw">use </span>massa_time::MassaTime;
+<span class="kw">use </span>massa_versioning::{
+    keypair_factory::KeyPairFactory, versioning::MipStore, versioning_factory::VersioningFactory,
+};
 <span class="kw">use </span>std::collections::BTreeMap;
 <span class="kw">use </span>std::net::{IpAddr, SocketAddr};
 
@@ -1129,6 +1132,7 @@
         version: Version,
         node_id: NodeId,
         storage: Storage,
+        mip_store: MipStore,
     ) -&gt; <span class="self">Self </span>{
         API(Public {
             consensus_controller,
@@ -1141,6 +1145,7 @@
             selector_controller,
             protocol_config,
             storage,
+            keypair_factory: KeyPairFactory { mip_store },
         })
     }
 }
@@ -1188,10 +1193,16 @@
             is_final,
         } <span class="kw">in </span>reqs
         {
-            <span class="kw">let </span>address = address.unwrap_or_else(|| {
-                <span class="comment">// if no addr provided, use a random one
-                </span>Address::from_public_key(<span class="kw-2">&amp;</span>KeyPair::generate().get_public_key())
-            });
+            <span class="kw">let </span>address = <span class="kw">if let </span><span class="prelude-val">Some</span>(addr) = address {
+                addr
+            } <span class="kw">else </span>{
+                <span class="kw">let </span>keypair = <span class="self">self
+                    </span>.<span class="number">0
+                    </span>.keypair_factory
+                    .create(<span class="kw-2">&amp;</span>(), <span class="prelude-val">None</span>)
+                    .map_err(ApiError::from)<span class="question-mark">?</span>;
+                Address::from_public_key(<span class="kw-2">&amp;</span>keypair.get_public_key())
+            };
 
             <span class="kw">let </span>op_datastore = <span class="kw">match </span>operation_datastore {
                 <span class="prelude-val">Some</span>(v) =&gt; {
@@ -1276,10 +1287,16 @@
             is_final,
         } <span class="kw">in </span>reqs
         {
-            <span class="kw">let </span>caller_address = caller_address.unwrap_or_else(|| {
-                <span class="comment">// if no addr provided, use a random one
-                </span>Address::from_public_key(<span class="kw-2">&amp;</span>KeyPair::generate().get_public_key())
-            });
+            <span class="kw">let </span>caller_address = <span class="kw">if let </span><span class="prelude-val">Some</span>(addr) = caller_address {
+                addr
+            } <span class="kw">else </span>{
+                <span class="kw">let </span>keypair = <span class="self">self
+                    </span>.<span class="number">0
+                    </span>.keypair_factory
+                    .create(<span class="kw-2">&amp;</span>(), <span class="prelude-val">None</span>)
+                    .map_err(ApiError::from)<span class="question-mark">?</span>;
+                Address::from_public_key(<span class="kw-2">&amp;</span>keypair.get_public_key())
+            };
 
             <span class="comment">// TODO:
             // * set a maximum gas value for read-only executions to prevent attacks
@@ -1420,16 +1437,7 @@
                     PeerConnectionType::IN =&gt; <span class="bool-val">false</span>,
                     PeerConnectionType::OUT =&gt; <span class="bool-val">true</span>,
                 };
-                <span class="comment">//TODO: Use the peerid correctly
-                </span>(
-                    NodeId::new(
-                        PublicKey::from_bytes(
-                            id.to_bytes()[..PUBLIC_KEY_SIZE_BYTES].try_into().unwrap(),
-                        )
-                        .unwrap(),
-                    ),
-                    (peer.<span class="number">0</span>.ip(), is_outgoing),
-                )
+                (NodeId::new(id.get_public_key()), (peer.<span class="number">0</span>.ip(), is_outgoing))
             })
             .collect::&lt;BTreeMap&lt;<span class="kw">_</span>, <span class="kw">_</span>&gt;&gt;();
 

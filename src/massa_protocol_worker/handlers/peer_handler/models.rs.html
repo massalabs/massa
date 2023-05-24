@@ -153,10 +153,10 @@
 <a href="#153" id="153">153</a>
 <a href="#154" id="154">154</a>
 </pre><pre class="rust"><code><span class="kw">use </span>crossbeam::channel::Sender;
-<span class="kw">use </span>massa_protocol_exports::{BootstrapPeers, ProtocolError};
+<span class="kw">use </span>massa_protocol_exports::{BootstrapPeers, PeerId, ProtocolError};
 <span class="kw">use </span>massa_time::MassaTime;
 <span class="kw">use </span>parking_lot::RwLock;
-<span class="kw">use </span>peernet::{peer_id::PeerId, transports::TransportType};
+<span class="kw">use </span>peernet::transports::TransportType;
 <span class="kw">use </span>rand::seq::SliceRandom;
 <span class="kw">use </span>std::cmp::Reverse;
 <span class="kw">use </span>std::collections::BTreeSet;

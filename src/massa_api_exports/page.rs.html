@@ -66,7 +66,6 @@
 <a href="#66" id="66">66</a>
 <a href="#67" id="67">67</a>
 <a href="#68" id="68">68</a>
-<a href="#69" id="69">69</a>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="kw">use </span>paginate::Pages;
@@ -74,7 +73,6 @@
 
 <span class="doccomment">/// Represents a Vec that can be split across Pages
 /// Cf. &lt;https://docs.rs/paginate/latest/paginate/&gt;
-</span><span class="attr">#[derive(Clone)]
 </span><span class="kw">pub struct </span>PagedVec&lt;T&gt; {
     res: Vec&lt;T&gt;,
     _total_count: usize,
@@ -122,7 +120,7 @@
 }
 
 <span class="doccomment">/// Represents the request inputs for a PagedVecV2
-</span><span class="attr">#[derive(Clone, Deserialize, Serialize)]
+</span><span class="attr">#[derive(Deserialize, Serialize)]
 </span><span class="kw">pub struct </span>PagedVecV2&lt;T&gt; {
     content: Vec&lt;T&gt;,
     total_count: usize,
