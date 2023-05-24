@@ -440,7 +440,7 @@ pub fn get_state(
 
             let slot = Slot::new(
                 final_state_guard.last_start_period,
-                bootstrap_config.thread_count,
+                bootstrap_config.thread_count.saturating_sub(1),
             );
 
             final_state_guard.db.write().write_batch(batch, Some(slot));
