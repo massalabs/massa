@@ -198,7 +198,6 @@ fn test_bootstrap_whitelist() {
     conn.unwrap();
 }
 
-// TEST TODO
 #[test]
 fn test_bootstrap_server() {
     let thread_count = 2;

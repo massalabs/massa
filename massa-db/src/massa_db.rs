@@ -203,7 +203,7 @@ where
                             let mut updates: BTreeMap<Vec<u8>, Option<Vec<u8>>> = BTreeMap::new();
                             let iter = self
                                 .change_history
-                                .range((Bound::Excluded(cursor_change_id), Bound::Unbounded));
+                                .range((Bound::Included(cursor_change_id), Bound::Unbounded));
                             for (_change_id, changes) in iter {
                                 updates.extend(
                                     changes

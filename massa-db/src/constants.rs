@@ -22,12 +22,12 @@ pub const STATE_HASH_ERROR: &str = "critical: saved state hash is corrupted";
 
 // Prefixes
 // TODO_PR: See if the indexes can be removed (I needed the cycle history to be the first streamed at some point)
-pub const CYCLE_HISTORY_PREFIX: &str = "0_cycle_history/";
-pub const DEFERRED_CREDITS_PREFIX: &str = "1_deferred_credits/";
-pub const ASYNC_POOL_PREFIX: &str = "2_async_pool/";
-pub const EXECUTED_OPS_PREFIX: &str = "3_executed_ops/";
-pub const EXECUTED_DENUNCIATIONS_PREFIX: &str = "4_executed_denunciations/";
-pub const LEDGER_PREFIX: &str = "5_ledger/";
+pub const CYCLE_HISTORY_PREFIX: &str = "cycle_history/";
+pub const DEFERRED_CREDITS_PREFIX: &str = "deferred_credits/";
+pub const ASYNC_POOL_PREFIX: &str = "async_pool/";
+pub const EXECUTED_OPS_PREFIX: &str = "executed_ops/";
+pub const EXECUTED_DENUNCIATIONS_PREFIX: &str = "executed_denunciations/";
+pub const LEDGER_PREFIX: &str = "ledger/";
 
 // Async Pool
 pub const ASYNC_POOL_HASH_ERROR: &str = "critical: saved async pool hash is corrupted";
