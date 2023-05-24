@@ -387,13 +387,6 @@ impl PoSFinalState {
         // compute the current cycle from the given slot
         let cycle = slot.get_cycle(self.config.periods_per_cycle);
 
-        // If the cycle_history_cache is empty, try and update it from the database
-        // TODO_PR: See if this check is still needed, remove it or fix the issue
-        // E.g. should panic if cache is empty here
-        if self.cycle_history_cache.is_empty() {
-            self.recompute_pos_state_caches();
-        }
-
         // if cycle C is absent from self.cycle_history:
         // push a new empty CycleInfo at the back of self.cycle_history and set its cycle = C
         // pop_front from cycle_history until front() represents cycle C-4 or later
@@ -1465,7 +1458,7 @@ impl PoSFinalState {
     }
 }
 
-// TODO_PR: ADD TESTS FOR APPLY_CHANGES
+// TODO_PR: ADD TESTS FOR APPLY_CHANGES?
 #[test]
 fn test_pos_final_state_hash_computation() {
     use crate::test_exports::MockSelectorController;
