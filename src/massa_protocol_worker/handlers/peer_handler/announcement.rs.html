@@ -427,7 +427,7 @@
         <span class="kw">let </span>timestamp = SystemTime::now()
             .duration_since(UNIX_EPOCH)
             .expect(<span class="string">&quot;Time went backward&quot;</span>)
-            .as_nanos();
+            .as_millis();
         buf.extend(timestamp.to_be_bytes());
         <span class="kw">let </span>hash = Hash::compute_from(<span class="kw-2">&amp;</span>buf);
         <span class="prelude-val">Ok</span>(<span class="self">Self </span>{

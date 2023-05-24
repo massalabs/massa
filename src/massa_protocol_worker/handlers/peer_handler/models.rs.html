@@ -258,7 +258,7 @@
         </span><span class="kw">let </span>now = SystemTime::now()
             .duration_since(UNIX_EPOCH)
             .expect(<span class="string">&quot;Time went backward&quot;</span>)
-            .as_nanos();
+            .as_millis();
 
         <span class="kw">let </span>min_time = now - THREE_DAYS_MS;
 

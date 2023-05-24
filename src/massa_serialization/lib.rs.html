@@ -390,6 +390,8 @@
 <a href="#390" id="390">390</a>
 <a href="#391" id="391">391</a>
 <a href="#392" id="392">392</a>
+<a href="#393" id="393">393</a>
+<a href="#394" id="394">394</a>
 </pre><pre class="rust"><code><span class="kw">use </span>std::{
     collections::VecDeque,
     fmt::{Debug, Display},
@@ -644,7 +646,8 @@ u32, U32VarIntSerializer, u32_buffer, U32VarIntDeserializer, <span class="string
 u64, U64VarIntSerializer, u64_buffer, U64VarIntDeserializer, <span class="string">&quot;`u64`&quot;
 </span>}
 
-<span class="kw">pub struct </span>OptionSerializer&lt;T, ST&gt;
+<span class="attr">#[derive(Clone)]
+</span><span class="kw">pub struct </span>OptionSerializer&lt;T, ST&gt;
 <span class="kw">where
     </span>ST: Serializer&lt;T&gt;,
 {
@@ -679,7 +682,8 @@ u64, U64VarIntSerializer, u64_buffer, U64VarIntDeserializer, <span class="string
     }
 }
 
-<span class="kw">pub struct </span>OptionDeserializer&lt;T, DT&gt;
+<span class="attr">#[derive(Clone)]
+</span><span class="kw">pub struct </span>OptionDeserializer&lt;T, DT&gt;
 <span class="kw">where
     </span>T: Clone,
     DT: Deserializer&lt;T&gt;,
@@ -729,7 +733,7 @@ u64, U64VarIntSerializer, u64_buffer, U64VarIntDeserializer, <span class="string
 }
 
 <span class="doccomment">/// Serializer for bool
-</span><span class="attr">#[derive(Debug, Default)]
+</span><span class="attr">#[derive(Clone, Debug, Default)]
 </span><span class="kw">pub struct </span>BoolSerializer {}
 
 <span class="kw">impl </span>BoolSerializer {
@@ -747,7 +751,7 @@ u64, U64VarIntSerializer, u64_buffer, U64VarIntDeserializer, <span class="string
 }
 
 <span class="doccomment">/// Deserializer for bool
-</span><span class="attr">#[derive(Debug, Default)]
+</span><span class="attr">#[derive(Clone, Debug, Default)]
 </span><span class="kw">pub struct </span>BoolDeserializer {}
 
 <span class="kw">impl </span>BoolDeserializer {
