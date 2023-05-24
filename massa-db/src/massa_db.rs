@@ -385,7 +385,7 @@ where
     }
 
     /// Set the initial change_id. This function should only be called at startup/reset, as it does not batch this set with other changes.
-    fn set_initial_change_id(&self, change_id: ChangeID) {
+    pub fn set_initial_change_id(&self, change_id: ChangeID) {
         self.current_batch.lock().clear();
 
         self.set_change_id_to_batch(change_id);

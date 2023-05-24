@@ -7,7 +7,7 @@
 
 use crate::{config::FinalStateConfig, error::FinalStateError, state_changes::StateChanges};
 use massa_async_pool::AsyncPool;
-use massa_db::{DBBatch, MassaDB};
+use massa_db::{DBBatch, MassaDB, CHANGE_ID_DESER_ERROR};
 use massa_db::{
     ASYNC_POOL_PREFIX, CYCLE_HISTORY_PREFIX, DEFERRED_CREDITS_PREFIX,
     EXECUTED_DENUNCIATIONS_PREFIX, EXECUTED_OPS_PREFIX, LEDGER_PREFIX, STATE_CF,
@@ -27,8 +27,6 @@ use tracing::{debug, info, warn};
 pub struct FinalState {
     /// execution state configuration
     pub(crate) config: FinalStateConfig,
-    /// slot at the output of which the state is attached
-    pub slot: Slot,
     /// final ledger associating addresses to their balance, executable bytecode and data
     pub ledger: Box<dyn LedgerController>,
     /// asynchronous pool containing messages sorted by priority and their data
@@ -68,10 +66,10 @@ impl FinalState {
         selector: Box<dyn SelectorController>,
         reset_final_state: bool,
     ) -> Result<Self, FinalStateError> {
-        let state_slot = db.read().get_change_id();
+        let recovered_slot = db.read().get_change_id();
         let recovered_hash = db.read().get_db_hash();
 
-        match state_slot {
+        match recovered_slot {
             Ok(slot) => {
                 info!(
                     "Recovered ledger. state slot: {}, state hash: {}",
@@ -111,7 +109,6 @@ impl FinalState {
             ExecutedDenunciations::new(config.executed_denunciations_config.clone(), db.clone());
 
         let mut final_state = FinalState {
-            slot,
             ledger,
             async_pool,
             pos_state,
@@ -135,6 +132,8 @@ impl FinalState {
             slot,
             final_state.db.read().get_db_hash()
         );
+
+        final_state.db.read().set_initial_change_id(slot);
 
         // create the final state
         Ok(final_state)
@@ -160,7 +159,7 @@ impl FinalState {
         // FIRST, we recover the last known final_state
         let mut final_state = FinalState::new(db, config, ledger, selector, false)?;
 
-        final_state.slot = final_state.db.read().get_change_id().map_err(|_| {
+        let recovered_slot = final_state.db.read().get_change_id().map_err(|_| {
             FinalStateError::InvalidSlot(String::from("Could not recover Slot in Ledger"))
         })?;
 
@@ -171,19 +170,19 @@ impl FinalState {
             final_state
                 .db
                 .write()
-                .write_batch(batch, Some(final_state.slot));
+                .write_batch(batch, Some(recovered_slot));
         }
 
-        final_state.last_slot_before_downtime = Some(final_state.slot);
+        final_state.last_slot_before_downtime = Some(recovered_slot);
 
         debug!(
             "Latest consistent slot found in snapshot data: {}",
-            final_state.slot
+            recovered_slot
         );
 
         info!(
             "final_state hash at slot {}: {}",
-            final_state.slot,
+            recovered_slot,
             final_state.db.read().get_db_hash()
         );
 
@@ -213,8 +212,6 @@ impl FinalState {
     /// Once we created a FinalState from a snapshot, we need to edit it to attach at the end_slot and handle the downtime.
     /// This basically recreates the history of the final_state, without executing the slots.
     fn interpolate_downtime(&mut self) -> Result<(), FinalStateError> {
-        // TODO: Change the current_slot when we deserialize the final state from RocksDB. Until then, final_state slot and the ledger slot are not consistent!
-        // let current_slot = self.slot;
         let current_slot = Slot::new(0, self.config.thread_count.saturating_sub(1));
         let current_slot_cycle = current_slot.get_cycle(self.config.periods_per_cycle);
 
@@ -237,19 +234,16 @@ impl FinalState {
             )?;
         }
 
-        self.slot = end_slot;
-
         // Recompute the hash with the updated data and feed it to POS_state.
-
         let final_state_hash = self.db.read().get_db_hash();
 
         info!(
             "final_state hash at slot {}: {}",
-            self.slot, final_state_hash
+            end_slot, final_state_hash
         );
 
         // feed final_state_hash to the last cycle
-        let cycle = self.slot.get_cycle(self.config.periods_per_cycle);
+        let cycle = end_slot.get_cycle(self.config.periods_per_cycle);
         self.pos_state
             .feed_cycle_state_hash(cycle, final_state_hash);
 
@@ -277,7 +271,7 @@ impl FinalState {
         self.pos_state
             .delete_cycle_info(latest_snapshot_cycle.0, &mut batch);
 
-        self.pos_state.db.write().write_batch(batch, None);
+        self.pos_state.db.write().write_batch(batch, Some(end_slot));
 
         let mut batch = DBBatch::new();
 
@@ -292,7 +286,7 @@ impl FinalState {
             )
             .map_err(|err| FinalStateError::PosError(format!("{}", err)))?;
 
-        self.pos_state.db.write().write_batch(batch, None);
+        self.pos_state.db.write().write_batch(batch, Some(end_slot));
 
         Ok(())
     }
@@ -320,7 +314,7 @@ impl FinalState {
         self.pos_state
             .delete_cycle_info(latest_snapshot_cycle.0, &mut batch);
 
-        self.pos_state.db.write().write_batch(batch, None);
+        self.pos_state.db.write().write_batch(batch, Some(end_slot));
 
         // Firstly, complete the first cycle
         let last_slot = Slot::new_last_of_cycle(
@@ -348,7 +342,7 @@ impl FinalState {
             )
             .map_err(|err| FinalStateError::PosError(format!("{}", err)))?;
 
-        self.pos_state.db.write().write_batch(batch, None);
+        self.pos_state.db.write().write_batch(batch, Some(end_slot));
 
         // Feed final_state_hash to the completed cycle
         self.feed_cycle_hash_and_selector_for_interpolation(current_slot_cycle)?;
@@ -389,7 +383,7 @@ impl FinalState {
                 )
                 .map_err(|err| FinalStateError::PosError(format!("{}", err)))?;
 
-            self.pos_state.db.write().write_batch(batch, None);
+            self.pos_state.db.write().write_batch(batch, Some(end_slot));
 
             // Feed final_state_hash to the completed cycle
             self.feed_cycle_hash_and_selector_for_interpolation(cycle)?;
@@ -429,7 +423,7 @@ impl FinalState {
             }
         }
 
-        self.db.write().write_batch(batch, None);
+        self.db.write().write_batch(batch, Some(end_slot));
 
         Ok(())
     }
@@ -456,8 +450,9 @@ impl FinalState {
     ///
     /// USED ONLY FOR BOOTSTRAP
     pub fn reset(&mut self) {
-        self.slot = Slot::new(0, self.config.thread_count.saturating_sub(1));
-        self.db.write().reset(self.slot);
+        self.db
+            .write()
+            .reset(Slot::new(0, self.config.thread_count.saturating_sub(1)));
         self.ledger.reset();
         self.async_pool.reset();
         self.pos_state.reset();
@@ -477,17 +472,14 @@ impl FinalState {
     ///
     /// Panics if the new slot is not the one coming just after the current one.
     pub fn finalize(&mut self, slot: Slot, changes: StateChanges) {
+        let cur_slot = self.db.read().get_change_id().expect(CHANGE_ID_DESER_ERROR);
         // check slot consistency
-        let next_slot = self
-            .slot
+        let next_slot = cur_slot
             .get_next_slot(self.config.thread_count)
             .expect("overflow in execution state slot");
         if slot != next_slot {
-            panic!("attempting to apply execution state changes at slot {} while the current slot is {}", slot, self.slot);
+            panic!("attempting to apply execution state changes at slot {} while the current slot is {}", slot, cur_slot);
         }
-
-        // update current slot
-        self.slot = slot;
 
         let mut db_batch = DBBatch::new();
 
@@ -497,7 +489,7 @@ impl FinalState {
             .apply_changes_to_batch(&changes.async_pool_changes, &mut db_batch);
 
         self.pos_state
-            .apply_changes_to_batch(changes.pos_changes.clone(), self.slot, true, &mut db_batch)
+            .apply_changes_to_batch(changes.pos_changes.clone(), slot, true, &mut db_batch)
             .expect("could not settle slot in final state proof-of-stake");
         // TODO:
         // do not panic above, it might just mean that the lookback cycle is not available
@@ -508,34 +500,31 @@ impl FinalState {
 
         self.executed_ops.apply_changes_to_batch(
             changes.executed_ops_changes.clone(),
-            self.slot,
+            slot,
             &mut db_batch,
         );
 
         self.executed_denunciations.apply_changes_to_batch(
             changes.executed_denunciations_changes.clone(),
-            self.slot,
+            slot,
             &mut db_batch,
         );
 
-        self.db.write().write_batch(db_batch, Some(self.slot));
+        self.db.write().write_batch(db_batch, Some(slot));
 
         let final_state_hash = self.db.read().get_db_hash();
 
         // compute the final state hash
-        info!(
-            "final_state hash at slot {}: {}",
-            self.slot, final_state_hash
-        );
+        info!("final_state hash at slot {}: {}", slot, final_state_hash);
 
         // Backup DB if needed
-        if self.slot.period % PERIODS_BETWEEN_BACKUPS == 0 && self.slot.period != 0 {
+        if slot.period % PERIODS_BETWEEN_BACKUPS == 0 && slot.period != 0 {
             let state_slot = self.db.read().get_change_id();
             match state_slot {
                 Ok(slot) => {
                     info!(
                         "Backuping db for slot {}, state slot: {}, state hash: {}",
-                        self.slot, slot, final_state_hash
+                        slot, slot, final_state_hash
                     );
                 }
                 Err(e) => {
@@ -547,7 +536,7 @@ impl FinalState {
                 }
             }
 
-            self.db.read().backup_db(self.slot);
+            self.db.read().backup_db(slot);
         }
 
         // feed final_state_hash to the last cycle

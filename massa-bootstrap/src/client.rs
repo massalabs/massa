@@ -108,8 +108,6 @@ fn stream_final_state_and_consensus(
                             ))
                         })?;
 
-                    write_final_state.slot = slot;
-
                     // Set consensus blocks
                     if let Some(graph) = global_bootstrap_state.graph.as_mut() {
                         // Extend the final blocks with the received part

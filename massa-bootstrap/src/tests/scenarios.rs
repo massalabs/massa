@@ -328,8 +328,6 @@ fn test_bootstrap_server() {
 
         let next = current_slot.get_next_slot(thread_count).unwrap();
 
-        final_write.slot = next;
-
         let mut batch = DBBatch::new();
 
         final_write
@@ -356,9 +354,7 @@ fn test_bootstrap_server() {
         final_write.db.write().write_batch(batch, Some(next));
 
         let final_state_hash = final_write.db.read().get_db_hash();
-        let cycle = final_write
-            .slot
-            .get_cycle(final_state_local_config.periods_per_cycle.clone());
+        let cycle = next.get_cycle(final_state_local_config.periods_per_cycle.clone());
         final_write
             .pos_state
             .feed_cycle_state_hash(cycle, final_state_hash);
@@ -465,8 +461,6 @@ fn test_bootstrap_server() {
                 let mut final_write = final_state_server_clone2.write();
                 let next = current_slot.get_next_slot(thread_count).unwrap();
 
-                final_write.slot = next;
-
                 let changes = StateChanges {
                     pos_changes: get_random_pos_changes(10),
                     ledger_changes: get_random_ledger_changes(10),
@@ -501,9 +495,7 @@ fn test_bootstrap_server() {
                 final_write.db.write().write_batch(batch, Some(next));
 
                 let final_state_hash = final_write.db.read().get_db_hash();
-                let cycle = final_write
-                    .slot
-                    .get_cycle(final_state_local_config.periods_per_cycle.clone());
+                let cycle = next.get_cycle(final_state_local_config.periods_per_cycle.clone());
                 final_write
                     .pos_state
                     .feed_cycle_state_hash(cycle, final_state_hash);

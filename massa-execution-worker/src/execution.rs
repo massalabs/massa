@@ -108,7 +108,12 @@ impl ExecutionState {
     ) -> ExecutionState {
         // Get the slot at the output of which the final state is attached.
         // This should be among the latest final slots.
-        let last_final_slot = final_state.read().slot;
+        let last_final_slot = final_state
+            .read()
+            .db
+            .read()
+            .get_change_id()
+            .expect("Critical error: Final state has no slot attached");
 
         // Create default active history
         let active_history: Arc<RwLock<ActiveHistory>> = Default::default();

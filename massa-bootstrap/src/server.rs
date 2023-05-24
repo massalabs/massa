@@ -29,6 +29,7 @@ mod white_black_list;
 use crossbeam::channel::tick;
 use humantime::format_duration;
 use massa_consensus_exports::{bootstrapable_graph::BootstrapableGraph, ConsensusController};
+use massa_db::CHANGE_ID_DESER_ERROR;
 use massa_final_state::FinalState;
 use massa_logging::massa_trace;
 use massa_models::{
@@ -528,7 +529,13 @@ pub fn stream_bootstrap_information(
                 }
             };
 
-            if let Some(slot) = last_slot && slot != final_state_read.slot && slot > final_state_read.slot {
+            let db_slot = final_state_read
+                .db
+                .read()
+                .get_change_id()
+                .expect(CHANGE_ID_DESER_ERROR);
+
+            if let Some(slot) = last_slot && slot > db_slot {
                 return Err(BootstrapError::GeneralError(
                     "Bootstrap cursor set to future slot".to_string(),
                 ));
@@ -536,8 +543,8 @@ pub fn stream_bootstrap_information(
 
             // Update cursors for next turn
             last_state_step = new_state_step;
-            last_slot = Some(final_state_read.slot);
-            current_slot = final_state_read.slot;
+            last_slot = Some(db_slot);
+            current_slot = db_slot;
             send_last_start_period = false;
         }
 

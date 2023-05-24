@@ -17,10 +17,7 @@ use massa_models::config::{
     MAX_DENUNCIATIONS_PER_BLOCK_HEADER, MAX_DENUNCIATION_CHANGES_LENGTH,
     MAX_PRODUCTION_STATS_LENGTH, MAX_ROLLS_COUNT_LENGTH,
 };
-use massa_models::{
-    config::{PERIODS_PER_CYCLE, POS_SAVED_CYCLES, THREAD_COUNT},
-    slot::Slot,
-};
+use massa_models::config::{PERIODS_PER_CYCLE, POS_SAVED_CYCLES, THREAD_COUNT};
 use massa_pos_exports::{PoSConfig, PoSFinalState};
 use parking_lot::RwLock;
 
@@ -32,7 +29,6 @@ impl FinalState {
         db: Arc<RwLock<MassaDB>>,
     ) -> Self {
         FinalState {
-            slot: Slot::new(0, 0),
             ledger: Box::new(FinalLedger::new(config.ledger_config.clone(), db.clone())),
             async_pool: AsyncPool::new(config.async_pool_config.clone(), db.clone()),
             pos_state,

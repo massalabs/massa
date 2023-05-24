@@ -8,7 +8,6 @@ use massa_async_pool::AsyncPool;
 use massa_db::{MassaDB, METADATA_CF, STATE_CF, STATE_HASH_KEY};
 use massa_executed_ops::{ExecutedDenunciations, ExecutedOps};
 use massa_ledger_exports::LedgerController;
-use massa_models::slot::Slot;
 use massa_pos_exports::PoSFinalState;
 use parking_lot::RwLock;
 
@@ -17,7 +16,6 @@ use crate::{FinalState, FinalStateConfig};
 /// Create a `FinalState` from pre-set values
 pub fn create_final_state(
     config: FinalStateConfig,
-    slot: Slot,
     ledger: Box<dyn LedgerController>,
     async_pool: AsyncPool,
     pos_state: PoSFinalState,
@@ -27,7 +25,6 @@ pub fn create_final_state(
 ) -> FinalState {
     FinalState {
         config,
-        slot,
         ledger,
         async_pool,
         pos_state,
@@ -41,7 +38,11 @@ pub fn create_final_state(
 
 /// asserts that two `FinalState` are equal
 pub fn assert_eq_final_state(v1: &FinalState, v2: &FinalState) {
-    assert_eq!(v1.slot, v2.slot, "final slot mismatch");
+    assert_eq!(
+        v1.db.read().get_change_id().unwrap(),
+        v2.db.read().get_change_id().unwrap(),
+        "final slot mismatch"
+    );
     assert_eq!(
         v1.last_start_period, v2.last_start_period,
         "last_start_period mismatch"

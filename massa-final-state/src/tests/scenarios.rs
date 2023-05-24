@@ -139,7 +139,7 @@ fn test_final_state() {
 
         fs.write().pos_state.create_initial_cycle(&mut batch);
 
-        let slot = fs.read().slot;
+        let slot = fs.read().db.read().get_change_id().unwrap();
 
         fs.write().db.write().write_batch(batch, Some(slot));
 

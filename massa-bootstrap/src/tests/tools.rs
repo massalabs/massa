@@ -330,7 +330,6 @@ pub fn get_random_final_state_bootstrap(
 
     create_final_state(
         config,
-        slot,
         Box::new(final_ledger),
         async_pool,
         pos_state,
