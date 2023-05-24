@@ -26,6 +26,7 @@ use massa_pos_exports::{PoSConfig, SelectorConfig};
 use massa_pos_worker::start_selector_worker;
 use parking_lot::RwLock;
 use std::collections::BTreeMap;
+use std::path::Path;
 use std::{path::PathBuf, str::FromStr, sync::Arc};
 use tempfile::TempDir;
 
@@ -110,12 +111,27 @@ fn create_final_state(temp_dir: &TempDir) -> Arc<RwLock<FinalState>> {
     final_state
 }
 
+use std::{fs, io};
+
+fn copy_dir_all(src: impl AsRef<Path>, dst: impl AsRef<Path>) -> io::Result<()> {
+    for entry in fs::read_dir(src)? {
+        let entry = entry?;
+        let ty = entry.file_type()?;
+        if ty.is_dir() {
+            copy_dir_all(entry.path(), dst.as_ref().join(entry.file_name()))?;
+        } else {
+            fs::copy(entry.path(), dst.as_ref().join(entry.file_name()))?;
+        }
+    }
+    Ok(())
+}
+
 #[test]
 fn test_final_state() {
     let temp_dir = TempDir::new().unwrap();
+    let temp_dir2 = TempDir::new().unwrap();
 
     let hash;
-
     {
         let fs = create_final_state(&temp_dir);
 
@@ -168,24 +184,15 @@ fn test_final_state() {
 
         fs.write().finalize(slot, state_changes);
 
-        hash = fs.read().final_state_hash;
+        hash = fs.read().db.read().get_db_hash();
+
+        fs.write().db.write().db.flush().unwrap();
     }
 
-    {
-        let fs2 = create_final_state(&temp_dir);
+    copy_dir_all(temp_dir.path(), &temp_dir2.path()).unwrap();
 
-        let mut batch = DBBatch::new();
+    let fs2 = create_final_state(&temp_dir2);
+    let hash2 = fs2.read().db.read().get_db_hash();
 
-        fs2.write().pos_state.create_initial_cycle(&mut batch);
-
-        let slot = fs2.read().slot;
-
-        fs2.write().db.write().write_batch(batch, Some(slot));
-
-        let slot = Slot::new(1, 0);
-        let changes = StateChanges::default();
-
-        fs2.write().finalize(slot, changes);
-        assert_eq!(hash, fs2.read().final_state_hash);
-    }
+    assert_eq!(hash, hash2);
 }

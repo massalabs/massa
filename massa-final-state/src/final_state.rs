@@ -75,19 +75,19 @@ impl FinalState {
         reset_final_state: bool,
     ) -> Result<Self, FinalStateError> {
         let state_slot = db.read().get_change_id();
+        let recovered_hash = db.read().get_db_hash();
 
         match state_slot {
             Ok(slot) => {
                 info!(
                     "Recovered ledger. state slot: {}, state hash: {}",
-                    slot,
-                    db.read().get_db_hash()
+                    slot, recovered_hash
                 );
             }
             Err(_e) => {
                 info!(
                     "Recovered ledger. Unknown state slot, state hash: {}",
-                    db.read().get_db_hash()
+                    recovered_hash
                 );
             }
         }
@@ -137,10 +137,11 @@ impl FinalState {
             final_state.executed_denunciations.reset();
         }
 
+        final_state.final_state_hash = final_state.db.read().get_db_hash();
+
         info!(
             "final_state hash at slot {}: {}",
-            slot,
-            final_state.db.read().get_db_hash()
+            slot, final_state.final_state_hash
         );
 
         // create the final state
@@ -527,6 +528,8 @@ impl FinalState {
         );
 
         self.db.write().write_batch(db_batch, Some(self.slot));
+
+        self.final_state_hash = self.db.read().get_db_hash();
 
         // compute the final state hash
         info!(

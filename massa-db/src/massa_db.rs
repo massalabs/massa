@@ -443,17 +443,21 @@ where
 
     /// Get the current state hash of the database
     pub fn get_db_hash(&self) -> Hash {
+        self.get_db_hash_opt()
+            .unwrap_or(Hash::from_bytes(STATE_HASH_INITIAL_BYTES))
+    }
+
+    /// Get the current state hash of the database
+    fn get_db_hash_opt(&self) -> Option<Hash> {
         let db = &self.db;
         let handle = db.cf_handle(METADATA_CF).expect(CF_ERROR);
-        if let Some(state_hash_bytes) = db
-            .get_cf(handle, STATE_HASH_KEY)
+
+        db.get_cf(handle, STATE_HASH_KEY)
             .expect(CRUD_ERROR)
             .as_deref()
-        {
-            Hash::from_bytes(state_hash_bytes.try_into().expect(STATE_HASH_ERROR))
-        } else {
-            Hash::from_bytes(STATE_HASH_INITIAL_BYTES)
-        }
+            .map(|state_hash_bytes| {
+                Hash::from_bytes(state_hash_bytes.try_into().expect(STATE_HASH_ERROR))
+            })
     }
 }
 
