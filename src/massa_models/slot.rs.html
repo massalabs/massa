@@ -677,7 +677,7 @@
 }
 
 <span class="doccomment">/// When an address is drawn to create an endorsement it is selected for a specific index
-</span><span class="attr">#[derive(Debug, Deserialize, Serialize, Hash, PartialEq, Eq)]
+</span><span class="attr">#[derive(Debug, Clone, Deserialize, Serialize, Hash, PartialEq, Eq)]
 </span><span class="kw">pub struct </span>IndexedSlot {
     <span class="doccomment">/// slot
     </span><span class="kw">pub </span>slot: Slot,

@@ -235,7 +235,6 @@
 <a href="#235" id="235">235</a>
 <a href="#236" id="236">236</a>
 <a href="#237" id="237">237</a>
-<a href="#238" id="238">238</a>
 </pre><pre class="rust"><code><span class="kw">use </span>std::{
     collections::HashMap,
     net::{IpAddr, SocketAddr},
@@ -243,9 +242,7 @@
     time::{SystemTime, UNIX_EPOCH},
 };
 
-<span class="kw">use </span>massa_hash::Hash;
 <span class="kw">use </span>massa_models::serialization::IpAddrDeserializer;
-<span class="kw">use </span>massa_signature::{KeyPair, Signature, SignatureDeserializer};
 <span class="kw">use </span>nom::{
     error::{context, ContextError, ParseError},
     multi::length_count,
@@ -255,11 +252,11 @@
 <span class="kw">use </span>peernet::{
     error::{PeerNetError, PeerNetResult},
     transports::TransportType,
+    types::{Hash, KeyPair, Signature},
 };
 
 <span class="kw">use </span>massa_serialization::{
-    DeserializeError, Deserializer, SerializeError, Serializer, U64VarIntDeserializer,
-    U64VarIntSerializer,
+    Deserializer, SerializeError, Serializer, U64VarIntDeserializer, U64VarIntSerializer,
 };
 
 <span class="attr">#[derive(Clone, Debug, PartialEq, Eq)]
@@ -367,15 +364,18 @@
         .parse(buffer)<span class="question-mark">?</span>;
         <span class="kw">let </span>serialized = buffer[..buffer.len() - rest.len()].to_vec();
         <span class="kw">let </span>hash = Hash::compute_from(<span class="kw-2">&amp;</span>serialized);
-        <span class="kw">let </span>signature_deserializer = SignatureDeserializer::new();
-        <span class="kw">let </span>(rest, signature) = signature_deserializer
-            .deserialize::&lt;DeserializeError&gt;(rest)
-            .map_err(|<span class="kw">_</span>| {
-                nom::Err::Error(ParseError::from_error_kind(
-                    rest,
-                    nom::error::ErrorKind::Verify,
-                ))
-            })<span class="question-mark">?</span>;
+        <span class="kw">let </span>signature = Signature::from_bytes(<span class="kw-2">&amp;</span>rest[..<span class="number">64</span>].try_into().map_err(|<span class="kw">_</span>| {
+            nom::Err::Error(ParseError::from_error_kind(
+                rest,
+                nom::error::ErrorKind::LengthValue,
+            ))
+        })<span class="question-mark">?</span>)
+        .map_err(|<span class="kw">_</span>| {
+            nom::Err::Error(ParseError::from_error_kind(
+                rest,
+                nom::error::ErrorKind::Verify,
+            ))
+        })<span class="question-mark">?</span>;
         <span class="prelude-val">Ok</span>((
             rest,
             Announcement {
@@ -448,8 +448,7 @@
         Announcement, AnnouncementDeserializer, AnnouncementDeserializerArgs,
     };
     <span class="kw">use </span>massa_serialization::{DeserializeError, Deserializer, Serializer};
-    <span class="kw">use </span>massa_signature::KeyPair;
-    <span class="kw">use </span>peernet::transports::TransportType;
+    <span class="kw">use </span>peernet::{transports::TransportType, types::KeyPair};
     <span class="kw">use </span>std::collections::HashMap;
 
     <span class="kw">use </span><span class="kw">super</span>::AnnouncementSerializer;
@@ -459,8 +458,7 @@
         <span class="kw">let </span><span class="kw-2">mut </span>listeners = HashMap::new();
         listeners.insert(<span class="string">&quot;127.0.0.1:8081&quot;</span>.parse().unwrap(), TransportType::Tcp);
         listeners.insert(<span class="string">&quot;127.0.0.1:8082&quot;</span>.parse().unwrap(), TransportType::Quic);
-        <span class="kw">let </span>announcement =
-            Announcement::new(listeners, <span class="prelude-val">None</span>, <span class="kw-2">&amp;</span>KeyPair::generate(<span class="number">0</span>).unwrap()).unwrap();
+        <span class="kw">let </span>announcement = Announcement::new(listeners, <span class="prelude-val">None</span>, <span class="kw-2">&amp;</span>KeyPair::generate()).unwrap();
         <span class="kw">let </span>announcement_serializer = AnnouncementSerializer::new();
         <span class="kw">let </span>announcement_deserializer =
             AnnouncementDeserializer::new(AnnouncementDeserializerArgs { max_listeners: <span class="number">100 </span>});

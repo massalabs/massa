@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"mod":["clique_computation","graph","process","process_commands","prune","stats","tick","verifications"],"static":["CALLSITE","META"],"struct":["ConsensusState"]};
+window.SIDEBAR_ITEMS = {"mod":["graph","process","process_commands","prune","stats","tick","verifications"],"static":["CALLSITE","META"],"struct":["ConsensusState"]};
