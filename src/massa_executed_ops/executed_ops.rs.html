@@ -470,8 +470,6 @@
 <a href="#470" id="470">470</a>
 <a href="#471" id="471">471</a>
 <a href="#472" id="472">472</a>
-<a href="#473" id="473">473</a>
-<a href="#474" id="474">474</a>
 </pre><pre class="rust"><code><span class="doccomment">//! Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 //! This file defines a structure to list and prune previously executed operations.
@@ -538,7 +536,7 @@
             (Included(u64::MIN), Included(u64::MAX)),
             (Included(<span class="number">0</span>), Excluded(config.thread_count)),
         );
-        <span class="kw">let </span><span class="kw-2">mut </span>executed_ops = <span class="self">Self </span>{
+        <span class="self">Self </span>{
             _config: config,
             db,
             sorted_ops: BTreeMap::new(),
@@ -549,9 +547,7 @@
             bool_serializer: BoolSerializer::new(),
             slot_deserializer,
             slot_serializer: SlotSerializer::new(),
-        };
-        executed_ops.recompute_sorted_ops_and_op_exec_status();
-        executed_ops
+        }
     }
 
     <span class="doccomment">/// Recomputes the local caches after bootstrap or loading the state from disk

@@ -350,8 +350,6 @@
 <a href="#350" id="350">350</a>
 <a href="#351" id="351">351</a>
 <a href="#352" id="352">352</a>
-<a href="#353" id="353">353</a>
-<a href="#354" id="354">354</a>
 </pre><pre class="rust"><code><span class="doccomment">//! Copyright (c) 2023 MASSA LABS &lt;info@massa.net&gt;
 
 //! This file defines a structure to list and prune previously executed denunciations.
@@ -412,15 +410,13 @@
     </span><span class="kw">pub fn </span>new(config: ExecutedDenunciationsConfig, db: Arc&lt;RwLock&lt;MassaDB&gt;&gt;) -&gt; <span class="self">Self </span>{
         <span class="kw">let </span>denunciation_index_deserializer =
             DenunciationIndexDeserializer::new(config.thread_count, config.endorsement_count);
-        <span class="kw">let </span><span class="kw-2">mut </span>executed_denunciations = <span class="self">Self </span>{
+        <span class="self">Self </span>{
             config,
             db,
             sorted_denunciations: Default::default(),
             denunciation_index_serializer: DenunciationIndexSerializer::new(),
             denunciation_index_deserializer,
-        };
-        executed_denunciations.recompute_sorted_denunciations();
-        executed_denunciations
+        }
     }
 
     <span class="doccomment">/// Recomputes the local caches after bootstrap or loading the state from disk

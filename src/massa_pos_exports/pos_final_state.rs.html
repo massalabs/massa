@@ -1623,19 +1623,6 @@
 <a href="#1623" id="1623">1623</a>
 <a href="#1624" id="1624">1624</a>
 <a href="#1625" id="1625">1625</a>
-<a href="#1626" id="1626">1626</a>
-<a href="#1627" id="1627">1627</a>
-<a href="#1628" id="1628">1628</a>
-<a href="#1629" id="1629">1629</a>
-<a href="#1630" id="1630">1630</a>
-<a href="#1631" id="1631">1631</a>
-<a href="#1632" id="1632">1632</a>
-<a href="#1633" id="1633">1633</a>
-<a href="#1634" id="1634">1634</a>
-<a href="#1635" id="1635">1635</a>
-<a href="#1636" id="1636">1636</a>
-<a href="#1637" id="1637">1637</a>
-<a href="#1638" id="1638">1638</a>
 </pre><pre class="rust"><code><span class="kw">use crate</span>::{
     CycleHistoryDeserializer, CycleHistorySerializer, CycleInfo, DeferredCreditsDeserializer,
     DeferredCreditsSerializer, PoSChanges, PosError, PosResult, ProductionStats,
@@ -1779,8 +1766,6 @@
     </span><span class="kw">pub </span>initial_rolls: BTreeMap&lt;Address, u64&gt;,
     <span class="doccomment">/// initial seeds, used for negative cycle look back (cycles -2, -1 in that order)
     </span><span class="kw">pub </span>initial_seeds: Vec&lt;Hash&gt;,
-    <span class="doccomment">/// initial ledger hash, used for seed computation
-    </span><span class="kw">pub </span>initial_ledger_hash: Hash,
     <span class="doccomment">/// deferred credits serializer
     </span><span class="kw">pub </span>deferred_credits_serializer: DeferredCreditsSerializer,
     <span class="doccomment">/// deferred credits deserializer
@@ -1798,7 +1783,6 @@
         initial_seed_string: <span class="kw-2">&amp;</span>str,
         initial_rolls_path: <span class="kw-2">&amp;</span>PathBuf,
         selector: Box&lt;<span class="kw">dyn </span>SelectorController&gt;,
-        initial_ledger_hash: Hash,
         db: Arc&lt;RwLock&lt;MassaDB&gt;&gt;,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="self">Self</span>, PosError&gt; {
         <span class="comment">// load get initial rolls from file
@@ -1821,7 +1805,7 @@
             config.max_production_stats_length,
         );
 
-        <span class="kw">let </span><span class="kw-2">mut </span>pos_state = <span class="self">Self </span>{
+        <span class="kw">let </span>pos_state = <span class="self">Self </span>{
             config,
             db,
             cycle_history_cache: Default::default(),
@@ -1829,15 +1813,11 @@
             selector,
             initial_rolls,
             initial_seeds,
-            initial_ledger_hash,
             deferred_credits_serializer: DeferredCreditsSerializer::new(),
             deferred_credits_deserializer,
             cycle_info_serializer: CycleHistorySerializer::new(),
             cycle_info_deserializer,
         };
-
-        <span class="comment">// TODO_PR: Should we do this here or only after bootstrap?
-        </span>pos_state.recompute_pos_state_caches();
 
         <span class="prelude-val">Ok</span>(pos_state)
     }
@@ -1996,14 +1976,14 @@
         <span class="prelude-val">Ok</span>(())
     }
 
-    <span class="doccomment">/// TODO_PR: Change this doc comment to reflect the PR changes
-    /// Technical specification of `apply_changes`:
+    <span class="doccomment">/// Technical specification of `apply_changes_to_batch`:
     ///
     /// set `self.last_final_slot` = C
-    /// if cycle C is absent from `self.cycle_history`:
-    ///     `push` a new empty `CycleInfo` at the back of `self.cycle_history` and set its cycle = C
-    ///     `pop_front` from `cycle_history` until front() represents cycle C-4 or later (not C-3 because we might need older endorsement draws on the limit between 2 cycles)
-    /// for the cycle C entry of `cycle_history`:
+    /// if cycle C is absent from `self.cycle_history_cache`:
+    ///     `push` a new empty `CycleInfo` on disk and reflect in `self.cycle_history_cache` and set its cycle = C
+    ///     `pop_front` from `cycle_history_cache` until front() represents cycle C-4 or later (not C-3 because we might need older endorsement draws on the limit between 2 cycles)
+    ///     delete the removed cycles from disk
+    /// for the cycle C entry in the db:
     ///     extend `seed_bits` with `changes.seed_bits`
     ///     extend `roll_counts` with `changes.roll_changes`
     ///         delete all entries from `roll_counts` for which the roll count is zero
@@ -2031,13 +2011,6 @@
 
         <span class="comment">// compute the current cycle from the given slot
         </span><span class="kw">let </span>cycle = slot.get_cycle(<span class="self">self</span>.config.periods_per_cycle);
-
-        <span class="comment">// If the cycle_history_cache is empty, try and update it from the database
-        // TODO_PR: See if this check is still needed, remove it or fix the issue
-        // E.g. should panic if cache is empty here
-        </span><span class="kw">if </span><span class="self">self</span>.cycle_history_cache.is_empty() {
-            <span class="self">self</span>.recompute_pos_state_caches();
-        }
 
         <span class="comment">// if cycle C is absent from self.cycle_history:
         // push a new empty CycleInfo at the back of self.cycle_history and set its cycle = C
@@ -2160,13 +2133,13 @@
                 </span><span class="kw">let </span>state_hash = <span class="self">self</span>.get_cycle_history_final_state_hash_snapshot(cycle_info.<span class="number">0</span>);
                 (
                     <span class="self">self</span>.get_all_roll_counts(cycle_info.<span class="number">0</span>),
-                    state_hash.expect(
+                    <span class="prelude-val">Some</span>(state_hash.expect(
                         <span class="string">&quot;critical: a complete cycle must contain a final state hash snapshot&quot;</span>,
-                    ),
+                    )),
                 )
             }
             <span class="comment">// looking back to negative cycles
-            </span><span class="prelude-val">None </span>=&gt; (<span class="self">self</span>.initial_rolls.clone(), <span class="self">self</span>.initial_ledger_hash),
+            </span><span class="prelude-val">None </span>=&gt; (<span class="self">self</span>.initial_rolls.clone(), <span class="prelude-val">None</span>),
         };
 
         <span class="comment">// get seed lookback
@@ -2184,7 +2157,9 @@
                 <span class="kw">let </span><span class="kw-2">mut </span>seed = Vec::new();
                 u64_ser.serialize(<span class="kw-2">&amp;</span>c, <span class="kw-2">&amp;mut </span>seed).unwrap();
                 seed.extend(<span class="self">self</span>.get_cycle_history_rng_seed(cycle_info.<span class="number">0</span>).into_vec());
-                seed.extend(lookback_state_hash.to_bytes());
+                <span class="kw">if let </span><span class="prelude-val">Some</span>(lookback_state_hash) = lookback_state_hash {
+                    seed.extend(lookback_state_hash.to_bytes());
+                }
                 Hash::compute_from(<span class="kw-2">&amp;</span>seed)
             }
             <span class="comment">// looking back to negative cycles
@@ -3108,14 +3083,14 @@
     }
 }
 
-<span class="comment">// TODO_PR: ADD TESTS FOR APPLY_CHANGES
+<span class="comment">// TODO_PR: ADD TESTS FOR APPLY_CHANGES?
 </span><span class="attr">#[test]
 </span><span class="kw">fn </span>test_pos_final_state_hash_computation() {
     <span class="kw">use </span><span class="kw">crate</span>::test_exports::MockSelectorController;
     <span class="kw">use </span><span class="kw">crate</span>::DeferredCredits;
     <span class="kw">use </span><span class="kw">crate</span>::PoSFinalState;
     <span class="kw">use </span>bitvec::prelude::<span class="kw-2">*</span>;
-    <span class="kw">use </span>massa_db::{MassaDB, MassaDBConfig, STATE_HASH_INITIAL_BYTES};
+    <span class="kw">use </span>massa_db::{MassaDB, MassaDBConfig};
     <span class="kw">use </span>massa_models::config::constants::{
         MAX_DEFERRED_CREDITS_LENGTH, MAX_PRODUCTION_STATS_LENGTH, MAX_ROLLS_COUNT_LENGTH,
         POS_SAVED_CYCLES,
@@ -3163,7 +3138,6 @@
         selector: selector_controller,
         initial_rolls: Default::default(),
         initial_seeds,
-        initial_ledger_hash: Hash::from_bytes(STATE_HASH_INITIAL_BYTES),
         deferred_credits_serializer: DeferredCreditsSerializer::new(),
         deferred_credits_deserializer,
         cycle_info_serializer: CycleHistorySerializer::new(),

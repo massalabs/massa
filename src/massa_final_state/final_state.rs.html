@@ -657,17 +657,6 @@
 <a href="#657" id="657">657</a>
 <a href="#658" id="658">658</a>
 <a href="#659" id="659">659</a>
-<a href="#660" id="660">660</a>
-<a href="#661" id="661">661</a>
-<a href="#662" id="662">662</a>
-<a href="#663" id="663">663</a>
-<a href="#664" id="664">664</a>
-<a href="#665" id="665">665</a>
-<a href="#666" id="666">666</a>
-<a href="#667" id="667">667</a>
-<a href="#668" id="668">668</a>
-<a href="#669" id="669">669</a>
-<a href="#670" id="670">670</a>
 </pre><pre class="rust"><code><span class="doccomment">//! Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 //! This file defines the final state of the node, which includes
@@ -760,7 +749,6 @@
             <span class="kw-2">&amp;</span>config.initial_seed_string,
             <span class="kw-2">&amp;</span>config.initial_rolls_path,
             selector,
-            db.read().get_db_hash(),
             db.clone(),
         )
         .map_err(|err| FinalStateError::PosError(<span class="macro">format!</span>(<span class="string">&quot;PoS final state init error: {}&quot;</span>, err)))<span class="question-mark">?</span>;
@@ -859,7 +847,7 @@
         <span class="comment">// Then, interpolate the downtime, to attach at end_slot;
         </span>final_state.last_start_period = last_start_period;
 
-        final_state.init_ledger_hash();
+        final_state.recompute_caches();
 
         <span class="comment">// We compute the draws here because we need to feed_cycles when interpolating
         </span>final_state.compute_initial_draws()<span class="question-mark">?</span>;
@@ -867,16 +855,6 @@
         final_state.interpolate_downtime()<span class="question-mark">?</span>;
 
         <span class="prelude-val">Ok</span>(final_state)
-    }
-
-    <span class="doccomment">/// Used after bootstrap, to set the initial ledger hash (used in initial draws)
-    </span><span class="kw">pub fn </span>init_ledger_hash(<span class="kw-2">&amp;mut </span><span class="self">self</span>) {
-        <span class="self">self</span>.pos_state.initial_ledger_hash = <span class="self">self</span>.db.read().get_db_hash();
-
-        <span class="macro">info!</span>(
-            <span class="string">&quot;Set initial ledger hash to {}&quot;</span>,
-            <span class="self">self</span>.db.read().get_db_hash().to_string()
-        )
     }
 
     <span class="doccomment">/// Once we created a FinalState from a snapshot, we need to edit it to attach at the end_slot and handle the downtime.

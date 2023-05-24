@@ -971,8 +971,6 @@
 <a href="#971" id="971">971</a>
 <a href="#972" id="972">972</a>
 <a href="#973" id="973">973</a>
-<a href="#974" id="974">974</a>
-<a href="#975" id="975">975</a>
 </pre><pre class="rust"><code><span class="doccomment">//! Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 //! This file defines a finite size final pool of asynchronous messages for use in the context of autonomous smart contracts
@@ -1179,7 +1177,7 @@
 <span class="kw">impl </span>AsyncPool {
     <span class="doccomment">/// Creates an empty `AsyncPool`
     </span><span class="kw">pub fn </span>new(config: AsyncPoolConfig, db: Arc&lt;RwLock&lt;MassaDB&gt;&gt;) -&gt; AsyncPool {
-        <span class="kw">let </span><span class="kw-2">mut </span>async_pool = AsyncPool {
+        AsyncPool {
             config: config.clone(),
             db,
             message_info_cache: Default::default(),
@@ -1192,9 +1190,7 @@
                 config.max_key_length,
                 <span class="bool-val">true</span>,
             ),
-        };
-        async_pool.recompute_message_info_cache();
-        async_pool
+        }
     }
 
     <span class="doccomment">/// Recomputes the local message_info_cache after bootstrap or loading the state from disk

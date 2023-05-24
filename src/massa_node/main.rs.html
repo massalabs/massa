@@ -1268,9 +1268,6 @@
 <a href="#1268" id="1268">1268</a>
 <a href="#1269" id="1269">1269</a>
 <a href="#1270" id="1270">1270</a>
-<a href="#1271" id="1271">1271</a>
-<a href="#1272" id="1272">1272</a>
-<a href="#1273" id="1273">1273</a>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="attr">#![doc = <span class="macro">include_str!</span>(<span class="string">&quot;../../README.md&quot;</span>)]
@@ -1600,11 +1597,8 @@
         </span><span class="macro">panic!</span>(<span class="string">&quot;critical: db is not valid after bootstrap&quot;</span>);
     }
 
-    final_state.write().recompute_caches();
-
     <span class="kw">if </span>args.restart_from_snapshot_at_period.is_none() {
-        <span class="comment">// TODO_PR: see if this PR changes things for this call
-        </span>final_state.write().init_ledger_hash();
+        final_state.write().recompute_caches();
 
         <span class="comment">// give the controller to final state in order for it to feed the cycles
         </span>final_state
