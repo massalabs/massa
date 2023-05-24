@@ -1623,6 +1623,19 @@
 <a href="#1623" id="1623">1623</a>
 <a href="#1624" id="1624">1624</a>
 <a href="#1625" id="1625">1625</a>
+<a href="#1626" id="1626">1626</a>
+<a href="#1627" id="1627">1627</a>
+<a href="#1628" id="1628">1628</a>
+<a href="#1629" id="1629">1629</a>
+<a href="#1630" id="1630">1630</a>
+<a href="#1631" id="1631">1631</a>
+<a href="#1632" id="1632">1632</a>
+<a href="#1633" id="1633">1633</a>
+<a href="#1634" id="1634">1634</a>
+<a href="#1635" id="1635">1635</a>
+<a href="#1636" id="1636">1636</a>
+<a href="#1637" id="1637">1637</a>
+<a href="#1638" id="1638">1638</a>
 </pre><pre class="rust"><code><span class="kw">use crate</span>::{
     CycleHistoryDeserializer, CycleHistorySerializer, CycleInfo, DeferredCreditsDeserializer,
     DeferredCreditsSerializer, PoSChanges, PosError, PosResult, ProductionStats,
@@ -2469,7 +2482,10 @@
         production_stats
     }
 
-    <span class="kw">fn </span>get_cycle_history_rng_seed(<span class="kw-2">&amp;</span><span class="self">self</span>, cycle: u64) -&gt; BitVec&lt;u8&gt; {
+    <span class="doccomment">/// Getter for the rng_seed of a given cycle, prioritizing the cache and querying the database as fallback.
+    ///
+    /// Panics if the cycle is not in the history.
+    </span><span class="kw">fn </span>get_cycle_history_rng_seed(<span class="kw-2">&amp;</span><span class="self">self</span>, cycle: u64) -&gt; BitVec&lt;u8&gt; {
         <span class="kw">let </span>db = <span class="self">self</span>.db.read();
         <span class="kw">let </span>handle = db.db.cf_handle(STATE_CF).expect(CF_ERROR);
 
@@ -2496,7 +2512,10 @@
         rng_seed
     }
 
-    <span class="kw">fn </span>get_cycle_history_final_state_hash_snapshot(<span class="kw-2">&amp;</span><span class="self">self</span>, cycle: u64) -&gt; <span class="prelude-ty">Option</span>&lt;Hash&gt; {
+    <span class="doccomment">/// Getter for the final_state_hash_snapshot of a given cycle.
+    ///
+    /// Panics if the cycle is not in the history.
+    </span><span class="kw">fn </span>get_cycle_history_final_state_hash_snapshot(<span class="kw-2">&amp;</span><span class="self">self</span>, cycle: u64) -&gt; <span class="prelude-ty">Option</span>&lt;Hash&gt; {
         <span class="kw">let </span>db = <span class="self">self</span>.db.read();
         <span class="kw">let </span>handle = db.db.cf_handle(STATE_CF).expect(CF_ERROR);
 
@@ -2517,7 +2536,9 @@
         state_hash
     }
 
-    <span class="kw">fn </span>get_cycle_history_cycles(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; Vec&lt;(u64, bool)&gt; {
+    <span class="doccomment">/// Used to recompute the cycle cache from the disk.
+    ///
+    </span><span class="kw">fn </span>get_cycle_history_cycles(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; Vec&lt;(u64, bool)&gt; {
         <span class="kw">let </span>db = <span class="self">self</span>.db.read();
         <span class="kw">let </span>handle = db.db.cf_handle(STATE_CF).expect(CF_ERROR);
 
@@ -2697,7 +2718,8 @@
             .push_back((cycle_info.cycle, cycle_info.complete));
     }
 
-    <span class="kw">fn </span>put_cycle_history_complete(<span class="kw-2">&amp;mut </span><span class="self">self</span>, cycle: u64, value: bool, batch: <span class="kw-2">&amp;mut </span>DBBatch) {
+    <span class="doccomment">/// Helper function to put a the complete flag for a given cycle
+    </span><span class="kw">fn </span>put_cycle_history_complete(<span class="kw-2">&amp;mut </span><span class="self">self</span>, cycle: u64, value: bool, batch: <span class="kw-2">&amp;mut </span>DBBatch) {
         <span class="kw">let </span>db = <span class="self">self</span>.db.read();
 
         <span class="kw">let </span>prefix = <span class="self">self</span>.cycle_history_cycle_prefix(cycle);
@@ -2711,7 +2733,8 @@
         }
     }
 
-    <span class="kw">fn </span>put_cycle_history_final_state_hash_snapshot(
+    <span class="doccomment">/// Helper function to put a the final_state_hash_snapshot for a given cycle
+    </span><span class="kw">fn </span>put_cycle_history_final_state_hash_snapshot(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         cycle: u64,
         value: <span class="prelude-ty">Option</span>&lt;Hash&gt;,
@@ -2735,7 +2758,8 @@
         );
     }
 
-    <span class="kw">fn </span>put_cycle_history_rng_seed(<span class="kw-2">&amp;mut </span><span class="self">self</span>, cycle: u64, value: BitVec&lt;u8&gt;, batch: <span class="kw-2">&amp;mut </span>DBBatch) {
+    <span class="doccomment">/// Helper function to put a the rng_seed for a given cycle
+    </span><span class="kw">fn </span>put_cycle_history_rng_seed(<span class="kw-2">&amp;mut </span><span class="self">self</span>, cycle: u64, value: BitVec&lt;u8&gt;, batch: <span class="kw-2">&amp;mut </span>DBBatch) {
         <span class="kw">let </span>db = <span class="self">self</span>.db.read();
 
         <span class="kw">let </span>prefix = <span class="self">self</span>.cycle_history_cycle_prefix(cycle);
@@ -2857,7 +2881,8 @@
 
 <span class="doccomment">/// Helpers for key and value management
 </span><span class="kw">impl </span>PoSFinalState {
-    <span class="kw">fn </span>cycle_history_cycle_prefix(<span class="kw-2">&amp;</span><span class="self">self</span>, cycle: u64) -&gt; Vec&lt;u8&gt; {
+    <span class="doccomment">/// Helper function to construct the key prefix associated with a given cycle
+    </span><span class="kw">fn </span>cycle_history_cycle_prefix(<span class="kw-2">&amp;</span><span class="self">self</span>, cycle: u64) -&gt; Vec&lt;u8&gt; {
         <span class="kw">let </span><span class="kw-2">mut </span>serialized_key = Vec::new();
         serialized_key.extend_from_slice(CYCLE_HISTORY_PREFIX.as_bytes());
         <span class="self">self</span>.cycle_info_serializer
@@ -3225,7 +3250,8 @@
         .unwrap();
     db.write().write_batch(batch, <span class="prelude-val">Some</span>(Slot::new(<span class="number">1</span>, <span class="number">0</span>)));
 
-    <span class="comment">/*
+    <span class="comment">// Previous asserts, that don&#39;t make sense anymore.
+    /*
         // create a second cycle from same value and match hash
         let cycle_b = CycleInfo::new_with_hash(
             0,
