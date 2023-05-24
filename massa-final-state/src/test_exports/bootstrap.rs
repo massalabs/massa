@@ -7,7 +7,6 @@ use std::sync::Arc;
 use massa_async_pool::AsyncPool;
 use massa_db::{MassaDB, METADATA_CF, STATE_CF, STATE_HASH_KEY};
 use massa_executed_ops::{ExecutedDenunciations, ExecutedOps};
-use massa_hash::{Hash, HASH_SIZE_BYTES};
 use massa_ledger_exports::LedgerController;
 use massa_models::slot::Slot;
 use massa_pos_exports::PoSFinalState;
@@ -34,7 +33,6 @@ pub fn create_final_state(
         pos_state,
         executed_ops,
         executed_denunciations,
-        final_state_hash: Hash::from_bytes(&[0; HASH_SIZE_BYTES]),
         last_start_period: 0,
         last_slot_before_downtime: None,
         db,

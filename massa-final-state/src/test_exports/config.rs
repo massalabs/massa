@@ -10,7 +10,6 @@ use massa_db::MassaDB;
 use massa_executed_ops::{
     ExecutedDenunciations, ExecutedDenunciationsConfig, ExecutedOps, ExecutedOpsConfig,
 };
-use massa_hash::{Hash, HASH_SIZE_BYTES};
 use massa_ledger_exports::LedgerConfig;
 use massa_ledger_worker::FinalLedger;
 use massa_models::config::{
@@ -43,7 +42,6 @@ impl FinalState {
                 db.clone(),
             ),
             config,
-            final_state_hash: Hash::from_bytes(&[0; HASH_SIZE_BYTES]),
             last_start_period: 0,
             last_slot_before_downtime: None,
             db,

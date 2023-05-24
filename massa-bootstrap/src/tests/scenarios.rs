@@ -355,12 +355,13 @@ fn test_bootstrap_server() {
 
         final_write.db.write().write_batch(batch, Some(next));
 
+        let final_state_hash = final_write.db.read().get_db_hash();
         let cycle = final_write
             .slot
             .get_cycle(final_state_local_config.periods_per_cycle.clone());
         final_write
             .pos_state
-            .feed_cycle_state_hash(cycle, final_write.final_state_hash);
+            .feed_cycle_state_hash(cycle, final_state_hash);
 
         current_slot = next;
     }
@@ -499,12 +500,13 @@ fn test_bootstrap_server() {
 
                 final_write.db.write().write_batch(batch, Some(next));
 
+                let final_state_hash = final_write.db.read().get_db_hash();
                 let cycle = final_write
                     .slot
                     .get_cycle(final_state_local_config.periods_per_cycle.clone());
                 final_write
                     .pos_state
-                    .feed_cycle_state_hash(cycle, final_write.final_state_hash);
+                    .feed_cycle_state_hash(cycle, final_state_hash);
 
                 let mut list_changes_write = list_changes_clone.write();
                 list_changes_write.push((next, changes));

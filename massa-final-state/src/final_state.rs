@@ -14,7 +14,6 @@ use massa_db::{
 };
 use massa_executed_ops::ExecutedDenunciations;
 use massa_executed_ops::ExecutedOps;
-use massa_hash::{Hash, HASH_SIZE_BYTES};
 use massa_ledger_exports::LedgerController;
 use massa_models::config::PERIODS_BETWEEN_BACKUPS;
 use massa_models::slot::Slot;
@@ -40,8 +39,6 @@ pub struct FinalState {
     pub executed_ops: ExecutedOps,
     /// executed denunciations
     pub executed_denunciations: ExecutedDenunciations,
-    /// hash of the final state, it is computed on finality
-    pub final_state_hash: Hash,
     /// last_start_period
     /// * If start new network: set to 0
     /// * If from snapshot: retrieve from args
@@ -53,11 +50,8 @@ pub struct FinalState {
     /// * If from bootstrap: set during bootstrap
     pub last_slot_before_downtime: Option<Slot>,
     /// the rocksdb instance used to write every final_state struct on disk
-    /// TODO_PR: See if we can use an Arc without the RwLock here (with only locks on the needed fields of the MassaDB)
     pub db: Arc<RwLock<MassaDB>>,
 }
-
-const FINAL_STATE_HASH_INITIAL_BYTES: &[u8; 32] = &[0; HASH_SIZE_BYTES];
 
 impl FinalState {
     /// Initializes a new `FinalState`
@@ -124,7 +118,6 @@ impl FinalState {
             config,
             executed_ops,
             executed_denunciations,
-            final_state_hash: Hash::from_bytes(FINAL_STATE_HASH_INITIAL_BYTES),
             last_start_period: 0,
             last_slot_before_downtime: None,
             db,
@@ -137,11 +130,10 @@ impl FinalState {
             final_state.executed_denunciations.reset();
         }
 
-        final_state.final_state_hash = final_state.db.read().get_db_hash();
-
         info!(
             "final_state hash at slot {}: {}",
-            slot, final_state.final_state_hash
+            slot,
+            final_state.db.read().get_db_hash()
         );
 
         // create the final state
@@ -247,18 +239,19 @@ impl FinalState {
 
         self.slot = end_slot;
 
-        // TODO_PR: Replace the final_state_hash with calls to self.db.read().get_db_hash()!
         // Recompute the hash with the updated data and feed it to POS_state.
+
+        let final_state_hash = self.db.read().get_db_hash();
+
         info!(
             "final_state hash at slot {}: {}",
-            self.slot,
-            self.db.read().get_db_hash()
+            self.slot, final_state_hash
         );
 
         // feed final_state_hash to the last cycle
         let cycle = self.slot.get_cycle(self.config.periods_per_cycle);
         self.pos_state
-            .feed_cycle_state_hash(cycle, self.final_state_hash);
+            .feed_cycle_state_hash(cycle, final_state_hash);
 
         Ok(())
     }
@@ -447,7 +440,7 @@ impl FinalState {
         cycle: u64,
     ) -> Result<(), FinalStateError> {
         self.pos_state
-            .feed_cycle_state_hash(cycle, self.final_state_hash);
+            .feed_cycle_state_hash(cycle, self.db.read().get_db_hash());
 
         self.pos_state
             .feed_selector(cycle.checked_add(2).ok_or_else(|| {
@@ -470,8 +463,6 @@ impl FinalState {
         self.pos_state.reset();
         self.executed_ops.reset();
         self.executed_denunciations.reset();
-        // reset the final state hash
-        self.final_state_hash = Hash::from_bytes(FINAL_STATE_HASH_INITIAL_BYTES);
     }
 
     /// Performs the initial draws.
@@ -529,13 +520,12 @@ impl FinalState {
 
         self.db.write().write_batch(db_batch, Some(self.slot));
 
-        self.final_state_hash = self.db.read().get_db_hash();
+        let final_state_hash = self.db.read().get_db_hash();
 
         // compute the final state hash
         info!(
             "final_state hash at slot {}: {}",
-            self.slot,
-            self.db.read().get_db_hash()
+            self.slot, final_state_hash
         );
 
         // Backup DB if needed
@@ -545,16 +535,14 @@ impl FinalState {
                 Ok(slot) => {
                     info!(
                         "Backuping db for slot {}, state slot: {}, state hash: {}",
-                        self.slot,
-                        slot,
-                        self.db.read().get_db_hash()
+                        self.slot, slot, final_state_hash
                     );
                 }
                 Err(e) => {
                     info!("{}", e);
                     info!(
                         "Backuping db for unknown state slot, state hash: {}",
-                        self.db.read().get_db_hash()
+                        final_state_hash
                     );
                 }
             }
@@ -565,7 +553,7 @@ impl FinalState {
         // feed final_state_hash to the last cycle
         let cycle = slot.get_cycle(self.config.periods_per_cycle);
         self.pos_state
-            .feed_cycle_state_hash(cycle, self.final_state_hash);
+            .feed_cycle_state_hash(cycle, final_state_hash);
     }
 
     /// After bootstrap or load from disk, recompute all the caches.

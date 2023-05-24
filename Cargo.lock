@@ -2730,7 +2730,6 @@ dependencies = [
  "massa_async_pool",
  "massa_db",
  "massa_executed_ops",
- "massa_hash 0.1.0",
  "massa_ledger_exports",
  "massa_ledger_worker",
  "massa_models",

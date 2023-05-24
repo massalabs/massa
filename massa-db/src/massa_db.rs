@@ -24,8 +24,6 @@ use std::{
     sync::Arc,
 };
 
-// TODO_PR: add doc comments for this file.
-
 type Key = Vec<u8>;
 type Value = Vec<u8>;
 
