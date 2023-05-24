@@ -19,7 +19,7 @@
 <span class="kw">use </span>serde::{Deserialize, Serialize};
 
 <span class="doccomment">/// slot / amount pair
-</span><span class="attr">#[derive(Debug, Deserialize, Serialize)]
+</span><span class="attr">#[derive(Debug, Clone, Deserialize, Serialize)]
 </span><span class="kw">pub struct </span>SlotAmount {
     <span class="doccomment">/// slot
     </span><span class="kw">pub </span>slot: Slot,
