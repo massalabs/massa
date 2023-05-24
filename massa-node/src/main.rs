@@ -330,9 +330,6 @@ async fn launch(
     final_state.write().recompute_caches();
 
     if args.restart_from_snapshot_at_period.is_none() {
-        // TODO_PR: see if this PR changes things for this call
-        final_state.write().init_ledger_hash();
-
         // give the controller to final state in order for it to feed the cycles
         final_state
             .write()

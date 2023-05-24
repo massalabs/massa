@@ -23,7 +23,6 @@ use massa_final_state::{
     test_exports::{assert_eq_final_state, assert_eq_final_state_hash},
     FinalState, FinalStateConfig, StateChanges,
 };
-use massa_hash::{Hash, HASH_SIZE_BYTES};
 use massa_ledger_exports::LedgerConfig;
 use massa_models::config::{
     DENUNCIATION_EXPIRE_PERIODS, ENDORSEMENT_COUNT, MAX_DEFERRED_CREDITS_LENGTH,
@@ -158,7 +157,6 @@ fn mock_bootstrap_manager(addr: SocketAddr, bootstrap_config: BootstrapConfig) -
             "",
             &rolls_path,
             server_selector_controller.clone(),
-            Hash::from_bytes(&[0; HASH_SIZE_BYTES]),
             db.clone(),
         )
         .unwrap(),
@@ -300,7 +298,6 @@ fn test_bootstrap_server() {
         "",
         &rolls_path,
         server_selector_controller.clone(),
-        Hash::from_bytes(&[0; HASH_SIZE_BYTES]),
         db_server.clone(),
     );
 
@@ -368,7 +365,6 @@ fn test_bootstrap_server() {
             "",
             &rolls_path,
             client_selector_controller.clone(),
-            Hash::from_bytes(&[0; HASH_SIZE_BYTES]),
             db_client.clone(),
         )
         .unwrap(),
@@ -533,7 +529,6 @@ fn test_bootstrap_server() {
         );
 
         final_state_client_write.recompute_caches();
-        final_state_client_write.init_ledger_hash();
     }
 
     // check final states

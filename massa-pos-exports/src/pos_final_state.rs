@@ -141,8 +141,6 @@ pub struct PoSFinalState {
     pub initial_rolls: BTreeMap<Address, u64>,
     /// initial seeds, used for negative cycle look back (cycles -2, -1 in that order)
     pub initial_seeds: Vec<Hash>,
-    /// initial ledger hash, used for seed computation
-    pub initial_ledger_hash: Hash,
     /// deferred credits serializer
     pub deferred_credits_serializer: DeferredCreditsSerializer,
     /// deferred credits deserializer
@@ -160,7 +158,6 @@ impl PoSFinalState {
         initial_seed_string: &str,
         initial_rolls_path: &PathBuf,
         selector: Box<dyn SelectorController>,
-        initial_ledger_hash: Hash,
         db: Arc<RwLock<MassaDB>>,
     ) -> Result<Self, PosError> {
         // load get initial rolls from file
@@ -191,7 +188,6 @@ impl PoSFinalState {
             selector,
             initial_rolls,
             initial_seeds,
-            initial_ledger_hash,
             deferred_credits_serializer: DeferredCreditsSerializer::new(),
             deferred_credits_deserializer,
             cycle_info_serializer: CycleHistorySerializer::new(),
@@ -522,13 +518,13 @@ impl PoSFinalState {
                 let state_hash = self.get_cycle_history_final_state_hash_snapshot(cycle_info.0);
                 (
                     self.get_all_roll_counts(cycle_info.0),
-                    state_hash.expect(
+                    Some(state_hash.expect(
                         "critical: a complete cycle must contain a final state hash snapshot",
-                    ),
+                    )),
                 )
             }
             // looking back to negative cycles
-            None => (self.initial_rolls.clone(), self.initial_ledger_hash),
+            None => (self.initial_rolls.clone(), None),
         };
 
         // get seed lookback
@@ -546,7 +542,9 @@ impl PoSFinalState {
                 let mut seed = Vec::new();
                 u64_ser.serialize(&c, &mut seed).unwrap();
                 seed.extend(self.get_cycle_history_rng_seed(cycle_info.0).into_vec());
-                seed.extend(lookback_state_hash.to_bytes());
+                if let Some(lookback_state_hash) = lookback_state_hash {
+                    seed.extend(lookback_state_hash.to_bytes());
+                }
                 Hash::compute_from(&seed)
             }
             // looking back to negative cycles
@@ -1477,7 +1475,7 @@ fn test_pos_final_state_hash_computation() {
     use crate::DeferredCredits;
     use crate::PoSFinalState;
     use bitvec::prelude::*;
-    use massa_db::{MassaDB, MassaDBConfig, STATE_HASH_INITIAL_BYTES};
+    use massa_db::{MassaDB, MassaDBConfig};
     use massa_models::config::constants::{
         MAX_DEFERRED_CREDITS_LENGTH, MAX_PRODUCTION_STATS_LENGTH, MAX_ROLLS_COUNT_LENGTH,
         POS_SAVED_CYCLES,
@@ -1525,7 +1523,6 @@ fn test_pos_final_state_hash_computation() {
         selector: selector_controller,
         initial_rolls: Default::default(),
         initial_seeds,
-        initial_ledger_hash: Hash::from_bytes(STATE_HASH_INITIAL_BYTES),
         deferred_credits_serializer: DeferredCreditsSerializer::new(),
         deferred_credits_deserializer,
         cycle_info_serializer: CycleHistorySerializer::new(),

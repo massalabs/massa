@@ -90,7 +90,6 @@ impl FinalState {
             &config.initial_seed_string,
             &config.initial_rolls_path,
             selector,
-            db.read().get_db_hash(),
             db.clone(),
         )
         .map_err(|err| FinalStateError::PosError(format!("PoS final state init error: {}", err)))?;
@@ -189,24 +188,12 @@ impl FinalState {
         // Then, interpolate the downtime, to attach at end_slot;
         final_state.last_start_period = last_start_period;
 
-        final_state.init_ledger_hash();
-
         // We compute the draws here because we need to feed_cycles when interpolating
         final_state.compute_initial_draws()?;
 
         final_state.interpolate_downtime()?;
 
         Ok(final_state)
-    }
-
-    /// Used after bootstrap, to set the initial ledger hash (used in initial draws)
-    pub fn init_ledger_hash(&mut self) {
-        self.pos_state.initial_ledger_hash = self.db.read().get_db_hash();
-
-        info!(
-            "Set initial ledger hash to {}",
-            self.db.read().get_db_hash().to_string()
-        )
     }
 
     /// Once we created a FinalState from a snapshot, we need to edit it to attach at the end_slot and handle the downtime.
