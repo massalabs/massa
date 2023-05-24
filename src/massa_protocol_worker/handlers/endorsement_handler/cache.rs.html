@@ -20,23 +20,29 @@
 <a href="#20" id="20">20</a>
 <a href="#21" id="21">21</a>
 <a href="#22" id="22">22</a>
-</pre><pre class="rust"><code><span class="kw">use </span>std::sync::Arc;
+<a href="#23" id="23">23</a>
+<a href="#24" id="24">24</a>
+<a href="#25" id="25">25</a>
+</pre><pre class="rust"><code><span class="kw">use </span>std::{num::NonZeroUsize, sync::Arc};
 
+<span class="kw">use </span>lru::LruCache;
 <span class="kw">use </span>massa_models::endorsement::EndorsementId;
 <span class="kw">use </span>massa_protocol_exports::PeerId;
 <span class="kw">use </span>parking_lot::RwLock;
-<span class="kw">use </span>schnellru::{ByLength, LruMap};
 
 <span class="kw">pub struct </span>EndorsementCache {
-    <span class="kw">pub </span>checked_endorsements: LruMap&lt;EndorsementId, ()&gt;,
-    <span class="kw">pub </span>endorsements_known_by_peer: LruMap&lt;PeerId, LruMap&lt;EndorsementId, ()&gt;&gt;,
+    <span class="kw">pub </span>checked_endorsements: LruCache&lt;EndorsementId, ()&gt;,
+    <span class="kw">pub </span>endorsements_known_by_peer: LruCache&lt;PeerId, LruCache&lt;EndorsementId, ()&gt;&gt;,
 }
 
 <span class="kw">impl </span>EndorsementCache {
-    <span class="kw">pub fn </span>new(max_known_endorsements: u32, max_known_endorsements_by_peer: u32) -&gt; <span class="self">Self </span>{
+    <span class="kw">pub fn </span>new(
+        max_known_endorsements: NonZeroUsize,
+        max_known_endorsements_by_peer: NonZeroUsize,
+    ) -&gt; <span class="self">Self </span>{
         <span class="self">Self </span>{
-            checked_endorsements: LruMap::new(ByLength::new(max_known_endorsements)),
-            endorsements_known_by_peer: LruMap::new(ByLength::new(max_known_endorsements_by_peer)),
+            checked_endorsements: LruCache::new(max_known_endorsements),
+            endorsements_known_by_peer: LruCache::new(max_known_endorsements_by_peer),
         }
     }
 }

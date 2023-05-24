@@ -523,21 +523,9 @@
 <a href="#523" id="523">523</a>
 <a href="#524" id="524">524</a>
 <a href="#525" id="525">525</a>
-<a href="#526" id="526">526</a>
-<a href="#527" id="527">527</a>
-<a href="#528" id="528">528</a>
-<a href="#529" id="529">529</a>
-<a href="#530" id="530">530</a>
-<a href="#531" id="531">531</a>
-<a href="#532" id="532">532</a>
-<a href="#533" id="533">533</a>
-<a href="#534" id="534">534</a>
-<a href="#535" id="535">535</a>
-<a href="#536" id="536">536</a>
-<a href="#537" id="537">537</a>
-<a href="#538" id="538">538</a>
 </pre><pre class="rust"><code><span class="kw">use </span>std::{
     collections::{HashMap, VecDeque},
+    num::NonZeroUsize,
     thread::JoinHandle,
     time::Instant,
 };
@@ -546,6 +534,7 @@
     channel::{tick, Receiver, Sender},
     select,
 };
+<span class="kw">use </span>lru::LruCache;
 <span class="kw">use </span>massa_logging::massa_trace;
 <span class="kw">use </span>massa_models::{
     operation::{OperationId, OperationPrefixId, OperationPrefixIds, SecureShareOperation},
@@ -560,7 +549,6 @@
 <span class="kw">use </span>massa_serialization::{DeserializeError, Deserializer};
 <span class="kw">use </span>massa_storage::Storage;
 <span class="kw">use </span>massa_time::{MassaTime, TimeError};
-<span class="kw">use </span>schnellru::{ByLength, LruMap};
 
 <span class="kw">use crate</span>::{
     handlers::peer_handler::models::{PeerManagementCmd, PeerMessageTuple},
@@ -594,7 +582,7 @@
     receiver: Receiver&lt;PeerMessageTuple&gt;,
     pool_controller: Box&lt;<span class="kw">dyn </span>PoolController&gt;,
     cache: SharedOperationCache,
-    asked_operations: LruMap&lt;OperationPrefixId, (Instant, Vec&lt;PeerId&gt;)&gt;,
+    asked_operations: LruCache&lt;OperationPrefixId, (Instant, Vec&lt;PeerId&gt;)&gt;,
     active_connections: Box&lt;<span class="kw">dyn </span>ActiveConnectionsTrait&gt;,
     op_batch_buffer: VecDeque&lt;OperationBatchItem&gt;,
     stored_operations: HashMap&lt;Instant, PreHashSet&lt;OperationId&gt;&gt;,
@@ -731,13 +719,7 @@
             received_ids.insert(operation_id);
 
             <span class="comment">// Check operation signature only if not already checked.
-            </span><span class="kw">if </span><span class="self">self
-                </span>.cache
-                .read()
-                .checked_operations
-                .peek(<span class="kw-2">&amp;</span>operation_id)
-                .is_none()
-            {
+            </span><span class="kw">if </span>!<span class="self">self</span>.cache.read().checked_operations.contains(<span class="kw-2">&amp;</span>operation_id) {
                 <span class="comment">// check signature if the operation wasn&#39;t in `checked_operation`
                 </span>new_operations.insert(operation_id, operation);
             };
@@ -759,20 +741,17 @@
             }
 
             <span class="comment">// add to known ops
-            </span><span class="kw">let </span>known_ops = cache_write
-                .ops_known_by_peer
-                .get_or_insert(source_peer_id.clone(), || {
-                    LruMap::new(ByLength::new(
-                        <span class="self">self</span>.config
-                            .max_node_known_ops_size
-                            .try_into()
-                            .expect(<span class="string">&quot;max_node_known_ops_size in config must be &gt; 0&quot;</span>),
-                    ))
-                })
-                .ok_or(())
-                .expect(<span class="string">&quot;ops_known_by_peer limitation reached&quot;</span>);
+            </span><span class="kw">let </span>known_ops =
+                cache_write
+                    .ops_known_by_peer
+                    .get_or_insert_mut(source_peer_id.clone(), || {
+                        LruCache::new(
+                            NonZeroUsize::new(<span class="self">self</span>.config.max_node_known_ops_size)
+                                .expect(<span class="string">&quot;max_node_known_ops_size in config must be &gt; 0&quot;</span>),
+                        )
+                    });
             <span class="kw">for </span>id <span class="kw">in </span>received_ids {
-                known_ops.insert(id.prefix(), ());
+                known_ops.put(id.prefix(), ());
             }
         }
 
@@ -856,27 +835,24 @@
         <span class="comment">// mark sender as knowing the ops
         </span>{
             <span class="kw">let </span><span class="kw-2">mut </span>cache_write = <span class="self">self</span>.cache.write();
-            <span class="kw">let </span>known_ops = cache_write
-                .ops_known_by_peer
-                .get_or_insert(peer_id.clone(), || {
-                    LruMap::new(ByLength::new(
-                        <span class="self">self</span>.config
-                            .max_node_known_ops_size
-                            .try_into()
-                            .expect(<span class="string">&quot;max_node_known_ops_size in config must be &gt; 0&quot;</span>),
-                    ))
-                })
-                .ok_or(())
-                .expect(<span class="string">&quot;ops_known_by_peer limitation reached&quot;</span>);
+            <span class="kw">let </span>known_ops =
+                cache_write
+                    .ops_known_by_peer
+                    .get_or_insert_mut(peer_id.clone(), || {
+                        LruCache::new(
+                            NonZeroUsize::new(<span class="self">self</span>.config.max_node_known_ops_size)
+                                .expect(<span class="string">&quot;max_node_known_ops_size in config must be &gt; 0&quot;</span>),
+                        )
+                    });
             <span class="kw">for </span>prefix <span class="kw">in </span><span class="kw-2">&amp;</span>op_batch {
-                known_ops.insert(<span class="kw-2">*</span>prefix, ());
+                known_ops.put(<span class="kw-2">*</span>prefix, ());
             }
         }
 
         <span class="comment">// filter out the operations that we already know about
         </span>{
             <span class="kw">let </span>cache_read = <span class="self">self</span>.cache.read();
-            op_batch.retain(|prefix| cache_read.checked_operations_prefix.peek(prefix).is_none());
+            op_batch.retain(|prefix| !cache_read.checked_operations_prefix.contains(prefix));
         }
 
         <span class="kw">let </span><span class="kw-2">mut </span>ask_set = OperationPrefixIds::with_capacity(op_batch.len());
@@ -885,7 +861,7 @@
         </span><span class="kw">let </span>now = Instant::now();
         <span class="kw">let </span><span class="kw-2">mut </span>count_reask = <span class="number">0</span>;
         <span class="kw">for </span>op_id <span class="kw">in </span>op_batch {
-            <span class="kw">let </span>wish = <span class="kw">match </span><span class="self">self</span>.asked_operations.get(<span class="kw-2">&amp;</span>op_id) {
+            <span class="kw">let </span>wish = <span class="kw">match </span><span class="self">self</span>.asked_operations.get_mut(<span class="kw-2">&amp;</span>op_id) {
                 <span class="prelude-val">Some</span>(wish) =&gt; {
                     <span class="kw">if </span>wish.<span class="number">1</span>.contains(peer_id) {
                         <span class="kw">continue</span>; <span class="comment">// already asked to the `peer_id`
@@ -913,7 +889,7 @@
             } <span class="kw">else </span>{
                 ask_set.insert(op_id);
                 <span class="self">self</span>.asked_operations
-                    .insert(op_id, (now, <span class="macro">vec!</span>[peer_id.clone()]));
+                    .put(op_id, (now, <span class="macro">vec!</span>[peer_id.clone()]));
             }
         } <span class="comment">// EndOf for op_id in op_batch:
 
@@ -954,7 +930,7 @@
                     <span class="macro">warn!</span>(<span class="string">&quot;Failed to send AskForOperations message to peer: {}&quot;</span>, err);
                     {
                         <span class="kw">let </span><span class="kw-2">mut </span>cache_write = <span class="self">self</span>.cache.write();
-                        cache_write.ops_known_by_peer.remove(peer_id);
+                        cache_write.ops_known_by_peer.pop(peer_id);
                     }
                 }
             }
@@ -1018,7 +994,7 @@
                 <span class="macro">warn!</span>(<span class="string">&quot;Failed to send Operations message to peer: {}&quot;</span>, err);
                 {
                     <span class="kw">let </span><span class="kw-2">mut </span>cache_write = <span class="self">self</span>.cache.write();
-                    cache_write.ops_known_by_peer.remove(peer_id);
+                    cache_write.ops_known_by_peer.pop(peer_id);
                 }
             }
         }
@@ -1058,12 +1034,10 @@
                 receiver_ext,
                 cache,
                 active_connections,
-                asked_operations: LruMap::new(ByLength::new(
-                    config
-                        .asked_operations_buffer_capacity
-                        .try_into()
+                asked_operations: LruCache::new(
+                    NonZeroUsize::new(config.asked_operations_buffer_capacity)
                         .expect(<span class="string">&quot;asked_operations_buffer_capacity in config must be &gt; 0&quot;</span>),
-                )),
+                ),
                 config,
                 operation_message_serializer: MessagesSerializer::new()
                     .with_operation_message_serializer(OperationMessageSerializer::new()),
