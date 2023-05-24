@@ -1016,6 +1016,23 @@
 <a href="#1016" id="1016">1016</a>
 <a href="#1017" id="1017">1017</a>
 <a href="#1018" id="1018">1018</a>
+<a href="#1019" id="1019">1019</a>
+<a href="#1020" id="1020">1020</a>
+<a href="#1021" id="1021">1021</a>
+<a href="#1022" id="1022">1022</a>
+<a href="#1023" id="1023">1023</a>
+<a href="#1024" id="1024">1024</a>
+<a href="#1025" id="1025">1025</a>
+<a href="#1026" id="1026">1026</a>
+<a href="#1027" id="1027">1027</a>
+<a href="#1028" id="1028">1028</a>
+<a href="#1029" id="1029">1029</a>
+<a href="#1030" id="1030">1030</a>
+<a href="#1031" id="1031">1031</a>
+<a href="#1032" id="1032">1032</a>
+<a href="#1033" id="1033">1033</a>
+<a href="#1034" id="1034">1034</a>
+<a href="#1035" id="1035">1035</a>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="doccomment">//! This module represents the context in which the VM executes bytecode.
@@ -1031,14 +1048,15 @@
 <span class="kw">use </span><span class="kw">crate</span>::speculative_ledger::SpeculativeLedger;
 <span class="kw">use </span><span class="kw">crate</span>::vesting_manager::VestingManager;
 <span class="kw">use crate</span>::{active_history::ActiveHistory, speculative_roll_state::SpeculativeRollState};
-<span class="kw">use </span>massa_async_pool::{AsyncMessage, AsyncMessageId};
+<span class="kw">use </span>massa_async_pool::{AsyncMessage, AsyncPoolChanges};
 <span class="kw">use </span>massa_executed_ops::{ExecutedDenunciationsChanges, ExecutedOpsChanges};
 <span class="kw">use </span>massa_execution_exports::{
     EventStore, ExecutionConfig, ExecutionError, ExecutionOutput, ExecutionStackElement,
 };
 <span class="kw">use </span>massa_final_state::{FinalState, StateChanges};
+<span class="kw">use </span>massa_hash::Hash;
 <span class="kw">use </span>massa_ledger_exports::LedgerChanges;
-<span class="kw">use </span>massa_models::address::{ExecutionAddressCycleInfo, SCAddress};
+<span class="kw">use </span>massa_models::address::ExecutionAddressCycleInfo;
 <span class="kw">use </span>massa_models::bytecode::Bytecode;
 <span class="kw">use </span>massa_models::denunciation::DenunciationIndex;
 <span class="kw">use </span>massa_models::{
@@ -1051,6 +1069,9 @@
 };
 <span class="kw">use </span>massa_module_cache::controller::ModuleCache;
 <span class="kw">use </span>massa_pos_exports::PoSChanges;
+<span class="kw">use </span>massa_versioning::address_factory::{AddressArgs, AddressFactory};
+<span class="kw">use </span>massa_versioning::versioning::MipStore;
+<span class="kw">use </span>massa_versioning::versioning_factory::VersioningFactory;
 <span class="kw">use </span>parking_lot::RwLock;
 <span class="kw">use </span>rand::SeedableRng;
 <span class="kw">use </span>rand_xoshiro::Xoshiro256PlusPlus;
@@ -1065,7 +1086,7 @@
     </span><span class="kw">pub </span>ledger_changes: LedgerChanges,
 
     <span class="doccomment">/// speculative asynchronous pool messages emitted so far in the context
-    </span><span class="kw">pub </span>async_pool_changes: Vec&lt;(AsyncMessageId, AsyncMessage)&gt;,
+    </span><span class="kw">pub </span>async_pool_changes: AsyncPoolChanges,
 
     <span class="doccomment">/// speculative list of operations executed
     </span><span class="kw">pub </span>executed_ops: ExecutedOpsChanges,
@@ -1172,6 +1193,9 @@
 
     <span class="comment">// Vesting Manager
     </span><span class="kw">pub </span>vesting_manager: Arc&lt;VestingManager&gt;,
+
+    <span class="comment">// Address factory
+    </span><span class="kw">pub </span>address_factory: AddressFactory,
 }
 
 <span class="kw">impl </span>ExecutionContext {
@@ -1191,6 +1215,7 @@
         active_history: Arc&lt;RwLock&lt;ActiveHistory&gt;&gt;,
         module_cache: Arc&lt;RwLock&lt;ModuleCache&gt;&gt;,
         vesting_manager: Arc&lt;VestingManager&gt;,
+        mip_store: MipStore,
     ) -&gt; <span class="self">Self </span>{
         ExecutionContext {
             speculative_ledger: SpeculativeLedger::new(
@@ -1233,6 +1258,7 @@
             module_cache,
             config,
             vesting_manager,
+            address_factory: AddressFactory { mip_store },
         }
     }
 
@@ -1311,6 +1337,7 @@
         active_history: Arc&lt;RwLock&lt;ActiveHistory&gt;&gt;,
         module_cache: Arc&lt;RwLock&lt;ModuleCache&gt;&gt;,
         vesting_manager: Arc&lt;VestingManager&gt;,
+        mip_store: MipStore,
     ) -&gt; <span class="self">Self </span>{
         <span class="comment">// Deterministically seed the unsafe RNG to allow the bytecode to use it.
         // Note that consecutive read-only calls for the same slot will get the same random seed.
@@ -1340,6 +1367,7 @@
                 active_history,
                 module_cache,
                 vesting_manager,
+                mip_store,
             )
         }
     }
@@ -1374,6 +1402,7 @@
     ///
     /// # returns
     /// A `ExecutionContext` instance
+    </span><span class="attr">#[allow(clippy::too_many_arguments)]
     </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>active_slot(
         config: ExecutionConfig,
         slot: Slot,
@@ -1382,6 +1411,7 @@
         active_history: Arc&lt;RwLock&lt;ActiveHistory&gt;&gt;,
         module_cache: Arc&lt;RwLock&lt;ModuleCache&gt;&gt;,
         vesting_manager: Arc&lt;VestingManager&gt;,
+        mip_store: MipStore,
     ) -&gt; <span class="self">Self </span>{
         <span class="comment">// Deterministically seed the unsafe RNG to allow the bytecode to use it.
 
@@ -1409,6 +1439,7 @@
                 active_history,
                 module_cache,
                 vesting_manager,
+                mip_store,
             )
         }
     }
@@ -1480,7 +1511,10 @@
             data.push(<span class="number">1u8</span>);
         }
         <span class="comment">// hash the seed to get a unique address
-        </span><span class="kw">let </span>address = Address::SC(SCAddress(massa_hash::Hash::compute_from(<span class="kw-2">&amp;</span>data)));
+        </span><span class="kw">let </span>hash = Hash::compute_from(<span class="kw-2">&amp;</span>data);
+        <span class="kw">let </span>address = <span class="self">self
+            </span>.address_factory
+            .create(<span class="kw-2">&amp;</span>AddressArgs::SC { hash }, <span class="prelude-val">None</span>)<span class="question-mark">?</span>;
 
         <span class="comment">// add this address with its bytecode to the speculative ledger
         </span><span class="self">self</span>.speculative_ledger.create_new_sc_address(
@@ -2007,7 +2041,7 @@
     ///
     </span><span class="kw">pub fn </span>insert_executed_denunciation(<span class="kw-2">&amp;mut </span><span class="self">self</span>, denunciation_idx: <span class="kw-2">&amp;</span>DenunciationIndex) {
         <span class="self">self</span>.speculative_executed_denunciations
-            .insert_executed_denunciation(denunciation_idx.clone());
+            .insert_executed_denunciation(<span class="kw-2">*</span>denunciation_idx);
     }
 
     <span class="doccomment">/// gets the cycle information for an address

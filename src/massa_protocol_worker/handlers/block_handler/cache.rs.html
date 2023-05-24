@@ -46,8 +46,8 @@
 
 <span class="kw">use </span>lru::LruCache;
 <span class="kw">use </span>massa_models::{block_header::SecuredHeader, block_id::BlockId};
+<span class="kw">use </span>massa_protocol_exports::PeerId;
 <span class="kw">use </span>parking_lot::RwLock;
-<span class="kw">use </span>peernet::peer_id::PeerId;
 
 <span class="kw">pub struct </span>BlockCache {
     <span class="kw">pub </span>checked_headers: LruCache&lt;BlockId, SecuredHeader&gt;,

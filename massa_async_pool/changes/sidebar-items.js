@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"enum":["Change","ChangeId"],"struct":["AsyncPoolChanges","AsyncPoolChangesDeserializer","AsyncPoolChangesSerializer"]};
+window.SIDEBAR_ITEMS = {"struct":["AsyncPoolChanges","AsyncPoolChangesDeserializer","AsyncPoolChangesSerializer"]};
