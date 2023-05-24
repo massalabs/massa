@@ -135,7 +135,7 @@
 <span class="kw">use </span>std::fmt::Formatter;
 
 <span class="doccomment">/// execution statistics
-</span><span class="attr">#[derive(Debug, Clone, Serialize, Deserialize)]
+</span><span class="attr">#[derive(Serialize, Deserialize, Debug)]
 </span><span class="kw">pub struct </span>ExecutionStats {
     <span class="doccomment">/// time window start
     </span><span class="kw">pub </span>time_window_start: MassaTime,
@@ -178,7 +178,7 @@
 }
 
 <span class="doccomment">/// stats produced by network module
-</span><span class="attr">#[derive(Debug, Clone, Serialize, Deserialize)]
+</span><span class="attr">#[derive(Serialize, Deserialize, Debug)]
 </span><span class="kw">pub struct </span>NetworkStats {
     <span class="doccomment">/// in connections count
     </span><span class="kw">pub </span>in_connection_count: u64,
