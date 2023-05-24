@@ -6,7 +6,7 @@ use peernet::transports::TransportType;
 use rand::seq::SliceRandom;
 use std::cmp::Reverse;
 use std::collections::BTreeSet;
-use std::time::{Duration, SystemTime, UNIX_EPOCH};
+use std::time::Duration;
 use std::{collections::HashMap, net::SocketAddr, sync::Arc};
 use tracing::log::info;
 

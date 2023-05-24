@@ -2,7 +2,6 @@ use std::{
     collections::HashMap,
     net::{IpAddr, SocketAddr},
     ops::Bound::Included,
-    time::{SystemTime, UNIX_EPOCH},
 };
 
 use massa_hash::Hash;

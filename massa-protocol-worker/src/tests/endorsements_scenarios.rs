@@ -110,14 +110,12 @@ fn test_protocol_does_not_send_invalid_endorsements_it_receives_to_pool() {
             let mut endorsement = tools::create_endorsement();
 
             //3. Change endorsement to make signature is invalid
-            endorsement.content_creator_pub_key = node_a_keypair.get_public_key().clone();
+            endorsement.content_creator_pub_key = node_a_keypair.get_public_key();
 
             network_controller
                 .send_from_peer(
                     &node_a_peer_id,
-                    Message::Endorsement(EndorsementMessage::Endorsements(vec![
-                        endorsement.clone()
-                    ])),
+                    Message::Endorsement(EndorsementMessage::Endorsements(vec![endorsement])),
                 )
                 .unwrap();
 
@@ -257,9 +255,7 @@ fn test_protocol_propagates_endorsements_only_to_nodes_that_dont_know_about_it_b
             network_controller
                 .send_from_peer(
                     &node_a_peer_id,
-                    Message::Block(Box::new(BlockMessage::BlockHeader(
-                        block.content.header.clone(),
-                    ))),
+                    Message::Block(Box::new(BlockMessage::BlockHeader(block.content.header))),
                 )
                 .unwrap();
 
