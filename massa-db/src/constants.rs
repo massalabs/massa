@@ -21,7 +21,6 @@ pub const CRUD_ERROR: &str = "critical: rocksdb crud operation failed";
 pub const STATE_HASH_ERROR: &str = "critical: saved state hash is corrupted";
 
 // Prefixes
-// TODO_PR: See if the indexes can be removed (I needed the cycle history to be the first streamed at some point)
 pub const CYCLE_HISTORY_PREFIX: &str = "cycle_history/";
 pub const DEFERRED_CREDITS_PREFIX: &str = "deferred_credits/";
 pub const ASYNC_POOL_PREFIX: &str = "async_pool/";

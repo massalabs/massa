@@ -362,8 +362,6 @@ fn test_bootstrap_server() {
             .pos_state
             .feed_cycle_state_hash(cycle, final_write.final_state_hash);
 
-        final_write.db.write().cur_change_id = next;
-
         current_slot = next;
     }
 
@@ -507,8 +505,6 @@ fn test_bootstrap_server() {
                 final_write
                     .pos_state
                     .feed_cycle_state_hash(cycle, final_write.final_state_hash);
-
-                final_write.db.write().cur_change_id = next;
 
                 let mut list_changes_write = list_changes_clone.write();
                 list_changes_write.push((next, changes));
