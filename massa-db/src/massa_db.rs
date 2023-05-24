@@ -1,7 +1,7 @@
 use crate::{
     MassaDBError, CF_ERROR, CHANGE_ID_DESER_ERROR, CHANGE_ID_KEY, CHANGE_ID_SER_ERROR, CRUD_ERROR,
     LSMTREE_ERROR, LSMTREE_NODES_CF, LSMTREE_VALUES_CF, METADATA_CF, OPEN_ERROR, STATE_CF,
-    STATE_HASH_ERROR, STATE_HASH_INITIAL_BYTES, STATE_HASH_KEY,
+    STATE_HASH_ERROR, STATE_HASH_INITIAL_BYTES, STATE_HASH_KEY, VERSIONING_CF,
 };
 use lsmtree::{bytes::Bytes, BadProof, KVStore, SparseMerkleTree};
 use massa_hash::{Hash, SmtHasher};
@@ -57,6 +57,10 @@ pub struct StreamBatch<ChangeID: PartialOrd + Ord + PartialEq + Eq + Clone + std
     pub new_elements: BTreeMap<Key, Value>,
     /// The changes made to previously streamed keys. Note that a None value can delete a given key.
     pub updates_on_previous_elements: BTreeMap<Key, Option<Value>>,
+    /// changes for versioning
+    pub updates_on_previous_versioning_elements: BTreeMap<Key, Option<Value>>,
+    ///
+    pub new_versioning_elements: BTreeMap<Key, Value>,
     /// The ChangeID associated with this batch, useful for syncing the changes not streamed yet to the client.
     pub change_id: ChangeID,
 }
@@ -66,7 +70,10 @@ impl<ChangeID: PartialOrd + Ord + PartialEq + Eq + Clone + std::fmt::Debug> Stre
     ///
     /// Note: even after having an empty StreamBatch, we still need to send the updates on previous elements while bootstrap has not finished.
     pub fn is_empty(&self) -> bool {
-        self.updates_on_previous_elements.is_empty() && self.new_elements.is_empty()
+        self.updates_on_previous_elements.is_empty()
+            && self.new_elements.is_empty()
+            && self.new_versioning_elements.is_empty()
+            && self.updates_on_previous_versioning_elements.is_empty()
     }
 }
 /// A generic wrapped RocksDB database.
@@ -86,6 +93,9 @@ pub struct RawMassaDB<
     config: MassaDBConfig,
     /// In change_history, we keep the latest changes made to the database, useful for streaming them to a client.
     pub change_history: BTreeMap<ChangeID, BTreeMap<Key, Option<Value>>>,
+    pub versioning_change_history: BTreeMap<ChangeID, BTreeMap<Key, Option<Value>>>,
+    // Here we keep it in memory, but maybe this should be only on disk?
+    pub cur_change_id: ChangeID,
     /// A serializer for the ChangeID type
     change_id_serializer: ChangeIDSerializer,
     /// A deserializer for the ChangeID type
@@ -203,6 +213,7 @@ where
     pub fn get_batch_to_stream(
         &self,
         last_obtained: Option<(Vec<u8>, ChangeID)>,
+        last_obtained_versioning: Option<(Vec<u8>, ChangeID)>,
     ) -> Result<StreamBatch<ChangeID>, MassaDBError> {
         let (updates_on_previous_elements, max_key) = if let Some((max_key, last_change_id)) =
             last_obtained
@@ -257,6 +268,60 @@ where
             (BTreeMap::new(), None) // we start from the beginning, so no updates on previous elements
         };
 
+        let (updates_on_previous_versioning_elements, max_key_2) = if let Some((
+            max_key,
+            last_change_id,
+        )) = last_obtained_versioning
+        {
+            match last_change_id.cmp(&self.cur_change_id) {
+                std::cmp::Ordering::Greater => {
+                    return Err(MassaDBError::TimeError(String::from(
+                        "we don't have this change yet on this node (it's in the future for us)",
+                    )));
+                }
+                std::cmp::Ordering::Equal => {
+                    (BTreeMap::new(), Some(max_key)) // no new updates
+                }
+                std::cmp::Ordering::Less => {
+                    // We should send all the new updates since last_change_id
+
+                    let cursor = self
+                        .change_history
+                        .lower_bound(Bound::Excluded(&last_change_id));
+
+                    if cursor.peek_prev().is_none() {
+                        return Err(MassaDBError::TimeError(String::from(
+                            "all our changes are strictly after last_change_id, we can't be sure we did not miss any",
+                        )));
+                    }
+
+                    match cursor.key() {
+                        Some(cursor_change_id) => {
+                            // We have to send all the updates since cursor_change_id
+                            let mut updates: BTreeMap<Vec<u8>, Option<Vec<u8>>> = BTreeMap::new();
+                            let iter = self
+                                .change_history
+                                .range((Bound::Excluded(cursor_change_id), Bound::Unbounded));
+                            for (_change_id, changes) in iter {
+                                updates.extend(
+                                    changes
+                                        .range((
+                                            Bound::<Vec<u8>>::Unbounded,
+                                            Included(max_key.clone()),
+                                        ))
+                                        .map(|(k, v)| (k.clone(), v.clone())),
+                                );
+                            }
+                            (updates, Some(max_key))
+                        }
+                        None => (BTreeMap::new(), Some(max_key)), // no new updates
+                    }
+                }
+            }
+        } else {
+            (BTreeMap::new(), None) // we start from the beginning, so no updates on previous elements
+        };
+
         let mut new_elements = BTreeMap::new();
         let handle = self.db.cf_handle(STATE_CF).expect(CF_ERROR);
 
@@ -280,9 +345,34 @@ where
             }
         }
 
+        let mut new_versioning_elements = BTreeMap::new();
+        let versioning_handle = self.db.cf_handle(VERSIONING_CF).expect(CF_ERROR);
+        // Creates an iterator from the next element after the last if defined, otherwise initialize it at the first key.
+        let db_iterator = match max_key_2 {
+            None => self.db.iterator_cf(versioning_handle, IteratorMode::Start),
+            Some(max_key_2) => {
+                let mut iter = self.db.iterator_cf(
+                    versioning_handle,
+                    IteratorMode::From(&max_key_2, Direction::Forward),
+                );
+                iter.next();
+                iter
+            }
+        };
+
+        for (serialized_key, serialized_value) in db_iterator.flatten() {
+            if new_versioning_elements.len() < self.config.max_history_length {
+                new_versioning_elements.insert(serialized_key.to_vec(), serialized_value.to_vec());
+            } else {
+                break;
+            }
+        }
+
         Ok(StreamBatch {
             new_elements,
             updates_on_previous_elements,
+            new_versioning_elements,
+            updates_on_previous_versioning_elements,
             change_id: self.get_change_id().expect(CHANGE_ID_DESER_ERROR),
         })
     }
@@ -294,6 +384,7 @@ where
     pub fn write_changes(
         &mut self,
         changes: BTreeMap<Key, Option<Value>>,
+        versioning_changes: BTreeMap<Key, Option<Value>>,
         change_id: Option<ChangeID>,
         reset_history: bool,
     ) -> Result<(), MassaDBError> {
@@ -307,11 +398,13 @@ where
 
         let handle_state = self.db.cf_handle(STATE_CF).expect(CF_ERROR);
         let handle_metadata = self.db.cf_handle(METADATA_CF).expect(CF_ERROR);
+        let handle_versioning = self.db.cf_handle(VERSIONING_CF).expect(CF_ERROR);
 
         *self.current_batch.lock() = WriteBatch::default();
 
         for (key, value) in changes.iter() {
             if let Some(value) = value {
+                println!("Put some value to STATE_CF");
                 self.current_batch.lock().put_cf(handle_state, key, value);
                 let key_hash = Hash::compute_from(key);
                 let value_hash = Hash::compute_from(value);
@@ -329,6 +422,19 @@ where
                 self.lsmtree
                     .remove(key_hash.to_bytes())
                     .expect(LSMTREE_ERROR);
+            }
+        }
+
+        // in versioning_changes, we have the data that we do not want to include in hash
+        // e.g everything that is not in 'Active' state (so hashes remain compatibles)
+        for (key, value) in versioning_changes.iter() {
+            if let Some(value) = value {
+                println!("Put some value to VERSIONING_CF");
+                self.current_batch
+                    .lock()
+                    .put_cf(handle_versioning, key, value);
+            } else {
+                self.current_batch.lock().delete_cf(handle_versioning, key);
             }
         }
 
@@ -357,6 +463,11 @@ where
             .entry(self.get_change_id().expect(CHANGE_ID_DESER_ERROR))
             .and_modify(|map| map.extend(changes.clone().into_iter()))
             .or_insert(changes);
+
+        self.versioning_change_history
+            .entry(self.cur_change_id.clone())
+            .and_modify(|map| map.extend(versioning_changes.clone().into_iter()))
+            .or_insert(versioning_changes);
 
         if reset_history {
             self.change_history.clear();
@@ -420,7 +531,7 @@ where
     pub fn write_batch_bootstrap_client(
         &mut self,
         stream_changes: StreamBatch<ChangeID>,
-    ) -> Result<StreamingStep<Key>, MassaDBError> {
+    ) -> Result<(StreamingStep<Key>, StreamingStep<Key>), MassaDBError> {
         let mut changes = BTreeMap::new();
 
         let new_cursor = match stream_changes.new_elements.last_key_value() {
@@ -444,9 +555,29 @@ where
                 .map(|(k, v)| (k.clone(), Some(v.clone()))),
         );
 
-        self.write_changes(changes, Some(stream_changes.change_id), true)?;
+        let mut versioning_changes = BTreeMap::new();
 
-        Ok(new_cursor)
+        let new_versioning_cursor = match stream_changes.new_elements.last_key_value() {
+            Some((k, _)) => StreamingStep::Ongoing(k.clone()),
+            None => StreamingStep::Finished(None),
+        };
+
+        versioning_changes.extend(stream_changes.updates_on_previous_versioning_elements);
+        versioning_changes.extend(
+            stream_changes
+                .new_versioning_elements
+                .iter()
+                .map(|(k, v)| (k.clone(), Some(v.clone()))),
+        );
+
+        self.write_changes(
+            changes,
+            versioning_changes,
+            Some(stream_changes.change_id),
+            true,
+        )?;
+
+        Ok((new_cursor, new_versioning_cursor))
     }
 
     /// Get the current state hash of the database
@@ -482,6 +613,7 @@ impl RawMassaDB<Slot, SlotSerializer, SlotDeserializer> {
             vec![
                 ColumnFamilyDescriptor::new(STATE_CF, Options::default()),
                 ColumnFamilyDescriptor::new(METADATA_CF, Options::default()),
+                ColumnFamilyDescriptor::new(VERSIONING_CF, Options::default()),
                 ColumnFamilyDescriptor::new(LSMTREE_NODES_CF, Options::default()),
                 ColumnFamilyDescriptor::new(LSMTREE_VALUES_CF, Options::default()),
             ],
@@ -523,6 +655,11 @@ impl RawMassaDB<Slot, SlotSerializer, SlotDeserializer> {
             db,
             config,
             change_history: BTreeMap::new(),
+            versioning_change_history: BTreeMap::new(),
+            cur_change_id: Slot {
+                period: 0,
+                thread: 0,
+            },
             change_id_serializer: SlotSerializer::new(),
             change_id_deserializer,
             lsmtree,
@@ -553,8 +690,13 @@ impl RawMassaDB<Slot, SlotSerializer, SlotDeserializer> {
     }
 
     /// Writes the batch to the DB
-    pub fn write_batch(&mut self, batch: DBBatch, change_id: Option<Slot>) {
-        self.write_changes(batch, change_id, false)
+    pub fn write_batch(
+        &mut self,
+        batch: DBBatch,
+        versioning_batch: DBBatch,
+        change_id: Option<Slot>,
+    ) {
+        self.write_changes(batch, versioning_batch, change_id, false)
             .expect(CRUD_ERROR);
     }
 
@@ -581,7 +723,7 @@ impl RawMassaDB<Slot, SlotSerializer, SlotDeserializer> {
 
             self.delete_key(&mut batch, serialized_key.to_vec());
         }
-        self.write_batch(batch, change_id);
+        self.write_batch(batch, Default::default(), change_id);
     }
 
     /// Reset the database, and attach it to the given slot.

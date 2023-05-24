@@ -319,15 +319,15 @@ fn test_executed_ops_hash_computing() {
 
     let mut batch_a = DBBatch::new();
     a.apply_changes_to_batch(change_a, apply_slot, &mut batch_a);
-    db_a.write().write_batch(batch_a, None);
+    db_a.write().write_batch(batch_a, Default::default(), None);
 
     let mut batch_b = DBBatch::new();
     a.apply_changes_to_batch(change_b, apply_slot, &mut batch_b);
-    db_a.write().write_batch(batch_b, None);
+    db_a.write().write_batch(batch_b, Default::default(), None);
 
     let mut batch_c = DBBatch::new();
     c.apply_changes_to_batch(change_c, apply_slot, &mut batch_c);
-    db_c.write().write_batch(batch_c, None);
+    db_c.write().write_batch(batch_c, Default::default(), None);
 
     // check that a.hash ^ $(change_b) = c.hash
     assert_ne!(
@@ -347,7 +347,7 @@ fn test_executed_ops_hash_computing() {
     };
     let mut batch_a = DBBatch::new();
     a.prune_to_batch(prune_slot, &mut batch_a);
-    db_a.write().write_batch(batch_a, None);
+    db_a.write().write_batch(batch_a, Default::default(), None);
 
     // at this point the hash should have been reset to its original value
     assert_eq!(

@@ -15,8 +15,8 @@ use massa_models::address::Address;
 use massa_models::amount::Amount;
 use massa_models::bytecode::Bytecode;
 use massa_models::config::{
-    DENUNCIATION_EXPIRE_PERIODS, ENDORSEMENT_COUNT, MAX_DEFERRED_CREDITS_LENGTH,
-    MAX_DENUNCIATIONS_PER_BLOCK_HEADER, MAX_PRODUCTION_STATS_LENGTH, MAX_ROLLS_COUNT_LENGTH,
+    DENUNCIATION_EXPIRE_PERIODS, ENDORSEMENT_COUNT, GENESIS_TIMESTAMP, MAX_DEFERRED_CREDITS_LENGTH,
+    MAX_DENUNCIATIONS_PER_BLOCK_HEADER, MAX_PRODUCTION_STATS_LENGTH, MAX_ROLLS_COUNT_LENGTH, T0,
 };
 use massa_models::config::{
     MAX_ASYNC_MESSAGE_DATA, MAX_ASYNC_POOL_LENGTH, MAX_DATASTORE_KEY_LENGTH, POS_SAVED_CYCLES,
@@ -24,6 +24,7 @@ use massa_models::config::{
 use massa_models::{config::MAX_DATASTORE_VALUE_LENGTH, slot::Slot};
 use massa_pos_exports::{PoSConfig, SelectorConfig};
 use massa_pos_worker::start_selector_worker;
+use massa_versioning_worker::versioning::{MipStatsConfig, MipStore};
 use parking_lot::RwLock;
 use std::collections::BTreeMap;
 use std::path::Path;
@@ -81,6 +82,8 @@ fn create_final_state(temp_dir: &TempDir) -> Arc<RwLock<FinalState>> {
         thread_count,
         periods_per_cycle,
         max_denunciations_per_block_header: MAX_DENUNCIATIONS_PER_BLOCK_HEADER,
+        t0: T0,
+        genesis_timestamp: *GENESIS_TIMESTAMP,
     };
 
     // setup selector local config
@@ -98,12 +101,19 @@ fn create_final_state(temp_dir: &TempDir) -> Arc<RwLock<FinalState>> {
 
     let ledger = FinalLedger::new(final_state_local_config.ledger_config.clone(), db.clone());
 
+    let mip_stats_config = MipStatsConfig {
+        block_count_considered: 5,
+        counters_max: 10,
+    };
+    let mip_store = MipStore::try_from(([], mip_stats_config)).unwrap();
+
     let final_state = Arc::new(RwLock::new(
         FinalState::new(
             db.clone(),
             final_state_local_config.clone(),
             Box::new(ledger),
             selector_controller,
+            mip_store,
             false,
         )
         .unwrap(),
@@ -142,7 +152,10 @@ fn test_final_state() {
 
         let slot = fs.read().db.read().get_change_id().unwrap();
 
-        fs.write().db.write().write_batch(batch, Some(slot));
+        fs.write()
+            .db
+            .write()
+            .write_batch(batch, Default::default(), Some(slot));
 
         let slot = Slot::new(1, 0);
         let mut state_changes = StateChanges::default();
@@ -195,5 +208,23 @@ fn test_final_state() {
     let fs2 = create_final_state(&temp_dir2);
     let hash2 = fs2.read().db.read().get_db_hash();
 
+<<<<<<< HEAD
     assert_eq!(hash, hash2);
+=======
+        fs2.write().pos_state.create_initial_cycle(&mut batch);
+
+        let slot = fs2.read().slot;
+
+        fs2.write()
+            .db
+            .write()
+            .write_batch(batch, Default::default(), Some(slot));
+
+        let slot = Slot::new(1, 0);
+        let changes = StateChanges::default();
+
+        fs2.write().finalize(slot, changes);
+        assert_eq!(hash, fs2.read().final_state_hash);
+    }
+>>>>>>> a7f33b9298 (Initial attempt to integrate versioning)
 }

@@ -17,7 +17,9 @@ use massa_executed_ops::ExecutedOps;
 use massa_ledger_exports::LedgerController;
 use massa_models::config::PERIODS_BETWEEN_BACKUPS;
 use massa_models::slot::Slot;
+use massa_models::timeslots::get_block_slot_timestamp;
 use massa_pos_exports::{PoSFinalState, SelectorController};
+use massa_versioning::versioning::MipStore;
 use parking_lot::RwLock;
 use rocksdb::IteratorMode;
 use std::sync::Arc;
@@ -37,6 +39,8 @@ pub struct FinalState {
     pub executed_ops: ExecutedOps,
     /// executed denunciations
     pub executed_denunciations: ExecutedDenunciations,
+    /// MIP store
+    pub mip_store: MipStore,
     /// last_start_period
     /// * If start new network: set to 0
     /// * If from snapshot: retrieve from args
@@ -64,6 +68,7 @@ impl FinalState {
         config: FinalStateConfig,
         ledger: Box<dyn LedgerController>,
         selector: Box<dyn SelectorController>,
+        mut mip_store: MipStore,
         reset_final_state: bool,
     ) -> Result<Self, FinalStateError> {
         let recovered_slot = db.read().get_change_id();
@@ -107,6 +112,8 @@ impl FinalState {
         let executed_denunciations =
             ExecutedDenunciations::new(config.executed_denunciations_config.clone(), db.clone());
 
+        mip_store.extend_from_db(db.clone());
+
         let mut final_state = FinalState {
             ledger,
             async_pool,
@@ -114,6 +121,7 @@ impl FinalState {
             config,
             executed_ops,
             executed_denunciations,
+            mip_store,
             last_start_period: 0,
             last_slot_before_downtime: None,
             db,
@@ -151,12 +159,13 @@ impl FinalState {
         config: FinalStateConfig,
         ledger: Box<dyn LedgerController>,
         selector: Box<dyn SelectorController>,
+        mip_store: MipStore,
         last_start_period: u64,
     ) -> Result<Self, FinalStateError> {
         info!("Restarting from snapshot");
 
         // FIRST, we recover the last known final_state
-        let mut final_state = FinalState::new(db, config, ledger, selector, false)?;
+        let mut final_state = FinalState::new(db, config, ledger, selector, mip_store, false)?;
 
         let recovered_slot = final_state.db.read().get_change_id().map_err(|_| {
             FinalStateError::InvalidSlot(String::from("Could not recover Slot in Ledger"))
@@ -169,7 +178,7 @@ impl FinalState {
             final_state
                 .db
                 .write()
-                .write_batch(batch, Some(recovered_slot));
+                .write_batch(batch, Default::default(), Some(recovered_slot));
         }
 
         final_state.last_slot_before_downtime = Some(recovered_slot);
@@ -260,7 +269,10 @@ impl FinalState {
         self.pos_state
             .delete_cycle_info(latest_snapshot_cycle.0, &mut batch);
 
-        self.pos_state.db.write().write_batch(batch, Some(end_slot));
+        self.pos_state
+            .db
+            .write()
+            .write_batch(batch, Default::default(), None);
 
         let mut batch = DBBatch::new();
 
@@ -275,7 +287,10 @@ impl FinalState {
             )
             .map_err(|err| FinalStateError::PosError(format!("{}", err)))?;
 
-        self.pos_state.db.write().write_batch(batch, Some(end_slot));
+        self.pos_state
+            .db
+            .write()
+            .write_batch(batch, Default::default(), None);
 
         Ok(())
     }
@@ -303,7 +318,10 @@ impl FinalState {
         self.pos_state
             .delete_cycle_info(latest_snapshot_cycle.0, &mut batch);
 
-        self.pos_state.db.write().write_batch(batch, Some(end_slot));
+        self.pos_state
+            .db
+            .write()
+            .write_batch(batch, Default::default(), None);
 
         // Firstly, complete the first cycle
         let last_slot = Slot::new_last_of_cycle(
@@ -331,7 +349,10 @@ impl FinalState {
             )
             .map_err(|err| FinalStateError::PosError(format!("{}", err)))?;
 
-        self.pos_state.db.write().write_batch(batch, Some(end_slot));
+        self.pos_state
+            .db
+            .write()
+            .write_batch(batch, Default::default(), None);
 
         // Feed final_state_hash to the completed cycle
         self.feed_cycle_hash_and_selector_for_interpolation(current_slot_cycle)?;
@@ -372,7 +393,10 @@ impl FinalState {
                 )
                 .map_err(|err| FinalStateError::PosError(format!("{}", err)))?;
 
-            self.pos_state.db.write().write_batch(batch, Some(end_slot));
+            self.pos_state
+                .db
+                .write()
+                .write_batch(batch, Default::default(), None);
 
             // Feed final_state_hash to the completed cycle
             self.feed_cycle_hash_and_selector_for_interpolation(cycle)?;
@@ -412,7 +436,7 @@ impl FinalState {
             }
         }
 
-        self.db.write().write_batch(batch, Some(end_slot));
+        self.db.write().write_batch(batch, Default::default(), None);
 
         Ok(())
     }
@@ -499,7 +523,32 @@ impl FinalState {
             &mut db_batch,
         );
 
-        self.db.write().write_batch(db_batch, Some(slot));
+        let mut db_versioning_batch = DBBatch::new();
+        let slot_1_ts = get_block_slot_timestamp(
+            self.config.thread_count,
+            self.config.t0,
+            self.config.genesis_timestamp,
+            cur_slot,
+        )
+        .expect("Unable to convert slot to timestamp");
+        let slot_2_ts = get_block_slot_timestamp(
+            self.config.thread_count,
+            self.config.t0,
+            self.config.genesis_timestamp,
+            slot,
+        )
+        .expect("Unable to convert slot to timestamp");
+        self.mip_store
+            .update_batch(
+                &mut db_batch,
+                &mut db_versioning_batch,
+                (&slot_1_ts, &slot_2_ts),
+            )
+            .expect("Unable to update batch from mip_store");
+
+        self.db
+            .write()
+            .write_batch(db_batch, db_versioning_batch, Some(slot));
 
         let final_state_hash = self.db.read().get_db_hash();
 

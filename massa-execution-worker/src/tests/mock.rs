@@ -4,7 +4,7 @@ use massa_final_state::{FinalState, FinalStateConfig};
 use massa_hash::Hash;
 use massa_ledger_exports::{LedgerConfig, LedgerController, LedgerEntry, LedgerError};
 use massa_ledger_worker::FinalLedger;
-use massa_models::config::ENDORSEMENT_COUNT;
+use massa_models::config::{ENDORSEMENT_COUNT, GENESIS_TIMESTAMP, T0};
 use massa_models::denunciation::Denunciation;
 use massa_models::execution::TempFileVestingRange;
 use massa_models::prehash::PreHashMap;
@@ -22,6 +22,7 @@ use massa_pos_exports::SelectorConfig;
 use massa_pos_worker::start_selector_worker;
 use massa_signature::KeyPair;
 use massa_time::MassaTime;
+use massa_versioning_worker::versioning::{MipStatsConfig, MipStore};
 use parking_lot::RwLock;
 use std::str::FromStr;
 use std::{
@@ -104,24 +105,45 @@ pub fn get_sample_state(
         initial_seed_string: "".to_string(),
         periods_per_cycle: 10,
         max_denunciations_per_block_header: 0,
+        t0: T0,
+        genesis_timestamp: *GENESIS_TIMESTAMP,
     };
     let (_, selector_controller) = start_selector_worker(SelectorConfig::default())
         .expect("could not start selector controller");
+
+    let mip_stats_config = MipStatsConfig {
+        block_count_considered: 5,
+        counters_max: 10,
+    };
+    let mip_store = MipStore::try_from(([], mip_stats_config)).unwrap();
+
     let mut final_state = if last_start_period > 0 {
         FinalState::new_derived_from_snapshot(
             db.clone(),
             cfg,
             Box::new(ledger),
             selector_controller,
+            mip_store,
             last_start_period,
         )
         .unwrap()
     } else {
-        FinalState::new(db.clone(), cfg, Box::new(ledger), selector_controller, true).unwrap()
+        FinalState::new(
+            db.clone(),
+            cfg,
+            Box::new(ledger),
+            selector_controller,
+            mip_store,
+            true,
+        )
+        .unwrap()
     };
     let mut batch: BTreeMap<Vec<u8>, Option<Vec<u8>>> = DBBatch::new();
     final_state.pos_state.create_initial_cycle(&mut batch);
-    final_state.db.write().write_batch(batch, None);
+    final_state
+        .db
+        .write()
+        .write_batch(batch, Default::default(), None);
     final_state.compute_initial_draws().unwrap();
     Ok((Arc::new(RwLock::new(final_state)), tempfile, tempdir))
 }

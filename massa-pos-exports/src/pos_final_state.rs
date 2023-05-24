@@ -557,7 +557,7 @@ impl PoSFinalState {
                 &mut batch,
             );
 
-            self.db.write().write_batch(batch, None);
+            self.db.write().write_batch(batch, Default::default(), None);
         } else {
             panic!("cycle {} should be contained here", cycle);
         }
@@ -1523,8 +1523,10 @@ fn test_pos_final_state_hash_computation() {
     pos_state.recompute_pos_state_caches();
 
     let mut batch = DBBatch::new();
+    let versioning_batch = DBBatch::new();
     pos_state.create_initial_cycle(&mut batch);
-    db.write().write_batch(batch, Some(Slot::new(0, 0)));
+    db.write()
+        .write_batch(batch, versioning_batch, Some(Slot::new(0, 0)));
 
     let addr = Address::from_public_key(&KeyPair::generate(0).unwrap().get_public_key());
 
@@ -1550,7 +1552,8 @@ fn test_pos_final_state_hash_computation() {
     pos_state
         .apply_changes_to_batch(changes, Slot::new(0, 0), false, &mut batch)
         .unwrap();
-    db.write().write_batch(batch, Some(Slot::new(0, 0)));
+    db.write()
+        .write_batch(batch, Default::default(), Some(Slot::new(0, 0)));
 
     // update changes once
     roll_changes.clear();
@@ -1574,7 +1577,8 @@ fn test_pos_final_state_hash_computation() {
     pos_state
         .apply_changes_to_batch(changes, Slot::new(0, 1), false, &mut batch)
         .unwrap();
-    db.write().write_batch(batch, Some(Slot::new(0, 1)));
+    db.write()
+        .write_batch(batch, Default::default(), Some(Slot::new(0, 1)));
 
     // update changes twice
     roll_changes.clear();
@@ -1598,7 +1602,8 @@ fn test_pos_final_state_hash_computation() {
     pos_state
         .apply_changes_to_batch(changes, Slot::new(1, 0), false, &mut batch)
         .unwrap();
-    db.write().write_batch(batch, Some(Slot::new(1, 0)));
+    db.write()
+        .write_batch(batch, Default::default(), Some(Slot::new(1, 0)));
 
     // Previous asserts, that don't make sense anymore.
     /*

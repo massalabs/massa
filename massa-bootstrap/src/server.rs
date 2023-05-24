@@ -40,7 +40,6 @@ use massa_models::{
 use massa_protocol_exports::ProtocolController;
 use massa_signature::KeyPair;
 use massa_time::MassaTime;
-use massa_versioning::versioning::MipStore;
 
 use parking_lot::RwLock;
 use std::{
@@ -137,7 +136,6 @@ pub fn start_bootstrap_server<L: BSEventPoller + Send + 'static>(
     config: BootstrapConfig,
     keypair: KeyPair,
     version: Version,
-    mip_store: MipStore,
 ) -> Result<BootstrapManager, BootstrapError> {
     massa_trace!("bootstrap.lib.start_bootstrap_server", {});
 
@@ -183,7 +181,6 @@ pub fn start_bootstrap_server<L: BSEventPoller + Send + 'static>(
                 version,
                 ip_hist_map: HashMap::with_capacity(config.ip_list_max_size),
                 bootstrap_config: config,
-                mip_store,
             }
             .event_loop(max_bootstraps)
         })
@@ -207,7 +204,6 @@ struct BootstrapServer<'a, L: BSEventPoller> {
     bootstrap_config: BootstrapConfig,
     version: Version,
     ip_hist_map: HashMap<IpAddr, Instant>,
-    mip_store: MipStore,
 }
 
 impl<L: BSEventPoller> BootstrapServer<'_, L> {
@@ -316,7 +312,6 @@ impl<L: BSEventPoller> BootstrapServer<'_, L> {
                 let config = self.bootstrap_config.clone();
 
                 let bootstrap_count_token = bootstrap_sessions_counter.clone();
-                let mip_store = self.mip_store.clone();
 
                 let _ = thread::Builder::new()
                     .name(format!("bootstrap thread, peer: {}", remote_addr))
@@ -330,7 +325,6 @@ impl<L: BSEventPoller> BootstrapServer<'_, L> {
                             version,
                             consensus_command_sender,
                             protocol_controller,
-                            mip_store,
                         )
                     });
 
@@ -393,7 +387,6 @@ fn run_bootstrap_session(
     version: Version,
     consensus_command_sender: Box<dyn ConsensusController>,
     protocol_controller: Box<dyn ProtocolController>,
-    mip_store: MipStore,
 ) {
     debug!("running bootstrap for peer {}", remote_addr);
     let deadline = Instant::now() + config.bootstrap_timeout.to_duration();
@@ -406,7 +399,6 @@ fn run_bootstrap_session(
         consensus_command_sender,
         protocol_controller,
         deadline,
-        mip_store,
     );
 
     // This drop allows the server to accept new connections before having to complete the error notifications
@@ -447,7 +439,7 @@ pub fn stream_bootstrap_information(
     final_state: Arc<RwLock<FinalState>>,
     consensus_controller: Box<dyn ConsensusController>,
     mut last_slot: Option<Slot>,
-    mut last_state_step: StreamingStep<Vec<u8>>,
+    mut last_state_step: (StreamingStep<Vec<u8>>, StreamingStep<Vec<u8>>),
     mut last_consensus_step: StreamingStep<PreHashSet<BlockId>>,
     mut send_last_start_period: bool,
     bs_deadline: &Instant,
@@ -482,7 +474,20 @@ pub fn stream_bootstrap_information(
                 None
             };
 
-            let last_obtained = match &last_state_step {
+            let last_obtained = match &last_state_step.0 {
+                StreamingStep::Started => None,
+                StreamingStep::Ongoing(last_key) => Some((last_key.clone(), last_slot.unwrap())),
+                StreamingStep::Finished(Some(last_key)) => {
+                    Some((last_key.clone(), last_slot.unwrap()))
+                }
+                StreamingStep::Finished(None) => {
+                    return Err(BootstrapError::GeneralError(String::from(
+                        "last_state_step is finished with no last_key!",
+                    )));
+                }
+            };
+
+            let last_obtained_versioning = match &last_state_step.1 {
                 StreamingStep::Started => None,
                 StreamingStep::Ongoing(last_key) => Some((last_key.clone(), last_slot.unwrap())),
                 StreamingStep::Finished(Some(last_key)) => {
@@ -497,13 +502,39 @@ pub fn stream_bootstrap_information(
             state_part = final_state_read
                 .db
                 .read()
-                .get_batch_to_stream(last_obtained)
+                .get_batch_to_stream(last_obtained, last_obtained_versioning)
                 .map_err(|e| {
                     BootstrapError::GeneralError(format!("Error get_batch_to_stream: {}", e))
                 })?;
 
             let new_state_step = match (
-                &last_state_step,
+                &last_state_step.0,
+                state_part.is_empty(),
+                state_part.new_elements.last_key_value(),
+            ) {
+                // We finished streaming the state already, but we received new info while streaming consensus: we stay sync
+                (StreamingStep::Finished(Some(_last_key)), false, Some((key, _))) => {
+                    StreamingStep::Finished(Some(key.clone()))
+                }
+                // We finished streaming the state already, and we received nothing new
+                (StreamingStep::Finished(Some(last_key)), true, _) => {
+                    StreamingStep::Finished(Some(last_key.clone()))
+                }
+                // We receive our first empty state batch
+                (StreamingStep::Ongoing(last_key), true, _) => {
+                    StreamingStep::Finished(Some(last_key.clone()))
+                }
+                // We still need to stream the state
+                (_, false, Some((new_last_key, _))) => StreamingStep::Ongoing(new_last_key.clone()),
+                _ => {
+                    return Err(BootstrapError::GeneralError(String::from(
+                        "state step is inconsistent! ",
+                    )));
+                }
+            };
+
+            let new_versioning_step = match (
+                &last_state_step.1,
                 state_part.is_empty(),
                 state_part.new_elements.last_key_value(),
             ) {
@@ -550,7 +581,7 @@ pub fn stream_bootstrap_information(
             }
 
             // Update cursors for next turn
-            last_state_step = new_state_step;
+            last_state_step = (new_state_step, new_versioning_step);
             last_slot = Some(db_slot);
             current_slot = db_slot;
             send_last_start_period = false;
@@ -561,11 +592,12 @@ pub fn stream_bootstrap_information(
         }
 
         // Setup final state global cursor
-        let final_state_global_step = if last_state_step.finished() {
-            StreamingStep::Finished(Some(current_slot))
-        } else {
-            StreamingStep::Ongoing(current_slot)
-        };
+        let final_state_global_step =
+            if last_state_step.0.finished() && last_state_step.1.finished() {
+                StreamingStep::Finished(Some(current_slot))
+            } else {
+                StreamingStep::Ongoing(current_slot)
+            };
 
         // Stream consensus blocks if final state base bootstrap is finished
         let mut consensus_part = BootstrapableGraph {
@@ -639,7 +671,6 @@ fn manage_bootstrap(
     consensus_controller: Box<dyn ConsensusController>,
     protocol_controller: Box<dyn ProtocolController>,
     deadline: Instant,
-    mip_store: MipStore,
 ) -> Result<(), BootstrapError> {
     massa_trace!("bootstrap.lib.manage_bootstrap", {});
     let read_error_timeout: Duration = bootstrap_config.read_error_timeout.into();
@@ -716,17 +747,6 @@ fn manage_bootstrap(
                         &deadline,
                         bootstrap_config.write_timeout.to_duration(),
                     )?;
-                }
-                BootstrapClientMessage::AskBootstrapMipStore => {
-                    let vs = mip_store.0.read().to_owned();
-                    let Some(write_timeout) = step_timeout_duration(&deadline, &bootstrap_config.write_timeout.to_duration()) else {
-                        return Err(BootstrapError::Interupted("insufficient time left to respond te request for mip-store".to_string()));
-                    };
-
-                    server.send_msg(
-                        write_timeout,
-                        BootstrapServerMessage::BootstrapMipStore { store: vs.clone() },
-                    )?
                 }
                 BootstrapClientMessage::BootstrapSuccess => break Ok(()),
                 BootstrapClientMessage::BootstrapError { error } => {
