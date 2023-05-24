@@ -148,7 +148,7 @@ impl PeerNetMessagesSerializer<Message> for MessagesSerializer {
             .map_err(|err| {
                 PeerNetError::HandlerError.error(
                     "MessagesHandler",
-                    Some(format!("Failed to serialize id {}", err.to_string())),
+                    Some(format!("Failed to serialize id {}", err)),
                 )
             })?;
         match message {
@@ -229,11 +229,11 @@ impl PeerNetMessagesHandler<PeerId> for MessagesHandler {
     fn handle(&self, data: &[u8], peer_id: &PeerId) -> PeerNetResult<()> {
         let (data, raw_id) = self
             .id_deserializer
-            .deserialize::<DeserializeError>(&data)
+            .deserialize::<DeserializeError>(data)
             .map_err(|err| {
                 PeerNetError::HandlerError.error(
                     "MessagesHandler",
-                    Some(format!("Failed to deserialize id: {}", err.to_string())),
+                    Some(format!("Failed to deserialize id: {}", err)),
                 )
             })?;
         let id = MessageTypeId::try_from(raw_id).map_err(|_| {
