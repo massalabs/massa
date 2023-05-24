@@ -187,27 +187,75 @@
 <a href="#187" id="187">187</a>
 <a href="#188" id="188">188</a>
 <a href="#189" id="189">189</a>
+<a href="#190" id="190">190</a>
+<a href="#191" id="191">191</a>
+<a href="#192" id="192">192</a>
+<a href="#193" id="193">193</a>
+<a href="#194" id="194">194</a>
+<a href="#195" id="195">195</a>
+<a href="#196" id="196">196</a>
+<a href="#197" id="197">197</a>
+<a href="#198" id="198">198</a>
+<a href="#199" id="199">199</a>
+<a href="#200" id="200">200</a>
+<a href="#201" id="201">201</a>
+<a href="#202" id="202">202</a>
+<a href="#203" id="203">203</a>
+<a href="#204" id="204">204</a>
+<a href="#205" id="205">205</a>
+<a href="#206" id="206">206</a>
+<a href="#207" id="207">207</a>
+<a href="#208" id="208">208</a>
+<a href="#209" id="209">209</a>
+<a href="#210" id="210">210</a>
+<a href="#211" id="211">211</a>
+<a href="#212" id="212">212</a>
+<a href="#213" id="213">213</a>
+<a href="#214" id="214">214</a>
+<a href="#215" id="215">215</a>
+<a href="#216" id="216">216</a>
+<a href="#217" id="217">217</a>
+<a href="#218" id="218">218</a>
+<a href="#219" id="219">219</a>
+<a href="#220" id="220">220</a>
+<a href="#221" id="221">221</a>
+<a href="#222" id="222">222</a>
+<a href="#223" id="223">223</a>
+<a href="#224" id="224">224</a>
+<a href="#225" id="225">225</a>
+<a href="#226" id="226">226</a>
+<a href="#227" id="227">227</a>
+<a href="#228" id="228">228</a>
+<a href="#229" id="229">229</a>
+<a href="#230" id="230">230</a>
+<a href="#231" id="231">231</a>
+<a href="#232" id="232">232</a>
+<a href="#233" id="233">233</a>
+<a href="#234" id="234">234</a>
+<a href="#235" id="235">235</a>
+<a href="#236" id="236">236</a>
+<a href="#237" id="237">237</a>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="doccomment">//! This file defines the final ledger associating addresses to their balances, bytecode and data.
 
 </span><span class="kw">use </span><span class="kw">crate</span>::ledger_db::{LedgerDB, LedgerSubEntry};
-<span class="kw">use </span>massa_db::{DBBatch, MassaDB};
+<span class="kw">use </span>massa_hash::Hash;
 <span class="kw">use </span>massa_ledger_exports::{
-    LedgerChanges, LedgerConfig, LedgerController, LedgerEntry, LedgerError,
+    Key, LedgerChanges, LedgerConfig, LedgerController, LedgerEntry, LedgerError,
 };
 <span class="kw">use </span>massa_models::{
     address::Address,
     amount::{Amount, AmountDeserializer},
     bytecode::{Bytecode, BytecodeDeserializer},
+    error::ModelsError,
+    slot::Slot,
+    streaming_step::StreamingStep,
 };
 <span class="kw">use </span>massa_serialization::{DeserializeError, Deserializer};
-<span class="kw">use </span>parking_lot::RwLock;
+<span class="kw">use </span>nom::AsBytes;
+<span class="kw">use </span>std::collections::{BTreeSet, HashMap};
 <span class="kw">use </span>std::ops::Bound::Included;
-<span class="kw">use </span>std::{
-    collections::{BTreeSet, HashMap},
-    sync::Arc,
-};
 
 <span class="doccomment">/// Represents a final ledger associating addresses to their balances, bytecode and data.
 /// The final ledger is part of the final state which is attached to a final slot, can be bootstrapped and allows others to bootstrap.
@@ -223,13 +271,14 @@
 
 <span class="kw">impl </span>FinalLedger {
     <span class="doccomment">/// Initializes a new `FinalLedger` by reading its initial state from file.
-    </span><span class="kw">pub fn </span>new(config: LedgerConfig, db: Arc&lt;RwLock&lt;MassaDB&gt;&gt;) -&gt; <span class="self">Self </span>{
+    </span><span class="kw">pub fn </span>new(config: LedgerConfig, with_final_state: bool) -&gt; <span class="self">Self </span>{
         <span class="comment">// create and initialize the disk ledger
         </span><span class="kw">let </span>sorted_ledger = LedgerDB::new(
-            db,
+            config.disk_ledger_path.clone(),
             config.thread_count,
             config.max_key_length,
-            config.max_datastore_value_length,
+            config.max_ledger_part_size,
+            with_final_state,
         );
 
         <span class="comment">// generate the final ledger
@@ -241,6 +290,17 @@
 }
 
 <span class="kw">impl </span>LedgerController <span class="kw">for </span>FinalLedger {
+    <span class="doccomment">/// Allows applying `LedgerChanges` to the final ledger
+    </span><span class="kw">fn </span>apply_changes(
+        <span class="kw-2">&amp;mut </span><span class="self">self</span>,
+        changes: LedgerChanges,
+        slot: Slot,
+        final_state_data: <span class="prelude-ty">Option</span>&lt;Vec&lt;u8&gt;&gt;,
+    ) {
+        <span class="self">self</span>.sorted_ledger
+            .apply_changes(changes, slot, final_state_data);
+    }
+
     <span class="doccomment">/// Loads ledger from file
     </span><span class="kw">fn </span>load_initial_ledger(<span class="kw-2">&amp;mut </span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span>&lt;(), LedgerError&gt; {
         <span class="comment">// load the ledger tree from file
@@ -335,6 +395,34 @@
         <span class="self">self</span>.sorted_ledger.get_datastore_keys(addr)
     }
 
+    <span class="doccomment">/// Get the current disk ledger hash
+    </span><span class="kw">fn </span>get_ledger_hash(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; Hash {
+        <span class="self">self</span>.sorted_ledger.get_ledger_hash()
+    }
+
+    <span class="doccomment">/// Get a part of the disk ledger.
+    ///
+    /// Solely used by the bootstrap.
+    ///
+    /// # Returns
+    /// A tuple containing the data and the last returned key
+    </span><span class="kw">fn </span>get_ledger_part(
+        <span class="kw-2">&amp;</span><span class="self">self</span>,
+        last_key: StreamingStep&lt;Key&gt;,
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;(Vec&lt;u8&gt;, StreamingStep&lt;Key&gt;), ModelsError&gt; {
+        <span class="self">self</span>.sorted_ledger.get_ledger_part(last_key)
+    }
+
+    <span class="doccomment">/// Set a part of the disk ledger.
+    ///
+    /// Solely used by the bootstrap.
+    ///
+    /// # Returns
+    /// The last key inserted
+    </span><span class="kw">fn </span>set_ledger_part(<span class="kw-2">&amp;</span><span class="self">self</span>, data: Vec&lt;u8&gt;) -&gt; <span class="prelude-ty">Result</span>&lt;StreamingStep&lt;Key&gt;, ModelsError&gt; {
+        <span class="self">self</span>.sorted_ledger.set_ledger_part(data.as_bytes())
+    }
+
     <span class="doccomment">/// Reset the disk ledger.
     ///
     /// USED FOR BOOTSTRAP ONLY
@@ -342,16 +430,24 @@
         <span class="self">self</span>.sorted_ledger.reset();
     }
 
-    <span class="doccomment">/// Allows applying `LedgerChanges` to the final ledger
-    </span><span class="kw">fn </span>apply_changes_to_batch(<span class="kw-2">&amp;mut </span><span class="self">self</span>, changes: LedgerChanges, ledger_batch: <span class="kw-2">&amp;mut </span>DBBatch) {
-        <span class="self">self</span>.sorted_ledger
-            .apply_changes_to_batch(changes, ledger_batch);
+    <span class="kw">fn </span>set_initial_slot(<span class="kw-2">&amp;mut </span><span class="self">self</span>, slot: Slot) {
+        <span class="self">self</span>.sorted_ledger.set_initial_slot(slot);
     }
 
-    <span class="doccomment">/// Deserializes the key and value, useful after bootstrap
-    </span><span class="kw">fn </span>is_key_value_valid(<span class="kw-2">&amp;</span><span class="self">self</span>, serialized_key: <span class="kw-2">&amp;</span>[u8], serialized_value: <span class="kw-2">&amp;</span>[u8]) -&gt; bool {
-        <span class="self">self</span>.sorted_ledger
-            .is_key_value_valid(serialized_key, serialized_value)
+    <span class="doccomment">/// Get the slot associated with the current ledger
+    </span><span class="kw">fn </span>get_slot(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span>&lt;Slot, ModelsError&gt; {
+        <span class="self">self</span>.sorted_ledger.get_slot()
+    }
+
+    <span class="doccomment">/// Set the final_state_hash of the slot associated with the current ledger
+    /// Can be used to verify the integrity of the final state saved when restarting from snapshot
+    </span><span class="kw">fn </span>set_final_state_hash(<span class="kw-2">&amp;mut </span><span class="self">self</span>, data: Vec&lt;u8&gt;) {
+        <span class="self">self</span>.sorted_ledger.set_final_state_hash(<span class="kw-2">&amp;</span>data)
+    }
+
+    <span class="doccomment">/// Get the final state stored in the ledger, to restart from snapshot
+    </span><span class="kw">fn </span>get_final_state(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span>&lt;Vec&lt;u8&gt;, ModelsError&gt; {
+        <span class="self">self</span>.sorted_ledger.get_final_state()
     }
 
     <span class="doccomment">/// Get every address and their corresponding balance.
