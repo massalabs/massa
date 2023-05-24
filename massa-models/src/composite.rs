@@ -67,7 +67,7 @@ pub struct StakersCycleProductionStats {
 
 /// just a public key and a signature it has produced
 /// used for serialization/deserialization purpose
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct PubkeySig {
     /// public key
     pub public_key: PublicKey,
