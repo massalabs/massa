@@ -423,7 +423,15 @@ where
 
         let new_cursor = match stream_changes.new_elements.last_key_value() {
             Some((k, _)) => StreamingStep::Ongoing(k.clone()),
-            None => StreamingStep::Finished(None),
+            None => {
+                let handle = self.db.cf_handle(STATE_CF).expect(CF_ERROR);
+                match self.db.iterator_cf(handle, IteratorMode::End).next() {
+                    Some(Ok((serialized_key, _value))) => {
+                        StreamingStep::Finished(Some(serialized_key.to_vec()))
+                    }
+                    _ => StreamingStep::Finished(None),
+                }
+            }
         };
 
         changes.extend(stream_changes.updates_on_previous_elements);

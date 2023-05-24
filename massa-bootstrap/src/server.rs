@@ -489,9 +489,8 @@ pub fn stream_bootstrap_information(
                     Some((last_key.clone(), last_slot.unwrap()))
                 }
                 StreamingStep::Finished(None) => {
-                    return Err(BootstrapError::GeneralError(String::from(
-                        "last_state_step is finished with no last_key!",
-                    )));
+                    warn!("Bootstrap is finished but nothing has been streamed yet");
+                    None
                 }
             };
 
@@ -524,7 +523,7 @@ pub fn stream_bootstrap_information(
                 (_, false, Some((new_last_key, _))) => StreamingStep::Ongoing(new_last_key.clone()),
                 _ => {
                     return Err(BootstrapError::GeneralError(String::from(
-                        "state step is inconsistent! ",
+                        "state step is inconsistent!",
                     )));
                 }
             };
