@@ -351,14 +351,14 @@ impl PoSFinalState {
         Ok(())
     }
 
-    /// TODO_PR: Change this doc comment to reflect the PR changes
-    /// Technical specification of `apply_changes`:
+    /// Technical specification of `apply_changes_to_batch`:
     ///
     /// set `self.last_final_slot` = C
-    /// if cycle C is absent from `self.cycle_history`:
-    ///     `push` a new empty `CycleInfo` at the back of `self.cycle_history` and set its cycle = C
-    ///     `pop_front` from `cycle_history` until front() represents cycle C-4 or later (not C-3 because we might need older endorsement draws on the limit between 2 cycles)
-    /// for the cycle C entry of `cycle_history`:
+    /// if cycle C is absent from `self.cycle_history_cache`:
+    ///     `push` a new empty `CycleInfo` on disk and reflect in `self.cycle_history_cache` and set its cycle = C
+    ///     `pop_front` from `cycle_history_cache` until front() represents cycle C-4 or later (not C-3 because we might need older endorsement draws on the limit between 2 cycles)
+    ///     delete the removed cycles from disk
+    /// for the cycle C entry in the db:
     ///     extend `seed_bits` with `changes.seed_bits`
     ///     extend `roll_counts` with `changes.roll_changes`
     ///         delete all entries from `roll_counts` for which the roll count is zero
