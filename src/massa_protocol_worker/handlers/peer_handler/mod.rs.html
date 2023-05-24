@@ -588,6 +588,12 @@
 <a href="#588" id="588">588</a>
 <a href="#589" id="589">589</a>
 <a href="#590" id="590">590</a>
+<a href="#591" id="591">591</a>
+<a href="#592" id="592">592</a>
+<a href="#593" id="593">593</a>
+<a href="#594" id="594">594</a>
+<a href="#595" id="595">595</a>
+<a href="#596" id="596">596</a>
 </pre><pre class="rust"><code><span class="kw">use </span>std::cmp::Reverse;
 <span class="kw">use </span>std::net::IpAddr;
 <span class="kw">use </span>std::{collections::HashMap, net::SocketAddr, thread::JoinHandle, time::Duration};
@@ -606,9 +612,9 @@
 <span class="kw">use </span>massa_serialization::{DeserializeError, Deserializer, Serializer};
 <span class="kw">use </span>massa_signature::Signature;
 <span class="kw">use </span>peernet::context::Context <span class="kw">as _</span>;
-<span class="kw">use </span>peernet::messages::MessagesSerializer <span class="kw">as _</span>;
 <span class="kw">use </span>rand::{rngs::StdRng, RngCore, SeedableRng};
 
+<span class="kw">use </span>peernet::messages::MessagesSerializer;
 <span class="kw">use </span>peernet::{
     error::{PeerNetError, PeerNetResult},
     messages::MessagesHandler <span class="kw">as </span>PeerNetMessagesHandler,
@@ -619,7 +625,7 @@
 
 <span class="kw">use </span><span class="kw">crate</span>::context::Context;
 <span class="kw">use </span><span class="kw">crate</span>::handlers::peer_handler::models::PeerState;
-<span class="kw">use </span><span class="kw">crate</span>::messages::{Message, MessagesHandler, MessagesSerializer};
+<span class="kw">use </span><span class="kw">crate</span>::messages::MessagesHandler;
 <span class="kw">use </span><span class="kw">crate</span>::wrap_network::ActiveConnectionsTrait;
 
 <span class="kw">use </span><span class="self">self</span>::models::PeerInfo;
@@ -686,9 +692,9 @@
             <span class="kw">let </span>peer_db = peer_db.clone();
             <span class="kw">let </span>ticker = tick(Duration::from_secs(<span class="number">10</span>));
             <span class="kw">let </span>config = config.clone();
-            <span class="kw">let </span>message_serializer = MessagesSerializer::new()
+            <span class="kw">let </span>message_serializer = <span class="kw">crate</span>::messages::MessagesSerializer::new()
                 .with_peer_management_message_serializer(PeerManagementMessageSerializer::new());
-            <span class="kw">let </span>message_deserializer =
+            <span class="kw">let </span><span class="kw-2">mut </span>message_deserializer =
                 PeerManagementMessageDeserializer::new(PeerManagementMessageDeserializerArgs {
                     max_peers_per_announcement: config.max_size_peers_announcement,
                     max_listeners_per_peer: config.max_size_listeners_per_peer,
@@ -753,8 +759,8 @@
                            }
                         },
                         recv(receiver_msg) -&gt; msg =&gt; {
-                            <span class="kw">let </span>(peer_id, message) = <span class="kw">match </span>msg {
-                                <span class="prelude-val">Ok</span>((peer_id, message)) =&gt; (peer_id, message),
+                            <span class="kw">let </span>(peer_id, message_id, message) = <span class="kw">match </span>msg {
+                                <span class="prelude-val">Ok</span>((peer_id, message_id, message)) =&gt; (peer_id, message_id, message),
                                 <span class="prelude-val">Err</span>(<span class="kw">_</span>) =&gt; {
                                     <span class="kw">return</span>;
                                 }
@@ -766,6 +772,7 @@
                                     <span class="kw">continue</span>;
                                 }
                             }
+                            message_deserializer.set_message(message_id);
                             <span class="kw">let </span>(rest, message) = <span class="kw">match </span>message_deserializer
                                 .deserialize::&lt;DeserializeError&gt;(<span class="kw-2">&amp;</span>message) {
                                 <span class="prelude-val">Ok</span>((rest, message)) =&gt; (rest, message),
@@ -808,7 +815,7 @@
                     <span class="kw-2">&amp;mut </span>message,
                 )
                 .unwrap();
-            sender_msg.send((peer_id.clone(), message)).unwrap();
+            sender_msg.send((peer_id.clone(), <span class="number">0</span>, message)).unwrap();
         }
 
         <span class="self">Self </span>{
@@ -845,7 +852,7 @@
     <span class="kw">pub </span>version_deserializer: VersionDeserializer,
     <span class="kw">pub </span>config: ProtocolConfig,
     <span class="kw">pub </span>peer_db: SharedPeerDB,
-    peer_mngt_msg_serializer: MessagesSerializer,
+    peer_mngt_msg_serializer: <span class="kw">crate</span>::messages::MessagesSerializer,
     peer_id_serializer: PeerIdSerializer,
     peer_id_deserializer: PeerIdDeserializer,
     message_handlers: MessagesHandler,
@@ -870,7 +877,7 @@
             config,
             peer_id_serializer: PeerIdSerializer::new(),
             peer_id_deserializer: PeerIdDeserializer::new(),
-            peer_mngt_msg_serializer: MessagesSerializer::new()
+            peer_mngt_msg_serializer: <span class="kw">crate</span>::messages::MessagesSerializer::new()
                 .with_peer_management_message_serializer(PeerManagementMessageSerializer::new()),
             message_handlers,
         }
@@ -996,19 +1003,16 @@
                         announcement.clone().listeners,
                     ));
                     <span class="kw">let </span><span class="kw-2">mut </span>bytes = Vec::new();
-                    <span class="kw">let </span>peer_management_message_serializer = MessagesSerializer::new()
-                        .with_peer_management_message_serializer(
-                            PeerManagementMessageSerializer::new(),
-                        );
+                    <span class="kw">let </span>peer_management_message_serializer = PeerManagementMessageSerializer::new();
                     peer_management_message_serializer
-                        .serialize(<span class="kw-2">&amp;</span>Message::PeerManagement(Box::new(message)), <span class="kw-2">&amp;mut </span>bytes)
+                        .serialize(<span class="kw-2">&amp;</span>message, <span class="kw-2">&amp;mut </span>bytes)
                         .map_err(|err| {
                             PeerNetError::HandshakeError.error(
                                 <span class="string">&quot;Massa Handshake&quot;</span>,
                                 <span class="prelude-val">Some</span>(<span class="macro">format!</span>(<span class="string">&quot;Failed to serialize announcement: {}&quot;</span>, err)),
                             )
                         })<span class="question-mark">?</span>;
-                    messages_handler.handle(<span class="kw-2">&amp;</span>bytes, <span class="kw-2">&amp;</span>peer_id)<span class="question-mark">?</span>;
+                    messages_handler.handle(<span class="number">7</span>, <span class="kw-2">&amp;</span>bytes, <span class="kw-2">&amp;</span>peer_id)<span class="question-mark">?</span>;
                     <span class="kw">let </span><span class="kw-2">mut </span>self_random_bytes = [<span class="number">0u8</span>; <span class="number">32</span>];
                     StdRng::from_entropy().fill_bytes(<span class="kw-2">&amp;mut </span>self_random_bytes);
                     <span class="kw">let </span>self_random_hash = Hash::compute_from(<span class="kw-2">&amp;</span>self_random_bytes);
@@ -1059,7 +1063,10 @@
                     <span class="prelude-val">Ok</span>((peer_id.clone(), <span class="prelude-val">Some</span>(announcement)))
                 }
                 <span class="number">1 </span>=&gt; {
-                    <span class="self">self</span>.message_handlers.handle(<span class="kw-2">&amp;</span>received[<span class="number">1</span>..], <span class="kw-2">&amp;</span>peer_id)<span class="question-mark">?</span>;
+                    <span class="kw">let </span>(received, id) = <span class="self">self
+                        </span>.message_handlers
+                        .deserialize_id(<span class="kw-2">&amp;</span>received[<span class="number">1</span>..], <span class="kw-2">&amp;</span>peer_id)<span class="question-mark">?</span>;
+                    <span class="self">self</span>.message_handlers.handle(id, received, <span class="kw-2">&amp;</span>peer_id)<span class="question-mark">?</span>;
                     <span class="prelude-val">Ok</span>((peer_id.clone(), <span class="prelude-val">None</span>))
                 }
                 <span class="kw">_ </span>=&gt; <span class="prelude-val">Err</span>(PeerNetError::HandshakeError
@@ -1120,6 +1127,7 @@
         <span class="kw">let </span><span class="kw-2">mut </span>buf = Vec::new();
         <span class="kw">let </span>msg = PeerManagementMessage::ListPeers(peers_to_send).into();
 
+        <span class="self">self</span>.peer_mngt_msg_serializer.serialize_id(<span class="kw-2">&amp;</span>msg, <span class="kw-2">&amp;mut </span>buf)<span class="question-mark">?</span>;
         <span class="self">self</span>.peer_mngt_msg_serializer.serialize(<span class="kw-2">&amp;</span>msg, <span class="kw-2">&amp;mut </span>buf)<span class="question-mark">?</span>;
         endpoint.send::&lt;PeerId&gt;(buf.as_slice())<span class="question-mark">?</span>;
 
@@ -1164,6 +1172,10 @@
             }
             buf.push(<span class="number">1</span>);
             <span class="kw">let </span>msg = PeerManagementMessage::ListPeers(peers_to_send).into();
+            <span class="kw">if let </span><span class="prelude-val">Err</span>(err) = serializer.serialize_id(<span class="kw-2">&amp;</span>msg, <span class="kw-2">&amp;mut </span>buf) {
+                <span class="macro">warn!</span>(<span class="string">&quot;Failed to serialize id message: {}&quot;</span>, err);
+                <span class="kw">return</span>;
+            }
             <span class="kw">if let </span><span class="prelude-val">Err</span>(err) = serializer.serialize(<span class="kw-2">&amp;</span>msg, <span class="kw-2">&amp;mut </span>buf) {
                 <span class="macro">warn!</span>(<span class="string">&quot;Failed to serialize message: {}&quot;</span>, err);
                 <span class="kw">return</span>;

@@ -1343,6 +1343,7 @@
 <a href="#1343" id="1343">1343</a>
 <a href="#1344" id="1344">1344</a>
 <a href="#1345" id="1345">1345</a>
+<a href="#1346" id="1346">1346</a>
 </pre><pre class="rust"><code><span class="kw">use </span>std::{
     collections::{hash_map::Entry, HashMap, HashSet},
     num::NonZeroUsize,
@@ -1450,7 +1451,7 @@
 
 <span class="kw">impl </span>RetrievalThread {
     <span class="kw">fn </span>run(<span class="kw-2">&amp;mut </span><span class="self">self</span>) {
-        <span class="kw">let </span>block_message_deserializer =
+        <span class="kw">let </span><span class="kw-2">mut </span>block_message_deserializer =
             BlockMessageDeserializer::new(BlockMessageDeserializerArgs {
                 thread_count: <span class="self">self</span>.config.thread_count,
                 endorsement_count: <span class="self">self</span>.config.endorsement_count,
@@ -1469,7 +1470,8 @@
             <span class="macro">select! </span>{
                 recv(<span class="self">self</span>.receiver_network) -&gt; msg =&gt; {
                     <span class="kw">match </span>msg {
-                        <span class="prelude-val">Ok</span>((peer_id, message)) =&gt; {
+                        <span class="prelude-val">Ok</span>((peer_id, message_id, message)) =&gt; {
+                            block_message_deserializer.set_message_id(message_id);
                             <span class="kw">let </span>(rest, message) = <span class="kw">match </span>block_message_deserializer
                                 .deserialize::&lt;DeserializeError&gt;(<span class="kw-2">&amp;</span>message) {
                                 <span class="prelude-val">Ok</span>((rest, message)) =&gt; (rest, message),
