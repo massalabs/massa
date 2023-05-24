@@ -1261,7 +1261,10 @@ impl ExecutionState {
                 // apply the cached output and return
                 self.apply_final_execution_output(exec_out.clone());
 
-                debug!("execute_final_slot: found in cache, applied cache");
+                // update versioning stats
+                self.update_versioning_stats(exec_target, slot);
+
+                debug!("execute_final_slot: found in cache, applied cache and updated versioning stats");
 
                 // Broadcast a final slot execution output to active channel subscribers.
                 if self.config.broadcast_enabled {

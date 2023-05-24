@@ -736,7 +736,10 @@ impl MipStoreRaw {
         slot_timestamp: MassaTime,
         network_versions: Option<(u32, u32)>,
     ) {
-        debug!("(VERSIONING LOG) new input versions are (c, a) = {:?}", network_versions);
+        debug!(
+            "(VERSIONING LOG) new input versions are (c, a) = {:?}",
+            network_versions
+        );
         if let Some((_current_network_version, announced_network_version)) = network_versions {
             let removed_version_ = match self.stats.latest_announcements.len() {
                 n if n > self.stats.config.block_count_considered => {
