@@ -162,6 +162,7 @@ impl RetrievalThread {
     }
 
     fn clear_storage(&mut self) {
+        println!("AURELIEN: Protocol: Storage ops: {} len", self.storage.read_operations().len());
         self.stored_operations.retain(|instant, operations| {
             if instant.elapsed() > self.config.asked_operations_pruning_period.to_duration() {
                 self.storage.drop_operation_refs(operations);
@@ -270,6 +271,7 @@ impl RetrievalThread {
             self.stored_operations
                 .insert(Instant::now(), to_announce.clone());
             self.storage.extend(ops_to_propagate);
+            println!("AURELIEN: Protocol: Storage ops2: {} len", self.storage.read_operations().len());
             self.internal_sender
                 .send(OperationHandlerPropagationCommand::AnnounceOperations(
                     to_announce,

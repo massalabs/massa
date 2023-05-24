@@ -108,6 +108,10 @@ impl BlockIndexes {
         None
     }
 
+    pub fn len(&self) -> usize {
+        self.blocks.len()
+    }
+
     /// Get a block reference by its ID
     /// Arguments:
     /// - id: ID of the block to retrieve

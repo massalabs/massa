@@ -114,7 +114,7 @@
     # amount of entries removed when `hd_cache_size` is reached
     snip_amount = 10
     # slot execution outputs channel capacity
-    broadcast_slot_execution_output_channel_capacity = 5000
+    broadcast_slot_execution_output_channel_capacity = 50
 
 [ledger]
     # path to the initial ledger
@@ -128,7 +128,7 @@
     # max number of previously discarded blocks kept in RAM
     max_discarded_blocks = 100
     # if a block is at least future_block_processing_max_periods periods in the future, it is just discarded
-    future_block_processing_max_periods = 100
+    future_block_processing_max_periods = 10
     # max number of blocks in the future kept in RAM
     max_future_processing_blocks = 400
     # max number of blocks waiting for dependencies
@@ -274,7 +274,7 @@
 
 [pool]
     # max number of operations kept per thread
-    max_pool_size_per_thread = 25000
+    max_pool_size_per_thread = 300
     # if an operation is too much in the future it will be ignored
     max_operation_future_validity_start_periods = 100
     # max number of endorsements kept

@@ -48,6 +48,7 @@ impl PropagationThread {
                                     blocks.get(&block_id).cloned()
                                 };
                                 if let Some(block) = block {
+                                    println!("AURELIEN: PROTOCOL: Storage block {} len", self.storage.read_blocks().len());
                                     self.storage.store_block(block.clone());
                                     self.saved_blocks.push_back(block.id);
                                     if self.saved_blocks.len()

@@ -101,6 +101,7 @@ impl ConsensusState {
         debug!("received block {} for slot {}", block_id, slot);
 
         let mut to_ack: BTreeSet<(Slot, BlockId)> = BTreeSet::new();
+        println!("AURELIEN: Consensus: Block statuses {} len", self.block_statuses.len());
         match self.block_statuses.entry(block_id) {
             // if absent => add as Incoming, call rec_ack on it
             Entry::Vacant(vac) => {

@@ -910,65 +910,8 @@ impl MassaRpcServer for API<Public> {
     }
 
     async fn send_operations(&self, ops: Vec<OperationInput>) -> RpcResult<Vec<OperationId>> {
-        let mut cmd_sender = self.0.pool_command_sender.clone();
-        let protocol_sender = self.0.protocol_controller.clone();
-        let api_cfg = self.0.api_settings.clone();
-        let mut to_send = self.0.storage.clone_without_refs();
-
-        if ops.len() as u64 > api_cfg.max_arguments {
-            return Err(ApiError::BadRequest("too many arguments".into()).into());
-        }
-        let operation_deserializer = SecureShareDeserializer::new(OperationDeserializer::new(
-            api_cfg.max_datastore_value_length,
-            api_cfg.max_function_name_length,
-            api_cfg.max_parameter_size,
-            api_cfg.max_op_datastore_entry_count,
-            api_cfg.max_op_datastore_key_length,
-            api_cfg.max_op_datastore_value_length,
-        ));
-        let verified_ops = ops
-            .into_iter()
-            .map(|op_input| {
-                let mut op_serialized = Vec::new();
-                op_serialized.extend(op_input.signature.to_bytes());
-                op_serialized.extend(op_input.creator_public_key.to_bytes());
-                op_serialized.extend(op_input.serialized_content);
-                let (rest, op): (&[u8], SecureShareOperation) = operation_deserializer
-                    .deserialize::<DeserializeError>(&op_serialized)
-                    .map_err(|err| {
-                        ApiError::ModelsError(ModelsError::DeserializeError(err.to_string()))
-                    })?;
-                if rest.is_empty() {
-                    Ok(op)
-                } else {
-                    Err(ApiError::ModelsError(ModelsError::DeserializeError(
-                        "There is data left after operation deserialization".to_owned(),
-                    ))
-                    .into())
-                }
-            })
-            .map(|op| match op {
-                Ok(operation) => {
-                    let _verify_signature = match operation.verify_signature() {
-                        Ok(()) => (),
-                        Err(e) => return Err(ApiError::ModelsError(e).into()),
-                    };
-                    Ok(operation)
-                }
-                Err(e) => Err(e),
-            })
-            .collect::<RpcResult<Vec<SecureShareOperation>>>()?;
-        to_send.store_operations(verified_ops.clone());
-        let ids: Vec<OperationId> = verified_ops.iter().map(|op| op.id).collect();
-        cmd_sender.add_operations(to_send.clone());
-
-        tokio::task::spawn_blocking(move || protocol_sender.propagate_operations(to_send))
-            .await
-            .map_err(|err| ApiError::InternalServerError(err.to_string()))?
-            .map_err(|err| {
-                ApiError::InternalServerError(format!("Failed to propagate operations: {}", err))
-            })?;
-        Ok(ids)
+        //protocol_sender.propagate_operations(to_send).map_err(|err| ApiError::InternalServerError(err.to_string()))?;
+        Ok(vec![])
     }
 
     /// Get events optionally filtered by:

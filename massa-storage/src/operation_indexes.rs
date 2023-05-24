@@ -36,6 +36,10 @@ impl OperationIndexes {
                 .insert(o.id);
         }
     }
+    
+    pub fn len(&self) -> usize {
+        self.operations.len()
+    }
 
     /// Remove a operation, remove from the indexes and made some clean-up in indexes if necessary.
     /// Arguments:

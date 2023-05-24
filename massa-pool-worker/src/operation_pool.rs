@@ -160,7 +160,8 @@ impl OperationPool {
         }
 
         // prune excess operations
-        self.sorted_ops_per_thread.iter_mut().for_each(|ops| {
+        self.sorted_ops_per_thread.iter_mut().enumerate().for_each(|(idx, ops)| {
+            println!("AURELIEN: POOL: thread: #{}, ops.len(): {}", idx, ops.len());
             while ops.len() > self.config.max_operation_pool_size_per_thread {
                 // the unwrap below won't panic because the loop condition tests for non-emptines of self.operations
                 let cursor = ops.pop_last().unwrap();
@@ -187,6 +188,9 @@ impl OperationPool {
             &added,
             &Default::default(),
         ));
+
+        println!("AURELIEN: POOL: pool storage len: {} ", self.storage.read_operations().len());
+        println!("AURELIEN: POOL: pool len: {} ", self.operations.len());
 
         // Clean the removed operations from storage.
         self.storage.drop_operation_refs(&removed);

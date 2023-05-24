@@ -304,7 +304,7 @@ pub const MIP_STORE_STATS_COUNTERS_MAX: usize = 10;
 //
 
 /// denunciation expiration delta
-pub const DENUNCIATION_EXPIRE_PERIODS: u64 = PERIODS_PER_CYCLE;
+pub const DENUNCIATION_EXPIRE_PERIODS: u64 = 10;
 /// Max number of denunciations that can be included in a block header
 pub const MAX_DENUNCIATIONS_PER_BLOCK_HEADER: u32 = 128;
 /// Number of roll to remove per denunciation
