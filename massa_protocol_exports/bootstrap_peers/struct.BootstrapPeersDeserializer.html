@@ -16,7 +16,7 @@
 ) -&gt; IResult&lt;&amp;'a [<a class="primitive" href="https://doc.rust-lang.org/nightly/std/primitive.u8.html">u8</a>], <a class="struct" href="struct.BootstrapPeers.html" title="struct massa_protocol_exports::bootstrap_peers::BootstrapPeers">BootstrapPeers</a>, E&gt;</h4></section></summary><div class="docblock">
 <div class="example-wrap"><pre class="rust rust-example-rendered"><code><span class="kw">use </span>massa_protocol_exports::{BootstrapPeers, PeerId, TransportType, BootstrapPeersSerializer, BootstrapPeersDeserializer};
 <span class="kw">use </span>massa_serialization::{Serializer, Deserializer, DeserializeError};
-<span class="kw">use </span>peernet::types::KeyPair;
+<span class="kw">use </span>massa_signature::KeyPair;
 <span class="kw">use </span>std::collections::HashMap;
 <span class="kw">use </span>std::str::FromStr;
 

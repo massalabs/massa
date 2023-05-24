@@ -1718,6 +1718,13 @@
 <a href="#1718" id="1718">1718</a>
 <a href="#1719" id="1719">1719</a>
 <a href="#1720" id="1720">1720</a>
+<a href="#1721" id="1721">1721</a>
+<a href="#1722" id="1722">1722</a>
+<a href="#1723" id="1723">1723</a>
+<a href="#1724" id="1724">1724</a>
+<a href="#1725" id="1725">1725</a>
+<a href="#1726" id="1726">1726</a>
+<a href="#1727" id="1727">1727</a>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="doccomment">//! This module deals with executing final and active slots, as well as read-only requests.
@@ -3277,8 +3284,15 @@
 
         <span class="kw">match </span>cycle.checked_sub(<span class="number">3</span>) {
             <span class="prelude-val">Some</span>(lookback_cycle) =&gt; {
+                <span class="kw">let </span>lookback_cycle_index =
+                    <span class="kw">match </span>final_state.pos_state.get_cycle_index(lookback_cycle) {
+                        <span class="prelude-val">Some</span>(v) =&gt; v,
+                        <span class="prelude-val">None </span>=&gt; Default::default(),
+                    };
                 <span class="comment">// get rolls
-                </span>final_state.pos_state.get_all_roll_counts(lookback_cycle)
+                </span>final_state.pos_state.cycle_history[lookback_cycle_index]
+                    .roll_counts
+                    .clone()
             }
             <span class="prelude-val">None </span>=&gt; final_state.pos_state.initial_rolls.clone(),
         }
