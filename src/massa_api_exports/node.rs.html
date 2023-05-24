@@ -100,7 +100,7 @@
 <span class="kw">use </span>std::net::IpAddr;
 
 <span class="doccomment">/// node status
-</span><span class="attr">#[derive(Debug, Deserialize, Serialize)]
+</span><span class="attr">#[derive(Debug, Clone, Deserialize, Serialize)]
 </span><span class="kw">pub struct </span>NodeStatus {
     <span class="doccomment">/// our node id
     </span><span class="kw">pub </span>node_id: NodeId,

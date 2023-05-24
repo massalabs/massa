@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"fn":["ask_password","main","run"],"macro":["client_warning","grpc_error","massa_fancy_ascii_art_logo","rpc_error"],"mod":["cmds","display","repl","settings"],"opaque":[""],"static":["ATOMIC_ID"],"struct":["Args","JsonError"]};
+window.SIDEBAR_ITEMS = {"fn":["ask_password","main","run"],"macro":["client_warning","massa_fancy_ascii_art_logo","rpc_error"],"mod":["cmds","display","repl","settings"],"opaque":[""],"static":["ATOMIC_ID"],"struct":["Args","JsonError"]};
