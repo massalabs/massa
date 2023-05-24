@@ -3,6 +3,7 @@ use crate::{
     LSMTREE_ERROR, LSMTREE_NODES_CF, LSMTREE_VALUES_CF, METADATA_CF, OPEN_ERROR, STATE_CF,
     STATE_HASH_ERROR, STATE_HASH_INITIAL_BYTES, STATE_HASH_KEY,
 };
+use lsmtree::{bytes::Bytes, BadProof, KVStore, SparseMerkleTree};
 use massa_hash::{Hash, SmtHasher};
 use massa_models::{
     error::ModelsError,
@@ -10,8 +11,6 @@ use massa_models::{
     streaming_step::StreamingStep,
 };
 use massa_serialization::{DeserializeError, Deserializer, Serializer};
-
-use lsmtree::{bytes::Bytes, BadProof, KVStore, SparseMerkleTree};
 use parking_lot::{Mutex, RwLock};
 use rocksdb::{
     checkpoint::Checkpoint, ColumnFamilyDescriptor, Direction, IteratorMode, Options, WriteBatch,
@@ -24,6 +23,8 @@ use std::{
     path::PathBuf,
     sync::Arc,
 };
+
+// TODO_PR: add doc comments for this file.
 
 type Key = Vec<u8>;
 type Value = Vec<u8>;
@@ -198,6 +199,7 @@ where
                     match cursor.key() {
                         Some(cursor_change_id) => {
                             // We have to send all the updates since cursor_change_id
+                            // TODO_PR: check if / how we want to limit the number of updates we send. It may be needed but tricky to implement.
                             let mut updates: BTreeMap<Vec<u8>, Option<Vec<u8>>> = BTreeMap::new();
                             let iter = self
                                 .change_history
@@ -504,7 +506,6 @@ impl RawMassaDB<Slot, SlotSerializer, SlotDeserializer> {
     }
 
     /// Get the current state hash
-    /// self.db.write().reset(self.slot);
     pub fn reset(&mut self, slot: Slot) {
         self.cur_change_id = slot;
         self.change_history.clear();

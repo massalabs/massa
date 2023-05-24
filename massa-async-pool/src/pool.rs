@@ -308,6 +308,10 @@ impl AsyncPool {
         }
     }
 
+    /// Query a message from the database.
+    ///
+    /// This should only be called when we know we want to execute the message.
+    /// Otherwise, we should use the `message_info_cache`.
     pub fn fetch_message(&self, message_id: &AsyncMessageId) -> Option<AsyncMessage> {
         let db = self.db.read();
         let handle = db.db.cf_handle(STATE_CF).expect(CF_ERROR);
@@ -339,6 +343,10 @@ impl AsyncPool {
         }
     }
 
+    /// Query a vec of messages from the database.
+    ///
+    /// This should only be called when we know we want to execute the messages.
+    /// Otherwise, we should use the `message_info_cache`.
     pub fn fetch_messages<'a>(
         &self,
         message_ids: Vec<&'a AsyncMessageId>,
@@ -484,6 +492,7 @@ impl AsyncPool {
         true
     }
 }
+
 /// Serializer for `AsyncPool`
 pub struct AsyncPoolSerializer {
     u64_serializer: U64VarIntSerializer,

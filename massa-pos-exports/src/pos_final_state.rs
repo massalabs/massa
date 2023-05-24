@@ -844,6 +844,9 @@ impl PoSFinalState {
         production_stats
     }
 
+    /// Getter for the rng_seed of a given cycle, prioritizing the cache and querying the database as fallback.
+    ///
+    /// Panics if the cycle is not in the history.
     fn get_cycle_history_rng_seed(&self, cycle: u64) -> BitVec<u8> {
         let db = self.db.read();
         let handle = db.db.cf_handle(STATE_CF).expect(CF_ERROR);
@@ -871,6 +874,9 @@ impl PoSFinalState {
         rng_seed
     }
 
+    /// Getter for the final_state_hash_snapshot of a given cycle.
+    ///
+    /// Panics if the cycle is not in the history.
     fn get_cycle_history_final_state_hash_snapshot(&self, cycle: u64) -> Option<Hash> {
         let db = self.db.read();
         let handle = db.db.cf_handle(STATE_CF).expect(CF_ERROR);
@@ -892,6 +898,8 @@ impl PoSFinalState {
         state_hash
     }
 
+    /// Used to recompute the cycle cache from the disk.
+    ///
     fn get_cycle_history_cycles(&self) -> Vec<(u64, bool)> {
         let db = self.db.read();
         let handle = db.db.cf_handle(STATE_CF).expect(CF_ERROR);
@@ -1072,6 +1080,7 @@ impl PoSFinalState {
             .push_back((cycle_info.cycle, cycle_info.complete));
     }
 
+    /// Helper function to put a the complete flag for a given cycle
     fn put_cycle_history_complete(&mut self, cycle: u64, value: bool, batch: &mut DBBatch) {
         let db = self.db.read();
 
@@ -1086,6 +1095,7 @@ impl PoSFinalState {
         }
     }
 
+    /// Helper function to put a the final_state_hash_snapshot for a given cycle
     fn put_cycle_history_final_state_hash_snapshot(
         &self,
         cycle: u64,
@@ -1110,6 +1120,7 @@ impl PoSFinalState {
         );
     }
 
+    /// Helper function to put a the rng_seed for a given cycle
     fn put_cycle_history_rng_seed(&mut self, cycle: u64, value: BitVec<u8>, batch: &mut DBBatch) {
         let db = self.db.read();
 
@@ -1232,6 +1243,7 @@ impl PoSFinalState {
 
 /// Helpers for key and value management
 impl PoSFinalState {
+    /// Helper function to construct the key prefix associated with a given cycle
     fn cycle_history_cycle_prefix(&self, cycle: u64) -> Vec<u8> {
         let mut serialized_key = Vec::new();
         serialized_key.extend_from_slice(CYCLE_HISTORY_PREFIX.as_bytes());
@@ -1600,6 +1612,7 @@ fn test_pos_final_state_hash_computation() {
         .unwrap();
     db.write().write_batch(batch, Some(Slot::new(1, 0)));
 
+    // Previous asserts, that don't make sense anymore.
     /*
         // create a second cycle from same value and match hash
         let cycle_b = CycleInfo::new_with_hash(

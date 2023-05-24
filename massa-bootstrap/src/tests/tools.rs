@@ -303,12 +303,6 @@ pub fn get_random_final_state_bootstrap(
     for _ in 0..r_limit {
         sorted_ledger.insert(get_random_address(), get_random_ledger_entry());
     }
-    // insert the last possible address to prevent the last cursor to move when testing the changes
-    // The magic number at idx 0 is to account for address variant leader. At time of writing,
-    // the highest value for encoding this variant in serialized form is `1`.
-    // note: when updating the bootstrap test make sure that this address is the last one at
-    // every step of the scenario
-
     let slot = Slot::new(0, 0);
     let final_ledger = create_final_ledger(db.clone(), config.ledger_config.clone(), sorted_ledger);
 
