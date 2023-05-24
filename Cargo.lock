@@ -1837,17 +1837,17 @@ dependencies = [
 
 [[package]]
 name = "hyper-rustls"
-version = "0.23.2"
+version = "0.24.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "1788965e61b367cd03a62950836d5cd41560c3577d90e40e0819373194d1661c"
+checksum = "0646026eb1b3eea4cd9ba47912ea5ce9cc07713d105b1a14698f4e6433d348b7"
 dependencies = [
  "http",
  "hyper",
  "log",
- "rustls 0.20.8",
+ "rustls",
  "rustls-native-certs",
  "tokio",
- "tokio-rustls 0.23.4",
+ "tokio-rustls",
  "webpki-roots",
 ]
 
@@ -1979,8 +1979,8 @@ dependencies = [
 
 [[package]]
 name = "jsonrpsee"
-version = "0.16.2"
-source = "git+https://github.com/paritytech/jsonrpsee.git?rev=118acc3#118acc39668c60cd90174d91743c725f59275388"
+version = "0.18.2"
+source = "git+https://github.com/paritytech/jsonrpsee.git?rev=ab097c8#ab097c8b4744461647896db59abcdd9e6d9eb805"
 dependencies = [
  "jsonrpsee-client-transport",
  "jsonrpsee-core",
@@ -1995,8 +1995,8 @@ dependencies = [
 
 [[package]]
 name = "jsonrpsee-client-transport"
-version = "0.16.2"
-source = "git+https://github.com/paritytech/jsonrpsee.git?rev=118acc3#118acc39668c60cd90174d91743c725f59275388"
+version = "0.18.2"
+source = "git+https://github.com/paritytech/jsonrpsee.git?rev=ab097c8#ab097c8b4744461647896db59abcdd9e6d9eb805"
 dependencies = [
  "futures-channel",
  "futures-util",
@@ -2008,7 +2008,7 @@ dependencies = [
  "soketto",
  "thiserror",
  "tokio",
- "tokio-rustls 0.23.4",
+ "tokio-rustls",
  "tokio-util",
  "tracing",
  "webpki-roots",
@@ -2016,8 +2016,8 @@ dependencies = [
 
 [[package]]
 name = "jsonrpsee-core"
-version = "0.16.2"
-source = "git+https://github.com/paritytech/jsonrpsee.git?rev=118acc3#118acc39668c60cd90174d91743c725f59275388"
+version = "0.18.2"
+source = "git+https://github.com/paritytech/jsonrpsee.git?rev=ab097c8#ab097c8b4744461647896db59abcdd9e6d9eb805"
 dependencies = [
  "anyhow",
  "async-lock",
@@ -2043,8 +2043,8 @@ dependencies = [
 
 [[package]]
 name = "jsonrpsee-http-client"
-version = "0.16.2"
-source = "git+https://github.com/paritytech/jsonrpsee.git?rev=118acc3#118acc39668c60cd90174d91743c725f59275388"
+version = "0.18.2"
+source = "git+https://github.com/paritytech/jsonrpsee.git?rev=ab097c8#ab097c8b4744461647896db59abcdd9e6d9eb805"
 dependencies = [
  "async-trait",
  "hyper",
@@ -2061,8 +2061,8 @@ dependencies = [
 
 [[package]]
 name = "jsonrpsee-proc-macros"
-version = "0.16.2"
-source = "git+https://github.com/paritytech/jsonrpsee.git?rev=118acc3#118acc39668c60cd90174d91743c725f59275388"
+version = "0.18.2"
+source = "git+https://github.com/paritytech/jsonrpsee.git?rev=ab097c8#ab097c8b4744461647896db59abcdd9e6d9eb805"
 dependencies = [
  "heck 0.4.1",
  "proc-macro-crate 1.3.1",
@@ -2073,8 +2073,8 @@ dependencies = [
 
 [[package]]
 name = "jsonrpsee-server"
-version = "0.16.2"
-source = "git+https://github.com/paritytech/jsonrpsee.git?rev=118acc3#118acc39668c60cd90174d91743c725f59275388"
+version = "0.18.2"
+source = "git+https://github.com/paritytech/jsonrpsee.git?rev=ab097c8#ab097c8b4744461647896db59abcdd9e6d9eb805"
 dependencies = [
  "futures-util",
  "hyper",
@@ -2092,8 +2092,8 @@ dependencies = [
 
 [[package]]
 name = "jsonrpsee-types"
-version = "0.16.2"
-source = "git+https://github.com/paritytech/jsonrpsee.git?rev=118acc3#118acc39668c60cd90174d91743c725f59275388"
+version = "0.18.2"
+source = "git+https://github.com/paritytech/jsonrpsee.git?rev=ab097c8#ab097c8b4744461647896db59abcdd9e6d9eb805"
 dependencies = [
  "anyhow",
  "beef",
@@ -2105,8 +2105,8 @@ dependencies = [
 
 [[package]]
 name = "jsonrpsee-wasm-client"
-version = "0.16.2"
-source = "git+https://github.com/paritytech/jsonrpsee.git?rev=118acc3#118acc39668c60cd90174d91743c725f59275388"
+version = "0.18.2"
+source = "git+https://github.com/paritytech/jsonrpsee.git?rev=ab097c8#ab097c8b4744461647896db59abcdd9e6d9eb805"
 dependencies = [
  "jsonrpsee-client-transport",
  "jsonrpsee-core",
@@ -2115,8 +2115,8 @@ dependencies = [
 
 [[package]]
 name = "jsonrpsee-ws-client"
-version = "0.16.2"
-source = "git+https://github.com/paritytech/jsonrpsee.git?rev=118acc3#118acc39668c60cd90174d91743c725f59275388"
+version = "0.18.2"
+source = "git+https://github.com/paritytech/jsonrpsee.git?rev=ab097c8#ab097c8b4744461647896db59abcdd9e6d9eb805"
 dependencies = [
  "http",
  "jsonrpsee-client-transport",
@@ -4339,18 +4339,6 @@ dependencies = [
 
 [[package]]
 name = "rustls"
-version = "0.20.8"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "fff78fc74d175294f4e83b28343315ffcfb114b156f0185e9741cb5570f50e2f"
-dependencies = [
- "log",
- "ring",
- "sct",
- "webpki",
-]
-
-[[package]]
-name = "rustls"
 version = "0.21.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "c911ba11bc8433e811ce56fde130ccf32f5127cab0e0194e9c68c5a5b671791e"
@@ -5110,22 +5098,11 @@ dependencies = [
 
 [[package]]
 name = "tokio-rustls"
-version = "0.23.4"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c43ee83903113e03984cb9e5cebe6c04a5116269e900e3ddba8f068a62adda59"
-dependencies = [
- "rustls 0.20.8",
- "tokio",
- "webpki",
-]
-
-[[package]]
-name = "tokio-rustls"
 version = "0.24.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "e0d409377ff5b1e3ca6437aa86c1eb7d40c134bfec254e44c830defa92669db5"
 dependencies = [
- "rustls 0.21.1",
+ "rustls",
  "tokio",
 ]
 
@@ -5206,7 +5183,7 @@ dependencies = [
  "prost",
  "rustls-pemfile",
  "tokio",
- "tokio-rustls 0.24.0",
+ "tokio-rustls",
  "tokio-stream",
  "tower",
  "tower-layer",
@@ -5815,22 +5792,12 @@ dependencies = [
 ]
 
 [[package]]
-name = "webpki"
-version = "0.22.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f095d78192e208183081cc07bc5515ef55216397af48b873e5edcd72637fa1bd"
-dependencies = [
- "ring",
- "untrusted",
-]
-
-[[package]]
 name = "webpki-roots"
-version = "0.22.6"
+version = "0.23.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b6c71e40d7d2c34a5106301fb632274ca37242cd0c9d3e64dbece371a40a2d87"
+checksum = "aa54963694b65584e170cf5dc46aeb4dcaa5584e652ff5f3952e56d66aff0125"
 dependencies = [
- "webpki",
+ "rustls-webpki",
 ]
 
 [[package]]

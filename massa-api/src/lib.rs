@@ -7,7 +7,7 @@ use api_trait::MassaApiServer;
 use hyper::Method;
 use jsonrpsee::core::{Error as JsonRpseeError, RpcResult};
 use jsonrpsee::proc_macros::rpc;
-use jsonrpsee::server::{AllowHosts, ServerBuilder, ServerHandle};
+use jsonrpsee::server::{AllowHosts, BatchRequestConfig, ServerBuilder, ServerHandle};
 use jsonrpsee::RpcModule;
 use massa_api_exports::{
     address::AddressInfo,
@@ -152,7 +152,11 @@ async fn serve<T>(
         .max_response_body_size(api_config.max_response_body_size)
         .max_connections(api_config.max_connections)
         .set_host_filtering(allowed_hosts)
-        .batch_requests_supported(api_config.batch_requests_supported)
+        .set_batch_request_config(if api_config.batch_request_limit > 0 {
+            BatchRequestConfig::Limit(api_config.batch_request_limit)
+        } else {
+            BatchRequestConfig::Disabled
+        })
         .ping_interval(api_config.ping_interval.to_duration())
         .custom_tokio_runtime(tokio::runtime::Handle::current());
 

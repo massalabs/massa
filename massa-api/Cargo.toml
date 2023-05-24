@@ -6,7 +6,7 @@ edition = "2021"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-jsonrpsee = { git = "https://github.com/paritytech/jsonrpsee.git", rev = "118acc3", features = ["server", "macros"] }
+jsonrpsee = { git = "https://github.com/paritytech/jsonrpsee.git", rev = "ab097c8", features = ["server", "macros"] }
 futures = "0.3.18"
 async-trait = "0.1.58"
 serde = { version = "1.0", features = ["derive"] }

@@ -22,7 +22,7 @@ pub struct OperationInput {
 }
 
 /// Operation and contextual info about it
-#[derive(Debug, Deserialize, Serialize)]
+#[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct OperationInfo {
     /// id
     pub id: OperationId,

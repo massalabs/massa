@@ -7,7 +7,7 @@ use serde::{Deserialize, Serialize};
 use crate::display_if_true;
 
 /// refactor to delete
-#[derive(Debug, Deserialize, Serialize)]
+#[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct BlockInfo {
     /// block id
     pub id: BlockId,
@@ -16,7 +16,7 @@ pub struct BlockInfo {
 }
 
 /// Block content
-#[derive(Debug, Deserialize, Serialize)]
+#[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct BlockInfoContent {
     /// true if final
     pub is_final: bool,
@@ -51,7 +51,7 @@ impl std::fmt::Display for BlockInfo {
 }
 
 /// A block resume (without the block itself)
-#[derive(Debug, Deserialize, Serialize)]
+#[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct BlockSummary {
     /// id
     pub id: BlockId,
