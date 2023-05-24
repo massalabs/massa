@@ -8,6 +8,7 @@ use std::{
 use massa_hash::Hash;
 use massa_models::serialization::IpAddrDeserializer;
 use massa_signature::{KeyPair, Signature, SignatureDeserializer};
+use massa_time::MassaTime;
 use nom::{
     error::{context, ContextError, ParseError},
     multi::length_count,
@@ -29,7 +30,7 @@ pub struct Announcement {
     /// Listeners
     pub listeners: HashMap<SocketAddr, TransportType>,
     /// Timestamp
-    pub timestamp: u128,
+    pub timestamp: u64,
     /// Hash
     pub hash: Hash,
     /// serialized version
@@ -115,7 +116,7 @@ impl Deserializer<Announcement> for AnnouncementDeserializer {
                     }),
                 ),
                 context("Failed timestamp deserialization", |buffer: &'a [u8]| {
-                    let timestamp = u128::from_be_bytes(buffer[..16].try_into().map_err(|_| {
+                    let timestamp = u64::from_be_bytes(buffer[..16].try_into().map_err(|_| {
                         nom::Err::Error(ParseError::from_error_kind(
                             buffer,
                             nom::error::ErrorKind::LengthValue,
@@ -186,10 +187,9 @@ impl Announcement {
             buf.extend_from_slice(&port_bytes);
             buf.push(*listener.1 as u8);
         }
-        let timestamp = SystemTime::now()
-            .duration_since(UNIX_EPOCH)
-            .expect("Time went backward")
-            .as_nanos();
+        let timestamp = MassaTime::now()
+            .expect("Unable to get MassaTime::now")
+            .to_millis();
         buf.extend(timestamp.to_be_bytes());
         let hash = Hash::compute_from(&buf);
         Ok(Self {
