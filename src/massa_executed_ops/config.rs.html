@@ -21,16 +21,16 @@
 </span><span class="kw">pub struct </span>ExecutedOpsConfig {
     <span class="doccomment">/// Number of threads
     </span><span class="kw">pub </span>thread_count: u8,
+    <span class="doccomment">/// Maximum size of a bootstrap part
+    </span><span class="kw">pub </span>bootstrap_part_size: u64,
 }
 
 <span class="attr">#[derive(Debug, Clone)]
 </span><span class="kw">pub struct </span>ExecutedDenunciationsConfig {
     <span class="doccomment">/// Period delta for denunciation to expire
     </span><span class="kw">pub </span>denunciation_expire_periods: u64,
-    <span class="doccomment">/// Number of threads
-    </span><span class="kw">pub </span>thread_count: u8,
-    <span class="doccomment">/// Number of endorsements
-    </span><span class="kw">pub </span>endorsement_count: u32,
+    <span class="doccomment">/// Maximum size of a bootstrap part
+    </span><span class="kw">pub </span>bootstrap_part_size: u64,
 }
 </code></pre></div>
 </section></main><div id="rustdoc-vars" data-root-path="../../" data-static-root-path="../../static.files/" data-current-crate="massa_executed_ops" data-themes="" data-resource-suffix="" data-rustdoc-version="1.69.0-nightly (d962ea578 2023-02-26)" data-search-js="search-14421e1532aead08.js" data-settings-js="settings-f0c5c39777a9a2f6.js" data-settings-css="settings-0bcba95ff279c1db.css" ></div></body></html>

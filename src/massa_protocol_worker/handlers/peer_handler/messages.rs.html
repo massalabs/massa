@@ -360,12 +360,13 @@
 <a href="#360" id="360">360</a>
 <a href="#361" id="361">361</a>
 <a href="#362" id="362">362</a>
-<a href="#363" id="363">363</a>
 </pre><pre class="rust"><code><span class="kw">use </span>std::{collections::HashMap, net::SocketAddr, ops::Bound::Included};
 
 <span class="kw">use </span>massa_models::serialization::{IpAddrDeserializer, IpAddrSerializer};
 <span class="kw">use </span>massa_protocol_exports::{PeerId, PeerIdDeserializer, PeerIdSerializer};
-<span class="kw">use </span>massa_serialization::{Deserializer, Serializer, U64VarIntDeserializer, U64VarIntSerializer};
+<span class="kw">use </span>massa_serialization::{
+    Deserializer, SerializeError, Serializer, U64VarIntDeserializer, U64VarIntSerializer,
+};
 <span class="kw">use </span>nom::{
     error::{context, ContextError, ParseError},
     multi::length_count,
@@ -385,29 +386,25 @@
     </span>ListPeers(Vec&lt;(PeerId, HashMap&lt;SocketAddr, TransportType&gt;)&gt;),
 }
 
-<span class="kw">impl </span>PeerManagementMessage {
-    <span class="kw">pub fn </span>get_id(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; MessageTypeId {
-        <span class="kw">match </span><span class="self">self </span>{
-            PeerManagementMessage::NewPeerConnected(<span class="kw">_</span>) =&gt; MessageTypeId::NewPeerConnected,
-            PeerManagementMessage::ListPeers(<span class="kw">_</span>) =&gt; MessageTypeId::ListPeers,
-        }
-    }
-
-    <span class="kw">pub fn </span>max_id() -&gt; u64 {
-        &lt;MessageTypeId <span class="kw">as </span>Into&lt;u64&gt;&gt;::into(MessageTypeId::ListPeers) + <span class="number">1
-    </span>}
-}
-
-<span class="comment">// DO NOT FORGET TO UPDATE MAX ID IF YOU UPDATE THERE
-</span><span class="attr">#[derive(IntoPrimitive, Debug, Eq, PartialEq, TryFromPrimitive)]
+<span class="attr">#[derive(IntoPrimitive, Debug, Eq, PartialEq, TryFromPrimitive)]
 #[repr(u64)]
 </span><span class="kw">pub enum </span>MessageTypeId {
     NewPeerConnected = <span class="number">0</span>,
     ListPeers = <span class="number">1</span>,
 }
 
+<span class="kw">impl </span>From&lt;<span class="kw-2">&amp;</span>PeerManagementMessage&gt; <span class="kw">for </span>MessageTypeId {
+    <span class="kw">fn </span>from(message: <span class="kw-2">&amp;</span>PeerManagementMessage) -&gt; <span class="self">Self </span>{
+        <span class="kw">match </span>message {
+            PeerManagementMessage::NewPeerConnected(<span class="kw">_</span>) =&gt; MessageTypeId::NewPeerConnected,
+            PeerManagementMessage::ListPeers(<span class="kw">_</span>) =&gt; MessageTypeId::ListPeers,
+        }
+    }
+}
+
 <span class="attr">#[derive(Default, Clone)]
 </span><span class="kw">pub struct </span>PeerManagementMessageSerializer {
+    id_serializer: U64VarIntSerializer,
     length_serializer: U64VarIntSerializer,
     ip_addr_serializer: IpAddrSerializer,
     peer_id_serializer: PeerIdSerializer,
@@ -416,6 +413,7 @@
 <span class="kw">impl </span>PeerManagementMessageSerializer {
     <span class="kw">pub fn </span>new() -&gt; <span class="self">Self </span>{
         <span class="self">Self </span>{
+            id_serializer: U64VarIntSerializer::new(),
             length_serializer: U64VarIntSerializer::new(),
             ip_addr_serializer: IpAddrSerializer::new(),
             peer_id_serializer: PeerIdSerializer::new(),
@@ -429,6 +427,12 @@
         value: <span class="kw-2">&amp;</span>PeerManagementMessage,
         buffer: <span class="kw-2">&amp;mut </span>Vec&lt;u8&gt;,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;(), massa_serialization::SerializeError&gt; {
+        <span class="self">self</span>.id_serializer.serialize(
+            <span class="kw-2">&amp;</span>MessageTypeId::from(value).try_into().map_err(|<span class="kw">_</span>| {
+                SerializeError::GeneralError(String::from(<span class="string">&quot;Failed to serialize id&quot;</span>))
+            })<span class="question-mark">?</span>,
+            buffer,
+        )<span class="question-mark">?</span>;
         <span class="kw">match </span>value {
             PeerManagementMessage::NewPeerConnected((peer_id, listeners)) =&gt; {
                 <span class="self">self</span>.peer_id_serializer.serialize(peer_id, buffer)<span class="question-mark">?</span>;
@@ -462,7 +466,7 @@
 }
 
 <span class="kw">pub struct </span>PeerManagementMessageDeserializer {
-    message_id: u64,
+    id_deserializer: U64VarIntDeserializer,
     listeners_length_deserializer: U64VarIntDeserializer,
     peers_length_deserializer: U64VarIntDeserializer,
     ip_addr_deserializer: IpAddrDeserializer,
@@ -480,7 +484,7 @@
 <span class="kw">impl </span>PeerManagementMessageDeserializer {
     <span class="kw">pub fn </span>new(limits: PeerManagementMessageDeserializerArgs) -&gt; <span class="self">Self </span>{
         <span class="self">Self </span>{
-            message_id: <span class="number">0</span>,
+            id_deserializer: U64VarIntDeserializer::new(Included(<span class="number">0</span>), Included(u64::MAX)),
             listeners_length_deserializer: U64VarIntDeserializer::new(
                 Included(<span class="number">0</span>),
                 Included(limits.max_listeners_per_peer),
@@ -493,10 +497,6 @@
             peer_id_deserializer: PeerIdDeserializer::new(),
         }
     }
-
-    <span class="kw">pub fn </span>set_message(<span class="kw-2">&amp;mut </span><span class="self">self</span>, message_id: u64) {
-        <span class="self">self</span>.message_id = message_id;
-    }
 }
 
 <span class="kw">impl </span>Deserializer&lt;PeerManagementMessage&gt; <span class="kw">for </span>PeerManagementMessageDeserializer {
@@ -505,7 +505,8 @@
         buffer: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>[u8],
     ) -&gt; IResult&lt;<span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>[u8], PeerManagementMessage, E&gt; {
         context(<span class="string">&quot;Failed PeerManagementMessage deserialization&quot;</span>, |buffer| {
-            <span class="kw">let </span>id = MessageTypeId::try_from(<span class="self">self</span>.message_id).map_err(|<span class="kw">_</span>| {
+            <span class="kw">let </span>(buffer, raw_id) = <span class="self">self</span>.id_deserializer.deserialize(buffer)<span class="question-mark">?</span>;
+            <span class="kw">let </span>id = MessageTypeId::try_from(raw_id).map_err(|<span class="kw">_</span>| {
                 nom::Err::Error(ParseError::from_error_kind(
                     buffer,
                     nom::error::ErrorKind::Eof,
@@ -651,13 +652,11 @@
 
         serializer.serialize(<span class="kw-2">&amp;</span>msg, <span class="kw-2">&amp;mut </span>buffer).unwrap();
 
-        <span class="kw">let </span><span class="kw-2">mut </span>deserializer =
+        <span class="kw">let </span>deserializer =
             PeerManagementMessageDeserializer::new(PeerManagementMessageDeserializerArgs {
                 max_listeners_per_peer: <span class="number">1000</span>,
                 max_peers_per_announcement: <span class="number">1000</span>,
             });
-        deserializer.set_message(<span class="number">0</span>);
-
         <span class="kw">let </span>(rest, message) = deserializer
             .deserialize::&lt;DeserializeError&gt;(<span class="kw-2">&amp;</span>buffer)
             .unwrap();
@@ -696,12 +695,11 @@
         <span class="kw">let </span>serializer = PeerManagementMessageSerializer::new();
         <span class="kw">let </span><span class="kw-2">mut </span>buffer = <span class="macro">vec!</span>[];
         serializer.serialize(<span class="kw-2">&amp;</span>message, <span class="kw-2">&amp;mut </span>buffer).unwrap();
-        <span class="kw">let </span><span class="kw-2">mut </span>deserializer =
+        <span class="kw">let </span>deserializer =
             PeerManagementMessageDeserializer::new(PeerManagementMessageDeserializerArgs {
                 max_listeners_per_peer: <span class="number">1000</span>,
                 max_peers_per_announcement: <span class="number">1000</span>,
             });
-        deserializer.set_message(<span class="number">1</span>);
         <span class="kw">let </span>(rest, message) = deserializer
             .deserialize::&lt;DeserializeError&gt;(<span class="kw-2">&amp;</span>buffer)
             .unwrap();

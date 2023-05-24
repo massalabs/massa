@@ -282,36 +282,12 @@
 <a href="#282" id="282">282</a>
 <a href="#283" id="283">283</a>
 <a href="#284" id="284">284</a>
-<a href="#285" id="285">285</a>
-<a href="#286" id="286">286</a>
-<a href="#287" id="287">287</a>
-<a href="#288" id="288">288</a>
-<a href="#289" id="289">289</a>
-<a href="#290" id="290">290</a>
-<a href="#291" id="291">291</a>
-<a href="#292" id="292">292</a>
-<a href="#293" id="293">293</a>
-<a href="#294" id="294">294</a>
-<a href="#295" id="295">295</a>
-<a href="#296" id="296">296</a>
-<a href="#297" id="297">297</a>
-<a href="#298" id="298">298</a>
-<a href="#299" id="299">299</a>
-<a href="#300" id="300">300</a>
-<a href="#301" id="301">301</a>
-<a href="#302" id="302">302</a>
-<a href="#303" id="303">303</a>
-<a href="#304" id="304">304</a>
-<a href="#305" id="305">305</a>
-<a href="#306" id="306">306</a>
-<a href="#307" id="307">307</a>
-<a href="#308" id="308">308</a>
-<a href="#309" id="309">309</a>
 </pre><pre class="rust"><code><span class="kw">use </span>crossbeam::channel::Sender;
 <span class="kw">use </span>massa_protocol_exports::PeerId;
 <span class="kw">use </span>massa_serialization::{
     DeserializeError, Deserializer, Serializer, U64VarIntDeserializer, U64VarIntSerializer,
 };
+<span class="kw">use </span>num_enum::{IntoPrimitive, TryFromPrimitive};
 <span class="kw">use </span>peernet::{
     error::{PeerNetError, PeerNetResult},
     messages::{
@@ -336,6 +312,26 @@
     PeerManagement(Box&lt;PeerManagementMessage&gt;),
 }
 
+<span class="attr">#[derive(IntoPrimitive, Debug, Eq, PartialEq, TryFromPrimitive)]
+#[repr(u64)]
+</span><span class="kw">pub enum </span>MessageTypeId {
+    Block = <span class="number">0</span>,
+    Endorsement = <span class="number">1</span>,
+    Operation = <span class="number">2</span>,
+    PeerManagement = <span class="number">3</span>,
+}
+
+<span class="kw">impl </span>From&lt;<span class="kw-2">&amp;</span>Message&gt; <span class="kw">for </span>MessageTypeId {
+    <span class="kw">fn </span>from(value: <span class="kw-2">&amp;</span>Message) -&gt; <span class="self">Self </span>{
+        <span class="kw">match </span>value {
+            Message::Block(<span class="kw">_</span>) =&gt; MessageTypeId::Block,
+            Message::Endorsement(<span class="kw">_</span>) =&gt; MessageTypeId::Endorsement,
+            Message::Operation(<span class="kw">_</span>) =&gt; MessageTypeId::Operation,
+            Message::PeerManagement(<span class="kw">_</span>) =&gt; MessageTypeId::PeerManagement,
+        }
+    }
+}
+
 <span class="comment">//TODO: Macroize this
 </span><span class="kw">impl </span>From&lt;BlockMessage&gt; <span class="kw">for </span>Message {
     <span class="kw">fn </span>from(message: BlockMessage) -&gt; <span class="self">Self </span>{
@@ -358,25 +354,6 @@
 <span class="kw">impl </span>From&lt;PeerManagementMessage&gt; <span class="kw">for </span>Message {
     <span class="kw">fn </span>from(message: PeerManagementMessage) -&gt; <span class="self">Self </span>{
         <span class="self">Self</span>::PeerManagement(Box::from(message))
-    }
-}
-
-<span class="kw">impl </span>Message {
-    <span class="comment">//TODO: Macroize get_id and max_id
-    </span><span class="kw">fn </span>get_id(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; u64 {
-        <span class="kw">match </span><span class="self">self </span>{
-            Message::Block(message) =&gt; message.get_id() <span class="kw">as </span>u64,
-            Message::Endorsement(message) =&gt; message.get_id() <span class="kw">as </span>u64 + BlockMessage::max_id(),
-            Message::Operation(message) =&gt; {
-                message.get_id() <span class="kw">as </span>u64 + BlockMessage::max_id() + EndorsementMessage::max_id()
-            }
-            Message::PeerManagement(message) =&gt; {
-                message.get_id() <span class="kw">as </span>u64
-                    + BlockMessage::max_id()
-                    + EndorsementMessage::max_id()
-                    + OperationMessage::max_id()
-            }
-        }
     }
 }
 
@@ -440,19 +417,24 @@
 }
 
 <span class="kw">impl </span>PeerNetMessagesSerializer&lt;Message&gt; <span class="kw">for </span>MessagesSerializer {
-    <span class="doccomment">/// Serialize the id of a message
-    </span><span class="kw">fn </span>serialize_id(<span class="kw-2">&amp;</span><span class="self">self</span>, message: <span class="kw-2">&amp;</span>Message, buffer: <span class="kw-2">&amp;mut </span>Vec&lt;u8&gt;) -&gt; PeerNetResult&lt;()&gt; {
-        <span class="self">self</span>.id_serializer
-            .serialize(<span class="kw-2">&amp;</span>message.get_id(), buffer)
-            .map_err(|err| {
-                PeerNetError::HandlerError.error(
-                    <span class="string">&quot;MessagesSerializer&quot;</span>,
-                    <span class="prelude-val">Some</span>(<span class="macro">format!</span>(<span class="string">&quot;Failed to serialize message id: {}&quot;</span>, err)),
-                )
-            })
-    }
     <span class="doccomment">/// Serialize the message
     </span><span class="kw">fn </span>serialize(<span class="kw-2">&amp;</span><span class="self">self</span>, message: <span class="kw-2">&amp;</span>Message, buffer: <span class="kw-2">&amp;mut </span>Vec&lt;u8&gt;) -&gt; PeerNetResult&lt;()&gt; {
+        <span class="self">self</span>.id_serializer
+            .serialize(
+                <span class="kw-2">&amp;</span>MessageTypeId::from(message).try_into().map_err(|<span class="kw">_</span>| {
+                    PeerNetError::HandlerError.error(
+                        <span class="string">&quot;MessagesSerializer&quot;</span>,
+                        <span class="prelude-val">Some</span>(String::from(<span class="string">&quot;Failed to serialize id&quot;</span>)),
+                    )
+                })<span class="question-mark">?</span>,
+                buffer,
+            )
+            .map_err(|err| {
+                PeerNetError::HandlerError.error(
+                    <span class="string">&quot;MessagesHandler&quot;</span>,
+                    <span class="prelude-val">Some</span>(<span class="macro">format!</span>(<span class="string">&quot;Failed to serialize id {}&quot;</span>, err.to_string())),
+                )
+            })<span class="question-mark">?</span>;
         <span class="kw">match </span>message {
             Message::Block(message) =&gt; {
                 <span class="kw">if let </span><span class="prelude-val">Some</span>(serializer) = <span class="kw-2">&amp;</span><span class="self">self</span>.block_message_serializer {
@@ -520,99 +502,67 @@
 
 <span class="attr">#[derive(Clone)]
 </span><span class="kw">pub struct </span>MessagesHandler {
+    <span class="kw">pub </span>id_deserializer: U64VarIntDeserializer,
     <span class="kw">pub </span>sender_blocks: Sender&lt;PeerMessageTuple&gt;,
     <span class="kw">pub </span>sender_endorsements: Sender&lt;PeerMessageTuple&gt;,
     <span class="kw">pub </span>sender_operations: Sender&lt;PeerMessageTuple&gt;,
     <span class="kw">pub </span>sender_peers: Sender&lt;PeerMessageTuple&gt;,
-    <span class="kw">pub </span>id_deserializer: U64VarIntDeserializer,
 }
 
 <span class="kw">impl </span>PeerNetMessagesHandler&lt;PeerId&gt; <span class="kw">for </span>MessagesHandler {
-    <span class="kw">fn </span>deserialize_id&lt;<span class="lifetime">&#39;a</span>&gt;(
-        <span class="kw-2">&amp;</span><span class="self">self</span>,
-        data: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>[u8],
-        _peer_id: <span class="kw-2">&amp;</span>PeerId,
-    ) -&gt; PeerNetResult&lt;(<span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>[u8], u64)&gt; {
-        <span class="kw">if </span>data.is_empty() {
-            <span class="kw">return </span><span class="prelude-val">Err</span>(PeerNetError::ReceiveError.error(
-                <span class="string">&quot;MessagesHandler&quot;</span>,
-                <span class="prelude-val">Some</span>(<span class="string">&quot;Empty message received&quot;</span>.to_string()),
-            ));
-        }
-        <span class="self">self</span>.id_deserializer
-            .deserialize::&lt;DeserializeError&gt;(data)
+    <span class="kw">fn </span>handle(<span class="kw-2">&amp;</span><span class="self">self</span>, data: <span class="kw-2">&amp;</span>[u8], peer_id: <span class="kw-2">&amp;</span>PeerId) -&gt; PeerNetResult&lt;()&gt; {
+        <span class="kw">let </span>(data, raw_id) = <span class="self">self
+            </span>.id_deserializer
+            .deserialize::&lt;DeserializeError&gt;(<span class="kw-2">&amp;</span>data)
             .map_err(|err| {
                 PeerNetError::HandlerError.error(
                     <span class="string">&quot;MessagesHandler&quot;</span>,
-                    <span class="prelude-val">Some</span>(<span class="macro">format!</span>(<span class="string">&quot;Failed to deserialize message id: {}&quot;</span>, err)),
+                    <span class="prelude-val">Some</span>(<span class="macro">format!</span>(<span class="string">&quot;Failed to deserialize id: {}&quot;</span>, err.to_string())),
                 )
-            })
-    }
-
-    <span class="kw">fn </span>handle(<span class="kw-2">&amp;</span><span class="self">self</span>, id: u64, data: <span class="kw-2">&amp;</span>[u8], peer_id: <span class="kw-2">&amp;</span>PeerId) -&gt; PeerNetResult&lt;()&gt; {
-        <span class="kw">let </span>block_max_id = BlockMessage::max_id();
-        <span class="kw">let </span>endorsement_max_id = EndorsementMessage::max_id();
-        <span class="kw">let </span>operation_max_id = OperationMessage::max_id();
-        <span class="kw">let </span>peer_management_max_id = PeerManagementMessage::max_id();
-        <span class="kw">if </span>id &lt; block_max_id {
-            <span class="self">self</span>.sender_blocks
-                .send((peer_id.clone(), id, data.to_vec()))
+            })<span class="question-mark">?</span>;
+        <span class="kw">let </span>id = MessageTypeId::try_from(raw_id).map_err(|<span class="kw">_</span>| {
+            PeerNetError::HandlerError.error(
+                <span class="string">&quot;MessagesHandler&quot;</span>,
+                <span class="prelude-val">Some</span>(String::from(<span class="string">&quot;Failed to deserialize id&quot;</span>)),
+            )
+        })<span class="question-mark">?</span>;
+        <span class="kw">match </span>id {
+            MessageTypeId::Block =&gt; <span class="self">self
+                </span>.sender_blocks
+                .send((peer_id.clone(), data.to_vec()))
                 .map_err(|err| {
                     PeerNetError::HandlerError.error(
                         <span class="string">&quot;MessagesHandler&quot;</span>,
                         <span class="prelude-val">Some</span>(<span class="macro">format!</span>(<span class="string">&quot;Failed to send block message to channel: {}&quot;</span>, err)),
                     )
-                })
-        } <span class="kw">else if </span>id &lt; endorsement_max_id + block_max_id {
-            <span class="self">self</span>.sender_endorsements
-                .send((peer_id.clone(), id - block_max_id, data.to_vec()))
+                }),
+            MessageTypeId::Endorsement =&gt; <span class="self">self
+                </span>.sender_endorsements
+                .send((peer_id.clone(), data.to_vec()))
                 .map_err(|err| {
                     PeerNetError::HandlerError.error(
                         <span class="string">&quot;MessagesHandler&quot;</span>,
-                        <span class="prelude-val">Some</span>(<span class="macro">format!</span>(
-                            <span class="string">&quot;Failed to send endorsement message to channel: {}&quot;</span>,
-                            err
-                        )),
+                        <span class="prelude-val">Some</span>(<span class="macro">format!</span>(<span class="string">&quot;Failed to send block message to channel: {}&quot;</span>, err)),
                     )
-                })
-        } <span class="kw">else if </span>id &lt; operation_max_id + block_max_id + endorsement_max_id {
-            <span class="self">self</span>.sender_operations
-                .send((
-                    peer_id.clone(),
-                    id - (block_max_id + endorsement_max_id),
-                    data.to_vec(),
-                ))
+                }),
+            MessageTypeId::Operation =&gt; <span class="self">self
+                </span>.sender_operations
+                .send((peer_id.clone(), data.to_vec()))
                 .map_err(|err| {
                     PeerNetError::HandlerError.error(
                         <span class="string">&quot;MessagesHandler&quot;</span>,
-                        <span class="prelude-val">Some</span>(<span class="macro">format!</span>(
-                            <span class="string">&quot;Failed to send operation message to channel: {}&quot;</span>,
-                            err
-                        )),
+                        <span class="prelude-val">Some</span>(<span class="macro">format!</span>(<span class="string">&quot;Failed to send block message to channel: {}&quot;</span>, err)),
                     )
-                })
-        } <span class="kw">else if </span>id &lt; peer_management_max_id + block_max_id + endorsement_max_id + operation_max_id
-        {
-            <span class="self">self</span>.sender_peers
-                .send((
-                    peer_id.clone(),
-                    id - (block_max_id + endorsement_max_id + operation_max_id),
-                    data.to_vec(),
-                ))
+                }),
+            MessageTypeId::PeerManagement =&gt; <span class="self">self
+                </span>.sender_peers
+                .send((peer_id.clone(), data.to_vec()))
                 .map_err(|err| {
                     PeerNetError::HandlerError.error(
                         <span class="string">&quot;MessagesHandler&quot;</span>,
-                        <span class="prelude-val">Some</span>(<span class="macro">format!</span>(
-                            <span class="string">&quot;Failed to send peer management message to channel: {}&quot;</span>,
-                            err
-                        )),
+                        <span class="prelude-val">Some</span>(<span class="macro">format!</span>(<span class="string">&quot;Failed to send block message to channel: {}&quot;</span>, err)),
                     )
-                })
-        } <span class="kw">else </span>{
-            <span class="prelude-val">Err</span>(PeerNetError::HandlerError.error(
-                <span class="string">&quot;MessagesHandler&quot;</span>,
-                <span class="prelude-val">Some</span>(<span class="macro">format!</span>(<span class="string">&quot;Unknown message id: {}&quot;</span>, id)),
-            ))
+                }),
         }
     }
 }

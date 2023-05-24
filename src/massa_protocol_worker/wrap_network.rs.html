@@ -170,7 +170,6 @@
 <a href="#170" id="170">170</a>
 <a href="#171" id="171">171</a>
 <a href="#172" id="172">172</a>
-<a href="#173" id="173">173</a>
 </pre><pre class="rust"><code><span class="kw">use </span>std::{
     collections::{HashMap, HashSet},
     net::SocketAddr,
@@ -180,7 +179,7 @@
 <span class="kw">use </span>peernet::{
     network_manager::{PeerNetManager, SharedActiveConnections},
     peer::PeerConnectionType,
-    transports::{OutConnectionConfig, TransportType},
+    transports::TransportType,
 };
 
 <span class="kw">use crate</span>::{
@@ -291,7 +290,6 @@
         <span class="kw-2">&amp;mut </span><span class="self">self</span>,
         addr: SocketAddr,
         timeout: std::time::Duration,
-        out_connection_config: <span class="kw-2">&amp;</span>OutConnectionConfig,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;(), ProtocolError&gt;;
 }
 
@@ -336,10 +334,10 @@
         <span class="kw-2">&amp;mut </span><span class="self">self</span>,
         addr: SocketAddr,
         timeout: std::time::Duration,
-        out_connection_config: <span class="kw-2">&amp;</span>OutConnectionConfig,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;(), ProtocolError&gt; {
-        <span class="self">self</span>.peernet_manager
-            .try_connect(addr, timeout, out_connection_config)
+        <span class="comment">//TODO: Change when we support multiple transports
+        </span><span class="self">self</span>.peernet_manager
+            .try_connect(TransportType::Tcp, addr, timeout)
             .map_err(|err| ProtocolError::GeneralProtocolError(err.to_string()))<span class="question-mark">?</span>;
         <span class="prelude-val">Ok</span>(())
     }

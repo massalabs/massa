@@ -416,8 +416,6 @@
 <a href="#416" id="416">416</a>
 <a href="#417" id="417">417</a>
 <a href="#418" id="418">418</a>
-<a href="#419" id="419">419</a>
-<a href="#420" id="420">420</a>
 </pre><pre class="rust"><code><span class="kw">use </span>std::{
     collections::HashMap,
     io::Read,
@@ -613,9 +611,7 @@
                         <span class="prelude-val">Ok</span>(peer_id.clone())
                     }
                     <span class="number">1 </span>=&gt; {
-                        <span class="kw">let </span>(received, id) =
-                            messages_handler.deserialize_id(<span class="kw-2">&amp;</span>data[<span class="number">1</span>..], <span class="kw-2">&amp;</span>peer_id)<span class="question-mark">?</span>;
-                        messages_handler.handle(id, received, <span class="kw-2">&amp;</span>peer_id)<span class="question-mark">?</span>;
+                        messages_handler.handle(<span class="kw-2">&amp;</span>data[<span class="number">1</span>..], <span class="kw-2">&amp;</span>peer_id)<span class="question-mark">?</span>;
                         <span class="prelude-val">Err</span>(PeerNetError::HandshakeError.error(
                                 <span class="string">&quot;Massa Handshake&quot;</span>,
                                 <span class="prelude-val">Some</span>(<span class="string">&quot;Tester Handshake failed received a message that our connection has been refused&quot;</span>.to_string()),

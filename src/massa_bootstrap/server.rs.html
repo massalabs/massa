@@ -728,6 +728,44 @@
 <a href="#728" id="728">728</a>
 <a href="#729" id="729">729</a>
 <a href="#730" id="730">730</a>
+<a href="#731" id="731">731</a>
+<a href="#732" id="732">732</a>
+<a href="#733" id="733">733</a>
+<a href="#734" id="734">734</a>
+<a href="#735" id="735">735</a>
+<a href="#736" id="736">736</a>
+<a href="#737" id="737">737</a>
+<a href="#738" id="738">738</a>
+<a href="#739" id="739">739</a>
+<a href="#740" id="740">740</a>
+<a href="#741" id="741">741</a>
+<a href="#742" id="742">742</a>
+<a href="#743" id="743">743</a>
+<a href="#744" id="744">744</a>
+<a href="#745" id="745">745</a>
+<a href="#746" id="746">746</a>
+<a href="#747" id="747">747</a>
+<a href="#748" id="748">748</a>
+<a href="#749" id="749">749</a>
+<a href="#750" id="750">750</a>
+<a href="#751" id="751">751</a>
+<a href="#752" id="752">752</a>
+<a href="#753" id="753">753</a>
+<a href="#754" id="754">754</a>
+<a href="#755" id="755">755</a>
+<a href="#756" id="756">756</a>
+<a href="#757" id="757">757</a>
+<a href="#758" id="758">758</a>
+<a href="#759" id="759">759</a>
+<a href="#760" id="760">760</a>
+<a href="#761" id="761">761</a>
+<a href="#762" id="762">762</a>
+<a href="#763" id="763">763</a>
+<a href="#764" id="764">764</a>
+<a href="#765" id="765">765</a>
+<a href="#766" id="766">766</a>
+<a href="#767" id="767">767</a>
+<a href="#768" id="768">768</a>
 </pre><pre class="rust"><code><span class="doccomment">//! start the bootstrapping system using [`start_bootstrap_server`]
 //! Once your node will be ready, you may want other to bootstrap from you.
 //!
@@ -758,9 +796,10 @@
 
 <span class="kw">use </span>crossbeam::channel::tick;
 <span class="kw">use </span>humantime::format_duration;
+<span class="kw">use </span>massa_async_pool::AsyncMessageId;
 <span class="kw">use </span>massa_consensus_exports::{bootstrapable_graph::BootstrapableGraph, ConsensusController};
-<span class="kw">use </span>massa_db::CHANGE_ID_DESER_ERROR;
-<span class="kw">use </span>massa_final_state::FinalState;
+<span class="kw">use </span>massa_final_state::{FinalState, FinalStateError};
+<span class="kw">use </span>massa_ledger_exports::Key <span class="kw">as </span>LedgerKey;
 <span class="kw">use </span>massa_logging::massa_trace;
 <span class="kw">use </span>massa_models::{
     block_id::BlockId, prehash::PreHashSet, slot::Slot, streaming_step::StreamingStep,
@@ -1177,7 +1216,12 @@
     final_state: Arc&lt;RwLock&lt;FinalState&gt;&gt;,
     consensus_controller: Box&lt;<span class="kw">dyn </span>ConsensusController&gt;,
     <span class="kw-2">mut </span>last_slot: <span class="prelude-ty">Option</span>&lt;Slot&gt;,
-    <span class="kw-2">mut </span>last_state_step: StreamingStep&lt;Vec&lt;u8&gt;&gt;,
+    <span class="kw-2">mut </span>last_ledger_step: StreamingStep&lt;LedgerKey&gt;,
+    <span class="kw-2">mut </span>last_pool_step: StreamingStep&lt;AsyncMessageId&gt;,
+    <span class="kw-2">mut </span>last_cycle_step: StreamingStep&lt;u64&gt;,
+    <span class="kw-2">mut </span>last_credits_step: StreamingStep&lt;Slot&gt;,
+    <span class="kw-2">mut </span>last_ops_step: StreamingStep&lt;Slot&gt;,
+    <span class="kw-2">mut </span>last_de_step: StreamingStep&lt;Slot&gt;,
     <span class="kw-2">mut </span>last_consensus_step: StreamingStep&lt;PreHashSet&lt;BlockId&gt;&gt;,
     <span class="kw-2">mut </span>send_last_start_period: bool,
     bs_deadline: <span class="kw-2">&amp;</span>Instant,
@@ -1191,11 +1235,16 @@
         }
 
         <span class="kw">let </span>current_slot;
-        <span class="kw">let </span>state_part;
+        <span class="kw">let </span>ledger_part;
+        <span class="kw">let </span>async_pool_part;
+        <span class="kw">let </span>pos_cycle_part;
+        <span class="kw">let </span>pos_credits_part;
+        <span class="kw">let </span>exec_ops_part;
+        <span class="kw">let </span>exec_de_part;
+        <span class="kw">let </span>final_state_changes;
         <span class="kw">let </span>last_start_period;
-        <span class="kw">let </span>last_slot_before_downtime;
 
-        <span class="kw">let </span>slot_too_old = <span class="bool-val">false</span>;
+        <span class="kw">let </span><span class="kw-2">mut </span>slot_too_old = <span class="bool-val">false</span>;
 
         <span class="comment">// Scope of the final state read
         </span>{
@@ -1206,75 +1255,71 @@
             } <span class="kw">else </span>{
                 <span class="prelude-val">None
             </span>};
-            last_slot_before_downtime = <span class="kw">if </span>send_last_start_period {
-                <span class="prelude-val">Some</span>(final_state_read.last_slot_before_downtime)
+
+            <span class="kw">let </span>(data, new_ledger_step) = final_state_read
+                .ledger
+                .get_ledger_part(last_ledger_step.clone())<span class="question-mark">?</span>;
+            ledger_part = data;
+
+            <span class="kw">let </span>(pool_data, new_pool_step) =
+                final_state_read.async_pool.get_pool_part(last_pool_step);
+            async_pool_part = pool_data;
+
+            <span class="kw">let </span>(cycle_data, new_cycle_step) = final_state_read
+                .pos_state
+                .get_cycle_history_part(last_cycle_step)<span class="question-mark">?</span>;
+            pos_cycle_part = cycle_data;
+
+            <span class="kw">let </span>(credits_data, new_credits_step) = final_state_read
+                .pos_state
+                .get_deferred_credits_part(last_credits_step);
+            pos_credits_part = credits_data;
+
+            <span class="kw">let </span>(ops_data, new_ops_step) = final_state_read
+                .executed_ops
+                .get_executed_ops_part(last_ops_step);
+            exec_ops_part = ops_data;
+
+            <span class="kw">let </span>(de_data, new_de_step) = final_state_read
+                .executed_denunciations
+                .get_executed_de_part(last_de_step);
+            exec_de_part = de_data;
+
+            <span class="kw">if let </span><span class="prelude-val">Some</span>(slot) = last_slot &amp;&amp; slot != final_state_read.slot {
+                <span class="kw">if </span>slot &gt; final_state_read.slot {
+                    <span class="kw">return </span><span class="prelude-val">Err</span>(BootstrapError::GeneralError(
+                        <span class="string">&quot;Bootstrap cursor set to future slot&quot;</span>.to_string(),
+                    ));
+                }
+                final_state_changes = <span class="kw">match </span>final_state_read.get_state_changes_part(
+                    slot,
+                    new_ledger_step.clone(),
+                    new_pool_step,
+                    new_cycle_step,
+                    new_credits_step,
+                    new_ops_step,
+                    new_de_step,
+                ) {
+                    <span class="prelude-val">Ok</span>(data) =&gt; data,
+                    <span class="prelude-val">Err</span>(err) <span class="kw">if </span><span class="macro">matches!</span>(err, FinalStateError::InvalidSlot(<span class="kw">_</span>)) =&gt; {
+                        slot_too_old = <span class="bool-val">true</span>;
+                        Vec::default()
+                    }
+                    <span class="prelude-val">Err</span>(err) =&gt; <span class="kw">return </span><span class="prelude-val">Err</span>(BootstrapError::FinalStateError(err)),
+                };
             } <span class="kw">else </span>{
-                <span class="prelude-val">None
-            </span>};
-
-            <span class="kw">let </span>last_obtained = <span class="kw">match </span><span class="kw-2">&amp;</span>last_state_step {
-                StreamingStep::Started =&gt; <span class="prelude-val">None</span>,
-                StreamingStep::Ongoing(last_key) =&gt; <span class="prelude-val">Some</span>((last_key.clone(), last_slot.unwrap())),
-                StreamingStep::Finished(<span class="prelude-val">Some</span>(last_key)) =&gt; {
-                    <span class="prelude-val">Some</span>((last_key.clone(), last_slot.unwrap()))
-                }
-                StreamingStep::Finished(<span class="prelude-val">None</span>) =&gt; {
-                    <span class="kw">return </span><span class="prelude-val">Err</span>(BootstrapError::GeneralError(String::from(
-                        <span class="string">&quot;last_state_step is finished with no last_key!&quot;</span>,
-                    )));
-                }
-            };
-
-            state_part = final_state_read
-                .db
-                .read()
-                .get_batch_to_stream(last_obtained)
-                .map_err(|e| {
-                    BootstrapError::GeneralError(<span class="macro">format!</span>(<span class="string">&quot;Error get_batch_to_stream: {}&quot;</span>, e))
-                })<span class="question-mark">?</span>;
-
-            <span class="kw">let </span>new_state_step = <span class="kw">match </span>(
-                <span class="kw-2">&amp;</span>last_state_step,
-                state_part.is_empty(),
-                state_part.new_elements.last_key_value(),
-            ) {
-                <span class="comment">// We finished streaming the state already, but we received new info while streaming consensus: we stay sync
-                </span>(StreamingStep::Finished(<span class="prelude-val">Some</span>(_last_key)), <span class="bool-val">false</span>, <span class="prelude-val">Some</span>((key, <span class="kw">_</span>))) =&gt; {
-                    StreamingStep::Finished(<span class="prelude-val">Some</span>(key.clone()))
-                }
-                <span class="comment">// We finished streaming the state already, and we received nothing new
-                </span>(StreamingStep::Finished(<span class="prelude-val">Some</span>(last_key)), <span class="bool-val">true</span>, <span class="kw">_</span>) =&gt; {
-                    StreamingStep::Finished(<span class="prelude-val">Some</span>(last_key.clone()))
-                }
-                <span class="comment">// We receive our first empty state batch
-                </span>(StreamingStep::Ongoing(last_key), <span class="bool-val">true</span>, <span class="kw">_</span>) =&gt; {
-                    StreamingStep::Finished(<span class="prelude-val">Some</span>(last_key.clone()))
-                }
-                <span class="comment">// We still need to stream the state
-                </span>(<span class="kw">_</span>, <span class="bool-val">false</span>, <span class="prelude-val">Some</span>((new_last_key, <span class="kw">_</span>))) =&gt; StreamingStep::Ongoing(new_last_key.clone()),
-                <span class="kw">_ </span>=&gt; {
-                    <span class="kw">return </span><span class="prelude-val">Err</span>(BootstrapError::GeneralError(String::from(
-                        <span class="string">&quot;state step is inconsistent! &quot;</span>,
-                    )));
-                }
-            };
-
-            <span class="kw">let </span>db_slot = final_state_read
-                .db
-                .read()
-                .get_change_id()
-                .expect(CHANGE_ID_DESER_ERROR);
-
-            <span class="kw">if let </span><span class="prelude-val">Some</span>(slot) = last_slot &amp;&amp; slot &gt; db_slot {
-                <span class="kw">return </span><span class="prelude-val">Err</span>(BootstrapError::GeneralError(
-                    <span class="string">&quot;Bootstrap cursor set to future slot&quot;</span>.to_string(),
-                ));
+                final_state_changes = Vec::new();
             }
 
             <span class="comment">// Update cursors for next turn
-            </span>last_state_step = new_state_step;
-            last_slot = <span class="prelude-val">Some</span>(db_slot);
-            current_slot = db_slot;
+            </span>last_ledger_step = new_ledger_step;
+            last_pool_step = new_pool_step;
+            last_cycle_step = new_cycle_step;
+            last_credits_step = new_credits_step;
+            last_ops_step = new_ops_step;
+            last_de_step = new_de_step;
+            last_slot = <span class="prelude-val">Some</span>(final_state_read.slot);
+            current_slot = final_state_read.slot;
             send_last_start_period = <span class="bool-val">false</span>;
         }
 
@@ -1283,7 +1328,20 @@
         }
 
         <span class="comment">// Setup final state global cursor
-        </span><span class="kw">let </span>final_state_global_step = <span class="kw">if </span>last_state_step.finished() {
+        </span><span class="kw">let </span>final_state_global_step = <span class="kw">if </span>last_ledger_step.finished()
+            &amp;&amp; last_pool_step.finished()
+            &amp;&amp; last_cycle_step.finished()
+            &amp;&amp; last_credits_step.finished()
+            &amp;&amp; last_ops_step.finished()
+            &amp;&amp; last_de_step.finished()
+        {
+            StreamingStep::Finished(<span class="prelude-val">Some</span>(current_slot))
+        } <span class="kw">else </span>{
+            StreamingStep::Ongoing(current_slot)
+        };
+
+        <span class="comment">// Setup final state changes cursor
+        </span><span class="kw">let </span>final_state_changes_step = <span class="kw">if </span>final_state_changes.is_empty() {
             StreamingStep::Finished(<span class="prelude-val">Some</span>(current_slot))
         } <span class="kw">else </span>{
             StreamingStep::Ongoing(current_slot)
@@ -1296,7 +1354,7 @@
         <span class="kw">let </span><span class="kw-2">mut </span>consensus_outdated_ids: PreHashSet&lt;BlockId&gt; = PreHashSet::default();
         <span class="kw">if </span>final_state_global_step.finished() {
             <span class="kw">let </span>(part, outdated_ids, new_consensus_step) = consensus_controller
-                .get_bootstrap_part(last_consensus_step, final_state_global_step)<span class="question-mark">?</span>;
+                .get_bootstrap_part(last_consensus_step, final_state_changes_step)<span class="question-mark">?</span>;
             consensus_part = part;
             consensus_outdated_ids = outdated_ids;
             last_consensus_step = new_consensus_step;
@@ -1317,7 +1375,10 @@
 
         <span class="comment">// If the consensus streaming is finished (also meaning that consensus slot == final state slot) exit
         // We don&#39;t bother with the bs-deadline, as this is the last step of the bootstrap process - defer to general write-timeout
-        </span><span class="kw">if </span>final_state_global_step.finished() &amp;&amp; last_consensus_step.finished() {
+        </span><span class="kw">if </span>final_state_global_step.finished()
+            &amp;&amp; final_state_changes_step.finished()
+            &amp;&amp; last_consensus_step.finished()
+        {
             server.send_msg(write_timeout, BootstrapServerMessage::BootstrapFinished)<span class="question-mark">?</span>;
             <span class="kw">break</span>;
         }
@@ -1330,11 +1391,16 @@
             write_timeout,
             BootstrapServerMessage::BootstrapPart {
                 slot: current_slot,
-                state_part,
+                ledger_part,
+                async_pool_part,
+                pos_cycle_part,
+                pos_credits_part,
+                exec_ops_part,
+                exec_de_part,
+                final_state_changes,
                 consensus_part,
                 consensus_outdated_ids,
                 last_start_period,
-                last_slot_before_downtime,
             },
         )<span class="question-mark">?</span>;
     }
@@ -1423,7 +1489,12 @@
                 }
                 BootstrapClientMessage::AskBootstrapPart {
                     last_slot,
-                    last_state_step,
+                    last_ledger_step,
+                    last_pool_step,
+                    last_cycle_step,
+                    last_credits_step,
+                    last_ops_step,
+                    last_de_step,
                     last_consensus_step,
                     send_last_start_period,
                 } =&gt; {
@@ -1432,7 +1503,12 @@
                         final_state.clone(),
                         consensus_controller.clone(),
                         last_slot,
-                        last_state_step,
+                        last_ledger_step,
+                        last_pool_step,
+                        last_cycle_step,
+                        last_credits_step,
+                        last_ops_step,
+                        last_de_step,
                         last_consensus_step,
                         send_last_start_period,
                         <span class="kw-2">&amp;</span>deadline,
