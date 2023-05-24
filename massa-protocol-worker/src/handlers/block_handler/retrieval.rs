@@ -1138,14 +1138,8 @@ impl RetrievalThread {
                             ),
                         );
                     } else {
-                        let data = cache_write
-                            .blocks_known_by_peer
-                            .remove(&peer_id)
-                            .ok_or(())
-                            .expect("promote peer_id not found");
-                        cache_write
-                            .blocks_known_by_peer
-                            .insert(peer_id.clone(), data);
+                        // Promote peer_id as the newest used key
+                        cache_write.blocks_known_by_peer.get(&peer_id);
                     }
 
                     if !self.asked_blocks.contains_key(&peer_id) {

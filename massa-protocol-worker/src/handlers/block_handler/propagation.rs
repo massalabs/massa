@@ -81,7 +81,7 @@ impl PropagationThread {
                                     }
                                 }
                                 for peer_id in peers_connected {
-                                    if cache_write.blocks_known_by_peer.get(&peer_id).is_none() {
+                                    if !cache_write.blocks_known_by_peer.peek(&peer_id).is_some() {
                                         //TODO: Change to detect the connection before
                                         cache_write.blocks_known_by_peer.insert(
                                             peer_id,

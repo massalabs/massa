@@ -102,7 +102,7 @@ impl PropagationThread {
 
             // Add new potential peers
             for peer_id in peers_connected {
-                if cache_write.ops_known_by_peer.get(&peer_id).is_none() {
+                if cache_write.ops_known_by_peer.peek(&peer_id).is_none() {
                     cache_write.ops_known_by_peer.insert(
                         peer_id.clone(),
                         LruMap::new(ByLength::new(
