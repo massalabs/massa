@@ -64,7 +64,7 @@ impl ExecutedOps {
             (Included(u64::MIN), Included(u64::MAX)),
             (Included(0), Excluded(config.thread_count)),
         );
-        let mut executed_ops = Self {
+        Self {
             _config: config,
             db,
             sorted_ops: BTreeMap::new(),
@@ -75,9 +75,7 @@ impl ExecutedOps {
             bool_serializer: BoolSerializer::new(),
             slot_deserializer,
             slot_serializer: SlotSerializer::new(),
-        };
-        executed_ops.recompute_sorted_ops_and_op_exec_status();
-        executed_ops
+        }
     }
 
     /// Recomputes the local caches after bootstrap or loading the state from disk

@@ -180,7 +180,7 @@ impl PoSFinalState {
             config.max_production_stats_length,
         );
 
-        let mut pos_state = Self {
+        let pos_state = Self {
             config,
             db,
             cycle_history_cache: Default::default(),
@@ -193,9 +193,6 @@ impl PoSFinalState {
             cycle_info_serializer: CycleHistorySerializer::new(),
             cycle_info_deserializer,
         };
-
-        // TODO_PR: Should we do this here or only after bootstrap?
-        pos_state.recompute_pos_state_caches();
 
         Ok(pos_state)
     }

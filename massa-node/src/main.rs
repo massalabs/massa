@@ -327,9 +327,9 @@ async fn launch(
         panic!("critical: db is not valid after bootstrap");
     }
 
-    final_state.write().recompute_caches();
-
     if args.restart_from_snapshot_at_period.is_none() {
+        final_state.write().recompute_caches();
+
         // give the controller to final state in order for it to feed the cycles
         final_state
             .write()

@@ -204,7 +204,7 @@ pub struct AsyncPool {
 impl AsyncPool {
     /// Creates an empty `AsyncPool`
     pub fn new(config: AsyncPoolConfig, db: Arc<RwLock<MassaDB>>) -> AsyncPool {
-        let mut async_pool = AsyncPool {
+        AsyncPool {
             config: config.clone(),
             db,
             message_info_cache: Default::default(),
@@ -217,9 +217,7 @@ impl AsyncPool {
                 config.max_key_length,
                 true,
             ),
-        };
-        async_pool.recompute_message_info_cache();
-        async_pool
+        }
     }
 
     /// Recomputes the local message_info_cache after bootstrap or loading the state from disk

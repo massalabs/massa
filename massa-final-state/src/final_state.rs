@@ -188,6 +188,8 @@ impl FinalState {
         // Then, interpolate the downtime, to attach at end_slot;
         final_state.last_start_period = last_start_period;
 
+        final_state.recompute_caches();
+
         // We compute the draws here because we need to feed_cycles when interpolating
         final_state.compute_initial_draws()?;
 
