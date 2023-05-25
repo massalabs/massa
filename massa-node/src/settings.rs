@@ -111,7 +111,7 @@ pub struct APISettings {
     pub max_subscriptions_per_connection: u32,
     pub max_log_length: u32,
     pub allow_hosts: Vec<String>,
-    pub batch_requests_supported: bool,
+    pub batch_request_limit: u32,
     pub ping_interval: MassaTime,
     pub enable_http: bool,
     pub enable_ws: bool,
