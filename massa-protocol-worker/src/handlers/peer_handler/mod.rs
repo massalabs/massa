@@ -578,8 +578,9 @@ impl InitConnectionHandler<PeerId, Context, MessagesHandler> for MassaHandshake 
                 warn!("Failed to serialize message: {}", err);
                 return;
             }
-            //TODO: Make it non blockable
-            if let Err(err) = endpoint.send::<PeerId>(buf.as_slice()) {
+            if let Err(err) =
+                endpoint.send_timeout::<PeerId>(buf.as_slice(), Duration::from_millis(200))
+            {
                 warn!("Failed to send message: {}", err);
                 return;
             }
