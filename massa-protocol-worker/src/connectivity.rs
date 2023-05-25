@@ -195,7 +195,7 @@ pub(crate) fn start_connectivity_thread(
                                     let peers: HashMap<PeerId, (SocketAddr, PeerConnectionType)> = network_controller.get_active_connections().get_peers_connected().into_iter().map(|(peer_id, peer)| {
                                         (peer_id, (peer.0, peer.1))
                                     }).collect();
-                                    responder.send((stats, peers)).unwrap_or_else(|_| warn!("Failed to send stats to responder"));
+                                    responder.try_send((stats, peers)).unwrap_or_else(|_| warn!("Failed to send stats to responder"));
                                 }
                                 Err(_) => {
                                     warn!("Channel to connectivity thread is closed. Stopping the protocol");

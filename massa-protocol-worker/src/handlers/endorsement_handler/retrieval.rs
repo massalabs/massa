@@ -219,7 +219,7 @@ impl RetrievalThread {
                     .collect()
             };
             endorsements_to_propagate.drop_endorsement_refs(&endorsements_to_not_propagate);
-            if let Err(err) = self.internal_sender.send(
+            if let Err(err) = self.internal_sender.try_send(
                 EndorsementHandlerPropagationCommand::PropagateEndorsements(
                     endorsements_to_propagate,
                 ),
@@ -237,7 +237,7 @@ impl RetrievalThread {
     fn ban_node(&mut self, peer_id: &PeerId) -> Result<(), ProtocolError> {
         massa_trace!("ban node from retrieval thread", { "peer_id": peer_id.to_string() });
         self.peer_cmd_sender
-            .send(PeerManagementCmd::Ban(vec![peer_id.clone()]))
+            .try_send(PeerManagementCmd::Ban(vec![peer_id.clone()]))
             .map_err(|err| ProtocolError::SendError(err.to_string()))
     }
 }
