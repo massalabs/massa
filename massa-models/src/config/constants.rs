@@ -295,7 +295,7 @@ pub const MAX_LISTENERS_PER_PEER: u64 = 100;
 // Constants used in versioning
 //
 /// Threshold to accept a new versioning
-pub const VERSIONING_THRESHOLD_TRANSITION_ACCEPTED: Amount = Amount::from_mantissa_scale(75, 0);
+pub const VERSIONING_THRESHOLD_TRANSITION_ACCEPTED: Amount = Amount::from_mantissa_scale(65, 0);
 /// Block count to process in MipStoreStats (for state change threshold)
 pub const MIP_STORE_STATS_BLOCK_CONSIDERED: usize = 1000;
 /// Max number of stats counters
