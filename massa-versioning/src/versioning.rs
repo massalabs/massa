@@ -237,6 +237,20 @@ impl Failed {
     }
 }
 
+/// Error returned by `MipState::is_coherent_with`
+#[derive(Error, Debug, PartialEq)]
+pub enum IsCoherentError {
+    // State is not coherent with associated MipInfo, ex: State is active but MipInfo.start was not reach yet
+    #[error("MipState history is empty")]
+    EmptyHistory,
+    #[error("MipState is at state Error")]
+    AtError,
+    #[error("History must start at state 'Defined' and not {0:?}")]
+    InvalidHistory(ComponentStateTypeId),
+    #[error("Non coherent state: {0:?} versus rebuilt state: {1:?}")]
+    NonCoherent(ComponentState, ComponentState),
+}
+
 /// Wrapper of ComponentState (in order to keep state history)
 #[derive(Debug, Clone, PartialEq)]
 pub struct MipState {
@@ -304,35 +318,37 @@ impl MipState {
         }
     }
 
-    /// Given a corresponding VersioningInfo, check if state is coherent
+    /// Given a corresponding MipInfo, check if state is coherent
     /// it is coherent
     ///   if state can be at this position (e.g. can it be at state "Started" according to given time range)
     ///   if history is coherent with current state
     /// Return false for state == ComponentState::Error
-    pub fn is_coherent_with(&self, versioning_info: &MipInfo) -> bool {
-        // TODO: rename versioning_info -> mip_info
-
+    pub fn is_coherent_with(&self, mip_info: &MipInfo) -> Result<(), IsCoherentError> {
         // Always return false for state Error or if history is empty
-        if matches!(&self.state, &ComponentState::Error) || self.history.is_empty() {
-            return false;
+        if matches!(&self.state, &ComponentState::Error) {
+            return Err(IsCoherentError::AtError);
+        }
+
+        if self.history.is_empty() {
+            return Err(IsCoherentError::EmptyHistory);
         }
 
         // safe to unwrap (already tested if empty or not)
         let (initial_ts, initial_state_id) = self.history.first_key_value().unwrap();
         if *initial_state_id != ComponentStateTypeId::Defined {
             // self.history does not start with Defined -> (always) false
-            return false;
+            return Err(IsCoherentError::InvalidHistory(initial_state_id.clone()));
         }
 
-        // Build a new VersionStateHistory from initial state, replaying the whole history
+        // Build a new MipStateHistory from initial state, replaying the whole history
         // but with given versioning info then compare
         let mut vsh = MipState::new(initial_ts.now);
         let mut advance_msg = Advance {
-            start_timestamp: versioning_info.start,
-            timeout: versioning_info.timeout,
+            start_timestamp: mip_info.start,
+            timeout: mip_info.timeout,
             threshold: Amount::zero(),
             now: initial_ts.now,
-            activation_delay: versioning_info.activation_delay,
+            activation_delay: mip_info.activation_delay,
         };
 
         for (adv, _state) in self.history.iter().skip(1) {
@@ -341,7 +357,14 @@ impl MipState {
             vsh.on_advance(&advance_msg);
         }
 
-        vsh == *self
+        if vsh == *self {
+            Ok(())
+        } else {
+            Err(IsCoherentError::NonCoherent(
+                self.state.clone(),
+                vsh.state.clone(),
+            ))
+        }
     }
 
     /// Query state at given timestamp
@@ -579,7 +602,7 @@ impl MipStoreStats {
     }
 }
 
-/// Error returned by
+/// Error returned by `MipStoreRaw::update_with`
 #[derive(Error, Debug, PartialEq)]
 pub enum UpdateWithError {
     // State is not coherent with associated MipInfo, ex: State is active but MipInfo.start was not reach yet
@@ -633,7 +656,7 @@ impl MipStoreRaw {
         let mut has_error: Option<UpdateWithError> = None;
 
         for (v_info, v_state) in store_raw.store.iter() {
-            if !v_state.is_coherent_with(v_info) {
+            if let Err(_e) = v_state.is_coherent_with(v_info) {
                 // As soon as we found one non coherent state we abort the merge
                 has_error = Some(UpdateWithError::NonCoherent(
                     v_info.clone(),
@@ -982,6 +1005,7 @@ mod test {
     use std::str::FromStr;
 
     use chrono::{Days, NaiveDate, NaiveDateTime};
+    use more_asserts::assert_le;
 
     use crate::test_helpers::versioning_helpers::advance_state_until;
 
@@ -1070,8 +1094,11 @@ mod test {
         let mut state: ComponentState = ComponentState::started(Default::default());
 
         let now = mi.start;
-        let threshold_too_low = Amount::from_str("74.9").unwrap();
-        let threshold_ok = Amount::from_str("82.42").unwrap();
+        let threshold_too_low = VERSIONING_THRESHOLD_TRANSITION_ACCEPTED
+            .saturating_sub(Amount::from_str("0.1").unwrap());
+        let threshold_ok = VERSIONING_THRESHOLD_TRANSITION_ACCEPTED
+            .saturating_add(Amount::from_str("5.42").unwrap());
+        assert_le!(threshold_ok, Amount::from_str("100.0").unwrap());
         let mut advance_msg = Advance::from((&mi, &threshold_too_low, &now));
 
         state = state.on_advance(advance_msg.clone());
@@ -1299,18 +1326,18 @@ mod test {
             history: Default::default(),
         };
         // At state Error -> (always) false
-        assert_eq!(vsh.is_coherent_with(&vi_1), false);
+        assert_eq!(vsh.is_coherent_with(&vi_1), Err(IsCoherentError::AtError));
 
         let vsh = MipState {
             state: ComponentState::defined(),
             history: Default::default(),
         };
         // At state Defined but no history -> false
-        assert_eq!(vsh.is_coherent_with(&vi_1), false);
+        assert_eq!(vsh.is_coherent_with(&vi_1).is_ok(), false);
 
         let mut vsh = MipState::new(MassaTime::from(1));
         // At state Defined at time 1 -> true, given vi_1 @ time 1
-        assert_eq!(vsh.is_coherent_with(&vi_1), true);
+        assert_eq!(vsh.is_coherent_with(&vi_1).is_ok(), true);
         // At state Defined at time 1 -> false given vi_1 @ time 3 (state should be Started)
         // assert_eq!(vsh.is_coherent_with(&vi_1, MassaTime::from(3)), false);
 
@@ -1321,9 +1348,9 @@ mod test {
 
         // At state Started at time now -> true
         assert_eq!(vsh.state, ComponentState::started(Amount::zero()));
-        assert_eq!(vsh.is_coherent_with(&vi_1), true);
+        assert_eq!(vsh.is_coherent_with(&vi_1).is_ok(), true);
         // Now with another versioning info
-        assert_eq!(vsh.is_coherent_with(&vi_2), false);
+        assert_eq!(vsh.is_coherent_with(&vi_2).is_ok(), false);
 
         // Advance to LockedIn
         let now = MassaTime::from(4);
@@ -1332,8 +1359,7 @@ mod test {
 
         // At state LockedIn at time now -> true
         assert_eq!(vsh.state, ComponentState::locked_in(now));
-        assert_eq!(vsh.is_coherent_with(&vi_1), true);
-        assert_eq!(vsh.is_coherent_with(&vi_1), true);
+        assert_eq!(vsh.is_coherent_with(&vi_1).is_ok(), true);
 
         // edge cases
         // TODO: history all good but does not start with Defined, start with Started
