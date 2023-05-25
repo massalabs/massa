@@ -30,7 +30,7 @@ use std::path::Path;
 use std::{path::PathBuf, str::FromStr, sync::Arc};
 use tempfile::TempDir;
 
-fn create_final_state(temp_dir: &TempDir) -> Arc<RwLock<FinalState>> {
+fn create_final_state(temp_dir: &TempDir, reset_final_state: bool) -> Arc<RwLock<FinalState>> {
     let thread_count = 2;
 
     let db_config = MassaDBConfig {
@@ -104,7 +104,7 @@ fn create_final_state(temp_dir: &TempDir) -> Arc<RwLock<FinalState>> {
             final_state_local_config.clone(),
             Box::new(ledger),
             selector_controller,
-            false,
+            reset_final_state,
         )
         .unwrap(),
     ));
@@ -134,7 +134,7 @@ fn test_final_state() {
 
     let hash;
     {
-        let fs = create_final_state(&temp_dir);
+        let fs = create_final_state(&temp_dir, true);
 
         let mut batch = DBBatch::new();
 
@@ -192,7 +192,7 @@ fn test_final_state() {
 
     copy_dir_all(temp_dir.path(), &temp_dir2.path()).unwrap();
 
-    let fs2 = create_final_state(&temp_dir2);
+    let fs2 = create_final_state(&temp_dir2, false);
     let hash2 = fs2.read().db.read().get_db_hash();
 
     assert_eq!(hash, hash2);
