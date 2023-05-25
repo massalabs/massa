@@ -509,7 +509,7 @@ impl FinalState {
         info!("final_state hash at slot {}: {}", slot, final_state_hash);
 
         // Backup DB if needed
-        if slot.period % PERIODS_BETWEEN_BACKUPS == 0 && slot.period != 0 {
+        if slot.period % PERIODS_BETWEEN_BACKUPS == 0 && slot.period != 0 && slot.thread == 0 {
             let state_slot = self.db.read().get_change_id();
             match state_slot {
                 Ok(slot) => {
