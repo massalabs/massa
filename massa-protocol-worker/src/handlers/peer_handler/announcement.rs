@@ -115,34 +115,31 @@ impl Deserializer<Announcement> for AnnouncementDeserializer {
                     }),
                 ),
                 context("Failed timestamp deserialization", |buffer: &'a [u8]| {
-                    let time_buffer = match buffer.get(..8) {
-                        Some(time_buffer) => time_buffer,
-                        None => {
-                            return Err(nom::Err::Error(ParseError::from_error_kind(
+                    let timestamp = u64::from_be_bytes(
+                        buffer
+                            .get(..8)
+                            .ok_or(nom::Err::Error(ParseError::from_error_kind(
                                 buffer,
                                 nom::error::ErrorKind::LengthValue,
-                            )))
-                        }
-                    };
+                            )))?
+                            .try_into()
+                            .map_err(|_| {
+                                nom::Err::Error(ParseError::from_error_kind(
+                                    buffer,
+                                    nom::error::ErrorKind::LengthValue,
+                                ))
+                            })?,
+                    );
 
-                    let timestamp = u64::from_be_bytes(time_buffer.try_into().map_err(|_| {
-                        nom::Err::Error(ParseError::from_error_kind(
-                            buffer,
-                            nom::error::ErrorKind::LengthValue,
-                        ))
-                    })?);
-
-                    let data = match buffer.get(8..) {
-                        Some(data) => data,
-                        None => {
-                            return Err(nom::Err::Error(ParseError::from_error_kind(
+                    Ok((
+                        buffer
+                            .get(8..)
+                            .ok_or(nom::Err::Error(ParseError::from_error_kind(
                                 buffer,
                                 nom::error::ErrorKind::LengthValue,
-                            )))
-                        }
-                    };
-
-                    Ok((data, timestamp))
+                            )))?,
+                        timestamp,
+                    ))
                 }),
             )),
         )

@@ -385,17 +385,14 @@ impl InitConnectionHandler<PeerId, Context, MessagesHandler> for MassaHandshake 
             )?;
             match id {
                 0 => {
-                    let data = match received.get(1..) {
-                        Some(data) => data,
-                        None => {
-                            return Err(PeerNetError::HandshakeError
-                                .error("Massa Handshake", Some("Failed to get data".to_string())))
-                        }
-                    };
-
                     let (_, announcement) = self
                         .announcement_deserializer
-                        .deserialize::<DeserializeError>(data)
+                        .deserialize::<DeserializeError>(
+                            received.get(1..).ok_or(PeerNetError::HandshakeError.error(
+                                "Massa Handshake",
+                                Some("Failed to get data".to_string()),
+                            ))?,
+                        )
                         .map_err(|err| {
                             PeerNetError::HandshakeError.error(
                                 "Massa Handshake",
@@ -483,15 +480,13 @@ impl InitConnectionHandler<PeerId, Context, MessagesHandler> for MassaHandshake 
                     Ok((peer_id.clone(), Some(announcement)))
                 }
                 1 => {
-                    let data = match received.get(1..) {
-                        Some(data) => data,
-                        None => {
-                            return Err(PeerNetError::HandshakeError
-                                .error("Massa Handshake", Some("Failed to get data".to_string())))
-                        }
-                    };
-
-                    self.message_handlers.handle(data, &peer_id)?;
+                    self.message_handlers.handle(
+                        received.get(1..).ok_or(
+                            PeerNetError::HandshakeError
+                                .error("Massa Handshake", Some("Failed to get data".to_string())),
+                        )?,
+                        &peer_id,
+                    )?;
                     Ok((peer_id.clone(), None))
                 }
                 _ => Err(PeerNetError::HandshakeError
