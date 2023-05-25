@@ -1,12 +1,12 @@
-use std::{collections::VecDeque, num::NonZeroUsize, thread::JoinHandle, time::Instant};
+use std::{collections::VecDeque, thread::JoinHandle, time::Instant};
 
 use crossbeam::channel::{Receiver, Sender};
-use lru::LruCache;
 use massa_logging::massa_trace;
 use massa_models::{block_id::BlockId, prehash::PreHashSet};
 use massa_protocol_exports::PeerId;
 use massa_protocol_exports::{ProtocolConfig, ProtocolError};
 use massa_storage::Storage;
+use schnellru::{ByLength, LruMap};
 use tracing::{debug, info, warn};
 
 use crate::{
@@ -77,18 +77,18 @@ impl PropagationThread {
                                     self.active_connections.get_peer_ids_connected();
                                 for peer_id in peers {
                                     if !peers_connected.contains(&peer_id) {
-                                        cache_write.blocks_known_by_peer.pop(&peer_id);
+                                        cache_write.blocks_known_by_peer.remove(&peer_id);
                                     }
                                 }
                                 for peer_id in peers_connected {
-                                    if !cache_write.blocks_known_by_peer.contains(&peer_id) {
+                                    if cache_write.blocks_known_by_peer.peek(&peer_id).is_none() {
                                         //TODO: Change to detect the connection before
-                                        cache_write.blocks_known_by_peer.put(
+                                        cache_write.blocks_known_by_peer.insert(
                                             peer_id,
                                             (
-                                                LruCache::new(
-                                                    NonZeroUsize::new(self.config.max_node_known_blocks_size)
-                                                        .expect("max_node_known_blocks_size in config must be > 0"),
+                                                LruMap::new(
+                                                    ByLength::new(self.config.max_node_known_blocks_size.try_into()
+                                                        .expect("max_node_known_blocks_size in config must be > 0")),
                                                 ),
                                                 Instant::now(),
                                             ),
@@ -98,7 +98,8 @@ impl PropagationThread {
                             }
                             {
                                 let cache_read = self.cache.read();
-                                for (peer_id, (blocks_known, _)) in &cache_read.blocks_known_by_peer
+                                for (peer_id, (blocks_known, _)) in
+                                    cache_read.blocks_known_by_peer.iter()
                                 {
                                     // peer that isn't asking for that block
                                     let cond = blocks_known.peek(&block_id);
