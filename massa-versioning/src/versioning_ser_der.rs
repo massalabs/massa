@@ -645,8 +645,8 @@ impl Serializer<MipStoreStats> for MipStoreStatsSerializer {
 
             if entry_count > entry_count_max {
                 return Err(SerializeError::GeneralError(format!(
-                    "Too many entries in MipStoreStats latest announcements, max: {}",
-                    MIP_STORE_STATS_BLOCK_CONSIDERED
+                    "Too many entries in MipStoreStats latest announcements, max: {}, received: {}",
+                    entry_count_max, entry_count
                 )));
             }
             self.u32_serializer.serialize(&entry_count, buffer)?;
