@@ -1224,6 +1224,7 @@
 <a href="#1224" id="1224">1224</a>
 <a href="#1225" id="1225">1225</a>
 <a href="#1226" id="1226">1226</a>
+<a href="#1227" id="1227">1227</a>
 </pre><pre class="rust"><code><span class="kw">use </span>std::collections::BTreeMap;
 <span class="kw">use </span>std::mem;
 <span class="kw">use </span>std::ops::Bound::{Excluded, Included};
@@ -2146,8 +2147,9 @@ impl Default for MipStoreRawDeserializer {
 </span><span class="attr">#[cfg(test)]
 </span><span class="kw">mod </span>test {
     <span class="kw">use super</span>::<span class="kw-2">*</span>;
-
     <span class="kw">use </span>std::assert_matches::assert_matches;
+
+    <span class="kw">use </span>std::collections::HashMap;
     <span class="kw">use </span>std::mem::{size_of, size_of_val};
     <span class="kw">use </span>std::str::FromStr;
 
@@ -2193,7 +2195,7 @@ impl Default for MipStoreRawDeserializer {
         <span class="kw">let </span>vi_1 = MipInfo {
             name: <span class="string">&quot;MIP-0002&quot;</span>.to_string(),
             version: <span class="number">2</span>,
-            components: BTreeMap::from([(MipComponent::Address, <span class="number">1</span>)]),
+            components: HashMap::from([(MipComponent::Address, <span class="number">1</span>)]),
             start: MassaTime::from(<span class="number">2</span>),
             timeout: MassaTime::from(<span class="number">5</span>),
             activation_delay: MassaTime::from(<span class="number">2</span>),
@@ -2293,7 +2295,7 @@ impl Default for MipStoreRawDeserializer {
         <span class="kw">let </span>mi_1 = MipInfo {
             name: <span class="string">&quot;MIP-0002&quot;</span>.to_string(),
             version: <span class="number">2</span>,
-            components: BTreeMap::from([(MipComponent::Address, <span class="number">1</span>)]),
+            components: HashMap::from([(MipComponent::Address, <span class="number">1</span>)]),
             start: MassaTime::from(<span class="number">2</span>),
             timeout: MassaTime::from(<span class="number">5</span>),
             activation_delay: MassaTime::from(<span class="number">2</span>),
@@ -2346,7 +2348,7 @@ impl Default for MipStoreRawDeserializer {
         <span class="kw">let </span>mi_2 = MipInfo {
             name: <span class="string">&quot;MIP-0002&quot;</span>.to_string(),
             version: <span class="number">2</span>,
-            components: BTreeMap::from([(MipComponent::Address, <span class="number">1</span>)]),
+            components: HashMap::from([(MipComponent::Address, <span class="number">1</span>)]),
             start: MassaTime::from(<span class="number">2</span>),
             timeout: MassaTime::from(<span class="number">5</span>),
             activation_delay: MassaTime::from(<span class="number">2</span>),
@@ -2355,7 +2357,7 @@ impl Default for MipStoreRawDeserializer {
         <span class="kw">let </span>mi_3 = MipInfo {
             name: <span class="string">&quot;MIP-0003&quot;</span>.to_string(),
             version: <span class="number">3</span>,
-            components: BTreeMap::from([(MipComponent::Block, <span class="number">1</span>)]),
+            components: HashMap::from([(MipComponent::Block, <span class="number">1</span>)]),
             start: MassaTime::from(<span class="number">12</span>),
             timeout: MassaTime::from(<span class="number">17</span>),
             activation_delay: MassaTime::from(<span class="number">2</span>),
@@ -2387,7 +2389,7 @@ impl Default for MipStoreRawDeserializer {
         <span class="kw">let </span><span class="kw-2">mut </span>mi_base = MipInfo {
             name: <span class="string">&quot;A&quot;</span>.repeat(<span class="number">254</span>),
             version: <span class="number">0</span>,
-            components: BTreeMap::from([(MipComponent::Address, <span class="number">0</span>)]),
+            components: HashMap::from([(MipComponent::Address, <span class="number">0</span>)]),
             start: MassaTime::from(<span class="number">0</span>),
             timeout: MassaTime::from(<span class="number">2</span>),
             activation_delay: MassaTime::from(<span class="number">2</span>),

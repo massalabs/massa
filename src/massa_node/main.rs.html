@@ -1259,9 +1259,6 @@
 <a href="#1259" id="1259">1259</a>
 <a href="#1260" id="1260">1260</a>
 <a href="#1261" id="1261">1261</a>
-<a href="#1262" id="1262">1262</a>
-<a href="#1263" id="1263">1263</a>
-<a href="#1264" id="1264">1264</a>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="attr">#![doc = <span class="macro">include_str!</span>(<span class="string">&quot;../../README.md&quot;</span>)]
@@ -1348,7 +1345,7 @@
 <span class="kw">use </span>massa_wallet::Wallet;
 <span class="kw">use </span>parking_lot::RwLock;
 <span class="kw">use </span>peernet::transports::TransportType;
-<span class="kw">use </span>std::collections::{BTreeMap, HashMap};
+<span class="kw">use </span>std::collections::HashMap;
 <span class="kw">use </span>std::path::PathBuf;
 <span class="kw">use </span>std::sync::atomic::{AtomicUsize, Ordering};
 <span class="kw">use </span>std::sync::{Condvar, Mutex};
@@ -1612,10 +1609,7 @@
             MipInfo {
                 name: <span class="string">&quot;MIP-0001&quot;</span>.to_string(),
                 version: <span class="number">1</span>,
-                components: BTreeMap::from([
-                    (MipComponent::Address, <span class="number">1</span>),
-                    (MipComponent::KeyPair, <span class="number">1</span>),
-                ]),
+                components: HashMap::from([(MipComponent::Address, <span class="number">1</span>), (MipComponent::KeyPair, <span class="number">1</span>)]),
                 start: MassaTime::from(<span class="number">0</span>),
                 timeout: MassaTime::from(<span class="number">0</span>),
                 activation_delay: MassaTime::from(<span class="number">0</span>),
