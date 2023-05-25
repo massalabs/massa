@@ -223,7 +223,7 @@
         <span class="kw">if let </span><span class="prelude-val">Some</span>(connection) = <span class="self">self</span>.read().connections.get(peer_id) {
             connection
                 .send_channels
-                .send(message_serializer, message, high_priority)
+                .try_send(message_serializer, message, high_priority)
                 .map_err(|err| ProtocolError::SendError(err.to_string()))
         } <span class="kw">else </span>{
             <span class="prelude-val">Err</span>(ProtocolError::SendError(
