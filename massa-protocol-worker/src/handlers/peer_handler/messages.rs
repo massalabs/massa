@@ -248,7 +248,18 @@ fn listener_deserializer<'a, E: ParseError<&'a [u8]> + ContextError<&'a [u8]>>(
                                 )))
                             }
                         };
-                        Ok((&buffer[1..], transport_type))
+
+                        let data = match buffer.get(1..) {
+                            Some(data) => data,
+                            None => {
+                                return Err(nom::Err::Error(ParseError::from_error_kind(
+                                    buffer,
+                                    nom::error::ErrorKind::LengthValue,
+                                )))
+                            }
+                        };
+
+                        Ok((data, transport_type))
                     },
                 )
                 .parse(buffer)
