@@ -357,6 +357,21 @@ impl MipState {
             vsh.on_advance(&advance_msg);
         }
 
+        // Advance state if both are at 'Started' (to have the same threshold)
+        // Note: because in history we do not add entries for every threshold update
+        if let (
+            ComponentState::Started(Started { threshold }),
+            ComponentState::Started(Started {
+                threshold: threshold_2,
+            }),
+        ) = (vsh.state, self.state)
+        {
+            if threshold_2 != threshold {
+                advance_msg.threshold = threshold_2;
+                vsh.on_advance(&advance_msg);
+            }
+        }
+
         if vsh == *self {
             Ok(())
         } else {
