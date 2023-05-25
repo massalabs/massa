@@ -144,7 +144,7 @@ fn test_noting_block_does_not_panic_with_one_max_node_known_blocks_size() {
                     &node_b_peer_id,
                     Message::Block(Box::new(BlockMessage::ReplyForBlocks(vec![(
                         block.id,
-                        BlockInfoReply::Operations(vec![op_1.clone(), op_2.clone()]),
+                        BlockInfoReply::Operations(vec![op_1, op_2]),
                     )]))),
                 )
                 .unwrap();

@@ -47,7 +47,7 @@ pub struct RetrievalThread {
 
 impl RetrievalThread {
     fn run(&mut self) {
-        let mut endorsement_message_deserializer =
+        let endorsement_message_deserializer =
             EndorsementMessageDeserializer::new(EndorsementMessageDeserializerArgs {
                 thread_count: self.config.thread_count,
                 max_length_endorsements: self.config.max_endorsements_per_message,
@@ -57,8 +57,7 @@ impl RetrievalThread {
             select! {
                 recv(self.receiver) -> msg => {
                     match msg {
-                        Ok((peer_id, message_id, message)) => {
-                            endorsement_message_deserializer.set_message_id(message_id);
+                        Ok((peer_id, message)) => {
                             let (rest, message) = match endorsement_message_deserializer
                                 .deserialize::<DeserializeError>(&message) {
                                 Ok((rest, message)) => (rest, message),
@@ -220,7 +219,7 @@ impl RetrievalThread {
                     .collect()
             };
             endorsements_to_propagate.drop_endorsement_refs(&endorsements_to_not_propagate);
-            if let Err(err) = self.internal_sender.send(
+            if let Err(err) = self.internal_sender.try_send(
                 EndorsementHandlerPropagationCommand::PropagateEndorsements(
                     endorsements_to_propagate,
                 ),
@@ -238,7 +237,7 @@ impl RetrievalThread {
     fn ban_node(&mut self, peer_id: &PeerId) -> Result<(), ProtocolError> {
         massa_trace!("ban node from retrieval thread", { "peer_id": peer_id.to_string() });
         self.peer_cmd_sender
-            .send(PeerManagementCmd::Ban(vec![peer_id.clone()]))
+            .try_send(PeerManagementCmd::Ban(vec![peer_id.clone()]))
             .map_err(|err| ProtocolError::SendError(err.to_string()))
     }
 }

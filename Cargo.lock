@@ -3617,7 +3617,7 @@ checksum = "19b17cddbe7ec3f8bc800887bab5e717348c95ea2ca0b1bf0837fb964dc67099"
 [[package]]
 name = "peernet"
 version = "0.1.0"
-source = "git+https://github.com/massalabs/PeerNet?branch=generic_peer_id#3425da8f0adfd2bf21577e99063810a3bf3f83ce"
+source = "git+https://github.com/massalabs/PeerNet?rev=0ad0e2e#0ad0e2eb10fc059ad64407825ae984a1c568ac00"
 dependencies = [
  "crossbeam",
  "enum_delegate",
@@ -4774,9 +4774,9 @@ checksum = "9e08d8363704e6c71fc928674353e6b7c23dcea9d82d7012c8faf2a3a025f8d0"
 
 [[package]]
 name = "stream_limiter"
-version = "1.2.0"
+version = "2.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c8c15323225cebaeebbf71fd83443d0cc7a7638a8d60b5f9f4108da65f755956"
+checksum = "92b85d49eee44700a8dc9a3e2d316e8e1f7d661d3eccd606ad9d02e9969e04bc"
 
 [[package]]
 name = "strsim"

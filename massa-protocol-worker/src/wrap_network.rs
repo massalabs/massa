@@ -7,7 +7,7 @@ use massa_protocol_exports::{PeerId, ProtocolError};
 use peernet::{
     network_manager::{PeerNetManager, SharedActiveConnections},
     peer::PeerConnectionType,
-    transports::{OutConnectionConfig, TransportType},
+    transports::TransportType,
 };
 
 use crate::{
@@ -51,7 +51,7 @@ impl ActiveConnectionsTrait for SharedActiveConnections<PeerId> {
         if let Some(connection) = self.read().connections.get(peer_id) {
             connection
                 .send_channels
-                .send(message_serializer, message, high_priority)
+                .try_send(message_serializer, message, high_priority)
                 .map_err(|err| ProtocolError::SendError(err.to_string()))
         } else {
             Err(ProtocolError::SendError(
@@ -118,7 +118,6 @@ pub trait NetworkController: Send + Sync {
         &mut self,
         addr: SocketAddr,
         timeout: std::time::Duration,
-        out_connection_config: &OutConnectionConfig,
     ) -> Result<(), ProtocolError>;
 }
 
@@ -163,10 +162,10 @@ impl NetworkController for NetworkControllerImpl {
         &mut self,
         addr: SocketAddr,
         timeout: std::time::Duration,
-        out_connection_config: &OutConnectionConfig,
     ) -> Result<(), ProtocolError> {
+        //TODO: Change when we support multiple transports
         self.peernet_manager
-            .try_connect(addr, timeout, out_connection_config)
+            .try_connect(TransportType::Tcp, addr, timeout)
             .map_err(|err| ProtocolError::GeneralProtocolError(err.to_string()))?;
         Ok(())
     }

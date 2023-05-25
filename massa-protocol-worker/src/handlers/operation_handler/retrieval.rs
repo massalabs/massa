@@ -71,7 +71,7 @@ pub struct RetrievalThread {
 
 impl RetrievalThread {
     fn run(&mut self) {
-        let mut operation_message_deserializer =
+        let operation_message_deserializer =
             OperationMessageDeserializer::new(OperationMessageDeserializerArgs {
                 max_operations_prefix_ids: self.config.max_operations_per_message as u32,
                 max_operations: self.config.max_operations_per_message as u32,
@@ -88,8 +88,7 @@ impl RetrievalThread {
             select! {
                 recv(self.receiver) -> msg => {
                     match msg {
-                        Ok((peer_id, message_id, message)) => {
-                            operation_message_deserializer.set_message_id(message_id);
+                        Ok((peer_id, message)) => {
                             let (rest, message) = match operation_message_deserializer
                                 .deserialize::<DeserializeError>(&message) {
                                     Ok((rest, message)) => (rest, message),
@@ -271,7 +270,7 @@ impl RetrievalThread {
                 .insert(Instant::now(), to_announce.clone());
             self.storage.extend(ops_to_propagate);
             self.internal_sender
-                .send(OperationHandlerPropagationCommand::AnnounceOperations(
+                .try_send(OperationHandlerPropagationCommand::AnnounceOperations(
                     to_announce,
                 ))
                 .map_err(|err| ProtocolError::SendError(err.to_string()))?;
@@ -480,14 +479,14 @@ impl RetrievalThread {
     fn ban_node(&mut self, peer_id: &PeerId) -> Result<(), ProtocolError> {
         massa_trace!("ban node from retrieval thread", { "peer_id": peer_id.to_string() });
         self.peer_cmd_sender
-            .send(PeerManagementCmd::Ban(vec![peer_id.clone()]))
+            .try_send(PeerManagementCmd::Ban(vec![peer_id.clone()]))
             .map_err(|err| ProtocolError::SendError(err.to_string()))
     }
 }
 
 #[allow(clippy::too_many_arguments)]
 pub fn start_retrieval_thread(
-    receiver: Receiver<(PeerId, u64, Vec<u8>)>,
+    receiver: Receiver<PeerMessageTuple>,
     pool_controller: Box<dyn PoolController>,
     storage: Storage,
     config: ProtocolConfig,

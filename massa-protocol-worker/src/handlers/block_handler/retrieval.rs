@@ -105,7 +105,7 @@ pub struct RetrievalThread {
 
 impl RetrievalThread {
     fn run(&mut self) {
-        let mut block_message_deserializer =
+        let block_message_deserializer =
             BlockMessageDeserializer::new(BlockMessageDeserializerArgs {
                 thread_count: self.config.thread_count,
                 endorsement_count: self.config.endorsement_count,
@@ -124,8 +124,7 @@ impl RetrievalThread {
             select! {
                 recv(self.receiver_network) -> msg => {
                     match msg {
-                        Ok((peer_id, message_id, message)) => {
-                            block_message_deserializer.set_message_id(message_id);
+                        Ok((peer_id, message)) => {
                             let (rest, message) = match block_message_deserializer
                                 .deserialize::<DeserializeError>(&message) {
                                 Ok((rest, message)) => (rest, message),
@@ -588,7 +587,7 @@ impl RetrievalThread {
     fn ban_node(&mut self, peer_id: &PeerId) -> Result<(), ProtocolError> {
         massa_trace!("ban node from retrieval thread", { "peer_id": peer_id.to_string() });
         self.peer_cmd_sender
-            .send(PeerManagementCmd::Ban(vec![peer_id.clone()]))
+            .try_send(PeerManagementCmd::Ban(vec![peer_id.clone()]))
             .map_err(|err| ProtocolError::SendError(err.to_string()))
     }
 
@@ -1039,7 +1038,7 @@ impl RetrievalThread {
             }
         }
         self.sender_propagation_ops
-            .send(OperationHandlerPropagationCommand::AnnounceOperations(
+            .try_send(OperationHandlerPropagationCommand::AnnounceOperations(
                 new_operations.keys().copied().collect(),
             ))
             .map_err(|err| ProtocolError::ChannelError(err.to_string()))?;

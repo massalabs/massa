@@ -2,12 +2,15 @@ use massa_models::operation::{
     OperationPrefixIds, OperationPrefixIdsDeserializer, OperationPrefixIdsSerializer,
     OperationsDeserializer, OperationsSerializer, SecureShareOperation,
 };
-use massa_serialization::{Deserializer, SerializeError, Serializer};
+use massa_serialization::{
+    Deserializer, SerializeError, Serializer, U64VarIntDeserializer, U64VarIntSerializer,
+};
 use nom::{
     error::{context, ContextError, ParseError},
     IResult, Parser,
 };
 use num_enum::{IntoPrimitive, TryFromPrimitive};
+use std::ops::Bound::Included;
 
 #[derive(Debug)]
 pub enum OperationMessage {
@@ -19,21 +22,6 @@ pub enum OperationMessage {
     Operations(Vec<SecureShareOperation>),
 }
 
-impl OperationMessage {
-    pub fn get_id(&self) -> MessageTypeId {
-        match self {
-            OperationMessage::OperationsAnnouncement(_) => MessageTypeId::OperationsAnnouncement,
-            OperationMessage::AskForOperations(_) => MessageTypeId::AskForOperations,
-            OperationMessage::Operations(_) => MessageTypeId::Operations,
-        }
-    }
-
-    pub fn max_id() -> u64 {
-        <MessageTypeId as Into<u64>>::into(MessageTypeId::Operations) + 1
-    }
-}
-
-// DO NOT FORGET TO UPDATE MAX ID IF YOU UPDATE THERE
 #[derive(IntoPrimitive, Debug, Eq, PartialEq, TryFromPrimitive)]
 #[repr(u64)]
 pub enum MessageTypeId {
@@ -42,8 +30,19 @@ pub enum MessageTypeId {
     Operations = 2,
 }
 
+impl From<&OperationMessage> for MessageTypeId {
+    fn from(message: &OperationMessage) -> Self {
+        match message {
+            OperationMessage::OperationsAnnouncement(_) => MessageTypeId::OperationsAnnouncement,
+            OperationMessage::AskForOperations(_) => MessageTypeId::AskForOperations,
+            OperationMessage::Operations(_) => MessageTypeId::Operations,
+        }
+    }
+}
+
 #[derive(Default, Clone)]
 pub struct OperationMessageSerializer {
+    id_serializer: U64VarIntSerializer,
     operation_prefix_ids_serializer: OperationPrefixIdsSerializer,
     operations_serializer: OperationsSerializer,
 }
@@ -51,6 +50,7 @@ pub struct OperationMessageSerializer {
 impl OperationMessageSerializer {
     pub fn new() -> Self {
         Self {
+            id_serializer: U64VarIntSerializer::new(),
             operation_prefix_ids_serializer: OperationPrefixIdsSerializer::new(),
             operations_serializer: OperationsSerializer::new(),
         }
@@ -63,6 +63,12 @@ impl Serializer<OperationMessage> for OperationMessageSerializer {
         value: &OperationMessage,
         buffer: &mut Vec<u8>,
     ) -> Result<(), SerializeError> {
+        self.id_serializer.serialize(
+            &MessageTypeId::from(value).try_into().map_err(|_| {
+                SerializeError::GeneralError(String::from("Failed to serialize id"))
+            })?,
+            buffer,
+        )?;
         match value {
             OperationMessage::OperationsAnnouncement(operations) => {
                 self.operation_prefix_ids_serializer
@@ -81,9 +87,9 @@ impl Serializer<OperationMessage> for OperationMessageSerializer {
 }
 
 pub struct OperationMessageDeserializer {
+    id_deserializer: U64VarIntDeserializer,
     operation_prefix_ids_deserializer: OperationPrefixIdsDeserializer,
     operations_deserializer: OperationsDeserializer,
-    message_id: u64,
 }
 
 /// Limits used in the deserialization of `OperationMessage`
@@ -110,6 +116,7 @@ pub struct OperationMessageDeserializerArgs {
 impl OperationMessageDeserializer {
     pub fn new(args: OperationMessageDeserializerArgs) -> Self {
         Self {
+            id_deserializer: U64VarIntDeserializer::new(Included(0), Included(u64::MAX)),
             operation_prefix_ids_deserializer: OperationPrefixIdsDeserializer::new(
                 args.max_operations_prefix_ids,
             ),
@@ -122,12 +129,7 @@ impl OperationMessageDeserializer {
                 args.max_op_datastore_key_length,
                 args.max_op_datastore_value_length,
             ),
-            message_id: 0,
         }
-    }
-
-    pub fn set_message_id(&mut self, id: u64) {
-        self.message_id = id;
     }
 }
 
@@ -137,7 +139,8 @@ impl Deserializer<OperationMessage> for OperationMessageDeserializer {
         buffer: &'a [u8],
     ) -> IResult<&'a [u8], OperationMessage, E> {
         context("Failed OperationMessage deserialization", |buffer| {
-            let id = MessageTypeId::try_from(self.message_id).map_err(|_| {
+            let (buffer, raw_id) = self.id_deserializer.deserialize(buffer)?;
+            let id = MessageTypeId::try_from(raw_id).map_err(|_| {
                 nom::Err::Error(ParseError::from_error_kind(
                     buffer,
                     nom::error::ErrorKind::Eof,

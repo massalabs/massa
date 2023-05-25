@@ -69,6 +69,7 @@ use massa_models::config::constants::{
     VERSION,
 };
 use massa_models::config::MAX_BOOTSTRAPPED_NEW_ELEMENTS;
+use massa_models::config::MAX_MESSAGE_SIZE;
 use massa_pool_exports::{PoolChannels, PoolConfig, PoolManager};
 use massa_pool_worker::start_pool_controller;
 use massa_pos_exports::{PoSConfig, SelectorConfig, SelectorManager};
@@ -570,6 +571,7 @@ async fn launch(
         genesis_timestamp: *GENESIS_TIMESTAMP,
         t0: T0,
         endorsement_count: ENDORSEMENT_COUNT,
+        max_message_size: MAX_MESSAGE_SIZE as usize,
         max_operations_propagation_time: SETTINGS.protocol.max_operations_propagation_time,
         max_endorsements_propagation_time: SETTINGS.protocol.max_endorsements_propagation_time,
         last_start_period: final_state.read().last_start_period,
