@@ -12,10 +12,6 @@
 <a href="#12" id="12">12</a>
 <a href="#13" id="13">13</a>
 <a href="#14" id="14">14</a>
-<a href="#15" id="15">15</a>
-<a href="#16" id="16">16</a>
-<a href="#17" id="17">17</a>
-<a href="#18" id="18">18</a>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="doccomment">/// proof-of-stake final state configuration
@@ -27,12 +23,8 @@
     </span><span class="kw">pub </span>thread_count: u8,
     <span class="doccomment">/// number of saved cycle
     </span><span class="kw">pub </span>cycle_history_length: usize,
-    <span class="doccomment">/// maximum rolls length
-    </span><span class="kw">pub </span>max_rolls_length: u64,
-    <span class="doccomment">/// maximum production stats length
-    </span><span class="kw">pub </span>max_production_stats_length: u64,
-    <span class="doccomment">/// maximum deferred credits length
-    </span><span class="kw">pub </span>max_credit_length: u64,
+    <span class="doccomment">/// maximum size of a deferred credits bootstrap part
+    </span><span class="kw">pub </span>credits_bootstrap_part_size: u64,
 }
 </code></pre></div>
 </section></main><div id="rustdoc-vars" data-root-path="../../" data-static-root-path="../../static.files/" data-current-crate="massa_pos_exports" data-themes="" data-resource-suffix="" data-rustdoc-version="1.69.0-nightly (d962ea578 2023-02-26)" data-search-js="search-14421e1532aead08.js" data-settings-js="settings-f0c5c39777a9a2f6.js" data-settings-css="settings-0bcba95ff279c1db.css" ></div></body></html>
