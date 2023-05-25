@@ -57,8 +57,8 @@ impl ActiveConnectionsTrait for SharedMockActiveConnections {
     ) -> HashMap<PeerId, (std::net::SocketAddr, PeerConnectionType, Option<String>)> {
         self.read()
             .connections
-            .iter()
-            .map(|(peer_id, _)| {
+            .keys()
+            .map(|peer_id| {
                 (
                     peer_id.clone(),
                     (

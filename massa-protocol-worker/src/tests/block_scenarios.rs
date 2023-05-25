@@ -144,7 +144,7 @@ fn test_full_ask_block_workflow() {
                     &node_b_peer_id,
                     Message::Block(Box::new(BlockMessage::ReplyForBlocks(vec![(
                         block.id,
-                        BlockInfoReply::Operations(vec![op_1.clone(), op_2.clone()]),
+                        BlockInfoReply::Operations(vec![op_1, op_2]),
                     )]))),
                 )
                 .unwrap();
