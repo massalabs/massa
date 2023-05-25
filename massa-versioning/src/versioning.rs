@@ -742,7 +742,7 @@ impl MipStoreRaw {
         );
         if let Some((_current_network_version, announced_network_version)) = network_versions {
             let removed_version_ = match self.stats.latest_announcements.len() {
-                n if n > self.stats.config.block_count_considered => {
+                n if n >= self.stats.config.block_count_considered => {
                     self.stats.latest_announcements.pop_front()
                 }
                 _ => None,
