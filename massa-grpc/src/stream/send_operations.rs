@@ -7,9 +7,11 @@ use massa_models::operation::{OperationDeserializer, SecureShareOperation};
 use massa_models::secure_share::SecureShareDeserializer;
 use massa_proto::massa::api::v1 as grpc;
 use massa_serialization::{DeserializeError, Deserializer};
+use massa_signature::{Signature, PublicKey};
 use std::collections::HashMap;
 use std::io::ErrorKind;
 use std::pin::Pin;
+use std::str::FromStr;
 use tonic::codegen::futures_core;
 use tracing::log::{error, warn};
 
@@ -29,6 +31,7 @@ pub(crate) async fn send_operations(
     grpc: &MassaGrpc,
     request: tonic::Request<tonic::Streaming<grpc::SendOperationsRequest>>,
 ) -> Result<SendOperationsStreamType, GrpcError> {
+    println!("AURELIEN: GRPC send_operations");
     let mut pool_command_sender = grpc.pool_command_sender.clone();
     let protocol_command_sender = grpc.protocol_command_sender.clone();
     let config = grpc.grpc_config.clone();
@@ -77,15 +80,14 @@ pub(crate) async fn send_operations(
                             let verified_ops_res: Result<HashMap<String, SecureShareOperation>, GrpcError> = req_content.operations
                                 .into_iter()
                                 .map(|proto_operation| {
-                                    let pub_key_b = proto_operation.content_creator_pub_key.as_bytes();
                                     // Concatenate signature, public key, and data into a single byte vector
-                                    let mut op_serialized = Vec::with_capacity(
-                                        proto_operation.signature.len()
-                                            + pub_key_b.len()
-                                            + proto_operation.serialized_data.len(),
-                                    );
-                                    op_serialized.extend_from_slice(proto_operation.signature.as_bytes());
-                                    op_serialized.extend_from_slice(pub_key_b);
+                                    let mut op_serialized = Vec::new();
+                                    op_serialized.extend_from_slice(&Signature::from_str(&proto_operation.signature)
+                                        .map_err(|e| GrpcError::InvalidArgument(format!("failed to parse signature: {}", e)))?
+                                        .to_bytes());
+                                    op_serialized.extend_from_slice(PublicKey::from_str(&proto_operation.content_creator_pub_key)
+                                        .map_err(|e| GrpcError::InvalidArgument(format!("failed to parse public key: {}", e)))?
+                                        .to_bytes());
                                     op_serialized.extend_from_slice(&proto_operation.serialized_data);
 
                                     // Deserialize the operation and verify its signature

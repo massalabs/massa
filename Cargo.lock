@@ -2755,6 +2755,7 @@ dependencies = [
  "massa_proto",
  "massa_protocol_exports",
  "massa_serialization 0.1.0",
+ "massa_signature 0.1.0",
  "massa_storage",
  "massa_time",
  "massa_wallet",

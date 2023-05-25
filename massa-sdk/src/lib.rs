@@ -11,6 +11,7 @@ use jsonrpsee::http_client::HttpClient;
 use jsonrpsee::rpc_params;
 use jsonrpsee::types::ErrorObject;
 use jsonrpsee::ws_client::{HeaderMap, HeaderValue, WsClient, WsClientBuilder};
+use jsonrpsee_http_client::types::ErrorObjectOwned;
 use massa_api_exports::page::PagedVecV2;
 use massa_api_exports::ApiRequest;
 use massa_api_exports::{
@@ -263,7 +264,9 @@ impl RpcClient {
         self.http_client
             .request("get_status", rpc_params![])
             .await
-            .unwrap()
+            .map_err(|err| {
+                ErrorObjectOwned::owned(500, err.to_string(), None::<()>)
+            })
     }
 
     pub(crate) async fn _get_cliques(&self) -> RpcResult<Vec<Clique>> {
