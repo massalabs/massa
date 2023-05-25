@@ -147,7 +147,12 @@ impl Tester {
                 match id {
                     0 => {
                         let (_, announcement) = announcement_deserializer
-                            .deserialize::<DeserializeError>(&data[1..])
+                            .deserialize::<DeserializeError>(data.get(1..).ok_or(
+                                PeerNetError::HandshakeError.error(
+                                    "Massa Handshake",
+                                    Some("Failed to get buffer".to_string()),
+                                ),
+                            )?)
                             .map_err(|err| {
                                 PeerNetError::HandshakeError.error(
                                     "Tester Handshake",
@@ -193,7 +198,13 @@ impl Tester {
                         Ok(peer_id.clone())
                     }
                     1 => {
-                        messages_handler.handle(&data[1..], &peer_id)?;
+                        messages_handler.handle(
+                            data.get(1..).ok_or(PeerNetError::HandshakeError.error(
+                                "Massa Handshake",
+                                Some("Failed to get buffer".to_string()),
+                            ))?,
+                            &peer_id,
+                        )?;
                         Err(PeerNetError::HandshakeError.error(
                                 "Massa Handshake",
                                 Some("Tester Handshake failed received a message that our connection has been refused".to_string()),

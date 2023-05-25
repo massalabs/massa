@@ -115,13 +115,31 @@ impl Deserializer<Announcement> for AnnouncementDeserializer {
                     }),
                 ),
                 context("Failed timestamp deserialization", |buffer: &'a [u8]| {
-                    let timestamp = u64::from_be_bytes(buffer[..8].try_into().map_err(|_| {
-                        nom::Err::Error(ParseError::from_error_kind(
-                            buffer,
-                            nom::error::ErrorKind::LengthValue,
-                        ))
-                    })?);
-                    Ok((&buffer[8..], timestamp))
+                    let timestamp = u64::from_be_bytes(
+                        buffer
+                            .get(..8)
+                            .ok_or(nom::Err::Error(ParseError::from_error_kind(
+                                buffer,
+                                nom::error::ErrorKind::LengthValue,
+                            )))?
+                            .try_into()
+                            .map_err(|_| {
+                                nom::Err::Error(ParseError::from_error_kind(
+                                    buffer,
+                                    nom::error::ErrorKind::LengthValue,
+                                ))
+                            })?,
+                    );
+
+                    Ok((
+                        buffer
+                            .get(8..)
+                            .ok_or(nom::Err::Error(ParseError::from_error_kind(
+                                buffer,
+                                nom::error::ErrorKind::LengthValue,
+                            )))?,
+                        timestamp,
+                    ))
                 }),
             )),
         )
