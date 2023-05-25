@@ -12,7 +12,7 @@ use nom::{
     error::{context, ContextError, ParseError},
     multi::length_count,
     sequence::tuple,
-    IResult, Parser, Slice,
+    IResult, Parser,
 };
 use peernet::{
     error::{PeerNetError, PeerNetResult},
