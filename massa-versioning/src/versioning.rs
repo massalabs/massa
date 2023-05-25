@@ -368,6 +368,8 @@ impl MipState {
         {
             if threshold_2 != threshold {
                 advance_msg.threshold = threshold_2;
+                // Need to advance now timestamp otherwise it will be ignored
+                advance_msg.now = advance_msg.now.saturating_add(MassaTime::from(1));
                 vsh.on_advance(&advance_msg);
             }
         }
@@ -1361,9 +1363,15 @@ mod test {
         let now = MassaTime::from(3);
         let adv = Advance::from((&vi_1, &Amount::zero(), &now));
         vsh.on_advance(&adv);
+        let now = MassaTime::from(4);
+        let adv = Advance::from((&vi_1, &Amount::from_str("14.42").unwrap(), &now));
+        vsh.on_advance(&adv);
 
         // At state Started at time now -> true
-        assert_eq!(vsh.state, ComponentState::started(Amount::zero()));
+        assert_eq!(
+            vsh.state,
+            ComponentState::started(Amount::from_str("14.42").unwrap())
+        );
         assert_eq!(vsh.is_coherent_with(&vi_1).is_ok(), true);
         // Now with another versioning info
         assert_eq!(vsh.is_coherent_with(&vi_2).is_ok(), false);
