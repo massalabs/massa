@@ -1732,22 +1732,8 @@
 <a href="#1732" id="1732">1732</a>
 <a href="#1733" id="1733">1733</a>
 <a href="#1734" id="1734">1734</a>
-<a href="#1735" id="1735">1735</a>
-<a href="#1736" id="1736">1736</a>
-<a href="#1737" id="1737">1737</a>
-<a href="#1738" id="1738">1738</a>
-<a href="#1739" id="1739">1739</a>
-<a href="#1740" id="1740">1740</a>
-<a href="#1741" id="1741">1741</a>
-<a href="#1742" id="1742">1742</a>
-<a href="#1743" id="1743">1743</a>
-<a href="#1744" id="1744">1744</a>
-<a href="#1745" id="1745">1745</a>
-<a href="#1746" id="1746">1746</a>
-<a href="#1747" id="1747">1747</a>
 </pre><pre class="rust"><code><span class="kw">use </span>std::cmp::Ordering;
 <span class="kw">use </span>std::collections::{BTreeMap, BTreeSet, HashMap, VecDeque};
-<span class="kw">use </span>std::hash::{Hash, Hasher};
 <span class="kw">use </span>std::ops::Deref;
 <span class="kw">use </span>std::sync::Arc;
 
@@ -1765,7 +1751,7 @@
 
 <span class="doccomment">/// Versioning component enum
 </span><span class="attr">#[allow(missing_docs)]
-#[derive(Clone, Debug, PartialEq, Eq, Hash, FromPrimitive, IntoPrimitive)]
+#[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash, FromPrimitive, IntoPrimitive)]
 #[repr(u32)]
 </span><span class="kw">pub enum </span>MipComponent {
     <span class="comment">// Address and KeyPair versions are directly related
@@ -1786,7 +1772,7 @@
     <span class="doccomment">/// Network (or global) version (to be included in block header)
     </span><span class="kw">pub </span>version: u32,
     <span class="doccomment">/// Components concerned by this versioning (e.g. a new Block version), and the associated component_version
-    </span><span class="kw">pub </span>components: HashMap&lt;MipComponent, u32&gt;,
+    </span><span class="kw">pub </span>components: BTreeMap&lt;MipComponent, u32&gt;,
     <span class="doccomment">/// a timestamp at which the version gains its meaning (e.g. announced in block header)
     </span><span class="kw">pub </span>start: MassaTime,
     <span class="doccomment">/// a timestamp at the which the deployment is considered failed
@@ -1821,17 +1807,6 @@
 }
 
 <span class="kw">impl </span>Eq <span class="kw">for </span>MipInfo {}
-
-<span class="comment">// Need to impl this manually otherwise clippy is angry :-P
-</span><span class="kw">impl </span>Hash <span class="kw">for </span>MipInfo {
-    <span class="kw">fn </span>hash&lt;H: Hasher&gt;(<span class="kw-2">&amp;</span><span class="self">self</span>, state: <span class="kw-2">&amp;mut </span>H) {
-        <span class="self">self</span>.name.hash(state);
-        <span class="self">self</span>.version.hash(state);
-        <span class="self">self</span>.components.iter().for_each(|c| c.hash(state));
-        <span class="self">self</span>.start.hash(state);
-        <span class="self">self</span>.timeout.hash(state);
-    }
-}
 
 <span class="macro">machine!</span>(
     <span class="doccomment">/// State machine for a Versioning component that tracks the deployment state
@@ -2285,7 +2260,7 @@
 }
 
 <span class="kw">impl</span>&lt;<span class="kw">const </span>N: usize&gt; TryFrom&lt;([(MipInfo, MipState); N], MipStatsConfig)&gt; <span class="kw">for </span>MipStore {
-    <span class="kw">type </span>Error = ();
+    <span class="kw">type </span>Error = UpdateWithError;
 
     <span class="kw">fn </span>try_from(
         (value, cfg): ([(MipInfo, MipState); N], MipStatsConfig),
@@ -2644,8 +2619,8 @@
                     }
                     new_store.insert(new_mip_info, mip_state.clone());
                 }
-                ComponentState::Started(..) =&gt; {
-                    <span class="comment">// Started -&gt; Reset to Defined, offset start &amp; timeout
+                ComponentState::Started(..) | ComponentState::LockedIn(..) =&gt; {
+                    <span class="comment">// Started or LockedIn -&gt; Reset to Defined, offset start &amp; timeout
 
                     </span><span class="kw">let </span><span class="kw-2">mut </span>new_mip_info = mip_info.clone();
 
@@ -2671,7 +2646,6 @@
                 }
                 <span class="kw">_ </span>=&gt; {
                     <span class="comment">// active / failed, error, nothing to do
-                    // locked in, nothing to do (might go from &#39;locked in&#39; to &#39;active&#39; during shutdown)
                     </span>new_store.insert(mip_info.clone(), mip_state.clone());
                 }
             }
@@ -2684,7 +2658,7 @@
 }
 
 <span class="kw">impl</span>&lt;<span class="kw">const </span>N: usize&gt; TryFrom&lt;([(MipInfo, MipState); N], MipStatsConfig)&gt; <span class="kw">for </span>MipStoreRaw {
-    <span class="kw">type </span>Error = ();
+    <span class="kw">type </span>Error = UpdateWithError;
 
     <span class="kw">fn </span>try_from(
         (value, cfg): ([(MipInfo, MipState); N], MipStatsConfig),
@@ -2707,7 +2681,7 @@
                 store.store.append(<span class="kw-2">&amp;mut </span>added);
                 <span class="prelude-val">Ok</span>(store)
             }
-            <span class="prelude-val">Err</span>(<span class="kw">_</span>) =&gt; <span class="prelude-val">Err</span>(()),
+            <span class="prelude-val">Err</span>(e) =&gt; <span class="prelude-val">Err</span>(e),
         }
     }
 }
@@ -2769,7 +2743,7 @@
             MipInfo {
                 name: <span class="string">&quot;MIP-0002&quot;</span>.to_string(),
                 version: <span class="number">2</span>,
-                components: HashMap::from([(MipComponent::Address, <span class="number">1</span>)]),
+                components: BTreeMap::from([(MipComponent::Address, <span class="number">1</span>)]),
                 start: MassaTime::from(start.timestamp() <span class="kw">as </span>u64),
                 timeout: MassaTime::from(timeout.timestamp() <span class="kw">as </span>u64),
                 activation_delay: MassaTime::from(<span class="number">20</span>),
@@ -3019,7 +2993,7 @@
         </span><span class="kw">let </span>vi_1 = MipInfo {
             name: <span class="string">&quot;MIP-0002&quot;</span>.to_string(),
             version: <span class="number">2</span>,
-            components: HashMap::from([(MipComponent::Address, <span class="number">1</span>)]),
+            components: BTreeMap::from([(MipComponent::Address, <span class="number">1</span>)]),
             start: MassaTime::from(<span class="number">2</span>),
             timeout: MassaTime::from(<span class="number">5</span>),
             activation_delay: MassaTime::from(<span class="number">2</span>),
@@ -3028,7 +3002,7 @@
         </span><span class="kw">let </span>vi_2 = MipInfo {
             name: <span class="string">&quot;MIP-0002&quot;</span>.to_string(),
             version: <span class="number">2</span>,
-            components: HashMap::from([(MipComponent::Address, <span class="number">1</span>)]),
+            components: BTreeMap::from([(MipComponent::Address, <span class="number">1</span>)]),
             start: MassaTime::from(<span class="number">7</span>),
             timeout: MassaTime::from(<span class="number">10</span>),
             activation_delay: MassaTime::from(<span class="number">2</span>),
@@ -3084,7 +3058,7 @@
         <span class="kw">let </span>vi_1 = MipInfo {
             name: <span class="string">&quot;MIP-0002&quot;</span>.to_string(),
             version: <span class="number">2</span>,
-            components: HashMap::from([(MipComponent::Address, <span class="number">1</span>)]),
+            components: BTreeMap::from([(MipComponent::Address, <span class="number">1</span>)]),
             start: MassaTime::from(<span class="number">2</span>),
             timeout: MassaTime::from(<span class="number">5</span>),
             activation_delay: MassaTime::from(<span class="number">2</span>),
@@ -3097,7 +3071,7 @@
         <span class="kw">let </span>vi_2 = MipInfo {
             name: <span class="string">&quot;MIP-0003&quot;</span>.to_string(),
             version: <span class="number">3</span>,
-            components: HashMap::from([(MipComponent::Address, <span class="number">2</span>)]),
+            components: BTreeMap::from([(MipComponent::Address, <span class="number">2</span>)]),
             start: MassaTime::from(<span class="number">17</span>),
             timeout: MassaTime::from(<span class="number">27</span>),
             activation_delay: MassaTime::from(<span class="number">2</span>),
@@ -3145,7 +3119,7 @@
         </span><span class="kw">let </span>vi_1 = MipInfo {
             name: <span class="string">&quot;MIP-0002&quot;</span>.to_string(),
             version: <span class="number">2</span>,
-            components: HashMap::from([(MipComponent::Address, <span class="number">1</span>)]),
+            components: BTreeMap::from([(MipComponent::Address, <span class="number">1</span>)]),
             start: MassaTime::from(<span class="number">0</span>),
             timeout: MassaTime::from(<span class="number">5</span>),
             activation_delay: MassaTime::from(<span class="number">2</span>),
@@ -3157,7 +3131,7 @@
         <span class="kw">let </span>vi_2 = MipInfo {
             name: <span class="string">&quot;MIP-0003&quot;</span>.to_string(),
             version: <span class="number">3</span>,
-            components: HashMap::from([(MipComponent::Address, <span class="number">2</span>)]),
+            components: BTreeMap::from([(MipComponent::Address, <span class="number">2</span>)]),
             start: MassaTime::from(<span class="number">17</span>),
             timeout: MassaTime::from(<span class="number">27</span>),
             activation_delay: MassaTime::from(<span class="number">2</span>),
@@ -3265,7 +3239,7 @@
         <span class="kw">let </span>mi_1 = MipInfo {
             name: <span class="string">&quot;MIP-0002&quot;</span>.to_string(),
             version: <span class="number">2</span>,
-            components: HashMap::from([(MipComponent::__Nonexhaustive, <span class="number">1</span>)]),
+            components: BTreeMap::from([(MipComponent::__Nonexhaustive, <span class="number">1</span>)]),
             start: MassaTime::from(<span class="number">0</span>),
             timeout: MassaTime::from(<span class="number">5</span>),
             activation_delay: MassaTime::from(<span class="number">2</span>),
@@ -3350,7 +3324,7 @@
         <span class="kw">let </span><span class="kw-2">mut </span>mi_1 = MipInfo {
             name: <span class="string">&quot;MIP-0002&quot;</span>.to_string(),
             version: <span class="number">2</span>,
-            components: HashMap::from([(MipComponent::Address, <span class="number">1</span>)]),
+            components: BTreeMap::from([(MipComponent::Address, <span class="number">1</span>)]),
             start: MassaTime::from(<span class="number">2</span>),
             timeout: MassaTime::from(<span class="number">5</span>),
             activation_delay: MassaTime::from(<span class="number">100</span>),
@@ -3358,7 +3332,7 @@
         <span class="kw">let </span><span class="kw-2">mut </span>mi_2 = MipInfo {
             name: <span class="string">&quot;MIP-0003&quot;</span>.to_string(),
             version: <span class="number">3</span>,
-            components: HashMap::from([(MipComponent::Address, <span class="number">2</span>)]),
+            components: BTreeMap::from([(MipComponent::Address, <span class="number">2</span>)]),
             start: MassaTime::from(<span class="number">7</span>),
             timeout: MassaTime::from(<span class="number">11</span>),
             activation_delay: MassaTime::from(<span class="number">100</span>),
@@ -3445,19 +3419,17 @@
             <span class="macro">assert!</span>(locked_in_at &lt; shutdown_start);
             <span class="kw">let </span>activate_at = Slot::new(<span class="number">4</span>, <span class="number">0</span>);
             <span class="macro">assert!</span>(shutdown_range.contains(<span class="kw-2">&amp;</span>activate_at));
-            mi_1.activation_delay =
+            <span class="comment">// MIP 1 in state &#39;LockedIn&#39;, should transition to &#39;Active&#39; during shutdown period
+            </span>mi_1.activation_delay =
                 get_slot_ts(activate_at).saturating_sub(get_slot_ts(locked_in_at));
-
-            <span class="comment">// Note: 2 states will transition right after shutdown_end
-            //       mi_1, ms_1 -&gt; &#39;LockedIn&#39; -&gt; &#39;Active&#39;
-            //       mi_2 -&gt; &#39;Defined&#39; -&gt; &#39;Started&#39;
-            </span>mi_2.start = get_slot_ts(Slot::new(<span class="number">7</span>, <span class="number">7</span>));
-            mi_2.timeout = get_slot_ts(Slot::new(<span class="number">10</span>, <span class="number">7</span>));
-
             <span class="kw">let </span>ms_1 = advance_state_until(
                 ComponentState::locked_in(get_slot_ts(Slot::new(<span class="number">1</span>, <span class="number">9</span>))),
                 <span class="kw-2">&amp;</span>mi_1,
             );
+
+            <span class="comment">// MIP 2 in state &#39;Defined&#39;
+            </span>mi_2.start = get_slot_ts(Slot::new(<span class="number">7</span>, <span class="number">7</span>));
+            mi_2.timeout = get_slot_ts(Slot::new(<span class="number">10</span>, <span class="number">7</span>));
             <span class="kw">let </span>ms_2 = advance_state_until(ComponentState::defined(), <span class="kw-2">&amp;</span>mi_2);
             <span class="kw">let </span><span class="kw-2">mut </span>store = MipStoreRaw::try_from((
                 [(mi_1.clone(), ms_1), (mi_2.clone(), ms_2)],
@@ -3471,7 +3443,7 @@
             <span class="macro">assert_eq!</span>(is_coherent(<span class="kw-2">&amp;</span>store, shutdown_start, shutdown_end), <span class="bool-val">true</span>);
             <span class="comment">// _dump_store(&amp;store);
 
-            // Update stats - so should force 2 version transitions
+            // Update stats - so should force transitions if any
             </span>store.update_network_version_stats(
                 get_slot_ts(shutdown_end.get_next_slot(THREAD_COUNT).unwrap()),
                 <span class="prelude-val">Some</span>((<span class="number">1</span>, <span class="number">0</span>)),
@@ -3479,15 +3451,17 @@
 
             <span class="kw">let </span>(first_mi_info, first_mi_state) = store.store.first_key_value().unwrap();
             <span class="macro">assert_eq!</span>(<span class="kw-2">*</span>first_mi_info.name, mi_1.name);
-            <span class="macro">assert_eq!</span>(
+            <span class="comment">// State was &#39;LockedIn&#39; -&gt; reset, start ts now defined right after network restart
+            </span><span class="macro">assert_eq!</span>(
                 ComponentStateTypeId::from(<span class="kw-2">&amp;</span>first_mi_state.state),
-                ComponentStateTypeId::Active
+                ComponentStateTypeId::Started
             );
             <span class="kw">let </span>(last_mi_info, last_mi_state) = store.store.last_key_value().unwrap();
             <span class="macro">assert_eq!</span>(<span class="kw-2">*</span>last_mi_info.name, mi_2.name);
-            <span class="macro">assert_eq!</span>(
+            <span class="comment">// State was &#39;Defined&#39; -&gt; start is set up after MIP 1 start &amp; timeout
+            </span><span class="macro">assert_eq!</span>(
                 ComponentStateTypeId::from(<span class="kw-2">&amp;</span>last_mi_state.state),
-                ComponentStateTypeId::Started
+                ComponentStateTypeId::Defined
             );
         }
     }
