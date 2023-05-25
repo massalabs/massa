@@ -666,8 +666,8 @@ impl Serializer<MipStoreStats> for MipStoreStatsSerializer {
 
             if entry_count_2 > entry_count_2_max {
                 return Err(SerializeError::GeneralError(format!(
-                    "Too many entries in MipStoreStats version counters, max: {}",
-                    MIP_STORE_STATS_COUNTERS_MAX
+                    "Too many entries in MipStoreStats version counters, max: {}, received: {}",
+                    entry_count_2_max, entry_count_2
                 )));
             }
             self.u32_serializer.serialize(&entry_count_2, buffer)?;
@@ -835,8 +835,8 @@ impl Serializer<MipStoreRaw> for MipStoreRawSerializer {
         })?;
         if entry_count > MIP_STORE_MAX_ENTRIES {
             return Err(SerializeError::GeneralError(format!(
-                "Too many entries in VersioningStoreRaw, max: {}",
-                MIP_STORE_MAX_ENTRIES
+                "Too many entries in VersioningStoreRaw, max: {}, received: {}",
+                MIP_STORE_MAX_ENTRIES, entry_count
             )));
         }
         self.u32_serializer.serialize(&entry_count, buffer)?;
