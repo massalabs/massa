@@ -47,7 +47,7 @@ pub struct RetrievalThread {
 
 impl RetrievalThread {
     fn run(&mut self) {
-        let mut endorsement_message_deserializer =
+        let endorsement_message_deserializer =
             EndorsementMessageDeserializer::new(EndorsementMessageDeserializerArgs {
                 thread_count: self.config.thread_count,
                 max_length_endorsements: self.config.max_endorsements_per_message,
@@ -57,8 +57,7 @@ impl RetrievalThread {
             select! {
                 recv(self.receiver) -> msg => {
                     match msg {
-                        Ok((peer_id, message_id, message)) => {
-                            endorsement_message_deserializer.set_message_id(message_id);
+                        Ok((peer_id, message)) => {
                             let (rest, message) = match endorsement_message_deserializer
                                 .deserialize::<DeserializeError>(&message) {
                                 Ok((rest, message)) => (rest, message),

@@ -27,7 +27,7 @@ pub struct PeerDB {
 
 pub type SharedPeerDB = Arc<RwLock<PeerDB>>;
 
-pub type PeerMessageTuple = (PeerId, u64, Vec<u8>);
+pub type PeerMessageTuple = (PeerId, Vec<u8>);
 
 #[derive(Clone, Debug)]
 pub struct PeerInfo {
