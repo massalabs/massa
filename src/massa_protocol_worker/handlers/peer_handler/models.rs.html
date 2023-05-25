@@ -151,22 +151,21 @@
 <a href="#151" id="151">151</a>
 <a href="#152" id="152">152</a>
 <a href="#153" id="153">153</a>
-<a href="#154" id="154">154</a>
 </pre><pre class="rust"><code><span class="kw">use </span>crossbeam::channel::Sender;
-<span class="kw">use </span>massa_protocol_exports::{BootstrapPeers, ProtocolError};
+<span class="kw">use </span>massa_protocol_exports::{BootstrapPeers, PeerId, ProtocolError};
 <span class="kw">use </span>massa_time::MassaTime;
 <span class="kw">use </span>parking_lot::RwLock;
-<span class="kw">use </span>peernet::{peer_id::PeerId, transports::TransportType};
+<span class="kw">use </span>peernet::transports::TransportType;
 <span class="kw">use </span>rand::seq::SliceRandom;
 <span class="kw">use </span>std::cmp::Reverse;
 <span class="kw">use </span>std::collections::BTreeSet;
-<span class="kw">use </span>std::time::{Duration, SystemTime, UNIX_EPOCH};
+<span class="kw">use </span>std::time::Duration;
 <span class="kw">use </span>std::{collections::HashMap, net::SocketAddr, sync::Arc};
 <span class="kw">use </span>tracing::log::info;
 
 <span class="kw">use </span><span class="kw">super</span>::announcement::Announcement;
 
-<span class="kw">const </span>THREE_DAYS_MS: u128 = <span class="number">3 </span>* <span class="number">24 </span>* <span class="number">60 </span>* <span class="number">60 </span>* <span class="number">1_000_000</span>;
+<span class="kw">const </span>THREE_DAYS_MS: u64 = <span class="number">3 </span>* <span class="number">24 </span>* <span class="number">60 </span>* <span class="number">60 </span>* <span class="number">1_000_000</span>;
 
 <span class="kw">pub type </span>InitialPeers = HashMap&lt;PeerId, HashMap&lt;SocketAddr, TransportType&gt;&gt;;
 
@@ -174,14 +173,14 @@
 </span><span class="kw">pub struct </span>PeerDB {
     <span class="kw">pub </span>peers: HashMap&lt;PeerId, PeerInfo&gt;,
     <span class="doccomment">/// peers tested successfully last is the oldest value (only routable peers) //TODO: need to be pruned
-    </span><span class="kw">pub </span>index_by_newest: BTreeSet&lt;(Reverse&lt;u128&gt;, PeerId)&gt;,
+    </span><span class="kw">pub </span>index_by_newest: BTreeSet&lt;(Reverse&lt;u64&gt;, PeerId)&gt;,
     <span class="doccomment">/// Tested addresses used to avoid testing the same address too often. //TODO: Need to be pruned
     </span><span class="kw">pub </span>tested_addresses: HashMap&lt;SocketAddr, MassaTime&gt;,
 }
 
 <span class="kw">pub type </span>SharedPeerDB = Arc&lt;RwLock&lt;PeerDB&gt;&gt;;
 
-<span class="kw">pub type </span>PeerMessageTuple = (PeerId, u64, Vec&lt;u8&gt;);
+<span class="kw">pub type </span>PeerMessageTuple = (PeerId, Vec&lt;u8&gt;);
 
 <span class="attr">#[derive(Clone, Debug)]
 </span><span class="kw">pub struct </span>PeerInfo {
@@ -255,10 +254,9 @@
         nb_peers: usize,
     ) -&gt; Vec&lt;(PeerId, HashMap&lt;SocketAddr, TransportType&gt;)&gt; {
         <span class="comment">//TODO: Add ourself
-        </span><span class="kw">let </span>now = SystemTime::now()
-            .duration_since(UNIX_EPOCH)
-            .expect(<span class="string">&quot;Time went backward&quot;</span>)
-            .as_millis();
+        </span><span class="kw">let </span>now = MassaTime::now()
+            .expect(<span class="string">&quot;Unable to get MassaTime::now&quot;</span>)
+            .to_millis();
 
         <span class="kw">let </span>min_time = now - THREE_DAYS_MS;
 

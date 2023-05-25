@@ -587,6 +587,10 @@
 <a href="#587" id="587">587</a>
 <a href="#588" id="588">588</a>
 <a href="#589" id="589">589</a>
+<a href="#590" id="590">590</a>
+<a href="#591" id="591">591</a>
+<a href="#592" id="592">592</a>
+<a href="#593" id="593">593</a>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2023 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="kw">use </span><span class="kw">crate</span>::cmds::ExtendedWallet;
@@ -627,6 +631,14 @@
 </span><span class="macro">macro_rules! </span>rpc_error {
     (<span class="macro-nonterminal">$e</span>:expr) =&gt; {
         <span class="macro">bail!</span>(<span class="string">&quot;check if your node is running: {}&quot;</span>, <span class="macro-nonterminal">$e</span>)
+    };
+}
+
+<span class="attr">#[macro_export]
+</span><span class="doccomment">/// bail a shinny RPC error
+</span><span class="macro">macro_rules! </span>grpc_error {
+    (<span class="macro-nonterminal">$e</span>:expr) =&gt; {
+        <span class="macro">bail!</span>(<span class="string">&quot;check if your node is running and grpc api enabled: {}&quot;</span>, <span class="macro-nonterminal">$e</span>)
     };
 }
 
@@ -933,10 +945,6 @@
             Style::Protocol.style(<span class="self">self</span>.periods_per_cycle)
         );
         <span class="macro">println!</span>(<span class="string">&quot;\tBlock reward: {}&quot;</span>, Style::Coins.style(<span class="self">self</span>.block_reward));
-        <span class="macro">println!</span>(
-            <span class="string">&quot;\tPeriods per cycle: {}&quot;</span>,
-            Style::Protocol.style(<span class="self">self</span>.periods_per_cycle)
-        );
         <span class="macro">println!</span>(<span class="string">&quot;\tRoll price: {}&quot;</span>, Style::Coins.style(<span class="self">self</span>.roll_price));
         <span class="macro">println!</span>(
             <span class="string">&quot;\tMax block size (in bytes): {}&quot;</span>,

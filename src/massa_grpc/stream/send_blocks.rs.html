@@ -230,7 +230,6 @@
 <span class="kw">use </span>futures_util::StreamExt;
 <span class="kw">use </span>massa_models::block::{BlockDeserializer, BlockDeserializerArgs, SecureShareBlock};
 <span class="kw">use </span>massa_models::error::ModelsError;
-<span class="kw">use </span>massa_models::mapping_grpc::secure_share_to_vec;
 <span class="kw">use </span>massa_models::secure_share::SecureShareDeserializer;
 <span class="kw">use </span>massa_proto::google::rpc::Status;
 <span class="kw">use </span>massa_proto::massa::api::v1 <span class="kw">as </span>grpc;
@@ -283,16 +282,17 @@
                         <span class="kw">continue</span>;
                     };
 
-                    <span class="kw">let </span><span class="prelude-val">Ok</span>(blk_serialized) = secure_share_to_vec(proto_block) <span class="kw">else </span>{
-                        report_error(
-                            req_content.id.clone(),
-                            tx.clone(),
-                            tonic::Code::InvalidArgument,
-                            <span class="string">&quot;failed to convert block secure share&quot;</span>.to_owned(),
-                        ).<span class="kw">await</span>;
-                        <span class="kw">continue</span>;
-                    };
+                    <span class="kw">let </span>pub_key_b = proto_block.content_creator_pub_key.as_bytes();
+                    <span class="comment">// Concatenate signature, public key, and data into a single byte vector
+                    </span><span class="kw">let </span><span class="kw-2">mut </span>blk_serialized = Vec::with_capacity(
+                        proto_block.signature.len()
+                            + pub_key_b.len()
+                            + proto_block.serialized_data.len(),
+                    );
 
+                    blk_serialized.extend_from_slice(proto_block.signature.as_bytes());
+                    blk_serialized.extend_from_slice(pub_key_b);
+                    blk_serialized.extend_from_slice(<span class="kw-2">&amp;</span>proto_block.serialized_data);
                     <span class="comment">// Create a block deserializer arguments
                     </span><span class="kw">let </span>args = BlockDeserializerArgs {
                         thread_count: config.thread_count,

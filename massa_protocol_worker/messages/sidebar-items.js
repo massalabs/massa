@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"enum":["Message"],"struct":["MessagesHandler","MessagesSerializer"]};
+window.SIDEBAR_ITEMS = {"constant":["Block__num_enum_0__","Endorsement__num_enum_0__","Operation__num_enum_0__","PeerManagement__num_enum_0__"],"enum":["Message","MessageTypeId"],"struct":["MessagesHandler","MessagesSerializer"]};

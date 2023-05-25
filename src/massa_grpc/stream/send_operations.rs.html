@@ -210,12 +210,20 @@
 <a href="#210" id="210">210</a>
 <a href="#211" id="211">211</a>
 <a href="#212" id="212">212</a>
+<a href="#213" id="213">213</a>
+<a href="#214" id="214">214</a>
+<a href="#215" id="215">215</a>
+<a href="#216" id="216">216</a>
+<a href="#217" id="217">217</a>
+<a href="#218" id="218">218</a>
+<a href="#219" id="219">219</a>
+<a href="#220" id="220">220</a>
+<a href="#221" id="221">221</a>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2023 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="kw">use </span><span class="kw">crate</span>::error::{match_for_io_error, GrpcError};
 <span class="kw">use </span><span class="kw">crate</span>::server::MassaGrpc;
 <span class="kw">use </span>futures_util::StreamExt;
-<span class="kw">use </span>massa_models::mapping_grpc::secure_share_to_vec;
 <span class="kw">use </span>massa_models::operation::{OperationDeserializer, SecureShareOperation};
 <span class="kw">use </span>massa_models::secure_share::SecureShareDeserializer;
 <span class="kw">use </span>massa_proto::massa::api::v1 <span class="kw">as </span>grpc;
@@ -290,7 +298,17 @@
                             <span class="kw">let </span>verified_ops_res: <span class="prelude-ty">Result</span>&lt;HashMap&lt;String, SecureShareOperation&gt;, GrpcError&gt; = req_content.operations
                                 .into_iter()
                                 .map(|proto_operation| {
-                                    <span class="kw">let </span>op_serialized = secure_share_to_vec(proto_operation)<span class="question-mark">?</span>;
+                                    <span class="kw">let </span>pub_key_b = proto_operation.content_creator_pub_key.as_bytes();
+                                    <span class="comment">// Concatenate signature, public key, and data into a single byte vector
+                                    </span><span class="kw">let </span><span class="kw-2">mut </span>op_serialized = Vec::with_capacity(
+                                        proto_operation.signature.len()
+                                            + pub_key_b.len()
+                                            + proto_operation.serialized_data.len(),
+                                    );
+                                    op_serialized.extend_from_slice(proto_operation.signature.as_bytes());
+                                    op_serialized.extend_from_slice(pub_key_b);
+                                    op_serialized.extend_from_slice(<span class="kw-2">&amp;</span>proto_operation.serialized_data);
+
                                     <span class="comment">// Deserialize the operation and verify its signature
                                     </span><span class="kw">let </span>verified_op_res = <span class="kw">match </span>operation_deserializer.deserialize::&lt;DeserializeError&gt;(<span class="kw-2">&amp;</span>op_serialized) {
                                         <span class="prelude-val">Ok</span>(tuple) =&gt; {

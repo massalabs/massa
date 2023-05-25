@@ -705,6 +705,7 @@
 <a href="#705" id="705">705</a>
 <a href="#706" id="706">706</a>
 <a href="#707" id="707">707</a>
+<a href="#708" id="708">708</a>
 </pre><pre class="rust"><code><span class="kw">use </span>std::{
     collections::{BTreeSet, HashMap, VecDeque},
     mem,
@@ -728,6 +729,8 @@
 <span class="kw">use </span>massa_storage::Storage;
 <span class="kw">use </span>massa_time::MassaTime;
 <span class="kw">use </span>tracing::log::{debug, info};
+
+<span class="kw">use </span><span class="kw">crate</span>::state::clique_computation::compute_max_cliques;
 
 <span class="kw">use </span><span class="kw">super</span>::ConsensusState;
 
@@ -1105,8 +1108,7 @@
                 { <span class="string">&quot;hash&quot;</span>: add_block_id }
             );
             <span class="kw">let </span>before = <span class="self">self</span>.max_cliques.len();
-            <span class="self">self</span>.max_cliques = <span class="self">self
-                </span>.compute_max_cliques()
+            <span class="self">self</span>.max_cliques = compute_max_cliques(<span class="kw-2">&amp;</span><span class="self">self</span>.gi_head)
                 .into_iter()
                 .map(|c| Clique {
                     block_ids: c,

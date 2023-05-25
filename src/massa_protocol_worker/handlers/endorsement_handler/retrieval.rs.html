@@ -271,13 +271,20 @@
 <a href="#271" id="271">271</a>
 <a href="#272" id="272">272</a>
 <a href="#273" id="273">273</a>
-</pre><pre class="rust"><code><span class="kw">use </span>std::{num::NonZeroUsize, thread::JoinHandle};
+<a href="#274" id="274">274</a>
+<a href="#275" id="275">275</a>
+<a href="#276" id="276">276</a>
+<a href="#277" id="277">277</a>
+<a href="#278" id="278">278</a>
+<a href="#279" id="279">279</a>
+<a href="#280" id="280">280</a>
+<a href="#281" id="281">281</a>
+</pre><pre class="rust"><code><span class="kw">use </span>std::thread::JoinHandle;
 
 <span class="kw">use </span>crossbeam::{
     channel::{Receiver, Sender},
     select,
 };
-<span class="kw">use </span>lru::LruCache;
 <span class="kw">use </span>massa_logging::massa_trace;
 <span class="kw">use </span>massa_models::{
     endorsement::SecureShareEndorsement,
@@ -285,11 +292,12 @@
     timeslots::get_block_slot_timestamp,
 };
 <span class="kw">use </span>massa_pool_exports::PoolController;
+<span class="kw">use </span>massa_protocol_exports::PeerId;
 <span class="kw">use </span>massa_protocol_exports::{ProtocolConfig, ProtocolError};
 <span class="kw">use </span>massa_serialization::{DeserializeError, Deserializer};
 <span class="kw">use </span>massa_storage::Storage;
 <span class="kw">use </span>massa_time::MassaTime;
-<span class="kw">use </span>peernet::peer_id::PeerId;
+<span class="kw">use </span>schnellru::{ByLength, LruMap};
 <span class="kw">use </span>tracing::{debug, info, warn};
 
 <span class="kw">use crate</span>::{
@@ -320,7 +328,7 @@
 
 <span class="kw">impl </span>RetrievalThread {
     <span class="kw">fn </span>run(<span class="kw-2">&amp;mut </span><span class="self">self</span>) {
-        <span class="kw">let </span><span class="kw-2">mut </span>endorsement_message_deserializer =
+        <span class="kw">let </span>endorsement_message_deserializer =
             EndorsementMessageDeserializer::new(EndorsementMessageDeserializerArgs {
                 thread_count: <span class="self">self</span>.config.thread_count,
                 max_length_endorsements: <span class="self">self</span>.config.max_endorsements_per_message,
@@ -330,8 +338,7 @@
             <span class="macro">select! </span>{
                 recv(<span class="self">self</span>.receiver) -&gt; msg =&gt; {
                     <span class="kw">match </span>msg {
-                        <span class="prelude-val">Ok</span>((peer_id, message_id, message)) =&gt; {
-                            endorsement_message_deserializer.set_message_id(message_id);
+                        <span class="prelude-val">Ok</span>((peer_id, message)) =&gt; {
                             <span class="kw">let </span>(rest, message) = <span class="kw">match </span>endorsement_message_deserializer
                                 .deserialize::&lt;DeserializeError&gt;(<span class="kw-2">&amp;</span>message) {
                                 <span class="prelude-val">Ok</span>((rest, message)) =&gt; (rest, message),
@@ -413,7 +420,11 @@
             <span class="comment">// check endorsement signature if not already checked
             </span>{
                 <span class="kw">let </span>read_cache = <span class="self">self</span>.cache.read();
-                <span class="kw">if </span>!read_cache.checked_endorsements.contains(<span class="kw-2">&amp;</span>endorsement_id) {
+                <span class="kw">if </span>read_cache
+                    .checked_endorsements
+                    .peek(<span class="kw-2">&amp;</span>endorsement_id)
+                    .is_none()
+                {
                     new_endorsements.insert(endorsement_id, endorsement);
                 }
             }
@@ -433,24 +444,29 @@
                 })
                 .collect::&lt;Vec&lt;<span class="kw">_</span>&gt;&gt;(),
         )<span class="question-mark">?</span>;
-        {
+        <span class="lifetime">&#39;write_cache</span>: {
             <span class="kw">let </span><span class="kw-2">mut </span>cache_write = <span class="self">self</span>.cache.write();
             <span class="comment">// add to verified signature cache
             </span><span class="kw">for </span>endorsement_id <span class="kw">in </span>endorsement_ids.iter() {
-                cache_write.checked_endorsements.put(<span class="kw-2">*</span>endorsement_id, ());
+                cache_write.checked_endorsements.insert(<span class="kw-2">*</span>endorsement_id, ());
             }
             <span class="comment">// add to known endorsements for source node.
-            </span><span class="kw">let </span>endorsements = cache_write.endorsements_known_by_peer.get_or_insert_mut(
-                from_peer_id.clone(),
-                || {
-                    LruCache::new(
-                        NonZeroUsize::new(<span class="self">self</span>.config.max_node_known_endorsements_size)
+            </span><span class="kw">let </span><span class="prelude-val">Ok</span>(endorsements) = cache_write
+                .endorsements_known_by_peer
+                .get_or_insert(from_peer_id.clone(), || {
+                    LruMap::new(ByLength::new(
+                        <span class="self">self</span>.config
+                            .max_node_known_endorsements_size
+                            .try_into()
                             .expect(<span class="string">&quot;max_node_known_endorsements_size in config should be &gt; 0&quot;</span>),
-                    )
-                },
-            );
+                    ))
+                })
+                .ok_or(()) <span class="kw">else </span>{
+                    <span class="macro">warn!</span>(<span class="string">&quot;endorsements_known_by_peer limit reached&quot;</span>);
+                    <span class="kw">break </span><span class="lifetime">&#39;write_cache</span>;
+                };
             <span class="kw">for </span>endorsement_id <span class="kw">in </span>endorsement_ids.iter() {
-                endorsements.put(<span class="kw-2">*</span>endorsement_id, ());
+                endorsements.insert(<span class="kw-2">*</span>endorsement_id, ());
             }
         }
 
@@ -493,7 +509,7 @@
                     .collect()
             };
             endorsements_to_propagate.drop_endorsement_refs(<span class="kw-2">&amp;</span>endorsements_to_not_propagate);
-            <span class="kw">if let </span><span class="prelude-val">Err</span>(err) = <span class="self">self</span>.internal_sender.send(
+            <span class="kw">if let </span><span class="prelude-val">Err</span>(err) = <span class="self">self</span>.internal_sender.try_send(
                 EndorsementHandlerPropagationCommand::PropagateEndorsements(
                     endorsements_to_propagate,
                 ),
@@ -511,7 +527,7 @@
     </span><span class="kw">fn </span>ban_node(<span class="kw-2">&amp;mut </span><span class="self">self</span>, peer_id: <span class="kw-2">&amp;</span>PeerId) -&gt; <span class="prelude-ty">Result</span>&lt;(), ProtocolError&gt; {
         <span class="macro">massa_trace!</span>(<span class="string">&quot;ban node from retrieval thread&quot;</span>, { <span class="string">&quot;peer_id&quot;</span>: peer_id.to_string() });
         <span class="self">self</span>.peer_cmd_sender
-            .send(PeerManagementCmd::Ban(<span class="macro">vec!</span>[peer_id.clone()]))
+            .try_send(PeerManagementCmd::Ban(<span class="macro">vec!</span>[peer_id.clone()]))
             .map_err(|err| ProtocolError::SendError(err.to_string()))
     }
 }

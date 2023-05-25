@@ -178,16 +178,30 @@
 <a href="#178" id="178">178</a>
 <a href="#179" id="179">179</a>
 <a href="#180" id="180">180</a>
-</pre><pre class="rust"><code><span class="kw">use </span>std::{num::NonZeroUsize, thread::JoinHandle};
+<a href="#181" id="181">181</a>
+<a href="#182" id="182">182</a>
+<a href="#183" id="183">183</a>
+<a href="#184" id="184">184</a>
+<a href="#185" id="185">185</a>
+<a href="#186" id="186">186</a>
+<a href="#187" id="187">187</a>
+<a href="#188" id="188">188</a>
+<a href="#189" id="189">189</a>
+<a href="#190" id="190">190</a>
+<a href="#191" id="191">191</a>
+<a href="#192" id="192">192</a>
+<a href="#193" id="193">193</a>
+<a href="#194" id="194">194</a>
+</pre><pre class="rust"><code><span class="kw">use </span>std::thread::JoinHandle;
 
 <span class="kw">use </span>crossbeam::channel::Receiver;
-<span class="kw">use </span>lru::LruCache;
 <span class="kw">use </span>massa_models::{
     endorsement::{EndorsementId, SecureShareEndorsement},
     prehash::{PreHashMap, PreHashSet},
 };
+<span class="kw">use </span>massa_protocol_exports::PeerId;
 <span class="kw">use </span>massa_protocol_exports::ProtocolConfig;
-<span class="kw">use </span>peernet::peer_id::PeerId;
+<span class="kw">use </span>schnellru::{ByLength, LruMap};
 <span class="kw">use </span>tracing::{debug, info, log::warn};
 
 <span class="kw">use crate</span>::{messages::MessagesSerializer, wrap_network::ActiveConnectionsTrait};
@@ -237,22 +251,25 @@
                             {
                                 <span class="kw">let </span><span class="kw-2">mut </span>cache_write = <span class="self">self</span>.cache.write();
                                 <span class="kw">for </span>endorsement_id <span class="kw">in </span>endorsements_ids.iter().copied() {
-                                    cache_write.checked_endorsements.put(endorsement_id, ());
+                                    cache_write.checked_endorsements.insert(endorsement_id, ());
                                 }
                                 <span class="comment">// Add peers that potentially don&#39;t exist in cache
                                 </span><span class="kw">let </span>peer_connected =
                                     <span class="self">self</span>.active_connections.get_peer_ids_connected();
                                 <span class="kw">for </span>peer_id <span class="kw">in </span><span class="kw-2">&amp;</span>peer_connected {
-                                    <span class="kw">if </span>!cache_write.endorsements_known_by_peer.contains(peer_id) {
-                                        cache_write.endorsements_known_by_peer.put(
+                                    <span class="kw">if </span>cache_write
+                                        .endorsements_known_by_peer
+                                        .get(peer_id)
+                                        .is_none()
+                                    {
+                                        cache_write.endorsements_known_by_peer.insert(
                                             peer_id.clone(),
-                                            LruCache::new(
-                                                NonZeroUsize::new(
-                                                    <span class="self">self</span>.config.max_node_known_endorsements_size,
-                                                )
+                                            LruMap::new(
+                                                ByLength::new(
+                                                    <span class="self">self</span>.config.max_node_known_endorsements_size.try_into()
                                                 .expect(
                                                     <span class="string">&quot;max_node_known_endorsements_size in config is &gt; 0&quot;</span>,
-                                                ),
+                                                )),
                                             ),
                                         );
                                     }
@@ -265,12 +282,23 @@
                                 <span class="comment">// Clean shared cache if peers do not exist anymore
                                 </span><span class="kw">for </span>peer_id <span class="kw">in </span>peers {
                                     <span class="kw">if </span>!peer_connected.contains(<span class="kw-2">&amp;</span>peer_id) {
-                                        cache_write.endorsements_known_by_peer.pop(<span class="kw-2">&amp;</span>peer_id);
+                                        cache_write.endorsements_known_by_peer.remove(<span class="kw-2">&amp;</span>peer_id);
                                     }
                                 }
-                                <span class="kw">for </span>(peer_id, endorsement_ids) <span class="kw">in
-                                    </span>cache_write.endorsements_known_by_peer.iter_mut()
-                                {
+                                <span class="kw">let </span>all_keys: Vec&lt;PeerId&gt; = cache_write
+                                    .endorsements_known_by_peer
+                                    .iter()
+                                    .map(|(k, <span class="kw">_</span>)| k)
+                                    .cloned()
+                                    .collect();
+                                <span class="kw">for </span>peer_id <span class="kw">in </span>all_keys.iter() {
+                                    <span class="comment">// for (peer_id, endorsement_ids) in
+                                    //     cache_write.endorsements_known_by_peer.iter()
+                                    // {
+                                    </span><span class="kw">let </span>endorsement_ids = cache_write
+                                        .endorsements_known_by_peer
+                                        .peek_mut(peer_id)
+                                        .unwrap();
                                     <span class="kw">let </span>new_endorsements: PreHashMap&lt;
                                         EndorsementId,
                                         SecureShareEndorsement,
@@ -280,7 +308,7 @@
                                             .get_endorsement_refs()
                                             .iter()
                                             .filter_map(|id| {
-                                                <span class="kw">if </span>endorsement_ids.contains(id) {
+                                                <span class="kw">if </span>endorsement_ids.peek(id).is_some() {
                                                     <span class="kw">return </span><span class="prelude-val">None</span>;
                                                 }
                                                 <span class="prelude-val">Some</span>((
@@ -291,7 +319,7 @@
                                             .collect()
                                     };
                                     <span class="kw">for </span>endorsement_id <span class="kw">in </span>new_endorsements.keys().copied() {
-                                        endorsement_ids.put(endorsement_id, ());
+                                        endorsement_ids.insert(endorsement_id, ());
                                     }
                                     <span class="kw">let </span>to_send =
                                         new_endorsements.into_values().collect::&lt;Vec&lt;<span class="kw">_</span>&gt;&gt;();

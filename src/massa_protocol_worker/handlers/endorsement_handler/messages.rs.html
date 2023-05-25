@@ -134,11 +134,15 @@
 <a href="#134" id="134">134</a>
 <a href="#135" id="135">135</a>
 <a href="#136" id="136">136</a>
+<a href="#137" id="137">137</a>
+<a href="#138" id="138">138</a>
 </pre><pre class="rust"><code><span class="kw">use </span>massa_models::{
     endorsement::{Endorsement, EndorsementDeserializer, SecureShareEndorsement},
     secure_share::{SecureShareDeserializer, SecureShareSerializer},
 };
-<span class="kw">use </span>massa_serialization::{Deserializer, Serializer, U64VarIntDeserializer, U64VarIntSerializer};
+<span class="kw">use </span>massa_serialization::{
+    Deserializer, SerializeError, Serializer, U64VarIntDeserializer, U64VarIntSerializer,
+};
 <span class="kw">use </span>nom::{
     error::{context, ContextError, ParseError},
     multi::length_count,
@@ -153,27 +157,23 @@
     </span>Endorsements(Vec&lt;SecureShareEndorsement&gt;),
 }
 
-<span class="kw">impl </span>EndorsementMessage {
-    <span class="kw">pub fn </span>get_id(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; MessageTypeId {
-        <span class="kw">match </span><span class="self">self </span>{
-            EndorsementMessage::Endorsements(<span class="kw">_</span>) =&gt; MessageTypeId::Endorsements,
-        }
-    }
-
-    <span class="kw">pub fn </span>max_id() -&gt; u64 {
-        &lt;MessageTypeId <span class="kw">as </span>Into&lt;u64&gt;&gt;::into(MessageTypeId::Endorsements) + <span class="number">1
-    </span>}
-}
-
-<span class="comment">// DO NOT FORGET TO UPDATE MAX ID IF YOU UPDATE THERE
-</span><span class="attr">#[derive(IntoPrimitive, Debug, Eq, PartialEq, TryFromPrimitive)]
+<span class="attr">#[derive(IntoPrimitive, Debug, Eq, PartialEq, TryFromPrimitive)]
 #[repr(u64)]
 </span><span class="kw">pub enum </span>MessageTypeId {
     Endorsements,
 }
 
+<span class="kw">impl </span>From&lt;<span class="kw-2">&amp;</span>EndorsementMessage&gt; <span class="kw">for </span>MessageTypeId {
+    <span class="kw">fn </span>from(message: <span class="kw-2">&amp;</span>EndorsementMessage) -&gt; <span class="self">Self </span>{
+        <span class="kw">match </span>message {
+            EndorsementMessage::Endorsements(<span class="kw">_</span>) =&gt; MessageTypeId::Endorsements,
+        }
+    }
+}
+
 <span class="attr">#[derive(Default, Clone)]
 </span><span class="kw">pub struct </span>EndorsementMessageSerializer {
+    id_serializer: U64VarIntSerializer,
     length_endorsements_serializer: U64VarIntSerializer,
     secure_share_serializer: SecureShareSerializer,
 }
@@ -181,6 +181,7 @@
 <span class="kw">impl </span>EndorsementMessageSerializer {
     <span class="kw">pub fn </span>new() -&gt; <span class="self">Self </span>{
         <span class="self">Self </span>{
+            id_serializer: U64VarIntSerializer::new(),
             length_endorsements_serializer: U64VarIntSerializer::new(),
             secure_share_serializer: SecureShareSerializer::new(),
         }
@@ -193,6 +194,12 @@
         value: <span class="kw-2">&amp;</span>EndorsementMessage,
         buffer: <span class="kw-2">&amp;mut </span>Vec&lt;u8&gt;,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;(), massa_serialization::SerializeError&gt; {
+        <span class="self">self</span>.id_serializer.serialize(
+            <span class="kw-2">&amp;</span>MessageTypeId::from(value).try_into().map_err(|<span class="kw">_</span>| {
+                SerializeError::GeneralError(String::from(<span class="string">&quot;Failed to serialize id&quot;</span>))
+            })<span class="question-mark">?</span>,
+            buffer,
+        )<span class="question-mark">?</span>;
         <span class="kw">match </span>value {
             EndorsementMessage::Endorsements(endorsements) =&gt; {
                 <span class="self">self</span>.length_endorsements_serializer
@@ -214,7 +221,7 @@
 }
 
 <span class="kw">pub struct </span>EndorsementMessageDeserializer {
-    message_id: u64,
+    id_deserializer: U64VarIntDeserializer,
     length_endorsements_deserializer: U64VarIntDeserializer,
     secure_share_deserializer: SecureShareDeserializer&lt;Endorsement, EndorsementDeserializer&gt;,
 }
@@ -222,7 +229,7 @@
 <span class="kw">impl </span>EndorsementMessageDeserializer {
     <span class="kw">pub fn </span>new(args: EndorsementMessageDeserializerArgs) -&gt; <span class="self">Self </span>{
         <span class="self">Self </span>{
-            message_id: <span class="number">0</span>,
+            id_deserializer: U64VarIntDeserializer::new(Included(<span class="number">0</span>), Included(u64::MAX)),
             length_endorsements_deserializer: U64VarIntDeserializer::new(
                 Included(<span class="number">0</span>),
                 Included(args.max_length_endorsements),
@@ -233,10 +240,6 @@
             )),
         }
     }
-
-    <span class="kw">pub fn </span>set_message_id(<span class="kw-2">&amp;mut </span><span class="self">self</span>, message_id: u64) {
-        <span class="self">self</span>.message_id = message_id;
-    }
 }
 
 <span class="kw">impl </span>Deserializer&lt;EndorsementMessage&gt; <span class="kw">for </span>EndorsementMessageDeserializer {
@@ -245,7 +248,8 @@
         buffer: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>[u8],
     ) -&gt; IResult&lt;<span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>[u8], EndorsementMessage, E&gt; {
         context(<span class="string">&quot;Failed EndorsementMessage deserialization&quot;</span>, |buffer| {
-            <span class="kw">let </span>id = MessageTypeId::try_from(<span class="self">self</span>.message_id).map_err(|<span class="kw">_</span>| {
+            <span class="kw">let </span>(buffer, raw_id) = <span class="self">self</span>.id_deserializer.deserialize(buffer)<span class="question-mark">?</span>;
+            <span class="kw">let </span>id = MessageTypeId::try_from(raw_id).map_err(|<span class="kw">_</span>| {
                 nom::Err::Error(ParseError::from_error_kind(
                     buffer,
                     nom::error::ErrorKind::Eof,
