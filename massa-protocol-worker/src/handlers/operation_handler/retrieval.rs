@@ -213,7 +213,7 @@ impl RetrievalThread {
                 .collect::<Vec<_>>(),
         )?;
 
-        {
+        'write_cache: {
             // add to checked operations
             let mut cache_write = self.cache.write();
             for op_id in new_operations.keys().copied() {
@@ -221,7 +221,7 @@ impl RetrievalThread {
             }
 
             // add to known ops
-            let known_ops = cache_write
+            let Ok(known_ops) = cache_write
                 .ops_known_by_peer
                 .get_or_insert(source_peer_id.clone(), || {
                     LruMap::new(ByLength::new(
@@ -231,8 +231,10 @@ impl RetrievalThread {
                             .expect("max_node_known_ops_size in config must be > 0"),
                     ))
                 })
-                .ok_or(())
-                .expect("ops_known_by_peer limitation reached");
+                .ok_or(()) else {
+                    warn!("ops_known_by_peer limitation reached");
+                    break 'write_cache;
+                };
             for id in received_ids {
                 known_ops.insert(id.prefix(), ());
             }
@@ -316,9 +318,9 @@ impl RetrievalThread {
         peer_id: &PeerId,
     ) -> Result<(), ProtocolError> {
         // mark sender as knowing the ops
-        {
+        'write_cache: {
             let mut cache_write = self.cache.write();
-            let known_ops = cache_write
+            let Ok(known_ops) = cache_write
                 .ops_known_by_peer
                 .get_or_insert(peer_id.clone(), || {
                     LruMap::new(ByLength::new(
@@ -328,8 +330,10 @@ impl RetrievalThread {
                             .expect("max_node_known_ops_size in config must be > 0"),
                     ))
                 })
-                .ok_or(())
-                .expect("ops_known_by_peer limitation reached");
+                .ok_or(()) else {
+                    warn!("ops_known_by_peer limitation reached");
+                    break 'write_cache;
+                };
             for prefix in &op_batch {
                 known_ops.insert(*prefix, ());
             }

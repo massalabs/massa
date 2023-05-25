@@ -498,9 +498,9 @@ impl RetrievalThread {
                     true,
                     Instant::now(),
                 );
-                {
+                'write_cache: {
                     let mut endorsement_cache_write = self.endorsement_cache.write();
-                    let endorsement_ids = endorsement_cache_write
+                    let Ok(endorsement_ids) =  endorsement_cache_write
                         .endorsements_known_by_peer
                         .get_or_insert(from_peer_id.clone(), || {
                             LruMap::new(ByLength::new(
@@ -510,8 +510,10 @@ impl RetrievalThread {
                                     .expect("max_node_known_blocks_size in config must be > 0"),
                             ))
                         })
-                        .ok_or(())
-                        .expect("endorsements_known_by_peer limit reached");
+                        .ok_or(()) else {
+                            warn!("endorsements known by peer limit reached");
+                            break 'write_cache;
+                        };
                     for endorsement_id in block_header.content.endorsements.iter().map(|e| e.id) {
                         endorsement_ids.insert(endorsement_id, ());
                     }
@@ -568,9 +570,9 @@ impl RetrievalThread {
                 true,
                 Instant::now(),
             );
-            {
+            'write_cache: {
                 let mut endorsement_cache_write = self.endorsement_cache.write();
-                let endorsement_ids = endorsement_cache_write
+                let Ok(endorsement_ids) = endorsement_cache_write
                     .endorsements_known_by_peer
                     .get_or_insert(from_peer_id.clone(), || {
                         LruMap::new(ByLength::new(
@@ -580,8 +582,10 @@ impl RetrievalThread {
                                 .expect("max_node_known_blocks_size in config must be > 0"),
                         ))
                     })
-                    .ok_or(())
-                    .expect("endorsements_known_by_peer limit reached");
+                    .ok_or(()) else {
+                        warn!("endorsements_known_by_peer limit reached");
+                        break 'write_cache;
+                    };
                 for endorsement_id in header.content.endorsements.iter().map(|e| e.id) {
                     endorsement_ids.insert(endorsement_id, ());
                 }
@@ -658,14 +662,14 @@ impl RetrievalThread {
                 .collect::<Vec<_>>(),
         )?;
 
-        {
+        'write_cache: {
             let mut cache_write = self.endorsement_cache.write();
             // add to verified signature cache
             for endorsement_id in endorsement_ids.iter() {
                 cache_write.checked_endorsements.insert(*endorsement_id, ());
             }
             // add to known endorsements for source node.
-            let endorsements = cache_write
+            let Ok(endorsements) = cache_write
                 .endorsements_known_by_peer
                 .get_or_insert(from_peer_id.clone(), || {
                     LruMap::new(ByLength::new(
@@ -675,8 +679,10 @@ impl RetrievalThread {
                             .expect("max_node_known_endorsements_size in config should be > 0"),
                     ))
                 })
-                .ok_or(())
-                .expect("endorsements_known_by_peer limit reached");
+                .ok_or(()) else {
+                    warn!("endorsements_known_by_peer limit reached");
+                    break 'write_cache;
+                };
             for endorsement_id in endorsement_ids.iter() {
                 endorsements.insert(*endorsement_id, ());
             }
@@ -718,9 +724,9 @@ impl RetrievalThread {
         let operation_ids_set: PreHashSet<OperationId> = operation_ids.iter().cloned().collect();
 
         // add to known ops
-        {
+        'write_cache: {
             let mut cache_write = self.operation_cache.write();
-            let known_ops = cache_write
+            let Ok(known_ops) = cache_write
                 .ops_known_by_peer
                 .get_or_insert(from_peer_id.clone(), || {
                     LruMap::new(ByLength::new(
@@ -730,8 +736,10 @@ impl RetrievalThread {
                             .expect("max_node_known_ops_size in config should be > 0"),
                     ))
                 })
-                .ok_or(())
-                .expect("ops_known_by_peer limitation reached");
+                .ok_or(()) else {
+                    warn!("ops_known_by_peer limitation reached");
+                    break 'write_cache;
+                };
             for op_id in operation_ids_set.iter() {
                 known_ops.insert(op_id.prefix(), ());
             }

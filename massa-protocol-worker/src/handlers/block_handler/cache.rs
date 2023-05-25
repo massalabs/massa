@@ -4,6 +4,7 @@ use massa_models::{block_header::SecuredHeader, block_id::BlockId};
 use massa_protocol_exports::PeerId;
 use parking_lot::RwLock;
 use schnellru::{ByLength, LruMap};
+use tracing::log::warn;
 
 pub struct BlockCache {
     pub checked_headers: LruMap<BlockId, SecuredHeader>,
@@ -20,7 +21,7 @@ impl BlockCache {
         val: bool,
         timeout: Instant,
     ) {
-        let (blocks, _) = self
+        let Ok((blocks, _)) = self
             .blocks_known_by_peer
             .get_or_insert(from_peer_id.clone(), || {
                 (
@@ -28,8 +29,10 @@ impl BlockCache {
                     Instant::now(),
                 )
             })
-            .ok_or(())
-            .expect("blocks_known_by_peer limit reached");
+            .ok_or(()) else {
+                warn!("blocks_known_by_peer limit reached");
+                return;
+            };
         for block_id in block_ids {
             blocks.insert(*block_id, (val, timeout));
         }

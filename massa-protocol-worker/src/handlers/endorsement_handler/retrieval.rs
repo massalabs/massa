@@ -164,14 +164,14 @@ impl RetrievalThread {
                 })
                 .collect::<Vec<_>>(),
         )?;
-        {
+        'write_cache: {
             let mut cache_write = self.cache.write();
             // add to verified signature cache
             for endorsement_id in endorsement_ids.iter() {
                 cache_write.checked_endorsements.insert(*endorsement_id, ());
             }
             // add to known endorsements for source node.
-            let endorsements = cache_write
+            let Ok(endorsements) = cache_write
                 .endorsements_known_by_peer
                 .get_or_insert(from_peer_id.clone(), || {
                     LruMap::new(ByLength::new(
@@ -181,8 +181,10 @@ impl RetrievalThread {
                             .expect("max_node_known_endorsements_size in config should be > 0"),
                     ))
                 })
-                .ok_or(())
-                .expect("endorsements_known_by_peer limit reached");
+                .ok_or(()) else {
+                    warn!("endorsements_known_by_peer limit reached");
+                    break 'write_cache;
+                };
             for endorsement_id in endorsement_ids.iter() {
                 endorsements.insert(*endorsement_id, ());
             }
