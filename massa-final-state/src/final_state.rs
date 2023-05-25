@@ -422,8 +422,11 @@ impl FinalState {
         &mut self,
         cycle: u64,
     ) -> Result<(), FinalStateError> {
+        
+        let final_state_hash = self.db.read().get_db_hash();
+
         self.pos_state
-            .feed_cycle_state_hash(cycle, self.db.read().get_db_hash());
+            .feed_cycle_state_hash(cycle, final_state_hash);
 
         self.pos_state
             .feed_selector(cycle.checked_add(2).ok_or_else(|| {
