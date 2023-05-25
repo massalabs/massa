@@ -270,13 +270,19 @@
 <a href="#270" id="270">270</a>
 <a href="#271" id="271">271</a>
 <a href="#272" id="272">272</a>
-</pre><pre class="rust"><code><span class="kw">use </span>std::{num::NonZeroUsize, thread::JoinHandle};
+<a href="#273" id="273">273</a>
+<a href="#274" id="274">274</a>
+<a href="#275" id="275">275</a>
+<a href="#276" id="276">276</a>
+<a href="#277" id="277">277</a>
+<a href="#278" id="278">278</a>
+<a href="#279" id="279">279</a>
+</pre><pre class="rust"><code><span class="kw">use </span>std::thread::JoinHandle;
 
 <span class="kw">use </span>crossbeam::{
     channel::{Receiver, Sender},
     select,
 };
-<span class="kw">use </span>lru::LruCache;
 <span class="kw">use </span>massa_logging::massa_trace;
 <span class="kw">use </span>massa_models::{
     endorsement::SecureShareEndorsement,
@@ -289,6 +295,7 @@
 <span class="kw">use </span>massa_serialization::{DeserializeError, Deserializer};
 <span class="kw">use </span>massa_storage::Storage;
 <span class="kw">use </span>massa_time::MassaTime;
+<span class="kw">use </span>schnellru::{ByLength, LruMap};
 <span class="kw">use </span>tracing::{debug, info, warn};
 
 <span class="kw">use crate</span>::{
@@ -411,7 +418,11 @@
             <span class="comment">// check endorsement signature if not already checked
             </span>{
                 <span class="kw">let </span>read_cache = <span class="self">self</span>.cache.read();
-                <span class="kw">if </span>!read_cache.checked_endorsements.contains(<span class="kw-2">&amp;</span>endorsement_id) {
+                <span class="kw">if </span>read_cache
+                    .checked_endorsements
+                    .peek(<span class="kw-2">&amp;</span>endorsement_id)
+                    .is_none()
+                {
                     new_endorsements.insert(endorsement_id, endorsement);
                 }
             }
@@ -435,20 +446,23 @@
             <span class="kw">let </span><span class="kw-2">mut </span>cache_write = <span class="self">self</span>.cache.write();
             <span class="comment">// add to verified signature cache
             </span><span class="kw">for </span>endorsement_id <span class="kw">in </span>endorsement_ids.iter() {
-                cache_write.checked_endorsements.put(<span class="kw-2">*</span>endorsement_id, ());
+                cache_write.checked_endorsements.insert(<span class="kw-2">*</span>endorsement_id, ());
             }
             <span class="comment">// add to known endorsements for source node.
-            </span><span class="kw">let </span>endorsements = cache_write.endorsements_known_by_peer.get_or_insert_mut(
-                from_peer_id.clone(),
-                || {
-                    LruCache::new(
-                        NonZeroUsize::new(<span class="self">self</span>.config.max_node_known_endorsements_size)
+            </span><span class="kw">let </span>endorsements = cache_write
+                .endorsements_known_by_peer
+                .get_or_insert(from_peer_id.clone(), || {
+                    LruMap::new(ByLength::new(
+                        <span class="self">self</span>.config
+                            .max_node_known_endorsements_size
+                            .try_into()
                             .expect(<span class="string">&quot;max_node_known_endorsements_size in config should be &gt; 0&quot;</span>),
-                    )
-                },
-            );
+                    ))
+                })
+                .ok_or(())
+                .expect(<span class="string">&quot;endorsements_known_by_peer limit reached&quot;</span>);
             <span class="kw">for </span>endorsement_id <span class="kw">in </span>endorsement_ids.iter() {
-                endorsements.put(<span class="kw-2">*</span>endorsement_id, ());
+                endorsements.insert(<span class="kw-2">*</span>endorsement_id, ());
             }
         }
 
