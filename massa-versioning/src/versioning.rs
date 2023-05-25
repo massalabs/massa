@@ -606,8 +606,8 @@ impl MipStoreStats {
 #[derive(Error, Debug, PartialEq)]
 pub enum UpdateWithError {
     // State is not coherent with associated MipInfo, ex: State is active but MipInfo.start was not reach yet
-    #[error("MipInfo {0:?} is not coherent with state: {1:?}")]
-    NonCoherent(MipInfo, MipState),
+    #[error("MipInfo {0:#?} is not coherent with state: {1:#?}, error: {2}")]
+    NonCoherent(MipInfo, MipState, IsCoherentError),
     // ex: State is already started but received state is only defined
     #[error("For MipInfo {0:?}, trying to downgrade from state {1:?} to {2:?}")]
     Downgrade(MipInfo, ComponentState, ComponentState),
@@ -656,11 +656,12 @@ impl MipStoreRaw {
         let mut has_error: Option<UpdateWithError> = None;
 
         for (v_info, v_state) in store_raw.store.iter() {
-            if let Err(_e) = v_state.is_coherent_with(v_info) {
+            if let Err(e) = v_state.is_coherent_with(v_info) {
                 // As soon as we found one non coherent state we abort the merge
                 has_error = Some(UpdateWithError::NonCoherent(
                     v_info.clone(),
                     v_state.clone(),
+                    e,
                 ));
                 break;
             }
