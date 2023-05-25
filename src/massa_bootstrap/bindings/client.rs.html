@@ -213,6 +213,7 @@
 <a href="#213" id="213">213</a>
 <a href="#214" id="214">214</a>
 <a href="#215" id="215">215</a>
+<a href="#216" id="216">216</a>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="kw">use </span><span class="kw">crate</span>::bindings::BindingReadExact;
@@ -223,13 +224,11 @@
 };
 <span class="kw">use </span><span class="kw">crate</span>::settings::BootstrapClientConfig;
 <span class="kw">use </span>massa_hash::Hash;
-<span class="kw">use </span>massa_models::config::{
-    MAX_BOOTSTRAP_MESSAGE_SIZE, MAX_BOOTSTRAP_MESSAGE_SIZE_BYTES, SIGNATURE_DESER_SIZE,
-};
+<span class="kw">use </span>massa_models::config::{MAX_BOOTSTRAP_MESSAGE_SIZE, MAX_BOOTSTRAP_MESSAGE_SIZE_BYTES};
 <span class="kw">use </span>massa_models::serialization::{DeserializeMinBEInt, SerializeMinBEInt};
 <span class="kw">use </span>massa_models::version::{Version, VersionSerializer};
 <span class="kw">use </span>massa_serialization::{DeserializeError, Deserializer, Serializer};
-<span class="kw">use </span>massa_signature::{PublicKey, Signature};
+<span class="kw">use </span>massa_signature::{PublicKey, Signature, SIGNATURE_SIZE_BYTES};
 <span class="kw">use </span>rand::{rngs::StdRng, RngCore, SeedableRng};
 <span class="kw">use </span>std::time::Instant;
 <span class="kw">use </span>std::{io::Write, net::TcpStream, time::Duration};
@@ -243,7 +242,7 @@
     cfg: BootstrapClientConfig,
 }
 
-<span class="kw">const </span>KNOWN_PREFIX_LEN: usize = SIGNATURE_DESER_SIZE + MAX_BOOTSTRAP_MESSAGE_SIZE_BYTES;
+<span class="kw">const </span>KNOWN_PREFIX_LEN: usize = SIGNATURE_SIZE_BYTES + MAX_BOOTSTRAP_MESSAGE_SIZE_BYTES;
 <span class="doccomment">/// The known-length component of a message to be received.
 </span><span class="kw">struct </span>ServerMessageLeader {
     sig: Signature,
@@ -403,13 +402,16 @@
     /// and makes error-type management cleaner
     </span><span class="kw">fn </span>decode_msg_leader(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
-        leader_buff: <span class="kw-2">&amp;</span>[u8; SIGNATURE_DESER_SIZE + MAX_BOOTSTRAP_MESSAGE_SIZE_BYTES],
+        leader_buff: <span class="kw-2">&amp;</span>[u8; SIGNATURE_SIZE_BYTES + MAX_BOOTSTRAP_MESSAGE_SIZE_BYTES],
     ) -&gt; <span class="prelude-ty">Result</span>&lt;ServerMessageLeader, BootstrapError&gt; {
-        <span class="kw">let </span>sig = Signature::from_bytes(leader_buff)<span class="question-mark">?</span>;
+        <span class="kw">let </span>sig_array = leader_buff[<span class="number">0</span>..SIGNATURE_SIZE_BYTES]
+            .try_into()
+            .expect(<span class="string">&quot;logic error in array manipulations&quot;</span>);
+        <span class="kw">let </span>sig = Signature::from_bytes(<span class="kw-2">&amp;</span>sig_array)<span class="question-mark">?</span>;
 
         <span class="comment">// construct the message len from the leader-bufff
         </span><span class="kw">let </span>msg_len = u32::from_be_bytes_min(
-            <span class="kw-2">&amp;</span>leader_buff[SIGNATURE_DESER_SIZE..],
+            <span class="kw-2">&amp;</span>leader_buff[SIGNATURE_SIZE_BYTES..],
             MAX_BOOTSTRAP_MESSAGE_SIZE,
         )<span class="question-mark">?
         </span>.<span class="number">0</span>;

@@ -282,8 +282,6 @@
 <a href="#282" id="282">282</a>
 <a href="#283" id="283">283</a>
 <a href="#284" id="284">284</a>
-<a href="#285" id="285">285</a>
-<a href="#286" id="286">286</a>
 </pre><pre class="rust"><code><span class="kw">use </span>crossbeam::{
     channel::{Receiver, Sender},
     select,
@@ -291,11 +289,11 @@
 <span class="kw">use </span>massa_consensus_exports::ConsensusController;
 <span class="kw">use </span>massa_models::stats::NetworkStats;
 <span class="kw">use </span>massa_pool_exports::PoolController;
-<span class="kw">use </span>massa_protocol_exports::{PeerCategoryInfo, PeerId, ProtocolConfig, ProtocolError};
+<span class="kw">use </span>massa_protocol_exports::{PeerCategoryInfo, ProtocolConfig, ProtocolError};
 <span class="kw">use </span>massa_storage::Storage;
-<span class="kw">use </span>massa_versioning::versioning::MipStore;
 <span class="kw">use </span>parking_lot::RwLock;
-<span class="kw">use </span>peernet::peer::PeerConnectionType;
+<span class="kw">use </span>peernet::{peer::PeerConnectionType, transports::OutConnectionConfig};
+<span class="kw">use </span>peernet::{peer_id::PeerId, transports::TcpOutConnectionConfig};
 <span class="kw">use </span>std::net::SocketAddr;
 <span class="kw">use </span>std::{collections::HashMap, net::IpAddr};
 <span class="kw">use </span>std::{num::NonZeroUsize, sync::Arc};
@@ -346,7 +344,6 @@
     peer_categories: HashMap&lt;String, (Vec&lt;IpAddr&gt;, PeerCategoryInfo)&gt;,
     _default_category: PeerCategoryInfo,
     config: ProtocolConfig,
-    mip_store: MipStore,
 ) -&gt; <span class="prelude-ty">Result</span>&lt;(Sender&lt;ConnectivityCommand&gt;, JoinHandle&lt;()&gt;), ProtocolError&gt; {
     <span class="kw">let </span>handle = std::thread::Builder::new()
     .name(<span class="string">&quot;protocol-connectivity&quot;</span>.to_string())
@@ -441,7 +438,6 @@
                 operation_cache,
                 block_cache,
                 storage.clone_without_refs(),
-                mip_store,
             );
 
             <span class="comment">//Try to connect to peers
@@ -481,7 +477,7 @@
                                     <span class="kw">let </span>peers: HashMap&lt;PeerId, (SocketAddr, PeerConnectionType)&gt; = network_controller.get_active_connections().get_peers_connected().into_iter().map(|(peer_id, peer)| {
                                         (peer_id, (peer.<span class="number">0</span>, peer.<span class="number">1</span>))
                                     }).collect();
-                                    responder.try_send((stats, peers)).unwrap_or_else(|<span class="kw">_</span>| <span class="macro">warn!</span>(<span class="string">&quot;Failed to send stats to responder&quot;</span>));
+                                    responder.send((stats, peers)).unwrap_or_else(|<span class="kw">_</span>| <span class="macro">warn!</span>(<span class="string">&quot;Failed to send stats to responder&quot;</span>));
                                 }
                                 <span class="prelude-val">Err</span>(<span class="kw">_</span>) =&gt; {
                                     <span class="macro">warn!</span>(<span class="string">&quot;Channel to connectivity thread is closed. Stopping the protocol&quot;</span>);
@@ -557,7 +553,7 @@
                         <span class="kw">for </span>addr <span class="kw">in </span>addresses_to_connect {
                             <span class="macro">info!</span>(<span class="string">&quot;Trying to connect to addr {}&quot;</span>, addr);
                             <span class="comment">// We only manage TCP for now
-                            </span><span class="kw">if let </span><span class="prelude-val">Err</span>(err) = network_controller.try_connect(addr, config.timeout_connection.to_duration()) {
+                            </span><span class="kw">if let </span><span class="prelude-val">Err</span>(err) = network_controller.try_connect(addr, config.timeout_connection.to_duration(), <span class="kw-2">&amp;</span>OutConnectionConfig::Tcp(Box::new(TcpOutConnectionConfig::new(config.read_write_limit_bytes_per_second / <span class="number">10</span>, Duration::from_millis(<span class="number">100</span>))))) {
                                 <span class="macro">warn!</span>(<span class="string">&quot;Failed to connect to peer {:?}: {:?}&quot;</span>, addr, err);
                             }
                         }

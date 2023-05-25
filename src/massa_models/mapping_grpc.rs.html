@@ -318,6 +318,23 @@
 <a href="#318" id="318">318</a>
 <a href="#319" id="319">319</a>
 <a href="#320" id="320">320</a>
+<a href="#321" id="321">321</a>
+<a href="#322" id="322">322</a>
+<a href="#323" id="323">323</a>
+<a href="#324" id="324">324</a>
+<a href="#325" id="325">325</a>
+<a href="#326" id="326">326</a>
+<a href="#327" id="327">327</a>
+<a href="#328" id="328">328</a>
+<a href="#329" id="329">329</a>
+<a href="#330" id="330">330</a>
+<a href="#331" id="331">331</a>
+<a href="#332" id="332">332</a>
+<a href="#333" id="333">333</a>
+<a href="#334" id="334">334</a>
+<a href="#335" id="335">335</a>
+<a href="#336" id="336">336</a>
+<a href="#337" id="337">337</a>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2023 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="kw">use </span>std::str::FromStr;
@@ -327,11 +344,13 @@
 <span class="kw">use </span><span class="kw">crate</span>::block_header::{BlockHeader, SecuredHeader};
 <span class="kw">use </span><span class="kw">crate</span>::denunciation::DenunciationIndex;
 <span class="kw">use </span><span class="kw">crate</span>::endorsement::{Endorsement, SecureShareEndorsement};
+<span class="kw">use </span><span class="kw">crate</span>::error::ModelsError;
 <span class="kw">use </span><span class="kw">crate</span>::execution::EventFilter;
 <span class="kw">use </span><span class="kw">crate</span>::operation::{Operation, OperationId, OperationType, SecureShareOperation};
 <span class="kw">use </span><span class="kw">crate</span>::output_event::{EventExecutionContext, SCOutputEvent};
 <span class="kw">use </span><span class="kw">crate</span>::slot::{IndexedSlot, Slot};
 <span class="kw">use </span>massa_proto::massa::api::v1 <span class="kw">as </span>grpc;
+<span class="kw">use </span>massa_signature::{PublicKey, Signature};
 
 <span class="kw">impl </span>From&lt;Block&gt; <span class="kw">for </span>grpc::Block {
     <span class="kw">fn </span>from(value: Block) -&gt; <span class="self">Self </span>{
@@ -637,6 +656,21 @@
             }),
         }
     }
+}
+
+<span class="doccomment">/// Converts a gRPC `SecureShare` into a byte vector
+</span><span class="kw">pub fn </span>secure_share_to_vec(value: grpc::SecureShare) -&gt; <span class="prelude-ty">Result</span>&lt;Vec&lt;u8&gt;, ModelsError&gt; {
+    <span class="kw">let </span>pub_key = PublicKey::from_str(<span class="kw-2">&amp;</span>value.content_creator_pub_key)<span class="question-mark">?</span>;
+    <span class="kw">let </span>pub_key_b = pub_key.to_bytes();
+    <span class="comment">// Concatenate signature, public key, and data into a single byte vector
+    </span><span class="kw">let </span><span class="kw-2">mut </span>serialized_content =
+        Vec::with_capacity(value.signature.len() + pub_key_b.len() + value.serialized_data.len());
+    serialized_content
+        .extend_from_slice(<span class="kw-2">&amp;</span>Signature::from_str(<span class="kw-2">&amp;</span>value.signature).map(|value| value.to_bytes())<span class="question-mark">?</span>);
+    serialized_content.extend_from_slice(pub_key_b);
+    serialized_content.extend_from_slice(<span class="kw-2">&amp;</span>value.serialized_data);
+
+    <span class="prelude-val">Ok</span>(serialized_content)
 }
 </code></pre></div>
 </section></main><div id="rustdoc-vars" data-root-path="../../" data-static-root-path="../../static.files/" data-current-crate="massa_models" data-themes="" data-resource-suffix="" data-rustdoc-version="1.69.0-nightly (d962ea578 2023-02-26)" data-search-js="search-14421e1532aead08.js" data-settings-js="settings-f0c5c39777a9a2f6.js" data-settings-css="settings-0bcba95ff279c1db.css" ></div></body></html>

@@ -270,6 +270,7 @@
 <a href="#270" id="270">270</a>
 <a href="#271" id="271">271</a>
 <a href="#272" id="272">272</a>
+<a href="#273" id="273">273</a>
 </pre><pre class="rust"><code><span class="kw">use </span>std::{num::NonZeroUsize, thread::JoinHandle};
 
 <span class="kw">use </span>crossbeam::{
@@ -284,11 +285,11 @@
     timeslots::get_block_slot_timestamp,
 };
 <span class="kw">use </span>massa_pool_exports::PoolController;
-<span class="kw">use </span>massa_protocol_exports::PeerId;
 <span class="kw">use </span>massa_protocol_exports::{ProtocolConfig, ProtocolError};
 <span class="kw">use </span>massa_serialization::{DeserializeError, Deserializer};
 <span class="kw">use </span>massa_storage::Storage;
 <span class="kw">use </span>massa_time::MassaTime;
+<span class="kw">use </span>peernet::peer_id::PeerId;
 <span class="kw">use </span>tracing::{debug, info, warn};
 
 <span class="kw">use crate</span>::{
@@ -319,7 +320,7 @@
 
 <span class="kw">impl </span>RetrievalThread {
     <span class="kw">fn </span>run(<span class="kw-2">&amp;mut </span><span class="self">self</span>) {
-        <span class="kw">let </span>endorsement_message_deserializer =
+        <span class="kw">let </span><span class="kw-2">mut </span>endorsement_message_deserializer =
             EndorsementMessageDeserializer::new(EndorsementMessageDeserializerArgs {
                 thread_count: <span class="self">self</span>.config.thread_count,
                 max_length_endorsements: <span class="self">self</span>.config.max_endorsements_per_message,
@@ -329,7 +330,8 @@
             <span class="macro">select! </span>{
                 recv(<span class="self">self</span>.receiver) -&gt; msg =&gt; {
                     <span class="kw">match </span>msg {
-                        <span class="prelude-val">Ok</span>((peer_id, message)) =&gt; {
+                        <span class="prelude-val">Ok</span>((peer_id, message_id, message)) =&gt; {
+                            endorsement_message_deserializer.set_message_id(message_id);
                             <span class="kw">let </span>(rest, message) = <span class="kw">match </span>endorsement_message_deserializer
                                 .deserialize::&lt;DeserializeError&gt;(<span class="kw-2">&amp;</span>message) {
                                 <span class="prelude-val">Ok</span>((rest, message)) =&gt; (rest, message),
@@ -491,7 +493,7 @@
                     .collect()
             };
             endorsements_to_propagate.drop_endorsement_refs(<span class="kw-2">&amp;</span>endorsements_to_not_propagate);
-            <span class="kw">if let </span><span class="prelude-val">Err</span>(err) = <span class="self">self</span>.internal_sender.try_send(
+            <span class="kw">if let </span><span class="prelude-val">Err</span>(err) = <span class="self">self</span>.internal_sender.send(
                 EndorsementHandlerPropagationCommand::PropagateEndorsements(
                     endorsements_to_propagate,
                 ),
@@ -509,7 +511,7 @@
     </span><span class="kw">fn </span>ban_node(<span class="kw-2">&amp;mut </span><span class="self">self</span>, peer_id: <span class="kw-2">&amp;</span>PeerId) -&gt; <span class="prelude-ty">Result</span>&lt;(), ProtocolError&gt; {
         <span class="macro">massa_trace!</span>(<span class="string">&quot;ban node from retrieval thread&quot;</span>, { <span class="string">&quot;peer_id&quot;</span>: peer_id.to_string() });
         <span class="self">self</span>.peer_cmd_sender
-            .try_send(PeerManagementCmd::Ban(<span class="macro">vec!</span>[peer_id.clone()]))
+            .send(PeerManagementCmd::Ban(<span class="macro">vec!</span>[peer_id.clone()]))
             .map_err(|err| ProtocolError::SendError(err.to_string()))
     }
 }

@@ -319,8 +319,6 @@
 <a href="#319" id="319">319</a>
 <a href="#320" id="320">320</a>
 <a href="#321" id="321">321</a>
-<a href="#322" id="322">322</a>
-<a href="#323" id="323">323</a>
 </pre><pre class="rust"><code><span class="doccomment">//! DEFAULT VALUES USED TO INITIALIZE DIVERS CONFIGURATIONS STRUCTURES
 //!
 //!
@@ -338,13 +336,13 @@
 //! (`default_testing.rs`) But as for the current file you shouldn&#39;t modify it.
 </span><span class="kw">use </span>std::str::FromStr;
 
-<span class="kw">use crate</span>::{amount::Amount, serialization::u32_be_bytes_min_length, version::Version};
+<span class="kw">use crate</span>::{
+    address::ADDRESS_SIZE_BYTES, amount::Amount, serialization::u32_be_bytes_min_length,
+    version::Version,
+};
 <span class="kw">use </span>massa_signature::KeyPair;
 <span class="kw">use </span>massa_time::MassaTime;
 <span class="kw">use </span>num::rational::Ratio;
-
-<span class="doccomment">/// IMPORTANNT TODO: should be removed after the bootstrap messages refacto
-</span><span class="kw">pub const </span>SIGNATURE_DESER_SIZE: usize = <span class="number">64 </span>+ <span class="number">1</span>;
 
 <span class="doccomment">/// Limit on the number of peers we advertise to others.
 </span><span class="kw">pub const </span>MAX_ADVERTISE_LENGTH: u32 = <span class="number">10000</span>;
@@ -396,7 +394,7 @@
         <span class="kw">if </span><span class="macro">cfg!</span>(feature = <span class="string">&quot;sandbox&quot;</span>) {
             <span class="string">&quot;SAND.22.1&quot;
         </span>} <span class="kw">else </span>{
-            <span class="string">&quot;TEST.23.0&quot;
+            <span class="string">&quot;TEST.22.2&quot;
         </span>}
         .parse()
         .unwrap()
@@ -424,8 +422,6 @@
 </span><span class="kw">pub const </span>BLOCK_REWARD: Amount = Amount::from_mantissa_scale(<span class="number">3</span>, <span class="number">1</span>);
 <span class="doccomment">/// Cost to store one byte in the ledger
 </span><span class="kw">pub const </span>LEDGER_COST_PER_BYTE: Amount = Amount::from_mantissa_scale(<span class="number">25</span>, <span class="number">5</span>);
-<span class="doccomment">/// Address size in bytes
-</span><span class="kw">pub const </span>ADDRESS_SIZE_BYTES: usize = <span class="number">32</span>;
 <span class="doccomment">/// Cost for a base entry (address + balance (5 bytes constant))
 </span><span class="kw">pub const </span>LEDGER_ENTRY_BASE_SIZE: usize = ADDRESS_SIZE_BYTES + <span class="number">8</span>;
 <span class="doccomment">/// Cost for a base entry datastore 10 bytes constant to avoid paying more for longer keys

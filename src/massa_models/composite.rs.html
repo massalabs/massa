@@ -150,7 +150,7 @@
 
 <span class="doccomment">/// just a public key and a signature it has produced
 /// used for serialization/deserialization purpose
-</span><span class="attr">#[derive(Debug, Serialize, Deserialize)]
+</span><span class="attr">#[derive(Debug, Clone, Serialize, Deserialize)]
 </span><span class="kw">pub struct </span>PubkeySig {
     <span class="doccomment">/// public key
     </span><span class="kw">pub </span>public_key: PublicKey,

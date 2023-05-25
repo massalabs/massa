@@ -722,9 +722,6 @@
 <a href="#722" id="722">722</a>
 <a href="#723" id="723">723</a>
 <a href="#724" id="724">724</a>
-<a href="#725" id="725">725</a>
-<a href="#726" id="726">726</a>
-<a href="#727" id="727">727</a>
 </pre><pre class="rust"><code><span class="kw">use </span>bitvec::vec::BitVec;
 <span class="kw">use </span>massa_hash::{Hash, HashDeserializer, HashSerializer, HASH_SIZE_BYTES};
 <span class="kw">use </span>massa_models::{
@@ -964,7 +961,6 @@
 </span><span class="kw">fn </span>test_cycle_info_hash_computation() {
     <span class="kw">use </span><span class="kw">crate</span>::DeferredCredits;
     <span class="kw">use </span>bitvec::prelude::<span class="kw-2">*</span>;
-    <span class="kw">use </span>massa_models::address::{UserAddress, UserAddressV0};
 
     <span class="comment">// cycle and address
     </span><span class="kw">let </span><span class="kw-2">mut </span>cycle_a = CycleInfo::new_with_hash(
@@ -974,9 +970,7 @@
         BitVec::default(),
         PreHashMap::default(),
     );
-    <span class="kw">let </span>addr = Address::User(UserAddress::UserAddressV0(UserAddressV0(
-        Hash::compute_from(<span class="kw-2">&amp;</span>[<span class="number">0</span>]),
-    )));
+    <span class="kw">let </span>addr = Address::from_prefixed_bytes(<span class="kw-2">&amp;</span>[<span class="number">0</span>; <span class="number">33</span>].as_slice()).unwrap();
 
     <span class="comment">// add changes
     </span><span class="kw">let </span><span class="kw-2">mut </span>roll_changes = PreHashMap::default();

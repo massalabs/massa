@@ -522,6 +522,7 @@
 <a href="#522" id="522">522</a>
 <a href="#523" id="523">523</a>
 <a href="#524" id="524">524</a>
+<a href="#525" id="525">525</a>
 </pre><pre class="rust"><code><span class="kw">use </span>std::{
     collections::{HashMap, VecDeque},
     num::NonZeroUsize,
@@ -543,11 +544,11 @@
     timeslots::get_block_slot_timestamp,
 };
 <span class="kw">use </span>massa_pool_exports::PoolController;
-<span class="kw">use </span>massa_protocol_exports::PeerId;
 <span class="kw">use </span>massa_protocol_exports::{ProtocolConfig, ProtocolError};
 <span class="kw">use </span>massa_serialization::{DeserializeError, Deserializer};
 <span class="kw">use </span>massa_storage::Storage;
 <span class="kw">use </span>massa_time::{MassaTime, TimeError};
+<span class="kw">use </span>peernet::peer_id::PeerId;
 
 <span class="kw">use crate</span>::{
     handlers::peer_handler::models::{PeerManagementCmd, PeerMessageTuple},
@@ -595,7 +596,7 @@
 
 <span class="kw">impl </span>RetrievalThread {
     <span class="kw">fn </span>run(<span class="kw-2">&amp;mut </span><span class="self">self</span>) {
-        <span class="kw">let </span>operation_message_deserializer =
+        <span class="kw">let </span><span class="kw-2">mut </span>operation_message_deserializer =
             OperationMessageDeserializer::new(OperationMessageDeserializerArgs {
                 max_operations_prefix_ids: <span class="self">self</span>.config.max_operations_per_message <span class="kw">as </span>u32,
                 max_operations: <span class="self">self</span>.config.max_operations_per_message <span class="kw">as </span>u32,
@@ -612,7 +613,8 @@
             <span class="macro">select! </span>{
                 recv(<span class="self">self</span>.receiver) -&gt; msg =&gt; {
                     <span class="kw">match </span>msg {
-                        <span class="prelude-val">Ok</span>((peer_id, message)) =&gt; {
+                        <span class="prelude-val">Ok</span>((peer_id, message_id, message)) =&gt; {
+                            operation_message_deserializer.set_message_id(message_id);
                             <span class="kw">let </span>(rest, message) = <span class="kw">match </span>operation_message_deserializer
                                 .deserialize::&lt;DeserializeError&gt;(<span class="kw-2">&amp;</span>message) {
                                     <span class="prelude-val">Ok</span>((rest, message)) =&gt; (rest, message),
@@ -794,7 +796,7 @@
                 .insert(Instant::now(), to_announce.clone());
             <span class="self">self</span>.storage.extend(ops_to_propagate);
             <span class="self">self</span>.internal_sender
-                .try_send(OperationHandlerPropagationCommand::AnnounceOperations(
+                .send(OperationHandlerPropagationCommand::AnnounceOperations(
                     to_announce,
                 ))
                 .map_err(|err| ProtocolError::SendError(err.to_string()))<span class="question-mark">?</span>;
@@ -1003,14 +1005,14 @@
     </span><span class="kw">fn </span>ban_node(<span class="kw-2">&amp;mut </span><span class="self">self</span>, peer_id: <span class="kw-2">&amp;</span>PeerId) -&gt; <span class="prelude-ty">Result</span>&lt;(), ProtocolError&gt; {
         <span class="macro">massa_trace!</span>(<span class="string">&quot;ban node from retrieval thread&quot;</span>, { <span class="string">&quot;peer_id&quot;</span>: peer_id.to_string() });
         <span class="self">self</span>.peer_cmd_sender
-            .try_send(PeerManagementCmd::Ban(<span class="macro">vec!</span>[peer_id.clone()]))
+            .send(PeerManagementCmd::Ban(<span class="macro">vec!</span>[peer_id.clone()]))
             .map_err(|err| ProtocolError::SendError(err.to_string()))
     }
 }
 
 <span class="attr">#[allow(clippy::too_many_arguments)]
 </span><span class="kw">pub fn </span>start_retrieval_thread(
-    receiver: Receiver&lt;PeerMessageTuple&gt;,
+    receiver: Receiver&lt;(PeerId, u64, Vec&lt;u8&gt;)&gt;,
     pool_controller: Box&lt;<span class="kw">dyn </span>PoolController&gt;,
     storage: Storage,
     config: ProtocolConfig,

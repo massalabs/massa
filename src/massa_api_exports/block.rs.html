@@ -97,7 +97,7 @@
 <span class="kw">use </span><span class="kw">crate</span>::display_if_true;
 
 <span class="doccomment">/// refactor to delete
-</span><span class="attr">#[derive(Debug, Deserialize, Serialize)]
+</span><span class="attr">#[derive(Debug, Clone, Deserialize, Serialize)]
 </span><span class="kw">pub struct </span>BlockInfo {
     <span class="doccomment">/// block id
     </span><span class="kw">pub </span>id: BlockId,
@@ -106,7 +106,7 @@
 }
 
 <span class="doccomment">/// Block content
-</span><span class="attr">#[derive(Debug, Deserialize, Serialize)]
+</span><span class="attr">#[derive(Debug, Clone, Deserialize, Serialize)]
 </span><span class="kw">pub struct </span>BlockInfoContent {
     <span class="doccomment">/// true if final
     </span><span class="kw">pub </span>is_final: bool,
@@ -141,7 +141,7 @@
 }
 
 <span class="doccomment">/// A block resume (without the block itself)
-</span><span class="attr">#[derive(Debug, Deserialize, Serialize)]
+</span><span class="attr">#[derive(Debug, Clone, Deserialize, Serialize)]
 </span><span class="kw">pub struct </span>BlockSummary {
     <span class="doccomment">/// id
     </span><span class="kw">pub </span>id: BlockId,

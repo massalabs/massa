@@ -169,21 +169,20 @@
 <a href="#169" id="169">169</a>
 <a href="#170" id="170">170</a>
 <a href="#171" id="171">171</a>
-<a href="#172" id="172">172</a>
 </pre><pre class="rust"><code><span class="kw">use </span>std::{
     collections::{HashMap, HashSet},
     net::SocketAddr,
 };
 
-<span class="kw">use </span>massa_protocol_exports::{PeerId, ProtocolError};
+<span class="kw">use </span>massa_protocol_exports::ProtocolError;
 <span class="kw">use </span>peernet::{
     network_manager::{PeerNetManager, SharedActiveConnections},
     peer::PeerConnectionType,
-    transports::TransportType,
+    peer_id::PeerId,
+    transports::{OutConnectionConfig, TransportType},
 };
 
 <span class="kw">use crate</span>::{
-    context::Context,
     handlers::peer_handler::MassaHandshake,
     messages::{Message, MessagesHandler, MessagesSerializer},
 };
@@ -212,7 +211,7 @@
     }
 }
 
-<span class="kw">impl </span>ActiveConnectionsTrait <span class="kw">for </span>SharedActiveConnections&lt;PeerId&gt; {
+<span class="kw">impl </span>ActiveConnectionsTrait <span class="kw">for </span>SharedActiveConnections {
     <span class="kw">fn </span>send_to_peer(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         peer_id: <span class="kw-2">&amp;</span>PeerId,
@@ -223,7 +222,7 @@
         <span class="kw">if let </span><span class="prelude-val">Some</span>(connection) = <span class="self">self</span>.read().connections.get(peer_id) {
             connection
                 .send_channels
-                .try_send(message_serializer, message, high_priority)
+                .send(message_serializer, message, high_priority)
                 .map_err(|err| ProtocolError::SendError(err.to_string()))
         } <span class="kw">else </span>{
             <span class="prelude-val">Err</span>(ProtocolError::SendError(
@@ -290,17 +289,16 @@
         <span class="kw-2">&amp;mut </span><span class="self">self</span>,
         addr: SocketAddr,
         timeout: std::time::Duration,
+        out_connection_config: <span class="kw-2">&amp;</span>OutConnectionConfig,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;(), ProtocolError&gt;;
 }
 
 <span class="kw">pub struct </span>NetworkControllerImpl {
-    peernet_manager: PeerNetManager&lt;PeerId, Context, MassaHandshake, MessagesHandler&gt;,
+    peernet_manager: PeerNetManager&lt;MassaHandshake, MessagesHandler&gt;,
 }
 
 <span class="kw">impl </span>NetworkControllerImpl {
-    <span class="kw">pub fn </span>new(
-        peernet_manager: PeerNetManager&lt;PeerId, Context, MassaHandshake, MessagesHandler&gt;,
-    ) -&gt; <span class="self">Self </span>{
+    <span class="kw">pub fn </span>new(peernet_manager: PeerNetManager&lt;MassaHandshake, MessagesHandler&gt;) -&gt; <span class="self">Self </span>{
         <span class="self">Self </span>{ peernet_manager }
     }
 }
@@ -334,10 +332,10 @@
         <span class="kw-2">&amp;mut </span><span class="self">self</span>,
         addr: SocketAddr,
         timeout: std::time::Duration,
+        out_connection_config: <span class="kw-2">&amp;</span>OutConnectionConfig,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;(), ProtocolError&gt; {
-        <span class="comment">//TODO: Change when we support multiple transports
-        </span><span class="self">self</span>.peernet_manager
-            .try_connect(TransportType::Tcp, addr, timeout)
+        <span class="self">self</span>.peernet_manager
+            .try_connect(addr, timeout, out_connection_config)
             .map_err(|err| ProtocolError::GeneralProtocolError(err.to_string()))<span class="question-mark">?</span>;
         <span class="prelude-val">Ok</span>(())
     }

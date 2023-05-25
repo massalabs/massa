@@ -308,6 +308,58 @@
 <a href="#308" id="308">308</a>
 <a href="#309" id="309">309</a>
 <a href="#310" id="310">310</a>
+<a href="#311" id="311">311</a>
+<a href="#312" id="312">312</a>
+<a href="#313" id="313">313</a>
+<a href="#314" id="314">314</a>
+<a href="#315" id="315">315</a>
+<a href="#316" id="316">316</a>
+<a href="#317" id="317">317</a>
+<a href="#318" id="318">318</a>
+<a href="#319" id="319">319</a>
+<a href="#320" id="320">320</a>
+<a href="#321" id="321">321</a>
+<a href="#322" id="322">322</a>
+<a href="#323" id="323">323</a>
+<a href="#324" id="324">324</a>
+<a href="#325" id="325">325</a>
+<a href="#326" id="326">326</a>
+<a href="#327" id="327">327</a>
+<a href="#328" id="328">328</a>
+<a href="#329" id="329">329</a>
+<a href="#330" id="330">330</a>
+<a href="#331" id="331">331</a>
+<a href="#332" id="332">332</a>
+<a href="#333" id="333">333</a>
+<a href="#334" id="334">334</a>
+<a href="#335" id="335">335</a>
+<a href="#336" id="336">336</a>
+<a href="#337" id="337">337</a>
+<a href="#338" id="338">338</a>
+<a href="#339" id="339">339</a>
+<a href="#340" id="340">340</a>
+<a href="#341" id="341">341</a>
+<a href="#342" id="342">342</a>
+<a href="#343" id="343">343</a>
+<a href="#344" id="344">344</a>
+<a href="#345" id="345">345</a>
+<a href="#346" id="346">346</a>
+<a href="#347" id="347">347</a>
+<a href="#348" id="348">348</a>
+<a href="#349" id="349">349</a>
+<a href="#350" id="350">350</a>
+<a href="#351" id="351">351</a>
+<a href="#352" id="352">352</a>
+<a href="#353" id="353">353</a>
+<a href="#354" id="354">354</a>
+<a href="#355" id="355">355</a>
+<a href="#356" id="356">356</a>
+<a href="#357" id="357">357</a>
+<a href="#358" id="358">358</a>
+<a href="#359" id="359">359</a>
+<a href="#360" id="360">360</a>
+<a href="#361" id="361">361</a>
+<a href="#362" id="362">362</a>
 </pre><pre class="rust"><code><span class="kw">use </span>std::collections::VecDeque;
 
 <span class="kw">use </span>massa_consensus_exports::{
@@ -549,6 +601,58 @@
             }
         }
         <span class="prelude-val">Ok</span>(final_blocks)
+    }
+
+    <span class="doccomment">/// Computes max cliques of compatible blocks
+    </span><span class="kw">pub fn </span>compute_max_cliques(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; Vec&lt;PreHashSet&lt;BlockId&gt;&gt; {
+        <span class="kw">let </span><span class="kw-2">mut </span>max_cliques: Vec&lt;PreHashSet&lt;BlockId&gt;&gt; = Vec::new();
+
+        <span class="comment">// algorithm adapted from IK_GPX as summarized in:
+        //   Cazals et al., &quot;A note on the problem of reporting maximal cliques&quot;
+        //   Theoretical Computer Science, 2008
+        //   https://doi.org/10.1016/j.tcs.2008.05.010
+
+        // stack: r, p, x
+        </span><span class="kw">let </span><span class="kw-2">mut </span>stack: Vec&lt;(
+            PreHashSet&lt;BlockId&gt;,
+            PreHashSet&lt;BlockId&gt;,
+            PreHashSet&lt;BlockId&gt;,
+        )&gt; = <span class="macro">vec!</span>[(
+            PreHashSet::&lt;BlockId&gt;::default(),
+            <span class="self">self</span>.gi_head.keys().cloned().collect(),
+            PreHashSet::&lt;BlockId&gt;::default(),
+        )];
+        <span class="kw">while let </span><span class="prelude-val">Some</span>((r, <span class="kw-2">mut </span>p, <span class="kw-2">mut </span>x)) = stack.pop() {
+            <span class="kw">if </span>p.is_empty() &amp;&amp; x.is_empty() {
+                max_cliques.push(r);
+                <span class="kw">continue</span>;
+            }
+            <span class="comment">// choose the pivot vertex following the GPX scheme:
+            // u_p = node from (p \/ x) that maximizes the cardinality of (P \ Neighbors(u_p, GI))
+            </span><span class="kw">let </span><span class="kw-2">&amp;</span>u_p = p
+                .union(<span class="kw-2">&amp;</span>x)
+                .max_by_key(|<span class="kw-2">&amp;</span>u| {
+                    p.difference(<span class="kw-2">&amp;</span>(<span class="kw-2">&amp;</span><span class="self">self</span>.gi_head[u] | <span class="kw-2">&amp;</span><span class="macro">vec!</span>[<span class="kw-2">*</span>u].into_iter().collect()))
+                        .count()
+                })
+                .unwrap(); <span class="comment">// p was checked to be non-empty before
+
+            // iterate over u_set = (p /\ Neighbors(u_p, GI))
+            </span><span class="kw">let </span>u_set: PreHashSet&lt;BlockId&gt; =
+                <span class="kw-2">&amp;</span>p &amp; <span class="kw-2">&amp;</span>(<span class="kw-2">&amp;</span><span class="self">self</span>.gi_head[<span class="kw-2">&amp;</span>u_p] | <span class="kw-2">&amp;</span><span class="macro">vec!</span>[u_p].into_iter().collect());
+            <span class="kw">for </span>u_i <span class="kw">in </span>u_set.into_iter() {
+                p.remove(<span class="kw-2">&amp;</span>u_i);
+                <span class="kw">let </span>u_i_set: PreHashSet&lt;BlockId&gt; = <span class="macro">vec!</span>[u_i].into_iter().collect();
+                <span class="kw">let </span>comp_n_u_i: PreHashSet&lt;BlockId&gt; = <span class="kw-2">&amp;</span><span class="self">self</span>.gi_head[<span class="kw-2">&amp;</span>u_i] | <span class="kw-2">&amp;</span>u_i_set;
+                stack.push((<span class="kw-2">&amp;</span>r | <span class="kw-2">&amp;</span>u_i_set, <span class="kw-2">&amp;</span>p - <span class="kw-2">&amp;</span>comp_n_u_i, <span class="kw-2">&amp;</span>x - <span class="kw-2">&amp;</span>comp_n_u_i));
+                x.insert(u_i);
+            }
+        }
+        <span class="kw">if </span>max_cliques.is_empty() {
+            <span class="comment">// make sure at least one clique remains
+            </span>max_cliques = <span class="macro">vec!</span>[PreHashSet::&lt;BlockId&gt;::default()];
+        }
+        max_cliques
     }
 
     <span class="doccomment">/// get the clique of higher fitness
