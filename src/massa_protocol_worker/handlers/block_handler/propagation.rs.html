@@ -193,15 +193,16 @@
 <a href="#193" id="193">193</a>
 <a href="#194" id="194">194</a>
 <a href="#195" id="195">195</a>
-</pre><pre class="rust"><code><span class="kw">use </span>std::{collections::VecDeque, num::NonZeroUsize, thread::JoinHandle, time::Instant};
+<a href="#196" id="196">196</a>
+</pre><pre class="rust"><code><span class="kw">use </span>std::{collections::VecDeque, thread::JoinHandle, time::Instant};
 
 <span class="kw">use </span>crossbeam::channel::{Receiver, Sender};
-<span class="kw">use </span>lru::LruCache;
 <span class="kw">use </span>massa_logging::massa_trace;
 <span class="kw">use </span>massa_models::{block_id::BlockId, prehash::PreHashSet};
 <span class="kw">use </span>massa_protocol_exports::PeerId;
 <span class="kw">use </span>massa_protocol_exports::{ProtocolConfig, ProtocolError};
 <span class="kw">use </span>massa_storage::Storage;
+<span class="kw">use </span>schnellru::{ByLength, LruMap};
 <span class="kw">use </span>tracing::{debug, info, warn};
 
 <span class="kw">use crate</span>::{
@@ -272,18 +273,18 @@
                                     <span class="self">self</span>.active_connections.get_peer_ids_connected();
                                 <span class="kw">for </span>peer_id <span class="kw">in </span>peers {
                                     <span class="kw">if </span>!peers_connected.contains(<span class="kw-2">&amp;</span>peer_id) {
-                                        cache_write.blocks_known_by_peer.pop(<span class="kw-2">&amp;</span>peer_id);
+                                        cache_write.blocks_known_by_peer.remove(<span class="kw-2">&amp;</span>peer_id);
                                     }
                                 }
                                 <span class="kw">for </span>peer_id <span class="kw">in </span>peers_connected {
-                                    <span class="kw">if </span>!cache_write.blocks_known_by_peer.contains(<span class="kw-2">&amp;</span>peer_id) {
+                                    <span class="kw">if </span>cache_write.blocks_known_by_peer.peek(<span class="kw-2">&amp;</span>peer_id).is_none() {
                                         <span class="comment">//TODO: Change to detect the connection before
-                                        </span>cache_write.blocks_known_by_peer.put(
+                                        </span>cache_write.blocks_known_by_peer.insert(
                                             peer_id,
                                             (
-                                                LruCache::new(
-                                                    NonZeroUsize::new(<span class="self">self</span>.config.max_node_known_blocks_size)
-                                                        .expect(<span class="string">&quot;max_node_known_blocks_size in config must be &gt; 0&quot;</span>),
+                                                LruMap::new(
+                                                    ByLength::new(<span class="self">self</span>.config.max_node_known_blocks_size.try_into()
+                                                        .expect(<span class="string">&quot;max_node_known_blocks_size in config must be &gt; 0&quot;</span>)),
                                                 ),
                                                 Instant::now(),
                                             ),
@@ -293,7 +294,8 @@
                             }
                             {
                                 <span class="kw">let </span>cache_read = <span class="self">self</span>.cache.read();
-                                <span class="kw">for </span>(peer_id, (blocks_known, <span class="kw">_</span>)) <span class="kw">in </span><span class="kw-2">&amp;</span>cache_read.blocks_known_by_peer
+                                <span class="kw">for </span>(peer_id, (blocks_known, <span class="kw">_</span>)) <span class="kw">in
+                                    </span>cache_read.blocks_known_by_peer.iter()
                                 {
                                     <span class="comment">// peer that isn&#39;t asking for that block
                                     </span><span class="kw">let </span>cond = blocks_known.peek(<span class="kw-2">&amp;</span>block_id);

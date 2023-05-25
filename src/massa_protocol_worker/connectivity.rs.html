@@ -297,8 +297,8 @@
 <span class="kw">use </span>parking_lot::RwLock;
 <span class="kw">use </span>peernet::peer::PeerConnectionType;
 <span class="kw">use </span>std::net::SocketAddr;
+<span class="kw">use </span>std::sync::Arc;
 <span class="kw">use </span>std::{collections::HashMap, net::IpAddr};
-<span class="kw">use </span>std::{num::NonZeroUsize, sync::Arc};
 <span class="kw">use </span>std::{thread::JoinHandle, time::Duration};
 <span class="kw">use </span>tracing::{info, warn};
 
@@ -372,17 +372,17 @@
             </span><span class="kw">let </span>total_in_slots = config.peers_categories.values().map(|v| v.max_in_connections_post_handshake).sum::&lt;usize&gt;() + config.default_category_info.max_in_connections_post_handshake;
             <span class="kw">let </span>total_out_slots = config.peers_categories.values().map(| v| v.target_out_connections).sum::&lt;usize&gt;() + config.default_category_info.target_out_connections;
             <span class="kw">let </span>operation_cache = Arc::new(RwLock::new(OperationCache::new(
-                NonZeroUsize::new(config.max_known_ops_size).unwrap(),
-                NonZeroUsize::new(total_in_slots + total_out_slots).unwrap(),
+                config.max_known_blocks_size.try_into().unwrap(),
+                (total_in_slots + total_out_slots).try_into().unwrap(),
             )));
             <span class="kw">let </span>endorsement_cache = Arc::new(RwLock::new(EndorsementCache::new(
-                NonZeroUsize::new(config.max_known_endorsements_size).unwrap(),
-                NonZeroUsize::new(total_in_slots + total_out_slots).unwrap(),
+                config.max_known_endorsements_size.try_into().unwrap(),
+                (total_in_slots + total_out_slots).try_into().unwrap()
             )));
 
             <span class="kw">let </span>block_cache = Arc::new(RwLock::new(BlockCache::new(
-                NonZeroUsize::new(config.max_known_blocks_size).unwrap(),
-                NonZeroUsize::new(total_in_slots + total_out_slots).unwrap(),
+                config.max_known_blocks_size.try_into().unwrap(),
+                (total_in_slots + total_out_slots).try_into().unwrap(),
             )));
 
             <span class="comment">// Start handlers
