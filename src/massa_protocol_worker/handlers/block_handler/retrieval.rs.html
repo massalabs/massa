@@ -1343,46 +1343,9 @@
 <a href="#1343" id="1343">1343</a>
 <a href="#1344" id="1344">1344</a>
 <a href="#1345" id="1345">1345</a>
-<a href="#1346" id="1346">1346</a>
-<a href="#1347" id="1347">1347</a>
-<a href="#1348" id="1348">1348</a>
-<a href="#1349" id="1349">1349</a>
-<a href="#1350" id="1350">1350</a>
-<a href="#1351" id="1351">1351</a>
-<a href="#1352" id="1352">1352</a>
-<a href="#1353" id="1353">1353</a>
-<a href="#1354" id="1354">1354</a>
-<a href="#1355" id="1355">1355</a>
-<a href="#1356" id="1356">1356</a>
-<a href="#1357" id="1357">1357</a>
-<a href="#1358" id="1358">1358</a>
-<a href="#1359" id="1359">1359</a>
-<a href="#1360" id="1360">1360</a>
-<a href="#1361" id="1361">1361</a>
-<a href="#1362" id="1362">1362</a>
-<a href="#1363" id="1363">1363</a>
-<a href="#1364" id="1364">1364</a>
-<a href="#1365" id="1365">1365</a>
-<a href="#1366" id="1366">1366</a>
-<a href="#1367" id="1367">1367</a>
-<a href="#1368" id="1368">1368</a>
-<a href="#1369" id="1369">1369</a>
-<a href="#1370" id="1370">1370</a>
-<a href="#1371" id="1371">1371</a>
-<a href="#1372" id="1372">1372</a>
-<a href="#1373" id="1373">1373</a>
-<a href="#1374" id="1374">1374</a>
-<a href="#1375" id="1375">1375</a>
-<a href="#1376" id="1376">1376</a>
-<a href="#1377" id="1377">1377</a>
-<a href="#1378" id="1378">1378</a>
-<a href="#1379" id="1379">1379</a>
-<a href="#1380" id="1380">1380</a>
-<a href="#1381" id="1381">1381</a>
-<a href="#1382" id="1382">1382</a>
-<a href="#1383" id="1383">1383</a>
 </pre><pre class="rust"><code><span class="kw">use </span>std::{
     collections::{hash_map::Entry, HashMap, HashSet},
+    num::NonZeroUsize,
     thread::JoinHandle,
     time::Instant,
 };
@@ -1403,6 +1366,7 @@
     channel::{at, Receiver, Sender},
     select,
 };
+<span class="kw">use </span>lru::LruCache;
 <span class="kw">use </span>massa_consensus_exports::ConsensusController;
 <span class="kw">use </span>massa_hash::{Hash, HASH_SIZE_BYTES};
 <span class="kw">use </span>massa_logging::massa_trace;
@@ -1423,7 +1387,6 @@
 <span class="kw">use </span>massa_storage::Storage;
 <span class="kw">use </span>massa_time::TimeError;
 <span class="kw">use </span>massa_versioning::versioning::MipStore;
-<span class="kw">use </span>schnellru::{ByLength, LruMap};
 <span class="kw">use </span>tracing::{debug, info, warn};
 
 <span class="kw">use super</span>::{
@@ -1690,7 +1653,7 @@
             <span class="kw">let </span>connected_peers = <span class="self">self</span>.active_connections.get_peer_ids_connected();
             <span class="kw">for </span>peer_id <span class="kw">in </span>peers {
                 <span class="kw">if </span>!connected_peers.contains(<span class="kw-2">&amp;</span>peer_id) {
-                    cache_write.blocks_known_by_peer.remove(<span class="kw-2">&amp;</span>peer_id);
+                    cache_write.blocks_known_by_peer.pop(<span class="kw-2">&amp;</span>peer_id);
                     <span class="self">self</span>.asked_blocks.remove(<span class="kw-2">&amp;</span>peer_id);
                 }
             }
@@ -1880,24 +1843,18 @@
                     <span class="bool-val">true</span>,
                     Instant::now(),
                 );
-                <span class="lifetime">&#39;write_cache</span>: {
+                {
                     <span class="kw">let </span><span class="kw-2">mut </span>endorsement_cache_write = <span class="self">self</span>.endorsement_cache.write();
-                    <span class="kw">let </span><span class="prelude-val">Ok</span>(endorsement_ids) =  endorsement_cache_write
+                    <span class="kw">let </span>endorsement_ids = endorsement_cache_write
                         .endorsements_known_by_peer
-                        .get_or_insert(from_peer_id.clone(), || {
-                            LruMap::new(ByLength::new(
-                                <span class="self">self</span>.config
-                                    .max_node_known_blocks_size
-                                    .try_into()
+                        .get_or_insert_mut(from_peer_id.clone(), || {
+                            LruCache::new(
+                                NonZeroUsize::new(<span class="self">self</span>.config.max_node_known_blocks_size)
                                     .expect(<span class="string">&quot;max_node_known_blocks_size in config must be &gt; 0&quot;</span>),
-                            ))
-                        })
-                        .ok_or(()) <span class="kw">else </span>{
-                            <span class="macro">warn!</span>(<span class="string">&quot;endorsements known by peer limit reached&quot;</span>);
-                            <span class="kw">break </span><span class="lifetime">&#39;write_cache</span>;
-                        };
+                            )
+                        });
                     <span class="kw">for </span>endorsement_id <span class="kw">in </span>block_header.content.endorsements.iter().map(|e| e.id) {
-                        endorsement_ids.insert(endorsement_id, ());
+                        endorsement_ids.put(endorsement_id, ());
                     }
                 }
                 <span class="kw">return </span><span class="prelude-val">Ok</span>(<span class="prelude-val">Some</span>((block_id, <span class="bool-val">false</span>)));
@@ -1944,7 +1901,7 @@
         }
         {
             <span class="kw">let </span><span class="kw-2">mut </span>cache_write = <span class="self">self</span>.cache.write();
-            cache_write.checked_headers.insert(block_id, header.clone());
+            cache_write.checked_headers.put(block_id, header.clone());
             cache_write.insert_blocks_known(from_peer_id, <span class="kw-2">&amp;</span>[block_id], <span class="bool-val">true</span>, Instant::now());
             cache_write.insert_blocks_known(
                 from_peer_id,
@@ -1952,24 +1909,18 @@
                 <span class="bool-val">true</span>,
                 Instant::now(),
             );
-            <span class="lifetime">&#39;write_cache</span>: {
+            {
                 <span class="kw">let </span><span class="kw-2">mut </span>endorsement_cache_write = <span class="self">self</span>.endorsement_cache.write();
-                <span class="kw">let </span><span class="prelude-val">Ok</span>(endorsement_ids) = endorsement_cache_write
+                <span class="kw">let </span>endorsement_ids = endorsement_cache_write
                     .endorsements_known_by_peer
-                    .get_or_insert(from_peer_id.clone(), || {
-                        LruMap::new(ByLength::new(
-                            <span class="self">self</span>.config
-                                .max_node_known_blocks_size
-                                .try_into()
+                    .get_or_insert_mut(from_peer_id.clone(), || {
+                        LruCache::new(
+                            NonZeroUsize::new(<span class="self">self</span>.config.max_node_known_blocks_size)
                                 .expect(<span class="string">&quot;max_node_known_blocks_size in config must be &gt; 0&quot;</span>),
-                        ))
-                    })
-                    .ok_or(()) <span class="kw">else </span>{
-                        <span class="macro">warn!</span>(<span class="string">&quot;endorsements_known_by_peer limit reached&quot;</span>);
-                        <span class="kw">break </span><span class="lifetime">&#39;write_cache</span>;
-                    };
+                        )
+                    });
                 <span class="kw">for </span>endorsement_id <span class="kw">in </span>header.content.endorsements.iter().map(|e| e.id) {
-                    endorsement_ids.insert(endorsement_id, ());
+                    endorsement_ids.put(endorsement_id, ());
                 }
             }
         }
@@ -2019,11 +1970,7 @@
             <span class="comment">// check endorsement signature if not already checked
             </span>{
                 <span class="kw">let </span>read_cache = <span class="self">self</span>.endorsement_cache.read();
-                <span class="kw">if </span>read_cache
-                    .checked_endorsements
-                    .peek(<span class="kw-2">&amp;</span>endorsement_id)
-                    .is_none()
-                {
+                <span class="kw">if </span>!read_cache.checked_endorsements.contains(<span class="kw-2">&amp;</span>endorsement_id) {
                     new_endorsements.insert(endorsement_id, endorsement);
                 }
             }
@@ -2044,29 +1991,24 @@
                 .collect::&lt;Vec&lt;<span class="kw">_</span>&gt;&gt;(),
         )<span class="question-mark">?</span>;
 
-        <span class="lifetime">&#39;write_cache</span>: {
+        {
             <span class="kw">let </span><span class="kw-2">mut </span>cache_write = <span class="self">self</span>.endorsement_cache.write();
             <span class="comment">// add to verified signature cache
             </span><span class="kw">for </span>endorsement_id <span class="kw">in </span>endorsement_ids.iter() {
-                cache_write.checked_endorsements.insert(<span class="kw-2">*</span>endorsement_id, ());
+                cache_write.checked_endorsements.put(<span class="kw-2">*</span>endorsement_id, ());
             }
             <span class="comment">// add to known endorsements for source node.
-            </span><span class="kw">let </span><span class="prelude-val">Ok</span>(endorsements) = cache_write
-                .endorsements_known_by_peer
-                .get_or_insert(from_peer_id.clone(), || {
-                    LruMap::new(ByLength::new(
-                        <span class="self">self</span>.config
-                            .max_node_known_endorsements_size
-                            .try_into()
+            </span><span class="kw">let </span>endorsements = cache_write.endorsements_known_by_peer.get_or_insert_mut(
+                from_peer_id.clone(),
+                || {
+                    LruCache::new(
+                        NonZeroUsize::new(<span class="self">self</span>.config.max_node_known_endorsements_size)
                             .expect(<span class="string">&quot;max_node_known_endorsements_size in config should be &gt; 0&quot;</span>),
-                    ))
-                })
-                .ok_or(()) <span class="kw">else </span>{
-                    <span class="macro">warn!</span>(<span class="string">&quot;endorsements_known_by_peer limit reached&quot;</span>);
-                    <span class="kw">break </span><span class="lifetime">&#39;write_cache</span>;
-                };
+                    )
+                },
+            );
             <span class="kw">for </span>endorsement_id <span class="kw">in </span>endorsement_ids.iter() {
-                endorsements.insert(<span class="kw-2">*</span>endorsement_id, ());
+                endorsements.put(<span class="kw-2">*</span>endorsement_id, ());
             }
         }
 
@@ -2106,24 +2048,19 @@
         </span><span class="kw">let </span>operation_ids_set: PreHashSet&lt;OperationId&gt; = operation_ids.iter().cloned().collect();
 
         <span class="comment">// add to known ops
-        </span><span class="lifetime">&#39;write_cache</span>: {
+        </span>{
             <span class="kw">let </span><span class="kw-2">mut </span>cache_write = <span class="self">self</span>.operation_cache.write();
-            <span class="kw">let </span><span class="prelude-val">Ok</span>(known_ops) = cache_write
-                .ops_known_by_peer
-                .get_or_insert(from_peer_id.clone(), || {
-                    LruMap::new(ByLength::new(
-                        <span class="self">self</span>.config
-                            .max_node_known_ops_size
-                            .try_into()
-                            .expect(<span class="string">&quot;max_node_known_ops_size in config should be &gt; 0&quot;</span>),
-                    ))
-                })
-                .ok_or(()) <span class="kw">else </span>{
-                    <span class="macro">warn!</span>(<span class="string">&quot;ops_known_by_peer limitation reached&quot;</span>);
-                    <span class="kw">break </span><span class="lifetime">&#39;write_cache</span>;
-                };
+            <span class="kw">let </span>known_ops =
+                cache_write
+                    .ops_known_by_peer
+                    .get_or_insert_mut(from_peer_id.clone(), || {
+                        LruCache::new(
+                            NonZeroUsize::new(<span class="self">self</span>.config.max_node_known_ops_size)
+                                .expect(<span class="string">&quot;max_node_known_ops_size in config should be &gt; 0&quot;</span>),
+                        )
+                    });
             <span class="kw">for </span>op_id <span class="kw">in </span>operation_ids_set.iter() {
-                known_ops.insert(op_id.prefix(), ());
+                known_ops.put(op_id.prefix(), ());
             }
         }
         <span class="kw">let </span>info = <span class="kw">if let </span><span class="prelude-val">Some</span>(info) = <span class="self">self</span>.block_wishlist.get_mut(<span class="kw-2">&amp;</span>block_id) {
@@ -2421,12 +2358,11 @@
             };
 
             <span class="comment">// Check operation signature only if not already checked.
-            </span><span class="kw">if </span><span class="self">self
+            </span><span class="kw">if </span>!<span class="self">self
                 </span>.operation_cache
                 .read()
                 .checked_operations
-                .peek(<span class="kw-2">&amp;</span>operation_id)
-                .is_none()
+                .contains(<span class="kw-2">&amp;</span>operation_id)
             {
                 <span class="comment">// check signature if the operation wasn&#39;t in `checked_operation`
                 </span>new_operations.insert(operation_id, operation);
@@ -2501,7 +2437,7 @@
                     .collect();
                 <span class="kw">for </span>peer_id <span class="kw">in </span>peers_in_cache {
                     <span class="kw">if </span>!peers_connected.contains(<span class="kw-2">&amp;</span>peer_id) {
-                        cache_write.blocks_known_by_peer.remove(<span class="kw-2">&amp;</span>peer_id);
+                        cache_write.blocks_known_by_peer.pop(<span class="kw-2">&amp;</span>peer_id);
                     }
                 }
                 <span class="kw">let </span>peers_in_asked_blocks: Vec&lt;PeerId&gt; =
@@ -2513,23 +2449,20 @@
                 }
                 <span class="comment">// Add new peers
                 </span><span class="kw">for </span>peer_id <span class="kw">in </span>peers_connected {
-                    <span class="kw">if </span>cache_write.blocks_known_by_peer.get(<span class="kw-2">&amp;</span>peer_id).is_none() {
+                    <span class="kw">if </span>!cache_write.blocks_known_by_peer.contains(<span class="kw-2">&amp;</span>peer_id) {
                         <span class="comment">//TODO: Change to detect the connection before
-                        </span>cache_write.blocks_known_by_peer.insert(
+                        </span>cache_write.blocks_known_by_peer.put(
                             peer_id.clone(),
                             (
-                                LruMap::new(ByLength::new(
-                                    <span class="self">self</span>.config
-                                        .max_node_known_blocks_size
-                                        .try_into()
+                                LruCache::new(
+                                    NonZeroUsize::new(<span class="self">self</span>.config.max_node_known_blocks_size)
                                         .expect(<span class="string">&quot;max_node_known_blocks_size in config must be &gt; 0&quot;</span>),
-                                )),
+                                ),
                                 Instant::now(),
                             ),
                         );
                     } <span class="kw">else </span>{
-                        <span class="comment">// Promote peer_id as the newest used key
-                        </span>cache_write.blocks_known_by_peer.get(<span class="kw-2">&amp;</span>peer_id);
+                        cache_write.blocks_known_by_peer.promote(<span class="kw-2">&amp;</span>peer_id);
                     }
 
                     <span class="kw">if </span>!<span class="self">self</span>.asked_blocks.contains_key(<span class="kw-2">&amp;</span>peer_id) {
@@ -2537,16 +2470,7 @@
                             .insert(peer_id.clone(), PreHashMap::default());
                     }
                 }
-                <span class="kw">let </span>all_keys: Vec&lt;PeerId&gt; = cache_write
-                    .blocks_known_by_peer
-                    .iter()
-                    .map(|(k, <span class="kw">_</span>)| k)
-                    .cloned()
-                    .collect();
-                <span class="kw">for </span>peer_id <span class="kw">in </span>all_keys.iter() {
-                    <span class="comment">// for (peer_id, (blocks_known, _)) in cache_write.blocks_known_by_peer.iter() {
-                    </span><span class="kw">let </span>(blocks_known, <span class="kw">_</span>) =
-                        cache_write.blocks_known_by_peer.peek_mut(peer_id).unwrap();
+                <span class="kw">for </span>(peer_id, (blocks_known, <span class="kw">_</span>)) <span class="kw">in </span>cache_write.blocks_known_by_peer.iter_mut() {
                     <span class="comment">// map to remove the borrow on asked_blocks. Otherwise can&#39;t call insert_known_blocks
                     </span><span class="kw">let </span>ask_time_opt = <span class="self">self
                         </span>.asked_blocks
@@ -2587,10 +2511,10 @@
                             </span><span class="kw">continue</span>; <span class="comment">// not a candidate
                         </span>}
                         <span class="comment">// timed out, supposed to have it
-                        </span>(<span class="bool-val">true</span>, <span class="prelude-val">Some</span>(<span class="kw-2">mut </span>timeout_at), <span class="prelude-val">Some</span>((<span class="bool-val">true</span>, info_time))) =&gt; {
-                            <span class="kw">if </span>info_time &lt; <span class="kw-2">&amp;mut </span>timeout_at {
+                        </span>(<span class="bool-val">true</span>, <span class="prelude-val">Some</span>(timeout_at), <span class="prelude-val">Some</span>((<span class="bool-val">true</span>, info_time))) =&gt; {
+                            <span class="kw">if </span>info_time &lt; <span class="kw-2">&amp;</span>timeout_at {
                                 <span class="comment">// info less recent than timeout: mark as not having it
-                                </span>blocks_known.insert(<span class="kw-2">*</span>hash, (<span class="bool-val">false</span>, timeout_at));
+                                </span>blocks_known.put(<span class="kw-2">*</span>hash, (<span class="bool-val">false</span>, timeout_at));
                                 (<span class="number">2u8</span>, ask_time_opt)
                             } <span class="kw">else </span>{
                                 <span class="comment">// told us it has it after a timeout: good candidate again
@@ -2598,16 +2522,16 @@
                             }
                         }
                         <span class="comment">// timed out, supposed to not have it
-                        </span>(<span class="bool-val">true</span>, <span class="prelude-val">Some</span>(<span class="kw-2">mut </span>timeout_at), <span class="prelude-val">Some</span>((<span class="bool-val">false</span>, info_time))) =&gt; {
-                            <span class="kw">if </span>info_time &lt; <span class="kw-2">&amp;mut </span>timeout_at {
+                        </span>(<span class="bool-val">true</span>, <span class="prelude-val">Some</span>(timeout_at), <span class="prelude-val">Some</span>((<span class="bool-val">false</span>, info_time))) =&gt; {
+                            <span class="kw">if </span>info_time &lt; <span class="kw-2">&amp;</span>timeout_at {
                                 <span class="comment">// info less recent than timeout: update info time
-                                </span>blocks_known.insert(<span class="kw-2">*</span>hash, (<span class="bool-val">false</span>, timeout_at));
+                                </span>blocks_known.put(<span class="kw-2">*</span>hash, (<span class="bool-val">false</span>, timeout_at));
                             }
                             (<span class="number">2u8</span>, ask_time_opt)
                         }
                         <span class="comment">// timed out but don&#39;t know if has it: mark as not having it
                         </span>(<span class="bool-val">true</span>, <span class="prelude-val">Some</span>(timeout_at), <span class="prelude-val">None</span>) =&gt; {
-                            blocks_known.insert(<span class="kw-2">*</span>hash, (<span class="bool-val">false</span>, timeout_at));
+                            blocks_known.put(<span class="kw-2">*</span>hash, (<span class="bool-val">false</span>, timeout_at));
                             (<span class="number">2u8</span>, ask_time_opt)
                         }
                     };
