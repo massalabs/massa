@@ -40,7 +40,7 @@
 
 [grpc]
     # whether to enable gRPC
-    enabled = false
+    enabled = true
     # whether to add HTTP 1 layer
     accept_http1 = false
     # whether to enable CORS. works only if `accept_http1` is true
