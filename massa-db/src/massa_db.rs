@@ -44,6 +44,8 @@ pub struct MassaDBConfig {
     pub path: PathBuf,
     /// Change history to keep (indexed by ChangeID)
     pub max_history_length: usize,
+    /// max_new_elements for bootstrap
+    pub max_new_elements: usize,
     /// Thread count for slot serialization
     pub thread_count: u8,
 }
@@ -271,7 +273,7 @@ where
         };
 
         for (serialized_key, serialized_value) in db_iterator.flatten() {
-            if new_elements.len() < self.config.max_history_length {
+            if new_elements.len() < self.config.max_new_elements {
                 new_elements.insert(serialized_key.to_vec(), serialized_value.to_vec());
             } else {
                 break;

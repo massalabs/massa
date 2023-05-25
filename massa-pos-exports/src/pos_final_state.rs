@@ -1487,6 +1487,7 @@ fn test_pos_final_state_hash_computation() {
     let db_config = MassaDBConfig {
         path: tempdir.path().to_path_buf(),
         max_history_length: 10,
+        max_new_elements: 100,
         thread_count: 2,
     };
     let db = Arc::new(RwLock::new(MassaDB::new(db_config)));

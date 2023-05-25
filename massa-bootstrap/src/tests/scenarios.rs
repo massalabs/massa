@@ -110,6 +110,7 @@ fn mock_bootstrap_manager(addr: SocketAddr, bootstrap_config: BootstrapConfig) -
     let db_config = MassaDBConfig {
         path: temp_dir.path().to_path_buf(),
         max_history_length: 10,
+        max_new_elements: 100,
         thread_count,
     };
     let db = Arc::new(RwLock::new(MassaDB::new(db_config)));
@@ -228,14 +229,16 @@ fn test_bootstrap_server() {
     let temp_dir_server = TempDir::new().unwrap();
     let db_server_config = MassaDBConfig {
         path: temp_dir_server.path().to_path_buf(),
-        max_history_length: 100,
+        max_history_length: 10,
+        max_new_elements: 100,
         thread_count,
     };
     let db_server = Arc::new(RwLock::new(MassaDB::new(db_server_config)));
     let temp_dir_client = TempDir::new().unwrap();
     let db_client_config = MassaDBConfig {
         path: temp_dir_client.path().to_path_buf(),
-        max_history_length: 100,
+        max_history_length: 10,
+        max_new_elements: 100,
         thread_count,
     };
     let db_client = Arc::new(RwLock::new(MassaDB::new(db_client_config)));

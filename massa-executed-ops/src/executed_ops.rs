@@ -271,11 +271,13 @@ fn test_executed_ops_hash_computing() {
     let db_a_config = MassaDBConfig {
         path: tempdir_a.path().to_path_buf(),
         max_history_length: 10,
+        max_new_elements: 100,
         thread_count,
     };
     let db_c_config = MassaDBConfig {
         path: tempdir_c.path().to_path_buf(),
         max_history_length: 10,
+        max_new_elements: 100,
         thread_count,
     };
     let db_a = Arc::new(RwLock::new(MassaDB::new(db_a_config)));

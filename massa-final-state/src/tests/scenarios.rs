@@ -36,6 +36,7 @@ fn create_final_state(temp_dir: &TempDir) -> Arc<RwLock<FinalState>> {
     let db_config = MassaDBConfig {
         path: temp_dir.path().to_path_buf(),
         max_history_length: 10,
+        max_new_elements: 100,
         thread_count,
     };
     let db = Arc::new(RwLock::new(MassaDB::new(db_config)));

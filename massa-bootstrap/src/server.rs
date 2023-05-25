@@ -507,19 +507,28 @@ pub fn stream_bootstrap_information(
                 state_part.is_empty(),
                 state_part.new_elements.last_key_value(),
             ) {
-                // We finished streaming the state already, but we received new info while streaming consensus: we stay sync
+                // We finished streaming the state already, but we received new elements while streaming consensus: we stay sync
                 (StreamingStep::Finished(Some(_last_key)), false, Some((key, _))) => {
                     StreamingStep::Finished(Some(key.clone()))
                 }
-                // We finished streaming the state already, and we received nothing new
-                (StreamingStep::Finished(Some(last_key)), true, _) => {
+                // We finished streaming the state already, and we received nothing new (or only updates)
+                (StreamingStep::Finished(Some(last_key)), _, _) => {
                     StreamingStep::Finished(Some(last_key.clone()))
                 }
                 // We receive our first empty state batch
                 (StreamingStep::Ongoing(last_key), true, _) => {
                     StreamingStep::Finished(Some(last_key.clone()))
                 }
-                // We still need to stream the state
+                // We still need to stream the state - no new elements
+                (StreamingStep::Ongoing(last_key), false, None) => {
+                    StreamingStep::Ongoing(last_key.clone())
+                }
+                // We receive an empty batch, but we've just started streaming
+                (StreamingStep::Started, true, _) => {
+                    warn!("Bootstrap is finished but nothing has been streamed yet");
+                    StreamingStep::Finished(None)
+                }
+                // We still need to stream the state - new elements
                 (_, false, Some((new_last_key, _))) => StreamingStep::Ongoing(new_last_key.clone()),
                 _ => {
                     return Err(BootstrapError::GeneralError(String::from(

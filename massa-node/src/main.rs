@@ -68,6 +68,7 @@ use massa_models::config::constants::{
     ROLL_COUNT_TO_SLASH_ON_DENUNCIATION, ROLL_PRICE, SELECTOR_DRAW_CACHE_SIZE, T0, THREAD_COUNT,
     VERSION,
 };
+use massa_models::config::MAX_BOOTSTRAPPED_NEW_ELEMENTS;
 use massa_pool_exports::{PoolChannels, PoolConfig, PoolManager};
 use massa_pool_worker::start_pool_controller;
 use massa_pos_exports::{PoSConfig, SelectorConfig, SelectorManager};
@@ -207,6 +208,7 @@ async fn launch(
     let db_config = MassaDBConfig {
         path: SETTINGS.ledger.disk_ledger_path.clone(),
         max_history_length: SETTINGS.ledger.final_history_length,
+        max_new_elements: MAX_BOOTSTRAPPED_NEW_ELEMENTS as usize,
         thread_count: THREAD_COUNT,
     };
     let db = Arc::new(RwLock::new(MassaDB::new(db_config)));
