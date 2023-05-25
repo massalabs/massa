@@ -147,7 +147,7 @@ impl PeerManagementHandler {
                                     }).collect();
                                     peers.push((peer_id.clone(), listeners));
                                 }
-                                if let Err(err) = responder.send(BootstrapPeers(peers)) {
+                                if let Err(err) = responder.try_send(BootstrapPeers(peers)) {
                                     warn!("error sending bootstrap peers: {:?}", err);
                                 }
                              },
@@ -218,7 +218,7 @@ impl PeerManagementHandler {
                     &mut message,
                 )
                 .unwrap();
-            sender_msg.send((peer_id.clone(), message)).unwrap();
+            sender_msg.try_send((peer_id.clone(), message)).unwrap();
         }
 
         Self {
