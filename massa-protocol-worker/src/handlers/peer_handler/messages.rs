@@ -296,8 +296,7 @@ mod tests {
         let msg = PeerManagementMessage::NewPeerConnected((
             PeerId::from_public_key(keypair.get_public_key()),
             listeners.clone(),
-        ))
-        .into();
+        ));
 
         serializer.serialize(&msg, &mut buffer).unwrap();
 

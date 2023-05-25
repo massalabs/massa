@@ -166,7 +166,7 @@ fn test_protocol_sends_blocks_with_operations_to_consensus() {
                 block.clone(),
                 &node_a_peer_id,
                 &protocol_controller,
-                vec![op_1.clone()],
+                vec![op_1],
             );
 
             //4. Verify that we sent to consensus
@@ -231,7 +231,7 @@ fn test_protocol_sends_blocks_with_operations_to_consensus() {
                     block.clone(),
                     &node_a_peer_id,
                     &protocol_controller,
-                    vec![op.clone()],
+                    vec![op],
                 );
 
                 // Check protocol did send block header to consensus but not the full block.
@@ -284,7 +284,7 @@ fn test_protocol_sends_blocks_with_operations_to_consensus() {
                     block.clone(),
                     &node_a_peer_id,
                     &protocol_controller,
-                    vec![op.clone()],
+                    vec![op],
                 );
 
                 // Check protocol did send block header to consensus but not the full block.
