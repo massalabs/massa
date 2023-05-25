@@ -589,6 +589,17 @@
 <a href="#589" id="589">589</a>
 <a href="#590" id="590">590</a>
 <a href="#591" id="591">591</a>
+<a href="#592" id="592">592</a>
+<a href="#593" id="593">593</a>
+<a href="#594" id="594">594</a>
+<a href="#595" id="595">595</a>
+<a href="#596" id="596">596</a>
+<a href="#597" id="597">597</a>
+<a href="#598" id="598">598</a>
+<a href="#599" id="599">599</a>
+<a href="#600" id="600">600</a>
+<a href="#601" id="601">601</a>
+<a href="#602" id="602">602</a>
 </pre><pre class="rust"><code><span class="kw">use </span>std::cmp::Reverse;
 <span class="kw">use </span>std::net::IpAddr;
 <span class="kw">use </span>std::{collections::HashMap, net::SocketAddr, thread::JoinHandle, time::Duration};
@@ -978,7 +989,12 @@
                 <span class="number">0 </span>=&gt; {
                     <span class="kw">let </span>(<span class="kw">_</span>, announcement) = <span class="self">self
                         </span>.announcement_deserializer
-                        .deserialize::&lt;DeserializeError&gt;(<span class="kw-2">&amp;</span>received[<span class="number">1</span>..])
+                        .deserialize::&lt;DeserializeError&gt;(
+                            received.get(<span class="number">1</span>..).ok_or(PeerNetError::HandshakeError.error(
+                                <span class="string">&quot;Massa Handshake&quot;</span>,
+                                <span class="prelude-val">Some</span>(<span class="string">&quot;Failed to get data&quot;</span>.to_string()),
+                            ))<span class="question-mark">?</span>,
+                        )
                         .map_err(|err| {
                             PeerNetError::HandshakeError.error(
                                 <span class="string">&quot;Massa Handshake&quot;</span>,
@@ -1060,7 +1076,13 @@
                     <span class="prelude-val">Ok</span>((peer_id.clone(), <span class="prelude-val">Some</span>(announcement)))
                 }
                 <span class="number">1 </span>=&gt; {
-                    <span class="self">self</span>.message_handlers.handle(<span class="kw-2">&amp;</span>received[<span class="number">1</span>..], <span class="kw-2">&amp;</span>peer_id)<span class="question-mark">?</span>;
+                    <span class="self">self</span>.message_handlers.handle(
+                        received.get(<span class="number">1</span>..).ok_or(
+                            PeerNetError::HandshakeError
+                                .error(<span class="string">&quot;Massa Handshake&quot;</span>, <span class="prelude-val">Some</span>(<span class="string">&quot;Failed to get data&quot;</span>.to_string())),
+                        )<span class="question-mark">?</span>,
+                        <span class="kw-2">&amp;</span>peer_id,
+                    )<span class="question-mark">?</span>;
                     <span class="prelude-val">Ok</span>((peer_id.clone(), <span class="prelude-val">None</span>))
                 }
                 <span class="kw">_ </span>=&gt; <span class="prelude-val">Err</span>(PeerNetError::HandshakeError

@@ -359,6 +359,15 @@
 <a href="#359" id="359">359</a>
 <a href="#360" id="360">360</a>
 <a href="#361" id="361">361</a>
+<a href="#362" id="362">362</a>
+<a href="#363" id="363">363</a>
+<a href="#364" id="364">364</a>
+<a href="#365" id="365">365</a>
+<a href="#366" id="366">366</a>
+<a href="#367" id="367">367</a>
+<a href="#368" id="368">368</a>
+<a href="#369" id="369">369</a>
+<a href="#370" id="370">370</a>
 </pre><pre class="rust"><code><span class="kw">use </span>std::{collections::HashMap, net::SocketAddr, ops::Bound::Included};
 
 <span class="kw">use </span>massa_models::serialization::{IpAddrDeserializer, IpAddrSerializer};
@@ -609,7 +618,16 @@
                                 )))
                             }
                         };
-                        <span class="prelude-val">Ok</span>((<span class="kw-2">&amp;</span>buffer[<span class="number">1</span>..], transport_type))
+
+                        <span class="prelude-val">Ok</span>((
+                            buffer
+                                .get(<span class="number">1</span>..)
+                                .ok_or(nom::Err::Error(ParseError::from_error_kind(
+                                    buffer,
+                                    nom::error::ErrorKind::LengthValue,
+                                )))<span class="question-mark">?</span>,
+                            transport_type,
+                        ))
                     },
                 )
                 .parse(buffer)
