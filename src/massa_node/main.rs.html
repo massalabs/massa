@@ -1268,6 +1268,8 @@
 <a href="#1268" id="1268">1268</a>
 <a href="#1269" id="1269">1269</a>
 <a href="#1270" id="1270">1270</a>
+<a href="#1271" id="1271">1271</a>
+<a href="#1272" id="1272">1272</a>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="attr">#![doc = <span class="macro">include_str!</span>(<span class="string">&quot;../../README.md&quot;</span>)]
@@ -1338,6 +1340,7 @@
     ROLL_COUNT_TO_SLASH_ON_DENUNCIATION, ROLL_PRICE, SELECTOR_DRAW_CACHE_SIZE, T0, THREAD_COUNT,
     VERSION,
 };
+<span class="kw">use </span>massa_models::config::MAX_BOOTSTRAPPED_NEW_ELEMENTS;
 <span class="kw">use </span>massa_pool_exports::{PoolChannels, PoolConfig, PoolManager};
 <span class="kw">use </span>massa_pool_worker::start_pool_controller;
 <span class="kw">use </span>massa_pos_exports::{PoSConfig, SelectorConfig, SelectorManager};
@@ -1477,6 +1480,7 @@
     <span class="kw">let </span>db_config = MassaDBConfig {
         path: SETTINGS.ledger.disk_ledger_path.clone(),
         max_history_length: SETTINGS.ledger.final_history_length,
+        max_new_elements: MAX_BOOTSTRAPPED_NEW_ELEMENTS <span class="kw">as </span>usize,
         thread_count: THREAD_COUNT,
     };
     <span class="kw">let </span>db = Arc::new(RwLock::new(MassaDB::new(db_config)));

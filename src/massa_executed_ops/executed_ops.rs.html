@@ -470,6 +470,8 @@
 <a href="#470" id="470">470</a>
 <a href="#471" id="471">471</a>
 <a href="#472" id="472">472</a>
+<a href="#473" id="473">473</a>
+<a href="#474" id="474">474</a>
 </pre><pre class="rust"><code><span class="doccomment">//! Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 //! This file defines a structure to list and prune previously executed operations.
@@ -743,11 +745,13 @@
     <span class="kw">let </span>db_a_config = MassaDBConfig {
         path: tempdir_a.path().to_path_buf(),
         max_history_length: <span class="number">10</span>,
+        max_new_elements: <span class="number">100</span>,
         thread_count,
     };
     <span class="kw">let </span>db_c_config = MassaDBConfig {
         path: tempdir_c.path().to_path_buf(),
         max_history_length: <span class="number">10</span>,
+        max_new_elements: <span class="number">100</span>,
         thread_count,
     };
     <span class="kw">let </span>db_a = Arc::new(RwLock::new(MassaDB::new(db_a_config)));

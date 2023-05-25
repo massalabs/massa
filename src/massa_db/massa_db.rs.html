@@ -589,6 +589,8 @@
 <a href="#589" id="589">589</a>
 <a href="#590" id="590">590</a>
 <a href="#591" id="591">591</a>
+<a href="#592" id="592">592</a>
+<a href="#593" id="593">593</a>
 </pre><pre class="rust"><code><span class="kw">use crate</span>::{
     MassaDBError, CF_ERROR, CHANGE_ID_DESER_ERROR, CHANGE_ID_KEY, CHANGE_ID_SER_ERROR, CRUD_ERROR,
     LSMTREE_ERROR, LSMTREE_NODES_CF, LSMTREE_VALUES_CF, METADATA_CF, OPEN_ERROR, STATE_CF,
@@ -635,6 +637,8 @@
     </span><span class="kw">pub </span>path: PathBuf,
     <span class="doccomment">/// Change history to keep (indexed by ChangeID)
     </span><span class="kw">pub </span>max_history_length: usize,
+    <span class="doccomment">/// max_new_elements for bootstrap
+    </span><span class="kw">pub </span>max_new_elements: usize,
     <span class="doccomment">/// Thread count for slot serialization
     </span><span class="kw">pub </span>thread_count: u8,
 }
@@ -862,7 +866,7 @@
         };
 
         <span class="kw">for </span>(serialized_key, serialized_value) <span class="kw">in </span>db_iterator.flatten() {
-            <span class="kw">if </span>new_elements.len() &lt; <span class="self">self</span>.config.max_history_length {
+            <span class="kw">if </span>new_elements.len() &lt; <span class="self">self</span>.config.max_new_elements {
                 new_elements.insert(serialized_key.to_vec(), serialized_value.to_vec());
             } <span class="kw">else </span>{
                 <span class="kw">break</span>;

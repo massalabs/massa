@@ -1623,6 +1623,7 @@
 <a href="#1623" id="1623">1623</a>
 <a href="#1624" id="1624">1624</a>
 <a href="#1625" id="1625">1625</a>
+<a href="#1626" id="1626">1626</a>
 </pre><pre class="rust"><code><span class="kw">use crate</span>::{
     CycleHistoryDeserializer, CycleHistorySerializer, CycleInfo, DeferredCreditsDeserializer,
     DeferredCreditsSerializer, PoSChanges, PosError, PosResult, ProductionStats,
@@ -3112,6 +3113,7 @@
     <span class="kw">let </span>db_config = MassaDBConfig {
         path: tempdir.path().to_path_buf(),
         max_history_length: <span class="number">10</span>,
+        max_new_elements: <span class="number">100</span>,
         thread_count: <span class="number">2</span>,
     };
     <span class="kw">let </span>db = Arc::new(RwLock::new(MassaDB::new(db_config)));
