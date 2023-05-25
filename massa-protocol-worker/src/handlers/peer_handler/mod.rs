@@ -428,12 +428,6 @@ impl InitConnectionHandler<PeerId, Context, MessagesHandler> for MassaHandshake 
                     StdRng::from_entropy().fill_bytes(&mut self_random_bytes);
                     let self_random_hash = Hash::compute_from(&self_random_bytes);
                     let mut bytes = [0u8; 32];
-
-                    if bytes.get(..32).is_none() {
-                        return Err(PeerNetError::HandshakeError
-                            .error("Massa Handshake", Some("Failed to get bytes".to_string())));
-                    }
-
                     bytes[..32].copy_from_slice(&self_random_bytes);
 
                     endpoint.send::<PeerId>(&bytes)?;
