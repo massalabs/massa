@@ -270,7 +270,7 @@
         <span class="self">self</span>.sender_block_handler
             .as_ref()
             .unwrap()
-            .send(BlockHandlerPropagationCommand::IntegratedBlock { block_id, storage })
+            .try_send(BlockHandlerPropagationCommand::IntegratedBlock { block_id, storage })
             .map_err(|<span class="kw">_</span>| ProtocolError::ChannelError(<span class="string">&quot;integrated_block command send error&quot;</span>.into()))
     }
 
@@ -279,7 +279,7 @@
         <span class="self">self</span>.sender_block_handler
             .as_ref()
             .unwrap()
-            .send(BlockHandlerPropagationCommand::AttackBlockDetected(
+            .try_send(BlockHandlerPropagationCommand::AttackBlockDetected(
                 block_id,
             ))
             .map_err(|<span class="kw">_</span>| {
@@ -311,7 +311,7 @@
         <span class="self">self</span>.sender_operation_handler
             .as_ref()
             .unwrap()
-            .send(OperationHandlerPropagationCommand::AnnounceOperations(
+            .try_send(OperationHandlerPropagationCommand::AnnounceOperations(
                 operations,
             ))
             .map_err(|<span class="kw">_</span>| {
@@ -324,7 +324,7 @@
         <span class="self">self</span>.sender_endorsement_handler
             .as_ref()
             .unwrap()
-            .send(EndorsementHandlerPropagationCommand::PropagateEndorsements(
+            .try_send(EndorsementHandlerPropagationCommand::PropagateEndorsements(
                 endorsements,
             ))
             .map_err(|<span class="kw">_</span>| {
@@ -345,7 +345,7 @@
         <span class="self">self</span>.sender_connectivity_thread
             .as_ref()
             .unwrap()
-            .send(ConnectivityCommand::GetStats { responder: sender })
+            .try_send(ConnectivityCommand::GetStats { responder: sender })
             .map_err(|<span class="kw">_</span>| ProtocolError::ChannelError(<span class="string">&quot;get_stats command send error&quot;</span>.into()))<span class="question-mark">?</span>;
         receiver
             .recv_timeout(Duration::from_secs(<span class="number">10</span>))
@@ -356,7 +356,7 @@
         <span class="self">self</span>.sender_peer_management_thread
             .as_ref()
             .unwrap()
-            .send(PeerManagementCmd::Ban(peer_ids))
+            .try_send(PeerManagementCmd::Ban(peer_ids))
             .map_err(|<span class="kw">_</span>| ProtocolError::ChannelError(<span class="string">&quot;ban_peers command send error&quot;</span>.into()))
     }
 
@@ -364,7 +364,7 @@
         <span class="self">self</span>.sender_peer_management_thread
             .as_ref()
             .unwrap()
-            .send(PeerManagementCmd::Unban(peer_ids))
+            .try_send(PeerManagementCmd::Unban(peer_ids))
             .map_err(|<span class="kw">_</span>| ProtocolError::ChannelError(<span class="string">&quot;unban_peers command send error&quot;</span>.into()))
     }
 
@@ -373,7 +373,7 @@
         <span class="self">self</span>.sender_peer_management_thread
             .as_ref()
             .unwrap()
-            .send(PeerManagementCmd::GetBootstrapPeers { responder: sender })
+            .try_send(PeerManagementCmd::GetBootstrapPeers { responder: sender })
             .map_err(|<span class="kw">_</span>| {
                 ProtocolError::ChannelError(<span class="string">&quot;get_bootstrap_peers command send error&quot;</span>.into())
             })<span class="question-mark">?</span>;

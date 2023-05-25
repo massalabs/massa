@@ -491,7 +491,7 @@
                     .collect()
             };
             endorsements_to_propagate.drop_endorsement_refs(<span class="kw-2">&amp;</span>endorsements_to_not_propagate);
-            <span class="kw">if let </span><span class="prelude-val">Err</span>(err) = <span class="self">self</span>.internal_sender.send(
+            <span class="kw">if let </span><span class="prelude-val">Err</span>(err) = <span class="self">self</span>.internal_sender.try_send(
                 EndorsementHandlerPropagationCommand::PropagateEndorsements(
                     endorsements_to_propagate,
                 ),
@@ -509,7 +509,7 @@
     </span><span class="kw">fn </span>ban_node(<span class="kw-2">&amp;mut </span><span class="self">self</span>, peer_id: <span class="kw-2">&amp;</span>PeerId) -&gt; <span class="prelude-ty">Result</span>&lt;(), ProtocolError&gt; {
         <span class="macro">massa_trace!</span>(<span class="string">&quot;ban node from retrieval thread&quot;</span>, { <span class="string">&quot;peer_id&quot;</span>: peer_id.to_string() });
         <span class="self">self</span>.peer_cmd_sender
-            .send(PeerManagementCmd::Ban(<span class="macro">vec!</span>[peer_id.clone()]))
+            .try_send(PeerManagementCmd::Ban(<span class="macro">vec!</span>[peer_id.clone()]))
             .map_err(|err| ProtocolError::SendError(err.to_string()))
     }
 }

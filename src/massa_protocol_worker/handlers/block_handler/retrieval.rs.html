@@ -1932,7 +1932,7 @@
     </span><span class="kw">fn </span>ban_node(<span class="kw-2">&amp;mut </span><span class="self">self</span>, peer_id: <span class="kw-2">&amp;</span>PeerId) -&gt; <span class="prelude-ty">Result</span>&lt;(), ProtocolError&gt; {
         <span class="macro">massa_trace!</span>(<span class="string">&quot;ban node from retrieval thread&quot;</span>, { <span class="string">&quot;peer_id&quot;</span>: peer_id.to_string() });
         <span class="self">self</span>.peer_cmd_sender
-            .send(PeerManagementCmd::Ban(<span class="macro">vec!</span>[peer_id.clone()]))
+            .try_send(PeerManagementCmd::Ban(<span class="macro">vec!</span>[peer_id.clone()]))
             .map_err(|err| ProtocolError::SendError(err.to_string()))
     }
 
@@ -2383,7 +2383,7 @@
             }
         }
         <span class="self">self</span>.sender_propagation_ops
-            .send(OperationHandlerPropagationCommand::AnnounceOperations(
+            .try_send(OperationHandlerPropagationCommand::AnnounceOperations(
                 new_operations.keys().copied().collect(),
             ))
             .map_err(|err| ProtocolError::ChannelError(err.to_string()))<span class="question-mark">?</span>;

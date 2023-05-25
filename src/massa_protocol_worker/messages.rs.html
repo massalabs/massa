@@ -538,7 +538,7 @@
                 }),
             MessageTypeId::Endorsement =&gt; <span class="self">self
                 </span>.sender_endorsements
-                .send((peer_id.clone(), data.to_vec()))
+                .try_send((peer_id.clone(), data.to_vec()))
                 .map_err(|err| {
                     PeerNetError::HandlerError.error(
                         <span class="string">&quot;MessagesHandler&quot;</span>,
@@ -547,7 +547,7 @@
                 }),
             MessageTypeId::Operation =&gt; <span class="self">self
                 </span>.sender_operations
-                .send((peer_id.clone(), data.to_vec()))
+                .try_send((peer_id.clone(), data.to_vec()))
                 .map_err(|err| {
                     PeerNetError::HandlerError.error(
                         <span class="string">&quot;MessagesHandler&quot;</span>,
@@ -556,7 +556,7 @@
                 }),
             MessageTypeId::PeerManagement =&gt; <span class="self">self
                 </span>.sender_peers
-                .send((peer_id.clone(), data.to_vec()))
+                .try_send((peer_id.clone(), data.to_vec()))
                 .map_err(|err| {
                     PeerNetError::HandlerError.error(
                         <span class="string">&quot;MessagesHandler&quot;</span>,
