@@ -51,7 +51,7 @@ impl ActiveConnectionsTrait for SharedActiveConnections<PeerId> {
         if let Some(connection) = self.read().connections.get(peer_id) {
             connection
                 .send_channels
-                .send(message_serializer, message, high_priority)
+                .try_send(message_serializer, message, high_priority)
                 .map_err(|err| ProtocolError::SendError(err.to_string()))
         } else {
             Err(ProtocolError::SendError(
