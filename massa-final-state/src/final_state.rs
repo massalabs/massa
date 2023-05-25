@@ -66,23 +66,9 @@ impl FinalState {
         selector: Box<dyn SelectorController>,
         reset_final_state: bool,
     ) -> Result<Self, FinalStateError> {
-        let recovered_slot = db.read().get_change_id();
-        let recovered_hash = db.read().get_db_hash();
-
-        match recovered_slot {
-            Ok(slot) => {
-                info!(
-                    "Recovered ledger. state slot: {}, state hash: {}",
-                    slot, recovered_hash
-                );
-            }
-            Err(_e) => {
-                info!(
-                    "Recovered ledger. Unknown state slot, state hash: {}",
-                    recovered_hash
-                );
-            }
-        }
+        let db_slot = db.read().get_change_id().map_err(|_| {
+            FinalStateError::InvalidSlot(String::from("Could not get slot in db"))
+        })?;
 
         // create the pos state
         let pos_state = PoSFinalState::new(
@@ -95,7 +81,11 @@ impl FinalState {
         .map_err(|err| FinalStateError::PosError(format!("PoS final state init error: {}", err)))?;
 
         // attach at the output of the latest initial final slot, that is the last genesis slot
-        let slot = Slot::new(0, config.thread_count.saturating_sub(1));
+        let slot = if reset_final_state {
+            Slot::new(0, config.thread_count.saturating_sub(1))
+        } else {
+            db_slot
+        };
 
         // create the async pool
         let async_pool = AsyncPool::new(config.async_pool_config.clone(), db.clone());
@@ -124,6 +114,7 @@ impl FinalState {
             final_state.pos_state.reset();
             final_state.executed_ops.reset();
             final_state.executed_denunciations.reset();
+            final_state.db.read().set_initial_change_id(slot);
         }
 
         info!(
@@ -132,7 +123,6 @@ impl FinalState {
             final_state.db.read().get_db_hash()
         );
 
-        final_state.db.read().set_initial_change_id(slot);
 
         // create the final state
         Ok(final_state)
@@ -155,11 +145,10 @@ impl FinalState {
     ) -> Result<Self, FinalStateError> {
         info!("Restarting from snapshot");
 
-        // FIRST, we recover the last known final_state
         let mut final_state = FinalState::new(db, config, ledger, selector, false)?;
 
         let recovered_slot = final_state.db.read().get_change_id().map_err(|_| {
-            FinalStateError::InvalidSlot(String::from("Could not recover Slot in Ledger"))
+            FinalStateError::InvalidSlot(String::from("Could not get slot in db"))
         })?;
 
         // This is needed for `test_bootstrap_server` to work
@@ -201,7 +190,9 @@ impl FinalState {
     /// Once we created a FinalState from a snapshot, we need to edit it to attach at the end_slot and handle the downtime.
     /// This basically recreates the history of the final_state, without executing the slots.
     fn interpolate_downtime(&mut self) -> Result<(), FinalStateError> {
-        let current_slot = Slot::new(0, self.config.thread_count.saturating_sub(1));
+        let current_slot = self.db.read().get_change_id().map_err(|_| {
+            FinalStateError::InvalidSlot(String::from("Could not get slot in db"))
+        })?;
         let current_slot_cycle = current_slot.get_cycle(self.config.periods_per_cycle);
 
         let end_slot = Slot::new(
@@ -335,10 +326,12 @@ impl FinalState {
 
         // Feed final_state_hash to the completed cycle
         self.feed_cycle_hash_and_selector_for_interpolation(current_slot_cycle)?;
-
+        
+        // TODO: Bring back the following optimisation (it fails because of selector)
         // Then, build all the completed cycles in betweens. If we have to build more cycles than the cycle_history_length, we only build the last ones.
-        let current_slot_cycle = (current_slot_cycle + 1)
-            .max(end_slot_cycle.saturating_sub(self.config.pos_config.cycle_history_length as u64));
+        //let current_slot_cycle = (current_slot_cycle + 1)
+        //    .max(end_slot_cycle.saturating_sub(self.config.pos_config.cycle_history_length as u64));
+        let current_slot_cycle = current_slot_cycle + 1;
 
         for cycle in current_slot_cycle..end_slot_cycle {
             let first_slot = Slot::new_first_of_cycle(cycle, self.config.periods_per_cycle)
@@ -509,7 +502,7 @@ impl FinalState {
         info!("final_state hash at slot {}: {}", slot, final_state_hash);
 
         // Backup DB if needed
-        if slot.period % PERIODS_BETWEEN_BACKUPS == 0 && slot.period != 0 {
+        if slot.period % PERIODS_BETWEEN_BACKUPS == 0 && slot.period != 0 && slot.thread == 0 {
             let state_slot = self.db.read().get_change_id();
             match state_slot {
                 Ok(slot) => {

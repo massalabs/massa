@@ -530,10 +530,12 @@ impl RawMassaDB<Slot, SlotSerializer, SlotDeserializer> {
             current_hashmap,
         };
 
-        massa_db.set_initial_change_id(Slot {
-            period: 0,
-            thread: 0,
-        });
+        if massa_db.get_change_id().is_err() {
+            massa_db.set_initial_change_id(Slot {
+                period: 0,
+                thread: 0,
+            });
+        }
 
         massa_db
     }
