@@ -719,21 +719,21 @@
             name: <span class="string">&quot;MIP-0002&quot;</span>.to_string(),
             version: <span class="number">1</span>,
             components: HashMap::from([(MipComponent::Address, <span class="number">1</span>)]),
-            start: MassaTime::from_millis(<span class="number">12</span>),
-            timeout: MassaTime::from_millis(<span class="number">15</span>),
-            activation_delay: MassaTime::from_millis(<span class="number">2</span>),
+            start: MassaTime::from(<span class="number">12</span>),
+            timeout: MassaTime::from(<span class="number">15</span>),
+            activation_delay: MassaTime::from(<span class="number">2</span>),
         };
-        <span class="kw">let </span>vs_1 = MipState::new(MassaTime::from_millis(<span class="number">10</span>));
+        <span class="kw">let </span>vs_1 = MipState::new(MassaTime::from(<span class="number">10</span>));
 
         <span class="kw">let </span>vi_2 = MipInfo {
             name: <span class="string">&quot;MIP-0003&quot;</span>.to_string(),
             version: <span class="number">2</span>,
             components: HashMap::from([(MipComponent::Address, <span class="number">2</span>)]),
-            start: MassaTime::from_millis(<span class="number">25</span>),
-            timeout: MassaTime::from_millis(<span class="number">28</span>),
-            activation_delay: MassaTime::from_millis(<span class="number">2</span>),
+            start: MassaTime::from(<span class="number">25</span>),
+            timeout: MassaTime::from(<span class="number">28</span>),
+            activation_delay: MassaTime::from(<span class="number">2</span>),
         };
-        <span class="kw">let </span>vs_2 = MipState::new(MassaTime::from_millis(<span class="number">18</span>));
+        <span class="kw">let </span>vs_2 = MipState::new(MassaTime::from(<span class="number">18</span>));
 
         <span class="kw">let </span>mip_stats_cfg = MipStatsConfig {
             block_count_considered: <span class="number">10</span>,
@@ -811,9 +811,9 @@
             name: <span class="string">&quot;MIP-0002&quot;</span>.to_string(),
             version: <span class="number">1</span>,
             components: HashMap::from([(MipComponent::Address, <span class="number">1</span>)]),
-            start: MassaTime::from_millis(<span class="number">12</span>),
-            timeout: MassaTime::from_millis(<span class="number">15</span>),
-            activation_delay: MassaTime::from_millis(<span class="number">2</span>),
+            start: MassaTime::from(<span class="number">12</span>),
+            timeout: MassaTime::from(<span class="number">15</span>),
+            activation_delay: MassaTime::from(<span class="number">2</span>),
         };
         <span class="kw">let </span>vs_1 = advance_state_until(ComponentState::active(_time), <span class="kw-2">&amp;</span>vi_1);
 
@@ -821,11 +821,11 @@
             name: <span class="string">&quot;MIP-0003&quot;</span>.to_string(),
             version: <span class="number">2</span>,
             components: HashMap::from([(MipComponent::Address, <span class="number">2</span>)]),
-            start: MassaTime::from_millis(<span class="number">25</span>),
-            timeout: MassaTime::from_millis(<span class="number">28</span>),
-            activation_delay: MassaTime::from_millis(<span class="number">2</span>),
+            start: MassaTime::from(<span class="number">25</span>),
+            timeout: MassaTime::from(<span class="number">28</span>),
+            activation_delay: MassaTime::from(<span class="number">2</span>),
         };
-        <span class="kw">let </span>vs_2 = MipState::new(MassaTime::from_millis(<span class="number">18</span>));
+        <span class="kw">let </span>vs_2 = MipState::new(MassaTime::from(<span class="number">18</span>));
 
         <span class="kw">let </span>mip_stats_cfg = MipStatsConfig {
             block_count_considered: <span class="number">10</span>,
@@ -850,12 +850,12 @@
         };
 
         <span class="comment">//
-        </span><span class="kw">let </span>st_1 = FactoryStrategy::At(MassaTime::from_millis(<span class="number">8</span>)); <span class="comment">// vi_1 not yet defined
-        </span><span class="kw">let </span>ts_1_2 = MassaTime::from_millis(<span class="number">13</span>);
+        </span><span class="kw">let </span>st_1 = FactoryStrategy::At(MassaTime::from(<span class="number">8</span>)); <span class="comment">// vi_1 not yet defined
+        </span><span class="kw">let </span>ts_1_2 = MassaTime::from(<span class="number">13</span>);
         <span class="kw">let </span>st_1_2 = FactoryStrategy::At(ts_1_2); <span class="comment">// vi_1 is started (after vi_1.start)
-        </span><span class="kw">let </span>st_2 = FactoryStrategy::At(MassaTime::from_millis(<span class="number">18</span>)); <span class="comment">// vi_1 is active (after start + activation delay)
-        </span><span class="kw">let </span>st_3 = FactoryStrategy::At(MassaTime::from_millis(<span class="number">27</span>)); <span class="comment">// vi_2 is started or locked_in
-        </span><span class="kw">let </span>st_4 = FactoryStrategy::At(MassaTime::from_millis(<span class="number">30</span>)); <span class="comment">// vi_2 is active (after vi_2.timeout)
+        </span><span class="kw">let </span>st_2 = FactoryStrategy::At(MassaTime::from(<span class="number">18</span>)); <span class="comment">// vi_1 is active (after start + activation delay)
+        </span><span class="kw">let </span>st_3 = FactoryStrategy::At(MassaTime::from(<span class="number">27</span>)); <span class="comment">// vi_2 is started or locked_in
+        </span><span class="kw">let </span>st_4 = FactoryStrategy::At(MassaTime::from(<span class="number">30</span>)); <span class="comment">// vi_2 is active (after vi_2.timeout)
 
         </span><span class="kw">let </span>addr_st_1 = fa.create(<span class="kw-2">&amp;</span>args, <span class="prelude-val">Some</span>(st_1));
         <span class="kw">let </span>addr_st_1_2 = fa.create(<span class="kw-2">&amp;</span>args, <span class="prelude-val">Some</span>(st_1_2.clone()));
