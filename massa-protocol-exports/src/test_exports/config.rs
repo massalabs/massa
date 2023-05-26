@@ -12,7 +12,7 @@ impl Default for ProtocolConfig {
                 .expect("cannot create temp file")
                 .path()
                 .to_path_buf(),
-            ask_block_timeout: 500.into(),
+            ask_block_timeout: MassaTime::from_millis(500),
             max_known_blocks_saved_size: 300,
             max_known_blocks_size: 100,
             max_node_known_blocks_size: 100,
@@ -26,10 +26,10 @@ impl Default for ProtocolConfig {
             operation_batch_buffer_capacity: 1000,
             operation_announcement_buffer_capacity: 1000,
             max_operation_storage_time: MassaTime::from_millis(60000),
-            operation_batch_proc_period: 200.into(),
+            operation_batch_proc_period: MassaTime::from_millis(200),
             asked_operations_buffer_capacity: 10000,
-            asked_operations_pruning_period: 500.into(),
-            operation_announcement_interval: 150.into(),
+            asked_operations_pruning_period: MassaTime::from_millis(500),
+            operation_announcement_interval: MassaTime::from_millis(150),
             max_operations_per_message: 1024,
             max_operations_per_block: 5000,
             thread_count: 32,

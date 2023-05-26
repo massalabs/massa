@@ -51,7 +51,7 @@ impl Serializer<MassaTime> for MassaTimeSerializer {
     /// use massa_serialization::Serializer;
     /// use massa_time::{MassaTime, MassaTimeSerializer};
     ///
-    /// let time: MassaTime = 30.into();
+    /// let time: MassaTime = MassaTime::from_millis(30);
     /// let mut serialized = Vec::new();
     /// let serializer = MassaTimeSerializer::new();
     /// serializer.serialize(&time, &mut serialized).unwrap();
@@ -91,10 +91,10 @@ impl Deserializer<MassaTime> for MassaTimeDeserializer {
     /// use massa_serialization::{Serializer, Deserializer, DeserializeError};
     /// use massa_time::{MassaTime, MassaTimeSerializer, MassaTimeDeserializer};
     ///
-    /// let time: MassaTime = 30.into();
+    /// let time: MassaTime = MassaTime::from_millis(30);
     /// let mut serialized = Vec::new();
     /// let serializer = MassaTimeSerializer::new();
-    /// let deserializer = MassaTimeDeserializer::new((Included(0.into()), Included(u64::MAX.into())));
+    /// let deserializer = MassaTimeDeserializer::new((Included(MassaTime::from_millis(0)), Included(MassaTime::from_millis(u64::MAX))));
     /// serializer.serialize(&time, &mut serialized).unwrap();
     /// let (rest, time_deser) = deserializer.deserialize::<DeserializeError>(&serialized).unwrap();
     /// assert!(rest.is_empty());
@@ -199,7 +199,7 @@ impl MassaTime {
     /// let now_duration : Duration = SystemTime::now().duration_since(UNIX_EPOCH).unwrap();
     /// let now_massa_time : MassaTime = MassaTime::now().unwrap();
     /// let converted  :MassaTime = MassaTime::try_from(now_duration).unwrap();
-    /// assert!(max(now_massa_time.saturating_sub(converted), converted.saturating_sub(now_massa_time)) < 100.into())
+    /// assert!(max(now_massa_time.saturating_sub(converted), converted.saturating_sub(now_massa_time)) < MassaTime::from_millis(100))
     /// ```
     pub fn now() -> Result<Self, TimeError> {
         let now: u64 = SystemTime::now()
