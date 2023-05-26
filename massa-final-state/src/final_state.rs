@@ -558,10 +558,6 @@ impl FinalState {
                     "Key/value does not correspond to any prefix: serialized_key: {:?}, serialized_value: {:?}",
                     serialized_key, serialized_value
                 );
-                println!(
-                    "Key/value does not correspond to any prefix: serialized_key: {:?}, serialized_value: {:?}",
-                    serialized_key, serialized_value
-                );
                 return false;
             }
 
@@ -571,10 +567,6 @@ impl FinalState {
                     .is_cycle_history_key_value_valid(&serialized_key, &serialized_value)
                 {
                     warn!(
-                        "Wrong key/value for CYCLE_HISTORY_KEY PREFIX serialized_key: {:?}, serialized_value: {:?}",
-                        serialized_key, serialized_value
-                    );
-                    println!(
                         "Wrong key/value for CYCLE_HISTORY_KEY PREFIX serialized_key: {:?}, serialized_value: {:?}",
                         serialized_key, serialized_value
                     );
@@ -589,10 +581,6 @@ impl FinalState {
                         "Wrong key/value for DEFERRED_CREDITS PREFIX serialized_key: {:?}, serialized_value: {:?}",
                         serialized_key, serialized_value
                     );
-                    println!(
-                        "Wrong key/value for DEFERRED_CREDITS PREFIX serialized_key: {:?}, serialized_value: {:?}",
-                        serialized_key, serialized_value
-                    );
                     return false;
                 }
             } else if serialized_key.starts_with(ASYNC_POOL_PREFIX.as_bytes()) {
@@ -601,10 +589,6 @@ impl FinalState {
                     .is_key_value_valid(&serialized_key, &serialized_value)
                 {
                     warn!(
-                        "Wrong key/value for ASYNC_POOL PREFIX serialized_key: {:?}, serialized_value: {:?}",
-                        serialized_key, serialized_value
-                    );
-                    println!(
                         "Wrong key/value for ASYNC_POOL PREFIX serialized_key: {:?}, serialized_value: {:?}",
                         serialized_key, serialized_value
                     );
@@ -619,10 +603,6 @@ impl FinalState {
                         "Wrong key/value for EXECUTED_OPS PREFIX serialized_key: {:?}, serialized_value: {:?}",
                         serialized_key, serialized_value
                     );
-                    println!(
-                        "Wrong key/value for EXECUTED_OPS PREFIX serialized_key: {:?}, serialized_value: {:?}",
-                        serialized_key, serialized_value
-                    );
                     return false;
                 }
             } else if serialized_key.starts_with(EXECUTED_DENUNCIATIONS_PREFIX.as_bytes()) {
@@ -631,7 +611,6 @@ impl FinalState {
                     .is_key_value_valid(&serialized_key, &serialized_value)
                 {
                     warn!("Wrong key/value for EXECUTED_DENUNCIATIONS PREFIX serialized_key: {:?}, serialized_value: {:?}", serialized_key, serialized_value);
-                    println!("Wrong key/value for EXECUTED_DENUNCIATIONS PREFIX serialized_key: {:?}, serialized_value: {:?}", serialized_key, serialized_value);
                     return false;
                 }
             } else if serialized_key.starts_with(LEDGER_PREFIX.as_bytes())
@@ -640,10 +619,6 @@ impl FinalState {
                     .is_key_value_valid(&serialized_key, &serialized_value)
             {
                 warn!(
-                    "Wrong key/value for LEDGER PREFIX serialized_key: {:?}, serialized_value: {:?}",
-                    serialized_key, serialized_value
-                );
-                println!(
                     "Wrong key/value for LEDGER PREFIX serialized_key: {:?}, serialized_value: {:?}",
                     serialized_key, serialized_value
                 );
