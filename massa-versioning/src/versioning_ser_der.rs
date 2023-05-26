@@ -21,7 +21,7 @@ use massa_serialization::{
     Deserializer, SerializeError, Serializer, U32VarIntDeserializer, U32VarIntSerializer,
     U64VarIntDeserializer, U64VarIntSerializer,
 };
-use massa_time::{MassaTimeDeserializer, MassaTimeSerializer};
+use massa_time::{MassaTime, MassaTimeDeserializer, MassaTimeSerializer};
 
 /// Ser / Der
 
@@ -129,8 +129,8 @@ impl MipInfoDeserializer {
                 Excluded(MIP_INFO_NAME_MAX_LEN),
             ),
             time_deserializer: MassaTimeDeserializer::new((
-                Included(0.into()),
-                Included(u64::MAX.into()),
+                Included(MassaTime::from_millis(0)),
+                Included(MassaTime::from_millis(u64::MAX)),
             )),
         }
     }
@@ -289,8 +289,8 @@ impl ComponentStateDeserializer {
                 Included(Amount::MAX),
             ),
             time_deserializer: MassaTimeDeserializer::new((
-                Included(0.into()),
-                Included(u64::MAX.into()),
+                Included(MassaTime::from_millis(0)),
+                Included(MassaTime::from_millis(u64::MAX)),
             )),
         }
     }
@@ -408,8 +408,8 @@ impl AdvanceDeserializer {
                 Included(Amount::MAX),
             ),
             time_deserializer: MassaTimeDeserializer::new((
-                Included(0.into()),
-                Included(u64::MAX.into()),
+                Included(MassaTime::from_millis(0)),
+                Included(MassaTime::from_millis(u64::MAX)),
             )),
         }
     }

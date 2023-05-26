@@ -107,7 +107,7 @@ impl Deserializer<MassaTime> for MassaTimeDeserializer {
         context("Failed MassaTime deserialization", |input| {
             self.u64_deserializer
                 .deserialize(input)
-                .map(|(rest, res)| (rest, res.into()))
+                .map(|(rest, res)| (rest, MassaTime::from_millis(res)))
         })(buffer)
     }
 }
@@ -137,17 +137,6 @@ impl TryFrom<Duration> for MassaTime {
                 .try_into()
                 .map_err(|_| TimeError::ConversionError)?,
         ))
-    }
-}
-
-impl From<u64> for MassaTime {
-    /// Conversion from `u64`, representing timestamp in milliseconds.
-    /// ```
-    /// # use massa_time::*;
-    /// let time : MassaTime = MassaTime::from_millis(42);
-    /// ```
-    fn from(val: u64) -> Self {
-        MassaTime(val)
     }
 }
 
