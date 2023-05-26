@@ -7,7 +7,7 @@ edition = "2021"
 [dependencies]
 displaydoc = "0.2"
 thiserror = "1.0"
-nom = "7.1"
+nom = "=7.1"
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
 peernet = { git = "https://github.com/massalabs/PeerNet", rev = "0ad0e2e" }
