@@ -1613,6 +1613,8 @@ impl ExecutionState {
     ) -> PreHashSet<OperationId> {
         let mut ops = ops.clone();
 
+        println!("ops lenght BEFORE history retain: {}", ops.len());
+
         if ops.is_empty() {
             return ops;
         }
@@ -1634,12 +1636,15 @@ impl ExecutionState {
                     return ops;
                 }
             }
+            println!("ops lenght AFTER history retain: {}", ops.len());
         }
 
         {
             // check final state
             let final_state = self.final_state.read();
+            println!("ops lenght BEFORE final_state retain: {}", ops.len());
             ops.retain(|op_id| !final_state.executed_ops.contains(op_id));
+            println!("ops lenght AFTER final_state retain: {}", ops.len());
         }
 
         ops

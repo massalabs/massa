@@ -214,6 +214,7 @@ impl OperationPool {
         for cursor in self.sorted_ops_per_thread[slot.thread as usize].iter() {
             // if we have reached the maximum number of operations, stop
             if remaining_ops == 0 {
+                println!("No more remaining ops, ops count: {}", op_ids.len());
                 break;
             }
             let op_info = self
@@ -223,16 +224,19 @@ impl OperationPool {
 
             // exclude ops for which the block slot is outside of their validity range
             if !op_info.validity_period_range.contains(&slot.period) {
+                println!("OP NOT IN VALIDITY_RANGE");
                 continue;
             }
 
             // exclude ops that are too large
             if op_info.size > remaining_space {
+                println!("OP TOO LARGE");
                 continue;
             }
 
             // exclude ops that require too much gas
             if op_info.max_gas > remaining_gas {
+                println!("OP NEEDS TOO MUCH GAS");
                 continue;
             }
 
@@ -243,6 +247,7 @@ impl OperationPool {
                 .unexecuted_ops_among(&vec![op_info.id].into_iter().collect(), slot.thread)
                 .is_empty()
             {
+                println!("OP WAS ALREADY EXECUTED");
                 continue;
             }
 
@@ -263,10 +268,12 @@ impl OperationPool {
                         .entry(op_info.creator_address)
                         .or_insert(final_amount)
                 } else {
+                    println!("creator_balance BIG BALANCE CHECK FAILS");
                     continue;
                 };
 
             if *creator_balance < op_info.fee {
+                println!("creator_balance DOES NOT COVER FEE");
                 continue;
             }
 

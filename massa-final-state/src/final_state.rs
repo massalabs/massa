@@ -66,9 +66,10 @@ impl FinalState {
         selector: Box<dyn SelectorController>,
         reset_final_state: bool,
     ) -> Result<Self, FinalStateError> {
-        let db_slot = db.read().get_change_id().map_err(|_| {
-            FinalStateError::InvalidSlot(String::from("Could not get slot in db"))
-        })?;
+        let db_slot = db
+            .read()
+            .get_change_id()
+            .map_err(|_| FinalStateError::InvalidSlot(String::from("Could not get slot in db")))?;
 
         // create the pos state
         let pos_state = PoSFinalState::new(
@@ -123,7 +124,6 @@ impl FinalState {
             final_state.db.read().get_db_hash()
         );
 
-
         // create the final state
         Ok(final_state)
     }
@@ -147,9 +147,10 @@ impl FinalState {
 
         let mut final_state = FinalState::new(db, config, ledger, selector, false)?;
 
-        let recovered_slot = final_state.db.read().get_change_id().map_err(|_| {
-            FinalStateError::InvalidSlot(String::from("Could not get slot in db"))
-        })?;
+        let recovered_slot =
+            final_state.db.read().get_change_id().map_err(|_| {
+                FinalStateError::InvalidSlot(String::from("Could not get slot in db"))
+            })?;
 
         // This is needed for `test_bootstrap_server` to work
         if cfg!(feature = "testing") {
@@ -190,9 +191,10 @@ impl FinalState {
     /// Once we created a FinalState from a snapshot, we need to edit it to attach at the end_slot and handle the downtime.
     /// This basically recreates the history of the final_state, without executing the slots.
     fn interpolate_downtime(&mut self) -> Result<(), FinalStateError> {
-        let current_slot = self.db.read().get_change_id().map_err(|_| {
-            FinalStateError::InvalidSlot(String::from("Could not get slot in db"))
-        })?;
+        let current_slot =
+            self.db.read().get_change_id().map_err(|_| {
+                FinalStateError::InvalidSlot(String::from("Could not get slot in db"))
+            })?;
         let current_slot_cycle = current_slot.get_cycle(self.config.periods_per_cycle);
 
         let end_slot = Slot::new(
@@ -326,7 +328,7 @@ impl FinalState {
 
         // Feed final_state_hash to the completed cycle
         self.feed_cycle_hash_and_selector_for_interpolation(current_slot_cycle)?;
-        
+
         // TODO: Bring back the following optimisation (it fails because of selector)
         // Then, build all the completed cycles in betweens. If we have to build more cycles than the cycle_history_length, we only build the last ones.
         //let current_slot_cycle = (current_slot_cycle + 1)
