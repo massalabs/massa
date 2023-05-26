@@ -24,6 +24,8 @@ massa_serialization = { path = "../massa-serialization" }
 massa_pos_exports = { path = "../massa-pos-exports" }
 massa_db = { path = "../massa-db" }
 massa_proto = { path = "../massa-proto" }
+massa_versioning = { path = "../massa-versioning" }
+massa_time = { path = "../massa-time" }
 
 [dev-dependencies]
 massa_async_pool = { path = "../massa-async-pool", features = ["testing"] }

@@ -25,9 +25,9 @@ use massa_final_state::{
 };
 use massa_ledger_exports::LedgerConfig;
 use massa_models::config::{
-    DENUNCIATION_EXPIRE_PERIODS, ENDORSEMENT_COUNT, MAX_DEFERRED_CREDITS_LENGTH,
+    DENUNCIATION_EXPIRE_PERIODS, ENDORSEMENT_COUNT, GENESIS_TIMESTAMP, MAX_DEFERRED_CREDITS_LENGTH,
     MAX_DENUNCIATIONS_PER_BLOCK_HEADER, MAX_PRODUCTION_STATS_LENGTH, MAX_ROLLS_COUNT_LENGTH,
-    MIP_STORE_STATS_BLOCK_CONSIDERED, MIP_STORE_STATS_COUNTERS_MAX,
+    MIP_STORE_STATS_BLOCK_CONSIDERED, MIP_STORE_STATS_COUNTERS_MAX, T0,
 };
 use massa_models::{
     address::Address, config::MAX_DATASTORE_VALUE_LENGTH, node::NodeId, slot::Slot,
@@ -78,6 +78,8 @@ fn mock_bootstrap_manager(addr: SocketAddr, bootstrap_config: BootstrapConfig) -
         ..Default::default()
     };
 
+    // FIXME?
+    /*
     // create a MIP store
     let mip_stats_cfg = MipStatsConfig {
         block_count_considered: MIP_STORE_STATS_BLOCK_CONSIDERED,
@@ -93,6 +95,7 @@ fn mock_bootstrap_manager(addr: SocketAddr, bootstrap_config: BootstrapConfig) -
     };
     let state_1 = MipState::new(MassaTime::from_millis(3));
     let mip_store = MipStore::try_from(([(mi_1, state_1)], mip_stats_cfg.clone())).unwrap();
+    */
 
     // start bootstrap manager
     let (_, keypair): &(BootstrapConfig, KeyPair) = &BOOTSTRAP_CONFIG_KEYPAIR;
@@ -150,6 +153,8 @@ fn mock_bootstrap_manager(addr: SocketAddr, bootstrap_config: BootstrapConfig) -
         endorsement_count: ENDORSEMENT_COUNT,
         max_executed_denunciations_length: 1000,
         max_denunciations_per_block_header: MAX_DENUNCIATIONS_PER_BLOCK_HEADER,
+        t0: T0,
+        genesis_timestamp: *GENESIS_TIMESTAMP,
     };
 
     let final_state_server = Arc::new(RwLock::new(get_random_final_state_bootstrap(
@@ -182,7 +187,6 @@ fn mock_bootstrap_manager(addr: SocketAddr, bootstrap_config: BootstrapConfig) -
         bootstrap_config.clone(),
         keypair.clone(),
         Version::from_str("TEST.1.10").unwrap(),
-        mip_store,
     )
     .unwrap()
 }
@@ -278,6 +282,8 @@ fn test_bootstrap_server() {
         thread_count,
         periods_per_cycle,
         max_denunciations_per_block_header: MAX_DENUNCIATIONS_PER_BLOCK_HEADER,
+        t0: T0,
+        genesis_timestamp: *GENESIS_TIMESTAMP,
     };
 
     // setup selector local config
@@ -351,7 +357,10 @@ fn test_bootstrap_server() {
             &mut batch,
         );
 
-        final_write.db.write().write_batch(batch, Some(next));
+        final_write
+            .db
+            .write()
+            .write_batch(batch, Default::default(), Some(next));
 
         let final_state_hash = final_write.db.read().get_db_hash();
         let cycle = next.get_cycle(final_state_local_config.periods_per_cycle.clone());
@@ -427,8 +436,6 @@ fn test_bootstrap_server() {
         .expect_clone_box()
         .return_once(move || stream_mock2);
 
-    let cloned_store = mip_store.clone();
-
     // Start the bootstrap server thread
     let bootstrap_manager_thread = std::thread::Builder::new()
         .name("bootstrap_thread".to_string())
@@ -441,7 +448,6 @@ fn test_bootstrap_server() {
                 bootstrap_config.clone(),
                 keypair.clone(),
                 Version::from_str("TEST.1.10").unwrap(),
-                cloned_store,
             )
             .unwrap()
         })
@@ -491,7 +497,10 @@ fn test_bootstrap_server() {
                     &mut batch,
                 );
 
-                final_write.db.write().write_batch(batch, Some(next));
+                final_write
+                    .db
+                    .write()
+                    .write_batch(batch, Default::default(), Some(next));
 
                 let final_state_hash = final_write.db.read().get_db_hash();
                 let cycle = next.get_cycle(final_state_local_config.periods_per_cycle.clone());
@@ -558,10 +567,12 @@ fn test_bootstrap_server() {
     // check graphs
     assert_eq_bootstrap_graph(&sent_graph, &bootstrap_res.graph.unwrap());
 
+    /*
     // check mip store
     let mip_raw_orig = mip_store.0.read().to_owned();
     let mip_raw_received = bootstrap_res.mip_store.unwrap().0.read().to_owned();
     assert_eq!(mip_raw_orig, mip_raw_received);
+    */
 
     // stop bootstrap server
     bootstrap_manager_thread

@@ -13,7 +13,6 @@ use massa_logging::massa_trace;
 use massa_models::{node::NodeId, slot::Slot, streaming_step::StreamingStep, version::Version};
 use massa_signature::PublicKey;
 use massa_time::MassaTime;
-use massa_versioning::versioning::{MipStore, MipStoreRaw};
 use parking_lot::RwLock;
 use rand::{
     prelude::{SliceRandom, StdRng},
@@ -81,6 +80,7 @@ fn stream_final_state_and_consensus(
                 BootstrapServerMessage::BootstrapPart {
                     slot,
                     state_part,
+                    versioning_part,
                     consensus_part,
                     consensus_outdated_ids,
                     last_start_period,
@@ -97,10 +97,10 @@ fn stream_final_state_and_consensus(
                         write_final_state.last_slot_before_downtime = last_slot_before_downtime;
                     }
 
-                    let last_state_step = write_final_state
+                    let (last_state_step, last_versioning_step) = write_final_state
                         .db
                         .write()
-                        .write_batch_bootstrap_client(state_part)
+                        .write_batch_bootstrap_client(state_part, versioning_part)
                         .map_err(|e| {
                             BootstrapError::GeneralError(format!(
                                 "Cannot write received stream batch to disk: {}",
@@ -135,6 +135,7 @@ fn stream_final_state_and_consensus(
                     *next_bootstrap_message = BootstrapClientMessage::AskBootstrapPart {
                         last_slot: Some(slot),
                         last_state_step,
+                        last_versioning_step,
                         last_consensus_step,
                         send_last_start_period: false,
                     };
@@ -149,6 +150,12 @@ fn stream_final_state_and_consensus(
                     info!("State bootstrap complete");
                     // Set next bootstrap message
                     *next_bootstrap_message = BootstrapClientMessage::AskBootstrapPeers;
+
+                    // Update MIP store by reading from the disk
+                    let mut guard = global_bootstrap_state.final_state.write();
+                    let db = guard.db.clone();
+                    guard.mip_store.extend_from_db(db);
+
                     return Ok(());
                 }
                 BootstrapServerMessage::SlotTooOld => {
@@ -156,6 +163,7 @@ fn stream_final_state_and_consensus(
                     *next_bootstrap_message = BootstrapClientMessage::AskBootstrapPart {
                         last_slot: None,
                         last_state_step: StreamingStep::Started,
+                        last_versioning_step: StreamingStep::Started,
                         last_consensus_step: StreamingStep::Started,
                         send_last_start_period: true,
                     };
@@ -298,25 +306,6 @@ fn bootstrap_from_server(
                     other => return Err(BootstrapError::UnexpectedServerMessage(other)),
                 };
                 global_bootstrap_state.peers = Some(peers);
-                *next_bootstrap_message = BootstrapClientMessage::AskBootstrapMipStore;
-            }
-            BootstrapClientMessage::AskBootstrapMipStore => {
-                let mip_store_raw: MipStoreRaw = match send_client_message(
-                    next_bootstrap_message,
-                    client,
-                    write_timeout,
-                    cfg.read_timeout.into(),
-                    "ask bootstrap versioning store timed out",
-                )? {
-                    BootstrapServerMessage::BootstrapMipStore { store: store_raw } => store_raw,
-                    BootstrapServerMessage::BootstrapError { error } => {
-                        return Err(BootstrapError::ReceivedError(error))
-                    }
-                    other => return Err(BootstrapError::UnexpectedServerMessage(other)),
-                };
-
-                global_bootstrap_state.mip_store =
-                    Some(MipStore(Arc::new(RwLock::new(mip_store_raw))));
                 *next_bootstrap_message = BootstrapClientMessage::BootstrapSuccess;
             }
             BootstrapClientMessage::BootstrapSuccess => {
@@ -443,7 +432,11 @@ pub fn get_state(
                 bootstrap_config.thread_count.saturating_sub(1),
             );
 
-            final_state_guard.db.write().write_batch(batch, Some(slot));
+            // TODO: should receive ver batch here?
+            final_state_guard
+                .db
+                .write()
+                .write_batch(batch, Default::default(), Some(slot));
         }
         return Ok(GlobalBootstrapState::new(final_state));
     }
@@ -456,6 +449,7 @@ pub fn get_state(
         BootstrapClientMessage::AskBootstrapPart {
             last_slot: None,
             last_state_step: StreamingStep::Started,
+            last_versioning_step: StreamingStep::Started,
             last_consensus_step: StreamingStep::Started,
             send_last_start_period: true,
         };

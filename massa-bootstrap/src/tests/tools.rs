@@ -57,6 +57,7 @@ use massa_protocol_exports::{BootstrapPeers, PeerId, TransportType};
 use massa_serialization::{DeserializeError, Deserializer, Serializer};
 use massa_signature::KeyPair;
 use massa_time::MassaTime;
+use massa_versioning::versioning::{MipStatsConfig, MipStore};
 use parking_lot::RwLock;
 use rand::Rng;
 use std::collections::{HashMap, HashSet};
@@ -178,14 +179,14 @@ fn get_random_pos_state(r_limit: u64, mut pos: PoSFinalState) -> PoSFinalState {
 
     pos.create_initial_cycle(&mut batch);
 
-    pos.db.write().write_batch(batch, None);
+    pos.db.write().write_batch(batch, Default::default(), None);
 
     let mut batch = DBBatch::new();
 
     pos.apply_changes_to_batch(changes, Slot::new(0, 0), false, &mut batch)
         .expect("Critical: Error while applying changes to pos_state");
 
-    pos.db.write().write_batch(batch, None);
+    pos.db.write().write_batch(batch, Default::default(), None);
 
     pos
 }
@@ -229,7 +230,7 @@ pub fn get_random_executed_ops(
     let mut executed_ops = ExecutedOps::new(config.clone(), db.clone());
     let mut batch = DBBatch::new();
     executed_ops.apply_changes_to_batch(get_random_executed_ops_changes(10), slot, &mut batch);
-    db.write().write_batch(batch, None);
+    db.write().write_batch(batch, Default::default(), None);
     executed_ops
 }
 
@@ -260,7 +261,10 @@ pub fn get_random_executed_de(
     let mut batch = DBBatch::new();
     executed_de.apply_changes_to_batch(get_random_executed_de_changes(10), slot, &mut batch);
 
-    executed_de.db.write().write_batch(batch, None);
+    executed_de
+        .db
+        .write()
+        .write_batch(batch, Default::default(), None);
 
     executed_de
 }
@@ -308,9 +312,13 @@ pub fn get_random_final_state_bootstrap(
 
     let mut async_pool = AsyncPool::new(config.async_pool_config.clone(), db.clone());
     let mut batch = DBBatch::new();
+    let mut versioning_batch = DBBatch::new();
 
     async_pool.apply_changes_to_batch(&messages, &mut batch);
-    async_pool.db.write().write_batch(batch, None);
+    async_pool
+        .db
+        .write()
+        .write_batch(batch, versioning_batch, None);
 
     let executed_ops = get_random_executed_ops(
         r_limit,
@@ -328,6 +336,15 @@ pub fn get_random_final_state_bootstrap(
 
     let pos_state = get_random_pos_state(r_limit, pos);
 
+    let mip_store = MipStore::try_from((
+        [],
+        MipStatsConfig {
+            block_count_considered: 10,
+            counters_max: 10,
+        },
+    ))
+    .unwrap();
+
     create_final_state(
         config,
         Box::new(final_ledger),
@@ -335,6 +352,7 @@ pub fn get_random_final_state_bootstrap(
         pos_state,
         executed_ops,
         executed_denunciations,
+        mip_store,
         db,
     )
 }

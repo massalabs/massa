@@ -15,8 +15,8 @@ use massa_models::address::Address;
 use massa_models::amount::Amount;
 use massa_models::bytecode::Bytecode;
 use massa_models::config::{
-    DENUNCIATION_EXPIRE_PERIODS, ENDORSEMENT_COUNT, MAX_DEFERRED_CREDITS_LENGTH,
-    MAX_DENUNCIATIONS_PER_BLOCK_HEADER, MAX_PRODUCTION_STATS_LENGTH, MAX_ROLLS_COUNT_LENGTH,
+    DENUNCIATION_EXPIRE_PERIODS, ENDORSEMENT_COUNT, GENESIS_TIMESTAMP, MAX_DEFERRED_CREDITS_LENGTH,
+    MAX_DENUNCIATIONS_PER_BLOCK_HEADER, MAX_PRODUCTION_STATS_LENGTH, MAX_ROLLS_COUNT_LENGTH, T0,
 };
 use massa_models::config::{
     MAX_ASYNC_MESSAGE_DATA, MAX_ASYNC_POOL_LENGTH, MAX_DATASTORE_KEY_LENGTH, POS_SAVED_CYCLES,
@@ -81,6 +81,8 @@ fn create_final_state(temp_dir: &TempDir, reset_final_state: bool) -> Arc<RwLock
         thread_count,
         periods_per_cycle,
         max_denunciations_per_block_header: MAX_DENUNCIATIONS_PER_BLOCK_HEADER,
+        t0: T0,
+        genesis_timestamp: *GENESIS_TIMESTAMP,
     };
 
     // setup selector local config
@@ -94,6 +96,17 @@ fn create_final_state(temp_dir: &TempDir, reset_final_state: bool) -> Arc<RwLock
     let (mut _selector_manager, selector_controller) =
         start_selector_worker(selector_local_config.clone())
             .expect("could not start server selector controller");
+
+    // MIP store
+    let mip_store = MipStore::try_from((
+        [],
+        MipStatsConfig {
+            block_count_considered: 10,
+            counters_max: 10,
+        },
+    ))
+    .unwrap();
+
     // setup final states
 
     let ledger = FinalLedger::new(final_state_local_config.ledger_config.clone(), db.clone());
@@ -104,6 +117,7 @@ fn create_final_state(temp_dir: &TempDir, reset_final_state: bool) -> Arc<RwLock
             final_state_local_config.clone(),
             Box::new(ledger),
             selector_controller,
+            mip_store,
             reset_final_state,
         )
         .unwrap(),
@@ -112,6 +126,7 @@ fn create_final_state(temp_dir: &TempDir, reset_final_state: bool) -> Arc<RwLock
     final_state
 }
 
+use massa_versioning::versioning::{MipStatsConfig, MipStore};
 use std::{fs, io};
 
 fn copy_dir_all(src: impl AsRef<Path>, dst: impl AsRef<Path>) -> io::Result<()> {
@@ -137,12 +152,16 @@ fn test_final_state() {
         let fs = create_final_state(&temp_dir, true);
 
         let mut batch = DBBatch::new();
+        let mut versioning_batch = DBBatch::new();
 
         fs.write().pos_state.create_initial_cycle(&mut batch);
 
         let slot = fs.read().db.read().get_change_id().unwrap();
 
-        fs.write().db.write().write_batch(batch, Some(slot));
+        fs.write()
+            .db
+            .write()
+            .write_batch(batch, versioning_batch, Some(slot));
 
         let slot = Slot::new(1, 0);
         let mut state_changes = StateChanges::default();

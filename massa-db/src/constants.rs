@@ -5,6 +5,7 @@ pub const LSMTREE_NODES_CF: &str = "lsmtree_nodes";
 pub const LSMTREE_VALUES_CF: &str = "lsmtree_values";
 pub const METADATA_CF: &str = "metadata";
 pub const STATE_CF: &str = "state";
+pub const VERSIONING_CF: &str = "versioning";
 
 pub const STATE_HASH_KEY: &[u8; 1] = b"h";
 pub const STATE_HASH_INITIAL_BYTES: &[u8; 32] = &[0; HASH_SIZE_BYTES];
@@ -27,6 +28,7 @@ pub const ASYNC_POOL_PREFIX: &str = "async_pool/";
 pub const EXECUTED_OPS_PREFIX: &str = "executed_ops/";
 pub const EXECUTED_DENUNCIATIONS_PREFIX: &str = "executed_denunciations/";
 pub const LEDGER_PREFIX: &str = "ledger/";
+pub const MIP_STORE_PREFIX: &str = "versioning/";
 
 // Async Pool
 pub const ASYNC_POOL_HASH_ERROR: &str = "critical: saved async pool hash is corrupted";

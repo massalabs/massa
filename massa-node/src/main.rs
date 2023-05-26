@@ -190,6 +190,8 @@ async fn launch(
         endorsement_count: ENDORSEMENT_COUNT,
         max_executed_denunciations_length: MAX_DENUNCIATION_CHANGES_LENGTH,
         max_denunciations_per_block_header: MAX_DENUNCIATIONS_PER_BLOCK_HEADER,
+        t0: T0,
+        genesis_timestamp: *GENESIS_TIMESTAMP,
     };
 
     // Remove current disk ledger if there is one and we don't want to restart from snapshot
@@ -229,6 +231,14 @@ async fn launch(
     })
     .expect("could not start selector worker");
 
+    // Creates an empty default store
+    let mip_stats_config = MipStatsConfig {
+        block_count_considered: MIP_STORE_STATS_BLOCK_CONSIDERED,
+        counters_max: MIP_STORE_STATS_COUNTERS_MAX,
+    };
+    let mip_store =
+        MipStore::try_from(([], mip_stats_config)).expect("Cannot create empty MIP store");
+
     // Create final state, either from a snapshot, or from scratch
     let final_state = Arc::new(parking_lot::RwLock::new(
         match args.restart_from_snapshot_at_period {
@@ -237,6 +247,7 @@ async fn launch(
                 final_state_config,
                 Box::new(ledger),
                 selector_controller.clone(),
+                mip_store.clone(),
                 last_start_period,
             )
             .expect("could not init final state"),
@@ -245,6 +256,7 @@ async fn launch(
                 final_state_config,
                 Box::new(ledger),
                 selector_controller.clone(),
+                mip_store.clone(),
                 true,
             )
             .expect("could not init final state"),
@@ -350,6 +362,7 @@ async fn launch(
             .expect("Overflow when creating constant ledger_entry_datastore_base_size"),
     };
 
+    /*
     // Creates an empty default store
     let mip_stats_config = MipStatsConfig {
         block_count_considered: MIP_STORE_STATS_BLOCK_CONSIDERED,
@@ -370,6 +383,10 @@ async fn launch(
         mip_stats_config,
     ))
     .expect("mip store creation failed");
+    */
+
+    // TODO: re enable this
+    /*
     if let Some(bootstrap_mip_store) = bootstrap_state.mip_store {
         // TODO: in some cases, should bootstrap again
         let (updated, added) = mip_store
@@ -442,6 +459,7 @@ async fn launch(
 
         debug!("MIP store got {} MIP updated from bootstrap", updated.len());
     }
+    */
 
     // launch execution module
     let execution_config = ExecutionConfig {
@@ -740,7 +758,6 @@ async fn launch(
             bootstrap_config,
             keypair.clone(),
             *VERSION,
-            mip_store.clone(),
         )
         .expect("Could not start bootstrap server");
         manager.set_listener_stopper(waker);

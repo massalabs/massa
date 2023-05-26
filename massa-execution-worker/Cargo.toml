@@ -35,7 +35,7 @@ massa_ledger_exports = { path = "../massa-ledger-exports" }
 massa_pos_exports = { path = "../massa-pos-exports" }
 massa_final_state = { path = "../massa-final-state" }
 massa_versioning = { path = "../massa-versioning" }
-massa_db = { path = "../massa-db", optional = true }
+massa_db = { path = "../massa-db" }
 
 [dev-dependencies]
 tokio = { version = "1.23", features = ["sync"] }
@@ -73,7 +73,6 @@ testing = [
     "tempfile",
     "massa_pos_worker",
     "massa_ledger_worker",
-    "massa_db",
 ]
 
 # This feature is useful as we want to have code that is compiled only when running benchmarks
