@@ -31,7 +31,7 @@
 
 <span class="kw">let </span>message_serializer = BootstrapServerMessageSerializer::new();
 <span class="kw">let </span>bootstrap_server_message = BootstrapServerMessage::BootstrapTime {
-   server_time: MassaTime::from(<span class="number">0</span>),
+   server_time: MassaTime::from_millis(<span class="number">0</span>),
    version: Version::from_str(<span class="string">&quot;TEST.1.10&quot;</span>).unwrap(),
 };
 <span class="kw">let </span><span class="kw-2">mut </span>message_serialized = Vec::new();

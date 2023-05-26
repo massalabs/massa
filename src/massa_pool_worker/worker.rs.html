@@ -231,6 +231,7 @@
 <a href="#231" id="231">231</a>
 <a href="#232" id="232">232</a>
 <a href="#233" id="233">233</a>
+<a href="#234" id="234">234</a>
 </pre><pre class="rust"><code><span class="doccomment">//! Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 //! Write worker for the pools, allowing asynchronous writes.
@@ -415,11 +416,12 @@
     <span class="comment">// denunciation_factory_tx: Sender&lt;DenunciationPrecursor&gt;,
     // denunciation_factory_rx: Receiver&lt;DenunciationPrecursor&gt;,
 </span>) -&gt; (Box&lt;<span class="kw">dyn </span>PoolManager&gt;, Box&lt;<span class="kw">dyn </span>PoolController&gt;) {
-    <span class="kw">let </span>(operations_input_sender, operations_input_receiver) = sync_channel(config.channels_size);
+    <span class="kw">let </span>(operations_input_sender, operations_input_receiver) =
+        sync_channel(config.operations_channel_size);
     <span class="kw">let </span>(endorsements_input_sender, endorsements_input_receiver) =
-        sync_channel(config.channels_size);
+        sync_channel(config.endorsements_channel_size);
     <span class="kw">let </span>(denunciations_input_sender, denunciations_input_receiver) =
-        sync_channel(config.channels_size);
+        sync_channel(config.denunciations_channel_size);
     <span class="kw">let </span>operation_pool = Arc::new(RwLock::new(OperationPool::init(
         config,
         storage,

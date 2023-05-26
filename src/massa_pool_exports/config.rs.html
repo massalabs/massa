@@ -49,6 +49,10 @@
 <a href="#49" id="49">49</a>
 <a href="#50" id="50">50</a>
 <a href="#51" id="51">51</a>
+<a href="#52" id="52">52</a>
+<a href="#53" id="53">53</a>
+<a href="#54" id="54">54</a>
+<a href="#55" id="55">55</a>
 </pre><pre class="rust"><code><span class="doccomment">//! Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="kw">use </span>massa_models::amount::Amount;
@@ -76,8 +80,12 @@
     </span><span class="kw">pub </span>max_endorsements_pool_size_per_thread: usize,
     <span class="doccomment">/// max number of endorsements per block
     </span><span class="kw">pub </span>max_block_endorsement_count: u32,
-    <span class="doccomment">/// operations and endorsements communication channels size
-    </span><span class="kw">pub </span>channels_size: usize,
+    <span class="doccomment">/// operations channel capacity
+    </span><span class="kw">pub </span>operations_channel_size: usize,
+    <span class="doccomment">/// endorsements channel capacity
+    </span><span class="kw">pub </span>endorsements_channel_size: usize,
+    <span class="doccomment">/// denunciations channel capacity
+    </span><span class="kw">pub </span>denunciations_channel_size: usize,
     <span class="doccomment">/// whether operations broadcast is enabled
     </span><span class="kw">pub </span>broadcast_enabled: bool,
     <span class="doccomment">/// endorsements channel capacity

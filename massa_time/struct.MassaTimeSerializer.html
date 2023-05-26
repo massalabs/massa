@@ -11,7 +11,7 @@
 <span class="kw">use </span>massa_serialization::Serializer;
 <span class="kw">use </span>massa_time::{MassaTime, MassaTimeSerializer};
 
-<span class="kw">let </span>time: MassaTime = <span class="number">30</span>.into();
+<span class="kw">let </span>time: MassaTime = MassaTime::from_millis(<span class="number">30</span>);
 <span class="kw">let </span><span class="kw-2">mut </span>serialized = Vec::new();
 <span class="kw">let </span>serializer = MassaTimeSerializer::new();
 serializer.serialize(<span class="kw-2">&amp;</span>time, <span class="kw-2">&amp;mut </span>serialized).unwrap();</code></pre></div>

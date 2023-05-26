@@ -1256,6 +1256,10 @@
 <a href="#1256" id="1256">1256</a>
 <a href="#1257" id="1257">1257</a>
 <a href="#1258" id="1258">1258</a>
+<a href="#1259" id="1259">1259</a>
+<a href="#1260" id="1260">1260</a>
+<a href="#1261" id="1261">1261</a>
+<a href="#1262" id="1262">1262</a>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="attr">#![doc = <span class="macro">include_str!</span>(<span class="string">&quot;../../README.md&quot;</span>)]
@@ -1322,12 +1326,14 @@
     MAX_SIZE_CHANNEL_NETWORK_TO_ENDORSEMENT_HANDLER, MAX_SIZE_CHANNEL_NETWORK_TO_OPERATION_HANDLER,
     MAX_SIZE_CHANNEL_NETWORK_TO_PEER_HANDLER, MIP_STORE_STATS_BLOCK_CONSIDERED,
     MIP_STORE_STATS_COUNTERS_MAX, OPERATION_VALIDITY_PERIODS, PERIODS_PER_CYCLE,
-    POOL_CONTROLLER_CHANNEL_SIZE, POS_MISS_RATE_DEACTIVATION_THRESHOLD, POS_SAVED_CYCLES,
-    PROTOCOL_CONTROLLER_CHANNEL_SIZE, PROTOCOL_EVENT_CHANNEL_SIZE,
-    ROLL_COUNT_TO_SLASH_ON_DENUNCIATION, ROLL_PRICE, SELECTOR_DRAW_CACHE_SIZE, T0, THREAD_COUNT,
-    VERSION,
+    POS_MISS_RATE_DEACTIVATION_THRESHOLD, POS_SAVED_CYCLES, PROTOCOL_CONTROLLER_CHANNEL_SIZE,
+    PROTOCOL_EVENT_CHANNEL_SIZE, ROLL_COUNT_TO_SLASH_ON_DENUNCIATION, ROLL_PRICE,
+    SELECTOR_DRAW_CACHE_SIZE, T0, THREAD_COUNT, VERSION,
 };
-<span class="kw">use </span>massa_models::config::MAX_MESSAGE_SIZE;
+<span class="kw">use </span>massa_models::config::{
+    MAX_MESSAGE_SIZE, POOL_CONTROLLER_DENUNCIATIONS_CHANNEL_SIZE,
+    POOL_CONTROLLER_ENDORSEMENTS_CHANNEL_SIZE, POOL_CONTROLLER_OPERATIONS_CHANNEL_SIZE,
+};
 <span class="kw">use </span>massa_pool_exports::{PoolChannels, PoolConfig, PoolManager};
 <span class="kw">use </span>massa_pool_worker::start_pool_controller;
 <span class="kw">use </span>massa_pos_exports::{PoSConfig, SelectorConfig, SelectorManager};
@@ -1607,11 +1613,11 @@
                 name: <span class="string">&quot;MIP-0001&quot;</span>.to_string(),
                 version: <span class="number">1</span>,
                 components: HashMap::from([(MipComponent::Address, <span class="number">1</span>), (MipComponent::KeyPair, <span class="number">1</span>)]),
-                start: MassaTime::from(<span class="number">0</span>),
-                timeout: MassaTime::from(<span class="number">0</span>),
-                activation_delay: MassaTime::from(<span class="number">0</span>),
+                start: MassaTime::from_millis(<span class="number">0</span>),
+                timeout: MassaTime::from_millis(<span class="number">0</span>),
+                activation_delay: MassaTime::from_millis(<span class="number">0</span>),
             },
-            MipState::new(MassaTime::from(<span class="number">0</span>)),
+            MipState::new(MassaTime::from_millis(<span class="number">0</span>)),
         )],
         mip_stats_config,
     ))
@@ -1756,7 +1762,9 @@
         max_operations_per_block: MAX_OPERATIONS_PER_BLOCK,
         max_operation_pool_size_per_thread: SETTINGS.pool.max_pool_size_per_thread,
         max_endorsements_pool_size_per_thread: SETTINGS.pool.max_pool_size_per_thread,
-        channels_size: POOL_CONTROLLER_CHANNEL_SIZE,
+        operations_channel_size: POOL_CONTROLLER_OPERATIONS_CHANNEL_SIZE,
+        endorsements_channel_size: POOL_CONTROLLER_ENDORSEMENTS_CHANNEL_SIZE,
+        denunciations_channel_size: POOL_CONTROLLER_DENUNCIATIONS_CHANNEL_SIZE,
         broadcast_enabled: SETTINGS.api.enable_broadcast,
         broadcast_endorsements_channel_capacity: SETTINGS
             .pool

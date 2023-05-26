@@ -1225,6 +1225,7 @@
 <a href="#1225" id="1225">1225</a>
 <a href="#1226" id="1226">1226</a>
 <a href="#1227" id="1227">1227</a>
+<a href="#1228" id="1228">1228</a>
 </pre><pre class="rust"><code><span class="kw">use </span>std::collections::BTreeMap;
 <span class="kw">use </span>std::mem;
 <span class="kw">use </span>std::ops::Bound::{Excluded, Included};
@@ -1248,7 +1249,7 @@
     Deserializer, SerializeError, Serializer, U32VarIntDeserializer, U32VarIntSerializer,
     U64VarIntDeserializer, U64VarIntSerializer,
 };
-<span class="kw">use </span>massa_time::{MassaTimeDeserializer, MassaTimeSerializer};
+<span class="kw">use </span>massa_time::{MassaTime, MassaTimeDeserializer, MassaTimeSerializer};
 
 <span class="doccomment">/// Ser / Der
 
@@ -1356,8 +1357,8 @@
                 Excluded(MIP_INFO_NAME_MAX_LEN),
             ),
             time_deserializer: MassaTimeDeserializer::new((
-                Included(<span class="number">0</span>.into()),
-                Included(u64::MAX.into()),
+                Included(MassaTime::from_millis(<span class="number">0</span>)),
+                Included(MassaTime::from_millis(u64::MAX)),
             )),
         }
     }
@@ -1516,8 +1517,8 @@
                 Included(Amount::MAX),
             ),
             time_deserializer: MassaTimeDeserializer::new((
-                Included(<span class="number">0</span>.into()),
-                Included(u64::MAX.into()),
+                Included(MassaTime::from_millis(<span class="number">0</span>)),
+                Included(MassaTime::from_millis(u64::MAX)),
             )),
         }
     }
@@ -1635,8 +1636,8 @@
                 Included(Amount::MAX),
             ),
             time_deserializer: MassaTimeDeserializer::new((
-                Included(<span class="number">0</span>.into()),
-                Included(u64::MAX.into()),
+                Included(MassaTime::from_millis(<span class="number">0</span>)),
+                Included(MassaTime::from_millis(u64::MAX)),
             )),
         }
     }
@@ -2196,9 +2197,9 @@ impl Default for MipStoreRawDeserializer {
             name: <span class="string">&quot;MIP-0002&quot;</span>.to_string(),
             version: <span class="number">2</span>,
             components: HashMap::from([(MipComponent::Address, <span class="number">1</span>)]),
-            start: MassaTime::from(<span class="number">2</span>),
-            timeout: MassaTime::from(<span class="number">5</span>),
-            activation_delay: MassaTime::from(<span class="number">2</span>),
+            start: MassaTime::from_millis(<span class="number">2</span>),
+            timeout: MassaTime::from_millis(<span class="number">5</span>),
+            activation_delay: MassaTime::from_millis(<span class="number">2</span>),
         };
 
         <span class="kw">let </span><span class="kw-2">mut </span>buf = Vec::new();
@@ -2257,11 +2258,11 @@ impl Default for MipStoreRawDeserializer {
             .unwrap();
 
         <span class="kw">let </span>adv = Advance {
-            start_timestamp: MassaTime::from(start.timestamp() <span class="kw">as </span>u64),
-            timeout: MassaTime::from(timeout.timestamp() <span class="kw">as </span>u64),
+            start_timestamp: MassaTime::from_millis(start.timestamp() <span class="kw">as </span>u64),
+            timeout: MassaTime::from_millis(timeout.timestamp() <span class="kw">as </span>u64),
             threshold: Default::default(),
-            now: MassaTime::from(now.timestamp() <span class="kw">as </span>u64),
-            activation_delay: MassaTime::from(<span class="number">20</span>),
+            now: MassaTime::from_millis(now.timestamp() <span class="kw">as </span>u64),
+            activation_delay: MassaTime::from_millis(<span class="number">20</span>),
         };
 
         <span class="kw">let </span><span class="kw-2">mut </span>buf = Vec::new();
@@ -2278,7 +2279,7 @@ impl Default for MipStoreRawDeserializer {
 
     <span class="attr">#[test]
     </span><span class="kw">fn </span>test_mip_state_ser_der() {
-        <span class="kw">let </span>state_1 = MipState::new(MassaTime::from(<span class="number">100</span>));
+        <span class="kw">let </span>state_1 = MipState::new(MassaTime::from_millis(<span class="number">100</span>));
 
         <span class="kw">let </span><span class="kw-2">mut </span>buf = Vec::new();
         <span class="kw">let </span>state_ser = MipStateSerializer::new();
@@ -2296,12 +2297,13 @@ impl Default for MipStoreRawDeserializer {
             name: <span class="string">&quot;MIP-0002&quot;</span>.to_string(),
             version: <span class="number">2</span>,
             components: HashMap::from([(MipComponent::Address, <span class="number">1</span>)]),
-            start: MassaTime::from(<span class="number">2</span>),
-            timeout: MassaTime::from(<span class="number">5</span>),
-            activation_delay: MassaTime::from(<span class="number">2</span>),
+            start: MassaTime::from_millis(<span class="number">2</span>),
+            timeout: MassaTime::from_millis(<span class="number">5</span>),
+            activation_delay: MassaTime::from_millis(<span class="number">2</span>),
         };
 
-        <span class="kw">let </span>state_2 = advance_state_until(ComponentState::locked_in(MassaTime::from(<span class="number">3</span>)), <span class="kw-2">&amp;</span>mi_1);
+        <span class="kw">let </span>state_2 =
+            advance_state_until(ComponentState::locked_in(MassaTime::from_millis(<span class="number">3</span>)), <span class="kw-2">&amp;</span>mi_1);
         state_ser.serialize(<span class="kw-2">&amp;</span>state_2, <span class="kw-2">&amp;mut </span>buf).unwrap();
         <span class="kw">let </span>(rem2, state_der_res) = state_der.deserialize::&lt;DeserializeError&gt;(<span class="kw-2">&amp;</span>buf).unwrap();
 
@@ -2349,18 +2351,18 @@ impl Default for MipStoreRawDeserializer {
             name: <span class="string">&quot;MIP-0002&quot;</span>.to_string(),
             version: <span class="number">2</span>,
             components: HashMap::from([(MipComponent::Address, <span class="number">1</span>)]),
-            start: MassaTime::from(<span class="number">2</span>),
-            timeout: MassaTime::from(<span class="number">5</span>),
-            activation_delay: MassaTime::from(<span class="number">2</span>),
+            start: MassaTime::from_millis(<span class="number">2</span>),
+            timeout: MassaTime::from_millis(<span class="number">5</span>),
+            activation_delay: MassaTime::from_millis(<span class="number">2</span>),
         };
 
         <span class="kw">let </span>mi_3 = MipInfo {
             name: <span class="string">&quot;MIP-0003&quot;</span>.to_string(),
             version: <span class="number">3</span>,
             components: HashMap::from([(MipComponent::Block, <span class="number">1</span>)]),
-            start: MassaTime::from(<span class="number">12</span>),
-            timeout: MassaTime::from(<span class="number">17</span>),
-            activation_delay: MassaTime::from(<span class="number">2</span>),
+            start: MassaTime::from_millis(<span class="number">12</span>),
+            timeout: MassaTime::from_millis(<span class="number">17</span>),
+            activation_delay: MassaTime::from_millis(<span class="number">2</span>),
         };
 
         <span class="kw">let </span>_time = MassaTime::now().unwrap();
@@ -2390,9 +2392,9 @@ impl Default for MipStoreRawDeserializer {
             name: <span class="string">&quot;A&quot;</span>.repeat(<span class="number">254</span>),
             version: <span class="number">0</span>,
             components: HashMap::from([(MipComponent::Address, <span class="number">0</span>)]),
-            start: MassaTime::from(<span class="number">0</span>),
-            timeout: MassaTime::from(<span class="number">2</span>),
-            activation_delay: MassaTime::from(<span class="number">2</span>),
+            start: MassaTime::from_millis(<span class="number">0</span>),
+            timeout: MassaTime::from_millis(<span class="number">2</span>),
+            activation_delay: MassaTime::from_millis(<span class="number">2</span>),
         };
 
         <span class="comment">// Note: we did not add the name ptr and hashmap ptr, only the data inside
@@ -2412,8 +2414,8 @@ impl Default for MipStoreRawDeserializer {
                     .components
                     .entry(MipComponent::Address)
                     .and_modify(|e| <span class="kw-2">*</span>e += <span class="number">1</span>);
-                mi_base.start = mi_base.timeout.saturating_add(MassaTime::from(<span class="number">1</span>));
-                mi_base.timeout = mi_base.start.saturating_add(MassaTime::from(<span class="number">2</span>));
+                mi_base.start = mi_base.timeout.saturating_add(MassaTime::from_millis(<span class="number">1</span>));
+                mi_base.timeout = mi_base.start.saturating_add(MassaTime::from_millis(<span class="number">2</span>));
 
                 <span class="kw">let </span>state = advance_state_until(ComponentState::active(_time), <span class="kw-2">&amp;</span>mi_base);
 

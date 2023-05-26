@@ -78,7 +78,7 @@
     max_denunciations_per_block_header: <span class="number">128</span>, max_denunciation_changes_length: <span class="number">1000</span>,};
 <span class="kw">let </span>message_deserializer = BootstrapServerMessageDeserializer::new(args);
 <span class="kw">let </span>bootstrap_server_message = BootstrapServerMessage::BootstrapTime {
-   server_time: MassaTime::from(<span class="number">0</span>),
+   server_time: MassaTime::from_millis(<span class="number">0</span>),
    version: Version::from_str(<span class="string">&quot;TEST.1.10&quot;</span>).unwrap(),
 };
 <span class="kw">let </span><span class="kw-2">mut </span>message_serialized = Vec::new();
@@ -89,7 +89,7 @@ message_serializer.serialize(<span class="kw-2">&amp;</span>bootstrap_server_mes
        server_time,
        version,
    } =&gt; {
-    <span class="macro">assert_eq!</span>(server_time, MassaTime::from(<span class="number">0</span>));
+    <span class="macro">assert_eq!</span>(server_time, MassaTime::from_millis(<span class="number">0</span>));
     <span class="macro">assert_eq!</span>(version, Version::from_str(<span class="string">&quot;TEST.1.10&quot;</span>).unwrap());
   }
   <span class="kw">_ </span>=&gt; <span class="macro">panic!</span>(<span class="string">&quot;Unexpected message&quot;</span>),
@@ -108,7 +108,7 @@ message_serializer.serialize(<span class="kw-2">&amp;</span>bootstrap_server_mes
 
 <span class="kw">let </span>message_serializer = BootstrapServerMessageSerializer::new();
 <span class="kw">let </span>bootstrap_server_message = BootstrapServerMessage::BootstrapTime {
-   server_time: MassaTime::from(<span class="number">0</span>),
+   server_time: MassaTime::from_millis(<span class="number">0</span>),
    version: Version::from_str(<span class="string">&quot;TEST.1.10&quot;</span>).unwrap(),
 };
 <span class="kw">let </span><span class="kw-2">mut </span>message_serialized = Vec::new();
