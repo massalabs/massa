@@ -225,8 +225,12 @@ pub const MAX_BOOTSTRAP_ERROR_LENGTH: u64 = 10000;
 pub const PROTOCOL_CONTROLLER_CHANNEL_SIZE: usize = 1024;
 /// Protocol event channel size
 pub const PROTOCOL_EVENT_CHANNEL_SIZE: usize = 1024;
-/// Pool controller channel size
-pub const POOL_CONTROLLER_CHANNEL_SIZE: usize = 1024;
+/// Pool controller operations channel size
+pub const POOL_CONTROLLER_OPERATIONS_CHANNEL_SIZE: usize = 1024;
+/// Pool controller endorsements channel size
+pub const POOL_CONTROLLER_ENDORSEMENTS_CHANNEL_SIZE: usize = 1024;
+/// Pool controller denunciations channel size
+pub const POOL_CONTROLLER_DENUNCIATIONS_CHANNEL_SIZE: usize = 1024;
 
 // ***********************
 // Constants used for execution module (injected from ConsensusConfig)

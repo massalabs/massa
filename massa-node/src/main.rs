@@ -64,12 +64,14 @@ use massa_models::config::constants::{
     MAX_SIZE_CHANNEL_NETWORK_TO_ENDORSEMENT_HANDLER, MAX_SIZE_CHANNEL_NETWORK_TO_OPERATION_HANDLER,
     MAX_SIZE_CHANNEL_NETWORK_TO_PEER_HANDLER, MIP_STORE_STATS_BLOCK_CONSIDERED,
     MIP_STORE_STATS_COUNTERS_MAX, OPERATION_VALIDITY_PERIODS, PERIODS_PER_CYCLE,
-    POOL_CONTROLLER_CHANNEL_SIZE, POS_MISS_RATE_DEACTIVATION_THRESHOLD, POS_SAVED_CYCLES,
-    PROTOCOL_CONTROLLER_CHANNEL_SIZE, PROTOCOL_EVENT_CHANNEL_SIZE,
-    ROLL_COUNT_TO_SLASH_ON_DENUNCIATION, ROLL_PRICE, SELECTOR_DRAW_CACHE_SIZE, T0, THREAD_COUNT,
-    VERSION,
+    POS_MISS_RATE_DEACTIVATION_THRESHOLD, POS_SAVED_CYCLES, PROTOCOL_CONTROLLER_CHANNEL_SIZE,
+    PROTOCOL_EVENT_CHANNEL_SIZE, ROLL_COUNT_TO_SLASH_ON_DENUNCIATION, ROLL_PRICE,
+    SELECTOR_DRAW_CACHE_SIZE, T0, THREAD_COUNT, VERSION,
 };
-use massa_models::config::MAX_MESSAGE_SIZE;
+use massa_models::config::{
+    MAX_MESSAGE_SIZE, POOL_CONTROLLER_DENUNCIATIONS_CHANNEL_SIZE,
+    POOL_CONTROLLER_ENDORSEMENTS_CHANNEL_SIZE, POOL_CONTROLLER_OPERATIONS_CHANNEL_SIZE,
+};
 use massa_pool_exports::{PoolChannels, PoolConfig, PoolManager};
 use massa_pool_worker::start_pool_controller;
 use massa_pos_exports::{PoSConfig, SelectorConfig, SelectorManager};
@@ -498,7 +500,9 @@ async fn launch(
         max_operations_per_block: MAX_OPERATIONS_PER_BLOCK,
         max_operation_pool_size_per_thread: SETTINGS.pool.max_pool_size_per_thread,
         max_endorsements_pool_size_per_thread: SETTINGS.pool.max_pool_size_per_thread,
-        channels_size: POOL_CONTROLLER_CHANNEL_SIZE,
+        operations_channel_size: POOL_CONTROLLER_OPERATIONS_CHANNEL_SIZE,
+        endorsements_channel_size: POOL_CONTROLLER_ENDORSEMENTS_CHANNEL_SIZE,
+        denunciations_channel_size: POOL_CONTROLLER_DENUNCIATIONS_CHANNEL_SIZE,
         broadcast_enabled: SETTINGS.api.enable_broadcast,
         broadcast_endorsements_channel_capacity: SETTINGS
             .pool
