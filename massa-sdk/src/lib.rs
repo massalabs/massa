@@ -12,6 +12,8 @@ use jsonrpsee::rpc_params;
 use jsonrpsee::types::ErrorObject;
 use jsonrpsee::ws_client::{HeaderMap, HeaderValue, WsClient, WsClientBuilder};
 use jsonrpsee::{core::RpcResult, http_client::HttpClientBuilder};
+use jsonrpsee_http_client as _;
+use jsonrpsee_ws_client as _;
 use massa_api_exports::page::PagedVecV2;
 use massa_api_exports::ApiRequest;
 use massa_api_exports::{
@@ -43,6 +45,7 @@ use massa_models::{
 use massa_proto::massa::api::v1::massa_service_client::MassaServiceClient;
 use std::net::{IpAddr, SocketAddr};
 use std::str::FromStr;
+use thiserror::Error;
 
 mod config;
 pub use config::ClientConfig;
