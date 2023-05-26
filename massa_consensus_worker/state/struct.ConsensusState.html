@@ -205,7 +205,7 @@ Ignore if we are before the last_start_period</p>
 </ul>
 <h5 id="returns-5"><a href="#returns-5">Returns:</a></h5>
 <p>Error if the process of a block returned an error.</p>
-</div></details></div></details><details class="toggle implementors-toggle" open><summary><section id="impl-ConsensusState-6" class="impl"><a class="srclink rightside" href="../../src/massa_consensus_worker/state/verifications.rs.html#48-650">source</a><a href="#impl-ConsensusState-6" class="anchor">§</a><h3 class="code-header">impl <a class="struct" href="struct.ConsensusState.html" title="struct massa_consensus_worker::state::ConsensusState">ConsensusState</a></h3></section></summary><div class="impl-items"><section id="method.detect_multistake" class="method"><a class="srclink rightside" href="../../src/massa_consensus_worker/state/verifications.rs.html#52-69">source</a><h4 class="code-header">pub(crate) fn <a href="#method.detect_multistake" class="fn">detect_multistake</a>(&amp;mut self, header: &amp;<a class="type" href="../../massa_models/block_header/type.SecuredHeader.html" title="type massa_models::block_header::SecuredHeader">SecuredHeader</a>) -&gt; <a class="primitive" href="https://doc.rust-lang.org/nightly/std/primitive.bool.html">bool</a></h4></section><details class="toggle method-toggle" open><summary><section id="method.check_block_and_store" class="method"><a class="srclink rightside" href="../../src/massa_consensus_worker/state/verifications.rs.html#75-141">source</a><h4 class="code-header">pub(crate) fn <a href="#method.check_block_and_store" class="fn">check_block_and_store</a>(
+</div></details></div></details><details class="toggle implementors-toggle" open><summary><section id="impl-ConsensusState-6" class="impl"><a class="srclink rightside" href="../../src/massa_consensus_worker/state/verifications.rs.html#48-636">source</a><a href="#impl-ConsensusState-6" class="anchor">§</a><h3 class="code-header">impl <a class="struct" href="struct.ConsensusState.html" title="struct massa_consensus_worker::state::ConsensusState">ConsensusState</a></h3></section></summary><div class="impl-items"><section id="method.detect_multistake" class="method"><a class="srclink rightside" href="../../src/massa_consensus_worker/state/verifications.rs.html#52-69">source</a><h4 class="code-header">pub(crate) fn <a href="#method.detect_multistake" class="fn">detect_multistake</a>(&amp;mut self, header: &amp;<a class="type" href="../../massa_models/block_header/type.SecuredHeader.html" title="type massa_models::block_header::SecuredHeader">SecuredHeader</a>) -&gt; <a class="primitive" href="https://doc.rust-lang.org/nightly/std/primitive.bool.html">bool</a></h4></section><details class="toggle method-toggle" open><summary><section id="method.check_block_and_store" class="method"><a class="srclink rightside" href="../../src/massa_consensus_worker/state/verifications.rs.html#75-141">source</a><h4 class="code-header">pub(crate) fn <a href="#method.check_block_and_store" class="fn">check_block_and_store</a>(
     &amp;mut self,
     block_id: <a class="struct" href="../../massa_models/block_id/struct.BlockId.html" title="struct massa_models::block_id::BlockId">BlockId</a>,
     slot: <a class="struct" href="../../massa_models/slot/struct.Slot.html" title="struct massa_models::slot::Slot">Slot</a>,
@@ -249,7 +249,7 @@ Ignore if we are before the last_start_period</p>
 <p><code>reason</code>: Read of the discard
 <code>block_id</code>: ID of the block
 <code>header</code>: header to save</p>
-</div></details><details class="toggle method-toggle" open><summary><section id="method.check_header" class="method"><a class="srclink rightside" href="../../src/massa_consensus_worker/state/verifications.rs.html#306-610">source</a><h4 class="code-header">pub fn <a href="#method.check_header" class="fn">check_header</a>(
+</div></details><details class="toggle method-toggle" open><summary><section id="method.check_header" class="method"><a class="srclink rightside" href="../../src/massa_consensus_worker/state/verifications.rs.html#303-596">source</a><h4 class="code-header">pub fn <a href="#method.check_header" class="fn">check_header</a>(
     &amp;self,
     block_id: &amp;<a class="struct" href="../../massa_models/block_id/struct.BlockId.html" title="struct massa_models::block_id::BlockId">BlockId</a>,
     header: &amp;<a class="type" href="../../massa_models/block_header/type.SecuredHeader.html" title="type massa_models::block_header::SecuredHeader">SecuredHeader</a>,
@@ -261,10 +261,7 @@ Ignore if we are before the last_start_period</p>
 <li>Slot above 0.</li>
 <li>Valid thread.</li>
 <li>Check that the block is older than the latest final one in thread.</li>
-<li>Check that the block slot is not too much into the future,
-as determined by the configuration <code>future_block_processing_max_periods</code>.</li>
 <li>Check if it was the creator’s turn to create this block.</li>
-<li>TODO: check for double staking.</li>
 <li>Check parents are present.</li>
 <li>Check the topological consistency of the parents.</li>
 <li>Check endorsements.</li>
@@ -273,7 +270,7 @@ as determined by the configuration <code>future_block_processing_max_periods</co
 <li>Check if the block is incompatible with a parent.</li>
 <li>Check if the block is incompatible with a final block.</li>
 </ul>
-</div></details><details class="toggle method-toggle" open><summary><section id="method.check_endorsements" class="method"><a class="srclink rightside" href="../../src/massa_consensus_worker/state/verifications.rs.html#615-649">source</a><h4 class="code-header">pub fn <a href="#method.check_endorsements" class="fn">check_endorsements</a>(
+</div></details><details class="toggle method-toggle" open><summary><section id="method.check_endorsements" class="method"><a class="srclink rightside" href="../../src/massa_consensus_worker/state/verifications.rs.html#601-635">source</a><h4 class="code-header">pub fn <a href="#method.check_endorsements" class="fn">check_endorsements</a>(
     &amp;self,
     header: &amp;<a class="type" href="../../massa_models/block_header/type.SecuredHeader.html" title="type massa_models::block_header::SecuredHeader">SecuredHeader</a>
 ) -&gt; <a class="enum" href="https://doc.rust-lang.org/nightly/core/result/enum.Result.html" title="enum core::result::Result">Result</a>&lt;<a class="enum" href="verifications/enum.EndorsementsCheckOutcome.html" title="enum massa_consensus_worker::state::verifications::EndorsementsCheckOutcome">EndorsementsCheckOutcome</a>, ConsensusError&gt;</h4></section></summary><div class="docblock"><p>check endorsements:</p>

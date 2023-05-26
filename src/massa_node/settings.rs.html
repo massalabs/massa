@@ -302,12 +302,6 @@
 <a href="#302" id="302">302</a>
 <a href="#303" id="303">303</a>
 <a href="#304" id="304">304</a>
-<a href="#305" id="305">305</a>
-<a href="#306" id="306">306</a>
-<a href="#307" id="307">307</a>
-<a href="#308" id="308">308</a>
-<a href="#309" id="309">309</a>
-<a href="#310" id="310">310</a>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="doccomment">//! Build here the default node settings from the configuration file toml
@@ -451,22 +445,16 @@
 </span><span class="kw">pub struct </span>ConsensusSettings {
     <span class="doccomment">/// Maximum number of blocks allowed in discarded blocks.
     </span><span class="kw">pub </span>max_discarded_blocks: usize,
-    <span class="doccomment">/// If a block is `future_block_processing_max_periods` periods in the future, it is just discarded.
-    </span><span class="kw">pub </span>future_block_processing_max_periods: u64,
     <span class="doccomment">/// Maximum number of blocks allowed in `FutureIncomingBlocks`.
     </span><span class="kw">pub </span>max_future_processing_blocks: usize,
     <span class="doccomment">/// Maximum number of blocks allowed in `DependencyWaitingBlocks`.
     </span><span class="kw">pub </span>max_dependency_blocks: usize,
     <span class="doccomment">/// stats time span
     </span><span class="kw">pub </span>stats_timespan: MassaTime,
-    <span class="doccomment">/// max event send wait
-    </span><span class="kw">pub </span>max_send_wait: MassaTime,
     <span class="doccomment">/// force keep at least this number of final periods in RAM for each thread
     </span><span class="kw">pub </span>force_keep_final_periods: u64,
     <span class="doccomment">/// old blocks are pruned every `block_db_prune_interval`
     </span><span class="kw">pub </span>block_db_prune_interval: MassaTime,
-    <span class="doccomment">/// max number of items returned while querying
-    </span><span class="kw">pub </span>max_item_return_count: usize,
     <span class="doccomment">/// blocks headers channel capacity
     </span><span class="kw">pub </span>broadcast_blocks_headers_channel_capacity: usize,
     <span class="doccomment">/// blocks channel capacity

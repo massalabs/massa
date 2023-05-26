@@ -634,20 +634,6 @@
 <a href="#634" id="634">634</a>
 <a href="#635" id="635">635</a>
 <a href="#636" id="636">636</a>
-<a href="#637" id="637">637</a>
-<a href="#638" id="638">638</a>
-<a href="#639" id="639">639</a>
-<a href="#640" id="640">640</a>
-<a href="#641" id="641">641</a>
-<a href="#642" id="642">642</a>
-<a href="#643" id="643">643</a>
-<a href="#644" id="644">644</a>
-<a href="#645" id="645">645</a>
-<a href="#646" id="646">646</a>
-<a href="#647" id="647">647</a>
-<a href="#648" id="648">648</a>
-<a href="#649" id="649">649</a>
-<a href="#650" id="650">650</a>
 </pre><pre class="rust"><code><span class="kw">use super</span>::{process::BlockInfos, ConsensusState};
 
 <span class="kw">use </span>massa_consensus_exports::{
@@ -942,10 +928,7 @@
     /// - Slot above 0.
     /// - Valid thread.
     /// - Check that the block is older than the latest final one in thread.
-    /// - Check that the block slot is not too much into the future,
-    ///   as determined by the configuration `future_block_processing_max_periods`.
     /// - Check if it was the creator&#39;s turn to create this block.
-    /// - TODO: check for double staking.
     /// - Check parents are present.
     /// - Check the topological consistency of the parents.
     /// - Check endorsements.
@@ -974,17 +957,6 @@
             &lt;= <span class="self">self</span>.latest_final_blocks_periods[header.content.slot.thread <span class="kw">as </span>usize].<span class="number">1
         </span>{
             <span class="kw">return </span><span class="prelude-val">Ok</span>(HeaderCheckOutcome::Discard(DiscardReason::Stale));
-        }
-
-        <span class="comment">// check if block slot is too much in the future
-        </span><span class="kw">if let </span><span class="prelude-val">Some</span>(cur_slot) = current_slot {
-            <span class="kw">if </span>header.content.slot.period
-                &gt; cur_slot
-                    .period
-                    .saturating_add(<span class="self">self</span>.config.future_block_processing_max_periods)
-            {
-                <span class="kw">return </span><span class="prelude-val">Ok</span>(HeaderCheckOutcome::WaitForSlot);
-            }
         }
 
         <span class="comment">// check if it was the creator&#39;s turn to create this block

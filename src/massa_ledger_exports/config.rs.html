@@ -18,6 +18,8 @@
 <a href="#18" id="18">18</a>
 <a href="#19" id="19">19</a>
 <a href="#20" id="20">20</a>
+<a href="#21" id="21">21</a>
+<a href="#22" id="22">22</a>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="doccomment">//! This file defines a configuration structure containing all settings for the ledger system
@@ -35,6 +37,8 @@
     </span><span class="kw">pub </span>disk_ledger_path: PathBuf,
     <span class="doccomment">/// max key length
     </span><span class="kw">pub </span>max_key_length: u8,
+    <span class="doccomment">/// max ledger part size
+    </span><span class="kw">pub </span>max_ledger_part_size: u64,
     <span class="doccomment">/// max datastore value length
     </span><span class="kw">pub </span>max_datastore_value_length: u64,
 }

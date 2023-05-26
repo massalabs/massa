@@ -51,12 +51,6 @@
 <a href="#51" id="51">51</a>
 <a href="#52" id="52">52</a>
 <a href="#53" id="53">53</a>
-<a href="#54" id="54">54</a>
-<a href="#55" id="55">55</a>
-<a href="#56" id="56">56</a>
-<a href="#57" id="57">57</a>
-<a href="#58" id="58">58</a>
-<a href="#59" id="59">59</a>
 </pre><pre class="rust"><code><span class="kw">use </span>massa_signature::KeyPair;
 <span class="kw">use </span>massa_time::MassaTime;
 <span class="kw">use </span>serde::{Deserialize, Serialize};
@@ -73,18 +67,12 @@
     </span><span class="kw">pub </span>genesis_key: KeyPair,
     <span class="doccomment">/// Maximum number of blocks allowed in discarded blocks.
     </span><span class="kw">pub </span>max_discarded_blocks: usize,
-    <span class="doccomment">/// If a block `is future_block_processing_max_periods` periods in the future, it is just discarded.
-    </span><span class="kw">pub </span>future_block_processing_max_periods: u64,
     <span class="doccomment">/// Maximum number of blocks allowed in `FutureIncomingBlocks`.
     </span><span class="kw">pub </span>max_future_processing_blocks: usize,
     <span class="doccomment">/// Maximum number of blocks allowed in `DependencyWaitingBlocks`.
     </span><span class="kw">pub </span>max_dependency_blocks: usize,
-    <span class="doccomment">/// max event send wait
-    </span><span class="kw">pub </span>max_send_wait: MassaTime,
     <span class="doccomment">/// old blocks are pruned every `block_db_prune_interval`
     </span><span class="kw">pub </span>block_db_prune_interval: MassaTime,
-    <span class="doccomment">/// max number of items returned while querying
-    </span><span class="kw">pub </span>max_item_return_count: usize,
     <span class="doccomment">/// Max gas per block for the execution configuration
     </span><span class="kw">pub </span>max_gas_per_block: u64,
     <span class="doccomment">/// Threshold for fitness.
