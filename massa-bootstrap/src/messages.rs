@@ -204,7 +204,7 @@ impl Serializer<BootstrapServerMessage> for BootstrapServerMessageSerializer {
     ///
     /// let message_serializer = BootstrapServerMessageSerializer::new();
     /// let bootstrap_server_message = BootstrapServerMessage::BootstrapTime {
-    ///    server_time: MassaTime::from(0),
+    ///    server_time: MassaTime::from_millis(0),
     ///    version: Version::from_str("TEST.1.10").unwrap(),
     /// };
     /// let mut message_serialized = Vec::new();
@@ -451,7 +451,7 @@ impl Deserializer<BootstrapServerMessage> for BootstrapServerMessageDeserializer
     ///     max_denunciations_per_block_header: 128, max_denunciation_changes_length: 1000,};
     /// let message_deserializer = BootstrapServerMessageDeserializer::new(args);
     /// let bootstrap_server_message = BootstrapServerMessage::BootstrapTime {
-    ///    server_time: MassaTime::from(0),
+    ///    server_time: MassaTime::from_millis(0),
     ///    version: Version::from_str("TEST.1.10").unwrap(),
     /// };
     /// let mut message_serialized = Vec::new();
@@ -462,7 +462,7 @@ impl Deserializer<BootstrapServerMessage> for BootstrapServerMessageDeserializer
     ///        server_time,
     ///        version,
     ///    } => {
-    ///     assert_eq!(server_time, MassaTime::from(0));
+    ///     assert_eq!(server_time, MassaTime::from_millis(0));
     ///     assert_eq!(version, Version::from_str("TEST.1.10").unwrap());
     ///   }
     ///   _ => panic!("Unexpected message"),

@@ -16,7 +16,7 @@ pub fn advance_state_until(at_state: ComponentState, versioning_info: &MipInfo) 
         todo!()
     }
 
-    let mut state = MipState::new(start.saturating_sub(MassaTime::from(1)));
+    let mut state = MipState::new(start.saturating_sub(MassaTime::from_millis(1)));
 
     if matches!(at_state, ComponentState::Defined(_)) {
         return state;
@@ -26,7 +26,7 @@ pub fn advance_state_until(at_state: ComponentState, versioning_info: &MipInfo) 
         start_timestamp: start,
         timeout,
         threshold: Default::default(),
-        now: start.saturating_add(MassaTime::from(1)),
+        now: start.saturating_add(MassaTime::from_millis(1)),
         activation_delay: versioning_info.activation_delay,
     };
     state.on_advance(&advance_msg);
@@ -36,12 +36,12 @@ pub fn advance_state_until(at_state: ComponentState, versioning_info: &MipInfo) 
     }
 
     if matches!(at_state, ComponentState::Failed(_)) {
-        advance_msg.now = timeout.saturating_add(MassaTime::from(1));
+        advance_msg.now = timeout.saturating_add(MassaTime::from_millis(1));
         state.on_advance(&advance_msg);
         return state;
     }
 
-    advance_msg.now = start.saturating_add(MassaTime::from(2));
+    advance_msg.now = start.saturating_add(MassaTime::from_millis(2));
     advance_msg.threshold = VERSIONING_THRESHOLD_TRANSITION_ACCEPTED;
     state.on_advance(&advance_msg);
 
@@ -52,7 +52,7 @@ pub fn advance_state_until(at_state: ComponentState, versioning_info: &MipInfo) 
     advance_msg.now = advance_msg
         .now
         .saturating_add(versioning_info.activation_delay)
-        .saturating_add(MassaTime::from(1));
+        .saturating_add(MassaTime::from_millis(1));
 
     state.on_advance(&advance_msg);
     // Active

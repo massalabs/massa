@@ -230,8 +230,8 @@ mod tests {
     #[serial]
     fn test_time_range_to_slot_range() {
         let thread_count = 3u8;
-        let t0: MassaTime = 30.into();
-        let genesis_timestamp: MassaTime = 100.into();
+        let t0: MassaTime = MassaTime::from_millis(30);
+        let genesis_timestamp: MassaTime = MassaTime::from_millis(100);
         /* slots:   (0, 0)  (0, 1)  (0, 2)  (1, 0)  (1, 1)  (1, 2)  (2, 0)  (2, 1)  (2, 2)
             time:    100      110     120    130      140    150     160     170     180
         */
@@ -241,8 +241,8 @@ mod tests {
             thread_count,
             t0,
             genesis_timestamp,
-            Some(111.into()),
-            Some(115.into()),
+            Some(MassaTime::from_millis(111)),
+            Some(MassaTime::from_millis(115)),
         )
         .unwrap();
         assert_eq!(out_start, out_end);
@@ -252,8 +252,8 @@ mod tests {
             thread_count,
             t0,
             genesis_timestamp,
-            Some(10.into()),
-            Some(100.into()),
+            Some(MassaTime::from_millis(10)),
+            Some(MassaTime::from_millis(100)),
         )
         .unwrap();
         assert_eq!(out_start, out_end);
@@ -263,8 +263,8 @@ mod tests {
             thread_count,
             t0,
             genesis_timestamp,
-            Some(115.into()),
-            Some(145.into()),
+            Some(MassaTime::from_millis(115)),
+            Some(MassaTime::from_millis(145)),
         )
         .unwrap();
         assert_eq!(out_start, Some(Slot::new(0, 2)));
@@ -275,8 +275,8 @@ mod tests {
             thread_count,
             t0,
             genesis_timestamp,
-            Some(110.into()),
-            Some(160.into()),
+            Some(MassaTime::from_millis(110)),
+            Some(MassaTime::from_millis(160)),
         )
         .unwrap();
         assert_eq!(out_start, Some(Slot::new(0, 1)));
@@ -287,13 +287,17 @@ mod tests {
     #[serial]
     fn test_get_closest_slot_to_timestamp() {
         let thread_count = 3u8;
-        let t0: MassaTime = 30.into();
-        let genesis_timestamp: MassaTime = 100.into();
+        let t0: MassaTime = MassaTime::from_millis(30);
+        let genesis_timestamp: MassaTime = MassaTime::from_millis(100);
         /* slots:   (0, 0)  (0, 1)  (0, 2)  (1, 0)  (1, 1)  (1, 2)  (2, 0)  (2, 1)  (2, 2)
             time:    100      110     120    130      140    150     160     170     180
         */
-        let out_slot =
-            get_closest_slot_to_timestamp(thread_count, t0, genesis_timestamp, 150.into());
+        let out_slot = get_closest_slot_to_timestamp(
+            thread_count,
+            t0,
+            genesis_timestamp,
+            MassaTime::from_millis(150),
+        );
         assert_eq!(out_slot, Slot::new(1, 2));
     }
 }
