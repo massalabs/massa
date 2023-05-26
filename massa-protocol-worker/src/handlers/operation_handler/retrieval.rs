@@ -1,6 +1,5 @@
 use std::{
     collections::{HashMap, VecDeque},
-    num::NonZeroUsize,
     thread::JoinHandle,
     time::Instant,
 };
@@ -9,7 +8,6 @@ use crossbeam::{
     channel::{tick, Receiver, Sender},
     select,
 };
-use lru::LruCache;
 use massa_logging::massa_trace;
 use massa_models::{
     operation::{OperationId, OperationPrefixId, OperationPrefixIds, SecureShareOperation},
@@ -24,6 +22,7 @@ use massa_protocol_exports::{ProtocolConfig, ProtocolError};
 use massa_serialization::{DeserializeError, Deserializer};
 use massa_storage::Storage;
 use massa_time::{MassaTime, TimeError};
+use schnellru::{ByLength, LruMap};
 
 use crate::{
     handlers::peer_handler::models::{PeerManagementCmd, PeerMessageTuple},
@@ -57,7 +56,7 @@ pub struct RetrievalThread {
     receiver: Receiver<PeerMessageTuple>,
     pool_controller: Box<dyn PoolController>,
     cache: SharedOperationCache,
-    asked_operations: LruCache<OperationPrefixId, (Instant, Vec<PeerId>)>,
+    asked_operations: LruMap<OperationPrefixId, (Instant, Vec<PeerId>)>,
     active_connections: Box<dyn ActiveConnectionsTrait>,
     op_batch_buffer: VecDeque<OperationBatchItem>,
     stored_operations: HashMap<Instant, PreHashSet<OperationId>>,
@@ -193,7 +192,13 @@ impl RetrievalThread {
             received_ids.insert(operation_id);
 
             // Check operation signature only if not already checked.
-            if !self.cache.read().checked_operations.contains(&operation_id) {
+            if self
+                .cache
+                .read()
+                .checked_operations
+                .peek(&operation_id)
+                .is_none()
+            {
                 // check signature if the operation wasn't in `checked_operation`
                 new_operations.insert(operation_id, operation);
             };
@@ -207,7 +212,7 @@ impl RetrievalThread {
                 .collect::<Vec<_>>(),
         )?;
 
-        {
+        'write_cache: {
             // add to checked operations
             let mut cache_write = self.cache.write();
             for op_id in new_operations.keys().copied() {
@@ -215,17 +220,22 @@ impl RetrievalThread {
             }
 
             // add to known ops
-            let known_ops =
-                cache_write
-                    .ops_known_by_peer
-                    .get_or_insert_mut(source_peer_id.clone(), || {
-                        LruCache::new(
-                            NonZeroUsize::new(self.config.max_node_known_ops_size)
-                                .expect("max_node_known_ops_size in config must be > 0"),
-                        )
-                    });
+            let Ok(known_ops) = cache_write
+                .ops_known_by_peer
+                .get_or_insert(source_peer_id.clone(), || {
+                    LruMap::new(ByLength::new(
+                        self.config
+                            .max_node_known_ops_size
+                            .try_into()
+                            .expect("max_node_known_ops_size in config must be > 0"),
+                    ))
+                })
+                .ok_or(()) else {
+                    warn!("ops_known_by_peer limitation reached");
+                    break 'write_cache;
+                };
             for id in received_ids {
-                known_ops.put(id.prefix(), ());
+                known_ops.insert(id.prefix(), ());
             }
         }
 
@@ -270,7 +280,7 @@ impl RetrievalThread {
                 .insert(Instant::now(), to_announce.clone());
             self.storage.extend(ops_to_propagate);
             self.internal_sender
-                .send(OperationHandlerPropagationCommand::AnnounceOperations(
+                .try_send(OperationHandlerPropagationCommand::AnnounceOperations(
                     to_announce,
                 ))
                 .map_err(|err| ProtocolError::SendError(err.to_string()))?;
@@ -307,26 +317,31 @@ impl RetrievalThread {
         peer_id: &PeerId,
     ) -> Result<(), ProtocolError> {
         // mark sender as knowing the ops
-        {
+        'write_cache: {
             let mut cache_write = self.cache.write();
-            let known_ops =
-                cache_write
-                    .ops_known_by_peer
-                    .get_or_insert_mut(peer_id.clone(), || {
-                        LruCache::new(
-                            NonZeroUsize::new(self.config.max_node_known_ops_size)
-                                .expect("max_node_known_ops_size in config must be > 0"),
-                        )
-                    });
+            let Ok(known_ops) = cache_write
+                .ops_known_by_peer
+                .get_or_insert(peer_id.clone(), || {
+                    LruMap::new(ByLength::new(
+                        self.config
+                            .max_node_known_ops_size
+                            .try_into()
+                            .expect("max_node_known_ops_size in config must be > 0"),
+                    ))
+                })
+                .ok_or(()) else {
+                    warn!("ops_known_by_peer limitation reached");
+                    break 'write_cache;
+                };
             for prefix in &op_batch {
-                known_ops.put(*prefix, ());
+                known_ops.insert(*prefix, ());
             }
         }
 
         // filter out the operations that we already know about
         {
             let cache_read = self.cache.read();
-            op_batch.retain(|prefix| !cache_read.checked_operations_prefix.contains(prefix));
+            op_batch.retain(|prefix| cache_read.checked_operations_prefix.peek(prefix).is_none());
         }
 
         let mut ask_set = OperationPrefixIds::with_capacity(op_batch.len());
@@ -335,7 +350,7 @@ impl RetrievalThread {
         let now = Instant::now();
         let mut count_reask = 0;
         for op_id in op_batch {
-            let wish = match self.asked_operations.get_mut(&op_id) {
+            let wish = match self.asked_operations.get(&op_id) {
                 Some(wish) => {
                     if wish.1.contains(peer_id) {
                         continue; // already asked to the `peer_id`
@@ -363,7 +378,7 @@ impl RetrievalThread {
             } else {
                 ask_set.insert(op_id);
                 self.asked_operations
-                    .put(op_id, (now, vec![peer_id.clone()]));
+                    .insert(op_id, (now, vec![peer_id.clone()]));
             }
         } // EndOf for op_id in op_batch:
 
@@ -404,7 +419,7 @@ impl RetrievalThread {
                     warn!("Failed to send AskForOperations message to peer: {}", err);
                     {
                         let mut cache_write = self.cache.write();
-                        cache_write.ops_known_by_peer.pop(peer_id);
+                        cache_write.ops_known_by_peer.remove(peer_id);
                     }
                 }
             }
@@ -468,7 +483,7 @@ impl RetrievalThread {
                 warn!("Failed to send Operations message to peer: {}", err);
                 {
                     let mut cache_write = self.cache.write();
-                    cache_write.ops_known_by_peer.pop(peer_id);
+                    cache_write.ops_known_by_peer.remove(peer_id);
                 }
             }
         }
@@ -479,7 +494,7 @@ impl RetrievalThread {
     fn ban_node(&mut self, peer_id: &PeerId) -> Result<(), ProtocolError> {
         massa_trace!("ban node from retrieval thread", { "peer_id": peer_id.to_string() });
         self.peer_cmd_sender
-            .send(PeerManagementCmd::Ban(vec![peer_id.clone()]))
+            .try_send(PeerManagementCmd::Ban(vec![peer_id.clone()]))
             .map_err(|err| ProtocolError::SendError(err.to_string()))
     }
 }
@@ -508,10 +523,12 @@ pub fn start_retrieval_thread(
                 receiver_ext,
                 cache,
                 active_connections,
-                asked_operations: LruCache::new(
-                    NonZeroUsize::new(config.asked_operations_buffer_capacity)
+                asked_operations: LruMap::new(ByLength::new(
+                    config
+                        .asked_operations_buffer_capacity
+                        .try_into()
                         .expect("asked_operations_buffer_capacity in config must be > 0"),
-                ),
+                )),
                 config,
                 operation_message_serializer: MessagesSerializer::new()
                     .with_operation_message_serializer(OperationMessageSerializer::new()),

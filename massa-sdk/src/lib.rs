@@ -9,9 +9,9 @@ use jsonrpsee::core::client::{ClientT, IdKind, Subscription, SubscriptionClientT
 use jsonrpsee::http_client::transport::HttpBackend;
 use jsonrpsee::http_client::HttpClient;
 use jsonrpsee::rpc_params;
-use jsonrpsee::types::error::CallError;
 use jsonrpsee::types::ErrorObject;
 use jsonrpsee::ws_client::{HeaderMap, HeaderValue, WsClient, WsClientBuilder};
+use jsonrpsee::{core::RpcResult, http_client::HttpClientBuilder};
 use massa_api_exports::page::PagedVecV2;
 use massa_api_exports::ApiRequest;
 use massa_api_exports::{
@@ -41,12 +41,6 @@ use massa_models::{
     version::Version,
 };
 use massa_proto::massa::api::v1::massa_service_client::MassaServiceClient;
-
-use jsonrpsee::{core::Error as JsonRpseeError, core::RpcResult, http_client::HttpClientBuilder};
-use jsonrpsee_http_client as _;
-use jsonrpsee_ws_client as _;
-use thiserror::Error;
-
 use std::net::{IpAddr, SocketAddr};
 use std::str::FromStr;
 
@@ -119,7 +113,10 @@ impl RpcClient {
 
     /// Gracefully stop the node.
     pub async fn stop_node(&self) -> RpcResult<()> {
-        self.http_client.request("stop_node", rpc_params![]).await
+        self.http_client
+            .request("stop_node", rpc_params![])
+            .await
+            .map_err(|e| to_error_obj(e.to_string()))
     }
 
     /// Sign message with node's key.
@@ -128,6 +125,7 @@ impl RpcClient {
         self.http_client
             .request("node_sign_message", rpc_params![message])
             .await
+            .map_err(|e| to_error_obj(e.to_string()))
     }
 
     /// Add a vector of new secret keys for the node to use to stake.
@@ -136,6 +134,7 @@ impl RpcClient {
         self.http_client
             .request("add_staking_secret_keys", rpc_params![secret_keys])
             .await
+            .map_err(|e| to_error_obj(e.to_string()))
     }
 
     /// Remove a vector of addresses used to stake.
@@ -144,6 +143,7 @@ impl RpcClient {
         self.http_client
             .request("remove_staking_addresses", rpc_params![addresses])
             .await
+            .map_err(|e| to_error_obj(e.to_string()))
     }
 
     /// Return hash-set of staking addresses.
@@ -151,6 +151,7 @@ impl RpcClient {
         self.http_client
             .request("get_staking_addresses", rpc_params![])
             .await
+            .map_err(|e| to_error_obj(e.to_string()))
     }
 
     /// Bans given ip address(es)
@@ -159,6 +160,7 @@ impl RpcClient {
         self.http_client
             .request("node_ban_by_ip", rpc_params![ips])
             .await
+            .map_err(|e| to_error_obj(e.to_string()))
     }
 
     /// Bans given node id(s)
@@ -167,6 +169,7 @@ impl RpcClient {
         self.http_client
             .request("node_ban_by_id", rpc_params![ids])
             .await
+            .map_err(|e| to_error_obj(e.to_string()))
     }
 
     /// Unban given ip address(es)
@@ -175,6 +178,7 @@ impl RpcClient {
         self.http_client
             .request("node_unban_by_ip", rpc_params![ips])
             .await
+            .map_err(|e| to_error_obj(e.to_string()))
     }
 
     /// Unban given node id(s)
@@ -183,6 +187,7 @@ impl RpcClient {
         self.http_client
             .request("node_unban_by_id", rpc_params![ids])
             .await
+            .map_err(|e| to_error_obj(e.to_string()))
     }
 
     /// Returns node peers whitelist IP address(es).
@@ -190,6 +195,7 @@ impl RpcClient {
         self.http_client
             .request("node_peers_whitelist", rpc_params![])
             .await
+            .map_err(|e| to_error_obj(e.to_string()))
     }
 
     /// Add IP address(es) to node peers whitelist.
@@ -197,6 +203,7 @@ impl RpcClient {
         self.http_client
             .request("node_add_to_peers_whitelist", rpc_params![ips])
             .await
+            .map_err(|e| to_error_obj(e.to_string()))
     }
 
     /// Remove IP address(es) to node peers whitelist.
@@ -204,6 +211,7 @@ impl RpcClient {
         self.http_client
             .request("node_remove_from_peers_whitelist", rpc_params![ips])
             .await
+            .map_err(|e| to_error_obj(e.to_string()))
     }
 
     /// Returns node bootstrap whitelist IP address(es).
@@ -211,6 +219,7 @@ impl RpcClient {
         self.http_client
             .request("node_bootstrap_whitelist", rpc_params![])
             .await
+            .map_err(|e| to_error_obj(e.to_string()))
     }
 
     /// Allow everyone to bootstrap from the node.
@@ -219,6 +228,7 @@ impl RpcClient {
         self.http_client
             .request("node_bootstrap_whitelist_allow_all", rpc_params![])
             .await
+            .map_err(|e| to_error_obj(e.to_string()))
     }
 
     /// Add IP address(es) to node bootstrap whitelist.
@@ -226,6 +236,7 @@ impl RpcClient {
         self.http_client
             .request("node_add_to_bootstrap_whitelist", rpc_params![ips])
             .await
+            .map_err(|e| to_error_obj(e.to_string()))
     }
 
     /// Remove IP address(es) to bootstrap whitelist.
@@ -233,6 +244,7 @@ impl RpcClient {
         self.http_client
             .request("node_remove_from_bootstrap_whitelist", rpc_params![ips])
             .await
+            .map_err(|e| to_error_obj(e.to_string()))
     }
 
     /// Returns node bootstrap blacklist IP address(es).
@@ -240,6 +252,7 @@ impl RpcClient {
         self.http_client
             .request("node_bootstrap_blacklist", rpc_params![])
             .await
+            .map_err(|e| to_error_obj(e.to_string()))
     }
 
     /// Add IP address(es) to node bootstrap blacklist.
@@ -247,6 +260,7 @@ impl RpcClient {
         self.http_client
             .request("node_add_to_bootstrap_blacklist", rpc_params![ips])
             .await
+            .map_err(|e| to_error_obj(e.to_string()))
     }
 
     /// Remove IP address(es) to bootstrap blacklist.
@@ -254,6 +268,7 @@ impl RpcClient {
         self.http_client
             .request("node_remove_from_bootstrap_blacklist", rpc_params![ips])
             .await
+            .map_err(|e| to_error_obj(e.to_string()))
     }
 
     ////////////////
@@ -264,18 +279,27 @@ impl RpcClient {
 
     /// summary of the current state: time, last final blocks (hash, thread, slot, timestamp), clique count, connected nodes count
     pub async fn get_status(&self) -> RpcResult<NodeStatus> {
-        self.http_client.request("get_status", rpc_params![]).await
+        self.http_client
+            .request("get_status", rpc_params![])
+            .await
+            .map_err(|e| to_error_obj(e.to_string()))
     }
 
     pub(crate) async fn _get_cliques(&self) -> RpcResult<Vec<Clique>> {
-        self.http_client.request("get_cliques", rpc_params![]).await
+        self.http_client
+            .request("get_cliques", rpc_params![])
+            .await
+            .map_err(|e| to_error_obj(e.to_string()))
     }
 
     // Debug (specific information)
 
     /// Returns the active stakers and their roll counts for the current cycle.
     pub(crate) async fn _get_stakers(&self) -> RpcResult<PreHashMap<Address, u64>> {
-        self.http_client.request("get_stakers", rpc_params![]).await
+        self.http_client
+            .request("get_stakers", rpc_params![])
+            .await
+            .map_err(|e| to_error_obj(e.to_string()))
     }
 
     /// Returns operation(s) information associated to a given list of operation(s) ID(s).
@@ -286,6 +310,7 @@ impl RpcClient {
         self.http_client
             .request("get_operations", rpc_params![operation_ids])
             .await
+            .map_err(|e| to_error_obj(e.to_string()))
     }
 
     /// Returns endorsement(s) information associated to a given list of endorsement(s) ID(s)
@@ -296,6 +321,7 @@ impl RpcClient {
         self.http_client
             .request("get_endorsements", rpc_params![endorsement_ids])
             .await
+            .map_err(|e| to_error_obj(e.to_string()))
     }
 
     /// Returns block(s) information associated to a given list of block(s) ID(s)
@@ -303,6 +329,7 @@ impl RpcClient {
         self.http_client
             .request("get_blocks", rpc_params![block_ids])
             .await
+            .map_err(|e| to_error_obj(e.to_string()))
     }
 
     /// Get events emitted by smart contracts with various filters
@@ -313,6 +340,7 @@ impl RpcClient {
         self.http_client
             .request("get_filtered_sc_output_event", rpc_params![filter])
             .await
+            .map_err(|e| to_error_obj(e.to_string()))
     }
 
     /// Get the block graph within the specified time interval.
@@ -324,6 +352,7 @@ impl RpcClient {
         self.http_client
             .request("get_graph_interval", rpc_params![time_interval])
             .await
+            .map_err(|e| to_error_obj(e.to_string()))
     }
 
     /// Get info by addresses
@@ -331,6 +360,7 @@ impl RpcClient {
         self.http_client
             .request("get_addresses", rpc_params![addresses])
             .await
+            .map_err(|e| to_error_obj(e.to_string()))
     }
 
     /// Get datastore entries
@@ -341,6 +371,7 @@ impl RpcClient {
         self.http_client
             .request("get_datastore_entries", rpc_params![input])
             .await
+            .map_err(|e| to_error_obj(e.to_string()))
     }
 
     // User (interaction with the node)
@@ -353,6 +384,7 @@ impl RpcClient {
         self.http_client
             .request("send_operations", rpc_params![operations])
             .await
+            .map_err(|e| to_error_obj(e.to_string()))
     }
 
     /// execute read only bytecode
@@ -365,10 +397,11 @@ impl RpcClient {
                 "execute_read_only_bytecode",
                 vec![vec![read_only_execution]],
             )
-            .await?
+            .await
+            .map_err(|e| to_error_obj(e.to_string()))?
             .pop()
             .ok_or_else(|| {
-                JsonRpseeError::Custom("missing return value on execute_read_only_bytecode".into())
+                to_error_obj("missing return value on execute_read_only_bytecode".to_owned())
             })
     }
 
@@ -382,10 +415,11 @@ impl RpcClient {
                 "execute_read_only_call",
                 vec![vec![read_only_execution]],
             )
-            .await?
+            .await
+            .map_err(|e| to_error_obj(e.to_string()))?
             .pop()
             .ok_or_else(|| {
-                JsonRpseeError::Custom("missing return value on execute_read_only_call".into())
+                to_error_obj("missing return value on execute_read_only_call".to_owned())
             })
     }
 }
@@ -467,10 +501,9 @@ impl RpcClientV2 {
             client
                 .request("get_largest_stakers", rpc_params![request])
                 .await
+                .map_err(|e| to_error_obj(e.to_string()))
         } else {
-            Err(JsonRpseeError::Custom(
-                "no Http client instance found".to_owned(),
-            ))
+            Err(to_error_obj("no Http client instance found".to_owned()))
         }
     }
 
@@ -480,21 +513,18 @@ impl RpcClientV2 {
             client
                 .request("get_next_block_best_parents", rpc_params![])
                 .await
+                .map_err(|e| to_error_obj(e.to_string()))
         } else {
-            Err(JsonRpseeError::Custom(
-                "no Http client instance found".to_owned(),
-            ))
+            Err(to_error_obj("no Http client instance found".to_owned()))
         }
     }
 
     /// Get Massa node version
     pub async fn get_version(&self) -> RpcResult<Version> {
         if let Some(client) = self.http_client.as_ref() {
-            client.request("get_version", rpc_params![]).await
+            client.request("get_version", rpc_params![]).await.unwrap()
         } else {
-            Err(JsonRpseeError::Custom(
-                "no Http client instance found".to_owned(),
-            ))
+            Err(to_error_obj("no Http client instance found".to_owned()))
         }
     }
 
@@ -511,12 +541,7 @@ impl RpcClientV2 {
                 )
                 .await
         } else {
-            Err(CallError::Custom(ErrorObject::owned(
-                -32080,
-                "no WebSocket client instance found".to_owned(),
-                None::<()>,
-            ))
-            .into())
+            Err(to_error_obj("no WebSocket client instance found".to_owned()).into())
         }
     }
 
@@ -533,12 +558,7 @@ impl RpcClientV2 {
                 )
                 .await
         } else {
-            Err(CallError::Custom(ErrorObject::owned(
-                -32080,
-                "no WebSocket client instance found".to_owned(),
-                None::<()>,
-            ))
-            .into())
+            Err(to_error_obj("no WebSocket client instance found".to_owned()).into())
         }
     }
 
@@ -555,12 +575,7 @@ impl RpcClientV2 {
                 )
                 .await
         } else {
-            Err(CallError::Custom(ErrorObject::owned(
-                -32080,
-                "no WebSocket client instance found".to_owned(),
-                None::<()>,
-            ))
-            .into())
+            Err(to_error_obj("no WebSocket client instance found".to_owned()).into())
         }
     }
 
@@ -577,12 +592,7 @@ impl RpcClientV2 {
                 )
                 .await
         } else {
-            Err(CallError::Custom(ErrorObject::owned(
-                -32080,
-                "no WebSocket client instance found".to_owned(),
-                None::<()>,
-            ))
-            .into())
+            Err(to_error_obj("no WebSocket client instance found".to_owned()).into())
         }
     }
 }
@@ -654,4 +664,9 @@ fn get_headers(headers: &[(String, String)]) -> HeaderMap {
     });
 
     headers_map
+}
+
+// SDK error object
+fn to_error_obj(message: String) -> ErrorObject<'static> {
+    ErrorObject::owned(-32080, message, None::<()>)
 }

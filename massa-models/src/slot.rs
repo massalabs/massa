@@ -331,7 +331,7 @@ impl Slot {
 }
 
 /// When an address is drawn to create an endorsement it is selected for a specific index
-#[derive(Debug, Deserialize, Serialize, Hash, PartialEq, Eq)]
+#[derive(Debug, Clone, Deserialize, Serialize, Hash, PartialEq, Eq)]
 pub struct IndexedSlot {
     /// slot
     pub slot: Slot,

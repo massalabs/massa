@@ -147,7 +147,7 @@ impl PeerManagementHandler {
                                     }).collect();
                                     peers.push((peer_id.clone(), listeners));
                                 }
-                                if let Err(err) = responder.send(BootstrapPeers(peers)) {
+                                if let Err(err) = responder.try_send(BootstrapPeers(peers)) {
                                     warn!("error sending bootstrap peers: {:?}", err);
                                 }
                              },
@@ -218,7 +218,7 @@ impl PeerManagementHandler {
                     &mut message,
                 )
                 .unwrap();
-            sender_msg.send((peer_id.clone(), message)).unwrap();
+            sender_msg.try_send((peer_id.clone(), message)).unwrap();
         }
 
         Self {
@@ -387,7 +387,12 @@ impl InitConnectionHandler<PeerId, Context, MessagesHandler> for MassaHandshake 
                 0 => {
                     let (_, announcement) = self
                         .announcement_deserializer
-                        .deserialize::<DeserializeError>(&received[1..])
+                        .deserialize::<DeserializeError>(
+                            received.get(1..).ok_or(PeerNetError::HandshakeError.error(
+                                "Massa Handshake",
+                                Some("Failed to get data".to_string()),
+                            ))?,
+                        )
                         .map_err(|err| {
                             PeerNetError::HandshakeError.error(
                                 "Massa Handshake",
@@ -469,7 +474,13 @@ impl InitConnectionHandler<PeerId, Context, MessagesHandler> for MassaHandshake 
                     Ok((peer_id.clone(), Some(announcement)))
                 }
                 1 => {
-                    self.message_handlers.handle(&received[1..], &peer_id)?;
+                    self.message_handlers.handle(
+                        received.get(1..).ok_or(
+                            PeerNetError::HandshakeError
+                                .error("Massa Handshake", Some("Failed to get data".to_string())),
+                        )?,
+                        &peer_id,
+                    )?;
                     Ok((peer_id.clone(), None))
                 }
                 _ => Err(PeerNetError::HandshakeError

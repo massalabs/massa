@@ -254,7 +254,7 @@ impl PeerNetMessagesHandler<PeerId> for MessagesHandler {
                 }),
             MessageTypeId::Endorsement => self
                 .sender_endorsements
-                .send((peer_id.clone(), data.to_vec()))
+                .try_send((peer_id.clone(), data.to_vec()))
                 .map_err(|err| {
                     PeerNetError::HandlerError.error(
                         "MessagesHandler",
@@ -263,7 +263,7 @@ impl PeerNetMessagesHandler<PeerId> for MessagesHandler {
                 }),
             MessageTypeId::Operation => self
                 .sender_operations
-                .send((peer_id.clone(), data.to_vec()))
+                .try_send((peer_id.clone(), data.to_vec()))
                 .map_err(|err| {
                     PeerNetError::HandlerError.error(
                         "MessagesHandler",
@@ -272,7 +272,7 @@ impl PeerNetMessagesHandler<PeerId> for MessagesHandler {
                 }),
             MessageTypeId::PeerManagement => self
                 .sender_peers
-                .send((peer_id.clone(), data.to_vec()))
+                .try_send((peer_id.clone(), data.to_vec()))
                 .map_err(|err| {
                     PeerNetError::HandlerError.error(
                         "MessagesHandler",

@@ -6,7 +6,7 @@ use serde::{Deserialize, Serialize};
 use std::fmt::Formatter;
 
 /// execution statistics
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ExecutionStats {
     /// time window start
     pub time_window_start: MassaTime,
@@ -49,7 +49,7 @@ impl std::fmt::Display for ExecutionStats {
 }
 
 /// stats produced by network module
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct NetworkStats {
     /// in connections count
     pub in_connection_count: u64,
