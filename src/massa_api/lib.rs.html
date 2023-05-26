@@ -381,6 +381,10 @@
 <a href="#381" id="381">381</a>
 <a href="#382" id="382">382</a>
 <a href="#383" id="383">383</a>
+<a href="#384" id="384">384</a>
+<a href="#385" id="385">385</a>
+<a href="#386" id="386">386</a>
+<a href="#387" id="387">387</a>
 </pre><pre class="rust"><code><span class="doccomment">//! Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 //! Json RPC API for a massa-node
 </span><span class="attr">#![feature(async_closure)]
@@ -390,7 +394,7 @@
 <span class="kw">use </span>hyper::Method;
 <span class="kw">use </span>jsonrpsee::core::{Error <span class="kw">as </span>JsonRpseeError, RpcResult};
 <span class="kw">use </span>jsonrpsee::proc_macros::rpc;
-<span class="kw">use </span>jsonrpsee::server::{AllowHosts, ServerBuilder, ServerHandle};
+<span class="kw">use </span>jsonrpsee::server::{AllowHosts, BatchRequestConfig, ServerBuilder, ServerHandle};
 <span class="kw">use </span>jsonrpsee::RpcModule;
 <span class="kw">use </span>massa_api_exports::{
     address::AddressInfo,
@@ -538,7 +542,11 @@
         .max_response_body_size(api_config.max_response_body_size)
         .max_connections(api_config.max_connections)
         .set_host_filtering(allowed_hosts)
-        .batch_requests_supported(api_config.batch_requests_supported)
+        .set_batch_request_config(<span class="kw">if </span>api_config.batch_request_limit &gt; <span class="number">0 </span>{
+            BatchRequestConfig::Limit(api_config.batch_request_limit)
+        } <span class="kw">else </span>{
+            BatchRequestConfig::Disabled
+        })
         .ping_interval(api_config.ping_interval.to_duration())
         .custom_tokio_runtime(tokio::runtime::Handle::current());
 

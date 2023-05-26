@@ -655,6 +655,24 @@
 <a href="#655" id="655">655</a>
 <a href="#656" id="656">656</a>
 <a href="#657" id="657">657</a>
+<a href="#658" id="658">658</a>
+<a href="#659" id="659">659</a>
+<a href="#660" id="660">660</a>
+<a href="#661" id="661">661</a>
+<a href="#662" id="662">662</a>
+<a href="#663" id="663">663</a>
+<a href="#664" id="664">664</a>
+<a href="#665" id="665">665</a>
+<a href="#666" id="666">666</a>
+<a href="#667" id="667">667</a>
+<a href="#668" id="668">668</a>
+<a href="#669" id="669">669</a>
+<a href="#670" id="670">670</a>
+<a href="#671" id="671">671</a>
+<a href="#672" id="672">672</a>
+<a href="#673" id="673">673</a>
+<a href="#674" id="674">674</a>
+<a href="#675" id="675">675</a>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 </span><span class="doccomment">//! Utilities for a massa client
 
@@ -666,9 +684,11 @@
 <span class="kw">use </span>jsonrpsee::http_client::transport::HttpBackend;
 <span class="kw">use </span>jsonrpsee::http_client::HttpClient;
 <span class="kw">use </span>jsonrpsee::rpc_params;
-<span class="kw">use </span>jsonrpsee::types::error::CallError;
 <span class="kw">use </span>jsonrpsee::types::ErrorObject;
 <span class="kw">use </span>jsonrpsee::ws_client::{HeaderMap, HeaderValue, WsClient, WsClientBuilder};
+<span class="kw">use </span>jsonrpsee::{core::RpcResult, http_client::HttpClientBuilder};
+<span class="kw">use </span>jsonrpsee_http_client <span class="kw">as _</span>;
+<span class="kw">use </span>jsonrpsee_ws_client <span class="kw">as _</span>;
 <span class="kw">use </span>massa_api_exports::page::PagedVecV2;
 <span class="kw">use </span>massa_api_exports::ApiRequest;
 <span class="kw">use </span>massa_api_exports::{
@@ -698,14 +718,9 @@
     version::Version,
 };
 <span class="kw">use </span>massa_proto::massa::api::v1::massa_service_client::MassaServiceClient;
-
-<span class="kw">use </span>jsonrpsee::{core::Error <span class="kw">as </span>JsonRpseeError, core::RpcResult, http_client::HttpClientBuilder};
-<span class="kw">use </span>jsonrpsee_http_client <span class="kw">as _</span>;
-<span class="kw">use </span>jsonrpsee_ws_client <span class="kw">as _</span>;
-<span class="kw">use </span>thiserror::Error;
-
 <span class="kw">use </span>std::net::{IpAddr, SocketAddr};
 <span class="kw">use </span>std::str::FromStr;
+<span class="kw">use </span>thiserror::Error;
 
 <span class="kw">mod </span>config;
 <span class="kw">pub use </span>config::ClientConfig;
@@ -776,8 +791,11 @@
 
     <span class="doccomment">/// Gracefully stop the node.
     </span><span class="kw">pub async fn </span>stop_node(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; RpcResult&lt;()&gt; {
-        <span class="self">self</span>.http_client.request(<span class="string">&quot;stop_node&quot;</span>, <span class="macro">rpc_params!</span>[]).<span class="kw">await
-    </span>}
+        <span class="self">self</span>.http_client
+            .request(<span class="string">&quot;stop_node&quot;</span>, <span class="macro">rpc_params!</span>[])
+            .<span class="kw">await
+            </span>.map_err(|e| to_error_obj(e.to_string()))
+    }
 
     <span class="doccomment">/// Sign message with node&#39;s key.
     /// Returns the public key that signed the message and the signature.
@@ -785,7 +803,8 @@
         <span class="self">self</span>.http_client
             .request(<span class="string">&quot;node_sign_message&quot;</span>, <span class="macro">rpc_params!</span>[message])
             .<span class="kw">await
-    </span>}
+            </span>.map_err(|e| to_error_obj(e.to_string()))
+    }
 
     <span class="doccomment">/// Add a vector of new secret keys for the node to use to stake.
     /// No confirmation to expect.
@@ -793,7 +812,8 @@
         <span class="self">self</span>.http_client
             .request(<span class="string">&quot;add_staking_secret_keys&quot;</span>, <span class="macro">rpc_params!</span>[secret_keys])
             .<span class="kw">await
-    </span>}
+            </span>.map_err(|e| to_error_obj(e.to_string()))
+    }
 
     <span class="doccomment">/// Remove a vector of addresses used to stake.
     /// No confirmation to expect.
@@ -801,14 +821,16 @@
         <span class="self">self</span>.http_client
             .request(<span class="string">&quot;remove_staking_addresses&quot;</span>, <span class="macro">rpc_params!</span>[addresses])
             .<span class="kw">await
-    </span>}
+            </span>.map_err(|e| to_error_obj(e.to_string()))
+    }
 
     <span class="doccomment">/// Return hash-set of staking addresses.
     </span><span class="kw">pub async fn </span>get_staking_addresses(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; RpcResult&lt;PreHashSet&lt;Address&gt;&gt; {
         <span class="self">self</span>.http_client
             .request(<span class="string">&quot;get_staking_addresses&quot;</span>, <span class="macro">rpc_params!</span>[])
             .<span class="kw">await
-    </span>}
+            </span>.map_err(|e| to_error_obj(e.to_string()))
+    }
 
     <span class="doccomment">/// Bans given ip address(es)
     /// No confirmation to expect.
@@ -816,7 +838,8 @@
         <span class="self">self</span>.http_client
             .request(<span class="string">&quot;node_ban_by_ip&quot;</span>, <span class="macro">rpc_params!</span>[ips])
             .<span class="kw">await
-    </span>}
+            </span>.map_err(|e| to_error_obj(e.to_string()))
+    }
 
     <span class="doccomment">/// Bans given node id(s)
     /// No confirmation to expect.
@@ -824,7 +847,8 @@
         <span class="self">self</span>.http_client
             .request(<span class="string">&quot;node_ban_by_id&quot;</span>, <span class="macro">rpc_params!</span>[ids])
             .<span class="kw">await
-    </span>}
+            </span>.map_err(|e| to_error_obj(e.to_string()))
+    }
 
     <span class="doccomment">/// Unban given ip address(es)
     /// No confirmation to expect.
@@ -832,7 +856,8 @@
         <span class="self">self</span>.http_client
             .request(<span class="string">&quot;node_unban_by_ip&quot;</span>, <span class="macro">rpc_params!</span>[ips])
             .<span class="kw">await
-    </span>}
+            </span>.map_err(|e| to_error_obj(e.to_string()))
+    }
 
     <span class="doccomment">/// Unban given node id(s)
     /// No confirmation to expect.
@@ -840,35 +865,40 @@
         <span class="self">self</span>.http_client
             .request(<span class="string">&quot;node_unban_by_id&quot;</span>, <span class="macro">rpc_params!</span>[ids])
             .<span class="kw">await
-    </span>}
+            </span>.map_err(|e| to_error_obj(e.to_string()))
+    }
 
     <span class="doccomment">/// Returns node peers whitelist IP address(es).
     </span><span class="kw">pub async fn </span>node_peers_whitelist(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; RpcResult&lt;Vec&lt;IpAddr&gt;&gt; {
         <span class="self">self</span>.http_client
             .request(<span class="string">&quot;node_peers_whitelist&quot;</span>, <span class="macro">rpc_params!</span>[])
             .<span class="kw">await
-    </span>}
+            </span>.map_err(|e| to_error_obj(e.to_string()))
+    }
 
     <span class="doccomment">/// Add IP address(es) to node peers whitelist.
     </span><span class="kw">pub async fn </span>node_add_to_peers_whitelist(<span class="kw-2">&amp;</span><span class="self">self</span>, ips: Vec&lt;IpAddr&gt;) -&gt; RpcResult&lt;()&gt; {
         <span class="self">self</span>.http_client
             .request(<span class="string">&quot;node_add_to_peers_whitelist&quot;</span>, <span class="macro">rpc_params!</span>[ips])
             .<span class="kw">await
-    </span>}
+            </span>.map_err(|e| to_error_obj(e.to_string()))
+    }
 
     <span class="doccomment">/// Remove IP address(es) to node peers whitelist.
     </span><span class="kw">pub async fn </span>node_remove_from_peers_whitelist(<span class="kw-2">&amp;</span><span class="self">self</span>, ips: Vec&lt;IpAddr&gt;) -&gt; RpcResult&lt;()&gt; {
         <span class="self">self</span>.http_client
             .request(<span class="string">&quot;node_remove_from_peers_whitelist&quot;</span>, <span class="macro">rpc_params!</span>[ips])
             .<span class="kw">await
-    </span>}
+            </span>.map_err(|e| to_error_obj(e.to_string()))
+    }
 
     <span class="doccomment">/// Returns node bootstrap whitelist IP address(es).
     </span><span class="kw">pub async fn </span>node_bootstrap_whitelist(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; RpcResult&lt;Vec&lt;IpAddr&gt;&gt; {
         <span class="self">self</span>.http_client
             .request(<span class="string">&quot;node_bootstrap_whitelist&quot;</span>, <span class="macro">rpc_params!</span>[])
             .<span class="kw">await
-    </span>}
+            </span>.map_err(|e| to_error_obj(e.to_string()))
+    }
 
     <span class="doccomment">/// Allow everyone to bootstrap from the node.
     /// remove bootstrap whitelist configuration file.
@@ -876,42 +906,48 @@
         <span class="self">self</span>.http_client
             .request(<span class="string">&quot;node_bootstrap_whitelist_allow_all&quot;</span>, <span class="macro">rpc_params!</span>[])
             .<span class="kw">await
-    </span>}
+            </span>.map_err(|e| to_error_obj(e.to_string()))
+    }
 
     <span class="doccomment">/// Add IP address(es) to node bootstrap whitelist.
     </span><span class="kw">pub async fn </span>node_add_to_bootstrap_whitelist(<span class="kw-2">&amp;</span><span class="self">self</span>, ips: Vec&lt;IpAddr&gt;) -&gt; RpcResult&lt;()&gt; {
         <span class="self">self</span>.http_client
             .request(<span class="string">&quot;node_add_to_bootstrap_whitelist&quot;</span>, <span class="macro">rpc_params!</span>[ips])
             .<span class="kw">await
-    </span>}
+            </span>.map_err(|e| to_error_obj(e.to_string()))
+    }
 
     <span class="doccomment">/// Remove IP address(es) to bootstrap whitelist.
     </span><span class="kw">pub async fn </span>node_remove_from_bootstrap_whitelist(<span class="kw-2">&amp;</span><span class="self">self</span>, ips: Vec&lt;IpAddr&gt;) -&gt; RpcResult&lt;()&gt; {
         <span class="self">self</span>.http_client
             .request(<span class="string">&quot;node_remove_from_bootstrap_whitelist&quot;</span>, <span class="macro">rpc_params!</span>[ips])
             .<span class="kw">await
-    </span>}
+            </span>.map_err(|e| to_error_obj(e.to_string()))
+    }
 
     <span class="doccomment">/// Returns node bootstrap blacklist IP address(es).
     </span><span class="kw">pub async fn </span>node_bootstrap_blacklist(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; RpcResult&lt;Vec&lt;IpAddr&gt;&gt; {
         <span class="self">self</span>.http_client
             .request(<span class="string">&quot;node_bootstrap_blacklist&quot;</span>, <span class="macro">rpc_params!</span>[])
             .<span class="kw">await
-    </span>}
+            </span>.map_err(|e| to_error_obj(e.to_string()))
+    }
 
     <span class="doccomment">/// Add IP address(es) to node bootstrap blacklist.
     </span><span class="kw">pub async fn </span>node_add_to_bootstrap_blacklist(<span class="kw-2">&amp;</span><span class="self">self</span>, ips: Vec&lt;IpAddr&gt;) -&gt; RpcResult&lt;()&gt; {
         <span class="self">self</span>.http_client
             .request(<span class="string">&quot;node_add_to_bootstrap_blacklist&quot;</span>, <span class="macro">rpc_params!</span>[ips])
             .<span class="kw">await
-    </span>}
+            </span>.map_err(|e| to_error_obj(e.to_string()))
+    }
 
     <span class="doccomment">/// Remove IP address(es) to bootstrap blacklist.
     </span><span class="kw">pub async fn </span>node_remove_from_bootstrap_blacklist(<span class="kw-2">&amp;</span><span class="self">self</span>, ips: Vec&lt;IpAddr&gt;) -&gt; RpcResult&lt;()&gt; {
         <span class="self">self</span>.http_client
             .request(<span class="string">&quot;node_remove_from_bootstrap_blacklist&quot;</span>, <span class="macro">rpc_params!</span>[ips])
             .<span class="kw">await
-    </span>}
+            </span>.map_err(|e| to_error_obj(e.to_string()))
+    }
 
     <span class="comment">////////////////
     // public-api //
@@ -921,19 +957,28 @@
 
     </span><span class="doccomment">/// summary of the current state: time, last final blocks (hash, thread, slot, timestamp), clique count, connected nodes count
     </span><span class="kw">pub async fn </span>get_status(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; RpcResult&lt;NodeStatus&gt; {
-        <span class="self">self</span>.http_client.request(<span class="string">&quot;get_status&quot;</span>, <span class="macro">rpc_params!</span>[]).<span class="kw">await
-    </span>}
+        <span class="self">self</span>.http_client
+            .request(<span class="string">&quot;get_status&quot;</span>, <span class="macro">rpc_params!</span>[])
+            .<span class="kw">await
+            </span>.map_err(|e| to_error_obj(e.to_string()))
+    }
 
     <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">async fn </span>_get_cliques(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; RpcResult&lt;Vec&lt;Clique&gt;&gt; {
-        <span class="self">self</span>.http_client.request(<span class="string">&quot;get_cliques&quot;</span>, <span class="macro">rpc_params!</span>[]).<span class="kw">await
-    </span>}
+        <span class="self">self</span>.http_client
+            .request(<span class="string">&quot;get_cliques&quot;</span>, <span class="macro">rpc_params!</span>[])
+            .<span class="kw">await
+            </span>.map_err(|e| to_error_obj(e.to_string()))
+    }
 
     <span class="comment">// Debug (specific information)
 
     </span><span class="doccomment">/// Returns the active stakers and their roll counts for the current cycle.
     </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">async fn </span>_get_stakers(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; RpcResult&lt;PreHashMap&lt;Address, u64&gt;&gt; {
-        <span class="self">self</span>.http_client.request(<span class="string">&quot;get_stakers&quot;</span>, <span class="macro">rpc_params!</span>[]).<span class="kw">await
-    </span>}
+        <span class="self">self</span>.http_client
+            .request(<span class="string">&quot;get_stakers&quot;</span>, <span class="macro">rpc_params!</span>[])
+            .<span class="kw">await
+            </span>.map_err(|e| to_error_obj(e.to_string()))
+    }
 
     <span class="doccomment">/// Returns operation(s) information associated to a given list of operation(s) ID(s).
     </span><span class="kw">pub async fn </span>get_operations(
@@ -943,7 +988,8 @@
         <span class="self">self</span>.http_client
             .request(<span class="string">&quot;get_operations&quot;</span>, <span class="macro">rpc_params!</span>[operation_ids])
             .<span class="kw">await
-    </span>}
+            </span>.map_err(|e| to_error_obj(e.to_string()))
+    }
 
     <span class="doccomment">/// Returns endorsement(s) information associated to a given list of endorsement(s) ID(s)
     </span><span class="kw">pub async fn </span>get_endorsements(
@@ -953,14 +999,16 @@
         <span class="self">self</span>.http_client
             .request(<span class="string">&quot;get_endorsements&quot;</span>, <span class="macro">rpc_params!</span>[endorsement_ids])
             .<span class="kw">await
-    </span>}
+            </span>.map_err(|e| to_error_obj(e.to_string()))
+    }
 
     <span class="doccomment">/// Returns block(s) information associated to a given list of block(s) ID(s)
     </span><span class="kw">pub async fn </span>get_blocks(<span class="kw-2">&amp;</span><span class="self">self</span>, block_ids: Vec&lt;BlockId&gt;) -&gt; RpcResult&lt;Vec&lt;BlockInfo&gt;&gt; {
         <span class="self">self</span>.http_client
             .request(<span class="string">&quot;get_blocks&quot;</span>, <span class="macro">rpc_params!</span>[block_ids])
             .<span class="kw">await
-    </span>}
+            </span>.map_err(|e| to_error_obj(e.to_string()))
+    }
 
     <span class="doccomment">/// Get events emitted by smart contracts with various filters
     </span><span class="kw">pub async fn </span>get_filtered_sc_output_event(
@@ -970,7 +1018,8 @@
         <span class="self">self</span>.http_client
             .request(<span class="string">&quot;get_filtered_sc_output_event&quot;</span>, <span class="macro">rpc_params!</span>[filter])
             .<span class="kw">await
-    </span>}
+            </span>.map_err(|e| to_error_obj(e.to_string()))
+    }
 
     <span class="doccomment">/// Get the block graph within the specified time interval.
     /// Optional parameters: from `&lt;time_start&gt;` (included) and to `&lt;time_end&gt;` (excluded) millisecond timestamp
@@ -981,14 +1030,16 @@
         <span class="self">self</span>.http_client
             .request(<span class="string">&quot;get_graph_interval&quot;</span>, <span class="macro">rpc_params!</span>[time_interval])
             .<span class="kw">await
-    </span>}
+            </span>.map_err(|e| to_error_obj(e.to_string()))
+    }
 
     <span class="doccomment">/// Get info by addresses
     </span><span class="kw">pub async fn </span>get_addresses(<span class="kw-2">&amp;</span><span class="self">self</span>, addresses: Vec&lt;Address&gt;) -&gt; RpcResult&lt;Vec&lt;AddressInfo&gt;&gt; {
         <span class="self">self</span>.http_client
             .request(<span class="string">&quot;get_addresses&quot;</span>, <span class="macro">rpc_params!</span>[addresses])
             .<span class="kw">await
-    </span>}
+            </span>.map_err(|e| to_error_obj(e.to_string()))
+    }
 
     <span class="doccomment">/// Get datastore entries
     </span><span class="kw">pub async fn </span>get_datastore_entries(
@@ -998,7 +1049,8 @@
         <span class="self">self</span>.http_client
             .request(<span class="string">&quot;get_datastore_entries&quot;</span>, <span class="macro">rpc_params!</span>[input])
             .<span class="kw">await
-    </span>}
+            </span>.map_err(|e| to_error_obj(e.to_string()))
+    }
 
     <span class="comment">// User (interaction with the node)
 
@@ -1010,7 +1062,8 @@
         <span class="self">self</span>.http_client
             .request(<span class="string">&quot;send_operations&quot;</span>, <span class="macro">rpc_params!</span>[operations])
             .<span class="kw">await
-    </span>}
+            </span>.map_err(|e| to_error_obj(e.to_string()))
+    }
 
     <span class="doccomment">/// execute read only bytecode
     </span><span class="kw">pub async fn </span>execute_read_only_bytecode(
@@ -1022,10 +1075,11 @@
                 <span class="string">&quot;execute_read_only_bytecode&quot;</span>,
                 <span class="macro">vec!</span>[<span class="macro">vec!</span>[read_only_execution]],
             )
-            .<span class="kw">await</span><span class="question-mark">?
+            .<span class="kw">await
+            </span>.map_err(|e| to_error_obj(e.to_string()))<span class="question-mark">?
             </span>.pop()
             .ok_or_else(|| {
-                JsonRpseeError::Custom(<span class="string">&quot;missing return value on execute_read_only_bytecode&quot;</span>.into())
+                to_error_obj(<span class="string">&quot;missing return value on execute_read_only_bytecode&quot;</span>.to_owned())
             })
     }
 
@@ -1039,10 +1093,11 @@
                 <span class="string">&quot;execute_read_only_call&quot;</span>,
                 <span class="macro">vec!</span>[<span class="macro">vec!</span>[read_only_execution]],
             )
-            .<span class="kw">await</span><span class="question-mark">?
+            .<span class="kw">await
+            </span>.map_err(|e| to_error_obj(e.to_string()))<span class="question-mark">?
             </span>.pop()
             .ok_or_else(|| {
-                JsonRpseeError::Custom(<span class="string">&quot;missing return value on execute_read_only_call&quot;</span>.into())
+                to_error_obj(<span class="string">&quot;missing return value on execute_read_only_call&quot;</span>.to_owned())
             })
     }
 }
@@ -1124,10 +1179,9 @@
             client
                 .request(<span class="string">&quot;get_largest_stakers&quot;</span>, <span class="macro">rpc_params!</span>[request])
                 .<span class="kw">await
-        </span>} <span class="kw">else </span>{
-            <span class="prelude-val">Err</span>(JsonRpseeError::Custom(
-                <span class="string">&quot;no Http client instance found&quot;</span>.to_owned(),
-            ))
+                </span>.map_err(|e| to_error_obj(e.to_string()))
+        } <span class="kw">else </span>{
+            <span class="prelude-val">Err</span>(to_error_obj(<span class="string">&quot;no Http client instance found&quot;</span>.to_owned()))
         }
     }
 
@@ -1137,21 +1191,18 @@
             client
                 .request(<span class="string">&quot;get_next_block_best_parents&quot;</span>, <span class="macro">rpc_params!</span>[])
                 .<span class="kw">await
-        </span>} <span class="kw">else </span>{
-            <span class="prelude-val">Err</span>(JsonRpseeError::Custom(
-                <span class="string">&quot;no Http client instance found&quot;</span>.to_owned(),
-            ))
+                </span>.map_err(|e| to_error_obj(e.to_string()))
+        } <span class="kw">else </span>{
+            <span class="prelude-val">Err</span>(to_error_obj(<span class="string">&quot;no Http client instance found&quot;</span>.to_owned()))
         }
     }
 
     <span class="doccomment">/// Get Massa node version
     </span><span class="kw">pub async fn </span>get_version(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; RpcResult&lt;Version&gt; {
         <span class="kw">if let </span><span class="prelude-val">Some</span>(client) = <span class="self">self</span>.http_client.as_ref() {
-            client.request(<span class="string">&quot;get_version&quot;</span>, <span class="macro">rpc_params!</span>[]).<span class="kw">await
-        </span>} <span class="kw">else </span>{
-            <span class="prelude-val">Err</span>(JsonRpseeError::Custom(
-                <span class="string">&quot;no Http client instance found&quot;</span>.to_owned(),
-            ))
+            client.request(<span class="string">&quot;get_version&quot;</span>, <span class="macro">rpc_params!</span>[]).<span class="kw">await</span>.unwrap()
+        } <span class="kw">else </span>{
+            <span class="prelude-val">Err</span>(to_error_obj(<span class="string">&quot;no Http client instance found&quot;</span>.to_owned()))
         }
     }
 
@@ -1168,12 +1219,7 @@
                 )
                 .<span class="kw">await
         </span>} <span class="kw">else </span>{
-            <span class="prelude-val">Err</span>(CallError::Custom(ErrorObject::owned(
-                -<span class="number">32080</span>,
-                <span class="string">&quot;no WebSocket client instance found&quot;</span>.to_owned(),
-                <span class="prelude-val">None</span>::&lt;()&gt;,
-            ))
-            .into())
+            <span class="prelude-val">Err</span>(to_error_obj(<span class="string">&quot;no WebSocket client instance found&quot;</span>.to_owned()).into())
         }
     }
 
@@ -1190,12 +1236,7 @@
                 )
                 .<span class="kw">await
         </span>} <span class="kw">else </span>{
-            <span class="prelude-val">Err</span>(CallError::Custom(ErrorObject::owned(
-                -<span class="number">32080</span>,
-                <span class="string">&quot;no WebSocket client instance found&quot;</span>.to_owned(),
-                <span class="prelude-val">None</span>::&lt;()&gt;,
-            ))
-            .into())
+            <span class="prelude-val">Err</span>(to_error_obj(<span class="string">&quot;no WebSocket client instance found&quot;</span>.to_owned()).into())
         }
     }
 
@@ -1212,12 +1253,7 @@
                 )
                 .<span class="kw">await
         </span>} <span class="kw">else </span>{
-            <span class="prelude-val">Err</span>(CallError::Custom(ErrorObject::owned(
-                -<span class="number">32080</span>,
-                <span class="string">&quot;no WebSocket client instance found&quot;</span>.to_owned(),
-                <span class="prelude-val">None</span>::&lt;()&gt;,
-            ))
-            .into())
+            <span class="prelude-val">Err</span>(to_error_obj(<span class="string">&quot;no WebSocket client instance found&quot;</span>.to_owned()).into())
         }
     }
 
@@ -1234,12 +1270,7 @@
                 )
                 .<span class="kw">await
         </span>} <span class="kw">else </span>{
-            <span class="prelude-val">Err</span>(CallError::Custom(ErrorObject::owned(
-                -<span class="number">32080</span>,
-                <span class="string">&quot;no WebSocket client instance found&quot;</span>.to_owned(),
-                <span class="prelude-val">None</span>::&lt;()&gt;,
-            ))
-            .into())
+            <span class="prelude-val">Err</span>(to_error_obj(<span class="string">&quot;no WebSocket client instance found&quot;</span>.to_owned()).into())
         }
     }
 }
@@ -1311,6 +1342,11 @@
     });
 
     headers_map
+}
+
+<span class="comment">// SDK error object
+</span><span class="kw">fn </span>to_error_obj(message: String) -&gt; ErrorObject&lt;<span class="lifetime">&#39;static</span>&gt; {
+    ErrorObject::owned(-<span class="number">32080</span>, message, <span class="prelude-val">None</span>::&lt;()&gt;)
 }
 </code></pre></div>
 </section></main><div id="rustdoc-vars" data-root-path="../../" data-static-root-path="../../static.files/" data-current-crate="massa_sdk" data-themes="" data-resource-suffix="" data-rustdoc-version="1.69.0-nightly (d962ea578 2023-02-26)" data-search-js="search-14421e1532aead08.js" data-settings-js="settings-f0c5c39777a9a2f6.js" data-settings-css="settings-0bcba95ff279c1db.css" ></div></body></html>
