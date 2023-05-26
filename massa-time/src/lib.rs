@@ -9,7 +9,6 @@ pub use error::TimeError;
 use massa_serialization::{Deserializer, Serializer, U64VarIntDeserializer, U64VarIntSerializer};
 use nom::error::{context, ContextError, ParseError};
 use nom::IResult;
-use serde::__private::de;
 use serde::{Deserialize, Serialize};
 use std::fmt;
 use std::ops::Bound;
