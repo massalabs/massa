@@ -48,6 +48,7 @@ mod config;
 pub use config::ClientConfig;
 pub use config::HttpConfig;
 pub use config::WsConfig;
+use thiserror::Error;
 
 /// Error when creating a new client
 #[derive(Error, Debug)]
