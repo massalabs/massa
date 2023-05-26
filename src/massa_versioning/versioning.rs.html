@@ -1745,6 +1745,10 @@
 <a href="#1745" id="1745">1745</a>
 <a href="#1746" id="1746">1746</a>
 <a href="#1747" id="1747">1747</a>
+<a href="#1748" id="1748">1748</a>
+<a href="#1749" id="1749">1749</a>
+<a href="#1750" id="1750">1750</a>
+<a href="#1751" id="1751">1751</a>
 </pre><pre class="rust"><code><span class="kw">use </span>std::cmp::Ordering;
 <span class="kw">use </span>std::collections::{BTreeMap, BTreeSet, HashMap, VecDeque};
 <span class="kw">use </span>std::hash::{Hash, Hasher};
@@ -1998,11 +2002,11 @@
         <span class="comment">// Build a &#39;dummy&#39; advance msg for state Defined, this is to avoid using an
         // Option&lt;Advance&gt; in MipStateHistory::history
         </span><span class="kw">let </span>advance = Advance {
-            start_timestamp: MassaTime::from(<span class="number">0</span>),
-            timeout: MassaTime::from(<span class="number">0</span>),
+            start_timestamp: MassaTime::from_millis(<span class="number">0</span>),
+            timeout: MassaTime::from_millis(<span class="number">0</span>),
             threshold: Default::default(),
             now: defined,
-            activation_delay: MassaTime::from(<span class="number">0</span>),
+            activation_delay: MassaTime::from_millis(<span class="number">0</span>),
         };
 
         <span class="kw">let </span>history = BTreeMap::from([(advance, state_id)]);
@@ -2770,9 +2774,9 @@
                 name: <span class="string">&quot;MIP-0002&quot;</span>.to_string(),
                 version: <span class="number">2</span>,
                 components: HashMap::from([(MipComponent::Address, <span class="number">1</span>)]),
-                start: MassaTime::from(start.timestamp() <span class="kw">as </span>u64),
-                timeout: MassaTime::from(timeout.timestamp() <span class="kw">as </span>u64),
-                activation_delay: MassaTime::from(<span class="number">20</span>),
+                start: MassaTime::from_millis(start.timestamp() <span class="kw">as </span>u64),
+                timeout: MassaTime::from_millis(timeout.timestamp() <span class="kw">as </span>u64),
+                activation_delay: MassaTime::from_millis(<span class="number">20</span>),
             },
         );
     }
@@ -2784,13 +2788,13 @@
         <span class="kw">let </span><span class="kw-2">mut </span>state: ComponentState = Default::default();
         <span class="macro">assert_eq!</span>(state, ComponentState::defined());
 
-        <span class="kw">let </span>now = mi.start.saturating_sub(MassaTime::from(<span class="number">1</span>));
+        <span class="kw">let </span>now = mi.start.saturating_sub(MassaTime::from_millis(<span class="number">1</span>));
         <span class="kw">let </span><span class="kw-2">mut </span>advance_msg = Advance::from((<span class="kw-2">&amp;</span>mi, <span class="kw-2">&amp;</span>Amount::zero(), <span class="kw-2">&amp;</span>now));
 
         state = state.on_advance(advance_msg.clone());
         <span class="macro">assert_eq!</span>(state, ComponentState::defined());
 
-        <span class="kw">let </span>now = mi.start.saturating_add(MassaTime::from(<span class="number">5</span>));
+        <span class="kw">let </span>now = mi.start.saturating_add(MassaTime::from_millis(<span class="number">5</span>));
         advance_msg.now = now;
         state = state.on_advance(advance_msg);
 
@@ -2826,7 +2830,7 @@
         <span class="comment">// Test Versioning state transition (from state: LockedIn)
         </span><span class="kw">let </span>(<span class="kw">_</span>, <span class="kw">_</span>, mi) = get_a_version_info();
 
-        <span class="kw">let </span>locked_in_at = mi.start.saturating_add(MassaTime::from(<span class="number">1</span>));
+        <span class="kw">let </span>locked_in_at = mi.start.saturating_add(MassaTime::from_millis(<span class="number">1</span>));
         <span class="kw">let </span><span class="kw-2">mut </span>state: ComponentState = ComponentState::locked_in(locked_in_at);
 
         <span class="kw">let </span>now = mi.start;
@@ -2835,7 +2839,9 @@
         state = state.on_advance(advance_msg.clone());
         <span class="macro">assert_eq!</span>(state, ComponentState::locked_in(locked_in_at));
 
-        advance_msg.now = advance_msg.timeout.saturating_add(MassaTime::from(<span class="number">1</span>));
+        advance_msg.now = advance_msg
+            .timeout
+            .saturating_add(MassaTime::from_millis(<span class="number">1</span>));
         state = state.on_advance(advance_msg);
         <span class="macro">assert!</span>(<span class="macro">matches!</span>(state, ComponentState::Active(<span class="kw">_</span>)));
     }
@@ -2844,7 +2850,7 @@
     </span><span class="kw">fn </span>test_state_advance_from_active() {
         <span class="comment">// Test Versioning state transition (from state: Active)
         </span><span class="kw">let </span>(start, <span class="kw">_</span>, mi) = get_a_version_info();
-        <span class="kw">let </span><span class="kw-2">mut </span>state = ComponentState::active(MassaTime::from(start.timestamp() <span class="kw">as </span>u64));
+        <span class="kw">let </span><span class="kw-2">mut </span>state = ComponentState::active(MassaTime::from_millis(start.timestamp() <span class="kw">as </span>u64));
         <span class="kw">let </span>now = mi.start;
         <span class="kw">let </span>advance = Advance::from((<span class="kw-2">&amp;</span>mi, <span class="kw-2">&amp;</span>Amount::zero(), <span class="kw-2">&amp;</span>now));
 
@@ -2867,7 +2873,7 @@
     </span><span class="kw">fn </span>test_state_advance_to_failed() {
         <span class="comment">// Test Versioning state transition (to state: Failed)
         </span><span class="kw">let </span>(<span class="kw">_</span>, <span class="kw">_</span>, mi) = get_a_version_info();
-        <span class="kw">let </span>now = mi.timeout.saturating_add(MassaTime::from(<span class="number">1</span>));
+        <span class="kw">let </span>now = mi.timeout.saturating_add(MassaTime::from_millis(<span class="number">1</span>));
         <span class="kw">let </span>advance_msg = Advance::from((<span class="kw-2">&amp;</span>mi, <span class="kw-2">&amp;</span>Amount::zero(), <span class="kw-2">&amp;</span>now));
 
         <span class="kw">let </span><span class="kw-2">mut </span>state: ComponentState = Default::default(); <span class="comment">// Defined
@@ -2884,12 +2890,12 @@
         <span class="comment">// Test MipStateHistory::state_at() function
 
         </span><span class="kw">let </span>(start, <span class="kw">_</span>, mi) = get_a_version_info();
-        <span class="kw">let </span>now_0 = MassaTime::from(start.timestamp() <span class="kw">as </span>u64);
+        <span class="kw">let </span>now_0 = MassaTime::from_millis(start.timestamp() <span class="kw">as </span>u64);
         <span class="kw">let </span><span class="kw-2">mut </span>state = MipState::new(now_0);
 
         <span class="macro">assert_eq!</span>(state, ComponentState::defined());
 
-        <span class="kw">let </span>now = mi.start.saturating_add(MassaTime::from(<span class="number">15</span>));
+        <span class="kw">let </span>now = mi.start.saturating_add(MassaTime::from_millis(<span class="number">15</span>));
         <span class="kw">let </span><span class="kw-2">mut </span>advance_msg = Advance::from((<span class="kw-2">&amp;</span>mi, <span class="kw-2">&amp;</span>Amount::zero(), <span class="kw-2">&amp;</span>now));
 
         <span class="comment">// Move from Defined -&gt; Started
@@ -2911,7 +2917,7 @@
 
         // Before Defined
         </span><span class="kw">let </span>state_id_ = state.state_at(
-            mi.start.saturating_sub(MassaTime::from(<span class="number">5</span>)),
+            mi.start.saturating_sub(MassaTime::from_millis(<span class="number">5</span>)),
             mi.start,
             mi.timeout,
         );
@@ -2927,12 +2933,12 @@
         <span class="macro">assert_eq!</span>(state_id, ComponentStateTypeId::Started);
 
         <span class="comment">// After Started timestamp but before timeout timestamp
-        </span><span class="kw">let </span>after_started_ts = now.saturating_add(MassaTime::from(<span class="number">15</span>));
+        </span><span class="kw">let </span>after_started_ts = now.saturating_add(MassaTime::from_millis(<span class="number">15</span>));
         <span class="kw">let </span>state_id_ = state.state_at(after_started_ts, mi.start, mi.timeout);
         <span class="macro">assert_eq!</span>(state_id_, <span class="prelude-val">Err</span>(StateAtError::Unpredictable));
 
         <span class="comment">// After Started timestamp and after timeout timestamp
-        </span><span class="kw">let </span>after_timeout_ts = mi.timeout.saturating_add(MassaTime::from(<span class="number">15</span>));
+        </span><span class="kw">let </span>after_timeout_ts = mi.timeout.saturating_add(MassaTime::from_millis(<span class="number">15</span>));
         <span class="kw">let </span>state_id = state
             .state_at(after_timeout_ts, mi.start, mi.timeout)
             .unwrap();
@@ -2941,13 +2947,13 @@
         <span class="comment">// Move from Started to LockedIn
         </span><span class="kw">let </span>threshold = VERSIONING_THRESHOLD_TRANSITION_ACCEPTED;
         advance_msg.threshold = threshold.saturating_add(Amount::from_str(<span class="string">&quot;1.0&quot;</span>).unwrap());
-        advance_msg.now = now.saturating_add(MassaTime::from(<span class="number">1</span>));
+        advance_msg.now = now.saturating_add(MassaTime::from_millis(<span class="number">1</span>));
         state.on_advance(<span class="kw-2">&amp;</span>advance_msg);
         <span class="macro">assert_eq!</span>(state, ComponentState::locked_in(advance_msg.now));
 
         <span class="comment">// Query with timestamp
         // After LockedIn timestamp and before timeout timestamp
-        </span><span class="kw">let </span>after_locked_in_ts = now.saturating_add(MassaTime::from(<span class="number">10</span>));
+        </span><span class="kw">let </span>after_locked_in_ts = now.saturating_add(MassaTime::from_millis(<span class="number">10</span>));
         <span class="kw">let </span>state_id = state
             .state_at(after_locked_in_ts, mi.start, mi.timeout)
             .unwrap();
@@ -2967,14 +2973,16 @@
 
         <span class="kw">let </span><span class="kw-2">mut </span>mi_2 = mi.clone();
         mi_2.version += <span class="number">1</span>;
-        mi_2.start =
-            MassaTime::from(timeout.checked_add_days(Days::new(<span class="number">2</span>)).unwrap().timestamp() <span class="kw">as </span>u64);
-        mi_2.timeout =
-            MassaTime::from(timeout.checked_add_days(Days::new(<span class="number">5</span>)).unwrap().timestamp() <span class="kw">as </span>u64);
+        mi_2.start = MassaTime::from_millis(
+            timeout.checked_add_days(Days::new(<span class="number">2</span>)).unwrap().timestamp() <span class="kw">as </span>u64,
+        );
+        mi_2.timeout = MassaTime::from_millis(
+            timeout.checked_add_days(Days::new(<span class="number">5</span>)).unwrap().timestamp() <span class="kw">as </span>u64,
+        );
 
         <span class="comment">// Can only build such object in test - history is empty :-/
         </span><span class="kw">let </span>vs_1 = MipState {
-            state: ComponentState::active(MassaTime::from(start.timestamp() <span class="kw">as </span>u64)),
+            state: ComponentState::active(MassaTime::from_millis(start.timestamp() <span class="kw">as </span>u64)),
             history: Default::default(),
         };
         <span class="kw">let </span>vs_2 = MipState {
@@ -3020,18 +3028,18 @@
             name: <span class="string">&quot;MIP-0002&quot;</span>.to_string(),
             version: <span class="number">2</span>,
             components: HashMap::from([(MipComponent::Address, <span class="number">1</span>)]),
-            start: MassaTime::from(<span class="number">2</span>),
-            timeout: MassaTime::from(<span class="number">5</span>),
-            activation_delay: MassaTime::from(<span class="number">2</span>),
+            start: MassaTime::from_millis(<span class="number">2</span>),
+            timeout: MassaTime::from_millis(<span class="number">5</span>),
+            activation_delay: MassaTime::from_millis(<span class="number">2</span>),
         };
         <span class="comment">// Another versioning info (from an attacker) for testing
         </span><span class="kw">let </span>vi_2 = MipInfo {
             name: <span class="string">&quot;MIP-0002&quot;</span>.to_string(),
             version: <span class="number">2</span>,
             components: HashMap::from([(MipComponent::Address, <span class="number">1</span>)]),
-            start: MassaTime::from(<span class="number">7</span>),
-            timeout: MassaTime::from(<span class="number">10</span>),
-            activation_delay: MassaTime::from(<span class="number">2</span>),
+            start: MassaTime::from_millis(<span class="number">7</span>),
+            timeout: MassaTime::from_millis(<span class="number">10</span>),
+            activation_delay: MassaTime::from_millis(<span class="number">2</span>),
         };
 
         <span class="kw">let </span>vsh = MipState {
@@ -3048,14 +3056,14 @@
         <span class="comment">// At state Defined but no history -&gt; false
         </span><span class="macro">assert_eq!</span>(vsh.is_coherent_with(<span class="kw-2">&amp;</span>vi_1), <span class="bool-val">false</span>);
 
-        <span class="kw">let </span><span class="kw-2">mut </span>vsh = MipState::new(MassaTime::from(<span class="number">1</span>));
+        <span class="kw">let </span><span class="kw-2">mut </span>vsh = MipState::new(MassaTime::from_millis(<span class="number">1</span>));
         <span class="comment">// At state Defined at time 1 -&gt; true, given vi_1 @ time 1
         </span><span class="macro">assert_eq!</span>(vsh.is_coherent_with(<span class="kw-2">&amp;</span>vi_1), <span class="bool-val">true</span>);
         <span class="comment">// At state Defined at time 1 -&gt; false given vi_1 @ time 3 (state should be Started)
-        // assert_eq!(vsh.is_coherent_with(&amp;vi_1, MassaTime::from(3)), false);
+        // assert_eq!(vsh.is_coherent_with(&amp;vi_1, MassaTime::from_millis(3)), false);
 
         // Advance to Started
-        </span><span class="kw">let </span>now = MassaTime::from(<span class="number">3</span>);
+        </span><span class="kw">let </span>now = MassaTime::from_millis(<span class="number">3</span>);
         <span class="kw">let </span>adv = Advance::from((<span class="kw-2">&amp;</span>vi_1, <span class="kw-2">&amp;</span>Amount::zero(), <span class="kw-2">&amp;</span>now));
         vsh.on_advance(<span class="kw-2">&amp;</span>adv);
 
@@ -3066,7 +3074,7 @@
         </span><span class="macro">assert_eq!</span>(vsh.is_coherent_with(<span class="kw-2">&amp;</span>vi_2), <span class="bool-val">false</span>);
 
         <span class="comment">// Advance to LockedIn
-        </span><span class="kw">let </span>now = MassaTime::from(<span class="number">4</span>);
+        </span><span class="kw">let </span>now = MassaTime::from_millis(<span class="number">4</span>);
         <span class="kw">let </span>adv = Advance::from((<span class="kw-2">&amp;</span>vi_1, <span class="kw-2">&amp;</span>VERSIONING_THRESHOLD_TRANSITION_ACCEPTED, <span class="kw-2">&amp;</span>now));
         vsh.on_advance(<span class="kw-2">&amp;</span>adv);
 
@@ -3085,9 +3093,9 @@
             name: <span class="string">&quot;MIP-0002&quot;</span>.to_string(),
             version: <span class="number">2</span>,
             components: HashMap::from([(MipComponent::Address, <span class="number">1</span>)]),
-            start: MassaTime::from(<span class="number">2</span>),
-            timeout: MassaTime::from(<span class="number">5</span>),
-            activation_delay: MassaTime::from(<span class="number">2</span>),
+            start: MassaTime::from_millis(<span class="number">2</span>),
+            timeout: MassaTime::from_millis(<span class="number">5</span>),
+            activation_delay: MassaTime::from_millis(<span class="number">2</span>),
         };
 
         <span class="kw">let </span>_time = MassaTime::now().unwrap();
@@ -3098,9 +3106,9 @@
             name: <span class="string">&quot;MIP-0003&quot;</span>.to_string(),
             version: <span class="number">3</span>,
             components: HashMap::from([(MipComponent::Address, <span class="number">2</span>)]),
-            start: MassaTime::from(<span class="number">17</span>),
-            timeout: MassaTime::from(<span class="number">27</span>),
-            activation_delay: MassaTime::from(<span class="number">2</span>),
+            start: MassaTime::from_millis(<span class="number">17</span>),
+            timeout: MassaTime::from_millis(<span class="number">27</span>),
+            activation_delay: MassaTime::from_millis(<span class="number">2</span>),
         };
         <span class="kw">let </span>vs_2 = advance_state_until(ComponentState::defined(), <span class="kw-2">&amp;</span>vi_2);
 
@@ -3146,9 +3154,9 @@
             name: <span class="string">&quot;MIP-0002&quot;</span>.to_string(),
             version: <span class="number">2</span>,
             components: HashMap::from([(MipComponent::Address, <span class="number">1</span>)]),
-            start: MassaTime::from(<span class="number">0</span>),
-            timeout: MassaTime::from(<span class="number">5</span>),
-            activation_delay: MassaTime::from(<span class="number">2</span>),
+            start: MassaTime::from_millis(<span class="number">0</span>),
+            timeout: MassaTime::from_millis(<span class="number">5</span>),
+            activation_delay: MassaTime::from_millis(<span class="number">2</span>),
         };
         <span class="kw">let </span>_time = MassaTime::now().unwrap();
         <span class="kw">let </span>vs_1 = advance_state_until(ComponentState::active(_time), <span class="kw-2">&amp;</span>vi_1);
@@ -3158,9 +3166,9 @@
             name: <span class="string">&quot;MIP-0003&quot;</span>.to_string(),
             version: <span class="number">3</span>,
             components: HashMap::from([(MipComponent::Address, <span class="number">2</span>)]),
-            start: MassaTime::from(<span class="number">17</span>),
-            timeout: MassaTime::from(<span class="number">27</span>),
-            activation_delay: MassaTime::from(<span class="number">2</span>),
+            start: MassaTime::from_millis(<span class="number">17</span>),
+            timeout: MassaTime::from_millis(<span class="number">27</span>),
+            activation_delay: MassaTime::from_millis(<span class="number">2</span>),
         };
         <span class="kw">let </span>vs_2 = advance_state_until(ComponentState::defined(), <span class="kw-2">&amp;</span>vi_2);
         <span class="macro">assert_eq!</span>(vs_2, ComponentState::defined());
@@ -3266,9 +3274,9 @@
             name: <span class="string">&quot;MIP-0002&quot;</span>.to_string(),
             version: <span class="number">2</span>,
             components: HashMap::from([(MipComponent::__Nonexhaustive, <span class="number">1</span>)]),
-            start: MassaTime::from(<span class="number">0</span>),
-            timeout: MassaTime::from(<span class="number">5</span>),
-            activation_delay: MassaTime::from(<span class="number">2</span>),
+            start: MassaTime::from_millis(<span class="number">0</span>),
+            timeout: MassaTime::from_millis(<span class="number">5</span>),
+            activation_delay: MassaTime::from_millis(<span class="number">2</span>),
         };
         <span class="kw">let </span>ms_1 = advance_state_until(ComponentState::defined(), <span class="kw-2">&amp;</span>mi_1);
         <span class="macro">assert_eq!</span>(ms_1, ComponentState::defined());
@@ -3288,7 +3296,7 @@
     </span><span class="kw">fn </span>test_mip_store_network_restart() {
         <span class="comment">// Test if we can get a coherent MipStore after a network shutdown
 
-        </span><span class="kw">let </span>genesis_timestamp = MassaTime::from(<span class="number">0</span>);
+        </span><span class="kw">let </span>genesis_timestamp = MassaTime::from_millis(<span class="number">0</span>);
 
         <span class="kw">let </span>shutdown_start = Slot::new(<span class="number">2</span>, <span class="number">0</span>);
         <span class="kw">let </span>shutdown_end = Slot::new(<span class="number">8</span>, <span class="number">0</span>);
@@ -3351,17 +3359,17 @@
             name: <span class="string">&quot;MIP-0002&quot;</span>.to_string(),
             version: <span class="number">2</span>,
             components: HashMap::from([(MipComponent::Address, <span class="number">1</span>)]),
-            start: MassaTime::from(<span class="number">2</span>),
-            timeout: MassaTime::from(<span class="number">5</span>),
-            activation_delay: MassaTime::from(<span class="number">100</span>),
+            start: MassaTime::from_millis(<span class="number">2</span>),
+            timeout: MassaTime::from_millis(<span class="number">5</span>),
+            activation_delay: MassaTime::from_millis(<span class="number">100</span>),
         };
         <span class="kw">let </span><span class="kw-2">mut </span>mi_2 = MipInfo {
             name: <span class="string">&quot;MIP-0003&quot;</span>.to_string(),
             version: <span class="number">3</span>,
             components: HashMap::from([(MipComponent::Address, <span class="number">2</span>)]),
-            start: MassaTime::from(<span class="number">7</span>),
-            timeout: MassaTime::from(<span class="number">11</span>),
-            activation_delay: MassaTime::from(<span class="number">100</span>),
+            start: MassaTime::from_millis(<span class="number">7</span>),
+            timeout: MassaTime::from_millis(<span class="number">11</span>),
+            activation_delay: MassaTime::from_millis(<span class="number">100</span>),
         };
 
         <span class="comment">// MipInfo 1 @ state &#39;Defined&#39; should start during shutdown
