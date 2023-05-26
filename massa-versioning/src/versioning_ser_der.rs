@@ -969,9 +969,9 @@ mod test {
             name: "MIP-0002".to_string(),
             version: 2,
             components: HashMap::from([(MipComponent::Address, 1)]),
-            start: MassaTime::from(2),
-            timeout: MassaTime::from(5),
-            activation_delay: MassaTime::from(2),
+            start: MassaTime::from_millis(2),
+            timeout: MassaTime::from_millis(5),
+            activation_delay: MassaTime::from_millis(2),
         };
 
         let mut buf = Vec::new();
@@ -1030,11 +1030,11 @@ mod test {
             .unwrap();
 
         let adv = Advance {
-            start_timestamp: MassaTime::from(start.timestamp() as u64),
-            timeout: MassaTime::from(timeout.timestamp() as u64),
+            start_timestamp: MassaTime::from_millis(start.timestamp() as u64),
+            timeout: MassaTime::from_millis(timeout.timestamp() as u64),
             threshold: Default::default(),
-            now: MassaTime::from(now.timestamp() as u64),
-            activation_delay: MassaTime::from(20),
+            now: MassaTime::from_millis(now.timestamp() as u64),
+            activation_delay: MassaTime::from_millis(20),
         };
 
         let mut buf = Vec::new();
@@ -1051,7 +1051,7 @@ mod test {
 
     #[test]
     fn test_mip_state_ser_der() {
-        let state_1 = MipState::new(MassaTime::from(100));
+        let state_1 = MipState::new(MassaTime::from_millis(100));
 
         let mut buf = Vec::new();
         let state_ser = MipStateSerializer::new();
@@ -1069,12 +1069,13 @@ mod test {
             name: "MIP-0002".to_string(),
             version: 2,
             components: HashMap::from([(MipComponent::Address, 1)]),
-            start: MassaTime::from(2),
-            timeout: MassaTime::from(5),
-            activation_delay: MassaTime::from(2),
+            start: MassaTime::from_millis(2),
+            timeout: MassaTime::from_millis(5),
+            activation_delay: MassaTime::from_millis(2),
         };
 
-        let state_2 = advance_state_until(ComponentState::locked_in(MassaTime::from(3)), &mi_1);
+        let state_2 =
+            advance_state_until(ComponentState::locked_in(MassaTime::from_millis(3)), &mi_1);
         state_ser.serialize(&state_2, &mut buf).unwrap();
         let (rem2, state_der_res) = state_der.deserialize::<DeserializeError>(&buf).unwrap();
 
@@ -1122,18 +1123,18 @@ mod test {
             name: "MIP-0002".to_string(),
             version: 2,
             components: HashMap::from([(MipComponent::Address, 1)]),
-            start: MassaTime::from(2),
-            timeout: MassaTime::from(5),
-            activation_delay: MassaTime::from(2),
+            start: MassaTime::from_millis(2),
+            timeout: MassaTime::from_millis(5),
+            activation_delay: MassaTime::from_millis(2),
         };
 
         let mi_3 = MipInfo {
             name: "MIP-0003".to_string(),
             version: 3,
             components: HashMap::from([(MipComponent::Block, 1)]),
-            start: MassaTime::from(12),
-            timeout: MassaTime::from(17),
-            activation_delay: MassaTime::from(2),
+            start: MassaTime::from_millis(12),
+            timeout: MassaTime::from_millis(17),
+            activation_delay: MassaTime::from_millis(2),
         };
 
         let _time = MassaTime::now().unwrap();
@@ -1163,9 +1164,9 @@ mod test {
             name: "A".repeat(254),
             version: 0,
             components: HashMap::from([(MipComponent::Address, 0)]),
-            start: MassaTime::from(0),
-            timeout: MassaTime::from(2),
-            activation_delay: MassaTime::from(2),
+            start: MassaTime::from_millis(0),
+            timeout: MassaTime::from_millis(2),
+            activation_delay: MassaTime::from_millis(2),
         };
 
         // Note: we did not add the name ptr and hashmap ptr, only the data inside
@@ -1185,8 +1186,8 @@ mod test {
                     .components
                     .entry(MipComponent::Address)
                     .and_modify(|e| *e += 1);
-                mi_base.start = mi_base.timeout.saturating_add(MassaTime::from(1));
-                mi_base.timeout = mi_base.start.saturating_add(MassaTime::from(2));
+                mi_base.start = mi_base.timeout.saturating_add(MassaTime::from_millis(1));
+                mi_base.timeout = mi_base.start.saturating_add(MassaTime::from_millis(2));
 
                 let state = advance_state_until(ComponentState::active(_time), &mi_base);
 
