@@ -128,7 +128,7 @@ pub const MAX_ASYNC_MESSAGE_DATA: u64 = 1_000_000;
 /// Maximum operation validity period count
 pub const OPERATION_VALIDITY_PERIODS: u64 = 10;
 /// cycle duration in periods
-pub const PERIODS_PER_CYCLE: u64 = 12;
+pub const PERIODS_PER_CYCLE: u64 = 128;
 /// cycle duration in periods
 pub const PERIODS_BETWEEN_BACKUPS: u64 = 128;
 /// Number of cycles saved in `PoSFinalState`
