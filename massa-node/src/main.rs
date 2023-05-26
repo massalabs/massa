@@ -388,7 +388,10 @@ async fn launch(
                                 "A new MIP has become active {:?}, version: {:?}",
                                 mip_info.name, mip_info.version
                             );
-                            panic!("Please update your Massa node to support it");
+                            panic!(
+                                "Please update your Massa node to support MIP version {} ({})",
+                                mip_info.version, mip_info.name
+                            );
                         } else if st_id == ComponentStateTypeId::Defined {
                             // a new MipInfo @ state defined or started (or failed / error)
                             // warn the user to update its node
