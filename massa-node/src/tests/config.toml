@@ -14,15 +14,12 @@
 
 [consensus]
     max_discarded_blocks = 100
-    future_block_processing_max_periods = 100
     max_future_processing_blocks = 400
     max_dependency_blocks = 2048
-    max_send_wait = 500
     force_keep_final_periods = 20
     staking_wallet_path = "../massa-node/config/staking_keys.json"
     stats_timespan = 60000
     block_db_prune_interval = 5000
-    max_item_return_count = 100
     genesis_timestamp = 1638931299263
     end_timestammp = 1638931299263
 
