@@ -277,7 +277,8 @@ pub struct BootstrapServerMessageDeserializer {
     time_deserializer: MassaTimeDeserializer,
     version_deserializer: VersionDeserializer,
     peers_deserializer: BootstrapPeersDeserializer,
-    state_length_deserializer: U64VarIntDeserializer,
+    state_new_elements_length_deserializer: U64VarIntDeserializer,
+    state_updates_length_deserializer: U64VarIntDeserializer,
     vec_u8_deserializer: VecU8Deserializer,
     opt_vec_u8_deserializer: OptionDeserializer<Vec<u8>, VecU8Deserializer>,
     bootstrapable_graph_deserializer: BootstrapableGraphDeserializer,
@@ -326,9 +327,13 @@ impl BootstrapServerMessageDeserializer {
                 Included(0),
                 Included(args.max_bootstrap_error_length),
             ),
-            state_length_deserializer: U64VarIntDeserializer::new(
+            state_new_elements_length_deserializer: U64VarIntDeserializer::new(
                 Included(0),
-                Included(args.max_changes_slot_count),
+                Included(args.max_new_elements),
+            ),
+            state_updates_length_deserializer: U64VarIntDeserializer::new(
+                Included(0),
+                Included(u64::MAX),
             ),
             slot_deserializer: SlotDeserializer::new(
                 (Included(0), Included(u64::MAX)),
@@ -366,7 +371,7 @@ impl Deserializer<BootstrapServerMessage> for BootstrapServerMessageDeserializer
     ///     thread_count: 32, endorsement_count: 16,
     ///     max_listeners_per_peer: 1000,
     ///     max_advertise_length: 1000, max_bootstrap_blocks_length: 1000,
-    ///     max_operations_per_block: 1000, max_bootstrap_final_state_parts_size: 1000,
+    ///     max_operations_per_block: 1000, max_new_elements: 1000,
     ///     max_async_pool_changes: 1000, max_async_pool_length: 1000, max_async_message_data: 1000,
     ///     max_ledger_changes_count: 1000, max_datastore_key_length: 255,
     ///     max_datastore_value_length: 1000,
@@ -451,7 +456,8 @@ impl Deserializer<BootstrapServerMessage> for BootstrapServerMessageDeserializer
                                 "Failed new_elements deserialization",
                                 length_count(
                                     context("Failed length deserialization", |input| {
-                                        self.state_length_deserializer.deserialize(input)
+                                        self.state_new_elements_length_deserializer
+                                            .deserialize(input)
                                     }),
                                     tuple((
                                         |input| self.vec_u8_deserializer.deserialize(input),
@@ -463,7 +469,7 @@ impl Deserializer<BootstrapServerMessage> for BootstrapServerMessageDeserializer
                                 "Failed updates deserialization",
                                 length_count(
                                     context("Failed length deserialization", |input| {
-                                        self.state_length_deserializer.deserialize(input)
+                                        self.state_updates_length_deserializer.deserialize(input)
                                     }),
                                     tuple((
                                         |input| self.vec_u8_deserializer.deserialize(input),
