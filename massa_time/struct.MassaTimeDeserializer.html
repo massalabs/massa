@@ -14,10 +14,10 @@
 <span class="kw">use </span>massa_serialization::{Serializer, Deserializer, DeserializeError};
 <span class="kw">use </span>massa_time::{MassaTime, MassaTimeSerializer, MassaTimeDeserializer};
 
-<span class="kw">let </span>time: MassaTime = MassaTime::from_millis(<span class="number">30</span>);
+<span class="kw">let </span>time: MassaTime = <span class="number">30</span>.into();
 <span class="kw">let </span><span class="kw-2">mut </span>serialized = Vec::new();
 <span class="kw">let </span>serializer = MassaTimeSerializer::new();
-<span class="kw">let </span>deserializer = MassaTimeDeserializer::new((Included(MassaTime::from_millis(<span class="number">0</span>)), Included(MassaTime::from_millis(u64::MAX))));
+<span class="kw">let </span>deserializer = MassaTimeDeserializer::new((Included(<span class="number">0</span>.into()), Included(u64::MAX.into())));
 serializer.serialize(<span class="kw-2">&amp;</span>time, <span class="kw-2">&amp;mut </span>serialized).unwrap();
 <span class="kw">let </span>(rest, time_deser) = deserializer.deserialize::&lt;DeserializeError&gt;(<span class="kw-2">&amp;</span>serialized).unwrap();
 <span class="macro">assert!</span>(rest.is_empty());

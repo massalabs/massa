@@ -297,10 +297,6 @@
 <a href="#297" id="297">297</a>
 <a href="#298" id="298">298</a>
 <a href="#299" id="299">299</a>
-<a href="#300" id="300">300</a>
-<a href="#301" id="301">301</a>
-<a href="#302" id="302">302</a>
-<a href="#303" id="303">303</a>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="doccomment">//! warning: assumes `thread_count &gt;= 1, t0_millis &gt;= 1, t0_millis % thread_count == 0`
@@ -533,8 +529,8 @@
     #[serial]
     </span><span class="kw">fn </span>test_time_range_to_slot_range() {
         <span class="kw">let </span>thread_count = <span class="number">3u8</span>;
-        <span class="kw">let </span>t0: MassaTime = MassaTime::from_millis(<span class="number">30</span>);
-        <span class="kw">let </span>genesis_timestamp: MassaTime = MassaTime::from_millis(<span class="number">100</span>);
+        <span class="kw">let </span>t0: MassaTime = <span class="number">30</span>.into();
+        <span class="kw">let </span>genesis_timestamp: MassaTime = <span class="number">100</span>.into();
         <span class="comment">/* slots:   (0, 0)  (0, 1)  (0, 2)  (1, 0)  (1, 1)  (1, 2)  (2, 0)  (2, 1)  (2, 2)
             time:    100      110     120    130      140    150     160     170     180
         */
@@ -544,8 +540,8 @@
             thread_count,
             t0,
             genesis_timestamp,
-            <span class="prelude-val">Some</span>(MassaTime::from_millis(<span class="number">111</span>)),
-            <span class="prelude-val">Some</span>(MassaTime::from_millis(<span class="number">115</span>)),
+            <span class="prelude-val">Some</span>(<span class="number">111</span>.into()),
+            <span class="prelude-val">Some</span>(<span class="number">115</span>.into()),
         )
         .unwrap();
         <span class="macro">assert_eq!</span>(out_start, out_end);
@@ -555,8 +551,8 @@
             thread_count,
             t0,
             genesis_timestamp,
-            <span class="prelude-val">Some</span>(MassaTime::from_millis(<span class="number">10</span>)),
-            <span class="prelude-val">Some</span>(MassaTime::from_millis(<span class="number">100</span>)),
+            <span class="prelude-val">Some</span>(<span class="number">10</span>.into()),
+            <span class="prelude-val">Some</span>(<span class="number">100</span>.into()),
         )
         .unwrap();
         <span class="macro">assert_eq!</span>(out_start, out_end);
@@ -566,8 +562,8 @@
             thread_count,
             t0,
             genesis_timestamp,
-            <span class="prelude-val">Some</span>(MassaTime::from_millis(<span class="number">115</span>)),
-            <span class="prelude-val">Some</span>(MassaTime::from_millis(<span class="number">145</span>)),
+            <span class="prelude-val">Some</span>(<span class="number">115</span>.into()),
+            <span class="prelude-val">Some</span>(<span class="number">145</span>.into()),
         )
         .unwrap();
         <span class="macro">assert_eq!</span>(out_start, <span class="prelude-val">Some</span>(Slot::new(<span class="number">0</span>, <span class="number">2</span>)));
@@ -578,8 +574,8 @@
             thread_count,
             t0,
             genesis_timestamp,
-            <span class="prelude-val">Some</span>(MassaTime::from_millis(<span class="number">110</span>)),
-            <span class="prelude-val">Some</span>(MassaTime::from_millis(<span class="number">160</span>)),
+            <span class="prelude-val">Some</span>(<span class="number">110</span>.into()),
+            <span class="prelude-val">Some</span>(<span class="number">160</span>.into()),
         )
         .unwrap();
         <span class="macro">assert_eq!</span>(out_start, <span class="prelude-val">Some</span>(Slot::new(<span class="number">0</span>, <span class="number">1</span>)));
@@ -590,17 +586,13 @@
     #[serial]
     </span><span class="kw">fn </span>test_get_closest_slot_to_timestamp() {
         <span class="kw">let </span>thread_count = <span class="number">3u8</span>;
-        <span class="kw">let </span>t0: MassaTime = MassaTime::from_millis(<span class="number">30</span>);
-        <span class="kw">let </span>genesis_timestamp: MassaTime = MassaTime::from_millis(<span class="number">100</span>);
+        <span class="kw">let </span>t0: MassaTime = <span class="number">30</span>.into();
+        <span class="kw">let </span>genesis_timestamp: MassaTime = <span class="number">100</span>.into();
         <span class="comment">/* slots:   (0, 0)  (0, 1)  (0, 2)  (1, 0)  (1, 1)  (1, 2)  (2, 0)  (2, 1)  (2, 2)
             time:    100      110     120    130      140    150     160     170     180
         */
-        </span><span class="kw">let </span>out_slot = get_closest_slot_to_timestamp(
-            thread_count,
-            t0,
-            genesis_timestamp,
-            MassaTime::from_millis(<span class="number">150</span>),
-        );
+        </span><span class="kw">let </span>out_slot =
+            get_closest_slot_to_timestamp(thread_count, t0, genesis_timestamp, <span class="number">150</span>.into());
         <span class="macro">assert_eq!</span>(out_slot, Slot::new(<span class="number">1</span>, <span class="number">2</span>));
     }
 }

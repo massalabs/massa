@@ -1176,7 +1176,7 @@
     ///
     /// let message_serializer = BootstrapServerMessageSerializer::new();
     /// let bootstrap_server_message = BootstrapServerMessage::BootstrapTime {
-    ///    server_time: MassaTime::from_millis(0),
+    ///    server_time: MassaTime::from(0),
     ///    version: Version::from_str(&quot;TEST.1.10&quot;).unwrap(),
     /// };
     /// let mut message_serialized = Vec::new();
@@ -1423,7 +1423,7 @@
     ///     max_denunciations_per_block_header: 128, max_denunciation_changes_length: 1000,};
     /// let message_deserializer = BootstrapServerMessageDeserializer::new(args);
     /// let bootstrap_server_message = BootstrapServerMessage::BootstrapTime {
-    ///    server_time: MassaTime::from_millis(0),
+    ///    server_time: MassaTime::from(0),
     ///    version: Version::from_str(&quot;TEST.1.10&quot;).unwrap(),
     /// };
     /// let mut message_serialized = Vec::new();
@@ -1434,7 +1434,7 @@
     ///        server_time,
     ///        version,
     ///    } =&gt; {
-    ///     assert_eq!(server_time, MassaTime::from_millis(0));
+    ///     assert_eq!(server_time, MassaTime::from(0));
     ///     assert_eq!(version, Version::from_str(&quot;TEST.1.10&quot;).unwrap());
     ///   }
     ///   _ =&gt; panic!(&quot;Unexpected message&quot;),
