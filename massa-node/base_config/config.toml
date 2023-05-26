@@ -27,8 +27,8 @@
     max_log_length = 4096
     # host filtering
     allow_hosts = []
-    # whether batch requests are supported by this server or not
-    batch_requests_supported = true
+    # batch request limit. 0 means disabled
+    batch_request_limit = 16
     # the interval at which `Ping` frames are submitted in milliseconds
     ping_interval = 60000
     # whether to enable HTTP.

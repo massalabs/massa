@@ -39,8 +39,8 @@ pub struct APIConfig {
     pub max_log_length: u32,
     /// host filtering.
     pub allow_hosts: Vec<String>,
-    /// whether batch requests are supported by this server or not.
-    pub batch_requests_supported: bool,
+    /// batch request limit. 0 means disabled.
+    pub batch_request_limit: u32,
     /// the interval at which `Ping` frames are submitted.
     pub ping_interval: MassaTime,
     /// whether to enable HTTP.
