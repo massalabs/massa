@@ -125,7 +125,7 @@ fn test_protocol_does_not_send_invalid_operations_it_receives_to_pool() {
             network_controller
                 .send_from_peer(
                     &node_a_peer_id,
-                    Message::Operation(OperationMessage::Operations(vec![operation_1.clone()])),
+                    Message::Operation(OperationMessage::Operations(vec![operation_1])),
                 )
                 .unwrap();
 
@@ -610,7 +610,7 @@ fn test_protocol_propagates_operations_only_to_nodes_that_dont_know_about_it_ind
                     &node_c_peer_id,
                     Message::Block(Box::new(BlockMessage::ReplyForBlocks(vec![(
                         block.id,
-                        BlockInfoReply::Operations(vec![operation_1.clone()]),
+                        BlockInfoReply::Operations(vec![operation_1]),
                     )]))),
                 )
                 .unwrap();

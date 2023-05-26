@@ -16,9 +16,9 @@ use massa_protocol_exports::{
 use massa_serialization::{DeserializeError, Deserializer, Serializer};
 use massa_signature::Signature;
 use peernet::context::Context as _;
+use peernet::messages::MessagesSerializer as _;
 use rand::{rngs::StdRng, RngCore, SeedableRng};
 
-use peernet::messages::MessagesSerializer;
 use peernet::{
     error::{PeerNetError, PeerNetResult},
     messages::MessagesHandler as PeerNetMessagesHandler,
@@ -29,7 +29,7 @@ use tracing::log::{debug, error, info, warn};
 
 use crate::context::Context;
 use crate::handlers::peer_handler::models::PeerState;
-use crate::messages::MessagesHandler;
+use crate::messages::{Message, MessagesHandler, MessagesSerializer};
 use crate::wrap_network::ActiveConnectionsTrait;
 
 use self::models::PeerInfo;
@@ -96,9 +96,9 @@ impl PeerManagementHandler {
             let peer_db = peer_db.clone();
             let ticker = tick(Duration::from_secs(10));
             let config = config.clone();
-            let message_serializer = crate::messages::MessagesSerializer::new()
+            let message_serializer = MessagesSerializer::new()
                 .with_peer_management_message_serializer(PeerManagementMessageSerializer::new());
-            let mut message_deserializer =
+            let message_deserializer =
                 PeerManagementMessageDeserializer::new(PeerManagementMessageDeserializerArgs {
                     max_peers_per_announcement: config.max_size_peers_announcement,
                     max_listeners_per_peer: config.max_size_listeners_per_peer,
@@ -147,7 +147,7 @@ impl PeerManagementHandler {
                                     }).collect();
                                     peers.push((peer_id.clone(), listeners));
                                 }
-                                if let Err(err) = responder.send(BootstrapPeers(peers)) {
+                                if let Err(err) = responder.try_send(BootstrapPeers(peers)) {
                                     warn!("error sending bootstrap peers: {:?}", err);
                                 }
                              },
@@ -163,8 +163,8 @@ impl PeerManagementHandler {
                            }
                         },
                         recv(receiver_msg) -> msg => {
-                            let (peer_id, message_id, message) = match msg {
-                                Ok((peer_id, message_id, message)) => (peer_id, message_id, message),
+                            let (peer_id, message) = match msg {
+                                Ok((peer_id, message)) => (peer_id, message),
                                 Err(_) => {
                                     return;
                                 }
@@ -176,7 +176,6 @@ impl PeerManagementHandler {
                                     continue;
                                 }
                             }
-                            message_deserializer.set_message(message_id);
                             let (rest, message) = match message_deserializer
                                 .deserialize::<DeserializeError>(&message) {
                                 Ok((rest, message)) => (rest, message),
@@ -219,7 +218,7 @@ impl PeerManagementHandler {
                     &mut message,
                 )
                 .unwrap();
-            sender_msg.send((peer_id.clone(), 0, message)).unwrap();
+            sender_msg.try_send((peer_id.clone(), message)).unwrap();
         }
 
         Self {
@@ -256,7 +255,7 @@ pub struct MassaHandshake {
     pub version_deserializer: VersionDeserializer,
     pub config: ProtocolConfig,
     pub peer_db: SharedPeerDB,
-    peer_mngt_msg_serializer: crate::messages::MessagesSerializer,
+    peer_mngt_msg_serializer: MessagesSerializer,
     peer_id_serializer: PeerIdSerializer,
     peer_id_deserializer: PeerIdDeserializer,
     message_handlers: MessagesHandler,
@@ -281,7 +280,7 @@ impl MassaHandshake {
             config,
             peer_id_serializer: PeerIdSerializer::new(),
             peer_id_deserializer: PeerIdDeserializer::new(),
-            peer_mngt_msg_serializer: crate::messages::MessagesSerializer::new()
+            peer_mngt_msg_serializer: MessagesSerializer::new()
                 .with_peer_management_message_serializer(PeerManagementMessageSerializer::new()),
             message_handlers,
         }
@@ -388,7 +387,12 @@ impl InitConnectionHandler<PeerId, Context, MessagesHandler> for MassaHandshake 
                 0 => {
                     let (_, announcement) = self
                         .announcement_deserializer
-                        .deserialize::<DeserializeError>(&received[1..])
+                        .deserialize::<DeserializeError>(
+                            received.get(1..).ok_or(PeerNetError::HandshakeError.error(
+                                "Massa Handshake",
+                                Some("Failed to get data".to_string()),
+                            ))?,
+                        )
                         .map_err(|err| {
                             PeerNetError::HandshakeError.error(
                                 "Massa Handshake",
@@ -407,16 +411,19 @@ impl InitConnectionHandler<PeerId, Context, MessagesHandler> for MassaHandshake 
                         announcement.clone().listeners,
                     ));
                     let mut bytes = Vec::new();
-                    let peer_management_message_serializer = PeerManagementMessageSerializer::new();
+                    let peer_management_message_serializer = MessagesSerializer::new()
+                        .with_peer_management_message_serializer(
+                            PeerManagementMessageSerializer::new(),
+                        );
                     peer_management_message_serializer
-                        .serialize(&message, &mut bytes)
+                        .serialize(&Message::PeerManagement(Box::new(message)), &mut bytes)
                         .map_err(|err| {
                             PeerNetError::HandshakeError.error(
                                 "Massa Handshake",
                                 Some(format!("Failed to serialize announcement: {}", err)),
                             )
                         })?;
-                    messages_handler.handle(7, &bytes, &peer_id)?;
+                    messages_handler.handle(&bytes, &peer_id)?;
                     let mut self_random_bytes = [0u8; 32];
                     StdRng::from_entropy().fill_bytes(&mut self_random_bytes);
                     let self_random_hash = Hash::compute_from(&self_random_bytes);
@@ -467,10 +474,13 @@ impl InitConnectionHandler<PeerId, Context, MessagesHandler> for MassaHandshake 
                     Ok((peer_id.clone(), Some(announcement)))
                 }
                 1 => {
-                    let (received, id) = self
-                        .message_handlers
-                        .deserialize_id(&received[1..], &peer_id)?;
-                    self.message_handlers.handle(id, received, &peer_id)?;
+                    self.message_handlers.handle(
+                        received.get(1..).ok_or(
+                            PeerNetError::HandshakeError
+                                .error("Massa Handshake", Some("Failed to get data".to_string())),
+                        )?,
+                        &peer_id,
+                    )?;
                     Ok((peer_id.clone(), None))
                 }
                 _ => Err(PeerNetError::HandshakeError
@@ -531,7 +541,6 @@ impl InitConnectionHandler<PeerId, Context, MessagesHandler> for MassaHandshake 
         let mut buf = Vec::new();
         let msg = PeerManagementMessage::ListPeers(peers_to_send).into();
 
-        self.peer_mngt_msg_serializer.serialize_id(&msg, &mut buf)?;
         self.peer_mngt_msg_serializer.serialize(&msg, &mut buf)?;
         endpoint.send::<PeerId>(buf.as_slice())?;
 
@@ -576,16 +585,13 @@ impl InitConnectionHandler<PeerId, Context, MessagesHandler> for MassaHandshake 
             }
             buf.push(1);
             let msg = PeerManagementMessage::ListPeers(peers_to_send).into();
-            if let Err(err) = serializer.serialize_id(&msg, &mut buf) {
-                warn!("Failed to serialize id message: {}", err);
-                return;
-            }
             if let Err(err) = serializer.serialize(&msg, &mut buf) {
                 warn!("Failed to serialize message: {}", err);
                 return;
             }
-            //TODO: Make it non blockable
-            if let Err(err) = endpoint.send::<PeerId>(buf.as_slice()) {
+            if let Err(err) =
+                endpoint.send_timeout::<PeerId>(buf.as_slice(), Duration::from_millis(200))
+            {
                 warn!("Failed to send message: {}", err);
                 return;
             }

@@ -8,7 +8,9 @@ use massa_models::{
     },
     secure_share::{SecureShareDeserializer, SecureShareSerializer},
 };
-use massa_serialization::{Deserializer, Serializer, U64VarIntDeserializer, U64VarIntSerializer};
+use massa_serialization::{
+    Deserializer, SerializeError, Serializer, U64VarIntDeserializer, U64VarIntSerializer,
+};
 use nom::{
     error::{context, ContextError, ParseError},
     multi::length_count,
@@ -55,27 +57,22 @@ pub enum BlockMessage {
     ReplyForBlocks(Vec<(BlockId, BlockInfoReply)>),
 }
 
-impl BlockMessage {
-    pub fn get_id(&self) -> MessageTypeId {
-        match self {
-            BlockMessage::BlockHeader(_) => MessageTypeId::BlockHeader,
-            BlockMessage::AskForBlocks(_) => MessageTypeId::AskForBlocks,
-            BlockMessage::ReplyForBlocks(_) => MessageTypeId::ReplyForBlocks,
-        }
-    }
-
-    pub fn max_id() -> u64 {
-        <MessageTypeId as Into<u64>>::into(MessageTypeId::ReplyForBlocks) + 1
-    }
-}
-
-// DO NOT FORGET TO UPDATE MAX ID IF YOU UPDATE THERE
 #[derive(IntoPrimitive, Debug, Eq, PartialEq, TryFromPrimitive)]
 #[repr(u64)]
 pub enum MessageTypeId {
     BlockHeader,
     AskForBlocks,
     ReplyForBlocks,
+}
+
+impl From<&BlockMessage> for MessageTypeId {
+    fn from(value: &BlockMessage) -> Self {
+        match value {
+            BlockMessage::BlockHeader(_) => MessageTypeId::BlockHeader,
+            BlockMessage::AskForBlocks(_) => MessageTypeId::AskForBlocks,
+            BlockMessage::ReplyForBlocks(_) => MessageTypeId::ReplyForBlocks,
+        }
+    }
 }
 
 #[derive(IntoPrimitive, Debug, Eq, PartialEq, TryFromPrimitive)]
@@ -114,6 +111,12 @@ impl Serializer<BlockMessage> for BlockMessageSerializer {
         value: &BlockMessage,
         buffer: &mut Vec<u8>,
     ) -> Result<(), massa_serialization::SerializeError> {
+        self.id_serializer.serialize(
+            &MessageTypeId::from(value).try_into().map_err(|_| {
+                SerializeError::GeneralError(String::from("Failed to serialize id"))
+            })?,
+            buffer,
+        )?;
         match value {
             BlockMessage::BlockHeader(endorsements) => {
                 self.secure_share_serializer
@@ -189,7 +192,6 @@ impl Serializer<BlockMessage> for BlockMessageSerializer {
 }
 
 pub struct BlockMessageDeserializer {
-    message_id: u64,
     id_deserializer: U64VarIntDeserializer,
     block_header_deserializer: SecureShareDeserializer<BlockHeader, BlockHeaderDeserializer>,
     block_infos_length_deserializer: U64VarIntDeserializer,
@@ -216,7 +218,6 @@ pub struct BlockMessageDeserializerArgs {
 impl BlockMessageDeserializer {
     pub fn new(args: BlockMessageDeserializerArgs) -> Self {
         Self {
-            message_id: 0,
             id_deserializer: U64VarIntDeserializer::new(Included(0), Included(u64::MAX)),
             block_header_deserializer: SecureShareDeserializer::new(BlockHeaderDeserializer::new(
                 args.thread_count,
@@ -243,10 +244,6 @@ impl BlockMessageDeserializer {
             ),
         }
     }
-
-    pub fn set_message_id(&mut self, message_id: u64) {
-        self.message_id = message_id;
-    }
 }
 
 impl Deserializer<BlockMessage> for BlockMessageDeserializer {
@@ -255,7 +252,8 @@ impl Deserializer<BlockMessage> for BlockMessageDeserializer {
         buffer: &'a [u8],
     ) -> IResult<&'a [u8], BlockMessage, E> {
         context("Failed BlockMessage deserialization", |buffer| {
-            let id = MessageTypeId::try_from(self.message_id).map_err(|_| {
+            let (buffer, raw_id) = self.id_deserializer.deserialize(buffer)?;
+            let id = MessageTypeId::try_from(raw_id).map_err(|_| {
                 nom::Err::Error(ParseError::from_error_kind(
                     buffer,
                     nom::error::ErrorKind::Eof,

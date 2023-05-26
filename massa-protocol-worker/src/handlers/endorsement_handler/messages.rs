@@ -2,7 +2,9 @@ use massa_models::{
     endorsement::{Endorsement, EndorsementDeserializer, SecureShareEndorsement},
     secure_share::{SecureShareDeserializer, SecureShareSerializer},
 };
-use massa_serialization::{Deserializer, Serializer, U64VarIntDeserializer, U64VarIntSerializer};
+use massa_serialization::{
+    Deserializer, SerializeError, Serializer, U64VarIntDeserializer, U64VarIntSerializer,
+};
 use nom::{
     error::{context, ContextError, ParseError},
     multi::length_count,
@@ -17,27 +19,23 @@ pub enum EndorsementMessage {
     Endorsements(Vec<SecureShareEndorsement>),
 }
 
-impl EndorsementMessage {
-    pub fn get_id(&self) -> MessageTypeId {
-        match self {
-            EndorsementMessage::Endorsements(_) => MessageTypeId::Endorsements,
-        }
-    }
-
-    pub fn max_id() -> u64 {
-        <MessageTypeId as Into<u64>>::into(MessageTypeId::Endorsements) + 1
-    }
-}
-
-// DO NOT FORGET TO UPDATE MAX ID IF YOU UPDATE THERE
 #[derive(IntoPrimitive, Debug, Eq, PartialEq, TryFromPrimitive)]
 #[repr(u64)]
 pub enum MessageTypeId {
     Endorsements,
 }
 
+impl From<&EndorsementMessage> for MessageTypeId {
+    fn from(message: &EndorsementMessage) -> Self {
+        match message {
+            EndorsementMessage::Endorsements(_) => MessageTypeId::Endorsements,
+        }
+    }
+}
+
 #[derive(Default, Clone)]
 pub struct EndorsementMessageSerializer {
+    id_serializer: U64VarIntSerializer,
     length_endorsements_serializer: U64VarIntSerializer,
     secure_share_serializer: SecureShareSerializer,
 }
@@ -45,6 +43,7 @@ pub struct EndorsementMessageSerializer {
 impl EndorsementMessageSerializer {
     pub fn new() -> Self {
         Self {
+            id_serializer: U64VarIntSerializer::new(),
             length_endorsements_serializer: U64VarIntSerializer::new(),
             secure_share_serializer: SecureShareSerializer::new(),
         }
@@ -57,6 +56,12 @@ impl Serializer<EndorsementMessage> for EndorsementMessageSerializer {
         value: &EndorsementMessage,
         buffer: &mut Vec<u8>,
     ) -> Result<(), massa_serialization::SerializeError> {
+        self.id_serializer.serialize(
+            &MessageTypeId::from(value).try_into().map_err(|_| {
+                SerializeError::GeneralError(String::from("Failed to serialize id"))
+            })?,
+            buffer,
+        )?;
         match value {
             EndorsementMessage::Endorsements(endorsements) => {
                 self.length_endorsements_serializer
@@ -78,7 +83,7 @@ pub struct EndorsementMessageDeserializerArgs {
 }
 
 pub struct EndorsementMessageDeserializer {
-    message_id: u64,
+    id_deserializer: U64VarIntDeserializer,
     length_endorsements_deserializer: U64VarIntDeserializer,
     secure_share_deserializer: SecureShareDeserializer<Endorsement, EndorsementDeserializer>,
 }
@@ -86,7 +91,7 @@ pub struct EndorsementMessageDeserializer {
 impl EndorsementMessageDeserializer {
     pub fn new(args: EndorsementMessageDeserializerArgs) -> Self {
         Self {
-            message_id: 0,
+            id_deserializer: U64VarIntDeserializer::new(Included(0), Included(u64::MAX)),
             length_endorsements_deserializer: U64VarIntDeserializer::new(
                 Included(0),
                 Included(args.max_length_endorsements),
@@ -97,10 +102,6 @@ impl EndorsementMessageDeserializer {
             )),
         }
     }
-
-    pub fn set_message_id(&mut self, message_id: u64) {
-        self.message_id = message_id;
-    }
 }
 
 impl Deserializer<EndorsementMessage> for EndorsementMessageDeserializer {
@@ -109,7 +110,8 @@ impl Deserializer<EndorsementMessage> for EndorsementMessageDeserializer {
         buffer: &'a [u8],
     ) -> IResult<&'a [u8], EndorsementMessage, E> {
         context("Failed EndorsementMessage deserialization", |buffer| {
-            let id = MessageTypeId::try_from(self.message_id).map_err(|_| {
+            let (buffer, raw_id) = self.id_deserializer.deserialize(buffer)?;
+            let id = MessageTypeId::try_from(raw_id).map_err(|_| {
                 nom::Err::Error(ParseError::from_error_kind(
                     buffer,
                     nom::error::ErrorKind::Eof,

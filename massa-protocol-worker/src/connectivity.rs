@@ -9,11 +9,10 @@ use massa_protocol_exports::{PeerCategoryInfo, PeerId, ProtocolConfig, ProtocolE
 use massa_storage::Storage;
 use massa_versioning::versioning::MipStore;
 use parking_lot::RwLock;
-use peernet::transports::TcpOutConnectionConfig;
-use peernet::{peer::PeerConnectionType, transports::OutConnectionConfig};
+use peernet::peer::PeerConnectionType;
 use std::net::SocketAddr;
+use std::sync::Arc;
 use std::{collections::HashMap, net::IpAddr};
-use std::{num::NonZeroUsize, sync::Arc};
 use std::{thread::JoinHandle, time::Duration};
 use tracing::{info, warn};
 
@@ -87,17 +86,17 @@ pub(crate) fn start_connectivity_thread(
             let total_in_slots = config.peers_categories.values().map(|v| v.max_in_connections_post_handshake).sum::<usize>() + config.default_category_info.max_in_connections_post_handshake;
             let total_out_slots = config.peers_categories.values().map(| v| v.target_out_connections).sum::<usize>() + config.default_category_info.target_out_connections;
             let operation_cache = Arc::new(RwLock::new(OperationCache::new(
-                NonZeroUsize::new(config.max_known_ops_size).unwrap(),
-                NonZeroUsize::new(total_in_slots + total_out_slots).unwrap(),
+                config.max_known_blocks_size.try_into().unwrap(),
+                (total_in_slots + total_out_slots).try_into().unwrap(),
             )));
             let endorsement_cache = Arc::new(RwLock::new(EndorsementCache::new(
-                NonZeroUsize::new(config.max_known_endorsements_size).unwrap(),
-                NonZeroUsize::new(total_in_slots + total_out_slots).unwrap(),
+                config.max_known_endorsements_size.try_into().unwrap(),
+                (total_in_slots + total_out_slots).try_into().unwrap()
             )));
 
             let block_cache = Arc::new(RwLock::new(BlockCache::new(
-                NonZeroUsize::new(config.max_known_blocks_size).unwrap(),
-                NonZeroUsize::new(total_in_slots + total_out_slots).unwrap(),
+                config.max_known_blocks_size.try_into().unwrap(),
+                (total_in_slots + total_out_slots).try_into().unwrap(),
             )));
 
             // Start handlers
@@ -196,7 +195,7 @@ pub(crate) fn start_connectivity_thread(
                                     let peers: HashMap<PeerId, (SocketAddr, PeerConnectionType)> = network_controller.get_active_connections().get_peers_connected().into_iter().map(|(peer_id, peer)| {
                                         (peer_id, (peer.0, peer.1))
                                     }).collect();
-                                    responder.send((stats, peers)).unwrap_or_else(|_| warn!("Failed to send stats to responder"));
+                                    responder.try_send((stats, peers)).unwrap_or_else(|_| warn!("Failed to send stats to responder"));
                                 }
                                 Err(_) => {
                                     warn!("Channel to connectivity thread is closed. Stopping the protocol");
@@ -272,7 +271,7 @@ pub(crate) fn start_connectivity_thread(
                         for addr in addresses_to_connect {
                             info!("Trying to connect to addr {}", addr);
                             // We only manage TCP for now
-                            if let Err(err) = network_controller.try_connect(addr, config.timeout_connection.to_duration(), &OutConnectionConfig::Tcp(Box::new(TcpOutConnectionConfig::new(config.read_write_limit_bytes_per_second / 10, Duration::from_millis(100))))) {
+                            if let Err(err) = network_controller.try_connect(addr, config.timeout_connection.to_duration()) {
                                 warn!("Failed to connect to peer {:?}: {:?}", addr, err);
                             }
                         }

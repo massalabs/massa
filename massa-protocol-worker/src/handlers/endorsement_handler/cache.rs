@@ -1,23 +1,20 @@
-use std::{num::NonZeroUsize, sync::Arc};
+use std::sync::Arc;
 
-use lru::LruCache;
 use massa_models::endorsement::EndorsementId;
 use massa_protocol_exports::PeerId;
 use parking_lot::RwLock;
+use schnellru::{ByLength, LruMap};
 
 pub struct EndorsementCache {
-    pub checked_endorsements: LruCache<EndorsementId, ()>,
-    pub endorsements_known_by_peer: LruCache<PeerId, LruCache<EndorsementId, ()>>,
+    pub checked_endorsements: LruMap<EndorsementId, ()>,
+    pub endorsements_known_by_peer: LruMap<PeerId, LruMap<EndorsementId, ()>>,
 }
 
 impl EndorsementCache {
-    pub fn new(
-        max_known_endorsements: NonZeroUsize,
-        max_known_endorsements_by_peer: NonZeroUsize,
-    ) -> Self {
+    pub fn new(max_known_endorsements: u32, max_known_endorsements_by_peer: u32) -> Self {
         Self {
-            checked_endorsements: LruCache::new(max_known_endorsements),
-            endorsements_known_by_peer: LruCache::new(max_known_endorsements_by_peer),
+            checked_endorsements: LruMap::new(ByLength::new(max_known_endorsements)),
+            endorsements_known_by_peer: LruMap::new(ByLength::new(max_known_endorsements_by_peer)),
         }
     }
 }
