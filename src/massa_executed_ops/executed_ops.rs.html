@@ -472,6 +472,7 @@
 <a href="#472" id="472">472</a>
 <a href="#473" id="473">473</a>
 <a href="#474" id="474">474</a>
+<a href="#475" id="475">475</a>
 </pre><pre class="rust"><code><span class="doccomment">//! Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 //! This file defines a structure to list and prune previously executed operations.
@@ -656,6 +657,7 @@
         <span class="kw">let </span>removed = std::mem::take(<span class="kw-2">&amp;mut </span><span class="self">self</span>.sorted_ops);
         <span class="kw">for </span>(<span class="kw">_</span>, ids) <span class="kw">in </span>removed {
             <span class="kw">for </span>op_id <span class="kw">in </span>ids {
+                <span class="self">self</span>.op_exec_status.remove(<span class="kw-2">&amp;</span>op_id);
                 <span class="self">self</span>.delete_entry(<span class="kw-2">&amp;</span>op_id, batch);
             }
         }
