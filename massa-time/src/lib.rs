@@ -51,7 +51,7 @@ impl Serializer<MassaTime> for MassaTimeSerializer {
     /// use massa_serialization::Serializer;
     /// use massa_time::{MassaTime, MassaTimeSerializer};
     ///
-    /// let time: MassaTime = 30.into();
+    /// let time: MassaTime = MassaTime::from_millis(30);
     /// let mut serialized = Vec::new();
     /// let serializer = MassaTimeSerializer::new();
     /// serializer.serialize(&time, &mut serialized).unwrap();
@@ -91,10 +91,10 @@ impl Deserializer<MassaTime> for MassaTimeDeserializer {
     /// use massa_serialization::{Serializer, Deserializer, DeserializeError};
     /// use massa_time::{MassaTime, MassaTimeSerializer, MassaTimeDeserializer};
     ///
-    /// let time: MassaTime = 30.into();
+    /// let time: MassaTime = MassaTime::from_millis(30);
     /// let mut serialized = Vec::new();
     /// let serializer = MassaTimeSerializer::new();
-    /// let deserializer = MassaTimeDeserializer::new((Included(0.into()), Included(u64::MAX.into())));
+    /// let deserializer = MassaTimeDeserializer::new((Included(MassaTime::from_millis(0)), Included(MassaTime::from_millis(u64::MAX))));
     /// serializer.serialize(&time, &mut serialized).unwrap();
     /// let (rest, time_deser) = deserializer.deserialize::<DeserializeError>(&serialized).unwrap();
     /// assert!(rest.is_empty());
@@ -107,7 +107,7 @@ impl Deserializer<MassaTime> for MassaTimeDeserializer {
         context("Failed MassaTime deserialization", |input| {
             self.u64_deserializer
                 .deserialize(input)
-                .map(|(rest, res)| (rest, res.into()))
+                .map(|(rest, res)| (rest, MassaTime::from_millis(res)))
         })(buffer)
     }
 }
@@ -127,7 +127,7 @@ impl TryFrom<Duration> for MassaTime {
     /// # use massa_time::*;
     /// # use std::convert::TryFrom;
     /// let duration: Duration = Duration::from_millis(42);
-    /// let time : MassaTime = MassaTime::from(42);
+    /// let time : MassaTime = MassaTime::from_millis(42);
     /// assert_eq!(time, MassaTime::try_from(duration).unwrap());
     /// ```
     fn try_from(value: Duration) -> Result<Self, Self::Error> {
@@ -140,17 +140,6 @@ impl TryFrom<Duration> for MassaTime {
     }
 }
 
-impl From<u64> for MassaTime {
-    /// Conversion from `u64`, representing timestamp in milliseconds.
-    /// ```
-    /// # use massa_time::*;
-    /// let time : MassaTime = MassaTime::from(42);
-    /// ```
-    fn from(val: u64) -> Self {
-        MassaTime(val)
-    }
-}
-
 impl From<MassaTime> for Duration {
     /// Conversion from `massa_time` to duration, representing timestamp in milliseconds.
     /// ```
@@ -158,7 +147,7 @@ impl From<MassaTime> for Duration {
     /// # use massa_time::*;
     /// # use std::convert::Into;
     /// let duration: Duration = Duration::from_millis(42);
-    /// let time : MassaTime = MassaTime::from(42);
+    /// let time : MassaTime = MassaTime::from_millis(42);
     /// let res: Duration = time.into();
     /// assert_eq!(res, duration);
     /// ```
@@ -176,7 +165,7 @@ impl FromStr for MassaTime {
     /// # use massa_time::*;
     /// # use std::str::FromStr;
     /// let duration: &str = "42";
-    /// let time : MassaTime = MassaTime::from(42);
+    /// let time : MassaTime = MassaTime::from_millis(42);
     ///
     /// assert_eq!(time, MassaTime::from_str(duration).unwrap());
     /// ```
@@ -210,7 +199,7 @@ impl MassaTime {
     /// let now_duration : Duration = SystemTime::now().duration_since(UNIX_EPOCH).unwrap();
     /// let now_massa_time : MassaTime = MassaTime::now().unwrap();
     /// let converted  :MassaTime = MassaTime::try_from(now_duration).unwrap();
-    /// assert!(max(now_massa_time.saturating_sub(converted), converted.saturating_sub(now_massa_time)) < 100.into())
+    /// assert!(max(now_massa_time.saturating_sub(converted), converted.saturating_sub(now_massa_time)) < MassaTime::from_millis(100))
     /// ```
     pub fn now() -> Result<Self, TimeError> {
         let now: u64 = SystemTime::now()
@@ -227,7 +216,7 @@ impl MassaTime {
     /// # use std::time::Duration;
     /// # use massa_time::*;
     /// let duration: Duration = Duration::from_millis(42);
-    /// let time : MassaTime = MassaTime::from(42);
+    /// let time : MassaTime = MassaTime::from_millis(42);
     /// let res: Duration = time.to_duration();
     /// assert_eq!(res, duration);
     /// ```
@@ -238,7 +227,7 @@ impl MassaTime {
     /// Conversion to `u64`, representing milliseconds.
     /// ```
     /// # use massa_time::*;
-    /// let time : MassaTime = MassaTime::from(42);
+    /// let time : MassaTime = MassaTime::from_millis(42);
     /// let res: u64 = time.to_millis();
     /// assert_eq!(res, 42);
     /// ```
@@ -271,10 +260,10 @@ impl MassaTime {
 
     /// ```
     /// # use massa_time::*;
-    /// let time_1 : MassaTime = MassaTime::from(42);
-    /// let time_2 : MassaTime = MassaTime::from(7);
+    /// let time_1 : MassaTime = MassaTime::from_millis(42);
+    /// let time_2 : MassaTime = MassaTime::from_millis(7);
     /// let res : MassaTime = time_1.saturating_sub(time_2);
-    /// assert_eq!(res, MassaTime::from(42-7))
+    /// assert_eq!(res, MassaTime::from_millis(42-7))
     /// ```
     #[must_use]
     pub fn saturating_sub(self, t: MassaTime) -> Self {
@@ -283,10 +272,10 @@ impl MassaTime {
 
     /// ```
     /// # use massa_time::*;
-    /// let time_1 : MassaTime = MassaTime::from(42);
-    /// let time_2 : MassaTime = MassaTime::from(7);
+    /// let time_1 : MassaTime = MassaTime::from_millis(42);
+    /// let time_2 : MassaTime = MassaTime::from_millis(7);
     /// let res : MassaTime = time_1.saturating_add(time_2);
-    /// assert_eq!(res, MassaTime::from(42+7))
+    /// assert_eq!(res, MassaTime::from_millis(42+7))
     /// ```
     #[must_use]
     pub fn saturating_add(self, t: MassaTime) -> Self {
@@ -295,10 +284,10 @@ impl MassaTime {
 
     /// ```
     /// # use massa_time::*;
-    /// let time_1 : MassaTime = MassaTime::from(42);
-    /// let time_2 : MassaTime = MassaTime::from(7);
+    /// let time_1 : MassaTime = MassaTime::from_millis(42);
+    /// let time_2 : MassaTime = MassaTime::from_millis(7);
     /// let res : MassaTime = time_1.checked_sub(time_2).unwrap();
-    /// assert_eq!(res, MassaTime::from(42-7))
+    /// assert_eq!(res, MassaTime::from_millis(42-7))
     /// ```
     pub fn checked_sub(self, t: MassaTime) -> Result<Self, TimeError> {
         self.0
@@ -309,10 +298,10 @@ impl MassaTime {
 
     /// ```
     /// # use massa_time::*;
-    /// let time_1 : MassaTime = MassaTime::from(42);
-    /// let time_2 : MassaTime = MassaTime::from(7);
+    /// let time_1 : MassaTime = MassaTime::from_millis(42);
+    /// let time_2 : MassaTime = MassaTime::from_millis(7);
     /// let res : MassaTime = time_1.checked_add(time_2).unwrap();
-    /// assert_eq!(res, MassaTime::from(42+7))
+    /// assert_eq!(res, MassaTime::from_millis(42+7))
     /// ```
     pub fn checked_add(self, t: MassaTime) -> Result<Self, TimeError> {
         self.0
@@ -323,8 +312,8 @@ impl MassaTime {
 
     /// ```
     /// # use massa_time::*;
-    /// let time_1 : MassaTime = MassaTime::from(42);
-    /// let time_2 : MassaTime = MassaTime::from(7);
+    /// let time_1 : MassaTime = MassaTime::from_millis(42);
+    /// let time_2 : MassaTime = MassaTime::from_millis(7);
     /// let res : u64 = time_1.checked_div_time(time_2).unwrap();
     /// assert_eq!(res,42/7)
     /// ```
@@ -336,9 +325,9 @@ impl MassaTime {
 
     /// ```
     /// # use massa_time::*;
-    /// let time_1 : MassaTime = MassaTime::from(42);
+    /// let time_1 : MassaTime = MassaTime::from_millis(42);
     /// let res : MassaTime = time_1.checked_div_u64(7).unwrap();
-    /// assert_eq!(res,MassaTime::from(42/7))
+    /// assert_eq!(res,MassaTime::from_millis(42/7))
     /// ```
     pub fn checked_div_u64(self, n: u64) -> Result<MassaTime, TimeError> {
         self.0
@@ -349,9 +338,9 @@ impl MassaTime {
 
     /// ```
     /// # use massa_time::*;
-    /// let time_1 : MassaTime = MassaTime::from(42);
+    /// let time_1 : MassaTime = MassaTime::from_millis(42);
     /// let res : MassaTime = time_1.saturating_mul(7);
-    /// assert_eq!(res,MassaTime::from(42*7))
+    /// assert_eq!(res,MassaTime::from_millis(42*7))
     /// ```
     #[must_use]
     pub const fn saturating_mul(self, n: u64) -> MassaTime {
@@ -360,9 +349,9 @@ impl MassaTime {
 
     /// ```
     /// # use massa_time::*;
-    /// let time_1 : MassaTime = MassaTime::from(42);
+    /// let time_1 : MassaTime = MassaTime::from_millis(42);
     /// let res : MassaTime = time_1.checked_mul(7).unwrap();
-    /// assert_eq!(res,MassaTime::from(42*7))
+    /// assert_eq!(res,MassaTime::from_millis(42*7))
     /// ```
     pub fn checked_mul(self, n: u64) -> Result<Self, TimeError> {
         self.0
@@ -373,10 +362,10 @@ impl MassaTime {
 
     /// ```
     /// # use massa_time::*;
-    /// let time_1 : MassaTime = MassaTime::from(42);
-    /// let time_2 : MassaTime = MassaTime::from(7);
+    /// let time_1 : MassaTime = MassaTime::from_millis(42);
+    /// let time_2 : MassaTime = MassaTime::from_millis(7);
     /// let res : MassaTime = time_1.checked_rem_time(time_2).unwrap();
-    /// assert_eq!(res,MassaTime::from(42%7))
+    /// assert_eq!(res,MassaTime::from_millis(42%7))
     /// ```
     pub fn checked_rem_time(self, t: MassaTime) -> Result<Self, TimeError> {
         self.0
@@ -387,9 +376,9 @@ impl MassaTime {
 
     /// ```
     /// # use massa_time::*;
-    /// let time_1 : MassaTime = MassaTime::from(42);
+    /// let time_1 : MassaTime = MassaTime::from_millis(42);
     /// let res : MassaTime = time_1.checked_rem_u64(7).unwrap();
-    /// assert_eq!(res,MassaTime::from(42%7))
+    /// assert_eq!(res,MassaTime::from_millis(42%7))
     /// ```
     pub fn checked_rem_u64(self, n: u64) -> Result<Self, TimeError> {
         self.0
@@ -401,11 +390,11 @@ impl MassaTime {
     /// ```
     /// # use massa_time::*;
     ///
-    /// let time1 = MassaTime::from(42);
-    /// let time2 = MassaTime::from(84);
+    /// let time1 = MassaTime::from_millis(42);
+    /// let time2 = MassaTime::from_millis(84);
     ///
-    /// assert_eq!(time1.abs_diff(time2), MassaTime::from(42));
-    /// assert_eq!(time2.abs_diff(time1), MassaTime::from(42));
+    /// assert_eq!(time1.abs_diff(time2), MassaTime::from_millis(42));
+    /// assert_eq!(time2.abs_diff(time1), MassaTime::from_millis(42));
     /// ```
     pub fn abs_diff(&self, t: MassaTime) -> MassaTime {
         MassaTime(self.0.abs_diff(t.0))
@@ -413,7 +402,7 @@ impl MassaTime {
 
     /// ```
     /// # use massa_time::*;
-    /// let massa_time : MassaTime = MassaTime::from(1_640_995_200_000);
+    /// let massa_time : MassaTime = MassaTime::from_millis(1_640_995_200_000);
     /// assert_eq!(massa_time.to_utc_string(), "2022-01-01T00:00:00Z")
     /// ```
     pub fn to_utc_string(self) -> String {
@@ -423,7 +412,7 @@ impl MassaTime {
 
     /// ```
     /// # use massa_time::*;
-    /// let massa_time = MassaTime::from(1000 * ( 8 * 24*60*60 + 1 * 60*60 + 3 * 60 + 6 ));
+    /// let massa_time = MassaTime::from_millis(1000 * ( 8 * 24*60*60 + 1 * 60*60 + 3 * 60 + 6 ));
     /// let (days, hours, mins, secs) = massa_time.days_hours_mins_secs().unwrap();
     /// assert_eq!(days, 8);
     /// assert_eq!(hours, 1);

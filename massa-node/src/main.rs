@@ -63,13 +63,14 @@ use massa_models::config::constants::{
     MAX_SIZE_CHANNEL_NETWORK_TO_ENDORSEMENT_HANDLER, MAX_SIZE_CHANNEL_NETWORK_TO_OPERATION_HANDLER,
     MAX_SIZE_CHANNEL_NETWORK_TO_PEER_HANDLER, MIP_STORE_STATS_BLOCK_CONSIDERED,
     MIP_STORE_STATS_COUNTERS_MAX, OPERATION_VALIDITY_PERIODS, PERIODS_PER_CYCLE,
-    POOL_CONTROLLER_CHANNEL_SIZE, POS_MISS_RATE_DEACTIVATION_THRESHOLD, POS_SAVED_CYCLES,
-    PROTOCOL_CONTROLLER_CHANNEL_SIZE, PROTOCOL_EVENT_CHANNEL_SIZE,
-    ROLL_COUNT_TO_SLASH_ON_DENUNCIATION, ROLL_PRICE, SELECTOR_DRAW_CACHE_SIZE, T0, THREAD_COUNT,
-    VERSION,
+    POS_MISS_RATE_DEACTIVATION_THRESHOLD, POS_SAVED_CYCLES, PROTOCOL_CONTROLLER_CHANNEL_SIZE,
+    PROTOCOL_EVENT_CHANNEL_SIZE, ROLL_COUNT_TO_SLASH_ON_DENUNCIATION, ROLL_PRICE,
+    SELECTOR_DRAW_CACHE_SIZE, T0, THREAD_COUNT, VERSION,
 };
-use massa_models::config::MAX_BOOTSTRAPPED_NEW_ELEMENTS;
-use massa_models::config::MAX_MESSAGE_SIZE;
+use massa_models::config::{
+    MAX_BOOTSTRAPPED_NEW_ELEMENTS, MAX_MESSAGE_SIZE, POOL_CONTROLLER_DENUNCIATIONS_CHANNEL_SIZE,
+    POOL_CONTROLLER_ENDORSEMENTS_CHANNEL_SIZE, POOL_CONTROLLER_OPERATIONS_CHANNEL_SIZE,
+};
 use massa_pool_exports::{PoolChannels, PoolConfig, PoolManager};
 use massa_pool_worker::start_pool_controller;
 use massa_pos_exports::{PoSConfig, SelectorConfig, SelectorManager};
@@ -362,11 +363,11 @@ async fn launch(
                 name: "MIP-0001".to_string(),
                 version: 1,
                 components: HashMap::from([(MipComponent::Address, 1), (MipComponent::KeyPair, 1)]),
-                start: MassaTime::from(0),
-                timeout: MassaTime::from(0),
-                activation_delay: MassaTime::from(0),
+                start: MassaTime::from_millis(0),
+                timeout: MassaTime::from_millis(0),
+                activation_delay: MassaTime::from_millis(0),
             },
-            MipState::new(MassaTime::from(0)),
+            MipState::new(MassaTime::from_millis(0)),
         )],
         mip_stats_config,
     ))
@@ -511,7 +512,9 @@ async fn launch(
         max_operations_per_block: MAX_OPERATIONS_PER_BLOCK,
         max_operation_pool_size_per_thread: SETTINGS.pool.max_pool_size_per_thread,
         max_endorsements_pool_size_per_thread: SETTINGS.pool.max_pool_size_per_thread,
-        channels_size: POOL_CONTROLLER_CHANNEL_SIZE,
+        operations_channel_size: POOL_CONTROLLER_OPERATIONS_CHANNEL_SIZE,
+        endorsements_channel_size: POOL_CONTROLLER_ENDORSEMENTS_CHANNEL_SIZE,
+        denunciations_channel_size: POOL_CONTROLLER_DENUNCIATIONS_CHANNEL_SIZE,
         broadcast_enabled: SETTINGS.api.enable_broadcast,
         broadcast_endorsements_channel_capacity: SETTINGS
             .pool
@@ -637,18 +640,15 @@ async fn launch(
         t0: T0,
         genesis_key: GENESIS_KEY.clone(),
         max_discarded_blocks: SETTINGS.consensus.max_discarded_blocks,
-        future_block_processing_max_periods: SETTINGS.consensus.future_block_processing_max_periods,
         max_future_processing_blocks: SETTINGS.consensus.max_future_processing_blocks,
         max_dependency_blocks: SETTINGS.consensus.max_dependency_blocks,
         delta_f0: DELTA_F0,
         operation_validity_periods: OPERATION_VALIDITY_PERIODS,
         periods_per_cycle: PERIODS_PER_CYCLE,
         stats_timespan: SETTINGS.consensus.stats_timespan,
-        max_send_wait: SETTINGS.consensus.max_send_wait,
         force_keep_final_periods: SETTINGS.consensus.force_keep_final_periods,
         endorsement_count: ENDORSEMENT_COUNT,
         block_db_prune_interval: SETTINGS.consensus.block_db_prune_interval,
-        max_item_return_count: SETTINGS.consensus.max_item_return_count,
         max_gas_per_block: MAX_GAS_PER_BLOCK,
         channel_size: CHANNEL_SIZE,
         bootstrap_part_size: CONSENSUS_BOOTSTRAP_PART_SIZE,
@@ -764,7 +764,7 @@ async fn launch(
         max_subscriptions_per_connection: SETTINGS.api.max_subscriptions_per_connection,
         max_log_length: SETTINGS.api.max_log_length,
         allow_hosts: SETTINGS.api.allow_hosts.clone(),
-        batch_requests_supported: SETTINGS.api.batch_requests_supported,
+        batch_request_limit: SETTINGS.api.batch_request_limit,
         ping_interval: SETTINGS.api.ping_interval,
         enable_http: SETTINGS.api.enable_http,
         enable_ws: SETTINGS.api.enable_ws,

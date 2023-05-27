@@ -5,6 +5,7 @@ use serde::{Deserialize, Serialize, Serializer};
 
 /// Represents a Vec that can be split across Pages
 /// Cf. <https://docs.rs/paginate/latest/paginate/>
+#[derive(Clone)]
 pub struct PagedVec<T> {
     res: Vec<T>,
     _total_count: usize,
@@ -52,7 +53,7 @@ pub struct PageRequest {
 }
 
 /// Represents the request inputs for a PagedVecV2
-#[derive(Deserialize, Serialize)]
+#[derive(Clone, Deserialize, Serialize)]
 pub struct PagedVecV2<T> {
     content: Vec<T>,
     total_count: usize,

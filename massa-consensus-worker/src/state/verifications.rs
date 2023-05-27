@@ -292,10 +292,7 @@ impl ConsensusState {
     /// - Slot above 0.
     /// - Valid thread.
     /// - Check that the block is older than the latest final one in thread.
-    /// - Check that the block slot is not too much into the future,
-    ///   as determined by the configuration `future_block_processing_max_periods`.
     /// - Check if it was the creator's turn to create this block.
-    /// - TODO: check for double staking.
     /// - Check parents are present.
     /// - Check the topological consistency of the parents.
     /// - Check endorsements.
@@ -324,17 +321,6 @@ impl ConsensusState {
             <= self.latest_final_blocks_periods[header.content.slot.thread as usize].1
         {
             return Ok(HeaderCheckOutcome::Discard(DiscardReason::Stale));
-        }
-
-        // check if block slot is too much in the future
-        if let Some(cur_slot) = current_slot {
-            if header.content.slot.period
-                > cur_slot
-                    .period
-                    .saturating_add(self.config.future_block_processing_max_periods)
-            {
-                return Ok(HeaderCheckOutcome::WaitForSlot);
-            }
         }
 
         // check if it was the creator's turn to create this block
