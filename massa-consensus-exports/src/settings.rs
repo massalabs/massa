@@ -14,18 +14,12 @@ pub struct ConsensusConfig {
     pub genesis_key: KeyPair,
     /// Maximum number of blocks allowed in discarded blocks.
     pub max_discarded_blocks: usize,
-    /// If a block `is future_block_processing_max_periods` periods in the future, it is just discarded.
-    pub future_block_processing_max_periods: u64,
     /// Maximum number of blocks allowed in `FutureIncomingBlocks`.
     pub max_future_processing_blocks: usize,
     /// Maximum number of blocks allowed in `DependencyWaitingBlocks`.
     pub max_dependency_blocks: usize,
-    /// max event send wait
-    pub max_send_wait: MassaTime,
     /// old blocks are pruned every `block_db_prune_interval`
     pub block_db_prune_interval: MassaTime,
-    /// max number of items returned while querying
-    pub max_item_return_count: usize,
     /// Max gas per block for the execution configuration
     pub max_gas_per_block: u64,
     /// Threshold for fitness.
