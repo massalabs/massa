@@ -182,6 +182,7 @@ impl ExecutedOps {
         let removed = std::mem::take(&mut self.sorted_ops);
         for (_, ids) in removed {
             for op_id in ids {
+                self.op_exec_status.remove(&op_id);
                 self.delete_entry(&op_id, batch);
             }
         }
