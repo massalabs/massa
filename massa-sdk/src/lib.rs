@@ -70,7 +70,7 @@ pub struct Client {
     /// private component
     pub private: RpcClient,
     /// grpc client
-    pub grpc: MassaServiceClient<tonic::transport::Channel>,
+    pub grpc: Option<MassaServiceClient<tonic::transport::Channel>>,
 }
 
 impl Client {
@@ -89,14 +89,22 @@ impl Client {
         let private_url = format!("http://{}", private_socket_addr);
         let grpc_url = format!("grpc://{}", grpc_socket_addr);
 
-        // start grpc client and connect to the server
-        let channel = tonic::transport::Channel::from_shared(grpc_url)?
+        // try to start grpc client and connect to the server
+        let grpc_opts = match tonic::transport::Channel::from_shared(grpc_url)?
             .connect()
-            .await?;
+            .await
+        {
+            Ok(channel) => Some(MassaServiceClient::new(channel)),
+            Err(_e) => {
+                // TODO print error
+                None
+            }
+        };
+
         Ok(Client {
             public: RpcClient::from_url(&public_url, http_config).await,
             private: RpcClient::from_url(&private_url, http_config).await,
-            grpc: MassaServiceClient::new(channel),
+            grpc: grpc_opts,
         })
     }
 }

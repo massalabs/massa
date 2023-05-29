@@ -774,42 +774,47 @@ impl Command {
                 // In order to generate a KeyPair we need to get the MIP statuses and use the latest
                 // active version
                 let req = grpc::GetMipStatusRequest { id: "".to_string() };
-                let versioning_status = match client.grpc.get_mip_status(req).await {
-                    Ok(resp_) => {
-                        let resp = resp_.into_inner();
-                        resp.entry
-                    }
-                    Err(e) => {
-                        // FIXME: Should we default to the last known version - default to 0?
-                        grpc_error!(e)
-                    }
-                };
 
-                // Note: unused for now as AddressFactory is not yet merged
-                let _address_version = versioning_status
-                    .into_iter()
-                    .rev()
-                    .find_map(|entry| {
-                        let state = grpc::ComponentStateId::from_i32(entry.state_id)
-                            .unwrap_or(grpc::ComponentStateId::Error);
-                        match state {
-                            grpc::ComponentStateId::Active => Some(entry.state_id),
-                            _ => None,
+                if let Some(ref mut grpc) = client.grpc {
+                    let versioning_status = match grpc.get_mip_status(req).await {
+                        Ok(resp_) => {
+                            let resp = resp_.into_inner();
+                            resp.entry
                         }
-                    })
-                    .unwrap_or(0);
-                println!("Should create address with version: {}", _address_version);
+                        Err(e) => {
+                            // FIXME: Should we default to the last known version - default to 0?
+                            grpc_error!(e)
+                        }
+                    };
 
-                let key = KeyPair::generate(0).unwrap();
-                let ad = wallet.add_keypairs(vec![key])?[0];
-                if json {
-                    Ok(Box::new(ad.to_string()))
+                    // Note: unused for now as AddressFactory is not yet merged
+                    let _address_version = versioning_status
+                        .into_iter()
+                        .rev()
+                        .find_map(|entry| {
+                            let state = grpc::ComponentStateId::from_i32(entry.state_id)
+                                .unwrap_or(grpc::ComponentStateId::Error);
+                            match state {
+                                grpc::ComponentStateId::Active => Some(entry.state_id),
+                                _ => None,
+                            }
+                        })
+                        .unwrap_or(0);
+                    println!("Should create address with version: {}", _address_version);
+
+                    let key = KeyPair::generate(0).unwrap();
+                    let ad = wallet.add_keypairs(vec![key])?[0];
+                    if json {
+                        Ok(Box::new(ad.to_string()))
+                    } else {
+                        println!("Generated {} address and added it to the wallet", ad);
+                        println!(
+                            "Type `wallet_info` to show wallet info (keys, addresses, balances ...) and/or `node_add_staking_secret_keys <your secret key>` to start staking with this key.\n"
+                        );
+                        Ok(Box::new(()))
+                    }
                 } else {
-                    println!("Generated {} address and added it to the wallet", ad);
-                    println!(
-                        "Type `node_start_staking <address>` to start staking with this address.\n"
-                    );
-                    Ok(Box::new(()))
+                    bail!("GRPC is not enabled on this node");
                 }
             }
 
