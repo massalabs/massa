@@ -61,7 +61,7 @@ impl ActiveHistory {
         HistorySearchResult::NoInfo
     }
 
-    /// Lazily query (from end to beginning) the a message based on its id
+    /// Lazily query (from end to beginning) a message based on its id
     ///
     /// Returns a `HistorySearchResult`.
     pub fn fetch_message(
