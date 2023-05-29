@@ -543,10 +543,8 @@ impl RawMassaDB<Slot, SlotSerializer, SlotDeserializer> {
     /// Creates a new hard copy of the DB, for the given slot
     pub fn backup_db(&self, slot: Slot) {
         let db = &self.db;
-        let mut subpath = String::from("backup_");
-        subpath.push_str(slot.period.to_string().as_str());
-        subpath.push('_');
-        subpath.push_str(slot.thread.to_string().as_str());
+
+        let subpath = format!("backup_{}_{}", slot.period, slot.thread);
 
         Checkpoint::new(db)
             .expect("Cannot init checkpoint")
