@@ -559,8 +559,6 @@
 <a href="#559" id="559">559</a>
 <a href="#560" id="560">560</a>
 <a href="#561" id="561">561</a>
-<a href="#562" id="562">562</a>
-<a href="#563" id="563">563</a>
 </pre><pre class="rust"><code><span class="kw">use crate</span>::{CycleInfo, PoSChanges, PosError, PosResult, ProductionStats, SelectorController};
 <span class="kw">use crate</span>::{DeferredCredits, PoSConfig};
 <span class="kw">use </span>bitvec::vec::BitVec;
@@ -576,7 +574,7 @@
     ops::Bound::{Excluded, Unbounded},
     path::PathBuf,
 };
-<span class="kw">use </span>tracing::{debug, info};
+<span class="kw">use </span>tracing::debug;
 
 <span class="attr">#[derive(Clone)]
 </span><span class="doccomment">/// Final state of PoS
@@ -909,8 +907,6 @@
             <span class="comment">// looking back to negative cycles
             </span><span class="prelude-val">None </span>=&gt; (<span class="self">self</span>.initial_rolls.clone(), <span class="self">self</span>.initial_ledger_hash),
         };
-
-        <span class="macro">info!</span>(<span class="string">&quot;lookback_state_hash fed to selection for draw_cycle {} is: {}&quot;</span>, draw_cycle, lookback_state_hash);
 
         <span class="comment">// get seed lookback
         </span><span class="kw">let </span>lookback_seed = <span class="kw">match </span>draw_cycle.checked_sub(<span class="number">2</span>) {

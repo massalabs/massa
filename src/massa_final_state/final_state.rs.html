@@ -941,11 +941,6 @@
 <a href="#941" id="941">941</a>
 <a href="#942" id="942">942</a>
 <a href="#943" id="943">943</a>
-<a href="#944" id="944">944</a>
-<a href="#945" id="945">945</a>
-<a href="#946" id="946">946</a>
-<a href="#947" id="947">947</a>
-<a href="#948" id="948">948</a>
 </pre><pre class="rust"><code><span class="doccomment">//! Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 //! This file defines the final state of the node, which includes
@@ -1348,7 +1343,6 @@
         <span class="kw">let </span><span class="kw-2">mut </span>hash_concat: Vec&lt;u8&gt; = ledger_hash.to_bytes().to_vec();
         <span class="comment">// 2. async_pool hash
         </span>hash_concat.extend(<span class="self">self</span>.async_pool.hash.to_bytes());
-        <span class="macro">info!</span>(<span class="string">&quot;async_pool hash: {}&quot;</span>, <span class="self">self</span>.async_pool.hash);
         <span class="comment">// 3. pos deferred_credit hash
         </span><span class="kw">let </span>deferred_credit_hash = <span class="kw">match </span><span class="self">self</span>.pos_state.deferred_credits.get_hash() {
             <span class="prelude-val">Some</span>(hash) =&gt; hash,
@@ -1358,20 +1352,16 @@
                 .enable_hash_tracker_and_compute_hash(),
         };
         hash_concat.extend(deferred_credit_hash.to_bytes());
-        <span class="macro">info!</span>(<span class="string">&quot;deferred_credits hash: {}&quot;</span>, deferred_credit_hash);
         <span class="comment">// 4. pos cycle history hashes, skip the bootstrap safety cycle if there is one
         </span><span class="kw">let </span>n = (<span class="self">self</span>.pos_state.cycle_history.len() == <span class="self">self</span>.config.pos_config.cycle_history_length)
             <span class="kw">as </span>usize;
         <span class="kw">for </span>cycle_info <span class="kw">in </span><span class="self">self</span>.pos_state.cycle_history.iter().skip(n) {
             hash_concat.extend(cycle_info.cycle_global_hash.to_bytes());
-            <span class="macro">info!</span>(<span class="string">&quot;cycle {} hash: {}&quot;</span>, cycle_info.cycle,  cycle_info.cycle_global_hash);
         }
         <span class="comment">// 5. executed operations hash
         </span>hash_concat.extend(<span class="self">self</span>.executed_ops.hash.to_bytes());
-        <span class="macro">info!</span>(<span class="string">&quot;executed_ops hash: {}&quot;</span>, <span class="self">self</span>.executed_ops.hash);
         <span class="comment">// 6. executed denunciations hash
         </span>hash_concat.extend(<span class="self">self</span>.executed_denunciations.hash.to_bytes());
-        <span class="macro">info!</span>(<span class="string">&quot;executed_denunciations hash: {}&quot;</span>, <span class="self">self</span>.executed_denunciations.hash);
         <span class="comment">// 7. compute and save final state hash
         </span><span class="self">self</span>.final_state_hash = Hash::compute_from(<span class="kw-2">&amp;</span>hash_concat);
 
