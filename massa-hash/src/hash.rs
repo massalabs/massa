@@ -405,7 +405,12 @@ impl lsmtree::digest::Digest for SmtHasher {
     }
 
     fn output_size() -> usize {
-        <Self as lsmtree::digest::OutputSizeUser>::output_size()
+        debug_assert_eq!(
+            HASH_SIZE_BYTES,
+            <Self as lsmtree::digest::OutputSizeUser>::output_size(),
+            "lsm_tree hash size is not HASH_SIZE_BYTES"
+        );
+        HASH_SIZE_BYTES
     }
 
     fn digest(data: impl AsRef<[u8]>) -> lsmtree::digest::Output<Self> {
