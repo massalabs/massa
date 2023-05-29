@@ -400,6 +400,7 @@ impl FinalState {
         let mut hash_concat: Vec<u8> = ledger_hash.to_bytes().to_vec();
         // 2. async_pool hash
         hash_concat.extend(self.async_pool.hash.to_bytes());
+        info!("async_pool hash: {}", self.async_pool.hash);
         // 3. pos deferred_credit hash
         let deferred_credit_hash = match self.pos_state.deferred_credits.get_hash() {
             Some(hash) => hash,
@@ -409,16 +410,20 @@ impl FinalState {
                 .enable_hash_tracker_and_compute_hash(),
         };
         hash_concat.extend(deferred_credit_hash.to_bytes());
+        info!("deferred_credits hash: {}", deferred_credit_hash);
         // 4. pos cycle history hashes, skip the bootstrap safety cycle if there is one
         let n = (self.pos_state.cycle_history.len() == self.config.pos_config.cycle_history_length)
             as usize;
         for cycle_info in self.pos_state.cycle_history.iter().skip(n) {
             hash_concat.extend(cycle_info.cycle_global_hash.to_bytes());
+            info!("cycle {} hash: {}", cycle_info.cycle,  cycle_info.cycle_global_hash);
         }
         // 5. executed operations hash
         hash_concat.extend(self.executed_ops.hash.to_bytes());
+        info!("executed_ops hash: {}", self.executed_ops.hash);
         // 6. executed denunciations hash
         hash_concat.extend(self.executed_denunciations.hash.to_bytes());
+        info!("executed_denunciations hash: {}", self.executed_denunciations.hash);
         // 7. compute and save final state hash
         self.final_state_hash = Hash::compute_from(&hash_concat);
 
