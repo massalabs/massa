@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"struct":["ExecutedDenunciations","ExecutedDenunciationsDeserializer","ExecutedDenunciationsSerializer"]};
+window.SIDEBAR_ITEMS = {"constant":["EXECUTED_DENUNCIATIONS_HASH_INITIAL_BYTES"],"struct":["ExecutedDenunciations","ExecutedDenunciationsDeserializer","ExecutedDenunciationsSerializer"]};

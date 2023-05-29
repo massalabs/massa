@@ -1303,7 +1303,7 @@
     <span class="doccomment">/// Creates a new deserializer for `Address`
     </span><span class="kw">pub const fn </span>new() -&gt; <span class="self">Self </span>{
         <span class="self">Self </span>{
-            type_deserializer: U64VarIntDeserializer::new(Included(<span class="number">0</span>), Included(<span class="number">1</span>)),
+            type_deserializer: U64VarIntDeserializer::new(Included(<span class="number">0</span>), Excluded(<span class="number">1</span>)),
             version_deserializer: U64VarIntDeserializer::new(Included(<span class="number">0</span>), Excluded(u64::MAX)),
             hash_deserializer: HashDeserializer::new(),
         }
