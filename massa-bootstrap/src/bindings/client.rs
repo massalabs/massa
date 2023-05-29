@@ -172,16 +172,57 @@ impl BootstrapClientBinder {
         }
 
         // Provide the message length
-        self.duplex.set_write_timeout(duration)?;
         let msg_len_bytes = msg_len.to_be_bytes_min(MAX_BOOTSTRAP_MESSAGE_SIZE)?;
         write_buf.extend(&msg_len_bytes);
 
         // Provide the message
         write_buf.extend(&msg_bytes);
 
-        // And send it off
-        self.duplex.write_all(&write_buf)?;
-        Ok(())
+        let mut send_timeout = |timeout: Duration| -> Result<(), BootstrapError> {
+            let start_time = std::time::Instant::now();
+            self.duplex.set_write_timeout(Some(timeout))?;
+            let mut total_bytes_written = 0;
+            let chunk_size = 1024;
+
+            while total_bytes_written < write_buf.len() {
+                if start_time.elapsed() >= timeout {
+                    return Err(BootstrapError::TimedOut(
+                        std::io::ErrorKind::TimedOut.into(),
+                    ));
+                }
+
+                let end = (total_bytes_written + chunk_size).min(write_buf.len());
+                match self.duplex.write(&write_buf[total_bytes_written..end]) {
+                    Ok(bytes_written) => {
+                        total_bytes_written += bytes_written;
+                    }
+                    Err(ref err) if err.kind() == std::io::ErrorKind::WouldBlock => {
+                        // Timeout exceeded
+                        if start_time.elapsed() >= timeout {
+                            return Err(BootstrapError::TimedOut(
+                                std::io::ErrorKind::TimedOut.into(),
+                            ));
+                        }
+                    }
+                    Err(err) => {
+                        return Err(BootstrapError::IoError(err));
+                    }
+                }
+            }
+
+            Ok(())
+        };
+
+        if let Some(timeout) = duration {
+            let to_return = send_timeout(timeout);
+            // Reset the timeout to None
+            self.duplex.set_write_timeout(None)?;
+            to_return
+        } else {
+            self.duplex
+                .write_all(&write_buf)
+                .map_err(BootstrapError::IoError)
+        }
     }
 
     /// We are using this instead of of our library deserializer as the process is relatively straight forward
