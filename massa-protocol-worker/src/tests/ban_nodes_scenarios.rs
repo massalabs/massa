@@ -55,9 +55,7 @@ fn test_protocol_bans_node_sending_block_header_with_invalid_signature() {
             network_controller
                 .send_from_peer(
                     &node_a_peer_id,
-                    Message::Block(Box::new(BlockMessage::BlockHeader(
-                        block.content.header.clone(),
-                    ))),
+                    Message::Block(Box::new(BlockMessage::BlockHeader(block.content.header))),
                 )
                 .unwrap();
 
@@ -122,7 +120,7 @@ fn test_protocol_bans_node_sending_operation_with_invalid_signature() {
             network_controller
                 .send_from_peer(
                     &node_a_peer_id,
-                    Message::Operation(OperationMessage::Operations(vec![operation.clone()])),
+                    Message::Operation(OperationMessage::Operations(vec![operation])),
                 )
                 .unwrap();
 
@@ -185,7 +183,7 @@ fn test_protocol_bans_node_sending_header_with_invalid_signature() {
             let block = tools::create_block_with_operations(
                 &node_a_keypair,
                 Slot::new(1, 1),
-                vec![operation_1.clone()],
+                vec![operation_1],
             );
 
             //4. Node A send the block
@@ -239,16 +237,14 @@ fn test_protocol_bans_node_sending_header_with_invalid_signature() {
             let block_2 = tools::create_block_with_operations(
                 &node_b_keypair,
                 Slot::new(1, 1),
-                vec![operation_2.clone()],
+                vec![operation_2],
             );
 
             //10. Node A tries to send it
             network_controller
                 .send_from_peer(
                     &node_a_peer_id,
-                    Message::Block(Box::new(BlockMessage::BlockHeader(
-                        block_2.content.header.clone(),
-                    ))),
+                    Message::Block(Box::new(BlockMessage::BlockHeader(block_2.content.header))),
                 )
                 .expect_err("Node A should not be able to send a block");
             std::thread::sleep(std::time::Duration::from_millis(1000));
@@ -347,7 +343,7 @@ fn test_protocol_does_not_asks_for_block_from_banned_node_who_propagated_header(
             //8. Send a wishlist that ask for the first block
             protocol_controller
                 .send_wishlist_delta(
-                    vec![(expected_hash, Some(block.content.header.clone()))]
+                    vec![(expected_hash, Some(block.content.header))]
                         .into_iter()
                         .collect(),
                     PreHashSet::<BlockId>::default(),

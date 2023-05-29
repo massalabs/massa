@@ -1839,17 +1839,17 @@ dependencies = [
 
 [[package]]
 name = "hyper-rustls"
-version = "0.23.2"
+version = "0.24.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "1788965e61b367cd03a62950836d5cd41560c3577d90e40e0819373194d1661c"
+checksum = "0646026eb1b3eea4cd9ba47912ea5ce9cc07713d105b1a14698f4e6433d348b7"
 dependencies = [
  "http",
  "hyper",
  "log",
- "rustls 0.20.8",
+ "rustls",
  "rustls-native-certs",
  "tokio",
- "tokio-rustls 0.23.4",
+ "tokio-rustls",
  "webpki-roots",
 ]
 
@@ -1990,8 +1990,9 @@ dependencies = [
 
 [[package]]
 name = "jsonrpsee"
-version = "0.16.2"
-source = "git+https://github.com/paritytech/jsonrpsee.git?rev=118acc3#118acc39668c60cd90174d91743c725f59275388"
+version = "0.18.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "1822d18e4384a5e79d94dc9e4d1239cfa9fad24e55b44d2efeff5b394c9fece4"
 dependencies = [
  "jsonrpsee-client-transport",
  "jsonrpsee-core",
@@ -2006,8 +2007,9 @@ dependencies = [
 
 [[package]]
 name = "jsonrpsee-client-transport"
-version = "0.16.2"
-source = "git+https://github.com/paritytech/jsonrpsee.git?rev=118acc3#118acc39668c60cd90174d91743c725f59275388"
+version = "0.18.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "11aa5766d5c430b89cb26a99b88f3245eb91534be8126102cea9e45ee3891b22"
 dependencies = [
  "futures-channel",
  "futures-util",
@@ -2019,7 +2021,7 @@ dependencies = [
  "soketto",
  "thiserror",
  "tokio",
- "tokio-rustls 0.23.4",
+ "tokio-rustls",
  "tokio-util",
  "tracing",
  "webpki-roots",
@@ -2027,8 +2029,9 @@ dependencies = [
 
 [[package]]
 name = "jsonrpsee-core"
-version = "0.16.2"
-source = "git+https://github.com/paritytech/jsonrpsee.git?rev=118acc3#118acc39668c60cd90174d91743c725f59275388"
+version = "0.18.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "64c6832a55f662b5a6ecc844db24b8b9c387453f923de863062c60ce33d62b81"
 dependencies = [
  "anyhow",
  "async-lock",
@@ -2054,8 +2057,9 @@ dependencies = [
 
 [[package]]
 name = "jsonrpsee-http-client"
-version = "0.16.2"
-source = "git+https://github.com/paritytech/jsonrpsee.git?rev=118acc3#118acc39668c60cd90174d91743c725f59275388"
+version = "0.18.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "1705c65069729e3dccff6fd91ee431d5d31cabcf00ce68a62a2c6435ac713af9"
 dependencies = [
  "async-trait",
  "hyper",
@@ -2072,8 +2076,9 @@ dependencies = [
 
 [[package]]
 name = "jsonrpsee-proc-macros"
-version = "0.16.2"
-source = "git+https://github.com/paritytech/jsonrpsee.git?rev=118acc3#118acc39668c60cd90174d91743c725f59275388"
+version = "0.18.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "c6027ac0b197ce9543097d02a290f550ce1d9432bf301524b013053c0b75cc94"
 dependencies = [
  "heck 0.4.1",
  "proc-macro-crate 1.3.1",
@@ -2084,8 +2089,9 @@ dependencies = [
 
 [[package]]
 name = "jsonrpsee-server"
-version = "0.16.2"
-source = "git+https://github.com/paritytech/jsonrpsee.git?rev=118acc3#118acc39668c60cd90174d91743c725f59275388"
+version = "0.18.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "4f06661d1a6b6e5b85469dc9c29acfbb9b3bb613797a6fd10a3ebb8a70754057"
 dependencies = [
  "futures-util",
  "hyper",
@@ -2103,8 +2109,9 @@ dependencies = [
 
 [[package]]
 name = "jsonrpsee-types"
-version = "0.16.2"
-source = "git+https://github.com/paritytech/jsonrpsee.git?rev=118acc3#118acc39668c60cd90174d91743c725f59275388"
+version = "0.18.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "6e5bf6c75ce2a4217421154adfc65a24d2b46e77286e59bba5d9fa6544ccc8f4"
 dependencies = [
  "anyhow",
  "beef",
@@ -2116,8 +2123,9 @@ dependencies = [
 
 [[package]]
 name = "jsonrpsee-wasm-client"
-version = "0.16.2"
-source = "git+https://github.com/paritytech/jsonrpsee.git?rev=118acc3#118acc39668c60cd90174d91743c725f59275388"
+version = "0.18.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "34e6ea7c6d862e60f8baebd946c037b70c6808a4e4e31e792a4029184e3ce13a"
 dependencies = [
  "jsonrpsee-client-transport",
  "jsonrpsee-core",
@@ -2126,8 +2134,9 @@ dependencies = [
 
 [[package]]
 name = "jsonrpsee-ws-client"
-version = "0.16.2"
-source = "git+https://github.com/paritytech/jsonrpsee.git?rev=118acc3#118acc39668c60cd90174d91743c725f59275388"
+version = "0.18.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "a64b2589680ba1ad7863f279cd2d5083c1dc0a7c0ea959d22924553050f8ab9f"
 dependencies = [
  "http",
  "jsonrpsee-client-transport",
@@ -2260,15 +2269,6 @@ checksum = "c0fbfc88337168279f2e9ae06e157cfed4efd3316e14dc96ed074d4f2e6c5952"
 dependencies = [
  "quote 1.0.27",
  "syn 1.0.109",
-]
-
-[[package]]
-name = "lru"
-version = "0.10.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "03f1160296536f10c833a82dca22267d5486734230d47bf00bf435885814ba1e"
-dependencies = [
- "hashbrown 0.13.2",
 ]
 
 [[package]]
@@ -2542,6 +2542,7 @@ version = "0.1.0"
 dependencies = [
  "crossbeam-channel",
  "displaydoc",
+ "jsonrpsee",
  "massa_execution_exports",
  "massa_hash 0.1.0",
  "massa_models",
@@ -2964,7 +2965,6 @@ name = "massa_protocol_worker"
 version = "0.1.0"
 dependencies = [
  "crossbeam",
- "lru",
  "massa_consensus_exports",
  "massa_hash 0.1.0",
  "massa_logging",
@@ -2982,6 +2982,7 @@ dependencies = [
  "peernet",
  "rand 0.8.5",
  "rayon",
+ "schnellru",
  "serde_json",
  "serial_test 2.0.0",
  "tempfile",
@@ -3570,7 +3571,7 @@ checksum = "19b17cddbe7ec3f8bc800887bab5e717348c95ea2ca0b1bf0837fb964dc67099"
 [[package]]
 name = "peernet"
 version = "0.1.0"
-source = "git+https://github.com/massalabs/PeerNet?branch=generic_peer_id#3425da8f0adfd2bf21577e99063810a3bf3f83ce"
+source = "git+https://github.com/massalabs/PeerNet?branch=debuig#80cc80b884ca270fb457b928b43d8550ec5652a8"
 dependencies = [
  "crossbeam",
  "enum_delegate",
@@ -4265,18 +4266,6 @@ dependencies = [
 
 [[package]]
 name = "rustls"
-version = "0.20.8"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "fff78fc74d175294f4e83b28343315ffcfb114b156f0185e9741cb5570f50e2f"
-dependencies = [
- "log",
- "ring",
- "sct",
- "webpki",
-]
-
-[[package]]
-name = "rustls"
 version = "0.21.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "c911ba11bc8433e811ce56fde130ccf32f5127cab0e0194e9c68c5a5b671791e"
@@ -4727,9 +4716,9 @@ checksum = "9e08d8363704e6c71fc928674353e6b7c23dcea9d82d7012c8faf2a3a025f8d0"
 
 [[package]]
 name = "stream_limiter"
-version = "1.2.0"
+version = "2.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c8c15323225cebaeebbf71fd83443d0cc7a7638a8d60b5f9f4108da65f755956"
+checksum = "92b85d49eee44700a8dc9a3e2d316e8e1f7d661d3eccd606ad9d02e9969e04bc"
 
 [[package]]
 name = "strsim"
@@ -5036,22 +5025,11 @@ dependencies = [
 
 [[package]]
 name = "tokio-rustls"
-version = "0.23.4"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c43ee83903113e03984cb9e5cebe6c04a5116269e900e3ddba8f068a62adda59"
-dependencies = [
- "rustls 0.20.8",
- "tokio",
- "webpki",
-]
-
-[[package]]
-name = "tokio-rustls"
 version = "0.24.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "e0d409377ff5b1e3ca6437aa86c1eb7d40c134bfec254e44c830defa92669db5"
 dependencies = [
- "rustls 0.21.1",
+ "rustls",
  "tokio",
 ]
 
@@ -5132,7 +5110,7 @@ dependencies = [
  "prost",
  "rustls-pemfile",
  "tokio",
- "tokio-rustls 0.24.0",
+ "tokio-rustls",
  "tokio-stream",
  "tower",
  "tower-layer",
@@ -5802,22 +5780,12 @@ dependencies = [
 ]
 
 [[package]]
-name = "webpki"
-version = "0.22.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f095d78192e208183081cc07bc5515ef55216397af48b873e5edcd72637fa1bd"
-dependencies = [
- "ring",
- "untrusted",
-]
-
-[[package]]
 name = "webpki-roots"
-version = "0.22.6"
+version = "0.23.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b6c71e40d7d2c34a5106301fb632274ca37242cd0c9d3e64dbece371a40a2d87"
+checksum = "aa54963694b65584e170cf5dc46aeb4dcaa5584e652ff5f3952e56d66aff0125"
 dependencies = [
- "webpki",
+ "rustls-webpki",
 ]
 
 [[package]]

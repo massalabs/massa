@@ -1,10 +1,9 @@
-use std::{num::NonZeroUsize, thread::JoinHandle};
+use std::thread::JoinHandle;
 
 use crossbeam::{
     channel::{Receiver, Sender},
     select,
 };
-use lru::LruCache;
 use massa_logging::massa_trace;
 use massa_models::{
     endorsement::SecureShareEndorsement,
@@ -17,6 +16,7 @@ use massa_protocol_exports::{ProtocolConfig, ProtocolError};
 use massa_serialization::{DeserializeError, Deserializer};
 use massa_storage::Storage;
 use massa_time::MassaTime;
+use schnellru::{ByLength, LruMap};
 use tracing::{debug, info, warn};
 
 use crate::{
@@ -47,7 +47,7 @@ pub struct RetrievalThread {
 
 impl RetrievalThread {
     fn run(&mut self) {
-        let mut endorsement_message_deserializer =
+        let endorsement_message_deserializer =
             EndorsementMessageDeserializer::new(EndorsementMessageDeserializerArgs {
                 thread_count: self.config.thread_count,
                 max_length_endorsements: self.config.max_endorsements_per_message,
@@ -57,8 +57,7 @@ impl RetrievalThread {
             select! {
                 recv(self.receiver) -> msg => {
                     match msg {
-                        Ok((peer_id, message_id, message)) => {
-                            endorsement_message_deserializer.set_message_id(message_id);
+                        Ok((peer_id, message)) => {
                             let (rest, message) = match endorsement_message_deserializer
                                 .deserialize::<DeserializeError>(&message) {
                                 Ok((rest, message)) => (rest, message),
@@ -140,7 +139,11 @@ impl RetrievalThread {
             // check endorsement signature if not already checked
             {
                 let read_cache = self.cache.read();
-                if !read_cache.checked_endorsements.contains(&endorsement_id) {
+                if read_cache
+                    .checked_endorsements
+                    .peek(&endorsement_id)
+                    .is_none()
+                {
                     new_endorsements.insert(endorsement_id, endorsement);
                 }
             }
@@ -160,24 +163,29 @@ impl RetrievalThread {
                 })
                 .collect::<Vec<_>>(),
         )?;
-        {
+        'write_cache: {
             let mut cache_write = self.cache.write();
             // add to verified signature cache
             for endorsement_id in endorsement_ids.iter() {
-                cache_write.checked_endorsements.put(*endorsement_id, ());
+                cache_write.checked_endorsements.insert(*endorsement_id, ());
             }
             // add to known endorsements for source node.
-            let endorsements = cache_write.endorsements_known_by_peer.get_or_insert_mut(
-                from_peer_id.clone(),
-                || {
-                    LruCache::new(
-                        NonZeroUsize::new(self.config.max_node_known_endorsements_size)
+            let Ok(endorsements) = cache_write
+                .endorsements_known_by_peer
+                .get_or_insert(from_peer_id.clone(), || {
+                    LruMap::new(ByLength::new(
+                        self.config
+                            .max_node_known_endorsements_size
+                            .try_into()
                             .expect("max_node_known_endorsements_size in config should be > 0"),
-                    )
-                },
-            );
+                    ))
+                })
+                .ok_or(()) else {
+                    warn!("endorsements_known_by_peer limit reached");
+                    break 'write_cache;
+                };
             for endorsement_id in endorsement_ids.iter() {
-                endorsements.put(*endorsement_id, ());
+                endorsements.insert(*endorsement_id, ());
             }
         }
 
@@ -220,7 +228,7 @@ impl RetrievalThread {
                     .collect()
             };
             endorsements_to_propagate.drop_endorsement_refs(&endorsements_to_not_propagate);
-            if let Err(err) = self.internal_sender.send(
+            if let Err(err) = self.internal_sender.try_send(
                 EndorsementHandlerPropagationCommand::PropagateEndorsements(
                     endorsements_to_propagate,
                 ),
@@ -238,7 +246,7 @@ impl RetrievalThread {
     fn ban_node(&mut self, peer_id: &PeerId) -> Result<(), ProtocolError> {
         massa_trace!("ban node from retrieval thread", { "peer_id": peer_id.to_string() });
         self.peer_cmd_sender
-            .send(PeerManagementCmd::Ban(vec![peer_id.clone()]))
+            .try_send(PeerManagementCmd::Ban(vec![peer_id.clone()]))
             .map_err(|err| ProtocolError::SendError(err.to_string()))
     }
 }

@@ -89,11 +89,11 @@ fn mock_bootstrap_manager(addr: SocketAddr, bootstrap_config: BootstrapConfig) -
         name: "MIP-0002".to_string(),
         version: 2,
         components: HashMap::from([(MipComponent::Address, 1)]),
-        start: MassaTime::from(5),
-        timeout: MassaTime::from(10),
-        activation_delay: MassaTime::from(4),
+        start: MassaTime::from_millis(5),
+        timeout: MassaTime::from_millis(10),
+        activation_delay: MassaTime::from_millis(4),
     };
-    let state_1 = MipState::new(MassaTime::from(3));
+    let state_1 = MipState::new(MassaTime::from_millis(3));
     let mip_store = MipStore::try_from(([(mi_1, state_1)], mip_stats_cfg.clone())).unwrap();
 
     // start bootstrap manager
@@ -215,11 +215,11 @@ fn test_bootstrap_server() {
         name: "MIP-0002".to_string(),
         version: 2,
         components: HashMap::from([(MipComponent::Address, 1)]),
-        start: MassaTime::from(5),
-        timeout: MassaTime::from(10),
-        activation_delay: MassaTime::from(4),
+        start: MassaTime::from_millis(5),
+        timeout: MassaTime::from_millis(10),
+        activation_delay: MassaTime::from_millis(4),
     };
-    let state_1 = MipState::new(MassaTime::from(3));
+    let state_1 = MipState::new(MassaTime::from_millis(3));
     let mip_store = MipStore::try_from(([(mi_1, state_1)], mip_stats_cfg.clone())).unwrap();
 
     // setup final state local config
@@ -408,7 +408,9 @@ fn test_bootstrap_server() {
         final_state_client_clone,
         mock_remote_connector,
         Version::from_str("TEST.1.10").unwrap(),
-        MassaTime::now().unwrap().saturating_sub(1000.into()),
+        MassaTime::now()
+            .unwrap()
+            .saturating_sub(MassaTime::from_millis(1000)),
         None,
         None,
         Arc::new((Mutex::new(false), Condvar::new())),

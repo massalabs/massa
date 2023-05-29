@@ -352,10 +352,6 @@ impl Output for CompactConfig {
             Style::Protocol.style(self.periods_per_cycle)
         );
         println!("\tBlock reward: {}", Style::Coins.style(self.block_reward));
-        println!(
-            "\tPeriods per cycle: {}",
-            Style::Protocol.style(self.periods_per_cycle)
-        );
         println!("\tRoll price: {}", Style::Coins.style(self.roll_price));
         println!(
             "\tMax block size (in bytes): {}",

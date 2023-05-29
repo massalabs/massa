@@ -2,12 +2,12 @@ use std::{
     collections::HashMap,
     net::{IpAddr, SocketAddr},
     ops::Bound::Included,
-    time::{SystemTime, UNIX_EPOCH},
 };
 
 use massa_hash::Hash;
 use massa_models::serialization::IpAddrDeserializer;
 use massa_signature::{KeyPair, Signature, SignatureDeserializer};
+use massa_time::MassaTime;
 use nom::{
     error::{context, ContextError, ParseError},
     multi::length_count,
@@ -29,7 +29,7 @@ pub struct Announcement {
     /// Listeners
     pub listeners: HashMap<SocketAddr, TransportType>,
     /// Timestamp
-    pub timestamp: u128,
+    pub timestamp: u64,
     /// Hash
     pub hash: Hash,
     /// serialized version
@@ -115,13 +115,31 @@ impl Deserializer<Announcement> for AnnouncementDeserializer {
                     }),
                 ),
                 context("Failed timestamp deserialization", |buffer: &'a [u8]| {
-                    let timestamp = u128::from_be_bytes(buffer[..16].try_into().map_err(|_| {
-                        nom::Err::Error(ParseError::from_error_kind(
-                            buffer,
-                            nom::error::ErrorKind::LengthValue,
-                        ))
-                    })?);
-                    Ok((&buffer[16..], timestamp))
+                    let timestamp = u64::from_be_bytes(
+                        buffer
+                            .get(..8)
+                            .ok_or(nom::Err::Error(ParseError::from_error_kind(
+                                buffer,
+                                nom::error::ErrorKind::LengthValue,
+                            )))?
+                            .try_into()
+                            .map_err(|_| {
+                                nom::Err::Error(ParseError::from_error_kind(
+                                    buffer,
+                                    nom::error::ErrorKind::LengthValue,
+                                ))
+                            })?,
+                    );
+
+                    Ok((
+                        buffer
+                            .get(8..)
+                            .ok_or(nom::Err::Error(ParseError::from_error_kind(
+                                buffer,
+                                nom::error::ErrorKind::LengthValue,
+                            )))?,
+                        timestamp,
+                    ))
                 }),
             )),
         )
@@ -186,10 +204,9 @@ impl Announcement {
             buf.extend_from_slice(&port_bytes);
             buf.push(*listener.1 as u8);
         }
-        let timestamp = SystemTime::now()
-            .duration_since(UNIX_EPOCH)
-            .expect("Time went backward")
-            .as_millis();
+        let timestamp = MassaTime::now()
+            .expect("Unable to get MassaTime::now")
+            .to_millis();
         buf.extend(timestamp.to_be_bytes());
         let hash = Hash::compute_from(&buf);
         Ok(Self {

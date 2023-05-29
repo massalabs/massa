@@ -6,13 +6,13 @@ use peernet::transports::TransportType;
 use rand::seq::SliceRandom;
 use std::cmp::Reverse;
 use std::collections::BTreeSet;
-use std::time::{Duration, SystemTime, UNIX_EPOCH};
+use std::time::Duration;
 use std::{collections::HashMap, net::SocketAddr, sync::Arc};
 use tracing::log::info;
 
 use super::announcement::Announcement;
 
-const THREE_DAYS_MS: u128 = 3 * 24 * 60 * 60 * 1_000_000;
+const THREE_DAYS_MS: u64 = 3 * 24 * 60 * 60 * 1_000_000;
 
 pub type InitialPeers = HashMap<PeerId, HashMap<SocketAddr, TransportType>>;
 
@@ -20,14 +20,14 @@ pub type InitialPeers = HashMap<PeerId, HashMap<SocketAddr, TransportType>>;
 pub struct PeerDB {
     pub peers: HashMap<PeerId, PeerInfo>,
     /// peers tested successfully last is the oldest value (only routable peers) //TODO: need to be pruned
-    pub index_by_newest: BTreeSet<(Reverse<u128>, PeerId)>,
+    pub index_by_newest: BTreeSet<(Reverse<u64>, PeerId)>,
     /// Tested addresses used to avoid testing the same address too often. //TODO: Need to be pruned
     pub tested_addresses: HashMap<SocketAddr, MassaTime>,
 }
 
 pub type SharedPeerDB = Arc<RwLock<PeerDB>>;
 
-pub type PeerMessageTuple = (PeerId, u64, Vec<u8>);
+pub type PeerMessageTuple = (PeerId, Vec<u8>);
 
 #[derive(Clone, Debug)]
 pub struct PeerInfo {
@@ -101,10 +101,9 @@ impl PeerDB {
         nb_peers: usize,
     ) -> Vec<(PeerId, HashMap<SocketAddr, TransportType>)> {
         //TODO: Add ourself
-        let now = SystemTime::now()
-            .duration_since(UNIX_EPOCH)
-            .expect("Time went backward")
-            .as_millis();
+        let now = MassaTime::now()
+            .expect("Unable to get MassaTime::now")
+            .to_millis();
 
         let min_time = now - THREE_DAYS_MS;
 

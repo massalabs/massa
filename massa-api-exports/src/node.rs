@@ -9,7 +9,7 @@ use std::collections::BTreeMap;
 use std::net::IpAddr;
 
 /// node status
-#[derive(Debug, Deserialize, Serialize)]
+#[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct NodeStatus {
     /// our node id
     pub node_id: NodeId,

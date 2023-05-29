@@ -57,8 +57,8 @@ impl ActiveConnectionsTrait for SharedMockActiveConnections {
     ) -> HashMap<PeerId, (std::net::SocketAddr, PeerConnectionType, Option<String>)> {
         self.read()
             .connections
-            .iter()
-            .map(|(peer_id, _)| {
+            .keys()
+            .map(|peer_id| {
                 (
                     peer_id.clone(),
                     (
@@ -82,7 +82,12 @@ impl ActiveConnectionsTrait for SharedMockActiveConnections {
         message: Message,
         _high_priority: bool,
     ) -> Result<(), massa_protocol_exports::ProtocolError> {
-        let _ = self.read().connections.get(peer_id).unwrap().send(message);
+        let _ = self
+            .read()
+            .connections
+            .get(peer_id)
+            .unwrap()
+            .try_send(message);
         Ok(())
     }
 
@@ -159,17 +164,10 @@ impl MockNetworkController {
         }
         let mut data = Vec::new();
         self.message_serializer
-            .serialize_id(&message, &mut data)
-            .map_err(|err| ProtocolError::GeneralProtocolError(err.to_string()))?;
-        self.message_serializer
             .serialize(&message, &mut data)
             .map_err(|err| ProtocolError::GeneralProtocolError(err.to_string()))?;
-        let (rest, id) = self
-            .messages_handler
-            .deserialize_id(&data, peer_id)
-            .map_err(|err| ProtocolError::GeneralProtocolError(err.to_string()))?;
         self.messages_handler
-            .handle(id, rest, peer_id)
+            .handle(&data, peer_id)
             .map_err(|err| ProtocolError::GeneralProtocolError(err.to_string()))?;
         Ok(())
     }
@@ -200,7 +198,6 @@ impl NetworkController for MockNetworkController {
         &mut self,
         _addr: std::net::SocketAddr,
         _timeout: std::time::Duration,
-        _out_connection_config: &peernet::transports::OutConnectionConfig,
     ) -> Result<(), massa_protocol_exports::ProtocolError> {
         Ok(())
     }

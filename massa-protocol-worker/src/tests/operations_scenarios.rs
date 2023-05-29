@@ -63,14 +63,16 @@ fn test_protocol_sends_valid_operations_it_receives_to_pool() {
                 .unwrap();
 
             //4. Check protocol sends operations to pool.
-            let received_operations =
-                match pool_event_receiver.wait_command(1000.into(), |evt| match evt {
+            let received_operations = match pool_event_receiver.wait_command(
+                MassaTime::from_millis(1000),
+                |evt| match evt {
                     evt @ MockPoolControllerMessage::AddOperations { .. } => Some(evt),
                     _ => None,
-                }) {
-                    Some(MockPoolControllerMessage::AddOperations { operations, .. }) => operations,
-                    _ => panic!("Unexpected or no protocol pool event."),
-                };
+                },
+            ) {
+                Some(MockPoolControllerMessage::AddOperations { operations, .. }) => operations,
+                _ => panic!("Unexpected or no protocol pool event."),
+            };
 
             let op_refs = received_operations.get_op_refs();
             // Check the event includes the expected operations.
@@ -125,12 +127,12 @@ fn test_protocol_does_not_send_invalid_operations_it_receives_to_pool() {
             network_controller
                 .send_from_peer(
                     &node_a_peer_id,
-                    Message::Operation(OperationMessage::Operations(vec![operation_1.clone()])),
+                    Message::Operation(OperationMessage::Operations(vec![operation_1])),
                 )
                 .unwrap();
 
             //5. Check protocol didn't sent operations to pool.
-            match pool_event_receiver.wait_command(1000.into(), |_| Some(())) {
+            match pool_event_receiver.wait_command(MassaTime::from_millis(1000), |_| Some(())) {
                 Some(_) => panic!("Unexpected or no protocol pool event."),
                 _ => (),
             }
@@ -185,7 +187,7 @@ fn test_protocol_propagates_operations_to_active_nodes() {
                 .unwrap();
 
             //4. Check protocol sends operations to pool.
-            pool_event_receiver.wait_command(1000.into(), |evt| match evt {
+            pool_event_receiver.wait_command(MassaTime::from_millis(1000), |evt| match evt {
                 MockPoolControllerMessage::AddOperations { .. } => {
                     Some(MockPoolControllerMessage::Any)
                 }
@@ -263,7 +265,7 @@ fn test_protocol_propagates_operations_received_over_the_network_only_to_nodes_t
                 .unwrap();
 
             //4. Check protocol sends operations to pool.
-            pool_event_receiver.wait_command(1000.into(), |evt| match evt {
+            pool_event_receiver.wait_command(MassaTime::from_millis(1000), |evt| match evt {
                 MockPoolControllerMessage::AddOperations { .. } => {
                     Some(MockPoolControllerMessage::Any)
                 }
@@ -337,7 +339,7 @@ fn test_protocol_batches_propagation_of_operations_received_over_the_network_and
                 .unwrap();
 
             //4. Check protocol sends operations to pool.
-            match pool_event_receiver.wait_command(1000.into(), |evt| match evt {
+            match pool_event_receiver.wait_command(MassaTime::from_millis(1000), |evt| match evt {
                 MockPoolControllerMessage::AddOperations { .. } => {
                     Some(MockPoolControllerMessage::Any)
                 }
@@ -610,7 +612,7 @@ fn test_protocol_propagates_operations_only_to_nodes_that_dont_know_about_it_ind
                     &node_c_peer_id,
                     Message::Block(Box::new(BlockMessage::ReplyForBlocks(vec![(
                         block.id,
-                        BlockInfoReply::Operations(vec![operation_1.clone()]),
+                        BlockInfoReply::Operations(vec![operation_1]),
                     )]))),
                 )
                 .unwrap();
