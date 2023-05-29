@@ -463,9 +463,12 @@ impl FinalState {
         let next_slot = cur_slot
             .get_next_slot(self.config.thread_count)
             .expect("overflow in execution state slot");
-        if slot != next_slot {
-            panic!("attempting to apply execution state changes at slot {} while the current slot is {}", slot, cur_slot);
-        }
+
+        assert_eq!(
+            slot, next_slot,
+            "attempting to apply execution state changes at slot {} while the current slot is {}",
+            slot, cur_slot
+        );
 
         let mut db_batch = DBBatch::new();
 
