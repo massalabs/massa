@@ -1624,6 +1624,22 @@
 <a href="#1624" id="1624">1624</a>
 <a href="#1625" id="1625">1625</a>
 <a href="#1626" id="1626">1626</a>
+<a href="#1627" id="1627">1627</a>
+<a href="#1628" id="1628">1628</a>
+<a href="#1629" id="1629">1629</a>
+<a href="#1630" id="1630">1630</a>
+<a href="#1631" id="1631">1631</a>
+<a href="#1632" id="1632">1632</a>
+<a href="#1633" id="1633">1633</a>
+<a href="#1634" id="1634">1634</a>
+<a href="#1635" id="1635">1635</a>
+<a href="#1636" id="1636">1636</a>
+<a href="#1637" id="1637">1637</a>
+<a href="#1638" id="1638">1638</a>
+<a href="#1639" id="1639">1639</a>
+<a href="#1640" id="1640">1640</a>
+<a href="#1641" id="1641">1641</a>
+<a href="#1642" id="1642">1642</a>
 </pre><pre class="rust"><code><span class="kw">use crate</span>::{
     CycleHistoryDeserializer, CycleHistorySerializer, CycleInfo, DeferredCreditsDeserializer,
     DeferredCreditsSerializer, PoSChanges, PosError, PosResult, ProductionStats,
@@ -2766,7 +2782,9 @@
         <span class="kw">let </span>prefix = <span class="self">self</span>.cycle_history_cycle_prefix(cycle);
 
         <span class="comment">// Roll count
-        </span><span class="kw">if let </span><span class="prelude-val">Some</span>(roll_count) = roll_count {
+        </span><span class="kw">if let </span><span class="prelude-val">Some</span>(<span class="number">0</span>) = roll_count {
+            db.delete_key(batch, <span class="macro">roll_count_key!</span>(prefix, address));
+        } <span class="kw">else if let </span><span class="prelude-val">Some</span>(roll_count) = roll_count {
             <span class="kw">let </span><span class="kw-2">mut </span>serialized_roll_count = Vec::new();
             <span class="self">self</span>.cycle_info_serializer
                 .cycle_info_serializer
@@ -3084,8 +3102,7 @@
     }
 }
 
-<span class="comment">// TODO_PR: ADD TESTS FOR APPLY_CHANGES?
-</span><span class="attr">#[test]
+<span class="attr">#[test]
 </span><span class="kw">fn </span>test_pos_final_state_hash_computation() {
     <span class="kw">use </span><span class="kw">crate</span>::test_exports::MockSelectorController;
     <span class="kw">use </span><span class="kw">crate</span>::DeferredCredits;
@@ -3097,6 +3114,7 @@
         POS_SAVED_CYCLES,
     };
     <span class="kw">use </span>massa_signature::KeyPair;
+    <span class="kw">use </span>std::collections::HashMap;
     <span class="kw">use </span>tempfile::TempDir;
 
     <span class="kw">let </span>pos_config = PoSConfig {
@@ -3166,7 +3184,7 @@
         },
     );
     <span class="kw">let </span>changes = PoSChanges {
-        seed_bits: <span class="macro">bitvec!</span>[u8, Lsb0; <span class="number">0</span>, <span class="number">10</span>],
+        seed_bits: <span class="macro">bitvec!</span>[u8, Lsb0; <span class="number">0</span>, <span class="number">1</span>],
         roll_changes: roll_changes.clone(),
         production_stats: production_stats.clone(),
         deferred_credits: DeferredCredits::new_with_hash(),
@@ -3190,7 +3208,7 @@
         },
     );
     <span class="kw">let </span>changes = PoSChanges {
-        seed_bits: <span class="macro">bitvec!</span>[u8, Lsb0; <span class="number">0</span>, <span class="number">20</span>],
+        seed_bits: <span class="macro">bitvec!</span>[u8, Lsb0; <span class="number">1</span>, <span class="number">0</span>],
         roll_changes: roll_changes.clone(),
         production_stats: production_stats.clone(),
         deferred_credits: DeferredCredits::new_with_hash(),
@@ -3213,8 +3231,9 @@
             block_failure_count: <span class="number">12</span>,
         },
     );
+
     <span class="kw">let </span>changes = PoSChanges {
-        seed_bits: <span class="macro">bitvec!</span>[u8, Lsb0; <span class="number">0</span>, <span class="number">30</span>],
+        seed_bits: <span class="macro">bitvec!</span>[u8, Lsb0; <span class="number">0</span>, <span class="number">1</span>],
         roll_changes,
         production_stats,
         deferred_credits: DeferredCredits::new_with_hash(),
@@ -3226,29 +3245,42 @@
         .unwrap();
     db.write().write_batch(batch, <span class="prelude-val">Some</span>(Slot::new(<span class="number">1</span>, <span class="number">0</span>)));
 
-    <span class="comment">// Previous asserts, that don&#39;t make sense anymore.
-    /*
-        // create a second cycle from same value and match hash
-        let cycle_b = CycleInfo::new_with_hash(
-            0,
-            cycle_a.complete,
-            cycle_a.roll_counts,
-            cycle_a.rng_seed,
-            cycle_a.production_stats,
-        );
-        assert_eq!(
-            cycle_a.roll_counts_hash, cycle_b.roll_counts_hash,
-            &quot;roll_counts_hash mismatch&quot;
-        );
-        assert_eq!(
-            cycle_a.production_stats_hash, cycle_b.production_stats_hash,
-            &quot;production_stats_hash mismatch&quot;
-        );
-        assert_eq!(
-            cycle_a.cycle_global_hash, cycle_b.cycle_global_hash,
-            &quot;global_hash mismatch&quot;
-        );
-    */
-</span>}
+    <span class="kw">let </span>cycles = pos_state.get_cycle_history_cycles();
+    <span class="macro">assert_eq!</span>(cycles.len(), <span class="number">1</span>, <span class="string">&quot;wrong number of cycles&quot;</span>);
+    <span class="macro">assert_eq!</span>(cycles[<span class="number">0</span>].<span class="number">0</span>, <span class="number">0</span>, <span class="string">&quot;cycle should be the 1st one&quot;</span>);
+    <span class="macro">assert_eq!</span>(cycles[<span class="number">0</span>].<span class="number">1</span>, <span class="bool-val">false</span>, <span class="string">&quot;cycle should not be complete yet&quot;</span>);
+
+    <span class="kw">let </span>cycle_info_a = pos_state.get_cycle_info(<span class="number">0</span>);
+
+    <span class="kw">let </span><span class="kw-2">mut </span>prod_stats = HashMap::default();
+    prod_stats.insert(
+        addr,
+        ProductionStats {
+            block_success_count: <span class="number">12</span>,
+            block_failure_count: <span class="number">18</span>,
+        },
+    );
+
+    <span class="kw">let </span>cycle_info_b = CycleInfo::new_with_hash(
+        <span class="number">0</span>,
+        <span class="bool-val">false</span>,
+        BTreeMap::default(),
+        <span class="macro">bitvec!</span>[u8, Lsb0; <span class="number">0</span>, <span class="number">0</span>, <span class="number">0</span>, <span class="number">1</span>, <span class="number">1</span>, <span class="number">0</span>, <span class="number">0</span>, <span class="number">1</span>],
+        prod_stats,
+    );
+
+    <span class="macro">assert_eq!</span>(
+        cycle_info_a.roll_counts_hash, cycle_info_b.roll_counts_hash,
+        <span class="string">&quot;roll_counts_hash mismatch&quot;
+    </span>);
+    <span class="macro">assert_eq!</span>(
+        cycle_info_a.production_stats_hash, cycle_info_b.production_stats_hash,
+        <span class="string">&quot;production_stats_hash mismatch&quot;
+    </span>);
+    <span class="macro">assert_eq!</span>(
+        cycle_info_a.cycle_global_hash, cycle_info_b.cycle_global_hash,
+        <span class="string">&quot;global_hash mismatch&quot;
+    </span>);
+}
 </code></pre></div>
 </section></main><div id="rustdoc-vars" data-root-path="../../" data-static-root-path="../../static.files/" data-current-crate="massa_pos_exports" data-themes="" data-resource-suffix="" data-rustdoc-version="1.69.0-nightly (d962ea578 2023-02-26)" data-search-js="search-14421e1532aead08.js" data-settings-js="settings-f0c5c39777a9a2f6.js" data-settings-css="settings-0bcba95ff279c1db.css" ></div></body></html>
