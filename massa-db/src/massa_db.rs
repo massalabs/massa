@@ -340,10 +340,9 @@ where
             .lock()
             .put_cf(handle_metadata, STATE_HASH_KEY, self.lsmtree.root());
 
-        let batch;
         {
             let mut current_batch_guard = self.current_batch.lock();
-            batch = WriteBatch::from_data(current_batch_guard.data());
+            let batch = WriteBatch::from_data(current_batch_guard.data());
             current_batch_guard.clear();
 
             self.db.write(batch).map_err(|e| {
