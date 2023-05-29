@@ -373,7 +373,7 @@ impl lsmtree::digest::Digest for SmtHasher {
     }
 
     fn new_with_prefix(_: impl AsRef<[u8]>) -> Self {
-        todo!()
+        unreachable!()
     }
 
     fn update(&mut self, data: impl AsRef<[u8]>) {
@@ -381,7 +381,7 @@ impl lsmtree::digest::Digest for SmtHasher {
     }
 
     fn chain_update(self, _: impl AsRef<[u8]>) -> Self {
-        todo!()
+        unreachable!()
     }
 
     fn finalize(self) -> lsmtree::digest::Output<Self> {
