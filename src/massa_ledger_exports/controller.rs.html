@@ -71,57 +71,14 @@
 <a href="#71" id="71">71</a>
 <a href="#72" id="72">72</a>
 <a href="#73" id="73">73</a>
-<a href="#74" id="74">74</a>
-<a href="#75" id="75">75</a>
-<a href="#76" id="76">76</a>
-<a href="#77" id="77">77</a>
-<a href="#78" id="78">78</a>
-<a href="#79" id="79">79</a>
-<a href="#80" id="80">80</a>
-<a href="#81" id="81">81</a>
-<a href="#82" id="82">82</a>
-<a href="#83" id="83">83</a>
-<a href="#84" id="84">84</a>
-<a href="#85" id="85">85</a>
-<a href="#86" id="86">86</a>
-<a href="#87" id="87">87</a>
-<a href="#88" id="88">88</a>
-<a href="#89" id="89">89</a>
-<a href="#90" id="90">90</a>
-<a href="#91" id="91">91</a>
-<a href="#92" id="92">92</a>
-<a href="#93" id="93">93</a>
-<a href="#94" id="94">94</a>
-<a href="#95" id="95">95</a>
-<a href="#96" id="96">96</a>
-<a href="#97" id="97">97</a>
-<a href="#98" id="98">98</a>
-<a href="#99" id="99">99</a>
-<a href="#100" id="100">100</a>
-<a href="#101" id="101">101</a>
-<a href="#102" id="102">102</a>
-<a href="#103" id="103">103</a>
-<a href="#104" id="104">104</a>
-</pre><pre class="rust"><code><span class="kw">use </span>massa_hash::Hash;
-<span class="kw">use </span>massa_models::{
-    address::Address, amount::Amount, bytecode::Bytecode, error::ModelsError, slot::Slot,
-    streaming_step::StreamingStep,
-};
+</pre><pre class="rust"><code><span class="kw">use </span>massa_models::{address::Address, amount::Amount, bytecode::Bytecode};
 <span class="kw">use </span>std::collections::BTreeSet;
 <span class="kw">use </span>std::fmt::Debug;
 
-<span class="kw">use crate</span>::{Key, LedgerChanges, LedgerError};
+<span class="kw">use crate</span>::{LedgerChanges, LedgerError};
+<span class="kw">use </span>::massa_db::DBBatch;
 
 <span class="kw">pub trait </span>LedgerController: Send + Sync + Debug {
-    <span class="doccomment">/// Allows applying `LedgerChanges` to the final ledger
-    /// * final_state_data should be non-None only if we are storing a final_state snapshot.
-    </span><span class="kw">fn </span>apply_changes(
-        <span class="kw-2">&amp;mut </span><span class="self">self</span>,
-        changes: LedgerChanges,
-        slot: Slot,
-        final_state_data: <span class="prelude-ty">Option</span>&lt;Vec&lt;u8&gt;&gt;,
-    );
-
     <span class="doccomment">/// Loads ledger from file
     </span><span class="kw">fn </span>load_initial_ledger(<span class="kw-2">&amp;mut </span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span>&lt;(), LedgerError&gt;;
 
@@ -159,34 +116,15 @@
     /// A `BTreeSet` of the datastore keys
     </span><span class="kw">fn </span>get_datastore_keys(<span class="kw-2">&amp;</span><span class="self">self</span>, addr: <span class="kw-2">&amp;</span>Address) -&gt; <span class="prelude-ty">Option</span>&lt;BTreeSet&lt;Vec&lt;u8&gt;&gt;&gt;;
 
-    <span class="doccomment">/// Get the current disk ledger hash
-    </span><span class="kw">fn </span>get_ledger_hash(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; Hash;
-
-    <span class="doccomment">/// Get a part of the ledger
-    /// Used for bootstrap
-    /// Return: Tuple with data and last key
-    </span><span class="kw">fn </span>get_ledger_part(
-        <span class="kw-2">&amp;</span><span class="self">self</span>,
-        last_key: StreamingStep&lt;Key&gt;,
-    ) -&gt; <span class="prelude-ty">Result</span>&lt;(Vec&lt;u8&gt;, StreamingStep&lt;Key&gt;), ModelsError&gt;;
-
-    <span class="doccomment">/// Set a part of the ledger
-    /// Used for bootstrap
-    /// Return: Last key inserted
-    </span><span class="kw">fn </span>set_ledger_part(<span class="kw-2">&amp;</span><span class="self">self</span>, data: Vec&lt;u8&gt;) -&gt; <span class="prelude-ty">Result</span>&lt;StreamingStep&lt;Key&gt;, ModelsError&gt;;
-
     <span class="doccomment">/// Reset the ledger
     ///
     /// USED FOR BOOTSTRAP ONLY
     </span><span class="kw">fn </span>reset(<span class="kw-2">&amp;mut </span><span class="self">self</span>);
 
-    <span class="kw">fn </span>set_initial_slot(<span class="kw-2">&amp;mut </span><span class="self">self</span>, slot: Slot);
+    <span class="kw">fn </span>apply_changes_to_batch(<span class="kw-2">&amp;mut </span><span class="self">self</span>, changes: LedgerChanges, ledger_batch: <span class="kw-2">&amp;mut </span>DBBatch);
 
-    <span class="kw">fn </span>get_slot(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span>&lt;Slot, ModelsError&gt;;
-
-    <span class="kw">fn </span>set_final_state_hash(<span class="kw-2">&amp;mut </span><span class="self">self</span>, data: Vec&lt;u8&gt;);
-
-    <span class="kw">fn </span>get_final_state(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span>&lt;Vec&lt;u8&gt;, ModelsError&gt;;
+    <span class="doccomment">/// Deserializes the key and value, useful after bootstrap
+    </span><span class="kw">fn </span>is_key_value_valid(<span class="kw-2">&amp;</span><span class="self">self</span>, serialized_key: <span class="kw-2">&amp;</span>[u8], serialized_value: <span class="kw-2">&amp;</span>[u8]) -&gt; bool;
 
     <span class="doccomment">/// Get every address and their corresponding balance.
     ///

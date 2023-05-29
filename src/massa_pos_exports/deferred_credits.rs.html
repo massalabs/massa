@@ -426,6 +426,14 @@
 <a href="#426" id="426">426</a>
 <a href="#427" id="427">427</a>
 <a href="#428" id="428">428</a>
+<a href="#429" id="429">429</a>
+<a href="#430" id="430">430</a>
+<a href="#431" id="431">431</a>
+<a href="#432" id="432">432</a>
+<a href="#433" id="433">433</a>
+<a href="#434" id="434">434</a>
+<a href="#435" id="435">435</a>
+<a href="#436" id="436">436</a>
 </pre><pre class="rust"><code><span class="kw">use </span>massa_hash::{Hash, HASH_SIZE_BYTES};
 <span class="kw">use </span>massa_models::{
     address::{Address, AddressDeserializer, AddressSerializer},
@@ -653,11 +661,13 @@
     }
 }
 
-<span class="doccomment">/// Serializer for `DeferredCredits`
+<span class="attr">#[derive(Clone)]
+#[allow(missing_docs)]
+</span><span class="doccomment">/// Serializer for `DeferredCredits`
 </span><span class="kw">pub struct </span>DeferredCreditsSerializer {
-    slot_ser: SlotSerializer,
-    u64_ser: U64VarIntSerializer,
-    credits_ser: CreditsSerializer,
+    <span class="kw">pub </span>slot_ser: SlotSerializer,
+    <span class="kw">pub </span>u64_ser: U64VarIntSerializer,
+    <span class="kw">pub </span>credits_ser: CreditsSerializer,
 }
 
 <span class="kw">impl </span>Default <span class="kw">for </span>DeferredCreditsSerializer {
@@ -697,11 +707,13 @@
     }
 }
 
-<span class="doccomment">/// Deserializer for `DeferredCredits`
+<span class="attr">#[derive(Clone)]
+#[allow(missing_docs)]
+</span><span class="doccomment">/// Deserializer for `DeferredCredits`
 </span><span class="kw">pub struct </span>DeferredCreditsDeserializer {
-    u64_deserializer: U64VarIntDeserializer,
-    slot_deserializer: SlotDeserializer,
-    credit_deserializer: CreditsDeserializer,
+    <span class="kw">pub </span>u64_deserializer: U64VarIntDeserializer,
+    <span class="kw">pub </span>slot_deserializer: SlotDeserializer,
+    <span class="kw">pub </span>credit_deserializer: CreditsDeserializer,
     enable_hash: bool,
 }
 
@@ -762,11 +774,13 @@
     }
 }
 
-<span class="doccomment">/// Serializer for `Credits`
+<span class="attr">#[derive(Clone)]
+#[allow(missing_docs)]
+</span><span class="doccomment">/// Serializer for `Credits`
 </span><span class="kw">pub struct </span>CreditsSerializer {
-    u64_ser: U64VarIntSerializer,
-    address_ser: AddressSerializer,
-    amount_ser: AmountSerializer,
+    <span class="kw">pub </span>u64_ser: U64VarIntSerializer,
+    <span class="kw">pub </span>address_ser: AddressSerializer,
+    <span class="kw">pub </span>amount_ser: AmountSerializer,
 }
 
 <span class="kw">impl </span>Default <span class="kw">for </span>CreditsSerializer {
@@ -805,11 +819,13 @@
     }
 }
 
-<span class="doccomment">/// Deserializer for a single credit
-</span><span class="kw">struct </span>CreditsDeserializer {
+<span class="attr">#[derive(Clone)]
+#[allow(missing_docs)]
+</span><span class="doccomment">/// Deserializer for a single credit
+</span><span class="kw">pub struct </span>CreditsDeserializer {
     u64_deserializer: U64VarIntDeserializer,
-    address_deserializer: AddressDeserializer,
-    amount_deserializer: AmountDeserializer,
+    <span class="kw">pub </span>address_deserializer: AddressDeserializer,
+    <span class="kw">pub </span>amount_deserializer: AmountDeserializer,
 }
 
 <span class="kw">impl </span>CreditsDeserializer {
