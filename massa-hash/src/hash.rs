@@ -385,7 +385,7 @@ impl lsmtree::digest::Digest for SmtHasher {
     }
 
     fn finalize(self) -> lsmtree::digest::Output<Self> {
-        let hash : [u8; HASH_SIZE_BYTES] = self.0.finalize().into();
+        let hash: [u8; HASH_SIZE_BYTES] = self.0.finalize().into();
         generic_array::GenericArray::from(hash)
     }
 
