@@ -1723,6 +1723,11 @@
 <a href="#1723" id="1723">1723</a>
 <a href="#1724" id="1724">1724</a>
 <a href="#1725" id="1725">1725</a>
+<a href="#1726" id="1726">1726</a>
+<a href="#1727" id="1727">1727</a>
+<a href="#1728" id="1728">1728</a>
+<a href="#1729" id="1729">1729</a>
+<a href="#1730" id="1730">1730</a>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="doccomment">//! This module deals with executing final and active slots, as well as read-only requests.
@@ -1833,12 +1838,7 @@
     ) -&gt; ExecutionState {
         <span class="comment">// Get the slot at the output of which the final state is attached.
         // This should be among the latest final slots.
-        </span><span class="kw">let </span>last_final_slot = final_state
-            .read()
-            .db
-            .read()
-            .get_change_id()
-            .expect(<span class="string">&quot;Critical error: Final state has no slot attached&quot;</span>);
+        </span><span class="kw">let </span>last_final_slot = final_state.read().slot;
 
         <span class="comment">// Create default active history
         </span><span class="kw">let </span>active_history: Arc&lt;RwLock&lt;ActiveHistory&gt;&gt; = Default::default();
@@ -2991,7 +2991,10 @@
                 // apply the cached output and return
                 </span><span class="self">self</span>.apply_final_execution_output(exec_out.clone());
 
-                <span class="macro">debug!</span>(<span class="string">&quot;execute_final_slot: found in cache, applied cache&quot;</span>);
+                <span class="comment">// update versioning stats
+                </span><span class="self">self</span>.update_versioning_stats(exec_target, slot);
+
+                <span class="macro">debug!</span>(<span class="string">&quot;execute_final_slot: found in cache, applied cache and updated versioning stats&quot;</span>);
 
                 <span class="comment">// Broadcast a final slot execution output to active channel subscribers.
                 </span><span class="kw">if </span><span class="self">self</span>.config.broadcast_enabled {
@@ -3287,8 +3290,15 @@
 
         <span class="kw">match </span>cycle.checked_sub(<span class="number">3</span>) {
             <span class="prelude-val">Some</span>(lookback_cycle) =&gt; {
+                <span class="kw">let </span>lookback_cycle_index =
+                    <span class="kw">match </span>final_state.pos_state.get_cycle_index(lookback_cycle) {
+                        <span class="prelude-val">Some</span>(v) =&gt; v,
+                        <span class="prelude-val">None </span>=&gt; Default::default(),
+                    };
                 <span class="comment">// get rolls
-                </span>final_state.pos_state.get_all_roll_counts(lookback_cycle)
+                </span>final_state.pos_state.cycle_history[lookback_cycle_index]
+                    .roll_counts
+                    .clone()
             }
             <span class="prelude-val">None </span>=&gt; final_state.pos_state.initial_rolls.clone(),
         }

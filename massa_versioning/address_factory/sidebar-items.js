@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"enum":["AddressArgs"],"struct":["AddressFactory"]};
+window.SIDEBAR_ITEMS = {"enum":["AddressArgs"],"static":["CALLSITE","META"],"struct":["AddressFactory"]};

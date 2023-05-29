@@ -1749,6 +1749,63 @@
 <a href="#1749" id="1749">1749</a>
 <a href="#1750" id="1750">1750</a>
 <a href="#1751" id="1751">1751</a>
+<a href="#1752" id="1752">1752</a>
+<a href="#1753" id="1753">1753</a>
+<a href="#1754" id="1754">1754</a>
+<a href="#1755" id="1755">1755</a>
+<a href="#1756" id="1756">1756</a>
+<a href="#1757" id="1757">1757</a>
+<a href="#1758" id="1758">1758</a>
+<a href="#1759" id="1759">1759</a>
+<a href="#1760" id="1760">1760</a>
+<a href="#1761" id="1761">1761</a>
+<a href="#1762" id="1762">1762</a>
+<a href="#1763" id="1763">1763</a>
+<a href="#1764" id="1764">1764</a>
+<a href="#1765" id="1765">1765</a>
+<a href="#1766" id="1766">1766</a>
+<a href="#1767" id="1767">1767</a>
+<a href="#1768" id="1768">1768</a>
+<a href="#1769" id="1769">1769</a>
+<a href="#1770" id="1770">1770</a>
+<a href="#1771" id="1771">1771</a>
+<a href="#1772" id="1772">1772</a>
+<a href="#1773" id="1773">1773</a>
+<a href="#1774" id="1774">1774</a>
+<a href="#1775" id="1775">1775</a>
+<a href="#1776" id="1776">1776</a>
+<a href="#1777" id="1777">1777</a>
+<a href="#1778" id="1778">1778</a>
+<a href="#1779" id="1779">1779</a>
+<a href="#1780" id="1780">1780</a>
+<a href="#1781" id="1781">1781</a>
+<a href="#1782" id="1782">1782</a>
+<a href="#1783" id="1783">1783</a>
+<a href="#1784" id="1784">1784</a>
+<a href="#1785" id="1785">1785</a>
+<a href="#1786" id="1786">1786</a>
+<a href="#1787" id="1787">1787</a>
+<a href="#1788" id="1788">1788</a>
+<a href="#1789" id="1789">1789</a>
+<a href="#1790" id="1790">1790</a>
+<a href="#1791" id="1791">1791</a>
+<a href="#1792" id="1792">1792</a>
+<a href="#1793" id="1793">1793</a>
+<a href="#1794" id="1794">1794</a>
+<a href="#1795" id="1795">1795</a>
+<a href="#1796" id="1796">1796</a>
+<a href="#1797" id="1797">1797</a>
+<a href="#1798" id="1798">1798</a>
+<a href="#1799" id="1799">1799</a>
+<a href="#1800" id="1800">1800</a>
+<a href="#1801" id="1801">1801</a>
+<a href="#1802" id="1802">1802</a>
+<a href="#1803" id="1803">1803</a>
+<a href="#1804" id="1804">1804</a>
+<a href="#1805" id="1805">1805</a>
+<a href="#1806" id="1806">1806</a>
+<a href="#1807" id="1807">1807</a>
+<a href="#1808" id="1808">1808</a>
 </pre><pre class="rust"><code><span class="kw">use </span>std::cmp::Ordering;
 <span class="kw">use </span>std::collections::{BTreeMap, BTreeSet, HashMap, VecDeque};
 <span class="kw">use </span>std::hash::{Hash, Hasher};
@@ -1759,7 +1816,7 @@
 <span class="kw">use </span>num_enum::{FromPrimitive, IntoPrimitive, TryFromPrimitive};
 <span class="kw">use </span>parking_lot::RwLock;
 <span class="kw">use </span>thiserror::Error;
-<span class="kw">use </span>tracing::warn;
+<span class="kw">use </span>tracing::{debug, warn};
 
 <span class="kw">use </span>massa_models::error::ModelsError;
 <span class="kw">use </span>massa_models::slot::Slot;
@@ -1955,6 +2012,7 @@
         }
 
         <span class="kw">if </span>input.threshold &gt;= VERSIONING_THRESHOLD_TRANSITION_ACCEPTED {
+            <span class="macro">debug!</span>(<span class="string">&quot;(VERSIONING LOG) transition accepted, locking in&quot;</span>);
             ComponentState::locked_in(input.now)
         } <span class="kw">else </span>{
             ComponentState::started(input.threshold)
@@ -1985,6 +2043,20 @@
     </span><span class="kw">pub fn </span>on_advance(<span class="self">self</span>, _input: Advance) -&gt; Failed {
         Failed {}
     }
+}
+
+<span class="doccomment">/// Error returned by `MipState::is_coherent_with`
+</span><span class="attr">#[derive(Error, Debug, PartialEq)]
+</span><span class="kw">pub enum </span>IsCoherentError {
+    <span class="comment">// State is not coherent with associated MipInfo, ex: State is active but MipInfo.start was not reach yet
+    </span><span class="attr">#[error(<span class="string">&quot;MipState history is empty&quot;</span>)]
+    </span>EmptyHistory,
+    <span class="attr">#[error(<span class="string">&quot;MipState is at state Error&quot;</span>)]
+    </span>AtError,
+    <span class="attr">#[error(<span class="string">&quot;History must start at state &#39;Defined&#39; and not {0:?}&quot;</span>)]
+    </span>InvalidHistory(ComponentStateTypeId),
+    <span class="attr">#[error(<span class="string">&quot;Non coherent state: {0:?} versus rebuilt state: {1:?}&quot;</span>)]
+    </span>NonCoherent(ComponentState, ComponentState),
 }
 
 <span class="doccomment">/// Wrapper of ComponentState (in order to keep state history)
@@ -2054,35 +2126,37 @@
         }
     }
 
-    <span class="doccomment">/// Given a corresponding VersioningInfo, check if state is coherent
+    <span class="doccomment">/// Given a corresponding MipInfo, check if state is coherent
     /// it is coherent
     ///   if state can be at this position (e.g. can it be at state &quot;Started&quot; according to given time range)
     ///   if history is coherent with current state
     /// Return false for state == ComponentState::Error
-    </span><span class="kw">pub fn </span>is_coherent_with(<span class="kw-2">&amp;</span><span class="self">self</span>, versioning_info: <span class="kw-2">&amp;</span>MipInfo) -&gt; bool {
-        <span class="comment">// TODO: rename versioning_info -&gt; mip_info
+    </span><span class="kw">pub fn </span>is_coherent_with(<span class="kw-2">&amp;</span><span class="self">self</span>, mip_info: <span class="kw-2">&amp;</span>MipInfo) -&gt; <span class="prelude-ty">Result</span>&lt;(), IsCoherentError&gt; {
+        <span class="comment">// Always return false for state Error or if history is empty
+        </span><span class="kw">if </span><span class="macro">matches!</span>(<span class="kw-2">&amp;</span><span class="self">self</span>.state, <span class="kw-2">&amp;</span>ComponentState::Error) {
+            <span class="kw">return </span><span class="prelude-val">Err</span>(IsCoherentError::AtError);
+        }
 
-        // Always return false for state Error or if history is empty
-        </span><span class="kw">if </span><span class="macro">matches!</span>(<span class="kw-2">&amp;</span><span class="self">self</span>.state, <span class="kw-2">&amp;</span>ComponentState::Error) || <span class="self">self</span>.history.is_empty() {
-            <span class="kw">return </span><span class="bool-val">false</span>;
+        <span class="kw">if </span><span class="self">self</span>.history.is_empty() {
+            <span class="kw">return </span><span class="prelude-val">Err</span>(IsCoherentError::EmptyHistory);
         }
 
         <span class="comment">// safe to unwrap (already tested if empty or not)
         </span><span class="kw">let </span>(initial_ts, initial_state_id) = <span class="self">self</span>.history.first_key_value().unwrap();
         <span class="kw">if </span><span class="kw-2">*</span>initial_state_id != ComponentStateTypeId::Defined {
             <span class="comment">// self.history does not start with Defined -&gt; (always) false
-            </span><span class="kw">return </span><span class="bool-val">false</span>;
+            </span><span class="kw">return </span><span class="prelude-val">Err</span>(IsCoherentError::InvalidHistory(initial_state_id.clone()));
         }
 
-        <span class="comment">// Build a new VersionStateHistory from initial state, replaying the whole history
+        <span class="comment">// Build a new MipStateHistory from initial state, replaying the whole history
         // but with given versioning info then compare
         </span><span class="kw">let </span><span class="kw-2">mut </span>vsh = MipState::new(initial_ts.now);
         <span class="kw">let </span><span class="kw-2">mut </span>advance_msg = Advance {
-            start_timestamp: versioning_info.start,
-            timeout: versioning_info.timeout,
+            start_timestamp: mip_info.start,
+            timeout: mip_info.timeout,
             threshold: Amount::zero(),
             now: initial_ts.now,
-            activation_delay: versioning_info.activation_delay,
+            activation_delay: mip_info.activation_delay,
         };
 
         <span class="kw">for </span>(adv, _state) <span class="kw">in </span><span class="self">self</span>.history.iter().skip(<span class="number">1</span>) {
@@ -2091,8 +2165,32 @@
             vsh.on_advance(<span class="kw-2">&amp;</span>advance_msg);
         }
 
-        vsh == <span class="kw-2">*</span><span class="self">self
-    </span>}
+        <span class="comment">// Advance state if both are at &#39;Started&#39; (to have the same threshold)
+        // Note: because in history we do not add entries for every threshold update
+        </span><span class="kw">if let </span>(
+            ComponentState::Started(Started { threshold }),
+            ComponentState::Started(Started {
+                threshold: threshold_2,
+            }),
+        ) = (vsh.state, <span class="self">self</span>.state)
+        {
+            <span class="kw">if </span>threshold_2 != threshold {
+                advance_msg.threshold = threshold_2;
+                <span class="comment">// Need to advance now timestamp otherwise it will be ignored
+                </span>advance_msg.now = advance_msg.now.saturating_add(MassaTime::from_millis(<span class="number">1</span>));
+                vsh.on_advance(<span class="kw-2">&amp;</span>advance_msg);
+            }
+        }
+
+        <span class="kw">if </span>vsh == <span class="kw-2">*</span><span class="self">self </span>{
+            <span class="prelude-val">Ok</span>(())
+        } <span class="kw">else </span>{
+            <span class="prelude-val">Err</span>(IsCoherentError::NonCoherent(
+                <span class="self">self</span>.state.clone(),
+                vsh.state.clone(),
+            ))
+        }
+    }
 
     <span class="doccomment">/// Query state at given timestamp
     /// TODO: add doc for start &amp; timeout parameter? why do we need them?
@@ -2329,12 +2427,12 @@
     }
 }
 
-<span class="doccomment">/// Error returned by
+<span class="doccomment">/// Error returned by `MipStoreRaw::update_with`
 </span><span class="attr">#[derive(Error, Debug, PartialEq)]
 </span><span class="kw">pub enum </span>UpdateWithError {
     <span class="comment">// State is not coherent with associated MipInfo, ex: State is active but MipInfo.start was not reach yet
-    </span><span class="attr">#[error(<span class="string">&quot;MipInfo {0:?} is not coherent with state: {1:?}&quot;</span>)]
-    </span>NonCoherent(MipInfo, MipState),
+    </span><span class="attr">#[error(<span class="string">&quot;MipInfo {0:#?} is not coherent with state: {1:#?}, error: {2}&quot;</span>)]
+    </span>NonCoherent(MipInfo, MipState, IsCoherentError),
     <span class="comment">// ex: State is already started but received state is only defined
     </span><span class="attr">#[error(<span class="string">&quot;For MipInfo {0:?}, trying to downgrade from state {1:?} to {2:?}&quot;</span>)]
     </span>Downgrade(MipInfo, ComponentState, ComponentState),
@@ -2383,11 +2481,12 @@
         <span class="kw">let </span><span class="kw-2">mut </span>has_error: <span class="prelude-ty">Option</span>&lt;UpdateWithError&gt; = <span class="prelude-val">None</span>;
 
         <span class="kw">for </span>(v_info, v_state) <span class="kw">in </span>store_raw.store.iter() {
-            <span class="kw">if </span>!v_state.is_coherent_with(v_info) {
+            <span class="kw">if let </span><span class="prelude-val">Err</span>(e) = v_state.is_coherent_with(v_info) {
                 <span class="comment">// As soon as we found one non coherent state we abort the merge
                 </span>has_error = <span class="prelude-val">Some</span>(UpdateWithError::NonCoherent(
                     v_info.clone(),
                     v_state.clone(),
+                    e,
                 ));
                 <span class="kw">break</span>;
             }
@@ -2486,9 +2585,13 @@
         slot_timestamp: MassaTime,
         network_versions: <span class="prelude-ty">Option</span>&lt;(u32, u32)&gt;,
     ) {
+        <span class="macro">debug!</span>(
+            <span class="string">&quot;(VERSIONING LOG) new input versions are (c, a) = {:?}&quot;</span>,
+            network_versions
+        );
         <span class="kw">if let </span><span class="prelude-val">Some</span>((_current_network_version, announced_network_version)) = network_versions {
             <span class="kw">let </span>removed_version_ = <span class="kw">match </span><span class="self">self</span>.stats.latest_announcements.len() {
-                n <span class="kw">if </span>n &gt; <span class="self">self</span>.stats.config.block_count_considered =&gt; {
+                n <span class="kw">if </span>n &gt;= <span class="self">self</span>.stats.config.block_count_considered =&gt; {
                     <span class="self">self</span>.stats.latest_announcements.pop_front()
                 }
                 <span class="kw">_ </span>=&gt; <span class="prelude-val">None</span>,
@@ -2540,6 +2643,8 @@
             <span class="kw">let </span>vote_ratio_ = <span class="number">100.0 </span>* network_version_count / block_count_considered;
 
             <span class="kw">let </span>vote_ratio = Amount::from_mantissa_scale(vote_ratio_.round() <span class="kw">as </span>u64, <span class="number">0</span>);
+
+            <span class="macro">debug!</span>(<span class="string">&quot;(VERSIONING LOG) vote_ration = {} (from version counter = {} and blocks considered = {})&quot;</span>, vote_ratio, network_version_count, block_count_considered);
 
             <span class="kw">let </span>advance_msg = Advance {
                 start_timestamp: mi.start,
@@ -2726,6 +2831,7 @@
     <span class="kw">use </span>std::str::FromStr;
 
     <span class="kw">use </span>chrono::{Days, NaiveDate, NaiveDateTime};
+    <span class="kw">use </span>more_asserts::assert_le;
 
     <span class="kw">use </span><span class="kw">crate</span>::test_helpers::versioning_helpers::advance_state_until;
 
@@ -2814,8 +2920,11 @@
         <span class="kw">let </span><span class="kw-2">mut </span>state: ComponentState = ComponentState::started(Default::default());
 
         <span class="kw">let </span>now = mi.start;
-        <span class="kw">let </span>threshold_too_low = Amount::from_str(<span class="string">&quot;74.9&quot;</span>).unwrap();
-        <span class="kw">let </span>threshold_ok = Amount::from_str(<span class="string">&quot;82.42&quot;</span>).unwrap();
+        <span class="kw">let </span>threshold_too_low = VERSIONING_THRESHOLD_TRANSITION_ACCEPTED
+            .saturating_sub(Amount::from_str(<span class="string">&quot;0.1&quot;</span>).unwrap());
+        <span class="kw">let </span>threshold_ok = VERSIONING_THRESHOLD_TRANSITION_ACCEPTED
+            .saturating_add(Amount::from_str(<span class="string">&quot;5.42&quot;</span>).unwrap());
+        <span class="macro">assert_le!</span>(threshold_ok, Amount::from_str(<span class="string">&quot;100.0&quot;</span>).unwrap());
         <span class="kw">let </span><span class="kw-2">mut </span>advance_msg = Advance::from((<span class="kw-2">&amp;</span>mi, <span class="kw-2">&amp;</span>threshold_too_low, <span class="kw-2">&amp;</span>now));
 
         state = state.on_advance(advance_msg.clone());
@@ -3047,18 +3156,18 @@
             history: Default::default(),
         };
         <span class="comment">// At state Error -&gt; (always) false
-        </span><span class="macro">assert_eq!</span>(vsh.is_coherent_with(<span class="kw-2">&amp;</span>vi_1), <span class="bool-val">false</span>);
+        </span><span class="macro">assert_eq!</span>(vsh.is_coherent_with(<span class="kw-2">&amp;</span>vi_1), <span class="prelude-val">Err</span>(IsCoherentError::AtError));
 
         <span class="kw">let </span>vsh = MipState {
             state: ComponentState::defined(),
             history: Default::default(),
         };
         <span class="comment">// At state Defined but no history -&gt; false
-        </span><span class="macro">assert_eq!</span>(vsh.is_coherent_with(<span class="kw-2">&amp;</span>vi_1), <span class="bool-val">false</span>);
+        </span><span class="macro">assert_eq!</span>(vsh.is_coherent_with(<span class="kw-2">&amp;</span>vi_1).is_ok(), <span class="bool-val">false</span>);
 
         <span class="kw">let </span><span class="kw-2">mut </span>vsh = MipState::new(MassaTime::from_millis(<span class="number">1</span>));
         <span class="comment">// At state Defined at time 1 -&gt; true, given vi_1 @ time 1
-        </span><span class="macro">assert_eq!</span>(vsh.is_coherent_with(<span class="kw-2">&amp;</span>vi_1), <span class="bool-val">true</span>);
+        </span><span class="macro">assert_eq!</span>(vsh.is_coherent_with(<span class="kw-2">&amp;</span>vi_1).is_ok(), <span class="bool-val">true</span>);
         <span class="comment">// At state Defined at time 1 -&gt; false given vi_1 @ time 3 (state should be Started)
         // assert_eq!(vsh.is_coherent_with(&amp;vi_1, MassaTime::from_millis(3)), false);
 
@@ -3066,12 +3175,18 @@
         </span><span class="kw">let </span>now = MassaTime::from_millis(<span class="number">3</span>);
         <span class="kw">let </span>adv = Advance::from((<span class="kw-2">&amp;</span>vi_1, <span class="kw-2">&amp;</span>Amount::zero(), <span class="kw-2">&amp;</span>now));
         vsh.on_advance(<span class="kw-2">&amp;</span>adv);
+        <span class="kw">let </span>now = MassaTime::from(<span class="number">4</span>);
+        <span class="kw">let </span>adv = Advance::from((<span class="kw-2">&amp;</span>vi_1, <span class="kw-2">&amp;</span>Amount::from_str(<span class="string">&quot;14.42&quot;</span>).unwrap(), <span class="kw-2">&amp;</span>now));
+        vsh.on_advance(<span class="kw-2">&amp;</span>adv);
 
         <span class="comment">// At state Started at time now -&gt; true
-        </span><span class="macro">assert_eq!</span>(vsh.state, ComponentState::started(Amount::zero()));
-        <span class="macro">assert_eq!</span>(vsh.is_coherent_with(<span class="kw-2">&amp;</span>vi_1), <span class="bool-val">true</span>);
+        </span><span class="macro">assert_eq!</span>(
+            vsh.state,
+            ComponentState::started(Amount::from_str(<span class="string">&quot;14.42&quot;</span>).unwrap())
+        );
+        <span class="macro">assert_eq!</span>(vsh.is_coherent_with(<span class="kw-2">&amp;</span>vi_1).is_ok(), <span class="bool-val">true</span>);
         <span class="comment">// Now with another versioning info
-        </span><span class="macro">assert_eq!</span>(vsh.is_coherent_with(<span class="kw-2">&amp;</span>vi_2), <span class="bool-val">false</span>);
+        </span><span class="macro">assert_eq!</span>(vsh.is_coherent_with(<span class="kw-2">&amp;</span>vi_2).is_ok(), <span class="bool-val">false</span>);
 
         <span class="comment">// Advance to LockedIn
         </span><span class="kw">let </span>now = MassaTime::from_millis(<span class="number">4</span>);
@@ -3080,8 +3195,7 @@
 
         <span class="comment">// At state LockedIn at time now -&gt; true
         </span><span class="macro">assert_eq!</span>(vsh.state, ComponentState::locked_in(now));
-        <span class="macro">assert_eq!</span>(vsh.is_coherent_with(<span class="kw-2">&amp;</span>vi_1), <span class="bool-val">true</span>);
-        <span class="macro">assert_eq!</span>(vsh.is_coherent_with(<span class="kw-2">&amp;</span>vi_1), <span class="bool-val">true</span>);
+        <span class="macro">assert_eq!</span>(vsh.is_coherent_with(<span class="kw-2">&amp;</span>vi_1).is_ok(), <span class="bool-val">true</span>);
 
         <span class="comment">// edge cases
         // TODO: history all good but does not start with Defined, start with Started

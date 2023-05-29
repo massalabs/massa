@@ -56,6 +56,11 @@
 <a href="#56" id="56">56</a>
 <a href="#57" id="57">57</a>
 <a href="#58" id="58">58</a>
+<a href="#59" id="59">59</a>
+<a href="#60" id="60">60</a>
+<a href="#61" id="61">61</a>
+<a href="#62" id="62">62</a>
+<a href="#63" id="63">63</a>
 </pre><pre class="rust"><code><span class="kw">use crate</span>::{
     versioning::{MipComponent, MipStore},
     versioning_factory::{FactoryError, FactoryStrategy, VersioningFactory},
@@ -64,6 +69,7 @@
 <span class="kw">use </span>massa_models::address::{
     Address, SCAddress, SCAddressV0, SCAddressV1, UserAddress, UserAddressV0, UserAddressV1,
 };
+<span class="kw">use </span>tracing::debug;
 
 <span class="attr">#[derive(Clone)]
 </span><span class="kw">pub struct </span>AddressFactory {
@@ -104,9 +110,13 @@
             },
             <span class="number">1 </span>=&gt; <span class="kw">match </span>args {
                 AddressArgs::User { hash } =&gt; {
+                    <span class="macro">debug!</span>(<span class="string">&quot;(FACTORY LOG) UserAddressV1 created&quot;</span>);
                     Address::User(UserAddress::UserAddressV1(UserAddressV1(<span class="kw-2">*</span>hash)))
                 }
-                AddressArgs::SC { hash } =&gt; Address::SC(SCAddress::SCAddressV1(SCAddressV1(<span class="kw-2">*</span>hash))),
+                AddressArgs::SC { hash } =&gt; {
+                    <span class="macro">debug!</span>(<span class="string">&quot;(FACTORY LOG) SCAddressV1 created&quot;</span>);
+                    Address::SC(SCAddress::SCAddressV1(SCAddressV1(<span class="kw-2">*</span>hash)))
+                }
             },
             v =&gt; <span class="kw">return </span><span class="prelude-val">Err</span>(FactoryError::UnimplementedVersion(v)),
         };
