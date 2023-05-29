@@ -15,7 +15,7 @@ mod tests {
     };
     use massa_hash::Hash;
     use massa_models::config::{
-        LEDGER_ENTRY_BASE_SIZE, LEDGER_ENTRY_DATASTORE_BASE_SIZE, MIP_STORE_STATS_BLOCK_CONSIDERED,
+        LEDGER_ENTRY_BASE_COST, LEDGER_ENTRY_DATASTORE_BASE_SIZE, MIP_STORE_STATS_BLOCK_CONSIDERED,
         MIP_STORE_STATS_COUNTERS_MAX,
     };
     use massa_models::prehash::PreHashMap;
@@ -1234,12 +1234,7 @@ mod tests {
             Amount::from_str("100")
                 .unwrap()
                 // Storage cost base
-                .saturating_sub(
-                    exec_cfg
-                        .storage_costs_constants
-                        .ledger_cost_per_byte
-                        .saturating_mul_u64(LEDGER_ENTRY_BASE_SIZE as u64)
-                )
+                .saturating_sub(LEDGER_ENTRY_BASE_COST)
         );
         // stop the execution controller
         manager.stop();
