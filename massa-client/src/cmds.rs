@@ -807,7 +807,7 @@ impl Command {
                 } else {
                     println!("Generated {} address and added it to the wallet", ad);
                     println!(
-                        "Type `node_start_staking <address>` to start staking with this address.\n"
+                        "Type `wallet_info` to show wallet info (keys, addresses, balances ...) and/or `node_add_staking_secret_keys <your secret key>` to start staking with this key.\n"
                     );
                     Ok(Box::new(()))
                 }
