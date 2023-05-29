@@ -104,7 +104,7 @@ pub const LEDGER_COST_PER_BYTE: Amount = Amount::from_mantissa_scale(25, 5);
 /// Address size in bytes
 pub const ADDRESS_SIZE_BYTES: usize = 32;
 /// Cost for a base entry default 0.01 MASSA
-pub const LEDGER_ENTRY_BASE_COST: usize = Amount::from_mantissa_scale(1, 2);
+pub const LEDGER_ENTRY_BASE_COST: Amount = Amount::from_mantissa_scale(1, 2);
 /// Cost for a base entry datastore 10 bytes constant to avoid paying more for longer keys
 pub const LEDGER_ENTRY_DATASTORE_BASE_SIZE: usize = 10;
 /// Time between the periods in the same thread.
