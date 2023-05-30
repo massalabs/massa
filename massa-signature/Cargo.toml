@@ -14,7 +14,8 @@ serde = { version = "1.0", features = ["derive"] }
 thiserror = "1.0"
 nom = "=7.1"
 rand = "0.7"
-transition = { git = "https://github.com/massalabs/transition.git" }
+# TODO tag transition crate with a version number
+transition = { git = "https://github.com/massalabs/transition.git", rev = "93fa3bf82f9f5ff421c78536879b7fd1b948ca75" }
 
 # custom modules
 massa_hash = { path = "../massa-hash" }

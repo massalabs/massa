@@ -22,7 +22,7 @@ massa_signature = { path = "../massa-signature" }
 massa_proto = { path = "../massa-proto" }
 
 [dev-dependencies]
-chrono = "0.4"
+chrono = "=0.4"
 more-asserts = "0.3"
 
 [features]
