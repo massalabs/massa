@@ -169,32 +169,7 @@
 <a href="#169" id="169">169</a>
 <a href="#170" id="170">170</a>
 <a href="#171" id="171">171</a>
-<a href="#172" id="172">172</a>
-<a href="#173" id="173">173</a>
-<a href="#174" id="174">174</a>
-<a href="#175" id="175">175</a>
-<a href="#176" id="176">176</a>
-<a href="#177" id="177">177</a>
-<a href="#178" id="178">178</a>
-<a href="#179" id="179">179</a>
-<a href="#180" id="180">180</a>
-<a href="#181" id="181">181</a>
-<a href="#182" id="182">182</a>
-<a href="#183" id="183">183</a>
-<a href="#184" id="184">184</a>
-<a href="#185" id="185">185</a>
-<a href="#186" id="186">186</a>
-<a href="#187" id="187">187</a>
-<a href="#188" id="188">188</a>
-<a href="#189" id="189">189</a>
-<a href="#190" id="190">190</a>
-<a href="#191" id="191">191</a>
-<a href="#192" id="192">192</a>
-<a href="#193" id="193">193</a>
-<a href="#194" id="194">194</a>
-<a href="#195" id="195">195</a>
-<a href="#196" id="196">196</a>
-</pre><pre class="rust"><code><span class="kw">use </span>std::{collections::VecDeque, thread::JoinHandle, time::Instant};
+</pre><pre class="rust"><code><span class="kw">use </span>std::{collections::VecDeque, thread::JoinHandle};
 
 <span class="kw">use </span>crossbeam::channel::{Receiver, Sender};
 <span class="kw">use </span>massa_logging::massa_trace;
@@ -202,7 +177,6 @@
 <span class="kw">use </span>massa_protocol_exports::PeerId;
 <span class="kw">use </span>massa_protocol_exports::{ProtocolConfig, ProtocolError};
 <span class="kw">use </span>massa_storage::Storage;
-<span class="kw">use </span>schnellru::{ByLength, LruMap};
 <span class="kw">use </span>tracing::{debug, info, warn};
 
 <span class="kw">use crate</span>::{
@@ -260,38 +234,14 @@
                                     <span class="kw">continue</span>;
                                 }
                             };
-
-                            <span class="comment">// Clean shared cache if peers do not exist anymore
-                            </span>{
-                                <span class="kw">let </span><span class="kw-2">mut </span>cache_write = <span class="self">self</span>.cache.write();
-                                <span class="kw">let </span>peers: Vec&lt;PeerId&gt; = cache_write
-                                    .blocks_known_by_peer
-                                    .iter()
-                                    .map(|(id, <span class="kw">_</span>)| id.clone())
-                                    .collect();
-                                <span class="kw">let </span>peers_connected =
-                                    <span class="self">self</span>.active_connections.get_peer_ids_connected();
-                                <span class="kw">for </span>peer_id <span class="kw">in </span>peers {
-                                    <span class="kw">if </span>!peers_connected.contains(<span class="kw-2">&amp;</span>peer_id) {
-                                        cache_write.blocks_known_by_peer.remove(<span class="kw-2">&amp;</span>peer_id);
-                                    }
-                                }
-                                <span class="kw">for </span>peer_id <span class="kw">in </span>peers_connected {
-                                    <span class="kw">if </span>cache_write.blocks_known_by_peer.peek(<span class="kw-2">&amp;</span>peer_id).is_none() {
-                                        <span class="comment">//TODO: Change to detect the connection before
-                                        </span>cache_write.blocks_known_by_peer.insert(
-                                            peer_id,
-                                            (
-                                                LruMap::new(
-                                                    ByLength::new(<span class="self">self</span>.config.max_node_known_blocks_size.try_into()
-                                                        .expect(<span class="string">&quot;max_node_known_blocks_size in config must be &gt; 0&quot;</span>)),
-                                                ),
-                                                Instant::now(),
-                                            ),
-                                        );
-                                    }
-                                }
-                            }
+                            <span class="kw">let </span>peers_connected = <span class="self">self</span>.active_connections.get_peer_ids_connected();
+                            <span class="self">self</span>.cache.write().update_cache(
+                                peers_connected,
+                                <span class="self">self</span>.config
+                                    .max_node_known_blocks_size
+                                    .try_into()
+                                    .expect(<span class="string">&quot;max_node_known_blocks_size is too big&quot;</span>),
+                            );
                             {
                                 <span class="kw">let </span>cache_read = <span class="self">self</span>.cache.read();
                                 <span class="kw">for </span>(peer_id, (blocks_known, <span class="kw">_</span>)) <span class="kw">in
