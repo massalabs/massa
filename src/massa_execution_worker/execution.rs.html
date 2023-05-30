@@ -1725,6 +1725,9 @@
 <a href="#1725" id="1725">1725</a>
 <a href="#1726" id="1726">1726</a>
 <a href="#1727" id="1727">1727</a>
+<a href="#1728" id="1728">1728</a>
+<a href="#1729" id="1729">1729</a>
+<a href="#1730" id="1730">1730</a>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="doccomment">//! This module deals with executing final and active slots, as well as read-only requests.
@@ -2988,7 +2991,10 @@
                 // apply the cached output and return
                 </span><span class="self">self</span>.apply_final_execution_output(exec_out.clone());
 
-                <span class="macro">debug!</span>(<span class="string">&quot;execute_final_slot: found in cache, applied cache&quot;</span>);
+                <span class="comment">// update versioning stats
+                </span><span class="self">self</span>.update_versioning_stats(exec_target, slot);
+
+                <span class="macro">debug!</span>(<span class="string">&quot;execute_final_slot: found in cache, applied cache and updated versioning stats&quot;</span>);
 
                 <span class="comment">// Broadcast a final slot execution output to active channel subscribers.
                 </span><span class="kw">if </span><span class="self">self</span>.config.broadcast_enabled {
