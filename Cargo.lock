@@ -2380,7 +2380,7 @@ dependencies = [
 [[package]]
 name = "massa-sc-runtime"
 version = "0.10.0"
-source = "git+https://github.com/massalabs/massa-sc-runtime?branch=testnet_23#37f610ed6cd29d7889b4112620542daf0d87d423"
+source = "git+https://github.com/massalabs/massa-sc-runtime?branch=main#d9355ecdab96bb04fe588b79c511e93e32163366"
 dependencies = [
  "anyhow",
  "as-ffi-bindings",
