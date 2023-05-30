@@ -74,16 +74,22 @@ impl std::fmt::Debug for Hash {
     }
 }
 
-/// We use bitwise XOR for hashes on some structures.
-/// However, we no longer use this for the final state hash, as we use lsmtree's Sparse Merkle Tree instead.
+/// Previously, the final state hash was a XOR of various hashses.
+/// However, this is vulnerable: https://github.com/massalabs/massa/discussions/3852
+/// As a result, we use lsmtree's Sparse Merkle Tree instead, which is not vulnerable to this.
+/// We still use bitwise XOR for fingerprinting on some structures.
+/// TODO: Remove every usage if this?
 impl BitXorAssign for Hash {
     fn bitxor_assign(&mut self, rhs: Self) {
         *self = *self ^ rhs;
     }
 }
 
-/// We use bitwise XOR for hashes on some structures.
-/// However, we no longer use this for the final state hash, as we use lsmtree's Sparse Merkle Tree instead.
+/// Previously, the final state hash was a XOR of various hashses.
+/// However, this is vulnerable: https://github.com/massalabs/massa/discussions/3852
+/// As a result, we use lsmtree's Sparse Merkle Tree instead, which is not vulnerable to this.
+/// We still use bitwise XOR for fingerprinting on some structures.
+/// TODO: Remove every usage if this?
 impl BitXor for Hash {
     type Output = Self;
 
@@ -94,7 +100,7 @@ impl BitXor for Hash {
             .zip(other.to_bytes())
             .map(|(x, y)| x ^ y)
             .collect();
-        // unwrap won't fail because of the intial byte arrays size
+        // unwrap won't fail because of the initial byte arrays size
         let input_bytes: [u8; HASH_SIZE_BYTES] = xored_bytes.try_into().unwrap();
         Hash::from_bytes(&input_bytes)
     }
