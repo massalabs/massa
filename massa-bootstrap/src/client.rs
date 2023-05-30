@@ -1,5 +1,7 @@
+use chrono::{TimeZone, Utc};
 use humantime::format_duration;
 use massa_db::DBBatch;
+use std::collections::BTreeMap;
 use std::{
     collections::HashSet,
     io,
@@ -13,6 +15,7 @@ use massa_logging::massa_trace;
 use massa_models::{node::NodeId, slot::Slot, streaming_step::StreamingStep, version::Version};
 use massa_signature::PublicKey;
 use massa_time::MassaTime;
+use massa_versioning::versioning::{ComponentStateTypeId, MipInfo, MipState};
 use parking_lot::RwLock;
 use rand::{
     prelude::{SliceRandom, StdRng},
@@ -154,10 +157,12 @@ fn stream_final_state_and_consensus(
                     // Update MIP store by reading from the disk
                     let mut guard = global_bootstrap_state.final_state.write();
                     let db = guard.db.clone();
-                    guard
+                    let (updated, added) = guard
                         .mip_store
                         .extend_from_db(db)
                         .map_err(|e| BootstrapError::from(FinalStateError::from(e)))?;
+
+                    warn_user_about_versioning_updates(updated, added);
 
                     return Ok(());
                 }
@@ -557,4 +562,72 @@ fn get_bootstrap_list_iter(
     let mut unique_node_ids: HashSet<NodeId> = HashSet::new();
     filtered_bootstrap_list.retain(|e| unique_node_ids.insert(e.1));
     Ok(filtered_bootstrap_list)
+}
+
+fn warn_user_about_versioning_updates(updated: Vec<MipInfo>, added: BTreeMap<MipInfo, MipState>) {
+    if !added.is_empty() {
+        for (mip_info, mip_state) in added.iter() {
+            let now = MassaTime::now().expect("Cannot get current time");
+            match mip_state.state_at(now, mip_info.start, mip_info.timeout) {
+                Ok(st_id) => {
+                    if st_id == ComponentStateTypeId::LockedIn {
+                        // A new MipInfo @ state locked_in - we need to urge the user to update
+                        warn!(
+                            "A new MIP has been received: {}, version: {}",
+                            mip_info.name, mip_info.version
+                        );
+                        // Safe to unwrap here (only panic if not LockedIn)
+                        let activation_at = mip_state.activation_at(mip_info).unwrap();
+                        let dt = Utc
+                            .timestamp_opt(activation_at.to_duration().as_secs() as i64, 0)
+                            .unwrap();
+                        warn!("Please update your Massa node before: {}", dt.to_rfc2822());
+                    } else if st_id == ComponentStateTypeId::Active {
+                        // A new MipInfo @ state active - we are not compatible anymore
+                        warn!(
+                            "A new MIP has been received {:?}, version: {:?}",
+                            mip_info.name, mip_info.version
+                        );
+                        panic!("Please update your Massa node to support it");
+                    } else if st_id == ComponentStateTypeId::Defined {
+                        // a new MipInfo @ state defined or started (or failed / error)
+                        // warn the user to update its node
+                        warn!(
+                            "A new MIP has been received: {}, version: {}",
+                            mip_info.name, mip_info.version
+                        );
+                        debug!("MIP state: {:?}", mip_state);
+                        let dt_start = Utc
+                            .timestamp_opt(mip_info.start.to_duration().as_secs() as i64, 0)
+                            .unwrap();
+                        let dt_timeout = Utc
+                            .timestamp_opt(mip_info.timeout.to_duration().as_secs() as i64, 0)
+                            .unwrap();
+                        warn!("Please update your node between: {} and {} if you want to support this update",
+                                dt_start.to_rfc2822(),
+                                dt_timeout.to_rfc2822()
+                            );
+                    } else {
+                        // a new MipInfo @ state defined or started (or failed / error)
+                        // warn the user to update its node
+                        warn!(
+                            "A new MIP has been received: {}, version: {}",
+                            mip_info.name, mip_info.version
+                        );
+                        debug!("MIP state: {:?}", mip_state);
+                        warn!("Please update your Massa node to support it");
+                    }
+                }
+                Err(e) => {
+                    // Should never happen
+                    panic!(
+                        "Unable to get state at {} of mip info: {:?}, error: {}",
+                        now, mip_info, e
+                    )
+                }
+            }
+        }
+    }
+
+    debug!("MIP store got {} MIP updated from bootstrap", updated.len());
 }

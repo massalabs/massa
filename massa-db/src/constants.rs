@@ -29,6 +29,7 @@ pub const EXECUTED_OPS_PREFIX: &str = "executed_ops/";
 pub const EXECUTED_DENUNCIATIONS_PREFIX: &str = "executed_denunciations/";
 pub const LEDGER_PREFIX: &str = "ledger/";
 pub const MIP_STORE_PREFIX: &str = "versioning/";
+pub const MIP_STORE_STATS_PREFIX: &str = "versioning_stats/";
 
 // Async Pool
 pub const ASYNC_POOL_HASH_ERROR: &str = "critical: saved async pool hash is corrupted";
