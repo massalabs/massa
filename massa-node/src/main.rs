@@ -235,8 +235,21 @@ async fn launch(
         block_count_considered: MIP_STORE_STATS_BLOCK_CONSIDERED,
         counters_max: MIP_STORE_STATS_COUNTERS_MAX,
     };
-    let mip_store =
-        MipStore::try_from(([], mip_stats_config)).expect("Cannot create empty MIP store");
+    let mut mip_store = MipStore::try_from((
+        [(
+            MipInfo {
+                name: "MIP-0000".to_string(),
+                version: 0,
+                components: HashMap::from([(MipComponent::Address, 0), (MipComponent::KeyPair, 0)]),
+                start: MassaTime::from_millis(0),
+                timeout: MassaTime::from_millis(0),
+                activation_delay: MassaTime::from_millis(0),
+            },
+            MipState::new(MassaTime::from_millis(0)),
+        )],
+        mip_stats_config,
+    ))
+    .expect("mip store creation failed");
 
     // Create final state, either from a snapshot, or from scratch
     let final_state = Arc::new(parking_lot::RwLock::new(
@@ -387,7 +400,7 @@ async fn launch(
             .checked_mul_u64(LEDGER_ENTRY_DATASTORE_BASE_SIZE as u64)
             .expect("Overflow when creating constant ledger_entry_datastore_base_size"),
     };
-  
+
     // launch execution module
     let execution_config = ExecutionConfig {
         max_final_events: SETTINGS.execution.max_final_events,

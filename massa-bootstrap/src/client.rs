@@ -573,7 +573,7 @@ fn warn_user_about_versioning_updates(updated: Vec<MipInfo>, added: BTreeMap<Mip
                     if st_id == ComponentStateTypeId::LockedIn {
                         // A new MipInfo @ state locked_in - we need to urge the user to update
                         warn!(
-                            "A new MIP has been received: {}, version: {}",
+                            "A new MIP has been locked in: {}, version: {}",
                             mip_info.name, mip_info.version
                         );
                         // Safe to unwrap here (only panic if not LockedIn)
@@ -585,15 +585,18 @@ fn warn_user_about_versioning_updates(updated: Vec<MipInfo>, added: BTreeMap<Mip
                     } else if st_id == ComponentStateTypeId::Active {
                         // A new MipInfo @ state active - we are not compatible anymore
                         warn!(
-                            "A new MIP has been received {:?}, version: {:?}",
+                            "A new MIP has become active {:?}, version: {:?}",
                             mip_info.name, mip_info.version
                         );
-                        panic!("Please update your Massa node to support it");
+                        panic!(
+                            "Please update your Massa node to support MIP version {} ({})",
+                            mip_info.version, mip_info.name
+                        );
                     } else if st_id == ComponentStateTypeId::Defined {
                         // a new MipInfo @ state defined or started (or failed / error)
                         // warn the user to update its node
                         warn!(
-                            "A new MIP has been received: {}, version: {}",
+                            "A new MIP has been defined: {}, version: {}",
                             mip_info.name, mip_info.version
                         );
                         debug!("MIP state: {:?}", mip_state);
@@ -617,6 +620,23 @@ fn warn_user_about_versioning_updates(updated: Vec<MipInfo>, added: BTreeMap<Mip
                         debug!("MIP state: {:?}", mip_state);
                         warn!("Please update your Massa node to support it");
                     }
+                }
+                Err(StateAtError::Unpredictable) => {
+                    warn!(
+                        "A new MIP has started: {}, version: {}",
+                        mip_info.name, mip_info.version
+                    );
+                    debug!("MIP state: {:?}", mip_state);
+                    let dt_start = Utc
+                        .timestamp_opt(mip_info.start.to_duration().as_secs() as i64, 0)
+                        .unwrap();
+                    let dt_timeout = Utc
+                        .timestamp_opt(mip_info.timeout.to_duration().as_secs() as i64, 0)
+                        .unwrap();
+                    warn!("Please update your node between: {} and {} if you want to support this update",
+                            dt_start.to_rfc2822(),
+                            dt_timeout.to_rfc2822()
+                        );
                 }
                 Err(e) => {
                     // Should never happen

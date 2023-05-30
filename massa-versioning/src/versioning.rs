@@ -1244,8 +1244,8 @@ mod test {
 
     use chrono::{Days, NaiveDate, NaiveDateTime};
     use massa_db::MassaDBConfig;
-    use tempfile::tempdir;
     use more_asserts::assert_le;
+    use tempfile::tempdir;
 
     use crate::test_helpers::versioning_helpers::advance_state_until;
 
