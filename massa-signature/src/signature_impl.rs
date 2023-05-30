@@ -1292,101 +1292,35 @@ pub fn verify_signature_batch(
         return public_key.verify_signature(&hash, &signature);
     }
 
-    // otherwise, use batch verif.
-    match batch[0] {
-        (_hash, Signature::SignatureV0(_sig), PublicKey::PublicKeyV0(_pubkey)) => {
-            let mut hashes = Vec::with_capacity(batch.len());
-            let mut signatures = Vec::with_capacity(batch.len());
-            let mut public_keys = Vec::with_capacity(batch.len());
-            batch.iter().for_each(|(hash, signature, public_key)| {
-                if let (Signature::SignatureV0(sig), PublicKey::PublicKeyV0(pubkey)) =
-                    (&signature, &public_key)
-                {
-                    hashes.push(hash.to_bytes().as_slice());
-                    signatures.push(sig.0);
-                    public_keys.push(pubkey.0);
-                }
-            });
-            ed25519_dalek::verify_batch(&hashes, signatures.as_slice(), public_keys.as_slice())
-                .map_err(|err| {
-                    MassaSignatureError::SignatureError(format!(
-                        "Batch signature verification failed: {}",
-                        err
-                    ))
-                })
-        }
-        (_hash, Signature::SignatureV1(_sig), PublicKey::PublicKeyV1(_pubkey)) => {
-            let mut hashes = Vec::with_capacity(batch.len());
-            let mut signatures = Vec::with_capacity(batch.len());
-            let mut public_keys = Vec::with_capacity(batch.len());
-            batch.iter().for_each(|(hash, signature, public_key)| {
-                if let (Signature::SignatureV0(sig), PublicKey::PublicKeyV0(pubkey)) =
-                    (&signature, &public_key)
-                {
-                    hashes.push(hash.to_bytes().as_slice());
-                    signatures.push(sig.0);
-                    public_keys.push(pubkey.0);
-                }
-            });
-            ed25519_dalek::verify_batch(&hashes, signatures.as_slice(), public_keys.as_slice())
-                .map_err(|err| {
-                    MassaSignatureError::SignatureError(format!(
-                        "Batch signature verification failed: {}",
-                        err
-                    ))
-                })
-        }
-        _ => Err(MassaSignatureError::InvalidVersionError(String::from(
-            "Batch contains incompatible versions",
-        ))),
+    // otherwise, use batch verification
+    let mut hashes = Vec::with_capacity(batch.len());
+    let mut signatures = Vec::with_capacity(batch.len());
+    let mut public_keys = Vec::with_capacity(batch.len());
+
+    for (hash, signature_, public_key_) in batch.iter() {
+        let (signature, public_key) = match (signature_, public_key_) {
+            (Signature::SignatureV0(s), PublicKey::PublicKeyV0(pk)) => (s.0, pk.0),
+            (Signature::SignatureV1(s), PublicKey::PublicKeyV1(pk)) => (s.0, pk.0),
+            _ => {
+                return Err(MassaSignatureError::InvalidVersionError(String::from(
+                    "Batch contains unsupported or incompatible versions",
+                )))
+            }
+        };
+
+        hashes.push(hash.to_bytes().as_slice());
+        signatures.push(signature);
+        public_keys.push(public_key);
     }
-}
 
-#[transition::impl_version(versions("0", "1"), structures("Signature", "PublicKey"))]
-impl Signature {
-    /// Verify a batch of signatures on a single core to gain total CPU performance.
-    /// Every provided triplet `(hash, signature, public_key)` is verified
-    /// and an error is returned if at least one of them fails.
-    ///
-    /// # Arguments
-    /// * `batch`: a slice of triplets `(hash, signature, public_key)`
-    ///
-    /// # Return value
-    /// Returns `Ok(())` if all signatures were successfully verified,
-    /// and `Err(MassaSignatureError::SignatureError(_))` if at least one of them failed.
-    ///
-    pub fn verify_signature_batch(
-        batch: &[(Hash, Signature, PublicKey)],
-    ) -> Result<(), MassaSignatureError> {
-        // nothing to verify
-        if batch.is_empty() {
-            return Ok(());
-        }
-
-        // normal verif is fastest for size 1 batches
-        if batch.len() == 1 {
-            let (hash, signature, public_key) = batch[0];
-            return public_key.verify_signature(&hash, &signature);
-        }
-
-        // otherwise, use batch verif
-        let mut hashes = Vec::with_capacity(batch.len());
-        let mut signatures = Vec::with_capacity(batch.len());
-        let mut public_keys = Vec::with_capacity(batch.len());
-        batch.iter().for_each(|(hash, signature, public_key)| {
-            hashes.push(hash.to_bytes().as_slice());
-            signatures.push(signature.0);
-            public_keys.push(public_key.0);
-        });
-        ed25519_dalek::verify_batch(&hashes, signatures.as_slice(), public_keys.as_slice()).map_err(
-            |err| {
-                MassaSignatureError::SignatureError(format!(
-                    "Batch signature verification failed: {}",
-                    err
-                ))
-            },
-        )
-    }
+    ed25519_dalek::verify_batch(&hashes, signatures.as_slice(), public_keys.as_slice()).map_err(
+        |err| {
+            MassaSignatureError::SignatureError(format!(
+                "Batch signature verification failed: {}",
+                err
+            ))
+        },
+    )
 }
 
 #[cfg(test)]
