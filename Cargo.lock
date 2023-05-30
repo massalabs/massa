@@ -2380,7 +2380,7 @@ dependencies = [
 [[package]]
 name = "massa-sc-runtime"
 version = "0.10.0"
-source = "git+https://github.com/massalabs/massa-sc-runtime?branch=testnet_23#37f610ed6cd29d7889b4112620542daf0d87d423"
+source = "git+https://github.com/massalabs/massa-sc-runtime?branch=main#d9355ecdab96bb04fe588b79c511e93e32163366"
 dependencies = [
  "anyhow",
  "as-ffi-bindings",
@@ -3003,6 +3003,7 @@ dependencies = [
  "massa_time",
  "thiserror",
  "tonic",
+ "tracing",
 ]
 
 [[package]]
@@ -3571,7 +3572,7 @@ checksum = "19b17cddbe7ec3f8bc800887bab5e717348c95ea2ca0b1bf0837fb964dc67099"
 [[package]]
 name = "peernet"
 version = "0.1.0"
-source = "git+https://github.com/massalabs/PeerNet?rev=0ad0e2e#0ad0e2eb10fc059ad64407825ae984a1c568ac00"
+source = "git+https://github.com/massalabs/PeerNet?rev=bf8adf5#bf8adf50e2427a6692c65f0dbb53c69b504185e0"
 dependencies = [
  "crossbeam",
  "enum_delegate",

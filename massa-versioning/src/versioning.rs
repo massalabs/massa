@@ -251,11 +251,11 @@ impl MipState {
         // Build a 'dummy' advance msg for state Defined, this is to avoid using an
         // Option<Advance> in MipStateHistory::history
         let advance = Advance {
-            start_timestamp: MassaTime::from(0),
-            timeout: MassaTime::from(0),
+            start_timestamp: MassaTime::from_millis(0),
+            timeout: MassaTime::from_millis(0),
             threshold: Default::default(),
             now: defined,
-            activation_delay: MassaTime::from(0),
+            activation_delay: MassaTime::from_millis(0),
         };
 
         let history = BTreeMap::from([(advance, state_id)]);
@@ -1023,9 +1023,9 @@ mod test {
                 name: "MIP-0002".to_string(),
                 version: 2,
                 components: HashMap::from([(MipComponent::Address, 1)]),
-                start: MassaTime::from(start.timestamp() as u64),
-                timeout: MassaTime::from(timeout.timestamp() as u64),
-                activation_delay: MassaTime::from(20),
+                start: MassaTime::from_millis(start.timestamp() as u64),
+                timeout: MassaTime::from_millis(timeout.timestamp() as u64),
+                activation_delay: MassaTime::from_millis(20),
             },
         );
     }
@@ -1037,13 +1037,13 @@ mod test {
         let mut state: ComponentState = Default::default();
         assert_eq!(state, ComponentState::defined());
 
-        let now = mi.start.saturating_sub(MassaTime::from(1));
+        let now = mi.start.saturating_sub(MassaTime::from_millis(1));
         let mut advance_msg = Advance::from((&mi, &Amount::zero(), &now));
 
         state = state.on_advance(advance_msg.clone());
         assert_eq!(state, ComponentState::defined());
 
-        let now = mi.start.saturating_add(MassaTime::from(5));
+        let now = mi.start.saturating_add(MassaTime::from_millis(5));
         advance_msg.now = now;
         state = state.on_advance(advance_msg);
 
@@ -1079,7 +1079,7 @@ mod test {
         // Test Versioning state transition (from state: LockedIn)
         let (_, _, mi) = get_a_version_info();
 
-        let locked_in_at = mi.start.saturating_add(MassaTime::from(1));
+        let locked_in_at = mi.start.saturating_add(MassaTime::from_millis(1));
         let mut state: ComponentState = ComponentState::locked_in(locked_in_at);
 
         let now = mi.start;
@@ -1088,7 +1088,9 @@ mod test {
         state = state.on_advance(advance_msg.clone());
         assert_eq!(state, ComponentState::locked_in(locked_in_at));
 
-        advance_msg.now = advance_msg.timeout.saturating_add(MassaTime::from(1));
+        advance_msg.now = advance_msg
+            .timeout
+            .saturating_add(MassaTime::from_millis(1));
         state = state.on_advance(advance_msg);
         assert!(matches!(state, ComponentState::Active(_)));
     }
@@ -1097,7 +1099,7 @@ mod test {
     fn test_state_advance_from_active() {
         // Test Versioning state transition (from state: Active)
         let (start, _, mi) = get_a_version_info();
-        let mut state = ComponentState::active(MassaTime::from(start.timestamp() as u64));
+        let mut state = ComponentState::active(MassaTime::from_millis(start.timestamp() as u64));
         let now = mi.start;
         let advance = Advance::from((&mi, &Amount::zero(), &now));
 
@@ -1120,7 +1122,7 @@ mod test {
     fn test_state_advance_to_failed() {
         // Test Versioning state transition (to state: Failed)
         let (_, _, mi) = get_a_version_info();
-        let now = mi.timeout.saturating_add(MassaTime::from(1));
+        let now = mi.timeout.saturating_add(MassaTime::from_millis(1));
         let advance_msg = Advance::from((&mi, &Amount::zero(), &now));
 
         let mut state: ComponentState = Default::default(); // Defined
@@ -1137,12 +1139,12 @@ mod test {
         // Test MipStateHistory::state_at() function
 
         let (start, _, mi) = get_a_version_info();
-        let now_0 = MassaTime::from(start.timestamp() as u64);
+        let now_0 = MassaTime::from_millis(start.timestamp() as u64);
         let mut state = MipState::new(now_0);
 
         assert_eq!(state, ComponentState::defined());
 
-        let now = mi.start.saturating_add(MassaTime::from(15));
+        let now = mi.start.saturating_add(MassaTime::from_millis(15));
         let mut advance_msg = Advance::from((&mi, &Amount::zero(), &now));
 
         // Move from Defined -> Started
@@ -1164,7 +1166,7 @@ mod test {
 
         // Before Defined
         let state_id_ = state.state_at(
-            mi.start.saturating_sub(MassaTime::from(5)),
+            mi.start.saturating_sub(MassaTime::from_millis(5)),
             mi.start,
             mi.timeout,
         );
@@ -1180,12 +1182,12 @@ mod test {
         assert_eq!(state_id, ComponentStateTypeId::Started);
 
         // After Started timestamp but before timeout timestamp
-        let after_started_ts = now.saturating_add(MassaTime::from(15));
+        let after_started_ts = now.saturating_add(MassaTime::from_millis(15));
         let state_id_ = state.state_at(after_started_ts, mi.start, mi.timeout);
         assert_eq!(state_id_, Err(StateAtError::Unpredictable));
 
         // After Started timestamp and after timeout timestamp
-        let after_timeout_ts = mi.timeout.saturating_add(MassaTime::from(15));
+        let after_timeout_ts = mi.timeout.saturating_add(MassaTime::from_millis(15));
         let state_id = state
             .state_at(after_timeout_ts, mi.start, mi.timeout)
             .unwrap();
@@ -1194,13 +1196,13 @@ mod test {
         // Move from Started to LockedIn
         let threshold = VERSIONING_THRESHOLD_TRANSITION_ACCEPTED;
         advance_msg.threshold = threshold.saturating_add(Amount::from_str("1.0").unwrap());
-        advance_msg.now = now.saturating_add(MassaTime::from(1));
+        advance_msg.now = now.saturating_add(MassaTime::from_millis(1));
         state.on_advance(&advance_msg);
         assert_eq!(state, ComponentState::locked_in(advance_msg.now));
 
         // Query with timestamp
         // After LockedIn timestamp and before timeout timestamp
-        let after_locked_in_ts = now.saturating_add(MassaTime::from(10));
+        let after_locked_in_ts = now.saturating_add(MassaTime::from_millis(10));
         let state_id = state
             .state_at(after_locked_in_ts, mi.start, mi.timeout)
             .unwrap();
@@ -1220,14 +1222,16 @@ mod test {
 
         let mut mi_2 = mi.clone();
         mi_2.version += 1;
-        mi_2.start =
-            MassaTime::from(timeout.checked_add_days(Days::new(2)).unwrap().timestamp() as u64);
-        mi_2.timeout =
-            MassaTime::from(timeout.checked_add_days(Days::new(5)).unwrap().timestamp() as u64);
+        mi_2.start = MassaTime::from_millis(
+            timeout.checked_add_days(Days::new(2)).unwrap().timestamp() as u64,
+        );
+        mi_2.timeout = MassaTime::from_millis(
+            timeout.checked_add_days(Days::new(5)).unwrap().timestamp() as u64,
+        );
 
         // Can only build such object in test - history is empty :-/
         let vs_1 = MipState {
-            state: ComponentState::active(MassaTime::from(start.timestamp() as u64)),
+            state: ComponentState::active(MassaTime::from_millis(start.timestamp() as u64)),
             history: Default::default(),
         };
         let vs_2 = MipState {
@@ -1273,18 +1277,18 @@ mod test {
             name: "MIP-0002".to_string(),
             version: 2,
             components: HashMap::from([(MipComponent::Address, 1)]),
-            start: MassaTime::from(2),
-            timeout: MassaTime::from(5),
-            activation_delay: MassaTime::from(2),
+            start: MassaTime::from_millis(2),
+            timeout: MassaTime::from_millis(5),
+            activation_delay: MassaTime::from_millis(2),
         };
         // Another versioning info (from an attacker) for testing
         let vi_2 = MipInfo {
             name: "MIP-0002".to_string(),
             version: 2,
             components: HashMap::from([(MipComponent::Address, 1)]),
-            start: MassaTime::from(7),
-            timeout: MassaTime::from(10),
-            activation_delay: MassaTime::from(2),
+            start: MassaTime::from_millis(7),
+            timeout: MassaTime::from_millis(10),
+            activation_delay: MassaTime::from_millis(2),
         };
 
         let vsh = MipState {
@@ -1301,14 +1305,14 @@ mod test {
         // At state Defined but no history -> false
         assert_eq!(vsh.is_coherent_with(&vi_1), false);
 
-        let mut vsh = MipState::new(MassaTime::from(1));
+        let mut vsh = MipState::new(MassaTime::from_millis(1));
         // At state Defined at time 1 -> true, given vi_1 @ time 1
         assert_eq!(vsh.is_coherent_with(&vi_1), true);
         // At state Defined at time 1 -> false given vi_1 @ time 3 (state should be Started)
-        // assert_eq!(vsh.is_coherent_with(&vi_1, MassaTime::from(3)), false);
+        // assert_eq!(vsh.is_coherent_with(&vi_1, MassaTime::from_millis(3)), false);
 
         // Advance to Started
-        let now = MassaTime::from(3);
+        let now = MassaTime::from_millis(3);
         let adv = Advance::from((&vi_1, &Amount::zero(), &now));
         vsh.on_advance(&adv);
 
@@ -1319,7 +1323,7 @@ mod test {
         assert_eq!(vsh.is_coherent_with(&vi_2), false);
 
         // Advance to LockedIn
-        let now = MassaTime::from(4);
+        let now = MassaTime::from_millis(4);
         let adv = Advance::from((&vi_1, &VERSIONING_THRESHOLD_TRANSITION_ACCEPTED, &now));
         vsh.on_advance(&adv);
 
@@ -1338,9 +1342,9 @@ mod test {
             name: "MIP-0002".to_string(),
             version: 2,
             components: HashMap::from([(MipComponent::Address, 1)]),
-            start: MassaTime::from(2),
-            timeout: MassaTime::from(5),
-            activation_delay: MassaTime::from(2),
+            start: MassaTime::from_millis(2),
+            timeout: MassaTime::from_millis(5),
+            activation_delay: MassaTime::from_millis(2),
         };
 
         let _time = MassaTime::now().unwrap();
@@ -1351,9 +1355,9 @@ mod test {
             name: "MIP-0003".to_string(),
             version: 3,
             components: HashMap::from([(MipComponent::Address, 2)]),
-            start: MassaTime::from(17),
-            timeout: MassaTime::from(27),
-            activation_delay: MassaTime::from(2),
+            start: MassaTime::from_millis(17),
+            timeout: MassaTime::from_millis(27),
+            activation_delay: MassaTime::from_millis(2),
         };
         let vs_2 = advance_state_until(ComponentState::defined(), &vi_2);
 
@@ -1399,9 +1403,9 @@ mod test {
             name: "MIP-0002".to_string(),
             version: 2,
             components: HashMap::from([(MipComponent::Address, 1)]),
-            start: MassaTime::from(0),
-            timeout: MassaTime::from(5),
-            activation_delay: MassaTime::from(2),
+            start: MassaTime::from_millis(0),
+            timeout: MassaTime::from_millis(5),
+            activation_delay: MassaTime::from_millis(2),
         };
         let _time = MassaTime::now().unwrap();
         let vs_1 = advance_state_until(ComponentState::active(_time), &vi_1);
@@ -1411,9 +1415,9 @@ mod test {
             name: "MIP-0003".to_string(),
             version: 3,
             components: HashMap::from([(MipComponent::Address, 2)]),
-            start: MassaTime::from(17),
-            timeout: MassaTime::from(27),
-            activation_delay: MassaTime::from(2),
+            start: MassaTime::from_millis(17),
+            timeout: MassaTime::from_millis(27),
+            activation_delay: MassaTime::from_millis(2),
         };
         let vs_2 = advance_state_until(ComponentState::defined(), &vi_2);
         assert_eq!(vs_2, ComponentState::defined());
@@ -1519,9 +1523,9 @@ mod test {
             name: "MIP-0002".to_string(),
             version: 2,
             components: HashMap::from([(MipComponent::__Nonexhaustive, 1)]),
-            start: MassaTime::from(0),
-            timeout: MassaTime::from(5),
-            activation_delay: MassaTime::from(2),
+            start: MassaTime::from_millis(0),
+            timeout: MassaTime::from_millis(5),
+            activation_delay: MassaTime::from_millis(2),
         };
         let ms_1 = advance_state_until(ComponentState::defined(), &mi_1);
         assert_eq!(ms_1, ComponentState::defined());
@@ -1541,7 +1545,7 @@ mod test {
     fn test_mip_store_network_restart() {
         // Test if we can get a coherent MipStore after a network shutdown
 
-        let genesis_timestamp = MassaTime::from(0);
+        let genesis_timestamp = MassaTime::from_millis(0);
 
         let shutdown_start = Slot::new(2, 0);
         let shutdown_end = Slot::new(8, 0);
@@ -1604,17 +1608,17 @@ mod test {
             name: "MIP-0002".to_string(),
             version: 2,
             components: HashMap::from([(MipComponent::Address, 1)]),
-            start: MassaTime::from(2),
-            timeout: MassaTime::from(5),
-            activation_delay: MassaTime::from(100),
+            start: MassaTime::from_millis(2),
+            timeout: MassaTime::from_millis(5),
+            activation_delay: MassaTime::from_millis(100),
         };
         let mut mi_2 = MipInfo {
             name: "MIP-0003".to_string(),
             version: 3,
             components: HashMap::from([(MipComponent::Address, 2)]),
-            start: MassaTime::from(7),
-            timeout: MassaTime::from(11),
-            activation_delay: MassaTime::from(100),
+            start: MassaTime::from_millis(7),
+            timeout: MassaTime::from_millis(11),
+            activation_delay: MassaTime::from_millis(100),
         };
 
         // MipInfo 1 @ state 'Defined' should start during shutdown

@@ -182,11 +182,12 @@ pub fn start_pool_controller(
     // denunciation_factory_tx: Sender<DenunciationPrecursor>,
     // denunciation_factory_rx: Receiver<DenunciationPrecursor>,
 ) -> (Box<dyn PoolManager>, Box<dyn PoolController>) {
-    let (operations_input_sender, operations_input_receiver) = sync_channel(config.channels_size);
+    let (operations_input_sender, operations_input_receiver) =
+        sync_channel(config.operations_channel_size);
     let (endorsements_input_sender, endorsements_input_receiver) =
-        sync_channel(config.channels_size);
+        sync_channel(config.endorsements_channel_size);
     let (denunciations_input_sender, denunciations_input_receiver) =
-        sync_channel(config.channels_size);
+        sync_channel(config.denunciations_channel_size);
     let operation_pool = Arc::new(RwLock::new(OperationPool::init(
         config,
         storage,

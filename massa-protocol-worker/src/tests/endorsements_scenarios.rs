@@ -11,6 +11,7 @@ use massa_pool_exports::test_exports::MockPoolControllerMessage;
 use massa_protocol_exports::PeerId;
 use massa_protocol_exports::{test_exports::tools, ProtocolConfig};
 use massa_signature::KeyPair;
+use massa_time::MassaTime;
 use serial_test::serial;
 
 use crate::{
@@ -57,16 +58,18 @@ fn test_protocol_sends_valid_endorsements_it_receives_to_pool() {
                 .unwrap();
 
             //3. Check protocol sends endorsements to pool.
-            let received_endorsements =
-                match pool_event_receiver.wait_command(1500.into(), |evt| match evt {
+            let received_endorsements = match pool_event_receiver.wait_command(
+                MassaTime::from_millis(1500),
+                |evt| match evt {
                     evt @ MockPoolControllerMessage::AddEndorsements { .. } => Some(evt),
                     _ => None,
-                }) {
-                    Some(MockPoolControllerMessage::AddEndorsements { endorsements, .. }) => {
-                        endorsements
-                    }
-                    _ => panic!("Unexpected or no protocol pool event."),
-                };
+                },
+            ) {
+                Some(MockPoolControllerMessage::AddEndorsements { endorsements, .. }) => {
+                    endorsements
+                }
+                _ => panic!("Unexpected or no protocol pool event."),
+            };
             assert!(received_endorsements
                 .get_endorsement_refs()
                 .contains(&endorsement.id));
@@ -120,7 +123,7 @@ fn test_protocol_does_not_send_invalid_endorsements_it_receives_to_pool() {
                 .unwrap();
 
             //4. Check protocol does not send endorsements to pool.
-            pool_event_receiver.wait_command(1000.into(), |evt| match evt {
+            pool_event_receiver.wait_command(MassaTime::from_millis(1000), |evt| match evt {
                 MockPoolControllerMessage::AddEndorsements { .. } => {
                     panic!("Protocol send invalid endorsements.")
                 }
@@ -177,7 +180,7 @@ fn test_protocol_propagates_endorsements_to_active_nodes() {
                 .unwrap();
 
             //3. Check protocol sends endorsements to pool.
-            pool_event_receiver.wait_command(1000.into(), |evt| match evt {
+            pool_event_receiver.wait_command(MassaTime::from_millis(1000), |evt| match evt {
                 MockPoolControllerMessage::AddEndorsements { .. } => {
                     Some(MockPoolControllerMessage::Any)
                 }
@@ -267,7 +270,7 @@ fn test_protocol_propagates_endorsements_only_to_nodes_that_dont_know_about_it_b
             protocol_controller.propagate_endorsements(storage).unwrap();
 
             //3. Check protocol sends endorsements to pool.
-            pool_event_receiver.wait_command(1000.into(), |evt| match evt {
+            pool_event_receiver.wait_command(MassaTime::from_millis(1000), |evt| match evt {
                 MockPoolControllerMessage::AddEndorsements { .. } => {
                     Some(MockPoolControllerMessage::Any)
                 }

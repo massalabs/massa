@@ -42,7 +42,7 @@ use massa_models::config::constants::{
     CONSENSUS_BOOTSTRAP_PART_SIZE, DEFERRED_CREDITS_BOOTSTRAP_PART_SIZE, DELTA_F0,
     DENUNCIATION_EXPIRE_PERIODS, ENDORSEMENT_COUNT, END_TIMESTAMP,
     EXECUTED_OPS_BOOTSTRAP_PART_SIZE, GENESIS_KEY, GENESIS_TIMESTAMP, INITIAL_DRAW_SEED,
-    LEDGER_COST_PER_BYTE, LEDGER_ENTRY_BASE_SIZE, LEDGER_ENTRY_DATASTORE_BASE_SIZE,
+    LEDGER_COST_PER_BYTE, LEDGER_ENTRY_BASE_COST, LEDGER_ENTRY_DATASTORE_BASE_SIZE,
     LEDGER_PART_SIZE_MESSAGE_BYTES, MAX_ADVERTISE_LENGTH, MAX_ASK_BLOCKS_PER_MESSAGE,
     MAX_ASYNC_GAS, MAX_ASYNC_MESSAGE_DATA, MAX_ASYNC_POOL_LENGTH, MAX_BLOCK_SIZE,
     MAX_BOOTSTRAP_ASYNC_POOL_CHANGES, MAX_BOOTSTRAP_BLOCKS, MAX_BOOTSTRAP_ERROR_LENGTH,
@@ -64,12 +64,14 @@ use massa_models::config::constants::{
     MAX_SIZE_CHANNEL_NETWORK_TO_ENDORSEMENT_HANDLER, MAX_SIZE_CHANNEL_NETWORK_TO_OPERATION_HANDLER,
     MAX_SIZE_CHANNEL_NETWORK_TO_PEER_HANDLER, MIP_STORE_STATS_BLOCK_CONSIDERED,
     MIP_STORE_STATS_COUNTERS_MAX, OPERATION_VALIDITY_PERIODS, PERIODS_PER_CYCLE,
-    POOL_CONTROLLER_CHANNEL_SIZE, POS_MISS_RATE_DEACTIVATION_THRESHOLD, POS_SAVED_CYCLES,
-    PROTOCOL_CONTROLLER_CHANNEL_SIZE, PROTOCOL_EVENT_CHANNEL_SIZE,
-    ROLL_COUNT_TO_SLASH_ON_DENUNCIATION, ROLL_PRICE, SELECTOR_DRAW_CACHE_SIZE, T0, THREAD_COUNT,
-    VERSION,
+    POS_MISS_RATE_DEACTIVATION_THRESHOLD, POS_SAVED_CYCLES, PROTOCOL_CONTROLLER_CHANNEL_SIZE,
+    PROTOCOL_EVENT_CHANNEL_SIZE, ROLL_COUNT_TO_SLASH_ON_DENUNCIATION, ROLL_PRICE,
+    SELECTOR_DRAW_CACHE_SIZE, T0, THREAD_COUNT, VERSION,
 };
-use massa_models::config::MAX_MESSAGE_SIZE;
+use massa_models::config::{
+    MAX_MESSAGE_SIZE, POOL_CONTROLLER_DENUNCIATIONS_CHANNEL_SIZE,
+    POOL_CONTROLLER_ENDORSEMENTS_CHANNEL_SIZE, POOL_CONTROLLER_OPERATIONS_CHANNEL_SIZE,
+};
 use massa_pool_exports::{PoolChannels, PoolConfig, PoolManager};
 use massa_pool_worker::start_pool_controller;
 use massa_pos_exports::{PoSConfig, SelectorConfig, SelectorManager};
@@ -330,9 +332,7 @@ async fn launch(
     // Storage costs constants
     let storage_costs_constants = StorageCostsConstants {
         ledger_cost_per_byte: LEDGER_COST_PER_BYTE,
-        ledger_entry_base_cost: LEDGER_COST_PER_BYTE
-            .checked_mul_u64(LEDGER_ENTRY_BASE_SIZE as u64)
-            .expect("Overflow when creating constant ledger_entry_base_cost"),
+        ledger_entry_base_cost: LEDGER_ENTRY_BASE_COST,
         ledger_entry_datastore_base_cost: LEDGER_COST_PER_BYTE
             .checked_mul_u64(LEDGER_ENTRY_DATASTORE_BASE_SIZE as u64)
             .expect("Overflow when creating constant ledger_entry_datastore_base_size"),
@@ -349,11 +349,11 @@ async fn launch(
                 name: "MIP-0001".to_string(),
                 version: 1,
                 components: HashMap::from([(MipComponent::Address, 1), (MipComponent::KeyPair, 1)]),
-                start: MassaTime::from(0),
-                timeout: MassaTime::from(0),
-                activation_delay: MassaTime::from(0),
+                start: MassaTime::from_millis(0),
+                timeout: MassaTime::from_millis(0),
+                activation_delay: MassaTime::from_millis(0),
             },
-            MipState::new(MassaTime::from(0)),
+            MipState::new(MassaTime::from_millis(0)),
         )],
         mip_stats_config,
     ))
@@ -498,7 +498,9 @@ async fn launch(
         max_operations_per_block: MAX_OPERATIONS_PER_BLOCK,
         max_operation_pool_size_per_thread: SETTINGS.pool.max_pool_size_per_thread,
         max_endorsements_pool_size_per_thread: SETTINGS.pool.max_pool_size_per_thread,
-        channels_size: POOL_CONTROLLER_CHANNEL_SIZE,
+        operations_channel_size: POOL_CONTROLLER_OPERATIONS_CHANNEL_SIZE,
+        endorsements_channel_size: POOL_CONTROLLER_ENDORSEMENTS_CHANNEL_SIZE,
+        denunciations_channel_size: POOL_CONTROLLER_DENUNCIATIONS_CHANNEL_SIZE,
         broadcast_enabled: SETTINGS.api.enable_broadcast,
         broadcast_endorsements_channel_capacity: SETTINGS
             .pool

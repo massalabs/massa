@@ -18,7 +18,7 @@ tracing = "0.1"
 massa_hash = { path = "../massa-hash" }
 massa_models = { path = "../massa-models" }
 massa_serialization = { path = "../massa-serialization" }
-massa-sc-runtime = { git = "https://github.com/massalabs/massa-sc-runtime", branch = "testnet_23", features = [
+massa-sc-runtime = { git = "https://github.com/massalabs/massa-sc-runtime", branch = "main", features = [
     "testing",
 ] }
 

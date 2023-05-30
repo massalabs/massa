@@ -276,21 +276,21 @@ mod test {
             name: "MIP-0002".to_string(),
             version: 1,
             components: HashMap::from([(MipComponent::Address, 1)]),
-            start: MassaTime::from(12),
-            timeout: MassaTime::from(15),
-            activation_delay: MassaTime::from(2),
+            start: MassaTime::from_millis(12),
+            timeout: MassaTime::from_millis(15),
+            activation_delay: MassaTime::from_millis(2),
         };
-        let vs_1 = MipState::new(MassaTime::from(10));
+        let vs_1 = MipState::new(MassaTime::from_millis(10));
 
         let vi_2 = MipInfo {
             name: "MIP-0003".to_string(),
             version: 2,
             components: HashMap::from([(MipComponent::Address, 2)]),
-            start: MassaTime::from(25),
-            timeout: MassaTime::from(28),
-            activation_delay: MassaTime::from(2),
+            start: MassaTime::from_millis(25),
+            timeout: MassaTime::from_millis(28),
+            activation_delay: MassaTime::from_millis(2),
         };
-        let vs_2 = MipState::new(MassaTime::from(18));
+        let vs_2 = MipState::new(MassaTime::from_millis(18));
 
         let mip_stats_cfg = MipStatsConfig {
             block_count_considered: 10,
@@ -368,9 +368,9 @@ mod test {
             name: "MIP-0002".to_string(),
             version: 1,
             components: HashMap::from([(MipComponent::Address, 1)]),
-            start: MassaTime::from(12),
-            timeout: MassaTime::from(15),
-            activation_delay: MassaTime::from(2),
+            start: MassaTime::from_millis(12),
+            timeout: MassaTime::from_millis(15),
+            activation_delay: MassaTime::from_millis(2),
         };
         let vs_1 = advance_state_until(ComponentState::active(_time), &vi_1);
 
@@ -378,11 +378,11 @@ mod test {
             name: "MIP-0003".to_string(),
             version: 2,
             components: HashMap::from([(MipComponent::Address, 2)]),
-            start: MassaTime::from(25),
-            timeout: MassaTime::from(28),
-            activation_delay: MassaTime::from(2),
+            start: MassaTime::from_millis(25),
+            timeout: MassaTime::from_millis(28),
+            activation_delay: MassaTime::from_millis(2),
         };
-        let vs_2 = MipState::new(MassaTime::from(18));
+        let vs_2 = MipState::new(MassaTime::from_millis(18));
 
         let mip_stats_cfg = MipStatsConfig {
             block_count_considered: 10,
@@ -407,12 +407,12 @@ mod test {
         };
 
         //
-        let st_1 = FactoryStrategy::At(MassaTime::from(8)); // vi_1 not yet defined
-        let ts_1_2 = MassaTime::from(13);
+        let st_1 = FactoryStrategy::At(MassaTime::from_millis(8)); // vi_1 not yet defined
+        let ts_1_2 = MassaTime::from_millis(13);
         let st_1_2 = FactoryStrategy::At(ts_1_2); // vi_1 is started (after vi_1.start)
-        let st_2 = FactoryStrategy::At(MassaTime::from(18)); // vi_1 is active (after start + activation delay)
-        let st_3 = FactoryStrategy::At(MassaTime::from(27)); // vi_2 is started or locked_in
-        let st_4 = FactoryStrategy::At(MassaTime::from(30)); // vi_2 is active (after vi_2.timeout)
+        let st_2 = FactoryStrategy::At(MassaTime::from_millis(18)); // vi_1 is active (after start + activation delay)
+        let st_3 = FactoryStrategy::At(MassaTime::from_millis(27)); // vi_2 is started or locked_in
+        let st_4 = FactoryStrategy::At(MassaTime::from_millis(30)); // vi_2 is active (after vi_2.timeout)
 
         let addr_st_1 = fa.create(&args, Some(st_1));
         let addr_st_1_2 = fa.create(&args, Some(st_1_2.clone()));

@@ -10,7 +10,7 @@ mod tests {
         ReadOnlyExecutionRequest, ReadOnlyExecutionTarget,
     };
     use massa_models::config::{
-        LEDGER_ENTRY_BASE_SIZE, LEDGER_ENTRY_DATASTORE_BASE_SIZE, MIP_STORE_STATS_BLOCK_CONSIDERED,
+        LEDGER_ENTRY_BASE_COST, LEDGER_ENTRY_DATASTORE_BASE_SIZE, MIP_STORE_STATS_BLOCK_CONSIDERED,
         MIP_STORE_STATS_COUNTERS_MAX,
     };
     use massa_models::prehash::PreHashMap;
@@ -114,8 +114,8 @@ mod tests {
         let vesting = get_initials_vesting(false);
         // setup the period duration
         let exec_cfg = ExecutionConfig {
-            t0: 100.into(),
-            cursor_delay: 0.into(),
+            t0: MassaTime::from_millis(100),
+            cursor_delay: MassaTime::from_millis(0),
             initial_vesting_path: vesting.path().to_path_buf(),
             ..ExecutionConfig::default()
         };
@@ -215,8 +215,8 @@ mod tests {
         let vesting = get_initials_vesting(false);
         // setup the period duration
         let exec_cfg = ExecutionConfig {
-            t0: 100.into(),
-            cursor_delay: 0.into(),
+            t0: MassaTime::from_millis(100),
+            cursor_delay: MassaTime::from_millis(0),
             initial_vesting_path: vesting.path().to_path_buf(),
             ..ExecutionConfig::default()
         };
@@ -375,8 +375,8 @@ mod tests {
         let vesting = get_initials_vesting(false);
         // setup the period duration
         let exec_cfg = ExecutionConfig {
-            t0: 100.into(),
-            cursor_delay: 0.into(),
+            t0: MassaTime::from_millis(100),
+            cursor_delay: MassaTime::from_millis(0),
             initial_vesting_path: vesting.path().to_path_buf(),
             ..ExecutionConfig::default()
         };
@@ -526,9 +526,9 @@ mod tests {
         let vesting = get_initials_vesting(false);
         // setup the period duration and the maximum gas for asynchronous messages execution
         let exec_cfg = ExecutionConfig {
-            t0: 100.into(),
+            t0: MassaTime::from_millis(100),
+            cursor_delay: MassaTime::from_millis(0),
             max_async_gas: 100_000,
-            cursor_delay: 0.into(),
             initial_vesting_path: vesting.path().to_path_buf(),
             ..ExecutionConfig::default()
         };
@@ -635,9 +635,9 @@ mod tests {
         let vesting = get_initials_vesting(false);
         // setup the period duration and the maximum gas for asynchronous messages execution
         let exec_cfg = ExecutionConfig {
-            t0: 100.into(),
             max_async_gas: 100_000,
-            cursor_delay: 0.into(),
+            t0: MassaTime::from_millis(100),
+            cursor_delay: MassaTime::from_millis(0),
             initial_vesting_path: vesting.path().to_path_buf(),
             ..ExecutionConfig::default()
         };
@@ -746,8 +746,8 @@ mod tests {
         let vesting = get_initials_vesting(false);
         // setup the period duration and cursor delay
         let exec_cfg = ExecutionConfig {
-            t0: 100.into(),
-            cursor_delay: 0.into(),
+            t0: MassaTime::from_millis(100),
+            cursor_delay: MassaTime::from_millis(0),
             initial_vesting_path: vesting.path().to_path_buf(),
             ..ExecutionConfig::default()
         };
@@ -869,8 +869,8 @@ mod tests {
         let vesting = get_initials_vesting(false);
         // setup the period duration and cursor delay
         let exec_cfg = ExecutionConfig {
-            t0: 100.into(),
-            cursor_delay: 0.into(),
+            t0: MassaTime::from_millis(100),
+            cursor_delay: MassaTime::from_millis(0),
             initial_vesting_path: vesting.path().to_path_buf(),
             ..ExecutionConfig::default()
         };
@@ -980,9 +980,9 @@ mod tests {
         let vesting = get_initials_vesting(false);
         // setup the period duration and the maximum gas for asynchronous messages execution
         let exec_cfg = ExecutionConfig {
-            t0: 100.into(),
+            t0: MassaTime::from_millis(100),
+            cursor_delay: MassaTime::from_millis(0),
             max_async_gas: 1_000_000_000,
-            cursor_delay: 0.into(),
             initial_vesting_path: vesting.path().to_path_buf(),
             ..ExecutionConfig::default()
         };
@@ -1134,8 +1134,8 @@ mod tests {
         let vesting = get_initials_vesting(false);
         // setup the period duration
         let exec_cfg = ExecutionConfig {
-            t0: 100.into(),
-            cursor_delay: 0.into(),
+            t0: MassaTime::from_millis(100),
+            cursor_delay: MassaTime::from_millis(0),
             initial_vesting_path: vesting.path().to_path_buf(),
             ..ExecutionConfig::default()
         };
@@ -1220,12 +1220,7 @@ mod tests {
             Amount::from_str("100")
                 .unwrap()
                 // Storage cost base
-                .saturating_sub(
-                    exec_cfg
-                        .storage_costs_constants
-                        .ledger_cost_per_byte
-                        .saturating_mul_u64(LEDGER_ENTRY_BASE_SIZE as u64)
-                )
+                .saturating_sub(LEDGER_ENTRY_BASE_COST)
         );
         // stop the execution controller
         manager.stop();
@@ -1237,8 +1232,8 @@ mod tests {
         let vesting = get_initials_vesting(true);
         // setup the period duration
         let exec_cfg = ExecutionConfig {
-            t0: 100.into(),
-            cursor_delay: 0.into(),
+            t0: MassaTime::from_millis(100),
+            cursor_delay: MassaTime::from_millis(0),
             initial_vesting_path: vesting.path().to_path_buf(),
             ..ExecutionConfig::default()
         };
@@ -1349,8 +1344,8 @@ mod tests {
         // setup the period duration
         let vesting = get_initials_vesting(true);
         let exec_cfg = ExecutionConfig {
-            t0: 100.into(),
-            cursor_delay: 0.into(),
+            t0: MassaTime::from_millis(100),
+            cursor_delay: MassaTime::from_millis(0),
             initial_vesting_path: vesting.path().to_path_buf(),
             ..ExecutionConfig::default()
         };
@@ -1446,8 +1441,8 @@ mod tests {
         let vesting = get_initials_vesting(false);
         // setup the period duration
         let exec_cfg = ExecutionConfig {
-            t0: 100.into(),
-            cursor_delay: 0.into(),
+            t0: MassaTime::from_millis(100),
+            cursor_delay: MassaTime::from_millis(0),
             initial_vesting_path: vesting.path().to_path_buf(),
             ..ExecutionConfig::default()
         };
@@ -1536,10 +1531,10 @@ mod tests {
 
         // setup the period duration
         let mut exec_cfg = ExecutionConfig {
-            t0: 100.into(),
+            t0: MassaTime::from_millis(100),
+            cursor_delay: MassaTime::from_millis(0),
             periods_per_cycle: 2,
             thread_count: 2,
-            cursor_delay: 0.into(),
             initial_vesting_path: vesting.path().to_path_buf(),
             last_start_period: 2,
             ..Default::default()
@@ -1728,10 +1723,10 @@ mod tests {
 
         // setup the period duration
         let mut exec_cfg = ExecutionConfig {
-            t0: 100.into(),
+            t0: MassaTime::from_millis(100),
+            cursor_delay: MassaTime::from_millis(0),
             periods_per_cycle: 2,
             thread_count: 2,
-            cursor_delay: 0.into(),
             initial_vesting_path: vesting.path().to_path_buf(),
             last_start_period: 2,
             roll_count_to_slash_on_denunciation: 3, // Set to 3 to check if config is taken into account
@@ -1889,10 +1884,10 @@ mod tests {
 
         // setup the period duration
         let mut exec_cfg = ExecutionConfig {
-            t0: 100.into(),
+            t0: MassaTime::from_millis(100),
+            cursor_delay: MassaTime::from_millis(0),
             periods_per_cycle: 2,
             thread_count: 2,
-            cursor_delay: 0.into(),
             initial_vesting_path: vesting.path().to_path_buf(),
             last_start_period: 2,
             roll_count_to_slash_on_denunciation: 4, // Set to 4 to check if config is taken into account
@@ -2066,9 +2061,9 @@ mod tests {
         let vesting = get_initials_vesting(false);
         // setup the period duration and the maximum gas for asynchronous messages execution
         let exec_cfg = ExecutionConfig {
-            t0: 100.into(),
+            t0: MassaTime::from_millis(100),
+            cursor_delay: MassaTime::from_millis(0),
             max_async_gas: 100_000,
-            cursor_delay: 0.into(),
             initial_vesting_path: vesting.path().to_path_buf(),
             ..ExecutionConfig::default()
         };
@@ -2154,9 +2149,9 @@ mod tests {
         let vesting = get_initials_vesting(false);
         // setup the period duration and the maximum gas for asynchronous messages execution
         let exec_cfg = ExecutionConfig {
-            t0: 100.into(),
+            t0: MassaTime::from_millis(100),
+            cursor_delay: MassaTime::from_millis(0),
             max_async_gas: 100_000,
-            cursor_delay: 0.into(),
             initial_vesting_path: vesting.path().to_path_buf(),
             ..ExecutionConfig::default()
         };
@@ -2239,9 +2234,9 @@ mod tests {
         let vesting = get_initials_vesting(false);
         // setup the period duration and the maximum gas for asynchronous messages execution
         let exec_cfg = ExecutionConfig {
-            t0: 100.into(),
+            t0: MassaTime::from_millis(100),
+            cursor_delay: MassaTime::from_millis(0),
             max_async_gas: 100_000,
-            cursor_delay: 0.into(),
             initial_vesting_path: vesting.path().to_path_buf(),
             ..ExecutionConfig::default()
         };
@@ -2324,9 +2319,9 @@ mod tests {
         let vesting = get_initials_vesting(false);
         // setup the period duration and the maximum gas for asynchronous messages execution
         let exec_cfg = ExecutionConfig {
-            t0: 100.into(),
+            t0: MassaTime::from_millis(100),
+            cursor_delay: MassaTime::from_millis(0),
             max_async_gas: 100_000,
-            cursor_delay: 0.into(),
             initial_vesting_path: vesting.path().to_path_buf(),
             ..ExecutionConfig::default()
         };
@@ -2472,8 +2467,8 @@ mod tests {
         // Compile the `./wasm_tests` and generate a block with `event_test.wasm`
         // as data. Then we check if we get an event as expected.
         let exec_cfg = ExecutionConfig {
-            t0: 100.into(),
-            cursor_delay: 0.into(),
+            t0: MassaTime::from_millis(100),
+            cursor_delay: MassaTime::from_millis(0),
             initial_vesting_path: vesting.path().to_path_buf(),
             ..ExecutionConfig::default()
         };
@@ -2579,7 +2574,7 @@ mod tests {
         let vesting = get_initials_vesting(false);
         // config
         let exec_cfg = ExecutionConfig {
-            t0: 100.into(),
+            t0: MassaTime::from_millis(100),
             initial_vesting_path: vesting.path().to_path_buf(),
             ..ExecutionConfig::default()
         };
@@ -2723,9 +2718,9 @@ mod tests {
         let vesting = get_initials_vesting(false);
         // setup the period duration and the maximum gas for asynchronous messages execution
         let exec_cfg = ExecutionConfig {
-            t0: 100.into(),
+            t0: MassaTime::from_millis(100),
+            cursor_delay: MassaTime::from_millis(0),
             max_async_gas: 100_000,
-            cursor_delay: 0.into(),
             initial_vesting_path: vesting.path().to_path_buf(),
             ..ExecutionConfig::default()
         };
@@ -2817,9 +2812,9 @@ mod tests {
         let vesting = get_initials_vesting(false);
         // setup the period duration and the maximum gas for asynchronous messages execution
         let exec_cfg = ExecutionConfig {
-            t0: 100.into(),
+            t0: MassaTime::from_millis(100),
+            cursor_delay: MassaTime::from_millis(0),
             max_async_gas: 100_000,
-            cursor_delay: 0.into(),
             initial_vesting_path: vesting.path().to_path_buf(),
             ..ExecutionConfig::default()
         };

@@ -44,7 +44,7 @@ lazy_static::lazy_static! {
     /// In sandbox mode, the value depends on starting time and on the --restart-from-snapshot-at-period argument in CLI,
     /// so that the network starts or restarts 10 seconds after launch
     pub static ref GENESIS_TIMESTAMP: MassaTime = if cfg!(feature = "sandbox") {
-        std::env::var("GENESIS_TIMESTAMP").map(|timestamp| timestamp.parse::<u64>().unwrap().into()).unwrap_or_else(|_|
+        std::env::var("GENESIS_TIMESTAMP").map(|timestamp| MassaTime::from_millis(timestamp.parse::<u64>().unwrap())).unwrap_or_else(|_|
             MassaTime::now()
                 .unwrap()
                 .saturating_sub(
@@ -54,14 +54,14 @@ lazy_static::lazy_static! {
             )
         )
     } else {
-        1683498600000.into()  // Sunday, May 7, 2023 10:30:00 PM UTC
+        MassaTime::from_millis(1683498600000) // Sunday, May 7, 2023 10:30:00 PM UTC
     };
 
     /// TESTNET: time when the blockclique is ended.
     pub static ref END_TIMESTAMP: Option<MassaTime> = if cfg!(feature = "sandbox") {
         None
     } else {
-        Some(1685556000000.into())  // Sunday, May 30, 2023 06:00:00 PM UTC
+        Some(MassaTime::from_millis(1685556000000))  // Sunday, May 30, 2023 06:00:00 PM UTC
     };
     /// `KeyPair` to sign genesis blocks.
     pub static ref GENESIS_KEY: KeyPair = KeyPair::from_str("S1UxdCJv5ckDK8z87E5Jq5fEfSVLi2cTHgtpfZy7iURs3KpPns8")
@@ -71,7 +71,7 @@ lazy_static::lazy_static! {
     /// node version
     pub static ref VERSION: Version = {
         if cfg!(feature = "sandbox") {
-            "SAND.22.1"
+            "SAND.23.0"
         } else {
             "TEST.23.0"
         }
@@ -103,8 +103,8 @@ pub const BLOCK_REWARD: Amount = Amount::from_mantissa_scale(3, 1);
 pub const LEDGER_COST_PER_BYTE: Amount = Amount::from_mantissa_scale(25, 5);
 /// Address size in bytes
 pub const ADDRESS_SIZE_BYTES: usize = 32;
-/// Cost for a base entry (address + balance (5 bytes constant))
-pub const LEDGER_ENTRY_BASE_SIZE: usize = ADDRESS_SIZE_BYTES + 8;
+/// Cost for a base entry default 0.01 MASSA
+pub const LEDGER_ENTRY_BASE_COST: Amount = Amount::from_mantissa_scale(1, 2);
 /// Cost for a base entry datastore 10 bytes constant to avoid paying more for longer keys
 pub const LEDGER_ENTRY_DATASTORE_BASE_SIZE: usize = 10;
 /// Time between the periods in the same thread.
@@ -225,8 +225,12 @@ pub const MAX_BOOTSTRAP_ERROR_LENGTH: u64 = 10000;
 pub const PROTOCOL_CONTROLLER_CHANNEL_SIZE: usize = 1024;
 /// Protocol event channel size
 pub const PROTOCOL_EVENT_CHANNEL_SIZE: usize = 1024;
-/// Pool controller channel size
-pub const POOL_CONTROLLER_CHANNEL_SIZE: usize = 1024;
+/// Pool controller operations channel size
+pub const POOL_CONTROLLER_OPERATIONS_CHANNEL_SIZE: usize = 1024;
+/// Pool controller endorsements channel size
+pub const POOL_CONTROLLER_ENDORSEMENTS_CHANNEL_SIZE: usize = 1024;
+/// Pool controller denunciations channel size
+pub const POOL_CONTROLLER_DENUNCIATIONS_CHANNEL_SIZE: usize = 1024;
 
 // ***********************
 // Constants used for execution module (injected from ConsensusConfig)
