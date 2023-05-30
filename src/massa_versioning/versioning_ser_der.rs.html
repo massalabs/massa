@@ -1873,8 +1873,8 @@
 
             <span class="kw">if </span>entry_count &gt; entry_count_max {
                 <span class="kw">return </span><span class="prelude-val">Err</span>(SerializeError::GeneralError(<span class="macro">format!</span>(
-                    <span class="string">&quot;Too many entries in MipStoreStats latest announcements, max: {}, received: {}&quot;</span>,
-                    entry_count_max, entry_count
+                    <span class="string">&quot;Too many entries in MipStoreStats latest announcements, max: {}&quot;</span>,
+                    MIP_STORE_STATS_BLOCK_CONSIDERED
                 )));
             }
             <span class="self">self</span>.u32_serializer.serialize(<span class="kw-2">&amp;</span>entry_count, buffer)<span class="question-mark">?</span>;
@@ -1894,8 +1894,8 @@
 
             <span class="kw">if </span>entry_count_2 &gt; entry_count_2_max {
                 <span class="kw">return </span><span class="prelude-val">Err</span>(SerializeError::GeneralError(<span class="macro">format!</span>(
-                    <span class="string">&quot;Too many entries in MipStoreStats version counters, max: {}, received: {}&quot;</span>,
-                    entry_count_2_max, entry_count_2
+                    <span class="string">&quot;Too many entries in MipStoreStats version counters, max: {}&quot;</span>,
+                    MIP_STORE_STATS_COUNTERS_MAX
                 )));
             }
             <span class="self">self</span>.u32_serializer.serialize(<span class="kw-2">&amp;</span>entry_count_2, buffer)<span class="question-mark">?</span>;
@@ -2063,8 +2063,8 @@ impl Default for MipStoreStatsDeserializer {
         })<span class="question-mark">?</span>;
         <span class="kw">if </span>entry_count &gt; MIP_STORE_MAX_ENTRIES {
             <span class="kw">return </span><span class="prelude-val">Err</span>(SerializeError::GeneralError(<span class="macro">format!</span>(
-                <span class="string">&quot;Too many entries in VersioningStoreRaw, max: {}, received: {}&quot;</span>,
-                MIP_STORE_MAX_ENTRIES, entry_count
+                <span class="string">&quot;Too many entries in VersioningStoreRaw, max: {}&quot;</span>,
+                MIP_STORE_MAX_ENTRIES
             )));
         }
         <span class="self">self</span>.u32_serializer.serialize(<span class="kw-2">&amp;</span>entry_count, buffer)<span class="question-mark">?</span>;
