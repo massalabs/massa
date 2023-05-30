@@ -584,7 +584,7 @@ fn conn_establishment_mocks() -> (MockBSEventPoller, MockBSConnector) {
     let mut mock_remote_connector = MockBSConnector::new();
     mock_remote_connector
         .expect_connect_timeout()
-        // .times(2)
+        .times(1)
         .returning(move |_, _| Ok(std::net::TcpStream::connect("127.0.0.1:8069").unwrap()))
         .in_sequence(&mut seq);
     (mock_bs_listener, mock_remote_connector)

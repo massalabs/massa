@@ -496,6 +496,7 @@ pub fn stream_bootstrap_information(
                     BootstrapError::GeneralError(format!("Error get_batch_to_stream: {}", e))
                 })?;
 
+            // TODO: Re-design the cursors states (e.g. in a state machine we can test independently)
             let new_state_step = match (
                 &last_state_step,
                 state_part.is_empty(),
@@ -524,15 +525,11 @@ pub fn stream_bootstrap_information(
                 }
                 // We still need to stream the state - new elements
                 (_, false, Some((new_last_key, _))) => StreamingStep::Ongoing(new_last_key.clone()),
+                // We finished streaming the (empty) state already, but we received new elements while streaming the versioning
+                (StreamingStep::Finished(None), true, _) => StreamingStep::Finished(None),
                 // Else, we are in an inconsistent state
                 _ => {
-                    if last_state_step == StreamingStep::Finished(None) {
-                        return Err(BootstrapError::GeneralError(String::from(
-                            "State bootstrap cursor is set to Finished but we do not know what was the last key streamed",
-                        )));
-                    } else if state_part.is_empty()
-                        && state_part.new_elements.last_key_value().is_some()
-                    {
+                    if state_part.is_empty() && state_part.new_elements.last_key_value().is_some() {
                         // If is_empty() has a correct implementation, this should never happen
                         return Err(BootstrapError::GeneralError(String::from(
                             "Bootstrap state_part is_empty() but it also contains new elements",
@@ -569,6 +566,7 @@ pub fn stream_bootstrap_information(
                     ))
                 })?;
 
+            // TODO: Re-design the cursors states (e.g. in a state machine we can test independently)
             let new_versioning_step = match (
                 &last_versioning_step,
                 versioning_part.is_empty(),
@@ -597,10 +595,20 @@ pub fn stream_bootstrap_information(
                 }
                 // We still need to stream the state - new elements
                 (_, false, Some((new_last_key, _))) => StreamingStep::Ongoing(new_last_key.clone()),
+                // We finished streaming the (empty) versioning already, but we received new elements while streaming the state
+                (StreamingStep::Finished(None), true, _) => StreamingStep::Finished(None),
                 _ => {
-                    return Err(BootstrapError::GeneralError(String::from(
-                        "state step is inconsistent!",
-                    )));
+                    if state_part.is_empty() && state_part.new_elements.last_key_value().is_some() {
+                        // If is_empty() has a correct implementation, this should never happen
+                        return Err(BootstrapError::GeneralError(String::from(
+                            "Bootstrap state_part is_empty() but it also contains new elements",
+                        )));
+                    } else {
+                        // StreamingStep::Started, false, None
+                        return Err(BootstrapError::GeneralError(String::from(
+                            "Bootstrap started but we have no new elements to stream",
+                        )));
+                    }
                 }
             };
 
@@ -641,6 +649,7 @@ pub fn stream_bootstrap_information(
             final_blocks: Default::default(),
         };
         let mut consensus_outdated_ids: PreHashSet<BlockId> = PreHashSet::default();
+
         if final_state_global_step.finished() {
             let (part, outdated_ids, new_consensus_step) = consensus_controller
                 .get_bootstrap_part(last_consensus_step, final_state_global_step)?;
