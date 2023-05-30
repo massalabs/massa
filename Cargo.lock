@@ -2332,7 +2332,7 @@ dependencies = [
 
 [[package]]
 name = "massa-node"
-version = "0.1.0"
+version = "0.23.0"
 dependencies = [
  "anyhow",
  "chrono",
