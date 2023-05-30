@@ -1,4 +1,4 @@
-use std::sync::Arc;
+use std::{collections::HashSet, sync::Arc};
 
 use massa_models::endorsement::EndorsementId;
 use massa_protocol_exports::PeerId;

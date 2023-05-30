@@ -5,7 +5,6 @@ use massa_logging::massa_trace;
 use massa_models::operation::OperationId;
 use massa_protocol_exports::PeerId;
 use massa_protocol_exports::ProtocolConfig;
-use schnellru::{ByLength, LruMap};
 use tracing::{debug, info, log::warn};
 
 use crate::{

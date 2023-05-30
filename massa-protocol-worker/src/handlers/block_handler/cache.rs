@@ -1,4 +1,4 @@
-use std::{sync::Arc, time::Instant};
+use std::{collections::HashSet, sync::Arc, time::Instant};
 
 use massa_models::{block_header::SecuredHeader, block_id::BlockId};
 use massa_protocol_exports::PeerId;
@@ -71,7 +71,10 @@ impl BlockCache {
             if self.blocks_known_by_peer.peek(&peer_id).is_none() {
                 self.blocks_known_by_peer.insert(
                     peer_id.clone(),
-                    LruMap::new(ByLength::new(max_known_blocks_by_peer)),
+                    (
+                        LruMap::new(ByLength::new(max_known_blocks_by_peer)),
+                        Instant::now(),
+                    ),
                 );
             }
         }

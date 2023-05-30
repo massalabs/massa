@@ -1,4 +1,4 @@
-use std::sync::Arc;
+use std::{sync::Arc, collections::HashSet};
 
 use massa_models::operation::{OperationId, OperationPrefixId};
 use massa_protocol_exports::PeerId;

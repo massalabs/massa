@@ -7,7 +7,6 @@ use massa_models::{
 };
 use massa_protocol_exports::PeerId;
 use massa_protocol_exports::ProtocolConfig;
-use schnellru::{ByLength, LruMap};
 use tracing::{debug, info, log::warn};
 
 use crate::{messages::MessagesSerializer, wrap_network::ActiveConnectionsTrait};
@@ -60,7 +59,7 @@ impl PropagationThread {
                                     cache_write.checked_endorsements.insert(endorsement_id, ());
                                 }
                                 // Add peers that potentially don't exist in cache
-                                let peer_connected =
+                                let peers_connected =
                                     self.active_connections.get_peer_ids_connected();
                                 cache_write.update_cache(
                                     peers_connected,

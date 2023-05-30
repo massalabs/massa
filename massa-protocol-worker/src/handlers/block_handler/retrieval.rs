@@ -1095,7 +1095,7 @@ impl RetrievalThread {
 
                 let peers_connected = self.active_connections.get_peer_ids_connected();
                 cache_write.update_cache(
-                    peers_connected,
+                    peers_connected.clone(),
                     self.config
                         .max_node_known_blocks_size
                         .try_into()

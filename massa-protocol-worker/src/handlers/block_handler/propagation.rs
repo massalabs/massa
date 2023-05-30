@@ -1,4 +1,4 @@
-use std::{collections::VecDeque, thread::JoinHandle, time::Instant};
+use std::{collections::VecDeque, thread::JoinHandle};
 
 use crossbeam::channel::{Receiver, Sender};
 use massa_logging::massa_trace;
@@ -6,7 +6,6 @@ use massa_models::{block_id::BlockId, prehash::PreHashSet};
 use massa_protocol_exports::PeerId;
 use massa_protocol_exports::{ProtocolConfig, ProtocolError};
 use massa_storage::Storage;
-use schnellru::{ByLength, LruMap};
 use tracing::{debug, info, warn};
 
 use crate::{
