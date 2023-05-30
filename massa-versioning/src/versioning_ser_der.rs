@@ -920,9 +920,8 @@ impl Deserializer<MipStoreRaw> for MipStoreRawDeserializer {
 #[cfg(test)]
 mod test {
     use super::*;
-    use std::assert_matches::assert_matches;
 
-    use std::collections::HashMap;
+    use std::assert_matches::assert_matches;
     use std::mem::{size_of, size_of_val};
     use std::str::FromStr;
 
@@ -968,7 +967,7 @@ mod test {
         let vi_1 = MipInfo {
             name: "MIP-0002".to_string(),
             version: 2,
-            components: HashMap::from([(MipComponent::Address, 1)]),
+            components: BTreeMap::from([(MipComponent::Address, 1)]),
             start: MassaTime::from_millis(2),
             timeout: MassaTime::from_millis(5),
             activation_delay: MassaTime::from_millis(2),
@@ -1068,7 +1067,7 @@ mod test {
         let mi_1 = MipInfo {
             name: "MIP-0002".to_string(),
             version: 2,
-            components: HashMap::from([(MipComponent::Address, 1)]),
+            components: BTreeMap::from([(MipComponent::Address, 1)]),
             start: MassaTime::from_millis(2),
             timeout: MassaTime::from_millis(5),
             activation_delay: MassaTime::from_millis(2),
@@ -1122,7 +1121,7 @@ mod test {
         let mi_2 = MipInfo {
             name: "MIP-0002".to_string(),
             version: 2,
-            components: HashMap::from([(MipComponent::Address, 1)]),
+            components: BTreeMap::from([(MipComponent::Address, 1)]),
             start: MassaTime::from_millis(2),
             timeout: MassaTime::from_millis(5),
             activation_delay: MassaTime::from_millis(2),
@@ -1131,7 +1130,7 @@ mod test {
         let mi_3 = MipInfo {
             name: "MIP-0003".to_string(),
             version: 3,
-            components: HashMap::from([(MipComponent::Block, 1)]),
+            components: BTreeMap::from([(MipComponent::Block, 1)]),
             start: MassaTime::from_millis(12),
             timeout: MassaTime::from_millis(17),
             activation_delay: MassaTime::from_millis(2),
@@ -1163,7 +1162,7 @@ mod test {
         let mut mi_base = MipInfo {
             name: "A".repeat(254),
             version: 0,
-            components: HashMap::from([(MipComponent::Address, 0)]),
+            components: BTreeMap::from([(MipComponent::Address, 0)]),
             start: MassaTime::from_millis(0),
             timeout: MassaTime::from_millis(2),
             activation_delay: MassaTime::from_millis(2),

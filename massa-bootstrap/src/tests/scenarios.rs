@@ -48,6 +48,7 @@ use massa_signature::KeyPair;
 use massa_time::MassaTime;
 use mockall::Sequence;
 use parking_lot::RwLock;
+use std::collections::BTreeMap;
 use std::net::{SocketAddr, TcpStream};
 use std::sync::{Condvar, Mutex};
 use std::vec;
@@ -74,6 +75,22 @@ fn mock_bootstrap_manager(addr: SocketAddr, bootstrap_config: BootstrapConfig) -
         genesis_address,
         ..Default::default()
     };
+
+    // create a MIP store
+    let mip_stats_cfg = MipStatsConfig {
+        block_count_considered: MIP_STORE_STATS_BLOCK_CONSIDERED,
+        counters_max: MIP_STORE_STATS_COUNTERS_MAX,
+    };
+    let mi_1 = MipInfo {
+        name: "MIP-0002".to_string(),
+        version: 2,
+        components: BTreeMap::from([(MipComponent::Address, 1)]),
+        start: MassaTime::from_millis(5),
+        timeout: MassaTime::from_millis(10),
+        activation_delay: MassaTime::from_millis(4),
+    };
+    let state_1 = MipState::new(MassaTime::from_millis(3));
+    let mip_store = MipStore::try_from(([(mi_1, state_1)], mip_stats_cfg.clone())).unwrap();
 
     // start bootstrap manager
     let (_, keypair): &(BootstrapConfig, KeyPair) = &BOOTSTRAP_CONFIG_KEYPAIR;
@@ -206,6 +223,14 @@ fn test_bootstrap_server() {
         max_history_length: 10,
         max_new_elements: 100,
         thread_count,
+    };
+    let mi_1 = MipInfo {
+        name: "MIP-0002".to_string(),
+        version: 2,
+        components: BTreeMap::from([(MipComponent::Address, 1)]),
+        start: MassaTime::from_millis(5),
+        timeout: MassaTime::from_millis(10),
+        activation_delay: MassaTime::from_millis(4),
     };
     let db_client = Arc::new(RwLock::new(MassaDB::new(db_client_config)));
     let final_state_local_config = FinalStateConfig {

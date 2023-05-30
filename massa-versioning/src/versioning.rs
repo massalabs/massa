@@ -1,6 +1,5 @@
 use std::cmp::Ordering;
 use std::collections::{BTreeMap, BTreeSet, HashMap, VecDeque};
-use std::hash::{Hash, Hasher};
 use std::ops::Deref;
 use std::sync::Arc;
 
@@ -28,7 +27,7 @@ use crate::versioning_ser_der::{
 
 /// Versioning component enum
 #[allow(missing_docs)]
-#[derive(Clone, Debug, PartialEq, Eq, Hash, FromPrimitive, IntoPrimitive)]
+#[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash, FromPrimitive, IntoPrimitive)]
 #[repr(u32)]
 pub enum MipComponent {
     // Address and KeyPair versions are directly related
@@ -49,7 +48,7 @@ pub struct MipInfo {
     /// Network (or global) version (to be included in block header)
     pub version: u32,
     /// Components concerned by this versioning (e.g. a new Block version), and the associated component_version
-    pub components: HashMap<MipComponent, u32>,
+    pub components: BTreeMap<MipComponent, u32>,
     /// a timestamp at which the version gains its meaning (e.g. announced in block header)
     pub start: MassaTime,
     /// a timestamp at the which the deployment is considered failed
@@ -84,17 +83,6 @@ impl PartialEq for MipInfo {
 }
 
 impl Eq for MipInfo {}
-
-// Need to impl this manually otherwise clippy is angry :-P
-impl Hash for MipInfo {
-    fn hash<H: Hasher>(&self, state: &mut H) {
-        self.name.hash(state);
-        self.version.hash(state);
-        self.components.iter().for_each(|c| c.hash(state));
-        self.start.hash(state);
-        self.timeout.hash(state);
-    }
-}
 
 machine!(
     /// State machine for a Versioning component that tracks the deployment state
@@ -636,7 +624,7 @@ impl MipStore {
 }
 
 impl<const N: usize> TryFrom<([(MipInfo, MipState); N], MipStatsConfig)> for MipStore {
-    type Error = ();
+    type Error = UpdateWithError;
 
     fn try_from(
         (value, cfg): ([(MipInfo, MipState); N], MipStatsConfig),
@@ -1008,8 +996,8 @@ impl MipStoreRaw {
                     }
                     new_store.insert(new_mip_info, mip_state.clone());
                 }
-                ComponentState::Started(..) => {
-                    // Started -> Reset to Defined, offset start & timeout
+                ComponentState::Started(..) | ComponentState::LockedIn(..) => {
+                    // Started or LockedIn -> Reset to Defined, offset start & timeout
 
                     let mut new_mip_info = mip_info.clone();
 
@@ -1035,7 +1023,6 @@ impl MipStoreRaw {
                 }
                 _ => {
                     // active / failed, error, nothing to do
-                    // locked in, nothing to do (might go from 'locked in' to 'active' during shutdown)
                     new_store.insert(mip_info.clone(), mip_state.clone());
                 }
             }
@@ -1205,7 +1192,7 @@ impl MipStoreRaw {
 }
 
 impl<const N: usize> TryFrom<([(MipInfo, MipState); N], MipStatsConfig)> for MipStoreRaw {
-    type Error = ();
+    type Error = UpdateWithError;
 
     fn try_from(
         (value, cfg): ([(MipInfo, MipState); N], MipStatsConfig),
@@ -1228,7 +1215,7 @@ impl<const N: usize> TryFrom<([(MipInfo, MipState); N], MipStatsConfig)> for Mip
                 store.store.append(&mut added);
                 Ok(store)
             }
-            Err(_) => Err(()),
+            Err(e) => Err(e),
         }
     }
 }
@@ -1293,7 +1280,7 @@ mod test {
             MipInfo {
                 name: "MIP-0002".to_string(),
                 version: 2,
-                components: HashMap::from([(MipComponent::Address, 1)]),
+                components: BTreeMap::from([(MipComponent::Address, 1)]),
                 start: MassaTime::from_millis(start.timestamp() as u64),
                 timeout: MassaTime::from_millis(timeout.timestamp() as u64),
                 activation_delay: MassaTime::from_millis(20),
@@ -1550,7 +1537,7 @@ mod test {
         let vi_1 = MipInfo {
             name: "MIP-0002".to_string(),
             version: 2,
-            components: HashMap::from([(MipComponent::Address, 1)]),
+            components: BTreeMap::from([(MipComponent::Address, 1)]),
             start: MassaTime::from_millis(2),
             timeout: MassaTime::from_millis(5),
             activation_delay: MassaTime::from_millis(2),
@@ -1559,7 +1546,7 @@ mod test {
         let vi_2 = MipInfo {
             name: "MIP-0002".to_string(),
             version: 2,
-            components: HashMap::from([(MipComponent::Address, 1)]),
+            components: BTreeMap::from([(MipComponent::Address, 1)]),
             start: MassaTime::from_millis(7),
             timeout: MassaTime::from_millis(10),
             activation_delay: MassaTime::from_millis(2),
@@ -1620,7 +1607,7 @@ mod test {
         let vi_1 = MipInfo {
             name: "MIP-0002".to_string(),
             version: 2,
-            components: HashMap::from([(MipComponent::Address, 1)]),
+            components: BTreeMap::from([(MipComponent::Address, 1)]),
             start: MassaTime::from_millis(2),
             timeout: MassaTime::from_millis(5),
             activation_delay: MassaTime::from_millis(2),
@@ -1633,7 +1620,7 @@ mod test {
         let vi_2 = MipInfo {
             name: "MIP-0003".to_string(),
             version: 3,
-            components: HashMap::from([(MipComponent::Address, 2)]),
+            components: BTreeMap::from([(MipComponent::Address, 2)]),
             start: MassaTime::from_millis(17),
             timeout: MassaTime::from_millis(27),
             activation_delay: MassaTime::from_millis(2),
@@ -1681,7 +1668,7 @@ mod test {
         let vi_1 = MipInfo {
             name: "MIP-0002".to_string(),
             version: 2,
-            components: HashMap::from([(MipComponent::Address, 1)]),
+            components: BTreeMap::from([(MipComponent::Address, 1)]),
             start: MassaTime::from_millis(0),
             timeout: MassaTime::from_millis(5),
             activation_delay: MassaTime::from_millis(2),
@@ -1693,7 +1680,7 @@ mod test {
         let vi_2 = MipInfo {
             name: "MIP-0003".to_string(),
             version: 3,
-            components: HashMap::from([(MipComponent::Address, 2)]),
+            components: BTreeMap::from([(MipComponent::Address, 2)]),
             start: MassaTime::from_millis(17),
             timeout: MassaTime::from_millis(27),
             activation_delay: MassaTime::from_millis(2),
@@ -1801,7 +1788,7 @@ mod test {
         let mi_1 = MipInfo {
             name: "MIP-0002".to_string(),
             version: 2,
-            components: HashMap::from([(MipComponent::__Nonexhaustive, 1)]),
+            components: BTreeMap::from([(MipComponent::__Nonexhaustive, 1)]),
             start: MassaTime::from_millis(0),
             timeout: MassaTime::from_millis(5),
             activation_delay: MassaTime::from_millis(2),
@@ -1886,7 +1873,7 @@ mod test {
         let mut mi_1 = MipInfo {
             name: "MIP-0002".to_string(),
             version: 2,
-            components: HashMap::from([(MipComponent::Address, 1)]),
+            components: BTreeMap::from([(MipComponent::Address, 1)]),
             start: MassaTime::from_millis(2),
             timeout: MassaTime::from_millis(5),
             activation_delay: MassaTime::from_millis(100),
@@ -1894,7 +1881,7 @@ mod test {
         let mut mi_2 = MipInfo {
             name: "MIP-0003".to_string(),
             version: 3,
-            components: HashMap::from([(MipComponent::Address, 2)]),
+            components: BTreeMap::from([(MipComponent::Address, 2)]),
             start: MassaTime::from_millis(7),
             timeout: MassaTime::from_millis(11),
             activation_delay: MassaTime::from_millis(100),
@@ -1981,19 +1968,17 @@ mod test {
             assert!(locked_in_at < shutdown_start);
             let activate_at = Slot::new(4, 0);
             assert!(shutdown_range.contains(&activate_at));
+            // MIP 1 in state 'LockedIn', should transition to 'Active' during shutdown period
             mi_1.activation_delay =
                 get_slot_ts(activate_at).saturating_sub(get_slot_ts(locked_in_at));
-
-            // Note: 2 states will transition right after shutdown_end
-            //       mi_1, ms_1 -> 'LockedIn' -> 'Active'
-            //       mi_2 -> 'Defined' -> 'Started'
-            mi_2.start = get_slot_ts(Slot::new(7, 7));
-            mi_2.timeout = get_slot_ts(Slot::new(10, 7));
-
             let ms_1 = advance_state_until(
                 ComponentState::locked_in(get_slot_ts(Slot::new(1, 9))),
                 &mi_1,
             );
+
+            // MIP 2 in state 'Defined'
+            mi_2.start = get_slot_ts(Slot::new(7, 7));
+            mi_2.timeout = get_slot_ts(Slot::new(10, 7));
             let ms_2 = advance_state_until(ComponentState::defined(), &mi_2);
             let mut store = MipStoreRaw::try_from((
                 [(mi_1.clone(), ms_1), (mi_2.clone(), ms_2)],
@@ -2007,7 +1992,7 @@ mod test {
             assert_eq!(is_coherent(&store, shutdown_start, shutdown_end), true);
             // _dump_store(&store);
 
-            // Update stats - so should force 2 version transitions
+            // Update stats - so should force transitions if any
             store.update_network_version_stats(
                 get_slot_ts(shutdown_end.get_next_slot(THREAD_COUNT).unwrap()),
                 Some((1, 0)),
@@ -2015,15 +2000,17 @@ mod test {
 
             let (first_mi_info, first_mi_state) = store.store.first_key_value().unwrap();
             assert_eq!(*first_mi_info.name, mi_1.name);
+            // State was 'LockedIn' -> reset, start ts now defined right after network restart
             assert_eq!(
                 ComponentStateTypeId::from(&first_mi_state.state),
-                ComponentStateTypeId::Active
+                ComponentStateTypeId::Started
             );
             let (last_mi_info, last_mi_state) = store.store.last_key_value().unwrap();
             assert_eq!(*last_mi_info.name, mi_2.name);
+            // State was 'Defined' -> start is set up after MIP 1 start & timeout
             assert_eq!(
                 ComponentStateTypeId::from(&last_mi_state.state),
-                ComponentStateTypeId::Started
+                ComponentStateTypeId::Defined
             );
         }
     }
