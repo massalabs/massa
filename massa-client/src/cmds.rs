@@ -814,7 +814,7 @@ impl Command {
                         Ok(Box::new(()))
                     }
                 } else {
-                    bail!("GRPC is not enabled on this node");
+                    bail!("GRPC is not enabled");
                 }
             }
 

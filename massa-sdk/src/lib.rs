@@ -95,8 +95,8 @@ impl Client {
             .await
         {
             Ok(channel) => Some(MassaServiceClient::new(channel)),
-            Err(_e) => {
-                // TODO print error
+            Err(e) => {
+                tracing::warn!("unable to connect to grpc server {}", e);
                 None
             }
         };
