@@ -86,7 +86,7 @@ use massa_versioning::versioning::{
 use massa_wallet::Wallet;
 use parking_lot::RwLock;
 use peernet::transports::TransportType;
-use std::collections::HashMap;
+use std::collections::{BTreeMap, HashMap};
 use std::path::PathBuf;
 use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::{Condvar, Mutex};
@@ -348,7 +348,10 @@ async fn launch(
             MipInfo {
                 name: "MIP-0000".to_string(),
                 version: 0,
-                components: HashMap::from([(MipComponent::Address, 0), (MipComponent::KeyPair, 0)]),
+                components: BTreeMap::from([
+                    (MipComponent::Address, 0),
+                    (MipComponent::KeyPair, 0),
+                ]),
                 start: MassaTime::from_millis(0),
                 timeout: MassaTime::from_millis(0),
                 activation_delay: MassaTime::from_millis(0),

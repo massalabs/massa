@@ -53,7 +53,7 @@ use massa_time::MassaTime;
 use massa_versioning::versioning::{MipComponent, MipInfo, MipState, MipStatsConfig, MipStore};
 use mockall::Sequence;
 use parking_lot::RwLock;
-use std::collections::HashMap;
+use std::collections::BTreeMap;
 use std::net::{SocketAddr, TcpStream};
 use std::sync::{Condvar, Mutex};
 use std::{path::PathBuf, str::FromStr, sync::Arc, time::Duration};
@@ -88,7 +88,7 @@ fn mock_bootstrap_manager(addr: SocketAddr, bootstrap_config: BootstrapConfig) -
     let mi_1 = MipInfo {
         name: "MIP-0002".to_string(),
         version: 2,
-        components: HashMap::from([(MipComponent::Address, 1)]),
+        components: BTreeMap::from([(MipComponent::Address, 1)]),
         start: MassaTime::from_millis(5),
         timeout: MassaTime::from_millis(10),
         activation_delay: MassaTime::from_millis(4),
@@ -214,7 +214,7 @@ fn test_bootstrap_server() {
     let mi_1 = MipInfo {
         name: "MIP-0002".to_string(),
         version: 2,
-        components: HashMap::from([(MipComponent::Address, 1)]),
+        components: BTreeMap::from([(MipComponent::Address, 1)]),
         start: MassaTime::from_millis(5),
         timeout: MassaTime::from_millis(10),
         activation_delay: MassaTime::from_millis(4),
