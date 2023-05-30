@@ -1093,14 +1093,6 @@ impl RetrievalThread {
                 };
                 let mut needs_ask = true;
 
-                let peers_in_asked_blocks: Vec<PeerId> =
-                    self.asked_blocks.keys().cloned().collect();
-                for peer_id in peers_in_asked_blocks {
-                    if !peers_connected.contains(&peer_id) {
-                        self.asked_blocks.remove(&peer_id);
-                    }
-                }
-                // Add new peers
                 let peers_connected = self.active_connections.get_peer_ids_connected();
                 cache_write.update_cache(
                     peers_connected,
@@ -1109,6 +1101,13 @@ impl RetrievalThread {
                         .try_into()
                         .expect("max_node_known_blocks_size is too big"),
                 );
+                let peers_in_asked_blocks: Vec<PeerId> =
+                    self.asked_blocks.keys().cloned().collect();
+                for peer_id in peers_in_asked_blocks {
+                    if !peers_connected.contains(&peer_id) {
+                        self.asked_blocks.remove(&peer_id);
+                    }
+                }
                 for peer_id in peers_connected {
                     if !self.asked_blocks.contains_key(&peer_id) {
                         self.asked_blocks
