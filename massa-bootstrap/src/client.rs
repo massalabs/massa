@@ -15,7 +15,7 @@ use massa_logging::massa_trace;
 use massa_models::{node::NodeId, slot::Slot, streaming_step::StreamingStep, version::Version};
 use massa_signature::PublicKey;
 use massa_time::MassaTime;
-use massa_versioning::versioning::{ComponentStateTypeId, MipInfo, MipState};
+use massa_versioning::versioning::{ComponentStateTypeId, MipInfo, MipState, StateAtError};
 use parking_lot::RwLock;
 use rand::{
     prelude::{SliceRandom, StdRng},

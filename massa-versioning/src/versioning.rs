@@ -2046,7 +2046,7 @@ mod test {
         let mi_1 = MipInfo {
             name: "MIP-0002".to_string(),
             version: 2,
-            components: HashMap::from([(MipComponent::Address, 1)]),
+            components: BTreeMap::from([(MipComponent::Address, 1)]),
             start: get_slot_ts(Slot::new(2, 0)),
             timeout: get_slot_ts(Slot::new(3, 0)),
             activation_delay: MassaTime::from_millis(10),
@@ -2056,7 +2056,7 @@ mod test {
         let mi_2 = MipInfo {
             name: "MIP-0003".to_string(),
             version: 3,
-            components: HashMap::from([(MipComponent::Address, 2)]),
+            components: BTreeMap::from([(MipComponent::Address, 2)]),
             start: get_slot_ts(Slot::new(4, 2)),
             timeout: get_slot_ts(Slot::new(7, 2)),
             activation_delay: MassaTime::from_millis(10),
