@@ -1386,72 +1386,6 @@
 <a href="#1386" id="1386">1386</a>
 <a href="#1387" id="1387">1387</a>
 <a href="#1388" id="1388">1388</a>
-<a href="#1389" id="1389">1389</a>
-<a href="#1390" id="1390">1390</a>
-<a href="#1391" id="1391">1391</a>
-<a href="#1392" id="1392">1392</a>
-<a href="#1393" id="1393">1393</a>
-<a href="#1394" id="1394">1394</a>
-<a href="#1395" id="1395">1395</a>
-<a href="#1396" id="1396">1396</a>
-<a href="#1397" id="1397">1397</a>
-<a href="#1398" id="1398">1398</a>
-<a href="#1399" id="1399">1399</a>
-<a href="#1400" id="1400">1400</a>
-<a href="#1401" id="1401">1401</a>
-<a href="#1402" id="1402">1402</a>
-<a href="#1403" id="1403">1403</a>
-<a href="#1404" id="1404">1404</a>
-<a href="#1405" id="1405">1405</a>
-<a href="#1406" id="1406">1406</a>
-<a href="#1407" id="1407">1407</a>
-<a href="#1408" id="1408">1408</a>
-<a href="#1409" id="1409">1409</a>
-<a href="#1410" id="1410">1410</a>
-<a href="#1411" id="1411">1411</a>
-<a href="#1412" id="1412">1412</a>
-<a href="#1413" id="1413">1413</a>
-<a href="#1414" id="1414">1414</a>
-<a href="#1415" id="1415">1415</a>
-<a href="#1416" id="1416">1416</a>
-<a href="#1417" id="1417">1417</a>
-<a href="#1418" id="1418">1418</a>
-<a href="#1419" id="1419">1419</a>
-<a href="#1420" id="1420">1420</a>
-<a href="#1421" id="1421">1421</a>
-<a href="#1422" id="1422">1422</a>
-<a href="#1423" id="1423">1423</a>
-<a href="#1424" id="1424">1424</a>
-<a href="#1425" id="1425">1425</a>
-<a href="#1426" id="1426">1426</a>
-<a href="#1427" id="1427">1427</a>
-<a href="#1428" id="1428">1428</a>
-<a href="#1429" id="1429">1429</a>
-<a href="#1430" id="1430">1430</a>
-<a href="#1431" id="1431">1431</a>
-<a href="#1432" id="1432">1432</a>
-<a href="#1433" id="1433">1433</a>
-<a href="#1434" id="1434">1434</a>
-<a href="#1435" id="1435">1435</a>
-<a href="#1436" id="1436">1436</a>
-<a href="#1437" id="1437">1437</a>
-<a href="#1438" id="1438">1438</a>
-<a href="#1439" id="1439">1439</a>
-<a href="#1440" id="1440">1440</a>
-<a href="#1441" id="1441">1441</a>
-<a href="#1442" id="1442">1442</a>
-<a href="#1443" id="1443">1443</a>
-<a href="#1444" id="1444">1444</a>
-<a href="#1445" id="1445">1445</a>
-<a href="#1446" id="1446">1446</a>
-<a href="#1447" id="1447">1447</a>
-<a href="#1448" id="1448">1448</a>
-<a href="#1449" id="1449">1449</a>
-<a href="#1450" id="1450">1450</a>
-<a href="#1451" id="1451">1451</a>
-<a href="#1452" id="1452">1452</a>
-<a href="#1453" id="1453">1453</a>
-<a href="#1454" id="1454">1454</a>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="kw">use </span><span class="kw">crate</span>::error::MassaSignatureError;
@@ -2746,101 +2680,35 @@
         <span class="kw">return </span>public_key.verify_signature(<span class="kw-2">&amp;</span>hash, <span class="kw-2">&amp;</span>signature);
     }
 
-    <span class="comment">// otherwise, use batch verif.
-    </span><span class="kw">match </span>batch[<span class="number">0</span>] {
-        (_hash, Signature::SignatureV0(_sig), PublicKey::PublicKeyV0(_pubkey)) =&gt; {
-            <span class="kw">let </span><span class="kw-2">mut </span>hashes = Vec::with_capacity(batch.len());
-            <span class="kw">let </span><span class="kw-2">mut </span>signatures = Vec::with_capacity(batch.len());
-            <span class="kw">let </span><span class="kw-2">mut </span>public_keys = Vec::with_capacity(batch.len());
-            batch.iter().for_each(|(hash, signature, public_key)| {
-                <span class="kw">if let </span>(Signature::SignatureV0(sig), PublicKey::PublicKeyV0(pubkey)) =
-                    (<span class="kw-2">&amp;</span>signature, <span class="kw-2">&amp;</span>public_key)
-                {
-                    hashes.push(hash.to_bytes().as_slice());
-                    signatures.push(sig.<span class="number">0</span>);
-                    public_keys.push(pubkey.<span class="number">0</span>);
-                }
-            });
-            ed25519_dalek::verify_batch(<span class="kw-2">&amp;</span>hashes, signatures.as_slice(), public_keys.as_slice())
-                .map_err(|err| {
-                    MassaSignatureError::SignatureError(<span class="macro">format!</span>(
-                        <span class="string">&quot;Batch signature verification failed: {}&quot;</span>,
-                        err
-                    ))
-                })
-        }
-        (_hash, Signature::SignatureV1(_sig), PublicKey::PublicKeyV1(_pubkey)) =&gt; {
-            <span class="kw">let </span><span class="kw-2">mut </span>hashes = Vec::with_capacity(batch.len());
-            <span class="kw">let </span><span class="kw-2">mut </span>signatures = Vec::with_capacity(batch.len());
-            <span class="kw">let </span><span class="kw-2">mut </span>public_keys = Vec::with_capacity(batch.len());
-            batch.iter().for_each(|(hash, signature, public_key)| {
-                <span class="kw">if let </span>(Signature::SignatureV0(sig), PublicKey::PublicKeyV0(pubkey)) =
-                    (<span class="kw-2">&amp;</span>signature, <span class="kw-2">&amp;</span>public_key)
-                {
-                    hashes.push(hash.to_bytes().as_slice());
-                    signatures.push(sig.<span class="number">0</span>);
-                    public_keys.push(pubkey.<span class="number">0</span>);
-                }
-            });
-            ed25519_dalek::verify_batch(<span class="kw-2">&amp;</span>hashes, signatures.as_slice(), public_keys.as_slice())
-                .map_err(|err| {
-                    MassaSignatureError::SignatureError(<span class="macro">format!</span>(
-                        <span class="string">&quot;Batch signature verification failed: {}&quot;</span>,
-                        err
-                    ))
-                })
-        }
-        <span class="kw">_ </span>=&gt; <span class="prelude-val">Err</span>(MassaSignatureError::InvalidVersionError(String::from(
-            <span class="string">&quot;Batch contains incompatible versions&quot;</span>,
-        ))),
+    <span class="comment">// otherwise, use batch verification
+    </span><span class="kw">let </span><span class="kw-2">mut </span>hashes = Vec::with_capacity(batch.len());
+    <span class="kw">let </span><span class="kw-2">mut </span>signatures = Vec::with_capacity(batch.len());
+    <span class="kw">let </span><span class="kw-2">mut </span>public_keys = Vec::with_capacity(batch.len());
+
+    <span class="kw">for </span>(hash, signature_, public_key_) <span class="kw">in </span>batch.iter() {
+        <span class="kw">let </span>(signature, public_key) = <span class="kw">match </span>(signature_, public_key_) {
+            (Signature::SignatureV0(s), PublicKey::PublicKeyV0(pk)) =&gt; (s.<span class="number">0</span>, pk.<span class="number">0</span>),
+            (Signature::SignatureV1(s), PublicKey::PublicKeyV1(pk)) =&gt; (s.<span class="number">0</span>, pk.<span class="number">0</span>),
+            <span class="kw">_ </span>=&gt; {
+                <span class="kw">return </span><span class="prelude-val">Err</span>(MassaSignatureError::InvalidVersionError(String::from(
+                    <span class="string">&quot;Batch contains unsupported or incompatible versions&quot;</span>,
+                )))
+            }
+        };
+
+        hashes.push(hash.to_bytes().as_slice());
+        signatures.push(signature);
+        public_keys.push(public_key);
     }
-}
 
-<span class="attr">#[transition::impl_version(versions(<span class="string">&quot;0&quot;</span>, <span class="string">&quot;1&quot;</span>), structures(<span class="string">&quot;Signature&quot;</span>, <span class="string">&quot;PublicKey&quot;</span>))]
-</span><span class="kw">impl </span>Signature {
-    <span class="doccomment">/// Verify a batch of signatures on a single core to gain total CPU performance.
-    /// Every provided triplet `(hash, signature, public_key)` is verified
-    /// and an error is returned if at least one of them fails.
-    ///
-    /// # Arguments
-    /// * `batch`: a slice of triplets `(hash, signature, public_key)`
-    ///
-    /// # Return value
-    /// Returns `Ok(())` if all signatures were successfully verified,
-    /// and `Err(MassaSignatureError::SignatureError(_))` if at least one of them failed.
-    ///
-    </span><span class="kw">pub fn </span>verify_signature_batch(
-        batch: <span class="kw-2">&amp;</span>[(Hash, Signature, PublicKey)],
-    ) -&gt; <span class="prelude-ty">Result</span>&lt;(), MassaSignatureError&gt; {
-        <span class="comment">// nothing to verify
-        </span><span class="kw">if </span>batch.is_empty() {
-            <span class="kw">return </span><span class="prelude-val">Ok</span>(());
-        }
-
-        <span class="comment">// normal verif is fastest for size 1 batches
-        </span><span class="kw">if </span>batch.len() == <span class="number">1 </span>{
-            <span class="kw">let </span>(hash, signature, public_key) = batch[<span class="number">0</span>];
-            <span class="kw">return </span>public_key.verify_signature(<span class="kw-2">&amp;</span>hash, <span class="kw-2">&amp;</span>signature);
-        }
-
-        <span class="comment">// otherwise, use batch verif
-        </span><span class="kw">let </span><span class="kw-2">mut </span>hashes = Vec::with_capacity(batch.len());
-        <span class="kw">let </span><span class="kw-2">mut </span>signatures = Vec::with_capacity(batch.len());
-        <span class="kw">let </span><span class="kw-2">mut </span>public_keys = Vec::with_capacity(batch.len());
-        batch.iter().for_each(|(hash, signature, public_key)| {
-            hashes.push(hash.to_bytes().as_slice());
-            signatures.push(signature.<span class="number">0</span>);
-            public_keys.push(public_key.<span class="number">0</span>);
-        });
-        ed25519_dalek::verify_batch(<span class="kw-2">&amp;</span>hashes, signatures.as_slice(), public_keys.as_slice()).map_err(
-            |err| {
-                MassaSignatureError::SignatureError(<span class="macro">format!</span>(
-                    <span class="string">&quot;Batch signature verification failed: {}&quot;</span>,
-                    err
-                ))
-            },
-        )
-    }
+    ed25519_dalek::verify_batch(<span class="kw-2">&amp;</span>hashes, signatures.as_slice(), public_keys.as_slice()).map_err(
+        |err| {
+            MassaSignatureError::SignatureError(<span class="macro">format!</span>(
+                <span class="string">&quot;Batch signature verification failed: {}&quot;</span>,
+                err
+            ))
+        },
+    )
 }
 
 <span class="attr">#[cfg(test)]
