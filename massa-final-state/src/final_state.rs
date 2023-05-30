@@ -6,8 +6,9 @@
 //! and need to be bootstrapped by nodes joining the network.
 
 use crate::{config::FinalStateConfig, error::FinalStateError, state_changes::StateChanges};
+
 use massa_async_pool::AsyncPool;
-use massa_db::{DBBatch, MassaDB, CHANGE_ID_DESER_ERROR};
+use massa_db::{DBBatch, MassaDB, CHANGE_ID_DESER_ERROR, MIP_STORE_PREFIX};
 use massa_db::{
     ASYNC_POOL_PREFIX, CYCLE_HISTORY_PREFIX, DEFERRED_CREDITS_PREFIX,
     EXECUTED_DENUNCIATIONS_PREFIX, EXECUTED_OPS_PREFIX, LEDGER_PREFIX, STATE_CF,
@@ -18,10 +19,13 @@ use massa_ledger_exports::LedgerController;
 use massa_models::config::PERIODS_BETWEEN_BACKUPS;
 use massa_models::slot::Slot;
 use massa_pos_exports::{PoSFinalState, SelectorController};
+use massa_versioning::versioning::MipStore;
+
 use parking_lot::RwLock;
 use rocksdb::IteratorMode;
-use std::sync::Arc;
 use tracing::{debug, info, warn};
+
+use std::sync::Arc;
 
 /// Represents a final state `(ledger, async pool, executed_ops, executed_de and the state of the PoS)`
 pub struct FinalState {
@@ -37,6 +41,8 @@ pub struct FinalState {
     pub executed_ops: ExecutedOps,
     /// executed denunciations
     pub executed_denunciations: ExecutedDenunciations,
+    /// MIP store
+    pub mip_store: MipStore,
     /// last_start_period
     /// * If start new network: set to 0
     /// * If from snapshot: retrieve from args
@@ -64,6 +70,7 @@ impl FinalState {
         config: FinalStateConfig,
         ledger: Box<dyn LedgerController>,
         selector: Box<dyn SelectorController>,
+        mut mip_store: MipStore,
         reset_final_state: bool,
     ) -> Result<Self, FinalStateError> {
         let db_slot = db
@@ -98,6 +105,11 @@ impl FinalState {
         let executed_denunciations =
             ExecutedDenunciations::new(config.executed_denunciations_config.clone(), db.clone());
 
+        // init MIP store by reading from the db
+        mip_store
+            .extend_from_db(db.clone())
+            .map_err(FinalStateError::from)?;
+
         let mut final_state = FinalState {
             ledger,
             async_pool,
@@ -105,6 +117,7 @@ impl FinalState {
             config,
             executed_ops,
             executed_denunciations,
+            mip_store,
             last_start_period: 0,
             last_slot_before_downtime: None,
             db,
@@ -141,11 +154,13 @@ impl FinalState {
         config: FinalStateConfig,
         ledger: Box<dyn LedgerController>,
         selector: Box<dyn SelectorController>,
+        mip_store: MipStore,
         last_start_period: u64,
     ) -> Result<Self, FinalStateError> {
         info!("Restarting from snapshot");
 
-        let mut final_state = FinalState::new(db, config, ledger, selector, false)?;
+        let mut final_state =
+            FinalState::new(db, config.clone(), ledger, selector, mip_store, false)?;
 
         let recovered_slot =
             final_state.db.read().get_change_id().map_err(|_| {
@@ -159,10 +174,49 @@ impl FinalState {
             final_state
                 .db
                 .write()
-                .write_batch(batch, Some(recovered_slot));
+                .write_batch(batch, Default::default(), Some(recovered_slot));
         }
 
         final_state.last_slot_before_downtime = Some(recovered_slot);
+
+        // Check that MIP store is coherent with the network shutdown time range
+        // Assume that the final state has been edited during network shutdown
+        let shutdown_start = recovered_slot
+            .get_next_slot(config.thread_count)
+            .map_err(|e| {
+                FinalStateError::InvalidSlot(format!(
+                    "Unable to get next slot from recovered slot: {:?}",
+                    e
+                ))
+            })?;
+        let shutdown_end = Slot::new(last_start_period, 0)
+            .get_prev_slot(config.thread_count)
+            .map_err(|e| {
+                FinalStateError::InvalidSlot(format!(
+                    "Unable to compute prev slot from last start period: {:?}",
+                    e
+                ))
+            })?;
+        debug!(
+            "Checking if MIP store is coherent against shutdown period: {} - {}",
+            shutdown_start, shutdown_end
+        );
+
+        if !final_state
+            .mip_store
+            .is_coherent_with_shutdown_period(
+                shutdown_start,
+                shutdown_end,
+                config.thread_count,
+                config.t0,
+                config.genesis_timestamp,
+            )
+            .unwrap_or(false)
+        {
+            return Err(FinalStateError::InvalidSlot(
+                "MIP store is Not coherent".to_string(),
+            ));
+        }
 
         debug!(
             "Latest consistent slot found in snapshot data: {}",
@@ -253,7 +307,10 @@ impl FinalState {
         self.pos_state
             .delete_cycle_info(latest_snapshot_cycle.0, &mut batch);
 
-        self.pos_state.db.write().write_batch(batch, Some(end_slot));
+        self.pos_state
+            .db
+            .write()
+            .write_batch(batch, Default::default(), Some(end_slot));
 
         let mut batch = DBBatch::new();
 
@@ -268,7 +325,10 @@ impl FinalState {
             )
             .map_err(|err| FinalStateError::PosError(format!("{}", err)))?;
 
-        self.pos_state.db.write().write_batch(batch, Some(end_slot));
+        self.pos_state
+            .db
+            .write()
+            .write_batch(batch, Default::default(), Some(end_slot));
 
         Ok(())
     }
@@ -296,7 +356,10 @@ impl FinalState {
         self.pos_state
             .delete_cycle_info(latest_snapshot_cycle.0, &mut batch);
 
-        self.pos_state.db.write().write_batch(batch, Some(end_slot));
+        self.pos_state
+            .db
+            .write()
+            .write_batch(batch, Default::default(), Some(end_slot));
 
         // Firstly, complete the first cycle
         let last_slot = Slot::new_last_of_cycle(
@@ -324,7 +387,10 @@ impl FinalState {
             )
             .map_err(|err| FinalStateError::PosError(format!("{}", err)))?;
 
-        self.pos_state.db.write().write_batch(batch, Some(end_slot));
+        self.pos_state
+            .db
+            .write()
+            .write_batch(batch, Default::default(), Some(end_slot));
 
         // Feed final_state_hash to the completed cycle
         self.feed_cycle_hash_and_selector_for_interpolation(current_slot_cycle)?;
@@ -367,7 +433,10 @@ impl FinalState {
                 )
                 .map_err(|err| FinalStateError::PosError(format!("{}", err)))?;
 
-            self.pos_state.db.write().write_batch(batch, Some(end_slot));
+            self.pos_state
+                .db
+                .write()
+                .write_batch(batch, Default::default(), Some(end_slot));
 
             // Feed final_state_hash to the completed cycle
             self.feed_cycle_hash_and_selector_for_interpolation(cycle)?;
@@ -407,7 +476,9 @@ impl FinalState {
             }
         }
 
-        self.db.write().write_batch(batch, Some(end_slot));
+        self.db
+            .write()
+            .write_batch(batch, Default::default(), Some(end_slot));
 
         Ok(())
     }
@@ -444,6 +515,7 @@ impl FinalState {
         self.pos_state.reset();
         self.executed_ops.reset();
         self.executed_denunciations.reset();
+        self.mip_store.reset_db(self.db.clone());
     }
 
     /// Performs the initial draws.
@@ -499,7 +571,9 @@ impl FinalState {
             &mut db_batch,
         );
 
-        self.db.write().write_batch(db_batch, Some(slot));
+        self.db
+            .write()
+            .write_batch(db_batch, Default::default(), Some(slot));
 
         let final_state_hash = self.db.read().get_db_hash();
 
@@ -556,6 +630,7 @@ impl FinalState {
                 && !serialized_key.starts_with(EXECUTED_OPS_PREFIX.as_bytes())
                 && !serialized_key.starts_with(EXECUTED_DENUNCIATIONS_PREFIX.as_bytes())
                 && !serialized_key.starts_with(LEDGER_PREFIX.as_bytes())
+                && !serialized_key.starts_with(MIP_STORE_PREFIX.as_bytes())
             {
                 warn!(
                     "Key/value does not correspond to any prefix: serialized_key: {:?}, serialized_value: {:?}",

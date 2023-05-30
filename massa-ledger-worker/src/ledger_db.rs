@@ -99,6 +99,7 @@ impl LedgerDB {
 
         self.db.write().write_batch(
             batch,
+            Default::default(),
             Some(Slot::new(0, self.thread_count.saturating_sub(1))),
         );
     }
@@ -190,7 +191,7 @@ impl LedgerDB {
     }
 
     pub fn reset(&self) {
-        self.db.write().delete_prefix(LEDGER_PREFIX, None);
+        self.db.write().delete_prefix(LEDGER_PREFIX, STATE_CF, None);
     }
 
     /// Deserializes the key and value, useful after bootstrap
@@ -535,7 +536,10 @@ mod tests {
 
         ledger_db.put_entry(&addr, entry, &mut batch);
         ledger_db.update_entry(&addr, entry_update, &mut batch);
-        ledger_db.db.write().write_batch(batch, None);
+        ledger_db
+            .db
+            .write()
+            .write_batch(batch, Default::default(), None);
 
         // return db and initial data
         (ledger_db, data)
@@ -575,7 +579,10 @@ mod tests {
         // delete entry
         let mut batch = DBBatch::new();
         ledger_db.delete_entry(&addr, &mut batch);
-        ledger_db.db.write().write_batch(batch, None);
+        ledger_db
+            .db
+            .write()
+            .write_batch(batch, Default::default(), None);
 
         // check deleted address and ledger hash
         assert_eq!(

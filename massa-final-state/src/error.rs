@@ -5,6 +5,8 @@
 use displaydoc::Display;
 use thiserror::Error;
 
+use massa_versioning::versioning::ExtendFromDbError;
+
 /// Final state error
 #[non_exhaustive]
 #[derive(Display, Error, Debug)]
@@ -17,4 +19,6 @@ pub enum FinalStateError {
     PosError(String),
     /// Snapshot error: {0}
     SnapshotError(String),
+    /// ExtendFromDbError
+    MipStoreError(#[from] ExtendFromDbError),
 }

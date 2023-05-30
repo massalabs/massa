@@ -13,12 +13,13 @@ use massa_executed_ops::{
 use massa_ledger_exports::LedgerConfig;
 use massa_ledger_worker::FinalLedger;
 use massa_models::config::{
-    DENUNCIATION_EXPIRE_PERIODS, ENDORSEMENT_COUNT, MAX_DEFERRED_CREDITS_LENGTH,
+    DENUNCIATION_EXPIRE_PERIODS, ENDORSEMENT_COUNT, GENESIS_TIMESTAMP, MAX_DEFERRED_CREDITS_LENGTH,
     MAX_DENUNCIATIONS_PER_BLOCK_HEADER, MAX_DENUNCIATION_CHANGES_LENGTH,
-    MAX_PRODUCTION_STATS_LENGTH, MAX_ROLLS_COUNT_LENGTH,
+    MAX_PRODUCTION_STATS_LENGTH, MAX_ROLLS_COUNT_LENGTH, T0,
 };
 use massa_models::config::{PERIODS_PER_CYCLE, POS_SAVED_CYCLES, THREAD_COUNT};
 use massa_pos_exports::{PoSConfig, PoSFinalState};
+use massa_versioning::versioning::{MipStatsConfig, MipStore};
 use parking_lot::RwLock;
 
 impl FinalState {
@@ -37,6 +38,14 @@ impl FinalState {
                 config.executed_denunciations_config.clone(),
                 db.clone(),
             ),
+            mip_store: MipStore::try_from((
+                [],
+                MipStatsConfig {
+                    block_count_considered: 10,
+                    counters_max: 10,
+                },
+            ))
+            .unwrap(),
             config,
             last_start_period: 0,
             last_slot_before_downtime: None,
@@ -75,6 +84,8 @@ impl Default for FinalStateConfig {
             max_executed_denunciations_length: MAX_DENUNCIATION_CHANGES_LENGTH,
             initial_seed_string: "".to_string(),
             max_denunciations_per_block_header: MAX_DENUNCIATIONS_PER_BLOCK_HEADER,
+            t0: T0,
+            genesis_timestamp: *GENESIS_TIMESTAMP,
         }
     }
 }

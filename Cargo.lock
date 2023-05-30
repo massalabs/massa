@@ -2345,7 +2345,6 @@ name = "massa-node"
 version = "0.1.0"
 dependencies = [
  "anyhow",
- "chrono",
  "crossbeam-channel",
  "ctrlc",
  "dialoguer",
@@ -2505,6 +2504,7 @@ name = "massa_bootstrap"
 version = "0.1.0"
 dependencies = [
  "bitvec",
+ "chrono",
  "crossbeam",
  "displaydoc",
  "humantime",
@@ -2738,6 +2738,8 @@ dependencies = [
  "massa_pos_worker",
  "massa_proto",
  "massa_serialization 0.1.0",
+ "massa_time",
+ "massa_versioning",
  "nom",
  "parking_lot",
  "rocksdb",
@@ -3119,6 +3121,7 @@ version = "0.1.0"
 dependencies = [
  "chrono",
  "machine",
+ "massa_db",
  "massa_hash 0.1.0",
  "massa_models",
  "massa_proto",
@@ -3129,6 +3132,7 @@ dependencies = [
  "nom",
  "num_enum",
  "parking_lot",
+ "tempfile",
  "thiserror",
  "tracing",
 ]

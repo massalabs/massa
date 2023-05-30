@@ -16,7 +16,6 @@
 use massa_consensus_exports::bootstrapable_graph::BootstrapableGraph;
 use massa_final_state::FinalState;
 use massa_protocol_exports::BootstrapPeers;
-use massa_versioning::versioning::MipStore;
 use parking_lot::RwLock;
 use std::io::{self, ErrorKind};
 use std::sync::Arc;
@@ -55,9 +54,6 @@ pub struct GlobalBootstrapState {
 
     /// list of network peers
     pub peers: Option<BootstrapPeers>,
-
-    /// versioning info state
-    pub mip_store: Option<MipStore>,
 }
 
 impl GlobalBootstrapState {
@@ -66,7 +62,6 @@ impl GlobalBootstrapState {
             final_state,
             graph: None,
             peers: None,
-            mip_store: None,
         }
     }
 }

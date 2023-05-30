@@ -1,5 +1,7 @@
+use chrono::{TimeZone, Utc};
 use humantime::format_duration;
 use massa_db::DBBatch;
+use std::collections::BTreeMap;
 use std::{
     collections::HashSet,
     io,
@@ -8,12 +10,12 @@ use std::{
     time::Duration,
 };
 
-use massa_final_state::FinalState;
+use massa_final_state::{FinalState, FinalStateError};
 use massa_logging::massa_trace;
 use massa_models::{node::NodeId, slot::Slot, streaming_step::StreamingStep, version::Version};
 use massa_signature::PublicKey;
 use massa_time::MassaTime;
-use massa_versioning::versioning::{MipStore, MipStoreRaw};
+use massa_versioning::versioning::{ComponentStateTypeId, MipInfo, MipState};
 use parking_lot::RwLock;
 use rand::{
     prelude::{SliceRandom, StdRng},
@@ -81,6 +83,7 @@ fn stream_final_state_and_consensus(
                 BootstrapServerMessage::BootstrapPart {
                     slot,
                     state_part,
+                    versioning_part,
                     consensus_part,
                     consensus_outdated_ids,
                     last_start_period,
@@ -97,10 +100,10 @@ fn stream_final_state_and_consensus(
                         write_final_state.last_slot_before_downtime = last_slot_before_downtime;
                     }
 
-                    let last_state_step = write_final_state
+                    let (last_state_step, last_versioning_step) = write_final_state
                         .db
                         .write()
-                        .write_batch_bootstrap_client(state_part)
+                        .write_batch_bootstrap_client(state_part, versioning_part)
                         .map_err(|e| {
                             BootstrapError::GeneralError(format!(
                                 "Cannot write received stream batch to disk: {}",
@@ -135,6 +138,7 @@ fn stream_final_state_and_consensus(
                     *next_bootstrap_message = BootstrapClientMessage::AskBootstrapPart {
                         last_slot: Some(slot),
                         last_state_step,
+                        last_versioning_step,
                         last_consensus_step,
                         send_last_start_period: false,
                     };
@@ -149,6 +153,17 @@ fn stream_final_state_and_consensus(
                     info!("State bootstrap complete");
                     // Set next bootstrap message
                     *next_bootstrap_message = BootstrapClientMessage::AskBootstrapPeers;
+
+                    // Update MIP store by reading from the disk
+                    let mut guard = global_bootstrap_state.final_state.write();
+                    let db = guard.db.clone();
+                    let (updated, added) = guard
+                        .mip_store
+                        .extend_from_db(db)
+                        .map_err(|e| BootstrapError::from(FinalStateError::from(e)))?;
+
+                    warn_user_about_versioning_updates(updated, added);
+
                     return Ok(());
                 }
                 BootstrapServerMessage::SlotTooOld => {
@@ -156,6 +171,7 @@ fn stream_final_state_and_consensus(
                     *next_bootstrap_message = BootstrapClientMessage::AskBootstrapPart {
                         last_slot: None,
                         last_state_step: StreamingStep::Started,
+                        last_versioning_step: StreamingStep::Started,
                         last_consensus_step: StreamingStep::Started,
                         send_last_start_period: true,
                     };
@@ -298,25 +314,6 @@ fn bootstrap_from_server(
                     other => return Err(BootstrapError::UnexpectedServerMessage(other)),
                 };
                 global_bootstrap_state.peers = Some(peers);
-                *next_bootstrap_message = BootstrapClientMessage::AskBootstrapMipStore;
-            }
-            BootstrapClientMessage::AskBootstrapMipStore => {
-                let mip_store_raw: MipStoreRaw = match send_client_message(
-                    next_bootstrap_message,
-                    client,
-                    write_timeout,
-                    cfg.read_timeout.into(),
-                    "ask bootstrap versioning store timed out",
-                )? {
-                    BootstrapServerMessage::BootstrapMipStore { store: store_raw } => store_raw,
-                    BootstrapServerMessage::BootstrapError { error } => {
-                        return Err(BootstrapError::ReceivedError(error))
-                    }
-                    other => return Err(BootstrapError::UnexpectedServerMessage(other)),
-                };
-
-                global_bootstrap_state.mip_store =
-                    Some(MipStore(Arc::new(RwLock::new(mip_store_raw))));
                 *next_bootstrap_message = BootstrapClientMessage::BootstrapSuccess;
             }
             BootstrapClientMessage::BootstrapSuccess => {
@@ -443,7 +440,11 @@ pub fn get_state(
                 bootstrap_config.thread_count.saturating_sub(1),
             );
 
-            final_state_guard.db.write().write_batch(batch, Some(slot));
+            // TODO: should receive ver batch here?
+            final_state_guard
+                .db
+                .write()
+                .write_batch(batch, Default::default(), Some(slot));
         }
         return Ok(GlobalBootstrapState::new(final_state));
     }
@@ -456,6 +457,7 @@ pub fn get_state(
         BootstrapClientMessage::AskBootstrapPart {
             last_slot: None,
             last_state_step: StreamingStep::Started,
+            last_versioning_step: StreamingStep::Started,
             last_consensus_step: StreamingStep::Started,
             send_last_start_period: true,
         };
@@ -560,4 +562,72 @@ fn get_bootstrap_list_iter(
     let mut unique_node_ids: HashSet<NodeId> = HashSet::new();
     filtered_bootstrap_list.retain(|e| unique_node_ids.insert(e.1));
     Ok(filtered_bootstrap_list)
+}
+
+fn warn_user_about_versioning_updates(updated: Vec<MipInfo>, added: BTreeMap<MipInfo, MipState>) {
+    if !added.is_empty() {
+        for (mip_info, mip_state) in added.iter() {
+            let now = MassaTime::now().expect("Cannot get current time");
+            match mip_state.state_at(now, mip_info.start, mip_info.timeout) {
+                Ok(st_id) => {
+                    if st_id == ComponentStateTypeId::LockedIn {
+                        // A new MipInfo @ state locked_in - we need to urge the user to update
+                        warn!(
+                            "A new MIP has been received: {}, version: {}",
+                            mip_info.name, mip_info.version
+                        );
+                        // Safe to unwrap here (only panic if not LockedIn)
+                        let activation_at = mip_state.activation_at(mip_info).unwrap();
+                        let dt = Utc
+                            .timestamp_opt(activation_at.to_duration().as_secs() as i64, 0)
+                            .unwrap();
+                        warn!("Please update your Massa node before: {}", dt.to_rfc2822());
+                    } else if st_id == ComponentStateTypeId::Active {
+                        // A new MipInfo @ state active - we are not compatible anymore
+                        warn!(
+                            "A new MIP has been received {:?}, version: {:?}",
+                            mip_info.name, mip_info.version
+                        );
+                        panic!("Please update your Massa node to support it");
+                    } else if st_id == ComponentStateTypeId::Defined {
+                        // a new MipInfo @ state defined or started (or failed / error)
+                        // warn the user to update its node
+                        warn!(
+                            "A new MIP has been received: {}, version: {}",
+                            mip_info.name, mip_info.version
+                        );
+                        debug!("MIP state: {:?}", mip_state);
+                        let dt_start = Utc
+                            .timestamp_opt(mip_info.start.to_duration().as_secs() as i64, 0)
+                            .unwrap();
+                        let dt_timeout = Utc
+                            .timestamp_opt(mip_info.timeout.to_duration().as_secs() as i64, 0)
+                            .unwrap();
+                        warn!("Please update your node between: {} and {} if you want to support this update",
+                                dt_start.to_rfc2822(),
+                                dt_timeout.to_rfc2822()
+                            );
+                    } else {
+                        // a new MipInfo @ state defined or started (or failed / error)
+                        // warn the user to update its node
+                        warn!(
+                            "A new MIP has been received: {}, version: {}",
+                            mip_info.name, mip_info.version
+                        );
+                        debug!("MIP state: {:?}", mip_state);
+                        warn!("Please update your Massa node to support it");
+                    }
+                }
+                Err(e) => {
+                    // Should never happen
+                    panic!(
+                        "Unable to get state at {} of mip info: {:?}, error: {}",
+                        now, mip_info, e
+                    )
+                }
+            }
+        }
+    }
+
+    debug!("MIP store got {} MIP updated from bootstrap", updated.len());
 }

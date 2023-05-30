@@ -213,8 +213,8 @@ impl PoSFinalState {
     /// USED ONLY FOR BOOTSTRAP
     pub fn reset(&mut self) {
         let mut db = self.db.write();
-        db.delete_prefix(CYCLE_HISTORY_PREFIX, None);
-        db.delete_prefix(DEFERRED_CREDITS_PREFIX, None);
+        db.delete_prefix(CYCLE_HISTORY_PREFIX, STATE_CF, None);
+        db.delete_prefix(DEFERRED_CREDITS_PREFIX, STATE_CF, None);
         self.cycle_history_cache = Default::default();
         self.rng_seed_cache = None;
     }
@@ -557,7 +557,7 @@ impl PoSFinalState {
                 &mut batch,
             );
 
-            self.db.write().write_batch(batch, None);
+            self.db.write().write_batch(batch, Default::default(), None);
         } else {
             panic!("cycle {} should be contained here", cycle);
         }
@@ -1526,7 +1526,8 @@ fn test_pos_final_state_hash_computation() {
 
     let mut batch = DBBatch::new();
     pos_state.create_initial_cycle(&mut batch);
-    db.write().write_batch(batch, Some(Slot::new(0, 0)));
+    db.write()
+        .write_batch(batch, Default::default(), Some(Slot::new(0, 0)));
 
     let addr = Address::from_public_key(&KeyPair::generate(0).unwrap().get_public_key());
 
@@ -1552,7 +1553,8 @@ fn test_pos_final_state_hash_computation() {
     pos_state
         .apply_changes_to_batch(changes, Slot::new(0, 0), false, &mut batch)
         .unwrap();
-    db.write().write_batch(batch, Some(Slot::new(0, 0)));
+    db.write()
+        .write_batch(batch, Default::default(), Some(Slot::new(0, 0)));
 
     // update changes once
     roll_changes.clear();
@@ -1576,7 +1578,8 @@ fn test_pos_final_state_hash_computation() {
     pos_state
         .apply_changes_to_batch(changes, Slot::new(0, 1), false, &mut batch)
         .unwrap();
-    db.write().write_batch(batch, Some(Slot::new(0, 1)));
+    db.write()
+        .write_batch(batch, Default::default(), Some(Slot::new(0, 1)));
 
     // update changes twice
     roll_changes.clear();
@@ -1601,7 +1604,8 @@ fn test_pos_final_state_hash_computation() {
     pos_state
         .apply_changes_to_batch(changes, Slot::new(1, 0), false, &mut batch)
         .unwrap();
-    db.write().write_batch(batch, Some(Slot::new(1, 0)));
+    db.write()
+        .write_batch(batch, Default::default(), Some(Slot::new(1, 0)));
 
     let cycles = pos_state.get_cycle_history_cycles();
     assert_eq!(cycles.len(), 1, "wrong number of cycles");

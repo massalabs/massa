@@ -10,11 +10,21 @@ use parking_lot::RwLock;
 use thiserror::Error;
 use tracing::warn;
 
+use massa_db::{
+    DBBatch, MassaDB, MIP_STORE_PREFIX, MIP_STORE_STATS_PREFIX, STATE_CF, VERSIONING_CF,
+};
+use massa_models::config::{MIP_STORE_STATS_BLOCK_CONSIDERED, MIP_STORE_STATS_COUNTERS_MAX};
 use massa_models::error::ModelsError;
 use massa_models::slot::Slot;
 use massa_models::timeslots::get_block_slot_timestamp;
 use massa_models::{amount::Amount, config::VERSIONING_THRESHOLD_TRANSITION_ACCEPTED};
+use massa_serialization::{DeserializeError, Deserializer, SerializeError, Serializer};
 use massa_time::MassaTime;
+
+use crate::versioning_ser_der::{
+    MipInfoDeserializer, MipInfoSerializer, MipStateDeserializer, MipStateSerializer,
+    MipStoreStatsDeserializer, MipStoreStatsSerializer,
+};
 
 /// Versioning component enum
 #[allow(missing_docs)]
@@ -521,6 +531,8 @@ impl MipStore {
         lock.update_with(lock_other.deref())
     }
 
+    // GRPC
+
     /// Retrieve a list of MIP info with their corresponding state (as id) - used for grpc API
     pub fn get_mip_status(&self) -> BTreeMap<MipInfo, ComponentStateTypeId> {
         let guard = self.0.read();
@@ -534,6 +546,53 @@ impl MipStore {
                 )
             })
             .collect()
+    }
+
+    // Network restart
+    pub fn is_coherent_with_shutdown_period(
+        &self,
+        shutdown_start: Slot,
+        shutdown_end: Slot,
+        thread_count: u8,
+        t0: MassaTime,
+        genesis_timestamp: MassaTime,
+    ) -> Result<bool, ModelsError> {
+        let guard = self.0.read();
+        guard.is_coherent_with_shutdown_period(
+            shutdown_start,
+            shutdown_end,
+            thread_count,
+            t0,
+            genesis_timestamp,
+        )
+    }
+
+    // DB
+    pub fn update_batches(
+        &self,
+        db_batch: &mut DBBatch,
+        db_versioning_batch: &mut DBBatch,
+        between: (&MassaTime, &MassaTime),
+    ) -> Result<(), SerializeError> {
+        let guard = self.0.read();
+        guard.update_batches(db_batch, db_versioning_batch, between)
+    }
+
+    pub fn extend_from_db(
+        &mut self,
+        db: Arc<RwLock<MassaDB>>,
+    ) -> Result<(Vec<MipInfo>, BTreeMap<MipInfo, MipState>), ExtendFromDbError> {
+        let mut guard = self.0.write();
+        guard.extend_from_db(db)
+    }
+
+    pub fn reset_db(&self, db: Arc<RwLock<MassaDB>>) {
+        {
+            let mut guard = db.write();
+            guard.delete_prefix(MIP_STORE_PREFIX, STATE_CF, None);
+            guard.delete_prefix(MIP_STORE_PREFIX, VERSIONING_CF, None);
+            guard.delete_prefix(MIP_STORE_STATS_PREFIX, VERSIONING_CF, None);
+        }
     }
 }
 
@@ -590,6 +649,17 @@ pub enum UpdateWithError {
     // ex: MipInfo 2 start is before MipInfo 1 timeout (MipInfo timings should only be sequential)
     #[error("MipInfo {0:?} has overlapping data of MipInfo {1:?}")]
     Overlapping(MipInfo, MipInfo),
+}
+
+/// Error returned by 'extend_from_db`
+#[derive(Error, Debug)]
+pub enum ExtendFromDbError {
+    #[error("Unable to get an handle over db column: {0}")]
+    UnknownDbColumn(String),
+    #[error("{0}")]
+    Update(#[from] UpdateWithError),
+    #[error("{0}")]
+    Deserialize(String),
 }
 
 /// Store of all versioning info
@@ -805,7 +875,6 @@ impl MipStoreRaw {
 
     /// Check if store is coherent with given last network shutdown
     /// On a network shutdown, the MIP infos will be edited but we still need to check if this is coherent
-    #[allow(dead_code)]
     fn is_coherent_with_shutdown_period(
         &self,
         shutdown_start: Slot,
@@ -934,6 +1003,163 @@ impl MipStoreRaw {
         self.stats = new_stats;
         Ok(())
     }
+
+    // DB methods
+
+    /// Get MIP store changes between 2 timestamps - used by the db to update the disk
+    fn update_batches(
+        &self,
+        batch: &mut DBBatch,
+        versioning_batch: &mut DBBatch,
+        between: (&MassaTime, &MassaTime),
+    ) -> Result<(), SerializeError> {
+        let mip_info_ser = MipInfoSerializer::new();
+        let mip_state_ser = MipStateSerializer::new();
+
+        let bounds = (*between.0)..=(*between.1);
+        let mut key = Vec::new();
+        let mut value = Vec::new();
+
+        for (mip_info, mip_state) in self.store.iter() {
+            if let Some((advance, state_id)) = mip_state.history.last_key_value() {
+                if bounds.contains(&advance.now) {
+                    key.extend(MIP_STORE_PREFIX.as_bytes().to_vec());
+                    mip_info_ser.serialize(mip_info, &mut key)?;
+                    mip_state_ser.serialize(mip_state, &mut value)?;
+                    match state_id {
+                        ComponentStateTypeId::Active => {
+                            batch.insert(key.clone(), Some(value.clone()));
+                        }
+                        _ => {
+                            versioning_batch.insert(key.clone(), Some(value.clone()));
+                        }
+                    }
+                    key.clear();
+                    value.clear();
+                }
+            }
+        }
+
+        key.clear();
+        value.clear();
+        key.extend(MIP_STORE_STATS_PREFIX.as_bytes().to_vec());
+        let mip_stats_ser = MipStoreStatsSerializer::new();
+        mip_stats_ser.serialize(&self.stats, &mut value)?;
+        versioning_batch.insert(key.clone(), Some(value.clone()));
+
+        Ok(())
+    }
+
+    /// Extend MIP store with what is written on the disk
+    fn extend_from_db(
+        &mut self,
+        db: Arc<RwLock<MassaDB>>,
+    ) -> Result<(Vec<MipInfo>, BTreeMap<MipInfo, MipState>), ExtendFromDbError> {
+        let mip_info_deser = MipInfoDeserializer::new();
+        let mip_state_deser = MipStateDeserializer::new();
+        let mip_store_stats_deser = MipStoreStatsDeserializer::new(
+            MIP_STORE_STATS_BLOCK_CONSIDERED,
+            MIP_STORE_STATS_COUNTERS_MAX,
+        );
+
+        let db = db.read();
+        let handle = db
+            .db
+            .cf_handle(STATE_CF)
+            .ok_or(ExtendFromDbError::UnknownDbColumn(STATE_CF.to_string()))?;
+
+        // Get data from state cf handle
+        let mut update_data: BTreeMap<MipInfo, MipState> = Default::default();
+        for (ser_mip_info, ser_mip_state) in
+            db.db.prefix_iterator_cf(handle, MIP_STORE_PREFIX).flatten()
+        {
+            if !ser_mip_info.starts_with(MIP_STORE_PREFIX.as_bytes()) {
+                break;
+            }
+
+            // deser
+            let (_, mip_info) = mip_info_deser
+                .deserialize::<DeserializeError>(&ser_mip_info[MIP_STORE_PREFIX.len()..])
+                .map_err(|e| ExtendFromDbError::Deserialize(e.to_string()))?;
+
+            let (_, mip_state) = mip_state_deser
+                .deserialize::<DeserializeError>(&ser_mip_state)
+                .map_err(|e| ExtendFromDbError::Deserialize(e.to_string()))?;
+
+            update_data.insert(mip_info, mip_state);
+        }
+
+        let store_raw_ = MipStoreRaw {
+            store: update_data,
+            stats: MipStoreStats {
+                config: MipStatsConfig {
+                    block_count_considered: MIP_STORE_STATS_BLOCK_CONSIDERED,
+                    counters_max: MIP_STORE_STATS_COUNTERS_MAX,
+                },
+                latest_announcements: Default::default(),
+                network_version_counters: Default::default(),
+            },
+        };
+        let (mut updated, mut added) = self.update_with(&store_raw_)?;
+
+        let mut update_data: BTreeMap<MipInfo, MipState> = Default::default();
+        let versioning_handle =
+            db.db
+                .cf_handle(VERSIONING_CF)
+                .ok_or(ExtendFromDbError::UnknownDbColumn(
+                    VERSIONING_CF.to_string(),
+                ))?;
+
+        // Get data from state cf handle
+        for (ser_mip_info, ser_mip_state) in db
+            .db
+            .prefix_iterator_cf(versioning_handle, MIP_STORE_PREFIX)
+            .flatten()
+        {
+            // deser
+
+            match ser_mip_info.as_ref() {
+                key if key.starts_with(MIP_STORE_PREFIX.as_bytes()) => {
+                    let (_, mip_info) = mip_info_deser
+                        .deserialize::<DeserializeError>(&ser_mip_info[MIP_STORE_PREFIX.len()..])
+                        .map_err(|e| ExtendFromDbError::Deserialize(e.to_string()))?;
+
+                    let (_, mip_state) = mip_state_deser
+                        .deserialize::<DeserializeError>(&ser_mip_state)
+                        .map_err(|e| ExtendFromDbError::Deserialize(e.to_string()))?;
+
+                    update_data.insert(mip_info, mip_state);
+                }
+                key if key.starts_with(MIP_STORE_STATS_PREFIX.as_bytes()) => {
+                    let (_, mip_store_stats) = mip_store_stats_deser
+                        .deserialize::<DeserializeError>(&ser_mip_state)
+                        .map_err(|e| ExtendFromDbError::Deserialize(e.to_string()))?;
+
+                    self.stats = mip_store_stats;
+                }
+                _ => {
+                    break;
+                }
+            }
+        }
+
+        let store_raw_ = MipStoreRaw {
+            store: update_data,
+            stats: MipStoreStats {
+                config: MipStatsConfig {
+                    block_count_considered: MIP_STORE_STATS_BLOCK_CONSIDERED,
+                    counters_max: MIP_STORE_STATS_COUNTERS_MAX,
+                },
+                latest_announcements: Default::default(),
+                network_version_counters: Default::default(),
+            },
+        };
+        let (updated_2, added_2) = self.update_with(&store_raw_)?;
+        updated.extend(updated_2);
+        added.extend(added_2);
+
+        Ok((updated, added))
+    }
 }
 
 impl<const N: usize> TryFrom<([(MipInfo, MipState); N], MipStatsConfig)> for MipStoreRaw {
@@ -975,6 +1201,8 @@ mod test {
     use std::str::FromStr;
 
     use chrono::{Days, NaiveDate, NaiveDateTime};
+    use massa_db::MassaDBConfig;
+    use tempfile::tempdir;
 
     use crate::test_helpers::versioning_helpers::advance_state_until;
 
@@ -1747,5 +1975,141 @@ mod test {
                 ComponentStateTypeId::Started
             );
         }
+    }
+
+    #[test]
+    fn test_mip_store_db() {
+        // Test interaction of MIP store with MassaDB
+        // 1- init from db (empty disk)
+        // 2- update state
+        // 3- write changes to db
+        // 4- init a new mip store from disk and compare
+
+        let genesis_timestamp = MassaTime::from_millis(0);
+        // helpers
+        let get_slot_ts =
+            |slot| get_block_slot_timestamp(THREAD_COUNT, T0, genesis_timestamp, slot).unwrap();
+
+        // Db init
+
+        let temp_dir = tempdir().expect("Unable to create a temp folder");
+        // println!("Using temp dir: {:?}", temp_dir.path());
+
+        let db_config = MassaDBConfig {
+            path: temp_dir.path().to_path_buf(),
+            max_history_length: 100,
+            max_new_elements: 100,
+            thread_count: THREAD_COUNT,
+        };
+        let db = Arc::new(RwLock::new(MassaDB::new(db_config)));
+
+        // MIP info / store init
+
+        let mi_1 = MipInfo {
+            name: "MIP-0002".to_string(),
+            version: 2,
+            components: HashMap::from([(MipComponent::Address, 1)]),
+            start: get_slot_ts(Slot::new(2, 0)),
+            timeout: get_slot_ts(Slot::new(3, 0)),
+            activation_delay: MassaTime::from_millis(10),
+        };
+        let ms_1 = advance_state_until(ComponentState::defined(), &mi_1);
+
+        let mi_2 = MipInfo {
+            name: "MIP-0003".to_string(),
+            version: 3,
+            components: HashMap::from([(MipComponent::Address, 2)]),
+            start: get_slot_ts(Slot::new(4, 2)),
+            timeout: get_slot_ts(Slot::new(7, 2)),
+            activation_delay: MassaTime::from_millis(10),
+        };
+        let ms_2 = advance_state_until(ComponentState::defined(), &mi_2);
+
+        let mip_stats_config = MipStatsConfig {
+            block_count_considered: MIP_STORE_STATS_BLOCK_CONSIDERED,
+            counters_max: MIP_STORE_STATS_COUNTERS_MAX,
+        };
+        let mut mip_store = MipStore::try_from((
+            [(mi_1.clone(), ms_1.clone()), (mi_2.clone(), ms_2.clone())],
+            mip_stats_config.clone(),
+        ))
+        .expect("Cannot create an empty MIP store");
+
+        // Step 1
+
+        mip_store.extend_from_db(db.clone()).unwrap();
+        // Check that we extend from an empty folder
+        assert_eq!(mip_store.0.read().store.len(), 2);
+        assert_eq!(
+            mip_store.0.read().store.first_key_value(),
+            Some((&mi_1, &ms_1))
+        );
+        assert_eq!(
+            mip_store.0.read().store.last_key_value(),
+            Some((&mi_2, &ms_2))
+        );
+
+        // Step 2
+        let active_at = get_slot_ts(Slot::new(2, 5));
+        let ms_1_ = advance_state_until(ComponentState::active(active_at), &mi_1);
+
+        let mip_store_ =
+            MipStore::try_from(([(mi_1.clone(), ms_1_.clone())], mip_stats_config.clone()))
+                .expect("Cannot create an empty MIP store");
+
+        let (updated, added) = mip_store.update_with(&mip_store_).unwrap();
+
+        // Check update_with result - only 1 state should be updated
+        assert_eq!(updated.len(), 1);
+        assert_eq!(added.len(), 0);
+        assert_eq!(mip_store.0.read().store.len(), 2);
+        assert_eq!(
+            mip_store.0.read().store.first_key_value(),
+            Some((&mi_1, &ms_1_))
+        );
+        assert_eq!(
+            mip_store.0.read().store.last_key_value(),
+            Some((&mi_2, &ms_2))
+        );
+
+        // Step 3
+
+        let mut db_batch = DBBatch::new();
+        let mut db_versioning_batch = DBBatch::new();
+
+        // FIXME: get slot right after active at - no hardcode
+        let slot_bounds_ = (&Slot::new(1, 0), &Slot::new(4, 2));
+        let between = (&get_slot_ts(*slot_bounds_.0), &get_slot_ts(*slot_bounds_.1));
+
+        mip_store
+            .update_batches(&mut db_batch, &mut db_versioning_batch, between)
+            .unwrap();
+
+        assert_eq!(db_batch.len(), 1);
+        assert_eq!(db_versioning_batch.len(), 2); // + stats
+
+        let mut guard_db = db.write();
+        // FIXME / TODO: no slot hardcoding?
+        guard_db.write_batch(db_batch, db_versioning_batch, Some(Slot::new(3, 0)));
+        drop(guard_db);
+
+        // Step 4
+        let mut mip_store_2 = MipStore::try_from((
+            [(mi_1.clone(), ms_1.clone()), (mi_2.clone(), ms_2.clone())],
+            mip_stats_config.clone(),
+        ))
+        .expect("Cannot create an empty MIP store");
+        // assert_eq!(mip_store_2.0.read().store.len(), 0);
+
+        mip_store_2.extend_from_db(db.clone()).unwrap();
+
+        let guard_1 = mip_store.0.read();
+        let guard_2 = mip_store_2.0.read();
+        let st1_raw = guard_1.deref();
+        let st2_raw = guard_2.deref();
+
+        // println!("st1_raw: {:?}", st1_raw);
+        // println!("st2_raw: {:?}", st2_raw);
+        assert_eq!(st1_raw, st2_raw);
     }
 }

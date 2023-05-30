@@ -14,6 +14,7 @@ use crate::interface_impl::InterfaceImpl;
 use crate::stats::ExecutionStatsCounter;
 use crate::vesting_manager::VestingManager;
 use massa_async_pool::AsyncMessage;
+use massa_db::DBBatch;
 use massa_execution_exports::{
     EventStore, ExecutionChannels, ExecutionConfig, ExecutionError, ExecutionOutput,
     ExecutionStackElement, ReadOnlyExecutionOutput, ReadOnlyExecutionRequest,
@@ -1710,6 +1711,37 @@ impl ExecutionState {
                     self.mip_store.update_network_version_stats(
                         slot_ts,
                         Some((current_version, announced_version)),
+                    );
+
+                    // Now write mip store changes to disk (if any)
+                    let mut db_batch = DBBatch::new();
+                    let mut db_versioning_batch = DBBatch::new();
+                    // Unwrap/Expect because if something fails we can only panic here
+                    let slot_prev_ts = get_block_slot_timestamp(
+                        self.config.thread_count,
+                        self.config.t0,
+                        self.config.genesis_timestamp,
+                        slot.get_prev_slot(self.config.thread_count).unwrap(),
+                    )
+                    .unwrap();
+
+                    self.mip_store
+                        .update_batches(
+                            &mut db_batch,
+                            &mut db_versioning_batch,
+                            (&slot_prev_ts, &slot_ts),
+                        )
+                        .unwrap_or_else(|_| {
+                            panic!(
+                                "Unable to get MIP store changes between {} and {}",
+                                slot_prev_ts, slot_ts
+                            )
+                        });
+
+                    self.final_state.write().db.write().write_batch(
+                        db_batch,
+                        db_versioning_batch,
+                        None,
                     );
                 } else {
                     warn!("Unable to get slot timestamp for slot: {} in order to update mip_store stats", slot);

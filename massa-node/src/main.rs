@@ -8,7 +8,6 @@ extern crate massa_logging;
 
 use crate::settings::SETTINGS;
 
-use chrono::{TimeZone, Utc};
 use crossbeam_channel::{Receiver, TryRecvError};
 use ctrlc as _;
 use dialoguer::Password;
@@ -71,6 +70,7 @@ use massa_models::config::{
     MAX_BOOTSTRAPPED_NEW_ELEMENTS, MAX_MESSAGE_SIZE, POOL_CONTROLLER_DENUNCIATIONS_CHANNEL_SIZE,
     POOL_CONTROLLER_ENDORSEMENTS_CHANNEL_SIZE, POOL_CONTROLLER_OPERATIONS_CHANNEL_SIZE,
 };
+use massa_models::slot::Slot;
 use massa_pool_exports::{PoolChannels, PoolConfig, PoolManager};
 use massa_pool_worker::start_pool_controller;
 use massa_pos_exports::{PoSConfig, SelectorConfig, SelectorManager};
@@ -79,9 +79,7 @@ use massa_protocol_exports::{ProtocolConfig, ProtocolManager};
 use massa_protocol_worker::{create_protocol_controller, start_protocol_controller};
 use massa_storage::Storage;
 use massa_time::MassaTime;
-use massa_versioning::versioning::{
-    ComponentStateTypeId, MipComponent, MipInfo, MipState, MipStatsConfig, MipStore,
-};
+use massa_versioning::versioning::{MipStatsConfig, MipStore};
 use massa_wallet::Wallet;
 use parking_lot::RwLock;
 use peernet::transports::TransportType;
@@ -95,7 +93,7 @@ use std::{path::Path, process, sync::Arc};
 use structopt::StructOpt;
 use tokio::signal;
 use tokio::sync::{broadcast, mpsc};
-use tracing::{debug, error, info, warn};
+use tracing::{error, info, warn};
 use tracing_subscriber::filter::{filter_fn, LevelFilter};
 
 mod settings;
@@ -190,6 +188,8 @@ async fn launch(
         endorsement_count: ENDORSEMENT_COUNT,
         max_executed_denunciations_length: MAX_DENUNCIATION_CHANGES_LENGTH,
         max_denunciations_per_block_header: MAX_DENUNCIATIONS_PER_BLOCK_HEADER,
+        t0: T0,
+        genesis_timestamp: *GENESIS_TIMESTAMP,
     };
 
     // Remove current disk ledger if there is one and we don't want to restart from snapshot
@@ -229,6 +229,14 @@ async fn launch(
     })
     .expect("could not start selector worker");
 
+    // Creates an empty default store
+    let mip_stats_config = MipStatsConfig {
+        block_count_considered: MIP_STORE_STATS_BLOCK_CONSIDERED,
+        counters_max: MIP_STORE_STATS_COUNTERS_MAX,
+    };
+    let mip_store =
+        MipStore::try_from(([], mip_stats_config)).expect("Cannot create empty MIP store");
+
     // Create final state, either from a snapshot, or from scratch
     let final_state = Arc::new(parking_lot::RwLock::new(
         match args.restart_from_snapshot_at_period {
@@ -237,6 +245,7 @@ async fn launch(
                 final_state_config,
                 Box::new(ledger),
                 selector_controller.clone(),
+                mip_store.clone(),
                 last_start_period,
             )
             .expect("could not init final state"),
@@ -245,6 +254,7 @@ async fn launch(
                 final_state_config,
                 Box::new(ledger),
                 selector_controller.clone(),
+                mip_store.clone(),
                 true,
             )
             .expect("could not init final state"),
@@ -341,6 +351,33 @@ async fn launch(
             .expect("could not compute initial draws"); // TODO: this might just mean a bad bootstrap, no need to panic, just reboot
     }
 
+    let last_slot_before_downtime_ = final_state.read().last_slot_before_downtime;
+    if let Some(last_slot_before_downtime) = last_slot_before_downtime_ {
+        let last_shutdown_start = last_slot_before_downtime
+            .get_next_slot(THREAD_COUNT)
+            .unwrap();
+        let last_shutdown_end = Slot::new(final_state.read().last_start_period, 0)
+            .get_prev_slot(THREAD_COUNT)
+            .unwrap();
+        if !final_state
+            .read()
+            .mip_store
+            .is_coherent_with_shutdown_period(
+                last_shutdown_start,
+                last_shutdown_end,
+                THREAD_COUNT,
+                T0,
+                *GENESIS_TIMESTAMP,
+            )
+            .unwrap_or(false)
+        {
+            panic!(
+                "MIP store is not coherent with last shutdown period ({} - {})",
+                last_shutdown_start, last_shutdown_end
+            );
+        }
+    }
+
     // Storage costs constants
     let storage_costs_constants = StorageCostsConstants {
         ledger_cost_per_byte: LEDGER_COST_PER_BYTE,
@@ -349,99 +386,6 @@ async fn launch(
             .checked_mul_u64(LEDGER_ENTRY_DATASTORE_BASE_SIZE as u64)
             .expect("Overflow when creating constant ledger_entry_datastore_base_size"),
     };
-
-    // Creates an empty default store
-    let mip_stats_config = MipStatsConfig {
-        block_count_considered: MIP_STORE_STATS_BLOCK_CONSIDERED,
-        counters_max: MIP_STORE_STATS_COUNTERS_MAX,
-    };
-    let mut mip_store = MipStore::try_from((
-        [(
-            MipInfo {
-                name: "MIP-0001".to_string(),
-                version: 1,
-                components: HashMap::from([(MipComponent::Address, 1), (MipComponent::KeyPair, 1)]),
-                start: MassaTime::from_millis(0),
-                timeout: MassaTime::from_millis(0),
-                activation_delay: MassaTime::from_millis(0),
-            },
-            MipState::new(MassaTime::from_millis(0)),
-        )],
-        mip_stats_config,
-    ))
-    .expect("mip store creation failed");
-    if let Some(bootstrap_mip_store) = bootstrap_state.mip_store {
-        // TODO: in some cases, should bootstrap again
-        let (updated, added) = mip_store
-            .update_with(&bootstrap_mip_store)
-            .expect("Cannot update MIP store with bootstrap mip store");
-
-        if !added.is_empty() {
-            for (mip_info, mip_state) in added.iter() {
-                let now = MassaTime::now().expect("Cannot get current time");
-                match mip_state.state_at(now, mip_info.start, mip_info.timeout) {
-                    Ok(st_id) => {
-                        if st_id == ComponentStateTypeId::LockedIn {
-                            // A new MipInfo @ state locked_in - we need to urge the user to update
-                            warn!(
-                                "A new MIP has been received: {}, version: {}",
-                                mip_info.name, mip_info.version
-                            );
-                            // Safe to unwrap here (only panic if not LockedIn)
-                            let activation_at = mip_state.activation_at(mip_info).unwrap();
-                            let dt = Utc
-                                .timestamp_opt(activation_at.to_duration().as_secs() as i64, 0)
-                                .unwrap();
-                            warn!("Please update your Massa node before: {}", dt.to_rfc2822());
-                        } else if st_id == ComponentStateTypeId::Active {
-                            // A new MipInfo @ state active - we are not compatible anymore
-                            warn!(
-                                "A new MIP has been received {:?}, version: {:?}",
-                                mip_info.name, mip_info.version
-                            );
-                            panic!("Please update your Massa node to support it");
-                        } else if st_id == ComponentStateTypeId::Defined {
-                            // a new MipInfo @ state defined or started (or failed / error)
-                            // warn the user to update its node
-                            warn!(
-                                "A new MIP has been received: {}, version: {}",
-                                mip_info.name, mip_info.version
-                            );
-                            debug!("MIP state: {:?}", mip_state);
-                            let dt_start = Utc
-                                .timestamp_opt(mip_info.start.to_duration().as_secs() as i64, 0)
-                                .unwrap();
-                            let dt_timeout = Utc
-                                .timestamp_opt(mip_info.timeout.to_duration().as_secs() as i64, 0)
-                                .unwrap();
-                            warn!("Please update your node between: {} and {} if you want to support this update",
-                                dt_start.to_rfc2822(),
-                                dt_timeout.to_rfc2822()
-                            );
-                        } else {
-                            // a new MipInfo @ state defined or started (or failed / error)
-                            // warn the user to update its node
-                            warn!(
-                                "A new MIP has been received: {}, version: {}",
-                                mip_info.name, mip_info.version
-                            );
-                            debug!("MIP state: {:?}", mip_state);
-                            warn!("Please update your Massa node to support it");
-                        }
-                    }
-                    Err(e) => {
-                        // Should never happen
-                        panic!(
-                            "Unable to get state at {} of mip info: {:?}, error: {}",
-                            now, mip_info, e
-                        )
-                    }
-                }
-            }
-        }
-
-        debug!("MIP store got {} MIP updated from bootstrap", updated.len());
-    }
 
     // launch execution module
     let execution_config = ExecutionConfig {
@@ -740,7 +684,6 @@ async fn launch(
             bootstrap_config,
             keypair.clone(),
             *VERSION,
-            mip_store.clone(),
         )
         .expect("Could not start bootstrap server");
         manager.set_listener_stopper(waker);

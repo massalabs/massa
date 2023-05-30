@@ -9,6 +9,7 @@ use massa_db::{MassaDB, METADATA_CF, STATE_CF, STATE_HASH_KEY};
 use massa_executed_ops::{ExecutedDenunciations, ExecutedOps};
 use massa_ledger_exports::LedgerController;
 use massa_pos_exports::PoSFinalState;
+use massa_versioning::versioning::MipStore;
 use parking_lot::RwLock;
 
 use crate::{FinalState, FinalStateConfig};
@@ -21,6 +22,7 @@ pub fn create_final_state(
     pos_state: PoSFinalState,
     executed_ops: ExecutedOps,
     executed_denunciations: ExecutedDenunciations,
+    mip_store: MipStore,
     db: Arc<RwLock<MassaDB>>,
 ) -> FinalState {
     FinalState {
@@ -30,6 +32,7 @@ pub fn create_final_state(
         pos_state,
         executed_ops,
         executed_denunciations,
+        mip_store,
         last_start_period: 0,
         last_slot_before_downtime: None,
         db,
