@@ -1364,7 +1364,7 @@ mod test {
         let now = MassaTime::from_millis(3);
         let adv = Advance::from((&vi_1, &Amount::zero(), &now));
         vsh.on_advance(&adv);
-        let now = MassaTime::from(4);
+        let now = MassaTime::from_millis(4);
         let adv = Advance::from((&vi_1, &Amount::from_str("14.42").unwrap(), &now));
         vsh.on_advance(&adv);
 
