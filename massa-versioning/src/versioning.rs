@@ -578,6 +578,13 @@ impl MipStore {
         let mut guard = self.0.write();
         guard.extend_from_db(db);
     }
+
+    pub fn reset_db(&self, db: Arc<RwLock<MassaDB>>) {
+        {
+            let mut guard = db.write();
+            guard.delete_prefix(MIP_STORE_PREFIX, None, Some(VERSIONING_CF));
+        }
+    }
 }
 
 impl<const N: usize> TryFrom<([(MipInfo, MipState); N], MipStatsConfig)> for MipStore {
@@ -1925,7 +1932,7 @@ mod test {
         // 3- write changes to db
         // 4- init a new mip store from disk and compare
 
-        let genesis_timestamp = MassaTime::from(0);
+        let genesis_timestamp = MassaTime::from_millis(0);
         // helpers
         let get_slot_ts =
             |slot| get_block_slot_timestamp(THREAD_COUNT, T0, genesis_timestamp, slot).unwrap();
@@ -1951,7 +1958,7 @@ mod test {
             components: HashMap::from([(MipComponent::Address, 1)]),
             start: get_slot_ts(Slot::new(2, 0)),
             timeout: get_slot_ts(Slot::new(3, 0)),
-            activation_delay: MassaTime::from(10),
+            activation_delay: MassaTime::from_millis(10),
         };
         let ms_1 = advance_state_until(ComponentState::defined(), &mi_1);
 
@@ -1961,7 +1968,7 @@ mod test {
             components: HashMap::from([(MipComponent::Address, 2)]),
             start: get_slot_ts(Slot::new(4, 2)),
             timeout: get_slot_ts(Slot::new(7, 2)),
-            activation_delay: MassaTime::from(10),
+            activation_delay: MassaTime::from_millis(10),
         };
         let ms_2 = advance_state_until(ComponentState::defined(), &mi_2);
 

@@ -152,7 +152,7 @@ fn test_final_state() {
         let fs = create_final_state(&temp_dir, true);
 
         let mut batch = DBBatch::new();
-        let mut versioning_batch = DBBatch::new();
+        let versioning_batch = DBBatch::new();
 
         fs.write().pos_state.create_initial_cycle(&mut batch);
 

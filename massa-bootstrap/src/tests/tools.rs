@@ -312,7 +312,7 @@ pub fn get_random_final_state_bootstrap(
 
     let mut async_pool = AsyncPool::new(config.async_pool_config.clone(), db.clone());
     let mut batch = DBBatch::new();
-    let mut versioning_batch = DBBatch::new();
+    let versioning_batch = DBBatch::new();
 
     async_pool.apply_changes_to_batch(&messages, &mut batch);
     async_pool

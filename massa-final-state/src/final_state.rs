@@ -492,6 +492,7 @@ impl FinalState {
         self.pos_state.reset();
         self.executed_ops.reset();
         self.executed_denunciations.reset();
+        self.mip_store.reset_db(self.db.clone());
     }
 
     /// Performs the initial draws.

@@ -479,7 +479,8 @@ impl Deserializer<BootstrapServerMessage> for BootstrapServerMessageDeserializer
                                 "Failed new_elements deserialization",
                                 length_count(
                                     context("Failed length deserialization", |input| {
-                                        self.state_length_deserializer.deserialize(input)
+                                        self.state_new_elements_length_deserializer
+                                            .deserialize(input)
                                     }),
                                     tuple((
                                         |input| self.vec_u8_deserializer.deserialize(input),
@@ -491,7 +492,7 @@ impl Deserializer<BootstrapServerMessage> for BootstrapServerMessageDeserializer
                                 "Failed updates deserialization",
                                 length_count(
                                     context("Failed length deserialization", |input| {
-                                        self.state_length_deserializer.deserialize(input)
+                                        self.state_updates_length_deserializer.deserialize(input)
                                     }),
                                     tuple((
                                         |input| self.vec_u8_deserializer.deserialize(input),

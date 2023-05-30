@@ -270,7 +270,7 @@ impl AsyncPool {
     ///
     /// USED ONLY FOR BOOTSTRAP
     pub fn reset(&mut self) {
-        self.db.write().delete_prefix(ASYNC_POOL_PREFIX, None);
+        self.db.write().delete_prefix(ASYNC_POOL_PREFIX, None, None);
         self.recompute_message_info_cache();
     }
 

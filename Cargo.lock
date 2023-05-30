@@ -2345,7 +2345,6 @@ name = "massa-node"
 version = "0.1.0"
 dependencies = [
  "anyhow",
- "chrono",
  "crossbeam-channel",
  "ctrlc",
  "dialoguer",

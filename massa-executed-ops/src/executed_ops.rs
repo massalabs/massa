@@ -127,7 +127,9 @@ impl ExecutedOps {
     ///
     /// USED FOR BOOTSTRAP ONLY
     pub fn reset(&mut self) {
-        self.db.write().delete_prefix(EXECUTED_OPS_PREFIX, None);
+        self.db
+            .write()
+            .delete_prefix(EXECUTED_OPS_PREFIX, None, None);
 
         self.recompute_sorted_ops_and_op_exec_status();
     }

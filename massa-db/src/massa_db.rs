@@ -430,7 +430,6 @@ where
         // e.g everything that is not in 'Active' state (so hashes remain compatibles)
         for (key, value) in versioning_changes.iter() {
             if let Some(value) = value {
-                println!("Put some value to VERSIONING_CF");
                 self.current_batch
                     .lock()
                     .put_cf(handle_versioning, key, value);
@@ -579,7 +578,6 @@ where
                 .map(|(k, v)| (k.clone(), Some(v.clone()))),
         );
 
-        // FIXME
         self.write_changes(
             changes,
             versioning_changes,
@@ -717,7 +715,12 @@ impl RawMassaDB<Slot, SlotSerializer, SlotDeserializer> {
     }
 
     /// Utility function to delete all keys in a prefix
-    pub fn delete_prefix(&mut self, prefix: &str, change_id: Option<Slot>) {
+    pub fn delete_prefix(
+        &mut self,
+        prefix: &str,
+        change_id: Option<Slot>,
+        additional_handle: Option<&str>,
+    ) {
         let db = &self.db;
 
         let handle = db.cf_handle(STATE_CF).expect(CF_ERROR);
@@ -730,8 +733,19 @@ impl RawMassaDB<Slot, SlotSerializer, SlotDeserializer> {
             self.delete_key(&mut batch, serialized_key.to_vec());
         }
 
-        // FIXME: should we also delete in VERSIONING_CF column? or add a column argument in fn?
-        self.write_batch(batch, Default::default(), change_id);
+        let mut batch_2 = DBBatch::new();
+        if let Some(additional_handle_) = additional_handle {
+            let handle_2 = db.cf_handle(additional_handle_).expect(CF_ERROR);
+            for (serialized_key, _) in db.prefix_iterator_cf(handle_2, prefix).flatten() {
+                if !serialized_key.starts_with(prefix.as_bytes()) {
+                    break;
+                }
+
+                self.delete_key(&mut batch_2, serialized_key.to_vec());
+            }
+        }
+
+        self.write_batch(batch, batch_2, change_id);
     }
 
     /// Reset the database, and attach it to the given slot.
