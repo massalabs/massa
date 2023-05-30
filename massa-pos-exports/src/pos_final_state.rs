@@ -13,7 +13,7 @@ use std::{
     ops::Bound::{Excluded, Unbounded},
     path::PathBuf,
 };
-use tracing::{debug, info};
+use tracing::debug;
 
 #[derive(Clone)]
 /// Final state of PoS
@@ -346,8 +346,6 @@ impl PoSFinalState {
             // looking back to negative cycles
             None => (self.initial_rolls.clone(), self.initial_ledger_hash),
         };
-
-        info!("lookback_state_hash fed to selection for draw_cycle {} is: {}", draw_cycle, lookback_state_hash);
 
         // get seed lookback
         let lookback_seed = match draw_cycle.checked_sub(2) {
