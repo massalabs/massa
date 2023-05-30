@@ -530,10 +530,25 @@ pub fn stream_bootstrap_information(
                 }
                 // We still need to stream the state - new elements
                 (_, false, Some((new_last_key, _))) => StreamingStep::Ongoing(new_last_key.clone()),
+                // Else, we are in an inconsistent state
                 _ => {
-                    return Err(BootstrapError::GeneralError(String::from(
-                        "state step is inconsistent!",
-                    )));
+                    if last_state_step == StreamingStep::Finished(None) {
+                        return Err(BootstrapError::GeneralError(String::from(
+                            "State bootstrap cursor is set to Finished but we do not know what was the last key streamed",
+                        )));
+                    } else if state_part.is_empty()
+                        && state_part.new_elements.last_key_value().is_some()
+                    {
+                        // If is_empty() has a correct implementation, this should never happen
+                        return Err(BootstrapError::GeneralError(String::from(
+                            "Bootstrap state_part is_empty() but it also contains new elements",
+                        )));
+                    } else {
+                        // StreamingStep::Started, false, None
+                        return Err(BootstrapError::GeneralError(String::from(
+                            "Bootstrap started but we have no new elements to stream",
+                        )));
+                    }
                 }
             };
 
