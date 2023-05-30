@@ -610,7 +610,7 @@
 </span><span class="kw">mod </span>test {
     <span class="kw">use super</span>::<span class="kw-2">*</span>;
 
-    <span class="kw">use </span>std::collections::{BTreeMap, HashMap};
+    <span class="kw">use </span>std::collections::BTreeMap;
 
     <span class="kw">use </span><span class="kw">crate</span>::test_helpers::versioning_helpers::advance_state_until;
     <span class="kw">use </span><span class="kw">crate</span>::versioning::{MipInfo, MipState, MipStatsConfig};
@@ -718,7 +718,7 @@
         <span class="kw">let </span>vi_1 = MipInfo {
             name: <span class="string">&quot;MIP-0002&quot;</span>.to_string(),
             version: <span class="number">1</span>,
-            components: HashMap::from([(MipComponent::Address, <span class="number">1</span>)]),
+            components: BTreeMap::from([(MipComponent::Address, <span class="number">1</span>)]),
             start: MassaTime::from_millis(<span class="number">12</span>),
             timeout: MassaTime::from_millis(<span class="number">15</span>),
             activation_delay: MassaTime::from_millis(<span class="number">2</span>),
@@ -728,7 +728,7 @@
         <span class="kw">let </span>vi_2 = MipInfo {
             name: <span class="string">&quot;MIP-0003&quot;</span>.to_string(),
             version: <span class="number">2</span>,
-            components: HashMap::from([(MipComponent::Address, <span class="number">2</span>)]),
+            components: BTreeMap::from([(MipComponent::Address, <span class="number">2</span>)]),
             start: MassaTime::from_millis(<span class="number">25</span>),
             timeout: MassaTime::from_millis(<span class="number">28</span>),
             activation_delay: MassaTime::from_millis(<span class="number">2</span>),
@@ -810,7 +810,7 @@
         <span class="kw">let </span>vi_1 = MipInfo {
             name: <span class="string">&quot;MIP-0002&quot;</span>.to_string(),
             version: <span class="number">1</span>,
-            components: HashMap::from([(MipComponent::Address, <span class="number">1</span>)]),
+            components: BTreeMap::from([(MipComponent::Address, <span class="number">1</span>)]),
             start: MassaTime::from_millis(<span class="number">12</span>),
             timeout: MassaTime::from_millis(<span class="number">15</span>),
             activation_delay: MassaTime::from_millis(<span class="number">2</span>),
@@ -820,7 +820,7 @@
         <span class="kw">let </span>vi_2 = MipInfo {
             name: <span class="string">&quot;MIP-0003&quot;</span>.to_string(),
             version: <span class="number">2</span>,
-            components: HashMap::from([(MipComponent::Address, <span class="number">2</span>)]),
+            components: BTreeMap::from([(MipComponent::Address, <span class="number">2</span>)]),
             start: MassaTime::from_millis(<span class="number">25</span>),
             timeout: MassaTime::from_millis(<span class="number">28</span>),
             activation_delay: MassaTime::from_millis(<span class="number">2</span>),

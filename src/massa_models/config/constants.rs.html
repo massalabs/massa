@@ -319,6 +319,12 @@
 <a href="#319" id="319">319</a>
 <a href="#320" id="320">320</a>
 <a href="#321" id="321">321</a>
+<a href="#322" id="322">322</a>
+<a href="#323" id="323">323</a>
+<a href="#324" id="324">324</a>
+<a href="#325" id="325">325</a>
+<a href="#326" id="326">326</a>
+<a href="#327" id="327">327</a>
 </pre><pre class="rust"><code><span class="doccomment">//! DEFAULT VALUES USED TO INITIALIZE DIVERS CONFIGURATIONS STRUCTURES
 //!
 //!
@@ -450,8 +456,6 @@
 </span><span class="kw">pub const </span>OPERATION_VALIDITY_PERIODS: u64 = <span class="number">10</span>;
 <span class="doccomment">/// cycle duration in periods
 </span><span class="kw">pub const </span>PERIODS_PER_CYCLE: u64 = <span class="number">128</span>;
-<span class="doccomment">/// cycle duration in periods
-</span><span class="kw">pub const </span>PERIODS_BETWEEN_BACKUPS: u64 = <span class="number">128</span>;
 <span class="doccomment">/// Number of cycles saved in `PoSFinalState`
 ///
 /// 6 for PoS itself so we can check denuncations on selections at C-2 after a bootstrap
@@ -463,6 +467,14 @@
 /// 5 to have a C-2 to C+2 range (6 cycles post-bootstrap give 5 cycle draws)
 /// 1 for margin
 </span><span class="kw">pub const </span>SELECTOR_DRAW_CACHE_SIZE: usize = <span class="number">6</span>;
+<span class="doccomment">/// Maximum size batch of data in a part of the ledger
+</span><span class="kw">pub const </span>LEDGER_PART_SIZE_MESSAGE_BYTES: u64 = <span class="number">1_000_000</span>;
+<span class="doccomment">/// Maximum async messages in a batch of the bootstrap of the async pool
+</span><span class="kw">pub const </span>ASYNC_POOL_BOOTSTRAP_PART_SIZE: u64 = <span class="number">100</span>;
+<span class="doccomment">/// Maximum proof-of-stake deferred credits in a bootstrap batch
+</span><span class="kw">pub const </span>DEFERRED_CREDITS_BOOTSTRAP_PART_SIZE: u64 = <span class="number">100</span>;
+<span class="doccomment">/// Maximum executed ops per slot in a bootstrap batch
+</span><span class="kw">pub const </span>EXECUTED_OPS_BOOTSTRAP_PART_SIZE: u64 = <span class="number">10</span>;
 <span class="doccomment">/// Maximum number of consensus blocks in a bootstrap batch
 </span><span class="kw">pub const </span>CONSENSUS_BOOTSTRAP_PART_SIZE: u64 = <span class="number">50</span>;
 <span class="doccomment">/// Maximum number of consensus block ids when sending a bootstrap cursor from the client
@@ -523,12 +535,12 @@
 </span><span class="kw">pub const </span>MAX_BOOTSTRAP_CHILDREN: u32 = <span class="number">1000</span>;
 <span class="doccomment">/// Max number of cycles in PoS bootstrap
 </span><span class="kw">pub const </span>MAX_BOOTSTRAP_POS_CYCLES: u32 = <span class="number">5</span>;
+<span class="doccomment">/// Max number of address and random entries for PoS bootstrap
+</span><span class="kw">pub const </span>MAX_BOOTSTRAP_POS_ENTRIES: u32 = <span class="number">1000000000</span>;
 <span class="doccomment">/// Max async pool changes
 </span><span class="kw">pub const </span>MAX_BOOTSTRAP_ASYNC_POOL_CHANGES: u64 = <span class="number">100_000</span>;
 <span class="doccomment">/// Max bytes in final states parts
 </span><span class="kw">pub const </span>MAX_BOOTSTRAP_FINAL_STATE_PARTS_SIZE: u64 = <span class="number">1_000_000_000</span>;
-<span class="doccomment">/// Max bytes in final states parts
-</span><span class="kw">pub const </span>MAX_BOOTSTRAPPED_NEW_ELEMENTS: u64 = <span class="number">1_000</span>;
 <span class="doccomment">/// Max size of the IP list
 </span><span class="kw">pub const </span>IP_LIST_MAX_SIZE: usize = <span class="number">10000</span>;
 <span class="doccomment">/// Size of the random bytes array used for the bootstrap, safe to import

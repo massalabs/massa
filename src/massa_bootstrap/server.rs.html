@@ -766,45 +766,6 @@
 <a href="#766" id="766">766</a>
 <a href="#767" id="767">767</a>
 <a href="#768" id="768">768</a>
-<a href="#769" id="769">769</a>
-<a href="#770" id="770">770</a>
-<a href="#771" id="771">771</a>
-<a href="#772" id="772">772</a>
-<a href="#773" id="773">773</a>
-<a href="#774" id="774">774</a>
-<a href="#775" id="775">775</a>
-<a href="#776" id="776">776</a>
-<a href="#777" id="777">777</a>
-<a href="#778" id="778">778</a>
-<a href="#779" id="779">779</a>
-<a href="#780" id="780">780</a>
-<a href="#781" id="781">781</a>
-<a href="#782" id="782">782</a>
-<a href="#783" id="783">783</a>
-<a href="#784" id="784">784</a>
-<a href="#785" id="785">785</a>
-<a href="#786" id="786">786</a>
-<a href="#787" id="787">787</a>
-<a href="#788" id="788">788</a>
-<a href="#789" id="789">789</a>
-<a href="#790" id="790">790</a>
-<a href="#791" id="791">791</a>
-<a href="#792" id="792">792</a>
-<a href="#793" id="793">793</a>
-<a href="#794" id="794">794</a>
-<a href="#795" id="795">795</a>
-<a href="#796" id="796">796</a>
-<a href="#797" id="797">797</a>
-<a href="#798" id="798">798</a>
-<a href="#799" id="799">799</a>
-<a href="#800" id="800">800</a>
-<a href="#801" id="801">801</a>
-<a href="#802" id="802">802</a>
-<a href="#803" id="803">803</a>
-<a href="#804" id="804">804</a>
-<a href="#805" id="805">805</a>
-<a href="#806" id="806">806</a>
-<a href="#807" id="807">807</a>
 </pre><pre class="rust"><code><span class="doccomment">//! start the bootstrapping system using [`start_bootstrap_server`]
 //! Once your node will be ready, you may want other to bootstrap from you.
 //!
@@ -835,9 +796,10 @@
 
 <span class="kw">use </span>crossbeam::channel::tick;
 <span class="kw">use </span>humantime::format_duration;
+<span class="kw">use </span>massa_async_pool::AsyncMessageId;
 <span class="kw">use </span>massa_consensus_exports::{bootstrapable_graph::BootstrapableGraph, ConsensusController};
-<span class="kw">use </span>massa_db::CHANGE_ID_DESER_ERROR;
-<span class="kw">use </span>massa_final_state::FinalState;
+<span class="kw">use </span>massa_final_state::{FinalState, FinalStateError};
+<span class="kw">use </span>massa_ledger_exports::Key <span class="kw">as </span>LedgerKey;
 <span class="kw">use </span>massa_logging::massa_trace;
 <span class="kw">use </span>massa_models::{
     block_id::BlockId, prehash::PreHashSet, slot::Slot, streaming_step::StreamingStep,
@@ -847,6 +809,7 @@
 <span class="kw">use </span>massa_protocol_exports::ProtocolController;
 <span class="kw">use </span>massa_signature::KeyPair;
 <span class="kw">use </span>massa_time::MassaTime;
+<span class="kw">use </span>massa_versioning::versioning::MipStore;
 
 <span class="kw">use </span>parking_lot::RwLock;
 <span class="kw">use </span>std::{
@@ -943,6 +906,7 @@
     config: BootstrapConfig,
     keypair: KeyPair,
     version: Version,
+    mip_store: MipStore,
 ) -&gt; <span class="prelude-ty">Result</span>&lt;BootstrapManager, BootstrapError&gt; {
     <span class="macro">massa_trace!</span>(<span class="string">&quot;bootstrap.lib.start_bootstrap_server&quot;</span>, {});
 
@@ -988,6 +952,7 @@
                 version,
                 ip_hist_map: HashMap::with_capacity(config.ip_list_max_size),
                 bootstrap_config: config,
+                mip_store,
             }
             .event_loop(max_bootstraps)
         })
@@ -1011,6 +976,7 @@
     bootstrap_config: BootstrapConfig,
     version: Version,
     ip_hist_map: HashMap&lt;IpAddr, Instant&gt;,
+    mip_store: MipStore,
 }
 
 <span class="kw">impl</span>&lt;L: BSEventPoller&gt; BootstrapServer&lt;<span class="lifetime">&#39;_</span>, L&gt; {
@@ -1119,6 +1085,7 @@
                 <span class="kw">let </span>config = <span class="self">self</span>.bootstrap_config.clone();
 
                 <span class="kw">let </span>bootstrap_count_token = bootstrap_sessions_counter.clone();
+                <span class="kw">let </span>mip_store = <span class="self">self</span>.mip_store.clone();
 
                 <span class="kw">let _ </span>= thread::Builder::new()
                     .name(<span class="macro">format!</span>(<span class="string">&quot;bootstrap thread, peer: {}&quot;</span>, remote_addr))
@@ -1132,6 +1099,7 @@
                             version,
                             consensus_command_sender,
                             protocol_controller,
+                            mip_store,
                         )
                     });
 
@@ -1194,6 +1162,7 @@
     version: Version,
     consensus_command_sender: Box&lt;<span class="kw">dyn </span>ConsensusController&gt;,
     protocol_controller: Box&lt;<span class="kw">dyn </span>ProtocolController&gt;,
+    mip_store: MipStore,
 ) {
     <span class="macro">debug!</span>(<span class="string">&quot;running bootstrap for peer {}&quot;</span>, remote_addr);
     <span class="kw">let </span>deadline = Instant::now() + config.bootstrap_timeout.to_duration();
@@ -1206,6 +1175,7 @@
         consensus_command_sender,
         protocol_controller,
         deadline,
+        mip_store,
     );
 
     <span class="comment">// This drop allows the server to accept new connections before having to complete the error notifications
@@ -1246,8 +1216,12 @@
     final_state: Arc&lt;RwLock&lt;FinalState&gt;&gt;,
     consensus_controller: Box&lt;<span class="kw">dyn </span>ConsensusController&gt;,
     <span class="kw-2">mut </span>last_slot: <span class="prelude-ty">Option</span>&lt;Slot&gt;,
-    <span class="kw-2">mut </span>last_state_step: StreamingStep&lt;Vec&lt;u8&gt;&gt;,
-    <span class="kw-2">mut </span>last_versioning_step: StreamingStep&lt;Vec&lt;u8&gt;&gt;,
+    <span class="kw-2">mut </span>last_ledger_step: StreamingStep&lt;LedgerKey&gt;,
+    <span class="kw-2">mut </span>last_pool_step: StreamingStep&lt;AsyncMessageId&gt;,
+    <span class="kw-2">mut </span>last_cycle_step: StreamingStep&lt;u64&gt;,
+    <span class="kw-2">mut </span>last_credits_step: StreamingStep&lt;Slot&gt;,
+    <span class="kw-2">mut </span>last_ops_step: StreamingStep&lt;Slot&gt;,
+    <span class="kw-2">mut </span>last_de_step: StreamingStep&lt;Slot&gt;,
     <span class="kw-2">mut </span>last_consensus_step: StreamingStep&lt;PreHashSet&lt;BlockId&gt;&gt;,
     <span class="kw-2">mut </span>send_last_start_period: bool,
     bs_deadline: <span class="kw-2">&amp;</span>Instant,
@@ -1261,12 +1235,16 @@
         }
 
         <span class="kw">let </span>current_slot;
-        <span class="kw">let </span>state_part;
-        <span class="kw">let </span>versioning_part;
+        <span class="kw">let </span>ledger_part;
+        <span class="kw">let </span>async_pool_part;
+        <span class="kw">let </span>pos_cycle_part;
+        <span class="kw">let </span>pos_credits_part;
+        <span class="kw">let </span>exec_ops_part;
+        <span class="kw">let </span>exec_de_part;
+        <span class="kw">let </span>final_state_changes;
         <span class="kw">let </span>last_start_period;
-        <span class="kw">let </span>last_slot_before_downtime;
 
-        <span class="kw">let </span>slot_too_old = <span class="bool-val">false</span>;
+        <span class="kw">let </span><span class="kw-2">mut </span>slot_too_old = <span class="bool-val">false</span>;
 
         <span class="comment">// Scope of the final state read
         </span>{
@@ -1277,165 +1255,71 @@
             } <span class="kw">else </span>{
                 <span class="prelude-val">None
             </span>};
-            last_slot_before_downtime = <span class="kw">if </span>send_last_start_period {
-                <span class="prelude-val">Some</span>(final_state_read.last_slot_before_downtime)
+
+            <span class="kw">let </span>(data, new_ledger_step) = final_state_read
+                .ledger
+                .get_ledger_part(last_ledger_step.clone())<span class="question-mark">?</span>;
+            ledger_part = data;
+
+            <span class="kw">let </span>(pool_data, new_pool_step) =
+                final_state_read.async_pool.get_pool_part(last_pool_step);
+            async_pool_part = pool_data;
+
+            <span class="kw">let </span>(cycle_data, new_cycle_step) = final_state_read
+                .pos_state
+                .get_cycle_history_part(last_cycle_step)<span class="question-mark">?</span>;
+            pos_cycle_part = cycle_data;
+
+            <span class="kw">let </span>(credits_data, new_credits_step) = final_state_read
+                .pos_state
+                .get_deferred_credits_part(last_credits_step);
+            pos_credits_part = credits_data;
+
+            <span class="kw">let </span>(ops_data, new_ops_step) = final_state_read
+                .executed_ops
+                .get_executed_ops_part(last_ops_step);
+            exec_ops_part = ops_data;
+
+            <span class="kw">let </span>(de_data, new_de_step) = final_state_read
+                .executed_denunciations
+                .get_executed_de_part(last_de_step);
+            exec_de_part = de_data;
+
+            <span class="kw">if let </span><span class="prelude-val">Some</span>(slot) = last_slot &amp;&amp; slot != final_state_read.slot {
+                <span class="kw">if </span>slot &gt; final_state_read.slot {
+                    <span class="kw">return </span><span class="prelude-val">Err</span>(BootstrapError::GeneralError(
+                        <span class="string">&quot;Bootstrap cursor set to future slot&quot;</span>.to_string(),
+                    ));
+                }
+                final_state_changes = <span class="kw">match </span>final_state_read.get_state_changes_part(
+                    slot,
+                    new_ledger_step.clone(),
+                    new_pool_step,
+                    new_cycle_step,
+                    new_credits_step,
+                    new_ops_step,
+                    new_de_step,
+                ) {
+                    <span class="prelude-val">Ok</span>(data) =&gt; data,
+                    <span class="prelude-val">Err</span>(err) <span class="kw">if </span><span class="macro">matches!</span>(err, FinalStateError::InvalidSlot(<span class="kw">_</span>)) =&gt; {
+                        slot_too_old = <span class="bool-val">true</span>;
+                        Vec::default()
+                    }
+                    <span class="prelude-val">Err</span>(err) =&gt; <span class="kw">return </span><span class="prelude-val">Err</span>(BootstrapError::FinalStateError(err)),
+                };
             } <span class="kw">else </span>{
-                <span class="prelude-val">None
-            </span>};
-
-            <span class="kw">let </span>last_obtained = <span class="kw">match </span><span class="kw-2">&amp;</span>last_state_step {
-                StreamingStep::Started =&gt; <span class="prelude-val">None</span>,
-                StreamingStep::Ongoing(last_key) =&gt; <span class="prelude-val">Some</span>((last_key.clone(), last_slot.unwrap())),
-                StreamingStep::Finished(<span class="prelude-val">Some</span>(last_key)) =&gt; {
-                    <span class="prelude-val">Some</span>((last_key.clone(), last_slot.unwrap()))
-                }
-                StreamingStep::Finished(<span class="prelude-val">None</span>) =&gt; {
-                    <span class="macro">warn!</span>(<span class="string">&quot;Bootstrap is finished but nothing has been streamed yet&quot;</span>);
-                    <span class="prelude-val">None
-                </span>}
-            };
-
-            state_part = final_state_read
-                .db
-                .read()
-                .get_batch_to_stream(last_obtained)
-                .map_err(|e| {
-                    BootstrapError::GeneralError(<span class="macro">format!</span>(<span class="string">&quot;Error get_batch_to_stream: {}&quot;</span>, e))
-                })<span class="question-mark">?</span>;
-
-            <span class="comment">// TODO: Re-design the cursors states (e.g. in a state machine we can test independently)
-            </span><span class="kw">let </span>new_state_step = <span class="kw">match </span>(
-                <span class="kw-2">&amp;</span>last_state_step,
-                state_part.is_empty(),
-                state_part.new_elements.last_key_value(),
-            ) {
-                <span class="comment">// We finished streaming the state already, but we received new elements while streaming consensus: we stay sync
-                </span>(StreamingStep::Finished(<span class="prelude-val">Some</span>(_last_key)), <span class="bool-val">false</span>, <span class="prelude-val">Some</span>((key, <span class="kw">_</span>))) =&gt; {
-                    StreamingStep::Finished(<span class="prelude-val">Some</span>(key.clone()))
-                }
-                <span class="comment">// We finished streaming the state already, and we received nothing new (or only updates)
-                </span>(StreamingStep::Finished(<span class="prelude-val">Some</span>(last_key)), <span class="kw">_</span>, <span class="kw">_</span>) =&gt; {
-                    StreamingStep::Finished(<span class="prelude-val">Some</span>(last_key.clone()))
-                }
-                <span class="comment">// We receive our first empty state batch
-                </span>(StreamingStep::Ongoing(last_key), <span class="bool-val">true</span>, <span class="kw">_</span>) =&gt; {
-                    StreamingStep::Finished(<span class="prelude-val">Some</span>(last_key.clone()))
-                }
-                <span class="comment">// We still need to stream the state - no new elements
-                </span>(StreamingStep::Ongoing(last_key), <span class="bool-val">false</span>, <span class="prelude-val">None</span>) =&gt; {
-                    StreamingStep::Ongoing(last_key.clone())
-                }
-                <span class="comment">// We receive an empty batch, but we&#39;ve just started streaming
-                </span>(StreamingStep::Started, <span class="bool-val">true</span>, <span class="kw">_</span>) =&gt; {
-                    <span class="macro">warn!</span>(<span class="string">&quot;Bootstrap is finished but nothing has been streamed yet&quot;</span>);
-                    StreamingStep::Finished(<span class="prelude-val">None</span>)
-                }
-                <span class="comment">// We still need to stream the state - new elements
-                </span>(<span class="kw">_</span>, <span class="bool-val">false</span>, <span class="prelude-val">Some</span>((new_last_key, <span class="kw">_</span>))) =&gt; StreamingStep::Ongoing(new_last_key.clone()),
-                <span class="comment">// We finished streaming the (empty) state already, but we received new elements while streaming the versioning
-                </span>(StreamingStep::Finished(<span class="prelude-val">None</span>), <span class="bool-val">true</span>, <span class="kw">_</span>) =&gt; StreamingStep::Finished(<span class="prelude-val">None</span>),
-                <span class="comment">// Else, we are in an inconsistent state
-                </span><span class="kw">_ </span>=&gt; {
-                    <span class="kw">if </span>state_part.is_empty() &amp;&amp; state_part.new_elements.last_key_value().is_some() {
-                        <span class="comment">// If is_empty() has a correct implementation, this should never happen
-                        </span><span class="kw">return </span><span class="prelude-val">Err</span>(BootstrapError::GeneralError(String::from(
-                            <span class="string">&quot;Bootstrap state_part is_empty() but it also contains new elements&quot;</span>,
-                        )));
-                    } <span class="kw">else </span>{
-                        <span class="comment">// StreamingStep::Started, false, None
-                        </span><span class="kw">return </span><span class="prelude-val">Err</span>(BootstrapError::GeneralError(String::from(
-                            <span class="string">&quot;Bootstrap started but we have no new elements to stream&quot;</span>,
-                        )));
-                    }
-                }
-            };
-
-            <span class="kw">let </span>last_obtained_versioning = <span class="kw">match </span><span class="kw-2">&amp;</span>last_versioning_step {
-                StreamingStep::Started =&gt; <span class="prelude-val">None</span>,
-                StreamingStep::Ongoing(last_key) =&gt; <span class="prelude-val">Some</span>((last_key.clone(), last_slot.unwrap())),
-                StreamingStep::Finished(<span class="prelude-val">Some</span>(last_key)) =&gt; {
-                    <span class="prelude-val">Some</span>((last_key.clone(), last_slot.unwrap()))
-                }
-                StreamingStep::Finished(<span class="prelude-val">None</span>) =&gt; {
-                    <span class="macro">warn!</span>(<span class="string">&quot;Bootstrap is finished but nothing has been streamed yet&quot;</span>);
-                    <span class="prelude-val">None
-                </span>}
-            };
-
-            versioning_part = final_state_read
-                .db
-                .read()
-                .get_versioning_batch_to_stream(last_obtained_versioning)
-                .map_err(|e| {
-                    BootstrapError::GeneralError(<span class="macro">format!</span>(
-                        <span class="string">&quot;Error get_versioning_batch_to_stream: {}&quot;</span>,
-                        e
-                    ))
-                })<span class="question-mark">?</span>;
-
-            <span class="comment">// TODO: Re-design the cursors states (e.g. in a state machine we can test independently)
-            </span><span class="kw">let </span>new_versioning_step = <span class="kw">match </span>(
-                <span class="kw-2">&amp;</span>last_versioning_step,
-                versioning_part.is_empty(),
-                versioning_part.new_elements.last_key_value(),
-            ) {
-                <span class="comment">// We finished streaming the state already, but we received new elements while streaming consensus: we stay sync
-                </span>(StreamingStep::Finished(<span class="prelude-val">Some</span>(_last_key)), <span class="bool-val">false</span>, <span class="prelude-val">Some</span>((key, <span class="kw">_</span>))) =&gt; {
-                    StreamingStep::Finished(<span class="prelude-val">Some</span>(key.clone()))
-                }
-                <span class="comment">// We finished streaming the state already, and we received nothing new (or only updates)
-                </span>(StreamingStep::Finished(<span class="prelude-val">Some</span>(last_key)), <span class="kw">_</span>, <span class="kw">_</span>) =&gt; {
-                    StreamingStep::Finished(<span class="prelude-val">Some</span>(last_key.clone()))
-                }
-                <span class="comment">// We receive our first empty state batch
-                </span>(StreamingStep::Ongoing(last_key), <span class="bool-val">true</span>, <span class="kw">_</span>) =&gt; {
-                    StreamingStep::Finished(<span class="prelude-val">Some</span>(last_key.clone()))
-                }
-                <span class="comment">// We still need to stream the state - no new elements
-                </span>(StreamingStep::Ongoing(last_key), <span class="bool-val">false</span>, <span class="prelude-val">None</span>) =&gt; {
-                    StreamingStep::Ongoing(last_key.clone())
-                }
-                <span class="comment">// We receive an empty batch, but we&#39;ve just started streaming
-                </span>(StreamingStep::Started, <span class="bool-val">true</span>, <span class="kw">_</span>) =&gt; {
-                    <span class="macro">warn!</span>(<span class="string">&quot;Bootstrap is finished but nothing has been streamed yet&quot;</span>);
-                    StreamingStep::Finished(<span class="prelude-val">None</span>)
-                }
-                <span class="comment">// We still need to stream the state - new elements
-                </span>(<span class="kw">_</span>, <span class="bool-val">false</span>, <span class="prelude-val">Some</span>((new_last_key, <span class="kw">_</span>))) =&gt; StreamingStep::Ongoing(new_last_key.clone()),
-                <span class="comment">// We finished streaming the (empty) versioning already, but we received new elements while streaming the state
-                </span>(StreamingStep::Finished(<span class="prelude-val">None</span>), <span class="bool-val">true</span>, <span class="kw">_</span>) =&gt; StreamingStep::Finished(<span class="prelude-val">None</span>),
-                <span class="kw">_ </span>=&gt; {
-                    <span class="kw">if </span>state_part.is_empty() &amp;&amp; state_part.new_elements.last_key_value().is_some() {
-                        <span class="comment">// If is_empty() has a correct implementation, this should never happen
-                        </span><span class="kw">return </span><span class="prelude-val">Err</span>(BootstrapError::GeneralError(String::from(
-                            <span class="string">&quot;Bootstrap state_part is_empty() but it also contains new elements&quot;</span>,
-                        )));
-                    } <span class="kw">else </span>{
-                        <span class="comment">// StreamingStep::Started, false, None
-                        </span><span class="kw">return </span><span class="prelude-val">Err</span>(BootstrapError::GeneralError(String::from(
-                            <span class="string">&quot;Bootstrap started but we have no new elements to stream&quot;</span>,
-                        )));
-                    }
-                }
-            };
-
-            <span class="kw">let </span>db_slot = final_state_read
-                .db
-                .read()
-                .get_change_id()
-                .expect(CHANGE_ID_DESER_ERROR);
-
-            <span class="kw">if let </span><span class="prelude-val">Some</span>(slot) = last_slot &amp;&amp; slot &gt; db_slot {
-                <span class="kw">return </span><span class="prelude-val">Err</span>(BootstrapError::GeneralError(
-                    <span class="string">&quot;Bootstrap cursor set to future slot&quot;</span>.to_string(),
-                ));
+                final_state_changes = Vec::new();
             }
 
             <span class="comment">// Update cursors for next turn
-            </span>last_state_step = new_state_step;
-            last_versioning_step = new_versioning_step;
-            last_slot = <span class="prelude-val">Some</span>(db_slot);
-            current_slot = db_slot;
+            </span>last_ledger_step = new_ledger_step;
+            last_pool_step = new_pool_step;
+            last_cycle_step = new_cycle_step;
+            last_credits_step = new_credits_step;
+            last_ops_step = new_ops_step;
+            last_de_step = new_de_step;
+            last_slot = <span class="prelude-val">Some</span>(final_state_read.slot);
+            current_slot = final_state_read.slot;
             send_last_start_period = <span class="bool-val">false</span>;
         }
 
@@ -1444,22 +1328,33 @@
         }
 
         <span class="comment">// Setup final state global cursor
-        </span><span class="kw">let </span>final_state_global_step =
-            <span class="kw">if </span>last_state_step.finished() &amp;&amp; last_versioning_step.finished() {
-                StreamingStep::Finished(<span class="prelude-val">Some</span>(current_slot))
-            } <span class="kw">else </span>{
-                StreamingStep::Ongoing(current_slot)
-            };
+        </span><span class="kw">let </span>final_state_global_step = <span class="kw">if </span>last_ledger_step.finished()
+            &amp;&amp; last_pool_step.finished()
+            &amp;&amp; last_cycle_step.finished()
+            &amp;&amp; last_credits_step.finished()
+            &amp;&amp; last_ops_step.finished()
+            &amp;&amp; last_de_step.finished()
+        {
+            StreamingStep::Finished(<span class="prelude-val">Some</span>(current_slot))
+        } <span class="kw">else </span>{
+            StreamingStep::Ongoing(current_slot)
+        };
+
+        <span class="comment">// Setup final state changes cursor
+        </span><span class="kw">let </span>final_state_changes_step = <span class="kw">if </span>final_state_changes.is_empty() {
+            StreamingStep::Finished(<span class="prelude-val">Some</span>(current_slot))
+        } <span class="kw">else </span>{
+            StreamingStep::Ongoing(current_slot)
+        };
 
         <span class="comment">// Stream consensus blocks if final state base bootstrap is finished
         </span><span class="kw">let </span><span class="kw-2">mut </span>consensus_part = BootstrapableGraph {
             final_blocks: Default::default(),
         };
         <span class="kw">let </span><span class="kw-2">mut </span>consensus_outdated_ids: PreHashSet&lt;BlockId&gt; = PreHashSet::default();
-
         <span class="kw">if </span>final_state_global_step.finished() {
             <span class="kw">let </span>(part, outdated_ids, new_consensus_step) = consensus_controller
-                .get_bootstrap_part(last_consensus_step, final_state_global_step)<span class="question-mark">?</span>;
+                .get_bootstrap_part(last_consensus_step, final_state_changes_step)<span class="question-mark">?</span>;
             consensus_part = part;
             consensus_outdated_ids = outdated_ids;
             last_consensus_step = new_consensus_step;
@@ -1480,7 +1375,10 @@
 
         <span class="comment">// If the consensus streaming is finished (also meaning that consensus slot == final state slot) exit
         // We don&#39;t bother with the bs-deadline, as this is the last step of the bootstrap process - defer to general write-timeout
-        </span><span class="kw">if </span>final_state_global_step.finished() &amp;&amp; last_consensus_step.finished() {
+        </span><span class="kw">if </span>final_state_global_step.finished()
+            &amp;&amp; final_state_changes_step.finished()
+            &amp;&amp; last_consensus_step.finished()
+        {
             server.send_msg(write_timeout, BootstrapServerMessage::BootstrapFinished)<span class="question-mark">?</span>;
             <span class="kw">break</span>;
         }
@@ -1493,12 +1391,16 @@
             write_timeout,
             BootstrapServerMessage::BootstrapPart {
                 slot: current_slot,
-                state_part,
-                versioning_part,
+                ledger_part,
+                async_pool_part,
+                pos_cycle_part,
+                pos_credits_part,
+                exec_ops_part,
+                exec_de_part,
+                final_state_changes,
                 consensus_part,
                 consensus_outdated_ids,
                 last_start_period,
-                last_slot_before_downtime,
             },
         )<span class="question-mark">?</span>;
     }
@@ -1525,6 +1427,7 @@
     consensus_controller: Box&lt;<span class="kw">dyn </span>ConsensusController&gt;,
     protocol_controller: Box&lt;<span class="kw">dyn </span>ProtocolController&gt;,
     deadline: Instant,
+    mip_store: MipStore,
 ) -&gt; <span class="prelude-ty">Result</span>&lt;(), BootstrapError&gt; {
     <span class="macro">massa_trace!</span>(<span class="string">&quot;bootstrap.lib.manage_bootstrap&quot;</span>, {});
     <span class="kw">let </span>read_error_timeout: Duration = bootstrap_config.read_error_timeout.into();
@@ -1586,8 +1489,12 @@
                 }
                 BootstrapClientMessage::AskBootstrapPart {
                     last_slot,
-                    last_state_step,
-                    last_versioning_step,
+                    last_ledger_step,
+                    last_pool_step,
+                    last_cycle_step,
+                    last_credits_step,
+                    last_ops_step,
+                    last_de_step,
                     last_consensus_step,
                     send_last_start_period,
                 } =&gt; {
@@ -1596,14 +1503,29 @@
                         final_state.clone(),
                         consensus_controller.clone(),
                         last_slot,
-                        last_state_step,
-                        last_versioning_step,
+                        last_ledger_step,
+                        last_pool_step,
+                        last_cycle_step,
+                        last_credits_step,
+                        last_ops_step,
+                        last_de_step,
                         last_consensus_step,
                         send_last_start_period,
                         <span class="kw-2">&amp;</span>deadline,
                         bootstrap_config.write_timeout.to_duration(),
                     )<span class="question-mark">?</span>;
                 }
+                BootstrapClientMessage::AskBootstrapMipStore =&gt; {
+                    <span class="kw">let </span>vs = mip_store.<span class="number">0</span>.read().to_owned();
+                    <span class="kw">let </span><span class="prelude-val">Some</span>(write_timeout) = step_timeout_duration(<span class="kw-2">&amp;</span>deadline, <span class="kw-2">&amp;</span>bootstrap_config.write_timeout.to_duration()) <span class="kw">else </span>{
+                        <span class="kw">return </span><span class="prelude-val">Err</span>(BootstrapError::Interupted(<span class="string">&quot;insufficient time left to respond te request for mip-store&quot;</span>.to_string()));
+                    };
+
+                    server.send_msg(
+                        write_timeout,
+                        BootstrapServerMessage::BootstrapMipStore { store: vs.clone() },
+                    )<span class="question-mark">?
+                </span>}
                 BootstrapClientMessage::BootstrapSuccess =&gt; <span class="kw">break </span><span class="prelude-val">Ok</span>(()),
                 BootstrapClientMessage::BootstrapError { error } =&gt; {
                     <span class="kw">break </span><span class="prelude-val">Err</span>(BootstrapError::ReceivedError(error));
