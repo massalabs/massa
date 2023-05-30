@@ -452,6 +452,12 @@
 <a href="#452" id="452">452</a>
 <a href="#453" id="453">453</a>
 <a href="#454" id="454">454</a>
+<a href="#455" id="455">455</a>
+<a href="#456" id="456">456</a>
+<a href="#457" id="457">457</a>
+<a href="#458" id="458">458</a>
+<a href="#459" id="459">459</a>
+<a href="#460" id="460">460</a>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="kw">use </span><span class="kw">crate</span>::error::MassaHashError;
@@ -528,16 +534,22 @@
     }
 }
 
-<span class="doccomment">/// We use bitwise XOR for hashes on some structures.
-/// However, we no longer use this for the final state hash, as we use lsmtree&#39;s Sparse Merkle Tree instead.
+<span class="doccomment">/// Previously, the final state hash was a XOR of various hashses.
+/// However, this is vulnerable: https://github.com/massalabs/massa/discussions/3852
+/// As a result, we use lsmtree&#39;s Sparse Merkle Tree instead, which is not vulnerable to this.
+/// We still use bitwise XOR for fingerprinting on some structures.
+/// TODO: Remove every usage if this?
 </span><span class="kw">impl </span>BitXorAssign <span class="kw">for </span>Hash {
     <span class="kw">fn </span>bitxor_assign(<span class="kw-2">&amp;mut </span><span class="self">self</span>, rhs: <span class="self">Self</span>) {
         <span class="kw-2">*</span><span class="self">self </span>= <span class="kw-2">*</span><span class="self">self </span>^ rhs;
     }
 }
 
-<span class="doccomment">/// We use bitwise XOR for hashes on some structures.
-/// However, we no longer use this for the final state hash, as we use lsmtree&#39;s Sparse Merkle Tree instead.
+<span class="doccomment">/// Previously, the final state hash was a XOR of various hashses.
+/// However, this is vulnerable: https://github.com/massalabs/massa/discussions/3852
+/// As a result, we use lsmtree&#39;s Sparse Merkle Tree instead, which is not vulnerable to this.
+/// We still use bitwise XOR for fingerprinting on some structures.
+/// TODO: Remove every usage if this?
 </span><span class="kw">impl </span>BitXor <span class="kw">for </span>Hash {
     <span class="kw">type </span>Output = <span class="self">Self</span>;
 
@@ -548,7 +560,7 @@
             .zip(other.to_bytes())
             .map(|(x, y)| x ^ y)
             .collect();
-        <span class="comment">// unwrap won&#39;t fail because of the intial byte arrays size
+        <span class="comment">// unwrap won&#39;t fail because of the initial byte arrays size
         </span><span class="kw">let </span>input_bytes: [u8; HASH_SIZE_BYTES] = xored_bytes.try_into().unwrap();
         Hash::from_bytes(<span class="kw-2">&amp;</span>input_bytes)
     }

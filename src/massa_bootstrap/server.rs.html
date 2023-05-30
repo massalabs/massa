@@ -736,6 +736,21 @@
 <a href="#736" id="736">736</a>
 <a href="#737" id="737">737</a>
 <a href="#738" id="738">738</a>
+<a href="#739" id="739">739</a>
+<a href="#740" id="740">740</a>
+<a href="#741" id="741">741</a>
+<a href="#742" id="742">742</a>
+<a href="#743" id="743">743</a>
+<a href="#744" id="744">744</a>
+<a href="#745" id="745">745</a>
+<a href="#746" id="746">746</a>
+<a href="#747" id="747">747</a>
+<a href="#748" id="748">748</a>
+<a href="#749" id="749">749</a>
+<a href="#750" id="750">750</a>
+<a href="#751" id="751">751</a>
+<a href="#752" id="752">752</a>
+<a href="#753" id="753">753</a>
 </pre><pre class="rust"><code><span class="doccomment">//! start the bootstrapping system using [`start_bootstrap_server`]
 //! Once your node will be ready, you may want other to bootstrap from you.
 //!
@@ -1268,10 +1283,25 @@
                 }
                 <span class="comment">// We still need to stream the state - new elements
                 </span>(<span class="kw">_</span>, <span class="bool-val">false</span>, <span class="prelude-val">Some</span>((new_last_key, <span class="kw">_</span>))) =&gt; StreamingStep::Ongoing(new_last_key.clone()),
-                <span class="kw">_ </span>=&gt; {
-                    <span class="kw">return </span><span class="prelude-val">Err</span>(BootstrapError::GeneralError(String::from(
-                        <span class="string">&quot;state step is inconsistent!&quot;</span>,
-                    )));
+                <span class="comment">// Else, we are in an inconsistent state
+                </span><span class="kw">_ </span>=&gt; {
+                    <span class="kw">if </span>last_state_step == StreamingStep::Finished(<span class="prelude-val">None</span>) {
+                        <span class="kw">return </span><span class="prelude-val">Err</span>(BootstrapError::GeneralError(String::from(
+                            <span class="string">&quot;State bootstrap cursor is set to Finished but we do not know what was the last key streamed&quot;</span>,
+                        )));
+                    } <span class="kw">else if </span>state_part.is_empty()
+                        &amp;&amp; state_part.new_elements.last_key_value().is_some()
+                    {
+                        <span class="comment">// If is_empty() has a correct implementation, this should never happen
+                        </span><span class="kw">return </span><span class="prelude-val">Err</span>(BootstrapError::GeneralError(String::from(
+                            <span class="string">&quot;Bootstrap state_part is_empty() but it also contains new elements&quot;</span>,
+                        )));
+                    } <span class="kw">else </span>{
+                        <span class="comment">// StreamingStep::Started, false, None
+                        </span><span class="kw">return </span><span class="prelude-val">Err</span>(BootstrapError::GeneralError(String::from(
+                            <span class="string">&quot;Bootstrap started but we have no new elements to stream&quot;</span>,
+                        )));
+                    }
                 }
             };
 
