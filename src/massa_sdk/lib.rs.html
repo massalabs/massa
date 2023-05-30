@@ -673,14 +673,6 @@
 <a href="#673" id="673">673</a>
 <a href="#674" id="674">674</a>
 <a href="#675" id="675">675</a>
-<a href="#676" id="676">676</a>
-<a href="#677" id="677">677</a>
-<a href="#678" id="678">678</a>
-<a href="#679" id="679">679</a>
-<a href="#680" id="680">680</a>
-<a href="#681" id="681">681</a>
-<a href="#682" id="682">682</a>
-<a href="#683" id="683">683</a>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 </span><span class="doccomment">//! Utilities for a massa client
 
@@ -753,7 +745,7 @@
     <span class="doccomment">/// private component
     </span><span class="kw">pub </span>private: RpcClient,
     <span class="doccomment">/// grpc client
-    </span><span class="kw">pub </span>grpc: <span class="prelude-ty">Option</span>&lt;MassaServiceClient&lt;tonic::transport::Channel&gt;&gt;,
+    </span><span class="kw">pub </span>grpc: MassaServiceClient&lt;tonic::transport::Channel&gt;,
 }
 
 <span class="kw">impl </span>Client {
@@ -772,22 +764,14 @@
         <span class="kw">let </span>private_url = <span class="macro">format!</span>(<span class="string">&quot;http://{}&quot;</span>, private_socket_addr);
         <span class="kw">let </span>grpc_url = <span class="macro">format!</span>(<span class="string">&quot;grpc://{}&quot;</span>, grpc_socket_addr);
 
-        <span class="comment">// try to start grpc client and connect to the server
-        </span><span class="kw">let </span>grpc_opts = <span class="kw">match </span>tonic::transport::Channel::from_shared(grpc_url)<span class="question-mark">?
+        <span class="comment">// start grpc client and connect to the server
+        </span><span class="kw">let </span>channel = tonic::transport::Channel::from_shared(grpc_url)<span class="question-mark">?
             </span>.connect()
-            .<span class="kw">await
-        </span>{
-            <span class="prelude-val">Ok</span>(channel) =&gt; <span class="prelude-val">Some</span>(MassaServiceClient::new(channel)),
-            <span class="prelude-val">Err</span>(e) =&gt; {
-                <span class="macro">tracing::warn!</span>(<span class="string">&quot;unable to connect to grpc server {}&quot;</span>, e);
-                <span class="prelude-val">None
-            </span>}
-        };
-
+            .<span class="kw">await</span><span class="question-mark">?</span>;
         <span class="prelude-val">Ok</span>(Client {
             public: RpcClient::from_url(<span class="kw-2">&amp;</span>public_url, http_config).<span class="kw">await</span>,
             private: RpcClient::from_url(<span class="kw-2">&amp;</span>private_url, http_config).<span class="kw">await</span>,
-            grpc: grpc_opts,
+            grpc: MassaServiceClient::new(channel),
         })
     }
 }
