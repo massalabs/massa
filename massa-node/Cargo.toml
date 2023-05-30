@@ -9,6 +9,8 @@ build = "build.rs"
 
 [build-dependencies]
 massa_models = { path = "../massa-models" }
+toml_edit = "0.19.8"
+walkdir = "2.3.3"
 
 [dependencies]
 crossbeam-channel = "0.5.6"

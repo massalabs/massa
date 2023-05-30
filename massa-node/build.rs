@@ -1,44 +1,63 @@
 use massa_models::config::constants::VERSION;
+use std::fs;
 use std::path::Path;
-use std::process::Command;
+use toml_edit::{Document, Formatted, Item, Value};
+use walkdir::WalkDir;
+
+fn update_workspace_packages_version(
+    new_version: String,
+    workspace_path: &Path,
+) -> Result<(), Box<dyn std::error::Error>> {
+    for entry in WalkDir::new(workspace_path)
+        .into_iter()
+        .filter_map(|e| e.ok())
+    {
+        if entry.file_name() == "Cargo.toml" {
+            check_package_version(new_version.clone(), entry.path())?;
+        }
+    }
+
+    Ok(())
+}
+
+fn check_package_version(
+    new_version: String,
+    cargo_toml_path: &Path,
+) -> Result<(), Box<dyn std::error::Error>> {
+    let cargo_toml_content = fs::read_to_string(cargo_toml_path)?;
+    let mut doc = cargo_toml_content.parse::<Document>()?;
+
+    if let Some(package) = doc["package"].as_table_mut() {
+        if let Some(version) = package.get_mut("version") {
+            let to_string = version.to_string().replace("\"", "");
+            let actual_version = to_string.trim();
+            if new_version.ne(actual_version) {
+                *version = Item::Value(Value::String(Formatted::new(new_version.clone())));
+            }
+        }
+    }
+
+    let updated_cargo_toml_content = doc.to_string();
+    fs::write(cargo_toml_path, updated_cargo_toml_content)?;
+
+    Ok(())
+}
 
 fn main() {
-    println!("hello world");
-
     let mut to_string = VERSION.to_string();
 
     if to_string.contains("TEST") || to_string.contains("SAND") {
-        to_string.replace_range(0..3, "0");
+        // TestNet and Sandbox versions < 1.0.0
+        to_string.replace_range(..4, "0");
     } else {
-        to_string.replace_range(0..3, "1");
+        // Main net version >= 1.0.0
+        // to_string.replace_range(..4, "1");
+        panic!("todo for mainnet");
     };
 
-    println!("version: {}", to_string);
+    let workspace_path = Path::new("../");
 
-    // let dest_path = Path::new("/Users/urvoy/dev/massa").join("hello.rs");
-    // fs::write(
-    //     &dest_path,
-    //     "pub fn message() -> &'static str {
-    //         \"Hello, World!\"
-    //     }
-    //     ",
-    // )
-    // .unwrap();
-
-    let workspace_path = Path::new("../"); // Mettez ici le chemin vers votre workspace
-
-    let output = Command::new("cargo")
-        .arg("run")
-        .arg("--manifest-path")
-        .arg(workspace_path.join("Cargo.toml"))
-        .env("CARGO_MANIFEST_DIR", workspace_path)
-        .env("NEW_VERSION", to_string)
-        .status()
-        .expect("Erreur lors de l'exécution du script de pré-construction.");
-
-    if output.success() {
-        println!("Script de pré-construction exécuté avec succès !");
-    } else {
-        eprintln!("Erreur lors de l'exécution du script de pré-construction.");
+    if let Err(e) = update_workspace_packages_version(to_string, workspace_path) {
+        panic!("Error updating workspace packages version: {}", e);
     }
 }
