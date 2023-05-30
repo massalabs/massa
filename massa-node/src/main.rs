@@ -70,6 +70,7 @@ use massa_models::config::{
     MAX_BOOTSTRAPPED_NEW_ELEMENTS, MAX_MESSAGE_SIZE, POOL_CONTROLLER_DENUNCIATIONS_CHANNEL_SIZE,
     POOL_CONTROLLER_ENDORSEMENTS_CHANNEL_SIZE, POOL_CONTROLLER_OPERATIONS_CHANNEL_SIZE,
 };
+use massa_models::slot::Slot;
 use massa_pool_exports::{PoolChannels, PoolConfig, PoolManager};
 use massa_pool_worker::start_pool_controller;
 use massa_pos_exports::{PoSConfig, SelectorConfig, SelectorManager};
@@ -350,6 +351,33 @@ async fn launch(
             .expect("could not compute initial draws"); // TODO: this might just mean a bad bootstrap, no need to panic, just reboot
     }
 
+    let last_slot_before_downtime_ = final_state.read().last_slot_before_downtime;
+    if let Some(last_slot_before_downtime) = last_slot_before_downtime_ {
+        let last_shutdown_start = last_slot_before_downtime
+            .get_next_slot(THREAD_COUNT)
+            .unwrap();
+        let last_shutdown_end = Slot::new(final_state.read().last_start_period, 0)
+            .get_prev_slot(THREAD_COUNT)
+            .unwrap();
+        if !final_state
+            .read()
+            .mip_store
+            .is_coherent_with_shutdown_period(
+                last_shutdown_start,
+                last_shutdown_end,
+                THREAD_COUNT,
+                T0,
+                *GENESIS_TIMESTAMP,
+            )
+            .unwrap_or(false)
+        {
+            panic!(
+                "MIP store is not coherent with last shutdown period ({} - {})",
+                last_shutdown_start, last_shutdown_end
+            );
+        }
+    }
+
     // Storage costs constants
     let storage_costs_constants = StorageCostsConstants {
         ledger_cost_per_byte: LEDGER_COST_PER_BYTE,
@@ -358,29 +386,6 @@ async fn launch(
             .checked_mul_u64(LEDGER_ENTRY_DATASTORE_BASE_SIZE as u64)
             .expect("Overflow when creating constant ledger_entry_datastore_base_size"),
     };
-
-    /*
-    // Creates an empty default store
-    let mip_stats_config = MipStatsConfig {
-        block_count_considered: MIP_STORE_STATS_BLOCK_CONSIDERED,
-        counters_max: MIP_STORE_STATS_COUNTERS_MAX,
-    };
-    let mut mip_store = MipStore::try_from((
-        [(
-            MipInfo {
-                name: "MIP-0001".to_string(),
-                version: 1,
-                components: HashMap::from([(MipComponent::Address, 1), (MipComponent::KeyPair, 1)]),
-                start: MassaTime::from_millis(0),
-                timeout: MassaTime::from_millis(0),
-                activation_delay: MassaTime::from_millis(0),
-            },
-            MipState::new(MassaTime::from_millis(0)),
-        )],
-        mip_stats_config,
-    ))
-    .expect("mip store creation failed");
-    */
 
     // TODO: re enable this
     /*

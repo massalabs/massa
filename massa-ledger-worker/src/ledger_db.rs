@@ -191,7 +191,7 @@ impl LedgerDB {
     }
 
     pub fn reset(&self) {
-        self.db.write().delete_prefix(LEDGER_PREFIX, None, None);
+        self.db.write().delete_prefix(LEDGER_PREFIX, STATE_CF, None);
     }
 
     /// Deserializes the key and value, useful after bootstrap

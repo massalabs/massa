@@ -129,7 +129,7 @@ impl ExecutedOps {
     pub fn reset(&mut self) {
         self.db
             .write()
-            .delete_prefix(EXECUTED_OPS_PREFIX, None, None);
+            .delete_prefix(EXECUTED_OPS_PREFIX, STATE_CF, None);
 
         self.recompute_sorted_ops_and_op_exec_status();
     }

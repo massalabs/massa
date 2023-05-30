@@ -108,7 +108,7 @@ impl ExecutedDenunciations {
     pub fn reset(&mut self) {
         {
             let mut db = self.db.write();
-            db.delete_prefix(EXECUTED_DENUNCIATIONS_PREFIX, None, None);
+            db.delete_prefix(EXECUTED_DENUNCIATIONS_PREFIX, STATE_CF, None);
         }
 
         self.recompute_sorted_denunciations();

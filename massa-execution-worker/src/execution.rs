@@ -1738,12 +1738,11 @@ impl ExecutionState {
                             )
                         });
 
-                    let guard = self.final_state.write();
-                    guard
-                        .db
-                        .write()
-                        .write_batch(db_batch, db_versioning_batch, None);
-                    drop(guard);
+                    self.final_state.write().db.write().write_batch(
+                        db_batch,
+                        db_versioning_batch,
+                        None,
+                    );
                 } else {
                     warn!("Unable to get slot timestamp for slot: {} in order to update mip_store stats", slot);
                 }

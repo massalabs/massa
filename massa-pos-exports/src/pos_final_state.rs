@@ -213,8 +213,8 @@ impl PoSFinalState {
     /// USED ONLY FOR BOOTSTRAP
     pub fn reset(&mut self) {
         let mut db = self.db.write();
-        db.delete_prefix(CYCLE_HISTORY_PREFIX, None, None);
-        db.delete_prefix(DEFERRED_CREDITS_PREFIX, None, None);
+        db.delete_prefix(CYCLE_HISTORY_PREFIX, STATE_CF, None);
+        db.delete_prefix(DEFERRED_CREDITS_PREFIX, STATE_CF, None);
         self.cycle_history_cache = Default::default();
         self.rng_seed_cache = None;
     }

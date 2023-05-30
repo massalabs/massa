@@ -582,7 +582,8 @@ impl MipStore {
     pub fn reset_db(&self, db: Arc<RwLock<MassaDB>>) {
         {
             let mut guard = db.write();
-            guard.delete_prefix(MIP_STORE_PREFIX, None, Some(VERSIONING_CF));
+            guard.delete_prefix(MIP_STORE_PREFIX, STATE_CF, None);
+            guard.delete_prefix(MIP_STORE_PREFIX, VERSIONING_CF, None);
         }
     }
 }

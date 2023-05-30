@@ -715,15 +715,10 @@ impl RawMassaDB<Slot, SlotSerializer, SlotDeserializer> {
     }
 
     /// Utility function to delete all keys in a prefix
-    pub fn delete_prefix(
-        &mut self,
-        prefix: &str,
-        change_id: Option<Slot>,
-        additional_handle: Option<&str>,
-    ) {
+    pub fn delete_prefix(&mut self, prefix: &str, handle_str: &str, change_id: Option<Slot>) {
         let db = &self.db;
 
-        let handle = db.cf_handle(STATE_CF).expect(CF_ERROR);
+        let handle = db.cf_handle(handle_str).expect(CF_ERROR);
         let mut batch = DBBatch::new();
         for (serialized_key, _) in db.prefix_iterator_cf(handle, prefix).flatten() {
             if !serialized_key.starts_with(prefix.as_bytes()) {
@@ -733,19 +728,15 @@ impl RawMassaDB<Slot, SlotSerializer, SlotDeserializer> {
             self.delete_key(&mut batch, serialized_key.to_vec());
         }
 
-        let mut batch_2 = DBBatch::new();
-        if let Some(additional_handle_) = additional_handle {
-            let handle_2 = db.cf_handle(additional_handle_).expect(CF_ERROR);
-            for (serialized_key, _) in db.prefix_iterator_cf(handle_2, prefix).flatten() {
-                if !serialized_key.starts_with(prefix.as_bytes()) {
-                    break;
-                }
-
-                self.delete_key(&mut batch_2, serialized_key.to_vec());
+        match handle_str {
+            STATE_CF => {
+                self.write_batch(batch, DBBatch::new(), change_id);
             }
+            VERSIONING_CF => {
+                self.write_batch(DBBatch::new(), batch, change_id);
+            }
+            _ => {}
         }
-
-        self.write_batch(batch, batch_2, change_id);
     }
 
     /// Reset the database, and attach it to the given slot.
