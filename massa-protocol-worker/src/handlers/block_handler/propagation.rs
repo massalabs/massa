@@ -1,4 +1,4 @@
-use std::{collections::VecDeque, thread::JoinHandle, time::Instant};
+use std::{collections::VecDeque, thread::JoinHandle};
 
 use crossbeam::channel::{Receiver, Sender};
 use massa_logging::massa_trace;
@@ -6,7 +6,6 @@ use massa_models::{block_id::BlockId, prehash::PreHashSet};
 use massa_protocol_exports::PeerId;
 use massa_protocol_exports::{ProtocolConfig, ProtocolError};
 use massa_storage::Storage;
-use schnellru::{ByLength, LruMap};
 use tracing::{debug, info, warn};
 
 use crate::{
@@ -64,38 +63,14 @@ impl PropagationThread {
                                     continue;
                                 }
                             };
-
-                            // Clean shared cache if peers do not exist anymore
-                            {
-                                let mut cache_write = self.cache.write();
-                                let peers: Vec<PeerId> = cache_write
-                                    .blocks_known_by_peer
-                                    .iter()
-                                    .map(|(id, _)| id.clone())
-                                    .collect();
-                                let peers_connected =
-                                    self.active_connections.get_peer_ids_connected();
-                                for peer_id in peers {
-                                    if !peers_connected.contains(&peer_id) {
-                                        cache_write.blocks_known_by_peer.remove(&peer_id);
-                                    }
-                                }
-                                for peer_id in peers_connected {
-                                    if cache_write.blocks_known_by_peer.peek(&peer_id).is_none() {
-                                        //TODO: Change to detect the connection before
-                                        cache_write.blocks_known_by_peer.insert(
-                                            peer_id,
-                                            (
-                                                LruMap::new(
-                                                    ByLength::new(self.config.max_node_known_blocks_size.try_into()
-                                                        .expect("max_node_known_blocks_size in config must be > 0")),
-                                                ),
-                                                Instant::now(),
-                                            ),
-                                        );
-                                    }
-                                }
-                            }
+                            let peers_connected = self.active_connections.get_peer_ids_connected();
+                            self.cache.write().update_cache(
+                                peers_connected,
+                                self.config
+                                    .max_node_known_blocks_size
+                                    .try_into()
+                                    .expect("max_node_known_blocks_size is too big"),
+                            );
                             {
                                 let cache_read = self.cache.read();
                                 for (peer_id, (blocks_known, _)) in
