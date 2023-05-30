@@ -8,7 +8,7 @@ use std::{
     time::Duration,
 };
 
-use massa_final_state::FinalState;
+use massa_final_state::{FinalState, FinalStateError};
 use massa_logging::massa_trace;
 use massa_models::{node::NodeId, slot::Slot, streaming_step::StreamingStep, version::Version};
 use massa_signature::PublicKey;
@@ -154,7 +154,10 @@ fn stream_final_state_and_consensus(
                     // Update MIP store by reading from the disk
                     let mut guard = global_bootstrap_state.final_state.write();
                     let db = guard.db.clone();
-                    guard.mip_store.extend_from_db(db);
+                    guard
+                        .mip_store
+                        .extend_from_db(db)
+                        .map_err(|e| BootstrapError::from(FinalStateError::from(e)))?;
 
                     return Ok(());
                 }

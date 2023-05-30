@@ -10,7 +10,7 @@ use parking_lot::RwLock;
 use thiserror::Error;
 use tracing::warn;
 
-use massa_db::{DBBatch, MassaDB, CF_ERROR, MIP_STORE_PREFIX, STATE_CF, VERSIONING_CF};
+use massa_db::{DBBatch, MassaDB, MIP_STORE_PREFIX, STATE_CF, VERSIONING_CF};
 use massa_models::error::ModelsError;
 use massa_models::slot::Slot;
 use massa_models::timeslots::get_block_slot_timestamp;
@@ -574,9 +574,9 @@ impl MipStore {
         guard.update_batches(db_batch, db_versioning_batch, between)
     }
 
-    pub fn extend_from_db(&mut self, db: Arc<RwLock<MassaDB>>) {
+    pub fn extend_from_db(&mut self, db: Arc<RwLock<MassaDB>>) -> Result<(), ExtendFromDbError> {
         let mut guard = self.0.write();
-        guard.extend_from_db(db);
+        guard.extend_from_db(db)
     }
 
     pub fn reset_db(&self, db: Arc<RwLock<MassaDB>>) {
@@ -640,6 +640,17 @@ pub enum UpdateWithError {
     // ex: MipInfo 2 start is before MipInfo 1 timeout (MipInfo timings should only be sequential)
     #[error("MipInfo {0:?} has overlapping data of MipInfo {1:?}")]
     Overlapping(MipInfo, MipInfo),
+}
+
+/// Error returned by 'extend_from_db`
+#[derive(Error, Debug)]
+pub enum ExtendFromDbError {
+    #[error("Unable to get an handle over db column: {0}")]
+    UnknownDbColumn(String),
+    #[error("{0}")]
+    Update(#[from] UpdateWithError),
+    #[error("{0}")]
+    Deserialize(String),
 }
 
 /// Store of all versioning info
@@ -855,7 +866,6 @@ impl MipStoreRaw {
 
     /// Check if store is coherent with given last network shutdown
     /// On a network shutdown, the MIP infos will be edited but we still need to check if this is coherent
-    #[allow(dead_code)]
     fn is_coherent_with_shutdown_period(
         &self,
         shutdown_start: Slot,
@@ -1022,34 +1032,36 @@ impl MipStoreRaw {
         Ok(())
     }
 
-    fn extend_from_db(&mut self, db: Arc<RwLock<MassaDB>>) {
+    fn extend_from_db(&mut self, db: Arc<RwLock<MassaDB>>) -> Result<(), ExtendFromDbError> {
         let mip_info_deser = MipInfoDeserializer::new();
         let mip_state_deser = MipStateDeserializer::new();
 
         let db = db.read();
-        let handle = db.db.cf_handle(STATE_CF).expect(CF_ERROR);
+        let handle = db
+            .db
+            .cf_handle(STATE_CF)
+            .ok_or(ExtendFromDbError::UnknownDbColumn(STATE_CF.to_string()))?;
 
         // Get data from state cf handle
         let mut update_data: BTreeMap<MipInfo, MipState> = Default::default();
         for (ser_mip_info, ser_mip_state) in
             db.db.prefix_iterator_cf(handle, MIP_STORE_PREFIX).flatten()
         {
-            println!("Processing ser entry...");
+            if !ser_mip_info.starts_with(MIP_STORE_PREFIX.as_bytes()) {
+                break;
+            }
 
             // deser
-            // FIXME: Result Result instead of using expect?
             let (_, mip_info) = mip_info_deser
                 .deserialize::<DeserializeError>(&ser_mip_info[MIP_STORE_PREFIX.len()..])
-                .expect("Mip info deser failed");
+                .map_err(|e| ExtendFromDbError::Deserialize(e.to_string()))?;
 
             let (_, mip_state) = mip_state_deser
                 .deserialize::<DeserializeError>(&ser_mip_state)
-                .expect("Mip state deser failed");
+                .map_err(|e| ExtendFromDbError::Deserialize(e.to_string()))?;
 
             update_data.insert(mip_info, mip_state);
         }
-
-        println!("update_data len: {}", update_data.len());
 
         // FIXME: stats
         let store_raw_ = MipStoreRaw {
@@ -1063,13 +1075,20 @@ impl MipStoreRaw {
                 network_version_counters: Default::default(),
             },
         };
-        let (updated, added) = self
+        let (_updated, _added) = self
             .update_with(&store_raw_)
-            .expect("update with state cf data");
-        println!("updated len: {}, added len: {}", updated.len(), added.len());
+            // .expect("update with state cf data");
+            ?;
 
         let mut update_data: BTreeMap<MipInfo, MipState> = Default::default();
-        let versioning_handle = db.db.cf_handle(VERSIONING_CF).expect(CF_ERROR);
+        let versioning_handle = db
+            .db
+            .cf_handle(VERSIONING_CF)
+            // .expect(CF_ERROR);
+            .ok_or(ExtendFromDbError::UnknownDbColumn(
+                VERSIONING_CF.to_string(),
+            ))?;
+
         // Get data from state cf handle
         for (ser_mip_info, ser_mip_state) in db
             .db
@@ -1077,17 +1096,17 @@ impl MipStoreRaw {
             .flatten()
         {
             // deser
+            if !ser_mip_info.starts_with(MIP_STORE_PREFIX.as_bytes()) {
+                break;
+            }
 
-            // TODO: check if ser_mip_info starts with prefix (see Leo's comment)
-
-            // FIXME: Result Result instead of using expect?
             let (_, mip_info) = mip_info_deser
                 .deserialize::<DeserializeError>(&ser_mip_info[MIP_STORE_PREFIX.len()..])
-                .expect("Mip info deser failed");
+                .map_err(|e| ExtendFromDbError::Deserialize(e.to_string()))?;
 
             let (_, mip_state) = mip_state_deser
                 .deserialize::<DeserializeError>(&ser_mip_state)
-                .expect("Mip state deser failed");
+                .map_err(|e| ExtendFromDbError::Deserialize(e.to_string()))?;
 
             update_data.insert(mip_info, mip_state);
         }
@@ -1104,8 +1123,8 @@ impl MipStoreRaw {
                 network_version_counters: Default::default(),
             },
         };
-        self.update_with(&store_raw_)
-            .expect("update with versioning cf data");
+        self.update_with(&store_raw_)?;
+        Ok(())
     }
 }
 
@@ -1984,7 +2003,7 @@ mod test {
 
         // Step 1
 
-        mip_store.extend_from_db(db.clone());
+        mip_store.extend_from_db(db.clone()).unwrap();
         // Check that we extend from an empty folder
         assert_eq!(mip_store.0.read().store.len(), 2);
         assert_eq!(
@@ -2047,7 +2066,7 @@ mod test {
         .expect("Cannot create an empty MIP store");
         // assert_eq!(mip_store_2.0.read().store.len(), 0);
 
-        mip_store_2.extend_from_db(db.clone());
+        mip_store_2.extend_from_db(db.clone()).unwrap();
 
         let guard_1 = mip_store.0.read();
         let guard_2 = mip_store_2.0.read();

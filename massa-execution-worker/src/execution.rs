@@ -1716,25 +1716,29 @@ impl ExecutionState {
                     // Now write mip store changes to disk (if any)
                     let mut db_batch = DBBatch::new();
                     let mut db_versioning_batch = DBBatch::new();
+                    // Unwrap/Expect because if something fails we can only panic here
                     let slot_prev_ts = get_block_slot_timestamp(
                         self.config.thread_count,
                         self.config.t0,
                         self.config.genesis_timestamp,
-                        slot.get_prev_slot(self.config.thread_count).unwrap(), // no unwrap
+                        slot.get_prev_slot(self.config.thread_count).unwrap(),
                     )
-                    .unwrap(); // FIXME: no unwrap()
+                    .unwrap();
 
-                    // FIXME: no unwrap
                     self.mip_store
                         .update_batches(
                             &mut db_batch,
                             &mut db_versioning_batch,
                             (&slot_prev_ts, &slot_ts),
                         )
-                        .unwrap();
+                        .unwrap_or_else(|_| {
+                            panic!(
+                                "Unable to get MIP store changes between {} and {}",
+                                slot_prev_ts, slot_ts
+                            )
+                        });
 
                     let guard = self.final_state.write();
-                    // FIXME: is change id ok?
                     guard
                         .db
                         .write()

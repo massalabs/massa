@@ -106,7 +106,9 @@ impl FinalState {
             ExecutedDenunciations::new(config.executed_denunciations_config.clone(), db.clone());
 
         // init MIP store by reading from the db
-        mip_store.extend_from_db(db.clone());
+        mip_store
+            .extend_from_db(db.clone())
+            .map_err(FinalStateError::from)?;
 
         let mut final_state = FinalState {
             ledger,
@@ -179,20 +181,41 @@ impl FinalState {
 
         // Check that MIP store is coherent with the network shutdown time range
         // Assume that the final state has been edited during network shutdown
+        let shutdown_start = recovered_slot
+            .get_next_slot(config.thread_count)
+            .map_err(|e| {
+                FinalStateError::InvalidSlot(format!(
+                    "Unable to get next slot from recovered slot: {:?}",
+                    e
+                ))
+            })?;
+        let shutdown_end = Slot::new(last_start_period, 0)
+            .get_prev_slot(config.thread_count)
+            .map_err(|e| {
+                FinalStateError::InvalidSlot(format!(
+                    "Unable to compute prev slot from last start period: {:?}",
+                    e
+                ))
+            })?;
+        debug!(
+            "Checking if MIP store is coherent against shutdown period: {} - {}",
+            shutdown_start, shutdown_end
+        );
+
         if !final_state
             .mip_store
             .is_coherent_with_shutdown_period(
-                recovered_slot,                  // FIXME: next slot
-                Slot::new(last_start_period, 0), // FIXME: is this correct, thread 0?
+                shutdown_start,
+                shutdown_end,
                 config.thread_count,
                 config.t0,
                 config.genesis_timestamp,
             )
-            .unwrap()
-        // TODO: no unwrap but rework is_coherent_with[...] result: Result<(), SpecificError>
+            .unwrap_or(false)
         {
-            // FIXME: improve error message
-            return Err(FinalStateError::InvalidSlot("Not coherent".to_string()));
+            return Err(FinalStateError::InvalidSlot(
+                "MIP store is Not coherent".to_string(),
+            ));
         }
 
         debug!(
@@ -548,7 +571,6 @@ impl FinalState {
             &mut db_batch,
         );
 
-        // FIXME: should we write MIP store here OR after stats update in execution worker?
         self.db
             .write()
             .write_batch(db_batch, Default::default(), Some(slot));
