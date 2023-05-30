@@ -3003,6 +3003,7 @@ dependencies = [
  "massa_time",
  "thiserror",
  "tonic",
+ "tracing",
 ]
 
 [[package]]
