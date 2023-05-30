@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"constant":["FINAL_STATE_HASH_INITIAL_BYTES"],"static":["CALLSITE","META"],"struct":["FinalState","FinalStateRaw","FinalStateRawDeserializer","FinalStateRawSerializer"]};
+window.SIDEBAR_ITEMS = {"static":["CALLSITE","META"],"struct":["FinalState"]};

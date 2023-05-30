@@ -39,6 +39,11 @@
 <a href="#39" id="39">39</a>
 <a href="#40" id="40">40</a>
 <a href="#41" id="41">41</a>
+<a href="#42" id="42">42</a>
+<a href="#43" id="43">43</a>
+<a href="#44" id="44">44</a>
+<a href="#45" id="45">45</a>
+<a href="#46" id="46">46</a>
 </pre><pre class="rust"><code><span class="doccomment">//! Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 //! This file defines a configuration structure containing all settings for final state management
@@ -47,6 +52,7 @@
 <span class="kw">use </span>massa_executed_ops::{ExecutedDenunciationsConfig, ExecutedOpsConfig};
 <span class="kw">use </span>massa_ledger_exports::LedgerConfig;
 <span class="kw">use </span>massa_pos_exports::PoSConfig;
+<span class="kw">use </span>massa_time::MassaTime;
 <span class="kw">use </span>std::path::PathBuf;
 
 <span class="doccomment">/// Ledger configuration
@@ -79,6 +85,10 @@
     <span class="doccomment">/// max number of denunciations that can be included in a block header
     /// or in executed denunciations struct
     </span><span class="kw">pub </span>max_denunciations_per_block_header: u32,
+    <span class="doccomment">/// TODO
+    </span><span class="kw">pub </span>t0: MassaTime,
+    <span class="doccomment">/// TODO
+    </span><span class="kw">pub </span>genesis_timestamp: MassaTime,
 }
 </code></pre></div>
 </section></main><div id="rustdoc-vars" data-root-path="../../" data-static-root-path="../../static.files/" data-current-crate="massa_final_state" data-themes="" data-resource-suffix="" data-rustdoc-version="1.69.0-nightly (d962ea578 2023-02-26)" data-search-js="search-14421e1532aead08.js" data-settings-js="settings-f0c5c39777a9a2f6.js" data-settings-css="settings-0bcba95ff279c1db.css" ></div></body></html>
