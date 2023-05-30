@@ -216,6 +216,7 @@ impl LockedIn {
     /// Update state from state LockedIn ...
     pub fn on_advance(self, input: Advance) -> ComponentState {
         if input.now > self.at.saturating_add(input.activation_delay) {
+            debug!("(VERSIONING LOG) locked version has become active");
             ComponentState::active(input.now)
         } else {
             ComponentState::locked_in(self.at)
@@ -777,10 +778,6 @@ impl MipStoreRaw {
         slot_timestamp: MassaTime,
         network_versions: Option<(u32, u32)>,
     ) {
-        debug!(
-            "(VERSIONING LOG) new input versions are (c, a) = {:?}",
-            network_versions
-        );
         if let Some((_current_network_version, announced_network_version)) = network_versions {
             let removed_version_ = match self.stats.latest_announcements.len() {
                 n if n >= self.stats.config.block_count_considered => {

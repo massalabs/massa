@@ -6,7 +6,6 @@ use massa_hash::Hash;
 use massa_models::address::{
     Address, SCAddress, SCAddressV0, SCAddressV1, UserAddress, UserAddressV0, UserAddressV1,
 };
-use tracing::debug;
 
 #[derive(Clone)]
 pub struct AddressFactory {
@@ -47,13 +46,9 @@ impl VersioningFactory for AddressFactory {
             },
             1 => match args {
                 AddressArgs::User { hash } => {
-                    debug!("(FACTORY LOG) UserAddressV1 created");
                     Address::User(UserAddress::UserAddressV1(UserAddressV1(*hash)))
                 }
-                AddressArgs::SC { hash } => {
-                    debug!("(FACTORY LOG) SCAddressV1 created");
-                    Address::SC(SCAddress::SCAddressV1(SCAddressV1(*hash)))
-                }
+                AddressArgs::SC { hash } => Address::SC(SCAddress::SCAddressV1(SCAddressV1(*hash))),
             },
             v => return Err(FactoryError::UnimplementedVersion(v)),
         };
