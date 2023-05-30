@@ -378,10 +378,7 @@ impl MipState {
         if vsh == *self {
             Ok(())
         } else {
-            Err(IsCoherentError::NonCoherent(
-                self.state.clone(),
-                vsh.state.clone(),
-            ))
+            Err(IsCoherentError::NonCoherent(self.state, vsh.state))
         }
     }
 
