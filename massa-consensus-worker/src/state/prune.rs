@@ -18,6 +18,7 @@ impl ConsensusState {
     fn prune_active(&mut self) -> Result<PreHashMap<BlockId, ActiveBlock>, ConsensusError> {
         // list required active blocks
         let mut retain_active: PreHashSet<BlockId> = self.list_required_active_blocks(None)?;
+
         // retain extra history according to the config
         // this is useful to avoid desync on temporary connection loss
         for a_block in self.active_index.iter() {
@@ -34,13 +35,15 @@ impl ConsensusState {
                         .saturating_sub(self.config.force_keep_final_periods_without_ops)
                 {
                     retain_active.insert(*a_block);
+                    if active_block.slot.period
+                        < latest_final_period.saturating_sub(self.config.force_keep_final_periods)
+                        && !self.active_index_without_ops.contains(a_block)
+                    {
+                        self.active_index_without_ops.insert(*a_block);
+                        storage.drop_operation_refs(&storage.get_op_refs().clone());
+                    }
+                } else {
                     self.active_index_without_ops.remove(a_block);
-                } else if active_block.slot.period
-                    >= latest_final_period.saturating_sub(self.config.force_keep_final_periods)
-                    && !self.active_index_without_ops.contains(a_block)
-                {
-                    self.active_index_without_ops.insert(*a_block);
-                    storage.drop_operation_refs(&storage.get_op_refs().clone());
                 }
             }
         }
