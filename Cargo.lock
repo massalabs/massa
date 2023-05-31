@@ -2412,15 +2412,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "massa-xtask"
-version = "0.23.0"
-dependencies = [
- "massa_models",
- "toml_edit",
- "walkdir",
-]
-
-[[package]]
 name = "massa_api"
 version = "0.23.0"
 dependencies = [
@@ -3109,6 +3100,15 @@ dependencies = [
  "serde_qs",
  "tempfile",
  "thiserror",
+]
+
+[[package]]
+name = "massa_xtask"
+version = "0.23.0"
+dependencies = [
+ "massa_models",
+ "toml_edit",
+ "walkdir",
 ]
 
 [[package]]

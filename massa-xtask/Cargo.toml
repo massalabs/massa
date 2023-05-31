@@ -1,5 +1,5 @@
 [package]
-name = "massa-xtask"
+name = "massa_xtask"
 version = "0.23.0"
 edition = "2021"
 
