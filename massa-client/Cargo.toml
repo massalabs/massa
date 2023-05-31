@@ -1,5 +1,5 @@
 [package]
-name = "massa-client"
+name = "massa_client"
 version = "0.23.0"
 edition = "2021"
 

@@ -2302,82 +2302,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "massa-client"
-version = "0.23.0"
-dependencies = [
- "anyhow",
- "atty",
- "console",
- "dialoguer",
- "erased-serde",
- "lazy_static",
- "massa_api_exports",
- "massa_models",
- "massa_proto",
- "massa_sdk",
- "massa_signature",
- "massa_time",
- "massa_wallet",
- "paw",
- "rustyline",
- "rustyline-derive",
- "serde",
- "serde_json",
- "structopt",
- "strum",
- "strum_macros",
- "tokio",
- "toml_edit",
-]
-
-[[package]]
-name = "massa-node"
-version = "0.23.0"
-dependencies = [
- "anyhow",
- "chrono",
- "crossbeam-channel",
- "ctrlc",
- "dialoguer",
- "lazy_static",
- "massa_api",
- "massa_api_exports",
- "massa_async_pool",
- "massa_bootstrap",
- "massa_consensus_exports",
- "massa_consensus_worker",
- "massa_executed_ops",
- "massa_execution_exports",
- "massa_execution_worker",
- "massa_factory_exports",
- "massa_factory_worker",
- "massa_final_state",
- "massa_grpc",
- "massa_ledger_exports",
- "massa_ledger_worker",
- "massa_logging",
- "massa_models",
- "massa_pool_exports",
- "massa_pool_worker",
- "massa_pos_exports",
- "massa_pos_worker",
- "massa_protocol_exports",
- "massa_protocol_worker",
- "massa_storage",
- "massa_time",
- "massa_versioning",
- "massa_wallet",
- "parking_lot",
- "paw",
- "peernet",
- "serde",
- "structopt",
- "tokio",
- "tracing",
- "tracing-subscriber",
-]
-
-[[package]]
 name = "massa-sc-runtime"
 version = "0.10.0"
 source = "git+https://github.com/massalabs/massa-sc-runtime?branch=testnet_23#37f610ed6cd29d7889b4112620542daf0d87d423"
@@ -2534,6 +2458,35 @@ dependencies = [
  "pbkdf2",
  "rand 0.8.5",
  "thiserror",
+]
+
+[[package]]
+name = "massa_client"
+version = "0.23.0"
+dependencies = [
+ "anyhow",
+ "atty",
+ "console",
+ "dialoguer",
+ "erased-serde",
+ "lazy_static",
+ "massa_api_exports",
+ "massa_models",
+ "massa_proto",
+ "massa_sdk",
+ "massa_signature",
+ "massa_time",
+ "massa_wallet",
+ "paw",
+ "rustyline",
+ "rustyline-derive",
+ "serde",
+ "serde_json",
+ "structopt",
+ "strum",
+ "strum_macros",
+ "tokio",
+ "toml_edit",
 ]
 
 [[package]]
@@ -2857,6 +2810,53 @@ dependencies = [
  "tempfile",
  "thiserror",
  "tracing",
+]
+
+[[package]]
+name = "massa_node"
+version = "0.23.0"
+dependencies = [
+ "anyhow",
+ "chrono",
+ "crossbeam-channel",
+ "ctrlc",
+ "dialoguer",
+ "lazy_static",
+ "massa_api",
+ "massa_api_exports",
+ "massa_async_pool",
+ "massa_bootstrap",
+ "massa_consensus_exports",
+ "massa_consensus_worker",
+ "massa_executed_ops",
+ "massa_execution_exports",
+ "massa_execution_worker",
+ "massa_factory_exports",
+ "massa_factory_worker",
+ "massa_final_state",
+ "massa_grpc",
+ "massa_ledger_exports",
+ "massa_ledger_worker",
+ "massa_logging",
+ "massa_models",
+ "massa_pool_exports",
+ "massa_pool_worker",
+ "massa_pos_exports",
+ "massa_pos_worker",
+ "massa_protocol_exports",
+ "massa_protocol_worker",
+ "massa_storage",
+ "massa_time",
+ "massa_versioning",
+ "massa_wallet",
+ "parking_lot",
+ "paw",
+ "peernet",
+ "serde",
+ "structopt",
+ "tokio",
+ "tracing",
+ "tracing-subscriber",
 ]
 
 [[package]]
