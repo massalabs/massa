@@ -302,8 +302,6 @@
 <a href="#302" id="302">302</a>
 <a href="#303" id="303">303</a>
 <a href="#304" id="304">304</a>
-<a href="#305" id="305">305</a>
-<a href="#306" id="306">306</a>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="doccomment">//! Build here the default node settings from the configuration file toml
@@ -455,8 +453,6 @@
     </span><span class="kw">pub </span>stats_timespan: MassaTime,
     <span class="doccomment">/// force keep at least this number of final periods in RAM for each thread
     </span><span class="kw">pub </span>force_keep_final_periods: u64,
-    <span class="doccomment">/// force keep at least this number of final periods without operations in RAM for each thread
-    </span><span class="kw">pub </span>force_keep_final_periods_without_ops: u64,
     <span class="doccomment">/// old blocks are pruned every `block_db_prune_interval`
     </span><span class="kw">pub </span>block_db_prune_interval: MassaTime,
     <span class="doccomment">/// blocks headers channel capacity
