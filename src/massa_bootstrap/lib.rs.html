@@ -112,6 +112,11 @@
 <a href="#112" id="112">112</a>
 <a href="#113" id="113">113</a>
 <a href="#114" id="114">114</a>
+<a href="#115" id="115">115</a>
+<a href="#116" id="116">116</a>
+<a href="#117" id="117">117</a>
+<a href="#118" id="118">118</a>
+<a href="#119" id="119">119</a>
 </pre><pre class="rust"><code><span class="doccomment">//! Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 //! Bootstrap crate
 //!
@@ -130,6 +135,7 @@
 </span><span class="kw">use </span>massa_consensus_exports::bootstrapable_graph::BootstrapableGraph;
 <span class="kw">use </span>massa_final_state::FinalState;
 <span class="kw">use </span>massa_protocol_exports::BootstrapPeers;
+<span class="kw">use </span>massa_versioning::versioning::MipStore;
 <span class="kw">use </span>parking_lot::RwLock;
 <span class="kw">use </span>std::io::{<span class="self">self</span>, ErrorKind};
 <span class="kw">use </span>std::sync::Arc;
@@ -168,6 +174,9 @@
 
     <span class="doccomment">/// list of network peers
     </span><span class="kw">pub </span>peers: <span class="prelude-ty">Option</span>&lt;BootstrapPeers&gt;,
+
+    <span class="doccomment">/// versioning info state
+    </span><span class="kw">pub </span>mip_store: <span class="prelude-ty">Option</span>&lt;MipStore&gt;,
 }
 
 <span class="kw">impl </span>GlobalBootstrapState {
@@ -176,6 +185,7 @@
             final_state,
             graph: <span class="prelude-val">None</span>,
             peers: <span class="prelude-val">None</span>,
+            mip_store: <span class="prelude-val">None</span>,
         }
     }
 }
