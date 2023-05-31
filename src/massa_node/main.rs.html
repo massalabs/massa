@@ -1283,6 +1283,9 @@
 <a href="#1283" id="1283">1283</a>
 <a href="#1284" id="1284">1284</a>
 <a href="#1285" id="1285">1285</a>
+<a href="#1286" id="1286">1286</a>
+<a href="#1287" id="1287">1287</a>
+<a href="#1288" id="1288">1288</a>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="attr">#![doc = <span class="macro">include_str!</span>(<span class="string">&quot;../../README.md&quot;</span>)]
@@ -1957,6 +1960,9 @@
             .consensus
             .broadcast_filled_blocks_channel_capacity,
         last_start_period: final_state.read().last_start_period,
+        force_keep_final_periods_without_ops: SETTINGS
+            .consensus
+            .force_keep_final_periods_without_ops,
     };
 
     <span class="kw">let </span>(consensus_event_sender, consensus_event_receiver) =

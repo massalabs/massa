@@ -1,1 +1,0 @@
-window.SIDEBAR_ITEMS = {"fn":["check_package_version","update_package_versions","update_workspace_packages_version"]};
