@@ -1,6 +1,6 @@
 // Copyright (c) 2022 MASSA LABS <info@massa.net>
 
-use massa_db::MassaDB;
+use massa_db_worker::MassaDB;
 use massa_ledger_exports::{LedgerConfig, LedgerController, LedgerEntry};
 use massa_models::address::Address;
 use parking_lot::RwLock;

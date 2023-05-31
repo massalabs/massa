@@ -5,11 +5,11 @@ use crate::{
 };
 use crate::{DeferredCredits, PoSConfig};
 use bitvec::vec::BitVec;
-use massa_db::{
-    DBBatch, MassaDB, CF_ERROR, CYCLE_HISTORY_DESER_ERROR, CYCLE_HISTORY_PREFIX,
-    CYCLE_HISTORY_SER_ERROR, DEFERRED_CREDITS_DESER_ERROR, DEFERRED_CREDITS_PREFIX,
-    DEFERRED_CREDITS_SER_ERROR, STATE_CF,
+use massa_db_exports::{
+    DBBatch, CF_ERROR, CYCLE_HISTORY_DESER_ERROR, CYCLE_HISTORY_PREFIX, CYCLE_HISTORY_SER_ERROR,
+    DEFERRED_CREDITS_DESER_ERROR, DEFERRED_CREDITS_PREFIX, DEFERRED_CREDITS_SER_ERROR, STATE_CF,
 };
+use massa_db_worker::MassaDB;
 use massa_hash::Hash;
 use massa_models::amount::Amount;
 use massa_models::{address::Address, prehash::PreHashMap, slot::Slot};
@@ -1466,7 +1466,7 @@ fn test_pos_final_state_hash_computation() {
     use crate::DeferredCredits;
     use crate::PoSFinalState;
     use bitvec::prelude::*;
-    use massa_db::{MassaDB, MassaDBConfig};
+    use massa_db_worker::{MassaDB, MassaDBConfig};
     use massa_models::config::constants::{
         MAX_DEFERRED_CREDITS_LENGTH, MAX_PRODUCTION_STATS_LENGTH, MAX_ROLLS_COUNT_LENGTH,
         POS_SAVED_CYCLES,

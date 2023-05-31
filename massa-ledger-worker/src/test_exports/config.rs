@@ -2,7 +2,7 @@
 
 use std::sync::Arc;
 
-use massa_db::{MassaDB, MassaDBConfig};
+use massa_db_worker::{MassaDB, MassaDBConfig};
 use parking_lot::RwLock;
 /// This file defines testing tools related to the configuration
 use tempfile::TempDir;

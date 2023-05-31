@@ -1,9 +1,10 @@
-use crate::{
-    MassaDBError, CF_ERROR, CHANGE_ID_DESER_ERROR, CHANGE_ID_KEY, CHANGE_ID_SER_ERROR, CRUD_ERROR,
-    LSMTREE_ERROR, LSMTREE_NODES_CF, LSMTREE_VALUES_CF, METADATA_CF, OPEN_ERROR, STATE_CF,
-    STATE_HASH_ERROR, STATE_HASH_INITIAL_BYTES, STATE_HASH_KEY, VERSIONING_CF,
-};
 use lsmtree::{bytes::Bytes, BadProof, KVStore, SparseMerkleTree};
+use massa_db_exports::{
+    DBBatch, Key, MassaDBError, Value, CF_ERROR, CHANGE_ID_DESER_ERROR, CHANGE_ID_KEY,
+    CHANGE_ID_SER_ERROR, CRUD_ERROR, LSMTREE_ERROR, LSMTREE_NODES_CF, LSMTREE_VALUES_CF,
+    METADATA_CF, OPEN_ERROR, STATE_CF, STATE_HASH_ERROR, STATE_HASH_INITIAL_BYTES, STATE_HASH_KEY,
+    VERSIONING_CF,
+};
 use massa_hash::{Hash, SmtHasher};
 use massa_models::{
     error::ModelsError,
@@ -24,18 +25,10 @@ use std::{
     sync::Arc,
 };
 
-type Key = Vec<u8>;
-type Value = Vec<u8>;
-
 /// Wrapped RocksDB database
 ///
 /// In our instance, we use Slot as the ChangeID
 pub type MassaDB = RawMassaDB<Slot, SlotSerializer, SlotDeserializer>;
-
-/// We use batching to reduce the number of writes to the database
-///
-/// Here, a DBBatch is a map from Key to Some(Value) for a new or updated value, or None for a deletion
-pub type DBBatch = BTreeMap<Key, Option<Value>>;
 
 /// Config structure for a `MassaDBRaw`
 #[derive(Debug, Clone)]

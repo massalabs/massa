@@ -4,10 +4,11 @@
 //! Used to detect operation reuse.
 
 use crate::{ops_changes::ExecutedOpsChanges, ExecutedOpsConfig};
-use massa_db::{
-    DBBatch, MassaDB, CF_ERROR, CRUD_ERROR, EXECUTED_OPS_ID_DESER_ERROR, EXECUTED_OPS_ID_SER_ERROR,
+use massa_db_exports::{
+    DBBatch, CF_ERROR, CRUD_ERROR, EXECUTED_OPS_ID_DESER_ERROR, EXECUTED_OPS_ID_SER_ERROR,
     EXECUTED_OPS_PREFIX, STATE_CF,
 };
+use massa_db_worker::MassaDB;
 use massa_models::{
     operation::{OperationId, OperationIdDeserializer, OperationIdSerializer},
     prehash::PreHashSet,
@@ -260,7 +261,8 @@ impl ExecutedOps {
 
 #[test]
 fn test_executed_ops_hash_computing() {
-    use massa_db::{MassaDB, MassaDBConfig, STATE_HASH_INITIAL_BYTES};
+    use massa_db_exports::STATE_HASH_INITIAL_BYTES;
+    use massa_db_worker::{MassaDB, MassaDBConfig};
     use massa_hash::Hash;
     use massa_models::prehash::PreHashMap;
     use massa_models::secure_share::Id;

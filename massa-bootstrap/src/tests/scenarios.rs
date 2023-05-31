@@ -17,7 +17,8 @@ use massa_async_pool::AsyncPoolConfig;
 use massa_consensus_exports::{
     bootstrapable_graph::BootstrapableGraph, test_exports::MockConsensusControllerImpl,
 };
-use massa_db::{DBBatch, MassaDB, MassaDBConfig};
+use massa_db_exports::DBBatch;
+use massa_db_worker::{MassaDB, MassaDBConfig};
 use massa_executed_ops::{ExecutedDenunciationsConfig, ExecutedOpsConfig};
 use massa_final_state::{
     test_exports::{assert_eq_final_state, assert_eq_final_state_hash},

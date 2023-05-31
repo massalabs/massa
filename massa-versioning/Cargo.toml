@@ -20,7 +20,8 @@ massa_serialization = { path = "../massa-serialization" }
 massa_hash = { path = "../massa-hash" }
 massa_signature = { path = "../massa-signature" }
 massa_proto = { path = "../massa-proto" }
-massa_db = { path = "../massa-db" }
+massa_db_worker = { path = "../massa-db-worker" }
+massa_db_exports = { path = "../massa-db-exports" }
 
 [dev-dependencies]
 more-asserts = "0.3"

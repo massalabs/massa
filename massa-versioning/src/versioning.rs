@@ -9,9 +9,10 @@ use parking_lot::RwLock;
 use thiserror::Error;
 use tracing::{debug, warn};
 
-use massa_db::{
-    DBBatch, MassaDB, MIP_STORE_PREFIX, MIP_STORE_STATS_PREFIX, STATE_CF, VERSIONING_CF,
+use massa_db_exports::{
+    DBBatch, MIP_STORE_PREFIX, MIP_STORE_STATS_PREFIX, STATE_CF, VERSIONING_CF,
 };
+use massa_db_worker::MassaDB;
 use massa_models::config::{MIP_STORE_STATS_BLOCK_CONSIDERED, MIP_STORE_STATS_COUNTERS_MAX};
 use massa_models::error::ModelsError;
 use massa_models::slot::Slot;
@@ -1233,8 +1234,7 @@ mod test {
 
     use std::assert_matches::assert_matches;
     use std::str::FromStr;
-
-    use massa_db::MassaDBConfig;
+    use massa_db_exports::MassaDBConfig;
     use more_asserts::assert_le;
     use tempfile::tempdir;
 

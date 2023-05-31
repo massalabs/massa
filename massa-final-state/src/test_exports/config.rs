@@ -6,7 +6,7 @@ use std::{path::PathBuf, sync::Arc};
 
 use crate::{FinalState, FinalStateConfig};
 use massa_async_pool::{AsyncPool, AsyncPoolConfig};
-use massa_db::MassaDB;
+use massa_db_worker::MassaDB;
 use massa_executed_ops::{
     ExecutedDenunciations, ExecutedDenunciationsConfig, ExecutedOps, ExecutedOpsConfig,
 };

@@ -8,11 +8,12 @@
 use crate::{config::FinalStateConfig, error::FinalStateError, state_changes::StateChanges};
 
 use massa_async_pool::AsyncPool;
-use massa_db::{DBBatch, MassaDB, CHANGE_ID_DESER_ERROR, MIP_STORE_PREFIX};
-use massa_db::{
-    ASYNC_POOL_PREFIX, CYCLE_HISTORY_PREFIX, DEFERRED_CREDITS_PREFIX,
-    EXECUTED_DENUNCIATIONS_PREFIX, EXECUTED_OPS_PREFIX, LEDGER_PREFIX, STATE_CF,
+use massa_db_exports::{
+    DBBatch, ASYNC_POOL_PREFIX, CHANGE_ID_DESER_ERROR, CYCLE_HISTORY_PREFIX,
+    DEFERRED_CREDITS_PREFIX, EXECUTED_DENUNCIATIONS_PREFIX, EXECUTED_OPS_PREFIX, LEDGER_PREFIX,
+    MIP_STORE_PREFIX, STATE_CF,
 };
+use massa_db_worker::MassaDB;
 use massa_executed_ops::ExecutedDenunciations;
 use massa_executed_ops::ExecutedOps;
 use massa_ledger_exports::LedgerController;

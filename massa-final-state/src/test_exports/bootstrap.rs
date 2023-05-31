@@ -5,7 +5,8 @@
 use std::sync::Arc;
 
 use massa_async_pool::AsyncPool;
-use massa_db::{MassaDB, METADATA_CF, STATE_CF, STATE_HASH_KEY};
+use massa_db_exports::{METADATA_CF, STATE_CF, STATE_HASH_KEY};
+use massa_db_worker::MassaDB;
 use massa_executed_ops::{ExecutedDenunciations, ExecutedOps};
 use massa_ledger_exports::LedgerController;
 use massa_pos_exports::PoSFinalState;
