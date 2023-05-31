@@ -29,10 +29,10 @@ fn check_package_version(
 
     if let Some(package) = doc["package"].as_table_mut() {
         if let Some(version) = package.get_mut("version") {
-            let to_string = version.to_string().replace("\"", "");
+            let to_string = version.to_string().replace('\"', "");
             let actual_version = to_string.trim();
             if new_version.ne(actual_version) {
-                *version = Item::Value(Value::String(Formatted::new(new_version.clone())));
+                *version = Item::Value(Value::String(Formatted::new(new_version)));
             }
         }
     }
