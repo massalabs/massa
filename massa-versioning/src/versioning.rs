@@ -893,7 +893,7 @@ impl MipStoreRaw {
 
             let vote_ratio = Amount::from_mantissa_scale(vote_ratio_.round() as u64, 0);
 
-            println!("(VERSIONING LOG) vote_ratio = {} (from version counter = {} and blocks considered = {})", vote_ratio, network_version_count, block_count_considered);
+            debug!("(VERSIONING LOG) vote_ratio = {} (from version counter = {} and blocks considered = {})", vote_ratio, network_version_count, block_count_considered);
 
             let advance_msg = Advance {
                 start_timestamp: mi.start,
