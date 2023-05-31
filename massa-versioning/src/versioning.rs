@@ -10,7 +10,7 @@ use thiserror::Error;
 use tracing::{debug, warn};
 
 use massa_db_exports::{
-    DBBatch, MIP_STORE_PREFIX, MIP_STORE_STATS_PREFIX, STATE_CF, VERSIONING_CF,
+    DBBatch, MassaDBController, MIP_STORE_PREFIX, MIP_STORE_STATS_PREFIX, STATE_CF, VERSIONING_CF,
 };
 use massa_db_worker::MassaDB;
 use massa_models::config::{MIP_STORE_STATS_BLOCK_CONSIDERED, MIP_STORE_STATS_COUNTERS_MAX};

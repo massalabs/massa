@@ -5,8 +5,8 @@
 
 use crate::{ops_changes::ExecutedOpsChanges, ExecutedOpsConfig};
 use massa_db_exports::{
-    DBBatch, CF_ERROR, CRUD_ERROR, EXECUTED_OPS_ID_DESER_ERROR, EXECUTED_OPS_ID_SER_ERROR,
-    EXECUTED_OPS_PREFIX, STATE_CF,
+    DBBatch, MassaDBController, CF_ERROR, CRUD_ERROR, EXECUTED_OPS_ID_DESER_ERROR,
+    EXECUTED_OPS_ID_SER_ERROR, EXECUTED_OPS_PREFIX, STATE_CF,
 };
 use massa_db_worker::MassaDB;
 use massa_models::{

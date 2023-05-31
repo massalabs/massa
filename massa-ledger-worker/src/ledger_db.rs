@@ -2,7 +2,9 @@
 
 //! Module to interact with the disk ledger
 
-use massa_db_exports::{DBBatch, CF_ERROR, CRUD_ERROR, KEY_SER_ERROR, LEDGER_PREFIX, STATE_CF};
+use massa_db_exports::{
+    DBBatch, MassaDBController, CF_ERROR, CRUD_ERROR, KEY_SER_ERROR, LEDGER_PREFIX, STATE_CF,
+};
 use massa_db_worker::MassaDB;
 use massa_ledger_exports::*;
 use massa_models::amount::AmountDeserializer;

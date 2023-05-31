@@ -8,6 +8,7 @@
 use crate::{config::FinalStateConfig, error::FinalStateError, state_changes::StateChanges};
 
 use massa_async_pool::AsyncPool;
+use massa_db_exports::MassaDBController;
 use massa_db_exports::{
     DBBatch, ASYNC_POOL_PREFIX, CHANGE_ID_DESER_ERROR, CYCLE_HISTORY_PREFIX,
     DEFERRED_CREDITS_PREFIX, EXECUTED_DENUNCIATIONS_PREFIX, EXECUTED_OPS_PREFIX, LEDGER_PREFIX,

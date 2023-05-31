@@ -17,7 +17,7 @@ use parking_lot::RwLock;
 
 use crate::{ExecutedDenunciationsChanges, ExecutedDenunciationsConfig};
 use massa_db_exports::{
-    DBBatch, CF_ERROR, CRUD_ERROR, EXECUTED_DENUNCIATIONS_INDEX_DESER_ERROR,
+    DBBatch, MassaDBController, CF_ERROR, CRUD_ERROR, EXECUTED_DENUNCIATIONS_INDEX_DESER_ERROR,
     EXECUTED_DENUNCIATIONS_INDEX_SER_ERROR, EXECUTED_DENUNCIATIONS_PREFIX, STATE_CF,
 };
 use massa_db_worker::MassaDB;
