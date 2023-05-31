@@ -95,10 +95,12 @@
 <a href="#95" id="95">95</a>
 <a href="#96" id="96">96</a>
 <a href="#97" id="97">97</a>
+<a href="#98" id="98">98</a>
+<a href="#99" id="99">99</a>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2023 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="kw">use </span><span class="kw">crate</span>::StateChanges;
-<span class="kw">use </span>massa_async_pool::{AsyncMessage, AsyncMessageId, Change};
+<span class="kw">use </span>massa_async_pool::AsyncMessageId;
 <span class="kw">use </span>massa_ledger_exports::SetUpdateOrDelete;
 <span class="kw">use </span>massa_proto::massa::api::v1 <span class="kw">as </span>grpc;
 
@@ -126,31 +128,33 @@
                 .async_pool_changes
                 .<span class="number">0
                 </span>.into_iter()
-                .map(
-                    |change: Change&lt;AsyncMessageId, AsyncMessage&gt;| <span class="kw">match </span>change {
-                        Change::Add(async_msg_id, async_msg) =&gt; grpc::AsyncPoolChangeEntry {
-                            async_message_id: async_msg_id_to_string(async_msg_id),
-                            value: <span class="prelude-val">Some</span>(grpc::AsyncPoolChangeValue {
-                                r#type: grpc::AsyncPoolChangeType::Add <span class="kw">as </span>i32,
-                                async_message: <span class="prelude-val">Some</span>(async_msg.into()),
-                            }),
-                        },
-                        Change::Activate(async_msg_id) =&gt; grpc::AsyncPoolChangeEntry {
-                            async_message_id: async_msg_id_to_string(async_msg_id),
-                            value: <span class="prelude-val">Some</span>(grpc::AsyncPoolChangeValue {
-                                r#type: grpc::AsyncPoolChangeType::Activate <span class="kw">as </span>i32,
-                                async_message: <span class="prelude-val">None</span>,
-                            }),
-                        },
-                        Change::Delete(async_msg_id) =&gt; grpc::AsyncPoolChangeEntry {
-                            async_message_id: async_msg_id_to_string(async_msg_id),
-                            value: <span class="prelude-val">Some</span>(grpc::AsyncPoolChangeValue {
-                                r#type: grpc::AsyncPoolChangeType::Delete <span class="kw">as </span>i32,
-                                async_message: <span class="prelude-val">None</span>,
-                            }),
-                        },
+                .map(|(async_msg_id, change)| <span class="kw">match </span>change {
+                    SetUpdateOrDelete::Set(async_msg) =&gt; grpc::AsyncPoolChangeEntry {
+                        async_message_id: async_msg_id_to_string(async_msg_id),
+                        value: <span class="prelude-val">Some</span>(grpc::AsyncPoolChangeValue {
+                            r#type: grpc::AsyncPoolChangeType::Set <span class="kw">as </span>i32,
+                            message: <span class="prelude-val">Some</span>(grpc::async_pool_change_value::Message::CreatedMessage(
+                                async_msg.into(),
+                            )),
+                        }),
                     },
-                )
+                    SetUpdateOrDelete::Update(async_msg_update) =&gt; grpc::AsyncPoolChangeEntry {
+                        async_message_id: async_msg_id_to_string(async_msg_id),
+                        value: <span class="prelude-val">Some</span>(grpc::AsyncPoolChangeValue {
+                            r#type: grpc::AsyncPoolChangeType::Update <span class="kw">as </span>i32,
+                            message: <span class="prelude-val">Some</span>(grpc::async_pool_change_value::Message::UpdatedMessage(
+                                async_msg_update.into(),
+                            )),
+                        }),
+                    },
+                    SetUpdateOrDelete::Delete =&gt; grpc::AsyncPoolChangeEntry {
+                        async_message_id: async_msg_id_to_string(async_msg_id),
+                        value: <span class="prelude-val">Some</span>(grpc::AsyncPoolChangeValue {
+                            r#type: grpc::AsyncPoolChangeType::Delete <span class="kw">as </span>i32,
+                            message: <span class="prelude-val">None</span>,
+                        }),
+                    },
+                })
                 .collect(),
             ledger_changes: value
                 .ledger_changes
