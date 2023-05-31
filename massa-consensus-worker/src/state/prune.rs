@@ -24,15 +24,27 @@ impl ConsensusState {
         for a_block in self.active_index.iter() {
             if let Some(BlockStatus::Active {
                 a_block: active_block,
-                ..
-            }) = self.block_statuses.get(a_block)
+                storage,
+            }) = self.block_statuses.get_mut(a_block)
             {
                 let (_b_id, latest_final_period) =
                     self.latest_final_blocks_periods[active_block.slot.thread as usize];
+
                 if active_block.slot.period
-                    >= latest_final_period.saturating_sub(self.config.force_keep_final_periods)
+                    >= latest_final_period
+                        .saturating_sub(self.config.force_keep_final_periods_without_ops)
                 {
                     retain_active.insert(*a_block);
+                    self.active_index_without_ops.remove(a_block);
+                } else {
+                    if active_block.slot.period
+                        >= latest_final_period.saturating_sub(self.config.force_keep_final_periods)
+                    {
+                        if !self.active_index_without_ops.contains(a_block) {
+                            self.active_index_without_ops.insert(*a_block);
+                            storage.drop_operation_refs(&storage.get_op_refs().clone());
+                        }
+                    }
                 }
             }
         }

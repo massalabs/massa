@@ -49,6 +49,8 @@ pub struct ConsensusState {
     pub max_cliques: Vec<Clique>,
     /// ids of active blocks
     pub active_index: PreHashSet<BlockId>,
+    /// ids of active blocks without ops
+    pub active_index_without_ops: PreHashSet<BlockId>,
     /// Save of latest periods
     pub save_final_periods: Vec<u64>,
     /// One (block id, period) per thread
