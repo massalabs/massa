@@ -1,5 +1,5 @@
 use humantime::format_duration;
-use massa_db_exports::DBBatch;
+use massa_db_exports::{DBBatch, MassaDBController};
 use std::collections::BTreeMap;
 use std::{
     collections::HashSet,

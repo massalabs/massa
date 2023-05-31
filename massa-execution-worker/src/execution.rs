@@ -14,7 +14,7 @@ use crate::interface_impl::InterfaceImpl;
 use crate::stats::ExecutionStatsCounter;
 use crate::vesting_manager::VestingManager;
 use massa_async_pool::AsyncMessage;
-use massa_db_exports::DBBatch;
+use massa_db_exports::{DBBatch, MassaDBController};
 use massa_execution_exports::{
     EventStore, ExecutionChannels, ExecutionConfig, ExecutionError, ExecutionOutput,
     ExecutionStackElement, ReadOnlyExecutionOutput, ReadOnlyExecutionRequest,

@@ -1,9 +1,9 @@
 use lsmtree::{bytes::Bytes, BadProof, KVStore, SparseMerkleTree};
 use massa_db_exports::{
-    DBBatch, Key, MassaDBError, Value, CF_ERROR, CHANGE_ID_DESER_ERROR, CHANGE_ID_KEY,
-    CHANGE_ID_SER_ERROR, CRUD_ERROR, LSMTREE_ERROR, LSMTREE_NODES_CF, LSMTREE_VALUES_CF,
-    METADATA_CF, OPEN_ERROR, STATE_CF, STATE_HASH_ERROR, STATE_HASH_INITIAL_BYTES, STATE_HASH_KEY,
-    VERSIONING_CF,
+    DBBatch, Key, MassaDBController, MassaDBError, Value, CF_ERROR, CHANGE_ID_DESER_ERROR,
+    CHANGE_ID_KEY, CHANGE_ID_SER_ERROR, CRUD_ERROR, LSMTREE_ERROR, LSMTREE_NODES_CF,
+    LSMTREE_VALUES_CF, METADATA_CF, OPEN_ERROR, STATE_CF, STATE_HASH_ERROR,
+    STATE_HASH_INITIAL_BYTES, STATE_HASH_KEY, VERSIONING_CF,
 };
 use massa_hash::{Hash, SmtHasher};
 use massa_models::{
@@ -673,9 +673,11 @@ impl RawMassaDB<Slot, SlotSerializer, SlotDeserializer> {
 
         massa_db
     }
+}
 
+impl MassaDBController for RawMassaDB<Slot, SlotSerializer, SlotDeserializer> {
     /// Creates a new hard copy of the DB, for the given slot
-    pub fn backup_db(&self, slot: Slot) {
+    fn backup_db(&self, slot: Slot) {
         let db = &self.db;
 
         let subpath = format!("backup_{}_{}", slot.period, slot.thread);
@@ -687,28 +689,23 @@ impl RawMassaDB<Slot, SlotSerializer, SlotDeserializer> {
     }
 
     /// Writes the batch to the DB
-    pub fn write_batch(
-        &mut self,
-        batch: DBBatch,
-        versioning_batch: DBBatch,
-        change_id: Option<Slot>,
-    ) {
+    fn write_batch(&mut self, batch: DBBatch, versioning_batch: DBBatch, change_id: Option<Slot>) {
         self.write_changes(batch, versioning_batch, change_id, false)
             .expect(CRUD_ERROR);
     }
 
     /// Utility function to put / update a key & value in the batch
-    pub fn put_or_update_entry_value(&self, batch: &mut DBBatch, key: Vec<u8>, value: &[u8]) {
+    fn put_or_update_entry_value(&self, batch: &mut DBBatch, key: Vec<u8>, value: &[u8]) {
         batch.insert(key, Some(value.to_vec()));
     }
 
     /// Utility function to delete a key & value in the batch
-    pub fn delete_key(&self, batch: &mut DBBatch, key: Vec<u8>) {
+    fn delete_key(&self, batch: &mut DBBatch, key: Vec<u8>) {
         batch.insert(key, None);
     }
 
     /// Utility function to delete all keys in a prefix
-    pub fn delete_prefix(&mut self, prefix: &str, handle_str: &str, change_id: Option<Slot>) {
+    fn delete_prefix(&mut self, prefix: &str, handle_str: &str, change_id: Option<Slot>) {
         let db = &self.db;
 
         let handle = db.cf_handle(handle_str).expect(CF_ERROR);
@@ -733,7 +730,7 @@ impl RawMassaDB<Slot, SlotSerializer, SlotDeserializer> {
     }
 
     /// Reset the database, and attach it to the given slot.
-    pub fn reset(&mut self, slot: Slot) {
+    fn reset(&mut self, slot: Slot) {
         self.set_initial_change_id(slot);
         self.change_history.clear();
         self.current_hashmap.write().clear();

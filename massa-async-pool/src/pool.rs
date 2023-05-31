@@ -10,8 +10,8 @@ use crate::{
     AsyncMessageSerializer,
 };
 use massa_db_exports::{
-    DBBatch, ASYNC_POOL_PREFIX, CF_ERROR, MESSAGE_ID_DESER_ERROR, MESSAGE_ID_SER_ERROR,
-    MESSAGE_SER_ERROR, STATE_CF,
+    DBBatch, MassaDBController, ASYNC_POOL_PREFIX, CF_ERROR, MESSAGE_ID_DESER_ERROR,
+    MESSAGE_ID_SER_ERROR, MESSAGE_SER_ERROR, STATE_CF,
 };
 use massa_db_worker::MassaDB;
 use massa_ledger_exports::{Applicable, SetOrKeep, SetUpdateOrDelete};
