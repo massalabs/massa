@@ -9,7 +9,7 @@ edition = "2021"
 [dependencies]
 bitvec = { version = "1.0", features = ["serde"] }
 displaydoc = "0.2"
-nom = "7.1"
+nom = "=7.1"
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
 thiserror = "1.0"
