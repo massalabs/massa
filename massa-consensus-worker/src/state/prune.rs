@@ -39,11 +39,10 @@ impl ConsensusState {
                 } else {
                     if active_block.slot.period
                         >= latest_final_period.saturating_sub(self.config.force_keep_final_periods)
+                        && !self.active_index_without_ops.contains(a_block)
                     {
-                        if !self.active_index_without_ops.contains(a_block) {
-                            self.active_index_without_ops.insert(*a_block);
-                            storage.drop_operation_refs(&storage.get_op_refs().clone());
-                        }
+                        self.active_index_without_ops.insert(*a_block);
+                        storage.drop_operation_refs(&storage.get_op_refs().clone());
                     }
                 }
             }
