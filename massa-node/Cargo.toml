@@ -3,14 +3,9 @@ name = "massa-node"
 version = "0.23.0"
 authors = ["Massa Labs <info@massa.net>"]
 edition = "2021"
-build = "build.rs"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
-[build-dependencies]
-massa_models = { path = "../massa-models" }
-toml_edit = "0.19.8"
-walkdir = "2.3.3"
 
 [dependencies]
 crossbeam-channel = "0.5.6"

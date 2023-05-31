@@ -2373,10 +2373,8 @@ dependencies = [
  "serde",
  "structopt",
  "tokio",
- "toml_edit",
  "tracing",
  "tracing-subscriber",
- "walkdir",
 ]
 
 [[package]]
@@ -2411,6 +2409,15 @@ dependencies = [
  "wasmer-compiler-singlepass",
  "wasmer-middlewares",
  "wasmer-types",
+]
+
+[[package]]
+name = "massa-xtask"
+version = "0.23.0"
+dependencies = [
+ "massa_models",
+ "toml_edit",
+ "walkdir",
 ]
 
 [[package]]
