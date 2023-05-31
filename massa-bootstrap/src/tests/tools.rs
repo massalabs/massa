@@ -10,7 +10,8 @@ use massa_consensus_exports::{
     },
     export_active_block::{ExportActiveBlock, ExportActiveBlockSerializer},
 };
-use massa_db::{DBBatch, MassaDB};
+use massa_db_exports::DBBatch;
+use massa_db_worker::MassaDB;
 use massa_executed_ops::{
     ExecutedDenunciations, ExecutedDenunciationsChanges, ExecutedDenunciationsConfig, ExecutedOps,
     ExecutedOpsConfig,

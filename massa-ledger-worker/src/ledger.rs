@@ -3,7 +3,8 @@
 //! This file defines the final ledger associating addresses to their balances, bytecode and data.
 
 use crate::ledger_db::{LedgerDB, LedgerSubEntry};
-use massa_db::{DBBatch, MassaDB};
+use massa_db_exports::DBBatch;
+use massa_db_worker::MassaDB;
 use massa_ledger_exports::{
     LedgerChanges, LedgerConfig, LedgerController, LedgerEntry, LedgerError,
 };

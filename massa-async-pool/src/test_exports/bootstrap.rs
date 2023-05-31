@@ -3,7 +3,7 @@
 use crate::{
     AsyncMessage, AsyncMessageDeserializer, AsyncMessageId, AsyncMessageIdDeserializer, AsyncPool,
 };
-use massa_db::{ASYNC_POOL_PREFIX, STATE_CF};
+use massa_db_exports::{ASYNC_POOL_PREFIX, STATE_CF};
 use massa_models::{
     address::Address,
     amount::Amount,

@@ -14,7 +14,8 @@ parking_lot = { version = "0.12", features = ["deadlock_detection"] }
 massa_ledger_exports = { path = "../massa-ledger-exports" }
 massa_models = { path = "../massa-models" }
 massa_serialization = { path = "../massa-serialization" }
-massa_db = { path = "../massa-db" }
+massa_db_worker = { path = "../massa-db-worker" }
+massa_db_exports = { path = "../massa-db-exports" }
 
 [dev-dependencies]
 massa_signature = { path = "../massa-signature" }

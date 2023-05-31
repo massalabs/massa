@@ -16,10 +16,11 @@ use nom::{
 use parking_lot::RwLock;
 
 use crate::{ExecutedDenunciationsChanges, ExecutedDenunciationsConfig};
-use massa_db::{
-    DBBatch, MassaDB, CF_ERROR, CRUD_ERROR, EXECUTED_DENUNCIATIONS_INDEX_DESER_ERROR,
+use massa_db_exports::{
+    DBBatch, CF_ERROR, CRUD_ERROR, EXECUTED_DENUNCIATIONS_INDEX_DESER_ERROR,
     EXECUTED_DENUNCIATIONS_INDEX_SER_ERROR, EXECUTED_DENUNCIATIONS_PREFIX, STATE_CF,
 };
+use massa_db_worker::MassaDB;
 use massa_models::denunciation::Denunciation;
 use massa_models::{
     denunciation::{DenunciationIndex, DenunciationIndexDeserializer, DenunciationIndexSerializer},

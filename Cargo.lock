@@ -2355,7 +2355,7 @@ dependencies = [
  "massa_bootstrap",
  "massa_consensus_exports",
  "massa_consensus_worker",
- "massa_db",
+ "massa_db_worker",
  "massa_executed_ops",
  "massa_execution_exports",
  "massa_execution_worker",
@@ -2481,7 +2481,8 @@ dependencies = [
 name = "massa_async_pool"
 version = "0.23.0"
 dependencies = [
- "massa_db",
+ "massa_db_exports",
+ "massa_db_worker",
  "massa_hash 0.23.0",
  "massa_ledger_exports",
  "massa_ledger_worker",
@@ -2511,7 +2512,8 @@ dependencies = [
  "lazy_static",
  "massa_async_pool",
  "massa_consensus_exports",
- "massa_db",
+ "massa_db_exports",
+ "massa_db_worker",
  "massa_executed_ops",
  "massa_final_state",
  "massa_hash 0.23.0",
@@ -2597,24 +2599,35 @@ dependencies = [
 ]
 
 [[package]]
-name = "massa_db"
+name = "massa_db_exports"
 version = "0.1.0"
 dependencies = [
  "displaydoc",
+ "massa_hash 0.1.0",
+ "massa_models",
+ "massa_serialization 0.1.0",
+ "thiserror",
+]
+
+[[package]]
+name = "massa_db_worker"
+version = "0.1.0"
+dependencies = [
  "lsmtree",
+ "massa_db_exports",
  "massa_hash 0.1.0",
  "massa_models",
  "massa_serialization 0.1.0",
  "parking_lot",
  "rocksdb",
- "thiserror",
 ]
 
 [[package]]
 name = "massa_executed_ops"
 version = "0.23.0"
 dependencies = [
- "massa_db",
+ "massa_db_exports",
+ "massa_db_worker",
  "massa_hash 0.23.0",
  "massa_ledger_worker",
  "massa_models",
@@ -2657,7 +2670,8 @@ dependencies = [
  "hex-literal",
  "massa-sc-runtime",
  "massa_async_pool",
- "massa_db",
+ "massa_db_exports",
+ "massa_db_worker",
  "massa_executed_ops",
  "massa_execution_exports",
  "massa_final_state",
@@ -2729,7 +2743,8 @@ dependencies = [
  "bs58",
  "displaydoc",
  "massa_async_pool",
- "massa_db",
+ "massa_db_exports",
+ "massa_db_worker",
  "massa_executed_ops",
  "massa_ledger_exports",
  "massa_ledger_worker",
@@ -2819,7 +2834,7 @@ name = "massa_ledger_exports"
 version = "0.23.0"
 dependencies = [
  "displaydoc",
- "massa_db",
+ "massa_db_exports",
  "massa_hash 0.23.0",
  "massa_models",
  "massa_proto",
@@ -2837,7 +2852,8 @@ dependencies = [
 name = "massa_ledger_worker"
 version = "0.23.0"
 dependencies = [
- "massa_db",
+ "massa_db_exports",
+ "massa_db_worker",
  "massa_hash 0.23.0",
  "massa_ledger_exports",
  "massa_models",
@@ -2944,7 +2960,8 @@ dependencies = [
  "bitvec",
  "crossbeam-channel",
  "displaydoc",
- "massa_db",
+ "massa_db_exports",
+ "massa_db_worker",
  "massa_hash 0.23.0",
  "massa_models",
  "massa_serialization 0.23.0",
@@ -3121,7 +3138,8 @@ version = "0.23.0"
 dependencies = [
  "chrono",
  "machine",
- "massa_db",
+ "massa_db_exports",
+ "massa_db_worker",
  "massa_hash 0.23.0",
  "massa_models",
  "massa_proto",

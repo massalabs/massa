@@ -1,6 +1,6 @@
 use chrono::{TimeZone, Utc};
 use humantime::format_duration;
-use massa_db::DBBatch;
+use massa_db_exports::DBBatch;
 use std::collections::BTreeMap;
 use std::{
     collections::HashSet,

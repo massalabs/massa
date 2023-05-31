@@ -1,4 +1,5 @@
-use massa_db::{DBBatch, MassaDB, MassaDBConfig};
+use massa_db_exports::DBBatch;
+use massa_db_worker::{MassaDB, MassaDBConfig};
 use massa_execution_exports::ExecutionError;
 use massa_final_state::{FinalState, FinalStateConfig};
 use massa_hash::Hash;

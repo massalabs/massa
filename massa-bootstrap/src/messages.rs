@@ -4,7 +4,7 @@ use crate::settings::BootstrapServerMessageDeserializerArgs;
 use massa_consensus_exports::bootstrapable_graph::{
     BootstrapableGraph, BootstrapableGraphDeserializer, BootstrapableGraphSerializer,
 };
-use massa_db::StreamBatch;
+use massa_db_worker::StreamBatch;
 use massa_models::block_id::{BlockId, BlockIdDeserializer, BlockIdSerializer};
 use massa_models::prehash::PreHashSet;
 use massa_models::serialization::{

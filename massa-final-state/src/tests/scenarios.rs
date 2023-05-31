@@ -5,7 +5,8 @@ use crate::{
     FinalState, FinalStateConfig, StateChanges,
 };
 use massa_async_pool::{AsyncMessage, AsyncPoolChanges, AsyncPoolConfig};
-use massa_db::{DBBatch, MassaDB, MassaDBConfig};
+use massa_db_exports::DBBatch;
+use massa_db_worker::{MassaDB, MassaDBConfig};
 use massa_executed_ops::{ExecutedDenunciationsConfig, ExecutedOpsConfig};
 use massa_ledger_exports::{
     LedgerChanges, LedgerConfig, LedgerEntryUpdate, SetOrKeep, SetUpdateOrDelete,

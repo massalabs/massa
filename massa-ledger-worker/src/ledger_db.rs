@@ -2,7 +2,8 @@
 
 //! Module to interact with the disk ledger
 
-use massa_db::{DBBatch, MassaDB, CF_ERROR, CRUD_ERROR, KEY_SER_ERROR, LEDGER_PREFIX, STATE_CF};
+use massa_db_exports::{DBBatch, CF_ERROR, CRUD_ERROR, KEY_SER_ERROR, LEDGER_PREFIX, STATE_CF};
+use massa_db_worker::MassaDB;
 use massa_ledger_exports::*;
 use massa_models::amount::AmountDeserializer;
 use massa_models::bytecode::BytecodeDeserializer;
@@ -485,7 +486,8 @@ fn end_prefix(prefix: &[u8]) -> Option<Vec<u8>> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use massa_db::{MassaDB, STATE_HASH_INITIAL_BYTES};
+    use massa_db_exports::STATE_HASH_INITIAL_BYTES;
+    use massa_db_worker::MassaDB;
     use massa_hash::Hash;
     use massa_ledger_exports::{LedgerEntry, LedgerEntryUpdate, SetOrKeep};
     use massa_models::{
@@ -502,7 +504,7 @@ mod tests {
     #[cfg(test)]
     fn init_test_ledger(addr: Address) -> (LedgerDB, BTreeMap<Vec<u8>, Vec<u8>>) {
         // init data
-        use massa_db::MassaDBConfig;
+        use massa_db_worker::MassaDBConfig;
 
         let mut data = BTreeMap::new();
         data.insert(b"1".to_vec(), b"a".to_vec());
