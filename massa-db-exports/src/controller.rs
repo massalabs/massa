@@ -1,4 +1,4 @@
-use crate::DBBatch;
+use crate::{DBBatch, Key, MassaDBError, Value};
 use massa_models::slot::Slot;
 use std::fmt::Debug;
 
@@ -20,4 +20,32 @@ pub trait MassaDBController: Send + Sync + Debug {
 
     /// Reset the database, and attach it to the given slot.
     fn reset(&mut self, slot: Slot);
+
+    /// Exposes RocksDB's "get_cf" function
+    fn get_cf(&self, handle_cf: &str, key: Key) -> Result<Option<Value>, MassaDBError>;
+
+    /// Exposes RocksDB's "iterator_cf" function
+    fn iterator_cf(
+        &self,
+        handle_cf: &str,
+        mode: MassaIteratorMode,
+    ) -> Box<dyn Iterator<Item = (Key, Value)> + '_>;
+
+    /// Exposes RocksDB's "prefix_iterator_cf" function
+    fn prefix_iterator_cf(
+        &self,
+        handle_cf: &str,
+        prefix: &str,
+    ) -> Box<dyn Iterator<Item = (Key, Value)> + '_>;
+}
+
+pub enum MassaIteratorMode<'a> {
+    Start,
+    End,
+    From(&'a [u8], MassaDirection),
+}
+
+pub enum MassaDirection {
+    Forward,
+    Reverse,
 }
