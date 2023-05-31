@@ -145,6 +145,7 @@
 <a href="#145" id="145">145</a>
 <a href="#146" id="146">146</a>
 <a href="#147" id="147">147</a>
+<a href="#148" id="148">148</a>
 </pre><pre class="rust"><code><span class="kw">use </span>std::{
     borrow::Cow,
     collections::HashSet,
@@ -156,7 +157,8 @@
 <span class="kw">use </span><span class="kw">crate</span>::error::BootstrapError;
 <span class="kw">use </span>massa_logging::massa_trace;
 <span class="kw">use </span>parking_lot::RwLock;
-<span class="kw">use </span>tracing::{info, warn};
+<span class="kw">use </span>tracing::info;
+<span class="kw">use </span>tracing::log::warn;
 
 <span class="kw">use </span><span class="kw">crate</span>::tools::normalize_ip;
 
