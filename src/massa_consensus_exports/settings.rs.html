@@ -51,6 +51,8 @@
 <a href="#51" id="51">51</a>
 <a href="#52" id="52">52</a>
 <a href="#53" id="53">53</a>
+<a href="#54" id="54">54</a>
+<a href="#55" id="55">55</a>
 </pre><pre class="rust"><code><span class="kw">use </span>massa_signature::KeyPair;
 <span class="kw">use </span>massa_time::MassaTime;
 <span class="kw">use </span>serde::{Deserialize, Serialize};
@@ -83,6 +85,8 @@
     </span><span class="kw">pub </span>periods_per_cycle: u64,
     <span class="doccomment">/// force keep at least this number of final periods in RAM for each thread
     </span><span class="kw">pub </span>force_keep_final_periods: u64,
+    <span class="doccomment">/// force keep at least this number of final blocks without ops in RAM for each thread
+    </span><span class="kw">pub </span>force_keep_final_periods_without_ops: u64,
     <span class="doccomment">/// target number of endorsement per block
     </span><span class="kw">pub </span>endorsement_count: u32,
     <span class="doccomment">/// TESTNET: time when the blockclique is ended.
