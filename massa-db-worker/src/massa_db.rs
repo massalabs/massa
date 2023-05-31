@@ -1,8 +1,8 @@
 use lsmtree::{bytes::Bytes, BadProof, KVStore, SparseMerkleTree};
 use massa_db_exports::{
-    DBBatch, Key, MassaDBController, MassaDBError, Value, CF_ERROR, CHANGE_ID_DESER_ERROR,
-    CHANGE_ID_KEY, CHANGE_ID_SER_ERROR, CRUD_ERROR, LSMTREE_ERROR, LSMTREE_NODES_CF,
-    LSMTREE_VALUES_CF, METADATA_CF, OPEN_ERROR, STATE_CF, STATE_HASH_ERROR,
+    DBBatch, Key, MassaDBController, MassaDBError, MassaDirection, MassaIteratorMode, Value,
+    CF_ERROR, CHANGE_ID_DESER_ERROR, CHANGE_ID_KEY, CHANGE_ID_SER_ERROR, CRUD_ERROR, LSMTREE_ERROR,
+    LSMTREE_NODES_CF, LSMTREE_VALUES_CF, METADATA_CF, OPEN_ERROR, STATE_CF, STATE_HASH_ERROR,
     STATE_HASH_INITIAL_BYTES, STATE_HASH_KEY, VERSIONING_CF,
 };
 use massa_hash::{Hash, SmtHasher};
@@ -734,5 +734,56 @@ impl MassaDBController for RawMassaDB<Slot, SlotSerializer, SlotDeserializer> {
         self.set_initial_change_id(slot);
         self.change_history.clear();
         self.current_hashmap.write().clear();
+    }
+
+    fn get_cf(&self, handle_cf: &str, key: Key) -> Result<Option<Value>, MassaDBError> {
+        let db = &self.db;
+        let handle = db.cf_handle(handle_cf).expect(CF_ERROR);
+
+        db.get_cf(handle, key)
+            .map_err(|e| MassaDBError::RocksDBError(format!("{:?}", e)))
+    }
+
+    /// Exposes RocksDB's "iterator_cf" function
+    fn iterator_cf(
+        &self,
+        handle_cf: &str,
+        mode: MassaIteratorMode,
+    ) -> Box<dyn Iterator<Item = (Key, Value)> + '_> {
+        let db = &self.db;
+        let handle = db.cf_handle(handle_cf).expect(CF_ERROR);
+
+        let rocksdb_mode = match mode {
+            MassaIteratorMode::Start => IteratorMode::Start,
+            MassaIteratorMode::End => IteratorMode::End,
+            MassaIteratorMode::From(key, MassaDirection::Forward) => {
+                IteratorMode::From(key, Direction::Forward)
+            }
+            MassaIteratorMode::From(key, MassaDirection::Reverse) => {
+                IteratorMode::From(key, Direction::Reverse)
+            }
+        };
+
+        Box::new(
+            db.iterator_cf(handle, rocksdb_mode)
+                .flatten()
+                .map(|(k, v)| (k.to_vec(), v.to_vec())),
+        )
+    }
+
+    /// Exposes RocksDB's "prefix_iterator_cf" function
+    fn prefix_iterator_cf(
+        &self,
+        handle_cf: &str,
+        prefix: &str,
+    ) -> Box<dyn Iterator<Item = (Key, Value)> + '_> {
+        let db = &self.db;
+        let handle = db.cf_handle(handle_cf).expect(CF_ERROR);
+
+        Box::new(
+            db.prefix_iterator_cf(handle, prefix)
+                .flatten()
+                .map(|(k, v)| (k.to_vec(), v.to_vec())),
+        )
     }
 }
