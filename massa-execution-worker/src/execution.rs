@@ -1734,10 +1734,10 @@ impl ExecutionState {
                             &mut db_versioning_batch,
                             (&slot_prev_ts, &slot_ts),
                         )
-                        .unwrap_or_else(|_| {
+                        .unwrap_or_else(|e| {
                             panic!(
-                                "Unable to get MIP store changes between {} and {}",
-                                slot_prev_ts, slot_ts
+                                "Unable to get MIP store changes between {} and {}: {}",
+                                slot_prev_ts, slot_ts, e
                             )
                         });
 
