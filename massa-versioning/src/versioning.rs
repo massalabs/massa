@@ -1,6 +1,5 @@
 use std::cmp::Ordering;
 use std::collections::{BTreeMap, BTreeSet, HashMap, VecDeque};
-use std::hash::{Hash, Hasher};
 use std::ops::Deref;
 use std::sync::Arc;
 
@@ -8,7 +7,7 @@ use machine::{machine, transitions};
 use num_enum::{FromPrimitive, IntoPrimitive, TryFromPrimitive};
 use parking_lot::RwLock;
 use thiserror::Error;
-use tracing::warn;
+use tracing::{debug, warn};
 
 use massa_models::error::ModelsError;
 use massa_models::slot::Slot;
@@ -18,7 +17,7 @@ use massa_time::MassaTime;
 
 /// Versioning component enum
 #[allow(missing_docs)]
-#[derive(Clone, Debug, PartialEq, Eq, Hash, FromPrimitive, IntoPrimitive)]
+#[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash, FromPrimitive, IntoPrimitive)]
 #[repr(u32)]
 pub enum MipComponent {
     // Address and KeyPair versions are directly related
@@ -39,7 +38,7 @@ pub struct MipInfo {
     /// Network (or global) version (to be included in block header)
     pub version: u32,
     /// Components concerned by this versioning (e.g. a new Block version), and the associated component_version
-    pub components: HashMap<MipComponent, u32>,
+    pub components: BTreeMap<MipComponent, u32>,
     /// a timestamp at which the version gains its meaning (e.g. announced in block header)
     pub start: MassaTime,
     /// a timestamp at the which the deployment is considered failed
@@ -74,17 +73,6 @@ impl PartialEq for MipInfo {
 }
 
 impl Eq for MipInfo {}
-
-// Need to impl this manually otherwise clippy is angry :-P
-impl Hash for MipInfo {
-    fn hash<H: Hasher>(&self, state: &mut H) {
-        self.name.hash(state);
-        self.version.hash(state);
-        self.components.iter().for_each(|c| c.hash(state));
-        self.start.hash(state);
-        self.timeout.hash(state);
-    }
-}
 
 machine!(
     /// State machine for a Versioning component that tracks the deployment state
@@ -204,6 +192,7 @@ impl Started {
         }
 
         if input.threshold >= VERSIONING_THRESHOLD_TRANSITION_ACCEPTED {
+            debug!("(VERSIONING LOG) transition accepted, locking in");
             ComponentState::locked_in(input.now)
         } else {
             ComponentState::started(input.threshold)
@@ -215,6 +204,7 @@ impl LockedIn {
     /// Update state from state LockedIn ...
     pub fn on_advance(self, input: Advance) -> ComponentState {
         if input.now > self.at.saturating_add(input.activation_delay) {
+            debug!("(VERSIONING LOG) locked version has become active");
             ComponentState::active(input.now)
         } else {
             ComponentState::locked_in(self.at)
@@ -234,6 +224,20 @@ impl Failed {
     pub fn on_advance(self, _input: Advance) -> Failed {
         Failed {}
     }
+}
+
+/// Error returned by `MipState::is_coherent_with`
+#[derive(Error, Debug, PartialEq)]
+pub enum IsCoherentError {
+    // State is not coherent with associated MipInfo, ex: State is active but MipInfo.start was not reach yet
+    #[error("MipState history is empty")]
+    EmptyHistory,
+    #[error("MipState is at state Error")]
+    AtError,
+    #[error("History must start at state 'Defined' and not {0:?}")]
+    InvalidHistory(ComponentStateTypeId),
+    #[error("Non coherent state: {0:?} versus rebuilt state: {1:?}")]
+    NonCoherent(ComponentState, ComponentState),
 }
 
 /// Wrapper of ComponentState (in order to keep state history)
@@ -303,35 +307,37 @@ impl MipState {
         }
     }
 
-    /// Given a corresponding VersioningInfo, check if state is coherent
+    /// Given a corresponding MipInfo, check if state is coherent
     /// it is coherent
     ///   if state can be at this position (e.g. can it be at state "Started" according to given time range)
     ///   if history is coherent with current state
     /// Return false for state == ComponentState::Error
-    pub fn is_coherent_with(&self, versioning_info: &MipInfo) -> bool {
-        // TODO: rename versioning_info -> mip_info
-
+    pub fn is_coherent_with(&self, mip_info: &MipInfo) -> Result<(), IsCoherentError> {
         // Always return false for state Error or if history is empty
-        if matches!(&self.state, &ComponentState::Error) || self.history.is_empty() {
-            return false;
+        if matches!(&self.state, &ComponentState::Error) {
+            return Err(IsCoherentError::AtError);
+        }
+
+        if self.history.is_empty() {
+            return Err(IsCoherentError::EmptyHistory);
         }
 
         // safe to unwrap (already tested if empty or not)
         let (initial_ts, initial_state_id) = self.history.first_key_value().unwrap();
         if *initial_state_id != ComponentStateTypeId::Defined {
             // self.history does not start with Defined -> (always) false
-            return false;
+            return Err(IsCoherentError::InvalidHistory(initial_state_id.clone()));
         }
 
-        // Build a new VersionStateHistory from initial state, replaying the whole history
+        // Build a new MipStateHistory from initial state, replaying the whole history
         // but with given versioning info then compare
         let mut vsh = MipState::new(initial_ts.now);
         let mut advance_msg = Advance {
-            start_timestamp: versioning_info.start,
-            timeout: versioning_info.timeout,
+            start_timestamp: mip_info.start,
+            timeout: mip_info.timeout,
             threshold: Amount::zero(),
             now: initial_ts.now,
-            activation_delay: versioning_info.activation_delay,
+            activation_delay: mip_info.activation_delay,
         };
 
         for (adv, _state) in self.history.iter().skip(1) {
@@ -340,7 +346,28 @@ impl MipState {
             vsh.on_advance(&advance_msg);
         }
 
-        vsh == *self
+        // Advance state if both are at 'Started' (to have the same threshold)
+        // Note: because in history we do not add entries for every threshold update
+        if let (
+            ComponentState::Started(Started { threshold }),
+            ComponentState::Started(Started {
+                threshold: threshold_2,
+            }),
+        ) = (vsh.state, self.state)
+        {
+            if threshold_2 != threshold {
+                advance_msg.threshold = threshold_2;
+                // Need to advance now timestamp otherwise it will be ignored
+                advance_msg.now = advance_msg.now.saturating_add(MassaTime::from_millis(1));
+                vsh.on_advance(&advance_msg);
+            }
+        }
+
+        if vsh == *self {
+            Ok(())
+        } else {
+            Err(IsCoherentError::NonCoherent(self.state, vsh.state))
+        }
     }
 
     /// Query state at given timestamp
@@ -538,7 +565,7 @@ impl MipStore {
 }
 
 impl<const N: usize> TryFrom<([(MipInfo, MipState); N], MipStatsConfig)> for MipStore {
-    type Error = ();
+    type Error = UpdateWithError;
 
     fn try_from(
         (value, cfg): ([(MipInfo, MipState); N], MipStatsConfig),
@@ -578,12 +605,12 @@ impl MipStoreStats {
     }
 }
 
-/// Error returned by
+/// Error returned by `MipStoreRaw::update_with`
 #[derive(Error, Debug, PartialEq)]
 pub enum UpdateWithError {
     // State is not coherent with associated MipInfo, ex: State is active but MipInfo.start was not reach yet
-    #[error("MipInfo {0:?} is not coherent with state: {1:?}")]
-    NonCoherent(MipInfo, MipState),
+    #[error("MipInfo {0:#?} is not coherent with state: {1:#?}, error: {2}")]
+    NonCoherent(MipInfo, MipState, IsCoherentError),
     // ex: State is already started but received state is only defined
     #[error("For MipInfo {0:?}, trying to downgrade from state {1:?} to {2:?}")]
     Downgrade(MipInfo, ComponentState, ComponentState),
@@ -632,11 +659,12 @@ impl MipStoreRaw {
         let mut has_error: Option<UpdateWithError> = None;
 
         for (v_info, v_state) in store_raw.store.iter() {
-            if !v_state.is_coherent_with(v_info) {
+            if let Err(e) = v_state.is_coherent_with(v_info) {
                 // As soon as we found one non coherent state we abort the merge
                 has_error = Some(UpdateWithError::NonCoherent(
                     v_info.clone(),
                     v_state.clone(),
+                    e,
                 ));
                 break;
             }
@@ -737,7 +765,7 @@ impl MipStoreRaw {
     ) {
         if let Some((_current_network_version, announced_network_version)) = network_versions {
             let removed_version_ = match self.stats.latest_announcements.len() {
-                n if n > self.stats.config.block_count_considered => {
+                n if n >= self.stats.config.block_count_considered => {
                     self.stats.latest_announcements.pop_front()
                 }
                 _ => None,
@@ -789,6 +817,8 @@ impl MipStoreRaw {
             let vote_ratio_ = 100.0 * network_version_count / block_count_considered;
 
             let vote_ratio = Amount::from_mantissa_scale(vote_ratio_.round() as u64, 0);
+
+            debug!("(VERSIONING LOG) vote_ration = {} (from version counter = {} and blocks considered = {})", vote_ratio, network_version_count, block_count_considered);
 
             let advance_msg = Advance {
                 start_timestamp: mi.start,
@@ -897,8 +927,8 @@ impl MipStoreRaw {
                     }
                     new_store.insert(new_mip_info, mip_state.clone());
                 }
-                ComponentState::Started(..) => {
-                    // Started -> Reset to Defined, offset start & timeout
+                ComponentState::Started(..) | ComponentState::LockedIn(..) => {
+                    // Started or LockedIn -> Reset to Defined, offset start & timeout
 
                     let mut new_mip_info = mip_info.clone();
 
@@ -924,7 +954,6 @@ impl MipStoreRaw {
                 }
                 _ => {
                     // active / failed, error, nothing to do
-                    // locked in, nothing to do (might go from 'locked in' to 'active' during shutdown)
                     new_store.insert(mip_info.clone(), mip_state.clone());
                 }
             }
@@ -937,7 +966,7 @@ impl MipStoreRaw {
 }
 
 impl<const N: usize> TryFrom<([(MipInfo, MipState); N], MipStatsConfig)> for MipStoreRaw {
-    type Error = ();
+    type Error = UpdateWithError;
 
     fn try_from(
         (value, cfg): ([(MipInfo, MipState); N], MipStatsConfig),
@@ -960,7 +989,7 @@ impl<const N: usize> TryFrom<([(MipInfo, MipState); N], MipStatsConfig)> for Mip
                 store.store.append(&mut added);
                 Ok(store)
             }
-            Err(_) => Err(()),
+            Err(e) => Err(e),
         }
     }
 }
@@ -975,6 +1004,7 @@ mod test {
     use std::str::FromStr;
 
     use chrono::{Days, NaiveDate, NaiveDateTime};
+    use more_asserts::assert_le;
 
     use crate::test_helpers::versioning_helpers::advance_state_until;
 
@@ -1022,7 +1052,7 @@ mod test {
             MipInfo {
                 name: "MIP-0002".to_string(),
                 version: 2,
-                components: HashMap::from([(MipComponent::Address, 1)]),
+                components: BTreeMap::from([(MipComponent::Address, 1)]),
                 start: MassaTime::from_millis(start.timestamp() as u64),
                 timeout: MassaTime::from_millis(timeout.timestamp() as u64),
                 activation_delay: MassaTime::from_millis(20),
@@ -1063,8 +1093,11 @@ mod test {
         let mut state: ComponentState = ComponentState::started(Default::default());
 
         let now = mi.start;
-        let threshold_too_low = Amount::from_str("74.9").unwrap();
-        let threshold_ok = Amount::from_str("82.42").unwrap();
+        let threshold_too_low = VERSIONING_THRESHOLD_TRANSITION_ACCEPTED
+            .saturating_sub(Amount::from_str("0.1").unwrap());
+        let threshold_ok = VERSIONING_THRESHOLD_TRANSITION_ACCEPTED
+            .saturating_add(Amount::from_str("5.42").unwrap());
+        assert_le!(threshold_ok, Amount::from_str("100.0").unwrap());
         let mut advance_msg = Advance::from((&mi, &threshold_too_low, &now));
 
         state = state.on_advance(advance_msg.clone());
@@ -1276,7 +1309,7 @@ mod test {
         let vi_1 = MipInfo {
             name: "MIP-0002".to_string(),
             version: 2,
-            components: HashMap::from([(MipComponent::Address, 1)]),
+            components: BTreeMap::from([(MipComponent::Address, 1)]),
             start: MassaTime::from_millis(2),
             timeout: MassaTime::from_millis(5),
             activation_delay: MassaTime::from_millis(2),
@@ -1285,7 +1318,7 @@ mod test {
         let vi_2 = MipInfo {
             name: "MIP-0002".to_string(),
             version: 2,
-            components: HashMap::from([(MipComponent::Address, 1)]),
+            components: BTreeMap::from([(MipComponent::Address, 1)]),
             start: MassaTime::from_millis(7),
             timeout: MassaTime::from_millis(10),
             activation_delay: MassaTime::from_millis(2),
@@ -1296,18 +1329,18 @@ mod test {
             history: Default::default(),
         };
         // At state Error -> (always) false
-        assert_eq!(vsh.is_coherent_with(&vi_1), false);
+        assert_eq!(vsh.is_coherent_with(&vi_1), Err(IsCoherentError::AtError));
 
         let vsh = MipState {
             state: ComponentState::defined(),
             history: Default::default(),
         };
         // At state Defined but no history -> false
-        assert_eq!(vsh.is_coherent_with(&vi_1), false);
+        assert_eq!(vsh.is_coherent_with(&vi_1).is_ok(), false);
 
         let mut vsh = MipState::new(MassaTime::from_millis(1));
         // At state Defined at time 1 -> true, given vi_1 @ time 1
-        assert_eq!(vsh.is_coherent_with(&vi_1), true);
+        assert_eq!(vsh.is_coherent_with(&vi_1).is_ok(), true);
         // At state Defined at time 1 -> false given vi_1 @ time 3 (state should be Started)
         // assert_eq!(vsh.is_coherent_with(&vi_1, MassaTime::from_millis(3)), false);
 
@@ -1315,12 +1348,18 @@ mod test {
         let now = MassaTime::from_millis(3);
         let adv = Advance::from((&vi_1, &Amount::zero(), &now));
         vsh.on_advance(&adv);
+        let now = MassaTime::from_millis(4);
+        let adv = Advance::from((&vi_1, &Amount::from_str("14.42").unwrap(), &now));
+        vsh.on_advance(&adv);
 
         // At state Started at time now -> true
-        assert_eq!(vsh.state, ComponentState::started(Amount::zero()));
-        assert_eq!(vsh.is_coherent_with(&vi_1), true);
+        assert_eq!(
+            vsh.state,
+            ComponentState::started(Amount::from_str("14.42").unwrap())
+        );
+        assert_eq!(vsh.is_coherent_with(&vi_1).is_ok(), true);
         // Now with another versioning info
-        assert_eq!(vsh.is_coherent_with(&vi_2), false);
+        assert_eq!(vsh.is_coherent_with(&vi_2).is_ok(), false);
 
         // Advance to LockedIn
         let now = MassaTime::from_millis(4);
@@ -1329,8 +1368,7 @@ mod test {
 
         // At state LockedIn at time now -> true
         assert_eq!(vsh.state, ComponentState::locked_in(now));
-        assert_eq!(vsh.is_coherent_with(&vi_1), true);
-        assert_eq!(vsh.is_coherent_with(&vi_1), true);
+        assert_eq!(vsh.is_coherent_with(&vi_1).is_ok(), true);
 
         // edge cases
         // TODO: history all good but does not start with Defined, start with Started
@@ -1341,7 +1379,7 @@ mod test {
         let vi_1 = MipInfo {
             name: "MIP-0002".to_string(),
             version: 2,
-            components: HashMap::from([(MipComponent::Address, 1)]),
+            components: BTreeMap::from([(MipComponent::Address, 1)]),
             start: MassaTime::from_millis(2),
             timeout: MassaTime::from_millis(5),
             activation_delay: MassaTime::from_millis(2),
@@ -1354,7 +1392,7 @@ mod test {
         let vi_2 = MipInfo {
             name: "MIP-0003".to_string(),
             version: 3,
-            components: HashMap::from([(MipComponent::Address, 2)]),
+            components: BTreeMap::from([(MipComponent::Address, 2)]),
             start: MassaTime::from_millis(17),
             timeout: MassaTime::from_millis(27),
             activation_delay: MassaTime::from_millis(2),
@@ -1402,7 +1440,7 @@ mod test {
         let vi_1 = MipInfo {
             name: "MIP-0002".to_string(),
             version: 2,
-            components: HashMap::from([(MipComponent::Address, 1)]),
+            components: BTreeMap::from([(MipComponent::Address, 1)]),
             start: MassaTime::from_millis(0),
             timeout: MassaTime::from_millis(5),
             activation_delay: MassaTime::from_millis(2),
@@ -1414,7 +1452,7 @@ mod test {
         let vi_2 = MipInfo {
             name: "MIP-0003".to_string(),
             version: 3,
-            components: HashMap::from([(MipComponent::Address, 2)]),
+            components: BTreeMap::from([(MipComponent::Address, 2)]),
             start: MassaTime::from_millis(17),
             timeout: MassaTime::from_millis(27),
             activation_delay: MassaTime::from_millis(2),
@@ -1522,7 +1560,7 @@ mod test {
         let mi_1 = MipInfo {
             name: "MIP-0002".to_string(),
             version: 2,
-            components: HashMap::from([(MipComponent::__Nonexhaustive, 1)]),
+            components: BTreeMap::from([(MipComponent::__Nonexhaustive, 1)]),
             start: MassaTime::from_millis(0),
             timeout: MassaTime::from_millis(5),
             activation_delay: MassaTime::from_millis(2),
@@ -1607,7 +1645,7 @@ mod test {
         let mut mi_1 = MipInfo {
             name: "MIP-0002".to_string(),
             version: 2,
-            components: HashMap::from([(MipComponent::Address, 1)]),
+            components: BTreeMap::from([(MipComponent::Address, 1)]),
             start: MassaTime::from_millis(2),
             timeout: MassaTime::from_millis(5),
             activation_delay: MassaTime::from_millis(100),
@@ -1615,7 +1653,7 @@ mod test {
         let mut mi_2 = MipInfo {
             name: "MIP-0003".to_string(),
             version: 3,
-            components: HashMap::from([(MipComponent::Address, 2)]),
+            components: BTreeMap::from([(MipComponent::Address, 2)]),
             start: MassaTime::from_millis(7),
             timeout: MassaTime::from_millis(11),
             activation_delay: MassaTime::from_millis(100),
@@ -1702,19 +1740,17 @@ mod test {
             assert!(locked_in_at < shutdown_start);
             let activate_at = Slot::new(4, 0);
             assert!(shutdown_range.contains(&activate_at));
+            // MIP 1 in state 'LockedIn', should transition to 'Active' during shutdown period
             mi_1.activation_delay =
                 get_slot_ts(activate_at).saturating_sub(get_slot_ts(locked_in_at));
-
-            // Note: 2 states will transition right after shutdown_end
-            //       mi_1, ms_1 -> 'LockedIn' -> 'Active'
-            //       mi_2 -> 'Defined' -> 'Started'
-            mi_2.start = get_slot_ts(Slot::new(7, 7));
-            mi_2.timeout = get_slot_ts(Slot::new(10, 7));
-
             let ms_1 = advance_state_until(
                 ComponentState::locked_in(get_slot_ts(Slot::new(1, 9))),
                 &mi_1,
             );
+
+            // MIP 2 in state 'Defined'
+            mi_2.start = get_slot_ts(Slot::new(7, 7));
+            mi_2.timeout = get_slot_ts(Slot::new(10, 7));
             let ms_2 = advance_state_until(ComponentState::defined(), &mi_2);
             let mut store = MipStoreRaw::try_from((
                 [(mi_1.clone(), ms_1), (mi_2.clone(), ms_2)],
@@ -1728,7 +1764,7 @@ mod test {
             assert_eq!(is_coherent(&store, shutdown_start, shutdown_end), true);
             // _dump_store(&store);
 
-            // Update stats - so should force 2 version transitions
+            // Update stats - so should force transitions if any
             store.update_network_version_stats(
                 get_slot_ts(shutdown_end.get_next_slot(THREAD_COUNT).unwrap()),
                 Some((1, 0)),
@@ -1736,15 +1772,17 @@ mod test {
 
             let (first_mi_info, first_mi_state) = store.store.first_key_value().unwrap();
             assert_eq!(*first_mi_info.name, mi_1.name);
+            // State was 'LockedIn' -> reset, start ts now defined right after network restart
             assert_eq!(
                 ComponentStateTypeId::from(&first_mi_state.state),
-                ComponentStateTypeId::Active
+                ComponentStateTypeId::Started
             );
             let (last_mi_info, last_mi_state) = store.store.last_key_value().unwrap();
             assert_eq!(*last_mi_info.name, mi_2.name);
+            // State was 'Defined' -> start is set up after MIP 1 start & timeout
             assert_eq!(
                 ComponentStateTypeId::from(&last_mi_state.state),
-                ComponentStateTypeId::Started
+                ComponentStateTypeId::Defined
             );
         }
     }

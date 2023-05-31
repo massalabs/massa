@@ -2304,7 +2304,7 @@ dependencies = [
 [[package]]
 name = "massa-sc-runtime"
 version = "0.10.0"
-source = "git+https://github.com/massalabs/massa-sc-runtime?branch=testnet_23#37f610ed6cd29d7889b4112620542daf0d87d423"
+source = "git+https://github.com/massalabs/massa-sc-runtime?branch=main#d9355ecdab96bb04fe588b79c511e93e32163366"
 dependencies = [
  "anyhow",
  "as-ffi-bindings",
@@ -3003,6 +3003,7 @@ dependencies = [
  "massa_time",
  "thiserror",
  "tonic",
+ "tracing",
 ]
 
 [[package]]
@@ -5299,7 +5300,7 @@ dependencies = [
 [[package]]
 name = "transition"
 version = "0.1.0"
-source = "git+https://github.com/massalabs/transition.git#93fa3bf82f9f5ff421c78536879b7fd1b948ca75"
+source = "git+https://github.com/massalabs/transition.git?rev=93fa3bf82f9f5ff421c78536879b7fd1b948ca75#93fa3bf82f9f5ff421c78536879b7fd1b948ca75"
 dependencies = [
  "transition-macros",
 ]
@@ -5307,7 +5308,7 @@ dependencies = [
 [[package]]
 name = "transition-macros"
 version = "0.1.0"
-source = "git+https://github.com/massalabs/transition.git#93fa3bf82f9f5ff421c78536879b7fd1b948ca75"
+source = "git+https://github.com/massalabs/transition.git?rev=93fa3bf82f9f5ff421c78536879b7fd1b948ca75#93fa3bf82f9f5ff421c78536879b7fd1b948ca75"
 dependencies = [
  "darling 0.14.4",
  "proc-macro2 1.0.58",

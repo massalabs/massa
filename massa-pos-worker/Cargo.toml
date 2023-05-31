@@ -8,9 +8,9 @@ edition = "2021"
 
 [dependencies]
 parking_lot = { version = "0.12", features = ["deadlock_detection"] }
-rand = "0.8.5"                                     # pin exact version for determinism
-rand_distr = "0.4.3"                               # pin exact version for determinism
-rand_xoshiro = "0.6"
+rand = "=0.8.5"                                     
+rand_distr = "=0.4.3"                              
+rand_xoshiro = "=0.6"
 tracing = "0.1"
 # custom modules
 massa_hash = { path = "../massa-hash" }

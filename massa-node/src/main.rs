@@ -81,12 +81,12 @@ use massa_protocol_worker::{create_protocol_controller, start_protocol_controlle
 use massa_storage::Storage;
 use massa_time::MassaTime;
 use massa_versioning::versioning::{
-    ComponentStateTypeId, MipComponent, MipInfo, MipState, MipStatsConfig, MipStore,
+    ComponentStateTypeId, MipComponent, MipInfo, MipState, MipStatsConfig, MipStore, StateAtError,
 };
 use massa_wallet::Wallet;
 use parking_lot::RwLock;
 use peernet::transports::TransportType;
-use std::collections::HashMap;
+use std::collections::{BTreeMap, HashMap};
 use std::path::PathBuf;
 use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::{Condvar, Mutex};
@@ -346,9 +346,12 @@ async fn launch(
     let mut mip_store = MipStore::try_from((
         [(
             MipInfo {
-                name: "MIP-0001".to_string(),
-                version: 1,
-                components: HashMap::from([(MipComponent::Address, 1), (MipComponent::KeyPair, 1)]),
+                name: "MIP-0000".to_string(),
+                version: 0,
+                components: BTreeMap::from([
+                    (MipComponent::Address, 0),
+                    (MipComponent::KeyPair, 0),
+                ]),
                 start: MassaTime::from_millis(0),
                 timeout: MassaTime::from_millis(0),
                 activation_delay: MassaTime::from_millis(0),
@@ -358,6 +361,8 @@ async fn launch(
         mip_stats_config,
     ))
     .expect("mip store creation failed");
+
+    // Check the bootstraped MIP store
     if let Some(bootstrap_mip_store) = bootstrap_state.mip_store {
         // TODO: in some cases, should bootstrap again
         let (updated, added) = mip_store
@@ -372,7 +377,7 @@ async fn launch(
                         if st_id == ComponentStateTypeId::LockedIn {
                             // A new MipInfo @ state locked_in - we need to urge the user to update
                             warn!(
-                                "A new MIP has been received: {}, version: {}",
+                                "A new MIP has been locked in: {}, version: {}",
                                 mip_info.name, mip_info.version
                             );
                             // Safe to unwrap here (only panic if not LockedIn)
@@ -384,15 +389,18 @@ async fn launch(
                         } else if st_id == ComponentStateTypeId::Active {
                             // A new MipInfo @ state active - we are not compatible anymore
                             warn!(
-                                "A new MIP has been received {:?}, version: {:?}",
+                                "A new MIP has become active {:?}, version: {:?}",
                                 mip_info.name, mip_info.version
                             );
-                            panic!("Please update your Massa node to support it");
+                            panic!(
+                                "Please update your Massa node to support MIP version {} ({})",
+                                mip_info.version, mip_info.name
+                            );
                         } else if st_id == ComponentStateTypeId::Defined {
                             // a new MipInfo @ state defined or started (or failed / error)
                             // warn the user to update its node
                             warn!(
-                                "A new MIP has been received: {}, version: {}",
+                                "A new MIP has been defined: {}, version: {}",
                                 mip_info.name, mip_info.version
                             );
                             debug!("MIP state: {:?}", mip_state);
@@ -416,6 +424,23 @@ async fn launch(
                             debug!("MIP state: {:?}", mip_state);
                             warn!("Please update your Massa node to support it");
                         }
+                    }
+                    Err(StateAtError::Unpredictable) => {
+                        warn!(
+                            "A new MIP has started: {}, version: {}",
+                            mip_info.name, mip_info.version
+                        );
+                        debug!("MIP state: {:?}", mip_state);
+                        let dt_start = Utc
+                            .timestamp_opt(mip_info.start.to_duration().as_secs() as i64, 0)
+                            .unwrap();
+                        let dt_timeout = Utc
+                            .timestamp_opt(mip_info.timeout.to_duration().as_secs() as i64, 0)
+                            .unwrap();
+                        warn!("Please update your node between: {} and {} if you want to support this update",
+                                dt_start.to_rfc2822(),
+                                dt_timeout.to_rfc2822()
+                            );
                     }
                     Err(e) => {
                         // Should never happen

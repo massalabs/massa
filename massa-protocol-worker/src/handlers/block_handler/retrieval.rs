@@ -296,22 +296,6 @@ impl RetrievalThread {
             };
             all_blocks_info.push((*hash, block_info));
         }
-        // Clean shared cache if peers do not exist anymore
-        {
-            let mut cache_write = self.cache.write();
-            let peers: Vec<PeerId> = cache_write
-                .blocks_known_by_peer
-                .iter()
-                .map(|(id, _)| id.clone())
-                .collect();
-            let connected_peers = self.active_connections.get_peer_ids_connected();
-            for peer_id in peers {
-                if !connected_peers.contains(&peer_id) {
-                    cache_write.blocks_known_by_peer.remove(&peer_id);
-                    self.asked_blocks.remove(&peer_id);
-                }
-            }
-        }
         debug!(
             "Send reply for blocks of len {} to {}",
             all_blocks_info.len(),
@@ -1108,19 +1092,15 @@ impl RetrievalThread {
                     )
                 };
                 let mut needs_ask = true;
-                // Clean old peers that aren't active anymore
-                let peers_connected: HashSet<PeerId> =
-                    self.active_connections.get_peer_ids_connected();
-                let peers_in_cache: Vec<PeerId> = cache_write
-                    .blocks_known_by_peer
-                    .iter()
-                    .map(|(peer_id, _)| peer_id.clone())
-                    .collect();
-                for peer_id in peers_in_cache {
-                    if !peers_connected.contains(&peer_id) {
-                        cache_write.blocks_known_by_peer.remove(&peer_id);
-                    }
-                }
+
+                let peers_connected = self.active_connections.get_peer_ids_connected();
+                cache_write.update_cache(
+                    peers_connected.clone(),
+                    self.config
+                        .max_node_known_blocks_size
+                        .try_into()
+                        .expect("max_node_known_blocks_size is too big"),
+                );
                 let peers_in_asked_blocks: Vec<PeerId> =
                     self.asked_blocks.keys().cloned().collect();
                 for peer_id in peers_in_asked_blocks {
@@ -1128,27 +1108,7 @@ impl RetrievalThread {
                         self.asked_blocks.remove(&peer_id);
                     }
                 }
-                // Add new peers
                 for peer_id in peers_connected {
-                    if cache_write.blocks_known_by_peer.get(&peer_id).is_none() {
-                        //TODO: Change to detect the connection before
-                        cache_write.blocks_known_by_peer.insert(
-                            peer_id.clone(),
-                            (
-                                LruMap::new(ByLength::new(
-                                    self.config
-                                        .max_node_known_blocks_size
-                                        .try_into()
-                                        .expect("max_node_known_blocks_size in config must be > 0"),
-                                )),
-                                Instant::now(),
-                            ),
-                        );
-                    } else {
-                        // Promote peer_id as the newest used key
-                        cache_write.blocks_known_by_peer.get(&peer_id);
-                    }
-
                     if !self.asked_blocks.contains_key(&peer_id) {
                         self.asked_blocks
                             .insert(peer_id.clone(), PreHashMap::default());
