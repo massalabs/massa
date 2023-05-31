@@ -1283,7 +1283,6 @@
 <a href="#1283" id="1283">1283</a>
 <a href="#1284" id="1284">1284</a>
 <a href="#1285" id="1285">1285</a>
-<a href="#1286" id="1286">1286</a>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="attr">#![doc = <span class="macro">include_str!</span>(<span class="string">&quot;../../README.md&quot;</span>)]
@@ -1366,11 +1365,13 @@
 <span class="kw">use </span>massa_protocol_worker::{create_protocol_controller, start_protocol_controller};
 <span class="kw">use </span>massa_storage::Storage;
 <span class="kw">use </span>massa_time::MassaTime;
-<span class="kw">use </span>massa_versioning::versioning::{ComponentStateTypeId, MipStatsConfig, MipStore, StateAtError};
+<span class="kw">use </span>massa_versioning::versioning::{
+    ComponentStateTypeId, MipComponent, MipInfo, MipState, MipStatsConfig, MipStore, StateAtError,
+};
 <span class="kw">use </span>massa_wallet::Wallet;
 <span class="kw">use </span>parking_lot::RwLock;
 <span class="kw">use </span>peernet::transports::TransportType;
-<span class="kw">use </span>std::collections::HashMap;
+<span class="kw">use </span>std::collections::{BTreeMap, HashMap};
 <span class="kw">use </span>std::path::PathBuf;
 <span class="kw">use </span>std::sync::atomic::{AtomicUsize, Ordering};
 <span class="kw">use </span>std::sync::{Condvar, Mutex};
@@ -1628,23 +1629,20 @@
         counters_max: MIP_STORE_STATS_COUNTERS_MAX,
     };
     <span class="kw">let </span><span class="kw-2">mut </span>mip_store = MipStore::try_from((
-        [
-            <span class="comment">// MIP placeholder
-            /* (
+        [(
             MipInfo {
-                name: &quot;MIP-0000&quot;.to_string(),
-                version: 0,
+                name: <span class="string">&quot;MIP-0000&quot;</span>.to_string(),
+                version: <span class="number">0</span>,
                 components: BTreeMap::from([
-                    (MipComponent::Address, 0),
-                    (MipComponent::KeyPair, 0),
+                    (MipComponent::Address, <span class="number">0</span>),
+                    (MipComponent::KeyPair, <span class="number">0</span>),
                 ]),
-                start: MassaTime::from_millis(0),
-                timeout: MassaTime::from_millis(0),
-                activation_delay: MassaTime::from_millis(0),
+                start: MassaTime::from_millis(<span class="number">0</span>),
+                timeout: MassaTime::from_millis(<span class="number">0</span>),
+                activation_delay: MassaTime::from_millis(<span class="number">0</span>),
             },
-            MipState::new(MassaTime::from_millis(0)),
-        ) */
-        </span>],
+            MipState::new(MassaTime::from_millis(<span class="number">0</span>)),
+        )],
         mip_stats_config,
     ))
     .expect(<span class="string">&quot;mip store creation failed&quot;</span>);

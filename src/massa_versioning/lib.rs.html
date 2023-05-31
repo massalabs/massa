@@ -56,10 +56,6 @@
 <a href="#56" id="56">56</a>
 <a href="#57" id="57">57</a>
 <a href="#58" id="58">58</a>
-<a href="#59" id="59">59</a>
-<a href="#60" id="60">60</a>
-<a href="#61" id="61">61</a>
-<a href="#62" id="62">62</a>
 </pre><pre class="rust"><code><span class="attr">#![feature(variant_count)]
 #![feature(assert_matches)]
 </span><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
@@ -71,22 +67,13 @@
 //! MIPState -&gt; Deployment state of a MIPInfo
 //! MIPStore -&gt; A map of MIPInfo -&gt; MipState
 //!
-//! # Notes on MipInfo versions
+//! # Note on MipInfo versions
 //!
-//! There is 2 different &#39;versions&#39;:
+//! There is 2 different versions:
 //! * version == Network version -&gt; This is the network version to announce and thus to store in block header
-//! * component_version -&gt; This is the version for the associated component and is used in VersioningFactory (e.g KeyPair, Address, VM)
+//! * component_version -&gt; This is the version for the associated component and is used in VersioningFactory
 //!
-//! # Notes on MipInfo timings and stats
-//!
-//! So in the execution module and after a block become final, we update the MipStore stats (in a blocking way) then continue one.
-//! By updating the stats, we mean sending: (Slot timestamp, Option&lt;(current: u32, advertising: Option)&gt;).
-//! Using the slot timestamp, ensure that the trigger (and the trigger timeout) is a consensus by all nodes
-//! (This means that the trigger and the trigger timeout are not timer based).
-//! In order to have all nodes in sync (because of node various delays), the state is se to active
-//! after an activation delay (duration is required to be &gt; 1 cycle).
-//!
-//! # Notes on MipState
+//! # Note on MipState
 //!
 //! MipState has:
 //! * A state machine (stores the current state of deployment for a MipInfo)
@@ -103,7 +90,12 @@
 //!   * + When we init MipStore (at startup), this ensures that we have a time ranges &amp; versions coherent list of MipInfo
 //!     * For instance, this can avoid to have 2 MipInfo with the same name
 //!
-//! # Versioning Factory
+//! # Advancing MipState
+//!
+//! The Versioning middleware is designed to process all finalized blocks and update the corresponding state
+//! **It is not yet implemented**
+//!
+//! # VersioningFactory
 //!
 //! A Factory trait is there to ease the development of factory for Versioned component (e.g. address, block)
 //!
