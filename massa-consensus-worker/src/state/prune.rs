@@ -18,7 +18,6 @@ impl ConsensusState {
     fn prune_active(&mut self) -> Result<PreHashMap<BlockId, ActiveBlock>, ConsensusError> {
         // list required active blocks
         let mut retain_active: PreHashSet<BlockId> = self.list_required_active_blocks(None)?;
-        println!("AURELIEN: len ops {}", self.storage.read_operations().len());
         // retain extra history according to the config
         // this is useful to avoid desync on temporary connection loss
         for a_block in self.active_index.iter() {
