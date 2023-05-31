@@ -5,7 +5,7 @@ authors = ["Massa Labs <info@massa.net>"]
 edition = "2021"
 
 [dependencies]
-nom = "7.1"
+nom = "=7.1"
 num = "0.4"
 serde = { version = "1.0", features = ["derive"] }
 rand = "0.8"

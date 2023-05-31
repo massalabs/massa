@@ -7,7 +7,7 @@ edition = "2021"
 [dependencies]
 displaydoc = "0.2"
 serde = { version = "1.0", features = ["derive"] }
-nom = "7.1"
+nom = "=7.1"
 bs58 = { version = "0.4", features = ["check"] }
 thiserror = "1.0"
 tracing = "0.1"

@@ -5342,7 +5342,7 @@ dependencies = [
 [[package]]
 name = "transition"
 version = "0.1.0"
-source = "git+https://github.com/massalabs/transition.git#93fa3bf82f9f5ff421c78536879b7fd1b948ca75"
+source = "git+https://github.com/massalabs/transition.git?rev=93fa3bf82f9f5ff421c78536879b7fd1b948ca75#93fa3bf82f9f5ff421c78536879b7fd1b948ca75"
 dependencies = [
  "transition-macros",
 ]
@@ -5350,7 +5350,7 @@ dependencies = [
 [[package]]
 name = "transition-macros"
 version = "0.1.0"
-source = "git+https://github.com/massalabs/transition.git#93fa3bf82f9f5ff421c78536879b7fd1b948ca75"
+source = "git+https://github.com/massalabs/transition.git?rev=93fa3bf82f9f5ff421c78536879b7fd1b948ca75#93fa3bf82f9f5ff421c78536879b7fd1b948ca75"
 dependencies = [
  "darling 0.14.4",
  "proc-macro2 1.0.58",

@@ -10,7 +10,7 @@ machine = { git = "https://github.com/antifuchs/machine", branch = "fix-workspac
 parking_lot = "0.12"
 thiserror = "1.0"
 num_enum = "0.5"
-nom = "7.1"
+nom = "=7.1"
 tracing = "0.1"
 
 # custom module
@@ -23,7 +23,7 @@ massa_proto = { path = "../massa-proto" }
 massa_db = { path = "../massa-db" }
 
 [dev-dependencies]
-chrono = "0.4"
+chrono = "=0.4"
 more-asserts = "0.3"
 tempfile = "3.5"
 

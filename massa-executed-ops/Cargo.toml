@@ -5,7 +5,7 @@ authors = ["Massa Labs <info@massa.net>"]
 edition = "2021"
 
 [dependencies]
-nom = "7.1"
+nom = "=7.1"
 rocksdb = "0.20"
 parking_lot = { version = "0.12", features = ["deadlock_detection"] }
 massa_models = { path = "../massa-models" }
