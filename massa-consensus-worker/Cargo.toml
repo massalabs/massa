@@ -1,6 +1,6 @@
 [package]
 name = "massa_consensus_worker"
-version = "0.1.0"
+version = "0.23.0"
 authors = ["Massa Labs <info@massa.net>"]
 edition = "2021"
 
