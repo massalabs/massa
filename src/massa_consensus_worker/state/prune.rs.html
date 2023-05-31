@@ -376,6 +376,9 @@
 <a href="#376" id="376">376</a>
 <a href="#377" id="377">377</a>
 <a href="#378" id="378">378</a>
+<a href="#379" id="379">379</a>
+<a href="#380" id="380">380</a>
+<a href="#381" id="381">381</a>
 </pre><pre class="rust"><code><span class="kw">use </span>massa_consensus_exports::{
     block_status::{BlockStatus, DiscardReason, HeaderOrBlock},
     error::ConsensusError,
@@ -396,6 +399,7 @@
     </span><span class="kw">fn </span>prune_active(<span class="kw-2">&amp;mut </span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span>&lt;PreHashMap&lt;BlockId, ActiveBlock&gt;, ConsensusError&gt; {
         <span class="comment">// list required active blocks
         </span><span class="kw">let </span><span class="kw-2">mut </span>retain_active: PreHashSet&lt;BlockId&gt; = <span class="self">self</span>.list_required_active_blocks(<span class="prelude-val">None</span>)<span class="question-mark">?</span>;
+
         <span class="comment">// retain extra history according to the config
         // this is useful to avoid desync on temporary connection loss
         </span><span class="kw">for </span>a_block <span class="kw">in </span><span class="self">self</span>.active_index.iter() {
@@ -412,13 +416,15 @@
                         .saturating_sub(<span class="self">self</span>.config.force_keep_final_periods_without_ops)
                 {
                     retain_active.insert(<span class="kw-2">*</span>a_block);
+                    <span class="kw">if </span>active_block.slot.period
+                        &lt; latest_final_period.saturating_sub(<span class="self">self</span>.config.force_keep_final_periods)
+                        &amp;&amp; !<span class="self">self</span>.active_index_without_ops.contains(a_block)
+                    {
+                        <span class="self">self</span>.active_index_without_ops.insert(<span class="kw-2">*</span>a_block);
+                        storage.drop_operation_refs(<span class="kw-2">&amp;</span>storage.get_op_refs().clone());
+                    }
+                } <span class="kw">else </span>{
                     <span class="self">self</span>.active_index_without_ops.remove(a_block);
-                } <span class="kw">else if </span>active_block.slot.period
-                    &gt;= latest_final_period.saturating_sub(<span class="self">self</span>.config.force_keep_final_periods)
-                    &amp;&amp; !<span class="self">self</span>.active_index_without_ops.contains(a_block)
-                {
-                    <span class="self">self</span>.active_index_without_ops.insert(<span class="kw-2">*</span>a_block);
-                    storage.drop_operation_refs(<span class="kw-2">&amp;</span>storage.get_op_refs().clone());
                 }
             }
         }
