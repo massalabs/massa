@@ -1027,8 +1027,8 @@ pub struct MipInfo {
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct MipComponentEntry {
-    #[prost(fixed32, tag = "1")]
-    pub kind: u32,
+    #[prost(enumeration = "MipComponent", tag = "1")]
+    pub kind: i32,
     #[prost(fixed32, tag = "2")]
     pub version: u32,
 }
@@ -1070,6 +1070,36 @@ impl ComponentStateId {
             "COMPONENT_STATE_ID_LOCKEDIN" => Some(Self::Lockedin),
             "COMPONENT_STATE_ID_ACTIVE" => Some(Self::Active),
             "COMPONENT_STATE_ID_FAILED" => Some(Self::Failed),
+            _ => None,
+        }
+    }
+}
+/// Same as MipComponent enum in versioning package
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, ::prost::Enumeration)]
+#[repr(i32)]
+pub enum MipComponent {
+    Unspecified = 0,
+    Address = 1,
+    Keypair = 2,
+}
+impl MipComponent {
+    /// String value of the enum field names used in the ProtoBuf definition.
+    ///
+    /// The values are not transformed in any way and thus are considered stable
+    /// (if the ProtoBuf definition does not change) and safe for programmatic use.
+    pub fn as_str_name(&self) -> &'static str {
+        match self {
+            MipComponent::Unspecified => "MIP_COMPONENT_UNSPECIFIED",
+            MipComponent::Address => "MIP_COMPONENT_ADDRESS",
+            MipComponent::Keypair => "MIP_COMPONENT_KEYPAIR",
+        }
+    }
+    /// Creates an enum from field names used in the ProtoBuf definition.
+    pub fn from_str_name(value: &str) -> ::core::option::Option<Self> {
+        match value {
+            "MIP_COMPONENT_UNSPECIFIED" => Some(Self::Unspecified),
+            "MIP_COMPONENT_ADDRESS" => Some(Self::Address),
+            "MIP_COMPONENT_KEYPAIR" => Some(Self::Keypair),
             _ => None,
         }
     }
