@@ -782,27 +782,38 @@ impl Command {
                             resp.entry
                         }
                         Err(e) => {
-                            // FIXME: Should we default to the last known version - default to 0?
                             grpc_error!(e)
                         }
                     };
 
-                    // Note: unused for now as AddressFactory is not yet merged
-                    let _address_version = versioning_status
+                    // Note: this is a bit duplicated with KeyPairFactory code but it avoids
+                    //       sending the whole mip store through the API
+                    let keypair_version = versioning_status
                         .into_iter()
                         .rev()
                         .find_map(|entry| {
+                            let is_about_keypair = match entry.mip_info {
+                                None => false,
+                                Some(mip_info) => mip_info.components.iter().any(|st_entry| {
+                                    grpc::MipComponent::from_i32(st_entry.kind)
+                                        .unwrap_or(grpc::MipComponent::Unspecified)
+                                        == grpc::MipComponent::Keypair
+                                }),
+                            };
+
                             let state = grpc::ComponentStateId::from_i32(entry.state_id)
                                 .unwrap_or(grpc::ComponentStateId::Error);
-                            match state {
-                                grpc::ComponentStateId::Active => Some(entry.state_id),
-                                _ => None,
+
+                            if is_about_keypair && state == grpc::ComponentStateId::Active {
+                                Some(entry.state_id)
+                            } else {
+                                None
                             }
                         })
                         .unwrap_or(0);
-                    println!("Should create address with version: {}", _address_version);
+                    let key = KeyPair::generate(keypair_version as u64)
+                        .expect("Unable to generate key pair");
 
-                    let key = KeyPair::generate(0).unwrap();
                     let ad = wallet.add_keypairs(vec![key])?[0];
                     if json {
                         Ok(Box::new(ad.to_string()))

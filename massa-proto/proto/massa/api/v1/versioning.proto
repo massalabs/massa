@@ -32,7 +32,7 @@ message MipInfo {
 }
 
 message MipComponentEntry {
-  fixed32 kind = 1;
+  MipComponent kind = 1;
   fixed32 version = 2;
 }
 
@@ -45,4 +45,11 @@ enum ComponentStateId {
   COMPONENT_STATE_ID_LOCKEDIN = 4;
   COMPONENT_STATE_ID_ACTIVE = 5;
   COMPONENT_STATE_ID_FAILED = 6;
+}
+
+// Versioning component enum
+enum MipComponent {
+  MIP_COMPONENT_UNSPECIFIED = 0;
+  MIP_COMPONENT_ADDRESS = 1;
+  MIP_COMPONENT_KEYPAIR = 2;
 }
