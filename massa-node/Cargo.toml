@@ -23,7 +23,7 @@ tracing-subscriber = "0.3"
 paw = "1.0"
 structopt = { version = "0.3", features = ["paw"] }
 dialoguer = "0.10"
-chrono = "0.4"
+ctrlc = "3.2.5"
 # custom modules
 massa_api_exports = { path = "../massa-api-exports" }
 massa_api = { path = "../massa-api" }
@@ -52,7 +52,7 @@ massa_factory_exports = { path = "../massa-factory-exports" }
 massa_factory_worker = { path = "../massa-factory-worker" }
 massa_grpc = { path = "../massa-grpc" }
 massa_versioning = { path = "../massa-versioning" }
-ctrlc = "3.2.5"
+massa_db = { path = "../massa-db" }
 
 # for more information on what are the following features used for, see the cargo.toml at workspace level
 [features]
@@ -60,4 +60,3 @@ beta = []
 deadlock_detection = []
 bootstrap_server = []
 sandbox = ["massa_bootstrap/sandbox", "massa_consensus_worker/sandbox", "massa_execution_worker/sandbox", "massa_final_state/sandbox", "massa_models/sandbox"]
-create_snapshot = ["massa_final_state/create_snapshot"]

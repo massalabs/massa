@@ -1,6 +1,7 @@
+use massa_async_pool::{AsyncMessage, AsyncMessageId, AsyncMessageUpdate};
 use massa_execution_exports::ExecutionOutput;
 use massa_ledger_exports::{
-    LedgerEntry, LedgerEntryUpdate, SetOrDelete, SetOrKeep, SetUpdateOrDelete,
+    Applicable, LedgerEntry, LedgerEntryUpdate, SetOrDelete, SetOrKeep, SetUpdateOrDelete,
 };
 use massa_models::denunciation::DenunciationIndex;
 use massa_models::{
@@ -58,6 +59,37 @@ impl ActiveHistory {
             }
         }
         HistorySearchResult::NoInfo
+    }
+
+    /// Lazily query (from end to beginning) a message based on its id
+    ///
+    /// Returns a `HistorySearchResult`.
+    pub fn fetch_message(
+        &self,
+        message_id: &AsyncMessageId,
+        mut current_updates: AsyncMessageUpdate,
+    ) -> HistorySearchResult<SetUpdateOrDelete<AsyncMessage, AsyncMessageUpdate>> {
+        for history_element in self.0.iter().rev() {
+            match history_element
+                .state_changes
+                .async_pool_changes
+                .0
+                .get(message_id)
+            {
+                Some(SetUpdateOrDelete::Set(msg)) => {
+                    let mut msg = msg.clone();
+                    msg.apply(current_updates);
+                    return HistorySearchResult::Present(SetUpdateOrDelete::Set(msg));
+                }
+                Some(SetUpdateOrDelete::Update(msg_update)) => {
+                    current_updates.apply(msg_update.clone());
+                }
+                Some(SetUpdateOrDelete::Delete) => return HistorySearchResult::Absent,
+                _ => (),
+            }
+        }
+
+        HistorySearchResult::Present(SetUpdateOrDelete::Update(current_updates))
     }
 
     /// Lazily query (from end to beginning) the active list of executed denunciations.

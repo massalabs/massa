@@ -1,4 +1,7 @@
+use chrono::{TimeZone, Utc};
 use humantime::format_duration;
+use massa_db::DBBatch;
+use std::collections::BTreeMap;
 use std::{
     collections::HashSet,
     io,
@@ -7,12 +10,12 @@ use std::{
     time::Duration,
 };
 
-use massa_final_state::FinalState;
+use massa_final_state::{FinalState, FinalStateError};
 use massa_logging::massa_trace;
-use massa_models::{node::NodeId, streaming_step::StreamingStep, version::Version};
+use massa_models::{node::NodeId, slot::Slot, streaming_step::StreamingStep, version::Version};
 use massa_signature::PublicKey;
 use massa_time::MassaTime;
-use massa_versioning::versioning::{MipStore, MipStoreRaw};
+use massa_versioning::versioning::{ComponentStateTypeId, MipInfo, MipState, StateAtError};
 use parking_lot::RwLock;
 use rand::{
     prelude::{SliceRandom, StdRng},
@@ -79,16 +82,12 @@ fn stream_final_state_and_consensus(
             match client.next_timeout(Some(cfg.read_timeout.to_duration()))? {
                 BootstrapServerMessage::BootstrapPart {
                     slot,
-                    ledger_part,
-                    async_pool_part,
-                    pos_cycle_part,
-                    pos_credits_part,
-                    exec_ops_part,
-                    exec_de_part,
-                    final_state_changes,
+                    state_part,
+                    versioning_part,
                     consensus_part,
                     consensus_outdated_ids,
                     last_start_period,
+                    last_slot_before_downtime,
                 } => {
                     // Set final state
                     let mut write_final_state = global_bootstrap_state.final_state.write();
@@ -97,45 +96,20 @@ fn stream_final_state_and_consensus(
                     if let Some(last_start_period) = last_start_period {
                         write_final_state.last_start_period = last_start_period;
                     }
-
-                    let last_ledger_step = write_final_state.ledger.set_ledger_part(ledger_part)?;
-                    let last_pool_step =
-                        write_final_state.async_pool.set_pool_part(async_pool_part);
-                    let last_cycle_step = write_final_state
-                        .pos_state
-                        .set_cycle_history_part(pos_cycle_part);
-                    let last_credits_step = write_final_state
-                        .pos_state
-                        .set_deferred_credits_part(pos_credits_part);
-                    let last_ops_step = write_final_state
-                        .executed_ops
-                        .set_executed_ops_part(exec_ops_part);
-                    let last_de_step = write_final_state
-                        .executed_denunciations
-                        .set_executed_de_part(exec_de_part);
-                    for (changes_slot, changes) in final_state_changes.iter() {
-                        write_final_state.ledger.apply_changes(
-                            changes.ledger_changes.clone(),
-                            *changes_slot,
-                            None,
-                        );
-                        write_final_state
-                            .async_pool
-                            .apply_changes_unchecked(&changes.async_pool_changes);
-                        if !changes.pos_changes.is_empty() {
-                            write_final_state.pos_state.apply_changes(
-                                changes.pos_changes.clone(),
-                                *changes_slot,
-                                false,
-                            )?;
-                        }
-                        if !changes.executed_ops_changes.is_empty() {
-                            write_final_state
-                                .executed_ops
-                                .apply_changes(changes.executed_ops_changes.clone(), *changes_slot);
-                        }
+                    if let Some(last_slot_before_downtime) = last_slot_before_downtime {
+                        write_final_state.last_slot_before_downtime = last_slot_before_downtime;
                     }
-                    write_final_state.slot = slot;
+
+                    let (last_state_step, last_versioning_step) = write_final_state
+                        .db
+                        .write()
+                        .write_batch_bootstrap_client(state_part, versioning_part)
+                        .map_err(|e| {
+                            BootstrapError::GeneralError(format!(
+                                "Cannot write received stream batch to disk: {}",
+                                e
+                            ))
+                        })?;
 
                     // Set consensus blocks
                     if let Some(graph) = global_bootstrap_state.graph.as_mut() {
@@ -163,12 +137,8 @@ fn stream_final_state_and_consensus(
                     // Set new message in case of disconnection
                     *next_bootstrap_message = BootstrapClientMessage::AskBootstrapPart {
                         last_slot: Some(slot),
-                        last_ledger_step,
-                        last_pool_step,
-                        last_cycle_step,
-                        last_credits_step,
-                        last_ops_step,
-                        last_de_step,
+                        last_state_step,
+                        last_versioning_step,
                         last_consensus_step,
                         send_last_start_period: false,
                     };
@@ -178,27 +148,30 @@ fn stream_final_state_and_consensus(
                         "client final state bootstrap cursors: {:?}",
                         next_bootstrap_message
                     );
-                    debug!(
-                        "client final state slot changes length: {}",
-                        final_state_changes.len()
-                    );
                 }
                 BootstrapServerMessage::BootstrapFinished => {
                     info!("State bootstrap complete");
                     // Set next bootstrap message
                     *next_bootstrap_message = BootstrapClientMessage::AskBootstrapPeers;
+
+                    // Update MIP store by reading from the disk
+                    let mut guard = global_bootstrap_state.final_state.write();
+                    let db = guard.db.clone();
+                    let (updated, added) = guard
+                        .mip_store
+                        .extend_from_db(db)
+                        .map_err(|e| BootstrapError::from(FinalStateError::from(e)))?;
+
+                    warn_user_about_versioning_updates(updated, added);
+
                     return Ok(());
                 }
                 BootstrapServerMessage::SlotTooOld => {
                     info!("Slot is too old retry bootstrap from scratch");
                     *next_bootstrap_message = BootstrapClientMessage::AskBootstrapPart {
                         last_slot: None,
-                        last_ledger_step: StreamingStep::Started,
-                        last_pool_step: StreamingStep::Started,
-                        last_cycle_step: StreamingStep::Started,
-                        last_credits_step: StreamingStep::Started,
-                        last_ops_step: StreamingStep::Started,
-                        last_de_step: StreamingStep::Started,
+                        last_state_step: StreamingStep::Started,
+                        last_versioning_step: StreamingStep::Started,
                         last_consensus_step: StreamingStep::Started,
                         send_last_start_period: true,
                     };
@@ -206,7 +179,7 @@ fn stream_final_state_and_consensus(
                     write_final_state.reset();
                     return Err(BootstrapError::GeneralError(String::from("Slot too old")));
                 }
-                // At this point, we have succesfully received the next message from the server, and it's an error-message String
+                // At this point, we have successfully received the next message from the server, and it's an error-message String
                 BootstrapServerMessage::BootstrapError { error } => {
                     return Err(BootstrapError::GeneralError(error))
                 }
@@ -341,25 +314,6 @@ fn bootstrap_from_server(
                     other => return Err(BootstrapError::UnexpectedServerMessage(other)),
                 };
                 global_bootstrap_state.peers = Some(peers);
-                *next_bootstrap_message = BootstrapClientMessage::AskBootstrapMipStore;
-            }
-            BootstrapClientMessage::AskBootstrapMipStore => {
-                let mip_store_raw: MipStoreRaw = match send_client_message(
-                    next_bootstrap_message,
-                    client,
-                    write_timeout,
-                    cfg.read_timeout.into(),
-                    "ask bootstrap versioning store timed out",
-                )? {
-                    BootstrapServerMessage::BootstrapMipStore { store: store_raw } => store_raw,
-                    BootstrapServerMessage::BootstrapError { error } => {
-                        return Err(BootstrapError::ReceivedError(error))
-                    }
-                    other => return Err(BootstrapError::UnexpectedServerMessage(other)),
-                };
-
-                global_bootstrap_state.mip_store =
-                    Some(MipStore(Arc::new(RwLock::new(mip_store_raw))));
                 *next_bootstrap_message = BootstrapClientMessage::BootstrapSuccess;
             }
             BootstrapClientMessage::BootstrapSuccess => {
@@ -478,7 +432,19 @@ pub fn get_state(
             }
 
             // create the initial cycle of PoS cycle_history
-            final_state_guard.pos_state.create_initial_cycle();
+            let mut batch = DBBatch::new();
+            final_state_guard.pos_state.create_initial_cycle(&mut batch);
+
+            let slot = Slot::new(
+                final_state_guard.last_start_period,
+                bootstrap_config.thread_count.saturating_sub(1),
+            );
+
+            // TODO: should receive ver batch here?
+            final_state_guard
+                .db
+                .write()
+                .write_batch(batch, Default::default(), Some(slot));
         }
         return Ok(GlobalBootstrapState::new(final_state));
     }
@@ -490,12 +456,8 @@ pub fn get_state(
     let mut next_bootstrap_message: BootstrapClientMessage =
         BootstrapClientMessage::AskBootstrapPart {
             last_slot: None,
-            last_ledger_step: StreamingStep::Started,
-            last_pool_step: StreamingStep::Started,
-            last_cycle_step: StreamingStep::Started,
-            last_credits_step: StreamingStep::Started,
-            last_ops_step: StreamingStep::Started,
-            last_de_step: StreamingStep::Started,
+            last_state_step: StreamingStep::Started,
+            last_versioning_step: StreamingStep::Started,
             last_consensus_step: StreamingStep::Started,
             send_last_start_period: true,
         };
@@ -600,4 +562,92 @@ fn get_bootstrap_list_iter(
     let mut unique_node_ids: HashSet<NodeId> = HashSet::new();
     filtered_bootstrap_list.retain(|e| unique_node_ids.insert(e.1));
     Ok(filtered_bootstrap_list)
+}
+
+fn warn_user_about_versioning_updates(updated: Vec<MipInfo>, added: BTreeMap<MipInfo, MipState>) {
+    if !added.is_empty() {
+        for (mip_info, mip_state) in added.iter() {
+            let now = MassaTime::now().expect("Cannot get current time");
+            match mip_state.state_at(now, mip_info.start, mip_info.timeout) {
+                Ok(st_id) => {
+                    if st_id == ComponentStateTypeId::LockedIn {
+                        // A new MipInfo @ state locked_in - we need to urge the user to update
+                        warn!(
+                            "A new MIP has been locked in: {}, version: {}",
+                            mip_info.name, mip_info.version
+                        );
+                        // Safe to unwrap here (only panic if not LockedIn)
+                        let activation_at = mip_state.activation_at(mip_info).unwrap();
+                        let dt = Utc
+                            .timestamp_opt(activation_at.to_duration().as_secs() as i64, 0)
+                            .unwrap();
+                        warn!("Please update your Massa node before: {}", dt.to_rfc2822());
+                    } else if st_id == ComponentStateTypeId::Active {
+                        // A new MipInfo @ state active - we are not compatible anymore
+                        warn!(
+                            "A new MIP has become active {:?}, version: {:?}",
+                            mip_info.name, mip_info.version
+                        );
+                        panic!(
+                            "Please update your Massa node to support MIP version {} ({})",
+                            mip_info.version, mip_info.name
+                        );
+                    } else if st_id == ComponentStateTypeId::Defined {
+                        // a new MipInfo @ state defined or started (or failed / error)
+                        // warn the user to update its node
+                        warn!(
+                            "A new MIP has been defined: {}, version: {}",
+                            mip_info.name, mip_info.version
+                        );
+                        debug!("MIP state: {:?}", mip_state);
+                        let dt_start = Utc
+                            .timestamp_opt(mip_info.start.to_duration().as_secs() as i64, 0)
+                            .unwrap();
+                        let dt_timeout = Utc
+                            .timestamp_opt(mip_info.timeout.to_duration().as_secs() as i64, 0)
+                            .unwrap();
+                        warn!("Please update your node between: {} and {} if you want to support this update",
+                                dt_start.to_rfc2822(),
+                                dt_timeout.to_rfc2822()
+                            );
+                    } else {
+                        // a new MipInfo @ state defined or started (or failed / error)
+                        // warn the user to update its node
+                        warn!(
+                            "A new MIP has been received: {}, version: {}",
+                            mip_info.name, mip_info.version
+                        );
+                        debug!("MIP state: {:?}", mip_state);
+                        warn!("Please update your Massa node to support it");
+                    }
+                }
+                Err(StateAtError::Unpredictable) => {
+                    warn!(
+                        "A new MIP has started: {}, version: {}",
+                        mip_info.name, mip_info.version
+                    );
+                    debug!("MIP state: {:?}", mip_state);
+                    let dt_start = Utc
+                        .timestamp_opt(mip_info.start.to_duration().as_secs() as i64, 0)
+                        .unwrap();
+                    let dt_timeout = Utc
+                        .timestamp_opt(mip_info.timeout.to_duration().as_secs() as i64, 0)
+                        .unwrap();
+                    warn!("Please update your node between: {} and {} if you want to support this update",
+                            dt_start.to_rfc2822(),
+                            dt_timeout.to_rfc2822()
+                        );
+                }
+                Err(e) => {
+                    // Should never happen
+                    panic!(
+                        "Unable to get state at {} of mip info: {:?}, error: {}",
+                        now, mip_info, e
+                    )
+                }
+            }
+        }
+    }
+
+    debug!("MIP store got {} MIP updated from bootstrap", updated.len());
 }

@@ -545,8 +545,22 @@ pub struct AsyncPoolChangeValue {
     #[prost(enumeration = "AsyncPoolChangeType", tag = "1")]
     pub r#type: i32,
     /// AsyncPool message
-    #[prost(message, optional, tag = "2")]
-    pub async_message: ::core::option::Option<AsyncMessage>,
+    #[prost(oneof = "async_pool_change_value::Message", tags = "2, 3")]
+    pub message: ::core::option::Option<async_pool_change_value::Message>,
+}
+/// Nested message and enum types in `AsyncPoolChangeValue`.
+pub mod async_pool_change_value {
+    /// AsyncPool message
+    #[allow(clippy::derive_partial_eq_without_eq)]
+    #[derive(Clone, PartialEq, ::prost::Oneof)]
+    pub enum Message {
+        /// Created ledger entry
+        #[prost(message, tag = "2")]
+        CreatedMessage(super::AsyncMessage),
+        /// Update ledger entry
+        #[prost(message, tag = "3")]
+        UpdatedMessage(super::AsyncMessageUpdate),
+    }
 }
 /// Asynchronous smart contract message
 #[allow(clippy::derive_partial_eq_without_eq)]
@@ -599,6 +613,124 @@ pub struct AsyncMessage {
     /// Hash of the message
     #[prost(string, tag = "14")]
     pub hash: ::prost::alloc::string::String,
+}
+/// Asynchronous smart contract message
+#[allow(clippy::derive_partial_eq_without_eq)]
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct AsyncMessageUpdate {
+    /// Change the slot at which the message was emitted
+    #[prost(message, optional, tag = "1")]
+    pub emission_slot: ::core::option::Option<SetOrKeepSlot>,
+    /// Change the index of the emitted message within the `emission_slot`.
+    /// This is used for disambiguate the emission of multiple messages at the same slot.
+    #[prost(message, optional, tag = "2")]
+    pub emission_index: ::core::option::Option<SetOrKeepFixed64>,
+    /// Change the address that sent the message
+    #[prost(message, optional, tag = "3")]
+    pub sender: ::core::option::Option<SetOrKeepString>,
+    /// Change the address towards which the message is being sent
+    #[prost(message, optional, tag = "4")]
+    pub destination: ::core::option::Option<SetOrKeepString>,
+    /// Change the handler function name within the destination address' bytecode
+    #[prost(message, optional, tag = "5")]
+    pub handler: ::core::option::Option<SetOrKeepString>,
+    /// Change the maximum gas to use when processing the message
+    #[prost(message, optional, tag = "6")]
+    pub max_gas: ::core::option::Option<SetOrKeepFixed64>,
+    /// Change the fee paid by the sender when the message is processed.
+    #[prost(message, optional, tag = "7")]
+    pub fee: ::core::option::Option<SetOrKeepFixed64>,
+    /// Change the coins sent from the sender to the target address of the message.
+    /// Those coins are spent by the sender address when the message is sent,
+    /// and credited to the destination address when receiving the message.
+    /// In case of failure or discard, those coins are reimbursed to the sender.
+    #[prost(message, optional, tag = "8")]
+    pub coins: ::core::option::Option<SetOrKeepFixed64>,
+    /// Change the slot at which the message starts being valid (bound included in the validity range)
+    #[prost(message, optional, tag = "9")]
+    pub validity_start: ::core::option::Option<SetOrKeepSlot>,
+    /// Change the slot at which the message stops being valid (bound not included in the validity range)
+    #[prost(message, optional, tag = "10")]
+    pub validity_end: ::core::option::Option<SetOrKeepSlot>,
+    /// Change the raw payload data of the message
+    #[prost(message, optional, tag = "11")]
+    pub data: ::core::option::Option<SetOrKeepBytes>,
+    /// Change the trigger that define whenever a message can be executed
+    #[prost(message, optional, tag = "12")]
+    pub trigger: ::core::option::Option<SetOrKeepAsyncMessageTrigger>,
+    /// Change the boolean that determine if the message can be executed. For messages without filter this boolean is always true.
+    /// For messages with filter, this boolean is true if the filter has been matched between `validity_start` and current slot.
+    #[prost(message, optional, tag = "13")]
+    pub can_be_executed: ::core::option::Option<SetOrKeepBool>,
+    /// Change the hash of the message
+    #[prost(message, optional, tag = "14")]
+    pub hash: ::core::option::Option<SetOrKeepString>,
+}
+/// Set or Keep Slot
+#[allow(clippy::derive_partial_eq_without_eq)]
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct SetOrKeepSlot {
+    /// The type of the change
+    #[prost(enumeration = "SetOrKeepType", tag = "1")]
+    pub r#type: i32,
+    /// The value of that entry (optional)
+    #[prost(message, optional, tag = "2")]
+    pub value: ::core::option::Option<Slot>,
+}
+/// Set or Keep Fixed64
+#[allow(clippy::derive_partial_eq_without_eq)]
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct SetOrKeepFixed64 {
+    /// The type of the change
+    #[prost(enumeration = "SetOrKeepType", tag = "1")]
+    pub r#type: i32,
+    /// The value of that entry (optional)
+    #[prost(fixed64, optional, tag = "2")]
+    pub value: ::core::option::Option<u64>,
+}
+/// Set or Keep String
+#[allow(clippy::derive_partial_eq_without_eq)]
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct SetOrKeepString {
+    /// The type of the change
+    #[prost(enumeration = "SetOrKeepType", tag = "1")]
+    pub r#type: i32,
+    /// The value of that entry (optional)
+    #[prost(string, optional, tag = "2")]
+    pub value: ::core::option::Option<::prost::alloc::string::String>,
+}
+/// Set or Keep Bytes
+#[allow(clippy::derive_partial_eq_without_eq)]
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct SetOrKeepBytes {
+    /// The type of the change
+    #[prost(enumeration = "SetOrKeepType", tag = "1")]
+    pub r#type: i32,
+    /// The value of that entry (optional)
+    #[prost(bytes = "vec", optional, tag = "2")]
+    pub value: ::core::option::Option<::prost::alloc::vec::Vec<u8>>,
+}
+/// Set or Keep Bool
+#[allow(clippy::derive_partial_eq_without_eq)]
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct SetOrKeepBool {
+    /// The type of the change
+    #[prost(enumeration = "SetOrKeepType", tag = "1")]
+    pub r#type: i32,
+    /// The value of that entry (optional)
+    #[prost(bool, optional, tag = "2")]
+    pub value: ::core::option::Option<bool>,
+}
+/// Set or Keep AsyncMessageTrigger
+#[allow(clippy::derive_partial_eq_without_eq)]
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct SetOrKeepAsyncMessageTrigger {
+    /// The type of the change
+    #[prost(enumeration = "SetOrKeepType", tag = "1")]
+    pub r#type: i32,
+    /// The value of that entry (optional)
+    #[prost(message, optional, tag = "2")]
+    pub value: ::core::option::Option<AsyncMessageTrigger>,
 }
 /// Structure defining a trigger for an asynchronous message
 #[allow(clippy::derive_partial_eq_without_eq)]
@@ -863,9 +995,9 @@ pub enum AsyncPoolChangeType {
     /// Default enum value
     Unspecified = 0,
     /// Add type
-    Add = 1,
+    Set = 1,
     /// Activate only type
-    Activate = 2,
+    Update = 2,
     /// Delete only type
     Delete = 3,
 }
@@ -877,8 +1009,8 @@ impl AsyncPoolChangeType {
     pub fn as_str_name(&self) -> &'static str {
         match self {
             AsyncPoolChangeType::Unspecified => "ASYNC_POOL_CHANGE_TYPE_UNSPECIFIED",
-            AsyncPoolChangeType::Add => "ASYNC_POOL_CHANGE_TYPE_ADD",
-            AsyncPoolChangeType::Activate => "ASYNC_POOL_CHANGE_TYPE_ACTIVATE",
+            AsyncPoolChangeType::Set => "ASYNC_POOL_CHANGE_TYPE_SET",
+            AsyncPoolChangeType::Update => "ASYNC_POOL_CHANGE_TYPE_UPDATE",
             AsyncPoolChangeType::Delete => "ASYNC_POOL_CHANGE_TYPE_DELETE",
         }
     }
@@ -886,8 +1018,8 @@ impl AsyncPoolChangeType {
     pub fn from_str_name(value: &str) -> ::core::option::Option<Self> {
         match value {
             "ASYNC_POOL_CHANGE_TYPE_UNSPECIFIED" => Some(Self::Unspecified),
-            "ASYNC_POOL_CHANGE_TYPE_ADD" => Some(Self::Add),
-            "ASYNC_POOL_CHANGE_TYPE_ACTIVATE" => Some(Self::Activate),
+            "ASYNC_POOL_CHANGE_TYPE_SET" => Some(Self::Set),
+            "ASYNC_POOL_CHANGE_TYPE_UPDATE" => Some(Self::Update),
             "ASYNC_POOL_CHANGE_TYPE_DELETE" => Some(Self::Delete),
             _ => None,
         }

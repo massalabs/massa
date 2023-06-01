@@ -11,13 +11,15 @@ serde_json = "1.0"
 tempfile = { version = "3.3", optional = true }    # use with testing feature
 thiserror = "1.0"
 nom = "=7.1"
+rocksdb = "0.20"
+num_enum = "0.5.10"
 
 # custom modules
 massa_proto = { path = "../massa-proto" }
 massa_hash = { path = "../massa-hash" }
 massa_models = { path = "../massa-models" }
 massa_serialization = { path = "../massa-serialization" }
-num_enum = "0.5.10"
+massa_db = { path = "../massa-db" }
 
 
 

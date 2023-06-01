@@ -8,6 +8,7 @@ members = [
   "massa-cipher",
   "massa-consensus-exports",
   "massa-consensus-worker",
+  "massa-db",
   "massa-executed-ops",
   "massa-execution-exports",
   "massa-execution-worker",
@@ -53,5 +54,4 @@ opt-level = 3 # Speed-up the CI
 # Do not add as a regular dependency. Never.
 #
 # * sandbox: for testing purpose, genesis timestamps is set as now + 9 seconds.
-# * create_snapshot: for saving the final_state on disk, alongside the ledger.
 # The saved snapshot can then be used to restart the network from the snapshot.

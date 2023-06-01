@@ -4,16 +4,18 @@
 //! Used to detect operation reuse.
 
 use crate::{ops_changes::ExecutedOpsChanges, ExecutedOpsConfig};
-use massa_hash::{Hash, HASH_SIZE_BYTES};
+use massa_db::{
+    DBBatch, MassaDB, CF_ERROR, CRUD_ERROR, EXECUTED_OPS_ID_DESER_ERROR, EXECUTED_OPS_ID_SER_ERROR,
+    EXECUTED_OPS_PREFIX, STATE_CF,
+};
 use massa_models::{
-    operation::{OperationId, OperationIdDeserializer},
+    operation::{OperationId, OperationIdDeserializer, OperationIdSerializer},
     prehash::PreHashSet,
-    secure_share::Id,
     slot::{Slot, SlotDeserializer, SlotSerializer},
-    streaming_step::StreamingStep,
 };
 use massa_serialization::{
-    Deserializer, SerializeError, Serializer, U64VarIntDeserializer, U64VarIntSerializer,
+    BoolDeserializer, BoolSerializer, DeserializeError, Deserializer, SerializeError, Serializer,
+    U64VarIntDeserializer, U64VarIntSerializer,
 };
 use nom::{
     error::{context, ContextError, ParseError},
@@ -21,63 +23,103 @@ use nom::{
     sequence::tuple,
     IResult, Parser,
 };
+use parking_lot::RwLock;
 use std::{
-    collections::{BTreeMap, HashMap},
-    ops::Bound::{Excluded, Included, Unbounded},
+    collections::{BTreeMap, HashMap, HashSet},
+    ops::Bound::{Excluded, Included},
+    sync::Arc,
 };
 
-const EXECUTED_OPS_HASH_INITIAL_BYTES: &[u8; 32] = &[0; HASH_SIZE_BYTES];
+/// Op id key formatting macro
+#[macro_export]
+macro_rules! op_id_key {
+    ($id:expr) => {
+        [&EXECUTED_OPS_PREFIX.as_bytes(), &$id[..]].concat()
+    };
+}
 
 /// A structure to list and prune previously executed operations
-#[derive(Debug, Clone)]
+#[derive(Clone)]
 pub struct ExecutedOps {
     /// Executed operations configuration
-    config: ExecutedOpsConfig,
+    _config: ExecutedOpsConfig,
+    /// RocksDB Instance
+    pub db: Arc<RwLock<MassaDB>>,
     /// Executed operations btreemap with slot as index for better pruning complexity
     pub sorted_ops: BTreeMap<Slot, PreHashSet<OperationId>>,
-    /// Executed operations only for better insertion complexity
-    pub ops: PreHashSet<OperationId>,
-    /// Accumulated hash of the executed operations
-    pub hash: Hash,
     /// execution status of operations (true: success, false: fail)
     pub op_exec_status: HashMap<OperationId, bool>,
+    operation_id_deserializer: OperationIdDeserializer,
+    operation_id_serializer: OperationIdSerializer,
+    bool_deserializer: BoolDeserializer,
+    bool_serializer: BoolSerializer,
+    slot_deserializer: SlotDeserializer,
+    slot_serializer: SlotSerializer,
 }
 
 impl ExecutedOps {
     /// Creates a new `ExecutedOps`
-    pub fn new(config: ExecutedOpsConfig) -> Self {
+    pub fn new(config: ExecutedOpsConfig, db: Arc<RwLock<MassaDB>>) -> Self {
+        let slot_deserializer = SlotDeserializer::new(
+            (Included(u64::MIN), Included(u64::MAX)),
+            (Included(0), Excluded(config.thread_count)),
+        );
         Self {
-            config,
+            _config: config,
+            db,
             sorted_ops: BTreeMap::new(),
-            ops: PreHashSet::default(),
-            hash: Hash::from_bytes(EXECUTED_OPS_HASH_INITIAL_BYTES),
             op_exec_status: HashMap::new(),
+            operation_id_deserializer: OperationIdDeserializer::new(),
+            operation_id_serializer: OperationIdSerializer::new(),
+            bool_deserializer: BoolDeserializer::new(),
+            bool_serializer: BoolSerializer::new(),
+            slot_deserializer,
+            slot_serializer: SlotSerializer::new(),
         }
     }
 
-    /// Creates a new `ExecutedOps` and computes the hash
-    /// Useful when restarting from a snapshot
-    pub fn new_with_hash(
-        config: ExecutedOpsConfig,
-        sorted_ops: BTreeMap<Slot, PreHashSet<OperationId>>,
-    ) -> Self {
-        let mut hash = Hash::from_bytes(EXECUTED_OPS_HASH_INITIAL_BYTES);
-        let mut ops = PreHashSet::default();
-        for (_, op_ids) in sorted_ops.clone() {
-            for op_id in op_ids {
-                if ops.insert(op_id) {
-                    // This let's us compute the accumulated hash of all op_ids in the struct.
-                    // We XOR the hash to allow reversibility if we remove an op_id.
-                    hash ^= *op_id.get_hash();
-                }
+    /// Recomputes the local caches after bootstrap or loading the state from disk
+    pub fn recompute_sorted_ops_and_op_exec_status(&mut self) {
+        self.sorted_ops.clear();
+        self.op_exec_status.clear();
+
+        let db = self.db.read();
+        let handle = db.db.cf_handle(STATE_CF).expect(CF_ERROR);
+
+        for (serialized_op_id, serialized_value) in db
+            .db
+            .prefix_iterator_cf(handle, EXECUTED_OPS_PREFIX)
+            .flatten()
+        {
+            if !serialized_op_id.starts_with(EXECUTED_OPS_PREFIX.as_bytes()) {
+                break;
             }
-        }
-        Self {
-            config,
-            sorted_ops,
-            ops,
-            hash,
-            op_exec_status: HashMap::new(),
+
+            let (_, op_id) = self
+                .operation_id_deserializer
+                .deserialize::<DeserializeError>(&serialized_op_id[EXECUTED_OPS_PREFIX.len()..])
+                .expect(EXECUTED_OPS_ID_DESER_ERROR);
+
+            let (rest, op_exec_status) = self
+                .bool_deserializer
+                .deserialize::<DeserializeError>(&serialized_value)
+                .expect(EXECUTED_OPS_ID_DESER_ERROR);
+            let (_, slot) = self
+                .slot_deserializer
+                .deserialize::<DeserializeError>(rest)
+                .expect(EXECUTED_OPS_ID_DESER_ERROR);
+
+            self.sorted_ops
+                .entry(slot)
+                .and_modify(|ids| {
+                    ids.insert(op_id);
+                })
+                .or_insert_with(|| {
+                    let mut new = HashSet::default();
+                    new.insert(op_id);
+                    new
+                });
+            self.op_exec_status.insert(op_id, op_exec_status);
         }
     }
 
@@ -85,36 +127,24 @@ impl ExecutedOps {
     ///
     /// USED FOR BOOTSTRAP ONLY
     pub fn reset(&mut self) {
-        self.sorted_ops.clear();
-        self.ops.clear();
-        self.hash = Hash::from_bytes(EXECUTED_OPS_HASH_INITIAL_BYTES);
-    }
+        self.db
+            .write()
+            .delete_prefix(EXECUTED_OPS_PREFIX, STATE_CF, None);
 
-    /// Returns the number of executed operations
-    pub fn len(&self) -> usize {
-        self.ops.len()
-    }
-
-    /// Check executed ops emptiness
-    pub fn is_empty(&self) -> bool {
-        self.ops.is_empty()
-    }
-
-    /// Internal function used to insert the values of an operation id iter and update the object hash
-    fn extend_and_compute_hash<'a, I>(&mut self, values: I)
-    where
-        I: Iterator<Item = &'a OperationId>,
-    {
-        for op_id in values {
-            if self.ops.insert(*op_id) {
-                self.hash ^= *op_id.get_hash();
-            }
-        }
+        self.recompute_sorted_ops_and_op_exec_status();
     }
 
     /// Apply speculative operations changes to the final executed operations state
-    pub fn apply_changes(&mut self, changes: ExecutedOpsChanges, slot: Slot) {
-        self.extend_and_compute_hash(changes.keys());
+    pub fn apply_changes_to_batch(
+        &mut self,
+        changes: ExecutedOpsChanges,
+        slot: Slot,
+        batch: &mut DBBatch,
+    ) {
+        for (id, value) in changes.iter() {
+            self.put_entry(id, value, batch);
+        }
+
         for (op_id, (op_exec_success, slot)) in changes {
             self.sorted_ops
                 .entry(slot)
@@ -126,97 +156,138 @@ impl ExecutedOps {
                     new.insert(op_id);
                     new
                 });
-
             self.op_exec_status.insert(op_id, op_exec_success);
         }
 
-        self.prune(slot);
+        self.prune_to_batch(slot, batch);
     }
 
     /// Check if an operation was executed
     pub fn contains(&self, op_id: &OperationId) -> bool {
-        self.ops.contains(op_id)
+        let db = self.db.read();
+        let handle = db.db.cf_handle(STATE_CF).expect(CF_ERROR);
+
+        let mut serialized_op_id = Vec::new();
+        self.operation_id_serializer
+            .serialize(op_id, &mut serialized_op_id)
+            .expect(EXECUTED_OPS_ID_SER_ERROR);
+
+        db.db
+            .get_cf(handle, op_id_key!(serialized_op_id))
+            .expect(CRUD_ERROR)
+            .is_some()
     }
 
     /// Prune all operations that expire strictly before `slot`
-    fn prune(&mut self, slot: Slot) {
+    fn prune_to_batch(&mut self, slot: Slot, batch: &mut DBBatch) {
         let kept = self.sorted_ops.split_off(&slot);
         let removed = std::mem::take(&mut self.sorted_ops);
         for (_, ids) in removed {
             for op_id in ids {
-                self.ops.remove(&op_id);
                 self.op_exec_status.remove(&op_id);
-                self.hash ^= *op_id.get_hash();
+                self.delete_entry(&op_id, batch);
             }
         }
         self.sorted_ops = kept;
     }
 
-    /// Get a part of the executed operations.
-    /// Used exclusively by the bootstrap server.
+    /// Add an executed_op to the DB
     ///
-    /// # Returns
-    /// A tuple containing the data and the next executed ops streaming step
-    pub fn get_executed_ops_part(
-        &self,
-        cursor: StreamingStep<Slot>,
-    ) -> (BTreeMap<Slot, PreHashSet<OperationId>>, StreamingStep<Slot>) {
-        let mut ops_part = BTreeMap::new();
-        let left_bound = match cursor {
-            StreamingStep::Started => Unbounded,
-            StreamingStep::Ongoing(slot) => Excluded(slot),
-            StreamingStep::Finished(_) => return (ops_part, cursor),
-        };
-        let mut ops_part_last_slot: Option<Slot> = None;
-        for (slot, ids) in self.sorted_ops.range((left_bound, Unbounded)) {
-            if ops_part.len() < self.config.bootstrap_part_size as usize {
-                ops_part.insert(*slot, ids.clone());
-                ops_part_last_slot = Some(*slot);
-            } else {
-                break;
-            }
-        }
-        if let Some(last_slot) = ops_part_last_slot {
-            (ops_part, StreamingStep::Ongoing(last_slot))
-        } else {
-            (ops_part, StreamingStep::Finished(None))
-        }
+    /// # Arguments
+    /// * `op_id`
+    /// * `value`: execution status and validity slot
+    /// * `batch`: the given operation batch to update
+    fn put_entry(&self, op_id: &OperationId, value: &(bool, Slot), batch: &mut DBBatch) {
+        let db = self.db.read();
+
+        let mut serialized_op_id = Vec::new();
+        self.operation_id_serializer
+            .serialize(op_id, &mut serialized_op_id)
+            .expect(EXECUTED_OPS_ID_SER_ERROR);
+
+        let mut serialized_op_value = Vec::new();
+        self.bool_serializer
+            .serialize(&value.0, &mut serialized_op_value)
+            .expect(EXECUTED_OPS_ID_SER_ERROR);
+        self.slot_serializer
+            .serialize(&value.1, &mut serialized_op_value)
+            .expect(EXECUTED_OPS_ID_SER_ERROR);
+
+        db.put_or_update_entry_value(batch, op_id_key!(serialized_op_id), &serialized_op_value);
     }
 
-    /// Set a part of the executed operations.
-    /// Used exclusively by the bootstrap client.
-    /// Takes the data returned from `get_executed_ops_part` as input.
+    /// Remove a op_id from the DB
     ///
-    /// # Returns
-    /// The next executed ops streaming step
-    pub fn set_executed_ops_part(
-        &mut self,
-        part: BTreeMap<Slot, PreHashSet<OperationId>>,
-    ) -> StreamingStep<Slot> {
-        self.sorted_ops.extend(part.clone());
-        self.extend_and_compute_hash(part.iter().flat_map(|(_, ids)| ids));
-        if let Some(slot) = self.sorted_ops.last_key_value().map(|(slot, _)| slot) {
-            StreamingStep::Ongoing(*slot)
-        } else {
-            StreamingStep::Finished(None)
+    /// # Arguments
+    /// * batch: the given operation batch to update
+    fn delete_entry(&self, op_id: &OperationId, batch: &mut DBBatch) {
+        let db = self.db.read();
+
+        let mut serialized_op_id = Vec::new();
+        self.operation_id_serializer
+            .serialize(op_id, &mut serialized_op_id)
+            .expect(EXECUTED_OPS_ID_SER_ERROR);
+
+        db.delete_key(batch, op_id_key!(serialized_op_id));
+    }
+
+    /// Deserializes the key and value, useful after bootstrap
+    pub fn is_key_value_valid(&self, serialized_key: &[u8], serialized_value: &[u8]) -> bool {
+        if !serialized_key.starts_with(EXECUTED_OPS_PREFIX.as_bytes()) {
+            return false;
         }
+
+        let Ok((rest, _id)) = self.operation_id_deserializer.deserialize::<DeserializeError>(&serialized_key[EXECUTED_OPS_PREFIX.len()..]) else {
+            return false;
+        };
+        if !rest.is_empty() {
+            return false;
+        }
+
+        let Ok((rest, _bool)) = self.bool_deserializer.deserialize::<DeserializeError>(serialized_value) else {
+            return false;
+        };
+        let Ok((rest, _slot)) = self.slot_deserializer.deserialize::<DeserializeError>(rest) else {
+            return false;
+        };
+        if !rest.is_empty() {
+            return false;
+        }
+
+        true
     }
 }
 
 #[test]
-fn test_executed_ops_xor_computing() {
+fn test_executed_ops_hash_computing() {
+    use massa_db::{MassaDB, MassaDBConfig, STATE_HASH_INITIAL_BYTES};
+    use massa_hash::Hash;
     use massa_models::prehash::PreHashMap;
     use massa_models::secure_share::Id;
+    use tempfile::TempDir;
 
     // initialize the executed ops config
-    let config = ExecutedOpsConfig {
-        thread_count: 2,
-        bootstrap_part_size: 10,
+    let thread_count = 2;
+    let config = ExecutedOpsConfig { thread_count };
+    let tempdir_a = TempDir::new().expect("cannot create temp directory");
+    let tempdir_c = TempDir::new().expect("cannot create temp directory");
+    let db_a_config = MassaDBConfig {
+        path: tempdir_a.path().to_path_buf(),
+        max_history_length: 10,
+        max_new_elements: 100,
+        thread_count,
     };
-
+    let db_c_config = MassaDBConfig {
+        path: tempdir_c.path().to_path_buf(),
+        max_history_length: 10,
+        max_new_elements: 100,
+        thread_count,
+    };
+    let db_a = Arc::new(RwLock::new(MassaDB::new(db_a_config)));
+    let db_c = Arc::new(RwLock::new(MassaDB::new(db_c_config)));
     // initialize the executed ops and executed ops changes
-    let mut a = ExecutedOps::new(config.clone());
-    let mut c = ExecutedOps::new(config);
+    let mut a = ExecutedOps::new(config.clone(), db_a.clone());
+    let mut c = ExecutedOps::new(config, db_c.clone());
     let mut change_a = PreHashMap::default();
     let mut change_b = PreHashMap::default();
     let mut change_c = PreHashMap::default();
@@ -248,25 +319,43 @@ fn test_executed_ops_xor_computing() {
         period: 0,
         thread: 0,
     };
-    a.apply_changes(change_a, apply_slot);
-    a.apply_changes(change_b, apply_slot);
-    c.apply_changes(change_c, apply_slot);
+
+    let mut batch_a = DBBatch::new();
+    a.apply_changes_to_batch(change_a, apply_slot, &mut batch_a);
+    db_a.write().write_batch(batch_a, Default::default(), None);
+
+    let mut batch_b = DBBatch::new();
+    a.apply_changes_to_batch(change_b, apply_slot, &mut batch_b);
+    db_a.write().write_batch(batch_b, Default::default(), None);
+
+    let mut batch_c = DBBatch::new();
+    c.apply_changes_to_batch(change_c, apply_slot, &mut batch_c);
+    db_c.write().write_batch(batch_c, Default::default(), None);
 
     // check that a.hash ^ $(change_b) = c.hash
-    assert_eq!(a.hash, c.hash, "'a' and 'c' hashes are not equal");
+    assert_ne!(
+        db_a.read().get_db_hash(),
+        Hash::from_bytes(STATE_HASH_INITIAL_BYTES)
+    );
+    assert_eq!(
+        db_a.read().get_db_hash(),
+        db_c.read().get_db_hash(),
+        "'a' and 'c' hashes are not equal"
+    );
 
     // prune every element
     let prune_slot = Slot {
         period: 20,
         thread: 0,
     };
-    a.apply_changes(PreHashMap::default(), prune_slot);
-    a.prune(prune_slot);
+    let mut batch_a = DBBatch::new();
+    a.prune_to_batch(prune_slot, &mut batch_a);
+    db_a.write().write_batch(batch_a, Default::default(), None);
 
-    // at this point the hash should have been XORed with itself
+    // at this point the hash should have been reset to its original value
     assert_eq!(
-        a.hash,
-        Hash::from_bytes(EXECUTED_OPS_HASH_INITIAL_BYTES),
+        db_a.read().get_db_hash(),
+        Hash::from_bytes(STATE_HASH_INITIAL_BYTES),
         "'a' was not reset to its initial value"
     );
 }

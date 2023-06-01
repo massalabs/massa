@@ -129,6 +129,8 @@ pub const MAX_ASYNC_MESSAGE_DATA: u64 = 1_000_000;
 pub const OPERATION_VALIDITY_PERIODS: u64 = 10;
 /// cycle duration in periods
 pub const PERIODS_PER_CYCLE: u64 = 128;
+/// cycle duration in periods
+pub const PERIODS_BETWEEN_BACKUPS: u64 = 128;
 /// Number of cycles saved in `PoSFinalState`
 ///
 /// 6 for PoS itself so we can check denuncations on selections at C-2 after a bootstrap
@@ -140,14 +142,6 @@ pub const POS_SAVED_CYCLES: usize = 7;
 /// 5 to have a C-2 to C+2 range (6 cycles post-bootstrap give 5 cycle draws)
 /// 1 for margin
 pub const SELECTOR_DRAW_CACHE_SIZE: usize = 6;
-/// Maximum size batch of data in a part of the ledger
-pub const LEDGER_PART_SIZE_MESSAGE_BYTES: u64 = 1_000_000;
-/// Maximum async messages in a batch of the bootstrap of the async pool
-pub const ASYNC_POOL_BOOTSTRAP_PART_SIZE: u64 = 100;
-/// Maximum proof-of-stake deferred credits in a bootstrap batch
-pub const DEFERRED_CREDITS_BOOTSTRAP_PART_SIZE: u64 = 100;
-/// Maximum executed ops per slot in a bootstrap batch
-pub const EXECUTED_OPS_BOOTSTRAP_PART_SIZE: u64 = 10;
 /// Maximum number of consensus blocks in a bootstrap batch
 pub const CONSENSUS_BOOTSTRAP_PART_SIZE: u64 = 50;
 /// Maximum number of consensus block ids when sending a bootstrap cursor from the client
@@ -208,12 +202,12 @@ pub const MAX_BOOTSTRAP_DEPS: u32 = 1000;
 pub const MAX_BOOTSTRAP_CHILDREN: u32 = 1000;
 /// Max number of cycles in PoS bootstrap
 pub const MAX_BOOTSTRAP_POS_CYCLES: u32 = 5;
-/// Max number of address and random entries for PoS bootstrap
-pub const MAX_BOOTSTRAP_POS_ENTRIES: u32 = 1000000000;
 /// Max async pool changes
 pub const MAX_BOOTSTRAP_ASYNC_POOL_CHANGES: u64 = 100_000;
 /// Max bytes in final states parts
 pub const MAX_BOOTSTRAP_FINAL_STATE_PARTS_SIZE: u64 = 1_000_000_000;
+/// Max bytes in final states parts
+pub const MAX_BOOTSTRAPPED_NEW_ELEMENTS: u64 = 500;
 /// Max size of the IP list
 pub const IP_LIST_MAX_SIZE: usize = 10000;
 /// Size of the random bytes array used for the bootstrap, safe to import

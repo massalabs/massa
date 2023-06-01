@@ -1,7 +1,7 @@
 // Copyright (c) 2023 MASSA LABS <info@massa.net>
 
 use crate::StateChanges;
-use massa_async_pool::{AsyncMessage, AsyncMessageId, Change};
+use massa_async_pool::AsyncMessageId;
 use massa_ledger_exports::SetUpdateOrDelete;
 use massa_proto::massa::api::v1 as grpc;
 
@@ -29,31 +29,33 @@ impl From<StateChanges> for grpc::StateChanges {
                 .async_pool_changes
                 .0
                 .into_iter()
-                .map(
-                    |change: Change<AsyncMessageId, AsyncMessage>| match change {
-                        Change::Add(async_msg_id, async_msg) => grpc::AsyncPoolChangeEntry {
-                            async_message_id: async_msg_id_to_string(async_msg_id),
-                            value: Some(grpc::AsyncPoolChangeValue {
-                                r#type: grpc::AsyncPoolChangeType::Add as i32,
-                                async_message: Some(async_msg.into()),
-                            }),
-                        },
-                        Change::Activate(async_msg_id) => grpc::AsyncPoolChangeEntry {
-                            async_message_id: async_msg_id_to_string(async_msg_id),
-                            value: Some(grpc::AsyncPoolChangeValue {
-                                r#type: grpc::AsyncPoolChangeType::Activate as i32,
-                                async_message: None,
-                            }),
-                        },
-                        Change::Delete(async_msg_id) => grpc::AsyncPoolChangeEntry {
-                            async_message_id: async_msg_id_to_string(async_msg_id),
-                            value: Some(grpc::AsyncPoolChangeValue {
-                                r#type: grpc::AsyncPoolChangeType::Delete as i32,
-                                async_message: None,
-                            }),
-                        },
+                .map(|(async_msg_id, change)| match change {
+                    SetUpdateOrDelete::Set(async_msg) => grpc::AsyncPoolChangeEntry {
+                        async_message_id: async_msg_id_to_string(async_msg_id),
+                        value: Some(grpc::AsyncPoolChangeValue {
+                            r#type: grpc::AsyncPoolChangeType::Set as i32,
+                            message: Some(grpc::async_pool_change_value::Message::CreatedMessage(
+                                async_msg.into(),
+                            )),
+                        }),
                     },
-                )
+                    SetUpdateOrDelete::Update(async_msg_update) => grpc::AsyncPoolChangeEntry {
+                        async_message_id: async_msg_id_to_string(async_msg_id),
+                        value: Some(grpc::AsyncPoolChangeValue {
+                            r#type: grpc::AsyncPoolChangeType::Update as i32,
+                            message: Some(grpc::async_pool_change_value::Message::UpdatedMessage(
+                                async_msg_update.into(),
+                            )),
+                        }),
+                    },
+                    SetUpdateOrDelete::Delete => grpc::AsyncPoolChangeEntry {
+                        async_message_id: async_msg_id_to_string(async_msg_id),
+                        value: Some(grpc::AsyncPoolChangeValue {
+                            r#type: grpc::AsyncPoolChangeType::Delete as i32,
+                            message: None,
+                        }),
+                    },
+                })
                 .collect(),
             ledger_changes: value
                 .ledger_changes

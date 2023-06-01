@@ -1,23 +1,11 @@
-use massa_hash::Hash;
-use massa_models::{
-    address::Address, amount::Amount, bytecode::Bytecode, error::ModelsError, slot::Slot,
-    streaming_step::StreamingStep,
-};
+use massa_models::{address::Address, amount::Amount, bytecode::Bytecode};
 use std::collections::BTreeSet;
 use std::fmt::Debug;
 
-use crate::{Key, LedgerChanges, LedgerError};
+use crate::{LedgerChanges, LedgerError};
+use ::massa_db::DBBatch;
 
 pub trait LedgerController: Send + Sync + Debug {
-    /// Allows applying `LedgerChanges` to the final ledger
-    /// * final_state_data should be non-None only if we are storing a final_state snapshot.
-    fn apply_changes(
-        &mut self,
-        changes: LedgerChanges,
-        slot: Slot,
-        final_state_data: Option<Vec<u8>>,
-    );
-
     /// Loads ledger from file
     fn load_initial_ledger(&mut self) -> Result<(), LedgerError>;
 
@@ -55,34 +43,15 @@ pub trait LedgerController: Send + Sync + Debug {
     /// A `BTreeSet` of the datastore keys
     fn get_datastore_keys(&self, addr: &Address) -> Option<BTreeSet<Vec<u8>>>;
 
-    /// Get the current disk ledger hash
-    fn get_ledger_hash(&self) -> Hash;
-
-    /// Get a part of the ledger
-    /// Used for bootstrap
-    /// Return: Tuple with data and last key
-    fn get_ledger_part(
-        &self,
-        last_key: StreamingStep<Key>,
-    ) -> Result<(Vec<u8>, StreamingStep<Key>), ModelsError>;
-
-    /// Set a part of the ledger
-    /// Used for bootstrap
-    /// Return: Last key inserted
-    fn set_ledger_part(&self, data: Vec<u8>) -> Result<StreamingStep<Key>, ModelsError>;
-
     /// Reset the ledger
     ///
     /// USED FOR BOOTSTRAP ONLY
     fn reset(&mut self);
 
-    fn set_initial_slot(&mut self, slot: Slot);
+    fn apply_changes_to_batch(&mut self, changes: LedgerChanges, ledger_batch: &mut DBBatch);
 
-    fn get_slot(&self) -> Result<Slot, ModelsError>;
-
-    fn set_final_state_hash(&mut self, data: Vec<u8>);
-
-    fn get_final_state(&self) -> Result<Vec<u8>, ModelsError>;
+    /// Deserializes the key and value, useful after bootstrap
+    fn is_key_value_valid(&self, serialized_key: &[u8], serialized_value: &[u8]) -> bool;
 
     /// Get every address and their corresponding balance.
     ///

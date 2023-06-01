@@ -8,17 +8,17 @@ edition = "2021"
 serde_json = "1.0"
 tempfile = { version = "3.3", optional = true } # use with testing feature
 rocksdb = "0.20"
-nom = "=7.1"
-tracing = "0.1"
+parking_lot = { version = "0.12", features = ["deadlock_detection"] }
 
 # custom modules
 massa_ledger_exports = { path = "../massa-ledger-exports" }
 massa_models = { path = "../massa-models" }
 massa_serialization = { path = "../massa-serialization" }
-massa_hash = { path = "../massa-hash" }
+massa_db = { path = "../massa-db" }
 
 [dev-dependencies]
 massa_signature = { path = "../massa-signature" }
+massa_hash = { path = "../massa-hash" }
 tempfile = "3.3"
 
 # for more information on what are the following features used for, see the cargo.toml at workspace level

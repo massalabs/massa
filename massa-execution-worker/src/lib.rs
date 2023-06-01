@@ -82,6 +82,8 @@
 #![feature(map_try_insert)]
 #![feature(let_chains)]
 #![feature(option_get_or_insert_default)]
+#![feature(drain_filter)]
+#![feature(btree_drain_filter)]
 
 mod active_history;
 mod context;
