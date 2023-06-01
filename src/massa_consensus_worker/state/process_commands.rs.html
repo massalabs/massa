@@ -183,21 +183,6 @@
 <a href="#183" id="183">183</a>
 <a href="#184" id="184">184</a>
 <a href="#185" id="185">185</a>
-<a href="#186" id="186">186</a>
-<a href="#187" id="187">187</a>
-<a href="#188" id="188">188</a>
-<a href="#189" id="189">189</a>
-<a href="#190" id="190">190</a>
-<a href="#191" id="191">191</a>
-<a href="#192" id="192">192</a>
-<a href="#193" id="193">193</a>
-<a href="#194" id="194">194</a>
-<a href="#195" id="195">195</a>
-<a href="#196" id="196">196</a>
-<a href="#197" id="197">197</a>
-<a href="#198" id="198">198</a>
-<a href="#199" id="199">199</a>
-<a href="#200" id="200">200</a>
 </pre><pre class="rust"><code><span class="kw">use </span>std::collections::{hash_map::Entry, BTreeSet};
 
 <span class="kw">use </span>massa_consensus_exports::{
@@ -365,22 +350,7 @@
         <span class="kw">let </span>reason = DiscardReason::Invalid(<span class="string">&quot;invalid&quot;</span>.to_string());
         <span class="self">self</span>.maybe_note_attack_attempt(<span class="kw-2">&amp;</span>reason, block_id);
         <span class="macro">massa_trace!</span>(<span class="string">&quot;consensus.block_graph.process.invalid_block&quot;</span>, {<span class="string">&quot;block_id&quot;</span>: block_id, <span class="string">&quot;reason&quot;</span>: reason});
-        <span class="kw">match </span><span class="self">self</span>.block_statuses.get(block_id) {
-            <span class="prelude-val">Some</span>(BlockStatus::WaitingForDependencies { .. }) =&gt; {
-                <span class="self">self</span>.waiting_for_dependencies_index.remove(block_id);
-            }
-            <span class="prelude-val">Some</span>(BlockStatus::WaitingForSlot(<span class="kw">_</span>)) =&gt; {
-                <span class="self">self</span>.waiting_for_slot_index.remove(block_id);
-            }
-            <span class="prelude-val">Some</span>(BlockStatus::Incoming(<span class="kw">_</span>)) =&gt; {
-                <span class="self">self</span>.incoming_index.remove(block_id);
-            }
-            <span class="prelude-val">Some</span>(BlockStatus::Active { .. }) =&gt; {
-                <span class="self">self</span>.active_index.remove(block_id);
-            }
-            <span class="prelude-val">Some</span>(BlockStatus::Discarded { .. }) =&gt; {}
-            <span class="prelude-val">None </span>=&gt; {}
-        };
+
         <span class="comment">// add to discard
         </span><span class="self">self</span>.block_statuses.insert(
             <span class="kw-2">*</span>block_id,
