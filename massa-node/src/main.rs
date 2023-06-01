@@ -225,6 +225,12 @@ async fn launch(
         genesis_timestamp: *GENESIS_TIMESTAMP,
     };
 
+    if cfg!(feature = "metrics") {
+        // TODO addr from config
+        let addr = ([192, 168, 1, 183], 9898).into();
+        massa_metrics::server::bind_metrics(addr);
+    }
+
     // Remove current disk ledger if there is one and we don't want to restart from snapshot
     // NOTE: this is temporary, since we cannot currently handle bootstrap from remaining ledger
     if args.keep_ledger || args.restart_from_snapshot_at_period.is_some() {

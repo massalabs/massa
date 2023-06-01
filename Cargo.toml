@@ -18,6 +18,7 @@ members = [
   "massa-consensus-worker",
   "massa-hash",
   "massa-logging",
+  "massa-metrics",
   "massa-models",
   "massa-node",
   "massa-sdk",
