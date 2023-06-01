@@ -228,7 +228,7 @@ async fn launch(
     if cfg!(feature = "metrics") {
         // TODO addr from config
         let addr = ([192, 168, 1, 183], 9898).into();
-        massa_metrics::server::bind_metrics(addr);
+        massa_metrics::start_metrics_server(addr);
     }
 
     // Remove current disk ledger if there is one and we don't want to restart from snapshot

@@ -8,7 +8,7 @@ use hyper::{
 use prometheus::{Encoder, TextEncoder};
 use tokio::runtime::Runtime;
 
-pub fn bind_metrics(addr: SocketAddr) {
+pub(crate) fn bind_metrics(addr: SocketAddr) {
     std::thread::spawn(move || {
         let runtime = Runtime::new().unwrap();
         runtime.block_on(async {
