@@ -108,7 +108,7 @@ impl ConsensusState {
     /// Get a full active block
     ///
     /// Returns an error if it was not found
-    pub fn try_get_full_active_block(
+    fn try_get_full_active_block(
         &self,
         block_id: &BlockId,
     ) -> Result<(&ActiveBlock, &Storage), ConsensusError> {
